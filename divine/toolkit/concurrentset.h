@@ -54,20 +54,24 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         size_t _size;
 
         size_t size() const { return _size; }
-        bool empty() const { return _size == 0; }
+
+        void size( size_t s ) {
+            assert( empty() );
+            _size = s;
+        }
+
+        bool empty() const { return begin() == nullptr; }
 
         void resize( size_t n ) {
             Cell *old = _data.exchange( new Cell[ n ] );
             _size = n;
-            if ( old )
-                delete[] old;
+            delete[] old;
         }
 
         void free() {
             Cell *old = _data.exchange( nullptr );
             _size = 0;
-            if ( old )
-                delete[] old;
+            delete[] old;
         }
 
         Cell &operator[]( size_t i ) {
@@ -77,8 +81,14 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         Cell *begin() {
             return _data.load( std::memory_order_relaxed );
         }
+        Cell *begin() const {
+            return _data.load( std::memory_order_relaxed );
+        }
 
         Cell *end() {
+            return begin() + size();
+        }
+        Cell *end() const {
             return begin() + size();
         }
 
@@ -99,11 +109,10 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         std::atomic< unsigned > doneSegments;
         std::atomic< size_t > used;
         std::atomic< bool > growing;
-        std::atomic< bool > firstAccess;
 
         Data( const Hasher &h, unsigned maxGrows )
-            : hasher( h ), table( maxGrows ), tableWorkers( maxGrows ), currentRow( 1 ),
-              availableSegments( 0 ), used( 0 ), growing( false ), firstAccess( false )
+            : hasher( h ), table( maxGrows ), tableWorkers( maxGrows ), currentRow( 0 ),
+              availableSegments( 0 ), used( 0 ), growing( false )
         {}
     };
 
@@ -190,6 +199,10 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 return Find( Resolution::Growing );
 
             Row &row = current( rowIndex );
+
+            if ( row.empty() )
+                return Find( Resolution::NotFound );
+
             const size_t mask = row.size() - 1;
 
             for ( size_t i = 0; i < Base::maxcollisions; ++i ) {
@@ -210,19 +223,18 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         template< bool force >
         Insert insertCell( value_type x, hash64_t h )
         {
+            Row &row = current( _td.currentRow );
             if ( !force ) {
                 // read usage first to guarantee usage <= size
                 size_t u = _d.used.load();
-                size_t s = size();
                 // usage >= 75% of table size
                 // usage is never greater than size
-                if ( ( s >> 2 ) >= s - u )
+                if ( row.empty() || double( row.size() ) <= double( 4 * u ) / 3 )
                     return Insert( Resolution::NoSpace );
                 if ( changed( _td.currentRow ) )
                     return Insert( Resolution::Growing );
             }
 
-            Row &row = current( _td.currentRow );
             assert( !row.empty() );
             const size_t mask = row.size() - 1;
 
@@ -267,6 +279,13 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             _d.currentRow.exchange( rowIndex );
             _d.tableWorkers[ rowIndex ] = 1;
             _d.doneSegments.exchange( 0 );
+
+            // current row is fake, so skip the rehashing
+            if ( row.empty() ) {
+                rehashingDone();
+                return true;
+            }
+
             const unsigned segments = std::max( row.size() / segmentSize, size_t( 1 ) );
             _d.availableSegments.exchange( segments );
 
@@ -279,6 +298,11 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             if ( _d.growing )
                 while( rehashSegment() );
             while( _d.growing );
+        }
+
+        void rehashingDone() {
+            _d.growing.exchange( false ); /* done */
+            releaseRow( _d.currentRow - 1 );
         }
 
         bool rehashSegment() {
@@ -317,10 +341,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 }
             }
 
-            if ( ++_d.doneSegments == segments ) {
-                _d.growing.exchange( false ); /* done */
-                releaseRow( td.currentRow - 1 );
-            }
+            if ( ++_d.doneSegments == segments )
+                rehashingDone();
 
             return segment > 0;
         }
@@ -349,11 +371,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             do {
                 if ( !refCount ) {
                     index = _d.currentRow;
-                    // only first access is allowed to pass through this guard
-                    if ( index > 1 || _d.firstAccess.exchange( true ) ) {
-                        refCount = _d.tableWorkers[ index ];
-                        continue;
-                    }
+                    refCount = _d.tableWorkers[ index ];
+                    continue;
                 }
 
                 if (_d.tableWorkers[ index ].compare_exchange_weak( refCount, refCount + 1 ))
@@ -381,7 +400,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     /* XXX only usable before the first insert; rename? */
     void setSize( size_t s ) {
         s = bitops::fill( s - 1 ) + 1;
-        _d.table[ 1 ].resize( s );
+        _d.table[ 0 ].size( s / 2 );
     }
 
     hash64_t hash( const value_type &t ) { return hash128( t ).first; }
