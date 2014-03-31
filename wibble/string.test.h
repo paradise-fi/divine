@@ -137,6 +137,11 @@ struct TestString {
         assert_eq(str::joinpath("a/", "b"), "a/b");
         assert_eq(str::joinpath("a", "/b"), "a/b");
         assert_eq(str::joinpath("a/", "/b"), "a/b");
+#if WIN32
+        assert_eq( str::joinpath( "a", "\\b" ), "a\\b" );
+        assert_eq( str::joinpath( "\\\\a", "\\b" ), "\\\\a\\b" );
+        assert_eq( str::joinpath( "c:\\a", "\\b" ), "c:\\a\\b" );
+#endif
     }
 
     Test appendpath()
@@ -144,11 +149,24 @@ struct TestString {
         assert_eq(str::appendpath("a", "b"), "a/b");
         assert_eq(str::appendpath("a/", "b"), "a/b");
         assert_eq(str::appendpath("a", "/b"), "/b");
-        assert_eq(str::appendpath("a/", "/b"), "/b");
         assert_eq(str::appendpath("/a", "b"), "/a/b");
         assert_eq(str::appendpath("/a/", "b"), "/a/b");
+#if POSIX
+        assert_eq(str::appendpath("a/", "/b"), "/b");
         assert_eq(str::appendpath("/a", "/b"), "/b");
         assert_eq(str::appendpath("/a/", "/b"), "/b");
+#endif
+#if WIN32
+        assert_eq( str::appendpath( "a\\", "\\b" ), "a\\b" );
+        assert_eq( str::appendpath( "\\a", "\\b" ), "\\a\\b" );
+        assert_eq( str::appendpath( "\\a\\", "\\b" ), "\\a\\b" );
+        assert_eq( str::appendpath( "a\\", "\\\\b" ), "\\\\b" );
+        assert_eq( str::appendpath( "a\\", "c:\\b" ), "c:\\b" );
+        assert_eq( str::appendpath( "c:\\a\\", "\\\\b" ), "\\\\b" );
+        assert_eq( str::appendpath( "c:\\a\\", "c:\\b" ), "c:\\b" );
+        assert_eq( str::appendpath( "\\\\a\\", "\\\\b" ), "\\\\b" );
+        assert_eq( str::appendpath( "\\\\a\\", "c:\\b" ), "c:\\b" );
+#endif
     }
 
     Test urlencode()
