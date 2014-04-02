@@ -71,7 +71,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, 
     }
 
     Info( Meta m ) : Algorithm( m ) {
-        g = this->initGraph( *this );
+        g = this->initGraph( *this, decltype( this )( nullptr ), false );
     }
 };
 

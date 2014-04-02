@@ -103,16 +103,18 @@ struct Algorithm
 
     /// Initializes the graph generator by reading a file
     template< typename Self >
-    typename Self::Graph *initGraph( Self &self, Self *master = nullptr ) {
+    typename Self::Graph *initGraph( Self &self, Self *master = nullptr, bool full = true ) {
         typename Self::Graph *g = new typename Self::Graph;
         g->setPool( self.masterPool() );
         g->setSlack( m_slack );
         g->read( meta().input.model, meta().input.definitions, master ? &master->graph() : nullptr );
-        g->useProperties( meta().input.properties );
-        meta().algorithm.reduce =
-            g->useReductions( meta().algorithm.reduce );
-        g->fairnessEnabled( meta().algorithm.fairness );
-        g->demangleStyle( meta().algorithm.demangle );
+        if ( full ) {
+            g->useProperties( meta().input.properties );
+            meta().algorithm.reduce =
+                g->useReductions( meta().algorithm.reduce );
+            g->fairnessEnabled( meta().algorithm.fairness );
+            g->demangleStyle( meta().algorithm.demangle );
+        }
         return g;
     }
 
