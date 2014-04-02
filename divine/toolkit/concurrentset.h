@@ -301,8 +301,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         }
 
         void rehashingDone() {
-            _d.growing.exchange( false ); /* done */
             releaseRow( _d.currentRow - 1 );
+            _d.growing.exchange( false ); /* done */
         }
 
         bool rehashSegment() {
