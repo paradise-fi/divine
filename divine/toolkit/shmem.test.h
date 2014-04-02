@@ -45,17 +45,15 @@ struct TestSharedMemoryUtilities {
         std::atomic< bool > &interrupted;
         int produce;
         int consume;
-        bool terminateEarly;
 
         template< typename D, typename C >
-        CounterWorker( D &d, C &c, std::atomic< int > &q, std::atomic< bool > &i, bool t ) :
+        CounterWorker( D &d, C &c, std::atomic< int > &q, std::atomic< bool > &i ) :
             detector( d ),
             counter( c ),
             queue( q ),
             interrupted( i ),
             produce( 0 ),
-            consume( 0 ),
-            terminateEarly( t )
+            consume( 0 )
         {}
 
         void *main() {
@@ -78,13 +76,6 @@ struct TestSharedMemoryUtilities {
                     --consume;
                     --counter;
                 }
-                // last worker will always fulfill this condition
-                // after exactly one consuming operation
-                if ( terminateEarly && consume == peers ) {
-                    queue = 0;
-                    interrupted = true;
-                    counter.reset();
-                }
                 if ( interrupted )
                     break;
             }
@@ -104,7 +95,11 @@ struct TestSharedMemoryUtilities {
         c.sync();
 
         std::vector< CounterWorker > threads{ peers,
-            CounterWorker{ detectorShared, counterShared, queue, interrupted, terminateEarly } };
+            CounterWorker{ detectorShared, counterShared, queue, interrupted } };
+
+#ifdef POSIX // hm
+        alarm( 1 );
+#endif
 
         // set consume and produce limits to each worker
         int i = 1;
@@ -117,12 +112,15 @@ struct TestSharedMemoryUtilities {
             ++i;
         }
 
-#ifdef POSIX // hm
-        alarm( 1 );
-#endif
-
         for ( auto &w : threads )
             w.start();
+
+        if ( terminateEarly ) {
+            interrupted = true;
+            counterShared.counter = 0;
+            queue = 0;
+        }
+
         for ( auto &w : threads )
             w.join();
 
