@@ -63,8 +63,8 @@ let
   mkbuild = { name, inputs,
               flags ? [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=OFF" ],
               clang ? false,
-              clang_runtime ? ({ pkgs }: pkgs.clang), # version of clang used in divine compile --llvm
-              llvm ? ({ pkgs }: pkgs.llvm)
+              clang_runtime ? (pkgs: pkgs.clang), # version of clang used in divine compile --llvm
+              llvm ? (pkgs: pkgs.llvm)
             }: system:
     let pkgs = import nixpkgs { inherit system; };
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
@@ -86,8 +86,7 @@ let
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name;
        src = jobs.tarball;
-       buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which ] ++
-                     inputs { inherit pkgs; };
+       buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which ] ++ inputs pkgs;
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ profile ++ flags;
        dontStrip = true;
        checkPhase = ''
@@ -146,7 +145,7 @@ let
 
   gcc_llvm_vers = vers: llvm: clang: with builtins; mkbuild {
       name = "llvm_${vers}";
-      inputs = { pkgs }: [ (getAttr llvm pkgs) (getAttr clang pkgs) ];
+      inputs = pkgs: [ (getAttr llvm pkgs) (getAttr clang pkgs) ];
       llvm = pkgs: getAttr llvm pkgs;
       clang_runtime = pkgs: getAttr clang pkgs;
   };
@@ -161,29 +160,29 @@ let
   };
 
   builds = {
-    gcc_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; };
-    gcc_mpi = mkbuild { name = "mpi"; inputs = { pkgs }: [ pkgs.openmpi ]; };
-    gcc_gui = mkbuild { name = "gui"; inputs = { pkgs }: [ pkgs.qt4 ]; };
+    gcc_minimal = mkbuild { name = "minimal"; inputs = pkgs: []; };
+    gcc_mpi = mkbuild { name = "mpi"; inputs = pkgs: [ pkgs.openmpi ]; };
+    gcc_gui = mkbuild { name = "gui"; inputs = pkgs: [ pkgs.qt4 ]; };
 
-    gcc_llvm = mkbuild { name = "llvm"; inputs = { pkgs }: [ pkgs.llvm pkgs.clang ]; };
+    gcc_llvm = mkbuild { name = "llvm"; inputs = pkgs: [ pkgs.llvm pkgs.clang ]; };
     gcc_llvm_31 = gcc_llvm_vers "3.1" "llvm_31" "clang_31";
     gcc_llvm_32 = gcc_llvm_vers "3.2" "llvm_32" "clang_32";
     gcc_llvm_33 = gcc_llvm_vers "3.3" "llvm_33" "clang_33";
     gcc_llvm_34 = gcc_llvm_vers "3.4" "llvm_34" "clang_34";
 
-    gcc_timed = mkbuild { name = "timed"; inputs = { pkgs }: [ pkgs.libxml2 pkgs.boost ]; };
-    gcc_compression = mkbuild { name = "compression"; inputs = { pkgs }: [];
+    gcc_timed = mkbuild { name = "timed"; inputs = pkgs: [ pkgs.libxml2 pkgs.boost ]; };
+    gcc_compression = mkbuild { name = "compression"; inputs = pkgs: [];
                        flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" "-DEXPLICIT=OFF" ]; };
-    gcc_hashcompaction = mkbuild { name = "hashcompaction"; inputs = { pkgs }: [];
+    gcc_hashcompaction = mkbuild { name = "hashcompaction"; inputs = pkgs: [];
                        flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=ON" "-DEXPLICIT=OFF" ]; };
-    gcc_explicit = mkbuild { name = "explicit"; inputs = { pkgs }: [];
+    gcc_explicit = mkbuild { name = "explicit"; inputs = pkgs: [];
                        flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=ON" ]; };
-    gcc_full = mkbuild { name = "full"; inputs = { pkgs }:
+    gcc_full = mkbuild { name = "full"; inputs = pkgs:
                           [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                          flags = []; };
-    clang_minimal = mkbuild { name = "minimal"; inputs = { pkgs }: []; clang = true; };
-    clang_medium = mkbuild { name = "medium"; inputs = { pkgs }:
-                              [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
+    clang_minimal = mkbuild { name = "minimal"; inputs = pkgs: []; clang = true; };
+    clang_medium  = mkbuild { name = "medium";  inputs = pkgs:
+                               [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
                              flags = []; clang = true; };
   };
 
