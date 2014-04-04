@@ -22,6 +22,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
  */
 
+// modifications by DIVINE team:
+// (c) 2014 Vladimír Štill
+
 #include <wibble/operators.h>
 #include <wibble/sfinae.h>
 
@@ -253,6 +256,21 @@ inline std::string ucfirst(const std::string& str)
 	return res + tolower(str.substr(1));
 }
 
+// sorted by priority
+#ifdef POSIX
+const char pathSeparators[] = { '/' };
+#endif
+#ifdef WIN32
+const char pathSeparators[] = { '\\', '/' };
+#endif
+
+inline bool isPathSeparator( char ch ) {
+    for ( int i = 0; i < int( sizeof( pathSeparators ) ); ++i )
+        if ( ch == pathSeparators[ i ] )
+            return true;
+    return false;
+}
+
 /// Join two paths, adding slashes when appropriate
 inline std::string joinpath(const std::string& path1, const std::string& path2)
 {
@@ -261,16 +279,16 @@ inline std::string joinpath(const std::string& path1, const std::string& path2)
 	if (path2.empty())
 		return path1;
 
-	if (path1[path1.size() - 1] == '/')
-		if (path2[0] == '/')
+	if ( isPathSeparator( path1[path1.size() - 1] ) )
+		if ( isPathSeparator( path2[0] ) )
 			return path1 + path2.substr(1);
 		else
 			return path1 + path2;
 	else
-		if (path2[0] == '/')
+		if ( isPathSeparator( path2[0] ) )
 			return path1 + path2;
 		else
-			return path1 + '/' + path2;
+			return path1 + pathSeparators[ 0 ] + path2;
 }
 
 // append path2 to path1 if path2 is not absolute, otherwise return path2
