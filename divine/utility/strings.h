@@ -13,6 +13,8 @@ extern const char *llvm_usr_h_str;
 extern const char *llvm_usr_pthread_h_str;
 extern const char *llvm_usr_pthread_cpp_str;
 extern const char *llvm_usr_glue_cpp_str;
+extern const char *llvm_usr_stubs_cpp_str;
+extern const char *llvm_usr_entry_cpp_str;
 extern const char *llvm_usr_atomic_h_str;
 extern const char *llvm_usr_cxa_exception_cpp_str;
 extern const char *llvm_usr_unwind_h_str;

@@ -324,6 +324,8 @@ struct Compile {
         if ( !o_dont_link->boolValue() ) {
             fs::writeFile( "pthread.cpp", llvm_usr_pthread_cpp_str );
             fs::writeFile( "glue.cpp", llvm_usr_glue_cpp_str );
+            fs::writeFile( "stubs.cpp", llvm_usr_stubs_cpp_str );
+            fs::writeFile( "entry.cpp", llvm_usr_entry_cpp_str );
             fs::writeFile( "cxa_exception_divine.cpp", llvm_usr_cxa_exception_cpp_str );
         }
 
@@ -342,10 +344,12 @@ struct Compile {
 
         if ( !o_precompiled->boolValue() && !o_dont_link->boolValue() ) {
             run( clang() + " -c -I. " + flags + " glue.cpp -o glue.bc" );
+            run( clang() + " -c -I. " + flags + " stubs.cpp -o stubs.bc" );
+            run( clang() + " -c -I. " + flags + " entry.cpp -o entry.bc" );
             run( clang() + " -c -I. " + flags + " pthread.cpp -o pthread.bc" );
             run( clang() + " -c -I. -Ilibcxxabi " + flags // needs part of private cxxabi headers
                     + " cxa_exception_divine.cpp -o cxa_exception_divine.bc" );
-            run( gold_ar() + " libdivine.a glue.bc pthread.bc cxa_exception_divine.bc" );
+            run( gold_ar() + " libdivine.a entry.bc stubs.bc glue.bc pthread.bc cxa_exception_divine.bc" );
         }
 
         if ( o_libs_only->boolValue() ) {
