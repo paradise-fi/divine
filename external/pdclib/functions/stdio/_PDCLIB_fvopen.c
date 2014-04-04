@@ -70,6 +70,10 @@ FILE * _PDCLIB_fvopen(
     rc->status |= _IOLBF;
     /* TODO: Setting mbstate */
     /* Adding to list of open files */
+#ifdef __divine__
+    if (!_PDCLIB_filelist)
+        atexit(_PDCLIB_closeall);
+#endif
     rc->next = _PDCLIB_filelist;
     _PDCLIB_filelist = rc;
     return rc;

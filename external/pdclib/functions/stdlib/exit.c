@@ -38,6 +38,7 @@ void exit( int status )
 
 #include <divine.h>
 
+/* with __divine__, closeall is atexit'd by fopen (fvopen) */
 void (**_PDCLIB_regstack)( void ) = NULL;
 size_t _PDCLIB_regptr = 0;
 
@@ -49,7 +50,6 @@ void exit( int status )
             _PDCLIB_regstack[ _PDCLIB_regptr - i ]();
 
     __divine_free( _PDCLIB_regstack );
-    _PDCLIB_closeall();
     _Exit( status );
 }
 
