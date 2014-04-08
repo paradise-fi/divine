@@ -530,6 +530,11 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
             });
     }
 
+    r << "heapmeta:";
+    for ( int i = 0; i < heap().segcount; ++i )
+        r << " " << state().get( HeapMeta() ).idAt( i );
+    r << std::endl;
+
     r << "--------" << std::endl;
 }
 
