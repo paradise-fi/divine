@@ -5,25 +5,39 @@
 
 using namespace divine::llvm;
 
-typedef Evaluator< Interpreter, Interpreter > Eval;
+template< typename HM >
+using Eval = Evaluator< Interpreter< HM >, Interpreter< HM > >;
 
-void Interpreter::choose( int32_t result )
+template< typename HM >
+void Interpreter< HM >::choose( int32_t result )
 {
     assert_eq( instruction().builtin, BuiltinChoice );
     *reinterpret_cast< int32_t * >(
         dereference( instruction().result() ) ) = result;
 }
 
-void Interpreter::evaluate()
+template< typename HM >
+void Interpreter< HM >::evaluate()
 {
-    Eval eval( info(), *this, *this );
+    Eval< HM > eval( info(), *this, *this );
     eval.instruction = instruction();
     eval.run();
 }
 
-void Interpreter::evaluateSwitchBB( PC to )
+template< typename HM >
+void Interpreter< HM >::evaluateSwitchBB( PC to )
 {
-    Eval eval( info(), *this, *this );
+    Eval< HM > eval( info(), *this, *this );
     eval.instruction = instruction();
     eval.switchBB( to );
+}
+
+namespace divine {
+namespace llvm {
+
+/* explicit instances */
+template struct Interpreter< machine::NoHeapMeta >;
+template struct Interpreter< machine::HeapIDs >;
+
+}
 }

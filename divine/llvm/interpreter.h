@@ -40,7 +40,7 @@
 namespace divine {
 namespace llvm {
 
-struct Interpreter;
+template< typename T > struct Interpreter;
 using wibble::Maybe;
 using toolkit::Probability;
 
@@ -77,12 +77,13 @@ struct BitCode {
     }
 };
 
+template< typename HeapMeta >
 struct Interpreter
 {
     Pool &pool;
     std::shared_ptr< BitCode > bc;
     TargetData TD;
-    MachineState<> state; /* the state we are dealing with */
+    MachineState< HeapMeta > state; /* the state we are dealing with */
     std::map< std::string, std::string > properties;
 
     bool jumped;

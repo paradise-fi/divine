@@ -416,7 +416,7 @@ namespace divine {
 namespace llvm {
 
 /* explicit instances */
-template struct MachineState<>;
+template struct MachineState< machine::NoHeapMeta >;
 template struct MachineState< machine::HeapIDs >;
 
 }

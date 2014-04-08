@@ -16,6 +16,7 @@
 #include <divine/generator/common.h>
 #include <divine/llvm/interpreter.h>
 #include <divine/ltl2ba/main.h>
+#include <divine/toolkit/lens.h>
 
 #ifndef DIVINE_GENERATOR_LLVM_H
 #define DIVINE_GENERATOR_LLVM_H
@@ -38,12 +39,14 @@ typename BS::bitstream &operator<<( BS &bs, const NoLabel & ) { return bs; }
 template< typename BS >
 typename BS::bitstream &operator>>( BS &bs, NoLabel & ) { return bs; }
 
-template< typename _Label >
+template< typename _Label, typename HeapMeta >
 struct _LLVM : Common< Blob > {
     typedef Blob Node;
+    using Interpreter = llvm::Interpreter< HeapMeta >;
+
     std::shared_ptr< divine::llvm::BitCode > bitcode;
-    divine::llvm::Interpreter *_interpreter;
-    std::shared_ptr< divine::llvm::Interpreter > _interpreter_2;
+    Interpreter *_interpreter;
+    std::shared_ptr< Interpreter > _interpreter_2;
     Node _initial;
     typedef _Label Label;
 
@@ -118,14 +121,17 @@ struct _LLVM : Common< Blob > {
         pool().free( s );
     }
 
-    using Flags = divine::llvm::machine::Flags;
+    using MachineState = llvm::MachineState<>;
+    using State = MachineState::State;
+    using Flags = llvm::machine::Flags;
+    using Heap = llvm::machine::Heap;
 
-    Flags &flags( Blob b ) {
-        return pool().template get< Flags >( b, this->slack() );
-    }
+    template< typename T >
+    T &state( Blob b ) { return interpreter().state.state( b ).get( T() ); }
+    Flags &flags( Blob b ) { return state< Flags >( b ); }
 
     bool isGoal( Node n ) {
-        auto &fl = flags( n );
+        auto &fl = state< Flags >( n );
         for ( int i = 0; i < fl.problemcount; ++i )
             for ( auto p : goalProblems )
                 if ( fl.problems( i ).what == p )
@@ -181,6 +187,7 @@ struct _LLVM : Common< Blob > {
     template< typename Y >
     void properties( Y yield ) {
         yield( "deadlock", "deadlock freedom", PT_Deadlock );
+        yield( "pointsto", "verify points-to info stored in LLVM metadata", PT_Goal );
         yield( "assert", "assertion safety", PT_Goal );
         yield( "memory", "memory safety (invalid dereferences + bound checks)", PT_Goal );
         yield( "arithmetic", "arithmetic safety (division by zero)", PT_Goal );
@@ -215,6 +222,9 @@ struct _LLVM : Common< Blob > {
     bool useProperty( std::string name )
     {
         size_t sz = goalProblems.size();
+
+        if ( name == "pointsto" )
+            useProperty( llvm::Problem::PointsToViolated );
 
         if ( name == "assert" || name == "safety" )
             useProperty( llvm::Problem::Assert );
@@ -334,13 +344,13 @@ struct _LLVM : Common< Blob > {
         return reduce;
     }
 
-    divine::llvm::Interpreter &interpreter() {
+    Interpreter &interpreter() {
         if (_interpreter)
             return *_interpreter;
 
-        _interpreter = new divine::llvm::Interpreter( this->pool(), this->_slack, bitcode );
+        _interpreter = new Interpreter( this->pool(), this->_slack, bitcode );
         if ( !_interpreter_2 )
-            _interpreter_2 = std::make_shared< divine::llvm::Interpreter >( this->pool(), this->_slack, bitcode );
+            _interpreter_2 = std::make_shared< Interpreter >( this->pool(), this->_slack, bitcode );
         applyReductions();
 
         return *_interpreter;
@@ -363,8 +373,8 @@ struct _LLVM : Common< Blob > {
 
 };
 
-typedef _LLVM< NoLabel > LLVM;
-typedef _LLVM< Probability > ProbabilisticLLVM;
+typedef _LLVM< NoLabel, llvm::machine::NoHeapMeta > LLVM;
+typedef _LLVM< Probability, llvm::machine::NoHeapMeta > ProbabilisticLLVM;
 
 }
 }

@@ -14,7 +14,8 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-Interpreter::Interpreter( Pool &pool, int slack, std::shared_ptr< BitCode > bc )
+template< typename HM >
+Interpreter< HM >::Interpreter( Pool &pool, int slack, std::shared_ptr< BitCode > bc )
     : pool( pool ), bc( bc ), TD( bc->module.get() ), state( info(), pool, slack )
 {
     tauplus = false;
@@ -23,7 +24,8 @@ Interpreter::Interpreter( Pool &pool, int slack, std::shared_ptr< BitCode > bc )
     parseProperties( bc->module.get() );
 }
 
-void Interpreter::parseProperties( Module * )
+template< typename HM >
+void Interpreter< HM >::parseProperties( Module * )
 {
     auto prefix = "__divine_LTL_";
 
@@ -49,7 +51,8 @@ void Interpreter::parseProperties( Module * )
     }
 }
 
-divine::Blob Interpreter::initial( Function *f, bool is_start )
+template< typename HM >
+divine::Blob Interpreter< HM >::initial( Function *f, bool is_start )
 {
     Blob pre_initial = pool.allocate( state._slack + state.size( 0, 0, 0, 0 ) );
     pool.clear( pre_initial );
@@ -94,7 +97,8 @@ divine::Blob Interpreter::initial( Function *f, bool is_start )
     return result;
 }
 
-int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl )
+template< typename HM >
+int Interpreter< HM >::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl )
 {
     int current = state._thread;
     int tid = state.new_thread();
@@ -102,16 +106,26 @@ int Interpreter::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl )
     if ( !arg.isNothing() ) {
         auto v = info().function( pc ).values[ 0 ];
         frame().memoryflag( info(), v ).set( fl );
-        *frame().dereference< Pointer >( info(), v ) = arg.value();
+        *frame().template dereference< Pointer >( info(), v ) = arg.value();
     }
     if ( current >= 0 )
         state.switch_thread( current );
     return tid;
 }
 
-int Interpreter::new_thread( Function *f )
+template< typename HM >
+int Interpreter< HM >::new_thread( Function *f )
 {
     return new_thread( PC( info().functionmap[ f ], 0 ),
                        Maybe< Pointer >::Nothing(), MemoryFlag::Data );
 }
 
+namespace divine {
+namespace llvm {
+
+/* explicit instances */
+template struct Interpreter< machine::NoHeapMeta >;
+template struct Interpreter< machine::HeapIDs >;
+
+}
+}
