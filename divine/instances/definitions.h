@@ -194,7 +194,7 @@ enum class Algorithm {
 };
 enum class Generator {
     Begin,
-    Dve, Coin, LLVM, ProbabilisticLLVM, Timed, CESMI, ProbabilisticExplicit, Explicit, Dummy,
+    Dve, Coin, PointsToLLVM, LLVM, ProbabilisticLLVM, Timed, CESMI, ProbabilisticExplicit, Explicit, Dummy,
     End
 };
 enum class Transform {
@@ -260,6 +260,7 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Generator, Dve );
     SHOW( Generator, Coin );
     SHOW( Generator, LLVM );
+    SHOW( Generator, PointsToLLVM );
     SHOW( Generator, ProbabilisticLLVM );
     SHOW( Generator, Timed );
     SHOW( Generator, CESMI );
@@ -336,6 +337,7 @@ static const CMap< Key, std::vector< std::string > > headers = {
     { Generator::Timed,                 { "divine/generator/timed.h" } },
     { Generator::CESMI,                 { "divine/generator/cesmi.h" } },
     { Generator::LLVM,                  { "divine/generator/llvm.h" } },
+    { Generator::PointsToLLVM,          { "divine/generator/llvm.h" } },
     { Generator::ProbabilisticLLVM,     { "divine/generator/llvm.h" } },
     { Generator::Explicit,              { "divine/generator/explicit.h" } },
     { Generator::ProbabilisticExplicit, { "divine/generator/explicit.h" } },
@@ -362,14 +364,18 @@ struct GenSelect {
     std::string extension;
     bool useProb;
     bool prob;
+    std::string property;
+
     GenSelect( std::string extension ) : extension( extension ), useProb( false ) { }
-    GenSelect( std::string extension, bool probabilistic ) :
-        extension( extension ), useProb( true ), prob( probabilistic )
+    GenSelect( std::string extension, bool probabilistic, std::string prop = "" ) :
+        extension( extension ), useProb( true ), prob( probabilistic ), property( prop )
     { }
 
     bool operator()( const Meta &meta ) {
         return wibble::str::endsWith( meta.input.model, extension )
-            && (!useProb || (prob == meta.input.probabilistic));
+            && (!useProb || (prob == meta.input.probabilistic))
+            && (property.empty() || meta.input.properties.count( property ) );
+
     }
 };
 
@@ -390,6 +396,7 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
     { Generator::Coin,              GenSelect( ".coin" ) },
     { Generator::Timed,             GenSelect( ".xml" ) },
     { Generator::CESMI,             GenSelect( generator::cesmi_ext ) },
+    { Generator::PointsToLLVM,      GenSelect( ".bc", false, "pointsto" ) },
     { Generator::LLVM,              GenSelect( ".bc", false ) },
     { Generator::ProbabilisticLLVM, GenSelect( ".bc", true ) },
     { Generator::Explicit,
@@ -453,6 +460,7 @@ static const CMap< Key, std::function< void( Meta & ) > > postSelect = {
     { Generator::Timed,                 NameGen( "Timed" ) },
     { Generator::CESMI,                 NameGen( "CESMI" ) },
     { Generator::LLVM,                  NameGen( "LLVM" ) },
+    { Generator::PointsToLLVM,          NameGen( "LLVM (pointsto)" ) },
     { Generator::ProbabilisticLLVM,     NameGen( "LLVM (probabilistic)" ) },
     { Generator::Explicit,              NameGen( "Explicit" ) },
     { Generator::ProbabilisticExplicit, NameGen( "Explicit (probabilistic)" ) },
@@ -477,6 +485,7 @@ static void initLLVM( const Meta &meta ) {
 // aditional initialization of runtime parameters -- optional
 static const CMap< Key, std::function< void( const Meta & ) > > init = {
     { Generator::LLVM,              initLLVM },
+    { Generator::PointsToLLVM,      initLLVM },
     { Generator::ProbabilisticLLVM, initLLVM },
 };
 
@@ -620,6 +629,7 @@ static const CMap< Key, FixArray< std::string > > symbols = {
     symGen( Generator::Timed ),
     symGen( Generator::CESMI ),
     symGen( Generator::LLVM ),
+    symGen( Generator::PointsToLLVM ),
     symGen( Generator::ProbabilisticLLVM ),
     symGen( Generator::Explicit ),
     symGen( Generator::ProbabilisticExplicit ),

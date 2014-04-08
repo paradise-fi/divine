@@ -374,6 +374,7 @@ struct _LLVM : Common< Blob > {
 };
 
 typedef _LLVM< NoLabel, llvm::machine::NoHeapMeta > LLVM;
+typedef _LLVM< NoLabel, llvm::machine::HeapIDs > PointsToLLVM;
 typedef _LLVM< Probability, llvm::machine::NoHeapMeta > ProbabilisticLLVM;
 
 }
