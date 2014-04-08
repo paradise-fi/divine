@@ -332,6 +332,10 @@ std::string Describe::problem( Problem bad )
             s << "NOT IMPLEMENTED"; break;
         case Problem::Uninitialised:
             s << "UNDEFINED VALUE"; break;
+        case Problem::PointsToViolated:
+            s << "POINTS-TO VIOLATED"; break;
+        default:
+            s << "????"; break;
     }
 
     if ( bad.where.function ) {

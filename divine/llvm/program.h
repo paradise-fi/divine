@@ -361,6 +361,13 @@ struct GlobalContext {
     bool free( Pointer ) { assert_die(); }
     int pointerSize( Pointer ) { assert_die(); }
 
+    std::vector< int > pointerId( ::llvm::Instruction *insn ) {
+        assert_unreachable( "no pointerId in global context" );
+    }
+    int pointerId( Pointer p ) {
+        assert_unreachable( "no pointerId in global context" );
+    }
+
     MemoryBits memoryflag( Pointer ) {
         assert( _const_flag == MemoryFlag::Data );
         return MemoryBits( reinterpret_cast< uint8_t * >( &_const_flag ), 0 );

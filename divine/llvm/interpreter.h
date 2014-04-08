@@ -280,6 +280,9 @@ struct Interpreter
     int pointerSize( Pointer p ) { return state.pointerSize( p ); }
     Pointer malloc( int size, int id ) { return state.malloc( size, id ); }
     bool free( Pointer p ) { return state.free( p ); }
+    std::vector< int > pointerId( ::llvm::Instruction *insn ) {
+        return state.heapMeta().pointerId( insn ); }
+    int pointerId( Pointer p ) { return state.pointerId( p ); }
 
     template< typename X > MemoryBits memoryflag( X p ) { return state.memoryflag( p ); }
     template< typename X > bool inBounds( X p, int o ) { return state.inBounds( p, o ); }

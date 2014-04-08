@@ -5,6 +5,9 @@
 
 #include <wibble/param.h>
 
+#include <divine/llvm/wrap/Constants.h>
+#include <llvm/IR/Metadata.h>
+
 #ifndef DIVINE_LLVM_MACHINE_H
 #define DIVINE_LLVM_MACHINE_H
 
@@ -25,7 +28,8 @@ struct Problem {
         UnreachableExecuted,
         MemoryLeak,
         NotImplemented,
-        Uninitialised
+        Uninitialised,
+        PointsToViolated
     };
     PC where;
     uint8_t what;
@@ -299,6 +303,11 @@ struct NoHeapMeta {
     StateAddress advance( StateAddress a, int ) { return a; }
     int end() { return 0; }
     static int size( int ) { return 0; }
+    static std::vector< int > pointerId( ::llvm::Instruction *insn ) {
+        return std::vector< int >();
+    }
+    int idAt( int ) { return 0; }
+    std::string fmt() { return ""; }
 };
 
 /* Track heap object IDs (but nothing else). */
@@ -313,13 +322,56 @@ struct HeapIDs : WithMemory< HeapIDs > {
     int end() { return 0; }
 
     int &idAt( int idx ) {
-        return *reinterpret_cast< int * >( memory() );
+        assert_leq( idx, count - 1 );
+        return reinterpret_cast< int * >( memory() )[ idx ];
     }
 
     void setSize( int c ) { count = c; }
     void newObject( int id ) { idAt( count++ ) = id; }
     void copyFrom( HeapIDs &from, int fromid, int toid ) {
         idAt( toid ) = from.idAt( fromid );
+    }
+
+    static void badPointerId( ::llvm::Instruction *i ) {
+        i->dump();
+        assert_unreachable( "Malformed aa_def metadata encountered." );
+    }
+
+    static std::vector< int > pointerId( ::llvm::Instruction *insn )
+    {
+        std::vector< int > r;
+
+        auto md = insn->getMetadata( "aa_def" );
+
+        if ( !md ) /* no metadata at all, carry on */
+            return r;
+
+        for ( int idx = 0; idx < md->getNumOperands(); ++idx ) {
+
+            auto memloc = ::llvm::cast< ::llvm::MDNode >( md->getOperand( idx ) );
+            if ( !memloc )
+                badPointerId( insn );
+
+            auto id = ::llvm::cast< ::llvm::ConstantInt >( memloc->getOperand( 0 ) );
+            if ( !id )
+                badPointerId( insn );
+            r.push_back( id->getZExtValue() ); /* downconvert ... */
+        }
+
+        return r;
+    }
+
+    int pointerId( Pointer p ) {
+        return idAt( p.segment );
+    }
+
+    std::string fmt() {
+        std::stringstream s;
+        s << "[";
+        for ( int i = 0; i < count; ++i )
+            s << " " << idAt( i );
+        s << " ]";
+        return s.str();
     }
 };
 
@@ -357,10 +409,10 @@ inline int size_heap( int segcount, int bytecount ) {
 
 }
 
-
-template< typename HeapMeta = machine::NoHeapMeta >
+template< typename _HeapMeta = machine::HeapIDs >
 struct MachineState
 {
+    using HeapMeta = _HeapMeta;
     using Frame = machine::Frame;
     using Nursery = machine::Nursery;
     using StateAddress = machine::StateAddress;
@@ -411,6 +463,16 @@ struct MachineState
         return nursery.malloc( size );
     }
 
+    int pointerId( Pointer p ) {
+        if ( nursery.owns( p ) ) {
+            p.segment -= nursery.segshift;
+            return _pool.get< HeapMeta >( _heapmeta ).idAt( p.segment );
+        }
+        if ( heap().owns( p ) )
+            return state().get( HeapMeta() ).idAt( p.segment );
+        return 0;
+    }
+
     bool free( Pointer p ) {
         if ( p.null() )
             return true; /* nothing to do */
@@ -424,8 +486,12 @@ struct MachineState
     bool isPrivate( Pointer p, Frame &, Canonic< HeapMeta > & );
     bool isPrivate( Pointer p, Pointer, Canonic< HeapMeta > & );
 
+    Lens< State > state( Blob b ) {
+        return Lens< State >( StateAddress( &_pool, &_info, b, _slack ) );
+    }
+
     Lens< State > state() {
-        return Lens< State >( StateAddress( &_pool, &_info, _blob, _slack ) );
+        return state( _blob );
     }
 
     MemoryBits memoryflag( Pointer p, int offset = 0 ) {
@@ -570,6 +636,10 @@ struct MachineState
             return Lens< Stack >( StateAddress( &_pool, &_info, _stack[thread].second, 0 ) );
         else
             return _blob_stack( thread );
+    }
+
+    HeapMeta &heapMeta() {
+        return state().get( HeapMeta() );
     }
 
     Heap &heap() {

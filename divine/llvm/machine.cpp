@@ -16,6 +16,8 @@ void MachineState< HeapMeta >::rewind( Blob to, int thread )
 
     _thread_count = threads().get().length();
     nursery.reset( heap().segcount );
+    _pool.get< HeapMeta >( _heapmeta ).setSize( 0 ),
+
     freed.clear();
     problems.clear();
     for ( int i = 0; i < int( _stack.size() ); ++i ) /* deactivate detached stacks */
@@ -304,6 +306,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
 
     auto &nursery_hm = _pool.get< HeapMeta >( _heapmeta ),
           &mature_hm = state().get( HeapMeta() );
+
     for ( auto &transl : canonic.segmap ) {
         bool nursed = transl.first >= nursery.segshift;
         heapmeta.copyFrom( nursed ? nursery_hm : mature_hm,

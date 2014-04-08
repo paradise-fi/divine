@@ -176,8 +176,36 @@ struct Evaluator
     template< typename... X >
     static Unit declcheck( X... ) { return Unit(); }
 
-    int pointerId() {
-        return 0; // TODO
+    std::vector< int > pointerId( bool nonempty = false ) {
+        auto r = econtext.pointerId( cast< ::llvm::Instruction >( instruction.op ) );
+        if ( nonempty && !r.size() )
+            return std::vector< int >{ 0 };
+        return r;
+    }
+
+    void checkPointsTo() { // TODO: check aa_use as well
+        auto &r = instruction.result();
+
+        if ( instruction.result().type == ProgramInfo::Value::Void )
+            return;
+
+        if ( econtext.memoryflag( r ).get() != MemoryFlag::HeapPointer )
+            return; /* nothing to do */
+
+        auto p = *reinterpret_cast< Pointer * >( econtext.dereference( r ) );
+        if ( p.null() )
+            return;
+
+        int actual = econtext.pointerId( p );
+        if ( !actual )
+            return;
+
+        auto expected = pointerId();
+        for ( auto i: expected )
+            if ( i == actual )
+                return;
+
+        ccontext.problem( Problem::PointsToViolated, p );
     }
 
     /******** Arithmetic & comparisons *******/
@@ -584,7 +612,7 @@ struct Evaluator
         unsigned alloc = std::max( 1, count * size );
         Pointer &p = *reinterpret_cast< Pointer * >(
             dereference( instruction.result() ) );
-        p = econtext.malloc( alloc, pointerId() );
+        p = econtext.malloc( alloc, pointerId( true )[0] );
         econtext.memoryflag( instruction.result() ).set( MemoryFlag::HeapPointer );
     }
 
@@ -907,7 +935,7 @@ struct Evaluator
                 }
                 case BuiltinMalloc: {
                     int size = withValues( Get< int >(), instruction.operand( 0 ) );
-                    Pointer result = size ? econtext.malloc( size, pointerId() ) : Pointer();
+                    Pointer result = size ? econtext.malloc( size, pointerId( true )[0] ) : Pointer();
                     withValues( Set< Pointer >( result, MemoryFlag::HeapPointer ), instruction.result() );
                     return;
                 }
@@ -1095,6 +1123,11 @@ struct Evaluator
                 instruction.op->dump();
                 assert_unreachable( "unknown opcode %d", instruction.opcode );
         }
+
+        /* invoke and call are checked when ret executes */
+        if ( instruction.opcode != LLVMInst::Call &&
+             instruction.opcode != LLVMInst::Invoke )
+            checkPointsTo();
     }
 
     template< typename Fun >
