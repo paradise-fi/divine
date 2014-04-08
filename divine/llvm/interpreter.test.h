@@ -102,7 +102,7 @@ struct TestLLVM {
     }
 
     divine::Blob _ith( Function *f, int step ) {
-        dlvm::Interpreter interpreter( pool, 0, bitcode() );
+        dlvm::Interpreter< dlvm::machine::NoHeapMeta > interpreter( pool, 0, bitcode() );
         divine::Blob ini = interpreter.initial( f ), fin;
         fin = ini;
 
@@ -120,7 +120,7 @@ struct TestLLVM {
     }
 
     std::string _descr( Function *f, divine::Blob b ) {
-        dlvm::Interpreter interpreter( pool, 0, bitcode() );
+        dlvm::Interpreter< dlvm::machine::NoHeapMeta > interpreter( pool, 0, bitcode() );
         interpreter.rewind( b );
         return interpreter.describe();
     }
@@ -128,7 +128,7 @@ struct TestLLVM {
     Test initial()
     {
         Function *main = code_ret();
-        dlvm::Interpreter i( pool, 0, bitcode() );
+        dlvm::Interpreter< dlvm::machine::NoHeapMeta > i( pool, 0, bitcode() );
         i.initial( main );
     }
 
@@ -162,7 +162,7 @@ struct TestLLVM {
     Test describe2()
     {
         Function *f = code_loop();
-        dlvm::Interpreter interpreter( pool, 0, bitcode() );
+        dlvm::Interpreter< dlvm::machine::NoHeapMeta > interpreter( pool, 0, bitcode() );
         divine::Blob b = _ith( code_loop(), 1 );
         interpreter.rewind( b );
         interpreter.new_thread( f );
@@ -222,7 +222,7 @@ struct TestLLVM {
     Test idempotency()
     {
         Function *f = code_loop();
-        dlvm::Interpreter interpreter( pool, 0, bitcode() );
+        dlvm::Interpreter< dlvm::machine::NoHeapMeta > interpreter( pool, 0, bitcode() );
         divine::Blob b1 = interpreter.initial( f ), b2;
         interpreter.rewind( b1 );
         b2 = interpreter.state.snapshot();
