@@ -498,6 +498,7 @@ static const CMap< Key, Traits::Get > traits = {
     { Generator::Timed,                 &Traits::timed },
     { Generator::CESMI,                 &Traits::cesmi },
     { Generator::LLVM,                  &Traits::llvm },
+    { Generator::PointsToLLVM,          &Traits::llvm },
     { Generator::ProbabilisticLLVM,     &Traits::llvm },
     { Generator::Explicit,              &Traits::dess },
     { Generator::ProbabilisticExplicit, &Traits::dess },
