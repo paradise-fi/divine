@@ -7,7 +7,7 @@
 #include <divine/explicit/header.h>
 #include <divine/instances/select.h>
 
-#include <divine/toolkit/typelist.h>
+#include <wibble/typelist.h>
 #include <wibble/strongenumflags.h>
 #include <wibble/union.h>
 #include <wibble/mixin.h>
@@ -298,7 +298,7 @@ static inline std::string show( Key component ) {
 
 static inline std::ostream &operator<<( std::ostream &o, Key k ) { return o << show( k ); }
 
-using Instantiation = TypeList< Algorithm, Generator, Transform, Visitor, Store, Topology, Statistics >;
+using Instantiation = wibble::TypeList< Algorithm, Generator, Transform, Visitor, Store, Topology, Statistics >;
 using InstT = std::array< std::vector< Key >, Instantiation::length >;
 
 template< size_t i, typename I >
@@ -311,7 +311,7 @@ static inline InstT _buildInst( InstT &&inst, I ) {
 }
 
 template<>
-inline InstT _buildInst< Instantiation::length, TypeList<> >( InstT &&inst, TypeList<> ) {
+inline InstT _buildInst< Instantiation::length, wibble::TypeList<> >( InstT &&inst, wibble::TypeList<> ) {
     return inst;
 }
 
