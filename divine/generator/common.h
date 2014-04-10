@@ -2,7 +2,6 @@
 
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/hashset.h>
-#include <divine/graph/allocator.h>
 #include <divine/graph/graph.h>
 
 #ifndef DIVINE_GENERATOR_COMMON_H
