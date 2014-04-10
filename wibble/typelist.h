@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013,2014 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <type_traits>
 
@@ -11,6 +11,8 @@ namespace wibble {
 
 /* TypeList ******************************************************************/
 
+template< size_t, typename > struct GetType;
+
 template< typename... >
 struct TypeList {
     using Empty = wibble::Unit;
@@ -19,12 +21,22 @@ struct TypeList {
 
 template< typename _T, typename... _Ts >
 struct TypeList< _T, _Ts... >  : private TypeList< _Ts... > {
+    using Self = TypeList< _T, _Ts... >;
     using Head = _T;
     using Tail = TypeList< _Ts... >;
     static constexpr size_t length = 1 + Tail::length;
+
+    template< size_t i >
+    using Get = typename GetType< i, Self >::T;
 };
 
 /* Basic list functions ******************************************************/
+
+template< size_t i, typename List >
+struct GetType : GetType< i - 1, typename List::Tail > { };
+
+template< typename List >
+struct GetType< 0, List > { using T = typename List::Head; };
 
 template< typename X, typename EmptyList >
 struct Append {
@@ -115,7 +127,13 @@ struct Replace< Original, New, TypeList<> > {
     using T = TypeList<>;
 };
 
+// 0 and 1 sized TypeLists
+template< typename > struct NoDuplicates : std::true_type { };
 
+template< typename T, typename... Ts >
+struct NoDuplicates< TypeList< T, Ts... > > : std::integral_constant< bool,
+    !Contains< TypeList< Ts... >, T >::value && NoDuplicates< TypeList< Ts... > >::value >
+{ };
 
 /* boolean expressions encoded in TypeList ***********************************/
 

@@ -4,6 +4,16 @@
 
 using namespace wibble;
 
+static_assert( std::is_same< TypeList< int, long, bool >::Get< 0 >, int >::value, "" );
+static_assert( std::is_same< TypeList< int, long, bool >::Get< 1 >, long >::value, "" );
+static_assert( std::is_same< TypeList< int, long, bool >::Get< 2 >, bool >::value, "" );
+
+static_assert( NoDuplicates< TypeList<> >::value, "" );
+static_assert( NoDuplicates< TypeList< int > >::value, "" );
+static_assert( !NoDuplicates< TypeList< int, int > >::value, "" );
+static_assert( !NoDuplicates< TypeList< int, long, bool, float, long > >::value, "" );
+
+
 struct TestBoolExpr {
     template< typename T >
     struct ConstTrue : public std::true_type { };
