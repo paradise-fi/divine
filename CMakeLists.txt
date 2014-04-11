@@ -671,6 +671,7 @@ set( CPACK_PACKAGE_VERSION ${VERSION_STRING} )
 
 message( "## -----------------------------------------------------------------" )
 message( "## Version: ${VERSION_STRING}" )
+message( "## Build type: ${CMAKE_BUILD_TYPE}" )
 message( "## Build options: ${BUILDOPTS}" )
 if ( DISABLED )
     message( "## Requested but *disabled*:${DISABLED}" )
