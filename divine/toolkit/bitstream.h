@@ -188,7 +188,7 @@ base< B > &operator>>( base< B > &bs, std::pair< T1, T2 > &i ) {
 template< typename B >
 base< B > &operator>>( base< B > &bs, Blob &blob )
 {
-    int size, off = 0;
+    int size = 0;
     bs >> size;
 
     if ( !size ) {
@@ -199,12 +199,15 @@ base< B > &operator>>( base< B > &bs, Blob &blob )
     assert( bs.pool );
     blob = bs.pool->allocate( size );
 
-    assert( bs.pool ); /// TODO: are we ever working without pool if so we shouldnt ???
-    assert_leq( bs.pool->template size( blob ), bs.size() * 4 );
+    assert( bs.pool );
+    assert_leq( bs.pool->size( blob ), bs.size() * 4 );
 
-    while ( off < bs.pool->template size( blob )) {
-        bs >> bs.pool->template get< uint32_t >( blob, off );
-        off += 4;
+    char *begin = bs.pool->dereference( blob );
+    const char *end = begin + bs.pool->size( blob );
+    uint32_t *ptr = reinterpret_cast< uint32_t * >( begin );
+    while ( ptr < reinterpret_cast< const uint32_t * >( end ) ) {
+        bs >> *ptr;
+        ++ptr;
     }
 
     return bs;
@@ -217,11 +220,14 @@ base< B > &operator<<( base< B > &bs, Blob blob )
     if ( !bs.pool->valid( blob ) )
         return bs << 0;
 
-    bs << bs.pool->size( blob );
-    int off = 0;
-    while ( off < bs.pool->size( blob ) ) {
-        bs << bs.pool->template get< uint32_t >( blob, off );
-        off += 4;
+    const int size = bs.pool->size( blob );
+    bs << size;
+    const char *begin = bs.pool->dereference( blob );
+    const char *end = begin + size;
+    const uint32_t *ptr = reinterpret_cast< const uint32_t * >( begin );
+    while ( ptr < reinterpret_cast< const uint32_t * >( end ) ) {
+        bs << *ptr;
+        ++ptr;
     }
     return bs;
 }
