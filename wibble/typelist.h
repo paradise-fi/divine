@@ -61,6 +61,16 @@ struct Filter< Cond, TypeList<> > {
     using T = TypeList<>;
 };
 
+template< template< typename > class F, typename List >
+struct Map : Append< typename F< typename List::Head >::T,
+                  typename Map< F, typename List::Tail >::T
+             > { };
+
+template< template< typename > class F >
+struct Map< F, TypeList<> > {
+    using T = TypeList<>;
+};
+
 template< typename List >
 struct Last : public Last< typename List::Tail > { };
 
@@ -134,6 +144,15 @@ template< typename T, typename... Ts >
 struct NoDuplicates< TypeList< T, Ts... > > : std::integral_constant< bool,
     !Contains< TypeList< Ts... >, T >::value && NoDuplicates< TypeList< Ts... > >::value >
 { };
+
+template< template< typename... > class, typename > struct Apply { };
+
+template< template< typename... > class TCon, typename... Ts >
+struct Apply< TCon, TypeList< Ts... > > {
+    using T = TCon< Ts... >;
+};
+
+
 
 /* boolean expressions encoded in TypeList ***********************************/
 
