@@ -346,7 +346,7 @@ struct HeapIDs : WithMemory< HeapIDs > {
         if ( !md ) /* no metadata at all, carry on */
             return r;
 
-        for ( int idx = 0; idx < md->getNumOperands(); ++idx ) {
+        for ( int idx = 0; idx < int( md->getNumOperands() ); ++idx ) {
 
             auto memloc = ::llvm::cast< ::llvm::MDNode >( md->getOperand( idx ) );
             if ( !memloc )
