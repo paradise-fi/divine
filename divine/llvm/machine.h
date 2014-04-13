@@ -6,7 +6,7 @@
 #include <wibble/param.h>
 
 #include <divine/llvm/wrap/Constants.h>
-#include <llvm/IR/Metadata.h>
+#include <divine/llvm/wrap/Metadata.h>
 
 #ifndef DIVINE_LLVM_MACHINE_H
 #define DIVINE_LLVM_MACHINE_H
