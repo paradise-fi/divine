@@ -413,7 +413,7 @@ struct Shared {
 
         using S2 = Interruptible< SetupOverride< S, This > >;
 
-        Store closed;
+        Store &closed;
         std::pair< typename S::Listener*, This* > bfvListener;
         BFVShared< S2 > bfv;
         StartDetector detector;
