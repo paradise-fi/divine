@@ -29,7 +29,8 @@ struct Problem {
         MemoryLeak,
         NotImplemented,
         Uninitialised,
-        PointsToViolated
+        PointsToViolated,
+        Deadlock
     };
     PC where;
     uint8_t what;

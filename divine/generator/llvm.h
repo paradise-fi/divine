@@ -194,7 +194,8 @@ struct _LLVM : Common< Blob > {
         yield( "leak", "memory leak freedom", PT_Goal );
         yield( "user", "user or library defined safety problems", PT_Goal );
         yield( "guard", "safety of compiler-defined guards (unreachable)", PT_Goal );
-        yield( "safety", "[assert + memory + arithmetic + leak + user + guard]", PT_Goal );
+        yield( "mutex", "mutex deadlock safety", PT_Goal );
+        yield( "safety", "[assert + memory + arithmetic + leak + user + guard + mutex]", PT_Goal );
         for ( auto p : interpreter().properties )
             yield( p.first, p.second, PT_Buchi );
     }
@@ -249,6 +250,9 @@ struct _LLVM : Common< Blob > {
             useProperty( llvm::Problem::InvalidArgument );
             useProperty( llvm::Problem::NotImplemented );
         }
+
+        if ( name == "mutex" || name == "safety" )
+            useProperty( llvm::Problem::Deadlock );
 
         return goalProblems.size() > sz;
     }
