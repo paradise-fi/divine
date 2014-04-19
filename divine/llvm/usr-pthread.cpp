@@ -91,12 +91,13 @@ struct CleanupHandler {
 };
 
 struct Thread { // (user-space) information maintained for every (running) thread
+    void *result;
+    pthread_cond_t *condition;
+    pthread_mutex_t *waiting_mutex;
+    CleanupHandler *cleanup_handlers;
+
     // global thread ID
     int gtid;
-
-    void *result;
-    pthread_cond_t* condition;
-    CleanupHandler *cleanup_handlers;
 
     bool running:1;
     bool detached:1;
@@ -113,7 +114,7 @@ namespace {
 bool initialized = false;
 unsigned alloc_pslots = 0; // num. of pointers (not actuall slots) allocated
 unsigned thread_counter = 1;
-Thread ** threads = NULL;
+Thread **threads = NULL;
 pthread_key_t keys = NULL;
 }
 
@@ -604,12 +605,44 @@ int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) {
     return 0;
 }
 
+Thread *_get_thread_by_gtid( int gtid ) {
+    for ( int i = 0; i < thread_counter; ++i )
+        if ( threads[ i ]->gtid == gtid )
+            return threads[ i ];
+    return NULL;
+}
+
+#include <sstream>
+
+void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
+    int holdertid = 0;
+    int lastthread = 0;
+    while ( mutex != NULL ) {
+        int holdertid = ((*mutex) & _MUTEX_OWNER_MASK) - 1;
+        if ( holdertid < 0 || holdertid == lastthread )
+            return;
+        if ( holdertid == gtid ) {
+            __divine_problem( 12, "Deadlock: Mutex cycle closed" );
+            return;
+        }
+        Thread *holder = _get_thread_by_gtid( holdertid );
+        if ( holder == NULL ) {
+            __divine_problem( 12, "Deadlock: Mutex locked by dead thread" );
+            return;
+        }
+        mutex = holder->waiting_mutex;
+        lastthread = holdertid;
+    }
+}
+
 bool _mutex_can_lock( pthread_mutex_t *mutex, int gtid ) {
     return !( (*mutex) & _MUTEX_OWNER_MASK ) || ( ( (*mutex) & _MUTEX_OWNER_MASK ) == ( gtid + 1 ) );
 }
 
 int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
-    int gtid = _get_gtid( __divine_get_tid() );
+
+    Thread *thr = threads[ __divine_get_tid() ];
+    int gtid = thr->gtid;
 
     if ( mutex == NULL || !( (*mutex) & _INITIALIZED_MUTEX ) ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
@@ -622,7 +655,7 @@ int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
             if ( ( *mutex & _MUTEX_TYPE_MASK ) == ( PTHREAD_MUTEX_ERRORCHECK << 24 ) )
                 return EDEADLK;
             else
-                __divine_assert( 0 );
+                __divine_problem( 12, "Deadlock: Nonrecursive mutex locked again" );
         }
     }
 
@@ -631,7 +664,18 @@ int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
         if ( !wait )
             return EBUSY;
     }
-    WAIT ( !_mutex_can_lock( mutex, gtid ) )
+
+    // mark waiting now for wait cycle detection
+    // note: waiting should not ne set in case of unsuccessfull try-lock
+    // (cycle in try-lock is not deadlock, although it might be livelock)
+    // so it must be here after return EBUSY
+    thr->waiting_mutex = mutex;
+    while ( !_mutex_can_lock( mutex, gtid ) ) {
+        _check_deadlock( mutex, gtid );
+        __divine_interrupt_unmask();
+        __divine_interrupt_mask();
+    }
+    thr->waiting_mutex = NULL;
 
     // try to increment lock counter
     int err = _mutex_adjust_count( mutex, 1 );
