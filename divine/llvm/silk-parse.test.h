@@ -79,7 +79,7 @@ struct TestSilkParse {
 
     Test lambda() {
         Lambda l = _parse< Expression >( "|x| x + 3" ).e;
-        assert_eq( l.bind.name, "x" );
+        assert_eq( l.bind.name(), "x" );
         BinOp op = l.body->e;
         assert( op.op == TI::Plus );
         Identifier id = op.lhs->e;
@@ -90,10 +90,10 @@ struct TestSilkParse {
 
     Test nestedLambda() {
         Lambda l1 = _parse< Expression >( "|x| |y| x + y" ).e;
-        assert_eq( l1.bind.name, "x" );
+        assert_eq( l1.bind.name(), "x" );
 
         Lambda l2 = l1.body->e;
-        assert_eq( l2.bind.name, "y" );
+        assert_eq( l2.bind.name(), "y" );
 
         BinOp op = l2.body->e;
         Identifier id1 = op.lhs->e;
@@ -169,5 +169,17 @@ struct TestSilkParse {
     Test bad1() {
         wibble::ExpectFailure _ef;
         _parse< Expression >( "a |x| a c" );
+    }
+
+    Test type() {
+        Lambda top = _parse< Expression >( "|x : _t| x" ).e;
+    }
+
+    Test type_fun() {
+        Lambda top = _parse< Expression >( "|x : _t -> _t| x" ).e;
+    }
+
+    Test type_pred() {
+        Lambda top = _parse< Expression >( "|x : fun? _t| x" ).e;
     }
 };

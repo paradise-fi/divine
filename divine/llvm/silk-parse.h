@@ -26,8 +26,8 @@ enum class TI {
     If, Then, Else,
     Bool_Or, Bool_And, Bool_Not,
     LEq, Lt, GEq, Gt, Eq, NEq,
-    Plus, Minus, Mult, Div, Mod, Or, And, Xor, LShift, RShift,
-    Semicolon, BlockDef, BlockEnd, BraceOpen, BraceClose
+    Plus, Minus, Mult, Div, Mod, Or, And, Xor, LShift, RShift, Arrow,
+    Semicolon, Colon, BlockDef, BlockEnd, BraceOpen, BraceClose
 };
 
 const int TI_End = int( TI::BraceClose ) + 1;
@@ -45,10 +45,12 @@ struct Token : wibble::Token< TI >
         return true;
     }
 
+    bool typeOp() const { return id == TI::Arrow; }
+
     int precedence() const
     {
         if ( id == TI::And || id == TI::Or || id == TI::Xor ||
-             id == TI::LShift || id == TI::RShift )
+             id == TI::LShift || id == TI::RShift || id == TI::Arrow )
             return 5;
 
         if ( id == TI::Mult || id == TI::Div || id == TI::Mod )
@@ -132,6 +134,9 @@ using ExpressionPtr = std::shared_ptr< Expression >;
 struct Scope;
 using ScopePtr = std::shared_ptr< Scope >;
 
+struct TypeExpression;
+using TypeExpressionPtr = std::shared_ptr< TypeExpression >;
+
 struct Identifier : Parser {
     std::string name;
     Identifier() = default;
@@ -140,6 +145,92 @@ struct Identifier : Parser {
         name = t.data;
     }
     Identifier( std::string n ) : name( n ) {}
+};
+
+template< typename T >
+struct _BinOp {
+    using Ptr = std::shared_ptr< T >;
+    Ptr lhs, rhs;
+    TI op;
+    _BinOp( Ptr lhs, Token op, Ptr rhs )
+        : lhs( lhs ), rhs( rhs ), op( op.id )
+    {}
+};
+
+template< typename T >
+struct _Application {
+    using Ptr = std::shared_ptr< T >;
+    Ptr lhs, rhs;
+    _Application( Ptr lhs, Ptr rhs )
+        : lhs( lhs ), rhs( rhs )
+    {}
+};
+
+using Application = _Application< Expression >;
+using BinOp = _BinOp< Expression >;
+
+using TypeApplication = _Application< TypeExpression >;
+using TypeBinOp = _BinOp< TypeExpression >;
+
+struct TypeExpression : Parser
+{
+    using E = wibble::Union< TypeBinOp, Identifier, TypeApplication >;
+    E e;
+
+    struct Atom {};
+
+    TypeExpression( E e ) : e( e ) {}
+
+    TypeExpression( Context &c, Atom ) : Parser( c ) {
+        if ( next( TI::ParenOpen ) ) {
+            e = TypeExpression( c ).e;
+            eat( TI::ParenClose );
+        } else {
+            e = Identifier( c );
+        }
+    }
+
+    TypeExpression( Context &c, int min_prec = 0 )
+        : Parser( c )
+    {
+        int next_min_prec;
+        bool done = false;
+
+        e = TypeExpression( c, Atom() ).e;
+
+        do {
+            Token op = eat( false );
+
+            if ( !op.valid() || !op.typeOp() ) {
+                c.rewind( 1 );
+                done = true;
+                if ( op.valid() && !op.precedence() && Token::precedences + 1 >= min_prec &&
+                     maybe( [&]() {
+                             auto rhs = std::make_shared< TypeExpression >( c, Token::precedences + 2 );
+                             next_min_prec = Token::precedences + 2;
+                             this->e = TypeApplication( std::make_shared< TypeExpression >( e ), rhs );
+                         } ) )
+                    done = false;
+            } else if ( op.precedence() >= min_prec ) {
+                next_min_prec = op.precedence() + op.leftassoc();
+                auto rhs = std::make_shared< TypeExpression >( c, next_min_prec );
+                e = TypeBinOp( std::make_shared< TypeExpression >( e ), op, rhs );
+            }
+        } while ( !done );
+    }
+};
+
+struct Pattern : Parser {
+    TypeExpressionPtr type;
+    Identifier binding;
+    Pattern( Context &c ) : Parser( c ) {
+        binding = Identifier( c );
+        if ( next( TI::Colon ) )
+            type = std::make_shared< TypeExpression >( c );
+    }
+    Pattern( Identifier i ) : binding( i ) {}
+    Pattern() {}
+    std::string name() { return binding.name; }
 };
 
 struct Constant : Parser
@@ -163,7 +254,7 @@ struct Constant : Parser
 };
 
 struct Lambda : Parser {
-    Identifier bind;
+    Pattern bind;
     ExpressionPtr body;
 
     Lambda() = default;
@@ -180,24 +271,9 @@ struct IfThenElse : Parser {
     IfThenElse( Context &c );
 };
 
-struct BinOp {
-    ExpressionPtr lhs, rhs;
-    TI op;
-    BinOp( ExpressionPtr lhs, Token op, ExpressionPtr rhs )
-        : lhs( lhs ), rhs( rhs ), op( op.id )
-    {}
-};
-
 struct SubScope {
     ExpressionPtr lhs, rhs;
     SubScope( ExpressionPtr lhs, ExpressionPtr rhs )
-        : lhs( lhs ), rhs( rhs )
-    {}
-};
-
-struct Application {
-    ExpressionPtr lhs, rhs;
-    Application( ExpressionPtr lhs, ExpressionPtr rhs )
         : lhs( lhs ), rhs( rhs )
     {}
 };
@@ -282,7 +358,7 @@ inline std::ostream &operator<<( std::ostream &o, Application ap ) {
 }
 
 inline std::ostream &operator<<( std::ostream &o, Lambda l ) {
-    return o << "(|" << l.bind.name << "| " << *l.body << ")";
+    return o << "(|" << l.bind.name() << "| " << *l.body << ")";
 }
 
 inline std::ostream &operator<<( std::ostream &o, BinOp op ) {
@@ -298,7 +374,7 @@ inline std::ostream &operator<<( std::ostream &o, Expression e )
 
 inline Lambda::Lambda( Context &c ) : Parser( c ) {
     eat( TI::LambdaParen );
-    bind = Identifier( c );
+    bind = Pattern( c );
     eat( TI::LambdaParen );
     body = std::make_shared< Expression >( c );
 }

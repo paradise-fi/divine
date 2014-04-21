@@ -90,6 +90,10 @@ struct Compiler
         return Symbol( syms, i.name );
     }
 
+    Symbol symbol( parse::Pattern p ) {
+        return Symbol( syms, p.name() );
+    }
+
     void compile( parse::Expression &e, SymStack &code, bool symctx = false )
     {
         e.e.match(
