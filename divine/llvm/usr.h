@@ -2,7 +2,7 @@
 #define __DIVINE_USR_H
 
 #undef assert
-#define assert( x ) __divine_assert( x != 0 )
+#define assert( x ) __divine_assert( !!(x) )
 
 #define AP( x ) __divine_ap( x )
 #define LTL( name, x ) extern const char * const __divine_LTL_ ## name = #x
