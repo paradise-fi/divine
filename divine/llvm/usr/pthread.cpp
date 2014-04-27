@@ -6,6 +6,7 @@
 #include <divine.h>
 #include <errno.h>
 #include <limits.h>
+#include <divine/problem.h>
 
 /* Macros */
 #define _WAIT( cond, cancel_point )                                            \
@@ -18,33 +19,28 @@
                     }                                                          \
                     if ( cancel_point && _canceled() )                         \
                           _cancel();                                           \
-                } while( 0 );
+                } while( 0 )
 
 #define WAIT( cond ) _WAIT( cond, false )
 #define WAIT_OR_CANCEL( cond ) _WAIT( cond, true )
 
 #define PTHREAD_FUN_BEGIN()         do { ATOMIC_FUN_BEGIN( false ); \
-                                         _initialize(); } while( 0 );
+                                         _initialize(); } while( 0 )
 
 #define PTHREAD_VISIBLE_FUN_BEGIN() do { ATOMIC_FUN_BEGIN( true ); \
-                                         _initialize(); } while( 0 );
+                                         _initialize(); } while( 0 )
 
 // LTID = local thread ID - unique for thread lifetime (returned by __divine_get_tid)
 // GTID = global thread ID - unique during the entire execution
-// PTID = pthread_t = GTID (16b) + LTID (16b)
-#define GTID( PTID )        ( PTID >> 16 )
-#define LTID( PTID )        ( PTID & 0xFFFF )
-#define PTID( GTID, LTID )  ( ( GTID << 16 ) | LTID )
 
 // thresholds
 #define MILLIARD  1000000000
 
+#define _real_pt( ptid ) ((real_pthread_t){ .asint = (ptid) })
+
 // bit masks
 #define _THREAD_ATTR_DETACH_MASK   0x1
 
-#define _MUTEX_OWNER_MASK          0xFFFF
-#define _MUTEX_COUNTER_MASK        0xFF0000
-#define _MUTEX_TYPE_MASK           0x3000000
 #define _MUTEX_ATTR_TYPE_MASK      0x3
 
 #define _COND_COUNTER_MASK         0xFFFF
@@ -90,22 +86,37 @@ struct CleanupHandler {
     CleanupHandler *next;
 };
 
+enum SleepingOn { NotSleeping = 0, Condition, Barrier };
+
 struct Thread { // (user-space) information maintained for every (running) thread
     void *result;
-    pthread_cond_t *condition;
     pthread_mutex_t *waiting_mutex;
     CleanupHandler *cleanup_handlers;
+    union {
+        pthread_cond_t *condition;
+        pthread_barrier_t *barrier;
+    };
 
     // global thread ID
     int gtid;
 
     bool running:1;
     bool detached:1;
-    bool sleeping:1;
+    SleepingOn sleeping:2;
     bool cancelled:1;
 
     int cancel_state:1;
     int cancel_type:1;
+
+    void setSleeping( pthread_cond_t *cond ) {
+        sleeping = Condition;
+        condition = cond;
+    }
+
+    void setSleeping( pthread_barrier_t *bar ) {
+        sleeping = Barrier;
+        barrier = bar;
+    }
 };
 
 namespace {
@@ -181,7 +192,7 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
 
     thread->gtid = gtid;
     thread->detached = ( ( attr & _THREAD_ATTR_DETACH_MASK ) == PTHREAD_CREATE_DETACHED );
-    // thread->condition = NULL; (FIXME: memset (hmm?) is not yet supported)
+    thread->condition = NULL;
     thread->cancel_state = PTHREAD_CANCEL_ENABLE;
     thread->cancel_type = PTHREAD_CANCEL_DEFERRED;
 
@@ -226,7 +237,7 @@ void _cleanup() {
 
 void _cancel() {
     int ltid = __divine_get_tid();
-    threads[ltid]->sleeping = false;
+    threads[ ltid ]->sleeping = NotSleeping;
 
     // call all cleanup handlers
     _cleanup();
@@ -240,7 +251,7 @@ bool _canceled() {
 
 void _pthread_entry( void *_args )
 {
-    PTHREAD_FUN_BEGIN()
+    PTHREAD_FUN_BEGIN();
 
     Entry *args = static_cast< Entry* >( _args );
     int ltid = __divine_get_tid();
@@ -288,7 +299,7 @@ void _pthread_entry( void *_args )
     thread->running = false;
 
     // wait until detach / join
-    WAIT( !thread->detached )
+    WAIT( !thread->detached );
 
     // cleanup
     __divine_free( thread );
@@ -297,7 +308,7 @@ void _pthread_entry( void *_args )
 
 int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(void *),
                     void *arg ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
     DBG_ASSERT( alloc_pslots > 0 );
 
     // test input arguments
@@ -314,16 +325,18 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
 
     // generate a unique ID
     int gtid = thread_counter++;
-    // 65535 is in fact the maximum number of threads (created during the entire execution)
+    // 2^16 - 1 is in fact the maximum number of threads (created during the entire execution)
     // we can handle (capacity of pthread_t, mutex & rwlock types are limiting factors).
-    __divine_assert( thread_counter < (1 << 16) );
-    *ptid = PTID( gtid, ltid );
+    // at most 2^15 - 1 threads may exist at any moment
+    if ( gtid >= (1 << 16) || ltid >= (1 << 15) )
+        return EAGAIN;
+    *ptid = ((real_pthread_t){ .gtid = gtid, .ltid = ltid, .initialized = 1 }).asint;
 
     // thread initialization
     _init_thread( gtid, ltid, ( attr == NULL ? PTHREAD_CREATE_JOINABLE : *attr ) );
     DBG_ASSERT( ltid < alloc_pslots );
 
-    WAIT( !args->initialized )  // wait, do not free args yet
+    WAIT( !args->initialized );  // wait, do not free args yet
 
     // cleanup and return
     __divine_free( args );
@@ -331,7 +344,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
 }
 
 void pthread_exit( void *result ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     int ltid = __divine_get_tid();
     int gtid = _get_gtid( ltid );
@@ -339,7 +352,7 @@ void pthread_exit( void *result ) {
     if (gtid == 0) {
         // join every other thread and exit
         for ( int i = 1; i < alloc_pslots; i++ ) {
-            WAIT_OR_CANCEL( threads[i] && threads[i]->running )
+            WAIT_OR_CANCEL( threads[i] && threads[i]->running );
         }
 
         _cleanup();
@@ -350,74 +363,74 @@ void pthread_exit( void *result ) {
     }
 }
 
-int pthread_join( pthread_t ptid, void **result ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+int pthread_join( pthread_t _ptid, void **result ) {
+    real_pthread_t ptid = _real_pt( _ptid );
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
-    int ltid = LTID( ptid );
-    int gtid = GTID( ptid );
-
-    if ( ( ltid < 0 ) || ( ltid >= alloc_pslots ) ||
-         ( gtid < 0 ) || ( gtid >= thread_counter ))
-        return EINVAL;
-
-    if ( gtid != _get_gtid( ltid ) )
+    if ( !ptid.initialized )
         return ESRCH;
 
-    if ( gtid == _get_gtid( __divine_get_tid() ) )
+    if ( ptid.ltid >= alloc_pslots || ptid.gtid >= thread_counter )
+        return EINVAL;
+
+    if ( ptid.gtid != _get_gtid( ptid.ltid ) )
+        return ESRCH;
+
+    if ( ptid.gtid == _get_gtid( __divine_get_tid() ) )
         return EDEADLK;
 
-    if ( threads[ltid]->detached )
+    if ( threads[ ptid.ltid ]->detached )
         return EINVAL;
 
     // wait for the thread to finnish
-    WAIT_OR_CANCEL( threads[ltid]->running )
+    WAIT_OR_CANCEL( threads[ ptid.ltid ]->running );
 
-    if ( ( gtid != _get_gtid( ltid ) ) ||
-         ( threads[ltid]->detached ) ) {
+    if ( ( ptid.gtid != _get_gtid( ptid.ltid ) ) ||
+         ( threads[ ptid.ltid ]->detached ) ) {
         // meanwhile detached
         return EINVAL;
     }
 
     // copy result
     if (result) {
-        if ( threads[ltid]->cancelled )
+        if ( threads[ ptid.ltid ]->cancelled )
             *result = PTHREAD_CANCELED;
         else
-            *result = threads[ltid]->result;
+            *result = threads[ ptid.ltid ]->result;
     }
 
     // let the thread to terminate now
-    threads[ltid]->detached = true;
+    threads[ ptid.ltid ]->detached = true;
 
     // force us to synchrozie with the thread on its end, to avoid it from
     // ending nondeterministically in all subsequent states
-    WAIT( threads[ ltid ] != NULL );
+    WAIT( threads[ ptid.ltid ] != NULL );
     return 0;
 }
 
-int pthread_detach( pthread_t ptid ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+int pthread_detach( pthread_t _ptid ) {
+    real_pthread_t ptid = _real_pt( _ptid );
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
-    int ltid = LTID( ptid );
-    int gtid = GTID( ptid );
-
-    if ( ( ltid < 0 ) || ( ltid >= alloc_pslots ) ||
-         ( gtid < 0 ) || ( gtid >= thread_counter ))
-        return EINVAL;
-
-    if ( gtid != _get_gtid( ltid ) )
+    if ( !ptid.initialized )
         return ESRCH;
 
-    if ( threads[ltid]->detached )
+    if ( ptid.ltid >= alloc_pslots || ptid.gtid >= thread_counter )
         return EINVAL;
 
-    bool ended = !threads[ ltid ]->running;
-    threads[ltid]->detached = true;
+    if ( ptid.gtid != _get_gtid( ptid.ltid ) )
+        return ESRCH;
+
+    if ( threads[ ptid.ltid ]->detached )
+        return EINVAL;
+
+    bool ended = !threads[ ptid.ltid ]->running;
+    threads[ ptid.ltid ]->detached = true;
 
     if ( ended ) {
         // force us to synchrozie with the thread on its end, to avoid it from
         // ending nondeterministically in all subsequent states
-        WAIT( threads[ ltid ] != NULL );
+        WAIT( threads[ ptid.ltid ] != NULL );
     }
     return 0;
 }
@@ -432,18 +445,18 @@ int pthread_detach( pthread_t ptid ) {
   */
 
 int pthread_attr_destroy( pthread_attr_t * ) {
-    PTHREAD_FUN_BEGIN()
+    PTHREAD_FUN_BEGIN();
     return 0;
 }
 
 int pthread_attr_init( pthread_attr_t *attr ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
     *attr = 0;
     return 0;
 }
 
 int pthread_attr_getdetachstate( const pthread_attr_t *attr, int *state) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL || state == NULL )
         return EINVAL;
@@ -493,7 +506,7 @@ int pthread_attr_getstacksize( const pthread_attr_t *, size_t * ) {
 }
 
 int pthread_attr_setdetachstate( pthread_attr_t *attr, int state) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL || ( state & ~_THREAD_ATTR_DETACH_MASK ) )
         return EINVAL;
@@ -545,13 +558,13 @@ int pthread_attr_setstacksize( pthread_attr_t *, size_t ) {
 
 /* Thread ID */
 pthread_t pthread_self( void ) {
-    PTHREAD_FUN_BEGIN()
+    PTHREAD_FUN_BEGIN();
     int ltid = __divine_get_tid();
-    return PTID( _get_gtid( ltid ), ltid );
+    return ((real_pthread_t){ .gtid = _get_gtid( ltid ), .ltid = ltid, .initialized = 1 }).asint;
 }
 
-int pthread_equal(pthread_t t1, pthread_t t2) {
-    return GTID( t1 ) == GTID( t2 );
+int pthread_equal( pthread_t t1, pthread_t t2 ) {
+    return _real_pt( t1 ).gtid == _real_pt( t2 ).gtid;
 }
 
 /* Scheduler */
@@ -595,13 +608,12 @@ int pthread_setschedprio( pthread_t, int ) {
   */
 
 int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) {
-    int count = ( (*mutex) & _MUTEX_COUNTER_MASK ) >> 16;
+    int count = mutex->lockCounter;
     count += adj;
-    if ( count >= ( 1 << 8 ) )
+    if ( count >= (1 << 12) || count < 0 )
         return EAGAIN;
 
-    (*mutex) &= ~_MUTEX_COUNTER_MASK;
-    (*mutex) |= count << 16;
+    mutex->lockCounter = count;
     return 0;
 }
 
@@ -618,16 +630,16 @@ void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
     int holdertid = 0;
     int lastthread = 0;
     while ( mutex != NULL ) {
-        int holdertid = ((*mutex) & _MUTEX_OWNER_MASK) - 1;
+        int holdertid = mutex->owner - 1;
         if ( holdertid < 0 || holdertid == lastthread )
             return;
         if ( holdertid == gtid ) {
-            __divine_problem( 12, "Deadlock: Mutex cycle closed" );
+            __divine_problem( Deadlock, "Deadlock: Mutex cycle closed" );
             return;
         }
         Thread *holder = _get_thread_by_gtid( holdertid );
         if ( holder == NULL ) {
-            __divine_problem( 12, "Deadlock: Mutex locked by dead thread" );
+            __divine_problem( Deadlock, "Deadlock: Mutex locked by dead thread" );
             return;
         }
         mutex = holder->waiting_mutex;
@@ -636,7 +648,7 @@ void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
 }
 
 bool _mutex_can_lock( pthread_mutex_t *mutex, int gtid ) {
-    return !( (*mutex) & _MUTEX_OWNER_MASK ) || ( ( (*mutex) & _MUTEX_OWNER_MASK ) == ( gtid + 1 ) );
+    return !mutex->owner || ( mutex->owner == ( gtid + 1 ) );
 }
 
 int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
@@ -644,23 +656,23 @@ int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
     Thread *thr = threads[ __divine_get_tid() ];
     int gtid = thr->gtid;
 
-    if ( mutex == NULL || !( (*mutex) & _INITIALIZED_MUTEX ) ) {
+    if ( mutex == NULL || !mutex->initialized ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
-    if ( ( (*mutex) & _MUTEX_OWNER_MASK ) == gtid + 1 ) {
+    if ( mutex->owner == gtid + 1 ) {
         // already locked by this thread
-        DBG_ASSERT( (*mutex) & _MUTEX_COUNTER_MASK ); // count should be > 0
-        if ( ( *mutex & _MUTEX_TYPE_MASK ) != ( PTHREAD_MUTEX_RECURSIVE << 24 ) ) {
-            if ( ( *mutex & _MUTEX_TYPE_MASK ) == ( PTHREAD_MUTEX_ERRORCHECK << 24 ) )
+        DBG_ASSERT( mutex->lockCounter ); // count should be > 0
+        if ( mutex->type != PTHREAD_MUTEX_RECURSIVE ) {
+            if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
                 return EDEADLK;
             else
-                __divine_problem( 12, "Deadlock: Nonrecursive mutex locked again" );
+                __divine_problem( Deadlock, "Deadlock: Nonrecursive mutex locked again" );
         }
     }
 
     if ( !_mutex_can_lock( mutex, gtid ) ) {
-        DBG_ASSERT( (*mutex) & _MUTEX_COUNTER_MASK ); // count should be > 0
+        DBG_ASSERT( mutex->lockCounter ); // count should be > 0
         if ( !wait )
             return EBUSY;
     }
@@ -683,79 +695,80 @@ int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
         return err;
 
     // lock the mutex
-    (*mutex) &= ~_MUTEX_OWNER_MASK;
-    (*mutex) |= gtid + 1;
+    mutex->owner = gtid + 1;
 
     return 0;
 }
 
 int pthread_mutex_destroy( pthread_mutex_t *mutex ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( mutex == NULL )
         return EINVAL;
 
-    if ( (*mutex) & _MUTEX_OWNER_MASK ) {
+    if ( mutex->owner ) {
         // mutex is locked
-        if ( ( *mutex & _MUTEX_TYPE_MASK ) == ( PTHREAD_MUTEX_ERRORCHECK << 24 ) )
+        if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
              return EBUSY;
         else
              __divine_assert( 0 );
     }
-    *mutex &= ~_INITIALIZED_MUTEX;
+    mutex->initialized = 0;
     return 0;
 }
 
 int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( mutex == NULL )
         return EINVAL;
 
-    if ( (*mutex) & _INITIALIZED_MUTEX ) {
+    if ( mutex->initialized ) {
         // already initialized
-        if ( ( *mutex & _MUTEX_TYPE_MASK ) == ( PTHREAD_MUTEX_ERRORCHECK << 24 ) )
+        if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
             return EBUSY;
     }
 
+    *mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+
     if ( attr )
-        *mutex = ( *attr & _MUTEX_ATTR_TYPE_MASK ) << 24;
+        mutex->type = attr->type;
     else
-        *mutex = PTHREAD_MUTEX_DEFAULT << 24;
-    *mutex |= _INITIALIZED_MUTEX;
+        mutex->type = PTHREAD_MUTEX_DEFAULT;
     return 0;
 }
 
 int pthread_mutex_lock( pthread_mutex_t *mutex ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
     return _mutex_lock( mutex, 1 );
 }
 
 int pthread_mutex_trylock( pthread_mutex_t *mutex ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
     return _mutex_lock( mutex, 0 );
 }
 
 int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
     int gtid = _get_gtid( __divine_get_tid() );
 
-    if ( mutex == NULL || !( (*mutex) & _INITIALIZED_MUTEX ) ) {
+    if ( mutex == NULL || !mutex->initialized ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
-    if ( ( (*mutex) & _MUTEX_OWNER_MASK ) != ( gtid + 1 ) ) {
+    if ( mutex->owner != gtid + 1 ) {
         // mutex is not locked or it is already locked by another thread
-        DBG_ASSERT( (*mutex) & _MUTEX_COUNTER_MASK ); // count should be > 0
-        if ( ( *mutex & _MUTEX_TYPE_MASK ) == ( PTHREAD_MUTEX_NORMAL << 24 ) )
+        DBG_ASSERT( mutex->lockCounter ); // count should be > 0
+        if ( mutex->type == PTHREAD_MUTEX_NORMAL )
              __divine_assert( 0 );
         else
              return EPERM; // recursive mutex can also detect
     }
 
-    _mutex_adjust_count( mutex, -1 );
-    if ( !( (*mutex) & _MUTEX_COUNTER_MASK ) )
-        *mutex &= ~_MUTEX_OWNER_MASK; // unlock if count == 0
+    int r = _mutex_adjust_count( mutex, -1 );
+    __divine_assert( r == 0 );
+    if ( !mutex->lockCounter )
+        mutex->owner = 0; // unlock if count == 0
     return 0;
 }
 
@@ -770,7 +783,7 @@ int pthread_mutex_setprioceiling( pthread_mutex_t *, int, int * ) {
 }
 
 int pthread_mutex_timedlock( pthread_mutex_t *mutex, const struct timespec *abstime ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( abstime == NULL || abstime->tv_nsec < 0 || abstime->tv_nsec >= MILLIARD ) {
         return EINVAL;
@@ -797,32 +810,32 @@ int pthread_mutex_timedlock( pthread_mutex_t *mutex, const struct timespec *abst
 
 
 int pthread_mutexattr_destroy( pthread_mutexattr_t *attr ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL )
         return EINVAL;
 
-    *attr = 0;
+    attr->type = 0;
     return 0;
 }
 
 int pthread_mutexattr_init( pthread_mutexattr_t *attr ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL )
         return EINVAL;
 
-    *attr = PTHREAD_MUTEX_DEFAULT;
+    attr->type = PTHREAD_MUTEX_DEFAULT;
     return 0;
 }
 
 int pthread_mutexattr_gettype( const pthread_mutexattr_t *attr, int *value ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL || value == NULL )
         return EINVAL;
 
-    *value = *attr & _MUTEX_ATTR_TYPE_MASK;
+    *value = attr->type & _MUTEX_ATTR_TYPE_MASK;
     return 0;
 }
 
@@ -842,13 +855,12 @@ int pthread_mutexattr_getpshared( const pthread_mutexattr_t *, int * ) {
 }
 
 int pthread_mutexattr_settype( pthread_mutexattr_t *attr, int value ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL || ( value & ~_MUTEX_ATTR_TYPE_MASK ) )
         return EINVAL;
 
-    *attr &= ~_MUTEX_ATTR_TYPE_MASK;
-    *attr |= value;
+    attr->type = value;
     return 0;
 }
 
@@ -897,7 +909,7 @@ int pthread_spin_unlock( pthread_spinlock_t * ) {
 
 /* Thread specific data */
 int pthread_key_create( pthread_key_t *p_key, void (*destructor)(void *) ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     // malloc
     void* _key = __divine_malloc( sizeof( _PerThreadData ) );
@@ -926,7 +938,7 @@ int pthread_key_create( pthread_key_t *p_key, void (*destructor)(void *) ) {
 }
 
 int pthread_key_delete( pthread_key_t key ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( key == NULL )
         return EINVAL;
@@ -948,7 +960,7 @@ int pthread_key_delete( pthread_key_t key ) {
 }
 
 int pthread_setspecific( pthread_key_t key, const void *data ) {
-    PTHREAD_FUN_BEGIN()
+    PTHREAD_FUN_BEGIN();
 
     if (key == NULL)
         return EINVAL;
@@ -961,7 +973,7 @@ int pthread_setspecific( pthread_key_t key, const void *data ) {
 }
 
 void *pthread_getspecific( pthread_key_t key ) {
-    PTHREAD_FUN_BEGIN()
+    PTHREAD_FUN_BEGIN();
     __divine_assert(key != NULL);
 
     int ltid = __divine_get_tid();
@@ -976,57 +988,80 @@ void *pthread_getspecific( pthread_key_t key ) {
   pthread_cond_t representation:
 
     { .mutex: address of associated mutex
-      .counter:
-          -------------------------------------------------------------------
-         | *free* | initialized?: 1 bit | number of waiting threads: 16 bits |
-          -------------------------------------------------------------------
-      }
+      .counter: number of waiting threads: 16 bits
+      .initialized: 1 bit
+      ._pad: 15 bits
+    }
 */
 
-int _cond_adjust_count( pthread_cond_t *cond, int adj ) {
-    int count = cond->counter & _COND_COUNTER_MASK;
+template< typename CondOrBarrier >
+int _cond_adjust_count( CondOrBarrier *cond, int adj ) {
+    int count = cond->counter;
     count += adj;
     __divine_assert( count < ( 1 << 16 ) );
+    __divine_assert( count >= 0 );
 
-    (cond->counter) &= ~_COND_COUNTER_MASK;
-    (cond->counter) |= count;
+    cond->counter = count;
     return count;
 }
 
-int pthread_cond_destroy( pthread_cond_t *cond ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+template< typename CondOrBarrier >
+int _destroy_cond_or_barrier(CondOrBarrier *cond ) {
 
-    if ( cond == NULL || !( cond->counter & _INITIALIZED_COND ) )
+    if ( cond == NULL || !cond->initialized )
         return EINVAL;
 
     // make sure that no thread is waiting on this condition
     // (probably better alternative when compared to: return EBUSY)
-    __divine_assert( ( cond->counter & _COND_COUNTER_MASK ) == 0 );
+    __divine_assert( cond->counter == 0 );
 
-    cond->mutex = NULL;
     cond->counter = 0;
+    cond->initialized = 0;
     return 0;
 }
 
+int pthread_cond_destroy( pthread_cond_t *cond ) {
+    PTHREAD_VISIBLE_FUN_BEGIN();
+
+    int r = _destroy_cond_or_barrier( cond );
+    if ( r == 0 )
+        cond->mutex = NULL;
+    return r;
+}
+
 int pthread_cond_init( pthread_cond_t *cond, const pthread_condattr_t * /* TODO: cond. attributes */ ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( cond == NULL )
         return EINVAL;
 
-    if ( cond->counter & _INITIALIZED_COND )
+    if ( cond->initialized )
         return EBUSY; // already initialized
 
-    cond->mutex = NULL;
-    cond->counter = _INITIALIZED_COND;
+    *cond = (pthread_cond_t){ .mutex = NULL, .initialized = 1, .counter = 0, ._pad = 0 };
     return 0;
 }
 
-int _cond_signal( pthread_cond_t *cond, bool broadcast = false ) {
-    if ( cond == NULL || !( cond->counter & _INITIALIZED_COND ) )
+template< typename > static inline SleepingOn _sleepCond();
+template<> inline SleepingOn _sleepCond< pthread_barrier_t >()
+{ return Barrier; }
+template<> inline SleepingOn _sleepCond< pthread_cond_t >()
+{ return Condition; }
+
+static inline bool _eqSleepTrait( Thread *t, pthread_cond_t *cond ) {
+    return t->condition == cond;
+}
+
+static inline bool _eqSleepTrait( Thread *t, pthread_barrier_t *bar ) {
+    return t->barrier == bar;
+}
+
+template< bool broadcast, typename CondOrBarrier >
+int _cond_signal( CondOrBarrier *cond ) {
+    if ( cond == NULL || !cond->initialized )
         return EINVAL;
 
-    int count = cond->counter & _COND_COUNTER_MASK;
+    int count = cond->counter;
     if ( count )  { // some threads are waiting for condition
         int waiting = 0, wokenup = 0, choice;
 
@@ -1039,12 +1074,13 @@ int _cond_signal( pthread_cond_t *cond, bool broadcast = false ) {
             if ( !threads[i] ) // empty slot
                 continue;
 
-            if ( threads[i]->sleeping && threads[i]->condition == cond ) {
+            if ( threads[i]->sleeping == _sleepCond< CondOrBarrier >()
+                    && _eqSleepTrait( threads[i], cond ) )
+            {
                 ++waiting;
-                if ( ( broadcast ) ||
-                     ( ( choice + 1 ) & ( 1 << (waiting - 1) ) ) ) {
+                if ( broadcast || ( (choice + 1) & ( 1 << (waiting - 1) ) ) ) {
                    // wake up the thread
-                   threads[i]->sleeping = false;
+                   threads[i]->sleeping = NotSleeping;
                    threads[i]->condition = NULL;
                    ++wokenup;
                 }
@@ -1053,36 +1089,41 @@ int _cond_signal( pthread_cond_t *cond, bool broadcast = false ) {
 
         DBG_ASSERT( count == waiting );
 
-        if ( !_cond_adjust_count( cond,-wokenup ) )
-            cond->mutex = NULL; // break binding between cond. variable and mutex
+        _cond_adjust_count( cond,-wokenup );
     }
     return 0;
 }
 
 int pthread_cond_signal( pthread_cond_t *cond ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
-    return _cond_signal( cond );
+    PTHREAD_VISIBLE_FUN_BEGIN();
+    int r = _cond_signal< false >( cond );
+    if ( r == 0 && cond->counter == 0 )
+        cond->mutex = NULL; // break binding between cond. variable and mutex
+    return r;
 }
 
 int pthread_cond_broadcast( pthread_cond_t *cond ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
-    return _cond_signal( cond, true );
+    PTHREAD_VISIBLE_FUN_BEGIN();
+    int r = _cond_signal< true >( cond );
+    if ( r == 0 && cond->counter == 0 )
+        cond->mutex = NULL; // break binding between cond. variable and mutex
+    return r;
 }
 
 int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     int ltid = __divine_get_tid();
     int gtid = _get_gtid( __divine_get_tid() );
 
-    if ( cond == NULL || !( cond->counter & _INITIALIZED_COND ) )
+    if ( cond == NULL || !cond->initialized )
         return EINVAL;
 
-    if ( mutex == NULL || !( (*mutex) & _INITIALIZED_MUTEX ) ) {
+    if ( mutex == NULL || !mutex->initialized ) {
         return EINVAL;
     }
 
-    if ( ( (*mutex) & _COND_COUNTER_MASK ) != ( gtid + 1 ) ) {
+    if ( mutex->owner != gtid + 1 ) {
         // mutex is not locked or it is already locked by another thread
         return EPERM;
     }
@@ -1095,14 +1136,13 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
 
     // fall asleep
     Thread* thread = threads[ltid];
-    thread->sleeping = true;
-    thread->condition = cond;
+    thread->setSleeping( cond );
 
     _cond_adjust_count( cond, 1 ); // one more thread is waiting for this condition
     pthread_mutex_unlock( mutex ); // unlock associated mutex
 
     // sleeping
-    WAIT_OR_CANCEL( thread->sleeping )
+    WAIT_OR_CANCEL( thread->sleeping == Condition );
 
     // try to lock mutex which was associated to the cond. variable by this thread
     // (not the one from current binding, which may have changed)
@@ -1112,7 +1152,7 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
 
 int pthread_cond_timedwait( pthread_cond_t *cond, pthread_mutex_t *mutex,
                             const struct timespec * abstime) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( abstime == NULL || abstime->tv_nsec < 0 || abstime->tv_nsec >= MILLIARD ) {
         return EINVAL;
@@ -1168,23 +1208,23 @@ int pthread_condattr_setpshared( pthread_condattr_t *, int ) {
   */
 
 int pthread_once( pthread_once_t *once_control, void (*init_routine)(void) ) {
-    if ( ~(*once_control) & _EXECUTE_ONCE )
+    if ( once_control->mtx.once == 0 )
         return 0;
 
-    pthread_mutex_lock( once_control );
+    pthread_mutex_lock( &once_control->mtx );
 
-    if ( (*once_control) & _EXECUTE_ONCE ) {
+    if ( once_control->mtx.once ) {
         init_routine();
-        (*once_control) &= ~_EXECUTE_ONCE;
+        once_control->mtx.once = 0;
     }
 
-    pthread_mutex_unlock( once_control );
+    pthread_mutex_unlock( &once_control->mtx );
     return 0;
 }
 
 /* Thread cancellation */
 int pthread_setcancelstate( int state, int *oldstate ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if (state & ~0x1)
         return EINVAL;
@@ -1196,7 +1236,7 @@ int pthread_setcancelstate( int state, int *oldstate ) {
 }
 
 int pthread_setcanceltype( int type, int *oldtype ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if (type & ~0x1)
         return EINVAL;
@@ -1207,34 +1247,33 @@ int pthread_setcanceltype( int type, int *oldtype ) {
     return 0;
 }
 
-int pthread_cancel( pthread_t ptid ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+int pthread_cancel( pthread_t _ptid ) {
+    real_pthread_t ptid = _real_pt( _ptid );
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
-    int ltid = LTID( ptid );
-    int gtid = GTID( ptid );
-
-    if ( ( ltid < 0 ) || ( ltid >= alloc_pslots ) ||
-         ( gtid < 0 ) || ( gtid >= thread_counter ))
+    if ( !ptid.initialized
+            || ptid.ltid >= alloc_pslots
+            || ptid.gtid >= thread_counter )
         return ESRCH;
 
-    if ( gtid != _get_gtid( ltid ) )
+    if ( ptid.gtid != _get_gtid( ptid.ltid ) )
         return ESRCH;
 
-    if ( threads[ltid]->cancel_state == PTHREAD_CANCEL_ENABLE )
-        threads[ltid]->cancelled = true;
+    if ( threads[ ptid.ltid ]->cancel_state == PTHREAD_CANCEL_ENABLE )
+        threads[ ptid.ltid ]->cancelled = true;
 
     return 0;
 }
 
 void pthread_testcancel( void ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if (_canceled())
         _cancel();
 }
 
 void pthread_cleanup_push( void (*routine)(void *), void *arg ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     __divine_assert( routine != NULL );
 
@@ -1247,7 +1286,7 @@ void pthread_cleanup_push( void (*routine)(void *), void *arg ) {
 }
 
 void pthread_cleanup_pop( int execute ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     int ltid = __divine_get_tid();
     CleanupHandler* handler = threads[ltid]->cleanup_handlers;
@@ -1343,7 +1382,7 @@ int _rwlock_lock( pthread_rwlock_t *rwlock, bool wait, bool writer ) {
         if ( !wait )
             return EBUSY;
     }
-    WAIT ( !_rwlock_can_lock( rwlock, writer ) )
+    WAIT ( !_rwlock_can_lock( rwlock, writer ) );
 
     if ( writer ) {
         rwlock->wlock &= ~_WLOCK_WRITER_MASK;
@@ -1362,7 +1401,7 @@ int _rwlock_lock( pthread_rwlock_t *rwlock, bool wait, bool writer ) {
 }
 
 int pthread_rwlock_destroy( pthread_rwlock_t * rwlock ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( rwlock == NULL )
         return EINVAL;
@@ -1377,7 +1416,7 @@ int pthread_rwlock_destroy( pthread_rwlock_t * rwlock ) {
 }
 
 int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( rwlock == NULL )
         return EINVAL;
@@ -1397,27 +1436,27 @@ int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *a
 }
 
 int pthread_rwlock_rdlock( pthread_rwlock_t * rwlock ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
     return _rwlock_lock( rwlock, true, false );
 }
 
 int pthread_rwlock_wrlock( pthread_rwlock_t * rwlock ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
     return _rwlock_lock( rwlock, true, true );
 }
 
 int pthread_rwlock_tryrdlock( pthread_rwlock_t * rwlock ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
     return _rwlock_lock( rwlock, false, false );
 }
 
 int pthread_rwlock_trywrlock( pthread_rwlock_t * rwlock ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
     return _rwlock_lock( rwlock, false, true );
 }
 
 int pthread_rwlock_unlock( pthread_rwlock_t * rwlock ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     int gtid = _get_gtid( __divine_get_tid() );
 
@@ -1464,7 +1503,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t * rwlock ) {
 */
 
 int pthread_rwlockattr_destroy( pthread_rwlockattr_t *attr ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL )
         return EINVAL;
@@ -1474,7 +1513,7 @@ int pthread_rwlockattr_destroy( pthread_rwlockattr_t *attr ) {
 }
 
 int pthread_rwlockattr_getpshared( const pthread_rwlockattr_t *attr, int *pshared ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL || pshared == NULL )
         return EINVAL;
@@ -1484,7 +1523,7 @@ int pthread_rwlockattr_getpshared( const pthread_rwlockattr_t *attr, int *pshare
 }
 
 int pthread_rwlockattr_init( pthread_rwlockattr_t *attr ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL )
         return EINVAL;
@@ -1494,7 +1533,7 @@ int pthread_rwlockattr_init( pthread_rwlockattr_t *attr ) {
 }
 
 int pthread_rwlockattr_setpshared( pthread_rwlockattr_t *attr, int pshared ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( attr == NULL || ( pshared & ~_RWLOCK_ATTR_SHARING_MASK ) )
         return EINVAL;
@@ -1510,54 +1549,53 @@ int pthread_rwlockattr_setpshared( pthread_rwlockattr_t *attr, int pshared ) {
   pthread_barrier_t representation:
 
    { .counter:
-        -----------------------------------------------------------------------------------------------
-       | the number of threads to synchronize: 15 bits | < the rest is the same as in pthread_cond_t > |
-        -----------------------------------------------------------------------------------------------
-     .mutex: NOT USED
+     initialized: 1 bit
+     .nthreads: the number of threads to synchronize: 15 bits
    }
 */
 
 int pthread_barrier_destroy( pthread_barrier_t *barrier ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( barrier == NULL )
         return EINVAL;
 
-    pthread_cond_destroy( barrier );
-    return 0;
+    int r = _destroy_cond_or_barrier( barrier );
+    if ( r == 0 )
+        barrier->nthreads = 0;
+    return r;
 }
 
 int pthread_barrier_init( pthread_barrier_t *barrier, const pthread_barrierattr_t * attr /* TODO: barrier attributes */,
                           unsigned count ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
     if ( count == 0 || barrier == NULL )
         return EINVAL;
 
     // make sure that no thread is blocked on the barrier
     // (probably better alternative when compared to: return EBUSY)
-    __divine_assert( ( barrier->counter & _COND_COUNTER_MASK ) == 0 );
+    __divine_assert( barrier->counter == 0 );
 
     // Set the number of threads that must call pthread_barrier_wait() before
     // any of them successfully return from the call.
-    barrier->counter = ( count << 17 );
-    barrier->counter |= _INITIALIZED_COND;
+    *barrier = (pthread_barrier_t){ .nthreads = count, .initialized = 1, .counter = 0 };
     return 0;
 }
 
 int pthread_barrier_wait( pthread_barrier_t *barrier ) {
-    PTHREAD_VISIBLE_FUN_BEGIN()
+    PTHREAD_VISIBLE_FUN_BEGIN();
 
-    if ( barrier == NULL || !( barrier->counter & _INITIALIZED_COND ) )
+    if ( barrier == NULL || !barrier->initialized )
         return EINVAL;
 
     int ltid = __divine_get_tid();
     int ret = 0;
-    int counter = barrier->counter & _COND_COUNTER_MASK;
-    int release_count = barrier->counter >> 17;
+    int counter = barrier->counter;
+    int release_count = barrier->nthreads;
 
     if ( (counter + 1) == release_count ) {
-        pthread_cond_broadcast( barrier );
+        _cond_signal< true >( barrier );
         ret = PTHREAD_BARRIER_SERIAL_THREAD;
     } else {
         // WARNING: this is not immune from spurious wakeup.
@@ -1565,13 +1603,13 @@ int pthread_barrier_wait( pthread_barrier_t *barrier ) {
 
         // fall asleep
         Thread* thread = threads[ltid];
-        thread->sleeping = true;
-        thread->condition = barrier;
+        thread->sleeping = Barrier;
+        thread->setSleeping( barrier );
 
         _cond_adjust_count( barrier, 1 ); // one more thread is blocked on this barrier
 
         // sleeping
-        WAIT_OR_CANCEL( thread->sleeping )
+        WAIT_OR_CANCEL( thread->sleeping == Barrier );
     }
 
     return ret;
