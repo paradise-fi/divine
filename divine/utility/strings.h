@@ -9,15 +9,26 @@ extern const char *cesmi_usr_ltl_h_str;
 extern const char *toolkit_pool_h_str;
 extern const char *toolkit_blob_h_str;
 extern const char *compile_defines_str;
-extern const char *llvm_usr_h_str;
-extern const char *llvm_usr_pthread_h_str;
-extern const char *llvm_usr_pthread_cpp_str;
-extern const char *llvm_usr_glue_cpp_str;
-extern const char *llvm_usr_stubs_cpp_str;
-extern const char *llvm_usr_entry_cpp_str;
-extern const char *llvm_usr_atomic_h_str;
-extern const char *llvm_usr_cxa_exception_cpp_str;
-extern const char *llvm_usr_unwind_h_str;
+
+namespace src_llvm {
+    extern const char *llvm_problem_def_str;
+    extern const char *divine_h_str;
+    extern const char *pthread_h_str;
+    extern const char *unwind_h_str;
+    extern const char *divine_assert_h_str;
+    extern const char *divine_problem_h_str;
+    extern const char *divine_atomoic_str;
+
+    extern const char *cxa_exception_divine_cpp_str;
+    extern const char *glue_cpp_str;
+    extern const char *pthread_cpp_str;
+    extern const char *entry_cpp_str;
+    extern const char *stubs_cpp_str;
+}
+
+struct stringtable { const char *n, *c; };
+extern stringtable llvm_list[];
+extern stringtable llvm_h_list[];
 }
 
 #endif
