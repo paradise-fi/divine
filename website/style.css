@@ -274,6 +274,28 @@ div#actions { display: inline; }
         }
 }
 
+@media handheld, ( max-width: 42em ), ( max-device-width: 42em ) {
+    blockquote {
+        font-size: 110%;
+        padding: .8ex 1em;
+        margin: 0ex;
+    }
+    pre {
+        padding: 1ex;
+        padding-bottom: .8ex;
+        margin: 0em;
+    }
+}
+
+@media ( max-width: 38em ), ( max-device-width: 38em ) {
+    #sidebar a, #mainnav a { margin: 0px; }
+}
+
+@media ( max-width: 25em ), ( max-device-width: 25em ) {
+    div#content {
+        padding: 0ex 1em 2ex 1em;
+    }
+}
 
 /* TRAC specific stuff follows */
 
