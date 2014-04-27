@@ -24,11 +24,11 @@ add_custom_target( functional
     "O_LTL3BA='${LTL3BA}'"
     "O_MPI='${MPI}'"
     "O_POOLS='${POOLS}'"
-    "O_LEGACY='${LEGACY}'"
     "O_TIMED='${TIMED}'"
     "O_COMPRESSION='${COMPRESSION}'"
     "O_MURPHI='${MURPHI}'"
     "O_COIN='${COIN}'"
+    "O_CESMI='${CESMI}'"
     "LLVMCONFIG='${LLVM_CONFIG_EXECUTABLE}'"
     "O_LLVM='${LLVM}'" ${tests}
 )

@@ -1,5 +1,7 @@
 . lib
 
+test "$O_CESMI" = "ON" || skip
+
 divine compile --cesmi data/withltl.c data/withltl.ltl
 divine info withltl$cesmiext | grep LTL
 
