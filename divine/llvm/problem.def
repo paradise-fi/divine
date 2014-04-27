@@ -1,0 +1,15 @@
+NoProblem = 0,
+Other = 1,
+Assert,
+InvalidDereference,
+InvalidArgument,
+OutOfBounds,
+DivisionByZero,
+UnreachableExecuted,
+MemoryLeak,
+NotImplemented,
+Uninitialised,
+PointsToViolated,
+Deadlock,
+
+Trace

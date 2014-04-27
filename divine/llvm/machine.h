@@ -18,19 +18,7 @@ template< typename HeapMeta > struct Canonic;
 
 struct Problem {
     enum What {
-        NoProblem = 0,
-        Other = 1,
-        Assert,
-        InvalidDereference,
-        InvalidArgument,
-        OutOfBounds,
-        DivisionByZero,
-        UnreachableExecuted,
-        MemoryLeak,
-        NotImplemented,
-        Uninitialised,
-        PointsToViolated,
-        Deadlock
+        #include <divine/llvm/problem.def>
     };
     PC where;
     uint8_t what;
