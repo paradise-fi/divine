@@ -30,7 +30,6 @@ using namespace sys;
 
 namespace divine {
 
-struct stringtable { const char *n, *c; };
 extern stringtable pdclib_list[];
 extern stringtable libm_list[];
 extern stringtable libunwind_list[];
@@ -258,13 +257,17 @@ struct Compile {
     void prepareIncludes( std::string name, Src src ) {
         fs::mkdirIfMissing( name, 0755 );
         chdir( name.c_str() );
+        prepareIncludes( src );
+        chdir( ".." );
+    }
 
+    template< typename Src >
+    void prepareIncludes( Src src ) {
         while ( src->n ) {
             fs::mkFilePath( src->n );
             fs::writeFile( src->n, src->c );
             ++src;
         }
-        chdir( ".." );
     }
 
     template< typename Src >
@@ -314,20 +317,14 @@ struct Compile {
         chdir( tmp_dir.basename.c_str() );
 
         // copy content of library files from memory to the directory
-        fs::writeFile( "divine.h", llvm_usr_h_str );
-        fs::writeFile( "pthread.h", llvm_usr_pthread_h_str );
+        prepareIncludes( llvm_h_list );
         fs::mkFilePath( "bits/pthreadtypes.h" );
         fs::writeFile( "bits/pthreadtypes.h" , "#include <pthread.h>" );
         fs::writeFile( "assert.h", "#include <divine.h>\n" ); /* override PDClib's assert.h */
-        fs::writeFile( "atomic", llvm_usr_atomic_h_str );
-        fs::writeFile( "unwind.h", llvm_usr_unwind_h_str ); // from libunwind
-        if ( !o_dont_link->boolValue() ) {
-            fs::writeFile( "pthread.cpp", llvm_usr_pthread_cpp_str );
-            fs::writeFile( "glue.cpp", llvm_usr_glue_cpp_str );
-            fs::writeFile( "stubs.cpp", llvm_usr_stubs_cpp_str );
-            fs::writeFile( "entry.cpp", llvm_usr_entry_cpp_str );
-            fs::writeFile( "cxa_exception_divine.cpp", llvm_usr_cxa_exception_cpp_str );
-        }
+        fs::mkFilePath( "divine/problem.def" );
+        fs::writeFile( "divine/problem.def", src_llvm::llvm_problem_def_str );
+        if ( !o_dont_link->boolValue() )
+            prepareIncludes( llvm_list );
 
         // compile libraries
         std::string flags = "-D__divine__ -emit-llvm -nobuiltininc -nostdinc -Xclang -nostdsysteminc -nostdinc++ -g ";
