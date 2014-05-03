@@ -39,7 +39,7 @@ endif( COIN )
 if( LLVM )
     file( GLOB SRC_LLVM llvm/*.cpp )
     file( GLOB llvmtesth llvm/*.test.h )
-    add_subdirectory( llvm/usr )
+    add_subdirectory( llvm/userspace )
     stringify( "llvm" llvm/problem.def )
 else() # enable silk even when LLVM is disabled
     file( GLOB SRC_LLVM llvm/silk-*.cpp )
