@@ -7,8 +7,6 @@
 #include "eval.h"
 #include <utap/utap.h>
 
-// #define LOCATION_BASED_EXTRAPOLATION_OFF
-
 using namespace UTAP;
 using namespace UTAP::Constants;
 using namespace std;
@@ -107,6 +105,71 @@ const Evaluator::FuncData &Evaluator::getFuncData( int procId, const UTAP::symbo
 
     assert( fun != funs.end() );
     return fun->second;
+}
+
+void Evaluator::parsePropClockGuard( const UTAP::expression_t &expr ) {
+    if ( expr.getSize() != 2 )
+        return;
+
+    const UTAP::expression_t &a = expr[ 0 ];
+    const UTAP::expression_t &b = expr[ 1 ];
+
+    if ( expr.getKind() == UTAP::Constants::AND ) {
+        parsePropClockGuard( a );
+        parsePropClockGuard( b );
+        return;
+    }
+
+    bool open;
+    switch ( expr.getKind() ) {
+        case UTAP::Constants::GT:
+        case UTAP::Constants::LT:
+            open = false;
+            break;
+        case UTAP::Constants::GE:
+        case UTAP::Constants::LE:
+            open = true;
+            break;
+        default:
+            assert( false );
+    }
+
+    if ( a.getType().isClock() || b.getType().isClock() ) {
+        //enableLU( false );
+        //enableLB( false );
+        //enableDiag( false );
+        int clock_id, value;
+        if ( a.getType().isClock() ) {
+            clock_id = resolveId( -1, a );
+            value = eval( -1, b ).get_int();
+        } else {
+            clock_id = resolveId( -1, b );
+            value = eval( -1, a ).get_int();
+        }
+
+        bool lessthan = expr.getKind() == UTAP::Constants::LT || UTAP::Constants::LE;
+
+        if ( lessthan == a.getType().isClock() )
+            ura.add_guard( clock_id, value, open );
+
+    } else if ( a.getType().isDiff() || b.getType().isDiff() ) {
+        std::cerr << "Diagonal constraints in the property are not supported yet." << std::endl;
+        abort();
+    }
+}
+
+unsigned Evaluator::getResetedMask( int procId, const UTAP::expression_t effect ) {
+    std::vector< bool > resets;
+    collectResets( procId, effect, resets );
+
+    unsigned reseted_mask = 0;
+    int mask = 1;
+    for ( unsigned i = 0; i < resets.size(); ++i, mask <<= 1 ) {
+        if ( resets[ i ] )
+            reseted_mask |= mask;
+    }
+
+    return reseted_mask;
 }
 
 void Evaluator::parseArrayValue(   const expression_t &exp,
@@ -630,18 +693,17 @@ void Evaluator::finalize() {
     // compute clock limits
 
     clocks.resize( ClockTable.size() );
+    ura.set_dimension( ClockTable.size() );
     fixedClockLimits.resize( ClockTable.size(), make_pair( -dbm_INFINITY, -dbm_INFINITY ) );
+    generalClockLimits.resize( ClockTable.size(), make_pair( -dbm_INFINITY, -dbm_INFINITY ) );
 
     computeLocClockLimits();
-#ifdef LOCATION_BASED_EXTRAPOLATION_OFF
-    computeLocalBounds();
-#endif
 }
 
 // after collectResets, out[c] is true iff the clock _c_ is reseted on the edge _e_
-void Evaluator::collectResets( int pId, const template_t &templ, const edge_t &e, vector< bool > & out ) {
+void Evaluator::collectResets( int pId, const expression_t &e, vector< bool > & out ) {
     out.resize( ClockTable.size(), false );
-    expression_t tmp = e.assign;
+    expression_t tmp = e;
     while ( tmp.getKind() == COMMA ) {
         if ( tmp[0].getKind() == ASSIGN && tmp[0][0].getType().isClock() ) {
             out[ resolveId( pId, tmp[0][0] ) ] = true;
@@ -659,31 +721,21 @@ void Evaluator::computeLocClockLimits() {
     int i = 0;
     for ( const instance_t &p : ProcessTable ) {
         for ( state_t &s : p.templ->states ) {
-#ifdef LOCATION_BASED_EXTRAPOLATION_OFF
-            setClockLimits( i, s.invariant, fixedClockLimits );
-#else
+            setClockLimits( i, s.invariant, generalClockLimits );
             limitsVector limits;
             limits.resize( ClockTable.size(), make_pair( -dbm_INFINITY, -dbm_INFINITY ) );
             setClockLimits( i, s.invariant, limits );
             locClockLimits[ i ][ s.locNr ] = limits;
-#endif
         }
         for ( edge_t &e : p.templ->edges ) {
-#ifdef LOCATION_BASED_EXTRAPOLATION_OFF
-            setClockLimits( i, e.guard, fixedClockLimits );
-#else
+            setClockLimits( i, e.guard, generalClockLimits );
             symbol_t src = e.src->uid;
             limitsVector &limits = locClockLimits[ i ][ e.src->locNr ];
             assert( limits.size() == ClockTable.size() );
             setClockLimits( i, e.guard, limits );
-#endif
         }
         ++i;
     }
-
-#ifdef LOCATION_BASED_EXTRAPOLATION_OFF
-    return;
-#endif
 
     bool change = true;
     while ( change ) {
@@ -693,7 +745,7 @@ void Evaluator::computeLocClockLimits() {
         for ( const instance_t &p : ProcessTable ) {
             for ( edge_t &e : p.templ->edges ) {
                 vector< bool > reseted;
-                collectResets( i, *p.templ, e, reseted );
+                collectResets( i, e.assign, reseted );
                 for ( size_t clk = 0; clk < ClockTable.size(); clk++ ) {
                     if ( reseted[ clk ] )
                         continue;
@@ -719,15 +771,20 @@ void Evaluator::computeLocalBounds() {
     vector< pair< int32_t, int32_t > > bounds = fixedClockLimits;
     assert( fixedClockLimits.size() == ClockTable.size() );
 
-#ifndef LOCATION_BASED_EXTRAPOLATION_OFF
-    for ( size_t proc = 0; proc < ProcessTable.size(); ++proc ) {
+    if ( usesLB() ) {
+        for ( size_t proc = 0; proc < ProcessTable.size(); ++proc ) {
+            for ( size_t clk = 0; clk < ClockTable.size(); ++clk ) {
+                auto &b = locClockLimits[ proc ][ locations[ proc ] ][ clk ];
+                bounds[ clk ].first = max( b.first, bounds[ clk ].first );
+                bounds[ clk ].second = max( b.second, bounds[ clk ].second );
+            }
+        }
+    } else {
         for ( size_t clk = 0; clk < ClockTable.size(); ++clk ) {
-            auto &b = locClockLimits[ proc ][ locations[ proc ] ][ clk ];
-            bounds[ clk ].first = max( b.first, bounds[ clk ].first );
-            bounds[ clk ].second = max( b.second, bounds[ clk ].second );
+            bounds[ clk ].first = max( bounds[ clk ].first, generalClockLimits[ clk ].first );
+            bounds[ clk ].second = max( bounds[ clk ].second, generalClockLimits[ clk ].second );
         }
     }
-#endif
 
     if ( extrapLU ) {
         for ( size_t clk = 0; clk < ClockTable.size(); ++clk ) {
@@ -995,15 +1052,24 @@ Evaluator::Value Evaluator::eval( int procId, const expression_t& expr ) {
 
 void Evaluator::setData( char *d, Locations l ) {
     data = reinterpret_cast< int32_t* >( d );
-    clocks.setData( d + getReqSize() - clocks.getReqSize() );
+    clocks.setData( d + getReqSize() - clocks.getReqSize() - sizeof( ura_id ) );
+    ura_id_ptr = reinterpret_cast< int32_t* >( d + getReqSize() - sizeof( ura_id ) );
     locations = l;
 }
 
 void Evaluator::extrapolate() {
-#ifndef LOCATION_BASED_EXTRAPOLATION_OFF
-    computeLocalBounds();
-#endif
-    clocks.extrapolate( );
+    if ( usesLB() )
+        computeLocalBounds();
+
+    if ( usesLU() && usesDiag() )
+        clocks.extrapolate( );
+    else if ( !usesLU() && !usesDiag() )
+        clocks.extrapolateMaxBounds();
+    else if ( !usesLU() && usesDiag() )
+        clocks.extrapolateDiagonalMaxBounds();
+    else {
+        assert( false );
+    }
 }
 
 /*
@@ -1032,6 +1098,7 @@ std::ostream& operator<<( std::ostream& o, Evaluator& e ) {
         }
     }
     o << e.clocks;
+    o << "URA state: " << e.getUraZone() << std::endl;
 
     return o;
 }

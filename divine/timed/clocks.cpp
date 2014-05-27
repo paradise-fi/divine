@@ -156,6 +156,14 @@ bool Clocks::updateUpperBound( unsigned int id, int32_t limit ) {
     return false;
 }
 
+void Clocks::extrapolateMaxBounds() {
+   dbm_extrapolateMaxBounds( data, dim, &bounds[ 0 ] );
+}
+
+void Clocks::extrapolateDiagonalMaxBounds() {
+   dbm_diagonalExtrapolateMaxBounds( data, dim, &bounds[ 0 ] );
+}
+
 void Clocks::extrapolate() {
-    dbm_diagonalExtrapolateLUBounds( data, dim, &bounds[ 0 ], &bounds[ dim ] );
+   dbm_diagonalExtrapolateLUBounds( data, dim, &bounds[ 0 ], &bounds[ dim ] );
 }

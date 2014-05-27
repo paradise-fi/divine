@@ -338,7 +338,6 @@ TAGen::PropGuard TAGen::buildPropGuard( const std::vector< std::pair< bool, std:
             throw std::runtime_error( "Unsupported expression type: \"" + tmp.toString() + "\"" );
         }
     }
-
     if ( sys.hasErrors() ) {
         std::cerr << "Errors in LTL proposition:" << std::endl;
         for ( auto err = sys.getErrors().begin(); err != sys.getErrors().end(); ++err )

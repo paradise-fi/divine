@@ -166,6 +166,10 @@ struct Timed : public Common< Blob > {
             // excludeZeno was called first
             nonZenoBuchi();
         }
+
+        for ( const auto &pg : propGuards )
+            gen.parsePropClockGuard( pg );
+        gen.finalizeUra();
     }
 
     template< typename Y >
@@ -179,8 +183,9 @@ struct Timed : public Common< Blob > {
     ReductionSet useReductions( ReductionSet r ) override {
         ReductionSet applied;
         if ( r.count( R_LU ) ) {
-            gen.enableLU( true );
             applied.insert( R_LU );
+        } else {
+            gen.enableLU( false );
         }
         return applied;
     }
@@ -199,6 +204,7 @@ struct Timed : public Common< Blob > {
 		if ( enabled )
 			excludeZeno();
 		assert( nonZeno == enabled );
+        gen.finalizeUra();
 	}
 
     // yield( Recurse, length, remaining count )

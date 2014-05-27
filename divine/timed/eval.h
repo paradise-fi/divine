@@ -3,6 +3,7 @@
 #include <limits>
 #include "clocks.h"
 #include "utils.h"
+#include "ura.h"
 
 #ifndef DIVINE_TIMED_EVAL_H
 #define DIVINE_TIMED_EVAL_H
@@ -123,6 +124,7 @@ private:
     const FuncData &getFuncData( int procId, const UTAP::symbol_t & s ) const;
     Clocks clocks;
 
+    typedef uint32_t ura_id;
     typedef std::pair< UTAP::symbol_t, int > VariableIdentifier;
     typedef std::map< VariableIdentifier, VarData > SymTable;
     typedef std::map< VariableIdentifier, FuncData > FuncTable;
@@ -130,7 +132,10 @@ private:
     FuncTable funs;
 
     int32_t *data = NULL;
-    bool extrapLU = false;
+    int32_t *ura_id_ptr = NULL;
+    bool extrapLU = true;
+    bool extrapLB = true;
+    bool extrapDiag = true;
     std::vector< int32_t > initValues;
     std::vector< int32_t > metaValues; // constants + local variables
 
@@ -165,11 +170,15 @@ private:
     int32_t *getValue( int procId, const UTAP::symbol_t& s );
     bool inRange( int procId, const UTAP::symbol_t& s, int32_t value ) const;
     std::pair < int32_t, int32_t > getRange( int procId, const UTAP::expression_t &expr );
-    void collectResets( int pId, const UTAP::template_t &templ, const UTAP::edge_t &e, std::vector< bool > & out );
+    void collectResets( int pId, const UTAP::expression_t &e, std::vector< bool > & out );
 
     typedef std::vector< std::pair< int32_t, int32_t > >  limitsVector;
+    // location based clock bounds
     std::vector< std::map< int32_t, limitsVector> > locClockLimits;
+    // clock bounds from diagonals and property
     std::vector< std::pair< int32_t, int32_t > > fixedClockLimits;
+    // other bounds
+    std::vector< std::pair< int32_t, int32_t > > generalClockLimits;
     void computeLocClockLimits();
     void computeChannelPriorities( UTAP::TimedAutomataSystem &sys );
 	void finalize();
@@ -189,6 +198,37 @@ private:
 
 public:
     Evaluator(  ) {}
+
+    Ura::ura ura;
+    int &getUraStateId() {
+        assert( ura_id_ptr );
+        return *ura_id_ptr;
+    }
+
+    bool hasClocks() const {
+        return !ClockTable.empty();
+    }
+
+    int getUraStateId() const {
+        assert( ura_id_ptr );
+        return *ura_id_ptr;
+    }
+
+    void finalizeUra() {
+        ura.finalize();
+    }
+
+    const dbm::dbm_t getUraZone() const {
+        ura_id uid = getUraStateId();
+        assert( uid < ura.uppaal_dbm_rep.size() );
+        return ura.uppaal_dbm_rep[ uid ];
+    }
+
+    // adds all clock comparisons to URA
+    void parsePropClockGuard( const UTAP::expression_t &expr );
+
+    // returns mask of clocks that was reseted in _effect_
+    unsigned getResetedMask( int procId, const UTAP::expression_t effect );
 
     // contains all inequalities involving clocks differences; filled by processDecl and setClockLimits; not internally used
     std::vector< Cut > clockDiffrenceExprs;
@@ -224,6 +264,8 @@ public:
     void initial() {
         memcpy( data, &initValues[0], initValues.size() * sizeof(int32_t) );
         clocks.initial();
+        ura_id_ptr = data + getReqSize() - sizeof( int32_t );
+        getUraStateId() = 0;
     }
 
     friend std::ostream& operator<<( std::ostream& o, Evaluator& e );
@@ -242,13 +284,21 @@ public:
         return clocks.intersection( fed );
     }
 
+    dbm::dbm_t dbmIntersection( dbm::dbm_t d ) const {
+        return clocks.intersection( d );
+    }
+
     void assignZone( const raw_t* src ) {
+        clocks.assignZone( src );
+    }
+
+    void assignZone( const dbm::dbm_t &src ) {
         clocks.assignZone( src );
     }
 
     // return number of bytes required to store variable values and clock zone
     unsigned int getReqSize() const {
-        return initValues.size() * sizeof(int32_t) + clocks.getReqSize();
+        return initValues.size() * sizeof(int32_t) + clocks.getReqSize() + sizeof(ura_id);
     }
 
     // returns range of the given type
@@ -285,6 +335,22 @@ public:
 
     bool usesLU() const {
         return extrapLU;
+    }
+
+    void enableLB( bool enable ) {
+        extrapLB = enable;
+    }
+
+    bool usesLB() const {
+        return extrapLB;
+    }
+
+    void enableDiag( bool enable ) {
+        extrapDiag = enable;
+    }
+
+    bool usesDiag() const {
+        return extrapDiag;
     }
 
     // returns DBM offset and size of each row

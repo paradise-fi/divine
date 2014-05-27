@@ -42,6 +42,8 @@ public:
 	// if the argument is true, diagonal extrapolation is performed,
 	// which can break constraints including clock differences
     void extrapolate();
+    void extrapolateMaxBounds();
+    void extrapolateDiagonalMaxBounds();
 
     // Returns number of bytes required to store clocks (always multiple of 4)
     unsigned int getReqSize() const {
@@ -116,9 +118,20 @@ public:
         return fed & data;
     }
 
+    dbm::dbm_t intersection( const dbm::dbm_t &d ) const {
+        assert( d.getDimension() == dim );
+        return d & data;
+    }
+
     // set zone from given pointer, dimensions have to be equal
     void assignZone( const raw_t* src ) {
         memcpy( data, src, getReqSize() );
+    }
+
+    void assignZone( const dbm::dbm_t &d ) {
+        assert( d.getDimension() == dim );
+        assert( d() );
+        memcpy( data, d(), getReqSize() );
     }
 };
 

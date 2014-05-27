@@ -238,6 +238,14 @@ struct ura {
     }
 
     void finalize() {
+        if ( !dbm_rep.empty() ) {
+            dbm_rep.clear();
+            transitions.clear();
+            uppaal_dbm_rep.clear();
+            diagonal_guards.clear();
+            visited.clear();
+        }
+
         for ( int clk = 0; clk < num_clocks; ++clk )
             std::sort( clock_guards[ clk ].guards.begin(), clock_guards[ clk ].guards.end() );
         for ( int i = 0; i < num_clocks; ++i ) {

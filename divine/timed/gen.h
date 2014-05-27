@@ -2,6 +2,7 @@
 #include "utils.h"
 #include "successorlist.h"
 #include <utap/utap.h>
+#include <dbm/print.h>
 
 class TAGen {
     typedef uint16_t state_id;
@@ -151,6 +152,10 @@ public:
 
     TAGen() : offVar( 0 ), size( 0 ), propertyId( 0 ) {}
 
+    void parsePropClockGuard( const PropGuard &pg ) {
+        eval.parsePropClockGuard( pg.expr );
+    }
+
     unsigned int stateSize() const {
         return size;
     }
@@ -159,11 +164,44 @@ public:
         eval.enableLU( enable );
     }
 
+    void enableLB( bool enable ) {
+        eval.enableLB( enable );
+    }
+
+    void enableDiag( bool enable ) {
+        eval.enableDiag( enable );
+    }
+
     template < typename Func >
     void genSuccs( char* source, Func callback ) {
         // error states and timelocks do not have any successors
         if ( getError( source ) )
             return;
+
+        if ( eval.hasClocks() && !isUrgent( source ) ) {
+            /*
+             *  delay transition: (l, Z, U) -> (l, Z, succ(U))
+             */
+            std::vector< char > succ( stateSize() );
+            newSucc( succ.data(), source );
+
+            int &ura_state = eval.getUraStateId();
+            auto ura_succ_it = eval.ura.get_first_transition( ura_state );
+
+            if ( ura_succ_it != eval.ura.transitions.end() ) {
+                int ura_succ_id = std::get<2>( *ura_succ_it );
+                bool ura_selfloop = ura_succ_id == ura_state;
+                ura_state = ura_succ_id;
+
+                dbm::dbm_t ura_succ_zone = eval.getUraZone();
+                dbm::dbm_t restricted = eval.dbmIntersection( ura_succ_zone );
+
+                if ( !restricted.isEmpty() && ( !ura_selfloop || eval.getFederation().isUnbounded() ) ) {
+                    callback( succ.data(), nullptr );
+                }
+            }
+
+        }
 
         bool urgent;
         BlockList bl( stateSize(), 1 );
@@ -188,6 +226,8 @@ public:
 
         setData( source );
         Federation fed = eval.getFederation();  // create federation from source zone
+        Federation orig = fed;
+        Federation outcoming;
         unsigned int remaining;
 
         // generate edge successors
@@ -216,16 +256,88 @@ public:
                         continue;
                     fed -= inter;
 
+                    if ( outcoming.isEmpty() )
+                        outcoming = inter;
+                    else
+                        outcoming += inter;
+
                     for ( auto dbm = inter.begin(); dbm != inter.end(); ++dbm ) {
-                        newSucc( bl.back(), bl[ i ] );
+                        std::vector< char > succ_before_ur( stateSize() );
+                        newSucc( succ_before_ur.data(), bl[ i ] );
                         eval.assignZone( dbm() );
 
-                        for ( auto &e : einf[ i ].edges )
-                            applyEdge( e );
+                        unsigned reseted_mask = 0;
+                        for ( auto &e : einf[ i ].edges ) {
+                            reseted_mask |= eval.getResetedMask( e->procId, e->assign );
+                        }
+                        int &ura_state = eval.getUraStateId();
+                        auto it = eval.ura.get_first_transition( ura_state, reseted_mask );
 
-                        makeSucc( bl.back(), [ &callback, edge ] ( const char* s ) {
-                            callback( s, edge );
-                        });
+                        /* current zone is Z & g */
+
+                        if ( eval.hasClocks() ) {
+                            dbm::dbm_t ura_zone = eval.getUraZone();
+                            dbm::dbm_t restricted = eval.dbmIntersection( ura_zone );
+                            if ( restricted.isEmpty() ) {
+                                break;
+                            }
+                            eval.assignZone( restricted );
+
+                            /* current zone is Z & g & U */
+                        }
+
+                        for ( auto &e : einf[ i ].edges ) {
+                            applyEdge( e );
+                        }
+
+                        /* current zone is (Z & g & U)[R] */
+
+                        if ( !eval.hasClocks() ) {
+                            makeSucc( succ_before_ur.data(), [ &callback, edge ] ( const char* s ) {
+                                callback( s, edge );
+                            });
+                            continue;
+                        } else if ( reseted_mask == 0 ) {
+                            newSucc( bl.back(), succ_before_ur.data() );
+                            dbm::dbm_t ura_zone_succ = eval.getUraZone();
+                            dbm::dbm_t restricted = eval.dbmIntersection( ura_zone_succ );
+
+                            if ( !restricted.isEmpty() ) {
+                                eval.assignZone( restricted );
+
+                                /* current zone is (Z & g & U)[R] & U' */
+
+                                /* makeSucc adds 'up' and invariant */
+
+                                makeSucc( bl.back(), [ &callback, edge ] ( const char* s ) {
+                                    callback( s, edge );
+                                });
+                            }
+                        } else {
+                            do
+                            {
+                                newSucc( bl.back(), succ_before_ur.data() );
+                                int &ura_state = eval.getUraStateId();
+                                int ura_succ = std::get<2>( *it++ );
+                                ura_state = ura_succ;
+                                dbm::dbm_t ura_zone_succ = eval.getUraZone();
+
+                                dbm::dbm_t restricted = eval.dbmIntersection( ura_zone_succ );
+
+                                if ( !restricted.isEmpty() ) {
+                                    eval.assignZone( restricted );
+
+                                    /* current zone is (Z & g & U)[R] & U' */
+
+                                    /* makeSucc adds 'up' and invariant */
+
+                                    makeSucc( bl.back(), [ &callback, edge ] ( const char* s ) {
+                                        callback( s, edge );
+                                    });
+                                }
+                            } while (    it != eval.ura.transitions.end()
+                                    && std::get<1>( *it ) == reseted_mask );
+                        }
                     }
                 } catch ( EvalError& e ) {
                     makeErrState( bl.back(), e.getErr() ); // create an error state
@@ -236,7 +348,7 @@ public:
         } while ( remaining > 0 && !fed.isEmpty() ); // quit if there is no remaining state and we still have a non-empty federation
 
         if ( !eval.usesLU() && !fed.isEmpty() ) { // if some valutions do not have outcoming edges (and LU is off since it would have false alarms)
-            if ( urgent || fed.isUnbounded() ) {
+            if ( urgent || outcoming.down() < orig ) {
                 makeErrState( bl.back(), EvalError::TIMELOCK ); // create artifical timelock state
                 callback( bl.back(), nullptr );
             }
@@ -249,8 +361,9 @@ public:
             bool urgent = isUrgent( succ );
             setData( succ );
 
-            if ( !evalInv() )
+            if ( !evalInv() ) {
                 return;
+            }
 
             if ( !urgent ) {
                 eval.up();
@@ -261,7 +374,15 @@ public:
             callback( succ );
         }
 
+        dbm::dbm_t restricted = eval.dbmIntersection( eval.getUraZone() );
+        if ( restricted.isEmpty() )
+            return;
+
         extrapolateDiff( succ, eval.clockDiffrenceExprs, callback );
+    }
+
+    void finalizeUra() {
+        eval.finalizeUra();
     }
 
     // get location of the property automaton
