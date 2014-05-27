@@ -160,21 +160,21 @@ timed_small() {
     check clear
     run $wrapper data/timed_clock.xml "$@" --property=deadlock
     check reachability_valid
-    check statespace 220 221 0 0
+    check statespace 220 228 0 0
 
     check clear
     run $wrapper data/bridge.xml "$@" --property=0
     check ltl_valid
     if test "$O_LTL3BA" = "ON"; then
        check statespace 2412 4848 0 0; else
-       check statespace 1624 2779 0 0; fi
+       check statespace 2813 6361 0 0; fi
     
     check clear
     run $wrapper data/bridge.xml "$@" --property=1
     check ltl_invalid
     if test "$O_LTL3BA" = "ON"; then
         check statespace 2867 5795 303 0; else
-        check statespace 1927 3283 303 0; fi
+        check statespace 2896 6640 303 0; fi
 
     check clear
     run $wrapper data/zeno.xml "$@" --property=0
@@ -184,7 +184,7 @@ timed_small() {
     check clear
     run $wrapper data/zeno.xml "$@" --property=0 --fair
     check ltl_valid
-    check statespace 7 8 3 3
+    check statespace 6 7 2 2
 }
 
 murphi_small() {
