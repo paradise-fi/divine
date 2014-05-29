@@ -31,13 +31,3 @@ void Interpreter< HM >::evaluateSwitchBB( PC to )
     eval.instruction = instruction();
     eval.switchBB( to );
 }
-
-namespace divine {
-namespace llvm {
-
-/* explicit instances */
-template struct Interpreter< machine::NoHeapMeta >;
-template struct Interpreter< machine::HeapIDs >;
-
-}
-}

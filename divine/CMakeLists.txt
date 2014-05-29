@@ -2,6 +2,7 @@ with_warnings()
 
 include( ../wibble/test.cmake )
 include( ../cmake/stringify.cmake )
+include( ../cmake/template-separe.cmake )
 
 file( GLOB SRC *.cpp )
 file( GLOB H *.h )
@@ -41,6 +42,7 @@ if( LLVM )
     file( GLOB llvmtesth llvm/*.test.h )
     add_subdirectory( llvm/userspace )
     stringify( "llvm" llvm/problem.def )
+    template_separe( LLVM llvm/interpreter.cpp )
 else() # enable silk even when LLVM is disabled
     file( GLOB SRC_LLVM llvm/silk-*.cpp )
     file( GLOB llvmtesth llvm/silk-*.test.h )
@@ -102,11 +104,12 @@ target_link_libraries( instances-generator libdivine )
 include_directories( ${DIVINE_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
-set_source_files_properties( llvm/execution.cpp llvm/constants.cpp PROPERTIES COMPILE_FLAGS "-fno-rtti -fno-exceptions" )
+set_source_files_properties( ${LLVM_TS_OUTPUTS} llvm/constants.cpp PROPERTIES COMPILE_FLAGS "-fno-rtti -fno-exceptions" )
 
 add_library( libdivine STATIC
     ${SRC_DLFCN} ${SRC} ${SRC_LEGACY} ${SRC_TIMED}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
+    ${LLVM_TS_OUTPUTS}
     "${SHA1}.cpp" "${SHA1}.cpp.fake" "divinecompileflags.cpp"
     ${STRINGIFIED} )
 
