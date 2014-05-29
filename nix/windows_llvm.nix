@@ -19,7 +19,7 @@ stdenv.mkDerivation rec {
     buildScript = ''
       set -ex
       mkdir build && cd build
-      cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=E:\\llvm ../source
+      cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=E:\\llvm -DLLVM_TARGETS_TO_BUILD=X86 ../source
       make
       make install
     '';
