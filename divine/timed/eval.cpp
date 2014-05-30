@@ -1,11 +1,11 @@
 #include <iostream>
-#include <cassert>
 #include <algorithm>
 #include <stdexcept>
 #include <typeinfo>
 #include "clocks.h"
 #include "eval.h"
 #include <utap/utap.h>
+#include <wibble/test.h>
 
 using namespace UTAP;
 using namespace UTAP::Constants;
@@ -33,7 +33,7 @@ void Evaluator::computeChannelPriorities( UTAP::TimedAutomataSystem &sys ) {
 }
 
 void Evaluator::emitError( int code ) {
-    assert( code != 0 );
+    assert_neq( code, 0 );
     throw EvalError( code );
 }
 
@@ -49,7 +49,7 @@ int Evaluator::getRecordElementIndex( int procId, const type_t record_type, unsi
     int index = 0;
 
     assert( record_type.isRecord() );
-    assert( field_index < record_type.getRecordSize() );
+    assert_leq( field_index, record_type.getRecordSize() - 1 );
 
     for ( unsigned i = 0; i < field_index; ++i )
         index += getElementCount( procId, record_type.getSub( i ) );
@@ -86,7 +86,7 @@ const Evaluator::VarData &Evaluator::getVarData( int procId, UTAP::expression_t 
         expr = expr[ 0 ];
 
     if ( expr.getKind() == DOT ) {
-        assert( procId == -1 );
+        assert_eq( procId, -1 );
         procId = resolveId( -1, expr[0] );
         auto proc = static_cast< const instance_t* >( expr[0].getSymbol().getData() ); // get instance
         symbol_t symbol = proc->templ->frame[ expr.getIndex() ];  // get referenced symbol
@@ -94,7 +94,7 @@ const Evaluator::VarData &Evaluator::getVarData( int procId, UTAP::expression_t 
         assert( var != vars.end() );
         return var->second;
     }
-    assert( expr.getKind() == IDENTIFIER );
+    assert_eq( expr.getKind(), IDENTIFIER );
     return getVarData( procId, expr.getSymbol() );
 }
 
@@ -131,7 +131,7 @@ void Evaluator::parsePropClockGuard( const UTAP::expression_t &expr ) {
             open = true;
             break;
         default:
-            assert( false );
+            assert_unreachable( "unhandled case" );
     }
 
     if ( a.getType().isClock() || b.getType().isClock() ) {
@@ -376,7 +376,7 @@ Evaluator::Value Evaluator::unop( int procId, const Constants::kind_t op, const 
 
     default:
         cerr << "Unknown unop " << op << endl;
-        assert( false );
+        assert_unreachable( "unhandled case" );
         return 0;
     }
 }
@@ -398,7 +398,7 @@ Evaluator::Value Evaluator::binop( int procId, const Constants::kind_t &op, cons
                             && clocks.constrainBelow( clock_id, value, false );
             default:
                 cerr << "Unknown binop " << op << " on clocks" << endl;
-                assert( false );
+                assert_unreachable( "unhandled case" );
                 return 0;
             }
         } else {
@@ -413,7 +413,7 @@ Evaluator::Value Evaluator::binop( int procId, const Constants::kind_t &op, cons
                             && clocks.constrainBelow( clock_id, value, false );
             default:
                 cerr << "Unknown binop " << op << " on clocks" << endl;
-                assert( false );
+                assert_unreachable( "unhandled case" );
                 return 0;
             }
         }
@@ -433,7 +433,7 @@ Evaluator::Value Evaluator::binop( int procId, const Constants::kind_t &op, cons
                             && clocks.constrainClocks( clock_idR, clock_idL, -value, false );
             default:
                 cerr << "Unknown binop " << op << " on clocks" << endl;
-                assert( false );
+                assert_unreachable( "unhandled case" );
                 return 0;
             }
         } else {
@@ -449,7 +449,7 @@ Evaluator::Value Evaluator::binop( int procId, const Constants::kind_t &op, cons
                             && clocks.constrainClocks( clock_idR, clock_idL, -value, false );
             default:
                 cerr << "Unknown binop " << op << " on clocks" << endl;
-                assert( false );
+                assert_unreachable( "unhandled case" );
                 return 0;
             }
         }
@@ -549,7 +549,7 @@ Evaluator::Value Evaluator::binop( int procId, const Constants::kind_t &op, cons
 
     default:
         cerr << "Unknown binop " << op << endl;
-        assert( false );
+        assert_unreachable( "unhandled case" );
     }
     return -1;
 }
@@ -561,7 +561,7 @@ Evaluator::Value Evaluator::ternop( int procId, const Constants::kind_t op, cons
         return eval( procId, a ).get_int() ? eval( procId, b ) : eval( procId, c );
     default:
         cerr << "Unknown ternop " << op << endl;
-        assert( false );
+        assert_unreachable( "unhandled case" );
         return 0;
     }
 }
@@ -609,7 +609,7 @@ int32_t *Evaluator::getValue( const VarData &var ) {
     if ( var.prefix == PrefixType::NONE ) {   // get variable
         data = Evaluator::data;
     } else {                                  // get constant or local variable
-        assert( metaValues.size() > 0 );
+        assert_leq( 1, metaValues.size() );
         data = &metaValues[0];
     }
 
@@ -731,7 +731,7 @@ void Evaluator::computeLocClockLimits() {
             setClockLimits( i, e.guard, generalClockLimits );
             symbol_t src = e.src->uid;
             limitsVector &limits = locClockLimits[ i ][ e.src->locNr ];
-            assert( limits.size() == ClockTable.size() );
+            assert_eq( limits.size(), ClockTable.size() );
             setClockLimits( i, e.guard, limits );
         }
         ++i;
@@ -769,7 +769,7 @@ void Evaluator::computeLocClockLimits() {
 
 void Evaluator::computeLocalBounds() {
     vector< pair< int32_t, int32_t > > bounds = fixedClockLimits;
-    assert( fixedClockLimits.size() == ClockTable.size() );
+    assert_eq( fixedClockLimits.size(), ClockTable.size() );
 
     if ( usesLB() ) {
         for ( size_t proc = 0; proc < ProcessTable.size(); ++proc ) {
@@ -941,19 +941,13 @@ Evaluator::Value Evaluator::evalFunCall( int procId, const UTAP::expression_t &e
 
         } else if ( dynamic_cast< const SwitchStatement* >( stmt ) ) {
             // UTAP does not know switch, case, default keywords
-            cerr << "Switch statement is not supported" << endl;
-            assert( false );
-            return 0;
+            assert_unreachable( "Switch statement is not supported" );
 
         } else if ( dynamic_cast< const CaseStatement* >( stmt ) ) {
-            cerr << "Case statement is not supported" << endl;
-            assert( false );
-            return 0;
+            assert_unreachable( "Case statement is not supported" );
 
         } else if ( dynamic_cast< const DefaultStatement* >( stmt ) ) {
-            cerr << "Default statement is not supported" << endl;
-            assert( false );
-            return 0;
+            assert_unreachable( "Default statement is not supported" );
 
         } else if ( dynamic_cast< const IfStatement* >( stmt ) ) {
             const IfStatement *eval_stmt = dynamic_cast< const IfStatement* >( stmt );
@@ -970,22 +964,16 @@ Evaluator::Value Evaluator::evalFunCall( int procId, const UTAP::expression_t &e
             // NOTE: UTAP library declares BreakStatement and ContinueStatement, but UPPAAL does not
             //      know break nor continue keyword...
             // delete current block + one more statement (while/for "header")
-            cerr << "Break statement is not supported" << endl;
-            assert( false );
-            return 0;
+            assert_unreachable( "Break statement is not supported" );
 
         } else if ( dynamic_cast< const ContinueStatement* >( stmt ) ) {
-            cerr << "Continue statement is not supported" << endl;
-            assert( false );
-            return 0;
+            assert_unreachable( "Continue statement is not supported" );
 
         } else if ( dynamic_cast< const ReturnStatement* >( stmt ) ) {
             return eval( procId, dynamic_cast< const ReturnStatement* >( stmt )->value );
 
         } else {
-            cerr << "Unknown statement type" << std::endl;
-            assert( false );
-            return 0;
+            assert_unreachable( "Unknown statement type" );
         }
     }
 
@@ -1042,12 +1030,10 @@ Evaluator::Value Evaluator::eval( int procId, const expression_t& expr ) {
                     return expr.getValue();
                 default:
                     cerr << "unknown nulop" << expr.getKind() << endl;
-                    assert( false );
-                    return -1;
+                    assert_unreachable( "unhandled case" );
             }
     }
-    assert( false );
-    return 0;
+    assert_unreachable( "unhandled case" );
 }
 
 void Evaluator::setData( char *d, Locations l ) {
@@ -1068,7 +1054,7 @@ void Evaluator::extrapolate() {
     else if ( !usesLU() && usesDiag() )
         clocks.extrapolateDiagonalMaxBounds();
     else {
-        assert( false );
+        assert_unreachable( "unhandled case" );
     }
 }
 
@@ -1141,8 +1127,8 @@ void Evaluator::setClockLimits( int procId, const UTAP::expression_t &expr, vect
                 int32_t limit = getRange( procId, expr[ limit_index ] ).second;
 
                 for ( int clockIndex = var.offset; clockIndex < var.offset + var.elementsCount; ++clockIndex ) {
-                    assert( clockIndex < intptr_t( ClockTable.size() ) );
-                    assert( ClockTable.size() == out.size() );
+                    assert_leq( clockIndex, intptr_t( ClockTable.size() ) - 1 );
+                    assert_eq( ClockTable.size(), out.size() );
                     if ( out[ clockIndex ].first < limit )
                         out[ clockIndex ].first = limit;
                     if ( out[ clockIndex ].second < limit )

@@ -1,7 +1,7 @@
 #include <stdint.h>
-#include <cassert>
 #include <utap/utap.h>
 #include <stdexcept>
+#include <wibble/test.h>
 
 #ifndef DIVINE_TIMED_UTILS_H
 #define DIVINE_TIMED_UTILS_H
@@ -25,7 +25,7 @@ bool addCut( const UTAP::expression_t& expr, int pId, std::vector< Cut >& cuts )
 // vector of zeroes is assumed to be the firs selection and when it is reached again, false is returned
 template < typename T >
 bool nextSelection( std::vector< unsigned int >& sel, const std::vector< std::vector< T > >& v ) {
-    assert( sel.size() <= v.size() );
+    assert_leq( sel.size(), v.size() );
     // "increment" _sel_
     unsigned int pos;
     for ( pos = 0; pos < sel.size(); ++pos ) {
@@ -54,7 +54,7 @@ public:
     }
 
     void set( unsigned int i, int loc ) {
-        assert( loc == static_cast< loc_id >( loc ) );
+        assert_eq( loc, static_cast< loc_id >( loc ) );
         locs[ i ] = static_cast< loc_id >( loc );
     }
 
@@ -76,7 +76,7 @@ public:
     };
 
     static const char* reason( int code ) {
-        assert( code != 0 );
+        assert_neq( code, 0 );
         switch ( code ) {
         case DIVIDE_BY_ZERO:
             return "Divide by zero";
@@ -98,7 +98,7 @@ public:
     }
 
     EvalError( int _err ) : std::exception(), err( _err ) {
-        assert( err != 0 );
+        assert_neq( err, 0 );
     }
 
     virtual const char* what() const throw() {

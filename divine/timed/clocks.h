@@ -9,6 +9,7 @@
 #include <dbm/fed.h>
 #undef TRUE
 #undef FALSE
+#include <wibble/test.h>
 
 typedef dbm::fed_t Federation;
 
@@ -114,12 +115,12 @@ public:
 
     // returns the intersection of the current zone and given federation
     Federation intersection( Federation fed ) const {
-        assert( fed.getDimension() == dim );
+        assert_eq( fed.getDimension(), dim );
         return fed & data;
     }
 
     dbm::dbm_t intersection( const dbm::dbm_t &d ) const {
-        assert( d.getDimension() == dim );
+        assert_eq( d.getDimension(), dim );
         return d & data;
     }
 
@@ -129,7 +130,7 @@ public:
     }
 
     void assignZone( const dbm::dbm_t &d ) {
-        assert( d.getDimension() == dim );
+        assert_eq( d.getDimension(), dim );
         assert( d() );
         memcpy( data, d(), getReqSize() );
     }

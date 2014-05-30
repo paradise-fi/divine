@@ -1,6 +1,7 @@
 #include "clocks.h"
 #include <external/dbm/include/dbm/dbm.h>
 #include <external/dbm/include/dbm/print.h>
+#include <wibble/test.h>
 
 // #define LU_EXTRAPOLATION_OFF
 
@@ -15,14 +16,14 @@ bool Clocks::isUnbounded() const {
 
 bool Clocks::constrainBelow( unsigned int id, int32_t value, bool strict ) {
     assert( id + 1 < dim );
-    assert( value <= bounds[ dim + id + 1 ] );  // incorrect upper bound
+    assert_leq( value, bounds[ dim + id + 1 ] );  // incorrect upper bound
     bool ret = dbm_constrain1( data, dim, id + 1, 0, dbm_boundbool2raw( value, strict ) );
     return ret;
 }
 
 bool Clocks::constrainAbove( unsigned int id, int32_t value, bool strict ) {
     assert( id + 1 < dim );
-    assert( value <= bounds[ id + 1 ] );    // incorrect lower bound
+    assert_leq( value, bounds[ id + 1 ] );    // incorrect lower bound
     bool ret = dbm_constrain1( data, dim, 0, id + 1, dbm_boundbool2raw( -value, strict ) );
     return ret;
 }

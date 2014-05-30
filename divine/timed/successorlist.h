@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <limits>
+#include <wibble/test.h>
 
 // Simple structure for storing blocks of data with eqaual size
 class BlockList {

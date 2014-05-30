@@ -3,6 +3,7 @@
 #include "successorlist.h"
 #include <utap/utap.h>
 #include <dbm/print.h>
+#include <wibble/test.h>
 
 class TAGen {
     typedef uint16_t state_id;
