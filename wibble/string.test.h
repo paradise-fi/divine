@@ -133,12 +133,17 @@ struct TestString {
 
     Test joinpath()
     {
+#if POSIX
         assert_eq(str::joinpath("a", "b"), "a/b");
         assert_eq(str::joinpath("a/", "b"), "a/b");
         assert_eq(str::joinpath("a", "/b"), "a/b");
         assert_eq(str::joinpath("a/", "/b"), "a/b");
+#endif
 #if WIN32
-        assert_eq( str::joinpath( "a", "\\b" ), "a\\b" );
+        assert_eq( str::joinpath( "a", "b" ), "a\\b" );
+        assert_eq( str::joinpath( "a\\", "b"), "a\\b" );
+        assert_eq( str::joinpath( "a", "\\b"), "a\\b");
+        assert_eq( str::joinpath( "a\\", "\\b"), "a\\b");
         assert_eq( str::joinpath( "\\\\a", "\\b" ), "\\\\a\\b" );
         assert_eq( str::joinpath( "c:\\a", "\\b" ), "c:\\a\\b" );
 #endif
@@ -146,18 +151,25 @@ struct TestString {
 
     Test appendpath()
     {
+#if POSIX
         assert_eq(str::appendpath("a", "b"), "a/b");
         assert_eq(str::appendpath("a/", "b"), "a/b");
         assert_eq(str::appendpath("a", "/b"), "/b");
         assert_eq(str::appendpath("/a", "b"), "/a/b");
         assert_eq(str::appendpath("/a/", "b"), "/a/b");
-#if POSIX
+
         assert_eq(str::appendpath("a/", "/b"), "/b");
         assert_eq(str::appendpath("/a", "/b"), "/b");
         assert_eq(str::appendpath("/a/", "/b"), "/b");
 #endif
 #if WIN32
-        assert_eq( str::appendpath( "a\\", "\\b" ), "a\\b" );
+        assert_eq( str::appendpath( "a", "b" ), "a\\b" );
+        assert_eq( str::appendpath( "a\\", "b"), "a\\b" );
+        assert_eq( str::appendpath( "a", "\\b"), "a\\b");
+        assert_eq( str::appendpath( "a\\", "\\b"), "a\\b");
+        assert_eq( str::appendpath( "\\\\a", "\\b" ), "\\\\a\\b" );
+        assert_eq( str::appendpath( "c:\\a", "\\b" ), "c:\\a\\b" );
+
         assert_eq( str::appendpath( "\\a", "\\b" ), "\\a\\b" );
         assert_eq( str::appendpath( "\\a\\", "\\b" ), "\\a\\b" );
         assert_eq( str::appendpath( "a\\", "\\\\b" ), "\\\\b" );
