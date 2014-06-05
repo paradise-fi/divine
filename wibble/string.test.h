@@ -165,13 +165,14 @@ struct TestString {
 #if WIN32
         assert_eq( str::appendpath( "a", "b" ), "a\\b" );
         assert_eq( str::appendpath( "a\\", "b"), "a\\b" );
-        assert_eq( str::appendpath( "a", "\\b"), "a\\b");
-        assert_eq( str::appendpath( "a\\", "\\b"), "a\\b");
-        assert_eq( str::appendpath( "\\\\a", "\\b" ), "\\\\a\\b" );
-        assert_eq( str::appendpath( "c:\\a", "\\b" ), "c:\\a\\b" );
+        assert_eq( str::appendpath( "a", "\\b"), "\\b");
+        assert_eq( str::appendpath( "a\\", "\\b"), "\\b");
+        assert_eq( str::appendpath( "\\\\a\\", "b" ), "\\\\a\\b" );
+        assert_eq( str::appendpath( "c:\\a\\", "\\b" ), "\\b" );
+        assert_eq( str::appendpath( "c:\\a\\", "b" ), "c:\\a\\b" );
 
-        assert_eq( str::appendpath( "\\a", "\\b" ), "\\a\\b" );
-        assert_eq( str::appendpath( "\\a\\", "\\b" ), "\\a\\b" );
+        assert_eq( str::appendpath( "\\a", "\\b" ), "\\b" );
+        assert_eq( str::appendpath( "\\a\\", "b" ), "\\a\\b" );
         assert_eq( str::appendpath( "a\\", "\\\\b" ), "\\\\b" );
         assert_eq( str::appendpath( "a\\", "c:\\b" ), "c:\\b" );
         assert_eq( str::appendpath( "c:\\a\\", "\\\\b" ), "\\\\b" );
@@ -269,9 +270,36 @@ struct TestString {
 		assert_eq(res, ":a::foo");
 	}
 
+    Test absolute() {
+        assert( !str::isAbsolutePath( "" ) );
+        assert_eq( str::absolutePrefix( "/" ).first, "/" );
+        assert_eq( str::absolutePrefix( "/" ).second, "" );
+        assert_eq( str::absolutePrefix( "/foo" ).first, "/" );
+        assert_eq( str::absolutePrefix( "/foo" ).second, "foo" );
+        assert( !str::isAbsolutePath( "foo" ) );
+        assert( !str::isAbsolutePath( "foo/bar" ) );
+#if WIN32
+        assert_eq( str::absolutePrefix( "\\" ).first, "\\" );
+        assert_eq( str::absolutePrefix( "\\" ).second, "" );
+        assert_eq( str::absolutePrefix( "\\foo" ).first, "\\" );
+        assert_eq( str::absolutePrefix( "\\foo" ).second, "foo" );
+
+        assert_eq( str::absolutePrefix( "\\\\" ).first, "\\\\" );
+        assert_eq( str::absolutePrefix( "\\\\" ).second, "" );
+        assert_eq( str::absolutePrefix( "\\\\foo" ).first, "\\\\" );
+        assert_eq( str::absolutePrefix( "\\\\foo" ).second, "foo" );
+
+        assert_eq( str::absolutePrefix( "c:\\" ).first, "c:\\" );
+        assert_eq( str::absolutePrefix( "c:\\" ).second, "" );
+        assert_eq( str::absolutePrefix( "c:\\foo" ).first, "c:\\" );
+        assert_eq( str::absolutePrefix( "c:\\foo" ).second, "foo" );
+#endif
+    }
+
 	Test normpath()
 	{
 		assert_eq(str::normpath(""), ".");
+#if POSIX
 		assert_eq(str::normpath("/"), "/");
 		assert_eq(str::normpath("foo"), "foo");
 		assert_eq(str::normpath("foo/"), "foo");
@@ -284,6 +312,38 @@ struct TestString {
 		assert_eq(str::normpath("foo//bar"), "foo/bar");
 		assert_eq(str::normpath("foo/./bar"), "foo/bar");
 		assert_eq(str::normpath("foo/foo/../bar"), "foo/bar");
+#endif
+#if WIN32
+		assert_eq(str::normpath("\\"), "\\");
+		assert_eq(str::normpath("foo"), "foo");
+		assert_eq(str::normpath("foo\\"), "foo");
+		assert_eq(str::normpath("c:\\foo"), "c:\\foo");
+		assert_eq(str::normpath("\\\\foo"), "\\\\foo");
+		assert_eq(str::normpath("foo\\bar"), "foo\\bar");
+		assert_eq(str::normpath("foo\\.\\bar"), "foo\\bar");
+		assert_eq(str::normpath(".\\.\\.\\.\\foo\\.\\.\\.\\bar\\.\\.\\.\\.\\"), "foo\\bar");
+		assert_eq(str::normpath("\\\\..\\..\\..\\..\\..\\foo"), "\\\\foo");
+		assert_eq(str::normpath("c:\\..\\..\\..\\..\\..\\foo"), "c:\\foo");
+		assert_eq(str::normpath("foo\\..\\foo\\..\\foo\\..\\foo\\..\\"), ".");
+		assert_eq(str::normpath("foo\\\\bar"), "foo\\bar");
+		assert_eq(str::normpath("foo\\.\\bar"), "foo\\bar");
+		assert_eq(str::normpath("foo\\foo\\..\\bar"), "foo\\bar");
+		assert_eq(str::normpath("\\foo\\foo\\..\\bar"), "foo\\bar");
+
+		assert_eq(str::normpath("/"), "\\");
+		assert_eq(str::normpath("foo"), "foo");
+		assert_eq(str::normpath("foo/"), "foo");
+		assert_eq(str::normpath("c:/foo"), "c:\\foo");
+		assert_eq(str::normpath("foo/bar"), "foo\\bar");
+		assert_eq(str::normpath("foo/./bar"), "foo\\bar");
+		assert_eq(str::normpath("././././foo/./././bar/././././"), "foo\\bar");
+		assert_eq(str::normpath("c:/../../../../../foo"), "c:\\foo");
+		assert_eq(str::normpath("foo/../foo/../foo/../foo/../"), ".");
+		assert_eq(str::normpath("foo//bar"), "foo\\bar");
+		assert_eq(str::normpath("foo/./bar"), "foo\\bar");
+		assert_eq(str::normpath("foo/foo/../bar"), "foo\\bar");
+		assert_eq(str::normpath("/foo/foo/../bar"), "foo\\bar");
+#endif
 	}
 
 	Test base64()
