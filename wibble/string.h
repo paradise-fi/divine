@@ -151,7 +151,7 @@ inline std::string dirname(const std::string& pathname)
  *
  * For example, A//B, A/./B and A/foo/../B all become A/B.
  */
-std::string normpath(const std::string& pathname);
+std::string normpath( std::string pathname );
 
 /// Check if a string starts with the given substring
 inline bool startsWith(const std::string& str, const std::string& part)
@@ -290,18 +290,27 @@ inline std::string joinpath(const std::string& path1, const std::string& path2)
 		else
 			return path1 + pathSeparators[ 0 ] + path2;
 }
+inline std::pair< std::string, std::string > absolutePrefix( const std::string &path ) {
+#ifdef WIN32 /* this must go before general case, because \ is prefix of \\ */
+    if ( path.size() >= 3 && path[ 1 ] == ':' && isPathSeparator( path[ 2 ] ) )
+        return std::make_pair( path.substr( 0, 3 ), path.substr( 3 ) );
+    if ( path.size() >= 2 && isPathSeparator( path[ 0 ] ) && isPathSeparator( path[ 1 ] ) )
+        return std::make_pair( path.substr( 0, 2 ), path.substr( 2 ) );
+#endif
+    // this is absolute path in both windows and unix
+    if ( path.size() >= 1 && isPathSeparator( path[ 0 ] ) )
+        return std::make_pair( path.substr( 0, 1 ), path.substr( 1 ) );
+    return std::make_pair( std::string(), std::string() );
+}
+
+inline bool isAbsolutePath( const std::string &path ) {
+    return absolutePrefix( path ).first.size() != 0;
+}
 
 // append path2 to path1 if path2 is not absolute, otherwise return path2
 inline std::string appendpath( const std::string &path1, const std::string &path2 ) {
-#ifdef POSIX
-    if ( path2.size() >= 1 && path2[ 0 ] == '/' )
+    if ( isAbsolutePath( path2 ) )
         return path2;
-#endif
-#ifdef WIN32
-    if ( ( path2.size() >= 3 && path2[ 1 ] == ':' && path2[ 2 ] == '\\' )
-            || ( path2.size() >= 2 && path2[ 0 ] == '\\' && path2[ 1 ] == '\\' ) )
-        return path2;
-#endif
     return joinpath( path1, path2 );
 }
 

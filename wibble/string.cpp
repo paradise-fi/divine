@@ -130,31 +130,41 @@ std::string fmt( const char* f, ... ) {
     return ret;
 }
 
-std::string normpath(const std::string& pathname)
-{
-	stack<string> st;
-	if (pathname[0] == '/')
-		st.push("/");
-	Split splitter("/", pathname);
-	for (Split::const_iterator i = splitter.begin(); i != splitter.end(); ++i)
-	{
-		if (*i == "." || i->empty()) continue;
-		if (*i == "..")
-			if (st.top() == "..")
-				st.push(*i);
-			else if (st.top() == "/")	
-				continue;
-			else
-				st.pop();
-		else
-			st.push(*i);
-	}
-	if (st.empty())
-		return ".";
-	string res = st.top();
-	for (st.pop(); !st.empty(); st.pop())
-		res = joinpath(st.top(), res);
-	return res;
+std::string normpath( std::string pathname ) {
+
+    for ( int i = 0; i < pathname.size(); ++i ) {
+        if ( isPathSeparator( pathname[ i ] ) )
+            pathname[ i ] = pathSeparators[ 0 ];
+    }
+
+    std::stack< string > st;
+    std::pair< std::string, std::string > abs = absolutePrefix( pathname );
+    bool absolute = false;
+    if ( abs.first.size() != 0 ) {
+        pathname = abs.second;
+        absolute = true;
+    }
+
+    Split splitter( std::string( 1, pathSeparators[ 0 ] ), pathname );
+    for ( Split::const_iterator i = splitter.begin(); i != splitter.end(); ++i )
+    {
+        if ( *i == "." || i->empty() ) continue;
+        if ( *i == ".." ) {
+            if ( absolute && st.empty() )
+                continue;
+            else if ( (!absolute && st.empty() ) || st.top() == ".." )
+                st.push( *i );
+            else
+                st.pop();
+        } else
+            st.push( *i );
+    }
+    if ( st.empty() )
+        return absolute ? abs.first : ".";
+    pathname = absolute ? joinpath( abs.first, st.top() ) : st.top();
+    for ( st.pop(); !st.empty(); st.pop() )
+        pathname = joinpath( st.top(), pathname );
+    return pathname;
 }
 
 std::string urlencode(const std::string& str)
