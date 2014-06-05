@@ -101,9 +101,9 @@ let
        '';
     };
 
-  mkwin = image: flags: with_llvm: pkgs.callPackage nix/windows_build.nix {
+  mkwin = image: flags: deps: pkgs.callPackage nix/windows_build.nix {
     inherit windows_mingw;
-    tools = [ windows_cmake windows_nsis ] ++ (if with_llvm then [ windows_llvm ] else [ windows_qt ]);
+    tools = [ windows_cmake windows_nsis ] ++ deps;
     img = image;
     src = jobs.tarball;
     name = "divine";
@@ -187,9 +187,9 @@ let
   };
 
   windows = {
-    win7.i386 = mkwin windows7_img "" false;
-    win7_small.i386 = mkwin windows7_img "-DSMALL=ON" false;
-    win7_llvm.i386 = mkwin windows7_img "" true;
+    win7.i386 = mkwin windows7_img "" [ windows_qt ];
+    win7_small.i386 = mkwin windows7_img "-DSMALL=ON" [];
+    win7_llvm.i386 = mkwin windows7_img "" [ windows_llvm ];
   };
 
   mapsystems = systems: attrs: with ( pkgs.lib // builtins );
