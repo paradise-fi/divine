@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
-//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2013,2014 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <stdint.h>
 #include <sstream>
@@ -330,12 +330,7 @@ struct LtlCE {
     using Linear = std::integral_constant< TraceType, TraceType::Linear >;
     using Lasso = std::integral_constant< TraceType, TraceType::Lasso >;
 
-    template< typename Domain, typename Alg, typename TraceType >
-    Traces parentTrace( Domain &d, Alg &a, TraceType ) {
-        return parentTrace< Domain, Alg, TraceType >( d, a );
-    }
-
-    template< typename Domain, typename Alg, typename TT >
+    template< typename TT, typename Domain, typename Alg >
     Traces parentTrace( Domain &d, Alg &a ) {
         Node parent = shared().ce.parent;
         std::deque< Handle > hTrace;
@@ -384,20 +379,10 @@ struct LtlCE {
         }
         hTrace.pop_front(); // initial
 
-        return succTrace< Domain, Alg, decltype( hTrace.begin() ), TT >(
-                d, a, parent, hTrace.begin(), hTrace.end() );
+        return succTrace< TT >( d, a, parent, hTrace.begin(), hTrace.end() );
     }
 
-
-    template< typename Domain, typename Alg, typename Iter, typename TraceType >
-    Traces succTrace( Domain &d, Alg &a, TraceType, Node parent,
-            Iter hTraceBegin, Iter hTraceEnd )
-    {
-        return succTrace< Domain, Alg, Iter, TraceType >( d, a, parent, hTraceBegin,
-                hTraceEnd );
-    }
-
-    template< typename Domain, typename Alg, typename Iter, typename TT >
+    template< typename TT, typename Domain, typename Alg, typename Iter >
     Traces succTrace( Domain &d, Alg &a, Node parent, Iter hTraceBegin,
                       Iter hTraceEnd )
     {
@@ -498,8 +483,7 @@ struct LtlCE {
     template< typename Domain, typename Alg >
     Node linear( Domain &d, Alg &a )
     {
-        return generateLinear( a, g(),
-                parentTrace( d, a, Linear() ) );
+        return generateLinear( a, g(), parentTrace< Linear >( d, a ) );
     }
 
     template< typename Domain, typename Alg >
@@ -508,8 +492,7 @@ struct LtlCE {
         linear( d, a );
         ++ shared().iteration;
         d.parallel( &Alg::_traceCycle );
-        generateLasso( a, g(),
-                parentTrace( d, a, Lasso() ) );
+        generateLasso( a, g(), parentTrace< Lasso >( d, a ) );
     }
 };
 
