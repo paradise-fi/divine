@@ -28,13 +28,21 @@ struct state
 
 int _get_initial( const cesmi_setup *setup, int handle, cesmi_node *to )
 {
-    if ( handle > 1 )
+    if ( handle > 2 )
         return 0;
-
     *to = setup->make_node( setup, sizeof( struct state ) );
     struct state *s = (struct state *) to->memory;
-    s->a = s->b = 0;
-    return 2;
+    
+    if (handle < 2 )
+      {
+	s->a = s->b = 0;
+	return 2;
+      }
+    else /* handle == 2 */
+      {
+	s->a = s->b = 2;
+	return 3;
+      }
 }
 
 int _get_successor( const cesmi_setup *setup, int handle, cesmi_node from, cesmi_node *to )
@@ -47,7 +55,7 @@ int _get_successor( const cesmi_setup *setup, int handle, cesmi_node from, cesmi
         *out = *in;
         switch (handle) {
         case 1: out->a ++; return 2;
-        case 2: out->b ++; return 3;
+        case 2: out->b = (out->b+1)%4; return 3;
         }
     }
     return 0;
@@ -75,7 +83,7 @@ char *_show_transition( const cesmi_setup *setup, cesmi_node from, int handle )
         return NULL;
     switch (handle) {
     case 1: return strdup( "a++" );
-    case 2: return strdup( "b++" );
+    case 2: return strdup( "(b++)%4" );
     }
     return NULL;
 }
