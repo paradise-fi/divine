@@ -347,18 +347,12 @@ struct LtlCE {
         shared().ce.parent = Node();
         shared().ce.successor = Handle(); // !valid()
         shared().ce.successor_id = 0;
+        shared().ce.is_ce_initial = false;
         bool first = false;
+
         while ( a.store().valid( shared().ce.current ) ) {
-            shared().ce.current_updated = shared().ce.is_ce_initial = false;
-            d.ring( &Alg::_parentTrace );
-            assert( shared().ce.current_updated );
-            hTrace.push_front( shared().ce.current );
-
-            if ( !shared().ce.is_ce_initial ) {
-                assert( hSeen.count( shared().ce.current.asNumber() ) == 0 );
-                hSeen.insert( shared().ce.current.asNumber() );
-            }
-
+            // we need to make sure we check for initial even if size of trace = 1
+            // that is even before we make fist step backward
             if ( TT::value == TraceType::Linear ) {
                 shared().ce.successor_id = 0;
                 shared().ce.current_updated = false;
@@ -376,7 +370,17 @@ struct LtlCE {
                 }
             }
             else
-                assert_die();
+                assert_unreachable( "invalid TraceType" );
+
+            shared().ce.current_updated = false;
+            d.ring( &Alg::_parentTrace );
+            assert( shared().ce.current_updated );
+            hTrace.push_front( shared().ce.current );
+
+            if ( !shared().ce.is_ce_initial ) {
+                assert( hSeen.count( shared().ce.current.asNumber() ) == 0 );
+                hSeen.insert( shared().ce.current.asNumber() );
+            }
         }
         hTrace.pop_front(); // initial
 
@@ -403,8 +407,7 @@ struct LtlCE {
 
         switch ( TT::value ) {
             case TraceType::Linear: {
-                if ( shared().ce.successor_id == 0 ) // empty CE
-                    return std::make_pair( trace, numTrace );
+                assert_neq( shared().ce.successor_id, 0 );
                 Node initial = getInitialById( shared().ce.successor_id );
                 assert( a.pool().valid( initial ) );
                 shared().ce.parent = initial;
