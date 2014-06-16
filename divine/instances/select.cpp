@@ -90,12 +90,22 @@ void warnOtherAvailable( Meta metacopy, Key k ) {
 
 using namespace instantiate;
 
+template< typename Trace >
+std::string stringTrace( Trace trace ) {
+    std::vector< std::string > vec;
+    for ( auto i : trace )
+        vec.emplace_back( std::get< 1 >( showGen( i ) ) );
+    return wibble::str::fmt( vec );
+}
+
 template< typename I >
 AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
 {
     if ( component == end ) {
-        if ( jumptable.count( sofar ) )
+        if ( jumptable.count( sofar ) ) {
+            meta.algorithm.instance = stringTrace( sofar );
             return jumptable[ sofar ]( meta );
+        }
         return nullptr;
     }
 

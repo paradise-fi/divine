@@ -117,7 +117,8 @@ Rep Algorithm::report() const {
     return { { "Algorithm", name },
              { "Transformations", wibble::str::fmt( txt ) },
              { "Compression", tostr( compression ) },
-             { "Shared", tostr( sharedVisitor ) }
+             { "Shared", tostr( sharedVisitor ) },
+             { "Instance", instance }
            };
 }
 

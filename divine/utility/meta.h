@@ -66,6 +66,7 @@ struct Algorithm : WithReport {
     graph::ReductionSet reduce;
     graph::DemangleStyle demangle; // for llvm
     bool interactive; // for simulate
+    std::string instance;
 
     Algorithm() : algorithm( Type::Info ),
                   hashSeed( 0 ),
