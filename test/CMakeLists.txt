@@ -30,7 +30,9 @@ add_custom_target( functional
     "O_COIN='${COIN}'"
     "O_CESMI='${CESMI}'"
     "LLVMCONFIG='${LLVM_CONFIG_EXECUTABLE}'"
-    "O_LLVM='${LLVM}'" ${tests}
+    "O_LLVM='${LLVM}'"
+    "O_SMALL='${SMALL}'"
+    ${tests}
 )
 
 add_dependencies( functional examples )

@@ -1,12 +1,20 @@
 . lib
 
+if [ "$O_DVE" = "ON" ]; then
+    testcase="data/empty.dve"
+elif [ "$O_SMALL" = "OFF" ]; then
+    testcase="--dummy"
+else
+    skip
+fi
+
 checkInstance() {
     key=$1
     msg=$2
     shift
     shift
 
-    inst=`divine verify --dummy "$@" -r | grep 'Instance:'`
+    inst=`divine verify "$testcase" "$@" -r | grep 'Instance:'`
     if echo $inst | egrep -i "$key"; then
         echo "#### PASSED"
     else
