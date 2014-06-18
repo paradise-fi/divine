@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
-//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2013, 2014 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
@@ -35,8 +35,15 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     algorithm::Statistics stats;
 
     struct Extension {
-        bool nested:1;
-        bool on_stack:1;
+        bool nested() { return _data & _nestedMask; }
+        bool onStack() { return _data & _onStackMask; }
+
+        void setNested() { _data |= _nestedMask; }
+        void setOnStack() { _data |= _onStackMask; }
+      private:
+        typename Store::template DataWrapper< uint8_t > _data;
+        static constexpr uint8_t _nestedMask = 0x1;
+        static constexpr uint8_t _onStackMask = 0x2;
     };
 
     Extension &extension( Vertex v ) {
@@ -150,14 +157,14 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
                 return visitor::ExpansionAction::Terminate;
             dfs.stats.addNode( dfs.graph(), st );
             dfs.ce_stack.push_front( st.handle() );
-            dfs.extension( st ).on_stack = true;
+            dfs.extension( st ).setOnStack();
             return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &dfs, Vertex from, Vertex to, Label ) {
             dfs.stats.addEdge( dfs.store(), from, to );
             if ( dfs.store().valid( from ) && !dfs.graph().full( from ) &&
-                 !dfs.graph().full( to ) && dfs.extension( to ).on_stack )
+                 !dfs.graph().full( to ) && dfs.extension( to ).onStack() )
                 dfs.toexpand.push_back( from.handle() );
             return visitor::TransitionAction::Follow;
         }
@@ -200,8 +207,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
                 return visitor::TransitionAction::Terminate;
             }
 
-            if ( !dfs.extension( to ).nested ) {
-                dfs.extension( to ).nested = true;
+            if ( !dfs.extension( to ).nested() ) {
+                dfs.extension( to ).setNested();
                 return visitor::TransitionAction::Expand;
             }
 
