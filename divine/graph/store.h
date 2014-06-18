@@ -1,5 +1,5 @@
 // -*- C++ -*-
-//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2013, 2014 Vladimír Štill <xstill@fi.muni.cz>
 #include <utility>
 #include <memory>
 #include <iterator>
@@ -11,6 +11,7 @@
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/parallel.h> // for WithID
+#include <divine/toolkit/weakatomic.h>
 
 #ifndef DIVINE_STORE_H
 #define DIVINE_STORE_H
@@ -134,6 +135,9 @@ struct PartitionedProvider {
             template< typename V > Guard( V, V ) {}
         };
 
+        template< typename T >
+        using DataWrapper = NotAtomic< T >;
+
         Table _table;
 
         Table &table() { return _table; }
@@ -188,6 +192,9 @@ struct SharedProvider {
             Guard( const Guard & ) = delete;
             Guard( Guard && ) = delete;
         };
+
+        template< typename T >
+        using DataWrapper = WeakAtomic< T >;
 
         TablePtr _table;
 
