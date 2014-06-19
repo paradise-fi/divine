@@ -57,7 +57,7 @@ class NotAtomic {
     T operator |=( T val ) { return _data |= val; }
 
     template< typename = decltype( std::declval< T & >() &= 0 ) >
-    T operator &=( T val ) { return _data |= val; }
+    T operator &=( T val ) { return _data &= val; }
 };
 
 }
