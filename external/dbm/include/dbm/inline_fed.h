@@ -71,7 +71,7 @@ namespace dbm
             if (nbBuckets) {
                 std::cerr << RED(BOLD) << nbBuckets
                           << (nbBuckets > 1 ? " DBMs are" : " DBM is")
-                          << " left in the internal hash table!"NORMAL"\n";
+                          << " left in the internal hash table!" << NORMAL << "\n";
             }
         }
 #endif
