@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2014 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <atomic>
+#include <utility>
 
 /* Simple wrapper around atomic with weakened memory orders
  * also includes non-atomic fake wrapper with same interface.
@@ -31,12 +32,12 @@ class WeakAtomic {
         return val;
     }
 
-    template< typename = decltype( _data.fetch_or( 0 ) ) >
+    template< typename = decltype( std::declval< std::atomic< T > & >().fetch_or( 0 ) ) >
     T operator |=( T val ) {
         return _data.fetch_or( val, std::memory_order_acq_rel ) | val;
     }
 
-    template< typename = decltype( _data.fetch_and( 0 ) ) >
+    template< typename = decltype( std::declval< std::atomic< T > & >().fetch_and( 0 ) ) >
     T operator &=( T val ) {
         return _data.fetch_and( val, std::memory_order_acq_rel ) & val;
     }
@@ -52,10 +53,10 @@ class NotAtomic {
     operator T() const { return _data; }
     T operator=( T val ) { _data = val; }
 
-    template< typename = decltype( _data |= 0 ) >
+    template< typename = decltype( std::declval< T & >() |= 0 ) >
     T operator |=( T val ) { return _data |= val; }
 
-    template< typename = decltype( _data &= 0 ) >
+    template< typename = decltype( std::declval< T & >() &= 0 ) >
     T operator &=( T val ) { return _data |= val; }
 };
 
