@@ -11,7 +11,8 @@ Source0:	http://divine.fi.muni.cz/divine-%{version}.tar.gz
 BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildRequires:	cmake
 
-Requires:       perl
+BuildRequires: perl cmake llvm-devel libxml2-devel boost-devel
+Requires:      clang
 
 %description
 DiVinE is a tool for LTL model checking and reachability analysis of discrete
@@ -31,14 +32,19 @@ export CXXFLAGS="%{optflags}" CFLAGS="%{optflags}"
 
 # "configure" is from cmake, not GNU, so there is no libdir option to invoke.
 # Therefore, ignore the rpmlint warning from this line:
-./configure -DCMAKE_INSTALL_PREFIX=/usr -DPROMELA_JARS= %(cat pkgbuildflags)
+./configure -DCMAKE_INSTALL_PREFIX=/usr $CMAKE_FLAGS
 
 # Use "make -k" so we can get all the errors at once; this is particularly
 # helpful with koji builds. Use VERBOSE=1 so we can check options invoked.
 make -k %{?_smp_mflags} VERBOSE=1
 
 %check
-make check
+set -x
+if [ "x$NIX_BUILD" = "x" ]; then
+    make check
+else
+    make check || touch $out/nix-support/failed
+fi
 
 %install
 rm -rf %{buildroot}
@@ -58,6 +64,9 @@ rm -rf %{buildroot}
 %doc examples/
 
 %changelog
+* Fri Jun 20 2014 Vladimir Still <xstill at fi.muni.cz> 3.1pre-1
+- Updated .spec: dependencies, better support for building in NIX VM
+
 * Tue Apr  25 2012 Petr Rockai <me at mornfall.net> 2.5.1-1
 - Reboot. New upstream version.
 
