@@ -17,6 +17,8 @@ SET( CMAKE_CXX_FLAGS_RELWITHASSERT "-O3 -DNVALGRIND" CACHE STRING
 SET( CMAKE_C_FLAGS_RELWITHASSERT "-O3 -DNVALGRIND" CACHE STRING
     "Flags used by the compiler during RelWithAssert builds. " )
 
+SET( REQUIRED "" CACHE STRING "Required components (if they are disabled, configure will fail)." )
+
 project( divine )
 
 set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" )
@@ -677,6 +679,14 @@ if ( DISABLED )
     message( "## Requested but *disabled*:${DISABLED}" )
 endif()
 message( "## -----------------------------------------------------------------" )
+
+if ( NOT ( "${REQUIRED}" STREQUAL "" ) )
+    foreach ( i ${REQUIRED} )
+        if ( NOT ( "${BUILDOPTS}" MATCHES "${i}"  ))
+            message( FATAL_ERROR "FATAL: ${i} is disabled but it is required by user, exiting." )
+        endif()
+    endforeach()
+endif()
 
 set( CPACK_PACKAGE_INSTALL_DIRECTORY
       "DiVinE ${CPACK_PACKAGE_VERSION}${VERSION_APPEND}" )
