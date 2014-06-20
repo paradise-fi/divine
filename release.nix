@@ -42,7 +42,7 @@ let
                  "binutils-gold" "libxml2-dev" ];
   extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
   extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
-  extra_rpms = [ "cmake" "redhat-rpm-config" ];
+  extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" ];
 
   mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESSION;EXPLICIT" }: arch:
    (VM arch) rec {
