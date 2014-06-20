@@ -40,7 +40,6 @@ let
   extra_debs = [ "cmake" "build-essential" "debhelper" "m4"
                  "libqt4-dev" "libboost-dev" "libncurses5-dev"
                  "binutils-gold" "libxml2-dev" ];
-  extra_debs31 = extra_debs ++ [ "llvm-3.1-dev" ];
   extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
   extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
   extra_rpms = [ "cmake" "redhat-rpm-config" ];
@@ -152,8 +151,8 @@ let
   };
 
   vms = {
-    debian70   = mkVM { VM = debuild; disk = "debian70"; extras = extra_debs31; };
-    ubuntu1210 = mkVM { VM = debuild; disk = "ubuntu1210"; extras = extra_debs31; };
+    debian70   = mkVM { VM = debuild; disk = "debian70"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
+    ubuntu1210 = mkVM { VM = debuild; disk = "ubuntu1210"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
     ubuntu1304 = mkVM { VM = debuild; disk = "ubuntu1304"; extras = extra_debs32; };
     ubuntu1310 = mkVM { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
     ubuntu1404 = mkVM { VM = debuild; disk = "ubuntu1404"; extras = extra_debs34; };
