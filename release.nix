@@ -39,7 +39,7 @@ let
 
   extra_debs = [ "cmake" "build-essential" "debhelper" "m4"
                  "libqt4-dev" "libboost-dev" "libncurses5-dev"
-                 "binutils-gold" ];
+                 "binutils-gold" "libxml2-dev" ];
   extra_debs31 = extra_debs ++ [ "llvm-3.1-dev" ];
   extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
   extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
