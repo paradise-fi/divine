@@ -49,11 +49,14 @@ let
      name = "divine";
      src = jobs.tarball;
      diskImage = (builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 8192; };
+     CMAKE_FLAGS = "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require}";
+     NIX_BUILD = 1;
+
+     # this actually runs just in debian-based distros, RPM based does not have configurePhase
      configurePhase = ''
-          echo "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require}" > pkgbuildflags
+          echo "${CMAKE_FLAGS}" > pkgbuildflags
           echo "override_dh_auto_test:" >> debian/rules
           echo "	dh_auto_test || touch $out/nix-support/failed" >> debian/rules
-          sed -e "s,^make check$,make check || touch $out/nix-support/failed," -i divine.spec
      '';
      doCheck = false; # the package builder is supposed to run checks
      memSize = mem;
