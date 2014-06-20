@@ -45,13 +45,13 @@ let
   extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
   extra_rpms = [ "cmake" "redhat-rpm-config" ];
 
-  mkVM = { VM, extras, disk, mem ? 3072 }: arch:
+  mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESSION;EXPLICIT" }: arch:
    (VM arch) rec {
      name = "divine";
      src = jobs.tarball;
      diskImage = (builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 8192; };
      configurePhase = ''
-          echo "-DCMAKE_BUILD_TYPE=${buildType}" > pkgbuildflags
+          echo "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require}" > pkgbuildflags
           echo "override_dh_auto_test:" >> debian/rules
           echo "	dh_auto_test || touch $out/nix-support/failed" >> debian/rules
           sed -e "s,^make check$,make check || touch $out/nix-support/failed," -i divine.spec
@@ -148,6 +148,7 @@ let
       inputs = pkgs: [ (getAttr llvm pkgs) (getAttr clang pkgs) ];
       llvm = pkgs: getAttr llvm pkgs;
       clang_runtime = pkgs: getAttr clang pkgs;
+      flags = [ "-DREQUIRED=LLVM" ];
   };
 
   vms = {
@@ -171,7 +172,8 @@ let
     gcc_llvm_33 = gcc_llvm_vers "3.3" "llvm_33" "clang_33";
     gcc_llvm_34 = gcc_llvm_vers "3.4" "llvm_34" "clang_34";
 
-    gcc_timed = mkbuild { name = "timed"; inputs = pkgs: [ pkgs.libxml2 pkgs.boost ]; };
+    gcc_timed = mkbuild { name = "timed"; inputs = pkgs: [ pkgs.libxml2 pkgs.boost ];
+                          flags = [ "-DREQUIRED=TIMED" ]; };
     gcc_compression = mkbuild { name = "compression"; inputs = pkgs: [];
                        flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" "-DEXPLICIT=OFF" ]; };
     gcc_hashcompaction = mkbuild { name = "hashcompaction"; inputs = pkgs: [];
@@ -180,7 +182,7 @@ let
                        flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=ON" ]; };
     gcc_full = mkbuild { name = "full"; inputs = pkgs:
                           [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                         flags = []; };
+                         flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESSION;EXPLICIT" ]; };
     clang_minimal = mkbuild { name = "minimal"; inputs = pkgs: []; clang = true; };
     clang_medium  = mkbuild { name = "medium";  inputs = pkgs:
                                [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
@@ -190,7 +192,7 @@ let
   windows = {
     win7.i386 = mkwin windows7_img "" [ windows_qt ];
     win7_small.i386 = mkwin windows7_img "-DSMALL=ON" [];
-    win7_llvm.i386 = mkwin windows7_img "" [ windows_llvm ];
+    win7_llvm.i386 = mkwin windows7_img "-DREQUIRED=LLVM" [ windows_llvm ];
   };
 
   mapsystems = systems: attrs: with ( pkgs.lib // builtins );
