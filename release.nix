@@ -42,7 +42,8 @@ let
                  "binutils-gold" "libxml2-dev" ];
   extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
   extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
-  extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "llvm-static" "clang" "libxml2-devel" "boost-devel" ];
+  extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" ];
+  extra_rpms_gt19 = extra_rpms ++ [ "llvm-static" ];
 
   mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESSION;EXPLICIT" }: arch:
    (VM arch) rec {
@@ -161,8 +162,8 @@ let
     ubuntu1404 = mkVM { VM = debuild; disk = "ubuntu1404"; extras = extra_debs34; };
 
     fedora18   = mkVM { VM = rpmbuild; disk = "fedora18"; extras = extra_rpms; };
-    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms; };
-    fedora20   = mkVM { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms; };
+    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms_gt19; };
+    fedora20   = mkVM { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms_gt19; };
   };
 
   builds = {
