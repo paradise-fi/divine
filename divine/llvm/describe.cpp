@@ -394,24 +394,24 @@ std::string Describe< HM >::all()
         state().eachframe( state().stack( c ), [&]( machine::Frame &f ) {
                 ++ i;
                 location = "<unknown>";
-                lines.clear();
-                if ( info().instruction( f.pc ).op )
+                this->lines.clear();
+                if ( this->info().instruction( f.pc ).op )
                 {
                     Function *fun = nullptr;
-                    location = locinfo( f.pc, false, &fun );
+                    location = this->locinfo( f.pc, false, &fun );
 
                     if ( fun ) {
                         for ( auto arg = fun->arg_begin(); arg != fun->arg_end(); ++ arg )
-                            value( &*arg, ValueRef( info().valuemap[ &*arg ], fcount - i, c ), Pointer() );
+                            this->value( &*arg, ValueRef( this->info().valuemap[ &*arg ], fcount - i, c ), Pointer() );
 
                         for ( auto block = fun->begin(); block != fun->end(); ++block ) {
-                            value( &*block, ValueRef(), Pointer() ); // just for counting
+                            this->value( &*block, ValueRef(), Pointer() ); // just for counting
                             for ( auto v = block->begin(); v != block->end(); ++v )
-                                value( &*v, ValueRef( info().valuemap[ &*v ], fcount - i, c), Pointer() );
+                                this->value( &*v, ValueRef( this->info().valuemap[ &*v ], fcount - i, c), Pointer() );
                         }
                     }
                 }
-                s << "  #" << i << ": " << location << " " << wibble::str::fmt( lines ) << std::endl;
+                s << "  #" << i << ": " << location << " " << wibble::str::fmt( this->lines ) << std::endl;
             } );
     }
 
@@ -512,19 +512,19 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
                 r << "frame[" << count << "]: pc = (" << f.pc
                   << "), data = ";
                 ++ count;
-                if ( f.pc.function >= int( _info.functions.size() ) ) {
+                if ( f.pc.function >= int( this->_info.functions.size() ) ) {
                     r << "<invalid PC>" << std::endl;
                     return;
                 }
-                auto fun = _info.function( f.pc );
+                auto fun = this->_info.function( f.pc );
                 r << "[" << fun.datasize << " bytes]\n";
                 for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i ) {
                     r << "          " << *i << " offset " << i->offset << ": ";
-                    if ( f.memoryflag( _info, *i ).get() == MemoryFlag::HeapPointer )
-                        r << *f.dereference< Pointer >( _info, *i ) << " ";
+                    if ( f.memoryflag( this->_info, *i ).get() == MemoryFlag::HeapPointer )
+                        r << *f.dereference< Pointer >( this->_info, *i ) << " ";
                     else
-                        r << fmtInteger( f.dereference( _info, *i ), i->width * 8 ) << " ";
-                    r << ", flags = " << static_cast< int >( f.memoryflag( _info, *i ).get() ) << "\n";
+                        r << fmtInteger( f.dereference( this->_info, *i ), i->width * 8 ) << " ";
+                    r << ", flags = " << static_cast< int >( f.memoryflag( this->_info, *i ).get() ) << "\n";
                 }
                 r << std::endl;
             });

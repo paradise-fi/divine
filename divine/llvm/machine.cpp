@@ -194,7 +194,7 @@ void MachineState< HeapMeta >::snapshot(
         memcopy( *val, *val, val->width, fctx, tctx );
         forPointers( f, _info, *val, [&]( ValueRef v, Pointer p ) {
                 target.memoryflag( _info, v ).set( MemoryFlag::HeapPointer );
-                snapshot( *target.dereference< Pointer >( _info, v ), p, canonic, heap );
+                this->snapshot( *target.dereference< Pointer >( _info, v ), p, canonic, heap );
             } );
     }
 
@@ -230,7 +230,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
         dead_threads = 0;
         canonic.stack += sizeof( Stack );
         eachframe( stack( tid ), [&]( Frame &fr ) {
-                trace( fr, canonic );
+                this->trace( fr, canonic );
             } );
     }
 
