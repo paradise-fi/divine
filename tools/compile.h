@@ -101,18 +101,8 @@ struct Compile {
     void run( std::string command ) {
         std::cerr << "+ " << command << std::endl;
         int status = system( command.c_str() );
-#ifdef POSIX
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-        if ( status != -1 ) {
-            if ( WEXITSTATUS( status ) != 0 )
-                die( "Error running an external command." );
-            else if ( WIFSIGNALED( status ) && ( WTERMSIG( status ) == SIGINT
-                        || WTERMSIG( status ) == SIGQUIT ) )
-                die( "Signaled or interrupted by user." );
-        }
-#pragma GCC diagnostic pop
-#endif
+        if ( status != 0 )
+            die( wibble::str::fmtf( "Error running an external command, exit code %d.", status ) );
     }
 
     void runCompiler( std::string comp, std::string in, std::string out, std::string flags = "" ) {
