@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <type_traits>
 
 #ifdef _WIN32
 #include <float.h>
@@ -74,9 +75,9 @@ auto deconsptr( Cons c ) -> typename UnPtr< typename list::ConsAt< I >::template
     return *c.template get< I >();
 }
 
-#define MATCH(l, ...) template< typename F, typename X > \
-    auto match( F &f, X x ) -> \
-        typename wibble::TPair< typename Eq< l, X::length >::Yes, decltype( f( __VA_ARGS__ ) ) >::Second \
+#define MATCH(l, ...) template< typename F, typename X, \
+        typename = typename Eq< l, X::length >::Yes > \
+    auto match( F &f, X x ) -> decltype( f( __VA_ARGS__ ) ) \
     { static_cast< void >( x ); return f( __VA_ARGS__ ); }
 
 MATCH( 0, /**/ )
@@ -1137,11 +1138,10 @@ struct Evaluator
         assert_unreachable( "bad parameters for opcode %d", instruction.opcode );
     }
 
-    template< typename Fun, typename I, typename Cons >
+    template< typename Fun, typename I, typename Cons,
+            typename = decltype( match( std::declval< Fun & >(), std::declval< Cons & >() ) ) >
     auto implement( wibble::Preferred, Fun fun, I i, I e, Cons list )
-        -> typename wibble::TPair< wibble::TPair< decltype( match( fun, list ) ),
-                                                  typename Eq< true, (Fun::arity == Cons::length) >::Yes >,
-                                   typename Fun::T >::Second
+        -> typename std::enable_if< Fun::arity == Cons::length, typename Fun::T >::type
     {
         assert( i == e );
         wibble::param::discard( i, e );
@@ -1153,11 +1153,10 @@ struct Evaluator
         return retval;
     }
 
-    template< typename Fun, typename I, typename Cons >
+    template< typename Fun, typename I, typename Cons,
+            typename = decltype( match( std::declval< Fun & >(), std::declval< Cons & >() ) ) >
     auto implement( wibble::Preferred, Fun fun, I i, I e, Cons list )
-        -> typename wibble::TPair< wibble::TPair< decltype( match( fun, list ) ),
-                                                  typename Eq< true, (Fun::arity > Cons::length) >::Yes >,
-                                   typename Fun::T >::Second
+        -> typename std::enable_if< (Fun::arity > Cons::length), typename Fun::T >::type
     {
         typedef ProgramInfo::Value Value;
         wibble::Preferred p;
