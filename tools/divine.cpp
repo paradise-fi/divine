@@ -441,6 +441,8 @@ struct Main {
         cmd_draw->add( compression );
         cmd_draw->add( input );
         cmd_draw->add( definitions );
+
+        opts.setPartialMatchingRecursively( true );
     }
 
     void setupLimits() {
