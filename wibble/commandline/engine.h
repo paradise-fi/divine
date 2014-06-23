@@ -101,7 +101,7 @@ protected:
 					const std::string& longDescription = std::string())
 		: m_manager(mman), m_name(name), m_found_command(0), primaryAlias(name),
 			usage(usage), description(description), longDescription(longDescription), hidden(false),
-			no_switches_after_first_arg(false) {}
+			no_switches_after_first_arg(false), partial_matching( false ) {}
 
 public:
 	const std::string& name() const { return m_name; }
@@ -231,6 +231,19 @@ public:
 	// non-switch argument, and they should be just left in the argument
 	// list
 	bool no_switches_after_first_arg;
+
+    /* Enable partial/prefix matching of long options, that is instead
+     * of fully specifiing long option, unabiguous prefix can be used
+     *
+     * NOTE: In engine with subcommands, if prefix of subcommand's option
+     * matches complete (higher-level) command option it is NOT considered
+     * ambiguous but it is considered to be option of given (higher-level)
+     * command.
+     */
+    bool partial_matching;
+
+    /* set partial matching for this engine and all subcomand engines */
+    void setPartialMatchingRecursively( bool );
 
 
 	friend class Parser;

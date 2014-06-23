@@ -6,6 +6,24 @@ using namespace std;
 namespace wibble {
 namespace commandline {
 
+typedef std::vector< std::map< std::string, Option * >::const_iterator > PartialMatches;
+
+
+static PartialMatches _partialMatches( std::map< std::string, Option * > longOpts, std::string name )
+{
+    std::map< std::string, Option * >::const_iterator engine = longOpts.lower_bound( name );
+    PartialMatches candidates;
+    for ( ; engine != longOpts.end(); ++engine ) {
+        if ( engine->first.size() < name.size() )
+            break;
+        if ( std::equal( name.begin(), name.end(), engine->first.begin() ) )
+            candidates.push_back( engine );
+        else
+            break;
+    }
+    return candidates;
+}
+
 void Engine::addWithoutAna(Option* o)
 {
 	const vector<char>& shorts = o->shortNames;
@@ -114,8 +132,16 @@ std::pair<ArgList::iterator, bool> Engine::parseFirstIfKnown(ArgList& list, ArgL
 		}
 
 		map<string, Option*>::const_iterator engine = m_long.find(name);
-		if (engine == m_long.end())
-			return make_pair(begin, false);
+        if (engine == m_long.end()) {
+            if ( partial_matching ) {
+                PartialMatches candidates = _partialMatches( m_long, name );
+                if ( candidates.size() == 1 )
+                    engine = candidates[ 0 ];
+                else
+                    return make_pair(begin, false);
+            } else
+                return make_pair(begin, false);
+        }
         if (has_arg)
             engine->second->parse(arg);
         else
@@ -170,13 +196,13 @@ ArgList::iterator Engine::parseKnownSwitches(ArgList& list, ArgList::iterator be
 
 Option* Engine::add(Option* o)
 {
-	m_options.push_back(o);	
+	m_options.push_back(o);
 	return o;
 }
 
 OptionGroup* Engine::add(OptionGroup* group)
 {
-	m_groups.push_back(group);	
+	m_groups.push_back(group);
 	return group;
 }
 
@@ -184,6 +210,12 @@ Engine* Engine::add(Engine* o)
 {
 	m_commands.push_back(o);
 	return o;
+}
+
+void Engine::setPartialMatchingRecursively( bool value ) {
+    partial_matching = value;
+    for ( std::vector< Engine * >::iterator i = m_commands.begin(); i != m_commands.end(); ++i )
+        (*i)->setPartialMatchingRecursively( value );
 }
 
 
@@ -297,8 +329,21 @@ ArgList::iterator Engine::parse(ArgList& list, ArgList::iterator begin)
 				}
 				break;
 			}
-			if (list.isSwitch(i))
-				throw exception::BadOption(string("unknown option ") + *i);
+			if (list.isSwitch(i)) {
+                std::stringstream ss;
+                ss << "unknown option " << *i;
+                if ( partial_matching && i->size() > 2 && (*i)[1] == '-' ) {
+                    PartialMatches pmatches = _partialMatches( m_long, i->substr( 2 )  );
+                    if ( pmatches.size() >= 2 ) {
+                        ss << std::endl << "Option is ambiguous, possible candidates are: ";
+                        for ( PartialMatches::const_iterator it = pmatches.begin(); it != pmatches.end(); ++it )
+                        {
+                            ss << (*it)->first << (it + 1 == pmatches.end() ? "" : ", ");
+                        }
+                    }
+                }
+                throw exception::BadOption( ss.str() );
+            }
 			else if (no_switches_after_first_arg)
 				// If requested, stop looking for switches
 				// after the first non-switch argument
