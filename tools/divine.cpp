@@ -393,7 +393,7 @@ struct Main {
         o_reachability = cmd_verify->add< BoolOption >(
             "reachability", 0, "reachability", "", "force reachability" );
         o_weakReachability = cmd_verify->add< BoolOption >(
-            "weak", 0, "weak", "force weak reachability" );
+            "weak-reachability", 0, "weak-reachability", "", "force weak reachability" );
 
         // simulate options
         o_inputTrace = cmd_simulate->add< StringOption >(
@@ -705,7 +705,7 @@ struct Main {
                     o_weakReachability->boolValue(), o_owcty->boolValue(), o_map->boolValue() } ) {
                 if ( oneSet && x )
                     die( "FATAL: only one of --nested-dfs, --owcty, --map,"
-                            " --reachability, --weak can be specified" );
+                            " --reachability, --weak-reachability can be specified" );
                 oneSet |= x;
             }
 
