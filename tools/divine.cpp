@@ -610,6 +610,10 @@ struct Main {
         if ( !opts.foundCommand() )
             die( "FATAL: no command specified" );
 
+        if ( o_simulateCe->boolValue() && o_weakReachability->boolValue() )
+            die( "FATAL: --simulate-counterexample cannot be used with --weak-reachability,\n"
+                 "       use --reachability instead" );
+
         if ( o_workers->boolValue() )
             meta.execution.threads = o_workers->intValue();
         // else default (currently set to 2)
