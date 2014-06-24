@@ -300,7 +300,7 @@ inline std::pair< std::string, std::string > absolutePrefix( const std::string &
     // this is absolute path in both windows and unix
     if ( path.size() >= 1 && isPathSeparator( path[ 0 ] ) )
         return std::make_pair( path.substr( 0, 1 ), path.substr( 1 ) );
-    return std::make_pair( std::string(), std::string() );
+    return std::make_pair( std::string(), path );
 }
 
 inline bool isAbsolutePath( const std::string &path ) {
