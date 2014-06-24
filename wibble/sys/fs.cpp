@@ -32,8 +32,15 @@ namespace wibble {
 namespace sys {
 namespace fs {
 
-std::auto_ptr<struct stat64> stat(const std::string& pathname)
+std::auto_ptr<struct stat64> stat( std::string pathname )
 {
+#if WIN32
+    // from MSDN:
+    // If path contains the location of a directory, it cannot contain
+    // a trailing backslash. If it does, -1 will be returned and errno
+    // will be set to ENOENT.
+    pathname = str::normpath( pathname );
+#endif
 	std::auto_ptr<struct stat64> res(new struct stat64);
 	if (::stat64(pathname.c_str(), res.get()) == -1) {
 		if (errno == ENOENT)

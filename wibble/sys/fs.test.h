@@ -202,7 +202,26 @@ struct TestFs {
 #endif
         assert( isdir( "CMakeFiles" ) );
         assert( !isdir( "_ThisDoesNotExist_" ) );
-        assert( !isdir( "wibble-test" ) );
+        assert( !isdir( "wibble-test-generated-main.cpp" ) );
+    }
+
+    Test _stat() {
+        std::auto_ptr< struct stat64 > pstat;
+
+        pstat = stat( "CMakeFiles" );
+        assert( pstat.get() );
+        assert( S_ISDIR( pstat->st_mode ) );
+
+        pstat = stat( "CMakeFiles/" );
+        assert( pstat.get() );
+        assert( S_ISDIR( pstat->st_mode ) );
+
+        pstat = stat( "_ThisDoesNotExist_" );
+        assert( !pstat.get() );
+
+        pstat = stat( "wibble-test-generated-main.cpp" );
+        assert( pstat.get() );
+        assert( S_ISREG( pstat->st_mode ) );
     }
 };
 

@@ -18,7 +18,7 @@ namespace fs {
  * If the file does not exist, return NULL.
  * Raises exceptions in case of errors.
  */
-std::auto_ptr<struct stat64> stat(const std::string& pathname);
+std::auto_ptr<struct stat64> stat( std::string pathname );
 
 /// access() a filename
 bool access(const std::string& s, int m);
