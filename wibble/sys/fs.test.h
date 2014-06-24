@@ -1,5 +1,6 @@
 /* -*- C++ -*- (c) 2007--2011 Petr Rockai <me@mornfall.net>
-               (c) 2007--2011 Enrico Zini <enrico@enricozini.org> */
+               (c) 2007--2011 Enrico Zini <enrico@enricozini.org>
+               (c) 2014 Vladimír Štill <xstill@fi.muni.cz> */
 #include <wibble/sys/fs.h>
 #include <wibble/exception.h>
 #include <cstdlib>
@@ -90,7 +91,6 @@ struct TestFs {
     }
 
     Test _mkPath() {
-#ifdef POSIX
         // Mkpath should succeed on existing directory
         mkpath(".");
 
@@ -98,38 +98,47 @@ struct TestFs {
         mkpath("./.");
 
         // Mkpath should succeed on existing directory
+#ifdef POSIX
         mkpath("/");
 #endif
     }
 
     Test _mkPath2() {
-#ifdef POSIX
         // Try creating a path with mkpath
+#ifdef POSIX
         system("rm -rf test-mkpath");
+#endif
+#ifdef WIN32
+        system( "rmdir /Q /S test-mkpath" );
+#endif
         mkpath("test-mkpath/test-mkpath");
         assert(wibble::sys::fs::access("test-mkpath", F_OK));
         assert(wibble::sys::fs::access("test-mkpath/test-mkpath", F_OK));
-        system("rm -rf test-mkpath");
-#endif
     }
 
     Test _mkFilePath() {
-#ifdef POSIX
         // Try creating a path with mkFilePath
+#ifdef POSIX
         system("rm -rf test-mkpath");
+#endif
+#ifdef WIN32
+        system( "rmdir /Q /S test-mkpath" );
+#endif
         mkFilePath("test-mkpath/test-mkpath/file");
         assert(wibble::sys::fs::access("test-mkpath", F_OK));
         assert(wibble::sys::fs::access("test-mkpath/test-mkpath", F_OK));
         assert(!wibble::sys::fs::access("test-mkpath/test-mkpath/file", F_OK));
-        system("rm -rf test-mkpath");
-#endif
     }
 
     Test _mkdirIfMissing() {
 #ifdef POSIX
+        system("rm -rf test-mkpath");
+#endif
+#ifdef WIN32
+        system( "rmdir /Q /S test-mkpath" );
+#endif
         // Creating works and is idempotent
         {
-            system("rm -rf test-mkpath");
             assert(!wibble::sys::fs::access("test-mkpath", F_OK));
             wibble::sys::fs::mkdirIfMissing("test-mkpath");
             assert(wibble::sys::fs::access("test-mkpath", F_OK));
@@ -138,7 +147,13 @@ struct TestFs {
 
         // Creating fails if it exists and it is a file
         {
+#ifdef POSIX
             system("rm -rf test-mkpath; touch test-mkpath");
+#endif
+#ifdef WIN32
+            system( "rmdir /Q /S test-mkpath" );
+            system( "type NUL > test-mkpath" );
+#endif
             try {
                 wibble::sys::fs::mkdirIfMissing("test-mkpath");
                 assert(false);
@@ -147,6 +162,7 @@ struct TestFs {
             }
         }
 
+#ifdef POSIX // hm
         // Deal with dangling symlinks
         {
             system("rm -rf test-mkpath; ln -s ./tmp/tmp/tmp/DOESNOTEXISTS test-mkpath");
@@ -167,6 +183,12 @@ struct TestFs {
         system("touch does-exist");
         assert(deleteIfExists("does-exist"));
 #endif
+#ifdef WIN32
+        system( "del /Q DoesNotExit.txt" );
+        assert( !deleteIfExists( "DoesNotExit.txt" ) );
+        system( "type NUL > DoesExist.txt" );
+        assert( deleteIfExists( "DoesExist.txt" ) );
+#endif
     }
 
     Test _isdir() {
@@ -178,6 +200,9 @@ struct TestFs {
         system("rm testdir; mkdir testdir");
         assert(isdir("testdir"));
 #endif
+        assert( isdir( "CMakeFiles" ) );
+        assert( !isdir( "_ThisDoesNotExist_" ) );
+        assert( !isdir( "wibble-test" ) );
     }
 };
 

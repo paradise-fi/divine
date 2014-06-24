@@ -1,3 +1,7 @@
+/* -*- C++ -*- (c) 2007--2011 Petr Rockai <me@mornfall.net>
+               (c) 2007--2011 Enrico Zini <enrico@enricozini.org>
+               (c) 2014 Vladimír Štill <xstill@fi.muni.cz> */
+
 #include <wibble/config.h>
 
 #include <wibble/sys/fs.h>
@@ -17,13 +21,17 @@
 #include <windows.h>
 #include <tchar.h>
 #include <shellapi.h>
+#include <direct.h>
+
+#define mkdir( dir, mode ) _mkdir( dir ) // hm
+
+#warning Permissions are not supported on Windows
 #endif
 
 namespace wibble {
 namespace sys {
 namespace fs {
 
-#ifdef POSIX
 std::auto_ptr<struct stat64> stat(const std::string& pathname)
 {
 	std::auto_ptr<struct stat64> res(new struct stat64);
@@ -66,26 +74,36 @@ bool isfifo(const std::string& pathname)
     common_stat_body(S_ISFIFO);
 }
 
+#ifdef POSIX // TODO
 bool islnk(const std::string& pathname)
 {
     common_stat_body(S_ISLNK);
 }
+#endif
 
 bool isreg(const std::string& pathname)
 {
     common_stat_body(S_ISREG);
 }
 
+#ifdef POSIX // TODO
 bool issock(const std::string& pathname)
 {
     common_stat_body(S_ISSOCK);
 }
+#endif
 
 #undef common_stat_body
 
 bool access(const std::string &s, int m)
 {
+#ifdef WIN32
+#define access _access
+#endif
 	return ::access(s.c_str(), m) == 0;
+#ifdef WIN32
+#undef access
+#endif
 }
 
 bool exists(const std::string& file)
@@ -95,7 +113,7 @@ bool exists(const std::string& file)
 
 std::string abspath(const std::string& pathname)
 {
-	if (pathname[0] == '/')
+	if ( str::isAbsolutePath( pathname ) )
 		return str::normpath(pathname);
 	else
 		return str::normpath(str::joinpath(process::getcwd(), pathname));
@@ -139,14 +157,25 @@ void mkdirIfMissing(const std::string& dir, mode_t mode)
     throw wibble::exception::Consistency("ensuring path " + dir + " exists", dir + " exists and looks like a dangling symlink");
 }
 
+void _mkpath( const std::string &prefix, const std::string &rest ) {
+    std::string::const_reverse_iterator ipos =
+            std::find_if( rest.rbegin(), rest.rend(), &str::isPathSeparator );
+	size_t pos = ipos == rest.rend()
+                ? std::string::npos
+                : rest.size() - std::distance( rest.rbegin(), ipos ) - 1;
+    assert( pos == std::string::npos || str::isPathSeparator( rest[ pos ] ) );
+	if ( pos != 0 && pos != std::string::npos )
+		// First ensure that the upper path exists
+		_mkpath( prefix, rest.substr( 0, pos ) );
+    mkdirIfMissing( prefix + rest, 0777 );
+}
+
 void mkpath(const std::string& dir)
 {
-	size_t pos = dir.rfind('/');
-	if (pos != 0 && pos != std::string::npos)
-		// First ensure that the upper path exists
-		mkpath(dir.substr(0, pos));
-	mkdirIfMissing(dir, 0777);
+    std::pair< std::string, std::string > abs = str::absolutePrefix( dir );
+    _mkpath( abs.first, abs.second );
 }
+
 
 void mkFilePath(const std::string& file)
 {
@@ -154,7 +183,6 @@ void mkFilePath(const std::string& file)
 	if (pos != std::string::npos)
 		mkpath(file.substr(0, pos));
 }
-#endif // POSIX
 
 std::string readFile( std::ifstream &in ) {
     if (!in.is_open())
@@ -231,7 +259,34 @@ void rmtree(const std::string& dir)
     }
     rmdir(dir);
 }
+#endif
+#ifdef WIN32
+// Use strictly ANSI variant of structures and functions.
+void rmtree( const std::string& dir ) {
+    // Use double null terminated path.
+    int len = dir.size();
+    char* from = reinterpret_cast< char* >( alloca( len + 2 ) );
+    strcpy( from, dir.c_str() );
+    from [ len + 1 ] = '\0';
 
+    SHFILEOPSTRUCTA fileop;
+    fileop.hwnd   = NULL;    // no status display
+    fileop.wFunc  = FO_DELETE;  // delete operation
+    fileop.pFrom  = from;  // source file name as double null terminated string
+    fileop.pTo    = NULL;    // no destination needed
+    fileop.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;  // do not prompt the user
+
+    fileop.fAnyOperationsAborted = FALSE;
+    fileop.lpszProgressTitle     = NULL;
+    fileop.hNameMappings         = NULL;
+
+    int ret = SHFileOperationA( &fileop );
+    if ( ret )// only zero return value is without error
+        throw wibble::exception::System( "deleting directory" );
+}
+#endif
+
+#ifdef POSIX // TODO
 Directory::const_iterator::~const_iterator()
 {
     if (d) delete d;
@@ -378,28 +433,24 @@ Directory::const_iterator Directory::end() const
 {
     return const_iterator();
 }
+#endif // POSIX
 
+#ifdef POSIX
 std::string mkdtemp( std::string tmpl )
 {
     char *_tmpl = reinterpret_cast< char * >( alloca( tmpl.size() + 1 ) );
     strcpy( _tmpl, tmpl.c_str() );
     return ::mkdtemp( _tmpl );
 }
-#endif // POSIX
-
+#endif
 #ifdef _WIN32
-bool access(const std::string &s, int m)
-{
-	return 1; /* FIXME */
-}
-
 std::string mkdtemp( std::string tmpl )
 {
     char *_tmpl = reinterpret_cast< char * >( alloca( tmpl.size() + 1 ) );
     strcpy( _tmpl, tmpl.c_str() );
 
     if ( _mktemp_s( _tmpl, tmpl.size() + 1 ) == 0 ) {
-        if ( ::mkdir( _tmpl ) == 0 )
+        if ( ::_mkdir( _tmpl ) == 0 )
             return _tmpl;
         else
             throw wibble::exception::System("creating temporary directory");
@@ -407,30 +458,8 @@ std::string mkdtemp( std::string tmpl )
         throw wibble::exception::System("creating temporary directory path");
     }
 }
-// Use strictly ANSI variant of structures and functions.
-void rmtree( const std::string& dir ) {
-    // Use double null terminated path.
-    int len = dir.size();
-    char* from = reinterpret_cast< char* >( alloca( len + 2 ) );
-    strcpy( from, dir.c_str() );
-    from [ len + 1 ] = '\0';
-
-    SHFILEOPSTRUCTA fileop;
-    fileop.hwnd   = NULL;    // no status display
-    fileop.wFunc  = FO_DELETE;  // delete operation
-    fileop.pFrom  = from;  // source file name as double null terminated string
-    fileop.pTo    = NULL;    // no destination needed
-    fileop.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;  // do not prompt the user
-
-    fileop.fAnyOperationsAborted = FALSE;
-    fileop.lpszProgressTitle     = NULL;
-    fileop.hNameMappings         = NULL;
-
-    int ret = SHFileOperationA( &fileop );
-    if ( ret )// only zero return value is without error
-        throw wibble::exception::System( "deleting directory" );
-}
 #endif
+
 
 }
 }
