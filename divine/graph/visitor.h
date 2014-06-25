@@ -476,7 +476,9 @@ struct Shared {
                         Data< typename S::AlgorithmSetup >& d )
             : closed( s ), bfvListener( &l, this ), bfv( bfvListener, g, s, d.chunkq, d.terminator ),
               detector( *d.detector ), worker( w ), notify( l )
-        {}
+        {
+            d.chunkq->clear();
+        }
     };
 };
 
