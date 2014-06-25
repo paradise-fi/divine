@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <utility>
+#include <type_traits>
 
 /* Simple wrapper around atomic with weakened memory orders
  * also includes non-atomic fake wrapper with same interface.
@@ -18,11 +19,30 @@
 
 namespace divine {
 
-template< typename T >
-class WeakAtomic {
-    std::atomic< T > _data;
-  public:
+namespace _impl {
 
+template< typename Self, typename T >
+struct WeakAtomicIntegral {
+
+    T operator |=( T val ) {
+        return self()._data.fetch_or( val, std::memory_order_acq_rel ) | val;
+    }
+
+    T operator &=( T val ) {
+        return self()._data.fetch_and( val, std::memory_order_acq_rel ) & val;
+    }
+
+    Self &self() { return *static_cast< Self * >( this ); }
+};
+
+struct Empty { };
+}
+
+template< typename T >
+struct WeakAtomic : std::conditional< std::is_integral< T >::value && !std::is_same< T, bool >::value,
+                      _impl::WeakAtomicIntegral< WeakAtomic< T >, T >,
+                      _impl::Empty >::type
+{
     WeakAtomic( T x ) : _data( x ) { }
     WeakAtomic() = default;
 
@@ -32,32 +52,9 @@ class WeakAtomic {
         return val;
     }
 
-    template< typename = decltype( std::declval< std::atomic< T > & >().fetch_or( 0 ) ) >
-    T operator |=( T val ) {
-        return _data.fetch_or( val, std::memory_order_acq_rel ) | val;
-    }
-
-    template< typename = decltype( std::declval< std::atomic< T > & >().fetch_and( 0 ) ) >
-    T operator &=( T val ) {
-        return _data.fetch_and( val, std::memory_order_acq_rel ) & val;
-    }
-};
-
-template< typename T >
-class NotAtomic {
-    T _data;
-  public:
-
-    NotAtomic( T x ) : _data( x ) { }
-
-    operator T() const { return _data; }
-    T operator=( T val ) { _data = val; }
-
-    template< typename = decltype( std::declval< T & >() |= 0 ) >
-    T operator |=( T val ) { return _data |= val; }
-
-    template< typename = decltype( std::declval< T & >() &= 0 ) >
-    T operator &=( T val ) { return _data &= val; }
+  private:
+    std::atomic< T > _data;
+    friend struct _impl::WeakAtomicIntegral< WeakAtomic< T >, T >;
 };
 
 }
