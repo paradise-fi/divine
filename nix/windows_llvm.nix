@@ -2,11 +2,11 @@
  
 stdenv.mkDerivation rec {
   name = "windows-llvm";
-  pkg = "llvm-3.2-x86-win32";
+  pkg = "llvm-3.4.2-x86-win32";
 
   source = fetchurl {
-      url = "http://llvm.org/releases/3.3/llvm-3.3.src.tar.gz";
-      sha256 = "0y3mfbb5qzcpw3v5qncn69x1hdrrrfirgs82ypi2annhf0g6nxk8";
+      url = "http://llvm.org/releases/3.4.2/llvm-3.4.2.src.tar.gz";
+      sha256 = "1mzgy7r0dma0npi1qrbr1s5n4nbj1ipxgbiw0q671l4s0r3qs0qp";
   };
 
   build = pkgs.callPackage ./windows_build.nix {
