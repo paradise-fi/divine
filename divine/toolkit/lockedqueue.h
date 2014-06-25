@@ -1,9 +1,11 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>,
-//                 2011 Tomáš Janoušek <tomi@nomi.cz>
+//                 2011 Tomáš Janoušek <tomi@nomi.cz>,
+//                 2014 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <deque>
 #include <wibble/sys/mutex.h>
 #include <divine/toolkit/shmem.h>
+#include <divine/toolkit/weakatomic.h>
 
 #ifndef DIVINE_LOCKEDQUEUE_H
 #define DIVINE_LOCKEDQUEUE_H
@@ -21,21 +23,23 @@ template < typename T >
 struct LockedQueue {
     typedef SpinLock Mutex;
     Mutex m;
-    volatile bool empty;
+    WeakAtomic< bool > _empty;
     std::deque< T > q;
 
-    LockedQueue( void ) : empty( true ) {}
+    LockedQueue( void ) : _empty( true ) {}
+
+    bool empty() const { return _empty; }
 
     void push( const T &x ) {
         wibble::sys::MutexLockT< Mutex > lk( m );
         q.push_back( x );
-        empty = false;
+        _empty = false;
     }
 
     void push( T &&x ) {
         wibble::sys::MutexLockT< Mutex > lk( m );
         q.push_back( std::move( x ) );
-        empty = false;
+        _empty = false;
     }
 
     /**
@@ -45,7 +49,7 @@ struct LockedQueue {
         T ret = T();
 
         /* Prevent threads from contending for a lock if the queue is empty. */
-        if ( empty )
+        if ( empty() )
             return ret;
 
         wibble::sys::MutexLockT< Mutex > lk( m );
@@ -57,9 +61,15 @@ struct LockedQueue {
         q.pop_front();
 
         if ( q.empty() )
-            empty = true;
+            _empty = true;
 
         return ret;
+    }
+
+    void clear() {
+        wibble::sys::MutexLockT< Mutex > guard{ m };
+        q.clear();
+        _empty = true;
     }
 
     LockedQueue( const LockedQueue & ) = delete;
