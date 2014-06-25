@@ -1,5 +1,5 @@
 {stdenv, lib, qemu_kvm, writeText, img, cdrkit, unzip, socat, utillinux, samba, vmTools, writeScript,
- windows_mingw, name ? "build",
+ windows_mingw, name ? "build", extraSources ? "",
  tools ? [], src, buildScript, mem ? "1024M" }:
 
 let origtools = tools; origname = name;
@@ -99,6 +99,7 @@ let origtools = tools; origname = name;
     echo source: $src
     tar xaf $src
     mv */* .
+    ${extraSources}
     cd ..
     tar cf source.tar source
     rm -rf source
