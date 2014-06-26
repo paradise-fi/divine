@@ -16,6 +16,8 @@ if echo $TOOLS | grep -q "^C:"; then # MSYS hack
 fi
 PATH="$TOOLS:$PATH"
 
+test -d "$TOOLS/../binutils/bin" && PATH="$TOOLS/../binutils/bin:$PATH"
+
 # fake ssh for mpiexec
 cat > $TOOLS/ssh <<EOF
 #!/bin/sh
