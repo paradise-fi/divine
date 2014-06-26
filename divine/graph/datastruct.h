@@ -279,6 +279,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     void pop_front() {
         Statistics::global().dequeue( id, sizeof( Handle ) );
         --termination;
+        assert( !incoming.empty() );
         incoming.pop_front();
     }
 
@@ -291,8 +292,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     void clear() {
         incoming.clear();
         outgoing.clear();
-        while ( !chunkq().empty )
-            chunkq().pop();
+        chunkq().clear();
         this->axed = true;
     }
 

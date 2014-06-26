@@ -136,7 +136,7 @@ struct PartitionedProvider {
         };
 
         template< typename T >
-        using DataWrapper = NotAtomic< T >;
+        using DataWrapper = T;
 
         Table _table;
 
