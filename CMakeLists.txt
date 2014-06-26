@@ -107,6 +107,7 @@ option( PERFORMANCE "compile for maximum performance (LONG compilation)" ${PERFO
 option( PROFILE "generate profiling information for lcov coverage" OFF )
 option( POOLS "use pool allocation for graph vertices" ON )
 option( SMALL "reduce size of the binary, disabling optional features" OFF )
+option( DIVINE_BINUTILS "build binutils for divine (enable if your binutils does not support plugins and you want LLVM verification" OFF )
 
 set( MAX_INSTANCE_FILES_COUNT "128" CACHE STRING
     "maximal number of used instance files to generate -- more means less memory requirements" )
@@ -114,10 +115,18 @@ set( MIN_INSTANCES_PER_FILE "10" CACHE STRING
     "minimal number of instances in one instance file" )
 mark_as_advanced( MAX_INSTANCE_FILES_COUNT MIN_INSTANCES_PER_FILE )
 
+set( DEFAULT_AR "ar" )
+set( DEFAULT_GOLD "ld.gold" )
+
+if( DIVINE_BINUTILS )
+    set( DEFAULT_AR "divine-ar" )
+    set( DEFAULT_GOLD "divine-ld.gold" )
+endif()
+
 set( CMD_GCC "gcc" CACHE STRING "how to run the GCC C/C++ compiler" )
 set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
-set( CMD_GOLD "ld.gold" CACHE STRING "how to run the GNU gold linker" )
-set( CMD_AR "ar" CACHE STRING "how to run GNU ar w/ gold plugin support" )
+set( CMD_GOLD ${DEFAULT_GOLD} CACHE STRING "how to run the GNU gold linker" )
+set( CMD_AR ${DEFAULT_AR} CACHE STRING "how to run GNU ar w/ gold plugin support" )
 
 include( FindLLVM )
 
@@ -608,6 +617,11 @@ if( SQL_REPORT )
     add_subdirectory( external/nanodbc )
 endif()
 
+if( DIVINE_BINUTILS )
+    add_subdirectory( external/binutils )
+    add_dependencies( divine binutils )
+endif()
+
 ###############################################
 ## TESTING
 ##
@@ -649,6 +663,13 @@ if( WIN32 )
   bundle( MINGW_LIB mingwm10.dll )
   bundle( MSYS_LIB msys-1.0.dll )
 endif( WIN32 )
+
+if( DIVINE_BINUTILS )
+    install( PROGRAMS
+        ${CMAKE_BINARY_DIR}/binutils/bin/divine-ar
+        ${CMAKE_BINARY_DIR}/binutils/bin/divine-ld.gold
+        DESTINATION ${CMAKE_INSTALL_BINDIR} )
+endif()
 
 ########################################
 ## BINARY INSTALLER
