@@ -45,13 +45,14 @@ let
                  "binutils-gold" "libxml2-dev" ];
   extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
   extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
-  extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" ];
+  extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" "bison" ];
   extra_rpms_gt19 = extra_rpms ++ [ "llvm-static" ];
 
-  mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESSION;EXPLICIT" }: arch:
+  mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESSION;EXPLICIT",
+           tarball ? jobs.tarball }: arch:
    (VM arch) rec {
      name = "divine";
-     src = jobs.tarball;
+     src = tarball;
      diskImage = (builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 8192; };
      CMAKE_FLAGS = "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require}";
      NIX_BUILD = 1;
@@ -164,10 +165,27 @@ let
     ubuntu1310 = mkVM { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
     ubuntu1404 = mkVM { VM = debuild; disk = "ubuntu1404"; extras = extra_debs34; };
 
-    fedora18   = mkVM { VM = rpmbuild; disk = "fedora18"; extras = extra_rpms; };
-    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms_gt19; };
-    fedora20   = mkVM { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms_gt19; };
+    fedora18   = mkVM { VM = rpmbuild; disk = "fedora18"; extras = extra_rpms; tarball = tarball_with_binutils; };
+    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms_gt19; tarball = tarball_with_binutils; };
+    fedora20   = mkVM { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms_gt19; tarball = tarball_with_binutils; };
   };
+
+  binutils = pkgs.fetchurl {
+      url = "http://ftp.gnu.org/gnu/binutils/binutils-2.24.tar.bz2";
+      sha256 = "0ds1y7qa0xqihw4ihnsgg6bxanmb228r228ddvwzgrv4jszcbs75";
+  };
+
+  tarball_with_binutils = pkgs.runCommand "divine-tarball" {} ''
+      set -ex
+      archive=`ls ${jobs.tarball}/tarballs`
+      echo $archive
+      tar xaf ${jobs.tarball}/tarballs/divine-*.tar.gz
+      cd divine-*/external/binutils
+      tar xaf ${binutils}
+      cd -
+      mkdir -p $out/tarballs
+      tar caf $out/tarballs/$archive divine-*
+  '';
 
   builds = {
     gcc_minimal = mkbuild { name = "minimal"; inputs = pkgs: []; };
