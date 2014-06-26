@@ -45,12 +45,12 @@ struct TestLockedQueue {
         void* main() {
             consumed = 0;
             while( *work ) {
-                while( !q->empty ) {
+                while( !q->empty() ) {
                     if( q->pop() )
                         ++consumed;
                 }
             }
-            while( !q->empty ) {
+            while( !q->empty() ) {
                 if( q->pop() )
                     ++consumed;
             }
@@ -88,6 +88,6 @@ struct TestLockedQueue {
                                     } );
         assert_eq( queue.q.size(), 0u );
         assert_eq( reads, inserts );
-        assert( queue.empty );
+        assert( queue.empty() );
     }
 };
