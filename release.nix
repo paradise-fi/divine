@@ -35,7 +35,10 @@ let
       windows_img = windows7_img; inherit pkgs windows_mingw; };
   windows_python = pkgs.callPackage nix/windows_python.nix {};
   windows_llvm = pkgs.callPackage nix/windows_llvm.nix {
-      windows_img = windows7_img; inherit pkgs windows_mingw windows_cmake windows_python; };
+      windows_img = windows7_img;
+      inherit pkgs windows_mingw windows_cmake windows_python;
+      build_clang = true;
+  };
 
   extra_debs = [ "cmake" "build-essential" "debhelper" "m4"
                  "libqt4-dev" "libboost-dev" "libncurses5-dev"

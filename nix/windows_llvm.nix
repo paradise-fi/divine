@@ -31,7 +31,10 @@ stdenv.mkDerivation rec {
     buildScript = ''
       set -ex
       mkdir build && cd build
-      cmake -G "MSYS Makefiles" -DCMAKE_INSTALL_PREFIX=E:\\llvm -DLLVM_TARGETS_TO_BUILD=X86 ../source
+      cmake -G "MSYS Makefiles" -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=E:\\llvm -DLLVM_TARGETS_TO_BUILD=X86 \
+          -DBUILD_SHARED_LIBS=OFF ../source
+      cat CMakeCache.txt
       make
       make install
     '';
