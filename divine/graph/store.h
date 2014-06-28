@@ -194,7 +194,7 @@ struct SharedProvider {
         };
 
         template< typename T >
-        using DataWrapper = WeakAtomic< T >;
+        using DataWrapper = std::atomic< T >;
 
         TablePtr _table;
 
