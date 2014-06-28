@@ -63,7 +63,7 @@ struct Main {
     Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info,
            *cmd_simulate, *cmd_genexplicit;
     OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions,
-                *ce, *compactOutput;
+                *ce, *compactOutput, *limits;
     BoolOption *o_noCe, *o_dispCe, *o_simulateCe, *o_dummy, *o_statistics, *o_shortReport;
     OptvalStringVectorOption *o_report;
     BoolOption *o_diskFifo;
@@ -252,6 +252,7 @@ struct Main {
         definitions = opts.createGroup( "Definitions" );
         ce = opts.createGroup( "Counterexample Options" );
         compactOutput = opts.createGroup( "Output option" );
+        limits = opts.createGroup( "Resource limits" );
 
         o_curses = opts.add< BoolOption >(
             "curses", '\0', "curses", "", "use curses-based progress monitoring" );
@@ -271,11 +272,11 @@ struct Main {
             "workers", 'w', "workers", "",
             "number of worker threads (default: 2)" );
 
-        o_mem = common->add< IntOption >(
+        o_mem = limits->add< IntOption >(
             "max-memory", '\0', "max-memory", "",
             "maximum memory to use in MB (default: 0 = unlimited)" );
 
-        o_time = common->add< IntOption >(
+        o_time = limits->add< IntOption >(
             "max-time", '\0', "max-time", "",
             "maximum wall time to use in seconds (default: 0 = unlimited)" );
 
@@ -411,12 +412,14 @@ struct Main {
                 "do not save states in DCESS file, only save transitions." );
 
         cmd_metrics->add( common );
+        cmd_metrics->add( limits );
         cmd_metrics->add( reduce );
         cmd_metrics->add( compression );
         cmd_metrics->add( input );
         cmd_metrics->add( definitions );
 
         cmd_verify->add( common );
+        cmd_verify->add( limits );
         cmd_verify->add( ce );
         cmd_verify->add( reduce );
         cmd_verify->add( compression );
@@ -424,11 +427,13 @@ struct Main {
         cmd_verify->add( definitions );
 
         cmd_simulate->add( common );
+        cmd_simulate->add( limits );
         cmd_simulate->add( reduce );
         cmd_simulate->add( compression );
         cmd_simulate->add( definitions );
 
         cmd_genexplicit->add( common );
+        cmd_genexplicit->add( limits );
         cmd_genexplicit->add( reduce );
         cmd_genexplicit->add( compression );
         cmd_genexplicit->add( definitions );
@@ -436,6 +441,7 @@ struct Main {
         cmd_genexplicit->add( compactOutput );
 
         cmd_draw->add( drawing );
+        cmd_draw->add( limits );
         cmd_draw->add( reduce );
         cmd_draw->add( o_property );
         cmd_draw->add( compression );
