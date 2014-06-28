@@ -9,7 +9,7 @@ reachability() { ann "divine verify --reachability --report" "$@" "2> progress |
 metrics() { ann "divine metrics --report" "$@" "2> progress | capture"; }
 verify() { ann "divine verify --report" "$@" "2> progress | capture"; }
 draw() { ann "divine draw" "$@"; }
-info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce\|-D [^ ]*,,g"); }
+info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce\|-D [^ ]*\|--max-[^ -]*=[0-9]*,,g"); }
 
 mpi_verify() { mpi verify --mpi "$@"; }
 mpi_metrics() { mpi metrics --mpi "$@"; }
@@ -63,5 +63,10 @@ llvm_assemble() {
     "$@" $out
 }
 
+EXTRA=""
+if [ "x$NO_TIME_LIMIT" = "x" ]; then
+    EXTRA="--max-time=600"
+fi
+
 set -e
-fixreduce "$@"
+fixreduce "$@" "$EXTRA"
