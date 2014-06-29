@@ -71,17 +71,21 @@ typename BS::bitstream &operator>>( BS &bs, MapShared< Handle > &sh )
  * 352–366. Springer-Verlag, 2004.
  */
 template< typename Setup >
-struct Map : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Map< Setup > >
+struct Map : Algorithm, AlgorithmUtils< Setup, MapShared< typename Setup::Store::Handle > >,
+             Parallel< Setup::template Topology, Map< Setup > >
 {
-    typedef Map< Setup > This;
+    using This = Map< Setup >;
+    using Shared = MapShared< typename Setup::Store::Handle >;
+    using Utils = AlgorithmUtils< Setup, Shared >;
 
-    ALGORITHM_CLASS( Setup, MapShared< typename Setup::Store::Handle > );
-    DIVINE_RPC( rpc::Root,
-                &This::getShared, &This::setShared,
-                &This::_visit, &This::_cleanup,
-                &This::_parentTrace, &This::_traceCycle,
-                &This::_por, &This::_por_worker,
-                &This::_successorTrace, &This::_ceIsInitial );
+    using Utils::shared;
+    using Utils::shareds;
+
+    ALGORITHM_CLASS( Setup );
+    DIVINE_RPC( Utils, &This::_visit, &This::_cleanup,
+                       &This::_parentTrace, &This::_traceCycle,
+                       &This::_por, &This::_por_worker,
+                       &This::_successorTrace, &This::_ceIsInitial );
 
     int64_t acceptingCount,
             eliminated,

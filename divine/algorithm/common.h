@@ -169,16 +169,27 @@ struct Algorithm
     virtual ~Algorithm() {}
 };
 
-template< typename _Setup >
+template< typename _Setup, typename _Shared >
 struct AlgorithmUtils {
     typedef _Setup Setup;
     typedef typename Setup::Store Store;
     typedef typename Setup::Graph Graph;
 
+
+    typedef _Shared Shared;
+    Shared shared;
+    std::vector< Shared > shareds;
+    void setShared( Shared sh ) { shared = sh; }
+    Shared getShared() { return shared; }
+
     std::shared_ptr< Store > m_store;
     std::shared_ptr< Graph > m_graph;
 
+    using This = AlgorithmUtils< Setup, Shared >;
+
     typename Setup::Visitor::template Data< Setup > data;
+
+    DIVINE_RPC( rpc::Root, &This::getShared, &This::setShared );
 
     template< typename Self >
     void init( Self &self, Self &master, std::pair< int, int > id ) {
@@ -195,7 +206,7 @@ struct AlgorithmUtils {
 
     template< typename Self >
     void _init( Self &self, Self* master = nullptr ) {
-        static_assert( std::is_base_of< AlgorithmUtils< _Setup >, Self >::value,
+        static_assert( std::is_base_of< AlgorithmUtils< Setup, Shared >, Self >::value,
                "Algorithm must be descendant of AlgorithmUtils" );
         assert_eq( static_cast< Self* >( this ), &self );
 
@@ -223,12 +234,7 @@ struct AlgorithmUtils {
 }
 }
 
-#define ALGORITHM_CLASS(_setup, _shared)                        \
-    typedef _shared Shared;                                     \
-    Shared shared;                                              \
-    std::vector< Shared > shareds;                              \
-    void setShared( Shared sh ) { shared = sh; }                \
-    Shared getShared() { return shared; }                       \
+#define ALGORITHM_CLASS(_setup)                                 \
     typedef typename _setup::Graph Graph;                       \
     typedef typename _setup::Statistics Statistics;             \
     typedef typename Graph::Node Node;                          \

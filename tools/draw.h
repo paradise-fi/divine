@@ -18,7 +18,8 @@ namespace divine {
 template< typename > struct Simple;
 
 template< typename Setup >
-struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, visitor::SetupBase, Sequential
+struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wibble::Unit >,
+              visitor::SetupBase, Sequential
 {
     typedef Draw< Setup > This;
     typedef typename Setup::Graph Graph;

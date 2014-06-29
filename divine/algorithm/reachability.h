@@ -41,18 +41,22 @@ typename BS::bitstream &operator>>( BS &bs, ReachabilityShared< Vertex > &st )
  * about here.
  */
 template< template< typename > class E, typename Setup >
-struct CommonReachability : Algorithm, AlgorithmUtils< Setup >,
-                      Parallel< Setup::template Topology, CommonReachability< E, Setup > >
+struct CommonReachability : Algorithm, AlgorithmUtils< Setup, ReachabilityShared< typename Setup::Store::Vertex > >,
+                            Parallel< Setup::template Topology, CommonReachability< E, Setup > >
 {
     using This = CommonReachability< E, Setup >;
-    ALGORITHM_CLASS( Setup, ReachabilityShared< typename Setup::Store::Vertex > );
-    DIVINE_RPC( rpc::Root,
-                &This::getShared, &This::setShared,
-                &This::_visit, &This::_por, &This::_por_worker,
-                &This::_parentTrace, &This::_successorTrace, &This::_ceIsInitial );
+    using Shared = ReachabilityShared< typename Setup::Store::Vertex >;
+    using Utils = AlgorithmUtils< Setup, Shared >;
 
+    ALGORITHM_CLASS( Setup );
+
+    DIVINE_RPC( Utils, &This::_visit, &This::_por, &This::_por_worker,
+                       &This::_parentTrace, &This::_successorTrace, &This::_ceIsInitial );
 
     using Extension = E< Handle >;
+
+    using Utils::shared;
+    using Utils::shareds;
 
     Handle goal;
     Node goalData;

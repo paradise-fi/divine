@@ -51,18 +51,19 @@ typename BS::bitstream &operator>>( BS &bs, OwctyShared< Handle > &sh )
  * Methods, LNCS. Springer-Verlag, 2009.  To appear.
  */
 template< typename Setup >
-struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Topology, Owcty< Setup > >
+struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::Store::Handle > >,
+               Parallel< Setup::template Topology, Owcty< Setup > >
 {
-    typedef Owcty< Setup > This;
+    using This = Owcty< Setup >;
+    using Shared = OwctyShared< typename Setup::Store::Handle >;
+    using Utils = AlgorithmUtils< Setup, Shared >;
 
-    ALGORITHM_CLASS( Setup, OwctyShared< typename Setup::Store::Handle > );
-    DIVINE_RPC( rpc::Root,
-                &This::getShared, &This::setShared,
-                &This::_initialise, &This::_reachability, &This::_elimination,
-                &This::_counterexample, &This::_checkCycle,
-                &This::_parentTrace, &This::_traceCycle,
-                &This::_por, &This::_por_worker,
-                &This::_successorTrace, &This::_ceIsInitial );
+    ALGORITHM_CLASS( Setup );
+    DIVINE_RPC( Utils, &This::_initialise, &This::_reachability, &This::_elimination,
+                       &This::_counterexample, &This::_checkCycle,
+                       &This::_parentTrace, &This::_traceCycle,
+                       &This::_por, &This::_por_worker,
+                       &This::_successorTrace, &This::_ceIsInitial );
 
     // -------------------------------
     // -- Some useful types
@@ -112,7 +113,10 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup >, Parallel< Setup::template Top
     // -- generally useful utilities
     // --
 
-    using AlgorithmUtils< Setup >::store;
+    using Utils::store;
+    using Utils::shared;
+    using Utils::shareds;
+
     Pool& pool() {
         return this->graph().pool();
     }

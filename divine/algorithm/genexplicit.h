@@ -17,10 +17,7 @@
 namespace divine {
 namespace algorithm {
 
-template< typename Setup >
-struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
-                 Parallel< Setup::template Topology, _GenExplicit< Setup > >
-{
+struct GenExplicitShared : algorithm::Statistics {
     enum class Iteration : int8_t {
         Start = 0,
         Count,
@@ -29,7 +26,38 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
         WriteFile
     };
 
-    typedef _GenExplicit< Setup > This;
+    Iteration iteration;
+    bool need_expand;
+
+    GenExplicitShared() :
+        iteration( Iteration::Count ), need_expand( false )
+    { }
+
+    template< typename BS >
+    friend typename BS::bitstream &operator<<( BS &bs, GenExplicitShared s ) {
+        bs << static_cast< int8_t >( s.iteration )
+           << s.need_expand;
+        return bs;
+    }
+
+    template< typename BS >
+    friend typename BS::bitstream &operator>>( BS &bs, GenExplicitShared &s ) {
+        int8_t iter;
+        bs >> iter
+           >> s.need_expand;
+        s.iteration = static_cast< Iteration >( iter );
+        return bs;
+    }
+};
+
+template< typename Setup >
+struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
+                      Parallel< Setup::template Topology, _GenExplicit< Setup > >
+{
+    using This = _GenExplicit< Setup >;
+    using Shared = GenExplicitShared;
+    using Utils = AlgorithmUtils< Setup, Shared >;
+    using Iteration = typename Shared::Iteration;
 
     struct ThreadLimit {
         int64_t indexStart; // inclusive
@@ -48,31 +76,6 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
         template< typename BS >
         friend typename BS::bitstream &operator>>( BS &bs, ThreadLimit &tl ) {
             return bs >> tl.indexStart >> tl.indexEnd;
-        }
-    };
-
-    struct Shared : algorithm::Statistics {
-        Iteration iteration;
-        bool need_expand;
-
-        Shared() :
-            iteration( Iteration::Count ), need_expand( false )
-        { }
-
-        template< typename BS >
-        friend typename BS::bitstream &operator<<( BS &bs, Shared s ) {
-            bs << static_cast< int8_t >( s.iteration )
-               << s.need_expand;
-            return bs;
-        }
-
-        template< typename BS >
-        friend typename BS::bitstream &operator>>( BS &bs, Shared &s ) {
-            int8_t iter;
-            bs >> iter
-               >> s.need_expand;
-            s.iteration = static_cast< Iteration >( iter );
-            return bs;
         }
     };
 
@@ -146,13 +149,14 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup >,
         }
     };
 
-    ALGORITHM_CLASS( Setup, Shared );
-    DIVINE_RPC( rpc::Root,
-                &This::getShared, &This::setShared,
-                &This::_init, &This::_count,
-                &This::_por, &This::_por_worker, &This::_normalize,
-                &This::_trackPredecessors, &This::_writeFile, &This::_collectCount,
-                &This::_setLimits, &This::_getNodeId, &This::_cleanup );
+    ALGORITHM_CLASS( Setup );
+    DIVINE_RPC( Utils ,&This::_init, &This::_count,
+                       &This::_por, &This::_por_worker, &This::_normalize,
+                       &This::_trackPredecessors, &This::_writeFile, &This::_collectCount,
+                       &This::_setLimits, &This::_getNodeId, &This::_cleanup );
+
+    using Utils::shared;
+    using Utils::shareds;
 
     Params params;
     Limits limits;

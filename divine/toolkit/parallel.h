@@ -481,8 +481,8 @@ struct Mpi : MpiMonitor
         return mpi.rank();
     }
 
-    template< typename Bit >
-    void distribute( Bit bit, void (Instance::*set)( Bit ) )
+    template< typename Bit, typename I >
+    void distribute( Bit bit, void (I::*set)( Bit ) )
     {
         if ( mpi.size() > 1 ) {
             bitblock bs( m_mpiForwarder.pool );
@@ -493,8 +493,8 @@ struct Mpi : MpiMonitor
         m_local.distribute( bit, set );
     }
 
-    template< typename Bits, typename Bit >
-    void collect( Bits &bits, Bit (Instance::*get)() )
+    template< typename Bits, typename Bit, typename I >
+    void collect( Bits &bits, Bit (I::*get)() )
     {
         m_local.collect( bits, get );
 
@@ -514,7 +514,8 @@ struct Mpi : MpiMonitor
         }
     }
 
-    void parallel( void (Instance::*fun)() )
+    template< typename I >
+    void parallel( void (I::*fun)() )
     {
         bitblock bs( m_mpiForwarder.pool );
         rpc::marshall( bs, fun );
@@ -528,8 +529,8 @@ struct Mpi : MpiMonitor
                           mpi.size() > 1 ? &m_mpiForwarder : 0 );
     }
 
-    template< typename X >
-    X ring( X x, X (Instance::*fun)( X ) ) {
+    template< typename X, typename I >
+    X ring( X x, X (I::*fun)( X ) ) {
         X retval;
         bitblock bs( m_mpiForwarder.pool );
 
@@ -553,8 +554,8 @@ struct Mpi : MpiMonitor
 
     template< typename MPIT, typename F > struct RingFromRemote
     {
-        template< typename X >
-        auto operator()( MPIT &mpit, X (Instance::*fun)( X ), X x )
+        template< typename X, typename I >
+        auto operator()( MPIT &mpit, X (I::*fun)( X ), X x )
             -> typename std::enable_if< !std::is_void< X >::value >::type
         {
             if ( !mpit.mpi.rank() )
@@ -569,15 +570,15 @@ struct Mpi : MpiMonitor
 
     template< typename MPIT, typename F > struct ParallelFromRemote
     {
-        template< typename X >
-        auto operator()( MPIT &mpit, void (Instance::*fun)( X ), X x )
+        template< typename X, typename I >
+        auto operator()( MPIT &mpit, void (I::*fun)( X ), X x )
             -> typename std::enable_if< !std::is_void< X >::value >::type
         {
             mpit.distribute( x, fun );
         }
 
-        template< typename X >
-        void operator()( MPIT &mpit, X (Instance::*fun)() )
+        template< typename X, typename I >
+        void operator()( MPIT &mpit, X (I::*fun)() )
         {
             std::vector< X > bits;
             bitblock bs( mpit.m_mpiForwarder.pool );
@@ -588,7 +589,8 @@ struct Mpi : MpiMonitor
             mpit.mpi.sendStream( _lock, bs, mpit.request_source, TAG_COLLECT );
         }
 
-        void operator()( MPIT &mpit, void (Instance::*fun)() ) {
+        template< typename I >
+        void operator()( MPIT &mpit, void (I::*fun)() ) {
             mpit.parallel( fun );
         }
 

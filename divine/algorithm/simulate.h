@@ -173,7 +173,7 @@ struct ProcessLoop {
 };
 
 template< typename Setup >
-struct Simulate : Algorithm, AlgorithmUtils< Setup >, Sequential
+struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
 {
     typedef Simulate< Setup > This;
     typedef typename Setup::Graph Graph;

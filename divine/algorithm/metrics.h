@@ -74,25 +74,26 @@ typename BS::bitstream &operator>>( BS &bs, Statistics &st )
     return bs >> st.states >> st.transitions >> st.expansions >> st.accepting >> st.deadlocks;
 }
 
+struct MetricsShared : algorithm::Statistics {
+    bool need_expand;
+    MetricsShared() : need_expand( false ) {}
+};
+
 /**
  * A very simple state space measurement algorithm. Explores the full state
  * space, keeping simple numeric statistics (see the Statistics template
  * above).
  */
 template< typename Setup >
-struct Metrics : Algorithm, AlgorithmUtils< Setup >,
+struct Metrics : Algorithm, AlgorithmUtils< Setup, MetricsShared >,
                  Parallel< Setup::template Topology, Metrics< Setup > >
 {
-    typedef Metrics< Setup > This;
-    struct Shared : algorithm::Statistics {
-        bool need_expand;
-        Shared() : need_expand( false ) {}
-    };
+    using This = Metrics< Setup >;
+    using Shared = MetricsShared;
+    using Utils = AlgorithmUtils< Setup, Shared >;
 
-    ALGORITHM_CLASS( Setup, Shared );
-    DIVINE_RPC( rpc::Root,
-                &This::getShared, &This::setShared,
-                &This::_visit, &This::_por, &This::_por_worker );
+    ALGORITHM_CLASS( Setup );
+    DIVINE_RPC( Utils, &This::_visit, &This::_por, &This::_por_worker );
 
     struct Main : Visit< This, Setup > {
         static visitor::ExpansionAction expansion( This &t, const Vertex &st )
@@ -115,7 +116,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     };
 
     void _visit() { // parallel
-        this->visit( this, Main(), shared.need_expand );
+        this->visit( this, Main(), this->shared.need_expand );
     }
 
     void _por_worker() {
@@ -123,10 +124,10 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     }
 
     Shared _por( Shared sh ) {
-        shared = sh;
+        this->shared = sh;
         if ( this->graph().porEliminate( *this, *this ) )
-            shared.need_expand = true;
-        return shared;
+            this->shared.need_expand = true;
+        return this->shared;
     }
 
     Metrics( Meta m ) : Algorithm( m, 0 )
@@ -151,7 +152,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
     }
 
     void collect() {
-        for ( auto s : shareds )
+        for ( auto s : this->shareds )
             s.update( meta().statistics );
     }
 
@@ -161,19 +162,19 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup >,
         collect();
 
         do {
-            shared.need_expand = false;
+            this->shared.need_expand = false;
             ring( &This::_por );
-            if ( shared.need_expand ) {
+            if ( this->shared.need_expand ) {
                 parallel( &This::_visit );
                 collect();
             }
-        } while ( shared.need_expand );
+        } while ( this->shared.need_expand );
 
         progress() << "done" << std::endl;
         banner( progress() );
 
         result().fullyExplored = meta::Result::R::Yes;
-        shared.update( meta().statistics );
+        this->shared.update( meta().statistics );
     }
 };
 

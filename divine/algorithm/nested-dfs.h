@@ -14,7 +14,7 @@ namespace divine {
 namespace algorithm {
 
 template< typename Setup >
-struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
+struct NestedDFS : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
 {
     typedef NestedDFS< Setup > This;
     typedef typename Setup::Graph Graph;

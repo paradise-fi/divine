@@ -14,7 +14,8 @@ struct InfoBase {
 };
 
 template< typename Setup >
-struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup >, virtual InfoBase, Sequential
+struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wibble::Unit >,
+              virtual InfoBase, Sequential
 {
     typename Setup::Graph *g;
 
