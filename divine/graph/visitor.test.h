@@ -395,11 +395,11 @@ struct TestVisitor {
             while ( expected % i ) i--;
             store.setSize( 1024 );
             this->becomeMaster( i );
+            data.create();
             this->initSlaves( *this );
         }
 
         SharedCheck( SharedCheck &m, std::pair< int, int > i ) : SharedCheck( m )
-//            Check< G >( m ), expected( m.expected ), store( this->_graph, 0, &m.store )
         {
             this->becomeSlave( m.topology(), i );
         }

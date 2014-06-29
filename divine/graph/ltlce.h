@@ -220,8 +220,7 @@ struct LtlCE {
     template< typename Algorithm >
     void _traceCycle( Algorithm &a ) {
         typedef FindCycle< typename Algorithm::Setup > Find;
-        typename Find::Visitor::template Implementation< Find, Algorithm >
-            visitor( *this, a, a.graph(), a.store(), a.data );
+        auto visitor = a.makeVisitor( *this, a, Find() );
 
         assert( a.store().valid( shared().ce.initial ) );
         if ( a.store().knows( shared().ce.initial ) ) {

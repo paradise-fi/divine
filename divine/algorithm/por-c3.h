@@ -123,8 +123,7 @@ struct PORGraph : graph::Transform< G > {
     template< typename Algorithm >
     void _porEliminate( Algorithm &a ) {
         typedef POREliminate< typename Algorithm::Setup > Elim;
-        typename Elim::Visitor::template Implementation< Elim, Algorithm >
-            visitor( *this, a, *this, a.store(), a.data );
+        auto visitor = a.makeVisitor( *this, a, Elim() );
 
         Elim::init( *this, visitor );
         visitor.processQueue();

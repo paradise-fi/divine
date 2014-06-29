@@ -262,6 +262,7 @@ struct Interruptible : Override
 struct Partitioned {
     template< typename S >
     struct Data {
+        void create() {}
     };
 
     template< typename S, typename Worker >
@@ -390,11 +391,13 @@ struct Shared {
         std::shared_ptr< typename Chunker::Terminator > terminator;
         std::shared_ptr< StartDetector::Shared > detector;
 
-        Data() :
-            chunkq( std::make_shared< typename Chunker::ChunkQ >() ),
-            terminator( std::make_shared< typename Chunker::Terminator >() ),
-            detector( std::make_shared< StartDetector::Shared >() )
-            {}
+        void create() {
+            chunkq = std::make_shared< typename Chunker::ChunkQ >();
+            terminator = std::make_shared< typename Chunker::Terminator >();
+            detector = std::make_shared< StartDetector::Shared >();
+        }
+
+        Data() = default;
         Data( const Data & ) = default;
     };
 
@@ -476,9 +479,7 @@ struct Shared {
                         Data< typename S::AlgorithmSetup >& d )
             : closed( s ), bfvListener( &l, this ), bfv( bfvListener, g, s, d.chunkq, d.terminator ),
               detector( *d.detector ), worker( w ), notify( l )
-        {
-            d.chunkq->clear();
-        }
+        {}
     };
 };
 

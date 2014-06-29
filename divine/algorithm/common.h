@@ -71,6 +71,25 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
     }
 };
 
+template< typename T >
+struct Locally {
+    T *t;
+    Locally( T &t ) : t( &t ) {}
+    Locally() : t( nullptr ) {}
+};
+
+template< typename BS, typename T >
+typename BS::bitstream &operator>>( BS &bs, Locally< T > & )
+{
+    return bs;
+}
+
+template< typename BS, typename T >
+typename BS::bitstream &operator<<( BS &bs, const Locally< T > & )
+{
+    return bs;
+}
+
 struct Algorithm
 {
     typedef divine::Meta Meta;
@@ -137,22 +156,30 @@ struct Algorithm
     }
 
     template< typename T >
-    void parallel( void (T::*fun)() ) {
+    void parallel( void (T::*fun)() )
+    {
         T *self = static_cast< T * >( this );
 
-        // self->comms().enableSaving( self->meta().execution.diskFifo );
-
+        self->_visitorData.create();
+        self->topology().distribute( Locally< typename T::VisitorData >( self->_visitorData ), &T::setVisitorData );
         self->topology().distribute( self->shared, &T::setShared );
         self->topology().parallel( fun );
         self->shareds.clear();
         self->topology().template collect( self->shareds, &T::getShared );
+        self->_visitorData = typename T::VisitorData();
+    }
+
+    template< typename Self, typename Setup >
+    auto makeVisitor( typename Setup::Listener &l, Self &self, Setup setup )
+        -> typename Setup::Visitor::template Implementation< Setup, Self >
+    {
+        return typename Setup::Visitor::template Implementation< Setup, Self >(
+            l, self, self.graph(), self.store(), self._visitorData );
     }
 
     template< typename Self, typename Setup >
     void visit( Self *self, Setup setup, bool por = false ) {
-        typename Setup::Visitor::template Implementation< Setup, Self >
-            visitor( *self, *self, self->graph(), self->store(), self->data );
-
+        auto visitor = self->makeVisitor( *self, *self, setup );
         if ( por )
             setup.queuePOR( *self, visitor );
         else
@@ -186,10 +213,12 @@ struct AlgorithmUtils {
     std::shared_ptr< Graph > m_graph;
 
     using This = AlgorithmUtils< Setup, Shared >;
+    using VisitorData = typename Setup::Visitor::template Data< Setup >;
 
-    typename Setup::Visitor::template Data< Setup > data;
+    VisitorData _visitorData;
+    void setVisitorData( Locally< VisitorData > d ) { _visitorData = *d.t; }
 
-    DIVINE_RPC( rpc::Root, &This::getShared, &This::setShared );
+    DIVINE_RPC( rpc::Root, &This::getShared, &This::setShared, &This::setVisitorData );
 
     template< typename Self >
     void init( Self &self, Self &master, std::pair< int, int > id ) {
@@ -211,8 +240,6 @@ struct AlgorithmUtils {
         assert_eq( static_cast< Self* >( this ), &self );
 
         m_graph = std::shared_ptr< Graph >( self.initGraph( self, master ) );
-        if ( master )
-            data = master->data;
         m_store = std::shared_ptr< Store >( self.initStore( self, master ) );
     }
 
