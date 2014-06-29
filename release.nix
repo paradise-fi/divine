@@ -56,6 +56,7 @@ let
      diskImage = (builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 8192; };
      CMAKE_FLAGS = "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require}";
      NIX_BUILD = 1;
+     dontUseTmpfs = 1;
 
      # this actually runs just in debian-based distros, RPM based does not have configurePhase
      configurePhase = ''
