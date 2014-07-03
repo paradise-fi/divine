@@ -1,6 +1,6 @@
-## This file contains various support functions and macros for making use of
-## bricks easier with cmake-based projects. Call include(bricks/support.cmake)
-## in your toplevel CMakeLists.txt to access those functions.
+## This file contains support functions and macros for making use of bricks
+## easier with cmake-based projects. Call include(bricks/support.cmake) in your
+## toplevel CMakeLists.txt to access those functions.
 
 function( update_file name content )
   if( EXISTS ${name} )
@@ -57,7 +57,6 @@ endfunction()
 # idea.
 
 macro( bricks_check_features )
-
   include( CheckCXXSourceCompiles )
 
   check_cxx_source_compiles(
@@ -71,5 +70,4 @@ macro( bricks_check_features )
   if ( BRICKS_HAVE_DIRENT_D_TYPE )
     add_definitions( -DBRICKS_HAVE_DIRENT_D_TYPE )
   endif()
-
 endmacro()
