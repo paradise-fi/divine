@@ -2,9 +2,10 @@
 
 /*
  * Assorted types, mosly for C++11.
- * - Maybe a = Just a | Nothing
- * - Union: distriminated (tagged) union
+ * - Maybe a = Just a | Nothing (w/ a limited variant for C++98)
  * - Unit: single-valued type (empty structure)
+ * - Union: distriminated (tagged) union
+ * - StrongEnumFlags
  */
 
 /*
@@ -209,7 +210,7 @@ struct Maybe : mixin::Comparable< Maybe< _T > >
     }
 
     const T &value() const {
-        assert( isJust() );
+        ASSERT( isJust() );
         return _v.t.t();
     }
 
@@ -269,6 +270,90 @@ private:
 };
 
 #if __cplusplus >= 201103L
+
+template< typename E >
+using is_enum_class = std::integral_constant< bool,
+        std::is_enum< E >::value && !std::is_convertible< E, int >::value >;
+
+template< typename Self >
+struct StrongEnumFlags {
+    static_assert( is_enum_class< Self >::value, "Not an enum class." );
+    using This = StrongEnumFlags< Self >;
+    using UnderlyingType = typename std::underlying_type< Self >::type;
+
+    constexpr StrongEnumFlags() noexcept : store( 0 ) { }
+    constexpr StrongEnumFlags( Self flag ) noexcept :
+        store( static_cast< UnderlyingType >( flag ) )
+    { }
+    explicit constexpr StrongEnumFlags( UnderlyingType st ) noexcept : store( st ) { }
+
+    constexpr explicit operator UnderlyingType() const noexcept {
+        return store;
+    }
+
+    This &operator|=( This o ) noexcept {
+        store |= o.store;
+        return *this;
+    }
+
+    This &operator&=( This o ) noexcept {
+        store &= o.store;
+        return *this;
+    }
+
+    This &operator^=( This o ) noexcept {
+        store ^= o.store;
+        return *this;
+    }
+
+    friend constexpr This operator|( This a, This b ) noexcept {
+        return This( a.store | b.store );
+    }
+
+    friend constexpr This operator&( This a, This b ) noexcept {
+        return This( a.store & b.store );
+    }
+
+    friend constexpr This operator^( This a, This b ) noexcept {
+        return This( a.store ^ b.store );
+    }
+
+    friend constexpr bool operator==( This a, This b ) noexcept {
+        return a.store == b.store;
+    }
+
+    friend constexpr bool operator!=( This a, This b ) noexcept {
+        return a.store != b.store;
+    }
+
+    constexpr bool has( Self x ) const noexcept {
+        return (*this) & x;
+    }
+
+    constexpr operator bool() const noexcept {
+        return store;
+    }
+
+  private:
+    UnderlyingType store;
+};
+
+// don't catch integral types and classical enum!
+template< typename Self, typename = typename
+          std::enable_if< is_enum_class< Self >::value >::type >
+constexpr StrongEnumFlags< Self > operator|( Self a, Self b ) noexcept {
+    using Ret = StrongEnumFlags< Self >;
+    return Ret( a ) | Ret( b );
+}
+
+template< typename Self, typename = typename
+          std::enable_if< is_enum_class< Self >::value >::type >
+constexpr StrongEnumFlags< Self > operator&( Self a, Self b ) noexcept {
+    using Ret = StrongEnumFlags< Self >;
+    return Ret( a ) & Ret( b );
+}
+
+/* implementation of Union */
 
 namespace _impl {
     template< size_t val, typename... >
@@ -726,6 +811,8 @@ struct Mixins {
 
 };
 
+#if __cplusplus >= 201103L
+
 struct A { };
 struct B { B() { }; ~B() { } };
 struct C { int x; C( int x ) : x( x ) {} C() : x( 0 ) {} };
@@ -830,6 +917,49 @@ struct Union {
     }
 };
 
+enum class FA : unsigned char  { X = 1, Y = 2, Z = 4 };
+enum class FB : unsigned short { X = 1, Y = 2, Z = 4 };
+enum class FC : unsigned       { X = 1, Y = 2, Z = 4 };
+enum class FD : unsigned long  { X = 1, Y = 2, Z = 4 };
+
+struct StrongEnumFlags {
+    template< typename Enum >
+    void testEnum() {
+        types::StrongEnumFlags< Enum > e1;
+        types::StrongEnumFlags< Enum > e2( Enum::X );
+
+        ASSERT( !e1 );
+        ASSERT( e2 );
+
+        ASSERT( e1 | e2 );
+        ASSERT( Enum::X | Enum::Y );
+        ASSERT( e2 | Enum::Z );
+        ASSERT( e2.has( Enum::X ) );
+
+        ASSERT( e2 & Enum::X );
+        ASSERT( !( Enum::X & Enum::Y ) );
+
+        ASSERT( Enum::X | Enum::Y | Enum::Z );
+        ASSERT( !( Enum::X & Enum::Y & Enum::Z ) );
+        ASSERT( ( Enum::X | Enum::Y | Enum::Z ) & Enum::X );
+    }
+
+    // we don't want to break classical enums and ints by out operators
+    TEST(regression) {
+        enum Classic { C_X = 1, C_Y = 2, C_Z = 4 };
+
+        ASSERT( C_X | C_Y | C_Z );
+        ASSERT( 1 | 2 | 4 );
+        ASSERT( C_X & 1 );
+    }
+
+    TEST(enum_uchar) { testEnum< FA >(); }
+    TEST(enum_ushort) { testEnum< FB >(); }
+    TEST(enum_uint) { testEnum< FC >(); }
+    TEST(enum_ulong) { testEnum< FD >(); }
+};
+
+#endif
 
 }
 
