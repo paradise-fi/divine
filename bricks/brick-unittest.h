@@ -7,7 +7,7 @@
  *
  * Unit test registration is only enabled when compiling with -DUNITTEST to
  * avoid unneccessary startup-time overhead in normal binaries. See also
- * unittest.cmake.
+ * bricks_unittest in support.cmake.
  */
 
 /*

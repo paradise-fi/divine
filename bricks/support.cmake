@@ -2,13 +2,6 @@
 ## bricks easier with cmake-based projects. Call include(bricks/support.cmake)
 ## in your toplevel CMakeLists.txt to access those functions.
 
-# Create a unit test driver for a bunch of header files. Syntax:
-#
-#    bricks_unittest( driver_name header1 header2 ... )
-#
-# This will get you an executable target driver_name that you can run
-# to run the testsuite.
-
 function( update_file name content )
   if( EXISTS ${name} )
     file( READ ${name} old )
@@ -18,6 +11,13 @@ function( update_file name content )
     file( WRITE ${name} ${content} )
   endif()
 endfunction()
+
+# Create a unit test driver for a bunch of header files. Syntax:
+#
+#    bricks_unittest( driver_name header1 header2 ... )
+#
+# This will get you an executable target driver_name that you can run
+# to run the testsuite.
 
 function( bricks_unittest name )
   set( main "${CMAKE_CURRENT_BINARY_DIR}/${name}-main.cpp" )
