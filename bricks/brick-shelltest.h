@@ -772,8 +772,8 @@ struct TestCase {
     }
 
     TestCase( Journal &j, Options opt, std::string path, std::string name, std::string flavour )
-        : timeout( false ), child( path ), name( name ), flavour( flavour ), options( opt ), journal( &j ),
-          last_update( 0 ), last_heartbeat( 0 )
+        : child( path ), name( name ), flavour( flavour ), timeout( false ),
+          last_update( 0 ), last_heartbeat( 0 ), options( opt ), journal( &j )
     {
     }
 };
@@ -821,7 +821,7 @@ struct Main {
             ::unlink( journal.location.c_str() );
     }
 
-    void run() {
+    int run() {
         setup();
         start = time( 0 );
         std::cerr << "running " << cases.size() << " tests" << std::endl;
@@ -852,10 +852,12 @@ struct Main {
 
         journal.banner();
         if ( die || fatal_signal )
-            exit( 1 );
+            return 1;
+
+        return 0;
     }
 
-    Main( Options o ) : die( false ), options( o ), journal( o.outdir ) {}
+    Main( Options o ) : die( false ), journal( o.outdir ), options( o ) {}
 };
 
 namespace {
@@ -977,8 +979,7 @@ int run( int argc, const char **argv )
     setup_handlers();
 
     Main main( opt );
-    main.run();
-
+    return main.run();
 }
 
 }
