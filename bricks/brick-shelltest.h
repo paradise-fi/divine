@@ -503,7 +503,7 @@ bool interrupt = false;
 
 struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts;
-    std::string testdir, outdir;
+    std::string testdir, outdir, workdir;
     std::vector< std::string > flavours, filter;
     Options() : verbose( false ), batch( false ), interactive( false ),
                 cont( false ), fatal_timeouts( false ) {}
@@ -750,7 +750,7 @@ struct TestCase {
             exit(201);
         } else if (pid == 0) {
             io.close();
-            chdir( options.testdir.c_str() );
+            chdir( options.workdir.c_str() );
             setenv("LVM_TEST_FLAVOUR", flavour.c_str(), 1);
             child.exec();
         } else {
@@ -970,9 +970,13 @@ int run( int argc, const char **argv )
 
     opt.outdir = args.opt( "--outdir" );
     opt.testdir = args.opt( "--testdir" );
+    opt.workdir = args.opt( "--workdir" );
 
     if ( opt.testdir.empty() )
         opt.testdir = "/usr/share/lvm2-testsuite";
+
+    if ( opt.workdir.empty() )
+        opt.workdir = opt.testdir;
 
     opt.testdir += "/";
 
