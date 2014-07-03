@@ -64,7 +64,9 @@
 #define ASSERT_NEQ(x, y) ((void)0)
 #endif
 
-#define ASSERT_UNREACHABLE(...) assert_die_fn( LOCATION( brick::string::fmtf(__VA_ARGS__) ) )
+/* you must #include <brick-string.h> to use ASSERT_UNREACHABLE_F */
+#define ASSERT_UNREACHABLE_F(...) assert_die_fn( LOCATION( brick::string::fmtf(__VA_ARGS__) ) )
+#define ASSERT_UNREACHABLE(x) assert_die_fn( LOCATION( x ) )
 #define ASSERT_UNIMPLEMENTED() assert_die_fn( LOCATION( "not imlemented" ) )
 
 #ifndef BRICK_UNITTEST_H
