@@ -363,7 +363,7 @@ void _register( const char *n, bool fail )
 #define TEST_(n, bad)                                                   \
     void __reg_ ## n() {                                                \
         using T = typename std::remove_reference< decltype(*this) >::type; \
-        _register< T, &T::n, &T::__reg_ ## n >( #n, bad );              \
+        ::brick::unittest::_register< T, &T::n, &T::__reg_ ## n >( #n, bad ); \
     }                                                                   \
     void n()
 
@@ -371,17 +371,6 @@ void _register( const char *n, bool fail )
 #define TEST_FAILING(n) TEST_(n, true)
 
 #endif
-
-}
-}
-
-namespace test {
-
-using brick::unittest::TestCase;
-using brick::unittest::_register;
-using brick::unittest::AssertFailed;
-
-}
 
 /* The following small self-test test group demonstrates how to write unit
  * tests. The TEST(xxx) approach is preferred, but if you want to avoid using
@@ -412,6 +401,10 @@ struct SelfTest
 };
 
 }
+
+}
+}
+
 
 #endif
 
