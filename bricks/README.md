@@ -9,6 +9,6 @@ dependencies, but some bricks inevitably use other bricks (all relevant
 Most bricks come with a small demo, always at the bottom of the file enclosed
 in an #ifdef DEMO section. You can build and run those demos by running
 
-    $ g++ -DDEMO -x c++ -I. brick-something.h
+    $ g++ -DBRICK_DEMO -x c++ -I. brick-something.h
 
 (add -std=c++11 and other flags as needed).

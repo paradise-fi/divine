@@ -421,7 +421,7 @@ struct SelfTest
 
 #endif
 
-#ifdef DEMO
+#ifdef BRICK_DEMO
 
 int main( int argc, const char **argv ) {
     brick::unittest::run( argc > 1 ? argv[1] : "",
