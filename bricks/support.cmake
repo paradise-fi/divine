@@ -9,11 +9,18 @@
 # This will get you an executable target driver_name that you can run
 # to run the testsuite.
 
+function( update_file name content )
+  if( EXISTS ${name} )
+    file( READ ${name} old )
+  endif()
+
+  if( NOT "${old}" STREQUAL "${content}" )
+    file( WRITE ${name} ${content} )
+  endif()
+endfunction()
+
 function( bricks_unittest name )
   set( main "${CMAKE_CURRENT_BINARY_DIR}/${name}-main.cpp" )
-  if( EXISTS ${main} )
-    file( READ ${main} old )
-  endif()
 
   foreach( src ${ARGN} )
     set( new "${new}\n#include <${src}>" )
@@ -26,9 +33,7 @@ function( bricks_unittest name )
     }"
   )
 
-  if( NOT "${old}" STREQUAL "${new}" )
-    file( WRITE ${main} ${new} )
-  endif()
+  update_file( ${main} "${new}" )
 
   add_executable( ${name} ${main} )
   set_source_files_properties( ${main} PROPERTIES COMPILE_DEFINITIONS UNITTEST )
