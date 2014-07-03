@@ -943,6 +943,8 @@ int run( int argc, const char **argv )
 
     if ( args.has( "--only" ) )
         split( args.opt( "--only" ), opt.filter );
+    else if ( hasenv( "T" ) )
+        split( getenv( "T" ), opt.filter );
 
     if ( args.has( "--fatal-timeouts" ) )
         opt.fatal_timeouts = true;
