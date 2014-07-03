@@ -37,11 +37,13 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <cstdlib>
 #include <cxxabi.h>
 #include <vector>
 #include <set>
+#include <map>
 
 #ifdef __unix
 #include <unistd.h>
@@ -238,8 +240,13 @@ void fork_test( TestCaseBase *tc ) {
 void run( std::string only_group= "" , std::string only_case = "" ) {
     ASSERT( testcases );
     std::set< std::string > done;
+    std::map< std::string, int > counts;
 
     int total = 0, total_bad = 0, group_count = 0;
+
+    for ( auto group : *testcases ) {
+        ++ counts[ group->group() ];
+    }
 
     for ( auto group : *testcases ) {
         if ( !only_group.empty() && only_group != group->group() )
@@ -247,7 +254,11 @@ void run( std::string only_group= "" , std::string only_case = "" ) {
         if ( done.count( group->group() ) )
             continue;
 
+        if ( only_group.empty() )
+            std::cerr << "[" << std::setw( 3 ) << 100 * group_count / counts.size() << "%] ";
+
         std::cerr << group->group() << " " << std::flush;
+
         group_count ++;
 
         int all = 0, bad = 0;
