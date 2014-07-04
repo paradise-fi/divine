@@ -582,7 +582,13 @@ struct Parser {
 
 };
 
-namespace test {
+}
+}
+
+namespace brick_test {
+namespace parse {
+
+using namespace ::brick::parse;
 
 struct Parse {
     enum TokenId { Invalid, Number };
@@ -605,7 +611,7 @@ struct Parse {
         IOStream( std::istream &i ) : i( i ) {}
     };
 
-    struct Lexer : parse::Lexer< Token, IOStream >
+    struct _Lexer : Lexer< Token, IOStream >
     {
         Token remove() {
             this->skipWhitespace();
@@ -613,8 +619,8 @@ struct Parse {
             return this->decide();
         }
 
-        Lexer( IOStream &s )
-            : parse::Lexer< Token, IOStream >( s )
+        _Lexer( IOStream &s )
+            : Lexer< Token, IOStream >( s )
         {}
     };
 
@@ -622,7 +628,7 @@ struct Parse {
         std::stringstream s;
         IOStream is( s );
         Token t;
-        Lexer l( is );
+        _Lexer l( is );
 
         s << "1 2";
 
@@ -638,8 +644,6 @@ struct Parse {
         ASSERT_EQ( t.id, Invalid );
     }
 };
-
-}
 
 }
 }

@@ -342,11 +342,17 @@ typename BT::template AccessAt< I >::T::Head get( BT &bt )
     return t;
 }
 
-namespace test {
+}
+}
 
-struct BitTuple {
+namespace brick_test {
+namespace bitlevel {
+
+using namespace ::brick::bitlevel;
+
+struct BitTupleTest {
     using U10 = BitField< unsigned, 10 >;
-    using T10_10 = bitlevel::BitTuple< U10, U10 >;
+    using T10_10 = BitTuple< U10, U10 >;
 
     int bitcount( uint32_t word ) {
         int i = 0;
@@ -586,7 +592,6 @@ struct BitTuple {
     }
 #undef CHECK
 };
-}
 
 }
 }

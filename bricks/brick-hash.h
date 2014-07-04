@@ -667,7 +667,13 @@ inline hash128_t spooky( const void *message, size_t length, uint64_t seed1, uin
 
 }
 
-namespace test {
+}
+}
+
+namespace brick_test {
+namespace hash {
+
+using namespace ::brick::hash;
 
 class Random
 {
@@ -976,8 +982,6 @@ struct Jenkins {
     }
 #undef BUFSIZE
 };
-
-}
 
 }
 }

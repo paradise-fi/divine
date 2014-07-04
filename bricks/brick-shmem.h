@@ -375,15 +375,21 @@ public:
     }
 };
 
-namespace test {
+}
+}
+
+namespace brick_test {
+namespace shmem {
+
+using namespace ::brick::shmem;
 
 #if __cplusplus >= 201103L
 
-struct Fifo {
+struct FifoTest {
     template< typename T >
-    struct Checker : shmem::Thread
+    struct Checker : Thread
     {
-        shmem::Fifo< T > fifo;
+        Fifo< T > fifo;
         int terminate;
         int n;
 
@@ -429,11 +435,11 @@ struct Fifo {
 struct StartEnd {
     static const int peers = 12;
 
-    struct DetectorWorker : shmem::Thread {
+    struct DetectorWorker : Thread {
 
-        shmem::StartDetector detector;
+        StartDetector detector;
 
-        DetectorWorker( shmem::StartDetector::Shared &sh ) :
+        DetectorWorker( StartDetector::Shared &sh ) :
             detector( sh )
         {}
 
@@ -443,7 +449,7 @@ struct StartEnd {
     };
 
     TEST(startDetector) {// this test must finish
-        shmem::StartDetector::Shared sh;
+        StartDetector::Shared sh;
         std::vector< DetectorWorker > threads{ peers, DetectorWorker{ sh } };
 
 #ifdef POSIX // hm
@@ -459,9 +465,9 @@ struct StartEnd {
         }
     }
 
-    struct CounterWorker : shmem::Thread {
-        shmem::StartDetector detector;
-        shmem::ApproximateCounter counter;
+    struct CounterWorker : Thread {
+        StartDetector detector;
+        ApproximateCounter counter;
         std::atomic< int > &queue;
         std::atomic< bool > &interrupted;
         int produce;
@@ -504,13 +510,13 @@ struct StartEnd {
     };
 
     void process( bool terminateEarly ) {
-        shmem::StartDetector::Shared detectorShared;
-        shmem::ApproximateCounter::Shared counterShared;
+        StartDetector::Shared detectorShared;
+        ApproximateCounter::Shared counterShared;
         std::atomic< bool > interrupted( false );
 
         // queueInitials
         std::atomic< int > queue{ 1 };
-        shmem::ApproximateCounter c( counterShared );
+        ApproximateCounter c( counterShared );
         ++c;
         c.sync();
 
@@ -560,9 +566,6 @@ struct StartEnd {
 };
 
 #endif
-
-
-}
 
 }
 }

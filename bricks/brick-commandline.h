@@ -2008,7 +2008,13 @@ void Manpage::readHooks(const std::string& file)
     fclose(in);
 }
 
-namespace test {
+}
+}
+
+namespace brick_test {
+namespace commandline {
+
+using namespace ::brick::commandline;
 
 template<typename T>
 class Public : public T
@@ -2074,7 +2080,7 @@ public:
 
 using std::string;
 
-struct Engine {
+struct EngineTest {
 
     TEST(optsAndArgs) {
         ArgList opts;
@@ -2212,7 +2218,7 @@ struct Engine {
         ArgList::iterator i = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
-        ASSERT_EQ(engine.foundCommand(), static_cast<commandline::Engine*>(0));
+        ASSERT_EQ(engine.foundCommand(), static_cast<Engine*>(0));
         ASSERT_EQ(engine.scramble_yell->stringValue(), string());
         ASSERT_EQ(engine.scramble_random->boolValue(), false);
         ASSERT_EQ(engine.fix_yell->stringValue(), string());
@@ -2222,7 +2228,7 @@ struct Engine {
 
     TEST(creationShortcuts) {
         MemoryManager mman;
-        Public<commandline::Engine> engine(&mman, "test", "[options]", "test engine", "this is the long description of a test engine");
+        Public<Engine> engine(&mman, "test", "[options]", "test engine", "this is the long description of a test engine");
         OptionGroup* group = engine.addGroup("test option group");
         BoolOption* testBool = group->add<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
         IntOption* testInt = group->add<IntOption>("tint", 0, "testint", "<val>", "a test int switch");
@@ -2252,7 +2258,6 @@ struct Engine {
 
 };
 
-}
 }
 }
 

@@ -379,7 +379,13 @@ constexpr auto lookup( X x, L l, int idx = 1 ) -> typename std::enable_if< L::le
     return compare( preferred(), x, l.car ) ? idx : lookup( x, l.cdr, idx + 1 );
 }
 
-namespace test {
+}
+}
+
+namespace brick_test {
+namespace hlist {
+
+using namespace ::brick::hlist;
 
 static_assert( std::is_same< TypeList< int, long, bool >::Get< 0 >, int >::value, "" );
 static_assert( std::is_same< TypeList< int, long, bool >::Get< 1 >, long >::value, "" );
@@ -437,8 +443,6 @@ struct BoolExpr {
         _basic< Switch, std::false_type, std::true_type >();
     }
 };
-
-}
 
 }
 }

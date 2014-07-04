@@ -341,7 +341,13 @@ void demarshall( T &t, BSI &bsi, BSO &bso ) {
     demarshallWith< T, Call >( t, bsi, bso );
 }
 
-namespace test {
+}
+}
+
+namespace brick_test {
+namespace rpc {
+
+using namespace ::brick::rpc;
 
 struct Bitstream {
     TEST(_bitstream) {
@@ -374,8 +380,6 @@ struct Bitstream {
         assert( bs.empty() );
     }
 };
-
-}
 
 }
 }

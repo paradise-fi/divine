@@ -767,7 +767,13 @@ struct Union {
 
 #endif // C++11
 
-namespace test {
+}
+}
+
+namespace brick_test {
+namespace types {
+
+using namespace ::brick::types;
 
 struct Integer : mixin::Comparable<Integer>
 {
@@ -821,19 +827,18 @@ static_assert( _impl::In< int, int >::value, "" );
 static_assert( _impl::In< A, A, B >::value, "" );
 static_assert( _impl::In< A, B, A >::value, "" );
 
-}
+// test instances
+struct UnionInstances {
+    Union<> a;
+    Union< int, long > b;
+    Union< int, long, A > c;
+    Union< int, long, A, B > d;
+    Union< int, long, A, B, std::string > e;
+};
 
-template struct Union<>;
-template struct Union< int, long >;
-template struct Union< int, long, test::A >;
-template struct Union< int, long, test::A, test::B >;
-template struct Union< int, long, test::A, test::B, std::string >;
-
-namespace test {
-
-struct Union {
+struct UnionTest {
     TEST(basic) {
-        types::Union< int > u( 1 );
+        Union< int > u( 1 );
         ASSERT( !!u );
         ASSERT( !u.empty() );
         ASSERT( u.is< int >() );
@@ -867,7 +872,7 @@ struct Union {
 
             Move &operator=( Move ) { return *this; }
         };
-        types::Union< long, Move > wierd;
+        Union< long, Move > wierd;
         ASSERT( wierd.empty() );
 
         wierd = 2L;
@@ -881,26 +886,26 @@ struct Union {
     }
 
     TEST(ctorCast) {
-        ASSERT( ( types::Union< int, long >{ int( 1 ) }.is< int >() ) );
-        ASSERT( ( types::Union< int, long >{ long( 1 ) }.is< long >() ) );
+        ASSERT( ( Union< int, long >{ int( 1 ) }.is< int >() ) );
+        ASSERT( ( Union< int, long >{ long( 1 ) }.is< long >() ) );
 
-        ASSERT( ( types::Union< long, std::string >{ int( 1 ) }.is< long >() ) );
+        ASSERT( ( Union< long, std::string >{ int( 1 ) }.is< long >() ) );
 
         struct A { operator int(){ return 1; } };
-        ASSERT( ( types::Union< int, A >{ A() }.is< A >() ) );
-        ASSERT( ( types::Union< int, std::string >{ A() }.is< int >() ) );
+        ASSERT( ( Union< int, A >{ A() }.is< A >() ) );
+        ASSERT( ( Union< int, std::string >{ A() }.is< int >() ) );
 
         struct B { B( int ) { } B() = default; };
-        ASSERT( ( types::Union< int, B >{ B() }.is< B >() ) );
-        ASSERT( ( types::Union< int, B >{ 1 }.is< int >() ) );
-        ASSERT( ( types::Union< B, std::string >{ 1 }.is< B >() ) );
+        ASSERT( ( Union< int, B >{ B() }.is< B >() ) );
+        ASSERT( ( Union< int, B >{ 1 }.is< int >() ) );
+        ASSERT( ( Union< B, std::string >{ 1 }.is< B >() ) );
     }
 
     static C idC( C c ) { return c; };
     static C constC( B b ) { return C( 32 ); };
 
     TEST(apply) {
-        types::Union< B, C > u;
+        Union< B, C > u;
         u = B();
 
         Maybe< C > result = u.match( idC, constC );
@@ -922,11 +927,11 @@ enum class FB : unsigned short { X = 1, Y = 2, Z = 4 };
 enum class FC : unsigned       { X = 1, Y = 2, Z = 4 };
 enum class FD : unsigned long  { X = 1, Y = 2, Z = 4 };
 
-struct StrongEnumFlags {
+struct StrongEnumFlagsTest {
     template< typename Enum >
     void testEnum() {
-        types::StrongEnumFlags< Enum > e1;
-        types::StrongEnumFlags< Enum > e2( Enum::X );
+        StrongEnumFlags< Enum > e1;
+        StrongEnumFlags< Enum > e2( Enum::X );
 
         ASSERT( !e1 );
         ASSERT( e2 );
@@ -960,8 +965,6 @@ struct StrongEnumFlags {
 };
 
 #endif
-
-}
 
 }
 }

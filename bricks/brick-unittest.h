@@ -405,7 +405,16 @@ void _register( const char *n, bool fail = false )
  * macros at all costs, you can use the _register call as shown in the
  * assert_eq test. */
 
-namespace test {
+}
+}
+
+namespace brick_test {
+
+using namespace ::brick;
+
+namespace unittest {
+
+using namespace ::brick::unittest;
 
 struct SelfTest
 {
@@ -427,8 +436,6 @@ struct SelfTest
         ASSERT( !die );
     }
 };
-
-}
 
 }
 }
