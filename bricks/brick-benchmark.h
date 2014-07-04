@@ -40,6 +40,9 @@
 #include <sys/socket.h>
 #endif
 
+#ifndef BRICK_BENCHMARK_H
+#define BRICK_BENCHMARK_H
+
 namespace brick {
 namespace benchmark {
 
@@ -262,3 +265,5 @@ struct SelfTest : BenchmarkGroup {
 
 }
 }
+
+#endif
