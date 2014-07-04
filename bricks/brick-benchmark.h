@@ -232,9 +232,9 @@ struct Benchmark : BenchmarkBase
 
 #define BENCHMARK(n)                                                    \
     void __reg_ ## n() {                                                \
-        using T = typename std::remove_reference< decltype(*this) >::type; \
+        using __T = typename std::remove_reference< decltype(*this) >::type; \
         ::brick::unittest::_register_g<                                 \
-            ::brick::benchmark::Benchmark, T, &T::n, &T::__reg_ ## n >( #n, false ); \
+            ::brick::benchmark::Benchmark, __T, &__T::n, &__T::__reg_ ## n >( #n, false ); \
     }                                                                   \
     void n()
 

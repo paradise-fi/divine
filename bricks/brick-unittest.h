@@ -414,8 +414,8 @@ void _register( const char *n, bool fail = false )
 
 #define TEST_(n, bad)                                                   \
     void __reg_ ## n() {                                                \
-        using T = typename std::remove_reference< decltype(*this) >::type; \
-        ::brick::unittest::_register< T, &T::n, &T::__reg_ ## n >( #n, bad ); \
+        using __T = typename std::remove_reference< decltype(*this) >::type; \
+        ::brick::unittest::_register< __T, &__T::n, &__T::__reg_ ## n >( #n, bad ); \
     }                                                                   \
     void n()
 
