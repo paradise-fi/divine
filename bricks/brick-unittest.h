@@ -243,10 +243,33 @@ void fork_test( TestCaseBase *tc, int * ) {
 
 #endif
 
+std::string simplify( std::string s, std::string l, bool fill = true ) {
+    int cut = 0, stop = 0;
+    while ( cut < s.length() && cut < l.length() && s[cut] == l[cut] ) {
+        ++cut;
+        if ( l[cut - 1] == ':' )
+            stop = cut;
+        if ( l[cut] == '<' )
+            break;
+    }
+
+    while ( cut < s.length() && s[ cut ] != '<' )
+        ++cut;
+
+    if ( s[cut] == '<' ) {
+        s = std::string( s, 0, cut + 1 ) +
+            simplify( std::string( s, cut + 1, std::string::npos),
+                      std::string( s, 0, cut - 1 ), false );
+    }
+
+    return (fill ? std::string( stop, ' ' ) : "") + std::string( s, stop, std::string::npos );
+}
+
 void run( std::string only_group= "" , std::string only_case = "" ) {
     ASSERT( testcases );
     std::set< std::string > done;
     std::map< std::string, int > counts;
+    std::string last;
 
     int total = 0, total_bad = 0, group_count = 0;
 
@@ -263,7 +286,7 @@ void run( std::string only_group= "" , std::string only_case = "" ) {
         if ( only_group.empty() )
             std::cerr << "[" << std::setw( 3 ) << 100 * group_count / counts.size() << "%] ";
 
-        std::cerr << group->group() << " " << std::flush;
+        std::cerr << simplify( group->group(), last ) << " " << std::flush;
 
         group_count ++;
 
@@ -300,6 +323,7 @@ void run( std::string only_group= "" , std::string only_case = "" ) {
             std::cerr << ", " << bad << " failed";
         std::cerr << std::endl;
         done.insert( group->group() );
+        last = group->group();
     }
 
     std::cerr << "# summary: " << (total - total_bad) << " ok";
