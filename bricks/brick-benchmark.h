@@ -240,6 +240,15 @@ struct Benchmark : BenchmarkBase
 
 #endif
 
+}
+}
+
+namespace brick_test {
+
+using namespace ::brick::benchmark;
+
+namespace benchmark {
+
 struct SelfTest : BenchmarkGroup {
     SelfTest() {
         x.active = true;
