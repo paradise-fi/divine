@@ -142,8 +142,8 @@ void repeat( BenchmarkBase *tc ) {
     std::cerr << "    " << p_name << " = " << std::setw( 8 ) << p << " " << p_unit
               <<   ", " << q_name << " = " << std::setw( 8 ) << q << " " << q_unit
               << std::fixed << std::setprecision( 3 )
-              << ", time = " << std::setw( 7 ) << avg * 1000
-              << " ±" << std::setw( 5 ) << 3 * stddev * 1000
+              << ", time = " << std::setw( 8 ) << avg * 1000
+              << " ±" << std::setw( 6 ) << 3 * stddev * 1000
               << " [sample = " << std::setw( 3 ) << series.size()
               << ", discarded = " << std::setw( 3 ) << iterations - series.size()
               << " , σ = " << stddev * 1000 << "]" << std::endl;
