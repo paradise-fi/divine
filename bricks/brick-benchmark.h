@@ -108,7 +108,7 @@ void repeat( BenchmarkBase *tc ) {
     double avg = 0, stddev = 0;
     int iterations = 0;
 
-    while ( series.size() < 100 && (!stddev || (stddev / avg) > 0.005) ) {
+    while ( series.size() < 100 && iterations < 200 && (!stddev || (stddev / avg) > 0.005) ) {
         for ( int i = 0; i < 10; ++i ) {
             iterations ++;
             unittest::fork_test( tc, tc->fds );
