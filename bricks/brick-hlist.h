@@ -35,6 +35,9 @@
 
 #include <type_traits>
 
+#ifndef BRICK_HLIST_H
+#define BRICK_HLIST_H
+
 namespace brick {
 namespace hlist {
 
@@ -439,3 +442,5 @@ struct BoolExpr {
 
 }
 }
+
+#endif
