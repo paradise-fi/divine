@@ -5,9 +5,9 @@
  * unit tests in them and run unittest::run(). To get a listing, use
  * unittest::list(). There are examples of unit tests at the end of this file.
  *
- * Unit test registration is only enabled when compiling with -DUNITTEST to
- * avoid unneccessary startup-time overhead in normal binaries. See also
- * bricks_unittest in support.cmake.
+ * Unit test registration is only enabled when compiling with
+ * -DBRICK_UNITTEST_REG to avoid unneccessary startup-time overhead in normal
+ * binaries. See also bricks_unittest in support.cmake.
  */
 
 /*
@@ -198,13 +198,19 @@ void list() {
 
 #ifdef __unix
 
-void fork_test( TestCaseBase *tc ) {
+void fork_test( TestCaseBase *tc, int *fds ) {
     pid_t pid = fork();
     if ( pid < 0 ) {
         std::cerr << "W: fork failed" << std::endl;
         tc->run(); // well...
     }
     if ( pid == 0 ) {
+        if ( fds ) {
+            ::dup2( fds[1], 1 );
+            ::close( fds[0] );
+            ::close( fds[1] );
+        }
+
         try {
             tc->run(); // if anything goes wrong, this should throw
         } catch ( const std::exception &e ) {
@@ -231,7 +237,7 @@ void fork_test( TestCaseBase *tc ) {
 
 #else // windows and other abominations
 
-void fork_test( TestCaseBase *tc ) {
+void fork_test( TestCaseBase *tc, int * ) {
     tc->run();
 }
 
@@ -275,7 +281,7 @@ void run( std::string only_group= "" , std::string only_case = "" ) {
                 if ( !only_group.empty() && !only_case.empty() )
                     tc->run();
                 else
-                    fork_test( tc );
+                    fork_test( tc, nullptr );
                 ok = true;
             } catch ( const std::exception &e ) {
                 if ( e.what() != std::string( "TestFailed" ) )
@@ -330,23 +336,13 @@ struct TestCase : TestCaseBase {
 
 struct RegistrationDone {};
 
-#ifndef UNITTEST
+template< template < typename X, void (X::*)() > class Wrapper,
+          typename T, void (T::*tc)(), void (T::*reg)() >
+void _register_g( const char *n, bool fail ) __attribute__((constructor));
 
-template< typename T, void (T::*tc)(), void (T::*reg)() = tc >
-void _register( const char *n )
-{
-}
-
-#define TEST(n)         void n()
-#define TEST_FAILING(n) void n()
-
-#else
-
-template< typename T, void (T::*tc)(), void (T::*reg)() = tc >
-void _register( const char *n, bool fail = false ) __attribute__((constructor));
-
-template< typename T, void (T::*tc)(), void (T::*reg)() >
-void _register( const char *n, bool fail )
+template< template < typename X, void (X::*)() > class Wrapper,
+          typename T, void (T::*tc)(), void (T::*reg)() >
+void _register_g( const char *n, bool fail )
 {
     static int entries = 0;
 
@@ -355,7 +351,7 @@ void _register( const char *n, bool fail )
 
     ++ entries;
 
-    static TestCase< T, tc > t;
+    static Wrapper< T, tc > t;
 
     if ( entries == 1 ) {
         try {
@@ -372,6 +368,25 @@ void _register( const char *n, bool fail )
         throw RegistrationDone();
     }
 }
+
+#ifndef BRICK_UNITTEST_REG
+
+template< typename T, void (T::*tc)(), void (T::*reg)() = tc >
+void _register( const char *n )
+{
+}
+
+#define TEST(n)         void n()
+#define TEST_FAILING(n) void n()
+
+#else
+
+template< typename T, void (T::*tc)(), void (T::*reg)() = tc >
+void _register( const char *n, bool fail = false )
+{
+    return _register_g< TestCase, T, tc, reg >( n, fail );
+}
+
 
 #define TEST_(n, bad)                                                   \
     void __reg_ ## n() {                                                \

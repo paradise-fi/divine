@@ -12,6 +12,26 @@ function( update_file name content )
   endif()
 endfunction()
 
+function( bricks_make_runner name main defs )
+  set( file "${CMAKE_CURRENT_BINARY_DIR}/${name}-runner.cpp" )
+
+  foreach( src ${ARGN} )
+    set( new "${new}\n#include <${src}>" )
+  endforeach( src )
+
+  set( new "${new}
+    int main( int argc, const char **argv ) {
+      ${main}
+      return 0\;
+    }"
+  )
+
+  update_file( ${file} "${new}" )
+
+  add_executable( ${name} ${file} )
+  set_source_files_properties( ${file} PROPERTIES COMPILE_DEFINITIONS ${defs} )
+endfunction()
+
 # Create a unit test driver for a bunch of header files. Syntax:
 #
 #    bricks_unittest( driver_name header1 header2 ... )
@@ -20,23 +40,15 @@ endfunction()
 # to run the testsuite.
 
 function( bricks_unittest name )
-  set( main "${CMAKE_CURRENT_BINARY_DIR}/${name}-main.cpp" )
-
-  foreach( src ${ARGN} )
-    set( new "${new}\n#include <${src}>" )
-  endforeach( src )
-
-  set( new "${new}
-    int main( int argc, const char **argv ) {
+  bricks_make_runner( ${name} "
       brick::unittest::run( argc > 1 ? argv[1] : \"\",
-                            argc > 2 ? argv[2] : \"\" )\;
-    }"
-  )
+                            argc > 2 ? argv[2] : \"\" )\;"
+      "BRICK_UNITTEST_REG" ${ARGN} )
+endfunction()
 
-  update_file( ${main} "${new}" )
-
-  add_executable( ${name} ${main} )
-  set_source_files_properties( ${main} PROPERTIES COMPILE_DEFINITIONS UNITTEST )
+function( bricks_benchmark name )
+  bricks_make_runner( ${name} "brick::benchmark::run( argc, argv )\;"
+                      "BRICK_BENCHMARK_REG" ${ARGN} )
 endfunction()
 
 # Register a target "test-bricks" that builds and runs all the unit tests
@@ -49,6 +61,12 @@ function( test_bricks dir )
   include_directories( ${dir} )
   file( GLOB SRC "${dir}/brick-*.h" )
   bricks_unittest( test-bricks ${SRC} )
+endfunction()
+
+function( benchmark_bricks dir )
+  include_directories( ${dir} )
+  file( GLOB SRC "${dir}/brick-*.h" )
+  bricks_benchmark( benchmark-bricks ${SRC} )
 endfunction()
 
 # Run feature checks and define -DBRICKS_* feature macros. You can use bricks
