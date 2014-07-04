@@ -970,3 +970,4 @@ struct StrongEnumFlagsTest {
 }
 
 #endif
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab

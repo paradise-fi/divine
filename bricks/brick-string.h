@@ -223,3 +223,4 @@ WordWrap(const std::string& s) : s(s), cursor(0) {}
 }
 
 #endif
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab

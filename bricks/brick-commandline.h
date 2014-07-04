@@ -2366,4 +2366,4 @@ int main(int argc, const char* argv[])
 
 #endif
 
-// vim: tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
