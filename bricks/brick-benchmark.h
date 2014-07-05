@@ -307,8 +307,8 @@ struct Benchmark : BenchmarkBase
 
     std::pair< int, int > amplitude() {
         BenchGroup bg;
-        return std::make_pair( ceil( log10( bg.x.scaled( bg.x.max ) ) ),
-                               ceil( log10( bg.y.scaled( bg.y.max ) ) ) );
+        return std::make_pair( floor( 1 + log10( bg.x.scaled( bg.x.max ) ) ),
+                               floor( 1 + log10( bg.y.scaled( bg.y.max ) ) ) );
     }
 
     void setup( int p_seq, int q_seq ) {
