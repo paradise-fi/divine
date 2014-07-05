@@ -820,7 +820,7 @@ struct TestCase {
 
     void setupIO() {
         iobuf = 0;
-        if ( options.verbose )
+        if ( options.verbose || options.interactive )
             io.sinks.push_back( new FdSink( 1 ) );
         else if ( !options.batch )
             io.sinks.push_back( iobuf = new BufSink() );
