@@ -552,7 +552,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         size_t size() const { return _size; }
 
         void size( size_t s ) {
-            assert( empty() );
+            ASSERT( empty() );
             _size = s;
         }
 
@@ -731,7 +731,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                     return Insert( Resolution::Growing );
             }
 
-            assert( !row.empty() );
+            ASSERT( !row.empty() );
             const size_t mask = row.size() - 1;
 
             for ( size_t i = 0; i < Base::maxcollisions; ++i )
@@ -755,7 +755,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
         bool grow( unsigned rowIndex )
         {
-            assert( rowIndex );
+            ASSERT( rowIndex );
 
             if ( rowIndex >= _d.table.size() )
                 ASSERT_UNREACHABLE( "out of growth space" );
@@ -814,7 +814,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             auto end = it + segmentSize;
             if ( end > row.end() )
                 end = row.end();
-            assert( it < end );
+            ASSERT( it < end );
 
             ThreadData td;
             td.currentRow = _d.currentRow;
