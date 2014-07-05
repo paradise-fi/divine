@@ -560,7 +560,7 @@ bool interrupt = false;
 
 struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts;
-    std::string testdir, outdir, workdir;
+    std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, filter;
     Options() : verbose( false ), batch( false ), interactive( false ),
                 cont( false ), fatal_timeouts( false ) {}
@@ -641,12 +641,12 @@ struct TestCase {
         end = time( 0 );
 
         /* heartbeat */
-        if ( end - last_heartbeat >= 20 ) {
-            std::string stampfile( options.outdir + "/timestamp" );
-            std::ofstream stamp( stampfile.c_str() );
-            stamp << end;
-            stamp.close();
-            fsync_name( stampfile );
+        if ( end - last_heartbeat >= 20 && !options.heartbeat.empty() ) {
+            std::ofstream hb( options.heartbeat.c_str(), std::fstream::app );
+            hb << ".";
+            hb.close();
+            fsync_name( options.heartbeat );
+            last_heartbeat = end;
         }
 
         if ( wait4(pid, &status, WNOHANG, &usage) != 0 ) {
@@ -1005,6 +1005,9 @@ int run( int argc, const char **argv )
 
     if ( args.has( "--fatal-timeouts" ) )
         opt.fatal_timeouts = true;
+
+    if ( args.has( "--heartbeat" ) )
+        opt.heartbeat = args.opt( "--heartbeat" );
 
     if ( args.has( "--batch" ) || hasenv( "BATCH" ) ) {
         opt.verbose = false;
