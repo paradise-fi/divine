@@ -62,6 +62,7 @@
 #include <cassert>
 #include <iterator>
 #include <algorithm>
+#include <stdexcept>
 
 #ifdef __unix
 #include <dirent.h>
