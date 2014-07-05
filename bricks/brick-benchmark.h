@@ -113,6 +113,7 @@ struct BenchmarkBase : unittest::TestCaseBase {
     struct timespec start, end;
     int fds[2];
     virtual std::pair< int, int > dimensions() = 0;
+    virtual std::pair< int, int > amplitude() = 0;
     virtual void setup( int p_seq, int q_seq ) = 0;
 };
 
@@ -127,6 +128,11 @@ struct Axis {
              min( 1 ), max( 10 ), step( 1 ),
              unit_mul( 1 ), unit_div( 1 ),
              name( "n" ), unit( "unit" ) {}
+
+    int scaled( int p ) {
+        return (p * unit_mul) / unit_div;
+    }
+
     int count() {
         if ( !active )
             return 1;
@@ -154,6 +160,8 @@ struct BenchmarkGroup {
             a.min = (a.min * a.step) / 100;
         return a.min;
     }
+    virtual int p_scaled() { return x.scaled( p ); }
+    virtual int q_scaled() { return y.scaled( q ); }
 };
 
 namespace {
@@ -166,7 +174,7 @@ std::string render_ci( double point, double low_err, double high_err )
     double mult = 1;
 
     std::stringstream str;
-    std::vector< std::string > names = { "s", "ms", "μs", "ns" };
+    std::vector< std::string > names = { "s ", "ms", "μs", "ns" };
 
     while ( point * mult < 1 &&
             low_err * mult < 0.01 &&
@@ -175,10 +183,10 @@ std::string render_ci( double point, double low_err, double high_err )
         mult = pow( 1000, scale );
     }
 
-    str << std::fixed << std::setprecision( 2 ) << std::setw( 6 )
-        << point * mult << " " << names[ scale ] << " ± ("
-        << std::setw( 4 ) << high_err * mult << " "
-        << std::setw( 4 ) << low_err * mult << ")";
+    str << std::fixed << std::setprecision( 2 ) << "(∓"
+        << std::setw( 4 ) << low_err * mult << " "
+        << std::setw( 6 ) << point * mult << " " << names[ scale ] << " ±"
+        << std::setw( 4 ) << high_err * mult << ")";
     return str.str();
 }
 
@@ -195,6 +203,8 @@ void repeat( BenchmarkBase *tc ) {
     Box b_sample, b_median, b_mean, b_stddev;
     double m_sample, m_mean, m_median;
     double sd_sample;
+
+    std::pair< int, int > amplitude = tc->amplitude();
 
     int iterations = 0;
 
@@ -245,17 +255,17 @@ void repeat( BenchmarkBase *tc ) {
         }
     }
 
-    std::cerr << "    " << p_name << " = " << std::setw( 8 ) << p << " " << p_unit
-              <<   ", " << q_name << " = " << std::setw( 8 ) << q << " " << q_unit
-              << ", mean = "   << render_ci( m_mean, m_mean - b_mean.low, b_mean.high - m_mean )
-              << ", median = " << render_ci( b_sample.median,
-                                             b_sample.median - b_median.low,
-                                             b_median.high - b_sample.median )
-              << ", σ = "      << render_ci( sd_sample,
-                                             sd_sample - b_stddev.low,
-                                             b_stddev.high - sd_sample )
+    std::cerr << "  " << p_name << ": " << std::setw( amplitude.first ) << p << " " << p_unit
+              << " " << q_name << ": " << std::setw( amplitude.second ) << q << " " << q_unit
+              << " μ: " << render_ci( m_mean, m_mean - b_mean.low, b_mean.high - m_mean )
+              << " m: " << render_ci( b_sample.median,
+                                       b_sample.median - b_median.low,
+                                       b_median.high - b_sample.median )
+              << " σ: " << render_ci( sd_sample,
+                                       sd_sample - b_stddev.low,
+                                       b_stddev.high - sd_sample )
               << " | n = " << std::setw( 3 ) << sample.size()
-              << ", discarded = " << std::setw( 3 ) << iterations - sample.size() << std::endl;
+              << ", bad = " << std::setw( 3 ) << iterations - sample.size() << std::endl;
 
     ::close( tc->fds[0] );
     ::close( tc->fds[1] );
@@ -295,6 +305,12 @@ struct Benchmark : BenchmarkBase
         return std::make_pair( bg.x.count(), bg.y.count() );
     }
 
+    std::pair< int, int > amplitude() {
+        BenchGroup bg;
+        return std::make_pair( ceil( log10( bg.x.scaled( bg.x.max ) ) ),
+                               ceil( log10( bg.y.scaled( bg.y.max ) ) ) );
+    }
+
     void setup( int p_seq, int q_seq ) {
         BenchGroup bg;
         p = bg.parameter( bg.x, p_seq );
@@ -315,8 +331,8 @@ struct Benchmark : BenchmarkBase
             s -= 1;
             ns += 1000000000;
         }
-        std::cout << bg.x.name << " " << (bg.p * bg.x.unit_mul) / bg.x.unit_div << " " << bg.x.unit << " "
-                  << bg.y.name << " " << (bg.q * bg.y.unit_mul) / bg.y.unit_div << " " << bg.y.unit << " "
+        std::cout << bg.x.name << " " << bg.p_scaled() << " " << bg.x.unit << " "
+                  << bg.y.name << " " << bg.q_scaled() << " " << bg.y.unit << " "
                   << s << "." << std::setfill( '0' ) << std::setw( 9 ) << ns;
 #endif
     }
