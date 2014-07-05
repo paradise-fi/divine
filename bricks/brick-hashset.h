@@ -39,6 +39,9 @@
 
 #include <type_traits>
 
+#ifndef BRICK_HASHSET_H
+#define BRICK_HASHSET_H
+
 namespace brick {
 namespace hashset {
 
@@ -1234,4 +1237,7 @@ template struct SeqBench< F >;
 
 }
 }
+
+#endif
+
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
