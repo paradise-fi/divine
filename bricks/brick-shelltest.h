@@ -656,18 +656,19 @@ struct TestCase {
         }
 
         /* kill off tests after a minute of silence */
-        if ( end - silent_start > 60 ) {
-            kill( pid, SIGINT );
-            sleep( 5 ); /* wait a bit for a reaction */
-            if ( waitpid( pid, &status, WNOHANG ) == 0 ) {
-                system( "echo t > /proc/sysrq-trigger" );
-                kill( -pid, SIGKILL );
-                waitpid( pid, &status, 0 );
+        if ( !options.interactive )
+            if ( end - silent_start > 60 ) {
+                kill( pid, SIGINT );
+                sleep( 5 ); /* wait a bit for a reaction */
+                if ( waitpid( pid, &status, WNOHANG ) == 0 ) {
+                    system( "echo t > /proc/sysrq-trigger" );
+                    kill( -pid, SIGKILL );
+                    waitpid( pid, &status, 0 );
+                }
+                timeout = true;
+                io.sync();
+                return false;
             }
-            timeout = true;
-            io.sync();
-            return false;
-        }
 
         struct timeval wait;
         fd_set set;
