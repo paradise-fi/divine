@@ -160,6 +160,28 @@ namespace {
 
 std::vector< BenchmarkBase * > *benchmarks = nullptr;
 
+std::string render_ci( double point, double low_err, double high_err )
+{
+    int scale = 0;
+    double mult = 1;
+
+    std::stringstream str;
+    std::vector< std::string > names = { "s", "ms", "μs", "ns" };
+
+    while ( point * mult < 1 &&
+            low_err * mult < 0.01 &&
+            high_err * mult < 0.01 ) {
+        ++ scale;
+        mult = pow( 1000, scale );
+    }
+
+    str << std::fixed << std::setprecision( 2 ) << std::setw( 6 )
+        << point * mult << " " << names[ scale ] << " ± ("
+        << std::setw( 4 ) << low_err * mult << " "
+        << std::setw( 4 ) << high_err * mult << ")";
+    return str.str();
+}
+
 void repeat( BenchmarkBase *tc ) {
 #ifdef __unix
     char buf[1024];
@@ -225,23 +247,13 @@ void repeat( BenchmarkBase *tc ) {
 
     std::cerr << "    " << p_name << " = " << std::setw( 8 ) << p << " " << p_unit
               <<   ", " << q_name << " = " << std::setw( 8 ) << q << " " << q_unit
-              << std::fixed << std::setprecision( 3 )
-
-              << ", mean = "
-              << std::setw( 8 ) << m_mean * 1000 << " ± ["
-              << std::setw( 5 ) << (m_mean - b_mean.low) * 1000 << ":"
-              << std::setw( 5 ) << (b_mean.high - m_mean) * 1000 << "]"
-
-              << ", median = "
-              << std::setw( 8 ) << b_sample.median * 1000 << " ± ["
-              << std::setw( 5 ) << (b_sample.median - b_median.low) * 1000 << ":"
-              << std::setw( 5 ) << (b_median.high - b_sample.median) * 1000 << "]"
-
-              << ", σ = "
-              << std::setw( 7 ) << sd_sample * 1000 << " ± ["
-              << std::setw( 5 ) << (sd_sample - b_stddev.low) * 1000 << ":"
-              << std::setw( 5 ) << (b_stddev.high - sd_sample) * 1000 << "]"
-
+              << ", mean = "   << render_ci( m_mean, m_mean - b_mean.low, b_mean.high - m_mean )
+              << ", median = " << render_ci( b_sample.median,
+                                             b_sample.median - b_median.low,
+                                             b_median.high - b_sample.median )
+              << ", σ = "      << render_ci( sd_sample,
+                                             sd_sample - b_stddev.low,
+                                             b_stddev.high - sd_sample )
               << " | n = " << std::setw( 3 ) << sample.size()
               << ", discarded = " << std::setw( 3 ) << iterations - sample.size() << std::endl;
 
