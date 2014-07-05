@@ -562,6 +562,7 @@ struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts;
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, filter;
+    std::string flavour_envvar;
     Options() : verbose( false ), batch( false ), interactive( false ),
                 cont( false ), fatal_timeouts( false ) {}
 };
@@ -808,7 +809,8 @@ struct TestCase {
         } else if (pid == 0) {
             io.close();
             chdir( options.workdir.c_str() );
-            setenv("LVM_TEST_FLAVOUR", flavour.c_str(), 1);
+            if ( !options.flavour_envvar.empty() )
+                setenv( options.flavour_envvar.c_str(), flavour.c_str(), 1 );
             child.exec();
         } else {
             parent();
@@ -990,10 +992,12 @@ void split( std::string s, C &c ) {
 
 }
 
-int run( int argc, const char **argv )
+int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
 {
     Args args( argc, argv );
     Options opt;
+
+    opt.flavour_envvar = fl_envvar;
 
     if ( args.has( "--continue" ) )
         opt.cont = true;
