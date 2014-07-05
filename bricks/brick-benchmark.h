@@ -177,8 +177,8 @@ std::string render_ci( double point, double low_err, double high_err )
 
     str << std::fixed << std::setprecision( 2 ) << std::setw( 6 )
         << point * mult << " " << names[ scale ] << " ± ("
-        << std::setw( 4 ) << low_err * mult << " "
-        << std::setw( 4 ) << high_err * mult << ")";
+        << std::setw( 4 ) << high_err * mult << " "
+        << std::setw( 4 ) << low_err * mult << ")";
     return str.str();
 }
 
