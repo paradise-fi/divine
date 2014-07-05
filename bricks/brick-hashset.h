@@ -645,6 +645,16 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             return find( x ).valid() ? 1 : 0;
         }
 
+        size_t nextSize( size_t s ) {
+            if ( s < 512 * 1024 )
+                return s * 16;
+            if ( s < 16 * 1024 * 1024 )
+                return s * 8;
+            if ( s < 32 * 1024 * 1024 )
+                return s * 4;
+            return s * 2;
+        }
+
         iterator insertHinted( value_type x, hash64_t h )
         {
             while ( true ) {
@@ -774,7 +784,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             }
 
             Row &row = current( rowIndex - 1 );
-            _d.table[ rowIndex ].resize( row.size() * 2 );
+            _d.table[ rowIndex ].resize( nextSize( row.size() ) );
             _d.currentRow.exchange( rowIndex );
             _d.tableWorkers[ rowIndex ] = 1;
             _d.doneSegments.exchange( 0 );
