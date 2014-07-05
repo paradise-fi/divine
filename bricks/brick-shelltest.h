@@ -18,6 +18,7 @@
 
 /*
  * (c) 2014 Petr Ročkai <me@mornfall.net>
+ * (c) 2014 Red Hat, Inc.
  */
 
 /* Redistribution and use in source and binary forms, with or without
