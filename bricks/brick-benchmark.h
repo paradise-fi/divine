@@ -31,6 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <brick-unittest.h>
+
 #include <numeric>
 #include <cmath>
 #include <algorithm>
@@ -47,6 +48,66 @@
 
 namespace brick {
 namespace benchmark {
+
+using Sample = std::vector< double >;
+
+struct Estimate {
+    double low, high, mean;
+};
+
+struct Box {
+    double low, high, median, width;
+};
+
+Box box( Sample s, double width = 0.5 )
+{
+    std::sort( s.begin(), s.end() );
+    Box result;
+    double wing = (1 - width) / 2;
+    result.low = s[ int( floor( s.size() * wing ) ) ];
+    result.median = s[ s.size() / 2 ];
+    result.high = s[ int( ceil( s.size() * (1 - wing) ) ) ];
+    return result;
+}
+
+double sum( Sample s ) {
+    double r = 0;
+    for ( auto n : s )
+        r += n;
+    return r;
+}
+
+double mean( Sample s ) {
+    return sum( s ) / s.size();
+}
+
+double stddev( Sample s ) {
+    double avg = mean( s ), sum = 0;
+    for ( auto n : s )
+        sum += (avg - n) * (avg - n);
+    return sum / s.size();
+}
+
+template< typename E >
+Sample bootstrap( Sample s, E estimator, int iterations = 20000 )
+{
+    struct random_data rand;
+    char statebuf[256];
+    memset( &rand, 0, sizeof(rand) );
+    initstate_r( 0, statebuf, sizeof( statebuf ), &rand );
+
+    Sample result;
+    for ( int i = 0; i < iterations; ++i ) {
+        Sample resample;
+        while ( resample.size() < s.size() ) {
+            int idx;
+            random_r( &rand, &idx );
+            resample.push_back( s[ idx % s.size() ] );
+        }
+        result.push_back( estimator( resample ) );
+    }
+    return result;
+}
 
 struct BenchmarkBase : unittest::TestCaseBase {
     struct timespec start, end;
@@ -104,14 +165,20 @@ void repeat( BenchmarkBase *tc ) {
     char buf[1024];
     ::socketpair( AF_UNIX, SOCK_STREAM, PF_UNIX, tc->fds );
 #endif
-    std::vector< double > series, series_n;
+    Sample sample;
     int64_t p = 0, q = 0;
     std::string p_unit, q_unit, p_name, q_name;
-    double avg = 0, stddev = 0;
+
+    Sample bs_median, bs_mean, bs_stddev;
+    Box b_sample, b_median, b_mean, b_stddev;
+    double m_sample, m_mean, m_median;
+    double sd_sample;
+
     int iterations = 0;
 
-    while ( series.size() < 100 && iterations < 200 && (!stddev || (stddev / avg) > 0.005) ) {
-        for ( int i = 0; i < 10; ++i ) {
+    while ( ( sum( sample ) < 3 && iterations < 300 ) ||
+            ( sample.size() < 100 && iterations < 200 ) ) {
+        for ( int i = 0; i < 10; ++i ) { /* get 10 data points at once */
             iterations ++;
             unittest::fork_test( tc, tc->fds );
 #ifdef __unix
@@ -123,32 +190,61 @@ void repeat( BenchmarkBase *tc ) {
             parse >> p_name >> p >> p_unit
                   >> q_name >> q >> q_unit
                   >> time;
-            series.push_back( time );
+            sample.push_back( time );
 #endif
         }
 
-        avg = stddev = 0;
-        for ( auto i = series.begin(); i != series.end(); ++i )
-            avg += *i;
-        avg /= series.size();
-        for ( auto i = series.begin(); i != series.end(); ++i )
-            stddev += (avg - *i) * (avg - *i);
-        stddev = ::sqrt( stddev / series.size() );
+        b_sample = box( sample );
+        m_sample = mean( sample );
+        sd_sample = stddev( sample );
 
-        series_n.clear();
-        std::copy_if( series.begin(), series.end(), std::back_inserter( series_n ),
-                      [stddev, avg]( double n ) { return fabs(n - avg) < 2 * stddev; } );
-        series = series_n;
+        double iqr = b_sample.high - b_sample.low;
+
+        bs_mean = bootstrap( sample, mean );
+        bs_median = bootstrap( sample, []( Sample s ) { return box( s ).median; } );
+        bs_stddev = bootstrap( sample, stddev );
+
+        b_mean = box( bs_mean, 0.95 );
+        b_median = box( bs_median, 0.95 );
+        b_stddev = box( bs_stddev, 0.95 );
+
+        m_mean = mean( bs_mean );
+
+        if ( b_median.high - b_median.low < 0.05 * b_sample.median &&
+             b_mean.high - b_mean.low < 0.05 * m_sample &&
+             ( sum( sample ) > 1 || sample.size() >= 100 ) )
+            break; /* the confidence interval is less than 5% => good enough */
+
+        /* if the sample is reasonably big but unsatisfactory, cut off outliers */
+        if ( sample.size() > 50 || sum( sample ) > 5 ) {
+            auto end = std::remove_if( sample.begin(), sample.end(),
+                                       [&]( double n ) { return fabs(n - m_sample) > 3 * iqr; } );
+            sample.erase( end, sample.end() ); // TODO: store the outliers
+        }
     }
 
     std::cerr << "    " << p_name << " = " << std::setw( 8 ) << p << " " << p_unit
               <<   ", " << q_name << " = " << std::setw( 8 ) << q << " " << q_unit
               << std::fixed << std::setprecision( 3 )
-              << ", time = " << std::setw( 8 ) << avg * 1000
-              << " ±" << std::setw( 6 ) << 3 * stddev * 1000
-              << " [sample = " << std::setw( 3 ) << series.size()
-              << ", discarded = " << std::setw( 3 ) << iterations - series.size()
-              << " , σ = " << stddev * 1000 << "]" << std::endl;
+
+              << ", mean = "
+              << std::setw( 8 ) << m_mean * 1000 << " ± ["
+              << std::setw( 5 ) << (m_mean - b_mean.low) * 1000 << ":"
+              << std::setw( 5 ) << (b_mean.high - m_mean) * 1000 << "]"
+
+              << ", median = "
+              << std::setw( 8 ) << b_sample.median * 1000 << " ± ["
+              << std::setw( 5 ) << (b_sample.median - b_median.low) * 1000 << ":"
+              << std::setw( 5 ) << (b_median.high - b_sample.median) * 1000 << "]"
+
+              << ", σ = "
+              << std::setw( 7 ) << sd_sample * 1000 << " ± ["
+              << std::setw( 5 ) << (sd_sample - b_stddev.low) * 1000 << ":"
+              << std::setw( 5 ) << (b_stddev.high - sd_sample) * 1000 << "]"
+
+              << " | n = " << std::setw( 3 ) << sample.size()
+              << ", discarded = " << std::setw( 3 ) << iterations - sample.size() << std::endl;
+
     ::close( tc->fds[0] );
     ::close( tc->fds[1] );
 }
