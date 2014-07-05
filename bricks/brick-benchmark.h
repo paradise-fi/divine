@@ -33,6 +33,8 @@
 #include <brick-unittest.h>
 #include <numeric>
 #include <cmath>
+#include <algorithm>
+
 #include <time.h>
 
 #ifdef __unix
