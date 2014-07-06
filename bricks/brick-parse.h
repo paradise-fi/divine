@@ -592,7 +592,7 @@ using namespace ::brick::parse;
 
 struct Parse {
     enum TokenId { Invalid, Number };
-    typedef Token< TokenId > Token;
+    typedef brick::parse::Token< TokenId > Token;
 
     struct IOStream {
         std::istream &i;
