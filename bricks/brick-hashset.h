@@ -1174,23 +1174,31 @@ struct wrap : T {
     void setSize( int s ) { this->reserve( s ); }
 };
 
+template< typename T >
+struct TN {};
+
 using A = wrap< std::unordered_set< int > >;
 using B = Compact< int, test_hasher >;
 using C = Fast< int, test_hasher >;
 // todo fixed-size concurrent set?
 using F = Concurrent< int, test_hasher >;
 
+template<> struct TN< A > { static const char *n() { return "unordered_set"; } };
+template<> struct TN< B > { static const char *n() { return "CompactSet"; } };
+template<> struct TN< C > { static const char *n() { return "FastSet"; } };
+template<> struct TN< F > { static const char *n() { return "ConcurrentSet"; } };
+
 struct Bench : BenchmarkGroup {
     Bench() {
         x.active = true;
         x.name = "items";
         x.log = true;
-        x.step = 200; // %
+        x.step = sqrt(sqrt(2));
         x.normalize = true;
         x.unit = "k";
-        x.unit_div = 1000;
-        x.min =   16000;
-        x.max = 4096000;
+        x.unit_div =    1000;
+        x.min =        16000;
+        x.max = 16 * 1024000;
 
         y.active = true;
         y.name = "reserve";
@@ -1204,6 +1212,8 @@ struct Bench : BenchmarkGroup {
 template< typename T >
 struct SeqBench : Bench
 {
+    std::string name() {
+        return std::string( "hashset::SeqBench< " ) + TN< T >::n() + " >"; }
     BENCHMARK( seqinsert ) {
         T t;
         RandomInsert< T > ri;
@@ -1219,6 +1229,12 @@ struct SeqBench : Bench
 template< int threads, typename T >
 struct ParBench : Bench
 {
+    std::string name() {
+        std::stringstream str;
+        str << "hashset::ParBench< " << threads << ", " << TN< T >::n() << " >";
+        return str.str();
+    }
+
     BENCHMARK(parinsert)
     {
         T t;
@@ -1244,6 +1260,8 @@ template struct SeqBench< A >;
 template struct SeqBench< B >;
 template struct SeqBench< C >;
 template struct SeqBench< F >;
+template struct ParBench< 2, F >;
+template struct ParBench< 4, F >;
 
 }
 }
