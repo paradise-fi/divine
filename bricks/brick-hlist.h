@@ -410,25 +410,25 @@ struct BoolExpr {
 
     template< template< typename > class LeafFn, typename T, typename F >
     void _basic() {
-        assert( (  EvalBoolExpr< LeafFn, T >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Not< F > >::value ) );
-        assert( (  !EvalBoolExpr< LeafFn, F >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, T >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Not< F > >::value ) );
+        ASSERT( (  !EvalBoolExpr< LeafFn, F >::value ) );
 
-        assert( (  EvalBoolExpr< LeafFn, And<> >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, And< T > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Not< And< F > > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, And< T, T > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Not< And< T, F > > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Not< And< F, F > > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Not< And< F, F > > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, And<> >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, And< T > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Not< And< F > > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, And< T, T > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Not< And< T, F > > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Not< And< F, F > > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Not< And< F, F > > >::value ) );
 
-        assert( (  EvalBoolExpr< LeafFn, Not< Or<> > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Or< T > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Not< Or< F > > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Or< T, T > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Or< T, F > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Or< F, T > >::value ) );
-        assert( (  EvalBoolExpr< LeafFn, Not< Or< F, F > > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Not< Or<> > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Or< T > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Not< Or< F > > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Or< T, T > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Or< T, F > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Or< F, T > >::value ) );
+        ASSERT( (  EvalBoolExpr< LeafFn, Not< Or< F, F > > >::value ) );
     }
 
     TEST(basic) {
