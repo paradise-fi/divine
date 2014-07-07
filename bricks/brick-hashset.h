@@ -1223,15 +1223,22 @@ template< typename T > struct TN {};
 template< typename Ts >
 struct Run : BenchmarkGroup
 {
-    template< typename >
-    std::string describe( hlist::not_preferred ) { return ""; }
+    template< typename, int Id >
+    std::string render( int id, hlist::not_preferred ) { return ""; }
 
-    template< typename Tss = Ts, typename = typename Tss::Head >
-    std::string describe( hlist::preferred = hlist::preferred() )
+    template< typename Tss = Ts, int Id = 0, typename = typename Tss::Head >
+    std::string render( int id, hlist::preferred = hlist::preferred() )
     {
-        std::string t = describe< typename Tss::Tail >( hlist::preferred() );
-        return std::string( "type=" ) + TN< typename Tss::Head >::n() +
-               (t.empty() ? "" : (" " + t));
+        if ( id == Id )
+            return TN< typename Tss::Head >::n();
+        return render< typename Tss::Tail, Id + 1 >( id, hlist::preferred() );
+    }
+
+    std::string describe() {
+        std::string s;
+        for ( int i = 0; i < Ts::length; ++i )
+            s += " type=" + render( i );
+        return std::string( s, 1, s.size() );
     }
 
     template< template< typename > class, typename Self, int, typename >
@@ -1313,12 +1320,39 @@ struct ThreadsVsReserve : Run< hlist::TypeList< T > >
     int items() { return _items * 1000; }
 };
 
+template< int _threads, int _reserve, typename... Ts >
+struct ItemsVsTypes : Run< hlist::TypeList< Ts... > >
+{
+    ItemsVsTypes() {
+        this->x = axis_items();
+        this->y = axis_types( sizeof...( Ts ) );
+        this->y._render = [this]( int i ) {
+            return this->render( i );
+        };
+    }
+
+    std::string fixed() {
+        std::stringstream s;
+        s << "threads=" << _threads << " reserve=" << _reserve;
+        return s.str();
+    }
+
+    int threads() { return _threads; }
+    double reserve() { return _reserve / 100.0; }
+    int items() { return this->p; }
+    int type() { return this->q; }
+    double normal() { return _threads; }
+};
+
 template< int _items, int _reserve, int _threads, typename... Ts >
 struct ThreadsVsTypes : Run< hlist::TypeList< Ts... > >
 {
     ThreadsVsTypes() {
         this->x = axis_threads( _threads );
         this->y = axis_types( sizeof...( Ts ) );
+        this->y._render = [this]( int i ) {
+            return this->render( i );
+        };
     }
 
     std::string fixed() {
@@ -1384,11 +1418,11 @@ using C = Fast< int, test_hasher >;
 using D = Concurrent< int, test_hasher >;
 using E = FastConcurrent< int, test_hasher >;
 
-template<> struct TN< A > { static const char *n() { return "unordered_set"; } };
-template<> struct TN< B > { static const char *n() { return "CompactSet"; } };
-template<> struct TN< C > { static const char *n() { return "FastSet"; } };
-template<> struct TN< D > { static const char *n() { return "ConcurrentSet"; } };
-template<> struct TN< E > { static const char *n() { return "FastConcurrentSet"; } };
+template<> struct TN< A > { static const char *n() { return "A"; } };
+template<> struct TN< B > { static const char *n() { return "B"; } };
+template<> struct TN< C > { static const char *n() { return "C"; } };
+template<> struct TN< D > { static const char *n() { return "D"; } };
+template<> struct TN< E > { static const char *n() { return "E"; } };
 
 template struct Bench< ThreadsVsTypes< 1024, 50, 16, D, E > >;
 
