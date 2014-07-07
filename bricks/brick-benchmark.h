@@ -233,15 +233,15 @@ struct Axis {
     bool normalize; /* scale time per unit on this axis? */
     int64_t min, max;
     double step; // useful for log-scaled benchmarks
-    int64_t unit_mul, unit_div;
+    double unit_mul, unit_div;
     std::string name, unit;
     Axis() : active( false ), log( false ), normalize( false ),
              min( 1 ), max( 10 ), step( 1 ),
              unit_mul( 1 ), unit_div( 1 ),
              name( "n" ), unit( "unit" ) {}
 
-    double scaled( int p ) {
-        return double(p * unit_mul) / unit_div;
+    double scaled( double p ) {
+        return (p * unit_mul) / unit_div;
     }
 
     int amplitude() {
@@ -332,7 +332,7 @@ struct ResultSet {
         mean_high.interpolateNaturalKs();
     }
 
-    std::string sample( int x, double mult ) {
+    std::string sample( double x, double mult ) {
         std::stringstream str;
         str << mean.eval( x ) * mult << " "
             << mean_low.eval( x ) * mult << " "
@@ -528,14 +528,14 @@ void run( int argc, const char **argv ) {
                 std::stringstream raw, interp;
 
                 for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
-                    int p = tc->parameter( x, p_seq );
+                    double p = tc->parameter( x, p_seq );
                     raw << " " << x.scaled( p ) << " " << res.sample( p, t_mult ) << std::endl;
                     interp << " " << x.scaled( p ) << " " << res.sample( p, t_mult ) << std::endl;
 
                     if ( p_seq < x.count() - 1 ) {
-                        int p_next = tc->parameter( x, p_seq + 1 );
+                        double p_next = tc->parameter( x, p_seq + 1 );
                         for ( int i = 1; i < 20; ++i ) {
-                            int p_ = p + i * (p_next - p) / 20;
+                            double p_ = p + i * (p_next - p) / 20.0;
                             interp << " " << x.scaled( p_ )
                                    << " " << res.sample( p_, t_mult ) << std::endl;
                         }
