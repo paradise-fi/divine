@@ -270,8 +270,7 @@ struct BenchmarkBase : unittest::TestCaseBase {
 
     virtual int parameter( Axis, int ) = 0;
     virtual std::pair< Axis, Axis > axes() = 0;
-
-    virtual void setup( int p_seq, int q_seq ) = 0;
+    int64_t p, q;
 };
 
 
@@ -286,6 +285,7 @@ struct BenchmarkGroup {
             a.min = a.min * a.step;
         return a.min;
     }
+    virtual void setup( int _p, int _q ) { p = _p; q = _q; }
     virtual std::string name() { return ""; }
 };
 
@@ -370,10 +370,7 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
                 buf[r] = 0;
             std::stringstream parse( buf );
             double time;
-            parse >> p_name >> p >> p_unit
-                  >> q_name >> q >> q_unit
-                  >> time;
-
+            parse >> time;
             sample.push_back( time );
 #endif
         }
@@ -409,8 +406,8 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
 
     double factor = (x.normalize ? 1.0 / p : 1) * (y.normalize ? 1.0 / q : 1);
 
-    std::cerr << "  " << p_name << ": " << std::setw( x.amplitude() ) << round( x.scaled( p ) ) << " " << p_unit
-              << " "  << q_name << ": " << std::setw( y.amplitude() ) << round( y.scaled( q ) ) << " " << q_unit
+    std::cerr << "  " << x.name << ": " << std::setw( x.amplitude() ) << round( x.scaled( tc->p ) ) << " " << x.unit
+              << " "  << y.name << ": " << std::setw( y.amplitude() ) << round( y.scaled( tc->q ) ) << " " << y.unit
               << " μ: " << render_ci( m_mean, m_mean - b_mean.low, b_mean.high - m_mean, factor )
               << " m: " << render_ci( b_sample.median,
                                       b_sample.median - b_median.low,
@@ -430,7 +427,6 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
 void run( int argc, const char **argv ) {
     ASSERT( benchmarks );
     std::set< std::string > done;
-
 
     std::cout << "set terminal pdfcairo enhanced font 'Liberation Sans,10'" << std::endl;
 
@@ -468,7 +464,8 @@ void run( int argc, const char **argv ) {
             for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
                 ResultSet res;
                 for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
-                    tc->setup( p_seq, q_seq );
+                    tc->p = tc->parameter( x, p_seq );
+                    tc->q = tc->parameter( y, q_seq );
                     repeat( tc, res );
                 }
                 results.push_back( res );
@@ -571,8 +568,6 @@ std::string _typeid() {
 template< typename BenchGroup, void (BenchGroup::*testcase)() >
 struct Benchmark : BenchmarkBase
 {
-    int64_t p, q;
-
     std::pair< Axis, Axis > axes() {
         BenchGroup bg;
         return std::make_pair( bg.x, bg.y );
@@ -583,16 +578,9 @@ struct Benchmark : BenchmarkBase
         return bg.parameter( a, p );
     }
 
-    void setup( int p_seq, int q_seq ) {
-        BenchGroup bg;
-        p = bg.parameter( bg.x, p_seq );
-        q = bg.parameter( bg.y, q_seq );
-    }
-
     void run() {
         BenchGroup bg;
-        bg.p = p;
-        bg.q = q;
+        bg.setup( p, q );
 #ifdef __unix // TODO: figure out a win32 implementation
         clock_gettime( CLOCK_MONOTONIC, &start );
         (bg.*testcase)();
@@ -603,9 +591,7 @@ struct Benchmark : BenchmarkBase
             s -= 1;
             ns += 1000000000;
         }
-        std::cout << bg.x.name << " " << bg.p << " " << bg.x.unit << " "
-                  << bg.y.name << " " << bg.q << " " << bg.y.unit << " "
-                  << s << "." << std::setfill( '0' ) << std::setw( 9 ) << ns;
+        std::cout << s << "." << std::setfill( '0' ) << std::setw( 9 ) << ns;
 #endif
     }
 
