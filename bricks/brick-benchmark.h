@@ -612,7 +612,7 @@ void run( int argc, const char **argv ) {
             std::cout << "set xrange [" << x.scaled( x.min ) << ":" << x.scaled( x.max ) << "]" << std::endl
                       << "set xtics " << (x.log ? pow(x.step, k) : x.step * k) << std::endl
                       << "unset mxtics" << std::endl
-                      << "set xlabel \"" << x.name << (x.unit.empty() ? "" : " [" + x.unit + "]") << "'" << std::endl
+                      << "set xlabel '" << x.name << (x.unit.empty() ? "" : " [" + x.unit + "]") << "'" << std::endl
                       << "set ylabel \"time [" << time_units[ t_scale ] << "]\"" << std::endl
                       << "set title '" << shortdesc( t_desc ) << "'" << std::endl
                       << "set key outside title '"  << y.name << (y.unit.empty() ? "" :
