@@ -559,6 +559,13 @@ void run( int argc, const char **argv ) {
     }
 }
 
+template< typename T >
+std::string _typeid() {
+    int stat;
+    return abi::__cxa_demangle( typeid( T ).name(),
+                                nullptr, nullptr, &stat );
+}
+
 }
 
 template< typename BenchGroup, void (BenchGroup::*testcase)() >
@@ -604,9 +611,8 @@ struct Benchmark : BenchmarkBase
 
     std::string group() {
         BenchGroup bg;
-        int stat;
         if ( bg.name().empty() )
-            return abi::__cxa_demangle( typeid( BenchGroup ).name(), nullptr, nullptr, &stat );
+            return _typeid< BenchGroup >();
         return bg.name();
     }
 
