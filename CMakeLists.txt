@@ -327,6 +327,10 @@ endif( NOT SHA1SUM )
 ## OPTIONAL FEATURES
 ##
 
+include( bricks/support.cmake )
+bricks_check_features()
+include_directories( bricks )
+
 find_package( PkgConfig )
 pkg_check_modules( VALGRIND valgrind )
 if ( VALGRIND_FOUND )
@@ -774,3 +778,5 @@ if(CMAKE_MAJOR_VERSION GREATER 2 OR CMAKE_MINOR_VERSION GREATER 6 OR HAVE_CMAKE_
                        DESCRIPTION "Sample models" )
 endif()
 
+test_bricks( bricks )
+benchmark_bricks( bricks )
