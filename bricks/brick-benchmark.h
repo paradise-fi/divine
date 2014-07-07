@@ -426,9 +426,47 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
     ::close( tc->fds[1] );
 }
 
+struct Filter {
+    using Clause = std::vector< std::string >;
+    using F = std::vector< Clause >;
+
+    F formula;
+
+    bool matches( std::string d ) {
+        for ( auto clause : formula ) {
+            bool ok = false;
+            for ( auto atom : clause )
+                if ( d.find( atom ) != std::string::npos ) {
+                    ok = true;
+                    break;
+                }
+            if ( !ok )
+                return false;
+        }
+        return true;
+    }
+
+    /* TODO duplicated from brick-shelltest */
+    template< typename C >
+    void split( std::string s, C &c ) {
+        std::stringstream ss( s );
+        std::string item;
+        while ( std::getline( ss, item, ',' ) )
+            c.push_back( item );
+    }
+
+    Filter( int argc, const char **argv ) {
+        for ( int i = 1; i < argc; ++i ) {
+            formula.emplace_back();
+            split( argv[i], formula.back() );
+        }
+    }
+};
+
 void run( int argc, const char **argv ) {
     ASSERT( benchmarks );
     std::set< std::string > done;
+    Filter flt( argc, argv );
 
     std::cout << "set terminal pdfcairo enhanced font 'Liberation Sans,10'" << std::endl;
 
@@ -457,7 +495,12 @@ void run( int argc, const char **argv ) {
         for ( auto tc : *benchmarks ) {
             if ( group->group() != tc->group() )
                 continue;
-            std::cerr << "## " << tc->group() << " test=" << tc->name << std::endl;
+
+            std::string t_desc = tc->group() + " test=" + tc->name;
+            if ( !flt.matches( t_desc ) )
+                continue;
+
+            std::cerr << "## " << t_desc << std::endl;
             auto axes = tc->axes();
             Axis x = axes.first, y = axes.second;
 
