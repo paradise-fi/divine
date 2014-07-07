@@ -347,8 +347,6 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
     ::socketpair( AF_UNIX, SOCK_STREAM, PF_UNIX, tc->fds );
 #endif
     Sample sample;
-    int64_t p = 0, q = 0;
-    std::string p_unit, q_unit, p_name, q_name;
 
     Sample bs_median, bs_mean, bs_stddev;
     Box b_sample, b_median, b_mean, b_stddev;
@@ -404,7 +402,7 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
         }
     }
 
-    double factor = (x.normalize ? 1.0 / p : 1) * (y.normalize ? 1.0 / q : 1);
+    double factor = (x.normalize ? 1.0 / tc->p : 1) * (y.normalize ? 1.0 / tc->q : 1);
 
     std::cerr << "  " << x.name << ": " << std::setw( x.amplitude() ) << round( x.scaled( tc->p ) ) << " " << x.unit
               << " "  << y.name << ": " << std::setw( y.amplitude() ) << round( y.scaled( tc->q ) ) << " " << y.unit
@@ -418,7 +416,7 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
               << " | n = " << std::setw( 3 ) << sample.size()
               << ", bad = " << std::setw( 3 ) << iterations - sample.size() << std::endl;
 
-    res.push( p, m_mean * factor, b_mean.low * factor, b_mean.high * factor );
+    res.push( tc->p, m_mean * factor, b_mean.low * factor, b_mean.high * factor );
 
     ::close( tc->fds[0] );
     ::close( tc->fds[1] );
