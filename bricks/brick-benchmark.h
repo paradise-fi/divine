@@ -290,6 +290,8 @@ struct BenchmarkBase : unittest::TestCaseBase {
     virtual double normal() = 0;
     virtual int parameter( Axis, int ) = 0;
     virtual std::pair< Axis, Axis > axes() = 0;
+    virtual std::string describe() = 0;
+    virtual std::string group() { return ""; } // TestCaseBase
     int64_t p, q;
 };
 
@@ -516,16 +518,16 @@ std::string shortdesc( std::string d, bool invert = false ) {
 void list() {
     ASSERT( benchmarks );
     for ( auto tc : *benchmarks ) {
-        std::string d = tc->group() + " test=" + tc->name;
+        std::string d = tc->describe();
         std::vector< std::string > extra;
         std::cerr << "• " << shortdesc( d ) << std::endl;
-        std::cerr << "  " << shortdesc( d, true ) << std::endl;
+        if ( !shortdesc( d, true ).empty() )
+            std::cerr << "  " << shortdesc( d, true ) << std::endl;
     }
 }
 
 void run( int argc, const char **argv ) {
     ASSERT( benchmarks );
-    std::set< std::string > done;
 
     if ( argc == 2 && std::string( argv[1] ) == "--list" )
         return list();
@@ -553,116 +555,111 @@ void run( int argc, const char **argv ) {
               << "set arrow from graph 1,0 to graph 1.05,0 size screen 0.025,10,60 filled ls 11" << std::endl
               << "set arrow from graph 0,1 to graph 0,1.05 size screen 0.025,10,60 filled ls 11" << std::endl;
 
-    for ( auto group : *benchmarks ) {
-        if ( done.count( group->group() ) )
+    for ( auto tc : *benchmarks ) {
+        if ( !flt.matches( tc->describe() ) )
             continue;
-        for ( auto tc : *benchmarks ) {
-            if ( group->group() != tc->group() )
-                continue;
 
-            std::string t_desc = tc->group() + " test=" + tc->name;
-            if ( !flt.matches( t_desc ) )
-                continue;
+        std::cerr << "## " << shortdesc( tc->describe() ) << std::endl;
+        auto axes = tc->axes();
+        Axis x = axes.first, y = axes.second;
 
-            std::cerr << "## " << shortdesc( t_desc ) << std::endl;
-            auto axes = tc->axes();
-            Axis x = axes.first, y = axes.second;
+        std::vector< ResultSet > results;
 
-            std::vector< ResultSet > results;
-
-            for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
-                ResultSet res;
-                for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
-                    tc->p = tc->parameter( x, p_seq );
-                    tc->q = tc->parameter( y, q_seq );
-                    repeat( tc, res );
-                }
-                results.push_back( res );
+        for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
+            ResultSet res;
+            for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
+                tc->p = tc->parameter( x, p_seq );
+                tc->q = tc->parameter( y, q_seq );
+                repeat( tc, res );
             }
+            results.push_back( res );
+        }
 
-            double t_max = 0, t_mult = 1;
-            int t_scale = 0;
+        double t_max = 0, t_mult = 1;
+        int t_scale = 0;
 
-            std::stringstream header;
+        std::stringstream header;
 
-            header << "plot \\" << std::endl;
-            for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
-                for ( int p_seq = 0; p_seq < x.count(); ++ p_seq )
-                    t_max = std::max( t_max, results[ q_seq ].mean_high.ys[ p_seq ] );
+        header << "plot \\" << std::endl;
 
-                header << " '-' using 1:3:4 title \"" << y.render( tc->parameter( y, q_seq ) )
-                       << "\" with filledcurves ls " << q_seq + 1;
-                header << ", '-' using 1:2 notitle with lines ls " << q_seq + 1;
-                header << ", '-' using 1:3 notitle with lines ls " << q_seq + 1 << " lw 0.5";
-                header << ", '-' using 1:4 notitle with lines ls " << q_seq + 1 << " lw 0.5";
-                header << ", '-' using 1:2 notitle with points ls " << q_seq + 1 << " pt 7 ps 0.1 lc rgb '#000000'";
-                if ( q_seq + 1 < y.count() )
-                    header << ", \\";
-                header << std::endl;
-            }
+        for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
+            for ( int p_seq = 0; p_seq < x.count(); ++ p_seq )
+                t_max = std::max( t_max, results[ q_seq ].mean_high.ys[ p_seq ] );
 
-            while ( t_mult * t_max < 1 ) {
-                ++ t_scale;
-                t_mult = pow( 1000, t_scale );
-            }
+            header << " '-' using 1:3:4 title \"" << y.render( tc->parameter( y, q_seq ) )
+                   << "\" with filledcurves ls " << q_seq + 1
+                   << ", '-' using 1:2 notitle with lines ls " << q_seq + 1
+                   << ", '-' using 1:3 notitle with lines ls " << q_seq + 1 << " lw 0.5"
+                   << ", '-' using 1:4 notitle with lines ls " << q_seq + 1 << " lw 0.5"
+                   << ", '-' using 1:2 notitle with points ls " << q_seq + 1
+                   << " pt 7 ps 0.1 lc rgb '#000000'";
 
-            std::cout << "unset logscale" << std::endl;
+            if ( q_seq + 1 < y.count() )
+                header << ", \\";
+            header << std::endl;
+        }
 
-            if ( x.log )
-                std::cout << "set logscale x" << std::endl;
+        while ( t_mult * t_max < 1 ) {
+            ++ t_scale;
+            t_mult = pow( 1000, t_scale );
+        }
 
-            double x_range = x.scaled( x.max ) - x.scaled( x.min );
-            int k = 1;
+        std::cout << "unset logscale" << std::endl;
 
-            while ( x.log && log(x_range) / log(pow(x.step, k)) > 20 )
-                ++ k;
+        if ( x.log )
+            std::cout << "set logscale x" << std::endl;
 
-            while ( !x.log && x_range / x.step * k > 10 )
-                ++ k;
+        double x_range = x.scaled( x.max ) - x.scaled( x.min );
+        int k = 1;
 
-            /* measurement-specific */
-            std::cout << "set xrange [" << x.scaled( x.min ) << ":" << x.scaled( x.max ) << "]" << std::endl
-                      << "set xtics " << (x.log ? pow(x.step, k) : x.step * k) << std::endl
-                      << "unset mxtics" << std::endl
-                      << "set xlabel '" << x.name << (x.unit.empty() ? "" : " [" + x.unit + "]") << "'" << std::endl
-                      << "set ylabel \"time [" << time_units[ t_scale ] << "]\"" << std::endl
-                      << "set title '" << shortdesc( t_desc ) << "'" << std::endl
-                      << "set key outside title '"  << y.name << (y.unit.empty() ? "" :
-                                                                  " [" + y.unit + "]") << "' Left" << std::endl
-                      << "set format x '%.0f'" << std::endl;
+        while ( x.log && log(x_range) / log(pow(x.step, k)) > 20 )
+            ++ k;
 
-            std::cout << header.str();
+        while ( !x.log && x_range / x.step * k > 10 )
+            ++ k;
 
-            for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
-                ResultSet res = results[ q_seq ];
-                res.interpolate();
+        /* measurement-specific */
+        std::cout << "set xrange [" << x.scaled( x.min ) << ":" << x.scaled( x.max ) << "]" << std::endl
+                  << "set xtics " << (x.log ? pow(x.step, k) : x.step * k) << std::endl
+                  << "unset mxtics" << std::endl
+                  << "set xlabel '" << x.name << (x.unit.empty() ?
+                                                  "" : " [" + x.unit + "]") << "'" << std::endl
+                  << "set ylabel \"time [" << time_units[ t_scale ] << "]\"" << std::endl
+                  << "set title '" << shortdesc( tc->describe() ) << "'" << std::endl
+                  << "set key outside title '"  << y.name << (y.unit.empty() ? "" :
+                                                              " [" + y.unit + "]") << "' Left" << std::endl
+                  << "set format x '%.0f'" << std::endl;
 
-                std::stringstream raw, interp;
+        std::cout << header.str();
 
-                for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
-                    double p = tc->parameter( x, p_seq );
-                    raw << " " << x.scaled( p ) << " " << res.sample( p, t_mult ) << std::endl;
-                    interp << " " << x.scaled( p ) << " " << res.sample( p, t_mult ) << std::endl;
+        for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
+            ResultSet res = results[ q_seq ];
+            res.interpolate();
 
-                    if ( p_seq < x.count() - 1 ) {
-                        double p_next = tc->parameter( x, p_seq + 1 );
-                        for ( int i = 1; i < 20; ++i ) {
-                            double p_ = p + i * (p_next - p) / 20.0;
-                            interp << " " << x.scaled( p_ )
-                                   << " " << res.sample( p_, t_mult ) << std::endl;
-                        }
+            std::stringstream raw, interp;
+
+            for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
+                double p = tc->parameter( x, p_seq );
+                raw << " " << x.scaled( p ) << " " << res.sample( p, t_mult ) << std::endl;
+                interp << " " << x.scaled( p ) << " " << res.sample( p, t_mult ) << std::endl;
+
+                if ( p_seq < x.count() - 1 ) {
+                    double p_next = tc->parameter( x, p_seq + 1 );
+                    for ( int i = 1; i < 20; ++i ) {
+                        double p_ = p + i * (p_next - p) / 20.0;
+                        interp << " " << x.scaled( p_ )
+                               << " " << res.sample( p_, t_mult ) << std::endl;
                     }
                 }
-
-                /* each overlay needs the data to be repeated :-( */
-                std::cout << interp.str() << "end" << std::endl
-                          << interp.str() << "end" << std::endl
-                          << interp.str() << "end" << std::endl
-                          << interp.str() << "end" << std::endl
-                          << raw.str()    << "end" << std::endl;
             }
+
+            /* each overlay needs the data to be repeated :-( */
+            std::cout << interp.str() << "end" << std::endl
+                      << interp.str() << "end" << std::endl
+                      << interp.str() << "end" << std::endl
+                      << interp.str() << "end" << std::endl
+                      << raw.str()    << "end" << std::endl;
         }
-        done.insert( group->group() );
     }
 }
 
@@ -710,11 +707,12 @@ struct Benchmark : BenchmarkBase
 #endif
     }
 
-    std::string group() {
+    std::string describe() {
         BenchGroup bg;
-        if ( bg.describe().empty() )
-            return _typeid< BenchGroup >();
-        return bg.describe();
+        std::string d = bg.describe();
+        if ( d.empty() )
+            d = _typeid< BenchGroup >();
+        return d + " " + "test:" + name;
     }
 
     Benchmark() {
@@ -765,6 +763,8 @@ struct SelfTest : BenchmarkGroup {
         y.step = 2;
         y.unit = "k";
     }
+
+    std::string describe() { return "category=selftest"; }
 
     BENCHMARK(empty) {}
     BENCHMARK(delay) {
