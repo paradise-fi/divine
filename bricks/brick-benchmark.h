@@ -31,6 +31,7 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <brick-unittest.h>
+#include <brick-gnuplot.h>
 
 #include <numeric>
 #include <cmath>
@@ -50,124 +51,6 @@ namespace brick {
 namespace benchmark {
 
 using Sample = std::vector< double >;
-
-struct Matrix {
-    std::vector< double > m;
-    int width;
-
-    int index( int r, int c ) {
-        ASSERT_LEQ( r * width + c, int( m.size() ) - 1 );
-        return r * width + c;
-    }
-
-    int height() { return m.size() / width; }
-
-    struct Proxy {
-        Matrix &A;
-        int x;
-        double &operator[]( double y ) {
-            return A.m[ A.index( x, y ) ];
-        }
-        Proxy( Matrix &A, int x ) : A( A ), x( x ) {}
-    };
-
-    Proxy operator[]( double x ) {
-        return Proxy( *this, x );
-    }
-
-    Matrix( int height, int width )
-        : m( width * height, 0.0 ), width( width )
-    {}
-
-    std::vector< double > solve() {
-        Matrix &A = *this;
-        int m = A.height();
-
-        for( int k = 0; k < m; ++ k )
-        {
-            int i_max = 0; // pivot for column
-            double vali = -std::numeric_limits< double >::infinity();
-
-            for ( int i = k; i < m; ++ i )
-                if( A[i][k] > vali ) { i_max = i; vali = A[i][k]; }
-
-            A.swapRows( k, i_max );
-
-            for( int i = k + 1; i < m; ++ i ) // for all rows below pivot
-            {
-                for(int j = k + 1; j < m + 1; ++ j )
-                    A[i][j] = A[i][j] - A[k][j] * (A[i][k] / A[k][k]);
-                A[i][k] = 0;
-            }
-        }
-
-        std::vector< double > x( m, 0.0 );
-
-        for( int i = m - 1; i >= 0; -- i) // rows = columns
-        {
-            double v = A[i][m] / A[i][i];
-            x[i] = v;
-            for( int j = i - 1; j >= 0; -- j) // rows
-            {
-                A[j][m] -= A[j][i] * v;
-                A[j][i] = 0;
-            }
-        }
-
-        return x;
-    }
-
-    void swapRows( int k, int l ) {
-        Matrix &A = *this;
-        for ( int i = 0; i < width; ++i )
-            std::swap( A[k][i], A[l][i] );
-    }
-};
-
-struct Spline {
-    std::vector< double > xs, ys, ks;
-
-    void push( double x, double y ) {
-        xs.push_back( x );
-        ys.push_back( y );
-    }
-
-    void interpolateNaturalKs() {
-        int n = xs.size() - 1;
-        Matrix A( n + 1, n + 2 );
-
-        for( int i = 1; i < n; ++ i ) // rows
-        {
-            A[i][i-1] = 1 / (xs[i] - xs[i-1]);
-            A[i][i  ] = 2 * (1/(xs[i] - xs[i-1]) + 1/(xs[i+1] - xs[i])) ;
-            A[i][i+1] = 1 / (xs[i+1] - xs[i]);
-            A[i][n+1] = 3 * ( (ys[i]-ys[i-1]) / ((xs[i] - xs[i-1]) * (xs[i] - xs[i-1]))  +
-                              (ys[i+1]-ys[i]) / ((xs[i+1] - xs[i]) * (xs[i+1] - xs[i])) );
-        }
-
-        A[0][  0] = 2/(xs[1] - xs[0]);
-        A[0][  1] = 1/(xs[1] - xs[0]);
-        A[0][n+1] = 3 * (ys[1] - ys[0]) / ((xs[1]-xs[0])*(xs[1]-xs[0]));
-
-        A[n][n-1] = 1 / (xs[n] - xs[n-1]);
-        A[n][  n] = 2 / (xs[n] - xs[n-1]);
-        A[n][n+1] = 3 * (ys[n] - ys[n-1]) / ((xs[n]-xs[n-1])*(xs[n]-xs[n-1]));
-
-        ks = A.solve();
-    }
-
-    double eval( double x ) {
-        int i = 1;
-        while(xs[i]<x) i++;
-
-        double t = (x - xs[i-1]) / (xs[i] - xs[i-1]);
-        double a =  ks[i-1]*(xs[i]-xs[i-1]) - (ys[i]-ys[i-1]);
-        double b = -ks[i  ]*(xs[i]-xs[i-1]) + (ys[i]-ys[i-1]);
-        double q = (1-t)*ys[i-1] + t*ys[i] + t*(1-t)*(a*(1-t)+b*t);
-
-        return q;
-    }
-};
 
 struct Estimate {
     double low, high, mean;
@@ -345,31 +228,7 @@ std::string render_ci( double point, double low_err, double high_err, double fac
     return str.str();
 }
 
-struct ResultSet {
-    Spline mean, mean_low, mean_high;
-
-    void push( int x, double m, double l, double h ) {
-        mean.push( x, m );
-        mean_low.push( x, l );
-        mean_high.push( x, h );
-    }
-
-    void interpolate() {
-        mean.interpolateNaturalKs();
-        mean_low.interpolateNaturalKs();
-        mean_high.interpolateNaturalKs();
-    }
-
-    std::string sample( double x, double mult ) {
-        std::stringstream str;
-        str << mean.eval( x ) * mult << " "
-            << mean_low.eval( x ) * mult << " "
-            << mean_high.eval( x )* mult ;
-        return str.str();
-    }
-};
-
-void repeat( BenchmarkBase *tc, ResultSet &res ) {
+void repeat( BenchmarkBase *tc, gnuplot::DataSet &res ) {
 #ifdef __unix
     char buf[1024];
     ::socketpair( AF_UNIX, SOCK_STREAM, PF_UNIX, tc->fds );
@@ -444,7 +303,10 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
               << " | n = " << std::setw( 3 ) << sample.size()
               << ", bad = " << std::setw( 3 ) << iterations - sample.size() << std::endl;
 
-    res.push( tc->p, m_mean * factor, b_mean.low * factor, b_mean.high * factor );
+    res.append( x.scaled( tc->p ),
+                y.scaled( m_mean * factor ),
+                y.scaled( b_mean.low * factor ),
+                y.scaled( b_mean.high * factor ) );
 
     ::close( tc->fds[0] );
     ::close( tc->fds[1] );
@@ -534,80 +396,42 @@ void run( int argc, const char **argv ) {
 
     Filter flt( argc, argv );
 
-    std::cout << "set terminal pdfcairo font 'Liberation Sans,10'" << std::endl;
-
-    /* set up line styles */
-    std::cout << "set style line 1 lc rgb '#ff4500' lt 1 lw 2" << std::endl
-              << "set style line 2 lc rgb '#ffa500' lt 1 lw 2" << std::endl
-              << "set style line 3 lc rgb '#006400' lt 1 lw 2" << std::endl
-              << "set style line 4 lc rgb '#0000ff' lt 1 lw 2" << std::endl
-              << "set style line 5 lc rgb '#9400d3' lt 1 lw 2" << std::endl
-              << "set style line 6 lc rgb '#800000' lt 1 lw 2" << std::endl
-              << "set style line 7 lc rgb '#ff0000' lt 1 lw 2" << std::endl
-              << "set style fill transparent solid 0.3" << std::endl;
-
-    /* set up axis styles */
-    std::cout << "set style line 11 lc rgb '#808080' lt 1" << std::endl
-              << "set border 3 back ls 11" << std::endl
-              << "set tics nomirror out scale 0.75" << std::endl
-              << "set style line 12 lc rgb'#808080' lt 0 lw 1" << std::endl
-              << "set grid back ls 12" << std::endl
-              << "set arrow from graph 1,0 to graph 1.05,0 size screen 0.025,10,60 filled ls 11" << std::endl
-              << "set arrow from graph 0,1 to graph 0,1.05 size screen 0.025,10,60 filled ls 11" << std::endl;
+    gnuplot::Plots plots;
 
     for ( auto tc : *benchmarks ) {
         if ( !flt.matches( tc->describe() ) )
             continue;
 
+        gnuplot::Plot &plot = plots.append();
+
         std::cerr << "## " << shortdesc( tc->describe() ) << std::endl;
         auto axes = tc->axes();
         Axis x = axes.first, y = axes.second;
 
-        std::vector< ResultSet > results;
-
         for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
-            ResultSet res;
+            auto &ds = plot.append( y.render( tc->parameter( y, q_seq ) ),
+                                    4, gnuplot::DataSet::RibbonLP );
             for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
                 tc->p = tc->parameter( x, p_seq );
                 tc->q = tc->parameter( y, q_seq );
-                repeat( tc, res );
+                repeat( tc, ds );
             }
-            results.push_back( res );
         }
 
         double t_max = 0, t_mult = 1;
         int t_scale = 0;
 
-        std::stringstream header;
-
-        header << "plot \\" << std::endl;
-
-        for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
+        for ( int q_seq = 0; q_seq < y.count(); ++ q_seq )
             for ( int p_seq = 0; p_seq < x.count(); ++ p_seq )
-                t_max = std::max( t_max, results[ q_seq ].mean_high.ys[ p_seq ] );
-
-            header << " '-' using 1:3:4 title \"" << y.render( tc->parameter( y, q_seq ) )
-                   << "\" with filledcurves ls " << q_seq + 1
-                   << ", '-' using 1:2 notitle with lines ls " << q_seq + 1
-                   << ", '-' using 1:3 notitle with lines ls " << q_seq + 1 << " lw 0.5"
-                   << ", '-' using 1:4 notitle with lines ls " << q_seq + 1 << " lw 0.5"
-                   << ", '-' using 1:2 notitle with points ls " << q_seq + 1
-                   << " pt 7 ps 0.1 lc rgb '#000000'";
-
-            if ( q_seq + 1 < y.count() )
-                header << ", \\";
-            header << std::endl;
-        }
+                t_max = std::max( t_max, plot[ q_seq ][ p_seq ][ 3 ] );
 
         while ( t_mult * t_max < 1 ) {
             ++ t_scale;
             t_mult = pow( 1000, t_scale );
         }
 
-        std::cout << "unset logscale" << std::endl;
-
         if ( x.log )
-            std::cout << "set logscale x" << std::endl;
+            plot.logscale( gnuplot::Plot::X );
 
         double x_range = x.scaled( x.max ) - x.scaled( x.min );
         int k = 1;
@@ -618,48 +442,14 @@ void run( int argc, const char **argv ) {
         while ( !x.log && x_range / x.step * k > 10 )
             ++ k;
 
-        /* measurement-specific */
-        std::cout << "set xrange [" << x.scaled( x.min ) << ":" << x.scaled( x.max ) << "]" << std::endl
-                  << "set xtics " << (x.log ? pow(x.step, k) : x.step * k) << std::endl
-                  << "unset mxtics" << std::endl
-                  << "set xlabel '" << x.name << (x.unit.empty() ?
-                                                  "" : " [" + x.unit + "]") << "'" << std::endl
-                  << "set ylabel \"time [" << time_units[ t_scale ] << "]\"" << std::endl
-                  << "set title '" << shortdesc( tc->describe() ) << "'" << std::endl
-                  << "set key outside title '"  << y.name << (y.unit.empty() ? "" :
-                                                              " [" + y.unit + "]") << "' Left" << std::endl
-                  << "set format x '%.0f'" << std::endl;
-
-        std::cout << header.str();
-
-        for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
-            ResultSet res = results[ q_seq ];
-            res.interpolate();
-
-            std::stringstream raw, interp;
-
-            for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
-                double p = tc->parameter( x, p_seq );
-                raw << " " << x.scaled( p ) << " " << res.sample( p, t_mult ) << std::endl;
-                interp << " " << x.scaled( p ) << " " << res.sample( p, t_mult ) << std::endl;
-
-                if ( p_seq < x.count() - 1 ) {
-                    double p_next = tc->parameter( x, p_seq + 1 );
-                    for ( int i = 1; i < 20; ++i ) {
-                        double p_ = p + i * (p_next - p) / 20.0;
-                        interp << " " << x.scaled( p_ )
-                               << " " << res.sample( p_, t_mult ) << std::endl;
-                    }
-                }
-            }
-
-            /* each overlay needs the data to be repeated :-( */
-            std::cout << interp.str() << "end" << std::endl
-                      << interp.str() << "end" << std::endl
-                      << interp.str() << "end" << std::endl
-                      << interp.str() << "end" << std::endl
-                      << raw.str()    << "end" << std::endl;
-        }
+        plot.rescale  ( gnuplot::Plot::Y, t_mult );
+        plot.bounds   ( gnuplot::Plot::X, x.scaled( x.min ), x.scaled( x.max ) );
+        plot.interval ( gnuplot::Plot::X, x.log ? pow(x.step, k) : x.step * k );
+        plot.axis     ( gnuplot::Plot::X, x.name, x.unit );
+        plot.axis     ( gnuplot::Plot::Y, "time", time_units[ t_scale ] );
+        plot.axis     ( gnuplot::Plot::Z, y.name, y.unit );
+        plot.name     ( shortdesc( tc->describe() ) );
+        std::cout << plot.plot();
     }
 }
 
