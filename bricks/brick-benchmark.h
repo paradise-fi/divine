@@ -287,6 +287,10 @@ struct BenchmarkGroup {
     }
     virtual void setup( int _p, int _q ) { p = _p; q = _q; }
     virtual std::string describe() { return ""; }
+    virtual std::string describe_axes() {
+        return "x=" + x.name + " y=" + y.name +
+               " x_unit=" + x.unit + " y_unit=" + y.unit;
+    }
 };
 
 namespace {
