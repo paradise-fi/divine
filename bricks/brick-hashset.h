@@ -940,6 +940,7 @@ using Concurrent = _ConcurrentHashSet< AtomicCell< T, Hasher > >;
 }
 }
 
+#include <brick-hlist.h>
 #include <unordered_set>
 
 namespace brick_test {
@@ -1167,101 +1168,235 @@ struct RandomInsert : shmem::Thread {
     };
 };
 
+Axis axis_items( int min = 16, int max = 16 * 1024 ) {
+    Axis a;
+    a.active = true;
+    a.name = "items";
+    a.log = true;
+    a.step = sqrt(sqrt(2));
+    a.normalize = true;
+    a.unit = "k";
+    a.unit_div =    1000;
+    a.min = min * 1000;
+    a.max = max * 1000;
+    return a;
+}
+
+Axis axis_threads( int max = 16 ) {
+    Axis a;
+    a.active = true;
+    a.name = "threads";
+    a.unit = "";
+    a.min = 1;
+    a.max = max;
+    a.step = 1;
+    return a;
+}
+
+Axis axis_reserve( int max = 200, int step = 50 )
+{
+    Axis a;
+    a.active = true;
+    a.name = "reserve";
+    a.unit = "%";
+    a.min = 0;
+    a.max = max;
+    a.step = step;
+    return a;
+}
+
+Axis axis_types( int count )
+{
+    Axis a;
+    a.active = true;
+    a.name = "type";
+    a.unit = "";
+    a.min = 0;
+    a.max = count - 1;
+    a.step = 1;
+    return a;
+}
+
+template< typename T > struct TN {};
+
+template< typename Ts >
+struct Run : BenchmarkGroup
+{
+    template< typename >
+    std::string describe( hlist::not_preferred ) { return ""; }
+
+    template< typename Tss = Ts, typename = typename Tss::Head >
+    std::string describe( hlist::preferred = hlist::preferred() )
+    {
+        std::string t = describe< typename Tss::Tail >( hlist::preferred() );
+        return std::string( "type=" ) + TN< typename Tss::Head >::n() +
+               (t.empty() ? "" : (" " + t));
+    }
+
+    template< template< typename > class, typename Self, int, typename >
+    static void run( Self *, hlist::not_preferred ) {
+        ASSERT_UNREACHABLE( "brick_test::hashset::Run fell off the cliff" );
+    }
+
+    template< template< typename > class RI, typename Self, int id = 0,
+              typename Tss = Ts, typename = typename Tss::Head >
+    static void run( Self *self, hlist::preferred = hlist::preferred() )
+    {
+        if ( self->type() == id ) {
+            /* std::cerr << "running " << id << " with " << self->items() << " items, " << self->threads()
+                      << " threads and " << self->reserve() << " reserve" <<
+                      std::endl; */
+            RI< typename Tss::Head >()( self->items(), self->threads(), self->reserve() );
+        } else
+            run< RI, Self, id + 1, typename Tss::Tail >( self, hlist::preferred() );
+    }
+
+    int type() { return 0; } // default
+};
+
+template< int _threads, typename T >
+struct ItemsVsReserve : Run< hlist::TypeList< T > >
+{
+    ItemsVsReserve() {
+        this->x = axis_items();
+        this->y = axis_reserve();
+    }
+
+    std::string fixed() {
+        std::stringstream s;
+        s << "threads=" << _threads;
+        return s.str();
+    }
+
+    int threads() { return _threads; }
+    int items() { return this->p; }
+    double reserve() { return this->q / 100; }
+};
+
+template< int _reserve, typename T >
+struct ItemsVsThreads : Run< hlist::TypeList< T > >
+{
+    ItemsVsThreads() {
+        this->x = axis_items();
+        this->y = axis_threads();
+    }
+
+    std::string fixed() {
+        std::stringstream s;
+        s << "reserve=" << _reserve;
+        return s.str();
+    }
+
+    int threads() { return this->q; }
+    int items() { return this->p; }
+    double reserve() { return _reserve / 100.0; }
+};
+
+template< int _items, typename T >
+struct ThreadsVsReserve : Run< hlist::TypeList< T > >
+{
+    ThreadsVsReserve() {
+        this->x = axis_threads();
+        this->y = axis_reserve();
+    }
+
+    std::string fixed() {
+        std::stringstream s;
+        s << "items=" << _items << "k";
+        return s.str();
+    }
+
+    int threads() { return this->p; }
+    int reserve() { return this->q; }
+    int items() { return _items * 1000; }
+};
+
+template< int _items, int _reserve, typename... Ts >
+struct ThreadsVsTypes : Run< hlist::TypeList< Ts... > >
+{
+    ThreadsVsTypes() {
+        this->x = axis_threads();
+        this->y = axis_types( sizeof...( Ts ) );
+    }
+
+    std::string fixed() {
+        std::stringstream s;
+        s << "items=" << _items << "k reserve=" << _reserve;
+        return s.str();
+    }
+
+    int threads() { return this->p; }
+    double reserve() { return _reserve / 100.0; }
+    int items() { return _items * 1000; }
+    int type() { return this->q; }
+};
+
+template< typename Param >
+struct Bench : Param
+{
+    std::string describe() {
+        return "category=hashset " + Param::describe() + " " + Param::fixed();
+    }
+
+    template< typename T >
+    struct _RandomInsert {
+        void operator()( int items, int threads, double reserve )
+        {
+            T t;
+
+            if ( reserve > 0 )
+                t.setSize( items * reserve );
+
+            RandomInsert< T > *ri = new RandomInsert< T >[ threads ];
+
+            for ( int i = 0; i < threads; ++i ) {
+                ri[i].count = items / threads;
+                ri[i]._set = &t;
+            }
+
+            for ( int i = 0; i < threads; ++i )
+                ri[i].start();
+            for ( int i = 0; i < threads; ++i )
+                ri[i].join();
+        }
+    };
+
+    BENCHMARK(random_insert)
+    {
+        this->template run< _RandomInsert >( this );
+    }
+};
+
 template< typename T >
 struct wrap : T {
     struct ThreadData {};
     wrap< T > &withTD( ThreadData & ) { return *this; }
-    void setSize( int s ) { this->reserve( s ); }
+    void setSize( int s ) { T::rehash( s ); }
 };
-
-template< typename T >
-struct TN {};
 
 using A = wrap< std::unordered_set< int > >;
 using B = Compact< int, test_hasher >;
 using C = Fast< int, test_hasher >;
-// todo fixed-size concurrent set?
-using F = Concurrent< int, test_hasher >;
+using D = Concurrent< int, test_hasher >;
+using E = FastConcurrent< int, test_hasher >;
 
 template<> struct TN< A > { static const char *n() { return "unordered_set"; } };
 template<> struct TN< B > { static const char *n() { return "CompactSet"; } };
 template<> struct TN< C > { static const char *n() { return "FastSet"; } };
-template<> struct TN< F > { static const char *n() { return "ConcurrentSet"; } };
+template<> struct TN< D > { static const char *n() { return "ConcurrentSet"; } };
+template<> struct TN< E > { static const char *n() { return "FastConcurrentSet"; } };
 
-struct Bench : BenchmarkGroup {
-    Bench() {
-        x.active = true;
-        x.name = "items";
-        x.log = true;
-        x.step = sqrt(sqrt(2));
-        x.normalize = true;
-        x.unit = "k";
-        x.unit_div =    1000;
-        x.min =        16000;
-        x.max = 16 * 1024000;
+template struct Bench< ThreadsVsTypes< 1024, 50, D, E > >;
 
-        y.active = true;
-        y.name = "reserve";
-        y.unit = "%";
-        y.min = 0;
-        y.max = 200;
-        y.step = 50;
-    }
-};
-
-template< typename T >
-struct SeqBench : Bench
-{
-    std::string name() {
-        return std::string( "hashset::SeqBench< " ) + TN< T >::n() + " >"; }
-    BENCHMARK( seqinsert ) {
-        T t;
-        RandomInsert< T > ri;
-        ri.count = p;
-        if ( q > 0 )
-            t.setSize( (p * q) / 100 );
-        ri._set = &t;
-
-        ri.main();
-    };
-};
-
-template< int threads, typename T >
-struct ParBench : Bench
-{
-    std::string name() {
-        std::stringstream str;
-        str << "hashset::ParBench< " << threads << ", " << TN< T >::n() << " >";
-        return str.str();
-    }
-
-    BENCHMARK(parinsert)
-    {
-        T t;
-
-        if ( q > 0 )
-            t.setSize( (p * q) / 100 );
-
-        RandomInsert< T > *ri = new RandomInsert< T >[ threads ];
-
-        for ( int i = 0; i < threads; ++i ) {
-            ri[i].count = p / threads;
-            ri[i]._set = &t;
-        }
-
-        for ( int i = 0; i < threads; ++i )
-            ri[i].start();
-        for ( int i = 0; i < threads; ++i )
-            ri[i].join();
-    }
-};
-
-template struct SeqBench< A >;
-template struct SeqBench< B >;
-template struct SeqBench< C >;
-template struct SeqBench< F >;
-template struct ParBench< 2, F >;
-template struct ParBench< 4, F >;
+template struct Bench< ItemsVsReserve< 1, A > >;
+template struct Bench< ItemsVsReserve< 1, B > >;
+template struct Bench< ItemsVsReserve< 1, C > >;
+template struct Bench< ItemsVsReserve< 1, D > >;
+template struct Bench< ItemsVsReserve< 2, D > >;
+template struct Bench< ItemsVsReserve< 4, D > >;
+template struct Bench< ItemsVsReserve< 1, E > >;
+template struct Bench< ItemsVsReserve< 2, E > >;
+template struct Bench< ItemsVsReserve< 4, E > >;
 
 }
 }
