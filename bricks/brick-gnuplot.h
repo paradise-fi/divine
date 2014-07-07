@@ -1,7 +1,15 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * Write benchmarks for C++ units.
+ * Make pretty plots with gnuplot. Three axes are supported, x and y being the
+ * planar axes of the plot and z being different linestyles (colors). Rendering
+ * of confidence intervals as ribbons is supported. The result is a single
+ * self-contained file that can be piped into gnuplot for rendering. The y
+ * values in-between samples are interpolated using cubic splines (when
+ * plotting with lines, that is -- points-only plotting is supported as well).
+ *
+ * The API is not intended to expose full power of gnuplot. It just provides a
+ * convenient way to build and render a specific type of x-y plots.
  */
 
 /*
