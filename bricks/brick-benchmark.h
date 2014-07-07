@@ -493,31 +493,43 @@ struct BeginsWith {
     }
 };
 
-std::string shortdesc( std::string d ) {
+std::string shortdesc( std::string d, bool invert = false ) {
     std::vector< std::string > bits, keep;
     std::string res;
 
     split( d, bits, ' ' );
+    int types = std::count_if( bits.begin(), bits.end(), BeginsWith( "type=" ) );
     std::copy_if( bits.begin(), bits.end(), std::back_inserter( keep ),
-                  BeginsWith( "type=" ) );
-    if ( keep.size() > 1 )
-        keep.clear(); // multi-type benchmarks have type on an axis
-    std::copy_if( bits.begin(), bits.end(), std::back_inserter( keep ),
-                  []( std::string s ) {
-                      return !BeginsWith( "x=" )( s ) &&
-                             !BeginsWith( "y=" )( s ) &&
-                             !BeginsWith( "x_unit=" )( s ) &&
-                             !BeginsWith( "y_unit=" )( s ) &&
-                             !BeginsWith( "type=" )( s );
+                  [ types, invert ]( std::string s ) {
+                      bool v = !BeginsWith( "x=" )( s ) &&
+                               !BeginsWith( "y=" )( s ) &&
+                               !BeginsWith( "x_unit=" )( s ) &&
+                               !BeginsWith( "y_unit=" )( s ) &&
+                               (types == 1 || !BeginsWith( "type=" )( s ) );
+                      return invert ? !v : v;
                   } );
     for ( auto k : keep )
         res += k + " ";
     return std::string( res, 0, res.length() - 1 );
 }
 
+void list() {
+    ASSERT( benchmarks );
+    for ( auto tc : *benchmarks ) {
+        std::string d = tc->group() + " test=" + tc->name;
+        std::vector< std::string > extra;
+        std::cerr << "• " << shortdesc( d ) << std::endl;
+        std::cerr << "  " << shortdesc( d, true ) << std::endl;
+    }
+}
+
 void run( int argc, const char **argv ) {
     ASSERT( benchmarks );
     std::set< std::string > done;
+
+    if ( argc == 2 && std::string( argv[1] ) == "--list" )
+        return list();
+
     Filter flt( argc, argv );
 
     std::cout << "set terminal pdfcairo font 'Liberation Sans,10'" << std::endl;
