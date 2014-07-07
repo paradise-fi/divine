@@ -448,6 +448,15 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
     ::close( tc->fds[1] );
 }
 
+/* TODO duplicated from brick-shelltest */
+template< typename C >
+void split( std::string s, C &c, char delim = ',' ) {
+    std::stringstream ss( s );
+    std::string item;
+    while ( std::getline( ss, item, delim ) )
+        c.push_back( item );
+}
+
 struct Filter {
     using Clause = std::vector< std::string >;
     using F = std::vector< Clause >;
@@ -468,15 +477,6 @@ struct Filter {
         return true;
     }
 
-    /* TODO duplicated from brick-shelltest */
-    template< typename C >
-    void split( std::string s, C &c ) {
-        std::stringstream ss( s );
-        std::string item;
-        while ( std::getline( ss, item, ',' ) )
-            c.push_back( item );
-    }
-
     Filter( int argc, const char **argv ) {
         for ( int i = 1; i < argc; ++i ) {
             formula.emplace_back();
@@ -485,12 +485,42 @@ struct Filter {
     }
 };
 
+struct BeginsWith {
+    std::string p;
+    BeginsWith( std::string p ) : p( p ) {}
+    bool operator()( std::string s ) {
+        return std::string( s, 0, p.size() ) == p;
+    }
+};
+
+std::string shortdesc( std::string d ) {
+    std::vector< std::string > bits, keep;
+    std::string res;
+
+    split( d, bits, ' ' );
+    std::copy_if( bits.begin(), bits.end(), std::back_inserter( keep ),
+                  BeginsWith( "type=" ) );
+    if ( keep.size() > 1 )
+        keep.clear(); // multi-type benchmarks have type on an axis
+    std::copy_if( bits.begin(), bits.end(), std::back_inserter( keep ),
+                  []( std::string s ) {
+                      return !BeginsWith( "x=" )( s ) &&
+                             !BeginsWith( "y=" )( s ) &&
+                             !BeginsWith( "x_unit=" )( s ) &&
+                             !BeginsWith( "y_unit=" )( s ) &&
+                             !BeginsWith( "type=" )( s );
+                  } );
+    for ( auto k : keep )
+        res += k + " ";
+    return std::string( res, 0, res.length() - 1 );
+}
+
 void run( int argc, const char **argv ) {
     ASSERT( benchmarks );
     std::set< std::string > done;
     Filter flt( argc, argv );
 
-    std::cout << "set terminal pdfcairo enhanced font 'Liberation Sans,10'" << std::endl;
+    std::cout << "set terminal pdfcairo font 'Liberation Sans,10'" << std::endl;
 
     /* set up line styles */
     std::cout << "set style line 1 lc rgb '#ff4500' lt 1 lw 2" << std::endl
@@ -522,7 +552,7 @@ void run( int argc, const char **argv ) {
             if ( !flt.matches( t_desc ) )
                 continue;
 
-            std::cerr << "## " << t_desc << std::endl;
+            std::cerr << "## " << shortdesc( t_desc ) << std::endl;
             auto axes = tc->axes();
             Axis x = axes.first, y = axes.second;
 
@@ -584,7 +614,7 @@ void run( int argc, const char **argv ) {
                       << "unset mxtics" << std::endl
                       << "set xlabel \"" << x.name << (x.unit.empty() ? "" : " [" + x.unit + "]") << "'" << std::endl
                       << "set ylabel \"time [" << time_units[ t_scale ] << "]\"" << std::endl
-                      << "set title \"{/LiberationMono " << tc->group() << "::" << tc->name << "}\"" << std::endl
+                      << "set title '" << shortdesc( t_desc ) << "'" << std::endl
                       << "set key outside title '"  << y.name << (y.unit.empty() ? "" :
                                                                   " [" + y.unit + "]") << "' Left" << std::endl
                       << "set format x '%.0f'" << std::endl;
