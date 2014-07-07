@@ -286,7 +286,7 @@ struct BenchmarkGroup {
         return a.min;
     }
     virtual void setup( int _p, int _q ) { p = _p; q = _q; }
-    virtual std::string name() { return ""; }
+    virtual std::string describe() { return ""; }
 };
 
 namespace {
@@ -455,7 +455,7 @@ void run( int argc, const char **argv ) {
         for ( auto tc : *benchmarks ) {
             if ( group->group() != tc->group() )
                 continue;
-            std::cerr << tc->group() << " " << tc->name << ":" << std::endl;
+            std::cerr << "## " << tc->group() << " test=" << tc->name << std::endl;
             auto axes = tc->axes();
             Axis x = axes.first, y = axes.second;
 
@@ -597,9 +597,9 @@ struct Benchmark : BenchmarkBase
 
     std::string group() {
         BenchGroup bg;
-        if ( bg.name().empty() )
+        if ( bg.describe().empty() )
             return _typeid< BenchGroup >();
-        return bg.name();
+        return bg.describe();
     }
 
     Benchmark() {
