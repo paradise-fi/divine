@@ -1,3 +1,5 @@
+. lib
+
 set -vex
 not () { "$@" && exit 1 || return 0; }
 

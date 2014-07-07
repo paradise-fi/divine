@@ -1,6 +1,34 @@
 # -*- sh -*-
 
+. environment
 . util
+
+test -d "$TOOLS" -a -f "$TOOLS/divine" || {
+    echo "TOOLS has to be directory with your divine binary."
+    exit 1
+}
+
+if echo $TOOLS | grep -q "^C:"; then # MSYS hack
+    TOOLS=`echo -n "$TOOLS" | sed -e 's,C:,/c,;s,\\\\,/,;'`
+fi
+PATH="$TOOLS:$PATH"
+
+test -d "$TOOLS/../binutils/bin" && PATH="$TOOLS/../binutils/bin:$PATH"
+
+# fake ssh for mpiexec
+cat > $TOOLS/ssh <<EOF
+#!/bin/sh
+test "\$1" = "-x" && shift
+shift # hostname
+eval "\$@"
+EOF
+chmod +x $TOOLS/ssh
+
+if test -z "$MPIEXEC"; then
+    MPIEXEC=false
+else
+    MPIEXEC=$(readlink -f `which $MPIEXEC`)
+fi
 
 COMPRESSIONS="none"
 if [ x$O_COMPRESSION = xON ]
