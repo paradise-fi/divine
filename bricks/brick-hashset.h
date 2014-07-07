@@ -1311,11 +1311,11 @@ struct ThreadsVsReserve : Run< hlist::TypeList< T > >
     int items() { return _items * 1000; }
 };
 
-template< int _items, int _reserve, typename... Ts >
+template< int _items, int _reserve, int _threads, typename... Ts >
 struct ThreadsVsTypes : Run< hlist::TypeList< Ts... > >
 {
     ThreadsVsTypes() {
-        this->x = axis_threads();
+        this->x = axis_threads( _threads );
         this->y = axis_types( sizeof...( Ts ) );
     }
 
@@ -1335,7 +1335,8 @@ template< typename Param >
 struct Bench : Param
 {
     std::string describe() {
-        return "category=hashset " + Param::describe() + " " + Param::fixed();
+        return "category=hashset " + Param::describe() + " " +
+               Param::fixed() + " " + this->describe_axes();
     }
 
     template< typename T >
@@ -1386,7 +1387,7 @@ template<> struct TN< C > { static const char *n() { return "FastSet"; } };
 template<> struct TN< D > { static const char *n() { return "ConcurrentSet"; } };
 template<> struct TN< E > { static const char *n() { return "FastConcurrentSet"; } };
 
-template struct Bench< ThreadsVsTypes< 1024, 50, D, E > >;
+template struct Bench< ThreadsVsTypes< 1024, 50, 16, D, E > >;
 
 template struct Bench< ItemsVsReserve< 1, A > >;
 template struct Bench< ItemsVsReserve< 1, B > >;
