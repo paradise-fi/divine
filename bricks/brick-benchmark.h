@@ -235,10 +235,24 @@ struct Axis {
     double step; // useful for log-scaled benchmarks
     double unit_mul, unit_div;
     std::string name, unit;
+
+    std::function<std::string(int64_t)> _render;
+
     Axis() : active( false ), log( false ), normalize( false ),
              min( 1 ), max( 10 ), step( 1 ),
              unit_mul( 1 ), unit_div( 1 ),
-             name( "n" ), unit( "unit" ) {}
+             name( "n" ), unit( "unit" )
+    {
+        _render = []( int64_t ) { return ""; };
+    }
+
+    std::string render( int64_t p ) {
+        if ( !_render( p ).empty() )
+            return _render( p );
+        std::stringstream s;
+        s << int( round( scaled( p ) ) );
+        return s.str();
+    }
 
     double scaled( double p ) {
         return (p * unit_mul) / unit_div;
@@ -408,8 +422,8 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
 
     double factor = (x.normalize ? 1.0 / tc->p : 1) * (y.normalize ? 1.0 / tc->q : 1);
 
-    std::cerr << "  " << x.name << ": " << std::setw( x.amplitude() ) << round( x.scaled( tc->p ) ) << " " << x.unit
-              << " "  << y.name << ": " << std::setw( y.amplitude() ) << round( y.scaled( tc->q ) ) << " " << y.unit
+    std::cerr << "  " << x.name << ": " << std::setw( x.amplitude() ) << x.render( tc->p ) << " " << x.unit
+              << " "  << y.name << ": " << std::setw( y.amplitude() ) << y.render( tc->q ) << " " << y.unit
               << " μ: " << render_ci( m_mean, m_mean - b_mean.low, b_mean.high - m_mean, factor )
               << " m: " << render_ci( b_sample.median,
                                       b_sample.median - b_median.low,
@@ -526,7 +540,7 @@ void run( int argc, const char **argv ) {
                 for ( int p_seq = 0; p_seq < x.count(); ++ p_seq )
                     t_max = std::max( t_max, results[ q_seq ].mean_high.ys[ p_seq ] );
 
-                header << " '-' using 1:3:4 title \"" << tc->parameter( y, q_seq )
+                header << " '-' using 1:3:4 title \"" << y.render( tc->parameter( y, q_seq ) )
                        << "\" with filledcurves ls " << q_seq + 1;
                 header << ", '-' using 1:2 notitle with lines ls " << q_seq + 1;
                 header << ", '-' using 1:3 notitle with lines ls " << q_seq + 1 << " lw 0.5";
