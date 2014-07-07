@@ -230,7 +230,7 @@ Sample bootstrap( Sample s, E estimator, int iterations = 20000 )
 struct Axis {
     bool active; /* only evaluate the axis if it is active */
     bool log; /* if true, step is multiplicative, in percent */
-    bool normalize; /* scale time per unit on this axis? */
+    enum { Mult, Div, None } normalize; /* scale time per unit on this axis? */
     int64_t min, max;
     double step; // useful for log-scaled benchmarks
     double unit_mul, unit_div;
@@ -238,7 +238,7 @@ struct Axis {
 
     std::function<std::string(int64_t)> _render;
 
-    Axis() : active( false ), log( false ), normalize( false ),
+    Axis() : active( false ), log( false ), normalize( None ),
              min( 1 ), max( 10 ), step( 1 ),
              unit_mul( 1 ), unit_div( 1 ),
              name( "n" ), unit( "unit" )
@@ -254,8 +254,13 @@ struct Axis {
         return s.str();
     }
 
-    double scaled( double p ) {
-        return (p * unit_mul) / unit_div;
+    double scaled( double p ) { return (p * unit_mul) / unit_div; }
+    double normal( double p ) {
+        switch( normalize ) {
+            case None: return 1;
+            case Mult: return p;
+            case Div: return 1.0 / p;
+        }
     }
 
     int amplitude() {
@@ -282,6 +287,7 @@ struct BenchmarkBase : unittest::TestCaseBase {
     struct timespec start, end;
     int fds[2];
 
+    virtual double normal() = 0;
     virtual int parameter( Axis, int ) = 0;
     virtual std::pair< Axis, Axis > axes() = 0;
     int64_t p, q;
@@ -305,6 +311,7 @@ struct BenchmarkGroup {
         return "x=" + x.name + " y=" + y.name +
                " x_unit=" + x.unit + " y_unit=" + y.unit;
     }
+    virtual double normal() { return 1.0; }
 };
 
 namespace {
@@ -420,7 +427,7 @@ void repeat( BenchmarkBase *tc, ResultSet &res ) {
         }
     }
 
-    double factor = (x.normalize ? 1.0 / tc->p : 1) * (y.normalize ? 1.0 / tc->q : 1);
+    double factor = x.normal( tc->p ) * y.normal( tc->q ) * tc->normal();
 
     std::cerr << "  " << x.name << ": " << std::setw( x.amplitude() ) << x.render( tc->p ) << " " << x.unit
               << " "  << y.name << ": " << std::setw( y.amplitude() ) << y.render( tc->q ) << " " << y.unit
@@ -637,6 +644,11 @@ struct Benchmark : BenchmarkBase
         return bg.parameter( a, p );
     }
 
+    double normal() {
+        BenchGroup bg;
+        return bg.normal();
+    }
+
     void run() {
         BenchGroup bg;
         bg.setup( p, q );
@@ -699,7 +711,7 @@ struct SelfTest : BenchmarkGroup {
         x.active = true;
         x.name = "items";
         x.unit = "kfrob";
-        x.normalize = true;
+        x.normalize = Axis::Div;
 
         y.active = true;
         y.min =      800000;

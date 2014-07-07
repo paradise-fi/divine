@@ -1174,7 +1174,7 @@ Axis axis_items( int min = 16, int max = 16 * 1024 ) {
     a.name = "items";
     a.log = true;
     a.step = sqrt(sqrt(2));
-    a.normalize = true;
+    a.normalize = Axis::Div;
     a.unit = "k";
     a.unit_div =    1000;
     a.min = min * 1000;
@@ -1186,6 +1186,7 @@ Axis axis_threads( int max = 16 ) {
     Axis a;
     a.active = true;
     a.name = "threads";
+    a.normalize = Axis::Mult;
     a.unit = "";
     a.min = 1;
     a.max = max;
@@ -1271,6 +1272,7 @@ struct ItemsVsReserve : Run< hlist::TypeList< T > >
     int threads() { return _threads; }
     int items() { return this->p; }
     double reserve() { return this->q / 100; }
+    double normal() { return _threads; }
 };
 
 template< int _reserve, typename T >
@@ -1329,6 +1331,7 @@ struct ThreadsVsTypes : Run< hlist::TypeList< Ts... > >
     double reserve() { return _reserve / 100.0; }
     int items() { return _items * 1000; }
     int type() { return this->q; }
+    double normal() { return 1.0 / items(); }
 };
 
 template< typename Param >
