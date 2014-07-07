@@ -318,7 +318,7 @@ namespace {
 
 std::vector< BenchmarkBase * > *benchmarks = nullptr;
 
-std::vector< std::string > time_units = { "s ", "ms", "μs", "ns", "ps", "fs", "as", "zs", "ys" };
+std::vector< std::string > time_units = { "s", "ms", "μs", "ns", "ps", "fs", "as", "zs", "ys" };
 
 std::string render_ci( double point, double low_err, double high_err, double factor = 1 )
 {
@@ -337,7 +337,8 @@ std::string render_ci( double point, double low_err, double high_err, double fac
 
     str << std::fixed << std::setprecision( 2 ) << "(∓"
         << std::setw( 4 ) << low_err * mult << " "
-        << std::setw( 6 ) << point * mult << " " << time_units[ scale ] << " ±"
+        << std::setw( 6 ) << point * mult << " "
+        << std::setw( 2 ) << time_units[ scale ] << " ±"
         << std::setw( 4 ) << high_err * mult << ")";
     return str.str();
 }
