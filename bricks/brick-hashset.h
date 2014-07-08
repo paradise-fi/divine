@@ -1404,10 +1404,13 @@ struct Bench : Param
 };
 
 template< typename T >
-struct wrap : T {
+struct wrap {
+    T *t;
     struct ThreadData {};
-    wrap< T > &withTD( ThreadData & ) { return *this; }
-    void setSize( int s ) { T::rehash( s ); }
+    wrap< T > withTD( ThreadData & ) { return *this; }
+    void setSize( int s ) { t->rehash( s ); }
+    void insert( typename T::value_type i ) { t->insert( i ); }
+    wrap() : t( new T ) {}
 };
 
 using A = wrap< std::unordered_set< int > >;
