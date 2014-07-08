@@ -804,7 +804,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         }
 
         void helpWithRehashing() {
-            if ( _d.growing )
+            while ( _d.growing )
                 while( rehashSegment() );
             while( _d.growing );
         }
