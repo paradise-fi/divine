@@ -38,6 +38,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
+#include <cmath>
+
 #ifndef BRICK_GNUPLOT_H
 #define BRICK_GNUPLOT_H
 
@@ -169,15 +171,117 @@ struct Spline {
     }
 };
 
-using Style = std::vector< std::string >; // just a list of colors
+struct Colour {
+    struct Lab { double L, a, b; };
+    struct XYZ { double x, y, z; };
+    struct RGB { double r, g, b; };
 
-namespace {
+    Lab _c;
 
-const Style rainbow = { "rgb '#ff4500'", "rgb '#ffa500'", "rgb '#006400'",
-                        "rgb '#0000ff'", "rgb '#9400d3'", "rgb '#800000'",
-                        "rgb '#ff0000'" };
+    double f_inv( double t ) {
+        if ( t > 6.0 / 29.0 )
+            return pow( t, 3 );
+        else
+            return 3 * pow ( 6.0 / 29.0, 2 ) * ( t - 4.0 / 29.0 );
+    }
 
-}
+    XYZ xyz() {
+        XYZ c = { 0, 0, 0 };
+
+        double l = ( _c.L + 16 ) / 116.0;
+        c.y = f_inv( l );
+        c.x = f_inv( _c.a / 500.0 + l );
+        c.z = f_inv( l - _c.b / 200.0 );
+
+        c.x *= 95.047;
+        c.y *= 100.0;
+        c.z *= 108.883;
+
+        return c;
+    };
+
+    double c_srgb( double x ) {
+        if ( x < 0.0031308 )
+            return 12.92 * x;
+        else
+            return 1.055 * pow( x, 1.0 / 2.4 ) - 0.055;
+    }
+
+    RGB rgb() {
+        XYZ r = xyz(); RGB c = { 0, 0, 0 };
+
+        r.x /= 100; r.y /= 100; r.z /= 100;
+
+        c.r = c_srgb( r.x *  3.2406 + r.y * -1.5372 + r.z * -0.4986 );
+        c.g = c_srgb( r.x * -0.9689 + r.y *  1.8758 + r.z *  0.0415 );
+        c.b = c_srgb( r.x *  0.0557 + r.y * -0.2040 + r.z *  1.0570 );
+
+        /* clip to the sRGB gamut */
+        c.r = std::max( std::min( c.r, 1.0 ), 0.0 );
+        c.g = std::max( std::min( c.g, 1.0 ), 0.0 );
+        c.b = std::max( std::min( c.b, 1.0 ), 0.0 );
+
+        return c;
+    }
+
+    Lab &lab() {
+        return _c;
+    }
+
+    Colour() : _c { 0, 0, 0 } {}
+};
+
+struct Style {
+    enum Type { Gradient, Spot } _type;
+    using Lab = Colour::Lab;
+    using RGB = Colour::RGB;
+
+    Colour::Lab _from, _to;
+
+    void set( Type t, Lab from, Lab to ) {
+        _type = t;
+        _from = from;
+        _to = to;
+    }
+
+    void gradient( Lab from, Lab to ) {
+        set( Gradient, from, to );
+    }
+
+    void spot( Lab from, Lab to ) {
+        set( Spot, from, to );
+    }
+
+    // TODO non-uniform value distributions?
+    // TODO HCL-based spot colors on demand
+    std::vector< RGB > render( int patches ) {
+        if ( _type == Spot )
+            return std::vector< RGB >{
+                { 1  , .27, 0   },
+                { 1  , .65, 0   },
+                { 0  , .39, 0   },
+                { 0  , 0  , 1   },
+                { .58, 0  , .83 },
+                { .50, 0  , 0   },
+                { 1  , 0  , 0   } };
+
+        double stepL = (_to.L - _from.L) / (patches - 1),
+               stepa = (_to.a - _from.a) / (patches - 1),
+               stepb = (_to.b - _from.b) / (patches - 1);
+
+        std::vector< Colour::RGB > res;
+
+        Colour c;
+        for ( int i = 0; i < patches; ++ i ) {
+            c.lab().L = _from.L + i * stepL;
+            c.lab().a = _from.a + i * stepa;
+            c.lab().b = _from.b + i * stepb;
+            res.push_back( c.rgb() );
+        }
+
+        return res;
+    }
+};
 
 /* a single line of a plot */
 struct DataSet {
@@ -254,6 +358,13 @@ struct DataSet {
     DataSet( int w ) : _raw( 0, w ) {}
 };
 
+std::ostream &operator<<( std::ostream &o, Colour::RGB c ) {
+    return o << "rgb '#" << std::hex << std::setfill( '0' )
+             << std::setw( 2 ) << int( 255 * c.r )
+             << std::setw( 2 ) << int( 255 * c.g )
+             << std::setw( 2 ) << int( 255 * c.b ) << "'";
+}
+
 struct Plot {
     enum Terminal { PDF } _terminal;
     enum Axis { X, Y, Z };
@@ -285,6 +396,12 @@ struct Plot {
     void logscale( Axis a ) { _logscale.insert( a ); }
     void interval( Axis a, double i ) { _interval[ a ] = i; }
     void name( std::string n ) { _name = n; }
+    void style( Style::Type t,
+                Colour::Lab from = { 91, -6, 29 },
+                Colour::Lab to = { 45, 41, 41 } )
+    {
+        _style.set( t, from, to );
+    }
 
     DataSet &append( std::string name, int cols, DataSet::Style s ) {
         _datasets.emplace_back( cols );
@@ -296,9 +413,10 @@ struct Plot {
 
     DataSet &operator[]( int i ) { return _datasets[ i ]; }
 
-    Plot() : _terminal( PDF ), _font( "Liberation Sans,10" ),
-             _style( rainbow )
-    {}
+    Plot() : _terminal( PDF ), _font( "Liberation Sans,10" )
+    {
+        style( Style::Spot );
+    }
 
     std::string preamble()
     {
@@ -307,7 +425,7 @@ struct Plot {
         str << "set terminal pdfcairo font '" << _font << "'" << std::endl;
 
         int i = 1;
-        for ( auto c : _style ) {
+        for ( auto c : _style.render( _datasets.size() ) ) {
             str << "set style line " << i
                 << " lc " << c << " lt 1 lw 2" << std::endl;
             ++ i;
