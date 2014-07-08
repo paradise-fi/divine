@@ -1279,12 +1279,12 @@ struct ItemsVsReserve : Run< hlist::TypeList< T > >
     double normal() { return _threads; }
 };
 
-template< int _reserve, typename T >
+template< int _max_threads, int _reserve, typename T >
 struct ItemsVsThreads : Run< hlist::TypeList< T > >
 {
     ItemsVsThreads() {
         this->x = axis_items();
-        this->y = axis_threads();
+        this->y = axis_threads( _max_threads );
     }
 
     std::string fixed() {
