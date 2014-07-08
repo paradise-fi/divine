@@ -345,6 +345,7 @@ struct Plot {
                 << (_units.count( a ) ? " [" + _units[ a ] + "]" : "")
                 << "'" << std::endl;
 
+        str << (_logscale.count( a ) ? "set" : "unset") << " logscale " << l << std::endl;
         return str.str();
     }
 
