@@ -353,7 +353,7 @@ struct Plot {
         std::stringstream str;
         str << setupAxis( X ) << setupAxis( Y )
             << "set title '" << _name << "'" << std::endl
-            << "set key outside title '"  << _name[ Z ]
+            << "set key outside title '"  << _names[ Z ]
             << (_units.count( Z ) ? " [" + _units[ Z ] + "]" : "")
             << "' Left" << std::endl
             << "set format x '%.0f'" << std::endl;
