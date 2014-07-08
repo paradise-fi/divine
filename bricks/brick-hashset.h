@@ -1149,16 +1149,13 @@ template< typename HS >
 struct RandomInsert : shmem::Thread {
     HS *_set;
     typename HS::ThreadData td;
-    int count;
+    int count, id;
     struct random_data rand;
     char statebuf[256];
 
-    RandomInsert() {
-        memset(&rand, 0, sizeof(rand));
-        initstate_r( 0, statebuf, 128, &rand );
-    }
-
     void main() {
+        memset(&rand, 0, sizeof(rand));
+        initstate_r( id, statebuf, 128, &rand );
         auto set = _set->withTD( td );
         int v;
         for ( int i = 0; i < count; ++i ) {
@@ -1388,6 +1385,7 @@ struct Bench : Param
             RandomInsert< T > *ri = new RandomInsert< T >[ threads ];
 
             for ( int i = 0; i < threads; ++i ) {
+                ri[i].id = i;
                 ri[i].count = items / threads;
                 ri[i]._set = &t;
             }
