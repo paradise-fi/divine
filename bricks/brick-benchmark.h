@@ -111,8 +111,8 @@ Sample bootstrap( Sample s, E estimator, int iterations = 20000 )
 }
 
 struct Axis {
-    bool active; /* only evaluate the axis if it is active */
     bool log; /* if true, step is multiplicative, in percent */
+    enum { Quantitative, Qualitative, Disabled } type;
     enum { Mult, Div, None } normalize; /* scale time per unit on this axis? */
     int64_t min, max;
     double step; // useful for log-scaled benchmarks
@@ -121,7 +121,7 @@ struct Axis {
 
     std::function<std::string(int64_t)> _render;
 
-    Axis() : active( false ), log( false ), normalize( None ),
+    Axis() : log( false ), type( Disabled ), normalize( None ),
              min( 1 ), max( 10 ), step( 1 ),
              unit_mul( 1 ), unit_div( 1 ),
              name( "n" ), unit( "unit" )
@@ -151,7 +151,7 @@ struct Axis {
     }
 
     int count() {
-        if ( !active )
+        if ( type == Disabled )
             return 1;
         ASSERT_LEQ( min, max );
         if ( log ) { // use floating point ::log?
@@ -449,6 +449,12 @@ void run( int argc, const char **argv ) {
         plot.axis     ( gnuplot::Plot::Y, "time", time_units[ t_scale ] );
         plot.axis     ( gnuplot::Plot::Z, y.name, y.unit );
         plot.name     ( shortdesc( tc->describe() ) );
+        switch ( y.type ) {
+            case Axis::Qualitative: plot.style( gnuplot::Style::Spot ); break;
+            case Axis::Quantitative: plot.style( gnuplot::Style::Gradient ); break;
+            default: ;
+        }
+
         std::cout << plot.plot();
     }
 }
@@ -540,12 +546,12 @@ namespace benchmark {
 
 struct SelfTest : BenchmarkGroup {
     SelfTest() {
-        x.active = true;
+        x.type = Axis::Quantitative;
         x.name = "items";
         x.unit = "kfrob";
         x.normalize = Axis::Div;
 
-        y.active = true;
+        y.type = Axis::Quantitative;
         y.min =      800000;
         y.max =     6400000;
         y.unit_div =   1000;

@@ -1167,7 +1167,7 @@ struct RandomInsert : shmem::Thread {
 
 Axis axis_items( int min = 16, int max = 16 * 1024 ) {
     Axis a;
-    a.active = true;
+    a.type = Axis::Quantitative;
     a.name = "items";
     a.log = true;
     a.step = sqrt(sqrt(2));
@@ -1181,7 +1181,7 @@ Axis axis_items( int min = 16, int max = 16 * 1024 ) {
 
 Axis axis_threads( int max = 16 ) {
     Axis a;
-    a.active = true;
+    a.type = Axis::Quantitative;
     a.name = "threads";
     a.normalize = Axis::Mult;
     a.unit = "";
@@ -1194,7 +1194,7 @@ Axis axis_threads( int max = 16 ) {
 Axis axis_reserve( int max = 200, int step = 50 )
 {
     Axis a;
-    a.active = true;
+    a.type = Axis::Quantitative;
     a.name = "reserve";
     a.unit = "%";
     a.min = 0;
@@ -1206,7 +1206,7 @@ Axis axis_reserve( int max = 200, int step = 50 )
 Axis axis_types( int count )
 {
     Axis a;
-    a.active = true;
+    a.type = Axis::Qualitative;
     a.name = "type";
     a.unit = "";
     a.min = 0;
