@@ -198,7 +198,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
     Options options;
 
     std::vector< Vertex > trace;
-    std::vector< Vertex > succs;
+    std::vector< std::pair< Vertex, Label > > succs;
 
     std::vector< int > iniTrail;
     std::vector< int > cycleTrail;
@@ -222,16 +222,16 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
     }
 
     // add successor to the list
-    void addSucc( Node n ) {
+    void addSucc( Node n, Label l ) {
         auto v = this->store().store( n );
-        succs.push_back( v );
+        succs.emplace_back( v, l );
     }
 
     // fill the successor array
     void generateSuccessors( Vertex from ) {
         clearSuccs();
-        this->graph().successors( from, [ this ] ( Node n, Label ) {
-            this->addSucc( n );
+        this->graph().successors( from, [ this ] ( Node n, Label l ) {
+            this->addSucc( n, l );
         });
     }
 
@@ -239,8 +239,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
     void generateInitials() {
         assert( trace.empty() );
         clearSuccs();
-        this->graph().initials( [ this ] ( Node, Node n, Label ) {
-            this->addSucc( n );
+        this->graph().initials( [ this ] ( Node, Node n, Label l ) {
+            this->addSucc( n, l );
         });
     }
 
@@ -250,9 +250,9 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
         assert_leq( i, int( succs.size() - 1 ) );
 
         // store selected successor
-        trace.push_back( succs[ i ] );
-        extension( succs[ i ] ).seen = true;
-        extension( succs[ i ] ).intrace = true;
+        trace.push_back( succs[ i ].first );
+        extension( succs[ i ].first ).seen = true;
+        extension( succs[ i ].first ).intrace = true;
 
         generateSuccessors( trace.back() );
     }
@@ -274,7 +274,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
     // one step of DFS, go down to the first unvisited state, otherwise go up
     bool stepDFS() {
         for ( unsigned int i = 0; i < succs.size(); i++ ) {
-            if ( !extension( succs[ i ] ).seen ) {
+            if ( !extension( succs[ i ].first ).seen ) {
                 goDown( i );
                 return true;
             }
@@ -405,7 +405,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
         const int LINE = 40;
         unsigned int id = 0;
         for ( const auto &s : succs ) {
-            Node n = s.node();
+            Node n = s.first.node();
             ++id;
 
             std::stringstream ss;
@@ -417,13 +417,13 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
 
             // print transition
             if ( options.has( Option::PrintEdges ) && !trace.empty() ) {
-                std::string edge = this->graph().showTransition( trace.back().node(), n, Label() );
+                std::string edge = this->graph().showTransition( trace.back().node(), n, s.second );
                 if ( !edge.empty() )
                     loop.show( "=> " + edge );
             }
 
             // print successor
-            showNode( s );
+            showNode( s.first );
         }
 
         if ( id )
