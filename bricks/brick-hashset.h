@@ -1146,12 +1146,16 @@ template struct Parallel< ConFS >;
 /* Benchmarks */
 
 template< typename HS >
-struct RandomInsert : shmem::Thread {
+struct RandomThread : shmem::Thread {
     HS *_set;
     typename HS::ThreadData td;
     int count, id;
     struct random_data rand;
     char statebuf[256];
+    bool insert;
+    int max;
+
+    RandomThread() : insert( true ) {}
 
     void main() {
         memset(&rand, 0, sizeof(rand));
@@ -1160,7 +1164,14 @@ struct RandomInsert : shmem::Thread {
         int v;
         for ( int i = 0; i < count; ++i ) {
             random_r( &rand, &v );
-            set.insert( v );
+            if ( max < std::numeric_limits< int >::max() ) {
+                v = v % max;
+                v = v * v + v + 41;
+            }
+            if ( insert )
+                set.insert( v );
+            else
+                set.count( v );
         }
     };
 };
@@ -1216,6 +1227,7 @@ Axis axis_types( int count )
 }
 
 template< typename T > struct TN {};
+template< typename > struct _void { typedef void T; };
 
 template< typename Ts >
 struct Run : BenchmarkGroup
@@ -1238,22 +1250,27 @@ struct Run : BenchmarkGroup
         return std::string( s, 1, s.size() );
     }
 
-    template< template< typename > class, typename Self, int, typename >
-    static void run( Self *, hlist::not_preferred ) {
+    template< template< typename > class, typename Self, int, typename, typename... Args >
+    static void run( Self *, hlist::not_preferred, Args... ) {
         ASSERT_UNREACHABLE( "brick_test::hashset::Run fell off the cliff" );
     }
 
-    template< template< typename > class RI, typename Self, int id = 0,
-              typename Tss = Ts, typename = typename Tss::Head >
-    static void run( Self *self, hlist::preferred = hlist::preferred() )
+    template< template< typename > class RI, typename Self, int id,
+              typename Tss, typename... Args >
+    static auto run( Self *self, hlist::preferred, Args... args )
+        -> typename _void< typename Tss::Head >::T
     {
         if ( self->type() == id ) {
-            /* std::cerr << "running " << id << " with " << self->items() << " items, " << self->threads()
-                      << " threads and " << self->reserve() << " reserve" <<
-                      std::endl; */
-            RI< typename Tss::Head >()( self->items(), self->threads(), self->reserve() );
+            RI< typename Tss::Head > x( self, args... );
+            self->reset(); // do not count the constructor
+            x( self );
         } else
-            run< RI, Self, id + 1, typename Tss::Tail >( self, hlist::preferred() );
+            run< RI, Self, id + 1, typename Tss::Tail, Args... >( self, hlist::preferred(), args... );
+    }
+
+    template< template< typename > class RI, typename Self, typename... Args >
+    static void run( Self *self, Args... args ) {
+        run< RI, Self, 0, Ts, Args... >( self, hlist::preferred(), args... );
     }
 
     int type() { return 0; } // default
@@ -1365,41 +1382,85 @@ struct ThreadsVsTypes : Run< hlist::TypeList< Ts... > >
     double normal() { return 1.0 / items(); }
 };
 
+template< typename T >
+struct RandomInsert {
+    bool insert;
+    int max;
+    T t;
+
+    template< typename BG >
+    RandomInsert( BG *bg, int max = std::numeric_limits< int >::max() )
+        : insert( true ), max( max )
+    {
+        if ( bg->reserve() > 0 )
+            t.setSize( bg->items() * bg->reserve() );
+    }
+
+    template< typename BG >
+    void operator()( BG *bg )
+    {
+        RandomThread< T > *ri = new RandomThread< T >[ bg->threads() ];
+
+        for ( int i = 0; i < bg->threads(); ++i ) {
+            ri[i].id = i;
+            ri[i].insert = insert;
+            ri[i].max = max;
+            ri[i].count = bg->items() / bg->threads();
+            ri[i]._set = &t;
+        }
+
+        for ( int i = 0; i < bg->threads(); ++i )
+            ri[i].start();
+        for ( int i = 0; i < bg->threads(); ++i )
+            ri[i].join();
+    }
+};
+
+template< typename T >
+struct RandomLookup : RandomInsert< T > {
+
+    template< typename BG >
+    RandomLookup( BG *bg, int ins_max, int look_max )
+        : RandomInsert< T >( bg, ins_max )
+    {
+        (*this)( bg );
+        this->max = look_max;
+        this->insert = false;
+    }
+};
+
 template< typename Param >
 struct Bench : Param
 {
     std::string describe() {
         return "category=hashset " + Param::describe() + " " +
-               Param::fixed() + " " + this->describe_axes();
+            Param::fixed() + " " + this->describe_axes();
     }
 
-    template< typename T >
-    struct _RandomInsert {
-        void operator()( int items, int threads, double reserve )
-        {
-            T t;
+    BENCHMARK(random_insert_1x) {
+        this->template run< RandomInsert >( this );
+    }
 
-            if ( reserve > 0 )
-                t.setSize( items * reserve );
+    BENCHMARK(random_insert_2x) {
+        this->template run< RandomInsert >( this, this->items() / 2 );
+    }
 
-            RandomInsert< T > *ri = new RandomInsert< T >[ threads ];
+    BENCHMARK(random_insert_4x) {
+        this->template run< RandomInsert >( this, this->items() / 4 );
+    }
 
-            for ( int i = 0; i < threads; ++i ) {
-                ri[i].id = i;
-                ri[i].count = items / threads;
-                ri[i]._set = &t;
-            }
+    BENCHMARK(random_lookup_100) {
+        this->template run< RandomInsert >( this );
+    }
 
-            for ( int i = 0; i < threads; ++i )
-                ri[i].start();
-            for ( int i = 0; i < threads; ++i )
-                ri[i].join();
-        }
-    };
+    BENCHMARK(random_lookup_50) {
+        this->template run< RandomLookup >(
+            this, this->items() / 2, this->items() );
+    }
 
-    BENCHMARK(random_insert)
-    {
-        this->template run< _RandomInsert >( this );
+    BENCHMARK(random_lookup_25) {
+        this->template run< RandomLookup >(
+            this, this->items() / 4, this->items() );
     }
 };
 
@@ -1410,6 +1471,7 @@ struct wrap {
     wrap< T > withTD( ThreadData & ) { return *this; }
     void setSize( int s ) { t->rehash( s ); }
     void insert( typename T::value_type i ) { t->insert( i ); }
+    int count( typename T::value_type i ) { return t->count( i ); }
     wrap() : t( new T ) {}
 };
 
