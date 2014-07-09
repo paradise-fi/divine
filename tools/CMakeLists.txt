@@ -26,13 +26,16 @@ if( TBBMALLOC )
   target_link_libraries( divine tbbmalloc )
 endif()
 
-set( llvmpaths "${CMAKE_CURRENT_BINARY_DIR}/llvmpaths.h" )
-file( WRITE ${llvmpaths} "static const char *_cmd_clang= \"${CMD_CLANG}\";\n" )
-file( APPEND ${llvmpaths} "static const char *_cmd_gold= \"${CMD_GOLD}\";\n" )
-file( APPEND ${llvmpaths} "static const char *_cmd_ar= \"${CMD_AR}\";\n" )
-file( APPEND ${llvmpaths} "static const char *_cmd_llvmgold= \"${CMD_LLVMGOLD}\";\n" )
+set( llvmpaths "
+static const char *_cmd_clang= \"${CMD_CLANG}\"\;
+static const char *_cmd_gold= \"${CMD_GOLD}\"\;
+static const char *_cmd_ar= \"${CMD_AR}\"\;
+static const char *_cmd_llvmgold= \"${CMD_LLVMGOLD}\"\;" )
 
-set_source_files_properties( compile.h PROPERTIES OBJECT_DEPENDS ${llvmpaths} )
+set( llvmpaths_file "${CMAKE_CURRENT_BINARY_DIR}/llvmpaths.h" )
+update_file( "${llvmpaths_file}" "${llvmpaths}" )
+
+set_source_files_properties( compile.h PROPERTIES OBJECT_DEPENDS ${llvmpaths_file} )
 
 set( MAKE_STRING_CONST "${CMAKE_CURRENT_SOURCE_DIR}/make-string-const.pl" )
 
