@@ -67,38 +67,36 @@ struct Unit {
 struct Preferred { CONSTEXPR Preferred() { } };
 struct NotPreferred { CONSTEXPR NotPreferred( Preferred ) {} };
 
-namespace mixin {
-
-template< typename Self >
 struct Comparable {
-
-    const Self &cmpSelf() const {
-        return *static_cast< const Self * >( this );
-    }
-
-    bool operator!=( const Self &o ) const {
-        return not( cmpSelf() == o );
-    }
-
-    bool operator==( const Self &o ) const {
-        return cmpSelf() <= o && o <= cmpSelf();
-    }
-
-    bool operator<( const Self &o ) const {
-        return cmpSelf() <= o && cmpSelf() != o;
-    }
-
-    bool operator>( const Self &o ) const {
-        return o <= cmpSelf() && cmpSelf() != o;
-    }
-
-    bool operator>=( const Self &o ) const {
-        return o <= cmpSelf();
-    }
-
-    // you implement this one in your class
-    // bool operator<=( const Self &o ) const { return this <= &o; }
+    typedef bool IsComparable;
 };
+
+template< typename T >
+typename T::IsComparable operator!=( const T &a, const T &b ) {
+    return not( a == b );
+}
+
+template< typename T >
+typename T::IsComparable operator==( const T &a, const T &b ) {
+    return a <= b && b <= a;
+}
+
+template< typename T >
+typename T::IsComparable operator<( const T &a, const T &b ) {
+    return a <= b && a != b;
+}
+
+template< typename T >
+typename T::IsComparable operator>( const T &a, const T &b ) {
+    return b <= a && a != b;
+}
+
+template< typename T >
+typename T::IsComparable operator>=( const T &a, const T &b ) {
+    return b <= a;
+}
+
+namespace mixin {
 
 #if __cplusplus >= 201103L
 template< typename Self >
@@ -153,7 +151,7 @@ struct LexComparable {
 */
 
 template <typename T>
-struct Maybe : mixin::Comparable< Maybe< T > > {
+struct Maybe : Comparable {
     bool nothing() const { return m_nothing; }
     bool isNothing() const { return nothing(); }
     T &value() { return m_value; }
@@ -197,7 +195,7 @@ struct StorableRef< T & > {
 };
 
 template< typename _T >
-struct Maybe : mixin::Comparable< Maybe< _T > >
+struct Maybe : Comparable
 {
     using T = _T;
 
@@ -775,7 +773,7 @@ namespace types {
 
 using namespace ::brick::types;
 
-struct Integer : mixin::Comparable<Integer>
+struct Integer : Comparable
 {
     int val;
 public:
