@@ -167,7 +167,6 @@ struct Axis {
 };
 
 struct BenchmarkBase : unittest::TestCaseBase {
-    struct timespec start, end;
     int fds[2];
 
     virtual double normal() = 0;
@@ -182,6 +181,12 @@ struct BenchmarkBase : unittest::TestCaseBase {
 struct BenchmarkGroup {
     Axis x, y; // z is time
     int64_t p, q; // parameter values on x and y axes
+    struct timespec start, end;
+
+    void reset() {
+        clock_gettime( CLOCK_MONOTONIC, &start );
+    }
+
     BenchmarkGroup() : p( 0 ), q( 0 ) {}
     virtual int64_t parameter( Axis a, int seq ) {
         if ( !a.log )
@@ -490,11 +495,11 @@ struct Benchmark : BenchmarkBase
         BenchGroup bg;
         bg.setup( p, q );
 #ifdef __unix // TODO: figure out a win32 implementation
-        clock_gettime( CLOCK_MONOTONIC, &start );
+        clock_gettime( CLOCK_MONOTONIC, &bg.start );
         (bg.*testcase)();
-        clock_gettime( CLOCK_MONOTONIC , &end );
-        int64_t ns = end.tv_nsec - start.tv_nsec;
-        time_t s = end.tv_sec - start.tv_sec;
+        clock_gettime( CLOCK_MONOTONIC , &bg.end );
+        int64_t ns = bg.end.tv_nsec - bg.start.tv_nsec;
+        time_t s = bg.end.tv_sec - bg.start.tv_sec;
         if ( ns < 0 ) {
             s -= 1;
             ns += 1000000000;
