@@ -460,9 +460,8 @@ void run( int argc, const char **argv ) {
             case Axis::Quantitative: plot.style( gnuplot::Style::Gradient ); break;
             default: ;
         }
-
-        std::cout << plot.plot();
     }
+    std::cout << plots.plot();
 }
 
 template< typename T >
