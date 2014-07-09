@@ -231,6 +231,11 @@ struct Colour {
     Colour() : _c { 0, 0, 0 } {}
 };
 
+bool operator<( Colour::Lab a, Colour::Lab b ) {
+    return std::make_tuple( a.L, a.a, a.b ) <
+           std::make_tuple( b.L, b.a, b.b );
+}
+
 struct Style {
     enum Type { Gradient, Spot } _type;
     using Lab = Colour::Lab;
@@ -283,6 +288,12 @@ struct Style {
     }
 };
 
+bool operator<( Style a, Style b ) {
+    return std::make_tuple( a._type, a._from, a._to ) <
+           std::make_tuple( b._type, b._from, b._to );
+}
+
+
 /* a single line of a plot */
 struct DataSet {
     Matrix _raw;
@@ -291,6 +302,7 @@ struct DataSet {
     enum Style { Points, LinePoints, Line, Ribbon,
                  RibbonLine, RibbonLP } _style;
     std::string _name;
+    int _sort;
 
     bool points() {
         return _style != Ribbon && _style != Line;
@@ -365,10 +377,25 @@ std::ostream &operator<<( std::ostream &o, Colour::RGB c ) {
              << std::setw( 2 ) << int( 255 * c.b ) << "'";
 }
 
+struct ColourKey {
+    std::string axis, value;
+    Style style;
+    ColourKey( std::string a, std::string v, Style s )
+        : axis( a ), value( v ), style( s )
+    {}
+};
+
+bool operator<( ColourKey a, ColourKey b ) {
+    return std::make_tuple( a.axis, a.value, a.style ) <
+           std::make_tuple( b.axis, b.value, b.style );
+}
+
+
+using ColourMap = std::map< ColourKey, Colour::RGB >;
+
 struct Plot {
-    enum Terminal { PDF } _terminal;
     enum Axis { X, Y, Z };
-    std::string _font, _name;
+    std::string _name;
     Style _style;
 
     using Bounds = std::pair< double, double >;
@@ -403,31 +430,36 @@ struct Plot {
         _style.set( t, from, to );
     }
 
-    DataSet &append( std::string name, int cols, DataSet::Style s ) {
+    DataSet &append( std::string name, int sort, int cols, DataSet::Style s ) {
         _datasets.emplace_back( cols );
         auto &n = _datasets.back();
         n._style = s;
         n._name = name;
+        n._sort = sort;
         return n;
     }
 
     DataSet &operator[]( int i ) { return _datasets[ i ]; }
 
-    Plot() : _terminal( PDF ), _font( "Liberation Sans,10" )
+    Plot()
     {
         style( Style::Spot );
     }
 
-    std::string preamble()
+    std::string preamble( ColourMap cm )
     {
         std::stringstream str;
 
-        str << "set terminal pdfcairo font '" << _font << "'" << std::endl;
+        auto colours = _style.render( _datasets.size() );
+        int i = 0;
 
-        int i = 1;
-        for ( auto c : _style.render( _datasets.size() ) ) {
-            str << "set style line " << i
-                << " lc " << c << " lt 1 lw 2" << std::endl;
+        for ( auto &ds : _datasets ) {
+            auto key = ColourKey( _names[ Z ], ds._name, _style );
+            auto use = colours[ i ];
+            if ( cm.count( key ) )
+                use = cm[ key ];
+            str << "set style line " << i + 1
+                << " lc " << use << " lt 1 lw 2" << std::endl;
             ++ i;
         }
 
@@ -515,17 +547,50 @@ struct Plot {
         return str.str();
     }
 
-    std::string plot() {
-        return preamble() + setup() + datasets();
+    std::string plot( ColourMap cm = ColourMap() ) {
+        return preamble( cm ) + setup() + datasets();
     }
 };
 
 struct Plots {
     std::vector< Plot > _plots;
+    enum Terminal { PDF } _terminal;
+    std::string _font;
+
+    Plots() : _terminal( PDF ), _font( "Liberation Sans,10" ) {}
+
     Plot &append() {
         _plots.emplace_back();
         return _plots.back();
     }
+
+    std::string plot() {
+        std::stringstream str;
+        str << "set terminal pdfcairo font '" << _font << "'" << std::endl;
+
+        std::map< std::pair< std::string, Style >,
+                  std::set< std::pair< int, std::string > > > accum;
+        ColourMap cm;
+
+        for ( auto &p : _plots ) {
+            auto &set = accum[ std::make_pair( p._names[ Plot::Z ], p._style ) ];
+            for ( auto &ds: p._datasets )
+                set.insert( std::make_pair( ds._sort, ds._name ) );
+        }
+
+        for ( auto &cs : accum ) {
+            auto csk = cs.first;
+            auto colours = csk.second.render( cs.second.size() );
+            auto cit = colours.begin();
+            for ( auto item : cs.second )
+                cm[ ColourKey( csk.first, item.second, csk.second ) ] = *cit++;
+        }
+
+        for ( auto &p : _plots )
+            str << p.plot( cm );
+        return str.str();
+    }
+
 };
 
 }
