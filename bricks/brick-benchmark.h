@@ -198,8 +198,8 @@ struct BenchmarkGroup {
     virtual void setup( int _p, int _q ) { p = _p; q = _q; }
     virtual std::string describe() { return ""; }
     virtual std::string describe_axes() {
-        return "x=" + x.name + " y=" + y.name +
-               " x_unit=" + x.unit + " y_unit=" + y.unit;
+        return "x:" + x.name + " y:" + y.name +
+               " x:unit:" + x.unit + " y:unit:" + y.unit;
     }
     virtual double normal() { return 1.0; }
 };
@@ -367,14 +367,12 @@ std::string shortdesc( std::string d, bool invert = false ) {
     std::string res;
 
     split( d, bits, ' ' );
-    int types = std::count_if( bits.begin(), bits.end(), BeginsWith( "type=" ) );
+    int types = std::count_if( bits.begin(), bits.end(), BeginsWith( "type:" ) );
     std::copy_if( bits.begin(), bits.end(), std::back_inserter( keep ),
                   [ types, invert ]( std::string s ) {
-                      bool v = !BeginsWith( "x=" )( s ) &&
-                               !BeginsWith( "y=" )( s ) &&
-                               !BeginsWith( "x_unit=" )( s ) &&
-                               !BeginsWith( "y_unit=" )( s ) &&
-                               (types == 1 || !BeginsWith( "type=" )( s ) );
+                      bool v = !BeginsWith( "x:" )( s ) &&
+                               !BeginsWith( "y:" )( s ) &&
+                               (types == 1 || !BeginsWith( "type:" )( s ) );
                       return invert ? !v : v;
                   } );
     for ( auto k : keep )
@@ -565,7 +563,7 @@ struct SelfTest : BenchmarkGroup {
         y.unit = "k";
     }
 
-    std::string describe() { return "category=selftest"; }
+    std::string describe() { return "category:selftest"; }
 
     BENCHMARK(empty) {}
     BENCHMARK(delay) {

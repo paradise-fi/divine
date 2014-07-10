@@ -1246,7 +1246,7 @@ struct Run : BenchmarkGroup
     std::string describe() {
         std::string s;
         for ( int i = 0; i < Ts::length; ++i )
-            s += " type=" + render( i );
+            s += " type:" + render( i );
         return std::string( s, 1, s.size() );
     }
 
@@ -1286,7 +1286,7 @@ struct ItemsVsReserve : Run< hlist::TypeList< T > >
 
     std::string fixed() {
         std::stringstream s;
-        s << "threads=" << _threads;
+        s << "threads:" << _threads;
         return s.str();
     }
 
@@ -1306,7 +1306,7 @@ struct ItemsVsThreads : Run< hlist::TypeList< T > >
 
     std::string fixed() {
         std::stringstream s;
-        s << "reserve=" << _reserve;
+        s << "reserve:" << _reserve;
         return s.str();
     }
 
@@ -1325,7 +1325,7 @@ struct ThreadsVsReserve : Run< hlist::TypeList< T > >
 
     std::string fixed() {
         std::stringstream s;
-        s << "items=" << _items << "k";
+        s << "items:" << _items << "k";
         return s.str();
     }
 
@@ -1347,7 +1347,7 @@ struct ItemsVsTypes : Run< hlist::TypeList< Ts... > >
 
     std::string fixed() {
         std::stringstream s;
-        s << "threads=" << _threads << " reserve=" << _reserve;
+        s << "threads:" << _threads << " reserve:" << _reserve;
         return s.str();
     }
 
@@ -1371,7 +1371,7 @@ struct ThreadsVsTypes : Run< hlist::TypeList< Ts... > >
 
     std::string fixed() {
         std::stringstream s;
-        s << "items=" << _items << "k reserve=" << _reserve;
+        s << "items:" << _items << "k reserve:" << _reserve;
         return s.str();
     }
 
@@ -1433,7 +1433,7 @@ template< typename Param >
 struct Bench : Param
 {
     std::string describe() {
-        return "category=hashset " + Param::describe() + " " +
+        return "category:hashset " + Param::describe() + " " +
             Param::fixed() + " " + this->describe_axes();
     }
 
