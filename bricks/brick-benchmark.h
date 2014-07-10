@@ -326,6 +326,14 @@ void split( std::string s, C &c, char delim = ',' ) {
         c.push_back( item );
 }
 
+struct BeginsWith {
+    std::string p;
+    BeginsWith( std::string p ) : p( p ) {}
+    bool operator()( std::string s ) {
+        return std::string( s, 0, p.size() ) == p;
+    }
+};
+
 struct Filter {
     using Clause = std::vector< std::string >;
     using F = std::vector< Clause >;
@@ -348,17 +356,11 @@ struct Filter {
 
     Filter( int argc, const char **argv ) {
         for ( int i = 1; i < argc; ++i ) {
+            if ( BeginsWith( "--" )( argv[i] ) )
+                continue;
             formula.emplace_back();
             split( argv[i], formula.back() );
         }
-    }
-};
-
-struct BeginsWith {
-    std::string p;
-    BeginsWith( std::string p ) : p( p ) {}
-    bool operator()( std::string s ) {
-        return std::string( s, 0, p.size() ) == p;
     }
 };
 
@@ -380,10 +382,13 @@ std::string shortdesc( std::string d, bool invert = false ) {
     return std::string( res, 0, res.length() - 1 );
 }
 
-void list() {
+void list( int argc, const char **argv ) {
     ASSERT( benchmarks );
+    Filter flt( argc, argv );
     for ( auto tc : *benchmarks ) {
         std::string d = tc->describe();
+        if ( !flt.matches( d ) )
+            continue;
         std::vector< std::string > extra;
         std::cerr << "• " << shortdesc( d ) << std::endl;
         if ( !shortdesc( d, true ).empty() )
@@ -394,8 +399,8 @@ void list() {
 void run( int argc, const char **argv ) {
     ASSERT( benchmarks );
 
-    if ( argc == 2 && std::string( argv[1] ) == "--list" )
-        return list();
+    if ( argc >= 2 && std::string( argv[1] ) == "--list" )
+        return list( argc, argv );
 
     Filter flt( argc, argv );
 
