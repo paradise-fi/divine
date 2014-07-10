@@ -943,6 +943,11 @@ using Concurrent = _ConcurrentHashSet< AtomicCell< T, Hasher > >;
 #include <brick-hlist.h>
 #include <unordered_set>
 
+#ifdef BRICKS_HAVE_TBB
+#include <tbb/concurrent_hash_map.h>
+#include <tbb/concurrent_unordered_set.h>
+#endif
+
 namespace brick_test {
 namespace hashset {
 
@@ -1487,6 +1492,19 @@ struct wrap_set {
 
 struct empty {};
 
+template< template< typename > class C >
+struct wrap_map {
+    template< typename T >
+    struct HashTable : wrap_set< C >::template HashTable< T >
+    {
+        template< typename TD >
+        HashTable< T > &withTD( TD & ) { return *this; }
+        void insert( int v ) {
+            this->t->insert( std::make_pair( v, empty() ) );
+        }
+    };
+};
+
 template< typename T >
 using unordered_set = std::unordered_set< T >;
 
@@ -1505,8 +1523,23 @@ template<> struct TN< E > { static const char *n() { return "cfs"; } };
 #define FOR_SEQ(M) M(A) M(B) M(C)
 #define SEQ A, B, C
 
+#ifdef BRICKS_HAVE_TBB
+#define FOR_PAR(M) M(D) M(E) M(F) M(G)
+#define PAR D, E, F, G
+
+template< typename T > using cus = tbb::concurrent_unordered_set< T >;
+template< typename T > using chm = tbb::concurrent_hash_map< T, empty >;
+
+using F = wrap_set< cus >;
+using G = wrap_map< chm >;
+
+template<> struct TN< F > { static const char *n() { return "cus"; } };
+template<> struct TN< G > { static const char *n() { return "chm"; } };
+
+#else
 #define FOR_PAR(M) M(D) M(E)
 #define PAR D, E
+#endif
 
 #define TvT(N) \
     template struct Bench< ThreadsVsTypes< N, 50, 4, PAR > >;
