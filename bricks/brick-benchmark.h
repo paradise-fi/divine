@@ -418,7 +418,7 @@ void run( int argc, const char **argv ) {
 
         for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
             int64_t q_val = tc->parameter( y, q_seq );
-            auto &ds = plot.append( y.render( q_val ), q_val,
+            auto &ds = plot.append( y.render( q_val ), y.type == Axis::Qualitative ? 0 : q_val,
                                     4, gnuplot::DataSet::RibbonLP );
             for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
                 tc->p = tc->parameter( x, p_seq );
