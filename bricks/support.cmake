@@ -89,3 +89,40 @@ macro( bricks_check_features )
     add_definitions( -DBRICKS_HAVE_DIRENT_D_TYPE )
   endif()
 endmacro()
+
+function( bricks_fetch_tbb )
+  include( ExternalProject )
+  ExternalProject_Add(
+    bricks-tbb-build
+    URL https://www.threadingbuildingblocks.org/sites/default/files/software_releases/source/tbb42_20140601oss_src.tgz
+    BUILD_COMMAND make
+    CONFIGURE_COMMAND :
+    BUILD_IN_SOURCE 1
+    INSTALL_COMMAND
+     sh -c "ln -fs build/*_release _release && ln -fs build/*_debug _debug" ;
+     && sh -c "cd _debug && ln -s libtbb_debug.so libtbb.so" ;
+     && sh -c "cd _debug && ln -s libtbbmalloc_debug.so libtbbmalloc.so" )
+
+  ExternalProject_Get_Property( bricks-tbb-build SOURCE_DIR BINARY_DIR )
+
+  if ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
+    set( tbb_BINARY_DIR "${BINARY_DIR}/_debug" )
+  else()
+    set( tbb_BINARY_DIR "${BINARY_DIR}/_release" )
+  endif()
+
+  set( tbb_SOURCE_DIR ${SOURCE_DIR} PARENT_SCOPE )
+  set( tbb_BINARY_DIR ${tbb_BINARY_DIR} PARENT_SCOPE )
+
+  add_library( bricks-tbb UNKNOWN IMPORTED )
+  set_property( TARGET bricks-tbb PROPERTY IMPORTED_LOCATION
+                ${tbb_BINARY_DIR}/libtbb.so )
+  add_dependencies( bricks-tbb bricks-tbb-build )
+endfunction()
+
+macro( bricks_use_tbb )
+  add_definitions( -DBRICKS_HAVE_TBB )
+  include_directories( ${tbb_SOURCE_DIR}/include )
+  link_directories( ${tbb_BINARY_DIR} )
+  link_libraries( bricks-tbb )
+endmacro()
