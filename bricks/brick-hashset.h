@@ -1121,6 +1121,7 @@ struct Parallel
     }
 };
 
+template< typename T >
 struct test_hasher {
     template< typename X >
     test_hasher( X& ) { }
@@ -1130,10 +1131,10 @@ struct test_hasher {
     bool equal( int a, int b ) const { return a == b; }
 };
 
-template< typename T > using CS = Compact< T, test_hasher >;
-template< typename T > using FS = Fast< T, test_hasher >;
-template< typename T > using ConCS = Concurrent< T, test_hasher >;
-template< typename T > using ConFS = FastConcurrent< T, test_hasher >;
+template< typename T > using CS = Compact< T, test_hasher< T > >;
+template< typename T > using FS = Fast< T, test_hasher< T > >;
+template< typename T > using ConCS = Concurrent< T, test_hasher< T > >;
+template< typename T > using ConFS = FastConcurrent< T, test_hasher< T > >;
 
 /* instantiate the testcases */
 template struct Sequential< CS >;
@@ -1386,7 +1387,8 @@ template< typename T >
 struct RandomInsert {
     bool insert;
     int max;
-    T t;
+    using HS = typename T::template HashTable< int >;
+    HS t;
 
     template< typename BG >
     RandomInsert( BG *bg, int max = std::numeric_limits< int >::max() )
@@ -1399,7 +1401,7 @@ struct RandomInsert {
     template< typename BG >
     void operator()( BG *bg )
     {
-        RandomThread< T > *ri = new RandomThread< T >[ bg->threads() ];
+        RandomThread< HS > *ri = new RandomThread< HS >[ bg->threads() ];
 
         for ( int i = 0; i < bg->threads(); ++i ) {
             ri[i].id = i;
@@ -1464,40 +1466,80 @@ struct Bench : Param
     }
 };
 
-template< typename T >
-struct wrap {
-    T *t;
-    struct ThreadData {};
-    wrap< T > withTD( ThreadData & ) { return *this; }
-    void setSize( int s ) { t->rehash( s ); }
-    void insert( typename T::value_type i ) { t->insert( i ); }
-    int count( typename T::value_type i ) { return t->count( i ); }
-    wrap() : t( new T ) {}
+template< template< typename > class C >
+struct wrap_hashset {
+    template< typename T > using HashTable = C< T >;
 };
 
-using A = wrap< std::unordered_set< int > >;
-using B = Compact< int, test_hasher >;
-using C = Fast< int, test_hasher >;
-using D = Concurrent< int, test_hasher >;
-using E = FastConcurrent< int, test_hasher >;
+template< template< typename > class C >
+struct wrap_set {
+    template< typename T >
+    struct HashTable {
+        C< T > *t;
+        struct ThreadData {};
+        HashTable< T > withTD( ThreadData & ) { return *this; }
+        void setSize( int s ) { t->rehash( s ); }
+        void insert( T i ) { t->insert( i ); }
+        int count( T i ) { return t->count( i ); }
+        HashTable() : t( new C< T > ) {}
+    };
+};
 
-template<> struct TN< A > { static const char *n() { return "A"; } };
-template<> struct TN< B > { static const char *n() { return "B"; } };
-template<> struct TN< C > { static const char *n() { return "C"; } };
-template<> struct TN< D > { static const char *n() { return "D"; } };
-template<> struct TN< E > { static const char *n() { return "E"; } };
+struct empty {};
 
-template struct Bench< ThreadsVsTypes< 1024, 50, 16, D, E > >;
+template< typename T >
+using unordered_set = std::unordered_set< T >;
 
-template struct Bench< ItemsVsReserve< 1, A > >;
-template struct Bench< ItemsVsReserve< 1, B > >;
-template struct Bench< ItemsVsReserve< 1, C > >;
-template struct Bench< ItemsVsReserve< 1, D > >;
-template struct Bench< ItemsVsReserve< 2, D > >;
-template struct Bench< ItemsVsReserve< 4, D > >;
-template struct Bench< ItemsVsReserve< 1, E > >;
-template struct Bench< ItemsVsReserve< 2, E > >;
-template struct Bench< ItemsVsReserve< 4, E > >;
+using A = wrap_set< unordered_set >;
+using B = wrap_hashset< CS >;
+using C = wrap_hashset< FS >;
+using D = wrap_hashset< ConCS >;
+using E = wrap_hashset< ConFS >;
+
+template<> struct TN< A > { static const char *n() { return "std"; } };
+template<> struct TN< B > { static const char *n() { return "scs"; } };
+template<> struct TN< C > { static const char *n() { return "sfs"; } };
+template<> struct TN< D > { static const char *n() { return "ccs"; } };
+template<> struct TN< E > { static const char *n() { return "cfs"; } };
+
+#define FOR_SEQ(M) M(A) M(B) M(C)
+#define SEQ A, B, C
+
+#define FOR_PAR(M) M(D) M(E)
+#define PAR D, E
+
+#define TvT(N) \
+    template struct Bench< ThreadsVsTypes< N, 50, 4, PAR > >;
+
+TvT(1024)
+TvT(16 * 1024)
+
+#define IvTh_PAR(T) \
+  template struct Bench< ItemsVsThreads< 4, 0, T > >;
+
+template struct Bench< ItemsVsTypes< 1, 0, SEQ, PAR > >;
+template struct Bench< ItemsVsTypes< 2, 0, PAR > >;
+template struct Bench< ItemsVsTypes< 4, 0, PAR > >;
+
+#define IvR_SEQ(T) \
+  template struct Bench< ItemsVsReserve< 1, T > >;
+#define IvR_PAR(T) \
+  template struct Bench< ItemsVsReserve< 1, T > >; \
+  template struct Bench< ItemsVsReserve< 2, T > >; \
+  template struct Bench< ItemsVsReserve< 4, T > >;
+
+FOR_PAR(IvTh_PAR)
+
+FOR_SEQ(IvR_SEQ)
+FOR_PAR(IvR_PAR)
+
+#undef FOR_SEQ
+#undef FOR_PAR
+#undef SEQ
+#undef PAR
+#undef IvT_PAR
+#undef IvR_SEQ
+#undef IvR_PAR
 
 }
 }
