@@ -481,10 +481,12 @@ struct Plot {
             str << "set " << l << "tics " << _interval[ a ] << std::endl;
         str << "unset m" << l << "tics" << std::endl;
 
+        str << "set " << l << "label ";
         if ( _names.count( a ) )
-            str << "set " << l << "label '" << _names[ a ]
+            str << "'" << _names[ a ]
                 << (_units.count( a ) ? " [" + _units[ a ] + "]" : "")
-                << "'" << std::endl;
+                << "'";
+        str << "offset " << (a == X ? "42,1.55" : "5.5,14") << " norotate" << std::endl;
 
         str << (_logscale.count( a ) ? "set" : "unset") << " logscale " << l << std::endl;
         return str.str();
