@@ -466,18 +466,6 @@ struct Plot {
             ++ i;
         }
 
-        str << "set style fill transparent solid 0.3" << std::endl;
-
-        str << "set style line 20 lc rgb '#808080' lt 1" << std::endl
-            << "set border 3 back ls 20" << std::endl
-            << "set tics nomirror out scale 0.75" << std::endl
-            << "set style line 21 lc rgb'#808080' lt 0 lw 1" << std::endl
-            << "set grid back ls 21" << std::endl
-            << "set arrow from graph 1,0 to graph 1.05,0 "
-            << "size screen 0.025,10,60 filled ls 20" << std::endl
-            << "set arrow from graph 0,1 to graph 0,1.05 "
-            << "size screen 0.025,10,60 filled ls 20" << std::endl;
-
         return str.str();
     }
 
@@ -584,6 +572,18 @@ struct Plots {
     std::string plot() {
         std::stringstream str;
         str << "set terminal pdfcairo font '" << _font << "'" << std::endl;
+
+        str << "set style fill transparent solid 0.3" << std::endl;
+
+        str << "set style line 20 lc rgb '#808080' lt 1" << std::endl
+            << "set border 3 back ls 20" << std::endl
+            << "set tics nomirror out scale 0.75" << std::endl
+            << "set style line 21 lc rgb'#808080' lt 0 lw 1" << std::endl
+            << "set grid back ls 21" << std::endl
+            << "set arrow from graph 1,0 to graph 1.05,0 "
+            << "size screen 0.025,10,60 filled ls 20" << std::endl
+            << "set arrow from graph 0,1 to graph 0,1.05 "
+            << "size screen 0.025,10,60 filled ls 20" << std::endl;
 
         std::map< std::pair< std::string, Style >,
                   std::set< std::pair< int, std::string > > > accum;
