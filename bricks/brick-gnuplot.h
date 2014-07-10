@@ -286,6 +286,9 @@ struct Style {
 
         return res;
     }
+
+    Style() = default;
+    Style( Type t, Lab from, Lab to ) { set( t, from, to ); }
 };
 
 bool operator<( Style a, Style b ) {
@@ -552,12 +555,26 @@ struct Plot {
     }
 };
 
+namespace {
+
+std::vector< Style > styles = {
+    Style( Style::Gradient, { 91,  -6,  29 }, { 45, 41,  41 } ),
+    Style( Style::Gradient, { 81, -66,  57 }, { 46, -5, -30 } ),
+    Style( Style::Gradient, { 83,   4,  67 }, { 42, 70, -33 } ),
+    Style( Style::Gradient, { 80, -25, -13 }, { 42, 70, -33 } )
+};
+
+}
+
 struct Plots {
     std::vector< Plot > _plots;
     enum Terminal { PDF } _terminal;
     std::string _font;
+    bool _autostyle;
 
-    Plots() : _terminal( PDF ), _font( "Liberation Sans,10" ) {}
+    Plots( bool autostyle = true )
+        : _terminal( PDF ), _font( "Liberation Sans,10" ), _autostyle( autostyle )
+    {}
 
     Plot &append() {
         _plots.emplace_back();
@@ -570,6 +587,7 @@ struct Plots {
 
         std::map< std::pair< std::string, Style >,
                   std::set< std::pair< int, std::string > > > accum;
+        std::set< Style > used;
         ColourMap cm;
 
         for ( auto &p : _plots ) {
@@ -580,7 +598,16 @@ struct Plots {
 
         for ( auto &cs : accum ) {
             auto csk = cs.first;
-            auto colours = csk.second.render( cs.second.size() );
+            auto style = csk.second;
+
+            for ( int i = 0; i < styles.size(); ++i ) {
+                if ( !used.count( style ) && style._type == csk.second._type )
+                    break;
+                style = styles[ i ];
+            }
+
+            used.insert( style );
+            auto colours = style.render( cs.second.size() );
             auto cit = colours.begin();
             for ( auto item : cs.second )
                 cm[ ColourKey( csk.first, item.second, csk.second ) ] = *cit++;
