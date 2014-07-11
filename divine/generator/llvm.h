@@ -25,19 +25,6 @@ namespace divine {
 namespace generator {
 
 using namespace ::llvm;
-using divine::llvm::Probability;
-
-struct NoLabel
-{
-    NoLabel() {}
-    NoLabel( Probability ) {}
-    std::string text() { return ""; }
-};
-
-template< typename BS >
-typename BS::bitstream &operator<<( BS &bs, const NoLabel & ) { return bs; }
-template< typename BS >
-typename BS::bitstream &operator>>( BS &bs, NoLabel & ) { return bs; }
 
 template< typename _Label, typename HeapMeta >
 struct _LLVM : Common< Blob > {
@@ -90,8 +77,8 @@ struct _LLVM : Common< Blob > {
     template< typename Yield >
     void successors( Node st, Yield yield ) {
         if ( !use_property )
-            return interpreter().run( st, [&]( Node n, Probability p ) { yield( n, Label( p ) ); } );
-        interpreter().run( st, [&]( Node n, Probability p ){
+            return interpreter().run( st, [&]( Node n, llvm::Label p ) { yield( n, Label( p ) ); } );
+        interpreter().run( st, [&]( Node n, llvm::Label p ){
                 std::vector< int > buchi_succs;
                 for ( auto next : this->prop_next[ this->flags( n ).buchi ] ) {
                     auto trans = this->prop_trans[ next ];
@@ -113,7 +100,7 @@ struct _LLVM : Common< Blob > {
                 }
 
                 this->flags( n ).buchi = buchi_succs.front();
-                yield( n, p ); /* TODO? */
+                yield( n, Label( p ) ); /* TODO? */
             } );
     }
 
@@ -167,7 +154,7 @@ struct _LLVM : Common< Blob > {
     }
 
     std::string showTransition( Node, Node, Label l ) {
-        return l.text();
+        return toolkit::showLabel( l );
     }
 
     void die( std::string err ) __attribute__((noreturn)) {
@@ -377,9 +364,10 @@ struct _LLVM : Common< Blob > {
 
 };
 
-typedef _LLVM< NoLabel, llvm::machine::NoHeapMeta > LLVM;
-typedef _LLVM< NoLabel, llvm::machine::HeapIDs > PointsToLLVM;
-typedef _LLVM< Probability, llvm::machine::NoHeapMeta > ProbabilisticLLVM;
+typedef _LLVM< toolkit::NoLabel, llvm::machine::NoHeapMeta > LLVM;
+typedef _LLVM< toolkit::NoLabel, llvm::machine::HeapIDs > PointsToLLVM;
+typedef _LLVM< toolkit::Probability, llvm::machine::NoHeapMeta > ProbabilisticLLVM;
+typedef _LLVM< toolkit::ControlLabel, llvm::machine::NoHeapMeta > ControlLLVM;
 
 }
 }
