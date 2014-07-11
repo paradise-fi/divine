@@ -386,8 +386,9 @@ struct BufSink : Sink {
     }
 
     void dump( std::ostream &o ) {
+        o << std::endl;
         while ( !data.empty( true ) )
-            o << "| " << fmt.format( data.shift( true ) ) << std::endl;
+            o << "| " << fmt.format( data.shift( true ) );
     }
 };
 
