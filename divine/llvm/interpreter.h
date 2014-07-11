@@ -30,7 +30,7 @@
 #include <llvm/Support/system_error.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 
-#include <divine/toolkit/probability.h>
+#include <divine/toolkit/label.h>
 
 #include <numeric>
 
@@ -42,7 +42,7 @@ namespace llvm {
 
 template< typename T > struct Interpreter;
 using wibble::Maybe;
-using toolkit::Probability;
+using toolkit::Label;
 
 using namespace ::llvm;
 
@@ -180,6 +180,7 @@ struct Interpreter
 
     template< typename Yield >
     void run( Blob b, Yield yield ) {
+        int oldtid = state._thread;
         state.rewind( b, -1 ); /* rewind first to get sense of thread count */
         state.flags().ap = 0; /* TODO */
         tid = 0;
@@ -189,7 +190,7 @@ struct Interpreter
         while ( threads ) {
             while ( tid < threads && !state.stack( tid ).get().length() )
                 ++tid;
-            run( tid, yield, Probability( pow( 2, tid + 1 ) ) );
+            run( tid, yield, Label( tid, oldtid != tid ) );
             if ( ++tid == threads )
                 break;
             state.rewind( b, -1 );
@@ -201,7 +202,7 @@ struct Interpreter
     void evaluateSwitchBB( PC to );
 
     template< typename Yield >
-    void run( int tid, Yield yield, Probability p ) {
+    void run( int tid, Yield yield, Label p ) {
         std::set< PC > seen;
         run( tid, yield, p, seen );
     }
@@ -226,7 +227,7 @@ struct Interpreter
     }
 
     template< typename Yield >
-    void run( int tid, Yield yield, Probability p, std::set< PC > &seen ) {
+    void run( int tid, Yield yield, Label l, std::set< PC > &seen ) {
 
         if ( !state._thread_count )
             return; /* no more successors for you */
@@ -234,12 +235,13 @@ struct Interpreter
         assert_leq( tid, state._thread_count - 1 );
         if ( state._thread != tid )
             state.switch_thread( tid );
+
         assert( state.stack().get().length() );
 
         while ( true ) {
 
             if ( interrupt( seen ) ) {
-                yield( state.snapshot(), p );
+                yield( state.snapshot(), l );
                 return;
             }
 
@@ -260,8 +262,8 @@ struct Interpreter
                     state.rewind( fork, tid );
                     choose( i );
                     advance();
-                    auto pp = c.p.empty() ? p.levelup( i + 1 ) :
-                              p * std::make_pair( c.p[ i ], std::accumulate( c.p.begin(), c.p.end(), 0 ) );
+                    auto pp = c.p.empty() ? l.levelup( i ) :
+                              l * std::make_pair( c.p[ i ], std::accumulate( c.p.begin(), c.p.end(), 0 ) );
                     run( tid, yield, pp, seen );
                 }
                 pool.free( fork );
@@ -272,7 +274,7 @@ struct Interpreter
                 advance();
         }
 
-        yield( state.snapshot(), p );
+        yield( state.snapshot(), l );
     }
 
     /* EvalContext interface. */
