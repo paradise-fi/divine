@@ -194,7 +194,8 @@ enum class Algorithm {
 };
 enum class Generator {
     Begin,
-    Dve, Coin, PointsToLLVM, LLVM, ProbabilisticLLVM, Timed, CESMI, ProbabilisticExplicit, Explicit, Dummy,
+    LLVM, PointsToLLVM, ControlLLVM, ProbabilisticLLVM,
+    Dve, Coin, Timed, CESMI, ProbabilisticExplicit, Explicit, Dummy,
     End
 };
 enum class Transform {
@@ -261,6 +262,7 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Generator, Coin );
     SHOW( Generator, LLVM );
     SHOW( Generator, PointsToLLVM );
+    SHOW( Generator, ControlLLVM );
     SHOW( Generator, ProbabilisticLLVM );
     SHOW( Generator, Timed );
     SHOW( Generator, CESMI );
@@ -338,6 +340,7 @@ static const CMap< Key, std::vector< std::string > > headers = {
     { Generator::CESMI,                 { "divine/generator/cesmi.h" } },
     { Generator::LLVM,                  { "divine/generator/llvm.h" } },
     { Generator::PointsToLLVM,          { "divine/generator/llvm.h" } },
+    { Generator::ControlLLVM,           { "divine/generator/llvm.h" } },
     { Generator::ProbabilisticLLVM,     { "divine/generator/llvm.h" } },
     { Generator::Explicit,              { "divine/generator/explicit.h" } },
     { Generator::ProbabilisticExplicit, { "divine/generator/explicit.h" } },
@@ -397,7 +400,8 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
     { Generator::Timed,             GenSelect( ".xml" ) },
     { Generator::CESMI,             GenSelect( generator::cesmi_ext ) },
     { Generator::PointsToLLVM,      GenSelect( ".bc", false, "pointsto" ) },
-    { Generator::LLVM,              GenSelect( ".bc", false ) },
+    { Generator::LLVM,              GenSelect( ".bc", false ) }, // these two have
+    { Generator::ControlLLVM,       GenSelect( ".bc", false ) }, // excluding supported-by
     { Generator::ProbabilisticLLVM, GenSelect( ".bc", true ) },
     { Generator::Explicit,
         []( const Meta &meta ) {
@@ -461,6 +465,7 @@ static const CMap< Key, std::function< void( Meta & ) > > postSelect = {
     { Generator::CESMI,                 NameGen( "CESMI" ) },
     { Generator::LLVM,                  NameGen( "LLVM" ) },
     { Generator::PointsToLLVM,          NameGen( "LLVM (pointsto)" ) },
+    { Generator::ControlLLVM,           NameGen( "LLVM (control)" ) },
     { Generator::ProbabilisticLLVM,     NameGen( "LLVM (probabilistic)" ) },
     { Generator::Explicit,              NameGen( "Explicit" ) },
     { Generator::ProbabilisticExplicit, NameGen( "Explicit (probabilistic)" ) },
@@ -486,6 +491,7 @@ static void initLLVM( const Meta &meta ) {
 static const CMap< Key, std::function< void( const Meta & ) > > init = {
     { Generator::LLVM,              initLLVM },
     { Generator::PointsToLLVM,      initLLVM },
+    { Generator::ControlLLVM,       initLLVM },
     { Generator::ProbabilisticLLVM, initLLVM },
 };
 
@@ -499,6 +505,7 @@ static const CMap< Key, Traits::Get > traits = {
     { Generator::CESMI,                 &Traits::cesmi },
     { Generator::LLVM,                  &Traits::llvm },
     { Generator::PointsToLLVM,          &Traits::llvm },
+    { Generator::ControlLLVM,           &Traits::llvm },
     { Generator::ProbabilisticLLVM,     &Traits::llvm },
     { Generator::Explicit,              &Traits::dess },
     { Generator::ProbabilisticExplicit, &Traits::dess },
@@ -571,6 +578,13 @@ static const CMap< Key, SupportedBy > supportedBy = {
     { Generator::Explicit,              Not{ Algorithm::GenExplicit } },
     { Generator::ProbabilisticExplicit, Not{ Algorithm::GenExplicit } },
 
+    { Generator::LLVM, Not{ Algorithm::Simulate } },
+    { Generator::ControlLLVM,
+        Not{ Or{ Algorithm::Info, Algorithm::Draw, Algorithm::Metrics,
+            Algorithm::Reachability, Algorithm::WeakReachability,
+            Algorithm::NestedDFS, Algorithm::Map, Algorithm::Owcty,
+            Algorithm::GenExplicit } } },
+
     { Transform::POR,      And{ Generator::Dve, Not{ Algorithm::Info } } },
     { Transform::Fairness, And{ Generator::Dve, Not{ Algorithm::Info } } },
 
@@ -631,6 +645,7 @@ static const CMap< Key, FixArray< std::string > > symbols = {
     symGen( Generator::CESMI ),
     symGen( Generator::LLVM ),
     symGen( Generator::PointsToLLVM ),
+    symGen( Generator::ControlLLVM ),
     symGen( Generator::ProbabilisticLLVM ),
     symGen( Generator::Explicit ),
     symGen( Generator::ProbabilisticExplicit ),
