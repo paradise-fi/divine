@@ -576,7 +576,12 @@ struct TestProcess
     void exec() {
         assert( fd >= 0 );
         if ( !interactive ) {
-            close( STDIN_FILENO );
+            int devnull = ::open( "/dev/null", O_RDONLY );
+            if ( devnull >= 0 ) { /* gcc really doesn't like to not have stdin */
+                dup2( devnull, STDIN_FILENO );
+                close( devnull );
+            } else
+                close( STDIN_FILENO );
             dup2( fd, STDOUT_FILENO );
             dup2( fd, STDERR_FILENO );
             close( fd );
