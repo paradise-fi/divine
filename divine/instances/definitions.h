@@ -189,7 +189,7 @@ const CMap< Type, SelectOptions > options {
 
 enum class Algorithm {
     Begin,
-    NestedDFS, Owcty, Map, Reachability, WeakReachability, Metrics, Simulate, GenExplicit, Draw, Info,
+    NestedDFS, Owcty, Map, Reachability, WeakReachability, Csdr, Metrics, Simulate, GenExplicit, Draw, Info,
     End
 };
 enum class Generator {
@@ -252,6 +252,7 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Algorithm, Map );
     SHOW( Algorithm, Reachability );
     SHOW( Algorithm, WeakReachability );
+    SHOW( Algorithm, Csdr );
     SHOW( Algorithm, Metrics );
     SHOW( Algorithm, Simulate );
     SHOW( Algorithm, GenExplicit );
@@ -328,6 +329,7 @@ static const CMap< Key, std::vector< std::string > > headers = {
     { Algorithm::Map,          { "divine/algorithm/map.h" } },
     { Algorithm::Reachability, { "divine/algorithm/reachability.h" } },
     { Algorithm::WeakReachability, { "divine/algorithm/reachability.h" } },
+    { Algorithm::Csdr,         { "divine/algorithm/csdr.h" } },
     { Algorithm::Metrics,      { "divine/algorithm/metrics.h" } },
     { Algorithm::Simulate,     { "divine/algorithm/simulate.h" } },
     { Algorithm::Draw,         { "tools/draw.h" } },
@@ -389,6 +391,7 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
     { Algorithm::Map,          AlgSelect( meta::Algorithm::Type::Map ) },
     { Algorithm::Reachability, AlgSelect( meta::Algorithm::Type::Reachability ) },
     { Algorithm::WeakReachability, AlgSelect( meta::Algorithm::Type::WeakReachability ) },
+    { Algorithm::Csdr,         AlgSelect( meta::Algorithm::Type::Csdr ) },
     { Algorithm::Metrics,      AlgSelect( meta::Algorithm::Type::Metrics ) },
     { Algorithm::Simulate,     AlgSelect( meta::Algorithm::Type::Simulate ) },
     { Algorithm::Draw,         AlgSelect( meta::Algorithm::Type::Draw ) },
@@ -453,6 +456,7 @@ static const CMap< Key, std::function< void( Meta & ) > > postSelect = {
     { Algorithm::Map,          NameAlgo( "MAP" ) },
     { Algorithm::Reachability, NameAlgo( "Reachability" ) },
     { Algorithm::WeakReachability, NameAlgo( "Weak Reachability" ) },
+    { Algorithm::Csdr,         NameAlgo( "CSDR" ) },
     { Algorithm::Metrics,      NameAlgo( "Metrics" ) },
     { Algorithm::Simulate,     NameAlgo( "Simulate" ) },
     { Algorithm::Draw,         NameAlgo( "Draw" ) },
@@ -530,6 +534,7 @@ static const CMap< Algorithm, std::string > algorithm = {
     { Algorithm::Map,          "divine::algorithm::Map" },
     { Algorithm::Reachability, "divine::algorithm::Reachability" },
     { Algorithm::WeakReachability, "divine::algorithm::WeakReachability" },
+    { Algorithm::Csdr,         "divine::algorithm::Csdr" },
     { Algorithm::Metrics,      "divine::algorithm::Metrics" },
     { Algorithm::Simulate,     "divine::algorithm::Simulate" },
     { Algorithm::Draw,         "divine::Draw" },
@@ -575,10 +580,17 @@ static inline std::unique_ptr< SupportedBy > box( const SuppBy &sb ) {
 // the component later in instatiation can depend only on components
 // instantiated before it
 static const CMap< Key, SupportedBy > supportedBy = {
-    { Generator::Explicit,              Not{ Algorithm::GenExplicit } },
-    { Generator::ProbabilisticExplicit, Not{ Algorithm::GenExplicit } },
+    { Generator::Explicit,              Not{ Or{ Algorithm::GenExplicit, Algorithm::Csdr } } },
+    { Generator::ProbabilisticExplicit, Not{ Or{ Algorithm::GenExplicit, Algorithm::Csdr } } },
 
-    { Generator::LLVM, Not{ Algorithm::Simulate } },
+    { Generator::Dummy,                 Not{ Algorithm::Csdr } },
+    { Generator::Dve,                   Not{ Algorithm::Csdr } },
+    { Generator::Coin,                  Not{ Algorithm::Csdr } },
+    { Generator::CESMI,                 Not{ Algorithm::Csdr } },
+    { Generator::Timed,                 Not{ Algorithm::Csdr } },
+    { Generator::LLVM,                  Not{ Or{ Algorithm::Simulate, Algorithm::Csdr } } },
+    { Generator::ProbabilisticLLVM,     Not{ Algorithm::Csdr } },
+    { Generator::PointsToLLVM,          Not{ Algorithm::Csdr } },
     { Generator::ControlLLVM,
         Not{ Or{ Algorithm::Info, Algorithm::Draw, Algorithm::Metrics,
             Algorithm::Reachability, Algorithm::WeakReachability,
