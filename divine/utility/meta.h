@@ -48,7 +48,8 @@ struct Execution : WithReport {
 };
 
 struct Algorithm : WithReport {
-    enum class Type { Metrics, Reachability, WeakReachability, Ndfs, Map, Owcty, Verify,
+    enum class Type { Metrics, Reachability, WeakReachability, Csdr,
+                Ndfs, Map, Owcty, Verify,
                 Draw, Info, GenExplicit, Probabilistic, Simulate };
     enum class Compression { None, Tree };
 
@@ -67,6 +68,7 @@ struct Algorithm : WithReport {
     graph::DemangleStyle demangle; // for llvm
     bool interactive; // for simulate
     std::string instance;
+    int contextSwitchLimit;
 
     Algorithm() : algorithm( Type::Info ),
                   hashSeed( 0 ),
@@ -76,7 +78,8 @@ struct Algorithm : WithReport {
                   compression( Compression::None ),
                   sharedVisitor( false ),
                   fairness( false ),
-                  interactive( false )
+                  interactive( false ),
+                  contextSwitchLimit( -1 )
     {}
 
     std::vector< ReportLine > report() const override;
