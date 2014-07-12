@@ -114,8 +114,10 @@ struct Algorithm
     void resultBanner( bool valid ) {
         progress() << " ============================================= " << std::endl
                    << ( valid ?
-                      "               The property HOLDS          " :
-                      "           The property DOES NOT hold      " )
+                        ( result().fullyExplored == meta::Result::R::Yes ?
+                          "               The property HOLDS          " :
+                          "     The property HOLDS (approximation)    " ) :
+                          "           The property DOES NOT hold      " )
                    << std::endl
                    << " ============================================= " << std::endl;
     }
