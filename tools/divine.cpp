@@ -84,8 +84,9 @@ struct Main {
     OptvalStringOption *o_demangle;
     StringOption *o_outputFile;
     BoolOption *o_noSaveStates;
+    IntOption *o_contextSwitchLimit;
 
-    BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability, *o_weakReachability;
+    BoolOption *o_ndfs, *o_map, *o_owcty, *o_reachability, *o_weakReachability, *o_csdr;
     BoolOption *o_mpi, *o_probabilistic;
 
     int argc;
@@ -395,6 +396,13 @@ struct Main {
             "reachability", 0, "reachability", "", "force reachability" );
         o_weakReachability = cmd_verify->add< BoolOption >(
             "weak-reachability", 0, "weak-reachability", "", "force weak reachability" );
+        o_csdr = cmd_verify->add< BoolOption >(
+            "csdr", 0, "csdr", "", "force Context Switch Driven Reachability" );
+
+        o_contextSwitchLimit = cmd_verify->add< IntOption >(
+            "context-switch-limit", 0, "context-switch-limit", "",
+            "Specify maximal allowed number of context-switches. "
+            "Impiles CSDR algorithm, not supported for LTL. 0 means unlimited. [default = 0]" );
 
         // simulate options
         o_inputTrace = cmd_simulate->add< StringOption >(
@@ -712,11 +720,24 @@ struct Main {
 
             bool oneSet = false;
             for ( auto x : { o_ndfs->boolValue(), o_reachability->boolValue(),
-                    o_weakReachability->boolValue(), o_owcty->boolValue(), o_map->boolValue() } ) {
+                    o_weakReachability->boolValue(), o_csdr->boolValue(),
+                    o_owcty->boolValue(), o_map->boolValue() } )
+            {
                 if ( oneSet && x )
                     die( "FATAL: only one of --nested-dfs, --owcty, --map,"
                             " --reachability, --weak-reachability can be specified" );
                 oneSet |= x;
+            }
+
+            if ( o_contextSwitchLimit->boolValue() ) {
+                meta.algorithm.contextSwitchLimit = o_contextSwitchLimit->intValue();
+                if ( oneSet ) {
+                    if ( !o_csdr->boolValue() )
+                        die( "Algorithm other then CSDR specified with --context-switch-limit" );
+                    if ( pt == generator::PT_Buchi )
+                        die( "LTL/Büchi properties are not supported with --context-switch-limit" );
+                } else
+                    meta.algorithm.algorithm = meta::Algorithm::Type::Csdr;
             }
 
             if ( !oneSet ) {
@@ -766,6 +787,13 @@ struct Main {
                 meta.algorithm.algorithm = meta::Algorithm::Type::WeakReachability;
             }
 
+            if ( o_csdr->boolValue() ) {
+                if ( pt == generator::PT_Buchi )
+                    std::cerr << "WARNING: Context Switch Driven Reachability is not suitable for checking LTL/Büchi properties."
+                              << std::endl;
+                meta.algorithm.algorithm = meta::Algorithm::Type::Csdr;
+            }
+
             if ( o_owcty->boolValue() ) {
                 if ( pt != generator::PT_Buchi )
                     std::cerr << "WARNING: OWCTY is only suitable for LTL/Büchi properties." << std::endl;
@@ -788,6 +816,7 @@ struct Main {
             if ( meta.algorithm.algorithm != meta::Algorithm::Type::Metrics &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Reachability &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::WeakReachability &&
+                 meta.algorithm.algorithm != meta::Algorithm::Type::Csdr &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Owcty &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Map &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Ndfs )
