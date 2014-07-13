@@ -2,13 +2,13 @@
 
 #include <vector>
 #include <wibble/sfinae.h> // Unit
-#include <divine/toolkit/probability.h>
+#include <divine/graph/probability.h>
 
 #ifndef DIVINE_TOOLKIT_LABEL_H
 #define DIVINE_TOOLKIT_LABEL_H
 
 namespace divine {
-namespace toolkit {
+namespace graph {
 
 using NoLabel = wibble::Unit;
 

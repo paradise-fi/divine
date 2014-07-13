@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#include <divine/toolkit/label.h>
+#include <divine/graph/label.h>
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 #include <divine/graph/ltlce.h>
@@ -94,9 +94,9 @@ struct Csdr : Algorithm, AlgorithmUtils< Setup, CsdrShared< typename Setup::Stor
                 _level = 1;
         }
 
-        Extension &registerPredecessor( const Extension &from, toolkit::ControlLabel label ) {
+        Extension &registerPredecessor( const Extension &from, graph::ControlLabel label ) {
             int32_t level = from.level() + 1;
-            if ( label != toolkit::ControlLabel::NoSwitch )
+            if ( label != graph::ControlLabel::NoSwitch )
                 ++level;
             assert_leq( 1, level ); // check for overflow
             if ( initialized() )

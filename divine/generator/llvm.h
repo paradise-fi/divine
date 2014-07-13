@@ -154,7 +154,7 @@ struct _LLVM : Common< Blob > {
     }
 
     std::string showTransition( Node, Node, Label l ) {
-        return toolkit::showLabel( l );
+        return graph::showLabel( l );
     }
 
     void die( std::string err ) __attribute__((noreturn)) {
@@ -364,10 +364,10 @@ struct _LLVM : Common< Blob > {
 
 };
 
-typedef _LLVM< toolkit::NoLabel, llvm::machine::NoHeapMeta > LLVM;
-typedef _LLVM< toolkit::NoLabel, llvm::machine::HeapIDs > PointsToLLVM;
-typedef _LLVM< toolkit::Probability, llvm::machine::NoHeapMeta > ProbabilisticLLVM;
-typedef _LLVM< toolkit::ControlLabel, llvm::machine::NoHeapMeta > ControlLLVM;
+typedef _LLVM< graph::NoLabel, llvm::machine::NoHeapMeta > LLVM;
+typedef _LLVM< graph::NoLabel, llvm::machine::HeapIDs > PointsToLLVM;
+typedef _LLVM< graph::Probability, llvm::machine::NoHeapMeta > ProbabilisticLLVM;
+typedef _LLVM< graph::ControlLabel, llvm::machine::NoHeapMeta > ControlLLVM;
 
 }
 }

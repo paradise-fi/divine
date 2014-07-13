@@ -4,7 +4,7 @@
 #include <divine/algorithm/metrics.h>
 #include <divine/explicit/explicit.h>
 #include <divine/explicit/transpose.h>
-#include <divine/toolkit/probability.h>
+#include <divine/graph/probability.h>
 #include <cstdint>
 #include <algorithm>
 
@@ -446,7 +446,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             creator.saveNodes( nodesSize );
         if ( std::is_same< Label, uint64_t >::value )
             creator.uint64Labels();
-        if ( std::is_same< Label, toolkit::Probability >::value )
+        if ( std::is_same< Label, graph::Probability >::value )
             creator.probability();
 
         auto dess = creator();

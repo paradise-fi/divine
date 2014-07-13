@@ -2,6 +2,7 @@
 
 #ifdef O_EXPLICIT
 #include <divine/explicit/explicit.h>
+#include <divine/graph/probability.h>
 
 #include <ostream>
 
@@ -63,7 +64,7 @@ Explicit PrealocateHelper::operator()() {
     assert( !_capabilities.has( Capability::UInt64Labels )
             || _labelSize == sizeof( uint64_t ) );
     assert( !_capabilities.has( Capability::Probability )
-            || _labelSize == sizeof( toolkit::Probability ) );
+            || _labelSize == sizeof( graph::Probability ) );
 
     int64_t nodeData = sizeof( int64_t ) * _nodes + _nodeDataSize;
 

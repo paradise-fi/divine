@@ -7,7 +7,7 @@
 #define DIVINE_TOOLKIT_PROBABILITY_H
 
 namespace divine {
-namespace toolkit {
+namespace graph {
 
 constexpr bool isprime( int i, int f ) {
     return (f * f > i) ? true : ( i % f == 0 ) ? false : isprime( i, f + 1 );

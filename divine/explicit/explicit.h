@@ -51,7 +51,6 @@
  * Because dess files are mapped into memory they are endianity-dependent!
  */
 
-#include <divine/toolkit/probability.h>
 #include <divine/explicit/header.h>
 
 #include <type_traits>

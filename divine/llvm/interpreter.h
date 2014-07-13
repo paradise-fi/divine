@@ -30,7 +30,7 @@
 #include <llvm/Support/system_error.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 
-#include <divine/toolkit/label.h>
+#include <divine/graph/label.h>
 
 #include <numeric>
 
@@ -42,7 +42,7 @@ namespace llvm {
 
 template< typename T > struct Interpreter;
 using wibble::Maybe;
-using toolkit::Label;
+using graph::Label;
 
 using namespace ::llvm;
 

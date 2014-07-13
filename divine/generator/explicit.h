@@ -2,7 +2,7 @@
 
 #include <divine/generator/common.h>
 #include <divine/explicit/explicit.h>
-#include <divine/toolkit/probability.h>
+#include <divine/graph/probability.h>
 #include <functional>
 
 #undef Yield
@@ -128,7 +128,7 @@ struct _Explicit : public Common< Blob > {
 };
 
 using Explicit = _Explicit< wibble::Unit >;
-using ProbabilisticExplicit = _Explicit< toolkit::Probability >;
+using ProbabilisticExplicit = _Explicit< graph::Probability >;
 
 }
 }

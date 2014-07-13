@@ -3,7 +3,7 @@
 // no ifdef O_EXPLICIT here! this must be alwais available (for definitions.h)
 
 #include <divine/explicit/header.h>
-#include <divine/toolkit/probability.h>
+#include <divine/graph/probability.h>
 #include <fstream>
 
 namespace divine {
@@ -55,10 +55,10 @@ Header *Header::ptr( void *p ) {
             ptr->labelSize != sizeof( uint64_t ) )
         die( "ERROR: invalid size of saved labels" );
     if ( ptr->capabilities.has( Capability::Probability ) &&
-            ptr->labelSize != sizeof( toolkit::Probability ) )
+            ptr->labelSize != sizeof( graph::Probability ) )
         die( "Error: invalid size of saved probability labels. ["
                 + std::to_string( ptr->labelSize ) + "] != ["
-                + std::to_string( sizeof( toolkit::Probability ) ) + "]" );
+                + std::to_string( sizeof( graph::Probability ) ) + "]" );
     return ptr;
 }
 
