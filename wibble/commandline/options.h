@@ -248,7 +248,7 @@ protected:
             this->usage = "<val>";
     }
 
-    ArgList::iterator parse(ArgList& list, ArgList::iterator begin)
+    ArgList::iterator parse(ArgList& , ArgList::iterator )
     {
         throw wibble::exception::Consistency(
                 "parsing option with optional value"
