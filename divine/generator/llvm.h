@@ -250,7 +250,7 @@ struct _LLVM : Common< Blob > {
 
         for ( std::string name : s ) {
             if ( name == "deadlock" ) {
-                assert_eq( s.size(), 1 );
+                assert_eq( s.size(), 1u );
                 return;
             }
 

@@ -172,7 +172,7 @@ struct Algorithm
     }
 
     template< typename Self, typename Setup >
-    auto makeVisitor( typename Setup::Listener &l, Self &self, Setup setup )
+    auto makeVisitor( typename Setup::Listener &l, Self &self, Setup )
         -> typename Setup::Visitor::template Implementation< Setup, Self >
     {
         return typename Setup::Visitor::template Implementation< Setup, Self >(

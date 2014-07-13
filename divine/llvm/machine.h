@@ -287,12 +287,12 @@ struct Nursery {
 /* Doesn't store any heap metadata. */
 struct NoHeapMeta {
     void setSize( int ) {}
-    void copyFrom( NoHeapMeta &, int fromid, int toid ) {}
-    void newObject( int id ) {}
+    void copyFrom( NoHeapMeta &, int /* fromid */, int /* toid */ ) {}
+    void newObject( int /* id */ ) {}
     StateAddress advance( StateAddress a, int ) { return a; }
     int end() { return 0; }
     static int size( int ) { return 0; }
-    static std::vector< int > pointerId( ::llvm::Instruction *insn ) {
+    static std::vector< int > pointerId( ::llvm::Instruction * ) {
         return std::vector< int >();
     }
     int idAt( int ) { return 0; }

@@ -361,10 +361,10 @@ struct GlobalContext {
     bool free( Pointer ) { assert_die(); }
     int pointerSize( Pointer ) { assert_die(); }
 
-    std::vector< int > pointerId( ::llvm::Instruction *insn ) {
+    std::vector< int > pointerId( ::llvm::Instruction * ) {
         assert_unreachable( "no pointerId in global context" );
     }
-    int pointerId( Pointer p ) {
+    int pointerId( Pointer ) {
         assert_unreachable( "no pointerId in global context" );
     }
 
