@@ -39,6 +39,7 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <cmath>
+#include <limits>
 
 #ifndef BRICK_GNUPLOT_H
 #define BRICK_GNUPLOT_H
