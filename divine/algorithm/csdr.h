@@ -319,7 +319,6 @@ struct Csdr : Algorithm, AlgorithmUtils< Setup, CsdrShared< typename Setup::Stor
 
         progress() << std::endl;
 
-        resultBanner( !this->store().valid( goal ) );
         if ( this->store().valid( goal ) && this->meta().output.wantCe ) {
             counterexample( goal );
             result().ceType = deadlocked ? meta::Result::CET::Deadlock : meta::Result::CET::Goal;
@@ -329,6 +328,8 @@ struct Csdr : Algorithm, AlgorithmUtils< Setup, CsdrShared< typename Setup::Stor
                                   ? meta::Result::R::No : meta::Result::R::Yes;
         result().fullyExplored = this->store().valid( goal ) || thisLevel > 0
                                   ? meta::Result::R::No : meta::Result::R::Yes;
+
+        resultBanner( !this->store().valid( goal ) );
     }
 };
 

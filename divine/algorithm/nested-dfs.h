@@ -133,7 +133,6 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
             inner.join();
 
         progress() << "done" << std::endl;
-        resultBanner( valid );
 
         if ( !valid ) {
             if ( parallel )
@@ -148,6 +147,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
         meta().statistics.deadlocks = -1; /* did not count */
         result().propertyHolds = valid ? meta::Result::R::Yes : meta::Result::R::No;
         result().fullyExplored = valid ? meta::Result::R::Yes : meta::Result::R::No;
+
+        resultBanner( valid );
     }
 
     struct Outer : Visit< This, Setup >

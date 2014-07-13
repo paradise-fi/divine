@@ -212,7 +212,6 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup, ReachabilityShared
         }
         progress() << std::endl;
 
-        resultBanner( !this->store().valid( goal ) );
         if ( this->store().valid( goal ) && this->meta().output.wantCe ) {
             counterexample( goal );
             result().ceType = deadlocked ? meta::Result::CET::Deadlock : meta::Result::CET::Goal;
@@ -222,6 +221,8 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup, ReachabilityShared
                                   ? meta::Result::R::No : meta::Result::R::Yes;
         result().fullyExplored = this->store().valid( goal )
                                   ? meta::Result::R::No : meta::Result::R::Yes;
+
+        resultBanner( !this->store().valid( goal ) );
     }
 };
 
