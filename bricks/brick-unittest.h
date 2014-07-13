@@ -293,7 +293,7 @@ void run( std::string only_group= "" , std::string only_case = "" ) {
         int all = 0, bad = 0;
 
         for ( auto tc : *testcases ) {
-            if ( !only_case.empty() && only_case != group->name )
+            if ( !only_case.empty() && only_case != tc->name )
                 continue;
             if ( group->group() != tc->group() )
                 continue;
