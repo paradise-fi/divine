@@ -36,16 +36,24 @@ typename BS::bitstream &operator>>( BS &bs, ReachabilityShared< Vertex > &st )
     return bs >> st.goal >> st.goalData >> st.deadlocked >> st.stats >> st.ce >> st.need_expand;
 }
 
+template< typename T >
+using Identity = T;
+
+template< typename T >
+struct Const { template< typename > using Wrap = T; };
+
 /**
  * A simple parallel reachability analysis implementation. Nothing to worry
  * about here.
  */
-template< template< typename > class E, typename Setup >
-struct CommonReachability : Algorithm, AlgorithmUtils< Setup, ReachabilityShared< typename Setup::Store::Vertex > >,
-                            Parallel< Setup::template Topology, CommonReachability< E, Setup > >
+template< template< typename > class E, typename Setup,
+    template< typename > class Sh = ReachabilityShared,
+    template< typename > class Wrap = Identity >
+struct CommonReachability : Algorithm, AlgorithmUtils< Setup, Sh< typename Setup::Store::Vertex > >,
+                            Wrap< Parallel< Setup::template Topology, CommonReachability< E, Setup, Sh, Wrap > > >
 {
-    using This = CommonReachability< E, Setup >;
-    using Shared = ReachabilityShared< typename Setup::Store::Vertex >;
+    using This = CommonReachability< E, Setup, Sh, Wrap >;
+    using Shared = Sh< typename Setup::Store::Vertex >;
     using Utils = AlgorithmUtils< Setup, Shared >;
 
     ALGORITHM_CLASS( Setup );
@@ -53,7 +61,7 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup, ReachabilityShared
     DIVINE_RPC( Utils, &This::_visit, &This::_por, &This::_por_worker,
                        &This::_parentTrace, &This::_successorTrace, &This::_ceIsInitial );
 
-    using Extension = E< Handle >;
+    using Extension = E< Store >;
 
     using Utils::shared;
     using Utils::shareds;
@@ -226,16 +234,19 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup, ReachabilityShared
     }
 };
 
-template< typename Handle >
+template< typename Store >
 struct Extension {
+    using Handle = typename Store::Handle;
+
     Handle _parent;
     Handle &parent() {
         return _parent;
     }
 };
 
-template< typename Handle >
+template< typename Store >
 struct NoExtension {
+    using Handle = typename Store::Handle;
     Handle parent() { return Handle(); }
 };
 

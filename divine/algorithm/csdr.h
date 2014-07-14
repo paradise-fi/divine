@@ -3,9 +3,7 @@
 #include <type_traits>
 
 #include <divine/graph/label.h>
-#include <divine/algorithm/common.h>
-#include <divine/algorithm/metrics.h>
-#include <divine/graph/ltlce.h>
+#include <divine/algorithm/reachability.h>
 
 #ifndef DIVINE_ALGORITHM_CSDR_H
 #define DIVINE_ALGORITHM_CSDR_H
@@ -27,110 +25,106 @@ void setToMin( std::atomic< T > &target, const T &val ) {
 }
 
 template < typename Vertex >
-struct CsdrShared {
-    using Handle = typename Vertex::Handle;
-    using Node = typename Vertex::Node;
-
-    algorithm::Statistics stats;
-    Handle goal;
-    Node goalData;
-    CeShared< Blob, Handle > ce;
+struct CsdrShared : ReachabilityShared< Vertex > {
     int32_t level;
-    bool deadlocked;
-    bool need_expand;
-    CsdrShared() : need_expand( false ) {}
+    ReachabilityShared< Vertex > &base() { return *this; }
 };
 
 template< typename BS, typename Vertex >
 typename BS::bitstream &operator<<( BS &bs, CsdrShared< Vertex > st )
 {
-    return bs << st.goal << st.goalData << st.deadlocked << st.stats << st.ce << st.need_expand << st.level;
+    return bs << st.base() << st.level;
 }
 
 template< typename BS, typename Vertex >
 typename BS::bitstream &operator>>( BS &bs, CsdrShared< Vertex > &st )
 {
-    return bs >> st.goal >> st.goalData >> st.deadlocked >> st.stats >> st.ce >> st.need_expand >> st.level;
+    return bs >> st.base() >> st.level;
 }
+
+template< typename Store >
+struct CsdrExtension {
+    using Handle = typename Store::Handle;
+
+    Handle &parent() { return _parent; }
+    int32_t level() const {
+        int32_t l = std::abs( _level );
+        assert_leq( 1, l );
+        return l - 1;
+    }
+
+    bool initialized() const { return _level; }
+    bool done() const { return _level < 0; }
+
+    bool setDone() {
+        if ( done() )
+            return true;
+        assert_leq( 1, int32_t( _level ) );
+        _level = -_level;
+        return false;
+    }
+
+    void setInit() {
+        if ( !_level )
+            _level = 1;
+    }
+
+    CsdrExtension &registerPredecessor( const CsdrExtension &from, graph::ControlLabel label ) {
+        int32_t level = from.level() + 1;
+        if ( label != graph::ControlLabel::NoSwitch )
+            ++level;
+        assert_leq( 1, level ); // check for overflow
+        if ( initialized() )
+            setToMin( _level, level );
+        else
+            _level = level;
+        return *this;
+    }
+
+    // we cannot support any other type of labels, please do not
+    // instentiate with them
+    template< typename Label >
+    CsdrExtension &registerPredecessor( const CsdrExtension &, Label ) = delete;
+
+  private:
+    Handle _parent;
+    typename Store::template DataWrapper< int32_t > _level;
+};
 
 /**
  * A simple parallel reachability analysis implementation. Nothing to worry
  * about here.
  */
 template< typename Setup >
-struct Csdr : Algorithm, AlgorithmUtils< Setup, CsdrShared< typename Setup::Store::Vertex > >,
-                            Parallel< Setup::template Topology, Csdr< Setup > >
+struct Csdr : CommonReachability< CsdrExtension, Setup, CsdrShared,
+    Const< Parallel< Setup::template Topology, Csdr< Setup > > >::template Wrap >
 {
     using This = Csdr< Setup >;
     using Shared = CsdrShared< typename Setup::Store::Vertex >;
-    using Utils = AlgorithmUtils< Setup, Shared >;
+    using Base = CommonReachability< CsdrExtension, Setup, CsdrShared,
+          Const< Parallel< Setup::template Topology, Csdr< Setup > > >::template Wrap >;
 
     ALGORITHM_CLASS( Setup );
 
-    DIVINE_RPC( Utils, &This::_visit, &This::_por, &This::_por_worker,
-                       &This::_parentTrace, &This::_successorTrace, &This::_ceIsInitial );
+    DIVINE_RPC( Base, &This::_visit );
 
-    struct Extension {
-        Handle &parent() { return _parent; }
-        int32_t level() const {
-            int32_t l = std::abs( _level );
-            assert_leq( 1, l );
-            return l - 1;
-        }
-
-        bool initialized() const { return _level; }
-        bool done() const { return _level < 0; }
-
-        bool setDone() {
-            if ( done() )
-                return true;
-            assert_leq( 1, int32_t( _level ) );
-            _level = -_level;
-            return false;
-        }
-
-        void setInit() {
-            if ( !_level )
-                _level = 1;
-        }
-
-        Extension &registerPredecessor( const Extension &from, graph::ControlLabel label ) {
-            int32_t level = from.level() + 1;
-            if ( label != graph::ControlLabel::NoSwitch )
-                ++level;
-            assert_leq( 1, level ); // check for overflow
-            if ( initialized() )
-                setToMin( _level, level );
-            else
-                _level = level;
-            return *this;
-        }
-
-        // we cannot support any other type of labels, please do not
-        // instentiate with them
-        template< typename Label >
-        Extension &registerPredecessor( const Extension &, Label ) = delete;
-
-      private:
-        Handle _parent;
-        typename Store::template DataWrapper< int32_t > _level;
-    };
-
-    using Utils::shared;
-    using Utils::shareds;
+    using Extension = typename Base::Extension;
+    using Base::shared;
+    using Base::shareds;
+    using Base::pool;
+    using Base::meta;
+    using Base::progress;
+    using Base::result;
+    using Base::parallel;
+    using Base::ring;
+    using Base::counterexample;
+    using Base::resultBanner;
 
     Handle goal;
     Node goalData;
     bool deadlocked;
     long thisLevel;
     int32_t limit;
-
-    typedef LtlCE< Setup, Shared, Extension, typename Store::Hasher > CE;
-    CE ce;
-
-    Pool& pool() {
-        return this->graph().pool();
-    }
 
     Extension &extension( Vertex v ) {
         return v.template extension< Extension >();
@@ -210,58 +204,15 @@ struct Csdr : Algorithm, AlgorithmUtils< Setup, CsdrShared< typename Setup::Stor
         this->visit( this, Main(), shared.need_expand );
     }
 
-    void _por_worker() {
-        this->graph()._porEliminate( *this );
-    }
-
-    Shared _por( Shared sh ) {
-        shared = sh;
-        if ( this->graph().porEliminate( *this, *this ) )
-            shared.need_expand = true;
-        return shared;
-    }
-
-    Csdr( Meta m ) :
-        Algorithm( m, bitops::compiletime::sizeOf< Extension >() ),
-        limit( std::numeric_limits< int32_t >::max() )
+    Csdr( Meta m ) : Base( m ), limit( std::numeric_limits< int32_t >::max() )
     {
-        this->init( *this );
         if ( meta().algorithm.contextSwitchLimit > 0 )
             limit = meta().algorithm.contextSwitchLimit;
     }
 
     Csdr( This &master, std::pair< int, int > id ) :
-        Algorithm( master.meta(), bitops::compiletime::sizeOf< Extension >() ),
-        limit( master.limit )
-    {
-        this->init( *this, master, id );
-    }
-
-    Shared runCe( Shared sh, void (CE::*ceCall)( This&, typename Setup::Store& ) ) {
-        shared = sh;
-        ce.setup( *this, shared );
-        (ce.*ceCall)( *this, this->store() );
-        return shared;
-    }
-
-    Shared _parentTrace( Shared sh ) {
-        return runCe( sh, &CE::_parentTrace );
-    }
-
-    Shared _successorTrace( Shared sh ) {
-        return runCe( sh, &CE::_successorTrace );
-    }
-
-    Shared _ceIsInitial( Shared sh ) {
-        return runCe( sh, &CE::_ceIsInitial );
-    }
-
-    virtual void counterexample( Handle n ) {
-        shared.ce.initial = n;
-        ce.setup( *this, shared );
-        Node goal = ce.linear( *this, *this );
-        ce.goal( *this, goal );
-    }
+        Base( master, id ), limit( master.limit )
+    { }
 
     void collect() {
         deadlocked = false;
