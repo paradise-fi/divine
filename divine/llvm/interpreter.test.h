@@ -108,7 +108,7 @@ struct TestLLVM {
 
         for ( int i = 0; i < step; ++i ) {
             fin = divine::Blob();
-            interpreter.run( ini, [&]( divine::Blob b, divine::llvm::Probability ) {
+            interpreter.run( ini, [&]( divine::Blob b, divine::llvm::Label ) {
                     assert( !pool.valid( fin ) ); // only one allowed
                     fin = b;
                 });
