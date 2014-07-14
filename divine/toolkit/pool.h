@@ -284,9 +284,10 @@ struct Lake {
 
         struct SizeInfo {
             int active;
+            int blocksize;
             FreeList touse;
             FreeList tofree;
-            SizeInfo() : active( -1 ) {}
+            SizeInfo() : active( -1 ), blocksize( 4096 ) {}
             ~SizeInfo() {}
         };
 
@@ -430,11 +431,18 @@ struct Lake {
             }
 
             const int overhead = sizeof( BlockHeader );
-            int total = std::max( (2048 * 1024) / size, 64 ); // at least 64 items, otherwise 2M
-            total -= std::max( overhead / size, 1 ); // make space for header
+            const int allocsize = align( size, sizeof( Pointer ) );
+
+            int total = ( sizeinfo( size ).blocksize - overhead ) / allocsize;
+            total = std::max( 2, total ); // always get at least 2 items
+            int allocate = total * allocsize + overhead;
+            if ( allocate >= 2048 * 1024 )
+                sizeinfo( size ).blocksize = allocate;
+            else
+                sizeinfo( size ).blocksize = 4 * allocate;
 
             /* TODO reorder so that pointer assignment is last? */
-            lake->block[ b ] = new char[ align( size, sizeof( Pointer ) ) * total + overhead ];
+            lake->block[ b ] = new char[ allocate ];
             lake->header( b ).itemsize = size;
             lake->header( b ).total = total;
             lake->header( b ).allocated = 0;
