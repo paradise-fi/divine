@@ -68,10 +68,11 @@ struct ThreadVector {
             extra->join();
     }
 
-    ThreadVector( std::vector< T > &instances, void (T::*fun)() )
+    template< typename I >
+    ThreadVector( std::vector< I > &instances, void (T::*fun)() )
     {
         for ( int i = 0; i < int( instances.size() ); ++ i )
-            m_threads.emplace_back( instances[ i ], fun );
+            m_threads.emplace_back( *static_cast< T * >( &instances[ i ] ), fun );
     }
 
     ThreadVector() {}
@@ -332,7 +333,8 @@ struct Topology {
 template< typename Instance >
 struct Local
 {
-    typedef ThreadVector< Instance, BarrierThread< Instance > > Threads;
+    template< typename Inst >
+    using Threads = ThreadVector< Inst, BarrierThread< Inst > >;
     typedef std::vector< Instance > Instances;
     typedef FifoMatrix< Message > Comms;
 
@@ -356,7 +358,7 @@ struct Local
     template< typename X = Instance >
     void initSlaves( X &init ) {
         for ( int i = 0; i < m_slavesCount; ++ i )
-            m_slaves.emplace_back( init, std::make_pair( i, m_offset + i ) );
+            m_slaves.emplace_back( static_cast< Instance & >( init ), std::make_pair( i, m_offset + i ) );
     }
 
     const Pool &masterPool() const {
@@ -390,18 +392,21 @@ struct Local
     int locals() { return m_slavesCount; }
     void wakeup( int id ) { barrier().wakeup( &m_slaves[ id ] ); }
 
-    auto parallel( void (Instance::*fun)() )
+    template< typename I >
+    auto parallel( void (I::*fun)() )
          -> decltype( _check< void (Instance::*)() >( fun ) )
     {
         parallel( this, fun );
     }
 
-    template< typename Self >
-    void parallel( Self *, void (Instance::*fun)(),
+    template< typename Self, typename Inst >
+    void parallel( Self *, void (Inst::*fun)(),
                    wibble::sys::Thread * extra = 0 )
     {
+        static_assert( std::is_base_of< Inst, Instance >::value,
+                "Trying to call unrellated function, that is not supported." );
         int nextra = extra ? 1 : 0;
-        Threads threads( m_slaves, fun );
+        Threads< Inst > threads( m_slaves, fun );
         m_barrier.setExpect( m_slaves.size() + nextra );
 
         for ( int i = 0; i < int( m_slaves.size() ); ++i )
@@ -410,11 +415,13 @@ struct Local
         threads.run( extra );
     }
 
-    template< typename X >
-    X ring( X x, X (Instance::*fun)( X ) )
+    template< typename X, typename Inst >
+    X ring( X x, X (Inst::*fun)( X ) )
     {
+        static_assert( std::is_base_of< Inst, Instance >::value,
+                "Trying to call unrellated function, that is not supported." );
         for ( int i = 0; i < int( m_slaves.size() ); ++i )
-            x = (m_slaves[ i ].*fun)( x );
+            x = (static_cast< Inst * >( &m_slaves[ i ] )->*fun)( x );
         return x;
     }
 
