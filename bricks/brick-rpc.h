@@ -36,6 +36,7 @@
 #include <brick-unittest.h>
 #include <brick-hlist.h>
 
+#include <deque>
 #include <type_traits>
 
 #ifndef BRICK_RPC_H
