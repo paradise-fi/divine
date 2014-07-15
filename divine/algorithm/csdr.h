@@ -4,6 +4,7 @@
 
 #include <divine/graph/label.h>
 #include <divine/algorithm/reachability.h>
+#include <divine/toolkit/bittuple.h>
 
 #ifndef DIVINE_ALGORITHM_CSDR_H
 #define DIVINE_ALGORITHM_CSDR_H
@@ -26,7 +27,7 @@ void setToMin( std::atomic< T > &target, const T &val ) {
 
 template < typename Vertex >
 struct CsdrShared : ReachabilityShared< Vertex > {
-    int32_t level;
+    long level;
     ReachabilityShared< Vertex > &base() { return *this; }
 };
 
@@ -46,49 +47,58 @@ template< typename Store >
 struct CsdrExtension {
     using Handle = typename Store::Handle;
 
-    Handle &parent() { return _parent; }
-    int32_t level() const {
-        int32_t l = std::abs( _level );
-        assert_leq( 1, l );
-        return l - 1;
-    }
+    auto parent() -> typename BitField< Handle >::Virtual { return get< 0 >( _data ); }
+    long level() { assert_leq( 1u, _level() ); return _level() - 1; }
+    bool done() { return _done(); }
+    int32_t incommingTid() { return _incommingTid(); }
 
-    bool initialized() const { return _level; }
-    bool done() const { return _level < 0; }
+    bool initialized() { return _level(); }
 
     bool setDone() {
-        if ( done() )
-            return true;
-        assert_leq( 1, int32_t( _level ) );
-        _level = -_level;
-        return false;
+        bool old = _done();
+        _done() = true;
+        return old;
     }
 
     void setInit() {
-        if ( !_level )
-            _level = 1;
+        if ( !done() )
+            _level() = 1;
     }
 
-    CsdrExtension &registerPredecessor( const CsdrExtension &from, graph::ControlLabel label ) {
-        int32_t level = from.level() + 1;
-        if ( label != graph::ControlLabel::NoSwitch )
+    CsdrExtension &registerPredecessor( Handle pred, CsdrExtension &from, graph::ControlLabel label ) {
+        uint32_t level = from._level();
+        if ( label.tid != from.incommingTid() )
             ++level;
-        assert_leq( 1, level ); // check for overflow
-        if ( initialized() )
-            setToMin( _level, level );
-        else
-            _level = level;
+        assert_leq( 1u, level ); // check for overflow
+        if ( !initialized() || level < _level() ) {
+            _level() = level;
+            _incommingTid() = label.tid;
+            parent() = pred;
+        }
         return *this;
     }
 
     // we cannot support any other type of labels, please do not
     // instentiate with them
     template< typename Label >
-    CsdrExtension &registerPredecessor( const CsdrExtension &, Label ) = delete;
+    CsdrExtension &registerPredecessor( Handle, const CsdrExtension &, Label ) = delete;
+
+
+    void lock() { get< 2 >( _data ).lock(); }
+    void unlock() { get< 2 >( _data ).unlock(); }
 
   private:
-    Handle _parent;
-    typename Store::template DataWrapper< int32_t > _level;
+    BitTuple<
+        BitField< Handle >, // [0]
+        BitField< uint32_t >, // [1] level
+        BitLock, // [2] 1b
+        BitField< bool, 1 >, // [3] 2b, done
+        BitField< int32_t, 30 > // [4] 32b incommingTid
+        > _data;
+
+    auto _level() -> decltype( get< 1 >( _data ) ) { return get< 1 >( _data ); }
+    auto _done() -> decltype( get< 3 >( _data ) ) { return get< 3 >( _data ); }
+    auto _incommingTid() -> decltype( get< 4 >( _data ) ) { return get< 4 >( _data ); }
 };
 
 /**
@@ -133,6 +143,7 @@ struct Csdr : CommonReachability< CsdrExtension, Setup, CsdrShared,
     struct Main : Visit< This, Setup >
     {
         using Base = Visit< This, Setup >;
+        using Guard = typename Store::template Guard< Extension >;
 
         static visitor::ExpansionAction expansion( This &c, Vertex st )
         {
@@ -154,15 +165,13 @@ struct Csdr : CommonReachability< CsdrExtension, Setup, CsdrShared,
         {
             c.shared.stats.addEdge( c.store(), f, t );
 
+            Guard _{ t };
+
             if ( !c.store().valid( f ) )
                 c.extension( t ).setInit();
-            else {
-                if ( !c.store().valid( c.extension( t ).parent() ) )
-                    c.extension( t ).parent() = f.handle();
-                if ( c.extension( t ).done()
-                    || c.extension( t ).registerPredecessor( c.extension( f ), l ).level() > c.shared.level )
-                    return visitor::TransitionAction::Forget;
-            }
+            else if ( c.extension( t ).done()
+                    || c.extension( t ).registerPredecessor( f.handle(), c.extension( f ), l ).level() > c.shared.level )
+                return visitor::TransitionAction::Forget;
 
             // on our level
             if ( c.meta().input.propertyType == graph::PT_Goal
