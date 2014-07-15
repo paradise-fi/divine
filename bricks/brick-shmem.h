@@ -63,7 +63,12 @@ struct Thread {
 
     Thread() : _thread( nullptr ) {}
 
+#ifdef __divine__
+    void start() __attribute__((noinline)) {
+        __divine_interrupt_mask();
+#else
     void start() {
+#endif
         _thread = new std::thread( [this]() { this->main(); } );
     }
 
