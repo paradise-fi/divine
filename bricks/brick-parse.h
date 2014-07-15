@@ -105,7 +105,7 @@ struct Lexer {
     Token _match;
 
     void shift() {
-        assert( !stream.eof() );
+        ASSERT( !stream.eof() );
         std::string r = stream.remove();
         std::copy( r.begin(), r.end(), std::back_inserter( _window ) );
     }
@@ -116,7 +116,7 @@ struct Lexer {
 
     std::string window( unsigned n ) {
         bool valid = ensure_window( n );
-        assert( valid );
+        ASSERT( valid );
         static_cast< void >( valid );
         std::deque< char >::iterator b = _window.begin(), e = b;
         e += n;
@@ -239,7 +239,7 @@ template< typename Token, typename Stream >
 struct ParseContext
 {
     Stream *_stream;
-    Stream &stream() { assert( _stream ); return *_stream; }
+    Stream &stream() { ASSERT( _stream ); return *_stream; }
 
     std::deque< Token > window;
     int window_pos;
@@ -336,8 +336,8 @@ struct ParseContext
     }
 
     void rewind( int n ) {
-        assert( n >= 0 );
-        assert( n <= window_pos );
+        ASSERT( n >= 0 );
+        ASSERT( n <= window_pos );
         window_pos -= n;
         position -= n;
     }
@@ -366,7 +366,7 @@ struct Parser {
     }
 
     Context &context() {
-        assert( ctx );
+        ASSERT( ctx );
         return *ctx;
     }
 
