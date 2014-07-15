@@ -50,7 +50,18 @@
 #include <sys/wait.h>
 #endif
 
-#ifndef NDEBUG
+#ifdef __divine__
+#include <divine.h>
+#endif
+
+#ifdef __divine__
+#define ASSERT(x) assert( x )
+#define ASSERT_PRED(p, x) assert( p( x ) )
+#define ASSERT_EQ(x, y) assert( x == y )
+#define ASSERT_LEQ(x, y) assert( x <= y )
+#define ASSERT_NEQ(x, y) assert ( x != y )
+
+#elif !defined NDEBUG
 #define LOCATION_I(stmt, i) ::brick::unittest::Location( __FILE__, __LINE__, stmt, i )
 
 #define ASSERT(x) assert_fn( LOCATION( #x ), x )
@@ -77,7 +88,6 @@
 namespace brick {
 namespace unittest {
 
-#if defined(__unix) || defined(__posix)
 struct Location {
     const char *file;
     int line, iteration;
@@ -85,7 +95,6 @@ struct Location {
     Location( const char *f, int l, std::string st, int iter = -1 )
         : file( f ), line( l ), iteration( iter ), stmt( st ) {}
 };
-#endif
 
 #define LOCATION(stmt) ::brick::unittest::Location( __FILE__, __LINE__, stmt )
 
