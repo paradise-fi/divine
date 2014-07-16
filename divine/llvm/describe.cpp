@@ -340,6 +340,8 @@ std::string Describe< HM >::problem( Problem bad )
             s << "UNDEFINED VALUE"; break;
         case Problem::PointsToViolated:
             s << "POINTS-TO VIOLATED"; break;
+        case Problem::Deadlock:
+            s << "PTHREAD DEADLOCK"; break;
         default:
             s << "????"; break;
     }
