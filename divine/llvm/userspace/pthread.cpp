@@ -1128,6 +1128,9 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
         return EPERM;
     }
 
+    if ( __divine_choice( 2 ) )
+        return 0; // simulate spurious wakeup
+
     // It is allowed to have one mutex associated with more than one conditional
     // variable. On the other hand, using more than one mutex for one
     // conditional variable results in undefined behaviour.
