@@ -233,38 +233,11 @@ std::string render_ci( double point, double low_err, double high_err, double fac
     return str.str();
 }
 
-void repeat( BenchmarkBase *tc, gnuplot::DataSet &res ) {
-#ifdef __unix
-    char buf[1024];
-    ::socketpair( AF_UNIX, SOCK_STREAM, PF_UNIX, tc->fds );
-#endif
-    Sample sample;
+struct SampleStats {
+    enum SampleQuality { Satisfactory, Unsatisfactory };
 
-    Sample bs_median, bs_mean, bs_stddev;
-    Box b_sample, b_median, b_mean, b_stddev;
-    double m_sample, m_mean, m_median;
-    double sd_sample;
-
-    Axis x = tc->axes().first, y = tc->axes().second;
-
-    int iterations = 0;
-
-    while ( ( sum( sample ) < 3 && iterations < 300 ) ||
-            ( sample.size() < 100 && iterations < 200 ) ) {
-        for ( int i = 0; i < 10; ++i ) { /* get 10 data points at once */
-            iterations ++;
-            unittest::fork_test( tc, tc->fds );
-#ifdef __unix
-            int r = ::read( tc->fds[0], buf, sizeof( buf ) );
-            if ( r >= 0 )
-                buf[r] = 0;
-            std::stringstream parse( buf );
-            double time;
-            parse >> time;
-            sample.push_back( time );
-#endif
-        }
-
+    // returns true if samples are satisfactory
+    SampleQuality processSamples( int cutLimit = 50, int sumLimit = 5 ) {
         b_sample = box( sample );
         m_sample = mean( sample );
         sd_sample = stddev( sample );
@@ -284,34 +257,74 @@ void repeat( BenchmarkBase *tc, gnuplot::DataSet &res ) {
         if ( b_median.high - b_median.low < 0.05 * b_sample.median &&
              b_mean.high - b_mean.low < 0.05 * m_sample &&
              ( sum( sample ) > 1 || sample.size() >= 100 ) )
-            break; /* the confidence interval is less than 5% => good enough */
+            return Satisfactory; /* the confidence interval is less than 5% => good enough */
 
         /* if the sample is reasonably big but unsatisfactory, cut off outliers */
-        if ( sample.size() > 50 || sum( sample ) > 5 ) {
+        if ( sample.size() > cutLimit || ( sumLimit > 0 && sum( sample ) > sumLimit ) ) {
             auto end = std::remove_if( sample.begin(), sample.end(),
                                        [&]( double n ) { return fabs(n - m_sample) > 3 * iqr; } );
             sample.erase( end, sample.end() ); // TODO: store the outliers
         }
+        return Unsatisfactory;
+    }
+
+    Sample sample;
+
+    Sample bs_median, bs_mean, bs_stddev;
+    Box b_sample, b_median, b_mean, b_stddev;
+    double m_sample, m_mean, m_median;
+    double sd_sample;
+};
+
+void repeat( BenchmarkBase *tc, gnuplot::DataSet &res ) {
+#ifdef __unix
+    char buf[1024];
+    ::socketpair( AF_UNIX, SOCK_STREAM, PF_UNIX, tc->fds );
+#endif
+    SampleStats stats;
+
+    Axis x = tc->axes().first, y = tc->axes().second;
+
+    int iterations = 0;
+
+    while ( ( sum( stats.sample ) < 3 && iterations < 300 ) ||
+            ( stats.sample.size() < 100 && iterations < 200 ) ) {
+        for ( int i = 0; i < 10; ++i ) { /* get 10 data points at once */
+            iterations ++;
+            unittest::fork_test( tc, tc->fds );
+#ifdef __unix
+            int r = ::read( tc->fds[0], buf, sizeof( buf ) );
+            if ( r >= 0 )
+                buf[r] = 0;
+            std::stringstream parse( buf );
+            double time;
+            parse >> time;
+            stats.sample.push_back( time );
+#endif
+        }
+
+        if ( stats.processSamples() == SampleStats::Satisfactory )
+            break;
     }
 
     double factor = x.normal( tc->p ) * y.normal( tc->q ) * tc->normal();
 
     std::cerr << "  " << x.name << ": " << std::setw( x.amplitude() ) << x.render( tc->p ) << " " << x.unit
               << " "  << y.name << ": " << std::setw( y.amplitude() ) << y.render( tc->q ) << " " << y.unit
-              << " μ: " << render_ci( m_mean, m_mean - b_mean.low, b_mean.high - m_mean, factor )
-              << " m: " << render_ci( b_sample.median,
-                                      b_sample.median - b_median.low,
-                                      b_median.high - b_sample.median, factor )
-              << " σ: " << render_ci( sd_sample,
-                                      sd_sample - b_stddev.low,
-                                      b_stddev.high - sd_sample, factor )
-              << " | n = " << std::setw( 3 ) << sample.size()
-              << ", bad = " << std::setw( 3 ) << iterations - sample.size() << std::endl;
+              << " μ: " << render_ci( stats.m_mean, stats.m_mean - stats.b_mean.low, stats.b_mean.high - stats.m_mean, factor )
+              << " m: " << render_ci( stats.b_sample.median,
+                                      stats.b_sample.median - stats.b_median.low,
+                                      stats.b_median.high - stats.b_sample.median, factor )
+              << " σ: " << render_ci( stats.sd_sample,
+                                      stats.sd_sample - stats.b_stddev.low,
+                                      stats.b_stddev.high - stats.sd_sample, factor )
+              << " | n = " << std::setw( 3 ) << stats.sample.size()
+              << ", bad = " << std::setw( 3 ) << iterations - stats.sample.size() << std::endl;
 
     res.append( x.scaled( tc->p ),
-                y.scaled( m_mean * factor ),
-                y.scaled( b_mean.low * factor ),
-                y.scaled( b_mean.high * factor ) );
+                y.scaled( stats.m_mean * factor ),
+                y.scaled( stats.b_mean.low * factor ),
+                y.scaled( stats.b_mean.high * factor ) );
 
     ::close( tc->fds[0] );
     ::close( tc->fds[1] );
