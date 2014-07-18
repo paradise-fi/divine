@@ -29,6 +29,7 @@ struct FollowCE {
 };
 struct FollowCEToEnd { };
 struct Back { };
+struct Reset { };
 struct PrintTrace { };
 struct PrintCE { };
 struct ListSuccs { };
@@ -39,7 +40,7 @@ struct NoOp { };
 
 using Command = wibble::Union<
                   DfsNext, Next, Random, Back,
-                  FollowCE, FollowCEToEnd,
+                  FollowCE, FollowCEToEnd, Reset,
                   PrintTrace, PrintCE,
                   ListSuccs, ToggleAutoListing,
                   NoOp, Exit >;
@@ -81,6 +82,7 @@ struct ProcessLoop {
             << "  r     go to a random successor" << std::endl
             << "  f [N] follow counterexample [for N steps]" << std::endl
             << "  F     follow counterexample to the end (to the first lasso accepting vertex for cycle)" << std::endl
+            << "  i     go back to before-initial state (reset)" << std::endl
             << "  q     exit" << std::endl
             << "multiple commands can be separated by a comma" << std::endl;
     }
@@ -102,6 +104,7 @@ struct ProcessLoop {
         if ( part == "n" ) return DfsNext();
         if ( part == "r" ) return Random();
         if ( part == "F" ) return FollowCEToEnd();
+        if ( part == "i" ) return Reset();
         if ( part[ 0 ] == 'f' ) {
             auto x = parse( part.substr( 1 ) );
             return FollowCE( x.second ? x.first : 1 );
@@ -560,6 +563,9 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
         } else if ( cmd.is< FollowCEToEnd >() ) {
             if ( !followCEToEnd() )
                 loop.error( "Cannot follow CE from current vertex or no CE at all" );
+        } else if ( cmd.is< Reset >() ) {
+            trace.clear();
+            generateInitials();
         } else if ( cmd.is< Back >() ) {
             if ( !trace.empty() )
                 goBack();
