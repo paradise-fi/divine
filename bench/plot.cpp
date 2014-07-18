@@ -15,10 +15,8 @@
 #include <fstream>
 #include <streambuf>
 
-
-#include <brick-gnuplot.h>
 #include <brick-query.h>
-#include <brick-unittest.h>
+#include <brick-benchmark.h>
 
 using namespace brick;
 
@@ -36,13 +34,13 @@ File readFile( std::string path ) {
     return File( path, std::move( str ) );
 }
 
-std::vector< File > getFiles( std::string path ) {
+auto getFiles( std::string path ) {
     std::vector< std::string > names;
     std::shared_ptr< DIR > dir{ opendir( path.c_str() ), []( DIR *ptr ) { closedir( ptr ); } };
     for ( struct dirent *dp = readdir( dir.get() ); dp; dp = readdir( dir.get() ) )
         if ( dp->d_type == DT_REG )
             names.push_back( path + "/" + dp->d_name );
-    return query::query( names ).map( readFile ).freeze();
+    return query::owningQuery( std::move( names ) ).map( readFile );
 }
 
 bool endsWith( std::string what, std::string ending ) {
@@ -68,6 +66,14 @@ struct Point {
     Point( double x, double y ) : x( x ), y( y ) { }
     double x;
     double y;
+};
+
+struct AggregatedPoint {
+    AggregatedPoint() : x( 0 ) { }
+    AggregatedPoint( double x, std::vector< double > y ) : x( x ), y( y ) { }
+
+    double x;
+    std::vector< double > y;
 };
 
 struct PointWithErrBar : Point {
@@ -114,6 +120,69 @@ struct Result {
     std::vector< Line< Pt > > lines;
 };
 
+struct ProcessedResult : Result< PointWithErrBar > {
+    using Result< PointWithErrBar >::Result;
+};
+
+struct BenchmarkDesc {
+    BenchmarkDesc( std::string model, std::string label, double x ) :
+        model( model ), label( label ), xParam( x )
+    { }
+    std::string model;
+    std::string label;
+    double xParam;
+};
+
+struct AggregatedResult : Result< AggregatedPoint > {
+    using Result< AggregatedPoint >::Result;
+
+    // returns processed report and list of unsatisfactory tests
+    std::pair< ProcessedResult, std::vector< BenchmarkDesc > > process() const {
+        ProcessedResult rep{ model, { } };
+        std::vector< BenchmarkDesc > unsat;
+        rep.lines = query::query( lines ).map( [&]( auto line ) {
+                return Line< PointWithErrBar >{
+                    line.label,
+                    query::query( line.line ).map( [&]( auto point ) {
+                            benchmark::SampleStats stats;
+                            stats.sample = point.y;
+                            if ( stats.processSamples( 20, -1 ) == benchmark::SampleStats::Unsatisfactory )
+                                unsat.emplace_back( model, line.label, point.x );
+                            return PointWithErrBar{ point.x, stats.m_mean, stats.b_mean.low, stats.b_mean.high };
+                        } ).freeze()
+                };
+            } ).freeze();
+        return std::make_pair( rep, unsat );
+    }
+};
+
+struct RawResult : Result< Point > {
+    using Result< Point >::Result;
+
+    AggregatedResult aggregate() const {
+        return AggregatedResult{
+            model,
+            query::query( lines ).map( []( const auto &l ) {
+                    return Line< AggregatedPoint >{
+                        l.label,
+                        query::query( l.line )
+                            .groupBy( []( Point p ) { return p.x; } )
+                            .map( []( auto pair ) {
+                                    return AggregatedPoint{
+                                        pair.first,
+                                        query::query( pair.second )
+                                            .map( []( Point p ) { return p.y; } )
+                                            .freeze()
+                                    };
+                                } )
+                            .freeze()
+                    };
+                } )
+            .freeze()
+        };
+    }
+};
+
 
 Result< PointWithErrBar > aggregateResults( const Result<> &src ) {
     auto lines = query::query( src.lines ).map( []( const Line<> &l ) {
@@ -121,7 +190,7 @@ Result< PointWithErrBar > aggregateResults( const Result<> &src ) {
                 .groupBy( []( Point p ) { return p.x; } )
                 .map( []( auto p ) {
                         auto q = query::query( p.second ).map( []( Point p ) { return p.y; } );
-                        return PointWithErrBar{ p.first, q.mean(), q.min(), q.max() };
+                        return PointWithErrBar{ p.first, q.median(), q.min(), q.max() };
                     } )
                 .freeze();
             return Line< PointWithErrBar >{ l.label, aggregate };
@@ -150,12 +219,11 @@ void dump( const std::vector< Result< Pt > > &results ) {
 int main( int argc, char **argv ) {
     if ( argc <= 4 )
         die( "usage: <result dir> <x-axe parameter> <y-axe parameter> <dateset parameter>" );
-    auto files = getFiles( argv[ 1 ] );
     std::string xAxe{ argv[ 2 ] };
     std::string yAxe{ argv[ 3 ] };
     std::string dataset{ argv[ 4 ] };
 
-    auto results = query::query( files )
+    std::vector< RawResult > rawResults = getFiles( argv[ 1 ] )
         .filter( []( File f ) { return endsWith( f.filename, ".rep" ) && f.content.size(); } )
         .map( [&]( File f ) {
                 auto map = toMap( f.content );
@@ -163,7 +231,7 @@ int main( int argc, char **argv ) {
             } )
         .groupBy( []( DataPoint &dp ) { return dp.model; } )
         .map( []( auto pair ) {
-                return Result<>{ pair.first, query::query( pair.second )
+                return RawResult{ pair.first, query::query( pair.second )
                         .groupBy( []( auto dp ) { return dp.label; } )
                         .map( []( auto pair ) {
                                 return Line<>{ pair.first, query::query( pair.second )
@@ -172,9 +240,20 @@ int main( int argc, char **argv ) {
                             } )
                         .freeze() };
             } )
-        .map( aggregateResults )
         .freeze();
-    dump( results );
+
+    auto resultsP = query::query( rawResults ).map( []( auto r ) { return r.aggregate().process(); } ).freeze();
+    std::vector< ProcessedResult > results = query::query( resultsP ).map( []( auto p ) { return p.first; } ).freeze();
+    auto unsat = query::query( resultsP ).concatMap( []( auto p ) { return p.second; } ).freeze();
+
+    if ( unsat.size() ) {
+        std::cerr << "WARNING: Following data points have unsatisfactory quality" << std::endl;
+        for ( auto x : unsat )
+            std::cerr << "{ Model = " << x.model
+                      << ", " << dataset << " = " << x.label
+                      << ", " << xAxe << " = " << x.xParam
+                      << " }" << std::endl;
+    }
 
     gnuplot::Plots plots;
     for ( auto &r : results ) {
