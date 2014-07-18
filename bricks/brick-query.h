@@ -32,11 +32,13 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <algorithm>
+#include <numeric>
 #include <type_traits>
 #include <iterator>
 #include <memory>
 #include <vector>
 #include <map>
+#include <set>
 #include <deque> // for tests
 
 #include <brick-unittest.h>
@@ -401,6 +403,47 @@ struct Query {
         return Query< std::map< Key, std::vector< ValueType > > >( std::move( map ) );
     }
 
+    template< typename T, typename BinaryOperation >
+    T fold( T init, BinaryOperation op ) {
+        return std::accumulate( begin(), end(), init, op );
+    }
+
+    ValueType minOr( ValueType x ) {
+        auto it = std::min_element( begin(), end() );
+        if ( it == end() )
+            return x;
+        return *it;
+    }
+
+    ValueType maxOr( ValueType x ) {
+        auto it = std::max_element( begin(), end() );
+        if ( it == end() )
+            return x;
+        return *it;
+    }
+
+    auto sort() -> Query< std::set< ValueType > > {
+        return Query< std::set< ValueType > >( begin(), end() );
+    }
+
+    ValueType mean() {
+        auto sorted = sort();
+        auto la = sorted.begin(),
+             ib = la++,
+             ie = sorted.end();
+        --ie;
+        while ( ib != ie && la != ie ) {
+            --ie;
+            ib = la++;
+        }
+        if ( ib == ie )
+            return *ib;
+        return (*ib + *ie) / ValueType( 2 );
+    }
+
+    ValueType min() { return *std::min_element( begin(), end() ); }
+    ValueType max() { return *std::max_element( begin(), end() ); }
+
     Iterator begin() { return _range.begin(); }
     Iterator end() { return _range.end(); }
 
@@ -414,13 +457,13 @@ auto query( Collection &col ) -> Query< Range< typename Collection::iterator > >
 }
 
 template< typename Collection >
-auto query( const Collection &col ) -> Query< Range< const typename Collection::iterator > > {
-    return Query< Range< const typename Collection::iterator > >( crange( col ) );
+auto query( const Collection &col ) -> Query< Range< typename Collection::const_iterator > > {
+    return Query< Range< typename Collection::const_iterator > >( crange( col ) );
 }
 
 template< typename Collection >
-auto cquery( const Collection &col ) -> Query< Range< const typename Collection::iterator > > {
-    return Query< Range< const typename Collection::iterator > >( crange( col ) );
+auto cquery( const Collection &col ) -> Query< Range< typename Collection::const_iterator > > {
+    return Query< Range< typename Collection::const_iterator > >( crange( col ) );
 }
 
 }
