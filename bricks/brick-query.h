@@ -426,7 +426,7 @@ struct Query {
         return Query< std::set< ValueType > >( begin(), end() );
     }
 
-    ValueType mean() {
+    ValueType median() {
         auto sorted = sort();
         auto la = sorted.begin(),
              ib = la++,
@@ -439,6 +439,16 @@ struct Query {
         if ( ib == ie )
             return *ib;
         return (*ib + *ie) / ValueType( 2 );
+    }
+
+    ValueType average() {
+        ValueType sum;
+        ptrdiff_t size;
+        std::tie( sum, size ) = fold( { ValueType(), 0 },
+                []( std::tuple< ValueType, ptrdiff_t > acc, const ValueType &val ) {
+                    return std::make_tuple( std::get< 0 >( acc ) + val, std::get< 1 >( acc ) + 1 );
+                } );
+        return sum / ValueType( size );
     }
 
     ValueType min() { return *std::min_element( begin(), end() ); }
@@ -465,6 +475,15 @@ template< typename Collection >
 auto cquery( const Collection &col ) -> Query< Range< typename Collection::const_iterator > > {
     return Query< Range< typename Collection::const_iterator > >( crange( col ) );
 }
+
+template< typename Collection >
+auto owningQuery( Collection &&col )
+    -> Query< typename std::remove_reference< Collection >::type >
+{
+    return Query< typename std::remove_reference< Collection >::type >(
+            std::forward< Collection >( col ) );
+}
+
 
 }
 }
