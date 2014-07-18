@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-set -x
+# example: ./bench/run.sh --divine ../relWithDebInfo/tools/divine --altopts "--reachability --csdr, --workers={1..4}"
+
+# set -x
 while [[ $1 ]]; do
     if [[ $OPT ]]; then
         eval "$OPT=\"$1\""
@@ -80,12 +82,83 @@ echo "opts=$opts"
 echo "repeat=$repeat"
 echo "altopts=$altopts"
 
-for _ in $(eval echo {1..$repeat}); do
-    timestamp=$(date +%s)
-    for i in $(ls models); do
-        if [[ -f models/$i ]]; then
-            echo "running: $i"
-            $divine verify $opts models/$i --report --report="text:report/$i.$timestamp.rep" 3>&1 1>&2 2>&3 | tee "report/$i.$timestamp.out"
+altgroups=0
+old_IFS=$IFS
+IFS=','
+for _ in $altopts; do let altgroups++; done
+IFS=$old_IFS;
+
+function group {
+    local old_IFS=$IFS
+    IFS=','
+    i=0
+    for g in $altopts; do
+        if [[ $i == $1 ]]; then
+            eval echo $g
         fi
+        let i++
+    done
+    IFS=$old_IFS;
+}
+
+function altsize {
+    i=0
+    for _ in $(group $1); do let i++; done
+    echo $i;
+}
+
+
+for i in $(eval echo {0..$altgroups}); do
+    altix[$i]=0
+    altsi[$i]=$(altsize $i)
+done
+
+function optval {
+    g=$(group $1)
+    i=0
+    for v in $g; do
+        if [[ $i == $2 ]]; then
+            echo $v
+        fi
+        let i++
+    done
+}
+
+for _ in $(eval echo {1..$repeat}); do
+    while true; do
+        curalts=""
+        i=0
+        while [[ $i -lt $altgroups ]]; do
+            val=$(optval $i ${altix[$i]})
+            curalts="$curalts $val"
+            let i++
+        done
+
+        timestamp=$(date +%s)
+        for i in $(ls models); do
+            if [[ -f models/$i ]]; then
+                echo "running: $i"
+                if [[ $dryrun ]]; then
+                    echo verify $opts $curalts models/$i
+                else
+                    $divine verify $opts $curalts models/$i \
+                        --report --report="text:report/$i.$timestamp.rep" \
+                        3>&1 1>&2 2>&3 | tee "report/$i.$timestamp.out"
+                fi
+            fi
+        done
+
+        i=0
+        carry=1
+        while [[ $carry -ne 0 && $i -lt $altgroups ]]; do
+            let altix[$i]++
+            if [[ ${altix[$i]} -eq ${altsi[$i]} ]]; then
+                altix[$i]=0
+            else
+                carry=0
+            fi
+            let i++
+        done
+        [[ $carry -ne 0 ]] && break
     done
 done
