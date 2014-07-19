@@ -345,6 +345,7 @@ struct DataSet {
         }
 
         std::stringstream str;
+        str << std::setprecision( std::numeric_limits< double >::digits10 );
         for ( int r = 0; r < _raw.height() - 1; ++r )
             for ( int k = 0; k < 20; ++k ) {
                 double x = _raw[r][0], x_next = _raw[r + 1][0];
@@ -363,6 +364,7 @@ struct DataSet {
 
     std::string rawdata( double xscale, double yscale ) {
         std::stringstream str;
+        str << std::setprecision( std::numeric_limits< double >::digits10 );
         for ( int r = 0; r < _raw.height(); ++r ) {
             str << " " << _raw[r][0] * xscale;
             for ( int c = 1; c < _raw.width; ++c )
