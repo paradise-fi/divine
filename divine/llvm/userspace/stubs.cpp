@@ -21,7 +21,11 @@ extern "C" {
     int wctob( wint_t ) { __divine_problem( 9, 0 ); return 0; }
     size_t wcsnrtombs( char *, const wchar_t **, size_t, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); }
     size_t mbsnrtowcs( wchar_t *, const char **, size_t, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); }
-    int mbtowc( wchar_t *, const char *, size_t ) { __divine_problem( 9, 0 ); }
+    int mbtowc( wchar_t *, const char *s, size_t ) {
+        if ( !s )
+            return 0; /* stateless */
+        __divine_problem( 9, 0 );
+    }
     int wctomb( char *, wchar_t ) { __divine_problem( 9, 0 ); }
     size_t mbrlen( const char *, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); }
     wchar_t *wmemset( wchar_t *, wchar_t, size_t ) { __divine_problem( 9, 0 ); }
