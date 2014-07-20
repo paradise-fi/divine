@@ -259,7 +259,14 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
                 case ::llvm::Intrinsic::trap:
                 case ::llvm::Intrinsic::vastart:
                 case ::llvm::Intrinsic::vacopy:
-                case ::llvm::Intrinsic::vaend: break;
+                case ::llvm::Intrinsic::vaend:
+                case ::llvm::Intrinsic::umul_with_overflow:
+                case ::llvm::Intrinsic::smul_with_overflow:
+                case ::llvm::Intrinsic::uadd_with_overflow:
+                case ::llvm::Intrinsic::sadd_with_overflow:
+                case ::llvm::Intrinsic::usub_with_overflow:
+                case ::llvm::Intrinsic::ssub_with_overflow:
+                    break;
                 case ::llvm::Intrinsic::dbg_declare:
                 case ::llvm::Intrinsic::dbg_value: p.I++; return p;
                 default: return lower( p );

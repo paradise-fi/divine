@@ -257,6 +257,49 @@ struct Evaluator
         }
     };
 
+    struct ArithmeticWithOverflow : BinaryOperator {
+        static const int arity = 4;
+        int operation;
+
+        ArithmeticWithOverflow( int op ) : operation( op ) {}
+
+        template< typename X = int, typename Y = uint8_t >
+        auto operator()( X &r = Dummy< X >::v(),
+                         Y &overflow = Dummy< Y >::v(),
+                         X &a = Dummy< X >::v(),
+                         X &b = Dummy< X >::v() )
+            -> decltype( declcheck( a + b, overflow = true ) )
+        {
+            overflow = false;
+
+            switch ( operation ) {
+                case Intrinsic::umul_with_overflow:
+                    assert( !this->evaluator().is_signed );
+                    r = a * b;
+                    if ( a > 0 && b > 0 && ( r < a || r < b ) )
+                        overflow = true;
+                    return Unit();
+                case Intrinsic::uadd_with_overflow:
+                    assert( !this->evaluator().is_signed );
+                    r = a + b;
+                    if ( r < a || r < b )
+                        overflow = true;
+                    return Unit();
+                case Intrinsic::usub_with_overflow:
+                    if ( a < b )
+                        overflow = true;
+                    r = a - b;
+                    return Unit();
+                case Intrinsic::smul_with_overflow:
+                case Intrinsic::sadd_with_overflow:
+                case Intrinsic::ssub_with_overflow:
+                    assert( this->evaluator().is_signed );
+                default:
+                    assert_unreachable( "invalid .with.overflow operation %d", operation );
+            }
+        }
+    };
+
     struct Bitwise : BinaryOperator {
         static const int arity = 3;
         template< typename X = int >
@@ -443,13 +486,16 @@ struct Evaluator
 
     /******** Memory access & conversion ********/
 
-    int compositeOffset( ::llvm::Type *t, int current, int end )
-    {
-        if ( current == end )
-            return 0;
+    using AtOffset = std::pair< int, Type * >;
 
-        int offset = 0;
-        int index = withValues( GetInt(), instruction.operand( current ) );
+    AtOffset compositeOffset( Type *t ) {
+        return std::make_pair( 0, t );
+    }
+
+    template< typename... Args >
+    AtOffset compositeOffset( Type *t, int index, Args... indices )
+    {
+        int offset;
 
         if (::llvm::StructType *STy = dyn_cast< ::llvm::StructType >( t )) {
             const ::llvm::StructLayout *SLO = econtext.TD.getStructLayout(STy);
@@ -458,9 +504,21 @@ struct Evaluator
             const ::llvm::SequentialType *ST = cast< ::llvm::SequentialType >( t );
             offset = index * econtext.TD.getTypeAllocSize( ST->getElementType() );
         }
-        return offset +
-            compositeOffset( cast< ::llvm::CompositeType >( t )->getTypeAtIndex( index ),
-                             current + 1, end );
+
+        auto r = compositeOffset(
+            cast< ::llvm::CompositeType >( t )->getTypeAtIndex( index ), indices... );
+        return std::make_pair( r.first + offset, r.second );
+    }
+
+    int compositeOffsetFromInsn( Type *t, int current, int end )
+    {
+        if ( current == end )
+            return 0;
+
+        int index = withValues( GetInt(), instruction.operand( current ) );
+        auto r = compositeOffset( t, index );
+
+        return r.first + compositeOffsetFromInsn( r.second, current + 1, end );
     }
 
     struct GetElement : Implementation {
@@ -468,7 +526,7 @@ struct Evaluator
         Unit operator()( Pointer &r = Dummy< Pointer >::v(),
                          Pointer &p = Dummy< Pointer >::v() )
         {
-            r = p + this->evaluator().compositeOffset(
+            r = p + this->evaluator().compositeOffsetFromInsn(
                 this->i().op->getOperand(0)->getType(), 1, this->i().values.size() - 1 );
             return Unit();
         }
@@ -619,8 +677,8 @@ struct Evaluator
 
     void implement_extractvalue() {
         auto r = memcopy( ValueRef( instruction.operand( 0 ), 0, -1,
-                                    compositeOffset( instruction.op->getOperand(0)->getType(), 1,
-                                                     instruction.values.size() - 1 ) ),
+                                    compositeOffsetFromInsn( instruction.op->getOperand(0)->getType(), 1,
+                                                             instruction.values.size() - 1 ) ),
                           instruction.result(), instruction.result().width );
         assert_eq( r, Problem::NoProblem );
         static_cast< void >( r );
@@ -633,8 +691,8 @@ struct Evaluator
         /* write the new value over the selected field */
         r = memcopy( instruction.operand( 1 ),
                      ValueRef( instruction.result(), 0, -1,
-                               compositeOffset( instruction.op->getOperand(0)->getType(), 2,
-                                                instruction.values.size() - 1 ) ),
+                               compositeOffsetFromInsn( instruction.op->getOperand(0)->getType(), 2,
+                                                        instruction.values.size() - 1 ) ),
                      instruction.operand( 1 ).width );
         assert_eq( r, Problem::NoProblem );
         static_cast< void >( r );
@@ -886,6 +944,24 @@ struct Evaluator
                     auto tag = withValues( Get< Pointer >(), instruction.operand( 0 ) );
                     int type_id = info.function( ccontext.pc() ).typeID( tag );
                     withValues( Set< int >( type_id ), instruction.result() );
+                    return;
+                }
+                case Intrinsic::smul_with_overflow:
+                case Intrinsic::sadd_with_overflow:
+                case Intrinsic::ssub_with_overflow:
+                    is_signed = true;
+                case Intrinsic::umul_with_overflow:
+                case Intrinsic::uadd_with_overflow:
+                case Intrinsic::usub_with_overflow: {
+                    auto res = instruction.result();
+                    res.width = instruction.operand( 0 ).width;
+                    res.type = ProgramInfo::Value::Integer;
+                    auto over = instruction.result();
+                    over.width = 1; // hmmm
+                    over.type = ProgramInfo::Value::Integer;
+                    over.offset += compositeOffset( instruction.op->getType(), 1 ).first;
+                    withValues( ArithmeticWithOverflow( F->getIntrinsicID() ), res, over,
+                                instruction.operand( 0 ), instruction.operand( 1 ) );
                     return;
                 }
                 default:
