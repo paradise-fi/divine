@@ -173,7 +173,7 @@ inline base< B > &operator>>( base< B > &bs, std::tuple< Tp... >& t  ) {
 
 template< typename B, typename T >
 typename integer< B, T >::stream &operator>>( base< B > &bs, T &x ) {
-    assert( bs.size() );
+    ASSERT( bs.size() );
     x = bs.front();
     bs.shift();
     return bs;
@@ -358,7 +358,7 @@ struct Bitstream {
         bs >> x; ASSERT_EQ( x, 1 );
         bs >> x; ASSERT_EQ( x, 2 );
         bs >> x; ASSERT_EQ( x, 3 );
-        assert( bs.empty() );
+        ASSERT( bs.empty() );
     }
 
     TEST(_bitblock) {
@@ -368,7 +368,7 @@ struct Bitstream {
         bs >> x; ASSERT_EQ( x, 1 );
         bs >> x; ASSERT_EQ( x, 2 );
         bs >> x; ASSERT_EQ( x, 3 );
-        assert( bs.empty() );
+        ASSERT( bs.empty() );
     }
 
     TEST(_bitstream_64) {
@@ -378,7 +378,7 @@ struct Bitstream {
         bs >> x; ASSERT_EQ( x, 1ull );
         bs >> x; ASSERT_EQ( x, 2ull );
         bs >> x; ASSERT_EQ( x, 3ull );
-        assert( bs.empty() );
+        ASSERT( bs.empty() );
     }
 };
 
