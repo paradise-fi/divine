@@ -37,9 +37,10 @@ File readFile( std::string path ) {
 auto getFiles( std::string path ) {
     std::vector< std::string > names;
     std::shared_ptr< DIR > dir{ opendir( path.c_str() ), []( DIR *ptr ) { closedir( ptr ); } };
-    for ( struct dirent *dp = readdir( dir.get() ); dp; dp = readdir( dir.get() ) )
-        if ( dp->d_type == DT_REG )
+    for ( struct dirent *dp = readdir( dir.get() ); dp; dp = readdir( dir.get() ) ) {
+        if ( dp->d_name != std::string( "." ) && dp->d_name != std::string( ".." ) )
             names.push_back( path + "/" + dp->d_name );
+    }
     return query::owningQuery( std::move( names ) ).map( readFile );
 }
 
@@ -144,11 +145,16 @@ struct AggregatedResult : Result< AggregatedPoint > {
                 return Line< PointWithErrBar >{
                     line.label,
                     query::query( line.line ).map( [&]( auto point ) {
+#if BOOTSTRAP
                             benchmark::SampleStats stats;
                             stats.sample = point.y;
-                            if ( stats.processSamples( 20, -1 ) == benchmark::SampleStats::Unsatisfactory )
+                             if ( stats.processSamples( 50, -1 ) == benchmark::SampleStats::Unsatisfactory )
                                 unsat.emplace_back( model, line.label, point.x );
                             return PointWithErrBar{ point.x, stats.m_mean, stats.b_mean.low, stats.b_mean.high };
+#else
+                            auto q = query::query( point.y ).sort().freeze();
+                            return PointWithErrBar{ point.x, q[ q.size() / 2 ], q[ q.size() / 4 ], q[ q.size() - q.size() / 4 ] };
+#endif
                         } ).freeze()
                 };
             } ).freeze();
@@ -160,7 +166,7 @@ struct RawResult : Result< Point > {
     using Result< Point >::Result;
 
     AggregatedResult aggregate() const {
-        return AggregatedResult{
+        auto val = AggregatedResult{
             model,
             query::query( lines ).map( []( const auto &l ) {
                     return Line< AggregatedPoint >{
@@ -168,18 +174,17 @@ struct RawResult : Result< Point > {
                         query::query( l.line )
                             .groupBy( []( Point p ) { return p.x; } )
                             .map( []( auto pair ) {
-                                    return AggregatedPoint{
-                                        pair.first,
-                                        query::query( pair.second )
+                                    auto ys = query::query( pair.second )
                                             .map( []( Point p ) { return p.y; } )
-                                            .freeze()
-                                    };
+                                            .freeze();
+                                    return AggregatedPoint{ pair.first, ys };
                                 } )
                             .freeze()
                     };
                 } )
             .freeze()
         };
+        return val;
     }
 };
 
@@ -258,13 +263,23 @@ int main( int argc, char **argv ) {
     gnuplot::Plots plots;
     for ( auto &r : results ) {
         gnuplot::Plot &plot = plots.append();
+        double xmin = r.lines[ 0 ].line[ 0 ].x,
+               xmax = xmin,
+               ymin = r.lines[ 0 ].line[ 0 ].y,
+               ymax = ymin;
         for ( auto &l : r.lines ) {
-            auto &ds = plot.append( l.label, 0, 4, gnuplot::DataSet::RibbonLP );
-            for ( PointWithErrBar &p : l.line )
+            auto &ds = plot.append( l.label, 0, 4, gnuplot::DataSet::Box );
+            for ( PointWithErrBar &p : l.line ) {
+                xmax = std::max( xmax, p.x );
+                xmin = std::min( xmin, p.x );
+                ymax = std::max( ymax, p.y_high );
+                ymin = std::min( ymin, p.y_low );
                 ds.append( p.x, p.y, p.y_low, p.y_high );
+            }
         }
         // plot.rescale  ( gnuplot::Plot::Y, t_mult );
-        // plot.bounds   ( gnuplot::Plot::X, x.scaled( x.min ), x.scaled( x.max ) );
+        plot.bounds   ( gnuplot::Plot::X, xmin - 1 , xmax + 1 );
+        plot.bounds   ( gnuplot::Plot::Y, std::min( 0.0, ymin * 1.05 ), ymax * 1.05 );
         // plot.interval ( gnuplot::Plot::X, x.log ? pow(x.step, k) : x.step * k );
         plot.axis     ( gnuplot::Plot::X, xAxe, "" );
         plot.axis     ( gnuplot::Plot::Y, yAxe, "" );
