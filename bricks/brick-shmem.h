@@ -62,6 +62,7 @@ struct Thread {
     virtual void main() = 0;
 
     Thread() : _thread( nullptr ) {}
+    ~Thread() { delete _thread; }
 
 #ifdef __divine__
     void start() __attribute__((noinline)) {
