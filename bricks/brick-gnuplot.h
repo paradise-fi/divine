@@ -40,6 +40,7 @@
 
 #include <cmath>
 #include <limits>
+#include <algorithm>
 
 #include <brick-unittest.h>
 
