@@ -57,9 +57,9 @@
 #ifdef __divine__
 #define ASSERT(x) assert( x )
 #define ASSERT_PRED(p, x) assert( p( x ) )
-#define ASSERT_EQ(x, y) assert( x == y )
-#define ASSERT_LEQ(x, y) assert( x <= y )
-#define ASSERT_NEQ(x, y) assert ( x != y )
+#define ASSERT_EQ(x, y) assert( (x) == (y) )
+#define ASSERT_LEQ(x, y) assert( (x) <= (y) )
+#define ASSERT_NEQ(x, y) assert ( (x) != (y) )
 
 #elif !defined NDEBUG
 #define LOCATION_I(stmt, i) ::brick::unittest::Location( __FILE__, __LINE__, stmt, i )
