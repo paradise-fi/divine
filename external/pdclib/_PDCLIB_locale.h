@@ -16,7 +16,11 @@
     extern tss_t _PDCLIB_locale_tss;
     static inline _PDCLIB_locale_t _PDCLIB_threadlocale( void )
     {
-        _PDCLIB_locale_t l = tss_get(_PDCLIB_locale_tss);
+        _PDCLIB_locale_t l;
+        if (_PDCLIB_locale_tss == NULL)
+            l = &_PDCLIB_global_locale;
+        else
+            l = tss_get(_PDCLIB_locale_tss);
         if(l == NULL)
             l = &_PDCLIB_global_locale;
         return l;
