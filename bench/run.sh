@@ -22,23 +22,35 @@ function prepareModels {
     from=$1
     to="$2/models"
     mkdir -p $to
+    new=""
 
     for i in $(ls $from); do
         if [[ $i = *.c ]] || [[ $i = *.cpp ]] || [[ $i = *.cc ]]; then
             CCS="$CCS $i"
-        else
+        elif ! [[ -f $to/$i ]]; then
             cp $from/$i $to/
+            new="$new $i"
         fi
     done
     if [[ $CCS ]]; then
         OLD=$PWD
         cd $to
-        mkdir libs
-        cd libs
-        $divine compile -l --lib -j 4
-        cd ..
+        if ! [[ -d $to/libs ]]; then
+            mkdir libs
+            cd libs
+            $divine compile -l --lib -j 4
+            cd ..
+        fi
         for i in $CCS; do
-            $divine compile -l --pre=libs $from/$i --cflags='-std=c++11'
+            target=$(echo $i | sed 's/\(.c$\|.cc$\|.cpp$\)/.bc/')
+            if ! [[ -f $target ]]; then
+                flags=""
+                if [[ $i = *.cpp ]] || [[ $i = *.cc ]]; then
+                    flags="--cflags='-std=c++11'"
+                fi
+                $divine compile -l --pre=libs $from/$i "$flags"
+                new="$new $target"
+            fi
         done
         cd $OLD
     fi
@@ -70,6 +82,8 @@ respath=$results/$build-$vers
 if mkdir $respath; then
     prepareModels $models $respath
     $divine --version >> $respath/version
+elif [[ $newmodels ]]; then
+    model_list=$(prepareModels $models $respath)
 fi
 
 cd $respath
@@ -124,6 +138,12 @@ function optval {
     done
 }
 
+if ! [[ $model_list ]]; then
+    model_list=$(ls models)
+fi
+
+echo "model_list=$model_list"
+
 for _ in $(eval echo {1..$repeat}); do
     while true; do
         curalts=""
@@ -135,7 +155,7 @@ for _ in $(eval echo {1..$repeat}); do
         done
 
         timestamp=$(date +%s)
-        for i in $(ls models); do
+        for i in $model_list; do
             if [[ -f models/$i ]]; then
                 echo "running: $i"
                 if [[ $dryrun ]]; then
