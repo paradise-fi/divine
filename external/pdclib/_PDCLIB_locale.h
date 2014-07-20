@@ -28,6 +28,8 @@
 
     static inline void _PDCLIB_setthreadlocale( locale_t l )
     {
+        if (_PDCLIB_locale_tss == NULL)
+            return; /* do nothing ... */
         if(tss_set(_PDCLIB_locale_tss, l) != thrd_success)
             abort();
     }
