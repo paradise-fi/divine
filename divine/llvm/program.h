@@ -34,13 +34,14 @@ struct Pointer;
 
 struct PC : wibble::mixin::Comparable< PC >
 {
-    uint32_t function:13;
     uint32_t instruction:17;
+    uint32_t function:13; /* must not be at end, since clang assumes that the
+                             last bit of a function pointer is always 0 */
     bool masked:1;
     uint32_t code:1;
 
     PC( int f, int i )
-        : function( f ), instruction( i ), masked( false ), code( 1 )
+        : instruction( i ), function( f ), masked( false ), code( 1 )
     {}
     PC() : PC( 0, 0 ) {}
 
