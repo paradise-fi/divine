@@ -36,6 +36,7 @@
 #include <numeric>
 #include <cmath>
 #include <algorithm>
+#include <cstring> // for memset
 
 #include <time.h>
 
