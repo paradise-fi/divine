@@ -306,23 +306,25 @@ struct DataSet {
     std::vector< Spline > _interpolated;
 
     enum Style { Points, LinePoints, Line, Ribbon,
-                 RibbonLine, RibbonLP } _style;
+                 RibbonLine, RibbonLP, Box } _style;
     std::string _name;
     int _sort;
 
-    bool points() {
-        return _style != Ribbon && _style != Line;
+    bool points() const {
+        return _style != Ribbon && _style != Line && _style != Box;
     }
 
-    bool lines() {
+    bool lines() const {
         return _style == LinePoints || _style == RibbonLine ||
                _style == RibbonLP;
     }
 
-    bool ribbon() {
+    bool ribbon() const {
         return _style == Ribbon || _style == RibbonLine ||
                _style == RibbonLP;
     }
+
+    bool box() const { return _style == Box; }
 
     template< typename... Ts >
     void append( Ts... ts ) {
@@ -505,6 +507,18 @@ struct Plot {
             << (_units.count( Z ) ? " [" + _units[ Z ] + "]" : "")
             << "' Left" << std::endl
             << "set format x '%.0f'" << std::endl;
+        int boxes = std::count_if( _datasets.begin(), _datasets.end(), []( const DataSet &ds ) { return ds.box(); } );
+        if ( boxes ) {
+            str << "num_of_datasets = " << boxes << ".0" << std::endl
+                << "outer_data_margin = 0.2" << std::endl
+                << "inter_box_gap = 0.2 / num_of_datasets" << std::endl
+                << "bars_space = 1 - outer_data_margin" << std::endl
+                << "usable_data_space = 1 - (outer_data_margin + (num_of_datasets - 1) * inter_box_gap)" << std::endl
+                << "bwidth = usable_data_space / num_of_datasets" << std::endl
+                << "offset = (bars_space - bwidth) / 2" << std::endl
+                << "step = bwidth + inter_box_gap" << std::endl
+                << "set boxwidth bwidth" << std::endl;
+        }
         return str.str();
     }
 
@@ -522,6 +536,10 @@ struct Plot {
             if ( d.points() )
                 str << ",\\\n '-' using 1:2 notitle with points ls " << seq
                     << " pt 7 ps 0.1 lc rgb '#000000'";
+            if ( d.box() )
+                str << " '-' using ($1 - offset + " << seq - 1 << " * step):3 with boxes title '" << d._name << "' ls " << seq
+                    << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):4 with boxes notitle ls " << seq
+                    << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):2 with boxes notitle ls " << seq;
             if ( seq != _datasets.size() )
                 str << ", \\" << std::endl << "  \\" << std::endl;
             ++ seq;
@@ -541,6 +559,8 @@ struct Plot {
                 str << data;
             if ( d.points() )
                 str << rdata;
+            if ( d.box() )
+                str << rdata << rdata << rdata;
         }
         return str.str();
     }
