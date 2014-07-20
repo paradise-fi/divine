@@ -31,7 +31,7 @@
         if (_PDCLIB_locale_tss == NULL)
             return; /* do nothing ... */
         if(tss_set(_PDCLIB_locale_tss, l) != thrd_success)
-            abort();
+            return; /* likewise */
     }
 #elif _PDCLIB_LOCALE_METHOD == _PDCLIB_LOCALE_METHOD_THREAD_LOCAL
     extern thread_local locale_t _PDCLIB_locale_tls;
