@@ -252,10 +252,23 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
         assert_leq( 0, i );
         assert_leq( i, int( succs.size() - 1 ) );
 
+        Vertex from = trace.empty()
+                    ? Vertex()
+                    : trace.back();
+
         // store selected successor
         trace.push_back( succs[ i ].first );
         extension( succs[ i ].first ).seen = true;
         extension( succs[ i ].first ).intrace = true;
+
+        if ( options.has( Option::PrintEdges ) ) {
+            std::string edge = this->graph().showTransition(
+                    from.node(),
+                    succs[ i ].first.node(),
+                    succs[ i ].second );
+            if ( !edge.empty() )
+                loop.show( "=> " + edge );
+        }
 
         generateSuccessors( trace.back() );
     }
