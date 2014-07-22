@@ -139,6 +139,8 @@ struct Spline {
     }
 
     void interpolateNaturalKs() {
+        if ( xs.size() < 2 )
+            return; // ??
         int n = xs.size() - 1;
         Matrix A( n + 1, n + 2 );
 
