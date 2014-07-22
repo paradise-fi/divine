@@ -433,6 +433,7 @@ struct FileSink : FdSink {
         }
         FdSink::sync();
     }
+
     ~FileSink() {
         if ( fd >= 0 ) {
             fsync( fd );
@@ -444,9 +445,40 @@ struct FileSink : FdSink {
 #define BRICK_SYSLOG_ACTION_READ_CLEAR     4
 #define BRICK_SYSLOG_ACTION_CLEAR          5
 
-struct KMsg {
+struct Source {
     int fd;
 
+    virtual void sync( Sink *sink ) {
+        ssize_t sz;
+        char buf[ 128 * 1024 ];
+        while ( (sz = read(fd, buf, sizeof(buf) - 1)) > 0 )
+            sink->push( std::string( buf, sz ) );
+        if ( sz < 0 && errno != EAGAIN )
+            throw syserr( "reading pipe" );
+    }
+
+    virtual void reset() {}
+
+    Source( int fd = -1 ) : fd( fd ) {}
+    virtual ~Source() {
+        if ( fd >= 0 )
+            ::close( fd );
+    }
+};
+
+struct FileSource : Source {
+    std::string file;
+    FileSource( std::string n ) : Source( -1 ), file( n ) {}
+
+    void sync( Sink *s ) {
+        if ( fd < 0 )
+            fd = open( file.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK );
+        if ( fd >= 0 )
+            Source::sync( s );
+    }
+};
+
+struct KMsg : Source {
     bool dev_kmsg() {
         return fd >= 0;
     }
@@ -466,7 +498,7 @@ struct KMsg {
 #endif
     }
 
-    void read( Sink *s ) {
+    void sync( Sink *s ) {
 #ifdef __unix
         int sz;
 
@@ -477,7 +509,7 @@ struct KMsg {
                 s->push( std::string( buf, sz ) );
             if ( sz < 0 ) {
                 fd = -1;
-                read( s );
+                sync( s );
             }
         } else {
             while ( (sz = klogctl( BRICK_SYSLOG_ACTION_READ_CLEAR, buf, sizeof(buf) - 1 )) > 0 )
@@ -485,8 +517,6 @@ struct KMsg {
         }
 #endif
     }
-
-    KMsg() : fd( -1 ) {}
 };
 
 struct Observer : Sink {
@@ -496,11 +526,12 @@ struct Observer : Sink {
 
 struct IO : Sink {
     typedef std::vector< Sink* > Sinks;
-    mutable Sinks sinks;
-    Observer *_observer;
+    typedef std::vector< Source* > Sources;
 
-    KMsg kmsg;
-    int fd;
+    mutable Sinks sinks;
+    mutable Sources sources;
+
+    Observer *_observer;
 
     virtual void push( std::string x ) {
         for ( Sinks::iterator i = sinks.begin(); i != sinks.end(); ++i )
@@ -508,39 +539,46 @@ struct IO : Sink {
     }
 
     void sync() {
-        ssize_t sz;
-        char buf[ 128 * 1024 ];
-
-        while ( (sz = read(fd, buf, sizeof(buf) - 1)) > 0 )
-            push( std::string( buf, sz ) );
-
-        if ( sz < 0 && errno != EAGAIN )
-            throw syserr( "reading pipe" );
-
-        kmsg.read( this );
+        for ( Sources::iterator i = sources.begin(); i != sources.end(); ++i )
+            (*i)->sync( this );
 
         for ( Sinks::iterator i = sinks.begin(); i != sinks.end(); ++i )
             (*i)->sync();
     }
 
-    void close() { ::close( fd ); }
+    void close() {
+        for ( Sources::iterator i = sources.begin(); i != sources.end(); ++i )
+            delete *i;
+        sources.clear();
+    }
+
+    int fd_set( fd_set *set ) {
+        int max = -1;
+
+        for ( Sources::iterator i = sources.begin(); i != sources.end(); ++i )
+            if ( (*i)->fd >= 0 ) {
+                FD_SET( (*i)->fd, set );
+                max = std::max( max, (*i)->fd );
+            }
+        return max + 1;
+    }
+
     Observer &observer() { return *_observer; }
 
-    IO() : fd( -1 ) {
+    IO() {
         sinks.push_back( _observer = new Observer );
     }
 
-    IO( const IO &io ) {
-        fd = io.fd;
-        sinks = io.sinks;
+    /* a stealing copy constructor */
+    IO( const IO &io ) : sinks( io.sinks ), sources( io.sources )
+    {
         io.sinks.clear();
+        io.sources.clear();
     }
 
     IO &operator= ( const IO &io ) {
-        fd = io.fd;
-        sinks = io.sinks;
-        io.sinks.clear();
-        return *this;
+        this->~IO();
+        return *new (this) IO( io );
     }
 
     void clear() {
@@ -549,7 +587,7 @@ struct IO : Sink {
         sinks.clear();
     }
 
-    ~IO() { clear(); }
+    ~IO() { close(); clear(); }
 
 };
 
@@ -562,7 +600,7 @@ bool interrupt = false;
 struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts;
     std::string testdir, outdir, workdir, heartbeat;
-    std::vector< std::string > flavours, filter;
+    std::vector< std::string > flavours, filter, watch;
     std::string flavour_envvar;
     Options() : verbose( false ), batch( false ), interactive( false ),
                 cont( false ), fatal_timeouts( false ) {}
@@ -639,7 +677,7 @@ struct TestCase {
             exit(202);
         }
 
-        io.fd = fds[0];
+        io.sources.push_back( new Source( fds[0] ) );
         child.fd = fds[1];
         child.interactive = options.interactive;
     }
@@ -680,7 +718,7 @@ struct TestCase {
         fd_set set;
 
         FD_ZERO( &set );
-        FD_SET( io.fd, &set );
+        int nfds = io.fd_set( &set );
         wait.tv_sec = 0;
         wait.tv_usec = 500000; /* timeout 0.5s */
 
@@ -692,7 +730,7 @@ struct TestCase {
             }
         }
 
-        if ( select( io.fd + 1, &set, NULL, NULL, &wait ) > 0 )
+        if ( select( nfds, &set, NULL, NULL, &wait ) > 0 )
             silent_start = end; /* something happened */
 
         io.sync();
@@ -804,6 +842,7 @@ struct TestCase {
                 progress( First ) << "   " << rusage() << std::endl;
         } else
             progress( Last ) << tag( r ) << pretty() << std::endl;
+
         io.clear();
     }
 
@@ -835,6 +874,10 @@ struct TestCase {
         std::replace( n.begin(), n.end(), '/', '_' );
         std::string fn = options.outdir + "/" + n + ".txt";
         io.sinks.push_back( new FileSink( fn ) );
+
+        for ( std::vector< std::string >::iterator i = options.watch.begin();
+              i != options.watch.end(); ++i )
+            io.sources.push_back( new FileSource( *i ) );
     }
 
     TestCase( Journal &j, Options opt, std::string path, std::string name, std::string flavour )
@@ -1033,6 +1076,9 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         split( args.opt( "--flavours" ), opt.flavours );
     else
         opt.flavours.push_back( "vanilla" );
+
+    if ( args.has( "--watch" ) )
+        split( args.opt( "--watch" ), opt.watch );
 
     opt.outdir = args.opt( "--outdir" );
     opt.testdir = args.opt( "--testdir" );
