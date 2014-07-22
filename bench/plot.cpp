@@ -144,7 +144,9 @@ struct AggregatedResult : Result< AggregatedPoint > {
         rep.lines = query::query( lines ).map( [&]( auto line ) {
                 return Line< PointWithErrBar >{
                     line.label,
-                    query::query( line.line ).map( [&]( auto point ) {
+                    query::query( line.line )
+                        .filter( []( auto point ) { return point.y.size(); } )
+                        .map( [&]( auto point ) {
 #if BOOTSTRAP
                             benchmark::SampleStats stats;
                             stats.sample = point.y;
@@ -152,8 +154,13 @@ struct AggregatedResult : Result< AggregatedPoint > {
                                 unsat.emplace_back( model, line.label, point.x );
                             return PointWithErrBar{ point.x, stats.m_mean, stats.b_mean.low, stats.b_mean.high };
 #else
-                            auto q = query::query( point.y ).sort().freeze();
-                            return PointWithErrBar{ point.x, q[ q.size() / 2 ], q[ q.size() / 4 ], q[ q.size() - q.size() / 4 ] };
+                            auto sorted = query::query( point.y ).sort().freeze();
+                            auto h = sorted.size() / 2;
+                            auto q = sorted.size() / 4;
+                            auto qq = sorted.size() - q;
+                            if ( qq == sorted.size() )
+                                --qq;
+                            return PointWithErrBar{ point.x, sorted[ h ], sorted[ q ], sorted[ qq ] };
 #endif
                         } ).freeze()
                 };
@@ -285,7 +292,7 @@ int main( int argc, char **argv ) {
         plot.axis     ( gnuplot::Plot::Y, yAxe, "" );
         plot.axis     ( gnuplot::Plot::Z, dataset, "" );
         plot.name     ( r.model );
-        plot.style    ( gnuplot::Style::Gradient );
+        plot.style    ( gnuplot::Style::Pattern );
     }
     std::cout << plots.plot();
     return 0;
