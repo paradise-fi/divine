@@ -243,7 +243,7 @@ bool operator<( Colour::Lab a, Colour::Lab b ) {
 }
 
 struct Style {
-    enum Type { Gradient, Spot } _type;
+    enum Type { Gradient, Spot, Pattern } _type;
     using Lab = Colour::Lab;
     using RGB = Colour::RGB;
 
@@ -261,6 +261,18 @@ struct Style {
 
     void spot( Lab from, Lab to ) {
         set( Spot, from, to );
+    }
+
+    std::string style() const {
+        return _type == Pattern
+            ? "set style fill solid border rgb 'black'"
+            : "set style fill transparent solid 0.3";
+    }
+
+    std::vector< int > patterns() {
+        if ( _type == Pattern )
+            return { 7, 2 };
+        return { };
     }
 
     // TODO non-uniform value distributions?
@@ -436,10 +448,15 @@ struct Plot {
     void logscale( Axis a ) { _logscale.insert( a ); }
     void interval( Axis a, double i ) { _interval[ a ] = i; }
     void name( std::string n ) { _name = n; }
-    void style( Style::Type t,
-                Colour::Lab from = { 91, -6, 29 },
-                Colour::Lab to = { 45, 41, 41 } )
-    {
+
+    void style( Style::Type t ) {
+        if ( t == Style::Type::Pattern )
+            style( t, { 80, 0, 0 }, { 45, 0, 0 } );
+        else
+            style( t, { 91, -6, 29 }, { 45, 41, 41 } );
+    }
+
+    void style( Style::Type t, Colour::Lab from, Colour::Lab to ) {
         _style.set( t, from, to );
     }
 
@@ -466,6 +483,7 @@ struct Plot {
         auto colours = _style.render( _datasets.size() );
         int i = 0;
 
+        str << _style.style() << std::endl;
         for ( auto &ds : _datasets ) {
             auto key = ColourKey( _names[ Z ], ds._name, _style );
             auto use = colours[ i ];
@@ -525,6 +543,13 @@ struct Plot {
         return str.str();
     }
 
+    std::string pattern( int i ) {
+        auto p = _style.patterns();
+        if ( i >= p.size() )
+            return "";
+        return " fs pattern " + std::to_string( p[ i ] );
+    }
+
     std::string datasets() {
         std::stringstream str;
         int seq = 1;
@@ -540,9 +565,9 @@ struct Plot {
                 str << ",\\\n '-' using 1:2 notitle with points ls " << seq
                     << " pt 7 ps 0.1 lc rgb '#000000'";
             if ( d.box() )
-                str << " '-' using ($1 - offset + " << seq - 1 << " * step):3 with boxes title '" << d._name << "' ls " << seq
-                    << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):4 with boxes notitle ls " << seq
-                    << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):2 with boxes notitle ls " << seq;
+                str << " '-' using ($1 - offset + " << seq - 1 << " * step):4 with boxes notitle ls " << seq << pattern( 0 )
+                    << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):2 with boxes notitle ls " << seq << pattern( 1 )
+                    << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):3 with boxes title '" << d._name << "' ls " << seq << pattern( 2 );
             if ( seq != _datasets.size() )
                 str << ", \\" << std::endl << "  \\" << std::endl;
             ++ seq;
@@ -602,8 +627,6 @@ struct Plots {
     std::string plot() {
         std::stringstream str;
         str << "set terminal pdfcairo font '" << _font << "'" << std::endl;
-
-        str << "set style fill transparent solid 0.3" << std::endl;
 
         str << "set style line 20 lc rgb '#808080' lt 1" << std::endl
             << "set border 3 back ls 20" << std::endl
