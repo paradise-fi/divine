@@ -61,7 +61,7 @@ struct CsdrExtension {
     }
 
     void setInit() {
-        if ( !done() )
+        if ( !initialized() )
             _level() = 1;
     }
 
