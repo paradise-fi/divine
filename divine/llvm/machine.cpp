@@ -240,7 +240,9 @@ divine::Blob MachineState< HeapMeta >::snapshot()
             trace( problems[ i ].pointer, canonic );
 
     Pointer p( true, 0, 0 );
-    for ( p.segment = 0; p.segment < heap().segcount + nursery.offsets.size() - 1; ++ p.segment )
+    const uint32_t limit = heap().segcount + nursery.offsets.size() - 1;
+    assert_leq( limit, (1u << Pointer::segmentSize) - 1 );
+    for ( p.segment = 0; p.segment < limit; ++ p.segment )
         if ( !canonic.seen( p ) && !freed.count( p.segment ) ) {
             trace( p, canonic );
             problem( Problem::MemoryLeak, p );

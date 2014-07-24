@@ -67,9 +67,12 @@ struct PC : wibble::mixin::Comparable< PC >
  */
 struct Pointer : wibble::mixin::Comparable< Pointer >
 {
-    uint32_t offset:14;// TODO use a bittuple for guaranteed layout; offset
+    static const uint32_t offsetSize = 14;
+    static const uint32_t segmentSize = 16;
+
+    uint32_t offset:offsetSize;// TODO use a bittuple for guaranteed layout; offset
                        // *must* be stored in the lowest 14 bits
-    uint32_t segment:16;
+    uint32_t segment:segmentSize;
     bool heap:1; /* make a (0, 0) pointer different from NULL */
     uint32_t code:1;
     Pointer operator+( int relative ) {
