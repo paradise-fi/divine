@@ -1,7 +1,7 @@
 . lib
 
 # re-locking
-llvm_verify invalid "Deadlock: Nonrecursive mutex locked again"  "" <<EOF
+llvm_verify invalid "PTHREAD DEADLOCK" "Deadlock: Nonrecursive mutex locked again" <<EOF
 // re-locking
 #include <pthread.h>
 
@@ -14,9 +14,9 @@ int main() {
 }
 EOF
 
-# dead locker
-llvm_verify invalid "Deadlock: Nonrecursive mutex locked again"  "" <<EOF
-// dead locker
+# dead locking thread
+llvm_verify invalid "PTHREAD DEADLOCK" "Deadlock: Mutex locked by dead thread" <<EOF
+// dead locking thread
 #include <pthread.h>
 
 void *thr( void *mtx ) {
@@ -29,13 +29,14 @@ int main() {
     pthread_t t;
     pthread_create( &t, 0, thr, &b );
     pthread_mutex_lock( &b );
+    pthread_join( t, 0 );
 
     return 0;
 }
 EOF
 
 # cycle
-llvm_verify invalid "Deadlock: Mutex cycle closed" "" <<EOF
+llvm_verify invalid "PTHREAD DEADLOCK" "Deadlock: Mutex cycle closed" <<EOF
 // basic cycle
 #include <pthread.h>
 
@@ -69,7 +70,7 @@ int main() {
 EOF
 
 # complicated cycle with partial deadlock
-llvm_verify invalid "Deadlock: Mutex cycle closed" "" <<EOF
+llvm_verify invalid "PTHREAD DEADLOCK" "Deadlock: Mutex cycle closed" <<EOF
 // complicated cycle partial deadlock
 #include <pthread.h>
 
