@@ -617,20 +617,18 @@ int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) {
     return 0;
 }
 
-Thread *_get_thread_by_gtid( int gtid ) {
-    for ( int i = 0; i < thread_counter; ++i )
-        if ( threads[ i ]->gtid == gtid )
+inline Thread *_get_thread_by_gtid( int gtid ) {
+    for ( int i = 0; i < alloc_pslots; ++i )
+        if ( threads[ i ] != NULL && threads[ i ]->gtid == gtid )
             return threads[ i ];
     return NULL;
 }
 
-#include <sstream>
-
 void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
     int holdertid = 0;
     int lastthread = 0;
-    while ( mutex != NULL ) {
-        int holdertid = mutex->owner - 1;
+    for ( int i = 0; mutex != NULL && i < alloc_pslots /* num of threads */; ++i ) {
+        holdertid = mutex->owner - 1;
         if ( holdertid < 0 || holdertid == lastthread )
             return;
         if ( holdertid == gtid ) {
@@ -638,7 +636,7 @@ void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
             return;
         }
         Thread *holder = _get_thread_by_gtid( holdertid );
-        if ( holder == NULL ) {
+        if ( holder == NULL || !holder->running ) {
             __divine_problem( Deadlock, "Deadlock: Mutex locked by dead thread" );
             return;
         }
