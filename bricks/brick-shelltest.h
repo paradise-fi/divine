@@ -480,8 +480,11 @@ struct FileSource : Source {
 
     int fd_set( ::fd_set * ) { return -1; } /* reading a file is always non-blocking */
     void sync( Sink *s ) {
-        if ( fd < 0 )
+        if ( fd < 0 ) {
             fd = open( file.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK );
+            if ( fd >= 0 )
+                lseek( fd, 0, SEEK_END );
+        }
         if ( fd >= 0 )
             Source::sync( s );
     }
