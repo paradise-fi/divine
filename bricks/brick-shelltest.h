@@ -614,12 +614,12 @@ bool interrupt = false;
 }
 
 struct Options {
-    bool verbose, batch, interactive, cont, fatal_timeouts;
+    bool verbose, batch, interactive, cont, fatal_timeouts, kmsg;
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, filter, watch;
     std::string flavour_envvar;
     Options() : verbose( false ), batch( false ), interactive( false ),
-                cont( false ), fatal_timeouts( false ) {}
+                cont( false ), fatal_timeouts( false ), kmsg( false ) {}
 };
 
 struct TestProcess
@@ -894,6 +894,8 @@ struct TestCase {
         for ( std::vector< std::string >::iterator i = options.watch.begin();
               i != options.watch.end(); ++i )
             io.sources.push_back( new FileSource( *i ) );
+        if ( options.kmsg )
+            io.sources.push_back( new KMsg );
     }
 
     TestCase( Journal &j, Options opt, std::string path, std::string name, std::string flavour )
@@ -1095,6 +1097,9 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
 
     if ( args.has( "--watch" ) )
         split( args.opt( "--watch" ), opt.watch );
+
+    if ( args.has( "--kmsg" ) )
+        opt.kmsg = true;
 
     opt.outdir = args.opt( "--outdir" );
     opt.testdir = args.opt( "--testdir" );
