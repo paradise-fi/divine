@@ -242,6 +242,7 @@ struct Nursery {
         int segment = offsets.size() - 1;
         int start = offsets[ segment ];
         int end = align( start + size, 4 );
+        assert_leq( segment + segshift, (1u << Pointer::segmentSize) - 1 );
         offsets.push_back( end );
         memory.resize( end, 0 );
         flags.resize( size_memoryflags( end ), 0 );
