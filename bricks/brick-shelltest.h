@@ -479,6 +479,10 @@ struct FileSource : Source {
 };
 
 struct KMsg : Source {
+    bool can_clear;
+
+    KMsg() : can_clear( true ) {}
+
     bool dev_kmsg() {
         return fd >= 0;
     }
@@ -494,14 +498,14 @@ struct KMsg : Source {
             } else if (lseek(fd, 0L, SEEK_END) == (off_t) -1)
                 perror("lseek /dev/kmsg");
         } else
-            klogctl( BRICK_SYSLOG_ACTION_CLEAR, 0, 0 );
+            if ( klogctl( BRICK_SYSLOG_ACTION_CLEAR, 0, 0 ) < 0 )
+                can_clear = false;
 #endif
     }
 
     void sync( Sink *s ) {
 #ifdef __unix
         int sz;
-
         char buf[ 128 * 1024 ];
 
         if ( dev_kmsg() ) {
@@ -511,9 +515,12 @@ struct KMsg : Source {
                 fd = -1;
                 sync( s );
             }
-        } else {
-            while ( (sz = klogctl( BRICK_SYSLOG_ACTION_READ_CLEAR, buf, sizeof(buf) - 1 )) > 0 )
+        } else if ( can_clear ) {
+            while ( (sz = klogctl( BRICK_SYSLOG_ACTION_READ_CLEAR, buf,
+                                   sizeof(buf) - 1 )) > 0 )
                 s->push( std::string( buf, sz ) );
+            if ( sz < 0 && errno == EPERM )
+                can_clear = false;
         }
 #endif
     }
