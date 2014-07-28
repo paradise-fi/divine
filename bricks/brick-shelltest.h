@@ -459,6 +459,14 @@ struct Source {
 
     virtual void reset() {}
 
+    virtual int fd_set( fd_set *set ) {
+        if ( fd >= 0 ) {
+            FD_SET( fd, set );
+            return fd;
+        } else
+            return -1;
+    }
+
     Source( int fd = -1 ) : fd( fd ) {}
     virtual ~Source() {
         if ( fd >= 0 )
@@ -470,6 +478,7 @@ struct FileSource : Source {
     std::string file;
     FileSource( std::string n ) : Source( -1 ), file( n ) {}
 
+    int fd_set( ::fd_set * ) { return -1; } /* reading a file is always non-blocking */
     void sync( Sink *s ) {
         if ( fd < 0 )
             fd = open( file.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK );
@@ -563,10 +572,7 @@ struct IO : Sink {
         int max = -1;
 
         for ( Sources::iterator i = sources.begin(); i != sources.end(); ++i )
-            if ( (*i)->fd >= 0 ) {
-                FD_SET( (*i)->fd, set );
-                max = std::max( max, (*i)->fd );
-            }
+            max = std::max( (*i)->fd_set( set ), max );
         return max + 1;
     }
 
