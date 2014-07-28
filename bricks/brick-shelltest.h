@@ -288,7 +288,7 @@ struct Journal {
 };
 
 struct TimedBuffer {
-    using Line = std::pair< time_t, std::string >;
+    typedef std::pair< time_t, std::string > Line;
 
     std::deque< Line > data;
     Line incomplete;
