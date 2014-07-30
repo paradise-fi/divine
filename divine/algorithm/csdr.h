@@ -148,9 +148,7 @@ struct Csdr : CommonReachability< CsdrExtension, Setup, CsdrShared,
         static visitor::ExpansionAction expansion( This &c, Vertex st )
         {
             c.shared.stats.addNode( c.graph(), st );
-            return c.extension( st ).setDone()
-                ? visitor::ExpansionAction::Ignore
-                : visitor::ExpansionAction::Expand;
+            return visitor::ExpansionAction::Expand;
         }
 
         static void setGoal( This &c, Vertex v, bool deadlock ) {
@@ -169,11 +167,13 @@ struct Csdr : CommonReachability< CsdrExtension, Setup, CsdrShared,
 
             if ( !c.store().valid( f ) )
                 c.extension( t ).setInit();
-            else if ( c.extension( t ).done()
-                    || c.extension( t ).registerPredecessor( f.handle(), c.extension( f ), l ).level() > c.shared.level )
+            else if ( c.extension( t ).registerPredecessor( f.handle(), c.extension( f ), l ).level() > c.shared.level )
+                return visitor::TransitionAction::Forget;
+            if ( c.extension( t ).done() )
                 return visitor::TransitionAction::Forget;
 
             // on our level
+            c.extension( t ).setDone();
             if ( c.meta().input.propertyType == graph::PT_Goal
                  && c.graph().isGoal( t.node() ) )
             {
