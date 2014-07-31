@@ -457,8 +457,8 @@ struct SelfTest
         ASSERT( false );
     }
 
-    void assert_eq() {
-        _register< SelfTest, &SelfTest::assert_eq >( "assert_eq" );
+    void _assert_eq() {
+        _register< SelfTest, &SelfTest::_assert_eq >( "assert_eq" );
 
         bool die = true;
         try {
