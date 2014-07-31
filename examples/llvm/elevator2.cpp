@@ -1,3 +1,4 @@
+/* divine-cflags: -std=c++11 */
 /*
  * Elevator2
  * =========

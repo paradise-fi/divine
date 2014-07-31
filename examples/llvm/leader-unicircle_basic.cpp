@@ -1,3 +1,4 @@
+/* divine-cflags: -std=c++11 */
 /*
  * Leader election in an Uni-circle (Basic algorithm)
  * ==================================================
