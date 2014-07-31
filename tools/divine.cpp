@@ -1,15 +1,16 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 //             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <wibble/test.h> // for assert
 #include <queue>
 #include <iostream>
 #include <sstream>
 #include <memory>
 
+#include <brick-commandline.h>
+
+#include <wibble/test.h> // for assert
 #include <wibble/sys/thread.h>
 #include <wibble/sys/mutex.h>
-#include <wibble/commandline/parser.h>
 #include <wibble/string.h>
 #include <wibble/sfinae.h>
 #include <wibble/sys/fs.h>
@@ -33,7 +34,8 @@
 #endif
 
 using namespace wibble;
-using namespace commandline;
+using namespace brick;
+using namespace brick::commandline;
 
 namespace divine {
 
@@ -617,8 +619,8 @@ struct Main {
                     std::cerr << "WARNING: Extraneous argument: " << opts.next() << std::endl;
             }
 
-        } catch( wibble::exception::BadOption &e ) {
-            die( e.fullInfo() );
+        } catch( commandline::BadOption &e ) {
+            die( e.what() );
         }
 
         if ( !opts.foundCommand() )

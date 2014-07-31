@@ -1,9 +1,10 @@
 // -*- C++ -*-
 #include <iostream>
 #include <sstream>
+#include <brick-commandline.h>
+
 #include <divine/ltl2ba/main.h>
 #include <divine/utility/die.h>
-#include <wibble/commandline/parser.h>
 #include <wibble/string.h>
 #include <wibble/sys/fs.h>
 #include <wibble/regexp.h>
@@ -30,7 +31,8 @@ std::list<std::string> get_buchi_all_symbols();
 #endif
 
 using namespace wibble;
-using namespace commandline;
+using namespace brick;
+using namespace brick::commandline;
 using namespace sys;
 
 namespace divine {
@@ -267,8 +269,8 @@ struct Combine {
             while ( opts.hasNext() )
                 defs += " -D" + opts.next(); // .push_back( opts.next() );
 
-        } catch( wibble::exception::BadOption &e ) {
-            die_help( e.fullInfo() );
+        } catch( commandline::BadOption &e ) {
+            die_help( e.what() );
         }
 
         if ( have_ltl && o_stdout->boolValue() && !o_propId->intValue() )

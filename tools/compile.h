@@ -5,7 +5,8 @@
 #include <vector>
 #include <future>
 
-#include <wibble/commandline/parser.h>
+#include <brick-commandline.h>
+
 #include <wibble/string.h>
 #include <wibble/sys/fs.h>
 #include <wibble/regexp.h>
@@ -25,7 +26,8 @@
 #define DIVINE_COMPILE_H
 
 using namespace wibble;
-using namespace commandline;
+using namespace brick;
+using namespace brick::commandline;
 using namespace sys;
 
 namespace divine {
