@@ -154,13 +154,13 @@ public:
         assert( !empty() );
         ++ head->read;
         if ( head->read == head->buffer + NodeSize ) {
-            if ( head != tail ) {
+            if ( head->next != 0 ) {
                 dropHead();
             }
         }
         // the following can happen when head->next is 0 even though head->read
         // has reached NodeSize, *and* no front() has been called in the meantime
-        if ( head != tail && head->read > head->buffer + NodeSize ) {
+        if ( head->read > head->buffer + NodeSize ) {
             dropHead();
             pop();
         }
