@@ -254,7 +254,7 @@ void fork_test( TestCaseBase *tc, int * ) {
 
 std::string simplify( std::string s, std::string l, bool fill = true ) {
     int cut = 0, stop = 0;
-    while ( cut < s.length() && cut < l.length() && s[cut] == l[cut] ) {
+    while ( cut < int( s.length() ) && cut < int( l.length() ) && s[cut] == l[cut] ) {
         ++cut;
         if ( l[cut - 1] == ':' )
             stop = cut;
@@ -262,7 +262,7 @@ std::string simplify( std::string s, std::string l, bool fill = true ) {
             break;
     }
 
-    while ( cut < s.length() && s[ cut ] != '<' )
+    while ( cut < int( s.length() ) && s[ cut ] != '<' )
         ++cut;
 
     if ( s[cut] == '<' ) {
@@ -405,7 +405,7 @@ void _register_g( const char *n, bool fail )
 #ifndef BRICK_UNITTEST_REG
 
 template< typename T, void (T::*tc)(), void (T::*reg)() = tc >
-void _register( const char *n )
+void _register( const char * )
 {
 }
 
