@@ -141,15 +141,15 @@ struct TestLLVM {
     Test successor2()
     {
         assert_eq( fmtblob( pool, _ith( code_loop(), 1 ) ),
-                   "[ 0, 0, 0, 0, 1, 1, 2147483650 ]" );
+                   "[ 0, 0, 0, 0, 1, 1, 2147745792 ]" );
     }
 
     Test successor3()
     {
         assert_eq( fmtblob( pool, _ith( code_add(), 2 ) ),
-                   "[ 0, 0, 0, 0, 1, 1, 2147483650, 3, 1 ]" );
+                   "[ 0, 0, 0, 0, 1, 1, 2147745792, 3, 1 ]" );
         assert_eq( fmtblob( pool, _ith( code_add(), 4 ) ),
-                   "[ 0, 0, 0, 0, 1, 1, 2147483650, 3, 1 ]" );
+                   "[ 0, 0, 0, 0, 1, 1, 2147745792, 3, 1 ]" );
     }
 
     Test describe1()
