@@ -42,14 +42,29 @@ std::string ltl_to_c( int id, std::string ltl );
 
 using namespace wibble;
 
+static inline std::string concat( commandline::VectorOption< String > *opt ) {
+    assert( opt != nullptr );
+    if ( opt->values().empty() )
+        return "";
+    std::stringstream ss;
+    for ( auto it = opt->values().begin(); ; ) {
+        ss << *it;
+        if ( ++it != opt->values().end() )
+            ss << " ";
+        else
+            break;
+    }
+    return ss.str();
+}
+
 struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
 
-    BoolOption *o_cesmi, *o_llvm, *o_keep, *o_libs_only, *o_dont_link;
-    StringOption *o_cflags, *o_out, *o_cmd_clang, *o_cmd_gold, *o_cmd_llvmgold,
+    BoolOption *o_cesmi, *o_llvm, *o_keep, *o_libs_only, *o_dont_link, *o_no_modeline;
+    StringOption *o_out, *o_cmd_clang, *o_cmd_gold, *o_cmd_llvmgold,
                  *o_cmd_ar, *o_precompiled, *o_parallel;
-    VectorOption< String > *o_definitions;
+    VectorOption< String > *o_definitions, *o_cflags;
     int parallelBuildJobs;
 
     struct FilePath {
@@ -294,8 +309,79 @@ struct Compile {
         chdir( ".." );
     }
 
-    void compileLLVM( std::string first_file, std::string cflags, std::string out ) {
+    void parseModelines( const std::string &file, std::vector< std::string > &modelineOpts ) {
+        std::string line;
+        std::ifstream fs{ file };
+        enum { None, Block, BlockCf } state = None;
+
+        static const std::string lineKey = "// divine:";
+        static const std::string blockKey = "/* divine:";
+        static const std::string lineCfKey = "// divine-cflags:";
+        static const std::string blockCfKey = "/* divine-cflags:";
+        wibble::Splitter splitter( "[\t ][ \t]*", REG_EXTENDED );
+
+        auto match = [ &line ]( const std::string &key ) { return line.substr( 0, key.size() ) == key; };
+        auto addmods = [&]( std::string m ) {
+            for ( auto it = splitter.begin( m ); it != splitter.end(); ++it )
+                if ( !it->empty() && *it != "*/" )
+                    modelineOpts.emplace_back( *it );
+        };
+        auto addcfmods = [&]( std::string m ) {
+            for ( auto it = splitter.begin( m ); it != splitter.end(); ++it )
+                if ( !it->empty() && *it != "*/" )
+                    modelineOpts.emplace_back( "--cflags=" + *it );
+        };
+
+        for ( int i = 0; (state != None || i < 5) && std::getline( fs, line ); ++i ) {
+            if ( state == None ) {
+                if ( match( lineKey ) )
+                    addmods( line.substr( lineKey.size() ) );
+                else if ( match( lineCfKey ) )
+                    addcfmods( line.substr( lineCfKey.size() ) );
+                else if ( match( blockKey ) ) {
+                    if ( line.find( "*/" ) == std::string::npos )
+                        state = Block;
+                    addmods( line.substr( blockKey.size() ) );
+                } else if ( match( blockCfKey ) ) {
+                    if ( line.find( "*/" ) == std::string::npos )
+                        state = BlockCf;
+                    addcfmods( line.substr( blockCfKey.size() ) );
+                }
+            } else if ( state == Block ) {
+                addmods( line );
+                if ( line.find( "*/" ) != std::string::npos )
+                    state = None;
+            } else if ( state == BlockCf ) {
+                addcfmods( line );
+                if ( line.find( "*/" ) != std::string::npos )
+                    state = None;
+            }
+        }
+    }
+
+    void compileLLVM( std::string first_file, std::string out ) {
 #if O_LLVM
+        std::vector< std::string > files;
+        if ( !first_file.empty() )
+            files.push_back( first_file );
+        while ( opts.hasNext() ) {
+            auto f = opts.next();
+            if ( !f.empty() )
+                files.push_back( f );
+        }
+
+        if ( !o_no_modeline->boolValue() ) {
+            std::vector< std::string > modelineOpts;
+            for ( const auto &f : files )
+                parseModelines( f, modelineOpts );
+            std::cout << "INFO: modelines: " << wibble::str::fmt( modelineOpts ) << std::endl;
+            auto e = cmd_compile->parseExtraOptions( modelineOpts );
+            if ( e.size() )
+                std::cout << "WARNING: unknown modeline options: " << wibble::str::fmt( e ) << std::endl;
+        }
+
+        std::string cflags = concat( o_cflags );
+
         // create temporary directory to compile in
         char tmp_dir_template[] = "_divine-compile.XXXXXX";
         FilePath tmp_dir;
@@ -362,16 +448,14 @@ struct Compile {
 
         // compile input file(s)
         std::string basename, compilename;
-        std::string file = first_file, all_unlinked;
+        std::string all_unlinked;
 
         flags += cflags;
 
-        if ( opts.hasNext() && o_dont_link->boolValue() && !out.empty() )
+        if ( files.size() >= 2 && o_dont_link->boolValue() && !out.empty() )
             die( "Cannot specify both -o and --dont-link with multiple files." );
 
-        do {
-            if ( file.empty() )
-                file = opts.next();
+        for ( auto file : files ) {
 
             basename = str::basename( file ).substr( 0, str::basename( file ).rfind( '.' ) );
             compilename = basename + ".bc";
@@ -399,8 +483,7 @@ struct Compile {
                 }
             }
 
-            file.clear();
-        } while ( opts.hasNext() );
+        }
 
         chdir( tmp_dir.abspath.c_str() );
 
@@ -442,9 +525,9 @@ struct Compile {
         else if ( str::endsWith( input, ".m" ) )
             compileMurphi( input );
         else if ( o_cesmi->boolValue() )
-            compileCESMI( input, o_cflags->stringValue() );
+            compileCESMI( input, concat( o_cflags ) );
         else if ( o_llvm->boolValue() )
-            compileLLVM( input, o_cflags->stringValue(), o_out->stringValue() );
+            compileLLVM( input, o_out->stringValue() );
         else {
             std::cerr << "Do not know how to compile this file type." << std::endl
                       << "Did you mean to run me with --llvm or --cesmi?" << std::endl;
@@ -470,7 +553,7 @@ struct Compile {
             "keep-build-directory", '\0', "keep-build-directory", "",
             "do not erase intermediate files after a compile" );
 
-        o_cflags = cmd_compile->add< StringOption >(
+        o_cflags = cmd_compile->add< VectorOption< String > >(
             "cflags", 'f', "cflags", "",
             "set flags for C/C++ compiler" );
 
@@ -514,6 +597,10 @@ struct Compile {
         o_parallel = cmd_compile->add< StringOption >(
             "jobs", 'j', "jobs", "",
             "parallel building (like with make but -j (without parameter) is not supported)" );
+
+        o_no_modeline = cmd_compile->add< BoolOption >(
+            "no-modeline", 0, "no-modeline", "",
+            "disable DIVINE modeline parsing" );
     }
 
 };
