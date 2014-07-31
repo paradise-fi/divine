@@ -48,12 +48,22 @@
 #ifdef __unix
 #include <unistd.h>
 #endif
+#ifdef _WIN32
+#include <io.h>
+#endif
 
 #ifndef BRICK_COMMANDLINE_H
 #define BRICK_COMMANDLINE_H
 
 namespace brick {
 namespace commandline {
+
+#ifdef _WIN32
+int access( const char *p, int m ) { return _access( p, m ); }
+#ifndef F_OK
+static const int F_OK = 0;
+#endif
+#endif
 
 struct BadOption : std::runtime_error
 {
@@ -80,8 +90,7 @@ class ArgList : public std::list<std::string>
 public:
     // Remove the item pointed by the iterator, and advance the iterator to the
     // next item.  Returns i itself.
-    inline iterator& eraseAndAdvance(iterator& i)
-    {
+    inline iterator& eraseAndAdvance(iterator& i) {
         if (i == end())
             return i;
         iterator next = i;
@@ -91,10 +100,34 @@ public:
         return i;
     }
 
-    static bool isSwitch(const char* str);
-    static bool isSwitch(const std::string& str);
-    static bool isSwitch(const const_iterator& iter);
-    static bool isSwitch(const iterator& iter);
+    static bool isSwitch(const const_iterator& iter) {
+        return ArgList::isSwitch(*iter);
+    }
+
+    static bool isSwitch(const iterator& iter) {
+        return ArgList::isSwitch(*iter);
+    }
+
+    static bool isSwitch(const char* str) {
+        // No empty strings
+        if (str[0] == 0)
+            return false;
+        // Must start with a dash
+        if (str[0] != '-')
+            return false;
+        // Must not be "-" (usually it means 'stdin' file argument)
+        if (str[1] == 0)
+            return false;
+        // Must not be "--" (end of switches)
+        if (strcmp(str, "--") == 0)
+            return false;
+        return true;
+    }
+
+    static bool isSwitch(const std::string& str) {
+        return ArgList::isSwitch( str.c_str() );
+    }
+
 };
 
 class Managed
@@ -128,43 +161,104 @@ public:
 struct Bool
 {
     typedef bool value_type;
-    static bool parse(const std::string& val);
+    static bool parse(const std::string& val) {
+        if (val == "true" || val == "t" || val == "1" || val == "yes" || val == "y")
+            return true;
+        if (val == "false" || val == "f" || val == "0" || val == "no" || val == "n")
+            return false;
+        throw BadOption("invalid true/false value: \"" + val + "\"");
+    }
 
-    static bool toBool(const value_type& val);
-    static int toInt(const value_type& val);
-    static std::string toString(const value_type& val);
-    static bool init_val;
+    static bool toBool(const value_type& val) { return val; }
+    static int toInt(const value_type& val) { return val ? 1 : 0; }
+    static std::string toString(const value_type& val) { return val ? "true" : "false"; }
+    static inline bool init_val() { return false; }
 };
+
 
 struct Int
 {
     typedef int value_type;
-    static int parse(const std::string& val);
+    static int parse(const std::string& val) {
+        // Ensure that we're all numeric
+        for (std::string::const_iterator s = val.begin(); s != val.end(); ++s)
+            if (!isdigit(*s))
+                throw BadOption("value " + val + " must be numeric");
+        return strtoul(val.c_str(), NULL, 10);
+    }
 
-    static bool toBool(const value_type& val);
-    static int toInt(const value_type& val);
-    static std::string toString(const value_type& val);
-    static int init_val;
+    static bool toBool(const value_type& val) { return static_cast<bool>(val); }
+    static int toInt(const value_type& val) { return val; }
+    static std::string toString(const value_type& val) {
+        std::stringstream str;
+        str << val; return str.str();
+    }
+    static inline int init_val() { return 0; }
 };
 
 struct String
 {
     typedef std::string value_type;
-    static std::string parse(const std::string& val);
+    static std::string parse(const std::string& val) { return val; }
 
-    static bool toBool(const value_type& val);
-    static int toInt(const value_type& val);
-    static std::string toString(const value_type& val);
-    static std::string init_val;
+    static bool toBool(const value_type& val) { return !val.empty(); }
+    static int toInt(const value_type& val) { return strtoul(val.c_str(), NULL, 10); }
+    static std::string toString(const value_type& val) { return val; }
+    static inline std::string init_val() { return std::string(); }
 };
 
 struct ExistingFile
 {
     typedef std::string value_type;
-    static std::string parse(const std::string& val);
-    static std::string toString(const value_type& val);
-    static std::string init_val;
+
+    static std::string parse(const std::string& val) {
+        if (access(val.c_str(), F_OK) == -1)
+            throw BadOption("file " + val + " must exist");
+        return val;
+    }
+    static std::string toString(const value_type& val) { return val; }
+    static inline std::string init_val() { return std::string(); }
 };
+
+namespace {
+
+std::string fmtshort(char c, const std::string& usage)
+{
+    if (usage.empty())
+        return std::string("-") + c;
+    else
+        return std::string("-") + c + " " + usage;
+}
+
+std::string fmtlong(const std::string& c, const std::string& usage, bool optional=false)
+{
+    if (usage.empty())
+        return std::string("--") + c;
+    else if (optional)
+        return std::string("--") + c + "[=" + usage + "]";
+    else
+        return std::string("--") + c + "=" + usage;
+}
+
+std::string manfmtshort(char c, const std::string& usage)
+{
+    if (usage.empty())
+        return std::string("\\-") + c;
+    else
+        return std::string("\\-") + c + " \\fI" + usage + "\\fP";
+}
+
+std::string manfmtlong(const std::string& c, const std::string& usage, bool optional=false)
+{
+    if (usage.empty())
+        return std::string("\\-\\-") + c;
+    else if (optional)
+        return std::string("\\-\\-") + c + "[=\\fI" + usage + "\\fP]";
+    else
+        return std::string("\\-\\-") + c + "=\\fI" + usage + "\\fP";
+}
+
+}
 
 /// Interface for a parser for one commandline option
 class Option : public Managed
@@ -219,7 +313,7 @@ protected:
     virtual bool arg_is_optional() const { return false; }
 
 public:
-    Option();
+    Option() : hidden(false) {}
     virtual ~Option() {}
 
     bool isSet() const { return m_isset; }
@@ -229,8 +323,47 @@ public:
     void addAlias(const std::string& str) { longNames.push_back(str); }
 
     /// Return a full usage message including all the aliases for this option
-    const std::string& fullUsage() const;
-    std::string fullUsageForMan() const;
+    const std::string& fullUsage() const {
+        if (m_fullUsage.empty())
+        {
+            for (std::vector<char>::const_iterator i = shortNames.begin();
+                 i != shortNames.end(); i++)
+            {
+                if (!m_fullUsage.empty())
+                    m_fullUsage += ", ";
+                m_fullUsage += fmtshort(*i, usage);
+            }
+
+            for (std::vector<std::string>::const_iterator i = longNames.begin();
+                 i != longNames.end(); i++)
+            {
+                if (!m_fullUsage.empty())
+                    m_fullUsage += ", ";
+                m_fullUsage += fmtlong(*i, usage, arg_is_optional());
+            }
+        }
+        return m_fullUsage;
+    }
+
+    std::string fullUsageForMan() const {
+        std::string res;
+
+        for (std::vector<char>::const_iterator i = shortNames.begin();
+             i != shortNames.end(); i++)
+        {
+            if (!res.empty()) res += ", ";
+            res += manfmtshort(*i, usage);
+        }
+
+        for (std::vector<std::string>::const_iterator i = longNames.begin();
+             i != longNames.end(); i++)
+        {
+            if (!res.empty()) res += ", ";
+            res += manfmtlong(*i, usage, arg_is_optional());
+        }
+
+        return res;
+    }
 
     std::vector<char> shortNames;
     std::vector<std::string> longNames;
@@ -279,7 +412,7 @@ protected:
     typename T::value_type m_value;
 
     SingleOption(const std::string& name)
-        : Option(name), m_value(T::init_val)
+        : Option(name), m_value(T::init_val())
     {
         usage = "<val>";
     }
@@ -288,7 +421,7 @@ protected:
                  const std::string& longName,
                  const std::string& usage = std::string(),
                  const std::string& description = std::string())
-        : Option(name, shortName, longName, usage, description), m_value(T::init_val)
+        : Option(name, shortName, longName, usage, description), m_value(T::init_val())
     {
         if (usage.empty())
             this->usage = "<val>";
@@ -344,7 +477,7 @@ protected:
     bool m_hasval;
 
     SingleOptvalOption(const std::string& name)
-        : Option(name), m_value(T::init_val), m_hasval(false)
+        : Option(name), m_value(T::init_val()), m_hasval(false)
     {
         usage = "<val>";
     }
@@ -353,7 +486,7 @@ protected:
                        const std::string& longName,
                        const std::string& usage = std::string(),
                        const std::string& description = std::string())
-        : Option(name, 0, longName, usage, description), m_value(T::init_val), m_hasval(false)
+        : Option(name, 0, longName, usage, description), m_value(T::init_val()), m_hasval(false)
     {
         if (shortName != 0)
             throw ApiError(
@@ -363,7 +496,7 @@ protected:
             this->usage = "<val>";
     }
 
-    ArgList::iterator parse(ArgList& list, ArgList::iterator begin)
+    ArgList::iterator parse( ArgList &, ArgList::iterator )
     {
         throw ApiError(
             "parsing option with optional value"
@@ -561,6 +694,27 @@ public:
     friend class Engine;
 };
 
+namespace {
+
+typedef std::vector< std::map< std::string, Option * >::const_iterator > PartialMatches;
+
+PartialMatches _partialMatches( std::map< std::string, Option * > longOpts, std::string name )
+{
+    std::map< std::string, Option * >::const_iterator engine = longOpts.lower_bound( name );
+    PartialMatches candidates;
+    for ( ; engine != longOpts.end(); ++engine ) {
+        if ( engine->first.size() < name.size() )
+            break;
+        if ( std::equal( name.begin(), name.end(), engine->first.begin() ) )
+            candidates.push_back( engine );
+        else
+            break;
+    }
+    return candidates;
+}
+
+}
+
 /**
  * Parse commandline options.
  *
@@ -591,12 +745,67 @@ protected:
     // NULL
     Engine* m_found_command;
 
-    void addWithoutAna(Option* o);
-    void addWithoutAna(const std::vector<Option*>& o);
-    void add(const std::string& alias, Engine* o);
+    void addWithoutAna(Option* o) {
+
+        const std::vector<char>& shorts = o->shortNames;
+        for (std::vector<char>::const_iterator i = shorts.begin(); i != shorts.end(); i++)
+        {
+            std::map<char, Option*>::iterator j = m_short.find(*i);
+            if (j != m_short.end())
+                throw ApiError(std::string("short option ") + *i + " is already mapped to " + j->second->name());
+            m_short[*i] = o;
+        }
+
+        const std::vector<std::string>& longs = o->longNames;
+        for (std::vector<std::string>::const_iterator i = longs.begin(); i != longs.end(); i++)
+        {
+            std::map<std::string, Option*>::iterator j = m_long.find(*i);
+            if (j != m_long.end())
+                throw ApiError(std::string("long option ") + *i + " is already mapped to " + j->second->name());
+            m_long[*i] = o;
+        }
+    }
+
+    void addWithoutAna(const std::vector<Option*>& o) {
+        for (std::vector<Option*>::const_iterator i = o.begin();
+             i != o.end(); ++i)
+            addWithoutAna(*i);
+    }
+
+    void add(const std::string& alias, Engine* o) {
+        std::map<std::string, Engine*>::iterator a = m_aliases.find(alias);
+        if (a != m_aliases.end())
+            throw ApiError("command " + alias + " has already been set to " + a->second->name());
+        m_aliases[alias] = o;
+    }
+
 
     // Rebuild the parse tables
-    void rebuild();
+    void rebuild() {
+        // Clear the engine tables
+        m_short.clear();
+        m_long.clear();
+
+        // Add the options from the groups
+        for (std::vector<OptionGroup*>::const_iterator i = m_groups.begin();
+             i != m_groups.end(); ++i)
+            addWithoutAna((*i)->options);
+
+        // Add the stray options
+        addWithoutAna(m_options);
+
+        // Add the commands
+        m_aliases.clear();
+        for (std::vector<Engine*>::const_iterator i = m_commands.begin();
+             i != m_commands.end(); ++i)
+        {
+            add((*i)->primaryAlias, *i);
+            for (std::vector<std::string>::const_iterator j = (*i)->aliases.begin();
+                 j != (*i)->aliases.end(); ++j)
+                add(*j, *i);
+        }
+    }
+
 
     /**
      * Handle the commandline switch at 'begin'.
@@ -605,10 +814,111 @@ protected:
      * 'begin',false is returned.  Else, the switch is removed and the new begin is
      * returned.
      */
-    std::pair<ArgList::iterator, bool> parseFirstIfKnown(ArgList& list, ArgList::iterator begin);
+    std::pair<ArgList::iterator, bool> parseFirstIfKnown(ArgList& list, ArgList::iterator begin)
+    {
+        std::string& opt = *begin;
+
+        if (opt[1] != '-')
+        {
+            // Short option
+            char c = opt[1];
+            // Loopup the option engine
+            std::map<char, Option*>::const_iterator engine = m_short.find(c);
+            if (engine == m_short.end())
+                return std::make_pair(begin, false);
+            // Parse the arguments, if any
+            ArgList::iterator next = begin; ++next;
+            engine->second->parse(list, next);
+            // Dispose of the parsed argument
+            if (opt[2] == 0)
+            {
+                // Remove what's left of the switch cluster as well
+                list.eraseAndAdvance(begin);
+            } else {
+                // Else only remove the character from the switch
+                opt.erase(opt.begin() + 1);
+            }
+        } else {
+            // Long option
+
+            // Split option and argument from "--foo=bar"
+            size_t sep = opt.find('=');
+            std::string name, arg;
+            bool has_arg;
+            if (sep == std::string::npos)
+            {
+                // No argument
+                name = opt.substr(2);
+                has_arg = false;
+            } else {
+                name = opt.substr(2, sep - 2);
+                arg = opt.substr(sep + 1);
+                has_arg = true;
+            }
+
+            std::map<std::string, Option*>::const_iterator engine = m_long.find(name);
+            if (engine == m_long.end()) {
+                if ( partial_matching ) {
+                    PartialMatches candidates = _partialMatches( m_long, name );
+                    if ( candidates.size() == 1 )
+                        engine = candidates[ 0 ];
+                    else
+                        return std::make_pair(begin, false);
+                } else
+                    return std::make_pair(begin, false);
+            }
+            if (has_arg)
+                engine->second->parse(arg);
+            else
+                engine->second->parse_noarg();
+
+            // Remove the parsed element
+            list.eraseAndAdvance(begin);
+        }
+        return make_pair(begin, true);
+    }
+
 
     /// Parse all known Options and leave the rest in list
-    ArgList::iterator parseKnownSwitches(ArgList& list, ArgList::iterator begin);
+    ArgList::iterator parseKnownSwitches(ArgList& list, ArgList::iterator begin) {
+        // Parse the first items, chopping them off the list, until it works
+        while (1)
+        {
+            if (begin == list.end())
+                return begin;
+            if (!list.isSwitch(begin))
+                break;
+            std::pair<ArgList::iterator, bool> res = parseFirstIfKnown(list, begin);
+            if (!res.second)
+                break;
+            begin = res.first;
+        }
+
+        // If requested, stop here
+        if (no_switches_after_first_arg)
+            return begin;
+
+        // Parse the next items, chopping off the list only those that we know
+        for (ArgList::iterator cur = begin; cur != list.end(); )
+        {
+            // Skip non-switches
+            if (!list.isSwitch(cur))
+            {
+                ++cur;
+                continue;
+            }
+
+            std::pair<ArgList::iterator, bool> res = parseFirstIfKnown(list, cur);
+            if (!res.second)
+                // If the switch is not handled, move past it
+                ++cur;
+            else
+                cur = res.first;
+        }
+
+        return begin;
+    }
+
 
     /**
      * Parse the list of arguments, starting at the beginning and removing the
@@ -623,7 +933,82 @@ protected:
      * Parse all the switches in list, leaving only the non-switch arguments or
      * the arguments following "--"
      */
-    ArgList::iterator parse(ArgList& list, ArgList::iterator begin);
+    ArgList::iterator parse(ArgList& list, ArgList::iterator begin) {
+        rebuild();
+
+        // Parse and remove known switches
+        begin = parseKnownSwitches(list, begin);
+
+        m_found_command = 0;
+
+        // Check if we have to handle commands
+        if (!m_commands.empty())
+        {
+            // Look for the first non-switch in the list
+            ArgList::iterator cmd = begin;
+            while (cmd != list.end() && list.isSwitch(cmd))
+                ++cmd;
+
+            if (cmd != list.end())
+            {
+                // A command has been found, ensure that we can handle it
+                std::map<std::string, Engine*>::iterator a = m_aliases.find(*cmd);
+                if (a == m_aliases.end())
+                    throw BadOption("unknown command " + *cmd);
+
+                // Remove the command from the list
+                if (cmd == begin)
+                    ++begin;
+                list.erase(cmd);
+
+                // We found a valid command, let's enable subcommand parsing
+                m_found_command = a->second;
+            }
+        }
+
+        if (!m_found_command)
+        {
+            // If we don't have any more subcommands to parse, then ensure that
+            // there are no switches left to process
+            for (ArgList::iterator i = begin; i != list.end(); ++i)
+            {
+                if (*i == "--")
+                {
+                    // Remove '--' and stop looking for switches
+                    if (begin == i)
+                    {
+                        begin++;
+                        list.erase(i);
+                    }
+                    break;
+                }
+                if (list.isSwitch(i)) {
+                    std::stringstream ss;
+                    ss << "unknown option " << *i;
+                    if ( partial_matching && i->size() > 2 && (*i)[1] == '-' ) {
+                        PartialMatches pmatches = _partialMatches( m_long, i->substr( 2 )  );
+                        if ( pmatches.size() >= 2 ) {
+                            ss << std::endl << "Option is ambiguous, possible candidates are: ";
+                            for ( PartialMatches::const_iterator it = pmatches.begin(); it != pmatches.end(); ++it )
+                            {
+                                ss << (*it)->first << (it + 1 == pmatches.end() ? "" : ", ");
+                            }
+                        }
+                    }
+                    throw BadOption( ss.str() );
+                }
+                else if (no_switches_after_first_arg)
+                    // If requested, stop looking for switches
+                    // after the first non-switch argument
+                    break;
+            }
+            m_found_command = 0;
+            return begin;
+        } else {
+            // Else, invoke the subcommand engine on the list
+            return m_found_command->parse(list, begin);
+        }
+    }
 
 
     Engine(MemoryManager* mman = 0, const std::string& name = std::string(),
@@ -638,13 +1023,23 @@ public:
     const std::string& name() const { return m_name; }
 
     /// Add an Option to this engine
-    Option* add(Option* o);
+    Option* add(Option* o) {
+        m_options.push_back(o);
+        return o;
+    }
 
     /// Add an OptionGroup to this engine
-    OptionGroup* add(OptionGroup* group);
+    OptionGroup* add(OptionGroup* group) {
+        m_groups.push_back(group);
+        return group;
+    }
 
     /// Add a Engine to this engine
-    Engine* add(Engine* o);
+    Engine* add(Engine* o) {
+        m_commands.push_back(o);
+        return o;
+    }
+
 
     /**
      * Create an option
@@ -746,7 +1141,54 @@ public:
     Engine* foundCommand() const { return m_found_command; }
 
 
-    void dump(std::ostream& out, const std::string& prefix = std::string());
+    void dump(std::ostream& out, const std::string& prefix = std::string()) {
+        rebuild();
+
+        out << prefix << "Engine " << name() << ": " << std::endl;
+
+        if (!m_commands.empty())
+        {
+            out << prefix << "   " << m_commands.size() << " commands:" << std::endl;
+            for (std::vector<Engine*>::const_iterator i = m_commands.begin();
+                 i != m_commands.end(); ++i)
+                (*i)->dump(out, prefix + "   ");
+        }
+        if (!m_aliases.empty())
+        {
+            out << prefix << "   Command parse table:" << std::endl;
+            for (std::map<std::string, Engine*>::const_iterator i = m_aliases.begin();
+                 i != m_aliases.end(); ++i)
+                out << prefix << "      " << i->first << " -> " << i->second->name() << std::endl;
+        }
+        if (!m_groups.empty())
+        {
+            out << prefix << "   " << m_groups.size() << " OptionGroups:" << std::endl;
+            for (std::vector<OptionGroup*>::const_iterator i = m_groups.begin();
+                 i != m_groups.end(); ++i)
+                out << prefix << "      " << (*i)->description << std::endl;
+        }
+        if (!m_options.empty())
+        {
+            out << prefix << "   " << m_options.size() << " Options:" << std::endl;
+            for (std::vector<Option*>::const_iterator i = m_options.begin();
+                 i != m_options.end(); ++i)
+                out << prefix << "      " << (*i)->fullUsage() << std::endl;
+        }
+        if (!m_short.empty())
+        {
+            out << prefix << "   Short options parse table:" << std::endl;
+            for (std::map<char, Option*>::const_iterator i = m_short.begin();
+                 i != m_short.end(); ++i)
+                out << prefix << "      " << i->first << " -> " << i->second->fullUsage() << std::endl;
+        }
+        if (!m_long.empty())
+        {
+            out << prefix << "   Long options parse table:" << std::endl;
+            for (std::map<std::string, Option*>::const_iterator i = m_long.begin();
+                 i != m_long.end(); ++i)
+                out << prefix << "      " << i->first << " -> " << i->second->fullUsage() << std::endl;
+        }
+    }
 
     std::string primaryAlias;
     std::vector<std::string> aliases;
@@ -774,11 +1216,16 @@ public:
     bool partial_matching;
 
     /* set partial matching for this engine and all subcomand engines */
-    void setPartialMatchingRecursively( bool );
 
+    void setPartialMatchingRecursively( bool value ) {
+        partial_matching = value;
+        for ( std::vector< Engine * >::iterator i = m_commands.begin(); i != m_commands.end(); ++i )
+            (*i)->setPartialMatchingRecursively( value );
+    }
 
     friend class Parser;
 };
+
 
 /**
  * Generic parser for commandline arguments.
@@ -824,7 +1271,56 @@ public:
     }
 };
 
-class HelpWriter;
+class HelpWriter
+{
+    // Width of the console
+    std::ostream& out;
+    int m_width;
+
+public:
+    HelpWriter(std::ostream& out) : out(out)
+    {
+        char* columns = getenv("COLUMNS");
+        m_width = columns ? atoi(columns) : 80;
+    }
+
+    // Write 'size' spaces to out
+    void pad(size_t size)
+    {
+        for (size_t i = 0; i < size; i++) out << " ";
+    }
+
+    // Output an item from a list.  The first bulletsize columns will be used to
+    // output bullet, the rest will have text, wordwrapped and properly aligned
+    void outlist(const std::string& bullet, size_t bulletsize, const std::string& text)
+    {
+        string::WordWrap wrapper(text);
+        size_t rightcol = m_width - bulletsize;
+
+        out << bullet;
+        pad(bulletsize - bullet.size());
+        out << wrapper.get(rightcol);
+        out << std::endl;
+
+        while (wrapper.hasData())
+        {
+            pad(bulletsize);
+            out << wrapper.get(rightcol);
+            out << std::endl;
+        }
+    }
+
+    void outstring(const std::string& str)
+    {
+        string::WordWrap wrapper(str);
+
+        while (wrapper.hasData())
+        {
+            out << wrapper.get(m_width);
+            out << std::endl;
+        }
+    }
+};
 
 class DocMaker
 {
@@ -840,15 +1336,183 @@ public:
 class Help : public DocMaker
 {
 protected:
-    void outputOptions(std::ostream& out, HelpWriter& writer, const Engine& cp);
+    void outputOptions(std::ostream& out, HelpWriter& writer, const Engine& p)
+    {
+        // Compute size of option display
+        size_t maxLeftCol = 0;
+        for (std::vector<OptionGroup*>::const_iterator i = p.groups().begin();
+             i != p.groups().end(); i++)
+        {
+            if ((*i)->hidden) continue;
+            for (std::vector<Option*>::const_iterator j = (*i)->options.begin();
+                 j != (*i)->options.end(); j++)
+            {
+                if ((*j)->hidden) continue;
+                size_t w = (*j)->fullUsage().size();
+                if (w > maxLeftCol)
+                    maxLeftCol = w;
+            }
+        }
+        for (std::vector<Option*>::const_iterator j = p.options().begin();
+             j != p.options().end(); j++)
+        {
+            if ((*j)->hidden) continue;
+            size_t w = (*j)->fullUsage().size();
+            if (w > maxLeftCol)
+                maxLeftCol = w;
+        }
+
+        if (maxLeftCol)
+        {
+            // Output the options
+            out << std::endl;
+            out << "Options are:" << std::endl;
+            for (std::vector<OptionGroup*>::const_iterator i = p.groups().begin();
+                 i != p.groups().end(); i++)
+            {
+                if ((*i)->hidden) continue;
+                if (!(*i)->description.empty())
+                {
+                    out << std::endl;
+                    writer.outstring((*i)->description + ":");
+                    out << std::endl;
+                }
+                for (std::vector<Option*>::const_iterator j = (*i)->options.begin();
+                     j != (*i)->options.end(); j++)
+                {
+                    if ((*j)->hidden) continue;
+                    writer.outlist(" " + (*j)->fullUsage(), maxLeftCol + 3, (*j)->description);
+                }
+            }
+            if (!p.options().empty())
+            {
+                out << std::endl;
+                writer.outstring("Other options:");
+                out << std::endl;
+                for (std::vector<Option*>::const_iterator j = p.options().begin();
+                     j != p.options().end(); j++)
+                {
+                    if ((*j)->hidden) continue;
+                    writer.outlist(" " + (*j)->fullUsage(), maxLeftCol + 3, (*j)->description);
+                }
+            }
+        }
+    }
 
 public:
     Help(const std::string& app, const std::string& ver)
         : DocMaker(app, ver) {}
 
-    void outputVersion(std::ostream& out);
-    void outputHelp(std::ostream& out, const Engine& cp);
+    void outputVersion(std::ostream& out)
+    {
+        out << m_app << " version " << m_ver << std::endl;
+    }
+
+    void outputHelp(std::ostream& out, const Engine& p)
+    {
+        HelpWriter writer(out);
+
+        if (!p.commands().empty())
+        {
+            // Dig informations from p
+            const std::vector<Engine*>& commands = p.commands();
+
+            // Compute the maximum length of alias names
+            size_t maxAliasSize = 0;
+            for (std::vector<Engine*>::const_iterator i = commands.begin();
+                 i != commands.end(); i++)
+            {
+                if ((*i)->hidden) continue;
+                const std::string& str = (*i)->primaryAlias;
+                if (maxAliasSize < str.size())
+                    maxAliasSize = str.size();
+            }
+
+            out << "Usage: " << m_app << " [options] " << p.usage << std::endl;
+            out << std::endl;
+            writer.outstring("Description: " + p.description);
+            out << std::endl;
+            out << "Commands are:" << std::endl;
+            out << std::endl;
+
+            // Print the commands
+            for (std::vector<Engine*>::const_iterator i = commands.begin();
+                 i != commands.end(); i++)
+            {
+                if ((*i)->hidden) continue;
+                std::string aliases;
+                const std::vector<std::string>& v = (*i)->aliases;
+                if (!v.empty())
+                {
+                    aliases += "  May also be invoked as ";
+                    for (std::vector<std::string>::const_iterator j = v.begin();
+                         j != v.end(); j++)
+                        if (j == v.begin())
+                            aliases += *j;
+                        else
+                            aliases += " or " + *j;
+                    aliases += ".";
+                }
+
+                writer.outlist(" " + (*i)->primaryAlias, maxAliasSize + 3, (*i)->description + "." + aliases);
+            }
+        } else {
+            // FIXME the || m_app == thing is a workaround...
+            if (p.primaryAlias.empty() || m_app == p.primaryAlias)
+                out << "Usage: " << m_app << " [options] " << p.usage << std::endl;
+            else
+                out << "Usage: " << m_app << " [options] " << p.primaryAlias << " [options] " << p.usage << std::endl;
+            out << std::endl;
+
+            if (!p.aliases.empty())
+            {
+                out << "Command aliases: ";
+                for (std::vector<std::string>::const_iterator i = p.aliases.begin();
+                     i != p.aliases.end(); i++)
+                    if (i == p.aliases.begin())
+                        out << *i;
+                    else
+                        out << ", " << *i;
+                out << "." << std::endl;
+                out << std::endl;
+            }
+            writer.outstring("Description: " + p.description);
+        }
+
+        if (p.hasOptions())
+            outputOptions(out, writer, p);
+
+        out << std::endl;
+    }
 };
+
+static inline std::string readline(FILE* in)
+{
+    std::string res;
+    int c;
+    while ((c = getc(in)) != EOF && c != '\n')
+        res += c;
+    return res;
+}
+
+static inline std::string toupper(const std::string& str)
+{
+    std::string res;
+    for (size_t i = 0; i < str.size(); i++)
+        res += ::toupper(str[i]);
+    return res;
+}
+
+static inline std::string man_date()
+{
+    time_t tnow = time(0);
+    struct tm* now = gmtime(&tnow);
+    char buf[20];
+    const char* oldlocale = setlocale(LC_TIME, "C");
+    std::string res(buf, strftime(buf, 20, "%B %d, %Y", now));
+    setlocale(LC_TIME, oldlocale);
+    return res;
+}
 
 class Manpage : public DocMaker
 {
@@ -872,12 +1536,82 @@ private:
     std::vector<Hook> hooks;
     std::string lastSection;
 
-    void outputParagraph(std::ostream& out, const std::string& str);
-    void outputOption(std::ostream& out, const Option* o);
-    void outputOptions(std::ostream& out, const Engine& p);
-    void runHooks(std::ostream& out, const std::string& section, where where);
-    void startSection(std::ostream& out, const std::string& name);
-    void endSection(std::ostream& out);
+    void outputParagraph(std::ostream& out, const std::string& str)
+    {
+        for (size_t i = 0; i < str.size(); i++)
+            switch (str[i])
+            {
+                case '-':
+                    out << "\\-";
+                    break;
+                case '\n':
+                    out << "\n.br\n";
+                    break;
+                default:
+                    out << str[i];
+            }
+        out << '\n';
+    }
+
+    void outputOption(std::ostream& out, const Option* o)
+    {
+        out << ".TP" << std::endl;
+        out << ".B " << o->fullUsageForMan() << std::endl;
+        out << o->description << "." << std::endl;
+    }
+
+    void outputOptions(std::ostream& out, const Engine& p)
+    {
+        for (std::vector<OptionGroup*>::const_iterator i = p.groups().begin();
+             i != p.groups().end(); i++)
+        {
+            if ((*i)->hidden) continue;
+            if (!(*i)->description.empty())
+                out << std::endl << (*i)->description << ":" << std::endl;
+            for (std::vector<Option*>::const_iterator j = (*i)->options.begin();
+                 j != (*i)->options.end(); ++j)
+            {
+                if ((*j)->hidden) continue;
+                outputOption(out, *j);
+            }
+            out << ".PP" << std::endl;
+        }
+
+        if (!p.options().empty())
+        {
+            out << std::endl;
+            out << "Other options:" << std::endl;
+            for (std::vector<Option*>::const_iterator j = p.options().begin();
+                 j != p.options().end(); ++j)
+            {
+                if ((*j)->hidden) continue;
+                outputOption(out, *j);
+            }
+        }
+    }
+
+    void runHooks(std::ostream& out, const std::string& section, where where)
+    {
+        for (std::vector<Hook>::const_iterator i = hooks.begin();
+             i != hooks.end(); i++)
+            if (i->section == section && i->placement == where)
+                out << i->text;
+    }
+
+    void startSection(std::ostream& out, const std::string& name)
+    {
+        runHooks(out, name, BEFORE);
+        out << ".SH " << name << std::endl;
+        runHooks(out, name, BEGINNING);
+        lastSection = name;
+    }
+
+    void endSection(std::ostream& out)
+    {
+        runHooks(out, lastSection, END);
+        lastSection.clear();
+    }
+
 
 
 public:
@@ -888,9 +1622,130 @@ public:
     {
         hooks.push_back(Hook(section, placement, text));
     }
-    void readHooks(const std::string& file);
 
-    void output(std::ostream& out, const Engine& cp);
+    void readHooks(const std::string& file)
+    {
+        FILE* in = fopen(file.c_str(), "r");
+        if (!in) throw std::runtime_error("failed to open " + file + " for reading");
+        std::string section;
+        commandline::Manpage::where placement = commandline::Manpage::BEFORE;
+        std::string text;
+        while (!feof(in))
+        {
+            std::string line(readline(in));
+            if (line.empty())
+                continue;
+            if (line[0] == '|')
+            {
+                text += line.substr(1) + "\n";
+            }
+            else if (isalpha(line[0]))
+            {
+                if (!section.empty())
+                {
+                    addHook(section, placement, text);
+                    text.clear();
+                }
+                size_t sep = line.find(' ');
+                if (sep == std::string::npos)
+                {
+                    fclose(in);
+                    throw ApiError("expected two words in line: " + line);
+                }
+                section = line.substr(0, sep);
+                std::string w(line, sep+1);
+                if (w == "before")
+                {
+                    placement = commandline::Manpage::BEFORE;
+                } else if (w == "beginning") {
+                    placement = commandline::Manpage::BEGINNING;
+                } else if (w == "end") {
+                    placement = commandline::Manpage::END;
+                } else {
+                    fclose(in);
+                    throw ApiError("expected 'before', 'beginning' or 'end' in line: " + line);
+                }
+            }
+        }
+        if (!section.empty())
+            addHook(section, placement, text);
+        fclose(in);
+    }
+
+    void output(std::ostream& out, const Engine& p)
+    {
+        // Manpage header
+        out << ".TH " << toupper(m_app) << " " << m_section << " \"" << man_date() << "\" \"" << m_ver << "\"" << std::endl;
+
+        startSection(out, "NAME");
+        out << p.name() << " \\- " << p.description << std::endl;
+        endSection(out);
+
+        startSection(out, "SYNOPSIS");
+        out << "\\fB" << p.name() << "\\fP [options] " << p.usage << std::endl;
+        endSection(out);
+
+        startSection(out, "DESCRIPTION");
+        if (!p.longDescription.empty())
+            outputParagraph(out, p.longDescription);
+        endSection(out);
+
+        if (!p.commands().empty())
+        {
+            const std::vector<Engine*>& commands = p.commands();
+
+            startSection(out, "COMMANDS");
+            out << "\\fB" << p.name() << "\\fP accepts a non-switch argument, that indicates what is the operation that should be performed:" << std::endl;
+            for (std::vector<Engine*>::const_iterator i = commands.begin();
+                 i != commands.end(); i++)
+            {
+                if ((*i)->hidden) continue;
+                out << ".TP" << std::endl;
+                out << "\\fB" << (*i)->primaryAlias << "\\fP";
+
+                const std::vector<std::string>& v = (*i)->aliases;
+                for (std::vector<std::string>::const_iterator j = v.begin(); j != v.end(); j++)
+                    out << " or \\fB" << *j << "\\fP";
+
+                out << " " << (*i)->usage << std::endl;
+                out << ".br" << std::endl;
+                if ((*i)->longDescription.empty())
+                    outputParagraph(out, (*i)->description);
+                else
+                    outputParagraph(out, (*i)->longDescription);
+            }
+            endSection(out);
+        }
+
+        startSection(out, "OPTIONS");
+        out << "This program follows the usual GNU command line syntax, with long options starting with two dashes (`\\-')." << std::endl << std::endl;
+        if (!p.commands().empty())
+            out << "Every one of the commands listed above has its own set of options.  To keep this manpage readable, all the options are presented together.  Please refer to \"\\fB" << p.name() << "\\fP help \\fIcommand\\fP\" to see which options are accepted by a given command." << std::endl;
+
+        // Output the general options
+        outputOptions(out, p);
+
+        // Output group-specific options
+        if (!p.commands().empty())
+        {
+            const std::vector<Engine*>& commands = p.commands();
+            for (std::vector<Engine*>::const_iterator i = commands.begin();
+                 i != commands.end(); i++)
+            {
+                if ((*i)->hidden) continue;
+                out << "\\fBOptions for command " << (*i)->primaryAlias << "\\fP" << std::endl;
+                out << ".br" << std::endl;
+                outputOptions(out, **i);
+            }
+        }
+        endSection(out);
+
+        startSection(out, "AUTHOR");
+        out << "\\fB" << p.name() << "\\fP is maintained by " << m_author << "." << std::endl << std::endl;
+        out << "This manpage has been automatically generated by the " << m_app << " program." << std::endl;
+        endSection(out);
+    }
+
 };
 
 
@@ -914,9 +1769,37 @@ public:
                                                    "print the program version and exit");
     }
 
-    void outputHelp(std::ostream& out);
+    void outputHelp(std::ostream& out) {
+        commandline::Help help(name(), m_version);
+        commandline::Engine* e = foundCommand();
 
-    bool parse(int argc, const char* argv[]);
+        if (e)
+            // Help on a specific command
+            help.outputHelp(out, *e);
+        else
+            // General help
+            help.outputHelp(out, *this);
+    }
+
+    bool parse(int argc, const char* argv[]) {
+        if (Parser::parse(argc, argv))
+            return true;
+
+        if (help->boolValue())
+        {
+            // Provide help as requested
+            outputHelp(std::cout);
+            return true;
+        }
+        if (version->boolValue())
+        {
+            // Print the program version
+            commandline::Help help(name(), m_version);
+            help.outputVersion(std::cout);
+            return true;
+        }
+        return false;
+    }
 
     OptionGroup* helpGroup;
     BoolOption* help;
@@ -946,7 +1829,21 @@ public:
                                                "output the " + name() + " manpage and exit");
     }
 
-    bool parse(int argc, const char* argv[]);
+    bool parse(int argc, const char* argv[])  {
+        if (StandardParser::parse(argc, argv))
+            return true;
+        if (manpage->isSet())
+        {
+            // Output the manpage
+            commandline::Manpage man(name(), m_version, m_section, m_author);
+            std::string hooks(manpage->value());
+            if (!hooks.empty())
+                man.readHooks(hooks);
+            man.output(std::cout, *this);
+            return true;
+        }
+        return false;
+    }
 
     StringOption* manpage;
 };
@@ -971,1042 +1868,40 @@ public:
 				"about that command.");
     }
 
-    bool parse(int argc, const char* argv[]);
+    bool parse(int argc, const char* argv[]) {
+        if (StandardParserWithManpage::parse(argc, argv))
+            return true;
+
+        if (!foundCommand())
+        {
+            commandline::Help help(name(), m_version);
+            help.outputHelp(std::cout, *this);
+            return true;
+        }
+        if (foundCommand() == helpCommand)
+        {
+            commandline::Help help(name(), m_version);
+            if (hasNext())
+            {
+                // Help on a specific command
+                std::string command = next();
+                if (Engine* e = this->command(command))
+                    help.outputHelp(std::cout, *e);
+                else
+                    throw BadOption("unknown command " + command + "; run '" + argv[0] + " help' "
+                                    "for a list of all the available commands");
+            } else {
+                // General help
+                help.outputHelp(std::cout, *this);
+            }
+            return true;
+        }
+        return false;
+    }
+
 
     Engine* helpCommand;
 };
-
-namespace {
-
-typedef std::vector< std::map< std::string, Option * >::const_iterator > PartialMatches;
-
-PartialMatches _partialMatches( std::map< std::string, Option * > longOpts, std::string name )
-{
-    std::map< std::string, Option * >::const_iterator engine = longOpts.lower_bound( name );
-    PartialMatches candidates;
-    for ( ; engine != longOpts.end(); ++engine ) {
-        if ( engine->first.size() < name.size() )
-            break;
-        if ( std::equal( name.begin(), name.end(), engine->first.begin() ) )
-            candidates.push_back( engine );
-        else
-            break;
-    }
-    return candidates;
-}
-
-}
-
-bool ArgList::isSwitch(const const_iterator& iter)
-{
-    return ArgList::isSwitch(*iter);
-}
-
-bool ArgList::isSwitch(const iterator& iter)
-{
-    return ArgList::isSwitch(*iter);
-}
-
-bool ArgList::isSwitch(const char* str)
-{
-    // No empty strings
-    if (str[0] == 0)
-        return false;
-    // Must start with a dash
-    if (str[0] != '-')
-        return false;
-    // Must not be "-" (usually it means 'stdin' file argument)
-    if (str[1] == 0)
-        return false;
-    // Must not be "--" (end of switches)
-    if (strcmp(str, "--") == 0)
-        return false;
-    return true;
-}
-
-bool ArgList::isSwitch(const std::string& str) {
-    return ArgList::isSwitch( str.c_str() );
-}
-
-void Engine::addWithoutAna(Option* o)
-{
-    const std::vector<char>& shorts = o->shortNames;
-    for (std::vector<char>::const_iterator i = shorts.begin(); i != shorts.end(); i++)
-    {
-        std::map<char, Option*>::iterator j = m_short.find(*i);
-        if (j != m_short.end())
-            throw ApiError(std::string("short option ") + *i + " is already mapped to " + j->second->name());
-        m_short[*i] = o;
-    }
-
-    const std::vector<std::string>& longs = o->longNames;
-    for (std::vector<std::string>::const_iterator i = longs.begin(); i != longs.end(); i++)
-    {
-        std::map<std::string, Option*>::iterator j = m_long.find(*i);
-        if (j != m_long.end())
-            throw ApiError(std::string("long option ") + *i + " is already mapped to " + j->second->name());
-        m_long[*i] = o;
-    }
-}
-
-void Engine::addWithoutAna(const std::vector<Option*>& o)
-{
-    for (std::vector<Option*>::const_iterator i = o.begin();
-         i != o.end(); ++i)
-        addWithoutAna(*i);
-}
-
-void Engine::add(const std::string& alias, Engine* o)
-{
-    std::map<std::string, Engine*>::iterator a = m_aliases.find(alias);
-    if (a != m_aliases.end())
-        throw ApiError("command " + alias + " has already been set to " + a->second->name());
-    m_aliases[alias] = o;
-}
-
-
-void Engine::rebuild()
-{
-    // Clear the engine tables
-    m_short.clear();
-    m_long.clear();
-
-    // Add the options from the groups
-    for (std::vector<OptionGroup*>::const_iterator i = m_groups.begin();
-         i != m_groups.end(); ++i)
-        addWithoutAna((*i)->options);
-
-    // Add the stray options
-    addWithoutAna(m_options);
-
-    // Add the commands
-    m_aliases.clear();
-    for (std::vector<Engine*>::const_iterator i = m_commands.begin();
-         i != m_commands.end(); ++i)
-    {
-        add((*i)->primaryAlias, *i);
-        for (std::vector<std::string>::const_iterator j = (*i)->aliases.begin();
-             j != (*i)->aliases.end(); ++j)
-            add(*j, *i);
-    }
-}
-
-std::pair<ArgList::iterator, bool> Engine::parseFirstIfKnown(ArgList& list, ArgList::iterator begin)
-{
-    std::string& opt = *begin;
-
-    if (opt[1] != '-')
-    {
-        // Short option
-        char c = opt[1];
-        // Loopup the option engine
-        std::map<char, Option*>::const_iterator engine = m_short.find(c);
-        if (engine == m_short.end())
-            return std::make_pair(begin, false);
-        // Parse the arguments, if any
-        ArgList::iterator next = begin; ++next;
-        engine->second->parse(list, next);
-        // Dispose of the parsed argument
-        if (opt[2] == 0)
-        {
-            // Remove what's left of the switch cluster as well
-            list.eraseAndAdvance(begin);
-        } else {
-            // Else only remove the character from the switch
-            opt.erase(opt.begin() + 1);
-        }
-    } else {
-        // Long option
-
-        // Split option and argument from "--foo=bar"
-        size_t sep = opt.find('=');
-        std::string name, arg;
-        bool has_arg;
-        if (sep == std::string::npos)
-        {
-            // No argument
-            name = opt.substr(2);
-            has_arg = false;
-        } else {
-            name = opt.substr(2, sep - 2);
-            arg = opt.substr(sep + 1);
-            has_arg = true;
-        }
-
-        std::map<std::string, Option*>::const_iterator engine = m_long.find(name);
-        if (engine == m_long.end()) {
-            if ( partial_matching ) {
-                PartialMatches candidates = _partialMatches( m_long, name );
-                if ( candidates.size() == 1 )
-                    engine = candidates[ 0 ];
-                else
-                    return std::make_pair(begin, false);
-            } else
-                return std::make_pair(begin, false);
-        }
-        if (has_arg)
-            engine->second->parse(arg);
-        else
-            engine->second->parse_noarg();
-
-        // Remove the parsed element
-        list.eraseAndAdvance(begin);
-    }
-    return make_pair(begin, true);
-}
-
-ArgList::iterator Engine::parseKnownSwitches(ArgList& list, ArgList::iterator begin)
-{
-    // Parse the first items, chopping them off the list, until it works
-    while (1)
-    {
-        if (begin == list.end())
-            return begin;
-        if (!list.isSwitch(begin))
-            break;
-        std::pair<ArgList::iterator, bool> res = parseFirstIfKnown(list, begin);
-        if (!res.second)
-            break;
-        begin = res.first;
-    }
-
-    // If requested, stop here
-    if (no_switches_after_first_arg)
-        return begin;
-
-    // Parse the next items, chopping off the list only those that we know
-    for (ArgList::iterator cur = begin; cur != list.end(); )
-    {
-        // Skip non-switches
-        if (!list.isSwitch(cur))
-        {
-            ++cur;
-            continue;
-        }
-
-        std::pair<ArgList::iterator, bool> res = parseFirstIfKnown(list, cur);
-        if (!res.second)
-            // If the switch is not handled, move past it
-            ++cur;
-        else
-            cur = res.first;
-    }
-
-    return begin;
-}
-
-
-Option* Engine::add(Option* o)
-{
-    m_options.push_back(o);
-    return o;
-}
-
-OptionGroup* Engine::add(OptionGroup* group)
-{
-    m_groups.push_back(group);
-    return group;
-}
-
-Engine* Engine::add(Engine* o)
-{
-    m_commands.push_back(o);
-    return o;
-}
-
-void Engine::setPartialMatchingRecursively( bool value ) {
-    partial_matching = value;
-    for ( std::vector< Engine * >::iterator i = m_commands.begin(); i != m_commands.end(); ++i )
-        (*i)->setPartialMatchingRecursively( value );
-}
-
-
-ArgList::iterator Engine::parse(ArgList& list, ArgList::iterator begin)
-{
-    rebuild();
-
-    // Parse and remove known switches
-    begin = parseKnownSwitches(list, begin);
-
-    m_found_command = 0;
-
-    // Check if we have to handle commands
-    if (!m_commands.empty())
-    {
-        // Look for the first non-switch in the list
-        ArgList::iterator cmd = begin;
-        while (cmd != list.end() && list.isSwitch(cmd))
-            ++cmd;
-
-        if (cmd != list.end())
-        {
-            // A command has been found, ensure that we can handle it
-            std::map<std::string, Engine*>::iterator a = m_aliases.find(*cmd);
-            if (a == m_aliases.end())
-                throw BadOption("unknown command " + *cmd);
-
-            // Remove the command from the list
-            if (cmd == begin)
-                ++begin;
-            list.erase(cmd);
-
-            // We found a valid command, let's enable subcommand parsing
-            m_found_command = a->second;
-        }
-    }
-
-    if (!m_found_command)
-    {
-        // If we don't have any more subcommands to parse, then ensure that
-        // there are no switches left to process
-        for (ArgList::iterator i = begin; i != list.end(); ++i)
-        {
-            if (*i == "--")
-            {
-                // Remove '--' and stop looking for switches
-                if (begin == i)
-                {
-                    begin++;
-                    list.erase(i);
-                }
-                break;
-            }
-            if (list.isSwitch(i)) {
-                std::stringstream ss;
-                ss << "unknown option " << *i;
-                if ( partial_matching && i->size() > 2 && (*i)[1] == '-' ) {
-                    PartialMatches pmatches = _partialMatches( m_long, i->substr( 2 )  );
-                    if ( pmatches.size() >= 2 ) {
-                        ss << std::endl << "Option is ambiguous, possible candidates are: ";
-                        for ( PartialMatches::const_iterator it = pmatches.begin(); it != pmatches.end(); ++it )
-                        {
-                            ss << (*it)->first << (it + 1 == pmatches.end() ? "" : ", ");
-                        }
-                    }
-                }
-                throw BadOption( ss.str() );
-            }
-            else if (no_switches_after_first_arg)
-                // If requested, stop looking for switches
-                // after the first non-switch argument
-                break;
-        }
-        m_found_command = 0;
-        return begin;
-    } else {
-        // Else, invoke the subcommand engine on the list
-        return m_found_command->parse(list, begin);
-    }
-}
-
-void Engine::dump(std::ostream& out, const std::string& pfx)
-{
-    rebuild();
-
-    out << pfx << "Engine " << name() << ": " << std::endl;
-
-    if (!m_commands.empty())
-    {
-        out << pfx << "   " << m_commands.size() << " commands:" << std::endl;
-        for (std::vector<Engine*>::const_iterator i = m_commands.begin();
-             i != m_commands.end(); ++i)
-            (*i)->dump(out, pfx + "   ");
-    }
-    if (!m_aliases.empty())
-    {
-        out << pfx << "   Command parse table:" << std::endl;
-        for (std::map<std::string, Engine*>::const_iterator i = m_aliases.begin();
-             i != m_aliases.end(); ++i)
-            out << pfx << "      " << i->first << " -> " << i->second->name() << std::endl;
-    }
-    if (!m_groups.empty())
-    {
-        out << pfx << "   " << m_groups.size() << " OptionGroups:" << std::endl;
-        for (std::vector<OptionGroup*>::const_iterator i = m_groups.begin();
-             i != m_groups.end(); ++i)
-            out << pfx << "      " << (*i)->description << std::endl;
-    }
-    if (!m_options.empty())
-    {
-        out << pfx << "   " << m_options.size() << " Options:" << std::endl;
-        for (std::vector<Option*>::const_iterator i = m_options.begin();
-             i != m_options.end(); ++i)
-            out << pfx << "      " << (*i)->fullUsage() << std::endl;
-    }
-    if (!m_short.empty())
-    {
-        out << pfx << "   Short options parse table:" << std::endl;
-        for (std::map<char, Option*>::const_iterator i = m_short.begin();
-             i != m_short.end(); ++i)
-            out << pfx << "      " << i->first << " -> " << i->second->fullUsage() << std::endl;
-    }
-    if (!m_long.empty())
-    {
-        out << pfx << "   Long options parse table:" << std::endl;
-        for (std::map<std::string, Option*>::const_iterator i = m_long.begin();
-             i != m_long.end(); ++i)
-            out << pfx << "      " << i->first << " -> " << i->second->fullUsage() << std::endl;
-    }
-}
-
-bool Bool::parse(const std::string& val)
-{
-    if (val == "true" || val == "t" || val == "1" || val == "yes" || val == "y")
-        return true;
-    if (val == "false" || val == "f" || val == "0" || val == "no" || val == "n")
-        return false;
-    throw BadOption("invalid true/false value: \"" + val + "\"");
-}
-
-bool Bool::toBool(const bool& val) { return val; }
-int Bool::toInt(const value_type& val) { return val ? 1 : 0; }
-std::string Bool::toString(const value_type& val) { return val ? "true" : "false"; }
-bool Bool::init_val = false;
-
-int Int::parse(const std::string& val)
-{
-    // Ensure that we're all numeric
-    for (std::string::const_iterator s = val.begin(); s != val.end(); ++s)
-        if (!isdigit(*s))
-            throw BadOption("value " + val + " must be numeric");
-    return strtoul(val.c_str(), NULL, 10);
-}
-
-bool Int::toBool(const int& val) { return static_cast<bool>(val); }
-int Int::toInt(const int& val) { return val; }
-std::string Int::toString(const int& val) {
-    std::stringstream str;
-    str << val; return str.str();
-}
-int Int::init_val = 0;
-
-std::string String::parse(const std::string& val)
-{
-    return val;
-}
-bool String::toBool(const std::string& val) { return !val.empty(); }
-int String::toInt(const std::string& val) { return strtoul(val.c_str(), NULL, 10); }
-std::string String::toString(const std::string& val) { return val; }
-std::string String::init_val = std::string();
-
-#ifdef __unix
-std::string ExistingFile::parse(const std::string& val)
-{
-    if (access(val.c_str(), F_OK) == -1)
-        throw BadOption("file " + val + " must exist");
-    return val;
-}
-#endif
-std::string ExistingFile::toString(const std::string& val) { return val; }
-std::string ExistingFile::init_val = std::string();
-
-namespace {
-
-std::string fmtshort(char c, const std::string& usage)
-{
-    if (usage.empty())
-        return std::string("-") + c;
-    else
-        return std::string("-") + c + " " + usage;
-}
-
-std::string fmtlong(const std::string& c, const std::string& usage, bool optional=false)
-{
-    if (usage.empty())
-        return std::string("--") + c;
-    else if (optional)
-        return std::string("--") + c + "[=" + usage + "]";
-    else
-        return std::string("--") + c + "=" + usage;
-}
-
-std::string manfmtshort(char c, const std::string& usage)
-{
-    if (usage.empty())
-        return std::string("\\-") + c;
-    else
-        return std::string("\\-") + c + " \\fI" + usage + "\\fP";
-}
-
-std::string manfmtlong(const std::string& c, const std::string& usage, bool optional=false)
-{
-    if (usage.empty())
-        return std::string("\\-\\-") + c;
-    else if (optional)
-        return std::string("\\-\\-") + c + "[=\\fI" + usage + "\\fP]";
-    else
-        return std::string("\\-\\-") + c + "=\\fI" + usage + "\\fP";
-}
-
-}
-
-Option::Option() : hidden(false) {}
-
-const std::string& Option::fullUsage() const
-{
-    if (m_fullUsage.empty())
-    {
-        for (std::vector<char>::const_iterator i = shortNames.begin();
-             i != shortNames.end(); i++)
-        {
-            if (!m_fullUsage.empty())
-                m_fullUsage += ", ";
-            m_fullUsage += fmtshort(*i, usage);
-        }
-
-        for (std::vector<std::string>::const_iterator i = longNames.begin();
-             i != longNames.end(); i++)
-        {
-            if (!m_fullUsage.empty())
-                m_fullUsage += ", ";
-            m_fullUsage += fmtlong(*i, usage, arg_is_optional());
-        }
-    }
-    return m_fullUsage;
-}
-
-std::string Option::fullUsageForMan() const
-{
-    std::string res;
-
-    for (std::vector<char>::const_iterator i = shortNames.begin();
-         i != shortNames.end(); i++)
-    {
-        if (!res.empty()) res += ", ";
-        res += manfmtshort(*i, usage);
-    }
-
-    for (std::vector<std::string>::const_iterator i = longNames.begin();
-         i != longNames.end(); i++)
-    {
-        if (!res.empty()) res += ", ";
-        res += manfmtlong(*i, usage, arg_is_optional());
-    }
-
-    return res;
-}
-
-void StandardParser::outputHelp(std::ostream& out)
-{
-    commandline::Help help(name(), m_version);
-    commandline::Engine* e = foundCommand();
-
-    if (e)
-        // Help on a specific command
-        help.outputHelp(out, *e);
-    else
-        // General help
-        help.outputHelp(out, *this);
-}
-
-bool StandardParser::parse(int argc, const char* argv[])
-{
-    if (Parser::parse(argc, argv))
-        return true;
-
-    if (help->boolValue())
-    {
-        // Provide help as requested
-        outputHelp(std::cout);
-        return true;
-    }
-    if (version->boolValue())
-    {
-        // Print the program version
-        commandline::Help help(name(), m_version);
-        help.outputVersion(std::cout);
-        return true;
-    }
-    return false;
-}
-
-bool StandardParserWithManpage::parse(int argc, const char* argv[])
-{
-    if (StandardParser::parse(argc, argv))
-        return true;
-    if (manpage->isSet())
-    {
-        // Output the manpage
-        commandline::Manpage man(name(), m_version, m_section, m_author);
-        std::string hooks(manpage->value());
-        if (!hooks.empty())
-            man.readHooks(hooks);
-        man.output(std::cout, *this);
-        return true;
-    }
-    return false;
-}
-
-bool StandardParserWithMandatoryCommand::parse(int argc, const char* argv[])
-{
-    if (StandardParserWithManpage::parse(argc, argv))
-        return true;
-
-    if (!foundCommand())
-    {
-        commandline::Help help(name(), m_version);
-        help.outputHelp(std::cout, *this);
-        return true;
-    }
-    if (foundCommand() == helpCommand)
-    {
-        commandline::Help help(name(), m_version);
-        if (hasNext())
-        {
-            // Help on a specific command
-            std::string command = next();
-            if (Engine* e = this->command(command))
-                help.outputHelp(std::cout, *e);
-            else
-                throw BadOption("unknown command " + command + "; run '" + argv[0] + " help' "
-                                "for a list of all the available commands");
-        } else {
-            // General help
-            help.outputHelp(std::cout, *this);
-        }
-        return true;
-    }
-    return false;
-}
-
-class HelpWriter
-{
-    // Width of the console
-    std::ostream& out;
-    int m_width;
-
-public:
-    HelpWriter(std::ostream& out);
-
-    // Write 'size' spaces to out
-    void pad(size_t size);
-
-    // Output an item from a list.  The first bulletsize columns will be used to
-    // output bullet, the rest will have text, wordwrapped and properly aligned
-    void outlist(const std::string& bullet, size_t bulletsize, const std::string& text);
-
-    void outstring(const std::string& str);
-};
-
-HelpWriter::HelpWriter(std::ostream& out) : out(out)
-{
-    char* columns = getenv("COLUMNS");
-    m_width = columns ? atoi(columns) : 80;
-}
-
-void HelpWriter::pad(size_t size)
-{
-    for (size_t i = 0; i < size; i++) out << " ";
-}
-
-void HelpWriter::outlist(const std::string& bullet, size_t bulletsize, const std::string& text)
-{
-    string::WordWrap wrapper(text);
-    size_t rightcol = m_width - bulletsize;
-
-    out << bullet;
-    pad(bulletsize - bullet.size());
-    out << wrapper.get(rightcol);
-    out << std::endl;
-
-    while (wrapper.hasData())
-    {
-        pad(bulletsize);
-        out << wrapper.get(rightcol);
-        out << std::endl;
-    }
-}
-
-void HelpWriter::outstring(const std::string& str)
-{
-    string::WordWrap wrapper(str);
-
-    while (wrapper.hasData())
-    {
-        out << wrapper.get(m_width);
-        out << std::endl;
-    }
-}
-
-void Help::outputOptions(std::ostream& out, HelpWriter& writer, const Engine& p)
-{
-    // Compute size of option display
-    size_t maxLeftCol = 0;
-    for (std::vector<OptionGroup*>::const_iterator i = p.groups().begin();
-         i != p.groups().end(); i++)
-    {
-        if ((*i)->hidden) continue;
-        for (std::vector<Option*>::const_iterator j = (*i)->options.begin();
-             j != (*i)->options.end(); j++)
-        {
-            if ((*j)->hidden) continue;
-            size_t w = (*j)->fullUsage().size();
-            if (w > maxLeftCol)
-                maxLeftCol = w;
-        }
-    }
-    for (std::vector<Option*>::const_iterator j = p.options().begin();
-         j != p.options().end(); j++)
-    {
-        if ((*j)->hidden) continue;
-        size_t w = (*j)->fullUsage().size();
-        if (w > maxLeftCol)
-            maxLeftCol = w;
-    }
-
-    if (maxLeftCol)
-    {
-        // Output the options
-        out << std::endl;
-        out << "Options are:" << std::endl;
-        for (std::vector<OptionGroup*>::const_iterator i = p.groups().begin();
-             i != p.groups().end(); i++)
-        {
-            if ((*i)->hidden) continue;
-            if (!(*i)->description.empty())
-            {
-                out << std::endl;
-                writer.outstring((*i)->description + ":");
-                out << std::endl;
-            }
-            for (std::vector<Option*>::const_iterator j = (*i)->options.begin();
-                 j != (*i)->options.end(); j++)
-            {
-                if ((*j)->hidden) continue;
-                writer.outlist(" " + (*j)->fullUsage(), maxLeftCol + 3, (*j)->description);
-            }
-        }
-        if (!p.options().empty())
-        {
-            out << std::endl;
-            writer.outstring("Other options:");
-            out << std::endl;
-            for (std::vector<Option*>::const_iterator j = p.options().begin();
-                 j != p.options().end(); j++)
-            {
-                if ((*j)->hidden) continue;
-                writer.outlist(" " + (*j)->fullUsage(), maxLeftCol + 3, (*j)->description);
-            }
-        }
-    }
-}
-
-void Help::outputVersion(std::ostream& out)
-{
-    out << m_app << " version " << m_ver << std::endl;
-}
-
-void Help::outputHelp(std::ostream& out, const Engine& p)
-{
-    HelpWriter writer(out);
-
-    if (!p.commands().empty())
-    {
-        // Dig informations from p
-        const std::vector<Engine*>& commands = p.commands();
-
-        // Compute the maximum length of alias names
-        size_t maxAliasSize = 0;
-        for (std::vector<Engine*>::const_iterator i = commands.begin();
-             i != commands.end(); i++)
-        {
-            if ((*i)->hidden) continue;
-            const std::string& str = (*i)->primaryAlias;
-            if (maxAliasSize < str.size())
-                maxAliasSize = str.size();
-        }
-
-        out << "Usage: " << m_app << " [options] " << p.usage << std::endl;
-        out << std::endl;
-        writer.outstring("Description: " + p.description);
-        out << std::endl;
-        out << "Commands are:" << std::endl;
-        out << std::endl;
-
-        // Print the commands
-        for (std::vector<Engine*>::const_iterator i = commands.begin();
-             i != commands.end(); i++)
-        {
-            if ((*i)->hidden) continue;
-            std::string aliases;
-            const std::vector<std::string>& v = (*i)->aliases;
-            if (!v.empty())
-            {
-                aliases += "  May also be invoked as ";
-                for (std::vector<std::string>::const_iterator j = v.begin();
-                     j != v.end(); j++)
-                    if (j == v.begin())
-                        aliases += *j;
-                    else
-                        aliases += " or " + *j;
-                aliases += ".";
-            }
-
-            writer.outlist(" " + (*i)->primaryAlias, maxAliasSize + 3, (*i)->description + "." + aliases);
-        }
-    } else {
-        // FIXME the || m_app == thing is a workaround...
-        if (p.primaryAlias.empty() || m_app == p.primaryAlias)
-            out << "Usage: " << m_app << " [options] " << p.usage << std::endl;
-        else
-            out << "Usage: " << m_app << " [options] " << p.primaryAlias << " [options] " << p.usage << std::endl;
-        out << std::endl;
-
-        if (!p.aliases.empty())
-        {
-            out << "Command aliases: ";
-            for (std::vector<std::string>::const_iterator i = p.aliases.begin();
-                 i != p.aliases.end(); i++)
-                if (i == p.aliases.begin())
-                    out << *i;
-                else
-                    out << ", " << *i;
-            out << "." << std::endl;
-            out << std::endl;
-        }
-        writer.outstring("Description: " + p.description);
-    }
-
-    if (p.hasOptions())
-        outputOptions(out, writer, p);
-
-    out << std::endl;
-}
-
-namespace {
-
-std::string toupper(const std::string& str)
-{
-    std::string res;
-    for (size_t i = 0; i < str.size(); i++)
-        res += ::toupper(str[i]);
-    return res;
-}
-
-std::string man_date()
-{
-    time_t tnow = time(0);
-    struct tm* now = gmtime(&tnow);
-    char buf[20];
-    const char* oldlocale = setlocale(LC_TIME, "C");
-    std::string res(buf, strftime(buf, 20, "%B %d, %Y", now));
-    setlocale(LC_TIME, oldlocale);
-    return res;
-}
-
-}
-
-void Manpage::outputParagraph(std::ostream& out, const std::string& str)
-{
-    for (size_t i = 0; i < str.size(); i++)
-        switch (str[i])
-        {
-            case '-':
-                out << "\\-";
-                break;
-            case '\n':
-                out << "\n.br\n";
-                break;
-            default:
-                out << str[i];
-        }
-    out << '\n';
-}
-
-void Manpage::outputOption(std::ostream& out, const Option* o)
-{
-    out << ".TP" << std::endl;
-    out << ".B " << o->fullUsageForMan() << std::endl;
-    out << o->description << "." << std::endl;
-}
-
-void Manpage::runHooks(std::ostream& out, const std::string& section, where where)
-{
-    for (std::vector<Hook>::const_iterator i = hooks.begin();
-         i != hooks.end(); i++)
-        if (i->section == section && i->placement == where)
-            out << i->text;
-}
-
-void Manpage::startSection(std::ostream& out, const std::string& name)
-{
-    runHooks(out, name, BEFORE);
-    out << ".SH " << name << std::endl;
-    runHooks(out, name, BEGINNING);
-    lastSection = name;
-}
-
-void Manpage::endSection(std::ostream& out)
-{
-    runHooks(out, lastSection, END);
-    lastSection.clear();
-}
-
-void Manpage::outputOptions(std::ostream& out, const Engine& p)
-{
-    for (std::vector<OptionGroup*>::const_iterator i = p.groups().begin();
-         i != p.groups().end(); i++)
-    {
-        if ((*i)->hidden) continue;
-        if (!(*i)->description.empty())
-            out << std::endl << (*i)->description << ":" << std::endl;
-        for (std::vector<Option*>::const_iterator j = (*i)->options.begin();
-             j != (*i)->options.end(); ++j)
-        {
-            if ((*j)->hidden) continue;
-            outputOption(out, *j);
-        }
-        out << ".PP" << std::endl;
-    }
-
-    if (!p.options().empty())
-    {
-        out << std::endl;
-        out << "Other options:" << std::endl;
-        for (std::vector<Option*>::const_iterator j = p.options().begin();
-             j != p.options().end(); ++j)
-        {
-            if ((*j)->hidden) continue;
-            outputOption(out, *j);
-        }
-    }
-}
-
-void Manpage::output(std::ostream& out, const Engine& p)
-{
-    // Manpage header
-    out << ".TH " << toupper(m_app) << " " << m_section << " \"" << man_date() << "\" \"" << m_ver << "\"" << std::endl;
-
-    startSection(out, "NAME");
-    out << p.name() << " \\- " << p.description << std::endl;
-    endSection(out);
-
-    startSection(out, "SYNOPSIS");
-    out << "\\fB" << p.name() << "\\fP [options] " << p.usage << std::endl;
-    endSection(out);
-
-    startSection(out, "DESCRIPTION");
-    if (!p.longDescription.empty())
-        outputParagraph(out, p.longDescription);
-    endSection(out);
-
-    if (!p.commands().empty())
-    {
-        const std::vector<Engine*>& commands = p.commands();
-
-        startSection(out, "COMMANDS");
-        out << "\\fB" << p.name() << "\\fP accepts a non-switch argument, that indicates what is the operation that should be performed:" << std::endl;
-        for (std::vector<Engine*>::const_iterator i = commands.begin();
-             i != commands.end(); i++)
-        {
-            if ((*i)->hidden) continue;
-            out << ".TP" << std::endl;
-            out << "\\fB" << (*i)->primaryAlias << "\\fP";
-
-            const std::vector<std::string>& v = (*i)->aliases;
-            for (std::vector<std::string>::const_iterator j = v.begin(); j != v.end(); j++)
-                out << " or \\fB" << *j << "\\fP";
-
-            out << " " << (*i)->usage << std::endl;
-            out << ".br" << std::endl;
-            if ((*i)->longDescription.empty())
-                outputParagraph(out, (*i)->description);
-            else
-                outputParagraph(out, (*i)->longDescription);
-        }
-        endSection(out);
-    }
-
-    startSection(out, "OPTIONS");
-    out << "This program follows the usual GNU command line syntax, with long options starting with two dashes (`\\-')." << std::endl << std::endl;
-    if (!p.commands().empty())
-        out << "Every one of the commands listed above has its own set of options.  To keep this manpage readable, all the options are presented together.  Please refer to \"\\fB" << p.name() << "\\fP help \\fIcommand\\fP\" to see which options are accepted by a given command." << std::endl;
-
-    // Output the general options
-    outputOptions(out, p);
-
-    // Output group-specific options
-    if (!p.commands().empty())
-    {
-        const std::vector<Engine*>& commands = p.commands();
-        for (std::vector<Engine*>::const_iterator i = commands.begin();
-             i != commands.end(); i++)
-        {
-            if ((*i)->hidden) continue;
-            out << "\\fBOptions for command " << (*i)->primaryAlias << "\\fP" << std::endl;
-            out << ".br" << std::endl;
-            outputOptions(out, **i);
-        }
-    }
-    endSection(out);
-
-    startSection(out, "AUTHOR");
-    out << "\\fB" << p.name() << "\\fP is maintained by " << m_author << "." << std::endl << std::endl;
-    out << "This manpage has been automatically generated by the " << m_app << " program." << std::endl;
-    endSection(out);
-}
-
-namespace {
-
-std::string readline(FILE* in)
-{
-    std::string res;
-    int c;
-    while ((c = getc(in)) != EOF && c != '\n')
-        res += c;
-    return res;
-}
-
-}
-
-void Manpage::readHooks(const std::string& file)
-{
-    FILE* in = fopen(file.c_str(), "r");
-    if (!in) throw std::runtime_error("failed to open " + file + " for reading");
-    std::string section;
-    commandline::Manpage::where placement = commandline::Manpage::BEFORE;
-    std::string text;
-    while (!feof(in))
-    {
-        std::string line(readline(in));
-        if (line.empty())
-            continue;
-        if (line[0] == '|')
-        {
-            text += line.substr(1) + "\n";
-        }
-        else if (isalpha(line[0]))
-        {
-            if (!section.empty())
-            {
-                addHook(section, placement, text);
-                text.clear();
-            }
-            size_t sep = line.find(' ');
-            if (sep == std::string::npos)
-            {
-                fclose(in);
-                throw ApiError("expected two words in line: " + line);
-            }
-            section = line.substr(0, sep);
-            std::string w(line, sep+1);
-            if (w == "before")
-            {
-                placement = commandline::Manpage::BEFORE;
-            } else if (w == "beginning") {
-                placement = commandline::Manpage::BEGINNING;
-            } else if (w == "end") {
-                placement = commandline::Manpage::END;
-            } else {
-                fclose(in);
-                throw ApiError("expected 'before', 'beginning' or 'end' in line: " + line);
-            }
-        }
-    }
-    if (!section.empty())
-        addHook(section, placement, text);
-    fclose(in);
-}
 
 }
 }
