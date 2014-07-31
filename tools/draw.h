@@ -6,8 +6,8 @@
 #include <divine/algorithm/common.h>
 #include <divine/graph/visitor.h>
 #include <divine/utility/report.h>
-#include <tools/combine.h> // for PipeThrough... FIXME
 #include <wibble/sys/fs.h>
+#include <wibble/sys/pipe.h>
 #include <wibble/list.h>
 
 #ifndef DIVINE_DRAW_H
