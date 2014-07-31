@@ -1,7 +1,7 @@
 #include "utils.h"
 
 UTAP::expression_t negIneq( const UTAP::expression_t& expr ) {
-    assert_eq( expr.getSize(), 2 );
+    assert_eq( expr.getSize(), 2u );
     UTAP::Constants::kind_t negOp;
     switch ( expr.getKind() ) {
     case UTAP::Constants::LT:
@@ -30,7 +30,7 @@ UTAP::expression_t negIneq( const UTAP::expression_t& expr ) {
 }
 
 bool addCut( const UTAP::expression_t& expr, int pId, std::vector< Cut >& cuts ) {
-    assert_eq( expr.getSize(), 2 );
+    assert_eq( expr.getSize(), 2u );
     if ( expr.getKind() == UTAP::Constants::EQ || expr.getKind() == UTAP::Constants::NEQ ) {
         // we need two cuts to express equality or inequality
         bool ret1 =

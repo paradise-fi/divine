@@ -91,7 +91,7 @@ struct _Explicit : public Common< Blob > {
     void release( Node s ) { pool().free( s ); }
 
     void useProperties( PropertySet s ) {
-        assert_eq( s.size(), 1 );
+        assert_eq( s.size(), 1u );
         assert_eq( *s.begin(), "deadlock" );
     }
 

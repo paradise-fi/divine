@@ -609,7 +609,7 @@ int32_t *Evaluator::getValue( const VarData &var ) {
     if ( var.prefix == PrefixType::NONE ) {   // get variable
         data = Evaluator::data;
     } else {                                  // get constant or local variable
-        assert_leq( 1, metaValues.size() );
+        assert_leq( 1u, metaValues.size() );
         data = &metaValues[0];
     }
 
