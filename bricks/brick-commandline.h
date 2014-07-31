@@ -1223,6 +1223,20 @@ public:
             (*i)->setPartialMatchingRecursively( value );
     }
 
+    /* Parsess extra options and adds them to current options
+     * returns vector of unknow options
+     */
+    std::vector< std::string > parseExtraOptions( const std::vector< std::string > &opts ) {
+        ArgList list;
+        for ( std::vector< std::string >::const_iterator it = opts.begin(); it != opts.end(); ++it )
+            list.push_back( *it );
+        ArgList::iterator it = parseKnownSwitches( list, list.begin() );
+        std::vector< std::string > extra;
+        for ( ; it != list.end(); ++it )
+            extra.push_back( *it );
+        return extra;
+    }
+
     friend class Parser;
 };
 
