@@ -65,19 +65,16 @@ template< typename B, typename T > struct container< B, std::deque< T > > {
 template< typename B > struct container< B, std::string > {
     typedef base< B > stream; };
 
-template< typename B, typename X > struct integer {};
-template< typename B > struct integer< B, bool > { typedef base< B > stream; };
-template< typename B > struct integer< B, char > { typedef base< B > stream; };
-template< typename B > struct integer< B, int8_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, int16_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, int32_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, uint8_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, uint16_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, uint32_t > { typedef base< B > stream; };
+template< typename B > struct _Stream { using stream = base< B >; };
 
-template< typename B, typename X > struct int64 {};
-template< typename B > struct int64< B, uint64_t > { typedef base< B > stream; };
-template< typename B > struct int64< B, int64_t > { typedef base< B > stream; };
+// integers of size <= 4, including bool and all char types
+template< typename B, typename X >
+using integer = typename std::conditional< std::is_integral< X >::value && sizeof( X ) <= 4,
+                  _Stream< B >, wibble::Unit >::type;
+
+template< typename B, typename X >
+using int64 = typename std::conditional< std::is_integral< X >::value && sizeof( X ) == 8,
+                  _Stream< B >, wibble::Unit >::type;
 
 template< typename B, typename X >
 typename container< B, X >::stream &operator<<( base< B > &bs, X x ) {
