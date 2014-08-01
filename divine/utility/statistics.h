@@ -40,6 +40,8 @@ struct NoStatistics {
     void start() {}
 };
 
+#ifndef __divine__
+
 struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     struct PerThread {
         std::vector< int64_t > sent;
@@ -155,6 +157,8 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     }
 };
 
+#endif // !__divine__
+
 template <typename Ty>
 int64_t memSize( Ty x, Pool& ) {
     return sizeof(x);
@@ -164,6 +168,7 @@ template <>
 inline int64_t memSize<Blob>(Blob x, Pool& pool) {
     return sizeof( Blob ) + ( pool.valid( x ) ? align( pool.size( x ), sizeof( void * ) ) : 0 );
 }
+
 
 }
 
