@@ -83,3 +83,10 @@ extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
     // it does not guearantee anything anyway
     return 0;
 }
+
+extern "C" unsigned int sleep( unsigned int seconds ) {
+    // same as nanosleep
+    return 0;
+}
+
+extern "C" int usleep(useconds_t usec) { return 0; }
