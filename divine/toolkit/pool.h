@@ -511,6 +511,59 @@ struct Pond {
     };
 };
 
+struct PondInDivine {
+
+    struct Pointer {
+
+        Pointer() : _ptr( 0 ), _tag( 0 ), _size( 0 ) { }
+
+        unsigned tag() const { return _tag; }
+        void setTag( unsigned v ) { _tag = v; }
+
+        uint64_t raw() const { return *reinterpret_cast< const uint64_t * >( this ); }
+        static Pointer fromRaw( uint64_t r ) { return *reinterpret_cast< Pointer * >( &r ); }
+
+        uint64_t raw_address() const { return _ptr; }
+
+        char *ptr() { return reinterpret_cast< char * >( uint64_t( _ptr ) ); }
+        const char *ptr() const { return reinterpret_cast< const char * >( uint64_t( _ptr ) ); }
+        static Pointer fromPtr( char *ptr ) { return fromRaw( uint64_t( ptr ) ); }
+
+        explicit operator bool() const { return _ptr; }
+        bool operator!() const { return !_ptr; }
+        bool operator<=( const Pointer &p ) const { return raw() <= p.raw(); }
+
+        uint32_t _ptr;
+        uint16_t _tag;
+        uint16_t _size;
+    };
+
+    PondInDivine() {}
+    PondInDivine( const PondInDivine & ) = delete;
+
+    struct Wharf {
+
+        Wharf( std::shared_ptr< PondInDivine > ) {}
+        Wharf() {}
+
+        char *dereference( Pointer p ) { return p.ptr(); }
+        const char *dereference( Pointer p ) const { return p.ptr(); }
+        bool valid( Pointer p ) { return bool( p ); }
+        int size( Pointer p ) { return p._size; }
+        bool alias( Pointer a, Pointer  b ) { return a._ptr == b._ptr; }
+        void free( Pointer p ) { delete[] p.ptr(); }
+
+        Pointer allocate( size_t s ) {
+            Pointer p = Pointer::fromPtr( new char[ s ] );
+            assert( p._size == 0 );
+            assert( p._tag == 0 );
+            p._size = s;
+            return p;
+        }
+
+    };
+};
+
 template< typename MM >
 struct Dereference {
     using Blob = typename MM::Pointer;
@@ -605,8 +658,10 @@ struct Dereference {
 
 #ifdef O_POOLS
 typedef Dereference< Lake > Pool;
-#else
+#elif !defined(__divine__)
 typedef Dereference< Pond > Pool;
+#else
+typedef Dereference< PondInDivine > Pool;
 #endif
 
 typedef Pool::Blob Blob;
