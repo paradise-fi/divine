@@ -19,18 +19,14 @@
 #include <divine/utility/report.h>
 #include <divine/utility/die.h>
 #include <divine/instances/select.h>
+#include <divine/utility/statistics.h>
 
-#include <tools/draw.h>
 #include <tools/combine.h>
 #include <tools/compile.h>
 #include <tools/info.h>
 
 #ifdef POSIX
 #include <sys/resource.h>
-#endif
-
-#ifdef O_LLVM
-#include <llvm/Support/Threading.h>
 #endif
 
 using namespace wibble;
