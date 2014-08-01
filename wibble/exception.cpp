@@ -40,7 +40,7 @@ namespace exception {
 
 std::vector< std::string > *AddContext::s_context = 0;
 
-#if defined(POSIX) && ! defined(__xlC__)
+#if defined(POSIX) && ! defined(__xlC__) && ! defined(__divine__)
 void DefaultUnexpected()
 {
 	try {
