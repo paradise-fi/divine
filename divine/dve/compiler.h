@@ -3,7 +3,7 @@
 
 #include <string>
 #include <fstream>
-#include <math.h>
+#include <cmath>
 #include <map>
 #include <vector>
 #include <string>

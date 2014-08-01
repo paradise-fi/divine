@@ -1,12 +1,12 @@
 // -*- C++ -*- (c) 2007-2014 Petr Rockai <me@mornfall.net>
 
-#include <divine/generator/common.h>
-
 #ifdef POSIX
 #include <dlfcn.h>
 #elif defined _WIN32
 #include <external/dlfcn-win32/dlfcn.h>
 #endif
+
+#include <divine/generator/common.h>
 
 #ifndef DIVINE_GENERATOR_CESMI_H
 #define DIVINE_GENERATOR_CESMI_H

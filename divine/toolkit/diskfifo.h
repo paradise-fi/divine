@@ -3,9 +3,9 @@
 #ifndef DIVINE_DISKFIFO_H
 #define DIVINE_DISKFIFO_H
 
+#include <fstream>
 #include <wibble/sys/mutex.h>
 #include <divine/toolkit/fifo.h>
-#include <fstream>
 
 namespace divine {
 

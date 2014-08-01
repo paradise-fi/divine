@@ -1,9 +1,9 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <divine/explicit/explicit.h>
 #include <cstdint>
 #include <cstring>
 #include <algorithm>
+#include <divine/explicit/explicit.h>
 
 #ifndef DIVINE_COMPACT_TRANSPOSE_H
 #define DIVINE_COMPACT_TRANSPOSE_H

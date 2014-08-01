@@ -1,19 +1,20 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 //                 2013 Petr Ročkai <me@mornfall.net>
 
-#include <divine/utility/meta.h>
-#include <divine/llvm/support.h>
-#include <divine/generator/cesmi.h>
-#include <divine/explicit/header.h>
-#include <divine/instances/select.h>
+#include <array>
+#include <map>
 
 #include <wibble/typelist.h>
 #include <wibble/strongenumflags.h>
 #include <wibble/union.h>
 #include <wibble/mixin.h>
 #include <wibble/sfinae.h>
-#include <array>
-#include <map>
+
+#include <divine/utility/meta.h>
+#include <divine/llvm/support.h>
+#include <divine/generator/cesmi.h>
+#include <divine/explicit/header.h>
+#include <divine/instances/select.h>
 
 #ifndef DIVINE_INSTANCES_DEFINITIONS
 #define DIVINE_INSTANCES_DEFINITIONS

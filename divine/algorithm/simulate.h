@@ -1,15 +1,14 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 // original version was created by Jan Havlíček <xhavlic4@fi.muni.cz>
 
-#include <wibble/test.h>
-#include <divine/algorithm/common.h>
-#include <wibble/regexp.h>
-#include <wibble/strongenumflags.h>
 #include <cstdint>
+#include <random>
 
 #include <wibble/union.h>
-
-#include <random>
+#include <wibble/test.h>
+#include <wibble/regexp.h>
+#include <wibble/strongenumflags.h>
+#include <divine/algorithm/common.h>
 
 #ifndef DIVINE_ALGORITHM_SIMULATE
 #define DIVINE_ALGORITHM_SIMULATE

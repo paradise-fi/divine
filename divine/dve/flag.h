@@ -3,7 +3,7 @@
 #ifndef DIVINE_DVE_ERROR_H
 #define DIVINE_DVE_ERROR_H
 
-#include <stdint.h>
+#include <cstdint>
 #include <iostream>
 
 namespace divine {

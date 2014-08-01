@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2013 Petr Rockai <me@mornfall.net>
 
-#include <divine/toolkit/bitstream.h>
 #include <cmath>
+#include <divine/toolkit/bitstream.h>
 
 #ifndef DIVINE_TOOLKIT_PROBABILITY_H
 #define DIVINE_TOOLKIT_PROBABILITY_H

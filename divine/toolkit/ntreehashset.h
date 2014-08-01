@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 //             (c) 2013 Petr Ročkai <me@mornfall.net>
 
-#include <wibble/test.h> // assert
 #include <tuple>
 #include <algorithm>
 #include <cstring>
@@ -9,6 +8,9 @@
 #include <cstdint>
 #include <vector>
 #include <numeric>
+
+#include <wibble/test.h> // assert
+
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
 

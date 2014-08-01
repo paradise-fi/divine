@@ -1,15 +1,16 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
 //             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
-#include <wibble/test.h> // for assert
 #include <iostream>
 #include <fstream>
-#include <divine/graph/graph.h>
-#include <divine/utility/sysinfo.h>
-#include <divine/utility/withreport.h>
-#include <stdint.h>
+#include <cstdint>
 #include <vector>
 #include <iterator>
 #include <initializer_list>
+
+#include <wibble/test.h> // for assert
+
+#include <divine/graph/graph.h>
+#include <divine/utility/withreport.h>
 
 #ifndef DIVINE_META_H
 #define DIVINE_META_H

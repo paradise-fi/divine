@@ -1,17 +1,18 @@
 // -*- C++ -*- (c) 2011 Petr Rockai
 //             (2) 2012, 2013 Jan Kriho
-#include <wibble/test.h>
-
-#include <divine/dve/parse.h>
-#include <divine/dve/symtab.h>
-#include <divine/dve/expression.h>
-#include <iostream>
 
 #include <memory>
 #include <unordered_set>
 #include <set>
 #include <unordered_map>
 #include <algorithm>
+#include <iostream>
+
+#include <wibble/test.h>
+
+#include <divine/dve/parse.h>
+#include <divine/dve/symtab.h>
+#include <divine/dve/expression.h>
 
 #ifndef DIVINE_DVE_INTERPRETER_H
 #define DIVINE_DVE_INTERPRETER_H

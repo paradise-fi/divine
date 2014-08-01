@@ -1,6 +1,6 @@
+#include <string>
 #include <wibble/exception.h>
 #include <wibble/test.h>
-#include <string>
 
 #ifndef DIVINE_UTILITY_DIE
 #define DIVINE_UTILITY_DIE

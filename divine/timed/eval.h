@@ -1,9 +1,9 @@
 #include <string>
-#include <utap/utap.h>
 #include <limits>
-#include "clocks.h"
-#include "utils.h"
-#include "ura.h"
+#include <utap/utap.h>
+#include <divine/timed/clocks.h>
+#include <divine/timed/utils.h>
+#include <divine/timed/ura.h>
 
 #ifndef DIVINE_TIMED_EVAL_H
 #define DIVINE_TIMED_EVAL_H

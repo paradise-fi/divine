@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <cstdint>
 #include <utap/utap.h>
 #include <stdexcept>
 #include <wibble/test.h>

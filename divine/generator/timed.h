@@ -3,6 +3,7 @@
 #ifdef O_TIMED
 #ifndef DIVINE_GENERATOR_TIMED_H
 #define DIVINE_GENERATOR_TIMED_H
+
 #include <stdexcept>
 #include <cstdlib>
 #include <divine/generator/common.h>

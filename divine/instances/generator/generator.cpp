@@ -21,7 +21,8 @@ using FixArray = std::vector< T >;
 
 static const std::vector< std::string > defaultHeaders = {
         "divine/instances/auto/extern.h",
-        "divine/instances/definitions.h"
+        "divine/instances/definitions.h",
+        "divine/graph/store.h",
     };
 
 struct InstGenerator {

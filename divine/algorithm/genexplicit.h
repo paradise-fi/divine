@@ -1,15 +1,15 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
+#include <unistd.h>
+#include <errno.h>
+#include <cstdint>
+#include <algorithm>
+
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 #include <divine/explicit/explicit.h>
 #include <divine/explicit/transpose.h>
 #include <divine/graph/probability.h>
-#include <cstdint>
-#include <algorithm>
-
-#include <unistd.h>
-#include <errno.h>
 
 #ifndef DIVINE_ALGORITHM_COMPACT_H
 #define DIVINE_ALGORITHM_COMPACT_H

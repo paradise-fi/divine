@@ -1,9 +1,9 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
+#include <functional>
 #include <divine/generator/common.h>
 #include <divine/explicit/explicit.h>
 #include <divine/graph/probability.h>
-#include <functional>
 
 #undef Yield
 

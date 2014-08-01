@@ -1,14 +1,14 @@
 // -*- C++ -*- (c) 2010-2014 Petr Rockai <me@mornfall.net>
 
 #include <numeric>
-#include <stdint.h>
-#include <wibble/sys/mutex.h>
-#include <divine/toolkit/pool.h>
-#include <divine/toolkit/bitoperations.h>
-#include <divine/toolkit/hashcell.h>
+#include <cstdint>
 #include <type_traits>
 
 #include <wibble/singleton.h>
+#include <wibble/sys/mutex.h>
+
+#include <divine/toolkit/bitoperations.h>
+#include <divine/toolkit/hashcell.h>
 
 #ifndef DIVINE_HASHSET_H
 #define DIVINE_HASHSET_H

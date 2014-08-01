@@ -1,9 +1,9 @@
-#include "eval.h"
-#include "utils.h"
-#include "successorlist.h"
 #include <utap/utap.h>
 #include <dbm/print.h>
 #include <wibble/test.h>
+#include <divine/timed/eval.h>
+#include <divine/timed/utils.h>
+#include <divine/timed/successorlist.h>
 
 class TAGen {
     typedef uint16_t state_id;

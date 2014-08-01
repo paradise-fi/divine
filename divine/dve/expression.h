@@ -1,11 +1,11 @@
 // -*- C++ -*- (c) 2011 Petr Rockai
 //             (c) 2012, 2013 Jan Kriho
 
+#include <vector>
+#include <unordered_set>
 #include <divine/dve/parse.h>
 #include <divine/dve/symtab.h>
 #include <divine/dve/flag.h>
-#include <vector>
-#include <unordered_set>
 
 #ifndef DIVINE_DVE_EXPRESSION_H
 #define DIVINE_DVE_EXPRESSION_H

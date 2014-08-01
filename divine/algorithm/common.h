@@ -1,17 +1,13 @@
 // -*- C++ -*- (c) 2009-2014 Petr Rockai <me@mornfall.net>
 
-#include <divine/toolkit/blob.h>
+#include <memory>
+
 #include <divine/toolkit/pool.h>
-#include <divine/toolkit/hashset.h>
-#include <divine/toolkit/bitset.h>
 #include <divine/toolkit/parallel.h>
 #include <divine/toolkit/rpc.h>
 #include <divine/utility/output.h>
 #include <divine/utility/meta.h>
 #include <divine/graph/visitor.h>
-#include <wibble/sfinae.h>
-
-#include <memory>
 
 #ifndef DIVINE_ALGORITHM_H
 #define DIVINE_ALGORITHM_H

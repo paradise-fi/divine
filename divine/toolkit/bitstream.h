@@ -4,7 +4,6 @@
 #include <deque>
 #include <string>
 
-#include <divine/toolkit/blob.h>
 #include <divine/toolkit/pool.h>
 
 #ifndef DIVINE_BITSTREAM_H

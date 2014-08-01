@@ -1,9 +1,9 @@
 #ifndef COIN_SEQ_HASHTABLE_H
 #define COIN_SEQ_HASHTABLE_H
-#include "state.h"
-#include<string.h>
-#include<iostream>
-#define NULL 0
+
+#include <divine/coin/state.h>
+#include <cstring>
+#include <iostream>
 
 /* A very simple hashtable. */
 

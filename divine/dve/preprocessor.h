@@ -3,13 +3,13 @@
 #ifndef DIVINE_DVE_PREPROCESSOR_H
 #define DIVINE_DVE_PREPROCESSOR_H
 
-#include <divine/dve/parse.h>
-#include <divine/dve/interpreter.h>
 #include <string>
-#include <wibble/string.h>
 #include <memory>
 #include <unordered_map>
 
+#include <wibble/string.h>
+#include <divine/dve/parse.h>
+#include <divine/dve/interpreter.h>
 #include <divine/utility/buchi.h>
 
 namespace divine {

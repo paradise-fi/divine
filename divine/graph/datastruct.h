@@ -1,14 +1,13 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 //             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
-#include <wibble/test.h> // assert
-#include <wibble/sfinae.h>
-#include <divine/utility/statistics.h>
-#include <divine/toolkit/lockedqueue.h>
-#include <divine/graph/store.h>
-#include <divine/toolkit/shmem.h>
 
 #include <deque>
 #include <memory>
+
+#include <wibble/test.h> // assert
+
+#include <divine/toolkit/lockedqueue.h>
+#include <divine/toolkit/shmem.h>
 
 #ifndef DIVINE_DATASTRUCT_H
 #define DIVINE_DATASTRUCT_H

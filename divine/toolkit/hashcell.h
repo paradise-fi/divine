@@ -5,6 +5,7 @@
 #define DIVINE_HASHCELL_H
 
 #include <type_traits>
+#include <divine/toolkit/hash.h>
 
 namespace divine {
 

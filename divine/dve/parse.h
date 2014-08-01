@@ -1,12 +1,13 @@
 // -*- C++ -*- (c) 2011 Petr Rockai
 //             (c) 2012, 2013 Jan Kriho
-#include <wibble/parse.h>
-#include <divine/dve/lex.h>
 
 #include <cassert>
 #include <cstdlib> // atoi
 #include <cstring>
 #include <memory>
+
+#include <wibble/parse.h>
+#include <divine/dve/lex.h>
 
 #ifndef DIVINE_DVE_PARSE_H
 #define DIVINE_DVE_PARSE_H

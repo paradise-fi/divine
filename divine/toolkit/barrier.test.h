@@ -1,8 +1,8 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
+#include <cstdlib> // for rand
 #include <wibble/sys/thread.h>
 #include <divine/toolkit/barrier.h>
-#include <stdlib.h> // for rand
 
 using namespace divine;
 

@@ -2,11 +2,9 @@
 //             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <divine/toolkit/pool.h>
-#include <divine/toolkit/blob.h>
 #include <divine/toolkit/fifo.h>
 #include <divine/toolkit/shmem.h>
 #include <divine/graph/datastruct.h>
-#include <divine/graph/store.h>
 
 #ifndef DIVINE_VISITOR_H
 #define DIVINE_VISITOR_H

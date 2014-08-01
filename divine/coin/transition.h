@@ -1,7 +1,7 @@
 #ifndef COIN_SEQ_TRANSITION_H
 #define COIN_SEQ_TRANSITION_H
 
-#include "parse/coin_common.hh"
+#include <divine/coin/parse/coin_common.hh>
 
 namespace coin_seq {
 

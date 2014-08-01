@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2011 Petr Rockai
 
-#include <wibble/parse.h>
 #include <cassert>
+#include <wibble/parse.h>
 
 #ifndef DIVINE_DVE_LEX_H
 #define DIVINE_DVE_LEX_H

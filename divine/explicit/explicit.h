@@ -51,10 +51,9 @@
  * Because dess files are mapped into memory they are endianity-dependent!
  */
 
-#include <divine/explicit/header.h>
-
 #include <type_traits>
 #include <wibble/sys/mmap_v2.h>
+#include <divine/explicit/header.h>
 
 #ifndef DIVINE_COMPACT_COMPACT_H
 #define DIVINE_COMPACT_COMPACT_H

@@ -9,7 +9,6 @@
 #include <divine/toolkit/ntreehashset.h>
 #include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
-#include <divine/toolkit/blob.h>
 #include <divine/toolkit/parallel.h> // for WithID
 #include <divine/toolkit/weakatomic.h>
 

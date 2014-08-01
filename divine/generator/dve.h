@@ -2,15 +2,16 @@
 //             (c) 2012, 2013 Jan Kriho
 
 #ifdef O_DVE
+
+#include <deque>
+#include <vector>
+
+#include <divine/dve/preprocessor.h>
+#include <divine/dve/interpreter.h>
 #include <divine/generator/common.h>
 
 #ifndef DIVINE_GENERATOR_DVE_H
 #define DIVINE_GENERATOR_DVE_H
-
-#include <deque>
-#include <vector>
-#include <divine/dve/preprocessor.h>
-#include <divine/dve/interpreter.h>
 
 namespace divine {
 namespace generator {

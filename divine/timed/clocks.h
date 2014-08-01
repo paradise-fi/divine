@@ -1,6 +1,7 @@
 #ifndef DIVINE_TIMED_CLOCKS_H
 #define DIVINE_TIMED_CLOCKS_H
-#include <stdint.h>
+
+#include <cstdint>
 #include <iostream>
 #include <cassert>
 #include <vector>

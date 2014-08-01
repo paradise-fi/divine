@@ -7,10 +7,12 @@
 #include <fstream>
 #include <type_traits>
 #include <memory>
+
 #include <wibble/sfinae.h>
 
 #include <divine/utility/version.h>
 #include <divine/utility/meta.h>
+#include <divine/utility/sysinfo.h>
 
 #ifndef DIVINE_REPORT_H
 #define DIVINE_REPORT_H

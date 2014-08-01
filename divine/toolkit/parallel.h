@@ -3,9 +3,9 @@
 
 #include <wibble/sys/thread.h>
 #include <divine/toolkit/fifo.h>
-#include <divine/toolkit/blob.h>
 #include <divine/toolkit/barrier.h>
 #include <divine/toolkit/mpi.h>
+#include <divine/toolkit/rpc.h>
 
 #ifndef DIVINE_PARALLEL_H
 #define DIVINE_PARALLEL_H

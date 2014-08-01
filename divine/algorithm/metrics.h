@@ -1,8 +1,8 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
-#include <divine/algorithm/common.h>
-
 #include <iomanip>
+
+#include <divine/algorithm/common.h>
 
 #ifndef DIVINE_ALGORITHM_METRICS_H
 #define DIVINE_ALGORITHM_METRICS_H
