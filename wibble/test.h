@@ -16,7 +16,18 @@
 #undef assert_unimplemented
 #undef assert_die
 
-#ifndef NDEBUG
+#ifdef __divine__
+#include <divine.h>
+#endif
+
+#ifdef __divine__
+#define assert(x) __divine_assert( !!(x) )
+#define assert_pred(p, x) assert( p( x ) )
+#define assert_eq(x, y) assert( (x) == (y) )
+#define assert_leq(x, y) assert( (x) <= (y) )
+#define assert_neq(x, y) assert ( (x) != (y) )
+
+#elif !defined NDEBUG
 #define LOCATION_I(stmt, i) ::wibble::Location( __FILE__, __LINE__, stmt, i )
 
 #define assert(x) assert_fn( LOCATION( #x ), x )
