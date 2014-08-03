@@ -125,7 +125,7 @@ struct Matrix {
     template< typename... Ts >
     void pushRow( Ts... v ) {
         std::vector< double > row{ v... };
-        ASSERT_EQ( row.size(), width );
+        ASSERT_EQ( int( row.size() ), width );
         std::copy( row.begin(), row.end(), std::back_inserter( m ) );
     };
 };
@@ -548,7 +548,7 @@ struct Plot {
 
     std::string pattern( int i ) {
         auto p = _style.patterns();
-        if ( i >= p.size() )
+        if ( i >= int( p.size() ) )
             return "";
         return " fs pattern " + std::to_string( p[ i ] );
     }
@@ -571,7 +571,7 @@ struct Plot {
                 str << " '-' using ($1 - offset + " << seq - 1 << " * step):4 with boxes notitle ls " << seq << pattern( 0 )
                     << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):2 with boxes notitle ls " << seq << pattern( 1 )
                     << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):3 with boxes title '" << d._name << "' ls " << seq << pattern( 2 );
-            if ( seq != _datasets.size() )
+            if ( seq != int( _datasets.size() ) )
                 str << ", \\" << std::endl << "  \\" << std::endl;
             ++ seq;
         }
@@ -656,7 +656,7 @@ struct Plots {
             auto csk = cs.first;
             auto style = csk.second;
 
-            for ( int i = 0; i < styles.size(); ++i ) {
+            for ( int i = 0; i < int( styles.size() ); ++i ) {
                 if ( !used.count( style ) && style._type == csk.second._type )
                     break;
                 style = styles[ i ];

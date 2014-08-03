@@ -62,13 +62,13 @@
 #define ASSERT_NEQ(x, y) assert ( (x) != (y) )
 
 #elif !defined NDEBUG
-#define LOCATION_I(stmt, i) ::brick::unittest::Location( __FILE__, __LINE__, stmt, i )
+#define BRICK_LOCATION_I(stmt, i) ::brick::unittest::Location( __FILE__, __LINE__, stmt, i )
 
-#define ASSERT(x) assert_fn( LOCATION( #x ), x )
-#define ASSERT_PRED(p, x) assert_pred_fn( LOCATION( #p "( " #x " )" ), x, p( x ) )
-#define ASSERT_EQ(x, y) assert_eq_fn( LOCATION( #x " == " #y ), x, y )
-#define ASSERT_LEQ(x, y) assert_leq_fn( LOCATION( #x " <= " #y ), x, y )
-#define ASSERT_NEQ(x, y) assert_neq_fn( LOCATION( #x " != " #y ), x, y )
+#define ASSERT(x) assert_fn( BRICK_LOCATION( #x ), x )
+#define ASSERT_PRED(p, x) assert_pred_fn( BRICK_LOCATION( #p "( " #x " )" ), x, p( x ) )
+#define ASSERT_EQ(x, y) assert_eq_fn( BRICK_LOCATION( #x " == " #y ), x, y )
+#define ASSERT_LEQ(x, y) assert_leq_fn( BRICK_LOCATION( #x " <= " #y ), x, y )
+#define ASSERT_NEQ(x, y) assert_neq_fn( BRICK_LOCATION( #x " != " #y ), x, y )
 #else
 #define ASSERT(x) ((void)0)
 #define ASSERT_PRED(p, x) ((void)0)
@@ -78,9 +78,9 @@
 #endif
 
 /* you must #include <brick-string.h> to use ASSERT_UNREACHABLE_F */
-#define ASSERT_UNREACHABLE_F(...) assert_die_fn( LOCATION( brick::string::fmtf(__VA_ARGS__) ) )
-#define ASSERT_UNREACHABLE(x) assert_die_fn( LOCATION( x ) )
-#define ASSERT_UNIMPLEMENTED() assert_die_fn( LOCATION( "not imlemented" ) )
+#define ASSERT_UNREACHABLE_F(...) assert_die_fn( BRICK_LOCATION( brick::string::fmtf(__VA_ARGS__) ) )
+#define ASSERT_UNREACHABLE(x) assert_die_fn( BRICK_LOCATION( x ) )
+#define ASSERT_UNIMPLEMENTED() assert_die_fn( BRICK_LOCATION( "not imlemented" ) )
 
 #ifndef BRICK_UNITTEST_H
 #define BRICK_UNITTEST_H
@@ -96,7 +96,7 @@ struct Location {
         : file( f ), line( l ), iteration( iter ), stmt( st ) {}
 };
 
-#define LOCATION(stmt) ::brick::unittest::Location( __FILE__, __LINE__, stmt )
+#define BRICK_LOCATION(stmt) ::brick::unittest::Location( __FILE__, __LINE__, stmt )
 
 struct AssertFailed : std::exception {
     std::string str;

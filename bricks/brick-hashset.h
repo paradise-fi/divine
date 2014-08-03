@@ -1243,7 +1243,7 @@ template< typename Ts >
 struct Run : BenchmarkGroup
 {
     template< typename, int Id >
-    std::string render( int id, hlist::not_preferred ) { return ""; }
+    std::string render( int, hlist::not_preferred ) { return ""; }
 
     template< typename Tss = Ts, int Id = 0, typename = typename Tss::Head >
     std::string render( int id, hlist::preferred = hlist::preferred() )
@@ -1255,7 +1255,7 @@ struct Run : BenchmarkGroup
 
     std::string describe() {
         std::string s;
-        for ( int i = 0; i < Ts::length; ++i )
+        for ( int i = 0; i < int( Ts::length ); ++i )
             s += " type:" + render( i );
         return std::string( s, 1, s.size() );
     }

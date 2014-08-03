@@ -265,7 +265,7 @@ struct SampleStats {
             return Satisfactory; /* the confidence interval is less than 5% => good enough */
 
         /* if the sample is reasonably big but unsatisfactory, cut off outliers */
-        if ( sample.size() > cutLimit || ( sumLimit > 0 && sum( sample ) > sumLimit ) ) {
+        if ( int( sample.size() ) > cutLimit || ( sumLimit > 0 && sum( sample ) > sumLimit ) ) {
             auto end = std::remove_if( sample.begin(), sample.end(),
                                        [&]( double n ) { return fabs(n - m_sample) > 3 * iqr; } );
             sample.erase( end, sample.end() ); // TODO: store the outliers

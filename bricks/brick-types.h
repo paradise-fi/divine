@@ -900,7 +900,7 @@ struct UnionTest {
     }
 
     static C idC( C c ) { return c; };
-    static C constC( B b ) { return C( 32 ); };
+    static C constC( B ) { return C( 32 ); };
 
     TEST(apply) {
         Union< B, C > u;
