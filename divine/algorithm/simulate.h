@@ -3,11 +3,13 @@
 
 #include <cstdint>
 #include <random>
+#include <csignal>
 
-#include <wibble/union.h>
+#include <brick-types.h>
+
 #include <wibble/test.h>
 #include <wibble/regexp.h>
-#include <wibble/strongenumflags.h>
+#include <wibble/raii.h>
 #include <divine/algorithm/common.h>
 
 #ifndef DIVINE_ALGORITHM_SIMULATE
@@ -17,6 +19,10 @@ namespace divine {
 namespace algorithm {
 
 struct DfsNext { };
+struct RunDfs {
+    long limit;
+    RunDfs( long limit = -1 ) : limit( limit ) { }
+};
 struct Next {
     int next;
     Next( int next ) : next( next ) { }
@@ -37,8 +43,8 @@ struct ToggleAutoListing { };
 struct Exit { };
 struct NoOp { };
 
-using Command = wibble::Union<
-                  DfsNext, Next, Random, Back,
+using Command = brick::types::Union<
+                  DfsNext, Next, Random, Back, RunDfs,
                   FollowCE, FollowCEToEnd, Reset,
                   PrintTrace, PrintCE,
                   ListSuccs, ToggleAutoListing,
@@ -56,7 +62,7 @@ enum class Option : uint32_t {
     AutoSuccs   = 0x200000, // all successors are automatically printed whenever the interactive prompt is shown
     PrintEdges  = 0x040000, // edge labels are printed for each successor
 };
-using Options = wibble::StrongEnumFlags< Option >;
+using Options = brick::types::StrongEnumFlags< Option >;
 
 struct ProcessLoop {
 
@@ -81,6 +87,7 @@ struct ProcessLoop {
             << "  r     go to a random successor" << std::endl
             << "  f [N] follow counterexample [for N steps]" << std::endl
             << "  F     follow counterexample to the end (to the first lasso accepting vertex for cycle)" << std::endl
+            << "  D [N] run DFS [for N steps], can be interrupted by ctrl+c/SIGINT" << std::endl
             << "  i     go back to before-initial state (reset)" << std::endl
             << "  q     exit" << std::endl
             << "multiple commands can be separated by a comma" << std::endl;
@@ -104,7 +111,10 @@ struct ProcessLoop {
         if ( part == "r" ) return Random();
         if ( part == "F" ) return FollowCEToEnd();
         if ( part == "i" ) return Reset();
-        if ( part[ 0 ] == 'f' ) {
+        if ( part[ 0 ] == 'D' ) {
+            auto x = parse( part.substr( 1 ) );
+            return RunDfs( x.second ? x.first : -1 );
+        } if ( part[ 0 ] == 'f' ) {
             auto x = parse( part.substr( 1 ) );
             return FollowCE( x.second ? x.first : 1 );
         } else {
@@ -164,9 +174,9 @@ struct ProcessLoop {
         return last;
     }
 
-    static std::pair< int, bool > parse( std::string s ) {
+    static std::pair< long, bool > parse( std::string s ) {
         try {
-            int i = std::stoi( s );
+            long i = std::stol( s );
             return std::make_pair( i, true );
         } catch ( std::invalid_argument & ) {
             return std::make_pair( 0, false );
@@ -174,8 +184,13 @@ struct ProcessLoop {
     }
 };
 
+static std::atomic< bool > interrupted;
+static void sigintHandler( int ) {
+    interrupted = true;
+}
+
 template< typename Setup >
-struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
+struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequential
 {
     typedef Simulate< Setup > This;
     typedef typename Setup::Graph Graph;
@@ -287,7 +302,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
     }
 
     // one step of DFS, go down to the first unvisited state, otherwise go up
-    bool stepDFS() {
+    bool stepDfs() {
         for ( unsigned int i = 0; i < succs.size(); i++ ) {
             if ( !extension( succs[ i ].first ).seen ) {
                 goDown( i );
@@ -300,6 +315,27 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
 
         goBack();
         return true;
+    }
+
+    brick::types::Maybe< long > runDfs( long limit ) {
+        bool print = options.has( Option::PrintEdges );
+        options.clear( Option::PrintEdges );
+        auto oldsig = std::signal( SIGINT, &sigintHandler );
+        assert( oldsig != SIG_ERR );
+        interrupted = false;
+        auto _ = wibble::raii::defer( [&]() {
+                if ( print ) options |= Option::PrintEdges;
+                std::signal( SIGINT, oldsig );
+            } );
+
+        for ( long i = 0; limit < 0 || i < limit; ++i ) {
+            if ( stepDfs() ) {
+                if ( interrupted.load( std::memory_order_relaxed ) )
+                    return brick::types::Maybe< long >::Just( -i );
+            } else
+                return brick::types::Maybe< long >::Just( i );
+        }
+        return brick::types::Maybe< long >::Nothing();
     }
 
     void markCE() {
@@ -548,7 +584,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
     CmdResponse runCommand( const Command cmd ) {
 
         if ( cmd.is< DfsNext >() ) {
-            if ( !stepDFS() )
+            if ( !stepDfs() )
                 loop.error( "Cannot go back" );
         } else if ( cmd.is< Next >() ) {
             int n = cmd.get< Next >().next;
@@ -583,6 +619,12 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
                 goBack();
             else
                 loop.error( "Cannot go back" );
+        } else if ( cmd.is< RunDfs >() ) {
+            auto r = runDfs( cmd.get< RunDfs >().limit );
+            if ( r && r.value() < 0 )
+                loop.error( "Interrupted after " + std::to_string( - r.value() ) + " steps" );
+            else if ( r && r.value() > 0 )
+                loop.error( "Model fully explored after " + std::to_string( r.value() ) + " steps" );
         } else if ( cmd.is< PrintTrace >() ) {
             for ( const auto &n : trace )
                 showNode( n );
