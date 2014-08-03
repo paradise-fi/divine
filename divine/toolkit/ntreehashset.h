@@ -10,14 +10,16 @@
 #include <numeric>
 
 #include <wibble/test.h> // assert
+#include <bricks/brick-hashset.h>
 
-#include <divine/toolkit/hashset.h>
 #include <divine/toolkit/pool.h>
 
 #ifndef N_TREE_HASH_SET_H
 #define N_TREE_HASH_SET_H
 
 namespace divine {
+
+using namespace brick;
 
 enum class Recurse : uint8_t { Yes, No };
 
@@ -56,9 +58,9 @@ struct NTreeHashSet
     NTreeHashSet( Hasher _hasher ) : _d( _hasher )
     {}
 
-    struct Leaf : NewType< Blob >, NewTypeTag< Blob, Leaf > {
+    struct Leaf : types::NewType< Blob >, NewTypeTag< Blob, Leaf > {
         Leaf() noexcept {}
-        Leaf( Blob b ) noexcept : NewType( b ) {}
+        Leaf( Blob b ) noexcept : types::NewType< Blob >( b ) {}
         Leaf( int32_t size, char* source, Pool& pool )
         {
             assert_leq( 1, size );
@@ -71,18 +73,18 @@ struct NTreeHashSet
     };
 
     template < typename Fork >
-    struct LeafOr : NewType< Blob >, NewTypeTag< Blob, LeafOr< Fork > > {
+    struct LeafOr : types::NewType< Blob >, NewTypeTag< Blob, LeafOr< Fork > > {
         LeafOr() noexcept {}
 
         const Blob &b() const { return this->unwrap(); }
         Blob &b() { return this->unwrap(); }
 
-        LeafOr( Fork f ) : NewType< Blob >( f.unwrap() ) {
+        LeafOr( Fork f ) : types::NewType< Blob >( f.unwrap() ) {
             assert_eq( b().tag(), 0UL );
             b().setTag( 1 );
         }
 
-        LeafOr( Leaf l ) : NewType< Blob >( l.unwrap() ) {
+        LeafOr( Leaf l ) : types::NewType< Blob >( l.unwrap() ) {
             assert_eq( b().tag(), 0UL );
         }
 
@@ -139,9 +141,9 @@ struct NTreeHashSet
         }
     };
 
-    struct Fork : WithChildren< Fork, Fork >, NewType< Blob >, NewTypeTag< Blob, Fork > {
+    struct Fork : WithChildren< Fork, Fork >, types::NewType< Blob >, NewTypeTag< Blob, Fork > {
         Fork() noexcept {}
-        Fork( Blob b ) noexcept : NewType< Blob >( b ) {}
+        Fork( Blob b ) noexcept : types::NewType< Blob >( b ) {}
         Fork( int32_t children, Pool& pool ) {
             assert_leq( 2, children );
             int32_t size = children * sizeof( LeafOr< Fork > );
@@ -160,13 +162,13 @@ struct NTreeHashSet
 
     typedef LeafOr< Fork > LeafOrFork;
 
-    struct Root : WithChildren< Root, Fork >, NewType< Blob >, NewTypeTag< Blob, Root > {
+    struct Root : WithChildren< Root, Fork >, types::NewType< Blob >, NewTypeTag< Blob, Root > {
         struct Header { int32_t forks; };
 
         Blob &b() { return this->unwrap(); }
 
         Root() noexcept {}
-        explicit Root( Blob b ) noexcept : NewType< Blob >( b ) {}
+        explicit Root( Blob b ) noexcept : types::NewType< Blob >( b ) {}
         Header &header( Pool &p ) { return *p.dereference< Header >( b() ); }
         bool leaf( Pool &p ) { return header( p ).forks == 0; }
         int32_t forkcount( Pool &p ) { return header( p ).forks; }

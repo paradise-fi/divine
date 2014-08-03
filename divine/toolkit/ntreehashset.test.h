@@ -5,7 +5,7 @@
 #define TESTS_NTREE_HASH_SET
 
 #include <divine/toolkit/ntreehashset.h>
-#include <divine/toolkit/hashset.h>
+#include <bricks-brick-hashset.h>
 #include <divine/toolkit/blob.h>
 #include <divine/algorithm/common.h> // hasher
 #include <divine/toolkit/pool.h>

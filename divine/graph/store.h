@@ -5,9 +5,8 @@
 #include <iterator>
 #include <tuple>
 
-#include <divine/toolkit/concurrentset.h>
 #include <divine/toolkit/ntreehashset.h>
-#include <divine/toolkit/hashset.h>
+#include <bricks/brick-hashset.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/parallel.h> // for WithID
 #include <divine/toolkit/weakatomic.h>
@@ -17,6 +16,9 @@
 
 namespace divine {
 namespace visitor {
+
+using hashset::Found;
+using hashset::isNew;
 
 /* Global utility functions independent of store type
  */
@@ -124,8 +126,8 @@ using PlainTable = typename Provider::template Make< IdentityWrap< Generator, Ha
 struct PartitionedProvider {
     template < typename WrapTable >
     struct Make : ProviderCommon, WrapTable  {
-        using Table = typename WrapTable::template Make< FastSet >;
-        using ThreadData = typename WrapTable::template ThreadData< FastSet >;
+        using Table = typename WrapTable::template Make< hashset::Fast >;
+        using ThreadData = typename WrapTable::template ThreadData< hashset::Fast >;
         using Hasher = typename WrapTable::Hasher;
 
         template< typename Mutex >
@@ -152,9 +154,9 @@ struct PartitionedProvider {
 struct SharedProvider {
     template < typename WrapTable >
     struct Make : ProviderCommon, WrapTable {
-        using Table = typename WrapTable::template Make< ConcurrentSet >;
+        using Table = typename WrapTable::template Make< hashset::Concurrent >;
         using TablePtr = std::shared_ptr< Table >;
-        using ThreadData = typename WrapTable::template ThreadData< ConcurrentSet >;
+        using ThreadData = typename WrapTable::template ThreadData< hashset::Concurrent >;
         using Hasher = typename WrapTable::Hasher;
 
         template< typename Mutex >

@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
 
-#include <divine/toolkit/hashset.h>
+#include <bricks/brick-hashset.h>
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/pool.h>
 

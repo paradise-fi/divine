@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <wibble/string.h>
 
-#include <divine/toolkit/hashset.h>
+#include <bricks/brick-hashset.h>
 #include <divine/utility/statistics.h>
 #include <divine/utility/output.h>
 

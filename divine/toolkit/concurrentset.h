@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <tuple>
 #include <algorithm>
-#include <divine/toolkit/hashset.h>
+#include <bricks/brick-hashset.h>
 #include <divine/toolkit/bitoperations.h>
 
 #ifndef DIVINE_SHAREDHASHSET_H

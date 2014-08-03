@@ -2,6 +2,8 @@
 
 #include <divine/graph/graph.h>
 
+#include <bricks/brick-hashset.h>
+
 #ifndef DIVINE_GENERATOR_COMMON_H
 #define DIVINE_GENERATOR_COMMON_H
 
