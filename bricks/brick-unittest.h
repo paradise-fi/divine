@@ -199,7 +199,7 @@ namespace {
 
 std::vector< TestCaseBase * > *testcases = nullptr;
 
-#ifdef __unix
+#if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ )
 
 void fork_test( TestCaseBase *tc, int *fds ) {
     pid_t pid = fork();

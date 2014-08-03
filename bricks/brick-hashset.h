@@ -35,7 +35,7 @@
 #include <brick-hash.h>
 #include <brick-shmem.h>
 #include <brick-bitlevel.h>
-#include <brick-benchmark.h>
+#include <brick-unittest.h>
 #include <brick-types.h>
 
 #include <type_traits>
@@ -927,13 +927,17 @@ using Concurrent = _ConcurrentHashSet< typename std::conditional< (
 }
 }
 
+#ifndef __divine__
+
 #include <brick-hlist.h>
+#include <brick-benchmark.h>
 #include <unordered_set>
 
 #ifdef BRICKS_HAVE_TBB
 #include <tbb/concurrent_hash_map.h>
 #include <tbb/concurrent_unordered_set.h>
 #endif
+#endif // __divine__
 
 namespace brick_test {
 namespace hashset {
@@ -1137,6 +1141,8 @@ template struct Parallel< ConCS >;
 template struct Parallel< ConFS >;
 
 /* Benchmarks */
+
+#ifndef __divine__
 
 template< typename HS >
 struct RandomThread : shmem::Thread {
@@ -1564,6 +1570,9 @@ FOR_PAR(IvR_PAR)
 #undef IvT_PAR
 #undef IvR_SEQ
 #undef IvR_PAR
+
+
+#endif // __divine__
 
 }
 }

@@ -462,7 +462,7 @@ struct StartEnd {
         StartDetector::Shared sh;
         std::vector< DetectorWorker > threads{ peers, DetectorWorker{ sh } };
 
-#ifdef POSIX // hm
+#if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
         alarm( 1 );
 #endif
 
@@ -533,7 +533,7 @@ struct StartEnd {
         std::vector< CounterWorker > threads{ peers,
             CounterWorker{ detectorShared, counterShared, queue, interrupted } };
 
-#ifdef __unix
+#if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
         alarm( 5 );
 #endif
 
