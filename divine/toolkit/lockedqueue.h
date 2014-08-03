@@ -3,9 +3,8 @@
 //                 2014 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <deque>
-#include <wibble/sys/mutex.h>
-#include <divine/toolkit/shmem.h>
-#include <divine/toolkit/weakatomic.h>
+#include <mutex>
+#include <brick-shmem.h>
 
 #ifndef DIVINE_LOCKEDQUEUE_H
 #define DIVINE_LOCKEDQUEUE_H
@@ -21,9 +20,9 @@ namespace divine {
 // note: std::deque of int, not of std:vector
 template < typename T >
 struct LockedQueue {
-    typedef SpinLock Mutex;
+    typedef brick::shmem::SpinLock Mutex;
     Mutex m;
-    WeakAtomic< bool > _empty;
+    brick::shmem::WeakAtomic< bool > _empty;
     std::deque< T > q;
 
     LockedQueue( void ) : _empty( true ) {}
@@ -31,13 +30,13 @@ struct LockedQueue {
     bool empty() const { return _empty; }
 
     void push( const T &x ) {
-        wibble::sys::MutexLockT< Mutex > lk( m );
+        std::lock_guard< Mutex > lk( m );
         q.push_back( x );
         _empty = false;
     }
 
     void push( T &&x ) {
-        wibble::sys::MutexLockT< Mutex > lk( m );
+        std::lock_guard< Mutex > lk( m );
         q.push_back( std::move( x ) );
         _empty = false;
     }
@@ -52,7 +51,7 @@ struct LockedQueue {
         if ( empty() )
             return ret;
 
-        wibble::sys::MutexLockT< Mutex > lk( m );
+        std::lock_guard< Mutex > lk( m );
 
         if ( q.empty() )
             return ret;
@@ -67,7 +66,7 @@ struct LockedQueue {
     }
 
     void clear() {
-        wibble::sys::MutexLockT< Mutex > guard{ m };
+        std::lock_guard< Mutex > guard{ m };
         q.clear();
         _empty = true;
     }
