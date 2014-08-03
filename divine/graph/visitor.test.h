@@ -18,16 +18,7 @@ using namespace divine;
 using namespace wibble;
 using namespace visitor;
 
-using brick_test::hashset::test_hasher;
-
-struct Int {
-    int i;
-    Int( int i ) : i( i ) {}
-    Int() : i( 0 ) {}
-    operator int() { return i; }
-};
-
-template < typename T > struct TestHasher;
+namespace brick_test { namespace hashset {
 
 template<>
 struct test_hasher< Lake::Pointer >
@@ -41,6 +32,19 @@ struct test_hasher< Lake::Pointer >
     bool valid( T t ) const { return _pool.valid( t ); }
     bool equal( T a, T b ) const { return _pool.equal( a, b ); }
 };
+
+} }
+
+using brick_test::hashset::test_hasher;
+
+struct Int {
+    int i;
+    Int( int i ) : i( i ) {}
+    Int() : i( 0 ) {}
+    operator int() { return i; }
+};
+
+template < typename T > struct TestHasher;
 
 template <>
 struct TestHasher< Int > : test_hasher< int >
