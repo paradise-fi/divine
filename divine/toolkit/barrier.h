@@ -1,7 +1,10 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
+//             (c) 2014 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <wibble/sys/mutex.h>
 #include <map>
+#include <mutex>
+#include <condition_variable>
+#include <wibble/test.h>
 
 #ifndef DIVINE_BARRIER_H
 #define DIVINE_BARRIER_H
@@ -20,14 +23,27 @@ struct Terminable {
 
 template< typename T >
 struct Barrier {
-    typedef wibble::sys::Mutex Mutex;
-    typedef wibble::sys::MutexLock MutexLock;
+    typedef std::mutex Mutex;
+    struct MutexLock {
+        MutexLock( std::mutex &mutex ) : _guard( mutex ), _yield( false ) { }
+        ~MutexLock() {
+            _guard.unlock();
+            if ( _yield )
+                std::this_thread::yield();
+        }
 
-    typedef std::map< T *, wibble::sys::Condition > ConditionMap;
+        void lock() { _guard.lock(); }
+        void unlock() { _guard.unlock(); }
+
+        void setYield() { _yield = true; }
+
+      private:
+        std::unique_lock< std::mutex > _guard;
+        bool _yield;
+    };
+
+    typedef std::map< T *, std::condition_variable_any > ConditionMap;
     typedef std::map< T *, Mutex > MutexMap;
-
-    typedef typename ConditionMap::iterator ConditionIterator;
-    typedef typename MutexMap::iterator MutexIterator;
 
     MutexMap m_mutexes;
     Mutex m_globalMutex;
@@ -41,14 +57,14 @@ struct Barrier {
 
     void wakeup( T *who ) {
         if ( who->sleeping )
-            condition( who ).signal();
+            condition( who ).notify_one();
     }
 
     Mutex &mutex( T *t ) {
         return m_mutexes[ t ];
     }
 
-    wibble::sys::Condition &condition( T *t ) {
+    std::condition_variable_any &condition( T *t ) {
         return m_conditions[ t ];
     }
 
@@ -66,31 +82,30 @@ struct Barrier {
         Set locked, busy;
         done = true;
 
-        for ( MutexIterator i = m_mutexes.begin(); i != m_mutexes.end(); ++i )
-        {
-            if ( i->first == who ) {
+        for ( auto &i : m_mutexes ) {
+            if ( i.first == who ) {
                 who_is_ours = true;
                 continue;
             }
-            if ( !i->second.trylock() ) {
+            if ( !i.second.try_lock() ) {
                 done = false;
             } else {
-                locked.insert( i->first );
+                locked.insert( i.first );
             }
         }
 
         assert( who_is_ours );
-	(void)who_is_ours;
+        (void)who_is_ours;
 
         // we are now holding whatever we could get at; let's check that
         // there's no work left in the system
         if ( done ) {
-            for ( MutexIterator i = m_mutexes.begin(); i != m_mutexes.end(); ++i )
+            for ( auto &i : m_mutexes )
             {
-                if ( (i->first != who && i->first->isBusy()) ||
-                     i->first->workWaiting() )
+                if ( (i.first != who && i.first->isBusy()) ||
+                     i.first->workWaiting() )
                 {
-                    busy.insert( i->first );
+                    busy.insert( i.first );
                     done = false;
                 }
             }
@@ -99,12 +114,11 @@ struct Barrier {
         // certainly, there are at least as many sleepers as we could lock
         // out... there may be more, since they might have let gone of the
         // global mutex, but still haven't arrived to the condition wait
-        assert_leq( locked.size(), size_t( m_sleeping ) );
+        assert_leq( int( locked.size() ), m_sleeping );
 
         // we drop all locks (but we hold on to the global one)
-        for ( typename Set::iterator i = locked.begin(); i != locked.end(); ++i ) {
-            mutex( *i ).unlock();
-        }
+        for ( auto &i : locked )
+            mutex( i ).unlock();
 
         if ( done ) {
             if ( !really )
@@ -113,19 +127,17 @@ struct Barrier {
             m_done = true; // mark.
 
             // signal everyone so they get past their sleep
-            for ( typename ConditionMap::iterator i = m_conditions.begin();
-                  i != m_conditions.end(); ++i ) {
-                if ( i->first == who )
+            for ( auto &i : m_conditions ) {
+                if ( i.first == who )
                     continue;
-                i->second.signal();
+                i.second.notify_one();
             }
         } else {
             // something failed, let's wake up all sleepers with work waiting
-            for ( typename ConditionMap::iterator i = m_conditions.begin();
-                  i != m_conditions.end(); ++i ) {
-                if ( !i->first->workWaiting() )
+            for ( auto &i : m_conditions ) {
+                if ( !i.first->workWaiting() )
                     continue;
-                i->second.signal(); // wake up that thread
+                i.second.notify_one(); // wake up that thread
             }
 
             // and if we have nothing to do ourselves, go to bed... for the
@@ -138,9 +150,9 @@ struct Barrier {
                 if ( m_sleeping < m_expect - 1 ) {
                     ++ m_sleeping;
                     who->sleeping = true;
-                    __l.drop();
+                    __l.unlock();
                     condition( who ).wait( mutex( who ) );
-                    __l.reclaim();
+                    __l.lock();
                     who->sleeping = false;
                     -- m_sleeping;
                 } else {
@@ -148,13 +160,13 @@ struct Barrier {
                     // after unlocking the global mutex so we avoid starving
                     // the rest of the system (that's trying to wake up and
                     // needs the global mutex for that)
-                    __l.setYield( true );
+                    __l.setYield();
                 }
             }
         }
 
         if ( m_done && really )
-            this->done( who );
+            this->done( who, __l );
         return m_done;
     }
 
@@ -172,10 +184,12 @@ struct Barrier {
 
     void done( T *t ) {
         MutexLock __l( m_globalMutex );
+        done( t, __l );
+    }
+
+    void done( T *t, MutexLock & ) {
         if ( m_mutexes.count( t ) ) {
-#ifdef POSIX
             mutex( t ).unlock();
-#endif
             m_mutexes.erase( t );
             m_conditions.erase( t );
             -- m_regd;
@@ -204,8 +218,7 @@ struct Barrier {
         m_expect = n;
     }
 
-    Barrier() : m_globalMutex( true )
-    {
+    Barrier() {
         clear();
     }
 };

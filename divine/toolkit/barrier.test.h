@@ -1,13 +1,13 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
 #include <cstdlib> // for rand
-#include <wibble/sys/thread.h>
+#include <brick-shmem.h>
 #include <divine/toolkit/barrier.h>
 
 using namespace divine;
 
 struct TestBarrier {
-    struct Thread : wibble::sys::Thread {
+    struct Thread : brick::shmem::Thread {
         volatile int i;
         int id;
         bool busy;
@@ -25,7 +25,7 @@ struct TestBarrier {
         }
         bool isBusy() { return false; }
 
-        void *main() {
+        void main() {
             busy = true;
             owner->barrier.started( this );
             while ( true ) {
@@ -34,7 +34,7 @@ struct TestBarrier {
                 if ( i % 3 == 1 ) {
                     busy = false;
                     if ( owner->barrier.idle( this ) )
-                        return 0;
+                        return;
                 }
             }
         }
