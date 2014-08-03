@@ -63,13 +63,13 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
         n.disown();
     }
 
-    struct : wibble::sys::Thread {
-        Fifo< Handle > process;
+    struct : brick::shmem::Thread {
+        brick::shmem::Fifo< Handle > process;
         This *outer;
         std::unique_ptr< Graph > graph;
         std::unique_ptr< Store > store;
 
-        void *main() {
+        void main() {
             while ( outer->valid ) {
                 if ( !process.empty() ) {
                     auto n = process.front();
@@ -78,13 +78,10 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
                     outer->runInner( *graph, store->vertex( n ), store.get() );
                 } else {
                     if ( outer->finished )
-                        return 0;
-#ifdef POSIX // uh oh...
-                    sched_yield();
-#endif
+                        return;
+                    std::this_thread::yield();
                 }
             }
-            return 0;
         }
     } inner;
 
