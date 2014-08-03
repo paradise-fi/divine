@@ -18,6 +18,8 @@
 #include <divine/ltl2ba/main.h>
 #include <divine/toolkit/lens.h>
 
+#include <wibble/exception.h>
+
 #ifndef DIVINE_GENERATOR_LLVM_H
 #define DIVINE_GENERATOR_LLVM_H
 

@@ -5,6 +5,7 @@
 #elif defined _WIN32
 #include <external/dlfcn-win32/dlfcn.h>
 #endif
+#include <wibble/exception.h>
 
 #include <divine/generator/common.h>
 
