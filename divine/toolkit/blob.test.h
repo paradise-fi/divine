@@ -1,8 +1,6 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
-#include <divine/toolkit/blob.h>
 #include <divine/toolkit/pool.h>
-#include <wibble/sys/thread.h>
 
 using namespace divine;
 

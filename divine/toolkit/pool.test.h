@@ -7,7 +7,7 @@ using namespace divine;
 
 struct TestPool {
 
-    struct Checker : wibble::sys::Thread
+    struct Checker : brick::shmem::Thread
     {
         char padding[128];
         divine::Pool m_pool;
@@ -28,7 +28,7 @@ struct TestPool {
             return true;
         }
 
-        void *main()
+        void main()
         {
             limit = 32*1024;
             int state = 0;
@@ -47,7 +47,6 @@ struct TestPool {
                 pool().free( ptrs.front() );
                 ptrs.pop_front();
             }
-            return 0;
         }
 
         Checker()

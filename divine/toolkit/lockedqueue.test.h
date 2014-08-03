@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <numeric>
 
-#include "lockedqueue.h"
-#include <wibble/sys/thread.h>
+#include <wibble/test.h>
+#include <divine/toolkit/lockedqueue.h>
 
 using namespace divine;
 
@@ -26,23 +26,22 @@ struct TestLockedQueue {
 
     typedef void Test;
 
-    struct Producer : wibble::sys::Thread {
+    struct Producer : brick::shmem::Thread {
         LockedQueue< int > *q;
         int produce;
         std::atomic< int > *work;
-        void* main() {
+        void main() {
             for ( int i = 1; i <= produce; ++i)
                 q->push( i );
             --*work;
-            return 0;
         }
     };
-    struct Consumer : wibble::sys::Thread {
+    struct Consumer : brick::shmem::Thread {
 
         LockedQueue< int > *q;
         int consumed;
         std::atomic< int > *work;
-        void* main() {
+        void main() {
             consumed = 0;
             while( *work ) {
                 while( !q->empty() ) {
@@ -54,7 +53,6 @@ struct TestLockedQueue {
                 if( q->pop() )
                     ++consumed;
             }
-            return nullptr;
         }
     };
 

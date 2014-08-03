@@ -1,9 +1,10 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
+#include <brick-shmem.h>
+#include <wibble/test.h>
 #include <divine/graph/datastruct.h>
 #include <divine/algorithm/common.h> // Hasher
 #include <divine/generator/dummy.h>
-#include <wibble/sys/thread.h>
 
 using namespace divine;
 
@@ -126,7 +127,7 @@ struct TestDatastruct {
     }
 
     template< typename Queue >
-    struct Worker : wibble::sys::Thread
+    struct Worker : brick::shmem::Thread
     {
         typedef typename Queue::QueueVertex QueueVertex;
 
@@ -135,7 +136,7 @@ struct TestDatastruct {
         int interleaveAdd;
         int count;
         int i;
-        void* main() {
+        void main() {
             bool stopPushing = false;
             for ( int i = 0; i < add; ++i ) {
                 queue->push( QueueVertex( i ) );
@@ -161,7 +162,6 @@ struct TestDatastruct {
                 queue->pop_front();
                 ++count;
             }
-            return nullptr;
         }
 
         Worker() : queue(), add( 0 ), count( 0 ), i( 0 )
