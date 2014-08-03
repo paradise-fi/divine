@@ -5,6 +5,8 @@ llvm_precompile
 
 for I in llvm_examples/*.c llvm_examples/*.cpp; do
 
+    grep -F -q '/* noinfo */' $I && continue
+
     divine compile --llvm $I --precompiled=. >& progress
     BC=$(echo $I | sed 's,^.*/,,' | sed 's/\.c\(pp\|c\)\{0,1\}$/.bc/')
     echo "BC: $BC"
