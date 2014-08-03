@@ -763,6 +763,38 @@ struct Union {
 
 };
 
+template< template< typename > class C, typename T, typename F >
+using FMap = C< typename std::result_of< F( T ) >::type >;
+
+template< typename T >
+struct NewType
+{
+    T _value;
+
+    template< typename X > using FMap = NewType< X >;
+    NewType() noexcept {}
+    NewType( const T &t ) noexcept : _value( t ) {}
+
+    T &unwrap() { return _value; }
+    const T &unwrap() const { return _value; }
+};
+
+template< typename T >
+struct Wrapper : NewType< T >
+{
+    Wrapper() = default;
+    Wrapper( const T &t ) : NewType< T >( t ) {}
+    operator T() { return this->unwrap(); }
+    T &value() { return this->unwrap(); }
+    T &operator*() { return this->unwrap(); }
+    T *operator->() { return &this->unwrap(); }
+};
+
+template< template< typename > class C, typename S, typename F >
+auto fmap( F, C< S > n ) -> decltype( FMap< C, S, F >( n.unwrap() ) ) {
+    return FMap< C, S, F >( n.unwrap() );
+}
+
 #endif // C++11
 
 }

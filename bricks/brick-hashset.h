@@ -36,6 +36,7 @@
 #include <brick-shmem.h>
 #include <brick-bitlevel.h>
 #include <brick-benchmark.h>
+#include <brick-types.h>
 
 #include <type_traits>
 
@@ -256,58 +257,26 @@ struct AtomicCell : CellBase< T, Hasher >
 template< typename T >
 struct default_hasher {};
 
-#if 0
-template< template< typename > class C, typename T, typename F >
-using FMap = C< typename std::result_of< F( T ) >::type >;
-
 template< typename T >
-struct NewType : wibble::Singleton< T >
-{
-    template< typename X > using FMap = NewType< X >;
-    NewType() noexcept {}
-    NewType( const T &t ) noexcept : wibble::Singleton< T >( t ) {}
-
-    T &unwrap() { return *this->begin(); }
-    const T &unwrap() const { return *this->begin(); }
-};
-
-template< typename T >
-struct Wrapper : NewType< T >
-{
-    Wrapper() = default;
-    Wrapper( const T &t ) : NewType< T >( t ) {}
-    operator T() { return this->unwrap(); }
-    T &value() { return this->unwrap(); }
-    T &operator*() { return this->unwrap(); }
-    T *operator->() { return &this->unwrap(); }
-};
-
-template< template< typename > class C, typename S, typename F >
-auto fmap( F, C< S > n ) -> decltype( FMap< C, S, F >( n.unwrap() ) ) {
-    return FMap< C, S, F >( n.unwrap() );
-}
-
-template< typename T >
-struct Found : Wrapper< T >
+struct Found : types::Wrapper< T >
 {
     bool _found;
 
-    Found( const T &t, bool found ) : Wrapper< T >( t ), _found( found ) {}
+    Found( const T &t, bool found ) : types::Wrapper< T >( t ), _found( found ) {}
     bool isnew() { return !_found; }
     bool found() { return _found; }
 
 };
 
 template< typename S, typename F >
-FMap< Found, S, F > fmap( F f, Found< S > n ) {
-    return FMap< Found, S, F >( f( n.unwrap() ), n._found );
+types::FMap< Found, S, F > fmap( F f, Found< S > n ) {
+    return types::FMap< Found, S, F >( f( n.unwrap() ), n._found );
 }
 
 template< typename T >
 Found< T > isNew( const T &x, bool y ) {
     return Found< T >( x, !y );
 }
-#endif
 
 template< typename Cell >
 struct HashSetBase
