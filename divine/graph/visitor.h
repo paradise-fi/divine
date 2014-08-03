@@ -1,9 +1,8 @@
 // -*- C++ -*- (c) 2007-2013 Petr Rockai <me@mornfall.net>
 //             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
+#include <brick-shmem.h>
 #include <divine/toolkit/pool.h>
-#include <divine/toolkit/fifo.h>
-#include <divine/toolkit/shmem.h>
 #include <divine/graph/datastruct.h>
 
 #ifndef DIVINE_VISITOR_H
@@ -381,6 +380,8 @@ struct Partitioned {
 };
 
 struct Shared {
+    using StartDetector = brick::shmem::StartDetector;
+
     template< typename S >
     struct Data {
         typedef divine::SharedQueue< S > Chunker;

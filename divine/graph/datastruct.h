@@ -4,10 +4,10 @@
 #include <deque>
 #include <memory>
 
+#include <brick-shmem.h>
 #include <wibble/test.h> // assert
 
 #include <divine/toolkit/lockedqueue.h>
-#include <divine/toolkit/shmem.h>
 
 #ifndef DIVINE_DATASTRUCT_H
 #define DIVINE_DATASTRUCT_H
@@ -218,7 +218,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
 
     typedef std::deque< Handle > Chunk;
     typedef divine::LockedQueue< Chunk > ChunkQ;
-    typedef ApproximateCounter Termination;
+    typedef brick::shmem::ApproximateCounter Termination;
     typedef Termination::Shared Terminator;
     typedef std::shared_ptr< Terminator > TerminatorPtr;
     typedef std::shared_ptr< ChunkQ > ChunkQPtr;

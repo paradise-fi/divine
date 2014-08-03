@@ -9,7 +9,6 @@
 #include <bricks/brick-hashset.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/parallel.h> // for WithID
-#include <divine/toolkit/weakatomic.h>
 
 #ifndef DIVINE_STORE_H
 #define DIVINE_STORE_H
