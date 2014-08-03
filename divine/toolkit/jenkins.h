@@ -29,6 +29,7 @@
 #ifndef DIVINE_TOOLKIT_JENKINS_H
 #define DIVINE_TOOLKIT_JENKINS_H
 
+namespace divine {
 namespace jenkins {
 //
 // SpookyHash: a 128-bit noncryptographic hash function
@@ -606,16 +607,8 @@ private:
     uint8  m_remainder;          // length of unhashed data stashed in m_data
 };
 
-
-
-
-
-
-
-
-
-
 } // namespace jenkins
+}
 
 #endif // DIVINE_TOOLKIT_JENKINS_H
 
