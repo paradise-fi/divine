@@ -618,8 +618,10 @@ struct Options {
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, filter, watch;
     std::string flavour_envvar;
+    int timeout;
     Options() : verbose( false ), batch( false ), interactive( false ),
-                cont( false ), fatal_timeouts( false ), kmsg( false ) {}
+                cont( false ), fatal_timeouts( false ), kmsg( false ),
+                timeout( 60 ) {}
 };
 
 struct TestProcess
@@ -717,7 +719,7 @@ struct TestCase {
 
         /* kill off tests after a minute of silence */
         if ( !options.interactive )
-            if ( end - silent_start > 60 ) {
+            if ( end - silent_start > options.timeout ) {
                 kill( pid, SIGINT );
                 sleep( 5 ); /* wait a bit for a reaction */
                 if ( waitpid( pid, &status, WNOHANG ) == 0 ) {
@@ -1097,6 +1099,9 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
 
     if ( args.has( "--watch" ) )
         split( args.opt( "--watch" ), opt.watch );
+
+    if ( args.has( "--timeout" ) )
+        opt.timeout = atoi( args.opt( "--timeout" ).c_str() );
 
     if ( args.has( "--kmsg" ) )
         opt.kmsg = true;
