@@ -6,6 +6,8 @@
 #include <fstream>
 #include <wibble/sys/mutex.h>
 #include <divine/toolkit/fifo.h>
+#include <divine/toolkit/pool.h>
+#include <divine/toolkit/bitstream.h>
 
 namespace divine {
 

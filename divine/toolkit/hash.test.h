@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stddef.h>
 
-using namespace jenkins;
+using namespace divine::jenkins;
 
 class Random
 {

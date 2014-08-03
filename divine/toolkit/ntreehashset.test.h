@@ -5,10 +5,10 @@
 #define TESTS_NTREE_HASH_SET
 
 #include <divine/toolkit/ntreehashset.h>
-#include <bricks-brick-hashset.h>
 #include <divine/toolkit/blob.h>
 #include <divine/algorithm/common.h> // hasher
 #include <divine/toolkit/pool.h>
+#include <bricks/brick-hashset.h>
 #include <random>
 #include <cstdint>
 #include <algorithm>
@@ -95,7 +95,7 @@ struct ThreadData : Set::ThreadData {
     Generator *generator;
 };
 
-using BlobSet = NTreeHashSet< FastSet, Blob, Hasher >;
+using BlobSet = NTreeHashSet< hashset::Fast, Blob, Hasher >;
 
 template< typename Generator >
 struct TestBase {

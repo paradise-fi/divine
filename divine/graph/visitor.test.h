@@ -7,13 +7,18 @@
 
 #include <divine/toolkit/blob.h>
 #include <divine/toolkit/parallel.h>
-#include <divine/graph/visitor.h>
 #include <divine/toolkit/pool.h>
-#include <divine/toolkit/hashset.test.h> // default_hasher
+#include <divine/graph/visitor.h>
+#include <divine/graph/store.h>
+#include <divine/utility/statistics.h>
+
+#include <brick-hashset.h>
 
 using namespace divine;
 using namespace wibble;
 using namespace visitor;
+
+using brick_test::hashset::test_hasher;
 
 struct Int {
     int i;
@@ -24,16 +29,28 @@ struct Int {
 
 template < typename T > struct TestHasher;
 
+template<>
+struct test_hasher< Lake::Pointer >
+{
+    typedef Lake::Pointer T;
+    Pool& _pool;
+    Pool &pool() { return _pool; }
+    test_hasher( Pool& p ) : _pool( p ) { }
+    test_hasher( const test_hasher &o ) : _pool( o._pool ) {}
+    hash128_t hash( T t ) const { return _pool.hash( t ); }
+    bool valid( T t ) const { return _pool.valid( t ); }
+    bool equal( T a, T b ) const { return _pool.equal( a, b ); }
+};
 
 template <>
-struct TestHasher< Int > : default_hasher< int >
+struct TestHasher< Int > : test_hasher< int >
 {
     TestHasher( Pool&, int ) { }
 };
 
 template<>
-struct TestHasher< Blob > : default_hasher< Blob > {
-    TestHasher( Pool& p, int ) : default_hasher< Blob >( p ) { }
+struct TestHasher< Blob > : test_hasher< Blob > {
+    TestHasher( Pool& p, int ) : test_hasher< Blob >( p ) { }
 };
 
 template< typename Store >
