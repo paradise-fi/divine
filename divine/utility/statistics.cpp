@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
 
 #include <iomanip>
+#include <mutex>
 #include <wibble/string.h>
 
 #include <bricks/brick-hashset.h>
@@ -126,11 +127,11 @@ void TrackStatistics::send() {
         data << t.enq << t.deq << t.hashsize << t.hashused << t.memQueue << t.memHashes;
     }
 
-    wibble::sys::MutexLock _lock( mpi.global().mutex );
+    std::unique_lock< std::mutex > _lock( mpi.global().mutex );
     mpi.sendStream( _lock, data, 0, TAG_STATISTICS );
 }
 
-Loop TrackStatistics::process( wibble::sys::MutexLock &_lock, MpiStatus &status )
+Loop TrackStatistics::process( std::unique_lock< std::mutex > &_lock, MpiStatus &status )
 {
     bitblock data;
     mpi.recvStream( _lock, status, data );

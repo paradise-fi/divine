@@ -5,8 +5,7 @@
 
 #include <memory>
 
-#include <wibble/sys/thread.h>
-#include <wibble/sys/mutex.h>
+#include <brick-shmem.h>
 #include <wibble/regexp.h>
 #include <divine/toolkit/mpi.h>
 #include <divine/toolkit/pool.h>
@@ -135,7 +134,7 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     void *main();
 
     void send();
-    Loop process( wibble::sys::MutexLock &, MpiStatus &status );
+    Loop process( std::unique_lock< std::mutex > &, MpiStatus &status );
 
     void setup( const Meta &m );
 
