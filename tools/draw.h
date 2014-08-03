@@ -273,12 +273,12 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wibble::Un
         if ( output.empty() ) {
             if ( render.empty() )
                 render = "dot -Tx11";
-            PipeThrough p( render );
+            wibble::sys::PipeThrough p( render );
             p.run( dot );
         } else {
             if ( render.empty() )
                 render = "dot -Tpdf";
-            PipeThrough p( render );
+            wibble::sys::PipeThrough p( render );
             wibble::sys::fs::writeFile( output, p.run( dot ) );
         }
     }
