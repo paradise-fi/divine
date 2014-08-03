@@ -1,8 +1,8 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 //             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <wibble/sys/thread.h>
-#include <divine/toolkit/fifo.h>
+#include <mutex>
+#include <brick-shmem.h>
 #include <divine/toolkit/barrier.h>
 #include <divine/toolkit/mpi.h>
 #include <divine/toolkit/rpc.h>
@@ -16,7 +16,7 @@ namespace divine {
  * A simple structure that runs a method of a class in a separate thread.
  */
 template< typename T >
-struct RunThread : wibble::sys::Thread {
+struct RunThread : brick::shmem::Thread {
     typedef void (T::*F)();
     T *t;
     F f;
@@ -24,16 +24,14 @@ struct RunThread : wibble::sys::Thread {
     virtual void init() {}
     virtual void fini() {}
 
-    void *main() {
+    void main() {
         init();
         (t->*f)();
         fini();
-        return 0;
     }
 
     RunThread( T &_t, F _f ) : t( &_t ), f( _f )
-    {
-    }
+    { }
 };
 
 /**
@@ -56,7 +54,7 @@ struct ThreadVector {
         return m_threads[ i ];
     }
 
-    void run( wibble::sys::Thread *extra = 0 ) {
+    void run( brick::shmem::Thread *extra = 0 ) {
         int n = m_threads.size();
         for ( int i = 0; i < n; ++i )
             m_threads[ i ].start();
@@ -119,7 +117,7 @@ template< typename _T >
 struct FifoMatrix
 {
     typedef _T T;
-    typedef divine::Fifo< T > Fifo;
+    typedef brick::shmem::Fifo< T > Fifo;
     std::vector< std::vector< Fifo > > m_matrix;
 
     void validate( int from, int to ) {
@@ -401,7 +399,7 @@ struct Local
 
     template< typename Self, typename Inst >
     void parallel( Self *, void (Inst::*fun)(),
-                   wibble::sys::Thread * extra = 0 )
+                   brick::shmem::Thread * extra = 0 )
     {
         static_assert( std::is_base_of< Inst, Instance >::value,
                 "Trying to call unrellated function, that is not supported." );
@@ -494,7 +492,7 @@ struct Mpi : MpiMonitor
         if ( mpi.size() > 1 ) {
             bitblock bs( m_mpiForwarder.pool );
             rpc::marshall( bs, set, bit );
-            wibble::sys::MutexLock _lock( mpi.global().mutex );
+            std::unique_lock< std::mutex > _lock( mpi.global().mutex );
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
         }
         m_local.distribute( bit, set );
@@ -511,7 +509,7 @@ struct Mpi : MpiMonitor
         bitblock bs( m_mpiForwarder.pool );
         rpc::marshall( bs, get );
         if ( mpi.master() ) {
-            wibble::sys::MutexLock _lock( mpi.global().mutex );
+            std::unique_lock< std::mutex > _lock( mpi.global().mutex );
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
             for ( int i = 1; i < mpi.size(); ++i ) {
                 bitblock response( m_mpiForwarder.pool );
@@ -527,8 +525,7 @@ struct Mpi : MpiMonitor
         bitblock bs( m_mpiForwarder.pool );
         rpc::marshall( bs, fun );
 
-        {
-            wibble::sys::MutexLock _lock( mpi.global().mutex );
+        {   std::unique_lock< std::mutex > _lock( mpi.global().mutex );
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
         }
 
@@ -546,10 +543,10 @@ struct Mpi : MpiMonitor
         if ( mpi.size() > 1 ) {
             rpc::marshall( bs, fun, x );
 
-            wibble::sys::MutexLock _lock( mpi.global().mutex );
-            mpi.global().is_master = false;
-            mpi.sendStream( _lock, bs, (mpi.rank() + 1) % mpi.size(), TAG_RING );
-            _lock.drop();
+            {   std::unique_lock< std::mutex > _lock( mpi.global().mutex );
+                mpi.global().is_master = false;
+                mpi.sendStream( _lock, bs, (mpi.rank() + 1) % mpi.size(), TAG_RING );
+            }
 
             while ( mpi.loop() == Continue ) ; // wait (and serve) till the ring is done
             async_retval >> retval;
@@ -592,7 +589,7 @@ struct Mpi : MpiMonitor
             mpit.collect( bits, fun );
             bs << bits;
 
-            wibble::sys::MutexLock _lock( mpit.mpi.global().mutex );
+            std::unique_lock< std::mutex > _lock( mpit.mpi.global().mutex );
             mpit.mpi.sendStream( _lock, bs, mpit.request_source, TAG_COLLECT );
         }
 
@@ -604,7 +601,7 @@ struct Mpi : MpiMonitor
     };
 
     /* The slave monitor */
-    Loop process( wibble::sys::MutexLock &_lock, divine::Mpi::Status &status ) {
+    Loop process( std::unique_lock< std::mutex > &_lock, divine::Mpi::Status &status ) {
 
         bitblock in( m_mpiForwarder.pool ), out( m_mpiForwarder.pool );
 
@@ -613,13 +610,13 @@ struct Mpi : MpiMonitor
 
         switch ( status.Get_tag() ) {
             case TAG_RING:
-                _lock.drop();
+                _lock.unlock();
                 rpc::demarshallWith< Instance, RingFromRemote >( *this, in, out );
                 if ( !async_retval.empty() )
                     return Done;
                 break;
             case TAG_PARALLEL:
-                _lock.drop();
+                _lock.unlock();
                 rpc::demarshallWith< Instance, ParallelFromRemote >( *this, in, out );
                 break;
             case TAG_INTERRUPT:
@@ -633,7 +630,7 @@ struct Mpi : MpiMonitor
     }
 
     void interrupt() {
-        wibble::sys::MutexLock _lock( mpi.global().mutex );
+        std::unique_lock< std::mutex > _lock( mpi.global().mutex );
         mpi.notify( _lock, TAG_INTERRUPT, bitblock( m_mpiForwarder.pool ) );
         m_local.interrupt();
     }

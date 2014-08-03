@@ -1,7 +1,8 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
-#include <wibble/test.h>
-#include <wibble/sys/thread.h>
+#include <mutex>
+
+#include <brick-shmem.h>
 #include <wibble/param.h>
 
 #include <divine/toolkit/pool.h>
@@ -48,11 +49,11 @@ struct MpiStatus {
 struct MpiMonitor {
     // Called when a message with a matching tag has been received. The status
     // object for the message is handed in.
-    virtual Loop process( wibble::sys::MutexLock &, MpiStatus & ) = 0;
+    virtual Loop process( std::unique_lock< std::mutex > &, MpiStatus & ) = 0;
 
     // Called whenever there is a pause in incoming traffic (i.e. a nonblocking
     // probe fails). A blocking probe will follow each call to progress().
-    virtual Loop progress( wibble::sys::MutexLock & ) { return Continue; }
+    virtual Loop progress( std::unique_lock< std::mutex > & ) { return Continue; }
 
     virtual ~MpiMonitor() {}
 };
@@ -73,7 +74,7 @@ struct Mpi {
 
 private:
     struct Data {
-        wibble::sys::Mutex mutex;
+        std::mutex mutex;
 
         MpiMonitor * progress;
         std::vector< MpiMonitor * > monitor;
@@ -103,11 +104,11 @@ public:
     }
 
     void send( const void *buf, int count, int dest, int tag ) {
-        wibble::sys::MutexLock _lock( global().mutex );
+        std::unique_lock< std::mutex > _lock( global().mutex );
         send( _lock, buf, count, dest, tag );
     }
 
-    void send( wibble::sys::MutexLock &, const void *buf, int count, int dest, int tag ) {
+    void send( std::unique_lock< std::mutex > &, const void *buf, int count, int dest, int tag ) {
 #ifdef O_MPI
             return MPI::COMM_WORLD.Send( buf, count, MPI::BYTE, dest, tag );
 #else
@@ -115,7 +116,7 @@ public:
 #endif
     }
 
-    MpiRequest isend( wibble::sys::MutexLock &, const void *buf, int count, int dest, int tag ) {
+    MpiRequest isend( std::unique_lock< std::mutex > &, const void *buf, int count, int dest, int tag ) {
 #ifdef O_MPI
         return MPI::COMM_WORLD.Isend( buf, count, MPI::BYTE, dest, tag );
 #else
@@ -176,14 +177,14 @@ public:
                 loop();
     }
 
-    bitblock &getStream( wibble::sys::MutexLock &_lock, int source, int tag, bitblock &bs )
+    bitblock &getStream( std::unique_lock< std::mutex > &_lock, int source, int tag, bitblock &bs )
     {
         Status st;
         probe( source, tag, st );
         return recvStream( _lock, st, bs );
     }
 
-    bitblock &recvStream( wibble::sys::MutexLock &, Status &st, bitblock &bs )
+    bitblock &recvStream( std::unique_lock< std::mutex > &, Status &st, bitblock &bs )
     {
         probe( st.Get_source(), st.Get_tag(), st );
         int first = bs.bits.size(), count = size( st ) / 4;
@@ -192,14 +193,14 @@ public:
         return bs;
     }
 
-    bitblock &sendStream( wibble::sys::MutexLock &_lock, bitblock &bs, int to, int tag )
+    bitblock &sendStream( std::unique_lock< std::mutex > &_lock, bitblock &bs, int to, int tag )
     {
         void *data = &*(bs.bits.begin() + bs.offset);
         send( _lock, data, bs.size() * 4, to, tag );
         return bs;
     }
 
-    void notifySlaves( wibble::sys::MutexLock &_lock,
+    void notifySlaves( std::unique_lock< std::mutex > &_lock,
                        int tag, bitblock bs )
     {
         if ( !master() )
@@ -207,7 +208,7 @@ public:
         notify( _lock, tag, bs );
     }
 
-    void notify( wibble::sys::MutexLock &_lock,
+    void notify( std::unique_lock< std::mutex > &_lock,
                  int tag, bitblock bs )
     {
         for ( int i = 0; i < size(); ++i ) {
@@ -220,7 +221,7 @@ public:
 
         Status status;
 
-        wibble::sys::MutexLock _lock( global().mutex );
+        std::unique_lock< std::mutex > _lock( global().mutex );
         // And process incoming MPI traffic.
         while ( probe( anySource, anyTag, status, false ) )
         {
@@ -279,7 +280,7 @@ template< typename T > struct FifoMatrix;
  * takes care to relay
  */
 template< typename Comms = FifoMatrix< Blob > >
-struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
+struct MpiForwarder : Terminable, MpiMonitor, brick::shmem::Thread {
     int recv, sent;
 
     Pool pool;
@@ -341,7 +342,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return !outgoingEmpty();
     }
 
-    std::pair< int, int > accumCounts( wibble::sys::MutexLock &_lock, int id ) {
+    std::pair< int, int > accumCounts( std::unique_lock< std::mutex > &_lock, int id ) {
         bitblock bs( pool );
         bs << id;
 
@@ -364,7 +365,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return valid ? std::make_pair( r, s ) : std::make_pair( 0, 1 );
     }
 
-    bool termination( wibble::sys::MutexLock &_lock ) {
+    bool termination( std::unique_lock< std::mutex > &_lock ) {
         std::pair< int, int > one, two;
 
         one = accumCounts( _lock, 0 );
@@ -384,7 +385,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return false;
     }
 
-    void receiveDataMessage( wibble::sys::MutexLock& _lock, MpiStatus &status )
+    void receiveDataMessage( std::unique_lock< std::mutex >& _lock, MpiStatus &status )
     {
         typename Comms::T b;
 
@@ -401,7 +402,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         ++ recv;
     }
 
-    Loop process( wibble::sys::MutexLock &_lock, MpiStatus &status ) {
+    Loop process( std::unique_lock< std::mutex > &_lock, MpiStatus &status ) {
 
         if ( status.Get_tag() == TAG_ID ) {
             receiveDataMessage( _lock, status );
@@ -428,7 +429,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return r;
     }
 
-    Loop progress( wibble::sys::MutexLock &_lock ) {
+    Loop progress( std::unique_lock< std::mutex > &_lock ) {
         // Fill outgoing buffers from the incoming FIFO queues...
         for ( int from = 0; from < m_peers; ++from ) {
             for ( int to = 0; to < m_peers; ++to ) {
@@ -492,7 +493,7 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         return Continue;
     }
 
-    void *main() {
+    void main() {
         m_barrier->started( this );
         mpi.registerProgress( *this );
         mpi.registerMonitor( TAG_ID, *this );
@@ -500,8 +501,6 @@ struct MpiForwarder : Terminable, MpiMonitor, wibble::sys::Thread {
         mpi.registerMonitor( TAG_TERMINATED, *this );
 
         while ( mpi.loop() == Continue ) ;
-
-        return 0;
     }
 };
 

@@ -37,13 +37,13 @@ Mpi::Mpi( const Mpi & ) {
 Mpi::~Mpi() {
     -- global().instances;
     if (!s_data->instances) {
-        wibble::sys::MutexLock _lock( global().mutex );
-        notifySlaves( _lock, TAG_ALL_DONE, bitblock() );
+        {   std::unique_lock< std::mutex > _lock( global().mutex );
+            notifySlaves( _lock, TAG_ALL_DONE, bitblock() );
 #ifdef O_MPI
-        if ( master() && s_data->isMpi )
-            MPI::Finalize();
+            if ( master() && s_data->isMpi )
+                MPI::Finalize();
 #endif
-        _lock.drop();
+        }
         delete s_data;
         s_data = 0;
     }
