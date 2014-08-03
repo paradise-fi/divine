@@ -272,9 +272,8 @@ protected:
     // them sharing a cache line, since they are always written from
     // different threads
     struct Node {
-        T *read;
-        char padding[ BRICKS_CACHELINE - sizeof(int) ];
-        T buffer[ NodeSize ];
+        T *read               __attribute__((__aligned__(BRICKS_CACHELINE)));
+        T buffer[ NodeSize ]  __attribute__((__aligned__(BRICKS_CACHELINE)));
         T * volatile write;
         Node *next;
         Node() {
@@ -285,11 +284,8 @@ protected:
 
     // pad the fifo object to ensure that head/tail pointers never
     // share a cache line with anyone else
-    char _padding1[BRICKS_CACHELINE - 2*sizeof(Node*)];
-    Node *head;
-    char _padding2[BRICKS_CACHELINE - 2*sizeof(Node*)];
-    Node * volatile tail;
-    char _padding3[BRICKS_CACHELINE - 2*sizeof(Node*)];
+    Node *head            __attribute__((__aligned__(BRICKS_CACHELINE)));
+    Node * volatile tail  __attribute__((__aligned__(BRICKS_CACHELINE)));
 
 public:
     Fifo() {
