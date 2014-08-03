@@ -12,6 +12,7 @@
  *   copyright and licensing details.                                      *
  ***************************************************************************/
 
+#include <divine/utility/statistics.h>
 #include <divine/instances/select.h>
 
 #include <QMessageBox>
