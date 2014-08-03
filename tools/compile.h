@@ -15,12 +15,13 @@
 #include <wibble/sys/process.h>
 #include <wibble/raii.h>
 
-#include <tools/combine.h>
-#include <tools/llvmpaths.h>
 #include <divine/dve/compiler.h>
 #include <divine/generator/cesmi.h>
 #include <divine/utility/strings.h>
 #include <divine/utility/die.h>
+
+#include <tools/combine.h>
+#include <tools/llvmpaths.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
