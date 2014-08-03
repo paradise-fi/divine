@@ -61,6 +61,8 @@ struct Box {
     double low, high, median, width;
 };
 
+namespace {
+
 Box box( Sample s, double width = 0.5 )
 {
     std::sort( s.begin(), s.end() );
@@ -109,6 +111,8 @@ Sample bootstrap( Sample s, E estimator, int iterations = 20000 )
         result.push_back( estimator( resample ) );
     }
     return result;
+}
+
 }
 
 struct Axis {

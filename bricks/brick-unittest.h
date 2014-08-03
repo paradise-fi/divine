@@ -199,12 +199,6 @@ namespace {
 
 std::vector< TestCaseBase * > *testcases = nullptr;
 
-void list() {
-    ASSERT( testcases );
-    for ( auto tc : *testcases )
-        std::cerr << tc->group() << "::" << tc->name << std::endl;
-}
-
 #ifdef __unix
 
 void fork_test( TestCaseBase *tc, int *fds ) {
@@ -251,6 +245,18 @@ void fork_test( TestCaseBase *tc, int * ) {
 }
 
 #endif
+
+}
+
+#ifdef BRICK_UNITTEST_REG
+
+namespace {
+
+void list() {
+    ASSERT( testcases );
+    for ( auto tc : *testcases )
+        std::cerr << tc->group() << "::" << tc->name << std::endl;
+}
 
 std::string simplify( std::string s, std::string l, bool fill = true ) {
     int cut = 0, stop = 0;
@@ -342,6 +348,8 @@ void run( std::string only_group= "" , std::string only_case = "" ) {
 }
 
 }
+
+#endif
 
 template< typename TestGroup, void (TestGroup::*testcase)() >
 struct TestCase : TestCaseBase {

@@ -237,7 +237,7 @@ struct Colour {
     Colour() : _c { 0, 0, 0 } {}
 };
 
-bool operator<( Colour::Lab a, Colour::Lab b ) {
+inline bool operator<( Colour::Lab a, Colour::Lab b ) {
     return std::make_tuple( a.L, a.a, a.b ) <
            std::make_tuple( b.L, b.a, b.b );
 }
@@ -309,7 +309,7 @@ struct Style {
     Style( Type t, Lab from, Lab to ) { set( t, from, to ); }
 };
 
-bool operator<( Style a, Style b ) {
+inline bool operator<( Style a, Style b ) {
     return std::make_tuple( a._type, a._from, a._to ) <
            std::make_tuple( b._type, b._from, b._to );
 }
@@ -395,11 +395,15 @@ struct DataSet {
     DataSet( int w ) : _raw( 0, w ) {}
 };
 
+namespace {
+
 std::ostream &operator<<( std::ostream &o, Colour::RGB c ) {
     return o << "rgb '#" << std::hex << std::setfill( '0' )
              << std::setw( 2 ) << int( 255 * c.r )
              << std::setw( 2 ) << int( 255 * c.g )
              << std::setw( 2 ) << int( 255 * c.b ) << "'";
+}
+
 }
 
 struct ColourKey {
@@ -410,11 +414,10 @@ struct ColourKey {
     {}
 };
 
-bool operator<( ColourKey a, ColourKey b ) {
+inline bool operator<( ColourKey a, ColourKey b ) {
     return std::make_tuple( a.axis, a.value, a.style ) <
            std::make_tuple( b.axis, b.value, b.style );
 }
-
 
 using ColourMap = std::map< ColourKey, Colour::RGB >;
 

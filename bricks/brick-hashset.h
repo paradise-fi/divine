@@ -1182,6 +1182,8 @@ struct RandomThread : shmem::Thread {
     };
 };
 
+namespace {
+
 Axis axis_items( int min = 16, int max = 16 * 1024 ) {
     Axis a;
     a.type = Axis::Quantitative;
@@ -1230,6 +1232,8 @@ Axis axis_types( int count )
     a.max = count - 1;
     a.step = 1;
     return a;
+}
+
 }
 
 template< typename T > struct TN {};
