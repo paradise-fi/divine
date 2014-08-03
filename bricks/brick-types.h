@@ -212,6 +212,10 @@ struct Maybe : Comparable
         return _v.t.t();
     }
 
+    T fromMaybe( T x ) const { return isJust() ? value() : x; }
+
+    explicit operator bool() const { return isJust(); }
+
     static Maybe Just( const T &t ) { return Maybe( t ); }
     static Maybe Nothing() { return Maybe(); }
 
@@ -440,44 +444,52 @@ template< typename F > struct ApplyResult< F > {};
 
 }
 
+struct UnionException : std::exception {
+    UnionException( std::string msg ) : msg( msg ) { }
+
+    virtual const char *what() const noexcept override { return msg.c_str(); }
+
+    std::string msg;
+};
+
 template< typename T >
 struct InPlace { };
 
 struct NullUnion { };
 
 template< typename... Types >
-struct Union {
+struct Union : Comparable {
     static_assert( sizeof...( Types ) < 0xff, "Too much unioned types, sorry" );
     static_assert( _impl::AllDistinct< Types... >::value,
             "All types in union must be distinct" );
 
-    constexpr Union() : discriminator( 0 ) { }
-    constexpr Union( NullUnion ) : discriminator( 0 ) { }
+    constexpr Union() : _discriminator( 0 ) { }
+    constexpr Union( NullUnion ) : _discriminator( 0 ) { }
 
     Union( const Union &other ) {
-        ASSERT_LEQ( size_t( other.discriminator ), sizeof...( Types ) );
-        if ( other.discriminator > 0 )
-            _copyConstruct< 1, Types... >( other.discriminator, other );
-        discriminator = other.discriminator;
+        ASSERT_LEQ( size_t( other._discriminator ), sizeof...( Types ) );
+        if ( other._discriminator > 0 )
+            _copyConstruct< 1, Types... >( other._discriminator, other );
+        _discriminator = other._discriminator;
     }
 
     Union( Union &&other ) {
-        ASSERT_LEQ( size_t( other.discriminator ), sizeof...( Types ) );
-        auto target = other.discriminator;
-        other.discriminator = 0;
+        ASSERT_LEQ( size_t( other._discriminator ), sizeof...( Types ) );
+        auto target = other._discriminator;
+        other._discriminator = 0;
         if ( target > 0 )
             _moveConstruct< 1, Types... >( target, std::move( other ) );
-        discriminator = target;
+        _discriminator = target;
     }
 
     template< typename T, typename U = typename _impl::OneConversion< T, Types... >::T >
     CPP1Y_CONSTEXPR Union( T val ) {
         new ( &storage ) U( std::move( val ) );
-        discriminator = _discriminator< U >();
+        _discriminator = discriminator< U >();
     }
 
     template< typename T, typename... Args >
-    Union( InPlace< T >, Args &&... args ) : discriminator( _discriminator< T >() ) {
+    Union( InPlace< T >, Args &&... args ) : _discriminator( discriminator< T >() ) {
         new ( &storage ) T( std::forward< Args >( args )... );
     }
 
@@ -514,31 +526,31 @@ struct Union {
         unsigned char tmpDis;
 
         std::memcpy( &tmpStor, &other.storage, size );
-        tmpDis = other.discriminator;
-        other.discriminator = 0;
+        tmpDis = other._discriminator;
+        other._discriminator = 0;
         std::memcpy( &other.storage, &storage, size );
-        other.discriminator = discriminator;
-        discriminator = 0;
+        other._discriminator = _discriminator;
+        _discriminator = 0;
         std::memcpy( &storage, &tmpStor, size );
-        discriminator = tmpDis;
+        _discriminator = tmpDis;
     }
 
     bool empty() {
-        return discriminator == 0;
+        return _discriminator == 0;
     }
 
     explicit operator bool() {
-        return discriminator > 0;
+        return !empty();
     }
 
     template< typename T >
     bool is() const {
-        return _discriminator< T >() == discriminator;
+        return discriminator< T >() == _discriminator;
     }
 
     template< typename T >
-    operator T() {
-        return get< T >();
+    explicit operator T() const {
+        return convert< T >();
     }
 
     template< typename T >
@@ -564,6 +576,9 @@ struct Union {
             return unsafeGet< T >();
         return val;
     }
+
+    template< typename T >
+    T convert() const { return _convert< T >(); }
 
     template< typename T >
     T &unsafeGet() {
@@ -615,27 +630,46 @@ struct Union {
         return _match< Applied< F > >( f, args... );
     }
 
+    bool operator==( const Union &other ) const {
+        return _discriminator == other._discriminator
+            && _compare< std::equal_to >( other );
+    }
+
+    bool operator!=( const Union &other ) const {
+        return _discriminator != other._discriminator
+            || _compare< std::not_equal_to >( other );
+    }
+
+    bool operator<( const Union &other ) const {
+        return _discriminator < other._discriminator
+            || (_discriminator == other._discriminator
+                    && _compare< std::less >( other ) );
+    }
+
+    unsigned char discriminator() const { return _discriminator; }
+
+    template< typename T >
+    unsigned char discriminator() const {
+        static_assert( _impl::In< T, Types... >::value,
+                "Trying to construct Union from value of type not allowed for it." );
+        return _discriminatorF< 1, T, Types... >();
+    }
+
   private:
     static constexpr size_t size = _impl::MaxSizeof< 1, Types... >::value;
     static constexpr size_t algignment = _impl::MaxAlign< 1, Types... >::value;
     typename std::aligned_storage< size, algignment >::type storage;
-    unsigned char discriminator;
+    unsigned char _discriminator;
 
-    template< typename T >
-    unsigned char _discriminator() const {
-        static_assert( _impl::In< T, Types... >::value,
-                "Trying to construct Union from value of type not allowed for it." );
-        return _discriminator< 1, T, Types... >();
-    }
 
     template< unsigned char i, typename Needle, typename T, typename... Ts >
-    constexpr unsigned char _discriminator() const {
+    constexpr unsigned char _discriminatorF() const {
         return std::is_same< Needle, T >::value
-            ? i : _discriminator< i + 1, Needle, Ts... >();
+            ? i : _discriminatorF< i + 1, Needle, Ts... >();
     }
 
     template< unsigned char, typename >
-    constexpr unsigned char _discriminator() const { return 0; /* cannot happen */ }
+    constexpr unsigned char _discriminatorF() const { return 0; /* cannot happen */ }
 
     template< unsigned char i, typename T, typename... Ts >
     void _copyConstruct( unsigned char d, const Union &other ) {
@@ -662,25 +696,25 @@ struct Union {
     { ASSERT_UNREACHABLE( "invalid _moveConstruct" ); }
 
     void _copyAssignDifferent( const Union &other ) {
-        auto tmp = discriminator;
-        discriminator = 0;
+        auto tmp = _discriminator;
+        _discriminator = 0;
         if ( tmp )
             _destruct< 1, Types... >( tmp );
-        if ( other.discriminator )
-            _copyConstruct< 1, Types... >( other.discriminator, other );
-        discriminator = other.discriminator;
+        if ( other._discriminator )
+            _copyConstruct< 1, Types... >( other._discriminator, other );
+        _discriminator = other._discriminator;
     }
 
     void _copyAssignSame( const Union &other ) {
-        ASSERT_EQ( discriminator, other.discriminator );
-        if ( discriminator == 0 )
+        ASSERT_EQ( _discriminator, other._discriminator );
+        if ( _discriminator == 0 )
             return;
         _copyAssignSame< 1, Types... >( other );
     }
 
     template< unsigned char i, typename T, typename... Ts >
     void _copyAssignSame( const Union &other ) {
-        if ( i == discriminator )
+        if ( i == _discriminator )
             unsafeGet< T >() = other.unsafeGet< T >();
         else
             _copyAssignSame< i + 1, Ts... >( other );
@@ -701,15 +735,15 @@ struct Union {
     void _destruct( unsigned char ) { ASSERT_UNREACHABLE( "invalid _destruct" ); }
 
     void _moveAssignSame( Union &&other ) {
-        ASSERT_EQ( discriminator, other.discriminator );
-        if ( discriminator == 0 )
+        ASSERT_EQ( _discriminator, other._discriminator );
+        if ( _discriminator == 0 )
             return;
         _moveAssignSame< 1, Types... >( std::move( other ) );
     }
 
     template< unsigned char i, typename T, typename... Ts >
     void _moveAssignSame( Union &&other ) {
-        if ( i == discriminator )
+        if ( i == _discriminator )
             unsafeGet< T >() = other.unsafeMoveOut< T >();
         else
             _moveAssignSame< i + 1, Ts... >( std::move( other ) );
@@ -719,14 +753,14 @@ struct Union {
     void _moveAssignSame( Union && ) { ASSERT_UNREACHABLE( "invalid _moveAssignSame" ); }
 
     void _moveAssignDifferent( Union &&other ) {
-        auto tmp = discriminator;
-        auto target = other.discriminator;
-        discriminator = 0;
+        auto tmp = _discriminator;
+        auto target = other._discriminator;
+        _discriminator = 0;
         if ( tmp )
             _destruct< 1, Types... >( tmp );
         if ( target )
             _moveConstruct< 1, Types... >( target, std::move( other ) );
-        discriminator = target;
+        _discriminator = target;
     }
 
     template< typename F > Applied< F > _apply( Preferred, F ) { return Applied< F >::Nothing(); }
@@ -759,6 +793,44 @@ struct Union {
     auto _apply( NotPreferred, F f ) -> Applied< F >
     {
         return _apply< F, Args... >( Preferred(), f );
+    }
+
+    template< template< typename > class Compare, int d >
+    bool _compare2( const Union & ) const { ASSERT_UNREACHABLE( "invalid discriminator" ); }
+
+    template< template< typename > class Compare, int d, typename T, typename... Ts >
+    bool _compare2( const Union &other ) const {
+        return d == _discriminator
+            ? Compare< T >()( get< T >(), other.template get< T >() )
+            : _compare2< Compare, d + 1, Ts... >( other );
+    }
+
+    template< template< typename > class Compare >
+    bool _compare( const Union &other ) const {
+        return _compare2< Compare, 1, Types... >( other );
+    }
+
+    template< typename Target, bool anyCastPossible, int >
+    Target _convert2( Preferred ) const {
+        static_assert( anyCastPossible, "Cast of Union can never succeed" );
+    }
+
+    template< typename Target, bool any, int d, typename, typename... Ts >
+    Target _convert2( NotPreferred ) const {
+        return _convert2< Target, any, d + 1, Ts... >( Preferred() );
+    }
+
+    template< typename Target, bool any, int d, typename T, typename... Ts >
+    auto _convert2( Preferred ) const -> decltype( static_cast< Target >( this->unsafeGet< T >() ) )
+    {
+        if ( _discriminator == d )
+            return static_cast< Target >( unsafeGet< T >() );
+        return _convert2< Target, true, d + 1, Ts... >( Preferred() );
+    }
+
+    template< typename Target >
+    Target _convert() const {
+        return _convert2< Target, false, 1, Types... >( Preferred() );
     }
 
 };
@@ -794,6 +866,63 @@ template< template< typename > class C, typename S, typename F >
 auto fmap( F, C< S > n ) -> decltype( FMap< C, S, F >( n.unwrap() ) ) {
     return FMap< C, S, F >( n.unwrap() );
 }
+
+template< typename T >
+struct IsUnion : std::false_type { };
+
+template< typename... Ts >
+struct IsUnion< Union< Ts... > > : std::true_type { };
+
+template< typename A, typename B >
+struct _OneUnion : std::enable_if<
+                       ( IsUnion< A >::value || IsUnion< B >::value )
+                       && !(IsUnion< A >::value && IsUnion< B >::value ),
+                   bool > { };
+
+template< typename A, typename B >
+auto operator==( const A &a, const B &b ) ->
+    typename std::enable_if< IsUnion< A >::value && !IsUnion< B >::value, bool >::type
+{
+    return a.template is< B >() && a.template get< B >() == b;
+}
+
+template< typename A, typename B >
+auto operator==( const A &a, const B &b ) ->
+    typename std::enable_if< !IsUnion< A >::value && IsUnion< B >::value, bool >::type
+{ return b == a; }
+
+
+template< typename A, typename B >
+auto operator<( const A &a, const B &b ) ->
+    typename std::enable_if< IsUnion< A >::value && !IsUnion< B >::value, bool >::type
+{
+    return a.discriminator() < a.template discriminator< B >()
+        || (a.template is< B >() && a.template get< B >() < b);
+}
+
+template< typename A, typename B >
+auto operator<( const A &a, const B &b ) ->
+    typename std::enable_if< !IsUnion< A >::value && IsUnion< B >::value, bool >::type
+{
+    return b.template discriminator< A >() < b.discriminator()
+        || (b.template is< A >() && a < b.template get< A >());
+}
+
+template< typename A, typename B >
+auto operator!=( const A &a, const B &b ) -> typename _OneUnion< A, B >::type
+{ return !(a == b); }
+
+template< typename A, typename B >
+auto operator<=( const A &a, const B &b ) -> typename _OneUnion< A, B >::type
+{ return a < b || a == b; }
+
+template< typename A, typename B >
+auto operator>( const A &a, const B &b ) -> typename _OneUnion< A, B >::type
+{ return b < a; }
+
+template< typename A, typename B >
+auto operator>=( const A &a, const B &b ) -> typename _OneUnion< A, B >::type
+{ return b <= a; }
 
 #endif // C++11
 
@@ -949,6 +1078,54 @@ struct UnionTest {
 
         result = u.match( constC );
         ASSERT( result.isNothing() );
+    }
+
+    TEST(eq) {
+        Union< int, long > u{ 1 };
+        Union< int, long > v{ 2 };
+        Union< int, long > w{ 2l };
+
+        ASSERT( u == u );
+        ASSERT( u != v );
+        ASSERT( v != w );
+        ASSERT( u != w );
+
+        ASSERT( u == 1 );
+        ASSERT( v == 2 );
+        ASSERT( w == 2l );
+
+        ASSERT( u != 1l );
+        ASSERT( v != 2l );
+        ASSERT( w != 2 );
+    }
+
+    TEST(ord) {
+        Union< int, long > u{ 1 };
+        Union< int, long > v{ 2 };
+        Union< int, long > w{ 2l };
+
+        ASSERT( u < v );
+        ASSERT( !(v < u) );
+        ASSERT( u < w );
+        ASSERT( !(w < u) );
+        ASSERT( v < w );
+        ASSERT( !(w < v) );
+
+        ASSERT( u <= 1 );
+        ASSERT( v > 1 );
+        ASSERT( w > 1 );
+
+        ASSERT( u < 1l );
+        ASSERT( v < 1l );
+        ASSERT( w > 1l );
+
+        ASSERT( u < 2 );
+        ASSERT( v <= 2 );
+        ASSERT( w > 2 );
+
+        ASSERT( u < 2l );
+        ASSERT( v < 2l );
+        ASSERT( w <= 2l );
     }
 };
 
