@@ -252,6 +252,16 @@ struct WeakAtomic : std::conditional< std::is_integral< T >::value && !std::is_s
 
 #endif
 
+#ifndef __divine__
+template< typename T >
+constexpr int defaultNodeSize() {
+    return (32 * 4096 - BRICKS_CACHELINE - sizeof( void* )) / sizeof( T );
+}
+#else
+template< typename T >
+constexpr int defaultNodeSize() { return 3; }
+#endif
+
 /*
  * A simple queue (First-In, First-Out). Concurrent access to the ends of the
  * queue is supported -- a thread may write to the queue while another is
@@ -263,9 +273,7 @@ struct WeakAtomic : std::conditional< std::is_integral< T >::value && !std::is_s
  * to give good cache usage.
  */
 
-template< typename T,
-          int NodeSize = (32 * 4096 - BRICKS_CACHELINE - sizeof(int)
-                          - sizeof(void*)) / sizeof(T) >
+template< typename T, int NodeSize = defaultNodeSize< T >() >
 struct Fifo {
 protected:
     // the Node layout puts read and write counters far apart to avoid
