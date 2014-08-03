@@ -329,7 +329,12 @@ struct StrongEnumFlags {
     }
 
     constexpr bool has( Self x ) const noexcept {
-        return (*this) & x;
+        return ((*this) & x) == x;
+    }
+
+    This clear( Self x ) noexcept {
+        store &= ~UnderlyingType( x );
+        return *this;
     }
 
     constexpr operator bool() const noexcept {
