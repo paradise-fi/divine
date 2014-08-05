@@ -41,6 +41,17 @@ struct FollowCE {
 struct FollowCEToEnd { };
 struct Back { };
 struct Reset { };
+
+struct Mark { };
+struct Unmark { };
+struct StopOn {
+    enum SC { Marked = 0x1, Accepting = 0x2, Deadlock = 0x4 };
+    StopOn( SC v, bool set = true ) : value( v ), set( set ) { };
+
+    SC value;
+    bool set;
+};
+
 struct PrintTrace { };
 struct PrintCE { };
 struct ListSuccs { };
@@ -53,8 +64,8 @@ struct NoOp { };
 using Command = brick::types::Union<
                   DfsNext, Next, Random, Back, RunDfs,
                   FollowCE, FollowCEToEnd, Reset,
-                  PrintTrace, PrintCE,
-                  ListSuccs, ToggleAutoListing,
+                  Mark, Unmark, StopOn,
+                  PrintTrace, PrintCE, ListSuccs, ToggleAutoListing,
                   NoOp, Help, Exit >;
 
 enum class Option : uint32_t {
@@ -72,13 +83,20 @@ enum class Option : uint32_t {
 using Options = brick::types::StrongEnumFlags< Option >;
 
 
-struct ApiError : std::logic_error
-{
-    ApiError(const std::string& error) throw ()
+struct ApiError : std::logic_error {
+    explicit ApiError( const std::string& error ) noexcept
         : std::logic_error( error + " while constructing command parser" )
     { }
 
-    ~ApiError() throw () { }
+    ~ApiError() noexcept = default;
+};
+
+struct ParseError : std::invalid_argument {
+    explicit ParseError( const std::string &error ) noexcept
+        : std::invalid_argument( error )
+    { }
+
+    ~ParseError() noexcept = default;
 };
 
 /* describes command, parse should return command representation, it will be
@@ -117,7 +135,7 @@ struct SpecCommandDesc {
     SpecCommandDesc() = default;
     SpecCommandDesc( std::string usage, std::string description,
             std::function< Command( std::string ) > parse ) :
-        usage( usage ), description( description ), parse( std::move( parse ) )
+        parse( std::move( parse ) ), usage( usage ), description( description )
     {
         if ( !this->parse )
             throw ApiError( "Parse function is not callable" );
@@ -153,8 +171,10 @@ struct CommandEngine {
 
         _commands.emplace_back( std::move( desc ) );
         auto ptr = &_commands.back();
-        _shortOpts[ ptr->shortOpt ] = ptr;
-        _longOpts[ ptr->longOpt ] = ptr;
+        if ( ptr->shortOpt )
+            _shortOpts[ ptr->shortOpt ] = ptr;
+        if ( !ptr->longOpt.empty() )
+            _longOpts[ ptr->longOpt ] = ptr;
         return *this;
     }
     template< typename... Args >
@@ -193,7 +213,7 @@ struct CommandEngine {
             os << _formatOpt( cd, offset ) << cd.description << std::endl;
     }
 
-    Command parse( std::string line, std::ostream &err = std::cerr ) {
+    Command parse( std::string line, std::ostream &err = std::cerr ) try {
         if ( line.empty() )
             return Command();
         Command comm;
@@ -206,10 +226,8 @@ struct CommandEngine {
         auto sp = std::find_if( line.begin(), line.end(),
                         []( char c ) { return bool( std::isspace( c ) ); } )
                     - line.begin();
-        ASSERT_LEQ( 0, sp );
-        ASSERT_LEQ( sp, line.size() );
         auto cmd = line.substr( 0, sp );
-        auto param = sp == line.size() ? std::string() : line.substr( sp + 1 );
+        auto param = sp == long( line.size() ) ? std::string() : line.substr( sp + 1 );
         CommandDesc *desc = nullptr;
         if ( cmd.size() == 1 ) {
             if ( _shortOpts.count( cmd[0] ) )
@@ -239,6 +257,9 @@ struct CommandEngine {
         if ( !desc )
             return Command();
         return desc->parse( param );
+    } catch ( ParseError &ex ) {
+        err << ex.what() << std::endl;
+        return Command();
     }
 
   private:
@@ -266,12 +287,23 @@ struct CommandEngine {
 };
 
 template< typename Cmd >
-static Command parseParams( std::string s ) {
+static Command parseLongParam( std::string s ) {
+    if ( s.empty() )
+        return Cmd( -1 );
     try {
         return Cmd( std::stol( s ) );
     } catch ( std::invalid_argument & ) {
-        return Command();
+        throw ParseError( "Expected nothing or positive number, given '" + s + "'" );
     }
+}
+
+template< StopOn::SC cond >
+static Command parseStop( std::string s ) {
+    if ( s == "on" || s == "ON" )
+        return StopOn( cond, true );
+    else if ( s == "off" || s == "OFF" )
+        return StopOn( cond, false );
+    throw ParseError( "Invalid option '" + s + "' expected 'on' or 'off'" );
 }
 
 struct ProcessLoop {
@@ -292,12 +324,21 @@ struct ProcessLoop {
             .add( "show-ce",                  'c', "",    "show remaining part of the counterexample", PrintCE() )
             .add( "step-dfs",                 'n', "",    "go to the next unvisited successor or go up if there is none (DFS)", DfsNext() )
             .add( "random-succ",              'r', "",    "go to a random successor", Random() )
-            .add( "follow-ce",                'f', "[N]", "follow counterexample [for N steps]", &parseParams< FollowCE > )
+            .add( "follow-ce",                'f', "[N]", "follow counterexample [for N steps]", &parseLongParam< FollowCE > )
             .add( "jump-goal",                'F', "",
                     "follow counterexample to the end (to the first lasso accepting vertex for cycle)", FollowCEToEnd() )
             .add( "run-dfs",                  'D', "[N]",
-                    "run DFS [for N steps], can be interrupted by ctrl+c/SIGINT", &parseParams< RunDfs > )
+                    "run DFS [for N steps], can be interrupted by ctrl+c/SIGINT", &parseLongParam< RunDfs > )
             .add( "initial",                  'i', "",    "go back to before-initial state (reset)", Reset() )
+            .add( "mark",                     'm', "",    "mark this state", Mark() )
+            .add( "unmark",                   'M', "",    "unmark this state", Unmark() )
+            .add( "stop-on-accepting",        0,   "{ on | off }",
+                    "stop on any accepting or goal state", &parseStop< StopOn::Accepting > )
+            .add( "stop-on-marked",           0,   "{ on | off }",
+                    "stop on any marked state", &parseStop< StopOn::Marked > )
+            .add( "stop-on-deadlock",         0,   "{ on | off }",
+                    "stop on any deadlock (state without successorts)", &parseStop< StopOn::Deadlock > )
+
             .add( "help",                     'h', "",    "show help", Help() )
             .add( "quit",                     'q', "",    "exit simulation", Exit() )
             .addSpec( "1,2,3", "use numbers to select a sucessor", []( std::string str ) -> Command {
@@ -397,10 +438,12 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
         bool inCEinit:1;
         bool inCElasso:1;
 
+        bool marked:1;
+
+        uint32_t ceNext:27;
+
         bool getInCEinit() { return inCEinit; }
         bool getInCElasso() { return inCElasso; }
-
-        uint32_t ceNext:28;
     };
 
     Options options;
@@ -417,6 +460,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
 
     std::string inputTrace;
     std::string last;
+
+    StopOn::SC stopOn;
 
     int id() { return 0; } // expected by AlgorithmUtils
 
@@ -508,7 +553,9 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
         return true;
     }
 
-    brick::types::Maybe< long > runDfs( long limit ) {
+    enum class StopReason { Done, EndOfModel, Signal, Deadlock, Accepting, Marked };
+
+    std::tuple< StopReason, long > runDfs( long limit ) {
         bool print = options.has( Option::PrintEdges );
         options.clear( Option::PrintEdges );
         auto oldsig = std::signal( SIGINT, &sigintHandler );
@@ -521,12 +568,25 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
 
         for ( long i = 0; limit <= 0 || i < limit; ++i ) {
             if ( stepDfs() ) {
+                if ( (stopOn & StopOn::Deadlock) == StopOn::Deadlock
+                        && succs.empty() )
+                    return { StopReason::Deadlock, i };
+                if ( !trace.empty() ) {
+                    if ( (stopOn & StopOn::Accepting) == StopOn::Accepting
+                            && (this->graph().isGoal( trace.back().node())
+                                || this->graph().isAccepting( trace.back().node() )) )
+                        return { StopReason::Accepting, i };
+                    if ( (stopOn & StopOn::Marked) == StopOn::Marked
+                            && extension( trace.back() ).marked )
+                        return { StopReason::Marked, i };
+                }
+
                 if ( interrupted.load( std::memory_order_relaxed ) )
-                    return brick::types::Maybe< long >::Just( -i );
+                    return { StopReason::Signal, i };
             } else
-                return brick::types::Maybe< long >::Just( i );
+                return { StopReason::EndOfModel, i };
         }
-        return brick::types::Maybe< long >::Nothing();
+        return { StopReason::Done, limit };
     }
 
     void markCE() {
@@ -750,6 +810,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
             nodeinfo.emplace_back( "in-ce-init" );
         if ( extension( v ).inCElasso )
             nodeinfo.emplace_back( "in-ce-lasso" );
+        if ( extension( v ).marked )
+            nodeinfo.emplace_back( "marked" );
         if ( this->graph().isAccepting( v.node() ) )
             nodeinfo.emplace_back( "accepting" );
         if ( this->graph().isGoal( v.node() ) )
@@ -764,7 +826,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
 
     void batch( std::string cmds ) {
         for ( auto p = loop.splitString( cmds ); p != loop.splitEnd(); ++p )
-            if ( runCommand( loop.command( *p ) ) == CmdResponse::Continue )
+            if ( runCommand( loop.command( *p ) ) == CmdResponse::Continue && !trace.empty() )
                 showNode( trace.back() );
     }
 
@@ -813,10 +875,37 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
                     loop.error( "Cannot go back" );
             }, [&]( RunDfs dfs ) {
                 auto r = runDfs( dfs.limit );
-                if ( r && r.value() < 0 )
-                    loop.error( "Interrupted after " + std::to_string( - r.value() ) + " steps" );
-                else if ( r && r.value() > 0 )
-                    loop.error( "Model fully explored after " + std::to_string( r.value() ) + " steps" );
+                auto n = std::to_string( std::get< 1 >( r ) );
+                switch ( std::get< 0 >( r ) ) {
+                    case StopReason::Signal:
+                        loop.error( "Interrupted after " + n + " steps" );
+                        break;
+                    case StopReason::EndOfModel:
+                        loop.error( "Model fully explored after " + n + " steps" );
+                        break;
+                    case StopReason::Deadlock:
+                        loop.show( "Reached deadlock after " + n + " steps" );
+                        break;
+                    case StopReason::Accepting:
+                        loop.show( "Reached accepting state after " + n + " steps" );
+                        break;
+                    case StopReason::Marked:
+                        loop.show( "Reached marked state after " + n + " steps" );
+                        break;
+                    default:
+                        ASSERT_UNREACHABLE( "unhandled case" );
+                }
+            }, [&]( Mark ) {
+                if ( !trace.empty() )
+                    extension( trace.back() ).marked = true;
+            }, [&]( Unmark ) {
+                if ( !trace.empty() )
+                    extension( trace.back() ).marked = false;
+            }, [&]( StopOn st ) {
+                if ( st.set )
+                    stopOn = StopOn::SC( stopOn | st.value );
+                else
+                    stopOn = StopOn::SC( stopOn & ~st.value );
             }, [&]( PrintTrace ) {
                 for ( const auto &n : trace )
                     showNode( n );
@@ -868,6 +957,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
         this->init( *this );
         options |= Option::PrintEdges;
         inputTrace = m.input.trace;
+        stopOn = StopOn::SC( 0 );
         if ( m.algorithm.interactive )
             options |= Option::Interactive;
 
