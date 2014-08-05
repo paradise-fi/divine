@@ -1,13 +1,19 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013-2014 Vladimír Štill <xstill@fi.muni.cz>
 // original version was created by Jan Havlíček <xhavlic4@fi.muni.cz>
 
 #include <cstdint>
-#include <random>
+#include <cstdlib>
 #include <csignal>
+#include <cctype>
+#include <random>
+#include <initializer_list>
+#include <iomanip>
+#include <map>
+#include <list>
+#include <vector>
 
 #include <brick-types.h>
 
-#include <wibble/test.h>
 #include <wibble/regexp.h>
 #include <wibble/raii.h>
 #include <divine/algorithm/common.h>
@@ -21,7 +27,7 @@ namespace algorithm {
 struct DfsNext { };
 struct RunDfs {
     long limit;
-    RunDfs( long limit = -1 ) : limit( limit ) { }
+    RunDfs( long limit = 0 ) : limit( limit ) { }
 };
 struct Next {
     int next;
@@ -41,6 +47,7 @@ struct ListSuccs { };
 struct ToggleAutoListing { };
 
 struct Exit { };
+struct Help { };
 struct NoOp { };
 
 using Command = brick::types::Union<
@@ -48,7 +55,7 @@ using Command = brick::types::Union<
                   FollowCE, FollowCEToEnd, Reset,
                   PrintTrace, PrintCE,
                   ListSuccs, ToggleAutoListing,
-                  NoOp, Exit >;
+                  NoOp, Help, Exit >;
 
 enum class Option : uint32_t {
     TraceOpts = 0xffff,
@@ -64,71 +71,262 @@ enum class Option : uint32_t {
 };
 using Options = brick::types::StrongEnumFlags< Option >;
 
+
+struct ApiError : std::logic_error
+{
+    ApiError(const std::string& error) throw ()
+        : std::logic_error( error + " while constructing command parser" )
+    { }
+
+    ~ApiError() throw () { }
+};
+
+/* describes command, parse should return command representation, it will be
+ * given string containing command parameters */
+struct CommandDesc {
+
+    CommandDesc() = default;
+    CommandDesc( std::string longOpt, char shortOpt, std::string params,
+            std::string description, std::function< Command( std::string ) > parse ) :
+        parse( std::move( parse ) ), longOpt( longOpt ), shortOpt( shortOpt ),
+        params( params ), description( description )
+    {
+        if ( !this->parse )
+            throw ApiError( "Parse function is not callable" );
+        if ( longOpt.empty() && shortOpt == 0 )
+            throw ApiError( "Missing both short and long command" );
+    }
+
+    CommandDesc( std::string longOpt, char shortOpt, std::string params,
+            std::string description, Command comm ) :
+        CommandDesc( longOpt, shortOpt, params, description,
+                [comm]( std::string ) { return comm; } )
+    { }
+
+    std::function< Command( std::string ) > parse;
+    std::string longOpt;
+    char        shortOpt;
+    std::string params;
+    std::string description;
+};
+
+/* describes commands which do not start with short or long option, parse will
+ * be given raw line (without line terminator), it should return parsed command
+ * or value of Command which is explicitly convertible to false */
+struct SpecCommandDesc {
+    SpecCommandDesc() = default;
+    SpecCommandDesc( std::string usage, std::string description,
+            std::function< Command( std::string ) > parse ) :
+        usage( usage ), description( description ), parse( std::move( parse ) )
+    {
+        if ( !this->parse )
+            throw ApiError( "Parse function is not callable" );
+        if ( usage.empty() )
+            throw ApiError( "usage must be given for SpecCommandDesc" );
+    }
+
+    std::function< Command( std::string ) > parse;
+    std::string usage;
+    std::string description;
+};
+
+/* Command processing engine, use add or addSpec to add commands
+ *
+ * Command matching (function parse) is performed as follows:
+ * 1. if command matches any special option (in order of their addition)
+ *    return of this special option is returned
+ * 2. if command length is 1 it is matched by short options
+ * 3. if command length is greater then 1 it is matches against long options
+ *    3a. if that does not succeed it is partially matched against long options
+ *        (that is we try to find unique option such that given command is
+ *        a prefix of its long option)
+ * 4. if nothing succeeds then help is printed and Command() is returned
+ */
+struct CommandEngine {
+    CommandEngine( std::string description ) : _descrition( description ) { }
+
+    CommandEngine &add( CommandDesc desc ) {
+        if ( _shortOpts.count( desc.shortOpt ) )
+            throw ApiError( "Short option clash for option '" + std::string( 1, desc.shortOpt ) + "'" );
+        if ( _longOpts.count( desc.longOpt ) )
+            throw ApiError( "Long option clash for option '" + desc.longOpt + "'" );
+
+        _commands.emplace_back( std::move( desc ) );
+        auto ptr = &_commands.back();
+        _shortOpts[ ptr->shortOpt ] = ptr;
+        _longOpts[ ptr->longOpt ] = ptr;
+        return *this;
+    }
+    template< typename... Args >
+    CommandEngine &add( Args &&...args ) {
+        return add( CommandDesc( std::forward< Args >( args )... ) );
+    }
+
+    CommandEngine &addSpec( SpecCommandDesc spec ) {
+        _specCommands.push_back( spec );
+        return *this;
+    }
+    template< typename... Args >
+    CommandEngine &addSpec( Args &&...args ) {
+        _specCommands.emplace_back( std::forward< Args >( args )... );
+        return *this;
+    }
+
+    std::string help() {
+        std::stringstream str;
+        help( str );
+        return str.str();
+    }
+
+    void help( std::ostream &os ) const {
+        os << _descrition << std::endl << std::endl;
+        int offset = 0;
+        for ( auto &cd : _commands )
+            offset = std::max( offset, int( _formatOpt( cd ).size() ) );
+        for ( auto &sc : _specCommands )
+            offset = std::max( offset, int( sc.usage.size() ) );
+        offset += 2;
+        for ( auto &sc : _specCommands )
+            os << sc.usage << std::string( offset - sc.usage.size(), ' ' )
+               << sc.description << std::endl;
+        for ( auto &cd : _commands )
+            os << _formatOpt( cd, offset ) << cd.description << std::endl;
+    }
+
+    Command parse( std::string line, std::ostream &err = std::cerr ) {
+        if ( line.empty() )
+            return Command();
+        Command comm;
+
+        for ( auto sci = _specCommands.begin(); !comm && sci != _specCommands.end(); ++sci )
+            comm = sci->parse( line );
+        if ( comm )
+            return comm;
+
+        auto sp = std::find_if( line.begin(), line.end(),
+                        []( char c ) { return bool( std::isspace( c ) ); } )
+                    - line.begin();
+        ASSERT_LEQ( 0, sp );
+        ASSERT_LEQ( sp, line.size() );
+        auto cmd = line.substr( 0, sp );
+        auto param = sp == line.size() ? std::string() : line.substr( sp + 1 );
+        CommandDesc *desc = nullptr;
+        if ( cmd.size() == 1 ) {
+            if ( _shortOpts.count( cmd[0] ) )
+                desc = _shortOpts[ cmd[0] ];
+            else {
+                err << "Unknown short option '" << cmd << "'." << std::endl;
+                help( err );
+            }
+        } else if ( _longOpts.count( cmd ) ) {
+                desc = _longOpts[ cmd ];
+        } else { // partial matching
+            auto lb = _longOpts.lower_bound( cmd );
+            std::vector< CommandDesc * > matches;
+            for ( ; lb != _longOpts.end() && lb->second->longOpt.substr( 0, cmd.size() ) == cmd; ++lb )
+                matches.push_back( lb->second );
+            if ( matches.empty() ) {
+                err << "Unknown long option '" << cmd << "'." << std::endl;
+                help( err );
+            } else if ( matches.size() > 1 ) {
+                err << "Ambiguous option '" << cmd << "' can mean one of { ";
+                for ( auto it = matches.begin(); (it + 1) != matches.end(); ++it )
+                    err << (*it)->longOpt << ", ";
+                err << matches.back()->longOpt << " }." << std::endl;
+            } else
+                desc = matches[ 0 ];
+        }
+        if ( !desc )
+            return Command();
+        return desc->parse( param );
+    }
+
+  private:
+    std::string _descrition;
+    // we need to store descriptions in container which does not invalidate
+    // pointers to them
+    std::list< SpecCommandDesc > _specCommands;
+    std::list< CommandDesc > _commands;
+    std::map< std::string, CommandDesc * > _longOpts;
+    std::map< char, CommandDesc * > _shortOpts;
+
+    static std::string _formatOpt( const CommandDesc &cd, int pad = 0 ) {
+        std::string str;
+        if ( cd.shortOpt != 0 && !cd.longOpt.empty() )
+            str = "{ " + cd.longOpt + " | " + std::string( 1, cd.shortOpt ) + " }";
+        else if ( !cd.longOpt.empty() )
+            str = cd.longOpt;
+        else
+            str = std::string( 1, cd.shortOpt );
+        if ( !cd.params.empty() )
+            str += " " + cd.params;
+        pad -= str.size();
+        return pad > 0 ? str + std::string( pad, ' ' ) : str;
+    }
+};
+
+template< typename Cmd >
+static Command parseParams( std::string s ) {
+    try {
+        return Cmd( std::stol( s ) );
+    } catch ( std::invalid_argument & ) {
+        return Command();
+    }
+}
+
 struct ProcessLoop {
 
     ProcessLoop() :
+        _engine( "DIVINE simulate -- model simulator and interactive model checker" ),
         _splitter( "[ \t]*,[ \t]*", REG_EXTENDED ),
         part( _splitter.end() ),
         _in( std::cin ),
         _out( std::cout ),
         _err( std::cerr )
-    { }
-
-    void help( bool error = false ) const {
-        (error ? _err : _out)
-            << "HELP:" << std::endl
-            << "  1,2,3 use numbers to select a sucessor" << std::endl
-            << "  s     list successors" << std::endl
-            << "  S     toggle automatic listing of successors" << std::endl
-            << "  b     back to the previous state" << std::endl
-            << "  t     show current trace" << std::endl
-            << "  c     show remaining part of counterexample" << std::endl
-            << "  n     go to the next unvisited successor or go up if there is none (DFS)" << std::endl
-            << "  r     go to a random successor" << std::endl
-            << "  f [N] follow counterexample [for N steps]" << std::endl
-            << "  F     follow counterexample to the end (to the first lasso accepting vertex for cycle)" << std::endl
-            << "  D [N] run DFS [for N steps], can be interrupted by ctrl+c/SIGINT" << std::endl
-            << "  i     go back to before-initial state (reset)" << std::endl
-            << "  q     exit" << std::endl
-            << "multiple commands can be separated by a comma" << std::endl;
+    {
+        _engine
+            .add( "succs",                    's', "",    "list successors", ListSuccs() )
+            .add( "toggle-successor-listing", 'S', "",    "toggle automatic listing of successors", ToggleAutoListing() )
+            .add( "back",                     'b', "",    "back to previous state", Back() )
+            .add( "show-trace",               't', "",    "show current trace", PrintTrace() )
+            .add( "show-ce",                  'c', "",    "show remaining part of the counterexample", PrintCE() )
+            .add( "step-dfs",                 'n', "",    "go to the next unvisited successor or go up if there is none (DFS)", DfsNext() )
+            .add( "random-succ",              'r', "",    "go to a random successor", Random() )
+            .add( "follow-ce",                'f', "[N]", "follow counterexample [for N steps]", &parseParams< FollowCE > )
+            .add( "jump-goal",                'F', "",
+                    "follow counterexample to the end (to the first lasso accepting vertex for cycle)", FollowCEToEnd() )
+            .add( "run-dfs",                  'D', "[N]",
+                    "run DFS [for N steps], can be interrupted by ctrl+c/SIGINT", &parseParams< RunDfs > )
+            .add( "initial",                  'i', "",    "go back to before-initial state (reset)", Reset() )
+            .add( "help",                     'h', "",    "show help", Help() )
+            .add( "quit",                     'q', "",    "exit simulation", Exit() )
+            .addSpec( "1,2,3", "use numbers to select a sucessor", []( std::string str ) -> Command {
+                        char *rest;
+                        long val = std::strtol( str.c_str(), &rest, 0 );
+                        if ( rest == str.c_str() )
+                            return Command();
+                        for ( int i = 0; rest[ i ]; ++i )
+                            if ( !std::isspace( rest[ i ] ) )
+                                return Command();
+                        return Next( val );
+                    } );
     }
+
+    void help( bool error = false ) const { _engine.help( error ? _err : _out ); }
 
     Command command() {
         return command( getPart() );
     }
 
-    Command command( std::string part ) const {
-
+    Command command( std::string part ) {
         if ( !_in.good() ) return Exit();
-        if ( part.empty() ) return NoOp();
-        if ( part == "q" ) return Exit();
-        if ( part == "s" ) return ListSuccs();
-        if ( part == "S" ) return ToggleAutoListing();
-        if ( part == "b" ) return Back();
-        if ( part == "t" ) return PrintTrace();
-        if ( part == "c" ) return PrintCE();
-        if ( part == "n" ) return DfsNext();
-        if ( part == "r" ) return Random();
-        if ( part == "F" ) return FollowCEToEnd();
-        if ( part == "i" ) return Reset();
-        if ( part[ 0 ] == 'D' ) {
-            auto x = parse( part.substr( 1 ) );
-            return RunDfs( x.second ? x.first : -1 );
-        } if ( part[ 0 ] == 'f' ) {
-            auto x = parse( part.substr( 1 ) );
-            return FollowCE( x.second ? x.first : 1 );
-        } else {
-            int i;
-            bool ok;
-            std::tie( i, ok ) = parse( part );
-            if ( !ok ) {
-                help( true );
-                return NoOp();
-            }
-            return Next( i );
+
+        auto comm = _engine.parse( part, _err );
+        if ( comm.is< Help >() ) {
+            help();
+            return NoOp();
         }
-        help();
-        return NoOp();
+        return comm ? comm : NoOp();
     }
 
     void error( std::string what ) const {
@@ -147,6 +345,8 @@ struct ProcessLoop {
 
 
   private:
+    CommandEngine _engine;
+
     wibble::Splitter _splitter;
     wibble::Splitter::const_iterator part;
 
@@ -157,7 +357,7 @@ struct ProcessLoop {
     std::string last;
 
     bool getLine() {
-        assert( part == _splitter.end() );
+        ASSERT( part == _splitter.end() );
         std::string line;
         std::getline( _in, line );
         part = _splitter.begin( line );
@@ -172,15 +372,6 @@ struct ProcessLoop {
         last = *part;
         ++part;
         return last;
-    }
-
-    static std::pair< long, bool > parse( std::string s ) {
-        try {
-            long i = std::stol( s );
-            return std::make_pair( i, true );
-        } catch ( std::invalid_argument & ) {
-            return std::make_pair( 0, false );
-        }
     }
 };
 
@@ -254,7 +445,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
 
     // fill the successor array by initial states
     void generateInitials() {
-        assert( trace.empty() );
+        ASSERT( trace.empty() );
         clearSuccs();
         this->graph().initials( [ this ] ( Node, Node n, Label l ) {
             this->addSucc( n, l );
@@ -263,8 +454,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
 
     // go to i-th successor
     void goDown( int i ) {
-        assert_leq( 0, i );
-        assert_leq( i, int( succs.size() - 1 ) );
+        ASSERT_LEQ( 0, i );
+        ASSERT_LEQ( i, int( succs.size() - 1 ) );
 
         Vertex from = trace.empty()
                     ? Vertex()
@@ -289,7 +480,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
 
     // backtrace by one
     void goBack() {
-        assert( !trace.empty() );
+        ASSERT( !trace.empty() );
 
         extension( trace.back() ).intrace = false;
         trace.pop_back();
@@ -321,14 +512,14 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
         bool print = options.has( Option::PrintEdges );
         options.clear( Option::PrintEdges );
         auto oldsig = std::signal( SIGINT, &sigintHandler );
-        assert( oldsig != SIG_ERR );
+        ASSERT( oldsig != SIG_ERR );
         interrupted = false;
         auto _ = wibble::raii::defer( [&]() {
                 if ( print ) options |= Option::PrintEdges;
                 std::signal( SIGINT, oldsig );
             } );
 
-        for ( long i = 0; limit < 0 || i < limit; ++i ) {
+        for ( long i = 0; limit <= 0 || i < limit; ++i ) {
             if ( stepDfs() ) {
                 if ( interrupted.load( std::memory_order_relaxed ) )
                     return brick::types::Maybe< long >::Just( -i );
@@ -371,8 +562,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
             else
                 this->pool().free( n );
         } );
-        assert_leq( succ, i );
-        assert( v.valid() );
+        ASSERT_LEQ( succ, i );
+        ASSERT( v.valid() );
         return v;
     }
 
@@ -386,8 +577,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
             else
                 this->pool().free( n );
         } );
-        assert_leq( succ, i );
-        assert( v.valid() );
+        ASSERT_LEQ( succ, i );
+        ASSERT( v.valid() );
         return v;
     }
 
@@ -400,12 +591,12 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
     template< typename Yield >
     Vertex followExtension( const Vertex &from, bool (Extension::*what)(), Yield yield ) {
         Vertex next = from;
-        assert( extension( next ).ceNext );
+        ASSERT( extension( next ).ceNext );
         Vertex head;
         int firstSeen = 0;
         do {
             head = next;
-            assert( (extension( head ).*what)() );
+            ASSERT( (extension( head ).*what)() );
 
             vertexCallback( yield, head );
             int target = extension( head ).ceNext;
@@ -427,9 +618,9 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
 
         Vertex from;
         if ( trace.empty() ) {
-            assert_leq( 1, int( iniTrail.size() ) );
+            ASSERT_LEQ( 1, int( iniTrail.size() ) );
             from = getInitial( iniTrail[ 0 ] );
-            assert( from.valid() );
+            ASSERT( from.valid() );
         } else {
             from = trace.back();
         }
@@ -511,7 +702,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
                 && !extension( trace.back() ).inCEinit
                 && !extension( trace.back() ).inCElasso )
             return false;
-        assert( !iniTrail.empty() );
+        ASSERT( !iniTrail.empty() );
         return true;
     }
 
@@ -540,7 +731,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
         }
 
         while ( true ) {
-            assert( extension( trace.back() ).inCEinit || extension( trace.back() ).inCElasso );
+            ASSERT( extension( trace.back() ).inCEinit || extension( trace.back() ).inCElasso );
             if ( extension( trace.back() ).ceNext == 0 )
                 return true;
             if ( extension( trace.back() ).inCElasso && this->graph().isAccepting( trace.back().node() ) )
@@ -581,70 +772,71 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
         return runCommand( loop.command() );
     }
 
-    CmdResponse runCommand( const Command cmd ) {
-
-        if ( cmd.is< DfsNext >() ) {
-            if ( !stepDfs() )
-                loop.error( "Cannot go back" );
-        } else if ( cmd.is< Next >() ) {
-            int n = cmd.get< Next >().next;
-            if ( n > 0 && n <= int( succs.size() ) )
-                goDown( n - 1 );
-            else if ( succs.empty() )
-                loop.error( "Current state has no successor" );
-            else
-                loop.error( "Enter number between 1 and " + std::to_string( succs.size() ) );
-        } else if ( cmd.is< Random >() ) {
-            if ( succs.empty() )
-                loop.error( "Current state has no successor" );
-            else if ( succs.size() == 1 )
-                goDown( 0 );
-            else
-                goDown( randFromTo( 0, succs.size() ) );
-        } else if ( cmd.is< FollowCE >() ) {
-            for ( int i = 0; i < cmd.get< FollowCE >().limit; ++i ) {
-                if ( !followCE() ) {
-                    loop.error( "There is no further CE continuation" );
-                    break;
+    CmdResponse runCommand( Command cmd ) try {
+        cmd.match(
+            [&]( DfsNext ) {
+                if ( !stepDfs() )
+                    loop.error( "Cannot go back" );
+            }, [&]( Next n ) {
+                if ( n.next > 0 && n.next <= int( succs.size() ) )
+                    goDown( n.next - 1 );
+                else if ( succs.empty() )
+                    loop.error( "Current state has no successor" );
+                else
+                    loop.error( "Enter number between 1 and " + std::to_string( succs.size() ) );
+            }, [&]( Random ) {
+                if ( succs.empty() )
+                    loop.error( "Current state has no successor" );
+                else if ( succs.size() == 1 )
+                    goDown( 0 );
+                else
+                    goDown( randFromTo( 0, succs.size() ) );
+            }, [&]( FollowCE fc ) {
+                if ( fc.limit <= 0 )
+                    fc.limit = 1;
+                for ( int i = 0; i < fc.limit; ++i ) {
+                    if ( !followCE() ) {
+                        loop.error( "There is no further CE continuation" );
+                        break;
+                    }
                 }
-            }
-        } else if ( cmd.is< FollowCEToEnd >() ) {
-            if ( !followCEToEnd() )
-                loop.error( "Cannot follow CE from current vertex or no CE at all" );
-        } else if ( cmd.is< Reset >() ) {
-            trace.clear();
-            generateInitials();
-        } else if ( cmd.is< Back >() ) {
-            if ( !trace.empty() )
-                goBack();
-            else
-                loop.error( "Cannot go back" );
-        } else if ( cmd.is< RunDfs >() ) {
-            auto r = runDfs( cmd.get< RunDfs >().limit );
-            if ( r && r.value() < 0 )
-                loop.error( "Interrupted after " + std::to_string( - r.value() ) + " steps" );
-            else if ( r && r.value() > 0 )
-                loop.error( "Model fully explored after " + std::to_string( r.value() ) + " steps" );
-        } else if ( cmd.is< PrintTrace >() ) {
-            for ( const auto &n : trace )
-                showNode( n );
-        } else if ( cmd.is< PrintCE >() ) {
-            printCE();
-        } else if ( cmd.is< ListSuccs >() ) {
-            printSuccessors();
-        } else if ( cmd.is< ToggleAutoListing >() ) {
-            options ^= Option::AutoSuccs;
-            loop.show( std::string( "Automatic listing of successors " ) +
-                    (options.has( Option::AutoSuccs ) ? "enabled" : "disabled" ) );
-        } else if ( cmd.is< Exit >() ) {
-            loop.show( "" );
-            return CmdResponse::Exit;
-        } else if ( cmd.is< NoOp >() ) {
-            return CmdResponse::Ignore;
-        } else {
-            assert_unreachable( "Unhandled case" );
-        }
+            }, [&]( FollowCEToEnd ) {
+                if ( !followCEToEnd() )
+                    loop.error( "Cannot follow CE from current vertex or no CE at all" );
+            }, [&]( Reset ) {
+                trace.clear();
+                generateInitials();
+            }, [&]( Back ) {
+                if ( !trace.empty() )
+                    goBack();
+                else
+                    loop.error( "Cannot go back" );
+            }, [&]( RunDfs dfs ) {
+                auto r = runDfs( dfs.limit );
+                if ( r && r.value() < 0 )
+                    loop.error( "Interrupted after " + std::to_string( - r.value() ) + " steps" );
+                else if ( r && r.value() > 0 )
+                    loop.error( "Model fully explored after " + std::to_string( r.value() ) + " steps" );
+            }, [&]( PrintTrace ) {
+                for ( const auto &n : trace )
+                    showNode( n );
+            }, [&]( PrintCE ) {
+                printCE();
+            }, [&]( ListSuccs ) {
+                printSuccessors();
+            }, [&]( ToggleAutoListing ) {
+                options ^= Option::AutoSuccs;
+                loop.show( std::string( "Automatic listing of successors " ) +
+                        (options.has( Option::AutoSuccs ) ? "enabled" : "disabled" ) );
+            }, [&]( Exit  ) {
+                loop.show( "" );
+                throw CmdResponse::Exit;
+            }, [&]( NoOp ) {
+                throw CmdResponse::Ignore;
+            } );
         return CmdResponse::Continue;
+    } catch ( CmdResponse resp ) {
+        return resp;
     }
 
     void evalLoop() {
