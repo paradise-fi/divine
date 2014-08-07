@@ -980,8 +980,10 @@ struct Evaluator
                     auto &c = *reinterpret_cast< PointerBlock * >( econtext.dereference( r ) );
                     c.count = ptrs.size();
                     int i = 0;
-                    for ( auto ptr : ptrs )
+                    for ( auto ptr : ptrs ) {
+                        econtext.memoryflag( r + sizeof( int ) + sizeof( Pointer ) * i ).set( MemoryFlag::HeapPointer );
                         c.ptr[ i++ ] = ptr;
+                    }
                     withValues( Set< Pointer >( r, MemoryFlag::HeapPointer ), instruction.result() );
                 } else { // stackrestore
                 }
