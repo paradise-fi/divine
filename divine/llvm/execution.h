@@ -927,125 +927,135 @@ struct Evaluator
         return r;
     }
 
+    void implement_intrinsic( int id ) {
+        switch ( id ) {
+            case Intrinsic::vastart:
+            case Intrinsic::trap:
+            case Intrinsic::vaend:
+            case Intrinsic::vacopy:
+                assert_unimplemented(); /* TODO */
+            case Intrinsic::eh_typeid_for: {
+                auto tag = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                int type_id = info.function( ccontext.pc() ).typeID( tag );
+                withValues( Set< int >( type_id ), instruction.result() );
+                return;
+            }
+            case Intrinsic::smul_with_overflow:
+            case Intrinsic::sadd_with_overflow:
+            case Intrinsic::ssub_with_overflow:
+                is_signed = true;
+            case Intrinsic::umul_with_overflow:
+            case Intrinsic::uadd_with_overflow:
+            case Intrinsic::usub_with_overflow: {
+                auto res = instruction.result();
+                res.width = instruction.operand( 0 ).width;
+                res.type = ProgramInfo::Value::Integer;
+                auto over = instruction.result();
+                over.width = 1; // hmmm
+                over.type = ProgramInfo::Value::Integer;
+                over.offset += compositeOffset( instruction.op->getType(), 1 ).first;
+                withValues( ArithmeticWithOverflow( id ), res, over,
+                            instruction.operand( 0 ), instruction.operand( 1 ) );
+                return;
+            }
+            default:
+                /* We lowered everything else in buildInfo. */
+                instruction.op->dump();
+                assert_unreachable( "unexpected intrinsic %d", id );
+        }
+    }
+
+    void implement_builtin() {
+        switch( instruction.builtin ) {
+            case BuiltinChoice: {
+                auto &c = ccontext.choice;
+                c.options = withValues( GetInt(), instruction.operand( 0 ) );
+                for ( int i = 1; i < int( instruction.values.size() ) - 2; ++i )
+                    c.p.push_back( withValues( GetInt(), instruction.operand( i ) ) );
+                if ( !c.p.empty() && int( c.p.size() ) != c.options ) {
+                    ccontext.problem( Problem::InvalidArgument );
+                    c.p.clear();
+                }
+                return;
+            }
+            case BuiltinAssert:
+                if ( !withValues( GetInt(), instruction.operand( 0 ) ) )
+                    ccontext.problem( Problem::Assert );
+                return;
+            case BuiltinProblem:
+                ccontext.problem(
+                    Problem::What( withValues( GetInt(), instruction.operand( 0 ) ) ),
+                    withValues( Get< Pointer >(), instruction.operand( 1 ) ) );
+                return;
+            case BuiltinAp:
+                ccontext.flags().ap |= (1 << withValues( GetInt(), instruction.operand( 0 ) ));
+                return;
+            case BuiltinMask: ccontext.pc().masked = true; return;
+            case BuiltinUnmask: ccontext.pc().masked = false; return;
+            case BuiltinInterrupt: return; /* an observable noop, see interpreter.h */
+            case BuiltinGetTID:
+                withValues( SetInt( ccontext.threadId() ), instruction.result() );
+                return;
+            case BuiltinNewThread: {
+                PC entry = withValues( Get< PC >(), instruction.operand( 0 ) );
+                Pointer arg = withValues( Get< Pointer >(), instruction.operand( 1 ) );
+                int tid = ccontext.new_thread(
+                    entry, Maybe< Pointer >::Just( arg ),
+                    econtext.memoryflag( instruction.operand( 1 ) ).get() );
+                withValues( SetInt( tid ), instruction.result() );
+                return;
+            }
+            case BuiltinMalloc: {
+                int size = withValues( Get< int >(), instruction.operand( 0 ) );
+                Pointer result = size ? econtext.malloc( size, pointerId( true )[0] ) : Pointer();
+                withValues( Set< Pointer >( result, MemoryFlag::HeapPointer ), instruction.result() );
+                return;
+            }
+            case BuiltinFree: {
+                Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                if ( !econtext.free( v ) )
+                    ccontext.problem( Problem::InvalidArgument, v );
+                return;
+            }
+            case BuiltinHeapObjectSize: {
+                Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                if ( !econtext.dereference( v ) )
+                    ccontext.problem( Problem::InvalidArgument, v );
+                else
+                    withValues( Set< int >( econtext.pointerSize( v ) ), instruction.result() );
+                return;
+            }
+            case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
+            case BuiltinVaStart: {
+                auto f = info.functions[ ccontext.pc().function ];
+                memcopy( f.values[ f.argcount ], instruction.result(), instruction.result().width );
+                return;
+            }
+            case BuiltinUnwind:
+                return unwind( withValues( GetInt(), instruction.operand( 0 ) ),
+                               Values( instruction.values.begin() + 2,
+                                       instruction.values.end() - 1 ) );
+            case BuiltinLandingPad:
+                withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction.operand( 0 ) ) ),
+                                            MemoryFlag::HeapPointer ),
+                            instruction.result() );
+                return;
+            default:
+                assert_unreachable( "unknown builtin %d", instruction.builtin );
+        }
+    }
+
     void implement_call() {
         CallSite CS( cast< ::llvm::Instruction >( instruction.op ) );
         ::llvm::Function *F = CS.getCalledFunction();
 
         if ( F && F->isDeclaration() ) {
+            auto id = F->getIntrinsicID();
+            if ( id != Intrinsic::not_intrinsic )
+                return implement_intrinsic( id );
 
-            switch (F->getIntrinsicID()) {
-                case Intrinsic::not_intrinsic: break;
-                case Intrinsic::vastart:
-                case Intrinsic::trap:
-                case Intrinsic::vaend:
-                case Intrinsic::vacopy:
-                    assert_unimplemented(); /* TODO */
-                case Intrinsic::eh_typeid_for: {
-                    auto tag = withValues( Get< Pointer >(), instruction.operand( 0 ) );
-                    int type_id = info.function( ccontext.pc() ).typeID( tag );
-                    withValues( Set< int >( type_id ), instruction.result() );
-                    return;
-                }
-                case Intrinsic::smul_with_overflow:
-                case Intrinsic::sadd_with_overflow:
-                case Intrinsic::ssub_with_overflow:
-                    is_signed = true;
-                case Intrinsic::umul_with_overflow:
-                case Intrinsic::uadd_with_overflow:
-                case Intrinsic::usub_with_overflow: {
-                    auto res = instruction.result();
-                    res.width = instruction.operand( 0 ).width;
-                    res.type = ProgramInfo::Value::Integer;
-                    auto over = instruction.result();
-                    over.width = 1; // hmmm
-                    over.type = ProgramInfo::Value::Integer;
-                    over.offset += compositeOffset( instruction.op->getType(), 1 ).first;
-                    withValues( ArithmeticWithOverflow( F->getIntrinsicID() ), res, over,
-                                instruction.operand( 0 ), instruction.operand( 1 ) );
-                    return;
-                }
-                default:
-                    /* We lowered everything else in buildInfo. */
-                    F->dump();
-                    assert_unreachable( "unexpected intrinsic %d", F->getIntrinsicID() );
-            }
-
-            switch( instruction.builtin ) {
-                case NotBuiltin: break;
-                case BuiltinChoice: {
-                    auto &c = ccontext.choice;
-                    c.options = withValues( GetInt(), instruction.operand( 0 ) );
-                    for ( int i = 1; i < int( instruction.values.size() ) - 2; ++i )
-                        c.p.push_back( withValues( GetInt(), instruction.operand( i ) ) );
-                    if ( !c.p.empty() && int( c.p.size() ) != c.options ) {
-                        ccontext.problem( Problem::InvalidArgument );
-                        c.p.clear();
-                    }
-                    return;
-                }
-                case BuiltinAssert:
-                    if ( !withValues( GetInt(), instruction.operand( 0 ) ) )
-                        ccontext.problem( Problem::Assert );
-                    return;
-                case BuiltinProblem:
-                    ccontext.problem(
-                        Problem::What( withValues( GetInt(), instruction.operand( 0 ) ) ),
-                        withValues( Get< Pointer >(), instruction.operand( 1 ) ) );
-                    return;
-                case BuiltinAp:
-                    ccontext.flags().ap |= (1 << withValues( GetInt(), instruction.operand( 0 ) ));
-                    return;
-                case BuiltinMask: ccontext.pc().masked = true; return;
-                case BuiltinUnmask: ccontext.pc().masked = false; return;
-                case BuiltinInterrupt: return; /* an observable noop, see interpreter.h */
-                case BuiltinGetTID:
-                    withValues( SetInt( ccontext.threadId() ), instruction.result() );
-                    return;
-                case BuiltinNewThread: {
-                    PC entry = withValues( Get< PC >(), instruction.operand( 0 ) );
-                    Pointer arg = withValues( Get< Pointer >(), instruction.operand( 1 ) );
-                    int tid = ccontext.new_thread(
-                        entry, Maybe< Pointer >::Just( arg ),
-                        econtext.memoryflag( instruction.operand( 1 ) ).get() );
-                    withValues( SetInt( tid ), instruction.result() );
-                    return;
-                }
-                case BuiltinMalloc: {
-                    int size = withValues( Get< int >(), instruction.operand( 0 ) );
-                    Pointer result = size ? econtext.malloc( size, pointerId( true )[0] ) : Pointer();
-                    withValues( Set< Pointer >( result, MemoryFlag::HeapPointer ), instruction.result() );
-                    return;
-                }
-                case BuiltinFree: {
-                    Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
-                    if ( !econtext.free( v ) )
-                        ccontext.problem( Problem::InvalidArgument, v );
-                    return;
-                }
-                case BuiltinHeapObjectSize: {
-                    Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
-                    if ( !econtext.dereference( v ) )
-                        ccontext.problem( Problem::InvalidArgument, v );
-                    else
-                        withValues( Set< int >( econtext.pointerSize( v ) ), instruction.result() );
-                    return;
-                }
-                case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
-                case BuiltinVaStart: {
-                    auto f = info.functions[ ccontext.pc().function ];
-                    memcopy( f.values[ f.argcount ], instruction.result(), instruction.result().width );
-                    return;
-                }
-                case BuiltinUnwind:
-                    return unwind( withValues( GetInt(), instruction.operand( 0 ) ),
-                                   Values( instruction.values.begin() + 2,
-                                           instruction.values.end() - 1 ) );
-                case BuiltinLandingPad:
-                    withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction.operand( 0 ) ) ),
-                                                MemoryFlag::HeapPointer ),
-                                instruction.result() );
-                    return;
-            }
+            if ( instruction.builtin )
+                return implement_builtin();
         }
 
         bool invoke = isa< ::llvm::InvokeInst >( instruction.op );
