@@ -554,8 +554,9 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
     }
 
     enum class StopReason { Done, EndOfModel, Signal, Deadlock, Accepting, Marked };
+    using Stop = std::tuple< StopReason, long >;
 
-    std::tuple< StopReason, long > runDfs( long limit ) {
+    Stop runDfs( long limit ) {
         bool print = options.has( Option::PrintEdges );
         options.clear( Option::PrintEdges );
         auto oldsig = std::signal( SIGINT, &sigintHandler );
@@ -570,23 +571,23 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
             if ( stepDfs() ) {
                 if ( (stopOn & StopOn::Deadlock) == StopOn::Deadlock
                         && succs.empty() )
-                    return { StopReason::Deadlock, i };
+                    return Stop{ StopReason::Deadlock, i };
                 if ( !trace.empty() ) {
                     if ( (stopOn & StopOn::Accepting) == StopOn::Accepting
                             && (this->graph().isGoal( trace.back().node())
                                 || this->graph().isAccepting( trace.back().node() )) )
-                        return { StopReason::Accepting, i };
+                        return Stop{ StopReason::Accepting, i };
                     if ( (stopOn & StopOn::Marked) == StopOn::Marked
                             && extension( trace.back() ).marked )
-                        return { StopReason::Marked, i };
+                        return Stop{ StopReason::Marked, i };
                 }
 
                 if ( interrupted.load( std::memory_order_relaxed ) )
-                    return { StopReason::Signal, i };
+                    return Stop{ StopReason::Signal, i };
             } else
-                return { StopReason::EndOfModel, i };
+                return Stop{ StopReason::EndOfModel, i };
         }
-        return { StopReason::Done, limit };
+        return Stop{ StopReason::Done, limit };
     }
 
     void markCE() {
