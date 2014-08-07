@@ -986,8 +986,20 @@ struct Evaluator
                     }
                     withValues( Set< Pointer >( r, MemoryFlag::HeapPointer ), instruction.result() );
                 } else { // stackrestore
+                    Pointer r = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                    auto &c = *reinterpret_cast< PointerBlock * >( econtext.dereference( r ) );
+                    for ( auto ptr : ptrs ) {
+                        bool retain = false;
+                        for ( int i = 0; i < c.count; ++i )
+                            if ( ptr == c.ptr[i] ) {
+                                retain = true;
+                                break;
+                            }
+                        if ( !retain )
+                            econtext.free( ptr );
+                    }
                 }
-                return; /* TODO */
+                return;
             }
             default:
                 /* We lowered everything else in buildInfo. */
