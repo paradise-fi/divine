@@ -57,6 +57,21 @@ PC ProgramInfo::getCodePointer( ::llvm::Value *val )
     return PC();
 }
 
+namespace {
+
+int intrinsic_id( ::llvm::Value *v ) {
+    auto insn = dyn_cast< ::llvm::Instruction >( v );
+    if ( !insn || insn->getOpcode() != ::llvm::Instruction::Call )
+        return ::llvm::Intrinsic::not_intrinsic;
+    llvm::CallSite CS( insn );
+    auto f = CS.getCalledFunction();
+    if ( !f )
+        return ::llvm::Intrinsic::not_intrinsic;
+    return f->getIntrinsicID();
+}
+
+}
+
 void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
 {
     if ( val->getType()->isVoidTy() ) {
@@ -83,7 +98,8 @@ void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
         result.width = CDS->getNumElements() * CDS->getElementByteSize();
     }
 
-    if ( isa< ::llvm::AllocaInst >( val ) )
+    if ( isa< ::llvm::AllocaInst >( val ) ||
+         intrinsic_id( val ) == ::llvm::Intrinsic::stacksave )
         result.type = ProgramInfo::Value::Alloca;
 }
 

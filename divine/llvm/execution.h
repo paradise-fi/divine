@@ -927,6 +927,11 @@ struct Evaluator
         return r;
     }
 
+    struct PointerBlock {
+        int count;
+        Pointer ptr[0];
+    };
+
     void implement_intrinsic( int id ) {
         switch ( id ) {
             case Intrinsic::vastart:
@@ -959,8 +964,29 @@ struct Evaluator
                 return;
             }
             case Intrinsic::stacksave:
-            case Intrinsic::stackrestore:
+            case Intrinsic::stackrestore: {
+                std::vector< ProgramInfo::Instruction > allocas;
+                std::vector< Pointer > ptrs;
+                auto &f = info.functions[ ccontext.pc().function ];
+                for ( auto &i : f.instructions )
+                    if ( i.opcode == LLVMInst::Alloca ) {
+                        allocas.push_back( i );
+                        auto ptr = withValues( Get< Pointer >(), i.result() );
+                        if ( !ptr.null() )
+                            ptrs.push_back( ptr );
+                    }
+                if ( id == Intrinsic::stacksave ) {
+                    Pointer r = econtext.malloc( sizeof( PointerBlock ) + ptrs.size() * sizeof( Pointer ), 0 );
+                    auto &c = *reinterpret_cast< PointerBlock * >( econtext.dereference( r ) );
+                    c.count = ptrs.size();
+                    int i = 0;
+                    for ( auto ptr : ptrs )
+                        c.ptr[ i++ ] = ptr;
+                    withValues( Set< Pointer >( r, MemoryFlag::HeapPointer ), instruction.result() );
+                } else { // stackrestore
+                }
                 return; /* TODO */
+            }
             default:
                 /* We lowered everything else in buildInfo. */
                 instruction.op->dump();
