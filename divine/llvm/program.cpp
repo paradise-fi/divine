@@ -260,6 +260,8 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
                 case ::llvm::Intrinsic::vastart:
                 case ::llvm::Intrinsic::vacopy:
                 case ::llvm::Intrinsic::vaend:
+                case ::llvm::Intrinsic::stacksave:
+                case ::llvm::Intrinsic::stackrestore:
                 case ::llvm::Intrinsic::umul_with_overflow:
                 case ::llvm::Intrinsic::smul_with_overflow:
                 case ::llvm::Intrinsic::uadd_with_overflow:

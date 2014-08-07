@@ -958,6 +958,9 @@ struct Evaluator
                             instruction.operand( 0 ), instruction.operand( 1 ) );
                 return;
             }
+            case Intrinsic::stacksave:
+            case Intrinsic::stackrestore:
+                return; /* TODO */
             default:
                 /* We lowered everything else in buildInfo. */
                 instruction.op->dump();
