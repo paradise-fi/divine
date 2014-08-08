@@ -102,8 +102,7 @@ static void int2base( uintmax_t value, struct _PDCLIB_status_t * status )
     // Perhaps after a certain size we should malloc? Or do we refuse to protect
     // them from their own stupidity?
     size_t bufLen = (status->width > maxIntLen ? status->width : maxIntLen) + 2;
-    char *outbuf = malloc(bufLen); // FIXME revert to use a VLA when we figure
-                                   // out llvm.stacksave/llvm.stackrestore
+    char outbuf[bufLen];
     char * outend = outbuf + bufLen;
     int written = 0;
 
