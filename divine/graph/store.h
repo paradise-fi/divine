@@ -357,7 +357,7 @@ struct TrivialHandle {
     explicit TrivialHandle( Blob blob, int rank ) : b( blob ) {
         b.setTag( rank );
     }
-    uint64_t asNumber() { return b.raw(); }
+    uint64_t asNumber() { return b.raw_address(); }
     int rank() const {
         return b.tag();
     }
@@ -372,7 +372,7 @@ typename BS::bitstream &operator<<( BS &bs, TrivialHandle h )
 template< typename BS >
 typename BS::bitstream &operator>>( BS &bs, TrivialHandle &h )
 {
-    uint64_t n;
+    Blob::Raw n;
     bs >> n;
     h.b = Blob::fromRaw( n );
     return bs;
@@ -404,7 +404,7 @@ struct DefaultStore
     bool valid( Node n ) { return Base::valid( n ); }
     bool valid( Handle h ) { return this->pool().valid( h.b ); }
     bool valid( Vertex v ) { return valid( v.handle() ); }
-    bool equal( Handle a, Handle b ) { return a.b.raw() == b.b.raw(); }
+    bool equal( Handle a, Handle b ) { return a.asNumber() == b.asNumber(); }
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
     int owner( Vertex v, hash64_t hint = 0 ) { return owner( v.node(), hint ); }
@@ -493,7 +493,7 @@ struct HcStore
     bool valid( Node n ) { return Base::valid( n ); }
     bool valid( Handle h ) { return this->pool().valid( h.b ); }
     bool valid( Vertex v ) { return valid( v.handle() ); }
-    bool equal( Handle a, Handle b ) { return a.b.raw() == b.b.raw(); }
+    bool equal( Handle a, Handle b ) { return a.asNumber() == b.asNumber(); }
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
     int owner( Vertex v, hash64_t hint = 0 ) { return owner( v.node(), hint ); }
@@ -615,7 +615,7 @@ struct NTreeStore
     bool valid( Node n ) { return Base::valid( n ); }
     bool valid( Handle h ) { return this->pool().valid( h.b ); }
     bool valid( Vertex v ) { return valid( v.handle() ); }
-    bool equal( Handle a, Handle b ) { return a.b.raw() == b.b.raw(); }
+    bool equal( Handle a, Handle b ) { return a.asNumber() == b.asNumber(); }
     bool equal( Node a, Node b ) { return Base::equal( a, b ); }
 
     hash64_t hash( Node n ) { return hash128( n ).first; }
