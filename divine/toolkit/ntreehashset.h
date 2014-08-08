@@ -56,9 +56,9 @@ struct NTreeHashSet
     NTreeHashSet( Hasher _hasher ) : _d( _hasher )
     {}
 
-    struct Leaf : types::NewType< Blob >, NewTypeTag< Blob, Leaf > {
+    struct Leaf : types::NewType< T >, NewTypeTag< T, Leaf > {
         Leaf() noexcept {}
-        Leaf( Blob b ) noexcept : types::NewType< Blob >( b ) {}
+        Leaf( T b ) noexcept : types::NewType< T >( b ) {}
         Leaf( int32_t size, char* source, Pool& pool )
         {
             assert_leq( 1, size );
@@ -71,22 +71,22 @@ struct NTreeHashSet
     };
 
     template < typename Fork >
-    struct LeafOr : types::NewType< Blob >, NewTypeTag< Blob, LeafOr< Fork > > {
+    struct LeafOr : types::NewType< T >, NewTypeTag< T, LeafOr< Fork > > {
         LeafOr() noexcept {}
 
-        const Blob &b() const { return this->unwrap(); }
-        Blob &b() { return this->unwrap(); }
+        const T &b() const { return this->unwrap(); }
+        T &b() { return this->unwrap(); }
 
-        LeafOr( Fork f ) : types::NewType< Blob >( f.unwrap() ) {
+        LeafOr( Fork f ) : types::NewType< T >( f.unwrap() ) {
             assert_eq( b().tag(), 0UL );
             b().setTag( 1 );
         }
 
-        LeafOr( Leaf l ) : types::NewType< Blob >( l.unwrap() ) {
+        LeafOr( Leaf l ) : types::NewType< T >( l.unwrap() ) {
             assert_eq( b().tag(), 0UL );
         }
 
-        Blob blob() const { Blob blob( b() ); blob.setTag( 0 ); return blob; }
+        T blob() const { T blob( b() ); blob.setTag( 0 ); return blob; }
         bool isLeaf() const { return !isFork(); }
         bool isFork() const { assert( b().tag() == 1 || b().tag() == 0 ); return b().tag(); }
         int32_t size( Pool &p ) const { return p.size( blob() ); }
@@ -139,9 +139,9 @@ struct NTreeHashSet
         }
     };
 
-    struct Fork : WithChildren< Fork, Fork >, types::NewType< Blob >, NewTypeTag< Blob, Fork > {
+    struct Fork : WithChildren< Fork, Fork >, types::NewType< T >, NewTypeTag< T, Fork > {
         Fork() noexcept {}
-        Fork( Blob b ) noexcept : types::NewType< Blob >( b ) {}
+        Fork( T b ) noexcept : types::NewType< T >( b ) {}
         Fork( int32_t children, Pool& pool ) {
             assert_leq( 2, children );
             int32_t size = children * sizeof( LeafOr< Fork > );
@@ -160,13 +160,13 @@ struct NTreeHashSet
 
     typedef LeafOr< Fork > LeafOrFork;
 
-    struct Root : WithChildren< Root, Fork >, types::NewType< Blob >, NewTypeTag< Blob, Root > {
+    struct Root : WithChildren< Root, Fork >, types::NewType< T >, NewTypeTag< T, Root > {
         struct Header { int32_t forks; };
 
-        Blob &b() { return this->unwrap(); }
+        T &b() { return this->unwrap(); }
 
         Root() noexcept {}
-        explicit Root( Blob b ) noexcept : types::NewType< Blob >( b ) {}
+        explicit Root( T b ) noexcept : types::NewType< T >( b ) {}
         Header &header( Pool &p ) { return *p.dereference< Header >( b() ); }
         bool leaf( Pool &p ) { return header( p ).forks == 0; }
         int32_t forkcount( Pool &p ) { return header( p ).forks; }
@@ -191,13 +191,13 @@ struct NTreeHashSet
         int32_t slackoffset( Pool &p ) { return sizeof( LeafOrFork ) * forkcount( p ); }
         char *slack( Pool &p ) { return rawdata( p ) + slackoffset( p ); }
 
-        Blob reassemble( Pool& p )
+        T reassemble( Pool& p )
         {
             assert( p.valid( b() ) );
             if ( leaf( p ) ) {
                 int32_t size = p.size( b() ) - sizeof( Header );
                 assert_leq( 0, size );
-                Blob out = p.allocate( size );
+                T out = p.allocate( size );
                 std::copy( data( p ), data( p ) + size, p.dereference( out ) );
                 return out;
             }
@@ -214,7 +214,7 @@ struct NTreeHashSet
             char* slackptr = slack( p );
             int32_t slacksize = p.size( b() ) - sizeof( Header ) - slackoffset( p );
             size += slacksize;
-            Blob out = p.allocate( size );
+            T out = p.allocate( size );
             char* outptr = p.dereference( out );
             outptr = std::copy( slackptr, slackptr + slacksize, outptr );
             for ( auto l : leaves ) {
@@ -392,12 +392,12 @@ struct NTreeHashSet
     /* struct NoSplitter
     {
         template< typename Yield >
-        void splitHint( Blob, intptr_t, intptr_t length, Yield yield ) {
+        void splitHint( T, intptr_t, intptr_t length, Yield yield ) {
             yield( Recurse::No, length, 0 );
         }
 
         template< typename Yield >
-        void splitHint( Blob n, Yield yield ) {
+        void splitHint( T n, Yield yield ) {
             splitHint( n, 0, pool().size( n ), yield );
         }
     }; */
