@@ -47,6 +47,7 @@ constexpr inline int align( int v, int a ) {
 struct Lake {
 
     struct Pointer : wibble::mixin::Comparable< Pointer > {
+        using Raw = uint64_t;
         static const unsigned blockBits = 24;
         static const unsigned offsetBits = 24;
         static const unsigned tagBits = 64 - blockBits - offsetBits;
@@ -514,6 +515,7 @@ struct Pond {
 struct PondInDivine {
 
     struct Pointer {
+        using Raw = uint64_t;
 
         Pointer() : _ptr( 0 ), _tag( 0 ), _size( 0 ) { }
 
