@@ -525,7 +525,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
         void size( size_t s ) {
             ASSERT( empty() );
-            _size = s;
+            _size = std::max( s, size_t( 1 ) );
         }
 
         bool empty() const { return begin() == nullptr; }
