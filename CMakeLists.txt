@@ -192,6 +192,16 @@ if( HOARD AND TBBMALLOC )
     set( HOARD OFF )
 endif()
 
+if( NOT POOLS AND COMPRESSION )
+    disabling( "COMPRESSION" "" "It is not supported without POOLS" )
+    set( COMPRESSION OFF )
+endif()
+
+if ( NOT POOLS AND MPI )
+    disabling( "MPI" " (cluster support)" "It is not supported without POOLS" )
+    set( MPI OFF )
+endif()
+
 include( CheckCXXSourceCompiles )
 set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
 set( CMAKE_REQUIRED_FLAGS "-std=c++11" ) # for the benefit of GCC
