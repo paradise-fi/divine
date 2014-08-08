@@ -281,7 +281,7 @@ struct _Vertex
     Node node() const {
         if ( _s && !foreign() && !_s->valid( _n ) && _s->valid( _h ) )
             _n = _s->unpack( _h, _p );
-        _n.setTag( 0 ); // Nodes must not be tagged so they can be easily compared
+        _clearTag( _n, wibble::Preferred() ); // Nodes must not be tagged so they can be easily compared
         return _n;
     }
 
@@ -289,7 +289,7 @@ struct _Vertex
     bool valid() const { return _s && _s->valid( _h ); }
     Handle handle() const { return _h; }
     // belongs to another machine -> cannot be dereferenced...
-    bool foreign() const { assert( _s ); return _h.rank() != _s->rank(); }
+    bool foreign() const { return _foreign( _h, wibble::Preferred() ); }
     void initForeign( Store& s ) {
         if ( _s == nullptr )
             _s = &s;
@@ -345,6 +345,28 @@ struct _Vertex
     }
 
 private:
+    template< typename T >
+    inline auto _foreign( const T &handle, wibble::Preferred ) const ->
+        typename std::enable_if< (T::tagBits > 0), bool >::type
+    {
+        assert( _s ); return handle.rank() != _s->rank();
+    }
+
+    template< typename T >
+    inline bool _foreign( const T &handle, wibble::NotPreferred ) const {
+        return false;
+    }
+
+    template< typename T >
+    inline auto _clearTag( T &node, wibble::Preferred ) const ->
+        typename std::enable_if< (T::tagBits > 0) >::type
+    {
+        node.setTag( 0 );
+    }
+
+    template< typename T >
+    inline void _clearTag( T &node, wibble::NotPreferred ) const { }
+
     Store *_s; // origin store
     Handle _h;
     Pool *_p; // local pool
@@ -355,12 +377,28 @@ struct TrivialHandle {
     Blob b;
     TrivialHandle() = default;
     explicit TrivialHandle( Blob blob, int rank ) : b( blob ) {
-        b.setTag( rank );
+        _setRank( b, rank, wibble::Preferred() );
     }
     uint64_t asNumber() { return b.raw_address(); }
-    int rank() const {
-        return b.tag();
-    }
+    int rank() const { return _getRank( b, wibble::Preferred() ); }
+
+  private:
+    template< typename T >
+    inline auto _setRank( T &b, int rank, wibble::Preferred ) ->
+        typename std::enable_if< (T::tagBits > 0) >::type
+    { b.setTag( rank ); }
+
+    template< typename T >
+    inline void _setRank( T &, int, wibble::NotPreferred ) { }
+
+    template< typename T >
+    inline auto _getRank( const T &b, wibble::Preferred ) const ->
+        typename std::enable_if< (T::tagBits > 0), int >::type
+    { return b.tag(); }
+
+    template< typename T >
+    inline int _getRank( const T &, wibble::NotPreferred ) const { return 0; }
+
 } __attribute__((packed));
 
 template< typename BS >
