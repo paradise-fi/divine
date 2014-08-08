@@ -10,6 +10,7 @@
 #include <memory>
 #include <map>
 #include <atomic>
+#include <tuple>
 
 #ifndef NVALGRIND
 #pragma GCC diagnostic push
@@ -515,29 +516,38 @@ struct Pond {
 struct PondInDivine {
 
     struct Pointer {
-        using Raw = uint64_t;
+        using Raw = std::tuple< uint64_t, uint32_t, uint32_t >;
+        static const unsigned tagBits = 32;
 
         Pointer() : _ptr( 0 ), _tag( 0 ), _size( 0 ) { }
 
         unsigned tag() const { return _tag; }
         void setTag( unsigned v ) { _tag = v; }
 
-        uint64_t raw() const { return *reinterpret_cast< const uint64_t * >( this ); }
-        static Pointer fromRaw( uint64_t r ) { return *reinterpret_cast< Pointer * >( &r ); }
+        Raw raw() const { return std::make_tuple( uint64_t( _ptr ), _tag, _size ); }
+        static Pointer fromRaw( Raw r ) {
+            Pointer p;
+            uint64_t ptr;
+            std::tie( ptr, p._tag, p._size ) = r;
+            p._ptr = reinterpret_cast< char * >( ptr );
+            return p;
+        }
 
-        uint64_t raw_address() const { return _ptr; }
+        uint64_t raw_address() const { return uint64_t( _ptr ); }
 
-        char *ptr() { return reinterpret_cast< char * >( uint64_t( _ptr ) ); }
-        const char *ptr() const { return reinterpret_cast< const char * >( uint64_t( _ptr ) ); }
-        static Pointer fromPtr( char *ptr ) { return fromRaw( uint64_t( ptr ) ); }
+        static Pointer fromPtr( char *ptr ) {
+            Pointer p;
+            p._ptr = ptr;
+            return p;
+        }
 
         explicit operator bool() const { return _ptr; }
         bool operator!() const { return !_ptr; }
         bool operator<=( const Pointer &p ) const { return raw() <= p.raw(); }
 
-        uint32_t _ptr;
-        uint16_t _tag;
-        uint16_t _size;
+        char *_ptr;
+        uint32_t _tag;
+        uint32_t _size;
     };
 
     PondInDivine() {}
@@ -548,17 +558,15 @@ struct PondInDivine {
         Wharf( std::shared_ptr< PondInDivine > ) {}
         Wharf() {}
 
-        char *dereference( Pointer p ) { return p.ptr(); }
-        const char *dereference( Pointer p ) const { return p.ptr(); }
+        char *dereference( Pointer p ) { return p._ptr; }
+        const char *dereference( Pointer p ) const { return p._ptr; }
         bool valid( Pointer p ) { return bool( p ); }
         int size( Pointer p ) { return p._size; }
         bool alias( Pointer a, Pointer  b ) { return a._ptr == b._ptr; }
-        void free( Pointer p ) { delete[] p.ptr(); }
+        void free( Pointer p ) { delete[] p._ptr; }
 
         Pointer allocate( size_t s ) {
             Pointer p = Pointer::fromPtr( new char[ s ] );
-            assert( p._size == 0 );
-            assert( p._tag == 0 );
             p._size = s;
             return p;
         }
