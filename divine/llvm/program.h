@@ -354,6 +354,10 @@ struct MemoryBits : BitPointer {
     }
 };
 
+inline bool isHeapPointer( MemoryBits f ) {
+    return f.get() == MemoryFlag::HeapPointer;
+};
+
 struct GlobalContext {
     ProgramInfo &info;
     ::llvm::TargetData &TD;

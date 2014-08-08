@@ -101,16 +101,15 @@ void MachineState< HeapMeta >::trace( Pointer p, Canonic< HeapMeta > &canonic )
         int size = pointerSize( p );
         canonic[ p ];
         for ( p.offset = 0; p.offset < size; p.offset += 4 )
-            if ( memoryflag( p ).get() == MemoryFlag::HeapPointer ) {
+            if ( isHeapPointer( memoryflag( p ) ) )
                 trace( followPointer( p ), canonic );
-            }
     }
 }
 
 template< typename Fun >
 void forPointers( machine::Frame &f, ProgramInfo &i, ValueRef v, Fun fun )
 {
-    if ( f.memoryflag( i, v ).get() == MemoryFlag::HeapPointer )
+    if ( isHeapPointer( f.memoryflag( i, v ) ) )
         fun( v, *f.dereference< Pointer >( i, v ) );
 /*
     while ( v.offset < v.v.width - 4 ) {
@@ -169,10 +168,10 @@ void MachineState< HeapMeta >::snapshot(
     /* And trace it. We work in 4 byte steps, pointers are 4 bytes and 4-byte aligned. */
     original.offset = edited.offset = 0;
     for ( ; original.offset < size; original.offset += 4, edited.offset += 4 ) {
-        bool recurse = this->memoryflag( original ).get() == MemoryFlag::HeapPointer;
-        if ( recurse )
-            heap.memoryflag( edited ).set( MemoryFlag::HeapPointer );
-        if ( recurse ) /* points to a pointer, recurse */
+        auto origflag = this->memoryflag( original );
+        if ( isHeapPointer( origflag ) )
+            heap.memoryflag( edited ).set( origflag.get() );
+        if ( isHeapPointer( origflag ) ) /* points to a pointer, recurse */
             snapshot( *heap.dereference< Pointer >( edited ),
                       followPointer( original ), canonic, heap );
         else
@@ -193,7 +192,7 @@ void MachineState< HeapMeta >::snapshot(
         FrameContext fctx( _info, f ), tctx( _info, target );
         memcopy( *val, *val, val->width, fctx, tctx );
         forPointers( f, _info, *val, [&]( ValueRef v, Pointer p ) {
-                target.memoryflag( _info, v ).set( MemoryFlag::HeapPointer );
+                target.memoryflag( _info, v ).set( f.memoryflag( _info, v ).get() );
                 this->snapshot( *target.dereference< Pointer >( _info, v ), p, canonic, heap );
             } );
     }
@@ -215,7 +214,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
             continue;
         Pointer p( false, i, 0 );
         for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
-            if ( global().memoryflag( _info, p ).get() == MemoryFlag::HeapPointer )
+            if ( isHeapPointer( global().memoryflag( _info, p ) ) )
                 trace( followPointer( p ), canonic );
     }
 
@@ -287,7 +286,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
             continue;
         Pointer p( false, i, 0 );
         for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
-            if ( global().memoryflag( _info, p ).get() == MemoryFlag::HeapPointer )
+            if ( isHeapPointer( global().memoryflag( _info, p ) ) )
                 snapshot( *(_global->dereference< Pointer >( _info, p )),
                           followPointer( p ), canonic, *_heap );
     }
@@ -350,10 +349,9 @@ bool MachineState< HeapMeta >::isPrivate( Pointer needle, Pointer p, Canonic< He
     if ( p.heap && !freed.count( p.segment ) ) {
         int size = pointerSize( p );
         for ( p.offset = 0; p.offset < size; p.offset += 4 )
-            if ( memoryflag( p ).get() == MemoryFlag::HeapPointer ) {
+            if ( isHeapPointer( memoryflag( p ) ) )
                 if ( !isPrivate( needle, followPointer( p ), canonic ) )
                     return false;
-            }
     }
 
     return true;
@@ -391,7 +389,7 @@ bool MachineState< HeapMeta >::isPrivate( int tid, Pointer needle )
             continue;
         Pointer p( false, i, 0 );
         for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
-            if ( global().memoryflag( _info, p ).get() == MemoryFlag::HeapPointer )
+            if ( isHeapPointer( global().memoryflag( _info, p ) ) )
                 if ( !isPrivate( needle, followPointer( p ), canonic ) )
                     return false;
     }
