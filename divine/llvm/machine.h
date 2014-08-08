@@ -691,15 +691,17 @@ struct MachineState
     }
 
     template< typename F >
-    void eachframe( Lens< Stack > s, F f ) {
+    bool eachframe( Lens< Stack > s, F f ) {
         int idx = 0;
         auto address = s.sub( 0 ).address();
         while ( idx < s.get().length() ) {
             Frame &fr = address.template as< Frame >();
-            f( fr );
+            if ( !f( fr ) )
+                return false;
             address = fr.advance( address, 0 );
             ++ idx;
         }
+        return true;
     }
 
     void switch_thread( int thread );
@@ -717,6 +719,7 @@ struct MachineState
     void snapshot( Pointer &edit, Pointer original, Canonic< HeapMeta > &canonic, Heap &heap );
     void snapshot( Frame &f, Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address );
     Blob snapshot();
+
     void rewind( Blob, int thread = 0 );
     void problem( Problem::What, Pointer p = Pointer() );
 

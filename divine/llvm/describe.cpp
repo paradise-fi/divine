@@ -414,6 +414,7 @@ std::string Describe< HM >::all()
                     }
                 }
                 s << "  #" << i << ": " << location << " " << wibble::str::fmt( this->lines ) << std::endl;
+                return true; // continue
             } );
     }
 
@@ -519,7 +520,7 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
                 ++ count;
                 if ( f.pc.function >= int( this->_info.functions.size() ) ) {
                     r << "<invalid PC>" << std::endl;
-                    return;
+                    return true;
                 }
                 auto fun = this->_info.function( f.pc );
                 r << "[" << fun.datasize << " bytes]\n";
@@ -532,6 +533,7 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
                     r << ", flags = " << static_cast< int >( f.memoryflag( this->_info, *i ).get() ) << "\n";
                 }
                 r << std::endl;
+                return true; // continue
             });
     }
 

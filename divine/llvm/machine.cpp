@@ -230,6 +230,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
         canonic.stack += sizeof( Stack );
         eachframe( stack( tid ), [&]( Frame &fr ) {
                 this->trace( fr, canonic );
+                return true; // continue
             } );
     }
 
@@ -296,6 +297,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
         address.advance( sizeof( int ) );
         eachframe( stack( tid ), [&]( Frame &fr ) {
                 snapshot( fr, canonic, *_heap, address );
+                return true; // continue
             });
     }
 
@@ -379,7 +381,6 @@ bool MachineState< HeapMeta >::isPrivate( int tid, Pointer needle )
     if ( !needle.heap ) /* globals are never private */
         return _thread_count <= 1;
 
-    bool found = false;
 
     Canonic< HeapMeta > canonic( *this );
 
@@ -394,19 +395,15 @@ bool MachineState< HeapMeta >::isPrivate( int tid, Pointer needle )
                     return false;
     }
 
-    struct Found {};
-
-    try {
-        for ( int search = 0; search < _thread_count; ++search ) {
-            if ( tid == search || found )
-                continue;
-            eachframe( stack( search ), [&]( Frame &fr ) {
+    for ( int search = 0; search < _thread_count; ++search ) {
+        if ( tid == search )
+            continue;
+        if ( !eachframe( stack( search ), [&]( Frame &fr ) {
                     if ( !isPrivate( needle, fr, canonic ) )
-                        throw Found();
-                } );
-        }
-    } catch ( Found ) {
-        return false;
+                        return false;
+                    return true;
+                } ) )
+            return false;
     }
 
     return true; /* not found */
