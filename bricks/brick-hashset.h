@@ -904,7 +904,25 @@ template< typename T, typename Hasher = default_hasher< T > >
 using FastConcurrent = _ConcurrentHashSet< FastAtomicCell< T, Hasher > >;
 
 template< typename T, typename Hasher = default_hasher< T > >
-using Concurrent = _ConcurrentHashSet< AtomicCell< T, Hasher > >;
+using CompactConcurrent = _ConcurrentHashSet< AtomicCell< T, Hasher > >;
+
+#ifdef BRICKS_FORCE_FAST_CONCURRENT_SET
+template< typename T, typename Hasher = default_hasher< T > >
+using Concurrent = FastConcurrent< T, Hasher >;
+
+#elif BRICKS_FORCE_COMPACT_CONCURRENT_SET
+template< typename T, typename Hasher = default_hasher< T > >
+using Concurrent = CompactConcurrent< T, Hasher >;
+
+#else
+template< typename T, typename Hasher = default_hasher< T > >
+using Concurrent = _ConcurrentHashSet< typename std::conditional< (
+              sizeof( Tagged< T > ) > 8 // most platforms do not have CAS for data types bigger then 64bit
+                                        // for example 16B CAS does not link in clang 3.4 on x86_64
+              || sizeof( std::atomic< Tagged< T > > ) > sizeof( Tagged< T > ) // atomic is not lock-free
+              || sizeof( AtomicCell< T, Hasher > ) >= sizeof( FastAtomicCell< T, Hasher > ) ),
+        FastAtomicCell< T, Hasher >, AtomicCell< T, Hasher > >::type >;
+#endif
 
 }
 }
@@ -1107,7 +1125,7 @@ struct test_hasher {
 
 template< typename T > using CS = Compact< T, test_hasher< T > >;
 template< typename T > using FS = Fast< T, test_hasher< T > >;
-template< typename T > using ConCS = Concurrent< T, test_hasher< T > >;
+template< typename T > using ConCS = CompactConcurrent< T, test_hasher< T > >;
 template< typename T > using ConFS = FastConcurrent< T, test_hasher< T > >;
 
 /* instantiate the testcases */
