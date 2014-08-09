@@ -69,28 +69,29 @@ template< typename HeapMeta >
 struct divine::llvm::Canonic
 {
     MachineState< HeapMeta > &ms;
-    std::map< int, int > segmap;
+    std::vector< int > segmap;
     int allocated, segcount;
     int stack;
     int boundary, segdone;
 
     Canonic( MachineState< HeapMeta > &ms )
         : ms( ms ), allocated( 0 ), segcount( 0 ), stack( 0 ), boundary( 0 ), segdone( 0 )
-    {}
+    {
+        segmap.resize( ms.nursery.offsets.size() - 1 + ms.nursery.segshift, -1 );
+    }
 
     Pointer operator[]( Pointer idx ) {
         if ( !idx.heap || !ms.validate( idx ) )
             return idx;
-        if ( !segmap.count( idx.segment ) ) {
-            segmap.insert( std::make_pair( int( idx.segment ), segcount ) );
-            ++ segcount;
+        if ( segmap[ idx.segment ] < 0 ) {
+            segmap[ idx.segment ] = segcount ++;
             allocated += ms.pointerSize( idx );
         }
-        return Pointer( idx.heap, segmap[ int( idx.segment ) ], idx.offset );
+        return Pointer( idx.heap, segmap[ idx.segment ], idx.offset );
     }
 
     bool seen( Pointer p ) {
-        return segmap.count( p.segment );
+        return segmap[ p.segment ] >= 0;
     }
 };
 
@@ -310,10 +311,12 @@ divine::Blob MachineState< HeapMeta >::snapshot()
     auto &nursery_hm = _pool.get< HeapMeta >( _heapmeta ),
           &mature_hm = state().get( HeapMeta() );
 
-    for ( auto &transl : canonic.segmap ) {
-        bool nursed = transl.first >= nursery.segshift;
+    for ( int seg = 0; seg < canonic.segmap.size(); ++seg ) {
+        if ( canonic.segmap[ seg ] < 0 )
+            continue;
+        bool nursed = seg >= nursery.segshift;
         heapmeta.copyFrom( nursed ? nursery_hm : mature_hm,
-                           transl.first - (nursed ? nursery.segshift : 0), transl.second );
+                           seg - (nursed ? nursery.segshift : 0), canonic.segmap[ seg ] );
     }
 
     assert_eq( canonic.segdone, canonic.segcount );
