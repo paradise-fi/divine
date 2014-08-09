@@ -198,6 +198,7 @@ struct ProgramInfo {
 
     std::vector< Function > functions;
     std::vector< Value > globals;
+    std::vector< std::pair< int, Value > > globalvars;
     std::vector< std::pair< ::llvm::Type *, std::string > > globalinfo, constinfo;
     std::vector< char > constdata;
     std::vector< char > globaldata; /* initial values! */

@@ -208,13 +208,10 @@ divine::Blob MachineState< HeapMeta >::snapshot()
     Canonic< HeapMeta > canonic( *this );
     int dead_threads = 0;
 
-    /* TODO inefficient, split globals into globals and constants */
-    for ( int i = 0; i < int( _info.globals.size() ); ++i ) {
-        ProgramInfo::Value v = _info.globals[i];
-        if ( v.constant )
-            continue;
-        Pointer p( false, i, 0 );
-        for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
+    for ( auto var : _info.globalvars ) {
+        assert ( !var.second.constant );
+        Pointer p( false, var.first, 0 );
+        for ( p.offset = 0; p.offset < var.second.width; p.offset += 4 )
             if ( isHeapPointer( global().memoryflag( _info, p ) ) )
                 trace( followPointer( p ), canonic );
     }
@@ -282,12 +279,10 @@ divine::Blob MachineState< HeapMeta >::snapshot()
     address.as< int >() = _thread_count - dead_threads;
     address.advance( sizeof( int ) ); // ick. length of the threads array
 
-    for ( int i = 0; i < int( _info.globals.size() ); ++i ) {
-        ProgramInfo::Value v = _info.globals[i];
-        if ( v.constant )
-            continue;
-        Pointer p( false, i, 0 );
-        for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
+    for ( auto var : _info.globalvars ) {
+        Pointer p( false, var.first, 0 );
+        assert( !var.second.constant );
+        for ( p.offset = 0; p.offset < var.second.width; p.offset += 4 )
             if ( isHeapPointer( global().memoryflag( _info, p ) ) )
                 snapshot( *(_global->dereference< Pointer >( _info, p )),
                           followPointer( p ), canonic, *_heap );
@@ -387,12 +382,10 @@ bool MachineState< HeapMeta >::isPrivate( int tid, Pointer needle )
 
     Canonic< HeapMeta > canonic( *this );
 
-    for ( int i = 0; i < int( _info.globals.size() ); ++i ) {
-        ProgramInfo::Value v = _info.globals[i];
-        if ( v.constant )
-            continue;
-        Pointer p( false, i, 0 );
-        for ( p.offset = 0; p.offset < v.width; p.offset += 4 )
+    for ( auto var : _info.globalvars ) {
+        Pointer p( false, var.first, 0 );
+        assert( !var.second.constant );
+        for ( p.offset = 0; p.offset < var.second.width; p.offset += 4 )
             if ( isHeapPointer( global().memoryflag( _info, p ) ) )
                 if ( !isPrivate( needle, followPointer( p ), canonic ) )
                     return false;
