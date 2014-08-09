@@ -54,7 +54,6 @@ namespace Intrinsic = ::llvm::Intrinsic;
 using ::llvm::CallSite;
 using ::llvm::Type;
 using wibble::Unit;
-using wibble::Maybe;
 
 template< int, int > struct Eq;
 template< int i > struct Eq< i, i > { typedef int Yes; };

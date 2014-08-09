@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2011-2014 Petr Ročkai <me@mornfall.net>
 
+#include <brick-types.h>
+
 #include <divine/llvm/program.h>
 #include <divine/toolkit/lens.h>
 
@@ -13,6 +15,8 @@
 
 namespace divine {
 namespace llvm {
+
+using brick::types::Maybe;
 
 template< typename HeapMeta > struct Canonic;
 

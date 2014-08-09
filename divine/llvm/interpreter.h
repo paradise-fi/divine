@@ -41,7 +41,6 @@ namespace divine {
 namespace llvm {
 
 template< typename T > struct Interpreter;
-using wibble::Maybe;
 using graph::Label;
 
 using namespace ::llvm;
