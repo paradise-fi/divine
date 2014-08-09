@@ -176,7 +176,7 @@ void MachineState< HeapMeta >::snapshot(
             snapshot( *heap.dereference< Pointer >( edited ),
                       followPointer( original ), canonic, heap );
         else
-            memcopy( original, edited, 4, *this, heap );
+            memcopy_fastpath( original, edited, 4, *this, heap );
     }
 }
 
@@ -188,10 +188,12 @@ void MachineState< HeapMeta >::snapshot(
     Frame &target = address.as< Frame >();
     target.pc = f.pc;
 
+    ProgramInfo::Value zero;
+    /* make a straight copy first, we will rewrite pointers next */
+    FrameContext fctx( _info, f ), tctx( _info, target );
+    memcopy_fastpath( zero, zero, target.datasize( _info ), fctx, tctx );
+
     for ( auto val = vals.begin(); val != vals.end(); ++val ) {
-        /* make a straight copy first, we will rewrite pointers next */
-        FrameContext fctx( _info, f ), tctx( _info, target );
-        memcopy( *val, *val, val->width, fctx, tctx );
         forPointers( f, _info, *val, [&]( ValueRef v, Pointer p ) {
                 target.memoryflag( _info, v ).set( f.memoryflag( _info, v ).get() );
                 this->snapshot( *target.dereference< Pointer >( _info, v ), p, canonic, heap );
