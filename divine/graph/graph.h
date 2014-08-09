@@ -3,7 +3,6 @@
 #include <vector>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/bitoperations.h>
-#include <divine/toolkit/ntreehashset.h> // for Recurse
 
 #ifndef DIVINE_GRAPH_H
 #define DIVINE_GRAPH_H
@@ -102,39 +101,38 @@ struct Base : Allocator {
 
     static const int SPLIT_LIMIT = 32; // should be multiple of 8
 
-    // yield( Recurse, length, remaining count )
-    template< typename Yield >
-    void splitHint( Node, int, int length, Yield yield ) {
-        // just a simple binary splitting, should be replaced by something
-        // more appropriate in generators
+    template< typename Coroutine >
+    void splitHint( Coroutine &cor, int a = 0, int b = 0, int chunk = SPLIT_LIMIT ) {
+        if ( !a )
+            a = cor.unconsumed();
 
-        if ( length <= SPLIT_LIMIT ) {
-            yield( Recurse::No, length, 0 );
-            return;
+        for ( int length : { a, b } ) {
+            if ( !length )
+                continue;
+
+            if ( length <= chunk ) {
+                cor.consume( length );
+                continue;
+            }
+
+            unsigned count = align( length, chunk ) / chunk;
+            assert_leq( int( (count - 1) * chunk ), length );
+            assert_leq( length, int( count * chunk ) );
+
+            unsigned msb = bitops::onlyMSB( count );
+            unsigned nomsb = count & ~msb;
+            unsigned rem = count * chunk - length;
+            assert_leq( 0, int( rem ) );
+            assert_leq( int( rem ), chunk );
+
+            if ( !nomsb ) {
+                msb /= 2;
+                nomsb = msb;
+            }
+
+            assert_eq( msb + nomsb, count );
+            cor.recurse( 2, msb * chunk, nomsb * chunk - rem, chunk );
         }
-
-        unsigned count = align( length, SPLIT_LIMIT ) / SPLIT_LIMIT;
-        assert_leq( int( (count - 1) * SPLIT_LIMIT ), length );
-        assert_leq( length, int( count * SPLIT_LIMIT ) );
-
-        unsigned msb = bitops::onlyMSB( count );
-        unsigned nomsb = count & ~msb;
-        unsigned rem = count * SPLIT_LIMIT - length;
-        assert_leq( 0, int( rem ) );
-        assert_leq( int( rem ), SPLIT_LIMIT );
-        if ( !nomsb ) {
-            msb /= 2;
-            nomsb = msb;
-        }
-        assert_eq( msb + nomsb, count );
-
-        yield( Recurse::Yes, msb * SPLIT_LIMIT, 1 );
-        yield( Recurse::Yes, nomsb * SPLIT_LIMIT - rem, 0 );
-    }
-
-    template< typename Yield >
-    void splitHint( Node n, Yield yield ) {
-        return splitHint( n, slack(), pool().size( n ) - slack(), yield );
     }
 
     std::string showConstdata() { return ""; }

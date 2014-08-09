@@ -21,8 +21,6 @@ namespace divine {
 
 using namespace brick;
 
-enum class Recurse : uint8_t { Yes, No };
-
 template< typename T >
 struct NewtypeHasher {
     Pool &p;
@@ -434,81 +432,113 @@ struct NTreeHashSet
             : _d( d ), _td( td )
         {}
 
-        iterator insertHinted( insert_type item, hash64_t hash )
-        {
+        struct SplitCoroutine {
+            Data &d;
+            ThreadData< Splitter > &td;
+            insert_type item;
             Root root;
+            std::vector< std::pair< Fork, int > > stack;
+            char *start, *current;
+            int size;
 
-            LeafOrFork* ptr = nullptr;
-            char* from = _td.pool().dereference( item ) + this->_d.slack;
-            _td.splitter().splitHint( item, [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
-                    if ( rec == Recurse::No ) {
-                        root = Root::createFlat( item, this->_td.pool() );
-                        assert_eq( remaining, 0 );
-                    } else {
-                        if ( !this->_td.pool().valid( root.unwrap() ) ) {
-                            root = Root::create( item, remaining + 1, this->_d.slack, this->_td.pool() );
-                            ptr = root.forkdata( this->_td.pool() );
-                            assert_leq( 1, remaining );
-                        }
-                        assert( ptr != nullptr );
+            Fork &fork() { assert( stack.size() > 1 ); return stack.back().first;  }
 
-                        *ptr = this->createChild( item, from, length, this->_td.pool() );
-                        ++ptr;
-                    }
+            int forkcount() {
+                assert( !stack.empty() );
+                return stack.size() == 1 ?
+                       root.forkcount( td.pool() ) :
+                       fork().forkcount( td.pool() );
+            }
 
-                    assert( this->_td.pool().valid( root.unwrap() ) );
-                    from += length;
-                } );
+            LeafOrFork *forkdata() {
+                assert( !stack.empty() );
+                return stack.size() == 1 ?
+                       root.forkdata( td.pool() ) :
+                       fork().forkdata( td.pool() );
+            }
 
-            assert( _td.pool().valid( root.unwrap() ) );
-            assert_eq( size_t( from ), size_t( _td.pool().dereference( item ) + _td.pool().size( item ) ) );
+            LeafOrFork &target() { return *(forkdata() + stack.back().second); }
 
-            auto tr = _d.roots.withTD( _td.roots ).insertHinted( root, hash );
-            if ( !tr.isnew() )
-                this->_td.pool().free( root.unwrap() );
+            SplitCoroutine( Data &d, ThreadData< Splitter > &td, insert_type item )
+                : d( d ), td( td ), item( item ),
+                  start( td.pool().dereference( item ) + d.slack ),
+                  current( start ), size( td.pool().size( item ) - d.slack )
+            {}
 
-            return tr;
-        }
+            int unconsumed() {
+                return start + size - current;
+            }
 
-        LeafOrFork createChild( insert_type item, char* from, intptr_t length, Pool &pool )
-        {
-            assert_leq( pool.dereference( item ) + _d.slack, from );
-            assert_leq( from, pool.dereference( item ) + pool.size( item ) );
-
-            LeafOrFork child;
-            LeafOrFork* ptr = nullptr;
-            _td.splitter().splitHint( item, from - pool.dereference( item ), length,
-                                 [&]( Recurse rec, intptr_t length, intptr_t remaining ) {
-                    if ( rec == Recurse::No ) {
-                        assert( child.isNull( pool ) );
-                        assert( ptr == nullptr );
-                        assert_eq( remaining, 0 );
-                        child = Leaf( length, from, pool );
-                    } else {
-                        if ( child.isNull( pool ) ) {
-                            child = Fork( remaining + 1, pool );
-                            ptr = child.fork().forkdata( pool );
-                        }
-                        assert( !child.isNull( pool ) );
-                        assert( ptr != nullptr );
-
-                        *ptr = this->createChild( item, from, length, pool );
-                        ++ptr;
-                    }
-                    from += length;
-                } );
-
-            if ( child.isLeaf() ) {
-                auto c = _d.leaves.withTD( _td.leaves ).insert( child.leaf() );
+            template< typename Table, typename I >
+            LeafOrFork insert( Table &table, typename Table::ThreadData &table_td, I i ) {
+                auto c = table.withTD( table_td ).insert( i );
                 if ( !c.isnew() )
-                    pool.free( child.blob() );
-                return c.copy();
-            } else {
-                auto c = _d.forks.withTD( _td.forks ).insert( child.fork() );
-                if ( !c.isnew() )
-                    pool.free( child.blob() );
+                    td.pool().free( i.unwrap() );
                 return c.copy();
             }
+
+            void split( int subdivides ) {
+                if ( stack.empty() ) { /* no root yet, create it */
+                    assert( !td.pool().valid( root.unwrap() ) );
+                    root = Root::create( item, subdivides, d.slack, td.pool() );
+                    stack.emplace_back( Fork(), 0 );
+                } else
+                    stack.emplace_back( Fork( subdivides, td.pool() ), 0 );
+            }
+
+            void advance() { assert( !stack.empty() ); stack.back().second ++; }
+
+            void join() {
+                auto f = stack.back().first;
+                assert_eq( forkcount(), stack.back().second );
+                stack.pop_back();
+                if ( !stack.empty() ) {
+                    assert_leq( &target(), forkdata() + forkcount() );
+                    target() = insert( d.forks, td.forks, f );
+                    advance();
+                }
+                assert( td.pool().valid( root.unwrap() ) );
+            }
+
+            template< typename... R >
+            void recurse( int subdivides, R... r )
+            {
+                split( subdivides );
+                td.splitter().splitHint( *this, r... );
+                join();
+            }
+
+            void consume( intptr_t length ) {
+                assert_leq( start, current );
+                assert_leq( current, start + size );
+                assert_leq( current + length, start + size );
+
+                if ( stack.empty() ) {
+                    assert( !td.pool().valid( root.unwrap() ) );
+                    root = Root::createFlat( item, td.pool() );
+                } else {
+                    target() = insert( d.leaves, td.leaves,
+                                          Leaf( length, current, td.pool() ) );
+                    advance();
+                }
+                current += length;
+            }
+        };
+
+        iterator insertHinted( insert_type item, hash64_t hash )
+        {
+            SplitCoroutine cor( _d, _td, item );
+            _td.splitter().splitHint( cor );
+
+            assert_eq( static_cast< void * >( cor.current ),
+                       static_cast< void * >( cor.start + cor.size ) );
+
+            assert( cor.stack.empty() );
+            auto tr = _d.roots.withTD( _td.roots ).insertHinted( cor.root, hash );
+            if ( !tr.isnew() )
+                _td.pool().free( cor.root.unwrap() );
+
+            return tr;
         }
 
         iterator find( insert_type item ) {

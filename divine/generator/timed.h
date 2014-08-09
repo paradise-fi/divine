@@ -208,46 +208,29 @@ struct Timed : public Common< Blob > {
         gen.finalizeUra();
 	}
 
-    // yield( Recurse, length, remaining count )
-    template< typename Yield >
-    void splitHint( Node, int from, int length, Yield yield ) {
-        assert_leq( slack(), from );
-        from -= slack();
-
-        if ( length <= Common::SPLIT_LIMIT ) {
-            yield( Recurse::No, length, 0 );
-            return;
-        }
-        auto splits = gen.getSplitPoints();
-        if ( from == 0 && length == int( splits[ 1 ] ) ) {
-            yield( Recurse::Yes, splits[ 0 ], 1 );
-            yield( Recurse::Yes, length - splits[ 0 ], 1 );
-        } else if ( from >= int( splits[ 1 ] ) && length > int( splits[ 2 ] ) ) {
-            assert_eq( length % splits[ 2 ], 0u );
-            unsigned count = length / splits[ 2 ];
-            if ( count == 1 ) {
-                yield( Recurse::No, length, 0 );
-            } else {
-                unsigned msb = bitops::onlyMSB( count );
-                unsigned nomsb = count & ~msb;
-                if ( !nomsb ) {
-                    msb /= 2;
-                    nomsb = msb;
-                }
-                yield( Recurse::Yes, splits[ 2 ] * msb, 1 );
-                yield( Recurse::Yes, splits[ 2 ] * nomsb, 0 );
-            }
-        } else {
-            yield( Recurse::No, length, 0 );
-        }
+    template< typename Coroutine >
+    void splitHint( Coroutine &cor, int a, int b, int ch ) {
+        Common::splitHint( cor, a, b, ch );
     }
 
-    // top-level split
-    template< typename Yield >
-    void splitHint( Node, Yield yield ) {
+    template< typename Coroutine >
+    void splitHint( Coroutine &cor ) {
+        if ( cor.unconsumed() <= Common::SPLIT_LIMIT ) {
+            cor.consume( cor.unconsumed() );
+            return;
+        }
+
         auto splits = gen.getSplitPoints();
-        yield( Recurse::Yes, splits[ 1 ], 1 );
-        yield( Recurse::Yes, gen.stateSize() - splits[ 1 ], 0 );
+        cor.split( 2 );
+
+        cor.split( 2 );
+        cor.consume( splits[ 0 ] );
+        cor.consume( splits[ 1 ] - splits[ 0 ] );
+        cor.join();
+
+        // run the binary splitter from Common on the rest
+        Common::splitHint( cor, cor.unconsumed(), 0, splits[ 2 ] );
+        cor.join();
     }
 
 private:

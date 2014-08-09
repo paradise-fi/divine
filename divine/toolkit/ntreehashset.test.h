@@ -24,69 +24,67 @@ struct FakeGeneratorBase {
     }
 };
 
-struct FakeGeneratorFlat : public FakeGeneratorBase {
-    template< typename Yield >
-    void splitHint( Blob, intptr_t, intptr_t length, Yield yield ) {
-        yield( Recurse::No, length, 0 );
-    }
-
-    template< typename Yield >
-    void splitHint( Blob n, Yield yield ) {
-        splitHint( n, 0, pool().size( n ), yield );
+struct FakeGeneratorFlat : public FakeGeneratorBase
+{
+    template< typename Coroutine >
+    void splitHint( Coroutine &cor, int = 0 ) {
+        cor.consume( pool().size( cor.item ) );
     }
 };
 
 struct FakeGeneratorBinary : public FakeGeneratorBase {
 
-    template< typename Yield >
-    void splitHint( Blob, intptr_t, intptr_t length, Yield yield ) {
-        if ( length < 32 )
-            yield( Recurse::No, length, 0 );
-        else {
-            auto half = length >> 1;
-            yield( Recurse::Yes, length - half, 1 );
-            yield( Recurse::Yes, half, 0 );
-        }
-    }
+    template< typename Coroutine >
+    void splitHint( Coroutine &cor, int a = 0, int b = 0 )
+    {
+        if ( !a )
+            a = cor.unconsumed();
 
-    template< typename Yield >
-    void splitHint( Blob n, Yield yield ) {
-        splitHint( n, 0, pool().size( n ), yield );
+        for ( int l : { a, b } ) {
+            if ( !l )
+                continue;
+
+            if ( l < 32 )
+                cor.consume( l );
+            else
+                cor.recurse( 2, l - l / 2, l / 2 );
+        }
     }
 };
 
 struct FakeGeneratorFixed : public FakeGeneratorBase {
 
-    std::vector< int > limits;
+    std::vector< int > sizes;
 
-    FakeGeneratorFixed( std::initializer_list< int > limits )
+    FakeGeneratorFixed( std::initializer_list< int > sz )
+        : sizes( sz )
     {
-        int sum = 0;
-        for ( auto i : limits )
-            this->limits.push_back( sum += i );
     }
 
-    template< typename Yield >
-    void splitHint( Blob, intptr_t from, intptr_t length, Yield yield ) {
+    template< typename Coroutine >
+    void splitHint( Coroutine &cor )
+    {
+        std::vector< int > splits;
+        int to_split = cor.unconsumed();
+        auto it = sizes.begin();
 
-        for ( auto it = limits.begin(); it != limits.end(); ++it ) {
-            if ( *it == from ) {
-                if ( it + 1 == limits.end() )
-                    yield( Recurse::No, length, 0 );
-                else {
-                    int len = it[ 1 ] - *it;
-                    yield( Recurse::Yes, len, 1 );
-                    yield( Recurse::Yes, length - len, 0 );
-                }
-                return;
-            }
+        while ( to_split && it != sizes.end() ) {
+            int chunk = std::min( *it++, to_split );
+            to_split -= chunk;
+            splits.push_back( chunk );
         }
-        yield( Recurse::No, length, 0 );
-    }
 
-    template< typename Yield >
-    void splitHint( Blob n, Yield yield ) {
-        splitHint( n, 0, pool().size( n ), yield );
+        if ( to_split )
+            splits.push_back( to_split );
+
+        if ( splits.size() > 1 )
+            cor.split( splits.size() );
+
+        for ( int i : splits )
+            cor.consume( i );
+
+        if ( splits.size() > 1 )
+            cor.join();
     }
 };
 
