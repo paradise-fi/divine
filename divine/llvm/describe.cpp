@@ -209,7 +209,8 @@ std::string Describe< HM >::value( Type *t, Ptr where )
         return pointer( t, mem ? *reinterpret_cast< Pointer * >( mem ) : Pointer() );
     }
     if ( t->isIntegerTy() ) {
-        if ( state().memoryflag( where ).get() == MemoryFlag::Uninitialised )
+        auto mflag = state().memoryflag( where );
+        if ( mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
             return "?";
         return fmtInteger( state().dereference( where ), TD().getTypeAllocSize( t ) * 8 );
     }
@@ -253,14 +254,15 @@ std::string Describe< HM >::value( std::pair< ::llvm::Type *, std::string > val,
     if ( !where.null() ) {
         value = this->value( type, where );
     } else { /* scalar */
-        if ( type->isPointerTy() && state().memoryflag( vref ).get() == MemoryFlag::HeapPointer ) {
+        auto mflag = state().memoryflag( vref );
+        if ( type->isPointerTy() && mflag.valid() && mflag.get() == MemoryFlag::HeapPointer ) {
             char *mem = state().dereference( vref );
             value = pointer( type, *reinterpret_cast< Pointer * >( mem ) );
         } else if ( vref.v.type == ProgramInfo::Value::Aggregate )
             value = aggregate( type, vref );
         else {
             if ( vref.v.width && state().dereference( vref ) &&
-                 state().memoryflag( vref ).get() == MemoryFlag::Uninitialised )
+                 mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
                 value = "?";
             else
                 value = fmtInteger( state().dereference( vref ), vref.v.width * 8 );

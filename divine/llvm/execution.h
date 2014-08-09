@@ -189,7 +189,8 @@ struct Evaluator
         if ( instruction.result().type == ProgramInfo::Value::Void )
             return;
 
-        if ( econtext.memoryflag( r ).get() != MemoryFlag::HeapPointer )
+        auto mflag = econtext.memoryflag( r );
+        if ( !mflag.valid() || mflag.get() != MemoryFlag::HeapPointer )
             return; /* nothing to do */
 
         auto p = *reinterpret_cast< Pointer * >( econtext.dereference( r ) );
@@ -1275,7 +1276,9 @@ struct Evaluator
         wibble::param::discard( i, e );
         fun._evaluator = this;
         auto retval = match( fun, list );
-        econtext.memoryflag( result.back() ).set( fun.resultFlag( flags.back() ) );
+        auto mflag = econtext.memoryflag( result.back() );
+        if ( mflag.valid() )
+            mflag.set( fun.resultFlag( flags.back() ) );
         flags.pop_back();
         result.pop_back();
         return retval;
@@ -1293,7 +1296,8 @@ struct Evaluator
 
         ValueRef v = *i++;
         char *mem = dereference( v );
-        flags.back().push_back( econtext.memoryflag( v ).get() );
+        auto mflag = econtext.memoryflag( v );
+        flags.back().push_back( mflag.valid() ? mflag.get() : MemoryFlag::Data );
 
         switch ( v.v.type ) {
             case Value::Integer: if ( is_signed ) switch ( v.v.width ) {

@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2011-2014 Petr Ročkai <me@mornfall.net>
 
 #include <brick-types.h>
+#include <brick-bitlevel.h>
 
 #include <divine/llvm/program.h>
 #include <divine/toolkit/lens.h>
@@ -36,8 +37,15 @@ template < typename From, typename To, typename FromC, typename ToC >
 void memcopy_fastpath( From f, To t, int bytes, FromC &fromc, ToC &toc, char *from, char *to )
 {
     memcpy( to, from, bytes );
-    bitcopy( fromc.memoryflag( f ), toc.memoryflag( t ),
-             bytes * MemoryBits::bitwidth );
+    auto fmf = fromc.memoryflag( f ), tmf = toc.memoryflag( t );
+    if (!tmf.valid() )
+        return;
+
+    if ( fmf.valid() )
+        bitcopy( fmf, tmf, bytes * MemoryBits::bitwidth );
+    else if ( tmf.valid() )
+        for ( int i = 0; i < bytes; ++i )
+            (tmf++).set( MemoryFlag::Data );
 }
 
 template < typename From, typename To, typename FromC, typename ToC >
@@ -50,7 +58,8 @@ void memcopy_unsafe( From f, To t, int bytes, FromC &fromc, ToC &toc, char *from
 
     if ( unalignment ) {
         t.offset -= unalignment;
-        if ( toc.memoryflag( t ).get() == MemoryFlag::HeapPointer )
+        auto tmf = toc.memoryflag( t );
+        if ( tmf.valid() && tmf.get() == MemoryFlag::HeapPointer )
             clobbered = Maybe< To >::Just( t );
         t.offset += unalignment;
     }
@@ -61,12 +70,17 @@ void memcopy_unsafe( From f, To t, int bytes, FromC &fromc, ToC &toc, char *from
             toc.memoryflag( clobbered.value() ).set( MemoryFlag::Uninitialised );
     } else {
         memmove( to, from, bytes );
+
+        if ( !toc.memoryflag( t ).valid() )
+            return;
+
         std::vector< std::pair< To, MemoryFlag > > setflags;
         if ( clobbered.isJust() )
             setflags.emplace_back( clobbered.value(), MemoryFlag::Uninitialised );
 
         while ( f.offset < f_end ) {
-            setflags.emplace_back( t, fromc.memoryflag( f ).get() );
+            auto fmf = fromc.memoryflag( f );
+            setflags.emplace_back( t, fmf.valid() ? fmf.get() : MemoryFlag::Data );
             f.offset ++;
             t.offset ++;
         }
@@ -527,22 +541,16 @@ struct MachineState
             return heap().memoryflag( p );
         if ( globalPointer( p ) )
             return global().memoryflag( _info, p );
-        if ( constantPointer( p ) )
-            return _const_bits();
+        if( constantPointer( p ) )
+            return MemoryBits();
         assert_unreachable( "invalid pointer passed to memoryflags" );
-    }
-
-    MemoryFlag _const_flag;
-    MemoryBits _const_bits() {
-        assert( _const_flag == MemoryFlag::Data );
-        return MemoryBits( reinterpret_cast< uint8_t * >( &_const_flag ), 0 );
     }
 
     MemoryBits memoryflag( ValueRef v ) {
         if ( v.tid < 0 )
             v.tid = _thread;
-        if ( v.v.constant )
-            return _const_bits();
+        if( v.v.constant )
+            return MemoryBits();
         assert( !v.v.global );
         return frame( v ).memoryflag( _info, v );
     }
@@ -767,7 +775,7 @@ struct MachineState
     }
 
     MachineState( ProgramInfo &i, Pool &pool, int slack )
-        : _info( i ), _pool( pool ), _slack( slack ), _const_flag( MemoryFlag::Data )
+        : _info( i ), _pool( pool ), _slack( slack )
     {
         _thread_count = 0;
         _frame = nullptr;

@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2012-2014 Petr Ročkai <me@mornfall.net>
 
+#include <brick-bitlevel.h>
+
 #include <wibble/mixin.h>
 #include <wibble/test.h>
 #include <divine/toolkit/blob.h> // for align
@@ -29,6 +31,9 @@ class IntrinsicLowering;
 
 namespace divine {
 namespace llvm {
+
+using brick::bitlevel::bitcopy;
+using brick::bitlevel::BitPointer;
 
 struct Pointer;
 
@@ -328,7 +333,7 @@ enum class MemoryFlag {
 struct MemoryBits : BitPointer {
     static const int bitwidth = 2;
 
-    MemoryBits( uint8_t *base, int offset )
+    MemoryBits( uint8_t *base = nullptr, int offset = 0 )
         : BitPointer( base, offset * bitwidth )
     {}
 
@@ -349,9 +354,15 @@ struct MemoryBits : BitPointer {
         return u.t;
     }
 
-    MemoryBits operator++() {
+    MemoryBits &operator++() {
         shift( bitwidth );
         return *this;
+    }
+
+    MemoryBits operator++(int) {
+        MemoryBits b = *this;
+        shift( bitwidth );
+        return b;
     }
 };
 
@@ -364,8 +375,6 @@ struct GlobalContext {
     ::llvm::TargetData &TD;
     bool allow_global;
 
-    MemoryFlag _const_flag;
-
     Pointer malloc( int, int ) { assert_die(); }
     bool free( Pointer ) { assert_die(); }
     int pointerSize( Pointer ) { assert_die(); }
@@ -377,11 +386,7 @@ struct GlobalContext {
         assert_unreachable( "no pointerId in global context" );
     }
 
-    MemoryBits memoryflag( Pointer ) {
-        assert( _const_flag == MemoryFlag::Data );
-        return MemoryBits( reinterpret_cast< uint8_t * >( &_const_flag ), 0 );
-    }
-
+    MemoryBits memoryflag( Pointer ) { return MemoryBits(); }
     MemoryBits memoryflag( ValueRef ) { return memoryflag( Pointer() ); }
 
     void dump() {}
@@ -406,7 +411,7 @@ struct GlobalContext {
     }
 
     GlobalContext( ProgramInfo &i, ::llvm::TargetData &TD, bool global )
-        : info( i ), TD( TD ), allow_global( global ), _const_flag( MemoryFlag::Data )
+        : info( i ), TD( TD ), allow_global( global )
     {}
 };
 
