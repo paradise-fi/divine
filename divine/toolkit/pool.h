@@ -476,15 +476,46 @@ struct Lake {
  */
 struct Pond {
 
-    struct Pointer {
-        char *p;
-        Pointer() : p( nullptr ) {}
-        uint64_t raw() { return uintptr_t( p ); }
-        static Pointer fromRaw( uint64_t r ) {
+    struct PtrHeader {
+        uint32_t size;
+
+    };
+
+    struct Pointer : wibble::mixin::Comparable< Pointer > {
+        using Raw = uint64_t;
+
+        Pointer() : _ptr( 0 ) { }
+        Pointer( void *ptr ) : _ptr( ptr ) { }
+
+        Raw raw() const { return uint64_t( _ptr ); }
+        static Pointer fromRaw( Raw r ) {
             Pointer p;
-            p.p = reinterpret_cast< char * >( r );
+            p._ptr = reinterpret_cast< char * >( r );
             return p;
         }
+
+        uint64_t raw_address() const { return uint64_t( _ptr ); }
+
+        explicit operator bool() const { return _ptr; }
+        bool operator!() const { return !_ptr; }
+        bool operator<=( const Pointer &p ) const { return raw() <= p.raw(); }
+
+        char *ptr() { return static_cast< char * >( _ptr ) + sizeof( PtrHeader ); }
+        const char *ptr() const { return reinterpret_cast< const char * >( _ptr ) + sizeof( PtrHeader ); }
+
+        PtrHeader &header() { return *static_cast< PtrHeader * >( _ptr ); }
+
+        static Pointer allocate( int n ) {
+            Pointer p( ::operator new( n + sizeof( PtrHeader ) ) );
+            p.header().size = n;
+            return p;
+        }
+        void free() {
+            ::operator delete( _ptr );
+            _ptr = nullptr;
+        }
+
+        void *_ptr;
     };
 
     Pond() {}
@@ -495,82 +526,13 @@ struct Pond {
         Wharf( std::shared_ptr< Pond > ) {}
         Wharf() {}
 
-        char *dereference( Pointer p ) { return p.p + 8; }
-        const char *dereference( Pointer p ) const { return p.p + 8; }
-        bool valid( Pointer p ) { return p.p != nullptr; }
-        uint64_t &_size( Pointer p ) { return *reinterpret_cast< uint64_t *> ( p.p ); }
-        int size( Pointer p ) { return int( _size( p ) ); }
-        bool alias( Pointer a, Pointer  b ) { return a.p == b.p; }
-        void free( Pointer p ) { delete[] p.p; }
-
-        Pointer allocate( size_t s ) {
-            Pointer p;
-            p.p = new char[ s + sizeof( uint64_t ) ];
-            _size( p ) = s;
-            return p;
-        }
-
-    };
-};
-
-struct PondInDivine {
-
-    struct Pointer {
-        using Raw = std::tuple< uint64_t, uint32_t, uint32_t >;
-        static const unsigned tagBits = 32;
-
-        Pointer() : _ptr( 0 ), _tag( 0 ), _size( 0 ) { }
-
-        unsigned tag() const { return _tag; }
-        void setTag( unsigned v ) { _tag = v; }
-
-        Raw raw() const { return std::make_tuple( uint64_t( _ptr ), _tag, _size ); }
-        static Pointer fromRaw( Raw r ) {
-            Pointer p;
-            uint64_t ptr;
-            std::tie( ptr, p._tag, p._size ) = r;
-            p._ptr = reinterpret_cast< char * >( ptr );
-            return p;
-        }
-
-        uint64_t raw_address() const { return uint64_t( _ptr ); }
-
-        static Pointer fromPtr( char *ptr ) {
-            Pointer p;
-            p._ptr = ptr;
-            return p;
-        }
-
-        explicit operator bool() const { return _ptr; }
-        bool operator!() const { return !_ptr; }
-        bool operator<=( const Pointer &p ) const { return raw() <= p.raw(); }
-
-        char *_ptr;
-        uint32_t _tag;
-        uint32_t _size;
-    };
-
-    PondInDivine() {}
-    PondInDivine( const PondInDivine & ) = delete;
-
-    struct Wharf {
-
-        Wharf( std::shared_ptr< PondInDivine > ) {}
-        Wharf() {}
-
-        char *dereference( Pointer p ) { return p._ptr; }
-        const char *dereference( Pointer p ) const { return p._ptr; }
+        char *dereference( Pointer p ) { return p.ptr(); }
+        const char *dereference( Pointer p ) const { return p.ptr(); }
         bool valid( Pointer p ) { return bool( p ); }
-        int size( Pointer p ) { return p._size; }
+        int size( Pointer p ) { return p.header().size; }
         bool alias( Pointer a, Pointer  b ) { return a._ptr == b._ptr; }
-        void free( Pointer p ) { delete[] p._ptr; }
-
-        Pointer allocate( size_t s ) {
-            Pointer p = Pointer::fromPtr( new char[ s ] );
-            p._size = s;
-            return p;
-        }
-
+        void free( Pointer p ) { p.free(); }
+        Pointer allocate( size_t s ) { return Pointer::allocate( s ); }
     };
 };
 
@@ -668,10 +630,8 @@ struct Dereference {
 
 #ifdef O_POOLS
 typedef Dereference< Lake > Pool;
-#elif !defined(__divine__)
-typedef Dereference< Pond > Pool;
 #else
-typedef Dereference< PondInDivine > Pool;
+typedef Dereference< Pond > Pool;
 #endif
 
 typedef Pool::Blob Blob;
