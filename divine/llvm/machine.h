@@ -33,6 +33,59 @@ struct Problem {
 };
 
 template < typename From, typename To, typename FromC, typename ToC >
+void memcopy_fastpath( From f, To t, int bytes, FromC &fromc, ToC &toc, char *from, char *to )
+{
+    memcpy( to, from, bytes );
+    bitcopy( fromc.memoryflag( f ), toc.memoryflag( t ),
+             bytes * MemoryBits::bitwidth );
+}
+
+template < typename From, typename To, typename FromC, typename ToC >
+void memcopy_unsafe( From f, To t, int bytes, FromC &fromc, ToC &toc, char *from, char *to )
+{
+    int distance = to - from;
+    int unalignment = t.offset % 4;
+    Maybe< To > clobbered = Maybe< To >::Nothing();
+    int f_end = f.offset + bytes;
+
+    if ( unalignment ) {
+        t.offset -= unalignment;
+        if ( toc.memoryflag( t ).get() == MemoryFlag::HeapPointer )
+            clobbered = Maybe< To >::Just( t );
+        t.offset += unalignment;
+    }
+
+    if ( abs( distance ) >= bytes ) {
+        memcopy_fastpath( f, t, bytes, fromc, toc, from, to );
+        if ( clobbered.isJust() )
+            toc.memoryflag( clobbered.value() ).set( MemoryFlag::Uninitialised );
+    } else {
+        memmove( to, from, bytes );
+        std::vector< std::pair< To, MemoryFlag > > setflags;
+        if ( clobbered.isJust() )
+            setflags.emplace_back( clobbered.value(), MemoryFlag::Uninitialised );
+
+        while ( f.offset < f_end ) {
+            setflags.emplace_back( t, fromc.memoryflag( f ).get() );
+            f.offset ++;
+            t.offset ++;
+        }
+
+        for ( auto s : setflags )
+            toc.memoryflag( s.first ).set( s.second );
+    }
+
+}
+
+template < typename From, typename To, typename FromC, typename ToC >
+void memcopy_fastpath( From f, To t, int bytes, FromC &fromc, ToC &toc )
+{
+    char *from = fromc.dereference( f ),
+           *to = toc.dereference( t );
+    memcopy_fastpath( f, t, bytes, fromc, toc, from, to );
+}
+
+template < typename From, typename To, typename FromC, typename ToC >
 Problem::What memcopy( From f, To t, int bytes, FromC &fromc, ToC &toc )
 {
     if ( !bytes )
@@ -40,7 +93,6 @@ Problem::What memcopy( From f, To t, int bytes, FromC &fromc, ToC &toc )
 
     char *from = fromc.dereference( f ),
            *to = toc.dereference( t );
-    int f_end = f.offset + bytes;
 
     if ( !from || !to )
         return Problem::InvalidDereference;
@@ -49,28 +101,7 @@ Problem::What memcopy( From f, To t, int bytes, FromC &fromc, ToC &toc )
          !toc.inBounds( t, bytes - 1 ) )
         return Problem::OutOfBounds;
 
-    memmove( to, from, bytes );
-
-    int unalignment = t.offset % 4;
-
-    std::vector< std::pair< To, MemoryFlag > > setflags;
-
-    /* check whether we are writing over part of a (former) pointer */
-    if ( unalignment ) {
-        t.offset -= unalignment;
-        if ( toc.memoryflag( t ).get() == MemoryFlag::HeapPointer )
-            setflags.emplace_back( t, MemoryFlag::Uninitialised );
-        t.offset += unalignment;
-    }
-
-    while ( f.offset < f_end ) {
-        setflags.emplace_back( t, fromc.memoryflag( f ).get() );
-        f.offset ++;
-        t.offset ++;
-    }
-
-    for ( auto s : setflags )
-        toc.memoryflag( s.first ).set( s.second );
+    memcopy_unsafe( f, t, bytes, fromc, toc, from, to );
 
     return Problem::NoProblem;
 }
