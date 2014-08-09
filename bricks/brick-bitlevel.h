@@ -150,15 +150,16 @@ struct BitPointer {
     {
         normalize();
     }
-    uint32_t &word() { return *static_cast< uint32_t * >( base ); }
-    uint64_t &dword() { return *static_cast< uint64_t * >( base ); }
+    uint32_t &word() { ASSERT( valid() ); return *static_cast< uint32_t * >( base ); }
+    uint64_t &dword() { ASSERT( valid() ); return *static_cast< uint64_t * >( base ); }
     void normalize() {
-        base = &word() + _bitoffset / 32;
+        base = static_cast< uint32_t * >( base ) + _bitoffset / 32;
         _bitoffset = _bitoffset % 32;
     }
     void shift( int bits ) { _bitoffset += bits; normalize(); }
     void fromReference( BitPointer r ) { *this = r; }
     int bitoffset() { return _bitoffset; }
+    bool valid() { return base; }
 private:
     void *base;
     int _bitoffset;
