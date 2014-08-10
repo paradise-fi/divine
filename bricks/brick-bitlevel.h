@@ -45,7 +45,7 @@
 #endif // WIN32
 
 #include <atomic>
-
+#include <cstring>
 
 #ifndef BRICK_BITLEVEL_H
 #define BRICK_BITLEVEL_H
@@ -392,8 +392,8 @@ struct BitTupleTest {
         ASSERT_EQ( b, 0x3FFu );
 
         unsigned char from[32], to[32];
-        memset( from, 0, 32 );
-        memset( to, 0, 32 );
+        std::memset( from, 0, 32 );
+        std::memset( to, 0, 32 );
         from[0] = 1 << 7;
         bitlevel::bitcopy( BitPointer( from, 7 ), BitPointer( to, 7 ), 1 );
         ASSERT_EQ( int( to[0] ), int( from[ 0 ] ) );
@@ -410,21 +410,21 @@ struct BitTupleTest {
 
         from[0] = 2;
         from[1] = 2;
-        memset( to, 0, 32 );
+        std::memset( to, 0, 32 );
         bitlevel::bitcopy( BitPointer( from, 1 ), BitPointer( to, 32 ), 16 );
         ASSERT_EQ( int( to[4] ), 1 );
         ASSERT_EQ( int( to[5] ), 1 );
 
         from[0] = 1;
         from[1] = 1;
-        memset( to, 0, 32 );
+        std::memset( to, 0, 32 );
         bitlevel::bitcopy( BitPointer( from, 0 ), BitPointer( to, 33 ), 16 );
         ASSERT_EQ( int( to[4] ), 2 );
         ASSERT_EQ( int( to[5] ), 2 );
 
         from[0] = 1;
         from[1] = 1;
-        memset( to, 0, 32 );
+        std::memset( to, 0, 32 );
         for ( int i = 0; i < 16; ++i )
             bitlevel::bitcopy( BitPointer( from, i ), BitPointer( to, 33 + i ), 1 );
         ASSERT_EQ( int( to[4] ), 2 );
@@ -432,7 +432,7 @@ struct BitTupleTest {
 
         for ( int i = 0; i < 16; ++i )
             from[i] = 2;
-        memset( to, 0, 32 );
+        std::memset( to, 0, 32 );
         bitlevel::bitcopy( BitPointer( from, 1 ), BitPointer( to, 3 ), 128 );
         for ( int i = 0; i < 16; ++i )
             ASSERT_EQ( int( to[i] ), 8 );
