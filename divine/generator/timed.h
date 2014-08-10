@@ -6,6 +6,7 @@
 
 #include <stdexcept>
 #include <cstdlib>
+#include <wibble/exception.h>
 #include <divine/generator/common.h>
 #include <divine/utility/buchi.h>
 #include <divine/timed/gen.h>
