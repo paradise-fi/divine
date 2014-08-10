@@ -745,8 +745,8 @@ struct Evaluator
         if ( instruction.values.size() == 2 )
             jumpTo( instruction.operand( 0 ) );
         else {
-            if ( econtext.memoryflag( instruction.operand( 0 ) ).get() ==
-                 MemoryFlag::Uninitialised )
+            auto mflag = econtext.memoryflag( instruction.operand( 0 ) );
+            if ( mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
                 ccontext.problem( Problem::Uninitialised );
             if ( withValues( IsTrue(), instruction.operand( 0 ) ) )
                 jumpTo( instruction.operand( 2 ) );
