@@ -5,11 +5,15 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
+
+#undef ASSERT
 #define TRUE TRUE_DBM
 #define FALSE FALSE_DBM
 #include <dbm/fed.h>
 #undef TRUE
 #undef FALSE
+#undef ASSERT
+
 #include <wibble/test.h>
 
 typedef dbm::fed_t Federation;
