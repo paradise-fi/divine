@@ -37,10 +37,10 @@ typename BS::bitstream &operator>>( BS &bs, ReachabilityShared< Vertex > &st )
 }
 
 template< typename T >
-using Identity = T;
+struct Identity { using Type = T; };
 
 template< typename T >
-struct Const { template< typename > using Wrap = T; };
+struct Const { template< typename > struct Wrap { using Type = T; }; };
 
 /**
  * A simple parallel reachability analysis implementation. Nothing to worry
@@ -50,7 +50,7 @@ template< template< typename > class E, typename Setup,
     template< typename > class Sh = ReachabilityShared,
     template< typename > class Wrap = Identity >
 struct CommonReachability : Algorithm, AlgorithmUtils< Setup, Sh< typename Setup::Store::Vertex > >,
-                            Wrap< Parallel< Setup::template Topology, CommonReachability< E, Setup, Sh, Wrap > > >
+                            Wrap< Parallel< Setup::template Topology, CommonReachability< E, Setup, Sh, Wrap > > >::Type
 {
     using This = CommonReachability< E, Setup, Sh, Wrap >;
     using Shared = Sh< typename Setup::Store::Vertex >;
