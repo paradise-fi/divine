@@ -26,6 +26,7 @@
 namespace divine {
 namespace generator {
 
+namespace machine = llvm::machine;
 using namespace ::llvm;
 
 template< typename _Label, typename HeapMeta >
@@ -132,6 +133,50 @@ struct _LLVM : Common< Blob > {
         if ( !use_property )
             return false;
         return prop_accept[ flags( n ).buchi ];
+    }
+
+    template< typename Coroutine >
+    void splitHint( Coroutine &cor, int a, int b, int ch ) {
+        Common::splitHint( cor, a, b, ch );
+    }
+
+    template< typename Coroutine >
+    void splitHint( Coroutine &cor ) {
+        using L = lens::Lens< machine::StateAddress, MachineState::State >;
+        auto state = L(
+            machine::StateAddress( &this->pool(), this->bitcode->info,
+                                   cor.item, this->_slack ) );
+
+        enum Ty { NA, Flags, Globals, Heap, HeapM, Threads };
+        using Chunk = std::pair< Ty, int >;
+        using Chunks = std::deque< Chunk >;
+
+        /* all these include slack in their offsets */
+        Chunks starts{
+             Chunk( Flags, state.address( machine::Flags() ).offset ),
+             Chunk( Globals, state.address( machine::Globals() ).offset ),
+             Chunk( Heap, state.address( machine::Heap() ).offset ),
+             Chunk( HeapM, state.address( MachineState::HeapMeta() ).offset ),
+             Chunk( Threads, state.address( MachineState::Threads() ).offset ) },
+            ends = starts;
+
+        ends.pop_front();
+        ends.push_back( Chunk( NA, pool().size( cor.item ) ) );
+        Chunks chunks;
+
+        auto end = ends.begin();
+        for ( auto ch : starts ) {
+            if ( end->second - ch.second > 0 )
+                chunks.emplace_back( ch.first, end->second - ch.second );
+            ++end;
+        }
+
+        cor.split( chunks.size() );
+
+        for ( auto ch : chunks )
+            Common::splitHint( cor, ch.second, 0 );
+
+        cor.join();
     }
 
     std::string showConstdata() {
