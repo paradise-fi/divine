@@ -745,7 +745,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             if ( _d.currentRow >= rowIndex )
                 return false;
 
-            while ( _d.growing.exchange( true ) ); // acquire growing lock
+            while ( _d.growing.exchange( true ) ) // acquire growing lock
+                helpWithRehashing();
 
             if ( _d.currentRow >= rowIndex ) {
                 _d.growing.exchange( false ); // release the lock
@@ -775,7 +776,6 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         void helpWithRehashing() {
             while ( _d.growing )
                 while( rehashSegment() );
-            while( _d.growing );
         }
 
         void rehashingDone() {
