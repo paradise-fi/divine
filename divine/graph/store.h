@@ -379,7 +379,7 @@ struct TrivialHandle {
     explicit TrivialHandle( Blob blob, int rank ) : b( blob ) {
         _setRank( b, rank, wibble::Preferred() );
     }
-    uint64_t asNumber() { return b.raw_address(); }
+    uint64_t asNumber() { return b.raw(); }
     int rank() const { return _getRank( b, wibble::Preferred() ); }
 
   private:
