@@ -345,27 +345,27 @@ struct _Vertex
     }
 
 private:
-    template< typename T >
-    inline auto _foreign( const T &handle, wibble::Preferred ) const ->
-        typename std::enable_if< (T::tagBits > 0), bool >::type
+    template< typename H >
+    inline auto _foreign( const H &handle, wibble::Preferred ) const ->
+        typename std::enable_if< (H::Base::tagBits > 0), bool >::type
     {
         assert( _s ); return handle.rank() != _s->rank();
     }
 
-    template< typename T >
-    inline bool _foreign( const T &handle, wibble::NotPreferred ) const {
+    template< typename H >
+    inline bool _foreign( const H &, wibble::NotPreferred ) const {
         return false;
     }
 
-    template< typename T >
-    inline auto _clearTag( T &node, wibble::Preferred ) const ->
-        typename std::enable_if< (T::tagBits > 0) >::type
+    template< typename N >
+    inline auto _clearTag( N &node, wibble::Preferred ) const ->
+        typename std::enable_if< (N::tagBits > 0) >::type
     {
         node.setTag( 0 );
     }
 
-    template< typename T >
-    inline void _clearTag( T &node, wibble::NotPreferred ) const { }
+    template< typename N >
+    inline void _clearTag( N &, wibble::NotPreferred ) const { }
 
     Store *_s; // origin store
     Handle _h;
@@ -374,6 +374,8 @@ private:
 };
 
 struct TrivialHandle {
+    using Base = Blob;
+
     Blob b;
     TrivialHandle() = default;
     explicit TrivialHandle( Blob blob, int rank ) : b( blob ) {
