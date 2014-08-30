@@ -189,7 +189,9 @@ struct BenchmarkGroup {
     struct timespec start, end;
 
     void reset() {
+#ifdef BRICK_BENCHMARK_REG
         clock_gettime( CLOCK_MONOTONIC, &start );
+#endif
     }
 
     BenchmarkGroup() : p( 0 ), q( 0 ) {}
