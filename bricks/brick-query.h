@@ -72,6 +72,8 @@ struct Range {
     InputIt end() { return _end; }
 
     Range() = default;
+    Range( const Range & ) = default;
+    Range( Range && ) = default;
     Range( InputIt begin, InputIt end ) : _begin( begin ), _end( end ) { }
 
     template< typename Collection,
@@ -332,7 +334,8 @@ struct Flatten {
 template< typename Range >
 struct Query {
     Query() = default;
-    Query( Range range ) : _range( range ) { }
+    Query( const Query & ) = default;
+    Query( Query && ) = default;
 
     template< typename... Args >
     Query( Args &&... args ) : _range( std::forward< Args >( args )... ) { }
