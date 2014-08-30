@@ -53,7 +53,7 @@ let
    (VM arch) rec {
      name = "divine";
      src = tarball;
-     diskImage = (builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 8192; };
+     diskImage = (builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 10240; };
      CMAKE_FLAGS = "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require}";
      NIX_BUILD = 1;
      dontUseTmpfs = 1;
