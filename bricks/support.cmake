@@ -49,6 +49,7 @@ endfunction()
 function( bricks_benchmark name )
   bricks_make_runner( ${name} "brick::benchmark::run( argc, argv )\;"
                       "BRICK_BENCHMARK_REG" ${ARGN} )
+  target_link_libraries( ${name} rt )
 endfunction()
 
 # Register a target "test-bricks" that builds and runs all the unit tests
