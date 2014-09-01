@@ -23,7 +23,6 @@ struct Terminable {
 
 template< typename T >
 struct Barrier {
-    typedef std::mutex Mutex;
     struct MutexLock {
         MutexLock( std::mutex &mutex ) : _guard( mutex ), _yield( false ) { }
         ~MutexLock() {
@@ -42,11 +41,11 @@ struct Barrier {
         bool _yield;
     };
 
-    typedef std::map< T *, std::condition_variable_any > ConditionMap;
-    typedef std::map< T *, Mutex > MutexMap;
+    typedef std::map< T *, std::shared_ptr< std::condition_variable_any > > ConditionMap;
+    typedef std::map< T *, std::shared_ptr< std::mutex > > MutexMap;
 
     MutexMap m_mutexes;
-    Mutex m_globalMutex;
+    std::mutex m_globalMutex;
     ConditionMap m_conditions;
     int m_sleeping;
 
@@ -60,12 +59,12 @@ struct Barrier {
             condition( who ).notify_one();
     }
 
-    Mutex &mutex( T *t ) {
-        return m_mutexes[ t ];
+    std::mutex &mutex( T *t ) {
+        return *m_mutexes[ t ];
     }
 
     std::condition_variable_any &condition( T *t ) {
-        return m_conditions[ t ];
+        return *m_conditions[ t ];
     }
 
     bool maybeIdle( T *who, bool really, bool sleep ) {
@@ -87,7 +86,7 @@ struct Barrier {
                 who_is_ours = true;
                 continue;
             }
-            if ( !i.second.try_lock() ) {
+            if ( !i.second->try_lock() ) {
                 done = false;
             } else {
                 locked.insert( i.first );
@@ -130,14 +129,14 @@ struct Barrier {
             for ( auto &i : m_conditions ) {
                 if ( i.first == who )
                     continue;
-                i.second.notify_one();
+                i.second->notify_one();
             }
         } else {
             // something failed, let's wake up all sleepers with work waiting
             for ( auto &i : m_conditions ) {
                 if ( !i.first->workWaiting() )
                     continue;
-                i.second.notify_one(); // wake up that thread
+                i.second->notify_one(); // wake up that thread
             }
 
             // and if we have nothing to do ourselves, go to bed... for the
@@ -200,8 +199,9 @@ struct Barrier {
         MutexLock __l( m_globalMutex );
         if ( m_mutexes.count( t ) )
             return; // already started, noop
-        m_conditions[ t ];
-        m_mutexes[ t ].lock();
+        m_conditions[ t ].reset( new std::condition_variable_any() );
+        m_mutexes[ t ].reset( new std::mutex() );
+        m_mutexes[ t ]->lock();
         ++ m_regd;
     }
 
