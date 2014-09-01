@@ -38,6 +38,7 @@
 
 #include <deque>
 #include <type_traits>
+#include <tuple> // for std::get
 
 #ifndef BRICK_RPC_H
 #define BRICK_RPC_H
