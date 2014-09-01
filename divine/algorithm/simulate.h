@@ -115,9 +115,9 @@ struct CommandDesc {
             throw ApiError( "Missing both short and long command" );
     }
 
-    CommandDesc( std::string longOpt, char shortOpt, std::string params,
+    CommandDesc( std::string longOpt, char shortOpt,
             std::string description, Command comm ) :
-        CommandDesc( longOpt, shortOpt, params, description,
+        CommandDesc( longOpt, shortOpt, "", description,
                 [comm]( std::string ) { return comm; } )
     { }
 
@@ -317,21 +317,21 @@ struct ProcessLoop {
         _err( std::cerr )
     {
         _engine
-            .add( "succs",                    's', "",    "list successors", ListSuccs() )
-            .add( "toggle-successor-listing", 'S', "",    "toggle automatic listing of successors", ToggleAutoListing() )
-            .add( "back",                     'b', "",    "back to previous state", Back() )
-            .add( "show-trace",               't', "",    "show current trace", PrintTrace() )
-            .add( "show-ce",                  'c', "",    "show remaining part of the counterexample", PrintCE() )
-            .add( "step-dfs",                 'n', "",    "go to the next unvisited successor or go up if there is none (DFS)", DfsNext() )
-            .add( "random-succ",              'r', "",    "go to a random successor", Random() )
+            .add( "succs",                    's',        "list successors", ListSuccs() )
+            .add( "toggle-successor-listing", 'S',        "toggle automatic listing of successors", ToggleAutoListing() )
+            .add( "back",                     'b',        "back to previous state", Back() )
+            .add( "show-trace",               't',        "show current trace", PrintTrace() )
+            .add( "show-ce",                  'c',        "show remaining part of the counterexample", PrintCE() )
+            .add( "step-dfs",                 'n',        "go to the next unvisited successor or go up if there is none (DFS)", DfsNext() )
+            .add( "random-succ",              'r',        "go to a random successor", Random() )
             .add( "follow-ce",                'f', "[N]", "follow counterexample [for N steps]", &parseLongParam< FollowCE > )
-            .add( "jump-goal",                'F', "",
+            .add( "jump-goal",                'F',
                     "follow counterexample to the end (to the first lasso accepting vertex for cycle)", FollowCEToEnd() )
             .add( "run-dfs",                  'D', "[N]",
                     "run DFS [for N steps], can be interrupted by ctrl+c/SIGINT", &parseLongParam< RunDfs > )
-            .add( "initial",                  'i', "",    "go back to before-initial state (reset)", Reset() )
-            .add( "mark",                     'm', "",    "mark this state", Mark() )
-            .add( "unmark",                   'M', "",    "unmark this state", Unmark() )
+            .add( "initial",                  'i',        "go back to before-initial state (reset)", Reset() )
+            .add( "mark",                     'm',        "mark this state", Mark() )
+            .add( "unmark",                   'M',        "unmark this state", Unmark() )
             .add( "stop-on-accepting",        0,   "{ on | off }",
                     "stop on any accepting or goal state", &parseStop< StopOn::Accepting > )
             .add( "stop-on-marked",           0,   "{ on | off }",
@@ -339,8 +339,8 @@ struct ProcessLoop {
             .add( "stop-on-deadlock",         0,   "{ on | off }",
                     "stop on any deadlock (state without successorts)", &parseStop< StopOn::Deadlock > )
 
-            .add( "help",                     'h', "",    "show help", Help() )
-            .add( "quit",                     'q', "",    "exit simulation", Exit() )
+            .add( "help",                     'h',        "show help", Help() )
+            .add( "quit",                     'q',        "exit simulation", Exit() )
             .addSpec( "1,2,3", "use numbers to select a sucessor", []( std::string str ) -> Command {
                         char *rest;
                         long val = std::strtol( str.c_str(), &rest, 0 );
@@ -563,7 +563,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
         ASSERT( oldsig != SIG_ERR );
         interrupted = false;
         auto _ = wibble::raii::defer( [&]() {
-                if ( print ) options |= Option::PrintEdges;
+                if ( print ) this->options |= Option::PrintEdges;
                 std::signal( SIGINT, oldsig );
             } );
 
@@ -838,88 +838,88 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
     CmdResponse runCommand( Command cmd ) try {
         cmd.match(
             [&]( DfsNext ) {
-                if ( !stepDfs() )
-                    loop.error( "Cannot go back" );
+                if ( !this->stepDfs() )
+                    this->loop.error( "Cannot go back" );
             }, [&]( Next n ) {
-                if ( n.next > 0 && n.next <= int( succs.size() ) )
-                    goDown( n.next - 1 );
-                else if ( succs.empty() )
-                    loop.error( "Current state has no successor" );
+                if ( n.next > 0 && n.next <= int( this->succs.size() ) )
+                    this->goDown( n.next - 1 );
+                else if ( this->succs.empty() )
+                    this->loop.error( "Current state has no successor" );
                 else
-                    loop.error( "Enter number between 1 and " + std::to_string( succs.size() ) );
+                    this->loop.error( "Enter number between 1 and " + std::to_string( this->succs.size() ) );
             }, [&]( Random ) {
-                if ( succs.empty() )
-                    loop.error( "Current state has no successor" );
-                else if ( succs.size() == 1 )
-                    goDown( 0 );
+                if ( this->succs.empty() )
+                    this->loop.error( "Current state has no successor" );
+                else if ( this->succs.size() == 1 )
+                    this->goDown( 0 );
                 else
-                    goDown( randFromTo( 0, succs.size() ) );
+                    this->goDown( this->randFromTo( 0, this->succs.size() ) );
             }, [&]( FollowCE fc ) {
                 if ( fc.limit <= 0 )
                     fc.limit = 1;
                 for ( int i = 0; i < fc.limit; ++i ) {
-                    if ( !followCE() ) {
-                        loop.error( "There is no further CE continuation" );
+                    if ( !this->followCE() ) {
+                        this->loop.error( "There is no further CE continuation" );
                         break;
                     }
                 }
             }, [&]( FollowCEToEnd ) {
-                if ( !followCEToEnd() )
-                    loop.error( "Cannot follow CE from current vertex or no CE at all" );
+                if ( !this->followCEToEnd() )
+                    this->loop.error( "Cannot follow CE from current vertex or no CE at all" );
             }, [&]( Reset ) {
-                trace.clear();
-                generateInitials();
+                this->trace.clear();
+                this->generateInitials();
             }, [&]( Back ) {
-                if ( !trace.empty() )
-                    goBack();
+                if ( !this->trace.empty() )
+                    this->goBack();
                 else
-                    loop.error( "Cannot go back" );
+                    this->loop.error( "Cannot go back" );
             }, [&]( RunDfs dfs ) {
-                auto r = runDfs( dfs.limit );
+                auto r = this->runDfs( dfs.limit );
                 auto n = std::to_string( std::get< 1 >( r ) );
                 switch ( std::get< 0 >( r ) ) {
                     case StopReason::Signal:
-                        loop.error( "Interrupted after " + n + " steps" );
+                        this->loop.error( "Interrupted after " + n + " steps" );
                         break;
                     case StopReason::EndOfModel:
-                        loop.error( "Model fully explored after " + n + " steps" );
+                        this->loop.error( "Model fully explored after " + n + " steps" );
                         break;
                     case StopReason::Deadlock:
-                        loop.show( "Reached deadlock after " + n + " steps" );
+                        this->loop.show( "Reached deadlock after " + n + " steps" );
                         break;
                     case StopReason::Accepting:
-                        loop.show( "Reached accepting state after " + n + " steps" );
+                        this->loop.show( "Reached accepting state after " + n + " steps" );
                         break;
                     case StopReason::Marked:
-                        loop.show( "Reached marked state after " + n + " steps" );
+                        this->loop.show( "Reached marked state after " + n + " steps" );
                         break;
                     default:
                         ASSERT_UNREACHABLE( "unhandled case" );
                 }
             }, [&]( Mark ) {
-                if ( !trace.empty() )
-                    extension( trace.back() ).marked = true;
+                if ( !this->trace.empty() )
+                    this->extension( this->trace.back() ).marked = true;
             }, [&]( Unmark ) {
-                if ( !trace.empty() )
-                    extension( trace.back() ).marked = false;
+                if ( !this->trace.empty() )
+                    this->extension( this->trace.back() ).marked = false;
             }, [&]( StopOn st ) {
                 if ( st.set )
-                    stopOn = StopOn::SC( stopOn | st.value );
+                    this->stopOn = StopOn::SC( this->stopOn | st.value );
                 else
-                    stopOn = StopOn::SC( stopOn & ~st.value );
+                    this->stopOn = StopOn::SC( this->stopOn & ~st.value );
             }, [&]( PrintTrace ) {
-                for ( const auto &n : trace )
-                    showNode( n );
+                for ( const auto &n : this->trace )
+                    this->showNode( n );
             }, [&]( PrintCE ) {
-                printCE();
+                this->printCE();
             }, [&]( ListSuccs ) {
-                printSuccessors();
+                this->printSuccessors();
             }, [&]( ToggleAutoListing ) {
-                options ^= Option::AutoSuccs;
-                loop.show( std::string( "Automatic listing of successors " ) +
-                        (options.has( Option::AutoSuccs ) ? "enabled" : "disabled" ) );
+                this->options ^= Option::AutoSuccs;
+                this->loop.show( std::string( "Automatic listing of successors " ) +
+                        (this->options.has( Option::AutoSuccs ) ? "enabled" : "disabled" ) );
             }, [&]( Exit  ) {
-                loop.show( "" );
+                this->loop.show( "" );
                 throw CmdResponse::Exit;
             }, [&]( NoOp ) {
                 throw CmdResponse::Ignore;
