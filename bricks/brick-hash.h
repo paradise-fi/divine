@@ -33,6 +33,7 @@
 
 #include <cstddef>
 #include <utility> // pair
+#include <tuple> // tie
 
 #ifdef _MSC_VER
 # define INLINE __forceinline
