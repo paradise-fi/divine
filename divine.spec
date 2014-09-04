@@ -67,18 +67,18 @@ rm -rf %{buildroot}
 * Fri Jun 20 2014 Vladimir Still <xstill at fi.muni.cz> 3.1pre-1
 - Updated .spec: dependencies, better support for building in NIX VM
 
-* Tue Apr  25 2012 Petr Rockai <me at mornfall.net> 2.5.1-1
+* Wed Apr 25 2012 Petr Rockai <me at mornfall.net> 2.5.1-1
 - Reboot. New upstream version.
 
-* Mon Mar  21 2009 David A. Wheeler <dwheeler at, dwheeler.com> 1.3-7
+* Sat Mar 21 2009 David A. Wheeler <dwheeler at, dwheeler.com> 1.3-7
 - Installs more binaries.  As a result, has more dependencies.
 - Switched to released version of nips
 - Added optionally-invoked test
 
-* Mon Mar  4 2009 David A. Wheeler <dwheeler at, dwheeler.com> 1.3-6
+* Wed Mar  4 2009 David A. Wheeler <dwheeler at, dwheeler.com> 1.3-6
 - Recompile .jar files
 
-* Mon Mar  4 2009 David A. Wheeler <dwheeler at, dwheeler.com> 1.3-5
+* Wed Mar  4 2009 David A. Wheeler <dwheeler at, dwheeler.com> 1.3-5
 - gcc flags - exported before ./configure, removed -fomit-frame-pointer
 - Added VERBOSE=1 as a make argument
 - examples now packaged as documentation
@@ -87,7 +87,7 @@ rm -rf %{buildroot}
 - No longer use "--help" as a test; there are better tests anyway.
 - Fixed sed to remove -gstabs+
 
-* Mon Mar  4 2009 David A. Wheeler <dwheeler at, dwheeler.com> 1.3-4
+* Wed Mar  4 2009 David A. Wheeler <dwheeler at, dwheeler.com> 1.3-4
 - Fix tests (in "check") to verify that we get correct results.
 
 * Mon Mar  2 2009 David A. Wheeler <dwheeler at, dwheeler.com> 1.3-3
