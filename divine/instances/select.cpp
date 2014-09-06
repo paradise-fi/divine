@@ -109,10 +109,18 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
         return nullptr;
     }
 
+    if ( component->empty() ) {
+        std::cerr << "FATAL: component list empty at " << wibble::str::fmt( sofar ) << std::endl;
+        throw nullptr;
+    }
+
+    bool available = false;
+
     for ( int retry = 0; retry < 2; ++ retry ) {
         for ( auto c : *component ) {
             if ( retry || _select( meta, c ) ) {
                 if ( _traits( c ) ) {
+                    available = true;
                     warnOtherAvailable( meta, c );
                     _postSelect( meta, c );
                     if ( auto x = divine::select( meta, appendArray( sofar, c ), component + 1, end ) )
@@ -126,6 +134,12 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
                 }
             }
         }
+    }
+
+    if ( !available ) {
+        std::cerr << "FATAL: no component for " << std::get< 0 >( showGen( *component->begin() ) )
+                  << " was built, at " << wibble::str::fmt( sofar ) << std::endl;
+        throw nullptr;
     }
 
     return nullptr;
