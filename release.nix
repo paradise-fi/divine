@@ -56,6 +56,7 @@ let
      diskImage = (builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 10240; };
      CMAKE_FLAGS = "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require}";
      NIX_BUILD = 1;
+     BATCH = 1;
      dontUseTmpfs = 1;
 
      # this actually runs just in debian-based distros, RPM based does not have configurePhase
@@ -99,7 +100,7 @@ let
        dontStrip = true;
        checkPhase = ''
           make unit || touch $out/nix-support/failed
-          make functional || touch $out/nix-support/failed
+          BATCH=1 make functional || touch $out/nix-support/failed
           cp -R test/results $out/test-results && \
             echo "report tests $out/test-results" >> $out/nix-support/hydra-build-products || true
           make lcov-report && \
