@@ -133,13 +133,13 @@ struct TestString {
 
     Test joinpath()
     {
-#if POSIX
+#if __unix
         assert_eq(str::joinpath("a", "b"), "a/b");
         assert_eq(str::joinpath("a/", "b"), "a/b");
         assert_eq(str::joinpath("a", "/b"), "a/b");
         assert_eq(str::joinpath("a/", "/b"), "a/b");
 #endif
-#if WIN32
+#if _WIN32
         assert_eq( str::joinpath( "a", "b" ), "a\\b" );
         assert_eq( str::joinpath( "a\\", "b"), "a\\b" );
         assert_eq( str::joinpath( "a", "\\b"), "a\\b");
@@ -151,7 +151,7 @@ struct TestString {
 
     Test appendpath()
     {
-#if POSIX
+#if __unix
         assert_eq(str::appendpath("a", "b"), "a/b");
         assert_eq(str::appendpath("a/", "b"), "a/b");
         assert_eq(str::appendpath("a", "/b"), "/b");
@@ -162,7 +162,7 @@ struct TestString {
         assert_eq(str::appendpath("/a", "/b"), "/b");
         assert_eq(str::appendpath("/a/", "/b"), "/b");
 #endif
-#if WIN32
+#if _WIN32
         assert_eq( str::appendpath( "a", "b" ), "a\\b" );
         assert_eq( str::appendpath( "a\\", "b"), "a\\b" );
         assert_eq( str::appendpath( "a", "\\b"), "\\b");
@@ -278,7 +278,7 @@ struct TestString {
         assert_eq( str::absolutePrefix( "/foo" ).second, "foo" );
         assert( !str::isAbsolutePath( "foo" ) );
         assert( !str::isAbsolutePath( "foo/bar" ) );
-#if WIN32
+#if _WIN32
         assert_eq( str::absolutePrefix( "\\" ).first, "\\" );
         assert_eq( str::absolutePrefix( "\\" ).second, "" );
         assert_eq( str::absolutePrefix( "\\foo" ).first, "\\" );
@@ -299,7 +299,7 @@ struct TestString {
 	Test normpath()
 	{
 		assert_eq(str::normpath(""), ".");
-#if POSIX
+#if __unix
 		assert_eq(str::normpath("/"), "/");
 		assert_eq(str::normpath("foo"), "foo");
 		assert_eq(str::normpath("foo/"), "foo");
@@ -313,7 +313,7 @@ struct TestString {
 		assert_eq(str::normpath("foo/./bar"), "foo/bar");
 		assert_eq(str::normpath("foo/foo/../bar"), "foo/bar");
 #endif
-#if WIN32
+#if _WIN32
 		assert_eq(str::normpath("\\"), "\\");
 		assert_eq(str::normpath("foo"), "foo");
 		assert_eq(str::normpath("foo\\"), "foo");

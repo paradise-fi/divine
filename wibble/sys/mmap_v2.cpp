@@ -1,5 +1,5 @@
 #if __cplusplus >= 201103L
-#ifdef POSIX
+#ifdef __unix
 
 #include <wibble/sys/mmap_v2.h>
 #include <wibble/exception.h>
