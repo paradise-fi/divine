@@ -262,7 +262,10 @@ struct Journal {
 
     void banner() {
         std::cout << std::endl << "### " << status.size() << " tests: "
-                  << count( PASSED ) << " passed" << std::endl;
+                  << count( PASSED ) << " passed, "
+                  << count( SKIPPED ) << " skipped, "
+                  << count( TIMEOUT ) + count( WARNED ) << " broken, "
+                  << count( FAILED ) << " failed" << std::endl;
     }
 
     void details() {
