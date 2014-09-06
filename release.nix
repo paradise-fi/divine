@@ -70,7 +70,7 @@ let
    };
 
   mkbuild = { name, inputs,
-              flags ? [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=OFF" ],
+              flags ? [ "-DSTORE_COMPRESS=OFF" "-DGEN_EXPLICIT=OFF" ],
               clang ? false,
               clang_runtime ? (pkgs: pkgs.clang), # version of clang used in divine compile --llvm
               llvm ? (pkgs: pkgs.llvm)
@@ -135,7 +135,7 @@ let
         -DLLVM_INCLUDE_DIRS=D:\\llvm\\include \
         -DLLVM_LIBRARY_DIRS=D:\\llvm\\lib \
         -DRX_PATH=D:\\mingw\\include \
-        -BUILD_DCMAKE_TYPE=$bt ${flags} ../source
+        -DCMAKE_BUILD_TYPE=$bt ${flags} ../source
       make VERBOSE=1
       mkdir E:\\nix-support
       make unit || touch E:\\nix-support\\failed
@@ -203,14 +203,14 @@ let
     gcc_timed = mkbuild { name = "timed"; inputs = pkgs: [ pkgs.libxml2 pkgs.boost ];
                           flags = [ "-DREQUIRED=TIMED" ]; };
     gcc_compression = mkbuild { name = "compression"; inputs = pkgs: [];
-                       flags = [ "-DHASH_COMPACTION=OFF" "-DCOMPRESSION=ON" "-DEXPLICIT=OFF" ]; };
+                       flags = [ "-DSTORE_HC=OFF" "-DSTORE_COMPRESS=ON" "-DGEN_EXPLICIT=OFF" ]; };
     gcc_hashcompaction = mkbuild { name = "hashcompaction"; inputs = pkgs: [];
-                       flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=ON" "-DEXPLICIT=OFF" ]; };
+                       flags = [ "-DSTORE_COMPRESS=OFF" "-DSTORE_HC=ON" "-DGEN_EXPLICIT=OFF" ]; };
     gcc_explicit = mkbuild { name = "explicit"; inputs = pkgs: [];
-                       flags = [ "-DCOMPRESSION=OFF" "-DHASH_COMPACTION=OFF" "-DEXPLICIT=ON" ]; };
+                       flags = [ "-DSTORE_COMPRESS=OFF" "-DALG_EXPLICIT=ON" "-DGEN_EXPLICIT=ON" ]; };
     gcc_full = mkbuild { name = "full"; inputs = pkgs:
                           [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                         flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESSION;EXPLICIT" ]; };
+                         flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
     clang_minimal = mkbuild { name = "minimal"; inputs = pkgs: []; clang = true; };
     clang_medium  = mkbuild { name = "medium";  inputs = pkgs:
                                [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
@@ -219,7 +219,7 @@ let
 
   windows = {
     win7.i386 = mkwin windows7_img "" [ windows_qt ];
-    win7_small.i386 = mkwin windows7_img "-DSMALL=ON" [];
+    # win7_small.i386 = mkwin windows7_img "-DSMALL=ON" [];
     win7_llvm.i386 = mkwin windows7_img "-DREQUIRED=LLVM" [ windows_llvm ];
   };
 
