@@ -42,19 +42,15 @@ struct Traits {
      *
      * no bitfiels -- pointers to members will be taken
      */
-    bool performance;
-    bool small;
-    bool dve;
-    bool llvm;
-    bool timed;
-    bool mpi;
-    bool coin;
-    bool cesmi;
-    bool dess; //explicit
-    bool ntree;
-    bool hc;
-    bool pools;
-    bool jit;
+    bool dev_nopools, dev_conflate;
+    bool gen_dve, gen_llvm, gen_llvm_csdr, gen_llvm_ptst, gen_llvm_prob,
+         gen_timed, gen_coin, gen_cesmi, gen_explicit, gen_explicit_prob,
+         gen_dummy;
+    bool alg_owcty, alg_map, alg_metrics, alg_ndfs, alg_reachability,
+         alg_weakreachability, alg_explicit, alg_csdr;
+    bool store_hc, store_compress;
+    bool transform_por, transform_fair;
+    bool opt_draw, opt_simulate, opt_mpi, opt_jit;
 
     struct Get {
         Get( bool Traits::* p ) :
@@ -114,45 +110,40 @@ struct Traits {
 
     static Traits compiled() {
         Traits t;
-#ifdef O_PERFORMANCE
-        t.performance = true;
-#endif
-#ifdef O_SMALL
-        t.small = true;
-#endif
-#ifdef O_DVE
-        t.dve = true;
-#endif
-#ifdef O_LLVM
-        t.llvm = true;
-#endif
-#ifdef O_TIMED
-        t.timed = true;
-#endif
-#ifdef O_MPI
-        t.mpi = true;
-#endif
-#ifdef O_COIN
-        t.coin = true;
-#endif
-#ifdef O_CESMI
-        t.cesmi = true;
-#endif
-#ifdef O_EXPLICIT
-        t.dess = true;
-#endif
-#ifdef O_COMPRESSION
-        t.ntree = true;
-#endif
-#ifdef O_HASH_COMPACTION
-        t.hc = true;
-#endif
-#ifdef O_POOLS
-        t.pools = true;
-#endif
-#ifdef O_JIT
-        t.jit = true;
-#endif
+        t.dev_conflate = DEV_CONFLATE;
+        t.dev_nopools = DEV_NOPOOLS;
+
+        t.gen_llvm = GEN_LLVM;
+        t.gen_llvm_csdr = GEN_LLVM_CSDR;
+        t.gen_llvm_prob = GEN_LLVM_PROB;
+        t.gen_llvm_ptst = GEN_LLVM_PTST;
+        t.gen_dve = GEN_DVE;
+        t.gen_coin = GEN_COIN;
+        t.gen_cesmi = GEN_CESMI;
+        t.gen_timed = GEN_TIMED;
+        t.gen_explicit = GEN_EXPLICIT;
+        t.gen_explicit_prob = GEN_EXPLICIT_PROB;
+        t.gen_dummy = GEN_DUMMY;
+
+        t.alg_map = ALG_MAP;
+        t.alg_owcty = ALG_OWCTY;
+        t.alg_reachability = ALG_REACHABILITY;
+        t.alg_weakreachability = ALG_WEAKREACHABILITY;
+        t.alg_explicit = ALG_EXPLICIT;
+        t.alg_csdr = ALG_CSDR;
+        t.alg_ndfs = ALG_NDFS;
+        t.alg_metrics = ALG_METRICS;
+
+        t.store_hc = STORE_HC;
+        t.store_compress = STORE_COMPRESS;
+        t.transform_por = TRANSFORM_POR;
+        t.transform_fair = TRANSFORM_FAIR;
+
+        t.opt_mpi = OPT_MPI;
+        t.opt_simulate = OPT_SIMULATE;
+        t.opt_draw = OPT_DRAW;
+        t.opt_jit = false; // OPT_JIT;
+
         return t;
     }
 };
@@ -502,30 +493,37 @@ static const CMap< Key, std::function< void( const Meta & ) > > init = {
 
 // traits can be used to specify required configure time options for component -- optional
 static const CMap< Key, Traits::Get > traits = {
-    { Algorithm::GenExplicit, &Traits::dess },
+    { Algorithm::GenExplicit,   &Traits::alg_explicit },
+    { Algorithm::Owcty,            &Traits::alg_owcty },
+    { Algorithm::Map,              &Traits::alg_map },
+    { Algorithm::NestedDFS,        &Traits::alg_ndfs },
+    { Algorithm::Csdr,             &Traits::alg_csdr },
+    { Algorithm::Reachability,     &Traits::alg_reachability },
+    { Algorithm::WeakReachability, &Traits::alg_weakreachability },
+    { Algorithm::Metrics,          &Traits::alg_metrics },
 
-    { Generator::Dve,                   &Traits::dve },
-    { Generator::Coin,                  &Traits::coin },
-    { Generator::Timed,                 &Traits::timed },
-    { Generator::CESMI,                 &Traits::cesmi },
-    { Generator::LLVM,                  &Traits::llvm },
-    { Generator::PointsToLLVM,          &Traits::llvm && !Tr( &Traits::small ) },
-    { Generator::ControlLLVM,           &Traits::llvm },
-    { Generator::ProbabilisticLLVM,     &Traits::llvm && !Tr( &Traits::small ) },
-    { Generator::Explicit,              &Traits::dess },
-    { Generator::ProbabilisticExplicit, &Traits::dess && !Tr( &Traits::small ) },
-    { Generator::Dummy,                 !Tr( &Traits::small ) },
+    { Generator::Dve,                   &Traits::gen_dve },
+    { Generator::Coin,                  &Traits::gen_coin },
+    { Generator::Timed,                 &Traits::gen_timed },
+    { Generator::CESMI,                 &Traits::gen_cesmi },
+    { Generator::LLVM,                  &Traits::gen_llvm },
+    { Generator::PointsToLLVM,          &Traits::gen_llvm_ptst },
+    { Generator::ControlLLVM,           &Traits::gen_llvm_csdr },
+    { Generator::ProbabilisticLLVM,     &Traits::gen_llvm_prob  },
+    { Generator::Explicit,              &Traits::gen_explicit },
+    { Generator::ProbabilisticExplicit, &Traits::gen_explicit_prob },
+    { Generator::Dummy,                 &Traits::gen_dummy },
 
-    { Transform::POR, !Tr( &Traits::small ) },
-    { Transform::Fairness, !Tr( &Traits::small ) },
+    { Transform::POR,      &Traits::transform_por },
+    { Transform::Fairness, &Traits::transform_fair },
 
-    { Store::NTreeStore, &Traits::ntree },
-    { Store::HcStore,    &Traits::hc },
+    { Store::NTreeStore, &Traits::store_compress },
+    { Store::HcStore,    &Traits::store_hc },
 
-    { Topology::Mpi,   !Tr( &Traits::performance ) || &Traits::mpi },
-    { Topology::Local, &Traits::performance },
+    { Topology::Mpi,   Tr( &Traits::dev_conflate ) || Tr( &Traits::opt_mpi ) },
+    { Topology::Local, !Tr( &Traits::dev_conflate ) },
 
-    { Statistics::NoStatistics, &Traits::performance }
+    { Statistics::NoStatistics, !Tr( &Traits::dev_conflate ) }
 };
 
 // algoritm symbols -- mandatory for each algorithm
@@ -606,7 +604,7 @@ static const CMap< Key, SupportedBy > supportedBy = {
     { Store::NTreeStore, Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
     { Store::HcStore,    Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
 
-#ifdef O_PERFORMANCE
+#if !DEV_CONFLATE
     { Topology::Mpi, Not{ Or{ Algorithm::NestedDFS, Algorithm::Info, Visitor::Shared } } },
 #endif
 

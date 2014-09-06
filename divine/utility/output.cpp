@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <time.h>
 
-#ifdef O_CURSES
+#if OPT_CURSES
 #include <curses.h>
 #include <unistd.h>
 #endif
@@ -78,16 +78,10 @@ struct StdIO : divine::Output, proxycall {
         return std::cerr;
     }
 
-    std::ostream &debug() {
-#if defined(O_MPIDEBUG)
-        wibble::sys::MutexLock __l( mutex );
-        repeat( last < ::time( 0 ) );
-        return std::cerr;
-#else
+    std::ostream &debug() { /* currently unused */
         static struct : std::streambuf {} buf;
         static std::ostream null(&buf);
         return null;
-#endif
     }
 
     std::ostream &progress() {
@@ -104,7 +98,7 @@ struct StdIO : divine::Output, proxycall {
     }
 };
 
-#ifdef O_CURSES
+#if OPT_CURSES
 struct Curses : divine::Output
 {
     wibble::sys::Mutex mutex;
@@ -189,7 +183,7 @@ Output *makeStdIO( std::ostream &o ) {
 }
 
 Output *makeCurses() {
-#ifdef O_CURSES
+#if OPT_CURSES
     return new Curses();
 #else
     std::cerr << "WARNING: This binary has been compiled without CURSES support." << std::endl;

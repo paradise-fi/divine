@@ -12,7 +12,7 @@
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H
 
-#ifdef O_MPI
+#if OPT_MPI
 #include <mpi.h>
 #endif
 
@@ -32,7 +32,7 @@ namespace divine {
 
 enum Loop { Continue, Done };
 
-#ifdef O_MPI
+#if OPT_MPI
 typedef MPI::Status MpiStatus;
 typedef MPI::Request MpiRequest;
 #else
@@ -91,7 +91,7 @@ private:
 public:
     typedef MpiStatus Status;
 
-#ifdef O_MPI
+#if OPT_MPI
     static const int anySource = MPI::ANY_SOURCE;
     static const int anyTag = MPI::ANY_TAG;
 #else
@@ -109,7 +109,7 @@ public:
     }
 
     void send( std::unique_lock< std::mutex > &, const void *buf, int count, int dest, int tag ) {
-#ifdef O_MPI
+#if OPT_MPI
             return MPI::COMM_WORLD.Send( buf, count, MPI::BYTE, dest, tag );
 #else
             wibble::param::discard( buf, count, dest, tag );
@@ -117,7 +117,7 @@ public:
     }
 
     MpiRequest isend( std::unique_lock< std::mutex > &, const void *buf, int count, int dest, int tag ) {
-#ifdef O_MPI
+#if OPT_MPI
         return MPI::COMM_WORLD.Isend( buf, count, MPI::BYTE, dest, tag );
 #else
         return MpiRequest();
@@ -126,7 +126,7 @@ public:
     }
 
     void recv( void *mem, size_t count, int source, int tag, Status &st ) {
-#ifdef O_MPI
+#if OPT_MPI
         MPI::COMM_WORLD.Recv( mem, count, MPI::BYTE, source, tag, st );
 #else
         wibble::param::discard( mem, count, source, tag, st );
@@ -134,7 +134,7 @@ public:
     }
 
     bool probe( int source, int tag, Status &st, bool wait = true ) {
-#ifdef O_MPI
+#if OPT_MPI
         if (wait) {
             MPI::COMM_WORLD.Probe( source, tag, st );
             return false;
@@ -146,7 +146,7 @@ public:
     }
 
     size_t size( const Status &st ) {
-#ifdef O_MPI
+#if OPT_MPI
         return st.Get_count( MPI::BYTE );
 #endif
         wibble::param::discard( st );
@@ -228,7 +228,7 @@ public:
             int tag = status.Get_tag();
 
             if ( tag == TAG_ALL_DONE ) {
-#ifdef O_MPI
+#if OPT_MPI
                 MPI::Finalize();
 #endif
                 exit( 0 ); // after a fashion...
@@ -240,7 +240,7 @@ public:
             } else assert_die();
         }
 
-#ifdef POSIX
+#ifdef __unix
         sched_yield();
 #endif
 

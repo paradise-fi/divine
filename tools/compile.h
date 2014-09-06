@@ -361,7 +361,7 @@ struct Compile {
     }
 
     void compileLLVM( std::string first_file, std::string out ) {
-#if O_LLVM
+#if GEN_LLVM
         std::vector< std::string > files;
         if ( !first_file.empty() )
             files.push_back( first_file );

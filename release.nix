@@ -48,7 +48,7 @@ let
   extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" "bison" ];
   extra_rpms_gt19 = extra_rpms ++ [ "llvm-static" ];
 
-  mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESSION;EXPLICIT",
+  mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT",
            tarball ? jobs.tarball }: arch:
    (VM arch) rec {
      name = "divine";

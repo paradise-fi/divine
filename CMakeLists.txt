@@ -43,71 +43,93 @@ macro(appendFlag flags value)
   endforeach( F )
 endmacro(appendFlag)
 
-macro( disabling name detail reason )
+macro( disable name detail reason )
+    list( FIND OPTIONS ${name} opt_idx )
+    if( opt_idx LESS 0 )
+        message( FATAL_ERROR "INTERNAL ERROR: tried to disable non-existent option ${name}" )
+    endif()
     message( "-- WARNING: ${name}${detail} DISABLED. ${reason}" )
     set( DISABLED "${DISABLED} ${name}" )
+    set( ${name} OFF )
+endmacro()
+
+macro( opt name help defval )
+    option( ${opt} "${name}" "${help}" "${defval}" )
+    list( APPEND OPTIONS ${name} )
 endmacro()
 
 macro( with_warnings )
     appendFlag( "CXX;C" "-Wall" )
+    appendFlag( "CXX" "-Wold-style-cast" )
     if( WARNINGS )
         appendFlag( "CXX;C" "-Wextra" )
     endif()
 endmacro()
 
-############################################
-## USER-LEVEL OPTIONS
-##
+# some build-type-dependent defaults
 
-option( MPI "compile DiVinE with MPI for clustering support" ON )
-option( LLVM "compile DiVinE with LLVM bitcode verification support" ON )
-option( DVE "include the DVE interpreter in the build" ON )
-option( COIN "include the CoIn interpreter in the build" ON )
-option( CESMI "include the CESMI binary interface in the build" ON )
-option( TIMED "include timed automata interpreter in the build" ON )
-option( LTL3BA "use ltl3ba for LTL to BA translation" OFF )
-option( MURPHI "enable Murphi model compiler" ON )
-option( CURSES "link to curses library for nice statistics" ON )
-option( HASH_COMPACTION "enable Hash Compaction" OFF )
-option( COMPRESSION "enable lossless compression" ON )
-option( EXPLICIT "include explicit state space representation support (gen-explicit algorithm and explicit generator)" ON )
-
-option( MANUAL "build pdf/html manual" ON )
-option( GUI "compile the Qt GUI" ON )
-option( LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" OFF )
-option( HOARD "use HOARD SMP memory allocator" OFF )
-option( TBBMALLOC "use Intel TBB memory allocator" ON )
-
-option( MPIDEBUG "make MPI code show lots of random debug noise" OFF )
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set( WARNINGS_DEF ON )
+if( CMAKE_BUILD_TYPE STREQUAL "Debug" )
+    set( DEV_WARNINGS_DEF ON )
+    set( DEV_CONFLATE_DEF ON )
 else()
-    set( WARNINGS_DEF OFF )
-endif()
-option( WARNINGS "enable extra compiler warnings" ${WARNINGS_DEF} )
-
-option( USE64 "pass -m64 to gcc to force 64b on multiarch" OFF )
-option( USE32 "pass -m32 to gcc to force 32b on multiarch" OFF )
-include (VersionAppend)
-
-option( SQL_REPORT "Include feature for reporting into database (requires ODBC)" ON )
-
-############################################
-## DEVELOPER-ORIENTED OPTIONS
-##
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set( PERFORMANCE_DEF OFF )
-else()
-    set( PERFORMANCE_DEF ON )
+    set( DEV_WARNINGS_DEF OFF )
+    set( DEV_CONFLATE_DEF OFF )
 endif()
 
-option( PERFORMANCE "compile for maximum performance (LONG compilation)" ${PERFORMANCE_DEF} )
-option( PROFILE "generate profiling information for lcov coverage" OFF )
-option( POOLS "use pool allocation for graph vertices" ON )
-option( SMALL "reduce size of the binary, disabling optional features" OFF )
-option( DIVINE_BINUTILS "build binutils for divine (enable if your binutils does not support plugins and you want LLVM verification" OFF )
+############################################
+## BUILD OPTIONS
+##
+
+opt( OPT_MPI "compile DiVinE with MPI for clustering support" ON )
+opt( OPT_LTL3BA "use ltl3ba for LTL to BA translation" OFF )
+opt( OPT_LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" OFF )
+opt( OPT_MURPHI "enable Murphi model compiler" ON )
+opt( OPT_CURSES "link to curses library for nice statistics" ON )
+
+opt( OPT_SQL "Include feature for reporting into database (requires ODBC)" ON )
+opt( OPT_MANUAL "build pdf/html manual" ON )
+opt( OPT_GUI "compile the Qt GUI" ON )
+opt( OPT_HOARD "use HOARD SMP memory allocator" OFF )
+opt( OPT_TBBMALLOC "use Intel TBB memory allocator" ON )
+
+opt( OPT_SIMULATE "divine simulate" ON )
+opt( OPT_DRAW "divine draw" ON )
+
+opt( GEN_LLVM "LLVM bitcode verification" ON )
+opt( GEN_LLVM_PTST "Points-To verification in LLVM bitcode" OFF )
+opt( GEN_LLVM_CSDR "CSDR-enabled LLVM verification (see ALG_CSDR)" ON )
+opt( GEN_LLVM_PROB "probabilistic LLVM verification" OFF )
+opt( GEN_DVE "include the DVE interpreter in the build" ON )
+opt( GEN_COIN "include the CoIn interpreter in the build" OFF )
+opt( GEN_CESMI "include the CESMI binary interface in the build" ON )
+opt( GEN_TIMED "include timed automata interpreter in the build" ON )
+opt( GEN_EXPLICIT "include explicit state space loading support" ON )
+opt( GEN_EXPLICIT_PROB "probabilistic explicit state space loading support" OFF )
+opt( GEN_DUMMY "dummy state space (for testing only)" OFF )
+
+opt( ALG_MAP "" OFF )
+opt( ALG_OWCTY "" ON )
+opt( ALG_REACHABILITY "" ON )
+opt( ALG_WEAKREACHABILITY "" OFF )
+opt( ALG_EXPLICIT "" OFF )
+opt( ALG_CSDR "" ON )
+opt( ALG_NDFS "" OFF )
+opt( ALG_METRICS "" OFF )
+
+opt( STORE_HC "enable Hash Compaction" OFF )
+opt( STORE_COMPRESS "enable lossless compression" ON )
+
+opt( TRANSFORM_POR  "" ON )
+opt( TRANSFORM_FAIR "" OFF )
+
+opt( DEV_CONFLATE "avoid extra faster but feature-equivalent instances" ${DEV_CONFLATE_DEF} )
+opt( DEV_GCOV "generate profiling information for a lcov coverage report" OFF )
+opt( DEV_NOPOOLS "avoid pool allocation for graph vertices" OFF )
+opt( DEV_WARNINGS "enable extra compiler warnings" ${DEV_WARNINGS_DEF} )
+
+opt( DIVINE_BINUTILS "build binutils for divine (enable if your binutils does not support plugins and you want LLVM verification" OFF )
+
+include( VersionAppend )
 
 set( MAX_INSTANCE_FILES_COUNT "128" CACHE STRING
     "maximal number of used instance files to generate -- more means less memory requirements" )
@@ -149,6 +171,10 @@ find_file( CMD_LLVMGOLD "LLVMgold.so"
     )
 set( CMD_LLVMGOLD "/usr/lib/llvm/LLVMgold.so" CACHE STRING "path to the LLVMgold.so plugin" )
 
+include( CheckCXXSourceCompiles )
+set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
+set( CMAKE_REQUIRED_FLAGS "-std=c++11" ) # for the benefit of GCC
+
 ###############################################
 ## MISC OPTION IMPLEMENTATION
 ##
@@ -156,21 +182,11 @@ set( CMD_LLVMGOLD "/usr/lib/llvm/LLVMgold.so" CACHE STRING "path to the LLVMgold
 if( WIN32 )
   # PE Executables have fixed stack size and the BISON parser needs a big one
   appendFlag( "EXE_LINKER;SHARED_LINKER" "-Wl,--stack,10485760" )
-else()
-  add_definitions( -DPOSIX )
 endif( WIN32 )
 
-if( SMALL )
-  add_definitions( -DO_SMALL )
-endif( SMALL )
-
-if( COIN )
-  add_definitions( -DO_COIN )
-endif( COIN )
-
-if( CESMI )
-    add_definitions( -DO_CESMI )
-endif( CESMI )
+if( GEN_COIN )
+  add_definitions( -DGEN_COIN )
+endif()
 
 # on some mingw32, regex.h is not on the default include path
 find_path( RX_PATH regex.h )
@@ -179,32 +195,17 @@ if ( RX_PATH )
   link_directories( ${RX_PATH} )
 endif()
 
-if( PERFORMANCE )
-  if ( NOT SMALL )
-    add_definitions( -DO_PERFORMANCE )
-  else()
-    disabling( "PERFORMANCE" "" "Overriden by SMALL." )
-  endif()
-endif( PERFORMANCE )
-
-if( HOARD AND TBBMALLOC )
-    disabling( "HOARD" "" "Overriden by TBBMALLOC." )
-    set( HOARD OFF )
+if( OPT_HOARD AND OPT_TBBMALLOC )
+    disable( OPT_HOARD "" "Overriden by TBBMALLOC." )
 endif()
 
-if( NOT POOLS AND COMPRESSION )
-    disabling( "COMPRESSION" "" "It is not supported without POOLS" )
-    set( COMPRESSION OFF )
+if( DEV_NOPOOLS AND STORE_COMPRESS )
+    disable( STORE_COMPRESS "" "Not supported without pools" )
 endif()
 
-if ( NOT POOLS AND MPI )
-    disabling( "MPI" " (cluster support)" "It is not supported without POOLS" )
-    set( MPI OFF )
+if ( DEV_NOPOOLS AND OPT_MPI )
+    disable( OPT_MPI " (cluster support)" "Not supported without pools" )
 endif()
-
-include( CheckCXXSourceCompiles )
-set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
-set( CMAKE_REQUIRED_FLAGS "-std=c++11" ) # for the benefit of GCC
 
 check_cxx_source_compiles("
 template< typename F > int check( F f );
@@ -280,52 +281,18 @@ if ( NOT HAVE_CXX11_TRAITS )
     message( FATAL_ERROR "DiVinE requires working C++11 type traits." )
 endif()
 
-if( DVE )
-  if( HAVE_CXX11_UNRESTRICTED_UNIONS )
-    add_definitions( -DO_DVE )
-  else()
-    message( "DVE" "" "C++11 unrestricted unions not available." )
-  endif()
+if( GEN_DVE AND NOT HAVE_CXX11_UNRESTRICTED_UNIONS )
+    disable( GEN_DVE "" "C++11 unrestricted unions not available." )
 endif()
 
-if( HASH_COMPACTION )
-    add_definitions( -DO_HASH_COMPACTION )
+if( EXPLICIT AND WIN32 )
+    disable( "GEN_EXPLICIT" "" "Not available on Windows." )
 endif()
 
-if( COMPRESSION )
-    add_definitions( -DO_COMPRESSION )
-endif()
-
-if( EXPLICIT )
-    if ( WIN32 )
-        message( "EXPLICIT" "" "is currently disabled on Windows." )
-    else()
-        add_definitions( -DO_EXPLICIT )
-    endif()
-endif()
-
-if( MPIDEBUG )
-    add_definitions( -DO_MPIDEBUG )
-endif()
-
-if( PROFILE )
+if( DEV_GCOV )
   appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )
   link_libraries( "gcov" )
-endif( PROFILE )
-
-if( USE64 )
-  appendFlag( "CXX;C;EXE_LINKER;SHARED_LINKER" "-m64" )
-  add_definitions( -DO_USE_GCC_M64 )
-endif( USE64 )
-
-if( USE32 )
-  appendFlag( "CXX;C;EXE_LINKER;SHARED_LINKER" "-m32" )
-  add_definitions( -DO_USE_GCC_M32 )
-endif( USE32 )
-
-if( POOLS )
-  add_definitions( "-DO_POOLS" )
-endif( POOLS )
+endif()
 
 find_program( SHA1SUM sha1sum )
 
@@ -343,6 +310,7 @@ include_directories( bricks )
 
 find_package( PkgConfig )
 pkg_check_modules( VALGRIND valgrind )
+
 if ( VALGRIND_FOUND )
     include_directories( ${VALGRIND_INCLUDEDIR} )
 else()
@@ -350,152 +318,133 @@ else()
     add_definitions( -DNVALGRIND )
 endif()
 
-if( CURSES AND NOT USE32 AND NOT USE64 )
-  # the curses package we'd find probably wouldn't work anyway
-  find_package( Curses )
-  if( CURSES_FOUND )
-    add_definitions( -DO_CURSES )
-    include_directories( ${CURSES_INCLUDE_PATH} )
-  else()
-    set( CURSES OFF )
-  endif()
-endif()
-
-if ( TIMED )
-  find_package( Boost )
-  find_package( LibXml2 )
-  if( NOT LIBXML2_FOUND )
-    disabling( "TIMED" " (timed automata)" "Could not find LibXml2." )
-    set( TIMED OFF )
-  elseif( NOT Boost_FOUND )
-    disabling( "TIMED" " (timed automata)" "Could not find Boost." )
-    set( TIMED OFF )
-  else()
-    include_directories( ${LIBXML2_INCLUDE_DIR} )
-    link_directories( ${PC_LIBXML_LIBDIR} )
-    list( APPEND ADDITIONAL_LIBS ${LIBXML2_LIBRARIES} )
-    add_definitions( -DO_TIMED )
-  endif()
-endif()
-
-if( LLVM )
-  if( NOT LLVM_FOUND )
-    disabling( "LLVM" "" "Could not find LLVM." )
-    set( LLVM OFF )
-  else()
-    if ( ${LLVM_STRING_VERSION} MATCHES "3[.][1234]([^0-9]*|[.].*)" )
-      add_definitions( -DO_LLVM )
-      link_directories( ${LLVM_LIBRARY_DIRS} )
-
-      # this is not very nice but it works and ncurses & zlib break builds under NixOS
-      list( REMOVE_ITEM LLVM_SYSLIBS "z" "ncurses" )
+if( OPT_CURSES )
+    find_package( Curses )
+    if( CURSES_FOUND )
+        include_directories( ${CURSES_INCLUDE_PATH} )
     else()
-      disabling( "LLVM" "" "Found version ${LLVM_STRING_VERSION} but 3.1 to 3.4 is required." )
-      set( LLVM OFF )
+        disable( OPT_CURSES "" "Curses not found." )
     endif()
-  endif()
 endif()
 
-if( MANUAL )
-  find_program( PANDOC pandoc )
-  find_program( PDFLATEX pdflatex )
-  find_program( BIBTEX bibtex )
-  if ( PANDOC )
-    if ( NOT PDFLATEX OR NOT BIBTEX )
-      message( "-- WARNING: pdflatex or bibtex not found. Skipping PDF generation." )
+if ( GEN_TIMED )
+    find_package( Boost )
+    find_package( LibXml2 )
+    if( NOT LIBXML2_FOUND )
+        disable( GEN_TIMED " (timed automata)" "Could not find LibXml2." )
+    elseif( NOT Boost_FOUND )
+        disable( GEN_TIMED " (timed automata)" "Could not find Boost." )
+    else()
+        include_directories( ${LIBXML2_INCLUDE_DIR} )
+        link_directories( ${PC_LIBXML_LIBDIR} )
+        list( APPEND ADDITIONAL_LIBS ${LIBXML2_LIBRARIES} )
     endif()
-  else()
-    disabling( "MANUAL" " (build pdf/html documentation)" "Could not find pandoc.")
-    set( MANUAL OFF )
-  endif()
 endif()
 
-if( MPI AND NOT WIN32 ) # MPI not supported on win32
-  include( FindMPI )
-  if ( MPI_FOUND )
-    add_definitions( "-DO_MPI" )
-    foreach( path ${MPI_INCLUDE_PATH} )
-      set( MPI_INCLUDE_FLAGS "-I${path} ${MPI_INCLUDE_FLAGS}" )
-    endforeach()
-    include (CheckIncludeFileCXX)
-    check_include_file_cxx( "ompi/version.h" HAVE_OMPI_VERSION ${MPI_INCLUDE_FLAGS} )
-    if( HAVE_OMPI_VERSION )
-      add_definitions( "-DO_OMPI_VERSION" )
+if( GEN_LLVM )
+    if( NOT LLVM_FOUND )
+        disable( GEN_LLVM "" "Could not find LLVM." )
+    elseif ( ${LLVM_STRING_VERSION} MATCHES "3[.][1234]([^0-9]*|[.].*)" )
+        link_directories( ${LLVM_LIBRARY_DIRS} )
+        # this is not very nice but it works and ncurses & zlib break builds under NixOS
+        list( REMOVE_ITEM LLVM_SYSLIBS "z" "ncurses" )
+        # suppress warnings coming from LLVM headers
+        add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
+    else()
+        disable( GEN_LLVM "" "Found version ${LLVM_STRING_VERSION} but 3.1 to 3.4 is required." )
     endif()
-  else()
-    disabling( "MPI" " (cluster support)" "Could not find MPI." )
-    set( MPI OFF )
-    set( MPI_INCLUDE_PATH "" )
-    set( MPI_LIBRARIES "" )
-    set( MPI_LIBRARY "" )
-    set( MPIEXEC "" )
-  endif()
 endif()
 
-if( PROFILE )
-  find_program( LCOV lcov )
-  find_program( GCOV gcov )
-  find_program( LCOV_GENHTML genhtml )
+if( OPT_MANUAL )
+    find_program( PANDOC pandoc )
+    find_program( PDFLATEX pdflatex )
+    find_program( BIBTEX bibtex )
+    if ( PANDOC )
+        if ( NOT PDFLATEX OR NOT BIBTEX )
+            message( "-- WARNING: pdflatex or bibtex not found. Skipping PDF generation." )
+        endif()
+    else()
+        disable( OPT_MANUAL " (build pdf/html documentation)" "Could not find pandoc.")
+    endif()
+endif()
 
-  if( LCOV )
-    set( LCOV_BIN "${LCOV}" )
-    set( GCOV_BIN "${GCOV}" )
-    set( LCOV_IN "${divine_BINARY_DIR}" )
-    set( LCOV_OUT "${divine_BINARY_DIR}/lcov-report" )
-    configure_file( cmake/with-lcov.sh ${divine_BINARY_DIR}/with-lcov )
-    execute_process( COMMAND chmod +x ${divine_BINARY_DIR}/with-lcov )
-    set( WIBBLE_WRAP_TESTS "${divine_BINARY_DIR}/with-lcov" )
+if( OPT_MPI AND NOT WIN32 ) # MPI not supported on win32
+    include( FindMPI )
+    if ( MPI_FOUND )
+        foreach( path ${MPI_INCLUDE_PATH} )
+            set( MPI_INCLUDE_FLAGS "-I${path} ${MPI_INCLUDE_FLAGS}" )
+        endforeach()
+        include (CheckIncludeFileCXX)
+        check_include_file_cxx( "ompi/version.h" HAVE_OMPI_VERSION ${MPI_INCLUDE_FLAGS} )
+        if( HAVE_OMPI_VERSION )
+            add_definitions( "-DHAVE_OMPI_VERSION" )
+        endif()
+        foreach ( path ${MPI_INCLUDE_PATH} )
+            add_definitions( -isystem ${path} )
+        endforeach()
+    else()
+        disable( OPT_MPI " (cluster support)" "Could not find MPI." )
+        set( MPI_INCLUDE_PATH "" )
+        set( MPI_LIBRARIES "" )
+        set( MPI_LIBRARY "" )
+        set( MPIEXEC "" )
+    endif()
+endif()
 
-    add_custom_target( lcov-report
-      COMMAND mkdir -p ${LCOV_OUT}
-      COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
+if( DEV_GCOV )
+    find_program( LCOV lcov )
+    find_program( GCOV gcov )
+    find_program( LCOV_GENHTML genhtml )
+
+    if( LCOV )
+        set( LCOV_BIN "${LCOV}" )
+        set( GCOV_BIN "${GCOV}" )
+        set( LCOV_IN "${divine_BINARY_DIR}" )
+        set( LCOV_OUT "${divine_BINARY_DIR}/lcov-report" )
+        configure_file( cmake/with-lcov.sh ${divine_BINARY_DIR}/with-lcov )
+        execute_process( COMMAND chmod +x ${divine_BINARY_DIR}/with-lcov )
+        set( WIBBLE_WRAP_TESTS "${divine_BINARY_DIR}/with-lcov" )
+
+        add_custom_target( lcov-report
+            COMMAND mkdir -p ${LCOV_OUT}
+            COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
                       -a ${LCOV_OUT}/base.info
                       -a ${LCOV_OUT}/collect-1.info
                       -a ${LCOV_OUT}/collect-2.info
                       -a ${LCOV_OUT}/collect-3.info
                       -o ${LCOV_OUT}/overall_everything.info
-      COMMAND ${LCOV} --extract ${LCOV_OUT}/overall_everything.info
+            COMMAND ${LCOV} --extract ${LCOV_OUT}/overall_everything.info
                       ${divine_SOURCE_DIR}/divine/*
                       ${divine_SOURCE_DIR}/examples/*
                       ${divine_SOURCE_DIR}/murphi/*
                       ${divine_SOURCE_DIR}/tools/*
                       -o ${LCOV_OUT}/overall.info
-      COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
-        ${LCOV_OUT}/overall.info
-      VERBATIM
-    )
-  else()
-    disabling( "PROFILE" " (coverage report generation)" "Could not find LCOV." )
-    set( PROFILE OFF )
-  endif()
+            COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
+                      ${LCOV_OUT}/overall.info
+            VERBATIM
+        )
+    else()
+        disable( DEV_GCOV " (coverage report generation)" "Could not find LCOV." )
+    endif()
 endif()
 
-if ( LTL3BA )
-  add_definitions( -DO_LTL3BA )
+if( OPT_LTL2DSTAR )
+    find_package( Boost )
+    if( NOT Boost_FOUND )
+        disable( OPT_LTL2DSTAR "" "Boost not found." )
+    endif()
 endif()
 
-if( LTL2DSTAR )
-  find_package( Boost )
-  if( Boost_FOUND )
-    add_definitions( -DO_LTL2DSTAR )
-  else()
-    set( LTL2DSTAR OFF )
-  endif()
+if( OPT_MURPHI )
+    find_program( BYACC "byacc" )
+    find_package( FLEX )
+    find_package( BYACC )
+    if ( NOT FLEX_FOUND OR NOT BYACC_FOUND OR NOT BYACC )
+        disable( OPT_MURPHI "" "Could not find flex and/or byacc" )
+    endif()
 endif()
 
-if( MURPHI )
-  find_program( BYACC "byacc" )
-  find_package( FLEX )
-  find_package( BYACC )
-  if ( FLEX_FOUND AND BYACC_FOUND AND BYACC )
-    add_definitions( -DO_MURPHI )
-  else()
-    disabling( "MURPHI" "" "Could not find flex and/or byacc" )
-    set( MURPHI OFF )
-  endif()
-endif()
-
-if( GUI )
+if( OPT_GUI )
   find_package( Qt4 4.5.0 )
   if( QT4_FOUND AND QT_VERSION_MINOR GREATER 4 )
     if ( WIN32 )
@@ -509,37 +458,19 @@ if( GUI )
         endif()
     endif()
   else()
-    disabling( "GUI" "" "Could not find Qt4 >= 4.5." )
-    set( GUI OFF )
+    disable( OPT_GUI "" "Could not find Qt4 >= 4.5." )
   endif()
-endif( GUI )
+endif()
 
-if( SQL_REPORT )
+if( OPT_SQL )
   include( FindODBC )
   if( NOT ODBC_FOUND )
-    disabling( "SQL_REPORT" "" "Could not find ODBC." )
-    set( SQL_REPORT OFF )
+    disable( OPT_SQL "" "Could not find ODBC." )
   else()
-      add_definitions( -DO_SQL_REPORT )
       add_definitions( "-DNANODBC_USE_CPP11" )
       link_directories( ${ODBC_LIBRARY_DIRS} )
   endif()
 endif()
-
-if( MANUAL )
-  find_program( PANDOC pandoc )
-  find_program( PDFLATEX pdflatex )
-  find_program( BIBTEX bibtex )
-  if ( PANDOC )
-    if ( NOT PDFLATEX OR NOT BIBTEX )
-      message( "-- WARNING: pdflatex or bibtex not found. Skipping PDF generation." )
-    endif()
-  else()
-    disabling( "MANUAL" " (build pdf/html documentation)" "Could not find pandoc.")
-    set( MANUAL OFF )
-  endif()
-endif()
-
 
 set( DIVINE_INCLUDES
   ${divine_SOURCE_DIR}
@@ -551,23 +482,14 @@ set( DIVINE_INCLUDES
   ${LLVM_INCLUDE_DIRS}
   ${divine_SOURCE_DIR}/divine/legacy )
 
-appendFlag( "CXX" "-Wold-style-cast" )
-
-if ( MPI )
-    foreach ( path ${MPI_INCLUDE_PATH} )
-        add_definitions( -isystem ${path} )
-    endforeach()
-endif( MPI )
-
-if ( LLVM )
-    # suppress warnings coming from LLVM headers
-    add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
-endif( LLVM )
-
-get_property( BUILDOPTS1 DIRECTORY PROPERTY COMPILE_DEFINITIONS )
-string(REPLACE ";" " " BUILDOPTS2 "${BUILDOPTS1}")
-string(REPLACE " NANODBC_USE_CPP11" "" BUILDOPTS3 "${BUILDOPTS2}")
-string(REPLACE "O_" "" BUILDOPTS "${BUILDOPTS3}")
+foreach( opt ${OPTIONS} )
+    if ( ${${opt}} )
+        add_definitions( "-D${opt}=1" )
+        set( BUILDOPTS "${BUILDOPTS} ${opt}" )
+    else()
+        add_definitions( "-D${opt}=0" )
+    endif()
+endforeach()
 
 ##########################################
 ## SOURCE DIRECTORIES
@@ -579,34 +501,34 @@ add_custom_target( unit )
 add_subdirectory( wibble )
 # add_subdirectory( external/lpsolve )
 
-if( HOARD )
+if( OPT_HOARD )
   add_subdirectory( external/hoard )
-endif( HOARD )
+endif()
 
-if( TBBMALLOC )
+if( OPT_TBBMALLOC )
   add_subdirectory( external/tbbmalloc )
 endif()
 
-if( LTL2DSTAR )
-  if ( NOT LTL3BA )
+if( OPT_LTL2DSTAR )
+  if ( NOT OPT_LTL3BA )
     add_subdirectory( external/ltl2ba )
   endif()
   add_subdirectory( external/ltl2dstar )
 endif()
 
-if( LLVM )
+if( GEN_LLVM )
   add_subdirectory( external/pdclib )
   add_subdirectory( external/libm )
   add_subdirectory( external/libcxxabi )
   add_subdirectory( external/libcxx )
 endif()
 
-if( TIMED )
+if( GEN_TIMED )
   add_subdirectory( external/libutap )
   add_subdirectory( external/dbm )
 endif()
 
-if( MURPHI )
+if( OPT_MURPHI )
   add_subdirectory( external/murphi )
 endif()
 
@@ -614,20 +536,20 @@ add_subdirectory( divine )
 add_subdirectory( tools )
 add_subdirectory( examples )
 
-if ( LTL3BA )
+if ( OPT_LTL3BA )
   add_subdirectory( external/ltl3ba )
 endif()
 
-if( GUI )
+if( OPT_GUI )
   add_subdirectory( gui )
-endif( GUI )
+endif()
 
-if( MANUAL )
+if( OPT_MANUAL )
   add_subdirectory( manual )
   add_subdirectory( website )
 endif()
 
-if( SQL_REPORT )
+if( OPT_SQL )
     add_subdirectory( external/nanodbc )
 endif()
 

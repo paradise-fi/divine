@@ -16,11 +16,11 @@
 
 extern const char *combine_m4;
 
-#ifdef O_LTL2DSTAR
+#if OPT_LTL2DSTAR
 int main_ltl2dstar(int argc, const char **argv, std::istream& in, std::ostream& out);
 #endif
 
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
 #include <external/ltl3ba/ltl3ba.h>
 #undef min // SIGH
 int main_ltl3ba(int argc, char *argv[], std::ostream& out);
@@ -37,7 +37,7 @@ using namespace sys;
 
 namespace divine {
 
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
 std::string buchi_to_cpp(BState* bstates, int accept, std::list< std::string > symbols);
 #else
 std::string graph_to_cpp(const BA_opt_graph_t &g);
@@ -64,7 +64,7 @@ struct Combine {
     IntOption *o_propId;
     BoolOption *o_stdout, *o_quiet, *o_help, *o_version, *o_det;
     StringOption *o_formula;
-#ifdef O_LTL2DSTAR
+#if OPT_LTL2DSTAR
     StringOption *o_condition;
 #endif
     commandline::StandardParserWithMandatoryCommand &opts;
@@ -104,7 +104,7 @@ struct Combine {
         o_quiet = cmd_combine->add< BoolOption >(
             "quiet", 'q', "quiet", "",
             "suppress normal output" );
-#ifdef O_LTL2DSTAR
+#if OPT_LTL2DSTAR
         o_condition = cmd_combine->add< StringOption >(
             "condition", 'c', "condition", "",
             "acceptance condition type: NBA | DRA (default: NBA)" );
@@ -146,7 +146,7 @@ struct Combine {
         return str.str();
     }
 
-#ifdef O_LTL2DSTAR
+#if OPT_LTL2DSTAR
     /// Translates ltl formula to automaton specified by acceptanceConditionType using external translator
     std::string ltl2dstarTranslation( const std::string& acceptanceConditionType, std::string ltl ) {
         // ltl2dstar expects the ltl formula to be in the prefix form
@@ -169,7 +169,7 @@ struct Combine {
     }
 #endif
 
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
     /// Translates ltl formula to Buchi automaton using ltl3ba
     static std::string ltl3baTranslation( std::string ltl ) {
         std::stringstream automatonStream, formulaStream;
@@ -229,18 +229,18 @@ struct Combine {
     void ltl_to_dve( int id, std::string ltl ) {
         std::string automaton;
         std::stringstream automaton_str;
-#ifdef O_LTL2DSTAR
+#if OPT_LTL2DSTAR
         if ( !o_condition->boolValue() || o_condition->stringValue() == "NBA" )
 #endif
         {
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
             automaton = ltl3baTranslation( ltl );
 #else
             divine::output( buchi( ltl, probabilistic ), automaton_str );
             automaton = automaton_str.str();
 #endif
         }
-#ifdef O_LTL2DSTAR
+#if OPT_LTL2DSTAR
         // this can also handle NBA, Streett, etc.
         else if ( o_condition->stringValue() == "DRA" ) {
             automaton = ltl2dstarTranslation( "rabin", ltl );

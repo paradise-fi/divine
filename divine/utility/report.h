@@ -142,7 +142,7 @@ struct SqlReport : Report {
     SqlReport( const std::string &db, const std::string &connstr );
     void doFinal( const Meta &meta ) override;
 
-#ifndef O_SQL_REPORT
+#if !OPT_SQL
     template< typename... X >
     static std::shared_ptr< Report > get( X &&...  ) { return nullptr; }
 #endif

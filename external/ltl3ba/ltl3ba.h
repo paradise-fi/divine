@@ -39,7 +39,7 @@
 #include <sstream>
 #include <stdlib.h>
 #include <sys/time.h>
-#ifdef POSIX
+#ifdef __unix
 #include <sys/resource.h>
 #endif
 

@@ -3,7 +3,7 @@
 
 #include <divine/ltl2ba/main.h>
 
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
 struct BState;
 #endif
 
@@ -24,7 +24,7 @@ protected:
     std::vector< BANode > nodes;
     int initId;
 
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
     static std::vector< DNFClause > gclause;
 #endif
 
@@ -36,7 +36,7 @@ public:
      */
     template < typename Func >
     bool build( const std::string& ltl, Func guardId ) {
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
     return build3ba( ltl, guardId );
 #else
     return build2ba( ltl, guardId );
@@ -77,7 +77,7 @@ public:
         return initId >= 0;
     }
 
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
 private:
     // parses ltl formula, returs zero on success
     int ltl3ba_parse( std::string ltl );

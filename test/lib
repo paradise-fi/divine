@@ -31,14 +31,14 @@ else
 fi
 
 COMPRESSIONS="none"
-if [ x$O_COMPRESSION = xON ]
+if [ x$STORE_COMPRESS = xON ]
 then
     COMPRESSIONS="$COMPRESSIONS ntree"
 fi
 
 for_dve_small() {
     wrapper=$1; shift
-    test "$O_DVE" = "ON" || return 0
+    test "$GEN_DVE" = "ON" || return 0
 
     check clear
     run $wrapper data/empty.dve "$@" --property=deadlock
@@ -158,12 +158,12 @@ dve_small() {
 }
 
 dve_compiled_small() {
-    test "$O_CESMI" = "ON" || return 0
+    test "$GEN_CESMI" = "ON" || return 0
     for_dve_small dve_compile "$@"
 }
 
 llvm_small() {
-    test "$O_LLVM" = "ON" || return 0
+    test "$GEN_LLVM" = "ON" || return 0
 
     check clear
     run llvm_assemble data/global-ok.ll "$@" --property=assert --reduce=tau+,taustores,heap
@@ -178,7 +178,7 @@ llvm_small() {
 
 timed_small() {
     wrapper=$1; shift
-    test "$O_TIMED" = "ON" || return 0
+    test "$GEN_TIMED" = "ON" || return 0
 
     check clear
     run $wrapper data/timed_arithm.xml "$@" --property=deadlock
@@ -193,14 +193,14 @@ timed_small() {
     check clear
     run $wrapper data/bridge.xml "$@" --property=0
     check ltl_valid
-    if test "$O_LTL3BA" = "ON"; then
+    if test "$OPT_LTL3BA" = "ON"; then
        check statespace 2412 4848 0 0; else
        check statespace 2813 6361 0 0; fi
     
     check clear
     run $wrapper data/bridge.xml "$@" --property=1
     check ltl_invalid
-    if test "$O_LTL3BA" = "ON"; then
+    if test "$OPT_LTL3BA" = "ON"; then
         check statespace 2867 5795 303 0; else
         check statespace 2896 6640 303 0; fi
 
@@ -216,7 +216,7 @@ timed_small() {
 }
 
 murphi_small() {
-    test "$O_MURPHI" = "ON" || return 0
+    test "$OPT_MURPHI" = "ON" || return 0
 
     check clear
     run dve_compile data/abp.m "$@" --property=deadlock
@@ -225,7 +225,7 @@ murphi_small() {
 }
 
 coin_small() {
-    test "$O_COIN" = "ON" || return 0
+    test "$GEN_COIN" = "ON" || return 0
 
     check clear
     run identity data/coffee.coin "$@" --property=deadlock
@@ -253,7 +253,7 @@ llvm_prepare() {
 }
 
 llvm_verify_file() {
-    test "$O_LLVM" = "ON" || skip
+    test "$GEN_LLVM" = "ON" || skip
     f=$1; shift
     t=$1; shift
     test "$t" == invalid && { where="$1"; what="$2"; shift; shift; }
@@ -272,19 +272,19 @@ llvm_verify_file() {
 }
 
 llvm_verify_cpp() {
-    test "$O_LLVM" = "ON" || skip
+    test "$GEN_LLVM" = "ON" || skip
     llvm_prepare testcase.cpp
     llvm_verify_file testcase.bc "$@"
 }
 
 llvm_verify() {
-    test "$O_LLVM" = "ON" || skip
+    test "$GEN_LLVM" = "ON" || skip
     llvm_prepare testcase.c
     llvm_verify_file testcase.bc "$@"
 }
 
 dve_statespace() {
-    test "$O_DVE" = "ON" || skip
+    test "$GEN_DVE" = "ON" || skip
     cat > testcase.dve
     divine metrics testcase.dve --no-reduce -p $1 -r 2>> progress | capture
     shift
@@ -293,7 +293,7 @@ dve_statespace() {
 }
 
 dve_shape() {
-    test "$O_DVE" = "ON" || skip
+    test "$GEN_DVE" = "ON" || skip
     cat > testcase.dve
     echo "$2" > expected
     divine draw testcase.dve --no-reduce -p $1 -r cat -o out.dot 2>> progress | capture

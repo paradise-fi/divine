@@ -1,13 +1,13 @@
 #include "buchi.h"
 #include <wibble/regexp.h>
 
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
 #include <external/ltl3ba/ltl3ba.h>
 #endif
 
 using namespace divine;
 
-#ifdef O_LTL3BA
+#if OPT_LTL3BA
 // ltl3ba does not have the proper interface
 void reinit();
 int tl_main( std::string &argv );

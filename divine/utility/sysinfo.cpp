@@ -5,7 +5,7 @@
 #include <fstream>
 #include <stdint.h>
 
-#ifdef POSIX
+#ifdef __unix
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -28,7 +28,7 @@ namespace sysinfo {
 Data *Info::data = 0;
 
 struct Data {
-#ifdef POSIX
+#ifdef __unix
     struct timeval tv, now;
     struct rusage usage;
 #endif
@@ -52,7 +52,7 @@ static bool matchLine( std::string file, wibble::ERegexp &r ) {
     return false;
 }
 
-#ifdef POSIX
+#ifdef __unix
 double interval( struct timeval from, struct timeval to ) {
     return to.tv_sec - from.tv_sec +
         double(to.tv_usec - from.tv_usec) / 1000000;
@@ -73,7 +73,7 @@ double SystemTimeToDouble(SYSTEMTIME &time)
 #endif
 
 double Info::userTime() const {
-#ifdef POSIX
+#ifdef __unix
     return interval( zeroTime(), data->usage.ru_utime );
 #elif defined(_WIN32)
     return SystemTimeToDouble(data->stUser);
@@ -81,7 +81,7 @@ double Info::userTime() const {
 }
 
 double Info::systemTime() const {
-#ifdef POSIX
+#ifdef __unix
     return interval( zeroTime(), data->usage.ru_stime );
 #elif defined(_WIN32)
     return SystemTimeToDouble(data->stKernel);
@@ -89,7 +89,7 @@ double Info::systemTime() const {
 }
 
 double Info::wallTime() const {
-#ifdef POSIX
+#ifdef __unix
     return interval( data->tv, data->now );
 #elif defined(_WIN32)
     return SystemTimeToDouble(data->stFinish) - SystemTimeToDouble(data->stStart);
@@ -105,7 +105,7 @@ Info::Info() {
 }
 
 void Info::start() const {
-#ifdef POSIX
+#ifdef __unix
     gettimeofday(&data->tv, NULL);
 #endif
 
@@ -116,7 +116,7 @@ void Info::start() const {
 }
 
 void Info::update() const {
-#ifdef POSIX
+#ifdef __unix
     gettimeofday(&data->now, NULL);
     getrusage( RUSAGE_SELF, &data->usage );
 #elif defined(_WIN32)

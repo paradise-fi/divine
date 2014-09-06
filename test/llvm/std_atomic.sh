@@ -1,6 +1,6 @@
 . lib
 
-test "$O_LLVM" = "ON" || skip
+test "$GEN_LLVM" = "ON" || skip
 
 llvm_precompile
 

@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2011-2014 Petr Rockai <me@mornfall.net>
 
-#ifdef O_LLVM
+#if GEN_LLVM
 #include <stdint.h>
 #include <iostream>
 

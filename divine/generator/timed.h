@@ -1,6 +1,6 @@
 // -*- C++ -*-
 
-#ifdef O_TIMED
+#if GEN_TIMED
 #ifndef DIVINE_GENERATOR_TIMED_H
 #define DIVINE_GENERATOR_TIMED_H
 

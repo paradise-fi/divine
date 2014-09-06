@@ -4,7 +4,7 @@
 #include <wibble/string.h>
 #include <map>
 
-#ifdef O_SQL_REPORT
+#if OPT_SQL
 #include <external/nanodbc/nanodbc.h>
 #endif
 
@@ -30,7 +30,7 @@ std::string Report::mangle( std::string str ) {
     return str;
 }
 
-#ifndef O_SQL_REPORT
+#if !OPT_SQL
 SqlReport::SqlReport( const std::string &, const std::string & ) {
     wibble::exception::Consistency( "ODBC support must be included for SQL reports" );
 }

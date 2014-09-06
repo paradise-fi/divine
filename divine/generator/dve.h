@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2007-2014 Petr Rockai <me@mornfall.net>
 //             (c) 2012, 2013 Jan Kriho
 
-#ifdef O_DVE
+#if GEN_DVE
 
 #include <deque>
 #include <vector>

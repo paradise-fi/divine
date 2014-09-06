@@ -13,7 +13,7 @@ Mpi::Mpi( bool forceMpi )
         s_data->is_master = true;
         s_data->progress = 0;
 
-#ifdef O_MPI
+#if OPT_MPI
         if ( getenv( "OMPI_UNIVERSE_SIZE" ) != nullptr || forceMpi ) {
             s_data->isMpi = true;
             MPI::Init();
@@ -39,7 +39,7 @@ Mpi::~Mpi() {
     if (!s_data->instances) {
         {   std::unique_lock< std::mutex > _lock( global().mutex );
             notifySlaves( _lock, TAG_ALL_DONE, bitblock() );
-#ifdef O_MPI
+#if OPT_MPI
             if ( master() && s_data->isMpi )
                 MPI::Finalize();
 #endif

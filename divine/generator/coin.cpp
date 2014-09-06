@@ -5,7 +5,7 @@
  *      Author: Milan Krivanek
  */
 
-#ifdef O_COIN
+#if GEN_COIN
 #include <divine/generator/coin.h>
 
 namespace divine {

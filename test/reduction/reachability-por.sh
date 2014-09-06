@@ -1,6 +1,6 @@
 . lib
 
-test "$O_DVE" = "OFF" && skip
+test "$GEN_DVE" = "OFF" && skip
 for COMP in $COMPRESSIONS
 do
     run reachability --reduce=por data/por.dve --compression=$COMP

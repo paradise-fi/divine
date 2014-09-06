@@ -8,7 +8,7 @@
 #include <divine/utility/statistics.h>
 #include <divine/utility/output.h>
 
-#ifdef POSIX
+#ifdef __unix
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -18,7 +18,7 @@ namespace divine {
 
 NoStatistics NoStatistics::_global;
 
-#ifdef POSIX
+#ifdef __unix
 void TrackStatistics::busy( int id ) {
     struct rusage usage;
     if ( !getrusage( RUSAGE_THREAD, &usage ) ) {

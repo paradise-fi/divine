@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
-#ifdef O_EXPLICIT
+#if ALG_EXPLICIT || GEN_EXPLICIT
 #include <divine/explicit/explicit.h>
 #include <divine/graph/probability.h>
 
@@ -110,4 +110,4 @@ Explicit PrealocateHelper::operator()() {
 
 }
 }
-#endif // O_EXPLICIT
+#endif

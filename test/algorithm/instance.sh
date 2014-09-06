@@ -1,8 +1,8 @@
 . lib
 
-if [ "$O_DVE" = "ON" ]; then
+if [ "$GEN_DVE" = "ON" ]; then
     testcase="data/empty.dve"
-elif [ "$O_SMALL" = "OFF" ]; then
+elif [ "$GEN_DUMMY" = "ON" ]; then
     testcase="--dummy"
 else
     skip
@@ -37,6 +37,6 @@ checkInstance 'Owcty.*Shared' "for shared OWCTY" --owcty --shared
 checkInstance 'Map.*Shared' "for shared MAP" --map --shared
 checkInstance 'NestedDFS.*Shared' "for double threaded NestedDFS" --nested-dfs -w 2
 
-if test "$O_COMPRESSION" = "ON"; then
+if test "$STORE_COMPRESS" = "ON"; then
     checkInstance 'NTree' "with enabled compression" --compression=tree
 fi

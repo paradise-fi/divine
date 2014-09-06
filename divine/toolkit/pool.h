@@ -628,10 +628,10 @@ struct Dereference {
     void releaseLock( Blob ) { assert_unimplemented(); }
 };
 
-#ifdef O_POOLS
-typedef Dereference< Lake > Pool;
-#else
+#if DEV_NOPOOLS
 typedef Dereference< Pond > Pool;
+#else
+typedef Dereference< Lake > Pool;
 #endif
 
 typedef Pool::Blob Blob;

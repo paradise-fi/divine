@@ -1,7 +1,7 @@
 . lib
 
 verify_dve() {
-    test "$O_DVE" = "ON" || test "$O_LEGACY" = "ON" || return 0
+    test "$GEN_DVE" = "ON" || return 0
 
     for COMP in $COMPRESSIONS
     do
@@ -26,7 +26,7 @@ verify_dve() {
 }
 
 verify_timed() {
-    test "$O_TIMED" = "ON" || return 0
+    test "$GEN_TIMED" = "ON" || return 0
 
     for COMP in $COMPRESSIONS
     do

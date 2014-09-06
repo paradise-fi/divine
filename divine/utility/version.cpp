@@ -3,9 +3,9 @@
 #include <string>
 #include <sstream>
 
-#ifdef O_MPI
+#if OPT_MPI
 #include <mpi.h>
-#ifdef O_OMPI_VERSION
+#ifdef HAVE_OMPI_VERSION
 #include <ompi/version.h>
 #endif
 #endif
@@ -36,11 +36,11 @@ const char *versionString() {
 
 std::vector< ReportLine > BuildInfo::report() const {
     std::stringstream ss;
-#ifdef O_MPI
+#if OPT_MPI
         int vers, subvers;
         std::string impl = "unknown implementation";
         MPI::Get_version( vers, subvers );
-#ifdef OMPI_VERSION
+#ifdef HAVE_OMPI_VERSION
         impl = std::string( "OpenMPI " ) + OMPI_VERSION;
 #endif
         ss << vers << "." << subvers << " (" << impl << ")";
