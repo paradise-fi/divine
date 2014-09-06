@@ -1,6 +1,6 @@
 project( ltl3ba )
 
-add_definitions( ${OPT_FLAGS} ${CXX_FLAGS} -DNXT -Wno-format-security )
+add_definitions( ${OPT_FLAGS} ${CXX_FLAGS} -DNXT -Wno-format-security -D__ltl3ba_internal )
 
 add_subdirectory( buddy )
 

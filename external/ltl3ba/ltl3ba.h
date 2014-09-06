@@ -496,6 +496,8 @@ inline void cGTrans::erase(std::map<GState*, std::map<cset, bdd>, GStateComp>::i
   trans.erase(tx);
 }
 
+#ifdef __ltl3ba_internal
+
 #ifdef __cplusplus
   #define ZN	nullptr
   #define ZS	nullptr
@@ -520,3 +522,5 @@ typedef Node	*Nodeptr;
 #define Assert(x, y)	{ if (!(x)) { tl_explain(y); \
 			  Fatal(": assertion failed\n",reinterpret_cast<char *>(0)); } }
 #define min(x,y)        ((x<y)?x:y)
+
+#endif
