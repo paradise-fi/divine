@@ -24,6 +24,9 @@
 #endif
 #endif // def( __cplusplus )
 
+#ifdef __unix
+#define POSIX
+#endif
 
 #ifdef WIBBLE_GUARD_CPP_11
     #if !WIBBLE_CPP_11
