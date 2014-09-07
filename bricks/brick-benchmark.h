@@ -328,8 +328,10 @@ void repeat( BenchmarkBase *tc, gnuplot::DataSet &res ) {
                 y.scaled( stats.b_mean.low * factor ),
                 y.scaled( stats.b_mean.high * factor ) );
 
+#ifdef __unix
     ::close( tc->fds[0] );
     ::close( tc->fds[1] );
+#endif
 }
 
 /* TODO duplicated from brick-shelltest */
