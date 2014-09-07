@@ -216,8 +216,8 @@ let
   };
 
   windows = {
-    win7.i386 = mkwin windows7_img "" [ windows_qt ];
-    # win7_small.i386 = mkwin windows7_img "-DSMALL=ON" [];
+    win7_gui.i386 = mkwin windows7_img "" [ windows_qt ];
+    win7.i386 = mkwin windows7_img "" [];
     win7_llvm.i386 = mkwin windows7_img "-DREQUIRED=LLVM" [ windows_llvm ];
   };
 
