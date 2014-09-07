@@ -45,8 +45,7 @@ let
                  "binutils-gold" "libxml2-dev" ];
   extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
   extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
-  extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" "bison" ];
-  extra_rpms_gt19 = extra_rpms ++ [ "llvm-static" ];
+  extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" "bison" "llvm-static" ];
 
   mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT",
            tarball ? jobs.tarball }: arch:
@@ -167,9 +166,8 @@ let
     ubuntu1310 = mkVM { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
     ubuntu1404 = mkVM { VM = debuild; disk = "ubuntu1404"; extras = extra_debs34; };
 
-    fedora18   = mkVM { VM = rpmbuild; disk = "fedora18"; extras = extra_rpms; tarball = tarball_with_binutils; };
-    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms_gt19; tarball = tarball_with_binutils; };
-    fedora20   = mkVM { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms_gt19; tarball = tarball_with_binutils; };
+    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms; tarball = tarball_with_binutils; };
+    fedora20   = mkVM { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms; tarball = tarball_with_binutils; };
   };
 
   binutils = pkgs.fetchurl {
