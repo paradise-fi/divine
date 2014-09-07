@@ -36,7 +36,7 @@
 #include <numeric>
 #include <cmath>
 #include <algorithm>
-#include <cstring> // for memset
+#include <random>
 
 #include <time.h>
 
@@ -95,19 +95,14 @@ double stddev( Sample s ) {
 template< typename E >
 Sample bootstrap( Sample s, E estimator, int iterations = 20000 )
 {
-    struct random_data rand;
-    char statebuf[256];
-    memset( &rand, 0, sizeof(rand) );
-    initstate_r( 0, statebuf, sizeof( statebuf ), &rand );
+    std::mt19937 rand;
+    std::uniform_int_distribution<> dist( 0, s.size() );
 
     Sample result;
     for ( int i = 0; i < iterations; ++i ) {
         Sample resample;
-        while ( resample.size() < s.size() ) {
-            int idx;
-            random_r( &rand, &idx );
-            resample.push_back( s[ idx % s.size() ] );
-        }
+        while ( resample.size() < s.size() )
+            resample.push_back( s[ dist( rand ) ] );
         result.push_back( estimator( resample ) );
     }
     return result;

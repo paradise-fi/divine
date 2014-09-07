@@ -1149,23 +1149,22 @@ struct RandomThread : shmem::Thread {
     HS *_set;
     typename HS::ThreadData td;
     int count, id;
-    struct random_data rand;
-    char statebuf[256];
+    std::mt19937 rand;
+    std::uniform_int_distribution<> dist;
     bool insert;
     int max;
 
     RandomThread() : insert( true ) {}
 
     void main() {
-        memset(&rand, 0, sizeof(rand));
-        initstate_r( id, statebuf, 128, &rand );
+        rand.seed( id );
         auto set = _set->withTD( td );
         int v;
         for ( int i = 0; i < count; ++i ) {
-            random_r( &rand, &v );
+            int v = dist( rand );
             if ( max < std::numeric_limits< int >::max() ) {
                 v = v % max;
-                v = v * v + v + 41;
+                v = v * v + v + 41; /* spread out the values */
             }
             if ( insert )
                 set.insert( v );
