@@ -280,7 +280,7 @@ std::string simplify( std::string s, std::string l, bool fill = true ) {
     return (fill ? std::string( stop, ' ' ) : "") + std::string( s, stop, std::string::npos );
 }
 
-void run( std::string only_group= "" , std::string only_case = "" ) {
+int run( std::string only_group= "" , std::string only_case = "" ) {
     ASSERT( testcases );
     std::set< std::string > done;
     std::map< std::string, int > counts;
@@ -345,6 +345,7 @@ void run( std::string only_group= "" , std::string only_case = "" ) {
     if ( total_bad )
         std::cerr << ", " << total_bad << " failed";
     std::cerr << std::endl;
+    return total_bad > 0;
 }
 
 }
@@ -491,8 +492,8 @@ struct SelfTest
 #ifdef BRICK_DEMO
 
 int main( int argc, const char **argv ) {
-    brick::unittest::run( argc > 1 ? argv[1] : "",
-                          argc > 2 ? argv[2] : "" );
+    return brick::unittest::run( argc > 1 ? argv[1] : "",
+                                 argc > 2 ? argv[2] : "" );
 }
 
 #endif

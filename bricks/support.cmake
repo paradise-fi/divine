@@ -41,8 +41,8 @@ endfunction()
 
 function( bricks_unittest name )
   bricks_make_runner( ${name} "
-      brick::unittest::run( argc > 1 ? argv[1] : \"\",
-                            argc > 2 ? argv[2] : \"\" )\;"
+      return brick::unittest::run( argc > 1 ? argv[1] : \"\",
+                                   argc > 2 ? argv[2] : \"\" )\;"
       "BRICK_UNITTEST_REG" ${ARGN} )
 endfunction()
 

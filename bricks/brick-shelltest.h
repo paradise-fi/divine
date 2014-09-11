@@ -986,7 +986,7 @@ struct Main {
         if ( die || fatal_signal )
             return 1;
 
-        return 0;
+        return journal.count( Journal::FAILED ) ? 1 : 0;
     }
 
     Main( Options o ) : die( false ), journal( o.outdir ), options( o ) {}
@@ -1135,7 +1135,7 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
 #ifdef BRICK_DEMO
 
 int main( int argc, const char **argv ) {
-    brick::shelltest::run( argc, argv );
+    return brick::shelltest::run( argc, argv );
 }
 
 #endif
