@@ -10,7 +10,7 @@ add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H}
                 $<TARGET_OBJECTS:libdivine-instances> )
 
 target_link_libraries( divine libdivine wibble )
-if( MURPHI )
+if( OPT_MURPHI )
     target_link_libraries( divine murphi )
 endif()
 
