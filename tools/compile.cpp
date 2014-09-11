@@ -84,7 +84,7 @@ std::string ltl_to_c( int id, std::string ltl )
     return decls.str() + "\n" + s.str();
 }
 
-#ifdef O_MURPHI
+#if OPT_MURPHI
 void Compile::compileMurphi( std::string in ) {
     std::string outfile = str::basename( in ) + ".cpp";
     if (!mucompile( in.c_str(), outfile.c_str() ))

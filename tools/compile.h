@@ -125,16 +125,7 @@ struct Compile {
 
     void runCompiler( std::string comp, std::string in, std::string out, std::string flags = "" ) {
         std::stringstream cmd;
-        std::string multiarch =
-#if defined(O_USE_GCC_M32)
-            "-m32 "
-#elif defined(O_USE_GCC_M64)
-            "-m64 "
-#else
-            ""
-#endif
-            ;
-        cmd << comp << " " << multiarch << flags << " -o " << out << " " << in;
+        cmd << comp << " " << flags << " -o " << out << " " << in;
         run( cmd.str() );
     }
 
@@ -171,7 +162,7 @@ struct Compile {
     }
 
     void compileDve( std::string in, std::vector< std::string > definitions ) {
-#if defined O_DVE
+#if GEN_DVE
         dve::compiler::DveCompiler compiler;
         compiler.read( in.c_str(), definitions );
         compiler.analyse();
