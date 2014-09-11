@@ -1,5 +1,5 @@
 #include <brick-shelltest.h>
 
 int main( int argc, const char **argv ) {
-    brick::shelltest::run( argc, argv );
+    return brick::shelltest::run( argc, argv );
 }
