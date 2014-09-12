@@ -48,9 +48,11 @@ namespace rpc {
 
 namespace _impl {
 
-template< typename Bits >
-struct base {
-    typedef base< Bits > bitstream;
+struct empty {};
+
+template< typename Bits, typename Ext = empty >
+struct base : Ext {
+    typedef base< Bits, Ext > bitstream;
     Bits bits;
 
     void clear() { bits.clear(); }
@@ -59,13 +61,15 @@ struct base {
     void shift() { bits.pop_front(); }
     uint32_t &front() { return bits.front(); }
     void push( uint32_t i ) { bits.push_back( i ); }
-    base() {}
+    template< typename... X >
+    base( X&&... x ) : Ext( std::forward< X >( x )... ) {}
 };
 
 struct block : std::vector< uint32_t > {};
 
-template<> struct base< block > {
-    typedef base< block > bitstream;
+template< typename Ext >
+struct base< block, Ext > : Ext {
+    typedef base< block, Ext > bitstream;
     block bits;
     int offset;
 
@@ -86,110 +90,113 @@ template<> struct base< block > {
     }
     void push( uint32_t i ) { bits.push_back( i ); }
     uint32_t &front() { return bits[ offset ]; }
-    base() : offset( 0 ) {}
+
+    template< typename... X >
+    base( X&&... x ) : Ext( std::forward< X >( x )... ) {}
 };
 
-template< typename B, typename X > struct container {};
-template< typename B, typename T > struct container< B, std::vector< T > > {
-    typedef base< B > stream; };
-template< typename B, typename T > struct container< B, std::deque< T > > {
-    typedef base< B > stream; };
-template< typename B > struct container< B, std::string > {
-    typedef base< B > stream; };
+template< typename B, typename E >
+struct sfinae {
+    using stream = base< B, E >;
+};
 
-template< typename B, typename X > struct integer {};
-template< typename B > struct integer< B, bool > { typedef base< B > stream; };
-template< typename B > struct integer< B, char > { typedef base< B > stream; };
-template< typename B > struct integer< B, int8_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, int16_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, int32_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, uint8_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, uint16_t > { typedef base< B > stream; };
-template< typename B > struct integer< B, uint32_t > { typedef base< B > stream; };
+template< typename B, typename E, typename X >
+struct container {};
+template< typename B, typename E, typename T >
+struct container< B, E, std::vector< T > > : sfinae< B, E > {};
+template< typename B, typename E, typename T >
+struct container< B, E, std::deque< T > > : sfinae< B, E > {};
 
-template< typename B, typename X > struct int64 {};
-template< typename B > struct int64< B, uint64_t > { typedef base< B > stream; };
-template< typename B > struct int64< B, int64_t > { typedef base< B > stream; };
+template< typename B, typename E >
+struct container< B, E, std::string > : sfinae< B, E > {};
 
-template< typename B, typename X >
-typename container< B, X >::stream &operator<<( base< B > &bs, X x ) {
+template< typename B, typename E, typename X >
+using integer = typename std::conditional< std::is_integral< X >::value &&
+                                           sizeof( X ) <= 4, sfinae< B, E >, empty >::type;
+
+template< typename B, typename E, typename X >
+using int64 = typename std::conditional< std::is_integral< X >::value &&
+                                         sizeof( X ) == 8, sfinae< B, E >, empty >::type;
+
+template< typename B, typename E, typename X >
+typename container< B, E, X >::stream &operator<<( base< B, E > &bs, X x ) {
     bs << x.size();
     for ( typename X::const_iterator i = x.begin(); i != x.end(); ++i )
         bs << *i;
     return bs;
 }
 
-template< typename B, typename T >
-typename integer< B, T >::stream &operator<<( base< B > &bs, T i ) {
+template< typename B, typename E, typename T >
+typename integer< B, E, T >::stream &operator<<( base< B, E > &bs, T i ) {
     bs.push( i );
     return bs;
 }
 
-template< typename B, typename T >
-typename int64< B, T >::stream &operator<<( base< B > &bs, T i ) {
+template< typename B, typename E, typename T >
+typename int64< B, E, T >::stream &operator<<( base< B, E > &bs, T i ) {
     union { uint64_t x64; struct { uint32_t a; uint32_t b; } x32; };
     x64 = i;
     bs << x32.a << x32.b;
     return bs;
 }
 
-template< typename B, typename T1, typename T2 >
-base< B > &operator<<( base< B > &bs, std::pair< T1, T2 > i ) {
+template< typename B, typename E, typename T1, typename T2 >
+base< B, E > &operator<<( base< B, E > &bs, std::pair< T1, T2 > i ) {
     return bs << i.first << i.second;
 }
 
-template< typename B, std::size_t I, typename... Tp >
+template< typename B, typename E, std::size_t I, typename... Tp >
 inline typename std::enable_if< (I == sizeof...(Tp)), void >::type
-writeTuple( base< B > &, std::tuple< Tp... >& ) {}
+writeTuple( base< B, E > &, std::tuple< Tp... >& ) {}
 
-template< typename B, std::size_t I, typename... Tp >
+template< typename B, typename E, std::size_t I, typename... Tp >
 inline typename std::enable_if< (I < sizeof...(Tp)), void >::type
-writeTuple( base< B > &bs, std::tuple< Tp... >& t ) {
+writeTuple( base< B, E > &bs, std::tuple< Tp... >& t ) {
     bs << std::get< I >( t );
-    writeTuple< B, I + 1, Tp... >( bs, t );
+    writeTuple< B, E, I + 1, Tp... >( bs, t );
 }
 
-template< typename B, std::size_t I, typename... Tp >
+template< typename B, typename E, std::size_t I, typename... Tp >
 inline typename std::enable_if< (I == sizeof...(Tp)), void >::type
-readTuple( base< B > &, std::tuple< Tp... >& ) {}
+readTuple( base< B, E > &, std::tuple< Tp... >& ) {}
 
-template< typename B, std::size_t I, typename... Tp >
+template< typename B, typename E, std::size_t I, typename... Tp >
 inline typename std::enable_if< (I < sizeof...(Tp)), void >::type
-readTuple( base< B > &bs, std::tuple< Tp... >& t ) {
+readTuple( base< B, E > &bs, std::tuple< Tp... >& t ) {
     bs >> std::get< I >( t );
-    readTuple< B, I + 1, Tp... >( bs, t );
+    readTuple< B, E, I + 1, Tp... >( bs, t );
 }
 
-template< typename B, typename... Tp >
-inline base< B > &operator<<( base< B > &bs, std::tuple< Tp... >& t  ) {
-    writeTuple< B, 0 >( bs, t );
+template< typename B, typename E, typename... Tp >
+inline base< B, E > &operator<<( base< B, E > &bs, std::tuple< Tp... >& t  ) {
+    writeTuple< B, E, 0 >( bs, t );
     return bs;
 }
 
-template< typename B, typename... Tp >
-inline base< B > &operator>>( base< B > &bs, std::tuple< Tp... >& t  ) {
-    readTuple< B, 0 >( bs, t );
+template< typename B, typename E, typename... Tp >
+inline base< B, E > &operator>>( base< B, E > &bs, std::tuple< Tp... >& t  ) {
+    readTuple< B, E, 0 >( bs, t );
     return bs;
 }
 
-template< typename B, typename T >
-typename integer< B, T >::stream &operator>>( base< B > &bs, T &x ) {
+template< typename B, typename E, typename T >
+typename integer< B, E, T >::stream &operator>>( base< B, E > &bs, T &x ) {
     ASSERT( bs.size() );
     x = bs.front();
     bs.shift();
     return bs;
 }
 
-template< typename B, typename T >
-typename int64< B, T >::stream &operator>>( base< B > &bs, T &i ) {
+template< typename B, typename E, typename T >
+typename int64< B, E, T >::stream &operator>>( base< B, E > &bs, T &i ) {
     union { uint64_t x64; struct { uint32_t a; uint32_t b; } x32; };
     bs >> x32.a >> x32.b;
     i = x64;
     return bs;
 }
 
-template< typename B, typename X >
-typename container< B, X >::stream &operator>>( base< B > &bs, X &x ) {
+template< typename B, typename E, typename X >
+typename container< B, E, X >::stream &operator>>( base< B, E > &bs, X &x ) {
     size_t size;
     bs >> size;
     for ( int i = 0; i < int( size ); ++ i ) {
@@ -200,8 +207,8 @@ typename container< B, X >::stream &operator>>( base< B > &bs, X &x ) {
     return bs;
 }
 
-template< typename B, typename T1, typename T2 >
-base< B > &operator>>( base< B > &bs, std::pair< T1, T2 > &i ) {
+template< typename B, typename E, typename T1, typename T2 >
+base< B, E > &operator>>( base< B, E > &bs, std::pair< T1, T2 > &i ) {
     return bs >> i.first >> i.second;
 }
 
@@ -387,9 +394,9 @@ struct Bitstream {
 }
 
 #define BRICK_RPC(super, ...)                                           \
-    template< typename Req, typename L = hlist::Nil >                    \
-    static void rpc_request( Req req, L l = hlist::Nil() ) {             \
-        super::rpc_request( req, concat( hlist::list( __VA_ARGS__ ), l ) ); \
+    template< typename Req, typename L = ::brick::hlist::Nil >          \
+    static void rpc_request( Req req, L l = ::brick::hlist::Nil() ) {             \
+        super::rpc_request( req, concat( ::brick::hlist::list( __VA_ARGS__ ), l ) ); \
     }
 
 #endif
