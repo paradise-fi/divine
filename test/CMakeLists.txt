@@ -21,6 +21,7 @@ add_custom_target( functional
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/util .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/check .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/run .
+  COMMAND mkdir -p results
   COMMAND ./runner --timeout 180 --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
   DEPENDS runner
 )
