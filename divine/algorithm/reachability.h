@@ -58,8 +58,8 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup, Sh< typename Setup
 
     ALGORITHM_CLASS( Setup );
 
-    DIVINE_RPC( Utils, &This::_visit, &This::_por, &This::_por_worker,
-                       &This::_parentTrace, &This::_successorTrace, &This::_ceIsInitial );
+    BRICK_RPC( Utils, &This::_visit, &This::_por, &This::_por_worker,
+                      &This::_parentTrace, &This::_successorTrace, &This::_ceIsInitial );
 
     using Extension = E< Store >;
 

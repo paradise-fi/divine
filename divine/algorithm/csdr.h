@@ -116,7 +116,7 @@ struct Csdr : CommonReachability< CsdrExtension, Setup, CsdrShared,
 
     ALGORITHM_CLASS( Setup );
 
-    DIVINE_RPC( Base, &This::_visit );
+    BRICK_RPC( Base, &This::_visit );
 
     using Extension = typename Base::Extension;
     using Base::shared;

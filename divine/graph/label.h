@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <wibble/sfinae.h> // Unit
+#include <brick-unittest.h>
 #include <divine/graph/probability.h>
 
 #ifndef DIVINE_TOOLKIT_LABEL_H
@@ -58,10 +59,10 @@ struct Label {
     }
 
     explicit operator Probability() const {
-        assert_leq( 0, denominator );
+        ASSERT_LEQ( 0, denominator );
         Probability p{ int( pow( 2, tid + 1 ) ), numerator, denominator };
-        assert_leq( p.numerator, numerator );
-        assert_eq( int( p.denominator ), denominator );
+        ASSERT_LEQ( p.numerator, numerator );
+        ASSERT_EQ( int( p.denominator ), denominator );
         for ( int c : choices )
             p = p.levelup( c + 1 );
         return p;

@@ -150,10 +150,10 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
     };
 
     ALGORITHM_CLASS( Setup );
-    DIVINE_RPC( Utils ,&This::_init, &This::_count,
-                       &This::_por, &This::_por_worker, &This::_normalize,
-                       &This::_trackPredecessors, &This::_writeFile, &This::_collectCount,
-                       &This::_setLimits, &This::_getNodeId, &This::_cleanup );
+    BRICK_RPC( Utils ,&This::_init, &This::_count,
+                      &This::_por, &This::_por_worker, &This::_normalize,
+                      &This::_trackPredecessors, &This::_writeFile, &This::_collectCount,
+                      &This::_setLimits, &This::_getNodeId, &This::_cleanup );
 
     using Utils::shared;
     using Utils::shareds;

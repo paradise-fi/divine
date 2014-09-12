@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2013 Petr Rockai <me@mornfall.net>
 
 #include <cmath>
-#include <divine/toolkit/bitstream.h>
+#include <brick-unittest.h> // ASSERT
 
 #ifndef DIVINE_TOOLKIT_PROBABILITY_H
 #define DIVINE_TOOLKIT_PROBABILITY_H
@@ -46,7 +46,7 @@ struct Probability {
     Probability levelup( int i ) {
         auto p = *this;
         int l;
-        assert( i );
+        ASSERT( i );
         for ( l = 1; p.cluster % prime( l ) == 0; ++l );
         p.cluster *= std::pow( prime( l ), i );
         return p;

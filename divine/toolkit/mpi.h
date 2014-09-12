@@ -3,11 +3,12 @@
 #include <mutex>
 
 #include <brick-shmem.h>
+
 #include <wibble/param.h>
 
+#include <divine/toolkit/rpc.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/barrier.h>
-#include <divine/toolkit/bitstream.h>
 
 #ifndef DIVINE_MPI_H
 #define DIVINE_MPI_H

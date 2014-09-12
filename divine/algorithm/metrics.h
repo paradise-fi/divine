@@ -93,7 +93,7 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup, MetricsShared >,
     using Utils = AlgorithmUtils< Setup, Shared >;
 
     ALGORITHM_CLASS( Setup );
-    DIVINE_RPC( Utils, &This::_visit, &This::_por, &This::_por_worker );
+    BRICK_RPC( Utils, &This::_visit, &This::_por, &This::_por_worker );
 
     struct Main : Visit< This, Setup > {
         static visitor::ExpansionAction expansion( This &t, const Vertex &st )

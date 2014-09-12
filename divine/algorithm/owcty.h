@@ -59,11 +59,11 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
     using Utils = AlgorithmUtils< Setup, Shared >;
 
     ALGORITHM_CLASS( Setup );
-    DIVINE_RPC( Utils, &This::_initialise, &This::_reachability, &This::_elimination,
-                       &This::_counterexample, &This::_checkCycle,
-                       &This::_parentTrace, &This::_traceCycle,
-                       &This::_por, &This::_por_worker,
-                       &This::_successorTrace, &This::_ceIsInitial );
+    BRICK_RPC( Utils, &This::_initialise, &This::_reachability, &This::_elimination,
+                      &This::_counterexample, &This::_checkCycle,
+                      &This::_parentTrace, &This::_traceCycle,
+                      &This::_por, &This::_por_worker,
+                      &This::_successorTrace, &This::_ceIsInitial );
 
     // -------------------------------
     // -- Some useful types

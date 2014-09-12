@@ -82,10 +82,10 @@ struct Map : Algorithm, AlgorithmUtils< Setup, MapShared< typename Setup::Store:
     using Utils::shareds;
 
     ALGORITHM_CLASS( Setup );
-    DIVINE_RPC( Utils, &This::_visit, &This::_cleanup,
-                       &This::_parentTrace, &This::_traceCycle,
-                       &This::_por, &This::_por_worker,
-                       &This::_successorTrace, &This::_ceIsInitial );
+    BRICK_RPC( Utils, &This::_visit, &This::_cleanup,
+                      &This::_parentTrace, &This::_traceCycle,
+                      &This::_por, &This::_por_worker,
+                      &This::_successorTrace, &This::_ceIsInitial );
 
     int64_t acceptingCount,
             eliminated,

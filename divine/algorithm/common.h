@@ -1,10 +1,11 @@
 // -*- C++ -*- (c) 2009-2014 Petr Rockai <me@mornfall.net>
 
 #include <memory>
+#include <brick-rpc.h>
+#include <brick-hlist.h>
 
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/parallel.h>
-#include <divine/toolkit/rpc.h>
 #include <divine/utility/output.h>
 #include <divine/utility/meta.h>
 #include <divine/graph/visitor.h>
@@ -216,7 +217,7 @@ struct AlgorithmUtils {
     VisitorData _visitorData;
     void setVisitorData( Locally< VisitorData > d ) { _visitorData = *d.t; }
 
-    DIVINE_RPC( rpc::Root, &This::getShared, &This::setShared, &This::setVisitorData );
+    BRICK_RPC( rpc::Root, &This::getShared, &This::setShared, &This::setVisitorData );
 
     template< typename Self >
     void init( Self &self, Self &master, std::pair< int, int > id ) {
