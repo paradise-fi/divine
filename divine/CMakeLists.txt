@@ -26,12 +26,6 @@ foreach( I RANGE 1 ${MAX_INSTANCE_FILES_COUNT} )
 endforeach()
 set_source_files_properties( ${SRC_auto_instances} PROPERTIES GENERATED ON )
 
-if ( LEGACY )
-   file( GLOB SRC_LEGACY legacy/*/*.cc legacy/*/*/*.cc legacy/*/*/*/*.cc
-                         legacy/*/*.c legacy/*/*/*.c legacy/*/*/*/*.c )
-   file( GLOB H_LEGACY legacy/*/*.hh legacy/*/*/*.hh )
-endif()
-
 if( GEN_COIN )
     file( GLOB SRC_COIN coin/*.cpp coin/parse/*.cpp)
     set_source_files_properties( coin/parse/lex.coin.cpp PROPERTIES COMPILE_DEFINITIONS YY_NO_INPUT=1 )
@@ -107,7 +101,7 @@ set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 set_source_files_properties( ${LLVM_TS_OUTPUTS} llvm/constants.cpp PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 
 add_library( libdivine STATIC
-    ${SRC_DLFCN} ${SRC} ${SRC_LEGACY} ${SRC_TIMED}
+    ${SRC_DLFCN} ${SRC} ${SRC_TIMED}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     ${LLVM_TS_OUTPUTS}
     "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
@@ -166,5 +160,4 @@ endif()
 install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
 
 install( FILES ${H} DESTINATION include/divine COMPONENT divine_dev )
-install( FILES ${H_LEGACY} DESTINATION include/divine/legacy COMPONENT divine_dev )
 install( FILES ${H_BA} DESTINATION include/divine/ltl2ba COMPONENT divine_dev )
