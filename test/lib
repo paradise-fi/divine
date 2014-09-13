@@ -285,6 +285,7 @@ llvm_verify() {
 
 dve_statespace() {
     test "$GEN_DVE" = "ON" || skip
+    test "$ALG_METRICS" = "ON" || skip
     cat > testcase.dve
     divine metrics testcase.dve --no-reduce -p $1 -r 2>> progress | capture
     shift
