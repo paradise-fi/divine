@@ -21,7 +21,7 @@ fi
 
 relsha=`cat release/checksum`
 
-test -z "$old" && old=`cat $where 2> /dev/null`
+test -z "$old" && old=`cat $where.cached 2> /dev/null`
 if type -p $sha1sum > /dev/null; then
     test -z "$new" && \
         new=`echo "$manifest" | egrep "$interesting" | egrep -v "$boring" | xargs $sha1sum \
@@ -36,6 +36,7 @@ if test "$old" != "$new"; then
     echo "const char *DIVINE_SOURCE_SHA = \"$new\";" >> $where
     echo "const char *DIVINE_BUILD_DATE = \"$(date -u "+%Y-%m-%d, %H:%M UTC")\";" >> $where
     echo "const char *DIVINE_RELEASE_SHA = \"$relsha\";" >> $where
+    echo $new > $where.cached
 fi
 
 echo $new
