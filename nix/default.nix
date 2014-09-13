@@ -3,7 +3,7 @@
 let
   pkgs = import nixpkgs {};
   debuild = arch: args:
-    import ./nix/debian_build.nix ({ stdenv = pkgs.stdenv; vmTools = pkgs.vmTools; } // args);
+    import ./debian_build.nix ({ stdenv = pkgs.stdenv; vmTools = pkgs.vmTools; } // args);
   rpmbuild = arch: args: if arch == "i386"
       then pkgs.pkgsi686Linux.releaseTools.rpmBuild
                (args // (if args ? memSize && args.memSize > 2047 then { memSize = 2047; } else {}))
@@ -11,13 +11,13 @@ let
   vmImgs = pkgs.vmTools.diskImageFuns;
   lib = pkgs.lib;
 
-  wimlib = pkgs.callPackage nix/wimlib.nix {};
+  wimlib = pkgs.callPackage ./wimlib.nix {};
   windows7_iso = pkgs.fetchurl {
     url = "http://msft.digitalrivercontent.net/win/X17-59183.iso";
     sha256 = "13l3skfp3qi2ccv9djhpg7a7f2g57rph8n38dnkw8yh8w1bdyk7x";
   };
 
-  windows7_img = pkgs.callPackage nix/windows_img.nix {
+  windows7_img = pkgs.callPackage ./windows_img.nix {
     inherit wimlib;
     iso = windows7_iso;
     name = "windows7";
@@ -28,13 +28,13 @@ let
     };
   };
 
-  windows_cmake = pkgs.callPackage nix/windows_cmake.nix {};
-  windows_mingw = pkgs.callPackage nix/windows_mingw.nix {};
-  windows_nsis = pkgs.callPackage nix/windows_nsis.nix {};
-  windows_qt = pkgs.callPackage nix/windows_qt.nix {
+  windows_cmake = pkgs.callPackage ./windows_cmake.nix {};
+  windows_mingw = pkgs.callPackage ./windows_mingw.nix {};
+  windows_nsis = pkgs.callPackage ./windows_nsis.nix {};
+  windows_qt = pkgs.callPackage ./windows_qt.nix {
       windows_img = windows7_img; inherit pkgs windows_mingw; };
-  windows_python = pkgs.callPackage nix/windows_python.nix {};
-  windows_llvm = pkgs.callPackage nix/windows_llvm.nix {
+  windows_python = pkgs.callPackage ./windows_python.nix {};
+  windows_llvm = pkgs.callPackage ./windows_llvm.nix {
       windows_img = windows7_img;
       inherit pkgs windows_mingw windows_cmake windows_python;
       build_clang = true;
@@ -111,7 +111,7 @@ let
        '';
     };
 
-  mkwin = image: flags: deps: pkgs.callPackage nix/windows_build.nix {
+  mkwin = image: flags: deps: pkgs.callPackage ./windows_build.nix {
     inherit windows_mingw;
     tools = [ windows_cmake windows_nsis ] ++ deps;
     img = image;
