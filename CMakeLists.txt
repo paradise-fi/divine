@@ -62,7 +62,7 @@ endmacro()
 
 macro( with_warnings )
     appendFlag( "CXX;C" "-Wall" )
-    appendFlag( "CXX" "-Wold-style-cast" )
+    appendFlag( "CXX" "-Wold-style-cast -Wno-unused-function" )
     if( WARNINGS )
         appendFlag( "CXX;C" "-Wextra" )
     endif()
