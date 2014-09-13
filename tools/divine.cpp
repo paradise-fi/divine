@@ -752,10 +752,12 @@ struct Main {
                         assert( !mpi );
                         mpi.reset( new Mpi( o_mpi->boolValue() ) );
                         mpiFillMeta( meta );
-                        if ( meta.execution.threads > 1 || meta.execution.nodes > 1 )
-                            meta.algorithm.algorithm = meta::Algorithm::Type::Owcty;
-                        else
+#if ALG_NDFS
+                        if ( meta.execution.threads == 1 && meta.execution.nodes == 1 )
                             meta.algorithm.algorithm = meta::Algorithm::Type::Ndfs;
+                        else
+#endif
+                            meta.algorithm.algorithm = meta::Algorithm::Type::Owcty;
                         break;
                     default:
                         assert_unimplemented();
