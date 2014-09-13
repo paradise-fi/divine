@@ -75,6 +75,8 @@ let
               llvm ? (pkgs: pkgs.llvm)
             }: system:
     let pkgs = import nixpkgs { inherit system; };
+        nicesys = if lib.eqStrings system "i686-linux" then "x86" else
+                     (if lib.eqStrings system "x86_64-linux" then "x64" else "unknown");
         cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
                    (if lib.eqStrings (builtins.substring 0 4 name) "llvm" ||
                        lib.eqStrings name "full" ||
@@ -92,7 +94,7 @@ let
                       else [ "-DCMAKE_CXX_COMPILER=${pkgs.gcc}/bin/g++"
                              "-DCMAKE_C_COMPILER=${pkgs.gcc}/bin/gcc" ];
     in pkgs.releaseTools.nixBuild {
-       name = "divine-" + name;
+       name = "divine-" + name + "_" + (lib.toLower buildType) + "_" + nicesys;
        src = jobs.tarball;
        buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which ] ++ inputs pkgs;
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ profile ++ flags;
@@ -151,8 +153,7 @@ let
                (lib.splitString "\n" versionFile));
   version = builtins.head (builtins.tail (lib.splitString "\"" (versionLine + " ")));
 
-  gcc_llvm_vers = vers: llvm: clang: with builtins; mkbuild {
-      name = "llvm_${vers}";
+  gcc_llvm_vers = llvm: clang: with builtins; mk: mk {
       inputs = pkgs: [ (getAttr llvm pkgs) (getAttr clang pkgs) ];
       llvm = pkgs: getAttr llvm pkgs;
       clang_runtime = pkgs: getAttr clang pkgs;
@@ -188,31 +189,29 @@ let
   '';
 
   builds = {
-    gcc_minimal = mkbuild { name = "minimal"; inputs = pkgs: []; };
-    gcc_mpi = mkbuild { name = "mpi"; inputs = pkgs: [ pkgs.openmpi ]; };
-    gcc_gui = mkbuild { name = "gui"; inputs = pkgs: [ pkgs.qt4 ]; };
+    gcc_min =      mk: mk { inputs = pkgs: []; };
+    gcc_mpi =      mk: mk { inputs = pkgs: [ pkgs.openmpi ]; };
+    gcc_gui =      mk: mk { name = "gui"; inputs = pkgs: [ pkgs.qt4 ]; };
 
-    gcc_llvm = mkbuild { name = "llvm"; inputs = pkgs: [ pkgs.llvm pkgs.clang ]; };
-    gcc_llvm_31 = gcc_llvm_vers "3.1" "llvm_31" "clang_31";
-    gcc_llvm_32 = gcc_llvm_vers "3.2" "llvm_32" "clang_32";
-    gcc_llvm_33 = gcc_llvm_vers "3.3" "llvm_33" "clang_33";
-    gcc_llvm_34 = gcc_llvm_vers "3.4" "llvm_34" "clang_34";
+    gcc_llvm =     mk: mk { name = "llvm"; inputs = pkgs: [ pkgs.llvm pkgs.clang ]; };
+    gcc_llvm_31 =  gcc_llvm_vers "llvm_31" "clang_31";
+    gcc_llvm_32 =  gcc_llvm_vers "llvm_32" "clang_32";
+    gcc_llvm_33 =  gcc_llvm_vers "llvm_33" "clang_33";
+    gcc_llvm_34 =  gcc_llvm_vers "llvm_34" "clang_34";
 
-    gcc_timed = mkbuild { name = "timed"; inputs = pkgs: [ pkgs.libxml2 pkgs.boost ];
-                          flags = [ "-DREQUIRED=TIMED" ]; };
-    gcc_compression = mkbuild { name = "compression"; inputs = pkgs: [];
-                       flags = [ "-DSTORE_HC=OFF" "-DSTORE_COMPRESS=ON" "-DGEN_EXPLICIT=OFF" ]; };
-    gcc_hashcompaction = mkbuild { name = "hashcompaction"; inputs = pkgs: [];
-                       flags = [ "-DSTORE_COMPRESS=OFF" "-DSTORE_HC=ON" "-DGEN_EXPLICIT=OFF" ]; };
-    gcc_explicit = mkbuild { name = "explicit"; inputs = pkgs: [];
-                       flags = [ "-DSTORE_COMPRESS=OFF" "-DALG_EXPLICIT=ON" "-DGEN_EXPLICIT=ON" ]; };
-    gcc_full = mkbuild { name = "full"; inputs = pkgs:
-                          [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                         flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
-    clang_minimal = mkbuild { name = "minimal"; inputs = pkgs: []; clang = true; };
-    clang_medium  = mkbuild { name = "medium";  inputs = pkgs:
-                               [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
-                             flags = []; clang = true; };
+    gcc_timed =    mk: mk { inputs = pkgs: [ pkgs.libxml2 pkgs.boost ];
+                           flags = [ "-DREQUIRED=TIMED" ]; };
+    gcc_compress = mk: mk { name = "compression"; inputs = pkgs: [];
+                            flags = [ "-DSTORE_HC=OFF" "-DSTORE_COMPRESS=ON" "-DGEN_EXPLICIT=OFF" ]; };
+    gcc_hashcomp = mk: mk { inputs = pkgs: [];
+                            flags = [ "-DSTORE_COMPRESS=OFF" "-DSTORE_HC=ON" "-DGEN_EXPLICIT=OFF" ]; };
+    gcc_explicit = mk: mk { inputs = pkgs: [];
+                            flags = [ "-DSTORE_COMPRESS=OFF" "-DALG_EXPLICIT=ON" "-DGEN_EXPLICIT=ON" ]; };
+    gcc_full =     mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+                            flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
+    clang_min =    mk: mk { inputs = pkgs: []; clang = true; };
+    clang_medium = mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
+                            flags = []; clang = true; };
   };
 
   windows = {
@@ -223,6 +222,8 @@ let
 
   mapsystems = systems: attrs: with ( pkgs.lib // builtins );
     mapAttrs ( n: fun: listToAttrs ( map (sys: { name = sys; value = fun sys; }) systems ) ) attrs;
+
+  namedbuild = name: fun: fun (attrs: mkbuild ({ "name" = name; } // attrs));
 
   jobs = rec {
 
@@ -275,7 +276,7 @@ let
               '';
               checkPhase = ":";
           };
-  } // mapsystems [ "i686-linux" "x86_64-linux" ] builds
+  } // mapsystems [ "i686-linux" "x86_64-linux" ] (lib.mapAttrs namedbuild builds)
     // mapsystems [ "i386" "x86_64" ] vms // windows;
 
 in
