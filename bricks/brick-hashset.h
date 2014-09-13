@@ -1159,7 +1159,6 @@ struct RandomThread : shmem::Thread {
     void main() {
         rand.seed( id );
         auto set = _set->withTD( td );
-        int v;
         for ( int i = 0; i < count; ++i ) {
             int v = dist( rand );
             if ( max < std::numeric_limits< int >::max() ) {

@@ -143,6 +143,7 @@ struct Axis {
             case None: return 1;
             case Mult: return p;
             case Div: return 1.0 / p;
+            default: ASSERT_UNREACHABLE( "bogus value of normalize" );
         }
     }
 

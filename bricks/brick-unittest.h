@@ -365,10 +365,10 @@ struct TestCase : TestCaseBase {
     }
 
     std::string group() {
-        int stat;
 #ifdef NO_RTTI
         return "unnamed";
 #else
+        int stat;
         return abi::__cxa_demangle( typeid( TestGroup ).name(), nullptr, nullptr, &stat );
 #endif
     }
