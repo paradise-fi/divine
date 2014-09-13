@@ -85,7 +85,7 @@ stringify( "" cesmi/usr-ltl.h )
 stringify( "" cesmi/usr-ltl.cpp )
 
 set( GENERATED_INSTANCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/instances/auto" )
-add_executable( instances-generator instances/generator/generator.cpp )
+add_executable( instances-generator instances/generator.cpp )
 file( MAKE_DIRECTORY ${GENERATED_INSTANCES_DIR} )
 add_custom_command( TARGET instances-generator POST_BUILD
     COMMAND "${CMAKE_CURRENT_BINARY_DIR}/instances-generator" ${MAX_INSTANCE_FILES_COUNT} ${MIN_INSTANCES_PER_FILE}
@@ -107,7 +107,7 @@ add_library( libdivine STATIC
     "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
     ${STRINGIFIED} )
 
-add_library( libdivine-instances OBJECT ${SRC_instances} ${SRC_auto_instances} )
+add_library( libdivine-instances OBJECT instances/select.cpp ${SRC_auto_instances} )
 add_dependencies( libdivine-instances instances-generator )
 
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
