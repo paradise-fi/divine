@@ -103,6 +103,7 @@ set_source_files_properties( ${LLVM_TS_OUTPUTS} llvm/constants.cpp PROPERTIES CO
 add_library( libdivine STATIC
     ${SRC_DLFCN} ${SRC} ${SRC_TIMED}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
+    instances/common.cpp
     ${LLVM_TS_OUTPUTS}
     "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
     ${STRINGIFIED} )

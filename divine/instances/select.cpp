@@ -118,6 +118,9 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
 
     for ( int retry = 0; retry < 2; ++ retry ) {
         for ( auto c : *component ) {
+            auto candidate = appendArray( sofar, c );
+            if ( !_valid( candidate ) )
+                continue;
             if ( retry || _select( meta, c ) ) {
                 if ( _traits( c ) ) {
                     available = true;
@@ -127,17 +130,18 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
                         return x;
                 } else if ( !retry ) {
                     _deactivate( meta, c );
-                    warningMissing( c );
                     /* die right away if there is no hope of recovery */
                     if ( options[ c.type ].has( SelectOption::ErrUnavailable ) )
                         throw errorMissing( appendArray( sofar, c ) );
+                    else
+                        warningMissing( c );
                 }
             }
         }
     }
 
     if ( !available ) {
-        std::cerr << "FATAL: no component for " << std::get< 0 >( showGen( *component->begin() ) )
+        std::cerr << "FATAL: no valid component for " << std::get< 0 >( showGen( *component->begin() ) )
                   << " was built, at " << wibble::str::fmt( sofar ) << std::endl;
         throw nullptr;
     }
