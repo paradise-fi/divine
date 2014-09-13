@@ -39,12 +39,7 @@ export CXXFLAGS="%{optflags}" CFLAGS="%{optflags}"
 make -k %{?_smp_mflags} VERBOSE=1
 
 %check
-set -x
-if [ "x$NIX_BUILD" = "x" ]; then
-    make check
-else
-    make check || touch $out/nix-support/failed
-fi
+make check
 
 %install
 rm -rf %{buildroot}

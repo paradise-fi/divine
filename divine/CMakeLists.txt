@@ -153,10 +153,15 @@ target_link_libraries( divine-test libdivine )
 
 if( NOT WIN32 )
   target_link_libraries( libdivine dl )
-  wibble_check_target( divine-test )
 else()
     target_link_libraries( libdivine psapi )
 endif()
+
+add_custom_target( unit_divine
+    COMMAND sh ${TEST_WRAPPER} ${CMAKE_CURRENT_BINARY_DIR}/divine-test
+    VERBATIM
+    DEPENDS divine-test ${TEST_WRAPPER} )
+add_dependencies( unit unit_divine )
 
 install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
 

@@ -65,8 +65,6 @@ let
      # this actually runs just in debian-based distros, RPM based does not have configurePhase
      configurePhase = ''
           echo "${flags}" > pkgbuildflags
-          echo "override_dh_auto_test:" >> debian/rules
-          echo "	dh_auto_test || touch $out/nix-support/failed" >> debian/rules
      '';
      doCheck = false; # the package builder is supposed to run checks
      memSize = mem;
@@ -104,10 +102,7 @@ let
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ profile ++ flags;
        dontStrip = true;
        checkPhase = ''
-          make unit || touch $out/nix-support/failed
-          BATCH=1 make functional || touch $out/nix-support/failed
-          cp -R test/results $out/test-results && \
-            echo "report tests $out/test-results" >> $out/nix-support/hydra-build-products || true
+          NIX_BUILD=1 BATCH=1 make check
           make lcov-report && \
             cp -R lcov-report $out/ && \
             echo "report coverage $out/lcov-report" >> $out/nix-support/hydra-build-products || \

@@ -504,6 +504,7 @@ file( READ release/patchlevel PATCHLEVEL )
 string( STRIP "${DIVINE_MAJOR}" DIVINE_MAJOR )
 string( STRIP "${PATCHLEVEL}" PATCHLEVEL )
 set( DIVINE_VERSION "${DIVINE_MAJOR}.${PATCHLEVEL}" )
+set( TEST_WRAPPER "${CMAKE_SOURCE_DIR}/nix/test-wrapper.sh" )
 
 ##########################################
 ## SOURCE DIRECTORIES
