@@ -147,11 +147,9 @@ let
     '';
   };
 
-  versionFile = builtins.readFile ./divine/utility/version.cpp;
-  versionLine = builtins.head (
-    lib.filter (str: lib.eqStrings (builtins.substring 0 22 str) "#define DIVINE_VERSION")
-               (lib.splitString "\n" versionFile));
-  version = builtins.head (builtins.tail (lib.splitString "\"" (versionLine + " ")));
+  versionMaj = lib.removeSuffix "\n" (builtins.readFile ../release/version);
+  versionPatch = lib.removeSuffix "\n" (builtins.readFile ../release/patchlevel);
+  version = "${versionMaj}.${versionPatch}";
 
   gcc_llvm_vers = llvm: clang: with builtins; mk: mk {
       inputs = pkgs: [ (getAttr llvm pkgs) (getAttr clang pkgs) ];
@@ -238,13 +236,14 @@ let
         cmakeFlags = [ "-DVERSION_APPEND=${versionSuffix}" ];
         dontFixCmake = true;
         autoconfPhase = ''
-          sed -e "s,^\(Version:.*\)0$,\1${version}${versionSuffix}," -i divine.spec
           sed -e 's,"","${versionSuffix}",' -i cmake/VersionAppend.cmake
+          ${pkgs.haskellPackages.pandoc}/bin/pandoc --from markdown --to html README > README.html
 
+          sed -e "s,^\(Version:.*\)0$,\1${version}${versionSuffix}," -i divine.spec
           mv debian/changelog debian/changelog.xxx
           echo "divine (${version}${versionSuffix}) unstable; urgency=low" >> debian/changelog
           echo >> debian/changelog
-          echo "  * Automated Hydra build" >> debian/changelog
+          echo "  * Automated build" >> debian/changelog
           echo >> debian/changelog
           echo " -- Petr Rockai <mornfall@debian.org>  `date -R`" >> debian/changelog
           echo >> debian/changelog

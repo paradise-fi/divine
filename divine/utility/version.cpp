@@ -10,13 +10,8 @@
 #endif
 #endif
 
-extern const char *DIVINE_SOURCE_SHA;
-extern const char *DIVINE_BUILD_DATE;
-
-// You need to update the version number *and* the SHA to current release one.
-#define DIVINE_VERSION "3.0.92"
-#define DIVINE_RELSTATE " (3.1 beta 1)"
-#define DIVINE_RELEASE_SHA "40c8bfd428f641ecb5cbf741aec07b073338c118"
+extern const char *DIVINE_SOURCE_SHA, *DIVINE_BUILD_DATE,
+                  *DIVINE_RELEASE_SHA, *DIVINE_VERSION;
 
 namespace divine {
 
@@ -28,9 +23,9 @@ const char *buildDateString() {
 
 const char *versionString() {
     if ( std::string(DIVINE_RELEASE_SHA) == DIVINE_SOURCE_SHA )
-        version = std::string( DIVINE_VERSION ) + DIVINE_RELSTATE;
+        version = std::string( DIVINE_VERSION );
     else
-        version = std::string( DIVINE_VERSION "+" ) + DIVINE_SOURCE_SHA;
+        version = std::string( DIVINE_VERSION ) + "+" + DIVINE_SOURCE_SHA;
     return version.c_str();
 }
 

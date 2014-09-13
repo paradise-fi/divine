@@ -1,15 +1,23 @@
 macro( page to srcdir opts )
   set( sources "" )
   foreach( source ${ARGN} )
-    list( APPEND sources "${srcdir}/${source}" )
+      string( REPLACE "../" "_" mangled ${source} )
+      list( APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/subst.${mangled}" )
+      add_custom_command(
+        OUTPUT subst.${mangled}
+        DEPENDS ${srcdir}/${source}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND sed -e s,@version@,${DIVINE_VERSION},g ${srcdir}/${source} >
+                ${CMAKE_CURRENT_BINARY_DIR}/subst.${mangled}
+      )
   endforeach()
   add_custom_command(
     OUTPUT ${to}
     DEPENDS ${sources} template.html
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND pandoc --to=html -s --smart
-            -o ${CMAKE_CURRENT_BINARY_DIR}/${to}
-            --template template.html
+            -o ${to}
+            --template ${CMAKE_CURRENT_SOURCE_DIR}/template.html
+            -V version:${DIVINE_VERSION}
             ${opts}
             ${sources}
   )

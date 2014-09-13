@@ -11,7 +11,8 @@ darcs show files | while read f; do
     mkdir -p divine-snapshot/`dirname "$f"`
     ln "$f" "divine-snapshot/$f"
 done
+darcs show files > divine-snapshot/release/manifest
 set -x
 tar czf divine-snapshot.tar.gz divine-snapshot
 rm -rf divine-snapshot
-nix-build release.nix --arg divineSrc "`pwd`/divine-snapshot.tar.gz" -A "$@"
+nix-build nix/ --arg divineSrc "`pwd`/divine-snapshot.tar.gz" -A "$@"

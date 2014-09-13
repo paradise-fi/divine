@@ -499,6 +499,12 @@ foreach( opt ${OPTIONS} )
     endif()
 endforeach()
 
+file( READ release/version DIVINE_MAJOR )
+file( READ release/patchlevel PATCHLEVEL )
+string( STRIP "${DIVINE_MAJOR}" DIVINE_MAJOR )
+string( STRIP "${PATCHLEVEL}" PATCHLEVEL )
+set( DIVINE_VERSION "${DIVINE_MAJOR}.${PATCHLEVEL}" )
+
 ##########################################
 ## SOURCE DIRECTORIES
 ##
@@ -623,21 +629,18 @@ set( CPACK_PACKAGE_DESCRIPTION_SUMMARY "DiViNE Distributed and Parallel Verifica
 set( CPACK_PACKAGE_VENDOR "ParaDiSe Laboratory" )
 set( CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README" )
 set( CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING" )
-
-file(STRINGS divine/utility/version.cpp VERSION_LINE REGEX "#define DIVINE_VERSION \"(.*)\"")
-string(REGEX REPLACE "#define DIVINE_VERSION \"([0-9.]+)\"" "\\1" VERSION_STRING ${VERSION_LINE})
+set( CPACK_PACKAGE_VERSION ${DIVINE_VERSION} )
 
 macro(versionExtract out n in)
    string(REGEX REPLACE "([0-9]*)\\.([0-9]*)\\.?([0-9]*)?" "\\${n}" ${out} ${in})
 endmacro()
 
-versionExtract( CPACK_PACKAGE_VERSION_MAJOR 1 ${VERSION_STRING} )
-versionExtract( CPACK_PACKAGE_VERSION_MINOR 2 ${VERSION_STRING} )
-versionExtract( CPACK_PACKAGE_VERSION_PATCH 3 ${VERSION_STRING} )
-set( CPACK_PACKAGE_VERSION ${VERSION_STRING} )
+versionExtract( CPACK_PACKAGE_VERSION_MAJOR 1 ${DIVINE_VERSION} )
+versionExtract( CPACK_PACKAGE_VERSION_MINOR 2 ${DIVINE_VERSION} )
+versionExtract( CPACK_PACKAGE_VERSION_PATCH 3 ${DIVINE_VERSION} )
 
 message( "## -----------------------------------------------------------------" )
-message( "## Version: ${VERSION_STRING}" )
+message( "## Version: ${DIVINE_VERSION}" )
 message( "## Build type: ${CMAKE_BUILD_TYPE}" )
 message( "## Build options: ${BUILDOPTS}" )
 if ( DISABLED )
@@ -654,7 +657,7 @@ if ( NOT ( "${REQUIRED}" STREQUAL "" ) )
 endif()
 
 set( CPACK_PACKAGE_INSTALL_DIRECTORY
-      "DiVinE ${CPACK_PACKAGE_VERSION}${VERSION_APPEND}" )
+      "DIVINE ${CPACK_PACKAGE_VERSION}${VERSION_APPEND}" )
 set( CPACK_SOURCE_PACKAGE_FILE_NAME
       "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION}${VERSION_APPEND}" )
 

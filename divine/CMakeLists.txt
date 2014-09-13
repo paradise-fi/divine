@@ -67,20 +67,20 @@ if( WIN32 )
     set( SRC_DLFCN ../external/dlfcn-win32/dlfcn.c )
 endif()
 
-set( SHA1 ${divine_BINARY_DIR}/divine/sha1 )
-set( UPDATE_SHA1 ${divine_SOURCE_DIR}/divine/update-sha1.sh )
+set( VERSION_FILE ${divine_BINARY_DIR}/divine/version-generated.cpp )
+set( UPDATE_VERSION ${divine_SOURCE_DIR}/divine/update-version.sh )
 
 add_custom_command(
-  COMMAND sh ${UPDATE_SHA1} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${SHA1}"
-  OUTPUT "${SHA1}.cpp.fake"
+  COMMAND sh ${UPDATE_VERSION} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${VERSION_FILE}" "${DIVINE_VERSION}"
+  OUTPUT "${VERSION_FILE}.check"
 )
-set_source_files_properties( "${SHA1}.cpp.fake" PROPERTIES SYMBOLIC ON )
-set_source_files_properties( "${SHA1}.cpp" PROPERTIES GENERATED ON )
+set_source_files_properties( "${VERSION_FILE}.check" PROPERTIES SYMBOLIC ON )
+set_source_files_properties( "${VERSION_FILE}" PROPERTIES GENERATED ON )
 
 add_custom_command(
-  OUTPUT divinecompileflags.cpp
+  OUTPUT flags-generated.cpp
   VERBATIM
-  COMMAND sh -c "echo -n \"const char* divineCompileFlags = \\\"${BUILDOPTS}\\\";\">divinecompileflags.cpp"
+  COMMAND sh -c "echo -n \"const char* divineCompileFlags = \\\"${BUILDOPTS}\\\";\">flags-generated.cpp"
 )
 
 stringify( "" toolkit/pool.h )
@@ -110,7 +110,7 @@ add_library( libdivine STATIC
     ${SRC_DLFCN} ${SRC} ${SRC_LEGACY} ${SRC_TIMED}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     ${LLVM_TS_OUTPUTS}
-    "${SHA1}.cpp" "${SHA1}.cpp.fake" "divinecompileflags.cpp"
+    "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
     ${STRINGIFIED} )
 
 add_library( libdivine-instances OBJECT ${SRC_instances} ${SRC_auto_instances} )
