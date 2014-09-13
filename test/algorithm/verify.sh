@@ -19,7 +19,11 @@ verify_dve() {
 
         check clear
         run verify data/test1.dve -w 1 --property=LTL --compression=$COMP
-        check report Algorithm "Nested DFS"
+        if test "$ALG_NDFS" = "ON"; then
+            check report Algorithm "Nested DFS"
+        else
+            check report Algorithm "OWCTY"
+        fi
         check report Property-Type neverclaim
         check ltl_invalid
     done
@@ -38,7 +42,11 @@ verify_timed() {
 
         check clear
         run verify data/bridge.xml --property=0 -w 1
-        check report Algorithm "Nested DFS"
+        if test "$ALG_NDFS" = "ON"; then
+            check report Algorithm "Nested DFS"
+        else
+            check report Algorithm "OWCTY"
+        fi
         check report Property-Type neverclaim
         check ltl_valid
 
