@@ -48,19 +48,23 @@ let
   extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" "bison" "llvm-static" ];
 
   mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT",
-           tarball ? jobs.tarball }: arch:
-   (VM arch) rec {
+           name, tarball ? jobs.tarball }: arch:
+     let flags = "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require}";
+         nicesys = if lib.eqStrings arch "i386" then "x86" else
+                      (if lib.eqStrings arch "x86_64" then "x64" else "unknown");
+   in (VM arch) {
      name = "divine";
      src = tarball;
-     diskImage = (builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 10240; };
-     CMAKE_FLAGS = "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require}";
+     diskImage = ((builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 10240; }) //
+                 { name = name + "_" + (lib.toLower buildType) + "_" + nicesys; };
+     CMAKE_FLAGS = flags;
      NIX_BUILD = 1;
      BATCH = 1;
      dontUseTmpfs = 1;
 
      # this actually runs just in debian-based distros, RPM based does not have configurePhase
      configurePhase = ''
-          echo "${CMAKE_FLAGS}" > pkgbuildflags
+          echo "${flags}" > pkgbuildflags
           echo "override_dh_auto_test:" >> debian/rules
           echo "	dh_auto_test || touch $out/nix-support/failed" >> debian/rules
      '';
@@ -114,7 +118,7 @@ let
   mkwin = image: flags: deps: pkgs.callPackage ./windows_build.nix {
     inherit windows_mingw;
     tools = [ windows_cmake windows_nsis ] ++ deps;
-    img = image;
+    img = image // { name = "win7_${lib.toLower buildType}_x86"; };
     src = jobs.tarball;
     name = "divine";
     mem = "2048M";
@@ -159,14 +163,14 @@ let
   };
 
   vms = {
-    debian70   = mkVM { VM = debuild; disk = "debian70"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
-    ubuntu1210 = mkVM { VM = debuild; disk = "ubuntu1210"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
-    ubuntu1304 = mkVM { VM = debuild; disk = "ubuntu1304"; extras = extra_debs32; };
-    ubuntu1310 = mkVM { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
-    ubuntu1404 = mkVM { VM = debuild; disk = "ubuntu1404"; extras = extra_debs34; };
+    debian70   = mk: mk { VM = debuild; disk = "debian70"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
+    ubuntu1210 = mk: mk { VM = debuild; disk = "ubuntu1210"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
+    ubuntu1304 = mk: mk { VM = debuild; disk = "ubuntu1304"; extras = extra_debs32; };
+    ubuntu1310 = mk: mk { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
+    ubuntu1404 = mk: mk { VM = debuild; disk = "ubuntu1404"; extras = extra_debs34; };
 
-    fedora19   = mkVM { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms; tarball = tarball_with_binutils; };
-    fedora20   = mkVM { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms; tarball = tarball_with_binutils; };
+    fedora19   = mk: mk { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms; tarball = tarball_with_binutils; };
+    fedora20   = mk: mk { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms; tarball = tarball_with_binutils; };
   };
 
   binutils = pkgs.fetchurl {
@@ -221,7 +225,7 @@ let
   mapsystems = systems: attrs: with ( pkgs.lib // builtins );
     mapAttrs ( n: fun: listToAttrs ( map (sys: { name = sys; value = fun sys; }) systems ) ) attrs;
 
-  namedbuild = name: fun: fun (attrs: mkbuild ({ "name" = name; } // attrs));
+  namedbuild = build: name: fun: fun (attrs: build ({ "name" = name; } // attrs));
 
   jobs = rec {
 
@@ -275,8 +279,8 @@ let
               '';
               checkPhase = ":";
           };
-  } // mapsystems [ "i686-linux" "x86_64-linux" ] (lib.mapAttrs namedbuild builds)
-    // mapsystems [ "i386" "x86_64" ] vms // windows;
+  } // mapsystems [ "i686-linux" "x86_64-linux" ] (lib.mapAttrs (namedbuild mkbuild) builds)
+    // mapsystems [ "i386" "x86_64" ] (lib.mapAttrs (namedbuild mkVM) vms) // windows;
 
 in
   jobs
