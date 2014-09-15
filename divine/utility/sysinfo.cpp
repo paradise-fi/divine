@@ -4,6 +4,7 @@
 #include <wibble/regexp.h>
 #include <fstream>
 #include <stdint.h>
+#include <mutex>
 
 #ifdef __unix
 #include <sys/resource.h>
