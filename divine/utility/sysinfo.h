@@ -15,7 +15,7 @@ struct Data;
 struct Info : WithReport { /* singleton */
     Info();
 
-    void start() const;
+    static void start();
     void stop() const;
     void update() const ;
 
@@ -27,6 +27,7 @@ struct Info : WithReport { /* singleton */
     double wallTime() const;
 
     static Data *data;
+    static void init();
 
     std::vector< ReportLine > report() const override;
 };

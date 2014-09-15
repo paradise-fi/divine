@@ -39,6 +39,7 @@ struct Data {
     SYSTEMTIME stStart, stFinish, stKernel, stUser;
     unsigned __int64 dwSpeed;
 #endif
+    std::mutex lock;
 };
 
 static bool matchLine( std::string file, wibble::ERegexp &r ) {
@@ -72,7 +73,10 @@ double SystemTimeToDouble(SYSTEMTIME &time)
 }
 #endif
 
+using guard = std::lock_guard< std::mutex >;
+
 double Info::userTime() const {
+    guard _l( data->lock );
 #ifdef __unix
     return interval( zeroTime(), data->usage.ru_utime );
 #elif defined(_WIN32)
@@ -81,6 +85,7 @@ double Info::userTime() const {
 }
 
 double Info::systemTime() const {
+    guard _l( data->lock );
 #ifdef __unix
     return interval( zeroTime(), data->usage.ru_stime );
 #elif defined(_WIN32)
@@ -89,6 +94,7 @@ double Info::systemTime() const {
 }
 
 double Info::wallTime() const {
+    guard _l( data->lock );
 #ifdef __unix
     return interval( data->tv, data->now );
 #elif defined(_WIN32)
@@ -96,15 +102,20 @@ double Info::wallTime() const {
 #endif
 }
 
-Info::Info() {
-    if (data)
+void Info::init() {
+    if ( data )
         return;
 
     data = new Data;
     start();
 }
 
-void Info::start() const {
+Info::Info() {
+    assert( data );
+}
+
+void Info::start() {
+    guard _l( data->lock );
 #ifdef __unix
     gettimeofday(&data->tv, NULL);
 #endif
@@ -116,6 +127,7 @@ void Info::start() const {
 }
 
 void Info::update() const {
+    guard _l( data->lock );
 #ifdef __unix
     gettimeofday(&data->now, NULL);
     getrusage( RUSAGE_SELF, &data->usage );
@@ -127,12 +139,14 @@ void Info::update() const {
 }
 
 void Info::stop() const {
+    guard _l( data->lock );
 #if defined(_WIN32)
     CloseHandle(data->hProcess);
 #endif
 }
 
 uint64_t Info::peakVmSize() const {
+    guard _l( data->lock );
     uint64_t vmsz = 0;
 #ifdef __linux
     std::stringstream file;
@@ -152,6 +166,7 @@ uint64_t Info::peakVmSize() const {
 }
 
 std::string Info::architecture() const {
+    guard _l( data->lock );
 #ifdef __linux
     wibble::ERegexp r( "model name[\t ]*: (.+)", 2 );
     if ( matchLine( "/proc/cpuinfo", r ) )

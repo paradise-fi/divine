@@ -108,6 +108,7 @@ struct Main {
           combine( opts ),
           compile( opts )
     {
+        sysinfo::Info::init();
         setupSignals();
         setupCommandline();
         parseCommandline();
