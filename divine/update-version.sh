@@ -22,7 +22,7 @@ fi
 relsha=`cat release/checksum`
 
 test -z "$old" && old=`cat $where.cached 2> /dev/null`
-if type -p $sha1sum > /dev/null; then
+if echo | $sha1sum > /dev/null; then
     test -z "$new" && \
         new=`echo "$manifest" | egrep "$interesting" | egrep -v "$boring" | xargs $sha1sum \
         | cut -d' ' -f1 | $sha1sum | cut -d' ' -f1`
