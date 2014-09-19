@@ -950,16 +950,8 @@ struct Jenkins {
             state.Update(buf, i);
             std::tie( c, d ) = state.Final();
 
-            if (a != c)
-            {
-                printf("wrong a %d: %.16lx %.16lx\n", i, a,c);
-                ASSERT( false );
-            }
-            if (b != d)
-            {
-                printf("wrong b %d: %.16lx %.16lx\n", i, b,d);
-                ASSERT( false );
-            }
+            ASSERT_EQ( a, c );
+            ASSERT_EQ( b, d );
 
             // all possible two consecutive pieces
             for (int j=0; j<i; ++j)
@@ -970,16 +962,8 @@ struct Jenkins {
                 state.Update(&buf[0], j);
                 state.Update(&buf[j], i-j);
                 std::tie( c, d ) = state.Final();
-                if (a != c)
-                {
-                    printf("wrong a %d %d: %.16lx %.16lx\n", j, i, a,c);
-                    ASSERT( false );
-                }
-                if (b != d)
-                {
-                    printf("wrong b %d %d: %.16lx %.16lx\n", j, i, b,d);
-                    ASSERT( false );
-                }
+                ASSERT_EQ( a, c );
+                ASSERT_EQ( b, d );
             }
         }
     }
