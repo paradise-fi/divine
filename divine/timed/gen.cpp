@@ -289,7 +289,8 @@ void TAGen::initial( char* d ) {
     makeSucc( d, [ this, &count, d ] ( const char* s ) {
         assert( count <= 1 );
         count++;
-        memcpy( d, s, stateSize() );
+        if ( d != s )
+            memcpy( d, s, stateSize() );
     });
 
     if ( !count ) {
