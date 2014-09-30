@@ -1,5 +1,7 @@
 . lib
 
+test "$ALG_REACHABILITY" = ON || skip
+
 for COMP in $COMPRESSIONS
 do
     all_small reachability -w 1 --compression=$COMP

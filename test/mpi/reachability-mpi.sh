@@ -1,5 +1,7 @@
 . lib
 
+test "$ALG_REACHABILITY" = "ON" || skip
+
 dve_small mpi_verify --reachability -w 1
 
 run mpi verify --reachability data/shuffle.dve

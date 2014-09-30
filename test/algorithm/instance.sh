@@ -24,16 +24,16 @@ checkInstance() {
 }
 
 # partitioned
-checkInstance '\<Reachability.*Partitioned' "for reachability" --reachability
+test "$ALG_REACHABILITY" = "ON" && checkInstance '\<Reachability.*Partitioned' "for reachability" --reachability
 test "$ALG_WEAKREACHABILITY" = "ON" && checkInstance 'WeakReachability.*Partitioned' "for weak reachability" --weak
-checkInstance 'Owcty.*Partitioned' "for OWCTY" --owcty
+test "$ALG_OWCTY" = "ON" && checkInstance 'Owcty.*Partitioned' "for OWCTY" --owcty
 test "$ALG_MAP" = "ON" && checkInstance 'Map.*Partitioned' "for MAP" --map
 test "$ALG_NDFS" = "ON" && checkInstance 'NestedDfs.*Partitioned' "for NestedDFS" --nested-dfs
 
 #shared
-checkInstance '\<Reachability.*Shared' "for shared reachability" --reachability --shared
+test "$ALG_REACHABILITY" = "ON" && checkInstance '\<Reachability.*Shared' "for shared reachability" --reachability --shared
 test "$ALG_WEAKREACHABILITY" = "ON" && checkInstance 'WeakReachability.*Shared' "for shared weak reachability" --weak --shared
-checkInstance 'Owcty.*Shared' "for shared OWCTY" --owcty --shared
+test "$ALG_OWCTY" = "ON" && checkInstance 'Owcty.*Shared' "for shared OWCTY" --owcty --shared
 test "$ALG_MAP" = "ON" && checkInstance 'Map.*Shared' "for shared MAP" --map --shared
 test "$ALG_NDFS" = "ON" && checkInstance 'NestedDFS.*Shared' "for double threaded NestedDFS" --nested-dfs -w 2
 

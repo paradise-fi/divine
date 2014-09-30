@@ -1,5 +1,7 @@
 . lib
 
+test "$ALG_OWCTY" = ON || skip
+
 for COMP in $COMPRESSIONS
 do
     all_small owcty -w 1 --compression=$COMP
