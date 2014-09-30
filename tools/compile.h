@@ -175,6 +175,8 @@ struct Compile {
         gplusplus( outfile, str::basename( in ) + generator::cesmi_ext );
 #else
         die( "FATAL: The DVE compiler requires DVE backend." );
+        (void)(in);
+        (void)(definitions);
 #endif
     }
 
@@ -493,6 +495,8 @@ struct Compile {
 
 #else
         die( "LLVM is disabled" );
+        (void)(first_file);
+        (void)(out);
 #endif
     }
 
