@@ -306,7 +306,7 @@ struct DeMarshall {
         read_and_invoke< typename hlist::List< Args... >::T >( f, hlist::Nil() );
     }
 
-    void handle( int id, hlist::Nil ) {
+    void handle( int, hlist::Nil ) {
         ASSERT_UNREACHABLE( "could not demarshall method" ); // todo print id?
     }
 
