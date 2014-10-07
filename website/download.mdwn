@@ -42,6 +42,12 @@ directly from our version control system, using [darcs] [6]:
 
     darcs get http://divine.fi.muni.cz/darcs/mainline divine
 
+If you experience any problem downloading our source repository please try
+
+    darcs get --no-http-pipelining http://divine.fi.muni.cz/darcs/mainline divine
+
+or update to newest available version of darcs.
+
 [6]: http://darcs.net
 [7]: manual.html#installation
 
