@@ -521,7 +521,7 @@ struct Compile {
         else if ( o_llvm->boolValue() )
             compileLLVM( input, o_out->stringValue() );
         else {
-            std::cerr << "Hint: Assuming --llvm. Use --cesmi to build CESMI modules." << std::endl
+            std::cerr << "Hint: Assuming --llvm. Use --cesmi to build CESMI modules." << std::endl;
             compileLLVM( input, o_out->stringValue() );
         }
     }
