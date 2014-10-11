@@ -325,7 +325,7 @@ struct Main {
 
         o_property = common->add< StringOption >(
             "property", 'p', "property", "",
-            "select a property [default=deadlock]" );
+            "select a property [default=safety]" );
 
         o_mpi = common->add< BoolOption >(
             "mpi", 0, "mpi", "",
@@ -632,7 +632,7 @@ struct Main {
         // else default (currently set to 2)
 
         meta.input.model = input;
-        meta.input.properties = parseProperties( o_property->boolValue() ? o_property->value() : "deadlock" );
+        meta.input.properties = parseProperties( o_property->boolValue() ? o_property->value() : "safety" );
         meta.input.definitions = o_definitions->values();
         meta.input.probabilistic = o_probabilistic->boolValue();
         meta.output.wantCe = !o_noCe->boolValue();
