@@ -14,7 +14,7 @@ checkInstance() {
     shift
     shift
 
-    inst=`divine verify "$testcase" "$@" -r | grep 'Instance:'`
+    inst=`divine verify -p deadlock "$testcase" "$@" -r | grep 'Instance:'`
     if echo $inst | egrep -i "$key"; then
         echo "#### PASSED"
     else
