@@ -521,8 +521,8 @@ struct Compile {
         else if ( o_llvm->boolValue() )
             compileLLVM( input, o_out->stringValue() );
         else {
-            std::cerr << "Do not know how to compile this file type." << std::endl
-                      << "Did you mean to run me with --llvm or --cesmi?" << std::endl;
+            std::cerr << "Hint: Assuming --llvm. Use --cesmi to build CESMI modules." << std::endl
+            compileLLVM( input, o_out->stringValue() );
         }
     }
 
