@@ -2139,12 +2139,12 @@ struct EngineTest {
         MemoryManager mman;
         Public<Engine> engine(&mman, "test", "[options]", "test engine", "this is the long description of a test engine");
         OptionGroup* group = engine.addGroup("test option group");
-        BoolOption* testBool = group->add<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
-        IntOption* testInt = group->add<IntOption>("tint", 0, "testint", "<val>", "a test int switch");
-        StringOption* testString = group->add<StringOption>("tstring", 0, "teststring", "<val>", "a test string switch");
-        BoolOption* testBool1 = engine.add<BoolOption>("tbool", 0, "testbool1", "<val>", "a test bool switch");
-        IntOption* testInt1 = engine.add<IntOption>("tint", 0, "testint1", "<val>", "a test int switch");
-        StringOption* testString1 = engine.add<StringOption>("tstring", 0, "teststring1", "<val>", "a test string switch");
+        BoolOption* testBool UNUSED = group->add<BoolOption>("tbool", 0, "testbool", "<val>", "a test bool switch");
+        IntOption* testInt UNUSED = group->add<IntOption>("tint", 0, "testint", "<val>", "a test int switch");
+        StringOption* testString UNUSED = group->add<StringOption>("tstring", 0, "teststring", "<val>", "a test string switch");
+        BoolOption* testBool1 UNUSED = engine.add<BoolOption>("tbool", 0, "testbool1", "<val>", "a test bool switch");
+        IntOption* testInt1 UNUSED = engine.add<IntOption>("tint", 0, "testint1", "<val>", "a test int switch");
+        StringOption* testString1 UNUSED = engine.add<StringOption>("tstring", 0, "teststring1", "<val>", "a test string switch");
 
         ArgList opts;
         opts.push_back("--testbool=true");
