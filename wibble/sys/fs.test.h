@@ -54,7 +54,8 @@ struct TestFs {
                     assert(!i.isdir());
                 }
         }
-        {
+        /* {  TODO: d_type on bind-mounted files is wrong; i.e. /dev/null gives
+              d_type of DT_REG in nix-created build chroots
             Directory dir("/dev");
             for (Directory::const_iterator i = dir.begin(); i != dir.end(); ++i)
             {
@@ -69,7 +70,7 @@ struct TestFs {
                     assert(!i.ischr());
                 }
             }
-        }
+        } */
 #endif
     }
 
