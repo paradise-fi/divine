@@ -77,6 +77,8 @@
 #define ASSERT_NEQ(x, y) ((void)0)
 #endif
 
+#define UNUSED __attribute__((unused))
+
 /* you must #include <brick-string.h> to use ASSERT_UNREACHABLE_F */
 #define ASSERT_UNREACHABLE_F(...) assert_die_fn( BRICK_LOCATION( brick::string::fmtf(__VA_ARGS__) ) )
 #define ASSERT_UNREACHABLE(x) assert_die_fn( BRICK_LOCATION( x ) )
@@ -224,7 +226,7 @@ void fork_test( TestCaseBase *tc, int *fds ) {
     }
     if ( pid > 0 ) {
         int status;
-        pid_t finished = waitpid( pid, &status, 0 );
+        pid_t finished UNUSED = waitpid( pid, &status, 0 );
         ASSERT_EQ( finished, pid );
 
         if ( WIFEXITED( status ) &&
@@ -473,7 +475,7 @@ struct SelfTest
     void _assert_eq() {
         _register< SelfTest, &SelfTest::_assert_eq >( "assert_eq" );
 
-        bool die = true;
+        bool die UNUSED = true;
         try {
             ASSERT_EQ( 1, 2 );
         } catch ( AssertFailed ) {
