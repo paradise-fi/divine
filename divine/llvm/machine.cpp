@@ -308,7 +308,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
     auto &nursery_hm = _pool.get< HeapMeta >( _heapmeta ),
           &mature_hm = state().get( HeapMeta() );
 
-    for ( int seg = 0; seg < canonic.segmap.size(); ++seg ) {
+    for ( int seg = 0; seg < int( canonic.segmap.size() ); ++seg ) {
         if ( canonic.segmap[ seg ] < 0 )
             continue;
         bool nursed = seg >= nursery.segshift;
