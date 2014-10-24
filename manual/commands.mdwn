@@ -169,6 +169,13 @@ them in this section.
      See [state space compression](#state-space-compression)
      on details of compression.
 
+`--shared
+:    This option switches between two graph traversal algorithms.
+     Use this switch to turn on Shared algorithm instead of Partitioned
+     algorithm. Default option is to use Partitioned algorithm.
+     See [graph traversal algorithms](#divine-graph-traversal-algorithms)
+     on details.
+
 Distributed Execution
 ---------------------
 
@@ -372,3 +379,56 @@ There are no limitations on other options implied by use of compression, it is
 supported with parallel verification (including MPI); however, to achieve best
 compression ratio it is recommended to use shared-memory verification
 (`--shared`), if possible.
+
+DIVINE Graph Traversal Algorithms
+---------------------------------
+
+DIVINE implements two different graph traversal algorithms. Both of them are
+designed to run in parallel environment and they implements pseudo BFS.
+However, each of them has different pros and cons and is suitable for different
+situations.
+
+### Partitioned
+
+The main idea of this algorithm is that a graph is partitioned into
+parts where each part is assigned to exactly one working thread
+(and vice versa, every thread has exactly one part of a graph).
+DIVINE generates a graph "on the fly" so it is not possible to anyhow
+analyse the particular graph in advance, in order to optimize the partitioning.
+That is the reason why the partitioning is done via hashing nodes of a graph,
+which may cause imbalanced and heavy communication workload.
+
+Every working thread has an independent store (simple hash table) for
+already visited nodes of the graph and a queue of nodes to-be-processed.
+Due to the independence of partitioning no synchronizations are required
+for standard operations. This is not the case with Shared algorithm
+(see below), therefore the performance of single threaded run of DIVINE
+is better if Partitioned algorithm is used. However, the independence implies
+worse efficiency of the tree compression, in other respects this algorithm can
+run in distributed environment without any penalty (except network cost).
+
+### Shared
+
+When using Shared algorithm, no partitioning is done. Two main data
+structures -- the store and queue -- are shared among all working threads.
+A working thread pushes already processed nodes of a graph into the store,
+and takes to-be-processed nodes from the queue. Shared algorithm is
+significantly better than the previous one when is DIVINE is supposed to be run
+on a multi-core machine with high amount of memory.
+
+The store is a hash table that allows for parallel access. This data structure
+is limited to only three operations -- insert, find, and grow. Our
+implementation in DIVINE does not use explicit locks, although it contains
+a few global implicit locks (or better atomic flags) to ensure correctness.
+
+The grow operation can also be done in parallel with a support of independent
+participating working threads (besides the thread that called grow). Anyway,
+more participating workers may improve the time needed for rehashing the old
+table into the new one.
+
+The usage of the tree compression together with Shared algorithm significantly
+decreases amount of memory needed by DIVINE. However, Shared algorithm
+is not the best choice for single threaded run due to a small performance
+penalty caused by synchronizations inside the hash table.
+
+As of time of this writing Shared algorithm cannot run in a distributed memory.
