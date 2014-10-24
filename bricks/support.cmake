@@ -62,12 +62,14 @@ function( test_bricks dir )
   include_directories( ${dir} )
   file( GLOB SRC "${dir}/brick-*.h" )
   bricks_unittest( test-bricks ${SRC} )
+  target_link_libraries( test-bricks pthread )
 endfunction()
 
 function( benchmark_bricks dir )
   include_directories( ${dir} )
   file( GLOB SRC "${dir}/brick-*.h" )
   bricks_benchmark( benchmark-bricks ${SRC} )
+  target_link_libraries( benchmark-bricks pthread )
 endfunction()
 
 # Run feature checks and define -DBRICKS_* feature macros. You can use bricks
