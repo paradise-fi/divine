@@ -73,8 +73,8 @@ using ScopeStack = std::vector< std::vector< Value > >;
 
 struct Text {
     void add( Label l, Symbol bind, const SymStack &c ) {
-        assert_eq( l.id, code.size() );
-        assert_eq( l.id, binders.size() );
+        assert_eq( l.id, int( code.size() ) );
+        assert_eq( l.id, int( binders.size() ) );
         code.push_back( c );
         binders.push_back( bind );
     }
@@ -204,7 +204,7 @@ struct Evaluator {
                         [&]( SymItem x ) {
                             return x.match( [&]( Value v ) -> ConItem { return v; },
                                             [&]( Use s ) -> ConItem {
-                                                assert( scope.size() > s.id );
+                                                assert( int( scope.size() ) > s.id );
                                                 assert( scope[ s.id ].size() );
                                                 return Value( scope[ s.id ].back() );
                                             },
@@ -234,8 +234,9 @@ struct Evaluator {
             case Op::Xor: return a ^ b;
             case Op::LShift: return a << b;
             case Op::RShift: return a >> b;
+        default:
+            assert_unreachable( "unknown binop" );                    
         }
-        assert_unreachable( "unknown binop" );
     }
 
     void step() {
@@ -282,7 +283,7 @@ struct Evaluator {
     int reduce() {
         while ( !code.empty() )
             step();
-        assert_eq( stack.size(), 1 );
+        assert_eq( int(stack.size()), 1 );
         Value r = stack.back();
         stack.pop_back();
         return r.v;

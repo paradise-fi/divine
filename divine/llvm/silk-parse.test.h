@@ -24,7 +24,7 @@ struct TestSilkParse {
 
     Test scope() {
         auto c = _parse< Scope >( "a = 2 + 3" );
-        assert_eq( c.bindings.size(), 1 );
+        assert_eq( int(c.bindings.size()), 1 );
         auto b = c.bindings[0];
         assert_eq( b.name.name, "a" );
         auto v = b.value.e;
@@ -39,7 +39,7 @@ struct TestSilkParse {
 
     Test scope2() {
         auto c = _parse< Scope >( "a = 2 + 3\nb = 4" );
-        assert_eq( c.bindings.size(), 2 );
+        assert_eq( int ( c.bindings.size() ), 2 );
         auto b1 = c.bindings[0];
         assert_eq( b1.name.name, "a" );
         auto b2 = c.bindings[1];
@@ -50,7 +50,7 @@ struct TestSilkParse {
 
     Test scope3() {
         auto c = _parse< Scope >( "a = 2 + 3; b = 4" );
-        assert_eq( c.bindings.size(), 2 );
+        assert_eq( int ( c.bindings.size() ), 2 );
         auto b1 = c.bindings[0];
         assert_eq( b1.name.name, "a" );
         auto b2 = c.bindings[1];
