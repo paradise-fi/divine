@@ -6,6 +6,7 @@
 #include <wibble/test.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <tuple>
 
 using namespace divine::jenkins;
 
