@@ -14,8 +14,8 @@
 using namespace llvm;
 using namespace divine::llvm;
 
-template< typename HM >
-Interpreter< HM >::Interpreter( Pool &pool, int slack, std::shared_ptr< BitCode > bc )
+template< typename HM, typename L >
+Interpreter< HM, L >::Interpreter( Pool &pool, int slack, std::shared_ptr< BitCode > bc )
     : pool( pool ), bc( bc ), TD( bc->module.get() ), state( info(), pool, slack )
 {
     tauplus = false;
@@ -24,8 +24,8 @@ Interpreter< HM >::Interpreter( Pool &pool, int slack, std::shared_ptr< BitCode 
     parseProperties( bc->module.get() );
 }
 
-template< typename HM >
-void Interpreter< HM >::parseProperties( Module * )
+template< typename HM, typename L >
+void Interpreter< HM, L >::parseProperties( Module * )
 {
     auto prefix = "__divine_LTL_";
 
@@ -51,8 +51,8 @@ void Interpreter< HM >::parseProperties( Module * )
     }
 }
 
-template< typename HM >
-divine::Blob Interpreter< HM >::initial( Function *f, bool is_start )
+template< typename HM, typename L >
+divine::Blob Interpreter< HM, L >::initial( Function *f, bool is_start )
 {
     Blob pre_initial = pool.allocate( state._slack + state.size( 0, 0, 0, 0 ) );
     pool.clear( pre_initial );
@@ -97,8 +97,8 @@ divine::Blob Interpreter< HM >::initial( Function *f, bool is_start )
     return result;
 }
 
-template< typename HM >
-int Interpreter< HM >::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl )
+template< typename HM, typename L >
+int Interpreter< HM, L >::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl )
 {
     int current = state._thread;
     int tid = state.new_thread();
@@ -113,8 +113,8 @@ int Interpreter< HM >::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl )
     return tid;
 }
 
-template< typename HM >
-int Interpreter< HM >::new_thread( Function *f )
+template< typename HM, typename L >
+int Interpreter< HM, L >::new_thread( Function *f )
 {
     return new_thread( PC( info().functionmap[ f ], 0 ),
                        Maybe< Pointer >::Nothing(), MemoryFlag::Data );

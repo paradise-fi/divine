@@ -40,8 +40,7 @@
 namespace divine {
 namespace llvm {
 
-template< typename T > struct Interpreter;
-using graph::Label;
+template< typename T, typename L > struct Interpreter;
 
 using namespace ::llvm;
 
@@ -76,7 +75,7 @@ struct BitCode {
     }
 };
 
-template< typename HeapMeta >
+template< typename HeapMeta, typename Label = graph::NoLabel >
 struct Interpreter
 {
     Pool &pool;

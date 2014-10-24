@@ -11,11 +11,27 @@
 namespace divine {
 namespace graph {
 
-using NoLabel = wibble::Unit;
+struct NoLabel {
+    NoLabel() {}
+    NoLabel( int ) {}
+    NoLabel levelup( int ) const { return NoLabel(); }
+    NoLabel operator *( std::pair< int, int > ) const { return NoLabel(); }
+};
+
+template< typename BS >
+typename BS::bitstream &operator<<( BS &bs, const NoLabel & ) {
+    return bs;
+}
+template< typename BS >
+typename BS::bitstream &operator>>( BS &bs, NoLabel & ) {
+    return bs;
+}
 
 struct ControlLabel {
     ControlLabel() : tid( -1 ) { }
     ControlLabel( int tid ) : tid( tid ) { }
+    ControlLabel levelup( int ) { return *this; }
+    ControlLabel operator *( std::pair< int, int > ) const { return *this; }
     int tid;
 };
 

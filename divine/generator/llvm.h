@@ -32,7 +32,7 @@ using namespace ::llvm;
 template< typename _Label, typename HeapMeta >
 struct _LLVM : Common< Blob > {
     typedef Blob Node;
-    using Interpreter = llvm::Interpreter< HeapMeta >;
+    using Interpreter = llvm::Interpreter< HeapMeta, _Label >;
 
     std::shared_ptr< divine::llvm::BitCode > bitcode;
     Interpreter *_interpreter;
@@ -80,8 +80,8 @@ struct _LLVM : Common< Blob > {
     template< typename Yield >
     void successors( Node st, Yield yield ) {
         if ( !use_property )
-            return interpreter().run( st, [&]( Node n, llvm::Label p ) { yield( n, Label( p ) ); } );
-        interpreter().run( st, [&]( Node n, llvm::Label p ){
+            return interpreter().run( st, yield );
+        interpreter().run( st, [&]( Node n, Label p ){
                 std::vector< int > buchi_succs;
                 for ( auto next : this->prop_next[ this->flags( n ).buchi ] ) {
                     auto trans = this->prop_trans[ next ];
@@ -103,7 +103,7 @@ struct _LLVM : Common< Blob > {
                 }
 
                 this->flags( n ).buchi = buchi_succs.front();
-                yield( n, Label( p ) ); /* TODO? */
+                yield( n, p ); /* TODO? */
             } );
     }
 

@@ -5,8 +5,10 @@ namespace divine {
 namespace llvm {
 
 #ifdef TCC_INSTANCE
-@template struct Interpreter< machine::NoHeapMeta >;
-@template struct Interpreter< machine::HeapIDs >;
+@template struct Interpreter< machine::NoHeapMeta, graph::NoLabel >;
+@template struct Interpreter< machine::NoHeapMeta, graph::ControlLabel >;
+@template struct Interpreter< machine::NoHeapMeta, graph::Probability >;
+@template struct Interpreter< machine::HeapIDs, graph::NoLabel >;
 #endif
 
 }

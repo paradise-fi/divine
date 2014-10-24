@@ -27,7 +27,7 @@ using namespace divine::llvm;
 namespace divine {
 namespace llvm {
 
-template< typename HM >
+template< typename HM, typename L >
 struct Describe {
 
     typedef std::set< std::pair< Pointer, Type * > > DescribeSeen;
@@ -36,11 +36,11 @@ struct Describe {
     std::vector< std::string > lines;
     bool detailed;
     int anonymous;
-    Interpreter< HM > *interpreter;
+    Interpreter< HM, L > *interpreter;
     bool _demangle;
 
     std::string pointer( Type *t, Pointer p );
-    Describe( Interpreter< HM > *i, bool demangle, bool detailed )
+    Describe( Interpreter< HM, L > *i, bool demangle, bool detailed )
         : detailed( detailed ), anonymous( 1 ), interpreter( i ), _demangle( demangle )
     {}
 
@@ -118,8 +118,8 @@ std::ostream &operator<<( std::ostream &o, ValueRef p ) {
 }
 }
 
-template< typename HM> template< typename Ptr >
-std::string Describe< HM >::aggregate( Type *t, Ptr where )
+template< typename HM, typename L > template< typename Ptr >
+std::string Describe< HM, L >::aggregate( Type *t, Ptr where )
 {
     char delim[2];
     std::vector< std::string > vec;
@@ -151,8 +151,8 @@ std::string Describe< HM >::aggregate( Type *t, Ptr where )
     return wibble::str::fmt_container( vec, delim[0], delim[1] );
 }
 
-template< typename HM >
-std::string Describe< HM >::pointer( Type *t, Pointer p )
+template< typename HM, typename L >
+std::string Describe< HM, L >::pointer( Type *t, Pointer p )
 {
     if ( p.null() )
         return "null";
@@ -198,8 +198,8 @@ void updateWidth( ::llvm::TargetData TD, ValueRef &w, Type *t ) {
 
 void updateWidth( ::llvm::TargetData, Pointer, Type * ) {}
 
-template< typename HM > template< typename Ptr >
-std::string Describe< HM >::value( Type *t, Ptr where )
+template< typename HM, typename L > template< typename Ptr >
+std::string Describe< HM, L >::value( Type *t, Ptr where )
 {
     updateWidth( TD(), where, t );
     if ( t->isAggregateType() )
@@ -219,8 +219,8 @@ std::string Describe< HM >::value( Type *t, Ptr where )
     return "<weird type>";
 }
 
-template< typename HM > template< typename Ptr >
-std::string Describe< HM >::value( const ::llvm::Value *val, ValueRef vref, Ptr where )
+template< typename HM, typename L > template< typename Ptr >
+std::string Describe< HM, L >::value( const ::llvm::Value *val, ValueRef vref, Ptr where )
 {
     std::string name, value;
 
@@ -240,8 +240,8 @@ std::string Describe< HM >::value( const ::llvm::Value *val, ValueRef vref, Ptr 
     return this->value( std::make_pair( type, name ), vref, where );
 }
 
-template< typename HM > template< typename Ptr >
-std::string Describe< HM >::value( std::pair< ::llvm::Type *, std::string > val,
+template< typename HM, typename L > template< typename Ptr >
+std::string Describe< HM, L >::value( std::pair< ::llvm::Type *, std::string > val,
                                    ValueRef vref, Ptr where )
 {
     if ( where.null() && !vref.v.width )
@@ -287,8 +287,8 @@ std::string fileline( const Instruction &insn )
     return "";
 }
 
-template< typename HM >
-std::string Describe< HM >::locinfo( PC pc, bool instruction,
+template< typename HM, typename L >
+std::string Describe< HM, L >::locinfo( PC pc, bool instruction,
                                      Function **fun )
 {
     auto user = info().instruction( pc ).op;
@@ -315,8 +315,8 @@ std::string Describe< HM >::locinfo( PC pc, bool instruction,
     return locs.str();
 }
 
-template< typename HM >
-std::string Describe< HM >::problem( Problem bad )
+template< typename HM, typename L >
+std::string Describe< HM, L >::problem( Problem bad )
 {
     std::stringstream s;
     switch ( bad.what ) {
@@ -373,8 +373,8 @@ std::string Describe< HM >::problem( Problem bad )
     return s.str();
 }
 
-template< typename HM >
-std::string Describe< HM >::all()
+template< typename HM, typename L >
+std::string Describe< HM, L >::all()
 {
     std::stringstream s;
 
@@ -450,8 +450,8 @@ std::string Describe< HM >::all()
     return s.str();
 }
 
-template< typename HM >
-std::string Describe< HM >::constdata() {
+template< typename HM, typename L >
+std::string Describe< HM, L >::constdata() {
     for ( int i = 0; i < int( info().constinfo.size() ); ++ i )
         if ( info().constinfo[ i ].first )
             value( info().constinfo[ i ], ValueRef(), Pointer( false, i, 0 ) );
@@ -576,18 +576,18 @@ void ProgramInfo::Instruction::dump( ProgramInfo &info, MachineState &state ) {
 }
 */
 
-template< typename HM >
-std::string Interpreter< HM >::describe( bool demangle, bool detailed ) {
-    return Describe< HM >( this, demangle, detailed ).all();
+template< typename HM, typename L >
+std::string Interpreter< HM, L >::describe( bool demangle, bool detailed ) {
+    return Describe< HM, L >( this, demangle, detailed ).all();
 }
 
-template< typename HM >
-std::string Interpreter< HM >::describeConstdata() {
-    return Describe< HM >( this, false, false ).constdata();
+template< typename HM, typename L >
+std::string Interpreter< HM, L >::describeConstdata() {
+    return Describe< HM, L >( this, false, false ).constdata();
 }
 
-template< typename HM >
-void Interpreter< HM >::dump() {
+template< typename HM, typename L >
+void Interpreter< HM, L >::dump() {
     state.dump();
     std::cerr << describe( false, true ) << std::endl;
 }
@@ -596,8 +596,10 @@ namespace divine {
 namespace llvm {
 
 /* explicit instances */
-template struct Interpreter< machine::NoHeapMeta >;
-template struct Interpreter< machine::HeapIDs >;
+template struct Interpreter< machine::NoHeapMeta, graph::NoLabel >;
+template struct Interpreter< machine::NoHeapMeta, graph::ControlLabel >;
+template struct Interpreter< machine::NoHeapMeta, graph::Probability >;
+template struct Interpreter< machine::HeapIDs, graph::NoLabel >;
 
 }
 }
