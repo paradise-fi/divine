@@ -129,8 +129,6 @@ opt( DEV_GCOV "generate profiling information for a lcov coverage report" OFF )
 opt( DEV_NOPOOLS "avoid pool allocation for graph vertices" OFF )
 opt( DEV_WARNINGS "enable extra compiler warnings" ${DEV_WARNINGS_DEF} )
 
-opt( DIVINE_BINUTILS "build binutils for divine (enable if your binutils does not support plugins and you want LLVM verification" OFF )
-
 include( VersionAppend )
 
 set( MAX_INSTANCE_FILES_COUNT "128" CACHE STRING
@@ -139,39 +137,10 @@ set( MIN_INSTANCES_PER_FILE "10" CACHE STRING
     "minimal number of instances in one instance file" )
 mark_as_advanced( MAX_INSTANCE_FILES_COUNT MIN_INSTANCES_PER_FILE )
 
-set( DEFAULT_AR "ar" )
-set( DEFAULT_GOLD "ld.gold" )
-
-if( DIVINE_BINUTILS )
-    set( DEFAULT_AR "divine-ar" )
-    set( DEFAULT_GOLD "divine-ld.gold" )
-endif()
-
 set( CMD_GCC "gcc" CACHE STRING "how to run the GCC C/C++ compiler" )
 set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
-set( CMD_GOLD ${DEFAULT_GOLD} CACHE STRING "how to run the GNU gold linker" )
-set( CMD_AR ${DEFAULT_AR} CACHE STRING "how to run GNU ar w/ gold plugin support" )
 
 include( FindLLVM )
-
-find_file( CMD_LLVMGOLD "LLVMgold.so"
-    HINTS "${LLVM_LIBRARY_DIRS}"
-    PATHS
-        "/usr/lib/"
-        "/usr/lib/bfd-plugins/"
-        "/usr/lib/llvm/"
-        "/usr/lib/llvm-3.2/"
-        "/usr/lib/llvm-3.2/lib/"
-        "/usr/lib/llvm-3.1/"
-        "/usr/lib/llvm-3.1/lib/"
-        "/usr/lib/llvm-3.3/"
-        "/usr/lib/llvm-3.3/lib/"
-        "/usr/lib/llvm-3.4/"
-        "/usr/lib/llvm-3.4/lib/"
-        "$ENV{HOME}/.nix-profile/lib"
-        "/run/current-system/sw/lib/"
-    )
-set( CMD_LLVMGOLD "/usr/lib/llvm/LLVMgold.so" CACHE STRING "path to the LLVMgold.so plugin" )
 
 include( CheckCXXSourceCompiles )
 set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
@@ -568,11 +537,6 @@ if( OPT_SQL )
     add_subdirectory( external/nanodbc )
 endif()
 
-if( DIVINE_BINUTILS )
-    add_subdirectory( external/binutils )
-    add_dependencies( divine binutils )
-endif()
-
 ###############################################
 ## TESTING
 ##
@@ -614,13 +578,6 @@ if( WIN32 )
   bundle( MINGW_LIB mingwm10.dll )
   bundle( MSYS_LIB msys-1.0.dll )
 endif( WIN32 )
-
-if( DIVINE_BINUTILS )
-    install( PROGRAMS
-        ${CMAKE_BINARY_DIR}/binutils/bin/divine-ar
-        ${CMAKE_BINARY_DIR}/binutils/bin/divine-ld.gold
-        DESTINATION ${CMAKE_INSTALL_BINDIR} )
-endif()
 
 ########################################
 ## BINARY INSTALLER
