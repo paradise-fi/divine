@@ -1,9 +1,7 @@
 // -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
 //             (c) 2013, 2014 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <unistd.h>
 #include <vector>
-#include <future>
 
 #include <brick-commandline.h>
 
@@ -17,11 +15,10 @@
 
 #include <divine/dve/compiler.h>
 #include <divine/generator/cesmi.h>
-#include <divine/utility/strings.h>
 #include <divine/utility/die.h>
 
 #include <tools/combine.h>
-#include <tools/llvmpaths.h>
+#include <tools/compile/llvm.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
@@ -32,12 +29,6 @@ using namespace brick::commandline;
 using namespace sys;
 
 namespace divine {
-
-extern stringtable pdclib_list[];
-extern stringtable libm_list[];
-extern stringtable libunwind_list[];
-extern stringtable libcxxabi_list[];
-extern stringtable libcxx_list[];
 
 std::string ltl_to_c( int id, std::string ltl );
 
@@ -63,8 +54,7 @@ struct Compile {
     commandline::StandardParserWithMandatoryCommand &opts;
 
     BoolOption *o_cesmi, *o_llvm, *o_keep, *o_libs_only, *o_dont_link, *o_no_modeline;
-    StringOption *o_out, *o_cmd_clang, *o_cmd_gold, *o_cmd_llvmgold,
-                 *o_cmd_ar, *o_precompiled, *o_parallel;
+    StringOption *o_out, *o_cmd_clang, *o_precompiled, *o_parallel;
     VectorOption< String > *o_definitions, *o_cflags;
     int parallelBuildJobs;
 
@@ -85,36 +75,6 @@ struct Compile {
         chdir( cleanup_tmpdir.abspath.c_str() );
         wibble::sys::fs::rmtree( cleanup_tmpdir.basename );
     }
-
-    struct RunQueue {
-        Compile *compile;
-        std::vector< std::string > commands;
-        std::atomic< size_t > current;
-
-        RunQueue( Compile *compile ) : compile( compile ), current( 0 ) { }
-
-        void push( std::string comm ) {
-            commands.push_back( comm );
-        }
-
-        void run() {
-            assert( compile );
-            int extra = compile->parallelBuildJobs - 1;
-            std::vector< std::future< void > > thrs;
-            for ( int i = 0; i < extra; ++i )
-                thrs.push_back( std::async( std::launch::async, &RunQueue::_run, this ) );
-
-            _run();
-            for ( auto &t : thrs )
-                t.get(); // get propagates exceptions
-        }
-
-        void _run() {
-            int job;
-            while ( (job = current.fetch_add( 1 )) < int( commands.size() ) )
-                compile->run( commands[ job ] );
-        }
-    };
 
     void run( std::string command ) {
         std::cerr << "+ " << command << std::endl;
@@ -137,28 +97,6 @@ struct Compile {
         if ( o_cmd_clang->boolValue() )
             return o_cmd_clang->stringValue();
         return ::_cmd_clang;
-    }
-
-    std::string gold_plugin() {
-        if ( o_cmd_llvmgold->boolValue() )
-            return " --plugin " + o_cmd_llvmgold->stringValue();
-        else if ( strlen( ::_cmd_llvmgold ) )
-            return std::string( " --plugin " ) + ::_cmd_llvmgold;
-        return "";
-    }
-
-    std::string gold_ar() {
-        if ( o_cmd_ar->boolValue() )
-            return o_cmd_ar->stringValue() + " r " + gold_plugin();
-        else
-            return std::string( ::_cmd_ar ) + " r " + gold_plugin();;
-    }
-
-    std::string gold() {
-        if ( o_cmd_gold->boolValue() )
-            return o_cmd_gold->stringValue() + gold_plugin();
-        else
-            return ::_cmd_gold + gold_plugin();;
     }
 
     void compileDve( std::string in, std::vector< std::string > definitions ) {
@@ -199,8 +137,8 @@ struct Compile {
         auto clean = wibble::raii::refDeleteIf( !o_keep->boolValue(), tmp_dir, cleanup );
 
         chdir( tmp_dir.basename.c_str() );
-        fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
-        fs::writeFile( "cesmi.cpp", cesmi_usr_cesmi_cpp_str );
+        brick::fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
+        brick::fs::writeFile( "cesmi.cpp", cesmi_usr_cesmi_cpp_str );
         chdir( tmp_dir.abspath.c_str() );
 
         std::string extras, ltlincludes;
@@ -254,55 +192,6 @@ struct Compile {
              generator::cesmi_ext + " " + in + extras );
     }
 
-    template< typename Src >
-    void prepareIncludes( std::string name, Src src ) {
-        fs::mkdirIfMissing( name, 0755 );
-        chdir( name.c_str() );
-        prepareIncludes( src );
-        chdir( ".." );
-    }
-
-    template< typename Src >
-    void prepareIncludes( Src src ) {
-        while ( src->n ) {
-            fs::mkFilePath( src->n );
-            fs::writeFile( src->n, src->c );
-            ++src;
-        }
-    }
-
-    template< typename Src >
-    void compileLibrary( std::string name, Src src, std::string flags )
-    {
-        std::string files;
-        auto src_ = src;
-        prepareIncludes( name, src );
-
-        chdir( name.c_str() );
-        if ( o_precompiled->boolValue() || o_dont_link->boolValue() ) {
-            chdir( ".." );
-            return; /* we only need the headers from above */
-        }
-
-        src = src_;
-
-        RunQueue rq( this );
-        while ( src->n ) {
-            if ( str::endsWith( src->n, ".cc" ) ||
-                 str::endsWith( src->n, ".c" ) ||
-                 str::endsWith( src->n, ".cpp" ) ||
-                 str::endsWith( src->n, ".cxx" ) ) {
-                rq.push( clang() + " -c " + flags + " -I. " + src->n + " -o " + src->n + ".bc" );
-                files = files + src->n + ".bc ";
-            }
-            ++src;
-        }
-
-        rq.run();
-        run( gold_ar() + " ../" + name + ".a " + files );
-        chdir( ".." );
-    }
-
     void parseModelines( const std::string &file, std::vector< std::string > &modelineOpts ) {
         std::string line;
         std::ifstream fs{ file };
@@ -353,8 +242,9 @@ struct Compile {
         }
     }
 
+
     void compileLLVM( std::string first_file, std::string out ) {
-#if GEN_LLVM
+#if GEN_LLVM || GEN_LLVM_CSDR || GEN_LLVM_PROB || GEN_LLVM_PTST
         std::vector< std::string > files;
         if ( !first_file.empty() )
             files.push_back( first_file );
@@ -376,123 +266,27 @@ struct Compile {
 
         std::string cflags = concat( o_cflags );
 
-        // create temporary directory to compile in
-        char tmp_dir_template[] = "_divine-compile.XXXXXX";
-        FilePath tmp_dir;
-        tmp_dir.abspath = process::getcwd();
-        tmp_dir.basename = wibble::sys::fs::mkdtemp( tmp_dir_template );
+        struct LLVMEnv : compile::Env {
+            LLVMEnv( Compile *comp ) : compile( comp ) { }
 
-        // prepare cleanup
-        auto clean = wibble::raii::refDeleteIf( !o_keep->boolValue(), tmp_dir, cleanup );
-
-        // enter tmp directory
-        chdir( tmp_dir.basename.c_str() );
-
-        // copy content of library files from memory to the directory
-        prepareIncludes( llvm_h_list );
-        fs::mkFilePath( "bits/pthreadtypes.h" );
-        fs::writeFile( "bits/pthreadtypes.h" , "#include <pthread.h>" );
-        fs::writeFile( "assert.h", "#include <divine.h>\n" ); /* override PDClib's assert.h */
-        fs::mkFilePath( "divine/problem.def" );
-        fs::writeFile( "divine/problem.def", src_llvm::llvm_problem_def_str );
-        if ( !o_dont_link->boolValue() )
-            prepareIncludes( llvm_list );
-
-        // compile libraries
-        std::string flags = "-D__divine__ -emit-llvm -nobuiltininc -nostdinc -Xclang -nostdsysteminc -nostdinc++ -g ";
-        compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
-        compileLibrary( "libm", libm_list, flags + " -I../libpdc -I." );
-
-        prepareIncludes( "libcxx", libcxx_list ); // cyclic dependency cxxabi <-> cxx
-        compileLibrary( "libcxxabi", libcxxabi_list, flags + " -I../libpdc -I../libm "
-                        "-I.. -Iinclude -I../libcxx/std -I../libcxx -std=c++11 -fstrict-aliasing" );
-        compileLibrary( "libcxx", libcxx_list, flags + " -I../libpdc -I../libm "
-                        "-I../libcxxabi/include -I.. -Istd -I. -fstrict-aliasing -std=c++11 -fstrict-aliasing" );
-
-        flags += " -Ilibcxxabi/include -Ilibpdc -Ilibcxx/std -Ilibcxx -Ilibm ";
-
-        if ( !o_precompiled->boolValue() && !o_dont_link->boolValue() ) {
-            run( clang() + " -c -I. " + flags + " glue.cpp -o glue.bc" );
-            run( clang() + " -c -I. " + flags + " stubs.cpp -o stubs.bc" );
-            run( clang() + " -c -I. " + flags + " entry.cpp -o entry.bc" );
-            run( clang() + " -c -I. " + flags + " pthread.cpp -o pthread.bc" );
-            run( clang() + " -c -I. -Ilibcxxabi " + flags // needs part of private cxxabi headers
-                    + " cxa_exception_divine.cpp -o cxa_exception_divine.bc" );
-            run( gold_ar() + " libdivine.a entry.bc stubs.bc glue.bc pthread.bc cxa_exception_divine.bc" );
-        }
-
-        if ( o_libs_only->boolValue() ) {
-            fs::renameIfExists( "libdivine.a", tmp_dir.abspath + "/libdivine.a" );
-            fs::renameIfExists( "libpdc.a", tmp_dir.abspath + "/libpdc.a" );
-            fs::renameIfExists( "libcxxabi.a", tmp_dir.abspath + "/libcxxabi.a" );
-            fs::renameIfExists( "libcxx.a", tmp_dir.abspath + "/libcxx.a" );
-            fs::renameIfExists( "libunwind.a", tmp_dir.abspath + "/libunwind.a" );
-            chdir( tmp_dir.abspath.c_str() );
-            return;
-        }
-
-        if ( !o_dont_link->boolValue() ) {
-            fs::writeFile( "requires.c", /* whatever is needed in intrinsic lowering */
-                           "extern void *memset, *memcpy, *memmove, *_divine_start;\n"
-                           "void __divine_requires() {\n"
-                           "    (void) memset; (void) memcpy; (void) memmove; (void) _divine_start;\n"
-                           "}" );
-            run( clang() + " -c " + flags + " -ffreestanding requires.c -o requires.bc" );
-         }
-
-        // compile input file(s)
-        std::string basename, compilename;
-        std::string all_unlinked;
-
-        flags += cflags;
-
-        if ( files.size() >= 2 && o_dont_link->boolValue() && !out.empty() )
-            die( "Cannot specify both -o and --dont-link with multiple files." );
-
-        for ( auto file : files ) {
-
-            basename = str::basename( file ).substr( 0, str::basename( file ).rfind( '.' ) );
-            compilename = basename + ".bc";
-
-            if ( out.empty() && !o_dont_link->boolValue() ) {
-                // If -o and --dont-link are not specified, then choose the name of the first file in the list
-                // for the target name.
-                out = compilename;
+            void compileFile( std::string file, std::string flags ) override {
+                compile->run( compile->clang() + " " + file + " " + flags );
             }
 
-            if ( !str::endsWith( file, ".bc" ) ) {
-                run( clang() + " -c -I. " + flags + " " + wibble::str::appendpath( "../", file )
-                     + " -o " + compilename );
+            Compile *compile;
+        } env( this );
 
-                if ( o_dont_link->boolValue() ) {
-                    fs::renameIfExists( compilename,
-                                        out.empty() ? ( wibble::str::appendpath( "../", compilename ) ) :
-                                                      ( wibble::str::appendpath( "../", out ) ) );
-                } else {
-                    all_unlinked += str::joinpath( tmp_dir.basename, compilename ) + " ";
-                }
-            } else {
-                if ( !o_dont_link->boolValue() ) {
-                    all_unlinked += file + " ";
-                }
-            }
+        env.usePrecompiled = o_precompiled->stringValue();
+        env.librariesOnly = o_libs_only->boolValue();
+        env.dontLink = o_dont_link->boolValue();
+        env.useThreads = parallelBuildJobs;
+        env.keepBuildDir = o_keep->boolValue();
+        env.input = files;
+        env.output = out;
+        env.flags = cflags;
 
-        }
-
-        chdir( tmp_dir.abspath.c_str() );
-
-        if ( !o_dont_link->boolValue() ) {
-            run( gold() +
-                " -plugin-opt emit-llvm " +
-                " -o " + out + " " +
-                all_unlinked +
-                ( o_precompiled->boolValue() ?
-                    ( " -L" + o_precompiled->stringValue() ) :
-                    ( " -L./" + tmp_dir.basename ) ) + " " +
-                tmp_dir.basename + "/requires.bc " +
-                "-ldivine -lcxxabi -lcxx -lcxxabi -lpdc -ldivine" );
-        }
-
+        compile::CompileLLVM llvm( env );
+        llvm.compile();
 #else
         die( "LLVM is disabled" );
         (void)(first_file);
@@ -573,18 +367,6 @@ struct Compile {
         o_cmd_clang = cmd_compile->add< StringOption >(
             "cmd-clang", 0, "cmd-clang", "",
             std::string( "how to run clang [default: " ) + _cmd_clang + "]" );
-
-        o_cmd_ar = cmd_compile->add< StringOption >(
-            "cmd-ar", 0, "cmd-ar", "",
-            std::string( "how to run ar [default: " ) + _cmd_ar + "]" );
-
-        o_cmd_gold = cmd_compile->add< StringOption >(
-            "cmd-gold", 0, "cmd-gold", "",
-            std::string( "how to run GNU gold [default: " ) + _cmd_gold + "]" );
-
-        o_cmd_llvmgold = cmd_compile->add< StringOption >(
-            "cmd-llvmgold", 0, "cmd-llvmgold", "",
-            std::string( "path to LLVMgold.so [default: " ) + _cmd_llvmgold );
 
         o_definitions = cmd_compile->add< VectorOption< String > >(
             "definition", 'D', "definition", "",
