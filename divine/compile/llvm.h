@@ -8,7 +8,7 @@
 #include <divine/utility/strings.h>
 #include <divine/utility/die.h>
 
-#include <tools/compile/env.h>
+#include <divine/compile/env.h>
 
 #ifndef TOOLS_COMPILE_LLVM_H
 #define TOOLS_COMPILE_LLVM_H

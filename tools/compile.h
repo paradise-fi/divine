@@ -18,7 +18,7 @@
 #include <divine/utility/die.h>
 
 #include <tools/combine.h>
-#include <tools/compile/llvm.h>
+#include <divine/compile/llvm.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
