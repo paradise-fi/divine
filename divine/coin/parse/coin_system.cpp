@@ -3,9 +3,7 @@
 #include <iostream>
 #include <map>
 
-using std::cout;
-using std::endl;
-using std::multimap;
+using namespace std;
 
 #define DEB(x) //std::cerr << x << endl
 

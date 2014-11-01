@@ -28,19 +28,11 @@ int yylex();
 #include <string>
 #include <queue>
 #include <set>
-#include <unordered_set>
 #include <iostream>
 
 #include "../bit_set.h"
 
-using std::string;
-using std::map;
-using std::vector;
-using std::queue;
-using std::set;
-using std::multimap;
-
-typedef const string & name_t;
+typedef const std::string & name_t;
 
 
 /* This is a generic symbol table */
@@ -48,8 +40,8 @@ typedef const string & name_t;
 template<typename T> class symtable {
   
   private:
-    vector<T *> table;		// the actual table of pointers to objects
-    map<string, int> mapper;	// the mapping from names to IDs
+    std::vector<T *> table;		// the actual table of pointers to objects
+    std::map<std::string, int> mapper;	// the mapping from names to IDs
     int index;			// index to the end of table
 
   public:
@@ -84,7 +76,7 @@ int symtable<T>::add_new (name_t name, T * elem)
 template<typename T>
 int symtable<T>::find_id (name_t name)
 {
-  map<string, int>::iterator i = mapper.find(name);
+  std::map<std::string, int>::iterator i = mapper.find(name);
   if (i != mapper.end()) return i->second; else return -1;
 }
 
@@ -99,11 +91,11 @@ T * symtable<T>::get (unsigned int id)
 /* the actual objects */
 
 struct component_t {
-  string name;
+  std::string name;
 };
 
 struct action_t {
-  string name;
+  std::string name;
 };
 
 struct label_t {
@@ -173,19 +165,19 @@ struct trans_t {
 };
 
 struct coin_state_t {
-  string name;
-  vector<trans_t *> outtrans;
+  std::string name;
+  std::vector<trans_t *> outtrans;
 
   bit_set_t * enAp;	// for C2 precomputation
 
-  set<int> visible_trans_to; // for C2 (visibility predicate)
+  std::set<int> visible_trans_to; // for C2 (visibility predicate)
 
   bit_set_t * input_act;	// for C1 computation
   bit_set_t * output_act;
 
-  vector<trans_t *> input_trans; //use multimap to be able to access transitions with certain act_id
-  vector<trans_t *> output_trans; //vector of output transitions
-  vector<trans_t *> internal_trans; //vector of input transitions
+  std::vector<trans_t *> input_trans; //use std::multimap to be able to access transitions with certain act_id
+  std::vector<trans_t *> output_trans; //std::vector of output transitions
+  std::vector<trans_t *> internal_trans; //std::vector of input transitions
 
   coin_state_t() 
     : enAp(NULL), input_act(NULL), output_act(NULL) {
@@ -196,7 +188,7 @@ struct coin_state_t {
   }
 
   ~coin_state_t() {
-	for (vector<trans_t *>::iterator i = outtrans.begin();
+	for (std::vector<trans_t *>::iterator i = outtrans.begin();
 	    	i != outtrans.end(); i++) {
 	  	delete *i;
 	}
@@ -240,12 +232,12 @@ class aut_t {
 
     bool is_Ap_visible_trans(int, int);
 
-    vector<int> composed_of; // if it is composite
+    std::vector<int> composed_of; // if it is composite
     bool is_restrict;
-    set<label_t> restrictions;
+    std::set<label_t> restrictions;
 
 //  private:
-    string aut_name;
+    std::string aut_name;
     int init_state;
     bool is_primitive;	// primitive or composed
     
@@ -266,16 +258,16 @@ class aut_t {
 };
 
 struct prop_trans_t {
-  set<label_t> labels;
+  std::set<label_t> labels;
   bool any_label;
   int tostate_id;
-  set<label_t> guard_true;
-  set<label_t> guard_false;
+  std::set<label_t> guard_true;
+  std::set<label_t> guard_false;
 };
 
 struct prop_state {
-  string name;
-  vector<prop_trans_t*> outtrans;
+  std::string name;
+  std::vector<prop_trans_t*> outtrans;
 };
 
 class prop_t : public aut_t {
@@ -283,7 +275,7 @@ class prop_t : public aut_t {
     prop_t() { act_trans = NULL; }
     prop_trans_t* act_trans;
     symtable<prop_state> prop_states;
-    set<int> accepting_states;
+    std::set<int> accepting_states;
     
 };
 
@@ -328,7 +320,7 @@ class coin_system_t {
     bool act_prop;
     bool acc_states;
 
-    string last_state;
+    std::string last_state;
 
   public:
 
@@ -339,9 +331,9 @@ class coin_system_t {
 
 	unsigned int act_count;
 
-    set<int> int_Ap; // c(Ap')
+    std::set<int> int_Ap; // c(Ap')
     	// actions (action IDs) from interesting E(label) atomic propositions
-    set<label_t> int_Act; // Act', interesting labels
+    std::set<label_t> int_Act; // Act', interesting labels
 
 
     coin_system_t () : act_aut_id(-1), act_prop(false), property(NULL) {}
@@ -371,7 +363,7 @@ class coin_system_t {
     label_t mklabel_out (name_t from, name_t act);
     label_t mklabel_in  (name_t act, name_t to);
     
-    string get_hier(int);
+    std::string get_hier(int);
 
     void precompute();
 };
@@ -379,8 +371,8 @@ class coin_system_t {
 
 extern coin_system_t * the_coin_system;
 
-bool common_elem(const set<label_t> &, const set<label_t> &);
-bool subset(const set<label_t> &, const set<label_t> &);
+bool common_elem(const std::set<label_t> &, const std::set<label_t> &);
+bool subset(const std::set<label_t> &, const std::set<label_t> &);
 
 
 #endif

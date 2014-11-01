@@ -9,7 +9,6 @@
 #include <unordered_set>
 #endif
 
-#include <divine/coin/parse/coin_common.hh>
 #include <divine/generator/common.h>
 #include <divine/coin/state.h>
 #include <divine/coin/transition.h>

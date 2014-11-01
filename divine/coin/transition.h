@@ -29,8 +29,8 @@ struct transition_t {
 	int automaton;
 	int to_state;
 
-	virtual void get_effect(const vector<int> & state_vector,
-                                vector<int> & next_state_vector) {
+	virtual void get_effect(const std::vector<int> & state_vector,
+                                std::vector<int> & next_state_vector) {
 	  next_state_vector = state_vector;
 	  next_state_vector[automaton] = to_state;
 	}
@@ -55,8 +55,8 @@ struct sync_transition_t : public transition_t {
 	int get_automaton2() const { return automaton2; }
 	int get_to_state2() const { return to_state2; }
 	
-	virtual void get_effect(const vector<int> & state_vector,
-                                vector<int> & next_state_vector) {
+	virtual void get_effect(const std::vector<int> & state_vector,
+                                std::vector<int> & next_state_vector) {
 	  next_state_vector = state_vector;
 	  next_state_vector[automaton] = to_state;
 	  next_state_vector[automaton2] = to_state2;
@@ -75,8 +75,8 @@ struct transition_with_property_t : public transition_t {
 
 	int prop_to_state;
 
-	virtual void get_effect(const vector<int> & state_vector,
-	                              vector<int> & next_state_vector) {
+	virtual void get_effect(const std::vector<int> & state_vector,
+	                              std::vector<int> & next_state_vector) {
 	 	  next_state_vector = state_vector;
 	  	  next_state_vector[automaton] = to_state;
 		  next_state_vector[state_vector.size() - 1] = prop_to_state;
@@ -98,8 +98,8 @@ struct sync_transition_with_property_t : public sync_transition_t {
 
 	int prop_to_state;
 
-        virtual void get_effect(const vector<int> & state_vector,
-	                        vector<int> & next_state_vector) {
+        virtual void get_effect(const std::vector<int> & state_vector,
+	                        std::vector<int> & next_state_vector) {
 		next_state_vector = state_vector;
 		next_state_vector[automaton] = to_state;
 		next_state_vector[automaton2] = to_state2;

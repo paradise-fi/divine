@@ -8,6 +8,8 @@
 #if GEN_COIN
 #include <divine/generator/coin.h>
 
+using namespace std;
+
 namespace divine {
 namespace generator {
 
