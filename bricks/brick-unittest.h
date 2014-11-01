@@ -354,6 +354,17 @@ int run( std::string only_group= "" , std::string only_case = "" ) {
 
 #endif
 
+template< typename T >
+std::string _typeid() {
+#ifdef NO_RTTI
+    return "unnamed";
+#else
+    int stat;
+    return abi::__cxa_demangle( typeid( T ).name(),
+                                nullptr, nullptr, &stat );
+#endif
+}
+
 template< typename TestGroup, void (TestGroup::*testcase)() >
 struct TestCase : TestCaseBase {
     void run() {
@@ -367,12 +378,7 @@ struct TestCase : TestCaseBase {
     }
 
     std::string group() {
-#ifdef NO_RTTI
-        return "unnamed";
-#else
-        int stat;
-        return abi::__cxa_demangle( typeid( TestGroup ).name(), nullptr, nullptr, &stat );
-#endif
+        return _typeid< TestGroup >();
     }
 
     TestCase() {

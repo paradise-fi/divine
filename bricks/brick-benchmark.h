@@ -485,12 +485,7 @@ void run( int argc, const char **argv ) {
     std::cout << plots.plot();
 }
 
-template< typename T >
-std::string _typeid() {
-    int stat;
-    return abi::__cxa_demangle( typeid( T ).name(),
-                                nullptr, nullptr, &stat );
-}
+using brick::unittest::_typeid;
 
 }
 
