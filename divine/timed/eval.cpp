@@ -11,6 +11,9 @@ using namespace UTAP;
 using namespace UTAP::Constants;
 using namespace std;
 
+namespace divine {
+namespace timed {
+
 std::pair< int, int > Evaluator::evalRange( int procId, const UTAP::type_t &type ) {
     auto range = type.getRange();
     return make_pair( eval( procId, range.first ).get_int(), eval( procId, range.second ).get_int() );
@@ -1217,4 +1220,7 @@ pair < int32_t, int32_t > Evaluator::getRange( int procId, const expression_t &e
     } else {
         return ( make_pair( numeric_limits< int >::min(), numeric_limits< int >::max() ) );
     }
+}
+
+}
 }

@@ -8,6 +8,9 @@
 #ifndef DIVINE_TIMED_EVAL_H
 #define DIVINE_TIMED_EVAL_H
 
+namespace divine {
+namespace timed {
+
 class Evaluator {
 private:
     enum class Type {
@@ -360,6 +363,9 @@ public:
         return std::make_pair( getReqSize() - clocks.getReqSize(), row * 4 );
     }
 };
+
+}
+}
 
 #endif
 

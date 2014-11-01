@@ -5,6 +5,9 @@
 #include <divine/timed/utils.h>
 #include <divine/timed/successorlist.h>
 
+namespace divine {
+namespace timed {
+
 class TAGen {
     typedef uint16_t state_id;
     typedef int chan_id;
@@ -436,3 +439,6 @@ public:
     }
 
 };
+
+}
+}

@@ -5,6 +5,8 @@
 #include <sstream>
 #include <limits>
 
+using namespace divine::timed;
+
 void TAGen::EdgeInfo::assignSubst( const EdgeInfo& ei, const UTAP::symbol_t& sym, const UTAP::expression_t& expr ) {
     guard = ei.guard.subst( sym, expr );
     assign = ei.assign.subst( sym, expr );
