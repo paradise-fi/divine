@@ -139,6 +139,34 @@ std::string fmtf( const char* f, ... ) {
     return ret;
 }
 
+/// Format any value into a string using a std::stringstream
+template< typename T >
+inline std::string fmt(const T& val)
+{
+    std::stringstream str;
+    str << val;
+    return str.str();
+}
+
+template< typename C >
+inline std::string fmt_container( const C &c, char f, char l )
+{
+    std::string s;
+    s += f;
+    if ( c.empty() )
+        return s + l;
+
+    s += ' ';
+    for ( typename C::const_iterator i = c.begin(); i != c.end(); ++i ) {
+        s += fmt( *i );
+        if ( i != c.end() && i + 1 != c.end() )
+            s += ", ";
+    }
+    s += ' ';
+    s += l;
+    return s;
+}
+
 }
 
 /**
