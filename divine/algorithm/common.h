@@ -3,6 +3,7 @@
 #include <memory>
 #include <brick-rpc.h>
 #include <brick-hlist.h>
+#include <brick-types.h>
 
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/parallel.h>
@@ -195,7 +196,9 @@ struct Algorithm
     virtual ~Algorithm() {}
 };
 
-template< typename _Setup, typename _Shared >
+using brick::types::Unit;
+
+template< typename _Setup, typename _Shared = Unit >
 struct AlgorithmUtils {
     typedef _Setup Setup;
     typedef typename Setup::Store Store;

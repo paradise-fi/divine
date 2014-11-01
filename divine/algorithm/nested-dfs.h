@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 //             (c) 2013, 2014 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <wibble/sfinae.h> // Unit
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 #include <divine/algorithm/por-c3.h>
@@ -14,7 +13,7 @@ namespace divine {
 namespace algorithm {
 
 template< typename Setup >
-struct NestedDFS : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
+struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 {
     typedef NestedDFS< Setup > This;
     typedef typename Setup::Graph Graph;
@@ -87,7 +86,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup, wibble::Unit >, Sequential
 
     void counterexample() {
         progress() << "generating counterexample... " << std::flush;
-        typedef LtlCE< Setup, wibble::Unit, wibble::Unit, wibble::Unit > CE;
+        typedef LtlCE< Setup, Unit, Unit, Unit > CE;
         CE ce( this );
         auto ceStack = ce.succTraceLocal( *this, typename CE::Linear(), Node(),
                                           ce_stack.rbegin(), ce_stack.rend() );

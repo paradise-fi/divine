@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <algorithm>
 
+#include <brick-string.h>
+
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 #include <divine/explicit/explicit.h>
@@ -318,7 +320,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         this->init( *this );
 
         if ( m.output.file.empty() ) {
-            std::string basename = wibble::str::basename( m.input.model );
+            std::string basename = brick::string::basename( m.input.model );
             std::string output = basename + dess::extension;
             for ( int i = 0; access( output.c_str(), F_OK ) == 0; ++i ) {
                 std::stringstream ss;

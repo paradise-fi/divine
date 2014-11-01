@@ -1,8 +1,10 @@
 // -*- C++ -*- (c) 2014 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <vector>
-#include <wibble/sfinae.h> // Unit
+
+#include <brick-types.h>
 #include <brick-unittest.h>
+
 #include <divine/graph/probability.h>
 
 #ifndef DIVINE_TOOLKIT_LABEL_H
@@ -11,11 +13,12 @@
 namespace divine {
 namespace graph {
 
-struct NoLabel {
+struct NoLabel : brick::types::Comparable {
     NoLabel() {}
     NoLabel( int ) {}
     NoLabel levelup( int ) const { return NoLabel(); }
     NoLabel operator *( std::pair< int, int > ) const { return NoLabel(); }
+    bool operator<=( NoLabel ) const { return true; }
 };
 
 template< typename BS >

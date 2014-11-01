@@ -13,9 +13,8 @@
 #include <vector>
 
 #include <brick-types.h>
+#include <brick-string.h>
 
-#include <wibble/regexp.h>
-#include <wibble/raii.h>
 #include <divine/algorithm/common.h>
 
 #ifndef DIVINE_ALGORITHM_SIMULATE
@@ -378,18 +377,20 @@ struct ProcessLoop {
         _out << what << std::endl;
     }
 
-    wibble::Splitter::const_iterator splitString( std::string str ) {
+    using Splitter = brick::string::Splitter;
+
+    Splitter::const_iterator splitString( std::string str ) {
         return _splitter.begin( str );
     }
 
-    wibble::Splitter::const_iterator splitEnd() { return _splitter.end(); }
+    Splitter::const_iterator splitEnd() { return _splitter.end(); }
 
 
   private:
     CommandEngine _engine;
 
-    wibble::Splitter _splitter;
-    wibble::Splitter::const_iterator part;
+    Splitter _splitter;
+    Splitter::const_iterator part;
 
     std::istream &_in;
     std::ostream &_out;
@@ -562,7 +563,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
         auto oldsig = std::signal( SIGINT, &sigintHandler );
         ASSERT( oldsig != SIG_ERR );
         interrupted = false;
-        auto _ = wibble::raii::defer( [&]() {
+        brick::types::Defer _( [&]() {
                 if ( print ) this->options |= Option::PrintEdges;
                 std::signal( SIGINT, oldsig );
             } );
@@ -819,7 +820,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
             nodeinfo.emplace_back( "goal" );
 
         loop.show( "vertex: " + (nodeinfo.empty() ?
-                "" : wibble::str::fmt_container( nodeinfo, '{', '}' )) );
+                                 "" : brick::string::fmt_container( nodeinfo, '{', '}' )) );
         loop.show( this->graph().showNode( v.node() ) );
     }
 

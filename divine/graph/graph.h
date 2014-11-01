@@ -3,6 +3,7 @@
 #include <vector>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/bitoperations.h>
+#include <divine/graph/label.h>
 
 #ifndef DIVINE_GRAPH_H
 #define DIVINE_GRAPH_H
@@ -47,7 +48,7 @@ struct Allocator {
 template< typename _Node >
 struct Base : Allocator {
     typedef _Node Node;
-    typedef wibble::Unit Label;
+    typedef NoLabel Label;
 
     void initPOR() {}
 
