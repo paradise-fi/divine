@@ -7,10 +7,10 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <wibble/exception.h>
+#include <brick-bitlevel.h>
 #include <divine/generator/common.h>
 #include <divine/utility/buchi.h>
 #include <divine/timed/gen.h>
-#include <divine/toolkit/bitoperations.h>
 
 /*
 Interpreter of UPPAAL timed automata models.

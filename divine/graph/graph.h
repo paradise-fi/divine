@@ -1,8 +1,8 @@
 // -*- C++ -*- (c) 2011-2014 Petr Rockai <me@mornfall.net>
 
 #include <vector>
+#include <brick-bitlevel.h>
 #include <divine/toolkit/pool.h>
-#include <divine/toolkit/bitoperations.h>
 #include <divine/graph/label.h>
 
 #ifndef DIVINE_GRAPH_H
@@ -120,7 +120,7 @@ struct Base : Allocator {
             assert_leq( int( (count - 1) * chunk ), length );
             assert_leq( length, int( count * chunk ) );
 
-            unsigned msb = bitops::onlyMSB( count );
+            unsigned msb = brick::bitlevel::onlyMSB( count );
             unsigned nomsb = count & ~msb;
             unsigned rem = count * chunk - length;
             assert_leq( 0, int( rem ) );
