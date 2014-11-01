@@ -272,7 +272,7 @@ struct NTreeHashSet
                 auto offset = sizeof( typename Root::Header ) + uhasher.slack;
                 return pool().hash( r.unwrap(), offset, offset + r.dataSize( pool(), uhasher.slack ) );
             } else {
-                SpookyState state( salt, salt );
+                brick::hash::jenkins::SpookyState state( salt, salt );
                 r.forAllLeaves( pool(), [ this, &state ]( Leaf l ) {
                             state.update( l.data( this->pool() ), l.size( this->pool() ) );
                             return true;
