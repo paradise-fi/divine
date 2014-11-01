@@ -37,6 +37,10 @@
 #include <cstdarg>
 #include <cstdlib>
 
+#include <deque>
+#include <vector>
+#include <set>
+
 #include <regex.h>
 
 #include <brick-unittest.h>
@@ -169,6 +173,21 @@ inline std::string fmt_container( const C &c, char f, char l )
     s += ' ';
     s += l;
     return s;
+}
+
+template< typename X >
+inline std::string fmt(const std::set< X >& val) {
+    return fmt_container( val, '{', '}' );
+}
+
+template< typename X >
+inline std::string fmt(const std::vector< X > &val) {
+    return fmt_container( val, '[', ']' );
+}
+
+template< typename X >
+inline std::string fmt(const std::deque< X > &val) {
+    return fmt_container( val, '[', ']' );
 }
 
 }
