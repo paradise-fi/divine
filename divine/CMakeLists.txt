@@ -1,6 +1,5 @@
 with_warnings()
 
-include( ../wibble/test.cmake )
 include( ../cmake/stringify.cmake )
 include( ../cmake/template-separe.cmake )
 
@@ -13,6 +12,7 @@ foreach( D utility toolkit generator algorithm instances explicit )
     install( FILES ${H_${D}} DESTINATION include/divine/${D} COMPONENT divine_dev )
     if ( NOT ${D} STREQUAL instances )
        list( APPEND SRC ${SRC_${D}} )
+       list( APPEND H ${H_${D}} )
     endif()
 endforeach()
 
@@ -113,7 +113,7 @@ add_dependencies( libdivine-instances instances-generator )
 
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
-wibble_add_test( divine-test ${testh} ${llvmtesth} )
+bricks_unittest( test-divine ${H} )
 
 if( NOT WIN32 )
   set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
@@ -149,7 +149,7 @@ if ( OPT_SQL )
 endif()
 
 target_link_libraries( libdivine wibble )
-target_link_libraries( divine-test libdivine )
+target_link_libraries( test-divine libdivine )
 
 if( NOT WIN32 )
   target_link_libraries( libdivine dl )
@@ -158,9 +158,9 @@ else()
 endif()
 
 add_custom_target( unit_divine
-    COMMAND sh ${TEST_WRAPPER} ${CMAKE_CURRENT_BINARY_DIR}/divine-test
+    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/test-divine
     VERBATIM
-    DEPENDS divine-test ${TEST_WRAPPER} )
+    DEPENDS test-divine )
 add_dependencies( unit unit_divine )
 
 install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
