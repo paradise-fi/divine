@@ -37,6 +37,10 @@
 #include <cstdarg>
 #include <cstdlib>
 
+#include <regex.h>
+
+#include <brick-unittest.h>
+
 #ifndef BRICK_STRING_H
 #define BRICK_STRING_H
 
@@ -245,6 +249,204 @@ WordWrap(const std::string& s) : s(s), cursor(0) {}
 	}
 	return res;
     }
+};
+
+/// Given a pathname, return the file name without its path
+inline std::string basename(const std::string& pathname)
+{
+    size_t pos = pathname.rfind("/");
+    if (pos == std::string::npos)
+        return pathname;
+    else
+        return pathname.substr(pos+1);
+}
+
+class Regexp
+{
+protected:
+    regex_t re;
+    regmatch_t* pmatch;
+    int nmatch;
+    std::string lastMatch;
+
+    void checkIndex( int idx ) {
+        if (idx > nmatch)
+            throw 0; // wibble::exception::ValOutOfRange<int>("index", idx, 0, nmatch, "getting submatch of regexp");
+    }
+
+public:
+    /* Note that match_count is required to be >1 to enable
+       sub-regexp capture. The maximum *INCLUDES* the whole-regexp
+       match (indexed 0). [TODO we may want to fix this to be more
+       friendly?] */
+    Regexp(const std::string& expr, int match_count = 0, int flags = 0)
+    {
+        if (match_count == 0)
+            flags |= REG_NOSUB;
+
+        int res = regcomp(&re, expr.c_str(), flags);
+        if (res)
+            throw 0; // wibble::exception::Regexp(re, res, "Compiling regexp \"" + expr + "\"");
+
+        if (match_count > 0)
+            pmatch = new regmatch_t[match_count];
+    }
+
+    ~Regexp() throw ()
+    {
+	regfree(&re);
+	if (pmatch)
+            delete[] pmatch;
+    }
+
+    bool match(const std::string& str, int flags = 0)
+    {
+        int res;
+
+        if (nmatch)
+        {
+            res = regexec(&re, str.c_str(), nmatch, pmatch, flags);
+            lastMatch = str;
+        }
+        else
+            res = regexec(&re, str.c_str(), 0, 0, flags);
+
+        switch (res)
+        {
+            case 0:	return true;
+            case REG_NOMATCH: return false;
+            default: throw 0; // XXX // wibble::exception::Regexp(re, res, "Matching string \"" + str + "\"");
+        }
+    }
+
+
+    /* Indexing is from 1 for capture matches, like perl's $0,
+       $1... 0 is whole-regexp match, not a capture. TODO
+       the range is miscalculated (an off-by-one, wrt. the
+       counterintuitive match counting). */
+    std::string operator[](int idx) {
+        checkIndex( idx );
+
+        if (pmatch[idx].rm_so == -1)
+            return std::string();
+
+        return std::string(lastMatch, pmatch[idx].rm_so, pmatch[idx].rm_eo - pmatch[idx].rm_so);
+    }
+
+    size_t matchStart(int idx) {
+        checkIndex( idx );
+        return pmatch[idx].rm_so;
+    }
+
+    size_t matchEnd(int idx) {
+        checkIndex( idx );
+        return pmatch[idx].rm_eo;
+    }
+
+    size_t matchLength(int idx) {
+        checkIndex( idx );
+	return pmatch[idx].rm_eo - pmatch[idx].rm_so;
+    }
+};
+
+class ERegexp : public Regexp
+{
+public:
+	ERegexp(const std::string& expr, int match_count = 0, int flags = 0)
+		: Regexp(expr, match_count, flags | REG_EXTENDED) {}
+};
+
+/**
+ * Split a string using a regular expression to match the token separators.
+ *
+ * This does a similar work to the split functions of perl, python and ruby.
+ *
+ * Example code:
+ * \code
+ *   utils::Splitter splitter("[ \t]*,[ \t]*", REG_EXTENDED);
+ *   vector<string> split;
+ *   std::copy(splitter.begin(myString), splitter.end(), back_inserter(split));
+ * \endcode
+ *
+ */
+class Splitter
+{
+    Regexp re;
+
+public:
+    /**
+     * Warning: the various iterators reuse the Regexps and therefore only one
+     * iteration of a Splitter can be done at a given time.
+     */
+    // TODO: add iterator_traits
+    class const_iterator
+    {
+        Regexp *re;
+        std::string cur;
+        std::string next;
+
+    public:
+        typedef std::string value_type;
+        typedef ptrdiff_t difference_type;
+        typedef value_type *pointer;
+        typedef value_type &reference;
+        typedef std::forward_iterator_tag iterator_category;
+
+        const_iterator(Regexp& re, const std::string& str) : re(&re), next(str) { ++*this; }
+        const_iterator(Regexp& re) : re(&re) {}
+
+        const_iterator& operator++()
+        {
+            ASSERT( re );
+            if (re->match(next)) {
+                if (re->matchLength(0)) {
+                    cur = next.substr(0, re->matchStart(0));
+                    next = next.substr(re->matchStart(0) + re->matchLength(0));
+                } else {
+                    if (!next.empty())
+                    {
+                        cur = next.substr(0, 1);
+                        next = next.substr(1);
+                    } else {
+                        cur = next;
+                    }
+                }
+            } else {
+                cur = next;
+                next = std::string();
+            }
+            return *this;
+        }
+
+        const std::string& operator*() const
+        {
+            return cur;
+        }
+        const std::string* operator->() const
+        {
+            return &cur;
+        }
+        bool operator==(const const_iterator& ti) const
+        {
+            return cur == ti.cur && next == ti.next;
+        }
+        bool operator!=(const const_iterator& ti) const
+        {
+            return cur != ti.cur || next != ti.next;
+        }
+    };
+
+    /**
+     * Create a splitter that uses the given regular expression to find tokens.
+     */
+    Splitter(const std::string& re, int flags)
+        : re(re, 1, flags) {}
+
+    /**
+     * Split the string and iterate the resulting tokens
+     */
+    const_iterator begin(const std::string& str) { return const_iterator(re, str); }
+    const_iterator end() { return const_iterator(re); }
 };
 
 }
