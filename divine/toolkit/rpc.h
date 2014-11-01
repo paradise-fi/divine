@@ -23,13 +23,15 @@ using bitstream_base = rpc::_impl::base< X, WithPool >;
 using bitstream = bitstream_base< std::deque< uint32_t > >;
 using bitblock = bitstream_base< rpc::_impl::block >;
 
+using brick::types::Unit;
+
 template< typename B >
-bitstream_base< B > &operator<<( bitstream_base< B > &bs, wibble::Unit ) {
+bitstream_base< B > &operator<<( bitstream_base< B > &bs, Unit ) {
     return bs;
 }
 
 template< typename B >
-bitstream_base< B > &operator>>( bitstream_base< B > &bs, wibble::Unit ) {
+bitstream_base< B > &operator>>( bitstream_base< B > &bs, Unit ) {
     return bs;
 }
 
