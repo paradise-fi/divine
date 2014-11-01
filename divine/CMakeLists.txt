@@ -33,13 +33,13 @@ endif()
 
 if( GEN_LLVM )
     file( GLOB SRC_LLVM llvm/*.cpp )
-    file( GLOB llvmtesth llvm/*.test.h )
+    file( GLOB H_LLVM llvm/*.h )
     add_subdirectory( llvm/userspace )
     stringify( "llvm" llvm/problem.def )
     template_separe( LLVM llvm/interpreter.cpp )
 else() # enable silk even when LLVM is disabled
     file( GLOB SRC_LLVM llvm/silk-*.cpp )
-    file( GLOB llvmtesth llvm/silk-*.test.h )
+    file( GLOB H_LLVM llvm/silk-*.h )
 endif()
 
 if( GEN_DVE )
@@ -53,8 +53,6 @@ endif()
 
 file( GLOB SRC_BA ltl2ba/*.cpp )
 file( GLOB H_BA ltl2ba/*.hh )
-
-file( GLOB testh *.test.h toolkit/*.test.h graph/*.test.h explicit/*.test.h )
 
 set( SRC_DLFCN "" )
 if( WIN32 )
@@ -113,7 +111,7 @@ add_dependencies( libdivine-instances instances-generator )
 
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
-bricks_unittest( test-divine ${H} )
+bricks_unittest( test-divine ${H} ${H_LLVM} )
 
 if( NOT WIN32 )
   set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
