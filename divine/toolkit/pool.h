@@ -1,7 +1,4 @@
 // -*- C++ -*- (c) 2007-2013 Petr Rockai <me@mornfall.net>
-#include <wibble/test.h> // for assert
-#include <wibble/mixin.h>
-
 #include <vector>
 #ifndef NVALGRIND
 #include <iostream>
@@ -18,6 +15,9 @@
 #include <memcheck.h>
 #pragma GCC diagnostic pop
 #endif
+
+#include <brick-types.h>
+#include <brick-string.h>
 
 #include <divine/toolkit/hash.h>
 
@@ -47,7 +47,7 @@ constexpr inline int align( int v, int a ) {
  */
 struct Lake {
 
-    struct Pointer : wibble::mixin::Comparable< Pointer > {
+    struct Pointer : brick::types::Comparable {
         using Raw = uint64_t;
         static const unsigned blockBits = 24;
         static const unsigned offsetBits = 24;
@@ -135,14 +135,14 @@ struct Lake {
                 delete[] alloc;
         }
 
-        assert( h );
-        assert( !h[ p.offset ].allocated );
+        ASSERT( h );
+        ASSERT( !h[ p.offset ].allocated );
         VALGRIND_DISCARD( h[ p.offset ].handle );
         h[ p.offset ].handle =
             VALGRIND_CREATE_BLOCK( dereference( p ), size( p ),
-                                   wibble::str::fmtf( "blob %llu:%llu @ %p",
-                                                      p.block, p.offset,
-                                                      dereference( p ) ).c_str() );
+                                   brick::string::fmtf( "blob %llu:%llu @ %p",
+                                                        p.block, p.offset,
+                                                        dereference( p ) ).c_str() );
         h[ p.offset ].allocated = true;
     }
 
@@ -150,15 +150,15 @@ struct Lake {
         VALGRIND_MEMPOOL_FREE( block[ p.block ], dereference( p ) );
         VALGRIND_MAKE_MEM_NOACCESS( dereference( p ), size( p ) );
 
-        assert( _vhandles[ p.block ].load() );
-        assert( _vhandles[ p.block ][ p.offset ].allocated );
+        ASSERT( _vhandles[ p.block ].load() );
+        ASSERT( _vhandles[ p.block ][ p.offset ].allocated );
 
         VALGRIND_DISCARD( _vhandles[ p.block ][ p.offset ].handle );
         _vhandles[ p.block ][ p.offset ].handle =
             VALGRIND_CREATE_BLOCK( dereference( p ), size( p ),
-                                   wibble::str::fmtf( "blob %llu:%llu @ %p [DELETED]",
-                                                      p.block, p.offset,
-                                                      dereference( p ) ).c_str() );
+                                   brick::string::fmtf( "blob %llu:%llu @ %p [DELETED]",
+                                                        p.block, p.offset,
+                                                        dereference( p ) ).c_str() );
         _vhandles[ p.block ][ p.offset ].allocated = false;
     }
 
@@ -273,7 +273,7 @@ struct Lake {
             else
                 delete newchunk;
         }
-        assert( chunk );
+        ASSERT( chunk );
         return chunk[ size % 4096 ];
     }
 
@@ -325,8 +325,8 @@ struct Lake {
         }
 
         Pointer fromFreelist( SizeInfo &si ) {
-            assert( si.touse.count );
-            assert( valid( si.touse.head ) );
+            ASSERT( si.touse.count );
+            ASSERT( valid( si.touse.head ) );
             -- si.touse.count;
             Pointer p = si.touse.head;
 #pragma GCC diagnostic push
@@ -481,7 +481,7 @@ struct Pond {
 
     };
 
-    struct Pointer : wibble::mixin::Comparable< Pointer > {
+    struct Pointer : brick::types::Comparable {
         using Raw = uint64_t;
 
         Pointer() : _ptr( 0 ) { }
@@ -565,7 +565,7 @@ struct Dereference {
     bool alias( Blob a, Blob b ) { return wharf.alias( a, b ); }
 
     template< typename T > T &get( T &x, int offset = 0 ) {
-        assert( !offset );
+        ASSERT( !offset );
         return x;
     }
 
@@ -578,14 +578,14 @@ struct Dereference {
     }
 
     void copy( Blob from, Blob to ) {
-        assert_leq( size( to ), size( from ) );
+        ASSERT_LEQ( size( to ), size( from ) );
         std::copy( dereference( from ), dereference( from ) + size( from ),
                    dereference( to ) );
     }
 
     void copy( Blob from, Blob to, int length ) {
-        assert_leq( length, size( from ) );
-        assert_leq( length, size( to ) );
+        ASSERT_LEQ( length, size( from ) );
+        ASSERT_LEQ( length, size( to ) );
         std::copy( dereference( from ), dereference( from ) + length,
                    dereference( to ) );
     }
@@ -608,9 +608,9 @@ struct Dereference {
                 return false;
             to = size( a );
         }
-        assert_leq( from, to );
-        assert_leq( to, size( a ) );
-        assert_leq( to, size( b ) );
+        ASSERT_LEQ( from, to );
+        ASSERT_LEQ( to, size( a ) );
+        ASSERT_LEQ( to, size( b ) );
         return std::equal( dereference( a ) + from, dereference( a ) + to,
                            dereference( b ) + from );
     }
@@ -619,13 +619,13 @@ struct Dereference {
     hash128_t hash( Blob b, int from, int to, uint64_t salt = 0 ) {
         if ( !valid( b ) )
             return std::make_pair( 0, 0 );
-        assert_leq( from, to );
-        assert_leq( to, size( b ) );
+        ASSERT_LEQ( from, to );
+        ASSERT_LEQ( to, size( b ) );
         return spookyHash( dereference( b ) + from, to - from, salt, salt );
     }
 
-    void acquireLock( Blob ) { assert_unimplemented(); }
-    void releaseLock( Blob ) { assert_unimplemented(); }
+    void acquireLock( Blob ) { ASSERT_UNIMPLEMENTED(); }
+    void releaseLock( Blob ) { ASSERT_UNIMPLEMENTED(); }
 };
 
 #if DEV_NOPOOLS
