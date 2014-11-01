@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
 
-#include <wibble/sfinae.h>
+#include <brick-types.h>
 #include <divine/toolkit/blob.h>
 
 #ifndef DIVINE_TOOLKIT_LENS_H
@@ -23,7 +23,7 @@ struct LinearSize {
     template< typename X > static int check( X );
 
     template< typename Addr, typename U >
-    static auto _get( wibble::Preferred, Addr a ) ->
+    static auto _get( brick::types::Preferred, Addr a ) ->
         decltype( check( a.template as< U >().advance( a, 0 ) ) )
     {
         T &instance = a.template as< T >();
@@ -31,14 +31,14 @@ struct LinearSize {
     }
 
     template< typename Addr, typename U >
-    static auto _get( wibble::NotPreferred, Addr ) -> int {
+    static auto _get( brick::types::NotPreferred, Addr ) -> int {
         return std::is_empty< T >::value ? 0 : sizeof( T );
     }
 
     template< typename Addr >
     static auto get( Addr a ) -> int
     {
-        return _get< Addr, T >( wibble::Preferred(), a );
+        return _get< Addr, T >( brick::types::Preferred(), a );
     }
 };
 
@@ -59,8 +59,8 @@ struct LinearAddress {
     { }
 
     char *dereference() {
-        assert( pool != nullptr );
-        assert( pool->valid( b ) );
+        ASSERT( pool != nullptr );
+        ASSERT( pool->valid( b ) );
         return pool->dereference( b ) + offset;
     }
 
@@ -155,7 +155,7 @@ struct _Tuple< Idx >
 {
     int _length() { return Idx; }
     template< typename Addr >
-    static Addr _advance( Addr base, int i ) { assert_eq( i, Idx ); return base; }
+    static Addr _advance( Addr base, int i ) { ASSERT_EQ( i, Idx ); return base; }
 };
 
 template< int _Idx, typename _Head, typename... _Tail >
@@ -183,14 +183,14 @@ class Tuple
 
     template< typename T, typename Tu >
     static auto _index() ->
-        typename wibble::EnableIf< wibble::TSame< T, typename Tu::Head >, int >::T
+        typename std::enable_if< std::is_same< T, typename Tu::Head >::value, int >::type
     {
         return Tu::Idx;
     }
 
     template< typename T, typename Tu >
     static auto _index() ->
-        typename wibble::DisableIf< wibble::TSame< T, typename Tu::Head >, int >::T
+        typename std::enable_if< !std::is_same< T, typename Tu::Head >::value, int >::type
     {
         return _index< T, typename Tu::Tail >();
     }
@@ -250,7 +250,7 @@ class Array: _Array< T, Array< T > >
 {
     template< typename Addr >
     Addr advance( Addr a, int i, int base = sizeof( int ) ) {
-        assert_leq( 0, i );
+        ASSERT_LEQ( 0, i );
         if ( !i )
             return Addr( a, -1, base );
         Addr previous = advance( a, i - 1, base );
@@ -280,6 +280,140 @@ public:
 #endif
 
 }
+}
+
+namespace divine_test {
+
+using namespace divine::lens;
+
+struct TestLens {
+
+    divine::Pool pool;
+
+    TEST(tuple) {
+        divine::Blob blob = pool.allocate( 3 * sizeof( int ) + sizeof( float ) );
+        pool.clear( blob );
+
+        struct IntA { int i; IntA( int i = 0 ) : i( i ) {} };
+        struct IntB { int i; IntB( int i = 0 ) : i( i ) {} };
+        struct IntC { int i; IntC( int i = 0 ) : i( i ) {} };
+
+        typedef Tuple< IntA, IntB, IntC, float > Foo;
+
+        LinearAddress a( &pool, blob, 0 );
+        Lens< LinearAddress, Foo > lens( a );
+
+        lens.get( IntA() ) = 1;
+        lens.get( IntB() ) = 2;
+        lens.get( IntC() ) = 3;
+
+        ASSERT_EQ( divine::fmtblob( pool, blob ), "[ 1, 2, 3, 0 ]" );
+    }
+
+    TEST(fixedArray) {
+        divine::Blob blob = pool.allocate( sizeof( int ) * 10 );
+        pool.clear( blob );
+
+        typedef FixedArray< int > Array;
+
+        LinearAddress a( &pool, blob, 0 );
+        Lens< LinearAddress, Array > lens( a );
+
+        lens.get().length() = 8;
+        for ( int i = 0; i < 8; ++i )
+            lens.get( i ) = i + 1;
+
+        ASSERT_EQ( divine::fmtblob( pool, blob ), "[ 8, 1, 2, 3, 4, 5, 6, 7, 8, 0 ]" );
+    }
+
+    TEST(basic) {
+        divine::Blob blob = pool.allocate( 200 );
+        pool.clear( blob );
+
+        struct IntArray1 : FixedArray< int > {};
+        struct IntArray2 : FixedArray< int > {};
+        struct Matrix : Array< FixedArray< int > > {};
+        struct Witch : Tuple< IntArray1, IntArray2 > {};
+        struct Doctor: Tuple< IntArray1, int, Witch, float, Matrix > {};
+
+        LinearAddress a( &pool, blob, 0 );
+        Lens< LinearAddress, Doctor > lens( a );
+
+        lens.get( IntArray1() ).length() = 5;
+        lens.get( Witch(), IntArray1() ).length() = 3;
+        lens.get( Witch(), IntArray2() ).length() = 4;
+        lens.get( float() ) = -1;
+
+        lens.get( Matrix() ).length() = 4;
+        lens.get( Matrix(), 0 ).length() = 4;
+        lens.get( Matrix(), 1 ).length() = 4;
+        lens.get( Matrix(), 2 ).length() = 4;
+        lens.get( Matrix(), 3 ).length() = 4;
+
+        for ( int i = 0; i < 4; ++i )
+            for ( int j = 0; j < 4; ++j )
+                lens.get( Matrix(), i, j ) = 100 + j + i * j;
+
+        lens.get( int() ) = int( 365 );
+
+        ASSERT_EQ( divine::fmtblob( pool, blob ),
+                   "[ 5, 0, 0, 0, 0, 0, 365, 3, 0, 0, 0, 4, 0, 0, 0, 0,"
+                   " 3212836864, 4, 4, 100, 101, 102, 103, 4, 100, 102,"
+                   " 104, 106, 4, 100, 103, 106, 109, 4, 100, 104, 108,"
+                   " 112, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]" );
+
+        for ( int i = 0; i < lens.get( IntArray1() ).length(); ++ i )
+            lens.get( IntArray1(), i ) = i + 10;
+        for ( int i = 0; i < lens.get( Witch(), IntArray1() ).length(); ++ i )
+            lens.get( Witch(), IntArray1(), i ) = i + 20;
+        for ( int i = 0; i < lens.get( Witch(), IntArray2() ).length(); ++ i )
+            lens.get( Witch(), IntArray2(), i ) = i + 30;
+
+
+        Lens< LinearAddress, Witch > lens2 = lens.sub( Witch() );
+
+        ASSERT_EQ( lens.get( int() ), 365 );
+
+        ASSERT_EQ( lens.get( IntArray1() ).length(), 5 );
+        ASSERT_EQ( lens.get( IntArray1(), 0 ), 10 );
+        ASSERT_EQ( lens2.get( IntArray1(), 1 ), 21 );
+        ASSERT_EQ( lens.get( Witch(), IntArray2(), 0 ), 30 );
+
+        ASSERT_EQ( divine::fmtblob( pool, blob ),
+                   "[ 5, 10, 11, 12, 13, 14, 365, 3, 20, 21, 22, 4, 30, 31, 32, 33, 3212836864,"
+                   " 4, 4, 100, 101, 102, 103, 4, 100, 102, 104, 106, 4, 100, 103, 106, 109, 4,"
+                   " 100, 104, 108, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]" );
+    }
+
+    TEST(copy) {
+        int size = 2 * sizeof( int );
+        divine::Blob blob = pool.allocate( size ), copy = pool.allocate( size );
+        pool.clear( blob );
+        pool.clear( copy );
+
+        struct IntA { int i; IntA( int i = 0 ) : i( i ) {} };
+        struct IntB { int i; IntB( int i = 0 ) : i( i ) {} };
+
+        typedef Tuple< IntA, IntB > Foo;
+
+        LinearAddress a( &pool, blob, 0 );
+        LinearAddress b( &pool, copy, 0 );
+
+        Lens< LinearAddress, Foo > lens( a );
+
+        lens.get( IntA() ) = 1;
+        lens.get( IntB() ) = 2;
+
+        lens.sub( IntA() ).copy( b );
+        ASSERT_EQ( divine::fmtblob( pool, copy ), "[ 1, 0 ]" );
+        pool.clear( copy );
+
+        lens.copy( b );
+        ASSERT_EQ( divine::fmtblob( pool, copy ), "[ 1, 2 ]" );
+    }
+
+};
+
 }
 
 #endif
