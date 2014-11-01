@@ -425,4 +425,190 @@ struct Scope : Parser {
 }
 }
 
+namespace divine_test {
+namespace silk {
+
+using namespace divine::silk::parse;
+
+struct Parse {
+
+    template< typename T >
+    static T _parse( std::string s ) {
+        Buffer b( s );
+        Lexer< Buffer > lexer( b );
+        Parser::Context ctx( lexer, "<inline>" );
+        try {
+            auto r = T( ctx );
+            ASSERT( lexer.eof() );
+            return r;
+        } catch (...) {
+            // ctx.errors( std::cerr );
+            throw;
+        }
+    }
+
+    TEST(scope) {
+        auto c = _parse< Scope >( "a = 2 + 3" );
+        ASSERT_EQ( int(c.bindings.size()), 1 );
+        auto b = c.bindings[0];
+        ASSERT_EQ( b.name.name, "a" );
+        auto v = b.value.e;
+
+        auto op = v.get< BinOp >();
+        ASSERT( op.op == TI::Plus );
+        Constant cnst( op.lhs->e );
+        ASSERT_EQ( cnst.value, 2 );
+        cnst = Constant( op.rhs->e );
+        ASSERT_EQ( cnst.value, 3 );
+    }
+
+    TEST(scope2) {
+        auto c = _parse< Scope >( "a = 2 + 3\nb = 4" );
+        ASSERT_EQ( int ( c.bindings.size() ), 2 );
+        auto b1 = c.bindings[0];
+        ASSERT_EQ( b1.name.name, "a" );
+        auto b2 = c.bindings[1];
+        ASSERT_EQ( b2.name.name, "b" );
+        auto cn = b2.value.e.get< Constant >();
+        ASSERT_EQ( cn.value, 4 );
+    }
+
+    TEST(scope3) {
+        auto c = _parse< Scope >( "a = 2 + 3; b = 4" );
+        ASSERT_EQ( int ( c.bindings.size() ), 2 );
+        auto b1 = c.bindings[0];
+        ASSERT_EQ( b1.name.name, "a" );
+        auto b2 = c.bindings[1];
+        ASSERT_EQ( b2.name.name, "b" );
+    }
+
+    TEST(scope_expr) {
+        SubScope c( _parse< Expression >( "{ a = 2 + 3; b = 4 }.b" ).e );
+        Constant s( c.lhs->e );
+        Identifier id( c.rhs->e );
+    }
+
+    TEST(scope_block) {
+        Constant c( _parse< Expression >( "def a = 2 + 3; b = 4 end" ).e );
+        ASSERT( c.scope );
+    }
+
+    TEST(simple) {
+        BinOp op( _parse< Expression >( "x + 3" ).e );
+        ASSERT( op.op == TI::Plus );
+        Identifier id( op.lhs->e );
+        Constant cnst( op.rhs->e );
+        ASSERT_EQ( id.name, "x" );
+        ASSERT_EQ( cnst.value, 3 );
+    }
+
+    TEST(lambda) {
+        Lambda l( _parse< Expression >( "|x| x + 3" ).e );
+        ASSERT_EQ( l.bind.name(), "x" );
+        BinOp op( l.body->e );
+        ASSERT( op.op == TI::Plus );
+        Identifier id( op.lhs->e );
+        Constant cnst( op.rhs->e );
+        ASSERT_EQ( id.name, "x" );
+        ASSERT_EQ( cnst.value, 3 );
+    }
+
+    TEST(nestedLambda) {
+        Lambda l1( _parse< Expression >( "|x| |y| x + y" ).e );
+        ASSERT_EQ( l1.bind.name(), "x" );
+
+        Lambda l2( l1.body->e );
+        ASSERT_EQ( l2.bind.name(), "y" );
+
+        BinOp op( l2.body->e );
+        Identifier id1( op.lhs->e );
+        Identifier id2( op.rhs->e );
+        ASSERT_EQ( id1.name, "x" );
+        ASSERT_EQ( id2.name, "y" );
+    }
+
+    TEST(ifThenElse) {
+        IfThenElse i( _parse< Expression >( "if x then x + y else z + y" ).e );
+        ASSERT( i.cond->e.is< Identifier >() );
+        ASSERT( i.yes->e.is< BinOp >() );
+        ASSERT( i.no->e.is< BinOp >() );
+    }
+
+    TEST(complex) {
+        auto i = _parse< Expression >( "if (|x| 3) then (if x + y then |a| 4 else |a| a) else |z| z + y" );
+        auto top = IfThenElse( i.e );
+        auto cond = Lambda( top.cond->e );
+        auto yes = IfThenElse( top.yes->e );
+        auto no = Lambda( top.no->e );
+        auto op = BinOp( yes.cond->e );
+        ASSERT( op.op == TI::Plus );
+    }
+
+    TEST(associativity) {
+        auto top = BinOp( _parse< Expression >( "1 + 2 + 3" ).e );
+        auto left = BinOp( top.lhs->e );
+        auto right = Constant( top.rhs->e );
+    }
+
+    TEST(subscope1) {
+        auto top = BinOp( _parse< Expression >( "1 + x.x" ).e );
+        auto left = Constant( top.lhs->e );
+        auto right = SubScope( top.rhs->e );
+    }
+
+    TEST(subscope2) {
+        auto top = BinOp( _parse< Expression >( "x.x + 1" ).e );
+        auto left = SubScope( top.lhs->e );
+        auto right = Constant( top.rhs->e );
+    }
+
+    TEST(application) {
+        auto top = Application( _parse< Expression >( "a b c" ).e );
+        auto left = Application( top.lhs->e );
+        auto a = Identifier( left.lhs->e );
+        auto b = Identifier( left.rhs->e );
+        auto c = Identifier( top.rhs->e );
+        ASSERT_EQ( a.name, "a" );
+        ASSERT_EQ( b.name, "b" );
+        ASSERT_EQ( c.name, "c" );
+    }
+
+    TEST(compound) {
+        auto top = Application( _parse< Expression >( "a (b + 1) c" ).e );
+        auto left = Application( top.lhs->e );
+        auto a = Identifier( left.lhs->e );
+        auto b = BinOp( left.rhs->e );
+        auto c = Identifier( top.rhs->e );
+        ASSERT_EQ( a.name, "a" );
+        ASSERT( b.op == TI::Plus );
+        ASSERT_EQ( c.name, "c" );
+    }
+
+    TEST(print) {
+        std::stringstream s;
+        auto top = _parse< Expression >( "a + 3" );
+        s << top;
+        ASSERT_EQ( s.str(), "(a + 3)" );
+    }
+
+    TEST_FAILING(bad1) {
+        _parse< Expression >( "a |x| a c" );
+    }
+
+    TEST(type) {
+        Lambda( _parse< Expression >( "|x : _t| x" ).e );
+    }
+
+    TEST(type_fun) {
+        Lambda( _parse< Expression >( "|x : _t -> _t| x" ).e );
+    }
+
+    TEST(type_pred) {
+        Lambda( _parse< Expression >( "|x : fun? _t| x" ).e );
+    }
+};
+
+}
+}
+
 #endif
