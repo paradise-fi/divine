@@ -1,6 +1,7 @@
 // -*- C++ -*- Copyright (c) 2010 Petr Rockai <me@mornfall.net>
 
 #include <memory>
+#include <brick-unittest.h>
 
 #ifndef DIVINE_OUTPUT_H
 #define DIVINE_OUTPUT_H
@@ -17,7 +18,7 @@ struct Output {
 
     static std::unique_ptr< Output > _output;
     static Output &output() {
-        assert( !!_output );
+        ASSERT( !!_output );
         return *_output;
     }
 };
