@@ -713,7 +713,7 @@ private:
 
 #define BUFSIZE (512)
 
-using jenkins::SpookyHash;
+using brick::hash::jenkins::SpookyHash;
 
 struct Jenkins {
 
