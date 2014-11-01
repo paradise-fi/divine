@@ -6,7 +6,7 @@
 #include <cstring>
 #include <memory>
 
-#include <wibble/parse.h>
+#include <brick-parse.h>
 #include <divine/dve/lex.h>
 
 #ifndef DIVINE_DVE_PARSE_H
@@ -39,7 +39,7 @@ struct IOStream {
     IOStream( std::istream &i ) : i( i ) {}
 };
 
-typedef wibble::Parser< Token, Lexer< IOStream > > Parser;
+typedef brick::parse::Parser< Token, Lexer< IOStream > > Parser;
 
 namespace parse {
 
@@ -485,7 +485,7 @@ struct Declaration : Parser {
     void setSize( int s ) {
         size = s;
         if ( size < 1 )
-            fail( ( "Invalid array size: " + wibble::str::fmt( size ) ).c_str(), FailType::Semantic );
+            fail( ( "Invalid array size: " + brick::string::fmt( size ) ).c_str(), FailType::Semantic );
     }
 
     void subscript() {
@@ -553,7 +553,7 @@ struct ChannelDeclaration : Parser {
     void setSize( int s ) {
         size = s;
         if ( size < 0 )
-            fail( ( "Invalid array size: " + wibble::str::fmt( size ) ).c_str(), FailType::Semantic );
+            fail( ( "Invalid array size: " + brick::string::fmt( size ) ).c_str(), FailType::Semantic );
         is_buffered = ( size > 0 );
     }
 

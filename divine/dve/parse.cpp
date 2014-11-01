@@ -5,7 +5,7 @@ using namespace divine;
 const std::string *dve::Token::tokenName = dve::tokenName;
 
 using namespace divine::dve::parse;
-using namespace wibble::str;
+using namespace brick::string;
 
 void Declaration::fold( dve::SymTab* symtab )
 {

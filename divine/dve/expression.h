@@ -137,8 +137,7 @@ struct Expression {
             case TI::LShift: return a << b;
             case TI::RShift: return a >> b;
             default:
-                std::cerr << "unknown operator: " << op << std::endl;
-                assert_die(); // something went seriously wrong...
+                ASSERT_UNREACHABLE_F( "unknown operator %s", brick::string::fmt( op ).c_str() );
         }
     }
 
@@ -152,7 +151,7 @@ struct Expression {
             case TI::Identifier:
                 ctx.push( i.arg1.symbol.deref( ctx.mem ) ); break;
             case TI::Reference:
-                assert_die(); // Obsolete pathway
+                ASSERT_UNREACHABLE( "unexpected reference" ); // obsolete code path
                 break;
             case TI::Constant:
                 ctx.push( i.arg1.ival ); break;
@@ -188,7 +187,7 @@ struct Expression {
         assert( ctx.stack.empty() );
         for ( std::vector< Item >::iterator i = rpn.begin(); i != rpn.end(); ++i )
             step( ctx, *i );
-        assert_eq( ctx.stack.size(), static_cast<size_t>( 1) );
+        ASSERT_EQ( ctx.stack.size(), static_cast<size_t>( 1) );
         DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
         EvalContext::ImmValue retval = ctx.pop();
         if ( retval.error ) {

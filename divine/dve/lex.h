@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2011 Petr Rockai
 
 #include <cassert>
-#include <wibble/parse.h>
+#include <brick-parse.h>
 
 #ifndef DIVINE_DVE_LEX_H
 #define DIVINE_DVE_LEX_H
@@ -50,10 +50,12 @@ const std::string tokenName[] = {
     "streett", "muller", "rabin", "buchi", "genbuchi"
 };
 
-struct Token : wibble::Token< TI::TokenId >, TI {
-    Token( Id id, char c ) : wibble::Token< TI::TokenId >( id, c ) {}
-    Token( Id id, std::string c ) : wibble::Token< TI::TokenId >( id, c ) {}
-    Token() : wibble::Token< TI::TokenId >() {}
+using TokenBase = brick::parse::Token< TI::TokenId >;
+
+struct Token : TokenBase, TI {
+    Token( Id id, char c ) : TokenBase( id, c ) {}
+    Token( Id id, std::string c ) : TokenBase( id, c ) {}
+    Token() : TokenBase() {}
 
     static const std::string *tokenName;
     static const int precedences = 6;
@@ -91,7 +93,7 @@ struct Fragment {
 };
 
 template< typename Stream >
-struct Lexer : wibble::Lexer< Token, Stream >, Fragment {
+struct Lexer : brick::parse::Lexer< Token, Stream >, Fragment {
 
     static int firstident( int c ) {
         return isalpha( c ) || c == '_';
@@ -131,7 +133,7 @@ struct Lexer : wibble::Lexer< Token, Stream >, Fragment {
     }
 
     Lexer( Stream &s )
-        : wibble::Lexer< Token, Stream >( s )
+        : brick::parse::Lexer< Token, Stream >( s )
     {}
 };
 

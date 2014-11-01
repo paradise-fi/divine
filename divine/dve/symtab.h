@@ -65,8 +65,8 @@ struct Symbol {
     }
 
     SymContext::Item &item() {
-        assert( context );
-        assert_leq( size_t( id + 1 ), context->ids.size() );
+        ASSERT( context );
+        ASSERT_LEQ( size_t( id + 1 ), context->ids.size() );
         return context->ids[ id ];
     }
 
@@ -75,42 +75,42 @@ struct Symbol {
             return context->constants[ item().offset + idx ];
         else {
             if ( idx )
-                assert( item().is_array );
+                ASSERT( item().is_array );
             char *place = mem + item().offset + idx * item().width;
             switch ( item().width ) {
                 case 1: return *reinterpret_cast< uint8_t * >( place );
                 case 2: return *reinterpret_cast< int16_t * >( place );
                 case 4: return *reinterpret_cast< uint32_t * >( place );
-                default: assert_die();
+                default: ASSERT_UNREACHABLE_F( "wrong deref width %d", item().width );
             }
         }
     }
 
     template< typename T >
     void deref( char *mem, int idx, T &retval ) {
-        assert( !item().is_constant );
+        ASSERT( !item().is_constant );
         if ( idx )
-            assert( item().is_array );
+            ASSERT( item().is_array );
         char *place = mem + item().offset + idx * item().width;
         retval = *reinterpret_cast< T * >( place );
     }
 
     char * getref( char *mem = 0, int idx = 0 ) {
-        assert( !item().is_constant );
+        ASSERT( !item().is_constant );
         if ( idx )
-            assert( item().is_array );
+            ASSERT( item().is_array );
         char *place = mem + item().offset + idx * item().width;
         return place;
     }
 
     void set( char *mem, int idx, int value, ErrorState &err ) {
-        assert ( !item().is_constant );
+        ASSERT( !item().is_constant );
         char *place = mem + item().offset + idx * item().width;
         switch ( item().width ) {
             case 1: setval< uint8_t >( place, value, err ); break;
             case 2: setval< int16_t >( place, value, err ); break;
             case 4: setval< uint32_t >( place, value, err ); break;
-            default: assert_die();
+            default: ASSERT_UNREACHABLE_F( "wrong set width %d", item().width );
         }
     }
 
@@ -124,7 +124,7 @@ struct Symbol {
 
     template< typename T >
     void set( char *mem, int idx, const T value ) {
-        assert ( !item().is_constant );
+        ASSERT( !item().is_constant );
         char *place = mem + item().offset + idx * item().width;
         *reinterpret_cast< T * >( place ) = value;
     }
@@ -143,8 +143,8 @@ struct SymTab : NS {
     std::map< Symbol, SymTab * > children;
 
     SymId newid( Namespace ns, std::string name ) {
-        assert( context );
-        assert( !tabs[ ns ].count( name ) );
+        ASSERT( context );
+        ASSERT( !tabs[ ns ].count( name ) );
 
         unsigned id = context->id ++;
         context->ids.resize( id + 1 );
@@ -190,9 +190,9 @@ struct SymTab : NS {
     Symbol allocate( Namespace ns, const T &decl ) {
         int width = decl.width;
 
-        assert_leq( 1, width );
+        ASSERT_LEQ( 1, width );
         if ( !decl.is_compound )
-            assert_leq( width, 4 );
+            ASSERT_LEQ( width, 4 );
 
         Symbol s = allocate( ns, decl.name, width * (decl.is_array ? decl.size : 1) );
         s.item().is_array = decl.is_array;
@@ -226,8 +226,8 @@ struct SymTab : NS {
     }
 
     const SymTab *child( Symbol id ) const {
-        assert( children.find( id ) != children.end() );
-        assert( children.find( id )->second );
+        ASSERT( children.find( id ) != children.end() );
+        ASSERT( children.find( id )->second );
         return children.find( id )->second;
     }
 
