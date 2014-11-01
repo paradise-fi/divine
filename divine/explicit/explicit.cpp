@@ -29,8 +29,8 @@ void Explicit::finishOpen() {
     header = Header::ptr( map.asArrayOf< void >() );
     char *cptr = map.asArrayOf< char >();
 
-    assert_leq( header->compactVersion, 1 );
-    assert_leq( header->dataStartOffset, int64_t( sizeof( Header ) ) );
+    ASSERT_LEQ( header->compactVersion, 1 );
+    ASSERT_LEQ( header->dataStartOffset, int64_t( sizeof( Header ) ) );
 
     if ( header->capabilities.has( Capability::ForwardEdges ) )
         forward = DataBlock( header->nodeCount,
@@ -49,21 +49,21 @@ PrealocateHelper::PrealocateHelper( const std::string &path ) :
 {
     fd = ::open( path.c_str(), O_RDWR | O_CREAT,
         S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH );
-    assert_leq( 0, fd );
+    ASSERT_LEQ( 0, fd );
 }
 
 Explicit PrealocateHelper::operator()() {
-    assert_leq( 0, fd );
-    assert( ( !_capabilities.has( Capability::Probability )
+    ASSERT_LEQ( 0, fd );
+    ASSERT( ( !_capabilities.has( Capability::Probability )
                 && !_capabilities.has( Capability::UInt64Labels ) )
             || ( _capabilities.has( Capability::Probability )
                 ^ _capabilities.has( Capability::UInt64Labels ) ) );
 
     int64_t edgeData = sizeof( int64_t ) * _nodes
         + _edges * (sizeof( int64_t ) + _labelSize);
-    assert( !_capabilities.has( Capability::UInt64Labels )
+    ASSERT( !_capabilities.has( Capability::UInt64Labels )
             || _labelSize == sizeof( uint64_t ) );
-    assert( !_capabilities.has( Capability::Probability )
+    ASSERT( !_capabilities.has( Capability::Probability )
             || _labelSize == sizeof( graph::Probability ) );
 
     int64_t nodeData = sizeof( int64_t ) * _nodes + _nodeDataSize;
@@ -78,7 +78,7 @@ Explicit PrealocateHelper::operator()() {
 
 
     auto r = ::posix_fallocate( fd, 0, fileSize );
-    assert_eq( r , 0 );
+    ASSERT_EQ( r , 0 );
     static_cast< void >( r );
 
     MMap map( fd, MMap::ProtectMode::Read | MMap::ProtectMode::Write

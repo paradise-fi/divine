@@ -4,8 +4,8 @@
 #include <cstring>
 #include <string>
 #include <memory>
-#include <wibble/test.h>
-#include <wibble/strongenumflags.h>
+
+#include <brick-types.h>
 
 #ifndef DIVINE_EXPLICIT_HEADER_H
 #define DIVINE_EXPLICIT_HEADER_H
@@ -25,7 +25,7 @@ enum class Capability : uint64_t {
     /* when adding don't forget to update showCapability in header.cpp ! */
 };
 
-using Capabilities = wibble::StrongEnumFlags< Capability >;
+using Capabilities = brick::types::StrongEnumFlags< Capability >;
 std::string to_string( Capabilities );
 
 static const size_t MAGIC_LENGTH = 40UL;

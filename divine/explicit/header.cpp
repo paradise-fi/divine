@@ -9,8 +9,6 @@
 namespace divine {
 namespace dess {
 
-using wibble::operator|;
-
 static std::string showCapability( Capability c ) {
 #define SHOW_CAPABILITY( C ) if ( c == Capability::C ) return #C;
     SHOW_CAPABILITY( ForwardEdges );
@@ -47,7 +45,7 @@ Header *Header::ptr( void *p ) {
             << std::endl;
         std::abort();
     }
-    assert_leq( 1, ptr->compactVersion );
+    ASSERT_LEQ( 1, ptr->compactVersion );
     if ( ptr->compactVersion > CURRENT_DCESS_VERSION )
         std::cerr << "WARNING: DCESS file was created by newer version of "
             "DIVINE\n and might not be compatible with this version";
@@ -70,7 +68,7 @@ Header Header::fromFile( std::string filename ) {
         U() : head() { }
     } u;
     str.read( u.chr, sizeof( Header ) );
-    assert( !str.eof() );
+    ASSERT( !str.eof() );
     return *ptr( &u.head ); // to check validity
 }
 

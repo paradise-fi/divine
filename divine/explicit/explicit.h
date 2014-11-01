@@ -77,19 +77,19 @@ struct DataBlock {
     int64_t count() { return _count; }
 
     char *operator[]( int64_t ix ) {
-        assert_leq( ix, _count );
+        ASSERT_LEQ( ix, _count );
         return _ix( ix );
     }
 
     int64_t size( int64_t ix ) {
         int64_t diff = int64_t( _ix( ix + 1 ) ) - int64_t( _ix( ix ) );
-        assert_leq( 0, diff );
+        ASSERT_LEQ( 0, diff );
         return diff;
     }
 
     template< typename T >
     T &get( int64_t ix ) {
-        assert_leq( ix, _count - 1 );
+        ASSERT_LEQ( ix, _count - 1 );
         return *reinterpret_cast< T * >( _ix( ix ) );
     }
 
@@ -99,7 +99,7 @@ struct DataBlock {
             _ptr( reinterpret_cast< T * >( ptr ) ),
             _size( size / sizeof( T ) )
         {
-            assert_eq( 0UL, size % sizeof( T ) );
+            ASSERT_EQ( 0UL, size % sizeof( T ) );
         }
 
         template< typename Fn >
@@ -128,7 +128,7 @@ struct DataBlock {
 
     template< typename T = char >
     _MapHelper< T > map( int64_t ix ) {
-        assert_leq( ix, _count - 1 );
+        ASSERT_LEQ( ix, _count - 1 );
         return _MapHelper< T >( _ix( ix ), size( ix ) );
     }
 /*
@@ -147,7 +147,7 @@ struct DataBlock {
             ++_dataNext;
             *_ptr = reinterpret_cast< size_t >( _dataNext )
                 - reinterpret_cast< size_t >( _dataBlock->_data );
-            assert_leq( 0, *_ptr );
+            ASSERT_LEQ( 0, *_ptr );
             ++_ptr;
             return r;
         }
@@ -178,7 +178,7 @@ struct DataBlock {
         auto emplace( int64_t size, Fn fn )
             -> typename std::result_of< Fn( char *, int64_t ) >::type
         {
-            assert( _ptr ); assert( _dataNext ); assert( _dataBlock );
+            ASSERT( _ptr ); ASSERT( _dataNext ); ASSERT( _dataBlock );
             char *data = _dataNext;
             _dataNext += size;
             *_ptr = _dataNext - _dataBlock->_data;
@@ -204,9 +204,9 @@ struct DataBlock {
     char *_data;
 
     char *_ix( int64_t ix ) {
-        assert_leq( 0, ix );
+        ASSERT_LEQ( 0, ix );
         int64_t i = ix == 0 ? 0 :_indices[ ix - 1 ];
-        assert_leq( 0, i );
+        ASSERT_LEQ( 0, i );
         return _data + i;
     }
 };
@@ -266,7 +266,7 @@ struct PrealocateHelper {
 
     template< typename Label >
     PrealocateHelper &labelSize( Label ) {
-        assert_eq( _labelSize, 0 );
+        ASSERT_EQ( _labelSize, 0 );
         _labelSize = std::is_empty< Label >::value ? 0 : sizeof( Label );
         return *this;
     }
@@ -282,19 +282,19 @@ struct PrealocateHelper {
     }
 
     PrealocateHelper &edges( int64_t edges ) {
-        assert_eq( _edges, 0 );
+        ASSERT_EQ( _edges, 0 );
         _edges = edges;
         return *this;
     }
 
     PrealocateHelper &nodes( int64_t nodes ) {
-        assert_eq( _nodes, 0 );
+        ASSERT_EQ( _nodes, 0 );
         _nodes = nodes;
         return *this;
     }
 
     PrealocateHelper &saveNodes( int64_t nodesSize ) {
-        assert_eq( _nodeDataSize, 0 );
+        ASSERT_EQ( _nodeDataSize, 0 );
         _nodeDataSize = nodesSize;
         _capabilities |= Capability::Nodes;
         return *this;
