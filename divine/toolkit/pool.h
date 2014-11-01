@@ -18,8 +18,7 @@
 
 #include <brick-types.h>
 #include <brick-string.h>
-
-#include <divine/toolkit/hash.h>
+#include <brick-hash.h>
 
 #ifndef DIVINE_POOL_H
 #define DIVINE_POOL_H
@@ -536,6 +535,9 @@ struct Pond {
     };
 };
 
+using brick::hash::hash128_t;
+using brick::hash::hash64_t;
+
 template< typename MM >
 struct Dereference {
     using Blob = typename MM::Pointer;
@@ -621,7 +623,7 @@ struct Dereference {
             return std::make_pair( 0, 0 );
         ASSERT_LEQ( from, to );
         ASSERT_LEQ( to, size( b ) );
-        return spookyHash( dereference( b ) + from, to - from, salt, salt );
+        return brick::hash::spooky( dereference( b ) + from, to - from, salt, salt );
     }
 
     void acquireLock( Blob ) { ASSERT_UNIMPLEMENTED(); }
