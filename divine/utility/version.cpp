@@ -1,7 +1,7 @@
-#include <divine/utility/version.h>
-#include <wibble/string.h>
 #include <string>
 #include <sstream>
+
+#include <divine/utility/version.h>
 
 #if OPT_MPI
 #include <mpi.h>
