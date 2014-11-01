@@ -5,9 +5,6 @@
 #include <memory>
 
 #include <brick-shmem.h>
-#include <wibble/test.h> // assert
-
-#include <divine/toolkit/lockedqueue.h>
 
 #ifndef DIVINE_DATASTRUCT_H
 #define DIVINE_DATASTRUCT_H
@@ -23,7 +20,7 @@ struct QueueFrontend {
     typedef typename Setup::Graph Graph;
     typedef typename Graph::Node Node;
     typedef typename Graph::Label Label;
-    typedef typename Setup::Vertex Vertex;
+    typedef typename Setup::Store::Vertex Vertex;
 
     template< typename Next >
     void processOpen( Next next ) {
@@ -31,7 +28,7 @@ struct QueueFrontend {
         axed = false;
 
         auto from = self().store().vertex( self().front() );
-        self().g.successors( from.node(), [&]( Node n, Label label ) {
+        self().g.successors( from, [&]( Node n, Label label ) {
                 this->deadlocked = false;
                 if ( !this->axed )
                     next( from, n, label );
@@ -115,12 +112,12 @@ struct Stack {
         Label label;
 
         Node node() {
-            assert( flag == Fresh );
+            ASSERT_EQ( flag, Fresh );
             return data.node;
         }
 
         Handle handle() {
-            assert( flag == Expanded );
+            ASSERT_EQ( flag, Expanded );
             return data.handle;
         }
 
@@ -163,7 +160,7 @@ struct Stack {
     template< typename Next >
     void processOpen( Next next ) {
         if ( !deadlocked ) {
-            assert_eq( _stack.back().flag, Fresh );
+            ASSERT_EQ( _stack.back().flag, Fresh );
             Node n = _stack.back().node();
             Label l = _stack.back().label;
             _stack.pop_back();
@@ -175,7 +172,7 @@ struct Stack {
     template< typename Dead >
     void processDead( Dead dead ) {
         if ( deadlocked && ! empty() ) {
-            assert_eq( _stack.back().flag, Expanded );
+            ASSERT_EQ( _stack.back().flag, Expanded );
             dead( s.vertex( _stack.back().handle() ) );
             deadlocked = false;
         }
@@ -218,7 +215,7 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     using Handle = typename Store::Handle;
 
     typedef std::deque< Handle > Chunk;
-    typedef divine::LockedQueue< Chunk > ChunkQ;
+    typedef brick::shmem::LockedQueue< Chunk > ChunkQ;
     typedef brick::shmem::ApproximateCounter Termination;
     typedef Termination::Shared Terminator;
     typedef std::shared_ptr< Terminator > TerminatorPtr;
@@ -272,14 +269,14 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     }
 
     Handle front() {
-        assert( !incoming.empty() );
+        ASSERT( !incoming.empty() );
         return incoming.front();
     }
 
     void pop_front() {
         Statistics::global().dequeue( id, sizeof( Handle ) );
         --termination;
-        assert( !incoming.empty() );
+        ASSERT( !incoming.empty() );
         incoming.pop_front();
     }
 
@@ -333,7 +330,6 @@ struct TestDatastruct {
         typedef generator::Dummy Graph;
         typedef NoStatistics Statistics;
         using Store = StoreFor< Graph, PartitionedProvider >;
-        typedef typename Store::Vertex Vertex;
         typedef typename Store::Handle Handle;
     };
 
@@ -349,7 +345,7 @@ struct TestDatastruct {
                     third = n;
                 ++ count;
             } );
-        assert_eq( count, 2 );
+        ASSERT_EQ( count, 2 );
     }
 
     template< typename Q >
@@ -360,54 +356,54 @@ struct TestDatastruct {
 
         init( d );
 
-        assert( q.empty() );
+        ASSERT( q.empty() );
         q.push( TrivialHandle( first, 0 ) );
-        assert( !q.empty() );
+        ASSERT( !q.empty() );
 
         count = 0;
         q.processOpen( [&]( Vertex, Node, Label ) { ++count; } );
         q.processClosed( [&]( Vertex ) {} );
-        assert_eq( count, 2 );
-        assert( q.empty() );
+        ASSERT_EQ( count, 2 );
+        ASSERT( q.empty() );
 
         count = 0;
         q.push( TrivialHandle( first, 0 ) );
         q.push( TrivialHandle( second, 0 ) );
-        assert( !q.empty() );
+        ASSERT( !q.empty() );
 
         q.processOpen( [&]( Vertex, Node n, Label ) {
                 if ( count == 0 ) {
-                    assert_eq( getShort( n, 0 ), 1 );
-                    assert_eq( getShort( n, 2 ), 0 );
-                    assert( d.pool().equal( n, second ) );
+                    ASSERT_EQ( getShort( n, 0 ), 1 );
+                    ASSERT_EQ( getShort( n, 2 ), 0 );
+                    ASSERT( d.pool().equal( n, second ) );
                 }
                 if ( count == 1 ) {
-                    assert_eq( getShort( n, 0 ), 0 );
-                    assert_eq( getShort( n, 2 ), 1 );
-                    assert( d.pool().equal( n, third ) );
+                    ASSERT_EQ( getShort( n, 0 ), 0 );
+                    ASSERT_EQ( getShort( n, 2 ), 1 );
+                    ASSERT( d.pool().equal( n, third ) );
                 }
                 ++ count;
             } );
         q.processClosed( [&]( Vertex ) {} );
 
-        assert_eq( count, 2 );
-        assert( !q.empty() );
+        ASSERT_EQ( count, 2 );
+        ASSERT( !q.empty() );
 
         count = 0;
         q.processOpen( [&]( Vertex, Node n, Label ) {
                 if ( count == 0 ) {
-                    assert_eq( getShort( n, 0 ), 2 );
-                    assert_eq( getShort( n, 2 ), 0 );
+                    ASSERT_EQ( getShort( n, 0 ), 2 );
+                    ASSERT_EQ( getShort( n, 2 ), 0 );
                 }
                 if ( count == 1 ) {
-                    assert_eq( getShort( n, 0 ), 1 );
-                    assert_eq( getShort( n, 2 ), 1 );
+                    ASSERT_EQ( getShort( n, 0 ), 1 );
+                    ASSERT_EQ( getShort( n, 2 ), 1 );
                 }
                 ++ count;
             } );
         q.processClosed( [&]( Vertex ) {} );
-        assert_eq( count, 2 );
-        assert( q.empty() );
+        ASSERT_EQ( count, 2 );
+        ASSERT( q.empty() );
     }
 
     TEST(queue) {
@@ -424,7 +420,6 @@ struct TestDatastruct {
         typedef G Graph;
         typedef NoStatistics Statistics;
         using Store = StoreFor< Graph, SharedProvider >;
-        typedef typename Store::Vertex Vertex;
         typedef typename Store::Handle Handle;
     };
 
@@ -522,12 +517,12 @@ struct TestDatastruct {
             shouldBe+= workers[ i ].i;
         }
 
-        assert_eq( sum, shouldBe );
+        ASSERT_EQ( sum, shouldBe );
         delete[] workers;
     } */
 
     TEST(stack) {
-        typedef typename SeqSetup::Vertex Vertex;
+        typedef typename SeqSetup::Store::Vertex Vertex;
 
         generator::Dummy d;
         d.setPool( Pool() );
@@ -541,24 +536,24 @@ struct TestDatastruct {
         d.setPool( Pool() );
         init( d );
 
-        assert( q.empty() );
+        ASSERT( q.empty() );
         q.push( TrivialHandle( first, 0 ) );
         q.processClosed( []( Vertex ) { assert_die(); } );
-        assert( !q.empty() );
+        ASSERT( !q.empty() );
 
         q.processOpen( [&]( Vertex, Node, Label ) { die = false; } );
         q.processClosed( []( Vertex ) { assert_die(); } );
-        assert( !q.empty() );
-        assert( !die );
+        ASSERT( !q.empty() );
+        ASSERT( !die );
 
         die = true;
         q.processOpen( [&]( Vertex, Node, Label ) { die = false; } );
-        assert( !die );
+        ASSERT( !die );
 
         die = true;
         q.processClosed( [&]( Vertex ) { die = false; } );
-        assert( !die );
-        assert( q.empty() );
+        ASSERT( !die );
+        ASSERT( q.empty() );
 
         q.push( TrivialHandle( first, 0 ) );
         q.processClosed( []( Vertex ) { assert_die(); } );
@@ -566,48 +561,48 @@ struct TestDatastruct {
 
         // 1, 1, from 1, 0
         q.processOpen( [&]( Vertex f, Node t, Label ) {
-                assert_eq( getShort( f.node(), 0 ), 1 );
-                assert_eq( getShort( f.node(), 2 ), 0 );
-                assert_eq( getShort( t, 0 ), 1 );
-                assert_eq( getShort( t, 2 ), 1 );
+                ASSERT_EQ( getShort( f.node(), 0 ), 1 );
+                ASSERT_EQ( getShort( f.node(), 2 ), 0 );
+                ASSERT_EQ( getShort( t, 0 ), 1 );
+                ASSERT_EQ( getShort( t, 2 ), 1 );
             } );
         q.processClosed( []( Vertex ) { assert_die(); } );
-        assert( !q.empty() );
+        ASSERT( !q.empty() );
 
         // 2, 0, from 1, 0
         q.processOpen( [&]( Vertex f, Node t, Label ) {
-                assert_eq( getShort( f.node(), 0 ), 1 );
-                assert_eq( getShort( f.node(), 2 ), 0 );
-                assert_eq( getShort( t, 0 ), 2 );
-                assert_eq( getShort( t, 2 ), 0 );
+                ASSERT_EQ( getShort( f.node(), 0 ), 1 );
+                ASSERT_EQ( getShort( f.node(), 2 ), 0 );
+                ASSERT_EQ( getShort( t, 0 ), 2 );
+                ASSERT_EQ( getShort( t, 2 ), 0 );
             } );
         die = true;
         q.processClosed( [&]( Vertex ) { die = false; } );
-        assert( !die );
-        assert( !q.empty() );
+        ASSERT( !die );
+        ASSERT( !q.empty() );
 
         // 0, 1, from 0, 0
         q.processOpen( [&]( Vertex f, Node t, Label ) {
-                assert_eq( getShort( f.node(), 0 ), 0 );
-                assert_eq( getShort( f.node(), 2 ), 0 );
-                assert_eq( getShort( t, 0 ), 0 );
-                assert_eq( getShort( t, 2 ), 1 );
+                ASSERT_EQ( getShort( f.node(), 0 ), 0 );
+                ASSERT_EQ( getShort( f.node(), 2 ), 0 );
+                ASSERT_EQ( getShort( t, 0 ), 0 );
+                ASSERT_EQ( getShort( t, 2 ), 1 );
             } );
-        assert( !q.empty() );
+        ASSERT( !q.empty() );
 
         // 1, 0, from 0, 0
         q.processOpen( [&]( Vertex f, Node t, Label ) {
-                assert_eq( getShort( f.node(), 0 ), 0 );
-                assert_eq( getShort( f.node(),  2 ), 0 );
-                assert_eq( getShort( t, 0 ), 1 );
-                assert_eq( getShort( t, 2 ), 0 );
+                ASSERT_EQ( getShort( f.node(), 0 ), 0 );
+                ASSERT_EQ( getShort( f.node(),  2 ), 0 );
+                ASSERT_EQ( getShort( t, 0 ), 1 );
+                ASSERT_EQ( getShort( t, 2 ), 0 );
             } );
 
         die = true;
         q.processClosed( [&]( Vertex ) { die = false; } );
-        assert( !die );
+        ASSERT( !die );
 
-        assert( q.empty() );
+        ASSERT( q.empty() );
     }
 };
 
