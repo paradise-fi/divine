@@ -50,7 +50,7 @@ struct ThreadVector {
     std::vector< R > m_threads;
 
     R &thread( int i ) {
-        assert_leq( i, int( m_threads.size() ) - 1 );
+        ASSERT_LEQ( i, int( m_threads.size() ) - 1 );
         return m_threads[ i ];
     }
 
@@ -89,7 +89,7 @@ struct BarrierThread : RunThread< T > {
     }
 
     virtual void init() {
-        assert( m_barrier );
+        ASSERT( m_barrier );
         m_barrier->started( this->t );
     }
 
@@ -121,8 +121,8 @@ struct FifoMatrix
     std::vector< std::vector< Fifo > > m_matrix;
 
     void validate( int from, int to ) {
-        assert_leq( from, int( m_matrix.size() ) - 1 );
-        assert_leq( to, int( m_matrix[ from ].size() ) - 1 );
+        ASSERT_LEQ( from, int( m_matrix.size() ) - 1 );
+        ASSERT_LEQ( to, int( m_matrix[ from ].size() ) - 1 );
     }
 
     bool pending( int from, int to ) {
@@ -177,11 +177,11 @@ struct WithID {
     int _peers;
     int _locals;
     int _rank;
-    int localId() const { assert_leq( 0, _localId ); return _localId; }
-    int id() const { assert_leq( 0, _id ); return _id; }
-    int peers() const { assert_leq( 0, _id ); return _peers; }
-    int rank() const { assert_leq( 0, _id ); return _rank; }
-    int locals() const { assert_leq( 0, _locals ); return _locals; }
+    int localId() const { ASSERT_LEQ( 0, _localId ); return _localId; }
+    int id() const { ASSERT_LEQ( 0, _id ); return _id; }
+    int peers() const { ASSERT_LEQ( 0, _id ); return _peers; }
+    int rank() const { ASSERT_LEQ( 0, _id ); return _rank; }
+    int locals() const { ASSERT_LEQ( 0, _locals ); return _locals; }
     void setId( int localId, int id, int peers, int locals, int rank ) {
         _localId = localId;
         _id = id;
@@ -623,7 +623,7 @@ struct Mpi : MpiMonitor
                 m_local.interrupt();
                 break;
             default:
-                assert_die();
+                ASSERT_UNREACHABLE_F( "unexpected tag %d", status.Get_tag() );
         }
 
         return Continue;
@@ -639,6 +639,120 @@ struct Mpi : MpiMonitor
 
 };
 
+}
+
+namespace divine_test {
+
+struct TestParallel {
+
+    struct Counter {
+        int i;
+        void inc() { i++; }
+        Counter() : i( 0 ) {}
+    };
+
+    TEST(runThread) {
+        Counter c;
+        ASSERT_EQ( c.i, 0 );
+        RunThread< Counter > t( c, &Counter::inc );
+        ASSERT_EQ( c.i, 0 );
+        t.start();
+        t.join();
+        ASSERT_EQ( c.i, 1 );
+    }
+
+    TEST(threadVector) {
+        std::vector< Counter > vec;
+        vec.resize( 10 );
+        ThreadVector< Counter > p( vec, &Counter::inc );
+        p.run();
+
+        for ( int i = 0; i < 10; ++i )
+            ASSERT_EQ_IDX( i, vec[ i ].i, 1 );
+    }
+
+    struct ParallelCounter : Parallel< Topology< wibble::Unit >::Local, ParallelCounter >
+    {
+        Counter counter;
+
+        int get() { return counter.i; }
+        void set( Counter c ) { counter = c; }
+        void inc() { counter.inc(); }
+
+        void run() {
+            this->topology().distribute( counter, &ParallelCounter::set );
+            this->topology().parallel( &ParallelCounter::inc );
+        }
+
+        ParallelCounter() {
+            this->becomeMaster( 10 );
+            this->initSlaves( *this );
+        }
+
+        ParallelCounter( ParallelCounter& m, std::pair< int, int > i ) {
+            this->becomeSlave( m.topology(), i );
+        }
+    };
+
+    template< typename X >
+    void checkValues( X &x, int n, int k ) {
+        std::vector< int > values;
+        x.topology().collect( values, &X::get );
+        ASSERT_EQ( values.size(), size_t( n ) );
+        for ( size_t i = 0; i < values.size(); ++i )
+            ASSERT_EQ_IDX( i, values[ i ], k );
+    }
+
+    TEST(parallel) {
+        ParallelCounter c;
+        ASSERT_EQ( c.get(), 0 );
+        checkValues( c, 10, 0 );
+
+        c.run();
+        ASSERT_EQ( c.get(), 0 );
+        checkValues( c, 10, 1 );
+    }
+
+    struct CommCounter : Parallel< Topology< int >::Local, CommCounter >
+    {
+        Counter counter;
+
+        void tellInc() {
+            submit( this->id(), (this->id() + 1) % this->peers(), 1 );
+            do {
+                if ( comms().pending( id() ) ) {
+                    counter.i += comms().take( this->id() );
+                    return;
+                }
+            } while ( true );
+        }
+
+        int get() { return counter.i; }
+        void run() {
+            this->topology().parallel( &CommCounter::tellInc );
+        }
+
+        CommCounter() {
+            this->becomeMaster( 10 );
+            this->initSlaves( *this );
+            counter.i = 0;
+        }
+
+        CommCounter( CommCounter &m, std::pair< int, int > i ) {
+            this->becomeSlave( m.topology(), i );
+        }
+    };
+
+    TEST(comm) {
+        CommCounter c;
+        ASSERT_EQ( c.counter.i, 0 );
+        checkValues( c, 10, 0 );
+
+        c.run();
+        ASSERT_EQ( c.counter.i, 0 );
+        checkValues( c, 10, 1 );
+    }
+};
 
 }
 
