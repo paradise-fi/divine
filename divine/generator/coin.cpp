@@ -184,7 +184,7 @@ Coin::Successors Coin::_successors(Node compressed_state) {
 }
 
 Coin::Successors Coin::_ample(Node compressed_state) {
-    assert(por);
+    ASSERT(por);
 
     vector<transition_t *> * enabled_trans = getEnabledTrans(compressed_state);
 
@@ -200,7 +200,7 @@ Coin::Successors Coin::_ample(Node compressed_state) {
         //std::cout << "Stored ample set ID: " << i << std::endl;
     }
 
-    assert(i >= 0);
+    ASSERT(i >= 0);
 
     if (i != system_aut_id) {
         //if non-empty ample set that is a proper subset of system automata was found
@@ -312,7 +312,7 @@ void Coin::init() {
     std::cout << id << ": Init, original slack: " << original_slack << std::endl;
 #endif
 
-    assert(coin_system);
+    ASSERT(coin_system);
 
     automata = coin_system->get_automata_list();
     property = coin_system->property;
@@ -811,7 +811,7 @@ int Coin::computeLCA(int i, int j) {
         current->visited = false;
     }
 
-    assert(ancestor != NULL);
+    ASSERT(ancestor != NULL);
 
     return automata->find_id(ancestor->aut_name);
 }
@@ -956,13 +956,13 @@ label_set * Coin::getOnlySet(int lower, int upper) {
 
 bool Coin::isLabelAllowed(const label_t& l, int from, int to, bool incl) {
     label_set * r = getRestrictSet(from, to);
-    assert(r != NULL);
+    ASSERT(r);
     if(r->count(l) > 0) {
         return false;
     }
 
     label_set * o = getOnlySet(from, to);
-    assert(o != NULL);
+    ASSERT(o);
     if(o != empty_label_set && o->count(l) <= 0) {
         return false;
     }
