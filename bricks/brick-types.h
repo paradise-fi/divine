@@ -96,6 +96,24 @@ typename T::IsComparable operator>=( const T &a, const T &b ) {
     return b <= a;
 }
 
+struct Defer {
+    template< typename F >
+    Defer( F fn ) : fn( fn ) { }
+
+    void run() {
+        if ( !_deleted ) {
+            fn();
+            _deleted = true;
+        }
+    }
+
+    bool deleted() const { return _deleted; }
+    ~Defer() { run(); }
+  private:
+    std::function< void() > fn;
+    bool _deleted;
+};
+
 namespace mixin {
 
 #if __cplusplus >= 201103L
