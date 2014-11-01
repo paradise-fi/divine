@@ -559,7 +559,7 @@ struct TestVisitor {
     template< typename _Node >
     struct NMTree {
         typedef _Node Node;
-        typedef wibble::Unit Label;
+        typedef generator::NoLabel Label;
         int n, m;
         Pool p;
 
