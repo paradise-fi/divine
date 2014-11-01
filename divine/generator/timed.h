@@ -29,6 +29,7 @@ namespace generator {
 struct Timed : public Common< Blob > {
     typedef Blob Node;
     typedef generator::Common< Blob > Common;
+    using TAGen = timed::TAGen;
     TAGen gen;
     divine::Buchi buchi;
     std::vector< std::string > ltlProps;
