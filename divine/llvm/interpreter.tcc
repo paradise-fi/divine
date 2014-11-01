@@ -2,7 +2,6 @@
 
 #define NO_RTTI
 
-#include <wibble/exception.h>
 #include <divine/llvm/interpreter.h>
 
 #include <divine/llvm/wrap/DerivedTypes.h>
