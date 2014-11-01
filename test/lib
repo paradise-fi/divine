@@ -243,7 +243,7 @@ all_small() {
 }
 
 llvm_precompile() {
-    test libdivinellvm.bc -nt `which divine` || divine compile --llvm --libraries-only
+    test libdivinert.bc -nt `which divine` || divine compile --llvm --libraries-only
 }
 
 llvm_prepare() {
