@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2008 Petr Rockai <me@mornfall.net>
 
+#include <wibble/test.h>
 #include <divine/toolkit/pool.h>
 
 using namespace divine;

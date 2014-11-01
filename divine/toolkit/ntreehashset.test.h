@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <numeric>
 
+using namespace brick;
 using namespace divine;
 using divine::algorithm::Hasher;
 
