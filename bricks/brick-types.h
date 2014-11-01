@@ -836,6 +836,7 @@ struct Union : Comparable {
     template< typename Target, bool anyCastPossible, int >
     Target _convert2( Preferred ) const {
         static_assert( anyCastPossible, "Cast of Union can never succeed" );
+        ASSERT_UNREACHABLE( "wrong _convert2 in Union" );
     }
 
     template< typename Target, bool any, int d, typename, typename... Ts >
