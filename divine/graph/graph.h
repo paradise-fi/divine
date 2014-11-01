@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2011-2014 Petr Rockai <me@mornfall.net>
 
 #include <vector>
+#include <brick-unittest.h>
+#include <brick-types.h>
 #include <brick-bitlevel.h>
 #include <divine/toolkit/pool.h>
 #include <divine/graph/label.h>
@@ -9,7 +11,6 @@
 #define DIVINE_GRAPH_H
 
 namespace divine {
-
 namespace graph {
 
 /// Types of acceptance condition
@@ -27,7 +28,7 @@ struct Allocator {
     int setSlack( int s ) { return _slack = s; }
     Pool &pool() { return _pool; }
     void setPool( Pool p ) { _pool = p; }
-    int slack() { assert_leq( 0, _slack ); return _slack; }
+    int slack() { ASSERT_LEQ( 0, _slack ); return _slack; }
 
     Allocator() : _pool( nullptr ), _slack( 0 ) {}
 
@@ -86,7 +87,7 @@ struct Base : Allocator {
 
     /// Makes a duplicate that can be released (permanent states are not duplicated)
     Node clone( Node n ) {
-        assert( pool().valid( n ) );
+        ASSERT( pool().valid( n ) );
         return copyState( n );
     }
 
@@ -117,21 +118,21 @@ struct Base : Allocator {
             }
 
             unsigned count = align( length, chunk ) / chunk;
-            assert_leq( int( (count - 1) * chunk ), length );
-            assert_leq( length, int( count * chunk ) );
+            ASSERT_LEQ( int( (count - 1) * chunk ), length );
+            ASSERT_LEQ( length, int( count * chunk ) );
 
             unsigned msb = brick::bitlevel::onlyMSB( count );
             unsigned nomsb = count & ~msb;
             unsigned rem = count * chunk - length;
-            assert_leq( 0, int( rem ) );
-            assert_leq( int( rem ), chunk );
+            ASSERT_LEQ( 0, int( rem ) );
+            ASSERT_LEQ( int( rem ), chunk );
 
             if ( !nomsb ) {
                 msb /= 2;
                 nomsb = msb;
             }
 
-            assert_eq( msb + nomsb, count );
+            ASSERT_EQ( msb + nomsb, count );
             cor.recurse( 2, msb * chunk, nomsb * chunk - rem, chunk );
         }
     }
@@ -143,7 +144,7 @@ template< typename G >
 struct Transform {
     G _base;
 
-    typedef wibble::Unit HasAllocator;
+    typedef brick::types::Unit HasAllocator;
     typedef typename G::Node Node;
     typedef typename G::Label Label;
     typedef G Graph;
@@ -227,8 +228,8 @@ struct Transform {
                 this->base().release( n );
             } );
 
-        assert_leq( 1, edge );
-        assert( found );
+        ASSERT_LEQ( 1, edge );
+        ASSERT( found );
         return edge;
     }
 

@@ -5,8 +5,9 @@
 #include <iterator>
 #include <tuple>
 
-#include <divine/toolkit/ntreehashset.h>
 #include <bricks/brick-hashset.h>
+
+#include <divine/toolkit/ntreehashset.h>
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/parallel.h> // for WithID
 
@@ -16,6 +17,7 @@
 namespace divine {
 namespace visitor {
 
+namespace hashset = brick::hashset;
 using hashset::Found;
 using hashset::isNew;
 
