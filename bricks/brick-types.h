@@ -1,7 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * Assorted types, mosly for C++11.
+ * Assorted types, mostly for C++11.
  * - Maybe a = Just a | Nothing (w/ a limited variant for C++98)
  * - Unit: single-valued type (empty structure)
  * - Union: distriminated (tagged) union
