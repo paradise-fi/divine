@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2014 Petr Rockai
+
 #include <divine/llvm/silk-parse.h>
 
 #ifndef DIVINE_LLVM_SILK_EVAL_H
@@ -59,8 +60,8 @@ struct Label {
     {}
 };
 
-using SymItem = wibble::Union< Value, Use, Symbol, Op >;
-using ConItem = wibble::Union< Value, Op >;
+using SymItem = brick::types::Union< Value, Use, Symbol, Op >;
+using ConItem = brick::types::Union< Value, Op >;
 using SymStack = std::vector< SymItem >;
 using ConStack = std::vector< ConItem >;
 using DefBlock = std::map< int, int >;
@@ -73,8 +74,8 @@ using ScopeStack = std::vector< std::vector< Value > >;
 
 struct Text {
     void add( Label l, Symbol bind, const SymStack &c ) {
-        assert_eq( l.id, int( code.size() ) );
-        assert_eq( l.id, int( binders.size() ) );
+        ASSERT_EQ( l.id, int( code.size() ) );
+        ASSERT_EQ( l.id, int( binders.size() ) );
         code.push_back( c );
         binders.push_back( bind );
     }
@@ -180,14 +181,14 @@ struct Evaluator {
     Evaluator( const Text &text ) : text( text ) {}
 
     Value vpop() {
-        assert( !stack.empty() );
+        ASSERT( !stack.empty() );
         auto v = stack.back();
         stack.pop_back();
         return v;
     }
 
     ConItem cpop() {
-        assert( !code.empty() );
+        ASSERT( !code.empty() );
         auto v = code.back();
         code.pop_back();
         return v;
@@ -204,8 +205,8 @@ struct Evaluator {
                         [&]( SymItem x ) {
                             return x.match( [&]( Value v ) -> ConItem { return v; },
                                             [&]( Use s ) -> ConItem {
-                                                assert( int( scope.size() ) > s.id );
-                                                assert( scope[ s.id ].size() );
+                                                ASSERT( int( scope.size() ) > s.id );
+                                                ASSERT( scope[ s.id ].size() );
                                                 return Value( scope[ s.id ].back() );
                                             },
                                             [&]( Symbol s ) -> ConItem { return Value( s.id ); },
@@ -235,7 +236,7 @@ struct Evaluator {
             case Op::LShift: return a << b;
             case Op::RShift: return a >> b;
         default:
-            assert_unreachable( "unknown binop" );                    
+            ASSERT_UNREACHABLE( "unknown binop" );                    
         }
     }
 
@@ -258,7 +259,7 @@ struct Evaluator {
             case Op::SubScope: {
                 Value block = vpop();
                 Value sym = vpop();
-                assert( text.defs[ block.v ].count( sym.v ) );
+                ASSERT( text.defs[ block.v ].count( sym.v ) );
                 /* bindings are always thunks */
                 return enter( Label( text.defs[ block.v ].find( sym.v )->second ), Value() );
             }
@@ -283,7 +284,7 @@ struct Evaluator {
     int reduce() {
         while ( !code.empty() )
             step();
-        assert_eq( int(stack.size()), 1 );
+        ASSERT_EQ( int(stack.size()), 1 );
         Value r = stack.back();
         stack.pop_back();
         return r.v;

@@ -2,8 +2,8 @@
 
 #define NO_RTTI
 
-#include <wibble/parse.h>
-#include <wibble/union.h>
+#include <brick-parse.h>
+#include <brick-types.h>
 
 #ifndef DIVINE_LLVM_SILK_PARSE_H
 #define DIVINE_LLVM_SILK_PARSE_H
@@ -32,7 +32,7 @@ enum class TI {
 
 const int TI_End = int( TI::BraceClose ) + 1;
 
-struct Token : wibble::Token< TI >
+struct Token : brick::parse::Token< TI >
 {
     static const TI Comment = TI::Comment;
     static const std::string tokenName[TI_End];
@@ -69,12 +69,12 @@ struct Token : wibble::Token< TI >
         return 0;
     }
 
-    Token( TI id, std::string data ) : wibble::Token< TI >( id, data ) {}
+    Token( TI id, std::string data ) : brick::parse::Token< TI >( id, data ) {}
     Token() = default;
 };
 
 template< typename Stream >
-struct Lexer : wibble::Lexer< Token, Stream >
+struct Lexer : brick::parse::Lexer< Token, Stream >
 {
     static int space( int c ) { return isspace( c ) && c != '\n'; }
     static int firstident( int c ) { return isalpha( c ) || c == '_'; }
@@ -109,7 +109,7 @@ struct Lexer : wibble::Lexer< Token, Stream >
     }
 
     Lexer( Stream &s )
-        : wibble::Lexer< Token, Stream >( s )
+        : brick::parse::Lexer< Token, Stream >( s )
     {}
 };
 
@@ -126,7 +126,7 @@ struct Buffer {
     Buffer( std::string s ) : buf( s ) {}
 };
 
-typedef wibble::Parser< Token, Lexer< Buffer > > Parser;
+typedef brick::parse::Parser< Token, Lexer< Buffer > > Parser;
 
 struct Expression;
 using ExpressionPtr = std::shared_ptr< Expression >;
@@ -174,7 +174,7 @@ using TypeBinOp = _BinOp< TypeExpression >;
 
 struct TypeExpression : Parser
 {
-    using E = wibble::Union< TypeBinOp, Identifier, TypeApplication >;
+    using E = brick::types::Union< TypeBinOp, Identifier, TypeApplication >;
     E e;
 
     struct Atom {};
@@ -280,7 +280,7 @@ struct SubScope {
 
 struct Expression : Parser {
 
-    using E = wibble::Union< BinOp, SubScope, Lambda, Constant, Identifier, IfThenElse, Application >;
+    using E = brick::types::Union< BinOp, SubScope, Lambda, Constant, Identifier, IfThenElse, Application >;
     E e;
 
     struct Atom {};

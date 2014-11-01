@@ -31,9 +31,9 @@ struct TestSilkParse {
 
         auto op = v.get< BinOp >();
         assert( op.op == TI::Plus );
-        Constant cnst = op.lhs->e;
+        Constant cnst( op.lhs->e );
         assert_eq( cnst.value, 2 );
-        cnst = op.rhs->e;
+        cnst = Constant( op.rhs->e );
         assert_eq( cnst.value, 3 );
     }
 
@@ -58,52 +58,52 @@ struct TestSilkParse {
     }
 
     Test scope_expr() {
-        SubScope c = _parse< Expression >( "{ a = 2 + 3; b = 4 }.b" ).e;
-        Constant s = c.lhs->e;
-        Identifier id = c.rhs->e;
+        SubScope c( _parse< Expression >( "{ a = 2 + 3; b = 4 }.b" ).e );
+        Constant s( c.lhs->e );
+        Identifier id( c.rhs->e );
     }
 
     Test scope_block() {
-        Constant c = _parse< Expression >( "def a = 2 + 3; b = 4 end" ).e;
+        Constant c( _parse< Expression >( "def a = 2 + 3; b = 4 end" ).e );
         assert( c.scope );
     }
 
     Test simple() {
-        BinOp op = _parse< Expression >( "x + 3" ).e;
+        BinOp op( _parse< Expression >( "x + 3" ).e );
         assert( op.op == TI::Plus );
-        Identifier id = op.lhs->e;
-        Constant cnst = op.rhs->e;
+        Identifier id( op.lhs->e );
+        Constant cnst( op.rhs->e );
         assert_eq( id.name, "x" );
         assert_eq( cnst.value, 3 );
     }
 
     Test lambda() {
-        Lambda l = _parse< Expression >( "|x| x + 3" ).e;
+        Lambda l( _parse< Expression >( "|x| x + 3" ).e );
         assert_eq( l.bind.name(), "x" );
-        BinOp op = l.body->e;
+        BinOp op( l.body->e );
         assert( op.op == TI::Plus );
-        Identifier id = op.lhs->e;
-        Constant cnst = op.rhs->e;
+        Identifier id( op.lhs->e );
+        Constant cnst( op.rhs->e );
         assert_eq( id.name, "x" );
         assert_eq( cnst.value, 3 );
     }
 
     Test nestedLambda() {
-        Lambda l1 = _parse< Expression >( "|x| |y| x + y" ).e;
+        Lambda l1( _parse< Expression >( "|x| |y| x + y" ).e );
         assert_eq( l1.bind.name(), "x" );
 
-        Lambda l2 = l1.body->e;
+        Lambda l2( l1.body->e );
         assert_eq( l2.bind.name(), "y" );
 
-        BinOp op = l2.body->e;
-        Identifier id1 = op.lhs->e;
-        Identifier id2 = op.rhs->e;
+        BinOp op( l2.body->e );
+        Identifier id1( op.lhs->e );
+        Identifier id2( op.rhs->e );
         assert_eq( id1.name, "x" );
         assert_eq( id2.name, "y" );
     }
 
     Test ifThenElse() {
-        IfThenElse i = _parse< Expression >( "if x then x + y else z + y" ).e;
+        IfThenElse i( _parse< Expression >( "if x then x + y else z + y" ).e );
         assert( i.cond->e.is< Identifier >() );
         assert( i.yes->e.is< BinOp >() );
         assert( i.no->e.is< BinOp >() );
@@ -111,49 +111,49 @@ struct TestSilkParse {
 
     Test complex() {
         auto i = _parse< Expression >( "if (|x| 3) then (if x + y then |a| 4 else |a| a) else |z| z + y" );
-        IfThenElse top = i.e;
-        Lambda cond = top.cond->e;
-        IfThenElse yes = top.yes->e;
-        Lambda no = top.no->e;
-        BinOp op = yes.cond->e;
+        auto top = IfThenElse( i.e );
+        auto cond = Lambda( top.cond->e );
+        auto yes = IfThenElse( top.yes->e );
+        auto no = Lambda( top.no->e );
+        auto op = BinOp( yes.cond->e );
         assert( op.op == TI::Plus );
     }
 
     Test associativity() {
-        BinOp top = _parse< Expression >( "1 + 2 + 3" ).e;
-        BinOp left = top.lhs->e;
-        Constant right = top.rhs->e;
+        auto top = BinOp( _parse< Expression >( "1 + 2 + 3" ).e );
+        auto left = BinOp( top.lhs->e );
+        auto right = Constant( top.rhs->e );
     }
 
     Test subscope1() {
-        BinOp top = _parse< Expression >( "1 + x.x" ).e;
-        Constant left = top.lhs->e;
-        SubScope right = top.rhs->e;
+        auto top = BinOp( _parse< Expression >( "1 + x.x" ).e );
+        auto left = Constant( top.lhs->e );
+        auto right = SubScope( top.rhs->e );
     }
 
     Test subscope2() {
-        BinOp top = _parse< Expression >( "x.x + 1" ).e;
-        SubScope left = top.lhs->e;
-        Constant right = top.rhs->e;
+        auto top = BinOp( _parse< Expression >( "x.x + 1" ).e );
+        auto left = SubScope( top.lhs->e );
+        auto right = Constant( top.rhs->e );
     }
 
     Test application() {
-        Application top = _parse< Expression >( "a b c" ).e;
-        Application left = top.lhs->e;
-        Identifier a = left.lhs->e;
-        Identifier b = left.rhs->e;
-        Identifier c = top.rhs->e;
+        auto top = Application( _parse< Expression >( "a b c" ).e );
+        auto left = Application( top.lhs->e );
+        auto a = Identifier( left.lhs->e );
+        auto b = Identifier( left.rhs->e );
+        auto c = Identifier( top.rhs->e );
         assert_eq( a.name, "a" );
         assert_eq( b.name, "b" );
         assert_eq( c.name, "c" );
     }
 
     Test compound() {
-        Application top = _parse< Expression >( "a (b + 1) c" ).e;
-        Application left = top.lhs->e;
-        Identifier a = left.lhs->e;
-        BinOp b = left.rhs->e;
-        Identifier c = top.rhs->e;
+        auto top = Application( _parse< Expression >( "a (b + 1) c" ).e );
+        auto left = Application( top.lhs->e );
+        auto a = Identifier( left.lhs->e );
+        auto b = BinOp( left.rhs->e );
+        auto c = Identifier( top.rhs->e );
         assert_eq( a.name, "a" );
         assert( b.op == TI::Plus );
         assert_eq( c.name, "c" );
@@ -172,14 +172,14 @@ struct TestSilkParse {
     }
 
     Test type() {
-        Lambda top = _parse< Expression >( "|x : _t| x" ).e;
+        Lambda( _parse< Expression >( "|x : _t| x" ).e );
     }
 
     Test type_fun() {
-        Lambda top = _parse< Expression >( "|x : _t -> _t| x" ).e;
+        Lambda( _parse< Expression >( "|x : _t -> _t| x" ).e );
     }
 
     Test type_pred() {
-        Lambda top = _parse< Expression >( "|x : fun? _t| x" ).e;
+        Lambda( _parse< Expression >( "|x : fun? _t| x" ).e );
     }
 };
