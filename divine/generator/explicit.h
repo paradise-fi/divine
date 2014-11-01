@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <functional>
+#include <brick-types.h>
 #include <divine/generator/common.h>
 #include <divine/explicit/explicit.h>
 #include <divine/graph/probability.h>
@@ -13,6 +14,8 @@
 namespace divine {
 namespace generator {
 
+using brick::types::Unit;
+
 namespace {
     template< typename Label >
     static inline void showLabel( std::stringstream &ss, const Label &l ) {
@@ -20,14 +23,13 @@ namespace {
     }
 
     template<>
-    inline void showLabel< wibble::Unit >( std::stringstream &,
-            const wibble::Unit & ) { }
+    inline void showLabel< Unit >( std::stringstream &, const Unit & ) { }
 }
 
 template< typename _Label >
 struct _Explicit : public Common< Blob > {
 
-    using IsExplicit = wibble::Unit;
+    using IsExplicit = Unit;
 
     using Node = Blob;
     using Label = _Label;
@@ -127,7 +129,7 @@ struct _Explicit : public Common< Blob > {
     dess::Explicit dess;
 };
 
-using Explicit = _Explicit< wibble::Unit >;
+using Explicit = _Explicit< Unit >;
 using ProbabilisticExplicit = _Explicit< graph::Probability >;
 
 }
