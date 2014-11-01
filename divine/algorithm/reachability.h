@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
+#include <brick-bitlevel.h>
+
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 
@@ -41,6 +43,8 @@ struct Identity { using Type = T; };
 
 template< typename T >
 struct Const { template< typename > struct Wrap { using Type = T; }; };
+
+using brick::bitlevel::compiletime::sizeOf;
 
 /**
  * A simple parallel reachability analysis implementation. Nothing to worry
@@ -142,13 +146,13 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup, Sh< typename Setup
         return shared;
     }
 
-    CommonReachability( Meta m ) : Algorithm( m, bitops::compiletime::sizeOf< Extension >() )
+    CommonReachability( Meta m ) : Algorithm( m, sizeOf< Extension >() )
     {
         this->init( *this );
     }
 
     CommonReachability( This &master, std::pair< int, int > id )
-        : Algorithm( master.meta(), bitops::compiletime::sizeOf< Extension >() )
+        : Algorithm( master.meta(), sizeOf< Extension >() )
     {
         this->init( *this, master, id );
     }
