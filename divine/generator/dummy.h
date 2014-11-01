@@ -38,7 +38,7 @@ struct Dummy : Common< Blob > {
     template< typename N, typename Yield >
     void successors( N st, Yield yield )
     {
-        return successors( st.getNode( this->pool() ), yield );
+        return successors( st.node(), yield );
     }
 
     template< typename Yield >
