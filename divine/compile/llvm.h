@@ -116,7 +116,7 @@ struct CompileLLVM {
             // note: mem* functions must be here since clang may emit llvm instrinsic
             // instead of them and this intrinsic needs to be later lowered to symbol
             linker.prune( { "_divine_start", "main", "memmove", "memset", "memcpy", "llvm.global_ctors" },
-                          brick::llvm::Prune::AllUnused );
+                          brick::llvm::Prune::UnusedModules ); // AllUnused );
             brick::llvm::writeModule( linker.get(), brick::fs::joinPath( rootDir.oldcwd, _env.output ) );
         }
 
