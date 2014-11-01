@@ -2,10 +2,6 @@
 
 #define NO_RTTI
 
-#include <wibble/exception.h>
-#include <wibble/test.h>
-#include <wibble/maybe.h>
-
 #include <divine/llvm/machine.h>
 #include <divine/llvm/program.h>
 
@@ -53,7 +49,7 @@ using ::llvm::AtomicRMWInst;
 namespace Intrinsic = ::llvm::Intrinsic;
 using ::llvm::CallSite;
 using ::llvm::Type;
-using wibble::Unit;
+using brick::types::Unit;
 
 template< int, int > struct Eq;
 template< int i > struct Eq< i, i > { typedef int Yes; };
@@ -88,14 +84,14 @@ MATCH( 4, deconsptr< 3 >( x ), deconsptr< 2 >( x ), deconsptr< 1 >( x ), deconsp
 #undef MATCH
 
 template< typename T >
-auto rem( wibble::Preferred, T a, T b )
+auto rem( brick::types::Preferred, T a, T b )
     -> decltype( a % b )
 {
     return a % b;
 }
 
 template< typename T >
-auto rem( wibble::NotPreferred, T a, T b )
+auto rem( brick::types::NotPreferred, T a, T b )
     -> decltype( std::fmod( a, b ) )
 {
     return std::fmod( a, b );
@@ -106,23 +102,23 @@ auto rem( wibble::NotPreferred, T a, T b )
 struct ControlContext {
     bool jumped;
     Choice choice;
-    void enter( int ) { assert_die(); }
-    void leave() { assert_die(); }
-    machine::Frame &frame( int /*depth*/ = 0 ) { assert_die(); }
-    machine::Flags &flags() { assert_die(); }
-    void problem( Problem::What, Pointer = Pointer() ) { assert_die(); }
-    PC &pc() { assert_die(); }
-    int new_thread( PC, Maybe< Pointer >, MemoryFlag ) { assert_die(); }
-    int stackDepth() { assert_die(); }
-    int threadId() { assert_die(); }
-    int threadCount() { assert_die(); }
-    void switch_thread( int ) { assert_die(); }
+    void enter( int ) { ASSERT_UNREACHABLE( "" ); }
+    void leave() { ASSERT_UNREACHABLE( "" ); }
+    machine::Frame &frame( int /*depth*/ = 0 ) { ASSERT_UNREACHABLE( "" ); }
+    machine::Flags &flags() { ASSERT_UNREACHABLE( "" ); }
+    void problem( Problem::What, Pointer = Pointer() ) { ASSERT_UNREACHABLE( "" ); }
+    PC &pc() { ASSERT_UNREACHABLE( "" ); }
+    int new_thread( PC, Maybe< Pointer >, MemoryFlag ) { ASSERT_UNREACHABLE( "" ); }
+    int stackDepth() { ASSERT_UNREACHABLE( "" ); }
+    int threadId() { ASSERT_UNREACHABLE( "" ); }
+    int threadCount() { ASSERT_UNREACHABLE( "" ); }
+    void switch_thread( int ) { ASSERT_UNREACHABLE( "" ); }
     void dump() {}
 };
 
 template< typename X >
 struct Dummy {
-    static X &v() { assert_die(); }
+    static X &v() { ASSERT_UNREACHABLE(""); }
 };
 
 /*
@@ -228,7 +224,7 @@ struct Evaluator
         auto operator()( X &r = Dummy< X >::v(),
                          X &a = Dummy< X >::v(),
                          X &b = Dummy< X >::v() )
-            -> decltype( declcheck( a + b, rem( wibble::Preferred(), a, b ) ) )
+            -> decltype( declcheck( a + b, rem( brick::types::Preferred(), a, b ) ) )
         {
             switch( this->i().opcode ) {
                 case LLVMInst::FAdd:
@@ -249,10 +245,10 @@ struct Evaluator
                 case LLVMInst::SRem:
                     if ( !b )
                         this->ccontext().problem( Problem::DivisionByZero );
-                    r = b ? rem( wibble::Preferred(), a, b ) : 0;
+                    r = b ? rem( brick::types::Preferred(), a, b ) : 0;
                     return Unit();
                 default:
-                    assert_unreachable( "invalid arithmetic opcode %d", this->i().opcode );
+                    ASSERT_UNREACHABLE_F( "invalid arithmetic opcode %d", this->i().opcode );
             }
         }
     };
@@ -274,13 +270,13 @@ struct Evaluator
 
             switch ( operation ) {
                 case Intrinsic::umul_with_overflow:
-                    assert( !this->evaluator().is_signed );
+                    ASSERT( !this->evaluator().is_signed );
                     r = a * b;
                     if ( a > 0 && b > 0 && ( r < a || r < b ) )
                         overflow = true;
                     return Unit();
                 case Intrinsic::uadd_with_overflow:
-                    assert( !this->evaluator().is_signed );
+                    ASSERT( !this->evaluator().is_signed );
                     r = a + b;
                     if ( r < a || r < b )
                         overflow = true;
@@ -293,9 +289,9 @@ struct Evaluator
                 case Intrinsic::smul_with_overflow:
                 case Intrinsic::sadd_with_overflow:
                 case Intrinsic::ssub_with_overflow:
-                    assert( this->evaluator().is_signed );
+                    ASSERT( this->evaluator().is_signed );
                 default:
-                    assert_unreachable( "invalid .with.overflow operation %d", operation );
+                    ASSERT_UNREACHABLE_F( "invalid .with.overflow operation %d", operation );
             }
         }
     };
@@ -316,7 +312,7 @@ struct Evaluator
                 case LLVMInst::AShr:  // XXX?
                 case LLVMInst::LShr:  r = a >> b; return Unit();
                 default:
-                    assert_unreachable( "invalid bitwise opcode %d", this->i().opcode );
+                    ASSERT_UNREACHABLE_F( "invalid bitwise opcode %d", this->i().opcode );
             }
         }
     };
@@ -650,7 +646,7 @@ struct Evaluator
                 case AtomicRMWInst::UMax: v = std::max( v, x ); return Unit();
                 case AtomicRMWInst::UMin:
                 case AtomicRMWInst::Min:  v = std::min( v, x ); return Unit();
-                case AtomicRMWInst::BAD_BINOP: assert_unreachable( "bad binop in atomicrmw" );
+                case AtomicRMWInst::BAD_BINOP: ASSERT_UNREACHABLE_F( "bad binop in atomicrmw" );
             }
 
             return Unit();
@@ -709,7 +705,7 @@ struct Evaluator
     void jumpTo( PC to )
     {
         if ( ccontext.pc().function != to.function )
-            assert_unreachable( "Can't deal with cross-function jumps." );
+            ASSERT_UNREACHABLE_F( "Can't deal with cross-function jumps." );
         switchBB( to );
     }
 
@@ -776,7 +772,7 @@ struct Evaluator
         ccontext.jumped = true;
 
         instruction = info.instruction( ccontext.pc() );
-        assert( instruction.op );
+        ASSERT( instruction.op );
 
         if ( !isa< ::llvm::PHINode >( instruction.op ) )
             return;  // Nothing fancy to do
@@ -1004,7 +1000,7 @@ struct Evaluator
             default:
                 /* We lowered everything else in buildInfo. */
                 instruction.op->dump();
-                assert_unreachable( "unexpected intrinsic %d", id );
+                ASSERT_UNREACHABLE_F( "unexpected intrinsic %d", id );
         }
     }
 
@@ -1084,7 +1080,7 @@ struct Evaluator
                             instruction.result() );
                 return;
             default:
-                assert_unreachable( "unknown builtin %d", instruction.builtin );
+                ASSERT_UNREACHABLE_F( "unknown builtin %d", instruction.builtin );
         }
     }
 
@@ -1137,7 +1133,7 @@ struct Evaluator
             }
         }
 
-        assert( !isa< ::llvm::PHINode >( instruction.op ) );
+        ASSERT( !isa< ::llvm::PHINode >( instruction.op ) );
     }
 
     /******** Dispatch ********/
@@ -1251,7 +1247,7 @@ struct Evaluator
 
             default:
                 instruction.op->dump();
-                assert_unreachable( "unknown opcode %d", instruction.opcode );
+                ASSERT_UNREACHABLE_F( "unknown opcode %d", instruction.opcode );
         }
 
         /* invoke and call are checked when ret executes */
@@ -1261,18 +1257,18 @@ struct Evaluator
     }
 
     template< typename Fun >
-    typename Fun::T implement( wibble::NotPreferred, Fun = Fun(), ... )
+    typename Fun::T implement( brick::types::NotPreferred, Fun = Fun(), ... )
     {
         instruction.op->dump();
-        assert_unreachable( "bad parameters for opcode %d", instruction.opcode );
+        ASSERT_UNREACHABLE_F( "bad parameters for opcode %d", instruction.opcode );
     }
 
     template< typename Fun, typename I, typename Cons,
             typename = decltype( match( std::declval< Fun & >(), std::declval< Cons & >() ) ) >
-    auto implement( wibble::Preferred, Fun fun, I i, I e, Cons list )
+    auto implement( brick::types::Preferred, Fun fun, I i, I e, Cons list )
         -> typename std::enable_if< Fun::arity == Cons::length, typename Fun::T >::type
     {
-        assert( i == e );
+        ASSERT( i == e );
         wibble::param::discard( i, e );
         fun._evaluator = this;
         auto retval = match( fun, list );
@@ -1286,13 +1282,13 @@ struct Evaluator
 
     template< typename Fun, typename I, typename Cons,
             typename = decltype( match( std::declval< Fun & >(), std::declval< Cons & >() ) ) >
-    auto implement( wibble::Preferred, Fun fun, I i, I e, Cons list )
+    auto implement( brick::types::Preferred, Fun fun, I i, I e, Cons list )
         -> typename std::enable_if< (Fun::arity > Cons::length), typename Fun::T >::type
     {
         typedef ProgramInfo::Value Value;
-        wibble::Preferred p;
+        brick::types::Preferred p;
 
-        assert( i != e );
+        ASSERT( i != e );
 
         ValueRef v = *i++;
         char *mem = dereference( v );
@@ -1311,7 +1307,7 @@ struct Evaluator
                     case 2: return implement( p, fun, i, e, consPtr< uint16_t >( mem, list ) );
                     case 8: return implement( p, fun, i, e, consPtr< uint64_t >( mem, list ) );
                 }
-                assert_unreachable( "Wrong integer width %d", v.v.width );
+                ASSERT_UNREACHABLE_F( "Wrong integer width %d", v.v.width );
             case Value::Pointer: case Value::Alloca:
                 return implement( p, fun, i, e, consPtr< Pointer >( mem, list ) );
             case Value::CodePointer:
@@ -1337,13 +1333,13 @@ struct Evaluator
         flags.push_back( MemoryFlags() );
         auto i = instruction.values.begin(), e = limit ? i + limit : instruction.values.end();
         result.push_back( instruction.result() );
-        return implement( wibble::Preferred(), fun, i, e, list::Nil() );
+        return implement( brick::types::Preferred(), fun, i, e, list::Nil() );
     }
 
     template< typename Fun >
     typename Fun::T _withValues( Fun fun ) {
         flags.push_back( MemoryFlags() );
-        return implement< Fun >( wibble::Preferred(), fun, values.begin(), values.end(), list::Nil() );
+        return implement< Fun >( brick::types::Preferred(), fun, values.begin(), values.end(), list::Nil() );
     }
 
     template< typename Fun, typename... Values >
