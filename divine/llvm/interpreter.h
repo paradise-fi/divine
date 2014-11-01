@@ -121,7 +121,7 @@ struct Interpreter
 
     template< typename N, typename... Args >
     MDNode *node( N *root, int n, Args... args ) {
-        if (root)
+        if ( root && isa< MDNode >( root->getOperand( n ) ) )
             return node( cast< MDNode >( root->getOperand(n) ), args... );
         return NULL;
     }
@@ -133,9 +133,13 @@ struct Interpreter
         // IR produced by clang 3.2 and 3.3
         // to make it worse I didn't find way to distinguish between those
         // by other method then trying
-        auto e = findEnum( node( meta, 0, 10, 0 ), lookup, 2 ); // clang <= 3.2
-        return e ? e : findEnum( node( meta, 0, 7 ), lookup, 3 ); // clang >= 3.3
-
+        for ( int modid = 0; modid < meta->getNumOperands(); ++modid ) {
+            auto e = findEnum( node( meta, modid, 10, 0 ), lookup, 2 ); // clang <= 3.2
+            if ( !e ) e = findEnum( node( meta, modid, 7 ), lookup, 3 ); // clang >= 3.3
+            if ( e )
+                return e;
+        }
+        return nullptr;
     }
 
     MDNode *findEnum( MDNode *enums, std::string lookup, int nameOperand ) {
