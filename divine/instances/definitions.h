@@ -30,8 +30,8 @@ FixArray< T > appendArray( FixArray< T > arr, T val ) {
 }
 
 enum class SelectOption { WarnOther = 0x1, LastDefault = 0x2, WarnUnavailable = 0x4, ErrUnavailable = 0x8 };
-using SelectOptions = wibble::StrongEnumFlags< SelectOption >;
-using wibble::operator|;
+using SelectOptions = brick::types::StrongEnumFlags< SelectOption >;
+using brick::types::operator|;
 
 struct Traits {
     /* this is kind of boilerplate code for accessing compile time macro definitions
