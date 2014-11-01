@@ -308,4 +308,55 @@ static inline PrealocateHelper preallocate( const std::string &path ) {
 }
 }
 
+namespace divine_test {
+namespace dess {
+
+using divine::dess::DataBlock;
+
+struct TestDataBlock {
+    TEST(empty) {
+        DataBlock empty;
+    }
+
+    /* this was dropped from code as it was not used
+    TEST(inserterT) {
+        char *data = new char[ 100 * sizeof( int64_t ) + 100 * 100 ];
+        DataBlock block( 100, data );
+
+        auto inserter = block.inserter< int64_t >();
+        for ( int i = 0; i < 100; ++i )
+            assert_eq( inserter.emplace( i ), i );
+        for ( int i = 0; i < 100; ++i )
+            assert_eq( block.get< int64_t >( i ), i );
+        for ( int64_t i = 0; i < 100; ++i )
+            block.map( i )( [ i ]( char *data, int64_t size ) -> void {
+                assert_eq( int64_t( sizeof( int64_t ) ), size );
+                assert_eq( *reinterpret_cast< int64_t *>( data ), i );
+            } );
+    } */
+
+    TEST(inserter) {
+        char *data = new char[ 100 * sizeof( int64_t ) + 100 * 100 ];
+        DataBlock block( 100, data );
+
+        auto inserter = block.inserter();
+        for ( int i = 0; i < 100; ++i )
+            ASSERT_EQ( inserter.emplace( std::max( size_t( i ), sizeof( int64_t ) ),
+                [ i ]( char *data, int64_t size ) -> int64_t {
+                    *reinterpret_cast< int64_t * >( data ) = i;
+                    return *reinterpret_cast< int64_t * >( data );
+                } ), i );
+        for ( int i = 0; i < 100; ++i )
+            ASSERT_EQ( block.get< int64_t >( i ), i );
+        for ( int64_t i = 0; i < 100; ++i )
+            block.map( i )( [ i ]( char *data, int64_t size ) -> void {
+                ASSERT_EQ( std::max( int64_t( i ), int64_t( sizeof( int64_t ) ) ), size );
+                ASSERT_EQ( *reinterpret_cast< int64_t *>( data ), i );
+            } );
+    }
+};
+
+}
+}
+
 #endif // DIVINE_COMPACT_COMPACT_H
