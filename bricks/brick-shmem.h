@@ -38,6 +38,7 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <brick-unittest.h>
+#include <deque>
 
 #if __cplusplus >= 201103L
 #include <mutex>
@@ -383,6 +384,67 @@ public:
         }
         return *head->read;
     }
+};
+
+/*
+ * A very simple spinlock-protected queue based on std::deque.
+ */
+
+template < typename T >
+struct LockedQueue {
+    typedef brick::shmem::SpinLock Mutex;
+    Mutex m;
+    brick::shmem::WeakAtomic< bool > _empty;
+    std::deque< T > q;
+
+    LockedQueue( void ) : _empty( true ) {}
+
+    bool empty() const { return _empty; }
+
+    void push( const T &x ) {
+        std::lock_guard< Mutex > lk( m );
+        q.push_back( x );
+        _empty = false;
+    }
+
+    void push( T &&x ) {
+        std::lock_guard< Mutex > lk( m );
+        q.push_back( std::move( x ) );
+        _empty = false;
+    }
+
+    /**
+     * Pops a whole chunk, to be processed by one thread as a whole.
+     */
+    T pop() {
+        T ret = T();
+
+        /* Prevent threads from contending for a lock if the queue is empty. */
+        if ( empty() )
+            return ret;
+
+        std::lock_guard< Mutex > lk( m );
+
+        if ( q.empty() )
+            return ret;
+
+        ret = std::move( q.front() );
+        q.pop_front();
+
+        if ( q.empty() )
+            _empty = true;
+
+        return ret;
+    }
+
+    void clear() {
+        std::lock_guard< Mutex > guard{ m };
+        q.clear();
+        _empty = true;
+    }
+
+    LockedQueue( const LockedQueue & ) = delete;
+    LockedQueue &operator=( const LockedQueue & ) = delete;
 };
 
 }
