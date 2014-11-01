@@ -92,7 +92,7 @@ struct base< block, Ext > : Ext {
     uint32_t &front() { return bits[ offset ]; }
 
     template< typename... X >
-    base( X&&... x ) : Ext( std::forward< X >( x )... ) {}
+    base( X&&... x ) : Ext( std::forward< X >( x )... ), offset( 0 ) {}
 };
 
 template< typename B, typename E >
