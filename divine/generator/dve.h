@@ -9,6 +9,7 @@
 #include <divine/dve/preprocessor.h>
 #include <divine/dve/interpreter.h>
 #include <divine/generator/common.h>
+#include <wibble/exception.h>
 
 #ifndef DIVINE_GENERATOR_DVE_H
 #define DIVINE_GENERATOR_DVE_H
