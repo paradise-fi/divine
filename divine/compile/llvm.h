@@ -23,13 +23,21 @@ extern stringtable libcxx_list[];
 
 namespace compile {
 
+static constexpr auto precompiledRuntime = "libdivinert.bc";
+
 struct CompileLLVM {
 
     CompileLLVM( Env &env ) : _env( env ) { }
 
     void compile() try {
-        if ( !_env.usePrecompiled.empty() )
-            linkFile( brick::fs::joinPath( _env.usePrecompiled, "libdivinellvm.bc" ) );
+        if ( !_env.usePrecompiled.empty() ) {
+            auto pre = ::llvm::ParseIRFile(
+                        brick::fs::joinPath( _env.usePrecompiled, precompiledRuntime ),
+                        err, ctx );
+            if ( !pre )
+                die( std::string( "Could not load precompiled library: " ) + err.getMessage().data() );
+            linker.load( pre );
+        }
 
         // create temporary directory to compile in
         brick::fs::TempDir tmpdir( "_divine-compile.XXXXXX",
@@ -69,7 +77,7 @@ struct CompileLLVM {
         }
 
         if ( _env.librariesOnly ) {
-            brick::llvm::writeModule( linker->get(), brick::fs::joinPath( rootDir.oldcwd, "libdivinellvm.bc" ) );
+            brick::llvm::writeModule( linker.get(), brick::fs::joinPath( rootDir.oldcwd, precompiledRuntime ) );
             return;
         }
 
@@ -107,8 +115,9 @@ struct CompileLLVM {
             // we must enter list of root, symbols not accessible from these will be pruned
             // note: mem* functions must be here since clang may emit llvm instrinsic
             // instead of them and this intrinsic needs to be later lowered to symbol
-            linker->prune( { "_divine_start", "main", "memmove", "memset", "memcpy", "llvm.global_ctors" } );
-            brick::llvm::writeModule( linker->get(), brick::fs::joinPath( rootDir.oldcwd, _env.output ) );
+            linker.prune( { "_divine_start", "main", "memmove", "memset", "memcpy", "llvm.global_ctors" },
+                          brick::llvm::Prune::AllUnused );
+            brick::llvm::writeModule( linker.get(), brick::fs::joinPath( rootDir.oldcwd, _env.output ) );
         }
 
     } catch ( brick::fs::SystemException &ex ) {
@@ -165,23 +174,17 @@ struct CompileLLVM {
 
     void linkFile( std::string file ) {
         std::cout << "linking " << file << std::endl;
-        std::unique_ptr< ::llvm::Module > mod( ::llvm::ParseIRFile( file, err, ctx ) );
+        auto mod = ::llvm::ParseIRFile( file, err, ctx );
         if ( !mod )
             die( std::string( "Linker error: " ) + err.getMessage().data() );
-        if ( !linker ) {
-            ASSERT( !root );
-            root = std::move( mod );
-            linker.reset( new brick::llvm::Linker( root.get() ) );
-        } else
-            linker->link( mod.get() );
+        linker.link( mod );
     }
 
   private:
     Env &_env;
     ::llvm::LLVMContext ctx;
     ::llvm::SMDiagnostic err;
-    std::unique_ptr< brick::llvm::Linker > linker;
-    std::unique_ptr< ::llvm::Module > root; //( ::llvm::ParseIRFile( main, err, ctx ) );
+    brick::llvm::Linker linker;
 };
 
 }
