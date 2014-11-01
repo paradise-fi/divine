@@ -4,11 +4,8 @@
 #include <array>
 #include <map>
 
-#include <wibble/typelist.h>
-#include <wibble/strongenumflags.h>
-#include <wibble/union.h>
-#include <wibble/mixin.h>
-#include <wibble/sfinae.h>
+#include <brick-types.h>
+#include <brick-hlist.h>
 
 #include <divine/utility/meta.h>
 #include <divine/llvm/support.h>
@@ -217,7 +214,7 @@ enum class Statistics {
 };
 
 // discriminated union of components
-struct Key : wibble::mixin::LexComparable< Key > {
+struct Key : brick::types::mixin::LexComparable< Key > {
     Type type;
     int key;
 
@@ -293,7 +290,10 @@ static inline std::string show( Key component ) {
 
 static inline std::ostream &operator<<( std::ostream &o, Key k ) { return o << show( k ); }
 
-using Instantiation = wibble::TypeList< Algorithm, Generator, Transform, Visitor, Store, Topology, Statistics >;
+using brick::hlist::TypeList;
+using brick::types::Union;
+
+using Instantiation = TypeList< Algorithm, Generator, Transform, Visitor, Store, Topology, Statistics >;
 using InstT = std::array< std::vector< Key >, Instantiation::length >;
 
 template< size_t i, typename I >
@@ -306,7 +306,7 @@ static inline InstT _buildInst( InstT &&inst, I ) {
 }
 
 template<>
-inline InstT _buildInst< Instantiation::length, wibble::TypeList<> >( InstT &&inst, wibble::TypeList<> ) {
+inline InstT _buildInst< Instantiation::length, TypeList<> >( InstT &&inst, TypeList<> ) {
     return inst;
 }
 
@@ -563,10 +563,10 @@ struct Not {
     std::unique_ptr< SupportedBy > val;
 };
 
-struct SupportedBy : wibble::Union< And, Or, Not, Key > {
+struct SupportedBy : Union< And, Or, Not, Key > {
     template< typename... Args >
     SupportedBy( Args &&...args ) :
-        wibble::Union< And, Or, Not, Key >( std::forward< Args >( args )... )
+        Union< And, Or, Not, Key >( std::forward< Args >( args )... )
     { }
 };
 
