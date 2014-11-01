@@ -69,6 +69,7 @@
 #define ASSERT_EQ(x, y) assert_eq_fn( BRICK_LOCATION( #x " == " #y ), x, y )
 #define ASSERT_LEQ(x, y) assert_leq_fn( BRICK_LOCATION( #x " <= " #y ), x, y )
 #define ASSERT_NEQ(x, y) assert_neq_fn( BRICK_LOCATION( #x " != " #y ), x, y )
+#define ASSERT_EQ_IDX(i, x, y) assert_eq_fn( BRICK_LOCATION( brick::string::fmtf( "%s at index %d", #x " == " #y, i ) ), x, y )
 #else
 #define ASSERT(x) ((void)0)
 #define ASSERT_PRED(p, x) ((void)0)
