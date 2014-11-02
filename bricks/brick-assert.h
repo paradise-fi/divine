@@ -34,9 +34,6 @@
 #include <string>
 #include <sstream>
 
-#ifndef BRICK_ASSERT_H
-#define BRICK_ASSERT_H
-
 #ifdef __divine__
 #include <divine.h>
 #endif
@@ -78,6 +75,9 @@
 #define ASSERT_UNIMPLEMENTED() assert_die_fn( BRICK_LOCATION( "not imlemented" ) )
 
 #define UNUSED __attribute__((unused))
+
+#ifndef BRICK_ASSERT_H
+#define BRICK_ASSERT_H
 
 namespace brick {
 namespace _assert {
