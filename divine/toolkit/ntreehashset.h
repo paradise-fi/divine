@@ -9,8 +9,8 @@
 #include <vector>
 #include <numeric>
 
-#include <wibble/test.h> // assert
-#include <bricks/brick-hashset.h>
+#include <brick-assert.h>
+#include <brick-hashset.h>
 
 #include <divine/toolkit/pool.h>
 
@@ -78,27 +78,27 @@ struct NTreeHashSet
         T &b() { return this->unwrap(); }
 
         LeafOr( Fork f ) : types::NewType< T >( f.unwrap() ) {
-            assert_eq( b().tag(), 0UL );
+            ASSERT_EQ( b().tag(), 0UL );
             b().setTag( 1 );
         }
 
         LeafOr( Leaf l ) : types::NewType< T >( l.unwrap() ) {
-            assert_eq( b().tag(), 0UL );
+            ASSERT_EQ( b().tag(), 0UL );
         }
 
         T blob() const { T blob( b() ); blob.setTag( 0 ); return blob; }
         bool isLeaf() const { return !isFork(); }
-        bool isFork() const { assert( b().tag() == 1 || b().tag() == 0 ); return b().tag(); }
+        bool isFork() const { ASSERT( b().tag() == 1 || b().tag() == 0 ); return b().tag(); }
         int32_t size( Pool &p ) const { return p.size( blob() ); }
         bool isNull( Pool &p ) const { return !p.valid( blob() ); }
 
         Fork fork() {
-            assert( isFork() );
+            ASSERT( isFork() );
             return Fork( blob() );
         }
 
         Leaf leaf() {
-            assert( isLeaf() );
+            ASSERT( isLeaf() );
             return Leaf( blob() );
         }
     };
@@ -110,7 +110,7 @@ struct NTreeHashSet
 
         template< typename Yield >
         void forChildren( Pool &p, Yield yield ) {
-            assert( self().forkcount( p ) );
+            ASSERT( self().forkcount( p ) );
             for ( int32_t i = 0; i < self().forkcount( p ); ++i )
                 yield( self().forkdata( p )[ i ] );
         }
@@ -175,12 +175,12 @@ struct NTreeHashSet
         explicit operator bool() { return !!this->unwrap(); }
 
         char *data( Pool &p ) {
-            assert( leaf( p ) );
+            ASSERT( leaf( p ) );
             return rawdata( p );
         }
 
         LeafOrFork *forkdata( Pool &p ) {
-            assert( !leaf( p ) );
+            ASSERT( !leaf( p ) );
             return reinterpret_cast< LeafOrFork *> ( rawdata( p ) );
         }
 
@@ -193,7 +193,7 @@ struct NTreeHashSet
 
         T reassemble( Pool& p )
         {
-            assert( p.valid( b() ) );
+            ASSERT( p.valid( b() ) );
             if ( leaf( p ) ) {
                 int32_t size = p.size( b() ) - sizeof( Header );
                 assert_leq( 0, size );
@@ -221,12 +221,12 @@ struct NTreeHashSet
                 assert_leq( outptr - p.dereference( out ), p.size( out ) );
                 outptr = std::copy( l.data( p ), l.data( p ) + p.size( l.unwrap() ), outptr );
             }
-            assert_eq( outptr - p.dereference( out ), p.size( out ) );
+            ASSERT_EQ( outptr - p.dereference( out ), p.size( out ) );
             return out;
         }
 
         static Root createFlat( insert_type it, Pool& pool ) {
-            assert( pool.valid( it ) );
+            ASSERT( pool.valid( it ) );
             Root r;
             r.unwrap() = pool.allocate( sizeof( Header ) + pool.size( it ) );
             r.header( pool ).forks = 0;
@@ -327,9 +327,9 @@ struct NTreeHashSet
             bool equal = true;
 
             root.forAllLeaves( pool(), [&] ( Leaf leaf ) {
-                    assert( equal );
-                    assert( this->pool().valid( leaf.unwrap() ) );
-                    assert( itemPtr != nullptr );
+                    ASSERT( equal );
+                    ASSERT( this->pool().valid( leaf.unwrap() ) );
+                    ASSERT( itemPtr != nullptr );
                     assert_leq( 0, pos );
 
                     Pool &p = this->pool();
@@ -362,8 +362,8 @@ struct NTreeHashSet
         typename LeafSet::ThreadData leaves;
         Splitter *_splitter;
         Pool *_pool;
-        Splitter &splitter() { assert( _splitter ); return *_splitter; }
-        Pool &pool() { assert( _pool ); return *_pool; }
+        Splitter &splitter() { ASSERT( _splitter ); return *_splitter; }
+        Pool &pool() { ASSERT( _pool ); return *_pool; }
 
         ThreadData() : _splitter( nullptr ), _pool( nullptr ) {}
         ThreadData( Pool &p, Splitter &sp )
@@ -441,17 +441,17 @@ struct NTreeHashSet
             char *start, *current;
             int size;
 
-            Fork &fork() { assert( stack.size() > 1 ); return stack.back().first;  }
+            Fork &fork() { ASSERT( stack.size() > 1 ); return stack.back().first;  }
 
             int forkcount() {
-                assert( !stack.empty() );
+                ASSERT( !stack.empty() );
                 return stack.size() == 1 ?
                        root.forkcount( td.pool() ) :
                        fork().forkcount( td.pool() );
             }
 
             LeafOrFork *forkdata() {
-                assert( !stack.empty() );
+                ASSERT( !stack.empty() );
                 return stack.size() == 1 ?
                        root.forkdata( td.pool() ) :
                        fork().forkdata( td.pool() );
@@ -479,25 +479,25 @@ struct NTreeHashSet
 
             void split( int subdivides ) {
                 if ( stack.empty() ) { /* no root yet, create it */
-                    assert( !td.pool().valid( root.unwrap() ) );
+                    ASSERT( !td.pool().valid( root.unwrap() ) );
                     root = Root::create( item, subdivides, d.slack, td.pool() );
                     stack.emplace_back( Fork(), 0 );
                 } else
                     stack.emplace_back( Fork( subdivides, td.pool() ), 0 );
             }
 
-            void advance() { assert( !stack.empty() ); stack.back().second ++; }
+            void advance() { ASSERT( !stack.empty() ); stack.back().second ++; }
 
             void join() {
                 auto f = stack.back().first;
-                assert_eq( forkcount(), stack.back().second );
+                ASSERT_EQ( forkcount(), stack.back().second );
                 stack.pop_back();
                 if ( !stack.empty() ) {
                     assert_leq( &target(), forkdata() + forkcount() );
                     target() = insert( d.forks, td.forks, f );
                     advance();
                 }
-                assert( td.pool().valid( root.unwrap() ) );
+                ASSERT( td.pool().valid( root.unwrap() ) );
             }
 
             template< typename... R >
@@ -514,7 +514,7 @@ struct NTreeHashSet
                 assert_leq( current + length, start + size );
 
                 if ( stack.empty() ) {
-                    assert( !td.pool().valid( root.unwrap() ) );
+                    ASSERT( !td.pool().valid( root.unwrap() ) );
                     root = Root::createFlat( item, td.pool() );
                 } else {
                     target() = insert( d.leaves, td.leaves,
@@ -530,10 +530,10 @@ struct NTreeHashSet
             SplitCoroutine cor( _d, _td, item );
             _td.splitter().splitHint( cor );
 
-            assert_eq( static_cast< void * >( cor.current ),
+            ASSERT_EQ( static_cast< void * >( cor.current ),
                        static_cast< void * >( cor.start + cor.size ) );
 
-            assert( cor.stack.empty() );
+            ASSERT( cor.stack.empty() );
             auto tr = _d.roots.withTD( _td.roots ).insertHinted( cor.root, hash );
             if ( !tr.isnew() )
                 _td.pool().free( cor.root.unwrap() );
@@ -755,42 +755,42 @@ struct TestNTreeHashSet {
     TEST(binary2) {
         TestBase< FakeGeneratorBinary > test;
 
-        // assert_eq( test.set().hasher.slack(), 0 );
+        // ASSERT_EQ( test.set().hasher.slack(), 0 );
 
         Blob b = test.pool().allocate( 33 );
         for ( unsigned i = 0; i < 33; ++i )
             test.pool().dereference( b )[ i ] = char(i & 0xff);
 
         auto root = test.insert( b );
-        assert( root.isnew() );
-        assert( !root->leaf( test.pool() ) );
-        assert_eq( size_t( test.pool().size( root->b() ) ),
+        ASSERT( root.isnew() );
+        ASSERT( !root->leaf( test.pool() ) );
+        ASSERT_EQ( size_t( test.pool().size( root->b() ) ),
                    sizeof( BlobSet::Root::Header ) + 2 * sizeof( BlobSet::LeafOrFork ) );
-        assert_eq( root->forkcount( test.pool() ), 2 );
+        ASSERT_EQ( root->forkcount( test.pool() ), 2 );
 
         auto children = root->childvector( test.pool() );
 
-        assert( children[ 0 ].isLeaf() );
-        assert( children[ 1 ].isLeaf() );
+        ASSERT( children[ 0 ].isLeaf() );
+        ASSERT( children[ 1 ].isLeaf() );
 
-        assert_eq( children.size(), 2UL );
+        ASSERT_EQ( children.size(), 2UL );
 
-        assert_eq( children[ 0 ].leaf().size( test.pool() ), 17 );
-        assert_eq( children[ 1 ].leaf().size( test.pool() ), 16 );
+        ASSERT_EQ( children[ 0 ].leaf().size( test.pool() ), 17 );
+        ASSERT_EQ( children[ 1 ].leaf().size( test.pool() ), 16 );
 
         for ( unsigned i = 0; i < 33; ++i )
-            assert_eq( c2u( children[ i / 17 ].leaf().data( test.pool() )[ i % 17 ] ), i & 0xff );
+            ASSERT_EQ( c2u( children[ i / 17 ].leaf().data( test.pool() )[ i % 17 ] ), i & 0xff );
 
         Blob b2 = root->reassemble( test.pool() );
-        assert( test.pool().equal( b, b2 ) );
+        ASSERT( test.pool().equal( b, b2 ) );
 
         auto rootVal = valDeref( root ); // avoid iterator invalidation on insert
 
-        assert( !test.insert( b ).isnew() );
+        ASSERT( !test.insert( b ).isnew() );
 
         auto root2 = test.get( b );
-        assert( !root2.isnew() );
-        assert_eq( rootVal.b().raw(), root2->b().raw() );
+        ASSERT( !root2.isnew() );
+        ASSERT_EQ( rootVal.b().raw(), root2->b().raw() );
 
         for ( auto x : { b, b2 } )
             test.pool().free( x );
@@ -806,50 +806,50 @@ struct TestNTreeHashSet {
             test.pool().dereference( b )[ i ] = char(i & 0xff);
 
         auto root = test.insert( b );
-        assert( root.isnew() );
-        assert( !root->leaf( test.pool() ) );
-        assert_eq( root->forkcount( test.pool() ), 2 );
+        ASSERT( root.isnew() );
+        ASSERT( !root->leaf( test.pool() ) );
+        ASSERT_EQ( root->forkcount( test.pool() ), 2 );
         auto children = root->childvector( test.pool() );
 
-        assert( children[ 0 ].isFork() );
-        assert( children[ 1 ].isFork() );
+        ASSERT( children[ 0 ].isFork() );
+        ASSERT( children[ 1 ].isFork() );
 
-        assert_eq( children.size(), 2UL );
+        ASSERT_EQ( children.size(), 2UL );
 
-        assert_eq( children[ 0 ].fork().forkcount( test.pool() ), 2 );
-        assert_eq( children[ 1 ].fork().forkcount( test.pool() ), 2 );
+        ASSERT_EQ( children[ 0 ].fork().forkcount( test.pool() ), 2 );
+        ASSERT_EQ( children[ 1 ].fork().forkcount( test.pool() ), 2 );
 
         auto left = children[ 0 ].fork().childvector( test.pool() );
         auto right = children[ 1 ].fork().childvector( test.pool() );
 
-        assert( left[ 0 ].isLeaf() );
-        assert( left[ 1 ].isLeaf() );
-        assert( right[ 0 ].isLeaf() );
-        assert( right[ 1 ].isLeaf() );
+        ASSERT( left[ 0 ].isLeaf() );
+        ASSERT( left[ 1 ].isLeaf() );
+        ASSERT( right[ 0 ].isLeaf() );
+        ASSERT( right[ 1 ].isLeaf() );
 
-        assert_eq( left.size(), 2UL );
-        assert_eq( right.size(), 2UL );
+        ASSERT_EQ( left.size(), 2UL );
+        ASSERT_EQ( right.size(), 2UL );
 
-        assert_eq( left[ 0 ].leaf().size( test.pool() ), 17 );
-        assert_eq( left[ 1 ].leaf().size( test.pool() ), 17 );
-        assert_eq( right[ 0 ].leaf().size( test.pool() ), 17 );
-        assert_eq( right[ 1 ].leaf().size( test.pool() ), 16 );
+        ASSERT_EQ( left[ 0 ].leaf().size( test.pool() ), 17 );
+        ASSERT_EQ( left[ 1 ].leaf().size( test.pool() ), 17 );
+        ASSERT_EQ( right[ 0 ].leaf().size( test.pool() ), 17 );
+        ASSERT_EQ( right[ 1 ].leaf().size( test.pool() ), 16 );
 
         for ( unsigned i = 0; i < 67; ++i )
-            assert_eq( c2u( ( i < 34 ? left : right )[ (i / 17) % 2 ]
+            ASSERT_EQ( c2u( ( i < 34 ? left : right )[ (i / 17) % 2 ]
                             .leaf().data( test.pool() )[ i % 17 ] ),
                        i & 0xff );
 
         Blob b2 = root->reassemble( test.pool() );
-        assert( test.pool().equal( b, b2 ) );
+        ASSERT( test.pool().equal( b, b2 ) );
 
         auto rootVal = valDeref( root );
 
-        assert( !test.insert( b ).isnew() );
+        ASSERT( !test.insert( b ).isnew() );
 
         auto r = test.get( b );
-        assert( !r.isnew() );
-        assert_eq( rootVal.b().raw(), r->b().raw() );
+        ASSERT( !r.isnew() );
+        ASSERT_EQ( rootVal.b().raw(), r->b().raw() );
 
         for ( auto x : { b, b2 } )
             test.pool().free( x );
@@ -874,28 +874,28 @@ struct TestNTreeHashSet {
             test.pool().dereference( b )[ i ] = char(i & 0xff);
 
         auto root = test.insert( b );
-        assert( root.isnew() );
+        ASSERT( root.isnew() );
         for ( unsigned i = 0; i < 1000; ++i )
-            assert_eq( c2u( test.pool().dereference( b )[ i ] ), i & 0xff );
+            ASSERT_EQ( c2u( test.pool().dereference( b )[ i ] ), i & 0xff );
 
-        assert_eq( root->leaf( test.pool() ), leaf );
+        ASSERT_EQ( root->leaf( test.pool() ), leaf );
         if ( root->leaf( test.pool() ) ) {
             for ( unsigned i = 0; i < 1000; ++i )
-                assert_eq( c2u( root->data( test.pool() )[ i ] ), i & 0xff );
+                ASSERT_EQ( c2u( root->data( test.pool() )[ i ] ), i & 0xff );
         }
 
         Blob b2 = root->reassemble( test.pool() );
         for ( unsigned i = 0; i < 1000; ++i )
-            assert_eq( c2u( test.pool().dereference( b2 )[ i ] ), i & 0xff );
-        assert( test.pool().equal( b, b2 ) );
+            ASSERT_EQ( c2u( test.pool().dereference( b2 )[ i ] ), i & 0xff );
+        ASSERT( test.pool().equal( b, b2 ) );
 
         auto rootVal = valDeref( root );
 
-        assert( !test.insert( b ).isnew() );
+        ASSERT( !test.insert( b ).isnew() );
 
         auto root2 = test.get( b );
-        assert( !root2.isnew() );
-        assert_eq( rootVal.b().raw(), root2->b().raw() );
+        ASSERT( !root2.isnew() );
+        ASSERT_EQ( rootVal.b().raw(), root2->b().raw() );
 
         for ( auto x : { b, b2 } )
             test.pool().free( x );
@@ -942,22 +942,22 @@ struct TestNTreeHashSet {
         Blob b1 = randomBlob( 128, test.pool() );
         Blob b2 = randomBlob( 128, test.pool() );
         Blob c = concatBlob( { b1, b2 }, test.pool() );
-        assert_neq( size_t( &test.set()._d.leaves ), size_t( &test.set()._d.forks ) );
-        assert_neq( size_t( &test.set()._d.leaves ), size_t( &test.set()._d.roots ) );
+        ASSERT_NEQ( size_t( &test.set()._d.leaves ), size_t( &test.set()._d.forks ) );
+        ASSERT_NEQ( size_t( &test.set()._d.leaves ), size_t( &test.set()._d.roots ) );
         test.insert( b1 );
         test.insert( b2 );
         size_t leaves = count( test.leaves(), test.pool() );
         size_t forks = count( test.forks(), test.pool() );
 
-        assert( !test.insert( b1 ).isnew() );
-        assert_eq( leaves, count( test.leaves(), test.pool() ) );
-        assert_eq( forks, count( test.forks(), test.pool() ) );
-        assert_eq( 2ul, count( test.roots(), test.pool() ) );
+        ASSERT( !test.insert( b1 ).isnew() );
+        ASSERT_EQ( leaves, count( test.leaves(), test.pool() ) );
+        ASSERT_EQ( forks, count( test.forks(), test.pool() ) );
+        ASSERT_EQ( 2ul, count( test.roots(), test.pool() ) );
 
         test.insert( c );
-        assert_eq( leaves, count( test.leaves(), test.pool() ) );
-        assert_eq( forks + 2, count( test.forks(), test.pool() ) );
-        assert_eq( 3ul, count( test.roots(), test.pool() ) );
+        ASSERT_EQ( leaves, count( test.leaves(), test.pool() ) );
+        ASSERT_EQ( forks + 2, count( test.forks(), test.pool() ) );
+        ASSERT_EQ( 3ul, count( test.roots(), test.pool() ) );
     }
 
     TEST(incrementalHash) {
@@ -967,26 +967,26 @@ struct TestNTreeHashSet {
         hash128_t hash = test.pool().hash( b );
         auto root = *test.insert( b );
         hash128_t rootHash = test.set()._d.roots.hasher.hash( root );
-        assert_eq( rootHash.first, hash.first );
-        assert_eq( rootHash.second, hash.second );
+        ASSERT_EQ( rootHash.first, hash.first );
+        ASSERT_EQ( rootHash.second, hash.second );
     }
 
     TEST(internalReuse) {
         TestBase< FakeGeneratorBinary > test;
 
         Blob b = randomBlob( 128, test.pool() );
-        assert( test.insert( b ).isnew() );
+        ASSERT( test.insert( b ).isnew() );
         size_t leaves = count( test.leaves(), test.pool() );
         size_t forks = count( test.forks(), test.pool() );
-        assert_eq( 1ul, count( test.roots(), test.pool() ) );
+        ASSERT_EQ( 1ul, count( test.roots(), test.pool() ) );
 
         BlobSet set( Hasher( test.pool() ) );
         Blob composite = concatBlob( { b, b }, test.pool() );
-        assert( test.insertSet( set, composite ).isnew() );
+        ASSERT( test.insertSet( set, composite ).isnew() );
 
-        assert_eq( leaves, count( set._d.leaves, test.pool() ) );
-        assert_eq( forks + 1, count( set._d.forks, test.pool() ) ); // tree it higher by one
-        assert_eq( 1ul, count( set._d.roots, test.pool() ) );
+        ASSERT_EQ( leaves, count( set._d.leaves, test.pool() ) );
+        ASSERT_EQ( forks + 1, count( set._d.forks, test.pool() ) ); // tree it higher by one
+        ASSERT_EQ( 1ul, count( set._d.roots, test.pool() ) );
     }
 
     TEST(shortLeaves) {
@@ -994,27 +994,27 @@ struct TestNTreeHashSet {
 
         Blob b32 = randomBlob( 32, test.pool() );
         auto r32 = valDeref( test.insert( b32 ) );
-        assert( test.pool().equal( b32, r32.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b32, r32.reassemble( test.pool() ) ) );
 
         Blob b37 = randomBlob( 37, test.pool() );
         auto r37 = valDeref( test.insert( b37 ) );
-        assert( test.pool().equal( b37, r37.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b37, r37.reassemble( test.pool() ) ) );
 
         Blob b41 = randomBlob( 41, test.pool() );
         auto r41 = valDeref( test.insert( b41 ) );
-        assert( test.pool().equal( b41, r41.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b41, r41.reassemble( test.pool() ) ) );
 
         Blob b44 = randomBlob( 44, test.pool() );
         auto r44 = valDeref( test.insert( b44 ) );
-        assert( test.pool().equal( b44, r44.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b44, r44.reassemble( test.pool() ) ) );
 
         Blob b46 = randomBlob( 46, test.pool() );
         auto r46 = valDeref( test.insert( b46 ) );
-        assert( test.pool().equal( b46, r46.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b46, r46.reassemble( test.pool() ) ) );
 
         Blob b47 = randomBlob( 47, test.pool() );
         auto r47 = valDeref( test.insert( b47 ) );
-        assert( test.pool().equal( b47, r47.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b47, r47.reassemble( test.pool() ) ) );
     }
 
 };
