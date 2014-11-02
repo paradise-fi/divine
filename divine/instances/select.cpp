@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 //             (c) 2013 Petr Rockai <me@mornfall.net>
 
+#include <brick-string.h>
+
 #include <divine/instances/definitions.h>
 #include <divine/instances/select.h>
 
@@ -48,13 +50,13 @@ std::nullptr_t errorMissing( FixArray< Key > trace ) {
     std::cerr << "ERROR: " << std::get< 1 >( showGen( trace.back() ) ) << " is not available "
               << "while selecting " << std::get< 0 >( showGen( trace.back() ) ) << "." << std::endl
               << "    Selector came to dead end after selecting: "
-              << wibble::str::fmt( trace ) << std::endl;
+              << brick::string::fmt( trace ) << std::endl;
     return nullptr;
 }
 
 std::nullptr_t noDefault( FixArray< Key > trace ) {
     std::cerr << "ERROR: Selector came to dead end after selecting: "
-              << wibble::str::fmt( trace ) << std::endl
+              << brick::string::fmt( trace ) << std::endl
               << "    No default available." << std::endl;
     return nullptr;
 }
@@ -76,7 +78,7 @@ void warnOtherAvailable( Meta metacopy, Key k ) {
             if ( skipped.empty() )
                 return;
 
-            std::cerr << "WARNING: symbols " << wibble::str::fmt_container( skipped, '{', '}' )
+            std::cerr << "WARNING: symbols " << brick::string::fmt_container( skipped, '{', '}' )
                       << " were not selected because " << std::get< 1 >( showGen( k ) )
                       << " has higher priority." << std::endl
                       << "    When instantiating " << std::get< 0 >( showGen( k ) ) << "." << std::endl;
@@ -95,7 +97,7 @@ std::string stringTrace( Trace trace ) {
     std::vector< std::string > vec;
     for ( auto i : trace )
         vec.emplace_back( std::get< 1 >( showGen( i ) ) );
-    return wibble::str::fmt( vec );
+    return brick::string::fmt( vec );
 }
 
 template< typename I >
@@ -110,7 +112,7 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
     }
 
     if ( component->empty() ) {
-        std::cerr << "FATAL: component list empty at " << wibble::str::fmt( sofar ) << std::endl;
+        std::cerr << "FATAL: component list empty at " << brick::string::fmt( sofar ) << std::endl;
         throw nullptr;
     }
 
@@ -142,7 +144,7 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
 
     if ( !available ) {
         std::cerr << "FATAL: no valid component for " << std::get< 0 >( showGen( *component->begin() ) )
-                  << " was built, at " << wibble::str::fmt( sofar ) << std::endl;
+                  << " was built, at " << brick::string::fmt( sofar ) << std::endl;
         throw nullptr;
     }
 

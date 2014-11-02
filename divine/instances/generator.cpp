@@ -1,8 +1,7 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 //                 2013 Petr Ročkai <me@mornfall.net>
 
-#include <divine/instances/definitions.h>
-#include <wibble/sys/fs.h>
+#include <brick-fs.h>
 
 #include <array>
 #include <cstdint>
@@ -12,6 +11,8 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+
+#include <divine/instances/definitions.h>
 
 namespace divine {
 namespace instantiate {
@@ -310,7 +311,7 @@ struct InstGenerator {
         std::string sdata = data.str();
 
         std::ifstream ifile{ name };
-        if ( !ifile.good() || wibble::sys::fs::readFile( ifile ) != sdata ) {
+        if ( !ifile.good() || brick::fs::readFile( ifile ) != sdata ) {
             ifile.close();
             std::ofstream ofile{ name };
             ofile << sdata;

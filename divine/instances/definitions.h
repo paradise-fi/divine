@@ -6,6 +6,7 @@
 
 #include <brick-types.h>
 #include <brick-hlist.h>
+#include <brick-string.h>
 
 #include <divine/utility/meta.h>
 #include <divine/llvm/support.h>
@@ -369,7 +370,7 @@ struct GenSelect {
     { }
 
     bool operator()( const Meta &meta ) {
-        return wibble::str::endsWith( meta.input.model, extension )
+        return brick::string::endsWith( meta.input.model, extension )
             && (!useProb || (prob == meta.input.probabilistic))
             && (property.empty() || meta.input.properties.count( property ) );
 
