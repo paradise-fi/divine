@@ -5,7 +5,6 @@
 #include <wibble/mixin.h>
 #include <wibble/test.h>
 #include <divine/toolkit/blob.h> // for align
-#include <divine/toolkit/bittuple.h>
 
 #include <divine/llvm/wrap/Function.h>
 

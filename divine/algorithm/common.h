@@ -4,6 +4,7 @@
 #include <brick-rpc.h>
 #include <brick-hlist.h>
 #include <brick-types.h>
+#include <brick-bitlevel.h>
 
 #include <divine/toolkit/pool.h>
 #include <divine/toolkit/parallel.h>
@@ -16,6 +17,11 @@
 
 namespace divine {
 namespace algorithm {
+
+using brick::bitlevel::BitTuple;
+using brick::bitlevel::BitField;
+using brick::bitlevel::BitLock;
+using std::get;
 
 struct Hasher {
     const int slack;

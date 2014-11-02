@@ -4,7 +4,6 @@
 
 #include <divine/graph/label.h>
 #include <divine/algorithm/reachability.h>
-#include <divine/toolkit/bittuple.h>
 
 #ifndef DIVINE_ALGORITHM_CSDR_H
 #define DIVINE_ALGORITHM_CSDR_H

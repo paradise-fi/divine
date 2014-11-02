@@ -3,7 +3,6 @@
 #include <divine/algorithm/common.h>
 #include <divine/algorithm/metrics.h>
 #include <divine/graph/ltlce.h>
-#include <divine/toolkit/bittuple.h>
 
 #ifndef DIVINE_ALGORITHM_MAP_H
 #define DIVINE_ALGORITHM_MAP_H
