@@ -4,7 +4,7 @@
 #include <map>
 #include <mutex>
 #include <condition_variable>
-#include <wibble/test.h>
+#include <brick-assert.h>
 
 #ifndef DIVINE_BARRIER_H
 #define DIVINE_BARRIER_H
@@ -68,7 +68,7 @@ struct Barrier {
     }
 
     bool maybeIdle( T *who, bool really, bool sleep ) {
-        assert( m_expect );
+        ASSERT( m_expect );
         if ( m_regd < m_expect )
             return false;
 
@@ -93,7 +93,7 @@ struct Barrier {
             }
         }
 
-        assert( who_is_ours );
+        ASSERT( who_is_ours );
         (void)who_is_ours;
 
         // we are now holding whatever we could get at; let's check that
@@ -113,7 +113,7 @@ struct Barrier {
         // certainly, there are at least as many sleepers as we could lock
         // out... there may be more, since they might have let gone of the
         // global mutex, but still haven't arrived to the condition wait
-        assert_leq( int( locked.size() ), m_sleeping );
+        ASSERT_LEQ( int( locked.size() ), m_sleeping );
 
         // we drop all locks (but we hold on to the global one)
         for ( auto &i : locked )
@@ -280,7 +280,7 @@ struct TestBarrier {
         }
         for ( int i = 0; i < count; ++i ) {
             threads[ i ].join();
-            assert_eq( threads[ i ].i % 3, 1 );
+            ASSERT_EQ( threads[ i ].i % 3, 1 );
         }
         barrier.clear();
     }

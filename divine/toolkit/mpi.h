@@ -2,9 +2,8 @@
 
 #include <mutex>
 
+#include <brick-assert.h>
 #include <brick-shmem.h>
-
-#include <wibble/param.h>
 
 #include <divine/toolkit/rpc.h>
 #include <divine/toolkit/pool.h>
@@ -113,7 +112,7 @@ public:
 #if OPT_MPI
             return MPI::COMM_WORLD.Send( buf, count, MPI::BYTE, dest, tag );
 #else
-            wibble::param::discard( buf, count, dest, tag );
+            brick::_assert::unused( buf, count, dest, tag );
 #endif
     }
 
@@ -122,7 +121,7 @@ public:
         return MPI::COMM_WORLD.Isend( buf, count, MPI::BYTE, dest, tag );
 #else
         return MpiRequest();
-        wibble::param::discard( buf, count, dest, tag );
+        brick::_assert::unused( buf, count, dest, tag );
 #endif
     }
 
@@ -130,7 +129,7 @@ public:
 #if OPT_MPI
         MPI::COMM_WORLD.Recv( mem, count, MPI::BYTE, source, tag, st );
 #else
-        wibble::param::discard( mem, count, source, tag, st );
+        brick::_assert::unused( mem, count, source, tag, st );
 #endif
     }
 
@@ -142,7 +141,7 @@ public:
         } else
             return MPI::COMM_WORLD.Iprobe( source, tag, st );
 #endif
-        wibble::param::discard( source, tag, st, wait );
+        brick::_assert::unused( source, tag, st, wait );
         return false;
     }
 
@@ -150,7 +149,7 @@ public:
 #if OPT_MPI
         return st.Get_count( MPI::BYTE );
 #endif
-        wibble::param::discard( st );
+        brick::_assert::unused( st );
         return 0;
     }
 
@@ -238,7 +237,8 @@ public:
             if ( global().monitor.size() >= size_t( tag ) && global().monitor[ tag ] ) {
                 if ( global().monitor[ tag ]->process( _lock, status ) == Done )
                     return Done;
-            } else assert_die();
+            } else
+                ASSERT_UNREACHABLE_F( "unexpected tag %d", tag );
         }
 
 #ifdef __unix
@@ -296,7 +296,7 @@ struct MpiForwarder : Terminable, MpiMonitor, brick::shmem::Thread {
     int m_localMin, m_localMax;
 
     Comms &comms() {
-        assert( m_comms );
+        ASSERT( m_comms );
         return *m_comms;
     }
 
@@ -394,7 +394,7 @@ struct MpiForwarder : Terminable, MpiMonitor, brick::shmem::Thread {
 
         int from, to;
         in_buffer >> from >> to;
-        assert_pred( isLocal, to );
+        ASSERT_PRED( isLocal, to );
 
         while ( !in_buffer.empty() ) {
             in_buffer >> b;
@@ -421,7 +421,7 @@ struct MpiForwarder : Terminable, MpiMonitor, brick::shmem::Thread {
             case TAG_TERMINATED:
                 return m_barrier->idle( this ) ? Done : Continue;
             default:
-                assert_die();
+                ASSERT_UNREACHABLE_F( "unexpected tag %d", status.Get_tag() );
         }
     }
 

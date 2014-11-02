@@ -23,7 +23,7 @@ Mpi::Mpi( bool forceMpi )
         } else
             s_data->isMpi = false;
 #else
-        wibble::param::discard( forceMpi );
+        brick::_assert::unused( forceMpi );
 #endif
         s_data->instances = 1;
     } else

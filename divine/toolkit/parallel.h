@@ -2,6 +2,7 @@
 //             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <mutex>
+#include <brick-types.h>
 #include <brick-shmem.h>
 #include <divine/toolkit/barrier.h>
 #include <divine/toolkit/mpi.h>
@@ -153,7 +154,7 @@ struct FifoMatrix
         for ( int from = 0; size_t( from ) < m_matrix.size(); ++from )
             if ( pending( from, to ) )
                 return take( from, to );
-        assert_die();
+        ASSERT_UNREACHABLE_F( "take on %d unexpectedly failed", to );
     }
 
     void resize( int size ) {
@@ -223,7 +224,7 @@ struct Sequential : WithID {
  */
 template< template < typename > class Topology, typename Instance >
 struct Parallel : Terminable, WithID {
-    typedef wibble::Unit IsParallel;
+    typedef brick::types::Unit IsParallel;
 
     Topology< Instance > *m_topology;
     typedef typename Topology< Instance >::Comms Comms;
@@ -242,7 +243,7 @@ struct Parallel : Terminable, WithID {
     template< typename M = Instance >
     void becomeMaster( int n ) {
         is_master = true;
-        assert( !m_topology );
+        ASSERT( !m_topology );
         m_topology = new Topology< Instance >( n ); // TODO int is kind of limited
         setId( -1, -1 , -1, -1, m_topology->rank() ); /* try to catch anyone thinking to use our ID */
     }
@@ -258,13 +259,13 @@ struct Parallel : Terminable, WithID {
     }
 
     Topology< Instance > &topology() {
-        assert( m_topology );
+        ASSERT( m_topology );
         return *m_topology;
     }
 
     // the original pool on machine
     const Pool &masterPool() const {
-        assert( m_topology );
+        ASSERT( m_topology );
         return m_topology->masterPool();
     }
 
@@ -273,7 +274,7 @@ struct Parallel : Terminable, WithID {
     }
 
     bool idle() {
-        assert( !is_master );
+        ASSERT( !is_master );
         m_busy = false;
         m_interrupt = false;
         bool res = topology().barrier().idle( static_cast< Instance* >( this ) );
@@ -310,7 +311,7 @@ struct Parallel : Terminable, WithID {
 
     /// Submit a message.
     void submit( int from, int to, typename Comms::T value ) {
-        assert( from < peers() );
+        ASSERT( from < peers() );
         comms().submit( from, to, value );
         topology().wakeup( to );
     }
@@ -671,7 +672,7 @@ struct TestParallel {
             ASSERT_EQ_IDX( i, vec[ i ].i, 1 );
     }
 
-    struct ParallelCounter : Parallel< Topology< wibble::Unit >::Local, ParallelCounter >
+    struct ParallelCounter : Parallel< Topology< brick::types::Unit >::Local, ParallelCounter >
     {
         Counter counter;
 
