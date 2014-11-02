@@ -9,6 +9,11 @@
 namespace divine {
 namespace dess {
 
+static inline void die( std::string &&msg ) {
+    std::cout << msg << std::endl;
+    std::abort();
+}
+
 static std::string showCapability( Capability c ) {
 #define SHOW_CAPABILITY( C ) if ( c == Capability::C ) return #C;
     SHOW_CAPABILITY( ForwardEdges );

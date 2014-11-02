@@ -34,11 +34,6 @@ static const int64_t CURRENT_DCESS_VERSION = 1;
 static const uint64_t EXPECTED_BYTE_ORDER = 0x0807060504030201ULL;
 static const size_t GENERATOR_FIELD_LENGTH = 24UL;
 
-static inline void die( std::string &&msg ) {
-    std::cout << msg << std::endl;
-    std::abort();
-}
-
 struct Header {
     // some meta about divine & compact
     char magic[ MAGIC_LENGTH ];                     //  40B
