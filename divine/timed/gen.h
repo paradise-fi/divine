@@ -1,3 +1,4 @@
+// -*- C++ -*-
 #include <utap/utap.h>
 #include <dbm/print.h>
 #include <wibble/test.h>

@@ -1,4 +1,7 @@
-#include "utils.h"
+#include <divine/timed/utils.h>
+
+namespace divine {
+namespace timed {
 
 UTAP::expression_t negIneq( const UTAP::expression_t& expr ) {
     assert_eq( expr.getSize(), 2u );
@@ -50,4 +53,7 @@ bool addCut( const UTAP::expression_t& expr, int pId, std::vector< Cut >& cuts )
         return true;
     }
     return false;
+}
+
+}
 }

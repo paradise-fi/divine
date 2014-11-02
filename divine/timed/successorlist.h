@@ -1,6 +1,10 @@
+// -*- C++ -*-
 #include <algorithm>
 #include <limits>
 #include <wibble/test.h>
+
+namespace divine {
+namespace timed {
 
 // Simple structure for storing blocks of data with eqaual size
 class BlockList {
@@ -139,3 +143,6 @@ struct EnabledInfo {
         prio.append( edgePrio );
     }
 };
+
+}
+}

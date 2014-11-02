@@ -1,3 +1,4 @@
+// -*- C++ -*-
 #include <iostream>
 #include <iomanip>
 #include <vector>
@@ -14,6 +15,9 @@
 
 #ifndef DIVINE_TIMED_URA_H
 #define DIVINE_TIMED_URA_H
+
+namespace divine {
+namespace timed {
 
 namespace Ura {
 
@@ -637,6 +641,9 @@ struct ura {
             << std::endl;
     }
 };
+}
+
+}
 }
 
 #endif

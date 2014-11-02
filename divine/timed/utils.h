@@ -6,6 +6,9 @@
 #ifndef DIVINE_TIMED_UTILS_H
 #define DIVINE_TIMED_UTILS_H
 
+namespace divine {
+namespace timed {
+
 struct Cut {
     UTAP::expression_t pos;
     UTAP::expression_t neg;
@@ -109,5 +112,8 @@ public:
         return err;
     }
 };
+
+}
+}
 
 #endif
