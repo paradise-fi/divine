@@ -118,7 +118,7 @@ struct ControlContext {
 
 template< typename X >
 struct Dummy {
-    static X &v() { ASSERT_UNREACHABLE(""); }
+    static X &v() { ASSERT_UNREACHABLE( "" ); }
 };
 
 /*
@@ -342,7 +342,8 @@ struct Evaluator
                          X &b = Dummy< X >::v() )
             -> typename std::enable_if< sizeof( R ) == 1, decltype( declcheck( r = a < b ) ) >::type
         {
-            switch (dyn_cast< ICmpInst >( this->i().op )->getPredicate()) {
+            auto p = dyn_cast< ICmpInst >( this->i().op )->getPredicate();
+            switch ( p ) {
                 case ICmpInst::ICMP_EQ:  r = a == b; return Unit();
                 case ICmpInst::ICMP_NE:  r = a != b; return Unit();
                 case ICmpInst::ICMP_ULT:
@@ -353,7 +354,7 @@ struct Evaluator
                 case ICmpInst::ICMP_SLE: r = a <= b; return Unit();
                 case ICmpInst::ICMP_UGE:
                 case ICmpInst::ICMP_SGE: r = a >= b; return Unit();
-                default: assert_die();
+                default: ASSERT_UNREACHABLE_F( "unexpected icmp op %d", p );
             }
         }
     };
@@ -367,7 +368,8 @@ struct Evaluator
             -> typename std::enable_if< sizeof( R ) == 1,
                                         decltype( declcheck( r = isnan( a ) && isnan( b ) ) ) >::type
         {
-            switch ( dyn_cast< FCmpInst >( this->i().op )->getPredicate() ) {
+            auto p = dyn_cast< FCmpInst >( this->i().op )->getPredicate();
+            switch ( p ) {
                 case FCmpInst::FCMP_FALSE: r = false; return Unit();
                 case FCmpInst::FCMP_TRUE:  r = true;  return Unit();
                 case FCmpInst::FCMP_ORD:   r = !isnan( a ) && !isnan( b ); return Unit();
@@ -395,10 +397,10 @@ struct Evaluator
                         return Unit();
                     }
                     break;
-                default: assert_die();
+                default: ASSERT_UNREACHABLE_F( "unexpected fcmp op %d", p );
             }
 
-            switch ( dyn_cast< FCmpInst >( this->i().op )->getPredicate() ) {
+            switch ( p ) {
                 case FCmpInst::FCMP_OEQ:
                 case FCmpInst::FCMP_UEQ: r = a == b; return Unit();
                 case FCmpInst::FCMP_ONE:
@@ -415,7 +417,7 @@ struct Evaluator
 
                 case FCmpInst::FCMP_OGE:
                 case FCmpInst::FCMP_UGE: r = a >= b; return Unit();
-                default: assert_die();
+                default: ASSERT_UNREACHABLE_F( "unexpected fcmp op %d", p );
             }
         }
     };
@@ -438,7 +440,7 @@ struct Evaluator
 
     void implement_bitcast() {
         auto r = memcopy( instruction.operand( 0 ), instruction.result(), instruction.result().width );
-        assert_eq( r, Problem::NoProblem );
+        ASSERT_EQ( r, Problem::NoProblem );
         static_cast< void >( r );
     }
 
@@ -527,7 +529,7 @@ struct Evaluator
             return Unit();
         }
         MemoryFlag resultFlag( std::vector< MemoryFlag > x ) {
-            assert_leq( 2U, x.size() );
+            ASSERT_LEQ( 2U, x.size() );
             return x[1];
         }
     };
@@ -676,21 +678,21 @@ struct Evaluator
                                     compositeOffsetFromInsn( instruction.op->getOperand(0)->getType(), 1,
                                                              instruction.values.size() - 1 ) ),
                           instruction.result(), instruction.result().width );
-        assert_eq( r, Problem::NoProblem );
+        ASSERT_EQ( r, Problem::NoProblem );
         static_cast< void >( r );
     }
 
     void implement_insertvalue() { /* NB. Implemented against spec, UNTESTED! */
         /* first copy the original */
         auto r = memcopy( instruction.operand( 0 ), instruction.result(), instruction.result().width );
-        assert_eq( r, Problem::NoProblem );
+        ASSERT_EQ( r, Problem::NoProblem );
         /* write the new value over the selected field */
         r = memcopy( instruction.operand( 1 ),
                      ValueRef( instruction.result(), 0, -1,
                                compositeOffsetFromInsn( instruction.op->getOperand(0)->getType(), 2,
                                                         instruction.values.size() - 1 ) ),
                      instruction.operand( 1 ).width );
-        assert_eq( r, Problem::NoProblem );
+        ASSERT_EQ( r, Problem::NoProblem );
         static_cast< void >( r );
     }
 
@@ -934,7 +936,7 @@ struct Evaluator
             case Intrinsic::trap:
             case Intrinsic::vaend:
             case Intrinsic::vacopy:
-                assert_unimplemented(); /* TODO */
+                ASSERT_UNIMPLEMENTED(); /* TODO */
             case Intrinsic::eh_typeid_for: {
                 auto tag = withValues( Get< Pointer >(), instruction.operand( 0 ) );
                 int type_id = info.function( ccontext.pc() ).typeID( tag );
@@ -1269,7 +1271,7 @@ struct Evaluator
         -> typename std::enable_if< Fun::arity == Cons::length, typename Fun::T >::type
     {
         ASSERT( i == e );
-        wibble::param::discard( i, e );
+        brick::_assert::unused( i, e );
         fun._evaluator = this;
         auto retval = match( fun, list );
         auto mflag = econtext.memoryflag( result.back() );
@@ -1324,7 +1326,7 @@ struct Evaluator
                 return implement( p, fun, i, e, list ); /* ignore void items */
         }
 
-        assert_die();
+        ASSERT_UNREACHABLE_F( "unexpected value type %d", v.v.type );
     }
 
     template< typename Fun, int Limit = 3 >

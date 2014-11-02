@@ -1,9 +1,9 @@
 // -*- C++ -*- (c) 2012-2014 Petr Ročkai <me@mornfall.net>
 
 #include <brick-bitlevel.h>
+#include <brick-types.h>
+#include <brick-assert.h>
 
-#include <wibble/mixin.h>
-#include <wibble/test.h>
 #include <divine/toolkit/blob.h> // for align
 
 #include <divine/llvm/wrap/Function.h>
@@ -36,7 +36,7 @@ using brick::bitlevel::BitPointer;
 
 struct Pointer;
 
-struct PC : wibble::mixin::Comparable< PC >
+struct PC : brick::types::Comparable
 {
     uint32_t instruction:17;
     uint32_t function:13; /* must not be at end, since clang assumes that the
@@ -69,13 +69,13 @@ struct PC : wibble::mixin::Comparable< PC >
  * segments*. Each allocation creates a new segment. Pointers cannot cross
  * segment boundaries through pointer arithmetic or any other manipulation.
  */
-struct Pointer : wibble::mixin::Comparable< Pointer >
+struct Pointer : brick::types::Comparable
 {
     static const uint32_t offsetSize = 14;
     static const uint32_t segmentSize = 16;
 
-    uint32_t offset:offsetSize;// TODO use a bittuple for guaranteed layout; offset
-                       // *must* be stored in the lowest 14 bits
+    uint32_t offset:offsetSize; // TODO use a bittuple for guaranteed layout; offset
+                                // *must* be stored in the lowest 14 bits
     uint32_t segment:segmentSize;
     bool heap:1; /* make a (0, 0) pointer different from NULL */
     uint32_t code:1;
@@ -194,7 +194,7 @@ struct ProgramInfo {
             return found == typeIDs.end() ? 0 : 1 + (found - typeIDs.begin());
         }
         Instruction &instruction( PC pc ) {
-            assert_leq( int( pc.instruction ), int( instructions.size() ) - 1 );
+            ASSERT_LEQ( int( pc.instruction ), int( instructions.size() ) - 1 );
             return instructions[ pc.instruction ];
         }
         Function() : datasize( 0 ) {}
@@ -226,7 +226,7 @@ struct ProgramInfo {
     }
 
     Function &function( PC pc ) {
-        assert_leq( int( pc.function ), int( functions.size() ) - 1 );
+        ASSERT_LEQ( int( pc.function ), int( functions.size() ) - 1 );
         return functions[ pc.function ];
     }
 
@@ -259,7 +259,7 @@ struct ProgramInfo {
 
     template< typename T >
     void makeConstant( Value &result, T value ) {
-        assert_leq( sizeof( T ), result.width );
+        ASSERT_LEQ( sizeof( T ), result.width );
         allocateConstant( result );
         constant< T >( result ) = value;
     }
@@ -279,12 +279,12 @@ struct ProgramInfo {
     void storeConstant( Value result, ::llvm::Constant *, bool global = false );
 
     bool globalPointerInBounds( Pointer p ) {
-        assert_leq( int( p.segment ), int( globals.size() ) - 1 );
+        ASSERT_LEQ( int( p.segment ), int( globals.size() ) - 1 );
         return p.offset < globals[ p.segment ].width;
     }
 
     int globalPointerOffset( Pointer p ) {
-        assert_leq( int( p.segment ), int( globals.size() ) - 1 );
+        ASSERT_LEQ( int( p.segment ), int( globals.size() ) - 1 );
         assert( globalPointerInBounds( p ) );
         return globals[ p.segment ].offset + p.offset;
     }
@@ -374,15 +374,15 @@ struct GlobalContext {
     ::llvm::TargetData &TD;
     bool allow_global;
 
-    Pointer malloc( int, int ) { assert_die(); }
-    bool free( Pointer ) { assert_die(); }
-    int pointerSize( Pointer ) { assert_die(); }
+    Pointer malloc( int, int ) { ASSERT_UNREACHABLE( "" ); }
+    bool free( Pointer ) { ASSERT_UNREACHABLE( "" ); }
+    int pointerSize( Pointer ) { ASSERT_UNREACHABLE( "" ); }
 
     std::vector< int > pointerId( ::llvm::Instruction * ) {
-        assert_unreachable( "no pointerId in global context" );
+        ASSERT_UNREACHABLE( "no pointerId in global context" );
     }
     int pointerId( Pointer ) {
-        assert_unreachable( "no pointerId in global context" );
+        ASSERT_UNREACHABLE( "no pointerId in global context" );
     }
 
     MemoryBits memoryflag( Pointer ) { return MemoryBits(); }
@@ -397,7 +397,7 @@ struct GlobalContext {
     char *dereference( Pointer p ) {
         if ( !p.heap && allow_global )
             return &info.globaldata[ info.globalPointerOffset( p ) ];
-        assert_die();
+        ASSERT_UNREACHABLE( "dereferencing invalid pointer in GlobalContext" );
     }
 
     char *dereference( ValueRef v ) {
@@ -406,7 +406,7 @@ struct GlobalContext {
         else if ( v.v.global && allow_global )
             return &info.globaldata[ v.v.offset + v.offset ];
         else
-            assert_unreachable( "dereferencing invalid value in GlobalContext" );
+            ASSERT_UNREACHABLE( "dereferencing invalid value in GlobalContext" );
     }
 
     GlobalContext( ProgramInfo &i, ::llvm::TargetData &TD, bool global )

@@ -63,7 +63,7 @@ divine::Blob Interpreter< HM, L >::initial( Function *f, bool is_start )
         ++ fl;
     }
     int tid = state.new_thread(); // switches automagically
-    assert_eq( tid, 0 ); // just to be on the safe side...
+    ASSERT_EQ( tid, 0 ); // just to be on the safe side...
     static_cast< void >( tid );
     state.enter( info().functionmap[ f ] );
 
@@ -74,10 +74,10 @@ divine::Blob Interpreter< HM, L >::initial( Function *f, bool is_start )
             auto ctor_arr = ::llvm::cast< ::llvm::ConstantArray >( ctors->getInitializer() );
             auto ctors_val = info().valuemap[ ctors ];
 
-            assert_eq( fun.values[ 0 ].width, sizeof( int ) );
-            assert_eq( fun.values[ 1 ].width, ctors_val.width );
-            assert_eq( fun.values[ 2 ].width, sizeof( int ) );
-            assert( info().module->getFunction( "main" ) );
+            ASSERT_EQ( fun.values[ 0 ].width, sizeof( int ) );
+            ASSERT_EQ( fun.values[ 1 ].width, ctors_val.width );
+            ASSERT_EQ( fun.values[ 2 ].width, sizeof( int ) );
+            ASSERT( info().module->getFunction( "main" ) );
 
             for ( int i = 0; i <= 2; ++i )
                 state.memoryflag( fun.values[ i ] ).set( MemoryFlag::Data );

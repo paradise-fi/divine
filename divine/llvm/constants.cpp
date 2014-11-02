@@ -37,7 +37,7 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
             case sizeof( float ): mem = reinterpret_cast< uint8_t * >( &fl ); break;
             case sizeof( double ): mem = reinterpret_cast< uint8_t * >( &dbl ); break;
             case sizeof( long double ): mem = reinterpret_cast< uint8_t * >( &ldbl ); break;
-            default: assert_unreachable( "non-double, non-float FP constant" );
+            default: ASSERT_UNREACHABLE( "non-double, non-float FP constant" );
         }
         std::copy( mem, mem + v.width, econtext.dereference( v ) );
     } else if ( isa< ::llvm::ConstantPointerNull >( C ) ) {
@@ -49,7 +49,7 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
             getCodePointer( C );
     } else if ( C->getType()->isPointerTy() ) {
         C->dump();
-        assert_unreachable( "unexpected non-zero constant pointer" );
+        ASSERT_UNREACHABLE( "unexpected non-zero constant pointer" );
     } else if ( isa< ::llvm::ConstantArray >( C ) || isa< ::llvm::ConstantStruct >( C ) ) {
         int offset = 0;
         for ( int i = 0; i < int( C->getNumOperands() ); ++i ) {
@@ -62,18 +62,18 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
             char *to = econtext.dereference( v ) + offset;
             std::copy( from, from + sub.width, to );
             offset += sub.width;
-            assert_leq( offset, int( v.width ) );
+            ASSERT_LEQ( offset, int( v.width ) );
         }
         /* and padding at the end ... */
     } else if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( C ) ) {
-        assert_eq( v.width, CDS->getNumElements() * CDS->getElementByteSize() );
+        ASSERT_EQ( v.width, CDS->getNumElements() * CDS->getElementByteSize() );
         const char *raw = CDS->getRawDataValues().data();
         std::copy( raw, raw + v.width, econtext.dereference( v ) );
     } else if ( dyn_cast< ::llvm::ConstantVector >( C ) ) {
-        assert_unimplemented();
+        ASSERT_UNIMPLEMENTED();
     } else {
         C->dump();
-        assert_unreachable( "unknown constant type" );
+        ASSERT_UNREACHABLE( "unknown constant type" );
     }
 }
 

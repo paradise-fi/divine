@@ -2,11 +2,10 @@
 
 #include <brick-types.h>
 #include <brick-bitlevel.h>
+#include <brick-assert.h>
 
 #include <divine/llvm/program.h>
 #include <divine/toolkit/lens.h>
-
-#include <wibble/param.h>
 
 #include <divine/llvm/wrap/Constants.h>
 #include <divine/llvm/wrap/Metadata.h>
@@ -186,8 +185,8 @@ struct Frame : WithMemory< Frame > {
 
     template< typename T = char >
     T *dereference( ProgramInfo &i, ValueRef v ) {
-        assert_leq( int( v.v.offset + v.offset ), datasize( i ) );
-        wibble::param::discard( i );
+        ASSERT_LEQ( int( v.v.offset + v.offset ), datasize( i ) );
+        brick::_assert::unused( i );
         return reinterpret_cast< T * >( memory() + v.offset + v.v.offset );
     }
 };
@@ -203,7 +202,7 @@ struct Globals : WithMemory< Globals > {
     }
 
     MemoryBits memoryflag( ProgramInfo &i, Pointer p ) {
-        assert( owns( i, p ) );
+        ASSERT( owns( i, p ) );
         return MemoryBits( memory() + i.globalsize, i.globalPointerOffset( p ) );
     }
 
@@ -218,7 +217,7 @@ struct Globals : WithMemory< Globals > {
 
     template< typename T = char >
     T *dereference( ProgramInfo &i, Pointer p ) {
-        assert( owns( i, p ) );
+        ASSERT( owns( i, p ) );
         if ( !i.globalPointerInBounds( p ) )
             return nullptr;
         return reinterpret_cast< T * >(
@@ -238,12 +237,12 @@ struct Heap : WithMemory< Heap > {
     }
 
     uint16_t &jumptable( Pointer p ) {
-        assert( owns( p ) );
+        ASSERT( owns( p ) );
         return jumptable( p.segment );
     }
 
     MemoryBits memoryflag( Pointer p ) {
-        assert( owns( p ) );
+        ASSERT( owns( p ) );
         return MemoryBits( memory() + size_jumptable( segcount ),
                            offset( p ) );
     }
@@ -253,12 +252,12 @@ struct Heap : WithMemory< Heap > {
     }
 
     int offset( Pointer p ) {
-        assert( owns( p ) );
+        ASSERT( owns( p ) );
         return int( jumptable( p ) * 4 ) + p.offset;
     }
 
     int size( Pointer p ) {
-        assert( owns( p ) );
+        ASSERT( owns( p ) );
         return 4 * (jumptable( p.segment + 1 ) - jumptable( p ));
     }
 
@@ -273,7 +272,7 @@ struct Heap : WithMemory< Heap > {
 
     template< typename T = char >
     T *dereference( Pointer p ) {
-        assert( owns( p ) );
+        ASSERT( owns( p ) );
         if ( p.offset >= size( p ) )
             return nullptr;
         return reinterpret_cast< T * >(
@@ -291,7 +290,7 @@ struct Nursery {
         int segment = offsets.size() - 1;
         int start = offsets[ segment ];
         int end = align( start + size, 4 );
-        assert_leq( segment + segshift, int( 1u << Pointer::segmentSize ) - 1 );
+        ASSERT_LEQ( segment + segshift, int( 1u << Pointer::segmentSize ) - 1 );
         offsets.push_back( end );
         memory.resize( end, 0 );
         flags.resize( size_memoryflags( end ), 0 );
@@ -304,12 +303,12 @@ struct Nursery {
     }
 
     int offset( Pointer p ) {
-        assert( owns( p ) );
+        ASSERT( owns( p ) );
         return offsets[ p.segment - segshift ] + p.offset;
     }
 
     int size( Pointer p ) {
-        assert( owns( p ) );
+        ASSERT( owns( p ) );
         return offsets[ p.segment - segshift + 1] - offsets[ p.segment - segshift ];
     }
 
@@ -318,10 +317,10 @@ struct Nursery {
     }
 
     char *dereference( Pointer p ) {
-        assert( owns( p ) );
+        ASSERT( owns( p ) );
         if ( offset( p ) >= offsets[ offsets.size() - 1 ] )
             return nullptr;
-        assert_leq( offsets[ p.segment - segshift ] + size( p ), offsets[ offsets.size() - 1 ] );
+        ASSERT_LEQ( offsets[ p.segment - segshift ] + size( p ), offsets[ offsets.size() - 1 ] );
         return &memory[ offset( p ) ];
     }
 
@@ -361,7 +360,7 @@ struct HeapIDs : WithMemory< HeapIDs > {
     int end() { return 0; }
 
     int &idAt( int idx ) {
-        assert_leq( idx, count - 1 );
+        ASSERT_LEQ( idx, count - 1 );
         return reinterpret_cast< int * >( memory() )[ idx ];
     }
 
@@ -373,7 +372,7 @@ struct HeapIDs : WithMemory< HeapIDs > {
 
     static void badPointerId( ::llvm::Instruction *i ) {
         i->dump();
-        assert_unreachable( "Malformed aa_def metadata encountered." );
+        ASSERT_UNREACHABLE( "Malformed aa_def metadata encountered." );
     }
 
     static std::vector< int > pointerId( ::llvm::Instruction *insn )
@@ -543,7 +542,7 @@ struct MachineState
             return global().memoryflag( _info, p );
         if( constantPointer( p ) )
             return MemoryBits();
-        assert_unreachable( "invalid pointer passed to memoryflags" );
+        ASSERT_UNREACHABLE( "invalid pointer passed to memoryflags" );
     }
 
     MemoryBits memoryflag( ValueRef v ) {
@@ -551,7 +550,7 @@ struct MachineState
             v.tid = _thread;
         if( v.v.constant )
             return MemoryBits();
-        assert( !v.v.global );
+        ASSERT( !v.v.global );
         return frame( v ).memoryflag( _info, v );
     }
 
@@ -572,8 +571,8 @@ struct MachineState
     }
 
     Frame &frame( ValueRef v ) {
-        assert( !v.v.global );
-        assert( !v.v.constant );
+        ASSERT( !v.v.global );
+        ASSERT( !v.v.constant );
         Frame *f = _frame;
         if ( v.tid != _thread || v.frame )
             f = &stack( v.tid ).get( stack( v.tid ).get().length() - v.frame - 1 );
@@ -600,7 +599,7 @@ struct MachineState
         if ( v.v.global )
             return reinterpret_cast< char * >( global().memory() + v.v.offset + v.offset );
 
-        assert_unreachable( "Impossible Value." );
+        ASSERT_UNREACHABLE( "Impossible Value." );
     }
 
     bool inBounds( ValueRef v, int byteoff )
@@ -619,8 +618,8 @@ struct MachineState
     }
 
     Lens< Stack > _blob_stack( int i ) {
-        assert_leq( 0, i );
-        assert_leq( i, threads().get().length() - 1 );
+        ASSERT_LEQ( 0, i );
+        ASSERT_LEQ( i, threads().get().length() - 1 );
         return state().sub( Threads(), i );
     }
 

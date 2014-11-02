@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2011-2014 Petr Rockai <me@mornfall.net>
 // Describe the interpreter's state in a human-readable fashion.
 
+#include <brick-string.h>
 #include <divine/llvm/interpreter.h>
 
 #pragma GCC diagnostic push
@@ -72,7 +73,7 @@ struct Describe {
             return true;
         if ( n.length() >= 2 && n[0] == '_' && std::isupper( n[1] ) )
             return true;
-        if ( fun && ( wibble::str::startsWith( n, "pthread_" ) ) )
+        if ( fun && ( brick::string::startsWith( n, "pthread_" ) ) )
              return true;
         return false;
     }
@@ -148,7 +149,7 @@ std::string Describe< HM, L >::aggregate( Type *t, Ptr where )
         }
     }
 
-    return wibble::str::fmt_container( vec, delim[0], delim[1] );
+    return brick::string::fmt_container( vec, delim[0], delim[1] );
 }
 
 template< typename HM, typename L >
@@ -157,11 +158,11 @@ std::string Describe< HM, L >::pointer( Type *t, Pointer p )
     if ( p.null() )
         return "null";
 
-    std::string ptr = wibble::str::fmt( p );
+    std::string ptr = brick::string::fmt( p );
     std::string res;
     Type *pointeeTy = cast< PointerType >( t )->getElementType();
     if ( p.code ) {
-        res = wibble::str::fmt( static_cast< PC >( p ) );
+        res = brick::string::fmt( static_cast< PC >( p ) );
     } else if ( seen.count( std::make_pair( p, pointeeTy ) ) ) {
         res = ptr + " <...>";
     } else {
@@ -179,11 +180,11 @@ static std::string fmtInteger( char *where, int bits ) {
         return "<null>";
 
     switch ( bits ) {
-        case 64: return wibble::str::fmt( *reinterpret_cast< int64_t* >( where ) );
-        case 32: return wibble::str::fmt( *reinterpret_cast< int32_t* >( where ) );
-        case 16: return wibble::str::fmt( *reinterpret_cast< int16_t* >( where ) );
-        case 8: return wibble::str::fmt( int( *reinterpret_cast< int8_t * >( where ) ) );
-        case 1: return wibble::str::fmt( *reinterpret_cast< bool * >( where ) );
+        case 64: return brick::string::fmt( *reinterpret_cast< int64_t* >( where ) );
+        case 32: return brick::string::fmt( *reinterpret_cast< int32_t* >( where ) );
+        case 16: return brick::string::fmt( *reinterpret_cast< int16_t* >( where ) );
+        case 8: return brick::string::fmt( int( *reinterpret_cast< int8_t * >( where ) ) );
+        case 1: return brick::string::fmt( *reinterpret_cast< bool * >( where ) );
         default:
             std::string rv = "< ";
             for ( int i = 0; i < bits / 8; i += 4 )
@@ -232,7 +233,7 @@ std::string Describe< HM, L >::value( const ::llvm::Value *val, ValueRef vref, P
     } else if ( type->isVoidTy() )
         ;
     else if ( detailed )
-        name = "%" + wibble::str::fmt( anonymous++ );
+        name = "%" + brick::string::fmt( anonymous++ );
 
     if ( boring( name ) || isa< BasicBlock >( val ) )
         return "";
@@ -283,7 +284,7 @@ std::string fileline( const Instruction &insn )
     if ( des.getLineNumber() )
         return des.getFilename().str() +
                std::string( ":" ) +
-               wibble::str::fmt( des.getLineNumber() );
+               brick::string::fmt( des.getLineNumber() );
     return "";
 }
 
@@ -415,7 +416,7 @@ std::string Describe< HM, L >::all()
                         }
                     }
                 }
-                s << "  #" << i << ": " << location << " " << wibble::str::fmt( this->lines ) << std::endl;
+                s << "  #" << i << ": " << location << " " << brick::string::fmt( this->lines ) << std::endl;
                 return true; // continue
             } );
     }
@@ -442,7 +443,7 @@ std::string Describe< HM, L >::all()
                 ap = ap >> 1;
                 ++k;
             }
-            s << "+ APs: " << wibble::str::fmt( x ) << std::endl;
+            s << "+ APs: " << brick::string::fmt( x ) << std::endl;
         } else
             s << "+ APs: 0x" << std::hex << ap << std::dec << std::endl;
     }
@@ -456,7 +457,7 @@ std::string Describe< HM, L >::constdata() {
         if ( info().constinfo[ i ].first )
             value( info().constinfo[ i ], ValueRef(), Pointer( false, i, 0 ) );
 
-    return wibble::str::fmt( lines );
+    return brick::string::fmt( lines );
 }
 
 template< typename HeapMeta >

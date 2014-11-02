@@ -57,7 +57,7 @@ int MachineState< HeapMeta >::pointerSize( Pointer p )
      * Pointers into global memory are not used for copying during
      * canonization, so we don't actually need to know their size.
      */
-    assert( !globalPointer( p ) );
+    ASSERT( !globalPointer( p ) );
 
     if ( heap().owns( p ) )
         return heap().size( p );
@@ -150,14 +150,14 @@ void MachineState< HeapMeta >::snapshot(
         return;
     }
 
-    assert( canonic.seen( original ) );
+    ASSERT( canonic.seen( original ) );
     edit = canonic[ original ]; /* canonize */
 
     if ( edit.segment < canonic.segdone )
         return; /* we already followed this pointer */
 
     Pointer edited = edit;
-    assert_eq( int( edit.segment ), canonic.segdone );
+    ASSERT_EQ( int( edit.segment ), canonic.segdone );
     canonic.segdone ++;
 
     /* Re-allocate the object... */
@@ -201,7 +201,7 @@ void MachineState< HeapMeta >::snapshot(
     }
 
     address = target.advance( address, 0 );
-    assert_eq( (address.offset - _slack) % 4, 0 );
+    ASSERT_EQ( (address.offset - _slack) % 4, 0 );
 }
 
 template< typename HeapMeta >
@@ -241,7 +241,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
 
     Pointer p( true, 0, 0 );
     const uint32_t limit = heap().segcount + nursery.offsets.size() - 1;
-    assert_leq( limit, (1u << Pointer::segmentSize) - 1 );
+    ASSERT_LEQ( limit, (1u << Pointer::segmentSize) - 1 );
     for ( p.segment = 0; p.segment < limit; ++ p.segment )
         if ( !canonic.seen( p ) && !freed.count( p.segment ) ) {
             trace( p, canonic );
@@ -272,7 +272,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
     /* heap needs to know its size in order to correctly dereference! */
     _heap->jumptable( canonic.segcount ) = canonic.allocated / 4;
     address.advance( machine::size_heap( canonic.segcount, canonic.allocated ) );
-    assert_eq( machine::size_heap( canonic.segcount, canonic.allocated ) % 4, 0 );
+    ASSERT_EQ( machine::size_heap( canonic.segcount, canonic.allocated ) % 4, 0 );
 
     auto &heapmeta = address.as< HeapMeta >();
     heapmeta.setSize( canonic.segcount );
@@ -283,7 +283,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
 
     for ( auto var : _info.globalvars ) {
         Pointer p( false, var.first, 0 );
-        assert( !var.second.constant );
+        ASSERT( !var.second.constant );
         for ( p.offset = 0; p.offset < var.second.width; p.offset += 4 )
             if ( isHeapPointer( global().memoryflag( _info, p ) ) )
                 snapshot( *(_global->dereference< Pointer >( _info, p )),
@@ -316,10 +316,10 @@ divine::Blob MachineState< HeapMeta >::snapshot()
                            seg - (nursed ? nursery.segshift : 0), canonic.segmap[ seg ] );
     }
 
-    assert_eq( canonic.segdone, canonic.segcount );
-    assert_eq( canonic.boundary, canonic.allocated );
-    assert_eq( address.offset, _pool.size( b ) );
-    assert_eq( (_pool.size( b ) - _slack) % 4, 0 );
+    ASSERT_EQ( canonic.segdone, canonic.segcount );
+    ASSERT_EQ( canonic.boundary, canonic.allocated );
+    ASSERT_EQ( address.offset, _pool.size( b ) );
+    ASSERT_EQ( (_pool.size( b ) - _slack) % 4, 0 );
 
     return b;
 }
@@ -386,7 +386,7 @@ bool MachineState< HeapMeta >::isPrivate( int tid, Pointer needle )
 
     for ( auto var : _info.globalvars ) {
         Pointer p( false, var.first, 0 );
-        assert( !var.second.constant );
+        ASSERT( !var.second.constant );
         for ( p.offset = 0; p.offset < var.second.width; p.offset += 4 )
             if ( isHeapPointer( global().memoryflag( _info, p ) ) )
                 if ( !isPrivate( needle, followPointer( p ), canonic ) )

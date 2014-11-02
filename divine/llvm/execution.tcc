@@ -11,7 +11,7 @@ using Eval = Evaluator< Interpreter< HM, L >, Interpreter< HM, L > >;
 template< typename HM, typename L >
 void Interpreter< HM, L >::choose( int32_t result )
 {
-    assert_eq( instruction().builtin, BuiltinChoice );
+    ASSERT_EQ( instruction().builtin, BuiltinChoice );
     *reinterpret_cast< int32_t * >(
         dereference( instruction().result() ) ) = result;
 }

@@ -2,7 +2,7 @@
 
 #define NO_RTTI
 
-#include <wibble/maybe.h>
+#include <brick-types.h>
 
 #include <divine/llvm/program.h>
 #include <divine/llvm/machine.h>
@@ -43,6 +43,7 @@ namespace llvm {
 template< typename T, typename L > struct Interpreter;
 
 using namespace ::llvm;
+using brick::types::Maybe;
 
 struct BitCode {
     OwningPtr< MemoryBuffer > input;
@@ -56,19 +57,19 @@ struct BitCode {
         MemoryBuffer::getFile( file, input );
         module.reset( ParseBitcodeFile( &*input, *ctx ) );
         info = new ProgramInfo( module.get() );
-        assert( module );
+        ASSERT( module );
     }
 
     BitCode( std::shared_ptr< ::llvm::Module > m )
         : ctx( nullptr ), module( m )
     {
-        assert( module );
+        ASSERT( module );
         info = new ProgramInfo( module.get() );
     }
 
     ~BitCode() {
         if ( ctx )
-            assert_eq( module.use_count(), 1 );
+            ASSERT_EQ( module.use_count(), 1 );
         module.reset();
         delete info;
         delete ctx;
@@ -127,7 +128,7 @@ struct Interpreter
     }
 
     MDNode *findEnum( std::string lookup ) {
-        assert( bc->module );
+        ASSERT( bc->module );
         auto meta =  bc->module->getNamedMetadata( "llvm.dbg.cu" );
         // sadly metadata for enums are located at different locations in
         // IR produced by clang 3.2 and 3.3
@@ -233,11 +234,11 @@ struct Interpreter
         if ( !state._thread_count )
             return; /* no more successors for you */
 
-        assert_leq( tid, state._thread_count - 1 );
+        ASSERT_LEQ( tid, state._thread_count - 1 );
         if ( state._thread != tid )
             state.switch_thread( tid );
 
-        assert( state.stack().get().length() );
+        ASSERT( state.stack().get().length() );
 
         while ( true ) {
 
@@ -256,7 +257,7 @@ struct Interpreter
                 break; /* this thread is done */
 
             if ( choice.options ) {
-                assert( !jumped );
+                ASSERT( !jumped );
                 Blob fork = state.snapshot();
                 Choice c = choice; /* make a copy, sublings must overwrite the original */
                 for ( int i = 0; i < c.options; ++i ) {
@@ -419,11 +420,11 @@ struct TestLLVM {
         for ( int i = 0; i < step; ++i ) {
             fin = divine::Blob();
             interpreter.run( ini, [&]( divine::Blob b, divine::graph::NoLabel ) {
-                    assert( !pool.valid( fin ) ); // only one allowed
+                    ASSERT( !pool.valid( fin ) ); // only one allowed
                     fin = b;
                 });
             ini = fin;
-            assert( pool.valid( fin ) );
+            ASSERT( pool.valid( fin ) );
         }
 
         return fin;
@@ -444,28 +445,28 @@ struct TestLLVM {
 
     TEST(successor1)
     {
-        assert_eq( fmtblob( pool, _ith( code_ret(), 1 ) ),
+        ASSERT_EQ( fmtblob( pool, _ith( code_ret(), 1 ) ),
                    "[ 0, 0, 0, 0, 0 ]" );
     }
 
     TEST(successor2)
     {
-        assert_eq( fmtblob( pool, _ith( code_loop(), 1 ) ),
+        ASSERT_EQ( fmtblob( pool, _ith( code_loop(), 1 ) ),
                    "[ 0, 0, 0, 0, 1, 1, 2147745792 ]" );
     }
 
     TEST(successor3)
     {
-        assert_eq( fmtblob( pool, _ith( code_add(), 2 ) ),
+        ASSERT_EQ( fmtblob( pool, _ith( code_add(), 2 ) ),
                    "[ 0, 0, 0, 0, 1, 1, 2147745792, 3, 1 ]" );
-        assert_eq( fmtblob( pool, _ith( code_add(), 4 ) ),
+        ASSERT_EQ( fmtblob( pool, _ith( code_add(), 4 ) ),
                    "[ 0, 0, 0, 0, 1, 1, 2147745792, 3, 1 ]" );
     }
 
     TEST(describe1)
     {
         divine::Blob b = _ith( code_loop(), 1 );
-        assert_eq( _descr( code_loop(), b ),
+        ASSERT_EQ( _descr( code_loop(), b ),
                    "thread 0:\n  #1: <testf> << br label %entry >> []\n" );
     }
 
@@ -476,28 +477,28 @@ struct TestLLVM {
         divine::Blob b = _ith( code_loop(), 1 );
         interpreter.rewind( b );
         interpreter.new_thread( f );
-        assert_eq( "thread 0:\n  #1: <testf> << br label %entry >> []\n"
+        ASSERT_EQ( "thread 0:\n  #1: <testf> << br label %entry >> []\n"
                    "thread 1:\n  #1: <testf> << br label %entry >> []\n", interpreter.describe() );
     }
 
     TEST(describe3)
     {
         divine::Blob b = _ith( code_add(), 0 );
-        assert_eq( _descr( code_add(), b ),
+        ASSERT_EQ( _descr( code_add(), b ),
                    "thread 0:\n  #1: <testf> << %meh = add i32 1, 2 >> [ meh = ? ]\n" );
 
         b = _ith( code_add(), 2 );
-        assert_eq( _descr( code_add(), b ),
+        ASSERT_EQ( _descr( code_add(), b ),
                    "thread 0:\n  #1: <testf> << %meh = add i32 1, 2 >> [ meh = 3 ]\n" );
     }
 
     TEST(describe4)
     {
         divine::Blob b = _ith( code_call(), 0 );
-        assert_eq( _descr( code_call(), b ),
+        ASSERT_EQ( _descr( code_call(), b ),
                    "thread 0:\n  #1: <testf> << %0 = call i32 @helper() >> []\n" );
         b = _ith( code_call(), 1 );
-        assert_eq( _descr( code_call(), b ),
+        ASSERT_EQ( _descr( code_call(), b ),
                    "thread 0:\n"
                    "  #1: <testf> << %0 = call i32 @helper() >> []\n"
                    "  #2: <helper> << br label %entry >> []\n" );
@@ -506,10 +507,10 @@ struct TestLLVM {
     TEST(describe5)
     {
         divine::Blob b = _ith( code_callarg(), 0 );
-        assert_eq( _descr( code_callarg(), b ),
+        ASSERT_EQ( _descr( code_callarg(), b ),
                    "thread 0:\n  #1: <testf> << %0 = call i32 @helper(i32 7) >> []\n" );
         b = _ith( code_callarg(), 3 );
-        assert_eq( _descr( code_callarg(), b ),
+        ASSERT_EQ( _descr( code_callarg(), b ),
                    "thread 0:\n"
                    "  #1: <testf> << %0 = call i32 @helper(i32 7) >> []\n"
                    "  #2: <helper> << %meh = add i32 %0, %0 >> [ meh = 14 ]\n" );
@@ -518,14 +519,14 @@ struct TestLLVM {
     TEST(describe6)
     {
         divine::Blob b = _ith( code_callret(), 3 );
-        assert_eq( _descr( code_callret(), b ),
+        ASSERT_EQ( _descr( code_callret(), b ),
                    "thread 0:\n  #1: <testf> << %meh = call i32 @helper() >> [ meh = 42 ]\n" );
     }
 
     TEST(memory1)
     {
         divine::Blob b = _ith( code_mem(), 2 );
-        assert_eq( _descr( code_mem(), b ),
+        ASSERT_EQ( _descr( code_mem(), b ),
                    "thread 0:\n  #1: <testf> << br label %tail >> [ foo = @(0:0| 33) ]\n" );
     }
 
@@ -536,7 +537,7 @@ struct TestLLVM {
         divine::Blob b1 = interpreter.initial( f ), b2;
         interpreter.rewind( b1 );
         b2 = interpreter.state.snapshot();
-        assert( pool.equal( b1, b2 ) );
+        ASSERT( pool.equal( b1, b2 ) );
     }
 };
 
