@@ -40,6 +40,7 @@
 #include <deque>
 #include <vector>
 #include <set>
+#include <stdexcept>
 
 #include <regex.h>
 
@@ -280,6 +281,19 @@ inline std::string basename(const std::string& pathname)
         return pathname.substr(pos+1);
 }
 
+namespace {
+
+void throw_regerror( regex_t *re, int code ) __attribute__((noreturn));
+
+void throw_regerror( regex_t *re, int code ) {
+    int size = regerror( code, re, nullptr, 0 );
+    char err[size];
+    regerror( code, re, err, size );
+    throw std::runtime_error( err );
+}
+
+}
+
 class Regexp
 {
 protected:
@@ -290,7 +304,9 @@ protected:
 
     void checkIndex( int idx ) {
         if (idx > nmatch)
-            throw 0; // wibble::exception::ValOutOfRange<int>("index", idx, 0, nmatch, "getting submatch of regexp");
+            throw std::out_of_range(
+                fmtf( "submatch index %d exceeds number of matches %d",
+                      idx, nmatch ) );
     }
 
 public:
@@ -299,13 +315,14 @@ public:
        match (indexed 0). [TODO we may want to fix this to be more
        friendly?] */
     Regexp(const std::string& expr, int match_count = 0, int flags = 0)
+	: pmatch(0), nmatch(match_count)
     {
         if (match_count == 0)
             flags |= REG_NOSUB;
 
         int res = regcomp(&re, expr.c_str(), flags);
         if (res)
-            throw 0; // wibble::exception::Regexp(re, res, "Compiling regexp \"" + expr + "\"");
+            throw_regerror( &re, res );
 
         if (match_count > 0)
             pmatch = new regmatch_t[match_count];
@@ -334,7 +351,7 @@ public:
         {
             case 0:	return true;
             case REG_NOMATCH: return false;
-            default: throw 0; // XXX // wibble::exception::Regexp(re, res, "Matching string \"" + str + "\"");
+            default: throw_regerror( &re, res );
         }
     }
 
