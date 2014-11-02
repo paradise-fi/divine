@@ -370,12 +370,16 @@ template< typename TestGroup, void (TestGroup::*testcase)() >
 struct TestCase : TestCaseBase {
     void run() {
         TestGroup tg;
+        bool passed = false;
         try {
             (tg.*testcase)();
+            passed = true;
         } catch (...) {
             if ( !expect_failure )
                 throw;
         }
+        if ( passed && expect_failure )
+            throw std::runtime_error("test passed unexpectedly");
     }
 
     std::string group() {
