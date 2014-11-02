@@ -49,16 +49,15 @@
 #define ASSERT_EQ(x, y) assert( (x) == (y) )
 #define ASSERT_LEQ(x, y) assert( (x) <= (y) )
 #define ASSERT_NEQ(x, y) assert ( (x) != (y) )
+#define ASSERT_EQ_IDX(i, x, y) assert( (x) == (y) )
 
 #elif !defined NDEBUG
-#define BRICK_LOCATION_I(stmt, i) ::brick::assert::Location( __FILE__, __LINE__, stmt, i )
-
 #define ASSERT(x) assert_fn( BRICK_LOCATION( #x ), x )
 #define ASSERT_PRED(p, x) assert_pred_fn( BRICK_LOCATION( #p "( " #x " )" ), x, p( x ) )
 #define ASSERT_EQ(x, y) assert_eq_fn( BRICK_LOCATION( #x " == " #y ), x, y )
 #define ASSERT_LEQ(x, y) assert_leq_fn( BRICK_LOCATION( #x " <= " #y ), x, y )
 #define ASSERT_NEQ(x, y) assert_neq_fn( BRICK_LOCATION( #x " != " #y ), x, y )
-#define ASSERT_EQ_IDX(i, x, y) assert_eq_fn( BRICK_LOCATION( brick::string::fmtf( "%s at index %d", #x " == " #y, i ) ), x, y )
+#define ASSERT_EQ_IDX(i, x, y) assert_eq_fn( BRICK_LOCATION_I( #x " == " #y, i ), x, y )
 
 #else
 
@@ -67,6 +66,7 @@
 #define ASSERT_EQ(x, y) ((void)0)
 #define ASSERT_LEQ(x, y) ((void)0)
 #define ASSERT_NEQ(x, y) ((void)0)
+#define ASSERT_EQ_IDX(i, x, y) ((void)0)
 #endif
 
 /* you must #include <brick-string.h> to use ASSERT_UNREACHABLE_F */
@@ -95,6 +95,7 @@ struct Location {
 };
 
 #define BRICK_LOCATION(stmt) ::brick::_assert::Location( __FILE__, __LINE__, stmt )
+#define BRICK_LOCATION_I(stmt, i) ::brick::_assert::Location( __FILE__, __LINE__, stmt, i )
 
 struct AssertFailed : std::exception {
     std::string str;
