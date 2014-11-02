@@ -386,6 +386,33 @@ struct TempDir {
     AutoDelete autoDelete;
 };
 
+namespace {
+
+std::string readFile( std::ifstream &in ) {
+    if ( !in.is_open() )
+        throw std::runtime_error( "reading filestream" );
+    size_t length;
+
+    in.seekg( 0, std::ios::end );
+    length = in.tellg();
+    in.seekg( 0, std::ios::beg );
+
+    std::string buffer;
+    buffer.resize( length );
+
+    in.read( &buffer[ 0 ], length );
+    return buffer;
+}
+
+std::string readFile( const std::string &file ) {
+    std::ifstream in( file.c_str(), std::ios::binary );
+    if ( !in.is_open() )
+        throw std::runtime_error( "reading file " + file );
+    return readFile( in );
+}
+
+}
+
 }
 }
 
