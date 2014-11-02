@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
+#include <vector>
 #include <string>
 #include <cerrno>
 #include <cstring>
