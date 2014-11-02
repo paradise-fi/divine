@@ -1,10 +1,11 @@
+#include <brick-string.h>
 #include <divine/timed/utils.h>
 
 namespace divine {
 namespace timed {
 
 UTAP::expression_t negIneq( const UTAP::expression_t& expr ) {
-    assert_eq( expr.getSize(), 2u );
+    ASSERT_EQ( expr.getSize(), 2u );
     UTAP::Constants::kind_t negOp;
     switch ( expr.getKind() ) {
     case UTAP::Constants::LT:
@@ -26,14 +27,13 @@ UTAP::expression_t negIneq( const UTAP::expression_t& expr ) {
         negOp =  UTAP::Constants::EQ;
         break;
     default:
-        assert_unreachable( "unhandled case" );
-        return UTAP::expression_t();
+        ASSERT_UNREACHABLE_F( "unexpected expression kind %d", expr.getKind() );
     }
     return UTAP::expression_t::createBinary( negOp, expr[ 0 ], expr[ 1 ], UTAP::position_t(), expr.getType() );
 }
 
 bool addCut( const UTAP::expression_t& expr, int pId, std::vector< Cut >& cuts ) {
-    assert_eq( expr.getSize(), 2u );
+    ASSERT_EQ( expr.getSize(), 2u );
     if ( expr.getKind() == UTAP::Constants::EQ || expr.getKind() == UTAP::Constants::NEQ ) {
         // we need two cuts to express equality or inequality
         bool ret1 =

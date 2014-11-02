@@ -1,12 +1,12 @@
 #include "clocks.h"
 #include <external/dbm/include/dbm/dbm.h>
 #include <external/dbm/include/dbm/print.h>
-#include <wibble/test.h>
+#include <brick-assert.h>
 
 // #define LU_EXTRAPOLATION_OFF
 
 void Clocks::up() {
-    assert( dbm_isValid( data, dim ) );
+    ASSERT( dbm_isValid( data, dim ) );
     dbm_up( data, dim );
 }
 
@@ -15,21 +15,21 @@ bool Clocks::isUnbounded() const {
 }
 
 bool Clocks::constrainBelow( unsigned int id, int32_t value, bool strict ) {
-    assert( id + 1 < dim );
-    assert_leq( value, bounds[ dim + id + 1 ] );  // incorrect upper bound
+    ASSERT( id + 1 < dim );
+    ASSERT_LEQ( value, bounds[ dim + id + 1 ] );  // incorrect upper bound
     bool ret = dbm_constrain1( data, dim, id + 1, 0, dbm_boundbool2raw( value, strict ) );
     return ret;
 }
 
 bool Clocks::constrainAbove( unsigned int id, int32_t value, bool strict ) {
-    assert( id + 1 < dim );
-    assert_leq( value, bounds[ id + 1 ] );    // incorrect lower bound
+    ASSERT( id + 1 < dim );
+    ASSERT_LEQ( value, bounds[ id + 1 ] );    // incorrect lower bound
     bool ret = dbm_constrain1( data, dim, 0, id + 1, dbm_boundbool2raw( -value, strict ) );
     return ret;
 }
 
 bool Clocks::constrainClocks( unsigned int c1, unsigned int c2, int32_t value, bool strict ) {
-    assert( c1 + 1 < dim && c2 + 1 < dim );
+    ASSERT( c1 + 1 < dim && c2 + 1 < dim );
     bool ret = dbm_constrain1( data, dim, c1 + 1, c2 + 1, dbm_boundbool2raw( value, strict ) );
     return ret;
 }
@@ -39,8 +39,8 @@ void Clocks::initial() {
 }
 
 void Clocks::set( unsigned int id, int32_t value ) {
-    assert( value >= 0);
-    assert( id + 1 < dim );
+    ASSERT( value >= 0);
+    ASSERT( id + 1 < dim );
     dbm_updateValue( data, dim, id + 1, value );
 }
 
@@ -93,7 +93,7 @@ void Clocks::rowFmt( std::ostream& o, unsigned int& count, bool printed ) {
 }
 
 bool Clocks::print_c( std::ostream& o, unsigned int i ) const {
-    assert( i > 0 );
+    ASSERT( i > 0 );
     raw_t upper = data[ i * dim + 0 ];
     raw_t lower = data[ 0 * dim + i ];
     if ( lower != dbm_LE_ZERO )
@@ -108,7 +108,7 @@ bool Clocks::print_c( std::ostream& o, unsigned int i ) const {
 }
 
 bool Clocks::print_d( std::ostream& o, unsigned int i, unsigned int j ) const {
-    assert( i > 0 && j > 0 );
+    ASSERT( i > 0 && j > 0 );
     raw_t upper = data[ i * dim + j ];
     raw_t lower = data[ j * dim + i ];
     if ( lower != dbm_LS_INFINITY )
@@ -130,12 +130,12 @@ void Clocks::setName( unsigned int id, const std::string& name ) {
 }
 
 void Clocks::setLowerBound( unsigned int id, int32_t limit ) {
-    assert( id + 1 < dim );
+    ASSERT( id + 1 < dim );
     bounds[ id + 1 ] = limit;
 }
 
 bool Clocks::updateLowerBound( unsigned int id, int32_t limit ) {
-    assert( id + 1 < dim );
+    ASSERT( id + 1 < dim );
     if ( limit > bounds[ id + 1 ] ) {
         bounds[ id + 1 ] = limit;
         return true;
@@ -144,12 +144,12 @@ bool Clocks::updateLowerBound( unsigned int id, int32_t limit ) {
 }
 
 void Clocks::setUpperBound( unsigned int id, int32_t limit ) {
-    assert( id + 1 < dim );
+    ASSERT( id + 1 < dim );
     bounds[ dim + id + 1 ] = limit;
 }
 
 bool Clocks::updateUpperBound( unsigned int id, int32_t limit ) {
-    assert( id + 1 < dim );
+    ASSERT( id + 1 < dim );
     if ( limit > bounds[ dim + id + 1 ] ) {
         bounds[ dim + id + 1 ] = limit;
         return true;

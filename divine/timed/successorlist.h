@@ -1,7 +1,7 @@
 // -*- C++ -*-
 #include <algorithm>
 #include <limits>
-#include <wibble/test.h>
+#include <brick-assert.h>
 
 namespace divine {
 namespace timed {
@@ -31,12 +31,12 @@ public:
     }
 
     char* back() {
-        assert( !v.empty() );
+        ASSERT( !v.empty() );
         return &*v.end() - block;
     }
 
     const char* back() const {
-        assert( !v.empty() );
+        ASSERT( !v.empty() );
         return &*v.end() - block;
     }
 
@@ -45,7 +45,7 @@ public:
     }
 
     void pop_back() {
-        assert( !v.empty() );
+        ASSERT( !v.empty() );
         v.resize( v.size() - block );
     }
 
@@ -62,12 +62,12 @@ public:
     }
 
     char* operator[]( unsigned int i ) {
-        assert( i*block < v.size() );
+        ASSERT( i*block < v.size() );
         return &v[ i*block ];
     }
 
     const char* operator[]( unsigned int i ) const {
-        assert( i*block < v.size() );
+        ASSERT( i*block < v.size() );
         return &v[ i*block ];
     }
 };
@@ -95,7 +95,7 @@ public:
 	// Finalize a priority valuation by sorting all values except the first one
     void finalize() {
         // leave the first element, sort the rest
-        assert( v.size() > 1 );
+        ASSERT( v.size() > 1 );
         std::sort( v.begin() + 1, v.end(), [] ( int a, int b ) { return a > b; } );
     }
 
@@ -103,7 +103,7 @@ public:
     bool updateMax( PrioVal& max ) const {
         unsigned int size = std::min( v.size(), max.v.size() );
         for ( unsigned int i = 0; i < size; i++ ) {
-            assert( i <= 1 || v[ i-1 ]>= v[ i ] );
+            ASSERT( i <= 1 || v[ i-1 ]>= v[ i ] );
             if ( v[ i ] < max.v[ i ] )     // lower than max priority - ignore
                 return false;
             if ( v[ i ] > max.v[ i ] ) {   // higher than max priority - set the new maximum
@@ -119,11 +119,11 @@ public:
 	// Check for equality
     bool equal( const PrioVal& max ) const {
         for ( unsigned int i = 0; i < max.v.size(); i++ ) {
-            assert( i < v.size() );
+            ASSERT( i < v.size() );
             if ( v[ i ] < max.v[ i ] )
                 return false;
-            assert( max.v[ i ] == v[ i ] );
-            assert( i <= 1 || max.v[ i-1 ] >= max.v[ i ] );
+            ASSERT( max.v[ i ] == v[ i ] );
+            ASSERT( i <= 1 || max.v[ i-1 ] >= max.v[ i ] );
         }
         return true;
     }

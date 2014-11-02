@@ -14,7 +14,7 @@
 #undef FALSE
 #undef ASSERT
 
-#include <wibble/test.h>
+#include <brick-assert.h>
 
 typedef dbm::fed_t Federation;
 
@@ -120,12 +120,12 @@ public:
 
     // returns the intersection of the current zone and given federation
     Federation intersection( Federation fed ) const {
-        assert_eq( fed.getDimension(), dim );
+        ASSERT_EQ( fed.getDimension(), dim );
         return fed & data;
     }
 
     dbm::dbm_t intersection( const dbm::dbm_t &d ) const {
-        assert_eq( d.getDimension(), dim );
+        ASSERT_EQ( d.getDimension(), dim );
         return d & data;
     }
 
@@ -135,8 +135,8 @@ public:
     }
 
     void assignZone( const dbm::dbm_t &d ) {
-        assert_eq( d.getDimension(), dim );
-        assert( d() );
+        ASSERT_EQ( d.getDimension(), dim );
+        ASSERT( d() );
         memcpy( data, d(), getReqSize() );
     }
 };

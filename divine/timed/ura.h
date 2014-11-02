@@ -11,7 +11,7 @@
 #include <dbm/fed.h>
 #include <dbm/constraints.h>
 #include <dbm/print.h>
-#include <wibble/test.h>
+#include <brick-assert.h>
 
 #ifndef DIVINE_TIMED_URA_H
 #define DIVINE_TIMED_URA_H
@@ -232,7 +232,7 @@ struct ura {
     int num_clocks = 0;
 
     void add_guard( unsigned clock, int value, bool open ) {
-        assert_leq( clock, clock_guards.size() - 1 );
+        ASSERT_LEQ( clock, clock_guards.size() - 1 );
         clock_guards[ clock ].add_guard( guard( value, open ) );
     }
 

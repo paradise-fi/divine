@@ -1,7 +1,7 @@
 // -*- C++ -*-
 #include <utap/utap.h>
 #include <dbm/print.h>
-#include <wibble/test.h>
+#include <brick-assert.h>
 #include <divine/timed/eval.h>
 #include <divine/timed/utils.h>
 #include <divine/timed/successorlist.h>
@@ -108,7 +108,7 @@ private:
         std::vector< int > next({ 0 });
 
         while ( !next.empty() ) {
-            assert( next.size() == bl.size() );
+            ASSERT( next.size() == bl.size() );
             if ( next.back() == 2 ) { // if we already completed both branches, go up
                 bl.pop_back();
                 next.pop_back();
@@ -223,7 +223,7 @@ public:
         PrioVal maxPrio( false );
         if ( sys.hasPriorityDeclaration() ) { // if priorities are used, compute the highest priority
             for ( auto it = einf.begin(); it != einf.end(); it++ ) {
-                assert( it->valid );
+                ASSERT( it->valid );
                 it->prio.finalize();
                 it->prio.updateMax( nextPrio );
             }
