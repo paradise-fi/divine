@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <type_traits>
-#include <brick-unittest.h>
+#include <brick-assert.h>
 
 #ifndef BRICK_HLIST_H
 #define BRICK_HLIST_H

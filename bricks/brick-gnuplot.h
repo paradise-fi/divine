@@ -41,8 +41,9 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <iomanip>
 
-#include <brick-unittest.h>
+#include <brick-assert.h>
 
 #ifndef BRICK_GNUPLOT_H
 #define BRICK_GNUPLOT_H

@@ -18,7 +18,7 @@
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
 
-#include <brick-unittest.h>
+#include <brick-assert.h>
 
 #include <vector>
 #include <string>

@@ -44,7 +44,7 @@
 
 #include <regex.h>
 
-#include <brick-unittest.h>
+#include <brick-assert.h>
 
 #ifndef BRICK_STRING_H
 #define BRICK_STRING_H

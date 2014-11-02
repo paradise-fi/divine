@@ -33,7 +33,7 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <brick-string.h>
-#include <brick-unittest.h>
+#include <brick-assert.h>
 
 #include <string>
 #include <vector>

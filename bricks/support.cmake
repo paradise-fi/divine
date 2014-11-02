@@ -12,14 +12,16 @@ function( update_file name content )
   endif()
 endfunction()
 
-function( bricks_make_runner name main defs )
+function( bricks_make_runner name header main defs )
   set( file "${CMAKE_CURRENT_BINARY_DIR}/${name}-runner.cpp" )
 
   foreach( src ${ARGN} )
     set( new "${new}\n#include <${src}>" )
   endforeach( src )
 
-  set( new "${new}
+  set( new "
+    #include <${header}>
+    ${new}
     int main( int argc, const char **argv ) {
       ${main}
       return 0\;
@@ -40,14 +42,14 @@ endfunction()
 # to run the testsuite.
 
 function( bricks_unittest name )
-  bricks_make_runner( ${name} "
+  bricks_make_runner( ${name} "brick-unittest.h" "
       return brick::unittest::run( argc > 1 ? argv[1] : \"\",
                                    argc > 2 ? argv[2] : \"\" )\;"
       "BRICK_UNITTEST_REG" ${ARGN} )
 endfunction()
 
 function( bricks_benchmark name )
-  bricks_make_runner( ${name} "brick::benchmark::run( argc, argv )\;"
+  bricks_make_runner( ${name} "brick-benchmark.h" "brick::benchmark::run( argc, argv )\;"
                       "BRICK_BENCHMARK_REG" ${ARGN} )
   target_link_libraries( ${name} rt )
 endfunction()

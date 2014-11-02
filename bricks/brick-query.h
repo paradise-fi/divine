@@ -41,7 +41,7 @@
 #include <set>
 #include <deque> // for tests
 
-#include <brick-unittest.h>
+#include <brick-assert.h>
 
 #ifndef BRICK_QUERY_H
 #define BRICK_QUERY_H

@@ -34,14 +34,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
-#include <brick-string.h>
-#include <brick-unittest.h>
-
 #include <string>
 #include <deque>
 #include <vector>
 #include <map>
 #include <queue>
+
+#include <brick-string.h>
+#include <brick-assert.h>
 
 #ifndef BRICK_PARSE_H
 #define BRICK_PARSE_H

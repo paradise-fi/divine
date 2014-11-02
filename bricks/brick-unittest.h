@@ -45,144 +45,18 @@
 #include <set>
 #include <map>
 
+#include <brick-assert.h>
+
 #ifdef __unix
 #include <unistd.h>
 #include <sys/wait.h>
 #endif
-
-#ifdef __divine__
-#include <divine.h>
-#endif
-
-#ifdef __divine__
-#define ASSERT(x) assert( x )
-#define ASSERT_PRED(p, x) assert( p( x ) )
-#define ASSERT_EQ(x, y) assert( (x) == (y) )
-#define ASSERT_LEQ(x, y) assert( (x) <= (y) )
-#define ASSERT_NEQ(x, y) assert ( (x) != (y) )
-
-#elif !defined NDEBUG
-#define BRICK_LOCATION_I(stmt, i) ::brick::unittest::Location( __FILE__, __LINE__, stmt, i )
-
-#define ASSERT(x) assert_fn( BRICK_LOCATION( #x ), x )
-#define ASSERT_PRED(p, x) assert_pred_fn( BRICK_LOCATION( #p "( " #x " )" ), x, p( x ) )
-#define ASSERT_EQ(x, y) assert_eq_fn( BRICK_LOCATION( #x " == " #y ), x, y )
-#define ASSERT_LEQ(x, y) assert_leq_fn( BRICK_LOCATION( #x " <= " #y ), x, y )
-#define ASSERT_NEQ(x, y) assert_neq_fn( BRICK_LOCATION( #x " != " #y ), x, y )
-#define ASSERT_EQ_IDX(i, x, y) assert_eq_fn( BRICK_LOCATION( brick::string::fmtf( "%s at index %d", #x " == " #y, i ) ), x, y )
-#else
-#define ASSERT(x) ((void)0)
-#define ASSERT_PRED(p, x) ((void)0)
-#define ASSERT_EQ(x, y) ((void)0)
-#define ASSERT_LEQ(x, y) ((void)0)
-#define ASSERT_NEQ(x, y) ((void)0)
-#endif
-
-#define UNUSED __attribute__((unused))
-
-/* you must #include <brick-string.h> to use ASSERT_UNREACHABLE_F */
-#define ASSERT_UNREACHABLE_F(...) assert_die_fn( BRICK_LOCATION( brick::string::fmtf(__VA_ARGS__) ) )
-#define ASSERT_UNREACHABLE(x) assert_die_fn( BRICK_LOCATION( x ) )
-#define ASSERT_UNIMPLEMENTED() assert_die_fn( BRICK_LOCATION( "not imlemented" ) )
 
 #ifndef BRICK_UNITTEST_H
 #define BRICK_UNITTEST_H
 
 namespace brick {
 namespace unittest {
-
-struct Location {
-    const char *file;
-    int line, iteration;
-    std::string stmt;
-    Location( const char *f, int l, std::string st, int iter = -1 )
-        : file( f ), line( l ), iteration( iter ), stmt( st ) {}
-};
-
-#define BRICK_LOCATION(stmt) ::brick::unittest::Location( __FILE__, __LINE__, stmt )
-
-struct AssertFailed : std::exception {
-    std::string str;
-
-    template< typename X >
-    friend inline AssertFailed &operator<<( AssertFailed &f, X x )
-    {
-        std::stringstream str;
-        str << x;
-        f.str += str.str();
-        return f;
-    }
-
-    AssertFailed( Location l )
-    {
-        (*this) << l.file << ": " << l.line;
-        if ( l.iteration != -1 )
-            (*this) << " (iteration " << l.iteration << ")";
-        (*this) << ": assertion `" << l.stmt << "' failed;";
-    }
-
-    const char *what() const noexcept { return str.c_str(); }
-};
-
-template< typename X >
-void assert_fn( Location l, X x )
-{
-    if ( !x ) {
-        throw AssertFailed( l );
-    }
-}
-
-inline void assert_die_fn( Location l ) __attribute__((noreturn));
-
-inline void assert_die_fn( Location l )
-{
-    throw AssertFailed( l );
-}
-
-template< typename X, typename Y >
-void assert_eq_fn( Location l, X x, Y y )
-{
-    if ( !( x == y ) ) {
-        AssertFailed f( l );
-        f << " got ["
-          << x << "] != [" << y
-          << "] instead";
-        throw f;
-    }
-}
-
-template< typename X, typename Y >
-void assert_leq_fn( Location l, X x, Y y )
-{
-    if ( !( x <= y ) ) {
-        AssertFailed f( l );
-        f << " got ["
-          << x << "] > [" << y
-          << "] instead";
-        throw f;
-    }
-}
-
-template< typename X >
-void assert_pred_fn( Location l, X x, bool p )
-{
-    if ( !p ) {
-        AssertFailed f( l );
-        f << " for " << x;
-        throw f;
-    }
-}
-
-template< typename X, typename Y >
-void assert_neq_fn( Location l, X x, Y y )
-{
-    if ( x != y )
-        return;
-    AssertFailed f( l );
-    f << " got ["
-      << x << "] == [" << y << "] instead";
-    throw f;
-}
 
 struct TestCaseBase {
     std::string name;
@@ -428,6 +302,9 @@ void _register_g( const char *n, bool fail )
     }
 }
 
+#undef TEST
+#undef TEST_FAILING
+
 #ifndef BRICK_UNITTEST_REG
 
 template< typename T, void (T::*tc)(), void (T::*reg)() = tc >
@@ -489,7 +366,7 @@ struct SelfTest
         bool die UNUSED = true;
         try {
             ASSERT_EQ( 1, 2 );
-        } catch ( AssertFailed ) {
+        } catch ( _assert::AssertFailed ) {
             die = false;
         }
         ASSERT( !die );
