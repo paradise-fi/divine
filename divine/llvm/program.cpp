@@ -2,7 +2,7 @@
 
 #define NO_RTTI
 
-#include <wibble/exception.h>
+#include <stdexcept>
 
 #include <divine/llvm/program.h>
 
@@ -45,8 +45,8 @@ PC ProgramInfo::getCodePointer( ::llvm::Value *val )
         return blockmap[ B->getBasicBlock() ];
     } else if ( auto F = dyn_cast< ::llvm::Function >( val ) ) {
         if ( !functionmap.count( F ) && builtin( F ) == NotBuiltin )
-            throw wibble::exception::Consistency(
-                "ProgramInfo::insert",
+            throw std::logic_error(
+                "ProgramInfo::insert: " +
                 std::string( "Unresolved symbol (function): " ) + F->getName().str() );
 
         if ( builtin( F ) )
@@ -129,9 +129,10 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {
             Value pointee;
             if ( !G->hasInitializer() )
-                throw wibble::exception::Consistency(
-                    "ProgramInfo::insert",
-                    std::string( "Unresolved symbol (global variable): " ) + G->getValueName()->getKey().str() );
+                throw std::logic_error(
+                    "ProgramInfo::insert: " +
+                    std::string( "Unresolved symbol (global variable): " ) +
+                    G->getValueName()->getKey().str() );
             assert( G->hasInitializer() );
             initValue( G->getInitializer(), pointee );
             if ( (pointee.constant = G->isConstant()) )
@@ -231,8 +232,8 @@ void ProgramInfo::builtin( Position p )
     ::llvm::Function *F = CS.getCalledFunction();
     insn.builtin = builtin( F );
     if ( insn.builtin == NotBuiltin )
-        throw wibble::exception::Consistency(
-            "ProgramInfo::builtin",
+        throw std::logic_error(
+            std::string( "ProgramInfo::builtin: " ) +
             "Can't call an undefined function: " + F->getName().str() );
 }
 
@@ -324,9 +325,9 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
     ++ p.I; /* next please */
 
     if ( ! ++ p.pc.instruction )
-        throw wibble::exception::Consistency(
-            "ProgramInfo::insert() in " + p.I->getParent()->getParent()->getName().str(),
-            "Too many instructions in a basic block, capacity exceeded" );
+        throw std::logic_error(
+            "ProgramInfo::insert() in " + p.I->getParent()->getParent()->getName().str() +
+            "\nToo many instructions in a basic block, capacity exceeded" );
 
     return p;
 }
@@ -375,14 +376,14 @@ void ProgramInfo::pass()
         auto name = function->getName();
 
         if ( !++ pc.function )
-            throw wibble::exception::Consistency(
-                "ProgramInfo::build in " + name.str(),
-                "Too many functions, capacity exceeded" );
+            throw std::logic_error(
+                "ProgramInfo::build in " + name.str() +
+                "\nToo many functions, capacity exceeded" );
 
         if ( function->begin() == function->end() )
-            throw wibble::exception::Consistency(
-                "ProgramInfo::build in " + name.str(),
-                "Can't deal with empty functions" );
+            throw std::logic_error(
+                "ProgramInfo::build in " + name.str() +
+                "\nCan't deal with empty functions" );
 
         makeFit( functions, pc.function );
         functionmap[ function ] = pc.function;
@@ -418,8 +419,8 @@ void ProgramInfo::pass()
             blockmap[ &*block ] = pc;
 
             if ( block->begin() == block->end() )
-                throw wibble::exception::Consistency(
-                    "ProgramInfo::build",
+                throw std::logic_error(
+                    std::string( "ProgramInfo::build: " ) +
                     "Can't deal with an empty BasicBlock in function " + name.str() );
 
             ProgramInfo::Position p( pc, block->begin() );
