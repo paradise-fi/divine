@@ -289,7 +289,7 @@ void throw_regerror( regex_t *re, int code ) {
     int size = regerror( code, re, nullptr, 0 );
     char err[size];
     regerror( code, re, err, size );
-    throw std::runtime_error( err );
+    throw std::runtime_error( fmtf( "regexp error: %s", err ) );
 }
 
 }
@@ -497,14 +497,14 @@ using std::string;
 struct TestRegexp {
 
     TEST_FAILING(parse) {
-        Regexp re("^foo(");
+        ERegexp re("^foo(");
     }
 
     TEST(parse_catch) {
         try {
-            Regexp re("^foo(");
+            ERegexp re("^foo(");
+            ASSERT_UNREACHABLE("bad regex");
         } catch ( std::runtime_error &e ) {
-            std::cerr << e.what() << std::endl;
         }
     }
 
