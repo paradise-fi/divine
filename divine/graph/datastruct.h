@@ -4,6 +4,7 @@
 #include <deque>
 #include <memory>
 
+#include <brick-assert.h>
 #include <brick-shmem.h>
 
 #ifndef DIVINE_DATASTRUCT_H

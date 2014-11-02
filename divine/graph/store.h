@@ -5,7 +5,7 @@
 #include <iterator>
 #include <tuple>
 
-#include <bricks/brick-hashset.h>
+#include <brick-hashset.h>
 
 #include <divine/toolkit/ntreehashset.h>
 #include <divine/toolkit/pool.h>
