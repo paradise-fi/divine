@@ -488,5 +488,107 @@ public:
 }
 }
 
+namespace brick_test {
+namespace string {
+
+using namespace brick::string;
+using std::string;
+
+struct TestRegexp {
+
+    TEST_FAILING(parse) {
+        Regexp re("^foo(");
+    }
+
+    TEST(parse_catch) {
+        try {
+            Regexp re("^foo(");
+        } catch ( std::runtime_error &e ) {
+            std::cerr << e.what() << std::endl;
+        }
+    }
+
+    TEST(basicMatch) {
+        Regexp re("^fo\\+bar()$");
+        ASSERT(re.match("fobar()"));
+        ASSERT(re.match("foobar()"));
+        ASSERT(re.match("fooobar()"));
+        ASSERT(!re.match("fbar()"));
+        ASSERT(!re.match(" foobar()"));
+        ASSERT(!re.match("foobar() "));
+    }
+
+    TEST(extendedMatch) {
+        ERegexp re("^fo+bar()$");
+        ASSERT(re.match("fobar"));
+        ASSERT(re.match("foobar"));
+        ASSERT(re.match("fooobar"));
+        ASSERT(!re.match("fbar"));
+        ASSERT(!re.match(" foobar"));
+        ASSERT(!re.match("foobar "));
+    }
+
+    TEST(capture) {
+        ERegexp re("^f(o+)bar([0-9]*)$", 3);
+        ASSERT(re.match("fobar"));
+        ASSERT_EQ(re[0], string("fobar"));
+        ASSERT_EQ(re[1], string("o"));
+        ASSERT_EQ(re[2], string(""));
+        ASSERT_EQ(re.matchStart(0), 0u);
+        ASSERT_EQ(re.matchEnd(0), 5u);
+        ASSERT_EQ(re.matchLength(0), 5u);
+        ASSERT_EQ(re.matchStart(1), 1u);
+        ASSERT_EQ(re.matchEnd(1), 2u);
+        ASSERT_EQ(re.matchLength(1), 1u);
+
+        ASSERT(re.match("foobar42"));
+        ASSERT_EQ(re[0], string("foobar42"));
+        ASSERT_EQ(re[1], string("oo"));
+        ASSERT_EQ(re[2], string("42"));
+    }
+
+    TEST(splitter)
+    {
+        Splitter splitter("[ \t]+or[ \t]+", REG_EXTENDED | REG_ICASE);
+        Splitter::const_iterator i = splitter.begin("a or b OR c   or     dadada");
+        ASSERT_EQ(*i, "a");
+        ASSERT_EQ(i->size(), 1u);
+        ++i;
+        ASSERT_EQ(*i, "b");
+        ASSERT_EQ(i->size(), 1u);
+        ++i;
+        ASSERT_EQ(*i, "c");
+        ASSERT_EQ(i->size(), 1u);
+        ++i;
+        ASSERT_EQ(*i, "dadada");
+        ASSERT_EQ(i->size(), 6u);
+        ++i;
+        ASSERT(i == splitter.end());
+    }
+
+    TEST(emptySplitter)
+    {
+        Splitter splitter("Z*", REG_EXTENDED | REG_ICASE);
+        Splitter::const_iterator i = splitter.begin("ciao");
+        ASSERT_EQ(*i, "c");
+        ASSERT_EQ(i->size(), 1u);
+        ++i;
+        ASSERT_EQ(*i, "i");
+        ASSERT_EQ(i->size(), 1u);
+        ++i;
+        ASSERT_EQ(*i, "a");
+        ASSERT_EQ(i->size(), 1u);
+        ++i;
+        ASSERT_EQ(*i, "o");
+        ASSERT_EQ(i->size(), 1u);
+        ++i;
+        ASSERT(i == splitter.end());
+    }
+
+};
+
+}
+}
+
 #endif
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
