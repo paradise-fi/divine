@@ -191,6 +191,20 @@ inline std::string fmt(const std::deque< X > &val) {
     return fmt_container( val, '[', ']' );
 }
 
+inline bool startsWith(const std::string& str, const std::string& part)
+{
+    if (str.size() < part.size())
+        return false;
+    return str.substr(0, part.size()) == part;
+}
+
+inline bool endsWith(const std::string& str, const std::string& part)
+{
+    if (str.size() < part.size())
+        return false;
+    return str.substr(str.size() - part.size()) == part;
+}
+
 }
 
 /**
