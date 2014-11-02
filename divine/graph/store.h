@@ -20,6 +20,8 @@ namespace visitor {
 namespace hashset = brick::hashset;
 using hashset::Found;
 using hashset::isNew;
+using brick::types::Preferred;
+using brick::types::NotPreferred;
 
 /* Global utility functions independent of store type
  */
@@ -283,7 +285,7 @@ struct _Vertex
     Node node() const {
         if ( _s && !foreign() && !_s->valid( _n ) && _s->valid( _h ) )
             _n = _s->unpack( _h, _p );
-        _clearTag( _n, wibble::Preferred() ); // Nodes must not be tagged so they can be easily compared
+        _clearTag( _n, Preferred() ); // Nodes must not be tagged so they can be easily compared
         return _n;
     }
 
@@ -291,7 +293,7 @@ struct _Vertex
     bool valid() const { return _s && _s->valid( _h ); }
     Handle handle() const { return _h; }
     // belongs to another machine -> cannot be dereferenced...
-    bool foreign() const { return _foreign( _h, wibble::Preferred() ); }
+    bool foreign() const { return _foreign( _h, Preferred() ); }
     void initForeign( Store& s ) {
         if ( _s == nullptr )
             _s = &s;
@@ -348,26 +350,26 @@ struct _Vertex
 
 private:
     template< typename H >
-    inline auto _foreign( const H &handle, wibble::Preferred ) const ->
+    inline auto _foreign( const H &handle, Preferred ) const ->
         typename std::enable_if< (H::Base::tagBits > 0), bool >::type
     {
         assert( _s ); return handle.rank() != _s->rank();
     }
 
     template< typename H >
-    inline bool _foreign( const H &, wibble::NotPreferred ) const {
+    inline bool _foreign( const H &, NotPreferred ) const {
         return false;
     }
 
     template< typename N >
-    inline auto _clearTag( N &node, wibble::Preferred ) const ->
+    inline auto _clearTag( N &node, Preferred ) const ->
         typename std::enable_if< (N::tagBits > 0) >::type
     {
         node.setTag( 0 );
     }
 
     template< typename N >
-    inline void _clearTag( N &, wibble::NotPreferred ) const { }
+    inline void _clearTag( N &, NotPreferred ) const { }
 
     Store *_s; // origin store
     Handle _h;
@@ -381,27 +383,27 @@ struct TrivialHandle {
     Blob b;
     TrivialHandle() = default;
     explicit TrivialHandle( Blob blob, int rank ) : b( blob ) {
-        _setRank( b, rank, wibble::Preferred() );
+        _setRank( b, rank, Preferred() );
     }
     uint64_t asNumber() { return b.raw(); }
-    int rank() const { return _getRank( b, wibble::Preferred() ); }
+    int rank() const { return _getRank( b, Preferred() ); }
 
   private:
     template< typename T >
-    inline auto _setRank( T &b, int rank, wibble::Preferred ) ->
+    inline auto _setRank( T &b, int rank, Preferred ) ->
         typename std::enable_if< (T::tagBits > 0) >::type
     { b.setTag( rank ); }
 
     template< typename T >
-    inline void _setRank( T &, int, wibble::NotPreferred ) { }
+    inline void _setRank( T &, int, NotPreferred ) { }
 
     template< typename T >
-    inline auto _getRank( const T &b, wibble::Preferred ) const ->
+    inline auto _getRank( const T &b, Preferred ) const ->
         typename std::enable_if< (T::tagBits > 0), int >::type
     { return b.tag(); }
 
     template< typename T >
-    inline int _getRank( const T &, wibble::NotPreferred ) const { return 0; }
+    inline int _getRank( const T &, NotPreferred ) const { return 0; }
 
 } __attribute__((packed));
 
@@ -517,7 +519,7 @@ struct HcStore
     using Vertex = _Vertex< This >;
     using Handle = TrivialHandle;
 
-    static_assert( wibble::TSame< Node, Blob >::value,
+    static_assert( std::is_same< Node, Blob >::value,
                    "HcStore can only work with Blob nodes" );
 
     hash64_t& stubHash( Blob stub ) {
