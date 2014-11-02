@@ -6,7 +6,6 @@
 
 #include <stdexcept>
 #include <cstdlib>
-#include <wibble/exception.h>
 #include <brick-bitlevel.h>
 #include <divine/generator/common.h>
 #include <divine/utility/buchi.h>
@@ -134,7 +133,7 @@ struct Timed : public Common< Blob > {
     void useProperties( PropertySet s ) {
 
         if ( s.size() != 1 )
-            throw wibble::exception::Consistency( "Timed only supports singleton properties" );
+            throw std::logic_error( "Timed only supports singleton properties" );
 
         propGuards.resize( 1 );
         int propId;
@@ -146,8 +145,8 @@ struct Timed : public Common< Blob > {
         else {
             propId = std::atoi( n.c_str() );
             if ( propId >= int( ltlProps.size() ) || propId < 0 )
-                throw wibble::exception::Consistency( "Unknown property " + n +
-                                                      ". Please consult divine info." );
+                throw std::logic_error( "Unknown property " + n +
+                                        ". Please consult divine info." );
         }
 
         hasLTL = false;

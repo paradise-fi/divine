@@ -3,6 +3,9 @@
 #if GEN_LLVM
 #include <stdint.h>
 #include <iostream>
+#include <stdexcept>
+
+#include <brick-string.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -18,7 +21,6 @@
 #include <divine/ltl2ba/main.h>
 #include <divine/toolkit/lens.h>
 
-#include <wibble/exception.h>
 
 #ifndef DIVINE_GENERATOR_LLVM_H
 #define DIVINE_GENERATOR_LLVM_H
@@ -189,11 +191,11 @@ struct _LLVM : Common< Blob > {
         std::string s = _interpreter_2->describe( demangle == DemangleStyle::Cpp );
         if ( use_property ) {
             int buchi = _interpreter_2->state.flags().buchi;
-            s += "LTL: " + wibble::str::fmt( buchi ) + " (";
+            s += "LTL: " + brick::string::fmt( buchi ) + " (";
             for ( int i = 0; i < int( prop_next[ buchi ].size() ); ++i ) {
                 int next = prop_next[buchi][i];
-                s += wibble::str::fmt( prop_trans[next].first ) + " -> " +
-                     wibble::str::fmt( prop_trans[next].second ) + "; ";
+                s += brick::string::fmt( prop_trans[next].first ) + " -> " +
+                     brick::string::fmt( prop_trans[next].second ) + "; ";
             }
             s += ")\n";
         }
@@ -307,7 +309,7 @@ struct _LLVM : Common< Blob > {
             if ( props.count( name ) )
                 ltl += (ltl.empty() ? "" : " && ") + props[ name ];
             else
-                throw wibble::exception::Consistency(
+                throw std::logic_error(
                     "Unknown property " + name + ". Please consult divine info." );
         }
 

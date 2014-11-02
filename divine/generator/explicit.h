@@ -93,8 +93,8 @@ struct _Explicit : public Common< Blob > {
     void release( Node s ) { pool().free( s ); }
 
     void useProperties( PropertySet s ) {
-        assert_eq( s.size(), 1u );
-        assert_eq( *s.begin(), "deadlock" );
+        ASSERT_EQ( s.size(), 1u );
+        ASSERT_EQ( *s.begin(), "deadlock" );
     }
 
     template< typename Yield >

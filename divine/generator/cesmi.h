@@ -5,8 +5,9 @@
 #elif defined _WIN32
 #include <external/dlfcn-win32/dlfcn.h>
 #endif
-#include <wibble/exception.h>
+#include <stdexcept>
 
+#include <brick-string.h>
 #include <divine/generator/common.h>
 
 #ifndef DIVINE_GENERATOR_CESMI_H
@@ -128,7 +129,7 @@ struct CESMI : public Common< Blob > {
         }
 
         // dlopen does not like path-less shared objects outside lib locations
-        if ( wibble::str::basename( path ) == path )
+        if ( brick::string::basename( path ) == path )
             path = "./" + path;
 
         dl.handle = dlopen( path.c_str(), RTLD_LAZY );
@@ -209,13 +210,13 @@ struct CESMI : public Common< Blob > {
                 p.type = PT_Buchi;
                 defd = "neverclaim / LTL verification";
                 break;
-            default: assert_unreachable( "unknown CESMI property type %d", type );
+            default: ASSERT_UNREACHABLE_F( "unknown CESMI property type %d", type );
         }
 
         p.seqno = _this->_properties.size();
 
         if ( p.id.empty() )
-            p.id = "p_" + wibble::str::fmt( p.seqno + 1 );
+            p.id = "p_" + brick::string::fmt( p.seqno + 1 );
 
         if ( p.description.empty() )
             p.description = defd;
@@ -223,7 +224,7 @@ struct CESMI : public Common< Blob > {
         _this->_properties.push_back( p );
         setup->property_count ++;
 
-        assert_eq( setup->property_count, int( _this->_properties.size() ) );
+        ASSERT_EQ( setup->property_count, int( _this->_properties.size() ) );
         return p.seqno;
     }
 
@@ -259,7 +260,7 @@ struct CESMI : public Common< Blob > {
     void useProperties( PropertySet s )
     {
         if ( s.size() != 1 )
-            throw wibble::exception::Consistency( "CESMI only supports singleton properties" );
+            throw std::logic_error( "DVE only supports singleton properties" );
 
         std::string n = *s.begin();
 
@@ -270,7 +271,7 @@ struct CESMI : public Common< Blob > {
                 return;
             }
 
-        throw wibble::exception::Consistency( "Unknown property " + n + ". Please consult divine info." );
+        throw std::logic_error( "Unknown property " + n + ". Please consult divine info." );
     }
 
     CESMI() {
@@ -320,7 +321,6 @@ struct CESMI : public Common< Blob > {
             return "";
     }
 
-    Node initial() { assert_die(); }
     void release( Node s ) { pool().free( s ); }
 };
 

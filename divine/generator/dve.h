@@ -5,11 +5,13 @@
 
 #include <deque>
 #include <vector>
+#include <stdexcept>
+
+#include <brick-string.h>
 
 #include <divine/dve/preprocessor.h>
 #include <divine/dve/interpreter.h>
 #include <divine/generator/common.h>
-#include <wibble/exception.h>
 
 #ifndef DIVINE_GENERATOR_DVE_H
 #define DIVINE_GENERATOR_DVE_H
@@ -214,20 +216,20 @@ struct Dve : public Common< Blob > {
         yield( "assert", "assertion safety", PT_Goal );
         int i = 0;
         for ( auto p : system->properties ) {
-            yield( "LTL" + (i ? wibble::str::fmt( i ) : ""), "Büchi neverclaim property", PT_Buchi );
+            yield( "LTL" + (i ? brick::string::fmt( i ) : ""), "Büchi neverclaim property", PT_Buchi );
             ++ i;
         }
     }
 
     void useProperties( PropertySet s ) {
         if ( s.size() != 1 )
-            throw wibble::exception::Consistency( "DVE only supports singleton properties" );
+            throw std::logic_error( "DVE only supports singleton properties" );
 
         std::string n = *s.begin();
         system->property = NULL;
         int i = 0;
         for ( auto &p : system->properties ) {
-            if ( n == "LTL" + (i ? wibble::str::fmt( i ) : "") )
+            if ( n == "LTL" + (i ? brick::string::fmt( i ) : "") )
                 system->property = &p;
             ++ i;
         }
