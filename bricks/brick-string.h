@@ -36,6 +36,7 @@
 #include <cstring>
 #include <cstdarg>
 #include <cstdlib>
+#include <cstddef>
 
 #include <deque>
 #include <vector>
@@ -437,7 +438,7 @@ public:
 
     public:
         typedef std::string value_type;
-        typedef ptrdiff_t difference_type;
+        typedef std::ptrdiff_t difference_type;
         typedef value_type *pointer;
         typedef value_type &reference;
         typedef std::forward_iterator_tag iterator_category;
