@@ -247,7 +247,7 @@ struct _LLVM : Common< Blob > {
             if ( name->getString() == lit )
                 return 1 + cast< ConstantInt >( it->getOperand(2) )->getValue().getZExtValue();
         }
-        assert_die();
+        ASSERT_UNREACHABLE_F( "failed to find literal ID for %s", lit.c_str() );
     }
 
     void useProperty( llvm::Problem::What w ) {
@@ -299,7 +299,7 @@ struct _LLVM : Common< Blob > {
 
         for ( std::string name : s ) {
             if ( name == "deadlock" ) {
-                assert_eq( s.size(), 1u );
+                ASSERT_EQ( s.size(), 1u );
                 return;
             }
 
@@ -328,13 +328,13 @@ struct _LLVM : Common< Blob > {
         initial = b.get_init_nodes();
         accept = b.get_accept_nodes();
 
-        assert_eq( initial.size(), 1U );
+        ASSERT_EQ( initial.size(), 1U );
         prop_initial = initial.front()->name;
         prop_next.resize( nodes.size() );
         prop_accept.resize( nodes.size(), false );
 
         for ( NodeList::iterator n = nodes.begin(); n != nodes.end(); ++n ) {
-            assert_leq( (*n)->name, int( nodes.size() ) );
+            ASSERT_LEQ( (*n)->name, int( nodes.size() ) );
             int nid = (*n)->name - 1;
 
             for ( TransList::const_iterator t = b.get_node_adj(*n).begin();
@@ -343,7 +343,7 @@ struct _LLVM : Common< Blob > {
 
                 for ( LTL_label_t::const_iterator l = t->t_label.begin();
                       l != t->t_label.end(); ++l ) {
-                    assert_leq( 1, literal_id( l->predikat ) );
+                    ASSERT_LEQ( 1, literal_id( l->predikat ) );
                     /* NB. Negation implies a *positive* query on an AP. */
                     guard.push_back( (l->negace ? 1 : -1) * literal_id( l->predikat ) );
                 }
