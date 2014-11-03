@@ -412,15 +412,11 @@ struct _HashSet : HashSetBase< Cell >
     }
 
     void grow() {
-        if ( 2 * size() >= _maxsize ) {
-            std::cerr << "Sorry, ran out of space in the hash table!" << std::endl;
-            abort();
-        }
+        if ( 2 * size() >= _maxsize )
+            ASSERT_UNREACHABLE( "ran out of space in the hash table" );
 
-        if( _growing ) {
-            std::cerr << "Oops, too many collisions during table growth." << std::endl;
-            abort();
-        }
+        if( _growing )
+            ASSERT_UNREACHABLE( "too many collisions during table growth" );
 
         _growing = true;
 
@@ -1070,9 +1066,7 @@ struct Parallel
         std::set< int > s;
         for ( size_t i = 0; i != set.size(); ++i ) {
             if ( set[ i ] ) {
-                if ( s.find( set[ i ] ) != s.end() )
-                    std::cout << set[ i ] << std::endl;
-                else
+                if ( s.find( set[ i ] ) == s.end() )
                     s.insert( set[ i ] );
                 ++count;
             }
