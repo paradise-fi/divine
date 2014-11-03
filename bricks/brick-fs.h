@@ -11,6 +11,9 @@
 #include <cstring>
 #include <cstdlib>
 #include <fstream>
+#include <stdexcept>
+#include <algorithm>
+#include <memory>
 
 #ifndef BRICK_FS_H
 #define BRICK_FS_H
