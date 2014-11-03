@@ -61,7 +61,7 @@ struct NTreeHashSet
         Leaf( T b ) noexcept : types::NewType< T >( b ) {}
         Leaf( int32_t size, char* source, Pool& pool )
         {
-            assert_leq( 1, size );
+            ASSERT_LEQ( 1, size );
             this->unwrap() = pool.allocate( size );
             std::copy( source, source + size, pool.dereference( this->unwrap() ) );
         }
@@ -143,7 +143,7 @@ struct NTreeHashSet
         Fork() noexcept {}
         Fork( T b ) noexcept : types::NewType< T >( b ) {}
         Fork( int32_t children, Pool& pool ) {
-            assert_leq( 2, children );
+            ASSERT_LEQ( 2, children );
             int32_t size = children * sizeof( LeafOr< Fork > );
             this->unwrap() = pool.allocate( size );
             pool.clear( this->unwrap() );
@@ -196,7 +196,7 @@ struct NTreeHashSet
             ASSERT( p.valid( b() ) );
             if ( leaf( p ) ) {
                 int32_t size = p.size( b() ) - sizeof( Header );
-                assert_leq( 0, size );
+                ASSERT_LEQ( 0, size );
                 T out = p.allocate( size );
                 std::copy( data( p ), data( p ) + size, p.dereference( out ) );
                 return out;
@@ -218,7 +218,7 @@ struct NTreeHashSet
             char* outptr = p.dereference( out );
             outptr = std::copy( slackptr, slackptr + slacksize, outptr );
             for ( auto l : leaves ) {
-                assert_leq( outptr - p.dereference( out ), p.size( out ) );
+                ASSERT_LEQ( outptr - p.dereference( out ), p.size( out ) );
                 outptr = std::copy( l.data( p ), l.data( p ) + p.size( l.unwrap() ), outptr );
             }
             ASSERT_EQ( outptr - p.dereference( out ), p.size( out ) );
@@ -236,8 +236,8 @@ struct NTreeHashSet
         }
 
         static Root create( insert_type it, int32_t children, int32_t slack, Pool& pool ) {
-            assert_leq( 2, children );
-            assert_leq( 0, slack );
+            ASSERT_LEQ( 2, children );
+            ASSERT_LEQ( 0, slack );
             uintptr_t size = sizeof( Header ) + slack + sizeof( LeafOrFork ) * children;
             Root root;
             root.unwrap() = pool.allocate( size );
@@ -330,17 +330,17 @@ struct NTreeHashSet
                     ASSERT( equal );
                     ASSERT( this->pool().valid( leaf.unwrap() ) );
                     ASSERT( itemPtr != nullptr );
-                    assert_leq( 0, pos );
+                    ASSERT_LEQ( 0, pos );
 
                     Pool &p = this->pool();
-                    assert_leq( pos + leaf.size( p ), itSize );
+                    ASSERT_LEQ( pos + leaf.size( p ), itSize );
                     equal = std::memcmp( itemPtr, leaf.data( p ),
                                          leaf.size( p ) ) == 0;
                     itemPtr += leaf.size( p );
                     pos += leaf.size( p );
                     return equal;
                 } );
-            assert_leq( 0, pos );
+            ASSERT_LEQ( 0, pos );
             return equal;
         }
 
@@ -493,7 +493,7 @@ struct NTreeHashSet
                 ASSERT_EQ( forkcount(), stack.back().second );
                 stack.pop_back();
                 if ( !stack.empty() ) {
-                    assert_leq( &target(), forkdata() + forkcount() );
+                    ASSERT_LEQ( &target(), forkdata() + forkcount() );
                     target() = insert( d.forks, td.forks, f );
                     advance();
                 }
@@ -509,9 +509,9 @@ struct NTreeHashSet
             }
 
             void consume( intptr_t length ) {
-                assert_leq( start, current );
-                assert_leq( current, start + size );
-                assert_leq( current + length, start + size );
+                ASSERT_LEQ( start, current );
+                ASSERT_LEQ( current, start + size );
+                ASSERT_LEQ( current + length, start + size );
 
                 if ( stack.empty() ) {
                     ASSERT( !td.pool().valid( root.unwrap() ) );
@@ -572,8 +572,8 @@ struct NTreeHashSet
     }
 
     Root operator[]( intptr_t off ) {
-        assert_leq( 0, off );
-        assert_leq( off, intptr_t( size() ) - 1 );
+        ASSERT_LEQ( 0, off );
+        ASSERT_LEQ( off, intptr_t( size() ) - 1 );
         return _d.roots[ off ];
     }
 
