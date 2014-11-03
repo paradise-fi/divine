@@ -1,6 +1,7 @@
 #ifndef DIVINE_UTILITY_BUCHI_H
 #define DIVINE_UTILITY_BUCHI_H
 
+#include <brick-assert.h>
 #include <divine/ltl2ba/main.h>
 
 #if OPT_LTL3BA
@@ -54,10 +55,10 @@ public:
 
         for ( auto n = nodeList.begin(); n != nodeList.end(); ++n ) {
             int nid = (*n)->name - 1;
-            assert( nid >= 0 && nid < int( nodes.size() ) );
+            ASSERT( nid >= 0 && nid < int( nodes.size() ) );
             nodes[ nid ].isAcc = (*n)->accept;
             if ( (*n)->initial ) {
-                assert( initId < 0 );
+                ASSERT( initId < 0 );
                 initId = nid;
             }
 
@@ -131,7 +132,7 @@ public:
             nodes.push_back( BANode() );
             nodes.back().isAcc = isAccepting( s );
             if ( isInitial( s ) ) {
-                assert( initId < 0 );
+                ASSERT( initId < 0 );
                 initId = getId( s );
             }
         }
@@ -152,7 +153,7 @@ public:
             initId = 0;
         }
 
-        assert( initId >= 0 );
+        ASSERT( initId >= 0 );
         ltl3ba_finalize();
         return true;
     }
