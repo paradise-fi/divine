@@ -1,7 +1,8 @@
+#include <brick-string.h>
 #include <divine/utility/strings.h>
 #include <divine/dve/compiler.h>
 
-using namespace wibble::str;
+using namespace brick::string;
 using namespace std;
 
 namespace divine {

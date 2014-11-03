@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <iostream>
 
-#include <wibble/test.h>
+#include <brick-assert.h>
 
 #include <divine/dve/parse.h>
 #include <divine/dve/symtab.h>
@@ -46,7 +46,7 @@ struct LValue {
         symbol = tab.lookup( NS::Variable, lv.ident.name() );
         if ( symbol.item().is_constant )
             lv.fail( "Cannot use a constant as lvalue!", parse::System::Fail::Semantic );
-        assert( symbol.valid() );
+        ASSERT( symbol.valid() );
     }
 
     LValue() : _valid( false ) {}
@@ -111,21 +111,21 @@ struct Channel {
     std::ostream& dump( std::ostream &os, char * data );
 
     char * item(char * data, int i) {
-        assert( _valid );
+        ASSERT( _valid );
         return data + i*context->offset;
     }
 
     int & count(char * data) {
-        assert( _valid );
+        ASSERT( _valid );
         char *place = data + bufsize*context->offset;
         return *reinterpret_cast< int * >( place );
     }
 
     void enqueue( EvalContext &ctx, std::vector< int > values, ErrorState &err ) {
-        assert( _valid );
+        ASSERT( _valid );
         char * data = thischan.getref( ctx.mem, 0 );
         char * _item = item( data, count( data ) );
-        assert_eq( values.size(), components.size() );
+        ASSERT_EQ( values.size(), components.size() );
 
         for ( unsigned i = 0; i < values.size(); i++ ) {
             components[ i ].set( _item, 0, values[ i ], err );
@@ -135,7 +135,7 @@ struct Channel {
     }
 
     std::vector< int > dequeue( EvalContext &ctx, ErrorState & ) {
-        assert( _valid );
+        ASSERT( _valid );
         char * data = thischan.getref( ctx.mem, 0 );
         std::vector< int > retval;
         retval.resize( components.size() );
@@ -151,7 +151,7 @@ struct Channel {
     }
 
     bool full( EvalContext &ctx ) {
-        assert( _valid );
+        ASSERT( _valid );
         char * data;
         if ( is_buffered )
             data = thischan.getref( ctx.mem, 0 );
@@ -161,7 +161,7 @@ struct Channel {
     };
 
     bool empty( EvalContext &ctx ) {
-        assert( _valid );
+        ASSERT( _valid );
         char * data;
         if ( is_buffered )
             data = thischan.getref( ctx.mem, 0 );
@@ -253,7 +253,7 @@ struct Transition {
                 else if ( sync_lval.valid() )
                     sync_lval.set( ctx, sync_channel->dequeue( ctx, err ), err );
                 else
-                    assert_die();
+                    ASSERT_UNREACHABLE( "invalid sync expression" );
         }
         if ( sync ) {
             if (sync->sync_lval.valid() && sync_expr.valid() )
@@ -463,9 +463,9 @@ struct Transition {
         }
 
         from = sym.lookup( NS::State, t.from );
-        assert( from.valid() );
+        ASSERT( from.valid() );
         to = sym.lookup( NS::State, t.to );
-        assert( to.valid() );
+        ASSERT( to.valid() );
 
         flags = sym.lookup( NS::Flag, "Flags" );
     }
@@ -482,7 +482,7 @@ static inline void declare( SymTab &symtab, const parse::Decls &decls )
             init.push_back( i->initial[ j ]);
 
         // TODO: add proper runtime check for array size validity
-        assert_leq( 0, i->size );
+        ASSERT_LEQ( 0, i->size );
         while ( init.size() < static_cast<unsigned>(i->size) )
             init.push_back( 0 );
         symtab.constant( i->is_const ? NS::Variable : NS::Initialiser, i->name, init );
@@ -522,14 +522,14 @@ struct Process {
     }
 
     int available( EvalContext &ctx ) {
-        assert_leq( size_t( state( ctx ) + 1 ), trans.size() );
+        ASSERT_LEQ( size_t( state( ctx ) + 1 ), trans.size() );
         return trans[ state( ctx ) ].size() > 0 ||
                 state_readers[ state( ctx ) ].size() > 0;
     }
 
     int enabled( EvalContext &ctx, unsigned i, ErrorState &err ) {
         ErrorState temp_err = ErrorState::e_none;
-        assert_leq( size_t( state( ctx ) + 1 ), trans.size() );
+        ASSERT_LEQ( size_t( state( ctx ) + 1 ), trans.size() );
         std::vector< Transition > &tr = trans[ state( ctx ) ];
         for ( ; i < tr.size(); ++i ) {
             if ( tr[ i ].enabled( ctx, temp_err ) )
@@ -545,9 +545,9 @@ struct Process {
     }
 
     Transition &transition( EvalContext &ctx, int i ) {
-        assert_leq( size_t( state( ctx ) + 1 ), trans.size() );
-        assert_leq( i, int( trans[ state( ctx ) ].size() ) );
-        assert_leq( 1, i );
+        ASSERT_LEQ( size_t( state( ctx ) + 1 ), trans.size() );
+        ASSERT_LEQ( i, int( trans[ state( ctx ) ].size() ) );
+        ASSERT_LEQ( 1, i );
         return trans[ state( ctx ) ][ i - 1 ];
     }
 
@@ -555,7 +555,7 @@ struct Process {
         : id( id ), symtab( parent )
     {
         int states = 0;
-        assert( id.valid() );
+        ASSERT( id.valid() );
 
         declare( symtab, proc.body.decls );
         for ( std::vector< parse::Identifier >::const_iterator i = proc.body.states.begin();
@@ -572,7 +572,7 @@ struct Process {
             symtab.channels[ proc.body.chandecls[i].name ] =  &channels[i];
         }
 
-        assert_eq( states, int( proc.body.states.size() ) );
+        ASSERT_EQ( states, int( proc.body.states.size() ) );
 
         is_accepting.resize( proc.body.states.size(), false );
         is_commited.resize( proc.body.states.size(), false );
@@ -698,7 +698,7 @@ struct System {
     System( const parse::System &sys )
         : property( 0 )
     {
-        assert( !sys.synchronous ); // XXX
+        ASSERT( !sys.synchronous ); // XXX
 
         declare( symtab, sys.decls );
         flags = symtab.lookup( NS::Flag, "Flags" );
@@ -767,7 +767,7 @@ struct System {
                 }
             }
 
-            assert( property );
+            ASSERT( property );
         }
     }
 
@@ -902,7 +902,7 @@ struct System {
             return true;
         Transition &trans = getTransition( ctx, cont );
         if ( trans.sync ) {
-            assert_leq( 0, trans.sync->procIndex );
+            ASSERT_LEQ( 0, trans.sync->procIndex );
             if (trans.sync->procIndex == getProcIndex( pid ) )
                 return true;
         }
@@ -938,7 +938,7 @@ struct System {
 
         for ( Scope::iterator i = scope.begin(); i != scope.end(); ++i ) {
             Symbol vsym = tab.lookup( vns, i->first ), isym = tab.lookup( ins, i->first );
-            assert( vsym.valid() );
+            ASSERT( vsym.valid() );
             if ( isym.valid() ) {
                 if ( vsym.item().is_array )
                     for ( int index = 0; index < vsym.item().array; index++ )

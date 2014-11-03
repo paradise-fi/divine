@@ -8,7 +8,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <wibble/string.h>
+#include <brick-string.h>
 #include <divine/dve/preprocessor.h>
 #include <divine/dve/interpreter.h>
 
@@ -187,7 +187,7 @@ struct DveCompiler
 
     void declare( std::string type, std::string name, int array = 0 ) {
         line( type + " " + name +
-              ( array ? ("[" + wibble::str::fmt( array ) + "]") : "" ) +
+              ( array ? ("[" + brick::string::fmt( array ) + "]") : "" ) +
               ";" );
     }
 
@@ -218,9 +218,9 @@ struct DveCompiler
     std::string channel_item_at( parse::Process & p, parse::SyncExpr & chan, std::string pos, int x, std::string state ) {
         parse::Identifier chanProc = getChannelProc( p, chan );
         if ( !chanProc.valid() )
-            return state + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
+            return state + "." + chan.chan.name() + ".content[" + pos + "].x" + brick::string::fmt( x );
         else
-            return state + "." + getProcName( chanProc.name() ) + "." + chan.chan.name() + ".content[" + pos + "].x" + wibble::str::fmt( x );
+            return state + "." + getProcName( chanProc.name() ) + "." + chan.chan.name() + ".content[" + pos + "].x" + brick::string::fmt( x );
     }
 
     parse::ChannelDeclaration & getChannel( std::string proc, parse::SyncExpr & chan ) {
@@ -312,7 +312,7 @@ struct DveCompiler
     void new_label() {
         if (many)
             return;
-        append( std::string( "l" ) + wibble::str::fmt( current_label ) + ": " );
+        append( std::string( "l" ) + brick::string::fmt( current_label ) + ": " );
         current_label ++;
     }
 
@@ -320,7 +320,7 @@ struct DveCompiler
     void block_end() { deindent(); line( "}" ); }
 
     std::string in_state( parse::Process process, int state, std::string from_state ) {
-        return "(" + process_state( process, from_state ) + " == " + wibble::str::fmt( state ) + ")";
+        return "(" + process_state( process, from_state ) + " == " + brick::string::fmt( state ) + ")";
     }
 
     void setOutput( std::ostream &o ) {

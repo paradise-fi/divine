@@ -7,7 +7,7 @@
 #include <memory>
 #include <unordered_map>
 
-#include <wibble/string.h>
+#include <brick-string.h>
 #include <divine/dve/parse.h>
 #include <divine/dve/interpreter.h>
 #include <divine/utility/buchi.h>
@@ -417,18 +417,18 @@ struct System {
         propBA.name = prop.name;
         propBA.ctx = prop.ctx;
         for ( int i = 0; i < int( ba.size() ); i++ ) {
-            propBA.body.states.push_back( parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() ) );
+            propBA.body.states.push_back( parse::Identifier( "q" + brick::string::fmt( i ), prop.context() ) );
 
             if ( ba.isAccepting( i ) )
-                propBA.body.accepts.push_back( parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() ) );
+                propBA.body.accepts.push_back( parse::Identifier( "q" + brick::string::fmt( i ), prop.context() ) );
 
             const BATrans &batrans = ba.transitions( i );
             for ( std::pair< int, int > bt : batrans ) {
                 parse::Transition t;
                 t.ctx = prop.ctx;
                 t.proc = prop.name;
-                t.from = parse::Identifier( "q" + wibble::str::fmt( i ), prop.context() );
-                t.to = parse::Identifier( "q" + wibble::str::fmt( bt.first ), prop.context() );
+                t.from = parse::Identifier( "q" + brick::string::fmt( i ), prop.context() );
+                t.to = parse::Identifier( "q" + brick::string::fmt( bt.first ), prop.context() );
                 for ( std::pair< bool, std::string > &item : clauses[ bt.second ] ) {
                     t.guards.push_back(
                         parse::Expression(
@@ -438,7 +438,7 @@ struct System {
                 propBA.body.trans.push_back( t );
             }
         }
-        propBA.body.inits.push_back( parse::Identifier( "q" + wibble::str::fmt( ba.getInitial() ), prop.context() ) );
+        propBA.body.inits.push_back( parse::Identifier( "q" + brick::string::fmt( ba.getInitial() ), prop.context() ) );
 
         return propBA;
     }
