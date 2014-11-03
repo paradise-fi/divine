@@ -1,4 +1,5 @@
 #include <divine/ltl2ba/main.h>
+#include <sstream>
 
 namespace divine {
 

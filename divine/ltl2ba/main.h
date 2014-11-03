@@ -6,8 +6,6 @@
 #include <divine/ltl2ba/support_dve.hh>
 #include <divine/ltl2ba/DBA_graph.hh>
 
-#include <wibble/test.h> // for assert
-
 #ifndef DIVINE_BUCHI_H
 #define DIVINE_BUCHI_H
 

@@ -11,7 +11,7 @@
 #include <iterator>
 #include <algorithm>
 #include "formul.hh"
-#include <wibble/test.h> // for assert_die
+#include <brick-assert.h>
 
 #ifndef DOXYGEN_PROCESSING
 
@@ -1078,17 +1078,13 @@ bool LTL_formul_t::is_pure_event()
 				obsah.o1->arg2->is_pure_event());
 			break;
                     default:
-                        std::cerr << "Unexpected value of variable \"obsah.o1->op\"" << std::endl;
-                        assert_die();
+                        ASSERT_UNREACHABLE( "Unexpected value of variable 'obsah.o1->op'" );
                 return false; //unreachable
                 break;
 		}
 		break;
         default:
-            std::cerr << "Unexpected value of variable \"what\"" << std::endl;
-            assert_die();
-            return false; //unreachable
-            break;
+            ASSERT_UNREACHABLE( "Unexpected value of variable \"what\"" );
 	}
 }
 
@@ -1119,17 +1115,11 @@ bool LTL_formul_t::is_pure_universal()
 				obsah.o1->arg2->is_pure_universal());
 			break;
                 default:
-                    std::cerr << "Unexpected value of variable \"obsah.o1->op\"" << std::endl;
-                    assert_die();
-                return false; //unreachable
-                break;
+                    ASSERT_UNREACHABLE( "Unexpected value of variable 'obsah.o1->op'" );
 		}
 		break;
         default:
-            std::cerr << "Unexpected value of variable \"what\"" << std::endl;
-            assert_die();
-            return false; //unreachable
-            break;
+            ASSERT_UNREACHABLE( "Unexpected value of variable 'what'" );
 	}
 }
 
