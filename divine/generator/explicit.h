@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <brick-types.h>
+#include <brick-assert.h>
 #include <divine/generator/common.h>
 #include <divine/explicit/explicit.h>
 #include <divine/graph/probability.h>
@@ -63,7 +64,7 @@ struct _Explicit : public Common< Blob > {
 
     template< typename Yield >
     void successors( Node from, Yield yield ) {
-        assert( this->pool().valid( from ) );
+        ASSERT( this->pool().valid( from ) );
         _successors( index( from ), yield );
     }
 
