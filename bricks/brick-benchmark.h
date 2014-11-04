@@ -37,6 +37,7 @@
 #include <cmath>
 #include <algorithm>
 #include <random>
+#include <functional>
 
 #include <time.h>
 
