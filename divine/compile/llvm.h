@@ -4,7 +4,7 @@
 #include <initializer_list>
 
 #include <brick-llvm.h>
-#include <tools/llvmpaths.h>
+#include <brick-fs.h>
 #include <divine/utility/strings.h>
 #include <divine/utility/die.h>
 
@@ -156,10 +156,10 @@ struct CompileLLVM {
 
         auto queue = _env.getQueue();
         while ( src->n ) {
-            if ( str::endsWith( src->n, ".cc" ) ||
-                 str::endsWith( src->n, ".c" ) ||
-                 str::endsWith( src->n, ".cpp" ) ||
-                 str::endsWith( src->n, ".cxx" ) ) {
+            if ( brick::string::endsWith( src->n, ".cc" ) ||
+                 brick::string::endsWith( src->n, ".c" ) ||
+                 brick::string::endsWith( src->n, ".cpp" ) ||
+                 brick::string::endsWith( src->n, ".cxx" ) ) {
                 queue.pushCompilation( src->n, " -c " + flags + " -I. -o " + src->n + ".bc" );
                 files.emplace_back( std::string( src->n ) + ".bc" );
             }
