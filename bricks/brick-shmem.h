@@ -451,6 +451,7 @@ struct LockedQueue {
 }
 
 #include <unistd.h> // alarm
+#include <vector>
 
 namespace brick_test {
 namespace shmem {
