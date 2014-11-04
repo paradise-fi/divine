@@ -588,6 +588,7 @@ struct NTreeHashSet
 
 }
 
+#include <random>
 #include <divine/algorithm/common.h>
 
 namespace divine_test {
