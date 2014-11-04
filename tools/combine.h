@@ -2,11 +2,11 @@
 #include <iostream>
 #include <sstream>
 #include <brick-commandline.h>
+#include <brick-fs.h>
 
 #include <divine/ltl2ba/main.h>
 #include <divine/utility/die.h>
 #include <wibble/string.h>
-#include <wibble/sys/fs.h>
 #include <wibble/regexp.h>
 #include <wibble/sys/pipe.h>
 #include <wibble/sys/exec.h>
@@ -204,7 +204,7 @@ struct Combine {
     void output( int id, std::string data, std::string prop_descr ) {
         announce( id, prop_descr );
         if ( !o_stdout->boolValue() )
-            fs::writeFile( outFile( id ), data );
+            brick::fs::writeFile( outFile( id ), data );
         else
             std::cout << data;
     }
@@ -290,15 +290,15 @@ struct Combine {
             die( "FATAL: Input file extension has to be one of "
                  ".o, .[m]dve or .[m]probdve." );
 
-        if ( !fs::access( input, R_OK ) )
+        if ( !brick::fs::access( input, R_OK ) )
             die( "FATAL: Can't open '" + input + "' for reading." );
 
-        in_data = fs::readFile( input ) + "\n";
+        in_data = brick::fs::readFile( input ) + "\n";
 
         if ( have_ltl ) {
-            if ( !fs::access( ltl, R_OK ) )
+            if ( !brick::fs::access( ltl, R_OK ) )
                 die( "FATAL: Can't open '" + ltl + "' for reading." );
-            ltl_data = fs::readFile( ltl ) + "\n";
+            ltl_data = brick::fs::readFile( ltl ) + "\n";
         }
 
         if ( str::endsWith( ltl, ".mltl" ) ) {

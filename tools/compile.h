@@ -4,9 +4,9 @@
 #include <vector>
 
 #include <brick-commandline.h>
+#include <brick-fs.h>
 
 #include <wibble/string.h>
-#include <wibble/sys/fs.h>
 #include <wibble/regexp.h>
 #include <wibble/sys/pipe.h>
 #include <wibble/sys/exec.h>
@@ -16,9 +16,11 @@
 #include <divine/dve/compiler.h>
 #include <divine/generator/cesmi.h>
 #include <divine/utility/die.h>
+#include <divine/utility/strings.h>
+#include <divine/compile/llvm.h>
 
 #include <tools/combine.h>
-#include <divine/compile/llvm.h>
+#include <tools/llvmpaths.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
@@ -73,7 +75,7 @@ struct Compile {
     static void cleanup( FilePath &cleanup_tmpdir )
     {
         chdir( cleanup_tmpdir.abspath.c_str() );
-        wibble::sys::fs::rmtree( cleanup_tmpdir.basename );
+        brick::fs::rmtree( cleanup_tmpdir.basename );
     }
 
     void run( std::string command ) {
@@ -131,7 +133,7 @@ struct Compile {
     void compileCESMI( std::string in, std::string cflags ) {
         FilePath tmp_dir;
         tmp_dir.abspath = process::getcwd();
-        tmp_dir.basename = wibble::sys::fs::mkdtemp( "_divine-compile.XXXXXX" );
+        tmp_dir.basename = brick::fs::mkdtemp( "_divine-compile.XXXXXX" );
         std::string in_basename( str::basename( in ), 0, str::basename(in).rfind( '.' ) );
 
         auto clean = wibble::raii::refDeleteIf( !o_keep->boolValue(), tmp_dir, cleanup );
@@ -148,10 +150,10 @@ struct Compile {
             if ( wibble::str::endsWith( extra, ".ltl" ) ) {
                 std::string ltlpath = tmp_dir.basename + "/" + wibble::str::basename( extra ) + ".h";
                 std::string code = "#include <cesmi.h>\n";
-                parse_ltl( wibble::sys::fs::readFile( extra ), [&]( std::string formula ) {
+                parse_ltl( brick::fs::readFile( extra ), [&]( std::string formula ) {
                         code += ltl_to_c( ltlcount++, formula );
                     }, [&]( std::string ) {} );
-                wibble::sys::fs::writeFile( ltlpath, code );
+                brick::fs::writeFile( ltlpath, code );
                 ltlincludes += "#include <" + wibble::str::basename( extra ) + ".h>\n";
             } else
                 extras += " " + extra;
@@ -161,8 +163,8 @@ struct Compile {
 
         std::string impl = tmp_dir.basename + "/cesmi-ltl",
                     aggr = tmp_dir.basename + "/ltl-aggregate.cpp";
-        wibble::sys::fs::writeFile( impl + ".cpp", cesmi_usr_ltl_cpp_str );
-        wibble::sys::fs::writeFile( impl + ".h", cesmi_usr_ltl_h_str );
+        brick::fs::writeFile( impl + ".cpp", cesmi_usr_ltl_cpp_str );
+        brick::fs::writeFile( impl + ".h", cesmi_usr_ltl_h_str );
         extras += " " + impl + ".cpp";
 
         std::ofstream aggr_s( aggr.c_str() );
