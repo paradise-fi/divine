@@ -416,6 +416,20 @@ std::string readFile( const std::string &file ) {
 
 }
 
+inline bool access(const std::string &s, int m)
+{
+#ifdef WIN32
+    return ::_access(s.c_str(), m) == 0;
+#else
+    return ::access(s.c_str(), m) == 0;
+#endif
+}
+
+inline bool exists(const std::string& file)
+{
+    return access(file, F_OK);
+}
+
 }
 }
 
