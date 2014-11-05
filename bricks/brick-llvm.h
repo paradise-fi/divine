@@ -156,9 +156,11 @@ struct Linker {
                 cnt += v->getNumOperands();
 
             std::vector< ::llvm::Constant * > ops;
-            for ( auto c : ctors )
-                for ( auto i = c->op_begin(); i != c->op_end(); ++i )
-                    ops.emplace_back( cast< Constant >( &*i ) );
+            for ( auto &c : ctors )
+                for ( auto i = c->op_begin(); i != c->op_end(); ++i ) {
+                    ::llvm::Use *use = &*i;
+                    ops.emplace_back( cast< Constant >( use ) );
+                }
 
             auto ctorType = ArrayType::get( valType, cnt );
             auto values = ConstantArray::get( ctorType, ArrayRef< Constant * >( ops ) );
