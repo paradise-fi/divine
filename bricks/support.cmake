@@ -46,6 +46,7 @@ function( bricks_unittest name )
       return brick::unittest::run( argc > 1 ? argv[1] : \"\",
                                    argc > 2 ? argv[2] : \"\" )\;"
       "BRICK_UNITTEST_REG" ${ARGN} )
+  set_target_properties( ${name} PROPERTIES COMPILE_FLAGS "-UNDEBUG" )
 endfunction()
 
 function( bricks_benchmark name )
