@@ -52,7 +52,7 @@
  */
 
 #include <type_traits>
-#include <wibble/sys/mmap_v2.h>
+#include <brick-mmap.h>
 #include <divine/explicit/header.h>
 
 #ifndef DIVINE_COMPACT_COMPACT_H
@@ -220,7 +220,7 @@ struct Explicit {
     DataBlock forward;
     DataBlock backward;
     DataBlock nodes;
-    wibble::sys::MMap map;
+    brick::mmap::MMap map;
 
     Explicit() : header(),
         forward(), backward(), nodes()

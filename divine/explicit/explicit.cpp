@@ -14,14 +14,13 @@
 namespace divine {
 namespace dess {
 
-using namespace wibble::sys;
-using wibble::operator|;
+using namespace brick::mmap;
 
 void Explicit::open( std::string path, OpenMode om ) {
-    auto mmapProt = om == OpenMode::Read ? MMap::ProtectMode::Read
-        : MMap::ProtectMode::Read | MMap::ProtectMode::Write;
+    auto mmapProt = om == OpenMode::Read ? ProtectMode::Read
+        : ProtectMode::Read | ProtectMode::Write;
 
-    map.map( path, MMap::ProtectMode::Shared | mmapProt );
+    map.map( path, ProtectMode::Shared | mmapProt );
     finishOpen();
 }
 
@@ -81,8 +80,8 @@ Explicit PrealocateHelper::operator()() {
     ASSERT_EQ( r , 0 );
     static_cast< void >( r );
 
-    MMap map( fd, MMap::ProtectMode::Read | MMap::ProtectMode::Write
-            | MMap::ProtectMode::Shared );
+    MMap map( fd, ProtectMode::Read | ProtectMode::Write
+            | ProtectMode::Shared );
 
     Header *h = new ( map.asArrayOf< void >() ) Header();
     h->capabilities = _capabilities;
