@@ -134,7 +134,7 @@ struct Interpreter
         // IR produced by clang 3.2 and 3.3
         // to make it worse I didn't find way to distinguish between those
         // by other method then trying
-        for ( int modid = 0; modid < meta->getNumOperands(); ++modid ) {
+        for ( int modid = 0; modid < int(meta->getNumOperands()); ++modid ) {
             auto e = findEnum( node( meta, modid, 10, 0 ), lookup, 2 ); // clang <= 3.2
             if ( !e ) e = findEnum( node( meta, modid, 7 ), lookup, 3 ); // clang >= 3.3
             if ( e )
@@ -465,7 +465,7 @@ struct TestLLVM {
 
     TEST(describe1)
     {
-        divine::Blob b = _ith( code_loop(), 1 );
+        divine::Blob b UNUSED = _ith( code_loop(), 1 );
         ASSERT_EQ( _descr( code_loop(), b ),
                    "thread 0:\n  #1: <testf> << br label %entry >> []\n" );
     }
@@ -518,14 +518,14 @@ struct TestLLVM {
 
     TEST(describe6)
     {
-        divine::Blob b = _ith( code_callret(), 3 );
+        divine::Blob b UNUSED = _ith( code_callret(), 3 );
         ASSERT_EQ( _descr( code_callret(), b ),
                    "thread 0:\n  #1: <testf> << %meh = call i32 @helper() >> [ meh = 42 ]\n" );
     }
 
     TEST(memory1)
     {
-        divine::Blob b = _ith( code_mem(), 2 );
+        divine::Blob b UNUSED = _ith( code_mem(), 2 );
         ASSERT_EQ( _descr( code_mem(), b ),
                    "thread 0:\n  #1: <testf> << br label %tail >> [ foo = @(0:0| 33) ]\n" );
     }
