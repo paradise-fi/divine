@@ -339,7 +339,7 @@ struct TestDataBlock {
         char *data = new char[ 100 * sizeof( int64_t ) + 100 * 100 ];
         DataBlock block( 100, data );
 
-        auto inserter = block.inserter();
+        auto inserter UNUSED = block.inserter();
         for ( int i = 0; i < 100; ++i )
             ASSERT_EQ( inserter.emplace( std::max( size_t( i ), sizeof( int64_t ) ),
                 [ i ]( char *data, int64_t size ) -> int64_t {

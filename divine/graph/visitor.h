@@ -984,7 +984,7 @@ struct TestVisitor {
         int lastfull = pow(m, fullheight-1);
         int remaining = n - fulltree;
         // remaining - remaining/m is not same as remaining/m (due to flooring)
-        int transitions = (n - 1) + lastfull + remaining - remaining / m;
+        int transitions UNUSED = (n - 1) + lastfull + remaining - remaining / m;
 
         assert_eq( n, _nodes );
         assert_eq( transitions, _transitions );

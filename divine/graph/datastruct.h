@@ -352,7 +352,7 @@ struct TestDatastruct {
     template< typename Q >
     void _queue(generator::Dummy& d, Q& q) {
         typedef typename Q::Vertex Vertex;
-        auto getShort = [&d]( Node n, int p ) { return d.pool().template get< short >( n, p ); };
+        auto getShort UNUSED = [&d]( Node n, int p ) { return d.pool().template get< short >( n, p ); };
         int count = 0;
 
         init( d );
@@ -532,7 +532,7 @@ struct TestDatastruct {
         Stack< SeqSetup > q( d, s );
 
         bool die = true;
-        auto getShort = [&d]( Node f, int p ) { return d.pool().get< short >( f, p ); };
+        auto getShort UNUSED = [&d]( Node f, int p ) { return d.pool().get< short >( f, p ); };
 
         d.setPool( Pool() );
         init( d );
