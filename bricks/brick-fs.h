@@ -1,9 +1,15 @@
 // -*- C++ -*- (c) 2014 Vladimír Štill
 
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#include <io.h>
+#else
+#include <unistd.h>
 #include <dirent.h>
+#endif
 
 #include <vector>
 #include <string>
@@ -17,6 +23,12 @@
 
 #ifndef BRICK_FS_H
 #define BRICK_FS_H
+
+#ifdef _WIN32
+#ifndef noexcept
+#define noexcept
+#endif
+#endif
 
 namespace brick {
 namespace fs {
@@ -150,26 +162,48 @@ inline std::string normalize( std::string path ) {
 
 
 inline std::string getcwd() {
-	size_t size = pathconf(".", _PC_PATH_MAX);
     std::string buf;
+#ifdef _WIN32
+    char *buffer;
+    if ( ( buffer = _getcwd( NULL, 0 ) ) == NULL )
+        throw SystemException( "getting the current working directory" );
+
+    buf = buffer;
+    free( buffer );
+#else
+    size_t size = pathconf( ".", _PC_PATH_MAX );
     buf.resize( size );
-	if ( ::getcwd( &buf.front(), size ) == nullptr )
-		throw SystemException( "getting the current working directory" );
+    if ( ::getcwd( &buf.front(), size ) == nullptr )
+        throw SystemException( "getting the current working directory" );
     buf.resize( std::strlen( &buf.front() ) );
+#endif
     return buf;
 }
 
 inline void chdir( std::string dir ) {
+#ifdef _WIN32
+    if ( ::_chdir( dir.c_str() ) != 0 )
+        throw SystemException( "changing directory" );
+#else
     if ( ::chdir( dir.c_str() ) != 0 )
         throw SystemException( "changing directory" );
+#endif
 }
 
 inline std::string mkdtemp( std::string dirTemplate ) {
+#ifdef _WIN32
+    if ( ::_mktemp( &dirTemplate.front() ) == nullptr )
+        throw SystemException( "creating temporary directory" );
+#else
     if ( ::mkdtemp( &dirTemplate.front() ) == nullptr )
         throw SystemException( "creating temporary directory" );
+#endif
     return dirTemplate;
 }
 
+#ifdef _WIN32
+#define stat64 _stat64
+#endif
 inline std::unique_ptr< struct stat64 > stat( std::string pathname ) {
 #if _WIN32
     // from MSDN:
@@ -188,11 +222,19 @@ inline std::unique_ptr< struct stat64 > stat( std::string pathname ) {
 	return res;
 }
 
+#ifdef _WIN32
+inline void mkdirIfMissing( std::string dir, int ) {
+#else
 inline void mkdirIfMissing( std::string dir, mode_t mode ) {
+#endif
     for ( int i = 0; i < 5; ++i )
     {
         // If it does not exist, make it
-        if ( ::mkdir( dir.c_str(), mode ) != -1)
+#ifdef _WIN32
+        if ( ::_mkdir( dir.c_str() ) != -1 )
+#else
+        if ( ::mkdir( dir.c_str(), mode ) != -1 )
+#endif
             return;
 
         // throw on all errors except EEXIST. Note that EEXIST "includes the case
@@ -202,8 +244,8 @@ inline void mkdirIfMissing( std::string dir, mode_t mode ) {
 
         // Ensure that, if dir exists, it is a directory
         auto st = stat( dir );
-        if ( !st )
-        {
+
+        if ( !st ) {
             // Either dir has just been deleted, or we hit a dangling
             // symlink.
             //
@@ -215,7 +257,11 @@ inline void mkdirIfMissing( std::string dir, mode_t mode ) {
             // stat and the lstat.
             continue;
         }
-        else if ( !S_ISDIR( st->st_mode) )
+#ifdef _WIN32
+        else if ( ( st->st_mode & _S_IFDIR ) == 0 )
+#else
+        else if ( !S_ISDIR( st->st_mode ) )
+#endif
             // If it exists but it is not a directory, complain
             throw Exception( "ensuring path: " + dir + " exists but it is not a directory" );
         else
@@ -282,16 +328,147 @@ inline void renameIfExists( std::string src, std::string dst ) {
 
 inline void unlink( std::string fname )
 {
+#ifdef _WIN32
+    if ( ::_unlink( fname.c_str() ) < 0 )
+        throw SystemException( "cannot delete file" + fname );
+#else
     if ( ::unlink( fname.c_str() ) < 0 )
         throw SystemException( "cannot delete file" + fname );
+#endif
 }
 
 inline void rmdir( std::string dirname ) {
+#ifdef _WIN32
+    if ( ::_rmdir( dirname.c_str() ) < 0 )
+        throw SystemException( "cannot delete directory " + dirname );
+#else
     if ( ::rmdir( dirname.c_str() ) < 0 )
         throw SystemException( "cannot delete directory " + dirname );
+#endif
 }
 
-#if defined( __unix )
+#ifdef _WIN32
+} // fs
+} // brick
+/*
+
+Declaration of POSIX directory browsing functions and types for Win32.
+
+Author:  Kevlin Henney (kevlin@acm.org, kevlin@curbralan.com)
+History: Created March 1997. Updated June 2003.
+
+Copyright Kevlin Henney, 1997, 2003. All rights reserved.
+
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose is hereby granted without fee, provided
+that this copyright and permissions notice appear in all copies and
+derivatives.
+
+This software is supplied "as is" without express or implied warranty.
+
+But that said, if there are any problems please get in touch.
+*/
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+struct dirent {
+    char *d_name;
+};
+struct DIR {
+    intptr_t            handle; /* -1 for failed rewind */
+    struct _finddata_t  info;
+    struct dirent       result; /* d_name null iff first time */
+    char                *name;  /* null-terminated char string */
+};
+
+DIR *opendir( const char *name ) {
+    DIR *dir = 0;
+
+    if ( name && name[ 0 ] ) {
+        size_t base_length = strlen( name );
+        const char *all = /* search pattern must end with suitable wildcard */
+            strchr( "/\\", name[ base_length - 1 ] ) ? "*" : "/*";
+
+        if ( ( dir = (DIR *)malloc( sizeof *dir ) ) != 0 &&
+             ( dir->name = (char *)malloc( base_length + strlen( all ) + 1 ) ) != 0 ) {
+            strcat( strcpy( dir->name, name ), all );
+
+            if ( ( dir->handle =
+                (intptr_t)_findfirst( dir->name, &dir->info ) ) != -1 ) {
+                dir->result.d_name = 0;
+            }
+            else { /* rollback */
+                free( dir->name );
+                free( dir );
+                dir = 0;
+            }
+        }
+        else { /* rollback */
+            free( dir );
+            dir = 0;
+            errno = ENOMEM;
+        }
+    }
+    else {
+        errno = EINVAL;
+    }
+
+    return dir;
+}
+
+int closedir( DIR *dir ) {
+    int result = -1;
+
+    if ( dir ) {
+        if ( dir->handle != -1 ) {
+            result = _findclose( dir->handle );
+        }
+
+        free( dir->name );
+        free( dir );
+    }
+
+    if ( result == -1 ) {/* map all errors to EBADF */
+        errno = EBADF;
+    }
+    return result;
+}
+
+struct dirent *readdir( DIR *dir ) {
+    struct dirent *result = 0;
+
+    if ( dir && dir->handle != -1 ) {
+        if ( !dir->result.d_name || _findnext( dir->handle, &dir->info ) != -1 ) {
+           result = &dir->result;
+           result->d_name = dir->info.name;
+        }
+    }
+    else {
+        errno = EBADF;
+    }
+    return result;
+}
+
+void rewinddir( DIR *dir ) {
+    if ( dir && dir->handle != -1 ) {
+        _findclose( dir->handle );
+        dir->handle = (intptr_t)_findfirst( dir->name, &dir->info );
+        dir->result.d_name = 0;
+    }
+    else {
+        errno = EBADF;
+    }
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+namespace brick {
+namespace fs {
+#endif
+
 template< typename DirPre, typename DirPost, typename File >
 void traverseDirectoryTree( std::string root, DirPre pre, DirPost post, File file ) {
     if ( pre( root ) ) {
@@ -307,7 +484,11 @@ void traverseDirectoryTree( std::string root, DirPre pre, DirPost post, File fil
 
             auto path = joinPath( root, name );
             auto st = stat( path );
+#ifdef _WIN32
+            if ( st->st_mode & _S_IFDIR )
+#else
             if ( S_ISDIR( st->st_mode ) )
+#endif
                 traverseDirectoryTree( path, pre, post, file );
             else
                 file( path );
@@ -316,9 +497,6 @@ void traverseDirectoryTree( std::string root, DirPre pre, DirPost post, File fil
         post( root );
     }
 }
-#elif defined( _WIN32 )
-#error TODO: traverseDirectoryTree
-#endif
 
 template< typename Dir, typename File >
 void traverseDirectory( std::string root, Dir dir, File file ) {
@@ -336,34 +514,12 @@ void traverseFiles( std::string dir, File file ) {
     traverseDirectory( dir, []( std::string ) {}, file );
 }
 
-#if defined( __unix )
+
 inline void rmtree( std::string dir ) {
     traverseDirectoryTree( dir, []( std::string ) { return true; },
             []( std::string dir ) { rmdir( dir ); },
             []( std::string file ) { unlink( file ); } );
 }
-#elif defined( _WIN32 )
-// Use strictly ANSI variant of structures and functions.
-inline void rmtree( const std::string& dir ) {
-    // Use double null terminated path.
-    dir.resize( dir.size() + 1, 0 );
-
-    SHFILEOPSTRUCTA fileop;
-    fileop.hwnd   = nullptr;    // no status display
-    fileop.wFunc  = FO_DELETE;  // delete operation
-    fileop.pFrom  = from;       // source file name as double null terminated string
-    fileop.pTo    = nullptr;    // no destination needed
-    fileop.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;  // do not prompt the user
-
-    fileop.fAnyOperationsAborted = FALSE;
-    fileop.lpszProgressTitle     = nullptr;
-    fileop.hNameMappings         = nullptr;
-
-    int ret = SHFileOperationA( &fileop );
-    if ( ret ) // only zero return value is without error
-        throw SystemException( "deleting directory" );
-}
-#endif
 
 struct ChangeCwd {
     ChangeCwd( std::string newcwd ) : oldcwd( getcwd() ) {
@@ -416,9 +572,17 @@ std::string readFile( const std::string &file ) {
 
 }
 
+#ifdef _WIN32
+#define F_OK 0
+#define R_OK 2
+#define W_OK 4
+//#define X_OK
+#endif
+
+
 inline bool access(const std::string &s, int m)
 {
-#ifdef WIN32
+#ifdef _WIN32
     return ::_access(s.c_str(), m) == 0;
 #else
     return ::access(s.c_str(), m) == 0;
