@@ -20,7 +20,11 @@ struct Env {
 
     struct RunQueue {
         RunQueue( const RunQueue &o ) : _env( o._env ) { ASSERT( _env != nullptr ); }
-        RunQueue( RunQueue && ) = default;
+        RunQueue( RunQueue &&o ) :
+            _env( o._env ),
+            _commands( std::move( o._commands ) ),
+            _current( o._current.load() )
+        { }
         RunQueue() = delete;
 
         friend struct Env;
