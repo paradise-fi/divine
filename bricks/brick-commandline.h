@@ -1999,7 +1999,7 @@ struct EngineTest {
         opts.push_back("foobar");
 
         Engine1 engine;
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 2u);
         ASSERT_EQ(string(*opts.begin()), string("ciaps"));
@@ -2017,7 +2017,7 @@ struct EngineTest {
 
         Engine1 engine;
 	engine.no_switches_after_first_arg = true;
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 2u);
         ASSERT_EQ(string(*opts.begin()), string("foobar"));
@@ -2032,7 +2032,7 @@ struct EngineTest {
         opts.push_back("foobar");
 
         Engine1 engine;
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 1u);
         ASSERT_EQ(string(*opts.begin()), string("foobar"));
@@ -2046,7 +2046,7 @@ struct EngineTest {
         opts.push_back("cippo");
 
         Engine1 engine;
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(engine.antani->boolValue(), true);
@@ -2059,7 +2059,7 @@ struct EngineTest {
         opts.push_back("foobar");
 
         Engine1 engine;
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 1u);
         ASSERT_EQ(string(*opts.begin()), string("foobar"));
@@ -2074,7 +2074,7 @@ struct EngineTest {
         opts.push_back("--antani");
 
         Engine1 engine;
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.begin());
         ASSERT_EQ(opts.size(), 1u);
         ASSERT_EQ(string(*opts.begin()), string("foobar"));
@@ -2089,7 +2089,7 @@ struct EngineTest {
         opts.push_back("-r");
 
         Engine2 engine;
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(engine.foundCommand(), engine.scramble);
@@ -2108,7 +2108,7 @@ struct EngineTest {
         opts.push_back("-Q");
 
         Engine2 engine;
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(engine.foundCommand(), engine.fix);
@@ -2124,7 +2124,7 @@ struct EngineTest {
         opts.push_back("--help");
 
         Engine2 engine;
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(engine.foundCommand(), static_cast<Engine*>(0));
@@ -2154,7 +2154,7 @@ struct EngineTest {
         opts.push_back("--testint1=5");
         opts.push_back("--teststring1=blinda");
 
-        ArgList::iterator i = engine.parseList(opts);
+        ArgList::iterator i UNUSED = engine.parseList(opts);
         ASSERT(i == opts.end());
         ASSERT_EQ(opts.size(), 0u);
         ASSERT_EQ(testBool->boolValue(), true);
