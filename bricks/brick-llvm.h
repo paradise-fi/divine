@@ -124,7 +124,7 @@ struct Linker {
         } else {
             _owned.emplace_back( src );
             std::string err;
-            auto r = _link->linkInModule( _annotate( src ), ::llvm::Linker::DestroySource, &err );
+            auto r UNUSED = _link->linkInModule( _annotate( src ), ::llvm::Linker::DestroySource, &err );
             ASSERT( !r );
         }
     }
