@@ -44,6 +44,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <stdexcept>
 
 #include <brick-assert.h>
 
