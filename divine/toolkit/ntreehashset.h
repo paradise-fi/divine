@@ -785,11 +785,11 @@ struct TestNTreeHashSet {
         Blob b2 = root->reassemble( test.pool() );
         ASSERT( test.pool().equal( b, b2 ) );
 
-        auto rootVal = valDeref( root ); // avoid iterator invalidation on insert
+        auto rootVal UNUSED = valDeref( root ); // avoid iterator invalidation on insert
 
         ASSERT( !test.insert( b ).isnew() );
 
-        auto root2 = test.get( b );
+        auto root2 UNUSED = test.get( b );
         ASSERT( !root2.isnew() );
         ASSERT_EQ( rootVal.b().raw(), root2->b().raw() );
 
@@ -844,11 +844,11 @@ struct TestNTreeHashSet {
         Blob b2 = root->reassemble( test.pool() );
         ASSERT( test.pool().equal( b, b2 ) );
 
-        auto rootVal = valDeref( root );
+        auto rootVal UNUSED = valDeref( root );
 
         ASSERT( !test.insert( b ).isnew() );
 
-        auto r = test.get( b );
+        auto r UNUSED = test.get( b );
         ASSERT( !r.isnew() );
         ASSERT_EQ( rootVal.b().raw(), r->b().raw() );
 
@@ -890,11 +890,11 @@ struct TestNTreeHashSet {
             ASSERT_EQ( c2u( test.pool().dereference( b2 )[ i ] ), i & 0xff );
         ASSERT( test.pool().equal( b, b2 ) );
 
-        auto rootVal = valDeref( root );
+        auto rootVal UNUSED = valDeref( root );
 
         ASSERT( !test.insert( b ).isnew() );
 
-        auto root2 = test.get( b );
+        auto root2 UNUSED = test.get( b );
         ASSERT( !root2.isnew() );
         ASSERT_EQ( rootVal.b().raw(), root2->b().raw() );
 
@@ -947,8 +947,8 @@ struct TestNTreeHashSet {
         ASSERT_NEQ( size_t( &test.set()._d.leaves ), size_t( &test.set()._d.roots ) );
         test.insert( b1 );
         test.insert( b2 );
-        size_t leaves = count( test.leaves(), test.pool() );
-        size_t forks = count( test.forks(), test.pool() );
+        size_t leaves UNUSED = count( test.leaves(), test.pool() );
+        size_t forks UNUSED = count( test.forks(), test.pool() );
 
         ASSERT( !test.insert( b1 ).isnew() );
         ASSERT_EQ( leaves, count( test.leaves(), test.pool() ) );
@@ -965,9 +965,9 @@ struct TestNTreeHashSet {
         TestBase< FakeGeneratorBinary > test;
 
         Blob b = randomBlob( 128, test.pool() );
-        hash128_t hash = test.pool().hash( b );
-        auto root = *test.insert( b );
-        hash128_t rootHash = test.set()._d.roots.hasher.hash( root );
+        hash128_t hash UNUSED = test.pool().hash( b );
+        auto root UNUSED = *test.insert( b );
+        hash128_t rootHash UNUSED = test.set()._d.roots.hasher.hash( root );
         ASSERT_EQ( rootHash.first, hash.first );
         ASSERT_EQ( rootHash.second, hash.second );
     }
@@ -977,12 +977,12 @@ struct TestNTreeHashSet {
 
         Blob b = randomBlob( 128, test.pool() );
         ASSERT( test.insert( b ).isnew() );
-        size_t leaves = count( test.leaves(), test.pool() );
-        size_t forks = count( test.forks(), test.pool() );
+        size_t leaves UNUSED = count( test.leaves(), test.pool() );
+        size_t forks UNUSED = count( test.forks(), test.pool() );
         ASSERT_EQ( 1ul, count( test.roots(), test.pool() ) );
 
         BlobSet set( Hasher( test.pool() ) );
-        Blob composite = concatBlob( { b, b }, test.pool() );
+        Blob composite UNUSED = concatBlob( { b, b }, test.pool() );
         ASSERT( test.insertSet( set, composite ).isnew() );
 
         ASSERT_EQ( leaves, count( set._d.leaves, test.pool() ) );
@@ -994,27 +994,27 @@ struct TestNTreeHashSet {
         TestBase< FakeGeneratorFixed > test{ 32, 5, 4, 3, 2, 1 };
 
         Blob b32 = randomBlob( 32, test.pool() );
-        auto r32 = valDeref( test.insert( b32 ) );
+        auto r32 UNUSED = valDeref( test.insert( b32 ) );
         ASSERT( test.pool().equal( b32, r32.reassemble( test.pool() ) ) );
 
         Blob b37 = randomBlob( 37, test.pool() );
-        auto r37 = valDeref( test.insert( b37 ) );
+        auto r37 UNUSED = valDeref( test.insert( b37 ) );
         ASSERT( test.pool().equal( b37, r37.reassemble( test.pool() ) ) );
 
         Blob b41 = randomBlob( 41, test.pool() );
-        auto r41 = valDeref( test.insert( b41 ) );
+        auto r41 UNUSED = valDeref( test.insert( b41 ) );
         ASSERT( test.pool().equal( b41, r41.reassemble( test.pool() ) ) );
 
         Blob b44 = randomBlob( 44, test.pool() );
-        auto r44 = valDeref( test.insert( b44 ) );
+        auto r44 UNUSED = valDeref( test.insert( b44 ) );
         ASSERT( test.pool().equal( b44, r44.reassemble( test.pool() ) ) );
 
         Blob b46 = randomBlob( 46, test.pool() );
-        auto r46 = valDeref( test.insert( b46 ) );
+        auto r46 UNUSED = valDeref( test.insert( b46 ) );
         ASSERT( test.pool().equal( b46, r46.reassemble( test.pool() ) ) );
 
         Blob b47 = randomBlob( 47, test.pool() );
-        auto r47 = valDeref( test.insert( b47 ) );
+        auto r47 UNUSED = valDeref( test.insert( b47 ) );
         ASSERT( test.pool().equal( b47, r47.reassemble( test.pool() ) ) );
     }
 

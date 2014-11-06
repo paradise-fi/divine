@@ -370,7 +370,7 @@ struct TestLens {
             lens.get( Witch(), IntArray2(), i ) = i + 30;
 
 
-        Lens< LinearAddress, Witch > lens2 = lens.sub( Witch() );
+        Lens< LinearAddress, Witch > lens2 UNUSED = lens.sub( Witch() );
 
         ASSERT_EQ( lens.get( int() ), 365 );
 
