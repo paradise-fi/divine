@@ -256,7 +256,7 @@ if( GEN_DVE AND NOT HAVE_CXX11_UNRESTRICTED_UNIONS )
     disable( GEN_DVE "" "C++11 unrestricted unions not available." )
 endif()
 
-if( EXPLICIT AND WIN32 )
+if( GEN_EXPLICIT AND WIN32 )
     disable( "GEN_EXPLICIT" "" "Not available on Windows." )
 endif()
 
@@ -345,7 +345,7 @@ if( OPT_MANUAL )
     endif()
 endif()
 
-if( OPT_MPI AND NOT WIN32 ) # MPI not supported on win32
+if( OPT_MPI ) # MPI not supported on win32
     include( FindMPI )
     if ( MPI_FOUND )
         foreach( path ${MPI_INCLUDE_PATH} )
