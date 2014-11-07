@@ -315,14 +315,14 @@ endif()
 if( GEN_LLVM )
     if( NOT LLVM_FOUND )
         disable( GEN_LLVM "" "Could not find LLVM." )
-    elseif ( ${LLVM_STRING_VERSION} MATCHES "3[.][1234]([^0-9]*|[.].*)" )
+    elseif ( ${LLVM_STRING_VERSION} MATCHES "3[.][34]([^0-9]*|[.].*)" )
         link_directories( ${LLVM_LIBRARY_DIRS} )
         # this is not very nice but it works and ncurses & zlib break builds under NixOS
         list( REMOVE_ITEM LLVM_SYSLIBS "z" "ncurses" )
         # suppress warnings coming from LLVM headers
         add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
     else()
-        disable( GEN_LLVM "" "Found version ${LLVM_STRING_VERSION} but 3.1 to 3.4 is required." )
+        disable( GEN_LLVM "" "Found version ${LLVM_STRING_VERSION} but 3.3 or 3.4 is required." )
     endif()
 endif()
 
