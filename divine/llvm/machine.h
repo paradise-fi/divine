@@ -7,8 +7,8 @@
 #include <divine/llvm/program.h>
 #include <divine/toolkit/lens.h>
 
-#include <divine/llvm/wrap/Constants.h>
-#include <divine/llvm/wrap/Metadata.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Metadata.h>
 
 #ifndef DIVINE_LLVM_MACHINE_H
 #define DIVINE_LLVM_MACHINE_H

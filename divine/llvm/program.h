@@ -6,13 +6,13 @@
 
 #include <divine/toolkit/blob.h> // for align
 
-#include <divine/llvm/wrap/Function.h>
+#include <llvm/IR/Function.h>
 
 #include <llvm/Config/config.h>
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
   #include <llvm/Target/TargetData.h>
 #else
-  #include <divine/llvm/wrap/DataLayout.h>
+  #include <llvm/IR/DataLayout.h>
   #define TargetData DataLayout
 #endif
 

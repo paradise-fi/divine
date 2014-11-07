@@ -4,10 +4,10 @@
 
 #include <divine/llvm/interpreter.h>
 
-#include <divine/llvm/wrap/DerivedTypes.h>
-#include <divine/llvm/wrap/Constants.h>
-#include <divine/llvm/wrap/Module.h>
-#include <divine/llvm/wrap/LLVMContext.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/LLVMContext.h>
 #include <cstring>
 
 using namespace llvm;

@@ -6,13 +6,13 @@
 
 #include <divine/llvm/program.h>
 
-#include <divine/llvm/wrap/Type.h>
-#include <divine/llvm/wrap/GlobalVariable.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/GlobalVariable.h>
 
 #include <llvm/CodeGen/IntrinsicLowering.h>
 #include <llvm/Support/CallSite.h>
-#include <divine/llvm/wrap/Constants.h>
-#include <divine/llvm/wrap/Module.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Module.h>
 #include <llvm/ADT/StringMap.h>
 
 using namespace divine::llvm;

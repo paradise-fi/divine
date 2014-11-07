@@ -7,8 +7,8 @@
 
 #include <divine/toolkit/list.h>
 
-#include <divine/llvm/wrap/Instructions.h>
-#include <divine/llvm/wrap/Constants.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Constants.h>
 
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/CallSite.h>
@@ -16,7 +16,7 @@
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
   #include <llvm/Target/TargetData.h>
 #else
-  #include <divine/llvm/wrap/DataLayout.h>
+  #include <llvm/IR/DataLayout.h>
   #define TargetData DataLayout
 #endif
 

@@ -7,15 +7,15 @@
 #include <divine/llvm/program.h>
 #include <divine/llvm/machine.h>
 
-#include <divine/llvm/wrap/Function.h>
-#include <divine/llvm/wrap/Module.h>
-#include <divine/llvm/wrap/Instructions.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
 
 #include <llvm/Config/config.h>
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
   #include <llvm/Target/TargetData.h>
 #else
-  #include <divine/llvm/wrap/DataLayout.h>
+  #include <llvm/IR/DataLayout.h>
   #define TargetData DataLayout
 #endif
 #undef PACKAGE_VERSION
@@ -25,7 +25,7 @@
 #undef PACKAGE_BUGREPORT
 
 #include <llvm/ADT/OwningPtr.h>
-#include <divine/llvm/wrap/LLVMContext.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/system_error.h>
 #include <llvm/Bitcode/ReaderWriter.h>
@@ -314,7 +314,7 @@ struct Interpreter
 #if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
 #  include <llvm/Support/IRBuilder.h>
 #else
-#  include <divine/llvm/wrap/IRBuilder.h>
+#  include <llvm/IR/IRBuilder.h>
 #endif
 
 namespace divine_test {

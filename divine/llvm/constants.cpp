@@ -2,7 +2,7 @@
 
 #include <divine/llvm/execution.h>
 #include <divine/llvm/program.h>
-#include <divine/llvm/wrap/GlobalVariable.h>
+#include <llvm/IR/GlobalVariable.h>
 
 using namespace divine::llvm;
 

@@ -11,8 +11,8 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <divine/llvm/wrap/Constants.h>
-#include <divine/llvm/wrap/Module.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Module.h>
 
 #pragma GCC diagnostic pop
 
