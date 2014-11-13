@@ -430,7 +430,7 @@ struct TestLLVM {
         return fin;
     }
 
-    std::string _descr( Function *f, divine::Blob b ) {
+    std::string _descr( Function *, divine::Blob b ) {
         Interpreter interpreter( pool, 0, bitcode() );
         interpreter.rewind( b );
         return interpreter.describe();
