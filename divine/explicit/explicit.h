@@ -344,7 +344,7 @@ struct TestDataBlock {
         auto inserter UNUSED = block.inserter();
         for ( int i = 0; i < 100; ++i )
             ASSERT_EQ( inserter.emplace( std::max( size_t( i ), sizeof( int64_t ) ),
-                [ i ]( char *data, int64_t size ) -> int64_t {
+                [ i ]( char *data, int64_t ) -> int64_t {
                     *reinterpret_cast< int64_t * >( data ) = i;
                     return *reinterpret_cast< int64_t * >( data );
                 } ), i );
