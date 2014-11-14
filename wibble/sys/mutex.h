@@ -28,6 +28,7 @@
 #endif
 
 #ifdef _WIN32
+#define FALSE 0
 #include <windows.h>
 #include <queue>
 #include <time.h>
