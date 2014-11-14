@@ -169,7 +169,7 @@ inline std::string fmt_container( const C &c, char f, char l )
     s += ' ';
     for ( typename C::const_iterator i = c.begin(); i != c.end(); ++i ) {
         s += fmt( *i );
-        if ( i != c.end() && i + 1 != c.end() )
+        if ( i != c.end() && std::next( i ) != c.end() )
             s += ", ";
     }
     s += ' ';
