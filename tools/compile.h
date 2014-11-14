@@ -310,7 +310,7 @@ struct Compile {
         parallelBuildJobs = o_parallel->boolValue()
             ? parseParallel( o_parallel->stringValue() )
             : 1;
-        if ( !o_libs_only->boolValue() && brick::fs::access( input, R_OK ) )
+        if ( !o_libs_only->boolValue() && !brick::fs::access( input, R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
         if ( str::endsWith( input, ".dve" ) )
             compileDve( input, o_definitions->values() );
