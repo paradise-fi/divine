@@ -39,6 +39,7 @@
 #include <brick-types.h>
 
 #include <type_traits>
+#include <set>
 
 #ifndef BRICK_HASHSET_H
 #define BRICK_HASHSET_H
