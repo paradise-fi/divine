@@ -1048,6 +1048,10 @@ struct Evaluator
             }
             case BuiltinMalloc: {
                 int size = withValues( Get< int >(), instruction.operand( 0 ) );
+                if ( size >= ( 2 << Pointer::offsetSize ) ) {
+                    ccontext.problem( Problem::InvalidArgument, Pointer() );
+                    size = 0;
+                }
                 Pointer result = size ? econtext.malloc( size, pointerId( true )[0] ) : Pointer();
                 withValues( Set< Pointer >( result, MemoryFlag::HeapPointer ), instruction.result() );
                 return;
