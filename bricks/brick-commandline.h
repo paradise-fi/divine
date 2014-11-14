@@ -44,6 +44,7 @@
 #include <sstream>
 #include <cstring>
 #include <iostream>
+#include <ctime>
 
 #ifdef __unix
 #include <unistd.h>
