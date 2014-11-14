@@ -309,6 +309,7 @@ struct Main {
             "set initial hash table size to 2^n [default = 19]" );
         o_initable ->setValue( 19 );
 
+#if 0
         o_diskFifo = common->add< BoolOption >(
             "disk-fifo", '\0', "disk-fifo", "",
             "save long queues to disk to reduce memory usage" );
@@ -316,6 +317,7 @@ struct Main {
         o_hashCompaction = common->add< BoolOption >(
             "hash-compaction", '\0', "hash-compaction", "",
             "reduction of memory usage, may not discover a counter-example");
+#endif
 
         o_shared = common->add< BoolOption >(
             "shared-memory", '\0', "shared", "",
