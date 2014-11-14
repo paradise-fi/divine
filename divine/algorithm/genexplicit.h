@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
+#if ALG_EXPLICIT
+
 #include <unistd.h>
 #include <errno.h>
 #include <cstdint>
@@ -583,3 +585,4 @@ struct GenExplicit : Algorithm {
 }
 
 #endif // DIVINE_ALGORITHM_COMPACT_H
+#endif

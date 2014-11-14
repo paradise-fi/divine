@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
+#if GEN_EXPLICIT
+
 #include <functional>
 #include <brick-types.h>
 #include <brick-assert.h>
@@ -137,3 +139,4 @@ using ProbabilisticExplicit = _Explicit< graph::Probability >;
 }
 
 #endif // DIVINE_GENERATOR_COMPACT_H
+#endif

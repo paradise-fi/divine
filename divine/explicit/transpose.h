@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
+#if GEN_EXPLICIT || ALG_EXPLICIT
+
 #include <cstdint>
 #include <cstring>
 #include <algorithm>
@@ -58,3 +60,4 @@ void transpose( DataBlock &from, DataBlock &to ) {
 }
 
 #endif // DIVINE_COMPACT_TRANSPOSE_H
+#endif

@@ -51,6 +51,8 @@
  * Because dess files are mapped into memory they are endianity-dependent!
  */
 
+#if GEN_EXPLICIT || ALG_EXPLICIT
+
 #include <type_traits>
 #include <brick-mmap.h>
 #include <divine/explicit/header.h>
@@ -360,3 +362,4 @@ struct TestDataBlock {
 }
 
 #endif // DIVINE_COMPACT_COMPACT_H
+#endif
