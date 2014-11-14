@@ -61,7 +61,7 @@ struct Main {
     Engine *cmd_verify, *cmd_metrics, *cmd_compile, *cmd_draw, *cmd_info,
            *cmd_simulate, *cmd_genexplicit;
     OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions,
-                *ce, *compactOutput, *limits;
+                *ce, *compactOutput, *limits, *stats, *simopts;
     BoolOption *o_noCe, *o_dispCe, *o_simulateCe, *o_dummy, *o_statistics, *o_shortReport;
     OptvalStringVectorOption *o_report;
     BoolOption *o_diskFifo;
@@ -245,6 +245,8 @@ struct Main {
                                           "convert state-space to explicit representation" );
 
         common = opts.createGroup( "Common Options" );
+        stats = opts.createGroup( "Statistics" );
+        simopts = opts.createGroup( "Simulate options" );
         drawing = opts.createGroup( "Drawing Options" );
         input = opts.createGroup( "Input Options" );
         reduce = opts.createGroup( "Reduction Options" );
@@ -280,10 +282,10 @@ struct Main {
             "max-time", '\0', "max-time", "",
             "maximum wall time to use in seconds (default: 0 = unlimited)" );
 
-        o_statistics = common->add< BoolOption >(
+        o_statistics = stats->add< BoolOption >(
             "statistics", 's', "statistics", "",
             "track communication and hash table load statistics" );
-        o_gnuplot= common->add< StringOption >(
+        o_gnuplot= stats->add< StringOption >(
             "gnuplot-statistics", '\0', "gnuplot-statistics", "",
             "output statistics in a gnuplot-friendly format" );
 
@@ -322,10 +324,12 @@ struct Main {
         o_seed = common->add< IntOption >(
             "seed", '\0', "seed", "",
             "set seed for hashing, useful with hash-compaction" );
+        simopts->add( o_seed );
 
         o_property = common->add< StringOption >(
             "property", 'p', "property", "",
             "select a property [default=safety]" );
+        simopts->add( o_property );
 
         o_mpi = common->add< BoolOption >(
             "mpi", 0, "mpi", "",
@@ -336,6 +340,7 @@ struct Main {
             "Demagle style of symbols (only for LLVM verification), "
             "available=node,cpp; default is none if --demangle in not "
             "specified, cpp otherwise" );
+        simopts->add( o_demangle );
 
         // definitions
         o_definitions = definitions->add< VectorOption< String > >(
@@ -418,42 +423,28 @@ struct Main {
                 "no-save-states", 0, "no-save-states", "",
                 "do not save states in DCESS file, only save transitions." );
 
-        cmd_metrics->add( common );
-        cmd_metrics->add( limits );
-        cmd_metrics->add( reduce );
-        cmd_metrics->add( compression );
-        cmd_metrics->add( input );
-        cmd_metrics->add( definitions );
+        cmd_draw->add( drawing );
+        cmd_simulate->add( simopts );
 
-        cmd_verify->add( common );
-        cmd_verify->add( limits );
+        for ( auto cmd : { cmd_metrics, cmd_verify, cmd_genexplicit } )
+            cmd->add( common );
+
+        for ( auto cmd : { cmd_metrics, cmd_verify, cmd_genexplicit, cmd_draw } )
+            cmd->add( stats );
+
         cmd_verify->add( ce );
-        cmd_verify->add( reduce );
-        cmd_verify->add( compression );
-        cmd_verify->add( input );
-        cmd_verify->add( definitions );
 
-        cmd_simulate->add( common );
-        cmd_simulate->add( limits );
-        cmd_simulate->add( reduce );
-        cmd_simulate->add( compression );
-        cmd_simulate->add( definitions );
+        for ( auto cmd : { cmd_metrics, cmd_verify, cmd_simulate, cmd_genexplicit, cmd_draw } ) {
+            cmd->add( limits );
+            cmd->add( reduce );
+            cmd->add( compression );
+            cmd->add( input );
+            cmd->add( definitions );
+        }
 
-        cmd_genexplicit->add( common );
-        cmd_genexplicit->add( limits );
-        cmd_genexplicit->add( reduce );
-        cmd_genexplicit->add( compression );
-        cmd_genexplicit->add( definitions );
-        cmd_genexplicit->add( input );
         cmd_genexplicit->add( compactOutput );
 
-        cmd_draw->add( drawing );
-        cmd_draw->add( limits );
-        cmd_draw->add( reduce );
         cmd_draw->add( o_property );
-        cmd_draw->add( compression );
-        cmd_draw->add( input );
-        cmd_draw->add( definitions );
 
         opts.setPartialMatchingRecursively( true );
     }
