@@ -44,6 +44,7 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
+#include <stdexcept>
 #endif
 
 #ifndef BRICK_SHMEM_H
@@ -59,11 +60,19 @@ namespace shmem {
 #if __cplusplus >= 201103L
 
 struct Thread {
-    std::thread *_thread;
+    std::unique_ptr< std::thread > _thread;
+    std::atomic< bool > _interrupted;
     virtual void main() = 0;
 
-    Thread() : _thread( nullptr ) {}
-    ~Thread() { delete _thread; }
+    Thread() : _interrupted( false ) {}
+    Thread( const Thread &other ) : _interrupted( false ) {
+        if( other._thread )
+            throw std::logic_error( "cannot copy running thread" );
+    }
+    ~Thread() {
+        interrupt();
+        join();
+    }
 
 #ifdef __divine__
     void start() __attribute__((noinline)) {
@@ -71,17 +80,30 @@ struct Thread {
 #else
     void start() {
 #endif
-        _thread = new std::thread( [this]() { this->main(); } );
+        _interrupted.store( false, std::memory_order_relaxed );
+        _thread.reset( new std::thread( [this]() { this->main(); } ) );
     }
 
     void join() {
-        if ( _thread )
+        if ( _thread ) {
             _thread->join();
+            _thread.reset();
+        }
     }
 
     void detach() {
-        if ( _thread )
+        if ( _thread ) {
             _thread->detach();
+            _thread.reset();
+        }
+    }
+
+    bool interrupted() const {
+        return _interrupted.load( std::memory_order_relaxed );
+    }
+
+    void interrupt() {
+        _interrupted.store( true, std::memory_order_relaxed );
     }
 };
 
