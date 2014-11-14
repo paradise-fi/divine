@@ -160,7 +160,7 @@ let
   vms = {
     debian70   = mk: mk { VM = debuild; disk = "debian70"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
     ubuntu1210 = mk: mk { VM = debuild; disk = "ubuntu1210"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
-    ubuntu1304 = mk: mk { VM = debuild; disk = "ubuntu1304"; extras = extra_debs32; };
+    ubuntu1304 = mk: mk { VM = debuild; disk = "ubuntu1304"; extras = extra_debs32; require="DVE;TIMED;CESMI"; };
     ubuntu1310 = mk: mk { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
     ubuntu1404 = mk: mk { VM = debuild; disk = "ubuntu1404"; extras = extra_debs34; };
 
