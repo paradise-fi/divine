@@ -338,8 +338,7 @@ struct Main {
         o_demangle = common->add< OptvalStringOption >(
             "demangle", 0, "demangle", "",
             "Demagle style of symbols (only for LLVM verification), "
-            "available=node,cpp; default is none if --demangle in not "
-            "specified, cpp otherwise" );
+            "available=node,cpp; default=cpp" );
         simopts->add( o_demangle );
 
         // definitions
@@ -642,7 +641,7 @@ struct Main {
         meta.algorithm.fairness = o_fair->boolValue();
         meta.algorithm.demangle = o_demangle->isSet()
             ? parseDemangle( o_demangle->value() )
-            : graph::DemangleStyle::None;
+            : graph::DemangleStyle::Cpp;
         meta.output.statistics = o_statistics->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
