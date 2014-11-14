@@ -35,3 +35,11 @@ void main() {
     }
 }
 EOF
+
+llvm_verify invalid "bad argument" . <<EOF
+#include <stdlib.h>
+
+void main() {
+    int *mem = malloc(65535);
+}
+EOF
