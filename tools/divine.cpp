@@ -685,7 +685,7 @@ struct Main {
         meta.output.saveStates = !o_noSaveStates->boolValue();
 
 
-        if ( !meta.input.dummygen && access( input.c_str(), R_OK ) )
+        if ( !meta.input.dummygen && brick::fs::access( input, R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
 
         {
