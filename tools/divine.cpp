@@ -622,7 +622,12 @@ struct Main {
         meta.input.definitions = o_definitions->values();
         meta.input.probabilistic = o_probabilistic->boolValue();
         meta.output.wantCe = !o_noCe->boolValue();
-        meta.algorithm.hashCompaction = o_hashCompaction->boolValue();
+        meta.algorithm.hashCompaction =
+#if 0
+            o_hashCompaction->boolValue();
+#else
+            false;
+#endif
         meta.algorithm.sharedVisitor = o_shared->boolValue();
         if ( !o_noreduce->boolValue() ) {
             if ( o_reduce->boolValue() )
@@ -651,7 +656,12 @@ struct Main {
         meta.algorithm.labels = o_labels->boolValue();
         meta.algorithm.traceLabels = o_traceLabels->boolValue();
         meta.algorithm.bfsLayout = o_bfsLayout->boolValue();
-        meta.execution.diskFifo = o_diskFifo->boolValue();
+        meta.execution.diskFifo = 
+#if 0
+            o_diskFifo->boolValue();
+#else
+            false;
+#endif
         if ( opts.foundCommand() == cmd_simulate ) {
             if ( o_inputTrace->isSet() && o_interactiveInputTrace->isSet() )
                 die( "Use just one of --trace / --int-trace" );
