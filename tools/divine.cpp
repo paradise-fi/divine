@@ -58,8 +58,7 @@ struct Main {
                 *ce, *compactOutput, *limits, *stats, *simopts;
     BoolOption *o_noCe, *o_dispCe, *o_simulateCe, *o_dummy, *o_statistics, *o_shortReport;
     OptvalStringVectorOption *o_report;
-    BoolOption *o_diskFifo;
-    BoolOption *o_fair, *o_hashCompaction, *o_shared;
+    BoolOption *o_fair, *o_shared;
     StringOption *o_reduce;
     OptvalStringOption *o_compression;
     VectorOption< String > *o_definitions;
@@ -302,16 +301,6 @@ struct Main {
             "initial-table", 'i', "initial-table", "",
             "set initial hash table size to 2^n [default = 19]" );
         o_initable ->setValue( 19 );
-
-#if 0
-        o_diskFifo = common->add< BoolOption >(
-            "disk-fifo", '\0', "disk-fifo", "",
-            "save long queues to disk to reduce memory usage" );
-
-        o_hashCompaction = common->add< BoolOption >(
-            "hash-compaction", '\0', "hash-compaction", "",
-            "reduction of memory usage, may not discover a counter-example");
-#endif
 
         o_shared = common->add< BoolOption >(
             "shared-memory", '\0', "shared", "",
@@ -622,12 +611,6 @@ struct Main {
         meta.input.definitions = o_definitions->values();
         meta.input.probabilistic = o_probabilistic->boolValue();
         meta.output.wantCe = !o_noCe->boolValue();
-        meta.algorithm.hashCompaction =
-#if 0
-            o_hashCompaction->boolValue();
-#else
-            false;
-#endif
         meta.algorithm.sharedVisitor = o_shared->boolValue();
         if ( !o_noreduce->boolValue() ) {
             if ( o_reduce->boolValue() )
@@ -656,12 +639,6 @@ struct Main {
         meta.algorithm.labels = o_labels->boolValue();
         meta.algorithm.traceLabels = o_traceLabels->boolValue();
         meta.algorithm.bfsLayout = o_bfsLayout->boolValue();
-        meta.execution.diskFifo = 
-#if 0
-            o_diskFifo->boolValue();
-#else
-            false;
-#endif
         if ( opts.foundCommand() == cmd_simulate ) {
             if ( o_inputTrace->isSet() && o_interactiveInputTrace->isSet() )
                 die( "Use just one of --trace / --int-trace" );
