@@ -327,13 +327,13 @@ struct TestDataBlock {
 
         auto inserter = block.inserter< int64_t >();
         for ( int i = 0; i < 100; ++i )
-            assert_eq( inserter.emplace( i ), i );
+            ASSERT_EQ( inserter.emplace( i ), i );
         for ( int i = 0; i < 100; ++i )
-            assert_eq( block.get< int64_t >( i ), i );
+            ASSERT_EQ( block.get< int64_t >( i ), i );
         for ( int64_t i = 0; i < 100; ++i )
             block.map( i )( [ i ]( char *data, int64_t size ) -> void {
-                assert_eq( int64_t( sizeof( int64_t ) ), size );
-                assert_eq( *reinterpret_cast< int64_t *>( data ), i );
+                ASSERT_EQ( int64_t( sizeof( int64_t ) ), size );
+                ASSERT_EQ( *reinterpret_cast< int64_t *>( data ), i );
             } );
     } */
 

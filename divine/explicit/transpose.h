@@ -21,7 +21,7 @@ void transpose( DataBlock &from, DataBlock &to ) {
                 int64_t & >::value,
             "Invalid EdgeSpec passed (expected method `int64_t &index()'" );
 #endif
-    assert_eq( from.count(), to.count() );
+    ASSERT_EQ( from.count(), to.count() );
 
     int64_t *counts = to.lowLevelIndices();
     std::memset( counts, 0, from.count() * sizeof( int64_t ) );
@@ -48,7 +48,7 @@ void transpose( DataBlock &from, DataBlock &to ) {
                     ( [ edges, i, j ]( EdgeSpec *de, int64_t size ) {
                         auto last = de + size - 1;
                         for ( ; de->index(); ++de )
-                            assert_leq( de, last );
+                            ASSERT_LEQ( de, last );
                         static_cast< void >( last );
                         de->index() = i;
                         de->label() = edges[ j ].label();
