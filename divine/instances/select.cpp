@@ -85,7 +85,7 @@ void warnOtherAvailable( Meta metacopy, Key k ) {
             return;
         }
     }
-    assert_unreachable( "Invalid key" );
+    ASSERT_UNREACHABLE( "Invalid key" );
 }
 
 }

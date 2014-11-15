@@ -74,7 +74,7 @@ struct InstGenerator {
                     error( { show( component ) + " does not define postSelect" } );
             }
         }
-        assert( good );
+        ASSERT( good );
     }
 
     std::vector< std::string > _headers( Key k ) {
@@ -266,7 +266,7 @@ struct InstGenerator {
             if ( c.type == Type::Algorithm )
                 alg = Algorithm( c.key );
         if ( alg == Algorithm::Begin )
-            assert_unreachable( "Algorithm missing in selection." );
+            ASSERT_UNREACHABLE( "Algorithm missing in selection." );
 
         if ( _allTraits( symbol ) ) {
             file << "struct Setup" << _label( symbol ) << " {" << std::endl
@@ -338,12 +338,12 @@ struct InstGenerator {
 }
 
 int main( int argc, char** argv ) {
-    assert_eq( argc, 3 );
+    ASSERT_EQ( argc, 3 );
 
     int files = std::stoi( argv[ 1 ] );
     int min = std::stoi( argv[ 2 ] );
-    assert_leq( 1, files );
-    assert_leq( 1, min );
+    ASSERT_LEQ( 1, files );
+    ASSERT_LEQ( 1, min );
 
     divine::instantiate::InstGenerator gen( min, files );
     int size = gen.buildGraph();

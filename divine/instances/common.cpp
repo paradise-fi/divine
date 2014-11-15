@@ -22,7 +22,7 @@ bool _evalSuppBy( const SupportedBy &suppBy, const std::vector< Key > &vec ) {
                     return true;
         return false;
     }
-    assert( suppBy.is< Key >() );
+    ASSERT( suppBy.is< Key >() );
     for ( auto v : vec )
         if ( v == suppBy.get< Key >() )
             return true;

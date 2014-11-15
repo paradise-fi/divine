@@ -161,7 +161,7 @@ struct CMap : std::map< K, T > {
 
     const T &operator[]( const K &k ) const {
         auto it = this->find( k );
-        assert( it != this->end() );
+        ASSERT( it != this->end() );
         return it->second;
     }
 };
@@ -279,7 +279,7 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Statistics, NoStatistics );
 
     std::string emsg = "show: unhandled option ( " + std::to_string( int( component.type ) ) + ", " + std::to_string( component.key ) + " )";
-    assert_unreachable( emsg.c_str() );
+    ASSERT_UNREACHABLE( emsg.c_str() );
 #undef SHOW
 }
 
@@ -480,7 +480,7 @@ static void initLLVM( const Meta &meta ) {
     if ( meta.execution.threads > 1 && !llvm::initMultithreaded() ) {
         std::cerr << "FATAL: This binary is linked to single-threaded LLVM." << std::endl
                   << "Multi-threaded LLVM is required for parallel algorithms." << std::endl;
-        assert_unreachable( "LLVM error" );
+        ASSERT_UNREACHABLE( "LLVM error" );
     }
 }
 
