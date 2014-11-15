@@ -38,13 +38,13 @@ struct Hasher {
 
     Pool &pool() { return _pool; }
     inline hash128_t hash( Blob b ) const {
-        assert( _pool.valid( b ) );
+        ASSERT( _pool.valid( b ) );
         return _pool.hash( b, slack, _pool.size( b ), seed );
     }
 
     inline bool equal( Blob a, Blob b ) const {
-        assert( _pool.valid( a ) );
-        assert( _pool.valid( b ) );
+        ASSERT( _pool.valid( a ) );
+        ASSERT( _pool.valid( b ) );
         return allEqual || _pool.equal( a, b, slack );
     }
 
@@ -245,14 +245,14 @@ struct AlgorithmUtils {
     void _init( Self &self, Self* master = nullptr ) {
         static_assert( std::is_base_of< AlgorithmUtils< Setup, Shared >, Self >::value,
                "Algorithm must be descendant of AlgorithmUtils" );
-        assert_eq( static_cast< Self* >( this ), &self );
+        ASSERT_EQ( static_cast< Self* >( this ), &self );
 
         m_graph = std::shared_ptr< Graph >( self.initGraph( self, master ) );
         m_store = std::shared_ptr< Store >( self.initStore( self, master ) );
     }
 
     Graph &graph() {
-        assert( m_graph );
+        ASSERT( m_graph );
         return *m_graph;
     }
 
@@ -261,7 +261,7 @@ struct AlgorithmUtils {
     }
 
     Store &store() {
-        assert( m_store );
+        ASSERT( m_store );
         return *m_store;
     }
 };

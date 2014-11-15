@@ -157,8 +157,8 @@ struct Map : Algorithm, AlgorithmUtils< Setup, MapShared< typename Setup::Store:
                 acceptingCount += shareds[ i ].accepting;
             eliminated += shareds[ i ].eliminated;
             expanded += shareds[ i ].expanded;
-            assert_eq( shared.eliminated, 0 );
-            assert_eq( shared.expanded, 0 );
+            ASSERT_EQ( shared.eliminated, 0 );
+            ASSERT_EQ( shared.expanded, 0 );
 
             if ( this->store().valid( shareds[ i ].ce.initial ) )
                 cycle_node = shareds[ i ].ce.initial;
@@ -335,7 +335,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup, MapShared< typename Setup::Store:
             old_eliminated = eliminated;
             expanded = 0;
             iteration();
-            assert_leq( eliminated, acceptingCount );
+            ASSERT_LEQ( eliminated, acceptingCount );
             progress() << eliminated << " eliminated, "
                        << expanded << " expanded" << std::endl;
             valid = !this->store().valid( cycle_node );
@@ -355,7 +355,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup, MapShared< typename Setup::Store:
 
         if ( !valid && want_ce ) {
             progress() << " generating counterexample...     " << std::flush;
-            assert( this->store().valid( cycle_node ) );
+            ASSERT( this->store().valid( cycle_node ) );
             shared.ce.initial = cycle_node;
             ce.setup( *this, shared );
             ce.lasso( *this, *this );

@@ -97,7 +97,7 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup, Sh< typename Setup
             r.shared.goal = v.handle();
             r.shared.goalData = r.pool().allocate( r.pool().size( v.node() ) );
             r.pool().copy( v.node(), r.shared.goalData );
-            assert( r.store().valid( r.shared.goal ) );
+            ASSERT( r.store().valid( r.shared.goal ) );
             r.shared.deadlocked = deadlock;
         }
 

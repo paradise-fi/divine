@@ -47,7 +47,7 @@ struct CsdrExtension {
     using Handle = typename Store::Handle;
 
     auto parent() -> typename BitField< Handle >::Virtual { return get< 0 >( _data ); }
-    long level() { assert_leq( 1u, _level() ); return _level() - 1; }
+    long level() { ASSERT_LEQ( 1u, _level() ); return _level() - 1; }
     bool done() { return _done(); }
     int32_t incommingTid() { return _incommingTid(); }
 
@@ -68,7 +68,7 @@ struct CsdrExtension {
         uint32_t level = from._level();
         if ( label.tid != from.incommingTid() )
             ++level;
-        assert_leq( 1u, level ); // check for overflow
+        ASSERT_LEQ( 1u, level ); // check for overflow
         if ( !initialized() || level < _level() ) {
             _level() = level;
             _incommingTid() = label.tid;
@@ -154,7 +154,7 @@ struct Csdr : CommonReachability< CsdrExtension, Setup, CsdrShared,
             c.shared.goal = v.handle();
             c.shared.goalData = c.pool().allocate( c.pool().size( v.node() ) );
             c.pool().copy( v.node(), c.shared.goalData );
-            assert( c.store().valid( c.shared.goal ) );
+            ASSERT( c.store().valid( c.shared.goal ) );
             c.shared.deadlocked = deadlock;
         }
 

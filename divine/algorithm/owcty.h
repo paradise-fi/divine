@@ -136,18 +136,18 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
 
     Handle cycleNode() {
         if ( shared.cycle_found ) {
-            assert( this->store().valid( shared.cycle_node ) );
+            ASSERT( this->store().valid( shared.cycle_node ) );
             return shared.cycle_node;
         }
 
         for ( int i = 0; i < int( shareds.size() ); ++i ) {
             if ( shareds[ i ].cycle_found ) {
-                assert( store().valid( shareds[ i ].cycle_node ) );
+                ASSERT( store().valid( shareds[ i ].cycle_node ) );
                 return shareds[ i ].cycle_node;
             }
         }
 
-        assert_die();
+        ASSERT_UNREACHABLE( "cycle node not found" );
     }
 
     int totalSize() {
@@ -192,8 +192,8 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
         static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
             Guard guard( st );
-            assert( o.extension( st ).predCount() > 0 );
-            assert( o.extension( st ).inS() );
+            ASSERT( o.extension( st ).predCount() > 0 );
+            ASSERT( o.extension( st ).inS() );
             ++ o.shared.size;
             o.shared.stats.addExpansion();
             return visitor::ExpansionAction::Expand;
@@ -312,7 +312,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
         static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
             Guard guard( st );
-            assert( o.extension( st ).predCount() == 0 );
+            ASSERT( o.extension( st ).predCount() == 0 );
             o.extension( st ).inS() = false;
             if ( o.extension( st ).inF() )
                 o.shared.size ++;
@@ -323,9 +323,9 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
         static visitor::TransitionAction transition( This &o, Vertex, Vertex t, Label )
         {
             Guard guard( t );
-            assert( o.store().valid( t ) );
-            assert( o.extension( t ).inS() );
-            assert( o.extension( t ).predCount() >= 1 );
+            ASSERT( o.store().valid( t ) );
+            ASSERT( o.extension( t ).inS() );
+            ASSERT( o.extension( t ).predCount() >= 1 );
             -- o.extension( t ).predCount();
             // we follow a transition only if the target state is going to
             // be eliminated
@@ -382,7 +382,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
     };
 
     void _checkCycle() {
-        assert( this->store().valid( shared.cycle_node ) );
+        ASSERT( this->store().valid( shared.cycle_node ) );
         this->visit( this, FindCE() );
     }
 
@@ -440,7 +440,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
         }
 
         progress() << " generating counterexample...      " << std::flush;
-        assert( cycleFound() );
+        ASSERT( cycleFound() );
         shared.ce.initial = cycleNode();
 
         ce.setup( *this, shared );

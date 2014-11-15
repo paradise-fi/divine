@@ -109,7 +109,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
         visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
         this->graph().initials( [&]( Node f, Node t, Label l ) {
-                assert( !this->store().valid( f ) );
+                ASSERT( !this->store().valid( f ) );
                 visitor.queue( Vertex(), t, l );
         } );
         visitor.processQueue();
@@ -176,7 +176,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
             }
 
             if ( dfs.valid && !dfs.ce_stack.empty() ) {
-                assert_eq( n.handle().asNumber(), dfs.ce_stack.front().asNumber() );
+                ASSERT_EQ( n.handle().asNumber(), dfs.ce_stack.front().asNumber() );
                 dfs.ce_stack.pop_front();
             }
         }
@@ -215,7 +215,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         static void finished( This &dfs, Vertex n ) {
 
             if ( !dfs.ce_lasso.empty() ) {
-                assert_eq( n.handle().asNumber(), dfs.ce_lasso.front().asNumber() );
+                ASSERT_EQ( n.handle().asNumber(), dfs.ce_lasso.front().asNumber() );
                 dfs.ce_lasso.pop_front();
             }
         }

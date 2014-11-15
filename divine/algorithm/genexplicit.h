@@ -186,25 +186,25 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             D() : predCount( 0 ) { }
         } _data;
         int64_t &predCount() {
-            assert( iteration < Iteration::PrececessorTracking );
+            ASSERT( iteration < Iteration::PrececessorTracking );
             return _data.predCount;
         }
         int64_t predSize( Pool &pool ) const {
-            assert( iteration >= Iteration::Normalize );
+            ASSERT( iteration >= Iteration::Normalize );
             return pool.size( _data.predecessors );
         }
         void addPredecessor( Pool &pool, EdgeSpec predecessor ) {
-            assert( iteration == Iteration::PrececessorTracking );
+            ASSERT( iteration == Iteration::PrececessorTracking );
             EdgeSpec *ptr = reinterpret_cast< EdgeSpec* >(
                     pool.dereference( _data.predecessors ) );
             for ( ; ptr->index() != -1; ++ptr )
-                assert_leq( ptr, reinterpret_cast< EdgeSpec * >(
+                ASSERT_LEQ( ptr, reinterpret_cast< EdgeSpec * >(
                         pool.dereference( _data.predecessors )
                         + pool.size( _data.predecessors ) ) - 1 );
             *ptr = predecessor;
         }
         const EdgeSpec *predecessors( Pool &pool ) const {
-            assert( iteration >= Iteration::Normalize );
+            ASSERT( iteration >= Iteration::Normalize );
             return reinterpret_cast< EdgeSpec * >(
                     pool.dereference( _data.predecessors ) );
         }
@@ -275,13 +275,13 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
     }
 
     void _normalize() {
-        assert( shared.iteration == Iteration::Normalize );
+        ASSERT( shared.iteration == Iteration::Normalize );
         int64_t index = limits[ params.ringId ].indexStart;
         for ( auto st : this->store() ) {
-            assert( extension( st ).iteration == Iteration::Count );
+            ASSERT( extension( st ).iteration == Iteration::Count );
             extension( st ).iteration = Iteration::Normalize;
             extension( st ).index = index++;
-            assert_leq( index, limits[ params.ringId ].indexEnd );
+            ASSERT_LEQ( index, limits[ params.ringId ].indexEnd );
 
             int64_t predCount = extension( st ).predCount();
             Blob preds = pool().allocate( predCount * sizeof( EdgeSpec ) );
@@ -290,7 +290,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
                 ptr[ i ] = EdgeSpec( -1, Label() );
             extension( st )._data.predecessors = preds;
         }
-        assert_eq( index, limits[ params.ringId ].indexEnd );
+        ASSERT_EQ( index, limits[ params.ringId ].indexEnd );
     }
 
     struct TrackPredecessors : Visit< This, Setup > {
@@ -371,7 +371,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         result().fullyExplored = meta::Result::R::Yes;
         progress() << "found " << nodes << " states, "
                    << nodesSize << " bytes" << std::endl;
-        assert_eq( nodes, meta().statistics.visited );
+        ASSERT_EQ( nodes, meta().statistics.visited );
 
         progress() << "  normalization...   \t\t " << std::flush;
         normalize();
@@ -413,19 +413,19 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
     }
 
     void normalize() {
-        assert( shared.iteration == Iteration::Count );
+        ASSERT( shared.iteration == Iteration::Count );
         shared.iteration = Iteration::Normalize;
         parallel( &This::_normalize );
     }
 
     void trackPredecessors() {
-        assert( shared.iteration == Iteration::Normalize );
+        ASSERT( shared.iteration == Iteration::Normalize );
         shared.iteration = Iteration::PrececessorTracking;
         parallel( &This::_trackPredecessors );
     }
 
     void writeFile() {
-        assert( shared.iteration == Iteration::PrececessorTracking );
+        ASSERT( shared.iteration == Iteration::PrececessorTracking );
         shared.iteration = Iteration::WriteFile;
 
         std::vector< EdgeSpec > initials;
@@ -433,12 +433,12 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             int64_t id;
             std::tie( std::ignore, id ) = this->topology().ring(
                 std::tuple< Node, int64_t >( n, -1 ), &This::_getNodeId );
-            assert_neq( -1 /* not found */, id );
-            assert_leq( 1, id );
+            ASSERT_NEQ( -1 /* not found */, id );
+            ASSERT_LEQ( 1, id );
             initials.emplace_back( id, l );
         } );
 
-        assert_eq( nodes, meta().statistics.visited );
+        ASSERT_EQ( nodes, meta().statistics.visited );
         auto creator = dess::preallocate( params.path )
             .nodes( nodes + 1 ) // pseudo-initial
             .edges( meta().statistics.transitions + initials.size() )
@@ -465,7 +465,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
                 } );
 
         auto r = this->topology().ring( true, &This::_writeFile );
-        assert( r );
+        ASSERT( r );
         static_cast< void >( r );
     }
 
@@ -473,17 +473,17 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         Node n;
         int64_t ix;
         std::tie( n, ix ) = q;
-        assert( pool().valid( n ) );
+        ASSERT( pool().valid( n ) );
         if ( this->store().knows( n ) ) {
             Vertex v = this->store().fetch( n );
-            assert_eq( ix, -1 );
+            ASSERT_EQ( ix, -1 );
             ix = extension( v ).index;
         }
         return std::make_tuple( n, ix );
     }
 
     bool _writeFile( bool ok ) {
-        assert( ok );
+        ASSERT( ok );
 
         return  params.saveNodes
             ? _writeFileT< true >()
@@ -498,7 +498,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         auto nodeInserter = dess.nodes.inserter( start );
 
         for ( auto st : this->store() ) {
-            assert( extension( st ).iteration == Iteration::PrececessorTracking );
+            ASSERT( extension( st ).iteration == Iteration::PrececessorTracking );
             auto ext = extension( st );
             edgeInserter.emplace( ext.predSize( pool() ),
                 [ ext, this ]( char *ptr, int64_t size ) {

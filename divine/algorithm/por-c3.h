@@ -86,7 +86,7 @@ struct PORGraph : graph::Transform< G > {
             if ( t.extension( to ).done )
                 return visitor::TransitionAction::Forget;
 
-            assert( t.predCount( to ) );
+            ASSERT( t.predCount( to ) );
             t.updatePredCount( to, t.predCount( to ) - 1 );
             t.extension( to ).remove = true;
             if ( t.predCount( to ) == 0 ) {
