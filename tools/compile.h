@@ -122,25 +122,22 @@ struct Compile {
     }
 
     void compileCESMI( std::string in, std::string cflags ) {
-        FilePath tmp_dir;
-        tmp_dir.abspath = brick::fs::getcwd();
-        tmp_dir.basename = brick::fs::mkdtemp( "_divine-compile.XXXXXX" );
-        std::string basename = brick::fs::splitFileName( in ).second;
-        std::string in_basename( basename, 0, basename.rfind( '.' ) );
+        brick::fs::TempDir tmpdir( "_divine-compile.XXXXXX",
+                                   brick::fs::AutoDelete( !o_keep->boolValue() ) );
+        brick::fs::ChangeCwd rootDir( tmpdir.path );
 
-        auto clean = brick::types::refDeleteIf( !o_keep->boolValue(), tmp_dir, cleanup );
+        std::string in_filename = brick::fs::splitFileName( in ).second;
+        std::string in_basename( in_filename, 0, in_filename.rfind( '.' ) );
 
-        chdir( tmp_dir.basename.c_str() );
         brick::fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
         brick::fs::writeFile( "cesmi.cpp", cesmi_usr_cesmi_cpp_str );
-        chdir( tmp_dir.abspath.c_str() );
 
         std::string extras, ltlincludes;
         int ltlcount = 0;
         while ( opts.hasNext() ) {
             std::string extra = opts.next();
             if ( brick::string::endsWith( extra, ".ltl" ) ) {
-                std::string ltlpath = tmp_dir.basename + "/" + brick::fs::splitFileName( extra ).second + ".h";
+                std::string ltlpath = brick::fs::splitFileName( extra ).second + ".h";
                 std::string code = "#include <cesmi.h>\n";
                 parse_ltl( brick::fs::readFile( extra ), [&]( std::string formula ) {
                         code += ltl_to_c( ltlcount++, formula );
@@ -151,10 +148,10 @@ struct Compile {
                 extras += " " + extra;
         }
 
-        extras += " " + tmp_dir.basename + "/cesmi.cpp";
+        extras += " cesmi.cpp";
 
-        std::string impl = tmp_dir.basename + "/cesmi-ltl",
-                    aggr = tmp_dir.basename + "/ltl-aggregate.cpp";
+        std::string impl = "cesmi-ltl",
+                    aggr = "ltl-aggregate.cpp";
         brick::fs::writeFile( impl + ".cpp", cesmi_usr_ltl_cpp_str );
         brick::fs::writeFile( impl + ".h", cesmi_usr_ltl_h_str );
         extras += " " + impl + ".cpp";
@@ -182,7 +179,7 @@ struct Compile {
         aggr_s.close();
 
         std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
-        run( "gcc " + flags + " -I" + tmp_dir.basename + " -o " + in_basename +
+        run( "gcc " + flags + " -I." + " -o ../" + in_filename +
              generator::cesmi_ext + " " + in + extras );
     }
 
