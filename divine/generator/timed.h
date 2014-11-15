@@ -39,7 +39,7 @@ struct Timed : public Common< Blob > {
 
     template< typename Yield >
     void successors( Node from, Yield yield ) {
-        assert( this->pool().valid( from ) );
+        ASSERT( this->pool().valid( from ) );
         unsigned int nSuccs = 0;
         const std::vector< std::pair< int, int > >& btrans = buchi.transitions( gen.getPropLoc( mem( from ) ) );
 
@@ -78,7 +78,7 @@ struct Timed : public Common< Blob > {
     }
 
     std::string showTransition( Node from, Node to, Label ) {
-        assert( this->pool().valid( from ) );
+        ASSERT( this->pool().valid( from ) );
 
         std::string str;
         const std::vector< std::pair< int, int > >& btrans = buchi.transitions( gen.getPropLoc( mem( from ) ) );
@@ -102,7 +102,7 @@ struct Timed : public Common< Blob > {
         if ( hasLTL && str.empty() ) {
             callback( mem( from ), NULL );
         }
-        assert( !str.empty() );
+        ASSERT( !str.empty() );
         return str;
     }
 
@@ -162,7 +162,7 @@ struct Timed : public Common< Blob > {
         }
         if ( !hasLTL )
             buchi.buildEmpty();
-        assert( buchi.size() > 0 );
+        ASSERT( buchi.size() > 0 );
 
         if ( nonZeno && hasLTL ) {
             // excludeZeno was called first
@@ -205,7 +205,7 @@ struct Timed : public Common< Blob > {
 	void fairnessEnabled( bool enabled ) {
 		if ( enabled )
 			excludeZeno();
-		assert( nonZeno == enabled );
+		ASSERT( nonZeno == enabled );
         gen.finalizeUra();
 	}
 
@@ -274,7 +274,7 @@ private:
         if ( propGuard > 0 ) {
             ss << " [" << propGuards[ propGuard ].toString() << "]";
         }
-        assert( !ss.str().empty() );
+        ASSERT( !ss.str().empty() );
         return ss.str();
     }
 

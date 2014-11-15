@@ -211,7 +211,7 @@ struct Dve : public Common< Blob > {
 
     template< typename Y >
     void properties( Y yield ) {
-        assert( system );
+        ASSERT( system );
         yield( "deadlock", "deadlock freedom", PT_Deadlock );
         yield( "assert", "assertion safety", PT_Goal );
         int i = 0;
