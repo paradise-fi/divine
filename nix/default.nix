@@ -83,13 +83,10 @@ let
                    (if lib.eqStrings (builtins.substring 0 4 name) "llvm" ||
                        lib.eqStrings name "full" ||
                        lib.eqStrings name "medium"
-                      then [ "-DCMD_CLANG=${(clang_runtime pkgs).clang}/bin/clang"
-                             "-DCMD_AR=${pkgs.gcc.binutils}/bin/ar"
-                             "-DCMD_GOLD=${pkgs.gcc.binutils}/bin/ld.gold"
-                             "-DCMD_LLVMGOLD=${llvm pkgs}/lib/LLVMgold.so" ]
+                      then [ "-DCMD_CLANG=${(clang_runtime pkgs).clang}/bin/clang" ]
                       else []);
         profile = if lib.eqStrings buildType "Debug" && !clang
-                     then [ "-DPROFILE=ON" "-DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
+                     then [ "-DDEV_GCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
         compiler = if clang
                       then [ "-DCMAKE_CXX_COMPILER=${pkgs.clangSelf}/bin/clang++"
                              "-DCMAKE_C_COMPILER=${pkgs.clangSelf}/bin/clang" ]
