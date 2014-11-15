@@ -821,7 +821,7 @@ struct TestChildprocess {
         EndlessChild child;
 
         // Start the child
-        pid_t pid = child.fork();
+        pid_t pid UNUSED = child.fork();
 
         // We should get a nonzero pid
         ASSERT(pid != 0);
@@ -830,7 +830,7 @@ struct TestChildprocess {
         child.kill(2);
 
         // Wait for the child to terminate
-        int res = child.wait();
+        int res UNUSED = child.wait();
 
         // Check that it was indeed terminated by signal 2
 #pragma GCC diagnostic push
@@ -848,7 +848,7 @@ struct TestChildprocess {
         int out;
 
         // Fork the child redirecting its stdout
-        pid_t pid = child.forkAndRedirect(0, &out, 0);
+        pid_t pid UNUSED = child.forkAndRedirect(0, &out, 0);
         ASSERT(pid != 0);
 
         // Read the child output
@@ -866,7 +866,7 @@ struct TestChildprocess {
         int out;
 
         // Fork the child redirecting its stdout
-        pid_t pid = child.forkAndRedirect(0, &out, 0);
+        pid_t pid UNUSED = child.forkAndRedirect(0, &out, 0);
         ASSERT(pid != 0);
 
         // Read the child output
@@ -881,7 +881,7 @@ struct TestChildprocess {
         int out;
 
         // Fork the child redirecting its stdout
-        pid_t pid = child.forkAndRedirect(0, &out, 0);
+        pid_t pid UNUSED = child.forkAndRedirect(0, &out, 0);
         ASSERT(pid != 0);
 
         // Read the child output
