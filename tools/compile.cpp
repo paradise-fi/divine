@@ -1,5 +1,5 @@
-#include <wibble/string.h>
-#include <wibble/sys/fs.h>
+#include <brick-string.h>
+#include <brick-fs.h>
 
 #include <tools/compile.h>
 #include <tools/combine.h>
@@ -9,7 +9,6 @@ bool mucompile( const char *, const char * );
 
 namespace divine {
 
-using namespace wibble;
 
 std::string ltl_to_c( int id, std::string ltl )
 {
@@ -86,14 +85,14 @@ std::string ltl_to_c( int id, std::string ltl )
 
 #if OPT_MURPHI
 void Compile::compileMurphi( std::string in ) {
-    std::string outfile = str::basename( in ) + ".cpp";
+    std::string outfile = brick::fs::splitFileName( in ).second + ".cpp";
     if (!mucompile( in.c_str(), outfile.c_str() ))
         die( "FATAL: Error in murphi compilation. Please consult above messages." );
 
-    std::string mu = sys::fs::readFile( outfile );
-    sys::fs::deleteIfExists( outfile );
+    std::string mu = brick::fs::readFile( outfile );
+    brick::fs::deleteIfExists( outfile );
 
-    sys::fs::writeFile( outfile, "\
+    brick::fs::writeFile( outfile, "\
 " + mu + cesmi_usr_cesmi_h_str + cesmi_usr_cesmi_cpp_str + "\
 \n\
 extern \"C\" void setup( cesmi_setup *s ) {\n\
@@ -128,7 +127,7 @@ extern \"C\" int get_successor( const cesmi_setup *setup, int h, cesmi_node from
     return rule + 2;\n\
 }\n" );
 
-    gplusplus( outfile, str::basename( in ) + ".so", std::string( "-Wno-write-strings" ) );
+    gplusplus( outfile, brick::bf::splitFileName( in ).second + ".so", std::string( "-Wno-write-strings" ) );
 }
 #else
 

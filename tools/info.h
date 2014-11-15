@@ -14,7 +14,7 @@ struct InfoBase {
 };
 
 template< typename Setup >
-struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wibble::Unit >,
+struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::types::Unit >,
               virtual InfoBase, Sequential
 {
     typename Setup::Graph *g;
@@ -39,7 +39,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wi
                     ++ count;
                     if ( m.input.propertyType != graph::PT_None &&
                          m.input.propertyType != t )
-                        throw wibble::exception::Consistency(
+                        throw std::logic_error(
                             "Combining different property types is currently not supported." );
                     m.input.propertyType = t;
                 }
@@ -54,21 +54,21 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wi
     T *ptr_cast( T *ptr ) { return reinterpret_cast< T * >( ptr ); }
 
     template< typename Gen >
-    auto _capa( wibble::Preferred ) ->
+    auto _capa( brick::types::Preferred ) ->
         decltype( typename Gen::IsExplicit(), std::tuple< bool, std::string >() )
     {
         return std::make_tuple( true, to_string( g->base().capabilities() ) );
     }
 
     template< typename Gen >
-    auto _capa( wibble::NotPreferred ) -> std::tuple< bool, std::string >
+    auto _capa( brick::types::NotPreferred ) -> std::tuple< bool, std::string >
     {
         return std::make_tuple( false, std::string() );
     }
 
     std::tuple< bool, std::string > compactCapabilities() {
         return _capa< typename std::remove_reference<
-            decltype( this->graph().base() ) >::type >( wibble::Preferred() );
+            decltype( this->graph().base() ) >::type >( brick::types::Preferred() );
     }
 
     Info( Meta m ) : Algorithm( m ) {

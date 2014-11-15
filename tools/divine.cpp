@@ -5,15 +5,10 @@
 #include <iostream>
 #include <sstream>
 #include <memory>
+#include <stdexcept>
 
 #include <brick-commandline.h>
-
-#include <wibble/test.h> // for assert
-#include <wibble/sys/thread.h>
-#include <wibble/sys/mutex.h>
-#include <wibble/string.h>
-#include <wibble/sfinae.h>
-#include <wibble/sys/fs.h>
+#include <brick-string.h>
 
 #include <divine/utility/meta.h>
 #include <divine/utility/report.h>
@@ -29,7 +24,6 @@
 #include <sys/resource.h>
 #endif
 
-using namespace wibble;
 using namespace brick;
 using namespace brick::commandline;
 
@@ -154,8 +148,8 @@ struct Main {
 
         _meta = &a->meta();
 
-        assert_eq( a->meta().execution.nodes, mpi->size() );
-        assert_eq( a->meta().execution.thisNode, mpi->rank() );
+        ASSERT_EQ( a->meta().execution.nodes, mpi->size() );
+        ASSERT_EQ( a->meta().execution.thisNode, mpi->rank() );
 
         if ( mpi->master() ) {
             setupOutput();
@@ -173,7 +167,7 @@ struct Main {
         if ( mpi->master() && opts.foundCommand() != cmd_info ) {
             auto a = meta.algorithm.name;
             std::cerr << " input: " << meta.input.model << std::endl
-                      << " property " << wibble::str::fmt( meta.input.properties )
+                      << " property " << brick::string::fmt( meta.input.properties )
                       << ": " << meta.input.propertyDetails << std::endl
                       << " " << std::string( (44 - a.size()) / 2, '-' )
                       << " " << a << " " << std::string( (44 - a.size()) / 2 , '-' )
@@ -482,12 +476,12 @@ struct Main {
         else if ( repStr.substr( 0, 5 ) == "text:" ) {
             std::string file = repStr.substr( 5 );
             if ( file.empty() )
-                throw wibble::exception::Consistency( "No file given for report." );
+                throw std::logic_error( "No file given for report." );
             rep = Report::get< TextFileReport >( file );
         } else if ( repStr.substr( 0, 6 ) == "plain:" ) {
             std::string file = repStr.substr( 6 );
             if ( file.empty() )
-                throw wibble::exception::Consistency( "No file given for report." );
+                throw std::logic_error( "No file given for report." );
             rep = Report::get< PlainFileReport >( file );
         } else if ( repStr.substr( 0, 4 ) == "sql:" ) {
             std::string sqlrep = repStr.substr( 4 );
@@ -495,12 +489,12 @@ struct Main {
             std::string db = sqlrep.substr( 0, pos );
             std::string connstr = sqlrep.substr( pos + 1 );
             if ( connstr.empty() )
-                throw wibble::exception::Consistency( "No connection string given for report." );
+                throw std::logic_error( "No connection string given for report." );
             rep = Report::get< SqlReport >( db, connstr );
         }
 
         if ( !rep )
-            throw wibble::exception::Consistency( "Unknown or unsupported report: " + repStr );
+            throw std::logic_error( "Unknown or unsupported report: " + repStr );
 
         return rep;
     }
@@ -511,7 +505,7 @@ struct Main {
             auto values = o_report->values();
             if ( o_report->emptyValueSet() )
                 values.push_back( "" );
-            assert_leq( 1UL, values.size() );
+            ASSERT_LEQ( 1UL, values.size() );
 
             if ( values.size() > 1 ) {
                 rep = Report::get< AggregateReport >();
@@ -532,17 +526,17 @@ struct Main {
 
     graph::PropertySet parseProperties( std::string s )
     {
-        wibble::str::Split splitter( ",", s );
+        brick::string::Splitter splitter( "[ \t]*,[ \t]*", REG_EXTENDED );
         graph::PropertySet r;
-        std::copy( splitter.begin(), splitter.end(), std::inserter( r, r.begin() ) );
+        std::copy( splitter.begin( s ), splitter.end(), std::inserter( r, r.begin() ) );
         return r;
     }
 
     graph::ReductionSet parseReductions( std::string s )
     {
-        wibble::str::Split splitter( ",", s );
+        brick::string::Splitter splitter( "[ \t]*,[ \t]*", REG_EXTENDED );
         graph::ReductionSet r;
-        std::transform( splitter.begin(), splitter.end(), std::inserter( r, r.begin() ),
+        std::transform( splitter.begin( s ), splitter.end(), std::inserter( r, r.begin() ),
                         [&]( std::string s ) {
                             if ( s == "tau" ) return graph::R_Tau;
                             if ( s == "tau+" ) return graph::R_TauPlus;
@@ -550,8 +544,8 @@ struct Main {
                             if ( s == "taustores" ) return graph::R_TauStores;
                             if ( s == "heap" ) return graph::R_Heap;
                             if ( s == "LU" ) return graph::R_LU;
-                            throw wibble::exception::OutOfRange(
-                                "reduction", "'" + s + "' is not a known reduction type;\n"
+                            throw std::out_of_range(
+                                "reduction: '" + s + "' is not a known reduction type;\n"
                                 "tau, tau+, por, taustores, heap and LU are allowed" );
                         } );
         return r;
@@ -563,7 +557,7 @@ struct Main {
         if ( s == "none" ) return meta::Algorithm::Compression::None;
         if ( s == "tree" ) return meta::Algorithm::Compression::Tree;
         if ( s == "ntree" ) return meta::Algorithm::Compression::Tree;
-        throw wibble::exception::OutOfRange( "compression", "'" + s
+        throw std::out_of_range( "compression: '" + s
                 + "' is not a known compression type" ); // TODO: allowed
     }
 
@@ -571,7 +565,7 @@ struct Main {
         if ( s.empty() ) return graph::DemangleStyle::Cpp;
         if ( s == "cpp" ) return graph::DemangleStyle::Cpp;
         if ( s == "none" ) return graph::DemangleStyle::None;
-        throw wibble::exception::OutOfRange( "demangle", "'" + s
+        throw std::out_of_range( "demangle: '" + s
                 + "' is not supported demangle style [available = none, cpp]" );
     }
 
@@ -742,7 +736,7 @@ struct Main {
                         // initialize meta from Mpi, this also calls MPI::init
                         // and creates (singleton) Mpi instance
                         // it is needed so that meta.execution.nodes is valid
-                        assert( !mpi );
+                        ASSERT( !mpi );
                         mpi.reset( new Mpi( o_mpi->boolValue() ) );
                         mpiFillMeta( meta );
 #if ALG_NDFS
@@ -753,7 +747,7 @@ struct Main {
                             meta.algorithm.algorithm = meta::Algorithm::Type::Owcty;
                         break;
                     default:
-                        assert_unimplemented();
+                        ASSERT_UNIMPLEMENTED();
                 }
             }
 
@@ -838,10 +832,10 @@ int main( int argc, const char **argv )
     try {
         divine::Main m( argc, argv );
     } catch ( divine::DieException &ex ) {
-        std::cerr << ex.desc() << std::endl;
+        std::cerr << ex.what() << std::endl;
         std::cerr << "Exiting after receiving fatal error." << std::endl;
         std::exit( ex.exitcode );
-    } catch ( wibble::exception::Generic &ex ) {
+    } catch ( std::exception &ex ) {
         std::cerr << "FATAL ERROR: caught error during verification:" << std::endl
                   << "    " << ex.what() << std::endl;
         std::cerr << "Exiting after receiving fatal error." << std::endl;

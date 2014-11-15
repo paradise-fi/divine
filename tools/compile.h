@@ -5,13 +5,8 @@
 
 #include <brick-commandline.h>
 #include <brick-fs.h>
-
-#include <wibble/string.h>
-#include <wibble/regexp.h>
-#include <wibble/sys/pipe.h>
-#include <wibble/sys/exec.h>
-#include <wibble/sys/process.h>
-#include <wibble/raii.h>
+#include <brick-types.h>
+#include <brick-string.h>
 
 #include <divine/dve/compiler.h>
 #include <divine/generator/cesmi.h>
@@ -25,16 +20,12 @@
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H
 
-using namespace wibble;
 using namespace brick;
 using namespace brick::commandline;
-using namespace sys;
 
 namespace divine {
 
 std::string ltl_to_c( int id, std::string ltl );
-
-using namespace wibble;
 
 static inline std::string concat( commandline::VectorOption< String > *opt ) {
     assert( opt != nullptr );
@@ -82,7 +73,7 @@ struct Compile {
         std::cerr << "+ " << command << std::endl;
         int status = system( command.c_str() );
         if ( status != 0 )
-            die( wibble::str::fmtf( "Error running an external command, exit code %d.", status ) );
+            die( brick::string::fmtf( "Error running an external command, exit code %d.", status ) );
     }
 
     void runCompiler( std::string comp, std::string in, std::string out, std::string flags = "" ) {
@@ -92,7 +83,7 @@ struct Compile {
     }
 
     void gplusplus( std::string in, std::string out, std::string flags = "" ) {
-	runCompiler ("g++", in, out, "-g -O2 -fPIC -shared " + flags);
+        runCompiler ("g++", in, out, "-g -O2 -fPIC -shared " + flags);
     }
 
     std::string clang() {
@@ -107,12 +98,12 @@ struct Compile {
         compiler.read( in.c_str(), definitions );
         compiler.analyse();
 
-        std::string outfile = str::basename( in ) + ".cpp";
+        std::string outfile = brick::fs::splitFileName( in ).second + ".cpp";
         std::ofstream out( outfile.c_str() );
         compiler.setOutput( out );
         compiler.print_generator();
 
-        gplusplus( outfile, str::basename( in ) + generator::cesmi_ext );
+        gplusplus( outfile, brick::fs::splitFileName( in ).second + generator::cesmi_ext );
 #else
         die( "FATAL: The DVE compiler requires DVE backend." );
         (void)(in);
@@ -132,11 +123,12 @@ struct Compile {
 
     void compileCESMI( std::string in, std::string cflags ) {
         FilePath tmp_dir;
-        tmp_dir.abspath = process::getcwd();
+        tmp_dir.abspath = brick::fs::getcwd();
         tmp_dir.basename = brick::fs::mkdtemp( "_divine-compile.XXXXXX" );
-        std::string in_basename( str::basename( in ), 0, str::basename(in).rfind( '.' ) );
+        std::string basename = brick::fs::splitFileName( in ).second;
+        std::string in_basename( basename, 0, basename.rfind( '.' ) );
 
-        auto clean = wibble::raii::refDeleteIf( !o_keep->boolValue(), tmp_dir, cleanup );
+        auto clean = brick::types::refDeleteIf( !o_keep->boolValue(), tmp_dir, cleanup );
 
         chdir( tmp_dir.basename.c_str() );
         brick::fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
@@ -147,14 +139,14 @@ struct Compile {
         int ltlcount = 0;
         while ( opts.hasNext() ) {
             std::string extra = opts.next();
-            if ( wibble::str::endsWith( extra, ".ltl" ) ) {
-                std::string ltlpath = tmp_dir.basename + "/" + wibble::str::basename( extra ) + ".h";
+            if ( brick::string::endsWith( extra, ".ltl" ) ) {
+                std::string ltlpath = tmp_dir.basename + "/" + brick::fs::splitFileName( extra ).second + ".h";
                 std::string code = "#include <cesmi.h>\n";
                 parse_ltl( brick::fs::readFile( extra ), [&]( std::string formula ) {
                         code += ltl_to_c( ltlcount++, formula );
                     }, [&]( std::string ) {} );
                 brick::fs::writeFile( ltlpath, code );
-                ltlincludes += "#include <" + wibble::str::basename( extra ) + ".h>\n";
+                ltlincludes += "#include <" + brick::fs::splitFileName( extra ).second + ".h>\n";
             } else
                 extras += " " + extra;
         }
@@ -203,7 +195,7 @@ struct Compile {
         static const std::string blockKey = "/* divine:";
         static const std::string lineCfKey = "// divine-cflags:";
         static const std::string blockCfKey = "/* divine-cflags:";
-        wibble::Splitter splitter( "[\t ][ \t]*", REG_EXTENDED );
+        brick::string::Splitter splitter( "[\t ][ \t]*", REG_EXTENDED );
 
         auto match = [ &line ]( const std::string &key ) { return line.substr( 0, key.size() ) == key; };
         auto addmods = [&]( std::string m ) {
@@ -260,10 +252,10 @@ struct Compile {
             std::vector< std::string > modelineOpts;
             for ( const auto &f : files )
                 parseModelines( f, modelineOpts );
-            std::cout << "INFO: modelines: " << wibble::str::fmt( modelineOpts ) << std::endl;
+            std::cout << "INFO: modelines: " << brick::string::fmt( modelineOpts ) << std::endl;
             auto e = cmd_compile->parseExtraOptions( modelineOpts );
             if ( e.size() )
-                std::cout << "WARNING: unknown modeline options: " << wibble::str::fmt( e ) << std::endl;
+                std::cout << "WARNING: unknown modeline options: " << brick::string::fmt( e ) << std::endl;
         }
 
         std::string cflags = concat( o_cflags );
@@ -312,9 +304,9 @@ struct Compile {
             : 1;
         if ( !o_libs_only->boolValue() && !brick::fs::access( input, R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
-        if ( str::endsWith( input, ".dve" ) )
+        if ( brick::string::endsWith( input, ".dve" ) )
             compileDve( input, o_definitions->values() );
-        else if ( str::endsWith( input, ".m" ) )
+        else if ( brick::string::endsWith( input, ".m" ) )
             compileMurphi( input );
         else if ( o_cesmi->boolValue() )
             compileCESMI( input, concat( o_cflags ) );

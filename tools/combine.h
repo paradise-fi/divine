@@ -3,13 +3,11 @@
 #include <sstream>
 #include <brick-commandline.h>
 #include <brick-fs.h>
+#include <brick-string.h>
+#include <brick-process.h>
 
 #include <divine/ltl2ba/main.h>
 #include <divine/utility/die.h>
-#include <wibble/string.h>
-#include <wibble/regexp.h>
-#include <wibble/sys/pipe.h>
-#include <wibble/sys/exec.h>
 
 #ifndef DIVINE_COMBINE_H
 #define DIVINE_COMBINE_H
@@ -30,10 +28,7 @@ int get_buchi_accept();
 std::list<std::string> get_buchi_all_symbols();
 #endif
 
-using namespace wibble;
-using namespace brick;
 using namespace brick::commandline;
-using namespace sys;
 
 namespace divine {
 
@@ -46,12 +41,12 @@ std::string graph_to_cpp(const BA_opt_graph_t &g);
 template< typename F, typename G >
 static inline void parse_ltl( std::string file, F ltl, G definition )
 {
-    wibble::Splitter lines( "\n", 0 );
-    wibble::ERegexp prop( "^[ \t]*#property ([^\n]+)", 2 );
-    wibble::ERegexp def( "^[ \t]*#define ([^\n]+)", 2 );
+    brick::string::Splitter lines( "\n", 0 );
+    brick::string::ERegexp prop( "^[ \t]*#property ([^\n]+)", 2 );
+    brick::string::ERegexp def( "^[ \t]*#define ([^\n]+)", 2 );
 
     std::vector< std::string >::iterator i;
-    for ( Splitter::const_iterator ln = lines.begin( file ); ln != lines.end(); ++ln ) {
+    for ( auto ln = lines.begin( file ); ln != lines.end(); ++ln ) {
         if ( prop.match( *ln ) )
             ltl( prop[1] );
         if ( def.match( *ln ) )
@@ -67,7 +62,7 @@ struct Combine {
 #if OPT_LTL2DSTAR
     StringOption *o_condition;
 #endif
-    commandline::StandardParserWithMandatoryCommand &opts;
+    StandardParserWithMandatoryCommand &opts;
 
     bool have_ltl;
     bool probabilistic;
@@ -84,7 +79,7 @@ struct Combine {
         die( bla );
     }
 
-    Combine( commandline::StandardParserWithMandatoryCommand &_opts )
+    Combine( StandardParserWithMandatoryCommand &_opts )
         : opts( _opts )
     {
         cmd_combine = opts.addEngine(
@@ -113,13 +108,13 @@ struct Combine {
 
     std::string m4( std::string in )
     {
-        PipeThrough p( "m4" + defs );
+        brick::process::PipeThrough p( "m4" + defs );
         return p.run( in );
     }
 
     std::string cpp( std::string in )
     {
-        PipeThrough p( "cpp -E -P" );
+        brick::process::PipeThrough p( "cpp -E -P" );
         return p.run( in );
     }
 
@@ -131,7 +126,7 @@ struct Combine {
         std::ostringstream str;
         auto a = input.rfind( '/' ), b = input.rfind( '.' );
         if ( b == std::string::npos )
-            throw wibble::exception::Generic( "Suffix expected." );
+            throw std::runtime_error( "Suffix expected." );
         if ( a == std::string::npos )
             a = 0;
         else
@@ -269,7 +264,7 @@ struct Combine {
             while ( opts.hasNext() )
                 defs += " -D" + opts.next(); // .push_back( opts.next() );
 
-        } catch( commandline::BadOption &e ) {
+        } catch( BadOption &e ) {
             die_help( e.what() );
         }
 
@@ -280,11 +275,11 @@ struct Combine {
     int main() {
         parseOptions();
 
-        probabilistic = str::endsWith( input, "probdve" );
+        probabilistic = brick::string::endsWith( input, "probdve" );
 
         if ( probabilistic )
             ext = ".probdve";
-        else if ( str::endsWith( input, "dve" ) )
+        else if ( brick::string::endsWith( input, "dve" ) )
             ext = ".dve";
         else
             die( "FATAL: Input file extension has to be one of "
@@ -301,12 +296,12 @@ struct Combine {
             ltl_data = brick::fs::readFile( ltl ) + "\n";
         }
 
-        if ( str::endsWith( ltl, ".mltl" ) ) {
+        if ( brick::string::endsWith( ltl, ".mltl" ) ) {
             ltl_data = m4( combine_m4 + ltl_data );
         }
 
-        if ( str::endsWith( input, ".mprobdve" )
-             || str::endsWith( input, ".mdve" ) ) {
+        if ( brick::string::endsWith( input, ".mprobdve" )
+             || brick::string::endsWith( input, ".mdve" ) ) {
             in_data = m4( combine_m4 + in_data );
             if ( !have_ltl ) {
                 output( -1, in_data, "(no property)" );

@@ -4,9 +4,9 @@
 #include <limits.h>
 #include <cstdlib>
 
-#include <wibble/sys/fs.h>
-#include <wibble/sys/pipe.h>
-#include <wibble/list.h>
+#include <brick-fs.h>
+#include <brick-process.h>
+#include <brick-types.h>
 
 #include <divine/algorithm/common.h>
 #include <divine/utility/statistics.h>
@@ -19,7 +19,7 @@ namespace divine {
 template< typename > struct Simple;
 
 template< typename Setup >
-struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wibble::Unit >,
+struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::types::Unit >,
               visitor::SetupBase, Sequential
 {
     typedef Draw< Setup > This;
@@ -206,7 +206,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wibble::Un
                 trans.front() --;
             } );
 
-        assert( this->store().valid( from ) );
+        ASSERT( this->store().valid( from ) );
 
         for ( int i = 1; size_t( i ) <= trans.size(); ++ i ) {
             extension( from ).intrace = true;
@@ -225,9 +225,9 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wibble::Un
                 } );
 
             if ( !this->store().valid( to ) )
-                throw wibble::exception::Consistency(
+                throw std::logic_error(
                     "The trace " + trace + " is invalid, not enough successors "
-                    "at step " + wibble::str::fmt( i ) + " (" + wibble::str::fmt( trans[ i ] ) + " requested)" );
+                    "at step " + brick::string::fmt( i ) + " (" + brick::string::fmt( trans[ i ] ) + " requested)" );
             if ( !extension( to ).serial )
                 extension( to ).serial = ++serial;
             extension( to ).distance = 1;
@@ -273,13 +273,13 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wibble::Un
         if ( output.empty() ) {
             if ( render.empty() )
                 render = "dot -Tx11";
-            wibble::sys::PipeThrough p( render );
+            brick::process::PipeThrough p( render );
             p.run( dot );
         } else {
             if ( render.empty() )
                 render = "dot -Tpdf";
-            wibble::sys::PipeThrough p( render );
-            wibble::sys::fs::writeFile( output, p.run( dot ) );
+            brick::process::PipeThrough p( render );
+            brick::fs::writeFile( output, p.run( dot ) );
         }
     }
 
@@ -289,8 +289,8 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, wibble::Un
         this->init( *this );
         maxdist = m.algorithm.maxDistance;
         if ( maxdist <= 0 )
-            throw wibble::exception::Consistency(
-                "The --distance specified (" + wibble::str::fmt( maxdist ) +
+            throw std::logic_error(
+                "The --distance specified (" + brick::string::fmt( maxdist ) +
                 " is too small, must be at least 1." );
         output = m.output.file;
         render = m.output.filterProgram;
