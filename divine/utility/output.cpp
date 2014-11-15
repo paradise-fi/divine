@@ -160,7 +160,7 @@ struct Curses : divine::Output
 
     std::ostream &statistics() {
         std::unique_lock< std::mutex > __l( _mutex );
-        return statstr;
+        return _statstr;
     }
 
     std::ostream &debug() {
@@ -170,7 +170,7 @@ struct Curses : divine::Output
     }
 
     std::ostream &progress() {
-        return progstr;
+        return _progstr;
     }
 
 };
