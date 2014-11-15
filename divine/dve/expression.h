@@ -41,7 +41,7 @@ struct EvalContext {
     };
 
     ImmValue pop() {
-        assert( !stack.empty() );
+        ASSERT( !stack.empty() );
         ImmValue v = stack.back();
         DEBUG(std::cerr << "-[" << v.value << "]");
         stack.pop_back();
@@ -184,14 +184,14 @@ struct Expression {
     }
 
     int evaluate( EvalContext &ctx, ErrorState * err = 0 ) {
-        assert( ctx.stack.empty() );
+        ASSERT( ctx.stack.empty() );
         for ( std::vector< Item >::iterator i = rpn.begin(); i != rpn.end(); ++i )
             step( ctx, *i );
         ASSERT_EQ( ctx.stack.size(), static_cast<size_t>( 1) );
         DEBUG(std::cerr << "done: " << ctx.stack.back().value << std::endl);
         EvalContext::ImmValue retval = ctx.pop();
         if ( retval.error ) {
-            assert( !retval.errState().padding() );
+            ASSERT( !retval.errState().padding() );
             if ( err )
                 err->error |= retval.error;
             return true; // Black magic - We want to have transition to the error state
@@ -205,11 +205,11 @@ struct Expression {
 
     void build( const SymTab &sym, const parse::Expression &ex, const SymTab * immscope = 0 ) {
         if ( ex.op.id == TI::Period ) {
-            assert( ex.lhs );
-            assert( ex.rhs );
+            ASSERT( ex.lhs );
+            ASSERT( ex.rhs );
             auto left = ex.lhs->rval, right = ex.rhs->rval;
-            assert( left );
-            assert( right );
+            ASSERT( left );
+            ASSERT( right );
             Symbol process = sym.lookup( SymTab::Process, left->ident.name() );
             if ( !process.valid() )
                 left->fail( ( "Couldn't find process: " + left->ident.name() ).c_str(),
@@ -228,8 +228,8 @@ struct Expression {
         }
 
         if ( ex.op.id == TI::Arrow ) {
-            assert( ex.lhs );
-            assert( ex.rhs );
+            ASSERT( ex.lhs );
+            ASSERT( ex.rhs );
             auto left = ex.lhs->rval;
             Symbol process = sym.lookup( SymTab::Process, left->ident );
             if ( !process.valid() )
@@ -260,12 +260,12 @@ struct Expression {
         }
 
         if ( ex.lhs ) {
-            assert( !ex.rval );
+            ASSERT( !ex.rval );
             build( sym, *ex.lhs );
         }
 
         if ( ex.rhs ) {
-            assert( ex.lhs );
+            ASSERT( ex.lhs );
             build( sym, *ex.rhs );
         }
 
@@ -309,7 +309,7 @@ struct ExpressionList {
         retval.resize( exprs.size() );
         auto retit = retval.begin();
         for( auto it = exprs.begin(); it != exprs.end(); it++, retit++ ) {
-            assert( retit != retval.end() );
+            ASSERT( retit != retval.end() );
             *retit = (*it).evaluate( ctx, err );
         }
         return retval;

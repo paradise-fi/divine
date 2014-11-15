@@ -85,7 +85,7 @@ struct Identifier : Parser {
         realstream << name;
         dve::IOStream stream( realstream );
         dve::Lexer< dve::IOStream > lexer( stream );
-        assert( &parent );
+        ASSERT( &parent );
         *this = Identifier( parent.createChild( lexer, name ) );
         this->token.data = name;
     }

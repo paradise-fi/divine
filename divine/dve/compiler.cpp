@@ -68,7 +68,7 @@ void DveCompiler::write_C( parse::Expression & expr, ostream& ostr,
     op[ TI::Arrow ] = "XXX";
     op[ TI::Imply ] = "XXX";
 
-    assert( op.count( expr.op.id ) );
+    ASSERT( op.count( expr.op.id ) );
     if ( expr.lhs && expr.rhs ) {
         ostr << "(";
         switch ( expr.op.id ) {
