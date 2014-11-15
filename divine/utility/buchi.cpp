@@ -1,5 +1,5 @@
 #include "buchi.h"
-#include <wibble/regexp.h>
+#include <brick-string.h>
 
 #if OPT_LTL3BA
 #include <external/ltl3ba/ltl3ba.h>
@@ -107,8 +107,8 @@ void Buchi::buildEmpty() {
 bool Buchi::readLTLFile( const std::string& fname, std::vector< std::string >& props, std::map< std::string, std::string >& defs ) {
     std::fstream file( fname, std::fstream::in );
     if ( !file.is_open() ) return false;
-    wibble::ERegexp def( "^[ \t]*#define ([^ \t]+)[ \t]+(.*)", 3 );
-    wibble::ERegexp prop( "^[ \t]*#property (.*)", 2 );
+    brick::string::ERegexp def( "^[ \t]*#define ([^ \t]+)[ \t]+(.*)", 3 );
+    brick::string::ERegexp prop( "^[ \t]*#property (.*)", 2 );
     while ( file.good() ) {
         std::string line;
         getline( file, line );

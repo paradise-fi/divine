@@ -1,8 +1,10 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
 
 #include <string>
-#include <wibble/sys/thread.h>
+#include <stdexcept>
 #include <divine/utility/withreport.h>
+
+#include <bricks/brick-shmem.h>
 
 #ifndef DIVINE_SYSINFO_H
 #define DIVINE_SYSINFO_H
@@ -32,15 +34,14 @@ struct Info : WithReport { /* singleton */
     std::vector< ReportLine > report() const override;
 };
 
-struct ResourceLimit : wibble::exception::Generic {
-    ResourceLimit( std::string x ) : wibble::exception::Generic( x ) {}
-    std::string desc() const throw () { return "Resource exhausted"; }
+struct ResourceLimit : std::runtime_error {
+    ResourceLimit( std::string x ) : std::runtime_error( "Resource exhausted: " + x ) {}
 };
 
-struct ResourceGuard : wibble::sys::Thread {
+struct ResourceGuard : brick::shmem::Thread {
     uint64_t memory; /* in kB */
     uint64_t time; /* in seconds */
-    void *main();
+    void main();
     ResourceGuard();
 };
 

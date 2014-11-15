@@ -1,8 +1,10 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #include <divine/utility/report.h>
-#include <wibble/param.h>
-#include <wibble/string.h>
+#include <stdexcept>
 #include <map>
+
+#include <bricks/brick-assert.h>
+#include <bricks/brick-string.h>
 
 #if OPT_SQL
 #include <external/nanodbc/nanodbc.h>
@@ -32,12 +34,12 @@ std::string Report::mangle( std::string str ) {
 
 #if !OPT_SQL
 SqlReport::SqlReport( const std::string &, const std::string & ) {
-    wibble::exception::Consistency( "ODBC support must be included for SQL reports" );
+    throw std::logic_error( "ODBC support must be included for SQL reports" );
 }
 
 
 void SqlReport::doFinal( const Meta & ) {
-    wibble::exception::Consistency( "ODBC support must be included for SQL reports" );
+    throw std::logic_error( "ODBC support must be included for SQL reports" );
 }
 #else
 
@@ -46,7 +48,7 @@ SqlReport::SqlReport( const std::string &db, const std::string &connstr ) :
 {
     // test connection string
     nanodbc::connection connection( _connstr );
-    wibble::param::discard( connection );
+    brick::_assert::discard( connection );
 }
 
 void SqlReport::doFinal( const Meta &meta ) {
@@ -81,7 +83,7 @@ void SqlReport::doFinal( const Meta &meta ) {
             []( std::string col ) { return col + " varchar"; } );
         std::stringstream create;
         create << "CREATE TABLE "
-               << _db << " (" << wibble::str::fmt_container( cols, ' ', ' ' )
+               << _db << " (" << brick::string::fmt_container( cols, ' ', ' ' )
                << ");";
         // std::cerr << create.str() << std::endl;
         execute( connection, create.str() );
@@ -90,8 +92,8 @@ void SqlReport::doFinal( const Meta &meta ) {
     std::vector< std::string > placeholders( usedkeys.size(), "?" );
     std::stringstream com;
     com << "INSERT INTO " << _db
-        << " (" << wibble::str::fmt_container( usedkeys, ' ', ' ' ) << ") "
-        << "VALUES (" << wibble::str::fmt_container( placeholders, ' ', ' ' ) << ");";
+        << " (" << brick::string::fmt_container( usedkeys, ' ', ' ' ) << ") "
+        << "VALUES (" << brick::string::fmt_container( placeholders, ' ', ' ' ) << ");";
     try {
         nanodbc::statement stmtins( connection );
         nanodbc::prepare( stmtins, com.str() );

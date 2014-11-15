@@ -1,4 +1,4 @@
-#include <wibble/sys/mutex.h>
+#include <mutex>
 #include <iostream>
 
 #include <fcntl.h>
@@ -17,83 +17,83 @@ struct proxycall {
 };
 
 struct proxybuf : std::stringbuf {
-    wibble::sys::Mutex &mutex;
-    proxycall &call;
+    std::mutex &_mutex;
+    proxycall &_call;
 
-    proxybuf( proxycall &c, wibble::sys::Mutex &m) : mutex( m ), call( c ) {}
+    proxybuf( proxycall &c, std::mutex &m ) : _mutex( m ), _call( c ) {}
 
     int sync() {
-        wibble::sys::MutexLock __l( mutex );
+        std::unique_lock< std::mutex > __l( _mutex );
         int r = std::stringbuf::sync();
         while ( str().find( '\n' ) != std::string::npos ) {
             std::string line( str(), 0, str().find( '\n' ) );
-            call.flush( line );
+            _call.flush( line );
             str( std::string( str(), line.length() + 1, str().length() ) );
         }
-        call.partial( str() );
+        _call.partial( str() );
         str( "" );
         return r;
     }
 };
 
 struct StdIO : divine::Output, proxycall {
-    wibble::sys::Mutex mutex;
+    std::mutex _mutex;
 
-    std::ostream &myout;
-    proxybuf m_progbuf;
-    std::ostream m_progress;
-    time_t last;
+    std::ostream &_myout;
+    proxybuf _progbuf;
+    std::ostream _progress;
+    time_t _last;
 
     std::string _partial;
-    bool flushed;
+    bool _flushed;
 
     void flush( std::string s ) {
-        if ( flushed )
-            myout << _partial;
-        myout << s << std::endl;
+        if ( _flushed )
+            _myout << _partial;
+        _myout << s << std::endl;
         _partial = "";
     }
 
     void partial( std::string s ) {
-        if ( flushed )
-            myout << _partial;
-        myout << s << std::flush;
+        if ( _flushed )
+            _myout << _partial;
+        _myout << s << std::flush;
         _partial += s;
-        flushed = false;
+        _flushed = false;
     }
 
-    void repeat( bool ) {
-        if ( flushed ) {
-            myout << _partial << " <...>" << std::endl;
+    void repeat() {
+        if ( _flushed ) {
+            _myout << _partial << " <...>" << std::endl;
         } else {
-            last = ::time( 0 );
-            myout << " <...>" << std::endl;
-            flushed = true;
+            _last = ::time( 0 );
+            _myout << " <...>" << std::endl;
+            _flushed = true;
         }
     }
 
     std::ostream &statistics() {
-        wibble::sys::MutexLock __l( mutex );
-        repeat( true );
+        std::unique_lock< std::mutex > __l( _mutex );
+        repeat();
         return std::cerr;
     }
 
     std::ostream &debug() { /* currently unused */
         static struct : std::streambuf {} buf;
-        static std::ostream null(&buf);
+        static std::ostream null( &buf );
         return null;
     }
 
     std::ostream &progress() {
-        last = time( 0 );
-        return m_progress;
+        _last = time( nullptr );
+        return _progress;
     }
 
     StdIO( std::ostream &o )
-        : myout( o ),
-          m_progbuf( *this, mutex ),
-          m_progress( &m_progbuf ),
-          last( 0 ), flushed( true )
+        : _myout( o ),
+          _progbuf( *this, _mutex ),
+          _progress( &_progbuf ),
+          _last( 0 ), _flushed( true )
     {
     }
 };
@@ -101,7 +101,7 @@ struct StdIO : divine::Output, proxycall {
 #if OPT_CURSES
 struct Curses : divine::Output
 {
-    wibble::sys::Mutex mutex;
+    std::mutex _mutex;
 
     struct : proxycall {
         WINDOW *win;
@@ -115,14 +115,14 @@ struct Curses : divine::Output
             wrefresh( win );
         }
 
-    } progcall, statcall;
+    } _progcall, _statcall;
 
-    proxybuf progbuf, statbuf;
-    std::ostream progstr, statstr;
+    proxybuf _progbuf, _statbuf;
+    std::ostream _progstr, _statstr;
 
     Curses()
-        : progbuf( progcall, mutex ), statbuf( statcall, mutex ),
-          progstr( &progbuf ), statstr( &statbuf )
+        : _progbuf( _progcall, _mutex ), _statbuf( _statcall, _mutex ),
+          _progstr( &_progbuf ), _statstr( &_statbuf )
     {
         // grab the tty if available; prevents mpiexec from garbling the output
         int tty = open( "/dev/tty", O_RDWR );
@@ -140,10 +140,10 @@ struct Curses : divine::Output
         getmaxyx( stdscr, maxy, maxx );
 	(void)maxy;
 
-        progcall.win = newwin( 0, 45, 1, 0 );
-        scrollok( progcall.win, true );
-        statcall.win = newwin( 0, maxx - 45, 0, 45 );
-        scrollok( statcall.win, true );
+        _progcall.win = newwin( 0, 45, 1, 0 );
+        scrollok( _progcall.win, true );
+        _statcall.win = newwin( 0, maxx - 45, 0, 45 );
+        scrollok( _statcall.win, true );
     }
 
     void cleanup() {
@@ -153,19 +153,19 @@ struct Curses : divine::Output
     ~Curses() { cleanup(); }
 
     void setStatsSize( int x, int y ) {
-        delwin( statcall.win );
-        statcall.win = newwin( y + 1, x + 20, 1, 45 );
-        scrollok( statcall.win, true );
+        delwin( _statcall.win );
+        _statcall.win = newwin( y + 1, x + 20, 1, 45 );
+        scrollok( _statcall.win, true );
     }
 
     std::ostream &statistics() {
-        wibble::sys::MutexLock __l( mutex );
+        std::unique_lock< std::mutex > __l( _mutex );
         return statstr;
     }
 
     std::ostream &debug() {
         static struct : std::streambuf {} buf;
-        static std::ostream null(&buf);
+        static std::ostream null( &buf );
         return null;
     }
 

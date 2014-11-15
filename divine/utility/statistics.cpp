@@ -2,7 +2,7 @@
 
 #include <iomanip>
 #include <mutex>
-#include <wibble/string.h>
+#include <chrono>
 
 #include <bricks/brick-hashset.h>
 #include <divine/utility/statistics.h>
@@ -159,17 +159,20 @@ void TrackStatistics::snapshot() {
         Output::output().statistics() << str.str() << std::flush;
 }
 
-void *TrackStatistics::main() {
-    while ( true ) {
+void TrackStatistics::main() {
+    while ( !interrupted() ) {
         if ( mpi.master() ) {
-            wibble::sys::sleep( 1 );
+            std::this_thread::sleep_for( 
+                std::chrono::seconds( 1 )
+            );
             snapshot();
         } else {
-            wibble::sys::usleep( 200 * 1000 );
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds( 200 )
+            );
             send();
         }
     }
-    return 0;
 }
 
 

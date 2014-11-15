@@ -7,8 +7,6 @@
 #include <iterator>
 #include <initializer_list>
 
-#include <wibble/test.h> // for assert
-
 #include <divine/graph/graph.h>
 #include <divine/utility/withreport.h>
 

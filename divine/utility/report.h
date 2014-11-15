@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <memory>
 
-#include <wibble/sfinae.h>
+#include <brick-types.h>
 
 #include <divine/utility/version.h>
 #include <divine/utility/meta.h>
@@ -64,7 +64,7 @@ struct Report
 
     template< typename Rep, typename... Ts >
     static std::shared_ptr< Report > get( Ts &&... ts ) {
-        return _get< Rep >( wibble::Preferred(), std::forward< Ts >( ts )... );
+        return _get< Rep >( brick::types::Preferred(), std::forward< Ts >( ts )... );
     }
 
   private:
@@ -78,18 +78,18 @@ struct Report
     static std::shared_ptr< Rep > declcheck( std::shared_ptr< Rep > ) {
         static_assert( std::is_base_of< Report, Rep >::value,
                 "Required report does not inherit from Report." );
-        assert_unreachable( "declcheck" );
+        ASSERT_UNREACHABLE( "declcheck" );
     }
 
     template< typename Rep, typename... Ts >
-    static auto _get( wibble::Preferred, Ts &&... ts ) ->
+    static auto _get( brick::types::Preferred, Ts &&... ts ) ->
         decltype( declcheck( Rep::get( std::forward< Ts >( ts )... ) ) )
     {
         return Rep::get( std::forward< Ts >( ts )... );
     }
 
     template< typename Rep, typename... Ts >
-    static std::shared_ptr< Report > _get( wibble::NotPreferred, Ts &&... ts ) {
+    static std::shared_ptr< Report > _get( brick::types::NotPreferred, Ts &&... ts ) {
         return std::make_shared< Rep >( std::forward< Ts >( ts )... );
     }
 };

@@ -6,7 +6,6 @@
 #include <memory>
 
 #include <brick-shmem.h>
-#include <wibble/regexp.h>
 #include <divine/toolkit/mpi.h>
 #include <divine/toolkit/pool.h>
 
@@ -42,7 +41,7 @@ struct NoStatistics {
 
 #ifndef __divine__
 
-struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
+struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     struct PerThread {
         std::vector< int64_t > sent;
         std::vector< int64_t > received;
@@ -91,14 +90,14 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     void busy( int id );
 
     PerThread &thread( int id ) {
-        assert_leq( size_t( id ), threads.size() );
+        ASSERT_LEQ( size_t( id ), threads.size() );
         if ( !threads[ id ] )
             threads[ id ] = new PerThread;
         return *threads[ id ];
     }
 
     void sent( int from, int to, int64_t nodeSize ) {
-        assert_leq( 0, to );
+        ASSERT_LEQ( 0, to );
 
         PerThread &f = thread( from );
         if ( f.sent.size() <= size_t( to ) )
@@ -108,7 +107,7 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     }
 
     void received( int from, int to, int64_t nodeSize ) {
-        assert_leq( 0, from );
+        ASSERT_LEQ( 0, from );
 
         PerThread &t = thread( to );
         if ( t.received.size() <= size_t( from ) )
@@ -133,7 +132,7 @@ struct TrackStatistics : wibble::sys::Thread, MpiMonitor {
     void label( std::ostream &o, std::string text, bool d = true );
     void format( std::ostream &o );
     void snapshot();
-    void *main();
+    void main();
 
     void send();
     Loop process( std::unique_lock< std::mutex > &, MpiStatus &status );

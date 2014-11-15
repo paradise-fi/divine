@@ -1,6 +1,7 @@
 // -*- C++ -*- Copyright (c) 2010 Petr Rockai <me@mornfall.net>
 
 #include <memory>
+#include <iostream>
 #include <brick-unittest.h>
 
 #ifndef DIVINE_OUTPUT_H

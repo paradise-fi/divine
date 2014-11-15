@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #include <divine/utility/meta.h>
 
+#include <brick-string.h>
+
 using namespace divine;
 
 namespace divine {
@@ -37,7 +39,7 @@ std::string tostr( Result::CET t ) {
         case Result::CET::Goal: return "goal";
         case Result::CET::Cycle: return "cycle";
         case Result::CET::Deadlock: return "deadlock";
-        default: assert_unreachable( "unknown CE type" );
+        default: ASSERT_UNREACHABLE( "unknown CE type" );
     }
 }
 
@@ -46,7 +48,7 @@ std::string tostr( graph::PropertyType t ) {
         case graph::PT_Deadlock: return "deadlock";
         case graph::PT_Goal: return "goal";
         case graph::PT_Buchi: return "neverclaim";
-        default: assert_unreachable( "unknown property" );
+        default: ASSERT_UNREACHABLE( "unknown property" );
     }
 }
 
@@ -54,7 +56,7 @@ std::string tostr( Algorithm::Compression c ) {
     switch ( c ) {
         case Algorithm::Compression::None: return "None";
         case Algorithm::Compression::Tree: return "Tree";
-        default: assert_unreachable( "unknown compression" );
+        default: ASSERT_UNREACHABLE( "unknown compression" );
     }
 }
 
@@ -71,7 +73,7 @@ Rep Input::report() const {
     return { { "Model", model },
              { "Model-Type", modelType },
              { "Property-Type", tostr( propertyType ) },
-             { "Properties", properties.empty() ? "-" : wibble::str::fmt( properties ) },
+             { "Properties", properties.empty() ? "-" : brick::string::fmt( properties ) },
              { "Property", propertyDetails.empty() ? "-" : propertyDetails }
            };
 }
@@ -115,7 +117,7 @@ Rep Algorithm::report() const {
         txt.push_back( "fairness" );
 
     return { { "Algorithm", name },
-             { "Transformations", wibble::str::fmt( txt ) },
+             { "Transformations", brick::string::fmt( txt ) },
              { "Compression", tostr( compression ) },
              { "Shared", tostr( sharedVisitor ) },
              { "Instance", instance }

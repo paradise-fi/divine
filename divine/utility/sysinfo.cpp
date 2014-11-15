@@ -1,10 +1,13 @@
 #include <divine/utility/sysinfo.h>
 
 #include <time.h>
-#include <wibble/regexp.h>
 #include <fstream>
 #include <stdint.h>
 #include <mutex>
+#include <thread>
+#include <chrono>
+
+#include <bricks/brick-string.h>
 
 #ifdef __unix
 #include <sys/resource.h>
@@ -43,7 +46,7 @@ struct Data {
     std::mutex lock;
 };
 
-static bool matchLine( std::string file, wibble::ERegexp &r ) {
+static bool matchLine( std::string file, brick::string::ERegexp &r ) {
     std::string line;
     std::ifstream f( file.c_str() );
     while ( !f.eof() ) {
@@ -112,7 +115,7 @@ void Info::init() {
 }
 
 Info::Info() {
-    assert( data );
+    ASSERT( data );
 }
 
 void Info::start() {
@@ -152,7 +155,7 @@ uint64_t Info::peakVmSize() const {
 #ifdef __linux
     std::stringstream file;
     file << "/proc/" << uint64_t( getpid() ) << "/status";
-    wibble::ERegexp r( "VmPeak:[\t ]*([0-9]+)", 2 );
+    brick::string::ERegexp r( "VmPeak:[\t ]*([0-9]+)", 2 );
     if ( matchLine( file.str(), r ) ) {
         vmsz = atoll( r[1].c_str() );
     }
@@ -169,7 +172,7 @@ uint64_t Info::peakVmSize() const {
 std::string Info::architecture() const {
     guard _l( data->lock );
 #ifdef __linux
-    wibble::ERegexp r( "model name[\t ]*: (.+)", 2 );
+    brick::string::ERegexp r( "model name[\t ]*: (.+)", 2 );
     if ( matchLine( "/proc/cpuinfo", r ) )
         return r[1];
     return "Unknown";
@@ -211,22 +214,23 @@ ResourceGuard::ResourceGuard()
     : memory( 0 ), time( 0 )
 {}
 
-void *ResourceGuard::main() {
+void ResourceGuard::main() {
     Info info;
-    while ( true ) {
+    while ( !interrupted() ) {
         info.update();
 
         if ( memory && info.peakVmSize() > memory )
             throw ResourceLimit( "Memory limit exceeded: used "
-                                 + wibble::str::fmt( info.peakVmSize() ) + "K / "
-                                 + wibble::str::fmt( memory ) + "K." );
+                                 + brick::string::fmt( info.peakVmSize() ) + "K / "
+                                 + brick::string::fmt( memory ) + "K." );
         if ( time && info.wallTime() > time )
             throw ResourceLimit( "Time limit exceeded: used "
-                                 + wibble::str::fmt( info.wallTime() ) + "s / "
-                                 + wibble::str::fmt( time ) + "s." );
-        wibble::sys::sleep( 1 );
+                                 + brick::string::fmt( info.wallTime() ) + "s / "
+                                 + brick::string::fmt( time ) + "s." );
+        std::this_thread::sleep_for(
+            std::chrono::seconds( 1 )
+        );
     }
-    return nullptr;
 }
 
 std::vector< ReportLine > Info::report() const {
