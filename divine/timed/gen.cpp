@@ -72,7 +72,7 @@ void TAGen::processInstance( const UTAP::instance_t& inst, std::vector< UTAP::in
 bool TAGen::evalInv() {
     int nInst = 0;
     for ( auto proc = states.begin(); proc != states.end(); ++proc, ++nInst ) {
-        assert( locs.get( nInst ) < intptr_t( proc->size() ) );
+        ASSERT( locs.get( nInst ) < intptr_t( proc->size() ) );
         StateInfo& s = (*proc)[ locs.get( nInst ) ];
         if ( !eval.evalBool( nInst, s.inv ) )
             return false;
@@ -81,7 +81,7 @@ bool TAGen::evalInv() {
 }
 
 void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &urgent ) {
-    assert( bl.size() == einf.size() + 1 );
+    ASSERT( bl.size() == einf.size() + 1 );
 
     std::vector< EdgeInfo* > trans; // non-synchronizing transitions and sending ends of synchronizations
     std::map< chan_id, std::vector< EdgeInfo* > > sync; // receiving ends
@@ -92,14 +92,14 @@ void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &u
     // find possible transitions and synchronizations
     int nInst = 0;
     for ( auto proc = states.begin(); proc != states.end(); ++proc, ++nInst ) {
-        assert( locs.get( nInst ) < intptr_t( proc->size() ) );
+        ASSERT( locs.get( nInst ) < intptr_t( proc->size() ) );
         StateInfo& s = (*proc)[ locs.get( nInst ) ];
         inUrgent = inUrgent || s.urgent;
         if ( s.commit )
             commit.insert( nInst );
         for ( auto tr = s.edges.begin(); tr != s.edges.end(); ++tr ) {
             if ( tr->syncType == UTAP::Constants::SYNC_QUE ) {
-                assert( !tr->sync.empty() );
+                ASSERT( !tr->sync.empty() );
                 try {
                     chan_id chan = eval.evalChan( nInst, tr->sync );
                     sync[ chan ].push_back( &*tr );
@@ -118,7 +118,7 @@ void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &u
             if ( !evalGuard( *itr ) ) continue;
 
             if ( (*itr)->syncType == UTAP::Constants::SYNC_BANG ) {
-                assert( !(*itr)->sync.empty() );
+                ASSERT( !(*itr)->sync.empty() );
                 chan_id chan = eval.evalChan( (*itr)->procId, (*itr)->sync );
 
                 if ( eval.isChanBcast( chan ) ) {
@@ -177,7 +177,7 @@ void TAGen::listEnabled( char* source, BlockList &bl, EnabledList &einf, bool &u
             makeErrState( bl.back(), e.getErr() );
             bl.push_back();
         }
-        assert( bl.size() == einf.size() + 1 );
+        ASSERT( bl.size() == einf.size() + 1 );
     }
 
     urgent = inUrgent || !commit.empty();
@@ -260,7 +260,7 @@ void TAGen::read( const std::string& path ) {
         procs.push_back( pi );
         states.push_back( std::vector< StateInfo >( tmp->states.size() ) );
         for ( auto st = tmp->states.begin(); st != tmp->states.end(); ++st ) {
-            assert( st->locNr < intptr_t( states.back().size() ) );
+            ASSERT( st->locNr < intptr_t( states.back().size() ) );
             StateInfo& stinf = states.back()[ st->locNr ];
             UTAP::type_t type = st->uid.getType();
             stinf.urgent = type.is( UTAP::Constants::URGENT );
@@ -280,7 +280,7 @@ void TAGen::read( const std::string& path ) {
 }
 
 void TAGen::initial( char* d ) {
-	assert( stateSize() == offVar + eval.getReqSize() );
+	ASSERT( stateSize() == offVar + eval.getReqSize() );
     memset( d, 0, stateSize() );
     setData( d );
     for ( auto proc = procs.begin(); proc != procs.end(); ++proc )
@@ -289,7 +289,7 @@ void TAGen::initial( char* d ) {
     eval.initial();
     unsigned int count = 0;
     makeSucc( d, [ this, &count, d ] ( const char* s ) {
-        assert( count <= 1 );
+        ASSERT( count <= 1 );
         count++;
         if ( d != s )
             memcpy( d, s, stateSize() );
@@ -313,8 +313,8 @@ bool isClockExpr( const UTAP::expression_t& e ) {
 }
 
 bool isDiffExpr( const UTAP::expression_t& e ) {
-    assert( isClockExpr( e ) );
-    assert( e.getSize() == 2 );
+    ASSERT( isClockExpr( e ) );
+    ASSERT( e.getSize() == 2 );
     return e[ 0 ].getType().is( UTAP::Constants::DIFF ) || e[ 1 ].getType().is( UTAP::Constants::DIFF );
 }
 
@@ -352,7 +352,7 @@ TAGen::PropGuard TAGen::buildPropGuard( const std::vector< std::pair< bool, std:
 
 bool TAGen::evalPropGuard( char* d, const TAGen::PropGuard& g ) {
     setData( d );
-    assert( !isErrState( d ) );
+    ASSERT( !isErrState( d ) );
     if ( g.expr.empty() )
         return true;
     try {
@@ -378,7 +378,7 @@ std::string TAGen::showNode( char* d ) {
 }
 
 void TAGen::makeErrState( char* d, int err ) {
-    assert( err != 0 );
+    ASSERT( err != 0 );
     // states (except timelocks) are cleared to ensure at most one of each error states exists
     if ( err != EvalError::TIMELOCK )
         memset( d, 0, stateSize() );
@@ -397,7 +397,7 @@ bool TAGen::isErrState( char* d ) {
 }
 
 void TAGen::addAuxClock() {
-    assert( auxResetExpr.empty() );
+    ASSERT( auxResetExpr.empty() );
     UTAP::symbol_t aux = sys.getGlobals().frame.addSymbol( "_aux", UTAP::type_t::createPrimitive( UTAP::Constants::CLOCK ), NULL );
     eval.addSymbol( aux, -1 );
 	// state size has changed
@@ -408,12 +408,12 @@ void TAGen::addAuxClock() {
 }
 
 void TAGen::resetAuxClock() {
-    assert( !auxResetExpr.empty() );
+    ASSERT( !auxResetExpr.empty() );
     eval.evalCmd( -1, auxResetExpr );
 }
 
 std::pair< TAGen::PropGuard, TAGen::PropGuard > TAGen::addAuxToGuard( const PropGuard& guard ) {
-    assert( !auxResetExpr.empty() );
+    ASSERT( !auxResetExpr.empty() );
     UTAP::expression_t aux = auxResetExpr[ 0 ];
     UTAP::expression_t
         auxGuard = UTAP::expression_t::createBinary( UTAP::Constants::GE, aux, UTAP::expression_t::createConstant( 1 ) ),

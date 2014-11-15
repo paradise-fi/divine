@@ -92,12 +92,12 @@ private:
         public:
 
         const struct Array& array() {
-            assert( kind == Array );
+            ASSERT( kind == Array );
             return _array;
         }
 
         const struct Array& array() const {
-            assert( kind == Array );
+            ASSERT( kind == Array );
             return _array;
         }
 
@@ -105,7 +105,7 @@ private:
         Value( int32_t *ptr, int i, int l ) : kind( Array ), num( 0 ), _array( { ptr, i, l } ) {}
 
         int32_t get_int() const {
-            assert( kind == Int || ( kind == Array && array().len == 1 ) );
+            ASSERT( kind == Int || ( kind == Array && array().len == 1 ) );
             if ( kind == Int )
                 return num;
             else
@@ -204,7 +204,7 @@ public:
 
     Ura::ura ura;
     int &getUraStateId() {
-        assert( ura_id_ptr );
+        ASSERT( ura_id_ptr );
         return *ura_id_ptr;
     }
 
@@ -213,7 +213,7 @@ public:
     }
 
     int getUraStateId() const {
-        assert( ura_id_ptr );
+        ASSERT( ura_id_ptr );
         return *ura_id_ptr;
     }
 
@@ -223,7 +223,7 @@ public:
 
     const dbm::dbm_t getUraZone() const {
         ura_id uid = getUraStateId();
-        assert( uid < ura.uppaal_dbm_rep.size() );
+        ASSERT( uid < ura.uppaal_dbm_rep.size() );
         return ura.uppaal_dbm_rep[ uid ];
     }
 
@@ -259,7 +259,7 @@ public:
 
     // evaluate boolean expression
     bool evalBool( int procId, const UTAP::expression_t& expr ) {
-        assert( (computeLocalBounds(), true) ); // computeLocalBounds() has to be called so asserts in Clocks::constrain* work
+        ASSERT( (computeLocalBounds(), true) ); // computeLocalBounds() has to be called so ASSERTs in Clocks::constrain* work
         return eval( procId, expr ).get_int();
     }
 
@@ -275,7 +275,7 @@ public:
 
     // perform clock "up" operation (release upper constraints)
     void up() {
-        assert( !clocks.isEmpty() );
+        ASSERT( !clocks.isEmpty() );
         clocks.up();
     }
 
@@ -310,7 +310,7 @@ public:
     int evalChan( int procId, const UTAP::expression_t& expr ) {
         // evaluate expression and return unique channel identifier that can be used
         // to call isChanUrgent, isChanBcast and getChanPriority
-        assert( expr.getType().is( UTAP::Constants::CHANNEL ) );
+        ASSERT( expr.getType().is( UTAP::Constants::CHANNEL ) );
         return resolveId( procId, expr );
     }
 
@@ -359,7 +359,7 @@ public:
     // returns DBM offset and size of each row
     std::pair< unsigned int, unsigned int > splitPoints() const {
         unsigned int row = ClockTable.size() + 1;
-        assert( clocks.getReqSize() == row * row * 4 );
+        ASSERT( clocks.getReqSize() == row * row * 4 );
         return std::make_pair( getReqSize() - clocks.getReqSize(), row * 4 );
     }
 };

@@ -594,7 +594,7 @@ struct ura {
 
             // (delay) succesor
             int to = _visit( get_succ( u ), Q );
-            // assert to != -1      // successor should be always valid
+            // ASSERT to != -1      // successor should be always valid
             transitions.emplace_back( from, 0U, to );
 
             // reset
@@ -604,7 +604,7 @@ struct ura {
                     if ( c & (1U << x) ) r_clocks.push_back( x );
                 }
                 auto urs = reset( u, dbm_rep[ from ], r_clocks );
-                // assert !urs.empty()
+                // ASSERT !urs.empty()
                 for ( auto &v : urs ) {
                     to = _visit( std::move( v ), Q );
                     transitions.emplace_back( from, c, to );
