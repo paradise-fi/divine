@@ -539,11 +539,11 @@ struct TestDatastruct {
 
         ASSERT( q.empty() );
         q.push( TrivialHandle( first, 0 ) );
-        q.processClosed( []( Vertex ) { assert_die(); } );
+        q.processClosed( []( Vertex ) { ASSERT_UNREACHABLE( "unreachable" ); } );
         ASSERT( !q.empty() );
 
         q.processOpen( [&]( Vertex, Node, Label ) { die = false; } );
-        q.processClosed( []( Vertex ) { assert_die(); } );
+        q.processClosed( []( Vertex ) { ASSERT_UNREACHABLE( "unreachable" ); } );
         ASSERT( !q.empty() );
         ASSERT( !die );
 
@@ -557,7 +557,7 @@ struct TestDatastruct {
         ASSERT( q.empty() );
 
         q.push( TrivialHandle( first, 0 ) );
-        q.processClosed( []( Vertex ) { assert_die(); } );
+        q.processClosed( []( Vertex ) { ASSERT_UNREACHABLE( "unreachable" ); } );
         q.push( TrivialHandle( second, 0 ) );
 
         // 1, 1, from 1, 0
@@ -567,7 +567,7 @@ struct TestDatastruct {
                 ASSERT_EQ( getShort( t, 0 ), 1 );
                 ASSERT_EQ( getShort( t, 2 ), 1 );
             } );
-        q.processClosed( []( Vertex ) { assert_die(); } );
+        q.processClosed( []( Vertex ) { ASSERT_UNREACHABLE( "unreachable" ); } );
         ASSERT( !q.empty() );
 
         // 2, 0, from 1, 0

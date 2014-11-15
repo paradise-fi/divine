@@ -156,8 +156,8 @@ struct Common {
         auto to = readOnly == ReadOnly::Yes
                     ? store().fetch( _to, hint )
                     : store().store( _to, hint );
-        assert( readOnly == ReadOnly::No || !to.isnew() );
-        assert( store().valid( *to ) );
+        ASSERT( readOnly == ReadOnly::No || !to.isnew() );
+        ASSERT( store().valid( *to ) );
 
         tact = S::transition( notify, from, *to, label );
 
@@ -350,7 +350,7 @@ struct Partitioned {
                 This &n = *l.second;
                 if ( n._store.owner( t, hint ) != n.worker.id() ) {
                     if (n._store.valid( f ) )
-                        assert_eq( n.store().owner( f ), n.worker.id() );
+                        ASSERT_EQ( n.store().owner( f ), n.worker.id() );
                     n.queueAny( f, t, label, hint );
                     return TransitionFilter::Ignore;
                 }
@@ -628,9 +628,9 @@ struct TestVisitor {
             Node f = fV.node();
             Node t = tV.node();
             if ( node( f, c._graph.pool() ) ) {
-                assert( c.seen.count( f ) );
+                ASSERT( c.seen.count( f ) );
                 c.edges() ++;
-                assert( !c.t_seen.count( std::make_pair( f, t ) ) );
+                ASSERT( !c.t_seen.count( std::make_pair( f, t ) ) );
                 c.t_seen.insert( std::make_pair( f, t ) );
             }
             return TransitionAction::Follow;
@@ -639,7 +639,7 @@ struct TestVisitor {
         template< typename V >
         static ExpansionAction expansion( This &c, V tV ) {
             Node t = tV.node();
-            assert( !c.seen.count( t ) );
+            ASSERT( !c.seen.count( t ) );
             c.seen.insert( t );
             c.nodes() ++;
             return ExpansionAction::Expand;
@@ -670,11 +670,11 @@ struct TestVisitor {
         auto t = tV.node();
 
         if ( node( f, self->_graph.pool() ) % self->peers() == self->id() )
-            assert( self->seen.count( f ) );
+            ASSERT( self->seen.count( f ) );
 
         if ( node( f, self->_graph.pool() ) ) {
             self->edges() ++;
-            assert( !self->t_seen.count( std::make_pair( f, t ) ) );
+            ASSERT( !self->t_seen.count( std::make_pair( f, t ) ) );
             self->t_seen.insert( std::make_pair( f, t ) );
         }
 
@@ -707,9 +707,9 @@ struct TestVisitor {
         }
 
         void _visit() { // parallel
-            assert_eq( expected % this->peers(), 0 );
-            assert_leq( 0, this->id() );
-            assert_leq( 0, this->rank() );
+            ASSERT_EQ( expected % this->peers(), 0 );
+            ASSERT_LEQ( 0, this->id() );
+            ASSERT_LEQ( 0, this->rank() );
             store.setId( *this );
             BFV< ParallelCheck< G > > bfv( *this, this->_graph, store );
             Node initial = this->_graph.initial();
@@ -722,7 +722,7 @@ struct TestVisitor {
 
                 auto next = this->comms().take( this->id() );
                 std::get< 0 >( next ).setPool( this->_graph.pool() );
-                assert_eq( node( std::get< 1 >( next ), this->_graph.pool() ) % this->peers(), this->id() );
+                ASSERT_EQ( node( std::get< 1 >( next ), this->_graph.pool() ) % this->peers(), this->id() );
                 bfv.queue( std::get< 0 >( next ),
                            std::get< 1 >( next ), std::get< 2 >( next ) );
                 bfv.processQueue();
@@ -788,14 +788,14 @@ struct TestVisitor {
             Node t = tV.node();
             if ( node( f, c._graph.pool() ) ) {
                 c.edges() ++;
-                assert( !c.t_seen.count( std::make_pair( f, t ) ) );
+                ASSERT( !c.t_seen.count( std::make_pair( f, t ) ) );
                 c.t_seen.insert( std::make_pair( f, t ) );
             }
             return TransitionAction::Follow;
         }
 
         void _visit() { // parallel
-            assert_eq( expected % this->peers(), 0 );
+            ASSERT_EQ( expected % this->peers(), 0 );
             store.setId( *this );
             Partitioned::Data< This > data;
             Partitioned::Implementation<This, This> partitioned( *this, *this, this->_graph, store, data );
@@ -856,7 +856,7 @@ struct TestVisitor {
             Node t = tV.node();
             if ( node( f, c._graph.pool() ) ) {
                 c.edges() ++;
-                assert( !c.t_seen.count( std::make_pair( f, t ) ) );
+                ASSERT( !c.t_seen.count( std::make_pair( f, t ) ) );
                 c.t_seen.insert( std::make_pair( f, t ) );
             }
             return TransitionAction::Follow;
@@ -864,7 +864,7 @@ struct TestVisitor {
 
         void _visit() { // parallel
             store.setId( *this );
-            assert_eq( expected % this->peers(), 0 );
+            ASSERT_EQ( expected % this->peers(), 0 );
             Shared::Implementation< This, This > shared( *this, *this, this->_graph, store, data );
             if ( !this->id() )
                 shared.queue( Vertex(), this->_graph.initial(), Label() );
@@ -937,7 +937,7 @@ struct TestVisitor {
                 if ( this->comms().pending( this->id() ) ) {
                     auto next = this->comms().take( this->id() );
                     std::get< 0 >( next ).setPool( this->_graph.pool() );
-                    assert_eq( owner( std::get< 1 >( next ) ), this->id() );
+                    ASSERT_EQ( owner( std::get< 1 >( next ) ), this->id() );
                     bfv.queue( std::get< 0 >( next ),
                                std::get< 1 >( next ), std::get< 2 >( next ) );
                     bfv.processQueue();
@@ -986,8 +986,8 @@ struct TestVisitor {
         // remaining - remaining/m is not same as remaining/m (due to flooring)
         int transitions UNUSED = (n - 1) + lastfull + remaining - remaining / m;
 
-        assert_eq( n, _nodes );
-        assert_eq( transitions, _transitions );
+        ASSERT_EQ( n, _nodes );
+        ASSERT_EQ( transitions, _transitions );
     }
 
     template< typename F >
@@ -1012,8 +1012,8 @@ struct TestVisitor {
         C c( g );
 
         // sanity check
-        assert_eq( c.edges(), 0 );
-        assert_eq( c.nodes(), 0 );
+        ASSERT_EQ( c.edges(), 0 );
+        ASSERT_EQ( c.nodes(), 0 );
 
         struct CheckSetup : Check< NMTree< N > >, Sequential {};
 

@@ -42,7 +42,7 @@ struct StoreCommon : TableProvider
 
     StoreCommon( const StoreCommon & ) = default;
     StoreCommon( StoreCommon && ) = default;
-    StoreCommon &operator=( const StoreCommon & ) { assert_unimplemented(); }
+    StoreCommon &operator=( const StoreCommon & ) { ASSERT_UNIMPLEMENTED(); }
 
     Pool &_pool;
     Hasher _hasher;
@@ -207,7 +207,7 @@ struct SharedProvider {
 
         bool knows( hash64_t ) const { return true; } // we know all
         int owner( hash64_t ) const {
-            assert_unreachable( "no owners in shared store" );
+            ASSERT_UNREACHABLE( "no owners in shared store" );
         }
 
         size_t firstIndex() {
@@ -276,7 +276,7 @@ struct _Vertex
 
     template< typename T >
     T &extension( int offset = 0 ) const {
-        assert( _s );
+        ASSERT( _s );
         return *reinterpret_cast< T * >(
                 ( foreign() ? _s->pool().dereference( _n ) : _s->extension( _h ) )
                 + offset );
@@ -353,7 +353,7 @@ private:
     inline auto _foreign( const H &handle, Preferred ) const ->
         typename std::enable_if< (H::Base::tagBits > 0), bool >::type
     {
-        assert( _s ); return handle.rank() != _s->rank();
+        ASSERT( _s ); return handle.rank() != _s->rank();
     }
 
     template< typename H >
@@ -439,7 +439,7 @@ struct DefaultStore
 
     void free_unpacked( Node n, Pool *p, bool foreign ) {
         if ( foreign ) {
-            assert( p );
+            ASSERT( p );
             p->free( n );
         }
     }
@@ -528,7 +528,7 @@ struct HcStore
 
     void free_unpacked( Node n, Pool *p, bool foreign ) {
         if ( foreign ) {
-            assert( p );
+            ASSERT( p );
             p->free( n );
         }
     }
@@ -604,8 +604,8 @@ private:
         std::tie( n, inserted ) = Base::_store( stub, h );
         if ( !inserted )
             this->pool().free( stub );
-        assert( equal( s, stub ) );
-        assert_unimplemented(); // return std::make_tuple( Vertex( s, n ), inserted );
+        ASSERT( equal( s, stub ) );
+        ASSERT)UNIMPLEMENTED(); // return std::make_tuple( Vertex( s, n ), inserted );
     }
 #endif
 };
@@ -649,11 +649,11 @@ struct NTreeStore
     }
 
     Blob unpack( Handle h, Pool *p ) {
-        assert( p );
+        ASSERT( p );
         return Root( h.b ).reassemble( *p );
     }
 
-    void free_unpacked( Node n, Pool *p, bool ) { assert( p ); p->free( n ); }
+    void free_unpacked( Node n, Pool *p, bool ) { ASSERT( p ); p->free( n ); }
     void free( Node n ) { this->pool().free( n ); }
 
     bool valid( Node n ) { return Base::valid( n ); }

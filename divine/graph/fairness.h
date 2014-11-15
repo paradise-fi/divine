@@ -51,8 +51,8 @@ struct FairGraph : NonPORGraph< G, St > {
 
         int copy = extension( stV ).copy;
         bool accepting = this->base().isAccepting( st );
-        assert_leq( 0, copy );
-        assert_leq( copy, procs );
+        ASSERT_LEQ( 0, copy );
+        ASSERT_LEQ( copy, procs );
 
         // 0-th copy: transitions from accepting states are redirected to copy 1, other remain unchanged
         if ( copy == 0 ) {

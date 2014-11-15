@@ -52,8 +52,8 @@ struct LtlCE {
     Shared *_shared;
     Store *_store;
 
-    G &g() { assert( _g ); return *_g; }
-    Shared &shared() { assert( _shared ); return *_shared; }
+    G &g() { ASSERT( _g ); return *_g; }
+    Shared &shared() { ASSERT( _shared ); return *_shared; }
 
     template< typename Algorithm >
     LtlCE( Algorithm *a ) : LtlCE() { setup( *a ); }
@@ -75,7 +75,7 @@ struct LtlCE {
         _store = &a.store();
     }
 
-    Store &store() { assert( _store ); return *_store; }
+    Store &store() { ASSERT( _store ); return *_store; }
     Pool& pool() { return g().pool(); }
 
     Extension& extension( Vertex vi ) {
@@ -96,7 +96,7 @@ struct LtlCE {
     void _parentTrace( Worker &, Store &s ) {
         if ( shared().ce.current_updated )
             return;
-        assert( s.valid( shared().ce.current ) );
+        ASSERT( s.valid( shared().ce.current ) );
 
         Handle h = shared().ce.current;
         if ( s.knows( h ) ) {
@@ -124,7 +124,7 @@ struct LtlCE {
     void _successorTrace( Worker &, Store& s ) {
         if ( shared().ce.current_updated )
             return;
-        assert( s.valid( shared().ce.parent ) );
+        ASSERT( s.valid( shared().ce.parent ) );
 
         if ( !s.knows( shared().ce.current ) )
             return;
@@ -143,8 +143,8 @@ struct LtlCE {
                 } else
                     this->g().release( n );
             } );
-        assert( shared().ce.current_updated );
-        assert( shared().ce.successor_id );
+        ASSERT( shared().ce.current_updated );
+        ASSERT( shared().ce.successor_id );
     }
 
     int whichInitial( Node n ) {
@@ -193,7 +193,7 @@ struct LtlCE {
     {
 
         static visitor::ExpansionAction expansion( This &t, Vertex v ) {
-            assert_eq( int( t.extension( v ).iteration() ), t.shared().iteration );
+            ASSERT_EQ( int( t.extension( v ).iteration() ), t.shared().iteration );
             return visitor::ExpansionAction::Expand;
         }
 
@@ -205,12 +205,12 @@ struct LtlCE {
             }
             if ( t.store().equal( to.handle(), t.shared().ce.initial ) ) {
                 t.extension( to ).parent() = from.handle();
-                assert_eq( int( t.extension( to ).iteration() ), t.shared().iteration );
+                ASSERT_EQ( int( t.extension( to ).iteration() ), t.shared().iteration );
                 return visitor::TransitionAction::Terminate;
             }
             if ( t.updateIteration( to ) ) {
                 t.extension( to ).parent() = from.handle();
-                assert_eq( int( t.extension( from ).iteration() ), t.shared().iteration );
+                ASSERT_EQ( int( t.extension( from ).iteration() ), t.shared().iteration );
                 return visitor::TransitionAction::Expand;
             }
             return visitor::TransitionAction::Forget;
@@ -222,7 +222,7 @@ struct LtlCE {
         typedef FindCycle< typename Algorithm::Setup > Find;
         auto visitor = a.makeVisitor( *this, a, Find() );
 
-        assert( a.store().valid( shared().ce.initial ) );
+        ASSERT( a.store().valid( shared().ce.initial ) );
         if ( a.store().knows( shared().ce.initial ) ) {
             Vertex i = a.store().vertex( shared().ce.initial );
             visitor.queue( Vertex(), i.node(), Label() );
@@ -352,7 +352,7 @@ struct LtlCE {
                 shared().ce.current_updated = false;
                 d.ring( &Alg::_ceIsInitial );
                 if ( shared().ce.current_updated ) {
-                    assert( shared().ce.successor_id );
+                    ASSERT( shared().ce.successor_id );
                     break;
                 }
             } else if ( TT::value == TraceType::Lasso ) {
@@ -364,15 +364,15 @@ struct LtlCE {
                 }
             }
             else
-                assert_unreachable( "invalid TraceType" );
+                ASSERT_UNREACHABLE( "invalid TraceType" );
 
             shared().ce.current_updated = false;
             d.ring( &Alg::_parentTrace );
-            assert( shared().ce.current_updated );
+            ASSERT( shared().ce.current_updated );
             hTrace.push_front( shared().ce.current );
 
             if ( !shared().ce.is_ce_initial ) {
-                assert( hSeen.count( shared().ce.current.asNumber() ) == 0 );
+                ASSERT( hSeen.count( shared().ce.current.asNumber() ) == 0 );
                 hSeen.insert( shared().ce.current.asNumber() );
             }
         }
@@ -391,9 +391,9 @@ struct LtlCE {
 
         switch ( TT::value ) {
             case TraceType::Linear: {
-                assert_neq( shared().ce.successor_id, 0 );
+                ASSERT_NEQ( shared().ce.successor_id, 0 );
                 Node initial = getInitialById( shared().ce.successor_id );
-                assert( a.pool().valid( initial ) );
+                ASSERT( a.pool().valid( initial ) );
                 shared().ce.parent = initial;
                 trace.push_back( initial );
                 numTrace.push_back( shared().ce.successor_id );
@@ -403,11 +403,11 @@ struct LtlCE {
                 shared().ce.parent = parent;
                 break; }
             default:
-                assert_die();
+                ASSERT_UNREACHABLE( "TT::value has invalid value" );
         }
 
 
-        assert( a.store().valid( shared().ce.parent ) );
+        ASSERT( a.store().valid( shared().ce.parent ) );
         shared().ce.successor = Handle();
         while ( hTraceBegin != hTraceEnd ) {
             shared().ce.current_updated = false;
@@ -415,8 +415,8 @@ struct LtlCE {
             shared().ce.current = *hTraceBegin;
             ++hTraceBegin;
             d.ring( &Alg::_successorTrace );
-            assert( shared().ce.current_updated );
-            assert( shared().ce.successor_id );
+            ASSERT( shared().ce.current_updated );
+            ASSERT( shared().ce.successor_id );
             trace.push_back( shared().ce.parent );
             numTrace.push_back( shared().ce.successor_id );
         }
@@ -450,13 +450,13 @@ struct LtlCE {
                         done = true;
                     }
                 } );
-            assert( a.pool().valid( parent ) );
+            ASSERT( a.pool().valid( parent ) );
             trace.push_back( parent );
             numTrace.push_back( i );
         } else
-            assert( TT::value == TraceType::Lasso );
+            ASSERT( TT::value == TraceType::Lasso );
 
-        assert( a.store().valid( parent ) );
+        ASSERT( a.store().valid( parent ) );
         Node successor;
         for ( ++hTraceBegin; hTraceBegin != hTraceEnd; ++hTraceBegin ) {
             int i = 0;
@@ -471,7 +471,7 @@ struct LtlCE {
                         done = true;
                     }
                 } );
-            assert( done );
+            ASSERT( done );
             trace.push_back( parent );
             numTrace.push_back( i );
         }
