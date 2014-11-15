@@ -285,7 +285,7 @@ struct ProgramInfo {
 
     int globalPointerOffset( Pointer p ) {
         ASSERT_LEQ( int( p.segment ), int( globals.size() ) - 1 );
-        assert( globalPointerInBounds( p ) );
+        ASSERT( globalPointerInBounds( p ) );
         return globals[ p.segment ].offset + p.offset;
     }
 

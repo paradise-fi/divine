@@ -211,7 +211,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
     int dead_threads = 0;
 
     for ( auto var : _info.globalvars ) {
-        assert ( !var.second.constant );
+        ASSERT ( !var.second.constant );
         Pointer p( false, var.first, 0 );
         for ( p.offset = 0; p.offset < var.second.width; p.offset += 4 )
             if ( isHeapPointer( global().memoryflag( _info, p ) ) )

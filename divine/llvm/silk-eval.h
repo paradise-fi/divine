@@ -324,34 +324,34 @@ struct Eval
     }
 
     TEST(basic) {
-        assert_eq( _expression( "1 + 1" ), 2 );
-        assert_eq( _expression( "2 - 1" ), 1 );
-        assert_eq( _expression( "2 - (1 + 1)" ), 0 );
-        assert_eq( _expression( "2 * 2 + 1" ), 5 );
-        assert_eq( _expression( "2 * (2 + 1)" ), 6 );
+        ASSERT_EQ( _expression( "1 + 1" ), 2 );
+        ASSERT_EQ( _expression( "2 - 1" ), 1 );
+        ASSERT_EQ( _expression( "2 - (1 + 1)" ), 0 );
+        ASSERT_EQ( _expression( "2 * 2 + 1" ), 5 );
+        ASSERT_EQ( _expression( "2 * (2 + 1)" ), 6 );
     }
 
     TEST(lambda) {
-        assert_eq( _expression( "1 + ((|x| x + 1) 4)" ), 6 );
-        assert_eq( _expression( "1 + ((|x| x - 1) 4)" ), 4 );
-        assert_eq( _expression( "1 + ((|x| |y| x - y) 4 2)" ), 3 );
-        assert_eq( _expression( "1 + ((|x| 1 + (|y| x - y) 2) 4)" ), 4 );
-        assert_eq( _expression( "(|x| 1 + (|y| x * y) 2) 4" ), 9 );
+        ASSERT_EQ( _expression( "1 + ((|x| x + 1) 4)" ), 6 );
+        ASSERT_EQ( _expression( "1 + ((|x| x - 1) 4)" ), 4 );
+        ASSERT_EQ( _expression( "1 + ((|x| |y| x - y) 4 2)" ), 3 );
+        ASSERT_EQ( _expression( "1 + ((|x| 1 + (|y| x - y) 2) 4)" ), 4 );
+        ASSERT_EQ( _expression( "(|x| 1 + (|y| x * y) 2) 4" ), 9 );
     }
 
     TEST(conditional) {
-        assert_eq( _expression( "if 1 then 5 else 2" ), 5 );
-        assert_eq( _expression( "1 + (if 1 then 5 else 2)" ), 6 );
-        assert_eq( _expression( "(|x| if x then x + 5 else x + 2) 0" ), 2 );
-        assert_eq( _expression( "(|x| if x then x + 5 else x + 2) 1" ), 6 );
+        ASSERT_EQ( _expression( "if 1 then 5 else 2" ), 5 );
+        ASSERT_EQ( _expression( "1 + (if 1 then 5 else 2)" ), 6 );
+        ASSERT_EQ( _expression( "(|x| if x then x + 5 else x + 2) 0" ), 2 );
+        ASSERT_EQ( _expression( "(|x| if x then x + 5 else x + 2) 1" ), 6 );
     }
 
     TEST(scope) {
-        assert_eq( _expression( "{ a = 5 }.a" ), 5 );
-        assert_eq( _expression( "{ a = 5 + 3 }.a" ), 8 );
-        assert_eq( _expression( "{ a = |x| x + 3 }.a 5" ), 8 );
-        assert_eq( _expression( "(|x| x.x + 3) { x = 1 }" ), 4 );
-        assert_eq( _expression( "{ a = |x| x.x + 3 }.a { x = 1 }" ), 4 );
+        ASSERT_EQ( _expression( "{ a = 5 }.a" ), 5 );
+        ASSERT_EQ( _expression( "{ a = 5 + 3 }.a" ), 8 );
+        ASSERT_EQ( _expression( "{ a = |x| x + 3 }.a 5" ), 8 );
+        ASSERT_EQ( _expression( "(|x| x.x + 3) { x = 1 }" ), 4 );
+        ASSERT_EQ( _expression( "{ a = |x| x.x + 3 }.a { x = 1 }" ), 4 );
     }
 };
 

@@ -38,10 +38,10 @@ bool ProgramInfo::isCodePointer( ::llvm::Value *val )
 PC ProgramInfo::getCodePointer( ::llvm::Value *val )
 {
     if ( auto B = dyn_cast< ::llvm::BasicBlock >( val ) ) {
-        assert( blockmap.count( B ) );
+        ASSERT( blockmap.count( B ) );
         return blockmap[ B ];
     } else if ( auto B = dyn_cast< ::llvm::BlockAddress >( val ) ) {
-        assert( blockmap.count( B->getBasicBlock() ) );
+        ASSERT( blockmap.count( B->getBasicBlock() ) );
         return blockmap[ B->getBasicBlock() ];
     } else if ( auto F = dyn_cast< ::llvm::Function >( val ) ) {
         if ( !functionmap.count( F ) && builtin( F ) == NotBuiltin )
@@ -133,7 +133,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
                     "ProgramInfo::insert: " +
                     std::string( "Unresolved symbol (global variable): " ) +
                     G->getValueName()->getKey().str() );
-            assert( G->hasInitializer() );
+            ASSERT( G->hasInitializer() );
             initValue( G->getInitializer(), pointee );
             if ( (pointee.constant = G->isConstant()) )
                 makeLLVMConstant( pointee, G->getInitializer() );
@@ -314,7 +314,7 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
                 Pointer ptr = constant< Pointer >( insn.operand( i + 1 ) );
                 if ( !function( p.pc ).typeID( ptr ) )
                     function( p.pc ).typeIDs.push_back( ptr );
-                assert( function( p.pc ).typeID( ptr ) );
+                ASSERT( function( p.pc ).typeID( ptr ) );
             }
         }
 
