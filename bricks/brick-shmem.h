@@ -69,9 +69,30 @@ struct Thread {
         if( other._thread )
             throw std::logic_error( "cannot copy running thread" );
     }
+    Thread( Thread &&other ) :
+        _thread( std::move( other._thread ) ),
+        _interrupted( other.interrupted() )
+    {}
     ~Thread() {
         interrupt();
         join();
+    }
+
+    Thread &operator=( const Thread &other ) {
+        if ( _thread )
+            throw std::logic_error( "cannot overwrite running thread" );
+        if ( other._thread )
+            throw std::logic_error( "cannot copy running thread" );
+        _interrupted.store( other.interrupted(), std::memory_order_relaxed );
+        return *this;
+    }
+
+    Thread &operator=( Thread &&other ) {
+        if ( _thread )
+            throw std::logic_error( "cannot overwrite running thread" );
+        _thread.swap( other._thread );
+        _interrupted.store( other.interrupted(), std::memory_order_relaxed );
+        return *this;
     }
 
 #ifdef __divine__
