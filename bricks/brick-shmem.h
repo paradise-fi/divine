@@ -174,7 +174,7 @@ struct ApproximateCounter {
     };
 
     Shared &shared;
-    unsigned local;
+    intptr_t local;
 
     ApproximateCounter( Shared &s ) : shared( s ), local( 0 ) {}
     ~ApproximateCounter() { sync(); }
