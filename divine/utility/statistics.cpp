@@ -156,7 +156,7 @@ void TrackStatistics::snapshot() {
     if ( output )
         *output << str.str() << std::flush;
     else
-        Output::output().statistics() << str.str() << std::flush;
+        Output::output( out_token ).statistics() << str.str() << std::flush;
 }
 
 void TrackStatistics::main() {

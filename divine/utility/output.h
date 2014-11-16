@@ -16,10 +16,28 @@ struct Output {
     virtual void setStatsSize( int /* x */, int /* y */ ) {}
     virtual void cleanup() {}
     virtual ~Output() {}
+    using Ptr = std::shared_ptr< Output >;
 
-    static std::unique_ptr< Output > _output;
+    struct Token {
+        Token( Ptr h ) : _held( h ) {}
+        bool check( Ptr p ) const { return p == _held; }
+    private:
+        Ptr _held;
+    };
+
+    static std::shared_ptr< Output > _output;
+
+    static Token hold() {
+        return Token( _output );
+    }
+
     static Output &output() {
         ASSERT( !!_output );
+        return *_output;
+    }
+
+    static Output &output( const Token &t ) {
+        ASSERT( t.check( _output ) );
         return *_output;
     }
 };

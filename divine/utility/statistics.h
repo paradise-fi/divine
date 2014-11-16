@@ -11,6 +11,7 @@
 
 #include <divine/utility/meta.h>
 #include <divine/utility/sysinfo.h>
+#include <divine/utility/output.h>
 
 #define TAG_STATISTICS 128
 
@@ -63,6 +64,8 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     bool gnuplot;
     std::ostream *output;
     int64_t memBaseline;
+
+    Output::Token out_token;
 
     void enqueue( int id , int64_t size ) {
         thread( id ).enq ++;
@@ -139,7 +142,7 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
 
     void setup( const Meta &m );
 
-    TrackStatistics() : pernode( 1 ), localmin( 0 )
+    TrackStatistics() : pernode( 1 ), localmin( 0 ), out_token( Output::hold() )
     {
         output = 0;
         gnuplot = false;

@@ -194,5 +194,5 @@ Output *makeCurses() {
 
 }
 
-std::unique_ptr< divine::Output > divine::Output::_output( makeStdIO( std::cerr ) );
+std::shared_ptr< divine::Output > divine::Output::_output( makeStdIO( std::cerr ) );
 
