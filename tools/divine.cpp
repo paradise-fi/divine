@@ -822,14 +822,14 @@ int main( int argc, const char **argv )
         std::cerr << ex.what() << std::endl;
         std::cerr << "Exiting after receiving fatal error." << std::endl;
         std::exit( ex.exitcode );
+    } catch ( std::bad_alloc & ) {
+        std::cerr << "FATAL ERROR: failed to allocate memory, exiting." << std::endl;
+        exit( 3 );
     } catch ( std::exception &ex ) {
         std::cerr << "FATAL ERROR: caught error during verification:" << std::endl
                   << "    " << ex.what() << std::endl;
         std::cerr << "Exiting after receiving fatal error." << std::endl;
         exit( 2 );
-    } catch ( std::bad_alloc & ) {
-        std::cerr << "FATAL ERROR: failed to allocate memory, exiting." << std::endl;
-        exit( 3 );
     }
     return 0;
 }
