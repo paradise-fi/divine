@@ -95,7 +95,7 @@ struct Compiler
         return Symbol( syms, p.name() );
     }
 
-    void compile( parse::Expression &e, SymStack &code, bool symctx = false )
+    void compile( parse::Expression &e, SymStack &code )
     {
         e.e.match(
             [&]( const parse::Constant &x ) {
