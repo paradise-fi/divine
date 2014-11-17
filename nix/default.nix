@@ -86,7 +86,7 @@ let
                       then [ "-DCMD_CLANG=${(clang_runtime pkgs).clang}/bin/clang" ]
                       else []);
         profile = if lib.eqStrings buildType "Debug" && !clang
-                     then [ "-DDEV_GCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
+                     then [ "-DDEV_GCOV=ON -DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
         compiler = if clang
                       then [ "-DCMAKE_CXX_COMPILER=${pkgs.clangSelf}/bin/clang++"
                              "-DCMAKE_C_COMPILER=${pkgs.clangSelf}/bin/clang" ]
