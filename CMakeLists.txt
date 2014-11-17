@@ -678,3 +678,6 @@ if(CMAKE_MAJOR_VERSION GREATER 2 OR CMAKE_MINOR_VERSION GREATER 6 OR HAVE_CMAKE_
   cpack_add_component( examples DISPLAY_NAME "Examples"
                        DESCRIPTION "Sample models" )
 endif()
+
+test_bricks( bricks )
+benchmark_bricks( bricks )
