@@ -30,7 +30,7 @@ function( bricks_make_runner name header main defs )
 
   update_file( ${file} "${new}" )
 
-  add_executable( ${name} ${file} )
+  add_executable( ${name} EXCLUDE_FROM_ALL ${file} )
   set_source_files_properties( ${file} PROPERTIES COMPILE_DEFINITIONS ${defs} )
 endfunction()
 
