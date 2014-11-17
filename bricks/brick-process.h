@@ -230,7 +230,9 @@ protected:
 
 public:
     ChildProcess() : _pid(-1), _stdin( 0 ), _stdout( 0 ), _stderr( 0 ) {}
-    virtual ~ChildProcess() {}
+    virtual ~ChildProcess() {
+        wait();
+    }
 
     /// Instead of calling the main() function of this class, execute an
     /// external command. The command is passed to the shell interpreter of the
@@ -387,13 +389,12 @@ public:
     /// storing resource usage informations in `ru'.  Return -1 if no child is
     /// running.  TODO: gracefully handle the EINTR error code
     int wait(struct rusage* ru = 0) {
+        if (_pid == -1)
+            return -1; // FIXME: for lack of better ideas
 #ifdef _WIN32
         m_status = 0; // FIXME
         WaitForSingleObject( pi.hProcess, INFINITE );
 #else
-        if (_pid == -1)
-            return -1; // FIXME: for lack of better ideas
-
         if (wait4(_pid, &m_status, 0, ru) == -1)
             waitError();
 #endif
