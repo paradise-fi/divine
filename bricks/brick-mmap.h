@@ -208,7 +208,7 @@ using namespace ::brick::mmap;
 
 struct MMapTest {
     TEST(read) {
-#if defined POSIX && __cplusplus >= 201103L
+#if __cplusplus >= 201103L
         MMap map;
         ASSERT_EQ( map.size(), 0U );
         ASSERT( !map );
