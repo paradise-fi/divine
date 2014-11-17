@@ -20,7 +20,7 @@
 #include <tools/compile.h>
 #include <tools/info.h>
 
-#ifdef POSIX
+#ifdef __unix
 #include <sys/resource.h>
 #endif
 
@@ -198,7 +198,7 @@ struct Main {
     void setupSignals()
     {
         for ( int i = 0; i <= 32; ++i ) {
-#ifdef POSIX
+#ifdef __unix
             if ( i == SIGCHLD || i == SIGWINCH || i == SIGURG )
                 continue;
 #endif
