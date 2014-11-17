@@ -380,7 +380,7 @@ if( DEV_GCOV )
         set( LCOV_OUT "${divine_BINARY_DIR}/lcov-report" )
         configure_file( cmake/with-lcov.sh ${divine_BINARY_DIR}/with-lcov )
         execute_process( COMMAND chmod +x ${divine_BINARY_DIR}/with-lcov )
-        set( WIBBLE_WRAP_TESTS "${divine_BINARY_DIR}/with-lcov" )
+        set( WITH_LCOV "${divine_BINARY_DIR}/with-lcov" )
 
         add_custom_target( lcov-report
             COMMAND mkdir -p ${LCOV_OUT}
@@ -388,7 +388,6 @@ if( DEV_GCOV )
                       -a ${LCOV_OUT}/base.info
                       -a ${LCOV_OUT}/collect-1.info
                       -a ${LCOV_OUT}/collect-2.info
-                      -a ${LCOV_OUT}/collect-3.info
                       -o ${LCOV_OUT}/overall_everything.info
             COMMAND ${LCOV} --extract ${LCOV_OUT}/overall_everything.info
                       ${divine_SOURCE_DIR}/divine/*
@@ -402,6 +401,7 @@ if( DEV_GCOV )
         )
     else()
         disable( DEV_GCOV " (coverage report generation)" "Could not find LCOV." )
+        set( WITH_LCOV "" )
     endif()
 endif()
 
