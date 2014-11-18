@@ -74,7 +74,12 @@
 #define ASSERT_UNREACHABLE(x) assert_die_fn( BRICK_LOCATION( x ) )
 #define ASSERT_UNIMPLEMENTED() assert_die_fn( BRICK_LOCATION( "not imlemented" ) )
 
+#ifdef _MSC_VER
+#define UNUSED
+#define noexcept
+#else
 #define UNUSED __attribute__((unused))
+#endif
 
 #ifndef BRICK_ASSERT_H
 #define BRICK_ASSERT_H

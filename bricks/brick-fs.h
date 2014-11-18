@@ -24,12 +24,6 @@
 #ifndef BRICK_FS_H
 #define BRICK_FS_H
 
-#ifdef _WIN32
-#ifndef noexcept
-#define noexcept
-#endif
-#endif
-
 namespace brick {
 namespace fs {
 
