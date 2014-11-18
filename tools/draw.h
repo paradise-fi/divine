@@ -291,7 +291,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
         if ( maxdist <= 0 )
             throw std::logic_error(
                 "The --distance specified (" + brick::string::fmt( maxdist ) +
-                " is too small, must be at least 1." );
+                ") is too small, must be at least 1." );
         output = m.output.file;
         render = m.output.filterProgram;
         trace = m.input.trace;
