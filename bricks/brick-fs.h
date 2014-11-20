@@ -376,7 +376,7 @@ struct DIR {
     char                *name;  /* null-terminated char string */
 };
 
-DIR *opendir( const char *name ) {
+static DIR *opendir( const char *name ) {
     DIR *dir = 0;
 
     if ( name && name[ 0 ] ) {
@@ -411,7 +411,7 @@ DIR *opendir( const char *name ) {
     return dir;
 }
 
-int closedir( DIR *dir ) {
+static int closedir( DIR *dir ) {
     int result = -1;
 
     if ( dir ) {
@@ -429,7 +429,7 @@ int closedir( DIR *dir ) {
     return result;
 }
 
-struct dirent *readdir( DIR *dir ) {
+static struct dirent *readdir( DIR *dir ) {
     struct dirent *result = 0;
 
     if ( dir && dir->handle != -1 ) {
@@ -444,7 +444,7 @@ struct dirent *readdir( DIR *dir ) {
     return result;
 }
 
-void rewinddir( DIR *dir ) {
+static void rewinddir( DIR *dir ) {
     if ( dir && dir->handle != -1 ) {
         _findclose( dir->handle );
         dir->handle = (intptr_t)_findfirst( dir->name, &dir->info );
