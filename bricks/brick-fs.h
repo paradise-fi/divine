@@ -84,11 +84,16 @@ inline std::string replaceExtension( std::string path, std::string extension ) {
 }
 
 inline std::pair< std::string, std::string > splitFileName( std::string path ) {
-    auto pos = std::find_if( path.rbegin(), path.rend(), &isPathSeparator );
+    auto begin = path.rbegin();
+    while ( isPathSeparator( *begin ) )
+        ++begin;
+    auto length = &*begin - &path.front() + 1;
+    auto pos = std::find_if( begin, path.rend(), &isPathSeparator );
     if ( pos == path.rend() )
-        return std::make_pair( std::string(), path );
+        return std::make_pair( std::string(), path.substr( 0, length ) );
     auto count = &*pos - &path.front();
-    return std::make_pair( path.substr( 0, count ), path.substr( count + 1 ) );
+    length -= count + 1;
+    return std::make_pair( path.substr( 0, count ), path.substr( count + 1, length ) );
 }
 
 inline std::pair< std::string, std::string > absolutePrefix( std::string path ) {
