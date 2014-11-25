@@ -60,7 +60,7 @@ namespace brick {
 namespace commandline {
 
 #ifdef _WIN32
-int access( const char *p, int m ) { return _access( p, m ); }
+inline int access( const char *p, int m ) { return _access( p, m ); }
 #ifndef F_OK
 static const int F_OK = 0;
 #endif
