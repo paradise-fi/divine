@@ -73,7 +73,7 @@ let
   mkbuild = { name, inputs,
               flags ? [ "-DSTORE_COMPRESS=OFF" "-DGEN_EXPLICIT=OFF" ],
               clang ? false,
-              compilerPkg ? if clang then pkgs.clangSelf else pkgs.gcc,
+              compilerPkg ? (pkgs: if clang then pkgs.clangSelf else pkgs.gcc),
               clang_runtime ? (pkgs: pkgs.clang), # version of clang used in divine compile --llvm
               llvm ? (pkgs: pkgs.llvm)
             }: system:
@@ -89,10 +89,10 @@ let
         profile = if lib.eqStrings buildType "Debug" && !clang
                      then [ "-DDEV_GCOV=ON -DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
         compiler = if clang
-                      then [ "-DCMAKE_CXX_COMPILER=${compilerPkg}/bin/clang++"
-                             "-DCMAKE_C_COMPILER=${compilerPkg}/bin/clang" ]
-                      else [ "-DCMAKE_CXX_COMPILER=${compilerPkg}/bin/g++"
-                             "-DCMAKE_C_COMPILER=${compilerPkg}/bin/gcc" ];
+                      then [ "-DCMAKE_CXX_COMPILER=${compilerPkg pkgs}/bin/clang++"
+                             "-DCMAKE_C_COMPILER=${compilerPkg pkgs}/bin/clang" ]
+                      else [ "-DCMAKE_CXX_COMPILER=${compilerPkg pkgs}/bin/g++"
+                             "-DCMAKE_C_COMPILER=${compilerPkg pkgs}/bin/gcc" ];
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name + "_" + (lib.toLower buildType) + "_" + nicesys;
        src = jobs.tarball;
@@ -188,7 +188,7 @@ let
     gcc_full =     mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                             flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
     gcc49_full =   mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
-                            compilerPkg = pkgs.gcc49;
+                            compilerPkg = pkgs: pkgs.gcc49;
                             flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
     clang_min =    mk: mk { inputs = pkgs: []; clang = true; };
     clang_medium = mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
