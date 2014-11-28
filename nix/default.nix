@@ -191,7 +191,7 @@ let
                             compilerPkg = pkgs: pkgs.gcc49;
                             flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
     clang_min =    mk: mk { inputs = pkgs: []; clang = true; };
-    clang_medium = mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
+    clang_med =    mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
                             flags = []; clang = true; };
   };
 
