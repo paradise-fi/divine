@@ -180,8 +180,8 @@ let
                            flags = [ "-DREQUIRED=TIMED" ]; };
     gcc_compress = mk: mk { name = "compression"; inputs = pkgs: [];
                             flags = [ "-DSTORE_HC=OFF" "-DSTORE_COMPRESS=ON" "-DGEN_EXPLICIT=OFF" ]; };
-    gcc_hashcomp = mk: mk { inputs = pkgs: [];
-                            flags = [ "-DSTORE_COMPRESS=OFF" "-DSTORE_HC=ON" "-DGEN_EXPLICIT=OFF" ]; };
+    /* gcc_hashcomp = mk: mk { inputs = pkgs: [];
+                            flags = [ "-DSTORE_COMPRESS=OFF" "-DSTORE_HC=ON" "-DGEN_EXPLICIT=OFF" ]; }; */
     gcc_explicit = mk: mk { inputs = pkgs: [];
                             flags = [ "-DSTORE_COMPRESS=OFF" "-DALG_EXPLICIT=ON" "-DGEN_EXPLICIT=ON" ]; };
     gcc_full =     mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
