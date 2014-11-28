@@ -90,7 +90,6 @@ add_custom_command( TARGET instances-generator POST_BUILD
     WORKING_DIRECTORY ${GENERATED_INSTANCES_DIR}
     COMMENT "Generating instance files"
     VERBATIM )
-target_link_libraries( instances-generator wibble )
 target_link_libraries( instances-generator libdivine )
 
 include_directories( ${DIVINE_INCLUDES} )
@@ -106,6 +105,7 @@ add_library( libdivine STATIC
     "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
     ${STRINGIFIED} )
 
+target_link_libraries( libdivine pthread )
 add_library( libdivine-instances OBJECT instances/select.cpp ${SRC_auto_instances} )
 add_dependencies( libdivine-instances instances-generator )
 
@@ -146,7 +146,6 @@ if ( OPT_SQL )
     target_link_libraries( libdivine nanodbc )
 endif()
 
-target_link_libraries( libdivine wibble )
 target_link_libraries( test-divine libdivine )
 
 if( NOT WIN32 )

@@ -141,6 +141,7 @@ set( CMD_GCC "gcc" CACHE STRING "how to run the GCC C/C++ compiler" )
 set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
 
 include( FindLLVM )
+include( FindPerl )
 
 include( CheckCXXSourceCompiles )
 set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
@@ -482,7 +483,6 @@ set( TEST_WRAPPER "${CMAKE_SOURCE_DIR}/nix/test-wrapper.sh" )
 add_custom_target( check )
 add_custom_target( unit )
 
-add_subdirectory( wibble )
 # add_subdirectory( external/lpsolve )
 
 if( OPT_HOARD )
@@ -626,7 +626,7 @@ endif( WIN32 )
 
 set( CPACK_SOURCE_IGNORE_FILES "/build/;/_build/;/_darcs/;~$;${CPACK_SOURCE_IGNORE_FILES}" )
 
-set( CPACK_COMPONENTS_ALL console_tools gui_tools divine_dev wibble_dev qt sys examples help)
+set( CPACK_COMPONENTS_ALL console_tools gui_tools divine_dev qt sys examples help)
 
 if(WIN32)
   set(CPACK_NSIS_MENU_LINKS "./divine.ide.exe" "DiViNE IDE"
@@ -661,15 +661,6 @@ if(CMAKE_MAJOR_VERSION GREATER 2 OR CMAKE_MINOR_VERSION GREATER 6 OR HAVE_CMAKE_
                        DESCRIPTION "Graphical environment"
                        GROUP tools )
 
-  cpack_add_component( wibble_dev DISPLAY_NAME "Wibble"
-                       DESCRIPTION "Wibble library"
-                       GROUP devel )
-
-  cpack_add_component( divine_dev DISPLAY_NAME "Divine"
-                       DESCRIPTION "Divine development files"
-                       DEPENDS wibble_dev
-                       GROUP devel )
-
   cpack_add_component( help HIDDEN DEPENDS gui_tools )
 
   cpack_add_component( qt HIDDEN DEPENDS gui_tools )
@@ -681,3 +672,5 @@ endif()
 
 test_bricks( bricks )
 benchmark_bricks( bricks )
+
+brick_find_prereq()
