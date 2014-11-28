@@ -132,3 +132,11 @@ macro( bricks_use_tbb )
   link_directories( ${tbb_BINARY_DIR} )
   link_libraries( bricks-tbb )
 endmacro()
+
+macro( brick_find_prereq )
+    # on some mingw32, regex.h is not on the default include path
+    find_path( RX_PATH regex.h )
+    if( RX_PATH )
+      include_directories( ${RX_PATH} )
+    endif()
+endmacro()
