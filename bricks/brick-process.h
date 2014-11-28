@@ -63,6 +63,7 @@
 #include <string>
 #include <iostream>
 #include <mutex>
+#include <algorithm> // std::find
 
 #ifdef _WIN32
 #include <windows.h>
