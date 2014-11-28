@@ -267,7 +267,8 @@ public:
     void initial() {
         memcpy( data, &initValues[0], initValues.size() * sizeof(int32_t) );
         clocks.initial();
-        ura_id_ptr = data + getReqSize() - sizeof( int32_t );
+        ura_id_ptr = reinterpret_cast< int32_t * >(
+            reinterpret_cast< char * >( data ) + getReqSize() - sizeof( int32_t ) );
         getUraStateId() = 0;
     }
 
