@@ -16,8 +16,8 @@
 
 #include <divine/ltl2ba/main.h>
 
-#include <wibble/regexp.h>
-#include <wibble/sys/pipe.h>
+#include <brick-string.h>
+#include <brick-process.h>
 
 #include <QStringList>
 #include <QMessageBox>
@@ -35,13 +35,13 @@ namespace {
 
   std::string m4( std::string in, const std::string & defs )
   {
-    wibble::sys::PipeThrough p( "m4" + defs );
+    brick::process::PipeThrough p( "m4" + defs );
     return p.run( in );
   }
 
   std::string cpp( std::string in )
   {
-    wibble::sys::PipeThrough p( "cpp -E -P" );
+    brick::process::PipeThrough p( "cpp -E -P" );
     return p.run( in );
   }
 }
@@ -85,12 +85,12 @@ QByteArray Combine::combine(const QByteArray & dve, const QByteArray & ltl, int 
 
 QByteArray Combine::process_ltl(int property)
 {
-  wibble::Splitter lines( "\n", 0 );
-  wibble::ERegexp prop( "^[ \t]*#property ([^\n]+)", 2 );
-  wibble::ERegexp def( "^[ \t]*#define ([^\n]+)", 2 );
+  brick::string::Splitter lines( "\n", 0 );
+  brick::string::ERegexp prop( "^[ \t]*#property ([^\n]+)", 2 );
+  brick::string::ERegexp def( "^[ \t]*#define ([^\n]+)", 2 );
 
   std::vector< std::string >::iterator i;
-  for ( wibble::Splitter::const_iterator ln = lines.begin( ltl_data_ ); ln != lines.end(); ++ln ) {
+  for ( brick::string::Splitter::const_iterator ln = lines.begin( ltl_data_ ); ln != lines.end(); ++ln ) {
     if ( prop.match( *ln ) )
       ltl_formulae_.push_back( prop[1] );
     if ( def.match( *ln ) )
