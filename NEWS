@@ -1,3 +1,19 @@
+DIVINE 3.2.1
+============
+
+- LLVM: The `divine compile` subcommand no longer uses ld.gold.
+- LLVM: Add fine-grained options in `--property` specification.
+- LLVM: Allow verification of points-to LLVM metadata.
+- LLVM: Programs that use stringstreams can now be verified.
+- LLVM: Implement stacksave and stackrestore intrinsics.
+- LLVM: Many optimisations.
+- timed: Implement ultraregion automatons in the UPPAAL generator.
+- timed: Verification of untimed LTL with clock constraints.
+- Improved CLI simulator interface.
+- Implement context-switch-directed reachability.
+- Improved reporting of verification results.
+- Many, many bugfixes and internal code improvements.
+
 DIVINE 3.0.92 (3.1 beta 1; 6.1.2014)
 ====================================
 
