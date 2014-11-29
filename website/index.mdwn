@@ -20,44 +20,18 @@ Feature Highlights
  * Runs on **Linux** and **MS Windows** (a Windows installer is available)
  * A **GUI**, with a simulator and a counter-example analyser for DVE
 
-DIVINE 3.0 has been released
-============================
+Automated Release Process
+=========================
 
-(2013-07-13) The final version of DIVINE 3.0 has been released today. Get the
-[source code] [1] or [pre-built binaries] [2]! The changelog is here: [what's
-new](whatsnew.html). The major highlights of the 3.0 release are:
-
- * Support for model checking of C and C++ code via LLVM bitcode (safety and LTL).
- * Model checking of timed automata (safety, time deadlocks and untimed LTL).
- * A stable binary interface for compiled models: [CESMI] [3].
- * Weak fairness for DVE.
- * Hash compaction.
- * Experimental support for shared-memory hashtables and queues.
-
-DIVINE 3.1 beta 1 has been released
-===================================
-
-(2014-01-06) We are pleased to announce the first beta release in preparation of
-version 3.1 of DIVINE. Please download the [source code] [1] (or visit [our
-hydra] [4] to obtain recent binary snapshots) and help us by testing this
-pre-release.
-
-The major improvements making a debut in version 3.1 are more sophisticated
-shared-memory verification, lossless tree-based state space compression,
-improved performance and substantially improved memory efficiency. The series
-also includes improved support for compilation of C++ into LLVM bitcode (now
-including the standard library out of the box) and improvements to the DVE
-specification language. The LLVM backend has gained a number of improvements,
-including more sophisticated error detection and reporting.
-
-Additionally, a number of improvements and bug fixes has been added since the
-last alpha release in autumn. Please consult the [changelog] [5].
+(2014-11-30) A new automated release process has been rolled out for DIVINE,
+based on results from our Continuous Integration system. The latest available
+release is always available from the [download page] [1] as a source
+tarball. Automatically built binaries for major operating systems will be made
+available in the future as well. The [release notes] [2] document lists
+important user-visible changes between releases.
 
 [1]: download.html
-[2]: http://divine.fi.muni.cz/hydra/jobset/divine/release
-[3]: manual.html#common-explicit-state-model-interface
-[4]: http://divine.fi.muni.cz/hydra/project/divine
-[5]: whatsnew.html
+[2]: whatsnew.html
 
 Contacting Us
 =============
