@@ -14,25 +14,20 @@ Download
 ========
 
 The source code of the latest version of DIVINE is available for download.
-Binaries are only available for 32-bit Windows.  Please note that DiVinE
-Cluster, DiVinE Multi-Core and ProbDiVinE have been discontinued.
+Windows builds are currently not provided, please contact us if you need them.
+Please also note that DiVinE Cluster, DiVinE Multi-Core and ProbDiVinE have
+been discontinued.
 
-> * Latest (stable) source code: **[divine-3.0.tar.gz](download/divine-3.0.tar.gz)**.
->
-> * An installer for 32 bit windows:
->   **[divine-2.97-installer.exe](download/divine-2.97-installer.exe)**.
->
-> * Latest *development* version: **[divine-3.0.92.tar.gz](download/divine-3.0.92.tar.gz)** (3.1 beta 1).
+> * Latest source code: **[divine-@version@.tar.gz](download/divine-@version@.tar.gz)**.
 >
 > Please consult [release notes] [1] for a summary of changes between
 > releases. Binaries and source tarballs of development snapshots can be
 > obtained from [hydra] [2]. Check the [installation instructions] [7] in the
 > manual.
 
-NB. The **windows** version does not currently include support for LLVM bitcode
-verification (this is work in progress) nor does it offer distributed execution
-through MPI (currently not planned). The GUI is included in the installer,
-however.
+NB. When built on **windows**, DIVINE currently does not include support for
+LLVM bitcode verification (this is work in progress) nor does it offer
+distributed execution through MPI (currently not planned).
 
 [1]: whatsnew.html
 [2]: http://divine.fi.muni.cz/hydra/jobset/divine/mainline-debug
