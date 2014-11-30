@@ -672,5 +672,3 @@ endif()
 
 test_bricks( bricks )
 benchmark_bricks( bricks )
-
-brick_find_prereq()
