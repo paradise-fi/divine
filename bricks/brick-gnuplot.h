@@ -517,13 +517,14 @@ struct Plot {
     std::string setupAxis( Axis a ) {
         std::stringstream str;
         char l = a == X ? 'x' : 'y';
+        double scale = _rescale.count( a ) ? _rescale[ a ] : 1;
 
         if ( _bounds.count( a ) )
-            str << "set " << l << "range [" << _bounds[ a ].first
-                << ":" << _bounds[ a ].second << "]" << std::endl;
+            str << "set " << l << "range [" << _bounds[ a ].first * scale
+                << ":" << _bounds[ a ].second * scale << "]" << std::endl;
 
         if ( _interval.count( a ) )
-            str << "set " << l << "tics " << _interval[ a ] << std::endl;
+            str << "set " << l << "tics " << _interval[ a ] * scale << std::endl;
         str << "unset m" << l << "tics" << std::endl;
 
         str << "set " << l << "label ";
