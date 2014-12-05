@@ -38,6 +38,7 @@
 #include <algorithm>
 #include <random>
 #include <functional>
+#include <fstream>
 
 #include <time.h>
 
@@ -208,6 +209,56 @@ struct BenchmarkGroup {
     virtual double normal() { return 1.0; }
 };
 
+struct ResultLog {
+    struct Key {
+        std::string benchmark;
+        int p, q;
+        bool operator<( const Key &o ) const {
+            return std::make_tuple( benchmark, p, q ) < std::make_tuple( o.benchmark, o.p, o.q );
+        }
+    };
+
+    using Value = std::tuple< double, double, double, double >;
+
+    std::ofstream log;
+    std::map< Key, Value > map;
+    Key last;
+
+    void append( Key k, Value value )
+    {
+        if ( last.benchmark != k.benchmark )
+            log << k.benchmark << std::endl;
+
+        double x, v, lo, hi;
+        std::tie( x, v, lo, hi ) = value;
+        log << ": " << k.p << " " << k.q << " " << x << " " << v << " " << lo << " " << hi << std::endl;
+        last = k;
+        map[ k ] = value;
+    }
+
+    bool has( Key k ) { return map.count( k ); }
+    Value get( Key k ) { return map[ k ]; }
+
+    ResultLog()
+    {
+        try {
+            std::ifstream ifs( "benchmark.log" );
+            char linebuf[4096];
+            while ( ifs.good() && !ifs.eof() ) {
+                ifs.getline(linebuf, 4096);
+                if (linebuf[0] == ':') {
+                    std::stringstream str( linebuf + 2 );
+                    double x, v, lo, hi;
+                    str >> last.p >> last.q >> x >> v >> lo >> hi;
+                    map[ last ] = std::make_tuple( x, v, lo, hi );
+                } else
+                    last.benchmark = linebuf;
+            }
+        } catch (...) {}
+        log.open( "benchmark.log", std::ofstream::out | std::ofstream::app );
+    }
+};
+
 namespace {
 
 std::vector< BenchmarkBase * > *benchmarks = nullptr;
@@ -280,7 +331,7 @@ struct SampleStats {
     double sd_sample;
 };
 
-void repeat( BenchmarkBase *tc, gnuplot::DataSet &res ) {
+ResultLog::Value repeat( BenchmarkBase *tc ) {
 #ifdef __unix
     char buf[1024];
     ::socketpair( AF_UNIX, SOCK_STREAM, PF_UNIX, tc->fds );
@@ -325,15 +376,17 @@ void repeat( BenchmarkBase *tc, gnuplot::DataSet &res ) {
               << " | n = " << std::setw( 3 ) << stats.sample.size()
               << ", bad = " << std::setw( 3 ) << iterations - stats.sample.size() << std::endl;
 
-    res.append( x.scaled( tc->p ),
-                y.scaled( stats.m_mean * factor ),
-                y.scaled( stats.b_mean.low * factor ),
-                y.scaled( stats.b_mean.high * factor ) );
+    auto res = std::make_tuple( x.scaled( tc->p ),
+                                y.scaled( stats.m_mean * factor ),
+                                y.scaled( stats.b_mean.low * factor ),
+                                y.scaled( stats.b_mean.high * factor ) );
 
 #ifdef __unix
     ::close( tc->fds[0] );
     ::close( tc->fds[1] );
 #endif
+
+    return res;
 }
 
 /* TODO duplicated from brick-shelltest */
@@ -424,10 +477,14 @@ void run( int argc, const char **argv ) {
     Filter flt( argc, argv );
 
     gnuplot::Plots plots;
+    ResultLog log;
+    ResultLog::Key key;
 
     for ( auto tc : *benchmarks ) {
         if ( !flt.matches( tc->describe() ) )
             continue;
+
+        key.benchmark = tc->describe();
 
         gnuplot::Plot &plot = plots.append();
 
@@ -440,9 +497,15 @@ void run( int argc, const char **argv ) {
             auto &ds = plot.append( y.render( q_val ), y.type == Axis::Qualitative ? 0 : q_val,
                                     4, gnuplot::DataSet::RibbonLP );
             for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
-                tc->p = tc->parameter( x, p_seq );
-                tc->q = tc->parameter( y, q_seq );
-                repeat( tc, ds );
+                key.p = tc->p = tc->parameter( x, p_seq );
+                key.q = tc->q = tc->parameter( y, q_seq );
+                if ( log.has( key ) )
+                    ds.append( log.get( key ) );
+                else {
+                    auto r = repeat( tc );
+                    ds.append( r );
+                    log.append( key, r );
+                }
             }
         }
 
@@ -464,7 +527,7 @@ void run( int argc, const char **argv ) {
         double x_range = x.scaled( x.max ) - x.scaled( x.min );
         int k = 1;
 
-        while ( x.log && log(x_range) / log(pow(x.step, k)) > 20 )
+        while ( x.log && std::log(x_range) / std::log(pow(x.step, k)) > 20 )
             ++ k;
 
         while ( !x.log && x_range / x.step * k > 10 )
