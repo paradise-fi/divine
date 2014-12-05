@@ -554,7 +554,7 @@ struct Plot {
                 << "bars_space = 1 - outer_data_margin" << std::endl
                 << "usable_data_space = 1 - (outer_data_margin + (num_of_datasets - 1) * inter_box_gap)" << std::endl
                 << "bwidth = usable_data_space / num_of_datasets" << std::endl
-                << "offset = (bars_space - bwidth) / 2" << std::endl
+                << "offset = (bars_space - bwidth) / 4" << std::endl
                 << "step = bwidth + inter_box_gap" << std::endl
                 << "set boxwidth bwidth" << std::endl;
         }
