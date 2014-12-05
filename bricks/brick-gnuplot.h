@@ -44,6 +44,7 @@
 #include <iomanip>
 
 #include <brick-assert.h>
+#include <brick-types.h>
 
 #ifndef BRICK_GNUPLOT_H
 #define BRICK_GNUPLOT_H
@@ -128,6 +129,18 @@ struct Matrix {
         std::vector< double > row{ v... };
         ASSERT_EQ( int( row.size() ), width );
         std::copy( row.begin(), row.end(), std::back_inserter( m ) );
+    };
+
+    template< int i, typename... Ts >
+    void pushRow( std::tuple< Ts... > v, types::NotPreferred ) {}
+
+    template< int i = 0, typename... Ts >
+    typename std::enable_if< (i < sizeof...( Ts )) >::type
+    pushRow( std::tuple< Ts... > v, types::Preferred = types::Preferred() ) {
+        const int w = std::tuple_size< decltype( v ) >::value;
+        ASSERT_EQ( w, width );
+        m.push_back( std::get< i >( v ) );
+        pushRow< i + 1, Ts... >( v, types::Preferred() );
     };
 };
 
