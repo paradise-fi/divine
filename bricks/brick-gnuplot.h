@@ -506,7 +506,7 @@ struct Plot {
             auto use = colours[ i ];
             if ( cm.count( key ) )
                 use = cm[ key ];
-            str << "set style line " << i + 1
+            str << "set style line " << std::setbase( 10 ) << i + 1
                 << " lc " << use << " lt 1 lw 2" << std::endl;
             ++ i;
         }
