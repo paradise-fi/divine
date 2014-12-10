@@ -607,7 +607,9 @@ struct Main {
         // else default (currently set to 2)
 
         meta.input.model = input;
-        meta.input.properties = parseProperties( o_property->boolValue() ? o_property->value() : "safety" );
+
+        if ( o_property->boolValue() )
+            meta.input.properties = parseProperties( o_property->value() );
         meta.input.definitions = o_definitions->values();
         meta.input.probabilistic = o_probabilistic->boolValue();
         meta.output.wantCe = !o_noCe->boolValue();
@@ -669,6 +671,19 @@ struct Main {
             if ( !ib )
                 die( "Fatal error encountered while processing input." );
 
+            if ( meta.input.properties.empty() ) {
+                std::set< std::string > props;
+                for ( auto p : ib->getProperties() )
+                    props.insert( p.name );
+                for ( auto p : { "safety", "deadlock" } )
+                    if ( props.count( p ) ) {
+                        meta.input.properties.insert( p );
+                        break;
+                    }
+                if ( meta.input.properties.empty() )
+                    die( "FATAL: No property given and no default usable, please"
+                            " consult divine info and use -p <prop name>" );
+            }
             ib->propertyInfo( meta.input.properties, meta );
             meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
         }
