@@ -1,15 +1,24 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 #include <divine/utility/meta.h>
 #include <type_traits>
+#include <vector>
 
 #ifndef DIVINE_ALGORITHM_INFO
 #define DIVINE_ALGORITHM_INFO
 
 namespace divine {
 
+struct Prop {
+    Prop() = default;
+    Prop( std::string name, std::string desc ) : name( name ), desc( desc ) { }
+    std::string name;
+    std::string desc;
+};
+
 struct InfoBase {
     virtual void propertyInfo( graph::PropertySet prop, Meta &m ) = 0;
     virtual generator::ReductionSet filterReductions( generator::ReductionSet ) = 0;
+    virtual std::vector< Prop > getProperties() = 0;
     virtual ~InfoBase() {};
 };
 
@@ -21,9 +30,8 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, br
 
     void run() {
         std::cout << "Available properties:" << std::endl;
-        g->properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
-                std::cout << " * " << name << ": " << descr << std::endl;
-            } );
+        for ( auto p : getProperties() )
+            std::cout << " * " << p.name << ": " << p.desc << std::endl;
         auto cap = compactCapabilities();
         if ( std::get< 0 >( cap ) )
             std::cout << "Saved features: " << std::get< 1 >( cap ) << std::endl;
@@ -31,7 +39,15 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, br
 
     int id() { return 0; }
 
-    virtual void propertyInfo( graph::PropertySet s, Meta &m ) {
+    virtual std::vector< Prop > getProperties() override {
+        std::vector< Prop > props;
+        g->properties( [&] ( std::string name, std::string descr, graph::PropertyType ) {
+                props.emplace_back( name, descr );
+            } );
+        return props;
+    }
+
+    virtual void propertyInfo( graph::PropertySet s, Meta &m ) override {
         int count = 0;
         g->properties( [&] ( std::string name, std::string des, graph::PropertyType t ) {
                 if ( s.count( name ) ) {
@@ -46,12 +62,9 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, br
             } );
     }
 
-    virtual generator::ReductionSet filterReductions( generator::ReductionSet rs ) {
+    virtual generator::ReductionSet filterReductions( generator::ReductionSet rs ) override {
         return g->useReductions( rs );
     }
-
-    template< typename T >
-    T *ptr_cast( T *ptr ) { return reinterpret_cast< T * >( ptr ); }
 
     template< typename Gen >
     auto _capa( brick::types::Preferred ) ->
