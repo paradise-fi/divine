@@ -104,6 +104,11 @@ macro( bricks_check_features )
       link_libraries( regex )
     endif()
   endif()
+
+  include( FindLLVM )
+  if( LLVM_FOUND )
+    add_definitions( -DBRICKS_HAVE_LLVM -isystem ${LLVM_INCLUDE_DIRS} )
+  endif()
 endmacro()
 
 function( bricks_fetch_tbb )

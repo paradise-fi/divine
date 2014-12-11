@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2014 Vladimír Štill
 
+#ifdef BRICKS_HAVE_LLVM
+
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -408,3 +410,5 @@ inline void writeModule( ::llvm::Module *m, std::string out ) {
 }
 
 #endif // BRICKS_LLVM_LINK_STRIP_H
+
+#endif
