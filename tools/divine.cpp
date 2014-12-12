@@ -313,7 +313,7 @@ struct Main {
 
         o_property = common->add< StringOption >(
             "property", 'p', "property", "",
-            "select a property [default is modelling language specific]" );
+            "select a property [defaults to first available property]" );
         simopts->add( o_property );
 
         o_mpi = common->add< BoolOption >(
