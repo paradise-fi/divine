@@ -313,7 +313,7 @@ struct Main {
 
         o_property = common->add< StringOption >(
             "property", 'p', "property", "",
-            "select a property [default=safety]" );
+            "select a property [default is modelling language specific]" );
         simopts->add( o_property );
 
         o_mpi = common->add< BoolOption >(
@@ -683,6 +683,12 @@ struct Main {
                 if ( meta.input.properties.empty() )
                     die( "FATAL: No property given and no default usable, please"
                             " consult divine info and use -p <prop name>" );
+                else
+                    std::cerr << "WARNING: Using default property "
+                        << *meta.input.properties.begin()
+                        << ", you can consult divine info and use" << std::endl
+                        << "         -p <prop name> to specify other property."
+                        << std::endl;
             }
             ib->propertyInfo( meta.input.properties, meta );
             meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
