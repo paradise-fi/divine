@@ -1,3 +1,8 @@
+DIVINE 3.2.x
+============
+
+- [3.2.2] Fix bug #301 (assertion failure when -p not given).
+
 DIVINE 3.2.1
 ============
 
