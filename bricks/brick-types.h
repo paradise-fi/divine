@@ -98,7 +98,7 @@ typename T::IsComparable operator>=( const T &a, const T &b ) {
 
 struct Defer {
     template< typename F >
-    Defer( F fn ) : fn( fn ) { }
+    Defer( F fn ) : fn( fn ), _deleted( false ) { }
 
     void run() {
         if ( !_deleted ) {
