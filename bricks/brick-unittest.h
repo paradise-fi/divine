@@ -236,8 +236,11 @@ std::string _typeid() {
     return "unnamed";
 #else
     int stat;
-    return abi::__cxa_demangle( typeid( T ).name(),
+    char *dem = abi::__cxa_demangle( typeid( T ).name(),
                                 nullptr, nullptr, &stat );
+    std::string strdem( dem );
+    std::free( dem );
+    return strdem;
 #endif
 }
 
