@@ -25,7 +25,11 @@ void * malloc( size_t size ) _PDCLIB_nothrow __attribute__((noinline)) {
 
 void *realloc( void *orig, size_t size ) _PDCLIB_nothrow __attribute__((noinline)) {
     __divine_interrupt_mask();
-    if ( size && __divine_choice( 2 ) ) {
+    if ( !size ) {
+        __divine_free( orig );
+        return NULL;
+    }
+    if ( __divine_choice( 2 ) ) {
         void *n = __divine_malloc( size );
         if ( orig ) {
             ::memcpy( n, orig, MIN( size, __divine_heap_object_size( orig ) ) );
