@@ -33,7 +33,7 @@
 /* are using additional errno values, you *HAVE* to provide appropriate error */
 /* messages for *ALL* locales.)                                               */
 /* Default is 4 (0, ERANGE, EDOM, EILSEQ).                                    */
-#define _PDCLIB_ERRNO_MAX 4
+#define _PDCLIB_ERRNO_MAX 134
 
 /* -------------------------------------------------------------------------- */
 /* Integers                                                                   */
