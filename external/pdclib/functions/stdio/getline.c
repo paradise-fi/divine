@@ -25,6 +25,7 @@ ssize_t _PDCLIB_getline_unlocked( char **lineptr, size_t *n, FILE *stream )
         *lineptr = realloc( *lineptr, INIT_SIZE );
         if ( !lineptr )
             return -1;
+        *n = INIT_SIZE;
     }
 
     if ( _PDCLIB_prepread( stream ) == EOF )
