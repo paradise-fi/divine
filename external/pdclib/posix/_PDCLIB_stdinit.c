@@ -625,7 +625,7 @@ _PDCLIB_uint16_t global_ctype_flags[] = {
 
 extern const struct _PDCLIB_charcodec _PDCLIB_ascii_codec;
 
-const struct _PDCLIB_locale _PDCLIB_global_locale = {
+struct _PDCLIB_locale _PDCLIB_global_locale = {
     ._Codec = &_PDCLIB_ascii_codec,
     ._Conv  = { 
         /* decimal_point      */ (char *)".",
