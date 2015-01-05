@@ -16,6 +16,7 @@ static bool readf( _PDCLIB_fd_t fd, void * buf, size_t length,
 {
     ssize_t res = read(fd.sval, buf, length);
     if(res == -1) {
+        *numBytesRead = 0;
         return false;
     } else {
         *numBytesRead = res;
@@ -28,6 +29,7 @@ static bool writef( _PDCLIB_fd_t fd, const void * buf, size_t length,
 {
     ssize_t res = write(fd.sval, buf, length);
     if(res == -1) {
+        *numBytesWritten = 0;
         return false;
     } else {
         *numBytesWritten = res;
