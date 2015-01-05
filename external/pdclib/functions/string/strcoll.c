@@ -21,7 +21,7 @@ int strcoll( const char * s1, const char * s2 )
         ++s1;
         ++s2;
     }
-    return ( ctype[(unsigned char)*s1].collation == ctype[(unsigned char)*s2].collation );
+    return ( ctype[(unsigned char)*s1].collation - ctype[(unsigned char)*s2].collation );
 }
 
 #endif
@@ -33,11 +33,11 @@ int main( void )
 {
     char cmpabcde[] = "abcde";
     char empty[] = "";
-    TESTCASE( strcmp( abcde, cmpabcde ) == 0 );
-    TESTCASE( strcmp( abcde, abcdx ) < 0 );
-    TESTCASE( strcmp( abcdx, abcde ) > 0 );
-    TESTCASE( strcmp( empty, abcde ) < 0 );
-    TESTCASE( strcmp( abcde, empty ) > 0 );
+    TESTCASE( strcoll( abcde, cmpabcde ) == 0 );
+    TESTCASE( strcoll( abcde, abcdx ) < 0 );
+    TESTCASE( strcoll( abcdx, abcde ) > 0 );
+    TESTCASE( strcoll( empty, abcde ) < 0 );
+    TESTCASE( strcoll( abcde, empty ) > 0 );
     return TEST_RESULTS;
 }
 #endif
