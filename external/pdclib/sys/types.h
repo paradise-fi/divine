@@ -18,8 +18,8 @@ typedef _PDCLIB_uint32_t socklen_t;
 typedef _PDCLIB_uint32_t uid_t;
 typedef _PDCLIB_uint32_t gid_t;
 
-typedef _PDCLIB_uint32_t off_t;
-typedef _PDCLIB_uint64_t off64_t;
+typedef _PDCLIB_int32_t off_t;
+typedef _PDCLIB_int64_t off64_t;
 
 typedef _PDCLIB_uint32_t mode_t;
 
