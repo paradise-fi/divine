@@ -15,9 +15,12 @@
 #include <threads.h>
 
 extern FILE * _PDCLIB_filelist;
+extern mtx_t _PDCLIB_filelist_lock;
+
 
 int fclose( FILE * stream )
 {
+    mtx_lock( &_PDCLIB_filelist_lock );
     FILE * current = _PDCLIB_filelist;
     FILE * previous = NULL;
     /* Checking that the FILE handle is actually one we had opened before. */
@@ -31,6 +34,7 @@ int fclose( FILE * stream )
                 if ( _PDCLIB_flushbuffer( stream ) == EOF )
                 {
                     /* Flush failed, errno already set */
+                    mtx_unlock( &_PDCLIB_filelist_lock );
                     return EOF;
                 }
             }
@@ -50,6 +54,8 @@ int fclose( FILE * stream )
             {
                 _PDCLIB_filelist = stream->next;
             }
+            mtx_unlock( &_PDCLIB_filelist_lock );
+
             /* Delete tmpfile() */
             if ( stream->status & _PDCLIB_DELONCLOSE )
             {
@@ -66,6 +72,7 @@ int fclose( FILE * stream )
         current = current->next;
     }
 
+    mtx_unlock( &_PDCLIB_filelist_lock );
     errno = EINVAL;
     return -1;
 }

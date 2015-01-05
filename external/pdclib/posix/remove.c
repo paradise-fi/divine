@@ -14,23 +14,29 @@
 #ifndef REGTEST
 #include <_PDCLIB_io.h>
 #include <string.h>
+#include <threads.h>
+#include <_PDCLIB_glue.h>
 
 extern FILE * _PDCLIB_filelist;
+extern mtx_t _PDCLIB_filelist_lock;
 
 extern int unlink( const char * pathname );
 
 int remove( const char * pathname )
 {
     FILE * current = _PDCLIB_filelist;
+    mtx_lock( &_PDCLIB_filelist_lock );
     while ( current != NULL )
     {
         if ( ( current->filename != NULL ) && ( strcmp( current->filename, pathname ) == 0 ) )
         {
+            mtx_unlock( &_PDCLIB_filelist_lock );
             return EOF;
         }
         current = current->next;
     }
-    return unlink( pathname );
+    mtx_unlock( &_PDCLIB_filelist_lock );
+    return _PDCLIB_remove( pathname );
 }
 
 #endif

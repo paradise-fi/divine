@@ -91,6 +91,7 @@ FILE * stderr = &_PDCLIB_serr;
 
 /* FIXME: This approach is a possible attack vector. */
 FILE * _PDCLIB_filelist = &_PDCLIB_sin;
+mtx_t _PDCLIB_filelist_lock;
 
 #endif
 
@@ -803,6 +804,7 @@ __attribute__((constructor)) void init_stdio(void)
         mtx_init(&stdout->lock, mtx_recursive);
     if ( stderr )
         mtx_init(&stderr->lock, mtx_recursive);
+    mtx_init( &_PDCLIB_filelist_lock, mtx_recursive );
 }
 
 #endif

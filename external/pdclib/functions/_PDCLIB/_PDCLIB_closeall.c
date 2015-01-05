@@ -10,10 +10,13 @@
 
 #ifndef REGTEST
 #include <_PDCLIB_io.h>
+#include <threads.h>
 extern _PDCLIB_file_t * _PDCLIB_filelist;
+extern mtx_t _PDCLIB_filelist_lock;
 
 void _PDCLIB_closeall( void )
 {
+    mtx_lock( &_PDCLIB_filelist_lock );
     _PDCLIB_file_t * stream = _PDCLIB_filelist;
     _PDCLIB_file_t * next;
     while ( stream != NULL )
@@ -22,6 +25,7 @@ void _PDCLIB_closeall( void )
         fclose( stream );
         stream = next;
     }
+    mtx_unlock( &_PDCLIB_filelist_lock );
 }
 #endif
 

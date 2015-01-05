@@ -10,13 +10,16 @@
 
 #ifndef REGTEST
 #include <_PDCLIB_io.h>
+#include <threads.h>
 
 extern FILE * _PDCLIB_filelist;
+extern mtx_t _PDCLIB_filelist_lock;
 
 int _PDCLIB_fflush_unlocked( FILE * stream )
 {
     if ( stream == NULL )
     {
+        mtx_lock( &_PDCLIB_filelist_lock );
         stream = _PDCLIB_filelist;
         /* TODO: Check what happens when fflush( NULL ) encounters write errors, in other libs */
         int rc = 0;
@@ -31,6 +34,7 @@ int _PDCLIB_fflush_unlocked( FILE * stream )
             }
             stream = stream->next;
         }
+        mtx_unlock( &_PDCLIB_filelist_lock );
         return rc;
     }
     else

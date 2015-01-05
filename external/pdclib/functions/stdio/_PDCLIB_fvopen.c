@@ -16,6 +16,7 @@
 #include <threads.h>
 
 extern FILE * _PDCLIB_filelist;
+extern mtx_t _PDCLIB_filelist_lock;
 
 FILE * _PDCLIB_fvopen( 
     _PDCLIB_fd_t                                    fd, 
@@ -74,8 +75,10 @@ FILE * _PDCLIB_fvopen(
     if (!_PDCLIB_filelist)
         atexit(_PDCLIB_closeall);
 #endif
+    mtx_lock( &_PDCLIB_filelist_lock );
     rc->next = _PDCLIB_filelist;
     _PDCLIB_filelist = rc;
+    mtx_unlock( &_PDCLIB_filelist_lock );
     return rc;
 }
 
