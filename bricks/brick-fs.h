@@ -159,6 +159,65 @@ inline std::string normalize( std::string path ) {
     return joinPath( abs.first, joinPath( splitPath( abs.second ) ) );
 }
 
+inline std::string distinctPaths( const std::string &prefix, const std::string &path ) {
+
+    auto prefI = prefix.begin();
+    auto pathI = path.begin();
+    auto start = pathI;
+    bool wasSlash = false;
+
+    for ( ; prefI != prefix.end() && pathI != path.end(); ++prefI, ++pathI ) {
+
+        while ( wasSlash && prefI != prefix.end() && isPathSeparator( *prefI ) )
+            ++prefI;
+        while ( wasSlash && pathI != path.end() && isPathSeparator( *pathI ) )
+            ++pathI;
+
+        if ( wasSlash ) {
+            start = pathI;
+            wasSlash = false;
+        }
+
+        if ( prefI == prefix.end() ) {
+            ++pathI;
+            break;
+        }
+
+        if ( pathI == path.end() ) {
+            ++prefI;
+            break;
+        }
+
+        if ( *pathI != *prefI )
+            break;
+
+        if ( isPathSeparator( *prefI ) )
+            wasSlash = true;
+
+    }
+    while ( wasSlash && prefI != prefix.end() && isPathSeparator( *prefI ) )
+        ++prefI;
+    while ( wasSlash && pathI != path.end() && isPathSeparator( *pathI ) )
+        ++pathI;
+
+    if ( wasSlash )
+        start = pathI;
+
+    if ( prefI == prefix.end() ) {
+        if ( pathI != path.end() && isPathSeparator( *pathI ) ) {
+            while ( pathI != path.end() && isPathSeparator( *pathI ) )
+                ++pathI;
+            start = pathI;
+        }
+        else if ( pathI == path.end() )
+            start = pathI;
+    }
+    else if ( prefI != prefix.end() && isPathSeparator( *prefI ) && pathI == path.end() ) {
+        start = pathI;
+    }
+
+    return std::string( start, path.end() );
+}
 
 inline std::string getcwd() {
     std::string buf;
