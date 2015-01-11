@@ -280,6 +280,19 @@ inline std::unique_ptr< struct stat64 > stat( std::string pathname ) {
 	return res;
 }
 
+#ifndef _WIN32
+inline std::unique_ptr< struct stat64 > lstat( std::string pathname ) {
+	std::unique_ptr< struct stat64 > res( new struct stat64 );
+	if ( ::lstat64( pathname.c_str(), res.get() ) == -1 ) {
+		if ( errno == ENOENT )
+			return std::unique_ptr< struct stat64 >();
+		else
+			throw SystemException( "getting file information for " + pathname );
+    }
+	return res;
+}
+#endif
+
 #ifdef _WIN32
 inline void mkdirIfMissing( std::string dir, int ) {
 #else
