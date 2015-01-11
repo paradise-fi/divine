@@ -556,9 +556,9 @@ void traverseDirectoryTree( std::string root, DirPre pre, DirPost post, File fil
             auto path = joinPath( root, name );
             auto st = stat( path );
 #ifdef _WIN32
-            if ( st->st_mode & _S_IFDIR )
+            if ( st && ( st->st_mode & _S_IFDIR ) )
 #else
-            if ( S_ISDIR( st->st_mode ) )
+            if ( st && S_ISDIR( st->st_mode ) )
 #endif
                 traverseDirectoryTree( path, pre, post, file );
             else
