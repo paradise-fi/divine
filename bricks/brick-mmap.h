@@ -217,7 +217,7 @@ struct MMapTest {
 
         map.map( "/bin/sh" );
         ASSERT_NEQ( map.size(), 0U );
-        ASSERT_EQ( map.mode(), ProtectMode::Read | ProtectMode::Shared );
+        ASSERT( map.mode() == (ProtectMode::Read | ProtectMode::Shared) );
         ASSERT( map.valid() );
         ASSERT_EQ( map[ 1 ], 'E' );
         ASSERT_EQ( map[ 2 ], 'L' );
@@ -226,7 +226,7 @@ struct MMapTest {
         MMap map1 = map; // shared_ptr semantics
         ASSERT_EQ( map.size(), map.size() );
         ASSERT_EQ( map.asArrayOf< char >(), map1.asArrayOf< char >() );
-        ASSERT_EQ( map.mode(), map1.mode() );
+        ASSERT( map.mode() == map1.mode() );
 
         ASSERT_EQ( map1.get< char >( 1 ), 'E' );
         ASSERT_EQ( map1.get< char >( 2 ), 'L' );

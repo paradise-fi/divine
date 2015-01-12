@@ -355,7 +355,7 @@ struct StrongEnumFlags {
         return *this;
     }
 
-    constexpr operator bool() const noexcept {
+    explicit constexpr operator bool() const noexcept {
         return store;
     }
 
