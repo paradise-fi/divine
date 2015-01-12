@@ -26,7 +26,12 @@ enum class Capability : uint64_t {
 };
 
 using Capabilities = brick::types::StrongEnumFlags< Capability >;
-std::string to_string( Capabilities );
+}
+}
+namespace std { std::string to_string( divine::dess::Capabilities ); }
+
+namespace divine {
+namespace dess {
 
 static const size_t MAGIC_LENGTH = 40UL;
 static const char MAGIC[ MAGIC_LENGTH ] = "DIVINE COMPACT EXPLICIT STATE SPACE";

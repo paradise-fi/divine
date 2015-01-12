@@ -26,17 +26,26 @@ static std::string showCapability( Capability c ) {
     return "<<UNKNOWN=" + std::to_string( uint64_t( c ) ) + ">>";
 }
 
-std::string to_string( Capabilities c ) {
+}
+}
+
+namespace std {
+std::string to_string( divine::dess::Capabilities c ) {
+    using namespace divine::dess;
     std::stringstream ss;
     for ( uint64_t mask = 1; mask; mask <<= 1 ) {
-        if ( ( c & mask ) == mask )
-            ss << " | " << showCapability( static_cast< Capability >( mask ) );
+        if ( c.has( Capability( mask ) ) )
+            ss << " | " << showCapability( Capability( mask ) );
     }
     ss << " )";
     auto str = ss.str();
     str[ 1 ] = '(';
     return str.substr( 1 );
 }
+}
+
+namespace divine {
+namespace dess {
 
 Header *Header::ptr( void *p ) {
     Header *ptr = static_cast< Header * >( p );
