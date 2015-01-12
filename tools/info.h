@@ -34,7 +34,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, br
             std::cout << " * " << p.name << ": " << p.desc << std::endl;
         auto cap = compactCapabilities();
         if ( std::get< 0 >( cap ) )
-            std::cout << "Saved features: " << std::get< 1 >( cap ) << std::endl;
+            std::cout << std::get< 1 >( cap ) << std::endl;
     }
 
     int id() { return 0; }
@@ -70,7 +70,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, br
     auto _capa( brick::types::Preferred ) ->
         decltype( typename Gen::IsExplicit(), std::tuple< bool, std::string >() )
     {
-        return std::make_tuple( true, to_string( g->base().capabilities() ) );
+        return std::make_tuple( true, g->base().explicitInfo() );
     }
 
     template< typename Gen >
