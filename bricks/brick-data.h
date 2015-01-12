@@ -133,7 +133,8 @@ namespace uninitialized {
     }
 }
 
-template< typename T, int stackCapacity = 4 >
+template< typename T, int stackCapacity = (4 > (2 * sizeof( void * )) / sizeof( T ))
+                                            ? 4 : (2 * sizeof( void * )) / sizeof( T ) >
 struct SmallVector {
     SmallVector() : _size( 0 ), _onstack( true ) { }
 
