@@ -50,6 +50,12 @@ struct _Explicit : public Common< Blob > {
         return dess.header->capabilities;
     }
 
+    std::string explicitInfo() {
+        return "DESS (DIVINE Explicit State Space) version "
+            + std::to_string( dess.header->compactVersion ) + "\n"
+            + "Saved features: " + std::to_string( capabilities() );
+    }
+
     int64_t index( Node n ) {
         return *reinterpret_cast< int64_t * >(
                 this->pool().dereference( n ) + _slack );
