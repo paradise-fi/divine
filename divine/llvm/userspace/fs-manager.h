@@ -62,7 +62,7 @@ struct FSManager {
 
     void removeFile( utils::String name );
     void removeDirectory( utils::String name );
-    void removeAt( int fd, utils::String name, flags::At fl );
+    void removeAt( int dirfd, utils::String name, flags::At fl );
 
     off_t lseek( int fd, off_t offset, Seek whence );
 
@@ -93,7 +93,7 @@ struct FSManager {
     }
 
     void changeDirectory( utils::String path );
-    void changeDirectory( int fd );
+    void changeDirectory( int dirfd );
 
     unsigned umask() const {
         return _umask;

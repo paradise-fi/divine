@@ -163,7 +163,7 @@ int rmdir( const char *path ) {
     }
 }
 
-int unlinkat( int fd, const char *path, int flags ) {
+int unlinkat( int dirfd, const char *path, int flags ) {
     divine::fs::flags::At f;
     switch( flags ) {
     case 0:
@@ -176,10 +176,10 @@ int unlinkat( int fd, const char *path, int flags ) {
         f = divine::fs::flags::At::Undefined;
         break;
     }
-    if ( fd == AT_FDCWD )
-        fd = divine::fs::CURRENT_DIRECTORY;
+    if ( dirfd == AT_FDCWD )
+        dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
-        divine::fs::filesystem.removeAt( fd, path, f );
+        divine::fs::filesystem.removeAt( dirfd, path, f );
         return 0;
     } catch ( Error & ) {
         return -1;
@@ -294,9 +294,9 @@ int chdir( const char *path ) {
     }
 }
 
-int fchdir( int fd ) {
+int fchdir( int dirfd ) {
     try {
-        divine::fs::filesystem.changeDirectory( fd );
+        divine::fs::filesystem.changeDirectory( dirfd );
         return 0;
     } catch( Error & ) {
         return -1;

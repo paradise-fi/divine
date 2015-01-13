@@ -190,25 +190,21 @@ void FSManager::removeDirectory( utils::String name ) {
     dir->removeDirectory( name );
 }
 
-void FSManager::removeAt( int fd, utils::String name, flags::At fl ) {
+void FSManager::removeAt( int dirfd, utils::String name, flags::At fl ) {
     WeakNode savedDir = _currentDirectory;
-    try {
-        if ( utils::isRelative( name ) && fd != CURRENT_DIRECTORY )
-            changeDirectory( fd );
-        switch( fl ) {
-        case flags::At::NoFlag:
-            removeFile( name );
-            break;
-        case flags::At::RemoveDir:
-            removeDirectory( name );
-            break;
-        default:
-            throw Error( EINVAL );
-        }
-        _currentDirectory = savedDir;
-    } catch ( Error & ) {
-        _currentDirectory = savedDir;
-        throw;
+    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+        changeDirectory( dirfd );
+
+    switch( fl ) {
+    case flags::At::NoFlag:
+        removeFile( name );
+        break;
+    case flags::At::RemoveDir:
+        removeDirectory( name );
+        break;
+    default:
+        throw Error( EINVAL );
     }
 }
 
@@ -252,8 +248,10 @@ void FSManager::changeDirectory( utils::String path ) {
     _currentDirectory = item;
 }
 
-void FSManager::changeDirectory( int fd ) {
-    Node item = getFile( fd )->inode();
+void FSManager::changeDirectory( int dirfd ) {
+    Node item = getFile( dirfd )->inode();
+    _checkGrants( item, Mode::XUSER );
+
     if ( !item )
         throw Error( ENOENT );
     if ( !item->mode().isDirectory() )
