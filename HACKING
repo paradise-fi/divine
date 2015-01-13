@@ -109,7 +109,7 @@ The source code is currently laid out like this:
       generators (the backends)
   * **divine/llvm/** contains the implementation of LLVM interpreter for
       verification of C and C++ using LLVM bitcode
-  * **divine/timed** contains the implementation of UppAll timed automata format
+  * **divine/timed/** contains the implementation of UppAll timed automata format
       for DIVINE.
   * **divine/dve/** contains the implementation of DVE interpreter for
       verification of DVE format.
@@ -124,12 +124,10 @@ The source code is currently laid out like this:
 * **tools/** is for binaries
 
   * **tools/divine.cpp** is the main user-level entry point of the tool
-  * **tools/simple.cpp** is the entry point of the Simple algorithm (see also
-    divine/algorithm/simple.h)
 
 * **external/** the external code used in DIVINE such as the libc++ library,
     the murphi compiler for divine, or the parallel allocators.
-* **wibble/** is the wibble C++ library used for threading, command line
+* **bricks/** is the bricks C++ library used for threading, command line
   parsing and a couple of other utilities used throughout the code
 * **gui/** is the Qt graphical interface of divine
 
