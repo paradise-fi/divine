@@ -10,8 +10,8 @@ struct stat {
     int st_ino;
     int st_mode;
     int st_nlink;
-    int st_uid;// 0
-    int st_gid;// 0
+    int st_uid;
+    int st_gid;
     int st_rdev;// 0
     int st_size;
     int st_blksize;

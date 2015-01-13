@@ -4,90 +4,113 @@
 namespace divine {
 namespace fs {
 
+FSManager::FSManager( bool ) :
+    _root{ std::make_shared< INode >(
+        Mode::DIR | Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER
+    ) },
+    _currentDirectory{ _root },
+    _standardIO{ {
+        std::make_shared< INode >( Mode::FILE | Mode::RUSER ),
+        std::make_shared< INode >( Mode::FILE | Mode::RUSER )
+    } },
+    _openFD{
+        std::make_shared< FileDescriptor >( _standardIO[ 0 ], flags::Open::Read ),// stdin
+        std::make_shared< FileDescriptor >( _standardIO[ 1 ], flags::Open::Write ),// stdout
+        std::make_shared< FileDescriptor >( _standardIO[ 1 ], flags::Open::Write )// stderr
+    }
+{
+    _root->assign( new Directory( _root ) );
+    _standardIO[ 1 ]->assign( new WriteOnlyFile() );
+}
+
+
+
 void FSManager::createDirectory( utils::String name, unsigned mode ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
-    Directory *current;
+    Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
 
-    if ( !current )
-        throw Error( ENOENT );
+    _checkGrants( current, Mode::WUSER );
+    Directory *dir = current->data()->as< Directory >();
 
-    if ( !current->grants().user.write() )
-        throw Error( EACCES );
+    mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
+    mode |= Mode::DIR;
+    if ( current->mode().hasGUID() )
+        mode |= Mode::GUID;
 
-    if ( !current->create< Directory >( std::move( name ), mode ) )
-        throw Error( EEXIST );
+    auto node = std::make_shared< INode >( mode );
+    node->assign( new Directory( node, current ) );
+
+    dir->create( std::move( name ), node );
 }
 
 void FSManager::createHardLink( utils::String name, const utils::String &target ) {
     if ( name.empty() || target.empty() )
         throw Error( ENOENT );
 
-    Directory *current;
+    Node current;
     std::tie( current, name )= _findDirectoryOfFile( name );
 
-    if ( !current )
+    _checkGrants( current, Mode::WUSER );
+    Directory *dir = current->data()->as< Directory >();
+
+    Node targetNode = findDirectoryItem( target );
+    if ( !targetNode )
         throw Error( ENOENT );
 
-    if ( !current->grants().user.write() )
-        throw Error( EACCES );
-
-    Ptr targetPtr = findDirectoryItem( target );
-    if ( !targetPtr )
-        throw Error( ENOENT );
-
-    if ( !targetPtr->isFile() )
+    if ( targetNode->mode().isDirectory() )
         throw Error( EPERM );
 
-    auto file = targetPtr->as< FileItem >();
-
-    if ( !current->create< FileItem >( std::move( name ), Grants::NONE, file->object() ) )
-        throw Error( EEXIST );
+    dir->create( std::move( name ), targetNode );
 }
 
 void FSManager::createSymLink( utils::String name, utils::String target ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
-    Directory *current;
-    std::tie( current, name ) = _findDirectoryOfFile( std::move( name ) );
-    if ( !current )
-        throw Error( ENOENT );
+    Node current;
+    std::tie( current, name ) = _findDirectoryOfFile( name );
 
-    if ( !current->grants().user.write() )
-        throw Error( EACCES );
+    _checkGrants( current, Mode::WUSER );
+    Directory *dir = current->data()->as< Directory >();
 
-    if ( !current->create< SymLink >( std::move( name ), Grants::ALL, std::move( target ) ) )
-        throw Error( EEXIST );
+    unsigned mode = 0;
+    mode |= Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER;
+    mode |= Mode::LINK;
+
+    auto node = std::make_shared< INode >( mode );
+    node->assign( new Link( std::move( target ) ) );
+
+    dir->create( std::move( name ), node );
 }
 
 int FSManager::createFile( utils::String name, unsigned mode ) {
-    Ptr file = nullptr;
-    _createFile( std::move( name ), mode, &file );
+    Node item;
+    _createFile( std::move( name ), mode, &item );
     Flags< flags::Open > fl = flags::Open::Write | flags::Open::Create;// | flags::Open::Truncate
-    return _getFileDescriptor( std::make_shared< FileDescriptor >( file, fl ) );
+    return _getFileDescriptor( std::make_shared< FileDescriptor >( std::move( item ), fl ) );
 }
 
 void FSManager::access( utils::String name, Flags< flags::Access > mode ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
-    Ptr item = findDirectoryItem( name );
+    Node item = findDirectoryItem( name );
     if ( !item )
         throw Error( EACCES );
 
-    if ( ( mode.has( flags::Access::Read ) && !item->grants().user.read() ) ||
-         ( mode.has( flags::Access::Write ) && !item->grants().user.write() ) ||
-         ( mode.has( flags::Access::Execute ) && !item->grants().user.execute() ) )
+    if ( ( mode.has( flags::Access::Read ) && !item->mode().userRead() ) ||
+         ( mode.has( flags::Access::Write ) && !item->mode().userWrite() ) ||
+         ( mode.has( flags::Access::Execute ) && !item->mode().userExecute() ) )
         throw Error( EACCES );
 }
 
 int FSManager::openFile( utils::String name, Flags< flags::Open > fl, unsigned mode ) {
 
-    Ptr file = findDirectoryItem( name );
-    if ( file && !file->isFile() )
+    Node file = findDirectoryItem( name );
+    if ( file && !file->mode().isFile() )
         file = nullptr;
 
     if ( fl.has( flags::Open::Create ) ) {
@@ -103,9 +126,9 @@ int FSManager::openFile( utils::String name, Flags< flags::Open > fl, unsigned m
         throw Error( ENOENT );
 
     if ( fl.has( flags::Open::Read ) )
-        _checkGrants( file, Grants::READ );
+        _checkGrants( file, Mode::RUSER );
     if ( fl.has( flags::Open::Write ) )
-        _checkGrants( file, Grants::WRITE );
+        _checkGrants( file, Mode::WUSER );
 
     return _getFileDescriptor( std::make_shared< FileDescriptor >( file, fl ) );
 }
@@ -136,48 +159,58 @@ std::shared_ptr< FileDescriptor > &FSManager::getFile( int fd ) {
     throw Error( EBADF );
 }
 
-void FSManager::removeFile( utils::String name, Directory *current ) {
+void FSManager::removeFile( utils::String name ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
-    if ( !current )
-        std::tie( current, name ) = _findDirectoryOfFile( name );
+    Node current;
+    std::tie( current, name ) = _findDirectoryOfFile( name );
 
-    if ( !current )
-        throw Error( ENOENT );
+    _checkGrants( current, Mode::WUSER );
+    Directory *dir = current->data()->as< Directory >();
 
-    _checkGrants( current, Grants::WRITE );
-
-    if ( !current->find( name ) )
-        throw Error( ENOENT );
-
-    if ( !current->remove( name ) )
-        throw Error( EISDIR );
+    dir->remove( name );
 }
 
-void FSManager::removeDirectory( utils::String name, Directory *current ) {
+void FSManager::removeDirectory( utils::String name ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
-    if ( !current )
-        std::tie( current, name ) = _findDirectoryOfFile( name );
+    Node current;
+    std::tie( current, name ) = _findDirectoryOfFile( name );
 
-    if ( !current )
-        throw Error( ENOENT );
 
-    _checkGrants( current, Grants::WRITE );
+    _checkGrants( current, Mode::WUSER );
+    Directory *dir = current->data()->as< Directory >();
 
-    if ( !current->find( name ) )
-        throw Error( ENOENT );
+    dir->removeDirectory( name );
+}
 
-    if ( !current->removeDirectory( name ) )
-        throw Error( ENOTDIR );
-
+void FSManager::removeAt( int fd, utils::String name, flags::At fl ) {
+    WeakNode savedDir = _currentDirectory;
+    try {
+        if ( utils::isRelative( name ) && fd != CURRENT_DIRECTORY )
+            changeDirectory( fd );
+        switch( fl ) {
+        case flags::At::NoFlag:
+            removeFile( name );
+            break;
+        case flags::At::RemoveDir:
+            removeDirectory( name );
+            break;
+        default:
+            throw Error( EINVAL );
+        }
+        _currentDirectory = savedDir;
+    } catch ( Error & ) {
+        _currentDirectory = savedDir;
+        throw;
+    }
 }
 
 off_t FSManager::lseek( int fd, off_t offset, Seek whence ) {
     auto f = getFile( fd );
-    if ( f->directoryItem()->isPipe() )
+    if ( f->inode()->mode().isFifo() )
         throw Error( ESPIPE );
 
     switch( whence ) {
@@ -206,57 +239,81 @@ off_t FSManager::lseek( int fd, off_t offset, Seek whence ) {
     return f->offset();
 }
 
+void FSManager::changeDirectory( utils::String path ) {
+    Node item = findDirectoryItem( path );
+    if ( !item )
+        throw Error( ENOENT );
+    if ( !item->mode().isDirectory() )
+        throw Error( ENOTDIR );
+    _currentDirectory = item;
+}
+
+void FSManager::changeDirectory( int fd ) {
+    Node item = getFile( fd )->inode();
+    if ( !item )
+        throw Error( ENOENT );
+    if ( !item->mode().isDirectory() )
+        throw Error( ENOTDIR );
+    _currentDirectory = item;
+}
+
 template< typename... Args >
-void FSManager::_createFile( utils::String name, unsigned mode, Ptr *file, Args &&... args ) {
+void FSManager::_createFile( utils::String name, unsigned mode, Node *file, Args &&... args ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
-    Directory *current;
+    Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
-    Ptr newFile;
-    if ( !current )
-        throw Error( ENOENT );
 
-    _checkGrants( current, Grants::WRITE );
+    _checkGrants( current, Mode::WUSER );
+    Directory *dir = current->data()->as< Directory >();
 
-    auto content = std::make_shared< File >( std::forward< Args >( args )... );
-    content->grants() = mode;
-    bool result = (newFile = current->create< FileItem >( std::move( name ), Grants::NONE, content ) );
-    if ( !result )
-        throw Error( EEXIST );
+    mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
+    mode |= Mode::FILE;
 
+    auto node = std::make_shared< INode >( mode );
+    node->assign( new RegularFile( std::forward< Args >( args )... ) );
+
+    dir->create( std::move( name ), node );
     if ( file )
-        *file = newFile;
+        *file = node;
 }
 
-Ptr FSManager::findDirectoryItem( const utils::String &name, bool followSymLinks ) {
-    Directory *current = &_root;
-    Ptr item = &_root;
+Node FSManager::findDirectoryItem( utils::String name, bool followSymLinks ) {
+    name = utils::normalize( name );
+    Node current = _root;
+    if ( utils::isRelative( name ) )
+        current = currentDirectory();
+
+    Node item = current;
     utils::Queue< utils::String > q( utils::splitPath< utils::Deque< utils::String > >( name ) );
-    utils::Set< SymLink * > loopDetector;
+    utils::Set< Link * > loopDetector;
     while ( !q.empty() ) {
-        if ( !current )
+        if ( !current->mode().isDirectory() )
             throw Error( ENOTDIR );
 
-        _checkGrants( current, Grants::EXECUTE );
+        _checkGrants( current, Mode::XUSER );
+
+        Directory *dir = current->data()->as< Directory >();
 
         {
-            auto d = utils::make_defer( [&]() { q.pop(); } );
+            auto d = utils::make_defer( [&]{ q.pop(); } );
             const auto &subFolder = q.front();
             if ( subFolder.empty() )
                 continue;
-            item = current->find( subFolder );
+            item = dir->find( subFolder );
         }
+
         if ( !item ) {
             if ( q.empty() )
                 return nullptr;
             throw Error( ENOENT );
         }
 
-        if ( item->isDirectory() )
-            current = DirectoryItem::self( item )->as< Directory >();
-        else if ( item->isSymLink() && ( followSymLinks || !q.empty() ) ) {
-            SymLink *sl = item->as< SymLink >();
+        if ( item->mode().isDirectory() )
+            current = item;
+        else if ( item->mode().isLink() && ( followSymLinks || !q.empty() ) ) {
+            Link *sl = item->data()->as< Link >();
 
             if ( !loopDetector.insert( sl ).second )
                 throw Error( ELOOP );
@@ -267,10 +324,8 @@ Ptr FSManager::findDirectoryItem( const utils::String &name, bool followSymLinks
                 q.pop();
             }
             q.swap( _q );
-            if ( q.front().empty() )
-                current = current->parent()->as< Directory >();
-            else
-                current = &_root;
+            if ( utils::isAbsolute( sl->target() ) )
+                current = _root;
             continue;
         }
         else {
@@ -282,14 +337,16 @@ Ptr FSManager::findDirectoryItem( const utils::String &name, bool followSymLinks
     return item;
 }
 
-std::pair< Directory *, utils::String > FSManager::_findDirectoryOfFile( utils::String name ) {
+std::pair< Node, utils::String > FSManager::_findDirectoryOfFile( utils::String name ) {
+    name = utils::normalize( name );
     utils::String path;
     std::tie( path, name ) = utils::splitFileName( name );
-    return { findDirectoryItem( path )->as< Directory >(), name };
-}
-
-Directory *FSManager::_findDirectory( const utils::String &path ) {
-    return findDirectoryItem( path )->as< Directory >();
+    Node item = findDirectoryItem( path );
+    if ( !item )
+        throw Error( ENOENT );
+    if ( !item->mode().isDirectory() )
+        throw Error( ENOTDIR );
+    return { item, name };
 }
 
 int FSManager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f ) {
@@ -324,8 +381,8 @@ void FSManager::_insertSnapshotItem( const SnapshotFS &item ) {
     }
 }
 
-void FSManager::_checkGrants( const Grantsable *item, unsigned grant ) const {
-    if ( ( item->grants().user & grant ) != grant )
+void FSManager::_checkGrants( Node inode, unsigned grant ) const {
+    if ( ( inode->mode() & grant ) != grant )
         throw Error( EACCES );
 }
 

@@ -1,3 +1,5 @@
+#include "fs-utils.h"
+
 #ifndef _FS_CONSTANTS_H_
 #define _FS_CONSTANTS_H_
 
@@ -11,6 +13,8 @@ enum class Seek {
     End
 };
 
+const int CURRENT_DIRECTORY = -4;
+
 namespace flags {
 
 enum class Open {
@@ -21,6 +25,7 @@ enum class Open {
     Create      =  4,
     Excl        =  8,
     TmpFile     = 16,
+    Truncate    = 32,
 };
 
 enum class Access {
@@ -28,6 +33,12 @@ enum class Access {
     Read        = 1,
     Write       = 2,
     Execute     = 4,
+};
+
+enum class At {
+    Undefined   = 0,
+    NoFlag      = 1,
+    RemoveDir   = 2,
 };
 
 } // namespace flags

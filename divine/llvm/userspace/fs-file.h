@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "fs-utils.h"
+#include "fs-inode.h"
 
 #ifndef _FS_FILE_H_
 #define _FS_FILE_H_
@@ -8,45 +9,52 @@
 namespace divine {
 namespace fs {
 
-struct FSItem : Grantsable {
-    FSItem( unsigned mode = Grants::ALL ) :
-        _grants( mode )
+struct Link : DataItem {
+
+    Link( utils::String target ) :
+        _target( std::move( target ) )
     {}
-    virtual ~FSItem() {}
-    virtual size_t size() const = 0;
-    virtual bool read( char *, size_t, size_t & ) = 0;
-    virtual bool write( const char *, size_t, size_t ) = 0;
-    virtual bool isRegularFile() const {
-        return true;
+
+    size_t size() const override {
+        return _target.size();
     }
 
-    Grants &grants() override {
-        return _grants;
+    utils::String &target() {
+        return _target;
     }
-    Grants grants() const override {
-        return _grants;
+    const utils::String &target() const {
+        return _target;
     }
+
 private:
-    Grants _grants;
+    utils::String _target;
 };
 
-struct File : public FSItem {
 
-    File( const char *content, size_t size ) :
+struct File : DataItem {
+
+    virtual bool read( char *, size_t, size_t & ) = 0;
+    virtual bool write( const char *, size_t, size_t ) = 0;
+
+};
+
+struct RegularFile : File {
+
+    RegularFile( const char *content, size_t size ) :
         _snapshot( bool( content ) ),
         _size( content ? size : 0 ),
         _roContent( content )
     {}
 
-    File() :
+    RegularFile() :
         _snapshot( false ),
         _size( 0 ),
         _roContent( nullptr )
     {}
 
-    File( const File &other ) = default;
-    File( File &&other ) = default;
-    File &operator=( File ) = delete;
+    RegularFile( const RegularFile &other ) = default;
+    RegularFile( RegularFile &&other ) = default;
+    RegularFile &operator=( RegularFile ) = delete;
 
     size_t size() const override {
         return _size;
@@ -94,7 +102,7 @@ private:
     utils::Vector< char > _content;
 };
 
-struct FileNull : public FSItem {
+struct WriteOnlyFile : public File {
 
     size_t size() const override {
         return 0;
@@ -107,11 +115,11 @@ struct FileNull : public FSItem {
     }
 };
 
-struct Pipe : public FSItem {
+struct Pipe : public File {
 
-    bool isRegularFile() const override {
-        return false;
-    }
+    Pipe() :
+        _reader( true )
+    {}
 
     size_t size() const override {
         return _content.size();
@@ -132,16 +140,25 @@ struct Pipe : public FSItem {
     }
 
     bool write( const char *buffer, size_t offset, size_t length ) override {
+        if ( !_reader )
+            /// TODO: raise SIGPIPE signal
+            throw Error( EPIPE );
         if ( _content.size() < offset + length )
             _content.resize( offset + length );
         std::copy( buffer, buffer + length, _content.begin() + offset );
         return true;
     }
+
+    void releaseReader() {
+        _reader = false;
+    }
+
 private:
     utils::Vector< char > _content;
+    bool _reader;
 };
 
-struct Socket : public FSItem {
+struct Socket : public File {
     // TODO: implement
 };
 

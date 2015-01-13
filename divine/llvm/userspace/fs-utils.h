@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <type_traits>
 #include <cstdlib>
+#include <cerrno>
 
 #ifndef _FS_PATH_UTILS_H_
 #define _FS_PATH_UTILS_H_
@@ -267,7 +268,7 @@ inline std::pair< String, String > splitFileName( String path ) {
     return std::make_pair( path.substr( 0, count ), path.substr( count + 1, length ) );
 }
 
-inline String joinPath( Vector< String > paths ) {
+inline String joinPath( Vector< String > paths, bool normalize = false ) {
     if ( paths.empty() )
         return "";
     auto it = ++paths.begin();
@@ -290,75 +291,51 @@ inline String joinPath( FilePaths &&...paths ) {
 }
 
 template< typename Result = Vector< String > >
-inline Result splitPath( String path ) {
+inline Result splitPath( String path, bool normalize = false ) {
     Result out;
     auto last = path.begin();
     while ( true ) {
         auto next = std::find_if( last, path.end(), &isPathSeparator );
         if ( next == path.end() ) {
-            out.emplace_back( last, next );
+            String s( last, next );
+            if ( normalize && s == "." );
+            else if ( normalize && s == ".." ) {
+                if ( !out.empty() && out.back() != ".." )
+                    out.pop_back();
+                else
+                    out.emplace_back( std::move( s ) );
+            }
+            else
+                out.emplace_back( std::move( s ) );
             return out;
         }
-        if ( last != next )
-            out.emplace_back( last, next );
+        if ( last != next ) {
+            String s( last, next );
+            if ( normalize && s == "." );
+            else if ( normalize && s == ".." ) {
+                if ( !out.empty() && out.back() != ".." )
+                    out.pop_back();
+                else
+                    out.emplace_back( std::move( s ) );
+            }
+            else
+                out.emplace_back( std::move( s ) );
+        }
         last = ++next;
     }
 }
 
+inline String normalize( String path ) {
+    auto abs = absolutePrefix( path );
+    return joinPath( abs.first, joinPath( splitPath( abs.second, true ) ) );
+}
+
 } // namespace utils
 
-struct Grants {
-
-    static const unsigned ALL = 0777;
-    static const unsigned EXECUTE = 1;
-    static const unsigned WRITE = 2;
-    static const unsigned READ = 4;
-    static const unsigned FULL = 7;
-    static const unsigned NONE = 0;
-
-    struct GrantItem {
-
-        bool read() const {
-            return _mode & READ;
-        }
-        bool write() const {
-            return _mode & WRITE;
-        }
-        bool execute() const {
-            return _mode & EXECUTE;
-        }
-
-        GrantItem( unsigned char mode ) :
-            _mode( mode & FULL )
-        {}
-        operator unsigned() const {
-            return _mode;
-        }
-    private:
-        unsigned char _mode;
-    };
-    GrantItem user;
-    GrantItem group;
-    GrantItem other;
-
-    Grants( unsigned mode ) :
-        user( mode >> 6 ),
-        group( mode >> 3 ),
-        other( mode )
-    {}
-
-    operator unsigned() const {
-        return (user << 6) | ( group << 3 ) | other;
-    }
-};
-
-struct Grantsable {
-    virtual Grants &grants() = 0;
-    virtual Grants grants() const = 0;
-};
-
 struct Error {
-    Error( int code ) : _code( code ) {}
+    Error( int code ) : _code( code ) {
+        errno = code;
+    }
 
     int code() const noexcept {
         return _code;

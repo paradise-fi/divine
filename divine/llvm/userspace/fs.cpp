@@ -3,6 +3,7 @@
 #include <cstdarg>
 
 #include "fs.h"
+#include "fcntl.h"
 #include "fs-manager.h"
 
 namespace divine {
@@ -28,12 +29,12 @@ void showFS() {
         [&]( utils::String path ) {
             for ( int i = 0; i < indent; ++i )
                 std::cout << "| ";
-            Ptr item = filesystem.findDirectoryItem( path, false );
-            std::cout << item->name();
-            if ( item->isSymLink() ) {
-                std::cout << " -> " << item->as< SymLink >()->target();
+            Node item = filesystem.findDirectoryItem( path, false );
+            std::cout << utils::splitFileName( path ).second;
+            if ( item->mode().isLink() ) {
+                std::cout << " -> " << item->data()->as< Link >()->target();
             }
-            else if ( item->isPipe() ) {
+            else if ( item->mode().isFifo() ) {
                 std::cout << " {pipe}";
             }
             std::cout << std::endl;
@@ -48,22 +49,22 @@ extern "C" {
 
 static void _initStat( struct stat *buf ) {
     buf->st_dev = 0;
-    buf->st_uid = 0;
-    buf->st_gid = 0;
     buf->st_rdev = 0;
     buf->st_atime = 0;
     buf->st_mtime = 0;
     buf->st_ctime = 0;
 }
 
-static int _fillStat( divine::fs::ConstPtr item, struct stat *buf ) {
+static int _fillStat( const divine::fs::Node item, struct stat *buf ) {
     if ( !item )
         return -1;
     _initStat( buf );
     buf->st_ino = item->ino();
-    buf->st_mode = item->grants();
-    buf->st_nlink = item->isFile() ? item->as< divine::fs::FileItem >()->object().use_count() : 1;
+    buf->st_mode = item->mode();
+    buf->st_nlink = item.use_count();
     buf->st_size = item->size();
+    buf->st_uid = item->uid();
+    buf->st_gid = item->gid();
     buf->st_blksize = 512;
     buf->st_blocks = ( buf->st_size + 1 ) / buf->st_blksize;
     return 0;
@@ -85,15 +86,14 @@ int open( const char *path, int flags, ... ) {
     va_start( args, flags );
     if ( flags & O_RDONLY )  f |= divine::fs::flags::Open::Read;
     if ( flags & O_WRONLY )  f |= divine::fs::flags::Open::Write;
-    if ( flags & O_CREAT ) { f |= divine::fs::flags::Open::Create; m = va_arg( args, unsigned ); }
+    if ( flags & O_CREAT ) { f |= divine::fs::flags::Open::Create; m = unsigned( va_arg( args, int ) ); }
     if ( flags & O_EXCL )    f |= divine::fs::flags::Open::Excl;
     if ( flags & O_TMPFILE ) f |= divine::fs::flags::Open::TmpFile;
     va_end( args );
 
     try {
         return divine::fs::filesystem.openFile( path, f, m );
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -102,8 +102,7 @@ int close( int fd ) {
     try {
         divine::fs::filesystem.closeFile( fd );
         return 0;
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -112,8 +111,7 @@ ssize_t write( int fd, const void *buf, size_t count ) {
     try {
         auto f = divine::fs::filesystem.getFile( fd );
         return f->write( buf, count );
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -122,8 +120,7 @@ ssize_t read( int fd, void *buf, size_t count ) {
     try {
         auto f = divine::fs::filesystem.getFile( fd );
         return f->read( buf, count );
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -132,8 +129,7 @@ int mkdir( const char *path, int mode ) {
     try {
         divine::fs::filesystem.createDirectory( path, mode );
         return 0;
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -142,8 +138,7 @@ int unlink( const char *path ) {
     try {
         divine::fs::filesystem.removeFile( path );
         return 0;
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -152,8 +147,30 @@ int rmdir( const char *path ) {
     try {
         divine::fs::filesystem.removeDirectory( path );
         return 0;
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int unlinkat( int fd, const char *path, int flags ) {
+    divine::fs::flags::At f;
+    switch( flags ) {
+    case 0:
+        f = divine::fs::flags::At::NoFlag;
+        break;
+    case AT_REMOVEDIR:
+        f = divine::fs::flags::At::RemoveDir;
+        break;
+    default:
+        f = divine::fs::flags::At::Undefined;
+        break;
+    }
+    if ( fd == AT_FDCWD )
+        fd = divine::fs::CURRENT_DIRECTORY;
+    try {
+        divine::fs::filesystem.removeAt( fd, path, f );
+        return 0;
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -173,24 +190,21 @@ off_t lseek( int fd, off_t offset, int whence ) {
             break;
         }
         return divine::fs::filesystem.lseek( fd, offset, w );
-    } catch ( Error &e ) {
-        errno = e.code();
-        return off_t( -1 );
+    } catch ( Error & ) {
+        return -1;
     }
 }
 int dup( int fd ) {
     try {
         return divine::fs::filesystem.duplicate( fd );
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
 int dup2( int oldfd, int newfd ) {
     try {
         return divine::fs::filesystem.duplicate2( oldfd, newfd );
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -198,8 +212,7 @@ int symlink( const char *target, const char *linkpath ) {
     try {
         divine::fs::filesystem.createSymLink( linkpath, target );
         return 0;
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -207,8 +220,7 @@ int link( const char *target, const char *linkpath ) {
     try {
         divine::fs::filesystem.createHardLink( linkpath, target );
         return 0;
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -220,8 +232,7 @@ int access( const char *path, int mode ) {
     try {
         divine::fs::filesystem.access( path, m );
         return 0;
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -232,8 +243,7 @@ int stat( const char *path, struct stat *buf ) {
         if ( !item )
             throw Error( ENOENT );
         return _fillStat( item, buf );
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -244,8 +254,7 @@ int lstat( const char *path, struct stat *buf ) {
         if ( !item )
             throw Error( ENOENT );
         return _fillStat( item, buf );
-    } catch ( Error &e ) {
-        errno = e.code();
+    } catch ( Error & ) {
         return -1;
     }
 }
@@ -253,12 +262,34 @@ int lstat( const char *path, struct stat *buf ) {
 int fstat( int fd, struct stat *buf ) {
     try {
         auto item = divine::fs::filesystem.getFile( fd );
-        return _fillStat( item->directoryItem(), buf );
-    } catch ( Error &e ) {
-        errno = e.code();
+        return _fillStat( item->inode(), buf );
+    } catch ( Error & ) {
         return -1;
     }
 }
 
+unsigned umask( unsigned mask ) {
+    unsigned result = divine::fs::filesystem.umask();
+    divine::fs::filesystem.umask( mask & 0777 );
+    return result;
+}
+
+int chdir( const char *path ) {
+    try {
+        divine::fs::filesystem.changeDirectory( path );
+        return 0;
+    } catch( Error & ) {
+        return -1;
+    }
+}
+
+int fchdir( int fd ) {
+    try {
+        divine::fs::filesystem.changeDirectory( fd );
+        return 0;
+    } catch( Error & ) {
+        return -1;
+    }
+}
 
 } // extern "C"

@@ -5,6 +5,7 @@
 #include <array>
 
 #include "fs-utils.h"
+#include "fs-inode.h"
 #include "fs-constants.h"
 #include "fs-file.h"
 #include "fs-directory.h"
@@ -20,28 +21,16 @@ namespace fs {
 struct FSManager {
 
     FSManager() :
-        _standardIO{ {
-            { nullptr, "", Grants::ALL, std::make_shared< File >() },
-            { nullptr, "", Grants::ALL, std::make_shared< FileNull >() } 
-        } },
-        _openFD{
-            std::make_shared< FileDescriptor >( &_standardIO[ 0 ], flags::Open::Read ),// stdin
-            std::make_shared< FileDescriptor >( &_standardIO[ 1 ], flags::Open::Write ),// stdout
-            std::make_shared< FileDescriptor >( &_standardIO[ 1 ], flags::Open::Write )// stderr
-        }
-    {}
+        FSManager( true )
+    {
+        _standardIO[ 0 ]->assign( new RegularFile() );
+    }
 
     FSManager( const char *in, size_t length ) :
-        _standardIO{ {
-            { nullptr, "", Grants::ALL, std::make_shared< File >( in, length ) },
-            { nullptr, "", Grants::ALL, std::make_shared< FileNull >() }
-        } },
-        _openFD{
-            std::make_shared< FileDescriptor >( &_standardIO[ 0 ], flags::Open::Read ),// stdin
-            std::make_shared< FileDescriptor >( &_standardIO[ 1 ], flags::Open::Write ),// stdout
-            std::make_shared< FileDescriptor >( &_standardIO[ 1 ], flags::Open::Write )// stderr
-        }
-    {}
+        FSManager( true )
+    {
+        _standardIO[ 0 ]->assign( new RegularFile( in, length ) );
+    }
 
     explicit FSManager( std::initializer_list< SnapshotFS > items ) :
         FSManager()
@@ -57,7 +46,7 @@ struct FSManager {
             _insertSnapshotItem( item );
     }
 
-    Ptr findDirectoryItem( const utils::String &name, bool followSymLinks = true );
+    Node findDirectoryItem( utils::String name, bool followSymLinks = true );
 
     void createDirectory( utils::String name, unsigned mode );
     void createHardLink( utils::String name, const utils::String &target );
@@ -71,24 +60,25 @@ struct FSManager {
     int duplicate2( int oldfd, int newfd );
     std::shared_ptr< FileDescriptor > &getFile( int fd );
 
-    void removeFile( utils::String name, Directory *current = nullptr );
-    void removeDirectory( utils::String name, Directory *current = nullptr );
+    void removeFile( utils::String name );
+    void removeDirectory( utils::String name );
+    void removeAt( int fd, utils::String name, flags::At fl );
 
     off_t lseek( int fd, off_t offset, Seek whence );
 
     template< typename DirPre, typename DirPost, typename File >
     void traverseDirectoryTree( const utils::String &root, DirPre pre, DirPost post, File file ) {
-        Directory *current = _findDirectory( root );
-        if ( !current )
+        Node current = findDirectoryItem( root );
+        if ( !current || !current->mode().isDirectory() )
             return;
         if ( pre( root ) ) {
-            for ( auto &i : *current ) {
+            for ( auto &i : *current->data()->as< Directory >() ) {
 
-                if ( i->name() == "." || i->name() == ".." )
+                if ( i.name() == "." || i.name() == ".." )
                     continue;
 
-                utils::String path = utils::joinPath( root, i->name() );
-                if ( i->isDirectory() )
+                utils::String path = utils::joinPath( root, i.name() );
+                if ( i.inode()->mode().isDirectory() )
                     traverseDirectoryTree( path, pre, post, file );
                 else
                     file( path );
@@ -98,20 +88,38 @@ struct FSManager {
         }
     }
 
+    Node currentDirectory() {
+        return _currentDirectory.lock();
+    }
+
+    void changeDirectory( utils::String path );
+    void changeDirectory( int fd );
+
+    unsigned umask() const {
+        return _umask;
+    }
+    void umask( unsigned mask ) {
+        _umask = 0777 & mask;
+    }
+
 private:
-    Directory _root;
-    std::array< FileItem, 2 > _standardIO;
+    Node _root;
+    WeakNode _currentDirectory;
+    std::array< Node, 2 > _standardIO;
     utils::Vector< std::shared_ptr< FileDescriptor > > _openFD;
 
-    template< typename... Args >
-    void _createFile( utils::String name, unsigned mode, Ptr *file, Args &&... args );
+    unsigned short _umask;
 
-    std::pair< Directory *, utils::String > _findDirectoryOfFile( utils::String name );
-    Directory *_findDirectory( const utils::String &path );
+    FSManager( bool );// private default ctor
+
+    template< typename... Args >
+    void _createFile( utils::String name, unsigned mode, Node *file, Args &&... args );
+
+    std::pair< Node, utils::String > _findDirectoryOfFile( utils::String name );
     int _getFileDescriptor( std::shared_ptr< FileDescriptor > f );
     void _insertSnapshotItem( const SnapshotFS &item );
 
-    void _checkGrants( const Grantsable *item, unsigned grant ) const;
+    void _checkGrants( Node inode, unsigned grant ) const;
 
 };
 

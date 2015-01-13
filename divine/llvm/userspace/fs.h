@@ -57,6 +57,7 @@ int close( int fd );
  *          number of written bytes
  *          -1 in case of error; possible error codes:
  *              EBADF
+ *              EPIPE
  */
 ssize_t write( int fd, const void *buf, size_t count );
 
@@ -86,6 +87,7 @@ int mkdir( const char *path, int mode );
 
 int unlink( const char *path );
 int rmdir( const char *path );
+int unlinkat( int fd, const char *path, int flags );
 
 off_t lseek( int fd, off_t offset, int whence );
 int dup( int fd );
@@ -97,6 +99,11 @@ int access( const char *path, int mode );
 int fstat( int fd, struct stat *buf );
 inline int stat( const char *path, struct stat *buf );
 inline int lstat( const char *path, struct stat *buf );
+
+unsigned umask( unsigned mask );
+
+int chdir( const char *path );
+int fchdir( int fd );
 
 #ifdef __cplusplus
 } // extern C

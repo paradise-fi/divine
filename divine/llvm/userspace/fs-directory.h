@@ -1,8 +1,7 @@
 #include <memory>
 #include <cerrno>
 
-#include "fs-constants.h"
-#include "fs-file.h"
+#include "fs-inode.h"
 #include "fs-utils.h"
 
 #ifndef _FS_DIRECTORY_H_
@@ -11,286 +10,160 @@
 namespace divine {
 namespace fs {
 
-struct Typeable {
-    virtual ~Typeable(){}
-    virtual bool isFile() const { return false; }
-    virtual bool isPipe() const { return false; }
-    virtual bool isSymLink() const { return false; }
-    virtual bool isDirectory() const { return false; }
+struct DirectoryEntry {
 
-    template< typename T >
-    T *as() {
-        return dynamic_cast< T * >( this );
-    }
-    template< typename T >
-    const T *as() const {
-        return dynamic_cast< const T * >( this );
-    }
-};
-
-struct DirectoryItem : Typeable, Grantsable {
-
-    DirectoryItem( DirectoryItem *parent, utils::String name, unsigned mode = Grants::ALL ) :
-        _parent( parent ),
+    DirectoryEntry( utils::String name, Node inode ) :
         _name( std::move( name ) ),
-        _ino( getIno() ),
-        _grants( mode )
+        _inode( std::move( inode ) ),
+        _weak( false )
     {}
 
-    DirectoryItem( const DirectoryItem & ) = delete;
-    DirectoryItem &operator=( const DirectoryItem & ) = delete;
-    DirectoryItem( DirectoryItem && ) = default;
-    DirectoryItem &operator=( DirectoryItem && ) = default;
+    DirectoryEntry( utils::String name, WeakNode inode ) :
+        _name( std::move( name ) ),
+        _inode( std::move( inode ) ),
+        _weak( true )
+    {}
 
-    const utils::String &name() const {
-        return _name;
+    DirectoryEntry( const DirectoryEntry &other ) :
+        _name( other.name() ),
+        _weak( other._weak )
+    {
+        if ( _weak )
+            new (&_inode.weak) WeakNode( other._inode.weak );
+        else
+            new (&_inode.strong) Node( other._inode.strong );
     }
+
+    DirectoryEntry( DirectoryEntry &&other ) :
+        _name( std::move( other._name ) ),
+        _weak( other._weak )
+    {
+        if ( _weak )
+            new (&_inode.weak) WeakNode( std::move( other._inode.weak ) );
+        else
+            new (&_inode.strong) Node( std::move( other._inode.strong ) );
+    }
+
+    ~DirectoryEntry() {
+        if ( _weak )
+            _inode.weak.~WeakNode();
+        else
+            _inode.strong.~Node();
+    }
+
+    DirectoryEntry &operator=( DirectoryEntry other ) {
+        swap( other );
+        return *this;
+    }
+
     utils::String &name() {
         return _name;
     }
-
-    DirectoryItem *parent() {
-        return _parent;
-    }
-    const DirectoryItem *parent() const {
-        return _parent;
+    const utils::String &name() const {
+        return _name;
     }
 
-    static DirectoryItem *self( DirectoryItem *item ) {
-        return item->selfVirtual();
+    Node inode() {
+        return _weak ? _inode.weak.lock() : _inode.strong;
+    }
+    const Node inode() const {
+        return _weak ? _inode.weak.lock() : _inode.strong;
     }
 
-    int ino() const {
-        return _ino;
+    void swap( DirectoryEntry &other ) {
+        using std::swap;
+        swap( _name, other._name );
+
+        if ( _weak && other._weak )
+            _inode.weak.swap( other._inode.weak );
+        else if ( !_weak && !other._weak )
+            _inode.strong.swap( other._inode.strong );
+        else if ( _weak ) {
+            WeakNode tmp( std::move( _inode.weak ) );
+            new (&_inode.strong) Node( std::move( other._inode.strong ) );
+            new (&other._inode.weak) WeakNode( std::move( tmp ) );
+        }
+        else {
+            WeakNode tmp( std::move( other._inode.weak ) );
+            new (&other._inode.strong) Node( std::move( _inode.strong ) );
+            new (&_inode.weak) WeakNode( std::move( tmp ) );
+        }
+        swap( _weak, other._weak );
     }
 
-    Grants &grants() override {
-        return _grants;
-    }
-    Grants grants() const override {
-        return _grants;
-    }
-
-    virtual size_t size() const {
-        return 0;
-    }
-
-protected:
-
-    virtual DirectoryItem *selfVirtual() {
-        return this;
-    }
 private:
-    DirectoryItem *_parent;
     utils::String _name;
-    const int _ino;
-    Grants _grants;
-
-    static int getIno() {
-        static int lastIno = 0;
-        return ++lastIno;
-    }
+    union _U {
+        Node strong;
+        WeakNode weak;
+        _U() {}
+        _U( Node &&node ) :
+            strong( std::move( node ) )
+        {}
+        _U( WeakNode &&node ) :
+            weak( std::move( node ) )
+        {}
+        _U( const _U & ) {}
+        _U( _U && ) {}
+        ~_U() {}
+    } _inode;
+    bool _weak;
 
 };
 
-using Handle = std::unique_ptr< DirectoryItem >;
-using Ptr = DirectoryItem *;
-using ConstPtr = const DirectoryItem *;
+struct Directory : DataItem {
+    using Items = utils::Vector< DirectoryEntry >;
 
-
-struct FileItem : DirectoryItem {
-
-    FileItem( DirectoryItem *parent, utils::String name, unsigned mode, std::shared_ptr< FSItem > item ) :
-        DirectoryItem( parent, std::move( name ) ),
-        _item( item )
+    Directory( WeakNode self, WeakNode parent = WeakNode{} ) :
+        _items{
+            DirectoryEntry{ ".", self },
+            DirectoryEntry{ "..", !parent.expired() ? parent : self }
+        }
     {}
-
-    bool isFile() const override {
-        return true;
-    }
-    bool isPipe() const override {
-        return !_item->isRegularFile();
-    }
 
     size_t size() const override {
-        return _item->size();
-    }
-
-    Grants &grants() override {
-        return _item->grants();
-    }
-    Grants grants() const override {
-        return _item->grants();
-    }
-
-    FSItem &get() {
-        return *_item;
-    }
-    const FSItem &get() const {
-        return *_item;
-    }
-
-    template< typename T >
-    T *get() {
-        return _item.get() ? dynamic_cast< T * >( _item.get() ) : nullptr;
-    }
-    template< typename T >
-    const T *get() const {
-        return _item.get() ? dynamic_cast< const T * >( _item.get() ) : nullptr;
-    }
-
-    std::shared_ptr< FSItem > object() {
-        return _item;
-    }
-
-    const std::shared_ptr< FSItem > &object() const {
-        return _item;
-    }
-private:
-    std::shared_ptr< FSItem > _item;
-};
-
-struct SymLink : DirectoryItem {
-    
-    SymLink( DirectoryItem *parent, utils::String name, unsigned mode, utils::String target ) :
-        DirectoryItem( parent, std::move( name ), mode ),
-        _target( std::move( target ) )
-    {}
-
-    bool isSymLink() const override {
-        return true;
-    }
-
-    size_t size() const override {
-        return _target.size();
-    }
-
-    utils::String &target() {
-        return _target;
-    }
-    const utils::String &target() const {
-        return _target;
-    }
-private:
-    utils::String _target;
-};
-
-struct Directory : DirectoryItem {
-    using Items = utils::Vector< Handle >;
-
-    struct DirectoryAlias : DirectoryItem {
-
-        DirectoryAlias( Directory *aliasFor, utils::String name ) :
-            DirectoryItem( aliasFor->parent(), std::move( name ) ),
-            _aliasFor( *aliasFor )
-        {
-        }
-
-        bool isDirectory() const override { return true; }
-
-        template< typename T, typename... Args >
-        Ptr create( utils::String name, unsigned mode, Args &&... args ) {
-            return _aliasFor.create< T >( std::move( name ), mode, std::forward< Args >( args )... );
-        }
-
-        Ptr find( utils::String name ) {
-            return _aliasFor.find( name );
-        }
-        template< typename T >
-        T *find( utils::String name ) {
-            return _aliasFor.find< T >( std::move( name ) );
-        }
-
-        bool remove( utils::String name ) {
-            return _aliasFor.remove( std::move( name ) );
-        }
-
-        bool removeDirectory( utils::String name ) {
-            return _aliasFor.removeDirectory( std::move( name ) );
-        }
-
-        size_t size() const {
-            return _aliasFor.size();
-        }
-
-        Items::iterator begin() {
-            return _aliasFor.begin();
-        }
-        Items::iterator end() {
-            return _aliasFor.end();
-        }
-        Items::const_iterator begin() const {
-            return _aliasFor.begin();
-        }
-        Items::const_iterator end() const {
-            return _aliasFor.end();
-        }
-    protected:
-        DirectoryItem *selfVirtual() override {
-            return &_aliasFor;
-        }
-    private:
-        Directory &_aliasFor;
-    };
-
-    Directory() :
-        Directory( this, "", Grants::ALL )
-    {}
-
-    Directory( Directory *parent, utils::String name, unsigned mode ) :
-        DirectoryItem( parent, std::move( name ), mode )
-    {
-        _items.emplace_back( Handle( new DirectoryAlias( this, "." ) ) );
-        _items.emplace_back( Handle( new DirectoryAlias( parent, ".." ) ) );
-    }
-
-    bool isDirectory() const override { return true; }
-
-    template< typename T, typename... Args >
-    Ptr create( utils::String name, unsigned mode, Args &&... args ) {
-        return insertDirectoryItem( name, Handle( new T( this, name, mode, std::forward< Args >( args )... ) ) );
-    }
-
-    Ptr find( utils::String name ) {
-        auto position = findItem( name );
-        if ( position == end() || name != (*position)->name() )
-            return nullptr;
-        return position->get();
-    }
-
-    template< typename T >
-    T *find( utils::String name ) {
-        Ptr item = find( std::move( name ) );
-        if ( !item )
-            return nullptr;
-        if ( item->isFile() )
-            return item->as< FileItem >()->get< T >();
-        return self( item )->as< T >();
-    }
-
-    bool remove( const utils::String &name ) {
-        auto position = findItem( name );
-        if ( position == end() || name != (*position)->name() || (*position)->isDirectory() )
-            return false;
-        _items.erase( position );
-        return true;
-    }
-
-    bool removeDirectory( const utils::String &name ) {
-        if ( name == "." || name == ".." )
-            return false;
-        auto position = findItem( name );
-        if ( position == end() || name != (*position)->name() || !(*position)->isDirectory() )
-            return false;
-        Directory *dir = (*position)->as< Directory >();
-        if ( !dir || dir->size() != 2 ) // not empty
-            return false;
-        _items.erase( position );
-        return true;
-    }
-
-    size_t size() const {
         return _items.size();
+    }
+
+    void create( utils::String name, Node inode ) {
+        _insertItem( DirectoryEntry( std::move( name ), std::move( inode ) ) );
+    }
+
+    Node find( const utils::String &name ) {
+        auto position = _findItem( name );
+        if ( position == _items.end() || name != position->name() )
+            return Node();
+        return position->inode();
+    }
+
+    template< typename T >
+    T *find( const utils::String &name ) {
+        Node node = find( name );
+        if ( !node )
+            return nullptr;
+        return node->data()->as< T >();
+    }
+
+    void remove( const utils::String &name ) {
+        auto position = _findItem( name );
+        if ( position == _items.end() || name != position->name() )
+            throw Error( ENOENT );
+        if ( position->inode()->mode().isDirectory() )
+            throw Error( EISDIR );
+        _items.erase( position );
+    }
+
+    void removeDirectory( const utils::String &name ) {
+        auto position = _findItem( name );
+        if ( position == _items.end() || name != position->name() )
+            throw Error( ENOENT );
+        if ( !position->inode()->mode().isDirectory() )
+            throw Error( ENOTDIR );
+
+        if ( position->inode()->size() != 2 )
+            throw Error( ENOTEMPTY );
+
+        _items.erase( position );
     }
 
     Items::iterator begin() {
@@ -305,31 +178,28 @@ struct Directory : DirectoryItem {
     Items::const_iterator end() const {
         return _items.end();
     }
-
 private:
 
-    Ptr insertDirectoryItem( const utils::String &name, Handle &&handle ) {
-        Ptr result = handle.get();
-        auto position = findItem( name );
-        if ( position == end() ) {
-            _items.push_back( std::move( handle ) );
-            return result;
+    void _insertItem( DirectoryEntry &&entry ) {
+        auto position = _findItem( entry.name() );
+        if ( position == _items.end() ) {
+            _items.emplace_back( std::move( entry ) );
+            return;
         }
-        if ( (*position)->name() != name) {
-            _items.insert( position, std::move( handle ) );
-            return result;
+        if ( position->name() != entry.name() ) {
+            _items.insert( position, std::move( entry ) );
+            return;
         }
-        errno = EEXIST;
-        return nullptr;
+        throw Error( EEXIST );
     }
 
-    Items::iterator findItem( const utils::String &name ) {
+    Items::iterator _findItem( const utils::String &name ) {
         return std::lower_bound(
             _items.begin(),
             _items.end(),
             name,
-            []( const Handle &handle, const utils::String &name ) {
-                return handle->name() < name;
+            []( const DirectoryEntry &entry, const utils::String &name ) {
+                return entry.name() < name;
             } );
     }
 
