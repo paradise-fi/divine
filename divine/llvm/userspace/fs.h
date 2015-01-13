@@ -27,6 +27,7 @@ int creat( const char *path, int mode );
 
 /**
  *  int open( const char *path, int flags[, int mode ] )
+ *  int openat( int dirfd, const char *path, int flags[, int mode ] )
  *
  *  Returns:
  *          file descriptor in range [0 - 1024] if succeeded
@@ -37,9 +38,11 @@ int creat( const char *path, int mode );
  *              ELOOP
  *              ENFILE
  *              EEXIST
+ *      openat may give also
+ *              EBADF
  */
 int open( const char *path, int flags, ... );
-
+int openat( int dirfd, const char *path, int flags, ... );
 /**
  *  int close( int fd )
  *

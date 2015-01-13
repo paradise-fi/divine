@@ -79,7 +79,7 @@ int creat( const char *path, int mode ) {
     }
 }
 
-int open( const char *path, int flags, ... ) {
+int openat( int dirfd, const char *path, int flags, ... ) {
     divine::fs::Flags< divine::fs::flags::Open > f = divine::fs::flags::Open::NoFlags;
     unsigned m = 0;
     va_list args;
@@ -90,12 +90,23 @@ int open( const char *path, int flags, ... ) {
     if ( flags & O_EXCL )    f |= divine::fs::flags::Open::Excl;
     if ( flags & O_TMPFILE ) f |= divine::fs::flags::Open::TmpFile;
     va_end( args );
-
+    if ( dirfd == AT_FDCWD )
+        dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
-        return divine::fs::filesystem.openFile( path, f, m );
+        return divine::fs::filesystem.openFileAt( dirfd, path, f, m );
     } catch ( Error & ) {
         return -1;
     }
+}
+int open( const char *path, int flags, ... ) {
+    int mode = 0;
+    if ( flags & O_CREAT ) {
+        va_list args;
+        va_start( args, flags );
+        mode = va_arg( args, int );
+        va_end( args );
+    }
+    return openat( AT_FDCWD, path, flags, mode );
 }
 
 int close( int fd ) {

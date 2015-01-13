@@ -54,7 +54,7 @@ struct FSManager {
     int createFile( utils::String name, unsigned mode );
 
     void access( utils::String name, Flags< flags::Access > mode );
-    int openFile( utils::String name, Flags< flags::Open > fl, unsigned mode );
+    int openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, unsigned mode );
     void closeFile( int fd );
     int duplicate( int oldfd );
     int duplicate2( int oldfd, int newfd );

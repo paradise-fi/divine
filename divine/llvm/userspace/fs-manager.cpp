@@ -107,7 +107,11 @@ void FSManager::access( utils::String name, Flags< flags::Access > mode ) {
         throw Error( EACCES );
 }
 
-int FSManager::openFile( utils::String name, Flags< flags::Open > fl, unsigned mode ) {
+int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, unsigned mode ) {
+    WeakNode savedDir = _currentDirectory;
+    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+        changeDirectory( dirfd );
 
     Node file = findDirectoryItem( name );
     if ( file && !file->mode().isFile() )
