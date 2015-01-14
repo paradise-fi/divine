@@ -22,7 +22,9 @@ template< typename HeapMeta > struct Canonic;
 
 struct Problem {
     enum What {
+        #define PROBLEM(x) x,
         #include <divine/llvm/problem.def>
+        #undef PROBLEM
     };
     PC where;
     uint8_t what;
@@ -804,6 +806,18 @@ struct FrameContext {
 
 
 }
+}
+
+namespace std {
+
+inline std::string to_string( divine::llvm::Problem::What p ) {
+    using P = divine::llvm::Problem::What;
+    #define PROBLEM(x) if ( p == P::x ) return #x;
+    #include <divine/llvm/problem.def>
+    #undef PROBLEM
+    return "<<UNKNOWN>>";
+}
+
 }
 
 #endif

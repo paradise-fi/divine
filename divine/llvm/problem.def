@@ -1,15 +1,17 @@
-NoProblem = 0,
-Other = 1,
-Assert,
-InvalidDereference,
-InvalidArgument,
-OutOfBounds,
-DivisionByZero,
-UnreachableExecuted,
-MemoryLeak,
-NotImplemented,
-Uninitialised,
-PointsToViolated,
-Deadlock,
+PROBLEM( NoProblem )
+PROBLEM( Other )
+PROBLEM( Assert )
+PROBLEM( InvalidDereference )
+PROBLEM( InvalidArgument )
+PROBLEM( OutOfBounds )
+PROBLEM( DivisionByZero )
+PROBLEM( UnreachableExecuted )
+PROBLEM( MemoryLeak )
+PROBLEM( NotImplemented )
+PROBLEM( Uninitialised )
+PROBLEM( PointsToViolated )
+PROBLEM( Deadlock )
 
-Trace
+PROBLEM( Trace )
+
+PROBLEM( End ) // not used as error, only to indicate number of problems
