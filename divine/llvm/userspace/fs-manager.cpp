@@ -1,4 +1,3 @@
-
 #include "fs-manager.h"
 
 namespace divine {
@@ -17,7 +16,8 @@ FSManager::FSManager( bool ) :
         std::make_shared< FileDescriptor >( _standardIO[ 0 ], flags::Open::Read ),// stdin
         std::make_shared< FileDescriptor >( _standardIO[ 1 ], flags::Open::Write ),// stdout
         std::make_shared< FileDescriptor >( _standardIO[ 1 ], flags::Open::Write )// stderr
-    }
+    },
+    _umask{ Mode::WGROUP | Mode::WOTHER }
 {
     _root->assign( new Directory( _root ) );
     _standardIO[ 1 ]->assign( new WriteOnlyFile() );
