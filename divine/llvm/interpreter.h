@@ -1,8 +1,10 @@
+
 // -*- C++ -*- (c) 2011, 2012 Petr Rockai <me@mornfall.net>
 
 #define NO_RTTI
 
 #include <brick-types.h>
+#include <brick-data.h>
 
 #include <divine/llvm/program.h>
 #include <divine/llvm/machine.h>
@@ -166,6 +168,8 @@ struct Interpreter
 
     std::string describe( bool demangle = false, bool detailed = false );
     std::string describeConstdata();
+
+    brick::data::Bimap< int, std::string > describeAPs();
 
     Blob initial( Function *f, bool is_start = false );
     void rewind( Blob b ) { state.rewind( b, -1 ); }

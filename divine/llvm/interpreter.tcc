@@ -118,3 +118,15 @@ int Interpreter< HM, L >::new_thread( Function *f )
     return new_thread( PC( info().functionmap[ f ], 0 ),
                        Maybe< Pointer >::Nothing(), MemoryFlag::Data );
 }
+
+template< typename HM, typename L >
+brick::data::Bimap< int, std::string > Interpreter< HM, L >::describeAPs() {
+    brick::data::Bimap< int, std::string > out;
+    MDNode *apmeta = findEnum( "APs" );
+    for ( int i = 0, end = apmeta->getNumOperands(); i < end; ++i ) {
+        auto ap = cast< MDNode >( apmeta->getOperand( i ) );
+        auto apval = cast< ConstantInt >( ap->getOperand( 2 ) )->getValue().getZExtValue();
+        out.insert( apval, cast< MDString >( ap->getOperand( 1 ) )->getString() );
+    }
+    return out;
+}
