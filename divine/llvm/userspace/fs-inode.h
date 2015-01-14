@@ -75,33 +75,33 @@ struct Mode {
     }
 
     bool userRead() const {
-        return _check( RUSER, RWXUSER );
+        return _has( RUSER );
     }
     bool userWrite() const {
-        return _check( WUSER, RWXUSER );
+        return _has( WUSER );
     }
     bool userExecute() const {
-        return _check( XUSER, RWXUSER );
+        return _has( XUSER );
     }
 
     bool groupRead() const {
-        return _check( RGROUP, RWXGROUP );
+        return _has( RGROUP );
     }
     bool groupWrite() const {
-        return _check( WGROUP, RWXGROUP );
+        return _has( WGROUP );
     }
     bool groupExecute() const {
-        return _check( XGROUP, RWXGROUP );
+        return _has( XGROUP );
     }
 
     bool otherRead() const {
-        return _check( ROTHER, RWXOTHER );
+        return _has( ROTHER );
     }
     bool otherWrite() const {
-        return _check( WOTHER, RWXOTHER );
+        return _has( WOTHER );
     }
     bool otherExecute() const {
-        return _check( XOTHER, RWXOTHER );
+        return _has( XOTHER );
     }
 
 private:
