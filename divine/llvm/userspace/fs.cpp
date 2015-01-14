@@ -80,16 +80,33 @@ int creat( const char *path, int mode ) {
 }
 
 int openat( int dirfd, const char *path, int flags, ... ) {
-    divine::fs::Flags< divine::fs::flags::Open > f = divine::fs::flags::Open::NoFlags;
+    using namespace divine::fs::flags;
+    divine::fs::Flags< Open > f = Open::NoFlags;
     unsigned m = 0;
-    va_list args;
-    va_start( args, flags );
-    if ( flags & O_RDONLY )  f |= divine::fs::flags::Open::Read;
-    if ( flags & O_WRONLY )  f |= divine::fs::flags::Open::Write;
-    if ( flags & O_CREAT ) { f |= divine::fs::flags::Open::Create; m = unsigned( va_arg( args, int ) ); }
-    if ( flags & O_EXCL )    f |= divine::fs::flags::Open::Excl;
-    if ( flags & O_TMPFILE ) f |= divine::fs::flags::Open::TmpFile;
-    va_end( args );
+    // special behaviour - check for access rights but do not grant them
+    if ( ( flags & 3 ) == 3)
+        f |= Open::NoAccess;
+    if ( flags & O_RDWR ) {
+        f |= Open::Read;
+        f |= Open::Write;
+    }
+    else if ( flags & O_WRONLY )
+        f |= Open::Write;
+    else
+        f |= Open::Read;
+
+    if ( flags & O_CREAT ) {
+        f |= divine::fs::flags::Open::Create;
+        va_list args;
+        va_start( args, flags );
+        m = unsigned( va_arg( args, int ) );
+        va_end( args );
+    }
+
+    if ( flags & O_EXCL )
+        f |= divine::fs::flags::Open::Excl;
+    if ( flags & O_TMPFILE )
+        f |= divine::fs::flags::Open::TmpFile;
     if ( dirfd == AT_FDCWD )
         dirfd = divine::fs::CURRENT_DIRECTORY;
     try {

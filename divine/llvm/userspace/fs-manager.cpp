@@ -114,8 +114,6 @@ int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > f
         changeDirectory( dirfd );
 
     Node file = findDirectoryItem( name );
-    if ( file && !file->mode().isFile() )
-        file = nullptr;
 
     if ( fl.has( flags::Open::Create ) ) {
         if ( file ) {
@@ -131,8 +129,16 @@ int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > f
 
     if ( fl.has( flags::Open::Read ) )
         _checkGrants( file, Mode::RUSER );
-    if ( fl.has( flags::Open::Write ) )
+    if ( fl.has( flags::Open::Write ) ) {
         _checkGrants( file, Mode::WUSER );
+        if ( file->mode().isDirectory() )
+            throw Error( EISDIR );
+    }
+
+    if ( fl.has( flags::Open::NoAccess ) ) {
+        fl.clear( flags::Open::Read );
+        fl.clear( flags::Open::Write );
+    }
 
     return _getFileDescriptor( std::make_shared< FileDescriptor >( file, fl ) );
 }

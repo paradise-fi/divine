@@ -33,6 +33,7 @@ int creat( const char *path, int mode );
  *          file descriptor in range [0 - 1024] if succeeded
  *          -1 in case of error; possible error codes:
  *              EACCES
+ *              EINVAL
  *              ENOENT
  *              ENOTDIR
  *              ELOOP
