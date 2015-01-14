@@ -93,11 +93,20 @@ int FSManager::createFile( utils::String name, unsigned mode ) {
     return _getFileDescriptor( std::make_shared< FileDescriptor >( std::move( item ), fl ) );
 }
 
-void FSManager::access( utils::String name, Flags< flags::Access > mode ) {
+void FSManager::accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
-    Node item = findDirectoryItem( name );
+    if ( mode.has( flags::Access::Invalid ) ||
+        fl.has( flags::At::Invalid ) )
+        throw Error( EINVAL );
+
+    WeakNode savedDir = _currentDirectory;
+    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+        changeDirectory( dirfd );
+
+    Node item = findDirectoryItem( name, !fl.has( flags::At::SymNofollow ) );
     if ( !item )
         throw Error( EACCES );
 
@@ -203,7 +212,7 @@ void FSManager::removeAt( int dirfd, utils::String name, flags::At fl ) {
         changeDirectory( dirfd );
 
     switch( fl ) {
-    case flags::At::NoFlag:
+    case flags::At::NoFlags:
         removeFile( name );
         break;
     case flags::At::RemoveDir:

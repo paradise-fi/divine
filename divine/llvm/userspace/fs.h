@@ -211,6 +211,7 @@ int link( const char *target, const char *linkpath );
  *              ENOTDIR
  */
 int access( const char *path, int mode );
+int faccessat( int dirfd, const char *path, int mode, int flags );
 
 /**
  *  int fstat( int fd, struct stat *buf )

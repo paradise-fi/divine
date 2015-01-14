@@ -53,7 +53,7 @@ struct FSManager {
     void createSymLink( utils::String name, utils::String target );
     int createFile( utils::String name, unsigned mode );
 
-    void access( utils::String name, Flags< flags::Access > mode );
+    void accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl );
     int openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, unsigned mode );
     void closeFile( int fd );
     int duplicate( int oldfd );

@@ -184,13 +184,13 @@ int unlinkat( int dirfd, const char *path, int flags ) {
     divine::fs::flags::At f;
     switch( flags ) {
     case 0:
-        f = divine::fs::flags::At::NoFlag;
+        f = divine::fs::flags::At::NoFlags;
         break;
     case AT_REMOVEDIR:
         f = divine::fs::flags::At::RemoveDir;
         break;
     default:
-        f = divine::fs::flags::At::Undefined;
+        f = divine::fs::flags::At::Invalid;
         break;
     }
     if ( dirfd == AT_FDCWD )
@@ -252,17 +252,33 @@ int link( const char *target, const char *linkpath ) {
         return -1;
     }
 }
-int access( const char *path, int mode ) {
+
+int faccessat( int dirfd, const char *path, int mode, int flags ) {
     divine::fs::Flags< divine::fs::flags::Access > m = divine::fs::flags::Access::OK;
     if ( mode & R_OK )  m |= divine::fs::flags::Access::Read;
     if ( mode & W_OK )  m |= divine::fs::flags::Access::Write;
     if ( mode & X_OK )  m |= divine::fs::flags::Access::Execute;
+    if ( ( mode | R_OK | W_OK | X_OK ) != ( R_OK | W_OK | X_OK ) )
+        m |= divine::fs::flags::Access::Invalid;
+
+    if ( dirfd == AT_FDCWD )
+        dirfd = divine::fs::CURRENT_DIRECTORY;
+
+    divine::fs::Flags< divine::fs::flags::At > fl = divine::fs::flags::At::NoFlags;
+    if ( flags & AT_EACCESS )   fl |= divine::fs::flags::At::EffectiveID;
+    if ( flags & AT_SYMLINK_NOFOLLOW )  fl |= divine::fs::flags::At::SymNofollow;
+    if ( ( flags | AT_EACCESS | AT_SYMLINK_NOFOLLOW ) != ( AT_EACCESS | AT_SYMLINK_NOFOLLOW ) )
+        fl |= divine::fs::flags::At::Invalid;
+
     try {
-        divine::fs::filesystem.access( path, m );
+        divine::fs::filesystem.accessAt( dirfd, path, m, fl );
         return 0;
     } catch ( Error & ) {
         return -1;
     }
+}
+int access( const char *path, int mode ) {
+    return faccessat( AT_FDCWD, path, mode, 0 );
 }
 
 int stat( const char *path, struct stat *buf ) {
