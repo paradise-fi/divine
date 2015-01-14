@@ -257,6 +257,18 @@ int fchdir( int dirfd );
 
 void _exit( int status );
 
+/**
+ *  int fdatasync( int fd )
+ *
+ *  Returns:
+ *          0 if succeeded
+ *          -1 in case of error; possible error codes:
+ *              EBADF
+ *  Note:
+ *          Synchronization is done together with write operation.
+ */
+int fdatasync( int fd );
+
 #ifdef __cplusplus
 } // extern C
 #endif

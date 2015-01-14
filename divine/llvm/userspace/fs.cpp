@@ -341,4 +341,13 @@ void _exit( int status ) {
     std::_Exit( status );
 }
 
+int fdatasync( int fd ) {
+    try {
+        divine::fs::filesystem.getFile( fd );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
 } // extern "C"
