@@ -139,22 +139,22 @@ struct SmallVector {
     SmallVector() : _size( 0 ), _onstack( true ) { }
 
     template< typename InputIt >
-    SmallVector( InputIt begin, InputIt end ) {
+    SmallVector( InputIt begin, InputIt end ) : SmallVector() {
         _resize( std::distance( begin, end ) );
         std::uninitialized_copy( begin, end, _begin() );
     }
 
-    SmallVector( std::initializer_list< T > init ) {
+    SmallVector( std::initializer_list< T > init ) : SmallVector() {
         _resize( init.size() );
         uninitialized::move( init.begin(), init.end(), begin() );
     }
 
-    SmallVector( const SmallVector &other ) {
+    SmallVector( const SmallVector &other ) : SmallVector() {
         _resize( other._size );
         std::uninitialized_copy( other.begin(), other.end(), begin() );
     }
 
-    SmallVector( SmallVector &&other ) {
+    SmallVector( SmallVector &&other ) : SmallVector() {
         _resize( other._size );
         uninitialized::move( other.begin(), other.end(), begin() );
         other.resize( 0 );
@@ -237,8 +237,14 @@ struct SmallVector {
     using Storage = typename std::aligned_storage< sizeof( T ), alignof( T ) >::type;
     static_assert( sizeof( Storage ) == sizeof( T ), "storage size" );
 
-    T *_ptrCast( Storage *ptr ) {
+    static T *_ptrCast( Storage *ptr ) {
         union { Storage *st; T *t; };
+        st = ptr;
+        return t;
+    }
+
+    static const T *_ptrCast( const Storage *ptr ) {
+        union { const Storage *st; const T *t; };
         st = ptr;
         return t;
     }
