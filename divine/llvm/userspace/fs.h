@@ -255,6 +255,8 @@ unsigned umask( unsigned mask );
 int chdir( const char *path );
 int fchdir( int dirfd );
 
+void _exit( int status );
+
 #ifdef __cplusplus
 } // extern C
 #endif

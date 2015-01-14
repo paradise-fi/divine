@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cerrno>
 #include <cstdarg>
+#include <cstdlib>
 
 #include "fs.h"
 #include "fcntl.h"
@@ -334,6 +335,10 @@ int fchdir( int dirfd ) {
     } catch( Error & ) {
         return -1;
     }
+}
+
+void _exit( int status ) {
+    std::_Exit( status );
 }
 
 } // extern "C"
