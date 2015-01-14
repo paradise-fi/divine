@@ -18,27 +18,32 @@ const int CURRENT_DIRECTORY = -4;
 namespace flags {
 
 enum class Open {
-    NoFlags     =  0,
-    Read        =  1,
-    Write       =  2,
-    ReadWrite   =  3,
-    Create      =  4,
-    Excl        =  8,
-    TmpFile     = 16,
-    Truncate    = 32,
+    NoFlags     =   0,
+    Read        =   1,
+    Write       =   2,
+    Create      =   4,
+    Excl        =   8,
+    TmpFile     =  16,
+    Truncate    =  32,
+    NoAccess    =  64,
+    Invalid     = 128,
 };
 
 enum class Access {
     OK          = 0,
-    Read        = 1,
+    Execute     = 1,
     Write       = 2,
-    Execute     = 4,
+    Read        = 4,
+    Invalid     = 8,
 };
 
 enum class At {
-    Undefined   = 0,
-    NoFlag      = 1,
-    RemoveDir   = 2,
+    NoFlags     =  0,
+    Invalid     =  1,
+    RemoveDir   =  2,
+    EffectiveID =  4,
+    SymFollow   =  8,
+    SymNofollow = 16,
 };
 
 } // namespace flags
