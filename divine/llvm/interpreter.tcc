@@ -121,8 +121,11 @@ int Interpreter< HM, L >::new_thread( Function *f )
 
 template< typename HM, typename L >
 brick::data::Bimap< int, std::string > Interpreter< HM, L >::describeAPs() {
-    brick::data::Bimap< int, std::string > out;
     MDNode *apmeta = findEnum( "APs" );
+    if ( !apmeta )
+        return { };
+
+    brick::data::Bimap< int, std::string > out;
     for ( int i = 0, end = apmeta->getNumOperands(); i < end; ++i ) {
         auto ap = cast< MDNode >( apmeta->getOperand( i ) );
         auto apval = cast< ConstantInt >( ap->getOperand( 2 ) )->getValue().getZExtValue();
