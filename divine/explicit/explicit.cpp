@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013-2015 Vladimír Štill <xstill@fi.muni.cz>
 
 #if ALG_EXPLICIT || GEN_EXPLICIT
 #include <divine/explicit/explicit.h>
@@ -28,8 +28,9 @@ void Explicit::finishOpen() {
     header = Header::ptr( map.asArrayOf< void >() );
     char *cptr = map.asArrayOf< char >();
 
-    ASSERT_LEQ( header->compactVersion, 1 );
-    ASSERT_LEQ( header->dataStartOffset, int64_t( sizeof( Header ) ) );
+    ASSERT_LEQ( 1, header->compactVersion );
+    ASSERT_LEQ( headerLength[ header->compactVersion ], header->dataStartOffset );
+    ASSERT_EQ( header->flagMaskBitWidth, 64 );
 
     if ( header->capabilities.has( Capability::ForwardEdges ) )
         forward = DataBlock( header->nodeCount,
@@ -40,11 +41,16 @@ void Explicit::finishOpen() {
     if ( header->capabilities.has( Capability::Nodes ) )
         nodes = DataBlock( header->nodeCount,
                 cptr + header->dataStartOffset + header->nodesOffset );
+    if ( header->capabilities.has( Capability::StateFlags ) )
+        stateFlags = StateFlags( header->flagCount,
+                cptr + header->dataStartOffset + header->flagMapOffset,
+                cptr + header->dataStartOffset + header->flagsOffset );
 }
 
 PrealocateHelper::PrealocateHelper( const std::string &path ) :
     _edges( 0 ), _nodes( 0 ),
-    _nodeDataSize( 0 ), _labelSize( 0 ), _capabilities()
+    _nodeDataSize( 0 ), _labelSize( 0 ),
+    _flagCount( 0 ), _flagStrings( 0 ), _capabilities()
 {
     fd = ::open( path.c_str(), O_RDWR | O_CREAT,
         S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH );
@@ -74,7 +80,10 @@ Explicit PrealocateHelper::operator()() {
         fileSize += edgeData;
     if ( _capabilities.has( Capability::Nodes ) )
         fileSize += nodeData;
-
+    if ( _capabilities.has( Capability::StateFlags ) ) {
+        fileSize += sizeof( int64_t ) * _flagCount + _flagStrings; // flag names
+        fileSize += sizeof( uint64_t ) * _nodes; // flags
+    }
 
     auto r = ::posix_fallocate( fd, 0, fileSize );
     ASSERT_EQ( r , 0 );
@@ -86,12 +95,17 @@ Explicit PrealocateHelper::operator()() {
     Header *h = new ( map.asArrayOf< void >() ) Header();
     h->capabilities = _capabilities;
     h->nodeCount = _nodes;
+    h->flagCount = _flagCount;
 
     h->forwardOffset = 0;
     h->backwardOffset = _capabilities.has( Capability::ForwardEdges )
         ? edgeData : 0;
     h->nodesOffset = h->backwardOffset
         + (_capabilities.has( Capability::BackwardEdges ) ? edgeData : 0);
+    h->flagMapOffset = h->nodesOffset
+        + (_capabilities.has( Capability::Nodes ) ? nodeData : 0);
+    h->flagsOffset = h->flagMapOffset
+        + sizeof( int64_t ) * _flagCount + _flagStrings;
     h->labelSize = _labelSize;
 
     Explicit compact;

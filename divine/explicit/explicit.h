@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013-2015 Vladimír Štill <xstill@fi.muni.cz>
 
 /* ====================== The DIVINE compact file format ======================
  *
@@ -55,6 +55,8 @@
 
 #include <type_traits>
 #include <brick-mmap.h>
+#include <brick-data.h>
+#include <vector>
 #include <divine/explicit/header.h>
 
 #ifndef DIVINE_COMPACT_COMPACT_H
@@ -63,7 +65,7 @@
 namespace divine {
 namespace dess {
 
-static_assert( sizeof( Header ) == 128, "Wrong size of Header" );
+static_assert( sizeof( Header ) == 152, "Wrong size of Header" );
 
 struct DataBlock {
     DataBlock() : _count( 0 ), _indices( nullptr ), _data( nullptr ) { }
@@ -83,7 +85,12 @@ struct DataBlock {
         return _ix( ix );
     }
 
-    int64_t size( int64_t ix ) {
+    const char *operator[]( int64_t ix ) const {
+        ASSERT_LEQ( ix, _count );
+        return _ix( ix );
+    }
+
+    int64_t size( int64_t ix ) const {
         int64_t diff = int64_t( _ix( ix + 1 ) ) - int64_t( _ix( ix ) );
         ASSERT_LEQ( 0, diff );
         return diff;
@@ -211,9 +218,84 @@ struct DataBlock {
         ASSERT_LEQ( 0, i );
         return _data + i;
     }
+
+    const char *_ix( int64_t ix ) const {
+        return const_cast< const char * >( const_cast< DataBlock * >( this )->_ix( ix ) );
+    }
 };
 
-// Explicit V1 runtime representation
+struct StateFlags {
+
+    StateFlags() : flagCount( 0 ), flagMasks( nullptr ) { }
+
+    StateFlags( int32_t count, char *map, char *flags ) :
+        flagCount( count ),
+        flagMap( flagCount, map ),
+        flagMasks( reinterpret_cast< uint64_t * >( flags ) )
+    { }
+
+    struct Map {
+        Map( const StateFlags *self ) : self( self ) { }
+        const StateFlags *self;
+
+        std::string operator[]( int intflag ) const {
+            return std::string( self->flagMap[ intflag ], self->flagMap.size( intflag ) );
+        }
+
+        int operator[]( std::string flagname ) const {
+            for ( int i = 0; i < self->flagCount; ++i )
+                if ( (*this)[ i ] == flagname )
+                    return i;
+            return -1;
+        }
+    };
+
+    // translation flag numbers <-> flag names
+    Map map() const { return Map( this ); }
+
+    std::vector< std::string > flagNames() const {
+        std::vector< std::string > out;
+        for ( int i = 0; i < flagCount; ++i )
+            out.emplace_back( flagMap[ i ] );
+        return out;
+    }
+
+    bool hasFlag( int64_t state, int flag ) const {
+        return (flagMasks[ state ] & (1 << flag)) != 0;
+    }
+
+    bool hasFlag( int64_t state, std::string flagname ) const {
+        return hasFlag( state, map()[ flagname ] );
+    }
+
+    uint64_t operator[]( int64_t state ) const {
+        return flagMasks[ state ];
+    }
+
+    // obtain flag numers for state, SmallVector used for optimization
+    brick::data::SmallVector< int > listFlags( int64_t state ) {
+        uint64_t flags = flagMasks[ state ];
+        brick::data::SmallVector< int > out;
+        for ( int i = 0; i < flagCount; ++i )
+            if ( (flags & (1 << i)) != 0 )
+                out.emplace_back( i );
+        return out;
+    }
+
+    std::vector< std::string > listFlagsStr( int64_t state ) {
+        std::vector< std::string > out;
+        for ( auto f : listFlags( state ) )
+            out.emplace_back( map()[ f ] );
+        return out;
+    }
+
+    // low-level interface
+    int64_t flagCount;
+    DataBlock flagMap;
+    uint64_t *flagMasks;
+};
+
+// Explicit V1/V2 runtime representation
 struct Explicit {
 
     enum class OpenMode { Read, Write };
@@ -222,11 +304,10 @@ struct Explicit {
     DataBlock forward;
     DataBlock backward;
     DataBlock nodes;
+    StateFlags stateFlags;
     brick::mmap::MMap map;
 
-    Explicit() : header(),
-        forward(), backward(), nodes()
-    { }
+    Explicit() = default;
 
     Explicit( std::string path, OpenMode mode = OpenMode::Read ) {
         open( path, mode );
@@ -244,6 +325,8 @@ struct PrealocateHelper {
     int64_t _nodes;
     int64_t _nodeDataSize;
     int32_t _labelSize;
+    int32_t _flagCount;
+    int32_t _flagStrings;
     Capabilities _capabilities;
     std::string _generator;
 
@@ -299,6 +382,15 @@ struct PrealocateHelper {
         ASSERT_EQ( _nodeDataSize, 0 );
         _nodeDataSize = nodesSize;
         _capabilities |= Capability::Nodes;
+        return *this;
+    }
+
+    PrealocateHelper &saveFlags( int flagCount, int flagStringsSize ) {
+        ASSERT_EQ( _flagCount, 0 );
+        ASSERT_LEQ( flagCount, 64 );
+        _flagCount = flagCount;
+        _flagStrings = flagStringsSize;
+        _capabilities |= Capability::StateFlags;
         return *this;
     }
 };

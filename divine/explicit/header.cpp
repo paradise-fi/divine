@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013-2015 Vladimír Štill <xstill@fi.muni.cz>
 
 // no ifdef O_EXPLICIT here! this must be alwais available (for definitions.h)
 
@@ -19,6 +19,7 @@ static std::string showCapability( Capability c ) {
     SHOW_CAPABILITY( ForwardEdges );
     SHOW_CAPABILITY( BackwardEdges );
     SHOW_CAPABILITY( Nodes );
+    SHOW_CAPABILITY( StateFlags );
     SHOW_CAPABILITY( UInt64Labels );
     SHOW_CAPABILITY( Probability );
 #undef SHOW_CAPABILITY
@@ -82,7 +83,11 @@ Header Header::fromFile( std::string filename ) {
         U() : head() { }
     } u;
     str.read( u.chr, sizeof( Header ) );
-    ASSERT( !str.eof() );
+    int read = str.gcount();
+    // the first check might look redundant but it is not: we want to make sure
+    // version field is valid before using it
+    ASSERT_LEQ( headerLength[ 0 ], read );
+    ASSERT_LEQ( headerLength[ u.head.compactVersion ], read );
     return *ptr( &u.head ); // to check validity
 }
 
