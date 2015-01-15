@@ -69,8 +69,11 @@ struct FileDescriptor {
         return length;
     }
 
-    size_t &offset() {
+    size_t offset() const {
         return _offset;
+    }
+    virtual void offset( size_t off ) {
+        _offset = off;
     }
 
     size_t size() {
@@ -109,6 +112,9 @@ struct PipeDescriptor : FileDescriptor {
 
             pipe->releaseReader();
         }
+    }
+    void offset( size_t off ) override {
+        throw Error( EPIPE );
     }
 
 };

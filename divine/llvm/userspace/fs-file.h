@@ -139,12 +139,12 @@ struct Pipe : public File {
         return true;
     }
 
-    bool write( const char *buffer, size_t offset, size_t length ) override {
+    bool write( const char *buffer, size_t, size_t length ) override {
         if ( !_reader )
             /// TODO: raise SIGPIPE signal
             throw Error( EPIPE );
-        if ( _content.size() < offset + length )
-            _content.resize( offset + length );
+        size_t offset = _content.size();
+        _content.resize( offset + length );
         std::copy( buffer, buffer + length, _content.begin() + offset );
         return true;
     }

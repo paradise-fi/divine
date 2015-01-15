@@ -232,21 +232,21 @@ off_t FSManager::lseek( int fd, off_t offset, Seek whence ) {
     case Seek::Set:
         if ( offset < 0 )
             throw Error( EINVAL );
-        f->offset() = offset;
+        f->offset( offset );
         break;
     case Seek::Current:
         if ( std::numeric_limits< size_t >::max() - f->offset() < offset )
             throw Error( EOVERFLOW );
         if ( offset < f->offset() )
             throw Error( EINVAL );
-        f->offset() += offset;
+        f->offset( offset + f->offset() );
         break;
     case Seek::End:
         if ( std::numeric_limits< size_t >::max() - f->size() < offset )
             throw Error( EOVERFLOW );
         if ( f->size() < -offset )
             throw Error( EINVAL );
-        f->offset() = f->size() + offset;
+        f->offset( f->size() + offset );
         break;
     default:
         throw Error( EINVAL );
