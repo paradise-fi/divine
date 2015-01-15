@@ -48,10 +48,12 @@ struct FSManager {
 
     Node findDirectoryItem( utils::String name, bool followSymLinks = true );
 
-    void createDirectory( utils::String name, unsigned mode );
+    void createDirectoryAt( int dirfd, utils::String name, unsigned mode );
     void createHardLink( utils::String name, const utils::String &target );
-    void createSymLink( utils::String name, utils::String target );
+    void createSymLinkAt( int dirfd, utils::String name, utils::String target );
     int createFile( utils::String name, unsigned mode );
+
+    ssize_t readLinkAt( int dirfd, utils::String name, char *buf, size_t count );
 
     void accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl );
     int openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, unsigned mode );
@@ -63,6 +65,8 @@ struct FSManager {
     void removeFile( utils::String name );
     void removeDirectory( utils::String name );
     void removeAt( int dirfd, utils::String name, flags::At fl );
+
+    void truncate( Node inode, off_t length );
 
     off_t lseek( int fd, off_t offset, Seek whence );
 

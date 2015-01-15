@@ -144,6 +144,17 @@ ssize_t write( int fd, const void *buf, size_t count ) {
         return -1;
     }
 }
+ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset ) {
+    try {
+        auto f = divine::fs::filesystem.getFile( fd );
+        size_t savedOffset = f->offset();
+        f->offset( offset );
+        auto d = divine::fs::utils::make_defer( [&]{ f->offset( savedOffset ); } );
+        return f->write( buf, count );
+    } catch ( Error & ) {
+        return -1;
+    }
+}
 
 ssize_t read( int fd, void *buf, size_t count ) {
     try {
@@ -153,14 +164,29 @@ ssize_t read( int fd, void *buf, size_t count ) {
         return -1;
     }
 }
-
-int mkdir( const char *path, int mode ) {
+ssize_t pread( int fd, void *buf, size_t count, off_t offset ) {
     try {
-        divine::fs::filesystem.createDirectory( path, mode );
+        auto f = divine::fs::filesystem.getFile( fd );
+        size_t savedOffset = f->offset();
+        f->offset( offset );
+        auto d = divine::fs::utils::make_defer( [&]{ f->offset( savedOffset ); } );
+        return f->read( buf, count );
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+int mkdirat( int dirfd, const char *path, int mode ) {
+    if ( dirfd == AT_FDCWD )
+        dirfd = divine::fs::CURRENT_DIRECTORY;
+    try {
+        divine::fs::filesystem.createDirectoryAt( dirfd, path, mode );
         return 0;
     } catch ( Error & ) {
         return -1;
     }
+}
+int mkdir( const char *path, int mode ) {
+    return mkdirat( AT_FDCWD, path, mode );
 }
 
 int unlink( const char *path ) {
@@ -237,13 +263,18 @@ int dup2( int oldfd, int newfd ) {
         return -1;
     }
 }
-int symlink( const char *target, const char *linkpath ) {
+int symlinkat( const char *target, int dirfd, const char *linkpath ) {
+    if ( dirfd == AT_FDCWD )
+        dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
-        divine::fs::filesystem.createSymLink( linkpath, target );
+        divine::fs::filesystem.createSymLinkAt( dirfd, linkpath, target );
         return 0;
     } catch ( Error & ) {
         return -1;
     }
+}
+int symlink( const char *target, const char *linkpath ) {
+    return symlinkat( target, AT_FDCWD, linkpath );
 }
 int link( const char *target, const char *linkpath ) {
     try {
@@ -254,6 +285,18 @@ int link( const char *target, const char *linkpath ) {
     }
 }
 
+ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count ) {
+    if ( dirfd == AT_FDCWD )
+        dirfd = divine::fs::CURRENT_DIRECTORY;
+    try {
+        return divine::fs::filesystem.readLinkAt( dirfd, path, buf, count );
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+ssize_t readlink( const char *path, char *buf, size_t count ) {
+    return readlinkat( AT_FDCWD, path, buf, count );
+}
 int faccessat( int dirfd, const char *path, int mode, int flags ) {
     divine::fs::Flags< divine::fs::flags::Access > m = divine::fs::flags::Access::OK;
     if ( mode & R_OK )  m |= divine::fs::flags::Access::Read;
@@ -342,6 +385,84 @@ void _exit( int status ) {
 }
 
 int fdatasync( int fd ) {
+    try {
+        divine::fs::filesystem.getFile( fd );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+int fsync( int fd ) {
+    try {
+        divine::fs::filesystem.getFile( fd );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int ftruncate( int fd, off_t length ) {
+    try {
+        auto item = divine::fs::filesystem.getFile( fd );
+        divine::fs::filesystem.truncate( item->inode(), length );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+int truncate( const char *path, off_t length ) {
+    try {
+        auto item = divine::fs::filesystem.findDirectoryItem( path );
+        divine::fs::filesystem.truncate( item, length );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+unsigned sleep( unsigned seconds ) {
+    /// TODO: divine context switch
+    return 0;
+}
+
+void swab( const void *_from, void *_to, ssize_t n ) {
+    const char *from = reinterpret_cast< const char * >( _from );
+    char *to = reinterpret_cast< char * >( _to );
+    for ( ssize_t i = 0; i < n/2; ++i ) {
+        *to = *(from + 1);
+        *(to + 1) = *from;
+        to += 2;
+        from += 2;
+    }
+}
+
+int isatty( int fd ) {
+    try {
+        divine::fs::filesystem.getFile( fd );
+        errno = EINVAL;
+    } catch ( Error & ) {
+    }
+    return 0;
+}
+char *ttyname( int fd ) {
+    try {
+        divine::fs::filesystem.getFile( fd );
+        errno = ENOTTY;
+    } catch ( Error & ) {
+    }
+    return nullptr;
+}
+int ttyname_r( int fd, char *buf, size_t count ) {
+    try {
+        divine::fs::filesystem.getFile( fd );
+        return ENOTTY;
+    } catch ( Error &e ) {
+        return e.code();
+    }
+}
+
+void sync( void ) {}
+int syncfs( int fd ) {
     try {
         divine::fs::filesystem.getFile( fd );
         return 0;

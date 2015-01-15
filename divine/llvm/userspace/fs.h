@@ -19,6 +19,7 @@ extern "C" {
  *              EACCES
  *              ENOENT
  *              ENOTDIR
+ *              ENAMETOOLONG
  *              ELOOP
  *              ENFILE
  *              EEXIST
@@ -34,6 +35,7 @@ int creat( const char *path, int mode );
  *          -1 in case of error; possible error codes:
  *              EACCES
  *              EINVAL
+ *              ENAMETOOLONG
  *              ENOENT
  *              ENOTDIR
  *              ELOOP
@@ -64,6 +66,7 @@ int close( int fd );
  *              EPIPE
  */
 ssize_t write( int fd, const void *buf, size_t count );
+ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset );
 
 /**
  *  ssize_t read( int fd, void *, size_t count )
@@ -74,6 +77,7 @@ ssize_t write( int fd, const void *buf, size_t count );
  *              EBADF
  */
 ssize_t read( int fd, void *buf, size_t count );
+ssize_t pread( int fd, void *buf, size_t count, off_t offset );
 
 /**
  *  int mkdir( const char *path, int mode )
@@ -83,6 +87,7 @@ ssize_t read( int fd, void *buf, size_t count );
  *          -1 in case of error; possible error codes:
  *              ENOENT
  *              EEXIST
+ *              ENAMETOOLONG
  *              EACCES
  *              ENOTDIR
  *              ELOOP
@@ -100,6 +105,7 @@ int mkdirat( int dirfd, const char *path, int mode );
  *          -1 in case of error; possible error codes:
  *              EACCES
  *              EISDIR
+ *              ENAMETOOLONG
  *              ELOOP
  *              ENOENT
  *              ENOTDIR
@@ -116,6 +122,7 @@ int unlink( const char *path );
  *             (EINVAL - not supported now)
  *              ELOOP
  *              ENOENT
+ *              ENAMETOOLONG
  *              ENOTDIR
  *              ENOTEMPTY
  */
@@ -131,6 +138,7 @@ int rmdir( const char *path );
  *              EISDIR
  *             (EINVAL - not supported now)
  *              ELOOP
+ *              ENAMETOOLONG
  *              ENOENT
  *              ENOTDIR
  *              ENOTEMPTY
@@ -177,12 +185,15 @@ int dup2( int oldfd, int newfd );
  *          0 if succeeded
  *          -1 in case of error; possible error codes:
  *              EACCES
+ *              EBADF
  *              EEXIST
+ *              ENAMETOOLONG
  *              ELOOP
  *              ENOENT
  *              ENOTDIR
  */
 int symlink( const char *target, const char *linkpath );
+int symlinkat( const char *target, int dirfd, const char *linkpath );
 
 /**
  *  int link( const char *target, const char *linkpath )
@@ -193,6 +204,7 @@ int symlink( const char *target, const char *linkpath );
  *              EACCES
  *              EEXIST
  *              ELOOP
+ *              ENAMETOOLONG
  *              ENOENT
  *              ENOTDIR
  *              EPERM
@@ -207,6 +219,7 @@ int link( const char *target, const char *linkpath );
  *          -1 in case of error; possible error codes:
  *              EACCES
  *              ELOOP
+ *              ENAMETOOLONG
  *              ENOENT
  *              ENOTDIR
  */
@@ -224,6 +237,7 @@ int faccessat( int dirfd, const char *path, int mode, int flags );
  *              EACCES
  *              EBADF
  *              ELOOP
+ *              ENAMETOOLONG
  *              ENOENT
  *              ENOTDIR
  */
@@ -248,6 +262,7 @@ unsigned umask( unsigned mask );
  *          -1 in case of error; possible error codes:
  *              EACCES
  *              EBADF
+ *              ENAMETOOLONG
  *              ELOOP
  *              ENOENT
  *              ENOTDIR
@@ -259,6 +274,7 @@ void _exit( int status );
 
 /**
  *  int fdatasync( int fd )
+ *  int fsync( int fd )
  *
  *  Returns:
  *          0 if succeeded
@@ -267,7 +283,86 @@ void _exit( int status );
  *  Note:
  *          Synchronization is done together with write operation.
  */
+int fsync( int fd );
 int fdatasync( int fd );
+
+/**
+ *  int ftruncate( int fd, off_t length )
+ *  int truncate( const char *path, off_t length )
+ *
+ *  Returns:
+ *          0 if succeeded
+ *          -1 in case of error; possible error codes:
+ *              EACCES
+ *              EBADF
+ *              EINVAL
+ *              EISDIR
+ *              ELOOP
+ *              ENAMETOOLONG
+ *              ENOENT
+ *              ENOTDIR
+ */
+int ftruncate( int fd, off_t length );
+int truncate( const char *path, off_t length );
+
+/**
+ *  unsigned sleep( unsigned seconds );
+ *
+ *  Returns:
+ *          0 always
+ */
+unsigned sleep( unsigned seconds );
+
+/**
+ *  ssize_t readlink( const char *path, char *buf, size_t count )
+ *  ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count )
+ *
+ *  Returns:
+ *          number of bytes copied into buf if succeeded
+ *          -1 in case of error; possible error codes:
+ *              EACCES
+ *              EBADF
+ *              EINVAL
+ *              ELOOP
+ *              ENOENT
+ *              ENOTDIR
+ */
+ssize_t readlink( const char *path, char *buf, size_t count );
+ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count );
+
+/**
+ *  void swab( const void *from, void *to, ssize_t n )
+ */
+void swab( const void *from, void *to, ssize_t n );
+
+/**
+ *  int isatty( int fd )
+ *
+ *  Returns:
+ *          0; possible error codes:
+ *              EBADF
+ *              EINVAL
+ */
+int isatty( int fd );
+
+/**
+ *  char *ttyname( int fd )
+ *  int ttyname_r( int fd, char *buf, size_t count )
+ */
+char *ttyname( int fd );
+int ttyname_r( int fd, char *buf, size_t count );
+
+/**
+ *  void sync( void )
+ *  int syncfs( int fd )
+ *
+ *  Returns:
+ *          0 if succeeded
+ *          -1 in case of error; possible error codes:
+ *              EBADF
+ */
+void sync( void );
+int syncfs( int fd );
 
 #ifdef __cplusplus
 } // extern C

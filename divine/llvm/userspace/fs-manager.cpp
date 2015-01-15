@@ -25,9 +25,14 @@ FSManager::FSManager( bool ) :
 
 
 
-void FSManager::createDirectory( utils::String name, unsigned mode ) {
+void FSManager::createDirectoryAt( int dirfd, utils::String name, unsigned mode ) {
     if ( name.empty() )
         throw Error( ENOENT );
+
+    WeakNode savedDir = _currentDirectory;
+    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+        changeDirectory( dirfd );
 
     Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
@@ -66,9 +71,16 @@ void FSManager::createHardLink( utils::String name, const utils::String &target 
     dir->create( std::move( name ), targetNode );
 }
 
-void FSManager::createSymLink( utils::String name, utils::String target ) {
+void FSManager::createSymLinkAt( int dirfd, utils::String name, utils::String target ) {
     if ( name.empty() )
         throw Error( ENOENT );
+    if ( target.size() > 1023 )
+        throw Error( ENAMETOOLONG );
+
+    WeakNode savedDir = _currentDirectory;
+    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+        changeDirectory( dirfd );
 
     Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
@@ -91,6 +103,25 @@ int FSManager::createFile( utils::String name, unsigned mode ) {
     _createFile( std::move( name ), mode, &item );
     Flags< flags::Open > fl = flags::Open::Write | flags::Open::Create;// | flags::Open::Truncate
     return _getFileDescriptor( std::make_shared< FileDescriptor >( std::move( item ), fl ) );
+}
+
+ssize_t FSManager::readLinkAt( int dirfd, utils::String name, char *buf, size_t count ) {
+    WeakNode savedDir = _currentDirectory;
+    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+        changeDirectory( dirfd );
+
+    Node inode = findDirectoryItem( std::move( name ) );
+    if ( !inode )
+        throw Error( ENOENT );
+    if ( !inode->mode().isLink() )
+        throw Error( EINVAL );
+
+    Link *sl = inode->data()->as< Link >();
+    const utils::String &target = sl->target();
+    auto realLength = std::min( target.size(), count );
+    std::copy( target.c_str(), target.c_str() + realLength, buf );
+    return realLength;
 }
 
 void FSManager::accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl ) {
@@ -254,6 +285,16 @@ off_t FSManager::lseek( int fd, off_t offset, Seek whence ) {
     return f->offset();
 }
 
+void FSManager::truncate( Node inode, off_t length ) {
+    if ( inode->mode().isDirectory() )
+        throw Error( EISDIR );
+    if ( !inode->mode().isFile() )
+        throw Error( EINVAL );
+
+    RegularFile *f = inode->data()->as< RegularFile >();
+    f->resize( length );
+}
+
 void FSManager::changeDirectory( utils::String path ) {
     Node item = findDirectoryItem( path );
     if ( !item )
@@ -392,10 +433,10 @@ void FSManager::_insertSnapshotItem( const SnapshotFS &item ) {
         _createFile( item.name, item.mode, nullptr, item.content, item.length );
         break;
     case Type::Directory:
-        createDirectory( item.name, item.mode );
+        createDirectoryAt( CURRENT_DIRECTORY, item.name, item.mode );
         break;
     case Type::SymLink:
-        createSymLink( item.name, item.content );
+        createSymLinkAt( CURRENT_DIRECTORY, item.name, item.content );
         break;
     default:
         break;
