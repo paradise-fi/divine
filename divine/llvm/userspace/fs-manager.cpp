@@ -297,6 +297,8 @@ void FSManager::_createFile( utils::String name, unsigned mode, Node *file, Args
 }
 
 Node FSManager::findDirectoryItem( utils::String name, bool followSymLinks ) {
+    if ( name.size() > 1023 )
+        throw Error( ENAMETOOLONG );
     name = utils::normalize( name );
     Node current = _root;
     if ( utils::isRelative( name ) )
@@ -318,6 +320,8 @@ Node FSManager::findDirectoryItem( utils::String name, bool followSymLinks ) {
             const auto &subFolder = q.front();
             if ( subFolder.empty() )
                 continue;
+            if ( subFolder.size() > 255 )
+                throw Error( ENAMETOOLONG );
             item = dir->find( subFolder );
         }
 

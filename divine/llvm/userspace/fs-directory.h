@@ -126,6 +126,8 @@ struct Directory : DataItem {
     }
 
     void create( utils::String name, Node inode ) {
+        if ( name.size() > 255 )
+            throw Error( ENAMETOOLONG );
         _insertItem( DirectoryEntry( std::move( name ), std::move( inode ) ) );
     }
 
