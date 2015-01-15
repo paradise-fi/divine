@@ -74,12 +74,16 @@ struct RegularFile : File {
         if ( isSnapshot() )
             copyOnWrite();
 
-        if ( _content.size() < offset + length ) {
-            _content.resize( offset + length );
-            _size = _content.size();
-        }
+        if ( _content.size() < offset + length )
+            resize( offset + length );
+
         std::copy( buffer, buffer + length, _content.begin() + offset );
         return true;
+    }
+
+    void resize( size_t length ) {
+        _content.resize( length );
+        _size = _content.size();
     }
 
 private:
