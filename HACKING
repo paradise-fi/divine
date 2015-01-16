@@ -109,7 +109,7 @@ The source code is currently laid out like this:
       generators (the backends)
   * **divine/llvm/** contains the implementation of LLVM interpreter for
       verification of C and C++ using LLVM bitcode
-  * **divine/timed/** contains the implementation of UppAll timed automata format
+  * **divine/timed/** contains the implementation of UPPAAL timed automata format
       for DIVINE.
   * **divine/dve/** contains the implementation of DVE interpreter for
       verification of DVE format.
