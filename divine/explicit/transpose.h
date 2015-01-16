@@ -27,6 +27,8 @@ void transpose( DataBlock &from, DataBlock &to ) {
     std::memset( counts, 0, from.count() * sizeof( int64_t ) );
 
     // count outdegree
+    ASSERT_EQ( from.size( 0 ) % sizeof( EdgeSpec ), 0 );
+    counts[ 0 ] = from.size( 0 ) / sizeof( EdgeSpec ); // intials
     EdgeSpec *revEdges = reinterpret_cast< EdgeSpec * >( from[ 1 ] );
     EdgeSpec *revEdgesEnd = reinterpret_cast< EdgeSpec * >( from[ from.count() ] );
     for ( EdgeSpec *p = revEdges; p < revEdgesEnd; ++p )
@@ -34,8 +36,13 @@ void transpose( DataBlock &from, DataBlock &to ) {
 
     auto inserter = to.inserter();
 
+    // copy initials
+    inserter.emplace( counts[ 0 ] * sizeof( EdgeSpec ), [&]( char *ptr, int64_t size ) {
+            std::copy( from[ 0 ], from[ 1 ], ptr );
+        } );
+
     // distribute space as needed
-    for ( int64_t i = 0; i < to.count(); ++i )
+    for ( int64_t i = 1; i < to.count(); ++i )
         inserter.emplace( counts[ i ] * sizeof( EdgeSpec ), []( char *ptr, int64_t size ) {
             std::memset( ptr, 0, size );
         } );

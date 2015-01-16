@@ -191,7 +191,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         }
         int64_t predSize( Pool &pool ) const {
             ASSERT( iteration >= Iteration::Normalize );
-            return pool.size( _data.predecessors );
+            return pool.valid( _data.predecessors ) ? pool.size( _data.predecessors ) : 0;
         }
         void addPredecessor( Pool &pool, EdgeSpec predecessor ) {
             ASSERT( iteration == Iteration::PrececessorTracking );
@@ -247,7 +247,8 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
 
         static visitor::TransitionAction transition( This &c, Vertex from, Vertex to, Label )
         {
-            ++c.extension( to ).predCount();
+            if ( from.valid() )
+                ++c.extension( to ).predCount();
             c.shared.addEdge( c.store(), from, to );
             c.graph().porTransition( c.store(), from, to );
             return visitor::TransitionAction::Follow;
@@ -284,11 +285,14 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             ASSERT_LEQ( index, limits[ params.ringId ].indexEnd );
 
             int64_t predCount = extension( st ).predCount();
-            Blob preds = pool().allocate( predCount * sizeof( EdgeSpec ) );
-            EdgeSpec *ptr = reinterpret_cast< EdgeSpec* >( pool().dereference( preds ) );
-            for ( int64_t i = 0; i < predCount; ++i )
-                ptr[ i ] = EdgeSpec( -1, Label() );
-            extension( st )._data.predecessors = preds;
+            if ( predCount > 0 ) {
+                Blob preds = pool().allocate( predCount * sizeof( EdgeSpec ) );
+                EdgeSpec *ptr = reinterpret_cast< EdgeSpec* >( pool().dereference( preds ) );
+                for ( int64_t i = 0; i < predCount; ++i )
+                    ptr[ i ] = EdgeSpec( -1, Label() );
+                extension( st )._data.predecessors = preds;
+            } else
+                extension( st )._data.predecessors = Blob();
         }
         ASSERT_EQ( index, limits[ params.ringId ].indexEnd );
     }
@@ -302,8 +306,9 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         static visitor::TransitionAction transition( This &c, Vertex from, Vertex to, Label label )
         {
             auto act = c.updateIteration( to );
-            c.extension( to ).addPredecessor( c.pool(),
-                    EdgeSpec( c.index( from ), label ) );
+            if ( from.valid() )
+                c.extension( to ).addPredecessor( c.pool(),
+                        EdgeSpec( c.index( from ), label ) );
             return act;
         }
 
@@ -494,6 +499,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
     bool _writeFileT() {
         dess::Explicit dess( params.path, dess::Explicit::OpenMode::Write );
         auto start = limits[ params.ringId ].indexStart;
+        ASSERT_LEQ( 1, start );
         auto edgeInserter = dess.backward.inserter( start );
         auto nodeInserter = dess.nodes.inserter( start );
 
@@ -502,10 +508,11 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             auto ext = extension( st );
             edgeInserter.emplace( ext.predSize( pool() ),
                 [ ext, this ]( char *ptr, int64_t size ) {
-                    std::copy( ext.predecessors( this->pool() ),
-                        ext.predecessors( this->pool() )
-                            + size / sizeof( EdgeSpec ),
-                        reinterpret_cast< EdgeSpec * >( ptr ) );
+                    if ( size )
+                        std::copy( ext.predecessors( this->pool() ),
+                            ext.predecessors( this->pool() )
+                                + size / sizeof( EdgeSpec ),
+                            reinterpret_cast< EdgeSpec * >( ptr ) );
                 } );
             if ( saveStates ) {
                 char *source = this->pool().dereference( st.node() ) + sizeof( Extension );
