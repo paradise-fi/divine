@@ -2,6 +2,7 @@
 #include <divine/utility/report.h>
 #include <stdexcept>
 #include <map>
+#include <algorithm>
 
 #include <bricks/brick-assert.h>
 #include <bricks/brick-string.h>
@@ -48,7 +49,7 @@ SqlReport::SqlReport( const std::string &db, const std::string &connstr ) :
 {
     // test connection string
     nanodbc::connection connection( _connstr );
-    brick::_assert::discard( connection );
+    brick::_assert::unused( connection );
 }
 
 void SqlReport::doFinal( const Meta &meta ) {
