@@ -82,9 +82,24 @@ struct _Explicit : public Common< Blob > {
                     std::placeholders::_1, std::placeholders::_2 ) );
     }
 
-    bool isAccepting( Node ) { return false; } // TODO
+    template< typename Yield >
+    void enumerateFlags( Yield yield ) {
+        for ( int i = 0; i < dess.stateFlags.flagCount; ++i )
+            if ( !dess.stateFlags.map()[ i ].empty() ) {
+                auto f = graph::flags::parseFlagName( dess.stateFlags.map()[ i ] );
+                yield( f.first, i, f.second );
+            }
+    }
 
-    bool isGoal( Node ) { return false; } // TODO
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node n, QueryFlags flags ) {
+        graph::FlagVector out;
+        uint64_t nf = dess.stateFlags[ index( n ) ];
+        for ( auto f : flags )
+            if ( nf & (1 << f) )
+                out.emplace_back( f );
+        return out;
+    }
 
     std::string showNode( Node n ) {
         std::stringstream ss;
@@ -129,9 +144,8 @@ struct _Explicit : public Common< Blob > {
     }
 
     Node _mkNode( int64_t index ) {
-        Node n = this->pool().allocate( this->slack() + sizeof( int64_t ) );
-        *reinterpret_cast< int64_t * >(
-                this->pool().dereference( n ) + this->slack() ) = index;
+        Node n = this->makeBlobCleared( sizeof( int64_t ) );
+        this->pool().template get< int64_t >( n, this->slack() ) = index;
         return n;
     }
 
