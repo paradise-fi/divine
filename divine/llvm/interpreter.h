@@ -132,6 +132,8 @@ struct Interpreter
     MDNode *findEnum( std::string lookup ) {
         ASSERT( bc->module );
         auto meta =  bc->module->getNamedMetadata( "llvm.dbg.cu" );
+        if ( !meta )
+            return nullptr;
         // sadly metadata for enums are located at different locations in
         // IR produced by clang 3.2 and 3.3
         // to make it worse I didn't find way to distinguish between those
