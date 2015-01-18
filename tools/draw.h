@@ -127,11 +127,11 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
         if ( extension( n ).initial )
             return "magenta";
         if ( extension( n ).intrace ) {
-            if ( this->graph().isGoal( n.node() ) )
+            if ( this->graph().stateFlags( n.node(), graph::flags::isGoal ) )
                 return "orange";
             return "red";
         }
-        if ( this->graph().isGoal( n.node() ) )
+        if ( this->graph().stateFlags( n.node(), graph::flags::isGoal ) )
             return "yellow";
         return "";
     }
@@ -147,7 +147,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
         str << extension( n ).serial << " [";
         if ( !color( n ).empty() )
             str << " fillcolor = " << color( n ) << " style=filled ";
-        if ( this->graph().isAccepting( n.node() ) )
+        if ( this->graph().stateFlags( n.node(), graph::flags::isAccepting ) )
             str << "peripheries=2 ";
 
         if ( label( n ).empty() )
