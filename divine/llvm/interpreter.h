@@ -134,16 +134,10 @@ struct Interpreter
         auto meta =  bc->module->getNamedMetadata( "llvm.dbg.cu" );
         if ( !meta )
             return nullptr;
-        // sadly metadata for enums are located at different locations in
-        // IR produced by clang 3.2 and 3.3
-        // to make it worse I didn't find way to distinguish between those
-        // by other method then trying
-        for ( int modid = 0; modid < int(meta->getNumOperands()); ++modid ) {
-            auto e = findEnum( node( meta, modid, 10, 0 ), lookup, 2 ); // clang <= 3.2
-            if ( !e ) e = findEnum( node( meta, modid, 7 ), lookup, 3 ); // clang >= 3.3
-            if ( e )
+
+        for ( int modid = 0; modid < int(meta->getNumOperands()); ++modid )
+            if ( auto e = findEnum( node( meta, modid, 7 ), lookup, 3 ) )
                 return e;
-        }
         return nullptr;
     }
 
