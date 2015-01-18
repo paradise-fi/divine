@@ -463,6 +463,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
     std::string last;
 
     StopOn::SC stopOn;
+    brick::data::Bimap< short, std::string > stateFlagMap;
+    brick::data::SmallVector< short > stateFlagsAll;
 
     int id() { return 0; } // expected by AlgorithmUtils
 
@@ -819,6 +821,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
             nodeinfo.emplace_back( "accepting" );
         if ( this->graph().stateFlags( v.node(), graph::flags::isGoal ) )
             nodeinfo.emplace_back( "goal" );
+        for ( auto f : this->graph().stateFlags( v.node(), stateFlagsAll ) )
+            nodeinfo.emplace_back( stateFlagMap[ f ] );
 
         loop.show( "vertex: " + (nodeinfo.empty() ?
                                  "" : brick::string::fmt_container( nodeinfo, '{', '}' )) );
@@ -974,6 +978,10 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
             }
             markCE();
         }
+
+        stateFlagMap = graph::flags::flagMap( this->graph() );
+        for ( auto &pair : stateFlagMap.left() )
+            stateFlagsAll.emplace_back( pair.first );
     }
 };
 
