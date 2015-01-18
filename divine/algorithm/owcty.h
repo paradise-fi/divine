@@ -241,7 +241,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
                 MapVertexId fromId = o.makeId( from );
                 if ( o.getMap( to ) < fromMap )
                     o.setMap( to, fromMap  );
-                if ( o.graph().isAccepting( from.node() ) ) {
+                if ( o.graph().stateFlags( from.node(), graph::flags::isAccepting ) ) {
                     if ( from.handle().asNumber() == to.handle().asNumber() ) { // hmm
                         o.shared.cycle_node = to.handle();
                         o.shared.cycle_found = true;
@@ -264,7 +264,9 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
         static visitor::ExpansionAction expansion( This &o, Vertex st )
         {
             Guard guard( st );
-            o.extension( st ).inF() = o.extension( st ).inS() = o.graph().isAccepting( st.node() );
+            o.extension( st ).inF()
+                = o.extension( st ).inS()
+                = !!o.graph().stateFlags( st.node(), graph::flags::isAccepting );
             o.shared.size += o.extension( st ).inS();
             o.shared.stats.addNode( o.graph(), st );
             return visitor::ExpansionAction::Expand;

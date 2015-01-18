@@ -575,8 +575,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
                     return Stop{ StopReason::Deadlock, i };
                 if ( !trace.empty() ) {
                     if ( (stopOn & StopOn::Accepting) == StopOn::Accepting
-                            && (this->graph().isGoal( trace.back().node())
-                                || this->graph().isAccepting( trace.back().node() )) )
+                            && this->graph().stateFlags( trace.back().node(),
+                                graph::FlagVector{ graph::flags::goal, graph::flags::accepting } ) )
                         return Stop{ StopReason::Accepting, i };
                     if ( (stopOn & StopOn::Marked) == StopOn::Marked
                             && extension( trace.back() ).marked )
@@ -796,7 +796,8 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
             ASSERT( extension( trace.back() ).inCEinit || extension( trace.back() ).inCElasso );
             if ( extension( trace.back() ).ceNext == 0 )
                 return true;
-            if ( extension( trace.back() ).inCElasso && this->graph().isAccepting( trace.back().node() ) )
+            if ( extension( trace.back() ).inCElasso
+                    && this->graph().stateFlags( trace.back().node(), graph::flags::isAccepting ) )
                 return true;
             goDown( extension( trace.back() ).ceNext - 1 );
         }
@@ -814,9 +815,9 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
             nodeinfo.emplace_back( "in-ce-lasso" );
         if ( extension( v ).marked )
             nodeinfo.emplace_back( "marked" );
-        if ( this->graph().isAccepting( v.node() ) )
+        if ( this->graph().stateFlags( v.node(), graph::flags::isAccepting ) )
             nodeinfo.emplace_back( "accepting" );
-        if ( this->graph().isGoal( v.node() ) )
+        if ( this->graph().stateFlags( v.node(), graph::flags::isGoal ) )
             nodeinfo.emplace_back( "goal" );
 
         loop.show( "vertex: " + (nodeinfo.empty() ?

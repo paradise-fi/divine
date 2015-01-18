@@ -168,7 +168,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
 
         static void finished( This &dfs, Vertex n ) {
 
-            if ( dfs.graph().isAccepting( n.node() ) ) { // run the nested search
+            if ( dfs.graph().stateFlags( n.node(), graph::flags::isAccepting ) ) { // run the nested search
                 if ( dfs.parallel )
                     dfs.inner.process.push( n.handle() );
                 else

@@ -168,7 +168,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup, MapShared< typename Setup::Store:
     bool isAccepting( Vertex st ) {
         if ( extension( st ).elim() >= 2 )
             return false;
-        if ( !this->graph().isAccepting ( st.node() ) ) {
+        if ( !this->graph().stateFlags( st.node(), graph::flags::isAccepting ) ) {
             extension( st ).elim() = 3;
             return false;
         }
@@ -183,7 +183,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup, MapShared< typename Setup::Store:
             ++ m.shared.expanded;
             if ( !m.extension( st ).seen() ) {
                 m.extension( st ).seen() = true;
-                if ( m.graph().isAccepting ( st.node() ) )
+                if ( m.graph().stateFlags( st.node(), graph::flags::isAccepting ) )
                     ++ m.shared.accepting;
                 else
                     m.extension( st ).elim() = 3; // not accepting
@@ -207,7 +207,7 @@ struct Map : Algorithm, AlgorithmUtils< Setup, MapShared< typename Setup::Store:
                 m.extension( t ).parent() = f.handle();
 
             /* self loop */
-            if ( m.graph().isAccepting( f.node() ) &&
+            if ( m.graph().stateFlags( f.node(), graph::flags::isAccepting ) &&
                  m.store().equal( f.handle(), t.handle() ) )
             {
                 m.shared.ce.initial = t.handle();

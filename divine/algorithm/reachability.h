@@ -109,7 +109,7 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup, Sh< typename Setup
             r.shared.stats.addEdge( r.store(), f, t );
 
             if ( r.meta().input.propertyType == graph::PT_Goal
-                 && r.graph().isGoal( t.node() ) )
+                 && r.graph().stateFlags( t.node(), graph::flags::isGoal ) )
             {
                 setGoal( r, t, false );
                 return visitor::TransitionAction::Terminate;

@@ -174,7 +174,7 @@ struct Csdr : CommonReachability< CsdrExtension, Setup, CsdrShared,
             // on our level
             c.extension( t ).setDone();
             if ( c.meta().input.propertyType == graph::PT_Goal
-                 && c.graph().isGoal( t.node() ) )
+                 && c.graph().stateFlags( t.node(), graph::flags::isGoal ) )
             {
                 setGoal( c, t, false );
                 return visitor::TransitionAction::Terminate;

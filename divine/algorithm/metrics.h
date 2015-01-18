@@ -25,7 +25,7 @@ struct Statistics {
     template< typename Graph, typename Vertex >
     void addNode( Graph &g, const Vertex& n ) {
         ++states;
-        if ( g.isAccepting( n.node() ) )
+        if ( g.stateFlags( n.node(), graph::flags::isAccepting ) )
             ++ accepting;
         addExpansion();
     }
