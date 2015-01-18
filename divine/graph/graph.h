@@ -93,6 +93,15 @@ inline std::pair< std::string, Type > parseFlagName( std::string fname ) {
     return { fname.substr( 2 ), t };
 }
 
+template< typename Graph >
+brick::data::Bimap< short, std::string > flagMap( Graph &g ) {
+    brick::data::Bimap< short, std::string > out;
+    g.enumerateFlags( [&]( std::string name, short i, Type t ) {
+            out.insert( i, flagName( name, t ) );
+        } );
+    return out;
+}
+
 }
 
 template< typename _Node >
