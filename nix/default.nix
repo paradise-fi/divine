@@ -183,17 +183,21 @@ let
                             flags = [ "-DSTORE_HC=OFF" "-DSTORE_COMPRESS=ON" "-DGEN_EXPLICIT=OFF" ]; };
     /* gcc_hashcomp = mk: mk { inputs = pkgs: [];
                             flags = [ "-DSTORE_COMPRESS=OFF" "-DSTORE_HC=ON" "-DGEN_EXPLICIT=OFF" ]; }; */
-    gcc_explicit = mk: mk { inputs = pkgs: [];
-                            flags = [ "-DSTORE_COMPRESS=OFF" "-DALG_EXPLICIT=ON" "-DGEN_EXPLICIT=ON" ]; };
     gcc_full =     mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                             flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
     gcc49_full =   mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
                             compilerPkg = pkgs: pkgs.gcc49;
                             flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
+
     clang_min =    mk: mk { inputs = pkgs: []; clang = true; };
     clang_med =    mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
                             flags = []; clang = true; };
-  };
+  } // lib.fold (alg: set: lib.setAttrByPath [ "gcc_${alg}" ] (mk:
+        mk { inputs = pkgs: [];
+          flags = [ "-DALG_OWCTY=OFF" "-DALG_REACHABILITY=OFF" "-DALG_CSDR=OFF"
+                    "-DALG_${lib.toUpper alg}=ON" ];
+        }
+      ) // set) {} [ "map" "ndfs" "metrics" "weakreachability" "explicit" ];
 
   windows = {
     win7_gui.i386 = mkwin windows7_img "" [ windows_qt ];
