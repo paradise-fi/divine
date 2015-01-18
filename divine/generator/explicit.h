@@ -46,6 +46,8 @@ struct _Explicit : public Common< Blob > {
         EdgeSpec( Node n, Label l ) : std::tuple< Node, Label >( n, l ) { }
     };
 
+    brick::data::SmallVector< short > goalFlags;
+
     dess::Capabilities capabilities() {
         return dess.header->capabilities;
     }
@@ -95,9 +97,14 @@ struct _Explicit : public Common< Blob > {
     graph::FlagVector stateFlags( Node n, QueryFlags flags ) {
         graph::FlagVector out;
         uint64_t nf = dess.stateFlags[ index( n ) ];
-        for ( auto f : flags )
-            if ( nf & (1 << f) )
+        for ( auto f : flags ) {
+            if ( f >= graph::flags::firstAvailable && (nf & (1 << f)) )
                 out.emplace_back( f );
+            else if ( f == graph::flags::goal )
+                for ( auto gf : goalFlags )
+                    if ( nf & (1 << gf) )
+                        out.emplace_back( gf );
+        }
         return out;
     }
 
@@ -109,7 +116,11 @@ struct _Explicit : public Common< Blob > {
 
     std::string showTransition( Node from, Node to, Label l ) {
         std::stringstream ss;
-        ss << index( from ) << " -> " << index( to );
+        ASSERT( this->pool().valid( to ) );
+        if ( this->pool().valid( from ) )
+            ss << index( from ) << " -> " << index( to );
+        else
+            ss << "-> " << index( to );
         showLabel( ss, l );
         return ss.str();
     }
@@ -117,13 +128,33 @@ struct _Explicit : public Common< Blob > {
     void release( Node s ) { pool().free( s ); }
 
     void useProperties( PropertySet s ) {
-        ASSERT_EQ( s.size(), 1u );
-        ASSERT_EQ( *s.begin(), "deadlock" );
+        auto flmap = graph::flags::flagMap( *this );
+
+        for ( auto p : s ) {
+            if ( p == "deadlock" )
+                continue;
+            if ( p == "safety" ) {
+                for ( auto pair : flmap.left() )
+                    if ( pair.second[ 0 ] == 'G' )
+                        goalFlags.emplace_back( pair.first );
+            } else if ( p == "goals" ) {
+                for ( auto pair : flmap.left() )
+                    if ( pair.second[ 0 ] == 'G' || pair.second[ 0 ] == 'g' )
+                        goalFlags.emplace_back( pair.first );
+            } else
+                goalFlags.emplace_back( flmap[ p ] );
+        }
     }
 
     template< typename Yield >
     void properties( Yield yield ) {
         yield( "deadlock", "deadlock freedom", PT_Deadlock );
+        yield( "safety", "unreachability of all G:* flags", PT_Goal );
+        yield( "goals", "unreachability of all G:* and g:* flags", PT_Goal );
+        enumerateFlags( [&]( std::string name, int, graph::flags::Type t ) {
+                auto fname = graph::flags::flagName( name, t );
+                yield( fname, "unreachability of " + fname + " flag", PT_Goal );
+            } );
     }
 
   private:
