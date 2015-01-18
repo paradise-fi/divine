@@ -32,9 +32,19 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, br
         std::cout << "Available properties:" << std::endl;
         for ( auto p : getProperties() )
             std::cout << " * " << p.name << ": " << p.desc << std::endl;
+        std::cout << std::endl;
+
         auto cap = compactCapabilities();
         if ( std::get< 0 >( cap ) )
-            std::cout << std::get< 1 >( cap ) << std::endl;
+            std::cout << std::get< 1 >( cap ) << std::endl << std::endl;
+
+        std::cout << "State flags: ";
+        bool fst = true;
+        g->enumerateFlags( [&]( std::string name, int, graph::flags::Type t ) {
+                std::cout << (fst ? "" : ", ") << graph::flags::flagName( name, t );
+                fst = false;
+            } );
+        std::cout << std::endl;
     }
 
     int id() { return 0; }
