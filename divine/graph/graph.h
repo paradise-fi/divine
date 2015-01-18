@@ -77,6 +77,7 @@ inline std::string flagName( std::string flag, Type type ) {
         case Type::Proposition: return "p:" + flag;
         case Type::Other: return "o:" + flag;
     }
+    ASSERT_UNREACHABLE( "unhandled case" );
 }
 
 inline std::pair< std::string, Type > parseFlagName( std::string fname ) {
