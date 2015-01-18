@@ -151,7 +151,7 @@ struct Stack {
         _from = s.vertex( h );
         _stack.push_back( StackItem( h, Label() ) );
         deadlocked = true;
-        g.successors( _from.node(), [&]( Node n, Label l ) {
+        g.successors( _from, [&]( Node n, Label l ) {
                 ++ this->_pushes;
                 this->deadlocked = false;
                 this->_stack.push_back( StackItem( n, l ) );
