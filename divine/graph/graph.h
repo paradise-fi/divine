@@ -1,9 +1,11 @@
 // -*- C++ -*- (c) 2011-2014 Petr Rockai <me@mornfall.net>
 
 #include <vector>
+#include <initializer_list>
 #include <brick-unittest.h>
 #include <brick-types.h>
 #include <brick-bitlevel.h>
+#include <brick-data.h>
 #include <divine/toolkit/pool.h>
 #include <divine/graph/label.h>
 
@@ -46,6 +48,53 @@ struct Allocator {
     }
 };
 
+struct FlagVector : brick::data::SmallVector< short > {
+    using brick::data::SmallVector< short >::SmallVector;
+
+    explicit operator bool() const { return !empty(); };
+};
+
+namespace flags {
+
+enum class Type {
+    DefaultGoal,
+    Goal,
+    Proposition,
+    Other
+};
+
+constexpr short accepting = -2;
+constexpr short goal = -1;
+constexpr short firstAvailable = 0;
+
+const std::initializer_list< short > isAccepting = { accepting };
+const std::initializer_list< short > isGoal = { goal };
+
+inline std::string flagName( std::string flag, Type type ) {
+    switch ( type ) {
+        case Type::DefaultGoal: return "G:" + flag;
+        case Type::Goal: return "g:" + flag;
+        case Type::Proposition: return "p:" + flag;
+        case Type::Other: return "o:" + flag;
+    }
+}
+
+inline std::pair< std::string, Type > parseFlagName( std::string fname ) {
+    ASSERT_LEQ( 2, fname.size() );
+    ASSERT_EQ( ':', fname[ 1 ] );
+    Type t;
+    switch ( fname[ 0 ] ) {
+        case 'G': t = Type::DefaultGoal; break;
+        case 'g': t = Type::Goal; break;
+        case 'p': t = Type::Proposition; break;
+        case 'o': t = Type::Other; break;
+        default: ASSERT_UNREACHABLE( "unhandled case" );
+    }
+    return { fname.substr( 2 ), t };
+}
+
+}
+
 template< typename _Node >
 struct Base : Allocator {
     typedef _Node Node;
@@ -53,13 +102,11 @@ struct Base : Allocator {
 
     void initPOR() {}
 
-    // for single-set acceptance conditions (Buchi)
-    bool isAccepting( Node ) { return false; }
+    template< typename Yield >
+    void enumerateFlags( Yield yield ) { }
 
-    // for multi-set acceptance conditions (Rabin, Streett, ...)
-    bool isInAccepting( Node, int /* acc_group */ ) { return false; }
-    bool isInRejecting( Node, int /* acc_group */ ) { return false; }
-    unsigned acceptingGroupCount() { return 0; }
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node n, QueryFlags qf ) { return { }; }
 
 	// HACK: Inform the gaph if fairness is enabled,
 	// The timed automata interpreter uses this to enable Zeno reduction
@@ -159,14 +206,17 @@ struct Transform {
     void allSuccessors( Node st, Yield yield ) { successors( st, yield ); }
     void release( Node s ) { base().release( s ); }
     bool isDeadlock( Node s ) { return base().isDeadlock( s ); }
-    bool isGoal( Node s ) { return base().isGoal( s ); }
-    bool isAccepting( Node s ) { return base().isAccepting( s ); }
     std::string showConstdata() { return base().showConstdata(); }
     std::string showNode( Node s ) { return base().showNode( s ); }
     std::string showTransition( Node from, Node to, Label act ) { return base().showTransition( from, to, act ); }
     void read( std::string path, std::vector< std::string > definitions, Transform< G > *blueprint = nullptr ) {
         base().read( path, definitions, blueprint ? &blueprint->_base : nullptr );
     }
+
+    template< typename Yield >
+    void enumerateFlags( Yield yield ) { return base().enumerateFlags( yield ); }
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node n, QueryFlags qf ) { return base().stateFlags( n, qf ); }
 
 	void fairnessEnabled( bool enabled ) {
 		base().fairnessEnabled( enabled );
