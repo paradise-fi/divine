@@ -62,15 +62,24 @@ struct Timed : public Common< Blob > {
         }
     }
 
-    bool isAccepting( Node n ) {
-        if ( gen.isErrState( mem( n ) ) )
-            return false;
-        return buchi.isAccepting( gen.getPropLoc( mem( n ) ) );
-    }
+    template< typename Yield >
+    void enumerateFlags( Yield ) { } // no flags supported beyond implicit accepting and goal
 
-    // error states are goals, timelocks just show up as deadlocks
-    bool isGoal( Node n ) {
-        return gen.isErrState( mem( n ) );
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
+        // note: in this generatior it is impossible to have same state accepting and goal
+        auto m = mem( s );
+        for ( auto f : qf ) {
+            if ( f == graph::flags::accepting
+                    && !gen.isErrState( m )
+                    && buchi.isAccepting( gen.getPropLoc( m ) ) )
+                return { f };
+
+            // error states are goals, timelocks just show up as deadlocks
+            if ( f == graph::flags::goal && gen.isErrState( m ) )
+                return { f };
+        }
+        return { };
     }
 
     std::string showNode( Node n ) {

@@ -178,16 +178,20 @@ public:
         pool().free( s );
     }
 
-    bool isGoal(Node) {
-        return false;
-    }
+    template< typename Yield >
+    void enumerateFlags( Yield ) { } // no flags supported beyond implicit accepting and goal
 
-    /**
-     * Determines if compressed_state is accepting
-     *
-     * \return true if compressed_state is accepting
-     */
-    bool isAccepting(Node compressed_state);
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
+        // ID of the current state of the property automaton = the last element of the vector
+        unsigned int sid = State::getPrimitiveState( pool(), s, getTotalSlack(), packed_state_size - 1 );
+
+        for ( auto f : qf )
+            if ( f == graph::flags::accepting && property
+                    && property->accepting_states.find( sid ) != property->accepting_states.end() )
+                return { graph::flags::accepting };
+        return { };
+    }
 
     /**
      * Converts compressed_state to a string

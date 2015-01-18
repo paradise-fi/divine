@@ -247,14 +247,20 @@ struct Dve : public Common< Blob > {
         return system->symtab.context->offset;
     }
 
-    bool isGoal( Node s ) {
-        updateMem( s );
-        return !system->assertValid( ctx );
-    }
+    template< typename Yield >
+    void enumerateFlags( Yield ) { } // no flags supported beyond implicit accepting and goal
 
-    bool isAccepting( Node s ) {
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
+        graph::FlagVector out;
         updateMem( s );
-        return system->accepting( ctx );
+        for ( auto f : qf ) {
+            if ( f == graph::flags::accepting && system->accepting( ctx ) )
+                out.emplace_back( f );
+            else if ( f == graph::flags::goal && !system->assertValid( ctx ) )
+                out.emplace_back( f );
+        }
+        return out;
     }
 
     char *mem( Node s ) {

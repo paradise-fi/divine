@@ -234,15 +234,6 @@ Coin::Successors Coin::_ample(Node compressed_state) {
     }
 }
 
-bool Coin::isAccepting(Node compressed_state) {
-    if (!property) {
-        return false;
-    }
-    // ID of the current state of the property automaton = the last element of the vector
-    unsigned int sid = State::getPrimitiveState(pool(), compressed_state, getTotalSlack(), packed_state_size-1);
-    return (property->accepting_states.find(sid) != property->accepting_states.end());
-}
-
 std::string Coin::showNode(Node compressed_state) {
     std::stringstream stream;
     State state(pool(), compressed_state, getTotalSlack());

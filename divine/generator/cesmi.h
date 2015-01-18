@@ -290,8 +290,21 @@ struct CESMI : public Common< Blob > {
             return 0;
     }
 
-    bool isGoal( Node s ) { return flags( s ) & cesmi::cesmi_goal; }
-    bool isAccepting( Node s ) { return flags( s ) & cesmi::cesmi_accepting; }
+    template< typename Yield >
+    void enumerateFlags( Yield ) { } // no flags supported beyond implicit accepting and goal
+
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
+        graph::FlagVector out;
+        auto csflags = flags( s );
+        for ( auto f : qf ) {
+            if ( f == graph::flags::goal && (csflags & cesmi::cesmi_goal) )
+                out.emplace_back( f );
+            else if ( f == graph::flags::accepting && (csflags & cesmi::cesmi_accepting) )
+                out.emplace_back( f );
+        }
+        return out;
+    }
 
     std::string showNode( Node s ) {
         if ( dl.show_node ) {

@@ -67,12 +67,18 @@ struct Dummy : Common< Blob > {
         pool().free( s );
     }
 
-    bool isGoal( Node s ) {
-        Content f = pool().get< Content >( s, this->slack() );
-        return f.first == dummy_size;
+    template< typename Yield >
+    void enumerateFlags( Yield ) { } // no flags supported beyond implicit accepting and goal
+
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
+        Content cont = pool().get< Content >( s, this->slack() );
+        for ( auto f : qf )
+            if ( f == graph::flags::goal && cont.first == dummy_size )
+                return { f };
+        return { };
     }
 
-    bool isAccepting( Node ) { return false; }
     std::string showNode( Node s ) {
         if ( !pool().valid( s ) )
             return "[]";
