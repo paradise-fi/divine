@@ -443,6 +443,23 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             initials.emplace_back( id, l );
         } );
 
+        int flagNamesLength = 0;
+        std::vector< std::string > flagNames;
+        int flagMax = 0;
+        this->graph().enumerateFlags( [&]( std::string name, int i, graph::flags::Type t ) {
+                auto fname = graph::flags::flagName( name, t );
+                if ( i >= 64 ) {
+                    progress() << "WARNING: ignoring flag " << fname
+                             << ", you can save at most 64 flags" << std::endl;
+                    return;
+                }
+                flagNamesLength += fname.size();
+                if ( flagNames.size() <= i )
+                    flagNames.resize( i + 1 );
+                flagNames[ i ] = std::move( fname );
+                flagMax = std::max( flagMax, i );
+            } );
+
         ASSERT_EQ( nodes, meta().statistics.visited );
         auto creator = dess::preallocate( params.path )
             .nodes( nodes + 1 ) // pseudo-initial
@@ -450,7 +467,8 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             .forward()
             .backward()
             .generator( meta().input.modelType )
-            .labelSize( Label() );
+            .labelSize( Label() )
+            .saveFlags( flagMax + 1, flagNamesLength );
         if ( params.saveNodes )
             creator.saveNodes( nodesSize );
         if ( std::is_same< Label, uint64_t >::value )
@@ -459,6 +477,12 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             creator.probability();
 
         auto dess = creator();
+
+        auto sfIns = dess.stateFlags.flagMap.inserter();
+        for ( auto f : flagNames )
+            sfIns.emplace( f.size(), [&]( char *ptr, int64_t ) {
+                        std::copy( f.begin(), f.end(), ptr );
+                    } );
 
         if ( params.saveNodes )
             dess.nodes.inserter().emplace( 0, []( char *, int64_t ) { } );
@@ -502,6 +526,12 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         ASSERT_LEQ( 1, start );
         auto edgeInserter = dess.backward.inserter( start );
         auto nodeInserter = dess.nodes.inserter( start );
+        uint64_t *flags = dess.stateFlags.flagMasks + start;
+
+        graph::FlagVector allflags;
+        this->graph().enumerateFlags( [&]( std::string, int i, graph::flags::Type ) {
+                    allflags.emplace_back( i );
+                } );
 
         for ( auto st : this->store() ) {
             ASSERT( extension( st ).iteration == Iteration::PrececessorTracking );
@@ -521,6 +551,11 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
                         std::copy( source, source + size, ptr );
                     } );
             }
+
+            auto filtered = this->graph().stateFlags( st.node(), allflags );
+            for ( auto f : filtered )
+                *flags |= 1 << f;
+            ++flags;
         }
         return true;
     }
