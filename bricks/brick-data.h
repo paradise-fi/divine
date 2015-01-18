@@ -48,6 +48,19 @@
 namespace brick {
 namespace data {
 
+// gcc is missing is_trivially_default_constructible (as of 4.9!)
+#ifdef __GLIBCXX__
+    template< typename T >
+    constexpr bool __triviallyDefaultConstructible() {
+        return std::has_trivial_default_constructor< T >::value;
+    }
+#else
+    template< typename T >
+    constexpr bool __triviallyDefaultConstructible() {
+        return std::is_trivially_default_constructible< T >::value;
+    }
+#endif
+
 template< typename K, typename V >
 struct RMap : std::map< K, V > {
 
@@ -146,12 +159,12 @@ namespace uninitialized {
 
     template< typename T, typename ForwardIt >
     auto construct( ForwardIt, ForwardIt ) ->
-        typename std::enable_if< std::is_trivially_default_constructible< T >::value >::type
+        typename std::enable_if< __triviallyDefaultConstructible< T >() >::type
     { }
 
     template< typename T, typename ForwardIt >
     auto construct( ForwardIt first, ForwardIt last ) ->
-        typename std::enable_if< !std::is_trivially_default_constructible< T >::value >::type
+        typename std::enable_if< !__triviallyDefaultConstructible< T >() >::type
     {
         ForwardIt current = first;
         try {
