@@ -31,7 +31,7 @@ void FSManager::createDirectoryAt( int dirfd, utils::String name, unsigned mode 
 
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
         changeDirectory( dirfd );
 
     Node current;
@@ -79,7 +79,7 @@ void FSManager::createSymLinkAt( int dirfd, utils::String name, utils::String ta
 
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
         changeDirectory( dirfd );
 
     Node current;
@@ -108,7 +108,7 @@ int FSManager::createFile( utils::String name, unsigned mode ) {
 ssize_t FSManager::readLinkAt( int dirfd, utils::String name, char *buf, size_t count ) {
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
         changeDirectory( dirfd );
 
     Node inode = findDirectoryItem( std::move( name ) );
@@ -134,7 +134,7 @@ void FSManager::accessAt( int dirfd, utils::String name, Flags< flags::Access > 
 
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
         changeDirectory( dirfd );
 
     Node item = findDirectoryItem( name, !fl.has( flags::At::SymNofollow ) );
@@ -150,7 +150,7 @@ void FSManager::accessAt( int dirfd, utils::String name, Flags< flags::Access > 
 int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, unsigned mode ) {
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
         changeDirectory( dirfd );
 
     Node file = findDirectoryItem( name );
@@ -239,7 +239,7 @@ void FSManager::removeDirectory( utils::String name ) {
 void FSManager::removeAt( int dirfd, utils::String name, flags::At fl ) {
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( utils::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
         changeDirectory( dirfd );
 
     switch( fl ) {
@@ -295,8 +295,8 @@ void FSManager::truncate( Node inode, off_t length ) {
     f->resize( length );
 }
 
-void FSManager::changeDirectory( utils::String path ) {
-    Node item = findDirectoryItem( path );
+void FSManager::changeDirectory( utils::String pathname ) {
+    Node item = findDirectoryItem( pathname );
     if ( !item )
         throw Error( ENOENT );
     if ( !item->mode().isDirectory() )
@@ -340,13 +340,13 @@ void FSManager::_createFile( utils::String name, unsigned mode, Node *file, Args
 Node FSManager::findDirectoryItem( utils::String name, bool followSymLinks ) {
     if ( name.size() > 1023 )
         throw Error( ENAMETOOLONG );
-    name = utils::normalize( name );
+    name = path::normalize( name );
     Node current = _root;
-    if ( utils::isRelative( name ) )
+    if ( path::isRelative( name ) )
         current = currentDirectory();
 
     Node item = current;
-    utils::Queue< utils::String > q( utils::splitPath< utils::Deque< utils::String > >( name ) );
+    utils::Queue< utils::String > q( path::splitPath< utils::Deque< utils::String > >( name ) );
     utils::Set< Link * > loopDetector;
     while ( !q.empty() ) {
         if ( !current->mode().isDirectory() )
@@ -380,13 +380,13 @@ Node FSManager::findDirectoryItem( utils::String name, bool followSymLinks ) {
             if ( !loopDetector.insert( sl ).second )
                 throw Error( ELOOP );
 
-            utils::Queue< utils::String > _q( utils::splitPath< utils::Deque< utils::String > >( sl->target() ) );
+            utils::Queue< utils::String > _q( path::splitPath< utils::Deque< utils::String > >( sl->target() ) );
             while ( !q.empty() ) {
                 _q.emplace( std::move( q.front() ) );
                 q.pop();
             }
             q.swap( _q );
-            if ( utils::isAbsolute( sl->target() ) )
+            if ( path::isAbsolute( sl->target() ) )
                 current = _root;
             continue;
         }
@@ -400,10 +400,10 @@ Node FSManager::findDirectoryItem( utils::String name, bool followSymLinks ) {
 }
 
 std::pair< Node, utils::String > FSManager::_findDirectoryOfFile( utils::String name ) {
-    name = utils::normalize( name );
-    utils::String path;
-    std::tie( path, name ) = utils::splitFileName( name );
-    Node item = findDirectoryItem( path );
+    name = path::normalize( name );
+    utils::String pathname;
+    std::tie( pathname, name ) = path::splitFileName( name );
+    Node item = findDirectoryItem( pathname );
     if ( !item )
         throw Error( ENOENT );
     if ( !item->mode().isDirectory() )

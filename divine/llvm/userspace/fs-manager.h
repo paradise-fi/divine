@@ -11,6 +11,7 @@
 #include "fs-directory.h"
 #include "fs-snapshot.h"
 #include "fs-descriptor.h"
+#include "fs-path.h"
 
 #ifndef _FS_MANAGER_H_
 #define _FS_MANAGER_H_
@@ -81,11 +82,11 @@ struct FSManager {
                 if ( i.name() == "." || i.name() == ".." )
                     continue;
 
-                utils::String path = utils::joinPath( root, i.name() );
+                utils::String pathname = path::joinPath( root, i.name() );
                 if ( i.inode()->mode().isDirectory() )
-                    traverseDirectoryTree( path, pre, post, file );
+                    traverseDirectoryTree( pathname, pre, post, file );
                 else
-                    file( path );
+                    file( pathname );
             }
 
             post( root );
@@ -96,7 +97,7 @@ struct FSManager {
         return _currentDirectory.lock();
     }
 
-    void changeDirectory( utils::String path );
+    void changeDirectory( utils::String pathname );
     void changeDirectory( int dirfd );
 
     unsigned umask() const {

@@ -21,7 +21,7 @@ void showFS() {
         [&]( utils::String path ) {
             for ( int i = 0; i < indent; ++i )
                 std::cout << "| ";
-            utils::String name = utils::splitFileName( path ).second;
+            utils::String name = path::splitFileName( path ).second;
             std::cout << '[' << name << ']' << std::endl;
             ++indent;
             return true;
@@ -31,7 +31,7 @@ void showFS() {
             for ( int i = 0; i < indent; ++i )
                 std::cout << "| ";
             Node item = filesystem.findDirectoryItem( path, false );
-            std::cout << utils::splitFileName( path ).second;
+            std::cout << path::splitFileName( path ).second;
             if ( item->mode().isLink() ) {
                 std::cout << " -> " << item->data()->as< Link >()->target();
             }
