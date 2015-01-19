@@ -48,6 +48,7 @@ struct _LLVM : Common< Blob > {
     std::vector< std::vector< int > > prop_next;
     std::vector< PropTrans > prop_trans;
     std::vector< bool > prop_accept;
+    brick::data::Bimap< int, std::string > apNames;
     int prop_initial;
     ReductionSet reduce;
 
@@ -122,19 +123,42 @@ struct _LLVM : Common< Blob > {
     T &state( Blob b ) { return interpreter().state.state( b ).get( T() ); }
     Flags &flags( Blob b ) { return state< Flags >( b ); }
 
-    bool isGoal( Node n ) {
-        auto &fl = state< Flags >( n );
-        for ( int i = 0; i < fl.problemcount; ++i )
-            for ( auto p : goalProblems )
-                if ( fl.problems( i ).what == p )
-                    return true;
-        return false;
+    template< typename Yield >
+    void enumerateFlags( Yield yield ) {
+        int i = graph::flags::firstAvailable;
+        for ( int p = 0; p < llvm::Problem::End; ++p, ++i )
+            yield( std::to_string( llvm::Problem::What( p ) ), i,
+                    p == llvm::Problem::PointsToViolated
+                    ? graph::flags::Type::Goal : graph::flags::Type::DefaultGoal );
+        for ( auto ap : apNames.left() )
+            yield( ap.second, i + ap.first, graph::flags::Type::Proposition );
     }
 
-    bool isAccepting( Node n ) {
-        if ( !use_property )
-            return false;
-        return prop_accept[ flags( n ).buchi ];
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node n, QueryFlags qf ) {
+        auto &fl = flags( n );
+        graph::FlagVector out;
+        const int apOffset = graph::flags::firstAvailable + llvm::Problem::End;
+
+        for ( auto f : qf ) {
+            if ( f == graph::flags::accepting ) {
+                if ( use_property && prop_accept[ fl.buchi ] )
+                    out.emplace_back( f );
+            } else if ( f == graph::flags::goal ) {
+                for ( int i = 0; i < fl.problemcount; ++i )
+                    for ( auto p : goalProblems )
+                        if ( fl.problems( i ).what == p )
+                            out.emplace_back( f );
+            } else if ( f < apOffset ) {
+                for ( int i = 0; i < fl.problemcount; ++i )
+                    if ( fl.problems( i ).what == f - graph::flags::firstAvailable ) {
+                        out.emplace_back( f );
+                        break;
+                    }
+            } else if ( fl.ap & (1 << (f - apOffset)) )
+                 out.emplace_back( f );
+        }
+        return std::move( out );
     }
 
     template< typename Coroutine >
@@ -237,17 +261,7 @@ struct _LLVM : Common< Blob > {
     }
 
     int literal_id( std::string lit ) {
-        MDNode *ap = interpreter().findEnum( "APs" );
-        if ( !ap )
-            die( "FATAL: atomic proposition names could not be detected.\n"
-                    "Maybe you are missing enum APs." );
-        for ( int i = 0; i < int( ap->getNumOperands() ); ++i ) {
-            MDNode *it = cast< MDNode >( ap->getOperand(i) );
-            MDString *name = cast< MDString >( it->getOperand(1) );
-            if ( name->getString() == lit )
-                return 1 + cast< ConstantInt >( it->getOperand(2) )->getValue().getZExtValue();
-        }
-        ASSERT_UNREACHABLE_F( "failed to find literal ID for %s", lit.c_str() );
+        return apNames[ lit ] + 1;
     }
 
     void useProperty( llvm::Problem::What w ) {
@@ -392,6 +406,8 @@ struct _LLVM : Common< Blob > {
         if ( !_interpreter_2 )
             _interpreter_2 = std::make_shared< Interpreter >( this->pool(), this->_slack, bitcode );
         applyReductions();
+
+        apNames = _interpreter->describeAPs();
 
         return *_interpreter;
     }
