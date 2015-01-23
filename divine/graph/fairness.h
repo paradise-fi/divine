@@ -50,7 +50,7 @@ struct FairGraph : NonPORGraph< G, St > {
         int procs = this->base().processCount();
 
         int copy = extension( stV ).copy;
-        bool accepting = this->base().isAccepting( st );
+        bool accepting = !!this->base().stateFlags( st, graph::flags::isAccepting );
         ASSERT_LEQ( 0, copy );
         ASSERT_LEQ( copy, procs );
 
@@ -79,12 +79,14 @@ struct FairGraph : NonPORGraph< G, St > {
     }
 
     // only states in copy 0 can be accepting
-    bool isAccepting( Node s ) {
-        return extension( s ).copy == 0 && this->base().isAccepting( s );
-    }
-
-    bool isInAccepting( Node s, int acc_group ) {
-        return extension( s ).copy == 0 && this->base().isInAccepting( s, acc_group );
+    template< typename QueryFlags >
+    graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
+        auto base = this->base().stateFlags( s, qf );
+        graph::FlagVector out;
+        for ( auto f : base )
+            if ( f != graph::flags::accepting || extension( s ).copy == 0 )
+                out.emplace_back( f );
+        return out;
     }
 };
 
