@@ -17,7 +17,13 @@ mpi_metrics() { mpi metrics --mpi "$@"; }
 
 mpi() {
     test "$OPT_MPI" = "ON" || exit 200;
-    "$MPIEXEC" > /dev/null 2>&1 || exit 200; # probably not found
+    if ! "$MPIEXEC" > /dev/null 2>&1; then
+        err=$?
+        if test $err -ne 0 && test $err -ne 1; then
+            echo mpiexec gave error $err, skipping test
+            exit 200
+        fi
+    fi
     ann "$MPIEXEC -H localhost,localhost divine" "$@" "--report 2> progress | capture"
 }
 
