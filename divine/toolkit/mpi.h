@@ -92,11 +92,11 @@ public:
     typedef MpiStatus Status;
 
 #if OPT_MPI
-    static const int anySource = MPI::ANY_SOURCE;
-    static const int anyTag = MPI::ANY_TAG;
+    static int anySource() { return MPI::ANY_SOURCE; }
+    static int anyTag() { return MPI::ANY_TAG; }
 #else
-    static const int anySource = 42;
-    static const int anyTag = 42;
+    static int anySource() { return 42; }
+    static int anyTag() { return 42; }
 #endif
 
     Data &global() {
@@ -223,7 +223,7 @@ public:
 
         std::unique_lock< std::mutex > _lock( global().mutex );
         // And process incoming MPI traffic.
-        while ( probe( anySource, anyTag, status, false ) )
+        while ( probe( anySource(), anyTag(), status, false ) )
         {
             int tag = status.Get_tag();
 
@@ -356,7 +356,7 @@ struct MpiForwarder : Terminable, MpiMonitor, brick::shmem::Thread {
                 continue;
 
             bitblock in( pool );
-            mpi.getStream( _lock, mpi.anySource, TAG_GIVE_COUNTS, in );
+            mpi.getStream( _lock, mpi.anySource(), TAG_GIVE_COUNTS, in );
 
             int addr, adds;
             in >> valid >> adds >> addr;
