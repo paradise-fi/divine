@@ -38,22 +38,7 @@
 
 #include "config.h"
 
-#ifdef HAVE_SLIST
-#  include <slist>
-#else
-#  ifdef HAVE_EXT_SLIST
-#    include <ext/slist>
-#  else
-#    include <list>
-#    define slist list
-#  endif
-#endif
-
-#ifdef CXX_SLIST_NAMESPACE
-namespace std
-{
-  using CXX_SLIST_NAMESPACE::slist;
-}
-#endif
+#include <forward_list>
+#define slist forward_list
 
 #endif // INCLUDE_BASE_SLIST_H
