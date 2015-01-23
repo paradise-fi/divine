@@ -123,7 +123,7 @@ Coin::Node Coin::_initial() {
     Blob b = newNode();
     packPrimitiveStates(primitive_states, state_vector);
     State s(primitive_states);
-    s.pack(pool(), b, getTotalSlack());
+    s.pack(pool(), b, this->slack());
 
     return b;
 }
@@ -159,10 +159,6 @@ int Coin::setSlack(int s) {
 
     original_slack = s;
     return Common::setSlack(por ? s + sizeof(Extension) : s);
-}
-
-inline int Coin::getTotalSlack() {
-    return this->slack();;
 }
 
 inline size_t Coin::getSize(unsigned int number_of_states) {
@@ -236,7 +232,7 @@ Coin::Successors Coin::_ample(Node compressed_state) {
 
 std::string Coin::showNode(Node compressed_state) {
     std::stringstream stream;
-    State state(pool(), compressed_state, getTotalSlack());
+    State state(pool(), compressed_state, this->slack());
     vector<int> v = state.getValues(); //primitive
     stream << '[';
     int n = 0;
@@ -498,7 +494,7 @@ vector<transition_t *> * Coin::combineWithProp(vector<transition_t *> * system_t
 }
 
 vector<transition_t *> * Coin::getEnabledTrans(Node compressed_state) {
-    State state(pool(), compressed_state, getTotalSlack());
+    State state(pool(), compressed_state, this->slack());
     primitive_states = state.getValues();
     unpackPrimitiveStates(primitive_states, state_vector);
 
@@ -555,7 +551,7 @@ Coin::Successors Coin::apply(const Node &st, vector<transition_t *> * succ_trans
         Blob b = newNode();
         packPrimitiveStates(primitive_states, next_state_vector);
         State s(primitive_states);
-        s.pack(pool(), b, getTotalSlack());
+        s.pack(pool(), b, this->slack());
         succs_list.push_back(b);
 
         delete t;

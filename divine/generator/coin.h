@@ -184,7 +184,7 @@ public:
     template< typename QueryFlags >
     graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
         // ID of the current state of the property automaton = the last element of the vector
-        unsigned int sid = State::getPrimitiveState( pool(), s, getTotalSlack(), packed_state_size - 1 );
+        unsigned int sid = State::getPrimitiveState( pool(), s, this->slack(), packed_state_size - 1 );
 
         for ( auto f : qf )
             if ( f == graph::flags::accepting && property
@@ -245,13 +245,6 @@ private:
     prop_t * property; //the property automaton
 
     coin_system_t * getCoinSystem(); //returns the model of the system
-
-    /**
-     * Returns the total size of the slack
-     *
-     * - the offset of the actual hashed data of the state (state_vector)
-     */
-    int getTotalSlack();
 
     /**
      * Returns the number of bytes necessary to store
