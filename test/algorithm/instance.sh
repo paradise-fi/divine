@@ -37,6 +37,6 @@ test "$ALG_OWCTY" = "ON" && checkInstance 'Owcty.*Shared' "for shared OWCTY" --o
 test "$ALG_MAP" = "ON" && checkInstance 'Map.*Shared' "for shared MAP" --map --shared
 test "$ALG_NDFS" = "ON" && checkInstance 'NestedDFS.*Shared' "for double threaded NestedDFS" --nested-dfs -w 2
 
-if test "$STORE_COMPRESS" = "ON"; then
+if test "$STORE_COMPRESS" = "ON" && test "$ALG_REACHABILITY" = "ON"; then
     checkInstance 'NTree' "with enabled compression" --compression=tree
 fi
