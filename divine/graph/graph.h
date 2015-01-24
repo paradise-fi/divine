@@ -54,6 +54,10 @@ struct FlagVector : brick::data::SmallVector< short > {
         brick::data::SmallVector< short >( std::forward< Args >( args )... )
     { }
 
+    FlagVector( std::initializer_list< short > ilist ) :
+        brick::data::SmallVector< short >( std::move( ilist ) )
+    { }
+
     explicit operator bool() const { return !empty(); };
 };
 
