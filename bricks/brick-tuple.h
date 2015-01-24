@@ -126,7 +126,7 @@ class BindThis {
 
     template< typename... Args >
     auto operator()( Args &&... args )
-        -> decltype( (this->_self.*_m)( std::forward< Args >( args )... ) )
+        -> decltype( (std::declval< T >().*std::declval< Method >())( std::forward< Args >( args )... ) )
     {
         return (_self.*_m)( std::forward< Args >( args )... );
     }

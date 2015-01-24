@@ -45,26 +45,83 @@
 #ifndef BRICK_DATA_H
 #define BRICK_DATA_H
 
+// gcc is missing is_trivially_default_constructible (as of 4.9!)
+// furthermore 4.7 is missing is_trivially_destructible but 4.8 has it and
+// is missing old trait has_trivial_destructor
+// https://stackoverflow.com/questions/12702103/writing-code-that-works-when-has-trivial-destructor-is-defined-instead-of-is
+// BUG: clang does not compile code in ifdef __GLIBCXX__ even if it is
+// compiled with libstdc++, this is no problem in DIVINE as we support either
+// clang with libc++ or gcc with libstdc++ (clang with libstdc++ is not able
+// to compile brick-hashset too)
+#ifdef __GLIBCXX__
+namespace std {
+    template< typename > struct has_trivial_default_constructor;
+    template< typename > struct is_trivially_default_constructible;
+    template< typename > struct has_trivial_destructor;
+    template< typename > struct is_trivially_destructible;
+}
+#endif
+
 namespace brick {
 namespace data {
 
-// gcc is missing is_trivially_default_constructible (as of 4.9!)
 #ifdef __GLIBCXX__
-    template< typename T >
-    constexpr bool __triviallyDefaultConstructible() {
-        return std::has_trivial_default_constructor< T >::value;
-    }
+template< typename T >
+class have_cxx11_ctor_trait {
+
+    template< typename T2, bool = std::is_trivially_default_constructible< T2 >::type::value >
+    static std::true_type test(int);
+
+    template< typename T2, bool = std::has_trivial_default_constructor< T2 >::type::value >
+    static std::false_type test(...);
+
+    public:
+    typedef decltype( test<T>(0) ) type;
+};
+
+template< typename T >
+constexpr bool __triviallyDefaultConstructible() {
+    return std::conditional< have_cxx11_ctor_trait< T >::type::value,
+                std::is_trivially_default_constructible< T >,
+                std::has_trivial_default_constructor< T > >::type::value;
+}
+
+template< typename T >
+class have_cxx11_dtor_trait {
+
+    template< typename T2, bool = std::is_trivially_destructible< T2 >::type::value >
+    static std::true_type test(int);
+
+    template< typename T2, bool = std::has_trivial_destructor< T2 >::type::value >
+    static std::false_type test(...);
+
+    public:
+    typedef decltype( test<T>(0) ) type;
+};
+
+template< typename T >
+constexpr bool __triviallyDestructible() {
+    return std::conditional< have_cxx11_dtor_trait< T >::type::value,
+                std::is_trivially_destructible< T >,
+                std::has_trivial_destructor< T > >::type::value;
+}
 #else
-    template< typename T >
-    constexpr bool __triviallyDefaultConstructible() {
-        return std::is_trivially_default_constructible< T >::value;
-    }
+template< typename T >
+constexpr bool __triviallyDefaultConstructible() {
+    return std::is_trivially_default_constructible< T >::value;
+}
+
+template< typename T >
+constexpr bool __triviallyDestructible() {
+    return std::is_trivially_destructible< T >::value;
+}
 #endif
 
 template< typename K, typename V >
 struct RMap : std::map< K, V > {
 
-    using std::map< K, V >::map;
+    template< typename... Args >
+    RMap( Args &&...args ) : std::map< K, V >( std::forward< Args >( args )... ) { }
 
     const V &operator[]( const K &key ) const {
         return this->at( key );
@@ -319,12 +376,12 @@ struct SmallVector {
 
     template< typename X >
     auto _drop( Storage *from, Storage *to ) ->
-        typename std::enable_if< std::is_trivially_destructible< X >::value >::type
+        typename std::enable_if< __triviallyDestructible< X >() >::type
     { }
 
     template< typename X >
     auto _drop( Storage *from, Storage *to ) ->
-        typename std::enable_if< !std::is_trivially_destructible< X >::value >::type
+        typename std::enable_if< !__triviallyDestructible< X >() >::type
     {
         for ( ; from < to; ++from )
             _ptrCast( from )->~X();
