@@ -179,6 +179,18 @@ if ( DEV_NOPOOLS AND OPT_MPI )
     disable( OPT_MPI " (cluster support)" "Not supported without pools" )
 endif()
 
+if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
+    if ( WIN32 )
+        if( CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8" )
+            message( FATAL_ERROR "You need at least gcc 4.8 to compile DIVINE on Windows" )
+        endif()
+    else()
+        if( CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.7" )
+            message( FATAL_ERROR "You need at least gcc 4.7 to compile DIVINE" )
+        endif()
+    endif()
+endif()
+
 check_cxx_source_compiles("
 template< typename F > int check( F f );
 
