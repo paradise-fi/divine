@@ -187,6 +187,10 @@ if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
     else()
         if( CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.7" )
             message( FATAL_ERROR "You need at least gcc 4.7 to compile DIVINE" )
+        elseif( CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8" )
+            # this is nasty hack to make divine compile with gcc which was not
+            # configured with --enable-libstdcxx-time
+            add_definitions( -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD )
         endif()
     endif()
 endif()
