@@ -514,7 +514,7 @@ struct Mpi : MpiMonitor
             mpi.notifySlaves( _lock, TAG_PARALLEL, bs );
             for ( int i = 1; i < mpi.size(); ++i ) {
                 bitblock response( m_mpiForwarder.pool );
-                mpi.getStream( _lock, mpi.anySource, TAG_COLLECT, response );
+                mpi.getStream( _lock, mpi.anySource(), TAG_COLLECT, response );
                 response >> bits;
             }
         }
