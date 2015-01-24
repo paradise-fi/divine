@@ -2,6 +2,8 @@
 
 # test that divine has default property for each major generator
 
+test "$ALG_REACHABILITY" = ON || skip
+
 if [ "$GEN_LLVM" = "ON" ]; then
     run llvm_assemble data/global-ok.ll verify
     check report Finished Yes
