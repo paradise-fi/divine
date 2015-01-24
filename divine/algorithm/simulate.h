@@ -578,7 +578,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
                 if ( !trace.empty() ) {
                     if ( (stopOn & StopOn::Accepting) == StopOn::Accepting
                             && this->graph().stateFlags( trace.back().node(),
-                                std::initializer_list< short >{ graph::flags::goal, graph::flags::accepting } ) )
+                                graph::FlagVector{ graph::flags::goal, graph::flags::accepting } ) )
                         return Stop{ StopReason::Accepting, i };
                     if ( (stopOn & StopOn::Marked) == StopOn::Marked
                             && extension( trace.back() ).marked )
