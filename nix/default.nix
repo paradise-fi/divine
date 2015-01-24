@@ -80,7 +80,7 @@ let
     let pkgs = import nixpkgs { inherit system; };
         nicesys = if lib.eqStrings system "i686-linux" then "x86" else
                      (if lib.eqStrings system "x86_64-linux" then "x64" else "unknown");
-        cmdflags = [ "-DCMD_GCC=${pkgs.gcc}/bin/gcc" ] ++
+        cmdflags = [ "-DCMD_GCC=${compilerPkg pkgs}/bin/cc" ] ++
                    (if lib.eqStrings (builtins.substring 0 4 name) "llvm" ||
                        lib.eqStrings name "full" ||
                        lib.eqStrings name "medium"
@@ -88,11 +88,8 @@ let
                       else []);
         profile = if lib.eqStrings buildType "Debug" && !clang
                      then [ "-DDEV_GCOV=ON -DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
-        compiler = if clang
-                      then [ "-DCMAKE_CXX_COMPILER=${compilerPkg pkgs}/bin/clang++"
-                             "-DCMAKE_C_COMPILER=${compilerPkg pkgs}/bin/clang" ]
-                      else [ "-DCMAKE_CXX_COMPILER=${compilerPkg pkgs}/bin/g++"
-                             "-DCMAKE_C_COMPILER=${compilerPkg pkgs}/bin/gcc" ];
+        compiler =    [ "-DCMAKE_CXX_COMPILER=${compilerPkg pkgs}/bin/c++"
+                        "-DCMAKE_C_COMPILER=${compilerPkg pkgs}/bin/cc" ];
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name + "_" + (lib.toLower buildType) + "_" + nicesys;
        src = jobs.tarball;
