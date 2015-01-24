@@ -266,7 +266,7 @@ if( DEV_GCOV )
   link_libraries( "gcov" )
 endif()
 
-find_program( SHA1SUM sha1sum )
+find_program( SHA1SUM NAMES sha1sum sha1 )
 
 if( NOT SHA1SUM )
   message( "I could use a working sha1sum program for the build. Please install one or supply me with a path if you already have it. Thank you." )
