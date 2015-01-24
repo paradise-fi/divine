@@ -84,7 +84,7 @@ inline std::string flagName( std::string flag, Type type ) {
 }
 
 inline std::pair< std::string, Type > parseFlagName( std::string fname ) {
-    ASSERT_LEQ( 2, fname.size() );
+    ASSERT_LEQ( 2u, fname.size() );
     ASSERT_EQ( ':', fname[ 1 ] );
     Type t;
     switch ( fname[ 0 ] ) {
