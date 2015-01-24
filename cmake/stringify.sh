@@ -39,7 +39,7 @@ if test "$1" = "-l"; then
     echo "}" >> $out
 else
     flat=$(echo $2 | flatten)
-    sed -e '1i \
+    (cat "$1/$2"; echo) | sed -e '1i \
 namespace divine { '"${NSBEG}"' const char *'"${flat}"'_str = "\\' \
     -e 's,\\,\\\\,g' \
     -e 's,$,\\n\\,' \
@@ -47,5 +47,5 @@ namespace divine { '"${NSBEG}"' const char *'"${flat}"'_str = "\\' \
     -e 's,wibble/test.h,cassert,' \
     -e '$a \
 \"\; }'"${NSEND}" \
-    < "$1/$2" > "${flat}_str.cpp"
+    > "${flat}_str.cpp"
 fi
