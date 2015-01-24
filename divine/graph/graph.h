@@ -49,7 +49,10 @@ struct Allocator {
 };
 
 struct FlagVector : brick::data::SmallVector< short > {
-    using brick::data::SmallVector< short >::SmallVector;
+    template< typename... Args >
+    FlagVector( Args &&...args ) :
+        brick::data::SmallVector< short >( std::forward< Args >( args )... )
+    { }
 
     explicit operator bool() const { return !empty(); };
 };
