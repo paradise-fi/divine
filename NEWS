@@ -2,6 +2,8 @@ DIVINE 3.2.x
 ============
 
 - [3.2.2] Fix bug #301 (assertion failure when -p not given).
+- [3.2.3] Support for storing boolean state properties in DESS.
+- [3.2.3] Fix broken MPI support.
 
 DIVINE 3.2.1
 ============
