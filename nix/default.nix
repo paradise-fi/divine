@@ -159,7 +159,6 @@ let
     ubuntu1310 = mk: mk { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
     ubuntu1404 = mk: mk { VM = debuild; disk = "ubuntu1404"; extras = extra_debs34; };
 
-    fedora19   = mk: mk { VM = rpmbuild; disk = "fedora19"; extras = extra_rpms; };
     fedora20   = mk: mk { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms; };
   };
 
