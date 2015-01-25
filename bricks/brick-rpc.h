@@ -62,12 +62,13 @@ struct base : Ext {
     void shift() { bits.pop_front(); }
     uint32_t &front() { return bits.front(); }
     void push( uint32_t i ) { bits.push_back( i ); }
+
     template< typename... X >
     base( X&&... x ) : Ext( std::forward< X >( x )... ) {}
 
-    base( bitstream &&cp ) = default;
-    base( bitstream &cp ) = default;
-    base( const bitstream &cp ) = default;
+    base( base &&cp ) = default;
+    base( const base &cp ) = default;
+    base( base &cp ) : base( const_cast< const base & >( cp ) ) { }
 };
 
 struct block : std::vector< uint32_t > {};
@@ -99,9 +100,9 @@ struct base< block, Ext > : Ext {
     template< typename... X >
     base( X&&... x ) : Ext( std::forward< X >( x )... ), offset( 0 ) {}
 
-    base( bitstream &&cp ) = default;
-    base( bitstream &cp ) = default;
-    base( const bitstream &cp ) = default;
+    base( base &&cp ) = default;
+    base( const base &cp ) = default;
+    base( base &cp ) : base( const_cast< const base & >( cp ) ) { }
 };
 
 template< typename B, typename E >
