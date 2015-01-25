@@ -605,7 +605,7 @@ struct StartEnd {
             detector.waitForAll( peers );
             while ( !counter.isZero() ) {
                 ASSERT_LEQ( 0, queue.load() );
-                if ( queue == 0 ) {
+                if ( queue == 0 && produce == 0 ) {
                     counter.sync();
                     continue;
                 }
