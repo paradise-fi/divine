@@ -613,12 +613,14 @@ struct Mpi : MpiMonitor
             case TAG_RING:
                 _lock.unlock();
                 rpc::demarshallWith< Instance, RingFromRemote >( *this, in, out );
+                _lock.lock();
                 if ( !async_retval.empty() )
                     return Done;
                 break;
             case TAG_PARALLEL:
                 _lock.unlock();
                 rpc::demarshallWith< Instance, ParallelFromRemote >( *this, in, out );
+                _lock.lock();
                 break;
             case TAG_INTERRUPT:
                 m_local.interrupt();
