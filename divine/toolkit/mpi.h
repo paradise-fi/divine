@@ -201,7 +201,7 @@ public:
     }
 
     void notifySlaves( std::unique_lock< std::mutex > &_lock,
-                       int tag, bitblock bs )
+                       int tag, const bitblock &bs )
     {
         if ( !master() )
             return;
