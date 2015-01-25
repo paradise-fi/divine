@@ -27,6 +27,7 @@ if( TBBMALLOC )
 endif()
 
 set( llvmpaths "
+#pragma once
 static const char *_cmd_cc= \"${CMD_CC}\"\;
 static const char *_cmd_cxx= \"${CMD_CXX}\"\;
 static const char *_cmd_clang= \"${CMD_CLANG}\"\;" )

@@ -5,6 +5,7 @@
 #include <brick-fs.h>
 #include <brick-string.h>
 #include <brick-process.h>
+#include <tools/llvmpaths.h> // actually for _cmd_cc
 
 #include <divine/ltl2ba/main.h>
 #include <divine/utility/die.h>
@@ -114,7 +115,7 @@ struct Combine {
 
     std::string cpp( std::string in )
     {
-        brick::process::PipeThrough p( "cpp -E -P" );
+        brick::process::PipeThrough p( std::string( _cmd_cc ) + " -E -P -" );
         return p.run( in );
     }
 
