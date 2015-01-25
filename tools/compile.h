@@ -83,7 +83,7 @@ struct Compile {
     }
 
     void gplusplus( std::string in, std::string out, std::string flags = "" ) {
-        runCompiler ("g++", in, out, "-g -O2 -fPIC -shared " + flags);
+        runCompiler ( std::string( _cmd_gcc ) + " -x c++", in, out, "-g -O2 -fPIC -shared " + flags);
     }
 
     std::string clang() {
