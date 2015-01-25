@@ -80,7 +80,8 @@ let
     let pkgs = import nixpkgs { inherit system; };
         nicesys = if lib.eqStrings system "i686-linux" then "x86" else
                      (if lib.eqStrings system "x86_64-linux" then "x64" else "unknown");
-        cmdflags = [ "-DCMD_GCC=${compilerPkg pkgs}/bin/cc" ] ++
+        cmdflags = [ "-DCMD_CC=${compilerPkg pkgs}/bin/cc"
+                     "-DCMD_CXX=${compilerPkg pkgs}/bin/c++" ] ++
                    (if lib.eqStrings (builtins.substring 0 4 name) "llvm" ||
                        lib.eqStrings name "full" ||
                        lib.eqStrings name "medium"
