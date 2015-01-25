@@ -137,7 +137,8 @@ set( MIN_INSTANCES_PER_FILE "10" CACHE STRING
     "minimal number of instances in one instance file" )
 mark_as_advanced( MAX_INSTANCE_FILES_COUNT MIN_INSTANCES_PER_FILE )
 
-set( CMD_GCC "gcc" CACHE STRING "how to run the GCC C/C++ compiler" )
+set( CMD_CC "cc" CACHE STRING "how to run (at runtime) a C compiler" )
+set( CMD_CXX "c++" CACHE STRING "how to run (at runtime) a C++ compiler" )
 set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
 
 include( FindLLVM )

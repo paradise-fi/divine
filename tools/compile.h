@@ -83,7 +83,7 @@ struct Compile {
     }
 
     void gplusplus( std::string in, std::string out, std::string flags = "" ) {
-        runCompiler ( std::string( _cmd_gcc ) + " -x c++", in, out, "-g -O2 -fPIC -shared " + flags);
+        runCompiler ( _cmd_cxx, in, out, "-g -O2 -fPIC -shared " + flags);
     }
 
     std::string clang() {
@@ -179,7 +179,7 @@ struct Compile {
         aggr_s.close();
 
         std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
-        run( std::string( _cmd_gcc ) + " " + flags + " -I." + " -o ../" + in_filename +
+        run( std::string( _cmd_cc ) + " " + flags + " -I." + " -o ../" + in_filename +
              generator::cesmi_ext + " " + in + extras );
     }
 

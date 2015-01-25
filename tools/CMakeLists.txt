@@ -27,7 +27,8 @@ if( TBBMALLOC )
 endif()
 
 set( llvmpaths "
-static const char *_cmd_gcc= \"${CMD_GCC}\"\;
+static const char *_cmd_cc= \"${CMD_CC}\"\;
+static const char *_cmd_cxx= \"${CMD_CXX}\"\;
 static const char *_cmd_clang= \"${CMD_CLANG}\"\;" )
 
 set( llvmpaths_file "${CMAKE_CURRENT_BINARY_DIR}/llvmpaths.h" )
