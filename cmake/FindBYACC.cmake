@@ -45,7 +45,7 @@
 # (To distributed this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
-FIND_PROGRAM(BYACC_EXECUTABLE byacc DOC "path to the byacc executable")
+FIND_PROGRAM(BYACC_EXECUTABLE NAMES byacc yacc DOC "path to the byacc executable")
 MARK_AS_ADVANCED(BYACC_EXECUTABLE)
 
 IF(BYACC_EXECUTABLE)
