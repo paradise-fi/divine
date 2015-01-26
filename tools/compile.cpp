@@ -127,7 +127,7 @@ extern \"C\" int get_successor( const cesmi_setup *setup, int h, cesmi_node from
     return rule + 2;\n\
 }\n" );
 
-    gplusplus( outfile, brick::bf::splitFileName( in ).second + ".so", std::string( "-Wno-write-strings" ) );
+    gplusplus( outfile, brick::fs::splitFileName( in ).second + ".so", std::string( "-Wno-write-strings" ) );
 }
 #else
 
