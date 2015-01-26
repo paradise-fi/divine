@@ -5,6 +5,7 @@
 #include <divine/algorithm/metrics.h>
 #include <divine/algorithm/por-c3.h>
 #include <divine/graph/ltlce.h>
+#include <atomic>
 
 #ifndef DIVINE_ALGORITHM_NDFS_H
 #define DIVINE_ALGORITHM_NDFS_H
@@ -24,8 +25,8 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     typedef typename Store::Handle Handle;
 
     Vertex seed;
-    bool valid;
-    bool parallel, finished;
+    bool parallel;
+    std::atomic< bool > valid, finished;
 
     std::deque< Handle > ce_stack;
     std::deque< Handle > ce_lasso;
@@ -69,7 +70,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         std::unique_ptr< Store > store;
 
         void main() {
-            while ( outer->valid ) {
+            while ( outer->valid.load( std::memory_order_relaxed ) ) {
                 if ( !process.empty() ) {
                     auto n = process.front();
                     process.pop();
@@ -114,7 +115,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         } );
         visitor.processQueue();
 
-        while ( valid && !toexpand.empty() ) {
+        while ( valid.load( std::memory_order_relaxed ) && !toexpand.empty() ) {
             auto from = this->store().vertex( toexpand.front() );
             if ( !this->graph().full( from ) )
                 this->graph().fullexpand( [&]( Vertex, Node t, Label ) {
@@ -125,8 +126,10 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         }
 
         finished = true;
-        if ( parallel )
+        if ( parallel ) {
             inner.join();
+            ASSERT( !valid || inner.process.empty() );
+        }
 
         progress() << "done" << std::endl;
 
@@ -150,7 +153,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     struct Outer : Visit< This, Setup >
     {
         static visitor::ExpansionAction expansion( This &dfs, Vertex st ) {
-            if ( !dfs.valid )
+            if ( !dfs.valid.load( std::memory_order_relaxed ) )
                 return visitor::ExpansionAction::Terminate;
             dfs.stats.addNode( dfs.graph(), st );
             dfs.ce_stack.push_front( st.handle() );
@@ -175,7 +178,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
                     dfs.runInner( dfs.graph(), n );
             }
 
-            if ( dfs.valid && !dfs.ce_stack.empty() ) {
+            if ( dfs.valid.load( std::memory_order_relaxed ) && !dfs.ce_stack.empty() ) {
                 ASSERT_EQ( n.handle().asNumber(), dfs.ce_stack.front().asNumber() );
                 dfs.ce_stack.pop_front();
             }
@@ -186,7 +189,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
     {
         static visitor::ExpansionAction expansion( This &dfs, Vertex st ) {
 
-            if ( !dfs.valid )
+            if ( !dfs.valid.load( std::memory_order_relaxed ) )
                 return visitor::ExpansionAction::Terminate;
             dfs.stats.addExpansion();
             dfs.ce_lasso.push_front( st.handle() );
