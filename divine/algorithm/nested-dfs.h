@@ -76,7 +76,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
                     // run the inner loop
                     outer->runInner( *graph, store->vertex( n ), store.get() );
                 } else {
-                    if ( outer->finished )
+                    if ( outer->finished && process.empty() )
                         return;
                     std::this_thread::yield();
                 }
