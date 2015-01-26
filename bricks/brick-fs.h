@@ -418,6 +418,22 @@ inline void rmdir( std::string dirname ) {
 #endif
 }
 
+inline bool deleteIfExists( std::string file )
+{
+#ifdef _WIN32
+	int r = ::_unlink( file.c_str() );
+#else
+	int r = ::unlink( file.c_str() );
+#endif
+	if ( r != 0 ) {
+		if ( errno != ENOENT )
+            throw SystemException( "cannot delete file" + file );
+        else
+            return false;
+    } else
+        return true;
+}
+
 #ifdef _WIN32
 } // fs
 } // brick
