@@ -16,3 +16,4 @@ set -x
 tar czf divine-snapshot.tar.gz divine-snapshot
 rm -rf divine-snapshot
 nix-build nix/ --arg divineSrc "`pwd`/divine-snapshot.tar.gz" -A "$@"
+test ! -f result/nix-support/failed
