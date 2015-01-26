@@ -155,7 +155,7 @@ else()
 endif()
 
 add_custom_target( unit_divine
-    COMMAND ${WITH_LCOV} ${CMAKE_CURRENT_BINARY_DIR}/test-divine
+    COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ${CMAKE_CURRENT_BINARY_DIR}/test-divine
     VERBATIM
     DEPENDS test-divine )
 add_dependencies( unit unit_divine )
