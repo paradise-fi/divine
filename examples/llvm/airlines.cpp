@@ -258,8 +258,7 @@ class Flight {
         : id( id ), source( src ), destination( dst ),
           capacity( seats ) {
 
-        tickets = reinterpret_cast< FlightTicket ** >
-                      ( malloc( sizeof( FlightTicket * ) * capacity ) );
+        tickets = new FlightTicket *[ capacity ];
 
         for ( int i = 0; i < capacity; i++ ) {
             tickets[i] = new FlightTicket( source, destination, i );
@@ -269,7 +268,7 @@ class Flight {
     ~Flight() {
         for ( int i = 0; i < capacity; i++ )
             delete tickets[i];
-        free( tickets );
+        delete[] tickets;
     }
 
     int get_id() {
@@ -321,7 +320,7 @@ class Airlines {
         if ( flights ) {
             for ( int i = 0; i < num_of_flights; i++ )
                 delete flights[i];
-            free( flights );
+            delete[] flights;
         }
     }
 
@@ -329,8 +328,7 @@ class Airlines {
         int src, dst;
 
         num_of_flights = __divine_choice( MAX_NUM_OF_FLIGHTS ) + 1;
-        flights = reinterpret_cast< Flight ** >
-                      ( malloc( sizeof( Flight * ) * num_of_flights ) );
+        flights = new Flight *[ num_of_flights ];
 
         for ( int i = 0; i < num_of_flights; i++ ) {
             src = __divine_choice( NUM_OF_DESTINATIONS );
@@ -565,8 +563,7 @@ class CustomerGenerator {
     CustomerGenerator( int id, InternetSeller **sellers )
         : id( id ), sellers( sellers ) {
 
-        customers = reinterpret_cast< Customer ** >
-                            ( malloc( sizeof( Customer * ) * NUM_OF_CUSTOMS_IN_THREAD ) );
+        customers = new Customer *[ NUM_OF_CUSTOMS_IN_THREAD ];
 
         for ( int i = 0; i < NUM_OF_CUSTOMS_IN_THREAD; i++ )
             customers[i] = NULL;
@@ -576,7 +573,7 @@ class CustomerGenerator {
         for ( int i = 0; i < NUM_OF_CUSTOMS_IN_THREAD; i++ )
             if ( customers[i] != NULL)
                 delete customers[i];
-        free( customers );
+        delete[] customers;
     }
 
 };
@@ -594,24 +591,21 @@ class Simulator {
     static void *run( void * ) {
         int i;
 
-        Airlines **airlines = reinterpret_cast< Airlines ** >
-                                  ( malloc( sizeof( Airlines * ) * NUM_OF_AIRLINES ) );
+        Airlines **airlines = new Airlines *[ NUM_OF_AIRLINES ];
 
         for ( i = 0; i < NUM_OF_AIRLINES; i++ ) {
             airlines[i] = new Airlines( i );
             airlines[i]->generate_flights();
         }
 
-        InternetSeller **sellers = reinterpret_cast< InternetSeller ** >
-                                       ( malloc( sizeof( InternetSeller * ) * NUM_OF_STHREADS ) );
+        InternetSeller **sellers = new InternetSeller *[ NUM_OF_STHREADS ];
 
         for ( i = 0; i < NUM_OF_STHREADS; i++ ) {
             sellers[i] = new InternetSeller( i, airlines );
             sellers[i]->start();
         }
 
-        CustomerGenerator **custgens = reinterpret_cast< CustomerGenerator ** >
-                                           ( malloc( sizeof( CustomerGenerator * ) * NUM_OF_CTHREADS ) );
+        CustomerGenerator **custgens = new CustomerGenerator *[ NUM_OF_CTHREADS ];
 
         for ( i = 0; i < NUM_OF_CTHREADS; i++ ) {
             custgens[i] = new CustomerGenerator( i, sellers );
@@ -647,9 +641,9 @@ class Simulator {
         for ( i = 0; i < NUM_OF_CTHREADS; i++ )
             delete custgens[i];
 
-        free( airlines );
-        free( sellers );
-        free( custgens );
+        delete[] airlines;
+        delete[] sellers;
+        delete[] custgens;
         return NULL;
     }
 
