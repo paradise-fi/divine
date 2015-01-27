@@ -613,7 +613,7 @@ struct TestSmallVector {
         Int() : v( def ) { }
         ~Int() { v = 0; }
         operator int() { return v; }
-        int v;
+        volatile int v;
     };
 
     TEST(defcon) {
