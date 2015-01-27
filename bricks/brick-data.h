@@ -243,7 +243,7 @@ struct SmallVector {
     template< typename InputIt >
     SmallVector( InputIt begin, InputIt end ) : SmallVector() {
         _resize( std::distance( begin, end ) );
-        std::uninitialized_copy( begin, end, _begin() );
+        std::uninitialized_copy( begin, end, begin() );
     }
 
     SmallVector( std::initializer_list< T > init ) : SmallVector() {
@@ -263,14 +263,15 @@ struct SmallVector {
     }
 
     ~SmallVector() {
-        _drop< T >( _begin(), _end() );
+        _drop< T >( begin(), end() );
         if ( !_onstack )
-            delete[] _data.range.begin;
+            operator delete( _data.range.begin );
     }
 
-    T *begin() { return _ptrCast( _begin() ); }
-    const T *begin() const { return _ptrCast( _begin() ); }
-    const T *cbegin() const { return _ptrCast( _begin() ); }
+
+    T *begin() { return _onstack ? _data.data : _data.range.begin; }
+    const T *begin() const { return _onstack ? _data.data : _data.range.begin; }
+    const T *cbegin() const { return begin(); }
     T &front() { return begin()[ 0 ]; }
     const T &front() const { return begin()[ 0 ]; }
 
@@ -329,75 +330,56 @@ struct SmallVector {
     void clear_and_drop_memory() {
         clear();
         if ( !_onstack ) {
-            delete[] _data.range.begin;
+            operator delete( _data.range.begin );
             _data.range.begin = nullptr;
             _onstack = true;
         }
     }
 
   private:
-    using Storage = typename std::aligned_storage< sizeof( T ), alignof( T ) >::type;
-    static_assert( sizeof( Storage ) == sizeof( T ), "storage size" );
-
-    static T *_ptrCast( Storage *ptr ) {
-        union { Storage *st; T *t; };
-        st = ptr;
-        return t;
-    }
-
-    static const T *_ptrCast( const Storage *ptr ) {
-        union { const Storage *st; const T *t; };
-        st = ptr;
-        return t;
-    }
 
     struct Range {
-        Storage *begin;
+        T *begin;
         long capacity;
     };
     union Data {
         Range range;
-        Storage data[ stackCapacity ];
+        T data[ stackCapacity ];
+        Data() { }
+        ~Data() { }
     };
 
     Data _data;
     long _size : sizeof( long ) * 8 - 1;
     bool _onstack : 1;
 
-    Storage *_begin() {
-        return _onstack ? _data.data : _data.range.begin;
-    }
-
-    const Storage *_begin() const {
-        return _onstack ? _data.data : _data.range.begin;
-    }
-
-    Storage *_end() { return _begin() + _size; }
-
     template< typename X >
-    auto _drop( Storage *from, Storage *to ) ->
+    auto _drop( X *from, X *to ) ->
         typename std::enable_if< __triviallyDestructible< X >() >::type
     { }
 
     template< typename X >
-    auto _drop( Storage *from, Storage *to ) ->
+    auto _drop( X *from, X *to ) ->
         typename std::enable_if< !__triviallyDestructible< X >() >::type
     {
         for ( ; from < to; ++from )
-            _ptrCast( from )->~X();
+            from->~X();
     }
+
+    struct MemDeleter { void operator()( T *x ) { operator delete( x ); } };
 
     void _reserve( long count ) {
         if ( count < _size )
-            _drop< T >( _begin() + count, _end() );
+            _drop< T >( begin() + count, end() );
         else if ( count > capacity() ) {
             long newcap = 1;
             for ( ; newcap < count; newcap <<= 1 ) { }
-            std::unique_ptr< Storage[] > nstor( new Storage[ newcap ] );
-            uninitialized::move( begin(), end(), _ptrCast( nstor.get() ) );
-            _drop< T >( _begin(), _end() );
+            std::unique_ptr< T, MemDeleter > nstor(
+                    static_cast< T * >( operator new( sizeof( T ) * newcap ) ) );
+            uninitialized::move( begin(), end(), nstor.get() );
+            _drop< T >( begin(), end() );
             if ( !_onstack )
-                delete[] _data.range.begin;
+                operator delete( _data.range.begin );
             _data.range.begin = nstor.release();
             _data.range.capacity = newcap;
             _onstack = false;
