@@ -148,6 +148,13 @@ void info( const T&... args) {
 #endif
 }
 
+#ifdef __divine__
+// override new to non-failing version
+#include <new>
+
+void* operator new  ( std::size_t count ) { return __divine_malloc( count ); }
+#endif
+
 // ------------------------------------
 
 template< typename T, int size >
