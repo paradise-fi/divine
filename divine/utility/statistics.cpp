@@ -203,6 +203,8 @@ void TrackStatistics::setup( const Meta &m ) {
 }
 
 TrackStatistics::~TrackStatistics() {
+    // the destructor is idempotent and must be run before data are deallocated
+    static_cast< Thread * >( this )->~Thread();
     for ( auto p : threads )
         delete p;
 }

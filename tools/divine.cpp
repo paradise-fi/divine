@@ -193,6 +193,9 @@ struct Main {
             std::cerr << std::endl << "Counterexample found, running simulate..." << std::endl;
             simulate->run();
         }
+
+        if ( meta.output.statistics )
+            TrackStatistics::killGlobal();
     }
 
     void setupSignals()

@@ -154,8 +154,17 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     ~TrackStatistics();
 
     static TrackStatistics &global() {
+        return *_global();
+    }
+
+    static void killGlobal() {
+        _global().reset( nullptr );
+    }
+
+  private:
+    static std::unique_ptr< TrackStatistics > &_global() {
         static std::unique_ptr< TrackStatistics > g( new TrackStatistics );
-        return *g;
+        return g;
     }
 };
 
