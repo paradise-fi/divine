@@ -73,9 +73,11 @@ struct Thread {
         _thread( std::move( other._thread ) ),
         _interrupted( other.interrupted() )
     {}
+    // ~Thread must be idempotent
     ~Thread() {
         interrupt();
-        join();
+        if ( _thread && _thread->joinable() )
+            join();
     }
 
     Thread &operator=( const Thread &other ) {
