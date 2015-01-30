@@ -631,7 +631,7 @@ struct Main {
         meta.algorithm.demangle = o_demangle->isSet()
             ? parseDemangle( o_demangle->value() )
             : graph::DemangleStyle::Cpp;
-        meta.output.statistics = o_statistics->boolValue();
+        meta.output.statistics = o_statistics->boolValue() || o_gnuplot->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
         if ( !o_dispCe->boolValue() && !o_simulateCe->boolValue()
