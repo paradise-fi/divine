@@ -28,7 +28,7 @@ handled with regular sequential tools.
 
 %build
 
-export CXXFLAGS="%{optflags}" CFLAGS="%{optflags}"
+test -z "$NIX_BUILD" && export CXXFLAGS="%{optflags}" CFLAGS="%{optflags}"
 
 # "configure" is from cmake, not GNU, so there is no libdir option to invoke.
 # Therefore, ignore the rpmlint warning from this line:
