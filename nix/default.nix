@@ -180,14 +180,14 @@ let
                             flags = [ "-DSTORE_HC=OFF" "-DSTORE_COMPRESS=ON" "-DGEN_EXPLICIT=OFF" ]; };
     /* gcc_hashcomp = mk: mk { inputs = pkgs: [];
                             flags = [ "-DSTORE_COMPRESS=OFF" "-DSTORE_HC=ON" "-DGEN_EXPLICIT=OFF" ]; }; */
-    gcc_full =     mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+    gcc_full =     mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
                             flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
-    gcc49_full =   mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost ];
+    gcc49_full =   mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
                             compilerPkg = pkgs: pkgs.gcc49;
                             flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
 
     clang_min =    mk: mk { inputs = pkgs: []; clang = true; };
-    clang_med =    mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.libxml2 ];
+    clang_med =    mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.boost pkgs.libxml2 pkgs.flex pkgs.byacc ];
                             flags = []; clang = true; };
   } // lib.fold (alg: set: lib.setAttrByPath [ "gcc_${alg}" ] (mk:
         mk { inputs = pkgs: [];
