@@ -804,7 +804,9 @@ __attribute__((constructor)) void init_stdio(void)
         mtx_init(&stdout->lock, mtx_recursive);
     if ( stderr )
         mtx_init(&stderr->lock, mtx_recursive);
+#ifndef __divine__ // for now
     mtx_init( &_PDCLIB_filelist_lock, mtx_recursive );
+#endif
 }
 
 #endif
