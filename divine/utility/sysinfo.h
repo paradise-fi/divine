@@ -23,6 +23,9 @@ struct Info : WithReport { /* singleton */
 
     std::string architecture() const;
     uint64_t peakVmSize() const;
+    uint64_t vmSize() const;
+    uint64_t peakResidentMemSize() const;
+    uint64_t residentMemSize() const;
 
     double userTime() const;
     double systemTime() const;

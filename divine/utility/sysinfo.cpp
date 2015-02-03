@@ -57,6 +57,18 @@ static bool matchLine( std::string file, brick::string::ERegexp &r ) {
     return false;
 }
 
+#ifdef __linux
+long long procStatusLine( std::string key ) {
+    std::stringstream file;
+    file << "/proc/" << uint64_t( getpid() ) << "/status";
+    brick::string::ERegexp r( key + ":[\t ]*([0-9]+)", 2 );
+    if ( matchLine( file.str(), r ) ) {
+        return std::atoll( r[1].c_str() );
+    }
+    return 0;
+}
+#endif
+
 #ifdef __unix
 double interval( struct timeval from, struct timeval to ) {
     return to.tv_sec - from.tv_sec +
@@ -149,25 +161,28 @@ void Info::stop() const {
 #endif
 }
 
-uint64_t Info::peakVmSize() const {
-    guard _l( data->lock );
-    uint64_t vmsz = 0;
-#ifdef __linux
-    std::stringstream file;
-    file << "/proc/" << uint64_t( getpid() ) << "/status";
-    brick::string::ERegexp r( "VmPeak:[\t ]*([0-9]+)", 2 );
-    if ( matchLine( file.str(), r ) ) {
-        vmsz = atoll( r[1].c_str() );
-    }
+#if defined( __linux )
+#define MEMINFO( fn, liKey, winKey ) uint64_t Info::fn() const { \
+    return procStatusLine( liKey ); \
+}
+#elif defined( _WIN32 )
+#define MEMINFO( fn, liKey, winKye ) uint64_t Info::fn() const { \
+    guard _l( data->lock ); /* functions might not be theread safe */ \
+    PROCESS_MEMORY_COUNTERS pmc; \
+    if (data->hProcess != NULL && GetProcessMemoryInfo(data->hProcess, &pmc, sizeof(pmc))) \
+        return pmc.PeakWorkingSetSize/(1024); \
+    return 0; \
+}
+#else
+#define MEMINFO( fn, liKey, winKey ) uint64_t Info::fn() const { return 0; }
 #endif
 
-#ifdef _WIN32
-    PROCESS_MEMORY_COUNTERS pmc;
-    if (data->hProcess != NULL && GetProcessMemoryInfo(data->hProcess, &pmc, sizeof(pmc)))
-        vmsz = pmc.PeakWorkingSetSize/(1024);
-#endif
-    return vmsz;
-}
+MEMINFO( peakVmSize, "VmPeak", PeakWorkingSetSize );
+MEMINFO( vmSize, "VmSize", WorkingSetSize );
+MEMINFO( peakResidentMemSize, "VmHWM", QuotaPeakPagedPoolUsage ); // not sure if win versions
+MEMINFO( residentMemSize, "VmRSS", QuotaPagedPoolUsage ); // are right for these two
+
+#undef MEMINFO
 
 std::string Info::architecture() const {
     guard _l( data->lock );
