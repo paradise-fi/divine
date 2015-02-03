@@ -252,6 +252,7 @@ std::vector< ReportLine > Info::report() const {
     update();
     return { { "Architecture", architecture() },
              { "Memory-Used", std::to_string( peakVmSize() ) },
+             { "Physical-Memory-Used", std::to_string( peakResidentMemSize() ) },
              { "User-Time", std::to_string( userTime() ) },
              { "System-Time", std::to_string( systemTime() ) },
              { "Wall-Time", std::to_string( wallTime() ) }
