@@ -62,6 +62,7 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     int pernode, localmin;
 
     bool gnuplot;
+    bool shared;
     std::ostream *output;
     int64_t vmBaseline;
     int64_t rssBaseline;
@@ -131,9 +132,10 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     int64_t residentMemNow() { return sysinfo::Info().residentMemSize() - rssBaseline; }
 
     void resize( int s );
-    template< typename F > void line( std::ostream &o, std::string lbl, F f );
+    template< typename F >
+    void line( std::ostream &o, std::string lbl, F f, bool max = false );
     void matrix( std::ostream &o, int64_t (*what)(int64_t, int64_t) );
-    void printv( std::ostream &o, int width, int64_t v, int64_t *sum );
+    void printv( std::ostream &o, int width, int64_t v, int64_t *sum = nullptr, bool max = false );
     void label( std::ostream &o, std::string text, bool d = true );
     void format( std::ostream &o );
     void snapshot();

@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <mutex>
 #include <chrono>
+#include <algorithm>
 
 #include <bricks/brick-hashset.h>
 #include <divine/utility/statistics.h>
@@ -42,10 +43,14 @@ void TrackStatistics::matrix( std::ostream &o, int64_t (*what)(int64_t, int64_t)
     }
 }
 
-void TrackStatistics::printv( std::ostream &o, int width, int64_t v, int64_t *sum ) {
+void TrackStatistics::printv( std::ostream &o, int width, int64_t v, int64_t *sum, bool max ) {
     o << " " << std::setw( width ) << v;
-    if ( sum )
-        *sum += v;
+    if ( sum ) {
+        if ( max )
+            *sum = std::max( *sum, v );
+        else
+            *sum += v;
+    }
 }
 
 void TrackStatistics::label( std::ostream &o, std::string text, bool d ) {
@@ -66,12 +71,12 @@ void TrackStatistics::label( std::ostream &o, std::string text, bool d ) {
 }
 
 template< typename F >
-void TrackStatistics::line( std::ostream &o, std::string lbl, F f ) {
+void TrackStatistics::line( std::ostream &o, std::string lbl, F f, bool max ) {
     o << std::endl;
     int64_t sum = 0;
     for ( int i = 0; i < int( threads.size() ); ++ i )
-        printv( o, 9, f( i ), &sum );
-    printv( o, 10, sum, 0 );
+        printv( o, 9, f( i ), &sum, max );
+    printv( o, 10, sum );
     o << " " << lbl;
 }
 
@@ -98,20 +103,29 @@ void TrackStatistics::format( std::ostream &o ) {
 
         label( o, "HASHTABLES" );
         line( o, "used", [&]( int i ) { return thread( i ).hashused; } );
-        line( o, "alloc'd", [&]( int i ) { return thread( i ).hashsize; } );
+        line( o, "alloc'd", [&]( int i ) { return thread( i ).hashsize; }, shared );
 
         label( o, "MEMORY EST" );
+
         long memSum = 0;
+        long tableMem = 0;
         o << std::endl;
         for ( int j = 0; j < nthreads; ++ j ) {
             PerThread &th = thread( j );
-            long threadMem = th.memQueue + th.memHashes + th.hashsize * sizeof( Blob ) /* FIXME */;
+            long threadMem = th.memQueue + th.memHashes;
+            int64_t tt = th.hashsize * sizeof( Blob ); // FIXME
+            if ( shared )
+                tableMem += tt;
+            else
+                tableMem = std::max( tt, tableMem );
             for ( int i = 0; i < nthreads; ++ i)
                 threadMem += thread( i ).memSent[ j ] - thread( j ).memReceived[ i ];
             memSum += threadMem;
-            printv(o, 9, threadMem / 1024, 0 );
+            printv(o, 9, threadMem / 1024 );
         }
-        printv( o, 10, memSum / 1024, 0 );
+        memSum += tableMem;
+
+        printv( o, 10, memSum / 1024 );
         o << " kB" << std::endl;
         auto meminfo = [&]( std::string i, int64_t v ) {
             o << std::setw( 10 * nthreads ) << i << std::setw( 11 )
@@ -206,6 +220,7 @@ void TrackStatistics::setup( const Meta &m ) {
     mpi.registerMonitor( TAG_STATISTICS, *this );
     pernode = m.execution.threads;
     localmin = m.execution.threads * m.execution.thisNode;
+    shared = m.algorithm.sharedVisitor;
     Output::output().setStatsSize( total * 10 + 11, total + 11 );
 }
 
