@@ -112,8 +112,15 @@ void TrackStatistics::format( std::ostream &o ) {
             printv(o, 9, threadMem / 1024, 0 );
         }
         printv( o, 10, memSum / 1024, 0 );
-        o << " kB" << std::endl << std::setw(10 * nthreads)
-          << "> Used: " << std::setw(11) << memUsed() << " kB" << std::endl;
+        o << " kB" << std::endl;
+        auto meminfo = [&]( std::string i, int64_t v ) {
+            o << std::setw( 10 * nthreads ) << i << std::setw( 11 )
+              << v << " kB" << std::endl;
+        };
+        meminfo( "> Virtual mem peak:  ", vmPeak() );
+        meminfo( "> Virtual mem:       ", vmNow() );
+        meminfo( "> Physical mem peak: ", residentMemPeak() );
+        meminfo( "> Physical mem:      ", residentMemNow() );
     }
 }
 

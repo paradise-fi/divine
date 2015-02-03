@@ -63,7 +63,8 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
 
     bool gnuplot;
     std::ostream *output;
-    int64_t memBaseline;
+    int64_t vmBaseline;
+    int64_t rssBaseline;
 
     Output::Token out_token;
 
@@ -123,10 +124,11 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     static int64_t second( int64_t, int64_t b ) { return b; }
     static int64_t diff( int64_t a, int64_t b ) { return a - b; }
 
-    int64_t memUsed() {
-        sysinfo::Info i;
-        return i.peakVmSize() - memBaseline;
-    }
+    int64_t vmPeak() { return sysinfo::Info().peakVmSize() - vmBaseline; }
+    int64_t vmNow() { return sysinfo::Info().peakVmSize() - vmBaseline; }
+
+    int64_t residentMemPeak() { return sysinfo::Info().peakResidentMemSize() - rssBaseline; }
+    int64_t residentMemNow() { return sysinfo::Info().residentMemSize() - rssBaseline; }
 
     void resize( int s );
     template< typename F > void line( std::ostream &o, std::string lbl, F f );
@@ -148,7 +150,8 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
         gnuplot = false;
         resize( 1 );
         sysinfo::Info i;
-        memBaseline = i.peakVmSize();
+        vmBaseline = i.peakVmSize();
+        rssBaseline = i.peakResidentMemSize();
     }
 
     ~TrackStatistics();
