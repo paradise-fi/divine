@@ -584,6 +584,16 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     Data _d;
     ThreadData _global; /* for single-thread access */
 
+    static size_t nextSize( size_t s ) {
+        if ( s < 512 * 1024 )
+            return s * 16;
+        if ( s < 16 * 1024 * 1024 )
+            return s * 8;
+        if ( s < 32 * 1024 * 1024 )
+            return s * 4;
+        return s * 2;
+    }
+
     struct WithTD
     {
         using iterator = typename Base::iterator;
@@ -609,16 +619,6 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
         int count( value_type x ) {
             return find( x ).valid() ? 1 : 0;
-        }
-
-        size_t nextSize( size_t s ) {
-            if ( s < 512 * 1024 )
-                return s * 16;
-            if ( s < 16 * 1024 * 1024 )
-                return s * 8;
-            if ( s < 32 * 1024 * 1024 )
-                return s * 4;
-            return s * 2;
         }
 
         iterator insertHinted( value_type x, hash64_t h )
@@ -875,7 +875,10 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     /* XXX only usable before the first insert; rename? */
     void setSize( size_t s ) {
         s = bitlevel::fill( s - 1 ) + 1;
-        _d.table[ 0 ].size( s / 2 );
+        size_t toSet = 1;
+        while ( nextSize( toSet ) < s )
+            toSet <<= 1;
+        _d.table[ 0 ].size( toSet );
     }
 
     hash64_t hash( const value_type &t ) { return hash128( t ).first; }
