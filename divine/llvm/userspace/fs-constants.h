@@ -18,15 +18,17 @@ const int CURRENT_DIRECTORY = -4;
 namespace flags {
 
 enum class Open {
-    NoFlags     =   0,
-    Read        =   1,
-    Write       =   2,
-    Create      =   4,
-    Excl        =   8,
-    TmpFile     =  16,
-    Truncate    =  32,
-    NoAccess    =  64,
-    Invalid     = 128,
+    NoFlags     =    0,
+    Read        =    1,
+    Write       =    2,
+    Create      =    4,
+    Excl        =    8,
+//    TmpFile     =   16,
+    Truncate    =   32,
+    NoAccess    =   64,
+    Append      =  128,
+    SymNofollow =  256,
+    Invalid     = 4096,
 };
 
 enum class Access {
