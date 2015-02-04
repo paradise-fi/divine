@@ -153,6 +153,7 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
 
     static void makeGlobalGnuplot( std::string file );
     static void makeGlobalDetailed();
+    static void makeGlobalSimple( std::vector< std::string > selectors );
 
     static TrackStatistics &global() {
         ASSERT( !!_global() );

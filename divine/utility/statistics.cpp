@@ -247,6 +247,83 @@ struct Detailed : Matrix {
     }
 };
 
+struct Simple : TrackStatistics {
+
+    virtual void format( std::ostream &o ) override {
+        for ( auto s : select )
+            o << s.first << "=" << (this->*s.second)() << "; ";
+        o << std::endl;
+    }
+
+    Simple( std::vector< std::string > selectstr ) :
+        start( std::chrono::steady_clock::now() )
+    {
+        if ( selectstr.empty() )
+            select = map;
+        else for ( auto s : selectstr ) {
+            std::pair< std::string, int64_t (Simple::*)() > val;
+            for ( auto p : map )
+                if ( p.first == s )
+                    val = p;
+            if ( val.first.empty() )
+                throw std::invalid_argument( "selector " + s + " not available for statistics" );
+            select.emplace_back( val );
+        }
+    }
+
+  private:
+    std::vector< std::pair< std::string, int64_t (Simple::*)() > > select;
+    std::chrono::time_point< std::chrono::steady_clock > start;
+    static std::vector< std::pair< std::string, int64_t (Simple::*)() > > map;
+
+    int64_t timestamp() {
+        auto dur = std::chrono::steady_clock::now() - start;
+        return std::chrono::duration_cast< std::chrono::milliseconds >( dur ).count();
+    }
+
+    int64_t hashsizes() {
+        return shared
+                ? maxof( &PerThread::hashsize )
+                : sumof( &PerThread::hashsize );
+    }
+
+    int64_t states() {
+        return sumof( &PerThread::hashused );
+    }
+
+    template< typename T >
+    T maxof( T (PerThread::*sel) ) {
+        return accumulate( -1, [sel]( T acc, PerThread &t ) {
+                return std::max( acc, t.*sel );
+            } );
+    }
+
+    template< typename T >
+    T sumof( T (PerThread::*sel) ) {
+        return accumulate( 0, [sel]( T acc, PerThread &t ) {
+                return acc + t.*sel;
+            } );
+    }
+
+    template< typename T, typename BinFn >
+    T accumulate( T accum, BinFn fn ) {
+        const int nthreads = threads.size();
+        for ( int i = 0; i < nthreads; ++i )
+            accum = fn( accum, thread( i ) );
+        return accum;
+    }
+};
+
+std::vector< std::pair< std::string, int64_t (Simple::*)() > > Simple::map {
+    { "hashsize", &Simple::hashsizes },
+    { "states",   &Simple::states },
+    { "vmpeak",   &Simple::vmPeak },
+    { "vm",       &Simple::vmNow },
+    { "rsspeak",  &Simple::residentMemPeak },
+    { "rss",      &Simple::residentMemNow },
+    { "time",     &Simple::timestamp }
+};
+
 } // namespace statistics
 
 void TrackStatistics::makeGlobalDetailed() {
@@ -258,5 +335,10 @@ void TrackStatistics::makeGlobalGnuplot( std::string file ) {
     if ( file != "-" )
         _global()->output = new std::ofstream( file );
 }
+
+void TrackStatistics::makeGlobalSimple( std::vector< std::string > selectors ) {
+    _global().reset( new statistics::Simple( selectors ) );
+}
+
 } // namespace divine
 

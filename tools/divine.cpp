@@ -56,7 +56,8 @@ struct Main {
            *cmd_simulate, *cmd_genexplicit;
     OptionGroup *common, *drawing, *input, *reduce, *compression, *definitions,
                 *ce, *compactOutput, *limits, *stats, *simopts;
-    BoolOption *o_noCe, *o_dispCe, *o_simulateCe, *o_dummy, *o_statistics, *o_shortReport;
+    BoolOption *o_noCe, *o_dispCe, *o_simulateCe, *o_dummy, *o_statisticsShort, *o_shortReport;
+    OptvalStringOption *o_statistics;
     OptvalStringVectorOption *o_report;
     BoolOption *o_fair, *o_shared;
     StringOption *o_reduce;
@@ -152,8 +153,11 @@ struct Main {
         // statistics must be set up after output
         if ( o_gnuplot->boolValue() )
             TrackStatistics::makeGlobalGnuplot( o_gnuplot->value() );
-        else if ( o_statistics->boolValue() )
+        else if ( o_statisticsShort->boolValue()
+                || (o_statistics->isSet() && o_statistics->value().empty()) )
             TrackStatistics::makeGlobalDetailed();
+        else if ( o_statistics->isSet() )
+            TrackStatistics::makeGlobalSimple( parseStatistics( o_statistics->value() ) );
 
         TrackStatistics::global().setup( a->meta() );
         if ( meta.output.statistics )
@@ -277,9 +281,17 @@ struct Main {
             "max-time", '\0', "max-time", "",
             "maximum wall time to use in seconds (default: 0 = unlimited)" );
 
-        o_statistics = stats->add< BoolOption >(
-            "statistics", 's', "statistics", "",
-            "track communication and hash table load statistics" );
+        o_statisticsShort = stats->add< BoolOption >(
+            "statistics", 's', "", "",
+            "track communication and hash table load statistics, display them in human readable table" );
+        o_statistics = stats->add< OptvalStringOption >(
+            "statistics", '\0', "statistics", "",
+            "track communication and hash table load statistics; statistics "
+            "are displayed either in human readable format (as with -s) if no "
+            "argument is given; or in simple machine readable format if either "
+            "'simple' one or more of the following selectors is given: "
+            "hashsize, states, vmpeak, vm, rsspeak, rss, time (multiple selectors "
+            "can be specified comma separated)" );
         o_gnuplot= stats->add< StringOption >(
             "gnuplot-statistics", '\0', "gnuplot-statistics", "",
             "output statistics in a gnuplot-friendly format" );
@@ -542,6 +554,16 @@ struct Main {
         return r;
     }
 
+    std::vector< std::string > parseStatistics( std::string s ) {
+        if ( s == "simple" )
+            return { }; // means all available selectors
+
+        brick::string::Splitter splitter( "[ \t]*,[ \t]*", REG_EXTENDED );
+        std::vector< std::string > r;
+        std::copy( splitter.begin( s ), splitter.end(), std::back_inserter( r ) );
+        return r;
+    }
+
     meta::Algorithm::Compression parseCompression( std::string s )
     {
         if ( s.empty() ) return meta::Algorithm::Compression::Tree;
@@ -630,7 +652,8 @@ struct Main {
         meta.algorithm.demangle = o_demangle->isSet()
             ? parseDemangle( o_demangle->value() )
             : graph::DemangleStyle::Cpp;
-        meta.output.statistics = o_statistics->boolValue() || o_gnuplot->boolValue();
+        meta.output.statistics = o_statistics->isSet()
+            || o_statisticsShort->boolValue() || o_gnuplot->boolValue();
 
         /* No point in generating counterexamples just to discard them. */
         if ( !o_dispCe->boolValue() && !o_simulateCe->boolValue()
