@@ -109,6 +109,8 @@ protected:
 
 struct PipeDescriptor : FileDescriptor {
 
+    using FileDescriptor::FileDescriptor;
+
     ~PipeDescriptor() {
         if ( _inode && _flags.has( flags::Open::Read ) ) {
             Pipe *pipe = _inode->data()->as< Pipe >();

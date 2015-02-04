@@ -540,5 +540,14 @@ int _FS_renameitem( const char *oldpath, const char *newpath ) {
     return _FS_renameitemat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
 }
 
+int pipe( int pipefd[ 2 ] ) {
+    FS_MASK
+    try {
+        std::tie( pipefd[ 0 ], pipefd[ 1 ] ) = divine::fs::filesystem.pipe();
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
 
 } // extern "C"

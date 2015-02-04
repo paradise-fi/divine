@@ -221,6 +221,16 @@ std::shared_ptr< FileDescriptor > &FSManager::getFile( int fd ) {
     throw Error( EBADF );
 }
 
+std::pair< int, int > FSManager::pipe() {
+    unsigned mode = Mode::RWXUSER | Mode::FIFO;
+
+    Node p = std::make_shared< INode >( mode, new Pipe() );
+    return {
+        _getFileDescriptor( std::make_shared< PipeDescriptor >( p, flags::Open::Read ) ),
+        _getFileDescriptor( std::make_shared< PipeDescriptor >( p, flags::Open::Write ) )
+    };
+}
+
 void FSManager::removeFile( utils::String name ) {
     if ( name.empty() )
         throw Error( ENOENT );

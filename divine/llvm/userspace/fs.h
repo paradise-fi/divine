@@ -359,6 +359,8 @@ FS_NOINLINE int ttyname_r( int fd, char *buf, size_t count );
 FS_NOINLINE void sync( void );
 FS_NOINLINE int syncfs( int fd );
 
+FS_NOINLINE int pipe( int pipefd[ 2 ] );
+
 FS_NOINLINE int _FS_renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );
 FS_NOINLINE int _FS_renameitem( const char *oldpath, const char *newpath );
 

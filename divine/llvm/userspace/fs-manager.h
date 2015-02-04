@@ -62,6 +62,8 @@ struct FSManager {
     int duplicate2( int oldfd, int newfd );
     std::shared_ptr< FileDescriptor > &getFile( int fd );
 
+    std::pair< int, int > pipe();
+
     void removeFile( utils::String name );
     void removeDirectory( utils::String name );
     void removeAt( int dirfd, utils::String name, flags::At fl );
