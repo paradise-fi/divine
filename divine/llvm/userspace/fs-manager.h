@@ -52,7 +52,6 @@ struct FSManager {
     void createDirectoryAt( int dirfd, utils::String name, unsigned mode );
     void createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl );
     void createSymLinkAt( int dirfd, utils::String name, utils::String target );
-    int createFile( utils::String name, unsigned mode );
 
     ssize_t readLinkAt( int dirfd, utils::String name, char *buf, size_t count );
 

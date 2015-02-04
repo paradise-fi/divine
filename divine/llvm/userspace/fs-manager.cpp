@@ -114,13 +114,6 @@ void FSManager::createSymLinkAt( int dirfd, utils::String name, utils::String ta
     dir->create( std::move( name ), node );
 }
 
-int FSManager::createFile( utils::String name, unsigned mode ) {
-    Node item;
-    _createFile( std::move( name ), mode, &item );
-    Flags< flags::Open > fl = flags::Open::Write | flags::Open::Create;// | flags::Open::Truncate
-    return _getFileDescriptor( std::make_shared< FileDescriptor >( std::move( item ), fl ) );
-}
-
 ssize_t FSManager::readLinkAt( int dirfd, utils::String name, char *buf, size_t count ) {
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
