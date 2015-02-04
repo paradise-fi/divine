@@ -51,17 +51,33 @@ void FSManager::createDirectoryAt( int dirfd, utils::String name, unsigned mode 
     dir->create( std::move( name ), node );
 }
 
-void FSManager::createHardLink( utils::String name, const utils::String &target ) {
+void FSManager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl ) {
     if ( name.empty() || target.empty() )
         throw Error( ENOENT );
 
+    if ( fl.has( flags::At::Invalid ) )
+        throw Error( EINVAL );
+
     Node current;
-    std::tie( current, name )= _findDirectoryOfFile( name );
+    {
+        WeakNode savedDir = _currentDirectory;
+        auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+        if ( path::isRelative( name ) &&  newdirfd != CURRENT_DIRECTORY )
+            changeDirectory( newdirfd );
+        std::tie( current, name )= _findDirectoryOfFile( name );
+    }
 
     _checkGrants( current, Mode::WUSER );
     Directory *dir = current->data()->as< Directory >();
 
-    Node targetNode = findDirectoryItem( target );
+    Node targetNode;
+    {
+        WeakNode savedDir = _currentDirectory;
+        auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+        if ( path::isRelative( target ) && olddirfd != CURRENT_DIRECTORY )
+            changeDirectory( olddirfd );
+        targetNode = findDirectoryItem( target, fl.has( flags::At::SymFollow ) );
+    }
     if ( !targetNode )
         throw Error( ENOENT );
 

@@ -50,7 +50,7 @@ struct FSManager {
     Node findDirectoryItem( utils::String name, bool followSymLinks = true );
 
     void createDirectoryAt( int dirfd, utils::String name, unsigned mode );
-    void createHardLink( utils::String name, const utils::String &target );
+    void createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl );
     void createSymLinkAt( int dirfd, utils::String name, utils::String target );
     int createFile( utils::String name, unsigned mode );
 

@@ -300,13 +300,28 @@ int symlink( const char *target, const char *linkpath ) {
     FS_MASK
     return symlinkat( target, AT_FDCWD, linkpath );
 }
-int link( const char *target, const char *linkpath ) {
+int linkat( int olddirfd, const char *target, int newdirfd, const char *linkpath, int flags ) {
+    FS_MASK
+    if ( olddirfd == AT_FDCWD )
+        olddirfd = divine::fs::CURRENT_DIRECTORY;
+    if ( newdirfd == AT_FDCWD )
+        newdirfd = divine::fs::CURRENT_DIRECTORY;
+
+    divine::fs::Flags< divine::fs::flags::At > fl = divine::fs::flags::At::NoFlags;
+    if ( flags & AT_SYMLINK_FOLLOW )   fl |= divine::fs::flags::At::SymFollow;
+    if ( ( flags | AT_SYMLINK_FOLLOW ) != AT_SYMLINK_FOLLOW )
+        fl |= divine::fs::flags::At::Invalid;
+
     try {
-        divine::fs::filesystem.createHardLink( linkpath, target );
+        divine::fs::filesystem.createHardLinkAt( newdirfd, linkpath, olddirfd, target, fl );
         return 0;
     } catch ( Error & ) {
         return -1;
     }
+}
+int link( const char *target, const char *linkpath ) {
+    FS_MASK
+    return linkat( AT_FDCWD, target, AT_FDCWD, linkpath, 0 );
 }
 
 ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count ) {
