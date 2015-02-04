@@ -35,6 +35,10 @@ struct Mode {
     static const unsigned WOTHER   = 0000002;
     static const unsigned XOTHER   = 0000001;
 
+    // composites
+    static const unsigned GRANTS   = 0000777;
+    static const unsigned CHMOD    = 0007777;
+
     Mode( unsigned m ) : _mode( m ) {}
     Mode( const Mode & ) = default;
     Mode &operator=( const Mode & ) = default;

@@ -364,6 +364,10 @@ FS_NOINLINE int pipe( int pipefd[ 2 ] );
 FS_NOINLINE int _FS_renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );
 FS_NOINLINE int _FS_renameitem( const char *oldpath, const char *newpath );
 
+FS_NOINLINE int chmod( const char *path, int mode );
+FS_NOINLINE int fchmod( int fd, int mode );
+FS_NOINLINE int fchmodat( int dirfd, const char *path, int mode, int flags );
+
 #undef FS_NOINLINE
 
 #ifdef __cplusplus

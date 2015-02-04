@@ -103,11 +103,14 @@ struct FSManager {
     void changeDirectory( utils::String pathname );
     void changeDirectory( int dirfd );
 
+    void chmodAt( int dirfd, utils::String name, unsigned mode, Flags< flags::At > fl );
+    void chmod( int fd, unsigned mode );
+
     unsigned umask() const {
         return _umask;
     }
     void umask( unsigned mask ) {
-        _umask = 0777 & mask;
+        _umask = Mode::GRANTS & mask;
     }
 
 private:
@@ -132,6 +135,8 @@ private:
     void _insertSnapshotItem( const SnapshotFS &item );
 
     void _checkGrants( Node inode, unsigned grant ) const;
+
+    void _chmod( Node inode, unsigned mode );
 
 };
 

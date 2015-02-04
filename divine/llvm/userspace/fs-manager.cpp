@@ -394,6 +394,23 @@ void FSManager::changeDirectory( int dirfd ) {
     _currentDirectory = item;
 }
 
+void FSManager::chmodAt( int dirfd, utils::String name, unsigned mode, Flags< flags::At > fl ) {
+    if ( fl.has( flags::At::Invalid ) )
+        throw Error( EINVAL );
+
+    WeakNode savedDir = _currentDirectory;
+    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+        changeDirectory( dirfd );
+
+    Node inode = findDirectoryItem( std::move( name ), !fl.has( flags::At::SymNofollow ) );
+    _chmod( inode, mode );
+}
+
+void FSManager::chmod( int fd, unsigned mode ) {
+    _chmod( getFile( fd )->inode(), mode );
+}
+
 template< typename... Args >
 void FSManager::_createFile( utils::String name, unsigned mode, Node *file, Args &&... args ) {
     if ( name.empty() )
@@ -531,6 +548,12 @@ void FSManager::_insertSnapshotItem( const SnapshotFS &item ) {
 void FSManager::_checkGrants( Node inode, unsigned grant ) const {
     if ( ( inode->mode() & grant ) != grant )
         throw Error( EACCES );
+}
+
+void FSManager::_chmod( Node inode, unsigned mode ) {
+    inode->mode() =
+        ( inode->mode() & ~Mode::CHMOD ) |
+        ( mode & Mode::CHMOD );
 }
 
 } // namespace fs

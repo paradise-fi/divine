@@ -550,4 +550,34 @@ int pipe( int pipefd[ 2 ] ) {
     }
 }
 
+int fchmodeat( int dirfd, const char *path, int mode, int flags ) {
+    FS_MASK
+
+    divine::fs::Flags< divine::fs::flags::At > fl = divine::fs::flags::At::NoFlags;
+    if ( flags & AT_SYMLINK_NOFOLLOW )  fl |= divine::fs::flags::At::SymNofollow;
+    if ( ( flags | AT_SYMLINK_NOFOLLOW ) != AT_SYMLINK_NOFOLLOW )
+        fl |= divine::fs::flags::At::Invalid;
+
+    if ( dirfd == AT_FDCWD )
+        dirfd = divine::fs::CURRENT_DIRECTORY;
+    try {
+        divine::fs::filesystem.chmodAt( dirfd, path, mode, fl );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+int chmod( const char *path, int mode ) {
+    FS_MASK
+    return fchmodeat( AT_FDCWD, path, mode, 0 );
+}
+int fchmod( int fd, int mode ) {
+    try {
+        divine::fs::filesystem.chmod( fd, mode );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
 } // extern "C"
