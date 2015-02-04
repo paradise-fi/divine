@@ -78,15 +78,6 @@ static int _fillStat( const divine::fs::Node item, struct stat *buf ) {
     return 0;
 }
 
-int creat( const char *path, int mode ) {
-    try {
-        return divine::fs::filesystem.createFile( path, unsigned( mode ) );
-    } catch( Error &e ) {
-        errno = e.code();
-        return -1;
-    }
-}
-
 int openat( int dirfd, const char *path, int flags, ... ) {
     FS_MASK
     using namespace divine::fs::flags;
@@ -134,6 +125,10 @@ int open( const char *path, int flags, ... ) {
         va_end( args );
     }
     return openat( AT_FDCWD, path, flags, mode );
+}
+int creat( const char *path, int mode ) {
+    FS_MASK
+    return openat( AT_FDCWD, path, O_CREAT | O_WRONLY | O_TRUNC, mode );
 }
 
 int close( int fd ) {
