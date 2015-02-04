@@ -107,12 +107,12 @@ void TrackStatistics::format( std::ostream &o ) {
 
         label( o, "MEMORY EST" );
 
-        long memSum = 0;
-        long tableMem = 0;
+        int64_t memSum = 0;
+        int64_t tableMem = 0;
         o << std::endl;
         for ( int j = 0; j < nthreads; ++ j ) {
             PerThread &th = thread( j );
-            long threadMem = th.memQueue + th.memHashes;
+            int64_t threadMem = th.memQueue + th.memHashes;
             int64_t tt = th.hashsize * sizeof( Blob ); // FIXME
             if ( shared )
                 tableMem += tt;
