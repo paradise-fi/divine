@@ -61,7 +61,7 @@ struct RegularFile : File {
     }
 
     bool read( char *buffer, size_t offset, size_t &length ) override {
-        const char *source = isSnapshot() ?
+        const char *source = _isSnapshot() ?
                           _roContent + offset :
                           _content.data() + offset;
         if ( offset + length > _size )
@@ -71,8 +71,8 @@ struct RegularFile : File {
     }
 
     bool write( const char *buffer, size_t offset, size_t length ) override {
-        if ( isSnapshot() )
-            copyOnWrite();
+        if ( _isSnapshot() )
+            _copyOnWrite();
 
         if ( _content.size() < offset + length )
             resize( offset + length );
@@ -88,11 +88,11 @@ struct RegularFile : File {
 
 private:
 
-    bool isSnapshot() const {
+    bool _isSnapshot() const {
         return _snapshot;
     }
 
-    void copyOnWrite() {
+    void _copyOnWrite() {
         const char *roContent = _roContent;
         _content.resize( _size );
 
