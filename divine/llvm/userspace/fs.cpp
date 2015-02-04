@@ -409,10 +409,6 @@ int fchdir( int dirfd ) {
     }
 }
 
-void _exit( int status ) {
-    std::_Exit( status );
-}
-
 int fdatasync( int fd ) {
     FS_MASK
     try {
@@ -451,11 +447,6 @@ int truncate( const char *path, off_t length ) {
     } catch ( Error & ) {
         return -1;
     }
-}
-
-unsigned sleep( unsigned seconds ) {
-    /// TODO: divine context switch
-    return 0;
 }
 
 void swab( const void *_from, void *_to, ssize_t n ) {
