@@ -61,6 +61,9 @@ struct FileDescriptor {
         if ( !file )
             throw Error( EBADF );
 
+        if ( _flags.has( flags::Open::Append ) )
+            _offset = file->size();
+
         const char *src = reinterpret_cast< const char * >( buf );
         if ( !file->write( src, _offset, length ) )
             throw Error( EBADF );

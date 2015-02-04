@@ -153,7 +153,7 @@ int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > f
     if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
         changeDirectory( dirfd );
 
-    Node file = findDirectoryItem( name );
+    Node file = findDirectoryItem( name, !fl.has( flags::Open::SymNofollow ) );
 
     if ( fl.has( flags::Open::Create ) ) {
         if ( file ) {
@@ -173,6 +173,9 @@ int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > f
         _checkGrants( file, Mode::WUSER );
         if ( file->mode().isDirectory() )
             throw Error( EISDIR );
+        if ( fl.has( flags::Open::Truncate ) )
+            if ( auto f = file->data()->as< File >() )
+                f->clear();
     }
 
     if ( fl.has( flags::Open::NoAccess ) ) {

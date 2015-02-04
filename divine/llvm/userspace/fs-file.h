@@ -36,6 +36,8 @@ struct File : DataItem {
     virtual bool read( char *, size_t, size_t & ) = 0;
     virtual bool write( const char *, size_t, size_t ) = 0;
 
+    virtual void clear() = 0;
+
 };
 
 struct RegularFile : File {
@@ -81,6 +83,14 @@ struct RegularFile : File {
         return true;
     }
 
+    void clear() override {
+        if ( !_size )
+            return;
+
+        _snapshot = false;
+        resize( 0 );
+    }
+
     void resize( size_t length ) {
         _content.resize( length );
         _size = _content.size();
@@ -117,6 +127,8 @@ struct WriteOnlyFile : public File {
     bool write( const char*, size_t, size_t ) override {
         return true;
     }
+    void clear() override {
+    }
 };
 
 struct Pipe : public File {
@@ -151,6 +163,9 @@ struct Pipe : public File {
         _content.resize( offset + length );
         std::copy( buffer, buffer + length, _content.begin() + offset );
         return true;
+    }
+
+    void clear() override {
     }
 
     void releaseReader() {

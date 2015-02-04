@@ -105,8 +105,13 @@ int openat( int dirfd, const char *path, int flags, ... ) {
 
     if ( flags & O_EXCL )
         f |= divine::fs::flags::Open::Excl;
-    if ( flags & O_TMPFILE )
-        f |= divine::fs::flags::Open::TmpFile;
+    if ( flags & O_TRUNC )
+        f |= divine::fs::flags::Open::Truncate;
+    if ( flags & O_APPEND )
+        f |= divine::fs::flags::Open::Append;
+    if ( flags & O_NOFOLLOW )
+        f |= divine::fs::flags::Open::SymNofollow;
+
     if ( dirfd == AT_FDCWD )
         dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
