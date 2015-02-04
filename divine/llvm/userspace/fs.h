@@ -10,6 +10,8 @@ void showFS();
 extern "C" {
 #endif
 
+#define FS_NOINLINE __attribute__((noinline))
+
 /**
  *  int creat( const char *path, int mode )
  *
@@ -54,7 +56,7 @@ int openat( int dirfd, const char *path, int flags, ... );
  *          -1 in case of error; possible error codes:
  *              EBADF
  */
-int close( int fd );
+FS_NOINLINE int close( int fd );
 
 /**
  *  ssize_t write( int fd, const void *buf, size_t count )
@@ -65,8 +67,8 @@ int close( int fd );
  *              EBADF
  *              EPIPE
  */
-ssize_t write( int fd, const void *buf, size_t count );
-ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset );
+FS_NOINLINE ssize_t write( int fd, const void *buf, size_t count );
+FS_NOINLINE ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset );
 
 /**
  *  ssize_t read( int fd, void *, size_t count )
@@ -76,8 +78,8 @@ ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset );
  *          -1 in case of error; possible error codes:
  *              EBADF
  */
-ssize_t read( int fd, void *buf, size_t count );
-ssize_t pread( int fd, void *buf, size_t count, off_t offset );
+FS_NOINLINE ssize_t read( int fd, void *buf, size_t count );
+FS_NOINLINE ssize_t pread( int fd, void *buf, size_t count, off_t offset );
 
 /**
  *  int mkdir( const char *path, int mode )
@@ -94,8 +96,8 @@ ssize_t pread( int fd, void *buf, size_t count, off_t offset );
  *      mkdirat may give also:
  *              EBADF
  */
-int mkdir( const char *path, int mode );
-int mkdirat( int dirfd, const char *path, int mode );
+FS_NOINLINE int mkdir( const char *path, int mode );
+FS_NOINLINE int mkdirat( int dirfd, const char *path, int mode );
 
 /**
  *  int unlink( const char *path )
@@ -110,7 +112,7 @@ int mkdirat( int dirfd, const char *path, int mode );
  *              ENOENT
  *              ENOTDIR
  */
-int unlink( const char *path );
+FS_NOINLINE int unlink( const char *path );
 
 /**
  *  int rmdir( const char *path )
@@ -126,7 +128,7 @@ int unlink( const char *path );
  *              ENOTDIR
  *              ENOTEMPTY
  */
-int rmdir( const char *path );
+FS_NOINLINE int rmdir( const char *path );
 
 /**
  *  int unlinkat( int dirfd, const char *path, int flags )
@@ -143,7 +145,7 @@ int rmdir( const char *path );
  *              ENOTDIR
  *              ENOTEMPTY
  */
-int unlinkat( int dirfd, const char *path, int flags );
+FS_NOINLINE int unlinkat( int dirfd, const char *path, int flags );
 
 /**
  *  off_t lseek( int fd, off_t offset, int whence )
@@ -156,7 +158,7 @@ int unlinkat( int dirfd, const char *path, int flags );
  *              EOVERFLOW
  *              ESPIPE
  */
-off_t lseek( int fd, off_t offset, int whence );
+FS_NOINLINE off_t lseek( int fd, off_t offset, int whence );
 
 /**
  *  int dup( int fd )
@@ -166,7 +168,7 @@ off_t lseek( int fd, off_t offset, int whence );
  *          -1 in case of error; possible error codes:
  *              EBADF
  */
-int dup( int fd );
+FS_NOINLINE int dup( int fd );
 
 /**
  *  int dup2( int fd )
@@ -176,7 +178,7 @@ int dup( int fd );
  *          -1 in case of error; possible error codes:
  *              EBADF
  */
-int dup2( int oldfd, int newfd );
+FS_NOINLINE int dup2( int oldfd, int newfd );
 
 /**
  *  int symlink( const char *target, const char *linkpath )
@@ -192,8 +194,8 @@ int dup2( int oldfd, int newfd );
  *              ENOENT
  *              ENOTDIR
  */
-int symlink( const char *target, const char *linkpath );
-int symlinkat( const char *target, int dirfd, const char *linkpath );
+FS_NOINLINE int symlink( const char *target, const char *linkpath );
+FS_NOINLINE int symlinkat( const char *target, int dirfd, const char *linkpath );
 
 /**
  *  int link( const char *target, const char *linkpath )
@@ -209,7 +211,8 @@ int symlinkat( const char *target, int dirfd, const char *linkpath );
  *              ENOTDIR
  *              EPERM
  */
-int link( const char *target, const char *linkpath );
+FS_NOINLINE int link( const char *target, const char *linkpath );
+FS_NOINLINE int linkat( int olddirfd, const char *target, int newdirfd, const char *linkpath, int flags );
 
 /**
  *  int access( const char *path, int mode )
@@ -223,8 +226,8 @@ int link( const char *target, const char *linkpath );
  *              ENOENT
  *              ENOTDIR
  */
-int access( const char *path, int mode );
-int faccessat( int dirfd, const char *path, int mode, int flags );
+FS_NOINLINE int access( const char *path, int mode );
+FS_NOINLINE int faccessat( int dirfd, const char *path, int mode, int flags );
 
 /**
  *  int fstat( int fd, struct stat *buf )
@@ -241,9 +244,9 @@ int faccessat( int dirfd, const char *path, int mode, int flags );
  *              ENOENT
  *              ENOTDIR
  */
-int fstat( int fd, struct stat *buf );
-int stat( const char *path, struct stat *buf );
-int lstat( const char *path, struct stat *buf );
+FS_NOINLINE int fstat( int fd, struct stat *buf );
+FS_NOINLINE int stat( const char *path, struct stat *buf );
+FS_NOINLINE int lstat( const char *path, struct stat *buf );
 
 /**
  *  unsigned umask( unsigned mask )
@@ -251,7 +254,7 @@ int lstat( const char *path, struct stat *buf );
  *  Returns:
  *          previous mask value
  */
-unsigned umask( unsigned mask );
+FS_NOINLINE unsigned umask( unsigned mask );
 
 /**
  *  int chdir( const char *path )
@@ -267,8 +270,8 @@ unsigned umask( unsigned mask );
  *              ENOENT
  *              ENOTDIR
  */
-int chdir( const char *path );
-int fchdir( int dirfd );
+FS_NOINLINE int chdir( const char *path );
+FS_NOINLINE int fchdir( int dirfd );
 
 void _exit( int status );
 
@@ -283,8 +286,8 @@ void _exit( int status );
  *  Note:
  *          Synchronization is done together with write operation.
  */
-int fsync( int fd );
-int fdatasync( int fd );
+FS_NOINLINE int fsync( int fd );
+FS_NOINLINE int fdatasync( int fd );
 
 /**
  *  int ftruncate( int fd, off_t length )
@@ -302,16 +305,8 @@ int fdatasync( int fd );
  *              ENOENT
  *              ENOTDIR
  */
-int ftruncate( int fd, off_t length );
-int truncate( const char *path, off_t length );
-
-/**
- *  unsigned sleep( unsigned seconds );
- *
- *  Returns:
- *          0 always
- */
-unsigned sleep( unsigned seconds );
+FS_NOINLINE int ftruncate( int fd, off_t length );
+FS_NOINLINE int truncate( const char *path, off_t length );
 
 /**
  *  ssize_t readlink( const char *path, char *buf, size_t count )
@@ -327,13 +322,13 @@ unsigned sleep( unsigned seconds );
  *              ENOENT
  *              ENOTDIR
  */
-ssize_t readlink( const char *path, char *buf, size_t count );
-ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count );
+FS_NOINLINE ssize_t readlink( const char *path, char *buf, size_t count );
+FS_NOINLINE ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count );
 
 /**
  *  void swab( const void *from, void *to, ssize_t n )
  */
-void swab( const void *from, void *to, ssize_t n );
+FS_NOINLINE void swab( const void *from, void *to, ssize_t n );
 
 /**
  *  int isatty( int fd )
@@ -343,14 +338,14 @@ void swab( const void *from, void *to, ssize_t n );
  *              EBADF
  *              EINVAL
  */
-int isatty( int fd );
+FS_NOINLINE int isatty( int fd );
 
 /**
  *  char *ttyname( int fd )
  *  int ttyname_r( int fd, char *buf, size_t count )
  */
-char *ttyname( int fd );
-int ttyname_r( int fd, char *buf, size_t count );
+FS_NOINLINE char *ttyname( int fd );
+FS_NOINLINE int ttyname_r( int fd, char *buf, size_t count );
 
 /**
  *  void sync( void )
@@ -361,8 +356,13 @@ int ttyname_r( int fd, char *buf, size_t count );
  *          -1 in case of error; possible error codes:
  *              EBADF
  */
-void sync( void );
-int syncfs( int fd );
+FS_NOINLINE void sync( void );
+FS_NOINLINE int syncfs( int fd );
+
+FS_NOINLINE int _FS_renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );
+FS_NOINLINE int _FS_renameitem( const char *oldpath, const char *newpath );
+
+#undef FS_NOINLINE
 
 #ifdef __cplusplus
 } // extern C
