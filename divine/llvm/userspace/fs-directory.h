@@ -138,6 +138,13 @@ struct Directory : DataItem {
         return position->inode();
     }
 
+    void replaceEntry( const utils::String &name, Node node ) {
+        auto position = _findItem( name );
+        if ( position == _items.end() || name != position->name() )
+            throw Error( ENOENT );
+        *position = DirectoryEntry( name, node );
+    }
+
     template< typename T >
     T *find( const utils::String &name ) {
         Node node = find( name );
@@ -166,6 +173,12 @@ struct Directory : DataItem {
             throw Error( ENOTEMPTY );
 
         _items.erase( position );
+    }
+
+    void forceRemove( const utils::String &name ) {
+        auto position = _findItem( name );
+        if ( position != _items.end() && name == position->name() )
+            _items.erase( position );
     }
 
     Items::iterator begin() {

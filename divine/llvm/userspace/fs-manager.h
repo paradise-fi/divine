@@ -67,6 +67,8 @@ struct FSManager {
     void removeDirectory( utils::String name );
     void removeAt( int dirfd, utils::String name, flags::At fl );
 
+    void renameAt( int newdirfd, utils::String newpath, int olddirfd, utils::String oldpath );
+
     void truncate( Node inode, off_t length );
 
     off_t lseek( int fd, off_t offset, Seek whence );
@@ -121,6 +123,10 @@ private:
     void _createFile( utils::String name, unsigned mode, Node *file, Args &&... args );
 
     std::pair< Node, utils::String > _findDirectoryOfFile( utils::String name );
+
+    template< typename I >
+    Node _findDirectoryItem( utils::String name, bool followSymLinks, I itemChecker );
+
     int _getFileDescriptor( std::shared_ptr< FileDescriptor > f );
     void _insertSnapshotItem( const SnapshotFS &item );
 

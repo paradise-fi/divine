@@ -273,6 +273,63 @@ void FSManager::removeAt( int dirfd, utils::String name, flags::At fl ) {
     }
 }
 
+void FSManager::renameAt( int newdirfd, utils::String newpath, int olddirfd, utils::String oldpath ) {
+    Node oldNode;
+    Directory *oldNodeDirectory;
+    Node newNode;
+    Directory *newNodeDirectory;
+
+    utils::String oldName;
+    utils::String newName;
+
+    {
+        WeakNode savedDir = _currentDirectory;
+        auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+        if ( path::isRelative( oldpath ) && olddirfd != CURRENT_DIRECTORY )
+            changeDirectory( olddirfd );
+
+        std::tie( oldNode, oldName ) = _findDirectoryOfFile( oldpath );
+        _checkGrants( oldNode, Mode::WUSER );
+        oldNodeDirectory = oldNode->data()->as< Directory >();
+    }
+    oldNode = oldNodeDirectory->find( oldName );
+    if ( !oldNode )
+        throw Error( ENOENT );
+
+    {
+        WeakNode savedDir = _currentDirectory;
+        auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+        if ( path::isRelative( newpath ) && newdirfd != CURRENT_DIRECTORY )
+            changeDirectory( newdirfd );
+
+        newNode = _findDirectoryItem( newpath, false, [&]( Node n ) {
+                if ( n == oldNode )
+                    throw Error( EINVAL );
+            } );
+    }
+
+    if ( !newNode ) {
+        std::tie( newNode, newName ) = _findDirectoryOfFile( newpath );
+        _checkGrants( newNode, Mode::WUSER );
+
+        newNodeDirectory = newNode->data()->as< Directory >();
+        newNodeDirectory->create( std::move( newName ), oldNode );
+    }
+    else {
+        if ( oldNode->mode().isDirectory() ) {
+            if ( !newNode->mode().isDirectory() )
+                throw Error( ENOTDIR );
+            if ( newNode->size() > 2 )
+                throw Error( ENOTEMPTY );
+        }
+        else if ( newNode->mode().isDirectory() )
+            throw Error( EISDIR );
+
+        newNodeDirectory->replaceEntry( newName, oldNode );
+    }
+    oldNodeDirectory->forceRemove( oldName );
+}
+
 off_t FSManager::lseek( int fd, off_t offset, Seek whence ) {
     auto f = getFile( fd );
     if ( f->inode()->mode().isFifo() )
@@ -357,6 +414,10 @@ void FSManager::_createFile( utils::String name, unsigned mode, Node *file, Args
 }
 
 Node FSManager::findDirectoryItem( utils::String name, bool followSymLinks ) {
+    return _findDirectoryItem( std::move( name ), followSymLinks, []( Node ){} );
+}
+template< typename I >
+Node FSManager::_findDirectoryItem( utils::String name, bool followSymLinks, I itemChecker ) {
     if ( name.size() > 1023 )
         throw Error( ENAMETOOLONG );
     name = path::normalize( name );
@@ -390,6 +451,8 @@ Node FSManager::findDirectoryItem( utils::String name, bool followSymLinks ) {
                 return nullptr;
             throw Error( ENOENT );
         }
+
+        itemChecker( item );
 
         if ( item->mode().isDirectory() )
             current = item;

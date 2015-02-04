@@ -520,4 +520,25 @@ int syncfs( int fd ) {
     }
 }
 
+
+int _FS_renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath ) {
+    FS_MASK
+    if ( olddirfd == AT_FDCWD )
+        olddirfd = divine::fs::CURRENT_DIRECTORY;
+    if ( newdirfd == AT_FDCWD )
+        newdirfd = divine::fs::CURRENT_DIRECTORY;
+    try {
+        divine::fs::filesystem.renameAt( newdirfd, newpath, olddirfd, oldpath );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+
+}
+int _FS_renameitem( const char *oldpath, const char *newpath ) {
+    FS_MASK
+    return _FS_renameitemat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
+}
+
+
 } // extern "C"
