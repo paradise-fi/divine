@@ -6,6 +6,13 @@
 #include "fs.h"
 #include "fcntl.h"
 #include "fs-manager.h"
+#include "fs-stat.h"
+
+#ifdef __divine__
+#define  FS_MASK __divine_interrupt_mask();
+#else
+#define FS_MASK
+#endif
 
 namespace divine {
 namespace fs {
@@ -81,6 +88,7 @@ int creat( const char *path, int mode ) {
 }
 
 int openat( int dirfd, const char *path, int flags, ... ) {
+    FS_MASK
     using namespace divine::fs::flags;
     divine::fs::Flags< Open > f = Open::NoFlags;
     unsigned m = 0;
@@ -117,6 +125,7 @@ int openat( int dirfd, const char *path, int flags, ... ) {
     }
 }
 int open( const char *path, int flags, ... ) {
+    FS_MASK
     int mode = 0;
     if ( flags & O_CREAT ) {
         va_list args;
@@ -128,6 +137,7 @@ int open( const char *path, int flags, ... ) {
 }
 
 int close( int fd ) {
+    FS_MASK
     try {
         divine::fs::filesystem.closeFile( fd );
         return 0;
@@ -137,6 +147,7 @@ int close( int fd ) {
 }
 
 ssize_t write( int fd, const void *buf, size_t count ) {
+    FS_MASK
     try {
         auto f = divine::fs::filesystem.getFile( fd );
         return f->write( buf, count );
@@ -145,6 +156,7 @@ ssize_t write( int fd, const void *buf, size_t count ) {
     }
 }
 ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset ) {
+    FS_MASK
     try {
         auto f = divine::fs::filesystem.getFile( fd );
         size_t savedOffset = f->offset();
@@ -157,6 +169,7 @@ ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset ) {
 }
 
 ssize_t read( int fd, void *buf, size_t count ) {
+    FS_MASK
     try {
         auto f = divine::fs::filesystem.getFile( fd );
         return f->read( buf, count );
@@ -165,6 +178,7 @@ ssize_t read( int fd, void *buf, size_t count ) {
     }
 }
 ssize_t pread( int fd, void *buf, size_t count, off_t offset ) {
+    FS_MASK
     try {
         auto f = divine::fs::filesystem.getFile( fd );
         size_t savedOffset = f->offset();
@@ -176,6 +190,7 @@ ssize_t pread( int fd, void *buf, size_t count, off_t offset ) {
     }
 }
 int mkdirat( int dirfd, const char *path, int mode ) {
+    FS_MASK
     if ( dirfd == AT_FDCWD )
         dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
@@ -186,10 +201,12 @@ int mkdirat( int dirfd, const char *path, int mode ) {
     }
 }
 int mkdir( const char *path, int mode ) {
+    FS_MASK
     return mkdirat( AT_FDCWD, path, mode );
 }
 
 int unlink( const char *path ) {
+    FS_MASK
     try {
         divine::fs::filesystem.removeFile( path );
         return 0;
@@ -199,6 +216,7 @@ int unlink( const char *path ) {
 }
 
 int rmdir( const char *path ) {
+    FS_MASK
     try {
         divine::fs::filesystem.removeDirectory( path );
         return 0;
@@ -208,6 +226,7 @@ int rmdir( const char *path ) {
 }
 
 int unlinkat( int dirfd, const char *path, int flags ) {
+    FS_MASK
     divine::fs::flags::At f;
     switch( flags ) {
     case 0:
@@ -231,6 +250,7 @@ int unlinkat( int dirfd, const char *path, int flags ) {
 }
 
 off_t lseek( int fd, off_t offset, int whence ) {
+    FS_MASK
     try {
         divine::fs::Seek w = divine::fs::Seek::Undefined;
         switch( whence ) {
@@ -250,6 +270,7 @@ off_t lseek( int fd, off_t offset, int whence ) {
     }
 }
 int dup( int fd ) {
+    FS_MASK
     try {
         return divine::fs::filesystem.duplicate( fd );
     } catch ( Error & ) {
@@ -257,6 +278,7 @@ int dup( int fd ) {
     }
 }
 int dup2( int oldfd, int newfd ) {
+    FS_MASK
     try {
         return divine::fs::filesystem.duplicate2( oldfd, newfd );
     } catch ( Error & ) {
@@ -264,6 +286,7 @@ int dup2( int oldfd, int newfd ) {
     }
 }
 int symlinkat( const char *target, int dirfd, const char *linkpath ) {
+    FS_MASK
     if ( dirfd == AT_FDCWD )
         dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
@@ -274,6 +297,7 @@ int symlinkat( const char *target, int dirfd, const char *linkpath ) {
     }
 }
 int symlink( const char *target, const char *linkpath ) {
+    FS_MASK
     return symlinkat( target, AT_FDCWD, linkpath );
 }
 int link( const char *target, const char *linkpath ) {
@@ -286,6 +310,7 @@ int link( const char *target, const char *linkpath ) {
 }
 
 ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count ) {
+    FS_MASK
     if ( dirfd == AT_FDCWD )
         dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
@@ -295,9 +320,11 @@ ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count ) {
     }
 }
 ssize_t readlink( const char *path, char *buf, size_t count ) {
+    FS_MASK
     return readlinkat( AT_FDCWD, path, buf, count );
 }
 int faccessat( int dirfd, const char *path, int mode, int flags ) {
+    FS_MASK
     divine::fs::Flags< divine::fs::flags::Access > m = divine::fs::flags::Access::OK;
     if ( mode & R_OK )  m |= divine::fs::flags::Access::Read;
     if ( mode & W_OK )  m |= divine::fs::flags::Access::Write;
@@ -322,10 +349,12 @@ int faccessat( int dirfd, const char *path, int mode, int flags ) {
     }
 }
 int access( const char *path, int mode ) {
+    FS_MASK
     return faccessat( AT_FDCWD, path, mode, 0 );
 }
 
 int stat( const char *path, struct stat *buf ) {
+    FS_MASK
     try {
         auto item = divine::fs::filesystem.findDirectoryItem( path );
         if ( !item )
@@ -337,6 +366,7 @@ int stat( const char *path, struct stat *buf ) {
 }
 
 int lstat( const char *path, struct stat *buf ) {
+    FS_MASK
     try {
         auto item = divine::fs::filesystem.findDirectoryItem( path, false );
         if ( !item )
@@ -348,6 +378,7 @@ int lstat( const char *path, struct stat *buf ) {
 }
 
 int fstat( int fd, struct stat *buf ) {
+    FS_MASK
     try {
         auto item = divine::fs::filesystem.getFile( fd );
         return _fillStat( item->inode(), buf );
@@ -357,12 +388,14 @@ int fstat( int fd, struct stat *buf ) {
 }
 
 unsigned umask( unsigned mask ) {
+    FS_MASK
     unsigned result = divine::fs::filesystem.umask();
     divine::fs::filesystem.umask( mask & 0777 );
     return result;
 }
 
 int chdir( const char *path ) {
+    FS_MASK
     try {
         divine::fs::filesystem.changeDirectory( path );
         return 0;
@@ -372,6 +405,7 @@ int chdir( const char *path ) {
 }
 
 int fchdir( int dirfd ) {
+    FS_MASK
     try {
         divine::fs::filesystem.changeDirectory( dirfd );
         return 0;
@@ -385,6 +419,7 @@ void _exit( int status ) {
 }
 
 int fdatasync( int fd ) {
+    FS_MASK
     try {
         divine::fs::filesystem.getFile( fd );
         return 0;
@@ -393,6 +428,7 @@ int fdatasync( int fd ) {
     }
 }
 int fsync( int fd ) {
+    FS_MASK
     try {
         divine::fs::filesystem.getFile( fd );
         return 0;
@@ -402,6 +438,7 @@ int fsync( int fd ) {
 }
 
 int ftruncate( int fd, off_t length ) {
+    FS_MASK
     try {
         auto item = divine::fs::filesystem.getFile( fd );
         divine::fs::filesystem.truncate( item->inode(), length );
@@ -411,6 +448,7 @@ int ftruncate( int fd, off_t length ) {
     }
 }
 int truncate( const char *path, off_t length ) {
+    FS_MASK
     try {
         auto item = divine::fs::filesystem.findDirectoryItem( path );
         divine::fs::filesystem.truncate( item, length );
@@ -426,6 +464,7 @@ unsigned sleep( unsigned seconds ) {
 }
 
 void swab( const void *_from, void *_to, ssize_t n ) {
+    FS_MASK
     const char *from = reinterpret_cast< const char * >( _from );
     char *to = reinterpret_cast< char * >( _to );
     for ( ssize_t i = 0; i < n/2; ++i ) {
@@ -437,6 +476,7 @@ void swab( const void *_from, void *_to, ssize_t n ) {
 }
 
 int isatty( int fd ) {
+    FS_MASK
     try {
         divine::fs::filesystem.getFile( fd );
         errno = EINVAL;
@@ -445,6 +485,7 @@ int isatty( int fd ) {
     return 0;
 }
 char *ttyname( int fd ) {
+    FS_MASK
     try {
         divine::fs::filesystem.getFile( fd );
         errno = ENOTTY;
@@ -453,6 +494,7 @@ char *ttyname( int fd ) {
     return nullptr;
 }
 int ttyname_r( int fd, char *buf, size_t count ) {
+    FS_MASK
     try {
         divine::fs::filesystem.getFile( fd );
         return ENOTTY;
@@ -463,6 +505,7 @@ int ttyname_r( int fd, char *buf, size_t count ) {
 
 void sync( void ) {}
 int syncfs( int fd ) {
+    FS_MASK
     try {
         divine::fs::filesystem.getFile( fd );
         return 0;
