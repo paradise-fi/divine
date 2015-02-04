@@ -72,9 +72,13 @@ void TrackStatistics::snapshot() {
 }
 
 void TrackStatistics::main() {
+    auto ts = std::chrono::steady_clock::now();
+    auto second = std::chrono::duration_cast< decltype( ts )::duration >(
+            std::chrono::seconds( 1 ) );
     while ( !interrupted() ) {
         if ( mpi.master() ) {
-            std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
+            ts += second;
+            std::this_thread::sleep_until( ts );
             snapshot();
         } else {
             std::this_thread::sleep_for( std::chrono::milliseconds( 200 ) );
