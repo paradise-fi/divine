@@ -28,7 +28,6 @@ struct NoStatistics {
     void busy( int ) {}
 
     std::ostream *output;
-    bool gnuplot;
 
     static NoStatistics _global;
     static NoStatistics &global() {
@@ -61,7 +60,6 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     divine::Mpi mpi;
     int pernode, localmin;
 
-    bool gnuplot;
     bool shared;
     std::ostream *output;
     int64_t vmBaseline;
@@ -132,12 +130,8 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     int64_t residentMemNow() { return sysinfo::Info().residentMemSize() - rssBaseline; }
 
     void resize( int s );
-    template< typename F >
-    void line( std::ostream &o, std::string lbl, F f, bool max = false );
-    void matrix( std::ostream &o, int64_t (*what)(int64_t, int64_t) );
-    void printv( std::ostream &o, int width, int64_t v, int64_t *sum = nullptr, bool max = false );
-    void label( std::ostream &o, std::string text, bool d = true );
-    void format( std::ostream &o );
+
+    virtual void format( std::ostream &o ) = 0;
     void snapshot();
     void main();
 
@@ -149,16 +143,19 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     TrackStatistics() : pernode( 1 ), localmin( 0 ), out_token( Output::hold() )
     {
         output = 0;
-        gnuplot = false;
         resize( 1 );
         sysinfo::Info i;
         vmBaseline = i.peakVmSize();
         rssBaseline = i.peakResidentMemSize();
     }
 
-    ~TrackStatistics();
+    virtual ~TrackStatistics();
+
+    static void makeGlobalGnuplot( std::string file );
+    static void makeGlobalDetailed();
 
     static TrackStatistics &global() {
+        ASSERT( !!_global() );
         return *_global();
     }
 
@@ -168,11 +165,10 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
 
   private:
     static std::unique_ptr< TrackStatistics > &_global() {
-        static std::unique_ptr< TrackStatistics > g( new TrackStatistics );
+        static std::unique_ptr< TrackStatistics > g;
         return g;
     }
 };
-
 #endif // !__divine__
 
 template <typename Ty>

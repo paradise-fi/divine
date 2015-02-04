@@ -124,13 +124,6 @@ struct Main {
             return;
         }
 
-        if ( o_gnuplot->boolValue() ) {
-            TrackStatistics::global().gnuplot = NoStatistics::global().gnuplot
-                = true;
-            TrackStatistics::global().output = NoStatistics::global().output
-                = new std::ofstream( o_gnuplot->value().c_str() );
-        }
-
         run();
     }
 
@@ -155,6 +148,12 @@ struct Main {
             if ( o_report->isSet() || o_shortReport->boolValue() )
                 _report = report;
         }
+
+        // statistics must be set up after output
+        if ( o_gnuplot->boolValue() )
+            TrackStatistics::makeGlobalGnuplot( o_gnuplot->value() );
+        else if ( o_statistics->boolValue() )
+            TrackStatistics::makeGlobalDetailed();
 
         TrackStatistics::global().setup( a->meta() );
         if ( meta.output.statistics )
