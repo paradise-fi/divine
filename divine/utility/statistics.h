@@ -131,7 +131,7 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
 
     void resize( int s );
 
-    virtual void format( std::ostream &o ) = 0;
+    virtual void format( std::ostream &o ) { }
     void snapshot();
     void main();
 
@@ -156,7 +156,8 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     static void makeGlobalSimple( std::vector< std::string > selectors );
 
     static TrackStatistics &global() {
-        ASSERT( !!_global() );
+        if ( !_global() )
+            _global().reset( new TrackStatistics() );
         return *_global();
     }
 
