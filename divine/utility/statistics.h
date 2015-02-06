@@ -162,7 +162,8 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     }
 
     static void killGlobal() {
-        _global().reset( nullptr );
+        _global()->stop();
+        _global().reset();
     }
 
   private:
