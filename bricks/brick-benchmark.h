@@ -472,8 +472,13 @@ void list( int argc, const char **argv ) {
 void run( int argc, const char **argv ) {
     ASSERT( benchmarks );
 
+    bool norun = false;
+
     if ( argc >= 2 && std::string( argv[1] ) == "--list" )
         return list( argc, argv );
+
+    if ( argc >= 2 && std::string( argv[1] ) == "--norun" )
+        norun = true;
 
     Filter flt( argc, argv );
 
@@ -503,6 +508,8 @@ void run( int argc, const char **argv ) {
                 if ( log.has( key ) )
                     ds.append( log.get( key ) );
                 else {
+                    if ( norun )
+                        throw std::runtime_error( "data missing in benchmark.log" );
                     auto r = repeat( tc );
                     ds.append( r );
                     log.append( key, r );
