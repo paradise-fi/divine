@@ -74,12 +74,8 @@ struct Thread {
         _thread( std::move( other._thread ) ),
         _interrupted( other.interrupted() )
     {}
-    // ~Thread must be idempotent
-    ~Thread() {
-        interrupt();
-        if ( _thread && _thread->joinable() )
-            join();
-    }
+
+    ~Thread() { stop(); }
 
     Thread &operator=( const Thread &other ) {
         if ( _thread )
@@ -106,6 +102,13 @@ struct Thread {
 #endif
         _interrupted.store( false, std::memory_order_relaxed );
         _thread.reset( new std::thread( [this]() { this->main(); } ) );
+    }
+
+    // stop must be idempotent
+    void stop() {
+        interrupt();
+        if ( _thread && _thread->joinable() )
+            join();
     }
 
     void join() {
