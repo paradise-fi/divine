@@ -45,6 +45,7 @@
 
 #include <brick-assert.h>
 #include <brick-types.h>
+#include <brick-string.h>
 
 #ifndef BRICK_GNUPLOT_H
 #define BRICK_GNUPLOT_H
@@ -435,6 +436,46 @@ inline bool operator<( ColourKey a, ColourKey b ) {
 
 using ColourMap = std::map< ColourKey, Colour::RGB >;
 
+struct Terminal {
+    enum Type { PDF, ConTeXt } type;
+    float width, height; /* cm, because gnuplot ... */
+    std::string font;
+
+    float unit( std::string u ) {
+        if ( u == "cm" )
+            return 1;
+        if ( u == "mm" )
+            return 0.1;
+        ASSERT_UNREACHABLE_F( "unknown unit %s", u.c_str() );
+    }
+
+    void fromString( std::string s ) {
+        string::ERegexp rx( "([0-9.]+)([a-z]+),([0-9.]+)([a-z]+)", 5 );
+        if ( rx.match( s ) ) {
+            width = std::atof( rx[1].c_str() );
+            height = std::atof( rx[3].c_str() );
+            width *= unit( rx[2] );
+            height *= unit( rx[4] );
+        }
+    }
+
+    Terminal( Type t = PDF )
+        : type( t ), width( 14 ), height( 9 ),
+          font( "Liberation Sans,10" )
+    {}
+
+    std::string string() {
+        std::stringstream str;
+        str << "set terminal ";
+        switch ( type ) {
+            case PDF: str << "pdfcairo font '" << font << "'"; break;
+            case ConTeXt: str << "context"; break;
+        }
+        str << " size " << width << "cm," << height << "cm";
+        return str.str();
+    }
+};
+
 struct Plot {
     enum Axis { X, Y, Z };
     std::string _name;
@@ -514,10 +555,11 @@ struct Plot {
         return str.str();
     }
 
-    std::string setupAxis( Axis a ) {
+    std::string setupAxis( Terminal t, Axis a ) {
         std::stringstream str;
         char l = a == X ? 'x' : 'y';
         double scale = _rescale.count( a ) ? _rescale[ a ] : 1;
+        std::stringstream off_x, off_y;
 
         if ( _bounds.count( a ) )
             str << "set " << l << "range [" << _bounds[ a ].first * scale
@@ -532,22 +574,38 @@ struct Plot {
             str << "'" << _names[ a ]
                 << (_units.count( a ) ? " [" + _units[ a ] + "]" : "")
                 << "'";
-        str << "offset " << (a == X ? "42,1.55" : "5.5,14") << " norotate" << std::endl;
+
+        if ( a == X ) {
+            off_x << "screen " << (t.width / 2 - .5) / t.width;
+            off_y << "character 1.5"; // = .4 / t.height;
+        } else {
+            off_x << "character 6"; // .8 / t.width;
+            off_y << "screen " << (t.height / 2 - .2) / t.height;
+        }
+
+        str << " offset " << off_x.str() << ", " << off_y.str() << " norotate" << std::endl;
 
         str << (_logscale.count( a ) ? "set" : "unset") << " logscale " << l << std::endl;
         return str.str();
     }
 
-    std::string setup() {
+    std::string setup( Terminal terminal = Terminal() ) {
         std::stringstream str;
-        str << setupAxis( X ) << setupAxis( Y )
+        str << setupAxis( terminal, X ) << setupAxis( terminal, Y )
             << "set title '" << _name << "'" << std::endl
             << "set key outside title '"  << _names[ Z ]
             << (_units.count( Z ) ? " [" + _units[ Z ] + "]" : "")
             << "' Left" << std::endl
+            << "unset grid" << std::endl
+            << "set tmargin 4" << std::endl
             << "set format x '%.0f'" << std::endl;
         int boxes = std::count_if( _datasets.begin(), _datasets.end(), []( const DataSet &ds ) { return ds.box(); } );
         if ( boxes ) {
+            if ( _names.count( X ) == 0 )
+                str << "set xtics scale 0" << std::endl << "set format x ''" << std::endl
+                    << "set grid ytics ls 21" << std::endl;
+            else
+                str << "set grid back ls 21" << std::endl;
             str << "num_of_datasets = " << boxes << ".0" << std::endl
                 << "outer_data_margin = 0.2" << std::endl
                 << "inter_box_gap = 0.2 / num_of_datasets" << std::endl
@@ -557,7 +615,8 @@ struct Plot {
                 << "offset = (bars_space - bwidth) / 4" << std::endl
                 << "step = bwidth + inter_box_gap" << std::endl
                 << "set boxwidth bwidth" << std::endl;
-        }
+        } else
+            str << "set grid back ls 21" << std::endl;
         return str.str();
     }
 
@@ -629,13 +688,19 @@ std::vector< Style > styles = {
 
 struct Plots {
     std::vector< Plot > _plots;
-    enum Terminal { PDF } _terminal;
-    std::string _font;
     bool _autostyle;
+    Terminal _terminal;
 
     Plots( bool autostyle = true )
-        : _terminal( PDF ), _font( "Liberation Sans,10" ), _autostyle( autostyle )
-    {}
+        : _autostyle( autostyle )
+    {
+        std::string t = getenv( "GNUPLOT_TERMINAL" ) ?: "";
+        if ( t == "pdf" )
+            _terminal.type = Terminal::PDF;
+        if ( t == "context" )
+            _terminal.type = Terminal::ConTeXt;
+        _terminal.fromString( getenv( "GNUPLOT_TERMINAL_SIZE" ) ?: "" );
+    }
 
     Plot &append() {
         _plots.emplace_back();
@@ -644,13 +709,13 @@ struct Plots {
 
     std::string plot() {
         std::stringstream str;
-        str << "set terminal pdfcairo font '" << _font << "'" << std::endl;
 
-        str << "set style line 20 lc rgb '#808080' lt 1" << std::endl
+        str << _terminal.string() << std::endl
+            << "set style line 20 lc rgb '#808080' lt 1" << std::endl
             << "set border 3 back ls 20" << std::endl
             << "set tics nomirror out scale 0.75" << std::endl
             << "set style line 21 lc rgb'#808080' lt 0 lw 1" << std::endl
-            << "set grid back ls 21" << std::endl
+            // << "set grid back ls 21" << std::endl
             << "set arrow from graph 1,0 to graph 1.05,0 "
             << "size screen 0.025,10,60 filled ls 20" << std::endl
             << "set arrow from graph 0,1 to graph 0,1.05 "
