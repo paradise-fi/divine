@@ -45,6 +45,7 @@
 #include <atomic>
 #include <thread>
 #include <stdexcept>
+#include <mutex>
 #endif
 
 #ifndef BRICK_SHMEM_H
@@ -441,6 +442,7 @@ struct LockedQueue {
     Mutex m;
     brick::shmem::WeakAtomic< bool > _empty;
     std::deque< T > q;
+    using element = T;
 
     LockedQueue( void ) : _empty( true ) {}
 
@@ -495,6 +497,8 @@ struct LockedQueue {
 }
 }
 
+#if __cplusplus >= 201103L
+
 #include <unistd.h> // alarm
 #include <vector>
 
@@ -502,8 +506,6 @@ namespace brick_test {
 namespace shmem {
 
 using namespace ::brick::shmem;
-
-#if __cplusplus >= 201103L
 
 struct FifoTest {
     template< typename T >
@@ -685,10 +687,439 @@ struct StartEnd {
     }
 };
 
+}
+}
+
+#ifdef BRICK_BENCHMARK_REG
+
+#ifdef BRICKS_HAVE_TBB
+#include <tbb/concurrent_queue.h>
 #endif
+
+#include <random>
+#include <brick-benchmark.h>
+
+namespace brick_test {
+namespace shmem {
+
+template< typename T >
+struct Naive {
+    std::deque< T > q;
+    std::mutex m;
+
+    void push( T x ) {
+        std::lock_guard< std::mutex > __l( m );
+        q.push_back( x );
+    }
+
+    void pop() {
+        std::lock_guard< std::mutex > __l( m );
+        q.pop_front();
+    }
+
+    T &front() {
+        std::lock_guard< std::mutex > __l( m );
+        return q.front();
+    }
+
+    bool empty() {
+        std::lock_guard< std::mutex > __l( m );
+        return q.empty();
+    }
+};
+
+template< typename T, int size = 512 >
+struct Ring {
+    volatile int reader;
+    T q[ size ];
+    volatile int writer;
+
+    void push( T x ) {
+        while ( (writer + 1) % size == reader ); // full; need to wait
+        q[ writer ] = x;
+        writer = (writer + 1) % size;
+    }
+
+    T &front() {
+        return q[ reader ];
+    }
+
+    void pop() {
+        reader = (reader + 1) % size;
+    }
+
+    bool empty() {
+        return reader == writer;
+    }
+
+    Ring() : reader( 0 ), writer( 0 ) {}
+};
+
+template< typename T >
+struct Student {
+    static const int width = 64;
+    static const int size = 8;
+
+    volatile int writer;
+    T q[width*size];
+    int reader;
+    volatile int free_lines __attribute__((aligned(64)));
+
+    void push(T x) {
+        q[writer] = x;
+        writer = (writer+1) % (size*width);
+        if (writer%size == 0) {
+            __sync_fetch_and_sub(&free_lines, 1);
+            // NOTE: (free_lines < 0) can happen!
+            while (free_lines<=0) ;
+        }
+    }
+
+    T &front() {
+        return q[reader];
+    }
+
+    void pop() {
+        reader = (reader+1)%(width*size);
+        if (reader%size == 0) {
+            __sync_fetch_and_add(&free_lines, 1);
+        }
+    }
+
+    bool empty() {
+        // NOTE: (free_lines > width) can happen!
+        return free_lines >= width && reader == writer;
+    }
+
+    Student() : writer(0), reader(0), free_lines(width) {}
+};
+
+template< typename T >
+struct Linked {
+    using element = T;
+    struct Node {
+        T value;
+        Node *next;
+    };
+
+    Node * volatile reader;
+    char _separation[ 128 ];
+    Node * volatile writer;
+
+    void push( T x ) {
+        Node *n = new Node;
+        n->value = x;
+        writer->next = n; // n->next = (Node *) writer;
+        writer = n;
+    }
+
+    T &front() {
+        return reader->value;
+    }
+
+    void pop() {
+        Node volatile *n = reader;
+        ASSERT( reader->next );
+        reader = reader->next;
+        delete n;
+    }
+
+    bool empty() {
+        return reader == writer;
+    }
+
+    Linked() {
+        reader = writer = new Node();
+        reader->next = 0;
+    }
+};
+
+#ifdef BRICKS_HAVE_TBB
+
+template< typename T >
+struct LocklessQueue {
+    tbb::concurrent_queue< T > q;
+    using element = T;
+
+    void push( T x ) {
+        q.push( x );
+    }
+
+    T pop() {
+        T res;
+        q.try_pop( res ); /* does nothing to res on failure */
+        return res;
+    }
+
+    bool empty() {
+        return q.empty();
+    }
+
+    LocklessQueue() {}
+};
+
+#endif
+
+template< typename Q >
+struct Shared {
+    using T = typename Q::element;
+    std::shared_ptr< Q > q;
+    void push( T t ) { q->push( t ); }
+    T pop() { return q->pop(); }
+    bool empty() { return q->empty(); }
+    void flush() {}
+    Shared() : q( new Q() ) {}
+};
+
+template< template< typename > class Q, typename T >
+struct Chunked {
+    using Chunk = std::deque< T >;
+    using ChQ = Q< Chunk >;
+    std::shared_ptr< ChQ > q;
+    unsigned chunkSize;
+
+    Chunk outgoing;
+    Chunk incoming;
+
+    void push( T t ) {
+        outgoing.push_back( t );
+        // std::cerr << "pushed " << outgoing.back() << std::endl;
+        if ( outgoing.size() >= chunkSize )
+            flush();
+    }
+
+    T pop() {
+        // std::cerr << "pop: empty = " << incoming.empty() << std::endl;
+        if ( incoming.empty() )
+            incoming = q->pop();
+        if ( incoming.empty() )
+            return T();
+        // std::cerr << "pop: found " << incoming.front() << std::endl;
+        auto x = incoming.front();
+        incoming.pop_front();
+        return x;
+    }
+
+    void flush() {
+        if ( !outgoing.empty() ) {
+            // std::cerr << "flushing " << outgoing.size() << " items" << std::endl;
+            Chunk tmp;
+            std::swap( outgoing, tmp );
+            q->push( std::move( tmp ) );
+
+            /* A quickstart trick -- make first few chunks smaller. */
+            if ( chunkSize < 64 )
+                chunkSize = std::min( 2 * chunkSize, 64u );
+        }
+    }
+
+    bool empty() {
+        if ( incoming.empty() ) { /* try to get a fresh one */
+            incoming = q->pop();
+            // std::cerr << "pulled in " << incoming.size() << " items" << std::endl;
+        }
+        return incoming.empty();
+    }
+
+    Chunked() : q( new ChQ() ), chunkSize( 2 ) {}
+};
+
+template< typename Q >
+struct InsertThread : Thread {
+    Q *q;
+    int items;
+    std::mt19937 rand;
+    std::uniform_int_distribution<> dist;
+
+    InsertThread() {}
+
+    void main() {
+        ASSERT( q );
+        for ( int i = 0; i < items; ++i )
+            q->push( rand() );
+    };
+};
+
+template< typename Q >
+struct WorkThread : Thread {
+    Q q;
+    std::atomic< bool > *stop;
+    int items;
+    int id, threads;
+
+    WorkThread() {}
+
+    void main() {
+        int step = items / 10;
+        for ( int i = 1; i <= step; ++i )
+            if ( id == i % threads )
+                q.push( i );
+        while ( !stop->load() ) {
+            while ( !q.empty() ) {
+                int i = q.pop();
+                if ( !i )
+                    continue;
+                if ( i == items )
+                    stop->store( true );
+                if ( i + step <= items ) {
+                    q.push( i + step );
+                    q.push( i + step + items );
+                }
+            }
+            q.flush();
+        }
+    }
+};
+
+template< int size >
+struct padded {
+    int i;
+    char padding[ size - sizeof( int ) ];
+    operator int() { return i; }
+    padded( int i ) : i( i ) {}
+    padded() : i( 0 ) {}
+};
+
+struct ShQueue : BenchmarkGroup
+{
+    ShQueue() {
+        x.type = Axis::Quantitative;
+        x.name = "threads";
+        x.min = 1;
+        x.max = 16;
+        x.step = 1;
+
+        y.type = Axis::Qualitative;
+        y.name = "type";
+        y.min = 0;
+        y.step = 1;
+        y.max = 3;
+        y._render = []( int i ) {
+            switch (i) {
+                case 0: return "spinlock";
+                case 1: return "lockless";
+                case 2: return "chunked";
+                case 3: return "hybrid";
+                default: abort();
+            }
+        };
+    }
+
+    std::string describe() {
+        return "category:shmem category:shqueue";
+    }
+
+    template< typename Q >
+    void scale() {
+        Q fifo;
+        auto *t = new WorkThread< Q >[ p ];
+        std::atomic< bool > stop( false );
+
+        for ( int i = 0; i < p; ++i ) {
+            t[ i ].q = fifo;
+            t[ i ].items = 1000;
+            t[ i ].id = i;
+            t[ i ].threads = p;
+            t[ i ].stop = &stop;
+        }
+
+        for ( int i = 0; i < p; ++i )
+            t[ i ].start();
+
+        for ( int i = 0; i < p; ++i )
+            t[ i ].join();
+    }
+
+    template< typename T >
+    void param() {
+        switch (q) {
+            case 0: return scale< Shared< LockedQueue< T > > >();
+            case 1: return scale< Shared< LocklessQueue< T > > >();
+            case 2: return scale< Chunked< LockedQueue, T > >();
+            case 3: return scale< Chunked< LocklessQueue, T > >();
+            default: ASSERT_UNREACHABLE_F( "bad q = %d", q );
+        }
+    }
+
+    BENCHMARK(p_int) { param< int >(); }
+    BENCHMARK(p_intptr) { param< intptr_t >(); }
+    BENCHMARK(p_64b) { param< padded< 64 > >(); }
+};
+
+struct FIFO : BenchmarkGroup
+{
+    FIFO() {
+        x.type = Axis::Disabled;
+        /* x.name = "p";
+        x.unit = "items";
+        x.min = 8;
+        x.max = 4096;
+        x.log = true;
+        x.step = 8; */
+
+        y.type = Axis::Qualitative;
+        y.name = "type";
+        y.min = 0;
+        y.step = 1;
+        y.max = 4;
+        y._render = []( int i ) {
+            switch (i) {
+                case 0: return "mutex";
+                case 1: return "spin";
+                case 2: return "linked";
+                case 3: return "ring";
+                case 4: return "hybrid";
+                case 5: return "student";
+                default: ASSERT_UNREACHABLE_F( "bad i = %d", i );
+            }
+        };
+    }
+
+    std::string describe() {
+        return "category:shmem category:fifo";
+    }
+
+    template< typename Q >
+    void length_() {
+        Q fifo;
+        InsertThread< Q > t;
+        t.q = &fifo;
+        t.items = 1024 * 1024;
+
+        t.start();
+
+        for ( int i = 0; i < t.items; ++i ) {
+            while ( fifo.empty() );
+            fifo.pop();
+        }
+        ASSERT( fifo.empty() );
+    }
+
+    template< typename T >
+    void param() {
+        switch (q) {
+            case 0: return length_< Naive< T > >();
+            case 1: return length_< LockedQueue< T > >();
+            case 2: return length_< Linked< T > >();
+            case 3: return length_< Ring< T  > >();
+            case 4: return length_< Fifo< T > >();
+            case 5: return length_< Student< T > >();
+            default: ASSERT_UNREACHABLE_F( "bad q = %d", q );
+        }
+    }
+
+    BENCHMARK(p_char) { param< char >(); }
+    BENCHMARK(p_int) { param< int >(); }
+    BENCHMARK(p_intptr) { param< intptr_t >(); }
+    BENCHMARK(p_16b) { param< padded< 16 > >(); }
+    BENCHMARK(p_64b) { param< padded< 64 > >(); }
+};
 
 }
 }
 
 #endif
+#endif
+#endif
+
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
