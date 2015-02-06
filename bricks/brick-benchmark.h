@@ -497,11 +497,12 @@ void run( int argc, const char **argv ) {
         std::cerr << "## " << shortdesc( tc->describe() ) << std::endl;
         auto axes = tc->axes();
         Axis x = axes.first, y = axes.second;
+        bool box = x.type == Axis::Disabled && y.type == Axis::Qualitative;
 
         for ( int q_seq = 0; q_seq < y.count(); ++ q_seq ) {
             int64_t q_val = tc->parameter( y, q_seq );
             auto &ds = plot.append( y.render( q_val ), y.type == Axis::Qualitative ? 0 : q_val,
-                                    4, gnuplot::DataSet::RibbonLP );
+                                    4, box ? gnuplot::DataSet::Box : gnuplot::DataSet::RibbonLP );
             for ( int p_seq = 0; p_seq < x.count(); ++ p_seq ) {
                 key.p = tc->p = tc->parameter( x, p_seq );
                 key.q = tc->q = tc->parameter( y, q_seq );
@@ -542,11 +543,17 @@ void run( int argc, const char **argv ) {
             ++ k;
 
         plot.rescale  ( gnuplot::Plot::Y, t_mult );
-        plot.bounds   ( gnuplot::Plot::X, x.scaled( x.min ), x.scaled( x.max ) );
-        plot.interval ( gnuplot::Plot::X, x.log ? pow(x.step, k) : x.step * k );
-        plot.axis     ( gnuplot::Plot::X, x.name, x.unit );
         plot.axis     ( gnuplot::Plot::Y, "time", time_units[ t_scale ] );
-        plot.axis     ( gnuplot::Plot::Z, y.name, y.unit );
+        if ( box )
+            plot.bounds( gnuplot::Plot::Y, 0, t_max );
+
+        if ( x.type != Axis::Disabled ) {
+            plot.bounds   ( gnuplot::Plot::X, x.scaled( x.min ), x.scaled( x.max ) );
+            plot.interval ( gnuplot::Plot::X, x.log ? pow(x.step, k) : x.step * k );
+            plot.axis     ( gnuplot::Plot::X, x.name, x.unit );
+            plot.axis     ( gnuplot::Plot::Z, y.name, y.unit );
+        }
+
         plot.name     ( shortdesc( tc->describe() ) );
         switch ( y.type ) {
             case Axis::Qualitative: plot.style( gnuplot::Style::Spot ); break;
