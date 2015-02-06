@@ -226,6 +226,8 @@ struct ResultLog {
 
     void append( Key k, Value value )
     {
+        if ( !log.is_open() )
+            log.open( "benchmark.log", std::ofstream::out | std::ofstream::app );
         if ( last.benchmark != k.benchmark )
             log << k.benchmark << std::endl;
 
@@ -255,7 +257,6 @@ struct ResultLog {
                     last.benchmark = linebuf;
             }
         } catch (...) {}
-        log.open( "benchmark.log", std::ofstream::out | std::ofstream::app );
     }
 };
 
