@@ -993,7 +993,11 @@ struct ShQueue : BenchmarkGroup
         y.name = "type";
         y.min = 0;
         y.step = 1;
+#ifdef BRICKS_HAVE_TBB
         y.max = 3;
+#else
+        y.max = 1;
+#endif
         y._render = []( int i ) {
             switch (i) {
                 case 0: return "spinlock";
@@ -1034,9 +1038,11 @@ struct ShQueue : BenchmarkGroup
     void param() {
         switch (q) {
             case 0: return scale< Shared< LockedQueue< T > > >();
-            case 1: return scale< Shared< LocklessQueue< T > > >();
-            case 2: return scale< Chunked< LockedQueue, T > >();
+            case 1: return scale< Chunked< LockedQueue, T > >();
+#ifdef BRICKS_HAVE_TBB
+            case 2: return scale< Shared< LocklessQueue< T > > >();
             case 3: return scale< Chunked< LocklessQueue, T > >();
+#endif
             default: ASSERT_UNREACHABLE_F( "bad q = %d", q );
         }
     }
