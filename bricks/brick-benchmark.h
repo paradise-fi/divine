@@ -538,7 +538,7 @@ void run( int argc, const char **argv ) {
         while ( x.log && std::log(x_range) / std::log(pow(x.step, k)) > 20 )
             ++ k;
 
-        while ( !x.log && x_range / x.step * k > 10 )
+        while ( !x.log && x_range / ( x.step * k ) > 10 )
             ++ k;
 
         plot.rescale  ( gnuplot::Plot::Y, t_mult );
