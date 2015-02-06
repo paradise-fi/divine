@@ -65,7 +65,6 @@ let origname = name;
 
   winpe_iso = vmTools.runInLinuxVM (stdenv.mkDerivation {
     name = "winpe-iso";
-    buildInputs = [ bootscript unattend wimtools ];
     mountDisk = true;
     preVM = ''
       diskImage=$(pwd)/tmp.img
