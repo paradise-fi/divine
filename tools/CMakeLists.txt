@@ -18,11 +18,11 @@ if( NOT WIN32 )
   target_link_libraries( divine pthread )
 endif( NOT WIN32 )
 
-if( HOARD )
+if( OPT_HOARD )
   target_link_libraries( divine hoard )
-endif( HOARD )
+endif()
 
-if( TBBMALLOC )
+if( OPT_TBBMALLOC )
   target_link_libraries( divine tbbmalloc )
 endif()
 
