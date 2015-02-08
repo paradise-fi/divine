@@ -289,6 +289,21 @@ struct Simple : TrackStatistics {
         return sumof( &PerThread::hashused );
     }
 
+    int64_t queues() {
+        const int nthreads = threads.size();
+        int64_t sum = 0;
+        for ( int i = 0; i < nthreads; ++i ) {
+            sum += thread( i ).enq - thread( i ).deq;
+            for ( int j = 0; j < nthreads; ++j )
+                sum += thread( j ).sent[ i ] - thread( i ).received[ j ];
+        }
+        return sum;
+    }
+
+    int64_t rssperst() {
+        return (vmNow() * 1024) / states();
+    }
+
     template< typename T >
     T maxof( T (PerThread::*sel) ) {
         return accumulate( -1, [sel]( T acc, PerThread &t ) {
@@ -315,10 +330,12 @@ struct Simple : TrackStatistics {
 std::vector< std::pair< std::string, int64_t (Simple::*)() > > Simple::map {
     { "hashsize", &Simple::hashsizes },
     { "states",   &Simple::states },
+    { "queues",   &Simple::queues },
     { "vmpeak",   &Simple::vmPeak },
     { "vm",       &Simple::vmNow },
     { "rsspeak",  &Simple::residentMemPeak },
     { "rss",      &Simple::residentMemNow },
+    { "rssperst", &Simple::rssperst },
     { "time",     &Simple::timestamp }
 };
 
