@@ -56,14 +56,19 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
         std::vector< int64_t > memReceived;
     };
 
+    struct Baseline {
+        int64_t vm;
+        int64_t rss;
+    };
+
     std::vector< PerThread * > threads;
     divine::Mpi mpi;
     int pernode, localmin;
 
+    const Baseline baseline;
+
     bool shared;
     std::ostream *output;
-    int64_t vmBaseline;
-    int64_t rssBaseline;
 
     Output::Token out_token;
 
@@ -123,11 +128,11 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     static int64_t second( int64_t, int64_t b ) { return b; }
     static int64_t diff( int64_t a, int64_t b ) { return a - b; }
 
-    int64_t vmPeak() { return sysinfo::Info().peakVmSize() - vmBaseline; }
-    int64_t vmNow() { return sysinfo::Info().peakVmSize() - vmBaseline; }
+    int64_t vmPeak() { return sysinfo::Info().peakVmSize() - baseline.vm; }
+    int64_t vmNow() { return sysinfo::Info().peakVmSize() - baseline.vm; }
 
-    int64_t residentMemPeak() { return sysinfo::Info().peakResidentMemSize() - rssBaseline; }
-    int64_t residentMemNow() { return sysinfo::Info().residentMemSize() - rssBaseline; }
+    int64_t residentMemPeak() { return sysinfo::Info().peakResidentMemSize() - baseline.rss; }
+    int64_t residentMemNow() { return sysinfo::Info().residentMemSize() - baseline.rss; }
 
     void resize( int s );
 
@@ -140,24 +145,30 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
 
     void setup( const Meta &m );
 
-    TrackStatistics() : pernode( 1 ), localmin( 0 ), out_token( Output::hold() )
-    {
-        output = 0;
-        resize( 1 );
+    static Baseline getBaseline() {
         sysinfo::Info i;
-        vmBaseline = i.peakVmSize();
-        rssBaseline = i.peakResidentMemSize();
+        Baseline b;
+        b.vm = i.peakVmSize();
+        b.rss = i.peakResidentMemSize();
+        return b;
+    }
+
+    TrackStatistics( Baseline b ) :
+        pernode( 1 ), localmin( 0 ), baseline( b ), shared( false ),
+        output( nullptr ), out_token( Output::hold() )
+    {
+        resize( 1 );
     }
 
     virtual ~TrackStatistics();
 
-    static void makeGlobalGnuplot( std::string file );
-    static void makeGlobalDetailed();
-    static void makeGlobalSimple( std::vector< std::string > selectors );
+    static void makeGlobalGnuplot( Baseline, std::string file );
+    static void makeGlobalDetailed( Baseline );
+    static void makeGlobalSimple( Baseline, std::vector< std::string > selectors );
 
     static TrackStatistics &global() {
         if ( !_global() )
-            _global().reset( new TrackStatistics() );
+            _global().reset( new TrackStatistics( Baseline() ) );
         return *_global();
     }
 

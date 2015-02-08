@@ -129,6 +129,8 @@ struct Main {
     }
 
     void run() {
+        auto baseline = TrackStatistics::getBaseline();
+
         if ( !mpi )
             mpi.reset( new Mpi( o_mpi->boolValue() ) );
 
@@ -152,12 +154,12 @@ struct Main {
 
         // statistics must be set up after output
         if ( o_gnuplot->boolValue() )
-            TrackStatistics::makeGlobalGnuplot( o_gnuplot->value() );
+            TrackStatistics::makeGlobalGnuplot( baseline, o_gnuplot->value() );
         else if ( o_statisticsShort->boolValue()
                 || (o_statistics->isSet() && o_statistics->value().empty()) )
-            TrackStatistics::makeGlobalDetailed();
+            TrackStatistics::makeGlobalDetailed( baseline );
         else if ( o_statistics->isSet() )
-            TrackStatistics::makeGlobalSimple( parseStatistics( o_statistics->value() ) );
+            TrackStatistics::makeGlobalSimple( baseline, parseStatistics( o_statistics->value() ) );
 
         TrackStatistics::global().setup( a->meta() );
         if ( meta.output.statistics )

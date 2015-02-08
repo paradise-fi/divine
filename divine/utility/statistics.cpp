@@ -124,7 +124,7 @@ namespace statistics {
 
 struct Matrix : TrackStatistics {
 
-    Matrix( bool summarize ) : summarize( summarize ) { }
+    Matrix( Baseline b, bool summarize ) : TrackStatistics( b ), summarize( summarize ) { }
 
     void matrix( std::ostream &o, int64_t (*what)(int64_t, int64_t) ) {
         for ( int i = 0; size_t( i ) < threads.size(); ++i ) {
@@ -153,7 +153,7 @@ struct Matrix : TrackStatistics {
 };
 
 struct Gnuplot : Matrix {
-    Gnuplot() : Matrix( false ) { }
+    Gnuplot( Baseline b ) : Matrix( b, false ) { }
 
     virtual void format( std::ostream &o ) override {
         matrix( o, diff );
@@ -162,7 +162,7 @@ struct Gnuplot : Matrix {
 };
 
 struct Detailed : Matrix {
-    Detailed() : Matrix( true ) { }
+    Detailed( Baseline b ) : Matrix( b, true ) { }
 
     template< typename F >
     void line( std::ostream &o, std::string lbl, F f, bool max = false ) {
@@ -253,7 +253,8 @@ struct Simple : TrackStatistics {
         o << std::endl;
     }
 
-    Simple( std::vector< std::string > selectstr ) :
+    Simple( Baseline b, std::vector< std::string > selectstr ) :
+        TrackStatistics( b ),
         start( std::chrono::steady_clock::now() )
     {
         if ( selectstr.empty() )
@@ -341,18 +342,18 @@ std::vector< std::pair< std::string, int64_t (Simple::*)() > > Simple::map {
 
 } // namespace statistics
 
-void TrackStatistics::makeGlobalDetailed() {
-    _global().reset( new statistics::Detailed() );
+void TrackStatistics::makeGlobalDetailed( Baseline b ) {
+    _global().reset( new statistics::Detailed( b ) );
 }
 
-void TrackStatistics::makeGlobalGnuplot( std::string file ) {
-    _global().reset( new statistics::Gnuplot() );
+void TrackStatistics::makeGlobalGnuplot( Baseline b, std::string file ) {
+    _global().reset( new statistics::Gnuplot( b ) );
     if ( file != "-" )
         _global()->output = new std::ofstream( file );
 }
 
-void TrackStatistics::makeGlobalSimple( std::vector< std::string > selectors ) {
-    _global().reset( new statistics::Simple( selectors ) );
+void TrackStatistics::makeGlobalSimple( Baseline b, std::vector< std::string > selectors ) {
+    _global().reset( new statistics::Simple( b, selectors ) );
 }
 
 } // namespace divine
