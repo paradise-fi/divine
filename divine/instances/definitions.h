@@ -602,7 +602,7 @@ static const CMap< Key, SupportedBy > supportedBy = {
 
     { Visitor::Shared, Not{ Or{ Algorithm::Simulate, Algorithm::GenExplicit, Algorithm::Info } } },
 
-    { Store::NTreeStore, Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
+    { Store::NTreeStore, Not{ Or{ Algorithm::Info } } },
     { Store::HcStore,    Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
 
 #if !DEV_CONFLATE
