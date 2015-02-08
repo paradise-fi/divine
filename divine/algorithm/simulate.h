@@ -899,6 +899,9 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
                     case StopReason::Marked:
                         this->loop.show( "Reached marked state after " + n + " steps" );
                         break;
+                    case StopReason::Done:
+                        this->loop.show( "Done" );
+                        break;
                     default:
                         ASSERT_UNREACHABLE( "unhandled case" );
                 }
