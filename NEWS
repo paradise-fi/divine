@@ -4,6 +4,10 @@ DIVINE 3.2.x
 - [3.2.2] Fix bug #301 (assertion failure when -p not given).
 - [3.2.3] Support for storing boolean state properties in DESS.
 - [3.2.3] Fix broken MPI support.
+- [3.2.4] Fix linking of TBB malloc or HOARD (when enabled).
+- [3.2.4] Fix races in pdclib stdio code.
+- [3.2.4] Implement machine-readable statistics output.
+- [3.2.4] Multiple fixes to libc (pdclib) functionality.
 
 DIVINE 3.2.1
 ============
