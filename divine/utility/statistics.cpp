@@ -307,14 +307,14 @@ struct Simple : TrackStatistics {
 
     template< typename T >
     T maxof( T (PerThread::*sel) ) {
-        return accumulate( -1, [sel]( T acc, PerThread &t ) {
+        return accumulate( T( 0 ), [sel]( T acc, PerThread &t ) {
                 return std::max( acc, t.*sel );
             } );
     }
 
     template< typename T >
     T sumof( T (PerThread::*sel) ) {
-        return accumulate( 0, [sel]( T acc, PerThread &t ) {
+        return accumulate( T( 0 ), [sel]( T acc, PerThread &t ) {
                 return acc + t.*sel;
             } );
     }
