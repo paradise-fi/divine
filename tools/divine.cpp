@@ -707,7 +707,7 @@ struct Main {
                         meta.input.properties.insert( p );
                         break;
                     }
-                if ( meta.input.properties.empty() )
+                if ( opts.foundCommand() != cmd_info && meta.input.properties.empty() )
                     die( "FATAL: No property given and no default usable, please"
                             " consult divine info and use -p <prop name>" );
             }
