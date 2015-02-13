@@ -129,13 +129,11 @@ struct Compile {
         std::string in_filename = brick::fs::splitFileName( in ).second;
         std::string in_basename( in_filename, 0, in_filename.rfind( '.' ) );
 
-        brick::fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
-        brick::fs::writeFile( "cesmi.cpp", cesmi_usr_cesmi_cpp_str );
-
         std::string extras, ltlincludes;
+
         int ltlcount = 0;
         while ( opts.hasNext() ) {
-            std::string extra = opts.next();
+            std::string extra = brick::fs::joinPath( "..", opts.next() );
             if ( brick::string::endsWith( extra, ".ltl" ) ) {
                 std::string ltlpath = brick::fs::splitFileName( extra ).second + ".h";
                 std::string code = "#include <cesmi.h>\n";
@@ -147,6 +145,9 @@ struct Compile {
             } else
                 extras += " " + extra;
         }
+
+        brick::fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
+        brick::fs::writeFile( "cesmi.cpp", cesmi_usr_cesmi_cpp_str );
 
         extras += " cesmi.cpp";
 
@@ -179,8 +180,8 @@ struct Compile {
         aggr_s.close();
 
         std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
-        run( std::string( _cmd_cc ) + " " + flags + " -I." + " -o ../" + in_filename +
-             generator::cesmi_ext + " " + in + extras );
+        run( std::string( _cmd_cc ) + " " + flags + " -I." + " -o ../" + in_basename +
+             generator::cesmi_ext + " " + brick::fs::joinPath( "..", in ) + extras );
     }
 
     void parseModelines( const std::string &file, std::vector< std::string > &modelineOpts ) {
