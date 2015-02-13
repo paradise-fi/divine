@@ -354,7 +354,7 @@ struct SmallVector {
     bool _onstack : 1;
 
     template< typename X >
-    auto _drop( X *from, X *to ) ->
+    auto _drop( X *, X * ) ->
         typename std::enable_if< __triviallyDestructible< X >() >::type
     { }
 
