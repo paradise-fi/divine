@@ -120,10 +120,10 @@ struct Base : Allocator {
     void initPOR() {}
 
     template< typename Yield >
-    void enumerateFlags( Yield yield ) { }
+    void enumerateFlags( Yield ) { }
 
     template< typename QueryFlags >
-    graph::FlagVector stateFlags( Node n, QueryFlags qf ) { return { }; }
+    graph::FlagVector stateFlags( Node, QueryFlags ) { return { }; }
 
 	// HACK: Inform the gaph if fairness is enabled,
 	// The timed automata interpreter uses this to enable Zeno reduction

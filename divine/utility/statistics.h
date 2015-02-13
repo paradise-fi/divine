@@ -136,7 +136,7 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
 
     void resize( int s );
 
-    virtual void format( std::ostream &o ) { }
+    virtual void format( std::ostream & ) { }
     void snapshot();
     void main();
 
