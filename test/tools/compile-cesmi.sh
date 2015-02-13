@@ -1,7 +1,7 @@
 . lib
 
 test "$GEN_CESMI" = "ON" || skip
-test "$GEN_METRICS" = "ON" || skip
+test "$ALG_METRICS" = "ON" || skip
 
 divine compile --cesmi data/withltl.c data/withltl.ltl
 divine info withltl$cesmiext | grep LTL
