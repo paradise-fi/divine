@@ -58,6 +58,7 @@ struct Main {
                 *ce, *compactOutput, *limits, *stats, *simopts;
     BoolOption *o_noCe, *o_dispCe, *o_simulateCe, *o_dummy, *o_statisticsShort, *o_shortReport;
     OptvalStringOption *o_statistics;
+    StringOption *o_outStatistics;
     OptvalStringVectorOption *o_report;
     BoolOption *o_fair, *o_shared;
     StringOption *o_reduce;
@@ -153,13 +154,18 @@ struct Main {
         }
 
         // statistics must be set up after output
-        if ( o_gnuplot->boolValue() )
-            TrackStatistics::makeGlobalGnuplot( baseline, o_gnuplot->value() );
-        else if ( o_statisticsShort->boolValue()
-                || (o_statistics->isSet() && o_statistics->value().empty()) )
-            TrackStatistics::makeGlobalDetailed( baseline );
-        else if ( o_statistics->isSet() )
-            TrackStatistics::makeGlobalSimple( baseline, parseStatistics( o_statistics->value() ) );
+        if ( meta.output.statistics ) {
+            if ( o_gnuplot->boolValue() )
+                TrackStatistics::makeGlobalGnuplot( baseline, o_gnuplot->value() );
+            else if ( o_statisticsShort->boolValue()
+                    || (o_statistics->isSet() && o_statistics->value().empty()) )
+                TrackStatistics::makeGlobalDetailed( baseline );
+            else if ( o_statistics->isSet() )
+                TrackStatistics::makeGlobalSimple( baseline, parseStatistics( o_statistics->value() ) );
+
+            if ( o_outStatistics->isSet() )
+                TrackStatistics::global().output.reset( new std::ofstream( o_outStatistics->stringValue() ) );
+        }
 
         TrackStatistics::global().setup( a->meta() );
         if ( meta.output.statistics )
@@ -294,6 +300,9 @@ struct Main {
             "'simple' one or more of the following selectors is given: "
             "hashsize, states, vmpeak, vm, rsspeak, rss, time (multiple selectors "
             "can be specified comma separated)" );
+        o_outStatistics = stats->add< StringOption >(
+            "out-statistics", '\0', "out-statistics", "",
+            "output statistics to specified file instead of stderr (file will be overwritten)" );
         o_gnuplot= stats->add< StringOption >(
             "gnuplot-statistics", '\0', "gnuplot-statistics", "",
             "output statistics in a gnuplot-friendly format" );
