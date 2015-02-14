@@ -27,7 +27,7 @@ struct NoStatistics {
     void idle( int ) {}
     void busy( int ) {}
 
-    std::ostream *output;
+    std::shared_ptr< std::ostream > output;
 
     static NoStatistics _global;
     static NoStatistics &global() {
@@ -68,7 +68,7 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     const Baseline baseline;
 
     bool shared;
-    std::ostream *output;
+    std::shared_ptr< std::ostream > output;
 
     Output::Token out_token;
 

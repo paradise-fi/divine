@@ -349,7 +349,7 @@ void TrackStatistics::makeGlobalDetailed( Baseline b ) {
 void TrackStatistics::makeGlobalGnuplot( Baseline b, std::string file ) {
     _global().reset( new statistics::Gnuplot( b ) );
     if ( file != "-" )
-        _global()->output = new std::ofstream( file );
+        _global()->output.reset( new std::ofstream( file ) );
 }
 
 void TrackStatistics::makeGlobalSimple( Baseline b, std::vector< std::string > selectors ) {
