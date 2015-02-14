@@ -137,6 +137,7 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
     void resize( int s );
 
     virtual void format( std::ostream & ) { }
+    virtual void startHeader( std::ostream & ) { } // to be printed before first format()
     void snapshot();
     void main();
 
@@ -155,7 +156,7 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
 
     TrackStatistics( Baseline b ) :
         pernode( 1 ), localmin( 0 ), baseline( b ), shared( false ),
-        output( nullptr ), out_token( Output::hold() )
+        output( nullptr ), out_token( Output::hold() ), meta( nullptr )
     {
         resize( 1 );
     }
@@ -176,6 +177,9 @@ struct TrackStatistics : brick::shmem::Thread, MpiMonitor {
         _global()->stop();
         _global().reset();
     }
+
+  protected:
+    const Meta *meta;
 
   private:
     static std::unique_ptr< TrackStatistics > &_global() {

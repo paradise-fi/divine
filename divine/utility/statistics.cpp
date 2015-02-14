@@ -4,6 +4,7 @@
 #include <mutex>
 #include <chrono>
 #include <algorithm>
+#include <cctype>
 
 #include <bricks/brick-hashset.h>
 #include <divine/utility/statistics.h>
@@ -62,19 +63,32 @@ Loop TrackStatistics::process( std::unique_lock< std::mutex > &_lock, MpiStatus 
     return Continue;
 }
 
+void dump( TrackStatistics &st, std::stringstream &str ) {
+    auto s = str.str();
+    if ( s.empty() )
+        return;
+
+    if ( st.output )
+        *st.output << s << std::flush;
+    else
+        Output::output( st.out_token ).statistics() << s << std::flush;
+}
+
 void TrackStatistics::snapshot() {
     std::stringstream str;
     format( str );
-    if ( output )
-        *output << str.str() << std::flush;
-    else
-        Output::output( out_token ).statistics() << str.str() << std::flush;
+    dump( *this, str );
 }
 
 void TrackStatistics::main() {
     auto ts = std::chrono::steady_clock::now();
     auto second = std::chrono::duration_cast< decltype( ts )::duration >(
             std::chrono::seconds( 1 ) );
+
+    std::stringstream str;
+    startHeader( str );
+    dump( *this, str );
+
     while ( !interrupted() ) {
         if ( mpi.master() ) {
             ts += second;
@@ -106,6 +120,7 @@ void TrackStatistics::resize( int s ) {
 }
 
 void TrackStatistics::setup( const Meta &m ) {
+    meta = &m;
     int total = m.execution.nodes * m.execution.threads;
     resize( total );
     mpi.registerMonitor( TAG_STATISTICS, *this );
@@ -253,6 +268,15 @@ struct Simple : TrackStatistics {
         o << std::endl;
     }
 
+    virtual void startHeader( std::ostream &o ) override {
+        o << "meta: model=" << meta->input.model
+          << "; algorithm=" << tolower( meta->algorithm.name )
+          << "; visitor=" << (meta->algorithm.sharedVisitor ? "shared" : "partitioned")
+          << "; compression=" << tolower( std::to_string( meta->algorithm.compression ) )
+          << "; threads=" << meta->execution.threads
+          << "; mpinodes=" << meta->execution.nodes << ";" << std::endl;
+    }
+
     Simple( Baseline b, std::vector< std::string > selectstr ) :
         TrackStatistics( b ),
         start( std::chrono::steady_clock::now() )
@@ -278,6 +302,12 @@ struct Simple : TrackStatistics {
     int64_t timestamp() {
         auto dur = std::chrono::steady_clock::now() - start;
         return std::chrono::duration_cast< std::chrono::milliseconds >( dur ).count();
+    }
+
+    static std::string tolower( std::string str ) {
+        for ( auto &c : str )
+            c = std::tolower( c );
+        return str;
     }
 
     int64_t hashsizes() {
