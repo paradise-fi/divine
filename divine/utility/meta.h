@@ -135,4 +135,32 @@ struct Meta : WithReport {
 
 }
 
+namespace std {
+
+inline std::string to_string( divine::meta::Result::R v ) {
+    return v == divine::meta::Result::R::Unknown
+        ? "Unknown"
+        : (v == divine::meta::Result::R::Yes ? "Yes" : "No");
+}
+
+inline std::string to_string( divine::meta::Result::CET t ) {
+    switch (t) {
+        case divine::meta::Result::CET::NoCE: return "none";
+        case divine::meta::Result::CET::Goal: return "goal";
+        case divine::meta::Result::CET::Cycle: return "cycle";
+        case divine::meta::Result::CET::Deadlock: return "deadlock";
+        default: ASSERT_UNREACHABLE( "unknown CE type" );
+    }
+}
+
+inline std::string to_string( divine::meta::Algorithm::Compression c ) {
+    switch ( c ) {
+        case divine::meta::Algorithm::Compression::None: return "None";
+        case divine::meta::Algorithm::Compression::Tree: return "Tree";
+        default: ASSERT_UNREACHABLE( "unknown compression" );
+    }
+}
+
+}
+
 #endif

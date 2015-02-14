@@ -27,36 +27,12 @@ std::string showTrace( Trace ntrace ) {
     return std::string( str, 0, str.length() - 1 );
 }
 
-std::string tostr( Result::R v ) {
-    return v == Result::R::Unknown
-        ? "Unknown"
-        : (v == Result::R::Yes ? "Yes" : "No");
-}
-
-std::string tostr( Result::CET t ) {
-    switch (t) {
-        case Result::CET::NoCE: return "none";
-        case Result::CET::Goal: return "goal";
-        case Result::CET::Cycle: return "cycle";
-        case Result::CET::Deadlock: return "deadlock";
-        default: ASSERT_UNREACHABLE( "unknown CE type" );
-    }
-}
-
 std::string tostr( graph::PropertyType t ) {
     switch (t) {
         case graph::PT_Deadlock: return "deadlock";
         case graph::PT_Goal: return "goal";
         case graph::PT_Buchi: return "neverclaim";
         default: ASSERT_UNREACHABLE( "unknown property" );
-    }
-}
-
-std::string tostr( Algorithm::Compression c ) {
-    switch ( c ) {
-        case Algorithm::Compression::None: return "None";
-        case Algorithm::Compression::Tree: return "Tree";
-        default: ASSERT_UNREACHABLE( "unknown compression" );
     }
 }
 
