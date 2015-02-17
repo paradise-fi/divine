@@ -41,5 +41,30 @@
     #error SEEK_HOLE != 4
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define FS_NOINLINE __attribute__((noinline))
+
+FS_NOINLINE int close( int fd );
+FS_NOINLINE ssize_t read( int fd, void *buf, size_t count );
+FS_NOINLINE ssize_t write( int fd, const void *buf, size_t count );
+
+FS_NOINLINE ssize_t pread( int fd, void *buf, size_t count, off_t offset );
+FS_NOINLINE ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset );
+
+FS_NOINLINE off_t lseek( int fd, off_t offset, int whence );
+
+FS_NOINLINE int unlink( const char *path );
+
+FS_NOINLINE int link( const char *target, const char *linkpath );
+
+#undef FS_NOINLINE
+
+#ifdef __cplusplus
+} // extern C
+#endif
+
 #endif
 
