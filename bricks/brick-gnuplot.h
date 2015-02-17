@@ -340,6 +340,7 @@ inline bool operator<( Style a, Style b ) {
 struct DataSet {
     Matrix _raw;
     std::vector< Spline > _interpolated;
+    bool _interpolate;
 
     enum Style { Points, LinePoints, Line, Ribbon,
                  RibbonLine, RibbonLP, Box } _style;
@@ -373,6 +374,13 @@ struct DataSet {
 
     std::string data( double xscale, double yscale )
     {
+        if ( _interpolate )
+            return dataInterpolated( xscale, yscale );
+        else
+            return rawdata( xscale, yscale );
+    }
+
+    std::string dataInterpolated( double xscale, double yscale ) {
         if ( _interpolated.empty() ) {
             _interpolated.resize( _raw.width );
             for ( int c = 1; c < _raw.width; ++c )
@@ -529,12 +537,13 @@ struct Plot {
         _style.set( t, from, to );
     }
 
-    DataSet &append( std::string name, int sort, int cols, DataSet::Style s ) {
+    DataSet &append( std::string name, int sort, int cols, DataSet::Style s, bool interpolate = true ) {
         _datasets.emplace_back( cols );
         auto &n = _datasets.back();
         n._style = s;
         n._name = name;
         n._sort = sort;
+        n._interpolate = interpolate;
         return n;
     }
 
