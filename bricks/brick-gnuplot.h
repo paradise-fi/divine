@@ -133,7 +133,7 @@ struct Matrix {
     };
 
     template< int i, typename... Ts >
-    void pushRow( std::tuple< Ts... > v, types::NotPreferred ) {}
+    void pushRow( std::tuple< Ts... >, types::NotPreferred ) {}
 
     template< int i = 0, typename... Ts >
     typename std::enable_if< (i < sizeof...( Ts )) >::type
@@ -303,6 +303,12 @@ struct Style {
                 { .50, 0  , 0   },
                 { 1  , 0  , 0   } };
 
+        if ( patches == 1 ) {
+            Colour c;
+            c.lab() = _from;
+            return { c.rgb() };
+        }
+
         double stepL = (_to.L - _from.L) / (patches - 1),
                stepa = (_to.a - _from.a) / (patches - 1),
                stepb = (_to.b - _from.b) / (patches - 1);
@@ -345,8 +351,8 @@ struct DataSet {
     }
 
     bool lines() const {
-        return _style == LinePoints || _style == RibbonLine ||
-               _style == RibbonLP;
+        return _style == LinePoints || _style == Line ||
+               _style == RibbonLine || _style == RibbonLP;
     }
 
     bool ribbon() const {
@@ -413,10 +419,15 @@ struct DataSet {
 namespace {
 
 std::ostream &operator<<( std::ostream &o, Colour::RGB c ) {
+    auto check = []( int x ) {
+        ASSERT_LEQ( 0, x );
+        ASSERT_LEQ( x, 255 );
+        return x;
+    };
     return o << "rgb '#" << std::hex << std::setfill( '0' )
-             << std::setw( 2 ) << int( 255 * c.r )
-             << std::setw( 2 ) << int( 255 * c.g )
-             << std::setw( 2 ) << int( 255 * c.b ) << "'";
+             << std::setw( 2 ) << check( 255 * c.r )
+             << std::setw( 2 ) << check( 255 * c.g )
+             << std::setw( 2 ) << check( 255 * c.b ) << "'";
 }
 
 }
@@ -637,7 +648,9 @@ struct Plot {
                     << ",\\\n '-' using 1:3 notitle with lines ls " << seq << " lw 0.5"
                     << ",\\\n '-' using 1:4 notitle with lines ls " << seq << " lw 0.5";
             if ( d.lines() )
-                str << ",\\\n '-' using 1:2 notitle with lines ls " << seq;
+                str << std::string( d.ribbon() ? ",\\\n" : "" )
+                    << " '-' using 1:2 " << (d.ribbon() ? "notitle " : "title '" + d._name + "'")
+                    << " with lines ls " << seq;
             if ( d.points() )
                 str << ",\\\n '-' using 1:2 notitle with points ls " << seq
                     << " pt 7 ps 0.1 lc rgb '#000000'";
