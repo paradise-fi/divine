@@ -7,7 +7,7 @@
 #define _PDCLIB_SIZE_T_DEFINED _PDCLIB_SIZE_T_DEFINED
 typedef _PDCLIB_size_t size_t;
 #endif
-typedef int ssize_t;
+typedef _PDCLIB_intptr_t ssize_t;
 
 typedef _PDCLIB_int32_t pid_t;
 
