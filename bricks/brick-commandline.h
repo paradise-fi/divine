@@ -197,6 +197,25 @@ struct Int
     static inline int init_val() { return 0; }
 };
 
+struct Double {
+    typedef double value_type;
+    static double parse( const std::string& val ) {
+        char *end;
+        double out = strtod( val.c_str(), &end );
+        if ( end != &val.c_str()[ val.size() ] )
+            throw BadOption("value " + val + " must be floating point");
+        return out;
+    }
+
+    static bool toBool(const value_type& val) { return static_cast<bool>(val); }
+    static int toInt(const value_type& val) { return val; }
+    static std::string toString(const value_type& val) {
+        std::stringstream str;
+        str << val; return str.str();
+    }
+    static inline int init_val() { return 0; }
+};
+
 struct String
 {
     typedef std::string value_type;
@@ -539,6 +558,9 @@ typedef SingleOptvalOption<String> OptvalStringOption;
 
 // Option needing a compulsory int value
 typedef SingleOption<Int> IntOption;
+
+// Option needing a compulsory int value
+typedef SingleOption<Double> DoubleOption;
 
 // Option with an optional int value
 typedef SingleOptvalOption<Int> OptvalIntOption;
