@@ -30,7 +30,8 @@ void Explicit::finishOpen() {
 
     ASSERT_LEQ( 1, header->compactVersion );
     ASSERT_LEQ( headerLength[ header->compactVersion ], header->dataStartOffset );
-    ASSERT_EQ( header->flagMaskBitWidth, 64 );
+    ASSERT( !header->capabilities.has( Capability::StateFlags )
+            || header->flagMaskBitWidth == 64 );
 
     if ( header->capabilities.has( Capability::ForwardEdges ) )
         forward = DataBlock( header->nodeCount,
