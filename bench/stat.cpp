@@ -191,8 +191,20 @@ int main( int argc, char **argv ) {
             "y-interval", '\0', "y-interval", ""
             "Interval between values on y-axis" );
     auto noyfix = gplot->add< cmd::BoolOption >(
-            "no-y-fix", '\0', "no-y-fix",
+            "no-y-fix", '\0', "no-y-fix", ""
             "Do not fix minimal value of y-ais to 0" );
+    auto xminopt = gplot->add< cmd::IntOption >(
+            "x-min-bound", 0, "x-min-bound", "",
+            "Minimal value on x-axis" );
+    auto xmaxopt = gplot->add< cmd::IntOption >(
+            "x-max-bound", 0, "x-max-bound", "",
+            "Maximal value on x-axis" );
+    auto yminopt = gplot->add< cmd::IntOption >(
+            "y-min-bound", 0, "y-min-bound", "",
+            "Minimal value on y-axis" );
+    auto ymaxopt = gplot->add< cmd::IntOption >(
+            "y-max-bound", 0, "y-max-bound", "",
+            "Maximal value on y-axis" );
 
     parser.add( gplot );
     parser.setPartialMatchingRecursively( true );
@@ -256,11 +268,15 @@ int main( int argc, char **argv ) {
     auto yAxis = labelVal->boolValue() ? labelVal->stringValue() : val->stringValue();
     auto label = name->boolValue() ? name->stringValue() : xAxis + " vs. " + yAxis;
 
-    plot.bounds( gnuplot::Plot::X, xmin - 1 , xmax + 1 );
-    auto yminbound = ymin * 0.95;
-    if ( !noyfix->boolValue() && !ylog->boolValue() )
-        yminbound = std::min( 0.0, yminbound );
-    plot.bounds( gnuplot::Plot::Y, yminbound, ymax * 1.05 );
+    auto xminb = xminopt->boolValue() ? xminopt->intValue() : xmin - 1;
+    auto xmaxb = xmaxopt->boolValue() ? xmaxopt->intValue() : xmax - 1;
+    plot.bounds( gnuplot::Plot::X, xminb, xmaxb );
+
+    auto yminb = yminopt->boolValue() ? yminopt->intValue() : ymin * 0.95;
+    if ( !noyfix->boolValue() && !ylog->boolValue() && !yminopt->boolValue() )
+        yminb = std::min( 0.0, yminb );
+    auto ymaxb = ymaxopt->boolValue() ? ymaxopt->intValue() : ymax * 1.05;
+    plot.bounds( gnuplot::Plot::Y, yminb, ymaxb );
 
     plot.axis( gnuplot::Plot::X, xAxis, "" );
     plot.axis( gnuplot::Plot::Y, yAxis, "" );
