@@ -184,27 +184,33 @@ int main( int argc, char **argv ) {
     auto ylog = gplot->add< cmd::BoolOption >(
             "y-log", '\0', "y-log", "",
             "Use logarithmic y-axis" );
-    auto xinterval = gplot->add< cmd::IntOption >(
+    auto xinterval = gplot->add< cmd::DoubleOption >(
             "x-interval", '\0', "x-interval", ""
             "Interval between values on x-axis" );
-    auto yinterval = gplot->add< cmd::IntOption >(
+    auto yinterval = gplot->add< cmd::DoubleOption >(
             "y-interval", '\0', "y-interval", ""
             "Interval between values on y-axis" );
     auto noyfix = gplot->add< cmd::BoolOption >(
             "no-y-fix", '\0', "no-y-fix", ""
             "Do not fix minimal value of y-ais to 0" );
-    auto xminopt = gplot->add< cmd::IntOption >(
+    auto xminopt = gplot->add< cmd::DoubleOption >(
             "x-min-bound", 0, "x-min-bound", "",
             "Minimal value on x-axis" );
-    auto xmaxopt = gplot->add< cmd::IntOption >(
+    auto xmaxopt = gplot->add< cmd::DoubleOption >(
             "x-max-bound", 0, "x-max-bound", "",
             "Maximal value on x-axis" );
-    auto yminopt = gplot->add< cmd::IntOption >(
+    auto yminopt = gplot->add< cmd::DoubleOption >(
             "y-min-bound", 0, "y-min-bound", "",
             "Minimal value on y-axis" );
-    auto ymaxopt = gplot->add< cmd::IntOption >(
+    auto ymaxopt = gplot->add< cmd::DoubleOption >(
             "y-max-bound", 0, "y-max-bound", "",
             "Maximal value on y-axis" );
+    auto xscale = gplot->add< cmd::DoubleOption >(
+            "x-rescale", 0, "x-rescale", "",
+            "x-axis scaling value (multiplicator)" );
+    auto yscale = gplot->add< cmd::DoubleOption >(
+            "y-rescale", 0, "y-rescale", "",
+            "y-axis scaling value (multiplicator)" );
 
     parser.add( gplot );
     parser.setPartialMatchingRecursively( true );
@@ -268,14 +274,14 @@ int main( int argc, char **argv ) {
     auto yAxis = labelVal->boolValue() ? labelVal->stringValue() : val->stringValue();
     auto label = name->boolValue() ? name->stringValue() : xAxis + " vs. " + yAxis;
 
-    auto xminb = xminopt->boolValue() ? xminopt->intValue() : xmin - 1;
-    auto xmaxb = xmaxopt->boolValue() ? xmaxopt->intValue() : xmax - 1;
+    auto xminb = xminopt->boolValue() ? xminopt->value() : xmin - 1;
+    auto xmaxb = xmaxopt->boolValue() ? xmaxopt->value() : xmax - 1;
     plot.bounds( gnuplot::Plot::X, xminb, xmaxb );
 
-    auto yminb = yminopt->boolValue() ? yminopt->intValue() : ymin * 0.95;
+    auto yminb = yminopt->boolValue() ? yminopt->value() : ymin * 0.95;
     if ( !noyfix->boolValue() && !ylog->boolValue() && !yminopt->boolValue() )
         yminb = std::min( 0.0, yminb );
-    auto ymaxb = ymaxopt->boolValue() ? ymaxopt->intValue() : ymax * 1.05;
+    auto ymaxb = ymaxopt->boolValue() ? ymaxopt->value() : ymax * 1.05;
     plot.bounds( gnuplot::Plot::Y, yminb, ymaxb );
 
     plot.axis( gnuplot::Plot::X, xAxis, "" );
@@ -287,12 +293,16 @@ int main( int argc, char **argv ) {
     if ( ylog->boolValue() )
         plot.logscale( gnuplot::Plot::Y );
     if ( xinterval->boolValue() )
-        plot.interval( gnuplot::Plot::X, xinterval->intValue() );
+        plot.interval( gnuplot::Plot::X, xinterval->value() );
     if ( yinterval->boolValue() )
-        plot.interval( gnuplot::Plot::Y, yinterval->intValue() );
+        plot.interval( gnuplot::Plot::Y, yinterval->value() );
+    if ( xscale->boolValue() )
+        plot.rescale( gnuplot::Plot::X, xscale->value() );
+    if ( yscale->boolValue() )
+        plot.rescale( gnuplot::Plot::Y, yscale->value() );
 
     plot.name( label );
-    plot.style( gnuplot::Style::Gradient );
+    plot.style( gnuplot::Style::Spot );
 
     std::cout << plots.plot();
 }
