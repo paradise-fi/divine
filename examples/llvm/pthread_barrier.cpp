@@ -69,16 +69,23 @@ void *thread( void* arg ) {
     count++;
     pthread_mutex_unlock( &mutex );
 
-    if ( pthread_barrier_wait( &barrier1 ) == PTHREAD_BARRIER_SERIAL_THREAD ) {
+    int r = 0;
+    if ( (r = pthread_barrier_wait( &barrier1 ))
+            == PTHREAD_BARRIER_SERIAL_THREAD )
+    {
+        pthread_mutex_lock( &mutex );
         serial++;
+        pthread_mutex_unlock( &mutex );
         // Barrier shouldn't release less then <RELEASE_COUNT> threads.
         // Well, it shouldn't wait for more threads either, but this is hard
         // to verify.
         assert( count >= RELEASE_COUNT );
-    }
+    } else
+        assert( r == 0 );
 
     // Wait for the "serial" thread of the previous barrier to make verification.
-    pthread_barrier_wait( &barrier2 );
+    r = pthread_barrier_wait( &barrier2 );
+    assert( r == 0 || r == PTHREAD_BARRIER_SERIAL_THREAD );
 
     pthread_mutex_lock( &mutex );
     count--;
