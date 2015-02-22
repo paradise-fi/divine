@@ -256,7 +256,7 @@ struct StateFlags {
     std::vector< std::string > flagNames() const {
         std::vector< std::string > out;
         for ( int i = 0; i < flagCount; ++i )
-            out.emplace_back( flagMap[ i ] );
+            out.emplace_back( flagMap[ i ], flagMap.size( i ) );
         return out;
     }
 
