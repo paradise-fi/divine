@@ -8,6 +8,7 @@ DIVINE 3.2.x
 - [3.2.4] Fix races in pdclib stdio code.
 - [3.2.4] Implement machine-readable statistics output.
 - [3.2.4] Multiple fixes to libc (pdclib) functionality.
+- [3.2.4] Fix backward compatibility with DESS files exported from divine < 3.2.3.
 
 DIVINE 3.2.1
 ============
