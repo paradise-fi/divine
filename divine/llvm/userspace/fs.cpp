@@ -379,7 +379,7 @@ int fstat( int fd, struct stat *buf ) {
 
 mode_t umask( mode_t mask ) {
     FS_MASK
-    unsigned result = divine::fs::filesystem.umask();
+    mode_t result = divine::fs::filesystem.umask();
     divine::fs::filesystem.umask( mask & 0777 );
     return result;
 }
@@ -547,6 +547,7 @@ int chmod( const char *path, int mode ) {
     return fchmodeat( AT_FDCWD, path, mode, 0 );
 }
 int fchmod( int fd, int mode ) {
+    FS_MASK
     try {
         divine::fs::filesystem.chmod( fd, mode );
         return 0;
@@ -657,7 +658,7 @@ int scandir( const char *path, struct dirent ***namelist,
         int length = 0;
         int fd = divine::fs::filesystem.openFileAt( divine::fs::CURRENT_DIRECTORY, path, f );
         dirp = divine::fs::filesystem.openDirectory( fd );
-        
+
         struct dirent **entries = nullptr;
         struct dirent *workingEntry = FS_MALLOC( sizeof( struct dirent ) );
 
