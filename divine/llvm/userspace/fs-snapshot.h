@@ -1,3 +1,5 @@
+#include <sys/types.h>
+
 #ifndef _FS_SNAPSHOT_H_
 #define _FS_SNAPSHOT_H_
 
@@ -16,7 +18,7 @@ enum class Type {
 struct SnapshotFS {
     const char *name;
     Type type;
-    unsigned mode;
+    mode_t mode;
     const char *content;
     size_t length;
 };

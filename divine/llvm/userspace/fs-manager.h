@@ -49,14 +49,15 @@ struct FSManager {
 
     Node findDirectoryItem( utils::String name, bool followSymLinks = true );
 
-    void createDirectoryAt( int dirfd, utils::String name, unsigned mode );
+    void createDirectoryAt( int dirfd, utils::String name, mode_t mode );
     void createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl );
     void createSymLinkAt( int dirfd, utils::String name, utils::String target );
+    void createFifoAt( int dirfd, utils::String name, mode_t mode );
 
     ssize_t readLinkAt( int dirfd, utils::String name, char *buf, size_t count );
 
     void accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl );
-    int openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, unsigned mode );
+    int openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, mode_t mode );
     void closeFile( int fd );
     int duplicate( int oldfd );
     int duplicate2( int oldfd, int newfd );
@@ -103,13 +104,13 @@ struct FSManager {
     void changeDirectory( utils::String pathname );
     void changeDirectory( int dirfd );
 
-    void chmodAt( int dirfd, utils::String name, unsigned mode, Flags< flags::At > fl );
-    void chmod( int fd, unsigned mode );
+    void chmodAt( int dirfd, utils::String name, mode_t mode, Flags< flags::At > fl );
+    void chmod( int fd, mode_t mode );
 
-    unsigned umask() const {
+    mode_t umask() const {
         return _umask;
     }
-    void umask( unsigned mask ) {
+    void umask( mode_t mask ) {
         _umask = Mode::GRANTS & mask;
     }
 
@@ -129,7 +130,7 @@ private:
     FSManager( bool );// private default ctor
 
     template< typename... Args >
-    void _createFile( utils::String name, unsigned mode, Node *file, Args &&... args );
+    void _createFile( utils::String name, mode_t mode, Node *file, Args &&... args );
 
     std::pair< Node, utils::String > _findDirectoryOfFile( utils::String name );
 
@@ -141,7 +142,7 @@ private:
 
     void _checkGrants( Node inode, unsigned grant ) const;
 
-    void _chmod( Node inode, unsigned mode );
+    void _chmod( Node inode, mode_t mode );
 
 };
 

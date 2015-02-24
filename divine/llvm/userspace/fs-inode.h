@@ -1,5 +1,7 @@
 #include <memory>
 
+#include <sys/types.h>
+
 #ifndef _FS_INODE_H_
 #define _FS_INODE_H_
 
@@ -7,42 +9,42 @@ namespace divine {
 namespace fs {
 
 struct Mode {
-    static const unsigned TMASK    = 0170000;
-    static const unsigned SOCKET   = 0140000;
-    static const unsigned LINK     = 0120000;
-    static const unsigned FILE     = 0100000;
-    static const unsigned BLOCKD   = 0060000;
-    static const unsigned DIR      = 0040000;
-    static const unsigned CHARD    = 0020000;
-    static const unsigned FIFO     = 0010000;
+    static const mode_t TMASK    = 0170000;
+    static const mode_t SOCKET   = 0140000;
+    static const mode_t LINK     = 0120000;
+    static const mode_t FILE     = 0100000;
+    static const mode_t BLOCKD   = 0060000;
+    static const mode_t DIR      = 0040000;
+    static const mode_t CHARD    = 0020000;
+    static const mode_t FIFO     = 0010000;
 
-    static const unsigned SUID     = 0004000;
-    static const unsigned GUID     = 0002000;
-    static const unsigned STICKY   = 0001000;
+    static const mode_t SUID     = 0004000;
+    static const mode_t GUID     = 0002000;
+    static const mode_t STICKY   = 0001000;
 
-    static const unsigned RWXUSER  = 0000700;
-    static const unsigned RUSER    = 0000400;
-    static const unsigned WUSER    = 0000200;
-    static const unsigned XUSER    = 0000100;
+    static const mode_t RWXUSER  = 0000700;
+    static const mode_t RUSER    = 0000400;
+    static const mode_t WUSER    = 0000200;
+    static const mode_t XUSER    = 0000100;
 
-    static const unsigned RWXGROUP = 0000070;
-    static const unsigned RGROUP   = 0000040;
-    static const unsigned WGROUP   = 0000020;
-    static const unsigned XGROUP   = 0000010;
+    static const mode_t RWXGROUP = 0000070;
+    static const mode_t RGROUP   = 0000040;
+    static const mode_t WGROUP   = 0000020;
+    static const mode_t XGROUP   = 0000010;
 
-    static const unsigned RWXOTHER = 0000007;
-    static const unsigned ROTHER   = 0000004;
-    static const unsigned WOTHER   = 0000002;
-    static const unsigned XOTHER   = 0000001;
+    static const mode_t RWXOTHER = 0000007;
+    static const mode_t ROTHER   = 0000004;
+    static const mode_t WOTHER   = 0000002;
+    static const mode_t XOTHER   = 0000001;
 
     // composites
-    static const unsigned GRANTS   = 0000777;
-    static const unsigned CHMOD    = 0007777;
+    static const mode_t GRANTS   = 0000777;
+    static const mode_t CHMOD    = 0007777;
 
-    Mode( unsigned m ) : _mode( m ) {}
+    Mode( mode_t m ) : _mode( m ) {}
     Mode( const Mode & ) = default;
     Mode &operator=( const Mode & ) = default;
-    operator unsigned() const {
+    operator mode_t() const {
         return _mode;
     }
 
@@ -121,7 +123,7 @@ private:
         return ( _mode & mask ) == p;
     }
 
-    unsigned _mode;
+    mode_t _mode;
 };
 
 struct DataItem {
@@ -146,7 +148,7 @@ using ConstPtr = const DataItem *;
 
 struct INode {
 
-    INode( unsigned mode, Ptr data = nullptr ) :
+    INode( mode_t mode, Ptr data = nullptr ) :
         _mode( mode ),
         _ino( getIno() ),
         _uid( 0 ),

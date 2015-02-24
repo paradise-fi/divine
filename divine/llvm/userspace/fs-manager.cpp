@@ -25,7 +25,7 @@ FSManager::FSManager( bool ) :
 
 
 
-void FSManager::createDirectoryAt( int dirfd, utils::String name, unsigned mode ) {
+void FSManager::createDirectoryAt( int dirfd, utils::String name, mode_t mode ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -104,7 +104,7 @@ void FSManager::createSymLinkAt( int dirfd, utils::String name, utils::String ta
     _checkGrants( current, Mode::WUSER );
     Directory *dir = current->data()->as< Directory >();
 
-    unsigned mode = 0;
+    mode_t mode = 0;
     mode |= Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER;
     mode |= Mode::LINK;
 
@@ -156,7 +156,7 @@ void FSManager::accessAt( int dirfd, utils::String name, Flags< flags::Access > 
         throw Error( EACCES );
 }
 
-int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, unsigned mode ) {
+int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, mode_t mode ) {
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
     if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
@@ -222,7 +222,7 @@ std::shared_ptr< FileDescriptor > &FSManager::getFile( int fd ) {
 }
 
 std::pair< int, int > FSManager::pipe() {
-    unsigned mode = Mode::RWXUSER | Mode::FIFO;
+    mode_t mode = Mode::RWXUSER | Mode::FIFO;
 
     Node p = std::make_shared< INode >( mode, new Pipe() );
     return {
@@ -394,7 +394,7 @@ void FSManager::changeDirectory( int dirfd ) {
     _currentDirectory = item;
 }
 
-void FSManager::chmodAt( int dirfd, utils::String name, unsigned mode, Flags< flags::At > fl ) {
+void FSManager::chmodAt( int dirfd, utils::String name, mode_t mode, Flags< flags::At > fl ) {
     if ( fl.has( flags::At::Invalid ) )
         throw Error( EINVAL );
 
@@ -407,7 +407,7 @@ void FSManager::chmodAt( int dirfd, utils::String name, unsigned mode, Flags< fl
     _chmod( inode, mode );
 }
 
-void FSManager::chmod( int fd, unsigned mode ) {
+void FSManager::chmod( int fd, mode_t mode ) {
     _chmod( getFile( fd )->inode(), mode );
 }
 
@@ -437,7 +437,7 @@ void FSManager::closeDirectory( void *descriptor ) {
 }
 
 template< typename... Args >
-void FSManager::_createFile( utils::String name, unsigned mode, Node *file, Args &&... args ) {
+void FSManager::_createFile( utils::String name, mode_t mode, Node *file, Args &&... args ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -570,12 +570,12 @@ void FSManager::_insertSnapshotItem( const SnapshotFS &item ) {
     }
 }
 
-void FSManager::_checkGrants( Node inode, unsigned grant ) const {
+void FSManager::_checkGrants( Node inode, mode_t grant ) const {
     if ( ( inode->mode() & grant ) != grant )
         throw Error( EACCES );
 }
 
-void FSManager::_chmod( Node inode, unsigned mode ) {
+void FSManager::_chmod( Node inode, mode_t mode ) {
     inode->mode() =
         ( inode->mode() & ~Mode::CHMOD ) |
         ( mode & Mode::CHMOD );

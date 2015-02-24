@@ -195,7 +195,7 @@ ssize_t pread( int fd, void *buf, size_t count, off_t offset ) {
         return -1;
     }
 }
-int mkdirat( int dirfd, const char *path, int mode ) {
+int mkdirat( int dirfd, const char *path, mode_t mode ) {
     FS_MASK
     if ( dirfd == AT_FDCWD )
         dirfd = divine::fs::CURRENT_DIRECTORY;
@@ -206,7 +206,7 @@ int mkdirat( int dirfd, const char *path, int mode ) {
         return -1;
     }
 }
-int mkdir( const char *path, int mode ) {
+int mkdir( const char *path, mode_t mode ) {
     FS_MASK
     return mkdirat( AT_FDCWD, path, mode );
 }
@@ -408,7 +408,7 @@ int fstat( int fd, struct stat *buf ) {
     }
 }
 
-unsigned umask( unsigned mask ) {
+mode_t umask( mode_t mask ) {
     FS_MASK
     unsigned result = divine::fs::filesystem.umask();
     divine::fs::filesystem.umask( mask & 0777 );
