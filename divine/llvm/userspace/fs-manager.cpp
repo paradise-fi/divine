@@ -411,6 +411,31 @@ void FSManager::chmod( int fd, unsigned mode ) {
     _chmod( getFile( fd )->inode(), mode );
 }
 
+DirectoryDescriptor *FSManager::openDirectory( int fd ) {
+    Node inode = getFile( fd )->inode();
+    _checkGrants( inode, Mode::RUSER | Mode::XUSER );
+    _openDD.emplace_back( , fd );
+    return &_openDD.back();
+}
+DirectoryDescriptor *FSManager::getDirectory( void *descriptor ) {
+    for ( auto i = _openDD.begin(); i != _openDD.end(); ++i ) {
+        if ( &*i == descriptor ) {
+            return &*i;
+        }
+    }
+    throw Error( EBADF );
+}
+void FSManager::closeDirectory( void *descriptor ) {
+    for ( auto i = _openDD.begin(); i != _openDD.end(); ++i ) {
+        if ( &*i == descriptor ) {
+            closeFile( i->fd() );
+            _openDD.erase( i );
+            return;
+        }
+    }
+    throw Error( EBADF );
+}
+
 template< typename... Args >
 void FSManager::_createFile( utils::String name, unsigned mode, Node *file, Args &&... args ) {
     if ( name.empty() )

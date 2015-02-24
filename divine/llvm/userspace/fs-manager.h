@@ -113,11 +113,16 @@ struct FSManager {
         _umask = Mode::GRANTS & mask;
     }
 
+    DirectoryDescriptor *openDirectory( int fd );
+    DirectoryDescriptor *getDirectory( void *descriptor );
+    void closeDirectory( void *descriptor );
+
 private:
     Node _root;
     WeakNode _currentDirectory;
     std::array< Node, 2 > _standardIO;
     utils::Vector< std::shared_ptr< FileDescriptor > > _openFD;
+    utils::List< DirectoryDescriptor > _openDD;
 
     unsigned short _umask;
 

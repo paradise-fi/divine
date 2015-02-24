@@ -3,6 +3,7 @@
 #include "fs-utils.h"
 #include "fs-file.h"
 #include "fs-constants.h"
+#include "fs-directory.h"
 
 #ifndef _FS_DESCRIPTOR_H_
 #define _FS_DESCRIPTOR_H_
@@ -122,6 +123,56 @@ struct PipeDescriptor : FileDescriptor {
         throw Error( EPIPE );
     }
 
+};
+
+struct DirectoryDescriptor {
+
+    DirectoryDescriptor( Node inode, int fd ) :
+        _fd( fd )
+    {
+        if ( !inode->mode().isDirectory() )
+            throw Error( ENOTDIR );
+
+        Directory *dir = inode->data()->as< Directory >();
+
+        _items.reserve( dir->size() );
+        for ( const auto &item : *dir ) {
+            _items.emplace( item );
+        }
+        rewind();
+    }
+
+    void rewind() {
+        _position = _items.begin();
+    }
+    void next() {
+        ++_position;
+    }
+
+    const DirectoryItemLabel *get() const {
+        if ( _position == _items.end() )
+            return nullptr;
+        return &*_position;
+    }
+
+    void seek( long off ) {
+        rewind();
+        _position += off;
+    }
+
+    long tell() const {
+        return long( _position - _items.begin() );
+    }
+
+    int fd() const {
+        return _fd;
+    }
+
+private:
+
+    utils::Vector< DirectoryItemLabel > _items;
+    utils::Vector< DirectoryItemLabel >::const_iterator _position;
+    int _fd;
 };
 
 } // namespace fs

@@ -5,6 +5,7 @@
 #include <string>
 #include <queue>
 #include <set>
+#include <list>
 #include <utility>
 #include <algorithm>
 #include <type_traits>
@@ -144,6 +145,9 @@ using Queue = std::queue< T, Deque< T > >;
 
 template< typename T >
 using Set = std::set< T, std::less< T >, memory::Allocator< T > >;
+
+template< typename T >
+using List = std::list< T, memory::Allocator< T > >;
 
 } // namespace utils
 

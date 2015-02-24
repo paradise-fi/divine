@@ -2,16 +2,22 @@
 #include <cerrno>
 #include <cstdarg>
 #include <cstdlib>
+#include <cstring.h>
+
+#include <bits/types.h>
 
 #include "fs.h"
 #include "fcntl.h"
 #include "fs-manager.h"
 #include "fs-stat.h"
+#include "dirent.h"
 
 #ifdef __divine__
-#define  FS_MASK __divine_interrupt_mask();
+#define FS_MASK __divine_interrupt_mask();
+#define FS_MALLOC( x ) __divine_malloc( x )
 #else
 #define FS_MASK
+#define FS_MALLOC( x ) std::malloc( x )
 #endif
 
 namespace divine {
@@ -577,6 +583,158 @@ int fchmod( int fd, int mode ) {
         return 0;
     } catch ( Error & ) {
         return -1;
+    }
+}
+
+int alphasort( const struct dirent **a, const struct dirent **b ) {
+    return std::strcoll( (*a)->d_name, (*b)->d_name );
+}
+
+int closedir( DIR *dirp ) {
+    FS_MASK
+    try {
+        divine::fs::filesystem.closeDirectory( dirp );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int dirfd( DIR *dirp ) {
+    FS_MASK
+    try {
+        return divine::fs::filesystem.getDirectory( dirp )->fd();
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+DIR *fdopendir( int fd ) {
+    FS_MASK
+    try {
+        return divine::fs::filesystem.openDirectory( fd );
+    } catch ( Error & ) {
+        return nullptr;
+    }
+}
+
+DIR *opendir( const char *path ) {
+    FS_MASK
+    using namespace divine::fs::flags;
+    divine::fs::Flags< Open > f = Open::Read;
+    try {
+        int fd = divine::fs::filesystem.openFileAt( divine::fs::CURRENT_DIRECTORY, path, f );
+        return divine::fs::filesystem.openDirectory( fd );
+    } catch ( Error & ) {
+        return nullptr;
+    }
+}
+
+struct dirent *readdir( DIR *dirp ) {
+    FS_MASK
+    static struct dirent entry;
+
+    try {
+        auto ent = divine::fs::filesystem.getDirectory( dirp )->get();
+        if ( !ent )
+            return nullptr;
+        entry.d_ino = ent->ino();
+        std::copy( ent->name().begin(), ent->name().end(), entry.d_name ) = '\0';
+        dir->next();
+        return &entry;
+    } catch ( Error & ) {
+        return nullptr;
+    }
+}
+
+int readdir_r( DIR *dirp, struct dirent *entry, struct dirent **result ) {
+    FS_MASK
+
+    try {
+        auto ent = divine::fs::filesystem.getDirectory( dirp )->get();
+        if ( ent ) {
+            entry->d_ino = ent->ino();
+            std::copy( ent->name().begin(), ent->name().end(), entry->d_name ) = '\0';
+            *result = entry;
+            dir->next();
+        }
+        else
+            *result = nullptr;
+        return 0;
+    } catch ( Error &e ) {
+        return e.code();
+    }
+}
+
+void rewinddir( DIR *dirp ) {
+    FS_MASK
+    e = errno;
+    try {
+        divine::fs::filesystem.getDirectory( dirp )->rewind();
+    } catch ( Error & ) {
+        errno = e;
+    }
+}
+
+int scandir( const char *path, struct dirent ***namelist,
+             int (*filter)( const struct dirent * ),
+             int (*compare)( const struct dirent **, const struct dirent ** ))
+{
+    FS_MASK
+    using namespace divine::fs::flags;
+    divine::fs::Flags< Open > f = Open::Read;
+    DIR *dirp = nullptr;
+    try {
+        int length = 0;
+        int fd = divine::fs::filesystem.openFileAt( divine::fs::CURRENT_DIRECTORY, path, f );
+        dirp = divine::fs::filesystem.openDirectory( fd );
+        
+        struct dirent **entries = nullptr;
+        struct dirent *workingEntry = FS_MALLOC( sizeof( struct dirent ) );
+
+        while ( auto ent = divine::fs::filesystem.getDirectory( dirp )->get() ) {
+            workingEntry->d_ino = ent->ino();
+            std::copy( ent->name().begin(), ent->name().end(), workingEntry->d_name ) = '\0';
+            dir->next();
+
+            if ( filter && !filter( workingEntry ) )
+                continue;
+
+            struct dirent **newEntries = FS_MALLOC( ( length + 1 ) * sizeof( struct dirent * ) );
+            if ( length )
+                std::memcpy( newEntries, entries, length * sizeof( struct dirent * ) );
+            std::swap( entries, newEntries );
+            std::free( newEntries );
+            entries[ length ] = workingEntry;
+            workingEntry = FS_MALLOC( sizeof( struct dirent ) );
+            ++length;
+        }
+
+        divine::fs::filesystem.closeDirectory( dirp );
+        std::qsort( entries, length, sizeof( struct dirent * ), compare );
+    } catch ( Error & ) {
+        if ( dirp )
+            divine::fs::filesystem.closeDirectory( dirp );
+        return -1;
+    }
+}
+
+long telldir( DIR *dirp ) {
+    FS_MASK
+    e = errno;
+    try {
+        return divine::fs::filesystem.getDirectory( dirp )->tell();
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+void seekdir( DIR *dirp, long offset ) {
+    FS_MASK
+    e = errno;
+    try {
+        divine::fs::filesystem.getDirectory( dirp )->seek( offset );
+    } catch ( Error & ) {
+        errno = e;
     }
 }
 

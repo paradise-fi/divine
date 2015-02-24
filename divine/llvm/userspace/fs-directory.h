@@ -111,6 +111,32 @@ private:
 
 };
 
+struct DirectoryItemLabel {
+    DirectoryItemLabel( const DirectoryEntry &entry ) :
+        _name( entry.name() ),
+        _ino( entry.inode()->ino() )
+    {}
+
+    DirectoryItemLabel( const DirectoryItemLabel & ) = default;
+    DirectoryItemLabel( DirectoryItemLabel && ) = default;
+    DirectoryItemLabel &operator=( DirectoryItemLabel other ) {
+        _name.swap( other._name );
+        _ino = other._ino;
+        return *this;
+    }
+
+    const utils::String &name() const {
+        return _name;
+    }
+    unsigned ino() const {
+        return _ino;
+    }
+
+private:
+    utils::String _name;
+    unsigned _ino;
+};
+
 struct Directory : DataItem {
     using Items = utils::Vector< DirectoryEntry >;
 
