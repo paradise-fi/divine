@@ -26,37 +26,6 @@ extern FSManager filesystem;
 } // namespace fs
 } // namespace divine
 
-void showFS() {
-    using namespace divine::fs;
-    int indent = 0;
-    std::cout << "FS:" << std::endl;
-    filesystem.traverseDirectoryTree( "", 
-        [&]( utils::String path ) {
-            for ( int i = 0; i < indent; ++i )
-                std::cout << "| ";
-            utils::String name = path::splitFileName( path ).second;
-            std::cout << '[' << name << ']' << std::endl;
-            ++indent;
-            return true;
-        },
-        [&]( utils::String ) { --indent; },
-        [&]( utils::String path ) {
-            for ( int i = 0; i < indent; ++i )
-                std::cout << "| ";
-            Node item = filesystem.findDirectoryItem( path, false );
-            std::cout << path::splitFileName( path ).second;
-            if ( item->mode().isLink() ) {
-                std::cout << " -> " << item->data()->as< Link >()->target();
-            }
-            else if ( item->mode().isFifo() ) {
-                std::cout << " {pipe}";
-            }
-            std::cout << std::endl;
-        }
-    );
-    std::cout << "-------------------------------------------" << std::endl;
-}
-
 using divine::fs::Error;
 
 extern "C" {
