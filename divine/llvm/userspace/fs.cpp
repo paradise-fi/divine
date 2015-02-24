@@ -427,6 +427,8 @@ int ftruncate( int fd, off_t length ) {
     FS_MASK
     try {
         auto item = divine::fs::filesystem.getFile( fd );
+        if ( !item->flags().has( divine::fs::flags::Open::Write ) )
+            throw Error( EINVAL );
         divine::fs::filesystem.truncate( item->inode(), length );
         return 0;
     } catch ( Error & ) {
