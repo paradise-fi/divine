@@ -66,17 +66,11 @@ extern "C" void *__errno_location() { __divine_problem( 9, 0 ); return 0; }
 extern "C" { /* POSIX kernel APIs */
 
     void raise( int ) { __divine_problem( 9, 0 ); }
-    int unlink( const char * ) { __divine_problem( 9, 0 ); return 0; }
-    ssize_t read(int, void *, size_t) { __divine_problem( 9, 0 ); return 0; }
-    ssize_t write(int, const void *, size_t) { __divine_problem( 9, 0 ); return 0; }
-    off_t lseek(int, off_t, int) { __divine_problem( 9, 0 ); return 0; }
-    int close(int) { __divine_problem( 9, 0 ); return 0; }
 
 }
 
 extern "C" { /* pdclib glue functions */
-    int _PDCLIB_rename( const char *, const char * ) { __divine_problem( 9, 0 ); return 0; }
-    int _PDCLIB_open( const char *, int ) { __divine_problem( 9, 0 ); return 0; }
+
     void _PDCLIB_Exit( int rv ) {
         if ( rv )
             __divine_problem( 1, "exit called with non-zero value" );
