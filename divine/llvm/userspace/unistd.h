@@ -56,11 +56,55 @@ FS_NOINLINE ssize_t write( int fd, const void *buf, size_t count );
 FS_NOINLINE ssize_t pread( int fd, void *buf, size_t count, off_t offset );
 FS_NOINLINE ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset );
 
+FS_NOINLINE int pipe( int pipefd[ 2 ] );
+
 FS_NOINLINE off_t lseek( int fd, off_t offset, int whence );
 
+FS_NOINLINE int dup( int fd );
+FS_NOINLINE int dup2( int oldfd, int newfd );
+
+FS_NOINLINE int ftruncate( int fd, off_t length );
+FS_NOINLINE int truncate( const char *path, off_t length );
+
 FS_NOINLINE int unlink( const char *path );
+FS_NOINLINE int rmdir( const char *path );
+FS_NOINLINE int unlinkat( int dirfd, const char *path, int flags );
 
 FS_NOINLINE int link( const char *target, const char *linkpath );
+FS_NOINLINE int linkat( int olddirfd, const char *target, int newdirfd, const char *linkpath, int flags );
+FS_NOINLINE int symlink( const char *target, const char *linkpath );
+FS_NOINLINE int symlinkat( const char *target, int dirfd, const char *linkpath );
+
+FS_NOINLINE ssize_t readlink( const char *path, char *buf, size_t count );
+FS_NOINLINE ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count );
+
+FS_NOINLINE int access( const char *path, int mode );
+FS_NOINLINE int faccessat( int dirfd, const char *path, int mode, int flags );
+
+FS_NOINLINE int chdir( const char *path );
+FS_NOINLINE int fchdir( int dirfd );
+
+void _exit( int status );
+
+FS_NOINLINE int fsync( int fd );
+FS_NOINLINE int fdatasync( int fd );
+
+FS_NOINLINE void swab( const void *from, void *to, ssize_t n );
+
+FS_NOINLINE int isatty( int fd );
+FS_NOINLINE char *ttyname( int fd );
+FS_NOINLINE int ttyname_r( int fd, char *buf, size_t count );
+
+FS_NOINLINE void sync( void );
+FS_NOINLINE int syncfs( int fd );
+
+int nanosleep( const struct timespec *req, struct timespec *rem );
+unsigned int sleep( unsigned int seconds );
+int usleep( useconds_t usec );
+
+// entrypoints for rename & renameat functions
+FS_NOINLINE int _FS_renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );
+FS_NOINLINE int _FS_renameitem( const char *oldpath, const char *newpath );
 
 #undef FS_NOINLINE
 
