@@ -370,6 +370,8 @@ void FSManager::truncate( Node inode, off_t length ) {
     if ( !inode->mode().isFile() )
         throw Error( EINVAL );
 
+    _checkGrants( inode, Mode::WUSER );
+
     RegularFile *f = inode->data()->as< RegularFile >();
     f->resize( length );
 }
@@ -531,6 +533,8 @@ std::pair< Node, utils::String > FSManager::_findDirectoryOfFile( utils::String 
     utils::String pathname;
     std::tie( pathname, name ) = path::splitFileName( name );
     Node item = findDirectoryItem( pathname );
+    _checkGrants( item, Mode::XUSER );
+
     if ( !item )
         throw Error( ENOENT );
     if ( !item->mode().isDirectory() )
