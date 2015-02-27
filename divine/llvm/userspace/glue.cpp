@@ -95,4 +95,9 @@ extern "C" unsigned int sleep( unsigned int seconds ) {
     return 0;
 }
 
-extern "C" int usleep(useconds_t usec) { return 0; }
+// should be useconds_t really, but wait for proper unistd for now
+extern "C" int usleep( unsigned int usec ) { return 0; }
+
+extern "C" void _exit( int rv ) {
+    _PDCLIB_Exit( rv );
+}
