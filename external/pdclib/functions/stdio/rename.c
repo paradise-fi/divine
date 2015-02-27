@@ -10,6 +10,7 @@
 
 #ifndef REGTEST
 #include <_PDCLIB_glue.h>
+#include <unistd.h>
 #include <threads.h>
 
 #include <string.h>
@@ -32,7 +33,7 @@ int rename( const char * old, const char * new )
         current = current->next;
     }
     mtx_unlock( &_PDCLIB_filelist_lock );
-    return _PDCLIB_rename( old, new );
+    return _FS_renameitem( old, new );
 }
 
 #endif
