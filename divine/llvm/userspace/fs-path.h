@@ -77,7 +77,7 @@ inline utils::String joinPath( FilePaths &&...paths ) {
 }
 
 template< typename Result = utils::Vector< utils::String > >
-inline Result splitPath( utils::String path, bool normalize = false ) {
+inline Result splitPath( const utils::String &path, bool normalize = false ) {
     Result out;
     auto last = path.begin();
     while ( true ) {
