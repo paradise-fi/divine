@@ -43,7 +43,9 @@
 #endif  // __BIG_ENDIAN__
 
 #ifdef __FreeBSD__
+#ifndef _BYTE_ORDER
 # include <sys/endian.h>
+#endif
 #  if _BYTE_ORDER == _LITTLE_ENDIAN
 #   define _LIBCPP_LITTLE_ENDIAN 1
 #   define _LIBCPP_BIG_ENDIAN    0
