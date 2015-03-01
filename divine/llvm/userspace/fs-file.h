@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <divine.h>
+#include <divine/problem.h>
 
 #include "fs-utils.h"
 #include "fs-inode.h"
@@ -134,7 +136,13 @@ struct WriteOnlyFile : public File {
 struct Pipe : public File {
 
     Pipe() :
-        _reader( true )
+        _reader( false ),
+        _writer( false )
+    {}
+
+    Pipe( bool r, bool w ) :
+        _reader( r ),
+        _writer( w )
     {}
 
     size_t size() const override {
@@ -172,9 +180,28 @@ struct Pipe : public File {
         _reader = false;
     }
 
+    bool reader() const {
+        return _reader;
+    }
+    bool writer() const {
+        return _writer;
+    }
+
+    void assingReader() {
+        if ( _reader )
+            __divine_problem( Other, "Pipe is opened for reading again." );
+        _reader = true;
+    }
+    void assignWriter() {
+        if ( _writer )
+            __divine_problem( Other, "Pipe is opened for writing again." );
+        _writer = true;
+    }
+
 private:
     utils::Vector< char > _content;
     bool _reader;
+    bool _writer;
 };
 
 struct Socket : public File {

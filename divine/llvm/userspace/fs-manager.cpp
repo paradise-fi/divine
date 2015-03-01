@@ -114,6 +114,30 @@ void FSManager::createSymLinkAt( int dirfd, utils::String name, utils::String ta
     dir->create( std::move( name ), node );
 }
 
+void FSManager::createFifoAt( int dirfd, utils::String name, mode_t mode ) {
+    if ( name.empty() )
+        throw Error( ENOENT );
+
+    WeakNode savedDir = _currentDirectory;
+    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
+    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
+        changeDirectory( dirfd );
+
+    Node current;
+    std::tie( current, name ) = _findDirectoryOfFile( name );
+
+    _checkGrants( current, Mode::WUSER );
+    Directory *dir = current->data()->as< Directory >();
+
+    mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
+    mode |= Mode::FIFO;
+
+    auto node = std::make_shared< INode >( mode );
+    node->assign( new Pipe() );
+
+    dir->create( std::move( name ), node );
+}
+
 ssize_t FSManager::readLinkAt( int dirfd, utils::String name, char *buf, size_t count ) {
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
@@ -192,6 +216,8 @@ int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > f
         fl.clear( flags::Open::Write );
     }
 
+    if ( file->mode().isFifo() )
+        return _getFileDescriptor( std::make_shared< PipeDescriptor >( file, fl, true ) );
     return _getFileDescriptor( std::make_shared< FileDescriptor >( file, fl ) );
 }
 
@@ -224,7 +250,7 @@ std::shared_ptr< FileDescriptor > &FSManager::getFile( int fd ) {
 std::pair< int, int > FSManager::pipe() {
     mode_t mode = Mode::RWXUSER | Mode::FIFO;
 
-    Node p = std::make_shared< INode >( mode, new Pipe() );
+    Node p = std::make_shared< INode >( mode, new Pipe( true, true ) );
     return {
         _getFileDescriptor( std::make_shared< PipeDescriptor >( p, flags::Open::Read ) ),
         _getFileDescriptor( std::make_shared< PipeDescriptor >( p, flags::Open::Write ) )

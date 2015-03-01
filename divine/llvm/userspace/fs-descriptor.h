@@ -1,4 +1,6 @@
 #include <memory>
+#include <divine.h>
+#include <divine/problem.h>
 
 #include "fs-utils.h"
 #include "fs-file.h"
@@ -102,6 +104,10 @@ struct FileDescriptor {
         _offset = 0;
     }
 
+    Flags< flags::Open > flags() const {
+        return _flags;
+    }
+
 protected:
     Node _inode;
     Flags< flags::Open > _flags;
@@ -110,7 +116,40 @@ protected:
 
 struct PipeDescriptor : FileDescriptor {
 
-    using FileDescriptor::FileDescriptor;
+    PipeDescriptor() :
+        FileDescriptor()
+    {}
+
+    PipeDescriptor( Node inode, Flags< flags::Open > fl, bool wait = false ) :
+        FileDescriptor( inode, fl )
+    {
+        if ( wait ) {
+            Pipe *pipe = inode->data()->as< Pipe >();
+
+            /// TODO: enable detection of deadlock
+            if ( fl.has( flags::Open::Read ) && fl.has( flags::Open::Write ) )
+                __divine_problem( Other, "Pipe is opened both for reading and writing" );
+            else if ( fl.has( flags::Open::Read ) ) {
+                pipe->assignReader();
+                while ( !pipe->writer() ) {
+                    __divine_interrupt_unmask();
+                    __divine_interrupt_mask();
+                }
+            }
+            else if ( fl.has( flags::Open::Write ) ) {
+                pipe->assignWriter();
+                while ( !pipe->reader() ) {
+                    __divine_interrupt_unmask();
+                    __divine_interrupt_mask();
+                }
+            }
+        }
+    }
+
+    PipeDescriptor( const PipeDescriptor & ) = default;
+    PipeDescriptor( PipeDescriptor && ) = default;
+    PipeDescriptor &operator=( const PipeDescriptor & ) = default;
+
 
     ~PipeDescriptor() {
         if ( _inode && _flags.has( flags::Open::Read ) ) {

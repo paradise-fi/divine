@@ -180,6 +180,20 @@ int mkdir( const char *path, mode_t mode ) {
     return mkdirat( AT_FDCWD, path, mode );
 }
 
+int mkfifoat( int dirfd, const char *path, mode_t mode ) {
+    if ( dirfd == AT_FDCWD )
+        dirfd = divine::fs::CURRENT_DIRECTORY;
+    try {
+        divine::fs::filesystem::createFifoAt( dirfd, path, mode );
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+int mkfifo( const char *path, mode_t mode ) {
+    FS_MASK
+    return mkfifoat( AT_FDCWD, path, mode );
+}
+
 int unlink( const char *path ) {
     FS_MASK
     try {
