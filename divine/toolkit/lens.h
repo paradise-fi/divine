@@ -141,9 +141,13 @@ struct Lens
         return Lens< Address, typename TypeAt< Structure, Ps... >::T >( address( ps... ) );
     }
 
+    size_t size() {
+        return LinearSize< Structure >::get( this->address() );
+    }
+
     template< typename Addr >
     Addr copy( Addr to ) {
-        return start.copy( to, LinearSize< Structure >::get( this->address() ) );
+        return start.copy( to, size() );
     }
 };
 
