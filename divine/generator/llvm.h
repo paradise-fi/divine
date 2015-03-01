@@ -116,14 +116,15 @@ struct _LLVM : Common< Blob > {
         pool().free( s );
     }
 
-    using MachineState = llvm::MachineState<>;
-    using State = MachineState::State;
+    using MachineState = llvm::MachineState< HeapMeta >;
+    using State = typename MachineState::State;
+    using StateLens = typename MachineState::StateLens;
+    using Threads = typename MachineState::Threads;
     using Flags = llvm::machine::Flags;
     using Heap = llvm::machine::Heap;
 
-    template< typename T >
-    T &state( Blob b ) { return interpreter().state.state( b ).get( T() ); }
-    Flags &flags( Blob b ) { return state< Flags >( b ); }
+    StateLens state( Blob b ) { return interpreter().state.state( b ); }
+    Flags &flags( Blob b ) { return state( b ).get( Flags() ); }
 
     template< typename Yield >
     void enumerateFlags( Yield yield ) {
@@ -207,11 +208,26 @@ struct _LLVM : Common< Blob > {
         auto &info = *bitcode->info;
 
         switch ( ch.first ) {
-            case ChunkT::Flags: cor.consume( ch.second ); break;
+            case ChunkT::Flags:
+                cor.consume( ch.second ); break;
             case ChunkT::Globals:
                 splitAccumulate( cor, ch.second, [&]() {
                         return info.globals[ i++ ].width; } );
                 break;
+            case ChunkT::Threads: {
+                auto thr = state( cor.item ).sub( Threads() );
+                int count = thr.get().length();
+                int extra = sizeof( thr.get().length() );
+                if ( count > 1 )
+                    cor.split( count );
+                for ( int i = 0; i < count; ++i ) {
+                    Common::splitHint( cor, extra + thr.sub( i ).size(), 0 );
+                    extra = 0;
+                }
+                if ( count > 1 )
+                    cor.join();
+                break;
+            }
             default:
                 return Common::splitHint( cor, ch.second, 0 );
         }
@@ -219,21 +235,18 @@ struct _LLVM : Common< Blob > {
 
     template< typename Coroutine >
     void splitHint( Coroutine &cor ) {
-        using L = lens::Lens< machine::StateAddress, MachineState::State >;
-        auto state = L(
-            machine::StateAddress( &this->pool(), this->bitcode->info,
-                                   cor.item, this->_slack ) );
+        auto state = this->state( cor.item );
 
         /* all these include slack in their offsets */
         Chunks starts;
         if ( LS == LLVMSplitter::Generic )
-            starts = Chunks{ Chunk( ChunkT::NA, state.address( machine::Flags() ).offset ) };
+            starts = Chunks{ Chunk( ChunkT::NA, state.address( Flags() ).offset ) };
         else
-            starts = Chunks { Chunk( ChunkT::Flags, state.address( machine::Flags() ).offset ),
+            starts = Chunks { Chunk( ChunkT::Flags, state.address( Flags() ).offset ),
                               Chunk( ChunkT::Globals, state.address( machine::Globals() ).offset ),
-                              Chunk( ChunkT::Heap, state.address( machine::Heap() ).offset ),
-                              Chunk( ChunkT::HeapM, state.address( MachineState::HeapMeta() ).offset ),
-                              Chunk( ChunkT::Threads, state.address( MachineState::Threads() ).offset ) };
+                              Chunk( ChunkT::Heap, state.address( Heap() ).offset ),
+                              Chunk( ChunkT::HeapM, state.address( HeapMeta() ).offset ),
+                              Chunk( ChunkT::Threads, state.address( Threads() ).offset ) };
 
         Chunks ends = starts;
 

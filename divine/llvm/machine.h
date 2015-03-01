@@ -482,6 +482,8 @@ struct MachineState
     typedef lens::Array< Stack > Threads;
     typedef lens::Tuple< Flags, Globals, Heap, HeapMeta, Threads > State;
 
+    using StateLens = Lens< State >;
+
     bool globalPointer( Pointer p ) {
         return global().owns( _info, p );
     }
@@ -526,11 +528,11 @@ struct MachineState
     bool isPrivate( Pointer p, Frame &, Canonic< HeapMeta > & );
     bool isPrivate( Pointer p, Pointer, Canonic< HeapMeta > & );
 
-    Lens< State > state( Blob b ) {
+    StateLens state( Blob b ) {
         return Lens< State >( StateAddress( &_pool, &_info, b, _slack ) );
     }
 
-    Lens< State > state() {
+    StateLens state() {
         return state( _blob );
     }
 
