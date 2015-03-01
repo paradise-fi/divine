@@ -1010,7 +1010,9 @@ extern "C" const int ** __ctype_toupper_loc();
 const ctype<char>::mask*
 ctype<char>::classic_table()  _NOEXCEPT
 {
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__divine__)
+    return _PDCLIB_global_locale._CTypeFlags;
+#elif defined(__APPLE__) || defined(__FreeBSD__)
     return _DefaultRuneLocale.__runetype;
 #elif defined(__NetBSD__)
     return _C_ctype_tab_ + 1;
@@ -1026,8 +1028,6 @@ ctype<char>::classic_table()  _NOEXCEPT
     return *__ctype_b_loc();
 #elif defined(_AIX)
     return (const unsigned long *)__lc_ctype_ptr->obj->mask;
-#elif __divine__
-    return _PDCLIB_global_locale._CTypeFlags;
 #else
     // Platform not supported: abort so the person doing the port knows what to
     // fix
