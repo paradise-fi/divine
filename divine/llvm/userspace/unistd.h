@@ -49,6 +49,8 @@ extern "C" {
 
 #define FS_NOINLINE __attribute__((noinline))
 
+typedef unsigned int useconds_t;
+
 FS_NOINLINE int close( int fd );
 FS_NOINLINE ssize_t read( int fd, void *buf, size_t count );
 FS_NOINLINE ssize_t write( int fd, const void *buf, size_t count );
