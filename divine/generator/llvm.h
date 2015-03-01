@@ -31,7 +31,9 @@ namespace generator {
 namespace machine = llvm::machine;
 using namespace ::llvm;
 
-template< typename _Label, typename HeapMeta >
+enum class LLVMSplitter { Generic, Hybrid, PerObject };
+
+template< typename _Label, typename HeapMeta, LLVMSplitter LS = LLVMSplitter::PerObject >
 struct _LLVM : Common< Blob > {
     typedef Blob Node;
     using Interpreter = llvm::Interpreter< HeapMeta, _Label >;
@@ -166,6 +168,55 @@ struct _LLVM : Common< Blob > {
         Common::splitHint( cor, a, b, ch );
     }
 
+    enum class ChunkT { NA, Flags, Globals, Heap, HeapM, Threads };
+    using Chunk = std::pair< ChunkT, int >;
+    using Chunks = std::deque< Chunk >;
+
+    template< typename Coroutine, typename Next >
+    void splitAccumulate( Coroutine &cor, int max, Next next ) {
+        int sz = 0, ch = 0, total = 0;
+
+        if ( max <= 32 )
+            return cor.consume( max );
+
+        Chunks subs;
+
+        while ( total < max ) {
+            while ( ch < 32 && total < max ) {
+                sz = next();
+                total += sz;
+                ch += sz;
+            }
+            subs.emplace_back( ChunkT::NA, ch );
+            ch = 0;
+        }
+
+        ASSERT_EQ( total, max );
+        cor.split( subs.size() );
+        for ( auto s : subs )
+            cor.consume( s.second );
+        cor.join();
+    }
+
+    template< typename Coroutine >
+    void splitHint( Coroutine &cor, Chunk ch ) {
+        if ( LS != LLVMSplitter::PerObject )
+            return Common::splitHint( cor, ch.second, 0 );
+
+        size_t i = 0;
+        auto &info = *bitcode->info;
+
+        switch ( ch.first ) {
+            case ChunkT::Flags: cor.consume( ch.second ); break;
+            case ChunkT::Globals:
+                splitAccumulate( cor, ch.second, [&]() {
+                        return info.globals[ i++ ].width; } );
+                break;
+            default:
+                return Common::splitHint( cor, ch.second, 0 );
+        }
+    }
+
     template< typename Coroutine >
     void splitHint( Coroutine &cor ) {
         using L = lens::Lens< machine::StateAddress, MachineState::State >;
@@ -173,21 +224,21 @@ struct _LLVM : Common< Blob > {
             machine::StateAddress( &this->pool(), this->bitcode->info,
                                    cor.item, this->_slack ) );
 
-        enum Ty { NA, Flags, Globals, Heap, HeapM, Threads };
-        using Chunk = std::pair< Ty, int >;
-        using Chunks = std::deque< Chunk >;
-
         /* all these include slack in their offsets */
-        Chunks starts{
-             Chunk( Flags, state.address( machine::Flags() ).offset ),
-             Chunk( Globals, state.address( machine::Globals() ).offset ),
-             Chunk( Heap, state.address( machine::Heap() ).offset ),
-             Chunk( HeapM, state.address( MachineState::HeapMeta() ).offset ),
-             Chunk( Threads, state.address( MachineState::Threads() ).offset ) },
-            ends = starts;
+        Chunks starts;
+        if ( LS == LLVMSplitter::Generic )
+            starts = Chunks{ Chunk( ChunkT::NA, state.address( machine::Flags() ).offset ) };
+        else
+            starts = Chunks { Chunk( ChunkT::Flags, state.address( machine::Flags() ).offset ),
+                              Chunk( ChunkT::Globals, state.address( machine::Globals() ).offset ),
+                              Chunk( ChunkT::Heap, state.address( machine::Heap() ).offset ),
+                              Chunk( ChunkT::HeapM, state.address( MachineState::HeapMeta() ).offset ),
+                              Chunk( ChunkT::Threads, state.address( MachineState::Threads() ).offset ) };
+
+        Chunks ends = starts;
 
         ends.pop_front();
-        ends.push_back( Chunk( NA, pool().size( cor.item ) ) );
+        ends.push_back( Chunk( ChunkT::NA, pool().size( cor.item ) ) );
         Chunks chunks;
 
         auto end = ends.begin();
@@ -200,7 +251,7 @@ struct _LLVM : Common< Blob > {
         cor.split( chunks.size() );
 
         for ( auto ch : chunks )
-            Common::splitHint( cor, ch.second, 0 );
+            splitHint( cor, ch );
 
         cor.join();
     }
