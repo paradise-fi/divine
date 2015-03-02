@@ -228,7 +228,7 @@ struct _LLVM : Common< Blob > {
         if ( LS != LLVMSplitter::PerObject )
             return Common::splitHint( cor, ch.second, 0 );
 
-        size_t i = 0, size = 0;
+        int i = 0, j = 0, size = 0;
         auto &info = *bitcode->info;
 
         switch ( ch.first ) {
@@ -251,16 +251,25 @@ struct _LLVM : Common< Blob > {
                 break;
             case ChunkT::Threads: {
                 auto thr = state( cor.item ).sub( Threads() );
-                int count = thr.get().length();
-                int extra = sizeof( thr.get().length() );
-                if ( count > 1 )
-                    cor.split( count );
-                for ( int i = 0; i < count || extra; ++i ) {
-                    Common::splitHint( cor, extra + (i < count ? thr.sub( i ).size() : 0), 0 );
-                    extra = 0;
-                }
-                if ( count > 1 )
-                    cor.join();
+                i = j = -1;
+                splitAccumulate( cor, ch.second, [&]() {
+                        unsigned s;
+                        ASSERT_LEQ( i + 1, thr.get().length() );
+                        if ( i < 0 ) {
+                            s = sizeof( thr.get().length() );
+                            ++ i;
+                        } else {
+                            ASSERT_LEQ( j + 1, int( thr.get( i ).length() ) );
+                            if ( j < 0 )
+                                s = sizeof( thr.get( i ).length() );
+                            else
+                                s = sizeof( machine::Frame ) + thr.get( i, j ).framesize( info );
+                            if ( ++ j == thr.get( i ).length() ) {
+                                ++ i;
+                                j = -1;
+                            }
+                        }
+                        return s; } );
                 break;
             }
             default:
