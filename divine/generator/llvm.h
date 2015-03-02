@@ -255,8 +255,8 @@ struct _LLVM : Common< Blob > {
                 int extra = sizeof( thr.get().length() );
                 if ( count > 1 )
                     cor.split( count );
-                for ( int i = 0; i < count; ++i ) {
-                    Common::splitHint( cor, extra + thr.sub( i ).size(), 0 );
+                for ( int i = 0; i < count || extra; ++i ) {
+                    Common::splitHint( cor, extra + (i < count ? thr.sub( i ).size() : 0), 0 );
                     extra = 0;
                 }
                 if ( count > 1 )
