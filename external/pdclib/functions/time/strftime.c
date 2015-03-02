@@ -48,6 +48,7 @@
 #ifdef __divine__
 #include <divine.h>
 
+struct tm;
 size_t strftime(char *s, size_t maxsize, const char *format, const struct tm *timeptr)
 {
     __divine_problem( 9, 0 );
