@@ -172,6 +172,24 @@ struct _LLVM : Common< Blob > {
     enum class ChunkT { NA, Flags, Globals, Heap, HeapM, Threads };
     using Chunk = std::pair< ChunkT, int >;
     using Chunks = std::deque< Chunk >;
+    using Levels = std::deque< int >;
+
+    template< typename Coroutine >
+    void splitAccumulate( Coroutine &cor, const Chunks &ch, const Levels &ls,
+                          int from, int to, int l )
+    {
+        ASSERT_LEQ( 1, to - from );
+        if ( to - from == 1 ) {
+            cor.consume( ch[ from ].second );
+            return;
+        }
+        int deg = l < ls.size() ? ls[ l ] : to - from, w = (to - from) / deg;
+        w += (to - from) % deg > 0 ? 1 : 0;
+        cor.split( (to - from) / w + ( (to - from) % w ? 1 : 0 ) );
+        for ( int i = from; i < to; i += w )
+            splitAccumulate( cor, ch, ls, i, std::min( i + w, to ), l + 1 );
+        cor.join();
+    }
 
     template< typename Coroutine, typename Next >
     void splitAccumulate( Coroutine &cor, int max, Next next ) {
@@ -180,7 +198,7 @@ struct _LLVM : Common< Blob > {
         if ( max <= 32 )
             return cor.consume( max );
 
-        Chunks subs;
+        Chunks leaves;
 
         while ( total < max ) {
             while ( ch < 32 && total < max ) {
@@ -188,15 +206,21 @@ struct _LLVM : Common< Blob > {
                 total += sz;
                 ch += sz;
             }
-            subs.emplace_back( ChunkT::NA, ch );
+            leaves.emplace_back( ChunkT::NA, ch );
             ch = 0;
         }
 
         ASSERT_EQ( total, max );
-        cor.split( subs.size() );
-        for ( auto s : subs )
-            cor.consume( s.second );
-        cor.join();
+
+        Levels levels;
+        int width = leaves.size();
+        while ( width > 1 ) {
+            int div = width > 8 ? 4 : 2;
+            width /= div;
+            levels.push_front( div );
+        }
+
+        splitAccumulate( cor, leaves, levels, 0, leaves.size(), 0 );
     }
 
     template< typename Coroutine >
