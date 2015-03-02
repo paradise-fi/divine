@@ -55,8 +55,8 @@ struct CompileLLVM {
             prepareIncludes( llvm_list );
 
         // compile libraries
-        std::string flags = "-D__divine__ -D_POSIX_C_SOURCE=2008098L -D_LITTLE_ENDIAN=1234 -D_BYTE_ORDER=1234 "
-                            "-emit-llvm -nobuiltininc -nostdlibinc -nostdinc -Xclang -nostdsysteminc -nostdinc++ -g ";
+        std::string flags = "-D__divine__ -D_POSIX_C_SOURCE=2008098L -D_LITTLE_ENDIAN=1234 -D_BYTE_ORDER=1234 -emit-llvm "
+                            "-Qunused-arguments -nobuiltininc -nostdlibinc -nostdinc -Xclang -nostdsysteminc -nostdinc++ -g ";
         compileLibrary( "libpdc", pdclib_list, flags + " -D_PDCLIB_BUILD -I.." );
         compileLibrary( "libm", libm_list, flags + " -I../libpdc -I." );
 
