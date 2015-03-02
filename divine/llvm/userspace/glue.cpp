@@ -13,7 +13,7 @@
  */
 
 /* Memory allocation */
-void * malloc( size_t size ) _PDCLIB_nothrow __attribute__((noinline)) {
+__attribute__((noinline)) void * malloc( size_t size ) _PDCLIB_nothrow {
     __divine_interrupt_mask();
     if ( __divine_choice( 2 ) )
         return __divine_malloc( size ); // success
@@ -23,7 +23,7 @@ void * malloc( size_t size ) _PDCLIB_nothrow __attribute__((noinline)) {
 
 #define MIN( a, b )   ((a) < (b) ? (a) : (b))
 
-void *realloc( void *orig, size_t size ) _PDCLIB_nothrow __attribute__((noinline)) {
+__attribute__((noinline)) void *realloc( void *orig, size_t size ) _PDCLIB_nothrow {
     __divine_interrupt_mask();
     if ( !size ) {
         __divine_free( orig );

@@ -19,16 +19,16 @@ extern "C" {
     size_t wcsxfrm( wchar_t *, const wchar_t *, size_t ) { __divine_problem( 9, 0 ); return 0; }
     wint_t btowc( int ) { __divine_problem( 9, 0 ); return 0; }
     int wctob( wint_t ) { __divine_problem( 9, 0 ); return 0; }
-    size_t wcsnrtombs( char *, const wchar_t **, size_t, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); }
-    size_t mbsnrtowcs( wchar_t *, const char **, size_t, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); }
+    size_t wcsnrtombs( char *, const wchar_t **, size_t, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); return 0; }
+    size_t mbsnrtowcs( wchar_t *, const char **, size_t, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); return 0; }
     int mbtowc( wchar_t *, const char *s, size_t ) {
-        if ( !s )
-            return 0; /* stateless */
-        __divine_problem( 9, 0 );
+        if ( s )/* not stateless */
+            __divine_problem( 9, 0 );
+        return 0;
     }
-    int wctomb( char *, wchar_t ) { __divine_problem( 9, 0 ); }
-    size_t mbrlen( const char *, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); }
-    wchar_t *wmemset( wchar_t *, wchar_t, size_t ) { __divine_problem( 9, 0 ); }
+    int wctomb( char *, wchar_t ) { __divine_problem( 9, 0 ); return 0; }
+    size_t mbrlen( const char *, size_t, mbstate_t * ) { __divine_problem( 9, 0 ); return 0; }
+    wchar_t *wmemset( wchar_t *, wchar_t, size_t ) { __divine_problem( 9, 0 ); return 0; }
     long wcstol( const wchar_t *, wchar_t **, int ) { __divine_problem( 9, 0 ); return 0; }
     long long wcstoll( const wchar_t *, wchar_t **, int ) { __divine_problem( 9, 0 ); return 0; }
     unsigned long wcstoul( const wchar_t *, wchar_t **, int ) { __divine_problem( 9, 0 ); return 0; }
