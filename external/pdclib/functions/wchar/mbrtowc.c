@@ -32,7 +32,7 @@ size_t mbrtowc_l(
     }
 
     if(ps->_PendState == _PendPrefix) {
-        res = _PDCLIB_mbrtocwc_l(pwc, &ps->_PendChar, 1, ps, l);
+        res = _PDCLIB_mbrtocwc_l((char32_t *)pwc, &ps->_PendChar, 1, ps, l);
         switch(res) {
             case 0:
                 // Converted the NUL character
@@ -60,7 +60,7 @@ size_t mbrtowc_l(
     }
 
     // _PendClear state
-    res = _PDCLIB_mbrtocwc_l(pwc, s, n, ps, l);
+    res = _PDCLIB_mbrtocwc_l((char32_t *)pwc, s, n, ps, l);
     switch(res) {
         case (size_t) -3:
             // Converted entirely from internal state
