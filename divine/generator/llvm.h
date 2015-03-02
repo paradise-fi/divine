@@ -228,7 +228,7 @@ struct _LLVM : Common< Blob > {
         if ( LS != LLVMSplitter::PerObject )
             return Common::splitHint( cor, ch.second, 0 );
 
-        size_t i = 0;
+        size_t i = 0, size = 0;
         auto &info = *bitcode->info;
 
         switch ( ch.first ) {
@@ -237,8 +237,15 @@ struct _LLVM : Common< Blob > {
             case ChunkT::Globals:
                 cor.split( 2 );
                 splitAccumulate( cor, info.globalsize, [&]() {
-                        ASSERT_LEQ( i + 1, info.globalvars.size() );
-                        return info.globalvars[ i++ ].second.width; } );
+                        unsigned s;
+                        if ( i < info.globalvars.size() ) {
+                            s = info.globalvars[ i++ ].second.width;
+                            size += s;
+                        } else {
+                            s = info.globalsize - size;
+                            ASSERT_LEQ( info.globalsize - size, 3 );
+                        }
+                        return s; } );
                 Common::splitHint( cor, ch.second - info.globalsize, 0 );
                 cor.join();
                 break;
