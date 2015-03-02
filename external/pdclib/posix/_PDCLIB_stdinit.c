@@ -626,7 +626,7 @@ _PDCLIB_uint16_t global_ctype_flags[] = {
 extern const struct _PDCLIB_charcodec _PDCLIB_ascii_codec;
 
 struct _PDCLIB_locale _PDCLIB_global_locale = {
-    ._Codec = &_PDCLIB_ascii_codec,
+    ._Codec = (_PDCLIB_charcodec_t)&_PDCLIB_ascii_codec,
     ._Conv  = { 
         /* decimal_point      */ (char *)".",
         /* thousands_sep      */ (char *)"",
@@ -653,8 +653,8 @@ struct _PDCLIB_locale _PDCLIB_global_locale = {
         /* int_p_sign_posn    */ CHAR_MAX,
         /* int_n_sign_posn    */ CHAR_MAX,
     },
-    ._CType = &global_ctype[1],
-    ._CTypeFlags = &global_ctype_flags[1],
+    ._CType = (_PDCLIB_ctype_t *)&global_ctype[1],
+    ._CTypeFlags = (_PDCLIB_uint16_t *)&global_ctype_flags[1],
     ._ErrnoStr = {
         (char *) "" /* no error */,
         (char *) "EPERM (Operation not permitted)",
