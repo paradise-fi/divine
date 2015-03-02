@@ -13,7 +13,7 @@
 
 void * memmove( void * s1, const void * s2, size_t n )
 {
-    return __divine_memcpy( s1, s2, n );
+    return __divine_memcpy( s1, ( void * )s2, n );
 }
 
 #endif
