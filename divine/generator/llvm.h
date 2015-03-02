@@ -305,12 +305,20 @@ struct _LLVM : Common< Blob > {
             ++end;
         }
 
-        cor.split( chunks.size() );
+        if ( chunks.size() > 1 )
+            cor.split( 2 );
+        if ( chunks.size() > 2 )
+            cor.split( chunks.size() - 1 );
 
-        for ( auto ch : chunks )
+        int i = 0;
+        for ( auto ch : chunks ) {
+            if ( chunks.size() > 2 && ++ i == chunks.size() )
+                cor.join();
             splitHint( cor, ch );
+        }
 
-        cor.join();
+        if ( chunks.size() > 1 )
+            cor.join();
     }
 
     std::string showConstdata() {
