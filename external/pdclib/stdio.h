@@ -617,6 +617,8 @@ int sprintf( char * _PDCLIB_restrict s, const char * _PDCLIB_restrict format, ..
 */
 int sscanf( const char * _PDCLIB_restrict s, const char * _PDCLIB_restrict format, ... ) _PDCLIB_nothrow;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wincompatible-library-redeclaration"
 /* Equivalent to fprintf( stream, format, ... ), except that the argument stack
    is passed as va_list parameter. Note that va_list is not declared by
    <stdio.h>.
@@ -660,6 +662,8 @@ int vsprintf( char * _PDCLIB_restrict s, const char * _PDCLIB_restrict format, _
    <stdio.h>.
 */
 int vsscanf( const char * _PDCLIB_restrict s, const char * _PDCLIB_restrict format, _PDCLIB_va_list arg ) _PDCLIB_nothrow;
+
+#pragma clang diagnostic pop
 
 /* Character input/output functions */
 
