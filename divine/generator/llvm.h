@@ -211,8 +211,12 @@ struct _LLVM : Common< Blob > {
             case ChunkT::Flags:
                 cor.consume( ch.second ); break;
             case ChunkT::Globals:
-                splitAccumulate( cor, ch.second, [&]() {
-                        return info.globals[ i++ ].width; } );
+                cor.split( 2 );
+                splitAccumulate( cor, info.globalsize, [&]() {
+                        ASSERT_LEQ( i + 1, info.globalvars.size() );
+                        return info.globalvars[ i++ ].second.width; } );
+                Common::splitHint( cor, ch.second - info.globalsize, 0 );
+                cor.join();
                 break;
             case ChunkT::Threads: {
                 auto thr = state( cor.item ).sub( Threads() );
