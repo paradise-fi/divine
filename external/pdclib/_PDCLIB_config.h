@@ -53,14 +53,31 @@
 /* Width of the integer types short, int, long, and long long, in bytes.      */
 /* SHRT == 2, INT >= SHRT, LONG >= INT >= 4, LLONG >= LONG - check your       */
 /* compiler manuals.                                                          */
-#define _PDCLIB_SHRT_BYTES  2
-#define _PDCLIB_INT_BYTES   4
-#if defined(_LP64) || defined(__ILP64__)
-    #define _PDCLIB_LONG_BYTES 8
+#if defined(__SIZEOF_SHORT__)
+# define _PDCLIB_SHRT_BYTES __SIZEOF_SHORT__
 #else
-    #define _PDCLIB_LONG_BYTES 4
+# define _PDCLIB_SHRT_BYTES  2
 #endif
-#define _PDCLIB_LLONG_BYTES 8
+
+#if defined(__SIZEOF_INT__)
+# define _PDCLIB_INT_BYTES __SIZEOF_INT__
+#else
+# define _PDCLIB_INT_BYTES   4
+#endif
+
+#if defined(__SIZEOF_LONG__)
+# define _PDCLIB_LONG_BYTES __SIZEOF_LONG__
+#elif defined(_LP64) || defined(__ILP64__)
+# define _PDCLIB_LONG_BYTES 8
+#else
+# define _PDCLIB_LONG_BYTES 4
+#endif
+
+#if defined(__SIZEOF_LONG_LONG__)
+# define _PDCLIB_LLONG_BYTES __SIZEOF_LONG_LONG__
+#else
+# define _PDCLIB_LLONG_BYTES 8
+#endif
 
 // Match Darwin headers
 #define _PDCLIB_INT64_IS_LLONG
@@ -132,14 +149,28 @@ struct _PDCLIB_lldiv_t
 /* -------------------------------------------------------------------------- */
 
 /* The result type of substracting two pointers */
-#ifdef __i386__
-#define _PDCLIB_ptrdiff int
-#define _PDCLIB_PTRDIFF INT
-#define _PDCLIB_PTR_CONV
+#if defined(__PTRDIFF_TYPE__) && defined(__SIZEOF_PTRDIFF_T__)
+# define _PDCLIB_ptrdiff __PTRDIFF_TYPE__
+# if defined(__SIZEOF_INT__) && __SIZEOF_PTRDIFF_T__ == __SIZEOF_INT__
+#  define _PDCLIB_PTRDIFF INT
+#  define _PDCLIB_PTR_CONV
+# elif defined(__SIZEOF_LONG__) && __SIZEOF_PTRDIFF_T__ == __SIZEOF_LONG__
+#  define _PDCLIB_PTRDIFF LONG
+#  define _PDCLIB_PTR_CONV l
+# elif defined(__SIZEOF_LONG_LONG__) && __SIZEOF_PTRDIFF_T__ == __SIZEOF_LONG_LONG__
+#  define _PDCLIB_PTRDIFF LLONG
+#  define _PDCLIB_PTR_CONV ll
+# else
+#  define _PDCLIB_PTR_CONV
+# endif
+#elif defined (__i386__)
+# define _PDCLIB_ptrdiff int
+# define _PDCLIB_PTRDIFF INT
+# define _PDCLIB_PTR_CONV
 #else
-#define _PDCLIB_ptrdiff long
-#define _PDCLIB_PTRDIFF LONG
-#define _PDCLIB_PTR_CONV l
+# define _PDCLIB_ptrdiff long
+# define _PDCLIB_PTRDIFF LONG
+# define _PDCLIB_PTR_CONV l
 #endif
 
 
@@ -151,30 +182,85 @@ struct _PDCLIB_lldiv_t
 #define _PDCLIB_SIG_ATOMIC INT
 
 /* Result type of the 'sizeof' operator (must be unsigned) */
-#ifdef __i386__ // uh-oh?
-#define _PDCLIB_size unsigned
-#define _PDCLIB_SIZE UINT
+#if defined(__SIZE_TYPE__) && defined(__SIZEOF_SIZE_T__)
+# define _PDCLIB_size __SIZE_TYPE__
+# if defined(__SIZEOF_INT__) && __SIZEOF_SIZE_T__ == __SIZEOF_INT__
+#  define _PDCLIB_SIZE UINT
+# elif defined(__SIZEOF_LONG__) && __SIZEOF_SIZE_T__ == __SIZEOF_LONG__
+#  define _PDCLIB_SIZE ULONG
+# elif defined(__SIZEOF_LONG_LONG__) && __SIZEOF_SIZE_T__ == __SIZEOF_LONG_LONG__
+#  define _PDCLIB_SIZE ULLONG
+# else
+#  define _PDCLIB_SIZE UINT
+# endif
+#elif defined (__i386__) // uh-oh?
+# define _PDCLIB_size unsigned
+# define _PDCLIB_SIZE UINT
 #else
-#define _PDCLIB_size unsigned long
-#define _PDCLIB_SIZE ULONG
+# define _PDCLIB_size unsigned long
+# define _PDCLIB_SIZE ULONG
 #endif
 
 /* Large enough an integer to hold all character codes of the largest supported
    locale.
 */
-#define _PDCLIB_wint  int
-#define _PDCLIB_wchar int
-#define _PDCLIB_WCHAR INT
+#if defined(__WINT_TYPE__) && defined(__WCHAR_TYPE__) && defined(__SIZEOF_WCHAR_T__)
+# define _PDCLIB_wint __WINT_TYPE__
+# define _PDCLIB_wchar __WCHAR_TYPE__
+# if defined(__SIZEOF_SHORT__) && __SIZEOF_WCHAR_T__ == __SIZEOF_SHORT__
+#  define _PDCLIB_WCHAR SHRT
+# elif defined(__SIZEOF_INT__) && __SIZEOF_WCHAR_T__ == __SIZEOF_INT__
+#  define _PDCLIB_WCHAR INT
+# elif defined(__SIZEOF_LONG__) && __SIZEOF_WCHAR_T__ == __SIZEOF_LONG__
+#  define _PDCLIB_WCHAR LONG
+# else
+#  define _PDCLIB_WCHAR INT
+# endif
+#else
+# define _PDCLIB_wint  int
+# define _PDCLIB_wchar int
+# define _PDCLIB_WCHAR INT
+#endif
 
-#define _PDCLIB_intptr long
-#define _PDCLIB_INTPTR LONG
+#if defined(__INTPTR_TYPE__) && defined(__SIZEOF_POINTER__)
+# define _PDCLIB_intptr __INTPTR_TYPE__
+# if defined(__SIZEOF_INT__) && __SIZEOF_POINTER__ == __SIZEOF_INT__
+#  define _PDCLIB_INTPTR INT
+# elif defined(__SIZEOF_LONG__) && __SIZEOF_POINTER__ == __SIZEOF_LONG__
+#  define _PDCLIB_INTPTR LONG
+# elif defined(__SIZEOF_LONG_LONG__) && __SIZEOF_POINTER__ == __SIZEOF_LONG_LONG__
+#  define _PDCLIB_INTPTR LLONG
+# else
+#  define _PDCLIB_INTPTR INT
+# endif
+#else
+# define _PDCLIB_intptr long
+# define _PDCLIB_INTPTR LONG
+#endif
 
 /* Largest supported integer type. Implementation note: see _PDCLIB_atomax(). */
-#define _PDCLIB_intmax long long int
-#define _PDCLIB_INTMAX LLONG
-#define _PDCLIB_MAX_CONV ll
+#if defined(__INTMAX_TYPE__) && defined(__INTMAX_WIDTH__)
+# define _PDCLIB_intmax __INTMAX_TYPE__
+# if defined(__SIZEOF_INT__) && __SIZEOF_INT__ == __INTMAX_WIDTH__/__CHAR_BIT__
+#  define _PDCLIB_INTMAX INT
+#  define _PDCLIB_MAX_CONV 
+# elif defined(__SIZEOF_LONG__) && __SIZEOF_LONG__ == __INTMAX_WIDTH__/__CHAR_BIT__
+#  define _PDCLIB_INTMAX LONG
+#  define _PDCLIB_MAX_CONV l
+# elif defined(__SIZEOF_LONG_LONG__) && __SIZEOF_LONG_LONG__ == __INTMAX_WIDTH__/__CHAR_BIT__
+#  define _PDCLIB_INTMAX LLONG
+#  define _PDCLIB_MAX_CONV ll
+# else
+#  define _PDCLIB_INTMAX INT
+#  define _PDCLIB_MAX_CONV 
+# endif
+#else
+# define _PDCLIB_intmax long long int
+# define _PDCLIB_INTMAX LLONG
+# define _PDCLIB_MAX_CONV ll
+#endif
 /* You are also required to state the literal suffix for the intmax type      */
-#define _PDCLIB_INTMAX_LITERAL ll
+#define _PDCLIB_INTMAX_LITERAL _PDCLIB_MAX_CONV
 
 /* <inttypes.h> defines imaxdiv(), which is equivalent to the div() function  */
 /* family (see further above) with intmax_t as basis.                         */
