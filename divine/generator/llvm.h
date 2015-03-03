@@ -33,7 +33,13 @@ using namespace ::llvm;
 
 enum class LLVMSplitter { Generic, Hybrid, PerObject };
 
-template< typename _Label, typename HeapMeta, LLVMSplitter LS = LLVMSplitter::PerObject >
+#ifndef OPT_LLVMSPLIT
+constexpr LLVMSplitter LLVM_DEFSPLIT = LLVMSplitter::PerObject;
+#else
+constexpr LLVMSplitter LLVM_DEFSPLIT = LLVMSplitter::OPT_LLVMSPLIT;
+#endif
+
+template< typename _Label, typename HeapMeta, LLVMSplitter LS = LLVM_DEFSPLIT >
 struct _LLVM : Common< Blob > {
     typedef Blob Node;
     using Interpreter = llvm::Interpreter< HeapMeta, _Label >;
