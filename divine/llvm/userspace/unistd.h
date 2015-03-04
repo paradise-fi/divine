@@ -100,7 +100,6 @@ FS_NOINLINE int ttyname_r( int fd, char *buf, size_t count );
 FS_NOINLINE void sync( void );
 FS_NOINLINE int syncfs( int fd );
 
-int nanosleep( const struct timespec *req, struct timespec *rem );
 unsigned int sleep( unsigned int seconds );
 int usleep( useconds_t usec );
 
