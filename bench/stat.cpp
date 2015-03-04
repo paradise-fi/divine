@@ -2,6 +2,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <future>
 
 #include <brick-data.h>
 #include <brick-types.h>
@@ -39,6 +40,8 @@ struct Statistics {
         const Statistics *_self;
         TableIt _row;
     };
+
+    Statistics() = default;
 
     explicit Statistics( std::istream &s ) {
         const std::regex valid {
@@ -235,13 +238,20 @@ int main( int argc, char **argv ) {
     }
 
     std::vector< std::pair< std::string, Statistics > > stat;
+    std::vector< std::future< Statistics > > fst;
     for ( std::string in; in = parser.next(), !in.empty(); ) {
-        std::cerr << "Parsing " << in << "... " << std::flush;
-        std::ifstream inf( in );
         stat.emplace_back( std::piecewise_construct,
-                std::make_tuple( in ), std::make_tuple( std::ref( inf ) ) );
-        std::cerr << "done" << std::endl;
+                std::make_tuple( in ), std::make_tuple() );
+        fst.emplace_back();
+        std::cerr << "Parsing " << in << "... " << std::endl;
+        fst.back() = std::async( [in]() {
+                std::ifstream inf( in );
+                return Statistics( inf );
+            } );
     }
+    for ( int i = 0; i < int( stat.size() ); ++i )
+        stat[ i ].second = fst[ i ].get();
+    std::cerr << "parsing done" << std::endl;
 
     gnuplot::Plots plots;
     gnuplot::Plot &plot = plots.append();
