@@ -176,7 +176,7 @@ struct DirectoryDescriptor {
 
         _items.reserve( dir->size() );
         for ( const auto &item : *dir ) {
-            _items.emplace( item );
+            _items.emplace_back( item );
         }
         rewind();
     }
