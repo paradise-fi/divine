@@ -442,7 +442,7 @@ void FSManager::chmod( int fd, mode_t mode ) {
 DirectoryDescriptor *FSManager::openDirectory( int fd ) {
     Node inode = getFile( fd )->inode();
     _checkGrants( inode, Mode::RUSER | Mode::XUSER );
-    _openDD.emplace_back( , fd );
+    _openDD.emplace_back( inode, fd );
     return &_openDD.back();
 }
 DirectoryDescriptor *FSManager::getDirectory( void *descriptor ) {
