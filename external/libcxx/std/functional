@@ -56,7 +56,7 @@ public:
 
     // invoke
     template <class... ArgTypes>
-      typename result_of<T(ArgTypes...)>::type
+      typename result_of<T&(ArgTypes&&...)>::type
           operator() (ArgTypes&&...) const;
 };
 
@@ -358,18 +358,6 @@ template <class S, class T>          const_mem_fun_ref_t<S,T>    mem_fun_ref(S (
 template <class S, class T, class A> const_mem_fun1_ref_t<S,T,A> mem_fun_ref(S (T::*f)(A) const);
 
 template<class R, class T> unspecified mem_fn(R T::*);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...));
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) const);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) volatile);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) const volatile);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) &);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) const &);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) volatile &);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) const volatile &);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) &&);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) const &&);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) volatile &&);
-template<class R, class T, class... Args> unspecified mem_fn(R (T::*)(Args...) const volatile &&);
 
 class bad_function_call
     : public exception
@@ -504,7 +492,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY plus : binary_function<_Tp, _Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x + __y;}
 };
 
@@ -513,7 +502,8 @@ template <>
 struct _LIBCPP_TYPE_VIS_ONLY plus<void>
 {
     template <class _T1, class _T2>
-    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) + _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
 };
@@ -527,7 +517,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY minus : binary_function<_Tp, _Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x - __y;}
 };
 
@@ -536,7 +527,8 @@ template <>
 struct _LIBCPP_TYPE_VIS_ONLY minus<void>
 {
     template <class _T1, class _T2>
-    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) - _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
 };
@@ -550,7 +542,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY multiplies : binary_function<_Tp, _Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x * __y;}
 };
 
@@ -559,7 +552,8 @@ template <>
 struct _LIBCPP_TYPE_VIS_ONLY multiplies<void>
 {
     template <class _T1, class _T2>
-    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) * _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
 };
@@ -573,7 +567,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY divides : binary_function<_Tp, _Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x / __y;}
 };
 
@@ -582,7 +577,8 @@ template <>
 struct _LIBCPP_TYPE_VIS_ONLY divides<void>
 {
     template <class _T1, class _T2>
-    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) / _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
 };
@@ -596,7 +592,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY modulus : binary_function<_Tp, _Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x % __y;}
 };
 
@@ -605,7 +602,8 @@ template <>
 struct _LIBCPP_TYPE_VIS_ONLY modulus<void>
 {
     template <class _T1, class _T2>
-    _LIBCPP_INLINE_VISIBILITY auto operator()(_T1&& __t, _T2&& __u) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) % _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
 };
@@ -619,7 +617,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY negate : unary_function<_Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x) const
         {return -__x;}
 };
 
@@ -628,7 +627,8 @@ template <>
 struct _LIBCPP_TYPE_VIS_ONLY negate<void>
 {
     template <class _Tp>
-    _LIBCPP_INLINE_VISIBILITY auto operator()(_Tp&& __x) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_Tp&& __x) const
         { return -_VSTD::forward<_Tp>(__x); }
     typedef void is_transparent;
 };
@@ -642,7 +642,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY equal_to : binary_function<_Tp, _Tp, bool>
 {
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x == __y;}
 };
 
@@ -650,7 +651,8 @@ struct _LIBCPP_TYPE_VIS_ONLY equal_to : binary_function<_Tp, _Tp, bool>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY equal_to<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) == _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -665,7 +667,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY not_equal_to : binary_function<_Tp, _Tp, bool>
 {
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x != __y;}
 };
 
@@ -673,7 +676,8 @@ struct _LIBCPP_TYPE_VIS_ONLY not_equal_to : binary_function<_Tp, _Tp, bool>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY not_equal_to<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) != _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -688,7 +692,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY greater : binary_function<_Tp, _Tp, bool>
 {
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x > __y;}
 };
 
@@ -696,7 +701,8 @@ struct _LIBCPP_TYPE_VIS_ONLY greater : binary_function<_Tp, _Tp, bool>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY greater<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) > _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -713,7 +719,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY greater_equal : binary_function<_Tp, _Tp, bool>
 {
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x >= __y;}
 };
 
@@ -721,7 +728,8 @@ struct _LIBCPP_TYPE_VIS_ONLY greater_equal : binary_function<_Tp, _Tp, bool>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY greater_equal<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) >= _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -736,7 +744,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY less_equal : binary_function<_Tp, _Tp, bool>
 {
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x <= __y;}
 };
 
@@ -744,7 +753,8 @@ struct _LIBCPP_TYPE_VIS_ONLY less_equal : binary_function<_Tp, _Tp, bool>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY less_equal<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) <= _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -759,7 +769,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY logical_and : binary_function<_Tp, _Tp, bool>
 {
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x && __y;}
 };
 
@@ -767,7 +778,8 @@ struct _LIBCPP_TYPE_VIS_ONLY logical_and : binary_function<_Tp, _Tp, bool>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY logical_and<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) && _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -782,7 +794,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY logical_or : binary_function<_Tp, _Tp, bool>
 {
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const _Tp& __x, const _Tp& __y) const
         {return __x || __y;}
 };
 
@@ -790,7 +803,8 @@ struct _LIBCPP_TYPE_VIS_ONLY logical_or : binary_function<_Tp, _Tp, bool>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY logical_or<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) || _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -805,7 +819,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY logical_not : unary_function<_Tp, bool>
 {
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const _Tp& __x) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const _Tp& __x) const
         {return !__x;}
 };
 
@@ -814,7 +829,8 @@ template <>
 struct _LIBCPP_TYPE_VIS_ONLY logical_not<void>
 {
     template <class _Tp>
-    _LIBCPP_INLINE_VISIBILITY auto operator()(_Tp&& __x) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_Tp&& __x) const
         { return !_VSTD::forward<_Tp>(__x); }
     typedef void is_transparent;
 };
@@ -828,7 +844,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY bit_and : binary_function<_Tp, _Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x & __y;}
 };
 
@@ -836,7 +853,8 @@ struct _LIBCPP_TYPE_VIS_ONLY bit_and : binary_function<_Tp, _Tp, _Tp>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY bit_and<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) & _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -851,7 +869,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY bit_or : binary_function<_Tp, _Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x | __y;}
 };
 
@@ -859,7 +878,8 @@ struct _LIBCPP_TYPE_VIS_ONLY bit_or : binary_function<_Tp, _Tp, _Tp>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY bit_or<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) | _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -874,7 +894,8 @@ template <class _Tp>
 #endif
 struct _LIBCPP_TYPE_VIS_ONLY bit_xor : binary_function<_Tp, _Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x, const _Tp& __y) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x, const _Tp& __y) const
         {return __x ^ __y;}
 };
 
@@ -882,7 +903,8 @@ struct _LIBCPP_TYPE_VIS_ONLY bit_xor : binary_function<_Tp, _Tp, _Tp>
 template <>
 struct _LIBCPP_TYPE_VIS_ONLY bit_xor<void>
 {
-    template <class _T1, class _T2> _LIBCPP_INLINE_VISIBILITY
+    template <class _T1, class _T2>
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
     auto operator()(_T1&& __t, _T2&& __u) const
         { return _VSTD::forward<_T1>(__t) ^ _VSTD::forward<_T2>(__u); }
     typedef void is_transparent;
@@ -894,7 +916,8 @@ struct _LIBCPP_TYPE_VIS_ONLY bit_xor<void>
 template <class _Tp = void>
 struct _LIBCPP_TYPE_VIS_ONLY bit_not : unary_function<_Tp, _Tp>
 {
-    _LIBCPP_INLINE_VISIBILITY _Tp operator()(const _Tp& __x) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    _Tp operator()(const _Tp& __x) const
         {return ~__x;}
 };
 
@@ -902,7 +925,8 @@ template <>
 struct _LIBCPP_TYPE_VIS_ONLY bit_not<void>
 {
     template <class _Tp>
-    _LIBCPP_INLINE_VISIBILITY auto operator()(_Tp&& __x) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    auto operator()(_Tp&& __x) const
         { return ~_VSTD::forward<_Tp>(__x); }
     typedef void is_transparent;
 };
@@ -914,14 +938,16 @@ class _LIBCPP_TYPE_VIS_ONLY unary_negate
 {
     _Predicate __pred_;
 public:
-    _LIBCPP_INLINE_VISIBILITY explicit unary_negate(const _Predicate& __pred)
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    explicit unary_negate(const _Predicate& __pred)
         : __pred_(__pred) {}
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const typename _Predicate::argument_type& __x) const
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const typename _Predicate::argument_type& __x) const
         {return !__pred_(__x);}
 };
 
 template <class _Predicate>
-inline _LIBCPP_INLINE_VISIBILITY
+inline _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
 unary_negate<_Predicate>
 not1(const _Predicate& __pred) {return unary_negate<_Predicate>(__pred);}
 
@@ -933,15 +959,17 @@ class _LIBCPP_TYPE_VIS_ONLY binary_negate
 {
     _Predicate __pred_;
 public:
-    _LIBCPP_INLINE_VISIBILITY explicit binary_negate(const _Predicate& __pred)
-        : __pred_(__pred) {}
-    _LIBCPP_INLINE_VISIBILITY bool operator()(const typename _Predicate::first_argument_type& __x,
+    _LIBCPP_INLINE_VISIBILITY explicit _LIBCPP_CONSTEXPR_AFTER_CXX11 
+    binary_negate(const _Predicate& __pred) : __pred_(__pred) {}
+
+    _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
+    bool operator()(const typename _Predicate::first_argument_type& __x,
                     const typename _Predicate::second_argument_type& __y) const
         {return !__pred_(__x, __y);}
 };
 
 template <class _Predicate>
-inline _LIBCPP_INLINE_VISIBILITY
+inline _LIBCPP_CONSTEXPR_AFTER_CXX11 _LIBCPP_INLINE_VISIBILITY
 binary_negate<_Predicate>
 not2(const _Predicate& __pred) {return binary_negate<_Predicate>(__pred);}
 
@@ -1193,7 +1221,7 @@ public:
     template <class... _ArgTypes>
        _LIBCPP_INLINE_VISIBILITY
        typename __invoke_return<type, _ArgTypes...>::type
-          operator() (_ArgTypes&&... __args)
+          operator() (_ArgTypes&&... __args) const
           {
               return __invoke(__f_, _VSTD::forward<_ArgTypes>(__args)...);
           }
@@ -1205,38 +1233,6 @@ __mem_fn<_Rp _Tp::*>
 mem_fn(_Rp _Tp::* __pm)
 {
     return __mem_fn<_Rp _Tp::*>(__pm);
-}
-
-template<class _Rp, class _Tp, class ..._Args>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_Args...)>
-mem_fn(_Rp (_Tp::* __pm)(_Args...))
-{
-    return __mem_fn<_Rp (_Tp::*)(_Args...)>(__pm);
-}
-
-template<class _Rp, class _Tp, class ..._Args>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_Args...) const>
-mem_fn(_Rp (_Tp::* __pm)(_Args...) const)
-{
-    return __mem_fn<_Rp (_Tp::*)(_Args...) const>(__pm);
-}
-
-template<class _Rp, class _Tp, class ..._Args>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_Args...) volatile>
-mem_fn(_Rp (_Tp::* __pm)(_Args...) volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)(_Args...) volatile>(__pm);
-}
-
-template<class _Rp, class _Tp, class ..._Args>
-inline _LIBCPP_INLINE_VISIBILITY
-__mem_fn<_Rp (_Tp::*)(_Args...) const volatile>
-mem_fn(_Rp (_Tp::* __pm)(_Args...) const volatile)
-{
-    return __mem_fn<_Rp (_Tp::*)(_Args...) const volatile>(__pm);
 }
 
 // bad_function_call
@@ -1425,7 +1421,7 @@ class _LIBCPP_TYPE_VIS_ONLY function<_Rp(_ArgTypes...)>
         static bool __not_null(_R2 (_Cp::*__p)(_Ap...) const volatile) {return __p;}
     template <class _R2, class ..._Ap>
         _LIBCPP_INLINE_VISIBILITY
-        static bool __not_null(const function<_Rp(_Ap...)>& __p) {return __p;}
+        static bool __not_null(const function<_R2(_Ap...)>& __p) {return !!__p;}
 
     template <class _Fp, bool = !is_same<_Fp, function>::value &&
                                 __invokable<_Fp&, _ArgTypes...>::value>
@@ -1621,21 +1617,22 @@ function<_Rp(_ArgTypes...)>::function(allocator_arg_t, const _Alloc& __a0, _Fp _
     if (__not_null(__f))
     {
         typedef __function::__func<_Fp, _Alloc, _Rp(_ArgTypes...)> _FF;
-        if (sizeof(_FF) <= sizeof(__buf_) && is_nothrow_copy_constructible<_Fp>::value)
+        typedef typename __alloc_traits::template
+#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
+            rebind_alloc<_FF>
+#else
+            rebind_alloc<_FF>::other
+#endif
+            _Ap;
+        _Ap __a(__a0);
+        if (sizeof(_FF) <= sizeof(__buf_) && 
+            is_nothrow_copy_constructible<_Fp>::value && is_nothrow_copy_constructible<_Ap>::value)
         {
             __f_ = (__base*)&__buf_;
-            ::new (__f_) _FF(_VSTD::move(__f));
+            ::new (__f_) _FF(_VSTD::move(__f), _Alloc(__a));
         }
         else
         {
-            typedef typename __alloc_traits::template
-#ifndef _LIBCPP_HAS_NO_TEMPLATE_ALIASES
-                rebind_alloc<_FF>
-#else
-                rebind_alloc<_FF>::other
-#endif
-                                                         _Ap;
-            _Ap __a(__a0);
             typedef __allocator_destructor<_Ap> _Dp;
             unique_ptr<__base, _Dp> __hold(__a.allocate(1), _Dp(__a, 1));
             ::new (__hold.get()) _FF(_VSTD::move(__f), _Alloc(__a));
@@ -1861,15 +1858,15 @@ inline _LIBCPP_INLINE_VISIBILITY
 typename __invoke_of<_Ti&, _Uj...>::type
 __mu_expand(_Ti& __ti, tuple<_Uj...>& __uj, __tuple_indices<_Indx...>)
 {
-    return __ti(_VSTD::forward<_Uj>(get<_Indx>(__uj))...);
+    return __ti(_VSTD::forward<_Uj>(_VSTD::get<_Indx>(__uj))...);
 }
 
 template <class _Ti, class ..._Uj>
 inline _LIBCPP_INLINE_VISIBILITY
-typename enable_if
+typename __lazy_enable_if
 <
     is_bind_expression<_Ti>::value,
-    typename __invoke_of<_Ti&, _Uj...>::type
+    __invoke_of<_Ti&, _Uj...>
 >::type
 __mu(_Ti& __ti, tuple<_Uj...>& __uj)
 {
@@ -1896,7 +1893,7 @@ typename enable_if
 __mu(_Ti&, _Uj& __uj)
 {
     const size_t _Indx = is_placeholder<_Ti>::value - 1;
-    return _VSTD::forward<typename tuple_element<_Indx, _Uj>::type>(get<_Indx>(__uj));
+    return _VSTD::forward<typename tuple_element<_Indx, _Uj>::type>(_VSTD::get<_Indx>(__uj));
 }
 
 template <class _Ti, class _Uj>
@@ -2023,7 +2020,7 @@ typename __bind_return<_Fp, _BoundArgs, _Args>::type
 __apply_functor(_Fp& __f, _BoundArgs& __bound_args, __tuple_indices<_Indx...>,
                 _Args&& __args)
 {
-    return __invoke(__f, __mu(get<_Indx>(__bound_args), __args)...);
+    return __invoke(__f, __mu(_VSTD::get<_Indx>(__bound_args), __args)...);
 }
 
 template<class _Fp, class ..._BoundArgs>
