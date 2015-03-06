@@ -146,7 +146,35 @@ private:
 
 };
 
+struct VFS {
 
+    VFS() {
+        __divine_interrupt_mask();
+        _fsm = new FSManager{};
+    }
+    VFS( const char *in, size_t length ) {
+        __divine_interrupt_mask();
+        _fsm = new FSManager{ in, length };
+    }
+    explicit VFS( std::initializer_list< SnapshotFS > items ) {
+        __divine_interrupt_mask();
+        _fsm = new FSManager{ items };
+    }
+    VFS( const char *in, size_t length, std::initializer_list< SnapshotFS > items ) {
+        __divine_interrupt_mask();
+        _fsm = new FSManager{ in, length, items };
+    }
+
+    FSManager &instance() {
+        assert( _fsm );
+        return *_fsm;
+    }
+
+private:
+    FSManager *_fsm;
+};
+
+extern VFS vfs;
 
 } // namespace fs
 } // namespace divine
