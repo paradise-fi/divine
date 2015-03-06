@@ -93,28 +93,9 @@ bool operator!=( const Allocator< T1 > &, const Allocator< T2 > & ) {
 } // namespace fs
 } // namespace divine
 
-inline void *operator new( std::size_t count ) {
-#ifdef __divine__
-    return __divine_malloc( count );
-#else
-    return std::malloc( count );
-#endif
-}
-
-inline void *operator new[]( std::size_t count ) {
-    return ::operator new( count );
-}
-
-inline void operator delete( void *ptr ) noexcept {
-#ifdef __divine__
-    __divine_free( ptr );
-#else
-    std::free( ptr );
-#endif
-}
-
-inline void operator delete[]( void *ptr ) noexcept {
-    ::operator delete( ptr );
-}
+void *operator new( std::size_t count );
+void *operator new[]( std::size_t count );
+void operator delete( void *ptr ) noexcept;
+void operator delete[]( void *ptr ) noexcept;
 
 #endif
