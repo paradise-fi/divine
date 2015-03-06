@@ -71,7 +71,9 @@ int openat( int dirfd, const char *path, int flags, ... ) {
         f |= divine::fs::flags::Open::Create;
         va_list args;
         va_start( args, flags );
-        m = unsigned( va_arg( args, int ) );
+        if ( !args )
+            FS_PROBLEM( "flag O_CREAT has been specified but mode was not set" );
+        m = va_arg( args, mode_t );
         va_end( args );
     }
 
@@ -98,6 +100,8 @@ int open( const char *path, int flags, ... ) {
     if ( flags & O_CREAT ) {
         va_list args;
         va_start( args, flags );
+        if ( !args )
+            FS_PROBLEM( "flag O_CREAT has been specified but mode was not set" );
         mode = va_arg( args, int );
         va_end( args );
     }
