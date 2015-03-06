@@ -46,10 +46,6 @@ void free( void * p) _PDCLIB_nothrow { return __divine_free( p ); }
 
 /* IOStream */
 
-void _ZNSt8ios_base4InitC1Ev( void ) { // std::ios_base::Init
-    // TODO?
-}
-
 void *__dso_handle; /* this is emitted by clang for calls to __cxa_exit for whatever reason */
 
 extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
