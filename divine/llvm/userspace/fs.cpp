@@ -2,15 +2,15 @@
 #include <cerrno>
 #include <cstdarg>
 #include <cstdlib>
-#include <cstring.h>
+#include <cstring>
 
 #include <bits/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <fcntl.h>
 
-#include "fs.h"
-#include "fcntl.h"
 #include "fs-manager.h"
-#include "fs-stat.h"
-#include "dirent.h"
 
 #ifdef __divine__
 #define FS_MASK __divine_interrupt_mask();
