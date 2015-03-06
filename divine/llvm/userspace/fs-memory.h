@@ -1,6 +1,6 @@
 #include <memory>
 #include <cstdlib>
-
+#include "divine.h"
 
 #ifndef _FS_MEMORY_H_
 #define _FS_MEMORY_H_
@@ -45,7 +45,7 @@ struct Allocator {
 
     pointer allocate( size_type n, std::allocator< void >::const_pointer hint = nullptr ) {
 #ifdef __divine__
-        return __divine_malloc( n * sizeof( value_type ) );
+        return static_cast< pointer >(__divine_malloc( n * sizeof( value_type ) ) );
 #else
         return std::allocator< value_type >().allocate( n, hint );
 #endif
