@@ -628,7 +628,8 @@ struct dirent *readdir( DIR *dirp ) {
         if ( !ent )
             return nullptr;
         entry.d_ino = ent->ino();
-        std::copy( ent->name().begin(), ent->name().end(), entry.d_name ) = '\0';
+        char *x = std::copy( ent->name().begin(), ent->name().end(), entry.d_name );
+        *x = '\0';
         dir->next();
         return &entry;
     } catch ( Error & ) {
@@ -644,7 +645,8 @@ int readdir_r( DIR *dirp, struct dirent *entry, struct dirent **result ) {
         auto ent = dir->get();
         if ( ent ) {
             entry->d_ino = ent->ino();
-            std::copy( ent->name().begin(), ent->name().end(), entry->d_name ) = '\0';
+            char *x = std::copy( ent->name().begin(), ent->name().end(), entry->d_name );
+            *x = '\0';
             *result = entry;
             dir->next();
         }
@@ -658,7 +660,7 @@ int readdir_r( DIR *dirp, struct dirent *entry, struct dirent **result ) {
 
 void rewinddir( DIR *dirp ) {
     FS_MASK
-    e = errno;
+    int e = errno;
     try {
         vfs.instance().getDirectory( dirp )->rewind();
     } catch ( Error & ) {
@@ -692,19 +694,20 @@ int scandir( const char *path, struct dirent ***namelist,
                 break;
 
             workingEntry->d_ino = ent->ino();
-            std::copy( ent->name().begin(), ent->name().end(), workingEntry->d_name ) = '\0';
+            char *x = std::copy( ent->name().begin(), ent->name().end(), workingEntry->d_name );
+            *x = '\0';
             dir->next();
 
             if ( filter && !filter( workingEntry ) )
                 continue;
 
-            struct dirent **newEntries = FS_MALLOC( ( length + 1 ) * sizeof( struct dirent * ) );
+            struct dirent **newEntries = (struct dirent **)FS_MALLOC( ( length + 1 ) * sizeof( struct dirent * ) );
             if ( length )
                 std::memcpy( newEntries, entries, length * sizeof( struct dirent * ) );
             std::swap( entries, newEntries );
             std::free( newEntries );
             entries[ length ] = workingEntry;
-            workingEntry = FS_MALLOC( sizeof( struct dirent ) );
+            workingEntry = (struct dirent *)FS_MALLOC( sizeof( struct dirent ) );
             ++length;
         }
 
@@ -721,7 +724,7 @@ int scandir( const char *path, struct dirent ***namelist,
 
 long telldir( DIR *dirp ) {
     FS_MASK
-    e = errno;
+    int e = errno;
     try {
         return vfs.instance().getDirectory( dirp )->tell();
     } catch ( Error & ) {
@@ -730,7 +733,7 @@ long telldir( DIR *dirp ) {
 }
 void seekdir( DIR *dirp, long offset ) {
     FS_MASK
-    e = errno;
+    int e = errno;
     try {
         vfs.instance().getDirectory( dirp )->seek( offset );
     } catch ( Error & ) {
