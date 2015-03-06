@@ -330,7 +330,9 @@ typedef __char32_t char32_t;
 #if defined(__FreeBSD__)
 #define _LIBCPP_HAS_QUICK_EXIT
 #define _LIBCPP_HAS_C11_FEATURES
-#elif defined(__linux__)
+#elif defined(__ANDROID__)
+#define _LIBCPP_HAS_QUICK_EXIT
+#elif defined(__linux__) && !defined(__divine__)
 #include <features.h>
 #if __GLIBC_PREREQ(2, 15)
 #define _LIBCPP_HAS_QUICK_EXIT
@@ -620,6 +622,11 @@ template <unsigned> struct __static_assert_check {};
 
 #ifndef _LIBCPP_EXTERN_TEMPLATE2
 #define _LIBCPP_EXTERN_TEMPLATE2(...) extern template __VA_ARGS__;
+#endif
+
+#if !defined(__divine__)
+#if defined(__APPLE__) && defined(__LP64__) && !defined(__x86_64__)
+#define _LIBCPP_NONUNIQUE_RTTI_BIT (1ULL << 63)
 #endif
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(_WIN32) || defined(__sun__) || defined(__NetBSD__)

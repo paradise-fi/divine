@@ -18,13 +18,82 @@
 
 #if defined(__sun__)
 #define rename solaris_headers_are_broken
-#endif
+#endif // defined(__sun__)
+
+#if !defined(__divine__)
+#if !defined(_WIN32)
 #include <fcntl.h>
 #include <unistd.h>
 #endif // !defined(_WIN32)
 #include <errno.h>
+#if defined(_LIBCPP_USING_NACL_RANDOM)
+#include <nacl/nacl_random.h>
+#endif // defined(_LIBCPP_USING_NACL_RANDOM)
+#endif
 
 _LIBCPP_BEGIN_NAMESPACE_STD
+
+#if defined(__divine__)
+
+// FIXME: this is very very bad
+
+random_device::random_device( const string & ) { }
+random_device::~random_device() { }
+unsigned random_device::operator()() {
+    return random_device::min() + __divine_choice( random_device::max() - random_device::min() );
+}
+
+#elif defined(_WIN32)
+
+random_device::random_device(const string&)
+{
+}
+
+random_device::~random_device()
+{
+}
+
+unsigned
+random_device::operator()()
+{
+    unsigned r;
+    errno_t err = rand_s(&r);
+    if (err)
+        __throw_system_error(err, "random_device rand_s failed.");
+    return r;
+}
+
+#elif defined(_LIBCPP_USING_NACL_RANDOM)
+
+random_device::random_device(const string& __token)
+{
+    if (__token != "/dev/urandom")
+        __throw_system_error(ENOENT, ("random device not supported " + __token).c_str());
+    int error = nacl_secure_random_init();
+    if (error)
+        __throw_system_error(error, ("random device failed to open " + __token).c_str());
+}
+
+random_device::~random_device()
+{
+}
+
+unsigned
+random_device::operator()()
+{
+    unsigned r;
+    size_t n = sizeof(r);
+    char* p = reinterpret_cast<char*>(&r);
+    size_t bytes_written;
+    int error = nacl_secure_random(&r, n, &bytes_written);
+    if (error != 0)
+        __throw_system_error(error, "random_device failed getting bytes");
+    else if (bytes_written != n)
+        __throw_runtime_error("random_device failed to obtain enough bytes");
+    return r;
+}
+
+#else // !defined(_WIN32) && !defined(_LIBCPP_USING_NACL_RANDOM)
 
 random_device::random_device(const string& __token)
     : __f_(open(__token.c_str(), O_RDONLY))
@@ -61,27 +130,12 @@ random_device::operator()()
     return r;
 }
 
-#endif // defined(_WIN32) || defined(_LIBCPP_USING_NACL_RANDOM)
+#endif // defined(__divine__) || defined(_WIN32) || defined(_LIBCPP_USING_NACL_RANDOM)
 
 double
 random_device::entropy() const _NOEXCEPT
 {
     return 0;
 }
-#else
-
-// FIXME: this is very very bad
-
-random_device::random_device( const string & ) { }
-random_device::~random_device() { }
-unsigned random_device::operator()() {
-    return random_device::min() + __divine_choice( random_device::max() - random_device::min() );
-}
-
-double random_device::entropy() const _NOEXCEPT {
-    return 0;
-}
-
-#endif
 
 _LIBCPP_END_NAMESPACE_STD

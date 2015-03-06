@@ -176,7 +176,9 @@ using ::fputc;
 using ::fputs;
 using ::getc;
 using ::getchar;
+#if _LIBCPP_STD_VER <= 11 && !defined(__divine__)
 using ::gets;
+#endif
 using ::putc;
 using ::putchar;
 using ::puts;

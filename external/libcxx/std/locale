@@ -193,9 +193,14 @@ template <class charT> class messages_byname;
 #include <ctime>
 #if defined(_LIBCPP_MSVCRT) || defined(__MINGW32__)
 #include <support/win32/locale_win32.h>
-#else // _LIBCPP_MSVCRT
+#elif defined(_NEWLIB_VERSION)
+// FIXME: replace all the uses of _NEWLIB_VERSION with __NEWLIB__ preceded by an
+// include of <sys/cdefs.h> once https://sourceware.org/ml/newlib-cvs/2014-q3/msg00038.html
+// has had a chance to bake for a bit
+#include <support/newlib/xlocale.h>
+#elif !defined(__ANDROID__) && !defined(__divine__)
 #include <nl_types.h>
-#endif  // !_LIBCPP_MSVCRT
+#endif
 
 #ifdef __APPLE__
 #include <Availability.h>
@@ -265,7 +270,8 @@ typedef _VSTD::unique_ptr<__locale_struct, decltype(&uselocale)> __locale_raii;
 // OSX has nice foo_l() functions that let you turn off use of the global
 // locale.  Linux, not so much.  The following functions avoid the locale when
 // that's possible and otherwise do the wrong thing.  FIXME.
-#if defined(__linux__) || defined(EMSCRIPTEN) || defined(_AIX)
+#if defined(__linux__) || defined(__EMSCRIPTEN__) || defined(_AIX) || \
+    defined(_NEWLIB_VERSION) || defined(__divine__)
 
 #ifdef _LIBCPP_LOCALE__L_EXTENSIONS
 decltype(MB_CUR_MAX_L(_VSTD::declval<locale_t>()))
@@ -3711,7 +3717,7 @@ template <class _CharT>
 typename messages<_CharT>::catalog
 messages<_CharT>::do_open(const basic_string<char>& __nm, const locale&) const
 {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__ANDROID__) || defined(_NEWLIB_VERSION) || defined(__divine__)
     return -1;
 #else // _WIN32 || __ANDROID__
     catalog __cat = (catalog)catopen(__nm.c_str(), NL_CAT_LOCALE);
@@ -3726,7 +3732,7 @@ typename messages<_CharT>::string_type
 messages<_CharT>::do_get(catalog __c, int __set, int __msgid,
                          const string_type& __dflt) const
 {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__ANDROID__) || defined(_NEWLIB_VERSION) || defined(__divine__)
     return __dflt;
 #else // _WIN32
     string __ndflt;
@@ -3748,9 +3754,9 @@ template <class _CharT>
 void
 messages<_CharT>::do_close(catalog __c) const
 {
-#if !defined(_WIN32)
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(_NEWLIB_VERSION) && !defined(__divine__)
     if (__c != -1)
-       && !defined( __divine__ )  __c <<= 1;
+        __c <<= 1;
     nl_catd __cat = (nl_catd)__c;
     catclose(__cat);
 #endif // !_WIN32
