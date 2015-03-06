@@ -12,18 +12,6 @@ extern const char *compile_defines_str;
 
 namespace src_llvm {
     extern const char *llvm_problem_def_str;
-    extern const char *divine_h_str;
-    extern const char *pthread_h_str;
-    extern const char *unwind_h_str;
-    extern const char *divine_assert_h_str;
-    extern const char *divine_problem_h_str;
-    extern const char *divine_atomoic_str;
-
-    extern const char *cxa_exception_divine_cpp_str;
-    extern const char *glue_cpp_str;
-    extern const char *pthread_cpp_str;
-    extern const char *entry_cpp_str;
-    extern const char *stubs_cpp_str;
 }
 
 struct stringtable { const char *n, *c; };
