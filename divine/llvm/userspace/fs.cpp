@@ -13,11 +13,13 @@
 #include "fs-manager.h"
 
 #ifdef __divine__
-#define FS_MASK __divine_interrupt_mask();
-#define FS_MALLOC( x ) __divine_malloc( x )
+# define FS_MASK __divine_interrupt_mask();
+# define FS_MALLOC( x ) __divine_malloc( x )
+# define FS_PROBLEM( msg ) __divine_problem( 1, msg )
 #else
-#define FS_MASK
-#define FS_MALLOC( x ) std::malloc( x )
+# define FS_MASK
+# define FS_MALLOC( x ) std::malloc( x )
+# define FS_PROBLEM( msg )
 #endif
 
 namespace divine {
