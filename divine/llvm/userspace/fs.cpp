@@ -54,7 +54,7 @@ int openat( int dirfd, const char *path, int flags, ... ) {
     FS_MASK
     using namespace divine::fs::flags;
     divine::fs::Flags< Open > f = Open::NoFlags;
-    unsigned m = 0;
+    mode_t m = 0;
     // special behaviour - check for access rights but do not grant them
     if ( ( flags & 3 ) == 3)
         f |= Open::NoAccess;
@@ -103,7 +103,7 @@ int open( const char *path, int flags, ... ) {
     }
     return openat( AT_FDCWD, path, flags, mode );
 }
-int creat( const char *path, int mode ) {
+int creat( const char *path, mode_t mode ) {
     FS_MASK
     return openat( AT_FDCWD, path, O_CREAT | O_WRONLY | O_TRUNC, mode );
 }
@@ -539,7 +539,7 @@ int pipe( int pipefd[ 2 ] ) {
     }
 }
 
-int fchmodeat( int dirfd, const char *path, int mode, int flags ) {
+int fchmodeat( int dirfd, const char *path, mode_t mode, int flags ) {
     FS_MASK
 
     divine::fs::Flags< divine::fs::flags::At > fl = divine::fs::flags::At::NoFlags;
@@ -556,11 +556,11 @@ int fchmodeat( int dirfd, const char *path, int mode, int flags ) {
         return -1;
     }
 }
-int chmod( const char *path, int mode ) {
+int chmod( const char *path, mode_t mode ) {
     FS_MASK
     return fchmodeat( AT_FDCWD, path, mode, 0 );
 }
-int fchmod( int fd, int mode ) {
+int fchmod( int fd, mode_t mode ) {
     FS_MASK
     try {
         vfs.instance().chmod( fd, mode );
