@@ -187,7 +187,7 @@ struct Pipe : public File {
         return _writer;
     }
 
-    void assingReader() {
+    void assignReader() {
         if ( _reader )
             __divine_problem( Other, "Pipe is opened for reading again." );
         _reader = true;
