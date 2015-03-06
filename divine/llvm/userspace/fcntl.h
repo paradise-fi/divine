@@ -1,6 +1,8 @@
 #ifndef _FCNTL_H_
 #define _FCNTL_H_
 
+#include <sys/types.h>
+
 #define O_RDONLY           00
 #define O_WRONLY           01
 #define O_RDWR             02
@@ -94,7 +96,7 @@ extern "C" {
 
 #define FS_NOINLINE __attribute__((noinline))
 
-FS_NOINLINE int creat( const char *path, int mode );
+FS_NOINLINE int creat( const char *path, mode_t mode );
 FS_NOINLINE int open( const char *path, int flags, ... );
 FS_NOINLINE int openat( int dirfd, const char *path, int flags, ... );
 
