@@ -563,19 +563,22 @@ struct Utils {
     struct DetectorWorker : Thread {
 
         StartDetector detector;
+        int rep;
 
-        DetectorWorker( StartDetector::Shared &sh ) :
-            detector( sh )
+        DetectorWorker( StartDetector::Shared &sh, int repeat ) :
+            detector( sh ),
+            rep( repeat )
         {}
 
         void main() {
-            detector.waitForAll( peers );
+            for ( int i = 0; i < rep; ++i )
+                detector.waitForAll( peers );
         }
     };
 
-    TEST(startDetector) {// this test must finish
+    void processDetector( int repeat ) {
         StartDetector::Shared sh;
-        std::vector< DetectorWorker > threads{ peers, DetectorWorker{ sh } };
+        std::vector< DetectorWorker > threads{ peers, DetectorWorker{ sh, repeat } };
 
 #if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
         alarm( 1 );
@@ -588,6 +591,14 @@ struct Utils {
                 w.join();
             ASSERT_EQ( sh.counter.load(), 0 );
         }
+    }
+
+    TEST(startDetectorSimple) {
+        processDetector( 1 );
+    }
+
+    TEST(startDetectorReentrant) {
+        processDetector( 4 );
     }
 
     struct CounterWorker : Thread {
