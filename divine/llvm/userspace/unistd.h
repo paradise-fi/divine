@@ -1,3 +1,5 @@
+// -*- C++ -*- (c) 2015 Jiří Weiser
+
 #include <sys/types.h>
 
 #ifndef _UNISTD_H_

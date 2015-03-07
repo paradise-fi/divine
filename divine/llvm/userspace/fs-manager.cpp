@@ -1,3 +1,5 @@
+// -*- C++ -*- (c) 2015 Jiří Weiser
+
 #include "fs-manager.h"
 
 namespace divine {

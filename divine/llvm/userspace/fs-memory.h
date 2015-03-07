@@ -1,5 +1,8 @@
+// -*- C++ -*- (c) 2015 Jiří Weiser
+
 #include <memory>
 #include <cstdlib>
+
 #include "divine.h"
 
 #ifndef _FS_MEMORY_H_

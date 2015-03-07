@@ -1,3 +1,9 @@
+// -*- C++ -*- (c) 2015 Jiří Weiser
+//             (c) 2014 Vladimír Štill
+/*
+ *  This file contains couple of (sometimes a little bit modified)
+ *  functions from bricks/brick-fs.h.
+ */
 #include "fs-utils.h"
 
 #ifndef _FS_PATH_H_

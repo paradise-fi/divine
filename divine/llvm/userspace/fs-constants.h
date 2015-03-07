@@ -1,3 +1,5 @@
+// -*- C++ -*- (c) 2015 Jiří Weiser
+
 #include "fs-utils.h"
 
 #ifndef _FS_CONSTANTS_H_

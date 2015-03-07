@@ -1,3 +1,5 @@
+// -*- C++ -*- (c) 2015 Jiří Weiser
+
 #ifndef _FCNTL_H_
 #define _FCNTL_H_
 

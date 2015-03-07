@@ -1,3 +1,5 @@
+// -*- C++ -*- (c) 2015 Jiří Weiser
+
 #include "fs-memory.h"
 
 void *operator new( std::size_t count ) {

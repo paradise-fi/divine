@@ -1,4 +1,7 @@
-/**
+// -*- C++ -*- (c) 2015 Jiří Weiser
+//             (c) 2014 Vladimír Štill
+
+/*
  * Few things ported from brick-fs and brick-types.
  */
 #include <vector>
