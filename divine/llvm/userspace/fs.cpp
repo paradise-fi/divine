@@ -686,9 +686,6 @@ int scandir( const char *path, struct dirent ***namelist,
         struct dirent **entries = nullptr;
         struct dirent *workingEntry = (struct dirent *)FS_MALLOC( sizeof( struct dirent ) );
 
-        //divine::fs::DirectoryDescriptor dir;
-        //const divine::fs::DirectoryItemLabel *ent;
-
         while ( true ) {
             auto dir = vfs.instance().getDirectory( dirp );
             auto ent = dir->get();
