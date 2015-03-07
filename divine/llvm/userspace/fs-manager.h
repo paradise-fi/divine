@@ -21,29 +21,29 @@
 namespace divine {
 namespace fs {
 
-struct FSManager {
+struct Manager {
 
-    FSManager() :
-        FSManager( true )
+    Manager() :
+        Manager( true )
     {
         _standardIO[ 0 ]->assign( new RegularFile() );
     }
 
-    FSManager( const char *in, size_t length ) :
-        FSManager( true )
+    Manager( const char *in, size_t length ) :
+        Manager( true )
     {
         _standardIO[ 0 ]->assign( new RegularFile( in, length ) );
     }
 
-    explicit FSManager( std::initializer_list< SnapshotFS > items ) :
-        FSManager()
+    explicit Manager( std::initializer_list< SnapshotFS > items ) :
+        Manager()
     {
         for ( const auto &item : items )
             _insertSnapshotItem( item );
     }
 
-    FSManager( const char *in, size_t length, std::initializer_list< SnapshotFS > items ) :
-        FSManager( in, length )
+    Manager( const char *in, size_t length, std::initializer_list< SnapshotFS > items ) :
+        Manager( in, length )
     {
         for ( const auto &item : items )
             _insertSnapshotItem( item );
@@ -129,7 +129,7 @@ private:
 
     unsigned short _umask;
 
-    FSManager( bool );// private default ctor
+    Manager( bool );// private default ctor
 
     template< typename... Args >
     void _createFile( utils::String name, mode_t mode, Node *file, Args &&... args );
@@ -152,28 +152,31 @@ struct VFS {
 
     VFS() {
         __divine_interrupt_mask();
-        _fsm = new FSManager{};
+        _manager = new Manager{};
     }
     VFS( const char *in, size_t length ) {
         __divine_interrupt_mask();
-        _fsm = new FSManager{ in, length };
+        _manager = new Manager{ in, length };
     }
     explicit VFS( std::initializer_list< SnapshotFS > items ) {
         __divine_interrupt_mask();
-        _fsm = new FSManager{ items };
+        _manager = new Manager{ items };
     }
     VFS( const char *in, size_t length, std::initializer_list< SnapshotFS > items ) {
         __divine_interrupt_mask();
-        _fsm = new FSManager{ in, length, items };
+        _manager = new Manager{ in, length, items };
+    }
+    ~VFS() {
+        delete _manager;
     }
 
-    FSManager &instance() {
-        assert( _fsm );
-        return *_fsm;
+    Manager &instance() {
+        assert( _manager );
+        return *_manager;
     }
 
 private:
-    FSManager *_fsm;
+    Manager *_manager;
 };
 
 extern VFS vfs;

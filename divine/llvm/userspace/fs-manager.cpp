@@ -5,7 +5,7 @@
 namespace divine {
 namespace fs {
 
-FSManager::FSManager( bool ) :
+Manager::Manager( bool ) :
     _root{ std::make_shared< INode >(
         Mode::DIR | Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER
     ) },
@@ -27,7 +27,7 @@ FSManager::FSManager( bool ) :
 
 
 
-void FSManager::createDirectoryAt( int dirfd, utils::String name, mode_t mode ) {
+void Manager::createDirectoryAt( int dirfd, utils::String name, mode_t mode ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -53,7 +53,7 @@ void FSManager::createDirectoryAt( int dirfd, utils::String name, mode_t mode ) 
     dir->create( std::move( name ), node );
 }
 
-void FSManager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl ) {
+void Manager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl ) {
     if ( name.empty() || target.empty() )
         throw Error( ENOENT );
 
@@ -89,7 +89,7 @@ void FSManager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd
     dir->create( std::move( name ), targetNode );
 }
 
-void FSManager::createSymLinkAt( int dirfd, utils::String name, utils::String target ) {
+void Manager::createSymLinkAt( int dirfd, utils::String name, utils::String target ) {
     if ( name.empty() )
         throw Error( ENOENT );
     if ( target.size() > 1023 )
@@ -116,7 +116,7 @@ void FSManager::createSymLinkAt( int dirfd, utils::String name, utils::String ta
     dir->create( std::move( name ), node );
 }
 
-void FSManager::createFifoAt( int dirfd, utils::String name, mode_t mode ) {
+void Manager::createFifoAt( int dirfd, utils::String name, mode_t mode ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -140,7 +140,7 @@ void FSManager::createFifoAt( int dirfd, utils::String name, mode_t mode ) {
     dir->create( std::move( name ), node );
 }
 
-ssize_t FSManager::readLinkAt( int dirfd, utils::String name, char *buf, size_t count ) {
+ssize_t Manager::readLinkAt( int dirfd, utils::String name, char *buf, size_t count ) {
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
     if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
@@ -159,7 +159,7 @@ ssize_t FSManager::readLinkAt( int dirfd, utils::String name, char *buf, size_t 
     return realLength;
 }
 
-void FSManager::accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl ) {
+void Manager::accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -182,7 +182,7 @@ void FSManager::accessAt( int dirfd, utils::String name, Flags< flags::Access > 
         throw Error( EACCES );
 }
 
-int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, mode_t mode ) {
+int Manager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, mode_t mode ) {
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
     if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
@@ -223,15 +223,15 @@ int FSManager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > f
     return _getFileDescriptor( std::make_shared< FileDescriptor >( file, fl ) );
 }
 
-void FSManager::closeFile( int fd ) {
+void Manager::closeFile( int fd ) {
     getFile( fd ).reset();
 }
 
-int FSManager::duplicate( int oldfd ) {
+int Manager::duplicate( int oldfd ) {
     return _getFileDescriptor( getFile( oldfd ) );
 }
 
-int FSManager::duplicate2( int oldfd, int newfd ) {
+int Manager::duplicate2( int oldfd, int newfd ) {
     if ( oldfd == newfd )
         return newfd;
     auto f = getFile( oldfd );
@@ -243,13 +243,13 @@ int FSManager::duplicate2( int oldfd, int newfd ) {
     return newfd;
 }
 
-std::shared_ptr< FileDescriptor > &FSManager::getFile( int fd ) {
+std::shared_ptr< FileDescriptor > &Manager::getFile( int fd ) {
     if ( fd >= 0 && fd < _openFD.size() && _openFD[ fd ] )
         return _openFD[ fd ];
     throw Error( EBADF );
 }
 
-std::pair< int, int > FSManager::pipe() {
+std::pair< int, int > Manager::pipe() {
     mode_t mode = Mode::RWXUSER | Mode::FIFO;
 
     Node p = std::make_shared< INode >( mode, new Pipe( true, true ) );
@@ -259,7 +259,7 @@ std::pair< int, int > FSManager::pipe() {
     };
 }
 
-void FSManager::removeFile( utils::String name ) {
+void Manager::removeFile( utils::String name ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -272,7 +272,7 @@ void FSManager::removeFile( utils::String name ) {
     dir->remove( name );
 }
 
-void FSManager::removeDirectory( utils::String name ) {
+void Manager::removeDirectory( utils::String name ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -286,7 +286,7 @@ void FSManager::removeDirectory( utils::String name ) {
     dir->removeDirectory( name );
 }
 
-void FSManager::removeAt( int dirfd, utils::String name, flags::At fl ) {
+void Manager::removeAt( int dirfd, utils::String name, flags::At fl ) {
     WeakNode savedDir = _currentDirectory;
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
     if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
@@ -304,7 +304,7 @@ void FSManager::removeAt( int dirfd, utils::String name, flags::At fl ) {
     }
 }
 
-void FSManager::renameAt( int newdirfd, utils::String newpath, int olddirfd, utils::String oldpath ) {
+void Manager::renameAt( int newdirfd, utils::String newpath, int olddirfd, utils::String oldpath ) {
     Node oldNode;
     Directory *oldNodeDirectory;
     Node newNode;
@@ -361,7 +361,7 @@ void FSManager::renameAt( int newdirfd, utils::String newpath, int olddirfd, uti
     oldNodeDirectory->forceRemove( oldName );
 }
 
-off_t FSManager::lseek( int fd, off_t offset, Seek whence ) {
+off_t Manager::lseek( int fd, off_t offset, Seek whence ) {
     auto f = getFile( fd );
     if ( f->inode()->mode().isFifo() )
         throw Error( ESPIPE );
@@ -392,7 +392,7 @@ off_t FSManager::lseek( int fd, off_t offset, Seek whence ) {
     return f->offset();
 }
 
-void FSManager::truncate( Node inode, off_t length ) {
+void Manager::truncate( Node inode, off_t length ) {
     if ( inode->mode().isDirectory() )
         throw Error( EISDIR );
     if ( !inode->mode().isFile() )
@@ -404,7 +404,7 @@ void FSManager::truncate( Node inode, off_t length ) {
     f->resize( length );
 }
 
-void FSManager::changeDirectory( utils::String pathname ) {
+void Manager::changeDirectory( utils::String pathname ) {
     Node item = findDirectoryItem( pathname );
     if ( !item )
         throw Error( ENOENT );
@@ -413,7 +413,7 @@ void FSManager::changeDirectory( utils::String pathname ) {
     _currentDirectory = item;
 }
 
-void FSManager::changeDirectory( int dirfd ) {
+void Manager::changeDirectory( int dirfd ) {
     Node item = getFile( dirfd )->inode();
     _checkGrants( item, Mode::XUSER );
 
@@ -424,7 +424,7 @@ void FSManager::changeDirectory( int dirfd ) {
     _currentDirectory = item;
 }
 
-void FSManager::chmodAt( int dirfd, utils::String name, mode_t mode, Flags< flags::At > fl ) {
+void Manager::chmodAt( int dirfd, utils::String name, mode_t mode, Flags< flags::At > fl ) {
     if ( fl.has( flags::At::Invalid ) )
         throw Error( EINVAL );
 
@@ -437,17 +437,17 @@ void FSManager::chmodAt( int dirfd, utils::String name, mode_t mode, Flags< flag
     _chmod( inode, mode );
 }
 
-void FSManager::chmod( int fd, mode_t mode ) {
+void Manager::chmod( int fd, mode_t mode ) {
     _chmod( getFile( fd )->inode(), mode );
 }
 
-DirectoryDescriptor *FSManager::openDirectory( int fd ) {
+DirectoryDescriptor *Manager::openDirectory( int fd ) {
     Node inode = getFile( fd )->inode();
     _checkGrants( inode, Mode::RUSER | Mode::XUSER );
     _openDD.emplace_back( inode, fd );
     return &_openDD.back();
 }
-DirectoryDescriptor *FSManager::getDirectory( void *descriptor ) {
+DirectoryDescriptor *Manager::getDirectory( void *descriptor ) {
     for ( auto i = _openDD.begin(); i != _openDD.end(); ++i ) {
         if ( &*i == descriptor ) {
             return &*i;
@@ -455,7 +455,7 @@ DirectoryDescriptor *FSManager::getDirectory( void *descriptor ) {
     }
     throw Error( EBADF );
 }
-void FSManager::closeDirectory( void *descriptor ) {
+void Manager::closeDirectory( void *descriptor ) {
     for ( auto i = _openDD.begin(); i != _openDD.end(); ++i ) {
         if ( &*i == descriptor ) {
             closeFile( i->fd() );
@@ -467,7 +467,7 @@ void FSManager::closeDirectory( void *descriptor ) {
 }
 
 template< typename... Args >
-void FSManager::_createFile( utils::String name, mode_t mode, Node *file, Args &&... args ) {
+void Manager::_createFile( utils::String name, mode_t mode, Node *file, Args &&... args ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -488,11 +488,11 @@ void FSManager::_createFile( utils::String name, mode_t mode, Node *file, Args &
         *file = node;
 }
 
-Node FSManager::findDirectoryItem( utils::String name, bool followSymLinks ) {
+Node Manager::findDirectoryItem( utils::String name, bool followSymLinks ) {
     return _findDirectoryItem( std::move( name ), followSymLinks, []( Node ){} );
 }
 template< typename I >
-Node FSManager::_findDirectoryItem( utils::String name, bool followSymLinks, I itemChecker ) {
+Node Manager::_findDirectoryItem( utils::String name, bool followSymLinks, I itemChecker ) {
     if ( name.size() > 1023 )
         throw Error( ENAMETOOLONG );
     name = path::normalize( name );
@@ -556,7 +556,7 @@ Node FSManager::_findDirectoryItem( utils::String name, bool followSymLinks, I i
     return item;
 }
 
-std::pair< Node, utils::String > FSManager::_findDirectoryOfFile( utils::String name ) {
+std::pair< Node, utils::String > Manager::_findDirectoryOfFile( utils::String name ) {
     name = path::normalize( name );
     utils::String pathname;
     std::tie( pathname, name ) = path::splitFileName( name );
@@ -570,7 +570,7 @@ std::pair< Node, utils::String > FSManager::_findDirectoryOfFile( utils::String 
     return { item, name };
 }
 
-int FSManager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f ) {
+int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f ) {
     int i = 0;
     for ( auto &fd : _openFD ) {
         if ( !fd ) {
@@ -586,7 +586,7 @@ int FSManager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f ) {
     return i;
 }
 
-void FSManager::_insertSnapshotItem( const SnapshotFS &item ) {
+void Manager::_insertSnapshotItem( const SnapshotFS &item ) {
     switch( item.type ) {
     case Type::File:
         _createFile( item.name, item.mode, nullptr, item.content, item.length );
@@ -602,12 +602,12 @@ void FSManager::_insertSnapshotItem( const SnapshotFS &item ) {
     }
 }
 
-void FSManager::_checkGrants( Node inode, mode_t grant ) const {
+void Manager::_checkGrants( Node inode, mode_t grant ) const {
     if ( ( inode->mode() & grant ) != grant )
         throw Error( EACCES );
 }
 
-void FSManager::_chmod( Node inode, mode_t mode ) {
+void Manager::_chmod( Node inode, mode_t mode ) {
     inode->mode() =
         ( inode->mode() & ~Mode::CHMOD ) |
         ( mode & Mode::CHMOD );
