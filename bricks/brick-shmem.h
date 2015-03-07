@@ -557,7 +557,7 @@ struct FifoTest {
     }
 };
 
-struct StartEnd {
+struct Utils {
     static const int peers = 12;
 
     struct DetectorWorker : Thread {
