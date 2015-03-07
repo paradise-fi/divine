@@ -604,60 +604,38 @@ struct Utils {
     struct CounterWorker : Thread {
         StartDetector detector;
         ApproximateCounter counter;
-        std::atomic< int > &queue;
-        std::atomic< bool > &interrupted;
         int produce;
         int consume;
 
         template< typename D, typename C >
-        CounterWorker( D &d, C &c, std::atomic< int > &q, std::atomic< bool > &i ) :
+        CounterWorker( D &d, C &c ) :
             detector( d ),
             counter( c ),
-            queue( q ),
-            interrupted( i ),
             produce( 0 ),
             consume( 0 )
         {}
 
         void main() {
             detector.waitForAll( peers );
-            while ( !counter.isZero() ) {
-                ASSERT_LEQ( 0, queue.load() );
-                if ( queue == 0 ) {
-                    counter.sync();
-                    continue;
-                }
-                if ( produce ) {
-                    --produce;
-                    ++queue;
-                    ++counter;
-                }
-                if ( consume ) {
-                    int v = queue;
-                    if ( v == 0 || !queue.compare_exchange_strong( v, v - 1 ) )
-                        continue;
-                    --consume;
-                    --counter;
-                }
-                if ( interrupted )
-                    break;
-            }
+
+            while ( produce-- )
+                ++counter;
+            counter.sync();
+
+            detector.waitForAll( peers );
+
+            while ( consume-- )
+                --counter;
+            counter.sync();
+
         }
     };
 
-    void process( bool terminateEarly ) {
+    void processCounter() {
         StartDetector::Shared detectorShared;
         ApproximateCounter::Shared counterShared;
-        std::atomic< bool > interrupted( false );
-
-        // queueInitials
-        std::atomic< int > queue{ 1 };
-        ApproximateCounter c( counterShared );
-        ++c;
-        c.sync();
-
         std::vector< CounterWorker > threads{ peers,
-            CounterWorker{ detectorShared, counterShared, queue, interrupted } };
+            CounterWorker{ detectorShared, counterShared } };
 
 #if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
         alarm( 5 );
@@ -670,35 +648,21 @@ struct Utils {
             // let last worker consume the rest of produced values
             w.consume = peers - i;
             if ( w.consume == 0 )
-                w.consume = peers + 1;// also initials
+                w.consume = peers;// also initials
             ++i;
         }
 
         for ( auto &w : threads )
             w.start();
 
-        if ( terminateEarly ) {
-            interrupted = true;
-            counterShared.counter = 0;
-            queue = 0;
-        }
-
         for ( auto &w : threads )
             w.join();
-
-        if ( !terminateEarly ) { // do not check on early termination
-            ASSERT_EQ( queue.load(), 0 );
-            ASSERT_EQ( counterShared.counter.load(), 0 );
-        }
+        ASSERT_EQ( counterShared.counter.load(), 0 );
     }
 
-    TEST(approximateCounterProcessAll) {
-        process( false );
+    TEST(approximateCounter) {
+        processCounter();
     };
-
-    TEST(approximateCounterTerminateEarly) {
-        process( true );
-    }
 };
 
 }
