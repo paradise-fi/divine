@@ -8,18 +8,45 @@
 /* clang specific macros */
 typedef __SIZE_TYPE__               __size_t;
 typedef __INT8_TYPE__               __int8_t;
-typedef unsigned __INT8_TYPE__      __uint8_t;
 typedef __INT16_TYPE__              __int16_t;
-typedef unsigned __INT16_TYPE__     __uint16_t;
 typedef __INT32_TYPE__              __int32_t;
-typedef unsigned __INT32_TYPE__     __uint32_t;
 typedef __INT64_TYPE__              __int64_t;
-typedef unsigned __INT64_TYPE__     __uint64_t;
 typedef __INTPTR_TYPE__             __intptr_t;
-typedef unsigned __INTPTR_TYPE__    __uintptr_t;
 typedef __PTRDIFF_TYPE__            __ptrdiff_t;
 typedef __INTMAX_TYPE__             __intmax_t;
+
+/* unsigned versions of previous types */
+#ifdef __UINT8_TYPE__
+typedef __UINT8_TYPE__              __uint8_t;
+#else
+typedef unsigned __INT8_TYPE__      __uint8_t;
+#endif
+#ifdef __UINT16_TYPE__
+typedef __UINT16_TYPE__             __uint16_t;
+#else
+typedef unsigned __INT16_TYPE__     __uint16_t;
+#endif
+#ifdef __UINT32_TYPE__
+typedef __UINT32_TYPE__             __uint32_t;
+#else
+typedef unsigned __INT32_TYPE__     __uint32_t;
+#endif
+#ifdef __UINT64_TYPE__
+typedef __UINT64_TYPE__             __uint64_t;
+#else
+typedef unsigned __INT64_TYPE__     __uint64_t;
+#endif
+#ifdef __UINTPTR_TYPE__
+typedef __UINTPTR_TYPE__            __uintptr_t;
+#else
+typedef unsigned __INTPTR_TYPE__    __uintptr_t;
+#endif
+#ifdef __UINTMAX_TYPE__
+typedef __UINTMAX_TYPE__            __uintmax_t;
+#else
 typedef unsigned __INTMAX_TYPE__    __uintmax_t;
+#endif
+
 
 
 /* Convenience types.  */
