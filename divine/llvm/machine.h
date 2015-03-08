@@ -635,7 +635,7 @@ struct MachineState
         auto &ss = _stack[thread];
 
         if ( !_pool.valid( ss.second ) )
-            ss.second = _pool.allocate( std::max( 65536, needbytes ) );
+            ss.second = _pool.allocate( std::max( 65500, needbytes ) );
 
         current = next = StateAddress( &_pool, &_info, ss.second, 0 );
 
@@ -783,7 +783,7 @@ struct MachineState
         _thread_count = 0;
         _frame = nullptr;
         nursery.reset( 0 ); /* nothing in the heap */
-        _heapmeta = _pool.allocate( 4096 );
+        _heapmeta = _pool.allocate( 4080 );
     }
 
     void dump( std::ostream & );
