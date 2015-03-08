@@ -207,14 +207,15 @@ struct _LLVM : Common< Blob > {
         Chunks leaves;
 
         while ( total < max ) {
-            while ( ch < 32 && total < max ) {
-                sz = next();
-                total += sz;
-                ch += sz;
-            }
-            leaves.emplace_back( ChunkT::NA, ch );
-            ch = 0;
+            sz = next();
+            if ( ch > 0 && ch + sz > 32 ) {
+                leaves.emplace_back( ChunkT::NA, ch );
+                ch = 0;
+            };
+            total += sz;
+            ch += sz;
         }
+        leaves.emplace_back( ChunkT::NA, ch );
 
         ASSERT_EQ( total, max );
 
