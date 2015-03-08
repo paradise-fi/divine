@@ -231,9 +231,17 @@ struct ApproximateCounter {
 struct StartDetector {
 
     struct Shared {
+        /*
+         *  Normally these fields should be placed in different
+         *  cache-lines to avoid false-sharing. This case is a
+         *  little bit different since this class is a parallel
+         *  reentrant barrier moreover used only on the very
+         *  beginning of the verification in DIVINE.
+         */
         std::atomic< unsigned short > counter;
+        std::atomic< unsigned short > leaveGuard;
 
-        Shared() : counter( 0 ) {}
+        Shared() : counter( 0 ), leaveGuard( 0 ) {}
         Shared( Shared & ) = delete;
     };
 
@@ -243,10 +251,16 @@ struct StartDetector {
     StartDetector( const StartDetector &s ) : shared( s.shared ) {}
 
     void waitForAll( unsigned short peers ) {
-        if ( ++shared.counter == peers )
+
+        while ( shared.leaveGuard );
+
+        if ( ++shared.counter == peers ) {
+            shared.leaveGuard = peers;
             shared.counter = 0;
+        }
 
         while ( shared.counter );
+        --shared.leaveGuard;
     }
 
 };
