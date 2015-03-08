@@ -306,28 +306,74 @@ struct Lake {
         std::vector< int > _emptyblocks;
         SizeInfo _size[ 4096 ];
         SizeInfo *_size_big[ 4096 ];
+        std::vector< std::pair< int, int > > ephemeral;
+        int ephemeral_block;
+
+        Pointer ephemeralAllocate( int sz ) {
+            ASSERT_LEQ( 0, ephemeral_block );
+            int off = 0;
+            sz = align( sz, 4 );
+
+            /* first-fit allocation */
+            auto i = ephemeral.begin();
+            for ( ; i != ephemeral.end(); ++i ) {
+                if ( off + sz < i->first )
+                    break;
+                off = i->second;
+            }
+            ephemeral.emplace( i, off, off + sz );
+
+            Pointer p;
+            p.block = ephemeral_block;
+            ASSERT_EQ( off % 4, 0 );
+            p.offset = off / 4;
+            return p;
+        }
+
+        void ephemeralFree( Pointer p ) {
+            if ( !valid( p ) )
+                return;
+            auto i = ephemeral.begin();
+            for ( ; i != ephemeral.end(); ++i )
+                if ( i->first == p.offset * 4 )
+                    break;
+            ASSERT( i != ephemeral.end() );
+            ephemeral.erase( i );
+        }
 
         char *dereference( Pointer p ) { return lake->dereference( p ); }
         const char *dereference( Pointer p ) const { return lake->dereference( p ); }
         bool valid( Pointer p ) { return p.block; /* != 0xFFFFFFFFFF*/; }
-        int size( Pointer p ) { return lake->size( p ); }
+        int size( Pointer p ) {
+            if( p.block == ephemeral_block )
+                for ( auto e : ephemeral )
+                    if ( e.first == p.offset * 4 )
+                        return e.second - e.first;
+            ASSERT_NEQ( p.block, ephemeral_block );
+            ASSERT( lake->size( p) );
+            return lake->size( p );
+        }
 
         bool alias( Pointer a, Pointer b ) {
             return a.block == b.block && a.offset == b.offset;
         }
 
-        Wharf() : lake( std::make_shared< Lake >() ) { initsize(); }
-        Wharf( std::shared_ptr< Lake > l ) : lake( l ) { initsize(); }
-        Wharf( const Wharf &w ) : lake( w.lake ) { initsize(); }
+        Wharf( std::shared_ptr< Lake > l ) : lake( l ), ephemeral_block( -1 ) {
+            for ( int i = 0; i < 4096; ++i )
+                _size_big[ i ] = nullptr;
+            _size[ 0 ].blocksize = blocksize;
+            if ( l ) {
+                ephemeral_block = newblock( 0 );
+                l->header( ephemeral_block ).itemsize = 4;
+            }
+        }
+
+        Wharf() : Wharf( std::make_shared< Lake >() ) {}
+        Wharf( const Wharf &w ) : Wharf( w.lake ) {}
 
         ~Wharf() {
             for ( int i = 0; i < 4096; ++i )
                 delete[] _size_big[ i ];
-        }
-
-        void initsize() {
-            for ( int i = 0; i < 4096; ++i )
-                _size_big[ i ] = nullptr;
         }
 
         Pointer &freechunk( Pointer p ) {
@@ -593,7 +639,9 @@ struct Dereference {
     }
 
     Blob allocate( int size ) { return wharf.allocate( size ); }
+    Blob ephemeralAllocate( int size ) { return wharf.ephemeralAllocate( size ); }
     void free( Blob b ) { wharf.free( b ); }
+    void ephemeralFree( Blob b ) { wharf.ephemeralFree( b ); }
     int size( Blob b ) { return wharf.size( b ); }
     bool valid( Blob b ) { return wharf.valid( b ); }
     bool alias( Blob a, Blob b ) { return wharf.alias( a, b ); }
