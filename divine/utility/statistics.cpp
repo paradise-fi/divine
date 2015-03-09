@@ -332,7 +332,8 @@ struct Simple : TrackStatistics {
     }
 
     int64_t rssperst() {
-        return (residentMemNow() * 1024) / states();
+        auto st = states();
+        return st ? (residentMemNow() * 1024) / st : -1;
     }
 
     template< typename T >
