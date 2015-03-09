@@ -650,7 +650,7 @@ struct NTreeStore
 
     Blob unpack( Handle h, Pool *p ) {
         ASSERT( p );
-        return Root( h.b ).reassemble( *p );
+        return Root( h.b ).reassemble( *p, this->slack() );
     }
 
     void free_unpacked( Node n, Pool *p, bool ) { ASSERT( p ); p->free( n ); }
@@ -682,7 +682,7 @@ struct NTreeStore
 
     template< typename T = char >
     T *extension( Handle h ) {
-        return reinterpret_cast< T* >( Root( h.b ).slack( this->pool() ) );
+        return reinterpret_cast< T* >( Root( h.b ).slack( this->pool(), this->slack() ) );
     }
 
     STORE_ITERATOR;

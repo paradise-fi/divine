@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013,2015 Vladimír Štill <xstill@fi.muni.cz>
 //             (c) 2013 Petr Ročkai <me@mornfall.net>
 
 #include <tuple>
@@ -109,22 +109,23 @@ struct NTreeHashSet
         Self &self() { return *static_cast< Self * >( this ); }
 
         template< typename Yield >
-        void forChildren( Pool &p, Yield yield ) {
-            ASSERT( self().forkcount( p ) );
-            for ( int32_t i = 0; i < self().forkcount( p ); ++i )
+        void forChildren( Pool &p, int32_t slack, Yield yield ) {
+            const int32_t count = self().forkcount( p, slack );
+            ASSERT_LEQ( 1, count );
+            for ( int32_t i = 0; i < count; ++i )
                 yield( self().forkdata( p )[ i ] );
         }
 
         // emit all leafs until false is returned from yield
         template< typename Yield >
-        bool forAllLeaves( Pool& p, Yield yield ) {
+        bool forAllLeaves( Pool& p, int32_t slack, Yield yield ) {
             bool result = false;
-            self().forChildren( p, [&]( LeafOrFork lof ) {
+            self().forChildren( p, slack, [&]( LeafOrFork lof ) {
                     if ( lof.isLeaf() ) {
                         if ( !yield( lof.leaf() ) )
                             return false;
                     } else {
-                        if ( !lof.fork().forAllLeaves( p, yield ) )
+                        if ( !lof.fork().forAllLeaves( p, slack, yield ) )
                             return false;
                     }
                     return result = true;
@@ -132,9 +133,9 @@ struct NTreeHashSet
             return result;
         }
 
-        std::vector< LeafOr< Fork > > childvector( Pool &p ) {
+        std::vector< LeafOr< Fork > > childvector( Pool &p, int32_t slack ) {
             std::vector< LeafOrFork > lof;
-            forChildren( p, [&lof]( LeafOr< Fork > x ) { lof.push_back( x ); } );
+            forChildren( p, slack, [&]( LeafOr< Fork > x ) { lof.push_back( x ); } );
             return lof;
         }
     };
@@ -149,7 +150,7 @@ struct NTreeHashSet
             pool.clear( this->unwrap() );
         }
 
-        int32_t forkcount( Pool &p ) {
+        int32_t forkcount( Pool &p, int32_t = 0 ) {
             return p.size( this->unwrap() ) / sizeof( LeafOr< Fork > );
         }
         LeafOr< Fork > *forkdata( Pool &p ) {
@@ -161,58 +162,43 @@ struct NTreeHashSet
     typedef LeafOr< Fork > LeafOrFork;
 
     struct Root : WithChildren< Root, Fork >, types::NewType< T >, NewTypeTag< T, Root > {
-        struct Header { int32_t forks; };
-
         T &b() { return this->unwrap(); }
 
         Root() noexcept {}
         explicit Root( T b ) noexcept : types::NewType< T >( b ) {}
-        Header &header( Pool &p ) { return *p.dereference< Header >( b() ); }
-        bool leaf( Pool &p ) { return header( p ).forks == 0; }
-        int32_t forkcount( Pool &p ) { return header( p ).forks; }
-        char *rawdata( Pool &p ) { return p.dereference( b() ) + sizeof( Header ); }
+        int32_t forkcount( Pool &p, int32_t slack ) {
+            ASSERT_EQ( 0, dataSize( p, slack ) % int( sizeof( LeafOrFork ) ) );
+            return dataSize( p, slack ) / sizeof( LeafOrFork );
+        }
+        char *rawdata( Pool &p ) { return p.dereference( b() ); }
 
         explicit operator bool() { return !!this->unwrap(); }
 
-        char *data( Pool &p ) {
-            ASSERT( leaf( p ) );
-            return rawdata( p );
-        }
-
         LeafOrFork *forkdata( Pool &p ) {
-            ASSERT( !leaf( p ) );
             return reinterpret_cast< LeafOrFork *> ( rawdata( p ) );
         }
 
-        int32_t dataSize( Pool &p, int32_t slack ) {
-            return p.size( b() ) - sizeof( Header ) - slack;
+        int32_t dataSize( Pool &p, int32_t slack ) { return p.size( b() ) - slack; }
+        int32_t slackoffset( Pool &p, int32_t slack ) { return dataSize( p, slack ); }
+
+        char *slack( Pool &p, int32_t slack ) {
+            return rawdata( p ) + slackoffset( p, slack );
         }
 
-        int32_t slackoffset( Pool &p ) { return sizeof( LeafOrFork ) * forkcount( p ); }
-        char *slack( Pool &p ) { return rawdata( p ) + slackoffset( p ); }
-
-        T reassemble( Pool& p )
+        T reassemble( Pool& p, int32_t slacksize )
         {
             ASSERT( p.valid( b() ) );
-            if ( leaf( p ) ) {
-                int32_t size = p.size( b() ) - sizeof( Header );
-                ASSERT_LEQ( 0, size );
-                T out = p.allocate( size );
-                std::copy( data( p ), data( p ) + size, p.dereference( out ) );
-                return out;
-            }
 
             std::vector< Leaf > leaves;
             int32_t size = 0;
 
-            this->forAllLeaves( p, [ &p, &leaves, &size ]( Leaf leaf ) -> bool {
+            this->forAllLeaves( p, slacksize, [&]( Leaf leaf ) -> bool {
                     leaves.push_back( leaf );
                     size += leaf.size( p );
                     return true; // demand all
                 } );
 
-            char* slackptr = slack( p );
-            int32_t slacksize = p.size( b() ) - sizeof( Header ) - slackoffset( p );
+            char* slackptr = slack( p, slacksize );
             size += slacksize;
             T out = p.allocate( size );
             char* outptr = p.dereference( out );
@@ -221,27 +207,16 @@ struct NTreeHashSet
                 ASSERT_LEQ( outptr - p.dereference( out ), p.size( out ) );
                 outptr = std::copy( l.data( p ), l.data( p ) + p.size( l.unwrap() ), outptr );
             }
-            ASSERT_EQ( outptr - p.dereference( out ), p.size( out ) );
+            ASSERT_EQ( outptr - p.dereference( out ), size );
             return out;
         }
 
-        static Root createFlat( insert_type it, Pool& pool ) {
-            ASSERT( pool.valid( it ) );
-            Root r;
-            r.unwrap() = pool.allocate( sizeof( Header ) + pool.size( it ) );
-            r.header( pool ).forks = 0;
-            std::copy( pool.dereference( it ), pool.dereference( it ) + pool.size( it ),
-                       pool.dereference( r.unwrap() ) + sizeof( Header ) );
-            return r;
-        }
-
         static Root create( insert_type it, int32_t children, int32_t slack, Pool& pool ) {
-            ASSERT_LEQ( 2, children );
+            ASSERT_LEQ( 1, children );
             ASSERT_LEQ( 0, slack );
-            uintptr_t size = sizeof( Header ) + slack + sizeof( LeafOrFork ) * children;
+            const uintptr_t size = slack + sizeof( LeafOrFork ) * children;
             Root root;
             root.unwrap() = pool.allocate( size );
-            root.header( pool ).forks = children;
             std::memset( root.rawdata( pool ), 0, sizeof( LeafOrFork ) * children );
             std::memcpy( pool.dereference( root.unwrap() ) + size - slack,
                          pool.dereference( it ), slack );
@@ -268,17 +243,12 @@ struct NTreeHashSet
 
         hash128_t hash( Uncompressed u ) { return uhasher.hash( u.i ); }
         hash128_t hash( Root r ) {
-            if ( r.leaf( pool() ) ) {
-                auto offset = sizeof( typename Root::Header ) + uhasher.slack;
-                return pool().hash( r.unwrap(), offset, offset + r.dataSize( pool(), uhasher.slack ) );
-            } else {
-                brick::hash::jenkins::SpookyState state( salt, salt );
-                r.forAllLeaves( pool(), [ this, &state ]( Leaf l ) {
-                            state.update( l.data( this->pool() ), l.size( this->pool() ) );
-                            return true;
-                        } );
-                return state.finalize();
-            }
+            brick::hash::jenkins::SpookyState state( salt, salt );
+            r.forAllLeaves( pool(), slack(), [&]( Leaf l ) {
+                        state.update( l.data( this->pool() ), l.size( this->pool() ) );
+                        return true;
+                    } );
+            return state.finalize();
         }
 
         bool valid( Root r ) { return pool().valid( r.unwrap() ); }
@@ -288,16 +258,10 @@ struct NTreeHashSet
         bool equal( Root r1, Root r2 ) {
             if ( r1.unwrap().raw() == r2.unwrap().raw() )
                 return true;
-            if ( r1.leaf( pool() ) && r2.leaf( pool() ) )
-                return pool().equal( r1.unwrap(), r2.unwrap(), sizeof( typename Root::Header )
-                        + uhasher.slack );
-            else if ( !r1.leaf( pool() ) && !r2.leaf( pool() ) ) {
-                int32_t s1 = pool().size( r1.unwrap() );
-                int32_t s2 = pool().size( r2.unwrap() );
-                return s1 == s2
-                    && pool().equal( r1.unwrap(), r2.unwrap(), sizeof( typename Root::Header ),
-                            sizeof( typename Root::Header ) + r1.slackoffset( pool() ) );
-            }
+
+            int32_t s1 = pool().size( r1.unwrap() );
+            int32_t s2 = pool().size( r2.unwrap() );
+            return s1 == s2 && pool().equal( r1.unwrap(), r2.unwrap(), 0, s1 - slack() );
 
             /*
              * Note on root equality: Leaves and forks are cononical, that is
@@ -306,7 +270,6 @@ struct NTreeHashSet
              * same nodes (as they differ in hash).  Therefore roots can be
              * compared trivially (on pointers to leafs/forks.
              */
-            return false;
         }
 
         bool equal( Root root, Uncompressed item ) {
@@ -314,30 +277,25 @@ struct NTreeHashSet
         }
 
         bool equal( Uncompressed item, Root root ) {
-            int32_t itSize = pool().size( item.i ) - slack();
+            const int32_t itSize = pool().size( item.i );
             char* itemPtr = pool().dereference( item.i ) + slack();
-            if ( root.leaf( pool() ) ) {
-                return itSize == root.dataSize( pool(), slack() )
-                    && std::memcmp( itemPtr,
-                                    root.data( pool() ) + slack(), itSize ) == 0;
-            }
+            ASSERT( itemPtr != nullptr );
 
-            itSize += slack();
             int32_t pos = slack();
             bool equal = true;
 
-            root.forAllLeaves( pool(), [&] ( Leaf leaf ) {
+            root.forAllLeaves( pool(), slack(), [&]( Leaf leaf ) {
+                    Pool &p = this->pool();
+                    const int32_t ls = leaf.size( p );
+
                     ASSERT( equal );
                     ASSERT( this->pool().valid( leaf.unwrap() ) );
-                    ASSERT( itemPtr != nullptr );
                     ASSERT_LEQ( 0, pos );
 
-                    Pool &p = this->pool();
-                    ASSERT_LEQ( pos + leaf.size( p ), itSize );
-                    equal = std::memcmp( itemPtr, leaf.data( p ),
-                                         leaf.size( p ) ) == 0;
-                    itemPtr += leaf.size( p );
-                    pos += leaf.size( p );
+                    ASSERT_LEQ( pos + ls, itSize );
+                    equal = std::memcmp( itemPtr, leaf.data( p ), ls ) == 0;
+                    itemPtr += ls;
+                    pos += ls;
                     return equal;
                 } );
             ASSERT_LEQ( 0, pos );
@@ -446,7 +404,7 @@ struct NTreeHashSet
             int forkcount() {
                 ASSERT( !stack.empty() );
                 return stack.size() == 1 ?
-                       root.forkcount( td.pool() ) :
+                       root.forkcount( td.pool(), d.slack ) :
                        fork().forkcount( td.pool() );
             }
 
@@ -515,7 +473,12 @@ struct NTreeHashSet
 
                 if ( stack.empty() ) {
                     ASSERT( !td.pool().valid( root.unwrap() ) );
-                    root = Root::createFlat( item, td.pool() );
+                    ASSERT_EQ( td.pool().size( item ) - d.slack, length );
+                    ASSERT_EQ( current, td.pool().dereference( item ) + d.slack );
+
+                    root = Root::create( item, 1, d.slack, td.pool() );
+                    root.forkdata( td.pool() )[ 0 ] =
+                            insert( d.leaves, td.leaves, Leaf( length, current, td.pool() ) );
                 } else {
                     target() = insert( d.leaves, td.leaves,
                                           Leaf( length, current, td.pool() ) );
@@ -764,12 +727,10 @@ struct TestNTreeHashSet {
 
         auto root = test.insert( b );
         ASSERT( root.isnew() );
-        ASSERT( !root->leaf( test.pool() ) );
-        ASSERT_EQ( size_t( test.pool().size( root->b() ) ),
-                   sizeof( BlobSet::Root::Header ) + 2 * sizeof( BlobSet::LeafOrFork ) );
-        ASSERT_EQ( root->forkcount( test.pool() ), 2 );
+        ASSERT_EQ( size_t( test.pool().size( root->b() ) ), 2 * sizeof( BlobSet::LeafOrFork ) );
+        ASSERT_EQ( root->forkcount( test.pool(), 0 ), 2 );
 
-        auto children = root->childvector( test.pool() );
+        auto children = root->childvector( test.pool(), 0 );
 
         ASSERT( children[ 0 ].isLeaf() );
         ASSERT( children[ 1 ].isLeaf() );
@@ -782,7 +743,7 @@ struct TestNTreeHashSet {
         for ( unsigned i = 0; i < 33; ++i )
             ASSERT_EQ( c2u( children[ i / 17 ].leaf().data( test.pool() )[ i % 17 ] ), i & 0xff );
 
-        Blob b2 = root->reassemble( test.pool() );
+        Blob b2 = root->reassemble( test.pool(), 0 );
         ASSERT( test.pool().equal( b, b2 ) );
 
         auto rootVal UNUSED = valDeref( root ); // avoid iterator invalidation on insert
@@ -808,9 +769,8 @@ struct TestNTreeHashSet {
 
         auto root = test.insert( b );
         ASSERT( root.isnew() );
-        ASSERT( !root->leaf( test.pool() ) );
-        ASSERT_EQ( root->forkcount( test.pool() ), 2 );
-        auto children = root->childvector( test.pool() );
+        ASSERT_EQ( root->forkcount( test.pool(), 0 ), 2 );
+        auto children = root->childvector( test.pool(), 0 );
 
         ASSERT( children[ 0 ].isFork() );
         ASSERT( children[ 1 ].isFork() );
@@ -820,8 +780,8 @@ struct TestNTreeHashSet {
         ASSERT_EQ( children[ 0 ].fork().forkcount( test.pool() ), 2 );
         ASSERT_EQ( children[ 1 ].fork().forkcount( test.pool() ), 2 );
 
-        auto left = children[ 0 ].fork().childvector( test.pool() );
-        auto right = children[ 1 ].fork().childvector( test.pool() );
+        auto left = children[ 0 ].fork().childvector( test.pool(), 0 );
+        auto right = children[ 1 ].fork().childvector( test.pool(), 0 );
 
         ASSERT( left[ 0 ].isLeaf() );
         ASSERT( left[ 1 ].isLeaf() );
@@ -841,7 +801,7 @@ struct TestNTreeHashSet {
                             .leaf().data( test.pool() )[ i % 17 ] ),
                        i & 0xff );
 
-        Blob b2 = root->reassemble( test.pool() );
+        Blob b2 = root->reassemble( test.pool(), 0 );
         ASSERT( test.pool().equal( b, b2 ) );
 
         auto rootVal UNUSED = valDeref( root );
@@ -879,13 +839,9 @@ struct TestNTreeHashSet {
         for ( unsigned i = 0; i < 1000; ++i )
             ASSERT_EQ( c2u( test.pool().dereference( b )[ i ] ), i & 0xff );
 
-        ASSERT_EQ( root->leaf( test.pool() ), leaf );
-        if ( root->leaf( test.pool() ) ) {
-            for ( unsigned i = 0; i < 1000; ++i )
-                ASSERT_EQ( c2u( root->data( test.pool() )[ i ] ), i & 0xff );
-        }
+        ASSERT( !leaf || root->forkcount( test.pool(), 0 ) == 1 );
 
-        Blob b2 = root->reassemble( test.pool() );
+        Blob b2 = root->reassemble( test.pool(), 0 );
         for ( unsigned i = 0; i < 1000; ++i )
             ASSERT_EQ( c2u( test.pool().dereference( b2 )[ i ] ), i & 0xff );
         ASSERT( test.pool().equal( b, b2 ) );
@@ -995,27 +951,27 @@ struct TestNTreeHashSet {
 
         Blob b32 = randomBlob( 32, test.pool() );
         auto r32 UNUSED = valDeref( test.insert( b32 ) );
-        ASSERT( test.pool().equal( b32, r32.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b32, r32.reassemble( test.pool(), 0 ) ) );
 
         Blob b37 = randomBlob( 37, test.pool() );
         auto r37 UNUSED = valDeref( test.insert( b37 ) );
-        ASSERT( test.pool().equal( b37, r37.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b37, r37.reassemble( test.pool(), 0 ) ) );
 
         Blob b41 = randomBlob( 41, test.pool() );
         auto r41 UNUSED = valDeref( test.insert( b41 ) );
-        ASSERT( test.pool().equal( b41, r41.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b41, r41.reassemble( test.pool(), 0 ) ) );
 
         Blob b44 = randomBlob( 44, test.pool() );
         auto r44 UNUSED = valDeref( test.insert( b44 ) );
-        ASSERT( test.pool().equal( b44, r44.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b44, r44.reassemble( test.pool(), 0 ) ) );
 
         Blob b46 = randomBlob( 46, test.pool() );
         auto r46 UNUSED = valDeref( test.insert( b46 ) );
-        ASSERT( test.pool().equal( b46, r46.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b46, r46.reassemble( test.pool(), 0 ) ) );
 
         Blob b47 = randomBlob( 47, test.pool() );
         auto r47 UNUSED = valDeref( test.insert( b47 ) );
-        ASSERT( test.pool().equal( b47, r47.reassemble( test.pool() ) ) );
+        ASSERT( test.pool().equal( b47, r47.reassemble( test.pool(), 0 ) ) );
     }
 
 };
