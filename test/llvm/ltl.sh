@@ -1,5 +1,7 @@
 . lib
 
+test "$ALG_OWCTY" = ON -o "$ALG_NDFS" = ON || skip
+
 llvm_verify ltl_valid progress <<EOF
 #include <divine.h>
 enum APs { a };
