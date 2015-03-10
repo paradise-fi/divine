@@ -320,6 +320,14 @@ struct Simple : TrackStatistics {
         return sumof( &PerThread::hashused );
     }
 
+    int64_t statesmem() {
+        return sumof( &PerThread::memHashes ) / 1024;
+    }
+
+    int64_t avgstate() {
+        return sumof( &PerThread::memHashes ) / states();
+    }
+
     int64_t queues() {
         const int nthreads = threads.size();
         int64_t sum = 0;
@@ -334,6 +342,11 @@ struct Simple : TrackStatistics {
     int64_t rssperst() {
         auto st = states();
         return st ? (residentMemNow() * 1024) / st : -1;
+    }
+
+    int64_t vmperst() {
+        auto st = states();
+        return st ? (vmNow() * 1024) / st : -1;
     }
 
     template< typename T >
@@ -365,9 +378,12 @@ std::vector< std::pair< std::string, int64_t (Simple::*)() > > Simple::map {
     { "queues",   &Simple::queues },
     { "vmpeak",   &Simple::vmPeak },
     { "vm",       &Simple::vmNow },
+    { "vmperst",  &Simple::vmperst },
     { "rsspeak",  &Simple::residentMemPeak },
     { "rss",      &Simple::residentMemNow },
     { "rssperst", &Simple::rssperst },
+    { "statesmem", &Simple::statesmem },
+    { "avgstate", &Simple::avgstate },
     { "time",     &Simple::timestamp }
 };
 
