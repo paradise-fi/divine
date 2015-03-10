@@ -572,7 +572,7 @@ struct FakeGeneratorFlat : public FakeGeneratorBase
 {
     template< typename Coroutine >
     void splitHint( Coroutine &cor, int = 0 ) {
-        cor.consume( pool().size( cor.item ) );
+        cor.consume( cor.size );
     }
 };
 
@@ -639,7 +639,7 @@ struct ThreadData : Set::ThreadData {
 
 using BlobSet = NTreeHashSet< hashset::Fast, Blob, Hasher >;
 
-template< typename Generator >
+template< typename Generator, int32_t slack = 0 >
 struct TestBase {
     Generator _gen;
     using TD = BlobSet::ThreadData< Generator >;
@@ -648,7 +648,7 @@ struct TestBase {
 
     template< typename... Args >
     TestBase( Args &&... args ) : _gen( std::forward< Args >( args )... ),
-        _set( Hasher( _gen.pool() ) )
+        _set( Hasher( _gen.pool(), slack ) )
     {
         _td._splitter = &_gen;
         _td._pool = &pool();
@@ -656,7 +656,7 @@ struct TestBase {
 
     template< typename T >
     TestBase( std::initializer_list< T > il ) : _gen( il ),
-        _set( Hasher( _gen.pool() ) )
+        _set( Hasher( _gen.pool(), slack ) )
     {
         _td._splitter = &_gen;
         _td._pool = &pool();
@@ -689,7 +689,7 @@ struct TestBase {
     auto insertSet( BlobSet &bs, Blob b )
         -> decltype( this->applyTD( bs ).insertHinted( b, 0 ) )
     {
-        return applyTD( bs ).insertHinted( b, pool().hash( b ).first );
+        return applyTD( bs ).insertHinted( b, bs._d.roots.hasher.hash( b ).first );
     }
 
     auto insert( Blob b ) -> decltype( this->insertSet( _set, b ) ) {
@@ -824,26 +824,42 @@ struct TestNTreeHashSet {
         return basic< FakeGeneratorBinary, false >();
     }
 
-    template< typename Generator, bool leaf  >
+    TEST(basicWSlackFlat) {
+        return basic< FakeGeneratorFlat, true, 0xff00aa33 >();
+    }
+
+    TEST(basicWSlackBinary) {
+        return basic< FakeGeneratorBinary, false, 0xff00aa33 >();
+    }
+
+    template< typename Generator, bool leaf, uint32_t slackpat = 0 >
     void basic() {
-        TestBase< Generator > test;
+        constexpr int32_t slack = slackpat ? sizeof( uint32_t ) : 0;
+        TestBase< Generator, slack > test;
+        auto derefslack = [&]( BlobSet::Root r ) {
+            return reinterpret_cast< uint32_t * >( r.slack( test.pool(), slack ) )[ 0 ];
+        };
 
-        BlobSet set( Hasher( test.pool() ) );
+        ASSERT_EQ( test._set.slack(), slack );
 
-        Blob b = test.pool().allocate( 1000 );
+        Blob b = test.pool().allocate( 1000 + slack );
+        reinterpret_cast< uint32_t * >( test.pool().dereference( b ) )[ 0 ] = slackpat;
         for ( unsigned i = 0; i < 1000; ++i )
-            test.pool().dereference( b )[ i ] = char(i & 0xff);
+            test.pool().dereference( b )[ slack + i ] = char(i & 0xff);
 
         auto root = test.insert( b );
         ASSERT( root.isnew() );
         for ( unsigned i = 0; i < 1000; ++i )
-            ASSERT_EQ( c2u( test.pool().dereference( b )[ i ] ), i & 0xff );
+            ASSERT_EQ( c2u( test.pool().dereference( b )[ slack + i ] ), i & 0xff );
 
-        ASSERT( !leaf || root->forkcount( test.pool(), 0 ) == 1 );
+        ASSERT( !leaf || root->forkcount( test.pool(), slack ) == 1 );
+        if ( slack )
+            ASSERT_EQ( derefslack( *root ), slackpat );
 
-        Blob b2 = root->reassemble( test.pool(), 0 );
+        Blob b2 = root->reassemble( test.pool(), slack );
         for ( unsigned i = 0; i < 1000; ++i )
-            ASSERT_EQ( c2u( test.pool().dereference( b2 )[ i ] ), i & 0xff );
+            ASSERT_EQ( c2u( test.pool().dereference( b2 )[ slack + i ] ), i & 0xff );
+        ASSERT_EQ( test.pool().size( b ), test.pool().size( b2 ) );
         ASSERT( test.pool().equal( b, b2 ) );
 
         auto rootVal UNUSED = valDeref( root );
@@ -851,8 +867,11 @@ struct TestNTreeHashSet {
         ASSERT( !test.insert( b ).isnew() );
 
         auto root2 UNUSED = test.get( b );
+        ASSERT( test.pool().valid( root2->b() ) );
         ASSERT( !root2.isnew() );
         ASSERT_EQ( rootVal.b().raw(), root2->b().raw() );
+        if ( slack )
+            ASSERT_EQ( derefslack( *root2 ), slackpat );
 
         for ( auto x : { b, b2 } )
             test.pool().free( x );
