@@ -595,7 +595,7 @@ struct Utils {
         std::vector< DetectorWorker > threads{ peers, DetectorWorker{ sh, repeat } };
 
 #if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
-        alarm( 1 );
+        alarm( 5 );
 #endif
 
         for ( int i = 0; i != 4; ++i ) {
