@@ -176,10 +176,6 @@ if( OPT_HOARD AND OPT_TBBMALLOC )
     disable( OPT_HOARD "" "Overriden by TBBMALLOC." )
 endif()
 
-if( DEV_NOPOOLS AND STORE_COMPRESS )
-    disable( STORE_COMPRESS "" "Not supported without pools" )
-endif()
-
 if ( DEV_NOPOOLS AND OPT_MPI )
     disable( OPT_MPI " (cluster support)" "Not supported without pools" )
 endif()
