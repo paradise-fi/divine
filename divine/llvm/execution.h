@@ -7,6 +7,8 @@
 
 #include <divine/toolkit/list.h>
 
+#include <brick-data.h>
+
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
 
@@ -150,10 +152,12 @@ struct Evaluator
 
     typedef ::llvm::Instruction LLVMInst;
     ProgramInfo::Instruction instruction;
-    std::vector< ValueRef > values; /* a withValues stash */
-    typedef std::vector< MemoryFlag > MemoryFlags;
-    std::vector< MemoryFlags > flags;
-    std::vector< ValueRef > result;
+
+    using ValueRefs = brick::data::SmallVector< ValueRef, 4 >;
+    using MemoryFlags = brick::data::SmallVector< MemoryFlag, 4 >;
+
+    ValueRefs values, result;
+    brick::data::SmallVector< MemoryFlags, 4 > flags;
 
     struct Implementation {
         typedef Unit T;
@@ -163,7 +167,7 @@ struct Evaluator
         EvalContext &econtext() { return _evaluator->econtext; }
         ControlContext &ccontext() { return _evaluator->ccontext; }
         ::llvm::TargetData &TD() { return econtext().TD; }
-        MemoryFlag resultFlag( std::vector< MemoryFlag > ) { return MemoryFlag::Data; }
+        MemoryFlag resultFlag( MemoryFlags ) { return MemoryFlag::Data; }
     };
 
     template< typename X >
@@ -208,7 +212,7 @@ struct Evaluator
     /******** Arithmetic & comparisons *******/
 
     struct BinaryOperator : Implementation {
-        MemoryFlag resultFlag( std::vector< MemoryFlag > x )
+        MemoryFlag resultFlag( MemoryFlags x )
         {
             if ( x[1] == MemoryFlag::Uninitialised || x[2] == MemoryFlag::Uninitialised )
                 return MemoryFlag::Uninitialised;
@@ -331,7 +335,7 @@ struct Evaluator
             r = a ? b : c;
             return Unit();
         }
-        MemoryFlag resulFlag( std::vector< MemoryFlag > x ) { return x[ _selected ]; }
+        MemoryFlag resulFlag( MemoryFlags x ) { return x[ _selected ]; }
     };
 
     struct ICmp : Implementation {
@@ -435,7 +439,7 @@ struct Evaluator
             return Unit();
         }
 
-        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return x[1]; }
+        MemoryFlag resultFlag( MemoryFlags x ) { return x[1]; }
     };
 
     void implement_bitcast() {
@@ -455,7 +459,7 @@ struct Evaluator
             return static_cast< T >( l );
         }
 
-        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return x[0]; }
+        MemoryFlag resultFlag( MemoryFlags x ) { return x[0]; }
     };
 
     template< typename _T >
@@ -473,7 +477,7 @@ struct Evaluator
             return Unit();
         }
 
-        MemoryFlag resultFlag( std::vector< MemoryFlag > ) { return _flag; }
+        MemoryFlag resultFlag( MemoryFlags ) { return _flag; }
 
         Set( Arg v, MemoryFlag f = MemoryFlag::Data ) : v( v ), _flag( f ) {}
     };
@@ -528,7 +532,7 @@ struct Evaluator
                 this->i().op->getOperand(0)->getType(), 1, this->i().values.size() - 1 );
             return Unit();
         }
-        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) {
+        MemoryFlag resultFlag( MemoryFlags x ) {
             ASSERT_LEQ( 2U, x.size() );
             return x[1];
         }
@@ -574,7 +578,7 @@ struct Evaluator
         }
 
         /* copy status from dest */
-        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return x[1]; }
+        MemoryFlag resultFlag( MemoryFlags x ) { return x[1]; }
     };
 
     struct Switch : Implementation {
@@ -595,7 +599,7 @@ struct Evaluator
             return Unit();
         }
 
-        MemoryFlag resultFlag( std::vector< MemoryFlag > x ) { return x[0]; }
+        MemoryFlag resultFlag( MemoryFlags x ) { return x[0]; }
     };
 
     struct CmpXchg : Implementation {
@@ -618,7 +622,7 @@ struct Evaluator
             return Unit();
         }
 
-        MemoryFlag resultFlag( std::vector< MemoryFlag > ) {
+        MemoryFlag resultFlag( MemoryFlags ) {
             return MemoryFlag::Data; /* nothing */
         }
     };
@@ -654,7 +658,7 @@ struct Evaluator
             return Unit();
         }
 
-        MemoryFlag resultFlag( std::vector< MemoryFlag > ) {
+        MemoryFlag resultFlag( MemoryFlags ) {
             return MemoryFlag::Data; /* nothing */
         }
     };
