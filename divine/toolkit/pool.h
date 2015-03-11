@@ -482,40 +482,62 @@ struct Pond {
     };
 
     struct Pointer : brick::types::Comparable {
-        using Raw = uint64_t;
+        using Raw = uintptr_t;
+        static constexpr int tagBits = 2;
+        static constexpr Raw tagMask = 0x3;
 
-        Pointer() : _ptr( 0 ) { }
-        Pointer( void *ptr ) : _ptr( ptr ) { }
+        Pointer() : _ptr( nullptr ) { }
+        Pointer( void *ptr ) : _ptr( ptr ) {
+            ASSERT_EQ( tag(), 0u );
+        }
 
-        Raw raw() const { return uint64_t( _ptr ); }
+        Raw raw() const { return _ptr.raw; }
+
         static Pointer fromRaw( Raw r ) {
             Pointer p;
-            p._ptr = reinterpret_cast< char * >( r );
+            p._ptr.raw = r;
             return p;
         }
 
-        uint64_t raw_address() const { return uint64_t( _ptr ); }
+        Pointer untagged() const {
+            Pointer p( *this );
+            p.setTag( 0 );
+            return p;
+        }
+        void *raw_ptr() const { return untagged()._ptr.ptr; }
+        Raw raw_address() const { return untagged()._ptr.raw; }
 
-        explicit operator bool() const { return _ptr; }
-        bool operator!() const { return !_ptr; }
+        unsigned tag() const { return _ptr.raw & tagMask; }
+        void setTag( unsigned tag ) {
+            ASSERT_EQ( tag & 0x3u, tag );
+            _ptr.raw &= ~tagMask;
+            _ptr.raw |= tag & tagMask;
+        }
+
+        explicit operator bool() const { return untagged()._ptr.ptr; }
+        bool operator!() const { return !bool( *this ); }
         bool operator<=( const Pointer &p ) const { return raw() <= p.raw(); }
 
-        char *ptr() { return static_cast< char * >( _ptr ) + sizeof( PtrHeader ); }
-        const char *ptr() const { return reinterpret_cast< const char * >( _ptr ) + sizeof( PtrHeader ); }
+        char *ptr() const { return static_cast< char * >( raw_ptr() ) + sizeof( PtrHeader ); }
 
-        PtrHeader &header() { return *static_cast< PtrHeader * >( _ptr ); }
+        PtrHeader &header() { return *static_cast< PtrHeader * >( raw_ptr() ); }
 
         static Pointer allocate( int n ) {
             Pointer p( ::operator new( n + sizeof( PtrHeader ) ) );
             p.header().size = n;
+            ASSERT_EQ( p.tag(), 0u );
             return p;
         }
         void free() {
-            ::operator delete( _ptr );
-            _ptr = nullptr;
+            ::operator delete( raw_ptr() );
+            _ptr.ptr = nullptr;
         }
 
-        void *_ptr;
+        union _Ptr {
+            _Ptr( void *ptr ) : ptr( ptr ) { }
+            void *ptr;
+            Raw raw;
+        } _ptr;
     };
 
     Pond() {}
@@ -530,7 +552,7 @@ struct Pond {
         const char *dereference( Pointer p ) const { return p.ptr(); }
         bool valid( Pointer p ) { return bool( p ); }
         int size( Pointer p ) { return p.header().size; }
-        bool alias( Pointer a, Pointer  b ) { return a._ptr == b._ptr; }
+        bool alias( Pointer a, Pointer  b ) { return a.raw() == b.raw(); }
         void free( Pointer p ) { p.free(); }
         Pointer allocate( size_t s ) { return Pointer::allocate( s ); }
     };

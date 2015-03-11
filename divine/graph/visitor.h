@@ -491,9 +491,9 @@ struct Shared {
 namespace brick_test { namespace hashset {
 
 template<>
-struct test_hasher< divine::Lake::Pointer >
+struct test_hasher< divine::Blob >
 {
-    typedef divine::Lake::Pointer T;
+    typedef divine::Blob T;
     divine::Pool& _pool;
     divine::Pool &pool() { return _pool; }
     test_hasher( divine::Pool& p ) : _pool( p ) { }
