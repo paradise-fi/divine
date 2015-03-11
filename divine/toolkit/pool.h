@@ -317,7 +317,7 @@ struct Lake {
             /* first-fit allocation */
             auto i = ephemeral.begin();
             for ( ; i != ephemeral.end(); ++i ) {
-                if ( off + sz < i->first )
+                if ( off + sz <= i->first )
                     break;
                 off = i->second;
             }
