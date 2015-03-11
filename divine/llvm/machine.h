@@ -766,7 +766,27 @@ struct MachineState
     void snapshot( Frame &f, Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address );
     Blob snapshot();
 
-    void rewind( Blob, int thread = 0 );
+    void rewind( Blob to, int thread = 0 )
+    {
+        _pool.free( _blob );
+        _blob = _pool.allocate( _pool.size( to ) );
+        _pool.copy( to, _blob );
+
+        _thread = -1; // special
+
+        _thread_count = threads().get().length();
+        nursery.reset( heap().segcount );
+        _pool.get< HeapMeta >( _heapmeta ).setSize( 0 ),
+
+        freed.clear();
+        problems.clear();
+        for ( int i = 0; i < int( _stack.size() ); ++i ) /* deactivate detached stacks */
+            _stack[i].first = false;
+
+        if ( thread >= 0 && thread < _thread_count )
+            switch_thread( thread );
+    }
+
     void problem( Problem::What, Pointer p = Pointer() );
 
     int size( int stack, int heapbytes, int heapsegs, int problems ) {
