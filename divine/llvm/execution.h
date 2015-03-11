@@ -846,16 +846,16 @@ struct Evaluator
 
         /* we have a place to return to */
         if ( frameid < ccontext.stackDepth() ) {
-            auto target = info.instruction( ccontext.frame( frameid ).pc );
+            auto target = &info.instruction( ccontext.frame( frameid ).pc );
 
-            if ( isa< ::llvm::InvokeInst >( target.op ) ) {
-                target_pc = withValues( Get< PC >(), ValueRef( target.operand( -1 ), frameid ) );
-                target = info.instruction( target_pc );
+            if ( isa< ::llvm::InvokeInst >( target->op ) ) {
+                target_pc = withValues( Get< PC >(), ValueRef( target->operand( -1 ), frameid ) );
+                target = &info.instruction( target_pc );
             }
 
             int copied = 0;
             for ( auto arg : args ) {
-                memcopy( arg, ValueRef( target.result(), frameid, -1, copied ), arg.width );
+                memcopy( arg, ValueRef( target->result(), frameid, -1, copied ), arg.width );
                 copied += arg.width;
             }
         }

@@ -2,6 +2,7 @@
 
 #include <brick-bitlevel.h>
 #include <brick-types.h>
+#include <brick-data.h>
 #include <brick-assert.h>
 
 #include <divine/toolkit/blob.h> // for align
@@ -171,7 +172,7 @@ struct ProgramInfo {
 
     struct Instruction {
         unsigned opcode;
-        std::vector< Value > values;
+        brick::data::SmallVector< Value, 4 > values;
         Value &result() { return values[0]; }
         Value &operand( int i ) { return values[ (i >= 0) ? (i + 1) : (i + values.size()) ]; }
 
