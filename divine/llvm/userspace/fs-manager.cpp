@@ -146,7 +146,7 @@ ssize_t Manager::readLinkAt( int dirfd, utils::String name, char *buf, size_t co
     if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
         changeDirectory( dirfd );
 
-    Node inode = findDirectoryItem( std::move( name ) );
+    Node inode = findDirectoryItem( std::move( name ), false );
     if ( !inode )
         throw Error( ENOENT );
     if ( !inode->mode().isLink() )
