@@ -1111,7 +1111,7 @@ struct Evaluator
             return;
         }
 
-        auto function = info.function( pc );
+        const auto &function = info.function( pc );
 
         /* report problems with the call before pushing the new stackframe */
         if ( !function.vararg && int( CS.arg_size() ) > function.argcount )
