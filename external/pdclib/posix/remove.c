@@ -17,10 +17,11 @@
 #include <threads.h>
 #include <_PDCLIB_glue.h>
 
+#include <unistd.h>
+#include <sys/stat.h>
+
 extern FILE * _PDCLIB_filelist;
 extern mtx_t _PDCLIB_filelist_lock;
-
-extern int unlink( const char * pathname );
 
 int remove( const char * pathname )
 {
@@ -36,7 +37,12 @@ int remove( const char * pathname )
         current = current->next;
     }
     mtx_unlock( &_PDCLIB_filelist_lock );
-    return _PDCLIB_remove( pathname );
+
+    struct stat st;
+    stat( pathname, &st );
+    if ( S_ISDIR( st.st_mode ) )
+        return rmdir( pathname );
+    return unlink( pathname );
 }
 
 #endif
