@@ -268,7 +268,7 @@ struct Interpreter
                               l * std::make_pair( c.p[ i ], std::accumulate( c.p.begin(), c.p.end(), 0 ) );
                     run( tid, yield, pp, seen, alloc );
                 }
-                pool.free( fork );
+                alloc.drop( pool, fork );
                 return;
             }
 
