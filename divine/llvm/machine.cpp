@@ -229,7 +229,7 @@ divine::Blob MachineState< HeapMeta >::snapshot()
         size( canonic.stack, canonic.allocated, canonic.segcount, problems.size() ) );
     _pool.clear( b );
 
-    StateAddress address( &_pool, &_info, b, _slack );
+    StateAddress address( &_info, _pool.dereference( b ), _slack );
     Flags &fl = address.as< Flags >();
     fl = flags();
     fl.problemcount = problems.size();

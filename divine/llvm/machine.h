@@ -145,13 +145,13 @@ struct StateAddress : lens::LinearAddress
         : LinearAddress( base, index, offset ), _info( base._info )
     {}
 
-    StateAddress( Pool* pool, ProgramInfo *i, Blob b, int offset )
-        : LinearAddress( pool, b, offset ), _info( i )
+    StateAddress( ProgramInfo *i, char *b, int offset )
+        : LinearAddress( b, offset ), _info( i )
     {}
 
     StateAddress copy( StateAddress to, int size ) {
         std::copy( dereference(), dereference() + size, to.dereference() );
-        return StateAddress( pool, _info, to.b, to.offset + size );
+        return StateAddress( _info, to.b, to.offset + size );
     }
 };
 
@@ -461,6 +461,8 @@ struct MachineState
     using Heap = machine::Heap;
 
     Blob _blob;
+    char *_blob_deref;
+
     /* those stacks experienced an entry and fit in _blob no more */
     std::vector< std::pair< bool, Blob > > _stack;
     Nursery nursery;
@@ -529,11 +531,11 @@ struct MachineState
     bool isPrivate( Pointer p, Pointer, Canonic< HeapMeta > & );
 
     StateLens state( Blob b ) {
-        return Lens< State >( StateAddress( &_pool, &_info, b, _slack ) );
+        return Lens< State >( StateAddress( &_info, _pool.dereference( b ), _slack ) );
     }
 
     StateLens state() {
-        return state( _blob );
+        return Lens< State >( StateAddress( &_info, _blob_deref, _slack ) );
     }
 
     MemoryBits memoryflag( Pointer p, int offset = 0 ) {
@@ -633,31 +635,33 @@ struct MachineState
 
         StateAddress current, next;
         auto &ss = _stack[thread];
+        Blob current_b = ss.second;
 
-        if ( !_pool.valid( ss.second ) )
+        if ( !_pool.valid( current_b ) )
             ss.second = _pool.allocate( std::max( 65500, needbytes ) );
 
-        current = next = StateAddress( &_pool, &_info, ss.second, 0 );
+        current = next = StateAddress( &_info, _pool.dereference( ss.second ), 0 );
 
         if ( !ss.first ) {
-            if ( thread < threads().get().length() )
+            if ( thread < threads().get().length() ) {
                 current = state().address( Threads(), thread );
+                current_b = _blob;
+            }
             _pool.get< int >( ss.second ) = 0; /* clear any pre-existing state */
         }
-
 
         Lens< Stack > from( current );
         int neednow = lens::LinearSize< Stack >::get( current );
 
-        if ( neednow + needbytes > _pool.size( next.b ) ) {
-            next = StateAddress( &_pool, &_info,
-                                 ss.second = _pool.allocate( neednow + needbytes ), 0 );
+        if ( neednow + needbytes > _pool.size( ss.second ) ) {
+            next = StateAddress( &_info, _pool.dereference(
+                                     ss.second = _pool.allocate( neednow + needbytes ) ), 0 );
         }
 
-        if ( current.b != ss.second ) {
+        if ( current_b != ss.second ) {
             from.copy( next );
             if ( ss.first )
-                _pool.free( current.b );
+                _pool.free( current_b );
         }
 
         ss.first = true; /* activate */
@@ -669,7 +673,7 @@ struct MachineState
             thread = _thread;
 
         if ( thread < int( _stack.size() ) && _stack[thread].first )
-            return Lens< Stack >( StateAddress( &_pool, &_info, _stack[thread].second, 0 ) );
+            return Lens< Stack >( StateAddress( &_info, _pool.dereference( _stack[thread].second ), 0 ) );
         else
             return _blob_stack( thread );
     }
@@ -770,6 +774,7 @@ struct MachineState
     {
         _pool.free( _blob );
         _blob = _pool.allocate( _pool.size( to ) );
+        _blob_deref = _pool.dereference( _blob );
         _pool.copy( to, _blob );
 
         _thread = -1; // special

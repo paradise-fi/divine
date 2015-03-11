@@ -43,25 +43,23 @@ struct LinearSize {
 };
 
 struct LinearAddress {
-    Blob b;
+    char *b;
     int offset;
-    Pool* pool;
 
     LinearAddress( LinearAddress base, int /* index */, int offset )
-        : b( base.b ), offset( base.offset + offset ), pool( base.pool )
+        : b( base.b ), offset( base.offset + offset )
     {}
 
-    LinearAddress( Pool* pool, Blob b, int offset )
-        : b( b ), offset( offset ), pool( pool )
+    LinearAddress( char *b, int offset )
+        : b( b ), offset( offset )
     {}
 
-    LinearAddress() : offset( 0 ), pool( nullptr )
+    LinearAddress() : b( nullptr ), offset( 0 )
     { }
 
     char *dereference() {
-        ASSERT( pool != nullptr );
-        ASSERT( pool->valid( b ) );
-        return pool->dereference( b ) + offset;
+        ASSERT( b );
+        return b + offset;
     }
 
     template< typename T >
@@ -76,7 +74,7 @@ struct LinearAddress {
     // TODO: Generalize to non-linear targets...
     LinearAddress copy( LinearAddress to, int size ) {
         std::copy( dereference(), dereference() + size, to.dereference() );
-        return LinearAddress( pool, to.b, to.offset + size );
+        return LinearAddress( to.b, to.offset + size );
     }
 
     void advance( int i ) {
@@ -304,7 +302,7 @@ struct TestLens {
 
         typedef Tuple< IntA, IntB, IntC, float > Foo;
 
-        LinearAddress a( &pool, blob, 0 );
+        LinearAddress a( pool.dereference( blob ), 0 );
         Lens< LinearAddress, Foo > lens( a );
 
         lens.get( IntA() ) = 1;
@@ -320,7 +318,7 @@ struct TestLens {
 
         typedef FixedArray< int > Array;
 
-        LinearAddress a( &pool, blob, 0 );
+        LinearAddress a( pool.dereference( blob ), 0 );
         Lens< LinearAddress, Array > lens( a );
 
         lens.get().length() = 8;
@@ -340,7 +338,7 @@ struct TestLens {
         struct Witch : Tuple< IntArray1, IntArray2 > {};
         struct Doctor: Tuple< IntArray1, int, Witch, float, Matrix > {};
 
-        LinearAddress a( &pool, blob, 0 );
+        LinearAddress a( pool.dereference( blob ), 0 );
         Lens< LinearAddress, Doctor > lens( a );
 
         lens.get( IntArray1() ).length() = 5;
@@ -400,8 +398,8 @@ struct TestLens {
 
         typedef Tuple< IntA, IntB > Foo;
 
-        LinearAddress a( &pool, blob, 0 );
-        LinearAddress b( &pool, copy, 0 );
+        LinearAddress a( pool.dereference( blob ), 0 );
+        LinearAddress b( pool.dereference( copy ), 0 );
 
         Lens< LinearAddress, Foo > lens( a );
 
