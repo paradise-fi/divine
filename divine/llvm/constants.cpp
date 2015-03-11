@@ -13,12 +13,13 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
         ControlContext ccontext;
         Evaluator< GlobalContext, ControlContext > eval( *this, econtext, ccontext );
 
-        Instruction &comp = eval.instruction;
+        Instruction comp;
         comp.op = CE;
         comp.opcode = CE->getOpcode();
         comp.values.push_back( v ); /* the result comes first */
         for ( int i = 0; i < int( CE->getNumOperands() ); ++i ) // now the operands
             comp.values.push_back( insert( 0, CE->getOperand( i ) ) );
+        eval._instruction = &comp;
         eval.run(); /* compute and write out the value */
     } else if ( dyn_cast< ::llvm::GlobalVariable >( C ) ) {
         char *address = econtext.dereference( insert( 0, C ) ); // insert will call us recursively as needed

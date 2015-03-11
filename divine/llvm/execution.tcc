@@ -20,7 +20,7 @@ template< typename HM, typename L >
 void Interpreter< HM, L >::evaluate()
 {
     Eval< HM, L > eval( info(), *this, *this );
-    eval.instruction = instruction();
+    eval._instruction = &instruction();
     eval.run();
 }
 
@@ -28,6 +28,6 @@ template< typename HM, typename L >
 void Interpreter< HM, L >::evaluateSwitchBB( PC to )
 {
     Eval< HM, L > eval( info(), *this, *this );
-    eval.instruction = instruction();
+    eval._instruction = &instruction();
     eval.switchBB( to );
 }

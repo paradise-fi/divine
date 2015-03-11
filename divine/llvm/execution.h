@@ -151,7 +151,9 @@ struct Evaluator
     bool is_signed;
 
     typedef ::llvm::Instruction LLVMInst;
-    ProgramInfo::Instruction instruction;
+    ProgramInfo::Instruction *_instruction;
+    ProgramInfo::Instruction &instruction() { return *_instruction; }
+
 
     using ValueRefs = brick::data::SmallVector< ValueRef, 4 >;
     using MemoryFlags = brick::data::SmallVector< MemoryFlag, 4 >;
@@ -163,7 +165,7 @@ struct Evaluator
         typedef Unit T;
         Evaluator< EvalContext, ControlContext > *_evaluator;
         Evaluator< EvalContext, ControlContext > &evaluator() { return *_evaluator; }
-        ProgramInfo::Instruction i() { return _evaluator->instruction; }
+        ProgramInfo::Instruction i() { return _evaluator->instruction(); }
         EvalContext &econtext() { return _evaluator->econtext; }
         ControlContext &ccontext() { return _evaluator->ccontext; }
         ::llvm::TargetData &TD() { return econtext().TD; }
@@ -177,16 +179,16 @@ struct Evaluator
     static Unit declcheck( X... ) { return Unit(); }
 
     std::vector< int > pointerId( bool nonempty = false ) {
-        auto r = econtext.pointerId( cast< ::llvm::Instruction >( instruction.op ) );
+        auto r = econtext.pointerId( cast< ::llvm::Instruction >( instruction().op ) );
         if ( nonempty && !r.size() )
             return std::vector< int >{ 0 };
         return r;
     }
 
     void checkPointsTo() { // TODO: check aa_use as well
-        auto &r = instruction.result();
+        auto &r = instruction().result();
 
-        if ( instruction.result().type == ProgramInfo::Value::Void )
+        if ( instruction().result().type == ProgramInfo::Value::Void )
             return;
 
         auto mflag = econtext.memoryflag( r );
@@ -443,7 +445,7 @@ struct Evaluator
     };
 
     void implement_bitcast() {
-        auto r = memcopy( instruction.operand( 0 ), instruction.result(), instruction.result().width );
+        auto r = memcopy( instruction().operand( 0 ), instruction().result(), instruction().result().width );
         ASSERT_EQ( r, Problem::NoProblem );
         static_cast< void >( r );
     }
@@ -517,7 +519,7 @@ struct Evaluator
         if ( current == end )
             return 0;
 
-        int index = withValues( GetInt(), instruction.operand( current ) );
+        int index = withValues( GetInt(), instruction().operand( current ) );
         auto r = compositeOffset( t, index );
 
         return r.first + compositeOffsetFromInsn( r.second, current + 1, end );
@@ -539,14 +541,14 @@ struct Evaluator
     };
 
     void implement_store() {
-        Pointer to = withValues( Get< Pointer >(), instruction.operand( 1 ) );
-        if ( auto r = memcopy( instruction.operand( 0 ), to, instruction.operand( 0 ).width ) )
+        Pointer to = withValues( Get< Pointer >(), instruction().operand( 1 ) );
+        if ( auto r = memcopy( instruction().operand( 0 ), to, instruction().operand( 0 ).width ) )
             ccontext.problem( r );
     }
 
     void implement_load() {
-        Pointer from = withValues( Get< Pointer >(), instruction.operand( 0 ) );
-        if ( auto r = memcopy( from, instruction.result(), instruction.result().width ) )
+        Pointer from = withValues( Get< Pointer >(), instruction().operand( 0 ) );
+        if ( auto r = memcopy( from, instruction().result(), instruction().result().width ) )
             ccontext.problem( r );
     }
 
@@ -664,38 +666,38 @@ struct Evaluator
     };
 
     void implement_alloca() {
-        ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction.op );
+        ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction().op );
         Type *ty = I->getAllocatedType();
 
-        int count = withValues( GetInt(), instruction.operand( 0 ) );
+        int count = withValues( GetInt(), instruction().operand( 0 ) );
         int size = econtext.TD.getTypeAllocSize(ty); /* possibly aggregate */
 
         unsigned alloc = std::max( 1, count * size );
         Pointer &p = *reinterpret_cast< Pointer * >(
-            dereference( instruction.result() ) );
+            dereference( instruction().result() ) );
         p = econtext.malloc( alloc, pointerId( true )[0] );
-        econtext.memoryflag( instruction.result() ).set( MemoryFlag::HeapPointer );
+        econtext.memoryflag( instruction().result() ).set( MemoryFlag::HeapPointer );
     }
 
     void implement_extractvalue() {
-        auto r = memcopy( ValueRef( instruction.operand( 0 ), 0, -1,
-                                    compositeOffsetFromInsn( instruction.op->getOperand(0)->getType(), 1,
-                                                             instruction.values.size() - 1 ) ),
-                          instruction.result(), instruction.result().width );
+        auto r = memcopy( ValueRef( instruction().operand( 0 ), 0, -1,
+                                    compositeOffsetFromInsn( instruction().op->getOperand(0)->getType(), 1,
+                                                             instruction().values.size() - 1 ) ),
+                          instruction().result(), instruction().result().width );
         ASSERT_EQ( r, Problem::NoProblem );
         static_cast< void >( r );
     }
 
     void implement_insertvalue() { /* NB. Implemented against spec, UNTESTED! */
         /* first copy the original */
-        auto r = memcopy( instruction.operand( 0 ), instruction.result(), instruction.result().width );
+        auto r = memcopy( instruction().operand( 0 ), instruction().result(), instruction().result().width );
         ASSERT_EQ( r, Problem::NoProblem );
         /* write the new value over the selected field */
-        r = memcopy( instruction.operand( 1 ),
-                     ValueRef( instruction.result(), 0, -1,
-                               compositeOffsetFromInsn( instruction.op->getOperand(0)->getType(), 2,
-                                                        instruction.values.size() - 1 ) ),
-                     instruction.operand( 1 ).width );
+        r = memcopy( instruction().operand( 1 ),
+                     ValueRef( instruction().result(), 0, -1,
+                               compositeOffsetFromInsn( instruction().op->getOperand(0)->getType(), 2,
+                                                        instruction().values.size() - 1 ) ),
+                     instruction().operand( 1 ).width );
         ASSERT_EQ( r, Problem::NoProblem );
         static_cast< void >( r );
     }
@@ -733,8 +735,8 @@ struct Evaluator
         }
 
         auto caller = info.instruction( ccontext.frame( 1 ).pc );
-        if ( instruction.values.size() > 1 ) /* return value */
-            memcopy( instruction.operand( 0 ), ValueRef( caller.result(), 1 ), caller.result().width );
+        if ( instruction().values.size() > 1 ) /* return value */
+            memcopy( instruction().operand( 0 ), ValueRef( caller.result(), 1 ), caller.result().width );
 
         ccontext.leave();
 
@@ -744,21 +746,21 @@ struct Evaluator
 
     void implement_br()
     {
-        if ( instruction.values.size() == 2 )
-            jumpTo( instruction.operand( 0 ) );
+        if ( instruction().values.size() == 2 )
+            jumpTo( instruction().operand( 0 ) );
         else {
-            auto mflag = econtext.memoryflag( instruction.operand( 0 ) );
+            auto mflag = econtext.memoryflag( instruction().operand( 0 ) );
             if ( mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
                 ccontext.problem( Problem::Uninitialised );
-            if ( withValues( IsTrue(), instruction.operand( 0 ) ) )
-                jumpTo( instruction.operand( 2 ) );
+            if ( withValues( IsTrue(), instruction().operand( 0 ) ) )
+                jumpTo( instruction().operand( 2 ) );
             else
-                jumpTo( instruction.operand( 1 ) );
+                jumpTo( instruction().operand( 1 ) );
         }
     }
 
     void implement_indirectBr() {
-        Pointer target = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+        Pointer target = withValues( Get< Pointer >(), instruction().operand( 0 ) );
         jumpTo( *reinterpret_cast< PC * >( dereference( target ) ) );
     }
 
@@ -777,10 +779,10 @@ struct Evaluator
         ccontext.pc() = target;
         ccontext.jumped = true;
 
-        instruction = info.instruction( ccontext.pc() );
-        ASSERT( instruction.op );
+        _instruction = &info.instruction( ccontext.pc() );
+        ASSERT( instruction().op );
 
-        if ( !isa< ::llvm::PHINode >( instruction.op ) )
+        if ( !isa< ::llvm::PHINode >( instruction().op ) )
             return;  // Nothing fancy to do
 
         machine::Frame &original = ccontext.frame();
@@ -791,14 +793,14 @@ struct Evaluator
         copy = ccontext.frame();
 
         std::copy( original.memory(), original.memory() + framesize, copy.memory() );
-        while ( ::llvm::PHINode *PN = dyn_cast< ::llvm::PHINode >( instruction.op ) ) {
+        while ( ::llvm::PHINode *PN = dyn_cast< ::llvm::PHINode >( instruction().op ) ) {
             /* TODO use operands directly, avoiding valuemap lookup */
             auto v = info.valuemap[ PN->getIncomingValueForBlock(
                     cast< ::llvm::Instruction >( info.instruction( origin ).op )->getParent() ) ];
             FrameContext copyctx( info, copy );
-            memcopy( v, instruction.result(), v.width, econtext, copyctx );
+            memcopy( v, instruction().result(), v.width, econtext, copyctx );
             ccontext.pc().instruction ++;
-            instruction = info.instruction( ccontext.pc() );
+            _instruction = &info.instruction( ccontext.pc() );
         }
         std::copy( copy.memory(), copy.memory() + framesize, original.memory() );
     }
@@ -942,9 +944,9 @@ struct Evaluator
             case Intrinsic::vacopy:
                 ASSERT_UNIMPLEMENTED(); /* TODO */
             case Intrinsic::eh_typeid_for: {
-                auto tag = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                auto tag = withValues( Get< Pointer >(), instruction().operand( 0 ) );
                 int type_id = info.function( ccontext.pc() ).typeID( tag );
-                withValues( Set< int >( type_id ), instruction.result() );
+                withValues( Set< int >( type_id ), instruction().result() );
                 return;
             }
             case Intrinsic::smul_with_overflow:
@@ -954,15 +956,15 @@ struct Evaluator
             case Intrinsic::umul_with_overflow:
             case Intrinsic::uadd_with_overflow:
             case Intrinsic::usub_with_overflow: {
-                auto res = instruction.result();
-                res.width = instruction.operand( 0 ).width;
+                auto res = instruction().result();
+                res.width = instruction().operand( 0 ).width;
                 res.type = ProgramInfo::Value::Integer;
-                auto over = instruction.result();
+                auto over = instruction().result();
                 over.width = 1; // hmmm
                 over.type = ProgramInfo::Value::Integer;
-                over.offset += compositeOffset( instruction.op->getType(), 1 ).first;
+                over.offset += compositeOffset( instruction().op->getType(), 1 ).first;
                 withValues( ArithmeticWithOverflow( id ), res, over,
-                            instruction.operand( 0 ), instruction.operand( 1 ) );
+                            instruction().operand( 0 ), instruction().operand( 1 ) );
                 return;
             }
             case Intrinsic::stacksave:
@@ -986,9 +988,9 @@ struct Evaluator
                         econtext.memoryflag( r + sizeof( int ) + sizeof( Pointer ) * i ).set( MemoryFlag::HeapPointer );
                         c.ptr[ i++ ] = ptr;
                     }
-                    withValues( Set< Pointer >( r, MemoryFlag::HeapPointer ), instruction.result() );
+                    withValues( Set< Pointer >( r, MemoryFlag::HeapPointer ), instruction().result() );
                 } else { // stackrestore
-                    Pointer r = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                    Pointer r = withValues( Get< Pointer >(), instruction().operand( 0 ) );
                     auto &c = *reinterpret_cast< PointerBlock * >( econtext.dereference( r ) );
                     for ( auto ptr : ptrs ) {
                         bool retain = false;
@@ -1005,18 +1007,18 @@ struct Evaluator
             }
             default:
                 /* We lowered everything else in buildInfo. */
-                instruction.op->dump();
+                instruction().op->dump();
                 ASSERT_UNREACHABLE_F( "unexpected intrinsic %d", id );
         }
     }
 
     void implement_builtin() {
-        switch( instruction.builtin ) {
+        switch( instruction().builtin ) {
             case BuiltinChoice: {
                 auto &c = ccontext.choice;
-                c.options = withValues( GetInt(), instruction.operand( 0 ) );
-                for ( int i = 1; i < int( instruction.values.size() ) - 2; ++i )
-                    c.p.push_back( withValues( GetInt(), instruction.operand( i ) ) );
+                c.options = withValues( GetInt(), instruction().operand( 0 ) );
+                for ( int i = 1; i < int( instruction().values.size() ) - 2; ++i )
+                    c.p.push_back( withValues( GetInt(), instruction().operand( i ) ) );
                 if ( !c.p.empty() && int( c.p.size() ) != c.options ) {
                     ccontext.problem( Problem::InvalidArgument );
                     c.p.clear();
@@ -1024,78 +1026,78 @@ struct Evaluator
                 return;
             }
             case BuiltinAssert:
-                if ( !withValues( GetInt(), instruction.operand( 0 ) ) )
+                if ( !withValues( GetInt(), instruction().operand( 0 ) ) )
                     ccontext.problem( Problem::Assert );
                 return;
             case BuiltinProblem:
                 ccontext.problem(
-                    Problem::What( withValues( GetInt(), instruction.operand( 0 ) ) ),
-                    withValues( Get< Pointer >(), instruction.operand( 1 ) ) );
+                    Problem::What( withValues( GetInt(), instruction().operand( 0 ) ) ),
+                    withValues( Get< Pointer >(), instruction().operand( 1 ) ) );
                 return;
             case BuiltinAp:
-                ccontext.flags().ap |= (1 << withValues( GetInt(), instruction.operand( 0 ) ));
+                ccontext.flags().ap |= (1 << withValues( GetInt(), instruction().operand( 0 ) ));
                 return;
             case BuiltinMask: ccontext.pc().masked = true; return;
             case BuiltinUnmask: ccontext.pc().masked = false; return;
             case BuiltinInterrupt: return; /* an observable noop, see interpreter.h */
             case BuiltinGetTID:
-                withValues( SetInt( ccontext.threadId() ), instruction.result() );
+                withValues( SetInt( ccontext.threadId() ), instruction().result() );
                 return;
             case BuiltinNewThread: {
-                PC entry = withValues( Get< PC >(), instruction.operand( 0 ) );
-                Pointer arg = withValues( Get< Pointer >(), instruction.operand( 1 ) );
+                PC entry = withValues( Get< PC >(), instruction().operand( 0 ) );
+                Pointer arg = withValues( Get< Pointer >(), instruction().operand( 1 ) );
                 int tid = ccontext.new_thread(
                     entry, Maybe< Pointer >::Just( arg ),
-                    econtext.memoryflag( instruction.operand( 1 ) ).get() );
-                withValues( SetInt( tid ), instruction.result() );
+                    econtext.memoryflag( instruction().operand( 1 ) ).get() );
+                withValues( SetInt( tid ), instruction().result() );
                 return;
             }
             case BuiltinMalloc: {
-                int size = withValues( Get< int >(), instruction.operand( 0 ) );
+                int size = withValues( Get< int >(), instruction().operand( 0 ) );
                 if ( size >= ( 2 << Pointer::offsetSize ) ) {
                     ccontext.problem( Problem::InvalidArgument, Pointer() );
                     size = 0;
                 }
                 Pointer result = size ? econtext.malloc( size, pointerId( true )[0] ) : Pointer();
-                withValues( Set< Pointer >( result, MemoryFlag::HeapPointer ), instruction.result() );
+                withValues( Set< Pointer >( result, MemoryFlag::HeapPointer ), instruction().result() );
                 return;
             }
             case BuiltinFree: {
-                Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                Pointer v = withValues( Get< Pointer >(), instruction().operand( 0 ) );
                 if ( !econtext.free( v ) )
                     ccontext.problem( Problem::InvalidArgument, v );
                 return;
             }
             case BuiltinHeapObjectSize: {
-                Pointer v = withValues( Get< Pointer >(), instruction.operand( 0 ) );
+                Pointer v = withValues( Get< Pointer >(), instruction().operand( 0 ) );
                 if ( !econtext.dereference( v ) )
                     ccontext.problem( Problem::InvalidArgument, v );
                 else
-                    withValues( Set< int >( econtext.pointerSize( v ) ), instruction.result() );
+                    withValues( Set< int >( econtext.pointerSize( v ) ), instruction().result() );
                 return;
             }
             case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
             case BuiltinVaStart: {
                 auto f = info.functions[ ccontext.pc().function ];
-                memcopy( f.values[ f.argcount ], instruction.result(), instruction.result().width );
+                memcopy( f.values[ f.argcount ], instruction().result(), instruction().result().width );
                 return;
             }
             case BuiltinUnwind:
-                return unwind( withValues( GetInt(), instruction.operand( 0 ) ),
-                               Values( instruction.values.begin() + 2,
-                                       instruction.values.end() - 1 ) );
+                return unwind( withValues( GetInt(), instruction().operand( 0 ) ),
+                               Values( instruction().values.begin() + 2,
+                                       instruction().values.end() - 1 ) );
             case BuiltinLandingPad:
-                withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction.operand( 0 ) ) ),
+                withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction().operand( 0 ) ) ),
                                             MemoryFlag::HeapPointer ),
-                            instruction.result() );
+                            instruction().result() );
                 return;
             default:
-                ASSERT_UNREACHABLE_F( "unknown builtin %d", instruction.builtin );
+                ASSERT_UNREACHABLE_F( "unknown builtin %d", instruction().builtin );
         }
     }
 
     void implement_call() {
-        CallSite CS( cast< ::llvm::Instruction >( instruction.op ) );
+        CallSite CS( cast< ::llvm::Instruction >( instruction().op ) );
         ::llvm::Function *F = CS.getCalledFunction();
 
         if ( F && F->isDeclaration() ) {
@@ -1103,12 +1105,12 @@ struct Evaluator
             if ( id != Intrinsic::not_intrinsic )
                 return implement_intrinsic( id );
 
-            if ( instruction.builtin )
+            if ( instruction().builtin )
                 return implement_builtin();
         }
 
-        bool invoke = isa< ::llvm::InvokeInst >( instruction.op );
-        auto pc = withValues( Get< PC >(), instruction.operand( invoke ? -3 : -1 ) );
+        bool invoke = isa< ::llvm::InvokeInst >( instruction().op );
+        auto pc = withValues( Get< PC >(), instruction().operand( invoke ? -3 : -1 ) );
 
         if ( !pc.function ) {
             ccontext.problem( Problem::InvalidArgument ); /* function 0 does not exist */
@@ -1126,38 +1128,38 @@ struct Evaluator
 
         /* Copy arguments to the new frame. */
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.argcount ); ++i )
-            memcopy( ValueRef( instruction.operand( i ), 1 ), function.values[ i ],
+            memcopy( ValueRef( instruction().operand( i ), 1 ), function.values[ i ],
                      function.values[ i ].width );
 
         if ( function.vararg ) {
             int size = 0;
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
-                size += instruction.operand( i ).width;
+                size += instruction().operand( i ).width;
             Pointer vaptr = size ? econtext.malloc( size, 0 ) : Pointer();
             withValues( Set< Pointer >( vaptr, MemoryFlag::HeapPointer ),
                         function.values[ function.argcount ] );
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i ) {
-                auto op = instruction.operand( i );
+                auto op = instruction().operand( i );
                 memcopy( ValueRef( op, 1 ), vaptr, op.width );
                 vaptr = vaptr + int( op.width );
             }
         }
 
-        ASSERT( !isa< ::llvm::PHINode >( instruction.op ) );
+        ASSERT( !isa< ::llvm::PHINode >( instruction().op ) );
     }
 
     /******** Dispatch ********/
 
     void run() {
         is_signed = false;
-        switch ( instruction.opcode ) {
+        switch ( instruction().opcode ) {
             case LLVMInst::GetElementPtr:
                 implement( GetElement(), 2 ); break;
             case LLVMInst::Select:
                 implement< Select >(); break;
 
             case LLVMInst::ICmp:
-                switch ( dyn_cast< ICmpInst >( instruction.op )->getPredicate() ) {
+                switch ( dyn_cast< ICmpInst >( instruction().op )->getPredicate() ) {
                     case ICmpInst::ICMP_SLT:
                     case ICmpInst::ICMP_SGT:
                     case ICmpInst::ICMP_SLE:
@@ -1246,7 +1248,7 @@ struct Evaluator
 
             case LLVMInst::Resume:
                 /* unwind down to the next invoke instruction in the stack */
-                unwind( -find_invoke(), Values( { instruction.operand( 0 ) } ) );
+                unwind( -find_invoke(), Values( { instruction().operand( 0 ) } ) );
                 break;
 
             case LLVMInst::LandingPad:
@@ -1256,21 +1258,21 @@ struct Evaluator
                 break;
 
             default:
-                instruction.op->dump();
-                ASSERT_UNREACHABLE_F( "unknown opcode %d", instruction.opcode );
+                instruction().op->dump();
+                ASSERT_UNREACHABLE_F( "unknown opcode %d", instruction().opcode );
         }
 
         /* invoke and call are checked when ret executes */
-        if ( instruction.opcode != LLVMInst::Call &&
-             instruction.opcode != LLVMInst::Invoke )
+        if ( instruction().opcode != LLVMInst::Call &&
+             instruction().opcode != LLVMInst::Invoke )
             checkPointsTo();
     }
 
     template< typename Fun >
     typename Fun::T implement( brick::types::NotPreferred, Fun = Fun(), ... )
     {
-        instruction.op->dump();
-        ASSERT_UNREACHABLE_F( "bad parameters for opcode %d", instruction.opcode );
+        instruction().op->dump();
+        ASSERT_UNREACHABLE_F( "bad parameters for opcode %d", instruction().opcode );
     }
 
     template< typename Fun, typename I, typename Cons,
@@ -1341,8 +1343,8 @@ struct Evaluator
     typename Fun::T implement( Fun fun = Fun(), int limit = 0 )
     {
         flags.push_back( MemoryFlags() );
-        auto i = instruction.values.begin(), e = limit ? i + limit : instruction.values.end();
-        result.push_back( instruction.result() );
+        auto i = instruction().values.begin(), e = limit ? i + limit : instruction().values.end();
+        result.push_back( instruction().result() );
         return implement( brick::types::Preferred(), fun, i, e, list::Nil() );
     }
 

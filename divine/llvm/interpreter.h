@@ -119,7 +119,7 @@ struct Interpreter
     }
 
     // the currently executing one, i.e. what pc of the top frame of the active thread points at
-    ProgramInfo::Instruction instruction() { return info().instruction( pc() ); }
+    ProgramInfo::Instruction &instruction() { return info().instruction( pc() ); }
     MDNode *node( MDNode *root ) { return root; }
 
     template< typename N, typename... Args >
