@@ -51,52 +51,6 @@ void Interpreter< HM, L >::parseProperties( Module * )
 }
 
 template< typename HM, typename L >
-divine::Blob Interpreter< HM, L >::initial( Function *f, bool is_start )
-{
-    Blob pre_initial = pool.allocate( state._slack + state.size( 0, 0, 0, 0 ) );
-    pool.clear( pre_initial );
-    state.rewind( pre_initial, 0 ); // there isn't a thread really
-    std::copy( info().globaldata.begin(), info().globaldata.end(), state.global().memory() );
-    auto fl = state.global().memoryflag( info() );
-    for ( int i = 0; i < int( info().globaldata.size() ); ++ i ) {
-        fl.set( MemoryFlag::Data );
-        ++ fl;
-    }
-    int tid = state.new_thread(); // switches automagically
-    ASSERT_EQ( tid, 0 ); // just to be on the safe side...
-    static_cast< void >( tid );
-    state.enter( info().functionmap[ f ] );
-
-    if ( is_start ) {
-        auto &fun = info().function( PC( info().functionmap[ f ], 0 ) );
-        auto ctors = info().module->getNamedGlobal( "llvm.global_ctors" );
-        if ( ctors ) {
-            auto ctor_arr = ::llvm::cast< ::llvm::ConstantArray >( ctors->getInitializer() );
-            auto ctors_val = info().valuemap[ ctors ];
-
-            ASSERT_EQ( fun.values[ 0 ].width, sizeof( int ) );
-            ASSERT_EQ( fun.values[ 1 ].width, ctors_val.width );
-            ASSERT_EQ( fun.values[ 2 ].width, sizeof( int ) );
-            ASSERT( info().module->getFunction( "main" ) );
-
-            for ( int i = 0; i <= 2; ++i )
-                state.memoryflag( fun.values[ i ] ).set( MemoryFlag::Data );
-
-            *reinterpret_cast< int * >( state.dereference( fun.values[ 0 ] ) ) =
-                ctor_arr->getNumOperands();
-            memcopy( ctors_val, fun.values[ 1 ], ctors_val.width, state, state );
-            *reinterpret_cast< int * >( state.dereference( fun.values[ 2 ] ) ) =
-                info().module->getFunction( "main" )->arg_size();
-        }
-    }
-
-    Blob result = state.snapshot();
-    state.rewind( result, 0 ); // so that we don't wind up in an invalid state...
-    pool.free( pre_initial );
-    return result;
-}
-
-template< typename HM, typename L >
 int Interpreter< HM, L >::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl )
 {
     int current = state._thread;

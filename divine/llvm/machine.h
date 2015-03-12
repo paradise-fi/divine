@@ -800,10 +800,11 @@ struct MachineState
     void snapshot( Pointer &edit, Pointer original, machine::Canonic< HeapMeta > &canonic, Heap &heap );
     void snapshot( Frame &f, machine::Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address );
 
-    void rewind( Blob to, int thread = 0 )
+    template< typename Alloc >
+    void rewind( Alloc alloc, Blob to, int thread = 0 )
     {
-        _pool.free( _blob );
-        _blob = _pool.allocate( _pool.size( to ) );
+        alloc.drop( _pool, _blob );
+        _blob = alloc.get( _pool, _pool.size( to ) );
         _blob_deref = _pool.dereference( _blob );
         _pool.copy( to, _blob );
 
@@ -844,7 +845,8 @@ struct MachineState
     void dump( std::ostream & );
     void dump();
 
-    divine::Blob snapshot()
+    template< typename Alloc >
+    divine::Blob snapshot( Alloc alloc )
     {
         machine::Canonic< HeapMeta > canonic( *this );
         int dead_threads = 0;
@@ -887,8 +889,8 @@ struct MachineState
                 problem( Problem::MemoryLeak, p );
             }
 
-        Blob b = _pool.allocate( _slack +
-            size( canonic.stack, canonic.allocated, canonic.segcount, problems.size() ) );
+        Blob b = alloc.get( _pool, _slack +
+                            size( canonic.stack, canonic.allocated, canonic.segcount, problems.size() ) );
         _pool.clear( b );
 
         StateAddress address( &_info, _pool.dereference( b ), _slack );

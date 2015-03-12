@@ -167,8 +167,8 @@ struct Interpreter
 
     brick::data::Bimap< int, std::string > describeAPs();
 
-    Blob initial( Function *f, bool is_start = false );
-    void rewind( Blob b ) { state.rewind( b, -1 ); }
+    template< typename Alloc >
+    void rewind( Alloc alloc, Blob b ) { state.rewind( alloc, b, -1 ); }
     void choose( int32_t i );
     void dump();
 
@@ -181,9 +181,9 @@ struct Interpreter
         }
     }
 
-    template< typename Yield >
-    void run( Blob b, Yield yield ) {
-        state.rewind( b, -1 ); /* rewind first to get sense of thread count */
+    template< typename Yield, typename Alloc >
+    void run( Blob b, Yield yield, Alloc alloc ) {
+        state.rewind( alloc, b, -1 ); /* rewind first to get sense of thread count */
         state.flags().ap = 0; /* TODO */
         tid = 0;
         /* cache, to avoid problems with thread creation/destruction */
@@ -192,10 +192,10 @@ struct Interpreter
         while ( threads ) {
             while ( tid < threads && !state.stack( tid ).get().length() )
                 ++tid;
-            run( tid, yield, Label( tid ) );
+            run( tid, yield, Label( tid ), alloc );
             if ( ++tid == threads )
                 break;
-            state.rewind( b, -1 );
+            state.rewind( alloc, b, -1 );
             state.flags().ap = 0; /* TODO */
         }
     }
@@ -203,10 +203,10 @@ struct Interpreter
     void evaluate();
     void evaluateSwitchBB( PC to );
 
-    template< typename Yield >
-    void run( int tid, Yield yield, Label p ) {
+    template< typename Yield, typename Alloc >
+    void run( int tid, Yield yield, Label p, Alloc alloc ) {
         std::set< PC > seen;
-        run( tid, yield, p, seen );
+        run( tid, yield, p, seen, alloc );
     }
 
     bool interrupt( std::set< PC > &seen ) {
@@ -228,8 +228,8 @@ struct Interpreter
         return false;
     }
 
-    template< typename Yield >
-    void run( int tid, Yield yield, Label l, std::set< PC > &seen ) {
+    template< typename Yield, typename Alloc >
+    void run( int tid, Yield yield, Label l, std::set< PC > &seen, Alloc alloc ) {
 
         if ( !state._thread_count )
             return; /* no more successors for you */
@@ -243,7 +243,7 @@ struct Interpreter
         while ( true ) {
 
             if ( interrupt( seen ) ) {
-                yield( state.snapshot(), l );
+                yield( state.snapshot( alloc ), l );
                 return;
             }
 
@@ -258,15 +258,15 @@ struct Interpreter
 
             if ( choice.options ) {
                 ASSERT( !jumped );
-                Blob fork = state.snapshot();
+                Blob fork = state.snapshot( alloc );
                 Choice c = choice; /* make a copy, sublings must overwrite the original */
                 for ( int i = 0; i < c.options; ++i ) {
-                    state.rewind( fork, tid );
+                    state.rewind( alloc, fork, tid );
                     choose( i );
                     advance();
                     auto pp = c.p.empty() ? l.levelup( i ) :
                               l * std::make_pair( c.p[ i ], std::accumulate( c.p.begin(), c.p.end(), 0 ) );
-                    run( tid, yield, pp, seen );
+                    run( tid, yield, pp, seen, alloc );
                 }
                 pool.free( fork );
                 return;
@@ -276,7 +276,7 @@ struct Interpreter
                 advance();
         }
 
-        yield( state.snapshot(), l );
+        yield( state.snapshot( alloc ), l );
     }
 
     /* EvalContext interface. */
@@ -305,6 +305,53 @@ struct Interpreter
     int threadCount() { return state._thread_count; }
     void switch_thread( int t ) { state.switch_thread( t ); }
     PC &pc() { return state._frame->pc; }
+
+    template< typename Alloc >
+    divine::Blob initial( Alloc alloc, Function *f, bool is_start = false )
+    {
+        Blob pre_initial = alloc.get( pool, state._slack + state.size( 0, 0, 0, 0 ) );
+        pool.clear( pre_initial );
+        state.rewind( alloc, pre_initial, 0 ); // there isn't a thread really
+        std::copy( info().globaldata.begin(), info().globaldata.end(), state.global().memory() );
+        auto fl = state.global().memoryflag( info() );
+        for ( int i = 0; i < int( info().globaldata.size() ); ++ i ) {
+            fl.set( MemoryFlag::Data );
+            ++ fl;
+        }
+        int tid = state.new_thread(); // switches automagically
+        ASSERT_EQ( tid, 0 ); // just to be on the safe side...
+        static_cast< void >( tid );
+        state.enter( info().functionmap[ f ] );
+
+        if ( is_start ) {
+            auto &fun = info().function( PC( info().functionmap[ f ], 0 ) );
+            auto ctors = info().module->getNamedGlobal( "llvm.global_ctors" );
+            if ( ctors ) {
+                auto ctor_arr = ::llvm::cast< ::llvm::ConstantArray >( ctors->getInitializer() );
+                auto ctors_val = info().valuemap[ ctors ];
+
+                ASSERT_EQ( fun.values[ 0 ].width, sizeof( int ) );
+                ASSERT_EQ( fun.values[ 1 ].width, ctors_val.width );
+                ASSERT_EQ( fun.values[ 2 ].width, sizeof( int ) );
+                ASSERT( info().module->getFunction( "main" ) );
+
+                for ( int i = 0; i <= 2; ++i )
+                    state.memoryflag( fun.values[ i ] ).set( MemoryFlag::Data );
+
+                *reinterpret_cast< int * >( state.dereference( fun.values[ 0 ] ) ) =
+                    ctor_arr->getNumOperands();
+                memcopy( ctors_val, fun.values[ 1 ], ctors_val.width, state, state );
+                *reinterpret_cast< int * >( state.dereference( fun.values[ 2 ] ) ) =
+                    info().module->getFunction( "main" )->arg_size();
+            }
+        }
+
+        Blob result = state.snapshot( alloc );
+        state.rewind( alloc, result, 0 ); // so that we don't wind up in an invalid state...
+        alloc.drop( pool, pre_initial );
+        return result;
+    }
+
 };
 
 }
@@ -414,7 +461,7 @@ struct TestLLVM {
 
     divine::Blob _ith( Function *f, int step ) {
         Interpreter interpreter( pool, 0, bitcode() );
-        divine::Blob ini = interpreter.initial( f ), fin;
+        divine::Blob ini = interpreter.initial( LongTerm(), f ), fin;
         fin = ini;
 
         for ( int i = 0; i < step; ++i ) {
@@ -422,7 +469,7 @@ struct TestLLVM {
             interpreter.run( ini, [&]( divine::Blob b, divine::graph::NoLabel ) {
                     ASSERT( !pool.valid( fin ) ); // only one allowed
                     fin = b;
-                });
+                }, LongTerm() );
             ini = fin;
             ASSERT( pool.valid( fin ) );
         }
@@ -432,7 +479,7 @@ struct TestLLVM {
 
     std::string _descr( Function *, divine::Blob b ) {
         Interpreter interpreter( pool, 0, bitcode() );
-        interpreter.rewind( b );
+        interpreter.rewind( LongTerm(), b );
         return interpreter.describe();
     }
 
@@ -440,7 +487,7 @@ struct TestLLVM {
     {
         Function *main = code_ret();
         Interpreter i( pool, 0, bitcode() );
-        i.initial( main );
+        i.initial( LongTerm(), main );
     }
 
     TEST(successor1)
@@ -475,7 +522,7 @@ struct TestLLVM {
         Function *f = code_loop();
         Interpreter interpreter( pool, 0, bitcode() );
         divine::Blob b = _ith( code_loop(), 1 );
-        interpreter.rewind( b );
+        interpreter.rewind( LongTerm(), b );
         interpreter.new_thread( f );
         ASSERT_EQ( "thread 0:\n  #1: <testf> << br label %entry >> []\n"
                    "thread 1:\n  #1: <testf> << br label %entry >> []\n", interpreter.describe() );
@@ -534,9 +581,9 @@ struct TestLLVM {
     {
         Function *f = code_loop();
         Interpreter interpreter( pool, 0, bitcode() );
-        divine::Blob b1 = interpreter.initial( f ), b2;
-        interpreter.rewind( b1 );
-        b2 = interpreter.state.snapshot();
+        divine::Blob b1 = interpreter.initial( LongTerm(), f ), b2;
+        interpreter.rewind( LongTerm(), b1 );
+        b2 = interpreter.state.snapshot( LongTerm() );
         ASSERT( pool.equal( b1, b2 ) );
     }
 };
