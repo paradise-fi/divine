@@ -54,7 +54,6 @@
 #include <stdio.h>          // flockfile, funlockfile
 #include <ctype.h>          // is*
 #include <errno.h>
-#include <malloc.h>
 #include <string.h>
 
 #include <sstream>
@@ -67,6 +66,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <malloc.h>
 #endif
 
 #include <brick-assert.h>
