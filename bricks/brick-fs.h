@@ -260,9 +260,10 @@ inline std::string mkdtemp( std::string dirTemplate ) {
 }
 
 #ifdef _WIN32
-#define stat64 _stat64
+#define stat _stat64
 #endif
-inline std::unique_ptr< struct stat64 > stat( std::string pathname ) {
+
+inline std::unique_ptr< struct stat > stat( std::string pathname ) {
 #if _WIN32
     // from MSDN:
     // If path contains the location of a directory, it cannot contain
@@ -270,10 +271,10 @@ inline std::unique_ptr< struct stat64 > stat( std::string pathname ) {
     // will be set to ENOENT.
     pathname = normalize( pathname );
 #endif
-	std::unique_ptr< struct stat64 > res( new struct stat64 );
-	if ( ::stat64( pathname.c_str(), res.get() ) == -1 ) {
+	std::unique_ptr< struct stat > res( new struct stat );
+	if ( ::stat( pathname.c_str(), res.get() ) == -1 ) {
 		if ( errno == ENOENT )
-			return std::unique_ptr< struct stat64 >();
+			return std::unique_ptr< struct stat >();
 		else
 			throw SystemException( "getting file information for " + pathname );
     }
@@ -281,11 +282,11 @@ inline std::unique_ptr< struct stat64 > stat( std::string pathname ) {
 }
 
 #ifndef _WIN32
-inline std::unique_ptr< struct stat64 > lstat( std::string pathname ) {
-	std::unique_ptr< struct stat64 > res( new struct stat64 );
-	if ( ::lstat64( pathname.c_str(), res.get() ) == -1 ) {
+inline std::unique_ptr< struct stat > lstat( std::string pathname ) {
+	std::unique_ptr< struct stat > res( new struct stat );
+	if ( ::lstat( pathname.c_str(), res.get() ) == -1 ) {
 		if ( errno == ENOENT )
-			return std::unique_ptr< struct stat64 >();
+			return std::unique_ptr< struct stat >();
 		else
 			throw SystemException( "getting file information for " + pathname );
     }
