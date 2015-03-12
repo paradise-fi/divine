@@ -486,7 +486,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
     // fill the successor array
     void generateSuccessors( Vertex from ) {
         clearSuccs();
-        this->graph().successors( from, [ this ] ( Node n, Label l ) {
+        this->graph().successors( LongTerm(), from, [ this ] ( Node n, Label l ) {
             this->addSucc( n, l );
         });
     }
@@ -495,7 +495,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
     void generateInitials() {
         ASSERT( trace.empty() );
         clearSuccs();
-        this->graph().initials( [ this ] ( Node, Node n, Label l ) {
+        this->graph().initials( LongTerm(), [ this ] ( Node, Node n, Label l ) {
             this->addSucc( n, l );
         });
     }
@@ -619,7 +619,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
     Vertex getSucc( Vertex from, int succ ) {
         int i = 0;
         Vertex v;
-        this->graph().successors( from, [&]( Node n, Label ) {
+        this->graph().successors( LongTerm(), from, [&]( Node n, Label ) {
             ++i;
             if ( i == succ )
                 v = this->store().store( n );
@@ -634,7 +634,7 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
     Vertex getInitial( int succ ) {
         int i = 0;
         Vertex v;
-        this->graph().initials( [&]( Node, Node n, Label ) {
+        this->graph().initials( LongTerm(), [&]( Node, Node n, Label ) {
             ++i;
             if ( i == succ )
                 v = this->store().store( n );

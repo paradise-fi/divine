@@ -62,7 +62,7 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
 
     template< typename A, typename V >
     void queueInitials( A &a, V &v ) {
-        a.graph().initials( [ &a, &v ] ( Node, Node n, Label l ) {
+        a.graph().initials( a.store().alloc, [ &a, &v ] ( Node, Node n, Label l ) {
                 v.queue( Vertex(), n, l );
             } );
     }
