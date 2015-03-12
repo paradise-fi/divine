@@ -163,9 +163,9 @@ int main( int argc, char **argv ) {
     auto key = gplot->add< cmd::StringOption >(
             "key", 'k', "key", "",
             "Key value name, that is value on x-axis" );
-    auto val = gplot->add< cmd::StringOption >(
+    auto val = gplot->add< cmd::VectorOption< cmd::String > >(
             "value", 'v', "value", "",
-            "Value name, that is value on y-axis" );
+            "Value name, that is value on y-axis (can be specified multiple times)" );
     auto labelKey = gplot->add< cmd::StringOption >(
             "label-key", '\0', "label-key", "",
             "Label for x-axis" );
@@ -232,10 +232,19 @@ int main( int argc, char **argv ) {
         exit( 1 );
     }
 
-    if ( !val->boolValue() ) {
+    auto values = val->values();
+    if ( values.empty() ) {
         std::cerr << "FATAL: --value | -v must be set" << std::endl;
         exit( 1 );
     }
+
+    auto tagLegend = [&]( std::string l, std::string v ) {
+        if ( values.size() == 1 )
+            return l;
+        if ( l.empty() )
+            return v;
+        return l + "-" + v;
+    };
 
     std::vector< std::pair< std::string, Statistics > > stat;
     std::vector< std::future< Statistics > > fst;
@@ -257,31 +266,33 @@ int main( int argc, char **argv ) {
     gnuplot::Plot &plot = plots.append();
 
     bool set = false;
-    int64_t xmin, xmax = xmin, ymin, ymax;
+    int64_t xmin, xmax, ymin, ymax;
 
     for ( auto &p : stat ) {
         auto file = p.first;
         auto s = p.second;
-        auto data = s.proxy( key->stringValue(), val->stringValue() );
-        if ( !set && data.begin() != data.end() ) {
-            set = true;
-            xmin = xmax = data.begin()->first;
-            ymin = ymax = data.begin()->second;
-        }
+        for ( auto val : values ) {
+            auto data = s.proxy( key->stringValue(), val );
+            if ( !set && data.begin() != data.end() ) {
+                set = true;
+                xmin = xmax = data.begin()->first;
+                ymin = ymax = data.begin()->second;
+            }
 
-        auto label = legend->boolValue() ? s.label( legend->values() ) : file;
-        auto &ds = plot.append( label, 0, 2, gnuplot::DataSet::Line, false );
-        for ( auto p : data ) {
-            xmax = std::max( xmax, p.first );
-            xmin = std::min( xmin, p.first );
-            ymax = std::max( ymax, p.second );
-            ymin = std::min( ymin, p.second );
-            ds.append( double( p.first ), double( p.second ) );
+            auto label = tagLegend( s.label( legend->values() ), val );
+            auto &ds = plot.append( label, 0, 2, gnuplot::DataSet::Line, false );
+            for ( auto p : data ) {
+                xmax = std::max( xmax, p.first );
+                xmin = std::min( xmin, p.first );
+                ymax = std::max( ymax, p.second );
+                ymin = std::min( ymin, p.second );
+                ds.append( double( p.first ), double( p.second ) );
+            }
         }
     }
 
     auto xAxis = labelKey->boolValue() ? labelKey->stringValue() : key->stringValue();
-    auto yAxis = labelVal->boolValue() ? labelVal->stringValue() : val->stringValue();
+    auto yAxis = labelVal->boolValue() ? labelVal->stringValue() : values[ 0 ];
     auto label = name->boolValue() ? name->stringValue() : xAxis + " vs. " + yAxis;
 
     auto xminb = xminopt->boolValue() ? xminopt->value() : xmin - 1;
