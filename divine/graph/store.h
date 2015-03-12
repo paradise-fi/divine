@@ -34,6 +34,8 @@ struct StoreCommon : TableProvider
     using InsertItem = typename TableProvider::Node;
     using StoredItem = typename Table::value_type;
 
+    typename std::conditional< TableProvider::allowEphemeral, Ephemeral, LongTerm >::type alloc;
+
     typename TableProvider::ThreadData td;
 
     template< typename... Args >
@@ -93,6 +95,8 @@ struct IdentityWrap {
 
     template< template < typename, typename > class T >
     using ThreadData = typename T< Node, H >::ThreadData;
+
+    static const bool allowEphemeral = false;
 };
 
 template< typename Generator, typename H >
@@ -105,6 +109,8 @@ struct NTreeWrap {
 
     template< template < typename, typename > class T >
     using ThreadData = typename NTreeHashSet< T, Node, H >::template ThreadData< Generator >;
+
+    static const bool allowEphemeral = true;
 };
 
 struct ProviderCommon {
@@ -151,6 +157,8 @@ struct PartitionedProvider {
         size_t lastIndex() { return table().size(); }
 
         Make( Hasher h, Make * ) : _table( h ) {}
+
+        static const bool allowEphemeral = false;
     };
 };
 
@@ -223,6 +231,8 @@ struct SharedProvider {
         Make ( Hasher h, Make *master )
             : _table( master ? master->_table : std::make_shared< Table >( h ) )
         {}
+
+        static const bool allowEphemeral = WrapTable::allowEphemeral;
     };
 };
 
@@ -637,7 +647,7 @@ struct NTreeStore
 
     Found< Vertex > store( Node n, hash64_t h = 0 ) {
         return fmap( [this, &n]( Root x ) {
-                this->free( n );
+                this->alloc.drop( *this->td._pool, n );
                 return this->vertex( x );
             }, this->_store( n, h ) );
     }
@@ -650,10 +660,10 @@ struct NTreeStore
 
     Blob unpack( Handle h, Pool *p ) {
         ASSERT( p );
-        return Root( h.b ).reassemble( *p, this->slack() );
+        return Root( h.b ).reassemble( this->alloc, *p, this->slack() );
     }
 
-    void free_unpacked( Node n, Pool *p, bool ) { ASSERT( p ); p->free( n ); }
+    void free_unpacked( Node n, Pool *p, bool ) { ASSERT( p ); this->alloc.drop( *p, n ); }
     void free( Node n ) { this->pool().free( n ); }
 
     bool valid( Node n ) { return Base::valid( n ); }

@@ -127,7 +127,7 @@ struct Common {
     void processQueue( int max = 0 ) {
         int i = 0;
         while ( ! _queue.empty() && (!max || i < max) ) {
-            _queue.processOpen( LongTerm(), [&]( Vertex f, Node t, Label l ) {
+            _queue.processOpen( store().alloc, [&]( Vertex f, Node t, Label l ) {
                     this->edge( f, t, l );
                 } );
             _queue.processDead( [&]( Vertex n ) {
@@ -169,7 +169,7 @@ struct Common {
              ( tact == TransitionAction::Follow && to.isnew() ) ) {
             eact = S::expansion( notify, *to );
             if ( eact == ExpansionAction::Expand )
-                _queue.push( LongTerm(), to->handle() );
+                _queue.push( store().alloc, to->handle() );
         }
 
         if ( tact == TransitionAction::Terminate ||
