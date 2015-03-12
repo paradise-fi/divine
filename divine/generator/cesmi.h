@@ -73,11 +73,11 @@ struct CESMI : public Common< Blob > {
         return n;
     }
 
-    template< typename Yield, typename Get >
-    void _successors( Node s, Yield yield, Get get )
+    template< typename Alloc, typename Yield, typename Get >
+    void _successors( Alloc alloc, Node s, Yield yield, Get get )
     {
         int handle = 1, old = 1;
-        call_setup();
+        call_setup< Alloc >();
         while ( handle ) {
             cesmi::cesmi_node state;
             handle = get( &setup, handle, data( s ), &state );
@@ -87,17 +87,17 @@ struct CESMI : public Common< Blob > {
         }
     }
 
-    template< typename Yield >
-    void successors( Node s, Yield yield ) {
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Node s, Yield yield ) {
         if ( !pool().valid( s ) )
             return;
-        _successors( s, [yield]( Node n, int ) { yield( n, Label() ); }, dl.get_successor );
+        _successors( alloc, s, [yield]( Node n, int ) { yield( n, Label() ); }, dl.get_successor );
     }
 
-    template< typename Yield >
-    void initials( Yield yield )
+    template< typename Alloc, typename Yield >
+    void initials( Alloc alloc, Yield yield )
     {
-        _successors( Node(), [yield]( Node n, int ) { yield( Node(), n, Label() ); },
+        _successors( alloc, Node(), [yield]( Node n, int ) { yield( Node(), n, Label() ); },
                      [this]( cesmi::cesmi_setup *s, int h,
                              cesmi::cesmi_node, cesmi::cesmi_node *to ) -> int
                      {
@@ -152,19 +152,22 @@ struct CESMI : public Common< Blob > {
             die( "FATAL: Could not resolve get_successor." );
     }
 
+    template< typename Alloc >
     static cesmi::cesmi_node make_node( const cesmi::cesmi_setup *setup, int size ) {
         CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
-        Blob b = _this->makeBlob( size );
+        Blob b = _this->makeBlob( Alloc(), size );
         cesmi::cesmi_node n;
         n.memory = _this->pool().dereference( b ) + _this->slack();
         n.handle = b.raw();
         return n;
     }
 
+    template< typename Alloc >
     static cesmi::cesmi_node clone_node( const cesmi::cesmi_setup *setup, cesmi::cesmi_node orig ) {
         CESMI *_this = reinterpret_cast< CESMI * >( setup->loader );
         Blob origb = Blob::fromRaw( orig.handle );
-        Blob b = _this->pool().allocate( _this->pool().size( origb ) );
+        Alloc alloc;
+        Blob b = alloc.get( _this->pool(), _this->pool().size( origb ) );
 
         int slack = _this->slack();
         _this->pool().copy( origb, b );
@@ -228,8 +231,12 @@ struct CESMI : public Common< Blob > {
         return p.seqno;
     }
 
+    template< typename Alloc = LongTerm >
     void call_setup()
     {
+        setup.make_node = &make_node< Alloc >;
+        setup.clone_node = &clone_node< Alloc >;
+
         if ( setup.instance_initialised )
             return;
 
@@ -237,8 +244,6 @@ struct CESMI : public Common< Blob > {
         setup.property = 0;
         setup.property_count = 0;
         setup.loader = this;
-        setup.make_node = &make_node;
-        setup.clone_node = &clone_node;
         setup.add_property = &add_property;
         setup.instance = 0;
         setup.instance_initialised = 0;
@@ -320,7 +325,7 @@ struct CESMI : public Common< Blob > {
         char *fmt = nullptr;
 
         if ( dl.show_transition && pool().valid( from ) ) {
-            _successors( from, [&]( Node n, int handle ) {
+            _successors( LongTerm(), from, [&]( Node n, int handle ) {
                     if ( pool().equal( to, n, slack() ) )
                         fmt = this->dl.show_transition( &this->setup, this->data( from ), handle );
                 }, dl.get_successor );
