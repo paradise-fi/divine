@@ -66,6 +66,7 @@
 
 #ifdef __unix
 #include <dirent.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/resource.h> /* rusage */
 #include <sys/select.h>
@@ -73,9 +74,12 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <sys/klog.h>
 #include <time.h>
 #include <unistd.h>
+#endif
+
+#ifdef __linux
+#include <sys/klog.h>
 #endif
 
 #ifndef BRICK_SHELLTEST_H
@@ -126,9 +130,9 @@ inline Listing listdir( std::string p, bool recurse = false, std::string prefix 
             continue;
 
         if ( recurse ) {
-            struct stat64 stat;
+            struct stat stat;
             std::string s = p + "/" + ename;
-            if ( ::stat64( s.c_str(), &stat ) == -1 )
+            if ( ::stat( s.c_str(), &stat ) == -1 )
                 continue;
             if ( S_ISDIR(stat.st_mode) ) {
                 Listing sl = listdir( s, true, prefix + ename + "/" );
@@ -503,7 +507,7 @@ struct KMsg : Source {
     }
 
     void reset() {
-#ifdef __unix
+#ifdef __linux
         int sz;
 
         if ( dev_kmsg() ) {
@@ -519,7 +523,7 @@ struct KMsg : Source {
     }
 
     void sync( Sink *s ) {
-#ifdef __unix
+#ifdef __linux
         int sz;
         char buf[ 128 * 1024 ];
 
