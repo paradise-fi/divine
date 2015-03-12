@@ -834,6 +834,16 @@ struct BlobComparerLT : public BlobComparerBase {
 
 std::ostream &operator<<( std::ostream &o, const Pool &p );
 
+struct LongTerm {
+    Blob get( Pool &p, int sz ) { return p.allocate( sz ); }
+    void drop( Pool &p, Blob ptr ) { return p.free( ptr ); }
+};
+
+struct Ephemeral {
+    Blob get( Pool &p, int sz ) { return p.ephemeralAllocate( sz ); }
+    void drop( Pool &p, Blob ptr ) { return p.ephemeralFree( ptr ); }
+};
+
 }
 
 namespace divine_test {
