@@ -131,7 +131,7 @@ struct LtlCE {
 
         int succnum = 0;
         Node parent = shared().ce.parent;
-        g().allSuccessors(
+        g().allSuccessors( LongTerm(),
             parent, [ this, &s, &succnum ]( Node n, Label ) {
                 if ( this->shared().ce.current_updated )
                     return;
@@ -161,7 +161,7 @@ struct LtlCE {
     template < typename Store >
     int whichInitial( Handle h, Store& s ) {
         int res = 0, i = 0;
-        g().initials( [ this, &h, &s, &res, &i ]( Node, Node o, Label ) {
+        g().initials( LongTerm(), [ this, &h, &s, &res, &i ]( Node, Node o, Label ) {
                 ++i;
                 Vertex v = s.fetch( o );
                 res = s.equal( v.handle(), h ) ? i : res;
@@ -173,7 +173,7 @@ struct LtlCE {
     Node getInitialById( int id ) {
         int i = 0;
         Node init;
-        g().initials( [ this, id, &i, &init ]( Node, Node o, Label ) {
+        g().initials( LongTerm(), [ this, id, &i, &init ]( Node, Node o, Label ) {
                 ++i;
                 if ( i == id )
                     init = o;
@@ -440,7 +440,7 @@ struct LtlCE {
                 return std::make_pair( trace, numTrace );
             int i = 0;
             bool done = false;
-            a.graph().initials( [&]( Node, Node o, Label ) {
+            a.graph().initials( LongTerm(), [&]( Node, Node o, Label ) {
                     if ( done )
                         return;
                     ++i;
@@ -461,7 +461,7 @@ struct LtlCE {
         for ( ++hTraceBegin; hTraceBegin != hTraceEnd; ++hTraceBegin ) {
             int i = 0;
             bool done = false;
-            a.graph().allSuccessors( parent, [&]( Node t, Label ) {
+            a.graph().allSuccessors( LongTerm(), parent, [&]( Node t, Label ) {
                     if ( done )
                         return;
                     ++i;

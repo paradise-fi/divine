@@ -23,13 +23,13 @@ struct QueueFrontend {
     typedef typename Graph::Label Label;
     typedef typename Setup::Store::Vertex Vertex;
 
-    template< typename Next >
-    void processOpen( Next next ) {
+    template< typename Alloc, typename Next >
+    void processOpen( Alloc alloc, Next next ) {
         deadlocked = true;
         axed = false;
 
         auto from = self().store().vertex( self().front() );
-        self().g.successors( from, [&]( Node n, Label label ) {
+        self().g.successors( alloc, from, [&]( Node n, Label label ) {
                 this->deadlocked = false;
                 if ( !this->axed )
                     next( from, n, label );
@@ -82,7 +82,8 @@ struct Queue : QueueFrontend< Setup, Queue< Setup > >
     void reserve( int n ) { _queue.reserve( n ); }
     int size() { return _queue.size(); } // XXX misleading?
 
-    void push( Handle t )
+    template< typename Alloc >
+    void push( Alloc, Handle t )
     {
         Statistics::global().enqueue( id, sizeof( t ) );
         _queue.push_back( t );
@@ -147,19 +148,20 @@ struct Stack {
 
     int _pushes, _pops;
 
-    void push( Handle h ) {
+    template< typename Alloc >
+    void push( Alloc alloc, Handle h ) {
         _from = s.vertex( h );
         _stack.push_back( StackItem( h, Label() ) );
         deadlocked = true;
-        g.successors( _from, [&]( Node n, Label l ) {
+        g.successors( alloc, _from, [&]( Node n, Label l ) {
                 ++ this->_pushes;
                 this->deadlocked = false;
                 this->_stack.push_back( StackItem( n, l ) );
             } );
     }
 
-    template< typename Next >
-    void processOpen( Next next ) {
+    template< typename Alloc, typename Next >
+    void processOpen( Alloc alloc, Next next ) {
         if ( !deadlocked ) {
             ASSERT_EQ( _stack.back().flag, Fresh );
             Node n = _stack.back().node();
@@ -261,7 +263,8 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
         }
     }
 
-    void push( Handle h ) {
+    template< typename Alloc >
+    void push( Alloc, Handle h ) {
         Statistics::global().enqueue( id, sizeof( Handle ) );
         ++termination;
         outgoing.push_back( h );
@@ -338,8 +341,8 @@ struct TestDatastruct {
 
     void init( generator::Dummy &g ) {
         int count = 0;
-        g.initials( [&]( Node, Node n, Label ) { first = n; } );
-        g.successors( first, [&]( Node n, Label ) {
+        g.initials( LongTerm(), [&]( Node, Node n, Label ) { first = n; } );
+        g.successors( LongTerm(), first, [&]( Node n, Label ) {
                 if ( count == 0 )
                     second = n;
                 if (count == 1 )
@@ -358,21 +361,21 @@ struct TestDatastruct {
         init( d );
 
         ASSERT( q.empty() );
-        q.push( TrivialHandle( first, 0 ) );
+        q.push( LongTerm(), TrivialHandle( first, 0 ) );
         ASSERT( !q.empty() );
 
         count = 0;
-        q.processOpen( [&]( Vertex, Node, Label ) { ++count; } );
+        q.processOpen( LongTerm(), [&]( Vertex, Node, Label ) { ++count; } );
         q.processClosed( [&]( Vertex ) {} );
         ASSERT_EQ( count, 2 );
         ASSERT( q.empty() );
 
         count = 0;
-        q.push( TrivialHandle( first, 0 ) );
-        q.push( TrivialHandle( second, 0 ) );
+        q.push( LongTerm(), TrivialHandle( first, 0 ) );
+        q.push( LongTerm(), TrivialHandle( second, 0 ) );
         ASSERT( !q.empty() );
 
-        q.processOpen( [&]( Vertex, Node n, Label ) {
+        q.processOpen( LongTerm(), [&]( Vertex, Node n, Label ) {
                 if ( count == 0 ) {
                     ASSERT_EQ( getShort( n, 0 ), 1 );
                     ASSERT_EQ( getShort( n, 2 ), 0 );
@@ -391,7 +394,7 @@ struct TestDatastruct {
         ASSERT( !q.empty() );
 
         count = 0;
-        q.processOpen( [&]( Vertex, Node n, Label ) {
+        q.processOpen( LongTerm(), [&]( Vertex, Node n, Label ) {
                 if ( count == 0 ) {
                     ASSERT_EQ( getShort( n, 0 ), 2 );
                     ASSERT_EQ( getShort( n, 2 ), 0 );
@@ -538,17 +541,17 @@ struct TestDatastruct {
         init( d );
 
         ASSERT( q.empty() );
-        q.push( TrivialHandle( first, 0 ) );
+        q.push( LongTerm(), TrivialHandle( first, 0 ) );
         q.processClosed( []( Vertex ) { ASSERT_UNREACHABLE( "unreachable" ); } );
         ASSERT( !q.empty() );
 
-        q.processOpen( [&]( Vertex, Node, Label ) { die = false; } );
+        q.processOpen( LongTerm(), [&]( Vertex, Node, Label ) { die = false; } );
         q.processClosed( []( Vertex ) { ASSERT_UNREACHABLE( "unreachable" ); } );
         ASSERT( !q.empty() );
         ASSERT( !die );
 
         die = true;
-        q.processOpen( [&]( Vertex, Node, Label ) { die = false; } );
+        q.processOpen( LongTerm(), [&]( Vertex, Node, Label ) { die = false; } );
         ASSERT( !die );
 
         die = true;
@@ -556,12 +559,12 @@ struct TestDatastruct {
         ASSERT( !die );
         ASSERT( q.empty() );
 
-        q.push( TrivialHandle( first, 0 ) );
+        q.push( LongTerm(), TrivialHandle( first, 0 ) );
         q.processClosed( []( Vertex ) { ASSERT_UNREACHABLE( "unreachable" ); } );
-        q.push( TrivialHandle( second, 0 ) );
+        q.push( LongTerm(), TrivialHandle( second, 0 ) );
 
         // 1, 1, from 1, 0
-        q.processOpen( [&]( Vertex f, Node t, Label ) {
+        q.processOpen( LongTerm(), [&]( Vertex f, Node t, Label ) {
                 ASSERT_EQ( getShort( f.node(), 0 ), 1 );
                 ASSERT_EQ( getShort( f.node(), 2 ), 0 );
                 ASSERT_EQ( getShort( t, 0 ), 1 );
@@ -571,7 +574,7 @@ struct TestDatastruct {
         ASSERT( !q.empty() );
 
         // 2, 0, from 1, 0
-        q.processOpen( [&]( Vertex f, Node t, Label ) {
+        q.processOpen( LongTerm(), [&]( Vertex f, Node t, Label ) {
                 ASSERT_EQ( getShort( f.node(), 0 ), 1 );
                 ASSERT_EQ( getShort( f.node(), 2 ), 0 );
                 ASSERT_EQ( getShort( t, 0 ), 2 );
@@ -583,7 +586,7 @@ struct TestDatastruct {
         ASSERT( !q.empty() );
 
         // 0, 1, from 0, 0
-        q.processOpen( [&]( Vertex f, Node t, Label ) {
+        q.processOpen( LongTerm(), [&]( Vertex f, Node t, Label ) {
                 ASSERT_EQ( getShort( f.node(), 0 ), 0 );
                 ASSERT_EQ( getShort( f.node(), 2 ), 0 );
                 ASSERT_EQ( getShort( t, 0 ), 0 );
@@ -592,7 +595,7 @@ struct TestDatastruct {
         ASSERT( !q.empty() );
 
         // 1, 0, from 0, 0
-        q.processOpen( [&]( Vertex f, Node t, Label ) {
+        q.processOpen( LongTerm(), [&]( Vertex f, Node t, Label ) {
                 ASSERT_EQ( getShort( f.node(), 0 ), 0 );
                 ASSERT_EQ( getShort( f.node(),  2 ), 0 );
                 ASSERT_EQ( getShort( t, 0 ), 1 );

@@ -217,10 +217,10 @@ struct Transform {
     Pool &pool() { return base().pool(); }
     int slack() { return base().slack(); }
 
-    template< typename Yield >
-    void successors( Node st, Yield yield ) { base().successors( st, yield ); }
-    template< typename Yield >
-    void allSuccessors( Node st, Yield yield ) { successors( st, yield ); }
+    template< typename Alloc, typename Yield >
+    void successors( Alloc a, Node st, Yield yield ) { base().successors( a, st, yield ); }
+    template< typename Alloc, typename Yield >
+    void allSuccessors( Alloc a, Node st, Yield yield ) { successors( a, st, yield ); }
     void release( Node s ) { base().release( s ); }
     bool isDeadlock( Node s ) { return base().isDeadlock( s ); }
     std::string showConstdata() { return base().showConstdata(); }
@@ -249,9 +249,9 @@ struct Transform {
         return base().isInRejecting( s, acc_group ); }
     unsigned acceptingGroupCount() { return base().acceptingGroupCount(); }
 
-    template< typename Yield >
-    void initials( Yield yield ) {
-        base().initials( yield );
+    template< typename Alloc, typename Yield >
+    void initials( Alloc alloc, Yield yield ) {
+        base().initials( alloc, yield );
     }
 
     void setPool( Pool p ) { base().setPool( p ); }
@@ -287,7 +287,7 @@ struct Transform {
         int edge = 0;
         bool found = false;
 
-        base().successors( current, [&]( Node n, Label ) {
+        base().successors( LongTerm(), current, [&]( Node n, Label ) {
                 if (!found)
                     ++ edge;
                 if ( edge > fromIndex && a.store().equal( n, next ) )
