@@ -18,8 +18,6 @@ namespace llvm {
 
 using brick::types::Maybe;
 
-template< typename HeapMeta > struct Canonic;
-
 struct Problem {
     enum What {
         #define PROBLEM(x) x,
@@ -121,7 +119,40 @@ Problem::What memcopy( From f, To t, int bytes, FromC &fromc, ToC &toc )
     return Problem::NoProblem;
 }
 
+template< typename _HeapMeta >
+struct MachineState;
+
 namespace machine {
+
+template< typename HeapMeta >
+struct Canonic
+{
+    MachineState< HeapMeta > &ms;
+    std::vector< int > segmap;
+    int allocated, segcount;
+    int stack;
+    int boundary, segdone;
+
+    Canonic( MachineState< HeapMeta > &ms )
+        : ms( ms ), allocated( 0 ), segcount( 0 ), stack( 0 ), boundary( 0 ), segdone( 0 )
+    {
+        segmap.resize( ms.nursery.offsets.size() - 1 + ms.nursery.segshift, -1 );
+    }
+
+    Pointer operator[]( Pointer idx ) {
+        if ( !idx.heap || !ms.validate( idx ) )
+            return idx;
+        if ( segmap[ idx.segment ] < 0 ) {
+            segmap[ idx.segment ] = segcount ++;
+            allocated += ms.pointerSize( idx );
+        }
+        return Pointer( idx.heap, segmap[ idx.segment ], idx.offset );
+    }
+
+    bool seen( Pointer p ) {
+        return segmap[ p.segment ] >= 0;
+    }
+};
 
 inline int size_jumptable( int segcount );
 inline int size_memoryflags( int bytecount );
@@ -527,8 +558,8 @@ struct MachineState
     }
 
     bool isPrivate( int tid, Pointer p );
-    bool isPrivate( Pointer p, Frame &, Canonic< HeapMeta > & );
-    bool isPrivate( Pointer p, Pointer, Canonic< HeapMeta > & );
+    bool isPrivate( Pointer p, Frame &, machine::Canonic< HeapMeta > & );
+    bool isPrivate( Pointer p, Pointer, machine::Canonic< HeapMeta > & );
 
     StateLens state( Blob b ) {
         return Lens< State >( StateAddress( &_info, _pool.dereference( b ), _slack ) );
@@ -764,11 +795,10 @@ struct MachineState
     }
 
 
-    void trace( Pointer p, Canonic< HeapMeta > &canonic );
-    void trace( Frame &f, Canonic< HeapMeta > &canonic );
-    void snapshot( Pointer &edit, Pointer original, Canonic< HeapMeta > &canonic, Heap &heap );
-    void snapshot( Frame &f, Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address );
-    Blob snapshot();
+    void trace( Pointer p, machine::Canonic< HeapMeta > &canonic );
+    void trace( Frame &f, machine::Canonic< HeapMeta > &canonic );
+    void snapshot( Pointer &edit, Pointer original, machine::Canonic< HeapMeta > &canonic, Heap &heap );
+    void snapshot( Frame &f, machine::Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address );
 
     void rewind( Blob to, int thread = 0 )
     {
@@ -813,6 +843,125 @@ struct MachineState
 
     void dump( std::ostream & );
     void dump();
+
+    divine::Blob snapshot()
+    {
+        machine::Canonic< HeapMeta > canonic( *this );
+        int dead_threads = 0;
+
+        for ( auto var : _info.globalvars ) {
+            ASSERT ( !var.second.constant );
+            Pointer p( false, var.first, 0 );
+            for ( p.offset = 0; p.offset < var.second.width; p.offset += 4 )
+                if ( isHeapPointer( global().memoryflag( _info, p ) ) )
+                    trace( followPointer( p ), canonic );
+        }
+
+        for ( int tid = 0; tid < _thread_count; ++tid ) {
+            if ( !stack( tid ).get().length() ) { /* leave out dead threads */
+                ++ dead_threads;
+                continue;
+            }
+
+            /* non-tail dead threads become zombies, with 4 byte overhead; put them back */
+            canonic.stack += dead_threads * sizeof( Stack );
+            dead_threads = 0;
+            canonic.stack += sizeof( Stack );
+            eachframe( stack( tid ), [&]( Frame &fr ) {
+                    this->trace( fr, canonic );
+                    return true; // continue
+                } );
+        }
+
+        /* we only store new problems, discarding those we inherited */
+        for ( int i = 0; i < int( problems.size() ); ++i )
+            if ( !problems[ i ].pointer.null() )
+                trace( problems[ i ].pointer, canonic );
+
+        Pointer p( true, 0, 0 );
+        const uint32_t limit = heap().segcount + nursery.offsets.size() - 1;
+        ASSERT_LEQ( limit, (1u << Pointer::segmentSize) - 1 );
+        for ( p.segment = 0; p.segment < limit; ++ p.segment )
+            if ( !canonic.seen( p ) && !freed.count( p.segment ) ) {
+                trace( p, canonic );
+                problem( Problem::MemoryLeak, p );
+            }
+
+        Blob b = _pool.allocate( _slack +
+            size( canonic.stack, canonic.allocated, canonic.segcount, problems.size() ) );
+        _pool.clear( b );
+
+        StateAddress address( &_info, _pool.dereference( b ), _slack );
+        Flags &fl = address.as< Flags >();
+        fl = flags();
+        fl.problemcount = problems.size();
+        address.advance( sizeof( Flags ) );
+
+        for ( int i = 0; i < int( problems.size() ); ++i ) {
+            address.advance( sizeof( Problem ) );
+            fl.problems( i ) = problems[ i ];
+        }
+
+        Globals *_global = &address.as< Globals >();
+        address = state().sub( Globals() ).copy( address );
+
+        /* skip the heap */
+        Heap *_heap = &address.as< Heap >();
+        _heap->segcount = canonic.segcount;
+        /* heap needs to know its size in order to correctly dereference! */
+        _heap->jumptable( canonic.segcount ) = canonic.allocated / 4;
+        address.advance( machine::size_heap( canonic.segcount, canonic.allocated ) );
+        ASSERT_EQ( machine::size_heap( canonic.segcount, canonic.allocated ) % 4, 0 );
+
+        auto &heapmeta = address.as< HeapMeta >();
+        heapmeta.setSize( canonic.segcount );
+        address = heapmeta.advance( address, 0 );
+
+        address.as< int >() = _thread_count - dead_threads;
+        address.advance( sizeof( int ) ); // ick. length of the threads array
+
+        for ( auto var : _info.globalvars ) {
+            Pointer p( false, var.first, 0 );
+            ASSERT( !var.second.constant );
+            for ( p.offset = 0; p.offset < var.second.width; p.offset += 4 )
+                if ( isHeapPointer( global().memoryflag( _info, p ) ) )
+                    snapshot( *(_global->dereference< Pointer >( _info, p )),
+                              followPointer( p ), canonic, *_heap );
+        }
+
+        for ( int tid = 0; tid < _thread_count - dead_threads; ++tid ) {
+            address.as< int >() = stack( tid ).get().length();
+            address.advance( sizeof( int ) );
+            eachframe( stack( tid ), [&]( Frame &fr ) {
+                    snapshot( fr, canonic, *_heap, address );
+                    return true; // continue
+                });
+        }
+
+        for ( int i = 0; i < fl.problemcount; ++i ) {
+            auto &p = fl.problems( i ).pointer;
+            if ( !p.null() )
+                snapshot( p, p, canonic, *_heap );
+        }
+
+        auto &nursery_hm = _pool.get< HeapMeta >( _heapmeta ),
+              &mature_hm = state().get( HeapMeta() );
+
+        for ( int seg = 0; seg < int( canonic.segmap.size() ); ++seg ) {
+            if ( canonic.segmap[ seg ] < 0 )
+                continue;
+            bool nursed = seg >= nursery.segshift;
+            heapmeta.copyFrom( nursed ? nursery_hm : mature_hm,
+                               seg - (nursed ? nursery.segshift : 0), canonic.segmap[ seg ] );
+        }
+
+        ASSERT_EQ( canonic.segdone, canonic.segcount );
+        ASSERT_EQ( canonic.boundary, canonic.allocated );
+        ASSERT_EQ( address.offset, _pool.size( b ) );
+        ASSERT_EQ( (_pool.size( b ) - _slack) % 4, 0 );
+
+        return b;
+    }
 };
 
 struct FrameContext {
