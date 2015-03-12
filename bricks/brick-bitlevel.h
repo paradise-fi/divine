@@ -35,14 +35,17 @@
 
 #include <type_traits>
 
-#ifndef _WIN32
+#ifdef __linux
 #include <asm/byteorder.h>
 #include <byteswap.h>
-#else // WIN32
+#elif !defined LITTLE_ENDIAN // if defined _WIN32
 #define BYTE_ORDER 1234
 #define LITTLE_ENDIAN 1234
+#endif
+
+#ifndef bswap_64
 #define bswap_64 __builtin_bswap64
-#endif // WIN32
+#endif
 
 #include <atomic>
 #include <cstring>
