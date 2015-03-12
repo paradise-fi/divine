@@ -34,15 +34,17 @@ struct Allocator {
 
     Allocator() : _pool( nullptr ), _slack( 0 ) {}
 
-    Blob makeBlob( int s ) {
-        Blob b = pool().allocate( s + slack() );
+    template< typename Alloc >
+    Blob makeBlob( Alloc alloc, int s ) {
+        Blob b = alloc.get( pool(), s + slack() );
         if ( slack() )
             pool().clear( b, 0, slack() );
         return b;
     }
 
-    Blob makeBlobCleared( int s ) {
-        Blob b = pool().allocate( s + slack() );
+    template< typename Alloc >
+    Blob makeBlobCleared( Alloc alloc, int s ) {
+        Blob b = alloc.get( pool(), s + slack() );
         pool().clear( b );
         return b;
     }
