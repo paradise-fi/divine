@@ -349,7 +349,7 @@ struct Lake {
                 for ( auto e : ephemeral )
                     if ( e.first == p.offset * 4 )
                         return e.second - e.first;
-            ASSERT_NEQ( p.block, ephemeral_block );
+            ASSERT_NEQ( int( p.block ), ephemeral_block );
             ASSERT( lake->size( p) );
             return lake->size( p );
         }
