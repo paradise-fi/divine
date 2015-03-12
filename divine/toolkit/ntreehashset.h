@@ -185,7 +185,8 @@ struct NTreeHashSet
             return rawdata( p ) + slackoffset( p, slack );
         }
 
-        T reassemble( Pool& p, int32_t slacksize )
+        template< typename Alloc >
+        T reassemble( Alloc alloc, Pool& p, int32_t slacksize )
         {
             ASSERT( p.valid( b() ) );
 
@@ -200,7 +201,7 @@ struct NTreeHashSet
 
             char* slackptr = slack( p, slacksize );
             size += slacksize;
-            T out = p.allocate( size );
+            T out = alloc.get( p, size );
             char* outptr = p.dereference( out );
             outptr = std::copy( slackptr, slackptr + slacksize, outptr );
             for ( auto l : leaves ) {
@@ -743,7 +744,7 @@ struct TestNTreeHashSet {
         for ( unsigned i = 0; i < 33; ++i )
             ASSERT_EQ( c2u( children[ i / 17 ].leaf().data( test.pool() )[ i % 17 ] ), i & 0xff );
 
-        Blob b2 = root->reassemble( test.pool(), 0 );
+        Blob b2 = root->reassemble( LongTerm(), test.pool(), 0 );
         ASSERT( test.pool().equal( b, b2 ) );
 
         auto rootVal UNUSED = valDeref( root ); // avoid iterator invalidation on insert
@@ -801,7 +802,7 @@ struct TestNTreeHashSet {
                             .leaf().data( test.pool() )[ i % 17 ] ),
                        i & 0xff );
 
-        Blob b2 = root->reassemble( test.pool(), 0 );
+        Blob b2 = root->reassemble( LongTerm(), test.pool(), 0 );
         ASSERT( test.pool().equal( b, b2 ) );
 
         auto rootVal UNUSED = valDeref( root );
@@ -856,7 +857,7 @@ struct TestNTreeHashSet {
         if ( slack )
             ASSERT_EQ( derefslack( *root ), slackpat );
 
-        Blob b2 = root->reassemble( test.pool(), slack );
+        Blob b2 = root->reassemble( LongTerm(), test.pool(), slack );
         for ( unsigned i = 0; i < 1000; ++i )
             ASSERT_EQ( c2u( test.pool().dereference( b2 )[ slack + i ] ), i & 0xff );
         ASSERT_EQ( test.pool().size( b ), test.pool().size( b2 ) );
@@ -970,27 +971,27 @@ struct TestNTreeHashSet {
 
         Blob b32 = randomBlob( 32, test.pool() );
         auto r32 UNUSED = valDeref( test.insert( b32 ) );
-        ASSERT( test.pool().equal( b32, r32.reassemble( test.pool(), 0 ) ) );
+        ASSERT( test.pool().equal( b32, r32.reassemble( LongTerm(), test.pool(), 0 ) ) );
 
         Blob b37 = randomBlob( 37, test.pool() );
         auto r37 UNUSED = valDeref( test.insert( b37 ) );
-        ASSERT( test.pool().equal( b37, r37.reassemble( test.pool(), 0 ) ) );
+        ASSERT( test.pool().equal( b37, r37.reassemble( LongTerm(), test.pool(), 0 ) ) );
 
         Blob b41 = randomBlob( 41, test.pool() );
         auto r41 UNUSED = valDeref( test.insert( b41 ) );
-        ASSERT( test.pool().equal( b41, r41.reassemble( test.pool(), 0 ) ) );
+        ASSERT( test.pool().equal( b41, r41.reassemble( LongTerm(), test.pool(), 0 ) ) );
 
         Blob b44 = randomBlob( 44, test.pool() );
         auto r44 UNUSED = valDeref( test.insert( b44 ) );
-        ASSERT( test.pool().equal( b44, r44.reassemble( test.pool(), 0 ) ) );
+        ASSERT( test.pool().equal( b44, r44.reassemble( LongTerm(), test.pool(), 0 ) ) );
 
         Blob b46 = randomBlob( 46, test.pool() );
         auto r46 UNUSED = valDeref( test.insert( b46 ) );
-        ASSERT( test.pool().equal( b46, r46.reassemble( test.pool(), 0 ) ) );
+        ASSERT( test.pool().equal( b46, r46.reassemble( LongTerm(), test.pool(), 0 ) ) );
 
         Blob b47 = randomBlob( 47, test.pool() );
         auto r47 UNUSED = valDeref( test.insert( b47 ) );
-        ASSERT( test.pool().equal( b47, r47.reassemble( test.pool(), 0 ) ) );
+        ASSERT( test.pool().equal( b47, r47.reassemble( LongTerm(), test.pool(), 0 ) ) );
     }
 
 };
