@@ -28,35 +28,35 @@ struct Dummy : Common< Blob > {
         return pool().get< Content >( b, slack() );
     }
 
-    template< typename Yield >
-    void initials( Yield yield ) {
-        Blob b = this->makeBlob( sizeof( Content ) );
+    template< typename Alloc, typename Yield >
+    void initials( Alloc alloc, Yield yield ) {
+        Blob b = this->makeBlob( alloc, sizeof( Content ) );
         content( b ) = std::make_pair( 0, 0 );
         yield( Node(), b, Label() );
     }
 
-    template< typename N, typename Yield >
-    void successors( N st, Yield yield )
+    template< typename Alloc, typename N, typename Yield >
+    void successors( Alloc alloc, N st, Yield yield )
     {
-        return successors( st.node(), yield );
+        return successors( alloc, st.node(), yield );
     }
 
-    template< typename Yield >
-    void successors( Node st, Yield yield ) {
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Node st, Yield yield ) {
         Node r;
 
         if ( !pool().valid( st ) )
             return;
 
         if ( content( st ).first < dummy_size ) {
-            r = this->makeBlob( sizeof( Content ) );
+            r = this->makeBlob( alloc, sizeof( Content ) );
             content( r ) = content( st );
             content( r ).first ++;
             yield( r, Label( 7 ) );
         }
 
         if ( content( st ).second < dummy_size ) {
-            r = this->makeBlob( sizeof( Content ) );
+            r = this->makeBlob( alloc, sizeof( Content ) );
             content( r ) = content( st );
             content( r ).second ++;
             yield( r, Label( 3 ) );
