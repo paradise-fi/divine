@@ -200,7 +200,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
              trans.push_back( ::atoi( each.c_str() ) ) ) ;
 
         Vertex from, to;
-        this->graph().initials( [&]( Node, Node n, Label ) {
+        this->graph().initials( LongTerm(), [&]( Node, Node n, Label ) {
                 if ( trans.front() == 1 )
                     from = this->store().store( n );
                 trans.front() --;
@@ -215,7 +215,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
                 break;
 
             int drop = trans[ i ] - 1;
-            this->graph().successors( from, [&]( Node n, Label ) {
+            this->graph().successors( LongTerm(), from, [&]( Node n, Label ) {
                     if ( drop > 0 ) {
                         -- drop;
                         return;
@@ -243,7 +243,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
         visitor::BFV< This >
             visitor( *this, this->graph(), this->store() );
 
-        this->graph().initials( [ this, &visitor ]( Node /*f*/, Node t, Label l ) {
+        this->graph().initials( LongTerm(), [ this, &visitor ]( Node /*f*/, Node t, Label l ) {
                 auto v = this->store().store( t );
                 this->extension( v ).serial = ++this->serial;
                 this->extension( v ).distance = 1;
