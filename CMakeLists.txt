@@ -342,6 +342,13 @@ if( GEN_LLVM )
     else()
         disable( GEN_LLVM "" "Found version ${LLVM_STRING_VERSION} but 3.3 or 3.4 is required." )
     endif()
+
+    execute_process( COMMAND ${CMD_CLANG} --version OUTPUT_VARIABLE CLANG_VERSION__ )
+    string( REGEX MATCH "clang version ([0-9]*[.])*[0-9]*" CLANG_VERSION_ ${CLANG_VERSION__} )
+    string( REPLACE "clang version " "" CLANG_VERSION ${CLANG_VERSION_} )
+    if ( NOT ${CLANG_VERSION} STREQUAL ${LLVM_STRING_VERSION} )
+        disable( GEN_LLVM "" "Clang version ${CLANG_VERSION} does not match LLVM version ${LLVM_STRING_VERSION}" )
+    endif()
 endif()
 
 if( NOT GEN_LLVM )
