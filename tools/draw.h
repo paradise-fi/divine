@@ -257,7 +257,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
         visitor.processQueue();
 
         while ( this->graph().porEliminateLocally( *this ) ) {
-            this->graph().porExpand(
+            this->graph().porExpand( LongTerm(),
                 this->store(), [ this, &visitor ]( Vertex f, Node t, Label l ) {
                     visitor.queue( f, t, l );
                 } );
