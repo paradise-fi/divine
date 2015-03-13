@@ -9,6 +9,7 @@
 #include <divine/utility/die.h>
 
 #include <divine/compile/env.h>
+#include <divine/compile/snapshot.h>
 
 #ifndef TOOLS_COMPILE_LLVM_H
 #define TOOLS_COMPILE_LLVM_H
@@ -70,9 +71,21 @@ struct CompileLLVM {
 
         if ( _env.usePrecompiled.empty() && !_env.dontLink ) {
             auto files = { "glue", "stubs", "entry", "pthread", "cxa_exception_divine" };
+            auto filesCpp11 = { "fs", "fs-snapshot", "fs-manager", "fs-memory" };
+
+            {
+                std::ofstream sn( "fs-snapshot.cpp" );
+                brick::fs::ChangeCwd _( rootDir.oldcwd );
+                Snapshot::writeFile( sn, _env.snapshot, _env.stdin );
+            }
+
 
             for ( std::string f : files ) {
                 _env.compileFile( f + ".cpp", " -c -I. -Ilibcxxabi " + flags + " -o " + f + ".bc" );
+                linkFile( f + ".bc" );
+            }
+            for ( std::string f : filesCpp11 ) {
+                _env.compileFile( f + ".cpp", " -std=c++11 -c -I. -Ilibcxxabi " + flags + " -o " + f + ".bc" );
                 linkFile( f + ".bc" );
             }
         }

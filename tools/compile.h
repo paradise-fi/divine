@@ -47,7 +47,7 @@ struct Compile {
     commandline::StandardParserWithMandatoryCommand &opts;
 
     BoolOption *o_cesmi, *o_llvm, *o_keep, *o_libs_only, *o_dont_link, *o_no_modeline;
-    StringOption *o_out, *o_cmd_clang, *o_precompiled, *o_parallel;
+    StringOption *o_out, *o_cmd_clang, *o_precompiled, *o_parallel, *o_snapshot, *o_stdin;
     VectorOption< String > *o_definitions, *o_cflags;
     int parallelBuildJobs;
 
@@ -273,6 +273,8 @@ struct Compile {
         env.dontLink = o_dont_link->boolValue();
         env.useThreads = parallelBuildJobs;
         env.keepBuildDir = o_keep->boolValue();
+        env.snapshot = o_snapshot->stringValue();
+        env.stdin = o_stdin->stringValue();
         env.input = files;
         env.output = out;
         env.flags = cflags;
@@ -371,6 +373,14 @@ struct Compile {
         o_no_modeline = cmd_compile->add< BoolOption >(
             "no-modeline", 0, "no-modeline", "",
             "disable DIVINE modeline parsing" );
+
+        o_snapshot = cmd_compile->add< StringOption >(
+            "snapshot", 0, "snapshot", "",
+            "make snapshot of a directory" );
+
+        o_stdin = cmd_compile->add< StringOption >(
+            "stdin", 0, "stdin", "",
+            "use file as a standard input" );
     }
 
 };
