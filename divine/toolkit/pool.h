@@ -312,14 +312,13 @@ struct Lake {
         Pointer ephemeralAllocate( int sz ) {
             ASSERT_LEQ( 0, ephemeral_block );
             int off = 0;
-            sz = align( sz, 4 );
 
             /* first-fit allocation */
             auto i = ephemeral.begin();
             for ( ; i != ephemeral.end(); ++i ) {
                 if ( off + sz <= i->first )
                     break;
-                off = i->second;
+                off = align( i->second, 4 );
             }
             ephemeral.emplace( i, off, off + sz );
 
