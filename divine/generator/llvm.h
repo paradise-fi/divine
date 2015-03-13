@@ -65,8 +65,8 @@ struct _LLVM : Common< Blob > {
 
     graph::DemangleStyle demangle;
 
-    template< typename Yield >
-    void initials( Yield yield )
+    template< typename Alloc, typename Yield >
+    void initials( Alloc alloc, Yield yield )
     {
         interpreter();
         Function *f = bitcode->module->getFunction( "_divine_start" );
@@ -77,7 +77,7 @@ struct _LLVM : Common< Blob > {
         }
         if ( !f )
             die( "FATAL: Missing both _divine_start and main in verified model." );
-        yield( Node(), interpreter().initial( f, is_start ), Label() );
+        yield( Node(), interpreter().initial( alloc, f, is_start ), Label() );
     }
 
     bool buchi_enabled( PropGuard guard, unsigned ap ) {
@@ -88,10 +88,10 @@ struct _LLVM : Common< Blob > {
         return true;
     }
 
-    template< typename Yield >
-    void successors( Node st, Yield yield ) {
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Node st, Yield yield ) {
         if ( !use_property )
-            return interpreter().run( st, yield );
+            return interpreter().run( st, yield, alloc );
         interpreter().run( st, [&]( Node n, Label p ){
                 std::vector< int > buchi_succs;
                 for ( auto next : this->prop_next[ this->flags( n ).buchi ] ) {
@@ -115,7 +115,7 @@ struct _LLVM : Common< Blob > {
 
                 this->flags( n ).buchi = buchi_succs.front();
                 yield( n, p ); /* TODO? */
-            } );
+            }, alloc );
     }
 
     void release( Node s ) {
@@ -334,7 +334,7 @@ struct _LLVM : Common< Blob > {
 
     std::string showNode( Node n ) {
         interpreter(); /* ensure _interpreter_2 is initialised */
-        _interpreter_2->rewind( n );
+        _interpreter_2->rewind( LongTerm(), n );
         std::string s = _interpreter_2->describe( demangle == DemangleStyle::Cpp );
         if ( use_property ) {
             int buchi = _interpreter_2->state.flags().buchi;
