@@ -47,7 +47,7 @@ void Manager::createDirectoryAt( int dirfd, utils::String name, mode_t mode ) {
     if ( current->mode().hasGUID() )
         mode |= Mode::GUID;
 
-    Node node( new( memory::nofail ) INode( mode ) );
+    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
     node->assign( new( memory::nofail ) Directory( node, current ) );
 
     dir->create( std::move( name ), node );
@@ -110,7 +110,7 @@ void Manager::createSymLinkAt( int dirfd, utils::String name, utils::String targ
     mode |= Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER;
     mode |= Mode::LINK;
 
-    Node node( new( memory::nofail ) INode( mode ) );
+    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
     node->assign( new( memory::nofail ) Link( std::move( target ) ) );
 
     dir->create( std::move( name ), node );
@@ -134,7 +134,7 @@ void Manager::createFifoAt( int dirfd, utils::String name, mode_t mode ) {
     mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
     mode |= Mode::FIFO;
 
-    Node node( new( memory::nofail ) INode( mode ) );
+    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
     node->assign( new( memory::nofail ) Pipe() );
 
     dir->create( std::move( name ), node );
@@ -252,7 +252,7 @@ std::shared_ptr< FileDescriptor > &Manager::getFile( int fd ) {
 std::pair< int, int > Manager::pipe() {
     mode_t mode = Mode::RWXUSER | Mode::FIFO;
 
-    Node node( new( memory::nofail ) INode( mode ) );
+    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
     node->assign( new( memory::nofail ) Pipe( true, true ) );
     return {
         _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Read ) ),
@@ -481,7 +481,7 @@ void Manager::_createFile( utils::String name, mode_t mode, Node *file, Args &&.
     mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
     mode |= Mode::FILE;
 
-    Node node( new( memory::nofail ) INode( mode ) );
+    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
     node->assign( new( memory::nofail ) RegularFile( std::forward< Args >( args )... ) );
 
     dir->create( std::move( name ), node );
