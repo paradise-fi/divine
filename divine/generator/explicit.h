@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013,2015 Vladimír Štill <xstill@fi.muni.cz>
 
 #if GEN_EXPLICIT
 
@@ -58,9 +58,8 @@ struct _Explicit : public Common< Blob > {
             + "Saved features: " + std::to_string( capabilities() );
     }
 
-    int64_t index( Node n ) {
-        return *reinterpret_cast< int64_t * >(
-                this->pool().dereference( n ) + _slack );
+    int64_t &index( Node n ) {
+        return this->pool().template get< int64_t >( n, this->slack() );
     }
 
     void read( std::string file, std::vector< std::string > /* definitions */,
@@ -72,15 +71,15 @@ struct _Explicit : public Common< Blob > {
             dess.open( file );
     }
 
-    template< typename Yield >
-    void successors( Node from, Yield yield ) {
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Node from, Yield yield ) {
         ASSERT( this->pool().valid( from ) );
-        _successors( index( from ), yield );
+        _successors( alloc, index( from ), yield );
     }
 
-    template< typename Yield >
-    void initials( Yield yield ) {
-        _successors( 0, std::bind( yield, Node(),
+    template< typename Alloc, typename Yield >
+    void initials( Alloc alloc, Yield yield ) {
+        _successors( alloc, 0, std::bind( yield, Node(),
                     std::placeholders::_1, std::placeholders::_2 ) );
     }
 
@@ -158,25 +157,18 @@ struct _Explicit : public Common< Blob > {
     }
 
   private:
-    template< typename Yield >
-    void _successors( int64_t ix, Yield yield ) {
-        dess.forward.map< EdgeSpec >( ix )
-            ( [ yield, this ]( EdgeSpec *succs, int64_t cnt ) {
+    template< typename Alloc, typename Yield >
+    void _successors( Alloc alloc, int64_t ix, Yield yield ) {
+        dess.forward.map< EdgeSpec >( ix )( [&]( EdgeSpec *succs, int64_t cnt ) {
                 for ( int64_t i = 0; i < cnt; ++i )
-                    this->_unwrapEdge( yield, succs[ i ] );
+                    yield( _mkNode( alloc, succs[ i ].node() ), succs[ i ].label() );
             } );
     }
 
-    template< typename Yield >
-    auto _unwrapEdge( Yield yield, EdgeSpec es )
-        -> typename std::result_of< Yield( Node, Label ) >::type
-    {
-        return yield( _mkNode( es.node() ), es.label() );
-    }
-
-    Node _mkNode( int64_t index ) {
-        Node n = this->makeBlobCleared( sizeof( int64_t ) );
-        this->pool().template get< int64_t >( n, this->slack() ) = index;
+    template< typename Alloc >
+    Node _mkNode( Alloc alloc, int64_t ix ) {
+        Node n = this->makeBlobCleared( alloc, sizeof( int64_t ) );
+        index( n ) = ix;
         return n;
     }
 
