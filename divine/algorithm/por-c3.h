@@ -57,12 +57,12 @@ struct PORGraph : graph::Transform< G > {
         return extension( n ).full;
     }
 
-    template< typename Yield >
-    void successors( Vertex st, Yield yield ) {
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Vertex st, Yield yield ) {
         if ( extension( st ).full )
-            this->base().successors( st.node(), yield );
+            this->base().successors( alloc, st.node(), yield );
         else
-            this->base().ample( st.node(), yield );
+            this->base().ample( alloc, st.node(), yield );
     }
 
     void porTransition( Store &s, Vertex f, Vertex t ) {
@@ -177,11 +177,11 @@ struct PORGraph : graph::Transform< G > {
         return to_expand.size() > 0;
     }
 
-    template< typename Yield >
-    void porExpand( Store& store, Yield yield )
+    template< typename Alloc, typename Yield >
+    void porExpand( Alloc alloc, Store& store, Yield yield )
     {
         for ( auto h : to_expand )
-            fullexpand( yield, store.vertex( h ) );
+            fullexpand( alloc, yield, store.vertex( h ) );
     }
 
     /* This closure is used instead of lambda to work-around bug in clang 3.4
@@ -200,15 +200,15 @@ struct PORGraph : graph::Transform< G > {
     template< typename Set >
     SuccInserter< Set > succInserter( Set &set ) { return SuccInserter< Set >( set ); }
 
-    template< typename Yield >
-    void fullexpand( Yield yield, Vertex v ) {
+    template< typename Alloc, typename Yield >
+    void fullexpand( Alloc alloc, Yield yield, Vertex v ) {
         extension( v ).full = true;
         BlobComparerLT bcomp( this->pool() );
         std::set< std::pair< Node, Label >, BlobComparerLT > all( bcomp ) , ample( bcomp ), out( bcomp );
         std::vector< std::pair< Node, Label > > extra;
 
-        this->base().successors( v.node(), succInserter( all ) );
-        this->base().ample( v.node(), succInserter( ample ) );
+        this->base().successors( alloc, v.node(), succInserter( all ) );
+        this->base().ample( alloc, v.node(), succInserter( ample ) );
 
         std::set_difference( all.begin(), all.end(), ample.begin(), ample.end(),
                              std::inserter( out, out.begin() ), bcomp );

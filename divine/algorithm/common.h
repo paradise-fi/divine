@@ -69,7 +69,7 @@ struct Visit : _AlgorithmSetup, visitor::SetupBase {
 
     template< typename A, typename V >
     void queuePOR( A &a, V &v ) {
-        a.graph().porExpand( a.store(), [ &a, &v ] ( Vertex f, Node n, Label l ) {
+        a.graph().porExpand( a.store().alloc, a.store(), [ &a, &v ] ( Vertex f, Node n, Label l ) {
                 v.queueAny( f, n, l );
             } );
     }
