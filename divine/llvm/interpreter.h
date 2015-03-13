@@ -35,6 +35,7 @@
 #include <divine/graph/label.h>
 
 #include <numeric>
+#include <unordered_set>
 
 #ifndef DIVINE_LLVM_INTERPRETER_H
 #define DIVINE_LLVM_INTERPRETER_H
@@ -93,10 +94,12 @@ struct Interpreter
 
     bool tauminus, tauplus, taustores;
 
+    using SeenPC = std::unordered_set< PC >;
+
     ProgramInfo &info() { return *bc->info; }
 
     void parseProperties( Module *M );
-    bool observable( const std::set< PC > &s )
+    bool observable( const SeenPC &s )
     {
         if ( !tauminus )
             return true;
@@ -205,11 +208,11 @@ struct Interpreter
 
     template< typename Yield, typename Alloc >
     void run( int tid, Yield yield, Label p, Alloc alloc ) {
-        std::set< PC > seen;
+        SeenPC seen;
         run( tid, yield, p, seen, alloc );
     }
 
-    bool interrupt( std::set< PC > &seen ) {
+    bool interrupt( SeenPC &seen ) {
         if ( pc().masked || seen.empty() )
             return false;
 
@@ -229,8 +232,8 @@ struct Interpreter
     }
 
     template< typename Yield, typename Alloc >
-    void run( int tid, Yield yield, Label l, std::set< PC > &seen, Alloc alloc ) {
-
+    void run( int tid, Yield yield, Label l, SeenPC &seen, Alloc alloc )
+    {
         if ( !state._thread_count )
             return; /* no more successors for you */
 
