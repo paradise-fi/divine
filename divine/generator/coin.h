@@ -1,4 +1,5 @@
-// -*- C++ -*-
+// -*- C++ -*- (c) 2010 Milan Krivanek
+//             (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 #ifndef DIVINE_GENERATOR_COINGENERATOR_H
 #define DIVINE_GENERATOR_COINGENERATOR_H
 
@@ -128,41 +129,94 @@ public:
      *
      * \return initial node
      */
-    Node _initial();
+    template< typename Alloc >
+    Node _initial( Alloc alloc ) {
+        getCoinSystem();
 
-    template< typename Yield >
-    void initials( Yield yield ) {
-        yield( Node(), _initial(), Label() );
+        Blob b = newNode( alloc );
+        packPrimitiveStates(primitive_states, state_vector);
+        State s(primitive_states);
+        s.pack(pool(), b, this->slack());
+
+        return b;
     }
 
-    /**
-     * Returns the collection of successors of the node compressed_state.
-     *
-     * \param compressed_state  the source node
-     * \return successors of compressed_state
-     */
-    Successors _successors(Node compressed_state);
+    template< typename Alloc, typename Yield >
+    void initials( Alloc alloc, Yield yield ) {
+        yield( Node(), _initial( alloc ), Label() );
+    }
 
-    /**
-     * Returns the reduced collection of successors of a node.
-     *
-     * \param compressed_state  the source node
-     * \return reduced collection of successors
-     */
-    Successors _ample(Node compressed_state);
+    template< typename Alloc >
+    Successors _successors( Alloc alloc, Node compressed_state ) {
+        vector<transition_t *> * enabled_trans = getEnabledTrans(compressed_state);
 
-    template< typename Yield >
-    void successors( Node n, Yield yield ) {
-        Successors s = _successors( n );
+        return apply( alloc, compressed_state, enabled_trans );
+    }
+
+    template< typename Alloc >
+    Successors _ample( Alloc alloc, Node compressed_state ) {
+        ASSERT(por);
+
+        vector<transition_t *> * enabled_trans = getEnabledTrans(compressed_state);
+
+        int i = getAmpleSet(compressed_state);
+        if (i < 0) {
+            i = findAmpleSet(enabled_trans); //try to find an ample set
+            //std::cout << "Found ample set ID: " << i << std::endl;
+            if (i == -1) { // not found
+                i = system_aut_id; // fully expand
+            }
+            setAmpleSet(compressed_state, i); // store ample set ID
+        } else {
+            //std::cout << "Stored ample set ID: " << i << std::endl;
+        }
+
+        ASSERT(i >= 0);
+
+        if (i != system_aut_id) {
+            //if non-empty ample set that is a proper subset of system automata was found
+            vector<transition_t *>::iterator it;
+
+            //resetting of the in_composition flags for all automata, then setting them for I
+            setCandidateFlags(i);
+
+            //filtering enabled transitions that do not belong to automata in I
+            vector<transition_t *> * ample_trans = new vector<transition_t *> ;
+            for (it = enabled_trans->begin(); it != enabled_trans->end(); it++) {
+                transition_t * tr = *it;
+                if (tr->is_sync()) {
+                    if ((!tree_nodes[tr->get_automaton()]->in_composition)
+                            && (!tree_nodes[tr->get_automaton2()]->in_composition)) {
+                        delete tr;
+                        continue;
+                    }
+                } else {
+                    if (!tree_nodes[tr->get_automaton()]->in_composition) {
+                        delete tr;
+                        continue;
+                    }
+                }
+                ample_trans->push_back(tr);
+            }
+            delete enabled_trans;
+            return apply( alloc, compressed_state, ample_trans );
+        } else {
+            return apply( alloc, compressed_state, enabled_trans );
+        }
+    }
+
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Node n, Yield yield ) {
+        Successors s = _successors( alloc, n );
         while ( !s.empty() ) {
             yield( s.head(), Label() );
             s = s.tail();
         }
     }
 
-    template< typename Yield >
-    void ample( Node n, Yield yield ) {
-        Successors s = _ample( n );
+    template< typename Alloc, typename Yield >
+    void ample( Alloc alloc, Node n, Yield yield ) {
+        Successors s = _ample( alloc, n );
         while ( !s.empty() ) {
             yield( s.head(), Label() );
             s = s.tail();
@@ -279,13 +333,43 @@ private:
      */
     vector<transition_t *> * combineWithProp(vector<transition_t *> * system_trans);
 
-    /**
-     * Apply the transitions to the current state to get a list of successor states.
-     *
-     * \param st           current state
-     * \param succ_trans   successor transitions
-     */
-    Successors apply(const Node &st, vector<transition_t *> * succ_trans);
+    template< typename Alloc >
+    Successors apply( Alloc alloc, Node st, vector<transition_t *> * succ_trans ) {
+
+        // if property, combine enabled transitions with property
+        if (property) {
+            vector<transition_t *> * combined_trans;
+            combined_trans = combineWithProp(succ_trans);
+            // leak corrected
+            for (vector<transition_t *>::iterator i = succ_trans->begin();
+                    i != succ_trans->end(); i++) {
+                delete *i;
+            }
+            //
+            delete succ_trans;
+            succ_trans = combined_trans;
+        }
+
+        // we can now compute the effect of effective transitions
+        std::list<Node> succs_list;
+        for (vector<transition_t *>::iterator i = succ_trans->begin();
+                i != succ_trans->end(); i++) {
+            transition_t * t = *i;
+            t->get_effect(state_vector, next_state_vector);
+
+            Blob b = newNode( alloc );
+            packPrimitiveStates(primitive_states, next_state_vector);
+            State s(primitive_states);
+            s.pack(pool(), b, this->slack());
+            succs_list.push_back(b);
+
+            delete t;
+        }
+        delete succ_trans;
+
+        Successors s(st, succs_list);
+        return s;
+    }
 
     //used for partial order reduction, the algorithm marks unusable nodes
     vector<tree_node_t *> tree_nodes;
@@ -327,22 +411,35 @@ private:
     /**
      * Allocates and initializes a new node.
      */
-    Node newNode();
+    template< typename Alloc >
+    Node newNode( Alloc alloc ) {
+        Blob b = makeBlobCleared( alloc, State::metrics.size );
+        setAmpleSet(b, -1); //newly allocated node, ample set is unknown
+        return b;
+    }
 
     /**
      * Extract the Extension from a node.
      */
-    Extension & extension( Node & n );
+    Extension &extension( Node &n ){
+        return pool().get< Extension >( n, original_slack );
+    }
 
     /**
      * Returns the stored ample set ID, if available
      */
-    int getAmpleSet(Node & n);
+    int getAmpleSet( Node &n ) {
+        return extension(n).ample_set_id;
+    }
+
 
     /**
      * Stores ample set ID.
      */
-    void setAmpleSet(Node & n, int id);
+    void setAmpleSet( Node &n, int id ) {
+        extension(n).ample_set_id = id;
+    }
+
 
     /**
      * Searches for an ample set, returns its ID, if available.

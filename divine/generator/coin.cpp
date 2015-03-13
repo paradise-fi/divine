@@ -117,17 +117,6 @@ void Coin::initPOR() {
     por = true;
 }
 
-Coin::Node Coin::_initial() {
-    getCoinSystem();
-
-    Blob b = newNode();
-    packPrimitiveStates(primitive_states, state_vector);
-    State s(primitive_states);
-    s.pack(pool(), b, this->slack());
-
-    return b;
-}
-
 void Coin::read(std::string path, std::vector< std::string >, Coin *) {
 #ifdef VERBOSE
     std::cout << id << ": Read '" << path << "'" << std::endl;
@@ -170,63 +159,6 @@ inline size_t Coin::getSize(unsigned int number_of_states) {
         return 3;
     } else {
         return 4;
-    }
-}
-
-Coin::Successors Coin::_successors(Node compressed_state) {
-    vector<transition_t *> * enabled_trans = getEnabledTrans(compressed_state);
-
-    return apply(compressed_state, enabled_trans);
-}
-
-Coin::Successors Coin::_ample(Node compressed_state) {
-    ASSERT(por);
-
-    vector<transition_t *> * enabled_trans = getEnabledTrans(compressed_state);
-
-    int i = getAmpleSet(compressed_state);
-    if (i < 0) {
-        i = findAmpleSet(enabled_trans); //try to find an ample set
-        //std::cout << "Found ample set ID: " << i << std::endl;
-        if (i == -1) { // not found
-            i = system_aut_id; // fully expand
-        }
-        setAmpleSet(compressed_state, i); // store ample set ID
-    } else {
-        //std::cout << "Stored ample set ID: " << i << std::endl;
-    }
-
-    ASSERT(i >= 0);
-
-    if (i != system_aut_id) {
-        //if non-empty ample set that is a proper subset of system automata was found
-        vector<transition_t *>::iterator it;
-
-        //resetting of the in_composition flags for all automata, then setting them for I
-        setCandidateFlags(i);
-
-        //filtering enabled transitions that do not belong to automata in I
-        vector<transition_t *> * ample_trans = new vector<transition_t *> ;
-        for (it = enabled_trans->begin(); it != enabled_trans->end(); it++) {
-            transition_t * tr = *it;
-            if (tr->is_sync()) {
-                if ((!tree_nodes[tr->get_automaton()]->in_composition)
-                        && (!tree_nodes[tr->get_automaton2()]->in_composition)) {
-                    delete tr;
-                    continue;
-                }
-            } else {
-                if (!tree_nodes[tr->get_automaton()]->in_composition) {
-                    delete tr;
-                    continue;
-                }
-            }
-            ample_trans->push_back(tr);
-        }
-        delete enabled_trans;
-        return apply(compressed_state, ample_trans);
-    } else {
-        return apply(compressed_state, enabled_trans);
     }
 }
 
@@ -525,43 +457,6 @@ vector<transition_t *> * Coin::getEnabledTrans(Node compressed_state) {
     return enabled_trans;
 }
 
-Coin::Successors Coin::apply(const Node &st, vector<transition_t *> * succ_trans) {
-
-    // if property, combine enabled transitions with property
-    if (property) {
-        vector<transition_t *> * combined_trans;
-        combined_trans = combineWithProp(succ_trans);
-        // leak corrected
-        for (vector<transition_t *>::iterator i = succ_trans->begin();
-                i != succ_trans->end(); i++) {
-            delete *i;
-        }
-        //
-        delete succ_trans;
-        succ_trans = combined_trans;
-    }
-
-    // we can now compute the effect of effective transitions
-    std::list<Node> succs_list;
-    for (vector<transition_t *>::iterator i = succ_trans->begin();
-            i != succ_trans->end(); i++) {
-        transition_t * t = *i;
-        t->get_effect(state_vector, next_state_vector);
-
-        Blob b = newNode();
-        packPrimitiveStates(primitive_states, next_state_vector);
-        State s(primitive_states);
-        s.pack(pool(), b, this->slack());
-        succs_list.push_back(b);
-
-        delete t;
-    }
-    delete succ_trans;
-
-    Successors s(st, succs_list);
-    return s;
-}
-
 void Coin::setInComposition(int i) {
     aut_t * automaton = (*automata)[i];
     tree_node_t * node = tree_nodes[i];
@@ -694,24 +589,6 @@ void Coin::setC0C2(const vector<transition_t *> * enabled_trans) {
             parent_node->nonempty_succs = tmp_nonempty_succs;
         }
     }
-}
-
-inline Coin::Node Coin::newNode() {
-    Blob b = makeBlobCleared(State::metrics.size);
-    setAmpleSet(b, -1); //newly allocated node, ample set is unknown
-    return b;
-}
-
-inline Coin::Extension & Coin::extension( Node & n ) {
-    return pool().get< Extension >( n, original_slack );
-}
-
-inline int Coin::getAmpleSet(Node & n) {
-    return extension(n).ample_set_id;
-}
-
-inline void Coin::setAmpleSet(Node & n, int id) {
-    extension(n).ample_set_id = id;
 }
 
 int Coin::findAmpleSet(vector<transition_t *> * enabled_trans) {
