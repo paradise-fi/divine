@@ -37,15 +37,15 @@ struct Timed : public Common< Blob > {
     bool hasLTL = false;
     bool nonZeno = false;
 
-    template< typename Yield >
-    void successors( Node from, Yield yield ) {
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Node from, Yield yield ) {
         ASSERT( this->pool().valid( from ) );
         unsigned int nSuccs = 0;
         const std::vector< std::pair< int, int > >& btrans = buchi.transitions( gen.getPropLoc( mem( from ) ) );
 
-        auto callback = [ this, &btrans, &nSuccs, yield ] ( const char* succ, const TAGen::EdgeInfo* ) mutable {
+        auto callback = [&]( const char* succ, const TAGen::EdgeInfo* ) {
             for ( auto btr = btrans.begin(); btr != btrans.end(); ++btr ) {
-                Node n = newNode( succ );
+                Node n = newNode( alloc, succ );
                 if ( doBuchiTrans( mem( n ), *btr ) ) {
                     yield( n, Label() );
                 } else {
@@ -115,9 +115,9 @@ struct Timed : public Common< Blob > {
         return str;
     }
 
-    template< typename Yield >
-    void initials( Yield yield ) {
-        Node n = makeBlobCleared( gen.stateSize() );
+    template< typename Alloc, typename Yield >
+    void initials( Alloc alloc, Yield yield ) {
+        Node n = makeBlobCleared( alloc, gen.stateSize() );
         gen.initial( mem( n ) );
         if ( !gen.isErrState( mem( n ) ) )
             gen.setPropLoc( mem( n ), buchi.getInitial() );
@@ -248,8 +248,9 @@ private:
         return &pool().get< char >( s, this->slack() );
     }
 
-    Node newNode( const char* src ) {
-        Node n = makeBlob( gen.stateSize() );
+    template< typename Alloc >
+    Node newNode( Alloc alloc, const char* src ) {
+        Node n = makeBlob( alloc, gen.stateSize() );
         memcpy( mem( n ), src, gen.stateSize() );
         return n;
     }
