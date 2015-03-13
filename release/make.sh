@@ -15,4 +15,6 @@ result=`bash ./nix/build.sh tarball`
 tb=$(cd $result/tarballs && ls)
 version=$(echo $tb | sed -e s,^divine-,, -e s,\.tar\.gz$,,)
 cp $result/tarballs/$tb .
-echo a | darcs rec --ask-deps release -a -m "${version}"
+
+echo a | darcs rec --ask-deps release -a -m "(temporary)"
+unset VISUAL; (echo y; echo d) | EDITOR="echo TAG ${version} >" darcs amend --edit
