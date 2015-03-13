@@ -6,23 +6,23 @@ namespace divine {
 namespace fs {
 
 Manager::Manager( bool ) :
-    _root{ std::make_shared< INode >(
-        Mode::DIR | Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER
+    _root{ std::allocate_shared< INode >(
+        memory::AllocatorPure(), Mode::DIR | Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER
     ) },
     _currentDirectory{ _root },
     _standardIO{ {
-        std::make_shared< INode >( Mode::FILE | Mode::RUSER ),
-        std::make_shared< INode >( Mode::FILE | Mode::RUSER )
+        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER ),
+        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER )
     } },
     _openFD{
-        std::make_shared< FileDescriptor >( _standardIO[ 0 ], flags::Open::Read ),// stdin
-        std::make_shared< FileDescriptor >( _standardIO[ 1 ], flags::Open::Write ),// stdout
-        std::make_shared< FileDescriptor >( _standardIO[ 1 ], flags::Open::Write )// stderr
+        std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 0 ], flags::Open::Read ),// stdin
+        std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 1 ], flags::Open::Write ),// stdout
+        std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 1 ], flags::Open::Write )// stderr
     },
     _umask{ Mode::WGROUP | Mode::WOTHER }
 {
-    _root->assign( new Directory( _root ) );
-    _standardIO[ 1 ]->assign( new WriteOnlyFile() );
+    _root->assign( new( memory::nofail ) Directory( _root ) );
+    _standardIO[ 1 ]->assign( new( memory::nofail ) WriteOnlyFile() );
 }
 
 
@@ -47,8 +47,8 @@ void Manager::createDirectoryAt( int dirfd, utils::String name, mode_t mode ) {
     if ( current->mode().hasGUID() )
         mode |= Mode::GUID;
 
-    auto node = std::make_shared< INode >( mode );
-    node->assign( new Directory( node, current ) );
+    Node node( new( memory::nofail ) INode( mode ) );
+    node->assign( new( memory::nofail ) Directory( node, current ) );
 
     dir->create( std::move( name ), node );
 }
@@ -110,8 +110,8 @@ void Manager::createSymLinkAt( int dirfd, utils::String name, utils::String targ
     mode |= Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER;
     mode |= Mode::LINK;
 
-    auto node = std::make_shared< INode >( mode );
-    node->assign( new Link( std::move( target ) ) );
+    Node node( new( memory::nofail ) INode( mode ) );
+    node->assign( new( memory::nofail ) Link( std::move( target ) ) );
 
     dir->create( std::move( name ), node );
 }
@@ -134,8 +134,8 @@ void Manager::createFifoAt( int dirfd, utils::String name, mode_t mode ) {
     mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
     mode |= Mode::FIFO;
 
-    auto node = std::make_shared< INode >( mode );
-    node->assign( new Pipe() );
+    Node node( new( memory::nofail ) INode( mode ) );
+    node->assign( new( memory::nofail ) Pipe() );
 
     dir->create( std::move( name ), node );
 }
@@ -219,8 +219,8 @@ int Manager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl,
     }
 
     if ( file->mode().isFifo() )
-        return _getFileDescriptor( std::make_shared< PipeDescriptor >( file, fl, true ) );
-    return _getFileDescriptor( std::make_shared< FileDescriptor >( file, fl ) );
+        return _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), file, fl, true ) );
+    return _getFileDescriptor( std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), file, fl ) );
 }
 
 void Manager::closeFile( int fd ) {
@@ -252,10 +252,11 @@ std::shared_ptr< FileDescriptor > &Manager::getFile( int fd ) {
 std::pair< int, int > Manager::pipe() {
     mode_t mode = Mode::RWXUSER | Mode::FIFO;
 
-    Node p = std::make_shared< INode >( mode, new Pipe( true, true ) );
+    Node node( new( memory::nofail ) INode( mode ) );
+    node->assign( new( memory::nofail ) Pipe( true, true ) );
     return {
-        _getFileDescriptor( std::make_shared< PipeDescriptor >( p, flags::Open::Read ) ),
-        _getFileDescriptor( std::make_shared< PipeDescriptor >( p, flags::Open::Write ) )
+        _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Read ) ),
+        _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Write ) )
     };
 }
 
@@ -480,8 +481,8 @@ void Manager::_createFile( utils::String name, mode_t mode, Node *file, Args &&.
     mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
     mode |= Mode::FILE;
 
-    auto node = std::make_shared< INode >( mode );
-    node->assign( new RegularFile( std::forward< Args >( args )... ) );
+    Node node( new( memory::nofail ) INode( mode ) );
+    node->assign( new( memory::nofail ) RegularFile( std::forward< Args >( args )... ) );
 
     dir->create( std::move( name ), node );
     if ( file )

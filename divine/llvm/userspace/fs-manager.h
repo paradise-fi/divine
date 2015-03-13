@@ -26,13 +26,13 @@ struct Manager {
     Manager() :
         Manager( true )
     {
-        _standardIO[ 0 ]->assign( new RegularFile() );
+        _standardIO[ 0 ]->assign( new( memory::nofail ) RegularFile() );
     }
 
     Manager( const char *in, size_t length ) :
         Manager( true )
     {
-        _standardIO[ 0 ]->assign( new RegularFile( in, length ) );
+        _standardIO[ 0 ]->assign( new( memory::nofail ) RegularFile( in, length ) );
     }
 
     explicit Manager( std::initializer_list< SnapshotFS > items ) :
@@ -152,19 +152,19 @@ struct VFS {
 
     VFS() {
         __divine_interrupt_mask();
-        _manager = new Manager{};
+        _manager = new( memory::nofail ) Manager{};
     }
     VFS( const char *in, size_t length ) {
         __divine_interrupt_mask();
-        _manager = new Manager{ in, length };
+        _manager = new( memory::nofail ) Manager{ in, length };
     }
     explicit VFS( std::initializer_list< SnapshotFS > items ) {
         __divine_interrupt_mask();
-        _manager = new Manager{ items };
+        _manager = new( memory::nofail ) Manager{ items };
     }
     VFS( const char *in, size_t length, std::initializer_list< SnapshotFS > items ) {
         __divine_interrupt_mask();
-        _manager = new Manager{ in, length, items };
+        _manager = new( memory::nofail ) Manager{ in, length, items };
     }
     ~VFS() {
         delete _manager;

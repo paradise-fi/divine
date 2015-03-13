@@ -2,7 +2,15 @@
 
 #include "fs-memory.h"
 
-void *operator new( std::size_t count ) {
+namespace divine {
+namespace fs {
+namespace memory {
+    nofail_t nofail;
+} // namespace memory
+} // namespace fs
+} // namespace divine
+
+void *operator new( std::size_t count, const divine::fs::memory::nofail_t & ) noexcept {
 #ifdef __divine__
     return __divine_malloc( count );
 #else
@@ -10,18 +18,6 @@ void *operator new( std::size_t count ) {
 #endif
 }
 
-void *operator new[]( std::size_t count ) {
-    return ::operator new( count );
-}
-
-void operator delete( void *ptr ) noexcept {
-#ifdef __divine__
-    __divine_free( ptr );
-#else
-    std::free( ptr );
-#endif
-}
-
-void operator delete[]( void *ptr ) noexcept {
-    ::operator delete( ptr );
+void *operator new[]( std::size_t count, const divine::fs::memory::nofail_t &nofail ) noexcept {
+    return ::operator new( count, nofail );
 }
