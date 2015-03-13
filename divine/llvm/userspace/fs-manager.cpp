@@ -92,7 +92,7 @@ void Manager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, 
 void Manager::createSymLinkAt( int dirfd, utils::String name, utils::String target ) {
     if ( name.empty() )
         throw Error( ENOENT );
-    if ( target.size() > 1023 )
+    if ( target.size() > PATH_LIMIT )
         throw Error( ENAMETOOLONG );
 
     WeakNode savedDir = _currentDirectory;
@@ -235,7 +235,7 @@ int Manager::duplicate2( int oldfd, int newfd ) {
     if ( oldfd == newfd )
         return newfd;
     auto f = getFile( oldfd );
-    if ( newfd < 0 || newfd > 1024 )
+    if ( newfd < 0 || newfd > FILE_DESCRIPTOR_LIMIT )
         throw Error( EBADF );
     if ( newfd >= _openFD.size() )
         _openFD.resize( newfd + 1 );
@@ -494,7 +494,7 @@ Node Manager::findDirectoryItem( utils::String name, bool followSymLinks ) {
 }
 template< typename I >
 Node Manager::_findDirectoryItem( utils::String name, bool followSymLinks, I itemChecker ) {
-    if ( name.size() > 1023 )
+    if ( name.size() > PATH_LIMIT )
         throw Error( ENAMETOOLONG );
     name = path::normalize( name );
     Node current = _root;
@@ -517,7 +517,7 @@ Node Manager::_findDirectoryItem( utils::String name, bool followSymLinks, I ite
             const auto &subFolder = q.front();
             if ( subFolder.empty() )
                 continue;
-            if ( subFolder.size() > 255 )
+            if ( subFolder.size() > FILE_NAME_LIMIT )
                 throw Error( ENAMETOOLONG );
             item = dir->find( subFolder );
         }
@@ -580,7 +580,7 @@ int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f ) {
         }
         ++i;
     }
-    if ( _openFD.size() >= 1024 )
+    if ( _openFD.size() >= FILE_DESCRIPTOR_LIMIT )
         throw Error( ENFILE );
 
    _openFD.push_back( f );

@@ -5,6 +5,7 @@
 
 #include "fs-inode.h"
 #include "fs-utils.h"
+#include "fs-constants.h"
 
 #ifndef _FS_DIRECTORY_H_
 #define _FS_DIRECTORY_H_
@@ -154,7 +155,7 @@ struct Directory : DataItem {
     }
 
     void create( utils::String name, Node inode ) {
-        if ( name.size() > 255 )
+        if ( name.size() > FILE_NAME_LIMIT )
             throw Error( ENAMETOOLONG );
         _insertItem( DirectoryEntry( std::move( name ), std::move( inode ) ) );
     }
