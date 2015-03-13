@@ -59,21 +59,21 @@ struct Dve : public Common< Blob > {
         );
     }
 
-    template< typename Yield >
-    void yieldSuccessor( Node from, dve::System::Continuation p, Yield yield) {
-        Blob b = makeBlob( stateSize() );
+    template< typename Alloc, typename Yield >
+    void yieldSuccessor( Alloc alloc, Node from, dve::System::Continuation p, Yield yield) {
+        Blob b = makeBlob( alloc, stateSize() );
         memcpy( mem( b ), mem( from ), stateSize() );
         updateMem( b );
         system->apply( ctx, p );
         yield( b );
     }
 
-    template< typename Yield >
-    void successors( Node from, Yield yield ) {
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Node from, Yield yield ) {
         enabledConts(
             from,
             [&]( dve::System::Continuation p ) {
-                this->yieldSuccessor( from, p, [&]( Node n ) { yield( n, Label() ); } );
+                this->yieldSuccessor( alloc, from, p, [&]( Node n ) { yield( n, Label() ); } );
                 return true;
             }
         );
@@ -91,8 +91,8 @@ struct Dve : public Common< Blob > {
         return !ampleTrans.visible[ system->property ];
     }
 
-    template< typename Yield >
-    void ample( Node from, Yield yield ) {
+    template< typename Alloc, typename Yield >
+    void ample( Alloc alloc, Node from, Yield yield ) {
         std::deque< dve::System::Continuation > ampleCands;
         for ( int i = 0; i < system->processCount(); i++ ) {
             bool tryNext = false;
@@ -142,12 +142,12 @@ struct Dve : public Common< Blob > {
 
             while ( !ampleCands.empty() ) {
                 dve::System::Continuation p = ampleCands.front();
-                yieldSuccessor( from, p, [&]( Node n ) { yield( n, Label() ); } );
+                yieldSuccessor( alloc, from, p, [&]( Node n ) { yield( n, Label() ); } );
                 ampleCands.pop_front();
             }
             return;
         }
-        successors( from, yield );
+        successors( alloc, from, yield );
     }
 
     template< typename Yield >
@@ -167,9 +167,9 @@ struct Dve : public Common< Blob > {
         return system->processCount();
     }
 
-    template< typename Yield >
-    void initials( Yield yield ) {
-        Blob b = makeBlobCleared( stateSize() );
+    template< typename Alloc, typename Yield >
+    void initials( Alloc alloc, Yield yield ) {
+        Blob b = makeBlobCleared( alloc, stateSize() );
         updateMem( b );
         system->initial( ctx );
         yield( Node(), b, Label() );
@@ -284,7 +284,7 @@ struct Dve : public Common< Blob > {
         std::string transLabel = "";
 
         enabledConts( from, [&]( dve::System::Continuation p ) {
-                Blob b = this->makeBlob( stateSize() );
+                Blob b = this->makeBlob( LongTerm(), stateSize() );
                 memcpy( mem( b ), mem( from ), stateSize() );
                 updateMem( b );
 
