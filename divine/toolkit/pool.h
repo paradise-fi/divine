@@ -8,6 +8,7 @@
 #include <map>
 #include <atomic>
 #include <tuple>
+#include <sys/mman.h>
 
 #ifndef NVALGRIND
 #pragma GCC diagnostic push
@@ -49,8 +50,8 @@ struct Lake {
 
     struct Pointer : brick::types::Comparable {
         using Raw = uint64_t;
-        static const unsigned blockBits = 24;
-        static const unsigned offsetBits = 24;
+        static const unsigned blockBits = 20;
+        static const unsigned offsetBits = 19;
         static const unsigned tagBits = 64 - blockBits - offsetBits;
         uint64_t _tag:tagBits;
         uint64_t block:blockBits;
@@ -96,7 +97,8 @@ struct Lake {
         }
     }
 
-    static const int blockcount = 1024 * 1024;
+    static const int blockcount = 1 << Pointer::blockBits;
+    static const int blocksize  = 4 << Pointer::offsetBits;
 
     char *block[ blockcount ]; /* 8M, each block is 2M -> up to 16T of memory */
     std::atomic< int > usedblocks;
@@ -256,8 +258,16 @@ struct Lake {
                 delete[] _freelist_big[ i ].load();
             }
         }
-        for ( int i = 0; i < blockcount; ++i )
-            delete[] block[ i ];
+        for ( int i = 0; i < blockcount; ++i ) {
+            if ( !block[ i ] )
+                continue;
+            auto size =
+                header( i ).total ?
+                header( i ).total * align( header( i ).itemsize,
+                                           sizeof( Pointer ) ) +
+                sizeof( BlockHeader ) : blocksize;
+            munmap( static_cast< void * >( block[ i ] ), size );
+        }
     }
 
     std::atomic< FreeList * > &freelist( int size )
@@ -432,24 +442,23 @@ struct Lake {
                 _emptyblocks.pop_back();
             }
 
+            auto &si = sizeinfo( size );
+
             const int overhead = sizeof( BlockHeader );
             const int allocsize = align( size, sizeof( Pointer ) );
+            si.blocksize = std::max( allocsize + overhead, si.blocksize );
+            const int total = allocsize ? ( si.blocksize - overhead ) / allocsize : 0;
+            const int allocate = allocsize ? overhead + total * allocsize : blocksize;
 
-            int total = ( sizeinfo( size ).blocksize - overhead ) / allocsize;
-            total = std::max( 2, total ); // always get at least 2 items
-            int allocate = total * allocsize + overhead;
-            if ( allocate >= 2048 * 1024 )
-                sizeinfo( size ).blocksize = allocate;
-            else
-                sizeinfo( size ).blocksize = 4 * allocate;
-
-            /* TODO reorder so that pointer assignment is last? */
-            lake->block[ b ] = new char[ allocate ];
+            auto mem = mmap( nullptr, allocate, PROT_READ | PROT_WRITE,
+                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 );
+            lake->block[ b ] = static_cast< char * >( mem );
             lake->header( b ).itemsize = size;
             lake->header( b ).total = total;
             lake->header( b ).allocated = 0;
             lake->valgrindNewBlock( b, total );
-            return sizeinfo( size ).active = b;
+            si.blocksize = std::min( 4 * si.blocksize, int( blocksize ) );
+            return si.active = b;
         }
 
     };
