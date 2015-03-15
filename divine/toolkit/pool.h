@@ -838,10 +838,14 @@ struct LongTerm {
     void drop( Pool &p, Blob ptr ) { return p.free( ptr ); }
 };
 
+#if DEV_NOPOOLEPHEMERAL
+using Ephemeral = LongTerm;
+#else
 struct Ephemeral {
     Blob get( Pool &p, int sz ) { return p.ephemeralAllocate( sz ); }
     void drop( Pool &p, Blob ptr ) { return p.ephemeralFree( ptr ); }
 };
+#endif
 
 }
 

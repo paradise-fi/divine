@@ -127,6 +127,8 @@ opt( TRANSFORM_FAIR "" OFF )
 opt( DEV_CONFLATE "avoid extra faster but feature-equivalent instances" ${DEV_CONFLATE_DEF} )
 opt( DEV_GCOV "generate profiling information for a lcov coverage report" OFF )
 opt( DEV_NOPOOLS "avoid pool allocation for graph vertices" OFF )
+opt( DEV_NOPOOLEPHEMERAL "disable ephemeral memory allocation optimization" OFF )
+mark_as_advanced( DEV_NOPOOLEPHEMERAL )
 opt( DEV_WARNINGS "enable extra compiler warnings" ${DEV_WARNINGS_DEF} )
 
 include( VersionAppend )
