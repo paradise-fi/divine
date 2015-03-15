@@ -92,8 +92,7 @@ add_custom_command( TARGET instances-generator POST_BUILD
     VERBATIM )
 target_link_libraries( instances-generator libdivine )
 
-include_directories( ${DIVINE_INCLUDES} )
-add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
+add_definitions( ${DIVINE_INCLUDE_DEFS} ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 set_source_files_properties( ${SRC_LLVM} PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 set_source_files_properties( ${LLVM_TS_OUTPUTS} llvm/constants.cpp PROPERTIES COMPILE_FLAGS "-fno-rtti" )
 

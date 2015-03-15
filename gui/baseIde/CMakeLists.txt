@@ -2,7 +2,7 @@ find_package(Qt4 REQUIRED QtXml)
 include(${QT_USE_FILE})
 
 include_directories(${QT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${DIVINE_INCLUDES})
+add_definitions( ${DIVINE_INCLUDE_DEFS} )
 
 set(BASE_IDE_SRC
     modules.h

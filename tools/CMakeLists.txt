@@ -1,7 +1,7 @@
 with_warnings()
 
-include_directories( ${DIVINE_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR} )
-add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
+include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
+add_definitions( ${DIVINE_INCLUDE_DEFS} ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 
 set( COMBINE_M4_H "${CMAKE_CURRENT_BINARY_DIR}/combine.m4.h" )
 set( COMBINE_M4 "${CMAKE_CURRENT_SOURCE_DIR}/combine.m4" )
