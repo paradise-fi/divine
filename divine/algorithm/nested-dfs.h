@@ -109,7 +109,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         }
 
         visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
-        this->graph().initials( [&]( Node f, Node t, Label l ) {
+        this->graph().initials( this->store().alloc, [&]( Node f, Node t, Label l ) {
                 ASSERT( !this->store().valid( f ) );
                 visitor.queue( Vertex(), t, l );
         } );
@@ -118,7 +118,7 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         while ( valid.load( std::memory_order_relaxed ) && !toexpand.empty() ) {
             auto from = this->store().vertex( toexpand.front() );
             if ( !this->graph().full( from ) )
-                this->graph().fullexpand( [&]( Vertex, Node t, Label ) {
+                this->graph().fullexpand( this->store().alloc, [&]( Vertex, Node t, Label ) {
                         visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
                         visitor.exploreFrom( t );
                     }, from );
