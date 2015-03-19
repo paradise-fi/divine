@@ -434,10 +434,11 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         shared.iteration = Iteration::WriteFile;
 
         std::vector< EdgeSpec > initials;
-        this->graph().initials( [ this, &initials ]( Node, Node n, Label l ) {
+        this->graph().initials( Ephemeral(), [&]( Node, Node n, Label l ) {
             int64_t id;
             std::tie( std::ignore, id ) = this->topology().ring(
                 std::tuple< Node, int64_t >( n, -1 ), &This::_getNodeId );
+            Ephemeral().drop( this->pool(), n );
             ASSERT_NEQ( -1 /* not found */, id );
             ASSERT_LEQ( 1, id );
             initials.emplace_back( id, l );
