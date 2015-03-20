@@ -476,12 +476,11 @@ if( OPT_SQL )
   endif()
 endif()
 
-set( DIVINE_INCLUDE_DEFS
-  -I${divine_SOURCE_DIR}
-  -isystem ${CMAKE_CURRENT_SOURCE_DIR}/external/ltl3ba/buddy/src
-  -isystem ${CMAKE_CURRENT_SOURCE_DIR}/external/libutap/src
-  -isystem ${CMAKE_CURRENT_SOURCE_DIR}/external/dbm/include
-  -I${divine_BINARY_DIR} )
+set( DIVINE_INCLUDES ${divine_SOURCE_DIR} ${divine_BINARY_DIR} )
+set( DIVINE_SYS_INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/ltl3ba/buddy/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/libutap/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/dbm/include )
 
 foreach( opt ${OPTIONS} )
     if ( ${${opt}} )
