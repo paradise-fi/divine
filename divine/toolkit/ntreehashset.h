@@ -278,7 +278,7 @@ struct NTreeHashSet
         }
 
         bool equal( Uncompressed item, Root root ) {
-            const int32_t itSize = pool().size( item.i );
+            const int32_t itSize UNUSED = pool().size( item.i );
             char* itemPtr = pool().dereference( item.i ) + slack();
             ASSERT( itemPtr != nullptr );
 
@@ -837,7 +837,7 @@ struct TestNTreeHashSet {
     void basic() {
         constexpr int32_t slack = slackpat ? sizeof( uint32_t ) : 0;
         TestBase< Generator, slack > test;
-        auto derefslack = [&]( BlobSet::Root r ) {
+        auto derefslack UNUSED = [&]( BlobSet::Root r ) {
             return reinterpret_cast< uint32_t * >( r.slack( test.pool(), slack ) )[ 0 ];
         };
 
