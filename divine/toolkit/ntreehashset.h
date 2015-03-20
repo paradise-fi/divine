@@ -278,7 +278,6 @@ struct NTreeHashSet
         }
 
         bool equal( Uncompressed item, Root root ) {
-            const int32_t itSize UNUSED = pool().size( item.i );
             char* itemPtr = pool().dereference( item.i ) + slack();
             ASSERT( itemPtr != nullptr );
 
@@ -293,7 +292,7 @@ struct NTreeHashSet
                     ASSERT( this->pool().valid( leaf.unwrap() ) );
                     ASSERT_LEQ( 0, pos );
 
-                    ASSERT_LEQ( pos + ls, itSize );
+                    ASSERT_LEQ( pos + ls, this->pool().size( item.i ) );
                     equal = std::memcmp( itemPtr, leaf.data( p ), ls ) == 0;
                     itemPtr += ls;
                     pos += ls;
@@ -833,9 +832,9 @@ struct TestNTreeHashSet {
         return basic< FakeGeneratorBinary, false, 0xff00aa33 >();
     }
 
-    template< typename Generator, bool leaf, uint32_t slackpat = 0 >
+    template< typename Generator, bool leaf, uint32_t slackpat = 0,
+        int32_t slack = slackpat ? sizeof( uint32_t ) : 0 >
     void basic() {
-        constexpr int32_t slack = slackpat ? sizeof( uint32_t ) : 0;
         TestBase< Generator, slack > test;
         auto derefslack UNUSED = [&]( BlobSet::Root r ) {
             return reinterpret_cast< uint32_t * >( r.slack( test.pool(), slack ) )[ 0 ];
