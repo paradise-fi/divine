@@ -87,7 +87,8 @@ struct Timed : public Common< Blob > {
     }
 
     std::string showTransition( Node from, Node to, Label ) {
-        ASSERT( this->pool().valid( from ) );
+        if ( !this->pool().valid( from ) )
+            return "";
 
         std::string str;
         const std::vector< std::pair< int, int > >& btrans = buchi.transitions( gen.getPropLoc( mem( from ) ) );
