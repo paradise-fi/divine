@@ -83,7 +83,7 @@ Header Header::fromFile( std::string filename ) {
         U() : head() { }
     } u;
     str.read( u.chr, sizeof( Header ) );
-    int read = str.gcount();
+    int read UNUSED = str.gcount();
     // the first check might look redundant but it is not: we want to make sure
     // version field is valid before using it
     ASSERT_LEQ( headerLength[ 0 ], read );
