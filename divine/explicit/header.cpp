@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2013-2015 Vladimír Štill <xstill@fi.muni.cz>
 
-// no ifdef O_EXPLICIT here! this must be alwais available (for definitions.h)
+// no ifdef O_EXPLICIT here! this must be always available (for definitions.h)
 
 #include <divine/explicit/header.h>
 #include <divine/graph/probability.h>
