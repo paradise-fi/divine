@@ -121,8 +121,10 @@ struct CompileLLVM {
                             : ( brick::fs::joinPath( rootDir.oldcwd, _env.output ) ) );
                 } else
                     linkFile( compilename );
-            } else if ( !_env.dontLink )
+            } else if ( !_env.dontLink ) {
+                brick::fs::ChangeCwd _( rootDir.oldcwd );
                 linkFile( file );
+			}
         }
 
         if ( !_env.dontLink ) {
