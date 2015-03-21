@@ -238,7 +238,7 @@ struct TestBarrier {
         bool sleeping;
 
         Thread() : i( 0 ), id( 0 ), busy( false ), sleeping( false ) {}
-        Thread( const Thread &o ) : i( o.i ), id( o.id ), busy( o.busy ), owner( o.owner ), sleeping( o.sleeping ) {}
+        Thread( const Thread & ) = default;
 
         bool workWaiting() {
             if ( busy )
