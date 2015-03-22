@@ -34,7 +34,7 @@ struct Probability {
     int numerator:16;
     unsigned denominator:16;
     Probability() : Probability( 0 ) {}
-    Probability( int c ) : Probability( c, 1, 1 ) {}
+    Probability( int tid ) : Probability( pow( 2, tid ), 1, 1 ) {}
     Probability( int c, int x, int y ) : cluster( c ), numerator( x ), denominator( y ) {}
     Probability operator*( std::pair< int, int > x ) {
         auto p = *this;
@@ -46,9 +46,8 @@ struct Probability {
     Probability levelup( int i ) {
         auto p = *this;
         int l;
-        ASSERT( i );
         for ( l = 1; p.cluster % prime( l ) == 0; ++l );
-        p.cluster *= std::pow( prime( l ), i );
+        p.cluster *= std::pow( prime( l ), i + 1 );
         return p;
     }
     std::string text() const {

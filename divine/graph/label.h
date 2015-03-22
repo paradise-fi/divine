@@ -83,7 +83,7 @@ struct Label {
         ASSERT_LEQ( p.numerator, numerator );
         ASSERT_EQ( int( p.denominator ), denominator );
         for ( int c : choices )
-            p = p.levelup( c + 1 );
+            p = p.levelup( c );
         return p;
     }
 
