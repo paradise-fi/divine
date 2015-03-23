@@ -350,7 +350,7 @@ struct SmallVector {
     };
 
     Data _data;
-    long _size : sizeof( long ) * 8 - 1;
+    unsigned long _size : sizeof( unsigned long ) * 8 - 1;
     bool _onstack : 1;
 
     template< typename X >
