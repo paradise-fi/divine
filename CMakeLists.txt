@@ -140,7 +140,7 @@ set( MIN_INSTANCES_PER_FILE "10" CACHE STRING
 mark_as_advanced( MAX_INSTANCE_FILES_COUNT MIN_INSTANCES_PER_FILE )
 
 set( OPT_LLVMSPLIT "PerObject" CACHE STRING
-    "A splitter used for Tree compression in LLVM, possible values are: Generic, PerObject and Hybrid" )
+    "LLVM compression splitter, one of: Generic, PerObject, PerObjectMono and Hybrid" )
 mark_as_advanced( OPT_LLVMSPLIT )
 
 set( CMD_CC "cc" CACHE STRING "how to run (at runtime) a C compiler" )
