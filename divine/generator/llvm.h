@@ -31,7 +31,7 @@ namespace generator {
 namespace machine = llvm::machine;
 using namespace ::llvm;
 
-enum class LLVMSplitter { Generic, Hybrid, PerObject };
+enum class LLVMSplitter { Generic, Hybrid, PerObject, PerObjectMono };
 
 #ifndef OPT_LLVMSPLIT
 constexpr LLVMSplitter LLVM_DEFSPLIT = LLVMSplitter::PerObject;
@@ -209,6 +209,10 @@ struct _LLVM : Common< Blob > {
         while ( total < max ) {
             sz = next();
             if ( ch > 0 && ch + sz > 32 ) {
+                while ( LS != LLVMSplitter::PerObjectMono && ch > 40 ) {
+                    leaves.emplace_back( ChunkT::NA, 32 );
+                    ch -= 32;
+                }
                 leaves.emplace_back( ChunkT::NA, ch );
                 ch = 0;
             };
