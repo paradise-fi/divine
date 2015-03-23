@@ -57,8 +57,9 @@ struct BitCode {
         ctx = new ::llvm::LLVMContext();
         MemoryBuffer::getFile( file, input );
         module.reset( ParseBitcodeFile( &*input, *ctx ) );
+		if ( !module )
+			throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
         info = new ProgramInfo( module.get() );
-        ASSERT( module );
     }
 
     BitCode( std::shared_ptr< ::llvm::Module > m )
