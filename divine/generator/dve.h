@@ -163,7 +163,8 @@ struct Dve : public Common< Blob > {
         );
     }
 
-    int processCount() {
+    template< typename Alloc >
+    int processCount( Alloc, Node ) {
         return system->processCount();
     }
 

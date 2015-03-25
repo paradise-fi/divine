@@ -47,12 +47,12 @@ struct FairGraph : NonPORGraph< G, St > {
     template< typename Alloc, typename Yield >
     void successors( Alloc alloc, Vertex stV, Yield yield ) {
         Node st = stV.node();
-        int procs = this->base().processCount();
+        int procs = this->base().processCount( alloc, st );
 
         int copy = extension( stV ).copy;
         bool accepting = !!this->base().stateFlags( st, graph::flags::isAccepting );
         ASSERT_LEQ( 0, copy );
-        ASSERT_LEQ( copy, procs );
+        copy = std::min( copy, procs );
 
         // 0-th copy: transitions from accepting states are redirected to copy 1, other remain unchanged
         if ( copy == 0 ) {
