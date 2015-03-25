@@ -44,8 +44,8 @@ struct FairGraph : NonPORGraph< G, St > {
         yield( n, l );
     }
 
-    template< typename Yield >
-    void successors( Vertex stV, Yield yield ) {
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Vertex stV, Yield yield ) {
         Node st = stV.node();
         int procs = this->base().processCount();
 
@@ -56,14 +56,14 @@ struct FairGraph : NonPORGraph< G, St > {
 
         // 0-th copy: transitions from accepting states are redirected to copy 1, other remain unchanged
         if ( copy == 0 ) {
-            this->base().successors( st, [&] ( Node n, Label l ) {
+            this->base().successors( alloc, st, [&] ( Node n, Label l ) {
                     this->withCopy( n, l, accepting ? 1 : 0, yield ); } );
         } else { // i-th copy: redirect all transitions made by (i-1)-th process to copy (i+1)
             bool enabled = false;
             do {
-                this->base().processSuccessors( st, [&] ( Node n, Label l ) {
+                this->base().processSuccessors( alloc, st, [&] ( Node n, Label l ) {
                         this->withCopy( n, l, copy, yield ); }, copy - 1, false );
-                this->base().processSuccessors( st, [&] ( Node n, Label l ) {
+                this->base().processSuccessors( alloc, st, [&] ( Node n, Label l ) {
                         enabled = true;
                         this->withCopy( n, l, ( copy + 1 ) % ( procs + 1 ), yield ); },
                     copy - 1, true );
@@ -72,7 +72,7 @@ struct FairGraph : NonPORGraph< G, St > {
             } while ( !enabled && copy > 0 );
 
             if ( !enabled ) { // break the epsilon-chain to avoid skipping the copy 0
-                this->base().successors( st, [&] ( Node n, Label l ) {
+                this->base().successors( alloc, st, [&] ( Node n, Label l ) {
                         this->withCopy( n, l, copy, yield ); } );
             }
         }

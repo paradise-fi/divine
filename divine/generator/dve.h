@@ -150,12 +150,12 @@ struct Dve : public Common< Blob > {
         successors( alloc, from, yield );
     }
 
-    template< typename Yield >
-    void processSuccessors( Node from, Yield yield, int pid, bool include ) {
+    template< typename Alloc, typename Yield >
+    void processSuccessors( Alloc alloc, Node from, Yield yield, int pid, bool include ) {
         processConts(
             from,
             [&]( dve::System::Continuation p ) {
-                yieldSuccessor( from, p, [&]( Node n ) { yield( n, Label() ); } );
+                yieldSuccessor( alloc, from, p, [&]( Node n ) { yield( n, Label() ); } );
                 return true;
             },
             pid,
