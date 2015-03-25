@@ -185,17 +185,21 @@ struct Interpreter
     }
 
     template< typename Yield, typename Alloc >
-    void run( Blob b, Yield yield, Alloc alloc ) {
+    void run( Blob b, Yield yield, Alloc alloc, int _tid = -1, bool include = true ) {
         state.rewind( alloc, b, -1 ); /* rewind first to get sense of thread count */
         state.flags().ap = 0; /* TODO */
         tid = 0;
         /* cache, to avoid problems with thread creation/destruction */
         int threads = state._thread_count;
 
-        while ( threads ) {
+        if ( _tid >= 0 && include ) {
+            if ( _tid < threads )
+                run( _tid, yield, Label( _tid ), alloc );
+        } else while ( threads ) {
             while ( tid < threads && !state.stack( tid ).get().length() )
                 ++tid;
-            run( tid, yield, Label( tid ), alloc );
+            if ( _tid < 0 || _tid != tid )
+                run( tid, yield, Label( tid ), alloc );
             if ( ++tid == threads )
                 break;
             state.rewind( alloc, b, -1 );
