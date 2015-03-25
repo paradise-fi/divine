@@ -325,7 +325,8 @@ struct Simple : TrackStatistics {
     }
 
     int64_t avgstate() {
-        return sumof( &PerThread::memHashes ) / states();
+        auto st = states();
+        return st ? sumof( &PerThread::memHashes ) / st : -1;
     }
 
     int64_t queues() {
