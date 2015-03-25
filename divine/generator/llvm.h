@@ -200,7 +200,7 @@ struct _LLVM : Common< Blob > {
             cor.consume( ch[ from ].second );
             return;
         }
-        int deg = l < ls.size() ? ls[ l ] : to - from, w = (to - from) / deg;
+        int deg = l < int( ls.size() ) ? ls[ l ] : to - from, w = (to - from) / deg;
         w += (to - from) % deg > 0 ? 1 : 0;
         cor.split( (to - from) / w + ( (to - from) % w ? 1 : 0 ) );
         for ( int i = from; i < to; i += w )
@@ -260,7 +260,7 @@ struct _LLVM : Common< Blob > {
                 cor.split( 2 );
                 splitAccumulate( cor, info.globalsize, [&]() {
                         unsigned s;
-                        if ( i < info.globalvars.size() ) {
+                        if ( i < int( info.globalvars.size() ) ) {
                             s = info.globalvars[ i++ ].second.width;
                             size += s;
                         } else {
@@ -334,7 +334,7 @@ struct _LLVM : Common< Blob > {
 
         int i = 0;
         for ( auto ch : chunks ) {
-            if ( chunks.size() > 2 && ++ i == chunks.size() )
+            if ( chunks.size() > 2 && ++ i == int( chunks.size() ) )
                 cor.join();
             splitHint( cor, ch );
         }
