@@ -89,9 +89,20 @@ struct _LLVM : Common< Blob > {
     }
 
     template< typename Alloc, typename Yield >
-    void successors( Alloc alloc, Node st, Yield yield ) {
+    void processSuccessors( Alloc alloc, Node st, Yield yield, int tid, bool include ) {
+        return successors( alloc, st, yield, tid, include );
+    }
+
+    template< typename Alloc >
+    int processCount( Alloc alloc, Node st ) {
+        interpreter().rewind( alloc, st );
+        return interpreter().threadCount() + 1;
+    }
+
+    template< typename Alloc, typename Yield >
+    void successors( Alloc alloc, Node st, Yield yield, int tid = -1, bool include = false ) {
         if ( !use_property )
-            return interpreter().run( st, yield, alloc );
+            return interpreter().run( st, yield, alloc, tid, include );
         interpreter().run( st, [&]( Node n, Label p ){
                 std::vector< int > buchi_succs;
                 for ( auto next : this->prop_next[ this->flags( n ).buchi ] ) {
@@ -115,7 +126,7 @@ struct _LLVM : Common< Blob > {
 
                 this->flags( n ).buchi = buchi_succs.front();
                 yield( n, p ); /* TODO? */
-            }, alloc );
+            }, alloc, tid, include );
     }
 
     void release( Node s ) {
