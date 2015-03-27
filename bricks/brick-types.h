@@ -108,6 +108,7 @@ struct Defer {
     }
 
     bool deleted() const { return _deleted; }
+    void pass() { _deleted = true; }
     ~Defer() { run(); }
   private:
     std::function< void() > fn;
