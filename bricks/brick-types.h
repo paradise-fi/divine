@@ -40,6 +40,7 @@
 #include <memory>
 #include <cstring>
 #include <type_traits>
+#include <functional>
 
 #ifndef BRICK_TYPES_H
 #define BRICK_TYPES_H
