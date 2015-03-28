@@ -8,7 +8,6 @@
 #include <map>
 #include <atomic>
 #include <tuple>
-#include <sys/mman.h>
 
 #ifndef NVALGRIND
 #pragma GCC diagnostic push
@@ -21,6 +20,7 @@
 #include <brick-string.h>
 #include <brick-hash.h>
 #include <brick-shmem.h>
+#include <brick-mmap.h>
 
 #ifndef DIVINE_POOL_H
 #define DIVINE_POOL_H
@@ -266,7 +266,7 @@ struct Lake {
                 header( i ).total * align( header( i ).itemsize,
                                            sizeof( Pointer ) ) +
                 sizeof( BlockHeader ) : blocksize;
-            munmap( static_cast< void * >( block[ i ] ), size );
+            brick::mmap::MMap::drop( block[ i ], size );
         }
     }
 
@@ -495,8 +495,7 @@ struct Lake {
             const int total = allocsize ? ( si.blocksize - overhead ) / allocsize : 0;
             const int allocate = allocsize ? overhead + total * allocsize : blocksize;
 
-            auto mem = mmap( nullptr, allocate, PROT_READ | PROT_WRITE,
-                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0 );
+            auto mem = brick::mmap::MMap::alloc( allocate );
             lake->block[ b ] = static_cast< char * >( mem );
             lake->header( b ).itemsize = size;
             lake->header( b ).total = total;
