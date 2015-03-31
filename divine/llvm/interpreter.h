@@ -234,6 +234,62 @@ struct Interpreter
         return false;
     }
 
+    using Leaves = std::vector< std::vector< std::pair< Blob, Label > > >;
+
+    template< typename Yield, typename Alloc >
+    void probabilistic( Yield yield, Label l, Alloc alloc, Leaves &leaves ) {
+        std::vector< std::vector< std::vector< std::pair< Blob, Label > > > > clusters;
+        std::vector< std::vector< int > > qs; /* coordinates */
+
+        int dim = 1, max = 0;
+
+        for ( auto &br : leaves ) {
+            clusters.emplace_back();
+            for ( auto r : br ) {
+                bool done = false;
+                for ( int i = 0; !done && i < int( clusters.back().size() ); ++i )
+                    if ( clusters.back()[ i ][ 0 ].second.level() == r.second.level() ) {
+                        clusters.back()[ i ].push_back( r );
+                        done = true;
+                    }
+                if ( !done ) {
+                    clusters.back().emplace_back();
+                    clusters.back().back().push_back( r );
+                }
+                max = std::max( max, r.second.level() );
+            }
+            dim *= clusters.back().size();
+        }
+
+        for ( int i = 0; i < dim; ++i ) {
+            int x = i;
+            qs.emplace_back();
+            for ( auto &clusterset: clusters ) {
+                qs[ i ].push_back( x % clusterset.size() );
+                x /= clusterset.size();
+            }
+        }
+
+        for ( auto &q : qs ) {
+            int cluster = 0;
+            for ( int i = 0; i < int( q.size() ); ++ i )
+                cluster += q[ i ] * std::pow( max, i );
+            Label cl = l.levelup( cluster );
+            for ( int i = 0; i < int( q.size() ); ++i ) {
+                for ( auto r : clusters[ i ][ q[ i ] ] ) {
+                    r.second.level( cl.level() );
+                    Blob b = alloc.get( pool, pool.size( r.first ) );
+                    pool.copy( r.first, b );
+                    yield( b, r.second );
+                }
+            }
+        }
+
+        for ( auto &br : leaves )
+            for ( auto l : br )
+                alloc.drop( pool, l.first );
+    }
+
     template< typename Yield, typename Alloc >
     void run( int tid, Yield yield, Label l, SeenPC &seen, Alloc alloc )
     {
@@ -265,18 +321,32 @@ struct Interpreter
             if ( choice.options ) {
                 ASSERT( !jumped );
                 Blob fork = state.snapshot( alloc );
+                Leaves leaves;
                 SeenPC s = seen;
                 Choice c = choice; /* make a copy, sublings must overwrite the original */
+
                 for ( int i = 0; i < c.options; ++i ) {
                     state.rewind( alloc, fork, tid );
                     choose( i );
                     advance();
                     seen = s;
-                    auto pp = c.p.empty() ? l.levelup( i ) :
-                              l * std::make_pair( c.p[ i ], std::accumulate( c.p.begin(), c.p.end(), 0 ) );
-                    run( tid, yield, pp, seen, alloc );
+                    Label pp = l.levelup( i );
+                    if ( !c.p.empty() ) { // probabilistic
+                        pp = pp * std::make_pair( c.p[ i ], std::accumulate( c.p.begin(), c.p.end(), 0 ) );
+                        leaves.resize( i + 1 );
+                        std::function< void( Blob, Label ) > f = [&]( Blob b, Label lbl ) {
+                            leaves[ i ].push_back( std::make_pair( b, lbl ) );
+                        };
+                        run( tid, f, pp, seen, alloc );
+                    } else // non-deterministic
+                        run( tid, yield, pp, seen, alloc );
                 }
+
                 alloc.drop( pool, fork );
+
+                if ( !c.p.empty() )
+                    probabilistic( yield, l, alloc, leaves );
+
                 return;
             }
 
