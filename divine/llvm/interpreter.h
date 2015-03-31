@@ -248,7 +248,7 @@ struct Interpreter
             for ( auto r : br ) {
                 bool done = false;
                 for ( int i = 0; !done && i < int( clusters.back().size() ); ++i )
-                    if ( clusters.back()[ i ][ 0 ].second.level() == r.second.level() ) {
+                    if ( clusters.back()[ i ][ 0 ].second.cluster() == r.second.cluster() ) {
                         clusters.back()[ i ].push_back( r );
                         done = true;
                     }
@@ -256,7 +256,7 @@ struct Interpreter
                     clusters.back().emplace_back();
                     clusters.back().back().push_back( r );
                 }
-                max = std::max( max, r.second.level() );
+                max = std::max( max, r.second.cluster() );
             }
             dim *= clusters.back().size();
         }
@@ -277,7 +277,7 @@ struct Interpreter
             Label cl = l.levelup( cluster );
             for ( int i = 0; i < int( q.size() ); ++i ) {
                 for ( auto r : clusters[ i ][ q[ i ] ] ) {
-                    r.second.level( cl.level() );
+                    r.second.cluster( cl.cluster() );
                     Blob b = alloc.get( pool, pool.size( r.first ) );
                     pool.copy( r.first, b );
                     yield( b, r.second );
