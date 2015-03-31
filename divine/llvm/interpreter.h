@@ -265,11 +265,13 @@ struct Interpreter
             if ( choice.options ) {
                 ASSERT( !jumped );
                 Blob fork = state.snapshot( alloc );
+                SeenPC s = seen;
                 Choice c = choice; /* make a copy, sublings must overwrite the original */
                 for ( int i = 0; i < c.options; ++i ) {
                     state.rewind( alloc, fork, tid );
                     choose( i );
                     advance();
+                    seen = s;
                     auto pp = c.p.empty() ? l.levelup( i ) :
                               l * std::make_pair( c.p[ i ], std::accumulate( c.p.begin(), c.p.end(), 0 ) );
                     run( tid, yield, pp, seen, alloc );
