@@ -69,7 +69,7 @@ struct Main {
     IntOption *o_workers, *o_mem, *o_time, *o_initable;
     IntOption *o_distance;
     IntOption *o_seed;
-    BoolOption *o_labels, *o_traceLabels, *o_bfsLayout;
+    BoolOption *o_labels, *o_transLabels, *o_traceLabels, *o_bfsLayout;
     StringOption *o_drawTrace, *o_drawOutput, *o_render;
     StringOption *o_gnuplot;
     StringOption *o_property;
@@ -395,6 +395,8 @@ struct Main {
             "labels", 'l', "labels", "", "draw state labels" );
         o_traceLabels = drawing->add< BoolOption >(
             "trace-labels", '\0', "trace-labels", "", "draw state labels, in trace only" );
+        o_transLabels = drawing->add< BoolOption >(
+            "transition-labels", '\0', "transition-labels", "", "draw transition labels" );
         o_bfsLayout = drawing->add< BoolOption >(
             "bfs-layout", '\0', "bfs-layout", "", "ask dot to lay out BFS layers in rows" );
 
@@ -676,6 +678,7 @@ struct Main {
         meta.output.filterProgram = o_render->value();
         meta.algorithm.labels = o_labels->boolValue();
         meta.algorithm.traceLabels = o_traceLabels->boolValue();
+        meta.algorithm.transLabels = o_transLabels->boolValue();
         meta.algorithm.bfsLayout = o_bfsLayout->boolValue();
         if ( opts.foundCommand() == cmd_simulate ) {
             if ( o_inputTrace->isSet() && o_interactiveInputTrace->isSet() )

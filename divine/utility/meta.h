@@ -58,7 +58,7 @@ struct Algorithm : WithReport {
 
     int maxDistance;
 
-    bool labels, traceLabels, bfsLayout; /* for drawing */
+    bool labels, transLabels, traceLabels, bfsLayout; /* for drawing */
     bool hashCompaction;
     Compression compression;
     bool sharedVisitor;

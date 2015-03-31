@@ -42,8 +42,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
     int drawn, maxdist, currentdist, serial;
 
     std::string dot_nodes, dot_edges, output, render, trace;
-    bool labels;
-    bool traceLabels;
+    bool labels, transLabels, traceLabels;
     bool bfs;
 
     std::set< std::pair< int, int > > intrace_trans;
@@ -170,7 +169,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
         str << extension( f ).serial << " -> " << extension( t ).serial;
         std::string label;
 
-        if ( labels )
+        if ( transLabels )
             label = escape( this->graph().showTransition(
                                 f.node(), t.node(), a ) );
 
@@ -296,6 +295,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
         render = m.output.filterProgram;
         trace = m.input.trace;
         labels = m.algorithm.labels;
+        transLabels = labels || m.algorithm.transLabels;
         traceLabels = labels || m.algorithm.traceLabels;
         drawn = 0;
         serial = 0;
