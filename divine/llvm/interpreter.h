@@ -1,8 +1,6 @@
 
 // -*- C++ -*- (c) 2011, 2012 Petr Rockai <me@mornfall.net>
 
-#define NO_RTTI
-
 #include <brick-types.h>
 #include <brick-data.h>
 

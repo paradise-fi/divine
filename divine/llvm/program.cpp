@@ -1,7 +1,5 @@
 // -*- C++ -*- (c) 2012-2014 Petr Ročkai <me@mornfall.net>
 
-#define NO_RTTI
-
 #include <stdexcept>
 
 #include <divine/llvm/program.h>

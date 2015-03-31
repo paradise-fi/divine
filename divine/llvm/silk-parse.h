@@ -1,7 +1,5 @@
 // -*- C++ -*- (c) 2014 Petr Rockai
 
-#define NO_RTTI
-
 #include <brick-parse.h>
 #include <brick-types.h>
 

@@ -1,7 +1,5 @@
 // -*- C++ -*- (c) 2012-2014 Petr Rockai
 
-#define NO_RTTI
-
 #include <divine/llvm/machine.h>
 #include <divine/llvm/program.h>
 

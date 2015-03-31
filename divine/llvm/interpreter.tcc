@@ -1,7 +1,5 @@
 // -*- C++ -*- (c) 2011, 2012 Petr Rockai <me@mornfall.net>
 
-#define NO_RTTI
-
 #include <divine/llvm/interpreter.h>
 
 #include <llvm/IR/DerivedTypes.h>
