@@ -17,6 +17,7 @@ struct NoLabel : brick::types::Comparable {
     NoLabel() {}
     NoLabel( int ) {}
     NoLabel levelup( int ) const { return NoLabel(); }
+    int cluster( int = 0 ) { return 0; }
     NoLabel operator *( std::pair< int, int > ) const { return NoLabel(); }
     bool operator<=( NoLabel ) const { return true; }
 };
@@ -34,6 +35,7 @@ struct ControlLabel {
     ControlLabel() : tid( -1 ) { }
     ControlLabel( int tid ) : tid( tid ) { }
     ControlLabel levelup( int ) { return *this; }
+    int cluster( int = 0 ) { return 0; }
     ControlLabel operator *( std::pair< int, int > ) const { return *this; }
     int tid;
 };
