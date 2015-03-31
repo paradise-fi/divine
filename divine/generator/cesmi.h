@@ -74,7 +74,7 @@ struct CESMI : public Common< Blob > {
     }
 
     template< typename Alloc, typename Yield, typename Get >
-    void _successors( Alloc alloc, Node s, Yield yield, Get get )
+    void _successors( Alloc, Node s, Yield yield, Get get )
     {
         int handle = 1, old = 1;
         call_setup< Alloc >();

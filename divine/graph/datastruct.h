@@ -161,7 +161,7 @@ struct Stack {
     }
 
     template< typename Alloc, typename Next >
-    void processOpen( Alloc alloc, Next next ) {
+    void processOpen( Alloc, Next next ) {
         if ( !deadlocked ) {
             ASSERT_EQ( _stack.back().flag, Fresh );
             Node n = _stack.back().node();
