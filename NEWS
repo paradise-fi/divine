@@ -1,3 +1,10 @@
+DIVINE 3.3.x
+============
+
+- [3.3.1] Implement --fairness (weak fairness) for LLVM.
+- [3.3.1] Substantial improvements to memory efficiency.
+- [3.3.1] Much faster (ca. 50%) LLVM interpreter.
+
 DIVINE 3.2.x
 ============
 
