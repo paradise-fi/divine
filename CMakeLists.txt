@@ -139,7 +139,7 @@ set( MIN_INSTANCES_PER_FILE "10" CACHE STRING
     "minimal number of instances in one instance file" )
 mark_as_advanced( MAX_INSTANCE_FILES_COUNT MIN_INSTANCES_PER_FILE )
 
-set( OPT_LLVMSPLIT "PerObject" CACHE STRING
+set( OPT_LLVMSPLIT "Generic" CACHE STRING
     "LLVM compression splitter, one of: Generic, PerObject, PerObjectMono and Hybrid" )
 mark_as_advanced( OPT_LLVMSPLIT )
 
