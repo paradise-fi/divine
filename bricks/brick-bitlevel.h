@@ -57,6 +57,10 @@ constexpr inline int align( int v, int a ) {
     return (v % a) ? (v + a - (v % a)) : v;
 }
 
+constexpr inline int downalign( int v, int a ) {
+    return v - (v % a);
+}
+
 namespace compiletime {
 
 template< typename T >
@@ -153,8 +157,10 @@ struct BitPointer {
     uint32_t &word() { ASSERT( valid() ); return *static_cast< uint32_t * >( base ); }
     uint64_t &dword() { ASSERT( valid() ); return *static_cast< uint64_t * >( base ); }
     void normalize() {
-        base = static_cast< uint32_t * >( base ) + _bitoffset / 32;
-        _bitoffset = _bitoffset % 32;
+        int shift = downalign( _bitoffset, 32 );
+        _bitoffset -= shift;
+        ASSERT_EQ( shift % 8, 0 );
+        base = static_cast< uint32_t * >( base ) + shift / 32;
     }
     void shift( int bits ) { _bitoffset += bits; normalize(); }
     void fromReference( BitPointer r ) { *this = r; }
@@ -186,7 +192,10 @@ inline void bitcopy( BitPointer from, BitPointer to, int bitcount )
         uint64_t bits = bitshift( from.word() & fmask, from.bitoffset() - to.bitoffset() );
         ASSERT_EQ( bits & ~tmask, 0u );
         ASSERT_EQ( bits & tmask, bits );
-        to.dword() = (to.dword() & ~tmask) | bits;
+        if ( to.bitoffset() + bitcount > 32 )
+            to.dword() = (to.dword() & ~tmask) | bits;
+        else
+            to.word() = (to.word() & ~static_cast< uint32_t >( tmask )) | static_cast< uint32_t >( bits );
         from.shift( w ); to.shift( w ); bitcount -= w; // slide
     }
 }
