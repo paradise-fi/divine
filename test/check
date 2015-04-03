@@ -15,11 +15,15 @@ die() {
 
 report() {
     test -f report || return 0
+    if [ "$1" = '-q' ]; then
+        shift;
+        local QUIET=1
+    fi
     v=`grep "^$1:" report | cut -f2- -d: | cut -c2-`
     test -n "$3" && op="$3" || op="=";
 
     if test -n "$2" && ! test "$2" "$op" "$v"; then
-        complain "Expected $1 $op '$2' but got '$v' instead"
+        test "$QUIET" = 1 || complain "Expected $1 $op '$2' but got '$v' instead"
         return 1
     fi
     echo "$v" > value;
@@ -32,44 +36,51 @@ report_print() {
 }
 
 ltl_algorithm() {
-    report Algorithm OWCTY && return 0
-    report Algorithm "Nested DFS" && return 0
-    report Algorithm MAP && return 0
+    report -q Algorithm OWCTY && return 0
+    report -q Algorithm "Nested DFS" && return 0
+    report -q Algorithm MAP && return 0
+    return 1
+}
+
+reach_algorithm() {
+    report -q Algorithm Reachability && return 0
+    report -q Algorithm "Weak Reachability" && return 0
+    report -q Algorithm CSDR && return 0
     return 1
 }
 
 ltl_valid() {
     report Finished Yes
-    report Property-Type neverclaim || return 0
+    report -q Property-Type neverclaim || return 0
     ltl_algorithm || return 0
     report Property-Holds Yes
 }
 
 ltl_invalid() {
     report Finished Yes
-    report Property-Type neverclaim || return 0
+    report -q Property-Type neverclaim || return 0
     ltl_algorithm || return 0
     report Property-Holds No
 }
 
 reachability_valid() {
     report Finished Yes
-    report Algorithm Reachability || return 0
+    reach_algorithm || return 0
     report Property-Holds Yes
 }
 
 reachability_deadlock() {
     report Finished Yes
-    report Property-Type deadlock || return 0
-    report Algorithm Reachability || return 0
+    report -q Property-Type deadlock || return 0
+    reach_algorithm || return 0
     report Property-Holds No
     report CE-Type deadlock
 }
 
 reachability_goal() {
     report Finished Yes
-    report Property-Type goal || return 0
-    report Algorithm Reachability || return 0
+    report -q Property-Type goal || return 0
+    reach_algorithm || return 0
     report Property-Holds No
     report CE-Type goal
 }
@@ -79,7 +90,7 @@ statespace() {
 
     report Finished Yes
     op=-eq
-    report Full-State-Space No && op=-le
+    report -q Full-State-Space No && op=-le
     grep "^Transformations:.*POR" report && op=-le
 
     states=`report_print States-Visited`
@@ -93,8 +104,12 @@ statespace() {
     test "$dead" = "-" || test $dead $op $4 || die "Deadlock-Count: $4 expected, $dead got"
 }
 
+cleanup() {
+    rm -f progress report testcase.{c,cpp,dve,dess} complaint
+}
+
 clear() {
-    rm -f progress report testcase.{c,dve}
+    cleanup
     echo "#### PASSED"
     echo
 }
@@ -118,10 +133,11 @@ debris() {
     echo "#### TEST END"
     echo
     test -f progress && (cat progress; echo) || true
-    test -f testcase.c && (nl -ba testcase.c; echo) || true
-    test -f testcase.dve && (nl -ba testcase.dve; echo) || true
+    for T in testcase.{c,cpp,dve}; do
+        test -f $T && (nl -ba $T; echo) || true
+    done
     test -f complaint && cat complaint || true
-    rm -f testcase.{c,dve} complaint progress
+    cleanup
     echo
     echo "."
 }
