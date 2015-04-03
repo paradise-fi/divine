@@ -116,6 +116,13 @@ struct NTreeWrap {
     static const bool allowEphemeral = true;
 };
 
+template< typename Provider, typename Generator, typename Hasher >
+using NTreeTable = typename Provider::template Make< NTreeWrap< Generator, Hasher > >;
+
+template< typename Provider, typename Generator, typename Hasher >
+using PlainTable = typename Provider::template Make< IdentityWrap< Generator, Hasher > >;
+
+
 struct ProviderCommon {
     WithID _id;
     void setId( WithID& id ) { _id = id; }
@@ -128,12 +135,6 @@ struct ProviderCommon {
     bool knows( hash64_t hash ) const { return owner( hash ) == _id.id(); }
     ProviderCommon() : _id( { 0, 0 }, 1, 1, 0 ) { }
 };
-
-template< typename Provider, typename Generator, typename Hasher >
-using NTreeTable = typename Provider::template Make< NTreeWrap< Generator, Hasher > >;
-
-template< typename Provider, typename Generator, typename Hasher >
-using PlainTable = typename Provider::template Make< IdentityWrap< Generator, Hasher > >;
 
 struct PartitionedProvider {
     template < typename WrapTable >
