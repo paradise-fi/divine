@@ -200,7 +200,7 @@ enum class Visitor {
 };
 enum class Store {
     Begin,
-    NTreeStore, HcStore, DefaultStore,
+    NDFSNTreeStore, NTreeStore, HcStore, DefaultStore,
     End
 };
 enum class Topology {
@@ -268,6 +268,7 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Visitor, Shared );
     SHOW( Visitor, Partitioned );
 
+    SHOW( Store, NDFSNTreeStore );
     SHOW( Store, NTreeStore );
     SHOW( Store, HcStore );
     SHOW( Store, DefaultStore );
@@ -419,9 +420,14 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
     { Visitor::Partitioned, constTrue },
     { Visitor::Shared, []( const Meta &meta ) { return meta.algorithm.sharedVisitor; } },
 
-    { Store::DefaultStore, constTrue },
-    { Store::NTreeStore,   []( const Meta &meta ) { return meta.algorithm.compression == meta::Algorithm::Compression::Tree; } },
-    { Store::HcStore,      []( const Meta &meta ) { return meta.algorithm.hashCompaction; } },
+    { Store::NDFSNTreeStore,
+        []( const Meta &meta ) {
+            return AlgSelect( meta::Algorithm::Type::Ndfs )( meta ) &&
+                meta.algorithm.compression == meta::Algorithm::Compression::Tree;
+        } },
+    { Store::DefaultStore,   constTrue },
+    { Store::NTreeStore,     []( const Meta &meta ) { return meta.algorithm.compression == meta::Algorithm::Compression::Tree; } },
+    { Store::HcStore,        []( const Meta &meta ) { return meta.algorithm.hashCompaction; } },
 
     { Topology::Mpi,   []( const Meta &meta ) { return meta.execution.nodes > 1; } },
     { Topology::Local, constTrue },
@@ -603,8 +609,9 @@ static const CMap< Key, SupportedBy > supportedBy = {
 
     { Visitor::Shared, Not{ Or{ Algorithm::Simulate, Algorithm::GenExplicit, Algorithm::Info } } },
 
-    { Store::NTreeStore, Not{ Or{ Algorithm::Info } } },
-    { Store::HcStore,    Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
+    { Store::NDFSNTreeStore, Algorithm::NestedDFS },
+    { Store::NTreeStore,     Not{ Or{ Algorithm::Info, Algorithm::NestedDFS } } },
+    { Store::HcStore,        Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
 
 #if !DEV_CONFLATE
     { Topology::Mpi, Not{ Or{ Algorithm::NestedDFS, Algorithm::Info, Visitor::Shared } } },
@@ -671,6 +678,7 @@ static const CMap< Key, FixArray< std::string > > symbols = {
     symVis( Visitor::Partitioned ),
     symVis( Visitor::Shared ),
 
+    symStore( Store::NDFSNTreeStore ),
     symStore( Store::NTreeStore ),
     symStore( Store::HcStore ),
     symStore( Store::DefaultStore ),

@@ -26,7 +26,7 @@ using brick::types::NotPreferred;
 /* Global utility functions independent of store type
  */
 
-template < typename TableProvider, typename Statistics >
+template < typename TableProvider, typename Statistics, bool allowEphemeral = false >
 struct StoreCommon : TableProvider
 {
     using Table = typename TableProvider::Table;
@@ -34,7 +34,10 @@ struct StoreCommon : TableProvider
     using InsertItem = typename TableProvider::Node;
     using StoredItem = typename Table::value_type;
 
-    typename std::conditional< TableProvider::allowEphemeral, Ephemeral, LongTerm >::type alloc;
+    typename std::conditional<
+        TableProvider::allowEphemeral && allowEphemeral,
+        Ephemeral,
+        LongTerm >::type alloc;
 
     typename TableProvider::ThreadData td;
 
@@ -432,8 +435,8 @@ typename BS::bitstream &operator>>( BS &bs, TrivialHandle &h )
     return bs;
 }
 
-template < typename TableProvider,
-           typename _Generator, typename _Hasher, typename Statistics >
+template < typename TableProvider, typename _Generator,
+           typename _Hasher, typename Statistics >
 struct DefaultStore
     : StoreCommon< PlainTable< TableProvider, _Generator, _Hasher >,
                    Statistics >
@@ -620,14 +623,14 @@ private:
 #endif
 };
 
-template < typename TableProvider,
-           typename _Generator, typename _Hasher, typename Statistics >
+template < typename TableProvider, typename _Generator,
+           typename _Hasher, typename Statistics, bool allowEphemeral = true >
 struct NTreeStore
     : StoreCommon< NTreeTable< TableProvider, _Generator, _Hasher >,
-                   Statistics >
+                   Statistics, allowEphemeral >
 {
-    using This = NTreeStore< TableProvider, _Generator, _Hasher, Statistics >;
-    using Base = StoreCommon< NTreeTable< TableProvider, _Generator, _Hasher >, Statistics >;
+    using This = NTreeStore< TableProvider, _Generator, _Hasher, Statistics, allowEphemeral >;
+    using Base = StoreCommon< NTreeTable< TableProvider, _Generator, _Hasher >, Statistics, allowEphemeral >;
     using Hasher = _Hasher;
     using Table = typename Base::Table;
 
@@ -699,6 +702,10 @@ struct NTreeStore
 private:
     Vertex vertex( Root n ) { return Vertex( *this, Handle( n.unwrap(), this->rank() ) ); }
 };
+
+template < typename TableProvider, typename _Generator,
+           typename _Hasher, typename Statistics >
+using NDFSNTreeStore = NTreeStore< TableProvider, _Generator, _Hasher, Statistics, false >;
 
 }
 }
