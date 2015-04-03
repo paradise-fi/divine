@@ -11,4 +11,10 @@ for I in llvm_examples/*.c llvm_examples/*.cpp; do
     BC=$(echo $I | sed 's,^.*/,,' | sed 's/\.c\(pp\|c\)\{0,1\}$/.bc/')
     echo "BC: $BC"
     divine info $BC 2>> progress | capture
+
+    # check if LTL properties defined in .c/.cpp are in .bc
+    (grep 'LTL(.*)' $I || true) | sed 's/LTL([ ]*\([^, ]*\)[ ]*,.*/\1/' | \
+        while read prop; do
+            grep $prop report || (echo "ERROR: missing property $prop"; false)
+        done
 done
