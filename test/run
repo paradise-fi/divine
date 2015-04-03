@@ -7,6 +7,7 @@ map() { ann "divine verify --map --report" "$@" "2> progress | capture"; }
 ndfs() { ann "divine verify --nested-dfs --report" "$@" "2> progress | capture"; }
 owcty() { ann "divine verify --owcty --report" "$@" "2> progress | capture"; }
 reachability() { ann "divine verify --reachability --report" "$@" "2> progress | capture"; }
+csdr() { ann "divine verify --csdr --report" "$@" "2> progress | capture"; }
 metrics() { ann "divine metrics --report" "$@" "2> progress | capture"; }
 verify() { ann "divine verify --report" "$@" "2> progress | capture"; }
 genexplicit() { ann "divine gen-explicit --report" "$@" "2> progress | capture"; }
