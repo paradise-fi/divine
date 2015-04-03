@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 //             (c) 2013 Petr Rockai <me@mornfall.net>
 
+#include <sstream>
+
 #include <brick-string.h>
 
 #include <divine/instances/definitions.h>
@@ -8,6 +10,36 @@
 
 namespace divine {
 namespace instantiate {
+
+struct ErrorMissing : std::runtime_error {
+
+    ErrorMissing( FixArray< Key > trace ) :
+        runtime_error( format( trace ) )
+    {}
+private:
+    static std::string format( FixArray< Key > trace ) {
+        std::ostringstream s;
+        s << std::get< 1 >( showGen( trace.back() ) ) << " is not available "
+          << "while selecting " << std::get< 0 >( showGen( trace.back() ) ) << "." << std::endl
+          << "    Selector came to dead end after selecting: "
+          << brick::string::fmt( trace ) << std::endl;
+        return s.str();
+    }
+};
+
+struct NoDefault : std::runtime_error {
+    NoDefault( FixArray< Key > trace ) :
+        runtime_error( format( trace ) )
+    {}
+private:
+    static std::string format( FixArray< Key > trace ) {
+        std::ostringstream s;
+        s << "Selector came to dead end after selecting: "
+          << brick::string::fmt( trace ) << std::endl
+          << "    No default available." << std::endl;
+        return s.str();
+    }
+};
 
 bool _select( const Meta &meta, Key k ) {
     return select[ k ]( meta );
@@ -44,21 +76,6 @@ void warningMissing( Key key ) {
     std::cerr << "WARNING: " + std::get< 1 >( showGen( key ) ) + " is not available "
               << "while selecting " + std::get< 0 >( showGen( key ) ) + "." << std::endl
               << "    Will try to select other option." << std::endl;
-}
-
-std::nullptr_t errorMissing( FixArray< Key > trace ) {
-    std::cerr << "ERROR: " << std::get< 1 >( showGen( trace.back() ) ) << " is not available "
-              << "while selecting " << std::get< 0 >( showGen( trace.back() ) ) << "." << std::endl
-              << "    Selector came to dead end after selecting: "
-              << brick::string::fmt( trace ) << std::endl;
-    return nullptr;
-}
-
-std::nullptr_t noDefault( FixArray< Key > trace ) {
-    std::cerr << "ERROR: Selector came to dead end after selecting: "
-              << brick::string::fmt( trace ) << std::endl
-              << "    No default available." << std::endl;
-    return nullptr;
 }
 
 void warnOtherAvailable( Meta metacopy, Key k ) {
@@ -111,10 +128,8 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
         return nullptr;
     }
 
-    if ( component->empty() ) {
-        std::cerr << "FATAL: component list empty at " << brick::string::fmt( sofar ) << std::endl;
-        throw nullptr;
-    }
+    if ( component->empty() )
+        throw std::runtime_error( "FATAL: component list empty at " + brick::string::fmt( sofar ) );
 
     bool available = false;
 
@@ -134,7 +149,7 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
                     _deactivate( meta, c );
                     /* die right away if there is no hope of recovery */
                     if ( options[ c.type ].has( SelectOption::ErrUnavailable ) )
-                        throw errorMissing( appendArray( sofar, c ) );
+                        throw ErrorMissing( appendArray( sofar, c ) );
                     else
                         warningMissing( c );
                 }
@@ -143,9 +158,9 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
     }
 
     if ( !available ) {
-        std::cerr << "FATAL: no valid component for " << std::get< 0 >( showGen( *component->begin() ) )
-                  << " was built, at " << brick::string::fmt( sofar ) << std::endl;
-        throw nullptr;
+        throw std::runtime_error( 
+            "FATAL: no valid component for " + std::get< 0 >( showGen( *component->begin() ) ) +
+            " was built, at " + brick::string::fmt( sofar ) );
     }
 
     return nullptr;
