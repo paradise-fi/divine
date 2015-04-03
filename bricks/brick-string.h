@@ -64,7 +64,7 @@ int vasprintf (char **result, const char *format, va_list args)
   int total_width = strlen (format) + 1;
   va_list ap;
 
-  memcpy ((void *)&ap, (void *)&args, sizeof (va_list));
+  memcpy (static_cast< void * >( &ap ), static_cast< void * >( &args ), sizeof (va_list));
 
   while (*p != '\0')
     {
@@ -78,7 +78,7 @@ int vasprintf (char **result, const char *format, va_list args)
 	      total_width += abs (va_arg (ap, int));
 	    }
 	  else
-	    total_width += strtoul (p, (char **) &p, 10);
+	    total_width += strtoul (p, const_cast< char ** >( &p ), 10);
 	  if (*p == '.')
 	    {
 	      ++p;
@@ -88,7 +88,7 @@ int vasprintf (char **result, const char *format, va_list args)
 		  total_width += abs (va_arg (ap, int));
 		}
 	      else
-	      total_width += strtoul (p, (char **) &p, 10);
+	      total_width += strtoul (p, const_cast< char ** >( &p ), 10);
 	    }
 	  while (strchr ("hlL", *p))
 	    ++p;
@@ -126,7 +126,7 @@ int vasprintf (char **result, const char *format, va_list args)
 	  p++;
 	}
     }
-  *result = (char*)malloc (total_width);
+  *result = static_cast< char * >( malloc (total_width) );
   if (*result != NULL) {
     return vsprintf (*result, format, args);}
   else {

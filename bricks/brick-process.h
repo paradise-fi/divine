@@ -364,7 +364,7 @@ public:
     }
 
     void waitForSuccess() {
-        int r = wait();
+        int r UNUSED = wait();
 #ifndef _WIN32
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
@@ -443,10 +443,10 @@ protected:
     virtual void spawnChild() {
 #ifdef _WIN32
         std::string cmd = pathname;
-        for ( int i = 1; i < args.size(); ++i )
+        for ( int i = 1; i < int( args.size() ); ++i )
             cmd += " \"" + args[i] + "\""; // FIXME: quoting...
         std::cerr << "CreateProcess: " << cmd << std::endl;
-        CreateProcess( NULL, (char*)cmd.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi );
+        CreateProcess( NULL, &cmd.front(), NULL, NULL, 1, 0, NULL, NULL, &si, &pi );
 #endif
     }
 
