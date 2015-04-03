@@ -9,6 +9,12 @@ owcty() { ann "divine verify --owcty --report" "$@" "2> progress | capture"; }
 reachability() { ann "divine verify --reachability --report" "$@" "2> progress | capture"; }
 metrics() { ann "divine metrics --report" "$@" "2> progress | capture"; }
 verify() { ann "divine verify --report" "$@" "2> progress | capture"; }
+genexplicit() { ann "divine gen-explicit --report" "$@" "2> progress | capture"; }
+genexplicit_rech() {
+    rm -f testcase.dess
+    ann "divine gen-explicit --report -o testcase.dess" "$@"
+    ann "divine verify --reachability --report testcase.dess" "2> progress | capture"
+}
 draw() { ann "divine draw" "$@"; }
 info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce\|-D [^ ]*\|--max-[^ -]*=[0-9]*,,g"); }
 
