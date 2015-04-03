@@ -661,8 +661,8 @@ std::string readFile( const std::string &file ) {
 
 #ifdef _WIN32
 #define F_OK 0
-#define R_OK 2
-#define W_OK 4
+#define W_OK 2
+#define R_OK 4
 //#define X_OK
 #endif
 
