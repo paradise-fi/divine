@@ -710,10 +710,10 @@ struct Main {
             if ( !ib )
                 die( "Fatal error encountered while processing input." );
 
+            std::set< std::string > props;
+            for ( auto p : ib->getProperties() )
+                props.insert( p.name );
             if ( meta.input.properties.empty() ) {
-                std::set< std::string > props;
-                for ( auto p : ib->getProperties() )
-                    props.insert( p.name );
                 for ( auto p : { "safety", "deadlock" } )
                     if ( props.count( p ) ) {
                         meta.input.properties.insert( p );
@@ -722,6 +722,10 @@ struct Main {
                 if ( opts.foundCommand() != cmd_info && meta.input.properties.empty() )
                     die( "FATAL: No property given and no default usable, please"
                             " consult divine info and use -p <prop name>" );
+            } else {
+                for ( auto p : meta.input.properties )
+                    if ( props.count( p ) == 0 )
+                        die( "Invalid property '" + p + "' specified." );
             }
             ib->propertyInfo( meta.input.properties, meta );
             meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
@@ -788,7 +792,7 @@ struct Main {
                             meta.algorithm.algorithm = meta::Algorithm::Type::Owcty;
                         break;
                     default:
-                        ASSERT_UNIMPLEMENTED();
+                        die( "Could not determine what algorithm to use." );
                 }
             }
 
