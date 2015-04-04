@@ -34,7 +34,7 @@ void Interpreter< HM, L >::parseProperties( Module * )
             continue;
 
         std::string name( id, strlen( prefix ), std::string::npos );
-        GlobalContext ctx( info(), TD, nullptr );
+        GlobalContext ctx( info(), TD, false );
         int idx = i;
         while ( true ) {
             auto val = info().globals[ idx ];
