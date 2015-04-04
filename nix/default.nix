@@ -75,7 +75,6 @@ let
               clang ? false,
               compilerPkg ? (pkgs: if clang then pkgs.clangSelf else pkgs.gcc),
               clang_runtime ? (pkgs: pkgs.clang), # version of clang used in divine compile --llvm
-              llvm ? (pkgs: pkgs.llvm)
             }: system:
     let pkgs = import nixpkgs { inherit system; };
         nicesys = if lib.eqStrings system "i686-linux" then "x86" else
@@ -84,7 +83,8 @@ let
                      "-DCMD_CXX=${compilerPkg pkgs}/bin/c++" ] ++
                    (if lib.eqStrings (builtins.substring 0 4 name) "llvm" ||
                        lib.eqStrings name "full" ||
-                       lib.eqStrings name "medium"
+                       lib.eqStrings name "medium" ||
+                       lib.eqStrings name "explicit"
                       then [ "-DCMD_CLANG=${(clang_runtime pkgs).clang}/bin/clang" ]
                       else []);
         profile = if lib.eqStrings buildType "Debug" && !clang
@@ -168,7 +168,9 @@ let
     gcc_mpi =      mk: mk { inputs = pkgs: [ pkgs.openmpi ]; };
     gcc_gui =      mk: mk { name = "gui"; inputs = pkgs: [ pkgs.qt4 ]; };
 
-    gcc_llvm =     mk: mk { name = "llvm"; inputs = pkgs: [ pkgs.llvm pkgs.clang ]; };
+    gcc_llvm =     mk: mk { name = "llvm"; inputs = pkgs: [ pkgs.llvm pkgs.clang ];
+                            flags = [ "-DGEN_LLVM_PROB=ON" ];
+                          };
     gcc_llvm_31 =  gcc_llvm_vers "llvm_31" "clang_31";
     gcc_llvm_32 =  gcc_llvm_vers "llvm_32" "clang_32";
     gcc_llvm_33 =  gcc_llvm_vers "llvm_33" "clang_33";
@@ -180,6 +182,11 @@ let
                             flags = [ "-DSTORE_HC=OFF" "-DSTORE_COMPRESS=ON" "-DGEN_EXPLICIT=OFF" ]; };
     /* gcc_hashcomp = mk: mk { inputs = pkgs: [];
                             flags = [ "-DSTORE_COMPRESS=OFF" "-DSTORE_HC=ON" "-DGEN_EXPLICIT=OFF" ]; }; */
+    gcc_explicit = mk: mk { name = "explicit"; inputs = pkgs: [ pkgs.llvm pkgs.clang pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
+                            flags = [ "-DALG_OWCTY=OFF" "-DALG_EXPLICIT=ON" "-DALG_CSDR=OFF"
+                                      "-DGEN_EXPLICIT=ON" "-DGEN_EXPLICIT_PROB=ON"
+                                      "-DGEN_LLVM_PROB=ON" "-DSTORE_COMPRESS=OFF" ];
+                          };
     gcc_full =     mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
                             flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
     gcc49_full =   mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
@@ -192,9 +199,9 @@ let
   } // lib.fold (alg: set: lib.setAttrByPath [ "gcc_${alg}" ] (mk:
         mk { inputs = pkgs: [];
           flags = [ "-DALG_OWCTY=OFF" "-DALG_REACHABILITY=OFF" "-DALG_CSDR=OFF"
-                    "-DALG_${lib.toUpper alg}=ON" ];
+                    "-DALG_${lib.toUpper alg}=ON" "-DSTORE_COMPRESS=OFF" ];
         }
-      ) // set) {} [ "map" "ndfs" "metrics" "weakreachability" "explicit" ];
+      ) // set) {} [ "map" "ndfs" "metrics" "weakreachability" ];
 
   windows = {
     win7_gui.i386 = mkwin windows7_img "" [ windows_qt ];
