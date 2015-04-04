@@ -369,7 +369,7 @@ struct SmallVector {
     struct MemDeleter { void operator()( T *x ) { operator delete( x ); } };
 
     void _reserve( long count ) {
-        if ( count < _size )
+        if ( count < long( _size ) )
             _drop< T >( begin() + count, end() );
         else if ( count > capacity() ) {
             long newcap = 1;
