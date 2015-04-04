@@ -56,15 +56,11 @@ void MachineState< HeapMeta >::trace( Pointer p, machine::Canonic< HeapMeta > &c
 template< typename Fun >
 void forPointers( machine::Frame &f, ProgramInfo &i, ValueRef v, Fun fun )
 {
-    if ( isHeapPointer( f.memoryflag( i, v ) ) )
-        fun( v, *f.dereference< Pointer >( i, v ) );
-/*
-    while ( v.offset < v.v.width - 4 ) {
-        v.offset += 4;
-        if ( f.isPointer( i, v ) )
+    while ( v.offset < v.v.width ) {
+        if ( isHeapPointer( f.memoryflag( i, v ) ) )
             fun( v, *f.dereference< Pointer >( i, v ) );
+        v.offset += 4;
     }
-*/
 }
 
 template< typename HeapMeta >
