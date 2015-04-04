@@ -476,11 +476,12 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
     }
     r << "]" << std::endl;
 
-    r << "heap: segcount = " << heap().segcount << ", size = " << heap().size() << ", data = ";
+    r << "heap: segcount = " << heap().segcount << ", size = " << heap().size() << ", data:" << std::endl;
     for ( int i = 0; i < heap().segcount; ++ i ) {
         Pointer p = Pointer( true, i, 0 );
         char *where = heap().dereference( Pointer( true, i, 0 ) );
         int size = heap().size( Pointer( true, i, 0 ) );
+        r << "    " << p << " size " << pointerSize( p ) << ": ";
         for ( ; p.offset < size; p.offset += 4 ) {
             if ( validate( p ) && heap().memoryflag( p ).get() == MemoryFlag::HeapPointer ) {
                 r << followPointer( p ) << " ";
@@ -488,7 +489,7 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
                 r << fmtInteger( where + p.offset, 32 ) << " ";
         }
         if ( i < heap().segcount - 1 )
-            r << "| ";
+            r << std::endl;
     }
     r << std::endl;
 
