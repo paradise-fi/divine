@@ -530,6 +530,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         uint64_t *flags = dess.stateFlags.flagMasks + start;
 
         graph::FlagVector allflags;
+        allflags.emplace_back( graph::flags::accepting );
         this->graph().enumerateFlags( [&]( std::string, int i, graph::flags::Type ) {
                     allflags.emplace_back( i );
                 } );

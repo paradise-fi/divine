@@ -72,9 +72,9 @@ enum class Type {
     Other
 };
 
-constexpr short accepting = -2;
 constexpr short goal = -1;
-constexpr short firstAvailable = 0;
+constexpr short accepting = 0;
+constexpr short firstAvailable = 1;
 
 const std::initializer_list< short > isAccepting = { accepting };
 const std::initializer_list< short > isGoal = { goal };

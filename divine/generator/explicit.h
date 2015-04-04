@@ -97,7 +97,7 @@ struct _Explicit : public Common< Blob > {
         graph::FlagVector out;
         uint64_t nf = dess.stateFlags[ index( n ) ];
         for ( auto f : flags ) {
-            if ( f >= graph::flags::firstAvailable && (nf & (1 << f)) )
+            if ( f >= 0 && (nf & (1 << f)) )
                 out.emplace_back( f );
             else if ( f == graph::flags::goal )
                 for ( auto gf : goalFlags )
