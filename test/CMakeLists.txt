@@ -11,6 +11,7 @@ file( WRITE "${CMAKE_CURRENT_BINARY_DIR}/environment" "
  export MPIEXEC='${MPIEXEC}'
  export WIN32='${WIN32}'
  export LLVMCONFIG='${LLVM_CONFIG_EXECUTABLE}'
+ export TESTS='${root}'
  ${EXPORT_OPTIONS}" )
 
 add_custom_target( functional
