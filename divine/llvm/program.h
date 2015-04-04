@@ -394,6 +394,7 @@ struct GlobalContext {
     /* TODO */
     bool inBounds( ValueRef, int ) { return true; }
     bool inBounds( Pointer, int ) { return true; }
+    bool validate( Pointer, bool ) { return true; }
 
     char *dereference( Pointer p ) {
         if ( !p.heap && allow_global )

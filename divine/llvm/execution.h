@@ -540,12 +540,18 @@ struct Evaluator
 
     void implement_store() {
         Pointer to = withValues( Get< Pointer >(), instruction().operand( 1 ) );
+        auto mf = econtext.memoryflag( instruction().operand( 1 ) );
+        if ( mf.valid() )
+            ASSERT( econtext.validate( to, mf.get() == MemoryFlag::HeapPointer ) );
         if ( auto r = memcopy( instruction().operand( 0 ), to, instruction().operand( 0 ).width ) )
             ccontext.problem( r );
     }
 
     void implement_load() {
         Pointer from = withValues( Get< Pointer >(), instruction().operand( 0 ) );
+        auto mf = econtext.memoryflag( instruction().operand( 0 ) );
+        if ( mf.valid() )
+            ASSERT( econtext.validate( from, mf.get() == MemoryFlag::HeapPointer ) );
         if ( auto r = memcopy( from, instruction().result(), instruction().result().width ) )
             ccontext.problem( r );
     }

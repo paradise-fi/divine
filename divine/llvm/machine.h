@@ -650,6 +650,11 @@ struct MachineState
         return dereference( p );
     }
 
+    bool validate( Pointer p, bool h ) {
+        bool hv = heap().owns( p ) || nursery.owns( p );
+        return (h && hv) || (!h && !hv);
+    }
+
     Lens< Threads > threads() {
         return state().sub( Threads() );
     }
@@ -972,6 +977,7 @@ struct FrameContext {
 
     template< typename X > MemoryBits memoryflag( X x ) { return frame.memoryflag( info, x ); }
     template< typename X > char *dereference( X x ) { return frame.dereference( info, x ); }
+    template< typename X > bool validate( X, bool ) { return true; }
     template< typename X > bool inBounds( X x, int off ) {
         x.offset += off;
         return dereference( x );

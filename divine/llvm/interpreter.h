@@ -369,6 +369,7 @@ struct Interpreter
 
     template< typename X > MemoryBits memoryflag( X p ) { return state.memoryflag( p ); }
     template< typename X > bool inBounds( X p, int o ) { return state.inBounds( p, o ); }
+    bool validate( Pointer p, bool heap ) { return state.validate( p, heap ); }
 
     /* ControlContext interface. */
     int stackDepth() { return state.stack().get().length(); }
