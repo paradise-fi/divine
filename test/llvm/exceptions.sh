@@ -76,3 +76,16 @@ int main() {
 }
 EOF
 
+llvm_verify_cpp valid <<EOF
+#include <cassert>
+#include <stdexcept>
+int main() {
+    int x = 0;
+    try { throw std::logic_error( "moo" ); }
+    catch( std::exception ) {
+        x = 5;
+    }
+    assert( x == 5 );
+}
+EOF
+
