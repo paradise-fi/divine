@@ -1,6 +1,7 @@
 #include <divine.h>
 #include "unwind.h"
 #include <src/cxa_exception.hpp>
+#include <src/private_typeinfo.h>
 #include <limits.h>
 
 using namespace __cxxabiv1;
@@ -35,6 +36,8 @@ void __cxa_throw_divine( __cxa_exception *e )
     _DivineLP_Info *lp = 0;
     typedef LPReturn (*Personality)( __cxa_exception * );
     Personality personality = 0;
+    e->adjustedPtr = &e->unwindHeader + 1;
+    auto eType = static_cast< const __shim_type_info * >( e->exceptionType );
 
     /* TODO: Check nativeness of e */
 
@@ -52,8 +55,9 @@ void __cxa_throw_divine( __cxa_exception *e )
         int cc = lp->clause_count;
         for ( int i = 0; i < cc; i ++ ) {
             int type_id = lp->clause[i].type_id;
-            void *tag = lp->clause[i].tag;
-            if ( type_id > 0 && ( !tag || tag == e->exceptionType ) )
+            auto tag = static_cast< const __shim_type_info * >( lp->clause[i].tag );
+            if ( type_id > 0 && (
+                     !tag || tag == eType || tag->can_catch( eType, e->adjustedPtr ) ) )
             {
                 handler = type_id;
                 personality = (Personality) lp->personality;
@@ -69,7 +73,6 @@ void __cxa_throw_divine( __cxa_exception *e )
     }
 
     e->handlerSwitchValue = handler;
-    e->adjustedPtr = &e->unwindHeader + 1;
     LPReturn ret = { 0, 0 };
     if ( personality )
         ret = personality( e );
