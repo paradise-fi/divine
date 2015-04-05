@@ -544,7 +544,7 @@ struct Evaluator
         if ( mf.valid() )
             ASSERT( econtext.validate( to, mf.get() == MemoryFlag::HeapPointer ) );
         if ( auto r = memcopy( instruction().operand( 0 ), to, instruction().operand( 0 ).width ) )
-            ccontext.problem( r );
+            ccontext.problem( r, to );
     }
 
     void implement_load() {
@@ -553,7 +553,7 @@ struct Evaluator
         if ( mf.valid() )
             ASSERT( econtext.validate( from, mf.get() == MemoryFlag::HeapPointer ) );
         if ( auto r = memcopy( from, instruction().result(), instruction().result().width ) )
-            ccontext.problem( r );
+            ccontext.problem( r, from );
     }
 
     template < typename From, typename To, typename FromC, typename ToC >

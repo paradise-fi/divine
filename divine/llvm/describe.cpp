@@ -369,6 +369,8 @@ std::string Describe< HM, L >::problem( Problem bad )
               << std::setw( 2 ) << std::setfill( '0' )
               << unsigned( uint8_t( str[i] ) ) << " ";
         }
+    } else if ( !bad.pointer.null() || bad.what == Problem::InvalidDereference ) {
+        s << ": the offending pointer was " << bad.pointer;
     }
 
     return s.str();
