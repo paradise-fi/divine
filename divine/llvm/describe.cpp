@@ -455,11 +455,16 @@ std::string Describe< HM, L >::all()
 
 template< typename HM, typename L >
 std::string Describe< HM, L >::constdata() {
+    lines.clear();
+
     for ( int i = 0; i < int( info().constinfo.size() ); ++ i )
         if ( info().constinfo[ i ].first )
             value( info().constinfo[ i ], ValueRef(), Pointer( false, i, 0 ) );
 
-    return brick::string::fmt( lines );
+    std::stringstream str;
+    for ( auto l : lines )
+        str << l << std::endl;
+    return str.str();
 }
 
 template< typename HeapMeta >
