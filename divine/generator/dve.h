@@ -248,8 +248,12 @@ struct Dve : public Common< Blob > {
         return system->symtab.context->offset;
     }
 
+    static const int assertFlag = graph::flags::firstAvailable;
+
     template< typename Yield >
-    void enumerateFlags( Yield ) { } // no flags supported beyond implicit accepting and goal
+    void enumerateFlags( Yield yield ) {
+        yield( "assert", assertFlag, graph::flags::Type::DefaultGoal );
+    }
 
     template< typename QueryFlags >
     graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
@@ -258,7 +262,7 @@ struct Dve : public Common< Blob > {
         for ( auto f : qf ) {
             if ( f == graph::flags::accepting && system->accepting( ctx ) )
                 out.emplace_back( f );
-            else if ( f == graph::flags::goal && !system->assertValid( ctx ) )
+            else if ( (f == graph::flags::goal || f == assertFlag) && !system->assertValid( ctx ) )
                 out.emplace_back( f );
         }
         return out;
