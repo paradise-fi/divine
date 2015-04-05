@@ -265,10 +265,12 @@ struct ProgramInfo {
         constant< T >( result ) = value;
     }
 
+    std::deque< std::tuple< Value, ::llvm::Constant *, bool > > toInit;
+    std::set< ::llvm::Value * > doneInit;
+
     void makeLLVMConstant( Value &result, ::llvm::Constant *c )
     {
         allocateConstant( result );
-        /* break loops in initializer dependencies */
         valuemap.insert( std::make_pair( c, result ) );
         storeConstant( result, c );
     }
@@ -277,6 +279,7 @@ struct ProgramInfo {
     bool isCodePointerConst( ::llvm::Value *val );
     PC getCodePointer( ::llvm::Value *val );
 
+    Value storeConstantR( ::llvm::Constant *, bool & );
     void storeConstant( Value result, ::llvm::Constant *, bool global = false );
 
     bool globalPointerInBounds( Pointer p ) {

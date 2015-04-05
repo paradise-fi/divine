@@ -118,9 +118,10 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
     if ( result.width % framealign )
         return Value(); /* ignore for now, later pass will assign this one */
 
-    if ( isCodePointerConst( val ) )
+    if ( isCodePointerConst( val ) ) {
         makeConstant( result, getCodePointer( val ) );
-    else if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( val ) )
+        doneInit.insert( val );
+    } else if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( val ) )
         result = insert( function, const_cast< ::llvm::GlobalValue * >( GA->resolveAliasedGlobal() ) );
     else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
         result.global = true;
@@ -142,6 +143,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
             globals.push_back( pointee );
             Pointer p( false, globals.size() - 1, 0 );
             makeConstant( result, p );
+            doneInit.insert( val );
 
             valuemap.insert( std::make_pair( val, result ) );
             if ( !G->isConstant() ) {
@@ -359,6 +361,12 @@ void ProgramInfo::build()
 
     framealign = 1;
     pass();
+
+    while ( !toInit.empty() ) {
+        auto x = toInit.front();
+        toInit.pop_front();
+        storeConstant( std::get< 0 >( x ), std::get< 1 >( x ), std::get< 2 >( x ) );
+    }
 }
 
 void ProgramInfo::pass()

@@ -3,11 +3,30 @@
 #include <divine/llvm/execution.h>
 #include <divine/llvm/program.h>
 #include <llvm/IR/GlobalVariable.h>
+#include <llvm/IR/Module.h>
 
 using namespace divine::llvm;
 
+ProgramInfo::Value ProgramInfo::storeConstantR( ::llvm::Constant *C, bool &done )
+{
+    if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( C ) )
+        return storeConstantR( GA->resolveAliasedGlobal(), done );
+
+    if ( !doneInit.count( C ) || !valuemap.count( C ) ) {
+        auto r = insert( 0, C );
+        if ( !doneInit.count( C ) )
+            done = false;
+        ASSERT( valuemap.count( C ) );
+        return r;
+    }
+    return valuemap[ C ];
+}
+
 void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool global )
 {
+    bool done = true;
+    size_t l = toInit.size();
+
     GlobalContext econtext( *this, TD, global );
     if ( auto CE = dyn_cast< ::llvm::ConstantExpr >( C ) ) {
         ControlContext ccontext;
@@ -18,11 +37,11 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
         comp.opcode = CE->getOpcode();
         comp.values.push_back( v ); /* the result comes first */
         for ( int i = 0; i < int( CE->getNumOperands() ); ++i ) // now the operands
-            comp.values.push_back( insert( 0, CE->getOperand( i ) ) );
+            comp.values.push_back( storeConstantR( CE->getOperand( i ), done ) );
         eval._instruction = &comp;
         eval.run(); /* compute and write out the value */
     } else if ( dyn_cast< ::llvm::GlobalVariable >( C ) ) {
-        char *address = econtext.dereference( insert( 0, C ) ); // insert will call us recursively as needed
+        char *address = econtext.dereference( storeConstantR( C, done ) );
         std::copy( address, address + v.width, econtext.dereference( v ) );
     } else if ( isa< ::llvm::UndefValue >( C ) ) {
         /* nothing to do (for now; we don't track uninitialised values yet) */
@@ -58,7 +77,7 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
                 const ::llvm::StructLayout *SLO = econtext.TD.getStructLayout(CS->getType());
                 offset = SLO->getElementOffset( i );
             }
-            auto sub = insert( 0, C->getOperand( i ) );
+            auto sub = storeConstantR( dyn_cast< ::llvm::Constant >( C->getOperand( i ) ), done );
             char *from = econtext.dereference( sub );
             char *to = econtext.dereference( v ) + offset;
             std::copy( from, from + sub.width, to );
@@ -76,5 +95,10 @@ void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool
         C->dump();
         ASSERT_UNREACHABLE( "unknown constant type" );
     }
+
+    if ( done )
+        doneInit.insert( C );
+    else
+        toInit.emplace_back( v, C, global );
 }
 
