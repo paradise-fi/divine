@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2010 Petr Rockai <me@mornfall.net>
+// -*- C++ -*- (c) 2010,2015 Petr Rockai <me@mornfall.net>
 
 #include "stdint.h"
 #ifdef _WIN32
@@ -25,6 +25,7 @@ typedef struct cesmi_setup {
     int property_count; /* filled in by setup */
     int property; /* filled in by loader */
     int instance_initialised;
+    void (*add_flag)( struct cesmi_setup *setup, char *name, int id, int type );
     /* extensions at the end are ABI-compatible */
 } cesmi_setup;
 

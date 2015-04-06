@@ -188,6 +188,13 @@ struct CESMI : public Common< Blob > {
     };
 
     std::vector< Property > _properties;
+    std::vector< std::tuple< std::string, int, graph::flags::Type > > _flags;
+
+    static void add_flag( cesmi::cesmi_setup *setup, char *name, int mask, int type )
+    {
+        CESMI *_this = static_cast< CESMI * >( setup->loader );
+        _this->_flags.emplace_back( name, mask, graph::flags::Type( type ) );
+    }
 
     static int add_property( cesmi::cesmi_setup *setup, char *id, char *desc, int type )
     {
@@ -245,6 +252,7 @@ struct CESMI : public Common< Blob > {
         setup.property_count = 0;
         setup.loader = this;
         setup.add_property = &add_property;
+        setup.add_flag = &add_flag;
         setup.instance = 0;
         setup.instance_initialised = 0;
 
@@ -296,16 +304,23 @@ struct CESMI : public Common< Blob > {
     }
 
     template< typename Yield >
-    void enumerateFlags( Yield ) { } // no flags supported beyond implicit accepting and goal
+    void enumerateFlags( Yield yield ) {
+        for ( auto f : _flags )
+            yield( std::get< 0 >( f ), std::get< 1 >( f ), std::get< 2 >( f ) );
+    }
 
     template< typename QueryFlags >
     graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
         graph::FlagVector out;
         auto csflags = flags( s );
         for ( auto f : qf ) {
-            if ( f == graph::flags::goal && (csflags & cesmi::cesmi_goal) )
-                out.emplace_back( f );
-            else if ( f == graph::flags::accepting && (csflags & cesmi::cesmi_accepting) )
+            if ( f == graph::flags::goal ) {
+                if ( csflags & cesmi::cesmi_goal )
+                    out.emplace_back( f );
+            } else if ( f == graph::flags::accepting ) {
+                if ( csflags & cesmi::cesmi_accepting )
+                    out.emplace_back( f );
+            } else if ( csflags & ( 1 << f ) )
                 out.emplace_back( f );
         }
         return out;
