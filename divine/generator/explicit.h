@@ -140,8 +140,10 @@ struct _Explicit : public Common< Blob > {
                 for ( auto pair : flmap.left() )
                     if ( pair.second[ 0 ] == 'G' || pair.second[ 0 ] == 'g' )
                         goalFlags.emplace_back( pair.first );
-            } else
+            } else if ( flmap.right().count( p ) )
                 goalFlags.emplace_back( flmap[ p ] );
+            else
+                throw std::logic_error( "Invalid property " + p );
         }
     }
 
