@@ -10,7 +10,8 @@ using namespace divine::llvm;
 ProgramInfo::Value ProgramInfo::storeConstantR( ::llvm::Constant *C, bool &done )
 {
     if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( C ) )
-        return storeConstantR( GA->resolveAliasedGlobal(), done );
+        return storeConstantR(
+            const_cast< ::llvm::GlobalValue * >( GA->resolveAliasedGlobal() ), done );
 
     if ( !doneInit.count( C ) || !valuemap.count( C ) ) {
         auto r = insert( 0, C );
