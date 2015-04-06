@@ -320,7 +320,7 @@ struct CESMI : public Common< Blob > {
             } else if ( f == graph::flags::accepting ) {
                 if ( csflags & cesmi::cesmi_accepting )
                     out.emplace_back( f );
-            } else if ( csflags & ( 1 << f ) )
+            } else if ( csflags & f )
                 out.emplace_back( f );
         }
         return out;
