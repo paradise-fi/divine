@@ -148,7 +148,6 @@ let
 
   gcc_llvm_vers = llvm: clang: with builtins; mk: mk {
       inputs = pkgs: [ (getAttr llvm pkgs) (getAttr clang pkgs) ];
-      llvm = pkgs: getAttr llvm pkgs;
       clang_runtime = pkgs: getAttr clang pkgs;
       flags = [ "-DREQUIRED=LLVM" ];
   };
