@@ -832,18 +832,19 @@ void DveCompiler::gen_is_accepting()
     line( "state_struct_t &state = *reinterpret_cast< state_struct_t * >( n.memory );" );
     line( "uint64_t f = 0;" );
 
-    line( "switch ( setup->property )" );
-    block_begin();
-
-    line( "case 1:" );
     for ( auto &p : ast->processes )
         for ( auto &a : p.body.asserts ) {
             if_begin( false );
             if_clause( in_state( p, getStateId( p, a.state.name() ), "state" ) );
             if_cexpr_clause( &a.expr, "state", p.name.name() );
             if_end();
-            line( "; else f |= cesmi_goal;" );
+            line( "; else f |= cesmi_first_user_flag;" );
         }
+
+    line( "switch ( setup->property )" );
+    block_begin();
+
+    line( "case 1: if ( f & cesmi_first_user_flag ) f |= cesmi_goal;" );
     line( "return f;" );
 
     for ( int j = 0; j < propCount(); j++ ) {
@@ -877,6 +878,7 @@ void DveCompiler::print_generator()
     line( "void setup( cesmi_setup *setup ) {" );
     line( "    setup->add_property( setup, strdup( \"deadlock\" ), NULL, cesmi_pt_deadlock );" );
     line( "    setup->add_property( setup, strdup( \"assert\" ), NULL, cesmi_pt_goal );" );
+    line( "    setup->add_flag( setup, strdup( \"assert\" ), cesmi_first_user_flag, 0 );" );
     for ( int i = 0; i < propCount(); i++ ) {
         line( "    setup->add_property( setup, strdup( \"LTL" + (i ? fmt( i ) : "") + "\" ), NULL, cesmi_pt_buchi );" );
     }
