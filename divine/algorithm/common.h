@@ -100,6 +100,7 @@ struct Algorithm
 
     Meta m_meta;
     const int m_slack;
+    int m_slack_adjusted;
 
     meta::Result &result() { return meta().result; }
 
@@ -131,7 +132,7 @@ struct Algorithm
     typename Self::Graph *initGraph( Self &self, Self *master = nullptr, bool full = true ) {
         typename Self::Graph *g = new typename Self::Graph;
         g->setPool( self.masterPool() );
-        g->setSlack( m_slack );
+        m_slack_adjusted = g->setSlack( m_slack );
         g->read( meta().input.model, meta().input.definitions, master ? &master->graph() : nullptr );
         if ( full ) {
             g->useProperties( meta().input.properties );
@@ -145,9 +146,8 @@ struct Algorithm
 
     template< typename Self >
     typename Self::Store *initStore( Self &self, Self* master ) {
-        int slack = self.graph().base().slack();
         typename Self::Store *s =
-            new typename Self::Store( self.graph(), slack,
+            new typename Self::Store( self.graph(), m_slack_adjusted,
                     master ? &master->store() : nullptr );
         s->hasher().setSeed( meta().algorithm.hashSeed );
         s->setSize( meta().execution.initialTable );
