@@ -33,17 +33,3 @@ int main() {
     return 0;
 }
 EOF
-
-llvm_verify_cpp valid <<EOF
-#include "../private_typeinfo.h"
-
-using namespace __cxxabiv1;
-
-struct x { virtual ~x() {} };
-
-int main() {
-    auto ti = &typeid( x );
-    auto shim = dynamic_cast< const __shim_type_info * >( ti );
-    return 0;
-}
-EOF
