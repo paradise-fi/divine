@@ -67,8 +67,14 @@ struct _Explicit : public Common< Blob > {
     {
         if ( c )
             dess = c->dess;
-        else
+        else {
             dess.open( file );
+            if ( dess.stateFlags.flagCount >= 1 &&
+                    dess.stateFlags.map()[ 0 ] != "o:accepting" )
+                std::cerr << "WARNING: unexpected value of reserved flag 0 "
+                          << "(expected 'o:accepting', found '"
+                          << dess.stateFlags.map()[ 0 ] << "')" << std::endl;
+        }
     }
 
     template< typename Alloc, typename Yield >
