@@ -89,7 +89,6 @@ struct Interpreter
 
     bool jumped;
     Choice choice;
-    int tid;
 
     bool tauminus, tauplus, taustores;
 
@@ -187,7 +186,7 @@ struct Interpreter
     void run( Blob b, Yield yield, Alloc alloc, int _tid = -1, bool include = true ) {
         state.rewind( alloc, b, -1 ); /* rewind first to get sense of thread count */
         state.flags().ap = 0; /* TODO */
-        tid = 0;
+        int tid = 0;
         /* cache, to avoid problems with thread creation/destruction */
         int threads = state._thread_count;
 
@@ -380,7 +379,7 @@ struct Interpreter
     void enter( int fun ) { state.enter( fun ); }
     int new_thread( Function *f );
     int new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag );
-    int threadId() { return tid; }
+    int threadId() { return state._thread; }
     int threadCount() { return state._thread_count; }
     void switch_thread( int t ) { state.switch_thread( t ); }
     PC &pc() { return state._frame->pc; }
