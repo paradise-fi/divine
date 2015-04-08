@@ -44,6 +44,12 @@ struct FairGraph : NonPORGraph< G, St > {
         yield( n, l );
     }
 
+    std::string showNode( Node n ) {
+        std::stringstream str;
+        str << this->base().showNode( n ) << "fairness id = " << int( extension( n ).copy ) << std::endl;
+        return str.str();
+    }
+
     template< typename Alloc, typename Yield >
     void successors( Alloc alloc, Vertex stV, Yield yield ) {
         Node st = stV.node();
