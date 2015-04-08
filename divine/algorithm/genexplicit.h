@@ -445,20 +445,16 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         } );
 
         int flagNamesLength = 0;
-        std::vector< std::string > flagNames;
-        int flagMax = 0;
-        this->graph().enumerateFlags( [&]( std::string name, int i, graph::flags::Type t ) {
+        std::vector< std::string > flagNames( graph::flags::firstAvailable );
+        this->graph().enumerateFlags( [&]( std::string name, int, graph::flags::Type t ) {
                 auto fname = graph::flags::flagName( name, t );
-                if ( i >= 64 ) {
+                if ( flagNames.size() >= 64 ) {
                     progress() << "WARNING: ignoring flag " << fname
                              << ", you can save at most 64 flags" << std::endl;
                     return;
                 }
                 flagNamesLength += fname.size();
-                if ( flagNames.size() <= i )
-                    flagNames.resize( i + 1 );
-                flagNames[ i ] = std::move( fname );
-                flagMax = std::max( flagMax, i );
+                flagNames.emplace_back( std::move( fname ) );
             } );
 
         ASSERT_EQ( nodes, meta().statistics.visited );
@@ -469,7 +465,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             .backward()
             .generator( meta().input.modelType )
             .labelSize( Label() )
-            .saveFlags( flagMax + 1, flagNamesLength );
+            .saveFlags( flagNames.size(), flagNamesLength );
         if ( params.saveNodes )
             creator.saveNodes( nodesSize );
         if ( std::is_same< Label, uint64_t >::value )
@@ -531,6 +527,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
 
         graph::FlagVector allflags;
         allflags.emplace_back( graph::flags::accepting );
+        allflags.resize( graph::flags::firstAvailable );
         this->graph().enumerateFlags( [&]( std::string, int i, graph::flags::Type ) {
                     allflags.emplace_back( i );
                 } );
@@ -555,8 +552,13 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
             }
 
             auto filtered = this->graph().stateFlags( st.node(), allflags );
-            for ( auto f : filtered )
-                *flags |= 1 << f;
+            for ( auto f : filtered ) {
+                for ( int i = 0; i < allflags.size(); ++i )
+                    if ( f == allflags[ i ] ) {
+                        *flags |= 1 << i;
+                        break;
+                    }
+            }
             ++flags;
         }
         return true;
