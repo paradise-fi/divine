@@ -405,3 +405,5 @@ code.sourceCode span.al { color: red; font-weight: bold; }
 code.sourceCode span.fu { color: #06287e; }
 code.sourceCode span.re { }
 code.sourceCode span.er { color: red; font-weight: bold; }
+
+* { box-shadow: none !important; }
