@@ -3,6 +3,7 @@
 #if ALG_EXPLICIT || GEN_EXPLICIT
 #include <divine/explicit/explicit.h>
 #include <divine/graph/probability.h>
+#include <divine/toolkit/pool.h> // align
 
 #include <ostream>
 
@@ -72,7 +73,8 @@ Explicit PrealocateHelper::operator()() {
     ASSERT( !_capabilities.has( Capability::Probability )
             || _labelSize == sizeof( graph::Probability ) );
 
-    int64_t nodeData = sizeof( int64_t ) * _nodes + _nodeDataSize;
+    int64_t nodeData = sizeof( int64_t ) * _nodes + align( _nodeDataSize, sizeof( int64_t ) );
+    int64_t flagNames = sizeof( int64_t ) * _flagCount + align( _flagStrings, sizeof( int64_t ) );
 
     int64_t fileSize = sizeof( Header );
     if ( _capabilities.has( Capability::ForwardEdges ) )
@@ -82,7 +84,7 @@ Explicit PrealocateHelper::operator()() {
     if ( _capabilities.has( Capability::Nodes ) )
         fileSize += nodeData;
     if ( _capabilities.has( Capability::StateFlags ) ) {
-        fileSize += sizeof( int64_t ) * _flagCount + _flagStrings; // flag names
+        fileSize += flagNames;
         fileSize += sizeof( uint64_t ) * _nodes; // flags
     }
 
@@ -105,8 +107,7 @@ Explicit PrealocateHelper::operator()() {
         + (_capabilities.has( Capability::BackwardEdges ) ? edgeData : 0);
     h->flagMapOffset = h->nodesOffset
         + (_capabilities.has( Capability::Nodes ) ? nodeData : 0);
-    h->flagsOffset = h->flagMapOffset
-        + sizeof( int64_t ) * _flagCount + _flagStrings;
+    h->flagsOffset = h->flagMapOffset + flagNames;
     h->labelSize = _labelSize;
 
     Explicit compact;
