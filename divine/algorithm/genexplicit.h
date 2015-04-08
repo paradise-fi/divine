@@ -445,7 +445,9 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         } );
 
         int flagNamesLength = 0;
-        std::vector< std::string > flagNames( graph::flags::firstAvailable );
+        std::vector< std::string > flagNames;
+        flagNames.emplace_back( "o:accepting" );
+        flagNames.resize( graph::flags::firstAvailable );
         this->graph().enumerateFlags( [&]( std::string name, int, graph::flags::Type t ) {
                 auto fname = graph::flags::flagName( name, t );
                 if ( flagNames.size() >= 64 ) {
@@ -453,9 +455,10 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
                              << ", you can save at most 64 flags" << std::endl;
                     return;
                 }
-                flagNamesLength += fname.size();
                 flagNames.emplace_back( std::move( fname ) );
             } );
+        for ( auto fname : flagNames )
+            flagNamesLength += fname.size();
 
         ASSERT_EQ( nodes, meta().statistics.visited );
         auto creator = dess::preallocate( params.path )
