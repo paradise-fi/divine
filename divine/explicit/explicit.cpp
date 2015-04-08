@@ -88,7 +88,9 @@ Explicit PrealocateHelper::operator()() {
         fileSize += sizeof( uint64_t ) * _nodes; // flags
     }
 
-    auto r = ::posix_fallocate( fd, 0, fileSize );
+    auto r = ::ftruncate( fd, 0 );
+    ASSERT_EQ( r, 0 );
+    r = ::posix_fallocate( fd, 0, fileSize );
     ASSERT_EQ( r , 0 );
     static_cast< void >( r );
 
