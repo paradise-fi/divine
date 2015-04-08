@@ -10,7 +10,7 @@
 
 enum cesmi_property_type { cesmi_pt_goal, cesmi_pt_deadlock, cesmi_pt_buchi };
 /* the following are bitmasks (i.e. each value should be a power of 2 */
-enum cesmi_flags { cesmi_goal = 1, cesmi_accepting = 2, cesmi_first_user_flag = 2 << 4 };
+enum cesmi_flags { cesmi_goal = 1, cesmi_accepting = 2, cesmi_first_user_flag = 1 << 8 };
 
 typedef struct {
     uint64_t handle;
