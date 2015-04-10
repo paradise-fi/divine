@@ -291,6 +291,10 @@ if( NOT SHA1SUM )
   message( "I could use a working sha1sum program for the build. Please install one or supply me with a path if you already have it. Thank you." )
 endif( NOT SHA1SUM )
 
+if( NOT GEN_CESMI )
+    disable( "OPT_MURPHI" "" "MURPHI requires CESMI" )
+endif()
+
 #########################################
 ## OPTIONAL FEATURES
 ##
