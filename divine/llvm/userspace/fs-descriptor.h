@@ -125,25 +125,23 @@ struct PipeDescriptor : FileDescriptor {
     PipeDescriptor( Node inode, Flags< flags::Open > fl, bool wait = false ) :
         FileDescriptor( inode, fl )
     {
-        if ( wait ) {
-            Pipe *pipe = inode->data()->as< Pipe >();
+        Pipe *pipe = inode->data()->as< Pipe >();
 
-            /// TODO: enable detection of deadlock
-            if ( fl.has( flags::Open::Read ) && fl.has( flags::Open::Write ) )
-                __divine_problem( Other, "Pipe is opened both for reading and writing" );
-            else if ( fl.has( flags::Open::Read ) ) {
-                pipe->assignReader();
-                while ( !pipe->writer() ) {
-                    __divine_interrupt_unmask();
-                    __divine_interrupt_mask();
-                }
+        /// TODO: enable detection of deadlock
+        if ( fl.has( flags::Open::Read ) && fl.has( flags::Open::Write ) )
+            __divine_problem( Other, "Pipe is opened both for reading and writing" );
+        else if ( fl.has( flags::Open::Read ) ) {
+            pipe->assignReader();
+            while ( wait && !pipe->writer() ) {
+                __divine_interrupt_unmask();
+                __divine_interrupt_mask();
             }
-            else if ( fl.has( flags::Open::Write ) ) {
-                pipe->assignWriter();
-                while ( !pipe->reader() ) {
-                    __divine_interrupt_unmask();
-                    __divine_interrupt_mask();
-                }
+        }
+        else if ( fl.has( flags::Open::Write ) ) {
+            pipe->assignWriter();
+            while ( wait && !pipe->reader() ) {
+                __divine_interrupt_unmask();
+                __divine_interrupt_mask();
             }
         }
     }
