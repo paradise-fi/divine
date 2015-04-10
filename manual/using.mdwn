@@ -180,10 +180,10 @@ like to know why this is so. Let's try to get a counterexample:
     1: <_Z14_pthread_entryPv> [ pthread.cpp:319 ] (internal)
     ASSERTION FAILED (thread 0): <main> [ ../program.c:17 ]
 
-First, we notice that the "goal" state (i.e. the one that violates the
-property, in this case assertion safety) near the end of the output. It shows
-that thread 0 has terminated, thread 1 is in an internal pthread routine and
-that it passed through a failing assertion at line 17 of our program.c.
+First, we notice the "goal" state (the one that violates the property, in this
+case assertion safety) near the end of the output. It shows that thread 0 has
+terminated, thread 1 is in an internal pthread routine and that it passed
+through a failing assertion at line 17 of our program.c.
 
 Indeed, line 17 is our `assert( i == 35 )`. Now let's walk through the trace
 from the beginning to understand what is going on. Each block (delimited by
