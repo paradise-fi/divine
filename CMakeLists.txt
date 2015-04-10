@@ -276,10 +276,6 @@ if( GEN_DVE AND NOT HAVE_CXX11_UNRESTRICTED_UNIONS )
     disable( GEN_DVE "" "C++11 unrestricted unions not available." )
 endif()
 
-if( GEN_EXPLICIT AND WIN32 )
-    disable( "GEN_EXPLICIT" "" "Not available on Windows." )
-endif()
-
 if( DEV_GCOV )
   appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )
   link_libraries( "gcov" )
