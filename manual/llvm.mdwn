@@ -117,3 +117,23 @@ this will show how the "future" of your program branches through various
 configurations, and how it converges back into a common point -- or, if its
 behaviour had changed depending on scheduling, diverges into multiple different
 outcomes.
+
+Non-Deterministic Choice
+------------------------
+
+Scheduling is not the only source of non-determinism in typical
+programs. Interactions with the environment can have different outcomes, even
+if the internal state of the program is identical. A typical example would be
+memory allocation: the same call in the same context could either succeed or
+fail, depending on the conditions outside the control of the program. In
+addition to failures, the normal input of the program (files, network, user
+input on the terminal) are all instances of non-determinism due to external
+influences. The sum of all such external behaviours that affect the outcome of
+the program is called the environment (this includes the scheduling of threads
+done by the operating system and/or CPU). When testing, the environment is
+controlled to some degree: the inputs are usually fixed, but eg. thread
+scheduling is (basically) random -- it changes with every test
+execution. Resource exhaustion can be simulated in a test environment to some
+degree. In a model checker, the environment is controlled much more strictly:
+when a test case is run through a model checker, it will come out the same
+every time.
