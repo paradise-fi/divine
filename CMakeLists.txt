@@ -116,13 +116,13 @@ opt( ALG_WEAKREACHABILITY "" OFF )
 opt( ALG_EXPLICIT "" OFF )
 opt( ALG_CSDR "" ON )
 opt( ALG_NDFS "" OFF )
-opt( ALG_METRICS "" OFF )
+opt( ALG_METRICS "" ON )
 
 opt( STORE_HC "enable Hash Compaction" OFF )
 opt( STORE_COMPRESS "enable lossless compression" ON )
 
 opt( TRANSFORM_POR  "" ON )
-opt( TRANSFORM_FAIR "" OFF )
+opt( TRANSFORM_FAIR "" ON )
 
 opt( DEV_CONFLATE "avoid extra faster but feature-equivalent instances" ${DEV_CONFLATE_DEF} )
 opt( DEV_GCOV "generate profiling information for a lcov coverage report" OFF )
