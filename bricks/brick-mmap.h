@@ -162,7 +162,10 @@ struct MMap
 #ifdef _WIN32
 
     static void *_alloc( size_t size, ProtectModeFlags ) {
-        return VirtualAlloc( nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE );
+        void *ptr = VirtualAlloc( nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE );
+        if ( !ptr )
+            throw SystemException( "VirtualAlloc failed" );
+        return ptr;
     }
     static void _drop( void *ptr, size_t size ) {
         VirtualFree( ptr, size, MEM_RELEASE );
@@ -414,10 +417,6 @@ struct MMapTest {
     TEST(alloc) {
         void *data =  MMap::alloc( 1024 );
         unsigned char *ptr = static_cast< unsigned char * >( data );
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-        ASSERT_NEQ( data, MAP_FAILED );
-#pragma GCC diagnostic pop
         for ( int i = 0; i < 1024; ++i )
             ptr[ i ] = i % 256;
 
