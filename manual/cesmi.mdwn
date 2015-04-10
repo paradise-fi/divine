@@ -74,6 +74,7 @@ typedef struct {
     int property_count; /* filled in by setup */
     int property; /* filled in by loader */
     int instance_initialised;
+    void (*add_flag)( struct cesmi_setup *setup, char *name, int id, int type );
     /* extensions at the end are ABI-compatible */
 } cesmi_setup;
 
@@ -85,7 +86,7 @@ the `setup` call, the `cesmi_setup` structure must be initialised by the loader
 to its default state. The `setup` implementation of the module may change the
 field `instance`, the remainder is for *reading only*. The `setup`
 implementation may also modify the `cesmi_setup` structure via calls to
-`add_property`.
+`add_property` and `add_flag`.
 
 Since the model checker might use the CESMI module in multiple threads, the
 CESMI module *must not* retain any global state. All instance-specific state
