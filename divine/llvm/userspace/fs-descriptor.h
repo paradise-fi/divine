@@ -43,7 +43,7 @@ struct FileDescriptor {
 
         File *file = _inode->data()->as< File >();
         if ( !file )
-            throw EBADF;
+            throw Error( EBADF );
 
         if ( _offset >= file->size() || length == 0 )
             return 0;
