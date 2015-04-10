@@ -11,6 +11,7 @@ struct Interval : Common {
         return Constrain();
     }
     virtual llvm::Type *abstract( llvm::Type *t ) { return t; }
+    std::string typeQualifier() { return "interval"; }
 };
 
 }
