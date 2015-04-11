@@ -641,7 +641,12 @@ struct Main {
 
         if ( o_workers->boolValue() )
             meta.execution.threads = o_workers->intValue();
-        // else default (currently set to 2)
+        else {
+            auto concur = std::thread::hardware_concurrency();
+            if ( concur > 0 )
+                meta.execution.threads = concur;
+            // else default (currently set to 2)
+        }
 
         meta.input.model = input;
 
