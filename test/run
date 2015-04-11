@@ -14,7 +14,13 @@ genexplicit() { ann "divine gen-explicit --report -o testcase.dess" "$@" "2> pro
 genexplicit_reach() {
     rm -f testcase.dess
     ann "divine gen-explicit --report -o testcase.dess" "$@"
-    ann "divine verify --reachability --report testcase.dess" "2> progress | capture"
+    ARGS=""
+    for a in "$@"; do
+        echo $a | grep -E '^[^.]*[.][^.]*' && continue
+        echo $a | grep -E '^--property=' && continue
+        ARGS="$ARGS $a"
+    done
+    ann "divine verify --reachability --report testcase.dess $ARGS" "2> progress | capture"
 }
 draw() { ann "divine draw" "$@"; }
 info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce\|-D [^ ]*\|--max-[^ -]*=[0-9]*,,g"); }
