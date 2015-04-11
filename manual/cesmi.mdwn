@@ -19,7 +19,7 @@ is also supported directly through an interpreter) and a compiler for the
 MurPHI language, adapted from the original MurPHI model compiler.
 
 The CESMI Specification
-=======================
+-----------------------
 
 CESMI is a set of APIs (Application Programming Interface) to represent model
 checking problems in a form independent of a specific model-checker. The API is
@@ -35,8 +35,7 @@ corresponding to the model, or a Kripke structure, to be examined. The "loader"
 is then a part of a model checking or other model examination tool, which
 treats the CESMI module as its input data.
 
-The Module
-----------
+### The Module
 
 We will lay out the basic requirements for a CESMI module in this section. The
 C prototypes of the individual calls exposed in the API of the module are as
@@ -95,8 +94,7 @@ structure. The CESMI loader *may* call `setup` multiple times with a different
 parameter (in the same address space), and the resulting CESMI module instances
 *must* be fully isolated.
 
-Handling State
---------------
+### Handling State
 
 The functions `get_initial` and `get_successor` (and by extension,
 `show_transition`, see below) need to maintain state between invocations to be
@@ -132,8 +130,7 @@ int get_successor( const cesmi_setup *setup, int handle,
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Memory Management
------------------
+### Memory Management
 
 The module is responsible for allocating memory for new states, and it must use
 the `make_node` or `clone_node` functions provided in the `cesmi_setup`
@@ -159,8 +156,7 @@ call `make_node`/`clone_node` at a point where it is known that a state will be
 generated, along with its size, otherwise it will cause undesirable memory
 leaks.
 
-Human-readable Labels
----------------------
+### Human-readable Labels
 
 To aid in reading counterexamples or when exploring the state space, it is
 often very useful to have human-readable labels assigned to system states
@@ -174,7 +170,7 @@ in the given origin state, or, if no such transition exists, return a `NULL`
 pointer.
 
 Building CESMI Modules with DIVINE
-==================================
+----------------------------------
 
 The CESMI module more or less represents a generic oriented graph. It is
 intentionally kept as simple as reasonably possible: apart from the graph
