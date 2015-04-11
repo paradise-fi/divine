@@ -1,4 +1,6 @@
 . lib
+. flavour vanilla 'part+*'
+FLAVOUR=`echo $FLAVOUR | sed 's/--no-shared//'`
 
 normal() {
     diff -u out.dot $1.dot
@@ -11,7 +13,7 @@ labels() {
 test "$WIN32" = "1" && skip
 
 extracheck=normal
-dve_small draw -r cat -o out.dot
+dve_small draw -r cat -o out.dot $FLAVOUR
 
 extracheck=labels
-dve_small draw -l -r cat -o out.dot
+dve_small draw -l -r cat -o out.dot $FLAVOUR

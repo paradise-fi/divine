@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 llvm_verify invalid 'bad dereference' main <<EOF
 int main( int argc, char **argv ) {

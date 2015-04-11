@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 test "$GEN_LLVM" = "ON" || skip
 llvm_precompile

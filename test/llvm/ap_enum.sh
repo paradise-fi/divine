@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 # this test tests that atomic proposition names get demangled
 # if they dont't divine will fail

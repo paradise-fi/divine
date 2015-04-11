@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 # test that divine has default property for each major generator
 

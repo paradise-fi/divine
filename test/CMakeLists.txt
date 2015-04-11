@@ -19,11 +19,12 @@ add_custom_target( functional
   COMMAND rm -rf llvm_examples
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/examples/llvm llvm_examples
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib .
+  COMMAND cp ${CMAKE_SOURCE_DIR}/test/flavour .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/util .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/check .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/run .
   COMMAND mkdir -p results
-  COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ./runner --timeout 600 --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
+  COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ./runner --flavours vanilla,part+none,shared+none,part+tree,shared+tree --timeout 600 --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
   DEPENDS runner
 )
 

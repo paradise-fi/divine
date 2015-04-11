@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 llvm_verify invalid "bad argument" '<free>' <<EOF
 #include <stdlib.h>

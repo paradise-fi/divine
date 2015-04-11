@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 test "$ALG_OWCTY" = ON -o "$ALG_NDFS" = ON || skip
 

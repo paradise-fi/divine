@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 # OOM
 llvm_verify invalid "ASSERTION FAILED" "testcase.c:8" <<EOF

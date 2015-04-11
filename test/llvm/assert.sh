@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 llvm_verify invalid "assertion failed" testcase.c:4 <<EOF
 #include <assert.h>

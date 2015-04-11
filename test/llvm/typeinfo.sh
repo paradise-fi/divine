@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 llvm_verify_cpp valid <<EOF
 #include <cassert>

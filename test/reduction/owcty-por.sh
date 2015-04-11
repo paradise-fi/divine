@@ -1,9 +1,7 @@
 . lib
+. flavour
 
 test "$ALG_OWCTY" = ON || skip
 
-for COMP in $COMPRESSIONS
-do
-    dve_small owcty --reduce=por --compression=$COMP
-done
+dve_small owcty --reduce=por $FLAVOUR
 # coin_small owcty --por

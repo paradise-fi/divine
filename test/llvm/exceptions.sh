@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 llvm_verify_cpp invalid ASSERTION testcase.cpp:5 <<EOF
 #include <cassert>

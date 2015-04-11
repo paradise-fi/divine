@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 llvm_verify invalid "bad dereference" testcase.c:6 <<EOF
 #include <stdlib.h>

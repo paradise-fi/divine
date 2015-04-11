@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 llvm_verify valid <<EOF
 #include <unistd.h>

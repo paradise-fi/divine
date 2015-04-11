@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 
 for bufsize in 0 1 3; do

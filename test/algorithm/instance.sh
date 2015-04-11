@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 if [ "$GEN_DVE" = "ON" ]; then
     testcase="data/empty.dve"
@@ -24,11 +25,11 @@ checkInstance() {
 }
 
 # partitioned
-test "$ALG_REACHABILITY" = "ON" && checkInstance '\<Reachability.*Partitioned' "for reachability" --reachability
-test "$ALG_WEAKREACHABILITY" = "ON" && checkInstance 'WeakReachability.*Partitioned' "for weak reachability" --weak
-test "$ALG_OWCTY" = "ON" && checkInstance 'Owcty.*Partitioned' "for OWCTY" --owcty
-test "$ALG_MAP" = "ON" && checkInstance 'Map.*Partitioned' "for MAP" --map
-test "$ALG_NDFS" = "ON" && checkInstance 'NestedDfs.*Partitioned' "for NestedDFS" --nested-dfs
+test "$ALG_REACHABILITY" = "ON" && checkInstance '\<Reachability.*Partitioned' "for reachability" --reachability --no-shared
+test "$ALG_WEAKREACHABILITY" = "ON" && checkInstance 'WeakReachability.*Partitioned' "for weak reachability" --weak --no-shared
+test "$ALG_OWCTY" = "ON" && checkInstance 'Owcty.*Partitioned' "for OWCTY" --owcty --no-shared
+test "$ALG_MAP" = "ON" && checkInstance 'Map.*Partitioned' "for MAP" --map --no-shared
+test "$ALG_NDFS" = "ON" && checkInstance 'NestedDfs.*Partitioned' "for NestedDFS" --nested-dfs --no-shared
 
 #shared
 test "$ALG_REACHABILITY" = "ON" && checkInstance '\<Reachability.*Shared' "for shared reachability" --reachability --shared

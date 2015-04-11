@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 llvm_verify invalid "division by zero" testcase.c:3 arithmetic <<EOF
 void main() {

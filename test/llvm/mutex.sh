@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 # re-locking
 llvm_verify invalid "PTHREAD DEADLOCK" "Deadlock: Nonrecursive mutex locked again" <<EOF

@@ -1,4 +1,5 @@
 . lib
+. flavour vanilla
 
 llvm_verify invalid assert memcpy <<EOF
 #include <string.h>
