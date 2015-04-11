@@ -11,7 +11,7 @@ csdr() { ann "divine verify --csdr --report" "$@" "2> progress | capture"; }
 metrics() { ann "divine metrics --report" "$@" "2> progress | capture"; }
 verify() { ann "divine verify --report" "$@" "2> progress | capture"; }
 genexplicit() { ann "divine gen-explicit --report -o testcase.dess" "$@" "2> progress | capture"; }
-genexplicit_rech() {
+genexplicit_reach() {
     rm -f testcase.dess
     ann "divine gen-explicit --report -o testcase.dess" "$@"
     ann "divine verify --reachability --report testcase.dess" "2> progress | capture"
