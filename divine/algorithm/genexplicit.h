@@ -500,7 +500,8 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         std::vector< EdgeSpec > initials;
         this->graph().initials( LongTerm(), [&]( Node, Node n, Label l ) {
             int64_t id;
-            std::tie( std::ignore, id ) = ring( { n, -1 }, &This::_getNodeId );
+            std::tie( std::ignore, id ) = ring( std::tuple< Node, int64_t >( n, -1 ),
+                                                &This::_getNodeId );
             LongTerm().drop( this->pool(), n );
             ASSERT_NEQ( -1 /* not found */, id );
             ASSERT_LEQ( 1, id );
