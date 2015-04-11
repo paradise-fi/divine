@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2013, 2015 Vladimír Štill <xstill@fi.muni.cz>
 
 #if ALG_EXPLICIT
 
@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <cstdint>
 #include <algorithm>
+#include <limits>
 
 #include <brick-string.h>
 
@@ -49,7 +50,7 @@ struct GenExplicitShared : algorithm::Statistics {
         int8_t iter;
         bs >> iter
            >> s.need_expand;
-        s.iteration = static_cast< Iteration >( iter );
+        s.iteration = Iteration( iter );
         return bs;
     }
 };
@@ -154,7 +155,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
     };
 
     ALGORITHM_CLASS( Setup );
-    BRICK_RPC( Utils ,&This::_init, &This::_count,
+    BRICK_RPC( Utils, &This::_init, &This::_explore,
                       &This::_por, &This::_por_worker, &This::_normalize,
                       &This::_trackPredecessors, &This::_writeFile, &This::_collectCount,
                       &This::_setLimits, &This::_getNodeId, &This::_cleanup );
@@ -178,40 +179,85 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
     };
 
     struct Extension {
-        int64_t index;
+
+        int64_t index() { return get< 2 >( _cntrl ); }
+        void index( int64_t ix ) { get< 2 >( _cntrl ) = ix; }
+
+        void lock() { get< 0 >( _cntrl ).lock(); }
+        void unlock() { get< 0 >( _cntrl ).unlock(); }
+
+        int64_t &predCount() {
+            ASSERT( iteration() < Iteration::PrececessorTracking );
+            return _preds.predCount;
+        }
+
+        void mkPredVector( Pool &pool ) {
+            if ( _preds.predCount > 0 ) {
+                Blob preds = pool.allocate( _preds.predCount * sizeof( EdgeSpec ) );
+                EdgeSpec *ptr = &pool.template get< EdgeSpec >( preds );
+                for ( int64_t i = 0; i < _preds.predCount; ++i )
+                    new ( &ptr[ i ] ) EdgeSpec( -1, Label() );
+                _preds.predecessors = preds;
+            } else
+                _preds.predecessors = Blob();
+        }
+
+        int64_t predSize( Pool &pool ) {
+            ASSERT( iteration() >= Iteration::Normalize );
+            return pool.valid( _preds.predecessors ) ? pool.size( _preds.predecessors ) : 0;
+        }
+
+        void addPredecessor( Pool &pool, EdgeSpec predecessor ) {
+            ASSERT( iteration() == Iteration::PrececessorTracking );
+            ASSERT_NEQ( predecessor.index(), -1 );
+            EdgeSpec *ptr = &pool.template get< EdgeSpec >( _preds.predecessors );
+            for ( ; ptr->index() != -1; ++ptr ){
+                if ( ptr >= reinterpret_cast< EdgeSpec * >( pool.dereference( _preds.predecessors ) + pool.size( _preds.predecessors ) ) )
+                {
+                    EdgeSpec *ptr2 = &pool.template get< EdgeSpec >( _preds.predecessors );
+                    std::cout << index() << ": ";
+                    for ( ; ptr2 < ptr; ++ptr2 )
+                        std::cout << ptr2->index() << " ";
+                    std::cout << "; " << predecessor.index() << std::endl;
+                }
+                ASSERT_LEQ( ptr, reinterpret_cast< EdgeSpec * >(
+                        pool.dereference( _preds.predecessors )
+                        + pool.size( _preds.predecessors ) ) - 1 );
+            }
+            *ptr = predecessor;
+        }
+
+        const EdgeSpec *predecessors( Pool &pool ) {
+            ASSERT( iteration() >= Iteration::Normalize );
+            return &pool.template get< EdgeSpec >( _preds.predecessors );
+        }
+
+        void dropPreds( Pool &pool ) {
+            pool.free( _preds.predecessors );
+        }
+
+        auto iteration() -> typename brick::bitlevel::BitField< Iteration, 3 >::Virtual {
+            return get< 1 >( _cntrl );
+        }
+
+        Extension() { }
+
+      private:
+        BitTuple<
+            BitLock,
+            BitField< Iteration, 3 >,
+            BitField< int64_t, 60 >
+        > _cntrl;
+
         union D {
             Blob predecessors;
             int64_t predCount;
 
             D() : predCount( 0 ) { }
-        } _data;
-        int64_t &predCount() {
-            ASSERT( iteration < Iteration::PrececessorTracking );
-            return _data.predCount;
-        }
-        int64_t predSize( Pool &pool ) const {
-            ASSERT( iteration >= Iteration::Normalize );
-            return pool.valid( _data.predecessors ) ? pool.size( _data.predecessors ) : 0;
-        }
-        void addPredecessor( Pool &pool, EdgeSpec predecessor ) {
-            ASSERT( iteration == Iteration::PrececessorTracking );
-            EdgeSpec *ptr = reinterpret_cast< EdgeSpec* >(
-                    pool.dereference( _data.predecessors ) );
-            for ( ; ptr->index() != -1; ++ptr )
-                ASSERT_LEQ( ptr, reinterpret_cast< EdgeSpec * >(
-                        pool.dereference( _data.predecessors )
-                        + pool.size( _data.predecessors ) ) - 1 );
-            *ptr = predecessor;
-        }
-        const EdgeSpec *predecessors( Pool &pool ) const {
-            ASSERT( iteration >= Iteration::Normalize );
-            return reinterpret_cast< EdgeSpec * >(
-                    pool.dereference( _data.predecessors ) );
-        }
-        Iteration iteration;
-
-        Extension() : index( 0 ), _data(), iteration( Iteration::Start ) { }
+        } _preds;
     };
+
+    using Guard = typename Store::template Guard< Extension >;
 
     Extension &extension( Vertex v ) {
         return v.template extension< Extension >();
@@ -219,7 +265,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
 
     int64_t index( Vertex v ) {
         return this->store().valid( v )
-            ? extension( v ).index
+            ? extension( v ).index()
             : 0;
     }
 
@@ -228,27 +274,29 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
     }
 
     visitor::TransitionAction updateIteration( Vertex t ) {
-        Iteration old = extension( t ).iteration;
-        extension( t ).iteration = shared.iteration;
-        return ( old != shared.iteration )
+        Iteration old = extension( t ).iteration();
+        extension( t ).iteration() = shared.iteration;
+        return old != shared.iteration
             ? visitor::TransitionAction::Expand
             : visitor::TransitionAction::Forget;
     }
 
-    struct Count : Visit< This, Setup > {
+    struct Explore : Visit< This, Setup > {
         static visitor::ExpansionAction expansion( This &c, const Vertex &st )
         {
             c.shared.addNode( c.graph(), st );
-            c.extension( st ).iteration = Iteration::Count;
-            ++c.nodes;
-            c.nodesSize += c.pool().size( st.node() ) - sizeof( Extension );
+
+            Guard _( st );
+            c.extension( st ).iteration() = Iteration::Count;
             return visitor::ExpansionAction::Expand;
         }
 
         static visitor::TransitionAction transition( This &c, Vertex from, Vertex to, Label )
         {
-            if ( from.valid() )
+            if ( from.valid() ) {
+                Guard _( to );
                 ++c.extension( to ).predCount();
+            }
             c.shared.addEdge( c.store(), from, to );
             c.graph().porTransition( c.store(), from, to );
             return visitor::TransitionAction::Follow;
@@ -260,8 +308,8 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         }
     };
 
-    void _count() { // parallel
-        this->visit( this, Count(), shared.need_expand );
+    void _explore() { // parallel
+        this->visit( this, Explore(), shared.need_expand );
     }
 
     void _por_worker() {
@@ -275,24 +323,31 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         return shared;
     }
 
+    void _count() {
+        ASSERT( shared.iteration == Iteration::Count );
+        for ( auto st : this->store() ) {
+            // note: Iteration over store has static partitioning even in
+            // shared store, this partitioning is preserved unless store
+            // is resized. Therefore no Guard is needed.
+            ASSERT( extension( st ).iteration() == Iteration::Count );
+            ++nodes;
+            nodesSize += this->pool().size( st.node() ) - sizeof( Extension );
+        }
+    }
+
     void _normalize() {
         ASSERT( shared.iteration == Iteration::Normalize );
         int64_t index = limits[ params.ringId ].indexStart;
         for ( auto st : this->store() ) {
-            ASSERT( extension( st ).iteration == Iteration::Count );
-            extension( st ).iteration = Iteration::Normalize;
-            extension( st ).index = index++;
+            // note: Iteration over store has static partitioning even in
+            // shared store, this partitioning is preserved unless store
+            // is resized. Therefore no Guard is needed.
+            ASSERT( extension( st ).iteration() == Iteration::Count );
+            extension( st ).iteration() = Iteration::Normalize;
+            extension( st ).index( index++ );
             ASSERT_LEQ( index, limits[ params.ringId ].indexEnd );
 
-            int64_t predCount = extension( st ).predCount();
-            if ( predCount > 0 ) {
-                Blob preds = pool().allocate( predCount * sizeof( EdgeSpec ) );
-                EdgeSpec *ptr = reinterpret_cast< EdgeSpec* >( pool().dereference( preds ) );
-                for ( int64_t i = 0; i < predCount; ++i )
-                    ptr[ i ] = EdgeSpec( -1, Label() );
-                extension( st )._data.predecessors = preds;
-            } else
-                extension( st )._data.predecessors = Blob();
+            extension( st ).mkPredVector( this->pool() );
         }
         ASSERT_EQ( index, limits[ params.ringId ].indexEnd );
     }
@@ -305,10 +360,10 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
 
         static visitor::TransitionAction transition( This &c, Vertex from, Vertex to, Label label )
         {
+            Guard _( to );
             auto act = c.updateIteration( to );
             if ( from.valid() )
-                c.extension( to ).addPredecessor( c.pool(),
-                        EdgeSpec( c.index( from ), label ) );
+                c.extension( to ).addPredecessor( c.pool(), { c.index( from ), label } );
             return act;
         }
 
@@ -368,12 +423,16 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
     }
 
     void run() {
-        this->topology().ring( params, &This::_init );
+        ring( params, &This::_init );
         params.ringId = -1;
+
+        progress() << "  exploring vertices... \t " << std::flush;
+        explore();
+        result().fullyExplored = meta::Result::R::Yes;
+        progress() << "done" << std::endl;
 
         progress() << "  counting vertices... \t\t " << std::flush;
         count();
-        result().fullyExplored = meta::Result::R::Yes;
         progress() << "found " << nodes << " states, "
                    << nodesSize << " bytes" << std::endl;
         ASSERT_EQ( nodes, meta().statistics.visited );
@@ -397,21 +456,26 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         progress() << "done" << std::endl;
     }
 
-    void count() {
+    void explore() {
         shared.iteration = Iteration::Count;
-        parallel( &This::_count );
+        parallel( &This::_explore );
         collect();
 
         do {
             shared.need_expand = false;
             ring( &This::_por );
             if ( shared.need_expand ) {
-                parallel( &This::_count );
+                parallel( &This::_explore );
                 collect();
             }
         } while ( shared.need_expand );
+    }
+
+    void count() {
+        ASSERT( shared.iteration == Iteration::Count );
+        parallel( &This::_count );
         limits.resize( shareds.size() );
-        limits = this->topology().ring( limits, &This::_collectCount );
+        limits = ring( limits, &This::_collectCount );
         this->topology().distribute( limits, &This::_setLimits );
         nodesSize = limits.nodesSize;
         nodes = limits.back().indexEnd - 1;
@@ -436,8 +500,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         std::vector< EdgeSpec > initials;
         this->graph().initials( LongTerm(), [&]( Node, Node n, Label l ) {
             int64_t id;
-            std::tie( std::ignore, id ) = this->topology().ring(
-                std::tuple< Node, int64_t >( n, -1 ), &This::_getNodeId );
+            std::tie( std::ignore, id ) = ring( { n, -1 }, &This::_getNodeId );
             LongTerm().drop( this->pool(), n );
             ASSERT_NEQ( -1 /* not found */, id );
             ASSERT_LEQ( 1, id );
@@ -493,7 +556,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
                         reinterpret_cast< EdgeSpec * >( ptr ) );
                 } );
 
-        auto r = this->topology().ring( true, &This::_writeFile );
+        auto r = ring( true, &This::_writeFile );
         ASSERT( r );
         static_cast< void >( r );
     }
@@ -503,10 +566,9 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         int64_t ix;
         std::tie( n, ix ) = q;
         ASSERT( pool().valid( n ) );
-        if ( this->store().knows( n ) ) {
+        if ( ix < 0 && this->store().knows( n ) ) {
             Vertex v = this->store().fetch( n );
-            ASSERT_EQ( ix, -1 );
-            ix = extension( v ).index;
+            ix = extension( v ).index();
         }
         return std::make_tuple( n, ix );
     }
@@ -536,10 +598,10 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
                 } );
 
         for ( auto st : this->store() ) {
-            ASSERT( extension( st ).iteration == Iteration::PrececessorTracking );
-            auto ext = extension( st );
+            ASSERT( extension( st ).iteration() == Iteration::PrececessorTracking );
+            auto &ext = extension( st );
             edgeInserter.emplace( ext.predSize( pool() ),
-                [ ext, this ]( char *ptr, int64_t size ) {
+                [&]( char *ptr, int64_t size ) {
                     if ( size )
                         std::copy( ext.predecessors( this->pool() ),
                             ext.predecessors( this->pool() )
@@ -570,8 +632,7 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
     // after this store must NOT be accessed
     void _cleanup() {
         for ( auto st : this->store() ) {
-            this->pool().free( extension( st )._data.predecessors );
-//            this->pool().free( st );
+            extension( st ).dropPreds( this->pool() );
         }
     }
 };

@@ -155,6 +155,12 @@ struct Algorithm
         return s;
     }
 
+    template< typename Val, typename T >
+    Val ring( Val val, Val (T::*fun)( Val ) ) {
+        T *self = static_cast< T * >( this );
+        return self->topology().ring( std::move( val ), fun );
+    }
+
     template< typename T >
     void ring( typename T::Shared (T::*fun)( typename T::Shared ) ) {
         T *self = static_cast< T * >( this );

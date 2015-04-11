@@ -851,7 +851,8 @@ struct Main {
                  meta.algorithm.algorithm != meta::Algorithm::Type::Csdr &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Owcty &&
                  meta.algorithm.algorithm != meta::Algorithm::Type::Map &&
-                 meta.algorithm.algorithm != meta::Algorithm::Type::Ndfs )
+                 meta.algorithm.algorithm != meta::Algorithm::Type::Ndfs &&
+                 meta.algorithm.algorithm != meta::Algorithm::Type::GenExplicit )
                 die( "FATAL: Shared memory hashtables are not yet supported for this algorithm." );
         }
 

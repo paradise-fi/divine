@@ -607,7 +607,7 @@ static const CMap< Key, SupportedBy > supportedBy = {
     { Transform::Fairness, And{ Or{ Generator::Dve, Generator::LLVM, Generator::ProbabilisticLLVM },
                                 Not{ Algorithm::Info } } },
 
-    { Visitor::Shared, Not{ Or{ Algorithm::Simulate, Algorithm::GenExplicit, Algorithm::Info } } },
+    { Visitor::Shared, Not{ Or{ Algorithm::Simulate, Algorithm::Info } } },
 
     { Store::NDFSNTreeStore, Algorithm::NestedDFS },
     { Store::NTreeStore,     Not{ Or{ Algorithm::Info, Algorithm::NestedDFS } } },
