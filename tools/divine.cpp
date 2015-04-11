@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
-//             (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2013, 2015 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <queue>
 #include <iostream>
@@ -60,7 +60,7 @@ struct Main {
     OptvalStringOption *o_statistics;
     StringOption *o_outStatistics;
     OptvalStringVectorOption *o_report;
-    BoolOption *o_fair, *o_shared;
+    BoolOption *o_fair, *o_shared, *o_noShared;
     StringOption *o_reduce;
     OptvalStringOption *o_compression;
     VectorOption< String > *o_definitions;
@@ -136,6 +136,12 @@ struct Main {
             mpi.reset( new Mpi( o_mpi->boolValue() ) );
 
         mpiFillMeta( meta );
+
+        if ( mpi->size() > 1 && meta.algorithm.sharedVisitor ) {
+            meta.algorithm.sharedVisitor = false;
+            if ( o_shared->boolValue() )
+                die( "FATAL: --shared cannot be used with MPI" );
+        }
 
         auto a = select( meta );
 
@@ -329,7 +335,11 @@ struct Main {
 
         o_shared = common->add< BoolOption >(
             "shared-memory", '\0', "shared", "",
-            "enable shared-memory hashtables & queues (EXPERIMENTAL)");
+            "use shared-memory hashtables & queues [default: used if available]" );
+
+        o_noShared = common->add< BoolOption >(
+            "no-shared-memory", '\0', "no-shared", "",
+            "use legacy hashtables & queues (static partioning) [default: used for MPI]" );
 
         o_seed = common->add< IntOption >(
             "seed", '\0', "seed", "",
@@ -655,7 +665,15 @@ struct Main {
         meta.input.definitions = o_definitions->values();
         meta.input.probabilistic = o_probabilistic->boolValue();
         meta.output.wantCe = !o_noCe->boolValue();
-        meta.algorithm.sharedVisitor = o_shared->boolValue();
+
+        if ( o_shared->boolValue() && o_noShared->boolValue() )
+            die( "FATAL: --shared and --no-shared cannot be used both" );
+        if ( o_shared->boolValue() && o_mpi->boolValue() )
+            die( "FATAL: --shared and --mpi cannot be used both" );
+        meta.algorithm.sharedVisitor = o_shared->boolValue()
+                || (!o_noShared->boolValue() && !o_mpi->boolValue()
+                    && (!o_workers->boolValue() || o_workers->intValue() > 1));
+
         if ( !o_noreduce->boolValue() ) {
             if ( o_reduce->boolValue() )
                 meta.algorithm.reduce = parseReductions( o_reduce->value() );
@@ -759,8 +777,8 @@ struct Main {
                     o_owcty->boolValue(), o_map->boolValue() } )
             {
                 if ( oneSet && x )
-                    die( "FATAL: only one of --nested-dfs, --owcty, --map,"
-                            " --reachability, --weak-reachability can be specified" );
+                    die( "FATAL: only one of --nested-dfs, --owcty, --map, --reachability, "
+                            "--weak-reachability, --csdr can be specified" );
                 oneSet |= x;
             }
 
@@ -850,15 +868,18 @@ struct Main {
         meta.execution.initialTable = 1L << (o_initable->intValue());
 
         if ( meta.algorithm.sharedVisitor ) {
-            if ( meta.algorithm.algorithm != meta::Algorithm::Type::Metrics &&
-                 meta.algorithm.algorithm != meta::Algorithm::Type::Reachability &&
-                 meta.algorithm.algorithm != meta::Algorithm::Type::WeakReachability &&
-                 meta.algorithm.algorithm != meta::Algorithm::Type::Csdr &&
-                 meta.algorithm.algorithm != meta::Algorithm::Type::Owcty &&
-                 meta.algorithm.algorithm != meta::Algorithm::Type::Map &&
-                 meta.algorithm.algorithm != meta::Algorithm::Type::Ndfs &&
-                 meta.algorithm.algorithm != meta::Algorithm::Type::GenExplicit )
-                die( "FATAL: Shared memory hashtables are not yet supported for this algorithm." );
+            bool ok = false;
+            for ( auto a : { meta::Algorithm::Type::Metrics, meta::Algorithm::Type::Reachability,
+                             meta::Algorithm::Type::WeakReachability, meta::Algorithm::Type::Csdr,
+                             meta::Algorithm::Type::Owcty, meta::Algorithm::Type::Map,
+                             meta::Algorithm::Type::Ndfs, meta::Algorithm::Type::GenExplicit } )
+                ok |= meta.algorithm.algorithm == a;
+            if ( !ok ) {
+                if ( o_shared->boolValue() )
+                    die( "FATAL: Shared memory hashtables are not yet supported for this algorithm." );
+                else
+                    meta.algorithm.sharedVisitor = false;
+            }
         }
 
         // ndfs needs a shared table, also Shared visitor have to have size without dividing
@@ -868,10 +889,7 @@ struct Main {
 
         if ( meta.algorithm.algorithm == meta::Algorithm::Type::Ndfs &&
                 meta.execution.threads > 1 && !meta.algorithm.sharedVisitor )
-        {
-            std::cerr << "WARNING: Parallel Nested DFS will use shared hash-table." << std::endl;
             meta.algorithm.sharedVisitor = true;
-        }
     }
 
 };
