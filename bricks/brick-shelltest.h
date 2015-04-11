@@ -19,6 +19,7 @@
 /*
  * (c) 2014 Petr Ročkai <me@mornfall.net>
  * (c) 2014 Red Hat, Inc.
+ * (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
  */
 
 /* Redistribution and use in source and binary forms, with or without
@@ -623,7 +624,7 @@ bool interrupt = false;
 struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts, kmsg;
     std::string testdir, outdir, workdir, heartbeat;
-    std::vector< std::string > flavours, filter, watch;
+    std::vector< std::string > flavours, filter, watch, flavourFilter;
     std::string flavour_envvar;
     int timeout;
     Options() : verbose( false ), batch( false ), interactive( false ),
@@ -925,26 +926,35 @@ struct Main {
     Options options;
     Cases cases;
 
+    bool skip( const std::string &what, const std::vector< std::string > &filter ) {
+        if ( filter.empty() )
+            return false;
+
+        for ( std::vector< std::string >::const_iterator filt = filter.begin();
+              filt !=filter.end(); ++filt ) {
+            if ( what.find( *filt ) != std::string::npos )
+                return false;
+        }
+        return true;
+    }
+
     void setup() {
         Listing l = listdir( options.testdir, true );
         std::sort( l.begin(), l.end() );
 
         for ( Flavours::iterator flav = options.flavours.begin();
-              flav != options.flavours.end(); ++flav ) {
+              flav != options.flavours.end(); ++flav )
+        {
+            if ( skip( *flav, options.flavourFilter ) )
+                continue;
 
             for ( Listing::iterator i = l.begin(); i != l.end(); ++i ) {
                 if ( i->substr( i->length() - 3, i->length() ) != ".sh" )
                     continue;
                 if ( i->substr( 0, 4 ) == "lib/" )
                     continue;
-                bool filter = !options.filter.empty();
 
-                for ( std::vector< std::string >::iterator filt = options.filter.begin();
-                      filt != options.filter.end(); ++filt ) {
-                    if ( i->find( *filt ) != std::string::npos )
-                        filter = false;
-                }
-                if ( filter )
+                if ( skip( *i, options.filter ) )
                     continue;
                 cases.push_back( TestCase( journal, options, options.testdir + *i, *i, *flav ) );
                 cases.back().options = options;
@@ -1103,6 +1113,8 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         split( args.opt( "--flavours" ), opt.flavours );
     else
         opt.flavours.push_back( "vanilla" );
+    if ( hasenv( "F" ) )
+        split( getenv( "F" ), opt.flavourFilter );
 
     if ( args.has( "--watch" ) )
         split( args.opt( "--watch" ), opt.watch );
