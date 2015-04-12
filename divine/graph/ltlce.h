@@ -150,11 +150,11 @@ struct LtlCE {
     template < typename Store >
     int whichInitial( Handle h, Store &s ) {
         int res = 0, i = 0;
-        g().initials( s.alloc, [&]( Node, Node o, Label ) {
+        g().initials( LongTerm(), [&]( Node, Node o, Label ) {
                 ++i;
                 Vertex v = s.fetch( o );
                 res = s.equal( v.handle(), h ) ? i : res;
-                this->g().release( s.alloc, o );
+                this->g().release( LongTerm(), o );
             } );
         return res;
     }
@@ -163,12 +163,12 @@ struct LtlCE {
     Node getInitialById( int id, Store &s ) {
         int i = 0;
         Node init;
-        g().initials( s.alloc, [&]( Node, Node o, Label ) {
+        g().initials( LongTerm(), [&]( Node, Node o, Label ) {
                 ++i;
                 if ( i == id )
                     init = o;
                 else
-                    this->g().release( s.alloc, o );
+                    this->g().release( LongTerm(), o );
             } );
         return init;
     }
