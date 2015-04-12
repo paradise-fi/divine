@@ -63,8 +63,9 @@ struct Dummy : Common< Blob > {
         }
     }
 
-    void release( Node s ) {
-        pool().free( s );
+    template< typename Alloc >
+    void release( Alloc alloc, Node s ) {
+        alloc.drop( pool(), s );
     }
 
     template< typename Yield >

@@ -309,7 +309,8 @@ struct Dve : public Common< Blob > {
         return transLabel;
     }
 
-    void release( Node s ) { pool().free( s ); }
+    template< typename Alloc >
+    void release( Alloc alloc, Node s ) { alloc.drop( pool(), s ); }
     Dve() : system( 0 ) {}
 };
 

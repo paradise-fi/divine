@@ -125,7 +125,8 @@ struct Timed : public Common< Blob > {
         yield( Node(), n, Label() );
     }
 
-    void release( Node s ) { pool().free( s ); }
+    template< typename Alloc >
+    void release( Alloc alloc, Node s ) { alloc.drop( pool(), s ); }
 
     void read( std::string file, std::vector< std::string > /* definitions */,
             Timed * = nullptr )

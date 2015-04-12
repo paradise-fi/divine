@@ -130,7 +130,8 @@ struct _Explicit : public Common< Blob > {
         return ss.str();
     }
 
-    void release( Node s ) { pool().free( s ); }
+    template< typename Alloc >
+    void release( Alloc alloc, Node s ) { alloc.drop( pool(), s ); }
 
     void useProperties( PropertySet s ) {
         auto flmap = graph::flags::flagMap( *this );

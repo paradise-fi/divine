@@ -112,7 +112,7 @@ struct _LLVM : Common< Blob > {
                 }
 
                 if ( buchi_succs.empty() ) {
-                    this->release( n );
+                    this->release( alloc, n );
                     return;
                 }
 
@@ -129,8 +129,9 @@ struct _LLVM : Common< Blob > {
             }, alloc, tid, include );
     }
 
-    void release( Node s ) {
-        pool().free( s );
+    template< typename Alloc >
+    void release( Alloc alloc, Node s ) {
+        alloc.drop( pool(), s );
     }
 
     using MachineState = llvm::MachineState< HeapMeta >;
