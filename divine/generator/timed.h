@@ -49,7 +49,7 @@ struct Timed : public Common< Blob > {
                 if ( doBuchiTrans( mem( n ), *btr ) ) {
                     yield( n, Label() );
                 } else {
-                    pool().free( n );
+                    this->release( alloc, n );
                 }
             }
             nSuccs++;
