@@ -52,12 +52,12 @@
 #define ASSERT_EQ_IDX(i, x, y) assert( (x) == (y) )
 
 #elif !defined NDEBUG
-#define ASSERT(x) assert_fn( BRICK_LOCATION( #x ), x )
-#define ASSERT_PRED(p, x) assert_pred_fn( BRICK_LOCATION( #p "( " #x " )" ), x, p( x ) )
-#define ASSERT_EQ(x, y) assert_eq_fn( BRICK_LOCATION( #x " == " #y ), x, y )
-#define ASSERT_LEQ(x, y) assert_leq_fn( BRICK_LOCATION( #x " <= " #y ), x, y )
-#define ASSERT_NEQ(x, y) assert_neq_fn( BRICK_LOCATION( #x " != " #y ), x, y )
-#define ASSERT_EQ_IDX(i, x, y) assert_eq_fn( BRICK_LOCATION_I( #x " == " #y, i ), x, y )
+#define ASSERT(x) ::brick::_assert::assert_fn( BRICK_LOCWRAP( BRICK_LOCATION( #x ) ), x )
+#define ASSERT_PRED(p, x) ::brick::_assert::assert_pred_fn( BRICK_LOCWRAP( BRICK_LOCATION( #p "( " #x " )" ) ), x, p( x ) )
+#define ASSERT_EQ(x, y) ::brick::_assert::assert_eq_fn( BRICK_LOCWRAP( BRICK_LOCATION( #x " == " #y ) ), x, y )
+#define ASSERT_LEQ(x, y) ::brick::_assert::assert_leq_fn( BRICK_LOCWRAP( BRICK_LOCATION( #x " <= " #y ) ), x, y )
+#define ASSERT_NEQ(x, y) ::brick::_assert::assert_neq_fn( BRICK_LOCWRAP( BRICK_LOCATION( #x " != " #y ) ), x, y )
+#define ASSERT_EQ_IDX(i, x, y) ::brick::_assert::assert_eq_fn( BRICK_LOCWRAP( BRICK_LOCATION_I( #x " == " #y, i ) ), x, y )
 
 #else
 
@@ -70,9 +70,9 @@
 #endif
 
 /* you must #include <brick-string.h> to use ASSERT_UNREACHABLE_F */
-#define ASSERT_UNREACHABLE_F(...) assert_die_fn( BRICK_LOCATION( brick::string::fmtf(__VA_ARGS__) ) )
-#define ASSERT_UNREACHABLE(x) assert_die_fn( BRICK_LOCATION( x ) )
-#define ASSERT_UNIMPLEMENTED() assert_die_fn( BRICK_LOCATION( "not imlemented" ) )
+#define ASSERT_UNREACHABLE_F(...) ::brick::_assert::assert_die_fn( BRICK_LOCATION( brick::string::fmtf(__VA_ARGS__) ) )
+#define ASSERT_UNREACHABLE(x) ::brick::_assert::assert_die_fn( BRICK_LOCATION( x ) )
+#define ASSERT_UNIMPLEMENTED() ::brick::_assert::assert_die_fn( BRICK_LOCATION( "not imlemented" ) )
 
 #ifdef _MSC_VER
 #define UNUSED
@@ -102,6 +102,16 @@ struct Location {
 #define BRICK_LOCATION(stmt) ::brick::_assert::Location( __FILE__, __LINE__, stmt )
 #define BRICK_LOCATION_I(stmt, i) ::brick::_assert::Location( __FILE__, __LINE__, stmt, i )
 
+// lazy location construction in C++11
+#if __cplusplus >= 201103L
+#define BRICK_LOCWRAP(x) [&]{ return (x); }
+#define BRICK_LOCUNWRAP(x) (x)()
+#else
+#define BRICK_LOCWRAP(x) (x)
+#define BRICK_LOCUNWRAP(x) (x)
+#endif
+
+
 struct AssertFailed : std::exception {
     std::string str;
 
@@ -125,11 +135,11 @@ struct AssertFailed : std::exception {
     const char *what() const noexcept { return str.c_str(); }
 };
 
-template< typename X >
+template< typename Location, typename X >
 void assert_fn( Location l, X x )
 {
     if ( !x ) {
-        throw AssertFailed( l );
+        throw AssertFailed( BRICK_LOCUNWRAP( l ) );
     }
 }
 
@@ -140,11 +150,11 @@ inline void assert_die_fn( Location l )
     throw AssertFailed( l );
 }
 
-template< typename X, typename Y >
+template< typename Location, typename X, typename Y >
 void assert_eq_fn( Location l, X x, Y y )
 {
     if ( !( x == y ) ) {
-        AssertFailed f( l );
+        AssertFailed f( BRICK_LOCUNWRAP( l ) );
         f << " got ["
           << x << "] != [" << y
           << "] instead";
@@ -152,11 +162,11 @@ void assert_eq_fn( Location l, X x, Y y )
     }
 }
 
-template< typename X, typename Y >
+template< typename Location, typename X, typename Y >
 void assert_leq_fn( Location l, X x, Y y )
 {
     if ( !( x <= y ) ) {
-        AssertFailed f( l );
+        AssertFailed f( BRICK_LOCUNWRAP( l ) );
         f << " got ["
           << x << "] > [" << y
           << "] instead";
@@ -164,22 +174,22 @@ void assert_leq_fn( Location l, X x, Y y )
     }
 }
 
-template< typename X >
+template< typename Location, typename X >
 void assert_pred_fn( Location l, X x, bool p )
 {
     if ( !p ) {
-        AssertFailed f( l );
+        AssertFailed f( BRICK_LOCUNWRAP( l ) );
         f << " for " << x;
         throw f;
     }
 }
 
-template< typename X, typename Y >
+template< typename Location, typename X, typename Y >
 void assert_neq_fn( Location l, X x, Y y )
 {
     if ( x != y )
         return;
-    AssertFailed f( l );
+    AssertFailed f( BRICK_LOCUNWRAP( l ) );
     f << " got ["
       << x << "] == [" << y << "] instead";
     throw f;
