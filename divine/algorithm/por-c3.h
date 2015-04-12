@@ -220,7 +220,7 @@ struct PORGraph : graph::Transform< G > {
 
         // release the states that we aren't going to use
         for ( auto i : extra )
-            this->base().release( i.first );
+            this->base().release( alloc, i.first );
 
         for ( auto i : out )
             yield( v, i.first, i.second );

@@ -168,8 +168,7 @@ struct Interpreter
 
     brick::data::Bimap< int, std::string > describeAPs();
 
-    template< typename Alloc >
-    void rewind( Alloc alloc, Blob b ) { state.rewind( alloc, b, -1 ); }
+    void rewind( Blob b ) { state.rewind( b, -1 ); }
     void choose( int32_t i );
     void dump();
 
@@ -184,7 +183,7 @@ struct Interpreter
 
     template< typename Yield, typename Alloc >
     void run( Blob b, Yield yield, Alloc alloc, int _tid = -1, bool include = true ) {
-        state.rewind( alloc, b, -1 ); /* rewind first to get sense of thread count */
+        state.rewind( b, -1 ); /* rewind first to get sense of thread count */
         state.flags().ap = 0; /* TODO */
         int tid = 0;
         /* cache, to avoid problems with thread creation/destruction */
@@ -200,7 +199,7 @@ struct Interpreter
                 run( tid, yield, Label( tid ), alloc );
             if ( ++tid == threads )
                 break;
-            state.rewind( alloc, b, -1 );
+            state.rewind( b, -1 );
             state.flags().ap = 0; /* TODO */
         }
     }
@@ -325,7 +324,7 @@ struct Interpreter
                 Choice c = choice; /* make a copy, sublings must overwrite the original */
 
                 for ( int i = 0; i < c.options; ++i ) {
-                    state.rewind( alloc, fork, tid );
+                    state.rewind( fork, tid );
                     choose( i );
                     advance();
                     seen = s;
@@ -389,7 +388,7 @@ struct Interpreter
     {
         Blob pre_initial = alloc.get( pool, state._slack + state.size( 0, 0, 0, 0 ) );
         pool.clear( pre_initial );
-        state.rewind( alloc, pre_initial, 0 ); // there isn't a thread really
+        state.rewind( pre_initial, 0 ); // there isn't a thread really
         std::copy( info().globaldata.begin(), info().globaldata.end(), state.global().memory() );
         auto fl = state.global().memoryflag( info() );
         for ( int i = 0; i < int( info().globaldata.size() ); ++ i ) {
@@ -425,7 +424,7 @@ struct Interpreter
         }
 
         Blob result = state.snapshot( alloc );
-        state.rewind( alloc, result, 0 ); // so that we don't wind up in an invalid state...
+        state.rewind( result, 0 ); // so that we don't wind up in an invalid state...
         alloc.drop( pool, pre_initial );
         return result;
     }
@@ -557,7 +556,7 @@ struct TestLLVM {
 
     std::string _descr( Function *, divine::Blob b ) {
         Interpreter interpreter( pool, 0, bitcode() );
-        interpreter.rewind( LongTerm(), b );
+        interpreter.rewind( b );
         return interpreter.describe();
     }
 
@@ -600,7 +599,7 @@ struct TestLLVM {
         Function *f = code_loop();
         Interpreter interpreter( pool, 0, bitcode() );
         divine::Blob b = _ith( code_loop(), 1 );
-        interpreter.rewind( LongTerm(), b );
+        interpreter.rewind( b );
         interpreter.new_thread( f );
         ASSERT_EQ( "thread 0:\n  #1: <testf> << br label %entry >> []\n"
                    "thread 1:\n  #1: <testf> << br label %entry >> []\n", interpreter.describe() );
@@ -660,7 +659,7 @@ struct TestLLVM {
         Function *f = code_loop();
         Interpreter interpreter( pool, 0, bitcode() );
         divine::Blob b1 = interpreter.initial( LongTerm(), f ), b2;
-        interpreter.rewind( LongTerm(), b1 );
+        interpreter.rewind( b1 );
         b2 = interpreter.state.snapshot( LongTerm() );
         ASSERT( pool.equal( b1, b2 ) );
     }

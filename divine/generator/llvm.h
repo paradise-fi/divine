@@ -93,9 +93,8 @@ struct _LLVM : Common< Blob > {
         return successors( alloc, st, yield, tid, include );
     }
 
-    template< typename Alloc >
-    int processCount( Alloc alloc, Node st ) {
-        interpreter().rewind( alloc, st );
+    int processCount( Node st ) {
+        interpreter().rewind( st );
         return interpreter().threadCount() + 1;
     }
 
@@ -350,7 +349,7 @@ struct _LLVM : Common< Blob > {
 
     std::string showNode( Node n ) {
         interpreter(); /* ensure _interpreter_2 is initialised */
-        _interpreter_2->rewind( LongTerm(), n );
+        _interpreter_2->rewind( n );
         std::string s = _interpreter_2->describe( demangle == DemangleStyle::Cpp );
         if ( use_property ) {
             int buchi = _interpreter_2->state.flags().buchi;

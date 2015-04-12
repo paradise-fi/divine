@@ -53,7 +53,7 @@ struct FairGraph : NonPORGraph< G, St > {
     template< typename Alloc, typename Yield >
     void successors( Alloc alloc, Vertex stV, Yield yield ) {
         Node st = stV.node();
-        int procs = this->base().processCount( alloc, st );
+        int procs = this->base().processCount( st );
 
         int copy = extension( stV ).copy;
         bool accepting = !!this->base().stateFlags( st, graph::flags::isAccepting );

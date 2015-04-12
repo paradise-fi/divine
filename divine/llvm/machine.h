@@ -805,13 +805,9 @@ struct MachineState
     void snapshot( Pointer &edit, Pointer original, machine::Canonic< HeapMeta > &canonic, Heap &heap );
     void snapshot( Frame &f, machine::Canonic< HeapMeta > &canonic, Heap &heap, StateAddress &address );
 
-    template< typename Alloc >
-    void rewind( Alloc alloc, Blob to, int thread = 0 )
+    void rewind( Blob to, int thread = 0 )
     {
-        alloc.drop( _pool, _blob );
-        _blob = alloc.get( _pool, _pool.size( to ) );
-        _blob_deref = _pool.dereference( _blob );
-        _pool.copy( to, _blob );
+        _pool.copy( to, _blob, _pool.size( to ) );
 
         _thread = -1; // special
 
@@ -845,6 +841,8 @@ struct MachineState
         _frame = nullptr;
         nursery.reset( 0 ); /* nothing in the heap */
         _heapmeta = _pool.allocate( 4080 );
+        _blob = _pool.allocate( 262000 ); /* about 64 pages */
+        _blob_deref = _pool.dereference( _blob );
     }
 
     void dump( std::ostream & );
