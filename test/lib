@@ -296,7 +296,7 @@ dve_shape() {
     cat > testcase.dve
     echo "$2" > expected
     divine draw testcase.dve --no-reduce -p $1 -r cat -o out.dot 2>> progress | capture
-    grep -- '->' out.dot | sed -e 's,\s,,g' > actual
+    grep -- '->' out.dot | sed -e 's,[ \t],,g' > actual
 
     for actual in $(cat actual); do
         grep -- $actual expected

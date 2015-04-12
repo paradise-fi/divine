@@ -23,7 +23,10 @@ genexplicit_reach() {
     ann "divine verify --reachability --report testcase.dess $ARGS" "2> progress | capture"
 }
 draw() { ann "divine draw" "$@"; }
-info() { ann "divine info" $(echo "$@" | sed -e "s,--property=[^ ]*\|--no-reduce\|-D [^ ]*\|--max-[^ -]*=[0-9]*,,g"); }
+info() { ann "divine info" $(echo "$@" | sed -e 's,--property=[^ ]*,,' \
+                                             -e 's,--no-reduce,,' \
+                                             -e 's,-D [^ ]*,,g' \
+                                             -e 's,--max-[^ -]*=[0-9]*,,g'); }
 
 mpi_verify() { mpi verify --mpi "$@"; }
 mpi_metrics() { mpi metrics --mpi "$@"; }
