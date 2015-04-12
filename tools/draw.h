@@ -249,6 +249,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
                 this->extension( v ).initial = 1;
                 this->extension( v ).intrace = false;
                 visitor.queue( Vertex(), v->node(), l );
+                v->disown();
             } );
 
         loadTrace();
