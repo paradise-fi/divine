@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
-//             (c) 2013,2014 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2013-2015 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <cstdint>
 #include <sstream>
@@ -132,7 +132,7 @@ struct LtlCE {
         int succnum = 0;
         Node parent = shared().ce.parent;
         g().allSuccessors( LongTerm(),
-            parent, [ this, &s, &succnum ]( Node n, Label ) {
+            parent, [&]( Node n, Label ) {
                 if ( this->shared().ce.current_updated )
                     return;
                 ++succnum;
@@ -141,44 +141,34 @@ struct LtlCE {
                     this->shared().ce.successor_id = succnum;
                     this->shared().ce.current_updated = true;
                 } else
-                    this->g().release( n );
+                    this->g().release( LongTerm(), n );
             } );
         ASSERT( shared().ce.current_updated );
         ASSERT( shared().ce.successor_id );
     }
 
-    int whichInitial( Node n ) {
-        int res = 0, i = 0;
-        g().initials( [&]( Node, Node o, Label ) {
-                ++ i;
-                if ( this->store().equal( n, o ) )
-                    res = i;
-                this->g().release( o ); /* leaving out this-> trips an ICE */
-            } );
-        return res;
-    }
-
     template < typename Store >
-    int whichInitial( Handle h, Store& s ) {
+    int whichInitial( Handle h, Store &s ) {
         int res = 0, i = 0;
-        g().initials( LongTerm(), [ this, &h, &s, &res, &i ]( Node, Node o, Label ) {
+        g().initials( s.alloc, [&]( Node, Node o, Label ) {
                 ++i;
                 Vertex v = s.fetch( o );
                 res = s.equal( v.handle(), h ) ? i : res;
-                this->g().release( o );
+                this->g().release( s.alloc, o );
             } );
         return res;
     }
 
-    Node getInitialById( int id ) {
+    template< typename Store >
+    Node getInitialById( int id, Store &s ) {
         int i = 0;
         Node init;
-        g().initials( LongTerm(), [ this, id, &i, &init ]( Node, Node o, Label ) {
+        g().initials( s.alloc, [&]( Node, Node o, Label ) {
                 ++i;
                 if ( i == id )
                     init = o;
                 else
-                    this->g().release( o );
+                    this->g().release( s.alloc, o );
             } );
         return init;
     }
@@ -392,7 +382,7 @@ struct LtlCE {
         switch ( TT::value ) {
             case TraceType::Linear: {
                 ASSERT_NEQ( shared().ce.successor_id, 0 );
-                Node initial = getInitialById( shared().ce.successor_id );
+                Node initial = getInitialById( shared().ce.successor_id, a.store() );
                 ASSERT( a.pool().valid( initial ) );
                 shared().ce.parent = initial;
                 trace.push_back( initial );

@@ -223,7 +223,8 @@ struct Transform {
     void successors( Alloc a, Node st, Yield yield ) { base().successors( a, st, yield ); }
     template< typename Alloc, typename Yield >
     void allSuccessors( Alloc a, Node st, Yield yield ) { successors( a, st, yield ); }
-    void release( Node s ) { base().release( s ); }
+    template< typename Alloc >
+    void release( Alloc a, Node s ) { base().release( a, s ); }
     bool isDeadlock( Node s ) { return base().isDeadlock( s ); }
     std::string showConstdata() { return base().showConstdata(); }
     std::string showNode( Node s ) { return base().showNode( s ); }
@@ -289,12 +290,12 @@ struct Transform {
         int edge = 0;
         bool found = false;
 
-        base().successors( LongTerm(), current, [&]( Node n, Label ) {
+        base().successors( a.store().alloc, current, [&]( Node n, Label ) {
                 if (!found)
                     ++ edge;
                 if ( edge > fromIndex && a.store().equal( n, next ) )
                     found = true;
-                this->base().release( n );
+                this->base().release( a.store().alloc, n );
             } );
 
         ASSERT_LEQ( 1, edge );

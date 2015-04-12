@@ -457,7 +457,7 @@ struct DefaultStore
             p->free( n );
         }
     }
-    void free( Node n ) { this->pool().free( n ); }
+    void free( Node n ) { this->alloc.drop( this->pool(), n ); }
 
     bool valid( Node n ) { return Base::valid( n ); }
     bool valid( Handle h ) { return this->pool().valid( h.b ); }
@@ -546,7 +546,7 @@ struct HcStore
             p->free( n );
         }
     }
-    void free( Node n ) { this->pool().free( n ); }
+    void free( Node n ) { this->alloc.drop( this->pool(), n ); }
 
     bool valid( Node n ) { return Base::valid( n ); }
     bool valid( Handle h ) { return this->pool().valid( h.b ); }
@@ -668,7 +668,7 @@ struct NTreeStore
     }
 
     void free_unpacked( Node n, Pool *p, bool ) { ASSERT( p ); this->alloc.drop( *p, n ); }
-    void free( Node n ) { this->pool().free( n ); }
+    void free( Node n ) { this->alloc.drop( this->pool(), n ); }
 
     bool valid( Node n ) { return Base::valid( n ); }
     bool valid( Handle h ) { return this->pool().valid( h.b ); }
