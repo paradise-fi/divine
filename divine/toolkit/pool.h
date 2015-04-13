@@ -320,6 +320,7 @@ struct Lake {
                     break;
                 off = align( i->second, 4 );
             }
+            ASSERT_LEQ( off + sz, blocksize );
             ephemeral.emplace( i, off, off + sz );
 
             Pointer p;
@@ -332,6 +333,8 @@ struct Lake {
         void ephemeralFree( Pointer p ) {
             if ( !valid( p ) )
                 return;
+
+            ASSERT_EQ( int( p.block ), ephemeral_block );
             auto i = ephemeral.begin();
             for ( ; i != ephemeral.end(); ++i )
                 if ( i->first == p.offset * 4 )
@@ -349,6 +352,8 @@ struct Lake {
                     if ( e.first == p.offset * 4 )
                         return e.second - e.first;
             ASSERT_NEQ( int( p.block ), ephemeral_block );
+
+            ASSERT( lake->header( p ).total > 0 && "invalid size() on foreign ephemeral block" );
             ASSERT( lake->size( p) );
             return lake->size( p );
         }
@@ -436,6 +441,8 @@ struct Lake {
         {
             if ( !valid( p ) )
                 return;
+
+            ASSERT( lake->header( p ).total > 0 && "trying to free ephemeral block" );
 
             auto &si = sizeinfo( size( p ) );
             FreeList *fl = si.touse.count < 4096 ? &si.touse : &si.tofree;
