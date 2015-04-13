@@ -1,4 +1,5 @@
 // -*- C++ -*-
+#include <array>
 #include <utap/utap.h>
 #include <dbm/print.h>
 #include <brick-assert.h>
@@ -430,13 +431,9 @@ public:
 
     std::pair< PropGuard, PropGuard > addAuxToGuard( const PropGuard& guard );
 
-    std::vector< unsigned int > getSplitPoints() const {
-        static std::vector< unsigned int > splits;
-        if ( splits.empty() ) {
-            auto sp = eval.splitPoints();
-            splits = std::vector< unsigned int >({ offVar, sp.first + offVar, sp.second });
-        }
-        return splits;
+    std::array< unsigned int, 3 > getSplitPoints() const {
+        auto sp = eval.splitPoints();
+        return { { offVar, sp.first + offVar, sp.second } };
     }
 
 };

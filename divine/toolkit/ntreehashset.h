@@ -467,6 +467,7 @@ struct NTreeHashSet
             }
 
             void consume( intptr_t length ) {
+                ASSERT_LEQ( 1, length );
                 ASSERT_LEQ( start, current );
                 ASSERT_LEQ( current, start + size );
                 ASSERT_LEQ( current + length, start + size );
