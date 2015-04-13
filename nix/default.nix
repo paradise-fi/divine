@@ -43,13 +43,12 @@ let
   extra_debs = [ "cmake" "build-essential" "debhelper" "m4"
                  "libqt4-dev" "libboost-dev" "libncurses5-dev"
                  "binutils-gold" "libxml2-dev" ];
-  extra_debs32 = extra_debs ++ [ "llvm-3.2-dev" "clang-3.2" ];
   extra_debs34 = extra_debs ++ [ "llvm-3.4-dev" "clang-3.4" ];
   extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" "bison" "llvm-static" ];
 
-  mkVM = { VM, extras, disk, mem ? 3072, require ? "DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT",
+  mkVM = { VM, extras, disk, mem ? 3072,
            name, tarball ? jobs.tarball, extra_opts ? "" }: arch:
-     let flags = "-DCMAKE_BUILD_TYPE=${buildType} -DREQUIRED=${require} ${extra_opts}";
+     let flags = "-DCMAKE_BUILD_TYPE=${buildType} ${extra_opts}";
          nicesys = if lib.eqStrings arch "i386" then "x86" else
                       (if lib.eqStrings arch "x86_64" then "x64" else "unknown");
    in (VM arch) {
@@ -71,22 +70,17 @@ let
    };
 
   mkbuild = { name, inputs,
-              flags ? [ "-DSTORE_COMPRESS=OFF" "-DGEN_EXPLICIT=OFF" ],
+              flags ? [],
               clang ? false,
               compilerPkg ? (pkgs: if clang then pkgs.clangSelf else pkgs.gcc),
-              clang_runtime ? (pkgs: pkgs.clang), # version of clang used in divine compile --llvm
+              clang_runtime ? (pkgs: pkgs.clang) # version of clang used in divine compile --llvm
             }: system:
     let pkgs = import nixpkgs { inherit system; };
         nicesys = if lib.eqStrings system "i686-linux" then "x86" else
                      (if lib.eqStrings system "x86_64-linux" then "x64" else "unknown");
         cmdflags = [ "-DCMD_CC=${compilerPkg pkgs}/bin/cc"
-                     "-DCMD_CXX=${compilerPkg pkgs}/bin/c++" ] ++
-                   (if lib.eqStrings (builtins.substring 0 4 name) "llvm" ||
-                       lib.eqStrings name "full" ||
-                       lib.eqStrings name "medium" ||
-                       lib.eqStrings name "explicit"
-                      then [ "-DCMD_CLANG=${(clang_runtime pkgs).clang}/bin/clang" ]
-                      else []);
+                     "-DCMD_CXX=${compilerPkg pkgs}/bin/c++"
+                     "-DCMD_CLANG=${(clang_runtime pkgs).clang}/bin/clang" ];
         profile = if lib.eqStrings buildType "Debug" && !clang
                      then [ "-DDEV_GCOV=ON -DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
         compiler =    [ "-DCMAKE_CXX_COMPILER=${compilerPkg pkgs}/bin/c++"
@@ -149,63 +143,46 @@ let
   gcc_llvm_vers = llvm: clang: with builtins; mk: mk {
       inputs = pkgs: [ (getAttr llvm pkgs) (getAttr clang pkgs) ];
       clang_runtime = pkgs: getAttr clang pkgs;
-      flags = [ "-DREQUIRED=LLVM" ];
   };
 
   vms = {
-    debian70   = mk: mk { VM = debuild; disk = "debian70"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
-    ubuntu1210 = mk: mk { VM = debuild; disk = "ubuntu1210"; extras = extra_debs; require="DVE;TIMED;CESMI"; };
-    ubuntu1304 = mk: mk { VM = debuild; disk = "ubuntu1304"; extras = extra_debs32; require="DVE;TIMED;CESMI"; };
+    debian70   = mk: mk { VM = debuild; disk = "debian70"; extras = extra_debs; };
+    ubuntu1210 = mk: mk { VM = debuild; disk = "ubuntu1210"; extras = extra_debs; };
+    ubuntu1304 = mk: mk { VM = debuild; disk = "ubuntu1304"; extras = extra_debs; };
     ubuntu1310 = mk: mk { VM = debuild; disk = "ubuntu1310"; extras = extra_debs34; };
     ubuntu1404 = mk: mk { VM = debuild; disk = "ubuntu1404"; extras = extra_debs34; };
 
     fedora20   = mk: mk { VM = rpmbuild; disk = "fedora20"; extras = extra_rpms; };
   };
 
-  builds = {
-    gcc_min =      mk: mk { inputs = pkgs: []; };
-    gcc_mpi =      mk: mk { inputs = pkgs: [ pkgs.openmpi ]; };
-    gcc_gui =      mk: mk { name = "gui"; inputs = pkgs: [ pkgs.qt4 ]; };
+  builds = let
+    allFlags = [ "-DALG_OWCTY=ON" "-DALG_EXPLICIT=ON" "-DALG_CSDR=ON" "-DALG_WEAKREACHABILITY=ON"
+                 "-DALG_NDFS=ON" "-DALG_MAP=ON" "-DGEN_EXPLICIT=ON" "-DGEN_EXPLICIT_PROB=ON"
+                 "-DGEN_LLVM_PROB=ON" "-DGEN_LLVM_PTST=ON" "-DGEN_DUMMY=ON"
+               ];
+    allInCommon = pkgs: [ pkgs.openmpi pkgs.qt4 pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
+    allInGcc = pkgs: (allInCommon pkgs ++ [ pkgs.llvm pkgs.clang ]);
+    allInClang = pkgs: (allInCommon pkgs ++ [ pkgs.llvmPackagesSelf.llvm pkgs.clangSelf ]);
+  in {
+    gcc_min =   mk: mk { inputs = pkgs: []; };
+    gcc_def   = mk: mk { inputs = allInGcc; };
+    gcc_all   = mk: mk { inputs = allInGcc; flags = allFlags; };
 
-    gcc_llvm =     mk: mk { name = "llvm"; inputs = pkgs: [ pkgs.llvm pkgs.clang ];
-                            flags = [ "-DGEN_LLVM_PROB=ON" ];
-                          };
-    gcc_llvm_31 =  gcc_llvm_vers "llvm_31" "clang_31";
-    gcc_llvm_32 =  gcc_llvm_vers "llvm_32" "clang_32";
+    gcc49_all = mk: mk { inputs = allInGcc; flags = allFlags; compilerPkg = pkgs: pkgs.gcc49; };
+
+    clang_min = mk: mk { inputs = pkgs: []; clang = true; };
+    clang_def = mk: mk { inputs = allInClang; clang = true; };
+    clang_all = mk: mk { inputs = allInClang; flags = allFlags; clang = true; };
+
     gcc_llvm_33 =  gcc_llvm_vers "llvm_33" "clang_33";
     gcc_llvm_34 =  gcc_llvm_vers "llvm_34" "clang_34";
 
-    gcc_timed =    mk: mk { inputs = pkgs: [ pkgs.libxml2 pkgs.boost ];
-                           flags = [ "-DREQUIRED=TIMED" ]; };
-    gcc_compress = mk: mk { name = "compression"; inputs = pkgs: [];
-                            flags = [ "-DSTORE_HC=OFF" "-DSTORE_COMPRESS=ON" "-DGEN_EXPLICIT=OFF" ]; };
-    /* gcc_hashcomp = mk: mk { inputs = pkgs: [];
-                            flags = [ "-DSTORE_COMPRESS=OFF" "-DSTORE_HC=ON" "-DGEN_EXPLICIT=OFF" ]; }; */
-    gcc_explicit = mk: mk { name = "explicit"; inputs = pkgs: [ pkgs.llvm pkgs.clang pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
-                            flags = [ "-DALG_OWCTY=OFF" "-DALG_EXPLICIT=ON" "-DALG_CSDR=OFF"
-                                      "-DGEN_EXPLICIT=ON" "-DGEN_EXPLICIT_PROB=ON"
-                                      "-DGEN_LLVM_PROB=ON" "-DSTORE_COMPRESS=OFF" ];
-                          };
-    gcc_full =     mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
-                            flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
-    gcc49_full =   mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvm pkgs.clang pkgs.qt4 pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
-                            compilerPkg = pkgs: pkgs.gcc49;
-                            flags = [ "-DREQUIRED=DVE;LLVM;TIMED;CESMI;COMPRESS;EXPLICIT" ]; };
-
-    clang_min =    mk: mk { inputs = pkgs: []; clang = true; };
-    clang_med =    mk: mk { inputs = pkgs: [ pkgs.openmpi pkgs.llvmPackagesSelf.llvm pkgs.clangSelf pkgs.boost pkgs.libxml2 pkgs.flex pkgs.byacc ];
-                            flags = []; clang = true; };
-  } // lib.fold (alg: set: lib.setAttrByPath [ "gcc_${alg}" ] (mk:
-        mk { inputs = pkgs: [];
-          flags = [ "-DALG_OWCTY=OFF" "-DALG_REACHABILITY=OFF" "-DALG_CSDR=OFF"
-                    "-DALG_${lib.toUpper alg}=ON" "-DSTORE_COMPRESS=OFF" ];
-        }
-      ) // set) {} [ "map" "ndfs" "metrics" "weakreachability" ];
+  };
 
   windows = {
     win7_gui.i386 = mkwin windows7_img "" [ windows_qt ];
     win7.i386 = mkwin windows7_img "" [];
-    win7_llvm.i386 = mkwin windows7_img "-DREQUIRED=LLVM" [ windows_llvm ];
+    win7_llvm.i386 = mkwin windows7_img "" [ windows_llvm ];
   };
 
   mapsystems = systems: attrs: with ( pkgs.lib // builtins );
