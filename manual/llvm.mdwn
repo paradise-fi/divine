@@ -87,15 +87,62 @@ in which case DIVINE will report the problem upon loading the file.
 Limitations
 -----------
 
-When DIVINE interprets your program, it does so in a very strictly controlled
-environment, so that every step is fully reproducible. Hence, no real IO is
-allowed; the program can only see its own memory. External storage (a
-filesystem) can be emulated in-memory -- the standard IO functions from the C
-library are currently implemented this way. See Section ... for details.
+DIVINE still does not support many things used in real programs. A support
+of processes including inter process communication is on the top of the list
+of features we plan. From C/C++ library features, we are still missing
+support of setjmp/longjmp, which is also on the list.
 
 The interpreter simulates an "in order" architecture, hence any possible
 detrimental effects of instruction and memory access reordering won't be
 detected. Again, an improvement in this area is planned for a future release.
+
+Virtual File System
+-------------------
+
+When DIVINE interprets your program, it does so in a very strictly controlled
+environment, so that every step is fully reproducible. Hence, no real IO is
+allowed; the program can only see its own memory. DIVINE can simulate IO by
+using virtual file system, which is done by implementation of subset of POSIX
+interface.
+
+The virtual file system can create a snapshot of a directory tree by
+`--shapshot=path/to/the/directory` and/or a snapshot of a file by
+`--stdin=path/to/the/file` which will be used as a keyboard (file descriptor 0,
+therefore as stdin and std::cin). Both options are recognized during
+compilation of the bitcode library so snapshots can be pre-compiled, however
+any change in snapshots requires recompilation of the bitcode library.
+
+Functions handle errors during their execution by returning an error value and
+setting errno to a value specified by the documentation. Variadic functions
+(open, openat) are also checked whether correct number of arguments is passed,
+if not, the verification is stopped and the problem is reported to the user.
+Wrong usage of pipes (i.e. closed reader when writing, opening pipe both for
+reading and writing) also causes stopping the verification and making the report.
+
+The virtual file system currently implements following header files and functions:
+
+ * `sys/stat.h`
+
+   fstat, stat, lstat, fstatat, chmod, fchmod, fchmodat, umask, mkdir, mkdirat,
+mkfifo, mkfifoat
+
+ * `sys/types.h`
+
+ * `dirent.h`
+
+   closedir, dirfd, fdopendir, opendir, readdir, readdir_r, rewinddir, scandir,
+seekdir, telldir
+
+ * `fcntl.h`
+
+   creat, open, openat
+
+ * `unistd.h`
+
+   close, read, write, pread, pwrite, pipe, lseek, dup, dup2, ftruncate, truncate,
+unlink, rmdir, unlinkat, link, linkat, symlink, symlinkat, readlink, readlinkat,
+access, faccessat, chdir, fchdir, fsync, fdatasync, isatty, ttyname, ttyname_r,
+swab, sync, syncfs
 
 State Space of a Program
 ------------------------
