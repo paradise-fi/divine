@@ -260,6 +260,8 @@ else()
     appendFlag( "CXX" "-std=c++11" )
 endif()
 
+appendFlag( "EXE_LINKER" "-Xlinker --no-keep-memory" )
+
 if( NOT HAVE_CXX11 )
     message( FATAL_ERROR "DiVinE requires a C++11 compliant compiler." )
 endif()
