@@ -559,6 +559,10 @@ Node Manager::_findDirectoryItem( utils::String name, bool followSymLinks, I ite
 
 std::pair< Node, utils::String > Manager::_findDirectoryOfFile( utils::String name ) {
     name = path::normalize( name );
+
+    if ( name.size() > PATH_LIMIT )
+        throw Error( ENAMETOOLONG );
+
     utils::String pathname;
     std::tie( pathname, name ) = path::splitFileName( name );
     Node item = findDirectoryItem( pathname );

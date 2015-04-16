@@ -17,15 +17,15 @@ struct Link : DataItem {
 
     Link( utils::String target ) :
         _target( std::move( target ) )
-    {}
+    {
+        if ( _target.size() > PATH_LIMIT )
+            throw Error( ENAMETOOLONG );
+    }
 
     size_t size() const override {
         return _target.size();
     }
 
-    utils::String &target() {
-        return _target;
-    }
     const utils::String &target() const {
         return _target;
     }
