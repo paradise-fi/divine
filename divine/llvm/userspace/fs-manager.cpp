@@ -566,10 +566,11 @@ std::pair< Node, utils::String > Manager::_findDirectoryOfFile( utils::String na
     utils::String pathname;
     std::tie( pathname, name ) = path::splitFileName( name );
     Node item = findDirectoryItem( pathname );
-    _checkGrants( item, Mode::XUSER );
 
     if ( !item )
         throw Error( ENOENT );
+
+    _checkGrants( item, Mode::XUSER );
     if ( !item->mode().isDirectory() )
         throw Error( ENOTDIR );
     return { item, name };
