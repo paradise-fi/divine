@@ -56,12 +56,14 @@
 namespace brick {
 namespace bitlevel {
 
-constexpr inline int align( int v, int a ) {
-    return (v % a) ? (v + a - (v % a)) : v;
+template< typename T1, typename T2 >
+constexpr inline T1 align( T1 v, T2 a ) {
+    return (v % T1(a)) ? (v + T1(a) - (v % T1(a))) : v;
 }
 
-constexpr inline int downalign( int v, int a ) {
-    return v - (v % a);
+template< typename T1, typename T2 >
+constexpr inline T1 downalign( T1 v, T2 a ) {
+    return v - (v % T1(a));
 }
 
 namespace compiletime {
