@@ -10,10 +10,11 @@ DIVINE 3.3.x
 - [3.3.1] Improved DESS (explicit state space) support.
 - [3.3.1] Fix --fair support (weak fairness, affects DVE and LLVM).
 - [3.3.2] Make gen-explicit work with --shared.
-- [3.3.2] Enable shared memory hashtable by default for parallel verification.
+- [3.3.2] Use --shared by default for parallel verification.
 - [3.3.2] Fix several bugs in combination of --shared with --compression.
-- [3.3.2] Make builds with assertions significantly faster (3x for LLVM in debug).
-- [3.3.2] Fix export of DESS files large than 2GB.
+- [3.3.2] Make builds with assertions significantly faster.
+- [3.3.2] Support for --fair is now built in by default.
+- [3.3.2] Fix export of DESS files larger than 2GB.
 
 DIVINE 3.2.x
 ============
