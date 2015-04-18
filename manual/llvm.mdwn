@@ -87,10 +87,16 @@ in which case DIVINE will report the problem upon loading the file.
 Limitations
 -----------
 
-DIVINE still does not support many things used in real programs. A support
-of processes including inter process communication is on the top of the list
-of features we plan. From C/C++ library features, we are still missing
-support of setjmp/longjmp, which is also on the list.
+When DIVINE interprets your program, it does so in a very strictly controlled
+environment, so that every step is fully reproducible. Hence, no real IO is
+allowed; the program can only see its own memory. DIVINE can simulate IO by
+using virtual file system, which is done by implementation of subset of POSIX
+interface; see [Virtual File System](#virtual-file-system).
+
+While the `pthread` interface is fully supported, the `fork` system call is
+not: DIVINE cannot verify multi-process systems at this time. Likewise, C++
+exceptions are well-supported but the C functions `setjmp` and `longjmp` are
+not yet implemented.
 
 The interpreter simulates an "in order" architecture, hence any possible
 detrimental effects of instruction and memory access reordering won't be
@@ -98,12 +104,6 @@ detected. Again, an improvement in this area is planned for a future release.
 
 Virtual File System
 -------------------
-
-When DIVINE interprets your program, it does so in a very strictly controlled
-environment, so that every step is fully reproducible. Hence, no real IO is
-allowed; the program can only see its own memory. DIVINE can simulate IO by
-using virtual file system, which is done by implementation of subset of POSIX
-interface.
 
 The virtual file system can create a snapshot of a directory tree by
 `--shapshot=path/to/the/directory` and/or a snapshot of a file by
