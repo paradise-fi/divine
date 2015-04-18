@@ -13,6 +13,7 @@ DIVINE 3.3.x
 - [3.3.2] Enable shared memory hashtable by default for parallel verification.
 - [3.3.2] Fix several bugs in combination of --shared with --compression.
 - [3.3.2] Make builds with assertions significantly faster (3x for LLVM in debug).
+- [3.3.2] Fix export of DESS files large than 2GB.
 
 DIVINE 3.2.x
 ============
