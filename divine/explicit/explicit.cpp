@@ -3,7 +3,7 @@
 #if ALG_EXPLICIT || GEN_EXPLICIT
 #include <divine/explicit/explicit.h>
 #include <divine/graph/probability.h>
-#include <divine/toolkit/pool.h> // align
+#include <brick-bitlevel.h> // align
 
 #include <ostream>
 
@@ -73,8 +73,10 @@ Explicit PrealocateHelper::operator()() {
     ASSERT( !_capabilities.has( Capability::Probability )
             || _labelSize == sizeof( graph::Probability ) );
 
-    int64_t nodeData = sizeof( int64_t ) * _nodes + align( _nodeDataSize, sizeof( int64_t ) );
-    int64_t flagNames = sizeof( int64_t ) * _flagCount + align( _flagStrings, sizeof( int64_t ) );
+    int64_t nodeData = sizeof( int64_t ) * _nodes +
+                    brick::bitlevel::align( _nodeDataSize, sizeof( int64_t ) );
+    int64_t flagNames = sizeof( int64_t ) * _flagCount +
+                    brick::bitlevel::align( _flagStrings, sizeof( int64_t ) );
 
     int64_t fileSize = sizeof( Header );
     if ( _capabilities.has( Capability::ForwardEdges ) )
