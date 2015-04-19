@@ -81,6 +81,7 @@ let
         cmdflags = [ "-DCMD_CC=${compilerPkg pkgs}/bin/cc"
                      "-DCMD_CXX=${compilerPkg pkgs}/bin/c++"
                      "-DCMD_CLANG=${(clang_runtime pkgs).clang}/bin/clang" ];
+        debug = if clang then [] else [ "-DCMAKE_CXX_FLAGS_DEBUG=-gsplit-dwarf" ];
         profile = if lib.eqStrings buildType "Debug" && !clang
                      then [ "-DDEV_GCOV=ON -DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
         compiler =    [ "-DCMAKE_CXX_COMPILER=${compilerPkg pkgs}/bin/c++"
@@ -89,7 +90,7 @@ let
        name = "divine-" + name + "_" + (lib.toLower buildType) + "_" + nicesys;
        src = jobs.tarball;
        buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which ] ++ inputs pkgs;
-       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ profile ++ flags;
+       cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ debug ++ profile ++ flags;
        dontStrip = true;
        checkPhase = ''
           NIX_BUILD=1 BATCH=1 make check
