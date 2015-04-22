@@ -47,7 +47,7 @@ let
   extra_rpms = [ "cmake" "redhat-rpm-config" "llvm-devel" "clang" "libxml2-devel" "boost-devel" "bison" "llvm-static" ];
 
   mkVM = { VM, extras, disk, mem ? 3072,
-           name, tarball ? jobs.tarball, extra_opts ? "" }: arch:
+           name, tarball ? jobs.tarball, extra_opts ? "-DMIN_INSTANCES_PER_FILE=8" }: arch:
      let flags = "-DCMAKE_BUILD_TYPE=${buildType} ${extra_opts}";
          nicesys = if lib.eqStrings arch "i386" then "x86" else
                       (if lib.eqStrings arch "x86_64" then "x64" else "unknown");
@@ -87,7 +87,8 @@ let
         profile = if lib.eqStrings buildType "Debug" && !clang
                      then [ "-DDEV_GCOV=ON -DGCOV=${pkgs.gcc.gcc}/bin/gcov" ] else [];
         compiler =    [ "-DCMAKE_CXX_COMPILER=${compilerPkg pkgs}/bin/c++"
-                        "-DCMAKE_C_COMPILER=${compilerPkg pkgs}/bin/cc" ];
+                        "-DCMAKE_C_COMPILER=${compilerPkg pkgs}/bin/cc"
+                        "-DMAX_INSTANCE_FILES_COUNT=200" "-DMIN_INSTANCES_PER_FILE=8" ];
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name + "_" + (lib.toLower buildType) + "_" + nicesys;
        inherit systems;
