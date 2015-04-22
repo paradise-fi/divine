@@ -626,10 +626,10 @@ struct Options {
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, filter, watch, flavourFilter;
     std::string flavour_envvar;
-    int timeout;
+    int timeout, total_timeout;
     Options() : verbose( false ), batch( false ), interactive( false ),
                 cont( false ), fatal_timeouts( false ), kmsg( false ),
-                timeout( 60 ) {}
+                timeout( 60 ), total_timeout( 3 * 3600 ) {}
 };
 
 struct TestProcess
@@ -987,8 +987,8 @@ struct Main {
                 die = 1;
             }
 
-            if ( time(0) - start > 3 * 3600 ) {
-                std::cerr << "3 hours passed, giving up..." << std::endl;
+            if ( time(0) - start > options.total_timeout ) {
+                std::cerr << "total timeout (" << options.total_timeout << "s) passed, giving up..." << std::endl;
                 die = 1;
             }
 
@@ -1121,6 +1121,9 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
 
     if ( args.has( "--timeout" ) )
         opt.timeout = atoi( args.opt( "--timeout" ).c_str() );
+
+    if ( args.has( "--total-timeout" ) )
+        opt.total_timeout = atoi( args.opt( "--total-timeout" ).c_str() );
 
     if ( args.has( "--kmsg" ) )
         opt.kmsg = true;
