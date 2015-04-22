@@ -54,6 +54,7 @@ let
    in (VM arch) {
      name = "divine";
      src = tarball;
+     systems = [];
      diskImage = ((builtins.getAttr (disk + arch) vmImgs) { extraPackages = extras; size = 14000; }) //
                  { name = name + "_" + (lib.toLower buildType) + "_" + nicesys; };
      CMAKE_FLAGS = flags;
@@ -73,7 +74,8 @@ let
               flags ? [],
               clang ? false,
               compilerPkg ? (pkgs: if clang then pkgs.clangSelf else pkgs.gcc),
-              clang_runtime ? (pkgs: pkgs.clang) # version of clang used in divine compile --llvm
+              clang_runtime ? (pkgs: pkgs.clang), # version of clang used in divine compile --llvm
+              systems ? []
             }: system:
     let pkgs = import nixpkgs { inherit system; };
         nicesys = if lib.eqStrings system "i686-linux" then "x86" else
@@ -88,6 +90,7 @@ let
                         "-DCMAKE_C_COMPILER=${compilerPkg pkgs}/bin/cc" ];
     in pkgs.releaseTools.nixBuild {
        name = "divine-" + name + "_" + (lib.toLower buildType) + "_" + nicesys;
+       inherit systems;
        src = jobs.tarball;
        buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which ] ++ inputs pkgs;
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ debug ++ profile ++ flags;
@@ -167,9 +170,10 @@ let
   in {
     gcc_min =   mk: mk { inputs = pkgs: []; };
     gcc_def   = mk: mk { inputs = allInGcc; };
-    gcc_all   = mk: mk { inputs = allInGcc; flags = allFlags; };
+    gcc_all   = mk: mk { inputs = allInGcc; flags = allFlags; systems = [ "x86_64-linux" ]; };
 
-    gcc49_all = mk: mk { inputs = allInGcc; flags = allFlags; compilerPkg = pkgs: pkgs.gcc49; };
+    gcc49_all = mk: mk { inputs = allInGcc; flags = allFlags; compilerPkg = pkgs: pkgs.gcc49;
+                         systems = [ "x86_64-linux" ]; };
 
     clang_min = mk: mk { inputs = pkgs: []; clang = true; };
     clang_def = mk: mk { inputs = allInClang; clang = true; };
@@ -187,7 +191,8 @@ let
   };
 
   mapsystems = systems: attrs: with ( pkgs.lib // builtins );
-    mapAttrs ( n: fun: listToAttrs ( map (sys: { name = sys; value = fun sys; }) systems ) ) attrs;
+      mapAttrs ( n: fun: listToAttrs ( filter ( a: any (s: a.name == s) a.value.systems || a.value.systems == [] )
+          ( map (sys: { name = sys; value = fun sys; }) systems ) ) ) attrs;
 
   namedbuild = build: name: fun: fun (attrs: build ({ "name" = name; } // attrs));
 
