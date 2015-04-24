@@ -177,8 +177,9 @@ let
                          systems = [ "x86_64-linux" ]; };
 
     clang_min = mk: mk { inputs = pkgs: []; clang = true; };
-    clang_def = mk: mk { inputs = allInClang; clang = true; };
-    clang_all = mk: mk { inputs = allInClang; flags = allFlags; clang = true; };
+    clang_def = mk: mk { inputs = allInClang; clang = true; systems = [ "x86_64-linux" ]; };
+    clang_all = mk: mk { inputs = allInClang; flags = allFlags; clang = true;
+                         systems = [ "x86_64-linux" ]; };
 
     gcc_llvm_33 =  gcc_llvm_vers "llvm_33" "clang_33";
     gcc_llvm_34 =  gcc_llvm_vers "llvm_34" "clang_34";
