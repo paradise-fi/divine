@@ -24,7 +24,7 @@ add_custom_target( functional
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/check .
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/run .
   COMMAND mkdir -p results
-  COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ./runner --flavours vanilla,part+none,shared+none,part+tree,shared+tree --total-timeout 18000 --timeout 600 --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
+  COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ./runner --flavours vanilla,part+none,shared+none,part+tree,shared+tree --total-timeout 28800 --timeout 600 --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
   DEPENDS runner
 )
 
