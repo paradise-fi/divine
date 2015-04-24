@@ -570,9 +570,9 @@ std::pair< Node, utils::String > Manager::_findDirectoryOfFile( utils::String na
     if ( !item )
         throw Error( ENOENT );
 
-    _checkGrants( item, Mode::XUSER );
     if ( !item->mode().isDirectory() )
         throw Error( ENOTDIR );
+    _checkGrants( item, Mode::XUSER );
     return { item, name };
 }
 
