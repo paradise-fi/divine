@@ -79,14 +79,14 @@
 #include "divine.h"
 
 LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
-LTL(exclusion, G(!(critical0 && critical1)));
+LTL(exclusion, G((critical0in -> (!critical1in W critical0out)) && (critical1in -> (!critical0in W critical1out))));
 
 #else                // native execution
 #define AP( x )
 
 #endif
 
-enum APs { wait0, critical0, wait1, critical1 };
+enum APs { wait0, critical0in, critical0out, wait1, critical1in, critical1out };
 
 // Protocol constants - do not change!
 #define OFF    255
@@ -142,10 +142,14 @@ void *fnc_thread( void *arg ) {
 
     // The critical section goes here...
     if ( id == 0 )
-        AP( critical0 );
+        AP( critical0in );
     if ( id == 1 )
-        AP( critical1 );
+        AP( critical1in );
     critical();
+    if ( id == 0 )
+        AP( critical0out );
+    if ( id == 1 )
+        AP( critical1out );
 
     owner = 0; // Leave the critical section.
 
@@ -178,7 +182,7 @@ void *fnc_timer( void *arg ) {
 int main() {
     timer = (int *) malloc( sizeof( int ) * NUM_OF_THREADS );
     if ( !timer )
-        return 1;
+        return 0;
 
     int i;
     pthread_t threads[NUM_OF_THREADS + 1];
