@@ -116,7 +116,7 @@ struct _LLVM : Common< Blob > {
                 }
 
                 while ( buchi_succs.size() > 1 ) {
-                    Blob b = this->pool().allocate( this->pool().size( n ) );
+                    Blob b = alloc.get( this->pool(), this->pool().size( n ) );
                     this->pool().copy( n, b );
                     this->flags( b ).buchi = buchi_succs.back();
                     buchi_succs.pop_back();
