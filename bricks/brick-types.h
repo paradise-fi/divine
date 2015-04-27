@@ -68,6 +68,9 @@ struct Unit {
 struct Preferred { CONSTEXPR Preferred() { } };
 struct NotPreferred { CONSTEXPR NotPreferred( Preferred ) {} };
 
+template< typename _T >
+struct Witness { using T = _T; };
+
 struct Comparable {
     typedef bool IsComparable;
 };
@@ -410,9 +413,6 @@ namespace _impl {
     struct In< Needle, T, Ts... > : std::integral_constant< bool,
         std::is_same< Needle, T >::value || In< Needle, Ts... >::value >
     { };
-
-    template< typename _T >
-    struct Witness { using T = _T; };
 
     template< typename, typename... >
     struct _OneConversion { };
