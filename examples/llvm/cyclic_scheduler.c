@@ -39,7 +39,7 @@
  *
  *         $ divine compile --llvm cyclic_scheduler.c
  *         $ divine verify -p assert cyclic_scheduler.bc -d
- *         $ divine verify -p deadlock cyclic_scheduler.bc -d
+ *         $ divine verify -p safety cyclic_scheduler.bc -d
  *
  *  - introducing a bug:
  *
@@ -77,11 +77,11 @@
 #include "divine.h"
 #endif
 
-int assigned = 0;
-int token = 0;
+volatile int assigned = 0;
+volatile int token = 0;
 
-int job[NUM_OF_CONSUMERS];
-int finished[NUM_OF_CONSUMERS];
+volatile int job[NUM_OF_CONSUMERS];
+volatile int finished[NUM_OF_CONSUMERS];
 
 void *consumer( void *arg ) {
     intptr_t id = (intptr_t) arg;

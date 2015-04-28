@@ -28,7 +28,7 @@
  *
  *         $ divine compile --llvm global.c
  *         $ divine verify -p assert global.bc -d
- *         $ divine verify -p deadlock global.bc -d
+ *         $ divine verify -p safety global.bc -d
  *
  *  - introducing a bug:
  *
@@ -46,7 +46,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-int i = 33;
+volatile int i = 33;
 
 #ifndef BUG
 pthread_mutex_t mutex;

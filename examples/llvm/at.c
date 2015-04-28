@@ -55,8 +55,8 @@
  *
  *         $ divine compile --llvm at.c
  *         $ divine verify -p assert at.bc -d
- *         $ divine verify -p deadlock at.bc -d
- *         $ divine verify -p progress at.bc -f -d
+ *         $ divine verify -p safety at.bc -d
+ *         $ divine verify -p progress at.bc --fair -d
  *         $ divine verify -p exclusion at.bc -d
  *
  *  - introducing a bug:
@@ -98,25 +98,27 @@
 #ifdef __divine__    // verification
 #include "divine.h"
 
-LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
-LTL(exclusion, G(!(critical1 && critical2)));
+LTL(progress, G(wait1 -> F(critical1in)) && G(wait2 -> F(critical2in)));
+LTL(exclusion, G((critical1in -> (!critical2in W critical1out)) && (critical2in -> (!critical1in W critical2out))));
 
 #else                // native execution
 #define AP( x )
 
 #endif
 
-enum APs { wait1, critical1, wait2, critical2 };
+enum APs { wait1, critical1in, critical1out, wait2, critical2in, critical2out };
 
 // Protocol constants - do not change!
 #define OFF    255
 #define DELTA  1
 
-int *timer;
-intptr_t x, y = 0, z = 0;
-int finished = 0;
+volatile int timer[ NUM_OF_THREADS ];
+volatile intptr_t x, y = 0, z = 0;
+volatile int finished = 0;
 
-int _critical = 0;
+volatile int _critical = 0;
+
+
 
 void critical() {
     assert( !_critical );
@@ -169,10 +171,14 @@ void *fnc_thread( void *arg ) {
 
     // The critical section goes here...
     if ( id == 1 )
-        AP( critical1 );
+        AP( critical1in );
     if ( id == 2 )
-        AP( critical2 );
+        AP( critical2in );
     critical();
+    if ( id == 1 )
+        AP( critical1out );
+    if ( id == 2 )
+        AP( critical2out );
 
     z = 0; // Leave the critical section.
 #ifndef BUG2
@@ -207,20 +213,15 @@ void *fnc_timer( void *arg ) {
 }
 
 int main() {
-    timer = (int *) malloc( sizeof( int ) * NUM_OF_THREADS );
-    if ( !timer )
-        return 1;
-
-    int i;
     pthread_t threads[NUM_OF_THREADS + 1];
 
     pthread_create( &threads[0], 0, fnc_timer, NULL );
-    for ( i=1; i <= NUM_OF_THREADS; i++ ) {
+    for ( int i = 1; i <= NUM_OF_THREADS; i++ ) {
         timer[i-1] = OFF;
         pthread_create( &threads[i], 0, fnc_thread, ( void* )( intptr_t )( i ) );
     }
 
-    for ( i=1; i <= NUM_OF_THREADS; i++ ) {
+    for ( int i = 1; i <= NUM_OF_THREADS; i++ ) {
         pthread_join( threads[i], NULL );
     }
 

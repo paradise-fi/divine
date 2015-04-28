@@ -17,7 +17,7 @@
  *
  *       $ divine compile --llvm ring.cpp
  *       $ divine verify -p assert ring.bc -d
- *       $ divine verify -p deadlock ring.bc -d
+ *       $ divine verify -p safety ring.bc -d
  *
  * Execution
  * ---------

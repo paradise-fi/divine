@@ -46,16 +46,16 @@
  *
  *         $ divine compile --llvm --cflags="-std=c++11" elevator.cpp
  *         $ divine verify -p assert elevator.bc -d
- *         $ divine verify -p deadlock elevator.bc -d
+ *         $ divine verify -p safety elevator.bc -d
  *         $ divine verify -p exclusion elevator.bc -d
- *         $ divine verify -p progress_in elevator.bc -f -d
- *         $ divine verify -p progress_out elevator.bc -f -d
+ *         $ divine verify -p progress_in elevator.bc --fair -d
+ *         $ divine verify -p progress_out elevator.bc --fair -d
  *
  *  - customizing some parameters:
  *
  *         $ divine compile --llvm --cflags="-std=c++11 -DNUM_OF_PERSONS=5 -DNUM_OF_RIDES=-1" elevator.cpp
- *         $ divine verify -p progress_in elevator.bc -f -d
- *         $ divine verify -p progress_out elevator.bc -f -d
+ *         $ divine verify -p progress_in elevator.bc --fair -d
+ *         $ divine verify -p progress_out elevator.bc --fair -d
  *
  *  - changing the strategy:
  *
@@ -65,7 +65,7 @@
  * Execution
  * ---------
  *
- *       $ clang++ -std=c++11 -lpthread -lstdc++ -o elevator.exe elevator.cpp
+ *       $ clang++ -std=c++11 -lpthread -o elevator.exe elevator.cpp
  *       $ ./elevator.exe
  */
 
@@ -96,7 +96,7 @@
 #ifdef __divine__    // verification
 #include "divine.h"
 
-LTL(exclusion, G(!(in_elevator1 && in_elevator2)));
+LTL(exclusion, G((in_elevator1 -> (!in_elevator2 W out1)) && (in_elevator2 -> (!in_elevator1 W out2))));
 LTL(progress_in, G(waiting1 -> F(in_elevator1)));
 LTL(progress_out, G(in_elevator1 -> F(out1)));
 
@@ -130,7 +130,7 @@ void info( const T&... args) {
 #endif
 }
 
-enum APs { waiting1, in_elevator1, out1, in_elevator2 };
+enum APs { waiting1, in_elevator1, out1, in_elevator2, out2 };
 
 template< typename T, int size >
 struct Queue {
@@ -200,6 +200,8 @@ struct Elevator {
         info ( "Person ", who, " leaved the elevator." );
         if ( who == 1 )
             AP( out1 );
+        if ( who == 2 )
+            AP( out2 );
         going_to = 0;
         return dest;
     }

@@ -37,8 +37,8 @@
  *
  *         $ divine compile --llvm szymanski.cpp
  *         $ divine verify -p assert szymanski.bc -d
- *         $ divine verify -p deadlock szymanski.bc -d
- *         $ divine verify -p progress szymanski.bc -f -d
+ *         $ divine verify -p safety szymanski.bc -d
+ *         $ divine verify -p progress szymanski.bc --fair -d
  *         $ divine verify -p exclusion szymanski.bc -d
  *
  *  - introducing a bug:
@@ -71,24 +71,24 @@
 #ifdef __divine__    // verification
 #include "divine.h"
 
-LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
-LTL(exclusion, G(!(critical0 && critical1)));
+LTL(progress, G(wait0 -> F(critical0in)) && G(wait1 -> F(critical1in)));
+LTL(exclusion, G((critical0in -> (!critical1in W critical0out)) && (critical1in -> (!critical0in W critical1out))));
 
 #else                // native execution
 #define AP( x )
 
 #endif
 
-enum APs { wait0, critical0, wait1, critical1 };
+enum APs { wait0, critical0in, critical0out, wait1, critical1in, critical1out };
 
 typedef enum { non_participant    = 1,
                outside            = 2,
                waiting_for_others = 4,
                at_doorway         = 8,
                at_critical        = 16 } Flag;
-Flag *flags;
+volatile Flag flags[ NUM_OF_THREADS ];
 
-int _critical = 0;
+volatile int _critical = 0;
 
 void critical() {
     assert( !_critical );
@@ -139,10 +139,14 @@ void *thread( void *arg ) {
 
     // Critical section.
     if ( id == 0 )
-        AP( critical0 );
+        AP( critical0in );
     if ( id == 1 )
-        AP( critical1 );
+        AP( critical1in );
     critical();
+    if ( id == 0 )
+        AP( critical0out );
+    if ( id == 1 )
+        AP( critical1out );
 
     // Ensure that everyone in the waiting room has realized that the door is supposed to be closed.
     wait( all, non_participant | outside | at_critical, id+1, NUM_OF_THREADS );
@@ -151,21 +155,17 @@ void *thread( void *arg ) {
 }
 
 int main() {
-    flags = reinterpret_cast< Flag * >( malloc( sizeof( Flag ) * NUM_OF_THREADS ) );
-    if ( !flags )
-        return 1;
 
-    int i;
-    for ( i = 0; i < NUM_OF_THREADS; i++ )
+    for ( int i = 0; i < NUM_OF_THREADS; i++ )
         flags[i] = non_participant;
 
     pthread_t threads[NUM_OF_THREADS];
 
-    for ( i=0; i < NUM_OF_THREADS; i++ ) {
+    for ( int i = 0; i < NUM_OF_THREADS; i++ ) {
         pthread_create( &threads[i], 0, thread, reinterpret_cast< void* >( i ) );
     }
 
-    for ( i=0; i < NUM_OF_THREADS; i++ ) {
+    for ( int i = 0; i < NUM_OF_THREADS; i++ ) {
         pthread_join( threads[i], NULL );
     }
     return 0;

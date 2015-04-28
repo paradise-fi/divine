@@ -42,9 +42,9 @@
  *
  *         $ divine compile --llvm bakery.c
  *         $ divine verify -p assert bakery.bc -d
- *         $ divine verify -p deadlock bakery.bc -d
+ *         $ divine verify -p safety bakery.bc -d
  *         $ divine verify -p exclusion bakery.bc -d
- *         $ divine verify -p progress bakery.bc -f -d
+ *         $ divine verify -p progress bakery.bc --fair -d
  *
  *  - introducing a bug:
  *
@@ -76,17 +76,17 @@
 #ifdef __divine__    // verification
 #include "divine.h"
 
-LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
-LTL(exclusion, G(!(critical0 && critical1)));
+LTL(progress, G(wait0 -> F(critical0in)) && G(wait1 -> F(critical1in)));
+LTL(exclusion, G((critical0in -> (!critical1in W critical0out)) && (critical1in -> (!critical0in W critical1out))));
 
 #else                // native execution
 #define AP( x )
 
 #endif
 
-enum APs { wait0, critical0, wait1, critical1 };
+enum APs { wait0, critical0in, critical0out, wait1, critical1in, critical1out };
 
-int _critical = 0;
+volatile int _critical = 0;
 
 void critical() {
     assert( !_critical );
@@ -95,8 +95,8 @@ void critical() {
     _critical = 0;
 }
 
-int choosing[NUM_OF_THREADS];
-int number[NUM_OF_THREADS];
+volatile int choosing[NUM_OF_THREADS];
+volatile int number[NUM_OF_THREADS];
 
 void lock( intptr_t id ) {
     int max = 0;
@@ -137,10 +137,14 @@ void *thread( void *arg ) {
 
     // The critical section goes here...
     if ( id == 0 )
-        AP( critical0 );
+        AP( critical0in );
     if ( id == 1 )
-        AP( critical1 );
+        AP( critical1in );
     critical();
+    if ( id == 0 )
+        AP( critical0out );
+    if ( id == 1 )
+        AP( critical1out );
 
     unlock(id);
 

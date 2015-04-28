@@ -81,14 +81,14 @@ int times[] = {5, 10, 20, 25, 30, 30, 40, 45};
 #include <assert.h>
 #include <pthread.h>
 
-int total_time = 0; // Elapsed time.
+volatile int total_time = 0; // Elapsed time.
 
 // Soldiers go from left to right.
-int right = 0;  // How many of them is on the right side.
+volatile int right = 0;  // How many of them is on the right side.
 
 // Where are/is soldiers/torch? left = 0, right = 1
-int where[N];
-int where_is_torch = 0;
+volatile int where[N];
+volatile int where_is_torch = 0;
 
 int main() {
     int i,j;

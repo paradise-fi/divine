@@ -33,19 +33,19 @@
  *
  *         $ divine compile --llvm pthread_rwlock.c
  *         $ divine verify -p assert pthread_rwlock.bc -d
- *         $ divine verify -p deadlock pthread_rwlock.bc -d
+ *         $ divine verify -p safety pthread_rwlock.bc -d
  *
  *  - customizing the number of threads:
  *
  *         $ divine compile --llvm --cflags="-DNUM_OF_READERS=3 -DNUM_OF_WRITERS=4" pthread_rwlock.c
  *         $ divine verify -p assert pthread_rwlock.bc -d
- *         $ divine verify -p deadlock pthread_rwlock.bc -d
+ *         $ divine verify -p safety pthread_rwlock.bc -d
  *
  *  - configuring the stream of exchanged data between writers and readers:
  *
  *         $ divine compile --llvm --cflags="-DINITIAL=0 -DEOF=20" pthread_rwlock.c
  *         $ divine verify -p assert pthread_rwlock.bc -d
- *         $ divine verify -p deadlock pthread_rwlock.bc -d
+ *         $ divine verify -p safety pthread_rwlock.bc -d
  *
  * Execution
  * ---------
@@ -80,10 +80,10 @@
 #define VERIFY_RWLOCK
 #endif
 
-int global = INITIAL;
-int writers = 0;
-int readers = 0;
-int ready_readers = 0;
+volatile int global = INITIAL;
+volatile int writers = 0;
+volatile int readers = 0;
+volatile int ready_readers = 0;
 pthread_mutex_t mutex; // mutex for readers
 pthread_rwlock_t rwlock;
 

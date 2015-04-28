@@ -25,7 +25,7 @@
  *
  *         $ divine compile --llvm pthread_showcase.cpp
  *         $ divine verify -p assert pthread_showcase.bc -d
- *         $ divine verify -p deadlock pthread_showcase.bc -d
+ *         $ divine verify -p safety pthread_showcase.bc -d
  *
  *  - changing the number of threads:
  *

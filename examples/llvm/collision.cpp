@@ -68,7 +68,7 @@
  *
  *         $ divine compile --llvm --cflags="-std=c++11" collision.cpp
  *         $ divine verify -p assert collision.bc -d
- *         $ divine verify -p deadlock collision.bc -d
+ *         $ divine verify -p safety collision.bc -d
  *
  *  - introducing a bug:
  *
@@ -83,7 +83,7 @@
  * Execution
  * ---------
  *
- *       $ clang++ -std=c++11 -lpthread -lstdc++ -o collision.exe collision.cpp
+ *       $ clang++ -std=c++11 -lpthread -o collision.exe collision.cpp
  *       $ ./collision.exe
  */
 

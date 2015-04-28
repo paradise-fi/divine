@@ -74,8 +74,8 @@
  *
  *         $ divine compile --llvm --cflags="-std=c++11" leader-unicircle_peterson.cpp
  *         $ divine verify -p assert leader-unicircle_peterson.bc -d
- *         $ divine verify -p deadlock leader-unicircle_peterson.bc -d
- *         $ divine verify -p progress leader-unicircle_peterson.bc -f -d
+ *         $ divine verify -p safety leader-unicircle_peterson.bc -d
+ *         $ divine verify -p progress leader-unicircle_peterson.bc --fair -d
  *
  *  - introducing a bug:
  *
@@ -85,13 +85,13 @@
  *  - customizing the number of processes and the distribution of IDs:
  *
  *         $ divine compile --llvm --cflags="-std=c++11 -DNUM_OF_PROCESSES=4 -DPIDS=\"{2, 3, 4, 1}\"" leader-unicircle_peterson.cpp
- *         $ divine verify -p progress leader-unicircle_peterson.bc -f -d
+ *         $ divine verify -p progress leader-unicircle_peterson.bc --fair -d
  *         $ divine verify -p assert leader-unicircle_peterson.bc -d
  *
  * Execution
  * ---------
  *
- *       $ clang++ -std=c++11 -lpthread -lstdc++ -o leader-unicircle_peterson.exe leader-unicircle_peterson.cpp
+ *       $ clang++ -std=c++11 -lpthread -o leader-unicircle_peterson.exe leader-unicircle_peterson.cpp
  *       $ ./leader-unicircle_peterson.exe
  */
 
@@ -157,7 +157,7 @@ void info( const T&... args) {
 
 enum APs { elected };
 
-int chef = -1;
+volatile int chef = -1;
 
 void leader( int who ) { // Elected process should run this once.
     assert( chef == -1 );

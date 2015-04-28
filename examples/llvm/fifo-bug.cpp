@@ -22,7 +22,7 @@
  *
  *       $ divine compile --llvm fifo.cpp
  *       $ divine verify -p assert fifo.bc -d
- *       $ divine deadlock -p assert fifo.bc -d
+ *       $ divine safety -p assert fifo.bc -d
  *
  * Execution
  * ---------

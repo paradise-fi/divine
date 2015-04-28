@@ -51,7 +51,7 @@
  *
  *         $ divine compile --llvm --cflags="-std=c++11" airlines.cpp
  *         $ divine verify -p assert airlines.bc -d
- *         $ divine verify -p deadlock airlines.bc -d
+ *         $ divine verify -p safety airlines.bc -d
  *
  *  - introducing a bug:
  *
@@ -66,11 +66,9 @@
  * Execution
  * ---------
  *
- *       $ clang++ -std=c++11 -lpthread -lstdc++ -o airlines.exe airlines.cpp
+ *       $ clang++ -std=c++11 -lpthread -o airlines.exe airlines.cpp
  *       $ ./airlines.exe
  */
-
-// XXX: we do not provide operators _new_ and _delete_ yet
 
 // Number of ticket sellers.
 #ifndef NUM_OF_STHREADS

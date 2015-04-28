@@ -29,13 +29,13 @@
  *
  *         $ divine compile --llvm pthread_barrier.cpp
  *         $ divine verify -p assert pthread_barrier.bc -d
- *         $ divine verify -p deadlock pthread_barrier.bc -d
+ *         $ divine verify -p safety pthread_barrier.bc -d
  *
  *  - playing with the parameters:
  *
  *         $ divine compile --llvm --cflags="-DRELEASE_COUNT=5 -DPASS_COUNT=3" pthread_barrier.cpp
  *         $ divine verify -p assert pthread_barrier.bc -d
- *         $ divine verify -p deadlock pthread_barrier.bc -d
+ *         $ divine verify -p safety pthread_barrier.bc -d
  *
  * Execution
  * ---------
@@ -58,8 +58,8 @@
 
 #define NUM_OF_THREADS  ( RELEASE_COUNT * PASS_COUNT )
 
-unsigned count = 0;
-unsigned serial = 0;
+volatile unsigned count = 0;
+volatile unsigned serial = 0;
 
 pthread_mutex_t mutex;
 pthread_barrier_t barrier1, barrier2;

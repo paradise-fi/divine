@@ -54,8 +54,8 @@
  *
  *         $ divine compile --llvm --cflags="-std=c++11" elevator2.cpp
  *         $ divine verify -p assert elevator2.bc -d
- *         $ divine verify -p deadlock elevator2.bc -d
- *         $ divine verify -p property1 elevator2.bc -f -d
+ *         $ divine verify -p safety elevator2.bc -d
+ *         $ divine verify -p property1 elevator2.bc --fair -d
  *         $ divine verify -p property2 elevator2.bc -d
  *         $ divine verify -p property3 elevator2.bc -d
  *         $ divine verify -p property4 elevator2.bc -d
@@ -74,7 +74,7 @@
  * Execution
  * ---------
  *
- *       $ clang++ -std=c++11 -lpthread -lstdc++ -o elevator2.exe elevator2.cpp
+ *       $ clang++ -std=c++11 -lpthread -o elevator2.exe elevator2.cpp
  *       $ ./elevator2.exe
  */
 
@@ -101,18 +101,18 @@
 
 #ifdef __divine__    // verification
 #include "divine.h"
-\
+
 // If level 1 is requested, it is served eventually.
-LTL(property1, G(r1 -> (F(c1 && open))));
+LTL(property1, G(r1 -> (F(c1i -> (!c1o U open)))));
 
 // If level 1 is requested, it is served as soon as the cab passes.
-LTL(property2, G(r1 -> (!c1 U (c1 U (c1 && open)))));
+LTL(property2, G(r1 -> (!c1i U (c1i U (c1i -> (!c1o U open))))));
 
 // If level 1 is requested, the cab passes the level without serving it at most once.
-LTL(property3, G(r1 -> (!c1 U (c1 U (!c1 U (c1 U (c1 && open)))))));
+LTL(property3, G(r1 -> (!c1i U (c1i U (!c1i U (c1i U (c1i -> (!c1o U open))))))));
 
 // If level 2 is requested, the cab passes the level without serving it at most once.
-LTL(property4, G(r2 -> (!c2 U (c2 U (!c2 U (c2 U (c2 && open)))))));
+LTL(property4, G(r2 -> (!c2i U (c2i U (!c2i U (c2i U (c2i -> (!c2o U open))))))));
 
 // The cab will remain at level 1 forever from some moment.
 LTL(property5, F(G c1));
@@ -147,7 +147,7 @@ void info( const T&... args) {
 #endif
 }
 
-enum APs { r1, r2, c1, c2, open };
+enum APs { r1, r2, c1i, c1o, c2i, c2o, open };
 
 struct Elevator;
 
@@ -189,10 +189,14 @@ struct Elevator {
         assert( direction == 1 || direction == -1 );
         current += direction;
         assert( current >= 1 && current <= FLOORS );
-        if ( current == 1 )
-            AP( c1 );
-        if ( current == 2 )
-            AP( c2 );
+        if ( current == 1 ) {
+            AP( c1i );
+            AP( c1o );
+        }
+        if ( current == 2 ) {
+            AP( c2i );
+            AP( c2o );
+        }
     }
 
     void _adjust_req_count( int inc ) {

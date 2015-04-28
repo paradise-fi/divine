@@ -27,7 +27,7 @@
  *
  *         $ divine compile --llvm pthread_mutex.c
  *         $ divine verify -p assert pthread_mutex.bc -d
- *         $ divine verify -p deadlock pthread_mutex.bc -d
+ *         $ divine verify -p safety pthread_mutex.bc -d
  *
  *  - introducing a bug:
  *
@@ -46,7 +46,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-int _critical = 0;
+volatile int _critical = 0;
 
 void critical() {
     assert( !_critical );

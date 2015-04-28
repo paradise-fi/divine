@@ -43,8 +43,8 @@
  *
  *         $ divine compile --llvm fischer.c
  *         $ divine verify -p assert fischer.bc -d
- *         $ divine verify -p deadlock fischer.bc -d
- *         $ divine verify -p progress fischer.bc -f -d
+ *         $ divine verify -p safety fischer.bc -d
+ *         $ divine verify -p progress fischer.bc --fair -d
  *         $ divine verify -p exclusion fischer.bc -d
  *
  *  - introducing a bug:
@@ -78,7 +78,7 @@
 #ifdef __divine__    // verification
 #include "divine.h"
 
-LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
+LTL(progress, G(wait0 -> F(critical0in)) && G(wait1 -> F(critical1in)));
 LTL(exclusion, G((critical0in -> (!critical1in W critical0out)) && (critical1in -> (!critical0in W critical1out))));
 
 #else                // native execution
@@ -92,11 +92,11 @@ enum APs { wait0, critical0in, critical0out, wait1, critical1in, critical1out };
 #define OFF    255
 #define DELTA  1
 
-int *timer;
-intptr_t owner = 0;
-int finished = 0;
+volatile int timer[ NUM_OF_THREADS ];
+volatile intptr_t owner = 0;
+volatile int finished = 0;
 
-int _critical = 0;
+volatile int _critical = 0;
 
 void critical() {
     assert( !_critical );
@@ -180,20 +180,15 @@ void *fnc_timer( void *arg ) {
 }
 
 int main() {
-    timer = (int *) malloc( sizeof( int ) * NUM_OF_THREADS );
-    if ( !timer )
-        return 0;
-
-    int i;
-    pthread_t threads[NUM_OF_THREADS + 1];
+    pthread_t threads[ NUM_OF_THREADS + 1 ];
 
     pthread_create( &threads[0], 0, fnc_timer, NULL );
-    for ( i=1; i <= NUM_OF_THREADS; i++ ) {
-        timer[i-1] = OFF;
+    for ( int i = 1; i <= NUM_OF_THREADS; i++ ) {
+        timer[ i-1 ] = OFF;
         pthread_create( &threads[i], 0, fnc_thread, ( void* )( intptr_t )( i-1 ) );
     }
 
-    for ( i=1; i <= NUM_OF_THREADS; i++ ) {
+    for ( int i = 1; i <= NUM_OF_THREADS; i++ ) {
         pthread_join( threads[i], NULL );
     }
 

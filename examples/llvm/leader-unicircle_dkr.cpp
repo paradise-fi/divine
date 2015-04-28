@@ -70,24 +70,24 @@
  *
  *         $ divine compile --llvm --cflags="-std=c++11" leader-unicircle_dkr.cpp
  *         $ divine verify -p assert leader-unicircle_dkr.bc -d
- *         $ divine verify -p deadlock leader-unicircle_dkr.bc -d
- *         $ divine verify -p progress leader-unicircle_dkr.bc -f -d
+ *         $ divine verify -p safety leader-unicircle_dkr.bc -d
+ *         $ divine verify -p progress leader-unicircle_dkr.bc --fair -d
  *
  *  - introducing a bug:
  *
  *         $ divine compile --llvm --cflags="-std=c++11 -DBUG" leader-unicircle_dkr.cpp -o leader-unicircle_dkr-bug.bc
- *         $ divine verify -p deadlock leader-unicircle_dkr-bug.bc -d
+ *         $ divine verify -p safety leader-unicircle_dkr-bug.bc -d
  *
  *  - customizing the number of processes and the distribution of IDs:
  *
  *         $ divine compile --llvm --cflags="-std=c++11 -DNUM_OF_PROCESSES=3 -DPIDS=\"{2, 1, 3}\"" leader-unicircle_dkr.cpp
- *         $ divine verify -p progress leader-unicircle_dkr.bc -f -d
- *         $ divine verify -p deadlock leader-unicircle_dkr.bc -d
+ *         $ divine verify -p progress leader-unicircle_dkr.bc --fair -d
+ *         $ divine verify -p safety leader-unicircle_dkr.bc -d
  *
  * Execution
  * ---------
  *
- *       $ clang++ -std=c++11 -lpthread -lstdc++ -o leader-unicircle_dkr.exe leader-unicircle_dkr.cpp
+ *       $ clang++ -std=c++11 -lpthread -o leader-unicircle_dkr.exe leader-unicircle_dkr.cpp
  *       $ ./leader-unicircle_dkr.exe
  */
 
@@ -153,7 +153,7 @@ void info( const T&... args) {
 
 enum APs { elected };
 
-int chef = -1;
+volatile int chef = -1;
 
 void leader( int who ) { // Elected process should run this once.
     assert( chef == -1 );

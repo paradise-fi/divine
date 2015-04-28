@@ -74,19 +74,19 @@
  *
  *         $ divine compile --llvm lamport_nonatomic1.cpp
  *         $ divine verify -p assert lamport_nonatomic1.bc -d
- *         $ divine verify -p deadlock lamport_nonatomic1.bc -d
- *         $ divine verify -p progress lamport_nonatomic1.bc -f -d
+ *         $ divine verify -p safety lamport_nonatomic1.bc -d
+ *         $ divine verify -p progress lamport_nonatomic1.bc --fair -d
  *         $ divine verify -p exclusion lamport_nonatomic1.bc -d
  *
  *  - introducing a bug:
  *
  *         $ divine compile --llvm --cflags="-DBUG" lamport_nonatomic1.cpp -o lamport_nonatomic1-bug.bc
- *         $ divine verify -p deadlock lamport_nonatomic1-bug.bc -d
+ *         $ divine verify -p safety lamport_nonatomic1-bug.bc -d
  *
  *  - customizing the number of threads:
  *
  *         $ divine compile --llvm --cflags="-DNUM_OF_THREADS=5" lamport_nonatomic1.cpp
- *         $ divine verify -p progress lamport_nonatomic1.bc -f -d
+ *         $ divine verify -p progress lamport_nonatomic1.bc --fair -d
  *         $ divine verify -p exclusion lamport_nonatomic1.bc -d
  *
  * Execution
@@ -107,8 +107,8 @@
 #ifdef __divine__    // verification
 #include "divine.h"
 
-LTL(progress, G(wait0 -> F(critical0)) && G(wait1 -> F(critical1)));
-LTL(exclusion, G(!(critical0 && critical1)));
+LTL(progress, G(wait0 -> F(critical0in)) && G(wait1 -> F(critical1in)));
+LTL(exclusion, G((critical0in -> (!critical1in W critical0out)) && (critical1in -> (!critical0in W critical1out))));
 
 #else                // native execution
 #define AP( x )
@@ -117,9 +117,9 @@ LTL(exclusion, G(!(critical0 && critical1)));
 
 #endif
 
-enum APs { wait0, critical0, wait1, critical1 };
+enum APs { wait0, critical0in, critical0out, wait1, critical1in, critical1out };
 
-int _critical = 0;
+volatile int _critical = 0;
 
 void critical() {
     assert( !_critical );
@@ -179,10 +179,14 @@ void *thread( void *arg ) {
 
     // The critical section goes here...
     if ( id == 0 )
-        AP( critical0 );
+        AP( critical0in );
     if ( id == 1 )
-        AP( critical1 );
+        AP( critical1in );
     critical();
+    if ( id == 0 )
+        AP( critical0out );
+    if ( id == 1 )
+        AP( critical1out );
 
     // Leave the critical section.
     entering[id].write( false );
@@ -190,14 +194,13 @@ void *thread( void *arg ) {
 }
 
 int main() {
-    int i;
     pthread_t threads[NUM_OF_THREADS];
 
-    for ( i = 0; i < NUM_OF_THREADS; i++ ) {
+    for ( int i = 0; i < NUM_OF_THREADS; i++ ) {
         pthread_create( &threads[i], 0, thread, reinterpret_cast< void* >( i ) );
     }
 
-    for ( i = 0; i < NUM_OF_THREADS; i++ ) {
+    for ( int i = 0; i < NUM_OF_THREADS; i++ ) {
         pthread_join( threads[i], NULL );
     }
     return 0;

@@ -57,8 +57,8 @@
  *
  *         $ divine compile --llvm anderson.c
  *         $ divine verify -p assert anderson.bc -d
- *         $ divine verify -p deadlock anderson.bc -d
- *         $ divine verify -p progress anderson.bc -f -d
+ *         $ divine verify -p safety anderson.bc -d
+ *         $ divine verify -p progress anderson.bc --fair -d
  *         $ divine verify -p exclusion anderson.bc -d
  *
  *  - introducing a bug:
@@ -91,20 +91,20 @@
 #ifdef __divine__    // verification
 #include "divine.h"
 
-LTL(progress, G(wait1 -> F(critical1)) && G(wait2 -> F(critical2)));
-LTL(exclusion, G(!(critical1 && critical2)));
+LTL(progress, G(wait1 -> F(critical1in)) && G(wait2 -> F(critical2in)));
+LTL(exclusion, G((critical1in -> (!critical2in W critical1out)) && (critical2in -> (!critical1in W critical2out))));
 
 #else                // native execution
 #define AP( x )
 
 #endif
 
-enum APs { wait1, critical1, wait2, critical2 };
+enum APs { wait1, critical1in, critical1out, wait2, critical2in, critical2out };
 
-int *slot;
-int next = 0;
+volatile int slot[ NUM_OF_THREADS ];
+volatile int next = 0;
 
-int _critical = 0;
+volatile int _critical = 0;
 
 void critical() {
     assert( !_critical );
@@ -154,10 +154,14 @@ void *thread( void *arg ) {
 
     // The critical section goes here...
     if ( id == 1 )
-        AP( critical1 );
+        AP( critical1in );
     if ( id == 2 )
-        AP( critical2 );
+        AP( critical2in );
     critical();
+    if ( id == 1 )
+        AP( critical1out );
+    if ( id == 2 )
+        AP( critical2out );
 
     slot[( my_place + 1 ) % NUM_OF_THREADS] = 1;
 
@@ -165,24 +169,20 @@ void *thread( void *arg ) {
 }
 
 int main() {
-    slot = (int *) malloc( sizeof( int ) * NUM_OF_THREADS );
-    if ( !slot )
-        return 1;
 
     if ( NUM_OF_THREADS > 0 )
         slot[0] = 1;
 
-    int i;
-    for ( i = 1; i < NUM_OF_THREADS; i++ )
+    for ( int i = 1; i < NUM_OF_THREADS; i++ )
         slot[i] = 0;
 
     pthread_t threads[NUM_OF_THREADS];
 
-    for ( i=0; i < NUM_OF_THREADS; i++ ) {
+    for ( int i = 0; i < NUM_OF_THREADS; i++ ) {
         pthread_create( &threads[i], 0, thread, ( void * )( intptr_t )( i+1 ) ) ;
     }
 
-    for ( i=0; i < NUM_OF_THREADS; i++ ) {
+    for ( int i = 0; i < NUM_OF_THREADS; i++ ) {
         pthread_join( threads[i], NULL );
     }
 

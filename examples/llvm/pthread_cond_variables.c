@@ -53,13 +53,13 @@
  *
  *         $ divine compile --llvm pthread_cond_variables.c
  *         $ divine verify -p assert pthread_cond_variables.bc -d
- *         $ divine verify -p deadlock pthread_cond_variables.bc -d
+ *         $ divine verify -p safety pthread_cond_variables.bc -d
  *
  *  - playing with the parameters:
  *
  *         $ divine compile --llvm --cflags="-DNUM_OF_CONSUMERS=4 -DNUM_OF_ITEMS_TO_PROCESS=8" pthread_cond_variables.c
  *         $ divine verify -p assert pthread_cond_variables.bc -d
- *         $ divine verify -p deadlock pthread_cond_variables.bc -d
+ *         $ divine verify -p safety pthread_cond_variables.bc -d
  *
  * Execution
  * ---------
@@ -97,7 +97,7 @@ void *consumer( void *arg )
     while ( 1 ) {
 
         pthread_mutex_lock( &queue_mutex );
-        
+
 #ifdef BUG
         if ( dequeued < NUM_OF_ITEMS_TO_PROCESS && enqueued == 0 ) {
 #else // correct
@@ -115,7 +115,7 @@ void *consumer( void *arg )
         if ( dequeued == NUM_OF_ITEMS_TO_PROCESS ) {
             pthread_mutex_unlock( &queue_mutex );
             break;
-        } 
+        }
 
         // dequeue
         assert( enqueued > 0 ); // fails if macro BUG is defined
