@@ -113,7 +113,7 @@ struct NTreeHashSet
             const int32_t count = self().forkcount( p, slack );
             ASSERT_LEQ( 1, count );
             for ( int32_t i = 0; i < count; ++i )
-                yield( self().forkdata( p )[ i ] );
+                yield( self().forkdata( p, slack )[ i ] );
         }
 
         // emit all leafs until false is returned from yield
@@ -153,7 +153,7 @@ struct NTreeHashSet
         int32_t forkcount( Pool &p, int32_t = 0 ) {
             return p.size( this->unwrap() ) / sizeof( LeafOr< Fork > );
         }
-        LeafOr< Fork > *forkdata( Pool &p ) {
+        LeafOr< Fork > *forkdata( Pool &p, int32_t /* only for consistency with root */ = 0) {
             return p.dereference< LeafOrFork >( this->unwrap() );
         }
         explicit operator bool() { return !!this->unwrap(); }
@@ -166,24 +166,22 @@ struct NTreeHashSet
 
         Root() noexcept {}
         explicit Root( T b ) noexcept : types::NewType< T >( b ) {}
+
         int32_t forkcount( Pool &p, int32_t slack ) {
             ASSERT_EQ( 0, dataSize( p, slack ) % int( sizeof( LeafOrFork ) ) );
             return dataSize( p, slack ) / sizeof( LeafOrFork );
         }
-        char *rawdata( Pool &p ) { return p.dereference( b() ); }
+        char *rawdata( Pool &p, int32_t slack ) { return p.dereference( b() ) + slack; }
 
         explicit operator bool() { return !!this->unwrap(); }
 
-        LeafOrFork *forkdata( Pool &p ) {
-            return reinterpret_cast< LeafOrFork *> ( rawdata( p ) );
+        LeafOrFork *forkdata( Pool &p, int32_t slack ) {
+            return reinterpret_cast< LeafOrFork *> ( rawdata( p, slack ) );
         }
 
         int32_t dataSize( Pool &p, int32_t slack ) { return p.size( b() ) - slack; }
-        int32_t slackoffset( Pool &p, int32_t slack ) { return dataSize( p, slack ); }
 
-        char *slack( Pool &p, int32_t slack ) {
-            return rawdata( p ) + slackoffset( p, slack );
-        }
+        char *slack( Pool &p ) { return p.dereference( b() ); }
 
         template< typename Alloc >
         T reassemble( Alloc alloc, Pool& p, int32_t slacksize )
@@ -199,7 +197,7 @@ struct NTreeHashSet
                     return true; // demand all
                 } );
 
-            char* slackptr = slack( p, slacksize );
+            char* slackptr = slack( p );
             size += slacksize;
             T out = alloc.get( p, size );
             char* outptr = p.dereference( out );
@@ -218,9 +216,8 @@ struct NTreeHashSet
             const uintptr_t size = slack + sizeof( LeafOrFork ) * children;
             Root root;
             root.unwrap() = pool.allocate( size );
-            std::memset( root.rawdata( pool ), 0, sizeof( LeafOrFork ) * children );
-            std::memcpy( pool.dereference( root.unwrap() ) + size - slack,
-                         pool.dereference( it ), slack );
+            std::memset( root.rawdata( pool, slack ), 0, sizeof( LeafOrFork ) * children );
+            std::memcpy( root.slack( pool ), pool.dereference( it ), slack );
             return root;
         }
     };
@@ -262,7 +259,7 @@ struct NTreeHashSet
 
             int32_t s1 = pool().size( r1.unwrap() );
             int32_t s2 = pool().size( r2.unwrap() );
-            return s1 == s2 && pool().equal( r1.unwrap(), r2.unwrap(), 0, s1 - slack() );
+            return s1 == s2 && pool().equal( r1.unwrap(), r2.unwrap(), slack() );
 
             /*
              * Note on root equality: Leaves and forks are cononical, that is
@@ -411,7 +408,7 @@ struct NTreeHashSet
             LeafOrFork *forkdata() {
                 ASSERT( !stack.empty() );
                 return stack.size() == 1 ?
-                       root.forkdata( td.pool() ) :
+                       root.forkdata( td.pool(), d.slack ) :
                        fork().forkdata( td.pool() );
             }
 
@@ -478,7 +475,7 @@ struct NTreeHashSet
                     ASSERT_EQ( current, td.pool().dereference( item ) + d.slack );
 
                     root = Root::create( item, 1, d.slack, td.pool() );
-                    root.forkdata( td.pool() )[ 0 ] =
+                    root.forkdata( td.pool(), d.slack )[ 0 ] =
                             insert( d.leaves, td.leaves, Leaf( length, current, td.pool() ) );
                 } else {
                     target() = insert( d.leaves, td.leaves,
@@ -838,7 +835,7 @@ struct TestNTreeHashSet {
     void basic() {
         TestBase< Generator, slack > test;
         auto derefslack UNUSED = [&]( BlobSet::Root r ) {
-            return reinterpret_cast< uint32_t * >( r.slack( test.pool(), slack ) )[ 0 ];
+            return reinterpret_cast< uint32_t * >( r.slack( test.pool() ) )[ 0 ];
         };
 
         ASSERT_EQ( test._set.slack(), slack );

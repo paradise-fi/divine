@@ -696,7 +696,7 @@ struct NTreeStore
 
     template< typename T = char >
     T *extension( Handle h ) {
-        return reinterpret_cast< T* >( Root( h.b ).slack( this->pool(), this->slack() ) );
+        return reinterpret_cast< T* >( Root( h.b ).slack( this->pool() ) );
     }
 
     STORE_ITERATOR;
