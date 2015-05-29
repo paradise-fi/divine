@@ -174,7 +174,7 @@ void Manager::accessAt( int dirfd, utils::String name, Flags< flags::Access > mo
 
     Node item = findDirectoryItem( name, !fl.has( flags::At::SymNofollow ) );
     if ( !item )
-        throw Error( EACCES );
+        throw Error( ENOENT );
 
     if ( ( mode.has( flags::Access::Read ) && !item->mode().userRead() ) ||
          ( mode.has( flags::Access::Write ) && !item->mode().userWrite() ) ||
