@@ -131,8 +131,7 @@ struct LtlCE {
 
         int succnum = 0;
         Node parent = shared().ce.parent;
-        g().allSuccessors( LongTerm(),
-            parent, [&]( Node n, Label ) {
+        g().allSuccessors( LongTerm(), s.fetch( parent ).value(), [&]( Node n, Label ) {
                 if ( this->shared().ce.current_updated )
                     return;
                 ++succnum;
@@ -159,8 +158,7 @@ struct LtlCE {
         return res;
     }
 
-    template< typename Store >
-    Node getInitialById( int id, Store &s ) {
+    Node getInitialById( int id ) {
         int i = 0;
         Node init;
         g().initials( LongTerm(), [&]( Node, Node o, Label ) {
@@ -382,7 +380,7 @@ struct LtlCE {
         switch ( TT::value ) {
             case TraceType::Linear: {
                 ASSERT_NEQ( shared().ce.successor_id, 0 );
-                Node initial = getInitialById( shared().ce.successor_id, a.store() );
+                Node initial = getInitialById( shared().ce.successor_id );
                 ASSERT( a.pool().valid( initial ) );
                 shared().ce.parent = initial;
                 trace.push_back( initial );
@@ -451,7 +449,7 @@ struct LtlCE {
         for ( ++hTraceBegin; hTraceBegin != hTraceEnd; ++hTraceBegin ) {
             int i = 0;
             bool done = false;
-            a.graph().allSuccessors( LongTerm(), parent, [&]( Node t, Label ) {
+            a.graph().allSuccessors( LongTerm(), a.store().fetch( parent ).value(), [&]( Node t, Label ) {
                     if ( done )
                         return;
                     ++i;

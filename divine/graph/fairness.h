@@ -84,6 +84,11 @@ struct FairGraph : NonPORGraph< G, St > {
         }
     }
 
+    template< typename Alloc, typename Yield >
+    void allSuccessors( Alloc alloc, Vertex stV, Yield yield ) {
+        return successors( alloc, stV, yield );
+    }
+
     // only states in copy 0 can be accepting
     template< typename QueryFlags >
     graph::FlagVector stateFlags( Node s, QueryFlags qf ) {
