@@ -604,7 +604,7 @@ static const CMap< Key, SupportedBy > supportedBy = {
             Algorithm::GenExplicit } } },
 
     { Transform::POR,      And{ Generator::Dve, Not{ Algorithm::Info } } },
-    { Transform::Fairness, And{ Or{ Generator::Dve, Generator::LLVM, Generator::ProbabilisticLLVM },
+    { Transform::Fairness, And{ Or{ Generator::Dve, Generator::LLVM, Generator::ControlLLVM, Generator::ProbabilisticLLVM },
                                 Not{ Algorithm::Info } } },
 
     { Visitor::Shared, Not{ Or{ Algorithm::Simulate, Algorithm::Info } } },
