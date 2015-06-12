@@ -26,7 +26,6 @@ ProgramInfo::Value ProgramInfo::storeConstantR( ::llvm::Constant *C, bool &done 
 void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool global )
 {
     bool done = true;
-    size_t l = toInit.size();
 
     GlobalContext econtext( *this, TD, global );
     if ( auto CE = dyn_cast< ::llvm::ConstantExpr >( C ) ) {
