@@ -394,6 +394,10 @@ off_t Manager::lseek( int fd, off_t offset, Seek whence ) {
 }
 
 void Manager::truncate( Node inode, off_t length ) {
+    if ( !inode )
+        throw Error( ENOENT );
+    if ( length < 0 )
+        throw Error( EINVAL );
     if ( inode->mode().isDirectory() )
         throw Error( EISDIR );
     if ( !inode->mode().isFile() )
