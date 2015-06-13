@@ -12,7 +12,7 @@ namespace algorithm {
 
 template < typename Handle >
 struct OwctyShared {
-    size_t size, oldsize;
+    int64_t size, oldsize;
     Handle cycle_node;
     bool cycle_found;
     int iteration;
@@ -353,6 +353,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
         shared.size = 0;
         parallel( &This::_elimination );
         shared.oldsize = shared.size = shared.oldsize - totalSize();
+        ASSERT_LEQ( 0, shared.size );
     }
 
     struct FindCE : Visit< This, Setup > {
@@ -477,7 +478,7 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
 
     void run()
     {
-        size_t oldsize = 0;
+        int64_t oldsize = 0;
 
         result().fullyExplored = meta::Result::R::Yes;
         progress() << " initialise...\t\t    " << std::flush;
