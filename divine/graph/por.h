@@ -20,7 +20,7 @@ struct NonPORGraph : graph::Transform< G > {
     bool full( Vertex ) { return true; }
 
     template< typename Alloc, typename Yield >
-    void fullexpand( Alloc, Yield, Vertex ) { }
+    void fullexpand( Alloc, Vertex, Yield ) { }
 
     template< typename Algorithm >
     void _porEliminate( Algorithm & ) {}

@@ -187,7 +187,7 @@ struct PORGraph : graph::Transform< G > {
     void porExpand( Alloc alloc, Store& store, Yield yield )
     {
         for ( auto h : to_expand )
-            fullexpand( alloc, yield, store.vertex( h ) );
+            fullexpand( alloc, store.vertex( h ), yield );
     }
 
     /* This closure is used instead of lambda to work-around bug in clang 3.4
@@ -207,7 +207,7 @@ struct PORGraph : graph::Transform< G > {
     SuccInserter< Set > succInserter( Set &set ) { return SuccInserter< Set >( set ); }
 
     template< typename Alloc, typename Yield >
-    void fullexpand( Alloc alloc, Yield yield, Vertex v ) {
+    void fullexpand( Alloc alloc, Vertex v, Yield yield ) {
         extension( v ).full = true;
         BlobComparerLT bcomp( this->pool() );
         std::set< std::pair< Node, Label >, BlobComparerLT > all( bcomp ) , ample( bcomp ), out( bcomp );

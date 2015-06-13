@@ -118,10 +118,10 @@ struct NestedDFS : Algorithm, AlgorithmUtils< Setup >, Sequential
         while ( valid.load( std::memory_order_relaxed ) && !toexpand.empty() ) {
             auto from = this->store().vertex( toexpand.front() );
             if ( !this->graph().full( from ) )
-                this->graph().fullexpand( this->store().alloc, [&]( Vertex, Node t, Label ) {
+                this->graph().fullexpand( this->store().alloc, from, [&]( Vertex, Node t, Label ) {
                         visitor::DFV< Outer > visitor( *this, this->graph(), this->store() );
                         visitor.exploreFrom( t );
-                    }, from );
+                    } );
             toexpand.pop_front();
         }
 
