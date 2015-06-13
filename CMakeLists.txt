@@ -543,6 +543,10 @@ if( OPT_MURPHI )
   add_subdirectory( external/murphi )
 endif()
 
+if ( GEN_LLVM )
+  add_subdirectory( lart )
+endif()
+
 add_subdirectory( divine )
 add_subdirectory( tools )
 add_subdirectory( examples )

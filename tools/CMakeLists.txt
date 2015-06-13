@@ -10,7 +10,12 @@ set( COMBINE_M4 "${CMAKE_CURRENT_SOURCE_DIR}/combine.m4" )
 add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H}
                 $<TARGET_OBJECTS:libdivine-instances> )
 
+set_source_files_properties( lart.cpp PROPERTIES COMPILE_FLAGS -fno-rtti )
+add_executable( lart lart.cpp )
+
+target_link_libraries( lart liblart ${LLVM_LIBRARIES} )
 target_link_libraries( divine libdivine )
+
 if( OPT_MURPHI )
     target_link_libraries( divine murphi )
 endif()
