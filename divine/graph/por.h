@@ -37,12 +37,6 @@ struct NonPORGraph : graph::Transform< G > {
 
     template< typename Alloc, typename Yield >
     void porExpand( Alloc, St&, Yield ) {}
-
-
-    template< typename Alloc, typename Yield >
-    void successors( Alloc alloc, Vertex st, Yield yield ) {
-        this->base().successors( alloc, st.node(), yield );
-    }
 };
 
 }

@@ -131,7 +131,7 @@ struct LtlCE {
 
         int succnum = 0;
         Node parent = shared().ce.parent;
-        g().allSuccessors( LongTerm(), s.fetch( parent ).value(), [&]( Node n, Label ) {
+        g().allSuccessors( LongTerm(), parent, [&]( Node n, Label ) {
                 if ( this->shared().ce.current_updated )
                     return;
                 ++succnum;
@@ -449,7 +449,7 @@ struct LtlCE {
         for ( ++hTraceBegin; hTraceBegin != hTraceEnd; ++hTraceBegin ) {
             int i = 0;
             bool done = false;
-            a.graph().allSuccessors( LongTerm(), a.store().fetch( parent ).value(), [&]( Node t, Label ) {
+            a.graph().allSuccessors( LongTerm(), parent, [&]( Node t, Label ) {
                     if ( done )
                         return;
                     ++i;

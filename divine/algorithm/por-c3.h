@@ -48,6 +48,12 @@ struct PORGraph : graph::Transform< G > {
         return n.template extension< Extension >( m_algslack );
     }
 
+    // extension of Node should not be written to, as it might not be saved in
+    // hashset directly
+    const Extension &extension( Node n ) {
+        return this->pool().template get< Extension >( n, m_algslack );
+    }
+
     template < typename T >
     int predCount( T n ) {
         return extension( n ).predCount;
@@ -58,11 +64,11 @@ struct PORGraph : graph::Transform< G > {
     }
 
     template< typename Alloc, typename Yield >
-    void successors( Alloc alloc, Vertex st, Yield yield ) {
+    void successors( Alloc alloc, Node st, Yield yield ) {
         if ( extension( st ).full )
-            this->base().successors( alloc, st.node(), yield );
+            this->base().successors( alloc, st, yield );
         else
-            this->base().ample( alloc, st.node(), yield );
+            this->base().ample( alloc, st, yield );
     }
 
     void porTransition( Store &s, Vertex f, Vertex t ) {

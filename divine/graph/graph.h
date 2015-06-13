@@ -219,10 +219,10 @@ struct Transform {
     Pool &pool() { return base().pool(); }
     int slack() { return base().slack(); }
 
-    template< typename Alloc, typename Vertex, typename Yield >
-    void successors( Alloc a, Vertex st, Yield yield ) { base().successors( a, st.node(), yield ); }
-    template< typename Alloc, typename Vertex, typename Yield >
-    void allSuccessors( Alloc a, Vertex st, Yield yield ) { successors( a, st, yield ); }
+    template< typename Alloc, typename Yield >
+    void successors( Alloc a, Node st, Yield yield ) { base().successors( a, st, yield ); }
+    template< typename Alloc, typename Yield >
+    void allSuccessors( Alloc a, Node st, Yield yield ) { successors( a, st, yield ); }
     template< typename Alloc >
     void release( Alloc a, Node s ) { base().release( a, s ); }
     bool isDeadlock( Node s ) { return base().isDeadlock( s ); }

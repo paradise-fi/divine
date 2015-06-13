@@ -51,11 +51,10 @@ struct FairGraph : NonPORGraph< G, St > {
     }
 
     template< typename Alloc, typename Yield >
-    void successors( Alloc alloc, Vertex stV, Yield yield ) {
-        Node st = stV.node();
+    void successors( Alloc alloc, Node st, Yield yield ) {
         int procs = this->base().processCount( st );
 
-        int copy = extension( stV ).copy;
+        int copy = extension( st ).copy;
         bool accepting = !!this->base().stateFlags( st, graph::flags::isAccepting );
         ASSERT_LEQ( 0, copy );
         copy = std::min( copy, procs );
@@ -85,8 +84,8 @@ struct FairGraph : NonPORGraph< G, St > {
     }
 
     template< typename Alloc, typename Yield >
-    void allSuccessors( Alloc alloc, Vertex stV, Yield yield ) {
-        return successors( alloc, stV, yield );
+    void allSuccessors( Alloc alloc, Node st, Yield yield ) {
+        return successors( alloc, st, yield );
     }
 
     // only states in copy 0 can be accepting

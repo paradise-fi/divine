@@ -214,7 +214,7 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
                 break;
 
             int drop = trans[ i ] - 1;
-            this->graph().successors( LongTerm(), from, [&]( Node n, Label ) {
+            this->graph().successors( LongTerm(), from.node(), [&]( Node n, Label ) {
                     if ( drop > 0 ) {
                         -- drop;
                         return;
