@@ -13,7 +13,7 @@ add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H}
 if ( GEN_LLVM )
   set_source_files_properties( lart.cpp PROPERTIES COMPILE_FLAGS -fno-rtti )
   add_executable( lart lart.cpp )
-  target_link_libraries( lart liblart ${LLVM_LIBRARIES} )
+  target_link_libraries( lart liblart ${LLVM_LIBRARIES} pthread )
 endif()
 
 target_link_libraries( divine libdivine )
