@@ -548,8 +548,10 @@ Node Manager::_findDirectoryItem( utils::String name, bool followSymLinks, I ite
                 q.pop();
             }
             q.swap( _q );
-            if ( path::isAbsolute( sl->target() ) )
+            if ( path::isAbsolute( sl->target() ) ) {
                 current = _root;
+                item = _root;
+            }
             continue;
         }
         else {
