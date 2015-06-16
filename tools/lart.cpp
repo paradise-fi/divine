@@ -1,5 +1,6 @@
 #include <lart/aa/pass.h>
 #include <lart/abstract/pass.h>
+#include <lart/interference/pass.h>
 
 #include <iostream>
 #include <cassert>
@@ -63,6 +64,9 @@ ModulePass *mkPass( std::string n, std::string opt )
 
         return new abstract::Pass( t );
     }
+
+    if ( n == "interference" )
+        return new interference::Pass();
 
     throw std::runtime_error( "unknown pass type: " + n );
 }
