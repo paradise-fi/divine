@@ -1,4 +1,4 @@
-all check divine clean lcov-report install unit functional manual website:
+all check divine clean lcov-report install unit functional manual website lart:
 	$(MAKE) -C _build $(@)
 dist:
 	$(MAKE) -C _build package_source
@@ -7,4 +7,4 @@ dist:
 distclean:
 	rm -rf _build
 
-.PHONY: all check divine clean lcov-report install unit functional manual website
+.PHONY: all check divine clean lcov-report install unit functional manual website lart
