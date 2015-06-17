@@ -14,10 +14,14 @@ void *operator new( std::size_t count, const divine::fs::memory::nofail_t & ) no
 #ifdef __divine__
     return __divine_malloc( count );
 #else
-    return std::malloc( count );
+    return ::operator new( count );
 #endif
 }
 
 void *operator new[]( std::size_t count, const divine::fs::memory::nofail_t &nofail ) noexcept {
+#ifdef __divine__
     return ::operator new( count, nofail );
+#else
+    return ::operator new[]( count );
+#endif
 }

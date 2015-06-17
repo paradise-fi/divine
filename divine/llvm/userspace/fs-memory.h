@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <cstdlib>
+#include <limits>
 
 #include "divine.h"
 

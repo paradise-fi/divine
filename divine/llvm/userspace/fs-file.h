@@ -1,8 +1,6 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
 #include <algorithm>
-#include <divine.h>
-#include <divine/problem.h>
 
 #include "fs-utils.h"
 #include "fs-inode.h"

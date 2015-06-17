@@ -1,8 +1,6 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
 #include <memory>
-#include <divine.h>
-#include <divine/problem.h>
 
 #include "fs-utils.h"
 #include "fs-file.h"

@@ -575,7 +575,7 @@ int fchmod( int fd, mode_t mode ) {
         return -1;
     }
 }
-
+#if defined(__divine__)
 int alphasort( const struct dirent **a, const struct dirent **b ) {
     return std::strcoll( (*a)->d_name, (*b)->d_name );
 }
@@ -739,5 +739,5 @@ void seekdir( DIR *dirp, long offset ) {
         errno = e;
     }
 }
-
+#endif
 } // extern "C"
