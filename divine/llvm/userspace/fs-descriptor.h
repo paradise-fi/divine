@@ -133,15 +133,13 @@ struct PipeDescriptor : FileDescriptor {
         else if ( fl.has( flags::Open::Read ) ) {
             pipe->assignReader();
             while ( wait && !pipe->writer() ) {
-                __divine_interrupt_unmask();
-                __divine_interrupt_mask();
+                FS_MAKE_INTERRUPT();
             }
         }
         else if ( fl.has( flags::Open::Write ) ) {
             pipe->assignWriter();
             while ( wait && !pipe->reader() ) {
-                __divine_interrupt_unmask();
-                __divine_interrupt_mask();
+                FS_MAKE_INTERRUPT();
             }
         }
     }

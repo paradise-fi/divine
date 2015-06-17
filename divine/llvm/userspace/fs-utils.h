@@ -19,6 +19,27 @@
 #ifndef _FS_PATH_UTILS_H_
 #define _FS_PATH_UTILS_H_
 
+#ifdef __divine__
+# define FS_INTERRUPT()             __divine_interrupt()
+# define FS_ATOMIC_SECTION_BEGIN()  __divine_interrupt_mask()
+# define FS_ATOMIC_SECTION_END()    __divine_interrupt_unmask()
+#else
+# define FS_INTERRUPT()
+# define FS_ATOMIC_SECTION_BEGIN()
+# define FS_ATOMIC_SECTION_END()
+#endif
+
+#define FS_BREAK_MASK( command )            \
+    do {                                    \
+        FS_ATOMIC_SECTION_END();            \
+        command;                            \
+        FS_ATOMIC_SECTION_BEGIN();          \
+    } while( false )
+
+#define FS_MAKE_INTERRUPT()                 \
+    FS_BREAK_MASK( FS_INTERRUPT() )
+
+
 namespace divine {
 namespace fs {
 namespace utils {
