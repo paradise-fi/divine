@@ -374,16 +374,16 @@ off_t Manager::lseek( int fd, off_t offset, Seek whence ) {
         f->offset( offset );
         break;
     case Seek::Current:
-        if ( std::numeric_limits< size_t >::max() - f->offset() < offset )
+        if ( offset > 0 && std::numeric_limits< size_t >::max() - f->offset() < offset )
             throw Error( EOVERFLOW );
-        if ( offset < f->offset() )
+        if ( f->offset() < -offset )
             throw Error( EINVAL );
         f->offset( offset + f->offset() );
         break;
     case Seek::End:
-        if ( std::numeric_limits< size_t >::max() - f->size() < offset )
+        if ( offset > 0 && std::numeric_limits< size_t >::max() - f->size() < offset )
             throw Error( EOVERFLOW );
-        if ( f->size() < -offset )
+        if ( offset < 0 && f->size() < -offset )
             throw Error( EINVAL );
         f->offset( f->size() + offset );
         break;
