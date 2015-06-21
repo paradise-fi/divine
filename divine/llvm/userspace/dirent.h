@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
+#include <sys/types.h>
 
 #ifndef _DIRENT_H
 #define _DIRENT_H
