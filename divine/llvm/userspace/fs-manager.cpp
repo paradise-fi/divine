@@ -253,7 +253,7 @@ std::pair< int, int > Manager::pipe() {
     mode_t mode = Mode::RWXUSER | Mode::FIFO;
 
     Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
-    node->assign( new( memory::nofail ) Pipe( true, true ) );
+    node->assign( new( memory::nofail ) Pipe() );
     return {
         _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Read ) ),
         _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Write ) )

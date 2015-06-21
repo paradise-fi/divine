@@ -36,7 +36,7 @@ private:
 struct File : DataItem {
 
     virtual bool read( char *, size_t, size_t & ) = 0;
-    virtual bool write( const char *, size_t, size_t ) = 0;
+    virtual bool write( const char *, size_t, size_t & ) = 0;
 
     virtual void clear() = 0;
 
@@ -74,7 +74,7 @@ struct RegularFile : File {
         return true;
     }
 
-    bool write( const char *buffer, size_t offset, size_t length ) override {
+    bool write( const char *buffer, size_t offset, size_t &length ) override {
         if ( _isSnapshot() )
             _copyOnWrite();
 
@@ -126,7 +126,7 @@ struct WriteOnlyFile : public File {
     bool read( char *, size_t, size_t & ) override {
         return false;
     }
-    bool write( const char*, size_t, size_t ) override {
+    bool write( const char*, size_t, size_t & ) override {
         return true;
     }
     void clear() override {
@@ -150,10 +150,14 @@ struct Pipe : public File {
     }
 
     bool read( char *buffer, size_t, size_t &length ) override {
-        if ( length > _content.size() )
-            length = _content.size();
         if ( length == 0 )
             return true;
+
+        while ( size() == 0 )
+            FS_MAKE_INTERRUPT();
+
+        if ( length > _content.size() )
+            length = _content.size();
 
         auto b = _content.begin();
         auto e = b + length;
@@ -163,11 +167,18 @@ struct Pipe : public File {
         return true;
     }
 
-    bool write( const char *buffer, size_t, size_t length ) override {
+    bool write( const char *buffer, size_t, size_t &length ) override {
         if ( !_reader )
             /// TODO: raise SIGPIPE signal
             throw Error( EPIPE );
         size_t offset = _content.size();
+
+        while ( offset >= PIPE_SIZE_LIMIT )
+            FS_MAKE_INTERRUPT();
+
+        if ( offset + length > PIPE_SIZE_LIMIT )
+            length = PIPE_SIZE_LIMIT - offset;
+
         _content.resize( offset + length );
         std::copy( buffer, buffer + length, _content.begin() + offset );
         return true;

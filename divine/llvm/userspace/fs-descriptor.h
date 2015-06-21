@@ -33,7 +33,7 @@ struct FileDescriptor {
 
     virtual ~FileDescriptor() {}
 
-    long long read( void *buf, size_t length ) {
+    virtual long long read( void *buf, size_t length ) {
         if ( !_inode )
             throw Error( EBADF );
         if ( !_flags.has( flags::Open::Read ) )
@@ -54,7 +54,7 @@ struct FileDescriptor {
         return length;
     }
 
-    long long write( const void *buf, size_t length ) {
+    virtual long long write( const void *buf, size_t length ) {
         if ( !_inode )
             throw Error( EBADF );
         if ( !_flags.has( flags::Open::Write ) )
@@ -154,6 +154,28 @@ struct PipeDescriptor : FileDescriptor {
             pipe->releaseReader();
         }
     }
+
+    long long read( void *buf, size_t length ) override {
+        if ( !_inode )
+            throw Error( EBADF );
+        if ( !_flags.has( flags::Open::Read ) )
+            throw Error( EBADF );
+
+        File *file = _inode->data()->as< File >();
+        if ( !file )
+            throw Error( EBADF );
+
+        if ( length == 0 )
+            return 0;
+
+        char *dst = reinterpret_cast< char * >( buf );
+        if ( !file->read( dst, _offset, length ) )
+            throw Error( EBADF );
+
+        _offset += length;
+        return length;
+    }
+
     void offset( size_t off ) override {
         throw Error( EPIPE );
     }
