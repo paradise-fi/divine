@@ -415,17 +415,19 @@ void Manager::changeDirectory( utils::String pathname ) {
         throw Error( ENOENT );
     if ( !item->mode().isDirectory() )
         throw Error( ENOTDIR );
+    _checkGrants( item, Mode::XUSER );
+
     _currentDirectory = item;
 }
 
 void Manager::changeDirectory( int dirfd ) {
     Node item = getFile( dirfd )->inode();
-    _checkGrants( item, Mode::XUSER );
-
     if ( !item )
         throw Error( ENOENT );
     if ( !item->mode().isDirectory() )
         throw Error( ENOTDIR );
+    _checkGrants( item, Mode::XUSER );
+
     _currentDirectory = item;
 }
 
