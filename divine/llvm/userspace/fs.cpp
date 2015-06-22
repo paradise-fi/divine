@@ -709,11 +709,14 @@ int scandir( const char *path, struct dirent ***namelist,
             workingEntry = (struct dirent *)FS_MALLOC( sizeof( struct dirent ) );
             ++length;
         }
-
+        std::free( workingEntry );
         vfs.instance().closeDirectory( dirp );
+
         typedef int( *cmp )( const void *, const void * );
         std::qsort( entries, length, sizeof( struct dirent * ), reinterpret_cast< cmp >( compare ) );
-        return 0;
+
+        *namelist = entries;
+        return length;
     } catch ( Error & ) {
         if ( dirp )
             vfs.instance().closeDirectory( dirp );
