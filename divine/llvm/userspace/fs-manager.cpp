@@ -450,6 +450,9 @@ void Manager::chmod( int fd, mode_t mode ) {
 
 DirectoryDescriptor *Manager::openDirectory( int fd ) {
     Node inode = getFile( fd )->inode();
+    if ( !inode->mode().isDirectory() )
+        throw Error( ENOTDIR );
+
     _checkGrants( inode, Mode::RUSER | Mode::XUSER );
     _openDD.emplace_back( inode, fd );
     return &_openDD.back();
