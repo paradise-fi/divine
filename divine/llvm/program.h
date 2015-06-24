@@ -346,16 +346,8 @@ struct MemoryBits : BitPointer {
         U() : x() { }
     };
 
-    void set( MemoryFlag s ) {
-        U u; u.t = s;
-        bitcopy( BitPointer( &u.x ), *this, bitwidth );
-    }
-
-    MemoryFlag get() {
-        U u;
-        bitcopy( *this, BitPointer( &u.x ), bitwidth );
-        return u.t;
-    }
+    void set( MemoryFlag s ) { setUnsafe( uint32_t( s ), bitwidth ); }
+    MemoryFlag get() { return MemoryFlag( getUnsafe( bitwidth ) ); }
 
     MemoryBits &operator++() {
         shift( bitwidth );
