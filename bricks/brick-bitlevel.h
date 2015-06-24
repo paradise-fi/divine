@@ -7,6 +7,7 @@
 /*
  * (c) 2013-2014 Jiří Weiser <xweiser1@fi.muni.cz>
  * (c) 2013 Petr Ročkai <me@mornfall.net>
+ * (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
  */
 
 /* Redistribution and use in source and binary forms, with or without
@@ -41,10 +42,6 @@
 #elif !defined LITTLE_ENDIAN // if defined _WIN32
 #define BYTE_ORDER 1234
 #define LITTLE_ENDIAN 1234
-#endif
-
-#ifndef bswap_64
-#define bswap_64 __builtin_bswap64
 #endif
 
 #include <atomic>
@@ -144,28 +141,46 @@ static inline number withoutMSB( number x ) {
     return x & ~onlyMSB( x );
 }
 
-inline uint64_t bitshift( uint64_t t, int shift ) {
-#if BYTE_ORDER == LITTLE_ENDIAN
-    return bswap_64( shift < 0 ? bswap_64( t << -shift ) : bswap_64( t >> shift ) );
-#else
+inline constexpr uint64_t bitshift( uint64_t t, int shift ) {
     return shift < 0 ? ( t << -shift ) : ( t >> shift );
-#endif
+}
+
+inline constexpr uint64_t mask( int first, int count ) {
+    return (uint64_t(-1) << first) & (uint64_t(-1) >> (64 - first - count));
 }
 
 struct BitPointer {
+    using Storage = uint32_t;
+    static constexpr int storageBits = sizeof( Storage ) * 8;
+
     BitPointer() : base( nullptr ), _bitoffset( 0 ) {}
     template< typename T > BitPointer( T *t, int offset = 0 )
         : base( static_cast< void * >( t ) ), _bitoffset( offset )
     {
         normalize();
     }
-    uint32_t &word() { ASSERT( valid() ); return *static_cast< uint32_t * >( base ); }
-    uint64_t &dword() { ASSERT( valid() ); return *static_cast< uint64_t * >( base ); }
+
+    template< typename T >
+    T &ref() { ASSERT( valid() ); return *static_cast< T * >( base ); }
+    uint32_t &word() { return ref< uint32_t >(); }
+    uint64_t &dword() { return ref< uint64_t >(); }
+
+    // unsafe version does not cross word boundary
+    uint32_t getUnsafe( int bits ) { return _get< uint32_t >( bits ); }
+    uint32_t get( int bits ) {
+        return bits + _bitoffset <= 32 ? _get< uint32_t >( bits ) : _get< uint64_t >( bits );
+    }
+
+    void setUnsafe( uint32_t val, int bits ) { return _set< uint32_t >( val, bits ); }
+    void set( uint32_t val, int bits ) {
+        return bits + _bitoffset <= 32 ? _set< uint32_t >( val, bits ) : _set< uint64_t >( val, bits );
+    }
+
     void normalize() {
-        int shift = downalign( _bitoffset, 32 );
+        int shift = downalign( _bitoffset, storageBits );
         _bitoffset -= shift;
         ASSERT_EQ( shift % 8, 0 );
-        base = static_cast< uint32_t * >( base ) + shift / 32;
+        base = static_cast< Storage * >( base ) + shift / storageBits;
     }
     void shift( int bits ) { _bitoffset += bits; normalize(); }
     void fromReference( BitPointer r ) { *this = r; }
@@ -174,11 +189,26 @@ struct BitPointer {
 private:
     void *base;
     int _bitoffset;
-};
 
-inline uint64_t mask( int first, int count ) {
-    return bitshift(uint64_t(-1), -first) & bitshift(uint64_t(-1), (64 - first - count));
-}
+    template< typename T >
+    uint32_t _get( int bits ) {
+        static_assert( std::is_unsigned< T >::value, "T has to be unsigned numeric type" );
+        ASSERT( valid() );
+        ASSERT_LEQ( 0, bits );
+        ASSERT_LEQ( bits, 32 );
+        ASSERT_LEQ( bits + _bitoffset, sizeof( T ) * 8 );
+        return (ref< T >() >> _bitoffset) & mask( 0, bits );
+    }
+
+    template< typename T >
+    void _set( uint32_t val, int bits ) {
+        static_assert( std::is_unsigned< T >::value, "T has to be unsigned numeric type" );
+        ASSERT_EQ( val & ~mask( 0, bits ), 0u );
+        ASSERT_LEQ( bits, 32 );
+        ASSERT_LEQ( bits + _bitoffset, sizeof( T ) * 8 );
+        ref< T >() = (ref< T >() & ~mask( _bitoffset, bits )) | (T(val) << _bitoffset);
+    }
+};
 
 /*
  * NB. This function will alias whatever "to" points to with an uint64_t. With
@@ -191,17 +221,20 @@ inline uint64_t mask( int first, int count ) {
 inline void bitcopy( BitPointer from, BitPointer to, int bitcount )
 {
     while ( bitcount ) {
-        int w = std::min( 32 - from.bitoffset(), bitcount );
-        uint32_t fmask = mask( from.bitoffset(), w );
-        uint64_t tmask = mask( to.bitoffset(), w );
-        uint64_t bits = bitshift( from.word() & fmask, from.bitoffset() - to.bitoffset() );
-        ASSERT_EQ( bits & ~tmask, 0u );
-        ASSERT_EQ( bits & tmask, bits );
-        if ( to.bitoffset() + bitcount > 32 )
-            to.dword() = (to.dword() & ~tmask) | bits;
-        else
-            to.word() = (to.word() & ~static_cast< uint32_t >( tmask )) | static_cast< uint32_t >( bits );
-        from.shift( w ); to.shift( w ); bitcount -= w; // slide
+        if ( from.bitoffset() == 0 && to.bitoffset() == 0
+                && bitcount >= BitPointer::storageBits )
+        {
+            const int cnt = bitcount / BitPointer::storageBits;
+            std::copy( &from.word(), &from.word() + cnt, &to.word() );
+            const int bitcnt = cnt * BitPointer::storageBits;
+            from.shift( bitcnt );
+            to.shift( bitcnt );
+            bitcount -= bitcnt;
+        } else {
+            int w = std::min( BitPointer::storageBits - from.bitoffset(), bitcount );
+            to.set( from.getUnsafe( w ), w );
+            from.shift( w ); to.shift( w ); bitcount -= w; // slide
+        }
     }
 }
 
