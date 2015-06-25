@@ -3,6 +3,7 @@
 #include <src/cxa_exception.hpp>
 #include <src/private_typeinfo.h>
 #include <limits.h>
+#include <divine/problem.h>
 
 using namespace __cxxabiv1;
 
@@ -26,7 +27,7 @@ LPReturn __gxx_personality_v0( __cxa_exception *e )
 }
 
 void __cxa_call_unexpected( void *) {
-    __divine_problem( 1, "unexpected exception" );
+    __divine_problem( Other, "unexpected exception" );
 }
 
 void __cxa_throw_divine( __cxa_exception *e )
@@ -45,7 +46,7 @@ void __cxa_throw_divine( __cxa_exception *e )
         lp = __divine_landingpad( frameid );
 
         if ( !lp ) {
-            __divine_problem( 1, "unhandled exception" );
+            __divine_problem( Other, "unhandled exception" );
             __divine_unwind( INT_MIN );
         }
 
