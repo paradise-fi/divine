@@ -70,8 +70,8 @@ struct CompileLLVM {
         flags += " -Ilibcxxabi/include -Ilibpdc -Ilibcxx/std -Ilibcxx -Ilibm ";
 
         if ( _env.usePrecompiled.empty() && !_env.dontLink ) {
-            auto files = { "glue", "stubs", "entry", "pthread" };
-            auto filesCpp11 = { "fs", "fs-snapshot", "fs-manager", "fs-memory", "cxa_exception_divine" };
+            auto files = { "glue", "stubs", "entry" };
+            auto filesCpp11 = { "fs", "fs-snapshot", "fs-manager", "fs-memory", "cxa_exception_divine", "pthread" };
 
             {
                 std::ofstream sn( "fs-snapshot.cpp" );
