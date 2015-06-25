@@ -346,8 +346,15 @@ struct MemoryBits : BitPointer {
         U() : x() { }
     };
 
-    void set( MemoryFlag s ) { setUnsafe( uint32_t( s ), bitwidth ); }
-    MemoryFlag get() { return MemoryFlag( getUnsafe( bitwidth ) ); }
+    void set( MemoryFlag s ) {
+        static_assert( 32 % bitwidth == 0, "setUnsafe is only safe for divisors of 32" );
+        setUnsafe( uint32_t( s ), bitwidth );
+    }
+
+    MemoryFlag get() {
+        static_assert( 32 % bitwidth == 0, "getUnsafe is only safe for divisors of 32" );
+        return MemoryFlag( getUnsafe( bitwidth ) );
+    }
 
     MemoryBits &operator++() {
         shift( bitwidth );
