@@ -273,7 +273,7 @@ int sched_getscheduler(pid_t) _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;
 int sched_rr_get_interval(pid_t, struct timespec *) _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;
 int sched_setparam(pid_t, const struct sched_param *) _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;
 int sched_setscheduler(pid_t, int, const struct sched_param *) _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;
-int sched_yield(void) _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;
+int sched_yield(void) _PTHREAD_NOINLINE;
 
 #ifdef __cplusplus
 }

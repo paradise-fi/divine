@@ -1676,6 +1676,7 @@ int sched_setscheduler(pid_t, int, const struct sched_param *) {
 }
 
 int sched_yield(void) {
-    /* TODO */
+    __divine_interrupt_unmask();
+    __divine_interrupt();
     return 0;
 }
