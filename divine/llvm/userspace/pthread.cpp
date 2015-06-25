@@ -88,6 +88,8 @@ struct CleanupHandler {
 
 enum SleepingOn { NotSleeping = 0, Condition, Barrier };
 
+typedef unsigned short ushort;
+
 struct Thread { // (user-space) information maintained for every (running) thread
     void *result;
     pthread_mutex_t *waiting_mutex;
@@ -330,7 +332,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
     // at most 2^15 - 1 threads may exist at any moment
     if ( gtid >= (1 << 16) || ltid >= (1 << 15) )
         return EAGAIN;
-    *ptid = ((real_pthread_t){ .gtid = gtid, .ltid = ltid, .initialized = 1 }).asint;
+    *ptid = ((real_pthread_t){ .gtid = ushort( gtid ), .ltid = ushort( ltid ), .initialized = 1 }).asint;
 
     // thread initialization
     _init_thread( gtid, ltid, ( attr == NULL ? PTHREAD_CREATE_JOINABLE : *attr ) );
@@ -559,8 +561,8 @@ int pthread_attr_setstacksize( pthread_attr_t *, size_t ) {
 /* Thread ID */
 pthread_t pthread_self( void ) {
     PTHREAD_FUN_BEGIN();
-    int ltid = __divine_get_tid();
-    return ((real_pthread_t){ .gtid = _get_gtid( ltid ), .ltid = ltid, .initialized = 1 }).asint;
+    unsigned short ltid = __divine_get_tid();
+    return ((real_pthread_t){ .gtid = ushort( _get_gtid( ltid ) ), .ltid = ltid, .initialized = 1 }).asint;
 }
 
 int pthread_equal( pthread_t t1, pthread_t t2 ) {
@@ -1580,7 +1582,7 @@ int pthread_barrier_init( pthread_barrier_t *barrier, const pthread_barrierattr_
 
     // Set the number of threads that must call pthread_barrier_wait() before
     // any of them successfully return from the call.
-    *barrier = (pthread_barrier_t){ .nthreads = count, .initialized = 1, .counter = 0 };
+    *barrier = (pthread_barrier_t){ .nthreads = ushort( count ), .initialized = 1, .counter = 0 };
     return 0;
 }
 
