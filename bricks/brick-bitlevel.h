@@ -196,7 +196,7 @@ private:
         ASSERT( valid() );
         ASSERT_LEQ( 0, bits );
         ASSERT_LEQ( bits, 32 );
-        ASSERT_LEQ( bits + _bitoffset, sizeof( T ) * 8 );
+        ASSERT_LEQ( bits + _bitoffset, int( sizeof( T ) * 8 ) );
         return (ref< T >() >> _bitoffset) & mask( 0, bits );
     }
 
@@ -205,7 +205,7 @@ private:
         static_assert( std::is_unsigned< T >::value, "T has to be unsigned numeric type" );
         ASSERT_EQ( val & ~mask( 0, bits ), 0u );
         ASSERT_LEQ( bits, 32 );
-        ASSERT_LEQ( bits + _bitoffset, sizeof( T ) * 8 );
+        ASSERT_LEQ( bits + _bitoffset, int( sizeof( T ) * 8 ) );
         ref< T >() = (ref< T >() & ~mask( _bitoffset, bits )) | (T(val) << _bitoffset);
     }
 };
