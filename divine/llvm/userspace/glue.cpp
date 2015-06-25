@@ -59,12 +59,6 @@ extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_han
 extern "C" void *dlsym( void *, void * ) { __divine_problem( 9, 0 ); return 0; }
 extern "C" void *__errno_location() { __divine_problem( 9, 0 ); return 0; }
 
-extern "C" { /* POSIX kernel APIs */
-
-    void raise( int ) { __divine_problem( 9, 0 ); }
-
-}
-
 extern "C" { /* pdclib glue functions */
 
     void _PDCLIB_Exit( int rv ) {
