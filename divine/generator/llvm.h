@@ -421,6 +421,7 @@ struct _LLVM : Common< Blob > {
         if ( name == "memory" || name == "safety" ) {
             useProperty( llvm::Problem::InvalidDereference );
             useProperty( llvm::Problem::OutOfBounds );
+            useProperty( llvm::Problem::Uninitialised );
         }
 
         if ( name == "arithmetic" || name == "safety" )
