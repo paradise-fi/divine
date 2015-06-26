@@ -264,7 +264,8 @@ llvm_verify_file() {
     test "$t" == invalid && {
         check reachability_goal
         test -n "$what" && \
-            grep -a -A 50 '== The goal ==' progress | grep -a -i "^$where" | grep -a "$what"
+            grep -a -A 50 '== The goal ==' progress | grep -a -i "^$where" | grep -a "$what" \
+            || ( echo -e "\nERROR: expected error '$where' at '$what'" >> progress; exit 1; )
     }
     check clear
 }
