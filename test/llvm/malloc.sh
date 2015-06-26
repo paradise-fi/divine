@@ -44,3 +44,49 @@ void main() {
     int *mem = malloc(65535);
 }
 EOF
+
+# successfull allocation
+llvm_verify invalid "assertion failed" "testcase.c:6" <<EOF
+#include <stdlib.h>
+#include <assert.h>
+
+void main() {
+    int *mem = malloc( sizeof( int ) );
+    assert( mem == NULL );
+}
+EOF
+
+# unsuccessfull allocation
+llvm_verify invalid "assertion failed" "testcase.c:6" <<EOF
+#include <stdlib.h>
+#include <assert.h>
+
+void main() {
+    int *mem = malloc( sizeof( int ) );
+    assert( mem != NULL );
+}
+EOF
+
+# uninitialized memory
+llvm_verify invalid "undefined value" "testcase.c:6" <<EOF
+#include <stdlib.h>
+
+void main() {
+    int *mem = malloc( sizeof( int ) );
+    if ( mem && *mem )
+        *mem = 42;
+    free( mem );
+}
+EOF
+
+# calloc should initialize
+llvm_verify valid <<EOF
+#include <stdlib.h>
+#include <assert.h>
+
+void main() {
+    int *mem = calloc( 1, sizeof( int ) );
+    assert( mem && *mem == 0 );
+    free( mem );
+}
+EOF
