@@ -67,18 +67,6 @@ void main() {
 }
 EOF
 
-# uninitialized memory
-llvm_verify invalid "undefined value" "testcase.c:6" <<EOF
-#include <stdlib.h>
-
-void main() {
-    int *mem = malloc( sizeof( int ) );
-    if ( mem && *mem )
-        *mem = 42;
-    free( mem );
-}
-EOF
-
 # calloc should initialize
 llvm_verify valid <<EOF
 #include <stdlib.h>
