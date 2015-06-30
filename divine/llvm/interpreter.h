@@ -410,8 +410,9 @@ struct Interpreter
         if ( is_start ) {
             auto &fun = info().function( PC( info().functionmap[ f ], 0 ) );
             auto ctors = info().module->getNamedGlobal( "llvm.global_ctors" );
+            ::llvm::ConstantArray *ctor_arr = nullptr;
             if ( ctors ) {
-                auto ctor_arr = ::llvm::cast< ::llvm::ConstantArray >( ctors->getInitializer() );
+                ctor_arr = ::llvm::cast< ::llvm::ConstantArray >( ctors->getInitializer() );
                 auto ctors_val = info().valuemap[ ctors ];
 
                 ASSERT_EQ( fun.values[ 0 ].width, sizeof( int ) );
@@ -419,15 +420,16 @@ struct Interpreter
                 ASSERT_EQ( fun.values[ 2 ].width, sizeof( int ) );
                 ASSERT( info().module->getFunction( "main" ) );
 
-                for ( int i = 0; i <= 2; ++i )
-                    state.memoryflag( fun.values[ i ] ).set( MemoryFlag::Data );
-
-                *reinterpret_cast< int * >( state.dereference( fun.values[ 0 ] ) ) =
-                    ctor_arr->getNumOperands();
                 memcopy( ctors_val, fun.values[ 1 ], ctors_val.width, state, state );
-                *reinterpret_cast< int * >( state.dereference( fun.values[ 2 ] ) ) =
-                    info().module->getFunction( "main" )->arg_size();
             }
+
+            for ( int i = 0; i <= 2; ++i )
+                state.memoryflag( fun.values[ i ] ).set( MemoryFlag::Data );
+
+            *reinterpret_cast< int * >( state.dereference( fun.values[ 0 ] ) ) =
+                ctors ? ctor_arr->getNumOperands() : 0;
+            *reinterpret_cast< int * >( state.dereference( fun.values[ 2 ] ) ) =
+                info().module->getFunction( "main" )->arg_size();
         }
 
         Blob result = state.snapshot( alloc );
