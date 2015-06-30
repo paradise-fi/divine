@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2012-2014 Petr Rockai
+//             (c) 2015 Vladimír Štill
 
 #include <divine/llvm/machine.h>
 #include <divine/llvm/program.h>
@@ -211,18 +212,20 @@ struct Evaluator
 
     /******** Arithmetic & comparisons *******/
 
+    template< bool propagatePointer = true, size_t fstoff = 1 >
     struct BinaryOperator : Implementation {
         MemoryFlag resultFlag( MemoryFlags x )
         {
-            if ( x[1] == MemoryFlag::Uninitialised || x[2] == MemoryFlag::Uninitialised )
+            if ( x[ fstoff ] == MemoryFlag::Uninitialised || x[ fstoff + 1 ] == MemoryFlag::Uninitialised )
                 return MemoryFlag::Uninitialised;
-            if ( x[1] == MemoryFlag::HeapPointer || x[2] == MemoryFlag::HeapPointer )
+            if ( propagatePointer &&
+                    ( x[ fstoff ] == MemoryFlag::HeapPointer || x[ fstoff + 1 ] == MemoryFlag::HeapPointer ) )
                 return MemoryFlag::HeapPointer;
             return MemoryFlag::Data;
         }
     };
 
-    struct Arithmetic : BinaryOperator {
+    struct Arithmetic : BinaryOperator<> {
         static const int arity = 3;
         template< typename X = int >
         auto operator()( X &r = Dummy< X >::v(),
@@ -257,7 +260,7 @@ struct Evaluator
         }
     };
 
-    struct ArithmeticWithOverflow : BinaryOperator {
+    struct ArithmeticWithOverflow : BinaryOperator< true, 2 > {
         static const int arity = 4;
         int operation;
 
@@ -300,7 +303,7 @@ struct Evaluator
         }
     };
 
-    struct Bitwise : BinaryOperator {
+    struct Bitwise : BinaryOperator<> {
         static const int arity = 3;
         template< typename X = int >
         auto operator()( X &r = Dummy< X >::v(),
@@ -331,14 +334,20 @@ struct Evaluator
                          R &c = Dummy< R >::v() )
             -> decltype( declcheck( r = a ? b : c ) )
         {
-            _selected = a ? 1 : 2;
+            _selected = a ? 2 : 3;
             r = a ? b : c;
             return Unit();
         }
-        MemoryFlag resulFlag( MemoryFlags x ) { return x[ _selected ]; }
+        MemoryFlag resultFlag( MemoryFlags x ) {
+            if ( x[1] == MemoryFlag::Uninitialised ) {
+                this->ccontext().problem( Problem::Uninitialised );
+                return MemoryFlag::Uninitialised;
+            } else
+                return x[ _selected ];
+        }
     };
 
-    struct ICmp : Implementation {
+    struct ICmp : BinaryOperator< false > {
         static const int arity = 3;
         template< typename R = uint8_t, typename X = int >
         auto operator()( R &r = Dummy< R >::v(),
@@ -363,7 +372,7 @@ struct Evaluator
         }
     };
 
-    struct FCmp : Implementation {
+    struct FCmp : BinaryOperator< false > {
         static const int arity = 3;
         template< typename R = uint8_t, typename X = int >
         auto operator()( R &r = Dummy< R >::v(),
@@ -605,7 +614,11 @@ struct Evaluator
             return Unit();
         }
 
-        MemoryFlag resultFlag( MemoryFlags x ) { return x[0]; }
+        MemoryFlag resultFlag( MemoryFlags x ) {
+            if ( x[0] == MemoryFlag::Uninitialised )
+                this->ccontext().problem( Problem::Uninitialised );
+            return x[0];
+        }
     };
 
     struct CmpXchg : Implementation {
@@ -764,6 +777,9 @@ struct Evaluator
     }
 
     void implement_indirectBr() {
+        auto mflag = econtext.memoryflag( instruction().operand( 0 ) );
+        if ( mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
+            ccontext.problem( Problem::Uninitialised );
         Pointer target = withValues( Get< Pointer >(), instruction().operand( 0 ) );
         jumpTo( *reinterpret_cast< PC * >( dereference( target ) ) );
     }
