@@ -1353,6 +1353,7 @@ struct Evaluator
             case Value::Aggregate:
                 return implement( p, fun, i, e, consPtr< void >( mem, list ) );
             case Value::Void:
+                flags.back().pop_back(); // ignore flag for void item
                 return implement( p, fun, i, e, list ); /* ignore void items */
         }
 
