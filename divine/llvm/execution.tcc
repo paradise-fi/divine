@@ -14,6 +14,9 @@ void Interpreter< HM, L >::choose( int32_t result )
     ASSERT_EQ( instruction().builtin, BuiltinChoice );
     *reinterpret_cast< int32_t * >(
         dereference( instruction().result() ) ) = result;
+    auto flags = memoryflag( instruction().result() );
+    for ( int i = 0; i < int( sizeof( int32_t ) ); ++i, ++flags )
+        flags.set( MemoryFlag::Data );
 }
 
 template< typename HM, typename L >
