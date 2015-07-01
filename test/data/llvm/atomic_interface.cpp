@@ -86,7 +86,7 @@ void genericIT() {
     assert( defcon == def< T >() );
     assert( defcon.exchange( def< T >() ) == def< T >() );
 
-    T t;
+    T t{};
     assert( defcon.compare_exchange_strong( t, def< T >() ) );
     defcon.compare_exchange_weak( t, def< T >() );
 

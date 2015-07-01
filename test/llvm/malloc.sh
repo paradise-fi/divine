@@ -74,7 +74,7 @@ llvm_verify valid <<EOF
 
 void main() {
     int *mem = calloc( 1, sizeof( int ) );
-    assert( mem && *mem == 0 );
+    assert( !mem || *mem == 0 );
     free( mem );
 }
 EOF

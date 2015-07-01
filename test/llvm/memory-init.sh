@@ -11,6 +11,97 @@ void main() {
 }
 EOF
 
+llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
+#include <stdlib.h>
+
+void main() {
+    int x;
+    if ( x )
+        exit( 1 );
+}
+EOF
+
+llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
+#include <stdlib.h>
+
+void main() {
+    int x;
+    if ( !x )
+        exit( 1 );
+}
+EOF
+
+llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
+#include <stdlib.h>
+
+void main() {
+    int x, y;
+    if ( x == y )
+        exit( 1 );
+}
+EOF
+
+llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
+#include <stdlib.h>
+
+void main() {
+    float x, y;
+    if ( x == y )
+        exit( 1 );
+}
+EOF
+
+llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
+#include <stdlib.h>
+
+void main() {
+    int x, y = 1;
+    if ( x == y )
+        exit( 1 );
+}
+EOF
+
+llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
+#include <stdlib.h>
+
+void main() {
+    float x, y = 1;
+    if ( x == y )
+        exit( 1 );
+}
+EOF
+
+llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
+#include <stdlib.h>
+
+void main() {
+    int x = 1, y;
+    if ( x == y )
+        exit( 1 );
+}
+EOF
+
+llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
+#include <stdlib.h>
+
+void main() {
+    float x = 1, y;
+    if ( x == y )
+        exit( 1 );
+}
+EOF
+
+llvm_verify invalid "undefined value" "testcase.c:6" <<EOF
+#include <stdlib.h>
+
+void main() {
+    int x;
+    int y = x == 42;
+    if ( y )
+        exit( 1 );
+}
+EOF
+
 llvm_verify valid <<EOF
 #include <stdlib.h>
 
@@ -59,6 +150,64 @@ void main() {
 }
 EOF
 
+llvm_verify valid <<EOF
+#include <stdlib.h>
+
+void main() {
+    short x = 42;
+    int y = x;
+    if ( y == 0 )
+        exit( 1 );
+}
+EOF
+
+llvm_verify valid <<EOF
+#include <stdlib.h>
+
+void main() {
+    int x = 42;
+    int y = ((short *)&x)[1];
+    if ( y == 1 )
+        exit( 1 );
+}
+EOF
+
+llvm_verify valid <<EOF
+#define CHECK_DEF( x ) ((void)((x) ? 1 : 2))
+
+union X {
+    int i;
+    struct {
+        short x;
+        short y:15;
+        short z:1;
+    } s;
+};
+
+void main() {
+    long x = 42;
+    CHECK_DEF( x );
+    CHECK_DEF( x >> 32 );
+    CHECK_DEF( (int)x );
+    CHECK_DEF( (short)x );
+    CHECK_DEF( (float)x );
+    CHECK_DEF( ((short*)&x)[ 2 ] );
+    union X u = { .i = x };
+    CHECK_DEF( u.i );
+    CHECK_DEF( u.s.x );
+    CHECK_DEF( u.s.y );
+    CHECK_DEF( u.s.z );
+    short y[4] = { 42 };
+    CHECK_DEF( *y );
+    CHECK_DEF( y[1] );
+    CHECK_DEF( y[2] );
+    CHECK_DEF( y[3] );
+    CHECK_DEF( (int)*y );
+    CHECK_DEF( (long)*y );
+    CHECK_DEF( (float)*y );
+}
+EOF
+
 llvm_verify invalid "undefined value" "testcase.c:6" <<EOF
 #include <stdlib.h>
 
@@ -102,6 +251,17 @@ llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 void main() {
     int *mem = malloc( sizeof( int ) );
     if ( mem && *mem )
+        *mem = 42;
+    free( mem );
+}
+EOF
+
+llvm_verify valid <<EOF
+#include <stdlib.h>
+
+void main() {
+    int *mem = calloc( 1, sizeof( int ) );
+    if ( mem && *mem == 0 )
         *mem = 42;
     free( mem );
 }
@@ -159,7 +319,7 @@ void main() {
     check( x.c );
     check( x.d );
     check( x.e );
-    struct Test y;
+    struct Test y = {};
     y.a = 1;
     y.b = 2;
     y.c = 3;
@@ -184,8 +344,8 @@ struct Test {
 
 int main() {
     Test x;
-    if ( x.y == 0 ) std::exit( 1 ); // OK 
-    if ( x.x == 0 ) std::exit( 1 ); // should fail
+    if ( x.y != 0 ) std::exit( 1 ); // OK 
+    if ( x.x != 0 ) std::exit( 1 ); // should fail
 }
 EOF
 
@@ -193,18 +353,13 @@ llvm_verify invalid "undefined value" "testcase.c:3" << EOF
 void main() {
     int x;
     if ( x ? 0 : 42 )
-        std::exit( 1 );
+        exit( 1 );
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:3" << EOF
 void main() {
     int x;
-    switch ( x ) {
-        case 0:
-            exit( 0 );
-        default:
-            exit( 1 );
-    }
+    switch ( x ) { case 0: exit( 2 ); default: exit( 1 ); }
 }
 EOF
