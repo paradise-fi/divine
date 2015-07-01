@@ -75,6 +75,9 @@ extern "C" {
                         std::calloc (1, sizeof (__cxa_eh_globals))
 #endif
                 );
+#if __divine__
+            memset(retVal, 0, sizeof(__cxa_eh_globals));
+#endif
             if ( NULL == retVal )
                 abort_message("cannot allocate __cxa_eh_globals");
             if ( 0 != pthread_setspecific ( key_, retVal ) )
