@@ -938,14 +938,23 @@ struct Evaluator
         int psize = info.TD.getPointerSize();
         Pointer r = econtext.malloc( 8 + psize + (4 + psize) * lp.items.size(), 0 );
 
-        auto c = econtext.dereference( r );
-        *reinterpret_cast< int32_t * >( c ) = lp.cleanup; c += 4;
-        *reinterpret_cast< int32_t * >( c ) = lp.items.size(); c += 4;
-        *reinterpret_cast< Pointer * >( c ) = lp.person; c+= psize;
+        auto flagof = [&]( Pointer p ) -> MemoryFlag {
+            if ( p.null() || p.code )
+                return MemoryFlag::Data;
+            auto pflag = econtext.memoryflag( p );
+            if ( pflag.valid() )
+                return pflag.get();
+            return MemoryFlag::Data;
+        };
+
+        MemoryAccess acc( r, econtext );
+        acc.setAndShift< int32_t >( lp.cleanup );
+        acc.setAndShift< int32_t >( lp.items.size() );
+        acc.setAndShift< Pointer >( lp.person, flagof( lp.person ), psize );
 
         for ( auto p : lp.items ) {
-            *reinterpret_cast< int32_t * >( c ) = p.first; c += 4;
-            *reinterpret_cast< Pointer * >( c ) = p.second; c+= psize;
+            acc.setAndShift< int32_t >( p.first );
+            acc.setAndShift< Pointer >( p.second, flagof( p.second ), psize );
         }
 
         return r;

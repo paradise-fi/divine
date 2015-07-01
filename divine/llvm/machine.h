@@ -480,6 +480,43 @@ inline int size_heap( int segcount, int bytecount ) {
 
 }
 
+struct MemoryAccess {
+    template< typename Ref, typename State >
+    MemoryAccess( Ref ref, State &state ) :
+        _data( state.dereference( ref ) ), _flags( state.memoryflag( ref ) )
+    { }
+
+    template< typename T >
+    void set( T val, MemoryFlag flag = MemoryFlag::Data, int size = sizeof( T ) ) {
+        MemoryAccess( *this ).setAndShift( val, flag, size );
+    }
+
+    void advance( int size ) {
+        ASSERT_LEQ( 0, size );
+        _data += size;
+        for ( int i = 0; i < size; ++i, ++_flags ) { }
+    }
+
+    // size must be set to value larger or equal to sizeof( T ), otherwise memory
+    // after size bytes will also be overwritten. Also this will not work
+    // correctly on big endian machines
+    template< typename T >
+    void setAndShift( T val, MemoryFlag flag = MemoryFlag::Data, int size = sizeof( T ) ) {
+        *reinterpret_cast< T * >( _data ) = val;
+        _data += size;
+        _flags.set( flag );
+        ++_flags;
+        if ( flag == MemoryFlag::HeapPointer )
+            flag = MemoryFlag::Data;
+        for ( int i = 1; i < size; ++i, ++_flags )
+            _flags.set( flag );
+    }
+
+  private:
+    char *_data;
+    MemoryBits _flags;
+};
+
 template< typename _HeapMeta = machine::HeapIDs >
 struct MachineState
 {
