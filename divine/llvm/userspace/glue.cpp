@@ -40,8 +40,16 @@ __attribute__((noinline)) void *realloc( void *orig, size_t size ) _PDCLIB_nothr
         return NULL; // failure
 }
 
-/* TODO malloc currently gives zeroed memory */
-void *calloc( size_t n, size_t size ) _PDCLIB_nothrow { return malloc( n * size ); }
+__attribute__((noinline)) void *calloc( size_t n, size_t size ) _PDCLIB_nothrow {
+    __divine_interrupt_mask();
+    if ( __divine_choice( 2 ) ) {
+        void *mem = __divine_malloc( n * size ); // success
+        memset( mem, 0, n * size );
+        return mem;
+    } else
+        return NULL; // failure
+}
+
 void free( void * p) _PDCLIB_nothrow { return __divine_free( p ); }
 
 /* IOStream */
