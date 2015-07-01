@@ -1314,8 +1314,16 @@ struct Evaluator
         fun._evaluator = this;
         auto retval = match( fun, list );
         auto mflag = econtext.memoryflag( result.back() );
-        if ( mflag.valid() )
-            mflag.set( fun.resultFlag( flags.back() ) );
+        if ( mflag.valid() ) {
+            auto f = fun.resultFlag( flags.back() );
+            const int s = result.back().v.width;
+            mflag.set( f );
+            ++mflag;
+            if ( f == MemoryFlag::HeapPointer )
+                f = MemoryFlag::Data;
+            for ( int i = 1; i < s; ++i, ++mflag )
+                mflag.set( f );
+        }
         flags.pop_back();
         result.pop_back();
         return retval;
