@@ -15,17 +15,32 @@
 #include "fs-manager.h"
 
 #ifdef __divine__
-# define FS_MASK __divine_interrupt_mask();
 # define FS_MALLOC( x ) __divine_malloc( x )
 # define FS_PROBLEM( msg ) __divine_problem( 1, msg )
 #else
-# define FS_MASK
 # define FS_MALLOC( x ) std::malloc( x )
 # define FS_PROBLEM( msg )
 #endif
 
+#define FS_ENTRYPOINT()                                     \
+    FS_ATOMIC_SECTION_BEGIN();                              \
+    bool _thisFunction = false;                             \
+    auto _unmasking = divine::fs::utils::make_defer( [&] {  \
+        if ( _thisFunction )                                \
+            underMask = false;                              \
+    } );                                                    \
+    do {                                                    \
+        if ( !underMask ) {                                 \
+            FS_MAKE_INTERRUPT();                            \
+            underMask = true;                               \
+            _thisFunction = true;                           \
+        }                                                   \
+    } while( false )
+
 using divine::fs::Error;
 using divine::fs::vfs;
+
+static bool underMask = false;
 
 extern "C" {
 
@@ -53,7 +68,7 @@ static int _fillStat( const divine::fs::Node item, struct stat *buf ) {
 }
 
 int openat( int dirfd, const char *path, int flags, ... ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     using namespace divine::fs::flags;
     divine::fs::Flags< Open > f = Open::NoFlags;
     mode_t m = 0;
@@ -97,7 +112,7 @@ int openat( int dirfd, const char *path, int flags, ... ) {
     }
 }
 int open( const char *path, int flags, ... ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     int mode = 0;
     if ( flags & O_CREAT ) {
         va_list args;
@@ -110,12 +125,12 @@ int open( const char *path, int flags, ... ) {
     return openat( AT_FDCWD, path, flags, mode );
 }
 int creat( const char *path, mode_t mode ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     return openat( AT_FDCWD, path, O_CREAT | O_WRONLY | O_TRUNC, mode );
 }
 
 int close( int fd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().closeFile( fd );
         return 0;
@@ -125,7 +140,7 @@ int close( int fd ) {
 }
 
 ssize_t write( int fd, const void *buf, size_t count ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         auto f = vfs.instance().getFile( fd );
         return f->write( buf, count );
@@ -134,7 +149,7 @@ ssize_t write( int fd, const void *buf, size_t count ) {
     }
 }
 ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         auto f = vfs.instance().getFile( fd );
         size_t savedOffset = f->offset();
@@ -147,7 +162,7 @@ ssize_t pwrite( int fd, const void *buf, size_t count, off_t offset ) {
 }
 
 ssize_t read( int fd, void *buf, size_t count ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         auto f = vfs.instance().getFile( fd );
         return f->read( buf, count );
@@ -156,7 +171,7 @@ ssize_t read( int fd, void *buf, size_t count ) {
     }
 }
 ssize_t pread( int fd, void *buf, size_t count, off_t offset ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         auto f = vfs.instance().getFile( fd );
         size_t savedOffset = f->offset();
@@ -168,7 +183,7 @@ ssize_t pread( int fd, void *buf, size_t count, off_t offset ) {
     }
 }
 int mkdirat( int dirfd, const char *path, mode_t mode ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     if ( dirfd == AT_FDCWD )
         dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
@@ -179,7 +194,7 @@ int mkdirat( int dirfd, const char *path, mode_t mode ) {
     }
 }
 int mkdir( const char *path, mode_t mode ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     return mkdirat( AT_FDCWD, path, mode );
 }
 
@@ -194,12 +209,12 @@ int mkfifoat( int dirfd, const char *path, mode_t mode ) {
     }
 }
 int mkfifo( const char *path, mode_t mode ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     return mkfifoat( AT_FDCWD, path, mode );
 }
 
 int unlink( const char *path ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().removeFile( path );
         return 0;
@@ -209,7 +224,7 @@ int unlink( const char *path ) {
 }
 
 int rmdir( const char *path ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().removeDirectory( path );
         return 0;
@@ -219,7 +234,7 @@ int rmdir( const char *path ) {
 }
 
 int unlinkat( int dirfd, const char *path, int flags ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     divine::fs::flags::At f;
     switch( flags ) {
     case 0:
@@ -243,7 +258,7 @@ int unlinkat( int dirfd, const char *path, int flags ) {
 }
 
 off_t lseek( int fd, off_t offset, int whence ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         divine::fs::Seek w = divine::fs::Seek::Undefined;
         switch( whence ) {
@@ -263,7 +278,7 @@ off_t lseek( int fd, off_t offset, int whence ) {
     }
 }
 int dup( int fd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         return vfs.instance().duplicate( fd );
     } catch ( Error & ) {
@@ -271,7 +286,7 @@ int dup( int fd ) {
     }
 }
 int dup2( int oldfd, int newfd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         return vfs.instance().duplicate2( oldfd, newfd );
     } catch ( Error & ) {
@@ -279,7 +294,7 @@ int dup2( int oldfd, int newfd ) {
     }
 }
 int symlinkat( const char *target, int dirfd, const char *linkpath ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     if ( dirfd == AT_FDCWD )
         dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
@@ -290,11 +305,11 @@ int symlinkat( const char *target, int dirfd, const char *linkpath ) {
     }
 }
 int symlink( const char *target, const char *linkpath ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     return symlinkat( target, AT_FDCWD, linkpath );
 }
 int linkat( int olddirfd, const char *target, int newdirfd, const char *linkpath, int flags ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     if ( olddirfd == AT_FDCWD )
         olddirfd = divine::fs::CURRENT_DIRECTORY;
     if ( newdirfd == AT_FDCWD )
@@ -313,12 +328,12 @@ int linkat( int olddirfd, const char *target, int newdirfd, const char *linkpath
     }
 }
 int link( const char *target, const char *linkpath ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     return linkat( AT_FDCWD, target, AT_FDCWD, linkpath, 0 );
 }
 
 ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     if ( dirfd == AT_FDCWD )
         dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
@@ -328,11 +343,11 @@ ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count ) {
     }
 }
 ssize_t readlink( const char *path, char *buf, size_t count ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     return readlinkat( AT_FDCWD, path, buf, count );
 }
 int faccessat( int dirfd, const char *path, int mode, int flags ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     divine::fs::Flags< divine::fs::flags::Access > m = divine::fs::flags::Access::OK;
     if ( mode & R_OK )  m |= divine::fs::flags::Access::Read;
     if ( mode & W_OK )  m |= divine::fs::flags::Access::Write;
@@ -357,12 +372,12 @@ int faccessat( int dirfd, const char *path, int mode, int flags ) {
     }
 }
 int access( const char *path, int mode ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     return faccessat( AT_FDCWD, path, mode, 0 );
 }
 
 int stat( const char *path, struct stat *buf ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         auto item = vfs.instance().findDirectoryItem( path );
         if ( !item )
@@ -374,7 +389,7 @@ int stat( const char *path, struct stat *buf ) {
 }
 
 int lstat( const char *path, struct stat *buf ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         auto item = vfs.instance().findDirectoryItem( path, false );
         if ( !item )
@@ -386,7 +401,7 @@ int lstat( const char *path, struct stat *buf ) {
 }
 
 int fstat( int fd, struct stat *buf ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         auto item = vfs.instance().getFile( fd );
         return _fillStat( item->inode(), buf );
@@ -396,14 +411,14 @@ int fstat( int fd, struct stat *buf ) {
 }
 
 mode_t umask( mode_t mask ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     mode_t result = vfs.instance().umask();
     vfs.instance().umask( mask & 0777 );
     return result;
 }
 
 int chdir( const char *path ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().changeDirectory( path );
         return 0;
@@ -413,7 +428,7 @@ int chdir( const char *path ) {
 }
 
 int fchdir( int dirfd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().changeDirectory( dirfd );
         return 0;
@@ -423,7 +438,7 @@ int fchdir( int dirfd ) {
 }
 
 int fdatasync( int fd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().getFile( fd );
         return 0;
@@ -432,7 +447,7 @@ int fdatasync( int fd ) {
     }
 }
 int fsync( int fd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().getFile( fd );
         return 0;
@@ -442,7 +457,7 @@ int fsync( int fd ) {
 }
 
 int ftruncate( int fd, off_t length ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         auto item = vfs.instance().getFile( fd );
         if ( !item->flags().has( divine::fs::flags::Open::Write ) )
@@ -454,7 +469,7 @@ int ftruncate( int fd, off_t length ) {
     }
 }
 int truncate( const char *path, off_t length ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         auto item = vfs.instance().findDirectoryItem( path );
         vfs.instance().truncate( item, length );
@@ -465,7 +480,7 @@ int truncate( const char *path, off_t length ) {
 }
 
 void swab( const void *_from, void *_to, ssize_t n ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     const char *from = reinterpret_cast< const char * >( _from );
     char *to = reinterpret_cast< char * >( _to );
     for ( ssize_t i = 0; i < n/2; ++i ) {
@@ -477,7 +492,7 @@ void swab( const void *_from, void *_to, ssize_t n ) {
 }
 
 int isatty( int fd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().getFile( fd );
         errno = EINVAL;
@@ -486,7 +501,7 @@ int isatty( int fd ) {
     return 0;
 }
 char *ttyname( int fd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().getFile( fd );
         errno = ENOTTY;
@@ -495,7 +510,7 @@ char *ttyname( int fd ) {
     return nullptr;
 }
 int ttyname_r( int fd, char *buf, size_t count ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().getFile( fd );
         return ENOTTY;
@@ -506,7 +521,7 @@ int ttyname_r( int fd, char *buf, size_t count ) {
 
 void sync( void ) {}
 int syncfs( int fd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().getFile( fd );
         return 0;
@@ -517,7 +532,7 @@ int syncfs( int fd ) {
 
 
 int _FS_renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     if ( olddirfd == AT_FDCWD )
         olddirfd = divine::fs::CURRENT_DIRECTORY;
     if ( newdirfd == AT_FDCWD )
@@ -531,12 +546,12 @@ int _FS_renameitemat( int olddirfd, const char *oldpath, int newdirfd, const cha
 
 }
 int _FS_renameitem( const char *oldpath, const char *newpath ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     return _FS_renameitemat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
 }
 
 int pipe( int pipefd[ 2 ] ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         std::tie( pipefd[ 0 ], pipefd[ 1 ] ) = vfs.instance().pipe();
         return 0;
@@ -546,7 +561,7 @@ int pipe( int pipefd[ 2 ] ) {
 }
 
 int fchmodeat( int dirfd, const char *path, mode_t mode, int flags ) {
-    FS_MASK
+    FS_ENTRYPOINT();
 
     divine::fs::Flags< divine::fs::flags::At > fl = divine::fs::flags::At::NoFlags;
     if ( flags & AT_SYMLINK_NOFOLLOW )  fl |= divine::fs::flags::At::SymNofollow;
@@ -563,11 +578,11 @@ int fchmodeat( int dirfd, const char *path, mode_t mode, int flags ) {
     }
 }
 int chmod( const char *path, mode_t mode ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     return fchmodeat( AT_FDCWD, path, mode, 0 );
 }
 int fchmod( int fd, mode_t mode ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().chmod( fd, mode );
         return 0;
@@ -581,7 +596,7 @@ int alphasort( const struct dirent **a, const struct dirent **b ) {
 }
 
 int closedir( DIR *dirp ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         vfs.instance().closeDirectory( dirp );
         return 0;
@@ -591,7 +606,7 @@ int closedir( DIR *dirp ) {
 }
 
 int dirfd( DIR *dirp ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         return vfs.instance().getDirectory( dirp )->fd();
     } catch ( Error & ) {
@@ -600,7 +615,7 @@ int dirfd( DIR *dirp ) {
 }
 
 DIR *fdopendir( int fd ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     try {
         return vfs.instance().openDirectory( fd );
     } catch ( Error & ) {
@@ -609,7 +624,7 @@ DIR *fdopendir( int fd ) {
 }
 
 DIR *opendir( const char *path ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     using namespace divine::fs::flags;
     divine::fs::Flags< Open > f = Open::Read;
     try {
@@ -621,7 +636,7 @@ DIR *opendir( const char *path ) {
 }
 
 struct dirent *readdir( DIR *dirp ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     static struct dirent entry;
 
     try {
@@ -640,7 +655,7 @@ struct dirent *readdir( DIR *dirp ) {
 }
 
 int readdir_r( DIR *dirp, struct dirent *entry, struct dirent **result ) {
-    FS_MASK
+    FS_ENTRYPOINT();
 
     try {
         auto dir = vfs.instance().getDirectory( dirp );
@@ -661,7 +676,7 @@ int readdir_r( DIR *dirp, struct dirent *entry, struct dirent **result ) {
 }
 
 void rewinddir( DIR *dirp ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     int e = errno;
     try {
         vfs.instance().getDirectory( dirp )->rewind();
@@ -674,7 +689,7 @@ int scandir( const char *path, struct dirent ***namelist,
              int (*filter)( const struct dirent * ),
              int (*compare)( const struct dirent **, const struct dirent ** ))
 {
-    FS_MASK
+    FS_ENTRYPOINT();
     using namespace divine::fs::flags;
     divine::fs::Flags< Open > f = Open::Read;
     DIR *dirp = nullptr;
@@ -725,7 +740,7 @@ int scandir( const char *path, struct dirent ***namelist,
 }
 
 long telldir( DIR *dirp ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     int e = errno;
     try {
         return vfs.instance().getDirectory( dirp )->tell();
@@ -734,7 +749,7 @@ long telldir( DIR *dirp ) {
     }
 }
 void seekdir( DIR *dirp, long offset ) {
-    FS_MASK
+    FS_ENTRYPOINT();
     int e = errno;
     try {
         vfs.instance().getDirectory( dirp )->seek( offset );
