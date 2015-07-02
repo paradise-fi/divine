@@ -818,6 +818,7 @@ int fgetpos( FILE * _PDCLIB_restrict stream, fpos_t * _PDCLIB_restrict pos ) _PD
    the error indicator for the given stream is set.
 */
 int fseek( FILE * stream, long int offset, int whence ) _PDCLIB_nothrow;
+int fseeko( FILE *stream, long int offset, int whence ) _PDCLIB_nothrow;
 
 /* Set the position indicator (and, where appropriate the mbstate_t status
    object) for the given stream to the given pos object (created by an earlier
@@ -839,6 +840,7 @@ int fsetpos( FILE * stream, const fpos_t * pos ) _PDCLIB_nothrow;
    TODO: Implementation-defined errno setting for ftell().
 */
 long int ftell( FILE * stream ) _PDCLIB_nothrow;
+off_t ftello( FILE *stream ) _PDCLIB_nothrow;
 
 /* Equivalent to (void)fseek( stream, 0L, SEEK_SET ), except that the error
    indicator for the stream is also cleared.

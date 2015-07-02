@@ -44,6 +44,11 @@ int fseek( FILE * stream, long loffset, int whence )
     return r;
 }
 
+int fseeko( FILE * stream, long loffset, int whence )
+{
+    return fseek( stream, loffset, whence );
+}
+
 #endif
 
 #ifdef TEST

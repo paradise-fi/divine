@@ -35,6 +35,11 @@ long int ftell( FILE * stream )
     return off;
 }
 
+off_t ftello( FILE * stream )
+{
+    return ftell( stream );
+}
+
 #endif
 
 #ifdef TEST
