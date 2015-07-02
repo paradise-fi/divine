@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
 #include <algorithm>
+#include <signal.h>
 
 #include "fs-utils.h"
 #include "fs-inode.h"
@@ -168,9 +169,10 @@ struct Pipe : public File {
     }
 
     bool write( const char *buffer, size_t, size_t &length ) override {
-        if ( !_reader )
-            /// TODO: raise SIGPIPE signal
+        if ( !_reader ) {
+            raise( SIGPIPE );
             throw Error( EPIPE );
+        }
         size_t offset = _content.size();
 
         while ( offset >= PIPE_SIZE_LIMIT )
