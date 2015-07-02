@@ -44,6 +44,8 @@ _PDCLIB_BEGIN_EXTERN_C
 #define SIGINT  2
 /* Invalid memory access */
 #define SIGSEGV 11
+/* Invalid pipe usage */
+#define SIGPIPE 13
 /* Termination request */
 #define SIGTERM 15
 
