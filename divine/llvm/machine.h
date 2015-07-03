@@ -651,6 +651,8 @@ struct MachineState
     }
 
     bool validate( Pointer p, bool h ) {
+        if ( !p.heap && p.segment == 0 )
+            return true;
         bool hv = heap().owns( p ) || nursery.owns( p );
         return (h && hv) || (!h && !hv);
     }
