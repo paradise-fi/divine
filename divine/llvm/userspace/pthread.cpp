@@ -172,7 +172,6 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
 
     // reallocate thread local storage if neccessary
     if ( ltid >= alloc_pslots ) {
-        DBG_ASSERT( ltid == alloc_pslots ); // shouldn't skip unallocated slots
         int new_count = ltid + 1;
 
         // thread metadata
