@@ -432,3 +432,88 @@ is not the best choice for single threaded run due to a small performance
 penalty caused by synchronizations inside the hash table.
 
 As of time of this writing Shared algorithm cannot run in a distributed memory.
+
+Compiling
+---------
+
+The command `divine compile` can be used to compile either CESMI module or DVE
+model into native code or C/C++ code into LLVM bitcode. See
+[model checking C and C++ code](#model-checking-c-and-c-code-via-llvm-bitcode)
+for more details. The mode of compilation is recognized by an extension of name
+of input file in some cases -- .dve for DVE models, .m for MURPHI models.
+The default mode of compilation is to compile C/C++ program via clang into LLVM
+bitcode. The selection of compilation CESMI module may be done by specifying
+`-c` or `--cesmi` option.
+
+    divine compile [-j N|--jobs=N]
+                   [-l|--llvm]
+                   [-c|--cesmi]
+                   [--keep-build-directory]
+                   [--cflags=<flags>|-f <flags>]
+                   [--libraries-only]
+                   [--precompiled=<path>]
+                   [-o <name>|--output-file=<name>]
+                   [--cmd-clang=<value>]
+                   [--dont-link]
+                   [--no-modeline]
+                   [-D <definition> | --definition=<definition>]
+                   [--snapshot=<path>]
+                   [--stdin=<path>]
+                   <file input>
+
+`-j N | --jobs=N`
+:    Enable parallel build. If not specified, `N` is assumed to be 1.
+
+`-l | --llvm`
+:    Set compilation mode explicitly to build an LLVM bitcode. This option
+     is suppressed when extension of the input file is `.dve` or `.m`.
+     Without this option a warning is emitted if compilation mode defaulted.
+
+`-c | --cesmi`
+:    Set compilation mode to build a CESMI module.
+
+`--keep-build-directory`
+:    This option prevents from deletion of a temporary build directory.
+
+`-f <flags> | --cflags=<flags>`
+:    This option is used to pass additional arguments to a compiler.
+
+`--libraries-only`
+:    By specifying this option DIVINE compiles only libraries such as
+     libc++, PDCLib, and virtual file system. The compiled libraries
+     may be later used repeatedly. This option is recognized only when
+     LLVM bitcode is compiled. This option does not use any other file
+     input.
+
+`--precompiled=<path>`
+:    Path to a directory where pre-compiled libraries are placed. The libraries
+     are to be linked with the verified program. This option is recognized
+     only when LLVM bitcode is compiled.
+
+`-o <name> | --output-file=<name>`
+:    Specify a name of a product of the compilation.
+
+`--cmd-clang=<value>`
+:    Set how to run clang. Useful when default path is not correct.
+
+`--dont-link`
+:    Compile the source files, but do not link. This option is recognized
+     only when LLVM bitcode is compiled.
+
+`--no-modeline`
+:    Disable DIVINE modeline parsing. Modelines are used in examples
+     of C/C++ programs to automatically set `--cflags`.
+
+`-D <definition> | --definition=<definition>`
+:    Add definition for generator, can be specified multiple times. This
+     option is recognized only when DVE model is compiled.
+
+`--snapshot=<path>`
+:    DIVINE takes a snapshot of the specified directory which becomes a root
+     of the virtual file system. This option is recognized only when LLVM
+     bitcode is compiled.
+
+`--stdin=<path>`
+:    DIVINE uses the specified file to be the standard input for the verified
+     program (file descriptor 0, therefore `stdin` and `std::cin`). This option
+     is recognized only when LLVM bitcode is compiled.
