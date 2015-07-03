@@ -768,7 +768,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
         // mutex is not locked or it is already locked by another thread
         DBG_ASSERT( mutex->lockCounter ); // count should be > 0
         if ( mutex->type == PTHREAD_MUTEX_NORMAL )
-             __divine_assert( 0 );
+             __divine_problem( Other, "Mutex has to be released by the same thread which acquired the mutex." );
         else
              return EPERM; // recursive mutex can also detect
     }
