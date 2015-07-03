@@ -169,7 +169,7 @@ them in this section.
      See [state space compression](#state-space-compression)
      on details of compression.
 
-`--shared
+`--shared`
 :    This option switches between two graph traversal algorithms.
      Use this switch to turn on Shared algorithm instead of Partitioned
      algorithm. Default option is to use Partitioned algorithm.

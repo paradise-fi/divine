@@ -121,20 +121,27 @@ reading and writing) also causes stopping the verification and making the report
 
 The virtual file system currently implements following header files and functions:
 
- * `sys/stat.h`:
-    fstat, stat, lstat, fstatat, chmod, fchmod, fchmodat, umask, mkdir, mkdirat,
-    mkfifo, mkfifoat
- * `sys/types.h`
- * `dirent.h`:
-    closedir, dirfd, fdopendir, opendir, readdir, readdir_r, rewinddir, scandir,
-    seekdir, telldir
- * `fcntl.h`:
-    creat, open, openat
- * `unistd.h`:
-    close, read, write, pread, pwrite, pipe, lseek, dup, dup2, ftruncate, truncate,
-    unlink, rmdir, unlinkat, link, linkat, symlink, symlinkat, readlink, readlinkat,
-    access, faccessat, chdir, fchdir, fsync, fdatasync, isatty, ttyname, ttyname_r,
-    swab, sync, syncfs
+`sys/stat.h`:
+:    fstat, stat, lstat, fstatat, chmod, fchmod, fchmodat, umask, mkdir, mkdirat,
+     mkfifo, mkfifoat
+
+`sys/types.h`
+
+`dirent.h`:
+:    closedir, dirfd, fdopendir, opendir, readdir, readdir_r, rewinddir, scandir,
+     seekdir, telldir
+
+`fcntl.h`:
+:    creat, open, openat
+
+`unistd.h`:
+:    close, read, write, pread, pwrite, pipe, lseek, dup, dup2, ftruncate, truncate,
+     unlink, rmdir, unlinkat, link, linkat, symlink, symlinkat, readlink, readlinkat,
+     access, faccessat, chdir, fchdir, fsync, fdatasync, isatty, ttyname, ttyname_r,
+     swab, sync, syncfs
+
+See `examples/llvm/ipc_emulation.c` and `examples/llvm/simple_io.cpp` for details how
+to use the virtual file system.
 
 State Space of a Program
 ------------------------
