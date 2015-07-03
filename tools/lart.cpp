@@ -1,6 +1,8 @@
 #include <lart/aa/pass.h>
 #include <lart/abstract/pass.h>
 #include <lart/interference/pass.h>
+#include <lart/weakmem/pass.h>
+#include <lart/support/composite.h>
 
 #include <iostream>
 #include <cassert>
@@ -67,6 +69,20 @@ ModulePass *mkPass( std::string n, std::string opt )
 
     if ( n == "interference" )
         return new interference::Pass();
+
+    if ( n == "weakmem" ) {
+        auto p = new CompositePass();
+        weakmem::Substitute::Type t;
+
+        if ( opt == "tso" )
+            t = weakmem::Substitute::TSO;
+        if ( opt == "pso" )
+            t = weakmem::Substitute::PSO;
+
+        p->append( new weakmem::ScalarMemory );
+        p->append( new weakmem::Substitute( t ) );
+        return p;
+    }
 
     throw std::runtime_error( "unknown pass type: " + n );
 }
