@@ -3,6 +3,7 @@
 
 #define __STORE_BUFFER_SIZE 2
 #include "memorder.h"
+#include <atomic>
 #include <pthread.h>
 
 enum APs { w0in, w0out, w1in, w1out };

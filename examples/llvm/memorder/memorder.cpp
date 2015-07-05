@@ -2,34 +2,41 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
 #include "memorder.h"
+#include <algorithm> // reverse iterator
 
 template< typename Collection >
 struct Reversed {
     using T = typename Collection::value_type;
     using iterator = std::reverse_iterator< T * >;
 
-    Reversed( Collection &data ) : data( data ) { }
+    Reversed( Collection &data ) __LART_WM_DIRECT__ : data( data ) { }
+    Reversed( const Reversed & ) __LART_WM_DIRECT__ = default;
 
-    iterator begin() { return iterator( data.end() ); }
-    iterator end() { return iterator( data.begin() ); }
+    iterator begin() __LART_WM_DIRECT__ { return iterator( data.end() ); }
+    iterator end() __LART_WM_DIRECT__ { return iterator( data.begin() ); }
 
     Collection &data;
 };
 
 template< typename T >
-Reversed< T > reversed( T &x ) { return Reversed< T >( x ); }
+Reversed< T > reversed( T &x ) __LART_WM_DIRECT__ { return Reversed< T >( x ); }
 
 template< typename T >
-static T *__alloc( int n ) { return reinterpret_cast< T * >( __divine_malloc( n * sizeof( T ) ) ); }
+static T *__alloc( int n ) __LART_WM_DIRECT__ { return reinterpret_cast< T * >( __divine_malloc( n * sizeof( T ) ) ); }
 
 struct __BufferHelper {
-    __BufferHelper() : buffers( nullptr ) {
+
+    // perform no initialization, first load/store can run before global ctors
+    // so we will intialize if buffers == nullptr
+    __BufferHelper() = default;
+
+    void start() __LART_WM_DIRECT__ {
         __divine_new_thread( []( void *self ) {
                 reinterpret_cast< __BufferHelper * >( self )->flusher();
             }, this );
     }
 
-    ~__BufferHelper() {
+    ~__BufferHelper() __LART_WM_DIRECT__ {
         if ( buffers ) {
             for ( int i = 0, e = __divine_heap_object_size( buffers ) / sizeof( Buffer * ); i < e; ++i )
                 __divine_free( buffers[ i ] );
@@ -38,7 +45,7 @@ struct __BufferHelper {
         }
     }
 
-    void flusher() {
+    void flusher() __LART_WM_DIRECT__ {
         while ( true ) {
             __divine_interrupt_mask();
             if ( buffers ) {
@@ -55,12 +62,12 @@ struct __BufferHelper {
     }
 
     struct BufferLine {
-        BufferLine() : addr( nullptr ), value( 0 ), bitwidth( 0 ) { }
-        BufferLine( void *addr, uint64_t value, int bitwidth ) :
+        BufferLine() __LART_WM_DIRECT__ : addr( nullptr ), value( 0 ), bitwidth( 0 ) { }
+        BufferLine( void *addr, uint64_t value, int bitwidth ) __LART_WM_DIRECT__ :
             addr( addr ), value( value ), bitwidth( bitwidth )
         { }
 
-        void store() {
+        void store() __LART_WM_DIRECT__ {
             switch ( bitwidth ) {
                 case 8: store< uint8_t >(); break;
                 case 16: store< uint16_t >(); break;
@@ -71,7 +78,7 @@ struct __BufferHelper {
         }
 
         template< typename T >
-        void store() {
+        void store() __LART_WM_DIRECT__ {
             *reinterpret_cast< T * >( addr ) = T( value );
         }
 
@@ -85,28 +92,30 @@ struct __BufferHelper {
 
         Buffer( const Buffer & ) = delete;
 
-        int size() {
+        int size() __LART_WM_DIRECT__ {
             return !this ? 0 : __divine_heap_object_size( this ) / sizeof( BufferLine );
         }
 
-        BufferLine &operator[]( int ix ) {
+        BufferLine &operator[]( int ix ) __LART_WM_DIRECT__ {
             assert( ix < size() );
             return begin()[ ix ];
         }
 
-        BufferLine *begin() {
+        BufferLine *begin() __LART_WM_DIRECT__ {
             return reinterpret_cast< BufferLine * >( this );
         }
-        BufferLine *end() { return begin() + size(); }
+        BufferLine *end() __LART_WM_DIRECT__ { return begin() + size(); }
     };
 
-    Buffer *&get() {
+    Buffer *&get() __LART_WM_DIRECT__ {
         int tid = __divine_get_tid();
         int cnt = !buffers ? 0 : __divine_heap_object_size( buffers ) / sizeof( Buffer * );
         if ( tid >= cnt ) {
             Buffer **n = __alloc< Buffer * >( tid + 1 );
             if ( buffers )
-                std::copy( buffers, buffers + cnt, n );
+                __divine_memcpy( n, buffers, cnt * sizeof( Buffer * ) );
+            else
+                start(); // intialize flushing thread
             for ( int i = cnt; i <= tid; ++i )
                 n[ i ] = nullptr;
             __divine_free( buffers );
@@ -115,19 +124,19 @@ struct __BufferHelper {
         return buffers[ tid ];
     }
 
-    Buffer &cast( void *data ) { return *reinterpret_cast< Buffer * >( data ); }
+    Buffer &cast( void *data ) __LART_WM_DIRECT__ { return *reinterpret_cast< Buffer * >( data ); }
 
-    BufferLine pop() {
+    BufferLine pop() __LART_WM_DIRECT__ {
         return pop( get() );
     }
 
-    BufferLine pop( Buffer *&buf ) {
+    BufferLine pop( Buffer *&buf ) __LART_WM_DIRECT__ {
         const auto size = buf->size();
         assert( size > 0 );
         BufferLine out = (*buf)[ 0 ];
         if ( size > 1 ) {
             auto &n = cast( __divine_malloc( sizeof( BufferLine ) * (size - 1) ) );
-            std::copy( buf->begin() + 1, buf->end(), n.begin() );
+            __divine_memcpy( n.begin(), buf->begin() + 1, (size - 1) * sizeof( BufferLine ) );
             __divine_free( buf );
             buf = &n;
         } else {
@@ -137,57 +146,64 @@ struct __BufferHelper {
         return out;
     }
 
-    void push( BufferLine line ) {
+    void push( const BufferLine &line ) __LART_WM_DIRECT__ {
         auto &buf = *get();
         const auto size = buf.size();
         auto &n = cast( __divine_malloc( sizeof( BufferLine ) * (size + 1) ) );
-        std::copy( buf.begin(), buf.end(), n.begin() );
+        __divine_memcpy( n.begin(), buf.begin(), size * sizeof( BufferLine ) );
         n[ size ] = line;
         __divine_free( &buf );
         get() = &n;
     }
 
-    void drop() {
+    void drop() __LART_WM_DIRECT__ {
         __divine_free( get() );
         get() = nullptr;
     }
 
     Buffer **buffers;
+    bool masked;
 };
 
-static __BufferHelper __storeBuffers;
+__BufferHelper __storeBuffers;
+
+#define WM_MASK() __divine_interrupt_mask(); const bool recursive = __storeBuffers.masked; __storeBuffers.masked = true
+#define WM_UNMASK() if ( !recursive ) {__storeBuffers.masked = false; __divine_interrupt_unmask(); __divine_interrupt(); } (void)(0)
 
 void __dsb_store( void *addr, uint64_t value, int bitwidth ) {
-    __divine_interrupt_mask();
-    __storeBuffers.push( { addr, value, bitwidth } );
+    WM_MASK();
+    __BufferHelper::BufferLine line( addr, value, bitwidth );
+    if ( recursive ) {
+        line.store();
+        return;
+    }
+
+    __storeBuffers.push( line );
     if ( __storeBuffers.get()->size() > __STORE_BUFFER_SIZE )
         __storeBuffers.pop().store();
-    __divine_interrupt_unmask();
-    __divine_interrupt();
+    WM_UNMASK();
 }
 
 void __dsb_flushOne() {
-    __divine_interrupt_mask();
+    WM_MASK();
     __storeBuffers.pop().store();
-    __divine_interrupt_unmask();
-    __divine_interrupt();
+    WM_UNMASK();
 }
 
 void __dsb_flush() {
-    __divine_interrupt_mask();
-    for ( auto l : *__storeBuffers.get() )
+    WM_MASK();
+    for ( auto &l : *__storeBuffers.get() )
         l.store();
     __storeBuffers.drop();
-    __divine_interrupt_unmask();
-    __divine_interrupt();
+    WM_UNMASK();
 }
 
 uint64_t __dsb_load( void *addr, int bitwidth ) {
-    __divine_interrupt_mask();
+    WM_MASK();
     uint64_t val;
     auto buf = __storeBuffers.get();
     if ( buf ) {
-        for ( auto &it : reversed( *buf ) )
+        for ( const auto &it : reversed( *buf ) )
             if ( it.addr == addr ) {
                 val = it.value;
                 goto ret;
@@ -201,7 +217,6 @@ uint64_t __dsb_load( void *addr, int bitwidth ) {
         default: __divine_problem( Problem::Other, "Unhandled case" );
     }
 ret:
-    __divine_interrupt_unmask();
-    __divine_interrupt();
+    WM_UNMASK();
     return val;
 }
