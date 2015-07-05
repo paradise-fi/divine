@@ -278,6 +278,7 @@ void _pthread_entry( void *_args )
 
     // call entry function
     thread->running = true;
+    __sync_synchronize();
     __divine_interrupt_unmask();
     // from now on, args and _args should not be accessed
 
@@ -306,6 +307,7 @@ void _pthread_entry( void *_args )
     }
 
     thread->running = false;
+    __sync_synchronize();
 
     // wait until detach / join
     WAIT( !thread->detached );
@@ -313,6 +315,7 @@ void _pthread_entry( void *_args )
     // cleanup
     __divine_free( thread );
     threads[ltid] = NULL;
+    __sync_synchronize();
 }
 
 int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(void *),
@@ -351,6 +354,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
     _init_thread( gtid, ltid, ( attr == NULL ? PTHREAD_CREATE_JOINABLE : *attr ) );
     DBG_ASSERT( ltid < alloc_pslots );
 
+    __sync_synchronize();
     WAIT( !args->initialized );  // wait, do not free args yet
 
     // cleanup and return
@@ -419,6 +423,7 @@ int pthread_join( pthread_t _ptid, void **result ) {
 
     // force us to synchrozie with the thread on its end, to avoid it from
     // ending nondeterministically in all subsequent states
+    __sync_synchronize();
     WAIT( threads[ ptid.ltid ] != NULL );
     return 0;
 }
@@ -445,6 +450,7 @@ int pthread_detach( pthread_t _ptid ) {
     if ( ended ) {
         // force us to synchrozie with the thread on its end, to avoid it from
         // ending nondeterministically in all subsequent states
+        __sync_synchronize();
         WAIT( threads[ ptid.ltid ] != NULL );
     }
     return 0;
@@ -709,6 +715,7 @@ int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
 
     // lock the mutex
     mutex->owner = gtid + 1;
+    __sync_synchronize();
 
     return 0;
 }
@@ -779,8 +786,10 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
 
     int r = _mutex_adjust_count( mutex, -1 );
     __divine_assert( r == 0 );
-    if ( !mutex->lockCounter )
+    if ( !mutex->lockCounter ) {
         mutex->owner = 0; // unlock if count == 0
+        __sync_synchronize();
+    }
     return 0;
 }
 
@@ -1111,6 +1120,7 @@ int pthread_cond_signal( pthread_cond_t *cond ) {
     int r = _cond_signal< false >( cond );
     if ( r == 0 && cond->counter == 0 )
         cond->mutex = NULL; // break binding between cond. variable and mutex
+    __sync_synchronize();
     return r;
 }
 
@@ -1119,6 +1129,7 @@ int pthread_cond_broadcast( pthread_cond_t *cond ) {
     int r = _cond_signal< true >( cond );
     if ( r == 0 && cond->counter == 0 )
         cond->mutex = NULL; // break binding between cond. variable and mutex
+    __sync_synchronize();
     return r;
 }
 
@@ -1412,6 +1423,7 @@ int _rwlock_lock( pthread_rwlock_t *rwlock, bool wait, bool writer ) {
         }
     }
 
+    __sync_synchronize();
     return 0;
 }
 
@@ -1505,6 +1517,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t * rwlock ) {
             __divine_free( rlock );
         }
     }
+    __sync_synchronize();
     return 0;
 }
 
@@ -1627,6 +1640,7 @@ int pthread_barrier_wait( pthread_barrier_t *barrier ) {
         WAIT_OR_CANCEL( thread->sleeping == Barrier );
     }
 
+    __sync_synchronize();
     return ret;
 }
 
