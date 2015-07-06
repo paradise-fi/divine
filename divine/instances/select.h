@@ -18,6 +18,7 @@ bool _valid( std::vector< Key > trace );
 }
 
 using AlgorithmPtr = std::unique_ptr< algorithm::Algorithm >;
+std::vector< instantiate::Key > selectTrace( Meta &meta );
 AlgorithmPtr select( Meta &meta );
 
 }

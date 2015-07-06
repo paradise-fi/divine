@@ -146,9 +146,10 @@ struct CommonReachability : Algorithm, AlgorithmUtils< Setup, Sh< typename Setup
         return shared;
     }
 
-    CommonReachability( Meta m ) : Algorithm( m, sizeOf< Extension >() )
+    CommonReachability( Meta m, typename Setup::Generator *g = nullptr )
+        : Algorithm( m, sizeOf< Extension >() )
     {
-        this->init( *this );
+        this->init( *this, g );
     }
 
     CommonReachability( This &master, std::pair< int, int > id )

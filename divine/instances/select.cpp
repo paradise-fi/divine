@@ -118,15 +118,10 @@ std::string stringTrace( Trace trace ) {
 }
 
 template< typename I >
-AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
+Trace selectTrace( Meta &meta, Trace sofar, I component, I end )
 {
-    if ( component == end ) {
-        if ( jumptable.count( sofar ) ) {
-            meta.algorithm.instance = stringTrace( sofar );
-            return jumptable[ sofar ]( meta );
-        }
-        return nullptr;
-    }
+    if ( component == end )
+        return sofar;
 
     if ( component->empty() )
         throw std::runtime_error( "FATAL: component list empty at " + brick::string::fmt( sofar ) );
@@ -143,7 +138,8 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
                     available = true;
                     warnOtherAvailable( meta, c );
                     _postSelect( meta, c );
-                    if ( auto x = divine::select( meta, appendArray( sofar, c ), component + 1, end ) )
+                    auto x = divine::selectTrace( meta, appendArray( sofar, c ), component + 1, end );
+                    if ( x != Trace() )
                         return x;
                 } else if ( !retry ) {
                     _deactivate( meta, c );
@@ -163,12 +159,24 @@ AlgorithmPtr select( Meta &meta, Trace sofar, I component, I end )
             " was built, at " + brick::string::fmt( sofar ) );
     }
 
-    return nullptr;
+    return Trace();
+}
+
+Trace selectTrace( Meta &meta )
+{
+    return divine::selectTrace( meta, Trace(), instantiation.begin(), instantiation.end() );
 }
 
 AlgorithmPtr select( Meta &meta )
 {
-    return divine::select( meta, Trace(), instantiation.begin(), instantiation.end() );
+    auto trace = selectTrace( meta );
+
+    if ( JumpTable< Unit >::data.count( trace ) ) {
+        meta.algorithm.instance = stringTrace( trace );
+        return JumpTable< Unit >::data[ trace ]( meta, Unit() );
+    }
+
+    return nullptr;
 }
 
 }

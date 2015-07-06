@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2007 Petr Rockai <me@mornfall.net>
 #include <divine/utility/meta.h>
+#include <divine/instances/definitions.h>
 #include <type_traits>
 #include <vector>
 
@@ -19,6 +20,7 @@ struct InfoBase {
     virtual void propertyInfo( graph::PropertySet prop, Meta &m ) = 0;
     virtual generator::ReductionSet filterReductions( generator::ReductionSet ) = 0;
     virtual std::vector< Prop > getProperties() = 0;
+    virtual AlgorithmPtr select( Meta & ) = 0;
     virtual ~InfoBase() {};
 };
 
@@ -45,6 +47,15 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, br
                 fst = false;
             } );
         std::cout << std::endl;
+    }
+
+    virtual AlgorithmPtr select( Meta &m ) {
+        auto t = selectTrace( m );
+        auto &d = instantiate::JumpTable< typename Setup::Generator * >::data;
+        if ( d.count( t ) )
+            return d[ t ]( m, &g->base() );
+        else
+            return instantiate::JumpTable< Unit >::data[ t ]( m, Unit() );
     }
 
     int id() { return 0; }
@@ -94,8 +105,10 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, br
             decltype( this->graph().base() ) >::type >( brick::types::Preferred() );
     }
 
-    Info( Meta m ) : Algorithm( m ) {
-        g = this->initGraph( *this, decltype( this )( nullptr ), false );
+    Info( Meta m, typename Setup::Generator *_g = nullptr )
+        : Algorithm( m )
+    {
+        g = this->initGraph( *this, _g, false );
     }
 };
 

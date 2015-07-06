@@ -233,7 +233,11 @@ struct Key : brick::types::mixin::LexComparable< Key > {
 };
 
 using Trace = std::vector< instantiate::Key >;
-extern const CMap< Trace, AlgorithmPtr (*)( Meta & ) > jumptable;
+
+template< typename T >
+struct JumpTable {
+    static const CMap< Trace, AlgorithmPtr (*)( Meta &, T ) > data;
+};
 
 static inline std::tuple< std::string, std::string > showGen( Key component ) {
 #define SHOW( TYPE, COMPONENT ) if ( component == TYPE::COMPONENT ) return std::make_tuple( #TYPE, #COMPONENT )
@@ -598,7 +602,7 @@ static const CMap< Key, SupportedBy > supportedBy = {
     { Generator::ProbabilisticLLVM,     Not{ Algorithm::Csdr } },
     { Generator::PointsToLLVM,          Not{ Algorithm::Csdr } },
     { Generator::ControlLLVM,
-        Not{ Or{ Algorithm::Info, Algorithm::Draw, Algorithm::Metrics,
+        Not{ Or{ Algorithm::Draw, Algorithm::Metrics,
             Algorithm::Reachability, Algorithm::WeakReachability,
             Algorithm::NestedDFS, Algorithm::Map, Algorithm::Owcty,
             Algorithm::GenExplicit } } },

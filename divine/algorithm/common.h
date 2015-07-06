@@ -129,11 +129,11 @@ struct Algorithm
 
     /// Initializes the graph generator by reading a file
     template< typename Self >
-    typename Self::Graph *initGraph( Self &self, Self *master = nullptr, bool full = true ) {
+    typename Self::Graph *initGraph( Self &self, typename Self::Setup::Generator *master_g = nullptr, bool full = true ) {
         typename Self::Graph *g = new typename Self::Graph;
         g->setPool( self.masterPool() );
         m_slack_adjusted = g->setSlack( m_slack );
-        g->read( meta().input.model, meta().input.definitions, master ? &master->graph() : nullptr );
+        g->read( meta().input.model, meta().input.definitions, master_g );
         if ( full ) {
             g->useProperties( meta().input.properties );
             meta().algorithm.reduce =
@@ -237,23 +237,23 @@ struct AlgorithmUtils {
     template< typename Self >
     void init( Self &self, Self &master, std::pair< int, int > id ) {
         self.becomeSlave( master.topology(), id );
-        _init( self, &master );
+        _init( self, &master, nullptr );
     }
 
     template< typename Self >
-    void init( Self &self ) {
+    void init( Self &self, typename Setup::Generator *g ) {
         self.becomeMaster( self.meta().execution.threads );
-        _init( self );
+        _init( self, static_cast< Self * >( nullptr ), g );
         self.initSlaves( self );
     }
 
     template< typename Self >
-    void _init( Self &self, Self* master = nullptr ) {
+    void _init( Self &self, Self* master, typename Setup::Generator *g ) {
         static_assert( std::is_base_of< AlgorithmUtils< Setup, Shared >, Self >::value,
                "Algorithm must be descendant of AlgorithmUtils" );
         ASSERT_EQ( static_cast< Self* >( this ), &self );
 
-        m_graph = std::shared_ptr< Graph >( self.initGraph( self, master ) );
+        m_graph = std::shared_ptr< Graph >( self.initGraph( self, master ? &master->graph().base() : g ) );
         m_store = std::shared_ptr< Store >( self.initStore( self, master ) );
     }
 

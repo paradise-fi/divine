@@ -283,10 +283,10 @@ struct Draw : algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, brick::typ
         }
     }
 
-    Draw( Meta m, bool = false )
+    Draw( Meta m, typename Setup::Generator *g = nullptr, bool = false )
         : Algorithm( m, sizeof( Extension ) )
     {
-        this->init( *this );
+        this->init( *this, g );
         maxdist = m.algorithm.maxDistance;
         if ( maxdist <= 0 )
             throw std::logic_error(

@@ -130,9 +130,10 @@ struct Metrics : Algorithm, AlgorithmUtils< Setup, MetricsShared >,
         return this->shared;
     }
 
-    Metrics( Meta m ) : Algorithm( m, 0 )
+    Metrics( Meta m, typename Setup::Generator *g = nullptr )
+        : Algorithm( m, 0 )
     {
-        this->init( *this );
+        this->init( *this, g );
     }
 
     Metrics( Metrics &master, std::pair< int, int > id ) : Algorithm( master.meta(), 0 )

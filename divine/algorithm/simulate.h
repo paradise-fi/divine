@@ -963,8 +963,10 @@ struct Simulate : Algorithm, AlgorithmUtils< Setup, brick::types::Unit >, Sequen
         }
     }
 
-    Simulate( Meta m ) : Algorithm( m, sizeof( Extension ) ) {
-        this->init( *this );
+    Simulate( Meta m, typename Setup::Generator *g = nullptr )
+        : Algorithm( m, sizeof( Extension ) )
+    {
+        this->init( *this, g );
         options |= Option::PrintEdges;
         inputTrace = m.input.trace;
         stopOn = StopOn::SC( 0 );

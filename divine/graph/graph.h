@@ -229,8 +229,8 @@ struct Transform {
     std::string showConstdata() { return base().showConstdata(); }
     std::string showNode( Node s ) { return base().showNode( s ); }
     std::string showTransition( Node from, Node to, Label act ) { return base().showTransition( from, to, act ); }
-    void read( std::string path, std::vector< std::string > definitions, Transform< G > *blueprint = nullptr ) {
-        base().read( path, definitions, blueprint ? &blueprint->_base : nullptr );
+    void read( std::string path, std::vector< std::string > definitions, G *blueprint = nullptr ) {
+        base().read( path, definitions, blueprint );
     }
 
     template< typename Yield >

@@ -90,6 +90,7 @@ struct Main {
     Compile compile;
 
     std::unique_ptr< Mpi > mpi;
+    AlgorithmPtr info;
 
     void mpiFillMeta( Meta &meta ) {
         // needs to be set up before parseCommandline
@@ -143,7 +144,8 @@ struct Main {
                 die( "FATAL: --shared cannot be used with MPI" );
         }
 
-        auto a = select( meta );
+        auto ib = dynamic_cast< InfoBase * >( info.get() );
+        auto a = ib->select( meta );
 
         if (!a)
             die( "FATAL: Internal error choosing algorithm. Built with -DSMALL?" );
@@ -725,34 +727,32 @@ struct Main {
         if ( !meta.input.dummygen && !brick::fs::access( input, R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
 
-        {
-            Meta metaInfo( meta );
-            metaInfo.algorithm.algorithm = meta::Algorithm::Type::Info;
-            auto infoAlg = select( metaInfo );
-            auto ib = dynamic_cast< InfoBase * >( infoAlg.get() );
-            if ( !ib )
-                die( "Fatal error encountered while processing input." );
+        Meta metaInfo( meta );
+        metaInfo.algorithm.algorithm = meta::Algorithm::Type::Info;
+        info = select( metaInfo );
+        auto ib = dynamic_cast< InfoBase * >( info.get() );
+        if ( !ib )
+            die( "Fatal error encountered while processing input." );
 
-            std::set< std::string > props;
-            for ( auto p : ib->getProperties() )
-                props.insert( p.name );
-            if ( meta.input.properties.empty() ) {
-                for ( auto p : { "safety", "deadlock" } )
-                    if ( props.count( p ) ) {
-                        meta.input.properties.insert( p );
-                        break;
-                    }
-                if ( opts.foundCommand() != cmd_info && meta.input.properties.empty() )
-                    die( "FATAL: No property given and no default usable, please"
-                            " consult divine info and use -p <prop name>" );
-            } else {
-                for ( auto p : meta.input.properties )
-                    if ( props.count( p ) == 0 )
-                        die( "Invalid property '" + p + "' specified." );
-            }
-            ib->propertyInfo( meta.input.properties, meta );
-            meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
+        std::set< std::string > props;
+        for ( auto p : ib->getProperties() )
+            props.insert( p.name );
+        if ( meta.input.properties.empty() ) {
+            for ( auto p : { "safety", "deadlock" } )
+                if ( props.count( p ) ) {
+                    meta.input.properties.insert( p );
+                    break;
+                }
+            if ( opts.foundCommand() != cmd_info && meta.input.properties.empty() )
+                die( "FATAL: No property given and no default usable, please"
+                     " consult divine info and use -p <prop name>" );
+        } else {
+            for ( auto p : meta.input.properties )
+                if ( props.count( p ) == 0 )
+                    die( "Invalid property '" + p + "' specified." );
         }
+        ib->propertyInfo( meta.input.properties, meta );
+        meta.algorithm.reduce = ib->filterReductions( meta.algorithm.reduce );
 
         auto pt = meta.input.propertyType;
 

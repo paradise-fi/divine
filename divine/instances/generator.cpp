@@ -21,7 +21,6 @@ template< typename T >
 using FixArray = std::vector< T >;
 
 static const std::vector< std::string > defaultHeaders = {
-        "divine/instances/auto/extern.h",
         "divine/instances/definitions.h",
         "divine/graph/store.h",
     };
@@ -164,25 +163,70 @@ struct InstGenerator {
 
         }
 
+        std::sort( finals.begin(), finals.end(), []( Trace a, Trace b ) {
+                for ( auto xa : a )
+                    if ( xa.type == Type::Generator )
+                        for ( auto xb : b )
+                            if ( xb.type == Type::Generator )
+                                return xa < xb;
+                return false;
+            } );
+
         emitSelect( finals );
         emitExtern( finals );
         return emitInstances( finals );
+    }
+
+    std::string _gen( Key k ) {
+        return std::get< 1 >( showGen( k ) );
+    }
+
+    std::string _gen( Trace trace ) {
+        for ( auto t : trace )
+            if ( t.type == Type::Generator )
+                return _gen( t );
     }
 
     void emitSelect( std::vector< FixArray< Key > > finals )
     {
         _select << "#include <divine/instances/auto/extern.h>" << std::endl
                 << "#include <divine/instances/definitions.h>" << std::endl
-                << std::endl
-                << "namespace divine { namespace instantiate {" << std::endl
                 << std::endl;
 
-        _select << "const instantiate::CMap< Trace, AlgorithmPtr (*)( Meta & ) > jumptable = {";
+        _select << "namespace divine {" << std::endl;
+
+
+        _select << "namespace instantiate {" << std::endl
+                << std::endl;
+
+        std::string current;
+
+        for ( auto trace : finals ) {
+            if ( !_allTraits(trace) )
+                continue;
+
+            if ( current != _gen( trace ) ) {
+                if ( current != "" )
+                    _select << "};" << std::endl;
+                _select << "template<> const instantiate::CMap< Trace, AlgorithmPtr (*)( Meta &, ::divine::generator::"
+                        << _gen( trace ) << " * ) > "
+                        << "instantiate::JumpTable< ::divine::generator::" << _gen( trace ) << " * >::data = {" << std::endl;
+                current = _gen( trace );
+            }
+
+            _select << std::endl << "{ Trace" << _show( trace ) << ", instantiate::create2"
+                    << _label( trace ) << " }," << std::endl;
+        }
+
+        _select << std::endl << "};" << std::endl;
+
+        _select << "template<> const instantiate::CMap< Trace, AlgorithmPtr (*)( Meta &, Unit ) >"
+                << " instantiate::JumpTable< Unit >::data = {" << std::endl;
 
         for ( auto trace : finals )
             if ( _allTraits(trace) )
-                _select << std::endl << "{ Trace" << _show( trace ) << ", instantiate::create"
-                        << _label( trace ) << " },";
+                _select << std::endl << "{ Trace" << _show( trace ) << ", instantiate::create1"
+                        << _label( trace ) << " }," << std::endl;
 
         _select << std::endl << "};" << std::endl;
 
@@ -193,13 +237,37 @@ struct InstGenerator {
         _extern << "#include <divine/utility/meta.h>" << std::endl
                 << "#include <divine/utility/die.h>" << std::endl
                 << "#include <divine/algorithm/common.h>" << std::endl
-                << "#include <memory>" << std::endl
-                << "namespace divine {" << std::endl
-                 << "namespace instantiate {" << std::endl << std::endl;
+                << "#include <memory>" << std::endl;
+
+        std::string current;
+        std::set< std::string > hdrs;
+
+        for ( auto trace : finals ) {
+            if ( _gen( trace ) == current )
+                continue;
+
+            for ( auto sym : trace ) {
+                if ( sym.type == Type::Generator ) {
+                    auto it = headers.find( sym );
+                    if ( it != headers.end() )
+                        std::copy( it->second.begin(), it->second.end(), std::inserter( hdrs, hdrs.begin() ) );
+                }
+            }
+        }
+
+        for ( auto header : hdrs )
+            _extern << "#include <" << header << ">" << std::endl;
+
+        _extern << "namespace divine {" << std::endl
+                << "namespace instantiate {" << std::endl;
 
         for ( auto symbol : finals )
-            _extern << "std::unique_ptr< ::divine::algorithm::Algorithm > create"
-                    << _label( symbol ) << "( Meta & );" << std::endl;
+            if ( _allTraits( symbol ) ) {
+                _extern << "std::unique_ptr< ::divine::algorithm::Algorithm > create2"
+                        << _label( symbol ) << "( Meta &, ::divine::generator::" << _gen( symbol ) << " * );" << std::endl;
+                _extern << "std::unique_ptr< ::divine::algorithm::Algorithm > create1"
+                        << _label( symbol ) << "( Meta &, Unit );" << std::endl;
+            }
 
         _extern << "}" << std::endl << "}" << std::endl;
     }
@@ -281,6 +349,7 @@ struct InstGenerator {
 
             file << "  public:" << std::endl
                  << "    using Store = _Store< _TableProvider, _Generator, _Hasher, _Statistics >;" << std::endl
+                 << "    using Generator = _Generator;" << std::endl
                  << "    using Graph = _Transform< _Generator, Store, _Statistics >;" << std::endl
                  << "    using Visitor = _Visitor;" << std::endl
                  << "    template< typename I >" << std::endl
@@ -289,11 +358,18 @@ struct InstGenerator {
                  << "    using Statistics = _Statistics;" << std::endl
                  << "};" << std::endl;
 
-            file << "std::unique_ptr< ::divine::algorithm::Algorithm > create"
-                 << _label( symbol ) << "( Meta &meta ) {" << std::endl
+            file << "std::unique_ptr< ::divine::algorithm::Algorithm > create1"
+                 << _label( symbol ) << "( Meta &meta, Unit ) {" << std::endl
                  << "    return std::unique_ptr< ::divine::algorithm::Algorithm >( new "
                  <<          algorithm[ alg ] << "< Setup" << _label( symbol ) << ">( meta ) );" << std::endl
                  << "}" << std::endl << std::endl;
+
+            file << "std::unique_ptr< ::divine::algorithm::Algorithm > create2"
+                 << _label( symbol ) << "( Meta &meta, ::divine::generator::" << _gen( symbol ) << " *g ) {" << std::endl
+                 << "    return std::unique_ptr< ::divine::algorithm::Algorithm >( new "
+                 <<          algorithm[ alg ] << "< Setup" << _label( symbol ) << ">( meta, g ) );" << std::endl
+                 << "}" << std::endl << std::endl;
+
             return true;
         } else
             return false;
@@ -323,6 +399,7 @@ struct InstGenerator {
 
     int writeFiles( std::string selName, std::string extName, std::string instancesPrefix ) {
         int cnt = 0;
+
         cnt += writeFile( selName, _select );
         cnt += writeFile( extName, _extern );
         for ( int i = 0; i < int( _instances.size() ); ++i )

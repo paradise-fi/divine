@@ -521,12 +521,14 @@ struct Owcty : Algorithm, AlgorithmUtils< Setup, OwctyShared< typename Setup::St
         meta().statistics.deadlocks = -1; /* did not count */
     }
 
-    Owcty( Meta m ) : Algorithm( m, sizeof( Extension ) )
+    Owcty( Meta m, typename Setup::Generator *g = nullptr )
+        : Algorithm( m, sizeof( Extension ) )
     {
-        this->init( *this );
+        this->init( *this, g );
     }
 
-    Owcty( Owcty &master, std::pair< int, int > id ) : Algorithm( master.meta(), sizeof( Extension ) )
+    Owcty( Owcty &master, std::pair< int, int > id )
+        : Algorithm( master.meta(), sizeof( Extension ) )
     {
         this->init( *this, master, id );
     }
