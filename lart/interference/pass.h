@@ -37,6 +37,7 @@ struct Pass : llvm::ModulePass
             annotate( f );
             clear();
         }
+
         return true;
     }
 };

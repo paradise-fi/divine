@@ -18,6 +18,7 @@ void Pass::propagate( llvm::Instruction *def, llvm::Value *use )
     if ( def == use )
         return;
     llvm::BasicBlock::iterator I = cast< llvm::Instruction >( use );
+    _interference[ &*I ].insert( def );
     auto BB = I->getParent();
     if ( I != BB->begin() )
         return propagate( def, --I );
