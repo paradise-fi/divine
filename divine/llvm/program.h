@@ -20,6 +20,7 @@
 #include <llvm/CodeGen/IntrinsicLowering.h>
 
 #include <map>
+#include <unordered_map>
 
 #ifndef DIVINE_LLVM_PROGRAM_H
 #define DIVINE_LLVM_PROGRAM_H
@@ -244,12 +245,20 @@ struct ProgramInfo {
         return &constdata[ result.offset ];
     }
 
-    void allocateValue( int fun, Value &result ) {
+    using Coverage = std::vector< std::vector< ::llvm::Value * > >;
+    std::vector< Coverage > coverage;
+
+    bool lifetimeOverlap( ::llvm::Value *a, ::llvm::Value *b );
+    bool overlayValue( int fun, Value &result, ::llvm::Value *val );
+
+    void allocateValue( int fun, Value &result, ::llvm::Value *val = nullptr ) {
         result.constant = false;
         if ( fun ) {
             result.global = false;
-            result.offset = functions[ fun ].datasize;
-            functions[ fun ].datasize += result.width;
+            if ( !val || !overlayValue( fun, result, val ) ) {
+                result.offset = functions[ fun ].datasize;
+                functions[ fun ].datasize += result.width;
+            }
         } else {
             result.global = true;
             result.offset = globalsize;

@@ -101,6 +101,70 @@ void ProgramInfo::initValue( ::llvm::Value *val, ProgramInfo::Value &result )
         result.type = ProgramInfo::Value::Alloca;
 }
 
+bool ProgramInfo::lifetimeOverlap( ::llvm::Value *v_a, ::llvm::Value *v_b ) {
+    auto a = dyn_cast< ::llvm::Instruction >( v_a );
+    auto b = dyn_cast< ::llvm::Instruction >( v_b );
+    if ( !a || !b )
+        return true;
+
+    auto id = a->getMetadata( "lart.id" );
+    auto list = b->getMetadata( "lart.interference" );
+
+    if ( !list || !id )
+        return true;
+    for ( int i = 0; i < list->getNumOperands(); ++i ) {
+        auto item = dyn_cast< ::llvm::MDNode >( list->getOperand( i ) );
+        if ( item == id )
+            return true;
+    }
+    return false;
+}
+
+bool ProgramInfo::overlayValue( int fun, Value &result, ::llvm::Value *val )
+{
+    if ( !result.width ) {
+        result.offset = 0;
+        return true;
+    }
+
+    int iter = 0;
+    auto &f = functions[ fun ];
+    makeFit( coverage, fun );
+    auto &c = coverage[ fun ];
+
+    auto insn = dyn_cast< ::llvm::Instruction >( val );
+    if ( !insn || !insn->getMetadata( "lart.interference" ) )
+        goto alloc;
+
+    ASSERT( !f.instructions.empty() );
+    c.resize( f.datasize );
+
+    for ( result.offset = 0; result.offset < f.datasize; ) {
+        iter ++;
+        if ( result.offset + result.width > f.datasize )
+            goto alloc;
+
+        bool good = true;
+        for ( int i = 0; good && i < result.width; ++i )
+            for ( auto v : c[ result.offset + i ] )
+                if ( lifetimeOverlap( val, v ) ) {
+                    result.offset = valuemap[ v ].offset + valuemap[ v ].width;
+                    good = false;
+                    break;
+                }
+
+        if ( good )
+            goto out;
+    }
+alloc:
+    result.offset = f.datasize;
+    f.datasize += result.width;
+    c.resize( f.datasize );
+out:
+    c[ result.offset ].push_back( val );
+    return true;
+}
+
 ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
 {
     if ( valuemap.find( val ) != valuemap.end() )
@@ -151,7 +215,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
                 constglobal = false;
             }
         } else makeLLVMConstant( result, C );
-    } else allocateValue( function, result );
+    } else allocateValue( function, result, val );
 
     if ( function && !result.global && !result.constant ) {
         if ( result.width )
@@ -367,6 +431,8 @@ void ProgramInfo::build()
         toInit.pop_front();
         storeConstant( std::get< 0 >( x ), std::get< 1 >( x ), std::get< 2 >( x ) );
     }
+
+    coverage.clear();
 }
 
 void ProgramInfo::pass()
