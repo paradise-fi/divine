@@ -87,7 +87,7 @@ struct Interpreter
     MachineState< HeapMeta > state; /* the state we are dealing with */
     std::map< std::string, std::string > properties;
 
-    bool jumped;
+    bool jumped, observed;
     Choice choice;
 
     bool tauminus, tauplus, taustores;
@@ -97,13 +97,10 @@ struct Interpreter
     ProgramInfo &info() { return *bc->info; }
 
     void parseProperties( Module *M );
-    bool observable( const SeenPC &s )
+    bool observable()
     {
         if ( !tauminus )
             return true;
-
-        if ( tauplus && s.empty() )
-            return false; /* this already caused an interrupt, if applicable */
 
         bool store = isa< StoreInst >( instruction().op );
         if ( store || isa< AtomicRMWInst >( instruction().op ) ||
@@ -116,7 +113,7 @@ struct Interpreter
                 dereference( instruction().operand( store ? 1 : 0 ) ) );
             return p && !state.isPrivate( state._thread, *p );
         }
-        return instruction().builtin == BuiltinInterrupt || instruction().builtin == BuiltinAp;
+        return instruction().builtin == BuiltinAp;
     }
 
     // the currently executing one, i.e. what pc of the top frame of the active thread points at
@@ -190,13 +187,17 @@ struct Interpreter
         int threads = state._thread_count;
 
         if ( _tid >= 0 && include ) {
-            if ( _tid < threads )
+            if ( _tid < threads ) {
+                observed = false;
                 run( _tid, yield, Label( _tid ), alloc );
+            }
         } else while ( threads ) {
             while ( tid < threads && !state.stack( tid ).get().length() )
                 ++tid;
-            if ( _tid < 0 || _tid != tid )
+            if ( _tid < 0 || _tid != tid ) {
+                observed = false;
                 run( tid, yield, Label( tid ), alloc );
+            }
             if ( ++tid == threads )
                 break;
             state.rewind( b, -1 );
@@ -220,7 +221,10 @@ struct Interpreter
         if ( !tauplus && !tauminus )
             return true;
 
-        if ( observable( seen ) || seen.count( pc() ) )
+        if ( seen.count( pc() ) )
+            return true;
+
+        if ( observed && ( instruction().builtin == BuiltinMask || observable() ) )
             return true;
 
         if ( !tauplus && jumped )
@@ -315,6 +319,9 @@ struct Interpreter
 
             if ( !state.stack().get().length() )
                 break; /* this thread is done */
+
+            if ( observable() )
+                observed = true;
 
             if ( choice.options ) {
                 ASSERT( !jumped );
