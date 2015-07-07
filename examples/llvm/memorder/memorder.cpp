@@ -4,25 +4,33 @@
 #include "memorder.h"
 #include <algorithm> // reverse iterator
 
+#define forceinline __attribute__((always_inline))
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wgcc-compat"
+
+namespace lart {
+namespace weakmem {
+
 template< typename Collection >
 struct Reversed {
     using T = typename Collection::value_type;
     using iterator = std::reverse_iterator< T * >;
 
-    Reversed( Collection &data ) __LART_WM_DIRECT__ : data( data ) { }
-    Reversed( const Reversed & ) __LART_WM_DIRECT__ = default;
+    Reversed( Collection &data ) _lart_weakmem_bypass_ : data( data ) { }
+    Reversed( const Reversed & ) _lart_weakmem_bypass_ = default;
 
-    iterator begin() __LART_WM_DIRECT__ { return iterator( data.end() ); }
-    iterator end() __LART_WM_DIRECT__ { return iterator( data.begin() ); }
+    iterator begin() _lart_weakmem_bypass_ { return iterator( data.end() ); }
+    iterator end() _lart_weakmem_bypass_ { return iterator( data.begin() ); }
 
     Collection &data;
 };
 
 template< typename T >
-Reversed< T > reversed( T &x ) __LART_WM_DIRECT__ { return Reversed< T >( x ); }
+Reversed< T > reversed( T &x ) _lart_weakmem_bypass_ { return Reversed< T >( x ); }
 
 template< typename T >
-static T *__alloc( int n ) __LART_WM_DIRECT__ { return reinterpret_cast< T * >( __divine_malloc( n * sizeof( T ) ) ); }
+static T *__alloc( int n ) _lart_weakmem_bypass_ { return reinterpret_cast< T * >( __divine_malloc( n * sizeof( T ) ) ); }
 
 struct __BufferHelper {
 
@@ -30,13 +38,15 @@ struct __BufferHelper {
     // so we will intialize if buffers == nullptr
     __BufferHelper() = default;
 
-    void start() __LART_WM_DIRECT__ {
-        __divine_new_thread( []( void *self ) {
-                reinterpret_cast< __BufferHelper * >( self )->flusher();
-            }, this );
+    void start() _lart_weakmem_bypass_ {
+        __divine_new_thread( &__BufferHelper::startFlusher, this );
     }
 
-    ~__BufferHelper() __LART_WM_DIRECT__ {
+    static void startFlusher( void *self ) _lart_weakmem_bypass_ {
+        reinterpret_cast< __BufferHelper * >( self )->flusher();
+    }
+
+    ~__BufferHelper() _lart_weakmem_bypass_ {
         if ( buffers ) {
             for ( int i = 0, e = __divine_heap_object_size( buffers ) / sizeof( Buffer * ); i < e; ++i )
                 __divine_free( buffers[ i ] );
@@ -45,8 +55,9 @@ struct __BufferHelper {
         }
     }
 
-    void flusher() __LART_WM_DIRECT__ {
+    void flusher() _lart_weakmem_bypass_ {
         while ( true ) {
+            __divine_interrupt();
             __divine_interrupt_mask();
             if ( buffers ) {
                 int tid = __divine_choice( __divine_heap_object_size( buffers ) / sizeof( Buffer * ) );
@@ -57,17 +68,16 @@ struct __BufferHelper {
                 }
             }
             __divine_interrupt_unmask();
-            __divine_interrupt();
         }
     }
 
     struct BufferLine {
-        BufferLine() __LART_WM_DIRECT__ : addr( nullptr ), value( 0 ), bitwidth( 0 ) { }
-        BufferLine( void *addr, uint64_t value, int bitwidth ) __LART_WM_DIRECT__ :
+        BufferLine() _lart_weakmem_bypass_ : addr( nullptr ), value( 0 ), bitwidth( 0 ) { }
+        BufferLine( void *addr, uint64_t value, int bitwidth ) _lart_weakmem_bypass_ :
             addr( addr ), value( value ), bitwidth( bitwidth )
         { }
 
-        void store() __LART_WM_DIRECT__ {
+        void store() _lart_weakmem_bypass_ forceinline {
             switch ( bitwidth ) {
                 case 8: store< uint8_t >(); break;
                 case 16: store< uint16_t >(); break;
@@ -78,7 +88,7 @@ struct __BufferHelper {
         }
 
         template< typename T >
-        void store() __LART_WM_DIRECT__ {
+        void store() _lart_weakmem_bypass_ forceinline {
             *reinterpret_cast< T * >( addr ) = T( value );
         }
 
@@ -92,22 +102,22 @@ struct __BufferHelper {
 
         Buffer( const Buffer & ) = delete;
 
-        int size() __LART_WM_DIRECT__ {
+        int size() _lart_weakmem_bypass_ {
             return !this ? 0 : __divine_heap_object_size( this ) / sizeof( BufferLine );
         }
 
-        BufferLine &operator[]( int ix ) __LART_WM_DIRECT__ {
+        BufferLine &operator[]( int ix ) _lart_weakmem_bypass_ forceinline {
             assert( ix < size() );
             return begin()[ ix ];
         }
 
-        BufferLine *begin() __LART_WM_DIRECT__ {
+        BufferLine *begin() _lart_weakmem_bypass_ forceinline {
             return reinterpret_cast< BufferLine * >( this );
         }
-        BufferLine *end() __LART_WM_DIRECT__ { return begin() + size(); }
+        BufferLine *end() _lart_weakmem_bypass_ forceinline { return begin() + size(); }
     };
 
-    Buffer *&get() __LART_WM_DIRECT__ {
+    Buffer *&get() _lart_weakmem_bypass_ forceinline {
         int tid = __divine_get_tid();
         int cnt = !buffers ? 0 : __divine_heap_object_size( buffers ) / sizeof( Buffer * );
         if ( tid >= cnt ) {
@@ -124,13 +134,13 @@ struct __BufferHelper {
         return buffers[ tid ];
     }
 
-    Buffer &cast( void *data ) __LART_WM_DIRECT__ { return *reinterpret_cast< Buffer * >( data ); }
+    Buffer &cast( void *data ) _lart_weakmem_bypass_ forceinline { return *reinterpret_cast< Buffer * >( data ); }
 
-    BufferLine pop() __LART_WM_DIRECT__ {
+    BufferLine pop() _lart_weakmem_bypass_ forceinline {
         return pop( get() );
     }
 
-    BufferLine pop( Buffer *&buf ) __LART_WM_DIRECT__ {
+    BufferLine pop( Buffer *&buf ) _lart_weakmem_bypass_ forceinline {
         const auto size = buf->size();
         assert( size > 0 );
         BufferLine out = (*buf)[ 0 ];
@@ -146,7 +156,7 @@ struct __BufferHelper {
         return out;
     }
 
-    void push( const BufferLine &line ) __LART_WM_DIRECT__ {
+    void push( const BufferLine &line ) _lart_weakmem_bypass_ forceinline {
         auto &buf = *get();
         const auto size = buf.size();
         auto &n = cast( __divine_malloc( sizeof( BufferLine ) * (size + 1) ) );
@@ -156,7 +166,7 @@ struct __BufferHelper {
         get() = &n;
     }
 
-    void drop() __LART_WM_DIRECT__ {
+    void drop() _lart_weakmem_bypass_ forceinline {
         __divine_free( get() );
         get() = nullptr;
     }
@@ -167,56 +177,92 @@ struct __BufferHelper {
 
 __BufferHelper __storeBuffers;
 
-#define WM_MASK() __divine_interrupt_mask(); const bool recursive = __storeBuffers.masked; __storeBuffers.masked = true
-#define WM_UNMASK() if ( !recursive ) {__storeBuffers.masked = false; __divine_interrupt_unmask(); __divine_interrupt(); } (void)(0)
-
-void __dsb_store( void *addr, uint64_t value, int bitwidth ) {
-    WM_MASK();
-    __BufferHelper::BufferLine line( addr, value, bitwidth );
-    if ( recursive ) {
-        line.store();
-        return;
+struct Masked {
+    Masked() : recursive( __storeBuffers.masked ) {
+        __storeBuffers.masked = true;
+    }
+    ~Masked() {
+        if ( !recursive )
+            __storeBuffers.masked = false;
     }
 
-    __storeBuffers.push( line );
+    operator bool() const { return recursive; }
+
+    bool recursive;
+};
+
+#define WM_VISIBLE_MASK()     \
+    __divine_interrupt();     \
+    __divine_interrupt_mask()
+
+void __lart_weakmem_store_tso( void *addr, uint64_t value, int bitwidth ) {
+    WM_VISIBLE_MASK();
+    __storeBuffers.push( { addr, value, bitwidth } );
     if ( __storeBuffers.get()->size() > __STORE_BUFFER_SIZE )
         __storeBuffers.pop().store();
-    WM_UNMASK();
 }
 
-void __dsb_flushOne() {
-    WM_MASK();
-    __storeBuffers.pop().store();
-    WM_UNMASK();
-}
-
-void __dsb_flush() {
-    WM_MASK();
+void __lart_weakmem_flush() {
+    WM_VISIBLE_MASK();
     for ( auto &l : *__storeBuffers.get() )
         l.store();
     __storeBuffers.drop();
-    WM_UNMASK();
 }
 
-uint64_t __dsb_load( void *addr, int bitwidth ) {
-    WM_MASK();
-    uint64_t val;
+uint64_t __lart_weakmem_load_tso( void *addr, int bitwidth ) {
+    WM_VISIBLE_MASK();
     auto buf = __storeBuffers.get();
     if ( buf ) {
         for ( const auto &it : reversed( *buf ) )
             if ( it.addr == addr ) {
-                val = it.value;
-                goto ret;
+                return it.value;
             }
     }
     switch ( bitwidth ) {
-        case 8: val = *reinterpret_cast< uint8_t * >( addr ); break;
-        case 16: val = *reinterpret_cast< uint16_t * >( addr ); break;
-        case 32: val = *reinterpret_cast< uint32_t * >( addr ); break;
-        case 64: val = *reinterpret_cast< uint64_t * >( addr ); break;
+        case 8: return *reinterpret_cast< uint8_t * >( addr );
+        case 16: return *reinterpret_cast< uint16_t * >( addr );
+        case 32: return *reinterpret_cast< uint32_t * >( addr );
+        case 64: return *reinterpret_cast< uint64_t * >( addr );
         default: __divine_problem( Problem::Other, "Unhandled case" );
     }
-ret:
-    WM_UNMASK();
-    return val;
+    return 0; // unreachable
 }
+
+uint64_t __lart_weakmem_load_pso( void *addr, int bitwidth ) {
+    __divine_problem( 1, "unimplemented" );
+}
+void __lart_weakmem_store_pso( void *addr, uint64_t value, int bitwidth ) {
+    __divine_problem( 1, "unimplemented" );
+}
+
+void __lart_weakmem_memmove( void *_dst, const void *_src, size_t n ) {
+    volatile char *dst = const_cast< volatile char * >( reinterpret_cast< char * >( _dst ) );
+    char *src = reinterpret_cast< char * >( const_cast< void * >( _src ) );
+    if ( dst < src )
+        for ( ; n; --n, ++dst, ++src )
+            *dst = *src;
+    else if ( dst > src ) {
+        dst = dst + n - 1;
+        src = src + n - 1;
+        for ( ; n; --n, --dst, --src )
+            *dst = *src;
+    }
+}
+
+void __lart_weakmem_memcpy( void *_dst, const void *_src, size_t n ) {
+    volatile char *dst = const_cast< volatile char * >( reinterpret_cast< char * >( _dst ) );
+    char *src = reinterpret_cast< char * >( const_cast< void * >( _src ) );
+    for ( ; n; --n, ++dst, ++src )
+        *dst = *src;
+}
+
+void __lart_weakmem_memset( void *_dst, int c, size_t n ) {
+    volatile char *dst = const_cast< volatile char * >( reinterpret_cast< char * >( _dst ) );
+    for ( ; n; --n, ++dst )
+        *dst = c;
+}
+
+}
+}
+
+#pragma GCC diagnostic pop

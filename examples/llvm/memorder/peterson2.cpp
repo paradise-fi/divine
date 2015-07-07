@@ -9,8 +9,8 @@
 enum APs { w0in, w0out, w1in, w1out };
 LTL( exclusion, G( w0in -> ((!w1in) W w0out ) ) && G( w1in -> ((!w0in) W w1out )) );
 
-WMO< bool > flag[2];
-WMO< int > turn;
+lart::weakmem::Slot< lart::weakmem::TSO, bool > flag[2];
+lart::weakmem::Slot< lart::weakmem::TSO, int > turn;
 
 constexpr int other( int x ) { return x == 0 ? 1 : 0; }
 const APs in[] = { w0in, w1in };
