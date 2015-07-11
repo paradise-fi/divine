@@ -56,7 +56,12 @@ int Interpreter< HM, L >::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl
     state.enter( pc.function );
     if ( !arg.isNothing() ) {
         auto v = info().function( pc ).values[ 0 ];
-        frame().memoryflag( info(), v ).set( fl );
+        auto mflag = frame().memoryflag( info(), v );
+        mflag.set( fl ); ++ mflag;
+        if ( fl == MemoryFlag::HeapPointer )
+            fl = MemoryFlag::Data;
+        for ( int i = 1; i < v.width; ++i, ++mflag )
+            mflag.set( fl );
         *frame().template dereference< Pointer >( info(), v ) = arg.value();
     }
     if ( current >= 0 )
