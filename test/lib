@@ -245,9 +245,11 @@ llvm_precompile() {
 }
 
 llvm_prepare() {
-    cat > $1
+    f="$1"
+    shift
+    cat > $f
     llvm_precompile
-    divine compile --llvm $1 --precompiled=. >& progress
+    divine compile --llvm $f --precompiled=. "$@" >& progress
 }
 
 llvm_verify_file() {
@@ -272,7 +274,7 @@ llvm_verify_file() {
 
 llvm_verify_cpp() {
     test "$GEN_LLVM" = "ON" || skip
-    llvm_prepare testcase.cpp
+    llvm_prepare testcase.cpp --cflags=-std=c++11
     llvm_verify_file testcase.bc "$@"
 }
 
