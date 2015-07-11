@@ -17,9 +17,10 @@ EOF
 llvm_verify invalid "PROBLEM.*Uncaught signal: SIGSEGV" pthread.cpp <<EOF
 #include <signal.h>
 
-void main() {
+int main() {
     signal( SIGSEGV, SIG_DFL );
     raise( SIGSEGV );
+    return 0;
 }
 EOF
 
@@ -75,12 +76,13 @@ void handler( int sig ) {
     signalled = 1;
 }
 
-void main() {
+int main() {
     signal( SIGSEGV, handler );
     raise( SIGSEGV );
     assert( signalled == 1 );
     signal( SIGSEGV, SIG_DFL );
     raise( SIGSEGV );
+    return 0;
 }
 EOF
 
@@ -96,12 +98,13 @@ void handler( int sig ) {
         AP( in_handler );
 }
 
-void main() {
+int main() {
     signal( SIGSEGV, SIG_IGN );
     raise( SIGSEGV );
     AP( ignored );
     signal( SIGSEGV, handler );
     raise( SIGSEGV );
     AP( post_raise );
+    return 0;
 }
 EOF

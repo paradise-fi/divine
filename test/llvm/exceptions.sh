@@ -7,6 +7,7 @@ int main() {
     try { throw 5; }
     catch( ... ) {}
     assert( 0 );
+    return 0;
 }
 EOF
 
@@ -62,6 +63,7 @@ int main() {
         return 0;
     }
     assert( 0 );
+    return 0;
 }
 EOF
 
@@ -74,6 +76,7 @@ int main() {
         return 0;
     }
     assert( 0 );
+    return 0;
 }
 EOF
 
@@ -87,6 +90,7 @@ int main() {
         x = 5;
     }
     assert( x == 5 );
+    return 0;
 }
 EOF
 

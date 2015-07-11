@@ -4,47 +4,52 @@
 llvm_verify valid <<EOF
 #include <assert.h>
 int array[2];
-void main() {
+int main() {
     array[1] = 3;
     assert( array[1] == 3 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "bad dereference" testcase.c:3 <<EOF
 int array[2];
-void main() {
+int main() {
     array[2] = 3;
+    return 0;
 }
 EOF
 
 llvm_verify valid <<EOF
 int array[2];
-void main() {
+int main() {
     memset( array, 1, 2 * sizeof( int ) );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "bad dereference" memset.c <<EOF
 int array[2];
-void main() {
+int main() {
     memset( array, 1, 3 * sizeof( int ) );
+    return 0;
 }
 EOF
 
 llvm_verify valid <<EOF
 struct self { struct self *a; };
 struct self s = { &s };
-void main() {}
+int main() { return 0; }
 EOF
 
 llvm_verify valid <<EOF
 #include <assert.h>
 int array[2] = { 3, 5 };
-void main() {
-     assert( array[0] == 3 );
-     array[0] = 2;
-     assert( array[1] == 5 );
-     assert( array[0] == 2 );
+int main() {
+    assert( array[0] == 3 );
+    array[0] = 2;
+    assert( array[1] == 5 );
+    assert( array[0] == 2 );
+    return 0;
 }
 EOF
 

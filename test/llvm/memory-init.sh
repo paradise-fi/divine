@@ -49,123 +49,135 @@ EOF
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     if ( x == 0 )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     if ( x )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     if ( !x )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x, y;
     if ( x == y )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     float x, y;
     if ( x == y )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x, y = 1;
     if ( x == y )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     float x, y = 1;
     if ( x == y )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x = 1, y;
     if ( x == y )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     float x = 1, y;
     if ( x == y )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:6" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     int y = x == 42;
     if ( y )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify valid <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     x = 42;
     if ( x == 0 )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:6" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     int y = x;
     if ( y == 0 )
         exit( 1 );
+    return 0;
 }
 EOF
 
@@ -173,12 +185,13 @@ llvm_verify invalid "undefined value" "testcase.c:8" <<EOF
 #include <stdlib.h>
 #include <string.h>
 
-void main() {
+int main() {
     int x;
     int y = 42;
     memcpy( &y, &x, sizeof( int ) );
     if ( y == 0 )
         exit( 1 );
+    return 0;
 }
 EOF
 
@@ -186,34 +199,37 @@ llvm_verify invalid "undefined value" "testcase.c:8" <<EOF
 #include <stdlib.h>
 #include <string.h>
 
-void main() {
+int main() {
     int x;
     int y = 42;
     memmove( &y, &x, sizeof( int ) );
     if ( y == 0 )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify valid <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     short x = 42;
     int y = x;
     if ( y == 0 )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify valid <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x = 42;
     int y = ((short *)&x)[1];
     if ( y == 1 )
         exit( 1 );
+    return 0;
 }
 EOF
 
@@ -229,7 +245,7 @@ union X {
     } s;
 };
 
-void main() {
+int main() {
     long x = 42;
     CHECK_DEF( x );
     CHECK_DEF( x >> 32 );
@@ -250,35 +266,38 @@ void main() {
     CHECK_DEF( (int)*y );
     CHECK_DEF( (long)*y );
     CHECK_DEF( (float)*y );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:6" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     int y = x + 4;
     if ( y == 0 )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:6" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     int y = x | 4;
     if ( y == 0 )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:10" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     int y = x;
     y = 4;
@@ -287,35 +306,38 @@ void main() {
     y |= x;
     if ( y == 0 ) // should fail
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int *mem = malloc( sizeof( int ) );
     if ( mem && *mem )
         *mem = 42;
     free( mem );
+    return 0;
 }
 EOF
 
 llvm_verify valid <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int *mem = calloc( 1, sizeof( int ) );
     if ( mem && *mem == 0 )
         *mem = 42;
     free( mem );
+    return 0;
 }
 EOF
 
 llvm_verify valid <<EOF
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x = 42;
     int *mem = malloc( sizeof( int ) );
     if ( mem ) {
@@ -324,6 +346,7 @@ void main() {
             exit( 1 );
     }
     free( mem );
+    return 0;
 }
 EOF
 
@@ -331,7 +354,7 @@ llvm_verify invalid "undefined value" "testcase.c:12" <<EOF
 #include <stdlib.h>
 #include <stdlib.h>
 
-void main() {
+int main() {
     int x;
     int *mem = malloc( sizeof( int ) );
     if ( mem ) {
@@ -343,6 +366,7 @@ void main() {
             exit( 1 );
     }
     free( mem );
+    return 0;
 }
 EOF
 
@@ -357,7 +381,7 @@ struct Test {
     int e:4;
 };
 
-void main() {
+int main() {
     struct Test x = { .a = 1, .b = 2, .c = 3, .d = 4, .e = 4 };
     check( x.a );
     check( x.b );
@@ -375,6 +399,7 @@ void main() {
     check( y.c );
     check( y.d );
     check( y.e );
+    return 0;
 }
 EOF
 
@@ -391,20 +416,28 @@ int main() {
     Test x;
     if ( x.y != 0 ) std::exit( 1 ); // OK 
     if ( x.x != 0 ) std::exit( 1 ); // should fail
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:3" << EOF
-void main() {
+int main() {
     int x;
     if ( x ? 0 : 42 )
         exit( 1 );
+    return 0;
 }
 EOF
 
 llvm_verify invalid "undefined value" "testcase.c:3" << EOF
-void main() {
+int main() {
     int x;
     switch ( x ) { case 0: exit( 2 ); default: exit( 1 ); }
+    return 0;
+}
+EOF
+
+llvm_verify invalid "undefined value" "_PDCLIB_Exit" << EOF
+void main() {
 }
 EOF

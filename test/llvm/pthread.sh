@@ -9,12 +9,13 @@ void *thread( void *x ) {
      return 1;
 }
 
-void main() {
+int main() {
      pthread_t tid;
      pthread_create( &tid, NULL, thread, NULL );
      void *i = 0;
      pthread_join( tid, &i );
      assert( i == 1 );
+     return 0;
 }
 EOF
 
@@ -31,7 +32,7 @@ void *thread( void *x ) {
      pthread_mutex_unlock( &mutex );
 }
 
-void main() {
+int main() {
      pthread_t tid;
      pthread_mutex_init( &mutex, NULL );
      pthread_create( &tid, NULL, thread, NULL );
@@ -40,6 +41,7 @@ void main() {
      pthread_mutex_unlock( &mutex );
      pthread_join( tid, NULL );
      assert( shared == 2 );
+     return 0;
 }
 EOF
 
@@ -53,12 +55,13 @@ void *thread( void *x ) {
      ++ shared;
 }
 
-void main() {
+int main() {
      pthread_t tid;
      pthread_create( &tid, NULL, thread, NULL );
      ++ shared;
      pthread_join( tid, NULL );
      assert( shared == 2 );
+     return 0;
 }
 EOF
 
@@ -71,12 +74,13 @@ void *thread( void *x ) {
      return 0;
 }
 
-void main() {
+int main() {
      pthread_t tid;
      pthread_create( &tid, NULL, thread, NULL );
      void *i = 0;
      pthread_join( tid, &i );
      assert( i == 1 );
+     return 0;
 }
 EOF
 
@@ -88,7 +92,7 @@ void *thread( void *x ) {
      return 1;
 }
 
-void main() {
+int main() {
     pthread_t detached[ 2 ];
     pthread_attr_t startDetach;
     pthread_attr_init( &startDetach );
@@ -102,6 +106,7 @@ void main() {
     pthread_join( tid, &i );
     assert( i == 1 );
     pthread_attr_destroy( &startDetach );
+    return 0;
 }
 EOF
 
@@ -113,11 +118,12 @@ void *thread( void *x ) {
      return 0;
 }
 
-void main() {
+int main() {
      pthread_t tid;
      pthread_create( &tid, NULL, thread, NULL );
      pthread_join( tid, NULL );
      int ret = 1;
      pthread_exit( &ret );
+     return 0;
 }
 EOF

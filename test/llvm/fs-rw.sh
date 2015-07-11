@@ -8,7 +8,7 @@ llvm_verify valid <<EOF
 #include <fcntl.h>
 #include <errno.h>
 
-void main() {
+int main() {
     char buf[8] = {};
     int fd = open( "test", O_WRONLY | O_CREAT, 0644 );
     assert( fd >= 0 );
@@ -19,6 +19,7 @@ void main() {
     assert( read( fd, buf, 7 ) == 7 );
     assert( strcmp( "tralala", buf ) == 0 );
     assert( close( fd ) == 0 );
+    return 0;
 }
 EOF
 
@@ -28,7 +29,7 @@ llvm_verify valid <<EOF
 #include <fcntl.h>
 #include <errno.h>
 
-void main() {
+int main() {
     char buf[8] = {};
     int fd = open( "test", O_WRONLY | O_CREAT, 0644  );
     assert( fd >= 0 );
@@ -38,6 +39,7 @@ void main() {
     errno = 0;
     assert( write( fd, "x", 1 ) == -1 );
     assert( errno == EBADF );
+    return 0;
 }
 EOF
 
@@ -47,7 +49,7 @@ llvm_verify valid <<EOF
 #include <fcntl.h>
 #include <errno.h>
 
-void main() {
+int main() {
     int fd = open( "test", O_WRONLY | O_CREAT, 0644 );
     assert( fd >= 0 );
     assert( close( fd ) == 0 );
@@ -56,6 +58,7 @@ void main() {
     assert( write( fd, "x", 1 ) == -1 );
     assert( errno == EBADF );
     assert( close( fd ) == 0 );
+    return 0;
 }
 EOF
 
@@ -65,7 +68,7 @@ llvm_verify valid <<EOF
 #include <fcntl.h>
 #include <errno.h>
 
-void main() {
+int main() {
     char buf[8]={};
     assert( mkdir( "dir", 0755 ) == 0 );
     int fd = open( "dir", O_RDONLY );
@@ -73,7 +76,7 @@ void main() {
     assert( read( fd, buf, 7 ) == -1 );
     assert( errno == EBADF );
     assert( close( fd ) == 0 );
-
+    return 0;
 }
 EOF
 
@@ -83,7 +86,7 @@ llvm_verify valid <<EOF
 #include <fcntl.h>
 #include <errno.h>
 
-void main() {
+int main() {
     char buf[8]={};
     int fd = open( "test", O_WRONLY | O_CREAT, 0644 );
     assert( fd >= 0 );
@@ -99,6 +102,7 @@ void main() {
     assert( pread( fd, buf, 7, 0 ) == 7 );
     assert( strcmp( buf, "hrabala" ) == 0 );
     assert( close( fd ) == 0 );
+    return 0;
 }
 EOF
 
@@ -109,7 +113,7 @@ llvm_verify valid <<EOF
 #include <string.h>
 #include <errno.h>
 
-void main() {
+int main() {
     char buf[ 8 ] = {};
     int fd = open( "file.txt", O_RDWR | O_CREAT, 0644 );
     assert( fd >= 0 );
@@ -133,6 +137,7 @@ void main() {
     assert( read( fd, buf, 7 ) == 0 );
     assert( strcmp( buf, "" ) == 0 );
     assert( close( fd ) == 0 );
+    return 0;
 }
 EOF
 
@@ -142,7 +147,7 @@ llvm_verify valid <<EOF
 #include <fcntl.h>
 #include <errno.h>
 
-void main() {
+int main() {
     errno = 0;
     assert( ftruncate( 20, 0 ) == -1 );
     assert( errno == EBADF );
@@ -162,6 +167,7 @@ void main() {
     errno = 0;
     assert( truncate( "nonexistent", 0 ) == -1 );
     assert( errno == ENOENT );
+    return 0;
 }
 EOF
 

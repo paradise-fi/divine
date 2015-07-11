@@ -12,12 +12,13 @@ void vararg(int i, ...) {
         assert( va_arg( ap, int ) == j );
 }
 
-void main() {
+int main() {
     vararg( 0 );
     vararg( 1, 0 );
     vararg( 2, 0, 1 );
     vararg( 3, 0, 1, 2 );
     vararg( 4, 0, 1, 2, 3 );
+    return 0;
 }
 EOF
 
@@ -32,9 +33,10 @@ void vararg(int i, ...) {
         assert( va_arg( ap, int ) == j );
 }
 
-void main() {
+int main() {
     vararg( 0 );
     vararg( 1, 0 );
     vararg( 2, 0, 2 );
+    return 0;
 }
 EOF
