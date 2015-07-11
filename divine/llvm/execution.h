@@ -1082,9 +1082,10 @@ struct Evaluator
             case BuiltinNewThread: {
                 PC entry = withValues( Get< PC >(), instruction().operand( 0 ) );
                 Pointer arg = withValues( Get< Pointer >(), instruction().operand( 1 ) );
+                auto mflag = econtext.memoryflag( instruction().operand( 1 ) );
                 int tid = ccontext.new_thread(
                     entry, Maybe< Pointer >::Just( arg ),
-                    econtext.memoryflag( instruction().operand( 1 ) ).get() );
+                    mflag.valid() ? mflag.get() : MemoryFlag::Data );
                 withValues( SetInt( tid ), instruction().result() );
                 return;
             }
