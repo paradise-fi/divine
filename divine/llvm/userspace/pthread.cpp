@@ -339,7 +339,13 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
     // at most 2^15 - 1 threads may exist at any moment
     if ( gtid >= (1 << 16) || ltid >= (1 << 15) )
         return EAGAIN;
-    *ptid = ((real_pthread_t){ .gtid = ushort( gtid ), .ltid = ushort( ltid ), .initialized = 1 }).asint;
+
+    real_pthread_t rptid; /* bitfields must be explicitly zeroed */
+    memset( &rptid, 0, sizeof( rptid ) );
+    rptid.gtid = gtid;
+    rptid.ltid = ltid;
+    rptid.initialized = 1;
+    *ptid = rptid.asint;
 
     // thread initialization
     _init_thread( gtid, ltid, ( attr == NULL ? PTHREAD_CREATE_JOINABLE : *attr ) );
@@ -730,13 +736,11 @@ int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr 
     if ( mutex == NULL )
         return EINVAL;
 
-    if ( mutex->initialized ) {
-        // already initialized
-        if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
-            return EBUSY;
-    }
-
-    *mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+    /* bitfield initializers can be only used as such, that is, initializers,
+     * *not* as a right-hand side of an assignment to uninitialised memory */
+    memset( mutex, 0, sizeof( pthread_mutex_t ) );
+    pthread_mutex_t init = PTHREAD_MUTEX_INITIALIZER;
+    *mutex = init;
 
     if ( attr )
         mutex->type = attr->type;
