@@ -210,10 +210,14 @@ std::string Describe< HM, L >::value( Type *t, Ptr where )
         return pointer( t, mem ? *reinterpret_cast< Pointer * >( mem ) : Pointer() );
     }
     if ( t->isIntegerTy() ) {
+        int w = TD().getTypeAllocSize( t ) * 8;
         auto mflag = state().memoryflag( where );
-        if ( mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
-            return "?";
-        return fmtInteger( state().dereference( where ), TD().getTypeAllocSize( t ) * 8 );
+        bool initd = true;
+        if ( mflag.valid() )
+            for ( int i = 0; i < w; ++i, ++mflag )
+                if ( mflag.get() == MemoryFlag::Uninitialised )
+                    initd = false;
+        return fmtInteger( state().dereference( where ), w ) + (initd ? "" : "?");
     }
     if ( t->getPrimitiveSizeInBits() )
         return "<weird scalar>";
@@ -262,11 +266,12 @@ std::string Describe< HM, L >::value( std::pair< ::llvm::Type *, std::string > v
         } else if ( vref.v.type == ProgramInfo::Value::Aggregate )
             value = aggregate( type, vref );
         else {
-            if ( vref.v.width && state().dereference( vref ) &&
-                 mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
-                value = "?";
-            else
-                value = fmtInteger( state().dereference( vref ), vref.v.width * 8 );
+            bool initd = true;
+            if ( vref.v.width && state().dereference( vref ) )
+                for ( int i = 0; i < vref.v.width; ++i, ++mflag )
+                    if ( mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
+                        initd = false;
+            value = fmtInteger( state().dereference( vref ), vref.v.width * 8 ) + (initd ? "" : "?");
         }
     }
 
@@ -487,7 +492,8 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
     for ( int i = 0; i < heap().segcount; ++ i ) {
         Pointer p = Pointer( true, i, 0 );
         char *where = heap().dereference( Pointer( true, i, 0 ) );
-        int size = heap().size( Pointer( true, i, 0 ) );
+        int size = heap().size( p );
+        auto mflag = heap().memoryflag( p );
         r << "    " << p << " size " << pointerSize( p ) << ": ";
         for ( ; p.offset < size; p.offset += 4 ) {
             if ( validate( p ) && heap().memoryflag( p ).get() == MemoryFlag::HeapPointer ) {
@@ -495,6 +501,10 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
             } else
                 r << fmtInteger( where + p.offset, 32 ) << " ";
         }
+        r << ", flags = [ ";
+        for ( int x = 0; x < size; ++x, ++mflag )
+            r << static_cast< int >( mflag.get() );
+        r << " ]";
         if ( i < heap().segcount - 1 )
             r << std::endl;
     }
@@ -507,14 +517,20 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
         Pointer p( true, i + nursery.segshift, 0 );
         char *where = nursery.dereference( p );
         int size = nursery.size( p );
+        auto mflag = nursery.memoryflag( p );
+        r << "    " << p << " size " << pointerSize( p ) << ": ";
         for ( ; p.offset < size; p.offset += 4 ) {
             if ( validate( p ) && nursery.memoryflag( p ).get() == MemoryFlag::HeapPointer )
                 r << followPointer( p ) << " ";
             else
                 r << fmtInteger( where + p.offset, 32 ) << " ";
         }
+        r << ", flags = [ ";
+        for ( int x = 0; x < size; ++x, ++mflag )
+            r << static_cast< int >( mflag.get() );
+        r << " ]";
         if ( i < int( nursery.offsets.size() ) - 1 )
-            r << "| ";
+            r << std::endl;
     }
     r << std::endl;
 
@@ -541,7 +557,11 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
                         r << *f.dereference< Pointer >( this->_info, *i ) << " ";
                     else
                         r << fmtInteger( f.dereference( this->_info, *i ), i->width * 8 ) << " ";
-                    r << ", flags = " << static_cast< int >( f.memoryflag( this->_info, *i ).get() ) << "\n";
+                    r << ", flags = [ ";
+                    auto mflag = f.memoryflag( this->_info, *i );
+                    for ( int x = 0; x < i->width; ++x, ++mflag )
+                        r << static_cast< int >( mflag.get() );
+                    r << " ]\n";
                 }
                 r << std::endl;
                 return true; // continue
