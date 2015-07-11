@@ -1352,7 +1352,16 @@ struct Evaluator
         ValueRef v = *i++;
         char *mem = dereference( v );
         auto mflag = econtext.memoryflag( v );
-        flags.back().push_back( mflag.valid() ? mflag.get() : MemoryFlag::Data );
+        auto mflag_v = MemoryFlag::Data;
+        if ( mflag.valid() )
+            for ( int i = 0; i < v.v.width; ++i, ++mflag ) {
+                if ( mflag_v == MemoryFlag::HeapPointer && mflag.get() != MemoryFlag::Uninitialised )
+                    continue;
+                if ( mflag_v != MemoryFlag::Uninitialised )
+                    mflag_v = mflag.get();
+            }
+
+        flags.back().push_back( mflag_v );
 
         switch ( v.v.type ) {
             case Value::Integer: if ( is_signed ) switch ( v.v.width ) {
