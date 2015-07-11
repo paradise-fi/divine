@@ -438,17 +438,21 @@ struct Evaluator
     /******** Register access & conversion *******/
 
     struct Convert : Implementation {
+        bool truncated;
         static const int arity = 2;
         template< typename L = int, typename R = L >
         auto operator()( L &l = Dummy< L >::v(),
                          R &r = Dummy< R >::v() )
             -> decltype( declcheck( l = L( r ) ) )
         {
+            truncated = sizeof( L ) < sizeof( R );
             l = L( r );
             return Unit();
         }
 
-        MemoryFlag resultFlag( MemoryFlags x ) { return x[1]; }
+        MemoryFlag resultFlag( MemoryFlags x ) {
+            return truncated && x[1] == MemoryFlag::HeapPointer ? MemoryFlag::Data : x[1];
+        }
     };
 
     void implement_bitcast() {
