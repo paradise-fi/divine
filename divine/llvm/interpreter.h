@@ -423,8 +423,12 @@ struct Interpreter
                 memcopy( ctors_val, fun.values[ 1 ], ctors_val.width, state, state );
             }
 
-            for ( int i = 0; i <= 2; ++i )
-                state.memoryflag( fun.values[ i ] ).set( MemoryFlag::Data );
+            for ( int i = 0; i <= 2; ++i ) {
+                auto v = fun.values[ i ];
+                auto mflag = state.memoryflag( v );
+                for ( int i = 0; i < v.width; ++ i, ++ mflag )
+                    mflag.set( MemoryFlag::Data );
+            }
 
             *reinterpret_cast< int * >( state.dereference( fun.values[ 0 ] ) ) =
                 ctors ? ctor_arr->getNumOperands() : 0;
