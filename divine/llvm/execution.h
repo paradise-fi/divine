@@ -697,7 +697,10 @@ struct Evaluator
         Pointer &p = *reinterpret_cast< Pointer * >(
             dereference( instruction().result() ) );
         p = econtext.malloc( alloc, pointerId( true )[0] );
-        econtext.memoryflag( instruction().result() ).set( MemoryFlag::HeapPointer );
+        auto mflag = econtext.memoryflag( instruction().result() );
+        mflag.set( MemoryFlag::HeapPointer ); ++ mflag;
+        for ( int i = 1; i < instruction().result().width; ++i, ++mflag )
+            mflag.set( MemoryFlag::Data );
     }
 
     void implement_extractvalue() {
