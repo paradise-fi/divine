@@ -1,6 +1,51 @@
 . lib
 . flavour vanilla
 
+llvm_verify valid <<EOF
+#include <divine.h>
+
+void thread( void *x ) {}
+int main() {
+    int tid = __divine_new_thread( thread, 0 );
+    if ( tid )
+        return 0;
+    return 1;
+}
+EOF
+
+llvm_verify valid <<EOF
+union U {
+    struct { short a, b; } x;
+    int y;
+};
+
+int main() {
+    union U u;
+    u.x.a = 1;
+    u.x.b = 2;
+    if ( u.y )
+        return 0;
+    else
+        return 1;
+}
+EOF
+
+llvm_verify invalid "undefined value" "testcase.c:9" <<EOF
+union U {
+    struct { short a, b; } x;
+    int y;
+};
+
+int main() {
+    union U u;
+    u.x.b = 2;
+    if ( u.y )
+        return 0;
+    else
+        return 1;
+}
+EOF
+
 llvm_verify invalid "undefined value" "testcase.c:5" <<EOF
 #include <stdlib.h>
 
