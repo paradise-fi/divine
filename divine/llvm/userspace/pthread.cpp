@@ -746,6 +746,7 @@ int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr 
         mutex->type = attr->type;
     else
         mutex->type = PTHREAD_MUTEX_DEFAULT;
+    __divine_interrupt_unmask();
     return 0;
 }
 
