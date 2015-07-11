@@ -214,6 +214,7 @@ struct ProgramInfo {
 
     std::map< const ::llvm::Value *, Value > valuemap;
     std::map< const ::llvm::Instruction *, PC > pcmap;
+    std::map< const ::llvm::Value *, std::string > anonmap;
 
     std::map< const ::llvm::BasicBlock *, PC > blockmap;
     std::map< const ::llvm::Function *, int > functionmap;

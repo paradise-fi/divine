@@ -15,6 +15,7 @@
 #endif
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Assembly/Writer.h>
 
 #include <cxxabi.h>
 #include <cstdlib>
@@ -36,13 +37,12 @@ struct Describe {
     DescribeSeen seen;
     std::vector< std::string > lines;
     bool detailed;
-    int anonymous;
     Interpreter< HM, L > *interpreter;
     bool _demangle;
 
     std::string pointer( Type *t, Pointer p );
     Describe( Interpreter< HM, L > *i, bool demangle, bool detailed )
-        : detailed( detailed ), anonymous( 1 ), interpreter( i ), _demangle( demangle )
+        : detailed( detailed ), interpreter( i ), _demangle( demangle )
     {}
 
     std::string all();
@@ -233,11 +233,18 @@ std::string Describe< HM, L >::value( const ::llvm::Value *val, ValueRef vref, P
     auto vname = val->getValueName();
 
     if ( vname ) {
-        name = vname->getKey();
+        name = vname->getKey().str();
     } else if ( type->isVoidTy() )
         ;
-    else if ( detailed )
-        name = "%" + brick::string::fmt( anonymous++ );
+    else if ( detailed ) {
+        if ( info().anonmap.find( val ) == info().anonmap.end() ) {
+            ::llvm::raw_string_ostream name_s( name );
+            ::llvm::WriteAsOperand(name_s, val, false, info().module );
+            name_s.flush();
+            info().anonmap[ val ] = name;
+        } else
+            name = info().anonmap[ val ];
+    }
 
     if ( boring( name ) || isa< BasicBlock >( val ) )
         return "";
