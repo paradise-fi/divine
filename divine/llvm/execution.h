@@ -1324,13 +1324,15 @@ struct Evaluator
         auto mflag = econtext.memoryflag( result.back() );
         if ( mflag.valid() ) {
             auto f = fun.resultFlag( flags.back() );
-            const int s = result.back().v.width;
-            mflag.set( f );
-            ++mflag;
-            if ( f == MemoryFlag::HeapPointer )
-                f = MemoryFlag::Data;
-            for ( int i = 1; i < s; ++i, ++mflag )
+            const int w = result.back().v.width;
+            if ( w ) {
                 mflag.set( f );
+                ++mflag;
+                if ( f == MemoryFlag::HeapPointer )
+                    f = MemoryFlag::Data;
+                for ( int i = 1; i < w; ++i, ++mflag )
+                    mflag.set( f );
+            }
         }
         flags.pop_back();
         result.pop_back();
