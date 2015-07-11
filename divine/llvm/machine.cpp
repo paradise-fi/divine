@@ -112,12 +112,13 @@ void MachineState< HeapMeta >::snapshot(
     original.offset = edited.offset = 0;
     for ( ; original.offset < size; original.offset += 4, edited.offset += 4 ) {
         auto origflag = this->memoryflag( original );
-        if ( isHeapPointer( origflag ) )
-            heap.memoryflag( edited ).set( origflag.get() );
-        if ( isHeapPointer( origflag ) ) /* points to a pointer, recurse */
+        if ( isHeapPointer( origflag ) ) { /* points to a pointer, recurse */
+            auto editedflag = heap.memoryflag( edited );
+            for ( int i = 0; i < 4; ++i, editedflag++, origflag++ )
+                editedflag.set( origflag.get() );
             snapshot( *heap.dereference< Pointer >( edited ),
                       followPointer( original ), canonic, heap );
-        else
+        } else
             memcopy_fastpath( original, edited, 4, *this, heap );
     }
 }
