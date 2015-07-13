@@ -376,10 +376,11 @@ struct _GenExplicit : Algorithm, AlgorithmUtils< Setup, GenExplicitShared >,
         this->visit( this, TrackPredecessors() );
     }
 
-    _GenExplicit( Meta m ) : Algorithm( m, sizeof( Extension ) ),
-        params(), limits(), nodes( 0 ), nodesSize( 0 )
+    _GenExplicit( Meta m, typename Setup::Generator *g = nullptr )
+        : Algorithm( m, sizeof( Extension ) ),
+          params(), limits(), nodes( 0 ), nodesSize( 0 )
     {
-        this->init( *this );
+        this->init( *this, g );
 
         if ( m.output.file.empty() ) {
             std::string basename = brick::string::basename( m.input.model );
@@ -670,10 +671,10 @@ struct GenExplicit : Algorithm {
     std::unique_ptr< Stage1 > stage1;
     std::unique_ptr< Stage2 > stage2;
 
-    GenExplicit( Meta m ) :
-        Algorithm( m ),
-        stage1( new Stage1( m ) ),
-        stage2()
+    GenExplicit( Meta m, typename Setup::Generator *g = nullptr )
+        : Algorithm( m ),
+          stage1( new Stage1( m, g ) ),
+          stage2()
     { }
 
     GenExplicit( GenExplicit &master, std::pair< int, int > id ) :

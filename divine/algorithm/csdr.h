@@ -212,7 +212,8 @@ struct Csdr : CommonReachability< CsdrExtension, Setup, CsdrShared,
         this->visit( this, Main(), shared.need_expand );
     }
 
-    Csdr( Meta m ) : Base( m ), limit( std::numeric_limits< int32_t >::max() )
+    Csdr( Meta m, typename Setup::Generator *g = nullptr )
+        : Base( m, g ), limit( std::numeric_limits< int32_t >::max() )
     {
         if ( meta().algorithm.contextSwitchLimit > 0 )
             limit = meta().algorithm.contextSwitchLimit;

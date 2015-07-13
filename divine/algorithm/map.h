@@ -364,9 +364,10 @@ struct Map : Algorithm, AlgorithmUtils< Setup, MapShared< typename Setup::Store:
         }
     }
 
-    Map( Meta m ) : Algorithm( m, sizeof( Extension ) )
+    Map( Meta m, typename Setup::Generator *g = nullptr )
+        : Algorithm( m, sizeof( Extension ) )
     {
-        this->init( *this );
+        this->init( *this, g );
     }
 
     Map( Map &master, std::pair< int, int > id ) : Algorithm( master.meta(), sizeof( Extension ) )
