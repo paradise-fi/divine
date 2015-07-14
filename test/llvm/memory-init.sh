@@ -234,6 +234,7 @@ int main() {
 EOF
 
 llvm_verify valid <<EOF
+#include <stdint.h>
 #define CHECK_DEF( x ) ((void)((x) ? 1 : 2))
 
 union X {
@@ -246,25 +247,25 @@ union X {
 };
 
 int main() {
-    long x = 42;
+    uint64_t x = 42;
     CHECK_DEF( x );
     CHECK_DEF( x >> 32 );
     CHECK_DEF( (int)x );
     CHECK_DEF( (short)x );
     CHECK_DEF( (float)x );
-    CHECK_DEF( ((short*)&x)[ 2 ] );
+    CHECK_DEF( ((uint16_t*)&x)[ 2 ] );
     union X u = { .i = x };
     CHECK_DEF( u.i );
     CHECK_DEF( u.s.x );
     CHECK_DEF( u.s.y );
     CHECK_DEF( u.s.z );
-    short y[4] = { 42 };
+    uint16_t y[4] = { 42 };
     CHECK_DEF( *y );
     CHECK_DEF( y[1] );
     CHECK_DEF( y[2] );
     CHECK_DEF( y[3] );
-    CHECK_DEF( (int)*y );
-    CHECK_DEF( (long)*y );
+    CHECK_DEF( (uint32_t)*y );
+    CHECK_DEF( (uint64_t)*y );
     CHECK_DEF( (float)*y );
     return 0;
 }
