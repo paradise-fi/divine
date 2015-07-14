@@ -731,7 +731,7 @@ int pthread_mutex_destroy( pthread_mutex_t *mutex ) {
         if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
              return EBUSY;
         else
-             __divine_assert( 0 );
+            __divine_problem( Deadlock, "Locked mutex destroyed" );
     }
     mutex->initialized = 0;
     return 0;
@@ -779,9 +779,9 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
         // mutex is not locked or it is already locked by another thread
         DBG_ASSERT( mutex->lockCounter ); // count should be > 0
         if ( mutex->type == PTHREAD_MUTEX_NORMAL )
-             __divine_problem( Other, "Mutex has to be released by the same thread which acquired the mutex." );
+             __divine_problem( Deadlock, "Mutex has to be released by the same thread which acquired the mutex." );
         else
-             return EPERM; // recursive mutex can also detect
+            return EPERM; // recursive mutex can also detect
     }
 
     int r = _mutex_adjust_count( mutex, -1 );
@@ -1157,7 +1157,8 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
     // It is allowed to have one mutex associated with more than one conditional
     // variable. On the other hand, using more than one mutex for one
     // conditional variable results in undefined behaviour.
-    __divine_assert( cond->mutex == NULL || cond->mutex == mutex );
+    if ( cond->mutex != NULL && cond->mutex != mutex )
+        __divine_problem( Deadlock, "Attempted to wait on condition variable using other mutex that already in use by this condition variable" );
     cond->mutex = mutex;
 
     // fall asleep
