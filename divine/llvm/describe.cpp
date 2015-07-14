@@ -224,6 +224,22 @@ std::string Describe< HM, L >::value( Type *t, Ptr where )
     return "<weird type>";
 }
 
+std::string valueName( const ::llvm::Value *val, ProgramInfo &info ) {
+    std::string name;
+    auto vname = val->getValueName();
+
+    if ( vname )
+        return vname->getKey().str();
+
+    if ( info.anonmap.find( val ) == info.anonmap.end() ) {
+        ::llvm::raw_string_ostream name_s( name );
+        ::llvm::WriteAsOperand(name_s, val, false, info.module );
+        name_s.flush();
+        return info.anonmap[ val ] = name;
+    } else
+        return info.anonmap[ val ];
+}
+
 template< typename HM, typename L > template< typename Ptr >
 std::string Describe< HM, L >::value( const ::llvm::Value *val, ValueRef vref, Ptr where )
 {
@@ -236,15 +252,8 @@ std::string Describe< HM, L >::value( const ::llvm::Value *val, ValueRef vref, P
         name = vname->getKey().str();
     } else if ( type->isVoidTy() )
         ;
-    else if ( detailed ) {
-        if ( info().anonmap.find( val ) == info().anonmap.end() ) {
-            ::llvm::raw_string_ostream name_s( name );
-            ::llvm::WriteAsOperand(name_s, val, false, info().module );
-            name_s.flush();
-            info().anonmap[ val ] = name;
-        } else
-            name = info().anonmap[ val ];
-    }
+    else if ( detailed )
+        name = valueName( val, info() );
 
     if ( boring( name ) || isa< BasicBlock >( val ) )
         return "";
@@ -557,16 +566,29 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
                     return true;
                 }
                 auto fun = this->_info.function( f.pc );
-                r << "[" << fun.datasize << " bytes]\n";
-                for ( auto i = fun.values.begin(); i != fun.values.end(); ++ i ) {
-                    r << "          " << *i << " offset " << i->offset << ": ";
-                    if ( f.memoryflag( this->_info, *i ).get() == MemoryFlag::HeapPointer )
-                        r << *f.dereference< Pointer >( this->_info, *i ) << " ";
+                auto lfun = dyn_cast< ::llvm::Instruction >( this->_info.instruction( f.pc ).op )->getParent()->getParent();
+                r << "[" << fun.datasize << " bytes] " << lfun->getName().str() << std::endl;
+
+                std::vector< llvm::Value * > vals;
+
+                for ( auto arg = lfun->arg_begin(); arg != lfun->arg_end(); ++ arg )
+                    vals.push_back( &*arg );
+
+                for ( auto block = lfun->begin(); block != lfun->end(); ++block )
+                    for ( auto v = block->begin(); v != block->end(); ++v )
+                        if ( !v->getType()->isVoidTy() )
+                            vals.push_back( &*v );
+
+                for ( auto i : vals ) {
+                    auto v = this->_info.valuemap[ &*i ];
+                    r << "          " << v << " (" << valueName( &*i, this->_info ) << ") = ";
+                    if ( f.memoryflag( this->_info, v ).get() == MemoryFlag::HeapPointer )
+                        r << *f.dereference< Pointer >( this->_info, v ) << " ";
                     else
-                        r << fmtInteger( f.dereference( this->_info, *i ), i->width * 8 ) << " ";
+                        r << fmtInteger( f.dereference( this->_info, v ), v.width * 8 ) << " ";
                     r << ", flags = [ ";
-                    auto mflag = f.memoryflag( this->_info, *i );
-                    for ( int x = 0; x < i->width; ++x, ++mflag )
+                    auto mflag = f.memoryflag( this->_info, v );
+                    for ( int x = 0; x < v.width; ++x, ++mflag )
                         r << static_cast< int >( mflag.get() );
                     r << " ]\n";
                 }
