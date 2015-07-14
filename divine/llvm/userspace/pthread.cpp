@@ -1754,7 +1754,7 @@ static const sighandler_t defact[] = {
 sighandler_t &get( Thread *thr, int sig ) { return thr->sighandlers[ sig - 1 ]; }
 sighandler_t def( int sig ) { return defact[ sig - 1 ]; }
 
-#undef __SIG_TERMINATE
+#undef __sig_terminate
 }
 
 int raise( int sig ) {
