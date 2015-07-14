@@ -166,12 +166,12 @@ llvm_small() {
     check clear
     run llvm_assemble data/global-ok.ll "$@" --property=assert --reduce=tau+,taustores,heap
     check reachability_valid
-    check statespace 59 111 0 0
+    check statespace 68 130 0 0
 
     check clear
     run llvm_assemble data/global-bug.ll "$@" --property=assert --reduce=tau+,taustores,heap
     check reachability_goal
-    check statespace 50 90 0 0
+    check statespace 59 109 0 0
 }
 
 timed_small() {
