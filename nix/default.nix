@@ -97,6 +97,7 @@ let
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ debug ++ profile ++ flags;
        dontStrip = true;
        checkPhase = ''
+          ulimit -c unlimited
           NIX_BUILD=1 BATCH=1 make check
           make lcov-report && \
             cp -R lcov-report $out/ && \
