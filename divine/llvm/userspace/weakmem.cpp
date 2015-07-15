@@ -1,7 +1,7 @@
 // divine-cflags: -std=c++11
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#include "memorder.h"
+#include <weakmem.h>
 #include <algorithm> // reverse iterator
 
 #define forceinline __attribute__((always_inline))

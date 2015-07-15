@@ -72,7 +72,7 @@ struct CompileLLVM {
 
         if ( _env.usePrecompiled.empty() && !_env.dontLink ) {
             auto files = { "glue", "stubs", "entry" };
-            auto filesCpp11 = { "fs", "fs-snapshot", "fs-manager", "fs-memory", "cxa_exception_divine", "pthread" };
+            auto filesCpp11 = { "fs", "fs-snapshot", "fs-manager", "fs-memory", "cxa_exception_divine", "pthread", "weakmem" };
 
             {
                 std::ofstream sn( "fs-snapshot.cpp" );
@@ -132,8 +132,11 @@ struct CompileLLVM {
             // we must enter list of root, symbols not accessible from these will be pruned
             // note: mem* functions must be here since clang may emit llvm instrinsic
             // instead of them and this intrinsic needs to be later lowered to symbol
-            linker.prune( { "_divine_start", "main", "memmove", "memset", "memcpy", "llvm.global_ctors" },
-                          brick::llvm::Prune::UnusedModules ); // AllUnused );
+            // also __lart_weakmem_* module needs to be included as it might be used later
+            // by lart transform, it is sufficient to enter just one function from each
+                // module if Prune::UnusedModules is used
+            linker.prune( { "_divine_start", "main", "memmove", "memset", "memcpy", "llvm.global_ctors", "__lart_weakmem_store_tso" },
+                          brick::llvm::Prune::UnusedModules );
             brick::llvm::writeModule( linker.get(), brick::fs::joinPath( rootDir.oldcwd, _env.output ) );
         }
 
