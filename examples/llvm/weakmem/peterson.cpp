@@ -2,7 +2,8 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
 #define __STORE_BUFFER_SIZE 2
-#include "memorder.h"
+#include <weakmem.h>
+#include <atomic>
 #include <pthread.h>
 
 enum APs { w0in, w0out, w1in, w1out };
@@ -19,16 +20,18 @@ std::atomic< int > critical;
 
 template< int tid >
 void *worker( void * ) {
-    __dsb_store( &flag[ tid ], true );
-    __dsb_store( &turn, other( tid ) );
-    while ( __dsb_load( &flag[ other( tid ) ] ) && __dsb_load( &turn ) == other( tid ) ) { }
+    lart::weakmem::store< lart::weakmem::TSO >( &flag[ tid ], true );
+    lart::weakmem::store< lart::weakmem::TSO >( &turn, other( tid ) );
+    while ( lart::weakmem::load< lart::weakmem::TSO >( &flag[ other( tid ) ] )
+            && lart::weakmem::load< lart::weakmem::TSO >( &turn ) == other( tid ) )
+    { }
     // critical start
     AP( in[ tid ] );
     ++critical;
     --critical;
     AP( out[ tid ] );
     // end
-    __dsb_store( &flag[ tid ], false );
+    lart::weakmem::store< lart::weakmem::TSO >( &flag[ tid ], false );
     return nullptr;
 }
 

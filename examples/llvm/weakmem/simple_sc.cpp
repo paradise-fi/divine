@@ -1,8 +1,8 @@
 // divine-cflags: -std=c++11
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#include "memorder.h"
 #include <pthread.h>
+#include <divine.h>
 
 enum APs { r0t0, r0t1 };
 LTL( sc, G( r0t0 -> G( !r0t1 ) ) && G( r0t1 -> G( !r0t0 ) ) );
@@ -14,7 +14,6 @@ void *worker( void * = nullptr ) {
     rx = 1;
     if ( ry == 0 )
         AP( ap );
-    __dsb_flush();
     return nullptr;
 }
 
