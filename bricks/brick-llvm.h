@@ -126,8 +126,11 @@ struct Linker {
         } else {
             _owned.emplace_back( src );
             std::string err;
-            auto r UNUSED = _link->linkInModule( _annotate( src ), ::llvm::Linker::DestroySource, &err );
-            ASSERT( !r );
+            auto r = _link->linkInModule( _annotate( src ), ::llvm::Linker::DestroySource, &err );
+            if ( r ) {
+                std::cerr << "ERROR: " << err << " while linking '" << src->getModuleIdentifier() << "'" << std::endl;
+                ASSERT_UNREACHABLE( "Linker error" );
+            }
         }
     }
 
@@ -148,8 +151,12 @@ struct Linker {
         // build llvm.global_ctors from used module ctors
         std::vector< ConstantArray * > ctors;
         for ( auto &glo : m->getGlobalList() )
-            if ( isPrefixOf( ctorPrefix, glo.getName().data() ) )
-                ctors.emplace_back( cast< ConstantArray >( glo.getInitializer() ) );
+            if ( isPrefixOf( ctorPrefix, glo.getName().data() ) ) {
+                if ( auto carr = ::llvm::dyn_cast< ConstantArray >( glo.getInitializer() ) )
+                    ctors.emplace_back( carr );
+                else
+                    ASSERT( ::llvm::isa< ::llvm::ConstantAggregateZero >( glo.getInitializer() ) );
+            }
 
         if ( !ctors.empty() ) {
             auto valType = ctors.front()->getType()->getElementType();
@@ -168,9 +175,8 @@ struct Linker {
             auto values = ConstantArray::get( ctorType, ArrayRef< Constant * >( ops ) );
             ASSERT( ctorType );
             ASSERT( values );
-            new GlobalVariable( *m, ctorType, false,
-                    GlobalValue::ExternalLinkage,
-                    values, global_ctors );
+            new GlobalVariable( *m, ctorType, false, GlobalValue::AppendingLinkage,
+                                values, global_ctors );
         }
 
         return prune == Prune::UnusedModules
