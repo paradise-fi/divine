@@ -210,7 +210,9 @@ std::string Describe< HM, L >::value( Type *t, Ptr where )
         return pointer( t, mem ? *reinterpret_cast< Pointer * >( mem ) : Pointer() );
     }
     if ( t->isIntegerTy() ) {
-        int w = TD().getTypeAllocSize( t ) * 8;
+        int w = TD().getTypeAllocSize( t );
+        if ( !state().inBounds( where, 0 ) )
+            return "<out-of-bounds access>";
         auto mflag = state().memoryflag( where );
         bool initd = true;
         if ( mflag.valid() )
@@ -528,7 +530,7 @@ void MachineState< HeapMeta >::dump( std::ostream &r ) {
 
     r << "nursery: segcount = " << nursery.offsets.size() - 1
       << ", size = " << nursery.offsets[ nursery.offsets.size() - 1 ]
-      << ", data = ";
+      << ", data:" << std::endl;
     for ( int i = 0; i < int( nursery.offsets.size() ) - 1; ++ i ) {
         Pointer p( true, i + nursery.segshift, 0 );
         char *where = nursery.dereference( p );
