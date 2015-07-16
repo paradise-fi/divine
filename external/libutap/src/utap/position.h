@@ -28,6 +28,8 @@
 #include <iostream>
 #include <climits>
 
+#undef error_t // from llvm-3.3/include/llvm/Config/config.h
+
 namespace UTAP
 {
     struct position_t
