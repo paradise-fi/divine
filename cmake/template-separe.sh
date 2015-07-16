@@ -14,11 +14,13 @@ if test -z "$1"; then
     i=0
     grep ^@ "$file" | while read l; do
         i=$(($i + 1))
-        echo -n "$(echo $base | flatten).$i.cpp;"
+        $(which echo) -n "$(echo $base | flatten).$i.cpp;"
     done
 else
     out="$1"
-    outn=$(echo $out | sed -re "s,.*\.([0-9]+)\.cpp,\1,")
+    esed="sed -r"
+    $esed 2>/dev/null || esed="sed -E"
+    outn=$(echo $out | $esed -e "s,.*\.([0-9]+)\.cpp,\1,")
     echo "#define TCC_INSTANCE $outn" > $out
     lines=$(wc -l < $file)
 

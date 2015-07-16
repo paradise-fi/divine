@@ -1,5 +1,5 @@
 find_program(LLVM_CONFIG_EXECUTABLE
-             NAMES llvm-config llvm-config-3.4 llvm-config-3.4.1 llvm-config-3.3 llvm-config-3.2 llvm-config-3.5
+             NAMES llvm-config llvm-config-3.4 llvm-config-3.4.1 llvm-config-3.4.2 llvm-config-3.3 llvm-config-mp-3.4 llvm-config-mp-3.3
              DOC "path to the llvm-config executable")
 
 # llvm-config does not like to be called through a symlink

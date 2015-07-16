@@ -48,7 +48,7 @@ set_source_files_properties( compile.h PROPERTIES OBJECT_DEPENDS ${llvmpaths_fil
 set( MAKE_STRING_CONST "${CMAKE_CURRENT_SOURCE_DIR}/make-string-const.pl" )
 
 # target_link_libraries( divine lpsolve )
-if( NOT WIN32 )
+if( NOT WIN32 AND NOT APPLE )
     target_link_libraries( divine rt )
 endif()
 
