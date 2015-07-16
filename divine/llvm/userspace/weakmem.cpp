@@ -102,7 +102,7 @@ struct __BufferHelper {
 
         Buffer( const Buffer & ) = delete;
 
-        int size() _lart_weakmem_bypass_ {
+        int size() _lart_weakmem_bypass_ forceinline {
             return !this ? 0 : __divine_heap_object_size( this ) / sizeof( BufferLine );
         }
 
@@ -235,25 +235,43 @@ void __lart_weakmem_store_pso( void *addr, uint64_t value, int bitwidth ) {
     __divine_problem( 1, "unimplemented" );
 }
 
+template< int adv >
+void internal_memcpy( volatile char *dst, char *src, size_t n ) forceinline {
+    constexpr int deref = adv == 1 ? 0 : -1;
+    static_assert( adv == 1 || adv == -1, "" );
+
+    while ( n ) {
+        // we must do copying in block of 4 if we can, otherwise pointers will
+        // be lost
+        if ( n >= 4 && uintptr_t( dst ) % 4 == 0 && uintptr_t( src ) % 4 == 0 ) {
+            size_t an = n / 4;
+            n -= an * 4;
+            volatile int32_t *adst = reinterpret_cast< volatile int32_t * >( dst );
+            int32_t *asrc = reinterpret_cast< int32_t * >( src );
+            for ( ; an; --an, asrc += adv, adst += adv )
+                adst[ deref ] = asrc[ deref ];
+            dst = reinterpret_cast< volatile char * >( adst );
+            src = reinterpret_cast< char * >( asrc );
+        } else {
+            dst[ deref ] = src[ deref ];
+            --n; dst += adv; src += adv;
+        }
+    }
+}
+
 void __lart_weakmem_memmove( void *_dst, const void *_src, size_t n ) {
     volatile char *dst = const_cast< volatile char * >( reinterpret_cast< char * >( _dst ) );
     char *src = reinterpret_cast< char * >( const_cast< void * >( _src ) );
     if ( dst < src )
-        for ( ; n; --n, ++dst, ++src )
-            *dst = *src;
-    else if ( dst > src ) {
-        dst = dst + n - 1;
-        src = src + n - 1;
-        for ( ; n; --n, --dst, --src )
-            *dst = *src;
-    }
+        internal_memcpy< 1 >( dst, src, n );
+    else if ( dst > src )
+        internal_memcpy< -1 >( dst + n, src + n, n );
 }
 
 void __lart_weakmem_memcpy( void *_dst, const void *_src, size_t n ) {
     volatile char *dst = const_cast< volatile char * >( reinterpret_cast< char * >( _dst ) );
     char *src = reinterpret_cast< char * >( const_cast< void * >( _src ) );
-    for ( ; n; --n, ++dst, ++src )
-        *dst = *src;
+    internal_memcpy< 1 >( dst, src, n );
 }
 
 void __lart_weakmem_memset( void *_dst, int c, size_t n ) {
