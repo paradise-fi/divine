@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2007-2014 Petr Rockai <me@mornfall.net>
 
-#ifdef __unix
+#if defined(__unix) || defined(__APPLE__)
 #include <dlfcn.h>
 #elif defined _WIN32
 #include <external/dlfcn-win32/dlfcn.h>

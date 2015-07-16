@@ -6,6 +6,8 @@
 #include <cassert>
 #include <vector>
 
+#undef TRUE
+#undef FALSE
 #undef ASSERT
 #define TRUE TRUE_DBM
 #define FALSE FALSE_DBM
