@@ -143,7 +143,7 @@ std::string fmtf( const char* f, ... ) {
     char *c;
     va_list ap;
     va_start( ap, f );
-    vasprintf( &c, f, ap );
+    int r UNUSED = vasprintf( &c, f, ap );
     std::string ret( c );
     free( c );
     return ret;
