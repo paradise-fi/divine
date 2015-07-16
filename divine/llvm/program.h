@@ -219,6 +219,8 @@ struct ProgramInfo {
     std::map< const ::llvm::BasicBlock *, PC > blockmap;
     std::map< const ::llvm::Function *, int > functionmap;
 
+    int pointerTypeSize;
+
     template< typename Container >
     static void makeFit( Container &c, int index ) {
         c.resize( std::max( index + 1, int( c.size() ) ) );
@@ -319,7 +321,7 @@ struct ProgramInfo {
     void build();
     void pass();
 
-    ProgramInfo( ::llvm::Module *m ) : module( m ), TD( m )
+    ProgramInfo( ::llvm::Module *m ) : module( m ), TD( m ), pointerTypeSize( TD.getPointerSize() )
     {
         constdatasize = 0;
         globalsize = 0;
@@ -422,6 +424,8 @@ struct GlobalContext {
         else
             ASSERT_UNREACHABLE( "dereferencing invalid value in GlobalContext" );
     }
+
+    int pointerTypeSize() const { return info.pointerTypeSize; }
 
     GlobalContext( ProgramInfo &i, ::llvm::TargetData &TD, bool global )
         : info( i ), TD( TD ), allow_global( global )

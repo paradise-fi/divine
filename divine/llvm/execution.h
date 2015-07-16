@@ -445,7 +445,7 @@ struct Evaluator
                          R &r = Dummy< R >::v() )
             -> decltype( declcheck( l = L( r ) ) )
         {
-            truncated = sizeof( L ) < sizeof( R );
+            truncated = this->i().result().width < this->econtext().pointerTypeSize();
             l = L( r );
             return Unit();
         }

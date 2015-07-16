@@ -442,6 +442,7 @@ struct Interpreter
         return result;
     }
 
+    int pointerTypeSize() const { return state.pointerTypeSize(); }
 };
 
 }

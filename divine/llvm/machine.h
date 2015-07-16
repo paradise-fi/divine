@@ -1006,6 +1006,8 @@ struct MachineState
 
         return b;
     }
+
+    int pointerTypeSize() const { return _info.pointerTypeSize; }
 };
 
 struct FrameContext {
