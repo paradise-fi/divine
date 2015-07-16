@@ -52,9 +52,9 @@ if( NOT WIN32 )
     target_link_libraries( divine rt )
 endif()
 
-if( LTL2DSTAR )
+if( OPT_LTL2DSTAR )
   target_link_libraries( divine ltl2dstar )
-endif( LTL2DSTAR )
+endif( OPT_LTL2DSTAR )
 
 if( WIN32 )
   set( INSTALL_BIN_DEST ./ )
