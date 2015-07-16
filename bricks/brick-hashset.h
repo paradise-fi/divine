@@ -701,7 +701,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             Row &row = current( _td.currentRow );
             if ( !force ) {
                 // read usage first to guarantee usage <= size
-                size_t u = _d.used.load();
+                size_t u = _d.used.load( std::memory_order_relaxed );
                 // usage >= 75% of table size
                 // usage is never greater than size
                 if ( row.empty() || double( row.size() ) <= double( 4 * u ) / 3 )
@@ -857,7 +857,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
         void increaseUsage() {
             if ( ++_td.inserts == syncPoint ) {
-                _d.used += syncPoint;
+                _d.used.fetch_add( syncPoint, std::memory_order_relaxed );
                 _td.inserts = 0;
             }
         }
