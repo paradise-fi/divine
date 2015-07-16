@@ -500,7 +500,6 @@ void ProgramInfo::pass()
                 p = insert( p );
 
             pc = p.pc;
-            makeFit( this->function( p.pc ).instructions, p.pc.instruction );
         }
     }
 
