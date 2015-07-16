@@ -12,6 +12,28 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+
+static bool fallocate(int fd, off_t len)
+{
+#if defined(HAVE_POSIX_FALLOCATE)
+  return posix_fallocate(fd, 0, len) == 0;
+#elif defined(XP_MACOSX)
+  fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, 0, aLength};
+  // Try to get a continous chunk of disk space
+  int ret = fcntl(fd, F_PREALLOCATE, &store);
+    if(-1 == ret){
+    // OK, perhaps we are too fragmented, allocate non-continuous
+    store.fst_flags = F_ALLOCATEALL;
+    ret = fcntl(fd, F_PREALLOCATE, &store);
+    if (-1 == ret)
+      return false;
+  }
+  return 0 == ftruncate(fd, len);
+#endif
+  return false;
+}
+
+
 namespace divine {
 namespace dess {
 
@@ -92,7 +114,7 @@ Explicit PrealocateHelper::operator()() {
 
     auto r = ::ftruncate( fd, 0 );
     ASSERT_EQ( r, 0 );
-    r = ::posix_fallocate( fd, 0, fileSize );
+    r = fallocate( fd, fileSize );
     ASSERT_EQ( r , 0 );
     static_cast< void >( r );
 
