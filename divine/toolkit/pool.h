@@ -615,6 +615,8 @@ struct Pond {
         bool alias( Pointer a, Pointer  b ) { return a.raw() == b.raw(); }
         void free( Pointer p ) { p.free(); }
         Pointer allocate( size_t s ) { return Pointer::allocate( s ); }
+        Pointer ephemeralAllocate( size_t s ) { return Pointer::allocate( s ); }
+        void ephemeralFree( Pointer p ) { p.free(); }
     };
 };
 
