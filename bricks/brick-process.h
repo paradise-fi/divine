@@ -77,6 +77,8 @@
 #ifndef BRICK_PROCESS_H
 #define BRICK_PROCESS_H
 
+extern char **environ;
+
 namespace brick {
 namespace process {
 
