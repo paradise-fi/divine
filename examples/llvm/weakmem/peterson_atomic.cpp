@@ -9,8 +9,8 @@
 enum APs { w0in, w0out, w1in, w1out };
 LTL( exclusion, G( w0in -> ((!w1in) W w0out ) ) && G( w1in -> ((!w0in) W w1out )) );
 
-bool flag[2];
-int turn;
+std::atomic< bool > flag[2];
+std::atomic< int > turn;
 
 constexpr int other( int x ) { return x == 0 ? 1 : 0; }
 const APs in[] = { w0in, w1in };

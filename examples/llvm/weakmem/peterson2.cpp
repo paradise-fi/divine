@@ -33,9 +33,12 @@ void *worker( void * ) {
 }
 
 int main() {
-    pthread_t tid;
-    pthread_create( &tid, nullptr, &worker< 0 >, nullptr );
-    pthread_create( &tid, nullptr, &worker< 1 >, nullptr );
+    pthread_t t1, t2;
+    pthread_create( &t1, nullptr, &worker< 0 >, nullptr );
+    pthread_create( &t2, nullptr, &worker< 1 >, nullptr );
     while ( true )
         assert( critical <= 1 );
+    pthread_join( t1, nullptr );
+    pthread_join( t2, nullptr );
+    return 0;
 }
