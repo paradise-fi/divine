@@ -72,7 +72,7 @@ ModulePass *mkPass( std::string n, std::string opt )
 
     if ( n == "weakmem" ) {
         auto p = new CompositePass();
-        weakmem::Substitute::Type t;
+        weakmem::Substitute::Type t = weakmem::Substitute::TSO;
 
         if ( opt == "tso" )
             t = weakmem::Substitute::TSO;
