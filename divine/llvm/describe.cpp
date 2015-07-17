@@ -219,7 +219,7 @@ std::string Describe< HM, L >::value( Type *t, Ptr where )
             for ( int i = 0; i < w; ++i, ++mflag )
                 if ( mflag.get() == MemoryFlag::Uninitialised )
                     initd = false;
-        return fmtInteger( state().dereference( where ), w ) + (initd ? "" : "?");
+        return fmtInteger( state().dereference( where ), w * 8 ) + (initd ? "" : "?");
     }
     if ( t->getPrimitiveSizeInBits() )
         return "<weird scalar>";
