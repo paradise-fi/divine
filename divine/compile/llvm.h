@@ -71,9 +71,8 @@ struct CompileLLVM {
         flags += " -Ilibcxxabi/include -Ilibpdc -Ilibcxx/std -Ilibcxx -Ilibm ";
 
         if ( _env.usePrecompiled.empty() && !_env.dontLink ) {
-            auto files = { "glue", "stubs", "entry", "fs", "fs-snapshot", "fs-manager",
-                           "fs-memory", "cxa_exception_divine", "pthread" };
-            auto filesOpt = { "weakmem" };
+            auto files = { "glue", "stubs", "entry", "cxa_exception_divine", "pthread" };
+            auto filesOpt = { "weakmem", "fs", "fs-snapshot", "fs-manager", "fs-memory" };
 
             {
                 std::ofstream sn( "fs-snapshot.cpp" );
@@ -86,7 +85,7 @@ struct CompileLLVM {
                 linkFile( f + ".bc" );
             }
             for ( std::string f : filesOpt ) {
-                _env.compileFile( f + ".cpp", " -O2 -std=c++11 -c -I. -Ilibcxxabi " + flags + " -o " + f + ".bc" );
+                _env.compileFile( f + ".cpp", " -O2 -fno-slp-vectorize -fno-vectorize -std=c++11 -c -I. -Ilibcxxabi " + flags + " -o " + f + ".bc" );
                 linkFile( f + ".bc" );
             }
         }
