@@ -10,6 +10,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/Support/CallSite.h>
 #include <brick-string.h>
 #include <unordered_set>
 #include <string>
@@ -83,13 +84,15 @@ struct Substitute : llvm::ModulePass
         for ( auto p : what ) {
             ASSERT( p.second );
             p.first[ Type::Bypass ] = p.second;
-            p.first[ Type::SC ] = p.second;
+            _bypass.insert( p.second );
+
+            p.first[ Type::SC ] = dupFn( p.second, "_sc" );
+            _sc.insert( p.first[ Type::SC ] );
 
             p.first[ Type::TSO ] = dupFn( p.second, "_tso" );
-            p.first[ Type::PSO ] = dupFn( p.second, "_pso" );
-            transformWeak( *p.first[ Type::TSO ], dl, Type::TSO );
-            transformWeak( *p.first[ Type::PSO ], dl, Type::PSO );
             _tso.insert( p.first[ Type::TSO ] );
+
+            p.first[ Type::PSO ] = dupFn( p.second, "_pso" );
             _pso.insert( p.first[ Type::PSO ] );
         }
     }
@@ -101,41 +104,6 @@ struct Substitute : llvm::ModulePass
         fn->getParent()->getFunctionList().push_back( dup );
         return dup;
     }
-
-    /*
-    void lowerTrivialMemOps( llvm::Module &m ) {
-        std::vector< llvm::MemIntrinsic * > memops;
-        for ( auto &f : m )
-            for ( auto &bb : f )
-                for ( auto &i : bb )
-                    if ( auto memop = llvm::dyn_cast< llvm::MemIntrinsic >( &i ) )
-                        memops.push_back( memop );
-        for ( auto memop : memops ) {
-            memop->dump();
-            memop->getLength()->dump();
-            if ( auto cint = llvm::dyn_cast< llvm::ConstantInt >( memop->getLength() ) ) {
-                int64_t cnt = cint->getSExtValue();
-                if ( auto memset = llvm::dyn_cast< llvm::MemSetInst >( memop ) ) {
-                    if ( cnt == 1 ) {
-                        auto dst = memset->getDest();
-                        auto dstty = llvm::cast< llvm::PointerType >( dst->getType() );
-                        auto dstvty = dstty->getElementType();
-                        auto val = memset->getValue();
-                        auto charty = llvm::IntegerType::getInt8Ty( memset->getContext() );
-                        llvm::IRBuilder<> builder( memset );
-                        val = builder.CreateCast( llvm::Instruction::Trunc, val, charty );
-                        if ( dstvty != charty )
-                            dst = builder.CreateCast( llvm::Instruction::BitCast, dst,
-                                        llvm::PointerType::get( charty, dstty->getAddressSpace() ) );
-                        auto store = new llvm::StoreInst( val, dst );
-                        llvm::ReplaceInstWithInst( memset, store );
-                    }
-                }
-            }
-        }
-
-    }
-    */
 
     std::string parseTag( std::string str ) {
         return str.substr( tagNamespace.size() );
@@ -210,7 +178,6 @@ struct Substitute : llvm::ModulePass
                 if ( anno == "propagate" )
                     propagate( fn, seen[ functionType( fn ) ] );
             } );
-
     }
 
     llvm::Type *intTypeOfSize( int size, llvm::LLVMContext &ctx ) {
@@ -259,7 +226,7 @@ struct Substitute : llvm::ModulePass
         transformMemTrans< llvm::MemMoveInst >( fn, _memmove[ type ] );
     }
 
-    llvm::Instruction::CastOps castOpFrom( llvm::Type *from, llvm::Type *to, bool isSigned = true ) {
+    llvm::Instruction::CastOps castOpFrom( llvm::Type *from, llvm::Type *to, bool isSigned = false ) {
         if ( from->getScalarSizeInBits() == to->getScalarSizeInBits() )
             return llvm::Instruction::BitCast;
         if ( from->getScalarSizeInBits() > to->getScalarSizeInBits() )
@@ -271,8 +238,8 @@ struct Substitute : llvm::ModulePass
 
     template< typename IntrinsicType >
     void transformMemTrans( llvm::Function &fn, llvm::Function *rfn ) {
-        if ( !rfn )
-            return;
+        if ( !rfn ) // we might be just transformimg memmove/memcpy/memset
+            return; //so this is not set yet
 
         auto repTy = rfn->getFunctionType();
         auto dstTy = repTy->getParamType( 0 );
@@ -291,10 +258,10 @@ struct Substitute : llvm::ModulePass
                 dst = builder.CreateCast( llvm::Instruction::BitCast, dst, dstTy );
             auto src = mem->getArgOperand( 1 )->stripPointerCasts();
             if ( src->getType() != srcTy )
-                src = builder.CreateCast( castOpFrom( src->getType(), srcTy ), src, srcTy );
+                src = builder.CreateCast( castOpFrom( src->getType(), srcTy, true ), src, srcTy );
             auto len = mem->getLength();
             if ( len->getType() != lenTy )
-                len = builder.CreateCast( castOpFrom( len->getType(), lenTy ), len, lenTy );
+                len = builder.CreateCast( castOpFrom( len->getType(), lenTy, true ), len, lenTy );
             auto replace = llvm::CallInst::Create( rfn, { dst, src, len } );
             llvm::ReplaceInstWithInst( mem, replace );
         }
@@ -314,15 +281,19 @@ struct Substitute : llvm::ModulePass
 
     template< typename Filter >
     void flushCalls( llvm::Function &fn, llvm::Function *barrier, Filter filter ) {
-        std::vector< llvm::CallInst * > calls;
+        std::vector< llvm::CallSite > calls;
         for ( auto &bb : fn )
-            for ( auto &i : bb )
+            for ( auto &i : bb ) {
                 if ( auto call = llvm::dyn_cast< llvm::CallInst >( &i ) )
-                    calls.push_back( call );
+                    calls.emplace_back( call );
+                else if ( auto inv = llvm::dyn_cast< llvm::InvokeInst >( &i ) )
+                    calls.emplace_back( inv );
+            }
         for ( auto call : calls ) {
-            auto called = call->getCalledFunction();
-            if ( called == nullptr || !filter( called ) )
-                llvm::CallInst::Create( barrier )->insertAfter( call );
+            auto called = call.getCalledFunction();
+            if ( (called == nullptr || !filter( called ))
+                    && !llvm::isa< llvm::IntrinsicInst >( call.getInstruction() ) )
+                llvm::CallInst::Create( barrier )->insertAfter( call.getInstruction() );
         }
     }
 
