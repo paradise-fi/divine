@@ -317,6 +317,8 @@ struct Substitute : llvm::ModulePass
         std::vector< llvm::LoadInst * > loads;
         std::vector< llvm::StoreInst * > stores;
         std::vector< llvm::FenceInst * > fences;
+        std::vector< llvm::AtomicCmpXchgInst * > cass;
+        std::vector< llvm::AtomicRMWInst * > ats;
 
         for ( auto &bb : f )
             for ( auto &i : bb ) {
@@ -326,8 +328,15 @@ struct Substitute : llvm::ModulePass
                     stores.push_back( store );
                 else if ( auto fence = llvm::dyn_cast< llvm::FenceInst >( &i ) )
                     fences.push_back( fence );
+                else if ( auto cas = llvm::dyn_cast< llvm::AtomicCmpXchgInst >( &i ) )
+                    cass.push_back( cas );
+                else if ( auto at = llvm::dyn_cast< llvm::AtomicRMWInst >( &i ) )
+                    ats.push_back( at );
             }
         for ( auto load : loads ) {
+            // SC: no barrier needed it has no effect on load
+            // TODO: PSO ordering (release,...)
+
             auto op = load->getPointerOperand();
             auto opty = llvm::cast< llvm::PointerType >( op->getType() );
             auto ety = opty->getElementType();
@@ -362,6 +371,15 @@ struct Substitute : llvm::ModulePass
             llvm::ReplaceInstWithInst( load, result );
         }
         for ( auto store : stores ) {
+            if ( store->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent ) {
+                // note: theoretically there should be weak store followed by
+                // memory barrier, however, this is equeivalent to first flusting
+                // store buffers AND THEN preforming direct store
+                llvm::CallInst::Create( _flush )->insertBefore( store );
+                continue;
+            }
+            // TODO: acquere ordering for PSO
+
             auto value = store->getValueOperand();
             auto addr = store->getPointerOperand();
             auto vty = value->getType();
@@ -395,9 +413,20 @@ struct Substitute : llvm::ModulePass
             llvm::ReplaceInstWithInst( store, storeCall );
         }
         for ( auto fence : fences ) {
-            // TODO: respect ordering of fence
+            if ( fence->getOrdering() != llvm::AtomicOrdering::SequentiallyConsistent )
+                continue;
+
+            // TODO: PSO fences
             auto callFlush = llvm::CallInst::Create( _flush );
             llvm::ReplaceInstWithInst( fence, callFlush );
+        }
+        for ( auto cas : cass ) {
+            ASSERT( cas->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent );
+            llvm::CallInst::Create( _flush )->insertBefore( cas );
+        }
+        for ( auto at : ats ) {
+            ASSERT( at->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent );
+            llvm::CallInst::Create( _flush )->insertBefore( at );
         }
         /* TODO: flush PSO -> TSO
         if ( type == Type::TSO )
