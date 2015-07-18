@@ -423,6 +423,48 @@ public:
     }
 };
 
+#ifndef __GLIBC__
+static int execvpe( const char *_file, char *const argv[], char *const envp[] ) {
+    std::string file = _file;
+    if ( file.find( '/' ) != std::string::npos )
+        return execve( _file, argv, envp );
+
+    std::string path = std::getenv( "PATH" );
+    if ( path.empty() ) {
+        int size = confstr( _CS_PATH, NULL, 0 );
+        ASSERT_LEQ( 0, size );
+        path.resize( size - 1 );
+        int s = confstr( _CS_PATH, &path[0], size );
+        ASSERT_EQ( s, size );
+    }
+
+    // search implemented according to manpage for execvp on apple
+    for ( size_t pos = 0, oldpos = 0;
+          pos = path.find( ':', oldpos ), pos != std::string::npos;
+          oldpos = pos + 1 )
+    {
+        std::string piece = path.substr( oldpos, pos - oldpos );
+        std::string absfile = piece + "/" + file;
+        int ret = execve( absfile.c_str(), argv, envp );
+        if ( ret == -1 ) {
+            if ( errno == ENOEXEC )
+                return -1;
+            else {
+                int olderrno = errno;
+                // check if it exists
+                if ( access( absfile.c_str(), X_OK ) != -1 ) {
+                    // it does, error was in exec
+                    errno = olderrno;
+                    return -1;
+                }
+            }
+        }
+    }
+    errno = ENOENT;
+    return -1;
+}
+#endif
+
 /**
  * Execute external commands, either forked as a ChildProcess or directly using
  * exec().
