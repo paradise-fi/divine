@@ -66,6 +66,7 @@ int Interpreter< HM, L >::new_thread( PC pc, Maybe< Pointer > arg, MemoryFlag fl
     }
     if ( current >= 0 )
         state.switch_thread( current );
+    observed = true;
     return tid;
 }
 
