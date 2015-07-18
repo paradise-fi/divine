@@ -444,6 +444,9 @@ namespace std {
 template<> struct hash< divine::llvm::PC > {
     size_t operator()( divine::llvm::PC pc ) const { return uint32_t( pc ); }
 };
+template<> struct hash< divine::llvm::Pointer > {
+    size_t operator()( divine::llvm::Pointer p ) const { return uint32_t( p ); }
+};
 }
 
 #endif

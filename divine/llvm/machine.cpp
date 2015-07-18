@@ -160,73 +160,56 @@ void MachineState< HeapMeta >::problem( Problem::What w, Pointer ptr )
 }
 
 template< typename HeapMeta >
-bool MachineState< HeapMeta >::isPrivate( Pointer needle, Pointer p, machine::Canonic< HeapMeta > &canonic )
-{
-    if ( p.heap && needle.segment == p.segment )
-        return false;
-
-    if ( canonic.seen( p ) )
-        return true;
-
-    canonic[p];
-
-    if ( p.heap && !freed.count( p.segment ) ) {
-        int size = pointerSize( p );
-        for ( p.offset = 0; p.offset < size; p.offset += 4 )
-            if ( isHeapPointer( memoryflag( p ) ) )
-                if ( !isPrivate( needle, followPointer( p ), canonic ) )
-                    return false;
-    }
-
-    return true;
-}
-
-template< typename HeapMeta >
-bool MachineState< HeapMeta >::isPrivate( Pointer needle, Frame &f, machine::Canonic< HeapMeta > &canonic )
-{
-    bool result = true;
-
-    auto vals = _info.function( f.pc ).values;
-    for ( auto val : vals ) {
-        forPointers( f, _info, val, [&]( ValueRef, Pointer p ) {
-                if ( !isPrivate( needle, p, canonic ) )
-                    result = false;
-            } );
-        if ( !result ) break; /* bail early */
-    }
-    return result;
-}
-
-template< typename HeapMeta >
 bool MachineState< HeapMeta >::isPrivate( int tid, Pointer needle )
 {
     if ( !needle.heap ) /* globals are never private */
         return _thread_count <= 1;
 
+    if ( _isPrivateTid >= 0 ) {
+        ASSERT_EQ( _isPrivateTid, tid );
+        if ( _isPrivate.count( needle.segment ) )
+            return _isPrivate.find( needle.segment )->second;
+        else
+            return _isPrivate[ needle.segment ] = true;
+    }
 
-    machine::Canonic< HeapMeta > canonic( *this );
+    _isPrivateTid = tid;
 
     for ( auto var : _info.globalvars ) {
         Pointer p( false, var.first, 0 );
         ASSERT( !var.second.constant );
         for ( p.offset = 0; p.offset < var.second.width; p.offset += 4 )
             if ( isHeapPointer( global().memoryflag( _info, p ) ) )
-                if ( !isPrivate( needle, followPointer( p ), canonic ) )
-                    return false;
+                markPublic( followPointer( p ).segment );
     }
 
     for ( int search = 0; search < _thread_count; ++search ) {
         if ( tid == search )
             continue;
-        if ( !eachframe( stack( search ), [&]( Frame &fr ) {
-                    if ( !isPrivate( needle, fr, canonic ) )
-                        return false;
-                    return true;
-                } ) )
-            return false;
+        eachframe( stack( search ), [&]( Frame &fr ) {
+                for ( auto &val : _info.function( fr.pc ).values )
+                    forPointers( fr, _info, val, [&]( ValueRef, Pointer p ) {
+                            markPublic( p.segment );
+                        } );
+                return true;
+            } );
     }
 
-    return true; /* not found */
+    return isPrivate( tid, needle );
+}
+
+template< typename HeapMeta >
+void MachineState< HeapMeta >::markPublic( int seg )
+{
+    if ( _isPrivate.count( seg ) )
+        return;
+
+    _isPrivate[ seg ] = false;
+    Pointer p( true, seg, 0 );
+    int size = pointerSize( p );
+    for ( p.offset = 0; p.offset < size; p.offset += 4 )
+        if ( isHeapPointer( memoryflag( p ) ) )
+            markPublic( followPointer( p ).segment );
 }
 
 namespace divine {

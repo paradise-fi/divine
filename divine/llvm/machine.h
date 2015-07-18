@@ -545,6 +545,9 @@ struct MachineState
     int _thread_count;
     Frame *_frame; /* pointer to the currently active frame */
 
+    int _isPrivateTid;
+    std::unordered_map< int, bool > _isPrivate;
+
     template< typename T >
     using Lens = lens::Lens< StateAddress, T >;
 
@@ -595,8 +598,7 @@ struct MachineState
     }
 
     bool isPrivate( int tid, Pointer p );
-    bool isPrivate( Pointer p, Frame &, machine::Canonic< HeapMeta > & );
-    bool isPrivate( Pointer p, Pointer, machine::Canonic< HeapMeta > & );
+    void markPublic( int seg );
 
     StateLens state( Blob b ) {
         return Lens< State >( StateAddress( &_info, _pool.dereference( b ), _slack ) );
@@ -846,6 +848,8 @@ struct MachineState
 
     void rewind( Blob to, int thread = 0 )
     {
+        _isPrivateTid = -1;
+        _isPrivate.clear();
         _pool.copy( to, _blob, _pool.size( to ) );
 
         _thread = -1; // special
