@@ -65,7 +65,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#ifdef __unix
+#if defined( __unix ) || defined( __APPLE__ )
 #include <dirent.h>
 #include <signal.h>
 #include <sys/stat.h>

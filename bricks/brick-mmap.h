@@ -11,7 +11,6 @@
 #error "brick-mmap is only supported with c++11 or newer"
 #endif
 
-
 #include <memory>
 #include <string>
 #include <stdexcept>
@@ -30,6 +29,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#endif
+
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS MAP_ANON
 #endif
 
 #include <brick-assert.h>
@@ -352,7 +355,7 @@ struct MMapTest {
     TEST(read) {
 #if __cplusplus >= 201103L
 
-        const char *toMap = 
+        const char *toMap =
 #ifdef _WIN32
             "c:\\windows\\system32\\cmd.exe";
 #else
@@ -372,7 +375,7 @@ struct MMapTest {
         ASSERT_EQ( map[ 0 ], 'M' );
         ASSERT_EQ( map[ 1 ], 'Z' );
         ASSERT_EQ( map[ 2 ], '\x90' );
-#else
+#elif defined( __unix )
         ASSERT_EQ( map[ 1 ], 'E' );
         ASSERT_EQ( map[ 2 ], 'L' );
         ASSERT_EQ( map[ 3 ], 'F' );
@@ -387,7 +390,7 @@ struct MMapTest {
         ASSERT_EQ( map1.get< char >( 0 ), 'M' );
         ASSERT_EQ( map1.get< char >( 1 ), 'Z' );
         ASSERT_EQ( map1.get< char >( 2 ), '\x90' );
-#else
+#elif defined( __unix )
         ASSERT_EQ( map1.get< char >( 1 ), 'E' );
         ASSERT_EQ( map1.get< char >( 2 ), 'L' );
         ASSERT_EQ( map1.get< char >( 3 ), 'F' );
@@ -400,7 +403,7 @@ struct MMapTest {
         ASSERT_EQ( map.cget< char >( 0 ), 'M' );
         ASSERT_EQ( map.cget< char >( 1 ), 'Z' );
         ASSERT_EQ( map.cget< char >( 2 ), '\x90' );
-#else
+#elif defined( __unix )
         ASSERT_EQ( map.cget< char >( 1 ), 'E' );
         ASSERT_EQ( map.cget< char >( 2 ), 'L' );
         ASSERT_EQ( map.cget< char >( 3 ), 'F' );

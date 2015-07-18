@@ -49,7 +49,7 @@ struct Exception : std::runtime_error {
     explicit Exception( const char *what ) : std::runtime_error( what ) { }
 };
 
-#if defined( __unix )
+#if defined( __unix ) || defined( __APPLE__ )
 const char pathSeparators[] = { '/' };
 #elif defined( _WIN32 )
 const char pathSeparators[] = { '\\', '/' };
@@ -229,7 +229,8 @@ inline std::string getcwd() {
     buf = buffer;
     free( buffer );
 #else
-    size_t size = pathconf( ".", _PC_PATH_MAX );
+    // seems like pathconf returns INT64_MAX on Apple :-/
+    size_t size = std::max( pathconf( ".", _PC_PATH_MAX ), 65536L );
     buf.resize( size );
     if ( ::getcwd( &buf.front(), size ) == nullptr )
         throw SystemException( "getting the current working directory" );

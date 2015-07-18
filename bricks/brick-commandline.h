@@ -46,7 +46,7 @@
 #include <iostream>
 #include <ctime>
 
-#ifdef __unix
+#if defined(__unix) || defined(__APPLE__)
 #include <unistd.h>
 #endif
 #ifdef _WIN32
@@ -61,9 +61,9 @@ namespace commandline {
 
 #ifdef _WIN32
 inline int access( const char *p, int m ) { return _access( p, m ); }
+#endif
 #ifndef F_OK
 static const int F_OK = 0;
-#endif
 #endif
 
 struct BadOption : std::runtime_error
