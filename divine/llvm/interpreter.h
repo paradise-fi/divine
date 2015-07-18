@@ -597,9 +597,9 @@ struct TestLLVM {
     TEST(successor3)
     {
         ASSERT_EQ( fmtblob( pool, _ith( code_add(), 2 ) ),
-                   "[ 0, 0, 0, 0, 1, 1, 2147745792, 3, 1 ]" );
+                   "[ 0, 0, 0, 0, 1, 1, 2147745792, 3, 85 ]" );
         ASSERT_EQ( fmtblob( pool, _ith( code_add(), 4 ) ),
-                   "[ 0, 0, 0, 0, 1, 1, 2147745792, 3, 1 ]" );
+                   "[ 0, 0, 0, 0, 1, 1, 2147745792, 3, 85 ]" );
     }
 
     TEST(describe1)
@@ -624,7 +624,7 @@ struct TestLLVM {
     {
         divine::Blob b = _ith( code_add(), 0 );
         ASSERT_EQ( _descr( code_add(), b ),
-                   "thread 0:\n  #1: <testf> << %meh = add i32 1, 2 >> [ meh = ? ]\n" );
+                   "thread 0:\n  #1: <testf> << %meh = add i32 1, 2 >> [ meh = 0? ]\n" );
 
         b = _ith( code_add(), 2 );
         ASSERT_EQ( _descr( code_add(), b ),
