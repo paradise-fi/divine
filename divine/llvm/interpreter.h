@@ -102,9 +102,10 @@ struct Interpreter
         if ( !tauminus )
             return true;
 
-        bool store = isa< StoreInst >( instruction().op );
-        if ( store || isa< AtomicRMWInst >( instruction().op ) ||
-             isa< LoadInst >( instruction().op ) )
+        bool store = instruction().opcode == llvm::Instruction::Store;
+        if ( store || instruction().opcode == llvm::Instruction::AtomicRMW ||
+                      instruction().opcode == llvm::Instruction::AtomicCmpXchg ||
+                      instruction().opcode == llvm::Instruction::Load )
         {
             if ( !taustores )
                 return true;
