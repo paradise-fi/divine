@@ -14,7 +14,7 @@ if test -z "$1"; then
     i=0
     grep ^@ "$file" | while read l; do
         i=$(($i + 1))
-        $(which echo) -n "$(echo $base | flatten).$i.cpp;"
+        echo "$(echo $base | flatten).$i.cpp"
     done
 else
     out="$1"

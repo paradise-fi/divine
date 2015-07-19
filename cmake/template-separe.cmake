@@ -6,8 +6,10 @@ macro( template_separe V )
 
     execute_process(
       COMMAND sh ${separe} "${filep}" "${file}"
-      OUTPUT_VARIABLE instances
+      OUTPUT_VARIABLE instances_
     )
+
+    string( REPLACE "\n" ";" instances ${instances_} )
 
     foreach( i ${instances} )
       add_custom_command(

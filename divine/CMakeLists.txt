@@ -72,7 +72,7 @@ set_source_files_properties( "${VERSION_FILE}" PROPERTIES GENERATED ON )
 add_custom_command(
   OUTPUT flags-generated.cpp
   VERBATIM
-  COMMAND sh -c "`which echo` -n \"const char* divineCompileFlags = \\\"${BUILDOPTS}\\\";\">flags-generated.cpp"
+  COMMAND sh -c "echo \"const char* divineCompileFlags = \\\"${BUILDOPTS}\\\";\">flags-generated.cpp"
 )
 
 stringify( "" toolkit/pool.h )
