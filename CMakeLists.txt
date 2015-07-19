@@ -276,6 +276,12 @@ if ( NOT HAVE_CXX11_TRAITS )
     message( FATAL_ERROR "DiVinE requires working C++11 type traits." )
 endif()
 
+include( CheckFunctionExists )
+check_function_exists( posix_fallocate HAVE_POSIX_FALLOCATE )
+if ( HAVE_POSIX_FALLOCATE )
+    add_definitions( -DHAVE_POSIX_FALLOCATE )
+endif()
+
 if( GEN_DVE AND NOT HAVE_CXX11_UNRESTRICTED_UNIONS )
     disable( GEN_DVE "" "C++11 unrestricted unions not available." )
 endif()
