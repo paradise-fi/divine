@@ -191,6 +191,8 @@ struct Masked {
     bool recursive;
 };
 
+volatile int __lart_weakmem_buffer_size = 2;
+
 #define WM_VISIBLE_MASK()     \
     __divine_interrupt();     \
     __divine_interrupt_mask()
@@ -198,7 +200,7 @@ struct Masked {
 void __lart_weakmem_store_tso( void *addr, uint64_t value, int bitwidth ) {
     WM_VISIBLE_MASK();
     __storeBuffers.push( { addr, value, bitwidth } );
-    if ( __storeBuffers.get()->size() > __STORE_BUFFER_SIZE )
+    if ( __storeBuffers.get()->size() > __lart_weakmem_buffer_size )
         __storeBuffers.pop().store();
 }
 

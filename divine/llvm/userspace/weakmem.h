@@ -6,10 +6,6 @@
 #ifndef __LART_WEAKMEM_H_
 #define __LART_WEAKMEM_H_
 
-#ifndef __STORE_BUFFER_SIZE
-#define __STORE_BUFFER_SIZE 2
-#endif
-
 #define _lart_weakmem_bypass_ __attribute__((annotate("lart.weakmem.bypass")))
 #define _lart_weakmem_sc_ __attribute__((annotate("lart.weakmem.sc")))
 #define _lart_weakmem_tso_ __attribute__((annotate("lart.weakmem.tso")))
@@ -24,6 +20,8 @@ namespace weakmem {
 
 extern "C" {
 #endif
+
+volatile extern int __lart_weakmem_buffer_size;
 
 void __lart_weakmem_store_tso( void *addr, uint64_t value, int bitwidth ) _lart_weakmem_bypass_ _lart_weakmem_propagate_ __NOINLINE;
 uint64_t __lart_weakmem_load_tso( void *addr, int bitwidth ) _lart_weakmem_bypass_ _lart_weakmem_propagate_ __NOINLINE;
