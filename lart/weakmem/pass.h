@@ -60,7 +60,7 @@ struct Substitute : llvm::ModulePass
         _loadPso = m.getFunction( "__lart_weakmem_load_pso" );
         _flush = m.getFunction( "__lart_weakmem_flush" );
 
-        transformMemManip( dl, {
+        transformMemManip( {
                 { _memmove, m.getFunction( "__lart_weakmem_memmove" ) },
                 { _memcpy,  m.getFunction( "__lart_weakmem_memcpy" ) },
                 { _memset,  m.getFunction( "__lart_weakmem_memset" ) } } );
@@ -78,8 +78,7 @@ struct Substitute : llvm::ModulePass
 
   private:
 
-    void transformMemManip( llvm::DataLayout &dl,
-            std::initializer_list< std::pair< llvm::Function **, llvm::Function * > > what )
+    void transformMemManip( std::initializer_list< std::pair< llvm::Function **, llvm::Function * > > what )
     {
         for ( auto p : what ) {
             ASSERT( p.second );
@@ -114,7 +113,7 @@ struct Substitute : llvm::ModulePass
         auto annos = m.getNamedGlobal( "llvm.global.annotations" );
         ASSERT( annos );
         auto a = llvm::cast< llvm::ConstantArray >( annos->getOperand(0) );
-        for ( int i = 0; i < a->getNumOperands(); i++ ) {
+        for ( int i = 0; i < int( a->getNumOperands() ); i++ ) {
             auto e = llvm::cast< llvm::ConstantStruct >( a->getOperand(i) );
             if ( auto fn = llvm::dyn_cast< llvm::Function >( e->getOperand(0)->getOperand(0) ) ) {
                 std::string anno = llvm::cast< llvm::ConstantDataArray >(
@@ -361,8 +360,10 @@ struct Substitute : llvm::ModulePass
                 result = llvm::CastInst::Create( llvm::Instruction::IntToPtr, builder.Insert( result ), ety );
             else {
                 auto size = ety->getPrimitiveSizeInBits();
-                ASSERT( size > 0 );
-                ASSERT_LEQ( size, 64 );
+                if ( size > 64 ) // TODO
+                    continue;
+                ASSERT_LEQ( 1u, size );
+                ASSERT_LEQ( size, 64u );
                 if ( size < 64 )
                     result = llvm::CastInst::Create( llvm::Instruction::Trunc, builder.Insert( result ), intTypeOfSize( size, ctx ) );
                 if ( !ety->isIntegerTy() )
@@ -399,9 +400,9 @@ struct Substitute : llvm::ModulePass
             else {
                 auto size = vty->getPrimitiveSizeInBits();
                 // ASSERT( size > 0 );
-                if ( size == 0 )
+                if ( size == 0 || size > 64 )
                     continue; // TODO
-                ASSERT_LEQ( size, 64 );
+                ASSERT_LEQ( size, 64u );
                 if ( !vty->isIntegerTy() )
                     value = builder.CreateCast( llvm::Instruction::BitCast, value, intTypeOfSize( size, ctx ) );
                 if ( size < 64 )
