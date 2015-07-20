@@ -76,8 +76,12 @@ ModulePass *mkPass( std::string n, std::string opt )
 
         if ( opt == "tso" )
             t = weakmem::Substitute::TSO;
-        if ( opt == "pso" )
+        else if ( opt == "pso" )
             t = weakmem::Substitute::PSO;
+        else if ( opt == "sc" )
+            t = weakmem::Substitute::SC;
+        else
+            throw std::runtime_error( "unknown weakmem type: " + opt );
 
         p->append( new weakmem::ScalarMemory );
         p->append( new weakmem::Substitute( t ) );
