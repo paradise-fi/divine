@@ -15,6 +15,14 @@ struct Key;
 bool _evalSuppBy( const SupportedBy &suppBy, const std::vector< Key > &vec );
 bool _valid( std::vector< Key > trace );
 
+template< typename Trace >
+std::string stringTrace( Trace trace ) {
+    std::vector< std::string > vec;
+    for ( auto i : trace )
+        vec.emplace_back( std::get< 1 >( showGen( i ) ) );
+    return brick::string::fmt( vec );
+}
+
 }
 
 using AlgorithmPtr = std::unique_ptr< algorithm::Algorithm >;

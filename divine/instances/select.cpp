@@ -109,14 +109,6 @@ void warnOtherAvailable( Meta metacopy, Key k ) {
 
 using namespace instantiate;
 
-template< typename Trace >
-std::string stringTrace( Trace trace ) {
-    std::vector< std::string > vec;
-    for ( auto i : trace )
-        vec.emplace_back( std::get< 1 >( showGen( i ) ) );
-    return brick::string::fmt( vec );
-}
-
 template< typename I >
 Trace selectTrace( Meta &meta, Trace sofar, I component, I end )
 {

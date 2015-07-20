@@ -51,6 +51,7 @@ struct Info : virtual algorithm::Algorithm, algorithm::AlgorithmUtils< Setup, br
 
     virtual AlgorithmPtr select( Meta &m ) {
         auto t = selectTrace( m );
+        m.algorithm.instance = instantiate::stringTrace( t );
         auto &d = instantiate::JumpTable< typename Setup::Generator * >::data;
         if ( d.count( t ) )
             return d[ t ]( m, &g->base() );
