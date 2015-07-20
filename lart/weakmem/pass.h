@@ -115,7 +115,8 @@ struct Substitute : llvm::ModulePass
 
     enum Type { Bypass, SC, TSO, PSO };
 
-    Substitute( Type t ) : llvm::ModulePass( ID ), _defaultType( t ),
+    Substitute( Type t, int bufferSize ) : llvm::ModulePass( ID ),
+        _defaultType( t ), _bufferSize( bufferSize ),
         _storeTso( nullptr ), _storePso( nullptr ),
         _loadTso( nullptr ), _loadPso( nullptr ),
         _flush( nullptr ),
@@ -127,6 +128,13 @@ struct Substitute : llvm::ModulePass
     virtual ~Substitute() {}
 
     bool runOnModule( llvm::Module &m ) {
+        if ( _bufferSize > 0 ) {
+            auto i32 = llvm::IntegerType::getInt32Ty( m.getContext() );
+            auto bufSize = llvm::ConstantInt::getSigned( i32, _bufferSize );
+            auto glo = llvm::cast< llvm::GlobalVariable >( m.getOrInsertGlobal( "__lart_weakmem_buffer_size", i32 ) );
+            glo->setInitializer( bufSize );
+        }
+
         llvm::DataLayout dl( &m );
 
         _storeTso = m.getFunction( "__lart_weakmem_store_tso" );
@@ -533,6 +541,7 @@ struct Substitute : llvm::ModulePass
     }
 
     Type _defaultType;
+    int _bufferSize;
     LLVMFunctionSet _bypass, _sc, _tso, _pso;
     llvm::Function *_storeTso, *_storePso, *_loadTso, *_loadPso, *_flush;
     llvm::Function *_memmove[4], *_memcpy[4], *_memset[4];

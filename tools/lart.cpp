@@ -74,6 +74,15 @@ ModulePass *mkPass( std::string n, std::string opt )
         auto p = new CompositePass();
         weakmem::Substitute::Type t = weakmem::Substitute::TSO;
 
+        auto c = opt.find( ':' );
+        int bufferSize = -1;
+        if ( c != std::string::npos ) {
+            bufferSize = std::stoi( opt.substr( c + 1 ) );
+            opt = opt.substr( 0, c );
+        }
+
+        std::cout << "opt = " << opt << ", bufferSize = " << bufferSize << std::endl;
+
         if ( opt == "tso" )
             t = weakmem::Substitute::TSO;
         else if ( opt == "pso" )
@@ -84,7 +93,7 @@ ModulePass *mkPass( std::string n, std::string opt )
             throw std::runtime_error( "unknown weakmem type: " + opt );
 
         p->append( new weakmem::ScalarMemory );
-        p->append( new weakmem::Substitute( t ) );
+        p->append( new weakmem::Substitute( t, bufferSize ) );
         return p;
     }
 
