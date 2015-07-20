@@ -721,7 +721,7 @@ namespace {
 
 typedef std::vector< std::map< std::string, Option * >::const_iterator > PartialMatches;
 
-PartialMatches _partialMatches( std::map< std::string, Option * > longOpts, std::string name )
+PartialMatches _partialMatches( std::map< std::string, Option * > &longOpts, std::string name )
 {
     std::map< std::string, Option * >::const_iterator engine = longOpts.lower_bound( name );
     PartialMatches candidates;
