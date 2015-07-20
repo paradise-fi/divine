@@ -28,10 +28,85 @@ using LLVMFunctionSet = std::unordered_set< llvm::Function * >;
 struct ScalarMemory : llvm::ModulePass
 {
     static char ID;
+    const int _wordsize = 8;
+
+    llvm::LLVMContext *_ctx;
+    llvm::LLVMContext &ctx() { return *_ctx; }
+
     ScalarMemory() : llvm::ModulePass( ID ) {}
     bool runOnModule( llvm::Module &m ) {
-        return false;
+        _ctx = &m.getContext();
+        for ( auto &f : m )
+            transform( f );
+        return true;
     }
+
+    void transform( llvm::Function &f ) {
+        std::vector< llvm::LoadInst * > loads;
+        std::vector< llvm::StoreInst * > stores;
+
+        for ( auto &bb : f )
+            for ( auto &i : bb ) {
+                if ( auto load = llvm::dyn_cast< llvm::LoadInst >( &i ) )
+                    loads.push_back( load );
+                if ( auto store = llvm::dyn_cast< llvm::StoreInst >( &i ) )
+                    stores.push_back( store );
+            }
+        for ( auto &s : stores )
+            transform( s );
+        for ( auto &l : loads )
+            transform( l );
+    }
+
+    llvm::Type *nonscalar( llvm::Value *v ) {
+        auto ty = v->getType();
+        if ( ( ty->getPrimitiveSizeInBits() && ty->getPrimitiveSizeInBits() <= 8 * _wordsize )
+             || ty->isPointerTy() )
+            return nullptr; /* already scalar */
+        if ( ty->getPrimitiveSizeInBits() )
+            return nullptr; /* TODO */
+        return ty;
+    }
+
+    void transform( llvm::LoadInst *load ) {
+        auto ty = nonscalar( load );
+        if ( !ty )
+            return;
+
+        llvm::IRBuilder<> builder( ctx() );
+        llvm::Value *agg = llvm::UndefValue::get( ty );
+        if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
+            for ( int i = 0; i < sty->getNumContainedTypes(); ++i ) {
+                auto geptr = builder.CreateConstGEP2_32( load->getOperand(0), 0, i );
+                auto val = builder.CreateLoad( geptr );
+                transform( val );
+                agg = builder.CreateInsertValue( agg, val, i );
+            }
+        llvm::ReplaceInstWithInst( load, llvm::dyn_cast< llvm::Instruction >( agg ) );
+    }
+
+    void transform( llvm::StoreInst *store ) {
+        auto ty = nonscalar( store->getValueOperand() );
+        if ( !ty )
+            return;
+
+        llvm::IRBuilder<> builder( ctx() );
+        llvm::Value *agg = store->getValueOperand();
+        llvm::Instruction *replace = nullptr;
+        if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
+            for ( int i = 0; i < sty->getNumContainedTypes(); ++i ) {
+                auto geptr = builder.CreateConstGEP2_32( store->getPointerOperand(), 0, i );
+                auto val = builder.CreateExtractValue( agg, i );
+                auto nstore = builder.CreateStore( val, geptr );
+                transform( nstore );
+                replace = nstore;
+            }
+        if ( replace ) {
+            llvm::ReplaceInstWithInst( store, replace );
+            replace->getParent()->dump();
+        }
+    }
+
 };
 
 struct Substitute : llvm::ModulePass
