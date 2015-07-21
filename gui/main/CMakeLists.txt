@@ -18,8 +18,8 @@ endif(APPLE)
 qt4_add_resources(DIVINE_IDE_RES main.qrc)
 
 # main executable
-add_executable(divine.ide ${GUI_TYPE} main.cpp ${DIVINE_IDE_RES} $<TARGET_OBJECTS:libdivine-instances>)
-target_link_libraries(divine.ide baseIDE baseTools dveModule ${QT_LIBRARIES})
+add_executable(divine.ide ${GUI_TYPE} main.cpp ${DIVINE_IDE_RES})
+target_link_libraries(divine.ide libdivine-instances baseIDE baseTools dveModule ${QT_LIBRARIES})
 
 set(BIN_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_BIN_DEST})
 set(LIB_PATH ${CMAKE_INSTALL_PREFIX}/${GUI_LIB_DEST})
