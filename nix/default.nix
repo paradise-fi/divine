@@ -172,10 +172,11 @@ let
   in {
     gcc_min =   mk: mk { inputs = pkgs: []; };
     gcc_def   = mk: mk { inputs = allInGcc; };
-    gcc_all   = mk: mk { inputs = allInGcc; flags = allFlags; systems = [ "x86_64-linux" ]; };
 
-    gcc49_all = mk: mk { inputs = allInGcc; flags = allFlags; compilerPkg = pkgs: pkgs.gcc49;
+    gcc_all   = mk: mk { inputs = allInGcc; flags = allFlags ++ [ "-DBUILD_SHARED_LIBS=ON" ];
                          systems = [ "x86_64-linux" ]; };
+    gcc49_all = mk: mk { inputs = allInGcc; flags = allFlags ++ [ "-DBUILD_SHARED_LIBS=ON" ];
+                         compilerPkg = pkgs: pkgs.gcc49; systems = [ "x86_64-linux" ]; };
 
     clang_min = mk: mk { inputs = pkgs: []; clang = true; };
     clang_def = mk: mk { inputs = allInClang; clang = true; systems = [ "x86_64-linux" ]; };
