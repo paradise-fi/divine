@@ -131,6 +131,8 @@ opt( DEV_NOPOOLEPHEMERAL "disable ephemeral memory allocation optimization" OFF 
 mark_as_advanced( DEV_NOPOOLEPHEMERAL )
 opt( DEV_WARNINGS "enable extra compiler warnings" ${DEV_WARNINGS_DEF} )
 
+option( BUILD_SHARED_LIBS "build shared libraries for libdivine and libdivine-instances" OFF )
+
 include( VersionAppend )
 
 set( MAX_INSTANCE_FILES_COUNT "128" CACHE STRING

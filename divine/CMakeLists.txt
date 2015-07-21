@@ -96,7 +96,7 @@ include_directories( ${DIVINE_INCLUDES} )
 include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 
-add_library( libdivine STATIC
+add_library( libdivine
     ${SRC_DLFCN} ${SRC} ${SRC_TIMED}
     ${SRC_COIN} ${SRC_BA} ${SRC_LLVM} ${SRC_DVE}
     instances/common.cpp
@@ -105,7 +105,7 @@ add_library( libdivine STATIC
     ${STRINGIFIED} )
 
 target_link_libraries( libdivine pthread )
-add_library( libdivine-instances OBJECT instances/select.cpp ${SRC_auto_instances} )
+add_library( libdivine-instances instances/select.cpp ${SRC_auto_instances} )
 add_dependencies( libdivine-instances instances-generator )
 
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )

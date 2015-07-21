@@ -7,8 +7,7 @@ add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 set( COMBINE_M4_H "${CMAKE_CURRENT_BINARY_DIR}/combine.m4.h" )
 set( COMBINE_M4 "${CMAKE_CURRENT_SOURCE_DIR}/combine.m4" )
 
-add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H}
-                $<TARGET_OBJECTS:libdivine-instances> )
+add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H} )
 
 if ( GEN_LLVM )
   set_source_files_properties( lart.cpp PROPERTIES COMPILE_FLAGS -fno-rtti )
@@ -16,7 +15,7 @@ if ( GEN_LLVM )
   target_link_libraries( lart liblart ${LLVM_LIBRARIES} ${LLVM_SYSLIBS} )
 endif()
 
-target_link_libraries( divine libdivine )
+target_link_libraries( divine libdivine libdivine-instances )
 
 if( OPT_MURPHI )
     target_link_libraries( divine murphi )
