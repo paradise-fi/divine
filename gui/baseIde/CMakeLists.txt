@@ -92,4 +92,4 @@ qt4_wrap_cpp(BASE_IDE_SRC2 ${BASE_IDE_MOC})
 qt4_wrap_ui(BASE_IDE_SRC3 ${BASE_IDE_UI})
 
 add_library(baseIDE STATIC ${BASE_IDE_SRC} ${BASE_IDE_SRC2} ${BASE_IDE_SRC3})
-target_link_libraries(baseIDE libdivine ${QT_LIBRARIES})
+target_link_libraries(baseIDE libdivine libdivine-instances ${QT_LIBRARIES})
