@@ -74,7 +74,7 @@ struct __BufferHelper {
     struct BufferLine {
         BufferLine() _lart_weakmem_bypass_ : addr( nullptr ), value( 0 ), bitwidth( 0 ) { }
         BufferLine( void *addr, uint64_t value, int bitwidth ) _lart_weakmem_bypass_ :
-            addr( addr ), value( value ), bitwidth( bitwidth )
+            addr( reinterpret_cast< char * >( addr ) ), value( value ), bitwidth( bitwidth )
         { }
 
         void store() _lart_weakmem_bypass_ forceinline {
@@ -92,7 +92,7 @@ struct __BufferHelper {
             *reinterpret_cast< T * >( addr ) = T( value );
         }
 
-        void *addr;
+        char *addr;
         uint64_t value;
         int bitwidth;
     };
@@ -172,24 +172,9 @@ struct __BufferHelper {
     }
 
     Buffer **buffers;
-    bool masked;
 };
 
 __BufferHelper __storeBuffers;
-
-struct Masked {
-    Masked() : recursive( __storeBuffers.masked ) {
-        __storeBuffers.masked = true;
-    }
-    ~Masked() {
-        if ( !recursive )
-            __storeBuffers.masked = false;
-    }
-
-    operator bool() const { return recursive; }
-
-    bool recursive;
-};
 
 volatile int __lart_weakmem_buffer_size = 2;
 
@@ -211,23 +196,59 @@ void __lart_weakmem_flush() {
     __storeBuffers.drop();
 }
 
-uint64_t __lart_weakmem_load_tso( void *addr, int bitwidth ) {
+union I64b {
+    uint64_t i64;
+    char b[8];
+};
+
+uint64_t __lart_weakmem_load_tso( void *_addr, int bitwidth ) {
     WM_VISIBLE_MASK();
+    I64b val = { .i64 = 0 };
+    char *addr = reinterpret_cast< char * >( _addr );
+    bool bmask[8] = { false };
+    bool any = false;
     auto buf = __storeBuffers.get();
     if ( buf ) {
-        for ( const auto &it : reversed( *buf ) )
-            if ( it.addr == addr ) {
-                return it.value;
+        for ( const auto &it : reversed( *buf ) ) {
+            if ( !any && it.addr == addr && it.bitwidth >= bitwidth )
+                return it.value & (uint64_t(-1) >> (64 - bitwidth));
+            if ( addr + (bitwidth / 8) > it.addr && addr < it.addr + (it.bitwidth / 8) ) {
+                I64b bval = { .i64 = it.value };
+                const int shift = intptr_t( it.addr ) - intptr_t( addr );
+                if ( shift >= 0 ) {
+                    for ( int i = shift, j = 0; i < bitwidth / 8 && j < it.bitwidth / 8; ++i, ++j )
+                        if ( !bmask[ i ] ) {
+                            val.b[ i ] = bval.b[ j ];
+                            bmask[ i ] = true;
+                            any = true;
+                        }
+                } else {
+                    for ( int i = 0, j = -shift; i < bitwidth / 8 && j < it.bitwidth / 8; ++i, ++j )
+                        if ( !bmask[ i ] ) {
+                            val.b[ i ] = bval.b[ j ];
+                            bmask[ i ] = true;
+                            any = true;
+                        }
+                }
+                bool all = true;
             }
+        }
     }
+    I64b mval;
     switch ( bitwidth ) {
-        case 8: return *reinterpret_cast< uint8_t * >( addr );
-        case 16: return *reinterpret_cast< uint16_t * >( addr );
-        case 32: return *reinterpret_cast< uint32_t * >( addr );
-        case 64: return *reinterpret_cast< uint64_t * >( addr );
+        case 8: mval.i64 = *reinterpret_cast< uint8_t * >( addr ); break;
+        case 16: mval.i64 = *reinterpret_cast< uint16_t * >( addr ); break;
+        case 32: mval.i64 = *reinterpret_cast< uint32_t * >( addr ); break;
+        case 64: mval.i64 = *reinterpret_cast< uint64_t * >( addr ); break;
         default: __divine_problem( Problem::Other, "Unhandled case" );
     }
-    return 0; // unreachable
+    if ( any ) {
+        for ( int i = 0; i < bitwidth / 8; ++i )
+            if ( !bmask[ i ] )
+                val.b[ i ] = mval.b[ i ];
+        return val.i64;
+    }
+    return mval.i64;
 }
 
 uint64_t __lart_weakmem_load_pso( void *addr, int bitwidth ) {
@@ -243,13 +264,13 @@ void internal_memcpy( volatile char *dst, char *src, size_t n ) forceinline {
     static_assert( adv == 1 || adv == -1, "" );
 
     while ( n ) {
-        // we must do copying in block of 4 if we can, otherwise pointers will
+        // we must do copying in block of 8 if we can, otherwise pointers will
         // be lost
-        if ( n >= 4 && uintptr_t( dst ) % 4 == 0 && uintptr_t( src ) % 4 == 0 ) {
-            size_t an = n / 4;
-            n -= an * 4;
-            volatile int32_t *adst = reinterpret_cast< volatile int32_t * >( dst );
-            int32_t *asrc = reinterpret_cast< int32_t * >( src );
+        if ( n >= 8 && uintptr_t( dst ) % 8 == 0 && uintptr_t( src ) % 8 == 0 ) {
+            size_t an = n / 8;
+            n -= an * 8;
+            volatile int64_t *adst = reinterpret_cast< volatile int64_t * >( dst );
+            int64_t *asrc = reinterpret_cast< int64_t * >( src );
             for ( ; an; --an, asrc += adv, adst += adv )
                 adst[ deref ] = asrc[ deref ];
             dst = reinterpret_cast< volatile char * >( adst );

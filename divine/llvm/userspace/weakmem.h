@@ -62,16 +62,16 @@ void __lart_weakmem_memset_pso( void *dest, int c, size_t n ) _lart_weakmem_bypa
 
 enum Order { TSO, PSO };
 
-template< Order o, typename T >
+template< Order o = TSO, typename T >
 void store( T *var, T val ) _lart_weakmem_bypass_ {
     (*(o == TSO ? &__lart_weakmem_store_tso : &__lart_weakmem_store_pso))( var, uint64_t( val ), sizeof( T ) * 8 );
 }
-template< Order o, typename T >
+template< Order o = TSO, typename T >
 T load( T *var ) _lart_weakmem_bypass_ {
     return T( (*(o == TSO ? &__lart_weakmem_load_tso : &__lart_weakmem_load_pso))( var, sizeof( T ) * 8 ) );
 }
 
-template< Order o, typename T >
+template< typename T, Order o = TSO >
 struct Slot {
     Slot() _lart_weakmem_bypass_ { }
     explicit Slot( T val ) _lart_weakmem_bypass_ : val( val ) { }
