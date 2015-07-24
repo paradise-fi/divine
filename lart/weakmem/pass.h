@@ -281,6 +281,8 @@ struct Substitute : llvm::ModulePass
     }
 
     void transform( llvm::Function &f, llvm::DataLayout &dl ) {
+        if ( f.empty() )
+            return;
         switch ( functionType( &f ) ) {
             case Type::Bypass:
                 transformBypass( f );
@@ -505,11 +507,11 @@ struct Substitute : llvm::ModulePass
             llvm::ReplaceInstWithInst( fence, callFlush );
         }
         for ( auto cas : cass ) {
-            ASSERT( cas->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent );
+            // ASSERT( cas->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent );
             llvm::CallInst::Create( _flush )->insertBefore( cas );
         }
         for ( auto at : ats ) {
-            ASSERT( at->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent );
+            // ASSERT( at->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent );
             llvm::CallInst::Create( _flush )->insertBefore( at );
         }
         /* TODO: flush PSO -> TSO
