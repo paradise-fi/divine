@@ -360,7 +360,7 @@ struct Substitute : llvm::ModulePass
         llvm::IRBuilder<> builder( bb.begin() );
         builder.CreateCall( _flush );
 
-        flushCalls( fn, _flush, [&]( llvm::Function *called ) { return _sc.count( called ) || _bypass.count( called ); } );
+        flushCalls( fn, _flush, [&]( llvm::Function *called ) { return functionType( called ) == Type::SC || functionType( called ) == Type::Bypass; } );
     }
 
     template< typename Filter >
