@@ -1,7 +1,6 @@
 // divine-cflags: -std=c++11
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#define __STORE_BUFFER_SIZE 2
 #include <weakmem.h>
 #include <atomic>
 #include <pthread.h>

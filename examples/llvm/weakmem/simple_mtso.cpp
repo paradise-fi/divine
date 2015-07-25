@@ -5,19 +5,21 @@
 #include <assert.h>
 #include <weakmem.h>
 
-int x, y;
+lart::weakmem::Slot< int > x, y;
 
-void *worker0( void * = nullptr ) _lart_weakmem_tso_ {
+void *worker0( void * = nullptr ) {
     x = 1;
     return reinterpret_cast< void * >( size_t( y ) );
 }
 
-void *worker1( void * = nullptr ) _lart_weakmem_tso_ {
+void *worker1( void * = nullptr ) {
     y = 1;
     return reinterpret_cast< void * >( size_t( x ) );
 }
 
 int main() {
+    __lart_weakmem_buffer_size = 1;
+
     pthread_t t0, t1;
     pthread_create( &t0, nullptr, &worker0, nullptr );
     pthread_create( &t1, nullptr, &worker1, nullptr );
