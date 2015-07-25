@@ -15,9 +15,6 @@
 #define __NOINLINE __attribute__((noinline))
 
 #ifdef __cplusplus
-namespace lart {
-namespace weakmem {
-
 extern "C" {
 #endif
 
@@ -59,6 +56,10 @@ void __lart_weakmem_memset_pso( void *dest, int c, size_t n ) _lart_weakmem_bypa
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"
+
+namespace lart {
+namespace weakmem {
+
 
 enum Order { TSO, PSO };
 

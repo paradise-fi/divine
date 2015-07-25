@@ -9,9 +9,6 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"
 
-namespace lart {
-namespace weakmem {
-
 template< typename Collection >
 struct Reversed {
     using T = typename Collection::value_type;
@@ -301,9 +298,6 @@ void __lart_weakmem_memset( void *_dst, int c, size_t n ) {
     volatile char *dst = const_cast< volatile char * >( reinterpret_cast< char * >( _dst ) );
     for ( ; n; --n, ++dst )
         *dst = c;
-}
-
-}
 }
 
 #pragma GCC diagnostic pop
