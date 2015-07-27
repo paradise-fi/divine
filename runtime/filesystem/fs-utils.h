@@ -55,21 +55,29 @@ namespace utils {
 
 template< typename T >
 struct Defer {
-    Defer( T &&c ) : _c( std::move( c ) ), _run( false ) {}
+    Defer( T &&c ) : _c( std::move( c ) ), _deleted( false ) {}
     ~Defer() {
         run();
     }
 
     void run() {
-        if ( !_run ) {
+        if ( !_deleted ) {
             _c();
-            _run = true;
+            _deleted = true;
         }
+    }
+
+    bool deleted() const {
+        return _deleted;
+    }
+
+    void pass() {
+        _deleted = true;
     }
 
 private:
     T _c;
-    bool _run;
+    bool _deleted;
 };
 
 template< typename T >
