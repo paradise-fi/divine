@@ -15,7 +15,7 @@ enum class Seek {
     End
 };
 
-const int CURRENT_DIRECTORY = -4;
+const int CURRENT_DIRECTORY = -100;
 const int PATH_LIMIT = 1023;
 const int FILE_NAME_LIMIT = 255;
 const int FILE_DESCRIPTOR_LIMIT = 1024;

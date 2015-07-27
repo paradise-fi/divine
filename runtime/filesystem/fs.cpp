@@ -42,6 +42,9 @@ using divine::fs::vfs;
 
 static bool underMask = false;
 
+static_assert( AT_FDCWD == divine::fs::CURRENT_DIRECTORY,
+    "mismatch value of AT_FDCWD and divine::fs::CURRENT_DIRECTORY" );
+
 extern "C" {
 
 static void _initStat( struct stat *buf ) {
@@ -103,8 +106,6 @@ int openat( int dirfd, const char *path, int flags, ... ) {
     if ( flags & O_NOFOLLOW )
         f |= divine::fs::flags::Open::SymNofollow;
 
-    if ( dirfd == AT_FDCWD )
-        dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
         return vfs.instance().openFileAt( dirfd, path, f, m );
     } catch ( Error & ) {
@@ -184,8 +185,6 @@ ssize_t pread( int fd, void *buf, size_t count, off_t offset ) {
 }
 int mkdirat( int dirfd, const char *path, mode_t mode ) {
     FS_ENTRYPOINT();
-    if ( dirfd == AT_FDCWD )
-        dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
         vfs.instance().createDirectoryAt( dirfd, path, mode );
         return 0;
@@ -247,8 +246,6 @@ int unlinkat( int dirfd, const char *path, int flags ) {
         f = divine::fs::flags::At::Invalid;
         break;
     }
-    if ( dirfd == AT_FDCWD )
-        dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
         vfs.instance().removeAt( dirfd, path, f );
         return 0;
@@ -295,8 +292,6 @@ int dup2( int oldfd, int newfd ) {
 }
 int symlinkat( const char *target, int dirfd, const char *linkpath ) {
     FS_ENTRYPOINT();
-    if ( dirfd == AT_FDCWD )
-        dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
         vfs.instance().createSymLinkAt( dirfd, linkpath, target );
         return 0;
@@ -310,10 +305,6 @@ int symlink( const char *target, const char *linkpath ) {
 }
 int linkat( int olddirfd, const char *target, int newdirfd, const char *linkpath, int flags ) {
     FS_ENTRYPOINT();
-    if ( olddirfd == AT_FDCWD )
-        olddirfd = divine::fs::CURRENT_DIRECTORY;
-    if ( newdirfd == AT_FDCWD )
-        newdirfd = divine::fs::CURRENT_DIRECTORY;
 
     divine::fs::Flags< divine::fs::flags::At > fl = divine::fs::flags::At::NoFlags;
     if ( flags & AT_SYMLINK_FOLLOW )   fl |= divine::fs::flags::At::SymFollow;
@@ -334,8 +325,6 @@ int link( const char *target, const char *linkpath ) {
 
 ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count ) {
     FS_ENTRYPOINT();
-    if ( dirfd == AT_FDCWD )
-        dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
         return vfs.instance().readLinkAt( dirfd, path, buf, count );
     } catch ( Error & ) {
@@ -354,9 +343,6 @@ int faccessat( int dirfd, const char *path, int mode, int flags ) {
     if ( mode & X_OK )  m |= divine::fs::flags::Access::Execute;
     if ( ( mode | R_OK | W_OK | X_OK ) != ( R_OK | W_OK | X_OK ) )
         m |= divine::fs::flags::Access::Invalid;
-
-    if ( dirfd == AT_FDCWD )
-        dirfd = divine::fs::CURRENT_DIRECTORY;
 
     divine::fs::Flags< divine::fs::flags::At > fl = divine::fs::flags::At::NoFlags;
     if ( flags & AT_EACCESS )   fl |= divine::fs::flags::At::EffectiveID;
@@ -533,10 +519,6 @@ int syncfs( int fd ) {
 
 int _FS_renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath ) {
     FS_ENTRYPOINT();
-    if ( olddirfd == AT_FDCWD )
-        olddirfd = divine::fs::CURRENT_DIRECTORY;
-    if ( newdirfd == AT_FDCWD )
-        newdirfd = divine::fs::CURRENT_DIRECTORY;
     try {
         vfs.instance().renameAt( newdirfd, newpath, olddirfd, oldpath );
         return 0;
@@ -568,8 +550,6 @@ int fchmodeat( int dirfd, const char *path, mode_t mode, int flags ) {
     if ( ( flags | AT_SYMLINK_NOFOLLOW ) != AT_SYMLINK_NOFOLLOW )
         fl |= divine::fs::flags::At::Invalid;
 
-    if ( dirfd == AT_FDCWD )
-        dirfd = divine::fs::CURRENT_DIRECTORY;
     try {
         vfs.instance().chmodAt( dirfd, path, mode, fl );
         return 0;
