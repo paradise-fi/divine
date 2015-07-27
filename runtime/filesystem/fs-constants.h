@@ -34,6 +34,7 @@ enum class Open {
     NoAccess    =   64,
     Append      =  128,
     SymNofollow =  256,
+    NonBlock    =  512,
     Invalid     = 4096,
 };
 

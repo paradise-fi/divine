@@ -31,7 +31,28 @@ struct FileDescriptor {
     FileDescriptor( FileDescriptor && ) = default;
     FileDescriptor &operator=( const FileDescriptor & ) = default;
 
-    virtual ~FileDescriptor() {}
+    virtual ~FileDescriptor() = default;
+
+    bool canRead() const {
+        if ( !_inode )
+            throw Error( EBADF );
+
+        File *file = _inode->data()->as< File >();
+        if ( !file )
+            throw Error( EBADF );
+
+        return file->canRead();
+    }
+    bool canWrite() const {
+        if ( !_inode )
+            throw Error( EBADF );
+
+        File *file = _inode->data()->as< File >();
+        if ( !file )
+            throw Error( EBADF );
+
+        return file->canWrite();
+    }
 
     virtual long long read( void *buf, size_t length ) {
         if ( !_inode )
@@ -42,6 +63,8 @@ struct FileDescriptor {
         File *file = _inode->data()->as< File >();
         if ( !file )
             throw Error( EBADF );
+        if ( _flags.has( flags::Open::NonBlock ) && !file->canRead() )
+            throw Error( EAGAIN );
 
         if ( _offset >= file->size() || length == 0 )
             return 0;
@@ -63,6 +86,8 @@ struct FileDescriptor {
         File *file = _inode->data()->as< File >();
         if ( !file )
             throw Error( EBADF );
+        if ( _flags.has( flags::Open::NonBlock ) && !file->canWrite() )
+            throw Error( EAGAIN );
 
         if ( _flags.has( flags::Open::Append ) )
             _offset = file->size();

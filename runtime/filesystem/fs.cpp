@@ -105,6 +105,8 @@ int openat( int dirfd, const char *path, int flags, ... ) {
         f |= divine::fs::flags::Open::Append;
     if ( flags & O_NOFOLLOW )
         f |= divine::fs::flags::Open::SymNofollow;
+    if ( flags & O_NONBLOCK )
+        f |= divine::fs::flags::Open::NonBlock;
 
     try {
         return vfs.instance().openFileAt( dirfd, path, f, m );

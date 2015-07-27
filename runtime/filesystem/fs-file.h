@@ -40,7 +40,8 @@ struct File : DataItem {
     virtual bool write( const char *, size_t, size_t & ) = 0;
 
     virtual void clear() = 0;
-
+    virtual bool canRead() const = 0;
+    virtual bool canWrite() const = 0;
 };
 
 struct RegularFile : File {
@@ -63,6 +64,13 @@ struct RegularFile : File {
 
     size_t size() const override {
         return _size;
+    }
+
+    bool canRead() const override {
+        return true;
+    }
+    bool canWrite() const override {
+        return true;
     }
 
     bool read( char *buffer, size_t offset, size_t &length ) override {
@@ -119,10 +127,16 @@ private:
     utils::Vector< char > _content;
 };
 
-struct WriteOnlyFile : public File {
+struct WriteOnlyFile : File {
 
     size_t size() const override {
         return 0;
+    }
+    bool canRead() const override {
+        return false;
+    }
+    bool canWrite() const override {
+        return true;
     }
     bool read( char *, size_t, size_t & ) override {
         return false;
@@ -148,6 +162,13 @@ struct Pipe : public File {
 
     size_t size() const override {
         return _content.size();
+    }
+
+    bool canRead() const override {
+        return size() > 0;
+    }
+    bool canWrite() const override {
+        return size() < PIPE_SIZE_LIMIT;
     }
 
     bool read( char *buffer, size_t, size_t &length ) override {
