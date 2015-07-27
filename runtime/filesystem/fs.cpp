@@ -127,7 +127,7 @@ int open( const char *path, int flags, ... ) {
 }
 int creat( const char *path, mode_t mode ) {
     FS_ENTRYPOINT();
-    return openat( AT_FDCWD, path, O_CREAT | O_WRONLY | O_TRUNC, mode );
+    return mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
 }
 
 int close( int fd ) {
@@ -183,10 +183,11 @@ ssize_t pread( int fd, void *buf, size_t count, off_t offset ) {
         return -1;
     }
 }
+
 int mkdirat( int dirfd, const char *path, mode_t mode ) {
     FS_ENTRYPOINT();
     try {
-        vfs.instance().createDirectoryAt( dirfd, path, mode );
+        vfs.instance().createNodeAt( dirfd, path, ( ACCESSPERMS & mode ) | S_IFDIR );
         return 0;
     } catch ( Error & ) {
         return -1;
@@ -194,22 +195,34 @@ int mkdirat( int dirfd, const char *path, mode_t mode ) {
 }
 int mkdir( const char *path, mode_t mode ) {
     FS_ENTRYPOINT();
-    return mkdirat( AT_FDCWD, path, mode );
+    return mkdirat( AT_FDCWD, path, mode | S_IFDIR );
 }
 
 int mkfifoat( int dirfd, const char *path, mode_t mode ) {
-    if ( dirfd == AT_FDCWD )
-        dirfd = divine::fs::CURRENT_DIRECTORY;
+    FS_ENTRYPOINT();
+    return mknodat( dirfd, path, ( ACCESSPERMS & mode ) | S_IFIFO, 0 );
+}
+int mkfifo( const char *path, mode_t mode ) {
+    FS_ENTRYPOINT();
+    return mknodat( AT_FDCWD, path, ( ACCESSPERMS & mode ) | S_IFIFO, 0 );
+}
+
+int mknodat( int dirfd, const char *path, mode_t mode, dev_t dev ) {
+    FS_ENTRYPOINT();
     try {
-        vfs.instance().createFifoAt( dirfd, path, mode );
+        if ( dev != 0 )
+            throw Error( EINVAL );
+        if ( !S_ISCHR( mode ) && !S_ISBLK( mode ) && !S_ISREG( mode ) && !S_ISFIFO( mode ) && !S_ISSOCK( mode ) )
+            throw Error( EINVAL );
+        vfs.instance().createNodeAt( dirfd, path, mode );
         return 0;
     } catch ( Error & ) {
         return -1;
     }
 }
-int mkfifo( const char *path, mode_t mode ) {
+int mknod( const char *path, mode_t mode, dev_t dev ) {
     FS_ENTRYPOINT();
-    return mkfifoat( AT_FDCWD, path, mode );
+    return mknodat( AT_FDCWD, path, mode, dev );
 }
 
 int unlink( const char *path ) {

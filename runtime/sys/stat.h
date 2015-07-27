@@ -117,6 +117,9 @@ FS_NOINLINE int mkdirat( int dirfd, const char *path, mode_t mode );
 FS_NOINLINE int mkfifo( const char *path, mode_t mode );
 FS_NOINLINE int mkfifoat( int dirfd, const char *path, mode_t mode );
 
+FS_NOINLINE int mknod( const char *path, mode_t mode, dev_t dev );
+FS_NOINLINE int mknodat( int dirfd, const char *path, mode_t mode, dev_t dev );
+
 #undef FS_NOINLINE
 
 #ifdef __cplusplus

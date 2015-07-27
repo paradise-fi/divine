@@ -15,7 +15,7 @@ namespace fs {
 
 Manager::Manager( bool ) :
     _root{ std::allocate_shared< INode >(
-        memory::AllocatorPure(), Mode::DIR | Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER
+        memory::AllocatorPure(), Mode::DIR | Mode::GRANTS
     ) },
     _currentDirectory{ _root },
     _standardIO{ {
@@ -34,8 +34,8 @@ Manager::Manager( bool ) :
 }
 
 
-
-void Manager::createDirectoryAt( int dirfd, utils::String name, mode_t mode ) {
+template< typename... Args >
+Node Manager::createNodeAt( int dirfd, utils::String name, mode_t mode, Args &&... args ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -47,15 +47,41 @@ void Manager::createDirectoryAt( int dirfd, utils::String name, mode_t mode ) {
     _checkGrants( current, Mode::WUSER );
     Directory *dir = current->data()->as< Directory >();
 
-    mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
-    mode |= Mode::DIR;
-    if ( current->mode().hasGUID() )
+    mode &= ~umask() & ( Mode::TMASK | Mode::GRANTS );
+    if ( Mode( mode ).isDirectory() )
         mode |= Mode::GUID;
 
     Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
-    node->assign( new( memory::nofail ) Directory( node, current ) );
+
+    switch( mode & Mode::TMASK ) {
+    case Mode::SOCKET:
+        /// TODO: implement
+        throw Error( ENOSYS );// not implemented
+        break;
+    case Mode::LINK:
+        node->assign( utils::constructIfPossible< Link >( std::forward< Args >( args )... ) );
+        break;
+    case Mode::FILE:
+        node->assign( utils::constructIfPossible< RegularFile >( std::forward< Args >( args )... ) );
+        break;
+    case Mode::DIR:
+        node->assign( utils::constructIfPossible< Directory >( node, current ) );
+        break;
+    case Mode::FIFO:
+        node->assign( utils::constructIfPossible< Pipe >( std::forward< Args >( args )... ) );
+        break;
+    case Mode::BLOCKD:
+    case Mode::CHARD:
+        throw Error( EPERM );
+    default:
+        throw Error( EINVAL );
+    }
+    if ( !node->data() )
+        throw Error( EINVAL );
 
     dir->create( std::move( name ), node );
+
+    return node;
 }
 
 void Manager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl ) {
@@ -94,49 +120,11 @@ void Manager::createSymLinkAt( int dirfd, utils::String name, utils::String targ
     if ( target.size() > PATH_LIMIT )
         throw Error( ENAMETOOLONG );
 
-    WeakNode savedDir = _currentDirectory;
-    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
-        changeDirectory( dirfd );
-
-    Node current;
-    std::tie( current, name ) = _findDirectoryOfFile( name );
-
-    _checkGrants( current, Mode::WUSER );
-    Directory *dir = current->data()->as< Directory >();
-
     mode_t mode = 0;
     mode |= Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER;
     mode |= Mode::LINK;
 
-    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
-    node->assign( new( memory::nofail ) Link( std::move( target ) ) );
-
-    dir->create( std::move( name ), node );
-}
-
-void Manager::createFifoAt( int dirfd, utils::String name, mode_t mode ) {
-    if ( name.empty() )
-        throw Error( ENOENT );
-
-    WeakNode savedDir = _currentDirectory;
-    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
-        changeDirectory( dirfd );
-
-    Node current;
-    std::tie( current, name ) = _findDirectoryOfFile( name );
-
-    _checkGrants( current, Mode::WUSER );
-    Directory *dir = current->data()->as< Directory >();
-
-    mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
-    mode |= Mode::FIFO;
-
-    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
-    node->assign( new( memory::nofail ) Pipe() );
-
-    dir->create( std::move( name ), node );
+    createNodeAt( dirfd, std::move( name ), mode, std::move( target ) );
 }
 
 ssize_t Manager::readLinkAt( int dirfd, utils::String name, char *buf, size_t count ) {
@@ -186,7 +174,7 @@ int Manager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl,
                 throw Error( EEXIST );
         }
         else {
-            _createFile( std::move( name ), mode, &file );
+            file = createNodeAt( CURRENT_DIRECTORY, std::move( name ), mode | Mode::FILE );
         }
     }
     else if ( !file )
@@ -454,28 +442,6 @@ void Manager::closeDirectory( void *descriptor ) {
     throw Error( EBADF );
 }
 
-template< typename... Args >
-void Manager::_createFile( utils::String name, mode_t mode, Node *file, Args &&... args ) {
-    if ( name.empty() )
-        throw Error( ENOENT );
-
-    Node current;
-    std::tie( current, name ) = _findDirectoryOfFile( name );
-
-    _checkGrants( current, Mode::WUSER );
-    Directory *dir = current->data()->as< Directory >();
-
-    mode &= ~umask() & ( Mode::RWXUSER | Mode::RWXGROUP | Mode::RWXOTHER );
-    mode |= Mode::FILE;
-
-    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
-    node->assign( new( memory::nofail ) RegularFile( std::forward< Args >( args )... ) );
-
-    dir->create( std::move( name ), node );
-    if ( file )
-        *file = node;
-}
-
 Node Manager::findDirectoryItem( utils::String name, bool followSymLinks ) {
     return _findDirectoryItem( std::move( name ), followSymLinks, []( Node ){} );
 }
@@ -582,15 +548,18 @@ int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f ) {
 }
 
 void Manager::_insertSnapshotItem( const SnapshotFS &item ) {
+
     switch( item.type ) {
     case Type::File:
-        _createFile( item.name, item.mode, nullptr, item.content, item.length );
+        createNodeAt( CURRENT_DIRECTORY, item.name, item.mode, item.content, item.length );
         break;
     case Type::Directory:
-        createDirectoryAt( CURRENT_DIRECTORY, item.name, item.mode );
+    case Type::Pipe:
+    case Type::Socket:
+        createNodeAt( CURRENT_DIRECTORY, item.name, item.mode );
         break;
     case Type::SymLink:
-        createSymLinkAt( CURRENT_DIRECTORY, item.name, item.content );
+        createNodeAt( CURRENT_DIRECTORY, item.name, item.mode, item.content );
         break;
     default:
         break;

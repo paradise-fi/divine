@@ -14,7 +14,7 @@ enum class Type {
     Directory,
     Pipe,
     SymLink,
-    HardLink
+    Socket,
 };
 
 struct SnapshotFS {

@@ -51,10 +51,10 @@ struct Manager {
 
     Node findDirectoryItem( utils::String name, bool followSymLinks = true );
 
-    void createDirectoryAt( int dirfd, utils::String name, mode_t mode );
     void createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl );
     void createSymLinkAt( int dirfd, utils::String name, utils::String target );
-    void createFifoAt( int dirfd, utils::String name, mode_t mode );
+    template< typename... Args >
+    Node createNodeAt( int dirfd, utils::String name, mode_t mode, Args &&... args );
 
     ssize_t readLinkAt( int dirfd, utils::String name, char *buf, size_t count );
 
@@ -130,9 +130,6 @@ private:
     unsigned short _umask;
 
     Manager( bool );// private default ctor
-
-    template< typename... Args >
-    void _createFile( utils::String name, mode_t mode, Node *file, Args &&... args );
 
     std::pair< Node, utils::String > _findDirectoryOfFile( utils::String name );
 
