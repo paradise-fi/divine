@@ -148,7 +148,49 @@ struct WriteOnlyFile : File {
     }
 };
 
-struct Pipe : public File {
+struct StandardInput : File {
+    StandardInput() :
+        _content( nullptr ),
+        _size( 0 )
+    {}
+
+    StandardInput( const char *content, size_t size ) :
+        _content( content ),
+        _size( size )
+    {}
+
+    size_t size() const override {
+        return _size;
+    }
+
+    bool canRead() const override {
+        // simulate user drinking coffee
+        if ( _size )
+            return FS_CHOICE( 2 ) == FS_CHOICE_GOAL;
+        return false;
+    }
+    bool canWrite() const override {
+        return false;
+    }
+    bool read( char *buffer, size_t offset, size_t &length ) override {
+        const char *source = _content + offset;
+        if ( offset + length > _size )
+            length = _size - offset;
+        std::copy( source, source + length, buffer );
+        return true;
+    }
+    bool write( const char *, size_t, size_t & ) override {
+        return false;
+    }
+    void clear() override {
+    }
+
+private:
+    const char *_content;
+    size_t _size;
+};
+
+struct Pipe : File {
 
     Pipe() :
         _reader( false ),

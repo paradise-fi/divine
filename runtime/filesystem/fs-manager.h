@@ -26,13 +26,13 @@ struct Manager {
     Manager() :
         Manager( true )
     {
-        _standardIO[ 0 ]->assign( new( memory::nofail ) RegularFile() );
+        _standardIO[ 0 ]->assign( new( memory::nofail ) StandardInput() );
     }
 
     Manager( const char *in, size_t length ) :
         Manager( true )
     {
-        _standardIO[ 0 ]->assign( new( memory::nofail ) RegularFile( in, length ) );
+        _standardIO[ 0 ]->assign( new( memory::nofail ) StandardInput( in, length ) );
     }
 
     explicit Manager( std::initializer_list< SnapshotFS > items ) :
