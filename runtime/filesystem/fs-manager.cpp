@@ -2,6 +2,14 @@
 
 #include "fs-manager.h"
 
+#define REMEMBER_DIRECTORY( dirfd, name )                               \
+    WeakNode savedDir = _currentDirectory;                              \
+    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } ); \
+    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )       \
+        changeDirectory( dirfd );                                       \
+    else                                                                \
+        d.pass();
+
 namespace divine {
 namespace fs {
 
@@ -31,10 +39,7 @@ void Manager::createDirectoryAt( int dirfd, utils::String name, mode_t mode ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
-    WeakNode savedDir = _currentDirectory;
-    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
-        changeDirectory( dirfd );
+    REMEMBER_DIRECTORY( dirfd, name );
 
     Node current;
     std::tie( current, name ) = _findDirectoryOfFile( name );
@@ -62,10 +67,7 @@ void Manager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, 
 
     Node current;
     {
-        WeakNode savedDir = _currentDirectory;
-        auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-        if ( path::isRelative( name ) &&  newdirfd != CURRENT_DIRECTORY )
-            changeDirectory( newdirfd );
+        REMEMBER_DIRECTORY( newdirfd, name );
         std::tie( current, name )= _findDirectoryOfFile( name );
     }
 
@@ -74,10 +76,7 @@ void Manager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, 
 
     Node targetNode;
     {
-        WeakNode savedDir = _currentDirectory;
-        auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-        if ( path::isRelative( target ) && olddirfd != CURRENT_DIRECTORY )
-            changeDirectory( olddirfd );
+        REMEMBER_DIRECTORY( olddirfd, target );
         targetNode = findDirectoryItem( target, fl.has( flags::At::SymFollow ) );
     }
     if ( !targetNode )
@@ -141,10 +140,7 @@ void Manager::createFifoAt( int dirfd, utils::String name, mode_t mode ) {
 }
 
 ssize_t Manager::readLinkAt( int dirfd, utils::String name, char *buf, size_t count ) {
-    WeakNode savedDir = _currentDirectory;
-    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
-        changeDirectory( dirfd );
+    REMEMBER_DIRECTORY( dirfd, name );
 
     Node inode = findDirectoryItem( std::move( name ), false );
     if ( !inode )
@@ -167,10 +163,7 @@ void Manager::accessAt( int dirfd, utils::String name, Flags< flags::Access > mo
         fl.has( flags::At::Invalid ) )
         throw Error( EINVAL );
 
-    WeakNode savedDir = _currentDirectory;
-    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
-        changeDirectory( dirfd );
+    REMEMBER_DIRECTORY( dirfd, name );
 
     Node item = findDirectoryItem( name, !fl.has( flags::At::SymNofollow ) );
     if ( !item )
@@ -183,10 +176,7 @@ void Manager::accessAt( int dirfd, utils::String name, Flags< flags::Access > mo
 }
 
 int Manager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, mode_t mode ) {
-    WeakNode savedDir = _currentDirectory;
-    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
-        changeDirectory( dirfd );
+    REMEMBER_DIRECTORY( dirfd, name );
 
     Node file = findDirectoryItem( name, !fl.has( flags::Open::SymNofollow ) );
 
@@ -288,10 +278,7 @@ void Manager::removeDirectory( utils::String name ) {
 }
 
 void Manager::removeAt( int dirfd, utils::String name, flags::At fl ) {
-    WeakNode savedDir = _currentDirectory;
-    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
-        changeDirectory( dirfd );
+    REMEMBER_DIRECTORY( dirfd, name );
 
     switch( fl ) {
     case flags::At::NoFlags:
@@ -315,10 +302,7 @@ void Manager::renameAt( int newdirfd, utils::String newpath, int olddirfd, utils
     utils::String newName;
 
     {
-        WeakNode savedDir = _currentDirectory;
-        auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-        if ( path::isRelative( oldpath ) && olddirfd != CURRENT_DIRECTORY )
-            changeDirectory( olddirfd );
+        REMEMBER_DIRECTORY( olddirfd, oldpath );
 
         std::tie( oldNode, oldName ) = _findDirectoryOfFile( oldpath );
         _checkGrants( oldNode, Mode::WUSER );
@@ -329,10 +313,7 @@ void Manager::renameAt( int newdirfd, utils::String newpath, int olddirfd, utils
         throw Error( ENOENT );
 
     {
-        WeakNode savedDir = _currentDirectory;
-        auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-        if ( path::isRelative( newpath ) && newdirfd != CURRENT_DIRECTORY )
-            changeDirectory( newdirfd );
+        REMEMBER_DIRECTORY( newdirfd, newpath );
 
         newNode = _findDirectoryItem( newpath, false, [&]( Node n ) {
                 if ( n == oldNode )
@@ -435,10 +416,7 @@ void Manager::chmodAt( int dirfd, utils::String name, mode_t mode, Flags< flags:
     if ( fl.has( flags::At::Invalid ) )
         throw Error( EINVAL );
 
-    WeakNode savedDir = _currentDirectory;
-    auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } );
-    if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )
-        changeDirectory( dirfd );
+    REMEMBER_DIRECTORY( dirfd, name );
 
     Node inode = findDirectoryItem( std::move( name ), !fl.has( flags::At::SymNofollow ) );
     _chmod( inode, mode );
