@@ -172,6 +172,20 @@ constexpr StrongEnumFlags< Self > operator&( Self a, Self b ) noexcept {
     return Ret( a ) & Ret( b );
 }
 
+template< typename Type, typename... Args >
+auto constructIfPossible( Args &&... args )
+    -> typename std::enable_if< std::is_constructible< Type, Args... >::value, Type * >::type
+{
+    return new( memory::nofail ) Type( std::forward< Args >( args )... );
+}
+
+template< typename Type, typename... Args >
+auto constructIfPossible( Args &&... args )
+    -> typename std::enable_if< !std::is_constructible< Type, Args... >::value, Type * >::type
+{
+    return nullptr;
+}
+
 
 using String = std::basic_string< char, std::char_traits< char >, memory::Allocator< char > >;
 
