@@ -169,13 +169,14 @@ let
     allInCommon = pkgs: [ pkgs.openmpi pkgs.qt4 pkgs.libxml2 pkgs.boost pkgs.flex pkgs.byacc ];
     allInGcc = pkgs: (allInCommon pkgs ++ [ pkgs.llvm pkgs.clang ]);
     allInClang = pkgs: (allInCommon pkgs ++ [ pkgs.llvmPackagesSelf.llvm pkgs.clangSelf ]);
+    shlibFlags = [ "-DBUILD_SHARED_LIBS=ON" "-DCMAKE_SKIP_BUILD_RPATH=OFF" ];
   in {
     gcc_min =   mk: mk { inputs = pkgs: []; };
     gcc_def   = mk: mk { inputs = allInGcc; };
 
-    gcc_all   = mk: mk { inputs = allInGcc; flags = allFlags ++ [ "-DBUILD_SHARED_LIBS=ON" ];
+    gcc_all   = mk: mk { inputs = allInGcc; flags = allFlags ++ shlibFlags;
                          systems = [ "x86_64-linux" ]; };
-    gcc49_all = mk: mk { inputs = allInGcc; flags = allFlags ++ [ "-DBUILD_SHARED_LIBS=ON" ];
+    gcc49_all = mk: mk { inputs = allInGcc; flags = allFlags ++ shlibFlags;
                          compilerPkg = pkgs: pkgs.gcc49; systems = [ "x86_64-linux" ]; };
 
     clang_min = mk: mk { inputs = pkgs: []; clang = true; };
