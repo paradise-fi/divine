@@ -93,7 +93,7 @@ let
        name = "divine-" + name + "_" + (lib.toLower buildType) + "_" + nicesys;
        inherit systems;
        src = jobs.tarball;
-       buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which ] ++ inputs pkgs;
+       buildInputs = [ pkgs.cmake pkgs.perl pkgs.m4 pkgs.lcov pkgs.which pkgs.gdb ] ++ inputs pkgs;
        cmakeFlags = [ "-DCMAKE_BUILD_TYPE=${buildType}" ] ++ compiler ++ cmdflags ++ debug ++ profile ++ flags;
        dontStrip = true;
        checkPhase = ''
