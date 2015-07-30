@@ -282,6 +282,8 @@ Builtin ProgramInfo::builtin( ::llvm::Function *f )
         return BuiltinLandingPad;
     if ( name == "__divine_memcpy" )
         return BuiltinMemcpy;
+    if ( name == "__divine_is_private" )
+        return BuiltinIsPrivate;
 
     if ( f->getIntrinsicID() != ::llvm::Intrinsic::not_intrinsic )
         return BuiltinIntrinsic; /* not our builtin */

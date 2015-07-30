@@ -364,6 +364,7 @@ struct Interpreter
     }
 
     /* EvalContext interface. */
+    bool isPrivate( int tid, Pointer p ) { return state.isPrivate( tid, p ); }
     char *dereference( ValueRef v ) { return state.dereference( v ); }
     char *dereference( Pointer p ) { return state.dereference( p ); }
     int pointerSize( Pointer p ) { return state.pointerSize( p ); }

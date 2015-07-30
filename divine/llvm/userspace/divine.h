@@ -58,6 +58,7 @@ int __divine_choice( int n, ... ) NOTHROW;
 void *__divine_malloc( unsigned long size ) NOTHROW;
 void __divine_free( void *ptr ) NOTHROW;
 int __divine_heap_object_size( void *ptr ) NOTHROW;
+int __divine_is_private( void *ptr ) NOTHROW;
 
 /*
  * Copy memory. Doing a per-byte copy would destroy pointer maps, hence you are

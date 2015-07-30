@@ -129,7 +129,8 @@ enum Builtin {
     BuiltinVaStart,
     BuiltinUnwind,
     BuiltinLandingPad,
-    BuiltinProblem
+    BuiltinProblem,
+    BuiltinIsPrivate
 };
 
 struct Choice {
@@ -392,6 +393,7 @@ struct GlobalContext {
     Pointer malloc( int, int ) { ASSERT_UNREACHABLE( "" ); }
     bool free( Pointer ) { ASSERT_UNREACHABLE( "" ); }
     int pointerSize( Pointer ) { ASSERT_UNREACHABLE( "" ); }
+    bool isPrivate( int, Pointer ) { ASSERT_UNREACHABLE( "" ); }
 
     std::vector< int > pointerId( ::llvm::Instruction * ) {
         ASSERT_UNREACHABLE( "no pointerId in global context" );

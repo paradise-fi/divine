@@ -1105,6 +1105,12 @@ struct Evaluator
                     ccontext.problem( Problem::InvalidArgument, v );
                 return;
             }
+            case BuiltinIsPrivate: {
+                Pointer p = withValues( Get< Pointer >(), instruction().operand( 0 ) );
+                withValues( Set< int >( econtext.isPrivate( ccontext.threadId(), p ) ),
+                            instruction().result() );
+                return;
+            }
             case BuiltinHeapObjectSize: {
                 Pointer v = withValues( Get< Pointer >(), instruction().operand( 0 ) );
                 if ( !econtext.dereference( v ) )
