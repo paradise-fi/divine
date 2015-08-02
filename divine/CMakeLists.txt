@@ -19,12 +19,20 @@ endforeach()
 # generated instantiate files
 set( H_INSTANCES_EXTERN "${CMAKE_CURRENT_BINARY_DIR}/instances/auto/extern.h" )
 install( FILES "${H_INSTANCES_EXTERN}" DESTINATION include/divine/instances/auto COMPONENT divine_dev )
-list( APPEND SRC_auto_instances "${CMAKE_CURRENT_BINARY_DIR}/instances/auto/select.cpp" )
+
+if( ${BUILD_SHARED_LIBS} )
+    set( LIBDIVINE_INSTANCE_BUCKETS 10 )
+else()
+    set( LIBDIVINE_INSTANCE_BUCKETS 1 )
+endif()
+
 foreach( I RANGE 1 ${MAX_INSTANCE_FILES_COUNT} )
+    math( EXPR bucket "${I} % ${LIBDIVINE_INSTANCE_BUCKETS} + 1" )
     set( F "${CMAKE_CURRENT_BINARY_DIR}/instances/auto/instances-${I}.cpp" )
     list( APPEND SRC_auto_instances ${F} )
+    list( APPEND SRC_auto_instances_${bucket} ${F} )
+    set_source_files_properties( ${F} PROPERTIES GENERATED ON )
 endforeach()
-set_source_files_properties( ${SRC_auto_instances} PROPERTIES GENERATED ON )
 
 if( GEN_COIN )
     file( GLOB SRC_COIN coin/*.cpp coin/parse/*.cpp)
@@ -105,10 +113,24 @@ add_library( libdivine
     ${STRINGIFIED} )
 
 target_link_libraries( libdivine pthread )
-add_library( libdivine-instances instances/select.cpp ${SRC_auto_instances} )
-add_dependencies( libdivine-instances instances-generator )
-
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
+
+set_source_files_properties( "${CMAKE_CURRENT_BINARY_DIR}/instances/auto/select.cpp"
+                             PROPERTIES GENERATED ON )
+add_library( libdivine-instances instances/select.cpp
+                                 "${CMAKE_CURRENT_BINARY_DIR}/instances/auto/select.cpp" )
+add_dependencies( libdivine-instances instances-generator )
+set_target_properties( libdivine-instances PROPERTIES OUTPUT_NAME "divine-instances" )
+list( APPEND LIBDIVINE_INSTANCES libdivine-instances )
+
+foreach( I RANGE 1 ${LIBDIVINE_INSTANCE_BUCKETS} )
+    add_library( libdivine-instances-${I} instances/select.cpp ${SRC_auto_instances_${I}} )
+    add_dependencies( libdivine-instances-${I} instances-generator )
+    set_target_properties( libdivine-instances-${I} PROPERTIES OUTPUT_NAME "divine-instances-${I}" )
+    list( APPEND LIBDIVINE_INSTANCES libdivine-instances-${I} )
+endforeach()
+
+set( LIBDIVINE_INSTANCES ${LIBDIVINE_INSTANCES} PARENT_SCOPE )
 
 bricks_unittest( test-divine ${H} ${H_LLVM} )
 

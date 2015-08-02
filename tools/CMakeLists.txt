@@ -15,7 +15,7 @@ if ( GEN_LLVM )
   target_link_libraries( lart liblart ${LLVM_LIBRARIES} ${LLVM_SYSLIBS} )
 endif()
 
-target_link_libraries( divine libdivine-instances libdivine )
+target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine )
 
 if( OPT_MURPHI )
     target_link_libraries( divine murphi )
