@@ -181,7 +181,7 @@ add_custom_target( unit_divine
     DEPENDS test-divine )
 add_dependencies( unit unit_divine )
 
-install( TARGETS libdivine DESTINATION lib COMPONENT divine_dev )
+install( TARGETS libdivine ${LIBDIVINE_INSTANCES} DESTINATION lib COMPONENT divine_dev )
 
 install( FILES ${H} DESTINATION include/divine COMPONENT divine_dev )
 install( FILES ${H_BA} DESTINATION include/divine/ltl2ba COMPONENT divine_dev )
