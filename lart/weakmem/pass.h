@@ -30,12 +30,8 @@ struct ScalarMemory : llvm::ModulePass
     static char ID;
     const int _wordsize = 8;
 
-    llvm::LLVMContext *_ctx;
-    llvm::LLVMContext &ctx() { return *_ctx; }
-
     ScalarMemory() : llvm::ModulePass( ID ) {}
     bool runOnModule( llvm::Module &m ) {
-        _ctx = &m.getContext();
         for ( auto &f : m )
             transform( f );
         return true;
@@ -73,7 +69,7 @@ struct ScalarMemory : llvm::ModulePass
         if ( !ty )
             return;
 
-        llvm::IRBuilder<> builder( ctx() );
+        llvm::IRBuilder<> builder( load );
         llvm::Value *agg = llvm::UndefValue::get( ty );
         if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
             for ( int i = 0; i < sty->getNumContainedTypes(); ++i ) {
@@ -82,7 +78,8 @@ struct ScalarMemory : llvm::ModulePass
                 transform( val );
                 agg = builder.CreateInsertValue( agg, val, i );
             }
-        llvm::ReplaceInstWithInst( load, llvm::dyn_cast< llvm::Instruction >( agg ) );
+        load->replaceAllUsesWith( agg );
+        load->eraseFromParent();
     }
 
     void transform( llvm::StoreInst *store ) {
@@ -90,7 +87,7 @@ struct ScalarMemory : llvm::ModulePass
         if ( !ty )
             return;
 
-        llvm::IRBuilder<> builder( ctx() );
+        llvm::IRBuilder<> builder( store );
         llvm::Value *agg = store->getValueOperand();
         llvm::Instruction *replace = nullptr;
         if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
@@ -102,8 +99,8 @@ struct ScalarMemory : llvm::ModulePass
                 replace = nstore;
             }
         if ( replace ) {
-            llvm::ReplaceInstWithInst( store, replace );
-            replace->getParent()->dump();
+            store->replaceAllUsesWith( replace );
+            store->eraseFromParent();
         }
     }
 
@@ -346,8 +343,9 @@ struct Substitute : llvm::ModulePass
             auto len = mem->getLength();
             if ( len->getType() != lenTy )
                 len = builder.CreateCast( castOpFrom( len->getType(), lenTy, true ), len, lenTy );
-            auto replace = llvm::CallInst::Create( rfn, { dst, src, len } );
-            llvm::ReplaceInstWithInst( mem, replace );
+            auto replace = builder.CreateCall3( rfn, dst, src, len );
+            mem->replaceAllUsesWith( replace );
+            mem->eraseFromParent();
         }
     }
 
@@ -437,12 +435,12 @@ struct Substitute : llvm::ModulePass
                 addr = builder.CreateBitCast( op, ty );
             }
             auto bitwidth = getBitwidth( ety, ctx, dl );
-            auto call = llvm::CallInst::Create( type == Type::TSO ? _loadTso : _loadPso, { addr, bitwidth } );
-            llvm::Instruction *result = call;
+            auto call = builder.CreateCall2( type == Type::TSO ? _loadTso : _loadPso, addr, bitwidth );
+            llvm::Value *result = call;
 
             // weak load and final cast i64 -> target type
             if ( ety->isPointerTy() )
-                result = llvm::CastInst::Create( llvm::Instruction::IntToPtr, builder.Insert( result ), ety );
+                result = builder.CreateCast( llvm::Instruction::IntToPtr, result, ety );
             else {
                 auto size = ety->getPrimitiveSizeInBits();
                 if ( size > 64 ) // TODO
@@ -450,11 +448,12 @@ struct Substitute : llvm::ModulePass
                 ASSERT_LEQ( 1u, size );
                 ASSERT_LEQ( size, 64u );
                 if ( size < 64 )
-                    result = llvm::CastInst::Create( llvm::Instruction::Trunc, builder.Insert( result ), intTypeOfSize( size, ctx ) );
+                    result = builder.CreateCast( llvm::Instruction::Trunc, result, intTypeOfSize( size, ctx ) );
                 if ( !ety->isIntegerTy() )
-                    result = llvm::CastInst::Create( llvm::Instruction::BitCast, builder.Insert( result ), ety );
+                    result = builder.CreateCast( llvm::Instruction::BitCast, result, ety );
             }
-            llvm::ReplaceInstWithInst( load, result );
+            load->replaceAllUsesWith( result );
+            load->eraseFromParent();
         }
         for ( auto store : stores ) {
             if ( store->getOrdering() == llvm::AtomicOrdering::SequentiallyConsistent ) {
@@ -495,8 +494,9 @@ struct Substitute : llvm::ModulePass
             }
 
             auto bitwidth = getBitwidth( vty, ctx, dl );
-            auto storeCall = llvm::CallInst::Create( type == Type::TSO ? _storeTso : _storePso, { addr, value, bitwidth } );
-            llvm::ReplaceInstWithInst( store, storeCall );
+            auto storeCall = builder.CreateCall3( type == Type::TSO ? _storeTso : _storePso, addr, value, bitwidth );
+            store->replaceAllUsesWith( storeCall );
+            store->eraseFromParent();
         }
         for ( auto fence : fences ) {
             if ( fence->getOrdering() != llvm::AtomicOrdering::SequentiallyConsistent )
