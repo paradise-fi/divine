@@ -207,7 +207,7 @@ struct Main {
         {
             Meta copy = a->meta();
             copy.algorithm.algorithm = meta::Algorithm::Type::Simulate;
-            auto simulate = select( copy );
+            auto simulate = ib->select( copy );
 
             std::cerr << std::endl << "Counterexample found, running simulate..." << std::endl;
             simulate->run();
