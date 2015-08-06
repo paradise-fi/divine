@@ -12,6 +12,7 @@
 #include <llvm/Support/system_error.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include <llvm/Analysis/Verifier.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/ADT/OwningPtr.h>
 
@@ -146,6 +147,7 @@ int main( int argc, char **argv )
 
     PassOpts passes = parse( argv + 3 );
     process( module, passes );
+    llvm::verifyModule( *module );
 
     WriteBitcodeToFile( module, outs );
 }
