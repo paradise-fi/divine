@@ -181,9 +181,14 @@ volatile int __lart_weakmem_buffer_size = 2;
 
 void __lart_weakmem_store_tso( void *addr, uint64_t value, int bitwidth ) {
     WM_VISIBLE_MASK();
-    __storeBuffers.push( { addr, value, bitwidth } );
-    if ( __storeBuffers.get()->size() > __lart_weakmem_buffer_size )
-        __storeBuffers.pop().store();
+    __BufferHelper::BufferLine bl{ addr, value, bitwidth };
+    if ( __divine_is_private( addr ) )
+        bl.store();
+    else {
+        __storeBuffers.push( bl );
+        if ( __storeBuffers.get()->size() > __lart_weakmem_buffer_size )
+            __storeBuffers.pop().store();
+    }
 }
 
 void __lart_weakmem_flush() {
