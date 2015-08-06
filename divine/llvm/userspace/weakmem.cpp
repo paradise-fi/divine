@@ -76,7 +76,7 @@ struct __BufferHelper {
 
         void store() _lart_weakmem_bypass_ forceinline {
             switch ( bitwidth ) {
-                case 8: store< uint8_t >(); break;
+                case 1: case 8: store< uint8_t >(); break;
                 case 16: store< uint16_t >(); break;
                 case 32: store< uint32_t >(); break;
                 case 64: store< uint64_t >(); break;
@@ -233,7 +233,7 @@ uint64_t __lart_weakmem_load_tso( void *_addr, int bitwidth ) {
     }
     I64b mval;
     switch ( bitwidth ) {
-        case 8: mval.i64 = *reinterpret_cast< uint8_t * >( addr ); break;
+        case 1: case 8: mval.i64 = *reinterpret_cast< uint8_t * >( addr ); break;
         case 16: mval.i64 = *reinterpret_cast< uint16_t * >( addr ); break;
         case 32: mval.i64 = *reinterpret_cast< uint32_t * >( addr ); break;
         case 64: mval.i64 = *reinterpret_cast< uint64_t * >( addr ); break;
