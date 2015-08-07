@@ -8,7 +8,7 @@
 #include <llvm/IR/GlobalVariable.h>
 
 #include <llvm/CodeGen/IntrinsicLowering.h>
-#include <llvm/Support/CallSite.h>
+#include <llvm/IR/CallSite.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
 #include <llvm/ADT/StringMap.h>
@@ -186,7 +186,7 @@ ProgramInfo::Value ProgramInfo::insert( int function, ::llvm::Value *val )
         makeConstant( result, getCodePointer( val ) );
         doneInit.insert( val );
     } else if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( val ) )
-        result = insert( function, const_cast< ::llvm::GlobalValue * >( GA->resolveAliasedGlobal() ) );
+        result = insert( function, const_cast< ::llvm::GlobalObject * >( GA->getBaseObject() ) );
     else if ( auto C = dyn_cast< ::llvm::Constant >( val ) ) {
         result.global = true;
         if ( auto G = dyn_cast< ::llvm::GlobalVariable >( val ) ) {

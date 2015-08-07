@@ -8,14 +8,7 @@
 #include <divine/toolkit/blob.h> // for align
 
 #include <llvm/IR/Function.h>
-
-#include <llvm/Config/config.h>
-#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
-  #include <llvm/Target/TargetData.h>
-#else
-  #include <llvm/IR/DataLayout.h>
-  #define TargetData DataLayout
-#endif
+#include <llvm/IR/DataLayout.h>
 
 #include <llvm/CodeGen/IntrinsicLowering.h>
 
@@ -142,7 +135,7 @@ struct Choice {
 struct ProgramInfo {
     ::llvm::IntrinsicLowering *IL;
     ::llvm::Module *module;
-    ::llvm::TargetData TD;
+    ::llvm::DataLayout TD;
 
     struct Value {
         enum { Void, Pointer, Integer, Float, Aggregate, CodePointer, Alloca } type:3;
@@ -387,7 +380,7 @@ inline bool isHeapPointer( MemoryBits f ) {
 
 struct GlobalContext {
     ProgramInfo &info;
-    ::llvm::TargetData &TD;
+    ::llvm::DataLayout &TD;
     bool allow_global;
 
     Pointer malloc( int, int ) { ASSERT_UNREACHABLE( "" ); }
@@ -429,7 +422,7 @@ struct GlobalContext {
 
     int pointerTypeSize() const { return info.pointerTypeSize; }
 
-    GlobalContext( ProgramInfo &i, ::llvm::TargetData &TD, bool global )
+    GlobalContext( ProgramInfo &i, ::llvm::DataLayout &TD, bool global )
         : info( i ), TD( TD ), allow_global( global )
     {}
 };

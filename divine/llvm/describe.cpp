@@ -7,15 +7,9 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
-#include <llvm/Config/config.h>
-#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
-  #include <llvm/Analysis/DebugInfo.h>
-#else
-  #include <llvm/DebugInfo.h>
-#endif
+#include <llvm/IR/DebugInfo.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Assembly/Writer.h>
 
 #include <cxxabi.h>
 #include <cstdlib>
@@ -50,7 +44,7 @@ struct Describe {
 
     using HeapMeta = HM;
 
-    ::llvm::TargetData &TD() { return interpreter->TD; }
+    ::llvm::DataLayout &TD() { return interpreter->TD; }
     MachineState< HM > &state() { return interpreter->state; }
     ProgramInfo &info() { return interpreter->info(); }
 
@@ -193,11 +187,11 @@ static std::string fmtInteger( char *where, int bits ) {
     }
 }
 
-void updateWidth( ::llvm::TargetData TD, ValueRef &w, Type *t ) {
+void updateWidth( ::llvm::DataLayout TD, ValueRef &w, Type *t ) {
     w.v.width = TD.getTypeAllocSize( t );
 }
 
-void updateWidth( ::llvm::TargetData, Pointer, Type * ) {}
+void updateWidth( ::llvm::DataLayout, Pointer, Type * ) {}
 
 template< typename HM, typename L > template< typename Ptr >
 std::string Describe< HM, L >::value( Type *t, Ptr where )
@@ -235,7 +229,7 @@ std::string valueName( const ::llvm::Value *val, ProgramInfo &info ) {
 
     if ( info.anonmap.find( val ) == info.anonmap.end() ) {
         ::llvm::raw_string_ostream name_s( name );
-        ::llvm::WriteAsOperand(name_s, val, false, info.module );
+        val->printAsOperand( name_s, false );
         name_s.flush();
         return info.anonmap[ val ] = name;
     } else
@@ -303,11 +297,10 @@ std::string fileline( const Instruction &insn )
 {
     const LLVMContext &ctx = insn.getContext();
     const DebugLoc &loc = insn.getDebugLoc();
-    DILocation des( loc.getAsMDNode( ctx ) );
-    if ( des.getLineNumber() )
-        return des.getFilename().str() +
-               std::string( ":" ) +
-               brick::string::fmt( des.getLineNumber() );
+    if ( loc.get()->getLine() )
+        return loc.get()->getFilename().str() +
+            std::string( ":" ) +
+            brick::string::fmt( loc.get()->getLine() );
     return "";
 }
 

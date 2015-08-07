@@ -423,10 +423,11 @@ struct HeapIDs : WithMemory< HeapIDs > {
             if ( !memloc )
                 badPointerId( insn );
 
-            auto id = ::llvm::cast< ::llvm::ConstantInt >( memloc->getOperand( 0 ) );
-            if ( !id )
+            auto id = ::llvm::cast< ::llvm::ValueAsMetadata >( memloc->getOperand( 0 ) );
+            auto int_id = ::llvm::cast< ::llvm::ConstantInt >( id->getValue() );
+            if ( !int_id )
                 badPointerId( insn );
-            r.push_back( id->getZExtValue() ); /* downconvert ... */
+            r.push_back( int_id->getZExtValue() ); /* downconvert ... */
         }
 
         return r;

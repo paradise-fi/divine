@@ -11,7 +11,7 @@ ProgramInfo::Value ProgramInfo::storeConstantR( ::llvm::Constant *C, bool &done 
 {
     if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( C ) )
         return storeConstantR(
-            const_cast< ::llvm::GlobalValue * >( GA->resolveAliasedGlobal() ), done );
+            const_cast< ::llvm::GlobalObject * >( GA->getBaseObject() ), done );
 
     if ( !doneInit.count( C ) || !valuemap.count( C ) ) {
         auto r = insert( 0, C );

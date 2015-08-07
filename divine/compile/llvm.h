@@ -32,12 +32,12 @@ struct CompileLLVM {
 
     void compile() try {
         if ( !_env.usePrecompiled.empty() ) {
-            auto pre = ::llvm::ParseIRFile(
+            auto pre = ::llvm::parseIRFile(
                         brick::fs::joinPath( _env.usePrecompiled, precompiledRuntime ),
                         err, ctx );
             if ( !pre )
                 die( std::string( "Could not load precompiled library: " ) + err.getMessage().data() );
-            linker.load( pre );
+            linker.load( std::move( pre ) );
         }
 
         // create temporary directory to compile in
@@ -193,10 +193,10 @@ struct CompileLLVM {
 
     void linkFile( std::string file ) {
         std::cout << "linking " << file << std::endl;
-        auto mod = ::llvm::ParseIRFile( file, err, ctx );
+        auto mod = ::llvm::parseIRFile( file, err, ctx );
         if ( !mod )
             die( std::string( "Linker error: " ) + err.getMessage().data() );
-        linker.link( mod );
+        linker.link( std::move( mod ) );
     }
 
   private:

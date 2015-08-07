@@ -86,8 +86,9 @@ brick::data::Bimap< int, std::string > Interpreter< HM, L >::describeAPs() {
     brick::data::Bimap< int, std::string > out;
     for ( int i = 0, end = apmeta->getNumOperands(); i < end; ++i ) {
         auto ap = cast< MDNode >( apmeta->getOperand( i ) );
-        auto apval = cast< ConstantInt >( ap->getOperand( 2 ) )->getValue().getZExtValue();
-        out.insert( apval, cast< MDString >( ap->getOperand( 1 ) )->getString() );
+        auto ap_val = cast< llvm::ValueAsMetadata >( ap->getOperand( 2 ) );
+        auto ap_int = cast< ConstantInt >( ap_val->getValue() )->getValue().getZExtValue();
+        out.insert( ap_int, cast< MDString >( ap->getOperand( 1 ) )->getString() );
     }
     return out;
 }

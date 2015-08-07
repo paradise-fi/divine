@@ -11,23 +11,10 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 
-#include <llvm/Config/config.h>
-#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
-  #include <llvm/Target/TargetData.h>
-#else
-  #include <llvm/IR/DataLayout.h>
-  #define TargetData DataLayout
-#endif
-#undef PACKAGE_VERSION
-#undef PACKAGE_TARNAME
-#undef PACKAGE_STRING
-#undef PACKAGE_NAME
-#undef PACKAGE_BUGREPORT
+#include <llvm/IR/DataLayout.h>
 
-#include <llvm/ADT/OwningPtr.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/system_error.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 
 #include <divine/graph/label.h>
@@ -47,7 +34,7 @@ using namespace ::llvm;
 using brick::types::Maybe;
 
 struct BitCode {
-    OwningPtr< MemoryBuffer > input;
+    std::unique_ptr< MemoryBuffer > input;
     LLVMContext *ctx;
     std::shared_ptr< ::llvm::Module > module; /* The bitcode. */
     ProgramInfo *info;
@@ -55,10 +42,11 @@ struct BitCode {
     BitCode( std::string file )
     {
         ctx = new ::llvm::LLVMContext();
-        MemoryBuffer::getFile( file, input );
-        module.reset( ParseBitcodeFile( &*input, *ctx ) );
-		if ( !module )
-			throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
+        input = std::move( MemoryBuffer::getFile( file ).get() );
+        auto parsed = parseBitcodeFile( input->getMemBufferRef(), *ctx );
+        if ( !parsed )
+            throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
+        module = std::move( parsed.get() );
         info = new ProgramInfo( module.get() );
     }
 
@@ -83,7 +71,7 @@ struct Interpreter
 {
     Pool &pool;
     std::shared_ptr< BitCode > bc;
-    TargetData TD;
+    DataLayout TD;
     MachineState< HeapMeta > state; /* the state we are dealing with */
     std::map< std::string, std::string > properties;
 
@@ -450,12 +438,7 @@ struct Interpreter
 }
 }
 
-#include <llvm/Config/config.h>
-#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
-#  include <llvm/Support/IRBuilder.h>
-#else
-#  include <llvm/IR/IRBuilder.h>
-#endif
+#include <llvm/IR/IRBuilder.h>
 
 namespace divine_test {
 namespace llvm {
@@ -547,7 +530,7 @@ struct TestLLVM {
         Function *helper = _function( NULL, "helper", 0 );
         builder.CreateRet( ConstantInt::get(ctx, APInt(32, 42)) );
         Function *f = _function( helper->getParent() );
-        builder.CreateCall( helper, "meh" );
+        builder.CreateCall( helper );
         builder.CreateBr( &*(f->begin()) );
         return f;
     }

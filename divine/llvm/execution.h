@@ -10,16 +10,9 @@
 
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
-
-#include <llvm/Support/GetElementPtrTypeIterator.h>
-#include <llvm/Support/CallSite.h>
-#include <llvm/Config/config.h>
-#if ( LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 2 )
-  #include <llvm/Target/TargetData.h>
-#else
-  #include <llvm/IR/DataLayout.h>
-  #define TargetData DataLayout
-#endif
+#include <llvm/IR/GetElementPtrTypeIterator.h>
+#include <llvm/IR/CallSite.h>
+#include <llvm/IR/DataLayout.h>
 
 #include <algorithm>
 #include <cmath>
@@ -167,7 +160,7 @@ struct Evaluator
         ProgramInfo::Instruction i() { return _evaluator->instruction(); }
         EvalContext &econtext() { return _evaluator->econtext; }
         ControlContext &ccontext() { return _evaluator->ccontext; }
-        ::llvm::TargetData &TD() { return econtext().TD; }
+        ::llvm::DataLayout &TD() { return econtext().TD; }
         MemoryFlag resultFlag( MemoryFlags ) { return MemoryFlag::Data; }
     };
 
