@@ -2,14 +2,8 @@
 
 namespace lart {
 
-typedef llvm::ArrayRef< llvm::Value * > ValsRef;
-
 llvm::MDNode *makeUniqueMDNode( llvm::Module &m ) {
-    llvm::Value **v = new llvm::Value *[ 1 ];
-    v[0] = nullptr;
-    auto md = llvm::MDNode::get( m.getContext(), ValsRef( v, 1 ) );
-    md->replaceOperandWith( 0, md );
-    return md;
+    return llvm::MDNode::getDistinct( m.getContext(), {} );
 }
 
 void updateIDs( llvm::Module &m ) {

@@ -1,14 +1,12 @@
 #include <lart/interference/pass.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/Support/CFG.h>
+#include <llvm/IR/CFG.h>
 #include <brick-assert.h>
-
-char lart::interference::Pass::ID = 0;
 
 using namespace lart::interference;
 
 using llvm::cast;
-using ValsRef = llvm::ArrayRef< llvm::Value * >;
+using MDsRef = llvm::ArrayRef< llvm::Metadata * >;
 
 void Pass::propagate( llvm::Instruction *def, llvm::Value *use )
 {
@@ -36,11 +34,11 @@ void Pass::annotate( llvm::Function *f )
 
     for ( auto i : _interference ) {
         auto &vals = i.second;
-        llvm::Value **v = new llvm::Value *[vals.size()];
+        llvm::Metadata **v = new llvm::Metadata *[vals.size()];
         std::transform( vals.begin(), vals.end(), v,
                         []( llvm::Value *i ) { return cast< llvm::Instruction >( i )->getMetadata( "lart.id" ); } );
         i.first->setMetadata( "lart.interference",
                               llvm::MDNode::get( f->getParent()->getContext(),
-                                                 ValsRef( v, vals.size() ) ) );
+                                                 MDsRef( v, vals.size() ) ) );
     }
 }

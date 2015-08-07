@@ -9,15 +9,14 @@
 #include <stdexcept>
 
 #include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/system_error.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/FileSystem.h>
 
-#include <llvm/Analysis/Verifier.h>
 #include <llvm/Bitcode/ReaderWriter.h>
-#include <llvm/ADT/OwningPtr.h>
 
+#include <llvm/IR/Verifier.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/PassManager.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
 
@@ -42,7 +41,7 @@ PassOpts parse( char **pass )
     return r;
 }
 
-ModulePass *mkPass( std::string n, std::string opt )
+void addPass( ModulePassManager &mgr, std::string n, std::string opt )
 {
     if ( n == "aa" ) {
         aa::Pass::Type t;
@@ -52,7 +51,7 @@ ModulePass *mkPass( std::string n, std::string opt )
         else
             throw std::runtime_error( "unknown alias-analysis type: " + opt );
 
-        return new aa::Pass( t );
+        mgr.addPass( aa::Pass( t ) );
     }
 
     if ( n == "abstract" ) {
@@ -65,14 +64,14 @@ ModulePass *mkPass( std::string n, std::string opt )
         else
             throw std::runtime_error( "unknown abstraction type: " + opt );
 
-        return new abstract::Pass( t );
+        mgr.addPass( abstract::Pass( t ) );
     }
 
     if ( n == "interference" )
-        return new interference::Pass();
+        mgr.addPass( interference::Pass() );
 
     if ( n == "weakmem" ) {
-        auto p = new CompositePass();
+        CompositePass p;
         weakmem::Substitute::Type t = weakmem::Substitute::TSO;
 
         auto c = opt.find( ':' );
@@ -93,9 +92,9 @@ ModulePass *mkPass( std::string n, std::string opt )
         else
             throw std::runtime_error( "unknown weakmem type: " + opt );
 
-        p->append( new weakmem::ScalarMemory );
-        p->append( new weakmem::Substitute( t, bufferSize ) );
-        return p;
+        p.append( new weakmem::ScalarMemory );
+        p.append( new weakmem::Substitute( t, bufferSize ) );
+        mgr.addPass( p );
     }
 
     throw std::runtime_error( "unknown pass type: " + n );
@@ -103,10 +102,10 @@ ModulePass *mkPass( std::string n, std::string opt )
 
 void process( Module *m, PassOpts opt )
 {
-    PassManager manager;
+    ModulePassManager manager;
 
     for ( auto i : opt )
-        manager.add( mkPass( i.first, i.second ) );
+        addPass( manager, i.first, i.second );
 
     manager.run( *m );
 }
@@ -129,21 +128,18 @@ int main( int argc, char **argv )
 
     LLVMContext *ctx = new LLVMContext();
 
-    OwningPtr< MemoryBuffer > input;
-    MemoryBuffer::getFile( from, input );
+    std::unique_ptr< MemoryBuffer > input;
+    input = std::move( MemoryBuffer::getFile( from ).get() );
     assert( input );
 
     Module *module;
-    module = ParseBitcodeFile( &*input, *ctx );
-    assert( module );
+    auto parsed = parseBitcodeFile( input->getMemBufferRef(), *ctx );
+    if ( !parsed )
+        throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
+    module = parsed.get().get();
 
-    std::string outerrs;
-    raw_fd_ostream outs( to, outerrs );
-
-    if ( !outerrs.empty() ) {
-        std::cerr << "error writing output: " << outerrs << std::endl;
-        return 2;
-    }
+    std::error_code serr;
+    ::llvm::raw_fd_ostream outs( to, serr, ::llvm::sys::fs::F_None );
 
     PassOpts passes = parse( argv + 3 );
     process( module, passes );

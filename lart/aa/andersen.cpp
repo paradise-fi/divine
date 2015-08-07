@@ -2,7 +2,7 @@
 
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
-#include <llvm/Support/CallSite.h>
+#include <llvm/IR/CallSite.h>
 
 #include <lart/aa/andersen.h>
 #include <iostream>
@@ -195,13 +195,12 @@ void Andersen::build( llvm::Module &m ) {
                 build( i );
 }
 
-typedef llvm::ArrayRef< llvm::Value * > ValsRef;
-using llvm::MDNode;
+typedef llvm::ArrayRef< llvm::Metadata * > MDsRef;
 
-MDNode *Andersen::annotate( Node *n, std::set< Node * > &seen )
+llvm::MDNode *Andersen::annotate( Node *n, std::set< Node * > &seen )
 {
     llvm::Module &m = *_module;
-    MDNode *mdn;
+    llvm::MDNode *mdn;
 
     /* already converted */
     if ( _mdnodes.count( n ) )
@@ -211,7 +210,7 @@ MDNode *Andersen::annotate( Node *n, std::set< Node * > &seen )
     if ( seen.count( n ) ) {
         if ( _mdtemp.count( n ) )
             return _mdtemp.find( n )->second;
-        mdn = MDNode::getTemporary( m.getContext(), ValsRef() );
+        mdn = llvm::MDNode::getTemporary( m.getContext(), MDsRef() ).get();
         _mdtemp.insert( std::make_pair( n, mdn ) );
         return mdn;
     }
@@ -222,23 +221,23 @@ MDNode *Andersen::annotate( Node *n, std::set< Node * > &seen )
     /* make the points-to set first */
     {
         std::set< Node * > &pto = n->_pointsto;
-        llvm::Value **v = new llvm::Value *[ pto.size() ], **vi = v;
+        llvm::Metadata **v = new llvm::Metadata *[ pto.size() ], **vi = v;
 
         int i = 0;
         for ( Node *p : pto )
             *vi++ = annotate( p, seen );
 
-        mdn = MDNode::get( m.getContext(), ValsRef( v, pto.size() ) );
+        mdn = llvm::MDNode::get( m.getContext(), MDsRef( v, pto.size() ) );
     }
 
     /* now make the AML node */
     if ( n->aml ) {
-        llvm::Value **v = new llvm::Value *[3];
-        v[0] = llvm::ConstantInt::get( m.getContext(), llvm::APInt( 32, id ) );
+        llvm::Metadata **v = new llvm::Metadata *[3];
+        v[0] = llvm::ValueAsMetadata::get( llvm::ConstantInt::get( m.getContext(), llvm::APInt( 32, id ) ) );
         v[1] = _rootctx;
         v[2] = mdn;
-        llvm::ArrayRef< llvm::Value * > vals( v, 3 );
-        mdn = MDNode::get( m.getContext(), vals );
+        MDsRef vals( v, 3 );
+        mdn = llvm::MDNode::get( m.getContext(), vals );
     }
 
     _mdnodes.insert( std::make_pair( n, mdn ) );
@@ -271,13 +270,13 @@ void Andersen::annotate( llvm::Instruction *insn, std::set< Node * > &seen )
         size += ops.back()->_pointsto.size();
     }
 
-    llvm::Value **v = new llvm::Value *[ size ], **vi = v;
+    llvm::Metadata **v = new llvm::Metadata *[ size ], **vi = v;
     for ( Node *n : ops )
         for ( Node *p : n->_pointsto )
             *vi++ = annotate( p, seen );
 
     insn->setMetadata(
-        "aa_use", MDNode::get( _module->getContext(), ValsRef( v, size ) ) );
+        "aa_use", llvm::MDNode::get( _module->getContext(), MDsRef( v, size ) ) );
 }
 
 void Andersen::annotate( llvm::Module &m ) {
@@ -285,9 +284,9 @@ void Andersen::annotate( llvm::Module &m ) {
 
     llvm::NamedMDNode *global = m.getOrInsertNamedMetadata( "lart.aa_global" );
 
-    llvm::ArrayRef< llvm::Value * > ctxv(
+    MDsRef ctxv(
         llvm::MDString::get( m.getContext(), "lart.aa-root-context" ) );
-    _rootctx = MDNode::get( m.getContext(), ctxv );
+    _rootctx = llvm::MDNode::get( m.getContext(), ctxv );
 
     std::set< Node * > seen;
 

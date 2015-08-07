@@ -1,20 +1,22 @@
 // -*- C++ -*- (c) 2015 Petr Rockai <me@mornfall.net>
 //             (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <llvm/PassManager.h>
+#include <llvm/Pass.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/CallSite.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
-#include <llvm/Support/CallSite.h>
 #include <brick-string.h>
 #include <unordered_set>
 #include <string>
 #include <iostream>
+
+#include <lart/support/pass.h>
 
 namespace lart {
 namespace weakmem {
@@ -25,16 +27,15 @@ using LLVMFunctionSet = std::unordered_set< llvm::Function * >;
  * Replace non-scalar load and store instructions with series of scalar-based
  * ones, along with requisite aggregate value (de)composition.
  */
-struct ScalarMemory : llvm::ModulePass
+struct ScalarMemory : lart::Pass
 {
     static char ID;
     const int _wordsize = 8;
 
-    ScalarMemory() : llvm::ModulePass( ID ) {}
-    bool runOnModule( llvm::Module &m ) {
+    llvm::PreservedAnalyses run( llvm::Module &m ) {
         for ( auto &f : m )
             transform( f );
-        return true;
+        return llvm::PreservedAnalyses::none();
     }
 
     void transform( llvm::Function &f ) {
@@ -73,7 +74,7 @@ struct ScalarMemory : llvm::ModulePass
         llvm::Value *agg = llvm::UndefValue::get( ty );
         if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
             for ( int i = 0; i < sty->getNumContainedTypes(); ++i ) {
-                auto geptr = builder.CreateConstGEP2_32( load->getOperand(0), 0, i );
+                auto geptr = builder.CreateConstGEP2_64( load->getOperand(0), 0, i );
                 auto val = builder.CreateLoad( geptr );
                 transform( val );
                 agg = builder.CreateInsertValue( agg, val, i );
@@ -92,7 +93,7 @@ struct ScalarMemory : llvm::ModulePass
         llvm::Instruction *replace = nullptr;
         if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
             for ( int i = 0; i < sty->getNumContainedTypes(); ++i ) {
-                auto geptr = builder.CreateConstGEP2_32( store->getPointerOperand(), 0, i );
+                auto geptr = builder.CreateConstGEP2_64( store->getPointerOperand(), 0, i );
                 auto val = builder.CreateExtractValue( agg, i );
                 auto nstore = builder.CreateStore( val, geptr );
                 transform( nstore );
@@ -106,25 +107,23 @@ struct ScalarMemory : llvm::ModulePass
 
 };
 
-struct Substitute : llvm::ModulePass
+struct Substitute : lart::Pass
 {
-    static char ID;
-
     enum Type { Bypass, SC, TSO, PSO };
 
-    Substitute( Type t, int bufferSize ) : llvm::ModulePass( ID ),
-        _defaultType( t ), _bufferSize( bufferSize ),
-        _storeTso( nullptr ), _storePso( nullptr ),
-        _loadTso( nullptr ), _loadPso( nullptr ),
-        _flush( nullptr ),
-        _memmove(), _memcpy(), _memset()
+    Substitute( Type t, int bufferSize )
+        : _defaultType( t ), _bufferSize( bufferSize ),
+          _storeTso( nullptr ), _storePso( nullptr ),
+          _loadTso( nullptr ), _loadPso( nullptr ),
+          _flush( nullptr ),
+          _memmove(), _memcpy(), _memset()
     {
         ASSERT_NEQ( _defaultType, Type::Bypass );
     }
 
     virtual ~Substitute() {}
 
-    bool runOnModule( llvm::Module &m ) {
+    llvm::PreservedAnalyses run( llvm::Module &m ) {
         if ( _bufferSize > 0 ) {
             auto i32 = llvm::IntegerType::getInt32Ty( m.getContext() );
             auto bufSize = llvm::ConstantInt::getSigned( i32, _bufferSize );
@@ -153,7 +152,7 @@ struct Substitute : llvm::ModulePass
 
         for ( auto &f : m )
             transform( f, dl );
-        return true;
+        return llvm::PreservedAnalyses::none();
     }
 
   private:
@@ -343,7 +342,7 @@ struct Substitute : llvm::ModulePass
             auto len = mem->getLength();
             if ( len->getType() != lenTy )
                 len = builder.CreateCast( castOpFrom( len->getType(), lenTy, true ), len, lenTy );
-            auto replace = builder.CreateCall3( rfn, dst, src, len );
+            auto replace = builder.CreateCall( rfn, { dst, src, len } );
             mem->replaceAllUsesWith( replace );
             mem->eraseFromParent();
         }
@@ -435,7 +434,7 @@ struct Substitute : llvm::ModulePass
                 addr = builder.CreateBitCast( op, ty );
             }
             auto bitwidth = getBitwidth( ety, ctx, dl );
-            auto call = builder.CreateCall2( type == Type::TSO ? _loadTso : _loadPso, addr, bitwidth );
+            auto call = builder.CreateCall( type == Type::TSO ? _loadTso : _loadPso, { addr, bitwidth } );
             llvm::Value *result = call;
 
             // weak load and final cast i64 -> target type
@@ -494,7 +493,7 @@ struct Substitute : llvm::ModulePass
             }
 
             auto bitwidth = getBitwidth( vty, ctx, dl );
-            auto storeCall = builder.CreateCall3( type == Type::TSO ? _storeTso : _storePso, addr, value, bitwidth );
+            auto storeCall = builder.CreateCall( type == Type::TSO ? _storeTso : _storePso, { addr, value, bitwidth } );
             store->replaceAllUsesWith( storeCall );
             store->eraseFromParent();
         }
