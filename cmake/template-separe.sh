@@ -19,7 +19,7 @@ if test -z "$1"; then
 else
     out="$1"
     esed="sed -r"
-    $esed 2>/dev/null || esed="sed -E"
+    echo | $esed 2>/dev/null || esed="sed -E"
     outn=$(echo $out | $esed -e "s,.*\.([0-9]+)\.cpp,\1,")
     echo "#define TCC_INSTANCE $outn" > $out
     lines=$(wc -l < $file)
