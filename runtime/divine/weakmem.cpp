@@ -175,12 +175,8 @@ __BufferHelper __storeBuffers;
 
 volatile int __lart_weakmem_buffer_size = 2;
 
-#define WM_VISIBLE_MASK()     \
-    __divine_interrupt();     \
-    __divine_interrupt_mask()
-
 void __lart_weakmem_store_tso( void *addr, uint64_t value, int bitwidth ) {
-    WM_VISIBLE_MASK();
+    __divine_interrupt_mask();
     __BufferHelper::BufferLine bl{ addr, value, bitwidth };
     if ( __divine_is_private( addr ) )
         bl.store();
@@ -192,7 +188,7 @@ void __lart_weakmem_store_tso( void *addr, uint64_t value, int bitwidth ) {
 }
 
 void __lart_weakmem_flush() {
-    WM_VISIBLE_MASK();
+    __divine_interrupt_mask();
     for ( auto &l : *__storeBuffers.get() )
         l.store();
     __storeBuffers.drop();
@@ -204,7 +200,7 @@ union I64b {
 };
 
 uint64_t __lart_weakmem_load_tso( void *_addr, int bitwidth ) {
-    WM_VISIBLE_MASK();
+    __divine_interrupt_mask();
     I64b val = { .i64 = 0 };
     char *addr = reinterpret_cast< char * >( _addr );
     bool bmask[8] = { false };
