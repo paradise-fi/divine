@@ -9,7 +9,7 @@ namespace llvm {
 
 bool initMultithreaded() {
 #if GEN_LLVM
-    return ::llvm::llvm_is_multithreaded() || ::llvm::llvm_start_multithreaded();
+    return ::llvm::llvm_is_multithreaded();
 #else
     ASSERT_UNREACHABLE( "LLVM not available" );
 #endif
