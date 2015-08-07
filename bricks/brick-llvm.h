@@ -8,17 +8,18 @@
 #ifndef __STDC_CONSTANT_MACROS
 #define __STDC_CONSTANT_MACROS
 #endif
-#include <llvm/Linker.h>
+#include <llvm/Linker/Linker.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/Analysis/Verifier.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/FileSystem.h>
 
 #include <brick-assert.h>
 
@@ -103,10 +104,10 @@ struct Linker {
     Linker() { }
 
     // load parlially linked module and take ownership of it
-    void load( Module *prelinked ) {
+    void load( std::unique_ptr< Module > &&prelinked ) {
         ASSERT( prelinked != nullptr );
-        _link.reset( new ::llvm::Linker( prelinked ) );
-        _root.reset( prelinked );
+        _link.reset( new ::llvm::Linker( prelinked.get() ) );
+        _root = std::move( prelinked );
 
         auto modlist = _root->getOrInsertNamedMetadata( moduleRoot );
         for ( int i = 0, count = modlist->getNumOperands(); i < count; ++i ) {
@@ -117,16 +118,16 @@ struct Linker {
     }
 
     // link bitcode module fresh from source (not yet linked)
-    void link( ::llvm::Module *src ) {
+    void link( std::unique_ptr< Module > &&src ) {
         ASSERT( src != nullptr );
         if ( !_link ) {
             ASSERT( !_root );
-            _root.reset( src );
+            _root = std::move( src );
             _link.reset( new ::llvm::Linker( _annotate( _root.get() ) ) );
         } else {
-            _owned.emplace_back( src );
             std::string err;
-            auto r = _link->linkInModule( _annotate( src ), ::llvm::Linker::DestroySource, &err );
+            auto r = _link->linkInModule( _annotate( src.get() ) );
+            _owned.emplace_back( std::move( src ) );
             if ( r ) {
                 std::cerr << "ERROR: " << err << " while linking '" << src->getModuleIdentifier() << "'" << std::endl;
                 ASSERT_UNREACHABLE( "Linker error" );
@@ -218,12 +219,12 @@ struct Linker {
     }
 
     ::llvm::MDNode *_mdlink( Module *m, ::llvm::Value &val ) {
-        return ::llvm::MDNode::get( m->getContext(), ValsRef( { &val } ) );
+        return ::llvm::MDNode::get( m->getContext(), { ::llvm::ValueAsMetadata::get( &val ) } );
     }
 
     ::llvm::MDNode *_modmd( Module *m, std::string modname ) {
-        return ::llvm::MDNode::get( m->getContext(), ValsRef(
-                    { ::llvm::MDString::get( m->getContext(), modname ) } ) );
+        return ::llvm::MDNode::get( m->getContext(),
+                    { ::llvm::MDString::get( m->getContext(), modname ) } );
     }
 
     struct _Prune {
@@ -244,18 +245,19 @@ struct Linker {
             _symbolModule.clear();
 
             auto m = _link->get();
-
+/* FIXME: metadata items are no longer Values, this needs to be refactored
             for ( auto &meta : m->getNamedMDList() ) {
                 if ( isPrefixOf( modulePrefix, meta.getName().data() ) ) {
                     auto mname = std::string( meta.getName().data() ).substr( std::string( modulePrefix ).size() );
                     auto &mset = _moduleMap[ mname ];
                     for ( int i = 0, count = meta.getNumOperands(); i < count; ++i ) {
-                        auto sym = meta.getOperand( i )->getOperand( 0 );
+                        auto sym = &*meta.getOperand( i )->getOperand( 0 );
                         mset.insert( sym );
                         _symbolModule[ sym ].insert( _link->_modules[ mname ] );
                     }
                 }
             }
+*/
         }
 
         bool pushSimple( ::llvm::Value *val ) {
@@ -407,8 +409,8 @@ struct Linker {
 };
 
 inline void writeModule( ::llvm::Module *m, std::string out ) {
-    std::string serr;
-    ::llvm::raw_fd_ostream fs( out.c_str(), serr );
+    std::error_code serr;
+    ::llvm::raw_fd_ostream fs( out.c_str(), serr, ::llvm::sys::fs::F_None );
     WriteBitcodeToFile( m, fs );
 }
 
