@@ -11,37 +11,39 @@ namespace divine {
 namespace fs {
 
 struct Mode {
-    static const mode_t TMASK    = 0170000;
-    static const mode_t SOCKET   = 0140000;
-    static const mode_t LINK     = 0120000;
-    static const mode_t FILE     = 0100000;
-    static const mode_t BLOCKD   = 0060000;
-    static const mode_t DIR      = 0040000;
-    static const mode_t CHARD    = 0020000;
-    static const mode_t FIFO     = 0010000;
+    enum : mode_t {
+       TMASK    = 0170000,
+       SOCKET   = 0140000,
+       LINK     = 0120000,
+       FILE     = 0100000,
+       BLOCKD   = 0060000,
+       DIR      = 0040000,
+       CHARD    = 0020000,
+       FIFO     = 0010000,
 
-    static const mode_t SUID     = 0004000;
-    static const mode_t GUID     = 0002000;
-    static const mode_t STICKY   = 0001000;
+       SUID     = 0004000,
+       GUID     = 0002000,
+       STICKY   = 0001000,
 
-    static const mode_t RWXUSER  = 0000700;
-    static const mode_t RUSER    = 0000400;
-    static const mode_t WUSER    = 0000200;
-    static const mode_t XUSER    = 0000100;
+       RWXUSER  = 0000700,
+       RUSER    = 0000400,
+       WUSER    = 0000200,
+       XUSER    = 0000100,
 
-    static const mode_t RWXGROUP = 0000070;
-    static const mode_t RGROUP   = 0000040;
-    static const mode_t WGROUP   = 0000020;
-    static const mode_t XGROUP   = 0000010;
+       RWXGROUP = 0000070,
+       RGROUP   = 0000040,
+       WGROUP   = 0000020,
+       XGROUP   = 0000010,
 
-    static const mode_t RWXOTHER = 0000007;
-    static const mode_t ROTHER   = 0000004;
-    static const mode_t WOTHER   = 0000002;
-    static const mode_t XOTHER   = 0000001;
+       RWXOTHER = 0000007,
+       ROTHER   = 0000004,
+       WOTHER   = 0000002,
+       XOTHER   = 0000001,
 
     // composites
-    static const mode_t GRANTS   = 0000777;
-    static const mode_t CHMOD    = 0007777;
+       GRANTS   = 0000777,
+       CHMOD    = 0007777,
+    };
 
     Mode( mode_t m ) : _mode( m ) {}
     Mode( const Mode & ) = default;
