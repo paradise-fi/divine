@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
 #include "fs-utils.h"
+#include "fs-storage.h"
 
 #ifndef _FS_CONSTANTS_H_
 #define _FS_CONSTANTS_H_
@@ -57,9 +58,9 @@ enum class At {
 
 } // namespace flags
 
-using utils::operator|;
+using storage::operator|;
 template< typename T >
-using Flags = utils::StrongEnumFlags< T >;
+using Flags = storage::StrongEnumFlags< T >;
 
 } // namespace fs
 } // namespace divine
