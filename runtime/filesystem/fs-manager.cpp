@@ -205,8 +205,8 @@ void Manager::closeFile( int fd ) {
     getFile( fd ).reset();
 }
 
-int Manager::duplicate( int oldfd ) {
-    return _getFileDescriptor( getFile( oldfd ) );
+int Manager::duplicate( int oldfd, int lowEdge ) {
+    return _getFileDescriptor( getFile( oldfd ), lowEdge );
 }
 
 int Manager::duplicate2( int oldfd, int newfd ) {
@@ -531,9 +531,16 @@ std::pair< Node, utils::String > Manager::_findDirectoryOfFile( utils::String na
     return { item, name };
 }
 
-int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f ) {
+int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdge ) {
     int i = 0;
-    for ( auto &fd : _openFD ) {
+
+    if ( lowEdge < 0 || lowEdge >= FILE_DESCRIPTOR_LIMIT )
+        throw Error( EINVAL );
+
+    if ( lowEdge >= _openFD.size() )
+        _openFD.resize( lowEdge + 1 );
+
+    for ( auto &fd : utils::withOffset( _openFD, lowEdge ) ) {
         if ( !fd ) {
             fd = f;
             return i;

@@ -61,7 +61,7 @@ struct Manager {
     void accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl );
     int openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, mode_t mode );
     void closeFile( int fd );
-    int duplicate( int oldfd );
+    int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
     std::shared_ptr< FileDescriptor > &getFile( int fd );
 
@@ -136,7 +136,7 @@ private:
     template< typename I >
     Node _findDirectoryItem( utils::String name, bool followSymLinks, I itemChecker );
 
-    int _getFileDescriptor( std::shared_ptr< FileDescriptor > f );
+    int _getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdge = 0 );
     void _insertSnapshotItem( const SnapshotFS &item );
 
     void _checkGrants( Node inode, unsigned grant ) const;

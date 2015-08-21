@@ -74,6 +74,10 @@ struct RegularFile : File {
     }
 
     bool read( char *buffer, size_t offset, size_t &length ) override {
+        if ( offset >= _size ) {
+            length = 0;
+            return true;
+        }
         const char *source = _isSnapshot() ?
                           _roContent + offset :
                           _content.data() + offset;
@@ -173,6 +177,10 @@ struct StandardInput : File {
         return false;
     }
     bool read( char *buffer, size_t offset, size_t &length ) override {
+        if ( offset >= _size ) {
+            length = 0;
+            return true;
+        }
         const char *source = _content + offset;
         if ( offset + length > _size )
             length = _size - offset;

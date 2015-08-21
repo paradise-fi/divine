@@ -39,6 +39,55 @@
 
 using divine::fs::Error;
 using divine::fs::vfs;
+namespace conversion {
+
+using namespace divine::fs::flags;
+
+divine::fs::Flags< Open > open( int fls ) {
+    divine::fs::Flags< Open > f = Open::NoFlags;
+    // special behaviour - check for access rights but do not grant them
+    if ( ( fls & 3 ) == 3)
+        f |= Open::NoAccess;
+    if ( fls & O_RDWR ) {
+        f |= Open::Read;
+        f |= Open::Write;
+    }
+    else if ( fls & O_WRONLY )
+        f |= Open::Write;
+    else
+        f |= Open::Read;
+
+    if ( fls & O_CREAT )    f |= Open::Create;
+    if ( fls & O_EXCL )     f |= Open::Excl;
+    if ( fls & O_TRUNC )    f |= Open::Truncate;
+    if ( fls & O_APPEND )   f |= Open::Append;
+    if ( fls & O_NOFOLLOW ) f |= Open::SymNofollow;
+    if ( fls & O_NONBLOCK ) f |= Open::NonBlock;
+    return f;
+}
+
+int open( divine::fs::Flags< Open > fls ) {
+    int f;
+    if ( fls.has( Open::NoAccess ) )
+        f = 3;
+    else if ( fls.has( Open::Read ) && fls.has( Open::Write ) )
+        f = O_RDWR;
+    else if ( fls.has( Open::Write ) )
+        f = O_WRONLY;
+    else
+        f = O_RDONLY;
+
+    if ( fls.has( Open::Create ) )      f |= O_CREAT;
+    if ( fls.has( Open::Excl ) )        f |= O_EXCL;
+    if ( fls.has( Open::Truncate ) )    f |= O_TRUNC;
+    if ( fls.has( Open::Append ) )      f |= O_APPEND;
+    if ( fls.has( Open::SymNofollow ) ) f |= O_NOFOLLOW;
+    if ( fls.has( Open::NonBlock ) )    f |= O_NONBLOCK;
+    return f;
+}
+
+} // namespace flags
+
 
 static bool underMask = false;
 
@@ -130,6 +179,64 @@ int open( const char *path, int flags, ... ) {
 int creat( const char *path, mode_t mode ) {
     FS_ENTRYPOINT();
     return mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
+}
+
+int fcntl( int fd, int cmd, ... ) {
+    FS_ENTRYPOINT();
+    try {
+        auto f = vfs.instance().getFile( fd );
+
+        switch ( cmd ) {
+        case F_SETFD: {
+            va_list args;
+            va_start( args, cmd );
+            if ( !args )
+                FS_PROBLEM( "command F_SETFD requires additional argument" );
+            int lowEdge = va_arg( args, int );
+            va_end( args );
+        }
+        case F_GETFD:
+            return 0;
+        case F_DUPFD_CLOEXEC: // for now let assume we cannot handle O_CLOEXEC
+        case F_DUPFD: {
+            va_list args;
+            va_start( args, cmd );
+            if ( !args )
+                FS_PROBLEM( "command F_DUPFD requires additional argument" );
+            int lowEdge = va_arg( args, int );
+            va_end( args );
+            return vfs.instance().duplicate( fd, lowEdge );
+        }
+        case F_GETFL:
+            return conversion::open( f->flags() );
+        case F_SETFL: {
+            va_list args;
+            va_start( args, cmd );
+            if ( !args )
+                FS_PROBLEM( "command F_SETFL requires additional argument" );
+            int mode = va_arg( args, int );
+            va_end( args );
+
+            if ( mode & O_APPEND )
+                f->flags() |= divine::fs::flags::Open::Append;
+            else if ( f->flags().has( divine::fs::flags::Open::Append ) )
+                throw Error( EPERM );
+
+            if ( mode & O_NONBLOCK )
+                f->flags() |= divine::fs::flags::Open::NonBlock;
+            else
+                f->flags().clear( divine::fs::flags::Open::NonBlock );
+
+            return 0;
+        }
+        default:
+            FS_PROBLEM( "the requested command is not implemented" );
+            return 0;
+        }
+
+    } catch ( Error & ) {
+        return -1;
+    }
 }
 
 int close( int fd ) {

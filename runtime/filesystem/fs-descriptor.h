@@ -66,14 +66,11 @@ struct FileDescriptor {
         if ( _flags.has( flags::Open::NonBlock ) && !file->canRead() )
             throw Error( EAGAIN );
 
-        if ( _offset >= file->size() || length == 0 )
-            return 0;
-
         char *dst = reinterpret_cast< char * >( buf );
         if ( !file->read( dst, _offset, length ) )
             throw Error( EBADF );
 
-        _offset += length;
+        _setOffset( _offset + length );
         return length;
     }
 
@@ -96,7 +93,7 @@ struct FileDescriptor {
         if ( !file->write( src, _offset, length ) )
             throw Error( EBADF );
 
-        _offset += length;
+        _setOffset( _offset + length );
         return length;
     }
 
@@ -132,8 +129,15 @@ struct FileDescriptor {
     Flags< flags::Open > flags() const {
         return _flags;
     }
+    Flags< flags::Open > &flags() {
+        return _flags;
+    }
 
 protected:
+    virtual void _setOffset( size_t off ) {
+        _offset = off;
+    }
+
     Node _inode;
     Flags< flags::Open > _flags;
     size_t _offset;
@@ -204,7 +208,9 @@ struct PipeDescriptor : FileDescriptor {
     void offset( size_t off ) override {
         throw Error( EPIPE );
     }
-
+protected:
+    void _setOffset( size_t ) override {
+    }
 };
 
 struct DirectoryDescriptor {

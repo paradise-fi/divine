@@ -102,6 +102,8 @@ FS_NOINLINE int creat( const char *path, mode_t mode );
 FS_NOINLINE int open( const char *path, int flags, ... );
 FS_NOINLINE int openat( int dirfd, const char *path, int flags, ... );
 
+FS_NOINLINE int fcntl( int fd, int cmd, ... );
+
 #undef FS_NOINLINE
 
 #ifdef __cplusplus
