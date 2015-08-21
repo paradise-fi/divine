@@ -55,8 +55,7 @@ Node Manager::createNodeAt( int dirfd, utils::String name, mode_t mode, Args &&.
 
     switch( mode & Mode::TMASK ) {
     case Mode::SOCKET:
-        /// TODO: implement
-        throw Error( ENOSYS );// not implemented
+        node->assign( utils::constructIfPossible< SocketDatagram >( std::forward< Args >( args )... ) );
         break;
     case Mode::LINK:
         node->assign( utils::constructIfPossible< Link >( std::forward< Args >( args )... ) );
@@ -225,6 +224,13 @@ std::shared_ptr< FileDescriptor > &Manager::getFile( int fd ) {
     if ( fd >= 0 && fd < _openFD.size() && _openFD[ fd ] )
         return _openFD[ fd ];
     throw Error( EBADF );
+}
+
+std::shared_ptr< SocketDescriptor > Manager::getSocket( int sockfd ) {
+    auto f = std::dynamic_pointer_cast< SocketDescriptor >( getFile( sockfd ) );
+    if ( !f )
+        throw Error( ENOTSOCK );
+    return f;
 }
 
 std::pair< int, int > Manager::pipe() {
@@ -440,6 +446,113 @@ void Manager::closeDirectory( void *descriptor ) {
         }
     }
     throw Error( EBADF );
+}
+
+int Manager::socket( SocketType type, Flags< flags::Open > fl ) {
+    Socket *s = nullptr;
+    switch ( type ) {
+    case SocketType::Stream:
+        s = new( memory::nofail ) SocketStream;
+        break;
+    case SocketType::Datagram:
+        s = new( memory::nofail ) SocketDatagram;
+        break;
+    default:
+        throw Error( EPROTONOSUPPORT );
+    }
+    std::shared_ptr< SocketDescriptor > sd =
+        std::allocate_shared< SocketDescriptor >(
+            memory::AllocatorPure(),
+            std::allocate_shared< INode >( memory::AllocatorPure(), Mode::GRANTS | Mode::SOCKET, s ),
+            fl
+        );
+
+    return _getFileDescriptor( std::move( sd ) );
+}
+
+std::pair< int, int > Manager::socketpair( SocketType type, Flags< flags::Open > fl ) {
+    if ( type != SocketType::Stream )
+        throw Error( EOPNOTSUPP );
+
+    SocketStream *cl = new( memory::nofail ) SocketStream;
+
+    Node client = std::allocate_shared< INode >(
+        memory::AllocatorPure(),
+        Mode::GRANTS | Mode::SOCKET,
+        cl );
+    Node server = std::allocate_shared< INode >(
+        memory::AllocatorPure(),
+        Mode::GRANTS | Mode::SOCKET,
+        new( memory::nofail ) SocketStream );
+
+    cl->connected( client, server );
+
+    return {
+        _getFileDescriptor(
+            std::allocate_shared< SocketDescriptor >(
+                memory::AllocatorPure(),
+                server,
+                fl
+            )
+        ),
+        _getFileDescriptor(
+            std::allocate_shared< SocketDescriptor >(
+                memory::AllocatorPure(),
+                client,
+                fl
+            )
+        )
+    };
+}
+
+void Manager::bind( int sockfd, Socket::Address address ) {
+    auto sd = getSocket( sockfd );
+
+    Node current;
+    utils::String name = address.value();
+    std::tie( current, name ) = _findDirectoryOfFile( name );
+
+    Directory *dir = current->data()->as< Directory >();
+    if ( dir->find( name ) )
+        throw Error( EADDRINUSE );
+
+    if ( sd->address() )
+        throw Error( EINVAL );
+
+    dir->create( std::move( name ), sd->inode() );
+    sd->address( std::move( address ) );
+}
+
+void Manager::connect( int sockfd, const Socket::Address &address ) {
+    auto sd = getSocket( sockfd );
+
+    Node model = resolveAddress( address );
+
+    sd->connected( model );
+}
+
+int Manager::accept( int sockfd, Socket::Address &address ) {
+    Node partner = getSocket( sockfd )->accept();
+    address = partner->data()->as< Socket >()->address();
+
+    return _getFileDescriptor(
+        std::allocate_shared< SocketDescriptor >(
+            memory::AllocatorPure(),
+            std::move( partner ),
+            flags::Open::NoFlags
+        )
+    );
+}
+
+Node Manager::resolveAddress( const Socket::Address &address ) {
+    Node item = findDirectoryItem( address.value() );
+
+    if ( !item )
+        throw Error( ENOENT );
+    if ( !item->mode().isSocket() )
+        throw Error( ECONNREFUSED );
+    _checkGrants( item, Mode::WUSER );
+    return item;
 }
 
 Node Manager::findDirectoryItem( utils::String name, bool followSymLinks ) {

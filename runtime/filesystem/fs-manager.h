@@ -64,6 +64,7 @@ struct Manager {
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
     std::shared_ptr< FileDescriptor > &getFile( int fd );
+    std::shared_ptr< SocketDescriptor > getSocket( int sockfd );
 
     std::pair< int, int > pipe();
 
@@ -119,6 +120,13 @@ struct Manager {
     DirectoryDescriptor *openDirectory( int fd );
     DirectoryDescriptor *getDirectory( void *descriptor );
     void closeDirectory( void *descriptor );
+
+    int socket( SocketType type, Flags< flags::Open > fl );
+    std::pair< int, int > socketpair( SocketType type, Flags< flags::Open > fl );
+    void bind( int sockfd, Socket::Address address );
+    void connect( int sockfd, const Socket::Address &address );
+    int accept( int sockfd, Socket::Address &address );
+    Node resolveAddress( const Socket::Address &address );
 
 private:
     Node _root;

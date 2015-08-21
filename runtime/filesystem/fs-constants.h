@@ -16,6 +16,11 @@ enum class Seek {
     End
 };
 
+enum class SocketType {
+    Stream,
+    Datagram,
+};
+
 const int CURRENT_DIRECTORY = -100;
 const int PATH_LIMIT = 1023;
 const int FILE_NAME_LIMIT = 255;
@@ -55,6 +60,14 @@ enum class At {
     SymFollow   =  8,
     SymNofollow = 16,
 };
+
+enum class Message {
+    NoFlags = 0,
+    DontWait = 1,
+    Peek = 2,
+    WaitAll = 4,
+};
+
 
 } // namespace flags
 

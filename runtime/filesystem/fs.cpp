@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include "fs-manager.h"
 
@@ -86,10 +88,14 @@ int open( divine::fs::Flags< Open > fls ) {
     return f;
 }
 
-} // namespace flags
+divine::fs::Flags< Message > message( int fls ) {
+    divine::fs::Flags< Message > f = Message::NoFlags;
 
-
-static bool underMask = false;
+    if ( fls & MSG_DONTWAIT )   f |= Message::DontWait;
+    if ( fls & MSG_PEEK )       f |= Message::Peek;
+    if ( fls & MSG_WAITALL )    f |= Message::WaitAll;
+    return f;
+}
 
 static_assert( AT_FDCWD == divine::fs::CURRENT_DIRECTORY,
     "mismatch value of AT_FDCWD and divine::fs::CURRENT_DIRECTORY" );
@@ -860,4 +866,267 @@ void seekdir( DIR *dirp, long offset ) {
     }
 }
 #endif
+
+int socket( int domain, int t, int protocol ) {
+    using SocketType = divine::fs::SocketType;
+    using namespace divine::fs::flags;
+
+    FS_ENTRYPOINT();
+    try {
+
+        if ( domain != AF_UNIX )
+            throw Error( EAFNOSUPPORT );
+
+        SocketType type;
+        switch ( t & __SOCK_TYPE_MASK ) {
+        case SOCK_STREAM:
+            type = SocketType::Stream;
+            break;
+        case SOCK_DGRAM:
+            type = SocketType::Datagram;
+            break;
+        default:
+            throw Error( EPROTONOSUPPORT );
+        }
+        if ( protocol )
+            throw Error( EPROTONOSUPPORT );
+
+        return vfs.instance().socket( type, t & SOCK_NONBLOCK ? Open::NonBlock : Open::NoFlags );
+
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int socketpair( int domain, int t, int protocol, int fds[ 2 ] ) {
+    using SocketType = divine::fs::SocketType;
+    using Open = divine::fs::flags::Open;
+
+    FS_ENTRYPOINT();
+    try {
+
+        if ( domain != AF_UNIX )
+            throw Error( EAFNOSUPPORT );
+
+        SocketType type;
+        switch ( t & __SOCK_TYPE_MASK ) {
+        case SOCK_STREAM:
+            type = SocketType::Stream;
+            break;
+        case SOCK_DGRAM:
+            type = SocketType::Datagram;
+            break;
+        default:
+            throw Error( EPROTONOSUPPORT );
+        }
+        if ( protocol )
+            throw Error( EPROTONOSUPPORT );
+
+        std::tie( fds[ 0 ], fds[ 1 ] ) = vfs.instance().socketpair( type, t & SOCK_NONBLOCK ? Open::NonBlock : Open::NoFlags );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int getsockname( int sockfd, struct sockaddr *addr, socklen_t *len ) {
+    FS_ENTRYPOINT();
+    try {
+        if ( !len )
+            throw Error( EFAULT );
+
+        auto s = vfs.instance().getSocket( sockfd );
+        struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
+
+        auto &address = s->address();
+
+        if ( address.size() >= *len )
+            throw Error( ENOBUFS );
+
+        if ( target ) {
+            target->sun_family = AF_UNIX;
+            char *end = std::copy( address.value().begin(), address.value().end(), target->sun_path );
+            *end = '\0';
+        }
+        *len = address.size() + 1 + sizeof( target->sun_family );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int bind( int sockfd, const struct sockaddr *addr, socklen_t len ) {
+    FS_ENTRYPOINT();
+    using Address = divine::fs::Socket::Address;
+    try {
+
+        if ( !addr )
+            throw Error( EFAULT );
+        if ( addr->sa_family != AF_UNIX )
+            throw Error( EINVAL );
+
+        const struct sockaddr_un *target = reinterpret_cast< const struct sockaddr_un * >( addr );
+        Address address( target->sun_path );
+
+        vfs.instance().bind( sockfd, std::move( address ) );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int connect( int sockfd, const struct sockaddr *addr, socklen_t len ) {
+    FS_ENTRYPOINT();
+    using Address = divine::fs::Socket::Address;
+    try {
+
+        if ( !addr )
+            throw Error( EFAULT );
+        if ( addr->sa_family != AF_UNIX )
+            throw Error( EAFNOSUPPORT );
+
+        const struct sockaddr_un *target = reinterpret_cast< const struct sockaddr_un * >( addr );
+        Address address( target->sun_path );
+
+        vfs.instance().connect( sockfd, address );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int getpeername( int sockfd, struct sockaddr *addr, socklen_t *len ) {
+    FS_ENTRYPOINT();
+    try {
+        if ( !len )
+            throw Error( EFAULT );
+
+        auto s = vfs.instance().getSocket( sockfd );
+        struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
+
+        auto &address = s->peer().address();
+
+        if ( address.size() >= *len )
+            throw Error( ENOBUFS );
+
+        if ( target ) {
+            target->sun_family = AF_UNIX;
+            char *end = std::copy( address.value().begin(), address.value().end(), target->sun_path );
+            *end = '\0';
+        }
+        *len = address.size() + 1 + sizeof( target->sun_family );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+ssize_t send( int sockfd, const void *buf, size_t n, int flags ) {
+    FS_ENTRYPOINT();
+    try {
+        auto s = vfs.instance().getSocket( sockfd );
+        return s->send( static_cast< const char * >( buf ), n, conversion::message( flags ) );
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+ssize_t sendto( int sockfd, const void *buf, size_t n, int flags, const struct sockaddr *addr, socklen_t len ) {
+    FS_ENTRYPOINT();
+    using Address = divine::fs::Socket::Address;
+
+    if ( !addr )
+        return send( sockfd, buf, n, flags );
+
+    try {
+        if ( addr->sa_family != AF_UNIX )
+            throw Error( EAFNOSUPPORT );
+
+        auto s = vfs.instance().getSocket( sockfd );
+        const struct sockaddr_un *target = reinterpret_cast< const struct sockaddr_un * >( addr );
+        Address address( target ? target->sun_path : divine::fs::utils::String() );
+
+        return s->sendTo( static_cast< const char * >( buf ), n, conversion::message( flags ), vfs.instance().resolveAddress( address ) );
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+ssize_t recv( int sockfd, void *buf, size_t n, int flags ) {
+    FS_ENTRYPOINT();
+    return recvfrom( sockfd, buf, n, flags, nullptr, nullptr );
+}
+
+ssize_t recvfrom( int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len ) {
+    FS_ENTRYPOINT();
+    using Address = divine::fs::Socket::Address;
+
+    try {
+
+        Address address;
+        struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
+        if ( target && !len )
+            throw Error( EFAULT );
+
+        auto s = vfs.instance().getSocket( sockfd );
+        n = s->receive( static_cast< char * >( buf ), n, conversion::message( flags ), address );
+
+        if ( target ) {
+            target->sun_family = AF_UNIX;
+            char *end = std::copy( address.value().begin(), address.value().end(), target->sun_path );
+            *end = '\0';
+            *len = address.size() + 1 + sizeof( target->sun_family );
+        }
+        return n;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int listen( int sockfd, int n ) {
+    FS_ENTRYPOINT();
+    try {
+        auto s = vfs.instance().getSocket( sockfd );
+        s->listen( n );
+        return 0;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
+int accept( int sockfd, struct sockaddr *addr, socklen_t *len ) {
+    FS_ENTRYPOINT();
+    return accept4( sockfd, addr, len, 0 );
+}
+
+int accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags ) {
+    FS_ENTRYPOINT();
+    using Address = divine::fs::Socket::Address;
+    try {
+
+        if ( addr && !len )
+            throw Error( EFAULT );
+
+        if ( ( flags | SOCK_NONBLOCK | SOCK_CLOEXEC ) != ( SOCK_NONBLOCK | SOCK_CLOEXEC ) )
+            throw Error( EINVAL );
+
+        Address address;
+        int newSocket =  vfs.instance().accept( sockfd, address );
+
+        if ( addr ) {
+            struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
+            target->sun_family = AF_UNIX;
+            char *end = std::copy( address.value().begin(), address.value().end(), target->sun_path );
+            *end = '\0';
+            *len = address.size() + 1 + sizeof( target->sun_family );
+        }
+        if ( flags & SOCK_NONBLOCK )
+            vfs.instance().getSocket( newSocket )->flags() |= divine::fs::flags::Open::NonBlock;
+
+        return newSocket;
+    } catch ( Error & ) {
+        return -1;
+    }
+}
+
 } // extern "C"
