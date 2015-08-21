@@ -5,6 +5,7 @@
 
 #include "fs-utils.h"
 #include "fs-inode.h"
+#include "fs-storage.h"
 
 #ifndef _FS_FILE_H_
 #define _FS_FILE_H_
@@ -32,7 +33,6 @@ struct Link : DataItem {
 private:
     utils::String _target;
 };
-
 
 struct File : DataItem {
 
@@ -201,17 +201,19 @@ private:
 struct Pipe : File {
 
     Pipe() :
+        _stream( PIPE_SIZE_LIMIT ),
         _reader( false ),
         _writer( false )
     {}
 
     Pipe( bool r, bool w ) :
+        _stream( PIPE_SIZE_LIMIT ),
         _reader( r ),
         _writer( w )
     {}
 
     size_t size() const override {
-        return _content.size();
+        return _stream.size();
     }
 
     bool canRead() const override {
@@ -225,17 +227,13 @@ struct Pipe : File {
         if ( length == 0 )
             return true;
 
-        while ( size() == 0 )
+        // progress or deadlock
+        while ( ( length = _stream.pop( buffer, length ) ) == 0 )
             FS_MAKE_INTERRUPT();
 
-        if ( length > _content.size() )
-            length = _content.size();
+        if ( length == 0 )
+            return true;
 
-        auto b = _content.begin();
-        auto e = b + length;
-        std::copy( b, e, buffer );
-
-        _content.erase( b, e );
         return true;
     }
 
@@ -244,20 +242,16 @@ struct Pipe : File {
             raise( SIGPIPE );
             throw Error( EPIPE );
         }
-        size_t offset = _content.size();
 
-        while ( offset >= PIPE_SIZE_LIMIT )
+        // progress or deadlock
+        while ( ( length = _stream.push( buffer, length ) ) == 0 )
             FS_MAKE_INTERRUPT();
 
-        if ( offset + length > PIPE_SIZE_LIMIT )
-            length = PIPE_SIZE_LIMIT - offset;
-
-        _content.resize( offset + length );
-        std::copy( buffer, buffer + length, _content.begin() + offset );
         return true;
     }
 
     void clear() override {
+        throw Error( EINVAL );
     }
 
     void releaseReader() {
@@ -283,7 +277,7 @@ struct Pipe : File {
     }
 
 private:
-    utils::Vector< char > _content;
+    storage::Stream _stream;
     bool _reader;
     bool _writer;
 };
