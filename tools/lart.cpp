@@ -2,6 +2,7 @@
 #include <lart/abstract/pass.h>
 #include <lart/interference/pass.h>
 #include <lart/weakmem/pass.h>
+#include <lart/interrupt/pass.h>
 #include <lart/support/composite.h>
 
 #include <iostream>
@@ -92,9 +93,16 @@ void addPass( ModulePassManager &mgr, std::string n, std::string opt )
         else
             throw std::runtime_error( "unknown weakmem type: " + opt );
 
-        p.append( new weakmem::ScalarMemory );
-        p.append( new weakmem::Substitute( t, bufferSize ) );
-        mgr.addPass( p );
+        p->append( new weakmem::ScalarMemory );
+        p->append( new weakmem::Substitute( t, bufferSize ) );
+        return p;
+    }
+
+    if ( n == "interrupt" ) {
+        auto p = new CompositePass();
+        p->append( new interrupt::EliminateInterrupt() );
+        p->append( new interrupt::HoistMasks() );
+        return p;
     }
 
     throw std::runtime_error( "unknown pass type: " + n );
