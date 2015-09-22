@@ -624,7 +624,7 @@ bool interrupt = false;
 struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts, kmsg;
     std::string testdir, outdir, workdir, heartbeat;
-    std::vector< std::string > flavours, filter, watch, flavourFilter;
+    std::vector< std::string > flavours, filter, watch, flavourFilter, exclude;
     std::string flavour_envvar;
     int timeout, total_timeout;
     Options() : verbose( false ), batch( false ), interactive( false ),
@@ -926,9 +926,9 @@ struct Main {
     Options options;
     Cases cases;
 
-    bool skip( const std::string &what, const std::vector< std::string > &filter ) {
+    bool skip( const std::string &what, const std::vector< std::string > &filter, bool empty ) {
         if ( filter.empty() )
-            return false;
+            return empty;
 
         for ( std::vector< std::string >::const_iterator filt = filter.begin();
               filt !=filter.end(); ++filt ) {
@@ -945,7 +945,7 @@ struct Main {
         for ( Flavours::iterator flav = options.flavours.begin();
               flav != options.flavours.end(); ++flav )
         {
-            if ( skip( *flav, options.flavourFilter ) )
+            if ( skip( *flav, options.flavourFilter, false ) )
                 continue;
 
             for ( Listing::iterator i = l.begin(); i != l.end(); ++i ) {
@@ -954,8 +954,12 @@ struct Main {
                 if ( i->substr( 0, 4 ) == "lib/" )
                     continue;
 
-                if ( skip( *i, options.filter ) )
+                if ( skip( *i, options.filter, false ) )
                     continue;
+
+                if ( !skip( *i, options.exclude, true ) )
+                    continue;
+
                 cases.push_back( TestCase( journal, options, options.testdir + *i, *i, *flav ) );
                 cases.back().options = options;
             }
@@ -1093,6 +1097,11 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         split( args.opt( "--only" ), opt.filter );
     else if ( hasenv( "T" ) )
         split( getenv( "T" ), opt.filter );
+
+    if ( args.has( "--skip" ) )
+        split( args.opt( "--split" ), opt.exclude );
+    else if ( hasenv( "S" ) )
+        split( getenv( "S" ), opt.exclude );
 
     if ( args.has( "--fatal-timeouts" ) )
         opt.fatal_timeouts = true;
