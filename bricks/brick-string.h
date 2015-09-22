@@ -158,6 +158,10 @@ inline std::string fmt(const T& val)
     return str.str();
 }
 
+// show chars as numbers
+inline std::string fmt( int8_t c ) { return fmt( int( c ) ); }
+inline std::string fmt( uint8_t c ) { return fmt( int( c ) ); }
+
 template< typename C >
 inline std::string fmt_container( const C &c, char f, char l )
 {
