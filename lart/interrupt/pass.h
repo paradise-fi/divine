@@ -1,12 +1,14 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <llvm/PassManager.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
-#include <llvm/Support/CallSite.h>
+#include <llvm/IR/CallSite.h>
+
+#include <lart/support/pass.h>
 
 #include <brick-assert.h>
 
@@ -16,13 +18,9 @@
 namespace lart {
 namespace interrupt {
 
-struct EliminateInterrupt : llvm::ModulePass {
+struct EliminateInterrupt : lart::Pass {
 
-    static char ID;
-
-    EliminateInterrupt() : llvm::ModulePass( ID ) {}
-
-    bool runOnModule( llvm::Module &m ) {
+    llvm::PreservedAnalyses run( llvm::Module &m ) override {
         auto interrupt = m.getFunction( "__divine_interrupt" );
         std::vector< llvm::CallInst * > interrupts;
         for ( auto &fn : m )
@@ -34,15 +32,13 @@ struct EliminateInterrupt : llvm::ModulePass {
         for ( auto call : interrupts )
             call->eraseFromParent();
         std::cout << "INFO: erased " << interrupts.size() << " interrupts" << std::endl;
-        return true;
+        return llvm::PreservedAnalyses::none();
     }
 };
 
-struct HoistMasks : llvm::ModulePass {
+struct HoistMasks : lart::Pass {
 
-    static char ID;
-
-    HoistMasks() : llvm::ModulePass( ID ), _total( 0 ), _hoisted( 0 ) {}
+    HoistMasks() : _total( 0 ), _hoisted( 0 ) {}
 
     // returns true if instruction can cause data or control escape, or is load
     bool canEscape( llvm::Instruction *i, std::unordered_set< llvm::Value * > &allocas ) {
@@ -103,11 +99,11 @@ struct HoistMasks : llvm::ModulePass {
         }
     }
 
-    bool runOnModule( llvm::Module &m ) {
+    llvm::PreservedAnalyses run( llvm::Module &m ) override {
         _mask = m.getFunction( "__divine_interrupt_mask" );
         if ( !_mask ) {
             std::cerr << "ERROR: could not find __divine_interrupt_mask" << std::endl;
-            return false;
+            return llvm::PreservedAnalyses::all();
         }
 
         for ( auto &fn : m )
@@ -116,7 +112,7 @@ struct HoistMasks : llvm::ModulePass {
 
         std::cout << "INFO: hoisted " << _hoisted << " out of " << _total
                   << " interrupt masks (" << 100 * double( _hoisted ) / _total << " %)"  << std::endl;
-        return true;
+        return llvm::PreservedAnalyses::none();
     }
 
   private:

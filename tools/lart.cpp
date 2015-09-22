@@ -72,7 +72,6 @@ void addPass( ModulePassManager &mgr, std::string n, std::string opt )
         mgr.addPass( interference::Pass() );
 
     if ( n == "weakmem" ) {
-        CompositePass p;
         weakmem::Substitute::Type t = weakmem::Substitute::TSO;
 
         auto c = opt.find( ':' );
@@ -93,19 +92,14 @@ void addPass( ModulePassManager &mgr, std::string n, std::string opt )
         else
             throw std::runtime_error( "unknown weakmem type: " + opt );
 
-        p->append( new weakmem::ScalarMemory );
-        p->append( new weakmem::Substitute( t, bufferSize ) );
-        return p;
+        mgr.addPass( weakmem::ScalarMemory() );
+        mgr.addPass( weakmem::Substitute( t, bufferSize ) );
     }
 
     if ( n == "interrupt" ) {
-        auto p = new CompositePass();
-        p->append( new interrupt::EliminateInterrupt() );
-        p->append( new interrupt::HoistMasks() );
-        return p;
+        mgr.addPass( interrupt::EliminateInterrupt() );
+        mgr.addPass( interrupt::HoistMasks() );
     }
-
-    throw std::runtime_error( "unknown pass type: " + n );
 }
 
 void process( Module *m, PassOpts opt )
