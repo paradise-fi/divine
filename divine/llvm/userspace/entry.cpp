@@ -3,7 +3,7 @@
 
 extern "C" {
     int main(...);
-    struct global_ctor { int prio; void (*fn)(); };
+    struct global_ctor { int prio; void (*fn)(); void *data; };
 
     void _divine_start( int ctorcount, void *ctors, int mainproto )
     {
