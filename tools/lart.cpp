@@ -99,6 +99,7 @@ void addPass( ModulePassManager &mgr, std::string n, std::string opt )
     if ( n == "interrupt" ) {
         mgr.addPass( interrupt::EliminateInterrupt() );
         mgr.addPass( interrupt::HoistMasks() );
+        mgr.addPass( interrupt::Mask() );
     }
 }
 

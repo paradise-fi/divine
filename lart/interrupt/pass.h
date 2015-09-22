@@ -11,6 +11,7 @@
 #include <lart/support/pass.h>
 
 #include <brick-assert.h>
+#include <lart/support/annotations.h>
 
 #include <iostream>
 #include <unordered_set>
@@ -118,6 +119,19 @@ struct HoistMasks : lart::Pass {
   private:
     llvm::Function *_mask;
     int _total, _hoisted;
+};
+
+struct Mask : lart::Pass {
+
+    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+        auto mask = m.getFunction( "__divine_interrupt_mask" );
+        ASSERT( mask );
+        annos::enumerateFunctionsForAnno( "lart.interrupt.masked", m, [&]( llvm::Function *fn ) {
+                ASSERT( !fn->empty() );
+                llvm::CallInst::Create( mask )->insertBefore( fn->front().begin() );
+            } );
+        return llvm::PreservedAnalyses::none();
+    }
 };
 
 }
