@@ -206,7 +206,7 @@ std::string Describe< HM, L >::value( Type *t, Ptr where )
     if ( t->isIntegerTy() ) {
         int w = TD().getTypeAllocSize( t );
         if ( !state().inBounds( where, 0 ) )
-            return "<out-of-bounds access>";
+            return "<out-of-bounds at " + brick::string::fmt( where.offset ) + ">";
         auto mflag = state().memoryflag( where );
         bool initd = true;
         if ( mflag.valid() )
