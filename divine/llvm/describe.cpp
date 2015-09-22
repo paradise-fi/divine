@@ -297,7 +297,7 @@ std::string fileline( const Instruction &insn )
 {
     const LLVMContext &ctx = insn.getContext();
     const DebugLoc &loc = insn.getDebugLoc();
-    if ( loc.get()->getLine() )
+    if ( loc.get() && loc.get()->getLine() )
         return loc.get()->getFilename().str() +
             std::string( ":" ) +
             brick::string::fmt( loc.get()->getLine() );
