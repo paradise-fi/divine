@@ -394,11 +394,6 @@ struct Linker {
                     if ( gvar->hasInitializer() )
                         push( gvar->getInitializer() );
             }
-
-            // bitcast function pointers
-            else if ( auto ce = ::llvm::dyn_cast< ::llvm::ConstantExpr >( val ) )
-                push( ce->getAsInstruction() );
-
             // catchall: instructions, constants, ...
             else if ( auto ins = ::llvm::dyn_cast< ::llvm::User >( val ) )
                 for ( auto op = ins->op_begin(); op != ins->op_end(); ++op )
