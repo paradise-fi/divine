@@ -151,8 +151,8 @@ struct Linker {
 
         // build llvm.global_ctors from used module ctors
         std::vector< ConstantArray * > ctors;
-        for ( auto &glo : m->getGlobalList() )
-            if ( isPrefixOf( ctorPrefix, glo.getName().data() ) ) {
+        for ( auto &glo : get()->getGlobalList() )
+            if ( isPrefixOf( ctorPrefix, glo.getName().data() ) && glo.getInitializer() ) {
                 if ( auto carr = ::llvm::dyn_cast< ConstantArray >( glo.getInitializer() ) )
                     ctors.emplace_back( carr );
                 else
