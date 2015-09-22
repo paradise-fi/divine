@@ -156,7 +156,7 @@ struct ProgramInfo {
         bool aggregate() { return type == Aggregate; }
         bool codePointer() { return type == CodePointer; }
 
-        operator uint32_t() const {
+        explicit operator uint32_t() const {
             return *reinterpret_cast< const uint32_t * >( this );
         }
 
