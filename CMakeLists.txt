@@ -154,7 +154,7 @@ include( FindPerl )
 
 include( CheckCXXSourceCompiles )
 set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
-set( CMAKE_REQUIRED_FLAGS "-std=c++11" ) # for the benefit of GCC
+set( CMAKE_REQUIRED_FLAGS "-std=c++14" ) # for the benefit of GCC
 
 ###############################################
 ## MISC OPTION IMPLEMENTATION
@@ -259,7 +259,7 @@ set( CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE} )
 if( WIN32 ) # strdup does not exist with c++11 on win32
     appendFlag( "CXX" "-std=gnu++11" )
 else()
-    appendFlag( "CXX" "-std=c++11" )
+    appendFlag( "CXX" "-std=c++14" )
 endif()
 
 if( NOT APPLE )
