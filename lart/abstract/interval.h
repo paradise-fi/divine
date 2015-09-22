@@ -6,8 +6,8 @@ namespace lart {
 namespace abstract {
 
 struct Interval : Common {
-    virtual void lower( llvm::Instruction *i ) {}
-    virtual Constrain constrain( llvm::Value *v, llvm::Value *constraint ) {
+    virtual void lower( llvm::Instruction * ) {}
+    virtual Constrain constrain( llvm::Value *, llvm::Value * /* constraint */ ) {
         return Constrain();
     }
     virtual llvm::Type *abstract( llvm::Type *t ) { return t; }

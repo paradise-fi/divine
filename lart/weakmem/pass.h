@@ -30,7 +30,7 @@ using LLVMFunctionSet = std::unordered_set< llvm::Function * >;
 struct ScalarMemory : lart::Pass
 {
     static char ID;
-    const int _wordsize = 8;
+    const unsigned _wordsize = 8;
 
     llvm::PreservedAnalyses run( llvm::Module &m ) {
         for ( auto &f : m )
@@ -57,7 +57,7 @@ struct ScalarMemory : lart::Pass
 
     llvm::Type *nonscalar( llvm::Value *v ) {
         auto ty = v->getType();
-        if ( ( ty->getPrimitiveSizeInBits() && ty->getPrimitiveSizeInBits() <= 8 * _wordsize )
+        if ( ( ty->getPrimitiveSizeInBits() && ty->getPrimitiveSizeInBits() <= 8u * _wordsize )
              || ty->isPointerTy() )
             return nullptr; /* already scalar */
         if ( ty->getPrimitiveSizeInBits() )
@@ -73,7 +73,7 @@ struct ScalarMemory : lart::Pass
         llvm::IRBuilder<> builder( load );
         llvm::Value *agg = llvm::UndefValue::get( ty );
         if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
-            for ( int i = 0; i < sty->getNumContainedTypes(); ++i ) {
+            for ( unsigned i = 0; i < sty->getNumContainedTypes(); ++i ) {
                 auto geptr = builder.CreateConstGEP2_64( load->getOperand(0), 0, i );
                 auto val = builder.CreateLoad( geptr );
                 transform( val );
@@ -92,7 +92,7 @@ struct ScalarMemory : lart::Pass
         llvm::Value *agg = store->getValueOperand();
         llvm::Instruction *replace = nullptr;
         if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
-            for ( int i = 0; i < sty->getNumContainedTypes(); ++i ) {
+            for ( unsigned i = 0; i < sty->getNumContainedTypes(); ++i ) {
                 auto geptr = builder.CreateConstGEP2_64( store->getPointerOperand(), 0, i );
                 auto val = builder.CreateExtractValue( agg, i );
                 auto nstore = builder.CreateStore( val, geptr );
