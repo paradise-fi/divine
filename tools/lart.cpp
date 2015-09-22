@@ -4,6 +4,7 @@
 #include <lart/weakmem/pass.h>
 #include <lart/interrupt/pass.h>
 #include <lart/support/composite.h>
+#include <lart/paropt/pass.h>
 
 #include <iostream>
 #include <cassert>
@@ -100,6 +101,12 @@ void addPass( ModulePassManager &mgr, std::string n, std::string opt )
         mgr.addPass( interrupt::EliminateInterrupt() );
         mgr.addPass( interrupt::HoistMasks() );
         mgr.addPass( interrupt::Mask() );
+    }
+
+    if ( n == "paropt" ) {
+        mgr.addPass( paropt::ConstConditionalJumpElimination() );
+        mgr.addPass( paropt::MergeBasicBlocks() );
+        mgr.addPass( paropt::ConstAllocaElimination() );
     }
 }
 
