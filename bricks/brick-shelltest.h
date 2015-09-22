@@ -997,6 +997,13 @@ struct Main {
         }
 
         journal.banner();
+
+        for ( Cases::iterator i = cases.begin(); i != cases.end(); ++i ) {
+            auto st = journal.status[ i->id() ];
+            if ( st != Journal::PASSED && st != Journal::SKIPPED )
+                std::cerr << i->tag( st ) << i->pretty() << std::endl;
+        }
+
         if ( die || fatal_signal )
             return 1;
 
