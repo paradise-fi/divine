@@ -411,6 +411,7 @@ struct Linker {
 inline void writeModule( ::llvm::Module *m, std::string out ) {
     std::error_code serr;
     ::llvm::raw_fd_ostream fs( out.c_str(), serr, ::llvm::sys::fs::F_None );
+    ::llvm::verifyModule( *m );
     WriteBitcodeToFile( m, fs );
 }
 
