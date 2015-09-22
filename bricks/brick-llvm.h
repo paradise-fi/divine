@@ -136,7 +136,7 @@ struct Linker {
     }
 
     template< typename Roots = std::initializer_list< std::string > >
-    Module *prune( Roots roots, Prune prune = Prune::UnusedModules ) {
+    void prune( Roots roots, Prune prune = Prune::UnusedModules ) {
         using ::llvm::ConstantArray;
         using ::llvm::GlobalVariable;
         using ::llvm::GlobalValue;
@@ -147,7 +147,7 @@ struct Linker {
 
 
         _Prune pruner( this, roots );
-        auto m = pruner.pruneModules();
+        pruner.pruneModules();
 
         // build llvm.global_ctors from used module ctors
         std::vector< ConstantArray * > ctors;
@@ -176,12 +176,13 @@ struct Linker {
             auto values = ConstantArray::get( ctorType, ArrayRef< Constant * >( ops ) );
             ASSERT( ctorType );
             ASSERT( values );
-            new GlobalVariable( *m, ctorType, false, GlobalValue::AppendingLinkage,
+            new GlobalVariable( *get(), ctorType, false, GlobalValue::AppendingLinkage,
                                 values, global_ctors );
         }
 
-        return prune == Prune::UnusedModules
-            ? m : pruner.pruneUnused();
+        if ( prune != Prune::UnusedModules )
+            pruner.pruneUnused();
+
     }
 
     Module *get() { return _root.get(); }
@@ -292,11 +293,11 @@ struct Linker {
             }
         }
 
-        Module *pruneModules() {
+        void pruneModules() {
             return prune( [&]( ::llvm::Value *v ) { pushWithModule( v ); } );
         }
 
-        Module *pruneUnused() {
+        void pruneUnused() {
             return prune( [&]( ::llvm::Value *v ) { pushSimple( v ); } );
         }
 
@@ -317,7 +318,7 @@ struct Linker {
         }
 
         template< typename Push >
-        Module *prune( Push push ) {
+        void prune( Push push ) {
             buildModuleMaps();
             init( push );
 
@@ -363,7 +364,6 @@ struct Linker {
                 glo->eraseFromParent();
             }
 
-            return m;
         }
 
         template< typename Push >
