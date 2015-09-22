@@ -245,19 +245,19 @@ struct Linker {
             _symbolModule.clear();
 
             auto m = _link->get();
-/* FIXME: metadata items are no longer Values, this needs to be refactored
             for ( auto &meta : m->getNamedMDList() ) {
                 if ( isPrefixOf( modulePrefix, meta.getName().data() ) ) {
                     auto mname = std::string( meta.getName().data() ).substr( std::string( modulePrefix ).size() );
                     auto &mset = _moduleMap[ mname ];
                     for ( int i = 0, count = meta.getNumOperands(); i < count; ++i ) {
-                        auto sym = &*meta.getOperand( i )->getOperand( 0 );
-                        mset.insert( sym );
-                        _symbolModule[ sym ].insert( _link->_modules[ mname ] );
+                        auto sym = ::llvm::dyn_cast< ::llvm::ValueAsMetadata >( meta.getOperand( i )->getOperand( 0 ) );
+                        if ( sym ) {
+                            mset.insert( sym->getValue() );
+                            _symbolModule[ sym->getValue() ].insert( _link->_modules[ mname ] );
+                        }
                     }
                 }
             }
-*/
         }
 
         bool pushSimple( ::llvm::Value *val ) {
