@@ -354,15 +354,14 @@ struct Linker {
              * Those must be separate runs, otherwise we could trip SEGV
              * by accessing already freed symbol by some use
              */
-            for ( auto glo : toDrop )
-                glo->dropAllReferences();
-
-            for ( auto glo : toDrop )
-                glo->replaceAllUsesWith( ::llvm::UndefValue::get( glo->getType() ) );
 
             for ( auto glo : toDrop ) {
-                glo->eraseFromParent();
+                glo->dropAllReferences();
+                glo->replaceAllUsesWith( ::llvm::UndefValue::get( glo->getType() ) );
             }
+
+            for ( auto glo : toDrop )
+                glo->eraseFromParent();
 
         }
 
@@ -404,6 +403,7 @@ struct Linker {
             else if ( auto ins = ::llvm::dyn_cast< ::llvm::User >( val ) )
                 for ( auto op = ins->op_begin(); op != ins->op_end(); ++op )
                     push( op->get() );
+
         }
     };
 };
