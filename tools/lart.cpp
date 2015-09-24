@@ -22,6 +22,8 @@
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
 
+#include <lart/support/meta.h>
+
 using namespace llvm;
 using namespace lart;
 
@@ -43,8 +45,17 @@ PassOpts parse( char **pass )
     return r;
 }
 
+std::vector< PassMeta > passes() {
+    return { weakmem::meta(), paropt::meta(), interrupt::meta() };
+}
+
 void addPass( ModulePassManager &mgr, std::string n, std::string opt )
 {
+    for ( auto pass : passes() ) {
+        if ( pass.select( mgr, n, opt ) )
+            return;
+    }
+
     if ( n == "aa" ) {
         aa::Pass::Type t;
 
@@ -72,42 +83,6 @@ void addPass( ModulePassManager &mgr, std::string n, std::string opt )
     if ( n == "interference" )
         mgr.addPass( interference::Pass() );
 
-    if ( n == "weakmem" ) {
-        weakmem::Substitute::Type t = weakmem::Substitute::TSO;
-
-        auto c = opt.find( ':' );
-        int bufferSize = -1;
-        if ( c != std::string::npos ) {
-            bufferSize = std::stoi( opt.substr( c + 1 ) );
-            opt = opt.substr( 0, c );
-        }
-
-        std::cout << "opt = " << opt << ", bufferSize = " << bufferSize << std::endl;
-
-        if ( opt == "tso" )
-            t = weakmem::Substitute::TSO;
-        else if ( opt == "pso" )
-            t = weakmem::Substitute::PSO;
-        else if ( opt == "sc" )
-            t = weakmem::Substitute::SC;
-        else
-            throw std::runtime_error( "unknown weakmem type: " + opt );
-
-        mgr.addPass( weakmem::ScalarMemory() );
-        mgr.addPass( weakmem::Substitute( t, bufferSize ) );
-    }
-
-    if ( n == "interrupt" ) {
-        mgr.addPass( interrupt::EliminateInterrupt() );
-        mgr.addPass( interrupt::HoistMasks() );
-        mgr.addPass( interrupt::Mask() );
-    }
-
-    if ( n == "paropt" ) {
-        mgr.addPass( paropt::ConstConditionalJumpElimination() );
-        mgr.addPass( paropt::MergeBasicBlocks() );
-        mgr.addPass( paropt::ConstAllocaElimination() );
-    }
 }
 
 void process( Module *m, PassOpts opt )
@@ -128,7 +103,11 @@ int main( int argc, char **argv )
                   << "pass aa (alias analysis), options:" << std::endl
                   << "    andersen: andersen-style, flow- and context-insensitive" << std::endl
                   << std::endl
-                  << "example: lart in.bc out.bc aa:andersen" << std::endl;
+                  << "example: lart in.bc out.bc aa:andersen" << std::endl << std::endl;
+        for ( auto pass : passes() ) {
+            pass.description( std::cerr );
+            std::cerr << std::endl;
+        }
         return 1;
     }
 

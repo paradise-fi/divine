@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include <lart/support/pass.h>
+#include <lart/support/meta.h>
 
 namespace lart {
 namespace weakmem {
@@ -29,6 +30,11 @@ using LLVMFunctionSet = std::unordered_set< llvm::Function * >;
  */
 struct ScalarMemory : lart::Pass
 {
+
+    static PassMeta meta() {
+        return passMeta< ScalarMemory >( "ScalarMemory", "breaks down loads and stores larger than 64 bits" );
+    }
+
     static char ID;
     const unsigned _wordsize = 8;
 
@@ -122,6 +128,36 @@ struct Substitute : lart::Pass
     }
 
     virtual ~Substitute() {}
+
+    static PassMeta meta() {
+        return passMetaC( "Substitute",
+                "Substitute loads and stores (and other memory manipulations) with appropriate "
+                "weak memory model versions.",
+                []( llvm::ModulePassManager &mgr, std::string opt ) {
+                    Type t = TSO;
+
+                    auto c = opt.find( ':' );
+                    int bufferSize = -1;
+                    if ( c != std::string::npos ) {
+                        bufferSize = std::stoi( opt.substr( c + 1 ) );
+                        opt = opt.substr( 0, c );
+                    }
+
+                    std::cout << "opt = " << opt << ", bufferSize = " << bufferSize << std::endl;
+
+                    if ( opt == "tso" )
+                        t = weakmem::Substitute::TSO;
+                    else if ( opt == "pso" )
+                        t = weakmem::Substitute::PSO;
+                    else if ( opt == "sc" )
+                        t = weakmem::Substitute::SC;
+                    else
+                        throw std::runtime_error( "unknown weakmem type: " + opt );
+
+                    return mgr.addPass( Substitute( t, bufferSize ) );
+                } );
+    }
+
 
     llvm::PreservedAnalyses run( llvm::Module &m ) {
         if ( _bufferSize > 0 ) {
@@ -548,6 +584,16 @@ struct Substitute : lart::Pass
     llvm::Function *_memmove[4], *_memcpy[4], *_memset[4];
     static const std::string tagNamespace;
 };
+
+inline PassMeta meta() {
+    return passMetaC< ScalarMemory, Substitute >( "weakmem",
+            "Transform SC code to code with given weak memory order approximation\n\n"
+            "options: { tso | pso | sc }:BUFFER_SIZE",
+            []( llvm::ModulePassManager &mgr, std::string opt ) {
+                ScalarMemory::meta().create( mgr, "" );
+                Substitute::meta().create( mgr, opt );
+            } );
+}
 
 }
 }

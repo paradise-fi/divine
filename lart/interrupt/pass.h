@@ -9,6 +9,7 @@
 #include <llvm/IR/CallSite.h>
 
 #include <lart/support/pass.h>
+#include <lart/support/meta.h>
 
 #include <brick-assert.h>
 #include <lart/support/annotations.h>
@@ -20,6 +21,10 @@ namespace lart {
 namespace interrupt {
 
 struct EliminateInterrupt : lart::Pass {
+
+    static PassMeta meta() {
+        return passMeta< EliminateInterrupt >( "EliminateInterrupt", "Remove all __divine_interrupt calls (they are deprecated)" );
+    }
 
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         auto interrupt = m.getFunction( "__divine_interrupt" );
@@ -40,6 +45,10 @@ struct EliminateInterrupt : lart::Pass {
 struct HoistMasks : lart::Pass {
 
     HoistMasks() : _total( 0 ), _hoisted( 0 ) {}
+
+    static PassMeta meta() {
+        return passMeta< HoistMasks >( "HoistMasks", "Extend masked regions as far as safely possible" );
+    }
 
     // returns true if instruction can cause data or control escape, or is load
     bool canEscape( llvm::Instruction *i, std::unordered_set< llvm::Value * > &allocas ) {
@@ -123,6 +132,10 @@ struct HoistMasks : lart::Pass {
 
 struct Mask : lart::Pass {
 
+    static PassMeta meta() {
+        return passMeta< Mask >( "Mask", "Mask whole functions annotated with 'lart.interrupt.masked'" );
+    }
+
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         auto mask = m.getFunction( "__divine_interrupt_mask" );
         ASSERT( mask );
@@ -133,6 +146,11 @@ struct Mask : lart::Pass {
         return llvm::PreservedAnalyses::none();
     }
 };
+
+inline PassMeta meta() {
+    return compositePassMeta< EliminateInterrupt, HoistMasks, Mask >( "interrupt",
+        "Optimize use of divine interrupt pasks" );
+}
 
 }
 }

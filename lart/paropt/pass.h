@@ -10,6 +10,7 @@
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 #include <lart/support/util.h>
+#include <lart/support/meta.h>
 
 #include <vector>
 #include <unordered_set>
@@ -24,6 +25,12 @@ namespace paropt {
 # Const Conditional Jump Elimination
 */
 struct ConstConditionalJumpElimination : lart::Pass {
+
+    static PassMeta meta() {
+        return passMeta< ConstConditionalJumpElimination >(
+                "ConstConditionalJumpElimination",
+                "Replace constant conditional jumps with unconditional branches." );
+    }
 
     llvm::BasicBlock *constJump( llvm::BasicBlock &bb ) {
         if ( auto br = llvm::dyn_cast< llvm::BranchInst >( bb.getTerminator() ) ) {
@@ -87,6 +94,10 @@ struct ConstConditionalJumpElimination : lart::Pass {
 */
 struct MergeBasicBlocks : lart::Pass {
 
+    static PassMeta meta() {
+        return passMeta< MergeBasicBlocks >( "MergeBasicBlocks" );
+    }
+
     void mergeBB( llvm::BasicBlock *bb ) {
         std::unordered_set< llvm::BasicBlock * > seen;
         mergeBB( 0, bb, seen );
@@ -141,6 +152,10 @@ of all loads with `%val`.
 
 */
 struct ConstAllocaElimination : lart::Pass {
+
+    static auto meta() {
+        return passMeta< ConstAllocaElimination >( "ConstAllocaElimination" );
+    }
 
     void processFunction( llvm::Function &fn ) {
         std::vector< std::pair< llvm::AllocaInst *, llvm::StoreInst * > > vars;
@@ -231,6 +246,11 @@ struct ConstAllocaElimination : lart::Pass {
     long allAllocas = 0;
     long deletedAllocas = 0;
 };
+
+inline auto meta() {
+    return compositePassMeta< ConstConditionalJumpElimination, MergeBasicBlocks, ConstAllocaElimination >(
+            "paropt", "Parallel-safe optimizations" );
+}
 
 } // namespace constify
 } // namespace lart
