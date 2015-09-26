@@ -39,6 +39,7 @@
 #include <map>
 #include <set>
 #include <deque> // for tests
+#include <cstddef>
 
 #include <brick-assert>
 
