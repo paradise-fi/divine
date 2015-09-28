@@ -55,6 +55,40 @@ struct _ValueType { using Type = typename It::value_type; };
 template< typename T >
 struct _ValueType< T * > { using Type = T; };
 
+template< typename T, bool isConst >
+struct _HasIterator {
+    template< typename C > static int64_t check( typename C::iterator * );
+    template< typename C > static int8_t check( ... );
+    template< typename C > static int64_t checkconst( typename C::const_iterator * );
+    template< typename C > static int8_t checkconst( ... );
+
+    static constexpr bool value = isConst
+        ? sizeof( checkconst< T >( nullptr ) ) == sizeof( int64_t )
+        : sizeof( check< T >( nullptr ) ) == sizeof( int64_t );
+};
+
+static_assert( _HasIterator< std::vector< int >, false >::value, "" );
+static_assert( !_HasIterator< int, false >::value, "" );
+
+template< typename T, bool _false, bool isConst >
+struct _GetIterator {
+    using Type = typename std::conditional< isConst,
+            typename std::decay< decltype( std::declval< const T & >().begin() ) >::type,
+            typename std::decay< decltype( std::declval< T & >().begin() ) >::type >::type;
+};
+
+template< typename T >
+struct _GetIterator< T, true, false > { using Type = typename T::iterator; };
+
+template< typename T >
+struct _GetIterator< T, true, true > { using Type = typename T::const_iterator; };
+
+template< typename T >
+using _Iterator = typename _GetIterator< T, _HasIterator< T, false >::value, false >::Type;
+
+template< typename T >
+using _ConstIterator = typename _GetIterator< T, _HasIterator< T, true >::value, true >::Type;
+
 /* range; basically just a tuple of iterrators.
  * Use wrapper functions range/crange for construction.
  *
@@ -90,18 +124,18 @@ struct Range {
 };
 
 template< typename Collection >
-auto range( Collection &col ) -> Range< typename Collection::iterator > {
-    return Range< typename Collection::iterator >( col );
+auto range( Collection &col ) -> Range< _Iterator< Collection > > {
+    return Range< _Iterator< Collection > >( col );
 }
 
 template< typename Collection >
-auto range( const Collection &col ) -> Range< typename Collection::const_iterator > {
-    return Range< typename Collection::const_iterator >( col );
+auto range( const Collection &col ) -> Range< _ConstIterator< Collection > > {
+    return Range< _ConstIterator< Collection > >( col );
 }
 
 template< typename Collection >
-auto crange( const Collection &col ) -> Range< typename Collection::const_iterator > {
-    return Range< typename Collection::const_iterator >( col );
+auto crange( const Collection &col ) -> Range< _ConstIterator< Collection > > {
+    return Range< _ConstIterator< Collection > >( col );
 }
 
 template< typename InputIt, typename UnaryPred >
@@ -224,8 +258,8 @@ struct Filter {
             return !( a == b );
         }
 
-        ValueType &operator*() { return *_it; }
-        ValueType *operator->() { return &*_it; }
+        auto operator*() -> decltype( *std::declval< BaseIterator & >() ) { return *_it; }
+        auto operator->() -> decltype( std::declval< BaseIterator & >().operator->() ) { return &*_it; }
 
         Iterator &operator++() {
             ++_it;
@@ -291,7 +325,9 @@ struct Flatten {
         }
 
         ValueType &operator*() { return *_sub; }
+        const ValueType &operator*() const { return *_sub; }
         ValueType *operator->() { return &*_sub; }
+        const ValueType *operator->() const { return &*_sub; }
 
         Iterator &operator++() {
             ++_sub;
@@ -347,17 +383,17 @@ struct Query {
 
     template< typename UnaryPred >
     bool all( UnaryPred pred ) {
-        return query::all( _range, pred );
+        return query::all( _range.begin(), _range.end(), pred );
     }
 
     template< typename UnaryPred >
     bool any( UnaryPred pred ) {
-        return query::any( _range, pred );
+        return query::any( _range.begin(), _range.end(), pred );
     }
 
     template< typename UnaryPred >
     bool none( UnaryPred pred ) {
-        return query::none( _range, pred );
+        return query::none( _range.begin(), _range.end(), pred );
     }
 
     template< typename UnaryFn >
@@ -391,9 +427,10 @@ struct Query {
     ptrdiff_t size() { return std::distance( begin(), end() ); }
 
     template< typename UnaryFn >
-    void forall( UnaryFn fn ) {
+    Query &forall( UnaryFn fn ) {
         for ( auto &a : _range )
             fn( a );
+        return *this;
     }
 
     template< typename KeySelect,
@@ -457,26 +494,86 @@ struct Query {
     ValueType min() { return *std::min_element( begin(), end() ); }
     ValueType max() { return *std::max_element( begin(), end() ); }
 
+    template< typename Map, typename FindResult, typename R = typename std::result_of< Map( ValueType ) >::type >
+    struct FindMapResult {
+        FindMapResult( FindResult find, Map map ) : find( find ), map( map ) { }
+
+        FindResult find;
+        Map map;
+
+        R get() { return map( find.get() ); }
+        R getOr( R x ) { return find.found ? get() : x; }
+    };
+
+    struct FindResult {
+        FindResult( Iterator it, long pos ) : iter( it ), pos( pos ), found( true ) { }
+        explicit FindResult( Iterator end ) : iter( end ), pos( -1 ), found( false ) { }
+
+        Iterator iter;
+        const long pos;
+        const bool found;
+
+        ValueType &get() { return *iter; }
+        ValueType getOr( ValueType x ) { return found ? get() : x; }
+
+        template< typename Map >
+        FindMapResult< Map, FindResult > map( Map map ) {
+            return FindMapResult< Map, FindResult >{ *this, map };
+        }
+    };
+
+    template< typename Pred >
+    FindResult find( Pred pred ) {
+        return find( pred, begin(), end() );
+    }
+
+    template< typename Pred >
+    FindResult find( Pred pred, Iterator i, const Iterator e ) {
+        long pos = 0;
+        for ( ; i != e; ++i  ) {
+            if ( pred( *i ) )
+                return FindResult{ i, pos };
+            ++pos;
+        }
+        return FindResult{ end() };
+    }
+
+    // find first occurence satisfying 'what' strictly before first occurence
+    // satisfying 'before', if occurence satisfying 'before' is not found
+    // this is equivalent to 'find'
+    template< typename What, typename Before >
+    FindResult findBefore( What what, Before before ) {
+        return find( what, begin(), find( before ).iter );
+    }
+
+    FindResult singleton() {
+        if ( !empty() && std::next( begin() ) == end() )
+            return FindResult{ begin(), 0 };
+        return FindResult{ end() };
+    }
+
+    bool empty() { return begin() == end(); }
+
     Iterator begin() { return _range.begin(); }
     Iterator end() { return _range.end(); }
 
-  private:
+  protected:
     Range _range;
 };
 
 template< typename Collection >
-auto query( Collection &col ) -> Query< Range< typename Collection::iterator > > {
-    return Query< Range< typename Collection::iterator > >( range( col ) );
+auto query( Collection &col ) -> Query< Range< _Iterator< Collection > > > {
+    return Query< Range< _Iterator< Collection > > >( range( col ) );
 }
 
 template< typename Collection >
-auto query( const Collection &col ) -> Query< Range< typename Collection::const_iterator > > {
-    return Query< Range< typename Collection::const_iterator > >( crange( col ) );
+auto query( const Collection &col ) -> Query< Range< _ConstIterator< Collection > > > {
+    return Query< Range< _ConstIterator< Collection > > >( crange( col ) );
 }
 
 template< typename Collection >
-auto cquery( const Collection &col ) -> Query< Range< typename Collection::const_iterator > > {
-    return Query< Range< typename Collection::const_iterator > >( crange( col ) );
+auto cquery( const Collection &col ) -> Query< Range< _ConstIterator< Collection > > > {
+    return Query< Range< _ConstIterator< Collection > > >( crange( col ) );
 }
 
 template< typename Collection >
@@ -513,8 +610,8 @@ struct Range {
 struct Query {
 
     struct Id { template< typename T > T operator()( T t ) const { return t; } };
-    struct ConstTrue { template< typename T > bool operator()( T t ) const { return true; } };
-    struct ConstFalse { template< typename T > bool operator()( T t ) const { return false; } };
+    struct ConstTrue { template< typename T > bool operator()( T ) const { return true; } };
+    struct ConstFalse { template< typename T > bool operator()( T ) const { return false; } };
 
     static const Id id;
     static const ConstTrue constTrue;
@@ -689,7 +786,7 @@ struct Query {
         query::query( vec )
             .groupBy( id )
             .forall( []( std::pair< int, std::vector< int > > p ) {
-                    ASSERT_EQ( p.second.size(), p.first );
+                    ASSERT_EQ( int( p.second.size() ), p.first );
                     for ( auto x : p.second )
                         ASSERT_EQ( x, p.first );
                 } );
