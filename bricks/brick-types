@@ -11,6 +11,13 @@
 /*
  * (c) 2006, 2014 Petr Ročkai <me@mornfall.net>
  * (c) 2013-2014 Vladimír Štill <xstill@fi.muni.cz>
+ */
+
+/* Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -972,6 +979,28 @@ struct Union : Comparable {
         UNREACHABLE( "Invalid _doSwapDifferent" );
     }
 };
+
+template< typename Fn, typename R = typename std::result_of< Fn() >::type >
+struct Lazy {
+
+    Lazy( Fn &&fn ) : _fn( std::forward< Fn >( fn ) ), _val() { }
+
+    R &get() {
+        if ( _val.empty() )
+            _val = _fn();
+        return _val.template get< R >();
+    }
+
+    R &operator*() { return get(); }
+    R *operator->() { return &get(); }
+
+  private:
+    Fn _fn;
+    Union< R > _val;
+};
+
+template< typename Fn, typename R = typename std::result_of< Fn() >::type >
+Lazy< Fn, R > lazy( Fn &&fn ) { return Lazy< Fn, R >( std::forward< Fn >( fn ) ); }
 
 template< template< typename > class C, typename T, typename F >
 using FMap = C< typename std::result_of< F( T ) >::type >;
