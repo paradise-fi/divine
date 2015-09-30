@@ -13,6 +13,9 @@ namespace lart {
 
 namespace util {
 
+template< typename T >
+using Set = std::unordered_set< T >;
+
 template< typename >
 struct ReturnType { };
 
@@ -41,6 +44,52 @@ struct MethodArg< i, R (Obj::*)( Args... ) const > {
     using T = typename _Get< i, Args... >::T;
 };
 
+template< typename It >
+struct Range {
+    Range( It begin, It end ) : _begin( begin ), _end( end ) { }
+
+    It begin() const { return _begin; }
+    It end() const { return _end; }
+
+  private:
+    const It _begin;
+    const It _end;
+};
+
+template< typename It >
+auto range( It begin, It end ) { return Range< It >( begin, end ); }
+
+template< typename T, typename It = typename T::reverse_iterator >
+auto reverse( T &t ) { return Range< It >( t.rbegin(), t.rend() ); }
+
+template< typename T >
+struct PtrPlusBit {
+    explicit PtrPlusBit( T *ptr ) : ptr( ptr ) {
+        ASSERT( (uintptr_t( ptr ) & 0x1) == 0 );
+    }
+
+    bool bit() { return (uintptr_t( ptr ) & 0x1u) == 0x1u; }
+    void bit( bool v ) { ptr = reinterpret_cast< T * >( uintptr_t( get() ) | uintptr_t( v ) ); }
+    T *get() { return reinterpret_cast< T * >( uintptr_t( ptr ) & ~uintptr_t(0x1) ); }
+    T &operator*() { return *get(); }
+    T *operator->() { return get(); }
+
+  private:
+    T *ptr;
+};
+
+template< typename X >
+auto succs( X *x ) { return range( llvm::succ_begin( x ), llvm::succ_end( x ) ); }
+
+template< typename X >
+auto succs( X &x ) { return succs( &x ); }
+
+template< typename X >
+auto preds( X *x ) { return range( llvm::pred_begin( x ), llvm::pred_end( x ) ); }
+
+template< typename X >
+auto preds( X &x ) { return preds( x ); }
+
 }
 
 template< typename What >
@@ -62,6 +111,68 @@ bool llvmcase( What *w, Lambda lambda, Lambdas &&...lambdas ) {
 template< typename What, typename... Lambdas >
 bool llvmcase( What &w, Lambdas &&...lambdas ) {
     return llvmcase( &w, std::forward< Lambdas >( lambdas )... );
+}
+
+template< typename Pre, typename Post >
+void bbDfs( llvm::BasicBlock &bb, util::Set< llvm::BasicBlock * > &seen, Pre pre, Post post ) {
+    std::vector< util::PtrPlusBit< llvm::BasicBlock > > stack;
+    stack.emplace_back( &bb );
+    while ( !stack.empty() ) {
+        auto &v = stack.back();
+        if ( v.bit() ) {
+            post( v.get() );
+            stack.pop_back();
+        } else {
+            bool inserted = seen.insert( v.get() ).second;
+            if ( inserted ) {
+                pre( v.get() );
+                v.bit( true );
+                for ( auto succ : util::succs( v.get() ) )
+                    stack.emplace_back( succ );
+            } else
+                stack.pop_back();
+        }
+    }
+}
+
+template< typename Pre, typename Post >
+void bbDfs( llvm::Function &fn, util::Set< llvm::BasicBlock * > &seen, Pre pre, Post post ) {
+    if ( fn.empty() )
+        return;
+
+    bbDfs( fn.getEntryBlock(), seen, pre, post );
+}
+
+template< typename Pre, typename Post >
+void bbDfs( llvm::Function &fn, Pre pre, Post post ) {
+    util::Set< llvm::BasicBlock * > seen;
+    bbDfs( fn, seen, pre, post );
+}
+
+template< typename Pre, typename Post >
+void bbDfs( llvm::BasicBlock &bb, Pre pre, Post post ) {
+    util::Set< llvm::BasicBlock * > seen;
+    bbDfs( bb, seen, pre, post );
+}
+
+template< typename Post >
+void bbPostorder( llvm::Function &fn, Post post ) {
+    return bbDfs( fn, []( llvm::BasicBlock * ) { }, post );
+}
+
+template< typename Post >
+void bbPostorder( llvm::BasicBlock &bb, Post post ) {
+    return bbDfs( bb, []( llvm::BasicBlock * ) { }, post );
+}
+
+template< typename Pre >
+void bbPreorder( llvm::Function &fn, Pre pre ) {
+    return bbDfs( fn, pre, []( llvm::BasicBlock * ) { } );
+}
+
+template< typename Pre >
+void bbPreorder( llvm::BasicBlock &bb, Pre pre ) {
+    return bbDfs( bb, pre, []( llvm::BasicBlock * ) { } );
 }
 
 }
