@@ -7,10 +7,14 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/CallSite.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 #include <lart/support/util.h>
 #include <lart/support/meta.h>
+#include <lart/escape/analysis.h>
+
+#include <brick-types.h>
 
 #include <vector>
 #include <unordered_set>
@@ -136,20 +140,13 @@ struct MergeBasicBlocks : lart::Pass {
 Clang often generates allocas even for variables which are not changed ever,
 those can be eliminated without changing properties of parallel program.
 
-The alloca can look like this (all in one basic block):
+The alloca can be eliminated if:
+1.  it does not escape function's scope
+2.  is only accessed by load and store instruction
+3.  there is only one store
+4.  the store dominates all loads
 
-```llvm
-%var = alloca <type>
-; any number of alloca, llvm.gdb.declare calls, bitcasts, and safe stores
-%
-store <type> %val, <type>* %var
-```
-
-this is definition of alloca `%var` with initial value of register `%val`.
-
-If any every use `%var` is load, then we can eliminate `%var` and replace results
-of all loads with `%val`.
-
+Not that calls to llvm.dbg.declare do not count as uses.
 */
 struct ConstAllocaElimination : lart::Pass {
 
@@ -157,85 +154,60 @@ struct ConstAllocaElimination : lart::Pass {
         return passMeta< ConstAllocaElimination >( "ConstAllocaElimination" );
     }
 
-    void processFunction( llvm::Function &fn ) {
+    void processFunction( llvm::Function &fn, escape::EscapeAnalysis::Analysis &&esc ) {
         std::vector< std::pair< llvm::AllocaInst *, llvm::StoreInst * > > vars;
+        auto dt = brick::types::lazy( [&]() { return llvm::DominatorTreeAnalysis().run( fn ); } );
 
-        for ( auto &bb : fn ) {
-            for ( auto &inst : bb ) {
-                llvmcase( inst, [&]( llvm::AllocaInst *alloca ) {
-                    ++allAllocas;
-                    bool seen = false;
-                    bool done = false;
-                    std::unordered_set< llvm::Value * > tracking{ alloca };
-
-                    for ( auto &i : bb ) {
-                        if ( !seen )
-                            seen = &i == alloca;
-                        llvmcase( i,
-                            []( llvm::DbgDeclareInst * ) { },
-                            []( llvm::AllocaInst * ) { },
-                            [&]( llvm::CastInst *cast ) {
-                                if ( tracking.count( cast->getOperand( 0 ) ) )
-                                    done = true; // TODO
-                                    // tracking.insert( cast );
-                            },
-                            [&]( llvm::StoreInst *store ) {
-                                auto val = store->getValueOperand();
-                                if ( tracking.count( val ) ) {
-                                    done = true; // pointer to alloca taken (escape)
-                                } else {
-                                    auto ptr = store->getPointerOperand();
-                                    if ( ptr == alloca ) {
-                                        vars.emplace_back( alloca, store );
-                                        done = true; // found
-                                    }
-                                }
-                            },
-                            [&]( llvm::Value * ) { done = true; } ); // may have escaped
-
-                        if ( done )
-                            break;
-                    }
-                } );
-            }
+        for ( auto &inst: query::query( fn ).flatten() ) {
+            llvmcase( inst, [&]( llvm::AllocaInst *alloca ) {
+                ++allAllocas;
+                if ( esc.escapes( alloca ).empty() ) {
+                    auto users = query::query( alloca->users() ).filter( query::isnot< llvm::DbgDeclareInst > );
+                    llvm::StoreInst *store = users.map( query::llvmdyncast< llvm::StoreInst > )
+                            .filter( query::notnull )
+                            .singleton()
+                            .getOr( nullptr );
+                    if ( store // single store
+                            && users.filter( query::isnot< llvm::StoreInst > )
+                                    .all( query::is< llvm::LoadInst > ) // + only loads and dbg info
+                            && users.map( query::llvmdyncast< llvm::LoadInst > ) // store dominates all loads
+                                    .filter( query::notnull )
+                                    .all( [&]( auto l ) { return dt->dominates( store, l ); } )
+                       )
+                        vars.emplace_back( alloca, store );
+                }
+            } );
         }
 
         for ( auto var : vars ) {
-            bool allLoads = true;
-            std::vector< llvm::Value * > users;
-            for ( auto uit = var.first->use_begin(), end = var.first->use_end(); allLoads && uit != end; ++uit ) {
-                allLoads &= *uit == var.second || llvm::isa< llvm::LoadInst >( *uit );
-                users.push_back( *uit );
-            }
-            if ( allLoads ) {
-                auto val = var.second->getValueOperand();
-                for ( auto user : users )
-                    llvmcase( user,
-                        [val]( llvm::LoadInst *load ) {
-                            load->replaceAllUsesWith( val );
-                            load->eraseFromParent();
-                        },
-                        []( llvm::DbgDeclareInst *dbg ) {
-                            dbg->eraseFromParent(); // TODO: fixme
-                        },
-                        [var]( llvm::StoreInst *store ) {
-                            ASSERT_EQ( store, var.second );
-                            store->eraseFromParent();
-                        },
-                        []( llvm::Value *val ) {
-                            val->dump();
-                            ASSERT_UNREACHABLE( "unhandled case" );
-                        }
-                        );
-                var.first->eraseFromParent();
-                ++deletedAllocas;
-            }
+            auto val = var.second->getValueOperand();
+            for ( auto user : var.first->users() )
+                llvmcase( user,
+                    [val]( llvm::LoadInst *load ) {
+                        load->replaceAllUsesWith( val );
+                        load->eraseFromParent();
+                    },
+                    []( llvm::DbgDeclareInst *dbg ) {
+                        dbg->eraseFromParent(); // TODO: fixme: copy debuginfo somehow
+                    },
+                    [var]( llvm::StoreInst *store ) {
+                        ASSERT_EQ( store, var.second );
+                        store->eraseFromParent();
+                    },
+                    []( llvm::Value *val ) {
+                        val->dump();
+                        ASSERT_UNREACHABLE( "unhandled case" );
+                    } );
+            var.first->eraseFromParent();
+            ++deletedAllocas;
         }
     }
 
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
+        escape::EscapeAnalysis escape( m );
+
         for ( auto &fn : m )
-            processFunction( fn );
+            processFunction( fn, escape.analyze( fn ) );
 
         std::cout << "INFO: removed " << deletedAllocas << " out of " << allAllocas
                   << " (" << double( 100 * deletedAllocas ) / allAllocas
