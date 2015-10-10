@@ -17,6 +17,7 @@
 #include <llvm/Support/FileSystem.h>
 
 #include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Support/raw_os_ostream.h>
 
 #include <llvm/IR/Verifier.h>
 #include <llvm/IR/LLVMContext.h>
@@ -161,7 +162,10 @@ int main( int argc, char **argv )
 
     PassOpts passes = parse( argv + 3 );
     process( module, passes );
-    llvm::verifyModule( *module );
+
+    llvm::raw_os_ostream cerr( std::cerr );
+    if ( llvm::verifyModule( *module, &cerr ) )
+        throw "ivalid bitcode";
 
     WriteBitcodeToFile( module, outs );
 }
