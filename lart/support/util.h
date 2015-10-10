@@ -5,6 +5,8 @@
 #include <llvm/Support/Casting.h>
 #include <brick-assert.h>
 #include <brick-types.h>
+#include <chrono>
+#include <string>
 
 #ifndef LART_SUPPORT_UTIL_H
 #define LART_SUPPORT_UTIL_H
@@ -46,6 +48,8 @@ struct MethodArg< i, R (Obj::*)( Args... ) const > {
 
 template< typename It >
 struct Range {
+    using iterator = It;
+
     Range( It begin, It end ) : _begin( begin ), _end( end ) { }
 
     It begin() const { return _begin; }
@@ -57,7 +61,35 @@ struct Range {
 };
 
 template< typename It >
-auto range( It begin, It end ) { return Range< It >( begin, end ); }
+struct FixLLVMIt : It {
+    using reference = typename std::conditional<
+            std::is_same< typename It::value_type &, typename It::reference >::value,
+            typename It::value_type,
+            typename It::value_type &
+        >::type;
+
+    reference operator*() { return *It::operator*(); }
+    using It::It;
+    FixLLVMIt( const It &it ) : It( it ) { }
+    FixLLVMIt( It &&it ) : It( std::move( it ) ) { }
+};
+
+using LLVMBBSuccIt = llvm::SuccIterator< llvm::TerminatorInst *, llvm::BasicBlock >;
+template<>
+struct FixLLVMIt< LLVMBBSuccIt > : LLVMBBSuccIt
+{
+    using It = LLVMBBSuccIt;
+    using reference = llvm::BasicBlock &;
+
+    reference operator*() { return *It::operator*(); }
+    using It::It;
+    FixLLVMIt() : It( nullptr ) { }
+    FixLLVMIt( const It &it ) : It( it ) { }
+    FixLLVMIt( It &&it ) : It( std::move( it ) ) { }
+};
+
+template< typename It >
+auto range( It begin, It end ) { return Range< FixLLVMIt< It > >( begin, end ); }
 
 template< typename T, typename It = typename T::reverse_iterator >
 auto reverse( T &t ) { return Range< It >( t.rbegin(), t.rend() ); }
@@ -79,16 +111,29 @@ struct PtrPlusBit {
 };
 
 template< typename X >
-auto succs( X *x ) { return range( llvm::succ_begin( x ), llvm::succ_end( x ) ); }
+auto succs( X *x ) { return range( succ_begin( x ), succ_end( x ) ); }
 
 template< typename X >
 auto succs( X &x ) { return succs( &x ); }
 
 template< typename X >
-auto preds( X *x ) { return range( llvm::pred_begin( x ), llvm::pred_end( x ) ); }
+auto preds( X *x ) { return range( pred_begin( x ), pred_end( x ) ); }
 
 template< typename X >
-auto preds( X &x ) { return preds( x ); }
+auto preds( X &x ) { return preds( &x ); }
+
+struct Timer {
+    explicit Timer( std::string msg ) : _msg( msg ), _begin( std::chrono::high_resolution_clock::now() ) { }
+    ~Timer() {
+        std::cerr << "INFO: " << _msg << ": "
+                  << std::chrono::duration_cast< std::chrono::milliseconds >( std::chrono::high_resolution_clock::now() - _begin ).count()
+                  << "ms" << std::endl;
+    }
+
+  private:
+    std::string _msg;
+    std::chrono::high_resolution_clock::time_point _begin;
+};
 
 }
 
@@ -127,8 +172,8 @@ void bbDfs( llvm::BasicBlock &bb, util::Set< llvm::BasicBlock * > &seen, Pre pre
             if ( inserted ) {
                 pre( v.get() );
                 v.bit( true );
-                for ( auto succ : util::succs( v.get() ) )
-                    stack.emplace_back( succ );
+                for ( auto &succ : util::succs( v.get() ) )
+                    stack.emplace_back( &succ );
             } else
                 stack.pop_back();
         }
