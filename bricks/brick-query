@@ -185,7 +185,7 @@ struct Map {
     Map() = default;
     Map( Range range, UnaryFn fn ) : _range( range ), _fn( fn ) { }
 
-    using ValueType = typename std::result_of< UnaryFn( typename Range::iterator::value_type ) >::type;
+    using ValueType = decltype( std::declval< UnaryFn & >()( *std::declval< typename Range::iterator & >() ) );
     using BaseIterator = typename Range::iterator;
 
     struct Iterator : std::iterator< std::forward_iterator_tag, ValueType > {
@@ -478,7 +478,7 @@ struct Query {
             return x;
         return *it;
     }
-
+/*
     auto sort() -> Query< std::set< ValueType > > {
         return Query< std::set< ValueType > >( begin(), end() );
     }
@@ -496,6 +496,11 @@ struct Query {
         if ( ib == ie )
             return *ib;
         return (*ib + *ie) / ValueType( 2 );
+    }
+    */
+
+    auto unstableUnique() -> Query< std::unordered_set< ValueType > > {
+        return Query< std::unordered_set< ValueType > >( begin(), end() );
     }
 
     template< typename VT = ValueType, typename = Copyable< VT > >
