@@ -1,4 +1,5 @@
 #include <iostream>
+#include <brick-assert.h>
 
 #ifndef LART_SUPPORT_META_H
 #define LART_SUPPORT_META_H

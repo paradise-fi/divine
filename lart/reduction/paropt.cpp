@@ -12,7 +12,9 @@
 
 #include <lart/support/util.h>
 #include <lart/support/meta.h>
-#include <lart/escape/analysis.h>
+#include <lart/support/pass.h>
+#include <lart/support/query.h>
+#include <lart/analysis/escape.h>
 
 #include <brick-types.h>
 
@@ -23,7 +25,7 @@
 #include <iostream>
 
 namespace lart {
-namespace paropt {
+namespace reduction {
 
 /*MD
 # Const Conditional Jump Elimination
@@ -154,7 +156,7 @@ struct ConstAllocaElimination : lart::Pass {
         return passMeta< ConstAllocaElimination >( "ConstAllocaElimination" );
     }
 
-    void processFunction( llvm::Function &fn, escape::EscapeAnalysis::Analysis &&esc ) {
+    void processFunction( llvm::Function &fn, analysis::EscapeAnalysis::Analysis &&esc ) {
         std::vector< std::pair< llvm::AllocaInst *, llvm::StoreInst * > > vars;
         auto dt = brick::types::lazy( [&]() { return llvm::DominatorTreeAnalysis().run( fn ); } );
 
@@ -204,7 +206,7 @@ struct ConstAllocaElimination : lart::Pass {
     }
 
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
-        escape::EscapeAnalysis escape( m );
+        analysis::EscapeAnalysis escape( m );
 
         for ( auto &fn : m )
             processFunction( fn, escape.analyze( fn ) );
@@ -219,10 +221,10 @@ struct ConstAllocaElimination : lart::Pass {
     long deletedAllocas = 0;
 };
 
-inline auto meta() {
+PassMeta paroptPass() {
     return compositePassMeta< ConstConditionalJumpElimination, MergeBasicBlocks, ConstAllocaElimination >(
             "paropt", "Parallel-safe optimizations" );
 }
 
-} // namespace constify
+} // namespace reduce
 } // namespace lart

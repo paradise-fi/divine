@@ -18,7 +18,7 @@
 #include <unordered_set>
 
 namespace lart {
-namespace interrupt {
+namespace reduction {
 
 struct EliminateInterrupt : lart::Pass {
 
@@ -147,7 +147,7 @@ struct Mask : lart::Pass {
     }
 };
 
-inline PassMeta meta() {
+PassMeta interruptPass() {
     return compositePassMeta< EliminateInterrupt, HoistMasks, Mask >( "interrupt",
         "Optimize use of divine interrupt pasks" );
 }

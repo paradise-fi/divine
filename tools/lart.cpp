@@ -2,9 +2,8 @@
 #include <lart/abstract/pass.h>
 #include <lart/interference/pass.h>
 #include <lart/weakmem/pass.h>
-#include <lart/interrupt/pass.h>
+#include <lart/reduction/passes.h>
 #include <lart/support/composite.h>
-#include <lart/paropt/pass.h>
 
 #include <iostream>
 #include <cassert>
@@ -21,8 +20,6 @@
 #include <llvm/IR/PassManager.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
-
-#include <lart/support/meta.h>
 
 using namespace llvm;
 using namespace lart;
@@ -46,7 +43,11 @@ PassOpts parse( char **pass )
 }
 
 std::vector< PassMeta > passes() {
-    return { weakmem::meta(), paropt::meta(), interrupt::meta() };
+    std::vector< PassMeta > out;
+    out.push_back( weakmem::meta() );
+    auto reduce = reduction::passes();
+    std::copy( reduce.begin(), reduce.end(), std::back_inserter( out ) );
+    return out;
 }
 
 void addPass( ModulePassManager &mgr, std::string n, std::string opt )

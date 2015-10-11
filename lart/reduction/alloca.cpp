@@ -11,18 +11,18 @@
 
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
+#include <lart/analysis/escape.h>
+#include <lart/analysis/bbreach.h>
 
 #include <brick-assert.h>
 #include <lart/support/query.h>
 
 #include <iostream>
 #include <unordered_set>
-
-#ifndef LART_ALLOCA_PASS_H
-#define LART_ALLOCA_PASS_H
+#include <unordered_map>
 
 namespace lart {
-namespace alloca {
+namespace reduction {
 
 struct DeadAllocaZeoring : lart::Pass {
 
@@ -30,7 +30,7 @@ struct DeadAllocaZeoring : lart::Pass {
         return passMeta< DeadAllocaZeoring >( "DeadAllocaZeoring", "Zero allocas after last use" );
     }
 
-    void runFn( llvm::Function &fn, escape::EscapeAnalysis::Result &&esc ) {
+    void runFn( llvm::Function &fn, analysis::EscapeAnalysis::Result &&esc ) {
         auto allocas = query::query( fn ).flatten()
                           .map( query::llvmdyncast< llvm::AllocaInst > )
                           .filter( query::notnull )
@@ -62,7 +62,6 @@ struct DeadAllocaZeoring : lart::Pass {
             irb.CreateCall( _mzero, { ptr, siv } );
         };
 
-        auto dt = llvm::DominatorTreeAnalysis().run( fn );
         analysis::BasicBlockSCC sccs( fn );
         analysis::Reachability reach( fn, &sccs );
 
@@ -166,7 +165,7 @@ struct DeadAllocaZeoring : lart::Pass {
         _m = &m;
         _dl = std::make_unique< llvm::DataLayout >( &m );
         _mzero = _mkmzero( m );
-        escape::EscapeAnalysis esc( m );
+        analysis::EscapeAnalysis esc( m );
         for ( auto &fn : m )
             runFn( fn, esc.run( fn ) );
         std::cerr << "INFO: zeroed " << _zeroed << " out of " << _allocas << " allocas ("
@@ -237,12 +236,10 @@ struct DeadAllocaZeoring : lart::Pass {
     }
 };
 
-inline PassMeta meta() {
+PassMeta allocaPass() {
     return compositePassMeta< DeadAllocaZeoring >( "alloca",
         "Optimize alloca use." );
 }
 
-} // namespace interrupt
+} // namespace reduce
 } // namespace lart
-
-#endif // LART_ALLOCA_PASS_H

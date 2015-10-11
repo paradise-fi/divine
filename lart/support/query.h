@@ -31,7 +31,7 @@ template< typename T > IsClosure< T > is;
 template< typename T > IsNotClosure< T > isnot;
 
 template< typename F >
-bool negate( F f ) { return [=]( auto x ) { return !f( x ); }; }
+static inline bool negate( F f ) { return [=]( auto x ) { return !f( x ); }; }
 
 static inline bool notnull( void *ptr ) { return ptr != nullptr; }
 
@@ -60,7 +60,7 @@ struct RefToPtr {
     T *operator()( T &x ) { return &x; }
 };
 
-RefToPtr refToPtr;
+static RefToPtr refToPtr;
 
 template< typename F, typename G >
 auto operator&&( F f, G g ) { return [f,g]( auto &&x ) { return f( x ) && g( x ); }; }

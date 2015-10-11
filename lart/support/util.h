@@ -7,6 +7,10 @@
 #include <brick-types.h>
 #include <chrono>
 #include <string>
+#include <unordered_set>
+#include <iostream>
+
+#include <llvm/IR/CFG.h>
 
 #ifndef LART_SUPPORT_UTIL_H
 #define LART_SUPPORT_UTIL_H
