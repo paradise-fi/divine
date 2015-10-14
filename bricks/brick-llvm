@@ -421,6 +421,38 @@ struct Linker {
     };
 };
 
+struct CompileUnitInfo {
+
+    CompileUnitInfo( ::llvm::GlobalValue *val ) : _root( nullptr ) {
+
+        for ( auto &meta : val->getParent()->getNamedMDList() ) {
+            if ( isPrefixOf( Linker::modulePrefix, meta.getName().data() ) ) {
+                for ( auto op : meta.operands() ) {
+                    auto sym = ::llvm::dyn_cast< ::llvm::ValueAsMetadata >( op->getOperand( 0 ) );
+                    if ( sym && sym->getValue() == val ) {
+                        _root = &meta;
+                        break;
+                    }
+                }
+            }
+            if ( _root )
+                break;
+        }
+
+        for ( auto op : _root->operands() ) {
+            auto sym = ::llvm::dyn_cast< ::llvm::ValueAsMetadata >( op->getOperand( 0 ) );
+            if ( sym )
+                _content.insert( sym->getValue() );
+        }
+    }
+
+    const std::unordered_set< ::llvm::Value * > &globals() const { return _content; }
+
+  private:
+    ::llvm::NamedMDNode *_root;
+    std::unordered_set< ::llvm::Value * > _content;
+};
+
 inline void writeModule( ::llvm::Module *m, std::string out ) {
     std::error_code serr;
     ::llvm::raw_fd_ostream fs( out.c_str(), serr, ::llvm::sys::fs::F_None );
