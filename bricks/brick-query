@@ -237,8 +237,8 @@ struct Map {
 template< typename Range, typename UnaryPred >
 struct Filter {
 
-    using ValueType = typename Range::iterator::value_type;
-    using BaseIterator = typename Range::iterator;
+    using ValueType =  typename _Iterator< Range >::value_type;
+    using BaseIterator = _Iterator< Range >;
 
     Filter() = default;
     Filter( Range range, UnaryPred pred ) : _range( range ), _pred( pred ) { }
@@ -300,7 +300,7 @@ template< typename Range >
 struct Flatten {
 
     using BaseIterator = typename Range::iterator;
-    using SubIterator = typename Range::value_type::iterator;
+    using SubIterator = _Iterator< typename Range::value_type >;
     using ValueType = typename _ValueType< SubIterator >::Type;
 
     Flatten() = default;
@@ -577,9 +577,15 @@ auto cquery( const Collection &col ) -> Query< Range< _ConstIterator< Collection
 }
 
 template< typename Collection >
-auto owningQuery( Collection &&col )
+auto owningQuery( typename std::remove_reference< Collection >::type &&col )
     -> Query< typename std::remove_reference< Collection >::type >
 {
+    return Query< typename std::remove_reference< Collection >::type >(
+            std::forward< Collection >( col ) );
+}
+
+template< typename Collection >
+auto owningQuery( Collection col ) -> Query< Collection > {
     return Query< typename std::remove_reference< Collection >::type >(
             std::forward< Collection >( col ) );
 }
