@@ -127,6 +127,7 @@ foreach( I RANGE 1 ${LIBDIVINE_INSTANCE_BUCKETS} )
     add_library( libdivine-instances-${I} instances/select.cpp ${SRC_auto_instances_${I}} )
     add_dependencies( libdivine-instances-${I} instances-generator )
     set_target_properties( libdivine-instances-${I} PROPERTIES OUTPUT_NAME "divine-instances-${I}" )
+    set_property( TARGET libdivine-instances-${I} PROPERTY JOB_POOL_COMPILE instances )
     list( APPEND LIBDIVINE_INSTANCES libdivine-instances-${I} )
 endforeach()
 

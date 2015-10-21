@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8.0)
 
+set_property( GLOBAL PROPERTY JOB_POOLS instances=3 )
+
 # this must be set BEFORE project
 SET( CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" CACHE STRING "" )
 SET( CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" CACHE STRING "" )
