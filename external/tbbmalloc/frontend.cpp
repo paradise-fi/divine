@@ -639,7 +639,7 @@ static inline unsigned int highestBitPos(unsigned int n)
     unsigned int pos;
 #if __ARCH_x86_32||__ARCH_x86_64
 
-# if __linux__||__APPLE__||__FreeBSD__||__NetBSD__||__sun||__MINGW32__
+# if __linux__||__APPLE__||__FreeBSD__||__NetBSD__||__sun||__MINGW32__||__OpenBSD__
     __asm__ ("bsr %1,%0" : "=r"(pos) : "r"(n));
 # elif (_WIN32 && (!_WIN64 || __INTEL_COMPILER))
     __asm

@@ -99,7 +99,7 @@ extern "C" void MallocInitializeITT() {
 #define MALLOCLIB_NAME "tbbmalloc" DEBUG_SUFFIX ".dll"
 #elif __APPLE__
 #define MALLOCLIB_NAME "libtbbmalloc" DEBUG_SUFFIX ".dylib"
-#elif __FreeBSD__ || __NetBSD__ || __sun || _AIX || __ANDROID__
+#elif __FreeBSD__ || __NetBSD__ || __sun || _AIX || __ANDROID__ || __OpenBSD__
 #define MALLOCLIB_NAME "libtbbmalloc" DEBUG_SUFFIX ".so"
 #elif __linux__
 #define MALLOCLIB_NAME "libtbbmalloc" DEBUG_SUFFIX  __TBB_STRING(.so.TBB_COMPATIBLE_INTERFACE_VERSION)
