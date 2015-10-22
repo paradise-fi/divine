@@ -51,7 +51,7 @@
 #define CONSTEXPR
 #endif
 
-#if __cplusplus > 201103L
+#if __cplusplus > 201103L && __GNUC__ != 4 && __GNUC_MINOR__ != 9
 #define CPP1Y_CONSTEXPR constexpr // C++1y
 #else
 #define CPP1Y_CONSTEXPR // C++11
