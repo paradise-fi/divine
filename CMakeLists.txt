@@ -85,8 +85,6 @@ endif()
 ##
 
 opt( OPT_MPI "compile DiVinE with MPI for clustering support" ON )
-opt( OPT_LTL3BA "use ltl3ba for LTL to BA translation" OFF )
-opt( OPT_LTL2DSTAR "build LTL2DSTAR, for LTL support in probabilistic MC" OFF )
 opt( OPT_CURSES "link to curses library for nice statistics" ON )
 
 opt( OPT_SQL "Include feature for reporting into database (requires ODBC)" ON )
@@ -416,13 +414,6 @@ if( DEV_GCOV )
     else()
         disable( DEV_GCOV " (coverage report generation)" "Could not find LCOV." )
         set( WITH_LCOV "" )
-    endif()
-endif()
-
-if( OPT_LTL2DSTAR )
-    find_package( Boost )
-    if( NOT Boost_FOUND )
-        disable( OPT_LTL2DSTAR "" "Boost not found." )
     endif()
 endif()
 
