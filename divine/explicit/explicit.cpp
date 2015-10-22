@@ -30,8 +30,7 @@ static bool fallocate(int fd, off_t len)
     // disk space, but still better then nothing
     return ftruncate( fd, len ) == 0;
 #else
-#error missing fallocate on this platform
-    return false;
+    return ftruncate( fd, len ) == 0;
 #endif
 }
 
