@@ -15,13 +15,13 @@ namespace compile {
 
 struct Snapshot {
 
-    static void writeFile( std::ofstream &file, const std::string &dir, const std::string &stdin ) {
+    static void writeFile( std::ofstream &file, const std::string &dir, const std::string &_stdin ) {
         file << "#include <fs-manager.h>\n"
              << "namespace divine{ namespace fs {\n"
              << "VFS vfs{\n";
 
-        if ( !stdin.empty() ) {
-            std::ifstream in( stdin, std::ios::binary );
+        if ( !_stdin.empty() ) {
+            std::ifstream in( _stdin, std::ios::binary );
             in >> std::noskipws;
             std::string content = brick::fs::readFile( in );
             file << '"' << _stringify( content ) << "\"," << content.size() << ",{\n";
@@ -64,7 +64,7 @@ struct Snapshot {
             );
         }
         file << "{nullptr, Type::Nothing, 0, nullptr, 0}";
-        if ( !stdin.empty() )
+        if ( !_stdin.empty() )
             file << "}";
         file << "};}}" << std::endl;
     }

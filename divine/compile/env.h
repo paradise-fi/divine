@@ -85,7 +85,7 @@ struct Env {
     std::string output;
     std::string flags;
     std::string snapshot;
-    std::string stdin;
+    std::string _stdin;
 
   private:
     std::vector< std::string > _cwdStack;

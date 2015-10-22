@@ -77,7 +77,7 @@ struct CompileLLVM {
             {
                 std::ofstream sn( "fs-snapshot.cpp" );
                 brick::fs::ChangeCwd _( rootDir.oldcwd );
-                Snapshot::writeFile( sn, _env.snapshot, _env.stdin );
+                Snapshot::writeFile( sn, _env.snapshot, _env._stdin );
             }
 
             for ( std::string f : files ) {

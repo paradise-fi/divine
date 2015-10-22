@@ -274,7 +274,7 @@ struct Compile {
         env.useThreads = parallelBuildJobs;
         env.keepBuildDir = o_keep->boolValue();
         env.snapshot = o_snapshot->stringValue();
-        env.stdin = o_stdin->stringValue();
+        env._stdin = o_stdin->stringValue();
         env.input = files;
         env.output = out;
         env.flags = cflags;
