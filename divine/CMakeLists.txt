@@ -170,10 +170,12 @@ endif()
 
 target_link_libraries( test-divine libdivine )
 
-if( NOT WIN32 )
+if( ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" )
   target_link_libraries( libdivine dl )
-else()
-    target_link_libraries( libdivine psapi )
+endif()
+
+if( WIN32 )
+  target_link_libraries( libdivine psapi )
 endif()
 
 add_custom_target( unit_divine
