@@ -348,10 +348,11 @@ struct InstGenerator {
             }
 
             file << "  public:" << std::endl
-                 << "    using Store = _Store< _TableProvider, _Generator, _Hasher, _Statistics >;" << std::endl
+                 << "    using TableProvider = ::divine::visitor::SharedProvider;" << std::endl
+                 << "    using Store = _Store< TableProvider, _Generator, _Hasher, _Statistics >;" << std::endl
                  << "    using Generator = _Generator;" << std::endl
                  << "    using Graph = _Transform< _Generator, Store, _Statistics >;" << std::endl
-                 << "    using Visitor = _Visitor;" << std::endl
+                 << "    using Visitor = ::divine::visitor::Shared;" << std::endl
                  << "    template< typename I >" << std::endl
                  << "    using Topology = typename _Topology< Transition< Graph, Store > >" << std::endl
                  << "                       ::template T< I >;" << std::endl

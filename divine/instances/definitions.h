@@ -139,7 +139,7 @@ using Tr = Traits::Get;
 
 enum class Type {
     Begin,
-    Algorithm, Generator, Transform, Visitor, Store, Topology, Statistics,
+    Algorithm, Generator, Transform, Store, Topology, Statistics,
     End
 };
 
@@ -160,7 +160,6 @@ const CMap< Type, SelectOptions > options {
     { Type::Algorithm,  SelectOption::ErrUnavailable },
     { Type::Generator,  SelectOption::ErrUnavailable },
     { Type::Transform,  SelectOption::WarnOther | SelectOption::WarnUnavailable | SelectOption::LastDefault },
-    { Type::Visitor,    SelectOption::ErrUnavailable },
     { Type::Store,      SelectOption::WarnUnavailable | SelectOption::LastDefault },
     { Type::Topology,   SelectOption::LastDefault },
     { Type::Statistics, SelectOption::LastDefault }
@@ -179,11 +178,6 @@ enum class Generator {
 enum class Transform {
     Begin,
     POR, Fairness, None,
-    End
-};
-enum class Visitor {
-    Begin,
-    Shared, Partitioned,
     End
 };
 enum class Store {
@@ -212,7 +206,6 @@ struct Key : brick::types::mixin::LexComparable< Key > {
     Key( Algorithm alg ) : type( Type::Algorithm ), key( int( alg ) ) { }
     Key( Generator gen ) : type( Type::Generator ), key( int( gen ) ) { }
     Key( Transform tra ) : type( Type::Transform ), key( int( tra ) ) { }
-    Key( Visitor vis )   : type( Type::Visitor ),   key( int( vis ) ) { }
     Key( Store stor )    : type( Type::Store ),     key( int( stor ) ) { }
     Key( Topology top )  : type( Type::Topology ),  key( int( top ) ) { }
     Key( Statistics st ) : type( Type::Statistics ),key( int( st ) ) { }
@@ -250,9 +243,6 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Transform, Fairness );
     SHOW( Transform, None );
 
-    SHOW( Visitor, Shared );
-    SHOW( Visitor, Partitioned );
-
     SHOW( Store, NDFSNTreeStore );
     SHOW( Store, NTreeStore );
     SHOW( Store, HcStore );
@@ -280,7 +270,7 @@ static inline std::ostream &operator<<( std::ostream &o, Key k ) { return o << s
 using brick::hlist::TypeList;
 using brick::types::Union;
 
-using Instantiation = TypeList< Algorithm, Generator, Transform, Visitor, Store, Topology, Statistics >;
+using Instantiation = TypeList< Algorithm, Generator, Transform, Store, Topology, Statistics >;
 using InstT = std::array< std::vector< Key >, Instantiation::length >;
 
 template< size_t i, typename I >
@@ -378,9 +368,6 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
     { Transform::None,     constTrue },
     { Transform::Fairness, []( const Meta &meta ) { return meta.algorithm.fairness; } },
     { Transform::POR,      []( const Meta &meta ) { return meta.algorithm.reduce.count( graph::R_POR ); } },
-
-    { Visitor::Partitioned, constTrue },
-    { Visitor::Shared, []( const Meta &meta ) { return meta.algorithm.sharedVisitor; } },
 
     { Store::NDFSNTreeStore,
         []( const Meta &meta ) {
@@ -546,15 +533,9 @@ static const CMap< Key, SupportedBy > supportedBy = {
     { Transform::Fairness, And{ Or{ Generator::LLVM, Generator::ControlLLVM, Generator::ProbabilisticLLVM },
                                 Not{ Algorithm::Info } } },
 
-    { Visitor::Shared, Not{ Or{ Algorithm::Simulate, Algorithm::Info } } },
-
     { Store::NDFSNTreeStore, Algorithm::NestedDFS },
     { Store::NTreeStore,     Not{ Or{ Algorithm::Info, Algorithm::NestedDFS } } },
     { Store::HcStore,        Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
-
-#if !DEV_CONFLATE
-    { Topology::Mpi, Not{ Or{ Algorithm::NestedDFS, Algorithm::Info, Visitor::Shared } } },
-#endif
 
     { Statistics::NoStatistics, Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
 };
@@ -567,12 +548,6 @@ static inline SymbolPair symGen( Generator g ) {
 static inline SymbolPair symTrans( Transform t, std::string symbol ) {
     return { t, { "template< typename Graph, typename Store, typename Stat >",
                   "using _Transform = " + symbol + ";" } };
-}
-
-static inline SymbolPair symVis( Visitor v ) {
-    auto vis = std::get< 1 >( showGen( v ) );
-    return { v, { "using _Visitor = ::divine::visitor::" + vis + ";",
-                  "using _TableProvider = ::divine::visitor::" + vis + "Provider;" } };
 }
 
 static inline SymbolPair symStore( Store s ) {
@@ -606,9 +581,6 @@ static const CMap< Key, FixArray< std::string > > symbols = {
     symTrans( Transform::None,     "::divine::graph::NonPORGraph< Graph, Store >" ),
     symTrans( Transform::Fairness, "::divine::graph::FairGraph< Graph, Store >" ),
     symTrans( Transform::POR,      "::divine::algorithm::PORGraph< Graph, Store, Stat >" ),
-
-    symVis( Visitor::Partitioned ),
-    symVis( Visitor::Shared ),
 
     symStore( Store::NDFSNTreeStore ),
     symStore( Store::NTreeStore ),
