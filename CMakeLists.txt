@@ -92,7 +92,6 @@ opt( OPT_CURSES "link to curses library for nice statistics" ON )
 opt( OPT_SQL "Include feature for reporting into database (requires ODBC)" ON )
 opt( OPT_MANUAL "build pdf/html manual" ON )
 opt( OPT_GUI "compile the Qt GUI" ON )
-opt( OPT_HOARD "use HOARD SMP memory allocator" OFF )
 opt( OPT_TBBMALLOC "use Intel TBB memory allocator" ON )
 
 opt( OPT_SIMULATE "divine simulate" ON )
@@ -164,10 +163,6 @@ find_path( RX_PATH regex.h )
 if ( RX_PATH )
   include_directories( ${RX_PATH} )
   link_directories( ${RX_PATH} )
-endif()
-
-if( OPT_HOARD AND OPT_TBBMALLOC )
-    disable( OPT_HOARD "" "Overriden by TBBMALLOC." )
 endif()
 
 if ( DEV_NOPOOLS AND OPT_MPI )
@@ -461,10 +456,6 @@ if( OPT_SQL )
 endif()
 
 set( DIVINE_INCLUDES ${divine_SOURCE_DIR} ${divine_BINARY_DIR} )
-set( DIVINE_SYS_INCLUDES
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/ltl3ba/buddy/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/libutap/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/dbm/include )
 
 foreach( opt ${OPTIONS} )
     if ( ${${opt}} )
@@ -492,21 +483,8 @@ set( TEST_WRAPPER "${CMAKE_SOURCE_DIR}/nix/test-wrapper.sh" )
 add_custom_target( check )
 add_custom_target( unit )
 
-# add_subdirectory( external/lpsolve )
-
-if( OPT_HOARD )
-  add_subdirectory( external/hoard )
-endif()
-
 if( OPT_TBBMALLOC )
   add_subdirectory( external/tbbmalloc )
-endif()
-
-if( OPT_LTL2DSTAR )
-  if ( NOT OPT_LTL3BA )
-    add_subdirectory( external/ltl2ba )
-  endif()
-  add_subdirectory( external/ltl2dstar )
 endif()
 
 if( GEN_LLVM )
@@ -518,10 +496,6 @@ endif()
 
 add_subdirectory( divine )
 add_subdirectory( tools )
-
-if ( OPT_LTL3BA )
-  add_subdirectory( external/ltl3ba )
-endif()
 
 if( OPT_GUI )
   add_subdirectory( gui )
