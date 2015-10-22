@@ -49,7 +49,7 @@ struct Exception : std::runtime_error {
     explicit Exception( const char *what ) : std::runtime_error( what ) { }
 };
 
-#if defined( __unix ) || defined( __APPLE__ )
+#if defined( __unix__ ) || defined( __APPLE__ )
 const char pathSeparators[] = { '/' };
 #elif defined( _WIN32 )
 const char pathSeparators[] = { '\\', '/' };

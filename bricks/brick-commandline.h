@@ -46,7 +46,7 @@
 #include <iostream>
 #include <ctime>
 
-#if defined(__unix) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
 #endif
 #ifdef _WIN32
