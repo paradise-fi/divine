@@ -91,7 +91,6 @@ opt( OPT_CURSES "link to curses library for nice statistics" ON )
 
 opt( OPT_SQL "Include feature for reporting into database (requires ODBC)" ON )
 opt( OPT_MANUAL "build pdf/html manual" ON )
-opt( OPT_GUI "compile the Qt GUI" ON )
 opt( OPT_TBBMALLOC "use Intel TBB memory allocator" ON )
 
 opt( OPT_SIMULATE "divine simulate" ON )
@@ -427,24 +426,6 @@ if( OPT_LTL2DSTAR )
     endif()
 endif()
 
-if( OPT_GUI )
-  find_package( Qt4 4.5.0 )
-  if( QT4_FOUND AND QT_VERSION_MINOR GREATER 4 )
-    if ( WIN32 )
-      add_definitions( -DQT_EDITION=QT_EDITION_OPENSOURCE )
-    endif()
-
-    if( NOT QT_QCOLLECTIONGENERATOR_EXECUTABLE )
-        find_program( QT_QCOLLECTIONGENERATOR_EXECUTABLE qcollectiongenerator )
-        if( NOT QT_QCOLLECTIONGENERATOR_EXECUTABLE )
-            message( "-- WARNING: qcollectiongenerator not found." )
-        endif()
-    endif()
-  else()
-    disable( OPT_GUI "" "Could not find Qt4 >= 4.5." )
-  endif()
-endif()
-
 if( OPT_SQL )
   include( FindODBC )
   if( NOT ODBC_FOUND )
@@ -496,10 +477,6 @@ endif()
 
 add_subdirectory( divine )
 add_subdirectory( tools )
-
-if( OPT_GUI )
-  add_subdirectory( gui )
-endif()
 
 if( OPT_MANUAL )
   add_subdirectory( manual )
@@ -556,7 +533,6 @@ endif( WIN32 )
 ## BINARY INSTALLER
 ##
 
-set( CPACK_PACKAGE_DESCRIPTION_SUMMARY "DiViNE Distributed and Parallel Verification Environment" )
 set( CPACK_PACKAGE_VENDOR "ParaDiSe Laboratory" )
 set( CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README" )
 set( CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING" )
@@ -587,61 +563,12 @@ if ( NOT ( "${REQUIRED}" STREQUAL "" ) )
     endforeach()
 endif()
 
-set( CPACK_PACKAGE_INSTALL_DIRECTORY
-      "DIVINE ${CPACK_PACKAGE_VERSION}${VERSION_APPEND}" )
 set( CPACK_SOURCE_PACKAGE_FILE_NAME
       "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION}${VERSION_APPEND}" )
 
-if( WIN32 )
-  set( CPACK_PACKAGE_FILE_NAME
-      "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION}${VERSION_APPEND}-installer" )
-endif( WIN32 )
-
 set( CPACK_SOURCE_IGNORE_FILES "/build/;/_build/;/_darcs/;~$;${CPACK_SOURCE_IGNORE_FILES}" )
 
-set( CPACK_COMPONENTS_ALL console_tools gui_tools divine_dev qt sys examples help)
-
-if(WIN32)
-  set(CPACK_NSIS_MENU_LINKS "./divine.ide.exe" "DiViNE IDE"
-                            "./README.txt" "README"
-                            "./COPYING.txt" "COPYING"
-                            "./AUTHORS.txt" "AUTHORS"
-                            "./NEWS.txt" "NEWS")
-  set(CPACK_PACKAGE_EXECUTABLES "" "")
-  set(CPACK_NSIS_MODIFY_PATH ON)
-endif(WIN32)
-
 include( CPack )
-
-if(CMAKE_MINOR_VERSION EQUAL 6 AND CMAKE_PATCH_VERSION GREATER 0)
-  set(HAVE_CMAKE_261 1)
-endif()
-
-if(CMAKE_MAJOR_VERSION GREATER 2 OR CMAKE_MINOR_VERSION GREATER 6 OR HAVE_CMAKE_261)
-  cpack_add_component_group( tools DISPLAY_NAME "Tools"
-                             DESCRIPTION "Installs the basic tools"
-                             EXPANDED )
-
-  cpack_add_component_group( devel DISPLAY_NAME "Development"
-                             DESCRIPTION "Installs header and library files"
-                             EXPANDED )
-
-  cpack_add_component( console_tools DISPLAY_NAME "Console Tools"
-                       DESCRIPTION "Console tools"
-                       GROUP tools )
-
-  cpack_add_component( gui_tools DISPLAY_NAME "IDE"
-                       DESCRIPTION "Graphical environment"
-                       GROUP tools )
-
-  cpack_add_component( help HIDDEN DEPENDS gui_tools )
-
-  cpack_add_component( qt HIDDEN DEPENDS gui_tools )
-  cpack_add_component( sys HIDDEN )
-
-  cpack_add_component( examples DISPLAY_NAME "Examples"
-                       DESCRIPTION "Sample models" )
-endif()
 
 test_bricks( bricks )
 benchmark_bricks( bricks )
