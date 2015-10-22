@@ -1003,6 +1003,8 @@ struct Main {
         journal.banner();
 
         for ( Cases::iterator i = cases.begin(); i != cases.end(); ++i ) {
+            if ( !journal.done( i->id() ) )
+                continue;
             auto st = journal.status[ i->id() ];
             if ( st != Journal::PASSED && st != Journal::SKIPPED )
                 std::cerr << i->tag( st ) << i->pretty() << std::endl;
