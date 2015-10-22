@@ -202,6 +202,13 @@ if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
     endif()
 endif()
 
+# clang doesn't print colored diagnostics when invoked from Ninja
+if (UNIX AND
+    CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+    CMAKE_GENERATOR STREQUAL "Ninja")
+  appendFlag( "C;CXX" "-fcolor-diagnostics" )
+endif()
+
 check_cxx_source_compiles("
 template< typename F > int check( F f );
 
