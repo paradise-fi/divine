@@ -75,9 +75,9 @@ struct Append {
     using T = TypeList< X >;
 };
 
-template< typename _X, typename _T, typename... _Ts >
-struct Append< _X, TypeList< _T, _Ts... > > {
-    using T = TypeList< _X, _T, _Ts... >;
+template< typename X, typename TT, typename... Ts >
+struct Append< X, TypeList< TT, Ts... > > {
+    using T = TypeList< X, TT, Ts... >;
 };
 
 template< template< typename > class Cond, typename List >
