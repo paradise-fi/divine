@@ -139,7 +139,7 @@ using Tr = Traits::Get;
 
 enum class Type {
     Begin,
-    Algorithm, Generator, Transform, Store, Topology, Statistics,
+    Algorithm, Generator, Transform, Store, Statistics,
     End
 };
 
@@ -161,7 +161,6 @@ const CMap< Type, SelectOptions > options {
     { Type::Generator,  SelectOption::ErrUnavailable },
     { Type::Transform,  SelectOption::WarnOther | SelectOption::WarnUnavailable | SelectOption::LastDefault },
     { Type::Store,      SelectOption::WarnUnavailable | SelectOption::LastDefault },
-    { Type::Topology,   SelectOption::LastDefault },
     { Type::Statistics, SelectOption::LastDefault }
 };
 
@@ -185,11 +184,6 @@ enum class Store {
     NDFSNTreeStore, NTreeStore, HcStore, DefaultStore,
     End
 };
-enum class Topology {
-    Begin,
-    Mpi, Local,
-    End
-};
 enum class Statistics {
     Begin,
     TrackStatistics, NoStatistics,
@@ -207,7 +201,6 @@ struct Key : brick::types::mixin::LexComparable< Key > {
     Key( Generator gen ) : type( Type::Generator ), key( int( gen ) ) { }
     Key( Transform tra ) : type( Type::Transform ), key( int( tra ) ) { }
     Key( Store stor )    : type( Type::Store ),     key( int( stor ) ) { }
-    Key( Topology top )  : type( Type::Topology ),  key( int( top ) ) { }
     Key( Statistics st ) : type( Type::Statistics ),key( int( st ) ) { }
 
     std::tuple< Type, int > toTuple() const { return std::make_tuple( type, key ); }
@@ -248,9 +241,6 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Store, HcStore );
     SHOW( Store, DefaultStore );
 
-    SHOW( Topology, Mpi );
-    SHOW( Topology, Local );
-
     SHOW( Statistics, TrackStatistics );
     SHOW( Statistics, NoStatistics );
 
@@ -270,7 +260,7 @@ static inline std::ostream &operator<<( std::ostream &o, Key k ) { return o << s
 using brick::hlist::TypeList;
 using brick::types::Union;
 
-using Instantiation = TypeList< Algorithm, Generator, Transform, Store, Topology, Statistics >;
+using Instantiation = TypeList< Algorithm, Generator, Transform, Store, Statistics >;
 using InstT = std::array< std::vector< Key >, Instantiation::length >;
 
 template< size_t i, typename I >
@@ -378,9 +368,6 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
     { Store::NTreeStore,     []( const Meta &meta ) { return meta.algorithm.compression == meta::Algorithm::Compression::Tree; } },
     { Store::HcStore,        []( const Meta &meta ) { return meta.algorithm.hashCompaction; } },
 
-    { Topology::Mpi,   []( const Meta &meta ) { return meta.execution.nodes > 1; } },
-    { Topology::Local, constTrue },
-
     { Statistics::TrackStatistics, []( const Meta &meta ) { return meta.output.statistics; } },
     { Statistics::NoStatistics,    constTrue }
 };
@@ -461,9 +448,6 @@ static const CMap< Key, Traits::Get > traits = {
 
     { Store::NTreeStore, &Traits::store_compress },
     { Store::HcStore,    &Traits::store_hc },
-
-    { Topology::Mpi,   Tr( &Traits::dev_conflate ) || Tr( &Traits::opt_mpi ) },
-    { Topology::Local, !Tr( &Traits::dev_conflate ) },
 
     { Statistics::NoStatistics, !Tr( &Traits::dev_conflate ) }
 };
@@ -556,16 +540,6 @@ static inline SymbolPair symStore( Store s ) {
                   "using _Store = ::divine::visitor::" + stor + "< Provider, Generator, Hasher, Stat >;" } };
 }
 
-static inline SymbolPair symTopo( Topology t ) {
-    auto topo = std::get< 1 >( showGen( t ) );
-    return { t, { "template< typename Transition >",
-                  "struct _Topology {",
-                  "    template< typename I >",
-                  "    using T = typename ::divine::Topology< Transition >",
-                  "                  ::template " + topo + "< I >;",
-                  "};" } };
-}
-
 static inline SymbolPair symStat( Statistics s ) {
     auto stat = std::get< 1 >( showGen( s ) );
     return { s, { "using _Statistics = ::divine::" + stat + ";" } };
@@ -586,9 +560,6 @@ static const CMap< Key, FixArray< std::string > > symbols = {
     symStore( Store::NTreeStore ),
     symStore( Store::HcStore ),
     symStore( Store::DefaultStore ),
-
-    symTopo( Topology::Mpi ),
-    symTopo( Topology::Local ),
 
     symStat( Statistics::NoStatistics ),
     symStat( Statistics::TrackStatistics )

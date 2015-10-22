@@ -354,8 +354,9 @@ struct InstGenerator {
                  << "    using Graph = _Transform< _Generator, Store, _Statistics >;" << std::endl
                  << "    using Visitor = ::divine::visitor::Shared;" << std::endl
                  << "    template< typename I >" << std::endl
-                 << "    using Topology = typename _Topology< Transition< Graph, Store > >" << std::endl
-                 << "                       ::template T< I >;" << std::endl
+                 << "    using Topology = typename ::divine::Topology< Transition< Graph, Store > >"
+                 << std::endl
+                 << "                       ::template Local< I >;" << std::endl
                  << "    using Statistics = _Statistics;" << std::endl
                  << "};" << std::endl;
 
