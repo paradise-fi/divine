@@ -56,7 +56,7 @@ IF(BYACC_EXECUTABLE)
     RESULT_VARIABLE BYACC_version_result
     OUTPUT_STRIP_TRAILING_WHITESPACE)
   IF(NOT ${BYACC_version_result} EQUAL 0)
-    MESSAGE(SEND_ERROR "Command \"${BYACC_EXECUTABLE} --version\" failed with output:\n${BYACC_version_error}")
+    MESSAGE(WARNING "Command \"${BYACC_EXECUTABLE} --version\" failed with output:\n${BYACC_version_error}")
   ELSE()
     STRING(REGEX REPLACE "^byacc \\(GNU Byacc\\) ([^\n]+)\n.*" "\\1"
       BYACC_VERSION "${BYACC_version_output}")
