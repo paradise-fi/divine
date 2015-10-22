@@ -8,8 +8,6 @@
 #include <brick-types.h>
 #include <brick-string.h>
 
-#include <divine/dve/compiler.h>
-#include <divine/generator/cesmi.h>
 #include <divine/utility/die.h>
 #include <divine/utility/strings.h>
 #include <divine/compile/llvm.h>
@@ -46,7 +44,7 @@ struct Compile {
     commandline::Engine *cmd_compile;
     commandline::StandardParserWithMandatoryCommand &opts;
 
-    BoolOption *o_cesmi, *o_llvm, *o_keep, *o_libs_only, *o_dont_link, *o_no_modeline;
+    BoolOption *o_llvm, *o_keep, *o_libs_only, *o_dont_link, *o_no_modeline;
     StringOption *o_out, *o_cmd_clang, *o_precompiled, *o_parallel, *o_snapshot, *o_stdin;
     VectorOption< String > *o_definitions, *o_cflags;
     int parallelBuildJobs;
@@ -93,22 +91,9 @@ struct Compile {
     }
 
     void compileDve( std::string in, std::vector< std::string > definitions ) {
-#if GEN_DVE
-        dve::compiler::DveCompiler compiler;
-        compiler.read( in.c_str(), definitions );
-        compiler.analyse();
-
-        std::string outfile = brick::fs::splitFileName( in ).second + ".cpp";
-        std::ofstream out( outfile.c_str() );
-        compiler.setOutput( out );
-        compiler.print_generator();
-
-        gplusplus( outfile, brick::fs::splitFileName( in ).second + generator::cesmi_ext );
-#else
         die( "FATAL: The DVE compiler requires DVE backend." );
         (void)(in);
         (void)(definitions);
-#endif
     }
 
     void compileMurphi( std::string in );
@@ -119,69 +104,6 @@ struct Compile {
             o << "        case " << i << ": return " << fun << "_" << i << args << ";" << std::endl;
         o <<     "        default: abort();" << std::endl;
         o << "    };" << std::endl;
-    }
-
-    void compileCESMI( std::string in, std::string cflags ) {
-        brick::fs::TempDir tmpdir( "_divine-compile.XXXXXX",
-                                   brick::fs::AutoDelete( !o_keep->boolValue() ) );
-        brick::fs::ChangeCwd rootDir( tmpdir.path );
-
-        std::string in_filename = brick::fs::splitFileName( in ).second;
-        std::string in_basename( in_filename, 0, in_filename.rfind( '.' ) );
-
-        std::string extras, ltlincludes;
-
-        int ltlcount = 0;
-        while ( opts.hasNext() ) {
-            std::string extra = brick::fs::joinPath( "..", opts.next() );
-            if ( brick::string::endsWith( extra, ".ltl" ) ) {
-                std::string ltlpath = brick::fs::splitFileName( extra ).second + ".h";
-                std::string code = "#include <cesmi.h>\n";
-                parse_ltl( brick::fs::readFile( extra ), [&]( std::string formula ) {
-                        code += ltl_to_c( ltlcount++, formula );
-                    }, [&]( std::string ) {} );
-                brick::fs::writeFile( ltlpath, code );
-                ltlincludes += "#include <" + brick::fs::splitFileName( extra ).second + ".h>\n";
-            } else
-                extras += " " + extra;
-        }
-
-        brick::fs::writeFile( "cesmi.h", cesmi_usr_cesmi_h_str );
-        brick::fs::writeFile( "cesmi.cpp", cesmi_usr_cesmi_cpp_str );
-
-        extras += " cesmi.cpp";
-
-        std::string impl = "cesmi-ltl",
-                    aggr = "ltl-aggregate.cpp";
-        brick::fs::writeFile( impl + ".cpp", cesmi_usr_ltl_cpp_str );
-        brick::fs::writeFile( impl + ".h", cesmi_usr_ltl_h_str );
-        extras += " " + impl + ".cpp";
-
-        std::ofstream aggr_s( aggr.c_str() );
-        aggr_s << "#include <stdlib.h>" << std::endl;
-        aggr_s << "#include <cesmi.h>" << std::endl;
-        aggr_s << ltlincludes << std::endl;
-        aggr_s << "extern \"C\" int buchi_accepting( int property, int id ) {\n";
-        propswitch( aggr_s, ltlcount, "buchi_accepting", "( id )" );
-        aggr_s << "}" << std::endl;
-        aggr_s << "extern \"C\" int buchi_next( int property, int from, int transition, cesmi_setup *setup, cesmi_node n ) {\n";
-        propswitch( aggr_s, ltlcount, "buchi_next", "( from, transition, setup, n )" );
-        aggr_s << "}" << std::endl;
-        aggr_s << "extern \"C\" int buchi_initial( int property ) {\n";
-        propswitch( aggr_s, ltlcount, "buchi_initial", "" );
-        aggr_s << "}" << std::endl;
-        aggr_s << "int buchi_property_count = " << ltlcount << ";" << std::endl;
-
-        aggr_s << "extern \"C\" char *buchi_formula( int property ) {\n";
-        propswitch( aggr_s, ltlcount, "buchi_formula", "" );
-        aggr_s << "}" << std::endl;
-
-        extras += " " + aggr;
-        aggr_s.close();
-
-        std::string flags = "-Wall -shared -g -O2 -fPIC " + cflags;
-        run( std::string( _cmd_cc ) + " " + flags + " -I." + " -o ../" + in_basename +
-             generator::cesmi_ext + " " + brick::fs::joinPath( "..", in ) + extras );
     }
 
     void parseModelines( const std::string &file, std::vector< std::string > &modelineOpts ) {
@@ -304,18 +226,7 @@ struct Compile {
             : 1;
         if ( !o_libs_only->boolValue() && !brick::fs::access( input, R_OK ) )
             die( "FATAL: cannot open input file " + input + " for reading" );
-        if ( brick::string::endsWith( input, ".dve" ) )
-            compileDve( input, o_definitions->values() );
-        else if ( brick::string::endsWith( input, ".m" ) )
-            compileMurphi( input );
-        else if ( o_cesmi->boolValue() )
-            compileCESMI( input, concat( o_cflags ) );
-        else if ( o_llvm->boolValue() )
-            compileLLVM( input, o_out->stringValue() );
-        else {
-            std::cerr << "Hint: Assuming --llvm. Use --cesmi to build CESMI modules." << std::endl;
-            compileLLVM( input, o_out->stringValue() );
-        }
+        compileLLVM( input, o_out->stringValue() );
     }
 
     Compile( commandline::StandardParserWithMandatoryCommand &_opts )
@@ -324,10 +235,6 @@ struct Compile {
         cmd_compile = _opts.addEngine( "compile",
                                        "<input>",
                                        "Compile input models into DiVinE binary interface.");
-
-        o_cesmi = cmd_compile->add< BoolOption >(
-            "cesmi", 'c', "cesmi", "",
-            "process input .cpp or .cc files as of CESMI type" );
 
         o_llvm = cmd_compile->add< BoolOption >(
             "llvm", 'l', "llvm", "",

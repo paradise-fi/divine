@@ -10,8 +10,6 @@
 
 #include <divine/utility/meta.h>
 #include <divine/llvm/support.h>
-#include <divine/generator/cesmi.h>
-#include <divine/explicit/header.h>
 #include <divine/instances/select.h>
 
 #ifndef DIVINE_INSTANCES_DEFINITIONS
@@ -41,9 +39,7 @@ struct Traits {
      * no bitfiels -- pointers to members will be taken
      */
     bool dev_nopools, dev_conflate;
-    bool gen_dve, gen_llvm, gen_llvm_csdr, gen_llvm_ptst, gen_llvm_prob,
-         gen_timed, gen_coin, gen_cesmi, gen_explicit, gen_explicit_prob,
-         gen_dummy;
+    bool gen_dve, gen_llvm, gen_llvm_csdr, gen_llvm_ptst, gen_llvm_prob;
     bool alg_owcty, alg_map, alg_metrics, alg_ndfs, alg_reachability,
          alg_weakreachability, alg_explicit, alg_csdr;
     bool store_hc, store_compress;
@@ -115,13 +111,6 @@ struct Traits {
         t.gen_llvm_csdr = GEN_LLVM_CSDR;
         t.gen_llvm_prob = GEN_LLVM_PROB;
         t.gen_llvm_ptst = GEN_LLVM_PTST;
-        t.gen_dve = GEN_DVE;
-        t.gen_coin = GEN_COIN;
-        t.gen_cesmi = GEN_CESMI;
-        t.gen_timed = GEN_TIMED;
-        t.gen_explicit = GEN_EXPLICIT;
-        t.gen_explicit_prob = GEN_EXPLICIT_PROB;
-        t.gen_dummy = GEN_DUMMY;
 
         t.alg_map = ALG_MAP;
         t.alg_owcty = ALG_OWCTY;
@@ -185,7 +174,6 @@ enum class Algorithm {
 enum class Generator {
     Begin,
     LLVM, PointsToLLVM, ControlLLVM, ProbabilisticLLVM,
-    Dve, Coin, Timed, CESMI, ProbabilisticExplicit, Explicit, Dummy,
     End
 };
 enum class Transform {
@@ -253,17 +241,10 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Algorithm, Draw );
     SHOW( Algorithm, Info );
 
-    SHOW( Generator, Dve );
-    SHOW( Generator, Coin );
     SHOW( Generator, LLVM );
     SHOW( Generator, PointsToLLVM );
     SHOW( Generator, ControlLLVM );
     SHOW( Generator, ProbabilisticLLVM );
-    SHOW( Generator, Timed );
-    SHOW( Generator, CESMI );
-    SHOW( Generator, ProbabilisticExplicit );
-    SHOW( Generator, Explicit );
-    SHOW( Generator, Dummy );
 
     SHOW( Transform, POR );
     SHOW( Transform, Fairness );
@@ -334,17 +315,10 @@ static const CMap< Key, std::vector< std::string > > headers = {
     { Algorithm::Info,         { "tools/info.h" } },
     { Algorithm:: GenExplicit, { "divine/algorithm/genexplicit.h" } },
 
-    { Generator::Dve,                   { "divine/generator/dve.h" } },
-    { Generator::Coin,                  { "divine/generator/coin.h"} },
-    { Generator::Timed,                 { "divine/generator/timed.h" } },
-    { Generator::CESMI,                 { "divine/generator/cesmi.h" } },
     { Generator::LLVM,                  { "divine/generator/llvm.h" } },
     { Generator::PointsToLLVM,          { "divine/generator/llvm.h" } },
     { Generator::ControlLLVM,           { "divine/generator/llvm.h" } },
     { Generator::ProbabilisticLLVM,     { "divine/generator/llvm.h" } },
-    { Generator::Explicit,              { "divine/generator/explicit.h" } },
-    { Generator::ProbabilisticExplicit, { "divine/generator/explicit.h" } },
-    { Generator::Dummy,                 { "divine/generator/dummy.h" } },
 
     { Transform::None,     { "divine/graph/por.h" } },
     { Transform::Fairness, { "divine/graph/fairness.h" } },
@@ -396,26 +370,10 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
     { Algorithm::Info,         AlgSelect( meta::Algorithm::Type::Info ) },
     { Algorithm::GenExplicit,  AlgSelect( meta::Algorithm::Type::GenExplicit ) },
 
-    { Generator::Dve,               GenSelect( ".dve" ) },
-    { Generator::Coin,              GenSelect( ".coin" ) },
-    { Generator::Timed,             GenSelect( ".xml" ) },
-    { Generator::CESMI,             GenSelect( generator::cesmi_ext ) },
     { Generator::PointsToLLVM,      GenSelect( ".bc", false, "pointsto" ) },
     { Generator::LLVM,              GenSelect( ".bc", false ) }, // these two have
     { Generator::ControlLLVM,       GenSelect( ".bc", false ) }, // excluding supported-by
     { Generator::ProbabilisticLLVM, GenSelect( ".bc", true ) },
-    { Generator::Explicit,
-        []( const Meta &meta ) {
-            return GenSelect( dess::extension )( meta ) &&
-                dess::Header::fromFile( meta.input.model ).labelSize == 0;
-        } },
-    { Generator::ProbabilisticExplicit,
-        []( const Meta &meta ) {
-            return GenSelect( dess::extension )( meta ) &&
-                dess::Header::fromFile( meta.input.model )
-                    .capabilities.has( dess::Capability::Probability );
-        } },
-    { Generator::Dummy, []( const Meta &meta ) { return meta.input.dummygen; } },
 
     { Transform::None,     constTrue },
     { Transform::Fairness, []( const Meta &meta ) { return meta.algorithm.fairness; } },
@@ -466,17 +424,10 @@ static const CMap< Key, std::function< void( Meta & ) > > postSelect = {
     { Algorithm::Info,         NameAlgo( "Info" ) },
     { Algorithm::GenExplicit,  NameAlgo( "Gen-Explicit" ) },
 
-    { Generator::Dve,                   NameGen( "DVE" ) },
-    { Generator::Coin,                  NameGen( "CoIn" ) },
-    { Generator::Timed,                 NameGen( "Timed" ) },
-    { Generator::CESMI,                 NameGen( "CESMI" ) },
     { Generator::LLVM,                  NameGen( "LLVM" ) },
     { Generator::PointsToLLVM,          NameGen( "LLVM (pointsto)" ) },
     { Generator::ControlLLVM,           NameGen( "LLVM (control)" ) },
     { Generator::ProbabilisticLLVM,     NameGen( "LLVM (probabilistic)" ) },
-    { Generator::Explicit,              NameGen( "Explicit" ) },
-    { Generator::ProbabilisticExplicit, NameGen( "Explicit (probabilistic)" ) },
-    { Generator::Dummy,                 NameGen( "Dummy" ) }
 };
 
 // those functions will be called if given component should be selected
@@ -513,17 +464,10 @@ static const CMap< Key, Traits::Get > traits = {
     { Algorithm::WeakReachability, &Traits::alg_weakreachability },
     { Algorithm::Metrics,          &Traits::alg_metrics },
 
-    { Generator::Dve,                   &Traits::gen_dve },
-    { Generator::Coin,                  &Traits::gen_coin },
-    { Generator::Timed,                 &Traits::gen_timed },
-    { Generator::CESMI,                 &Traits::gen_cesmi },
     { Generator::LLVM,                  &Traits::gen_llvm },
     { Generator::PointsToLLVM,          &Traits::gen_llvm_ptst },
     { Generator::ControlLLVM,           &Traits::gen_llvm_csdr },
     { Generator::ProbabilisticLLVM,     &Traits::gen_llvm_prob  },
-    { Generator::Explicit,              &Traits::gen_explicit },
-    { Generator::ProbabilisticExplicit, &Traits::gen_explicit_prob },
-    { Generator::Dummy,                 &Traits::gen_dummy },
 
     { Transform::POR,      &Traits::transform_por },
     { Transform::Fairness, &Traits::transform_fair },
@@ -590,14 +534,6 @@ static inline std::unique_ptr< SupportedBy > box( const SuppBy &sb ) {
 // the component later in instatiation can depend only on components
 // instantiated before it
 static const CMap< Key, SupportedBy > supportedBy = {
-    { Generator::Explicit,              Not{ Or{ Algorithm::GenExplicit, Algorithm::Csdr } } },
-    { Generator::ProbabilisticExplicit, Not{ Or{ Algorithm::GenExplicit, Algorithm::Csdr } } },
-
-    { Generator::Dummy,                 Not{ Algorithm::Csdr } },
-    { Generator::Dve,                   Not{ Algorithm::Csdr } },
-    { Generator::Coin,                  Not{ Algorithm::Csdr } },
-    { Generator::CESMI,                 Not{ Algorithm::Csdr } },
-    { Generator::Timed,                 Not{ Algorithm::Csdr } },
     { Generator::LLVM,                  Not{ Or{ Algorithm::Simulate, Algorithm::Csdr } } },
     { Generator::ProbabilisticLLVM,     Not{ Algorithm::Csdr } },
     { Generator::PointsToLLVM,          Not{ Algorithm::Csdr } },
@@ -607,8 +543,7 @@ static const CMap< Key, SupportedBy > supportedBy = {
             Algorithm::NestedDFS, Algorithm::Map, Algorithm::Owcty,
             Algorithm::GenExplicit } } },
 
-    { Transform::POR,      And{ Generator::Dve, Not{ Algorithm::Info } } },
-    { Transform::Fairness, And{ Or{ Generator::Dve, Generator::LLVM, Generator::ControlLLVM, Generator::ProbabilisticLLVM },
+    { Transform::Fairness, And{ Or{ Generator::LLVM, Generator::ControlLLVM, Generator::ProbabilisticLLVM },
                                 Not{ Algorithm::Info } } },
 
     { Visitor::Shared, Not{ Or{ Algorithm::Simulate, Algorithm::Info } } },
@@ -663,17 +598,10 @@ static inline SymbolPair symStat( Statistics s ) {
 
 // symbols for components with exception of algorithm -- mandatory (except for algorithm)
 static const CMap< Key, FixArray< std::string > > symbols = {
-    symGen( Generator::Dve ),
-    symGen( Generator::Coin ),
-    symGen( Generator::Timed ),
-    symGen( Generator::CESMI ),
     symGen( Generator::LLVM ),
     symGen( Generator::PointsToLLVM ),
     symGen( Generator::ControlLLVM ),
     symGen( Generator::ProbabilisticLLVM ),
-    symGen( Generator::Explicit ),
-    symGen( Generator::ProbabilisticExplicit ),
-    symGen( Generator::Dummy ),
 
     symTrans( Transform::None,     "::divine::graph::NonPORGraph< Graph, Store >" ),
     symTrans( Transform::Fairness, "::divine::graph::FairGraph< Graph, Store >" ),

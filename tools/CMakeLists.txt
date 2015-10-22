@@ -17,10 +17,6 @@ endif()
 
 target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine )
 
-if( OPT_MURPHI )
-    target_link_libraries( divine murphi )
-endif()
-
 if( NOT WIN32 )
   target_link_libraries( divine pthread )
 endif( NOT WIN32 )

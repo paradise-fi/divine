@@ -34,11 +34,6 @@ foreach( I RANGE 1 ${MAX_INSTANCE_FILES_COUNT} )
     set_source_files_properties( ${F} PROPERTIES GENERATED ON )
 endforeach()
 
-if( GEN_COIN )
-    file( GLOB SRC_COIN coin/*.cpp coin/parse/*.cpp)
-    set_source_files_properties( coin/parse/lex.coin.cpp PROPERTIES COMPILE_DEFINITIONS YY_NO_INPUT=1 )
-endif()
-
 if( GEN_LLVM )
     file( GLOB SRC_LLVM llvm/*.cpp )
     file( GLOB H_LLVM llvm/*.h )
@@ -48,15 +43,6 @@ if( GEN_LLVM )
 else() # enable silk even when LLVM is disabled
     file( GLOB SRC_LLVM llvm/silk-*.cpp )
     file( GLOB H_LLVM llvm/silk-*.h )
-endif()
-
-if( GEN_DVE )
-    file( GLOB SRC_DVE dve/*.cpp )
-endif()
-
-if ( GEN_TIMED )
-    file( GLOB SRC_TIMED timed/*.cpp )
-    include_directories( ${Boost_INCLUDE_DIR} )
 endif()
 
 file( GLOB SRC_BA ltl2ba/*.cpp )
@@ -85,10 +71,6 @@ add_custom_command(
 
 stringify( "" toolkit/pool.h )
 stringify( "" toolkit/blob.h )
-stringify( "" cesmi/usr-cesmi.h )
-stringify( "" cesmi/usr-cesmi.cpp )
-stringify( "" cesmi/usr-ltl.h )
-stringify( "" cesmi/usr-ltl.cpp )
 
 set( GENERATED_INSTANCES_DIR "${CMAKE_CURRENT_BINARY_DIR}/instances/auto" )
 add_executable( instances-generator instances/generator.cpp )
@@ -157,11 +139,6 @@ target_link_libraries( libdivine ${MPI_LIBRARIES} )
 
 if( OPT_LTL3BA )
   target_link_libraries( libdivine ltl3ba )
-endif()
-
-if( GEN_TIMED )
-  target_link_libraries( libdivine dbm )
-  target_link_libraries( libdivine utap )
 endif()
 
 if ( OPT_SQL )
