@@ -280,7 +280,6 @@ struct AlgorithmUtils {
 
 #define ALGORITHM_CLASS(_setup)                                 \
     typedef typename _setup::Graph Graph;                       \
-    typedef typename _setup::Statistics Statistics;             \
     typedef typename Graph::Node Node;                          \
     typedef typename Graph::Label Label;                        \
     typedef typename _setup::Store Store;                       \

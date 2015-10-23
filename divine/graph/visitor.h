@@ -93,7 +93,6 @@ struct Common {
     typedef typename Graph::Node Node;
     typedef typename S::Label Label;
     typedef typename S::Listener Listener;
-    typedef typename S::Statistics Statistics;
     typedef typename S::Store Store;
 
     typedef typename Store::Vertex Vertex;
@@ -276,7 +275,6 @@ struct Partitioned {
         typedef typename Store::Hasher Hasher;
         typedef typename Store::Vertex Vertex;
         typedef typename Store::Handle Handle;
-        typedef typename S::Statistics Statistics;
         typedef Implementation< S, Worker > This;
 
         Store &_store;
@@ -294,7 +292,6 @@ struct Partitioned {
 
         inline void queueAny( Vertex from, Node to, Label label, hash64_t hint = 0 ) {
             int _to = store().owner( to, hint ), _from = worker.id();
-            Statistics::global().sent( _from, _to, sizeof(from) + memSize( to, pool() ) );
             worker.submit( _from, _to, std::make_tuple( from, to, label ) );
         }
 
@@ -302,7 +299,6 @@ struct Partitioned {
         void run( BFV &bfv ) {
             worker.restart();
             while ( true ) {
-                Statistics::global().busy( worker.id() );
                 if ( worker.workWaiting() ) {
 
                     int to = worker.id();
@@ -317,9 +313,6 @@ struct Partitioned {
                     for ( int from = 0; from < worker.peers(); ++from ) {
                         while ( worker.comms().pending( from, to ) ) {
                             auto p = worker.comms().take( from, to );
-                            Statistics::global().received(
-                                from, to, sizeof( Node ) + memSize( std::get< 1 >( p ),
-                                    graph.pool() ) );
                             auto f = std::get< 0 >( p );
                             f.initForeign( store() );
                             f.setPool( graph.pool() );
@@ -333,7 +326,6 @@ struct Partitioned {
                 } else if ( !bfv._queue.empty() )
                     bfv.processQueue( 64 );
                 else {
-                    Statistics::global().idle( worker.id() );
                     if ( worker.idle() )
                         return;
                 }
@@ -409,7 +401,6 @@ struct Shared {
         typedef typename S::Node Node;
         typedef typename S::Label Label;
         typedef typename S::Store Store;
-        typedef typename S::Statistics Statistics;
         typedef typename S::Vertex Vertex;
 
         typedef divine::SharedQueue< S > Chunker;
@@ -552,7 +543,7 @@ template<> inline Blob makeNode< Blob >( int n, Pool& p ) {
 }
 
 template< typename G, typename Provider >
-using StoreFor = visitor::DefaultStore< Provider, G, TestHasher< typename G::Node >, NoStatistics >;
+using StoreFor = visitor::DefaultStore< Provider, G, TestHasher< typename G::Node > >;
 
 struct TestVisitor {
     typedef void Test_;
@@ -608,7 +599,6 @@ struct TestVisitor {
         typedef G Graph;
         typedef Check< G > This;
         typedef This Listener;
-        typedef NoStatistics Statistics;
         using Store = StoreFor< G, PartitionedProvider >;
         typedef typename Store::Vertex Vertex;
         typedef typename Store::Handle Handle;
@@ -842,7 +832,6 @@ struct TestVisitor {
         typedef This AlgorithmSetup;
         typedef typename G::Node Node;
         typedef typename G::Label Label;
-        typedef NoStatistics Statistics;
         using Store = StoreFor< G, SharedProvider >;
         typedef G Graph;
         typedef typename Store::Vertex Vertex;

@@ -139,7 +139,7 @@ using Tr = Traits::Get;
 
 enum class Type {
     Begin,
-    Algorithm, Generator, Transform, Store, Statistics,
+    Algorithm, Generator, Transform, Store,
     End
 };
 
@@ -160,8 +160,7 @@ const CMap< Type, SelectOptions > options {
     { Type::Algorithm,  SelectOption::ErrUnavailable },
     { Type::Generator,  SelectOption::ErrUnavailable },
     { Type::Transform,  SelectOption::WarnOther | SelectOption::WarnUnavailable | SelectOption::LastDefault },
-    { Type::Store,      SelectOption::WarnUnavailable | SelectOption::LastDefault },
-    { Type::Statistics, SelectOption::LastDefault }
+    { Type::Store,      SelectOption::WarnUnavailable | SelectOption::LastDefault }
 };
 
 enum class Algorithm {
@@ -184,11 +183,6 @@ enum class Store {
     NDFSNTreeStore, NTreeStore, HcStore, DefaultStore,
     End
 };
-enum class Statistics {
-    Begin,
-    TrackStatistics, NoStatistics,
-    End
-};
 
 // discriminated union of components
 struct Key : brick::types::mixin::LexComparable< Key > {
@@ -201,7 +195,6 @@ struct Key : brick::types::mixin::LexComparable< Key > {
     Key( Generator gen ) : type( Type::Generator ), key( int( gen ) ) { }
     Key( Transform tra ) : type( Type::Transform ), key( int( tra ) ) { }
     Key( Store stor )    : type( Type::Store ),     key( int( stor ) ) { }
-    Key( Statistics st ) : type( Type::Statistics ),key( int( st ) ) { }
 
     std::tuple< Type, int > toTuple() const { return std::make_tuple( type, key ); }
 };
@@ -241,9 +234,6 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Store, HcStore );
     SHOW( Store, DefaultStore );
 
-    SHOW( Statistics, TrackStatistics );
-    SHOW( Statistics, NoStatistics );
-
     std::string emsg = "show: unhandled option ( " + std::to_string( int( component.type ) ) + ", " + std::to_string( component.key ) + " )";
     ASSERT_UNREACHABLE( emsg.c_str() );
 #undef SHOW
@@ -260,7 +250,7 @@ static inline std::ostream &operator<<( std::ostream &o, Key k ) { return o << s
 using brick::hlist::TypeList;
 using brick::types::Union;
 
-using Instantiation = TypeList< Algorithm, Generator, Transform, Store, Statistics >;
+using Instantiation = TypeList< Algorithm, Generator, Transform, Store >;
 using InstT = std::array< std::vector< Key >, Instantiation::length >;
 
 template< size_t i, typename I >
@@ -302,10 +292,7 @@ static const CMap< Key, std::vector< std::string > > headers = {
 
     { Transform::None,     { "divine/graph/por.h" } },
     { Transform::Fairness, { "divine/graph/fairness.h" } },
-    { Transform::POR,      { "divine/algorithm/por-c3.h" } },
-
-    { Statistics::NoStatistics,    { "divine/utility/statistics.h" } },
-    { Statistics::TrackStatistics, { "divine/utility/statistics.h" } }
+    { Transform::POR,      { "divine/algorithm/por-c3.h" } }
 };
 
 struct AlgSelect {
@@ -366,10 +353,7 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
         } },
     { Store::DefaultStore,   constTrue },
     { Store::NTreeStore,     []( const Meta &meta ) { return meta.algorithm.compression == meta::Algorithm::Compression::Tree; } },
-    { Store::HcStore,        []( const Meta &meta ) { return meta.algorithm.hashCompaction; } },
-
-    { Statistics::TrackStatistics, []( const Meta &meta ) { return meta.output.statistics; } },
-    { Statistics::NoStatistics,    constTrue }
+    { Store::HcStore,        []( const Meta &meta ) { return meta.algorithm.hashCompaction; } }
 };
 
 struct NameAlgo {
@@ -448,8 +432,6 @@ static const CMap< Key, Traits::Get > traits = {
 
     { Store::NTreeStore, &Traits::store_compress },
     { Store::HcStore,    &Traits::store_hc },
-
-    { Statistics::NoStatistics, !Tr( &Traits::dev_conflate ) }
 };
 
 // algoritm symbols -- mandatory for each algorithm
@@ -520,8 +502,6 @@ static const CMap< Key, SupportedBy > supportedBy = {
     { Store::NDFSNTreeStore, Algorithm::NestedDFS },
     { Store::NTreeStore,     Not{ Or{ Algorithm::Info, Algorithm::NestedDFS } } },
     { Store::HcStore,        Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
-
-    { Statistics::NoStatistics, Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
 };
 
 using SymbolPair = std::pair< const Key, FixArray< std::string > >;
@@ -530,19 +510,14 @@ static inline SymbolPair symGen( Generator g ) {
 }
 
 static inline SymbolPair symTrans( Transform t, std::string symbol ) {
-    return { t, { "template< typename Graph, typename Store, typename Stat >",
+    return { t, { "template< typename Graph, typename Store >",
                   "using _Transform = " + symbol + ";" } };
 }
 
 static inline SymbolPair symStore( Store s ) {
     auto stor = std::get< 1 >( showGen( s ) );
-    return { s, { "template < typename Provider, typename Generator, typename Hasher, typename Stat >",
-                  "using _Store = ::divine::visitor::" + stor + "< Provider, Generator, Hasher, Stat >;" } };
-}
-
-static inline SymbolPair symStat( Statistics s ) {
-    auto stat = std::get< 1 >( showGen( s ) );
-    return { s, { "using _Statistics = ::divine::" + stat + ";" } };
+    return { s, { "template < typename Provider, typename Generator, typename Hasher >",
+                  "using _Store = ::divine::visitor::" + stor + "< Provider, Generator, Hasher >;" } };
 }
 
 // symbols for components with exception of algorithm -- mandatory (except for algorithm)
@@ -554,15 +529,12 @@ static const CMap< Key, FixArray< std::string > > symbols = {
 
     symTrans( Transform::None,     "::divine::graph::NonPORGraph< Graph, Store >" ),
     symTrans( Transform::Fairness, "::divine::graph::FairGraph< Graph, Store >" ),
-    symTrans( Transform::POR,      "::divine::algorithm::PORGraph< Graph, Store, Stat >" ),
+    symTrans( Transform::POR,      "::divine::algorithm::PORGraph< Graph, Store >" ),
 
     symStore( Store::NDFSNTreeStore ),
     symStore( Store::NTreeStore ),
     symStore( Store::HcStore ),
     symStore( Store::DefaultStore ),
-
-    symStat( Statistics::NoStatistics ),
-    symStat( Statistics::TrackStatistics )
 };
 
 template< typename Graph, typename Store >

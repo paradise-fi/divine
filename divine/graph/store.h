@@ -26,7 +26,7 @@ using brick::types::NotPreferred;
 /* Global utility functions independent of store type
  */
 
-template < typename TableProvider, typename Statistics, bool allowEphemeral = false >
+template < typename TableProvider, bool allowEphemeral = false >
 struct StoreCommon : TableProvider
 {
     using Table = typename TableProvider::Table;
@@ -80,10 +80,6 @@ struct StoreCommon : TableProvider
 
     Found< StoredItem > _store( InsertItem s, hash64_t h ) {
         auto found = this->table().withTD( td ).insertHinted( s, h ? h : hash( s ) );
-        if ( found.isnew() ) {
-            Statistics::global().hashadded( this->id(), memSize( s, hasher().pool() ) );
-            Statistics::global().hashsize( this->id(), this->table().size() );
-        }
         return isNew( *found, found.isnew() );
     }
 };
@@ -436,14 +432,12 @@ typename BS::bitstream &operator>>( BS &bs, TrivialHandle &h )
     return bs;
 }
 
-template < typename TableProvider, typename _Generator,
-           typename _Hasher, typename Statistics >
+template < typename TableProvider, typename _Generator, typename _Hasher >
 struct DefaultStore
-    : StoreCommon< PlainTable< TableProvider, _Generator, _Hasher >,
-                   Statistics >
+    : StoreCommon< PlainTable< TableProvider, _Generator, _Hasher > >
 {
-    using This = DefaultStore< TableProvider, _Generator, _Hasher, Statistics >;
-    using Base = StoreCommon< PlainTable< TableProvider, _Generator, _Hasher >, Statistics >;
+    using This = DefaultStore< TableProvider, _Generator, _Hasher >;
+    using Base = StoreCommon< PlainTable< TableProvider, _Generator, _Hasher > >;
     using Hasher = _Hasher;
     using Table = typename Base::Table;
 
@@ -519,14 +513,13 @@ struct HcHasher : Hasher
 };
 
 template < typename TableProvider,
-           typename _Generator, typename _Hasher, typename Statistics >
+           typename _Generator, typename _Hasher >
 struct HcStore
-    : StoreCommon< PlainTable< TableProvider, _Generator, HcHasher< _Hasher > >,
-                   Statistics >
+    : StoreCommon< PlainTable< TableProvider, _Generator, HcHasher< _Hasher > > >
 {
     using Hasher = HcHasher< _Hasher >;
-    using This = HcStore< TableProvider, _Generator, _Hasher, Statistics >;
-    using Base = StoreCommon< PlainTable< TableProvider, _Generator, Hasher >, Statistics >;
+    using This = HcStore< TableProvider, _Generator, _Hasher >;
+    using Base = StoreCommon< PlainTable< TableProvider, _Generator, Hasher > >;
     using Table = typename Base::Table;
 
     using Node = typename Base::InsertItem;
@@ -625,13 +618,12 @@ private:
 };
 
 template < typename TableProvider, typename _Generator,
-           typename _Hasher, typename Statistics, bool allowEphemeral = true >
+           typename _Hasher, bool allowEphemeral = true >
 struct NTreeStore
-    : StoreCommon< NTreeTable< TableProvider, _Generator, _Hasher >,
-                   Statistics, allowEphemeral >
+    : StoreCommon< NTreeTable< TableProvider, _Generator, _Hasher >, allowEphemeral >
 {
-    using This = NTreeStore< TableProvider, _Generator, _Hasher, Statistics, allowEphemeral >;
-    using Base = StoreCommon< NTreeTable< TableProvider, _Generator, _Hasher >, Statistics, allowEphemeral >;
+    using This = NTreeStore< TableProvider, _Generator, _Hasher, allowEphemeral >;
+    using Base = StoreCommon< NTreeTable< TableProvider, _Generator, _Hasher >, allowEphemeral >;
     using Hasher = _Hasher;
     using Table = typename Base::Table;
 
@@ -704,9 +696,8 @@ private:
     Vertex vertex( Root n ) { return Vertex( *this, Handle( n.unwrap(), this->rank() ) ); }
 };
 
-template < typename TableProvider, typename _Generator,
-           typename _Hasher, typename Statistics >
-using NDFSNTreeStore = NTreeStore< TableProvider, _Generator, _Hasher, Statistics, false >;
+template < typename TableProvider, typename _Generator, typename _Hasher >
+using NDFSNTreeStore = NTreeStore< TableProvider, _Generator, _Hasher, false >;
 
 }
 }

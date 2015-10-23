@@ -62,7 +62,6 @@ struct Queue : QueueFrontend< Setup, Queue< Setup > >
     typedef typename Setup::Graph Graph;
     typedef typename Setup::Store Store;
     typedef typename Graph::Node Node;
-    typedef typename Setup::Statistics Statistics;
     typedef typename Store::Handle Handle;
 
     Graph &g;
@@ -75,7 +74,6 @@ struct Queue : QueueFrontend< Setup, Queue< Setup > >
 
     Handle front() { return _queue.front(); }
     void pop_front() {
-        Statistics::global().dequeue( id, sizeof( Handle ) );
         _queue.pop_front();
     }
 
@@ -85,7 +83,6 @@ struct Queue : QueueFrontend< Setup, Queue< Setup > >
     template< typename Alloc >
     void push( Alloc, Handle t )
     {
-        Statistics::global().enqueue( id, sizeof( t ) );
         _queue.push_back( t );
     }
 
@@ -212,7 +209,6 @@ template < typename Setup >
 struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
 {
     typedef typename Setup::Graph Graph;
-    typedef typename Setup::Statistics Statistics;
 
     using Store = typename Setup::Store;
     using Handle = typename Store::Handle;
@@ -265,7 +261,6 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
 
     template< typename Alloc >
     void push( Alloc, Handle h ) {
-        Statistics::global().enqueue( id, sizeof( Handle ) );
         ++termination;
         outgoing.push_back( h );
         if ( outgoing.size() >= chunkSize )
@@ -278,7 +273,6 @@ struct SharedQueue : QueueFrontend< Setup, SharedQueue< Setup > >
     }
 
     void pop_front() {
-        Statistics::global().dequeue( id, sizeof( Handle ) );
         --termination;
         ASSERT( !incoming.empty() );
         incoming.pop_front();
@@ -332,7 +326,6 @@ struct TestDatastruct {
 
     struct SeqSetup {
         typedef generator::Dummy Graph;
-        typedef NoStatistics Statistics;
         using Store = StoreFor< Graph, PartitionedProvider >;
         typedef typename Store::Handle Handle;
     };
@@ -422,7 +415,6 @@ struct TestDatastruct {
     template < typename G >
     struct SharedSetup {
         typedef G Graph;
-        typedef NoStatistics Statistics;
         using Store = StoreFor< Graph, SharedProvider >;
         typedef typename Store::Handle Handle;
     };

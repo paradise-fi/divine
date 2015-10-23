@@ -349,15 +349,14 @@ struct InstGenerator {
 
             file << "  public:" << std::endl
                  << "    using TableProvider = ::divine::visitor::SharedProvider;" << std::endl
-                 << "    using Store = _Store< TableProvider, _Generator, _Hasher, _Statistics >;" << std::endl
+                 << "    using Store = _Store< TableProvider, _Generator, _Hasher >;" << std::endl
                  << "    using Generator = _Generator;" << std::endl
-                 << "    using Graph = _Transform< _Generator, Store, _Statistics >;" << std::endl
+                 << "    using Graph = _Transform< _Generator, Store >;" << std::endl
                  << "    using Visitor = ::divine::visitor::Shared;" << std::endl
                  << "    template< typename I >" << std::endl
                  << "    using Topology = typename ::divine::Topology< Transition< Graph, Store > >"
                  << std::endl
                  << "                       ::template Local< I >;" << std::endl
-                 << "    using Statistics = _Statistics;" << std::endl
                  << "};" << std::endl;
 
             file << "std::unique_ptr< ::divine::algorithm::Algorithm > create1"
