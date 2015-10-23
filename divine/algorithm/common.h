@@ -129,7 +129,9 @@ struct Algorithm
 
     /// Initializes the graph generator by reading a file
     template< typename Self >
-    typename Self::Graph *initGraph( Self &self, typename Self::Setup::Generator *master_g = nullptr, bool full = true ) {
+    typename Self::Graph *initGraph( Self &self, typename Self::Setup::Generator *master_g = nullptr,
+                                     bool full = true )
+    {
         typename Self::Graph *g = new typename Self::Graph;
         g->setPool( self.masterPool() );
         m_slack_adjusted = g->setSlack( m_slack );
@@ -173,7 +175,8 @@ struct Algorithm
         T *self = static_cast< T * >( this );
 
         self->_visitorData.create();
-        self->topology().distribute( Locally< typename T::VisitorData >( self->_visitorData ), &T::setVisitorData );
+        self->topology().distribute( Locally< typename T::VisitorData >( self->_visitorData ),
+                                     &T::setVisitorData );
         self->topology().distribute( self->shared, &T::setShared );
         self->topology().parallel( fun );
         self->shareds.clear();

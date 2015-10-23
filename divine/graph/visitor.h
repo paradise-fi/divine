@@ -372,7 +372,8 @@ struct Partitioned {
             run( bfv );
         }
 
-        Implementation( typename S::Listener &n, Worker &w, Graph &g, Store &s, Data< typename S::AlgorithmSetup > )
+        Implementation( typename S::Listener &n, Worker &w, Graph &g, Store &s,
+                        Data< typename S::AlgorithmSetup > )
             : worker( w ), notify( n ), graph( g ), _store( s ),
               bfvListener( &notify, this ), bfv( bfvListener, graph, _store )
         {}
