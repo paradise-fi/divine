@@ -64,8 +64,7 @@ struct InstGenerator {
                              "of type " + std::get< 0 >( showGen( v[0] ) ) + "." } );
                 if ( select.find( component ) == select.end() )
                     error( { "Component " + show( component ) + " does not define select" } );
-                if ( (component.type == Type::Algorithm || component.type == Type::Generator
-                            || component.type == Type::Transform )
+                if ( (component.type == Type::Algorithm || component.type == Type::Generator )
                         && headers.find( component ) == headers.end() )
                     error( { show( component ) + " does not define header" } );
                 if ( (component.type == Type::Algorithm || component.type == Type::Generator)
@@ -351,7 +350,7 @@ struct InstGenerator {
                  << "    using TableProvider = ::divine::visitor::SharedProvider;" << std::endl
                  << "    using Store = _Store< TableProvider, _Generator, _Hasher >;" << std::endl
                  << "    using Generator = _Generator;" << std::endl
-                 << "    using Graph = _Transform< _Generator, Store >;" << std::endl
+                 << "    using Graph = ::divine::graph::NonPORGraph< _Generator, Store >;" << std::endl
                  << "    using Visitor = ::divine::visitor::Shared;" << std::endl
                  << "    template< typename I >" << std::endl
                  << "    using Topology = typename ::divine::Topology< Transition< Graph, Store > >"

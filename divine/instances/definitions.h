@@ -139,7 +139,7 @@ using Tr = Traits::Get;
 
 enum class Type {
     Begin,
-    Algorithm, Generator, Transform, Store,
+    Algorithm, Generator, Store,
     End
 };
 
@@ -159,7 +159,6 @@ struct CMap : std::map< K, T > {
 const CMap< Type, SelectOptions > options {
     { Type::Algorithm,  SelectOption::ErrUnavailable },
     { Type::Generator,  SelectOption::ErrUnavailable },
-    { Type::Transform,  SelectOption::WarnOther | SelectOption::WarnUnavailable | SelectOption::LastDefault },
     { Type::Store,      SelectOption::WarnUnavailable | SelectOption::LastDefault }
 };
 
@@ -171,11 +170,6 @@ enum class Algorithm {
 enum class Generator {
     Begin,
     LLVM, PointsToLLVM, ControlLLVM, ProbabilisticLLVM,
-    End
-};
-enum class Transform {
-    Begin,
-    POR, Fairness, None,
     End
 };
 enum class Store {
@@ -193,7 +187,6 @@ struct Key : brick::types::mixin::LexComparable< Key > {
 
     Key( Algorithm alg ) : type( Type::Algorithm ), key( int( alg ) ) { }
     Key( Generator gen ) : type( Type::Generator ), key( int( gen ) ) { }
-    Key( Transform tra ) : type( Type::Transform ), key( int( tra ) ) { }
     Key( Store stor )    : type( Type::Store ),     key( int( stor ) ) { }
 
     std::tuple< Type, int > toTuple() const { return std::make_tuple( type, key ); }
@@ -225,10 +218,6 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
     SHOW( Generator, ControlLLVM );
     SHOW( Generator, ProbabilisticLLVM );
 
-    SHOW( Transform, POR );
-    SHOW( Transform, Fairness );
-    SHOW( Transform, None );
-
     SHOW( Store, NDFSNTreeStore );
     SHOW( Store, NTreeStore );
     SHOW( Store, HcStore );
@@ -250,7 +239,7 @@ static inline std::ostream &operator<<( std::ostream &o, Key k ) { return o << s
 using brick::hlist::TypeList;
 using brick::types::Union;
 
-using Instantiation = TypeList< Algorithm, Generator, Transform, Store >;
+using Instantiation = TypeList< Algorithm, Generator, Store >;
 using InstT = std::array< std::vector< Key >, Instantiation::length >;
 
 template< size_t i, typename I >
@@ -288,11 +277,7 @@ static const CMap< Key, std::vector< std::string > > headers = {
     { Generator::LLVM,                  { "divine/generator/llvm.h" } },
     { Generator::PointsToLLVM,          { "divine/generator/llvm.h" } },
     { Generator::ControlLLVM,           { "divine/generator/llvm.h" } },
-    { Generator::ProbabilisticLLVM,     { "divine/generator/llvm.h" } },
-
-    { Transform::None,     { "divine/graph/por.h" } },
-    { Transform::Fairness, { "divine/graph/fairness.h" } },
-    { Transform::POR,      { "divine/algorithm/por-c3.h" } }
+    { Generator::ProbabilisticLLVM,     { "divine/generator/llvm.h" } }
 };
 
 struct AlgSelect {
@@ -342,10 +327,6 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
     { Generator::ControlLLVM,       GenSelect( ".bc", false ) }, // excluding supported-by
     { Generator::ProbabilisticLLVM, GenSelect( ".bc", true ) },
 
-    { Transform::None,     constTrue },
-    { Transform::Fairness, []( const Meta &meta ) { return meta.algorithm.fairness; } },
-    { Transform::POR,      []( const Meta &meta ) { return meta.algorithm.reduce.count( graph::R_POR ); } },
-
     { Store::NDFSNTreeStore,
         []( const Meta &meta ) {
             return AlgSelect( meta::Algorithm::Type::Ndfs )( meta ) &&
@@ -390,10 +371,7 @@ static const CMap< Key, std::function< void( Meta & ) > > postSelect = {
 
 // those functions will be called if given component should be selected
 // but it is not available
-static const CMap< Key, std::function< void( Meta & ) > > deactivation = {
-    { Transform::POR,      []( Meta &meta ) { meta.algorithm.reduce.erase( graph::R_POR ); } },
-    { Transform::Fairness, []( Meta &meta ) { meta.algorithm.fairness = false; } },
-};
+static const CMap< Key, std::function< void( Meta & ) > > deactivation = {};
 
 static void initLLVM( const Meta &meta ) {
     if ( meta.execution.threads > 1 && !llvm::initMultithreaded() ) {
@@ -426,9 +404,6 @@ static const CMap< Key, Traits::Get > traits = {
     { Generator::PointsToLLVM,          &Traits::gen_llvm_ptst },
     { Generator::ControlLLVM,           &Traits::gen_llvm_csdr },
     { Generator::ProbabilisticLLVM,     &Traits::gen_llvm_prob  },
-
-    { Transform::POR,      &Traits::transform_por },
-    { Transform::Fairness, &Traits::transform_fair },
 
     { Store::NTreeStore, &Traits::store_compress },
     { Store::HcStore,    &Traits::store_hc },
@@ -496,9 +471,6 @@ static const CMap< Key, SupportedBy > supportedBy = {
             Algorithm::NestedDFS, Algorithm::Map, Algorithm::Owcty,
             Algorithm::GenExplicit } } },
 
-    { Transform::Fairness, And{ Or{ Generator::LLVM, Generator::ControlLLVM, Generator::ProbabilisticLLVM },
-                                Not{ Algorithm::Info } } },
-
     { Store::NDFSNTreeStore, Algorithm::NestedDFS },
     { Store::NTreeStore,     Not{ Or{ Algorithm::Info, Algorithm::NestedDFS } } },
     { Store::HcStore,        Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
@@ -507,11 +479,6 @@ static const CMap< Key, SupportedBy > supportedBy = {
 using SymbolPair = std::pair< const Key, FixArray< std::string > >;
 static inline SymbolPair symGen( Generator g ) {
     return { g, { "using _Generator = ::divine::generator::" + std::get< 1 >( showGen( g ) ) + ";" } };
-}
-
-static inline SymbolPair symTrans( Transform t, std::string symbol ) {
-    return { t, { "template< typename Graph, typename Store >",
-                  "using _Transform = " + symbol + ";" } };
 }
 
 static inline SymbolPair symStore( Store s ) {
@@ -526,10 +493,6 @@ static const CMap< Key, FixArray< std::string > > symbols = {
     symGen( Generator::PointsToLLVM ),
     symGen( Generator::ControlLLVM ),
     symGen( Generator::ProbabilisticLLVM ),
-
-    symTrans( Transform::None,     "::divine::graph::NonPORGraph< Graph, Store >" ),
-    symTrans( Transform::Fairness, "::divine::graph::FairGraph< Graph, Store >" ),
-    symTrans( Transform::POR,      "::divine::algorithm::PORGraph< Graph, Store >" ),
 
     symStore( Store::NDFSNTreeStore ),
     symStore( Store::NTreeStore ),
