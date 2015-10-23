@@ -30,6 +30,4 @@ add_custom_target( functional
 )
 
 add_executable( runner runner.cpp )
-
-add_dependencies( functional examples )
 add_dependencies( functional divine )
