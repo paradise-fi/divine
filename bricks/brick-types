@@ -586,6 +586,12 @@ struct Union : Comparable {
     }
 
     template< typename T >
+    T *asptr() { return is< T >() ? &get< T >() : nullptr; }
+
+    template< typename T >
+    const T *asptr() const { return is< T >() ? &get< T >() : nullptr; }
+
+    template< typename T >
     const T &getOr( const T &val ) const {
         if ( is< T >() )
             return unsafeGet< T >();
