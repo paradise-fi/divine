@@ -3,6 +3,7 @@
 #include <lart/interference/pass.h>
 #include <lart/weakmem/pass.h>
 #include <lart/reduction/passes.h>
+#include <lart/svcomp/passes.h>
 #include <lart/support/composite.h>
 
 #include <iostream>
@@ -42,11 +43,15 @@ PassOpts parse( char **pass )
     return r;
 }
 
+void insertPasses( std::vector< PassMeta > &out, std::vector< PassMeta > &&toadd ) {
+    std::copy( toadd.begin(), toadd.end(), std::back_inserter( out ) );
+}
+
 std::vector< PassMeta > passes() {
     std::vector< PassMeta > out;
     out.push_back( weakmem::meta() );
-    auto reduce = reduction::passes();
-    std::copy( reduce.begin(), reduce.end(), std::back_inserter( out ) );
+    insertPasses( out, reduction::passes() );
+    insertPasses( out, svcomp::passes() );
     return out;
 }
 

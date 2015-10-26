@@ -64,16 +64,22 @@ struct Range {
     const It _end;
 };
 
+template< typename To, typename From >
+struct Deref;
+
+template< typename T >
+struct Deref< T &, T * > { static T &run( T *x ) { return *x; } };
+
+template< typename T >
+struct Deref< T, T > { static T run( T x ) { return x; } };
+
 template< typename It >
 struct FixLLVMIt : It {
-    using reference = typename std::conditional<
-            std::is_same< typename It::value_type &, typename It::reference >::value,
-            typename It::value_type,
-            typename It::value_type &
-        >::type;
+    using reference = typename It::value_type &;
 
-    reference operator*() { return *It::operator*(); }
+    reference operator*() { return Deref< reference, typename It::reference >::run( It::operator*() ); }
     using It::It;
+    FixLLVMIt() = default;
     FixLLVMIt( const It &it ) : It( it ) { }
     FixLLVMIt( It &&it ) : It( std::move( it ) ) { }
 };
@@ -222,6 +228,33 @@ void bbPreorder( llvm::Function &fn, Pre pre ) {
 template< typename Pre >
 void bbPreorder( llvm::BasicBlock &bb, Pre pre ) {
     return bbDfs( bb, pre, []( llvm::BasicBlock * ) { } );
+}
+
+inline llvm::Value *getCalledValue( llvm::CallInst *call ) { return call->getCalledValue(); }
+inline llvm::Value *getCalledValue( llvm::InvokeInst *call ) { return call->getCalledValue(); }
+
+template< typename C >
+llvm::Function *getCalledFunction( C *call ) {
+    llvm::Value *calledVal = getCalledValue( call );
+
+    llvm::Function *called = nullptr;
+    do {
+        llvmcase( calledVal,
+            [&]( llvm::Function *fn ) { called = fn; },
+            [&]( llvm::BitCastInst *bc ) { calledVal = bc->getOperand( 0 ); },
+            [&]( llvm::ConstantExpr *ce ) {
+                if ( ce->isCast() )
+                    calledVal = ce->getOperand( 0 );
+                else {
+                    std::cerr << "CONST " << std::flush;
+                    ce->dump();
+                }
+            },
+            [&]( llvm::Value *v ) { std::cerr << "VAL " << std::flush; v->dump(); calledVal = nullptr; }
+        );
+    } while ( !called && calledVal );
+
+    return called;
 }
 
 }
