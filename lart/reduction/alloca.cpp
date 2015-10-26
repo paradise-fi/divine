@@ -8,10 +8,10 @@
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/Analysis/CaptureTracking.h>
 
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
-#include <lart/analysis/escape.h>
 #include <lart/analysis/bbreach.h>
 
 #include <brick-assert.h>
@@ -30,12 +30,12 @@ struct DeadAllocaZeoring : lart::Pass {
         return passMeta< DeadAllocaZeoring >( "DeadAllocaZeoring", "Zero allocas after last use" );
     }
 
-    void runFn( llvm::Function &fn, analysis::EscapeAnalysis::Result &&esc ) {
+    void runFn( llvm::Function &fn ) {
         auto allocas = query::query( fn ).flatten()
                           .map( query::llvmdyncast< llvm::AllocaInst > )
                           .filter( query::notnull )
                           .forall( [&]( auto & ) { ++_allocas; } )
-                          .filter( [&]( llvm::AllocaInst *al ) { return esc.escapes( al ).empty(); } )
+                          .filter( [&]( llvm::AllocaInst *al ) { return !llvm::PointerMayBeCaptured( al, false, true ); } )
                           .forall( [&]( auto & ) { ++_nonescaping; } )
                           .freeze();
 
@@ -165,9 +165,8 @@ struct DeadAllocaZeoring : lart::Pass {
         _m = &m;
         _dl = std::make_unique< llvm::DataLayout >( &m );
         _mzero = _mkmzero( m );
-        analysis::EscapeAnalysis esc( m );
         for ( auto &fn : m )
-            runFn( fn, esc.run( fn ) );
+            runFn( fn );
         std::cerr << "INFO: zeroed " << _zeroed << " out of " << _allocas << " allocas ("
                   << double( _zeroed * 100 ) / _allocas << "%), (" << _nonescaping << " nonescaping)" << std::endl;
         return llvm::PreservedAnalyses::none();

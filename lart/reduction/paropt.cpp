@@ -9,12 +9,12 @@
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/Analysis/CaptureTracking.h>
 
 #include <lart/support/util.h>
 #include <lart/support/meta.h>
 #include <lart/support/pass.h>
 #include <lart/support/query.h>
-#include <lart/analysis/escape.h>
 
 #include <brick-types.h>
 
@@ -156,20 +156,20 @@ struct ConstAllocaElimination : lart::Pass {
         return passMeta< ConstAllocaElimination >( "ConstAllocaElimination" );
     }
 
-    void processFunction( llvm::Function &fn, analysis::EscapeAnalysis::Analysis &&esc ) {
+    void processFunction( llvm::Function &fn ) {
         std::vector< std::pair< llvm::AllocaInst *, llvm::StoreInst * > > vars;
         auto dt = brick::types::lazy( [&]() { return llvm::DominatorTreeAnalysis().run( fn ); } );
 
         for ( auto &inst: query::query( fn ).flatten() ) {
             llvmcase( inst, [&]( llvm::AllocaInst *alloca ) {
                 ++allAllocas;
-                if ( esc.escapes( alloca ).empty() ) {
+                if ( !llvm::PointerMayBeCaptured( alloca, false, true ) ) {
                     auto users = query::query( alloca->users() ).filter( query::isnot< llvm::DbgDeclareInst > );
                     llvm::StoreInst *store = users.map( query::llvmdyncast< llvm::StoreInst > )
                             .filter( query::notnull )
                             .singleton()
                             .getOr( nullptr );
-                    if ( store // single store
+                    if ( store && store->getPointerOperand() == alloca // single store
                             && users.filter( query::isnot< llvm::StoreInst > )
                                     .all( query::is< llvm::LoadInst > ) // + only loads and dbg info
                             && users.map( query::llvmdyncast< llvm::LoadInst > ) // store dominates all loads
@@ -196,7 +196,11 @@ struct ConstAllocaElimination : lart::Pass {
                         ASSERT_EQ( store, var.second );
                         store->eraseFromParent();
                     },
-                    []( llvm::Value *val ) {
+                    [&]( llvm::Value *val ) {
+                        std::cerr << "in " << fn.getName().str() << std::endl;
+                        fn.dump();
+                        var.first->dump();
+                        var.second->dump();
                         val->dump();
                         ASSERT_UNREACHABLE( "unhandled case" );
                     } );
@@ -206,10 +210,9 @@ struct ConstAllocaElimination : lart::Pass {
     }
 
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
-        analysis::EscapeAnalysis escape( m );
 
         for ( auto &fn : m )
-            processFunction( fn, escape.analyze( fn ) );
+            processFunction( fn );
 
         std::cout << "INFO: removed " << deletedAllocas << " out of " << allAllocas
                   << " (" << double( 100 * deletedAllocas ) / allAllocas

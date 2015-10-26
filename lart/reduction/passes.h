@@ -12,7 +12,7 @@ namespace lart {
         PassMeta interruptPass();
         PassMeta allocaPass();
 
-        std::vector< PassMeta > passes() {
+        inline std::vector< PassMeta > passes() {
             return { paroptPass(), interruptPass(), allocaPass() };
         }
     }
