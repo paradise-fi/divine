@@ -31,6 +31,7 @@ struct NondetTracking : lart::Pass {
         return passMeta< NondetTracking >( "nonteterminism-tracking", "" );
     }
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         _dl = std::make_unique< llvm::DataLayout >( &m );
         _ctx = &m.getContext();
@@ -286,6 +287,7 @@ struct Intrinsic : lart::Pass {
         }
     }
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         _ctx = &m.getContext();
         _divineProblem = m.getFunction( "__divine_problem" );
@@ -360,6 +362,7 @@ struct NoMallocFail : lart::Pass {
         std::cout << "INFO: removed " << removed << " choices from " << fn->getName().str() << std::endl;
     }
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         choice = m.getFunction( "__divine_choice" );
         ctx = &m.getContext();

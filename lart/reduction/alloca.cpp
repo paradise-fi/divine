@@ -161,6 +161,7 @@ struct DeadAllocaZeoring : lart::Pass {
 
     llvm::Module *_m;
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         _m = &m;
         _dl = std::make_unique< llvm::DataLayout >( &m );

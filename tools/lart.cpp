@@ -1,6 +1,8 @@
+#if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
+#include <lart/interference/pass.h>
 #include <lart/aa/pass.h>
 #include <lart/abstract/pass.h>
-#include <lart/interference/pass.h>
+#endif
 #include <lart/weakmem/pass.h>
 #include <lart/reduction/passes.h>
 #include <lart/svcomp/passes.h>
@@ -62,6 +64,7 @@ void addPass( ModulePassManager &mgr, std::string n, std::string opt )
             return;
     }
 
+#if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
     if ( n == "aa" ) {
         aa::Pass::Type t;
 
@@ -88,6 +91,9 @@ void addPass( ModulePassManager &mgr, std::string n, std::string opt )
 
     if ( n == "interference" )
         mgr.addPass( interference::Pass() );
+#else
+#warning "LART features disabled: aa, abstract, interference (requires LLVM 3.7)"
+#endif
 
 }
 
@@ -98,7 +104,11 @@ void process( Module *m, PassOpts opt )
     for ( auto i : opt )
         addPass( manager, i.first, i.second );
 
+#if LLVM_MAJOR == 3 && LLVM_MINOR <= 5
+    manager.run( m );
+#else
     manager.run( *m );
+#endif
 }
 
 int main( int argc, char **argv )
@@ -128,12 +138,25 @@ int main( int argc, char **argv )
     assert( input );
 
     Module *module;
-    auto parsed = parseBitcodeFile( input->getMemBufferRef(), *ctx );
+#if LLVM_MAJOR == 3 && LLVM_MINOR <= 5
+    auto inputData = input.get();
+#else
+    auto inputData = input->getMemBufferRef();
+#endif
+    auto parsed = parseBitcodeFile( inputData, *ctx );
     if ( !parsed )
         throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
+#if LLVM_MAJOR == 3 && LLVM_MINOR < 7
+    module = parsed.get();
+#else
     module = parsed.get().get();
+#endif
 
+#if LLVM_MAJOR == 3 && LLVM_MINOR <= 5
+    std::string serr;
+#else
     std::error_code serr;
+#endif
     ::llvm::raw_fd_ostream outs( to, serr, ::llvm::sys::fs::F_None );
 
     PassOpts passes = parse( argv + 3 );

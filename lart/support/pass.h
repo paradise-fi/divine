@@ -13,6 +13,9 @@ namespace lart {
 struct Pass
 {
     virtual llvm::PreservedAnalyses run( llvm::Module &m ) = 0;
+    virtual llvm::PreservedAnalyses run( llvm::Module *m ) {
+        return run( *m );
+    }
     static std::string name() { return "anonymous LART pass"; }
 };
 

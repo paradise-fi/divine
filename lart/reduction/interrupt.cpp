@@ -26,6 +26,7 @@ struct EliminateInterrupt : lart::Pass {
         return passMeta< EliminateInterrupt >( "EliminateInterrupt", "Remove all __divine_interrupt calls (they are deprecated)" );
     }
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         auto interrupt = m.getFunction( "__divine_interrupt" );
         std::vector< llvm::CallInst * > interrupts;
@@ -109,6 +110,7 @@ struct HoistMasks : lart::Pass {
         }
     }
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         _mask = m.getFunction( "__divine_interrupt_mask" );
         if ( !_mask ) {
@@ -136,6 +138,7 @@ struct Mask : lart::Pass {
         return passMeta< Mask >( "Mask", "Mask whole functions annotated with 'lart.interrupt.masked'" );
     }
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         auto mask = m.getFunction( "__divine_interrupt_mask" );
         ASSERT( mask );

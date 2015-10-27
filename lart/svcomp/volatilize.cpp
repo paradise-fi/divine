@@ -42,6 +42,7 @@ struct Atomic : lart::Pass {
         orig->eraseFromParent();
     }
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         auto vbegin = m.getFunction( "__VERIFIER_atomic_begin" ),
              vend = m.getFunction( "__VERIFIER_atomic_end" ),
@@ -75,6 +76,7 @@ struct Volatilize : lart::Pass {
         return passMeta< Volatilize >( "Volatilize", "" );
     }
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         long changed = 0;
         query::owningQuery( brick::llvm::CompileUnitInfo( m.getFunction( "main" ) ).globals() )

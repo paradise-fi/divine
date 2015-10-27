@@ -38,6 +38,7 @@ struct ScalarMemory : lart::Pass
     static char ID;
     const unsigned _wordsize = 8;
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) {
         for ( auto &f : m )
             transform( f );
@@ -159,6 +160,7 @@ struct Substitute : lart::Pass
     }
 
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) {
         if ( _bufferSize > 0 ) {
             auto i32 = llvm::IntegerType::getInt32Ty( m.getContext() );

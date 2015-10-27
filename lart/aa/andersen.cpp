@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2014 Petr Rockai <me@mornfall.net>
 
+#if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
+
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/CallSite.h>
@@ -302,3 +304,5 @@ void Andersen::annotate( llvm::Module &m ) {
 
 }
 }
+
+#endif

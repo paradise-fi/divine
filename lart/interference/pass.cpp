@@ -1,3 +1,5 @@
+#if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
+
 #include <lart/interference/pass.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/CFG.h>
@@ -42,3 +44,5 @@ void Pass::annotate( llvm::Function *f )
                                                  MDsRef( v, vals.size() ) ) );
     }
 }
+
+#endif

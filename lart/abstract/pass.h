@@ -16,6 +16,7 @@ struct Pass : lart::Pass
     Type _type;
     Pass( Type t ) : _type( t ) {}
 
+    using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) {
         std::set< llvm::Value * > vals;
         switch ( _type ) {
