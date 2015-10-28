@@ -38,6 +38,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <unordered_set>
 #include <deque> // for tests
 #include <cstddef>
 
