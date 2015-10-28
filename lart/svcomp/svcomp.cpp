@@ -316,10 +316,10 @@ struct Intrinsic : lart::Pass {
     }
 
     llvm::CallInst *callProblem() {
-        return llvm::CallInst::Create( _divineProblem, {
-                    llvm::ConstantInt::get( llvm::Type::getInt32Ty( *_ctx ), 2 ),
-                    llvm::ConstantPointerNull::get( llvm::Type::getInt8PtrTy( *_ctx ) )
-                } );
+        return llvm::CallInst::Create( _divineProblem, llvm::ArrayRef< llvm::Value * >( {
+                    static_cast< llvm::Value * >( llvm::ConstantInt::get( llvm::Type::getInt32Ty( *_ctx ), 2 ) ),
+                    static_cast< llvm::Value * >( llvm::ConstantPointerNull::get( llvm::Type::getInt8PtrTy( *_ctx ) ) )
+                } ) );
     }
 
   private:

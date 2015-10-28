@@ -380,7 +380,7 @@ struct Substitute : lart::Pass
             auto len = mem->getLength();
             if ( len->getType() != lenTy )
                 len = builder.CreateCast( castOpFrom( len->getType(), lenTy, true ), len, lenTy );
-            auto replace = builder.CreateCall( rfn, { dst, src, len } );
+            auto replace = builder.CreateCall( rfn, llvm::ArrayRef< llvm::Value * >( { dst, src, len } ) );
             mem->replaceAllUsesWith( replace );
             mem->eraseFromParent();
         }
@@ -472,7 +472,7 @@ struct Substitute : lart::Pass
                 addr = builder.CreateBitCast( op, ty );
             }
             auto bitwidth = getBitwidth( ety, ctx, dl );
-            auto call = builder.CreateCall( type == Type::TSO ? _loadTso : _loadPso, { addr, bitwidth } );
+            auto call = builder.CreateCall( type == Type::TSO ? _loadTso : _loadPso, llvm::ArrayRef< llvm::Value * >( { addr, bitwidth } ) );
             llvm::Value *result = call;
 
             // weak load and final cast i64 -> target type
@@ -531,7 +531,7 @@ struct Substitute : lart::Pass
             }
 
             auto bitwidth = getBitwidth( vty, ctx, dl );
-            auto storeCall = builder.CreateCall( type == Type::TSO ? _storeTso : _storePso, { addr, value, bitwidth } );
+            auto storeCall = builder.CreateCall( type == Type::TSO ? _storeTso : _storePso, llvm::ArrayRef< llvm::Value * >( { addr, value, bitwidth } ) );
             store->replaceAllUsesWith( storeCall );
             store->eraseFromParent();
         }

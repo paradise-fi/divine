@@ -59,7 +59,7 @@ struct DeadAllocaZeoring : lart::Pass {
             if ( al->getType() != _mzeroPtrT )
                 ptr = irb.CreateBitCast( al, _mzeroPtrT );
 
-            irb.CreateCall( _mzero, { ptr, siv } );
+            irb.CreateCall( _mzero, llvm::ArrayRef< llvm::Value * >( { ptr, siv } ) );
         };
 
         analysis::BasicBlockSCC sccs( fn );
@@ -181,7 +181,7 @@ struct DeadAllocaZeoring : lart::Pass {
         auto &ctx = m.getContext();
         _mzeroPtrT = llvm::Type::getInt8PtrTy( ctx );
         _mzeroSiT = llvm::Type::getInt64Ty( ctx );
-        auto mzerotype = llvm::FunctionType::get( llvm::Type::getVoidTy( ctx ), { _mzeroPtrT, _mzeroSiT }, false );
+        auto mzerotype = llvm::FunctionType::get( llvm::Type::getVoidTy( ctx ), llvm::ArrayRef< llvm::Type * >( { _mzeroPtrT, _mzeroSiT } ), false );
         auto mzero = llvm::cast< llvm::Function >( m.getOrInsertFunction( /* "lart.alloca.mzero" */ name, mzerotype ) );
         if ( !mzero->empty() )
             return mzero; // already present
