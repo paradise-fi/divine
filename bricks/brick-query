@@ -448,14 +448,19 @@ struct Query {
         return std::accumulate( begin(), end(), init, op );
     }
 
-    ValueType minOr( ValueType x ) {
+    template< typename X >
+    using Copyable = typename std::enable_if< std::is_copy_constructible< X >::value >::type;
+
+    template< typename VT = ValueType, typename = Copyable< VT > >
+    VT minOr( VT x ) {
         auto it = std::min_element( begin(), end() );
         if ( it == end() )
             return x;
         return *it;
     }
 
-    ValueType maxOr( ValueType x ) {
+    template< typename VT = ValueType, typename = Copyable< VT > >
+    VT maxOr( VT x ) {
         auto it = std::max_element( begin(), end() );
         if ( it == end() )
             return x;
@@ -481,7 +486,8 @@ struct Query {
         return (*ib + *ie) / ValueType( 2 );
     }
 
-    ValueType average() {
+    template< typename VT = ValueType, typename = Copyable< VT > >
+    VT average() {
         ValueType sum;
         ptrdiff_t size;
         std::tie( sum, size ) = fold( { ValueType(), 0 },
@@ -491,10 +497,12 @@ struct Query {
         return sum / ValueType( size );
     }
 
-    ValueType min() { return *std::min_element( begin(), end() ); }
-    ValueType max() { return *std::max_element( begin(), end() ); }
+    template< typename VT = ValueType, typename = Copyable< VT > >
+    VT min() { return *std::min_element( begin(), end() ); }
+    template< typename VT = ValueType, typename = Copyable< VT > >
+    VT max() { return *std::max_element( begin(), end() ); }
 
-    template< typename Map, typename FindResult, typename R = typename std::result_of< Map( ValueType ) >::type >
+    template< typename Map, typename FindResult, typename R = typename std::result_of< Map( ValueType & ) >::type >
     struct FindMapResult {
         FindMapResult( FindResult find, Map map ) : find( find ), map( map ) { }
 
