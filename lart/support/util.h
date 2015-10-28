@@ -2,15 +2,17 @@
 //
 //
 #include <type_traits>
+
+#include <llvm/IR/Constants.h>
 #include <llvm/Support/Casting.h>
+#include <llvm/IR/CFG.h>
+
 #include <brick-assert.h>
 #include <brick-types.h>
 #include <chrono>
 #include <string>
 #include <unordered_set>
 #include <iostream>
-
-#include <llvm/IR/CFG.h>
 
 #ifndef LART_SUPPORT_UTIL_H
 #define LART_SUPPORT_UTIL_H

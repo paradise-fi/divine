@@ -6,6 +6,7 @@
 #include <lart/weakmem/pass.h>
 #include <lart/reduction/passes.h>
 #include <lart/svcomp/passes.h>
+#include <lart/divine/passes.h>
 #include <lart/support/composite.h>
 
 #include <iostream>
@@ -54,6 +55,7 @@ std::vector< PassMeta > passes() {
     out.push_back( weakmem::meta() );
     insertPasses( out, reduction::passes() );
     insertPasses( out, svcomp::passes() );
+    insertPasses( out, divine::passes() );
     return out;
 }
 
