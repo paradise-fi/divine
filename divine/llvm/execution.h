@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2012-2014 Petr Rockai
+// -*- C++ -*- (c) 2012-2015 Petr Rockai
 //             (c) 2015 Vladimír Štill
 
 #include <divine/llvm/machine.h>
@@ -18,11 +18,6 @@
 #include <cmath>
 #include <type_traits>
 
-#ifdef _WIN32
-#include <float.h>
-#define isnan _isnan
-#endif
-
 #ifndef DIVINE_LLVM_EXECUTION_H
 #define DIVINE_LLVM_EXECUTION_H
 
@@ -34,6 +29,19 @@ typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 namespace divine {
 namespace llvm {
 
+namespace {
+ int8_t &make_signed(  uint8_t &x ) { return *reinterpret_cast<  int8_t * >( &x ); }
+int16_t &make_signed( uint16_t &x ) { return *reinterpret_cast< int16_t * >( &x ); }
+int32_t &make_signed( uint32_t &x ) { return *reinterpret_cast< int32_t * >( &x ); }
+int64_t &make_signed( uint64_t &x ) { return *reinterpret_cast< int64_t * >( &x ); }
+
+/* maybe assert out instead? */
+float &make_signed( float &x ) { return x; }
+double &make_signed( double &x ) { return x; }
+long double &make_signed( long double &x ) { return x; }
+}
+
+using std::isnan;
 using ::llvm::dyn_cast;
 using ::llvm::cast;
 using ::llvm::isa;
@@ -45,51 +53,14 @@ using ::llvm::CallSite;
 using ::llvm::Type;
 using brick::types::Unit;
 
-template< int, int > struct Eq;
-template< int i > struct Eq< i, i > { typedef int Yes; };
-
-template< typename As, typename A, typename B >
-list::Cons< As *, B > consPtr( A *a, B b ) {
-    return list::Cons< As *, B >( reinterpret_cast< As * >( a ), b );
-}
-
-template< typename X >
-struct UnPtr {};
-template< typename X >
-struct UnPtr< X * > { typedef X T; };
-
-template< int I, typename Cons >
-auto deconsptr( Cons c ) -> typename UnPtr< typename list::ConsAt< I >::template T< Cons > >::T &
-{
-    return *c.template get< I >();
-}
-
-#define MATCH(l, ...) template< typename F, typename X, \
-        typename = typename Eq< l, X::length >::Yes > \
-    auto match( F &f, X x ) -> decltype( f( __VA_ARGS__ ) ) \
-    { static_cast< void >( x ); return f( __VA_ARGS__ ); }
-
-MATCH( 0, /**/ )
-MATCH( 1, deconsptr< 0 >( x ) )
-MATCH( 2, deconsptr< 1 >( x ), deconsptr< 0 >( x ) )
-MATCH( 3, deconsptr< 2 >( x ), deconsptr< 1 >( x ), deconsptr< 0 >( x ) )
-MATCH( 4, deconsptr< 3 >( x ), deconsptr< 2 >( x ), deconsptr< 1 >( x ), deconsptr< 0 >( x ) )
-
-#undef MATCH
+struct NoOp { template< typename T > NoOp( T ) {} };
 
 template< typename T >
-auto rem( brick::types::Preferred, T a, T b )
-    -> decltype( a % b )
-{
-    return a % b;
-}
+auto rem( T x, T y ) -> decltype( x % y ) { return x % y; }
 
 template< typename T >
-auto rem( brick::types::NotPreferred, T a, T b )
-    -> decltype( std::fmod( a, b ) )
-{
-    return std::fmod( a, b );
-}
+auto rem( T x, T y ) -> typename std::enable_if< std::is_floating_point< T >::value, T >::type
+{ return std::fmod( x, y ); }
 
 /* Dummy implementation of a ControlContext, useful for Evaluator for
  * control-flow-free snippets (like ConstantExpr). */
@@ -115,6 +86,38 @@ struct Dummy {
     static X &v() { ASSERT_UNREACHABLE( "" ); }
 };
 
+template< typename To > struct Convertible
+{
+    template< typename From >
+    static constexpr decltype( To( std::declval< From >() ), true ) value( unsigned ) { return true; }
+    template< typename From >
+    static constexpr bool value( int ) { return false ; }
+
+    template< typename From >
+    struct Guard {
+        static const bool value = Convertible< To >::value< From >( 0u );
+    };
+};
+
+template< typename To > struct SignedConvertible {
+    template< typename From >
+    struct Guard {
+        static const bool value = std::is_arithmetic< To >::value &&
+                                  std::is_arithmetic< From >::value &&
+                                  Convertible< To >::template Guard< From >::value;
+    };
+};
+
+template< typename T > struct IntegerComparable {
+    static const bool value = std::is_integral< T >::value ||
+                              std::is_same< T, Pointer >::value ||
+                              std::is_same< T, PC >::value;
+};
+
+struct __X {};
+static_assert( Convertible< double >::template Guard< float >::value, "" );
+static_assert( !Convertible< __X >::template Guard< float >::value, "" );
+
 /*
  * A relatively efficient evaluator for the LLVM instruction set. Current
  * semantics are derived from C++ semantics, which is not always entirely
@@ -123,11 +126,6 @@ struct Dummy {
  * EvalContext provides access to the register file and memory. It needs to
  * provide at least TargetData, dereference( Value ), dereference( Pointer )
  * and malloc( int ).
- *
- * BEWARE. The non-const references in argument lists of Implementations are
- * necessary to restrict matching to exact same types, since const references
- * and lvalues allow conversions through temporaries to happen. This is
- * undesirable. Please watch out to not modify right-hand values accidentally.
  */
 template < typename EvalContext, typename ControlContext >
 struct Evaluator
@@ -152,17 +150,6 @@ struct Evaluator
 
     ValueRefs values, result;
     brick::data::SmallVector< MemoryFlags, 4 > flags;
-
-    struct Implementation {
-        typedef Unit T;
-        Evaluator< EvalContext, ControlContext > *_evaluator;
-        Evaluator< EvalContext, ControlContext > &evaluator() { return *_evaluator; }
-        ProgramInfo::Instruction i() { return _evaluator->instruction(); }
-        EvalContext &econtext() { return _evaluator->econtext; }
-        ControlContext &ccontext() { return _evaluator->ccontext; }
-        ::llvm::DataLayout &TD() { return econtext().TD; }
-        MemoryFlag resultFlag( MemoryFlags ) { return MemoryFlag::Data; }
-    };
 
     template< typename X >
     char *dereference( X x ) { return econtext.dereference( x ); }
@@ -203,296 +190,12 @@ struct Evaluator
         ccontext.problem( Problem::PointsToViolated, p );
     }
 
-    /******** Arithmetic & comparisons *******/
-
-    template< bool propagatePointer = true, size_t fstoff = 1 >
-    struct BinaryOperator : Implementation {
-        MemoryFlag resultFlag( MemoryFlags x )
-        {
-            if ( x[ fstoff ] == MemoryFlag::Uninitialised || x[ fstoff + 1 ] == MemoryFlag::Uninitialised )
-                return MemoryFlag::Uninitialised;
-            if ( propagatePointer &&
-                    ( x[ fstoff ] == MemoryFlag::HeapPointer || x[ fstoff + 1 ] == MemoryFlag::HeapPointer ) )
-                return MemoryFlag::HeapPointer;
-            return MemoryFlag::Data;
-        }
-    };
-
-    struct Arithmetic : BinaryOperator<> {
-        static const int arity = 3;
-        template< typename X = int >
-        auto operator()( X &r = Dummy< X >::v(),
-                         X &a = Dummy< X >::v(),
-                         X &b = Dummy< X >::v() )
-            -> decltype( declcheck( a + b, rem( brick::types::Preferred(), a, b ) ) )
-        {
-            switch( this->i().opcode ) {
-                case LLVMInst::FAdd:
-                case LLVMInst::Add: r = a + b; return Unit();
-                case LLVMInst::FSub:
-                case LLVMInst::Sub: r = a - b; return Unit();
-                case LLVMInst::FMul:
-                case LLVMInst::Mul: r = a * b; return Unit();
-                case LLVMInst::FDiv:
-                case LLVMInst::SDiv:
-                case LLVMInst::UDiv:
-                    if ( !b )
-                        this->ccontext().problem( Problem::DivisionByZero );
-                    r = b ? (a / b) : 0;
-                    return Unit();
-                case LLVMInst::FRem:
-                case LLVMInst::URem:
-                case LLVMInst::SRem:
-                    if ( !b )
-                        this->ccontext().problem( Problem::DivisionByZero );
-                    r = b ? rem( brick::types::Preferred(), a, b ) : 0;
-                    return Unit();
-                default:
-                    ASSERT_UNREACHABLE_F( "invalid arithmetic opcode %d", this->i().opcode );
-            }
-        }
-    };
-
-    struct ArithmeticWithOverflow : BinaryOperator< true, 2 > {
-        static const int arity = 4;
-        int operation;
-
-        ArithmeticWithOverflow( int op ) : operation( op ) {}
-
-        template< typename X = int, typename Y = uint8_t >
-        auto operator()( X &r = Dummy< X >::v(),
-                         Y &overflow = Dummy< Y >::v(),
-                         X &a = Dummy< X >::v(),
-                         X &b = Dummy< X >::v() )
-            -> decltype( declcheck( a + b, overflow = true ) )
-        {
-            overflow = false;
-
-            switch ( operation ) {
-                case Intrinsic::umul_with_overflow:
-                    ASSERT( !this->evaluator().is_signed );
-                    r = a * b;
-                    if ( a > 0 && b > 0 && ( r < a || r < b ) )
-                        overflow = true;
-                    return Unit();
-                case Intrinsic::uadd_with_overflow:
-                    ASSERT( !this->evaluator().is_signed );
-                    r = a + b;
-                    if ( r < a || r < b )
-                        overflow = true;
-                    return Unit();
-                case Intrinsic::usub_with_overflow:
-                    if ( a < b )
-                        overflow = true;
-                    r = a - b;
-                    return Unit();
-                case Intrinsic::smul_with_overflow:
-                case Intrinsic::sadd_with_overflow:
-                case Intrinsic::ssub_with_overflow:
-                    ASSERT( this->evaluator().is_signed );
-                default:
-                    ASSERT_UNREACHABLE_F( "invalid .with.overflow operation %d", operation );
-            }
-        }
-    };
-
-    struct Bitwise : BinaryOperator<> {
-        static const int arity = 3;
-        template< typename X = int >
-        auto operator()( X &r = Dummy< X >::v(),
-                         X &a = Dummy< X >::v(),
-                         X &b = Dummy< X >::v() )
-            -> decltype( declcheck( a | b ) )
-        {
-            switch( this->i().opcode ) {
-                case LLVMInst::And:  r = a & b; return Unit();
-                case LLVMInst::Or:   r = a | b; return Unit();
-                case LLVMInst::Xor:  r = a ^ b; return Unit();
-                case LLVMInst::Shl:  r = a << b; return Unit();
-                case LLVMInst::AShr:  // XXX?
-                case LLVMInst::LShr:  r = a >> b; return Unit();
-                default:
-                    ASSERT_UNREACHABLE_F( "invalid bitwise opcode %d", this->i().opcode );
-            }
-        }
-    };
-
-    struct Select : Implementation {
-        int _selected;
-        static const int arity = 4;
-        template< typename R = int, typename C = int >
-        auto operator()( R &r = Dummy< R >::v(),
-                         C &a = Dummy< C >::v(),
-                         R &b = Dummy< R >::v(),
-                         R &c = Dummy< R >::v() )
-            -> decltype( declcheck( r = a ? b : c ) )
-        {
-            _selected = a ? 2 : 3;
-            r = a ? b : c;
-            return Unit();
-        }
-        MemoryFlag resultFlag( MemoryFlags x ) {
-            if ( x[1] == MemoryFlag::Uninitialised ) {
-                this->ccontext().problem( Problem::Uninitialised );
-                return MemoryFlag::Uninitialised;
-            } else
-                return x[ _selected ];
-        }
-    };
-
-    struct ICmp : BinaryOperator< false > {
-        static const int arity = 3;
-        template< typename R = uint8_t, typename X = int >
-        auto operator()( R &r = Dummy< R >::v(),
-                         X &a = Dummy< X >::v(),
-                         X &b = Dummy< X >::v() )
-            -> typename std::enable_if< sizeof( R ) == 1, decltype( declcheck( r = a < b ) ) >::type
-        {
-            auto p = dyn_cast< ICmpInst >( this->i().op )->getPredicate();
-            switch ( p ) {
-                case ICmpInst::ICMP_EQ:  r = a == b; return Unit();
-                case ICmpInst::ICMP_NE:  r = a != b; return Unit();
-                case ICmpInst::ICMP_ULT:
-                case ICmpInst::ICMP_SLT: r = a < b; return Unit();
-                case ICmpInst::ICMP_UGT:
-                case ICmpInst::ICMP_SGT: r = a > b; return Unit();
-                case ICmpInst::ICMP_ULE:
-                case ICmpInst::ICMP_SLE: r = a <= b; return Unit();
-                case ICmpInst::ICMP_UGE:
-                case ICmpInst::ICMP_SGE: r = a >= b; return Unit();
-                default: ASSERT_UNREACHABLE_F( "unexpected icmp op %d", p );
-            }
-        }
-    };
-
-    struct FCmp : BinaryOperator< false > {
-        static const int arity = 3;
-        template< typename R = uint8_t, typename X = int >
-        auto operator()( R &r = Dummy< R >::v(),
-                         X &a = Dummy< X >::v(),
-                         X &b = Dummy< X >::v() )
-            -> typename std::enable_if< sizeof( R ) == 1,
-                                        decltype( declcheck( r = isnan( a ) && isnan( b ) ) ) >::type
-        {
-            auto p = dyn_cast< FCmpInst >( this->i().op )->getPredicate();
-            switch ( p ) {
-                case FCmpInst::FCMP_FALSE: r = false; return Unit();
-                case FCmpInst::FCMP_TRUE:  r = true;  return Unit();
-                case FCmpInst::FCMP_ORD:   r = !isnan( a ) && !isnan( b ); return Unit();
-                case FCmpInst::FCMP_UNO:   r = isnan( a ) || isnan( b );   return Unit();
-
-                case FCmpInst::FCMP_UEQ:
-                case FCmpInst::FCMP_UNE:
-                case FCmpInst::FCMP_UGE:
-                case FCmpInst::FCMP_ULE:
-                case FCmpInst::FCMP_ULT:
-                case FCmpInst::FCMP_UGT:
-                    if ( isnan( a ) || isnan( b ) ) {
-                        r = true;
-                        return Unit();
-                    }
-                    break;
-                case FCmpInst::FCMP_OEQ:
-                case FCmpInst::FCMP_ONE:
-                case FCmpInst::FCMP_OGE:
-                case FCmpInst::FCMP_OLE:
-                case FCmpInst::FCMP_OLT:
-                case FCmpInst::FCMP_OGT:
-                    if ( isnan( a ) || isnan( b ) ) {
-                        r = false;
-                        return Unit();
-                    }
-                    break;
-                default: ASSERT_UNREACHABLE_F( "unexpected fcmp op %d", p );
-            }
-
-            switch ( p ) {
-                case FCmpInst::FCMP_OEQ:
-                case FCmpInst::FCMP_UEQ: r = a == b; return Unit();
-                case FCmpInst::FCMP_ONE:
-                case FCmpInst::FCMP_UNE: r = a != b; return Unit();
-
-                case FCmpInst::FCMP_OLT:
-                case FCmpInst::FCMP_ULT: r = a < b; return Unit();
-
-                case FCmpInst::FCMP_OGT:
-                case FCmpInst::FCMP_UGT: r = a > b; return Unit();
-
-                case FCmpInst::FCMP_OLE:
-                case FCmpInst::FCMP_ULE: r = a <= b; return Unit();
-
-                case FCmpInst::FCMP_OGE:
-                case FCmpInst::FCMP_UGE: r = a >= b; return Unit();
-                default: ASSERT_UNREACHABLE_F( "unexpected fcmp op %d", p );
-            }
-        }
-    };
-
-    /******** Register access & conversion *******/
-
-    struct Convert : Implementation {
-        bool truncated;
-        static const int arity = 2;
-        template< typename L = int, typename R = L >
-        auto operator()( L &l = Dummy< L >::v(),
-                         R &r = Dummy< R >::v() )
-            -> decltype( declcheck( l = L( r ) ) )
-        {
-            truncated = this->i().result().width < this->econtext().pointerTypeSize();
-            l = L( r );
-            return Unit();
-        }
-
-        MemoryFlag resultFlag( MemoryFlags x ) {
-            return truncated && x[1] == MemoryFlag::HeapPointer ? MemoryFlag::Data : x[1];
-        }
-    };
-
     void implement_bitcast() {
-        auto r = memcopy( instruction().operand( 0 ), instruction().result(), instruction().result().width );
+        auto r = memcopy( instruction().operand( 0 ), instruction().result(),
+						  instruction().result().width );
         ASSERT_EQ( r, Problem::NoProblem );
         static_cast< void >( r );
     }
-
-    template< typename _T >
-    struct Get : Implementation {
-        static const int arity = 1;
-        typedef _T T;
-
-        template< typename X = T >
-        auto operator()( X &l = Dummy< X >::v() ) -> decltype( static_cast< T >( l ) )
-        {
-            return static_cast< T >( l );
-        }
-
-        MemoryFlag resultFlag( MemoryFlags x ) { return x[0]; }
-    };
-
-    template< typename _T >
-    struct Set : Implementation {
-        typedef _T Arg;
-        Arg v;
-        MemoryFlag _flag;
-        static const int arity = 1;
-
-        template< typename X = Arg >
-        auto operator()( X &r = Dummy< X >::v() )
-            -> decltype( declcheck( static_cast< X >( v ) ) )
-        {
-            r = static_cast< X >( v );
-            return Unit();
-        }
-
-        MemoryFlag resultFlag( MemoryFlags ) { return _flag; }
-
-        Set( Arg v, MemoryFlag f = MemoryFlag::Data ) : v( v ), _flag( f ) {}
-    };
-
-    typedef Get< bool > IsTrue;
-    typedef Get< int > GetInt;
-    typedef Set< int > SetInt;
-
-    /******** Memory access & conversion ********/
 
     using AtOffset = std::pair< int, Type * >;
 
@@ -523,29 +226,14 @@ struct Evaluator
         if ( current == end )
             return 0;
 
-        int index = withValues( GetInt(), instruction().operand( current ) );
+        int index = _get< int >( instruction().operand( current ) );
         auto r = compositeOffset( t, index );
 
         return r.first + compositeOffsetFromInsn( r.second, current + 1, end );
     }
 
-    struct GetElement : Implementation {
-        static const int arity = 2;
-        Unit operator()( Pointer &r = Dummy< Pointer >::v(),
-                         Pointer &p = Dummy< Pointer >::v() )
-        {
-            r = p + this->evaluator().compositeOffsetFromInsn(
-                this->i().op->getOperand(0)->getType(), 1, this->i().values.size() - 1 );
-            return Unit();
-        }
-        MemoryFlag resultFlag( MemoryFlags x ) {
-            ASSERT_LEQ( 2U, x.size() );
-            return x[1];
-        }
-    };
-
     void implement_store() {
-        Pointer to = withValues( Get< Pointer >(), instruction().operand( 1 ) );
+        Pointer to = _get< Pointer >( instruction().operand( 1 ) );
         auto mf = econtext.memoryflag( instruction().operand( 1 ) );
         if ( mf.valid() )
             ASSERT( econtext.validate( to, mf.get() == MemoryFlag::HeapPointer ) );
@@ -554,7 +242,7 @@ struct Evaluator
     }
 
     void implement_load() {
-        Pointer from = withValues( Get< Pointer >(), instruction().operand( 0 ) );
+        Pointer from = _get< Pointer >( instruction().operand( 0 ) );
         auto mf = econtext.memoryflag( instruction().operand( 0 ) );
         if ( mf.valid() )
             ASSERT( econtext.validate( from, mf.get() == MemoryFlag::HeapPointer ) );
@@ -573,117 +261,85 @@ struct Evaluator
         return memcopy( f, t, bytes, econtext, econtext );
     }
 
-    struct Memcpy : Implementation {
-        static const int arity = 4;
-        template< typename I = int >
-        auto operator()( Pointer &ret = Dummy< Pointer >::v(),
-                         Pointer &dest = Dummy< Pointer >::v(),
-                         Pointer &src = Dummy< Pointer >::v(),
-                         I &nmemb = Dummy< I >::v() )
-            -> decltype( declcheck( memcpy( Dummy< void * >::v(), Dummy< void * >::v(), nmemb ) ) )
-        {
-            if ( auto problem = this->evaluator().memcopy( src, dest, nmemb ) )
-                this->ccontext().problem( problem );
-
-            ret = dest;
-            return Unit();
-        }
-
-        /* copy status from dest */
-        MemoryFlag resultFlag( MemoryFlags x ) { return x[1]; }
+    template< typename T >
+    struct s_get {
+        Evaluator< EvalContext, ControlContext > *ev;
+        s_get( Evaluator< EvalContext, ControlContext > *ev ) : ev( ev ) {}
+        T &operator()( int i ) { return ev->_get< T >( i ); }
     };
 
-    struct Switch : Implementation {
-        static const int arity = 1;
-        template< typename X = int >
-        Unit operator()( X &condition = Dummy< X >::v() )
-        {
-            for ( int o = 2; o < int( this->i().values.size() ) - 1; o += 2 )
-            {
-                X &v = *reinterpret_cast< X * >(
-                    this->evaluator().dereference( this->i().operand( o ) ) );
-                if ( v == condition ) {
-                    this->evaluator().jumpTo( this->i().operand( o + 1 ) );
-                    return Unit();
+    template< typename T >
+    T &_get( int i ) { return *reinterpret_cast< T * >( dereference( instruction().value( i ) ) ); }
+
+    template< typename T >
+    T &_get( ValueRef r ) { return *reinterpret_cast< T * >( dereference( r ) ); }
+
+    template< typename T >
+    typename std::remove_reference< T >::type &_deref( int i ) {
+        return *reinterpret_cast<
+            typename std::remove_reference< T >::type * >(
+                dereference( _get< Pointer >( i ) ) ); }
+
+    template< typename > struct Any { static const bool value = true; };
+
+    template< template< typename > class Guard, typename T, typename Op >
+    auto op( Op _op ) -> typename std::enable_if< Guard<
+        typename std::remove_reference< T >::type >::value >::type
+    {
+        _op( [this]( int i ) -> auto& { return this->_get< T >( i ); } );
+    }
+
+    template< template< typename > class Guard, typename T >
+    void op( NoOp ) {
+        instruction().op->dump();
+        ASSERT_UNREACHABLE( "invalid operation" );
+    }
+
+    template< template< typename > class Guard, typename Op >
+    void op( int off, Op _op ) {
+        using Value = ProgramInfo::Value;
+        auto &v = instruction().value( off );
+        switch ( v.type ) {
+            case Value::Integer:
+                switch ( v.width ) {
+                    case 1: return op< Guard,  uint8_t >( _op );
+                    case 2: return op< Guard, uint16_t >( _op );
+                    case 4: return op< Guard, uint32_t >( _op );
+                    case 8: return op< Guard, uint64_t >( _op );
                 }
+                ASSERT_UNREACHABLE_F( "Unsupported integer width %d", v.width );
+            case Value::Pointer: case Value::Alloca:
+                return op< Guard, Pointer >( _op );
+            case Value::CodePointer:
+                return op< Guard, PC >( _op );
+            case Value::Float:
+                switch ( v.width ) {
+                case sizeof(float):
+                    return op< Guard, float >( _op );
+                case sizeof(double):
+                    return op< Guard, double >( _op );
+                case sizeof(long double):
+                    return op< Guard, long double >( _op );
             }
-            this->evaluator().jumpTo( this->i().operand( 1 ) );
-            return Unit();
+            default:
+                ASSERT_UNREACHABLE_F( "Wrong dispatch type %d", v.type );
         }
+    }
 
-        MemoryFlag resultFlag( MemoryFlags x ) {
-            if ( x[0] == MemoryFlag::Uninitialised )
-                this->ccontext().problem( Problem::Uninitialised );
-            return x[0];
-        }
-    };
-
-    struct CmpXchg : Implementation {
-        static const int arity = 4;
-        template< typename X = int >
-        auto operator()( X &result = Dummy< X >::v(),
-                         Pointer &p = Dummy< Pointer >::v(),
-                         X &expected = Dummy< X >::v(),
-                         X &changed = Dummy< X >::v() )
-            -> decltype( declcheck( expected == changed ) )
-        {
-            X &current = *reinterpret_cast< X * >(
-                this->evaluator().dereference( p ) );
-
-            result = current;
-
-            if ( current == expected )
-                current = changed;
-
-            return Unit();
-        }
-
-        MemoryFlag resultFlag( MemoryFlags ) {
-            return MemoryFlag::Data; /* nothing */
-        }
-    };
-
-    struct AtomicRMW : Implementation {
-        static const int arity = 3;
-        template< typename X = int >
-        auto operator()( X &result = Dummy< X >::v(),
-                         Pointer &p = Dummy< Pointer >::v(),
-                         X &x = Dummy< X >::v() )
-            -> decltype( declcheck( x + x, x ^ x ) )
-        {
-            X &v = *reinterpret_cast< X * >(
-                this->evaluator().dereference( p ) );
-
-            result = v;
-
-            switch (dyn_cast< AtomicRMWInst >( this->i().op )->getOperation()) {
-                case AtomicRMWInst::Xchg: v = x;     return Unit();
-                case AtomicRMWInst::Add:  v =  v + x; return Unit();
-                case AtomicRMWInst::Sub:  v =  v - x; return Unit();
-                case AtomicRMWInst::And:  v =  v & x; return Unit();
-                case AtomicRMWInst::Nand: v = ~v & x; return Unit();
-                case AtomicRMWInst::Or:   v =  v | x; return Unit();
-                case AtomicRMWInst::Xor:  v =  v ^ x; return Unit();
-                case AtomicRMWInst::Max:
-                case AtomicRMWInst::UMax: v = std::max( v, x ); return Unit();
-                case AtomicRMWInst::UMin:
-                case AtomicRMWInst::Min:  v = std::min( v, x ); return Unit();
-                case AtomicRMWInst::BAD_BINOP: ASSERT_UNREACHABLE_F( "bad binop in atomicrmw" );
-            }
-
-            return Unit();
-        }
-
-        MemoryFlag resultFlag( MemoryFlags ) {
-            return MemoryFlag::Data; /* nothing */
-        }
-    };
+    template< template< typename > class Guard, typename Op >
+    void op( int off1, int off2, Op _op ) {
+        op< Any >( off1, [&]( auto get1 ) {
+                return this->op< Guard< typename std::remove_reference< decltype( get1( 0 ) ) >::type
+                                >::template Guard >(
+                    off2, [&]( auto get2 ) { return _op( get1, get2 ); } );
+            } );
+    }
 
     void implement_alloca() {
         ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction().op );
         Type *ty = I->getAllocatedType();
 
-        int count = withValues( GetInt(), instruction().operand( 0 ) );
+        int count = _get< int >( instruction().operand( 0 ) );
         int size = econtext.TD.getTypeAllocSize(ty); /* possibly aggregate */
 
         unsigned alloc = std::max( 1, count * size );
@@ -718,8 +374,6 @@ struct Evaluator
         ASSERT_EQ( r, Problem::NoProblem );
         static_cast< void >( r );
     }
-
-    /******** Control flow ********/
 
     void jumpTo( ProgramInfo::Value v )
     {
@@ -769,7 +423,7 @@ struct Evaluator
             auto mflag = econtext.memoryflag( instruction().operand( 0 ) );
             if ( mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
                 ccontext.problem( Problem::Uninitialised );
-            if ( withValues( IsTrue(), instruction().operand( 0 ) ) )
+            if ( _get< bool >( instruction().operand( 0 ) ) )
                 jumpTo( instruction().operand( 2 ) );
             else
                 jumpTo( instruction().operand( 1 ) );
@@ -780,7 +434,7 @@ struct Evaluator
         auto mflag = econtext.memoryflag( instruction().operand( 0 ) );
         if ( mflag.valid() && mflag.get() == MemoryFlag::Uninitialised )
             ccontext.problem( Problem::Uninitialised );
-        Pointer target = withValues( Get< Pointer >(), instruction().operand( 0 ) );
+        Pointer target = _get< Pointer >( instruction().operand( 0 ) );
         jumpTo( *reinterpret_cast< PC * >( dereference( target ) ) );
     }
 
@@ -869,7 +523,7 @@ struct Evaluator
             auto target = &info.instruction( ccontext.frame( frameid ).pc );
 
             if ( isa< ::llvm::InvokeInst >( target->op ) ) {
-                target_pc = withValues( Get< PC >(), ValueRef( target->operand( -1 ), frameid ) );
+                target_pc = _get< PC >( ValueRef( target->operand( -1 ), frameid ) );
                 target = &info.instruction( target_pc );
             }
 
@@ -904,12 +558,13 @@ struct Evaluator
         auto lpi = info.instruction( pc );
         if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( lpi.op ) ) {
             r.cleanup = LPI->isCleanup();
-            r.person = withValues( Get< Pointer >(), ValueRef( lpi.operand( 0 ) ) );
+            r.person = Pointer( _get< PC >( info.function( pc ).personality ) );
+            ASSERT( !r.person.null() );
             for ( int i = 0; i < int( LPI->getNumClauses() ); ++i ) {
                 if ( LPI->isFilter( i ) ) {
                     r.items.push_back( std::make_pair( -1, Pointer() ) );
                 } else {
-                    auto tag = withValues( Get< Pointer >(), ValueRef( lpi.operand( i + 1 ), frameid ) );
+                    auto tag = _get< Pointer >( ValueRef( lpi.operand( i ), frameid ) );
                     auto type_id = info.function( pc ).typeID( tag );
                     r.items.push_back( std::make_pair( type_id, tag ) );
                 }
@@ -930,7 +585,7 @@ struct Evaluator
         PC pc = ccontext.frame( frameid ).pc;
         auto insn = info.instruction( pc );
         if ( isa< ::llvm::InvokeInst >( insn.op ) ) {
-            pc = withValues( Get< PC >(), ValueRef( insn.operand( -1 ), frameid ) );
+            pc = _get< PC >( ValueRef( insn.operand( -1 ), frameid ) );
             lp = getLPInfo( pc, frameid );
         }
 
@@ -973,9 +628,10 @@ struct Evaluator
             case Intrinsic::vacopy:
                 ASSERT_UNIMPLEMENTED(); /* TODO */
             case Intrinsic::eh_typeid_for: {
-                auto tag = withValues( Get< Pointer >(), instruction().operand( 0 ) );
+                auto tag = _get< Pointer >( instruction().operand( 0 ) );
                 int type_id = info.function( ccontext.pc() ).typeID( tag );
-                withValues( Set< int >( type_id ), instruction().result() );
+                _get< int >( 0 ) = type_id;
+                setFlags( instruction().result(), MemoryFlag::Data );
                 return;
             }
             case Intrinsic::smul_with_overflow:
@@ -992,8 +648,10 @@ struct Evaluator
                 over.width = 1; // hmmm
                 over.type = ProgramInfo::Value::Integer;
                 over.offset += compositeOffset( instruction().op->getType(), 1 ).first;
-                withValues( ArithmeticWithOverflow( id ), res, over,
-                            instruction().operand( 0 ), instruction().operand( 1 ) );
+                ASSERT_UNIMPLEMENTED();
+                /* withValues( ArithmeticWithOverflow( id ), res, over,
+                            instruction().operand( 0 ), instruction().operand(
+                            1 ) ); */
                 return;
             }
             case Intrinsic::stacksave:
@@ -1004,7 +662,7 @@ struct Evaluator
                 for ( auto &i : f.instructions )
                     if ( i.opcode == LLVMInst::Alloca ) {
                         allocas.push_back( i );
-                        auto ptr = withValues( Get< Pointer >(), i.result() );
+                        auto ptr = _get< Pointer >( i.result() );
                         if ( !ptr.null() )
                             ptrs.push_back( ptr );
                     }
@@ -1017,9 +675,10 @@ struct Evaluator
                         econtext.memoryflag( r + sizeof( int ) + sizeof( Pointer ) * i ).set( MemoryFlag::HeapPointer );
                         c.ptr[ i++ ] = ptr;
                     }
-                    withValues( Set< Pointer >( r, MemoryFlag::HeapPointer ), instruction().result() );
+                    _get< Pointer >( 0 ) = r;
+                    setFlags( instruction().result(), MemoryFlag::HeapPointer );
                 } else { // stackrestore
-                    Pointer r = withValues( Get< Pointer >(), instruction().operand( 0 ) );
+                    Pointer r = _get< Pointer >( instruction().operand( 0 ) );
                     auto &c = *reinterpret_cast< PointerBlock * >( econtext.dereference( r ) );
                     for ( auto ptr : ptrs ) {
                         bool retain = false;
@@ -1045,9 +704,9 @@ struct Evaluator
         switch( instruction().builtin ) {
             case BuiltinChoice: {
                 auto &c = ccontext.choice;
-                c.options = withValues( GetInt(), instruction().operand( 0 ) );
+                c.options = _get< int >( instruction().operand( 0 ) );
                 for ( int i = 1; i < int( instruction().values.size() ) - 2; ++i )
-                    c.p.push_back( withValues( GetInt(), instruction().operand( i ) ) );
+                    c.p.push_back( _get< int >( instruction().operand( i ) ) );
                 if ( !c.p.empty() && int( c.p.size() ) != c.options ) {
                     ccontext.problem( Problem::InvalidArgument );
                     c.p.clear();
@@ -1055,77 +714,85 @@ struct Evaluator
                 return;
             }
             case BuiltinAssert:
-                if ( !withValues( GetInt(), instruction().operand( 0 ) ) )
+                if ( !_get< int >( instruction().operand( 0 ) ) )
                     ccontext.problem( Problem::Assert );
                 return;
             case BuiltinProblem:
                 ccontext.problem(
-                    Problem::What( withValues( GetInt(), instruction().operand( 0 ) ) ),
-                    withValues( Get< Pointer >(), instruction().operand( 1 ) ) );
+                    Problem::What( _get< int >( instruction().operand( 0 ) ) ),
+                    _get< Pointer >( instruction().operand( 1 ) ) );
                 return;
             case BuiltinAp:
-                ccontext.flags().ap |= (1 << withValues( GetInt(), instruction().operand( 0 ) ));
+                ccontext.flags().ap |= (1 << _get< int >( instruction().operand( 0 ) ));
                 return;
             case BuiltinMask: ccontext.pc().masked = true; return;
             case BuiltinUnmask: ccontext.pc().masked = false; return;
             case BuiltinInterrupt: return; /* an observable noop, see interpreter.h */
             case BuiltinGetTID:
-                withValues( SetInt( ccontext.threadId() ), instruction().result() );
+                _get< int >( 0 ) = ccontext.threadId();
+                setFlags( instruction().result(), MemoryFlag::Data );
                 return;
             case BuiltinNewThread: {
-                PC entry = withValues( Get< PC >(), instruction().operand( 0 ) );
-                Pointer arg = withValues( Get< Pointer >(), instruction().operand( 1 ) );
+                PC entry = _get< PC >( instruction().operand( 0 ) );
+                Pointer arg = _get< Pointer >( instruction().operand( 1 ) );
                 auto mflag = econtext.memoryflag( instruction().operand( 1 ) );
                 int tid = ccontext.new_thread(
                     entry, Maybe< Pointer >::Just( arg ),
                     mflag.valid() ? mflag.get() : MemoryFlag::Data );
-                withValues( SetInt( tid ), instruction().result() );
+                _get< int >( 0 ) = tid;
+                setFlags( instruction().result(), MemoryFlag::Data );
                 return;
             }
             case BuiltinMalloc: {
-                int size = withValues( Get< int >(), instruction().operand( 0 ) );
+                int size = _get< int >( instruction().operand( 0 ) );
                 if ( size >= ( 2 << Pointer::offsetSize ) ) {
                     ccontext.problem( Problem::InvalidArgument, Pointer() );
                     size = 0;
                 }
                 Pointer result = size ? econtext.malloc( size, pointerId( true )[0] ) : Pointer();
-                withValues( Set< Pointer >( result, MemoryFlag::HeapPointer ), instruction().result() );
+                _get< Pointer >( 0 ) = result;
+                setFlags( instruction().result(), MemoryFlag::HeapPointer );
                 return;
             }
             case BuiltinFree: {
-                Pointer v = withValues( Get< Pointer >(), instruction().operand( 0 ) );
+                Pointer v = _get< Pointer >( instruction().operand( 0 ) );
                 if ( !econtext.free( v ) )
                     ccontext.problem( Problem::InvalidArgument, v );
                 return;
             }
             case BuiltinIsPrivate: {
-                Pointer p = withValues( Get< Pointer >(), instruction().operand( 0 ) );
-                withValues( Set< int >( econtext.isPrivate( ccontext.threadId(), p ) ),
-                            instruction().result() );
+                Pointer p = _get< Pointer >( 1 );
+                _get< int >( 0 ) = econtext.isPrivate( ccontext.threadId(), p );
+                setFlags( instruction().result(), MemoryFlag::Data );
                 return;
             }
             case BuiltinHeapObjectSize: {
-                Pointer v = withValues( Get< Pointer >(), instruction().operand( 0 ) );
+                Pointer v = _get< Pointer >( instruction().operand( 0 ) );
                 if ( !econtext.dereference( v ) )
                     ccontext.problem( Problem::InvalidArgument, v );
-                else
-                    withValues( Set< int >( econtext.pointerSize( v ) ), instruction().result() );
+                else {
+                    _get< int >( 0 ) = econtext.pointerSize( v );
+                    setFlags( instruction().result(), MemoryFlag::Data );
+                }
                 return;
             }
-            case BuiltinMemcpy: implement( Memcpy(), 4 ); return;
+            case BuiltinMemcpy:
+                if ( auto problem = memcopy( _get< Pointer >( 2 ), _get< Pointer >( 1 ), _get< size_t >( 3 ) ) )
+                    ccontext.problem( problem );
+                memcopy( instruction().operand( 1 ), instruction().result(), instruction().result().width );
+                return;
             case BuiltinVaStart: {
                 auto f = info.functions[ ccontext.pc().function ];
                 memcopy( f.values[ f.argcount ], instruction().result(), instruction().result().width );
                 return;
             }
             case BuiltinUnwind:
-                return unwind( withValues( GetInt(), instruction().operand( 0 ) ),
+                return unwind( _get< int >( instruction().operand( 0 ) ),
                                Values( instruction().values.begin() + 2,
                                        instruction().values.end() - 1 ) );
             case BuiltinLandingPad:
-                withValues( Set< Pointer >( make_lpinfo( withValues( GetInt(), instruction().operand( 0 ) ) ),
-                                            MemoryFlag::HeapPointer ),
-                            instruction().result() );
+                _get< Pointer >( 0 ) = make_lpinfo( _get< int >( instruction().operand( 0 ) ) );
+                setFlags( instruction().result(), MemoryFlag::HeapPointer );
                 return;
             default:
                 ASSERT_UNREACHABLE_F( "unknown builtin %d", instruction().builtin );
@@ -1146,10 +813,10 @@ struct Evaluator
         }
 
         bool invoke = isa< ::llvm::InvokeInst >( instruction().op );
-        auto pc = withValues( Get< PC >(), instruction().operand( invoke ? -3 : -1 ) );
+        auto pc = _get< PC >( instruction().operand( invoke ? -3 : -1 ) );
 
         if ( !pc.function ) {
-            ccontext.problem( Problem::InvalidArgument ); /* function 0 does not exist */
+            ccontext.problem( Problem::InvalidDereference ); /* function 0 does not exist */
             return;
         }
 
@@ -1172,8 +839,9 @@ struct Evaluator
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
                 size += instruction().operand( i ).width;
             Pointer vaptr = size ? econtext.malloc( size, 0 ) : Pointer();
-            withValues( Set< Pointer >( vaptr, MemoryFlag::HeapPointer ),
-                        function.values[ function.argcount ] );
+            auto vaptr_loc = function.values[ function.argcount ];
+            _get< Pointer >( vaptr_loc ) = vaptr;
+            setFlags( vaptr_loc, MemoryFlag::HeapPointer );
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i ) {
                 auto op = instruction().operand( i );
                 memcopy( ValueRef( op, 1 ), vaptr, op.width );
@@ -1184,28 +852,223 @@ struct Evaluator
         ASSERT( !isa< ::llvm::PHINode >( instruction().op ) );
     }
 
-    /******** Dispatch ********/
+    void setFlags( ValueRef vr, MemoryFlag f ) {
+        auto mflag = econtext.memoryflag( vr );
+        if ( mflag.valid() ) {
+            const int w = vr.v.width;
+            if ( w ) {
+                mflag.set( f );
+                ++mflag;
+                if ( f == MemoryFlag::HeapPointer )
+                    f = MemoryFlag::Data;
+                for ( int i = 1; i < w; ++i, ++mflag )
+                    mflag.set( f );
+            }
+        }
+    }
+
+    auto operandFlag( int i ) {
+        auto f = econtext.memoryflag( instruction().operand( i ) );
+        return f.valid() ? f.get() : MemoryFlag::Data;
+    }
+
+    void binopFlags( bool propagate = true ) {
+        if ( operandFlag( 0 ) == MemoryFlag::Uninitialised ||
+             operandFlag( 1 ) == MemoryFlag::Uninitialised )
+            setFlags( instruction().result(), MemoryFlag::Uninitialised );
+        else if ( propagate && ( operandFlag( 0 ) == MemoryFlag::HeapPointer ||
+                                 operandFlag( 1 ) == MemoryFlag::HeapPointer ) )
+            setFlags( instruction().result(), MemoryFlag::HeapPointer );
+        else
+            setFlags( instruction().result(), MemoryFlag::Data );
+    }
+
+    void convertFlags() {
+        if ( operandFlag( 0 ) == MemoryFlag::HeapPointer &&
+             instruction().result().width < econtext.pointerTypeSize() )
+            setFlags( instruction().result(), MemoryFlag::Data );
+        else
+            setFlags( instruction().result(), operandFlag( 0 ) );
+    }
 
     void run() {
-        is_signed = false;
-        switch ( instruction().opcode ) {
-            case LLVMInst::GetElementPtr:
-                implement( GetElement(), 2 ); break;
-            case LLVMInst::Select:
-                implement< Select >(); break;
 
-            case LLVMInst::ICmp:
-                switch ( dyn_cast< ICmpInst >( instruction().op )->getPredicate() ) {
+        /* operation templates */
+
+        auto _cmp = [this] ( auto impl ) -> void {
+            this->op< IntegerComparable >( 1, [&]( auto get ) {
+                    impl( this->_get< bool >( 0 ), get( 1 ), get( 2 ) ); } );
+        };
+
+        auto _div = [this] ( auto impl ) -> void {
+            this->binopFlags();
+            this->op< std::is_arithmetic >( 0, [&]( auto get )
+                {
+                    if ( !get( 2 ) ) {
+                        this->ccontext.problem( Problem::DivisionByZero );
+                        get( 0 ) =
+                            typename std::remove_reference< decltype( get( 0 ) ) >::type( 0 );
+                    } else
+                        impl( get( 0 ), get( 1 ), get( 2 ) );
+                } );
+        };
+
+        auto _arith = [this] ( auto impl ) -> void {
+            this->binopFlags();
+            this->op< std::is_arithmetic >( 0, [&]( auto get )
+                   { impl( get( 0 ), get( 1 ), get( 2 ) ); } );
+        };
+
+        auto _bitwise = [this] ( auto impl ) -> void {
+            this->binopFlags();
+            this->op< std::is_integral >( 0, [&]( auto get )
+                   { impl( get( 0 ), get( 1 ), get( 2 ) ); } );
+        };
+
+        auto _atomicrmw = [this] ( auto impl ) -> void {
+            this->op< std::is_integral >( 0, [&]( auto get ) {
+                    auto &edit = this->_deref< decltype( get( -1 ) ) >( 1 );
+                    get( 0 ) = edit;
+                    impl( edit, get( 2 ) );
+                } );
+        };
+
+        auto _cmp_signed = [this] ( auto impl ) -> void {
+            this->op< std::is_integral >( 1, [&]( auto get ) {
+                    impl( this->_get< bool >( 0 ), make_signed( get( 1 ) ),
+                          make_signed( get( 2 ) ) ); } );
+        };
+
+        auto _fcmp = [&]( auto impl ) -> void {
+            this->op< std::is_floating_point >( 1, [&]( auto get ) {
+                    impl( this->_get< bool >( 0 ), get( 1 ), get( 2 ) ); } );
+        };
+
+        /* instruction dispatch */
+
+        switch ( instruction().opcode )
+        {
+
+            case LLVMInst::GetElementPtr:
+                setFlags( instruction().result(), operandFlag( 0 ) );
+                _get< Pointer >( 0 ) = _get< Pointer >( 1 ) + compositeOffsetFromInsn(
+                    instruction().op->getOperand(0)->getType(), 1, instruction().values.size() - 1 );
+                return;
+
+            case LLVMInst::Select: {
+                int selected = _get< bool >( 1 ) ? 1 : 2;
+
+                if ( operandFlag( 0 ) == MemoryFlag::Uninitialised ) {
+                    ccontext.problem( Problem::Uninitialised );
+                    setFlags( instruction().result(), MemoryFlag::Uninitialised );
+                } else
+                    setFlags( instruction().result(), operandFlag( selected ) );
+
+                memcopy( instruction().operand( selected ), instruction().result(), instruction().result().width );
+                return;
+            }
+
+            case LLVMInst::ICmp: {
+
+                binopFlags( false );
+
+                auto p = cast< ICmpInst >( instruction().op )->getPredicate();
+                switch ( p ) {
+                    case ICmpInst::ICMP_EQ:
+                        return _cmp( []( auto &r, auto &a, auto &b ) { r = a == b; } );
+                    case ICmpInst::ICMP_NE:
+                        return _cmp( []( auto &r, auto &a, auto &b ) { r = a != b; } );
+                    case ICmpInst::ICMP_ULT:
+                        return _cmp( []( auto &r, auto &a, auto &b ) { r = a < b; } );
+                    case ICmpInst::ICMP_UGE:
+                        return _cmp( []( auto &r, auto &a, auto &b ) { r = a >= b; } );
+                    case ICmpInst::ICMP_UGT:
+                        return _cmp( []( auto &r, auto &a, auto &b ) { r = a > b; } );
+                    case ICmpInst::ICMP_ULE:
+                        return _cmp( []( auto &r, auto &a, auto &b ) { r = a <= b; } );
                     case ICmpInst::ICMP_SLT:
+                        return _cmp_signed( []( auto &r, auto &a, auto &b ) { r = a < b; } );
                     case ICmpInst::ICMP_SGT:
+                        return _cmp_signed( []( auto &r, auto &a, auto &b ) { r = a > b; } );
                     case ICmpInst::ICMP_SLE:
-                    case ICmpInst::ICMP_SGE: is_signed = true;
+                        return _cmp_signed( []( auto &r, auto &a, auto &b ) { r = a <= b; } );
+                    case ICmpInst::ICMP_SGE:
+                        return _cmp_signed( []( auto &r, auto &a, auto &b ) { r = a >= b; } );
+                    default: ASSERT_UNREACHABLE_F( "unexpected icmp op %d", p );
+                }
+            }
+
+
+            case LLVMInst::FCmp: {
+
+                binopFlags( false );
+
+                auto p = cast< FCmpInst >( instruction().op )->getPredicate();
+                bool nan;
+
+                _fcmp( [&]( auto &, auto &a, auto &b )
+                       { nan = isnan( a ) || isnan( b ); } );
+
+                switch ( p ) {
+                    case FCmpInst::FCMP_FALSE:
+                        _get< bool >( 0 ) = false; return;
+                    case FCmpInst::FCMP_TRUE:
+                        _get< bool >( 0 ) = true; return;
+                    case FCmpInst::FCMP_ORD:
+                        _get< bool >( 0 ) = !nan; return;
+                    case FCmpInst::FCMP_UNO:
+                        _get< bool >( 0 ) = nan; return;
                     default: ;
                 }
-                implement< ICmp >(); break;
 
-            case LLVMInst::FCmp:
-                implement< FCmp >(); break;
+                if ( nan )
+                    switch ( p ) {
+                        case FCmpInst::FCMP_UEQ:
+                        case FCmpInst::FCMP_UNE:
+                        case FCmpInst::FCMP_UGE:
+                        case FCmpInst::FCMP_ULE:
+                        case FCmpInst::FCMP_ULT:
+                        case FCmpInst::FCMP_UGT:
+                            _get< bool >( 0 ) = true;
+                            return;
+                        case FCmpInst::FCMP_OEQ:
+                        case FCmpInst::FCMP_ONE:
+                        case FCmpInst::FCMP_OGE:
+                        case FCmpInst::FCMP_OLE:
+                        case FCmpInst::FCMP_OLT:
+                        case FCmpInst::FCMP_OGT:
+                            _get< bool >( 0 ) = false;
+                            return;
+                        default: ;
+                    }
+
+                switch ( p ) {
+                    case FCmpInst::FCMP_OEQ:
+                    case FCmpInst::FCMP_UEQ:
+                        return _fcmp( []( auto &r, auto &a, auto &b ) { r = a == b; } );
+                    case FCmpInst::FCMP_ONE:
+                    case FCmpInst::FCMP_UNE:
+                        return _fcmp( []( auto &r, auto &a, auto &b ) { r = a != b; } );
+
+                    case FCmpInst::FCMP_OLT:
+                    case FCmpInst::FCMP_ULT:
+                        return _fcmp( []( auto &r, auto &a, auto &b ) { r = a < b; } );
+
+                    case FCmpInst::FCMP_OGT:
+                    case FCmpInst::FCMP_UGT:
+                        return _fcmp( []( auto &r, auto &a, auto &b ) { r = a > b; } );
+
+                    case FCmpInst::FCMP_OLE:
+                    case FCmpInst::FCMP_ULE:
+                        return _fcmp( []( auto &r, auto &a, auto &b ) { r = a <= b; } );
+
+                    case FCmpInst::FCMP_OGE:
+                    case FCmpInst::FCMP_UGE:
+                        return _fcmp( []( auto &r, auto &a, auto &b ) { r = a >= b; } );
+                    default:
+                        ASSERT_UNREACHABLE_F( "unexpected fcmp op %d", p );
+                }
+            }
 
             case LLVMInst::ZExt:
             case LLVMInst::FPExt:
@@ -1215,25 +1078,46 @@ struct Evaluator
             case LLVMInst::IntToPtr:
             case LLVMInst::FPTrunc:
             case LLVMInst::Trunc:
-                implement< Convert >(); break;
+
+                convertFlags();
+                return op< Convertible >( 0, 1, [this]( auto get0, auto get1 )
+                           {
+                               using T = typename std::remove_reference< decltype( get0( 0 ) ) >::type;
+                               get0( 0 ) = T( get1( 1 ) );
+                           } );
+            case LLVMInst::SExt:
+            case LLVMInst::SIToFP:
+            case LLVMInst::FPToSI:
+                convertFlags();
+                return op< SignedConvertible >( 0, 1, [this]( auto get0, auto get1 )
+                           {
+                               using T = typename std::remove_reference<
+                                   decltype( make_signed( get0( 0 ) ) ) >::type;
+                               make_signed( get0( 0 ) ) = T( make_signed( get1( 1 ) ) );
+                           } );
 
             case LLVMInst::Br:
                 implement_br(); break;
             case LLVMInst::IndirectBr:
                 implement_indirectBr(); break;
             case LLVMInst::Switch:
-                implement( Switch(), 2 ); break;
+                if ( operandFlag( 0 ) == MemoryFlag::Uninitialised )
+                    ccontext.problem( Problem::Uninitialised );
+                return op< Any >( 1, [this]( auto get ) {
+                        for ( int o = 2; o < int( this->instruction().values.size() ) - 1; o += 2 ) {
+                            if ( operandFlag( o ) == MemoryFlag::Uninitialised )
+                                ccontext.problem( Problem::Uninitialised );
+                            if ( get( 1 ) == this->_get< typename std::remove_reference< decltype( get( 1 ) ) >::type >( o + 1 ) )
+                                return this->jumpTo( this->instruction().operand( o + 1 ) );
+                        }
+                        return this->jumpTo( this->instruction().operand( 1 ) );
+                    } );
+
             case LLVMInst::Call:
             case LLVMInst::Invoke:
                 implement_call(); break;
             case LLVMInst::Ret:
                 implement_ret(); break;
-
-            case LLVMInst::SExt:
-            case LLVMInst::SIToFP:
-            case LLVMInst::FPToSI:
-                is_signed = true;
-                implement< Convert >(); break;
 
             case LLVMInst::BitCast:
                 implement_bitcast(); break;
@@ -1244,39 +1128,102 @@ struct Evaluator
                 implement_store(); break;
             case LLVMInst::Alloca:
                 implement_alloca(); break;
+
             case LLVMInst::AtomicCmpXchg:
-                implement< CmpXchg >(); break;
+                setFlags( instruction().result(), MemoryFlag::Data ); /* TODO */
+                return op< Any >( 2, [&]( auto get ) {
+                        auto &r = get( 0 );
+                        auto &pointer = this->_deref< decltype( get( -1 ) ) >( 1 );
+                        auto &cmp = get( 2 );
+                        auto &_new = get( 3 );
+
+                        auto over = this->instruction().result();
+                        over.width = 1; // hmmm
+                        over.type = ProgramInfo::Value::Integer;
+                        over.offset += this->compositeOffset( this->instruction().op->getType(), 1 ).first;
+
+                        r = pointer;
+                        if ( pointer == cmp ) {
+                            pointer = _new;
+                            this->_get< bool >( over ) = true;
+                        } else
+                            this->_get< bool >( over ) = false;
+                    } );
+
             case LLVMInst::AtomicRMW:
-                implement< AtomicRMW >(); break;
+                setFlags( instruction().result(), MemoryFlag::Data ); /* TODO */
+                switch ( cast< AtomicRMWInst >( instruction().op )->getOperation() )
+                {
+                    case AtomicRMWInst::Xchg:
+                        return _atomicrmw( []( auto &v, auto &x ) { v = x; } );
+                    case AtomicRMWInst::Add:
+                        return _atomicrmw( []( auto &v, auto &x ) { v = v + x; } );
+                    case AtomicRMWInst::Sub:
+                        return _atomicrmw( []( auto &v, auto &x ) { v = v - x; } );
+                    case AtomicRMWInst::And:
+                        return _atomicrmw( []( auto &v, auto &x ) { v = v & x; } );
+                    case AtomicRMWInst::Nand:
+                        return _atomicrmw( []( auto &v, auto &x ) { v = ~v & x; } );
+                    case AtomicRMWInst::Or:
+                        return _atomicrmw( []( auto &v, auto &x ) { v = v | x; } );
+                    case AtomicRMWInst::Xor:
+                        return _atomicrmw( []( auto &v, auto &x ) { v = v ^ x; } );
+                    case AtomicRMWInst::UMax:
+                        return _atomicrmw( []( auto &v, auto &x ) { v = std::max( v, x ); } );
+                    case AtomicRMWInst::Max:
+                        return _atomicrmw( []( auto &v, auto &x ) { make_signed( v ) =
+                                    std::max( make_signed( v ), make_signed( x ) ); } );
+                    case AtomicRMWInst::UMin:
+                        return _atomicrmw( []( auto &v, auto &x ) { v = std::min( v, x ); } );
+                    case AtomicRMWInst::Min:
+                        return _atomicrmw( []( auto &v, auto &x ) { make_signed( v ) =
+                                    std::min( make_signed( v ), make_signed( x ) ); } );
+                    case AtomicRMWInst::BAD_BINOP:
+                        ASSERT_UNREACHABLE_F( "bad binop in atomicrmw" );
+                }
 
             case LLVMInst::ExtractValue:
                 implement_extractvalue(); break;
             case LLVMInst::InsertValue:
                 implement_insertvalue(); break;
 
-            case LLVMInst::SDiv:
-            case LLVMInst::SRem:
-                is_signed = true;
             case LLVMInst::FAdd:
             case LLVMInst::Add:
+                return _arith( []( auto &r, auto &a, auto &b ) { r = a + b; } );
             case LLVMInst::FSub:
             case LLVMInst::Sub:
+                return _arith( []( auto &r, auto &a, auto &b ) { r = a - b; } );
             case LLVMInst::FMul:
             case LLVMInst::Mul:
+                return _arith( []( auto &r, auto &a, auto &b ) { r = a * b; } );
+
             case LLVMInst::FDiv:
             case LLVMInst::UDiv:
+                return _div( []( auto &r, auto &a, auto &b ) { r = a / b; } );
+
+            case LLVMInst::SDiv:
+			  return _div( []( auto &r, auto &a, auto &b ) {
+                              return make_signed( r ) = make_signed( a ) / make_signed( b ); } );
             case LLVMInst::FRem:
             case LLVMInst::URem:
-                implement< Arithmetic >(); break;
+                return _div( []( auto &r, auto &a, auto &b ) { r = rem( a, b ); } );
 
-            case LLVMInst::AShr:
-                is_signed = true;
+            case LLVMInst::SRem:
+                return _div( []( auto &r, auto &a, auto &b ) {
+                        return make_signed( r ) = rem( make_signed( a ), make_signed( b ) ); } );
+
             case LLVMInst::And:
+                return _bitwise( []( auto &r, auto &a, auto &b ) { r = a & b; } );
             case LLVMInst::Or:
+                return _bitwise( []( auto &r, auto &a, auto &b ) { r = a | b; } );
             case LLVMInst::Xor:
+                return _bitwise( []( auto &r, auto &a, auto &b ) { r = a ^ b; } );
             case LLVMInst::Shl:
+                return _bitwise( []( auto &r, auto &a, auto &b ) { r = a << b; } );
+            case LLVMInst::AShr:
+                return _bitwise( []( auto &r, auto &a, auto &b ) { make_signed( r ) = make_signed( a ) >> b; } );
             case LLVMInst::LShr:
-                implement< Bitwise >(); break;
+                return _bitwise( []( auto &r, auto &a, auto &b ) { r = a >> b; } );
 
             case LLVMInst::Unreachable:
                 ccontext.problem( Problem::UnreachableExecuted );
@@ -1302,126 +1249,6 @@ struct Evaluator
         if ( instruction().opcode != LLVMInst::Call &&
              instruction().opcode != LLVMInst::Invoke )
             checkPointsTo();
-    }
-
-    template< typename Fun >
-    typename Fun::T implement( brick::types::NotPreferred, Fun = Fun(), ... )
-    {
-        instruction().op->dump();
-        ASSERT_UNREACHABLE_F( "bad parameters for opcode %d", instruction().opcode );
-    }
-
-    template< typename Fun, typename I, typename Cons,
-            typename = decltype( match( std::declval< Fun & >(), std::declval< Cons & >() ) ) >
-    auto implement( brick::types::Preferred, Fun fun, I i, I e, Cons list )
-        -> typename std::enable_if< Fun::arity == Cons::length, typename Fun::T >::type
-    {
-        ASSERT( i == e );
-        brick::_assert::unused( i, e );
-        fun._evaluator = this;
-        auto retval = match( fun, list );
-        auto mflag = econtext.memoryflag( result.back() );
-        if ( mflag.valid() ) {
-            auto f = fun.resultFlag( flags.back() );
-            const int w = result.back().v.width;
-            if ( w ) {
-                mflag.set( f );
-                ++mflag;
-                if ( f == MemoryFlag::HeapPointer )
-                    f = MemoryFlag::Data;
-                for ( int i = 1; i < w; ++i, ++mflag )
-                    mflag.set( f );
-            }
-        }
-        flags.pop_back();
-        result.pop_back();
-        return retval;
-    }
-
-    template< typename Fun, typename I, typename Cons,
-            typename = decltype( match( std::declval< Fun & >(), std::declval< Cons & >() ) ) >
-    auto implement( brick::types::Preferred, Fun fun, I i, I e, Cons list )
-        -> typename std::enable_if< (Fun::arity > Cons::length), typename Fun::T >::type
-    {
-        typedef ProgramInfo::Value Value;
-        brick::types::Preferred p;
-
-        ASSERT( i != e );
-
-        ValueRef v = *i++;
-        char *mem = dereference( v );
-        auto mflag = econtext.memoryflag( v );
-        auto mflag_v = MemoryFlag::Data;
-        if ( mflag.valid() )
-            for ( int i = 0; i < v.v.width; ++i, ++mflag ) {
-                if ( mflag_v == MemoryFlag::HeapPointer && mflag.get() != MemoryFlag::Uninitialised )
-                    continue;
-                if ( mflag_v != MemoryFlag::Uninitialised )
-                    mflag_v = mflag.get();
-            }
-
-        flags.back().push_back( mflag_v );
-
-        switch ( v.v.type ) {
-            case Value::Integer: if ( is_signed ) switch ( v.v.width ) {
-                    case 1: return implement( p, fun, i, e, consPtr<  int8_t >( mem, list ) );
-                    case 4: return implement( p, fun, i, e, consPtr< int32_t >( mem, list ) );
-                    case 2: return implement( p, fun, i, e, consPtr< int16_t >( mem, list ) );
-                    case 8: return implement( p, fun, i, e, consPtr< int64_t >( mem, list ) );
-                } else switch ( v.v.width ) {
-                    case 1: return implement( p, fun, i, e, consPtr<  uint8_t >( mem, list ) );
-                    case 4: return implement( p, fun, i, e, consPtr< uint32_t >( mem, list ) );
-                    case 2: return implement( p, fun, i, e, consPtr< uint16_t >( mem, list ) );
-                    case 8: return implement( p, fun, i, e, consPtr< uint64_t >( mem, list ) );
-                }
-                ASSERT_UNREACHABLE_F( "Wrong integer width %d", v.v.width );
-            case Value::Pointer: case Value::Alloca:
-                return implement( p, fun, i, e, consPtr< Pointer >( mem, list ) );
-            case Value::CodePointer:
-                return implement( p, fun, i, e, consPtr< PC >( mem, list ) );
-            case Value::Float: switch ( v.v.width ) {
-                case sizeof(float):
-                    return implement( p, fun, i, e, consPtr< float >( mem, list ) );
-                case sizeof(double):
-                    return implement( p, fun, i, e, consPtr< double >( mem, list ) );
-            }
-            case Value::Aggregate:
-                return implement( p, fun, i, e, consPtr< void >( mem, list ) );
-            case Value::Void:
-                flags.back().pop_back(); // ignore flag for void item
-                return implement( p, fun, i, e, list ); /* ignore void items */
-        }
-
-        ASSERT_UNREACHABLE_F( "unexpected value type %d", v.v.type );
-    }
-
-    template< typename Fun, int Limit = 3 >
-    typename Fun::T implement( Fun fun = Fun(), int limit = 0 )
-    {
-        flags.push_back( MemoryFlags() );
-        auto i = instruction().values.begin(), e = limit ? i + limit : instruction().values.end();
-        result.push_back( instruction().result() );
-        return implement( brick::types::Preferred(), fun, i, e, list::Nil() );
-    }
-
-    template< typename Fun >
-    typename Fun::T _withValues( Fun fun ) {
-        flags.push_back( MemoryFlags() );
-        return implement< Fun >( brick::types::Preferred(), fun, values.begin(), values.end(), list::Nil() );
-    }
-
-    template< typename Fun, typename... Values >
-    typename Fun::T _withValues( Fun fun, ValueRef v, Values... vs ) {
-        if ( values.empty() )
-            result.push_back( v );
-        values.push_back( v );
-        return _withValues< Fun >( fun, vs... );
-    }
-
-    template< typename Fun, typename... Values >
-    typename Fun::T withValues( Fun fun, Values... vs ) {
-        values.clear();
-        return _withValues< Fun >( fun, vs... );
     }
 };
 
