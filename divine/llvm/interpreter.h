@@ -12,6 +12,7 @@
 #include <llvm/IR/Instructions.h>
 
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/DebugInfo.h>
 
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/MemoryBuffer.h>
@@ -107,43 +108,15 @@ struct Interpreter
 
     // the currently executing one, i.e. what pc of the top frame of the active thread points at
     ProgramInfo::Instruction &instruction() { return info().instruction( pc() ); }
-    MDNode *node( MDNode *root ) { return root; }
 
-    template< typename N, typename... Args >
-    MDNode *node( N *root, int n, Args... args ) {
-        if ( root && isa< MDNode >( root->getOperand( n ) ) )
-            return node( cast< MDNode >( root->getOperand(n) ), args... );
-        return NULL;
-    }
-
-    MDNode *findEnum( std::string lookup ) {
+    ::llvm::DICompositeType *findEnum( std::string lookup ) {
         ASSERT( bc->module );
-        auto meta =  bc->module->getNamedMetadata( "llvm.dbg.cu" );
-        if ( !meta )
-            return nullptr;
-
-        for ( int modid = 0; modid < int(meta->getNumOperands()); ++modid )
-            if ( auto e = findEnum( node( meta, modid, 7 ), lookup, 3 ) )
-                return e;
-        return nullptr;
-    }
-
-    MDNode *findEnum( MDNode *enums, std::string lookup, int nameOperand ) {
-        if ( !enums )
-            return nullptr;
-        for ( int i = 0; i < int( enums->getNumOperands() ); ++i ) {
-            MDNode *n = dyn_cast_or_null< MDNode >( enums->getOperand(i) );
-            if ( !n )
-                return nullptr; // this would means we hit wrong metadata list, not enums
-            auto no = n->getNumOperands();
-            if ( no <= 10 )
-                return nullptr; // same here
-            MDString *name = dyn_cast_or_null< MDString >( n->getOperand( nameOperand ) );
-            if ( !name )
-                return nullptr;
-            if ( name->getString() == lookup )
-                return cast< MDNode >( n->getOperand(10) ); // the list of enum items
-        }
+        ::llvm::DebugInfoFinder dif;
+        dif.processModule( *bc->module );
+        for ( auto &cu : dif.compile_units() )
+            for ( auto e : cu->getEnumTypes() )
+                if ( e->getName() == lookup )
+                    return e;
         return nullptr;
     }
 
