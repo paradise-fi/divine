@@ -374,10 +374,11 @@ ProgramInfo::Position ProgramInfo::insert( Position p )
             insertIndices< ::llvm::InsertValueInst >( p );
 
         if ( auto LPI = dyn_cast< ::llvm::LandingPadInst >( p.I ) ) {
+            int off = LPI->getNumOperands() - LPI->getNumClauses();
             for ( int i = 0; i < int( LPI->getNumClauses() ); ++i ) {
                 if ( LPI->isFilter( i ) )
                     continue;
-                Pointer ptr = constant< Pointer >( insn.operand( i + 1 ) );
+                Pointer ptr = constant< Pointer >( insn.operand( i + off ) );
                 if ( !function( p.pc ).typeID( ptr ) )
                     function( p.pc ).typeIDs.push_back( ptr );
                 ASSERT( function( p.pc ).typeID( ptr ) );
@@ -468,6 +469,8 @@ void ProgramInfo::pass()
 
             auto &pi_function = this->functions[ pc.function ];
             pi_function.argcount = 0;
+            if ( function->hasPersonalityFn() )
+                pi_function.personality = insert( 0, function->getPersonalityFn() );
 
             for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg ) {
                 insert( pc.function, &*arg );

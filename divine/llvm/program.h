@@ -170,6 +170,7 @@ struct ProgramInfo {
         brick::data::SmallVector< Value, 4 > values;
         Value &result() { return values[0]; }
         Value &operand( int i ) { return values[ (i >= 0) ? (i + 1) : (i + values.size()) ]; }
+        Value &value( int i ) { return values[ (i >= 0) ? i : (i + values.size()) ]; }
 
         int builtin; /* non-zero if this is a call to a builtin */
         ::llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
@@ -181,6 +182,7 @@ struct ProgramInfo {
         int datasize;
         int argcount:31;
         bool vararg:1;
+        Value personality;
         std::vector< Value > values;
         std::vector< Instruction > instructions;
         std::vector< Pointer > typeIDs; /* for landing pads */
