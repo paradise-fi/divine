@@ -287,7 +287,7 @@ std::string Describe< HM, L >::value( std::pair< ::llvm::Type *, std::string > v
         }
     }
 
-    if ( !boring( name ) )
+    if ( detailed || !boring( name ) )
         lines.push_back( name + " = " + value );
 
     return name.empty() ? "" : name + " = " + value;
