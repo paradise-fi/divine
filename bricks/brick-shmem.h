@@ -46,7 +46,6 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
-#include <stdexcept>
 #include <mutex>
 #endif
 
@@ -66,17 +65,6 @@ struct Thread {
     std::unique_ptr< std::thread > _thread;
     std::atomic< bool > _interrupted;
     virtual void main() = 0;
-    virtual void exception( std::exception_ptr ep ) {
-        try {
-            std::rethrow_exception( ep );
-        } catch ( std::exception &ex ) {
-            std::cerr << "Uncaught exception"
-                      << " of type " << typeid( ex ).name()
-                      << ":" << std::endl;
-            std::cerr << ex.what() << std::endl;
-            std::terminate();
-        }
-    }
 
     Thread() : _interrupted( false ) {}
     Thread( const Thread &other ) : _interrupted( false ) {
@@ -114,13 +102,7 @@ struct Thread {
     void start() {
 #endif
         _interrupted.store( false, std::memory_order_relaxed );
-        _thread.reset( new std::thread( [this]() {
-                    try {
-                        this->main();
-                    } catch (...) {
-                        this->exception( std::current_exception() );
-                    }
-        } ) );
+        _thread.reset( new std::thread( [this]() { this->main(); } ) );
     }
 
     // stop must be idempotent
