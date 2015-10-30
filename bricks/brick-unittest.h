@@ -79,6 +79,15 @@ std::vector< TestCaseBase * > *testcases = nullptr;
 
 #if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ )
 
+void panic() {
+    try {
+        std::rethrow_exception( std::current_exception() );
+    } catch ( std::exception &e ) {
+        std::cerr << std::endl << "  fatal error: " << e.what() << std::endl;
+        abort();
+    }
+}
+
 void fork_test( TestCaseBase *tc, int *fds ) {
     pid_t pid = fork();
     if ( pid < 0 ) {
@@ -93,6 +102,7 @@ void fork_test( TestCaseBase *tc, int *fds ) {
         }
 
         try {
+            std::set_terminate( panic );
             tc->run(); // if anything goes wrong, this should throw
         } catch ( const std::exception &e ) {
             std::cerr << std::endl << "  # case " << tc->id() << " failed: " << e.what() << std::endl;
