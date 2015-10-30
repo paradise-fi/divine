@@ -530,6 +530,57 @@ struct LockedQueue {
     LockedQueue &operator=( const LockedQueue & ) = delete;
 };
 
+template< template< typename > class Q, typename T >
+struct Chunked
+{
+    using Chunk = std::deque< T >;
+    using ChQ = Q< Chunk >;
+    std::shared_ptr< ChQ > q;
+    unsigned chunkSize;
+
+    Chunk outgoing;
+    Chunk incoming;
+
+    void push( T t ) {
+        outgoing.push_back( t );
+        if ( outgoing.size() >= chunkSize )
+            flush();
+    }
+
+    T pop() {
+        if ( incoming.empty() )
+            incoming = q->pop();
+        if ( incoming.empty() )
+            return T();
+        auto x = incoming.front();
+        incoming.pop_front();
+        return x;
+    }
+
+    void flush() {
+        if ( !outgoing.empty() ) {
+            Chunk tmp;
+            std::swap( outgoing, tmp );
+            q->push( std::move( tmp ) );
+
+            /* A quickstart trick -- make first few chunks smaller. */
+            if ( chunkSize < 64 )
+                chunkSize = std::min( 2 * chunkSize, 64u );
+        }
+    }
+
+    bool empty() {
+        if ( incoming.empty() ) /* try to get a fresh one */
+            incoming = q->pop();
+        return incoming.empty();
+    }
+
+    Chunked() : q( new ChQ() ), chunkSize( 2 ) {}
+};
+
+template< typename T >
+using SharedQueue = Chunked< LockedQueue, T >;
+
 }
 }
 
@@ -880,59 +931,6 @@ struct Shared {
     bool empty() { return q->empty(); }
     void flush() {}
     Shared() : q( new Q() ) {}
-};
-
-template< template< typename > class Q, typename T >
-struct Chunked {
-    using Chunk = std::deque< T >;
-    using ChQ = Q< Chunk >;
-    std::shared_ptr< ChQ > q;
-    unsigned chunkSize;
-
-    Chunk outgoing;
-    Chunk incoming;
-
-    void push( T t ) {
-        outgoing.push_back( t );
-        // std::cerr << "pushed " << outgoing.back() << std::endl;
-        if ( outgoing.size() >= chunkSize )
-            flush();
-    }
-
-    T pop() {
-        // std::cerr << "pop: empty = " << incoming.empty() << std::endl;
-        if ( incoming.empty() )
-            incoming = q->pop();
-        if ( incoming.empty() )
-            return T();
-        // std::cerr << "pop: found " << incoming.front() << std::endl;
-        auto x = incoming.front();
-        incoming.pop_front();
-        return x;
-    }
-
-    void flush() {
-        if ( !outgoing.empty() ) {
-            // std::cerr << "flushing " << outgoing.size() << " items" << std::endl;
-            Chunk tmp;
-            std::swap( outgoing, tmp );
-            q->push( std::move( tmp ) );
-
-            /* A quickstart trick -- make first few chunks smaller. */
-            if ( chunkSize < 64 )
-                chunkSize = std::min( 2 * chunkSize, 64u );
-        }
-    }
-
-    bool empty() {
-        if ( incoming.empty() ) { /* try to get a fresh one */
-            incoming = q->pop();
-            // std::cerr << "pulled in " << incoming.size() << " items" << std::endl;
-        }
-        return incoming.empty();
-    }
-
-    Chunked() : q( new ChQ() ), chunkSize( 2 ) {}
 };
 
 template< typename Q >
