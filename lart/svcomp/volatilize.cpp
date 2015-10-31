@@ -63,6 +63,7 @@ struct Atomic : lart::Pass {
 
         for ( auto &f : m ) {
             if ( !f.empty() && f.getName().startswith( atomicPrefix ) ) {
+                f.addFnAttr( llvm::Attribute::NoInline );
                 llvm::IRBuilder<> irb( f.getEntryBlock().getFirstInsertionPt() );
                 irb.CreateCall( dbegin, { } );
                 ++atomicfs;

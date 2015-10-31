@@ -23,6 +23,12 @@
 namespace lart {
 namespace svcomp {
 
+#ifndef NDEBUG
+#define LART_DEBUG( X ) X
+#else
+#define LART_DEBUG( X ) ((void)0)
+#endif
+
 struct NondetTracking : lart::Pass {
 
     enum class Signed { Unknown = -1, No = 0, Yes = 1 };
@@ -134,7 +140,7 @@ struct NondetTracking : lart::Pass {
             std::abort();
         }
 
-        std::cerr << "INFO tracking init with " << dump( in ) << " for " << std::flush; call->dump();
+        LART_DEBUG( std::cerr << "INFO tracking init with " << dump( in ) << " for " << std::flush; call->dump() );
         auto res = trackUsers( call, in );
         if ( auto in = res.template asptr< Interval >() ) {
             // replace with __divine_choice( in->size() ) + in->start
@@ -143,7 +149,7 @@ struct NondetTracking : lart::Pass {
     }
 
     Tracking track( llvm::Value *from, llvm::Value *v, Tracking tracking ) {
-        std::cerr << "    INFO: tracking " << dump( tracking ) << std::flush; v->dump();
+        LART_DEBUG( std::cerr << "    INFO: tracking " << dump( tracking ) << std::flush; v->dump() );
 
         bool matched = true;
         matched = llvmcase( v,
@@ -160,21 +166,21 @@ struct NondetTracking : lart::Pass {
                         if ( consant->isZero() || consant->isOne() )
                             tracking = Interval( 0, 1 );
                         else {
-                            consant->dump();
+                            LART_DEBUG( consant->dump() );
                             matched = false;
                         }
                     } else {
-                        other->dump();
+                        LART_DEBUG( other->dump() );
                         matched = false;
                     }
                 } else {
                     matched = false;
-                    cmp->dump();
+                    LART_DEBUG( cmp->dump() );
                 }
             } ) && matched;
 
         if ( !matched ) {
-            std::cerr << "    WARN: could not track " << std::flush; v->dump();
+            LART_DEBUG( std::cerr << "    WARN: could not track " << std::flush; v->dump() );
             return tracking;
         }
 
@@ -237,11 +243,10 @@ struct Intrinsic : lart::Pass {
                         if ( ce->isCast() )
                             calledVal = ce->getOperand( 0 );
                         else {
-                            std::cerr << "CONST" << std::flush;
-                            ce->dump();
+                            LART_DEBUG( std::cerr << "CONST" << std::flush; ce->dump() );
                         }
                     },
-                    [&]( llvm::Value *v ) { v->dump(); calledVal = nullptr; }
+                    [&]( llvm::Value *v ) { LART_DEBUG( v->dump() ); calledVal = nullptr; }
                 );
             } while ( !called && calledVal );
 
@@ -302,8 +307,7 @@ struct Intrinsic : lart::Pass {
         auto dropfn = [&]( llvm::StringRef name ) {
             if ( auto fn = m.getFunction( name ) ) {
                 for ( auto u : fn->users() ) {
-                    std::cerr << "U " << std::flush;
-                    u->dump();
+                    LART_DEBUG( std::cerr << "U " << std::flush; u->dump() );
                 }
                 fn->replaceAllUsesWith( llvm::UndefValue::get( fn->getType() ) );
                 fn->eraseFromParent();
@@ -380,6 +384,8 @@ struct NoMallocFail : lart::Pass {
 PassMeta intrinsicPass() {
     return compositePassMeta< NondetTracking, NoMallocFail, Intrinsic >( "svcomp", "" );
 }
+
+#undef LART_DEBUG
 
 }
 }

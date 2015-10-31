@@ -247,12 +247,8 @@ llvm::Function *getCalledFunction( C *call ) {
             [&]( llvm::ConstantExpr *ce ) {
                 if ( ce->isCast() )
                     calledVal = ce->getOperand( 0 );
-                else {
-                    std::cerr << "CONST " << std::flush;
-                    ce->dump();
-                }
             },
-            [&]( llvm::Value *v ) { std::cerr << "VAL " << std::flush; v->dump(); calledVal = nullptr; }
+            [&]( llvm::Value *v ) { calledVal = nullptr; }
         );
     } while ( !called && calledVal );
 
