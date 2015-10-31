@@ -1,11 +1,38 @@
-// -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
-/* mmap support using C++11
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * mmap support using C++11
  *
  * mmaped file can be shared across threads without memory overhead,
  * but obviously it is not thread safe. It has shared_ptr semantics.
- *
- * redistributable under BSD licence
  */
+
+/*
+ * (c) 2013, 2015 Vladimír Štill <xstill@fi.muni.cz>
+ * (c) 2013, 2015 Jiří Weiser <xweiser1@fi.muni.cz>
+ */
+
+/* Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE. */
 
 #if __cplusplus < 201103L
 #error "brick-mmap is only supported with c++11 or newer"
@@ -428,3 +455,4 @@ struct MMapTest {
 
 #endif // BRICK_MMAP_H
 
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
