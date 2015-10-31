@@ -174,7 +174,7 @@ enum class Generator {
 };
 enum class Store {
     Begin,
-    NDFSNTreeStore, NTreeStore, HcStore, DefaultStore,
+    NDFSNTreeStore, NTreeStore,
     End
 };
 
@@ -220,8 +220,6 @@ static inline std::tuple< std::string, std::string > showGen( Key component ) {
 
     SHOW( Store, NDFSNTreeStore );
     SHOW( Store, NTreeStore );
-    SHOW( Store, HcStore );
-    SHOW( Store, DefaultStore );
 
     std::string emsg = "show: unhandled option ( " + std::to_string( int( component.type ) ) + ", " + std::to_string( component.key ) + " )";
     ASSERT_UNREACHABLE( emsg.c_str() );
@@ -332,9 +330,7 @@ static const CMap< Key, std::function< bool( const Meta & ) > > select = {
             return AlgSelect( meta::Algorithm::Type::Ndfs )( meta ) &&
                 meta.algorithm.compression == meta::Algorithm::Compression::Tree;
         } },
-    { Store::DefaultStore,   constTrue },
-    { Store::NTreeStore,     []( const Meta &meta ) { return meta.algorithm.compression == meta::Algorithm::Compression::Tree; } },
-    { Store::HcStore,        []( const Meta &meta ) { return meta.algorithm.hashCompaction; } }
+    { Store::NTreeStore,   constTrue }
 };
 
 struct NameAlgo {
@@ -405,8 +401,7 @@ static const CMap< Key, Traits::Get > traits = {
     { Generator::ControlLLVM,           &Traits::gen_llvm_csdr },
     { Generator::ProbabilisticLLVM,     &Traits::gen_llvm_prob  },
 
-    { Store::NTreeStore, &Traits::store_compress },
-    { Store::HcStore,    &Traits::store_hc },
+    { Store::NTreeStore, &Traits::store_compress }
 };
 
 // algoritm symbols -- mandatory for each algorithm
@@ -471,9 +466,7 @@ static const CMap< Key, SupportedBy > supportedBy = {
             Algorithm::NestedDFS, Algorithm::Map, Algorithm::Owcty,
             Algorithm::GenExplicit } } },
 
-    { Store::NDFSNTreeStore, Algorithm::NestedDFS },
-    { Store::NTreeStore,     Not{ Or{ Algorithm::Info, Algorithm::NestedDFS } } },
-    { Store::HcStore,        Not{ Or{ Algorithm::Info, Algorithm::Simulate } } },
+    { Store::NDFSNTreeStore, Algorithm::NestedDFS }
 };
 
 using SymbolPair = std::pair< const Key, FixArray< std::string > >;
@@ -495,9 +488,7 @@ static const CMap< Key, FixArray< std::string > > symbols = {
     symGen( Generator::ProbabilisticLLVM ),
 
     symStore( Store::NDFSNTreeStore ),
-    symStore( Store::NTreeStore ),
-    symStore( Store::HcStore ),
-    symStore( Store::DefaultStore ),
+    symStore( Store::NTreeStore )
 };
 
 template< typename Graph, typename Store >
