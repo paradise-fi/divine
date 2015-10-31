@@ -4,10 +4,7 @@ include_directories( ${CMAKE_CURRENT_BINARY_DIR} ${DIVINE_INCLUDES} )
 include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 
-set( COMBINE_M4_H "${CMAKE_CURRENT_BINARY_DIR}/combine.m4.h" )
-set( COMBINE_M4 "${CMAKE_CURRENT_SOURCE_DIR}/combine.m4" )
-
-add_executable( divine divine.cpp compile.cpp combine.cpp ${COMBINE_M4_H} )
+add_executable( divine divine.cpp compile.cpp )
 
 if ( GEN_LLVM )
   set_source_files_properties( lart.cpp PROPERTIES COMPILE_FLAGS -fno-rtti )
@@ -59,9 +56,3 @@ endif( WIN32 )
 
 install( TARGETS divine
          DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
-
-add_custom_command(
-  OUTPUT ${COMBINE_M4_H}
-  DEPENDS ${COMBINE_M4} ${MAKE_STRING_CONST}
-  COMMAND ${PERL_EXECUTABLE} ${MAKE_STRING_CONST} "const char *combine_m4 = " ${COMBINE_M4} > ${COMBINE_M4_H} )
-
