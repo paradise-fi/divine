@@ -40,7 +40,7 @@
 #include <iterator>
 #include <memory>
 
-#include <brick-assert.h>
+#include <brick-assert>
 
 #ifndef BRICK_DATA_H
 #define BRICK_DATA_H
@@ -393,10 +393,9 @@ struct SmallVector {
 };
 
 }
-}
 
-namespace brick_test {
-namespace data {
+namespace t_data {
+
 using namespace brick::data;
 
 #define TC( X ) do { try { X; } catch ( std::out_of_range &ex ) { \

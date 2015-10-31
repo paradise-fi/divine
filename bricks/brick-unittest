@@ -46,7 +46,7 @@
 #include <map>
 #include <stdexcept>
 
-#include <brick-assert.h>
+#include <brick-assert>
 
 #ifdef __unix
 #include <unistd.h>
@@ -105,7 +105,8 @@ void fork_test( TestCaseBase *tc, int *fds ) {
             std::set_terminate( panic );
             tc->run(); // if anything goes wrong, this should throw
         } catch ( const std::exception &e ) {
-            std::cerr << std::endl << "  # case " << tc->id() << " failed: " << e.what() << std::endl;
+            std::cerr << std::endl << "###### " << tc->id() << " failed."
+                      << std::endl << "###### " << e.what() << std::endl;
             exit( 1 );
         }
         exit( 0 );
@@ -120,7 +121,7 @@ void fork_test( TestCaseBase *tc, int *fds ) {
                 return;
 
         if ( WIFSIGNALED( status ) )
-            std::cerr << "  # case " << tc->id() << " caught fatal signal " << WTERMSIG( status ) << std::endl;
+            std::cerr << std::endl << "###### " << tc->id() << " caught fatal signal " << WTERMSIG( status ) << std::endl;
 
         throw TestFailed();
     }
@@ -211,8 +212,9 @@ int run( std::string only_group= "" , std::string only_case = "" ) {
                 ok = true;
             } catch ( const std::exception &e ) {
                 if ( e.what() != std::string( "TestFailed" ) )
-                    std::cerr << std::endl << "  # case " << tc->id() << " failed: " << e.what() << std::endl;
-                std::cerr << group->group() << " " << std::flush;
+                    std::cerr << std::endl << "###### " << tc->id() << " failed."
+                              << std::endl << "###### " << e.what() << std::endl;
+                std::cerr << "[    ] " << group->group() << " " << std::flush;
                 ++ bad;
                 ++ total_bad;
             }
@@ -356,15 +358,10 @@ void _register( const char *n, bool fail = false )
  * assert_eq test. */
 
 }
-}
 
-namespace brick_test {
+namespace t_unittest {
 
-using namespace ::brick;
-
-namespace unittest {
-
-using namespace ::brick::unittest;
+using namespace unittest;
 
 struct SelfTest
 {

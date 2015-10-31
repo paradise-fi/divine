@@ -43,9 +43,9 @@
 #include <algorithm>
 #include <iomanip>
 
-#include <brick-assert.h>
-#include <brick-types.h>
-#include <brick-string.h>
+#include <brick-assert>
+#include <brick-types>
+#include <brick-string>
 
 #ifndef BRICK_GNUPLOT_H
 #define BRICK_GNUPLOT_H

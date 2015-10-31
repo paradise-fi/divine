@@ -32,11 +32,11 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
-#include <brick-hash.h>
-#include <brick-shmem.h>
-#include <brick-bitlevel.h>
-#include <brick-assert.h>
-#include <brick-types.h>
+#include <brick-hash>
+#include <brick-shmem>
+#include <brick-bitlevel>
+#include <brick-assert>
+#include <brick-types>
 
 #include <type_traits>
 #include <set>
@@ -925,14 +925,10 @@ using Concurrent = _ConcurrentHashSet< typename std::conditional< (
 #endif
 
 }
-}
 
-/* unit tests */
+namespace t_hashset {
 
-namespace brick_test {
-namespace hashset {
-
-using namespace ::brick::hashset;
+using namespace hashset;
 
 template< template< typename > class HS >
 struct Sequential
@@ -1142,8 +1138,8 @@ template struct Parallel< ConFS >;
 #include <tbb/concurrent_unordered_set.h>
 #endif
 
-namespace brick_test {
-namespace hashset {
+namespace brick {
+namespace b_hashset {
 
 template< typename HS >
 struct RandomThread : shmem::Thread {
@@ -1254,7 +1250,7 @@ struct Run : BenchmarkGroup
 
     template< template< typename > class, typename Self, int, typename, typename... Args >
     static void run( Self *, hlist::not_preferred, Args... ) {
-        ASSERT_UNREACHABLE( "brick_test::hashset::Run fell off the cliff" );
+        ASSERT_UNREACHABLE( "brick::b_hashset::Run fell off the cliff" );
     }
 
     template< template< typename > class RI, typename Self, int id,

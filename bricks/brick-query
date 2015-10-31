@@ -41,7 +41,7 @@
 #include <set>
 #include <deque> // for tests
 
-#include <brick-assert.h>
+#include <brick-assert>
 
 #ifndef BRICK_QUERY_H
 #define BRICK_QUERY_H
@@ -489,15 +489,13 @@ auto owningQuery( Collection &&col )
 
 
 }
-}
 
-namespace brick_test {
-namespace query {
+namespace t_query {
 
 struct Range {
     TEST(range) {
         std::vector< int > vec = { 1, 2, 3, 4 };
-        auto range = brick::query::range( vec );
+        auto range = query::range( vec );
         static_assert( std::is_same< int, decltype( range )::iterator::value_type >::value, "types" );
         auto rit = range.begin();
         for ( auto i : vec ) {
@@ -524,7 +522,7 @@ struct Query {
 
     TEST(query) {
         std::vector< int > vec = { 1, 2, 3, 4 };
-        auto query = brick::query::query( vec );
+        auto query = query::query( vec );
         static_assert( std::is_same< int, decltype( query )::iterator::value_type >::value, "types" );
         auto qit = query.begin();
         for ( auto i : vec ) {
@@ -541,23 +539,23 @@ struct Query {
     // freeze . query == id
     TEST(freeze_id) {
         std::vector< int > vec = { 1, 2, 3, 4 };
-        ASSERT( brick::query::query( vec ).freeze() == vec );
+        ASSERT( query::query( vec ).freeze() == vec );
     }
 
     TEST(freeze_id_deque) {
         std::deque< int > deq = { 1, 2, 3, 4 };
-        ASSERT( brick::query::query( deq ).freezeAs< std::deque< int > >() == deq );
+        ASSERT( query::query( deq ).freezeAs< std::deque< int > >() == deq );
     }
 
     // freeze . map( id ) . query == id
     TEST(map_id) {
         std::vector< int > vec = { 1, 2, 3, 4 };
-        ASSERT( brick::query::query( vec ).map( id ).freeze() == vec );
+        ASSERT( query::query( vec ).map( id ).freeze() == vec );
     }
 
     TEST(map_it) {
         std::vector< int > vec = { 1, 2 };
-        auto q = brick::query::query( vec ).map( id );
+        auto q = query::query( vec ).map( id );
         ASSERT( !q.begin().end() );
         ASSERT( q.end().end() );
         ASSERT( !(++q.begin()).end() );
@@ -567,18 +565,18 @@ struct Query {
     TEST(map) {
         std::vector< int > vec = { 1, 2, 3, 4 };
         std::vector< int > doubles = { 2, 4, 6, 8 };
-        ASSERT( brick::query::query( vec ).map( []( int x ) { return x * 2; } ).freeze() == doubles );
+        ASSERT( query::query( vec ).map( []( int x ) { return x * 2; } ).freeze() == doubles );
     }
 
     // freeze . filter( const_true ) . query == id
     TEST(filter_id) {
         std::vector< int > vec = { 1, 2, 3, 4 };
-        ASSERT( brick::query::query( vec ).filter( constTrue ).freeze() == vec );
+        ASSERT( query::query( vec ).filter( constTrue ).freeze() == vec );
     }
 
     TEST(filter_it) {
         std::vector< int > vec = { 1, 2 };
-        auto q = brick::query::query( vec ).filter( constTrue );
+        auto q = query::query( vec ).filter( constTrue );
         ASSERT( !q.begin().end() );
         ASSERT( q.end().end() );
         ASSERT( !(++q.begin()).end() );
@@ -588,14 +586,14 @@ struct Query {
     TEST(filter) {
         std::vector< int > vec = { 1, 2, 3, 4 };
         std::vector< int > odd = { 1, 3 };
-        ASSERT( brick::query::query( vec ).filter( []( int x ) { return x % 2 == 1; } ).freeze() == odd );
+        ASSERT( query::query( vec ).filter( []( int x ) { return x % 2 == 1; } ).freeze() == odd );
         std::vector< int > empty = { };
-        ASSERT( brick::query::query( vec ).filter( constFalse ).freeze() == empty );
+        ASSERT( query::query( vec ).filter( constFalse ).freeze() == empty );
     }
 
     TEST(flatten_it) {
         std::vector< std::vector< int > > vec = { { }, { 1 }, { }, { }, { 2 }, { }, { } };
-        auto q = brick::query::query( vec ).flatten();
+        auto q = query::query( vec ).flatten();
         ASSERT( !q.begin().end() );
         ASSERT( q.end().end() );
         ASSERT( !(++q.begin()).end() );
@@ -604,10 +602,10 @@ struct Query {
 
     TEST(flatten_map_it) {
         std::vector< std::vector< int > > vec = { };
-        ASSERT( brick::query::query( vec ).map( id ).flatten().begin().end() );
+        ASSERT( query::query( vec ).map( id ).flatten().begin().end() );
 
         vec = { { }, { 1 }, { }, { }, { 2 }, { }, { } };
-        auto q = brick::query::query( vec ).map( id ).flatten();
+        auto q = query::query( vec ).map( id ).flatten();
 
         ASSERT( !q.begin().end() );
         ASSERT( q.end().end() );
@@ -619,41 +617,41 @@ struct Query {
         std::vector< std::vector< int > > vec = { { }, { }, { 1, 2 }, { 3 }, { }, { }, { }, { 4 }, { }, { }, { }, { } };
         std::vector< int > target = { 1, 2, 3, 4 };
 
-        ASSERT_EQ( brick::query::query( vec ).flatten().size(), 4 );
-        ASSERT( brick::query::query( vec ).flatten().freeze() == target );
+        ASSERT_EQ( query::query( vec ).flatten().size(), 4 );
+        ASSERT( query::query( vec ).flatten().freeze() == target );
     }
 
     TEST(size) {
         std::vector< int > vec = { 1, 2, 3, 4 };
-        ASSERT_EQ( brick::query::query( vec ).size(), 4 );
-        ASSERT_EQ( brick::query::query( vec ).map( id ).size(), 4 );
-        ASSERT_EQ( brick::query::query( vec ).filter( constTrue ).size(), 4 );
-        ASSERT_EQ( brick::query::query( vec ).filter( constFalse ).size(), 0 );
-        ASSERT_EQ( brick::query::query( vec )
+        ASSERT_EQ( query::query( vec ).size(), 4 );
+        ASSERT_EQ( query::query( vec ).map( id ).size(), 4 );
+        ASSERT_EQ( query::query( vec ).filter( constTrue ).size(), 4 );
+        ASSERT_EQ( query::query( vec ).filter( constFalse ).size(), 0 );
+        ASSERT_EQ( query::query( vec )
                 .filter( []( int x ) { return x % 2 == 0; } ).size(), 2 );
 
         std::vector< std::vector< int > > dvec = { { 1 } };
-        ASSERT_EQ( brick::query::query( dvec ).map( id ).flatten().size(), 1 );
-        ASSERT_EQ( brick::query::query( dvec ).flatten().map( id ).size(), 1 );
+        ASSERT_EQ( query::query( dvec ).map( id ).flatten().size(), 1 );
+        ASSERT_EQ( query::query( dvec ).flatten().map( id ).size(), 1 );
 
         dvec = { { 1 }, { 2, 3 }, { }, { 4 } };
-        ASSERT_EQ( brick::query::query( dvec ).map( id ).flatten().size(), 4 );
-        ASSERT_EQ( brick::query::query( dvec ).flatten().map( id ).size(), 4 );
+        ASSERT_EQ( query::query( dvec ).map( id ).flatten().size(), 4 );
+        ASSERT_EQ( query::query( dvec ).flatten().map( id ).size(), 4 );
     }
 
     TEST(map_flatten) {
         std::vector< std::deque< int > > vec = { { }, { }, { 1, 2 }, { 3 }, { }, { }, { }, { 4 }, { }, { }, { }, { } };
         std::vector< int > target = { 1, 2, 3, 4 };
 
-        ASSERT_EQ( brick::query::query( vec ).map( id ).flatten().size(), 4 );
-        ASSERT( brick::query::query( vec ).map( id ).flatten().freeze() == target );
+        ASSERT_EQ( query::query( vec ).map( id ).flatten().size(), 4 );
+        ASSERT( query::query( vec ).map( id ).flatten().freeze() == target );
     }
 
     TEST(filter_flatten) {
         std::vector< std::deque< int > > vec = { { }, { }, { 1, 2 }, { 3 }, { }, { }, { }, { 4 }, { }, { }, { }, { } };
         std::vector< int > target = { 1, 2 };
 
-        ASSERT( brick::query::query( vec ).filter( []( std::deque< int > x ) { return x.size() % 2 == 0; } )
+        ASSERT( query::query( vec ).filter( []( std::deque< int > x ) { return x.size() % 2 == 0; } )
                 .flatten().freeze() == target );
     }
 
@@ -661,12 +659,12 @@ struct Query {
         std::vector< std::deque< std::vector< int > > > vec = { { }, { { }, { } }, { { 1, 2 } }, { { 3 }, { } }, { { 4 } }, };
         std::vector< int > target = { 1, 2, 3, 4 };
 
-        ASSERT( brick::query::query( vec ).flatten().flatten().freeze() == target );
+        ASSERT( query::query( vec ).flatten().flatten().freeze() == target );
     }
 
     TEST(complicated) {
         std::vector< int > vec = { 1, 2, 3, 4 };
-        std::string str = brick::query::query( vec )
+        std::string str = query::query( vec )
             .map( []( int x ) -> std::deque< int > {
                     std::deque< int > d;
                     for ( int i = 0; i < x; ++i )
@@ -682,13 +680,13 @@ struct Query {
     TEST(forall) {
         std::vector< int > vec = { 1, 2, 3, 4 };
         int sum = 0;
-        brick::query::query( vec ).forall( [&]( int i ) { sum += i; } );
+        query::query( vec ).forall( [&]( int i ) { sum += i; } );
         ASSERT_EQ( sum, 10 );
     }
 
     TEST(groupBy) {
         std::vector< int > vec = { 1, 2, 2, 3, 3, 3, 4, 4, 4, 4 };
-        brick::query::query( vec )
+        query::query( vec )
             .groupBy( id )
             .forall( []( std::pair< int, std::vector< int > > p ) {
                     ASSERT_EQ( p.second.size(), p.first );

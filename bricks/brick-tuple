@@ -41,7 +41,7 @@
 #include <tuple>
 #include <type_traits>
 
-#include <brick-assert.h>
+#include <brick-assert>
 
 #ifndef BRICK_TUPLE_H
 #define BRICK_TUPLE_H
@@ -178,12 +178,10 @@ auto passIx( Args &&...args )
 }
 
 }
-}
 
-namespace brick_test {
-namespace tuple {
+namespace t_tuple {
 
-using namespace brick::tuple;
+using namespace tuple;
 
 struct Obj {
     void m1( int x ) { ASSERT_EQ( x, 42 ); }

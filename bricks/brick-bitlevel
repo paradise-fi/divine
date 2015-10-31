@@ -32,7 +32,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
-#include <brick-assert.h>
+#include <brick-assert>
 
 #include <type_traits>
 
@@ -391,10 +391,8 @@ typename BT::template AccessAt< I >::T::Head get( BT &bt )
 }
 
 }
-}
 
-namespace brick_test {
-namespace bitlevel {
+namespace t_bitlevel {
 
 using namespace ::brick::bitlevel;
 

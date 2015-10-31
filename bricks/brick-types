@@ -35,7 +35,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
-#include <brick-assert.h>
+#include <brick-assert>
 
 #include <memory>
 #include <cstring>
@@ -953,12 +953,10 @@ auto operator>=( const A &a, const B &b ) -> typename _OneUnion< A, B >::type
 #endif // C++11
 
 }
-}
 
-namespace brick_test {
-namespace types {
+namespace t_types {
 
-using namespace ::brick::types;
+using namespace types;
 
 struct Integer : Comparable
 {

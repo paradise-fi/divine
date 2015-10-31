@@ -34,7 +34,7 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <type_traits>
-#include <brick-assert.h>
+#include <brick-assert>
 
 #ifndef BRICK_HLIST_H
 #define BRICK_HLIST_H
@@ -381,12 +381,10 @@ constexpr auto lookup( X x, L l, int idx = 1 ) -> typename std::enable_if< L::le
 }
 
 }
-}
 
-namespace brick_test {
-namespace hlist {
+namespace t_hlist {
 
-using namespace ::brick::hlist;
+using namespace hlist;
 
 static_assert( std::is_same< TypeList< int, long, bool >::Get< 0 >, int >::value, "" );
 static_assert( std::is_same< TypeList< int, long, bool >::Get< 1 >, long >::value, "" );

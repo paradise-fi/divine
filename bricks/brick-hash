@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
-#include <brick-assert.h>
+#include <brick-assert>
 
 #include <cstddef>
 #include <utility> // pair
@@ -671,12 +671,10 @@ inline hash128_t spooky( const void *message, size_t length, uint64_t seed1, uin
 }
 
 }
-}
 
-namespace brick_test {
-namespace hash {
+namespace t_hash {
 
-using namespace ::brick::hash;
+using namespace hash;
 
 class Random
 {

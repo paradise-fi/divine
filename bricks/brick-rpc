@@ -33,8 +33,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
-#include <brick-assert.h>
-#include <brick-hlist.h>
+#include <brick-assert>
+#include <brick-hlist>
 
 #include <deque>
 #include <type_traits>
@@ -361,12 +361,10 @@ void demarshall( T &t, BSI &bsi, BSO &bso ) {
 }
 
 }
-}
 
-namespace brick_test {
-namespace rpc {
+namespace t_rpc {
 
-using namespace ::brick::rpc;
+using namespace rpc;
 
 struct Bitstream {
     TEST(_bitstream) {

@@ -1,7 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * Commandline parser.
+ * Commandline parser. OBSOLETE, use brick-cmd instead.
  */
 
 /*
@@ -32,8 +32,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
-#include <brick-string.h>
-#include <brick-assert.h>
+#include <brick-string>
+#include <brick-assert>
 
 #include <string>
 #include <vector>
@@ -1941,10 +1941,8 @@ public:
 };
 
 }
-}
 
-namespace brick_test {
-namespace commandline {
+namespace t_commandline {
 
 using namespace ::brick::commandline;
 

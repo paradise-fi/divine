@@ -44,6 +44,7 @@
 #endif
 
 #ifdef __divine__
+
 #define ASSERT(x) assert( x )
 #define ASSERT_PRED(p, x) assert( p( x ) )
 #define ASSERT_EQ(x, y) assert( (x) == (y) )
@@ -52,12 +53,19 @@
 #define ASSERT_EQ_IDX(i, x, y) assert( (x) == (y) )
 
 #elif !defined NDEBUG
-#define ASSERT(x) ::brick::_assert::assert_fn( BRICK_LOCWRAP( BRICK_LOCATION( #x ) ), x )
-#define ASSERT_PRED(p, x) ::brick::_assert::assert_pred_fn( BRICK_LOCWRAP( BRICK_LOCATION( #p "( " #x " )" ) ), x, p( x ) )
-#define ASSERT_EQ(x, y) ::brick::_assert::assert_eq_fn( BRICK_LOCWRAP( BRICK_LOCATION( #x " == " #y ) ), x, y )
-#define ASSERT_LEQ(x, y) ::brick::_assert::assert_leq_fn( BRICK_LOCWRAP( BRICK_LOCATION( #x " <= " #y ) ), x, y )
-#define ASSERT_NEQ(x, y) ::brick::_assert::assert_neq_fn( BRICK_LOCWRAP( BRICK_LOCATION( #x " != " #y ) ), x, y )
-#define ASSERT_EQ_IDX(i, x, y) ::brick::_assert::assert_eq_fn( BRICK_LOCWRAP( BRICK_LOCATION_I( #x " == " #y, i ) ), x, y )
+
+#define ASSERT(x) ::brick::_assert::assert_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( #x ) ), x )
+#define ASSERT_PRED(p, x) ::brick::_assert::assert_pred_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( #p "( " #x " )" ) ), x, p( x ) )
+#define ASSERT_EQ(x, y) ::brick::_assert::assert_eq_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( #x " == " #y ) ), x, y )
+#define ASSERT_LEQ(x, y) ::brick::_assert::assert_leq_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( #x " <= " #y ) ), x, y )
+#define ASSERT_NEQ(x, y) ::brick::_assert::assert_neq_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( #x " != " #y ) ), x, y )
+#define ASSERT_EQ_IDX(i, x, y) ::brick::_assert::assert_eq_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION_I( #x " == " #y, i ) ), x, y )
 
 #else
 
@@ -92,11 +100,24 @@ template< typename... X >
 void unused( const X&... ) { }
 
 struct Location {
-    const char *file;
     int line, iteration;
-    std::string stmt;
+    std::string file, stmt;
     Location( const char *f, int l, std::string st, int iter = -1 )
-        : file( f ), line( l ), iteration( iter ), stmt( st ) {}
+        : file( f ), line( l ), iteration( iter ), stmt( st )
+    {
+        int slashes = 0;
+        for ( int i = 0; i < file.size(); ++i )
+            if ( file[i] == '/' )
+                ++ slashes;
+
+        while ( slashes >= 3 )
+        {
+            file = std::string( file, file.find( "/" ) + 1, std::string::npos );
+            -- slashes;
+        }
+        if ( f != file )
+            file = ".../" + file;
+    }
 };
 
 #define BRICK_LOCATION(stmt) ::brick::_assert::Location( __FILE__, __LINE__, stmt )

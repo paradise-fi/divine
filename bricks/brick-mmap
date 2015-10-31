@@ -35,8 +35,8 @@
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
-#include <brick-assert.h>
-#include <brick-types.h>
+#include <brick-assert>
+#include <brick-types>
 
 #ifndef BRICK_MMAP_H
 #define BRICK_MMAP_H
@@ -342,14 +342,8 @@ struct MMap
 };
 
 }
-}
 
-/* unit tests */
-
-namespace brick_test {
-namespace mmap {
-
-using namespace ::brick::mmap;
+namespace t_mmap {
 
 struct MMapTest {
     TEST(read) {
@@ -361,7 +355,7 @@ struct MMapTest {
 #else
             "/bin/sh";
 #endif
-        MMap map;
+        mmap::MMap map;
         ASSERT_EQ( map.size(), 0U );
         ASSERT( !map );
         ASSERT( !map.valid() );
@@ -369,7 +363,7 @@ struct MMapTest {
 
         map.map( toMap );
         ASSERT_NEQ( map.size(), 0U );
-        ASSERT( map.mode() == (ProtectMode::Read | ProtectMode::Shared) );
+        ASSERT( map.mode() == (mmap::ProtectMode::Read | mmap::ProtectMode::Shared) );
         ASSERT( map.valid() );
 #ifdef _WIN32
         ASSERT_EQ( map[ 0 ], 'M' );
@@ -381,7 +375,7 @@ struct MMapTest {
         ASSERT_EQ( map[ 3 ], 'F' );
 #endif
 
-        MMap map1 = map; // shared_ptr semantics
+        mmap::MMap map1 = map; // shared_ptr semantics
         ASSERT_EQ( map.size(), map.size() );
         ASSERT_EQ( map.asArrayOf< char >(), map1.asArrayOf< char >() );
         ASSERT( map.mode() == map1.mode() );
@@ -418,14 +412,14 @@ struct MMapTest {
     }
 
     TEST(alloc) {
-        void *data =  MMap::alloc( 1024 );
+        void *data = mmap::MMap::alloc( 1024 );
         unsigned char *ptr = static_cast< unsigned char * >( data );
         for ( int i = 0; i < 1024; ++i )
             ptr[ i ] = i % 256;
 
         for ( int i = 0; i < 1024; ++i )
             ASSERT_EQ( ptr[ i ], i % 256 );
-        MMap::drop( ptr, 1024 );
+        mmap::MMap::drop( ptr, 1024 );
     }
 };
 

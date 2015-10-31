@@ -69,10 +69,10 @@
 #include <malloc.h>
 #endif
 
-#include <brick-assert.h>
-#include <brick-string.h>
-#include <brick-shmem.h>
-#include <brick-unittest.h>
+#include <brick-assert>
+#include <brick-string>
+#include <brick-shmem>
+#include <brick-unittest>
 
 #ifndef BRICK_PROCESS_H
 #define BRICK_PROCESS_H
@@ -820,10 +820,9 @@ struct PipeThrough {
 };
 
 }
-}
 
-namespace brick_test {
-namespace process {
+namespace t_process {
+
 #ifdef _WIN32
 #define sleep(x) Sleep((x) * 1000)
 #endif

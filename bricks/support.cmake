@@ -42,7 +42,7 @@ endfunction()
 # to run the testsuite.
 
 function( bricks_unittest name )
-  bricks_make_runner( ${name} "brick-unittest.h" "
+  bricks_make_runner( ${name} "brick-unittest" "
       return brick::unittest::run( argc > 1 ? argv[1] : \"\",
                                    argc > 2 ? argv[2] : \"\" )\;"
       "BRICK_UNITTEST_REG" ${ARGN} )
@@ -50,7 +50,7 @@ function( bricks_unittest name )
 endfunction()
 
 function( bricks_benchmark name )
-  bricks_make_runner( ${name} "brick-benchmark.h" "brick::benchmark::run( argc, argv )\;"
+  bricks_make_runner( ${name} "brick-benchmark" "brick::benchmark::run( argc, argv )\;"
                       "BRICK_BENCHMARK_REG" ${ARGN} )
   target_link_libraries( ${name} rt )
 endfunction()
@@ -63,14 +63,14 @@ endfunction()
 
 function( test_bricks dir )
   include_directories( ${dir} )
-  file( GLOB SRC "${dir}/brick-*.h" )
+  file( GLOB SRC "${dir}/brick-*[a-z]" )
   bricks_unittest( test-bricks ${SRC} )
   target_link_libraries( test-bricks pthread )
 endfunction()
 
 function( benchmark_bricks dir )
   include_directories( ${dir} )
-  file( GLOB SRC "${dir}/brick-*.h" )
+  file( GLOB SRC "${dir}/brick-*[a-z]" )
   bricks_benchmark( benchmark-bricks ${SRC} )
   target_link_libraries( benchmark-bricks pthread )
 endfunction()

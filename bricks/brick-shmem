@@ -37,7 +37,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
-#include <brick-assert.h>
+#include <brick-assert>
 #include <deque>
 #include <iostream>
 #include <typeinfo>
@@ -48,6 +48,9 @@
 #include <thread>
 #include <mutex>
 #endif
+
+#include <unistd.h> // alarm
+#include <vector>
 
 #ifndef BRICK_SHMEM_H
 #define BRICK_SHMEM_H
@@ -564,15 +567,10 @@ template< typename T >
 using SharedQueue = Chunked< LockedQueue, T >;
 
 }
-}
 
 #if __cplusplus >= 201103L
 
-#include <unistd.h> // alarm
-#include <vector>
-
-namespace brick_test {
-namespace shmem {
+namespace t_shmem {
 
 using namespace ::brick::shmem;
 
@@ -741,7 +739,7 @@ struct Utils {
 #endif
 
 #include <random>
-#include <brick-benchmark.h>
+#include <brick-benchmark>
 
 namespace brick_test {
 namespace shmem {

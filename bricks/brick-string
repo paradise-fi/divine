@@ -45,7 +45,7 @@
 
 #include <regex.h>
 
-#include <brick-assert.h>
+#include <brick-assert>
 
 #ifndef BRICK_STRING_H
 #define BRICK_STRING_H
@@ -333,7 +333,7 @@ public:
        sub-regexp capture. The maximum *INCLUDES* the whole-regexp
        match (indexed 0). [TODO we may want to fix this to be more
        friendly?] */
-    Regexp(const std::string& expr, int match_count = 0, int flags = 0)
+    Regexp(const std::string& expr, int match_count = 0, int flags = REG_BASIC)
 	: pmatch(0), nmatch(match_count)
     {
         if (match_count == 0)
@@ -505,10 +505,8 @@ public:
 };
 
 }
-}
 
-namespace brick_test {
-namespace string {
+namespace t_string {
 
 using namespace brick::string;
 using std::string;

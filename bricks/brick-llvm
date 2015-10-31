@@ -21,7 +21,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
 
-#include <brick-assert.h>
+#include <brick-assert>
 
 #include <vector>
 #include <string>

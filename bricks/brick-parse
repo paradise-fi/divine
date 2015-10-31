@@ -40,8 +40,8 @@
 #include <map>
 #include <queue>
 
-#include <brick-string.h>
-#include <brick-assert.h>
+#include <brick-string>
+#include <brick-assert>
 
 #ifndef BRICK_PARSE_H
 #define BRICK_PARSE_H
@@ -583,16 +583,12 @@ struct Parser {
 };
 
 }
-}
 
-namespace brick_test {
-namespace parse {
-
-using namespace ::brick::parse;
+namespace t_parse {
 
 struct Parse {
     enum TokenId { Invalid, Number };
-    typedef brick::parse::Token< TokenId > Token;
+    typedef parse::Token< TokenId > Token;
 
     struct IOStream {
         std::istream &i;
@@ -611,7 +607,7 @@ struct Parse {
         IOStream( std::istream &i ) : i( i ) {}
     };
 
-    struct _Lexer : Lexer< Token, IOStream >
+    struct Lexer : parse::Lexer< Token, IOStream >
     {
         Token remove() {
             this->skipWhitespace();
@@ -619,8 +615,8 @@ struct Parse {
             return this->decide();
         }
 
-        _Lexer( IOStream &s )
-            : Lexer< Token, IOStream >( s )
+        Lexer( IOStream &s )
+            : parse::Lexer< Token, IOStream >( s )
         {}
     };
 
@@ -628,7 +624,7 @@ struct Parse {
         std::stringstream s;
         IOStream is( s );
         Token t;
-        _Lexer l( is );
+        Lexer l( is );
 
         s << "1 2";
 
