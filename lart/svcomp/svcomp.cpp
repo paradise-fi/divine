@@ -41,6 +41,10 @@ struct NondetTracking : lart::Pass {
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         _dl = std::make_unique< llvm::DataLayout >( &m );
         _ctx = &m.getContext();
+        auto choice = m.getFunction( "__divine_choice" );
+        auto ctype = choice->getFunctionType()->getParamType( 0 );
+
+        std::vector< std::pair< llvm::CallInst *, Tracking > > toReplace;
 
         query::query( m ).flatten().flatten().map( query::refToPtr )
             .map( query::llvmdyncast< llvm::CallInst > )
@@ -53,7 +57,33 @@ struct NondetTracking : lart::Pass {
                 return std::pair< Choice *, llvm::CallInst * >( &*it, call );
             } )
             .filter( []( auto t ) { return t.first != nullptr; } )
-            .forall( [this]( auto t ) { this->trackAndReplace( t.first, t.second ); } );
+            .forall( [&]( auto t ) {
+                    toReplace.emplace_back( t.second, this->trackAndReplace( t.first, t.second ) );
+                } );
+
+        for ( auto r : toReplace ) {
+            if ( auto in = r.second.template asptr< Interval >() ) {
+                llvm::IRBuilder<> irb( r.first );
+                llvm::Value *replace;
+                if ( in->size() > 16 ) {
+                    ASSERT_UNREACHABLE( "unimplemented" );
+                } else {
+                    replace = irb.CreateCall( choice, llvm::ConstantInt::get( ctype, in->size() ) );
+                    if ( replace->getType() != ctype ) {
+                        if ( replace->getType()->getScalarSizeInBits() > ctype->getScalarSizeInBits() )
+                            replace = irb.CreateTrunc( replace, ctype );
+                        else
+                            replace = irb.CreateZExtOrBitCast( replace, ctype );
+                    }
+                    if ( in->start != 0 ) {
+                        replace = irb.CreateAdd( replace, llvm::ConstantInt::get( ctype, in->start ) );
+                    }
+                }
+                r.first->replaceAllUsesWith( replace );
+                r.first->eraseFromParent();
+                replace->dump();
+            }
+        }
 
         return llvm::PreservedAnalyses::none();
     }
@@ -119,7 +149,7 @@ struct NondetTracking : lart::Pass {
         return "()";
     }
 
-    void trackAndReplace( Choice *choice, llvm::CallInst *call ) {
+    Tracking trackAndReplace( Choice *choice, llvm::CallInst *call ) {
         Tracking in;
         if ( choice->interval.valid() )
             in = choice->interval;
@@ -141,11 +171,7 @@ struct NondetTracking : lart::Pass {
         }
 
         LART_DEBUG( std::cerr << "INFO tracking init with " << dump( in ) << " for " << std::flush; call->dump() );
-        auto res = trackUsers( call, in );
-        if ( auto in = res.template asptr< Interval >() ) {
-            // replace with __divine_choice( in->size() ) + in->start
-            ASSERT_LEQ( in->size(), INT_MAX );
-        }
+        return trackUsers( call, in );
     }
 
     Tracking track( llvm::Value *from, llvm::Value *v, Tracking tracking ) {
@@ -165,17 +191,40 @@ struct NondetTracking : lart::Pass {
                     if ( auto consant = llvm::dyn_cast< llvm::ConstantInt >( other ) ) {
                         if ( consant->isZero() || consant->isOne() )
                             tracking = Interval( 0, 1 );
-                        else {
-                            LART_DEBUG( consant->dump() );
-                            matched = false;
-                        }
-                    } else {
-                        LART_DEBUG( other->dump() );
-                        matched = false;
+                            return;
                     }
-                } else {
-                    matched = false;
-                    LART_DEBUG( cmp->dump() );
+                }
+                matched = false;
+                LART_DEBUG( cmp->dump() );
+            },
+            [&]( llvm::BinaryOperator *op ) {
+                switch ( op->getOpcode() ) {
+                    case llvm::Instruction::SRem:
+                    case llvm::Instruction::URem:
+                        ASSERT_EQ( op->getNumOperands(), 2 );
+                        if ( auto mod = llvm::dyn_cast< llvm::ConstantInt >( op->getOperand( 1 ) ) ) {
+                            int64_t modval = mod->getSExtValue();
+                            Interval out;
+                            if ( auto i = tracking.template asptr< Interval >() )
+                                out = *i;
+                            else if ( auto p = tracking.template asptr< SIPair >() ) {
+                                if ( op->getOpcode() == llvm::Instruction::SRem )
+                                    out = p->ifsigned;
+                                else
+                                    out = p->ifunsigned;
+                            }
+
+                            if ( out.start <= 0 && out.end >= modval ) {
+                                out.start = 0;
+                                out.end = modval;
+                                tracking = out;
+                                return;
+                            }
+                        }
+                        // deliberately no break here
+                    default:
+                        matched = false;
+                        LART_DEBUG( op->dump() );
                 }
             } ) && matched;
 
