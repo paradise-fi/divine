@@ -65,20 +65,21 @@ struct NondetTracking : lart::Pass {
             if ( auto in = r.second.template asptr< Interval >() ) {
                 llvm::IRBuilder<> irb( r.first );
                 llvm::Value *replace;
-                if ( in->size() > 16 ) {
-                    ASSERT_UNREACHABLE( "unimplemented" );
-                } else {
-                    replace = irb.CreateCall( choice, llvm::ConstantInt::get( ctype, in->size() ) );
-                    if ( replace->getType() != ctype ) {
-                        if ( replace->getType()->getScalarSizeInBits() > ctype->getScalarSizeInBits() )
-                            replace = irb.CreateTrunc( replace, ctype );
-                        else
-                            replace = irb.CreateZExtOrBitCast( replace, ctype );
-                    }
-                    if ( in->start != 0 ) {
-                        replace = irb.CreateAdd( replace, llvm::ConstantInt::get( ctype, in->start ) );
-                    }
+
+                if ( in->size() > INT_MAX )
+                    continue;
+
+                replace = irb.CreateCall( choice, llvm::ConstantInt::get( ctype, in->size() ) );
+                if ( replace->getType() != ctype ) {
+                    if ( replace->getType()->getScalarSizeInBits() > ctype->getScalarSizeInBits() )
+                        replace = irb.CreateTrunc( replace, ctype );
+                    else
+                        replace = irb.CreateZExtOrBitCast( replace, ctype );
                 }
+                if ( in->start != 0 ) {
+                    replace = irb.CreateAdd( replace, llvm::ConstantInt::get( ctype, in->start ) );
+                }
+
                 r.first->replaceAllUsesWith( replace );
                 r.first->eraseFromParent();
                 replace->dump();
@@ -179,7 +180,7 @@ struct NondetTracking : lart::Pass {
 
         bool matched = true;
         matched = llvmcase( v,
-            [&]( llvm::TruncInst *cast ) { ASSERT( false ); },
+            [&]( llvm::TruncInst *cast ) {  },
             []( llvm::ZExtInst * ) { /* ignored */ },
             []( llvm::SExtInst * ) { /* ignored */ },
             [&]( llvm::ICmpInst *cmp ) {
