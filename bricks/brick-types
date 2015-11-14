@@ -980,6 +980,21 @@ struct Union : Comparable {
     }
 };
 
+template< typename Left, typename Right >
+struct Either : Union< Left, Right > {
+
+    using Union< Left, Right >::Union;
+
+    bool isLeft() const { return this->template is< Left >(); }
+    bool isRight() const { return this->template is< Right >(); }
+
+    Left &left() { return this->template get< Left >(); }
+    Right &right() { return this->template get< Right >(); }
+
+    const Left &left() const { return this->template get< Left >(); }
+    const Right &right() const { return this->template get< Right >(); }
+};
+
 template< typename Fn, typename R = typename std::result_of< Fn() >::type >
 struct Lazy {
 
