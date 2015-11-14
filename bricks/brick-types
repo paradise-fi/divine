@@ -90,6 +90,22 @@ typename T::IsComparable operator>=( const T &a, const T &b ) {
     return b <= a;
 }
 
+struct Eq { typedef bool IsEq; };
+
+template< typename T >
+typename T::IsEq operator!=( const T &a, const T &b ) { return !(a == b); }
+
+struct Ord : Eq { typedef bool IsOrd; };
+
+template< typename T >
+typename T::IsOrd operator<( const T &a, const T &b ) { return !(b <= a); }
+
+template< typename T >
+typename T::IsOrd operator>( const T &a, const T &b ) { return !(a <= b); }
+
+template< typename T >
+typename T::IsOrd operator>=( const T &a, const T &b ) { return b <= a; }
+
 struct Defer {
     template< typename F >
     Defer( F fn ) : fn( fn ), _deleted( false ) { }
