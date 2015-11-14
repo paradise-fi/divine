@@ -536,25 +536,21 @@ struct Union : Comparable {
         return *this;
     }
 
-    void swap( Union other ) {
-        typename std::aligned_storage< size, algignment >::type tmpStor;
-        unsigned char tmpDis;
+    void swap( Union &other ) {
+        if ( _discriminator == 0 && other._discriminator == 0 )
+            return;
 
-        std::memcpy( &tmpStor, &other.storage, size );
-        tmpDis = other._discriminator;
-        other._discriminator = 0;
-        std::memcpy( &other.storage, &storage, size );
-        other._discriminator = _discriminator;
-        _discriminator = 0;
-        std::memcpy( &storage, &tmpStor, size );
-        _discriminator = tmpDis;
+        if ( _discriminator == other._discriminator )
+            _swapSame< 1, Types... >( other );
+        else
+            _swapDifferent< 0, void, Types... >( other );
     }
 
-    bool empty() {
+    bool empty() const {
         return _discriminator == 0;
     }
 
-    explicit operator bool() {
+    explicit operator bool() const {
         return !empty();
     }
 
@@ -678,8 +674,8 @@ struct Union : Comparable {
 
   private:
     static constexpr size_t size = _impl::MaxSizeof< 1, Types... >::value;
-    static constexpr size_t algignment = _impl::MaxAlign< 1, Types... >::value;
-    typename std::aligned_storage< size, algignment >::type storage;
+    static constexpr size_t alignment = _impl::MaxAlign< 1, Types... >::value;
+    typename std::aligned_storage< size, alignment >::type storage;
     unsigned char _discriminator;
 
 
@@ -855,6 +851,79 @@ struct Union : Comparable {
         return _convert2< Target, false, 1, Types... >( Preferred() );
     }
 
+    template< unsigned char i, typename T, typename... Ts >
+    void _swapSame( Union &other ) {
+        if ( _discriminator == i )
+            _doSwap< T >( unsafeGet< T >(), other.unsafeGet< T >(), Preferred() );
+        else
+            _swapSame< i + 1, Ts... >( other );
+    }
+
+    template< unsigned char i >
+    void _swapSame( Union & ) { ASSERT_UNREACHABLE( "Invalid _swapSame" ); }
+
+    template< typename T >
+    auto _doSwap( T &a, T &b, Preferred ) -> decltype( a.swap( b ) ) {
+        a.swap( b );
+    }
+
+    template< typename T >
+    auto _doSwap( T &a, T &b, NotPreferred ) -> decltype( std::swap( a, b ) ) {
+        std::swap( a, b );
+    }
+
+    template< unsigned char i, typename T, typename... Ts >
+    void _swapDifferent( Union &other ) {
+        if ( i == _discriminator )
+            _swapDifferent2< i, T, 0, void, Types... >( other );
+        else
+            _swapDifferent< i + 1, Ts... >( other );
+    }
+
+    template< unsigned char i >
+    void _swapDifferent( Union & ) { ASSERT_UNREACHABLE( "Invalid _swapDifferent" ); }
+
+    template< unsigned char local, typename Local, unsigned char i, typename T, typename... Ts >
+    void _swapDifferent2( Union &other ) {
+        if ( i == other._discriminator )
+            _doSwapDifferent< local, i, Local, T >( other );
+        else
+            _swapDifferent2< local, Local, i + 1, Ts... >( other );
+    }
+
+    template< unsigned char local, typename Local, unsigned char i >
+    void _swapDifferent2( Union & ) { ASSERT_UNREACHABLE( "Invalid _swapDifferent2" ); }
+
+    template< unsigned char l, unsigned char r, typename L, typename R >
+    auto _doSwapDifferent( Union &other ) -> typename std::enable_if< l != 0 && r != 0 >::type {
+        L lval( unsafeMoveOut< L >() );
+        unsafeGet< L >().~L();
+
+        new ( &unsafeGet< R >() ) R( other.unsafeMoveOut< R >() );
+        other.unsafeGet< R >().~R();
+
+        new ( &other.unsafeGet< L >() ) L( std::move( lval ) );
+        std::swap( _discriminator, other._discriminator );
+    }
+
+    template< unsigned char l, unsigned char r, typename L, typename R >
+    auto _doSwapDifferent( Union &other ) -> typename std::enable_if< l == 0 && r != 0 >::type {
+        new ( &unsafeGet< R >() ) R( other.unsafeMoveOut< R >() );
+        other.unsafeGet< R >().~R();
+        std::swap( _discriminator, other._discriminator );
+    }
+
+    template< unsigned char l, unsigned char r, typename L, typename R >
+    auto _doSwapDifferent( Union &other ) -> typename std::enable_if< l != 0 && r == 0 >::type {
+        new ( &other.unsafeGet< L >() ) L( unsafeMoveOut< L >() );
+        unsafeGet< L >().~L();
+        std::swap( _discriminator, other._discriminator );
+    }
+
+    template< unsigned char l, unsigned char r, typename L, typename R >
+    auto _doSwapDifferent( Union & ) -> typename std::enable_if< l == 0 && r == 0 >::type {
+        ASSERT_UNREACHABLE( "Invalid _doSwapDifferent" );
+    }
 };
 
 template< template< typename > class C, typename T, typename F >
