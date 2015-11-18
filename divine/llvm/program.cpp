@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include <divine/llvm/program.h>
+#include <divine/llvm/program.hpp>
 
 #include <llvm/IR/Type.h>
 #include <llvm/IR/GlobalVariable.h>

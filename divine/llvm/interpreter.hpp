@@ -4,8 +4,8 @@
 #include <brick-types.h>
 #include <brick-data.h>
 
-#include <divine/llvm/program.h>
-#include <divine/llvm/machine.h>
+#include <divine/llvm/program.hpp>
+#include <divine/llvm/machine.hpp>
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>

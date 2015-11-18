@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2011, 2012 Petr Rockai <me@mornfall.net>
 
-#include <divine/llvm/interpreter.h>
+#include <divine/llvm/interpreter.hpp>
 
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Constants.h>

@@ -1,8 +1,8 @@
 // -*- C++ -*- (c) 2012-2015 Petr Rockai
 //             (c) 2015 Vladimír Štill
 
-#include <divine/llvm/machine.h>
-#include <divine/llvm/program.h>
+#include <divine/llvm/machine.hpp>
+#include <divine/llvm/program.hpp>
 
 #include <divine/toolkit/list.h>
 

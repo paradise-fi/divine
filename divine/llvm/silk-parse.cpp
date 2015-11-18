@@ -1,4 +1,4 @@
-#include <divine/llvm/silk-parse.h>
+#include <divine/llvm/silk-parse.hpp>
 
 using namespace divine::silk;
 

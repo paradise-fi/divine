@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2012 Petr Rockai
 
-#include <divine/llvm/interpreter.h>
-#include <divine/llvm/execution.h>
+#include <divine/llvm/interpreter.hpp>
+#include <divine/llvm/execution.hpp>
 
 using namespace divine::llvm;
 

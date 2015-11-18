@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2011-2014 Petr Rockai <me@mornfall.net>
 
-#include <divine/llvm/machine.h>
+#include <divine/llvm/machine.hpp>
 
 using namespace divine::llvm;
 

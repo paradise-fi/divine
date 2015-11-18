@@ -2,7 +2,7 @@
 // Describe the interpreter's state in a human-readable fashion.
 
 #include <brick-string.h>
-#include <divine/llvm/interpreter.h>
+#include <divine/llvm/interpreter.hpp>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"

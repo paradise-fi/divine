@@ -3,17 +3,13 @@ with_warnings()
 include( ../cmake/stringify.cmake )
 include( ../cmake/template-separe.cmake )
 
-file( GLOB SRC *.cpp )
-file( GLOB H *.h )
+file( GLOB CPP *.cpp )
+file( GLOB HPP *.h *.hpp )
 
-foreach( D utility toolkit generator algorithm instances explicit )
-    file( GLOB SRC_${D} ${D}/*.cpp )
-    file( GLOB H_${D} ${D}/*.h )
-    install( FILES ${H_${D}} DESTINATION include/divine/${D} COMPONENT divine_dev )
-    if ( NOT ${D} STREQUAL instances )
-       list( APPEND SRC ${SRC_${D}} )
-       list( APPEND H ${H_${D}} )
-    endif()
+foreach( D utility llvm compile toolkit statespace algorithm ui )
+    file( GLOB CPP_${D} ${D}/*.cpp )
+    file( GLOB HPP_${D} ${D}/*.hpp )
+    install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
 endforeach()
 
 # generated instantiate files

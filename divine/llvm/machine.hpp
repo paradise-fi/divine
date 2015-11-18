@@ -4,7 +4,7 @@
 #include <brick-bitlevel.h>
 #include <brick-assert.h>
 
-#include <divine/llvm/program.h>
+#include <divine/llvm/program.hpp>
 #include <divine/toolkit/lens.h>
 
 #include <llvm/IR/Constants.h>

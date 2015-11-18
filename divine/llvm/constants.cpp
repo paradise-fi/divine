@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2012-2014 Petr Ročkai <me@mornfall.net>
 
-#include <divine/llvm/execution.h>
-#include <divine/llvm/program.h>
+#include <divine/llvm/execution.hpp>
+#include <divine/llvm/program.hpp>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Module.h>
 

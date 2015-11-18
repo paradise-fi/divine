@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2014 Petr Rockai
 
-#include <divine/llvm/silk-parse.h>
+#include <divine/llvm/silk-parse.hpp>
 
 #ifndef DIVINE_LLVM_SILK_EVAL_H
 #define DIVINE_LLVM_SILK_EVAL_H
