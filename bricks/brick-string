@@ -526,7 +526,7 @@ struct TestRegexp {
     }
 
     TEST(basicMatch) {
-        Regexp re("^fo\\+bar()$");
+        Regexp re("^foo*bar()$");
         ASSERT(re.match("fobar()"));
         ASSERT(re.match("foobar()"));
         ASSERT(re.match("fooobar()"));
