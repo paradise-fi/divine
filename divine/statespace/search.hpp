@@ -15,6 +15,8 @@
 namespace divine {
 namespace statespace {
 
+namespace shmem = ::brick::shmem;
+
 template< typename L >
 struct Aggregate
 {
@@ -48,7 +50,7 @@ struct DFS : SearchBase< B, L >
     DFS( std::shared_ptr< Shared >, B &builder, L &listener ) : SearchBase< B, L >( builder, listener ) {}
     virtual typename Result< L >::T run( bool ) override
     {
-        // ...
+        ASSERT_UNIMPLEMENTED();
     }
 };
 
@@ -57,12 +59,12 @@ struct BFS : SearchBase< B, L >
 {
     struct Shared
     {
-        brick::shmem::SharedQueue< typename B::State > q;
-        brick::shmem::StartDetector::Shared start;
+        shmem::SharedQueue< typename B::State > q;
+        shmem::StartDetector::Shared start;
     };
 
     std::shared_ptr< Shared > _sh;
-    brick::shmem::StartDetector _start;
+    shmem::StartDetector _start;
 
     virtual typename Result< L >::T run( bool initials ) override
     {
@@ -107,7 +109,7 @@ struct BFS : SearchBase< B, L >
 
     BFS( std::shared_ptr< Shared > sh, B &builder, L &listener )
         : SearchBase< B, L >( builder, listener ), _sh( sh ),
-          _start( sh.start )
+          _start( sh->start )
     {}
 };
 
@@ -119,8 +121,8 @@ struct DistributedBFS : BFS< B, L >
     {
         ASSERT_UNIMPLEMENTED();
         /* also pull stuff out from networked queues with some probability */
-        /* statically decide whether to push edges onto the local queue or
-         * send it into the network */
+        /* decide whether to push edges onto the local queue or send it into
+         * the network */
     }
 
     DistributedBFS( std::shared_ptr< Shared > sh, B& builder, L &listener )
