@@ -11,6 +11,7 @@
 #include <llvm/IR/CallSite.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/Analysis/CaptureTracking.h>
 #include <brick-string.h>
 #include <unordered_set>
 #include <string>
@@ -18,6 +19,7 @@
 
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
+#include <lart/support/cleanup.h>
 
 namespace lart {
 namespace weakmem {
@@ -72,44 +74,46 @@ struct ScalarMemory : lart::Pass
         return ty;
     }
 
-    void transform( llvm::LoadInst *load ) {
+    llvm::Instruction *transform( llvm::LoadInst *load ) {
         auto ty = nonscalar( load );
         if ( !ty )
-            return;
+            return load;
 
         llvm::IRBuilder<> builder( load );
         llvm::Value *agg = llvm::UndefValue::get( ty );
         if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
             for ( unsigned i = 0; i < sty->getNumContainedTypes(); ++i ) {
-                auto geptr = builder.CreateConstGEP2_64( load->getOperand(0), 0, i );
+                auto geptr = builder.CreateConstGEP2_32( sty, load->getOperand(0), 0, i );
                 auto val = builder.CreateLoad( geptr );
-                transform( val );
-                agg = builder.CreateInsertValue( agg, val, i );
+                auto tval = transform( val );
+                agg = builder.CreateInsertValue( agg, tval, i );
             }
         load->replaceAllUsesWith( agg );
         load->eraseFromParent();
+        return llvm::cast< llvm::Instruction >( agg );
     }
 
-    void transform( llvm::StoreInst *store ) {
+    llvm::Instruction *transform( llvm::StoreInst *store ) {
         auto ty = nonscalar( store->getValueOperand() );
         if ( !ty )
-            return;
+            return store;
 
         llvm::IRBuilder<> builder( store );
         llvm::Value *agg = store->getValueOperand();
         llvm::Instruction *replace = nullptr;
         if ( auto sty = llvm::dyn_cast< llvm::CompositeType >( ty ) )
             for ( unsigned i = 0; i < sty->getNumContainedTypes(); ++i ) {
-                auto geptr = builder.CreateConstGEP2_64( store->getPointerOperand(), 0, i );
+                auto geptr = builder.CreateConstGEP2_32( sty, store->getPointerOperand(), 0, i );
                 auto val = builder.CreateExtractValue( agg, i );
                 auto nstore = builder.CreateStore( val, geptr );
-                transform( nstore );
-                replace = nstore;
+                replace = transform( nstore );
             }
         if ( replace ) {
             store->replaceAllUsesWith( replace );
             store->eraseFromParent();
+            return replace;
         }
+        return store;
     }
 
 };
@@ -426,6 +430,10 @@ struct Substitute : lart::Pass
         transformWeak( f, dl, functionType( &f ) );
     }
 
+    bool nonlocal( llvm::Value *i ) {
+        return !llvm::isa< llvm::AllocaInst >( i ) || llvm::PointerMayBeCaptured( i, false, true );
+    };
+
     void transformWeak( llvm::Function &f, llvm::DataLayout &dl, Type type ) {
         auto &ctx = f.getContext();
 
@@ -439,18 +447,24 @@ struct Substitute : lart::Pass
         std::vector< llvm::AtomicCmpXchgInst * > cass;
         std::vector< llvm::AtomicRMWInst * > ats;
 
+
         for ( auto &bb : f )
             for ( auto &i : bb ) {
-                if ( auto load = llvm::dyn_cast< llvm::LoadInst >( &i ) )
-                    loads.push_back( load );
-                else if ( auto store = llvm::dyn_cast< llvm::StoreInst >( &i ) )
-                    stores.push_back( store );
-                else if ( auto fence = llvm::dyn_cast< llvm::FenceInst >( &i ) )
+                if ( auto load = llvm::dyn_cast< llvm::LoadInst >( &i ) ) {
+                    if ( nonlocal( load->getPointerOperand() ) )
+                        loads.push_back( load );
+                } else if ( auto store = llvm::dyn_cast< llvm::StoreInst >( &i ) ) {
+                    if ( nonlocal( store->getPointerOperand() ) )
+                        stores.push_back( store );
+                } else if ( auto fence = llvm::dyn_cast< llvm::FenceInst >( &i ) ) {
                     fences.push_back( fence );
-                else if ( auto cas = llvm::dyn_cast< llvm::AtomicCmpXchgInst >( &i ) )
-                    cass.push_back( cas );
-                else if ( auto at = llvm::dyn_cast< llvm::AtomicRMWInst >( &i ) )
-                    ats.push_back( at );
+                } else if ( auto cas = llvm::dyn_cast< llvm::AtomicCmpXchgInst >( &i ) ) {
+                    if ( nonlocal( cas->getPointerOperand() ) )
+                        cass.push_back( cas );
+                } else if ( auto at = llvm::dyn_cast< llvm::AtomicRMWInst >( &i ) ) {
+                    if ( nonlocal( at->getPointerOperand() ) )
+                        ats.push_back( at );
+                }
             }
         for ( auto load : loads ) {
             // SC: no barrier needed it has no effect on load
