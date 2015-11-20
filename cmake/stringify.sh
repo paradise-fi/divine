@@ -40,7 +40,7 @@ if test "$1" = "-l"; then
 else
     flat=$(echo $2 | flatten)
     (cat "$1/$2"; echo) | sed -e '1i \
-namespace divine { '"${NSBEG}"' const char *'"${flat}"'_str = "\\' \
+namespace divine { '"${NSBEG}"' const char *'"${flat}"'_str = "' \
     -e 's,\\,\\\\,g' \
     -e 's,$,\\n\\,' \
     -e 's,",\\",g' \
