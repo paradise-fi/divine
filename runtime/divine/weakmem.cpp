@@ -201,6 +201,16 @@ union I64b {
 
 uint64_t __lart_weakmem_load_tso( void *_addr, int bitwidth ) {
     __divine_interrupt_mask();
+    if ( __divine_is_private( _addr ) ) {
+        switch ( bitwidth ) {
+            case 1: case 8: return *reinterpret_cast< uint8_t * >( _addr );
+            case 16: return *reinterpret_cast< uint16_t * >( _addr );
+            case 32: return *reinterpret_cast< uint32_t * >( _addr );
+            case 64: return *reinterpret_cast< uint64_t * >( _addr );
+            default: __divine_problem( Problem::Other, "Unhandled case" );
+        }
+    }
+
     I64b val = { .i64 = 0 };
     char *addr = reinterpret_cast< char * >( _addr );
     bool bmask[8] = { false };
