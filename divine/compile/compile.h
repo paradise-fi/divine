@@ -12,8 +12,7 @@
 #include <divine/utility/strings.h>
 #include <divine/compile/llvm.h>
 
-#include <tools/combine.h>
-#include <tools/llvmpaths.h>
+#include <divine/llvmpaths.h>
 
 #ifndef DIVINE_COMPILE_H
 #define DIVINE_COMPILE_H

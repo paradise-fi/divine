@@ -1,8 +1,7 @@
 #include <brick-string.h>
 #include <brick-fs.h>
 
-#include <tools/compile.h>
-#include <tools/combine.h>
+#include <divine/compile/compile.h>
 #include <divine/utility/buchi.h>
 
 bool mucompile( const char *, const char * );
