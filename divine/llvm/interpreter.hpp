@@ -133,6 +133,9 @@ struct Interpreter
 
     void advance() {
         pc().instruction ++;
+        /* TODO not needed, all terminators use explicit destinations */
+        /* asserts on unreachable if it's the last thing in a function and
+         * incorrectly proceeds to the next block otherwise */
         if ( !instruction().op ) {
             PC to = pc();
             to.instruction ++;
