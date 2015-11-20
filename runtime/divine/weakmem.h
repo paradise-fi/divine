@@ -27,6 +27,7 @@ void __lart_weakmem_store_pso( void *addr, uint64_t value, int bitwidth ) _lart_
 uint64_t __lart_weakmem_load_pso( void *addr, int bitwidth ) _lart_weakmem_bypass_ _lart_weakmem_propagate_ __NOINLINE;
 
 void __lart_weakmem_flush() _lart_weakmem_bypass_ _lart_weakmem_propagate_ __NOINLINE;
+void __lart_weakmem_cleanup( int cnt, ... ) _lart_weakmem_bypass_ _lart_weakmem_propagate_ __NOINLINE;
 
 /* memory manipulation "template" functions */
 void __lart_weakmem_memmove( void *dest, const void *src, size_t n ) _lart_weakmem_bypass_ _lart_weakmem_propagate_ __NOINLINE;

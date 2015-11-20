@@ -3,6 +3,7 @@
 
 #include <weakmem.h>
 #include <algorithm> // reverse iterator
+#include <cstdarg>
 
 #define forceinline __attribute__((always_inline))
 
@@ -131,6 +132,16 @@ struct __BufferHelper {
         return buffers[ tid ];
     }
 
+    Buffer **getIfExists() _lart_weakmem_bypass_ forceinline {
+        if ( !buffers )
+            return nullptr;
+        int tid = __divine_get_tid();
+        int cnt = __divine_heap_object_size( buffers ) / sizeof( Buffer * );
+        if ( tid >= cnt )
+            return nullptr;
+        return &buffers[ tid ];
+    }
+
     Buffer &cast( void *data ) _lart_weakmem_bypass_ forceinline { return *reinterpret_cast< Buffer * >( data ); }
 
     BufferLine pop() _lart_weakmem_bypass_ forceinline {
@@ -151,6 +162,30 @@ struct __BufferHelper {
             buf = nullptr;
         }
         return out;
+    }
+
+    void evict( char *const from, char *const to ) forceinline {
+        Buffer **buf = getIfExists();
+        if ( !buf )
+            return;
+
+        int left = 0;
+        for ( BufferLine &l : **buf ) {
+            if ( !(from <= l.addr && l.addr < to) )
+                ++left;
+        }
+        if ( left == 0 ) {
+            __divine_free( *buf );
+            *buf = nullptr;
+        } else if ( left < (*buf)->size() ) {
+            Buffer *n = &cast( __divine_malloc( sizeof( BufferLine ) * left ) );
+            int i = 0;
+            for ( BufferLine &l : **buf ) {
+                if ( from <= l.addr && l.addr < to )
+                    (*n)[ i++ ] = l;
+            }
+            n = *buf;
+        }
     }
 
     void push( const BufferLine &line ) _lart_weakmem_bypass_ forceinline {
@@ -189,7 +224,11 @@ void __lart_weakmem_store_tso( void *addr, uint64_t value, int bitwidth ) {
 
 void __lart_weakmem_flush() {
     __divine_interrupt_mask();
-    for ( auto &l : *__storeBuffers.get() )
+    auto **buf = __storeBuffers.getIfExists();
+    if ( !buf )
+        return;
+
+    for ( auto &l : **buf )
         l.store();
     __storeBuffers.drop();
 }
@@ -309,6 +348,20 @@ void __lart_weakmem_memset( void *_dst, int c, size_t n ) {
     volatile char *dst = const_cast< volatile char * >( reinterpret_cast< char * >( _dst ) );
     for ( ; n; --n, ++dst )
         *dst = c;
+}
+
+void __lart_weakmem_cleanup( int cnt, ... ) {
+    __divine_interrupt_mask();
+    va_list ptrs;
+    va_start( ptrs, cnt );
+
+    for ( int i = 0; i < cnt; ++i ) {
+        char *ptr = va_arg( ptrs, char * );
+        if ( !ptr )
+            continue;
+        __storeBuffers.evict( ptr, ptr + __divine_heap_object_size( ptr ) );
+    }
+    va_end( ptrs );
 }
 
 #pragma GCC diagnostic pop
