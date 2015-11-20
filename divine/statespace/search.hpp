@@ -7,6 +7,8 @@
 
 #include <brick-shmem.h>
 
+#include <divine/statespace/perthread.hpp>
+
 namespace divine {
 namespace statespace {
 
@@ -126,13 +128,19 @@ struct DistributedBFS : BFS< B, L >
 enum class Order { PseudoBFS, DFS };
 
 template< typename L >
-using MakeSearch = std::function< std::unique_ptr< SearchInterface< L > >() >;
+using MakeSearch = std::function< std::unique_ptr< SearchInterface< L > >( int ) >;
 
 template< template< typename, typename > class S, typename B, typename L >
 MakeSearch< L > make( B &b, L &l )
 {
-    auto sh = std::make_shared< typename S< B, L >::Shared >();
-    return [&b, &l, sh]() { return std::make_unique< S< B, L > >( sh, b, l ); };
+    using B_PerThread = typename std::remove_reference< decltype( thread_access( b, 0 ) ) >::type;
+    using Search = S< B_PerThread, L >;
+    auto sh = std::make_shared< typename Search::Shared >();
+    return [&b, &l, sh]( int i )
+    {
+        auto &builder = thread_access( b, i );
+        return std::make_unique< Search >( sh, builder, l );
+    };
 }
 
 /*
@@ -166,7 +174,7 @@ auto search( Order o, B &b, int threads, Listen l ) -> typename Aggregate< Liste
     for ( int i = 0; i < threads; ++i )
         rs.emplace_back(
             std::async( [mkinstance, i]() {
-                    auto s = mkinstance();
+                    auto s = mkinstance( i );
                     return s->run( i == 0 );
                 } ) );
 
