@@ -12,17 +12,38 @@
 #include <chrono>
 #include <string>
 #include <unordered_set>
+#include <unordered_map>
+#include <set>
+#include <map>
 #include <iostream>
 
 #ifndef LART_SUPPORT_UTIL_H
 #define LART_SUPPORT_UTIL_H
+
+namespace std {
+
+template< typename A, typename B >
+struct hash< std::pair< A, B > > {
+    size_t operator()( const std::pair< A, B > &pair ) const {
+        return ha( pair.first ) ^ hb( pair.second );
+    }
+
+  private:
+    std::hash< A > ha;
+    std::hash< B > hb;
+};
+
+}
 
 namespace lart {
 
 namespace util {
 
 template< typename T >
-using Set = std::unordered_set< T >;
+using Set = std::set< T >;
+
+template< typename K, typename V >
+using Map = std::map< K, V >;
 
 template< typename >
 struct ReturnType { };

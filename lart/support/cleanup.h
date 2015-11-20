@@ -1,0 +1,230 @@
+// -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
+
+#include <type_traits>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Dominators.h>
+#include <llvm/ADT/Optional.h>
+
+#include <brick-types.h>
+
+#include <lart/support/query.h>
+#include <lart/analysis/bbreach.h>
+
+#ifndef LART_SUPPORT_CLEANUP_H
+#define LART_SUPPORT_CLEANUP_H
+
+namespace lart {
+namespace cleanup {
+
+struct EhInfo {
+    EhInfo() : personality( nullptr ), landingpadType( nullptr ), cleanupSelector( 0 ) { }
+    EhInfo( llvm::Function *personality, llvm::Type *landingpadType,
+            std::initializer_list< unsigned > idxs, long cleanupSelector ) :
+        personality( personality ), landingpadType( landingpadType ),
+        selectorIndices( idxs ), cleanupSelector( cleanupSelector )
+    { }
+
+    bool valid() const { return personality && landingpadType; }
+    operator bool() const { return valid(); }
+
+    static EhInfo cpp( llvm::Module &m ) {
+        auto &ctx = m.getContext();
+        return EhInfo(
+            m.getFunction( "__gxx_personality_v0" ),
+            llvm::StructType::get( llvm::Type::getInt8PtrTy( ctx ), llvm::Type::getInt32Ty( ctx ), nullptr ),
+            { 1 }, 0 );
+    }
+
+    llvm::Function *personality;
+    llvm::Type *landingpadType;
+    std::vector< unsigned > selectorIndices;
+    long cleanupSelector;
+};
+
+template< typename ShouldClean, typename Cleanup // ,
+//    typename = decltype( std::declval< ShouldClean && >()( std::declval< llvm::AllocaInst * >() ) ), // typecheck shouldClean( AllocaInst * )
+//    typename = decltype( std::declval< Cleanup && >()( std::declval< std::vector< llvm::AllocaInst * > >() ) ) // typecheck cleanup( std::vector< AllocaInst * > )
+    >
+void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClean, Cleanup &&cleanup,
+        analysis::Reachability *reach = nullptr, llvm::DominatorTree *dt = nullptr )
+{
+    if ( fn.empty() )
+        return;
+    ASSERT( ehi.valid() );
+
+    llvm::Optional< analysis::BasicBlockSCC > localSCC;
+    llvm::Optional< analysis::Reachability > localReach;
+    if ( !reach ) {
+        localSCC.emplace( fn );
+        localReach.emplace( fn, localSCC.getPointer() );
+        reach = localReach.getPointer();
+    }
+    llvm::Optional< llvm::DominatorTree > localDT;
+    if ( !dt ) {
+        localDT.emplace( llvm::DominatorTreeAnalysis().run( fn ) );
+        dt = localDT.getPointer();
+    }
+
+    std::vector< llvm::AllocaInst * > allocas = query::query( fn ).flatten()
+        .map( query::llvmdyncast< llvm::AllocaInst > )
+        .filter( query::notnull ).filter( shouldClean ).freeze();
+    if ( allocas.empty() )
+        return;
+
+    // get all call sites that have allocas which can reach them
+    auto calls = query::query( fn ).flatten()
+        .filter( query::is< llvm::CallInst > || query::is< llvm::InvokeInst > )
+        .map( []( llvm::Instruction &call ) { return llvm::CallSite( &call ); } )
+        .filter( []( llvm::CallSite &cs ) { return !cs.doesNotThrow(); } )
+        .filter( [&]( llvm::CallSite &cs ) {
+            return !query::query( allocas )
+                    .filter( [&]( llvm::AllocaInst *al ) { return reach->reachable( al, cs.getInstruction() ); } )
+                    .empty();
+        } ).freeze();
+
+    // phase 1 = replace calls with invokes landing in cleanup with resume
+    //           and add cleanup with resume to all non-cleanup landing blocks
+    bool invokeAdded = false;
+    for ( auto &cs : calls ) {
+
+        if ( cs.isInvoke() ) {
+            auto *inst = llvm::cast< llvm::InvokeInst >( cs.getInstruction() );
+            auto *unwindBB = inst->getUnwindDest();
+            auto *lp = llvm::cast< llvm::LandingPadInst >( unwindBB->getFirstNonPHI() );
+
+            if ( !lp->isCleanup() ) {
+                lp->setCleanup( true );
+                auto *noCleanupBB = unwindBB->splitBasicBlock( unwindBB->getFirstInsertionPt() , "lart.cleanup.lb.orig" );
+                auto *cleanupBB = llvm::BasicBlock::Create( fn.getParent()->getContext(), "lart.cleanup.lb.cleanup", &fn );
+                llvm::IRBuilder<>( cleanupBB ).CreateResume( lp );
+
+                // note: split invalidated interator
+                llvm::IRBuilder<> irb( unwindBB->getFirstInsertionPt() );
+                auto *sel = irb.CreateExtractValue( lp, ehi.selectorIndices );
+                auto *cmp = irb.CreateICmpEQ( sel, llvm::ConstantInt::get(
+                            llvm::cast< llvm::IntegerType >( sel->getType() ), ehi.cleanupSelector ) );
+                irb.CreateCondBr( cmp, noCleanupBB, cleanupBB );
+                unwindBB->rbegin()->eraseFromParent(); // br added by splitBasicBlock
+            }
+        } else {
+            auto *inst = llvm::cast< llvm::CallInst >( cs.getInstruction() );
+            invokeAdded = true;
+
+            auto *cleanupBB = llvm::BasicBlock::Create( fn.getParent()->getContext(), "lart.cleanup.invoke.unwind", &fn );
+            llvm::IRBuilder<> irb( cleanupBB );
+            auto *lp = irb.CreateLandingPad( ehi.landingpadType, 0 );
+            lp->setCleanup( true );
+            irb.CreateResume( lp );
+
+            auto split = std::next( llvm::BasicBlock::iterator( inst ) );
+            auto *bb = inst->getParent();
+            auto *invokeOkBB = bb->splitBasicBlock( split, "lart.cleanup.invoke.ok" );
+
+            std::vector< llvm::Value * > args( inst->arg_operands().begin(), inst->arg_operands().end() );
+            auto *invoke = llvm::InvokeInst::Create( inst->getCalledValue(), invokeOkBB, cleanupBB, args );
+            llvm::ReplaceInstWithInst( inst, invoke );
+            bb->rbegin()->eraseFromParent(); // br added by splitBasicBlock
+        }
+    }
+
+    if ( invokeAdded && !fn.hasPersonalityFn() )
+        fn.setPersonalityFn( ehi.personality );
+    // ASSERT( !fn.hasPersonalityFn() || (fn.getPersonalityFn() == ehi.personality || (fn.getPersonalityFn()->dump(), ehi.personality->dump(), false) ) );
+
+    // phase 2: propagate all allocas which might reach bb into it using phi nodes
+    struct Local { };
+    using AllocaIdentity = brick::types::Either< Local, std::pair< util::Set< llvm::BasicBlock * >, llvm::PHINode * > >;
+    util::Map< std::pair< llvm::BasicBlock *, llvm::AllocaInst * >, AllocaIdentity > allocaMap;
+    util::Map< llvm::BasicBlock *, util::Set< llvm::AllocaInst * > > reachingAllocas;
+    std::vector< llvm::BasicBlock * > worklist;
+    worklist.push_back( &fn.getEntryBlock() );
+
+    auto allocaReprInBB = [&]( llvm::AllocaInst *alloca, llvm::BasicBlock *bb ) -> llvm::Instruction * {
+        if ( alloca->getParent() == bb )
+            return alloca;
+        auto &id = allocaMap[ { bb, alloca } ].right();
+        if ( id.second )
+            return id.second;
+        return alloca;
+    };
+
+    while ( !worklist.empty() ) {
+        auto bb = worklist.back();
+        worklist.pop_back();
+
+        bool propagate = false;
+        auto &reachingHere = reachingAllocas[ bb ];
+
+        // union predecessors
+        for ( auto &pbb : util::preds( bb ) ) {
+            for ( auto alloca : reachingAllocas[ &pbb ] ) {
+                if ( reachingHere.insert( alloca ).second )
+                    propagate = true;
+
+                bool addToPhi = false;
+                auto it = allocaMap.find( { bb, alloca } );
+                if ( it == allocaMap.end() ) {
+                    allocaMap[ { bb, alloca } ] = std::pair< util::Set< llvm::BasicBlock * >, llvm::PHINode * >{ { &pbb }, nullptr };
+                    addToPhi = true;
+                } else {
+                    ASSERT( it->second.isRight() );
+                    addToPhi = it->second.right().first.insert( &pbb ).second;
+                }
+
+                llvm::PHINode *&phi = allocaMap[ { bb, alloca } ].right().second;
+                if ( addToPhi && !dt->dominates( alloca, bb ) ) {
+                    if ( !phi )
+                        phi = llvm::IRBuilder<>( bb ).CreatePHI( alloca->getType(), 0 );
+                    phi->addIncoming( allocaReprInBB( alloca, &pbb ), &pbb );
+                }
+            }
+        }
+
+        // allocas here
+        for ( auto &inst : *bb ) {
+            if ( auto *alloca = llvm::dyn_cast< llvm::AllocaInst >( &inst ) ) {
+                if ( reachingHere.insert( alloca ).second ) {
+                    propagate = true;
+                    allocaMap[ { bb, alloca } ] = Local();
+                }
+            }
+        }
+
+        if ( propagate )
+            std::copy( llvm::succ_begin( bb ), llvm::succ_end( bb ), std::back_inserter( worklist ) );
+    }
+
+    // predecessors from which alloca cannot be obtained must be represented by null
+    for ( auto &bb : fn ) {
+        for ( auto *alloca : reachingAllocas[ &bb ] ) {
+            auto &id = allocaMap[ { &bb, alloca } ];
+            if ( id.isRight() && id.right().second ) {
+                llvm::PHINode *phi = id.right().second;
+                for ( auto &pbb : util::preds( bb ) ) {
+                    if ( id.right().first.count( &pbb ) == 0 )
+                        phi->addIncoming( llvm::ConstantPointerNull::get( alloca->getType() ), &pbb );
+                }
+            }
+        }
+    }
+
+    // phase 3: clean all allocas that are visible at function exit point
+    auto exits = query::query( fn ).flatten()
+            .map( query::refToPtr )
+            .filter( query::is< llvm::ReturnInst > || query::is< llvm::ResumeInst > );
+    for ( auto *exit : exits ) {
+        llvm::IRBuilder<> irb( exit );
+        auto exitbb = exit->getParent();
+        auto reaching = query::query( reachingAllocas[ exitbb ] )
+                  .map( [&]( llvm::AllocaInst *alloca ) { return allocaReprInBB( alloca, exitbb ); } )
+                  .freeze();
+        cleanup( irb, reaching );
+        // exitbb->dump();
+    }
+}
+
+}
+}
+
+#endif // LART_SUPPORT_CLEANUP_H
