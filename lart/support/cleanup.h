@@ -42,46 +42,16 @@ struct EhInfo {
     long cleanupSelector;
 };
 
-template< typename ShouldClean, typename Cleanup // ,
-//    typename = decltype( std::declval< ShouldClean && >()( std::declval< llvm::AllocaInst * >() ) ), // typecheck shouldClean( AllocaInst * )
-//    typename = decltype( std::declval< Cleanup && >()( std::declval< std::vector< llvm::AllocaInst * > >() ) ) // typecheck cleanup( std::vector< AllocaInst * > )
-    >
-void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClean, Cleanup &&cleanup,
-        analysis::Reachability *reach = nullptr, llvm::DominatorTree *dt = nullptr )
+template< typename ShouldTransformCall >
+void makeExceptionsVisible( EhInfo ehi, llvm::Function &fn, ShouldTransformCall &&shouldTransform )
 {
-    if ( fn.empty() )
-        return;
     ASSERT( ehi.valid() );
 
-    llvm::Optional< analysis::BasicBlockSCC > localSCC;
-    llvm::Optional< analysis::Reachability > localReach;
-    if ( !reach ) {
-        localSCC.emplace( fn );
-        localReach.emplace( fn, localSCC.getPointer() );
-        reach = localReach.getPointer();
-    }
-    llvm::Optional< llvm::DominatorTree > localDT;
-    if ( !dt ) {
-        localDT.emplace( llvm::DominatorTreeAnalysis().run( fn ) );
-        dt = localDT.getPointer();
-    }
-
-    std::vector< llvm::AllocaInst * > allocas = query::query( fn ).flatten()
-        .map( query::llvmdyncast< llvm::AllocaInst > )
-        .filter( query::notnull ).filter( shouldClean ).freeze();
-    if ( allocas.empty() )
-        return;
-
-    // get all call sites that have allocas which can reach them
     auto calls = query::query( fn ).flatten()
         .filter( query::is< llvm::CallInst > || query::is< llvm::InvokeInst > )
         .map( []( llvm::Instruction &call ) { return llvm::CallSite( &call ); } )
-        .filter( []( llvm::CallSite &cs ) { return !cs.doesNotThrow(); } )
-        .filter( [&]( llvm::CallSite &cs ) {
-            return !query::query( allocas )
-                    .filter( [&]( llvm::AllocaInst *al ) { return reach->reachable( al, cs.getInstruction() ); } )
-                    .empty();
-        } ).freeze();
+        .filter( shouldTransform )
+        .freeze(); // avoid changing BBs while iterating through them
 
     // phase 1 = replace calls with invokes landing in cleanup with resume
     //           and add cleanup with resume to all non-cleanup landing blocks
@@ -130,7 +100,40 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
 
     if ( invokeAdded && !fn.hasPersonalityFn() )
         fn.setPersonalityFn( ehi.personality );
-    // ASSERT( !fn.hasPersonalityFn() || (fn.getPersonalityFn() == ehi.personality || (fn.getPersonalityFn()->dump(), ehi.personality->dump(), false) ) );
+}
+
+template< typename ShouldClean, typename Cleanup >
+void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClean, Cleanup &&cleanup,
+        analysis::Reachability *reach = nullptr, llvm::DominatorTree *dt = nullptr )
+{
+    if ( fn.empty() )
+        return;
+
+    llvm::Optional< analysis::BasicBlockSCC > localSCC;
+    llvm::Optional< analysis::Reachability > localReach;
+    if ( !reach ) {
+        localSCC.emplace( fn );
+        localReach.emplace( fn, localSCC.getPointer() );
+        reach = localReach.getPointer();
+    }
+    llvm::Optional< llvm::DominatorTree > localDT;
+    if ( !dt ) {
+        localDT.emplace( llvm::DominatorTreeAnalysis().run( fn ) );
+        dt = localDT.getPointer();
+    }
+
+    std::vector< llvm::AllocaInst * > allocas = query::query( fn ).flatten()
+        .map( query::llvmdyncast< llvm::AllocaInst > )
+        .filter( query::notnull ).filter( shouldClean ).freeze();
+    if ( allocas.empty() )
+        return;
+
+    makeExceptionsVisible( ehi, fn, [&]( llvm::CallSite &cs ) {
+        return !cs.doesNotThrow()
+            && !query::query( allocas )
+                    .filter( [&]( llvm::AllocaInst *al ) { return reach->reachable( al, cs.getInstruction() ); } )
+                    .empty();
+    } );
 
     // phase 2: propagate all allocas which might reach bb into it using phi nodes
     struct Local { };
@@ -214,13 +217,11 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
             .map( query::refToPtr )
             .filter( query::is< llvm::ReturnInst > || query::is< llvm::ResumeInst > );
     for ( auto *exit : exits ) {
-        llvm::IRBuilder<> irb( exit );
         auto exitbb = exit->getParent();
         auto reaching = query::query( reachingAllocas[ exitbb ] )
                   .map( [&]( llvm::AllocaInst *alloca ) { return allocaReprInBB( alloca, exitbb ); } )
                   .freeze();
-        cleanup( irb, reaching );
-        // exitbb->dump();
+        cleanup( exit, reaching );
     }
 }
 

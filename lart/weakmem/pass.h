@@ -180,6 +180,7 @@ struct Substitute : lart::Pass
         _loadTso = m.getFunction( "__lart_weakmem_load_tso" );
         _loadPso = m.getFunction( "__lart_weakmem_load_pso" );
         _flush = m.getFunction( "__lart_weakmem_flush" );
+        _cleanup = m.getFunction( "__lart_weakmem_cleanup" );
 
         transformMemManip( {
                 { _memmove, m.getFunction( "__lart_weakmem_memmove" ) },
@@ -189,6 +190,7 @@ struct Substitute : lart::Pass
         processAnnos( m );
         ASSERT( _memmove[ Type::Bypass ] );
         ASSERT( _flush );
+        ASSERT( _cleanup );
         ASSERT( _tso.empty() || (_storeTso && _loadTso) );
         ASSERT( _pso.empty() || (_storePso && _loadPso) );
 
@@ -430,15 +432,27 @@ struct Substitute : lart::Pass
         transformWeak( f, dl, functionType( &f ) );
     }
 
-    bool nonlocal( llvm::Value *i ) {
-        return !llvm::isa< llvm::AllocaInst >( i ) || llvm::PointerMayBeCaptured( i, false, true );
+    template< typename Inst >
+    bool withLocal( Inst *i ) { return withLocal( i, brick::types::Preferred() ); }
+
+    template< typename Inst >
+    auto withLocal( Inst *i, brick::types::Preferred ) -> decltype( bool( i->getPointerOperand() ) )
+    {
+        return local( i->getPointerOperand() );
+    }
+
+    template< typename Inst >
+    bool withLocal( Inst *i, brick::types::NotPreferred ) { return false; }
+
+    bool local( llvm::Value *i ) {
+        return llvm::isa< llvm::AllocaInst >( i ) && !llvm::PointerMayBeCaptured( i, false, true );
     };
 
     void transformWeak( llvm::Function &f, llvm::DataLayout &dl, Type type ) {
         auto &ctx = f.getContext();
 
         if ( type == Type::TSO ) {
-            // TODO: insert PSO -> TSO fence at the beginning
+            // TODO: PSO->TSO barrier
         }
 
         std::vector< llvm::LoadInst * > loads;
@@ -447,25 +461,28 @@ struct Substitute : lart::Pass
         std::vector< llvm::AtomicCmpXchgInst * > cass;
         std::vector< llvm::AtomicRMWInst * > ats;
 
-
-        for ( auto &bb : f )
-            for ( auto &i : bb ) {
-                if ( auto load = llvm::dyn_cast< llvm::LoadInst >( &i ) ) {
-                    if ( nonlocal( load->getPointerOperand() ) )
+        for ( auto &i : query::query( f ).flatten() )
+            llvmcase( i,
+                [&]( llvm::LoadInst *load ) {
+                    if ( !withLocal( load ) )
                         loads.push_back( load );
-                } else if ( auto store = llvm::dyn_cast< llvm::StoreInst >( &i ) ) {
-                    if ( nonlocal( store->getPointerOperand() ) )
+                },
+                [&]( llvm::StoreInst *store ) {
+                    if ( !withLocal( store ) )
                         stores.push_back( store );
-                } else if ( auto fence = llvm::dyn_cast< llvm::FenceInst >( &i ) ) {
+                },
+                [&]( llvm::FenceInst *fence ) {
                     fences.push_back( fence );
-                } else if ( auto cas = llvm::dyn_cast< llvm::AtomicCmpXchgInst >( &i ) ) {
-                    if ( nonlocal( cas->getPointerOperand() ) )
+                },
+                [&]( llvm::AtomicCmpXchgInst *cas ) {
+                    if ( !withLocal( cas ) )
                         cass.push_back( cas );
-                } else if ( auto at = llvm::dyn_cast< llvm::AtomicRMWInst >( &i ) ) {
-                    if ( nonlocal( at->getPointerOperand() ) )
+                },
+                [&]( llvm::AtomicRMWInst *at ) {
+                    if ( !withLocal( at ) )
                         ats.push_back( at );
-                }
-            }
+                } );
+
         for ( auto load : loads ) {
             // SC: no barrier needed it has no effect on load
             // TODO: PSO ordering (release,...)
@@ -573,6 +590,21 @@ struct Substitute : lart::Pass
         */
 
         transformMemTrans( f, type );
+
+        // add cleanups
+        cleanup::addAllocaCleanups( cleanup::EhInfo::cpp( *f.getParent() ), f,
+            [&]( llvm::AllocaInst *alloca ) {
+                return !query::query( alloca->users() ).all( [this]( llvm::Value *v ) { return this->withLocal( v ); } );
+            },
+            [&]( llvm::Instruction *insPoint, auto &allocas ) {
+                if ( allocas.empty() )
+                    return;
+
+                std::vector< llvm::Value * > args;
+                args.emplace_back( llvm::ConstantInt::get( llvm::Type::getInt32Ty( ctx ), allocas.size() ) );
+                std::copy( allocas.begin(), allocas.end(), std::back_inserter( args ) );
+                llvm::CallInst::Create( _cleanup, args, "", insPoint );
+            } );
     }
 
     LLVMFunctionSet &_default() {
@@ -598,6 +630,7 @@ struct Substitute : lart::Pass
     LLVMFunctionSet _bypass, _sc, _tso, _pso;
     llvm::Function *_storeTso, *_storePso, *_loadTso, *_loadPso, *_flush;
     llvm::Function *_memmove[4], *_memcpy[4], *_memset[4];
+    llvm::Function *_cleanup;
     static const std::string tagNamespace;
 };
 
