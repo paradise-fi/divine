@@ -5,9 +5,12 @@
 #include <future>
 #include <vector>
 
-#include <brick-shmem.h>
+#include <brick-shmem>
 
 #include <divine/statespace/perthread.hpp>
+
+#include <divine/statespace/fixed.hpp>  /* tests */
+#include <divine/statespace/random.hpp> /* tests */
 
 namespace divine {
 namespace statespace {
@@ -186,38 +189,67 @@ auto search( Order o, B &b, int threads, Listen l ) -> typename Aggregate< Liste
 }
 
 }
-}
 
-#include <divine/graph/fixed.hpp>
-#include <divine/graph/random.hpp>
+namespace t_statespace {
 
-namespace divine_test {
-namespace _statespace {
-
-using namespace divine;
-
-struct TestSearch
+struct Search
 {
-    TEST(bfs_fixed) {
-        statespace::Fixed builder{ {1, 2}, {2, 3}, {1, 3}, {3, 4} };
+    void _bfs_fixed( int threads )
+    {
+        statespace::Fixed builder{ { 1, 2 }, { 2, 3 }, { 1, 3 }, { 3, 4 } };
         int edgecount = 0, statecount = 0;
         statespace::search(
-            statespace::Order::PseudoBFS, builder, 1, statespace::passive_listen(
-                [&] ( auto f, auto t, auto l ) { ++ edgecount; },
+            statespace::Order::PseudoBFS, builder, threads, statespace::passive_listen(
+                [&] ( auto f, auto t, auto l )
+                {
+                    if ( f == 1 )
+                        ASSERT( t == 2 || t == 3 );
+                    if ( f == 2 )
+                        ASSERT_EQ( t, 3 );
+                    if ( f == 3 )
+                        ASSERT_EQ( t, 4 );
+                    ++ edgecount;
+                },
                 [&] ( auto s ) { ++ statecount; } ) );
         ASSERT_EQ( edgecount, 4 );
         ASSERT_EQ( statecount, 4 );
     }
 
-    TEST(bfs_random) {
-        statespace::Random builder{ 50, 120 };
-        int edgecount = 0, statecount = 0;
-        statespace::search(
-            statespace::Order::PseudoBFS, builder, 1, statespace::passive_listen(
-                [&] ( auto f, auto t, auto l ) { ++ edgecount; },
-                [&] ( auto s ) { ++ statecount; } ) );
-        ASSERT_EQ( statecount, 50 );
-        ASSERT_EQ( edgecount, 120 );
+    void _bfs_random( int threads )
+    {
+        for ( unsigned seed = 0; seed < 10; ++ seed )
+        {
+            statespace::Random builder{ 50, 120, seed };
+            std::atomic< int > edgecount( 0 ), statecount( 0 );
+            statespace::search(
+                statespace::Order::PseudoBFS, builder, threads, statespace::passive_listen(
+                    [&] ( auto f, auto t, auto l ) { ++ edgecount; },
+                    [&] ( auto s ) { ++ statecount; } ) );
+            ASSERT_EQ( statecount.load(), 50 );
+            ASSERT_EQ( edgecount.load(), 120 );
+        }
+    }
+
+    TEST( bfs_fixed )
+    {
+        _bfs_fixed( 1 );
+    }
+
+    TEST( bfs_fixed_parallel )
+    {
+        _bfs_fixed( 2 );
+        _bfs_fixed( 3 );
+    }
+
+    TEST( bfs_random )
+    {
+        _bfs_random( 1 );
+    }
+
+    TEST( bfs_random_parallel )
+    {
+        _bfs_random( 2 );
+        _bfs_random( 3 );
     }
 };
 
