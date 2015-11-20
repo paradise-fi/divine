@@ -78,9 +78,12 @@
 #endif
 
 /* you must #include <brick-string.h> to use ASSERT_UNREACHABLE_F */
-#define ASSERT_UNREACHABLE_F(...) ::brick::_assert::assert_die_fn( BRICK_LOCATION( brick::string::fmtf(__VA_ARGS__) ) )
-#define ASSERT_UNREACHABLE(x) ::brick::_assert::assert_die_fn( BRICK_LOCATION( x ) )
-#define ASSERT_UNIMPLEMENTED() ::brick::_assert::assert_die_fn( BRICK_LOCATION( "not imlemented" ) )
+#define ASSERT_UNREACHABLE_F(...) ::brick::_assert::assert_die_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( brick::string::fmtf(__VA_ARGS__) ) ) )
+#define ASSERT_UNREACHABLE(x) ::brick::_assert::assert_die_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( x ) ) )
+#define ASSERT_UNIMPLEMENTED() ::brick::_assert::assert_die_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( "not implemented" ) ) )
 
 #ifdef _MSC_VER
 #define UNUSED
@@ -103,7 +106,7 @@ struct Location {
     int line, iteration;
     std::string file, stmt;
     Location( const char *f, int l, std::string st, int iter = -1 )
-        : file( f ), line( l ), iteration( iter ), stmt( st )
+        : line( l ), iteration( iter ), file( f ), stmt( st )
     {
         int slashes = 0;
         for ( int i = 0; i < file.size(); ++i )
@@ -150,7 +153,7 @@ struct AssertFailed : std::exception {
         (*this) << l.file << ": " << l.line;
         if ( l.iteration != -1 )
             (*this) << " (iteration " << l.iteration << ")";
-        (*this) << ": assertion `" << l.stmt << "' failed;";
+        (*this) << ":\n  expected " << l.stmt;
     }
 
     const char *what() const noexcept { return str.c_str(); }
@@ -164,11 +167,13 @@ void assert_fn( Location l, X x )
     }
 }
 
+template< typename Location >
 inline void assert_die_fn( Location l ) __attribute__((noreturn));
 
+template< typename Location >
 inline void assert_die_fn( Location l )
 {
-    throw AssertFailed( l );
+    throw AssertFailed( BRICK_LOCUNWRAP( l ) );
 }
 
 template< typename Location, typename X, typename Y >
@@ -176,9 +181,8 @@ void assert_eq_fn( Location l, X x, Y y )
 {
     if ( !( x == y ) ) {
         AssertFailed f( BRICK_LOCUNWRAP( l ) );
-        f << " got ["
-          << x << "] != [" << y
-          << "] instead";
+        f << "\n   but got "
+          << x << " != " << y;
         throw f;
     }
 }
@@ -188,9 +192,8 @@ void assert_leq_fn( Location l, X x, Y y )
 {
     if ( !( x <= y ) ) {
         AssertFailed f( BRICK_LOCUNWRAP( l ) );
-        f << " got ["
-          << x << "] > [" << y
-          << "] instead";
+        f << "\n   but got "
+          << x << " > " << y;
         throw f;
     }
 }
@@ -200,7 +203,7 @@ void assert_pred_fn( Location l, X x, bool p )
 {
     if ( !p ) {
         AssertFailed f( BRICK_LOCUNWRAP( l ) );
-        f << " for " << x;
+        f << "\n   but got x = " << x;
         throw f;
     }
 }
@@ -211,8 +214,8 @@ void assert_neq_fn( Location l, X x, Y y )
     if ( x != y )
         return;
     AssertFailed f( BRICK_LOCUNWRAP( l ) );
-    f << " got ["
-      << x << "] == [" << y << "] instead";
+    f << "\n   but got "
+      << x << " == " << y;
     throw f;
 }
 
