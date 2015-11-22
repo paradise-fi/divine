@@ -164,6 +164,21 @@ struct Substitute : lart::Pass
                 } );
     }
 
+    void transformFree( llvm::Function *free ) {
+        ASSERT( free );
+        auto &ctx = free->getParent()->getContext();
+        auto calls = query::query( free->users() )
+                    .filter( query::is< llvm::CallInst > || query::is< llvm::InvokeInst > )
+                    .map( []( llvm::User *i ) { return llvm::CallSite( i ); } )
+                    .freeze();
+
+        for ( auto &cs : calls ) {
+            std::vector< llvm::Value * > args;
+            args.emplace_back( llvm::ConstantInt::get( llvm::Type::getInt32Ty( ctx ), 1 ) );
+            args.emplace_back( cs.getArgOperand( 0 ) );
+            llvm::CallInst::Create( _cleanup, args, "", cs.getInstruction() );
+        }
+    }
 
     using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) {
@@ -194,6 +209,8 @@ struct Substitute : lart::Pass
         ASSERT( _cleanup );
         ASSERT( _tso.empty() || (_storeTso && _loadTso) );
         ASSERT( _pso.empty() || (_storePso && _loadPso) );
+
+        transformFree( m.getFunction( "__divine_free" ) );
 
         for ( auto &f : m )
             transform( f, dl );
