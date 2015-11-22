@@ -184,7 +184,8 @@ struct __BufferHelper {
                 if ( from <= l.addr && l.addr < to )
                     (*n)[ i++ ] = l;
             }
-            n = *buf;
+            __divine_free( *buf );
+            *buf = n;
         }
     }
 
