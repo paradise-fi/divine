@@ -169,6 +169,11 @@ struct Substitute : lart::Pass
         auto &ctx = free->getParent()->getContext();
         auto calls = query::query( free->users() )
                     .filter( query::is< llvm::CallInst > || query::is< llvm::InvokeInst > )
+                    .filter( [&]( llvm::User *i ) {
+                        return this->functionType(
+                                llvm::cast< llvm::Instruction >( i )->getParent()->getParent() )
+                            != Type::Bypass;
+                    } )
                     .map( []( llvm::User *i ) { return llvm::CallSite( i ); } )
                     .freeze();
 
