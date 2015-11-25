@@ -146,7 +146,7 @@ struct Thread {
 struct SpinLock {
     std::atomic_flag b;
 
-    SpinLock() : b( ATOMIC_FLAG_INIT ) {}
+    SpinLock() : b( 0 ) {}
 
     void lock() {
         while( b.test_and_set() );

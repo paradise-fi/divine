@@ -53,7 +53,7 @@
 // compiled with libstdc++, this is no problem in DIVINE as we support either
 // clang with libc++ or gcc with libstdc++ (clang with libstdc++ is not able
 // to compile brick-hashset too)
-#ifdef __GLIBCXX__
+#if defined( __GLIBCXX__ ) && defined( __GNUC__ ) && !defined( __clang__ ) && __GNUC__ < 5
 namespace std {
     template< typename > struct has_trivial_default_constructor;
     template< typename > struct is_trivially_default_constructible;
@@ -65,7 +65,7 @@ namespace std {
 namespace brick {
 namespace data {
 
-#ifdef __GLIBCXX__
+#if defined( __GLIBCXX__ ) && defined( __GNUC__ ) && !defined( __clang__ ) && __GNUC__ < 5
 template< typename T >
 class have_cxx11_ctor_trait {
 
