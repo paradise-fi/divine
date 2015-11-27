@@ -181,7 +181,7 @@ struct __BufferHelper {
             Buffer *n = &cast( __divine_malloc( sizeof( BufferLine ) * left ) );
             int i = 0;
             for ( BufferLine &l : **buf ) {
-                if ( from <= l.addr && l.addr < to )
+                if ( !(from <= l.addr && l.addr < to) )
                     (*n)[ i++ ] = l;
             }
             __divine_free( *buf );
