@@ -164,8 +164,10 @@ int main( int argc, char **argv )
     process( module, passes );
 
     llvm::raw_os_ostream cerr( std::cerr );
-    if ( llvm::verifyModule( *module, &cerr ) )
-        throw "ivalid bitcode";
+    if ( llvm::verifyModule( *module, &cerr ) ) {
+        cerr.flush(); // otherwise nothing will be displayed
+        ASSERT_UNREACHABLE( "invalid bitcode" );
+    }
 
     WriteBitcodeToFile( module, outs );
 }
