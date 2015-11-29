@@ -1,0 +1,783 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2015 Petr Ročkai <m@fixp.eu>
+ */
+
+/* Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE. */
+
+#pragma once
+
+#include <vector>
+#include <deque>
+#include <stack>
+#include <unordered_map>
+
+#include <brick-unittest>
+#include <brick-types>
+
+namespace brick {
+namespace cmd {
+
+using Tokens = std::vector< std::string >;
+
+struct ValidatorInterface
+{
+    virtual bool validate( std::string t, std::string v ) = 0;
+};
+
+template< typename... > struct Validator;
+
+template< typename T, typename... Ts >
+struct Validator< T, Ts... >
+    : ValidatorInterface, std::enable_shared_from_this< Validator< T, Ts... > >
+{
+    using Next = std::shared_ptr< Validator< Ts... > >;
+
+    std::string _name;
+    std::function< T( std::string ) > _parse;
+    Next _next;
+
+    bool validate( std::string t, std::string v ) override
+    {
+        if ( t != _name && _next )
+            return _next->validate( t, v );
+
+        try
+        {
+            _parse( v );
+            return true;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
+    template< typename X >
+    auto parse( std::string t, std::string v )
+        -> typename std::enable_if< !std::is_convertible< T, X >::value, X >::type
+    {
+        return _next->template parse< X >( t, v );
+    }
+
+    template< typename X >
+    auto parse( std::string t, std::string v )
+        -> typename std::enable_if< std::is_convertible< T, X >::value, T >::type
+    {
+        if ( _name != t )
+            return _next->template parse< X >( t, v );
+        return _parse( v );
+    }
+
+    Validator( std::string t, std::function< T( std::string ) > parse, Next next )
+        : _name( t ), _parse( parse ), _next( next )
+    {}
+
+    template< typename P >
+    auto add( std::string t, P parse )
+    {
+        using S = decltype( parse( "" ) );
+        return std::make_shared< Validator< S, T, Ts... > >( t, parse, this->shared_from_this() );
+    }
+};
+
+template<>
+struct Validator<> : ValidatorInterface, std::enable_shared_from_this< Validator<> >
+{
+    bool validate( std::string t, std::string ) override
+    {
+        throw std::logic_error( "Unknown capture type " + t );
+    }
+
+    template< typename X >
+    X parse( std::string t, std::string v )
+    {
+        throw std::logic_error( "Unknown or mismatched capture of type " + t );
+    }
+
+    template< typename P >
+    auto add( std::string t, P parse )
+    {
+        using S = decltype( parse( "" ) );
+        return std::make_shared< Validator< S > >( t, parse, this->shared_from_this() );
+    }
+};
+
+using ValidatorPtr = std::shared_ptr< ValidatorInterface >;
+auto make_validator()
+{
+    return std::make_shared< Validator<> >()->
+        add( "string", []( std::string s ) { return s; } )->
+        add( "int", []( std::string s )
+             {
+                 const char *err;
+                 auto r = strtonum( s.c_str(), INT_MIN, INT_MAX, &err );
+                 if ( err )
+                     throw std::runtime_error( err );
+                 return r;
+             } );
+}
+
+std::pair< std::string, std::string > next_token( std::string s )
+{
+    ASSERT( !s.empty() );
+    std::stack< char > stack;
+
+    int skip = 0;
+    int i = 0; /* index */
+
+    for ( ; skip < s.size(); ++skip )
+        if ( !std::isblank( s[skip] ) )
+            break;
+
+    for ( i = skip; i < s.size(); ++i )
+    {
+        if ( stack.empty() )
+            if ( ( i > skip && s[i] == '|' ) || std::isblank( s[i] ) )
+                break;
+        if ( s[i] == '[' || s[i] == '(' )
+            stack.push( s[i] );
+        if ( s[i] == ']' || s[i] == ')' )
+        {
+            if ( stack.empty() )
+                break;
+            if ( ( stack.top() == '(' && s[i] != ')' ) ||
+                 ( stack.top() == '[' && s[i] != ']' ) )
+                throw std::logic_error( "Mismatched () or [] in a pattern: " + s );
+            stack.pop();
+            if ( stack.empty() )
+            {
+                ++ i;
+                break;
+            }
+        }
+    }
+
+    int j = i;
+    while ( std::isblank( s[j] ) && j < s.size() )
+        ++ j;
+
+    return std::make_pair( std::string( s, skip, i ),
+                           std::string( s, j, std::string::npos ) );
+}
+
+/*
+ * Patterns (represented as format strings):
+ * - tokens are whitespace-separated
+ * - [x|y] matches either x or y
+ * - {x} matches (and captures) a value of type x [bool, int, string, ...]
+ * - [,{int}]+ matches zero or more times
+ * - constant (no quantifier) {...} captures produce tuples
+ * - variable (with the + quantifier) capture produces vectors
+ * - all captures in a quantified fmt string must be of the same type
+ * - to capture a list of tuples, register a new type
+ *
+ * - the (regular) language for a set of patterns is obtained as [x|y|...]+ for
+ *   all components x, y, ... unioned with .*X.*, .*Y.*, etc. for all X, Y
+ *   non-optional
+ */
+
+struct Pattern
+{
+    /*
+     * Match: prefix match
+     * Mixed: full-string match with (possibly multiple) captures
+     */
+    enum { Match, Capture, Group, Mixed, Empty } _type;
+    std::string _text;
+    std::string _capture;
+    int _capture_id;
+    ValidatorPtr _validator;
+    bool _required;
+    using Ptr = std::shared_ptr< Pattern >;
+
+    Ptr _next;
+    Ptr _alt;
+
+    std::vector< Ptr > _subs;
+
+    std::string fmt()
+    {
+        std::string str;
+
+        if ( _type == Group )
+            for ( auto a : _subs )
+            {
+                if ( a->_type == Group && a->_required )
+                    str += "(" + a->fmt() + ")|";
+                else
+                    str += a->fmt() + "|";
+            }
+
+        str = std::string( str, 0, str.length() - 1 );
+
+        if ( _type == Capture )
+            str = "{" + _capture + "}";
+        if ( _type == Match )
+            str = _text;
+
+        if ( !_required )
+            str = "[" + str + "]";
+        else if ( _next && _type == Group )
+            str = "(" + str + ")";
+        if ( _next )
+            str += " " + _next->fmt();
+        return str;
+    }
+
+    Tokens::iterator match( Tokens::iterator begin, Tokens::iterator end )
+    {
+        auto ignore = []( int, std::string, std::string ) {};
+        return match( ignore, begin, end );
+    }
+
+    template< typename C >
+    Tokens::iterator match( C capture, Tokens::iterator begin, Tokens::iterator end )
+    {
+        _capture_id = 0;
+        return match( capture, begin, end, begin );
+    }
+
+    template< typename C >
+    Tokens::iterator match( C capture, Tokens::iterator begin, Tokens::iterator end, Tokens::iterator fail )
+    {
+        Tokens::iterator next = begin;
+        if ( _type == Match && *begin == _text )
+            next = begin + 1;
+        if ( _type == Capture && _validator->validate( _capture, *begin ) )
+        {
+            capture( _capture_id++, _capture, *begin );
+            next = begin + 1;
+        }
+        if ( _type == Mixed )
+            ASSERT_UNIMPLEMENTED();
+        if ( _type == Group )
+        {
+            std::vector< Tokens::iterator > res;
+            for ( auto a : _subs )
+                res.push_back( a->match( capture, begin, end ) );
+            int count = 0;
+            for ( auto r : res )
+                if ( r > next )
+                    next = r, count = 0;
+                else if ( r == next && next > begin )
+                    ++ count;
+            if ( count )
+            {
+                std::string line, alts;
+                for ( auto i = begin; i != next; ++i )
+                    line += " " + *i;
+                for ( int i = 0; i < res.size(); ++i )
+                    if ( res[i] == next )
+                        alts += "\n matched " + _subs[i]->fmt();
+                throw std::runtime_error( "Ambiguous parse:" + line + alts );
+            }
+        }
+
+        if ( _required && next == begin )
+            return fail;
+        if ( _next )
+            next = _next->match( capture, next, end, fail );
+        return next;
+    }
+
+    Pattern( ValidatorPtr v )
+        : _type( Empty ), _validator( v ), _required( true )
+    {}
+
+    Pattern( ValidatorPtr v, std::string s )
+        : Pattern( v )
+    {
+        create( s, this );
+    }
+
+    void simplify()
+    {
+        bool r = _required;
+        if ( _type == Group && _subs.size() == 1 && _subs[0]->_type == Group )
+        {
+            auto a = _subs[0];
+            *this = *a;
+            _required = _required && r;
+        }
+    }
+
+    bool create( std::string s, Pattern *prev_alt )
+    {
+        std::string me, rest;
+        bool alt = false;
+        std::tie( me, rest ) = next_token( s );
+        ASSERT( !me.empty() );
+
+        if ( me[0] == '|' )
+        {
+            alt = true;
+            me = std::string( me, 1, me.size() - 1 );
+        }
+
+        if ( me[0] == '[' || me[0] == '(' )
+        {
+            _subs.emplace_back( new Pattern( _validator, std::string( me, 1, me.size() - 2 ) ) );
+            _type = Group;
+            if ( me[0] == '[' )
+                _required = false;
+            simplify();
+        }
+
+        else if ( me[0] == '{' )
+        {
+            _type = Capture;
+            _capture = std::string( me, 1, me.size() - 2 );
+        }
+
+        else
+        {
+            _type = Match;
+            _text = me;
+        }
+
+        if ( !rest.empty() )
+        {
+            auto n = new Pattern( _validator );
+            if ( n->create( rest, alt ? this : prev_alt ) )
+                _next.reset( n );
+
+            if ( prev_alt == this && _alt )
+            {
+                ASSERT( _type != Empty );
+                Ptr a( new Pattern( *this ) );
+                *this = Pattern( _validator );
+                _type = Group;
+                while ( a )
+                {
+                    _subs.emplace_back( a );
+                    a = a->_alt;
+                    _subs.back()->_alt.reset();
+                }
+            }
+        }
+
+        if ( alt )
+        {
+            ASSERT( !prev_alt->_alt );
+            prev_alt->_alt.reset( this );
+            return false;
+        }
+
+        return true;
+    }
+};
+
+template< typename T >
+struct OptionInterface
+{
+    virtual Tokens::iterator parse( T &edit, Tokens::iterator, Tokens::iterator ) = 0;
+    virtual Tokens::iterator match( Tokens::iterator, Tokens::iterator ) = 0;
+    virtual bool required() = 0;
+    virtual std::string fmt() = 0;
+    virtual std::string describe() { return ""; }
+};
+
+template< typename Validator, typename T, typename V >
+struct Option : OptionInterface< T >
+{
+    using Get = std::function< V &( T & ) >;
+    std::shared_ptr< Validator > _validator;
+    Pattern _pattern;
+    Get _get;
+    std::string _descr;
+
+    Tokens::iterator parse( T &edit, Tokens::iterator b, Tokens::iterator e ) override
+    {
+        return _pattern.match(
+            [&]( int, std::string type, std::string val )
+            {
+                _get( edit ) = _validator->template parse< V >( type, val );
+            }, b, e );
+    }
+
+    Tokens::iterator match( Tokens::iterator b, Tokens::iterator e ) override
+    {
+        return _pattern.match( b, e );
+    }
+
+    bool required() override { return _pattern._required; };
+    std::string fmt() override { return _pattern.fmt(); };
+    std::string describe() override { return fmt() + "\t" + _descr; };
+
+    Option( std::shared_ptr< Validator > v, std::string fmt, Get get, std::string descr )
+        : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr )
+    {}
+};
+
+template< typename T, typename S >
+struct OptionWrapper : OptionInterface< T >
+{
+    using Get = std::function< S &( T & ) >;
+    using Sub = std::shared_ptr< OptionInterface< S > >;
+
+    Get _get;
+    Sub _sub;
+
+    OptionWrapper( Sub sub, Get get ) : _get( get ), _sub( sub ) {}
+
+    Tokens::iterator parse( T &edit, Tokens::iterator b, Tokens::iterator e ) override
+    {
+        return _sub->parse( _get( edit ), b, e );
+    }
+
+    Tokens::iterator match( Tokens::iterator b, Tokens::iterator e ) override
+    {
+        return _sub->match( b, e );
+    }
+
+    bool required() override { return _sub->required(); }
+    std::string fmt() override { return _sub->fmt(); }
+    std::string describe() override { return _sub->describe(); }
+};
+
+template< typename T >
+using OptionPtr = std::shared_ptr< OptionInterface< T > >;
+
+struct Inherited {};
+
+template< typename Validator, typename T >
+struct OptionSet
+{
+    std::shared_ptr< Validator > _validator;
+    std::vector< OptionPtr< T > > _opts;
+
+    template< typename V, typename... Args >
+    auto &add( std::string fmt, V T::*member, std::string descr, Args... args )
+    {
+        auto o = new Option< Validator, T, V >(
+            _validator, fmt, [member]( auto &x ) -> auto& { return x.*member; }, descr );
+        _opts.emplace_back( o );
+        return add( args... );
+    }
+
+    template< typename V, typename... Args >
+    auto &add( std::string fmt, V T::*member, Args... args )
+    {
+        return add( fmt, member, std::string( "(no description)" ), args... );
+    }
+
+    template< typename S, typename... Args >
+    auto &add( OptionSet< Validator, S > opts, S T::*member, Args... args )
+    {
+        for ( auto o : opts._opts )
+            _opts.emplace_back(
+                new OptionWrapper< T, S >(
+                    o, [member]( T &x ) -> S& { return x.*member; } ) );
+        return add( args... );
+    }
+
+    template< typename S, typename... Args >
+    auto &add( OptionSet< Validator, S > opts, Inherited, Args... args )
+    {
+        for ( auto o : opts._opts )
+            _opts.emplace_back(
+                new OptionWrapper< T, S >(
+                    o, []( T &x ) -> S& { return x; } ) );
+        return add( args... );
+    }
+
+    auto &add() { return *this; }
+
+    template< typename... Args >
+    explicit OptionSet( std::shared_ptr< Validator > v, Args... args )
+        : _validator( v )
+    {
+        add( args... );
+    }
+
+    virtual std::string describe()
+    {
+        return fmt();
+    }
+
+    std::string fmt()
+    {
+        std::stringstream s;
+        for ( auto o : _opts )
+            s << "  " << o->describe() << std::endl;
+        return s.str();
+    }
+
+    Tokens::iterator parse( T &t, Tokens::iterator b, Tokens::iterator e )
+    {
+        std::set< OptionPtr< T > > parsed;
+        while ( b != e )
+        {
+            std::set< OptionPtr< T > > matched;
+            for ( auto o : _opts )
+                if ( o->match( b, e ) != b )
+                    matched.insert( o );
+            if ( matched.size() > 1 )
+            {
+                std::string alts;
+                for ( auto o : matched )
+                    alts += "\n" + o->fmt();
+                throw std::runtime_error( "Ambiguous option " + *b + ":" + alts );
+            }
+            if ( matched.empty() )
+                break;
+            auto o = *matched.begin();
+            b = o->parse( t, b, e );
+            parsed.insert( o );
+        }
+        for ( auto o : _opts )
+            if ( o->required() && !parsed.count( o ) )
+                throw std::runtime_error( "Missing option: " + o->fmt() + ", expected:\n"
+                                          + this->describe() );
+        return b;
+    }
+};
+
+template< typename T, typename V, typename... Args >
+auto make_option_set( std::shared_ptr< V > v, Args... args )
+{
+    return OptionSet< V, T >( v, args... );
+}
+
+template< typename Validator, typename T >
+struct Command : OptionSet< Validator, T >
+{
+    /* not foolproof, but good enough? will misfire on types nested inside
+     * templates */
+    std::string name()
+    {
+        auto s = brick::unittest::_typeid< T >();
+        int p = s.find( "<" );
+        if ( p != std::string::npos )
+            s = std::string( s, 0, p );
+        p = s.rfind( "::" );
+        if ( p != std::string::npos )
+            s = std::string( s, p + 2, std::string::npos );
+        for ( int i = 0; i < s.size(); ++i )
+            s[i] = std::tolower( s[i] );
+        return s;
+    }
+
+    virtual std::string describe()
+    {
+        std::stringstream req;
+        for ( auto o : this->_opts )
+            if ( o->required() )
+                req << o->fmt() << " ";
+        return name() + " [options] " + req.str() + "\n" + this->fmt();
+    }
+
+    template< typename... Args >
+    Command( std::shared_ptr< Validator > v, Args... args )
+        : OptionSet< Validator, T >( v, args... )
+    {}
+};
+
+template< typename... > struct ParserT;
+
+template< typename Validator, typename T, typename... Ts >
+struct ParserT< Validator, T, Ts... >
+{
+    Command< Validator, T > _car;
+    ParserT< Validator, Ts... > _cdr;
+    std::shared_ptr< Validator > _validator;
+
+    template< typename U >
+    void parse( U &res, Tokens::iterator b, Tokens::iterator e )
+    {
+        if ( _car.name() == *b )
+        {
+            T t;
+            _car.parse( t, b + 1, e );
+            res = t;
+        }
+        else
+            _cdr.parse( res, b, e );
+    }
+
+    types::Union< T, Ts... > parse( Tokens::iterator b, Tokens::iterator e )
+    {
+        types::Union< T, Ts... > _result;
+        parse( _result, b, e );
+        return _result;
+    }
+
+    template< typename S, typename... Args >
+    auto add( Args... args )
+    {
+        return ParserT< Validator, S, T, Ts... >(
+            Command< Validator, S >( _validator, args... ), *this );
+    }
+
+    ParserT( Command< Validator, T > car, ParserT< Validator, Ts... > cdr )
+        : _car( car ), _cdr( cdr ), _validator( cdr._validator )
+    {}
+};
+
+template< typename Validator >
+struct ParserT< Validator >
+{
+    std::shared_ptr< Validator > _validator;
+
+    template< typename T, typename... Args >
+    auto add( Args... args ) -> ParserT< Validator, T >
+    {
+        return ParserT< Validator, T >( Command< Validator, T >( _validator, args... ), *this );
+    }
+
+    template< typename U >
+    void parse( U &, Tokens::iterator b, Tokens::iterator e ) {}
+
+    ParserT( std::shared_ptr< Validator > v ) : _validator( v ) {}
+};
+
+template< typename V >
+auto make_parser( std::shared_ptr< V > v )
+{
+    return ParserT< V >( v );
+}
+
+}
+
+namespace t_cmd {
+
+struct Common
+{
+    int range;
+    std::vector< std::string > cflags;
+};
+
+struct Foo : Common
+{
+    bool bar;
+    int value;
+};
+
+struct Bar : Common {};
+
+struct TestCmd
+{
+    auto validator()
+    {
+        return cmd::make_validator();
+    }
+
+    TEST(pattern_fmt)
+    {
+        auto v = validator();
+
+        cmd::Pattern p( v );
+        cmd::Pattern l( v );
+        cmd::Pattern r( v );
+        p._type = cmd::Pattern::Group;
+        l._type = cmd::Pattern::Match;
+        l._text = "foo";
+        r._type = cmd::Pattern::Match;
+        r._text = "for";
+        p._subs.emplace_back( new cmd::Pattern( l ) );
+        p._subs.emplace_back( new cmd::Pattern( r ) );
+        ASSERT_EQ( p.fmt(), "foo|for" );
+        p._next.reset( new cmd::Pattern( v, "bar" ) );
+        ASSERT_EQ( p.fmt(), "(foo|for) bar" );
+        p._next.reset();
+        p._subs[0]->_next.reset( new cmd::Pattern( v, "bar" ) );
+        p._subs[1]->_next.reset( new cmd::Pattern( v, "baz" ) );
+        ASSERT_EQ( p.fmt(), "foo bar|for baz" );
+        p._required = false;
+        ASSERT_EQ( p.fmt(), "[foo bar|for baz]" );
+        p._subs.emplace_back( new cmd::Pattern( v, "x" ) );
+        ASSERT_EQ( p.fmt(), "[foo bar|for baz|x]" );
+    }
+
+    TEST(pattern_match)
+    {
+        auto v = validator();
+        cmd::Pattern p( v, "foo|for" );
+
+        cmd::Tokens in = { "foo" };
+        ASSERT( p.match( in.begin(), in.end() ) == in.end() );
+
+        in = { "foo", "foo" };
+        ASSERT( p.match( in.begin(), in.end() ) == in.begin() + 1 );
+
+        cmd::Pattern q( v, "(foo|for) foo" );
+        in = { "foo", "foo" };
+        ASSERT( q.match( in.begin(), in.end() ) == in.end() );
+    }
+
+    void check_parse( std::string s )
+    {
+        auto v = validator();
+        cmd::Pattern p( v, s );
+        ASSERT_EQ( p.fmt(), s );
+    }
+
+    TEST(pattern_parse)
+    {
+        check_parse( "[a|b]" );
+        check_parse( "a|b" );
+        check_parse( "a x|b x" );
+        check_parse( "[a x|b x]" );
+        check_parse( "a [x]|b x" );
+        check_parse( "(a|b) c" );
+        check_parse( "(a|b)|c" );
+        check_parse( "a|b|c" );
+        check_parse( "[a|b|c]" );
+        check_parse( "a|(b|c)" );
+        check_parse( "a b|[b c]" );
+        check_parse( "[a b]|b c" );
+    }
+
+    TEST(cmd_parse)
+    {
+        auto v = validator();
+
+        auto common = cmd::make_option_set< Common >
+            ( v, "[-r {int}|--range {int}]", &Common::range,
+                 "[-Wc,{string}|-Xcompiler {string}]", &Common::cflags );
+
+        auto p = cmd::make_parser( v )
+                 .add< Foo >( common, cmd::Inherited(),
+                              "[--bar|--no-bar]", &Foo::bar,
+                              "{int}", &Foo::value )
+                 .add< Bar >( common, cmd::Inherited() );
+
+        ASSERT_EQ( p._car.name(), "bar" );
+
+        cmd::Tokens in = { "foo", "32" };
+        bool is_foo = false;
+
+        auto r = p.parse( in.begin(), in.end() );
+        r.match( [&]( Foo f ) { is_foo = true; ASSERT_EQ( f.value, 32 ); },
+                 [&]( Bar ) { is_foo = false; } );
+
+        ASSERT( is_foo );
+    }
+};
+
+}
+}
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
