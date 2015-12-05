@@ -12,9 +12,10 @@ namespace lart {
         PassMeta interruptPass();
         PassMeta allocaPass();
         PassMeta globalsPass();
+        PassMeta silentPass();
 
         inline std::vector< PassMeta > passes() {
-            return { paroptPass(), interruptPass(), allocaPass(), globalsPass() };
+            return { paroptPass(), interruptPass(), allocaPass(), globalsPass(), silentPass() };
         }
     }
 }
