@@ -51,6 +51,7 @@ void makeExceptionsVisible( EhInfo ehi, llvm::Function &fn, ShouldTransformCall 
     auto calls = query::query( fn ).flatten()
         .filter( query::is< llvm::CallInst > || query::is< llvm::InvokeInst > )
         .map( []( llvm::Instruction &call ) { return llvm::CallSite( &call ); } )
+        .filter( []( llvm::CallSite &cs ) { return !cs.doesNotThrow(); } )
         .filter( shouldTransform )
         .freeze(); // avoid changing BBs while iterating through them
 
@@ -130,8 +131,7 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
         return;
 
     makeExceptionsVisible( ehi, fn, [&]( llvm::CallSite &cs ) {
-        return !cs.doesNotThrow()
-            && !query::query( allocas )
+        return !query::query( allocas )
                     .filter( [&]( llvm::AllocaInst *al ) { return reach->reachable( al, cs.getInstruction() ); } )
                     .empty();
     } );

@@ -6,6 +6,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/IR/CFG.h>
+#include <llvm/Analysis/CaptureTracking.h>
 
 #include <brick-assert.h>
 #include <brick-types.h>
@@ -168,6 +169,19 @@ struct Timer {
     std::chrono::high_resolution_clock::time_point _begin;
 };
 
+template< typename M = Map< llvm::Value *, bool >  >
+bool canBeCaptured( llvm::Value *v, M *map = nullptr ) {
+    if ( !llvm::isa< llvm::AllocaInst >( v->stripPointerCasts() ) ) // llvm::isa< llvm::GlobalValue >( v ) )
+        return true;
+    if ( !map )
+        return llvm::PointerMayBeCaptured( v, false, true );
+
+    auto it = map->find( v );
+    return it != map->end()
+            ? it->second
+            : ( (*map)[ v ] = llvm::PointerMayBeCaptured( v, false, true ) );
+}
+
 }
 
 template< typename What >
@@ -189,6 +203,33 @@ bool llvmcase( What *w, Lambda lambda, Lambdas &&...lambdas ) {
 template< typename What, typename... Lambdas >
 bool llvmcase( What &w, Lambdas &&...lambdas ) {
     return llvmcase( &w, std::forward< Lambdas >( lambdas )... );
+}
+
+template< typename T, typename TypeList, typename Yield >
+auto apply( T *, TypeList, Yield && ) -> typename std::enable_if< TypeList::length == 0 >::type { }
+
+// if i's dynamic type matches any in TypeList yield will be called with
+// parameter of the matched type
+template< typename T, typename TypeList, typename Yield >
+auto apply( T *i, TypeList tl, Yield &&yield ) -> typename std::enable_if< TypeList::length != 0 >::type
+{
+    if ( auto *ii = llvm::dyn_cast< typename TypeList::Head >( i ) )
+        yield( ii );
+    apply( i, typename TypeList::Tail(), yield );
+}
+
+template< typename R, typename T, typename TypeList, typename Yield >
+auto apply( T *, TypeList, R r, Yield && ) -> typename std::enable_if< TypeList::length == 0, R >::type { return r; }
+
+// if i's dynamic type matches any in TypeList, Yield will be called with
+// parameter of the matched type and its result returned
+// otherwise def will be returned
+template< typename R, typename T, typename TypeList, typename Yield >
+auto apply( T *i, TypeList tl, R def, Yield &&yield ) -> typename std::enable_if< TypeList::length != 0, R >::type
+{
+    if ( auto *ii = llvm::dyn_cast< typename TypeList::Head >( i ) )
+        return yield( ii );
+    return apply( i, typename TypeList::Tail(), def, yield );
 }
 
 template< typename Pre, typename Post >
