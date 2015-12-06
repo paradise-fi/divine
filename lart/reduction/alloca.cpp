@@ -174,15 +174,12 @@ struct DeadAllocaZeoring : lart::Pass {
     }
 
     llvm::Function *_mkmzero( llvm::Module &m ) {
-        ++_mscnt;
-        std::string name = "lart.alloca.mzero.";
-        name += std::to_string( _mscnt );
 
         auto &ctx = m.getContext();
         _mzeroPtrT = llvm::Type::getInt8PtrTy( ctx );
         _mzeroSiT = llvm::Type::getInt64Ty( ctx );
         auto mzerotype = llvm::FunctionType::get( llvm::Type::getVoidTy( ctx ), llvm::ArrayRef< llvm::Type * >( { _mzeroPtrT, _mzeroSiT } ), false );
-        auto mzero = llvm::cast< llvm::Function >( m.getOrInsertFunction( /* "lart.alloca.mzero" */ name, mzerotype ) );
+        auto mzero = llvm::cast< llvm::Function >( m.getOrInsertFunction( "lart.alloca.mzero", mzerotype ) );
         if ( !mzero->empty() )
             return mzero; // already present
 
@@ -192,16 +189,26 @@ struct DeadAllocaZeoring : lart::Pass {
         llvm::Value *siarg = args;
         siarg->setName( "si" );
 
-        auto end = llvm::BasicBlock::Create( ctx, "end", mzero );
-        auto body = llvm::BasicBlock::Create( ctx, "body", mzero, end );
-        auto entry = llvm::BasicBlock::Create( ctx, "entry", mzero, body );
+        auto *ret = llvm::BasicBlock::Create( ctx, "ret", mzero );
+        auto *unlock = llvm::BasicBlock::Create( ctx, "unlock", mzero, ret );
+        auto *end = llvm::BasicBlock::Create( ctx, "end", mzero, unlock );
+        auto *body = llvm::BasicBlock::Create( ctx, "body", mzero, end );
+        auto *entry = llvm::BasicBlock::Create( ctx, "entry", mzero, body );
 
-        llvm::IRBuilder<> irb( end );
+        llvm::IRBuilder<> irb( entry );
+        auto *mask = irb.CreateCall( m.getFunction( "__divine_interrupt_mask" ), { } );
+        auto *shouldUnlock = irb.CreateICmpEQ( mask, llvm::ConstantInt::get( mask->getType(), 0 ), "shouldUnlock" );
+        irb.CreateBr( body );
+
+        irb.SetInsertPoint( end );
+        irb.CreateCondBr( shouldUnlock, unlock, ret );
+
+        irb.SetInsertPoint( ret );
         irb.CreateRetVoid();
 
-        irb.SetInsertPoint( entry );
-        irb.CreateCall( m.getFunction( "__divine_interrupt_mask" ), { } );
-        irb.CreateBr( body );
+        irb.SetInsertPoint( unlock );
+        irb.CreateCall( m.getFunction( "__divine_interrupt_unmask" ), { } );
+        irb.CreateRetVoid();
 
         irb.SetInsertPoint( body );
 
@@ -222,7 +229,6 @@ struct DeadAllocaZeoring : lart::Pass {
     }
 
   private:
-    int _mscnt = 0;
     std::unique_ptr< llvm::DataLayout > _dl;
     llvm::Function *_mzero;
     llvm::Type *_mzeroPtrT;
