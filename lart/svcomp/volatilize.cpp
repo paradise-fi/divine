@@ -19,6 +19,7 @@
 #include <lart/support/meta.h>
 #include <lart/support/query.h>
 #include <lart/support/util.h>
+#include <lart/support/cleanup.h>
 
 #include <brick-types.h>
 #include <brick-llvm.h>
@@ -37,9 +38,10 @@ struct Atomic : lart::Pass {
         if ( !orig )
             return;
 
-        ASSERT( orig->getFunctionType() == replacement->getFunctionType() );
-        orig->replaceAllUsesWith( replacement );
-        orig->eraseFromParent();
+        auto *bb = llvm::BasicBlock::Create( orig->getParent()->getContext(), "entry", orig );
+        llvm::IRBuilder<> irb( bb );
+        irb.CreateCall( replacement, { } );
+        irb.CreateRetVoid();
     }
 
     using lart::Pass::run;
@@ -63,9 +65,11 @@ struct Atomic : lart::Pass {
 
         for ( auto &f : m ) {
             if ( !f.empty() && f.getName().startswith( atomicPrefix ) ) {
-                f.addFnAttr( llvm::Attribute::NoInline );
                 llvm::IRBuilder<> irb( f.getEntryBlock().getFirstInsertionPt() );
                 irb.CreateCall( dbegin, { } );
+                cleanup::atExits( f, [=]( llvm::Instruction *exit ) {
+                    llvm::IRBuilder<>( exit ).CreateCall( dend, { } );
+                } );
                 ++atomicfs;
             }
         }
