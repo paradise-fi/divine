@@ -74,7 +74,7 @@ void makeExceptionsVisible( EhInfo ehi, llvm::Function &fn, ShouldTransformCall 
                 // note: split invalidated interator
                 llvm::IRBuilder<> irb( unwindBB->getFirstInsertionPt() );
                 auto *sel = irb.CreateExtractValue( lp, ehi.selectorIndices, "lart.cleanup.lb.sel" );
-                auto *cmp = irb.CreateICmpEQ( sel, llvm::ConstantInt::get(
+                auto *cmp = irb.CreateICmpNE( sel, llvm::ConstantInt::get(
                             llvm::cast< llvm::IntegerType >( sel->getType() ), ehi.cleanupSelector ) );
                 irb.CreateCondBr( cmp, noCleanupBB, cleanupBB );
                 unwindBB->rbegin()->eraseFromParent(); // br added by splitBasicBlock
