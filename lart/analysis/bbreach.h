@@ -62,6 +62,13 @@ struct Reachability {
     }
 
     bool strictlyReachable( I *from, I *to ) {
+        // as a special case invoke is considered to be defined at the beginning
+        // of 'normal' patch block, that is it does not reach 'unwind' block, but
+        // it reaches all instructions in 'normal' block (and any block reachable
+        // form the normal block)
+        if ( auto inv = llvm::dyn_cast< llvm::InvokeInst >( from ) )
+            return reachable( inv->getNormalDest(), to->getParent() );
+
         // this includes case when from is before to in the same bb and there
         // is cycle going through the bb, and the case of to being
         // in any reachable bb
@@ -86,6 +93,11 @@ struct Reachability {
     bool strictlyBackwardReachable( I *from, I *to ) {
         auto fromBB = from->getParent();
         auto toBB = to->getParent();
+
+        // again, invoke is considered to be part of its 'norma' destination
+        // block (see strictlyReachable for more details)
+        if ( auto inv = llvm::dyn_cast< llvm::InvokeInst >( to ) )
+            return backwardReachable( fromBB, inv->getNormalDest() );
 
         if ( strictlyBackwardReachable( fromBB, toBB ) )
             return true;
