@@ -745,6 +745,8 @@ struct Evaluator
                 return;
             }
             case BuiltinMalloc: {
+                /* TODO check that size is reasonable (most importantly
+                 * non-negative) */
                 int size = _get< int >( instruction().operand( 0 ) );
                 if ( size >= ( 2 << Pointer::offsetSize ) ) {
                     ccontext.problem( Problem::InvalidArgument, Pointer() );
