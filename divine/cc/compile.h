@@ -25,7 +25,7 @@ namespace divine {
 std::string ltl_to_c( int id, std::string ltl );
 
 static inline std::string concat( commandline::VectorOption< String > *opt ) {
-    assert( opt != nullptr );
+    ASSERT( opt != nullptr );
     if ( opt->values().empty() )
         return "";
     std::stringstream ss;
