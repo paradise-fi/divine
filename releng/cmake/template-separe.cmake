@@ -1,4 +1,4 @@
-set( separe ${CMAKE_SOURCE_DIR}/cmake/template-separe.sh )
+set( separe ${CMAKE_SOURCE_DIR}/release/cmake/template-separe.sh )
 
 macro( template_separe V )
   foreach( file ${ARGN} )

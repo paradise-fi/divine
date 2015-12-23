@@ -34,7 +34,7 @@ if test "$1" = "-l"; then
         var=$(echo "$n" | flatten)
         echo "{ \"$n\", ${NSPRE}${var}_str }," >> $out
     done
-    echo "{ nullptr, nullptr }" >> $out
+    echo "{ 0, 0 }" >> $out
     echo "};" >> $out
     echo "}" >> $out
 else

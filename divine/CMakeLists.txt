@@ -1,7 +1,7 @@
 with_warnings()
 
-include( ../cmake/stringify.cmake )
-include( ../cmake/template-separe.cmake )
+include( stringify )
+include( template-separe )
 
 file( GLOB CPP *.cpp )
 file( GLOB HPP *.h *.hpp )
@@ -12,7 +12,6 @@ foreach( D utility llvm compile toolkit statespace algorithm ui )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
 endforeach()
 
-add_subdirectory( llvm/userspace )
 stringify( "llvm" llvm/problem.def )
 template_separe( LLVM llvm/interpreter.cpp )
 
@@ -55,6 +54,7 @@ add_library( libdivine
   ${STRINGIFIED} )
 
 target_link_libraries( libdivine pthread )
+target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
 bricks_unittest( test-divine ${HPP} ${HPP_llvm} ${HPP_ui} ${HPP_statespace} )
@@ -70,10 +70,7 @@ target_link_libraries( libdivine m_str )
 target_link_libraries( libdivine cxxabi_str )
 target_link_libraries( libdivine cxx_str )
 target_link_libraries( libdivine llvm_usr_str )
-
-if( OPT_CURSES )
-  target_link_libraries( libdivine ${CURSES_LIBRARIES} )
-endif()
+target_link_libraries( libdivine ${CURSES_LIBRARIES} )
 
 if ( OPT_SQL )
     target_link_libraries( libdivine nanodbc )

@@ -1,4 +1,4 @@
-set( STRINGIFY ${CMAKE_SOURCE_DIR}/cmake/stringify.sh )
+set( STRINGIFY ${CMAKE_SOURCE_DIR}/release/cmake/stringify.sh )
 
 macro( stringify namespace file )
   string( REPLACE "." "_" fileu "${file}" )

@@ -1,6 +1,4 @@
-cmake_minimum_required(VERSION 2.8.0)
-
-set_property( GLOBAL PROPERTY JOB_POOLS instances=3 )
+cmake_minimum_required( VERSION 3.2 )
 
 # this must be set BEFORE project
 SET( CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" CACHE STRING "" )
@@ -19,11 +17,10 @@ SET( CMAKE_CXX_FLAGS_RELWITHASSERT "-O3 -DNVALGRIND" CACHE STRING
 SET( CMAKE_C_FLAGS_RELWITHASSERT "-O3 -DNVALGRIND" CACHE STRING
     "Flags used by the compiler during RelWithAssert builds. " )
 
-SET( REQUIRED "" CACHE STRING "Required components (if they are disabled, configure will fail)." )
-
 project( divine )
+enable_language( CXX )
 
-set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" )
+set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/release/cmake" )
 
 mark_as_advanced( FORCE CMAKE_CXX_FLAGS_RELWITHDEBUG CMAKE_C_FLAGS_RELWITHDEBUG
     CMAKE_CXX_FLAGS_RELWITHASSERT CMAKE_C_FLAGS_RELWITHASSERT )
@@ -79,20 +76,8 @@ endif()
 ## BUILD OPTIONS
 ##
 
-opt( OPT_MPI "compile DiVinE with MPI for clustering support" ON )
-opt( OPT_CURSES "link to curses library for nice statistics" ON )
-
-opt( OPT_SQL "Include feature for reporting into database (requires ODBC)" ON )
-opt( OPT_MANUAL "build pdf/html manual" ON )
+opt( OPT_SQL "enable ODBC-based database reports" ON )
 opt( OPT_TBBMALLOC "use Intel TBB memory allocator" ON )
-
-opt( OPT_SIMULATE "divine simulate" ON )
-opt( OPT_DRAW "divine draw" ON )
-
-opt( GEN_LLVM "LLVM bitcode verification" ON )
-opt( GEN_LLVM_PTST "Points-To verification in LLVM bitcode" OFF )
-opt( GEN_LLVM_CSDR "CSDR-enabled LLVM verification (see ALG_CSDR)" ON )
-opt( GEN_LLVM_PROB "probabilistic LLVM verification" OFF )
 
 opt( ALG_MAP "" OFF )
 opt( ALG_OWCTY "" ON )
@@ -103,63 +88,19 @@ opt( ALG_CSDR "" ON )
 opt( ALG_NDFS "" OFF )
 opt( ALG_METRICS "" ON )
 
-opt( STORE_HC "enable Hash Compaction" OFF )
-opt( STORE_COMPRESS "enable lossless compression" ON )
-
-opt( TRANSFORM_POR  "" ON )
-opt( TRANSFORM_FAIR "" ON )
-
-opt( DEV_CONFLATE "avoid extra faster but feature-equivalent instances" ${DEV_CONFLATE_DEF} )
-opt( DEV_GCOV "generate profiling information for a lcov coverage report" OFF )
 opt( DEV_NOPOOLS "avoid pool allocation for graph vertices" OFF )
-opt( DEV_NOPOOLEPHEMERAL "disable ephemeral memory allocation optimization" OFF )
-mark_as_advanced( DEV_NOPOOLEPHEMERAL )
 opt( DEV_WARNINGS "enable extra compiler warnings" ${DEV_WARNINGS_DEF} )
 
 option( BUILD_SHARED_LIBS "build shared libraries for libdivine and libdivine-instances" OFF )
 
 include( VersionAppend )
 
-set( MAX_INSTANCE_FILES_COUNT "128" CACHE STRING
-    "maximal number of used instance files to generate -- more means less memory requirements" )
-set( MIN_INSTANCES_PER_FILE "10" CACHE STRING
-    "minimal number of instances in one instance file" )
-mark_as_advanced( MAX_INSTANCE_FILES_COUNT MIN_INSTANCES_PER_FILE )
-
-set( OPT_LLVMSPLIT "Generic" CACHE STRING
-    "LLVM compression splitter, one of: Generic, PerObject, PerObjectMono and Hybrid" )
-mark_as_advanced( OPT_LLVMSPLIT )
-
-set( CMD_CC "cc" CACHE STRING "how to run (at runtime) a C compiler" )
-set( CMD_CXX "c++" CACHE STRING "how to run (at runtime) a C++ compiler" )
-set( CMD_CLANG "clang" CACHE STRING "how to run the CLang C/C++ compiler" )
-
 include( FindLLVM )
 include( FindPerl )
-
-include( CheckCXXSourceCompiles )
-set( CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS} )
-set( CMAKE_REQUIRED_FLAGS "-std=c++14" ) # for the benefit of GCC
 
 ###############################################
 ## MISC OPTION IMPLEMENTATION
 ##
-
-if( WIN32 )
-  # PE Executables have fixed stack size and the BISON parser needs a big one
-  appendFlag( "EXE_LINKER;SHARED_LINKER" "-Wl,--stack,10485760" )
-endif( WIN32 )
-
-# on some mingw32, regex.h is not on the default include path
-find_path( RX_PATH regex.h )
-if ( RX_PATH )
-  include_directories( ${RX_PATH} )
-  link_directories( ${RX_PATH} )
-endif()
-
-if ( DEV_NOPOOLS AND OPT_MPI )
-    disable( OPT_MPI " (cluster support)" "Not supported without pools" )
-endif()
 
 if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
     if ( WIN32 )
@@ -184,99 +125,16 @@ if (UNIX AND
   appendFlag( "C;CXX" "-fcolor-diagnostics" )
 endif()
 
-check_cxx_source_compiles("
-template< typename F > int check( F f );
-
-template< typename T, typename F, int n >
-auto findID_helper( F f ) ->
-    decltype( check< typename T::template X< n, true >::Fun >( f ) )
-{}
-int main() { return 0; }
-" HAVE_CXX11 )
-
-if( HAVE_CXX11 )
-  check_cxx_source_compiles("
-      struct ConstructorTest {
-          ConstructorTest(int) {}
-      };
-
-      union UnionTest {
-          ConstructorTest b;
-      };
-
-      int main() { return 0; }
-  " HAVE_CXX11_UNRESTRICTED_UNIONS )
-
-  check_cxx_source_compiles("
-      #include <atomic>
-
-      int main() {
-          std::atomic< int > aint( 0 );
-          int a( 0 ), b( 1 );
-          aint.compare_exchange_strong( a, b );
-          aint++;
-          aint |= 1;
-          aint.exchange( 0 );
-          aint.compare_exchange_weak( a, b );
-          return 0;
-      }
-  " HAVE_CXX11_ATOMIC )
-
-  check_cxx_source_compiles("
-      #include <type_traits>
-
-      enum class Enum : unsigned { A, B, C };
-
-      template< typename E >
-      class A {
-          static_assert( std::is_same< typename std::underlying_type< E >::type, unsigned >::value, \"\" );
-      };
-
-      int main() {
-          A< Enum > e;
-          return 0;
-      }
-  " HAVE_CXX11_TRAITS )
-endif()
-
-set( CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE} )
-if( WIN32 ) # strdup does not exist with c++11 on win32
-    appendFlag( "CXX" "-std=gnu++11" )
-else()
-    appendFlag( "CXX" "-std=c++14" )
-endif()
-
-if( NOT APPLE )
-    appendFlag( "EXE_LINKER" "-Xlinker --no-keep-memory" )
-endif()
-
-if( NOT HAVE_CXX11 )
-    message( FATAL_ERROR "DiVinE requires a C++11 compliant compiler." )
-endif()
-
-if( NOT HAVE_CXX11_ATOMIC )
-    message( FATAL_ERROR "DiVinE requires working C++11 std::atomic." )
-endif()
-
-if ( NOT HAVE_CXX11_TRAITS )
-    message( FATAL_ERROR "DiVinE requires working C++11 type traits." )
-endif()
-
 include( CheckFunctionExists )
 check_function_exists( posix_fallocate HAVE_POSIX_FALLOCATE )
 if ( HAVE_POSIX_FALLOCATE )
     add_definitions( -DHAVE_POSIX_FALLOCATE )
 endif()
 
-if( DEV_GCOV )
-  appendFlag( "CXX;C" "-fprofile-arcs -ftest-coverage" )
-  link_libraries( "gcov" )
-endif()
-
 find_program( SHA1SUM NAMES sha1sum sha1 )
 
 if( NOT SHA1SUM )
-  message( "I could use a working sha1sum program for the build. Please install one or supply me with a path if you already have it. Thank you." )
+  message( "Did not find sha1sum, version will be imprecise." )
 endif( NOT SHA1SUM )
 
 #########################################
@@ -293,123 +151,40 @@ pkg_check_modules( VALGRIND valgrind )
 if ( VALGRIND_FOUND )
     include_directories( ${VALGRIND_INCLUDEDIR} )
 else()
-    message( "-- WARNING: Valgrind (headers) not found! Pool debugging will not work." )
+    message( WARNING "Valgrind (headers) not found! Pool debugging will not work." )
     add_definitions( -DNVALGRIND )
 endif()
 
-if( OPT_CURSES )
-    find_package( Curses )
-    if( CURSES_FOUND )
-        include_directories( ${CURSES_INCLUDE_PATH} )
-    else()
-        disable( OPT_CURSES "" "Curses not found." )
-    endif()
+find_package( Curses )
+if( CURSES_FOUND )
+    include_directories( ${CURSES_INCLUDE_PATH} )
+else()
+    message( SEND_ERROR "Curses not found." )
 endif()
 
-if( GEN_LLVM )
-    if( NOT LLVM_FOUND )
-        disable( GEN_LLVM "" "Could not find LLVM." )
-    elseif ( ${LLVM_STRING_VERSION} MATCHES "3[.][7]([^0-9]*|[.].*)" )
-        link_directories( ${LLVM_LIBRARY_DIRS} )
-        # this is not very nice but it works and ncurses & zlib break builds under NixOS
-        list( REMOVE_ITEM LLVM_SYSLIBS "z" "ncurses" )
-        # suppress warnings coming from LLVM headers
-        add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
-    else()
-        disable( GEN_LLVM "" "Found version ${LLVM_STRING_VERSION} but 3.7 is required." )
-    endif()
-
-    execute_process( COMMAND "${CMD_CLANG}" --version OUTPUT_VARIABLE CLANG_VERSION__ )
-    string( REGEX MATCH "clang version [0-9]*[.][0-9]*" CLANG_VERSION_ "${CLANG_VERSION__}" )
-    string( REPLACE "clang version " "" CLANG_VERSION "${CLANG_VERSION_}" )
-    if ( "${CLANG_VERSION}" STREQUAL "" )
-        # apple clang
-        string( REGEX MATCH "based on LLVM [0-9]*[.][0-9]*" CLANG_VERSION_ "${CLANG_VERSION__}" )
-        string( REPLACE "based on LLVM " "" CLANG_VERSION "${CLANG_VERSION_}" )
-    endif()
-    string( REGEX MATCH "^[0-9]*[.][0-9]" LLVM_VERSION "${LLVM_STRING_VERSION}" )
-    if ( NOT "${CLANG_VERSION}" STREQUAL "${LLVM_VERSION}" )
-        disable( GEN_LLVM "" "Clang version ${CLANG_VERSION} does not match LLVM version ${LLVM_VERSION}" )
-    endif()
+if( NOT LLVM_FOUND )
+    message( SEND_ERROR "LLVM not found." )
 endif()
 
-if( NOT GEN_LLVM )
-    disable( GEN_LLVM_PROB "" "GEN_LLVM is required for GEN_LLVM_PROB." )
-    disable( GEN_LLVM_CSDR "" "GEN_LLVM is required for GEN_LLVM_CSDR." )
-    disable( GEN_LLVM_PTST "" "GEN_LLVM is required for GEN_LLVM_PTST." )
+if ( NOT ${LLVM_STRING_VERSION} MATCHES "3[.][7]([^0-9]*|[.].*)" )
+    message( SEND_ERROR "LLVM version ${LLVM_STRING_VERSION} does not match 3.7." )
 endif()
 
-if( OPT_MANUAL )
-    find_program( PANDOC pandoc )
-    find_program( PDFLATEX pdflatex )
-    find_program( BIBTEX bibtex )
-    if ( PANDOC )
-        if ( NOT PDFLATEX OR NOT BIBTEX )
-            message( "-- WARNING: pdflatex or bibtex not found. Skipping PDF generation." )
-        endif()
-    else()
-        disable( OPT_MANUAL " (build pdf/html documentation)" "Could not find pandoc.")
+link_directories( ${LLVM_LIBRARY_DIRS} )
+# this is not very nice but it works and ncurses & zlib break builds under NixOS
+list( REMOVE_ITEM LLVM_SYSLIBS "z" "ncurses" )
+# suppress warnings coming from LLVM headers
+add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
+
+find_program( PANDOC pandoc )
+find_program( PDFLATEX pdflatex )
+find_program( BIBTEX bibtex )
+if ( PANDOC )
+    if ( NOT PDFLATEX OR NOT BIBTEX )
+        message( WARNING "pdflatex or bibtex not found. Skipping PDF generation." )
     endif()
-endif()
-
-if( OPT_MPI ) # MPI not supported on win32
-    include( FindMPI )
-    if ( MPI_FOUND )
-        foreach( path ${MPI_INCLUDE_PATH} )
-            set( MPI_INCLUDE_FLAGS "-I${path} ${MPI_INCLUDE_FLAGS}" )
-        endforeach()
-        include (CheckIncludeFileCXX)
-        check_include_file_cxx( "ompi/version.h" HAVE_OMPI_VERSION ${MPI_INCLUDE_FLAGS} )
-        if( HAVE_OMPI_VERSION )
-            add_definitions( "-DHAVE_OMPI_VERSION" )
-        endif()
-        foreach ( path ${MPI_INCLUDE_PATH} )
-            add_definitions( -isystem ${path} )
-        endforeach()
-    else()
-        disable( OPT_MPI " (cluster support)" "Could not find MPI." )
-        set( MPI_INCLUDE_PATH "" )
-        set( MPI_LIBRARIES "" )
-        set( MPI_LIBRARY "" )
-        set( MPIEXEC "" )
-    endif()
-endif()
-
-if( DEV_GCOV )
-    find_program( LCOV lcov )
-    find_program( GCOV gcov )
-    find_program( LCOV_GENHTML genhtml )
-
-    if( LCOV )
-        set( LCOV_BIN "${LCOV}" )
-        set( GCOV_BIN "${GCOV}" )
-        set( LCOV_IN "${divine_BINARY_DIR}" )
-        set( LCOV_OUT "${divine_BINARY_DIR}/lcov-report" )
-        configure_file( cmake/with-lcov.sh ${divine_BINARY_DIR}/with-lcov )
-        execute_process( COMMAND chmod +x ${divine_BINARY_DIR}/with-lcov )
-        set( WITH_LCOV "${divine_BINARY_DIR}/with-lcov" )
-
-        add_custom_target( lcov-report
-            COMMAND mkdir -p ${LCOV_OUT}
-            COMMAND ${LCOV} --quiet -b ${divine_SOURCE_DIR} -d ${divine_SOURCE_DIR}
-                      -a ${LCOV_OUT}/base.info
-                      -a ${LCOV_OUT}/collect-1.info
-                      -a ${LCOV_OUT}/collect-2.info
-                      -o ${LCOV_OUT}/overall_everything.info
-            COMMAND ${LCOV} --extract ${LCOV_OUT}/overall_everything.info
-                      ${divine_SOURCE_DIR}/divine/*
-                      ${divine_SOURCE_DIR}/examples/*
-                      ${divine_SOURCE_DIR}/murphi/*
-                      ${divine_SOURCE_DIR}/tools/*
-                      -o ${LCOV_OUT}/overall.info
-            COMMAND ${LCOV_GENHTML} -o lcov-report -p `pwd` -p ${divine_SOURCE_DIR}
-                      ${LCOV_OUT}/overall.info
-            VERBATIM
-        )
-    else()
-        disable( DEV_GCOV " (coverage report generation)" "Could not find LCOV." )
-        set( WITH_LCOV "" )
-    endif()
+    add_subdirectory( manual )
+    add_subdirectory( website )
 endif()
 
 if( OPT_SQL )
@@ -433,15 +208,13 @@ foreach( opt ${OPTIONS} )
     endif()
 endforeach()
 
-add_definitions( "-DOPT_LLVMSPLIT=${OPT_LLVMSPLIT}" )
-set( BUILDOPTS "${BUILDOPTS} OPT_LLVMSPLIT=${OPT_LLVMSPLIT}" )
-
 file( READ release/version DIVINE_MAJOR )
 file( READ release/patchlevel PATCHLEVEL )
 string( STRIP "${DIVINE_MAJOR}" DIVINE_MAJOR )
 string( STRIP "${PATCHLEVEL}" PATCHLEVEL )
 set( DIVINE_VERSION "${DIVINE_MAJOR}.${PATCHLEVEL}" )
-set( TEST_WRAPPER "${CMAKE_SOURCE_DIR}/nix/test-wrapper.sh" )
+# set( TEST_WRAPPER "${CMAKE_SOURCE_DIR}/nix/test-wrapper.sh" )
+set( TEST_WRAPPER "-c" )
 
 ##########################################
 ## SOURCE DIRECTORIES
@@ -454,20 +227,14 @@ if( OPT_TBBMALLOC )
   add_subdirectory( external/tbbmalloc )
 endif()
 
-if( GEN_LLVM )
-  add_subdirectory( external/pdclib )
-  add_subdirectory( external/libm )
-  add_subdirectory( external/libcxxabi )
-  add_subdirectory( external/libcxx )
-endif()
+add_subdirectory( external/pdclib )
+add_subdirectory( external/libm )
+add_subdirectory( external/libcxxabi )
+add_subdirectory( external/libcxx )
+add_subdirectory( userspace )
 
 add_subdirectory( divine )
 add_subdirectory( tools )
-
-if( OPT_MANUAL )
-  add_subdirectory( manual )
-  add_subdirectory( website )
-endif()
 
 if( OPT_SQL )
     add_subdirectory( external/nanodbc )

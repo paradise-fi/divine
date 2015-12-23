@@ -1,4 +1,4 @@
-include( ../../cmake/stringify.cmake )
+include( stringify )
 
 file( GLOB src RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.c *.h bits/*.h )
 foreach( f ${src} )
