@@ -259,7 +259,8 @@ struct IndicesTo<0, S...> {
   typedef Indices<S...> T;
 };
 
-template< template < typename, typename > class With, typename X, typename T, typename BSI, typename BSO >
+template< template < typename, typename > class With,
+          typename X, typename T, typename BSI, typename BSO >
 struct DeMarshall {
     X &x;
     BSI &bsi;
@@ -350,7 +351,8 @@ void marshall( BS &bs, R (T::*f)( Args... ), Args... args ) {
     T::rpc_request( Marshall< BS, R (T::*)( Args... ), Args... >( bs, f, args... ) );
 }
 
-template< typename T, template< typename, typename > class With, typename X, typename BSI, typename BSO >
+template< typename T, template< typename, typename > class With,
+          typename X, typename BSI, typename BSO >
 void demarshallWith( X &x, BSI &bsi, BSO &bso ) {
     T::rpc_request( DeMarshall< With, X, T, BSI, BSO >( x, bsi, bso ) );
 }
