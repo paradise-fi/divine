@@ -215,7 +215,7 @@ struct Buffer : Array< BufferLine > {
         }
     }
 
-    void flushOne() __attribute__((__inline__, __flatten__)) {
+    void flushOne() __attribute__((__always_inline__, __flatten__)) {
         int sz = size();
         __divine_assume( sz > 0 );
         int i = sz == 1 ? 0 : __divine_choice( sz );
@@ -241,7 +241,7 @@ struct Buffer : Array< BufferLine > {
             cleanOldAndFlushed();
     }
 
-    void cleanOldAndFlushed() __attribute__((__inline__, __flatten__)) {
+    void cleanOldAndFlushed() __attribute__((__always_inline__, __flatten__)) {
         while ( size() > 0 && (oldest().flushed || oldest().isFence()) )
             erase( 0 );
     }
@@ -279,18 +279,24 @@ struct BufferHelper : Array< Buffer > {
     Buffer &get() { return get( __divine_get_tid() ); }
 
     // mo must be other then Unordered
+    template< bool strong = false >
     void waitForOther( char *const from, int size, const MemoryOrder mo ) {
         auto *local = getIfExists();
         for ( auto &sb : *this )
             if ( &sb != local )
                 for ( auto &l : sb ) {
                     __divine_assume( !( // conditions for waiting
-                        // wait for all SC operations (even flushed ones)
+                        // wait for all SC operations, synchronize with them
                         ( mo == MemoryOrder::SeqCst && l.order == MemoryOrder::SeqCst )
-                        || // wait for non-SC atomic operations on matching location
-                        ( subseteq( MemoryOrder::Monotonic, mo ) && l.isStore() && !l.flushed && l.matches( from, size ) && subseteq( MemoryOrder::Monotonic, l.order ) )
-                        || // wait for observed fences and observed or matching release stores (including flushed ones)
-                        ( subseteq( MemoryOrder::Release, l.order ) && subseteq( MemoryOrder::Acquire, mo ) && (l.observed() || l.matches( from, size )) )
+                        || // strong: wait for non-SC atomic operations on matching location
+                           // weak: monotonic does not require anything, it can be loaded from memory
+                        ( strong && subseteq( MemoryOrder::Monotonic, mo ) && l.isStore() && !l.flushed && l.matches( from, size ) && subseteq( MemoryOrder::Monotonic, l.order ) )
+                        || // strong: wait for observed fences and observed or matching release stores (including flushed ones)
+                           // weak: only wait if data was flushed and therefore can be observed
+                           // note: there can never be prefix of flushed data locations and fences in SB, therefore
+                           //       flushed ==> there is something before which is not flushed and not fence
+                        ( subseteq( MemoryOrder::Release, l.order ) && subseteq( MemoryOrder::Acquire, mo ) &&
+                           ( l.observed() || ( l.matches( from, size ) && (strong || l.flushed) ) ) )
                     ) );
                 }
     }
@@ -302,7 +308,7 @@ struct BufferHelper : Array< Buffer > {
         for ( auto &sb : *this )
             for ( auto &l : sb )
                 if ( l.flushed && l.matches( from, size ) && subseteq( MemoryOrder::Monotonic, l.order ) ) {
-                    // go throught all release ops older than l and observe them
+                    // go throught all release ops older than l and l, and observe them
                     for ( auto &f : sb ) {
                         if ( subseteq( MemoryOrder::Release, f.order ) )
                             f.observe();
@@ -383,6 +389,13 @@ void __lart_weakmem_fence( __lart_weakmem_order _ord ) noexcept {
     }
     if ( subseteq( MemoryOrder::Acquire, ord ) ) // read barrier
         __lart_weakmem.storeBuffers.waitForFence( ord );
+}
+
+void __lart_weakmem_sync( char *addr, uint32_t bitwidth, __lart_weakmem_order _ord ) noexcept {
+    divine::InterruptMask masked;
+    MemoryOrder ord = MemoryOrder( _ord );
+    if ( subseteq( MemoryOrder::Monotonic, ord ) && (!addr || ord == MemoryOrder::SeqCst || !__divine_is_private( addr )) )
+        __lart_weakmem.storeBuffers.waitForOther< true >( addr, bitwidth / 8, ord );
 }
 
 union I64b {

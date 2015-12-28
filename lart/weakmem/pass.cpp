@@ -294,11 +294,12 @@ struct Substitute : lart::Pass {
 
         _store = m.getFunction( "__lart_weakmem_store" );
         _load = m.getFunction( "__lart_weakmem_load" );
-        _flush = m.getFunction( "__lart_weakmem_fence" );
+        _fence = m.getFunction( "__lart_weakmem_fence" );
+        _sync = m.getFunction( "__lart_weakmem_sync" );
         _cleanup = m.getFunction( "__lart_weakmem_cleanup" );
-        ASSERT( _store ); ASSERT( _load ); ASSERT( _flush ); ASSERT( _cleanup );
+        ASSERT( _store ); ASSERT( _load ); ASSERT( _fence ); ASSERT( _sync ); ASSERT( _cleanup );
 
-        _moTy = _flush->getFunctionType()->getParamType( 0 );
+        _moTy = _fence->getFunctionType()->getParamType( 0 );
 
         transformMemManip( {
                 std::make_tuple( &_memmove, &_wmemmove, m.getFunction( "__lart_weakmem_memmove" ) ),
@@ -524,6 +525,7 @@ struct Substitute : lart::Pass {
 
     void transformWeak( llvm::Function &f, llvm::DataLayout &dl, Type type ) {
         auto &ctx = f.getContext();
+        auto *i8ptr = llvm::Type::getInt8PtrTy( ctx );
 
         // fist translate atomics, so that if they are translated to
         // non-atomic equievalents under mask these are later converted to TSO
@@ -590,13 +592,22 @@ struct Substitute : lart::Pass {
             llvm::IRBuilder<> irb( bb->getTerminator() );
             auto *mask = irb.CreateCall( _mask, { } );
             auto *shouldunlock = irb.CreateICmpEQ( mask, llvm::ConstantInt::get( mask->getType(), 0 ), "lart.weakmem.cmpxchg.shouldunlock" );
+            auto *vptr = irb.CreateBitCast( ptr, i8ptr );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.cmpxchg.orig" );
             orig->setAtomic( failord );
+            irb.CreateCall( _sync, { vptr,
+                                     getBitwidth( ptr->getType(), ctx, dl ),
+                                     llvm::ConstantInt::get( _moTy, uint64_t( castmemord( failord ) ) )
+                                   } );
             auto *eq = irb.CreateICmpEQ( orig, cmp, "lart.weakmem.cmpxchg.eq" );
             llvm::ReplaceInstWithInst( bb->getTerminator(), llvm::BranchInst::Create( ifeq, end, eq ) );
 
             irb.SetInsertPoint( ifeq );
-            irb.CreateFence( succord );
+            if ( succord != failord )
+                irb.CreateCall( _sync, { vptr,
+                                         getBitwidth( ptr->getType(), ctx, dl ),
+                                         llvm::ConstantInt::get( _moTy, uint64_t( castmemord( succord ) ) )
+                                       } );
             irb.CreateStore( val, ptr )->setAtomic( succord );
             irb.CreateBr( end );
 
@@ -627,6 +638,10 @@ struct Substitute : lart::Pass {
             auto *shouldunlock = irb.CreateICmpEQ( mask, llvm::ConstantInt::get( mask->getType(), 0 ), "lart.weakmem.atomicrmw.shouldunlock" );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.atomicrmw.orig" );
             orig->setAtomic( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord );
+            irb.CreateCall( _sync, { irb.CreateBitCast( ptr, i8ptr ),
+                                     getBitwidth( ptr->getType(), ctx, dl ),
+                                     llvm::ConstantInt::get( _moTy, uint64_t( castmemord( aord ) ) )
+                                   } );
 
             switch ( op ) {
                 case llvm::AtomicRMWInst::Xchg: break;
@@ -774,7 +789,7 @@ struct Substitute : lart::Pass {
             store->eraseFromParent();
         }
         for ( auto fence : fences ) {
-            auto callFlush = llvm::CallInst::Create( _flush, {
+            auto callFlush = llvm::CallInst::Create( _fence, {
                     llvm::ConstantInt::get( _moTy, uint64_t( _config.fence | castmemord( fence->getOrdering() ) ) ) } );
             llvm::ReplaceInstWithInst( fence, callFlush );
         }
@@ -818,7 +833,7 @@ struct Substitute : lart::Pass {
     Type _defaultType;
     int _bufferSize;
     LLVMFunctionSet _bypass;
-    llvm::Function *_store = nullptr, *_load = nullptr, *_flush = nullptr;
+    llvm::Function *_store = nullptr, *_load = nullptr, *_fence = nullptr, *_sync = nullptr;
     llvm::Function *_memmove = nullptr, *_memcpy = nullptr, *_memset = nullptr;
     llvm::Function *_wmemmove = nullptr, *_wmemcpy = nullptr, *_wmemset = nullptr;
     llvm::Function *_cleanup = nullptr;

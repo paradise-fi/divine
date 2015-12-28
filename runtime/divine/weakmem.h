@@ -35,6 +35,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth, __lart
 uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order ord ) __WM_INTERFACE_ATTR;
 
 void __lart_weakmem_fence( __lart_weakmem_order ord ) __WM_INTERFACE_ATTR;
+void __lart_weakmem_sync( char *addr, uint32_t bitwidth, __lart_weakmem_order ord ) __WM_INTERFACE_ATTR;
 void __lart_weakmem_cleanup( int cnt, ... ) __WM_INTERFACE_ATTR;
 
 /* memory manipulation "template" functions */
