@@ -195,7 +195,7 @@ void *push( void * ) {
     try {
         while ( true )
             if ( length < L ) {
-                ++ length;
+                length.fetch_add( 1, std::memory_order_relaxed );
                 q->push( 42 + i );
                 i = (i + 1) % (N - 1);
             }
@@ -210,13 +210,27 @@ int main() {
         pthread_create( &p, nullptr, &push, nullptr );
         while (true)
             for ( int i = 0; i < N - 1; ++i ) {
-                assert( 42 + i == q->front( true ) );
-                assert( 1 <= length );
+                int got = q->front( true );
+                assert( 42 + i == got );
+                assert( 1 <= length.load( std::memory_order_relaxed ) );
                 q->pop();
-                -- length;
+                length.fetch_sub( std::memory_order_relaxed );
             }
         pthread_join( p, nullptr );
     } catch (...) {} // ignore exceptions
     delete q;
     return 0;
 }
+
+/* divine-test
+holds: true
+*/
+/* divine-test
+lart: weakmem:tso:3
+holds: true
+*/
+/* divine-test
+lart: weakmem:std:3
+holds: false
+problem: ASSERTION.*fifo.cpp
+*/

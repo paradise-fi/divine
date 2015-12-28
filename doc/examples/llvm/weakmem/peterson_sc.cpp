@@ -1,7 +1,7 @@
 // divine-cflags: -std=c++11
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <weakmem.h>
+#include <divine.h>
 #include <atomic>
 #include <pthread.h>
 
@@ -44,3 +44,12 @@ int main() {
     pthread_join( t2, nullptr );
     return 0;
 }
+
+/* divine-test
+holds: true
+*/
+/* divine-test
+lart: weakmem:tso:2
+holds: false
+problem: ASSERTION.*:42
+*/

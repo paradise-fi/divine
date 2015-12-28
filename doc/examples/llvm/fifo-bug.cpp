@@ -220,3 +220,18 @@ int main() {
     delete q;
     return 0;
 }
+
+/* divine-test
+holds: false
+problem: ASSERTION.*fifo-bug.cpp
+*/
+/* divine-test
+lart: weakmem:tso:3
+holds: false
+problem: ASSERTION.*fifo-bug.cpp
+*/
+/* divine-test
+lart: weakmem:std:3
+holds: false
+problem: ASSERTION.*fifo-bug.cpp
+*/

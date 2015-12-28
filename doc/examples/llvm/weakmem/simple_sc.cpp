@@ -3,16 +3,16 @@
 
 #include <pthread.h>
 #include <assert.h>
-#include <weakmem.h>
+#include <divine.h>
 
-int x, y;
+volatile int x, y;
 
-void *worker0( void * = nullptr ) _lart_weakmem_tso_ {
+void *worker0( void * = nullptr ) {
     x = 1;
     return reinterpret_cast< void * >( size_t( y ) );
 }
 
-void *worker1( void * = nullptr ) _lart_weakmem_tso_ {
+void *worker1( void * = nullptr ) {
     y = 1;
     return reinterpret_cast< void * >( size_t( x ) );
 }
@@ -26,3 +26,12 @@ int main() {
     pthread_join( t1, reinterpret_cast< void ** >( &rx ) );
     assert( rx == 1 || ry == 1 );
 }
+
+/* divine-test
+holds: true
+*/
+/* divine-test
+lart: weakmem:tso:1
+holds: false
+problem: ASSERTION.*:27
+*/
