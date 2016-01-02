@@ -493,6 +493,7 @@ struct Substitute : lart::Pass {
     template< typename Inst >
     bool withLocal( Inst *i, brick::types::NotPreferred ) { return false; }
 
+    // TODO: resolve bitcasts to allocas
     bool local( llvm::Value *i ) {
         return llvm::isa< llvm::AllocaInst >( i ) && !llvm::PointerMayBeCaptured( i, false, true );
     };
@@ -535,12 +536,12 @@ struct Substitute : lart::Pass {
         for ( auto &i : query::query( f ).flatten() )
             llvmcase( i,
                 [&]( llvm::AtomicCmpXchgInst *cas ) {
-                    if ( !withLocal( cas ) )
-                        cass.push_back( cas );
+                    // if ( !withLocal( cas ) )
+                    cass.push_back( cas );
                 },
                 [&]( llvm::AtomicRMWInst *at ) {
-                    if ( !withLocal( at ) )
-                        ats.push_back( at );
+                    // if ( !withLocal( at ) )
+                    ats.push_back( at );
                 } );
 
         for ( auto cas : cass ) {
@@ -701,8 +702,8 @@ struct Substitute : lart::Pass {
         for ( auto &i : query::query( f ).flatten() )
             llvmcase( i,
                 [&]( llvm::LoadInst *load ) {
-                    if ( !withLocal( load ) )
-                        loads.push_back( load );
+                    // if ( !withLocal( load ) )
+                    loads.push_back( load );
                 },
                 [&]( llvm::StoreInst *store ) {
                     if ( !withLocal( store ) )

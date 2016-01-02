@@ -230,7 +230,7 @@ struct Buffer : Array< BufferLine > {
             // don't flush stores after any mathcing stores
             __divine_assume( !other.matches( entry.addr, entry.bitwidth / 8 ) );
             // don't ever flush SC stores before other SC stores
-            __divine_assume( entry.order != MemoryOrder::SeqCst || other.order != MemoryOrder::SeqCst );
+            // __divine_assume( entry.order != MemoryOrder::SeqCst || other.order != MemoryOrder::SeqCst );
             if ( subseteq( MemoryOrder::Release, other.order ) )
                 releaseOrAfterRelease = true;
         }
@@ -432,6 +432,9 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
     Buffer *buf = __lart_weakmem.storeBuffers.getIfExists();
     if ( buf ) {
         for ( const auto &it : reversed( *buf ) ) { // go from newest entry
+            if ( it.flushed )
+                continue;
+
             if ( !any && it.addr == addr && it.bitwidth >= bitwidth )
                 return it.value & (uint64_t(-1) >> (64 - bitwidth));
             if ( it.matches( addr, bitwidth / 8 ) ) {
