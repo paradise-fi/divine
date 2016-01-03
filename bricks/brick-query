@@ -108,6 +108,7 @@ struct Range {
 
     Range() = default;
     Range( const Range & ) = default;
+    Range( Range & ) = default;
     Range( Range && ) = default;
     Range( InputIt begin, InputIt end ) : _begin( begin ), _end( end ) { }
 
@@ -127,6 +128,11 @@ struct Range {
 template< typename Collection >
 auto range( Collection &col ) -> Range< _Iterator< Collection > > {
     return Range< _Iterator< Collection > >( col );
+}
+
+template< typename It >
+auto range( It &&beg, It &&end ) -> Range< It > {
+    return Range< It >( std::forward< It >( beg ), std::forward< It >( end ) );
 }
 
 template< typename Collection >
@@ -583,6 +589,11 @@ auto query( const Collection &col ) -> Query< Range< _ConstIterator< Collection 
 template< typename Collection >
 auto cquery( const Collection &col ) -> Query< Range< _ConstIterator< Collection > > > {
     return Query< Range< _ConstIterator< Collection > > >( crange( col ) );
+}
+
+template< typename It >
+auto query( It &&begin, It &&end ) -> Query< Range< It > > {
+    return Query< Range< It > >( std::forward< It >( begin ), std::forward< It >( end ) );
 }
 
 template< typename Collection >
