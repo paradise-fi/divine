@@ -167,7 +167,8 @@ struct DeadAllocaZeoring : lart::Pass {
         _dl = std::make_unique< llvm::DataLayout >( &m );
         _mzero = _mkmzero( m );
         for ( auto &fn : m )
-            runFn( fn );
+            if ( &fn != _mzero )
+                runFn( fn );
         std::cerr << "INFO: zeroed " << _zeroed << " out of " << _allocas << " allocas ("
                   << double( _zeroed * 100 ) / _allocas << "%), (" << _nonescaping << " nonescaping)" << std::endl;
         return llvm::PreservedAnalyses::none();
@@ -198,6 +199,8 @@ struct DeadAllocaZeoring : lart::Pass {
         llvm::IRBuilder<> irb( entry );
         auto *mask = irb.CreateCall( m.getFunction( "__divine_interrupt_mask" ), { } );
         auto *shouldUnlock = irb.CreateICmpEQ( mask, llvm::ConstantInt::get( mask->getType(), 0 ), "shouldUnlock" );
+        auto *undefAlloca = irb.CreateAlloca( llvm::Type::getInt8Ty( ctx ) );
+        auto *undef = irb.CreateLoad( undefAlloca, "undefval" );
         irb.CreateBr( body );
 
         irb.SetInsertPoint( end );
@@ -217,7 +220,7 @@ struct DeadAllocaZeoring : lart::Pass {
         auto siphi = irb.CreatePHI( siarg->getType(), 2 );
         siphi->addIncoming( siarg, entry );
 
-        irb.CreateStore( llvm::ConstantInt::get( llvm::Type::getInt8Ty( ctx ), 0 ), ptrphi );
+        irb.CreateStore( undef, ptrphi );
         auto ptrnext = irb.CreateGEP( ptrphi, llvm::ConstantInt::get( llvm::Type::getInt64Ty( ctx ), 1 ) );
         auto sinext = irb.CreateAdd( siphi, llvm::ConstantInt::get( _mzeroSiT, -1 ) );
         ptrphi->addIncoming( ptrnext, body );
@@ -225,6 +228,7 @@ struct DeadAllocaZeoring : lart::Pass {
         auto isend = irb.CreateICmpEQ( sinext, llvm::ConstantInt::get( _mzeroSiT, 0 ) );
         irb.CreateCondBr( isend, end, body );
 
+        mzero->dump();
         return mzero;
     }
 
@@ -244,7 +248,7 @@ struct DeadAllocaZeoring : lart::Pass {
 
 PassMeta allocaPass() {
     return compositePassMeta< DeadAllocaZeoring >( "alloca",
-        "Optimize alloca use." );
+        "Optimize alloca use. Deprecated: use register pass instead." );
 }
 
 } // namespace reduce

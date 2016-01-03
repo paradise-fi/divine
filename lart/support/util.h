@@ -123,6 +123,9 @@ struct FixLLVMIt< LLVMBBSuccIt > : LLVMBBSuccIt
 };
 
 template< typename It >
+auto fixLLVMIt( It it ) { return FixLLVMIt< It >( it ); }
+
+template< typename It >
 auto range( It begin, It end ) { return Range< FixLLVMIt< It > >( begin, end ); }
 
 template< typename T, typename It = typename T::reverse_iterator >
