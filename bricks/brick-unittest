@@ -38,7 +38,7 @@
 
 #include <brick-assert>
 
-#ifdef __unix
+#ifdef __unix__
 #include <unistd.h>
 #include <sys/wait.h>
 #endif
@@ -67,7 +67,7 @@ namespace {
 
 std::vector< TestCaseBase * > *testcases = nullptr;
 
-#if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ )
+#if (defined( __unix__ ) || defined( POSIX )) && !defined( __divine__ )
 
 void panic() {
     try {
