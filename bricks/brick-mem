@@ -111,6 +111,15 @@ struct Pool
         FreeList() : next( nullptr ), count( 0 ) {}
     };
 
+    struct SizeInfo
+    {
+        int active, blocksize;
+        FreeList touse, tofree;
+        int perm_active, perm_blocksize;
+        SizeInfo() : active( -1 ), blocksize( 4096 ), perm_active( -1 ) {}
+        ~SizeInfo() {}
+    };
+
     static void nukeList( FreeList *f )
     {
         while ( f ) {
@@ -123,16 +132,7 @@ struct Pool
     static const int blockcount = 1 << block_bits;
     static const int blocksize  = 4 << offset_bits;
 
-    char *block[ blockcount ];
-    std::atomic< int > usedblocks;
-
     using FreeListPtr = std::atomic< FreeList * >;
-    FreeListPtr _freelist[ 4096 ];
-    std::atomic< FreeListPtr * >_freelist_big[ 4096 ];
-
-#ifndef NVALGRIND
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
 
     struct VHandle
     {
@@ -141,22 +141,46 @@ struct Pool
         VHandle() : handle( -1 ), allocated( false ) {}
     };
 
-    std::atomic< VHandle * > _vhandles[ blockcount ]; /* one for each block */
+    struct Shared
+    {
+        char *block[ blockcount ];
+        std::atomic< int > usedblocks;
+        FreeListPtr freelist[ 4096 ];
+        std::atomic< FreeListPtr * > freelist_big[ 4096 ];
+#ifndef NVALGRIND
+        std::atomic< VHandle * > vhandles[ blockcount ]; /* one for each block */
+#endif
+    };
+
+    struct Local
+    {
+        std::vector< int > emptyblocks;
+        SizeInfo size[ 4096 ];
+        SizeInfo *size_big[ 4096 ];
+        int ephemeral_block;
+        int ephemeral_offset;
+    } _l;
+
+    const std::shared_ptr< Shared > _s;
+
+#ifndef NVALGRIND
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 
     void valgrindInit()
     {
         for ( int i = 0; i < blockcount; ++i )
-            _vhandles[ i ] = nullptr;
+            _s->vhandles[ i ] = nullptr;
     }
 
     void valgrindAllocated( Pointer p )
     {
-        VALGRIND_MEMPOOL_ALLOC( block[ p._block ], dereference( p ), size( p ) );
+        VALGRIND_MEMPOOL_ALLOC( _s->block[ p._block ], dereference( p ), size( p ) );
         VALGRIND_MAKE_MEM_UNDEFINED( dereference( p ), size( p ) );
 
-        VHandle *h = _vhandles[ p._block ], *alloc;
+        VHandle *h = _s->vhandles[ p._block ], *alloc;
         if ( !h ) {
-            if ( _vhandles[ p._block ].compare_exchange_strong(
+            if ( _s->vhandles[ p._block ].compare_exchange_strong(
                      h, alloc = new VHandle[ header( p ).total ]) )
                 h = alloc;
             else
@@ -176,25 +200,25 @@ struct Pool
 
     void valgrindDeallocated( Pointer p )
     {
-        VALGRIND_MEMPOOL_FREE( block[ p._block ], dereference( p ) );
+        VALGRIND_MEMPOOL_FREE( _s->block[ p._block ], dereference( p ) );
         VALGRIND_MAKE_MEM_NOACCESS( dereference( p ), size( p ) );
 
-        ASSERT( _vhandles[ p._block ].load() );
-        ASSERT( _vhandles[ p._block ][ p._offset ].allocated );
+        ASSERT( _s->vhandles[ p._block ].load() );
+        ASSERT( _s->vhandles[ p._block ][ p._offset ].allocated );
 
-        VALGRIND_DISCARD( _vhandles[ p._block ][ p._offset ].handle );
-        _vhandles[ p._block ][ p._offset ].handle =
+        VALGRIND_DISCARD( _s->vhandles[ p._block ][ p._offset ].handle );
+        _s->vhandles[ p._block ][ p._offset ].handle =
             VALGRIND_CREATE_BLOCK( dereference( p ), size( p ),
                                    brick::string::fmtf( "blob %llu:%llu @ %p [DELETED]",
                                                         p._block, p._offset,
                                                         dereference( p ) ).c_str() );
-        _vhandles[ p._block ][ p._offset ].allocated = false;
+        _s->vhandles[ p._block ][ p._offset ].allocated = false;
     }
 
     void valgrindNewBlock( int b, int bytes )
     {
-        VALGRIND_MAKE_MEM_NOACCESS( block[ b ] + sizeof( BlockHeader ), bytes );
-        VALGRIND_CREATE_MEMPOOL( block[ b ], 0, 0 );
+        VALGRIND_MAKE_MEM_NOACCESS( _s->block[ b ] + sizeof( BlockHeader ), bytes );
+        VALGRIND_CREATE_MEMPOOL( _s->block[ b ], 0, 0 );
     }
 
     void bump( std::vector< int64_t > &v, size_t cnt )
@@ -214,24 +238,24 @@ struct Pool
             return ;
 
         for ( int i = 0; i < blockcount; ++i )
-            if ( _vhandles[ i ] ) {
+            if ( _s->vhandles[ i ] ) {
                 for ( int j = 0; j < header( i ).total; ++j ) {
-                    bool allocd = _vhandles[ i ][ j ].allocated;
+                    bool allocd = _s->vhandles[ i ][ j ].allocated;
                     count += allocd;
                     bump( sizecount, header( i ).itemsize );
                     sizecount[ header( i ).itemsize ] += allocd;
                 }
-                delete[] _vhandles[ i ].load();
+                delete[] _s->vhandles[ i ].load();
             }
 
         for ( int i = 0; i < blockcount; ++i )
-            if ( block[ i ] ) {
+            if ( _s->block[ i ] ) {
                 int64_t is = header( i ).itemsize;
                 int64_t b = header( i ).total * align( is, sizeof( Pointer ) );
                 bytes += b;
                 bump( sizebytes, is + 1 );
                 sizebytes[ is ] += b;
-                VALGRIND_DESTROY_MEMPOOL( block[ i ] );
+                VALGRIND_DESTROY_MEMPOOL( _s->block[ i ] );
             }
 
         bump( sizecount, sizebytes.size() - 1 );
@@ -271,49 +295,72 @@ struct Pool
      * Extensions, which tend to contain Pointers, are no longer zeroed, but
      * constructed instead (as they should)
      */
-    Pool() : usedblocks( 8 )
+    Pool() : _s( new Shared() )
     {
+        _s->usedblocks = 8;
         for ( int i = 0; i < 4096; ++i )
-            _freelist[ i ] = nullptr;
+            _s->freelist[ i ] = nullptr;
         for ( int i = 0; i < 4096; ++i )
-            _freelist_big[ i ] = nullptr;
+            _s->freelist_big[ i ] = nullptr;
         for ( int i = 0; i < blockcount; ++i )
-            block[ i ] = nullptr;
+            _s->block[ i ] = nullptr;
         valgrindInit();
+        initL();
     }
-    Pool( const Pool & ) = delete;
 
     ~Pool()
     {
+        for ( int i = 0; i < 4096; ++i )
+            delete[] _l.size_big[ i ];
+
+        if ( _s.use_count() > 1 )
+            return;
+
+        /* concurrent copying and destruction of the same object is not
+           allowed */
         valgrindFini();
         for ( int i = 0; i < 4096; ++i ) {
-            nukeList( _freelist[ i ] );
-            if ( _freelist_big[ i ] ) {
+            nukeList( _s->freelist[ i ] );
+            if ( _s->freelist_big[ i ] ) {
                 for ( int j = 0; j < 4096; ++j )
-                    nukeList( _freelist_big[ i ][ j ] );
-                delete[] _freelist_big[ i ].load();
+                    nukeList( _s->freelist_big[ i ][ j ] );
+                delete[] _s->freelist_big[ i ].load();
             }
         }
         for ( int i = 0; i < blockcount; ++i ) {
-            if ( !block[ i ] )
+            if ( !_s->block[ i ] )
                 continue;
             auto size =
                 header( i ).total ?
                 header( i ).total * align( header( i ).itemsize,
                                            sizeof( Pointer ) ) +
                 sizeof( BlockHeader ) : blocksize;
-            brick::mmap::MMap::drop( block[ i ], size );
+            brick::mmap::MMap::drop( _s->block[ i ], size );
         }
+    }
+
+    Pool( const Pool &o ) : _s( o._s )
+    {
+        initL();
+    }
+
+    void initL()
+    {
+        for ( int i = 0; i < 4096; ++i )
+            _l.size_big[ i ] = nullptr;
+        _l.size[ 0 ].blocksize = blocksize;
+        _l.ephemeral_block = newblock( 0 );
+        header( _l.ephemeral_block ).itemsize = 4;
     }
 
     std::atomic< FreeList * > &freelist( int size )
     {
         if ( size < 4096 )
-            return _freelist[ size ];
+            return _s->freelist[ size ];
 
         std::atomic< FreeList * > *chunk, *newchunk;
-        if ( !( chunk = _freelist_big[ size / 4096 ] ) ) {
-            if ( _freelist_big[ size / 4096 ].compare_exchange_strong(
+        if ( !( chunk = _s->freelist_big[ size / 4096 ] ) ) {
+            if ( _s->freelist_big[ size / 4096 ].compare_exchange_strong(
                      chunk, newchunk = new FreeListPtr[ 4096 ]() ) )
                 chunk = newchunk;
             else
@@ -323,331 +370,193 @@ struct Pool
         return chunk[ size % 4096 ];
     }
 
-    struct ThreadAccess
+    int &ephemeralSize( Pointer p )
     {
-        std::shared_ptr< Pool > _pool;
-
-        struct SizeInfo
-        {
-            int active, blocksize;
-            FreeList touse, tofree;
-            int perm_active, perm_blocksize;
-            SizeInfo() : active( -1 ), blocksize( 4096 ), perm_active( -1 ) {}
-            ~SizeInfo() {}
-        };
-
-        std::vector< int > _emptyblocks;
-        SizeInfo _size[ 4096 ];
-        SizeInfo *_size_big[ 4096 ];
-        int _ephemeral_block;
-        int _ephemeral_offset;
-
-        int &ephemeralSize( Pointer p )
-        {
-            return *reinterpret_cast< int * >( dereference( p ) - sizeof( int ) );
-        }
-
-        Pointer ephemeralAllocate( int sz )
-        {
-            /* TODO valgrind */
-            ASSERT_LEQ( 0, _ephemeral_block );
-            ASSERT_LEQ( _ephemeral_offset + sz, blocksize );
-            Pointer p( _ephemeral_block, _ephemeral_offset + sizeof( int ) );
-            _ephemeral_offset += align( sz, 4 ) + sizeof( int );
-            ephemeralSize( p ) = sz;
-            return p;
-        }
-
-        void ephemeralClear()
-        {
-            /* TODO valgrind */
-            _ephemeral_offset = 0;
-        }
-
-        char *dereference( Pointer p ) { return _pool->dereference( p ); }
-        const char *dereference( Pointer p ) const { return _pool->dereference( p ); }
-        bool valid( Pointer p ) { return p._block; /* != 0xFFFFFFFFFF*/; }
-
-        int size( Pointer p )
-        {
-            if( p._block == _ephemeral_block )
-            {
-                ASSERT_LEQ( p._offset, _ephemeral_offset );
-                return ephemeralSize( p );
-            }
-
-            ASSERT( _pool->header( p ).total > 0 && "invalid size() call on a foreign ephemeral block" );
-            ASSERT( _pool->size( p) );
-            return _pool->size( p );
-        }
-
-        bool alias( Pointer a, Pointer b )
-        {
-            return a.block == b.block && a.offset == b.offset;
-        }
-
-        ThreadAccess( std::shared_ptr< Pool > l )
-            : _pool( l ), _ephemeral_block( -1 )
-        {
-            for ( int i = 0; i < 4096; ++i )
-                _size_big[ i ] = nullptr;
-            _size[ 0 ].blocksize = blocksize;
-            if ( l ) {
-                _ephemeral_block = newblock( 0 );
-                l->header( _ephemeral_block ).itemsize = 4;
-            }
-        }
-
-        ThreadAccess() : _pool( std::make_shared< Pool >() ) {}
-        ThreadAccess( const ThreadAccess &a ) : ThreadAccess( a._pool ) {}
-
-        ~ThreadAccess()
-        {
-            for ( int i = 0; i < 4096; ++i )
-                delete[] _size_big[ i ];
-        }
-
-        Pointer &freechunk( Pointer p )
-        {
-            return *reinterpret_cast< Pointer * >( dereference( p ) );
-        }
-
-        Pointer fromFreelist( SizeInfo &si )
-        {
-            ASSERT( si.touse.count );
-            ASSERT( valid( si.touse.head ) );
-            -- si.touse.count;
-            Pointer p = si.touse.head;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-            VALGRIND_MAKE_MEM_DEFINED( dereference( p ), sizeof( Pointer ) );
-            si.touse.head = freechunk( p );
-            VALGRIND_MAKE_MEM_NOACCESS( dereference( p ), sizeof( Pointer ) );
-#pragma GCC diagnostic pop
-            return p;
-        }
-
-        Pointer allocate( int size )
-        {
-            Pointer p;
-
-            auto &si = sizeinfo( size );
-            /* try our private freelist first */
-
-            if ( !si.touse.count && si.tofree.count ) {
-                si.touse = si.tofree;
-                si.tofree = FreeList();
-            }
-
-            if ( si.touse.count )
-                p = fromFreelist( si );
-            else { /* nope. try a partially filled block */
-                if ( si.active >= 0 && usable( si.active ) ) {
-                    p._block = si.active;
-                    p._offset = _pool->header( p ).allocated ++;
-                } else { /* still nothing. try nicking something from the shared freelist */
-                    std::atomic< FreeList * > &fhead = _pool->freelist( size );
-                    FreeList *fb = fhead;
-                    while ( fb && !fhead.compare_exchange_weak( fb, fb->next ) );
-                    if ( fb ) {
-                        si.touse = *fb;
-                        si.touse.next = nullptr;
-                        delete fb;
-                        p = fromFreelist( si );
-                    } else { /* give up and allocate a fresh block */
-                        p._block = newblock( size );
-                        p._offset = _pool->header( p ).allocated ++;
-                    }
-                }
-
-            }
-
-            _pool->valgrindAllocated( p );
-            return p;
-        }
-
-        void free( Pointer p )
-        {
-            if ( !valid( p ) )
-                return;
-
-            ASSERT( _pool->header( p ).total > 0 && "trying to free ephemeral block" );
-
-            auto &si = sizeinfo( size( p ) );
-            FreeList *fl = si.touse.count < 4096 ? &si.touse : &si.tofree;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-            VALGRIND_MAKE_MEM_UNDEFINED( dereference( p ), sizeof( Pointer ) );
-#pragma GCC diagnostic pop
-            freechunk( p ) = fl->head;
-            fl->head = p;
-            ++ fl->count;
-
-            _pool->valgrindDeallocated( p );
-
-            /* if there's a lot on our freelists, give some to the pool */
-            if ( fl == &si.tofree && fl->count >= 4096 ) {
-                std::atomic< FreeList * > &fhead = _pool->freelist( size( p ) );
-                fl = new FreeList( *fl );
-                fl->next = fhead;
-                while ( !fhead.compare_exchange_weak( fl->next, fl ) );
-                si.tofree = FreeList();
-            }
-        }
-
-        bool usable( int b )
-        {
-            return _pool->block[ b ] &&
-                _pool->header( b ).allocated < _pool->header( b ).total;
-        }
-
-        SizeInfo &sizeinfo( int index )
-        {
-            if ( index < 4096 )
-                return _size[ index ];
-            if ( !_size_big[ index / 4096 ] )
-                _size_big[ index / 4096 ] = new SizeInfo[ 4096 ];
-            return _size_big[ index / 4096 ][ index % 4096 ];
-        }
-
-        int newblock( int size )
-        {
-            int b = 0;
-
-            if ( _emptyblocks.empty() ) {
-                b = _pool->usedblocks.fetch_add( 16 );
-                for ( int i = b + 1; i < b + 16; ++i )
-                    _emptyblocks.push_back( i );
-            } else {
-                b = _emptyblocks.back();
-                _emptyblocks.pop_back();
-            }
-
-            auto &si = sizeinfo( size );
-
-            const int overhead = sizeof( BlockHeader );
-            const int allocsize = align( size, sizeof( Pointer ) );
-            si.blocksize = std::max( allocsize + overhead, si.blocksize );
-            const int total = allocsize ? ( si.blocksize - overhead ) / allocsize : 0;
-            const int allocate = allocsize ? overhead + total * allocsize : blocksize;
-
-            auto mem = brick::mmap::MMap::alloc( allocate );
-            _pool->block[ b ] = static_cast< char * >( mem );
-            _pool->header( b ).itemsize = size;
-            _pool->header( b ).total = total;
-            _pool->header( b ).allocated = 0;
-            _pool->valgrindNewBlock( b, total );
-            si.blocksize = std::min( 4 * si.blocksize, int( blocksize ) );
-            return si.active = b;
-        }
-
-    };
-
-    BlockHeader &header( Pointer p ) { return header( p._block ); }
-    BlockHeader &header( int b ) {
-        return *reinterpret_cast< BlockHeader * >( block[ b ] );
+        return *reinterpret_cast< int * >( dereference( p ) - sizeof( int ) );
     }
 
-    char *dereference( Pointer p ) {
-        return block[ p._block ] + sizeof( BlockHeader ) +
-            p._offset * align( header( p ).itemsize, sizeof( Pointer ) );
+    Pointer ephemeralAllocate( int sz )
+    {
+        /* TODO valgrind */
+        ASSERT_LEQ( 0, _l.ephemeral_block );
+        ASSERT_LEQ( _l.ephemeral_offset + sz, blocksize );
+        Pointer p( _l.ephemeral_block, _l.ephemeral_offset + sizeof( int ) );
+        _l.ephemeral_offset += align( sz, 4 ) + sizeof( int );
+        ephemeralSize( p ) = sz;
+        return p;
     }
 
-    int size( Pointer p ) {
+    void ephemeralClear()
+    {
+        /* TODO valgrind */
+        _l.ephemeral_offset = 0;
+    }
+
+    bool valid( Pointer p ) { return p._block; /* != 0xFFFFFFFFFF*/; }
+
+    template< typename T >
+    T *machinePointer( Pointer p ) { return reinterpret_cast< T * >( dereference( p ) ); }
+
+    int size( Pointer p )
+    {
+        if( p._block == _l.ephemeral_block )
+        {
+            ASSERT_LEQ( p._offset, _l.ephemeral_offset );
+            return ephemeralSize( p );
+        }
+
+        ASSERT( header( p ).total > 0 && "invalid size() call on a foreign ephemeral block" );
+        ASSERT( header( p ).itemsize );
         return header( p ).itemsize;
     }
 
-};
+    bool alias( Pointer a, Pointer b )
+    {
+        return a.block == b.block && a.offset == b.offset;
+    }
 
-/*
- * A 'dummy' pool implementation, wrapping the system allocator and emulating
- * the 'special' capabilities of pool (access to extra bits per pointer -- but
- * only 2, unlike the real pool, pointer->size queries).
- */
+    Pointer &freechunk( Pointer p )
+    {
+        return *reinterpret_cast< Pointer * >( dereference( p ) );
+    }
 
-struct NonPool
-{
-    struct PtrHeader {
-        uint32_t size;
-    };
+    Pointer fromFreelist( SizeInfo &si )
+    {
+        ASSERT( si.touse.count );
+        ASSERT( valid( si.touse.head ) );
+        -- si.touse.count;
+        Pointer p = si.touse.head;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+        VALGRIND_MAKE_MEM_DEFINED( dereference( p ), sizeof( Pointer ) );
+        si.touse.head = freechunk( p );
+        VALGRIND_MAKE_MEM_NOACCESS( dereference( p ), sizeof( Pointer ) );
+#pragma GCC diagnostic pop
+        return p;
+    }
 
-    struct Pointer : brick::types::Comparable {
-        using Raw = uintptr_t;
-        static constexpr int tagBits = 2;
-        static constexpr Raw tagMask = 0x3;
+    Pointer allocate( int size )
+    {
+        Pointer p;
 
-        Pointer() : _ptr( nullptr ) { }
-        Pointer( void *ptr ) : _ptr( ptr ) {
-            ASSERT_EQ( tag(), 0u );
+        auto &si = sizeinfo( size );
+        /* try our private freelist first */
+
+        if ( !si.touse.count && si.tofree.count ) {
+            si.touse = si.tofree;
+            si.tofree = FreeList();
         }
 
-        Raw raw() const { return _ptr.raw; }
-
-        static Pointer fromRaw( Raw r ) {
-            Pointer p;
-            p._ptr.raw = r;
-            return p;
+        if ( si.touse.count )
+            p = fromFreelist( si );
+        else { /* nope. try a partially filled block */
+            if ( si.active >= 0 && usable( si.active ) ) {
+                p._block = si.active;
+                p._offset = header( p ).allocated ++;
+            } else { /* still nothing. try nicking something from the shared freelist */
+                std::atomic< FreeList * > &fhead = freelist( size );
+                FreeList *fb = fhead;
+                while ( fb && !fhead.compare_exchange_weak( fb, fb->next ) );
+                if ( fb ) {
+                    si.touse = *fb;
+                    si.touse.next = nullptr;
+                    delete fb;
+                    p = fromFreelist( si );
+                } else { /* give up and allocate a fresh block */
+                    p._block = newblock( size );
+                    p._offset = header( p ).allocated ++;
+                }
+            }
         }
 
-        Pointer untagged() const {
-            Pointer p( *this );
-            p.setTag( 0 );
-            return p;
+        valgrindAllocated( p );
+        return p;
+    }
+
+    void free( Pointer p )
+    {
+        if ( !valid( p ) )
+            return;
+
+        ASSERT( header( p ).total > 0 && "trying to free ephemeral block" );
+
+        auto &si = sizeinfo( size( p ) );
+        FreeList *fl = si.touse.count < 4096 ? &si.touse : &si.tofree;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+        VALGRIND_MAKE_MEM_UNDEFINED( dereference( p ), sizeof( Pointer ) );
+#pragma GCC diagnostic pop
+        freechunk( p ) = fl->head;
+        fl->head = p;
+        ++ fl->count;
+
+        valgrindDeallocated( p );
+
+        /* if there's a lot on our freelists, give some to the pool */
+        if ( fl == &si.tofree && fl->count >= 4096 ) {
+            std::atomic< FreeList * > &fhead = freelist( size( p ) );
+            fl = new FreeList( *fl );
+            fl->next = fhead;
+            while ( !fhead.compare_exchange_weak( fl->next, fl ) );
+            si.tofree = FreeList();
         }
-        void *raw_ptr() const { return untagged()._ptr.ptr; }
-        Raw raw_address() const { return untagged()._ptr.raw; }
+    }
 
-        unsigned tag() const { return _ptr.raw & tagMask; }
-        void setTag( unsigned tag ) {
-            ASSERT_EQ( tag & 0x3u, tag );
-            _ptr.raw &= ~tagMask;
-            _ptr.raw |= tag & tagMask;
+    bool usable( int b )
+    {
+        return _s->block[ b ] && header( b ).allocated < header( b ).total;
+    }
+
+    SizeInfo &sizeinfo( int index )
+    {
+        if ( index < 4096 )
+            return _l.size[ index ];
+        if ( !_l.size_big[ index / 4096 ] )
+            _l.size_big[ index / 4096 ] = new SizeInfo[ 4096 ];
+        return _l.size_big[ index / 4096 ][ index % 4096 ];
+    }
+
+    int newblock( int size )
+    {
+        int b = 0;
+
+        if ( _l.emptyblocks.empty() ) {
+            b = _s->usedblocks.fetch_add( 16 );
+            for ( int i = b + 1; i < b + 16; ++i )
+                _l.emptyblocks.push_back( i );
+        } else {
+            b = _l.emptyblocks.back();
+            _l.emptyblocks.pop_back();
         }
 
-        explicit operator bool() const { return untagged()._ptr.ptr; }
-        bool operator!() const { return !bool( *this ); }
-        bool operator<=( const Pointer &p ) const { return raw() <= p.raw(); }
+        auto &si = sizeinfo( size );
 
-        char *ptr() const { return static_cast< char * >( raw_ptr() ) + sizeof( PtrHeader ); }
+        const int overhead = sizeof( BlockHeader );
+        const int allocsize = align( size, sizeof( Pointer ) );
+        si.blocksize = std::max( allocsize + overhead, si.blocksize );
+        const int total = allocsize ? ( si.blocksize - overhead ) / allocsize : 0;
+        const int allocate = allocsize ? overhead + total * allocsize : blocksize;
 
-        PtrHeader &header() { return *static_cast< PtrHeader * >( raw_ptr() ); }
+        auto mem = brick::mmap::MMap::alloc( allocate );
+        _s->block[ b ] = static_cast< char * >( mem );
+        header( b ).itemsize = size;
+        header( b ).total = total;
+        header( b ).allocated = 0;
+        valgrindNewBlock( b, total );
+        si.blocksize = std::min( 4 * si.blocksize, int( blocksize ) );
+        return si.active = b;
+    }
 
-        static Pointer allocate( int n ) {
-            Pointer p( ::operator new( n + sizeof( PtrHeader ) ) );
-            p.header().size = n;
-            ASSERT_EQ( p.tag(), 0u );
-            return p;
-        }
-        void free() {
-            ::operator delete( raw_ptr() );
-            _ptr.ptr = nullptr;
-        }
+    BlockHeader &header( Pointer p ) { return header( p._block ); }
+    BlockHeader &header( int b ) {
+        return *reinterpret_cast< BlockHeader * >( _s->block[ b ] );
+    }
 
-        union _Ptr {
-            _Ptr( void *ptr ) : ptr( ptr ) { }
-            void *ptr;
-            Raw raw;
-        } _ptr;
-    };
+    char *dereference( Pointer p ) {
+        return _s->block[ p._block ] + sizeof( BlockHeader ) +
+            p._offset * align( header( p ).itemsize, sizeof( Pointer ) );
+    }
 
-    NonPool() {}
-    NonPool( const NonPool & ) = delete;
-
-    struct Wharf {
-
-        Wharf( std::shared_ptr< NonPool > ) {}
-        Wharf() {}
-
-        char *dereference( Pointer p ) { return p.ptr(); }
-        const char *dereference( Pointer p ) const { return p.ptr(); }
-        bool valid( Pointer p ) { return bool( p ); }
-        int size( Pointer p ) { return p.header().size; }
-        bool alias( Pointer a, Pointer  b ) { return a.raw() == b.raw(); }
-        void free( Pointer p ) { p.free(); }
-        Pointer allocate( size_t s ) { return Pointer::allocate( s ); }
-        Pointer ephemeralAllocate( size_t s ) { return Pointer::allocate( s ); }
-        void ephemeralFree( Pointer p ) { p.free(); }
-    };
 };
 
 }
@@ -661,14 +570,14 @@ struct TestPool
     struct Checker : shmem::Thread
     {
         char padding[128];
-        Pool::ThreadAccess m_pool;
+        Pool m_pool;
         std::deque< Pool::Pointer > ptrs;
         int limit;
         unsigned seedp;
         int terminate;
         char padding2[128];
 
-        Pool::ThreadAccess &pool() { return m_pool; }
+        Pool &pool() { return m_pool; }
 
         bool decide( int i )
         {
@@ -703,10 +612,16 @@ struct TestPool
             : terminate( 0 ) {}
     };
 
-    TEST(stress)
+    TEST(sequential)
+    {
+        Checker c;
+        c.main();
+    }
+
+    TEST(parallel)
     {
         std::vector< Checker > c;
-        c.resize( 3 );
+        c.resize( 3, Checker() );
         for ( int j = 0; j < 5; ++j ) {
             for ( auto &t : c ) t.start();
             for ( auto &t : c ) t.join();
