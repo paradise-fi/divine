@@ -59,6 +59,7 @@
 namespace brick {
 namespace hash {
 
+typedef uint32_t hash32_t;
 typedef uint64_t hash64_t;
 typedef std::pair< hash64_t, hash64_t > hash128_t;
 
