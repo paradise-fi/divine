@@ -665,7 +665,7 @@ struct SpookyState {
 
 namespace {
 
-inline hash128_t spooky( const void *message, size_t length, uint64_t seed1, uint64_t seed2 ) {
+inline hash128_t spooky( const void *message, size_t length, uint64_t seed1 = 0, uint64_t seed2 = 0 ) {
     return jenkins::SpookyHash::Hash128( message, length, seed1, seed2 );
 }
 
