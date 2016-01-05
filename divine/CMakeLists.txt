@@ -6,17 +6,17 @@ include( template-separe )
 file( GLOB CPP *.cpp )
 file( GLOB HPP *.h *.hpp )
 
-foreach( D utility llvm compile toolkit statespace algorithm ui )
+foreach( D utility vm compile ss algorithm ui )
     file( GLOB CPP_${D} ${D}/*.cpp )
     file( GLOB HPP_${D} ${D}/*.hpp )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
 endforeach()
 
-stringify( "llvm" llvm/problem.def )
-template_separe( LLVM llvm/interpreter.cpp )
+stringify( "vm" vm/problem.def )
+template_separe( VM vm/interpreter.cpp )
 
 set( VERSION_FILE ${divine_BINARY_DIR}/divine/version-generated.cpp )
-set( UPDATE_VERSION ${divine_SOURCE_DIR}/divine/update-version.sh )
+set( UPDATE_VERSION ${divine_SOURCE_DIR}/releng/update-version-sha.sh )
 
 add_custom_command(
   COMMAND sh ${UPDATE_VERSION} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${VERSION_FILE}" "${DIVINE_VERSION}"
@@ -48,8 +48,8 @@ update_file( "${llvmpaths_file}" "${llvmpaths}" )
 
 set_source_files_properties( compile.h PROPERTIES OBJECT_DEPENDS ${llvmpaths_file} )
 add_library( libdivine
-  ${CPP_utility} ${CPP_llvm} ${CPP_toolkit} ${CPP_compile}
-  ${LLVM_TS_OUTPUTS}
+  ${CPP_utility} ${CPP_vm} ${CPP_compile}
+  ${VM_TS_OUTPUTS}
   "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
   ${STRINGIFIED} )
 
@@ -57,7 +57,7 @@ target_link_libraries( libdivine pthread liblart )
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
-bricks_unittest( test-divine ${HPP} ${HPP_llvm} ${HPP_ui} ${HPP_statespace} )
+bricks_unittest( test-divine ${HPP} ${HPP_vm} ${HPP_ui} ${HPP_statespace} )
 
 if( NOT WIN32 )
   set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
@@ -69,7 +69,7 @@ target_link_libraries( libdivine pdclib_str )
 target_link_libraries( libdivine m_str )
 target_link_libraries( libdivine cxxabi_str )
 target_link_libraries( libdivine cxx_str )
-target_link_libraries( libdivine llvm_usr_str )
+target_link_libraries( libdivine vm_usr_str )
 target_link_libraries( libdivine ${CURSES_LIBRARIES} )
 
 if ( OPT_SQL )
