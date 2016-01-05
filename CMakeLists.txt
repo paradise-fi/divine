@@ -231,7 +231,7 @@ add_subdirectory( external/pdclib )
 add_subdirectory( external/libm )
 add_subdirectory( external/libcxxabi )
 add_subdirectory( external/libcxx )
-add_subdirectory( userspace )
+add_subdirectory( runtime )
 
 add_subdirectory( divine )
 add_subdirectory( tools )
