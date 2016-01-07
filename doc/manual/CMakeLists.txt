@@ -9,7 +9,8 @@ if( PDFLATEX AND BIBTEX )
     OUTPUT manual.pdf
     DEPENDS ${SOURCES}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND pandoc --smart -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.pdf ${SOURCES}
+    COMMAND pandoc --latex-engine=${PDFLATEX} --smart -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.pdf ${SOURCES}
+    VERBATIM
   )
   set( PDFMAN "manual.pdf" )
 endif()
