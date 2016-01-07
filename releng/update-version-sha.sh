@@ -9,8 +9,8 @@ cd $from
 
 interesting='.*(\.c$|\.cpp$|\.h$|\.cc$|\.hh$)';
 boring='\.orig$|~$';
-if test -e release/manifest; then
-    manifest=`cat release/manifest`;
+if test -e releng/manifest; then
+    manifest=`cat releng/manifest`;
 else
     if ! test -d _darcs || ! darcs --version > /dev/null; then
         manifest=`find . -type f ! -path './_build*' ! -path './_darcs*'` # assume...
@@ -19,7 +19,7 @@ else
     fi
 fi
 
-relsha=`cat release/checksum`
+relsha=`cat releng/checksum`
 
 sha() {
     echo "$manifest" | egrep "^./$1/$interesting" | egrep -v "$boring" \
