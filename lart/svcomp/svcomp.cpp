@@ -99,7 +99,7 @@ struct NondetTracking : lart::Pass {
         bool valid() const { return start != 0 || end != 0; }
         bool contains( int64_t x ) const { return start <= x && x <= end; }
         bool contains( Interval other ) const { return start <= other.start && other.end <= end; }
-        uint64_t size() const { return uint64_t( end ) - uint64_t( start ); }
+        uint64_t size() const { return uint64_t( end ) - uint64_t( start ) + 1; }
 
         bool operator==( Interval o ) const { return start == o.start && end == o.end; }
     };
