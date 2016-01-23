@@ -176,6 +176,22 @@ struct Substitute : lart::Pass {
         }
     }
 
+    static bool subseteq( MemoryOrder a, MemoryOrder b ) {
+        using uint = typename std::underlying_type< MemoryOrder >::type;
+        return uint( a ) == (uint( a ) & uint( b ));
+    }
+
+    MemoryOrder usememord( MemoryOrder x ) {
+        if ( subseteq( x, _minMemOrd ) )
+            _minMemOrd = x;
+        return x;
+    }
+
+    llvm::AtomicOrdering usememord( llvm::AtomicOrdering x ) {
+        usememord( castmemord( x ) );
+        return x;
+    }
+
     virtual ~Substitute() {}
 
     static PassMeta meta() {
@@ -279,8 +295,8 @@ struct Substitute : lart::Pass {
 
     using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) {
+        auto i32 = llvm::IntegerType::getInt32Ty( m.getContext() );
         if ( _bufferSize > 0 ) {
-            auto i32 = llvm::IntegerType::getInt32Ty( m.getContext() );
             auto bufSize = llvm::ConstantInt::getSigned( i32, _bufferSize );
             auto glo = llvm::cast< llvm::GlobalVariable >( m.getOrInsertGlobal( "__lart_weakmem_buffer_size", i32 ) );
             glo->setInitializer( bufSize );
@@ -315,6 +331,12 @@ struct Substitute : lart::Pass {
                 transformBypass( f );
             else
                 transformWeak( f, dl );
+
+        if ( _minMemOrd != MemoryOrder::Unordered ) {
+            if ( auto min = llvm::dyn_cast< llvm::GlobalVariable >( m.getOrInsertGlobal( "__lart_weakmem_min_ordering", i32 ) ) )
+                min->setInitializer( llvm::ConstantInt::get( i32, uint32_t( _minMemOrd ) ) );
+        }
+
         return llvm::PreservedAnalyses::none();
     }
 
@@ -598,7 +620,7 @@ struct Substitute : lart::Pass {
             orig->setAtomic( failord );
             irb.CreateCall( _sync, { vptr,
                                      getBitwidth( ptr->getType(), ctx, dl ),
-                                     llvm::ConstantInt::get( _moTy, uint64_t( castmemord( failord ) ) )
+                                     llvm::ConstantInt::get( _moTy, uint64_t( usememord( castmemord( failord ) ) ) )
                                    } );
             auto *eq = irb.CreateICmpEQ( orig, cmp, "lart.weakmem.cmpxchg.eq" );
             llvm::ReplaceInstWithInst( bb->getTerminator(), llvm::BranchInst::Create( ifeq, end, eq ) );
@@ -607,7 +629,7 @@ struct Substitute : lart::Pass {
             if ( succord != failord )
                 irb.CreateCall( _sync, { vptr,
                                          getBitwidth( ptr->getType(), ctx, dl ),
-                                         llvm::ConstantInt::get( _moTy, uint64_t( castmemord( succord ) ) )
+                                         llvm::ConstantInt::get( _moTy, uint64_t( usememord( castmemord( succord ) ) ) )
                                        } );
             irb.CreateStore( val, ptr )->setAtomic( succord );
             irb.CreateBr( end );
@@ -638,10 +660,10 @@ struct Substitute : lart::Pass {
             auto *mask = irb.CreateCall( _mask, { } );
             auto *shouldunlock = irb.CreateICmpEQ( mask, llvm::ConstantInt::get( mask->getType(), 0 ), "lart.weakmem.atomicrmw.shouldunlock" );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.atomicrmw.orig" );
-            orig->setAtomic( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord );
+            orig->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord ) );
             irb.CreateCall( _sync, { irb.CreateBitCast( ptr, i8ptr ),
                                      getBitwidth( ptr->getType(), ctx, dl ),
-                                     llvm::ConstantInt::get( _moTy, uint64_t( castmemord( aord ) ) )
+                                     llvm::ConstantInt::get( _moTy, uint64_t( usememord( castmemord( aord ) ) ) )
                                    } );
 
             switch ( op ) {
@@ -681,8 +703,8 @@ struct Substitute : lart::Pass {
                     ASSERT_UNREACHABLE( "weakmem: bad binop in AtomicRMW" );
             }
 
-            irb.CreateStore( val, ptr )->setAtomic(
-                    aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Release : aord );
+            irb.CreateStore( val, ptr )->setAtomic( usememord(
+                    aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Release : aord ) );
             llvm::ReplaceInstWithInst( bb->getTerminator(),
                     llvm::BranchInst::Create( unmask, cont, shouldunlock ) );
 
@@ -730,7 +752,7 @@ struct Substitute : lart::Pass {
             }
             auto bitwidth = getBitwidth( ety, ctx, dl );
             auto call = builder.CreateCall( _load, { addr, bitwidth,
-                        llvm::ConstantInt::get( _moTy, uint64_t( _config.load | castmemord( load->getOrdering() ) ) )
+                        llvm::ConstantInt::get( _moTy, uint64_t( usememord( _config.load | castmemord( load->getOrdering() ) ) ) )
                     } );
             llvm::Value *result = call;
 
@@ -784,14 +806,14 @@ struct Substitute : lart::Pass {
 
             auto bitwidth = getBitwidth( vty, ctx, dl );
             auto storeCall = builder.CreateCall( _store, { addr, value, bitwidth,
-                        llvm::ConstantInt::get( _moTy, uint64_t( _config.store | castmemord( store->getOrdering() ) ) )
+                        llvm::ConstantInt::get( _moTy, uint64_t( usememord( _config.store | castmemord( store->getOrdering() ) ) ) )
                     } );
             store->replaceAllUsesWith( storeCall );
             store->eraseFromParent();
         }
         for ( auto fence : fences ) {
-            auto callFlush = llvm::CallInst::Create( _fence, {
-                    llvm::ConstantInt::get( _moTy, uint64_t( _config.fence | castmemord( fence->getOrdering() ) ) ) } );
+            auto callFlush = llvm::CallInst::Create( _fence, { llvm::ConstantInt::get(
+                        _moTy, uint64_t( usememord( _config.fence | castmemord( fence->getOrdering() ) ) ) ) } );
             llvm::ReplaceInstWithInst( fence, callFlush );
         }
 
@@ -839,7 +861,8 @@ struct Substitute : lart::Pass {
     llvm::Function *_wmemmove = nullptr, *_wmemcpy = nullptr, *_wmemset = nullptr;
     llvm::Function *_cleanup = nullptr;
     llvm::Function *_mask = nullptr, *_unmask = nullptr;
-    llvm::Type *_moTy;
+    llvm::Type *_moTy = nullptr;
+    MemoryOrder _minMemOrd = MemoryOrder::SeqCst;
     static const std::string tagNamespace;
 };
 

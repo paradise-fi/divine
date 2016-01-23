@@ -20,6 +20,7 @@ extern "C" {
 #endif
 
 volatile extern int __lart_weakmem_buffer_size;
+volatile extern int __lart_weakmem_min_ordering;
 
 enum __lart_weakmem_order {
     __lart_weakmem_order_unordered = 0,

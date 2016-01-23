@@ -21,6 +21,9 @@ bool subseteq( const MemoryOrder a, const MemoryOrder b ) __lart_weakmem_bypass 
     return (unsigned( a ) & unsigned( b )) == unsigned( a );
 }
 
+MemoryOrder minMemOrd() forceinline { return MemoryOrder( __lart_weakmem_min_ordering ); }
+bool minIsAcqRel() forceinline { return subseteq( MemoryOrder::AcqRel, minMemOrd() ); }
+
 template< typename Collection >
 struct Reversed {
     using T = typename Collection::value_type;
@@ -218,7 +221,9 @@ struct Buffer : Array< BufferLine > {
     void flushOne() __attribute__((__always_inline__, __flatten__)) {
         int sz = size();
         __divine_assume( sz > 0 );
-        int i = sz == 1 ? 0 : __divine_choice( sz );
+        // If minimap ordering ic acquire-release, there is no point in
+        // reordering, as it will sync anyway
+        int i = sz == 1 || minIsAcqRel() ? 0 : __divine_choice( sz );
 
         BufferLine &entry = (*this)[ i ];
 
@@ -354,6 +359,7 @@ void startFlusher( void *_which ) __lart_weakmem_bypass {
 }
 
 volatile int __lart_weakmem_buffer_size = 2;
+volatile int __lart_weakmem_min_ordering = 0;
 
 using namespace lart::weakmem;
 
@@ -365,8 +371,16 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth, __lart
         __divine_problem( Problem::InvalidArgument, "weakmem.store: invalid bitwidth" );
 
     MemoryOrder ord = MemoryOrder( _ord );
+    BufferLine line{ addr, value, bitwidth, ord };
+    // bypass store buffer if acquire-release is minimal ordering (and
+    // therefore the memory model is at least TSO) and the memory location
+    // is thread-private
+    if ( minIsAcqRel() && __divine_is_private( addr ) ) {
+        line.store();
+        return;
+    }
     auto &buf = __lart_weakmem.storeBuffers.get();
-    buf.push( BufferLine{ addr, value, bitwidth, ord } );
+    buf.push( std::move( line ) );
     // there can be fence as oldest entry, so we need while here
     while ( buf.storeCount() > __lart_weakmem_buffer_size ) {
         buf.oldest().store();
