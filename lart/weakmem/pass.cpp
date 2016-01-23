@@ -181,14 +181,20 @@ struct Substitute : lart::Pass {
         return uint( a ) == (uint( a ) & uint( b ));
     }
 
-    MemoryOrder usememord( MemoryOrder x ) {
-        if ( subseteq( x, _minMemOrd ) )
-            _minMemOrd = x;
+    enum class InstType { Load, Store, Other };
+
+    MemoryOrder usememord( MemoryOrder x, InstType it = InstType::Other ) {
+        auto check = x;
+        if ( ( check == MemoryOrder::Release && it == InstType::Store )
+            || ( check == MemoryOrder::Acquire && it == InstType::Load ) )
+            check = MemoryOrder::AcqRel;
+        if ( subseteq( check, _minMemOrd ) )
+            _minMemOrd = check;
         return x;
     }
 
-    llvm::AtomicOrdering usememord( llvm::AtomicOrdering x ) {
-        usememord( castmemord( x ) );
+    llvm::AtomicOrdering usememord( llvm::AtomicOrdering x, InstType it = InstType::Other ) {
+        usememord( castmemord( x ), it );
         return x;
     }
 
@@ -660,7 +666,7 @@ struct Substitute : lart::Pass {
             auto *mask = irb.CreateCall( _mask, { } );
             auto *shouldunlock = irb.CreateICmpEQ( mask, llvm::ConstantInt::get( mask->getType(), 0 ), "lart.weakmem.atomicrmw.shouldunlock" );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.atomicrmw.orig" );
-            orig->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord ) );
+            orig->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord, InstType::Load ) );
             irb.CreateCall( _sync, { irb.CreateBitCast( ptr, i8ptr ),
                                      getBitwidth( ptr->getType(), ctx, dl ),
                                      llvm::ConstantInt::get( _moTy, uint64_t( usememord( castmemord( aord ) ) ) )
@@ -704,7 +710,7 @@ struct Substitute : lart::Pass {
             }
 
             irb.CreateStore( val, ptr )->setAtomic( usememord(
-                    aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Release : aord ) );
+                    aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Release : aord, InstType::Store ) );
             llvm::ReplaceInstWithInst( bb->getTerminator(),
                     llvm::BranchInst::Create( unmask, cont, shouldunlock ) );
 
@@ -752,7 +758,7 @@ struct Substitute : lart::Pass {
             }
             auto bitwidth = getBitwidth( ety, ctx, dl );
             auto call = builder.CreateCall( _load, { addr, bitwidth,
-                        llvm::ConstantInt::get( _moTy, uint64_t( usememord( _config.load | castmemord( load->getOrdering() ) ) ) )
+                        llvm::ConstantInt::get( _moTy, uint64_t( usememord( _config.load | castmemord( load->getOrdering() ), InstType::Load ) ) )
                     } );
             llvm::Value *result = call;
 
@@ -806,7 +812,7 @@ struct Substitute : lart::Pass {
 
             auto bitwidth = getBitwidth( vty, ctx, dl );
             auto storeCall = builder.CreateCall( _store, { addr, value, bitwidth,
-                        llvm::ConstantInt::get( _moTy, uint64_t( usememord( _config.store | castmemord( store->getOrdering() ) ) ) )
+                        llvm::ConstantInt::get( _moTy, uint64_t( usememord( _config.store | castmemord( store->getOrdering() ), InstType::Store ) ) )
                     } );
             store->replaceAllUsesWith( storeCall );
             store->eraseFromParent();
