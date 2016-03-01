@@ -514,6 +514,11 @@ struct Union : Comparable {
         return *this;
     }
 
+    ~Union() {
+        if ( _discriminator )
+            _destruct< 1, Types... >( _discriminator );
+    }
+
     template< typename T >
     auto operator=( const T &other ) -> typename
         std::enable_if< std::is_lvalue_reference< T & >::value, Union & >::type
@@ -1215,6 +1220,31 @@ struct UnionTest {
         ASSERT( u < 2l );
         ASSERT( v < 2l );
         ASSERT( w <= 2l );
+    }
+
+    struct TrackDtor {
+        TrackDtor( int *cnt ) : cnt( cnt ) { }
+        ~TrackDtor() { ++*cnt; }
+        int *cnt;
+    };
+
+    TEST(dtor) {
+        int cnt = 0;
+        {
+            Union< int, TrackDtor > u;
+            u = TrackDtor( &cnt );
+            cnt = 0;
+        }
+        ASSERT_EQ( cnt, 1 );
+    }
+
+    TEST(assing_dtor) {
+        int cnt = 0;
+        Union< int, TrackDtor > u;
+        u = TrackDtor( &cnt );
+        cnt = 0;
+        u = 1;
+        ASSERT_EQ( cnt, 1 );
     }
 };
 
