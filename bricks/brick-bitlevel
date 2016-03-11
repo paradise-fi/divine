@@ -590,15 +590,15 @@ struct BitTupleTest {
     struct OperatorTester {
         int value;
         int expected;
-        OperatorTester &operator++() { ASSERT_UNREACHABLE( "fell through" ); return *this; }
-        OperatorTester operator++( int ) { ASSERT_UNREACHABLE( "fell through" ); return *this; }
-        OperatorTester &operator--() { ASSERT_UNREACHABLE( "fell through" ); return *this; }
-        OperatorTester &operator--( int ) { ASSERT_UNREACHABLE( "fell through" ); return *this; }
-        OperatorTester &operator+=( int ) { ASSERT_UNREACHABLE( "fell through" ); return *this; }
-        OperatorTester &operator-=( int ) { ASSERT_UNREACHABLE( "fell through" ); return *this; }
-        OperatorTester &operator*=( int ) { ASSERT_UNREACHABLE( "fell through" ); return *this; }
-        OperatorTester &operator/=( int ) { ASSERT_UNREACHABLE( "fell through" ); return *this; }
-        OperatorTester &operator%=( int ) { ASSERT_UNREACHABLE( "fell through" ); return *this; }
+        OperatorTester &operator++() { UNREACHABLE( "fell through" ); return *this; }
+        OperatorTester operator++( int ) { UNREACHABLE( "fell through" ); return *this; }
+        OperatorTester &operator--() { UNREACHABLE( "fell through" ); return *this; }
+        OperatorTester &operator--( int ) { UNREACHABLE( "fell through" ); return *this; }
+        OperatorTester &operator+=( int ) { UNREACHABLE( "fell through" ); return *this; }
+        OperatorTester &operator-=( int ) { UNREACHABLE( "fell through" ); return *this; }
+        OperatorTester &operator*=( int ) { UNREACHABLE( "fell through" ); return *this; }
+        OperatorTester &operator/=( int ) { UNREACHABLE( "fell through" ); return *this; }
+        OperatorTester &operator%=( int ) { UNREACHABLE( "fell through" ); return *this; }
         void test() { ASSERT_EQ( value, expected ); }
         void set( int v, int e ) { value = v; expected = e; }
     };

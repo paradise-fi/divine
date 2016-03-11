@@ -261,7 +261,7 @@ struct Pattern
             next = begin + 1;
         }
         if ( _type == Mixed )
-            ASSERT_UNIMPLEMENTED();
+            NOT_IMPLEMENTED();
         if ( _type == Group )
         {
             std::vector< Tokens::iterator > res;

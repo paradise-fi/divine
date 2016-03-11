@@ -421,10 +421,10 @@ struct _HashSet : HashSetBase< Cell >
 
     void grow() {
         if ( 2 * size() >= _maxsize )
-            ASSERT_UNREACHABLE( "ran out of space in the hash table" );
+            UNREACHABLE( "ran out of space in the hash table" );
 
         if( _growing )
-            ASSERT_UNREACHABLE( "too many collisions during table growth" );
+            UNREACHABLE( "too many collisions during table growth" );
 
         _growing = true;
 
@@ -635,7 +635,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                     updateIndex( _l.currentRow );
                     break;
                 default:
-                    ASSERT_UNREACHABLE("impossible result from insertCell");
+                    UNREACHABLE("impossible result from insertCell");
             }
         }
         UNREACHABLE("broken loop");
