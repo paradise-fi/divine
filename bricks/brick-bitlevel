@@ -233,7 +233,7 @@ struct BitField
 {
     static const int bitwidth = width;
     struct Virtual : BitPointer {
-        void set( T t ) { bitcopy( BitPointer( &t ), *this, bitwidth ); }
+        T set( T t ) { bitcopy( BitPointer( &t ), *this, bitwidth ); return t; }
         Virtual operator=( T t ) {
             set( t );
             return *this;
@@ -369,6 +369,16 @@ template< typename... Args > struct BitTuple : _BitTuple< Args... >
     char storage[ align( Virtual::bitwidth, 32 ) / 8 ];
     BitTuple() { std::fill( storage, storage + sizeof( storage ), 0 ); }
     operator BitPointer() { return BitPointer( storage ); }
+    bool operator<( const BitTuple &o ) const
+    {
+        return std::lexicographical_compare( storage, storage + sizeof( storage ),
+                                             o.storage, o.storage + sizeof( storage ) );
+    }
+    bool operator==( const BitTuple &o ) const
+    {
+        return std::equal( storage, storage + sizeof( storage ),
+                           o.storage, o.storage + sizeof( storage ) );
+    }
 };
 
 template< int I, typename BT >
