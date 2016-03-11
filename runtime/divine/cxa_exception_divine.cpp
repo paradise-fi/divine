@@ -1,7 +1,7 @@
 #include <divine.h>
 #include "unwind.h"
-#include <src/cxa_exception.hpp>
-#include <src/private_typeinfo.h>
+#include <libcxxabi/src/cxa_exception.hpp>
+#include <libcxxabi/src/private_typeinfo.h>
 #include <limits.h>
 #include <divine/problem.h>
 
