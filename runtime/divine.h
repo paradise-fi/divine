@@ -1,124 +1,159 @@
-#ifndef __DIVINE_USR_H
-#define __DIVINE_USR_H
-
-#undef assert
-#define assert( x ) __divine_assert( !!(x) )
-
-#define AP( x ) __divine_ap( x )
-#define LTL( name, x ) extern const char * const __divine_LTL_ ## name = #x;
-
-#include <stdint.h>
-#include <string.h>
+#ifndef __DIVINE_H__
+#define __DIVINE_H__
 
 #ifdef __cplusplus
-#define NOTHROW throw()
-extern "C" {
+#define EXTERN_C extern "C" {
+#define CPP_END }
+#define NOTHROW noexcept
 #else
+#define EXTERN_C
+#define CPP_END
 #define NOTHROW
 #endif
 
-/* Prototypes for DiVinE-provided builtins. */
-int __divine_new_thread( void (*entry)(void *), void *arg ) NOTHROW;
-int __divine_get_tid( void ) NOTHROW;
+struct _VM_ValueInfo
+{
+    int type;
+    int width;
+};
 
-void __divine_interrupt_mask( void ) NOTHROW;
-void __divine_interrupt_unmask( void ) NOTHROW;
-void __divine_interrupt( void ) NOTHROW;
+struct _VM_InstructionInfo
+{
+    int opcode;
+};
 
-void __divine_assert( int value ) NOTHROW;
-void __divine_ap( int id ) NOTHROW;
+struct _VM_FunctionInfo
+{
+    int frame_size;
+    void *entry_point;
+} __attribute__((packed));
 
-void __divine_problem( int type, const char *data ) NOTHROW;
+struct _VM_Frame
+{
+    void *pc;
+    struct _VM_Frame *parent;
+};
+
+enum _VM_Fault
+{
+    _VM_F_Assert,
+    _VM_F_Arithmetic, /* division by zero */
+    _VM_F_Memory,
+    _VM_F_Control,
+    _VM_F_Locking,
+    _VM_F_Hypercall,
+    _VM_F_NotImplemented
+};
+
+enum _VM_FaultAction
+{
+    _VM_FA_Resume, _VM_FA_Abort
+};
+
+#ifdef __divine__
+#undef assert
+#define assert( x ) do { if ( !(x) ) __vm_fault( _VM_F_Assert ); } while (0)
+
+EXTERN_C
+
+void *__sys_init( void *env[] );
 
 /*
- * Non-deterministic choice: when __divine_choice is encountered, the
- * "universe" of the program splits into n copies. Each copy of the "universe"
- * will see a different return value from __divine_choice, starting from 0.
+ * Set up the scheduler. After __sys_init returns, the VM will repeatedly call
+ * the scheduler (every time with a blank frame). In the first invocation, the
+ * return value of __sys_init is passed to the scheduler (along with its size),
+ * while in each subsequent call, it gets the return value of its previous
+ * invocation (again, along with its size). The scheduler can use __vm_jump to
+ * invoke suspended threads of execution. Upon interrupt, the address of the
+ * interrupted frame is optionally stored by the VM in a location set by a call
+ * to __vm_set_ifl and the control is returned to the scheduler's frame
+ * (i.e. if the scheduler invokes __vm_jump and the jumped-to function is then
+ * interrupted, control returns to the instruction right after the __vm_jump).
+ */
+void __vm_set_sched( void *(*f)( int, void * ) ) NOTHROW;
+void __vm_set_fault( enum _VM_FaultAction (*f)( enum _VM_Fault ) ) NOTHROW;
+
+/*
+ * When execution is interrupted, the VM will store the address of the
+ * interrupted frame into *where (unless where is NULL). This address is reset
+ * to NULL upon every new invocation of the scheduler.
+ */
+void __vm_set_ifl( struct _VM_Frame **where ) NOTHROW;
+
+/*
+ * Non-deterministic choice: when __vm_choose is encountered, the "universe" of
+ * the program splits into n copies. Each copy of the "universe" will see a
+ * different return value from __vm_choose, starting from 0.
  *
  * When more than one parameter is given, the choice becomes probabilistic: for
  * N choices, you need to provide N additional integers, giving probability
- * weight of a given alternative (numbering from 0). E.g.
- * `__divine_choice( 2, 1, 9 )` will return 0 with probability 1/10 and 1 with
- * probability 9/10.
+ * weight of a given alternative (numbering from 0). E.g.  `__vm_choose( 2, 1,
+ * 9 )` will return 0 with probability 1/10 and 1 with probability 9/10.
  */
-int __divine_choice( int n, ... ) NOTHROW;
+int __vm_choose( int n, ... ) NOTHROW;
 
 /*
- * Heap access. To obtain a new heap block, call __divine_malloc with a
- * size. The size will not be rounded in any way: you get exactly what you ask
- * for. Does not fail. Calling free will mark a block as invalid and the
- * program is no longer allowed to touch it.
- *
- * TODO: Any references to freed memory blocks should be turned into null
- * pointers immediately, to avoid the possibility of incidentally creating
- * references to subsequently allocated memory. Currently this null-ing only
- * happens „sometimes“ (when the heap is canonized).
+ * Transfer control to a given frame. The program counter of the current frame
+ * is incremented *before* __vm_jump transfers control, so if the target frame
+ * uses __vm_jump to go back to the first one, it'll continue execution right
+ * after the call which caused the first __vm_jump. If `forgetful` is non-zero,
+ * the jump will also atomically clear the mask flag (see `__vm_mask`) and
+ * forget any visible effects that may have happened within the current atomic
+ * section.
  */
-
-void *__divine_malloc( unsigned long size ) NOTHROW;
-void __divine_free( void *ptr ) NOTHROW;
-int __divine_heap_object_size( void *ptr ) NOTHROW;
-int __divine_is_private( void *ptr ) NOTHROW;
+void __vm_jump( void *dest, int forgetful ) NOTHROW;
 
 /*
- * Copy memory. Doing a per-byte copy would destroy pointer maps, hence you are
- * required to copy memory blocks using this builtin. The llvm memcpy
- * intrinsics are automatically mapped memcpy, which is provided by pdclib and
- * calls __divine_memcpy. Unlike libc memcpy, the memory areas are allowed to
- * overlap (i.e. __divine_memcpy behaves like memmove).
+ * Cause a fault. The first argument is passed on to the fault handler in the
+ * program. All remaining arguments are ignored, but can be examined by the
+ * fault handler, since it will obtain a pointer to the call instruction which
+ * invoked __vm_fault as its 'fault location' parameter.
  */
-void *__divine_memcpy( void *dest, void *src, size_t count ) NOTHROW;
+void __vm_fault( enum _VM_Fault t, ... ) NOTHROW;
 
 /*
- * Variable argument handling. Calling __divine_va_start gives you a pointer to
- * a monolithic block of memory that contains all the varargs, successively
- * assigned higher addresses going from left to right. All the rest of vararg
- * support can be implemented in the userspace then.
+ * Setting the mask to 1 disables interrupts, i.e. the program executes
+ * atomically until the mask is reset to 0. Returns the previous value of
+ * mask.
  */
-void *__divine_va_start( void ) NOTHROW;
+int __vm_mask( int ) NOTHROW;
+
+void __vm_trace( const char * ) NOTHROW;
 
 /*
- * Exception handling and stack unwinding.
- *
- * To unwind some frames (in the current execution stack, i.e. the current
- * thread), call __divine_unwind. The argument "frameid" gives the id of the
- * frame to unwind to (see also __divine_landingpad). If more than 1 frame is
- * unwound, the intervening frames will NOT run their landing pads.
- *
- * If a landing pad exists for the active call in the frame that we unwind
- * into, the landing pad personality routine gets exactly the arguments passed
- * as varargs to __divine_unwind.
+ * Create and destroy heap objects.
  */
-void __divine_unwind( int frameid, ... ) NOTHROW __attribute__((noreturn));
-
-struct _DivineLP_Clause {
-    int32_t type_id; // -1 for a filter
-    void *tag; /* either a pointer to an array constant for a filter, or a
-                  typeinfo pointer for catch */
-} __attribute__((packed));
-
-struct _DivineLP_Info {
-    int32_t cleanup; /* whether the cleanup flag is present on the landingpad */
-    int32_t clause_count;
-    void *personality;
-    struct _DivineLP_Clause clause[];
-} __attribute__((packed));
+void *__vm_make_object( int size ) NOTHROW;
+void  __vm_free_object( void *ptr ) NOTHROW;
 
 /*
- * The LPInfo data will be garbage-collected when it is no longer
- * referenced. The info returned reflects the landingpad LLVM instruction: each
- * LPClause is either a "catch" or a "filter". The frameid is either an
- * absolute frame number counted from 1 upwards through the call stack, or a
- * relative frame number counted from 0 downwards (0 being the caller of
- * __divine_landingpad, -1 its caller, etc.). Returns NULL if the active call
- * in the given frame has no landing pad.
+ * Efficient, atomic memory copy. Should have the same effect as a loop-based
+ * copy done under a mask, but much faster (especially much faster than
+ * byte-based copying, due to much simpler pointer tracking code paths).
  */
-struct _DivineLP_Info *__divine_landingpad( int frameid ) NOTHROW;
+void  __vm_memcpy( void *, void *, int ) NOTHROW;
 
-#ifdef __cplusplus
-}
-#endif
+/*
+ * Variable argument handling. Calling __vm_query_varargs gives you a pointer
+ * to a monolithic block of memory that contains all the varargs, successively
+ * assigned higher addresses (going from left to right in the argument list).
+ */
+void *__vm_query_varargs( void ) NOTHROW;
 
+/*
+ * Get the address of the currently executing frame.
+ */
+void *__vm_query_frame( void ) NOTHROW;
+int __vm_query_object_size( void * ) NOTHROW;
+
+struct _VM_FunctionInfo *__vm_query_function( const char *name ) NOTHROW;
+
+CPP_END
+
+#endif // __divine__
+
+#undef EXTERN_C
+#undef CPP_END
 #undef NOTHROW
 
-#endif
+#endif // __DIVINE_H__
