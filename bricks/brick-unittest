@@ -167,6 +167,9 @@ int run( std::string only_group= "" , std::string only_case = "" ) {
 
     int total = 0, total_bad = 0, group_count = 0;
 
+    std::sort( testcases->begin(), testcases->end(),
+               []( auto a, auto b ) { return a->group() < b->group(); } );
+
     for ( auto group : *testcases ) {
         ++ counts[ group->group() ];
     }
