@@ -7,7 +7,7 @@
 #include <thread>
 #include <chrono>
 
-#include <bricks/brick-string.h>
+#include <brick-string>
 
 #ifdef __unix
 #include <sys/resource.h>

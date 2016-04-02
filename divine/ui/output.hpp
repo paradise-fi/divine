@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <iostream>
-#include <brick-unittest.h>
+#include <brick-unittest>
 
 #ifndef DIVINE_OUTPUT_H
 #define DIVINE_OUTPUT_H

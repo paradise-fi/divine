@@ -1,7 +1,7 @@
 #include <string>
 #include <stdexcept>
 
-#include <bricks/brick-assert.h>
+#include <bricks/brick-assert>
 
 #ifndef DIVINE_UTILITY_DIE
 #define DIVINE_UTILITY_DIE

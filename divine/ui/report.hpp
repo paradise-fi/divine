@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <memory>
 
-#include <brick-types.h>
+#include <brick-types>
 
 #include <divine/utility/version.h>
 #include <divine/utility/meta.h>

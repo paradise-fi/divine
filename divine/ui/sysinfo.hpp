@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <divine/utility/withreport.h>
 
-#include <bricks/brick-shmem.h>
+#include <bricks/brick-shmem>
 
 #ifndef DIVINE_SYSINFO_H
 #define DIVINE_SYSINFO_H
