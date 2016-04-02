@@ -105,7 +105,7 @@ macro( bricks_check_features )
     endif()
   endif()
 
-  include( FindLLVM )
+  find_package( LLVM )
   if( LLVM_FOUND )
     add_definitions( -DBRICKS_HAVE_LLVM -isystem ${LLVM_INCLUDE_DIRS} )
   endif()
