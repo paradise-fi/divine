@@ -2,7 +2,7 @@
 #define DIVINE_LLVM_SUPPORT
 
 namespace divine {
-namespace llvm {
+namespace vm {
 bool initMultithreaded();
 }
 }
