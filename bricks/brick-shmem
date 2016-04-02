@@ -249,22 +249,21 @@ struct StartDetector {
         Shared( Shared & ) = delete;
     };
 
-    Shared &shared;
+    std::shared_ptr< Shared > _s;
 
-    StartDetector( Shared &s ) : shared( s ) {}
-    StartDetector( const StartDetector &s ) : shared( s.shared ) {}
+    StartDetector() : _s( new Shared() ) {}
 
-    void waitForAll( unsigned short peers ) {
+    void waitForAll( unsigned short peers )
+    {
+        while ( _s->leaveGuard );
 
-        while ( shared.leaveGuard );
-
-        if ( ++shared.counter == peers ) {
-            shared.leaveGuard = peers;
-            shared.counter = 0;
+        if ( ++ _s->counter == peers ) {
+            _s->leaveGuard = peers;
+            _s->counter = 0;
         }
 
-        while ( shared.counter );
-        --shared.leaveGuard;
+        while ( _s->counter );
+        -- _s->leaveGuard;
     }
 
 };
@@ -629,7 +628,7 @@ struct Utils {
         StartDetector detector;
         int rep;
 
-        DetectorWorker( StartDetector::Shared &sh, int repeat ) :
+        DetectorWorker( StartDetector sh, int repeat ) :
             detector( sh ),
             rep( repeat )
         {}
@@ -641,7 +640,7 @@ struct Utils {
     };
 
     void processDetector( int repeat ) {
-        StartDetector::Shared sh;
+        StartDetector sh;
         std::vector< DetectorWorker > threads{ peers, DetectorWorker{ sh, repeat } };
 
 #if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
@@ -653,7 +652,7 @@ struct Utils {
                 w.start();
             for ( auto &w : threads )
                 w.join();
-            ASSERT_EQ( sh.counter.load(), 0 );
+            ASSERT_EQ( sh._s->counter.load(), 0 );
         }
     }
 
@@ -696,10 +695,10 @@ struct Utils {
     };
 
     void processCounter() {
-        StartDetector::Shared detectorShared;
+        StartDetector det;
         ApproximateCounter::Shared counterShared;
         std::vector< CounterWorker > threads{ peers,
-            CounterWorker{ detectorShared, counterShared } };
+            CounterWorker{ det, counterShared } };
 
 #if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
         alarm( 5 );
