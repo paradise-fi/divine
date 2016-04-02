@@ -57,7 +57,7 @@ endfunction()
 
 # Register a target "test-bricks" that builds and runs all the unit tests
 # included with bricks. Use test_bricks( directory_with_bricks ). Also note
-# that if you write your own unit tests using brick-unittesh.h, the tests of
+# that if you write your own unit tests using brick-unittest, the tests of
 # any bricks that you use in the tested units will be automatically included in
 # your testsuite.
 
