@@ -696,7 +696,7 @@ struct Union : Comparable {
 
     template< unsigned char >
     unsigned char _copyConstruct( unsigned char, const Union & )
-    { ASSERT_UNREACHABLE( "invalid _copyConstruct" ); }
+    { UNREACHABLE( "invalid _copyConstruct" ); }
 
     template< unsigned char i, typename T, typename... Ts >
     void _moveConstruct( unsigned char d, Union &&other ) {
@@ -708,7 +708,7 @@ struct Union : Comparable {
 
     template< unsigned char >
     unsigned char _moveConstruct( unsigned char, Union && )
-    { ASSERT_UNREACHABLE( "invalid _moveConstruct" ); }
+    { UNREACHABLE( "invalid _moveConstruct" ); }
 
     void _copyAssignDifferent( const Union &other ) {
         auto tmp = _discriminator;
@@ -736,7 +736,7 @@ struct Union : Comparable {
     }
 
     template< unsigned char >
-    void _copyAssignSame( const Union & ) { ASSERT_UNREACHABLE( "invalid _copyAssignSame" ); }
+    void _copyAssignSame( const Union & ) { UNREACHABLE( "invalid _copyAssignSame" ); }
 
     template< unsigned char i, typename T, typename... Ts >
     void _destruct( unsigned char d ) {
@@ -747,7 +747,7 @@ struct Union : Comparable {
     }
 
     template< unsigned char >
-    void _destruct( unsigned char ) { ASSERT_UNREACHABLE( "invalid _destruct" ); }
+    void _destruct( unsigned char ) { UNREACHABLE( "invalid _destruct" ); }
 
     void _moveAssignSame( Union &&other ) {
         ASSERT_EQ( _discriminator, other._discriminator );
@@ -765,7 +765,7 @@ struct Union : Comparable {
     }
 
     template< unsigned char >
-    void _moveAssignSame( Union && ) { ASSERT_UNREACHABLE( "invalid _moveAssignSame" ); }
+    void _moveAssignSame( Union && ) { UNREACHABLE( "invalid _moveAssignSame" ); }
 
     void _moveAssignDifferent( Union &&other ) {
         auto tmp = _discriminator;
@@ -811,7 +811,7 @@ struct Union : Comparable {
     }
 
     template< template< typename > class Compare, int d >
-    bool _compare2( const Union & ) const { ASSERT_UNREACHABLE( "invalid discriminator" ); }
+    bool _compare2( const Union & ) const { UNREACHABLE( "invalid discriminator" ); }
 
     template< template< typename > class Compare, int d, typename T, typename... Ts >
     bool _compare2( const Union &other ) const {
@@ -828,7 +828,7 @@ struct Union : Comparable {
     template< typename Target, bool anyCastPossible, int >
     Target _convert2( Preferred ) const {
         static_assert( anyCastPossible, "Cast of Union can never succeed" );
-        ASSERT_UNREACHABLE( "wrong _convert2 in Union" );
+        UNREACHABLE( "wrong _convert2 in Union" );
     }
 
     template< typename Target, bool any, int d, typename, typename... Ts >

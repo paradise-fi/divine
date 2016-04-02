@@ -146,8 +146,9 @@ struct Linker {
             auto r = _link->linkInModule( _annotate( src.get() ) );
             _owned.emplace_back( std::move( src ) );
             if ( r ) {
-                std::cerr << "ERROR: " << err << " while linking '" << src->getModuleIdentifier() << "'" << std::endl;
-                ASSERT_UNREACHABLE( "Linker error" );
+                std::cerr << "ERROR: " << err << " while linking '"
+                          << src->getModuleIdentifier() << "'" << std::endl;
+                UNREACHABLE( "Linker error" );
             }
         }
     }

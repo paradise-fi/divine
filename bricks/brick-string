@@ -520,7 +520,7 @@ struct TestRegexp {
     TEST(parse_catch) {
         try {
             ERegexp re("^foo(");
-            ASSERT_UNREACHABLE("bad regex");
+            UNREACHABLE("bad regex");
         } catch ( std::runtime_error &e ) {
         }
     }

@@ -614,7 +614,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                     ASSERT_UNREACHABLE("impossible result from insertCell");
             }
         }
-        ASSERT_UNREACHABLE("broken loop");
+        UNREACHABLE("broken loop");
     }
 
     template< typename T >
@@ -631,10 +631,10 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                     updateIndex( _l.currentRow );
                     break;
                 default:
-                    ASSERT_UNREACHABLE("impossible result from findCell");
+                    UNREACHABLE("impossible result from findCell");
             }
         }
-        ASSERT_UNREACHABLE("broken loop");
+        UNREACHABLE("broken loop");
     }
 
     template< typename T >
@@ -706,7 +706,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         ASSERT( rowIndex );
 
         if ( rowIndex >= _s->table.size() )
-            ASSERT_UNREACHABLE( "out of growth space" );
+            UNREACHABLE( "out of growth space" );
 
         if ( _s->currentRow >= rowIndex )
             return false;
@@ -777,9 +777,9 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 case Resolution::Success:
                     break;
                 case Resolution::NoSpace:
-                    ASSERT_UNREACHABLE( "ran out of space during growth" );
+                    UNREACHABLE( "ran out of space during growth" );
                 default:
-                    ASSERT_UNREACHABLE( "internal error" );
+                    UNREACHABLE( "internal error" );
             }
         }
 
@@ -1213,7 +1213,7 @@ struct Run : BenchmarkGroup
 
     template< template< typename > class, typename Self, int, typename, typename... Args >
     static void run( Self *, hlist::not_preferred, Args... ) {
-        ASSERT_UNREACHABLE( "brick::b_hashset::Run fell off the cliff" );
+        UNREACHABLE( "brick::b_hashset::Run fell off the cliff" );
     }
 
     template< template< typename > class RI, typename Self, int id,

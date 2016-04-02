@@ -356,7 +356,7 @@ struct MMap
             return O_RDONLY;
         if ( _flags.has( ProtectMode::Write ) )
             return O_WRONLY;
-        ASSERT_UNREACHABLE( "No open flags specified" );
+        UNREACHABLE( "No open flags specified" );
     }
 
 #endif
