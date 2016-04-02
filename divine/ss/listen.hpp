@@ -1,5 +1,10 @@
 namespace divine {
-namespace statespace {
+namespace ss {
+
+struct TrivialGroup
+{
+    TrivialGroup operator+( const TrivialGroup & ) { return *this; }
+};
 
 struct Listen
 {
@@ -25,9 +30,7 @@ template< typename E, typename S, typename M, typename C >
 struct GenericListen : Listen
 {
     E _e; S _s; M _m; C _c;
-
-    using Result = struct {};
-    using Aggregate = struct { void add( Result ) {} };
+    TrivialGroup result;
 
     GenericListen( E e, S s, M m, C c )
         : _e( e ), _s( s ), _m( m ), _c( c )
@@ -50,9 +53,7 @@ template< typename E, typename S, typename M, typename C >
 struct PassiveListen : Listen
 {
     E _e; S _s; M _m; C _c;
-
-    using Result = struct {};
-    using Aggregate = struct { void add( Result ) {} };
+    TrivialGroup result;
 
     PassiveListen( E e, S s, M m, C c )
         : _e( e ), _s( s ), _m( m ), _c( c )

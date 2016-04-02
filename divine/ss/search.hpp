@@ -7,68 +7,50 @@
 
 #include <brick-shmem>
 
-#include <divine/statespace/perthread.hpp>
-
-#include <divine/statespace/fixed.hpp>  /* tests */
-#include <divine/statespace/random.hpp> /* tests */
+#include <divine/ss/fixed.hpp>  /* tests */
+#include <divine/ss/random.hpp> /* tests */
 
 namespace divine {
-namespace statespace {
+namespace ss {
 
 namespace shmem = ::brick::shmem;
 
 template< typename L >
-struct Aggregate
-{
-    using T = typename L::Aggregate;
-};
-
-template< typename L >
-struct Result
-{
-    using T = typename L::Result;
-};
-
-template< typename L >
 struct SearchInterface
 {
-    virtual typename Result< L >::T run( bool ) = 0;
+    virtual void run( bool ) = 0;
 };
 
 template< typename B, typename L >
 struct SearchBase : SearchInterface< L >
 {
-    B &_b;
-    L &_l;
-    SearchBase( B &builder, L &listener ) : _b( builder ), _l( listener ) {}
+    B _b;
+    L _l;
+    SearchBase( const B &b, const L &l ) : _b( b ), _l( l ) {}
+    auto result() { return _l.result; }
 };
 
 template< typename B, typename L >
 struct DFS : SearchBase< B, L >
 {
-    struct Shared {};
-    DFS( std::shared_ptr< Shared >, B &builder, L &listener ) : SearchBase< B, L >( builder, listener ) {}
-    virtual typename Result< L >::T run( bool ) override
+    virtual void run( bool ) override
     {
-        ASSERT_UNIMPLEMENTED();
+        NOT_IMPLEMENTED();
     }
+
+    DFS( const B &b, const L &l ) : SearchBase< B, L >( b, l ) {}
 };
 
 template< typename B, typename L >
 struct BFS : SearchBase< B, L >
 {
-    struct Shared
-    {
-        shmem::SharedQueue< typename B::State > q;
-        shmem::StartDetector::Shared start;
-    };
-
-    std::shared_ptr< Shared > _sh;
+    shmem::SharedQueue< typename B::State > _q;
     shmem::StartDetector _start;
 
-    virtual typename Result< L >::T run( bool initials ) override
+    BFS( const B &b, const L &l ) : SearchBase< B, L >( b, l ) {}
+
+    virtual void run( bool initials ) override
     {
-        auto q = _sh->q; /* make a copy */
         bool terminate = false;
         int count = 0;
 
@@ -78,14 +60,14 @@ struct BFS : SearchBase< B, L >
                                {
                                    auto b = this->_l.state( i );
                                    if ( b == L::Process || b == L::AsNeeded )
-                                       q.push( i );
+                                       _q.push( i );
                                    if ( count++ % 10 == 0 )
-                                       q.flush();
+                                       _q.flush();
                                } );
 
-        while ( !terminate && !q.empty() )
+        while ( !terminate && !_q.empty() )
         {
-            auto v = q.pop();
+            auto v = _q.pop();
             this->_b.edges(
                 v, [&]( auto x, auto label, bool isnew )
                 {
@@ -98,110 +80,90 @@ struct BFS : SearchBase< B, L >
                         if ( b == L::Terminate )
                             terminate = true;
                         if ( b == L::Process || ( b == L::AsNeeded && isnew ) )
-                            q.push( x );
+                            _q.push( x );
                     }
                 } );
-            if ( q.empty() )
-                q.flush();
+            if ( _q.empty() )
+                _q.flush();
         }
-        return typename Result< L >::T();
     }
-
-    BFS( std::shared_ptr< Shared > sh, B &builder, L &listener )
-        : SearchBase< B, L >( builder, listener ), _sh( sh ),
-          _start( sh->start )
-    {}
 };
 
 template< typename B, typename L >
 struct DistributedBFS : BFS< B, L >
 {
-    using Shared = typename BFS< B, L >::Shared;
-    virtual typename Result< L >::T run( bool ) override
+    virtual void run( bool ) override
     {
-        ASSERT_UNIMPLEMENTED();
+        NOT_IMPLEMENTED();
         /* also pull stuff out from networked queues with some probability */
         /* decide whether to push edges onto the local queue or send it into
          * the network */
     }
 
-    DistributedBFS( std::shared_ptr< Shared > sh, B& builder, L &listener )
-        : BFS< B, L >( sh, builder, listener )
-    {}
+    DistributedBFS( const B &b, const L &l ) : BFS< B, L >( b, l ) {}
 };
 
 enum class Order { PseudoBFS, DFS };
 
-template< typename L >
-using MakeSearch = std::function< std::unique_ptr< SearchInterface< L > >( int ) >;
-
 template< template< typename, typename > class S, typename B, typename L >
-MakeSearch< L > make( B &b, L &l )
+auto do_search( const B &b, const L &l, int threads )
 {
-    using B_PerThread = typename std::remove_reference< decltype( thread_access( b, 0 ) ) >::type;
-    using Search = S< B_PerThread, L >;
-    auto sh = std::make_shared< typename Search::Shared >();
-    return [&b, &l, sh]( int i )
+    /* for ( auto p : g.peers() )
     {
-        auto &builder = thread_access( b, i );
-        return std::make_unique< Search >( sh, builder, l );
-    };
+        // TODO spawn remote threads attached to the respective peer stores
+    } */
+
+    std::vector< std::future< decltype( l.result ) > > ls;
+
+    S< B, L > search( b, l );
+    for ( int i = 0; i < threads; ++i )
+        ls.emplace_back(
+            std::async( [&search, i]()
+                        {
+                            S< B, L > s( search );
+                            s.run( i == 0 );
+                            return s.result();
+                        } ) );
+
+    decltype( l.result ) result = l.result;
+    for ( auto &l : ls )
+        result = result + l.get();
+    // TODO: remote results
+
+    return result;
 }
 
 /*
  * Parallel (and possibly distributed) graph search. The search is directed by
  * a Listener.
  */
-template< typename B, typename Listen >
-auto search( Order o, B &b, int threads, Listen l ) -> typename Aggregate< Listen >::T
+template< typename B, typename L >
+auto search( Order o, B b, int threads, L l )
 {
-    using R = typename Result< Listen >::T;
-    using Agg = typename Aggregate< Listen >::T;
-
-    MakeSearch< Listen > mkinstance;
-
     if ( /* g.peers().empty() && */ o == Order::PseudoBFS )
-        mkinstance = make< BFS, B, Listen >( b, l );
+        return do_search< BFS >( b, l, threads );
     else if ( o == Order::PseudoBFS )
-        mkinstance = make< DistributedBFS, B, Listen >( b, l );
+        return do_search< DistributedBFS >( b, l, threads );
     else if ( o == Order::DFS )
     {
         // ASSERT( g.peers().empty() );
-        mkinstance = make< DFS, B, Listen >( b, l );
+        return do_search< DFS >( b, l, threads );
     }
-
-    /* for ( auto p : g.peers() )
-    {
-        // TODO spawn remote threads attached to the respective peer stores
-    } */
-
-    std::vector< std::future< R > > rs;
-    for ( int i = 0; i < threads; ++i )
-        rs.emplace_back(
-            std::async( [mkinstance, i]() {
-                    auto s = mkinstance( i );
-                    return s->run( i == 0 );
-                } ) );
-
-    Agg agg;
-    for ( auto &r : rs )
-        agg.add( r.get() );
-    // TODO collect remote results
-    return agg;
+    UNREACHABLE( "don't know how to run a search" );
 }
 
 }
 
-namespace t_statespace {
+namespace t_ss {
 
 struct Search
 {
     void _bfs_fixed( int threads )
     {
-        statespace::Fixed builder{ { 1, 2 }, { 2, 3 }, { 1, 3 }, { 3, 4 } };
+        ss::Fixed builder{ { 1, 2 }, { 2, 3 }, { 1, 3 }, { 3, 4 } };
         int edgecount = 0, statecount = 0;
-        statespace::search(
-            statespace::Order::PseudoBFS, builder, threads, statespace::passive_listen(
+        ss::search(
+            ss::Order::PseudoBFS, builder, threads, ss::passive_listen(
                 [&] ( auto f, auto t, auto l )
                 {
                     if ( f == 1 )
@@ -221,12 +183,11 @@ struct Search
     {
         for ( unsigned seed = 0; seed < 10; ++ seed )
         {
-            statespace::Random builder{ 50, 120, seed };
+            ss::Random builder{ 50, 120, seed };
             std::atomic< int > edgecount( 0 ), statecount( 0 );
-            statespace::search(
-                statespace::Order::PseudoBFS, builder, threads, statespace::passive_listen(
-                    [&] ( auto f, auto t, auto l ) { ++ edgecount; },
-                    [&] ( auto s ) { ++ statecount; } ) );
+            ss::search( ss::Order::PseudoBFS, builder, threads, ss::passive_listen(
+                            [&] ( auto f, auto t, auto l ) { ++ edgecount; },
+                            [&] ( auto s ) { ++ statecount; } ) );
             ASSERT_EQ( statecount.load(), 50 );
             ASSERT_EQ( edgecount.load(), 120 );
         }
