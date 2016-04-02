@@ -30,6 +30,16 @@ namespace brick {
 namespace cmd {
 
 using Tokens = std::vector< std::string >;
+enum ErrorType { BadContent, BadFormat };
+
+struct Error
+{
+    std::string _description;
+    ErrorType _type;
+};
+
+template< typename T >
+using ErrorOr = types::Union< Error, T >;
 
 struct ValidatorInterface
 {
@@ -38,57 +48,52 @@ struct ValidatorInterface
 
 template< typename... > struct Validator;
 
-template< typename T, typename... Ts >
-struct Validator< T, Ts... >
-    : ValidatorInterface, std::enable_shared_from_this< Validator< T, Ts... > >
+static const auto ignore2 = []( auto, auto ) {};
+
+template< typename Parse, typename... Ps >
+struct Validator< Parse, Ps... >
+    : ValidatorInterface, std::enable_shared_from_this< Validator< Parse, Ps... > >
 {
-    using Next = std::shared_ptr< Validator< Ts... > >;
+    using Next = std::shared_ptr< Validator< Ps... > >;
 
     std::string _name;
-    std::function< T( std::string ) > _parse;
+    Parse _parse;
     Next _next;
+
 
     bool validate( std::string t, std::string v ) override
     {
         if ( t != _name && _next )
             return _next->validate( t, v );
 
-        try
-        {
-            _parse( v );
-            return true;
-        }
-        catch (...)
-        {
-            return false;
-        }
+        /* TODO */
+        bool result = true;
+        _parse( v, [&]( auto ) { result = true; },
+                [&]( ErrorType e, auto ) { result = e != BadFormat; } );
+        return result;
     }
 
-    template< typename X >
-    auto parse( std::string t, std::string v )
-        -> typename std::enable_if< !std::is_convertible< T, X >::value, X >::type
-    {
-        return _next->template parse< X >( t, v );
-    }
-
-    template< typename X >
-    auto parse( std::string t, std::string v )
-        -> typename std::enable_if< std::is_convertible< T, X >::value, T >::type
+    template< typename S >
+    void parse( S set, std::string t, std::string v )
     {
         if ( _name != t )
-            return _next->template parse< X >( t, v );
-        return _parse( v );
+            return _next->parse( set, t, v );
+        return _parse( v, set,
+                       []( auto err, std::string s )
+                       {
+                           throw std::logic_error( "validator error: " + s );
+                       } );
     }
 
-    Validator( std::string t, std::function< T( std::string ) > parse, Next next )
+    Validator( std::string t, Parse parse, Next next )
         : _name( t ), _parse( parse ), _next( next )
     {}
 
     template< typename P >
     auto add( std::string t, P parse )
     {
-        using S = decltype( parse( "" ) );
-        return std::make_shared< Validator< S, T, Ts... > >( t, parse, this->shared_from_this() );
+        return std::make_shared< Validator< P, Parse, Ps... > >(
+            t, parse, this->shared_from_this() );
     }
 };
 
@@ -100,8 +105,8 @@ struct Validator<> : ValidatorInterface, std::enable_shared_from_this< Validator
         throw std::logic_error( "Unknown capture type " + t );
     }
 
-    template< typename X >
-    X parse( std::string t, std::string v )
+    template< typename S >
+    void parse( S set, std::string t, std::string v )
     {
         throw std::logic_error( "Unknown or mismatched capture of type " + t );
     }
@@ -109,8 +114,7 @@ struct Validator<> : ValidatorInterface, std::enable_shared_from_this< Validator
     template< typename P >
     auto add( std::string t, P parse )
     {
-        using S = decltype( parse( "" ) );
-        return std::make_shared< Validator< S > >( t, parse, this->shared_from_this() );
+        return std::make_shared< Validator< P > >( t, parse, this->shared_from_this() );
     }
 };
 
@@ -118,14 +122,14 @@ using ValidatorPtr = std::shared_ptr< ValidatorInterface >;
 auto make_validator()
 {
     return std::make_shared< Validator<> >()->
-        add( "string", []( std::string s ) { return s; } )->
-        add( "int", []( std::string s )
+        add( "string", []( std::string s, auto good, auto bad) { return good( s ); } )->
+        add( "int", []( std::string s, auto good, auto bad )
              {
                  const char *err;
                  auto r = strtonum( s.c_str(), INT_MIN, INT_MAX, &err );
                  if ( err )
-                     throw std::runtime_error( err );
-                 return r;
+                     return bad( BadFormat, err );
+                 return good( r );
              } );
 }
 
@@ -199,7 +203,7 @@ struct Pattern
     std::string _capture;
     int _capture_id;
     ValidatorPtr _validator;
-    bool _required;
+    bool _required, _many;
     using Ptr = std::shared_ptr< Pattern >;
 
     Ptr _next;
@@ -238,7 +242,7 @@ struct Pattern
 
     Tokens::iterator match( Tokens::iterator begin, Tokens::iterator end )
     {
-        auto ignore = []( int, std::string, std::string ) {};
+        auto ignore = []( int, bool, std::string, std::string ) {};
         return match( ignore, begin, end );
     }
 
@@ -250,14 +254,15 @@ struct Pattern
     }
 
     template< typename C >
-    Tokens::iterator match( C capture, Tokens::iterator begin, Tokens::iterator end, Tokens::iterator fail )
+    Tokens::iterator match( C capture, Tokens::iterator begin, Tokens::iterator end,
+                            Tokens::iterator fail )
     {
         Tokens::iterator next = begin;
         if ( _type == Match && *begin == _text )
             next = begin + 1;
         if ( _type == Capture && _validator->validate( _capture, *begin ) )
         {
-            capture( _capture_id++, _capture, *begin );
+            capture( _capture_id++, _many, _capture, *begin );
             next = begin + 1;
         }
         if ( _type == Mixed )
@@ -293,7 +298,7 @@ struct Pattern
     }
 
     Pattern( ValidatorPtr v )
-        : _type( Empty ), _validator( v ), _required( true )
+        : _type( Empty ), _validator( v ), _required( true ), _many( false )
     {}
 
     Pattern( ValidatorPtr v, std::string s )
@@ -339,6 +344,11 @@ struct Pattern
         {
             _type = Capture;
             _capture = std::string( me, 1, me.size() - 2 );
+            if ( me.back() == '+' )
+            {
+                _capture = std::string( _capture, 0, _capture.size() - 1 );
+                _many = true;
+            }
         }
 
         else
@@ -385,6 +395,7 @@ struct OptionInterface
     virtual Tokens::iterator parse( T &edit, Tokens::iterator, Tokens::iterator ) = 0;
     virtual Tokens::iterator match( Tokens::iterator, Tokens::iterator ) = 0;
     virtual bool required() = 0;
+    virtual int priority() = 0;
     virtual std::string fmt() = 0;
     virtual std::string describe() { return ""; }
 };
@@ -398,12 +409,43 @@ struct Option : OptionInterface< T >
     Get _get;
     std::string _descr;
 
+    template< typename X >
+    struct Set
+    {
+        X &x;
+        Set( X &x ) : x( x ) {}
+
+        template< typename Y >
+        void operator()( Y y ) { _set( types::Preferred(), x, y ); }
+
+        template< typename X_, typename Y >
+        auto _set( types::Preferred, X_ &x, Y y )
+            -> typename std::enable_if< std::is_convertible< Y, typename X_::value_type >::value >::type
+        {
+            x.push_back( y );
+        }
+
+        template< typename X_, typename Y >
+        auto _set( types::NotPreferred, X_ &x, Y y )
+            -> typename std::enable_if< std::is_convertible< Y, X_ >::value >::type
+        {
+            x = y;
+        }
+
+        template< typename X_, typename Y >
+        auto _set( types::NotPreferred, X_ &x, Y y )
+            -> typename std::enable_if< !std::is_convertible< Y, X_ >::value >::type
+        {
+            UNREACHABLE( "capture type mismatch" );
+        }
+    };
+
     Tokens::iterator parse( T &edit, Tokens::iterator b, Tokens::iterator e ) override
     {
         return _pattern.match(
-            [&]( int, std::string type, std::string val )
+            [&]( int, bool many, std::string type, std::string val )
             {
-                _get( edit ) = _validator->template parse< V >( type, val );
+                _validator->parse( Set< decltype( _get( edit ) ) >( _get( edit ) ), type, val );
             }, b, e );
     }
 
@@ -415,6 +457,7 @@ struct Option : OptionInterface< T >
     bool required() override { return _pattern._required; };
     std::string fmt() override { return _pattern.fmt(); };
     std::string describe() override { return fmt() + "\t" + _descr; };
+    int priority() override { return _pattern._type == Pattern::Capture ? 0 : 1; };
 
     Option( std::shared_ptr< Validator > v, std::string fmt, Get get, std::string descr )
         : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr )
@@ -443,14 +486,13 @@ struct OptionWrapper : OptionInterface< T >
     }
 
     bool required() override { return _sub->required(); }
+    int priority() override { return _sub->priority(); }
     std::string fmt() override { return _sub->fmt(); }
     std::string describe() override { return _sub->describe(); }
 };
 
 template< typename T >
 using OptionPtr = std::shared_ptr< OptionInterface< T > >;
-
-struct Inherited {};
 
 template< typename Validator, typename T >
 struct OptionSet
@@ -484,7 +526,7 @@ struct OptionSet
     }
 
     template< typename S, typename... Args >
-    auto &add( OptionSet< Validator, S > opts, Inherited, Args... args )
+    auto &add( OptionSet< Validator, S > opts, Args... args )
     {
         for ( auto o : opts._opts )
             _opts.emplace_back(
@@ -520,20 +562,26 @@ struct OptionSet
         std::set< OptionPtr< T > > parsed;
         while ( b != e )
         {
-            std::set< OptionPtr< T > > matched;
+            std::set< OptionPtr< T > > matched, selected;
+            int prio = 0;
             for ( auto o : _opts )
                 if ( o->match( b, e ) != b )
                     matched.insert( o );
-            if ( matched.size() > 1 )
+            for ( auto &o : matched )
+                prio = std::max( prio, o->priority() );
+            for ( auto &o : matched )
+                if ( o->priority() == prio )
+                    selected.insert( o );
+            if ( selected.size() > 1 )
             {
                 std::string alts;
-                for ( auto o : matched )
+                for ( auto o : selected )
                     alts += "\n" + o->fmt();
                 throw std::runtime_error( "Ambiguous option " + *b + ":" + alts );
             }
-            if ( matched.empty() )
+            if ( selected.empty() )
                 break;
-            auto o = *matched.begin();
+            auto o = *selected.begin();
             b = o->parse( t, b, e );
             parsed.insert( o );
         }
@@ -595,22 +643,30 @@ struct ParserT< Validator, T, Ts... >
     std::shared_ptr< Validator > _validator;
 
     template< typename U >
-    void parse( U &res, Tokens::iterator b, Tokens::iterator e )
+    auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
     {
         if ( _car.name() == *b )
         {
             T t;
-            _car.parse( t, b + 1, e );
+            auto x = _car.parse( t, b + 1, e );
             res = t;
+            return x;
         }
         else
-            _cdr.parse( res, b, e );
+            return _cdr.parse( res, b, e );
     }
 
     types::Union< T, Ts... > parse( Tokens::iterator b, Tokens::iterator e )
     {
         types::Union< T, Ts... > _result;
-        parse( _result, b, e );
+        auto x = parse( _result, b, e );
+        if ( x != e )
+        {
+            std::stringstream extra;
+            while ( x != e )
+                extra << "'" << *x++ << "' ";
+            throw std::runtime_error( "unexpected options: " + extra.str() );
+        }
         return _result;
     }
 
@@ -638,7 +694,7 @@ struct ParserT< Validator >
     }
 
     template< typename U >
-    void parse( U &, Tokens::iterator b, Tokens::iterator e ) {}
+    auto parse( U &, Tokens::iterator b, Tokens::iterator e ) { return b; }
 
     ParserT( std::shared_ptr< Validator > v ) : _validator( v ) {}
 };
@@ -655,6 +711,7 @@ namespace t_cmd {
 
 struct Common
 {
+    int a, b;
     int range;
     std::vector< std::string > cflags;
 };
@@ -749,10 +806,10 @@ struct TestCmd
                  "[-Wc,{string}|-Xcompiler {string}]", &Common::cflags );
 
         auto p = cmd::make_parser( v )
-                 .add< Foo >( common, cmd::Inherited(),
+                 .add< Foo >( common,
                               "[--bar|--no-bar]", &Foo::bar,
                               "{int}", &Foo::value )
-                 .add< Bar >( common, cmd::Inherited() );
+                 .add< Bar >( common );
 
         ASSERT_EQ( p._car.name(), "bar" );
 
@@ -764,6 +821,93 @@ struct TestCmd
                  [&]( Bar ) { is_foo = false; } );
 
         ASSERT( is_foo );
+    }
+
+    TEST(option)
+    {
+        auto v = validator();
+        auto opts = cmd::make_option_set< Common >( v )
+                    .add( "[-a {int}]", &Common::a )
+                    .add( "[-b {int}]", &Common::b );
+        Common c;
+
+        cmd::Tokens in = { "-a", "10" };
+        opts.parse( c, in.begin(), in.end() );
+        ASSERT_EQ( c.a, 10 );
+    }
+
+    TEST(nonoption)
+    {
+        struct X { int a, b; };
+        auto v = validator();
+        auto opts = cmd::make_option_set< X >( v )
+                    .add( "[-a {int}]", &X::a )
+                    .add( "{int}", &X::b );
+        X x;
+
+        cmd::Tokens in = { "10" };
+        opts.parse( x, in.begin(), in.end() );
+        ASSERT_EQ( x.b, 10 );
+
+        in = { "-a", "15", "20" };
+        opts.parse( x, in.begin(), in.end() );
+        ASSERT_EQ( x.a, 15 );
+        ASSERT_EQ( x.b, 20 );
+    }
+
+    TEST(nonoption_string)
+    {
+        struct X { std::string a, b; };
+        auto v = validator();
+        auto opts = cmd::make_option_set< X >( v )
+                    .add( "[-a {string}]", &X::a )
+                    .add( "{string}", &X::b );
+        X x;
+
+        cmd::Tokens in = { "10" };
+        opts.parse( x, in.begin(), in.end() );
+        ASSERT_EQ( x.b, "10" );
+
+        in = { "-a", "15", "20" };
+        opts.parse( x, in.begin(), in.end() );
+        ASSERT_EQ( x.a, "15" );
+        ASSERT_EQ( x.b, "20" );
+    }
+
+    TEST(multi)
+    {
+        struct X { std::vector< std::string > a; };
+        auto v = validator();
+        auto opts = cmd::make_option_set< X >( v )
+                    .add( "{string}+", &X::a );
+        X x;
+
+        cmd::Tokens in = { "10", "20" };
+        opts.parse( x, in.begin(), in.end() );
+        ASSERT_EQ( x.a.size(), 2 );
+        ASSERT_EQ( x.a[ 0 ], "10" );
+        ASSERT_EQ( x.a[ 1 ], "20" );
+    }
+
+    TEST(cmd_multi)
+    {
+        struct X { std::vector< std::string > a; int x; };
+        auto v = validator();
+        auto opts = cmd::make_option_set< X >( v )
+                    .add( "[-y {int}]", &X::x )
+                    .add( "{string}+", &X::a );
+        auto p = cmd::make_parser( v )
+                 .add< X >( opts );
+
+        cmd::Tokens in = { "x", "10", "20" };
+        auto r = p.parse( in.begin(), in.end() );
+        bool matched = false;
+        r.apply( [&]( X x )
+                 {
+                     matched = true;
+                     ASSERT_EQ( x.a.size(), 2 );
+                 } );
+        ASSERT( matched );
     }
 };
 
