@@ -297,7 +297,7 @@ struct MMap
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
         if ( ptr == MAP_FAILED )
-            throw SystemException( "mmap failed" );
+            throw SystemException( "anonymous mmap for " + std::to_string( size )  + " bytes failed" );
 #pragma GCC diagnostic pop
         return ptr;
     }
