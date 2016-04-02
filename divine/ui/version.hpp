@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
 
-#include <divine/utility/withreport.h>
+#include <divine/ui/withreport.hpp>
 
 // Set version information in version.cpp.
 

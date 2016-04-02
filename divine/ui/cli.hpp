@@ -1,22 +1,103 @@
 #pragma once
 
+#include <divine/vm/bitcode.hpp>
+#include <divine/vm/run.hpp>
+
 #include <divine/ui/common.hpp>
 #include <divine/ui/curses.hpp>
 #include <brick-cmd>
 #include <brick-fs>
+#include <brick-llvm>
 
 namespace divine {
 namespace ui {
 
 namespace cmd = brick::cmd;
 
-struct Common
+struct Command
 {
-    std::string bitcode;
+    virtual void run() = 0;
+    virtual void setup() {}
 };
 
-struct Verify : Common {};
-struct Draw   : Common {};
+struct WithBC : Command
+{
+    std::string _file;
+    std::vector< std::string > _env;
+
+    std::shared_ptr< vm::BitCode > _bc;
+    void setup()
+    {
+        _bc = std::make_shared< vm::BitCode >( _file );
+    }
+};
+
+struct Verify : WithBC
+{
+    void run() { NOT_IMPLEMENTED(); }
+};
+
+struct Run    : WithBC
+{
+    void run() /* yeah, well, FIXME */
+    {
+        using Eval = vm::Eval< vm::Program, vm::RunContext, vm::RunContext::PointerV >;
+
+        auto &p = _bc->program();
+        vm::RunContext _ctx( p );
+        _ctx.setup( _env );
+        Eval eval( p, _ctx );
+        std::cerr << "-------------------------" << std::endl;
+        _ctx.control().mask( true );
+        eval.run();
+        auto state = eval._result;
+        std::cerr << "state = " << state << std::endl;
+
+        while ( state.v() != vm::nullPointer() )
+        {
+            /* std::cerr << "-------------------------" << std::endl;
+            std::cerr << "-------------------------" << std::endl; */
+            _ctx.control().enter(
+                _ctx._control._sched, vm::nullPointer(),
+                Eval::IntV( eval.heap().size( state.v() ) ), state );
+            _ctx.control().mask( true );
+            eval.run();
+            state = eval._result;
+            // std::cerr << "state = " << state << std::endl;
+        }
+    }
+};
+
+struct Draw   : WithBC
+{
+    void run() { NOT_IMPLEMENTED(); }
+};
+
+struct Link : Command
+{
+    std::vector< std::string > _files;
+    std::string _output;
+
+    Link() : _output( "a.bc" ) {}
+    void run() override
+    {
+        brick::llvm::Linker linker;
+        ::llvm::SMDiagnostic err;
+        ::llvm::LLVMContext ctx;
+        for ( auto f : _files )
+        {
+            auto mod = ::llvm::parseIRFile( f, err, ctx );
+            if ( !mod )
+                throw std::runtime_error( "error loading bitcode file " + f + "\n    " +
+                                          err.getMessage().data() );
+            std::cerr << "I: linking " << f << std::endl;
+            linker.link( std::move( mod ) );
+        }
+        linker.prune( { "__sys_init", "main", "memmove", "memset", "memcpy", "llvm.global_ctors" },
+                      brick::llvm::Prune::AllUnused /* TODO UnusedModules */ );
+        brick::llvm::writeModule( linker.get(), _output );
+    }
+};
 
 struct CLI : Interface
 {
@@ -30,22 +111,35 @@ struct CLI : Interface
             _args.emplace_back( argv[ i ] );
     }
 
+    auto validator()
+    {
+        return cmd::make_validator()->
+            add( "file", []( std::string s, auto good, auto bad )
+                 {
+                     if ( s[0] == '-' ) /* FIXME! */
+                         return bad( cmd::BadFormat, "file must not start with -" );
+                     if ( !brick::fs::access( s, F_OK ) )
+                         return bad( cmd::BadContent, "file " + s + " does not exist");
+                     if ( !brick::fs::access( s, R_OK ) )
+                         return bad( cmd::BadContent, "file " + s + " is not readable");
+                     return good( s );
+                 } );
+    }
+
     auto parse()
     {
-        auto v = cmd::make_validator()->
-                 add( "file", []( std::string s )
-                      {
-                          if ( !brick::fs::access( s, F_OK ) )
-                              throw std::runtime_error( "file " + s + " does not exist");
-                          if ( !brick::fs::access( s, R_OK ) )
-                              throw std::runtime_error( "file " + s + " is not readable");
-                          return s;
-                      } );
-        auto common = cmd::make_option_set< Common >( v )
-                      .add( "{file}", &Common::bitcode, std::string( "the bitcode file to load" ) );
+        auto v = validator();
+        auto linkopts = cmd::make_option_set< Link >( v )
+                        .add( "[-o {string}]", &Link::_output, std::string( "the output file" ) )
+                        .add( "{file}+", &Link::_files, std::string( "files to link" ) );
+        auto bcopts = cmd::make_option_set< WithBC >( v )
+                      .add( "[-D {string}]", &WithBC::_env, std::string( "add to the environment" ) )
+                      .add( "{file}", &WithBC::_file, std::string( "the bitcode file to load" ) );
         auto p = cmd::make_parser( v )
-                 .add< Verify >( common, cmd::Inherited() )
-                 .add< Draw >( common, cmd::Inherited() );
+                 .add< Verify >( bcopts )
+                 .add< Run >( bcopts )
+                 .add< Draw >( bcopts )
+                 .add< Link >( linkopts );
         return p.parse( _args.begin(), _args.end() );
     }
 
@@ -59,12 +153,12 @@ struct CLI : Interface
 
     virtual int main() override
     {
-        auto r = parse().match(
-            [&]( Verify v ) { std::cerr << "verify: " << v.bitcode << std::endl; },
-            [&]( Draw d ) { std::cerr << "draw: " << d.bitcode << std::endl; }
-        );
-        if ( r.isNothing() )
-            throw std::runtime_error( "error parsing command line" );
+        auto cmd = parse();
+        cmd.apply( [&]( Command &c )
+                   {
+                       c.setup();
+                       c.run();
+                   } );
         return 0;
     }
 };

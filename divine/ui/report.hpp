@@ -10,9 +10,9 @@
 
 #include <brick-types>
 
-#include <divine/utility/version.h>
-#include <divine/utility/meta.h>
-#include <divine/utility/sysinfo.h>
+#include <divine/ui/version.hpp>
+// #include <divine/ui/meta.h>
+#include <divine/ui/sysinfo.hpp>
 
 #ifndef DIVINE_REPORT_H
 #define DIVINE_REPORT_H
@@ -33,31 +33,22 @@ struct Report
         _finished = true;
     }
 
-    void final( const Meta &meta ) {
-        if ( _dumped )
-            return;
-        _dumped = true;
-
-        doFinal( meta );
-    }
-
     virtual void execCommand( const std::string &ec ) {
         _execCommand = ec;
     }
 
-    virtual void doFinal( const Meta & ) = 0;
+    virtual void doFinal() = 0;
 
     struct Merged : WithReport {
         const Report &r;
-        const Meta &m;
 
-        Merged( const Report &r, const Meta &m ) : r( r ), m( m ) { }
+        Merged( const Report &r ) : r( r ) { }
 
         std::vector< ReportLine > report() const override;
     };
 
-    Merged mergedReport( const Meta &meta ) const {
-        return Merged( *this, meta );
+    Merged mergedReport() const {
+        return Merged( *this );
     }
 
     static std::string mangle( std::string str );
@@ -78,7 +69,7 @@ struct Report
     static std::shared_ptr< Rep > declcheck( std::shared_ptr< Rep > ) {
         static_assert( std::is_base_of< Report, Rep >::value,
                 "Required report does not inherit from Report." );
-        ASSERT_UNREACHABLE( "declcheck" );
+        UNREACHABLE( "declcheck" );
     }
 
     template< typename Rep, typename... Ts >
@@ -101,8 +92,8 @@ struct TextReportBase : Report {
     template< typename... Ts >
     TextReportBase( Ts &&...ts ) : output( std::forward< Ts >( ts )... ) { }
 
-    void doFinal( const Meta &meta ) override {
-        output << mergedReport( meta );
+    void doFinal() override {
+        output << mergedReport();
     }
 };
 
@@ -121,8 +112,8 @@ struct PlainReportBase : Report {
     template< typename... Ts >
     PlainReportBase( Ts &&...ts ) : output( std::forward< Ts >( ts )... ) { }
 
-    void doFinal( const Meta &meta ) override {
-        auto merged = mergedReport( meta ).report();
+    void doFinal() override {
+        auto merged = mergedReport().report();
         for ( auto x : merged ) {
             if ( x.key != "" )
                 output << x.key << ": " << x.value << std::endl;
@@ -140,7 +131,7 @@ struct PlainFileReport : PlainReportBase< std::ofstream > {
 
 struct SqlReport : Report {
     SqlReport( const std::string &db, const std::string &connstr );
-    void doFinal( const Meta &meta ) override;
+    void doFinal() override;
 
 #if !OPT_SQL
     template< typename... X >
@@ -169,9 +160,9 @@ struct AggregateReport : Report {
             r->execCommand( ec );
     }
 
-    void doFinal( const Meta &meta ) override {
+    void doFinal() override {
         for ( auto r : _reports )
-            r->doFinal( meta );
+            r->doFinal();
     }
 
     void addReport( std::shared_ptr< Report > rep ) {
@@ -183,7 +174,7 @@ struct AggregateReport : Report {
 };
 
 struct NoReport : Report {
-    void doFinal( const Meta & ) override { }
+    void doFinal() override { }
     void signal( int ) override { }
     void finished() override { }
 };

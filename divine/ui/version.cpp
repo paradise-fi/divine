@@ -1,7 +1,7 @@
 #include <string>
 #include <sstream>
 
-#include <divine/utility/version.h>
+#include <divine/ui/version.hpp>
 
 #if OPT_MPI
 #include <mpi.h>

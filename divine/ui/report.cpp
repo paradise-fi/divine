@@ -1,11 +1,13 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
-#include <divine/utility/report.h>
+
 #include <stdexcept>
 #include <map>
 #include <algorithm>
 
-#include <bricks/brick-assert.h>
-#include <bricks/brick-string.h>
+#include <bricks/brick-assert>
+#include <bricks/brick-string>
+
+#include <divine/ui/report.hpp>
 
 #if OPT_SQL
 #include <external/nanodbc/nanodbc.h>
@@ -21,7 +23,7 @@ std::vector< ReportLine > Report::Merged::report() const {
         };
 
     return WithReport::merge( ec, empty, BuildInfo(), empty, r._sysinfo,
-            empty, m, empty, term );
+                              empty, empty, term );
 }
 
 std::string Report::mangle( std::string str ) {
@@ -39,7 +41,7 @@ SqlReport::SqlReport( const std::string &, const std::string & ) {
 }
 
 
-void SqlReport::doFinal( const Meta & ) {
+void SqlReport::doFinal() {
     throw std::logic_error( "ODBC support must be included for SQL reports" );
 }
 #else

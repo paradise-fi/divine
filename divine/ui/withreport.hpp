@@ -1,10 +1,9 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
+#pragma once
+
 #include <string>
 #include <vector>
 #include <iostream>
-
-#ifndef DIVINE_UTILITY_WITHREPORT
-#define DIVINE_UTILITY_WITHREPORT
 
 namespace divine {
 
@@ -53,7 +52,18 @@ struct Empty : WithReport {
     }
 };
 
-std::ostream &operator<<( std::ostream &, const WithReport & );
+static inline std::ostream &operator<<( std::ostream &o, const WithReport &wr )
+{
+    const auto &rep = wr.report();
+    for ( auto x : rep )
+    {
+        if ( x.key == "" )
+            o << std::endl;
+        else
+            o << x.key << ": " << x.value << std::endl;
+    }
+    return o;
+}
 
 }
-#endif
+

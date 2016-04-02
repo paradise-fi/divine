@@ -9,7 +9,7 @@
 #include <unistd.h>
 #endif
 
-#include <divine/utility/output.h>
+#include <divine/ui/output.hpp>
 
 struct proxycall {
     virtual void flush( std::string ) = 0;

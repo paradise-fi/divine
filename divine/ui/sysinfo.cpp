@@ -1,4 +1,4 @@
-#include <divine/utility/sysinfo.h>
+#include <divine/ui/sysinfo.hpp>
 
 #include <time.h>
 #include <fstream>

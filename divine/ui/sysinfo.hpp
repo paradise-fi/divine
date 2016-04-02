@@ -2,7 +2,7 @@
 
 #include <string>
 #include <stdexcept>
-#include <divine/utility/withreport.h>
+#include <divine/ui/withreport.hpp>
 
 #include <bricks/brick-shmem>
 
