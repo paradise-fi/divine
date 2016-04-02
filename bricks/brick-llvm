@@ -209,6 +209,7 @@ struct Linker {
     static constexpr auto global_ctors = "llvm.global_ctors";
 
     Linker() { }
+    ~Linker() { _root.release(); } /* FIXME! */
 
     // load parlially linked module and take ownership of it
     void load( std::unique_ptr< Module > &&prelinked ) {
@@ -234,7 +235,7 @@ struct Linker {
         } else {
             std::string err;
             auto r = _link->linkInModule( _annotate( src.get() ) );
-            _owned.emplace_back( std::move( src ) );
+            src.release(); // FIXME!? _owned.emplace_back( std::move( src ) );
             if ( r ) {
                 std::cerr << "ERROR: " << err << " while linking '"
                           << src->getModuleIdentifier() << "'" << std::endl;
