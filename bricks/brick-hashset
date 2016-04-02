@@ -41,6 +41,30 @@ using hash::hash32_t;
 using hash::hash64_t;
 using hash::hash128_t;
 
+struct DefaultHasher
+{
+    template< typename X >
+    auto hash( const X &t ) const -> decltype ( std::hash< X >()( t ), hash128_t() )
+    {
+        return std::make_pair( std::hash< X >()( t ), ~std::hash< X >()( t ) );
+    }
+
+    template< typename X >
+    auto hash( const X &t ) const -> decltype( t.hash() )
+    {
+        return t.hash();
+    }
+
+    template< typename X >
+    auto equal( const X &s, const X &t ) const -> decltype( s == t )
+    {
+        return s == t;
+    }
+
+    template< typename X >
+    bool valid( const X &t ) const { return t != X(); }
+};
+
 hash64_t highbits( hash64_t orig, int bits )
 {
     // use a different part of the hash than what we use for indexing
@@ -857,13 +881,13 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     bool valid( size_t idx ) { return !cellAt( idx ).empty(); }
 };
 
-template< typename T, typename Hasher >
+template< typename T, typename Hasher = DefaultHasher >
 using FastConcurrent = _ConcurrentHashSet< FastAtomicCell< T, Hasher > >;
 
-template< typename T, typename Hasher >
+template< typename T, typename Hasher = DefaultHasher >
 using CompactConcurrent = _ConcurrentHashSet< AtomicCell< T, Hasher > >;
 
-template< typename T, typename Hasher >
+template< typename T, typename Hasher = DefaultHasher >
 using Concurrent = _ConcurrentHashSet< typename std::conditional< (
               sizeof( Tagged< T > ) > 8 // most platforms do not have CAS for data types bigger then 64bit
                                         // for example 16B CAS does not link in clang 3.4 on x86_64
