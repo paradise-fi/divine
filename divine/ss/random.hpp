@@ -1,28 +1,26 @@
 #pragma once
 
-#include <brick-shmem>
+#include <brick-hashset>
 #include <set>
 #include <random>
 
 namespace divine {
-namespace statespace {
+namespace ss {
 
 struct Random
 {
-    using Lock = brick::shmem::SpinLock;
     using State = int;
 
     std::vector< std::vector< int > > _succs;
-    std::set< int > _states;
-    Lock _lock;
+    hashset::Concurrent< int > _states;
 
     Random( int vertices, int edges, unsigned seed = 0 )
     {
         std::mt19937 rand{ seed };
-        std::uniform_int_distribution< int > dist( 0, vertices - 1 );
-        _succs.resize( vertices );
+        std::uniform_int_distribution< int > dist( 1, vertices );
+        _succs.resize( vertices + 1 );
         std::set< int > connected;
-        int last = 0;
+        int last = 1;
 
         /* first connect everything */
         while ( connected.size() < vertices ) {
@@ -53,19 +51,16 @@ struct Random
     {
         for ( auto t : _succs[ from ] )
         {
-            std::unique_lock< Lock > _g( _lock );
             auto r = _states.insert( t );
-            _g.unlock();
-            yield( t, 0, r.second );
+            yield( t, 0, r.isnew() );
         }
     }
 
     template< typename Y >
     void initials( Y yield )
     {
-        yield( 0 );
-        std::lock_guard< Lock > _g( _lock );
-        _states.insert( 0 );
+        yield( 1 );
+        _states.insert( 1 );
     }
 };
 
