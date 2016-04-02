@@ -422,10 +422,10 @@ template< typename F, typename T, typename Fallback, typename Check = bool >
 struct _ApplyResult : Fallback {};
 
 template< typename F, typename T, typename Fallback >
-struct _ApplyResult< F, T, Fallback, decltype( std::declval< F >()( std::declval< T >() ), true ) >
+struct _ApplyResult< F, T, Fallback, decltype( std::declval< F >()( std::declval< T& >() ), true ) >
 {
     using Parameter = T;
-    using Result = decltype( std::declval< F >()( std::declval< T >() ) );
+    using Result = decltype( std::declval< F >()( std::declval< T& >() ) );
 };
 
 template< typename F, typename... Ts > struct ApplyResult;
@@ -617,7 +617,7 @@ struct Union : Comparable {
     // invoke the first function that can handle the currently stored value
     // (type-based pattern matching)
     template< typename R, typename F, typename... Args >
-    R _match( F f, Args... args ) {
+    R _match( F f, Args&&... args ) {
         auto x = apply( f );
         if ( x.isNothing() )
             return _match< R >( args... );
@@ -626,7 +626,7 @@ struct Union : Comparable {
     }
 
     template< typename F, typename... Args >
-    Applied< F > match( F f, Args... args ) {
+    Applied< F > match( F f, Args&&... args ) {
         return _match< Applied< F > >( f, args... );
     }
 
@@ -1298,8 +1298,9 @@ struct UnionTest {
         ASSERT( ( Union< B, std::string >{ 1 }.is< B >() ) );
     }
 
-    static C idC( C c ) { return c; };
-    static C constC( B ) { return C( 32 ); };
+    static C idC( C c ) { return c; }
+    static C constC( B ) { return C( 32 ); }
+    static C refC( C &c ) { return c; }
 
     TEST(apply) {
         Union< B, C > u;
@@ -1316,6 +1317,9 @@ struct UnionTest {
 
         result = u.match( constC );
         ASSERT( result.isNothing() );
+
+        result = u.match( refC );
+        ASSERT_EQ( result.value().x, 12 );
     }
 
     TEST(eq) {
