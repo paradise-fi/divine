@@ -1,16 +1,19 @@
 // -*- C++ -*- (c) 2012-2014 Petr Ročkai <me@mornfall.net>
 
-#include <brick-bitlevel.h>
-#include <brick-types.h>
-#include <brick-data.h>
-#include <brick-assert.h>
-
-#include <divine/toolkit/blob.h> // for align
+#include <brick-types>
+#include <brick-data>
+#include <brick-assert>
+#include <brick-mem>
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/DataLayout.h>
 
 #include <llvm/CodeGen/IntrinsicLowering.h>
+
+#include <divine/vm/pointer.hpp>
+#include <divine/vm/heap.hpp>
+
+#include <runtime/divine.h>
 
 #include <map>
 #include <unordered_map>
@@ -24,106 +27,39 @@ class IntrinsicLowering;
 }
 
 namespace divine {
-namespace llvm {
+namespace vm {
 
-using brick::bitlevel::bitcopy;
-using brick::bitlevel::BitPointer;
-
-struct Pointer;
-
-struct PC : brick::types::Comparable
+enum Builtin /* see divine.h for prototypes & documentation */
 {
-    uint32_t instruction:17;
-    uint32_t function:13; /* must not be at end, since clang assumes that the
-                             last bit of a function pointer is always 0 */
-    bool masked:1;
-    uint32_t code:1;
-
-    PC( int f, int i )
-        : instruction( i ), function( f ), masked( false ), code( 1 )
-    {}
-    PC() : PC( 0, 0 ) {}
-
-    bool operator<= ( PC o ) const {
-        /* masked is irrelevant for equality! */
-        return std::make_tuple( int( function ), int( instruction ) )
-            <= std::make_tuple( int( o.function ), int( o.instruction ) );
-    }
-
-    explicit PC( const uint32_t &x ) { *this = *reinterpret_cast< const PC * >( &x ); }
-    explicit PC( const Pointer &p ) { *this = *reinterpret_cast< const PC * >( &p ); }
-
-    explicit operator uint32_t() const {
-        return *reinterpret_cast< const uint32_t * >( this );
-    }
-    explicit operator uint64_t() const { return uint32_t( *this ); }
-};
-
-/*
- * We use a *non-overlapping* segmented memory scheme, with *variable-sized
- * segments*. Each allocation creates a new segment. Pointers cannot cross
- * segment boundaries through pointer arithmetic or any other manipulation.
- */
-struct Pointer : brick::types::Comparable
-{
-    static const uint32_t offsetSize = 14;
-    static const uint32_t segmentSize = 16;
-
-    uint32_t offset:offsetSize; // TODO use a bittuple for guaranteed layout; offset
-                                // *must* be stored in the lowest 14 bits
-    uint32_t segment:segmentSize;
-    bool heap:1; /* make a (0, 0) pointer different from NULL */
-    uint32_t code:1;
-    Pointer operator+( int relative ) {
-        return Pointer( heap, segment, offset + relative );
-    }
-    Pointer( bool heap, int segment, int offset )
-        : offset( offset ), segment( segment ), heap( heap ), code( 0 )
-    {}
-    Pointer() : Pointer( false, 0, 0 ) {}
-    bool null() { return !heap && !segment && !offset; }
-
-    explicit operator uint32_t() const {
-        return *reinterpret_cast< const uint32_t * >( this );
-    }
-    explicit operator uint64_t() const { return uint32_t( *this ); }
-
-    explicit Pointer( uint32_t x ) {
-        union U {
-            uint32_t x;
-            Pointer p;
-            U( uint32_t x ) : x( x ) {}
-        } u( x );
-        *this = u.p;
-    }
-    explicit Pointer( const PC &x ) { *this = *reinterpret_cast< const Pointer * >( &x ); }
-
-    bool operator<=( Pointer o ) const {
-        return std::make_tuple( int( heap ), int( segment ), int( offset ) )
-            <= std::make_tuple( int( o.heap ), int( o.segment ), int( o.offset ) );
-    }
-};
-
-enum Builtin {
     NotBuiltin = 0,
     BuiltinIntrinsic = 1,
-    BuiltinChoice,
+
+    /* system entry points */
+    BuiltinSetSched,
+    BuiltinSetFault,
+    BuiltinSetIfl,
+
+    /* control flow */
+    BuiltinChoose,
     BuiltinMask,
-    BuiltinUnmask,
-    BuiltinInterrupt,
-    BuiltinGetTID,
-    BuiltinNewThread,
-    BuiltinAssert,
-    BuiltinMalloc,
-    BuiltinFree,
-    BuiltinHeapObjectSize,
-    BuiltinAp,
+    BuiltinJump,
+    BuiltinFault,
+
+    /* feedback */
+    BuiltinTrace,
+
+    /* memory management */
+    BuiltinMakeObject,
+    BuiltinFreeObject,
     BuiltinMemcpy,
-    BuiltinVaStart,
-    BuiltinUnwind,
-    BuiltinLandingPad,
-    BuiltinProblem,
-    BuiltinIsPrivate
+
+    /* introspection */
+    BuiltinQueryVarargs,
+    BuiltinQueryFrame,
+    BuiltinQueryObjectSize,
+    BuiltinQueryInstruction,
+    BuiltinQueryVariable,
+    BuiltinQueryFunction
 };
 
 struct Choice {
@@ -132,19 +68,71 @@ struct Choice {
     std::vector< int > p;
 };
 
-struct ProgramInfo {
-    ::llvm::IntrinsicLowering *IL;
-    ::llvm::Module *module;
-    ::llvm::DataLayout TD;
+struct ConstContext
+{
+    using Heap = MutableHeap;
+    using HeapPointer = Heap::Pointer;
+    using PointerV = value::Pointer< HeapPointer >;
+    struct Control
+    {
+        PointerV _constants;
+        PointerV _globals;
+        PointerV frame() { return PointerV(); }
+        void frame( HeapPointer ) {}
+        PointerV globals() { return _globals; }
+        PointerV constants() { return _constants; }
+        void fault( _VM_Fault ) { NOT_IMPLEMENTED(); }
+        bool mask( bool )  { NOT_IMPLEMENTED(); }
+        template< typename I >
+        int choose( int, I, I ) { NOT_IMPLEMENTED(); }
+        void setSched( CodePointer ) { NOT_IMPLEMENTED(); }
+        void setFault( CodePointer ) { NOT_IMPLEMENTED(); }
+        void setIfl( PointerV ) { NOT_IMPLEMENTED(); }
+        bool isEntryFrame( HeapPointer ) { NOT_IMPLEMENTED(); }
+        void trace( std::string ) { NOT_IMPLEMENTED(); }
+    };
 
-    struct Value {
+    Heap _heap;
+    Control _control;
+
+    Heap &heap() { return _heap; }
+    Control &control() { return _control; }
+    void setup( int gds, int cds )
+    {
+        control()._constants = heap().make( cds );
+        if ( gds )
+            control()._globals = heap().make( gds );
+    }
+};
+
+/*
+ * A representation of the LLVM program that is suitable for execution.
+ */
+struct Program
+{
+    llvm::IntrinsicLowering *IL;
+    llvm::Module *module;
+    llvm::DataLayout TD;
+
+    /*
+     * Values (data) used in a program are organised into blocks of memory:
+     * frames (one for each function), globals (for each process) and constants
+     * (immutable and shared across all processes). These blocks consist of
+     * individual slots, one slot per value stored in the given block. Slots
+     * are typed and they can overlap *if* the lifetimes of the values stored
+     * in them do not. In this respect, slots behave like pointers into the
+     * given memory block. All slots are assigned statically. All LLVM Values
+     * are allocated into slots.
+     */
+    struct Slot
+    {
         enum { Void, Pointer, Integer, Float, Aggregate, CodePointer, Alloca } type:3;
+        enum Location { Global, Local, Constant, Invalid } location:2;
         uint32_t width:29;
-        bool constant:1;
-        bool global:1;
         uint32_t offset:30;
 
-        bool operator<( Value v ) const {
+        bool operator<( Slot v ) const
+        {
             return static_cast< uint32_t >( *this )
                  < static_cast< uint32_t >( v );
         }
@@ -156,294 +144,225 @@ struct ProgramInfo {
         bool aggregate() { return type == Aggregate; }
         bool codePointer() { return type == CodePointer; }
 
-        explicit operator uint32_t() const {
+        explicit operator uint32_t() const
+        {
             return *reinterpret_cast< const uint32_t * >( this );
         }
 
-        Value()
-            : type( Integer ), width( 0 ), constant( false ), global( false ), offset( 0 )
+        Slot( int w = 0, Location l = Invalid )
+            : type( Integer ), location( l ), width( w ), offset( 0 )
         {}
     };
 
-    struct Instruction {
-        unsigned opcode;
-        brick::data::SmallVector< Value, 4 > values;
-        Value &result() { return values[0]; }
-        Value &operand( int i ) { return values[ (i >= 0) ? (i + 1) : (i + values.size()) ]; }
-        Value &value( int i ) { return values[ (i >= 0) ? i : (i + values.size()) ]; }
-
-        int builtin; /* non-zero if this is a call to a builtin */
-        ::llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
-        Instruction() : builtin( NotBuiltin ), op( nullptr ) {}
-        /* next instruction is in the same BB unless op == NULL */
+    struct SlotRef
+    {
+        Slot slot;
+        int seqno;
+        SlotRef( Slot s = Slot(), int n = -1 ) : slot( s ), seqno( n ) {}
     };
 
-    struct Function {
+    struct Instruction
+    {
+        uint32_t opcode:16;
+        uint32_t builtin:16; /* non-zero if this is a call to a builtin */
+        brick::data::SmallVector< Slot, 4 > values;
+        Slot &result() { ASSERT( values.size() ); return values[0]; }
+        Slot &operand( int i )
+        {
+            int idx = (i >= 0) ? (i + 1) : (i + values.size());
+            ASSERT_LEQ( idx, values.size() - 1 );
+            return values[ idx ];
+        }
+        Slot &value( int i )
+        {
+            int idx = (i >= 0) ? i : (i + values.size());
+            ASSERT_LEQ( idx, values.size() - 1 );
+            return values[ idx ];
+        }
+
+        /*
+         * TODO, remove the 'op' pointer (to improve compactness)...
+         * - alloca needs to get a virtual size parameter
+         * - LLVM type needs to be passed for {extract,insert}value, getelementptr
+         * - PHI incoming block addresses need to be represented
+         * - icmp/fcmp predicates, atomicrmw operation
+         * - callsite handling needs to be reworked
+         */
+        llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
+        Instruction() : builtin( NotBuiltin ), op( nullptr ) {}
+    };
+
+    struct Function
+    {
         int datasize;
         int argcount:31;
         bool vararg:1;
-        Value personality;
-        std::vector< Value > values;
+        Slot personality;
+        std::vector< Slot > values; /* TODO only store arguments; rename, use SmallVector */
         std::vector< Instruction > instructions;
-        std::vector< Pointer > typeIDs; /* for landing pads */
-        int typeID( Pointer p )
+        std::vector< ConstPointer > typeIDs; /* for landing pads */
+
+        int typeID( ConstPointer p )
         {
             auto found = std::find( typeIDs.begin(), typeIDs.end(), p );
             return found == typeIDs.end() ? 0 : 1 + (found - typeIDs.begin());
         }
-        Instruction &instruction( PC pc ) {
-            ASSERT_LEQ( int( pc.instruction ), int( instructions.size() ) - 1 );
-            return instructions[ pc.instruction ];
+
+        Instruction &instruction( CodePointer pc )
+        {
+            ASSERT_LEQ( pc.instruction(), int( instructions.size() ) - 1 );
+            return instructions[ pc.instruction() ];
         }
+
         Function() : datasize( 0 ) {}
     };
 
     std::vector< Function > functions;
-    std::vector< Value > globals;
-    std::vector< std::pair< int, Value > > globalvars;
-    std::vector< std::pair< ::llvm::Type *, std::string > > globalinfo, constinfo;
-    std::vector< char > constdata;
-    std::vector< char > globaldata; /* initial values! */
-    int globalsize, constdatasize;
+    std::vector< Slot > _globals, _constants;
+    int _globals_size, _constants_size;
+
     int framealign;
     bool codepointers;
 
-    std::map< const ::llvm::Value *, Value > valuemap;
-    std::map< const ::llvm::Instruction *, PC > pcmap;
-    std::map< const ::llvm::Value *, std::string > anonmap;
+    std::map< const llvm::Value *, SlotRef > valuemap;
+    std::map< const llvm::Instruction *, CodePointer > pcmap;
+    std::map< const llvm::Value *, std::string > anonmap;
 
-    std::map< const ::llvm::BasicBlock *, PC > blockmap;
-    std::map< const ::llvm::Function *, int > functionmap;
+    std::map< const llvm::BasicBlock *, CodePointer > blockmap;
+    std::map< const llvm::Function *, int > functionmap;
 
-    int pointerTypeSize;
+    ConstContext _ccontext;
 
     template< typename Container >
     static void makeFit( Container &c, int index ) {
         c.resize( std::max( index + 1, int( c.size() ) ) );
     }
 
-    Instruction &instruction( PC pc ) {
+    Instruction &instruction( CodePointer pc )
+    {
         return function( pc ).instruction( pc );
     }
 
-    Function &function( PC pc ) {
-        ASSERT_LEQ( int( pc.function ), int( functions.size() ) - 1 );
-        return functions[ pc.function ];
+    Function &function( CodePointer pc )
+    {
+        ASSERT_LEQ( pc.function(), int( functions.size() ) - 1 );
+        ASSERT( pc.function() > 0 );
+        return functions[ pc.function() ];
     }
 
-    template< typename T >
-    T &constant( Value v ) {
-        return *reinterpret_cast< T * >( &constdata[ v.offset ] );
-    }
-
-    char *allocateConstant( Value &result ) {
-        result.constant = true;
-        result.offset = constdatasize;
-        constdatasize += result.width;
-        constdata.resize( constdata.size() + result.width, 0 );
-        return &constdata[ result.offset ];
-    }
-
-    using Coverage = std::vector< std::vector< ::llvm::Value * > >;
-    std::vector< Coverage > coverage;
-
-    bool lifetimeOverlap( ::llvm::Value *a, ::llvm::Value *b );
-    bool overlayValue( int fun, Value &result, ::llvm::Value *val );
-
-    void allocateValue( int fun, Value &result, ::llvm::Value *val = nullptr ) {
-        result.constant = false;
-        if ( fun ) {
-            result.global = false;
-            if ( !val || !overlayValue( fun, result, val ) ) {
-                result.offset = functions[ fun ].datasize;
-                functions[ fun ].datasize += result.width;
-            }
-        } else {
-            result.global = true;
-            result.offset = globalsize;
-            globalsize += result.width;
-            globaldata.resize( globalsize );
+    SlotRef allocateSlot( Slot slot , int function = 0, llvm::Value *val = nullptr )
+    {
+        switch ( slot.location )
+        {
+            case Slot::Constant:
+                slot.offset = _constants_size;
+                _constants_size += slot.width;
+                _constants.push_back( slot );
+                return SlotRef( slot, _constants.size() - 1 );
+            case Slot::Global:
+                slot.offset = _globals_size;
+                _globals_size += slot.width;
+                _globals.push_back( slot );
+                return SlotRef( slot, _globals.size() - 1 );
+            case Slot::Local:
+                ASSERT( function );
+                overlaySlot( function, slot, val );
+                functions[ function ].values.push_back( slot );
+                return SlotRef( slot, 0 );
+            default:
+                UNREACHABLE( "invalid slot location" );
         }
     }
 
-    template< typename T >
-    void makeConstant( Value &result, T value ) {
-        ASSERT_LEQ( sizeof( T ), result.width );
-        allocateConstant( result );
-        constant< T >( result ) = value;
-    }
-
-    std::deque< std::tuple< Value, ::llvm::Constant *, bool > > toInit;
-    std::set< ::llvm::Value * > doneInit;
-
-    void makeLLVMConstant( Value &result, ::llvm::Constant *c )
+    GenericPointer<> s2ptr( SlotRef sr )
     {
-        allocateConstant( result );
-        valuemap.insert( std::make_pair( c, result ) );
-        storeConstant( result, c );
+        switch ( sr.slot.location )
+        {
+            case Slot::Constant: return ConstPointer( sr.seqno, 0 );
+            case Slot::Global: return GlobalPointer( sr.seqno, 0 );
+            default: UNREACHABLE( "invalid slot type in Program::s2ptr" );
+        }
     }
 
-    bool isCodePointer( ::llvm::Value *val );
-    bool isCodePointerConst( ::llvm::Value *val );
-    PC getCodePointer( ::llvm::Value *val );
+    ConstContext::PointerV s2hptr( Slot s );
 
-    Value storeConstantR( ::llvm::Constant *, bool & );
-    void storeConstant( Value result, ::llvm::Constant *, bool global = false );
+    using Coverage = std::vector< std::vector< llvm::Value * > >;
+    std::vector< Coverage > coverage;
 
-    bool globalPointerInBounds( Pointer p ) {
-        ASSERT_LEQ( int( p.segment ), int( globals.size() ) - 1 );
-        return p.offset < globals[ p.segment ].width;
+    bool lifetimeOverlap( llvm::Value *a, llvm::Value *b );
+    void overlaySlot( int fun, Slot &result, llvm::Value *val );
+
+    std::deque< std::function< void() > > _toinit;
+    std::set< llvm::Value * > _doneinit;
+
+    CodePointer functionByName( std::string s );
+
+    bool isCodePointer( llvm::Value *val );
+    bool isCodePointerConst( llvm::Value *val );
+    CodePointer getCodePointer( llvm::Value *val );
+
+    void initStatic( Slot slot, llvm::Value * );
+
+    template< typename T >
+    auto initStatic( Slot s, T t ) -> decltype( std::declval< typename T::Raw >(), void() )
+    {
+        // std::cerr << "initial constant value " << t << " at " << s2hptr( s ) << std::endl;
+        _ccontext.heap().write( s2hptr( s ), t );
     }
 
-    int globalPointerOffset( Pointer p ) {
-        ASSERT_LEQ( int( p.segment ), int( globals.size() ) - 1 );
-        ASSERT( globalPointerInBounds( p ) );
-        return globals[ p.segment ].offset + p.offset;
-    }
 
-    struct Position {
-        PC pc;
-        ::llvm::BasicBlock::iterator I;
-        Position( PC pc, ::llvm::BasicBlock::iterator I ) : pc( pc ), I( I ) {}
+    struct Position
+    {
+        CodePointer pc;
+        llvm::BasicBlock::iterator I;
+        Position( CodePointer pc, llvm::BasicBlock::iterator I ) : pc( pc ), I( I ) {}
     };
 
     template< typename Insn > void insertIndices( Position p );
     Position insert( Position );
     Position lower( Position ); // convert intrinsic into normal insns
-    Builtin builtin( ::llvm::Function *f );
+    Builtin builtin( llvm::Function *f );
     void builtin( Position );
-    void initValue( ::llvm::Value *val, Value &result );
-    Value insert( int function, ::llvm::Value *val );
-    void build();
-    void pass();
+    Slot initSlot( llvm::Value *val, Slot::Location loc );
+    SlotRef insert( int function, llvm::Value *val );
+    SlotRef insert( int function, llvm::Value *val, Slot::Location sl );
 
-    ProgramInfo( ::llvm::Module *m ) : module( m ), TD( m ), pointerTypeSize( TD.getPointerSize() )
+    void pass(); /* internal */
+
+    void setupRR();
+    void computeRR(); /* RR = runtime representation */
+    void computeStatic();
+
+    /* the construction sequence is this:
+       1) constructor
+       2) setupRR
+       3a) (optional) set up additional constant/global data
+       3b) computeRR
+       4) computeStatic */
+    Program( llvm::Module *m ) : module( m ), TD( m )
     {
-        constdatasize = 0;
-        globalsize = 0;
-        IL = new ::llvm::IntrinsicLowering( TD );
-        build();
+        _constants_size = 0;
+        _globals_size = 0;
+        IL = new llvm::IntrinsicLowering( TD );
     }
 };
 
-struct ValueRef {
-    ProgramInfo::Value v;
-    int frame;
-    int tid;
-    int offset;
-    ValueRef( ProgramInfo::Value v = ProgramInfo::Value(),
-              int frame = 0, int tid = -1, int off = 0 )
-        : v( v ), frame( frame ), tid( tid ), offset( off )
-    {}
-};
-
-enum class MemoryFlag {
-    Uninitialised, Data, HeapPointer
-};
-
-struct MemoryBits : BitPointer {
-    static const int bitwidth = 2;
-
-    MemoryBits( uint8_t *base = nullptr, int offset = 0 )
-        : BitPointer( base, offset * bitwidth )
-    {}
-
-    union U {
-        uint64_t x;
-        volatile MemoryFlag t;
-        U() : x() { }
-    };
-
-    void set( MemoryFlag s ) {
-        static_assert( 32 % bitwidth == 0, "setUnsafe is only safe for divisors of 32" );
-        setUnsafe( uint32_t( s ), bitwidth );
-    }
-
-    MemoryFlag get() {
-        static_assert( 32 % bitwidth == 0, "getUnsafe is only safe for divisors of 32" );
-        return MemoryFlag( getUnsafe( bitwidth ) );
-    }
-
-    MemoryBits &operator++() {
-        shift( bitwidth );
-        return *this;
-    }
-
-    MemoryBits operator++(int) {
-        MemoryBits b = *this;
-        shift( bitwidth );
-        return b;
-    }
-};
-
-inline bool isHeapPointer( MemoryBits f ) {
-    return f.get() == MemoryFlag::HeapPointer;
-};
-
-struct GlobalContext {
-    ProgramInfo &info;
-    ::llvm::DataLayout &TD;
-    bool allow_global;
-
-    Pointer malloc( int, int ) { ASSERT_UNREACHABLE( "" ); }
-    bool free( Pointer ) { ASSERT_UNREACHABLE( "" ); }
-    int pointerSize( Pointer ) { ASSERT_UNREACHABLE( "" ); }
-    bool isPrivate( int, Pointer ) { ASSERT_UNREACHABLE( "" ); }
-
-    std::vector< int > pointerId( ::llvm::Instruction * ) {
-        ASSERT_UNREACHABLE( "no pointerId in global context" );
-    }
-    int pointerId( Pointer ) {
-        ASSERT_UNREACHABLE( "no pointerId in global context" );
-    }
-
-    MemoryBits memoryflag( Pointer ) { return MemoryBits(); }
-    MemoryBits memoryflag( ValueRef ) { return memoryflag( Pointer() ); }
-
-    void dump() {}
-
-    /* TODO */
-    bool inBounds( ValueRef, int ) { return true; }
-    bool inBounds( Pointer, int ) { return true; }
-    bool validate( Pointer, bool ) { return true; }
-
-    char *dereference( Pointer p ) {
-        if ( !p.heap && allow_global )
-            return &info.globaldata[ info.globalPointerOffset( p ) ];
-        ASSERT_UNREACHABLE( "dereferencing invalid pointer in GlobalContext" );
-    }
-
-    char *dereference( ValueRef v ) {
-        if( v.v.constant )
-            return &info.constdata[ v.v.offset + v.offset ];
-        else if ( v.v.global && allow_global )
-            return &info.globaldata[ v.v.offset + v.offset ];
-        else
-            ASSERT_UNREACHABLE( "dereferencing invalid value in GlobalContext" );
-    }
-
-    int pointerTypeSize() const { return info.pointerTypeSize; }
-
-    GlobalContext( ProgramInfo &i, ::llvm::DataLayout &TD, bool global )
-        : info( i ), TD( TD ), allow_global( global )
-    {}
-};
-
-std::ostream &operator<<( std::ostream &o, PC p );
-std::ostream &operator<<( std::ostream &o, Pointer p );
-std::ostream &operator<<( std::ostream &o, ProgramInfo::Value p );
-std::ostream &operator<<( std::ostream &o, ValueRef p );
-
-}
+static inline std::ostream &operator<<( std::ostream &o, Program::Slot p )
+{
+    static std::vector< std::string > t = { "void", "ptr", "int", "float", "agg", "code", "alloca" };
+    static std::vector< std::string > l = { "global", "local", "const", "invalid" };
+    return o << "[" << l[ p.location ] << " " << t[ p.type ] << " @" << p.offset << " ↔"
+             << p.width << "]";
 }
 
-namespace std {
-template<> struct hash< divine::llvm::PC > {
-    size_t operator()( divine::llvm::PC pc ) const { return uint32_t( pc ); }
-};
-template<> struct hash< divine::llvm::Pointer > {
-    size_t operator()( divine::llvm::Pointer p ) const { return uint32_t( p ); }
-};
+static inline std::ostream &operator<<( std::ostream &o, const Program::Instruction &i )
+{
+    for ( auto v : i.values )
+        o << v << " ";
+    return o;
+}
+
+}
 }
 
 #endif

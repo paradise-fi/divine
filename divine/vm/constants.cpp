@@ -1,112 +1,178 @@
-// -*- C++ -*- (c) 2012-2014 Petr Ročkai <me@mornfall.net>
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
-#include <divine/llvm/execution.hpp>
-#include <divine/llvm/program.hpp>
+/*
+ * (c) 2012-2016 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#include <divine/vm/eval.hpp>
+#include <divine/vm/program.hpp>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/Module.h>
 
-using namespace divine::llvm;
+using namespace divine::vm;
 
-ProgramInfo::Value ProgramInfo::storeConstantR( ::llvm::Constant *C, bool &done )
+ConstContext::PointerV Program::s2hptr( Program::Slot v )
 {
-    if ( auto GA = dyn_cast< ::llvm::GlobalAlias >( C ) )
-        return storeConstantR(
-            const_cast< ::llvm::GlobalObject * >( GA->getBaseObject() ), done );
-
-    if ( !doneInit.count( C ) || !valuemap.count( C ) ) {
-        auto r = insert( 0, C );
-        if ( !doneInit.count( C ) )
-            done = false;
-        ASSERT( valuemap.count( C ) );
-        return r;
-    }
-    return valuemap[ C ];
+    Eval< Program, ConstContext, value::Void > eval( *this, _ccontext );
+    return eval.s2ptr( v );
 }
 
-void ProgramInfo::storeConstant( ProgramInfo::Value v, ::llvm::Constant *C, bool global )
+void Program::initStatic( Program::Slot v, llvm::Value *V )
 {
     bool done = true;
 
-    GlobalContext econtext( *this, TD, global );
-    if ( auto CE = dyn_cast< ::llvm::ConstantExpr >( C ) ) {
-        ControlContext ccontext;
-        Evaluator< GlobalContext, ControlContext > eval( *this, econtext, ccontext );
+    auto &heap = _ccontext.heap();
+    Eval< Program, ConstContext, value::Void > eval( *this, _ccontext );
+    auto ptr = eval.s2ptr( v );
+    auto C = dyn_cast< llvm::Constant >( V );
 
+    // std::cerr << "ptr = " << ptr << std::endl;
+
+    if ( !valuemap.count( V ) )
+    {
+        V->dump();
+        UNREACHABLE( "value not allocated during initialisation" );
+    }
+
+    if ( C )
+        for ( int i = 0; i < int( C->getNumOperands() ); ++i )
+        {
+            auto op = C->getOperand( i );
+            if ( !_doneinit.count( op ) )
+                done = false;
+            if ( !isa< llvm::GlobalVariable >( op ) )
+                _toinit.emplace_back( [=]{ initStatic( valuemap[ op ].slot, op ); } );
+        }
+
+    if ( auto CE = dyn_cast< llvm::ConstantExpr >( V ) )
+    {
         Instruction comp;
         comp.op = CE;
         comp.opcode = CE->getOpcode();
         comp.values.push_back( v ); /* the result comes first */
-        for ( int i = 0; i < int( CE->getNumOperands() ); ++i ) // now the operands
-            comp.values.push_back( storeConstantR( CE->getOperand( i ), done ) );
+        for ( int i = 0; i < int( C->getNumOperands() ); ++i ) // now the operands
+        {
+            if ( !valuemap.count( C->getOperand( i ) ) )
+            {
+                C->dump();
+                C->getOperand( i )->dump();
+                UNREACHABLE( "oops" );
+            }
+            comp.values.push_back( valuemap[ C->getOperand( i ) ].slot );
+        }
         eval._instruction = &comp;
-        eval.run(); /* compute and write out the value */
-    } else if ( dyn_cast< ::llvm::GlobalVariable >( C ) ) {
-        char *address = econtext.dereference( storeConstantR( C, done ) );
-        std::copy( address, address + v.width, econtext.dereference( v ) );
-    } else if ( isa< ::llvm::UndefValue >( C ) ) {
+        eval.dispatch(); /* compute and write out the value */
+/*
+        eval.op< decltype( eval )::Any >( 0, []( auto v )
+                                          { std::cerr << "result = " << v.get( 0 ) << std::endl; } );
+*/
+    }
+    else if ( isa< llvm::UndefValue >( V ) )
+    {
         /* nothing to do (for now; we don't track uninitialised values yet) */
-    } else if ( auto I = dyn_cast< ::llvm::ConstantInt >( C ) ) {
+    }
+    else if ( auto I = dyn_cast< llvm::ConstantInt >( V ) )
+    {
         const uint8_t *mem = reinterpret_cast< const uint8_t * >( I->getValue().getRawData() );
-        std::copy( mem, mem + v.width, econtext.dereference( v ) );
-    } else if ( auto FP = dyn_cast< ::llvm::ConstantFP >( C ) ) {
-        const uint8_t *mem;
-        float fl; double dbl; long double ldbl;
+        std::for_each( mem, mem + v.width, [&]( char c )
+                       {
+                           heap.shift( ptr, value::Int< 8 >( c ) );
+                       } );
+    }
+    else if ( auto FP = dyn_cast< llvm::ConstantFP >( V ) )
+    {
         switch ( v.width ) {
             case sizeof( float ):
-                fl = FP->getValueAPF().convertToFloat();
-                mem = reinterpret_cast< uint8_t * >( &fl ); break;
+                heap.shift( ptr, value::Float< float >( FP->getValueAPF().convertToFloat() ) );
+                break;
             case sizeof( double ):
-                dbl = FP->getValueAPF().convertToDouble();
-                mem = reinterpret_cast< uint8_t * >( &dbl ); break;
+                heap.shift( ptr, value::Float< double >( FP->getValueAPF().convertToDouble() ) );
+                break;
             case sizeof( long double ): {
                 bool lossy;
-                ::llvm::APFloat x = FP->getValueAPF();
-                x.convert( ::llvm::APFloat::IEEEdouble, ::llvm::APFloat::rmNearestTiesToEven, &lossy );
-                ldbl = x.convertToDouble();
-                mem = reinterpret_cast< uint8_t * >( &ldbl ); break;
+                llvm::APFloat x = FP->getValueAPF();
+                x.convert( llvm::APFloat::IEEEdouble, llvm::APFloat::rmNearestTiesToEven, &lossy );
+                /* FIXME? */
+                heap.shift( ptr, value::Float< long double >( x.convertToDouble() ) );
+                break;
             }
-            default: ASSERT_UNREACHABLE( "non-double, non-float FP constant" );
+            default: UNREACHABLE( "non-double, non-float FP constant" );
         }
-        std::copy( mem, mem + v.width, econtext.dereference( v ) );
-    } else if ( isa< ::llvm::ConstantPointerNull >( C ) ) {
+    }
+    else if ( isa< llvm::ConstantPointerNull >( V ) )
+    {
         /* nothing to do, everything is zeroed by default */
-    } else if ( isa< ::llvm::ConstantAggregateZero >( C ) ) {
+    }
+    else if ( isa< llvm::GlobalVariable >( V ) )
+    {
+        UNREACHABLE( "an unexpected llvm::GlobalVariable" );
+    }
+    else if ( isa< llvm::ConstantAggregateZero >( V ) )
+    {
         /* nothing to do, everything is zeroed by default */
-    } else if ( isCodePointer( C ) ) {
-        *reinterpret_cast< PC * >( econtext.dereference( v ) ) =
-            getCodePointer( C );
-    } else if ( C->getType()->isPointerTy() ) {
-        C->dump();
-        ASSERT_UNREACHABLE( "unexpected non-zero constant pointer" );
-    } else if ( isa< ::llvm::ConstantArray >( C ) || isa< ::llvm::ConstantStruct >( C ) ) {
+    }
+    else if ( isCodePointer( V ) )
+    {
+        // V->dump();
+        std::cerr << "code pointer at " << ptr << ": " << getCodePointer( V ) << std::endl;
+        heap.shift( ptr, value::Pointer<>( getCodePointer( V ) ) );
+    }
+    else if ( V->getType()->isPointerTy() )
+    {
+        V->dump();
+        UNREACHABLE( "an unexpected non-zero constant pointer" );
+    }
+    else if ( isa< llvm::ConstantArray >( V ) || isa< llvm::ConstantStruct >( V ) )
+    {
         int offset = 0;
-        for ( int i = 0; i < int( C->getNumOperands() ); ++i ) {
-            if ( auto CS = dyn_cast< ::llvm::ConstantStruct >( C ) ) {
-                const ::llvm::StructLayout *SLO = econtext.TD.getStructLayout(CS->getType());
+        for ( int i = 0; i < int( C->getNumOperands() ); ++i )
+        {
+            if ( auto CS = dyn_cast< llvm::ConstantStruct >( C ) )
+            {
+                const llvm::StructLayout *SLO = TD.getStructLayout(CS->getType());
                 offset = SLO->getElementOffset( i );
             }
-            auto sub = storeConstantR( dyn_cast< ::llvm::Constant >( C->getOperand( i ) ), done );
-            char *from = econtext.dereference( sub );
-            char *to = econtext.dereference( v ) + offset;
-            std::copy( from, from + sub.width, to );
+
+            auto sub = valuemap[ C->getOperand( i ) ].slot;
+            heap.copy( eval.s2ptr( sub ), eval.s2ptr( v, offset ), sub.width );
             offset += sub.width;
             ASSERT_LEQ( offset, int( v.width ) );
         }
         /* and padding at the end ... */
-    } else if ( auto CDS = dyn_cast< ::llvm::ConstantDataSequential >( C ) ) {
+    }
+    else if ( auto CDS = dyn_cast< llvm::ConstantDataSequential >( V ) )
+    {
         ASSERT_EQ( v.width, CDS->getNumElements() * CDS->getElementByteSize() );
         const char *raw = CDS->getRawDataValues().data();
-        std::copy( raw, raw + v.width, econtext.dereference( v ) );
-    } else if ( dyn_cast< ::llvm::ConstantVector >( C ) ) {
-        ASSERT_UNIMPLEMENTED();
-    } else {
-        C->dump();
-        ASSERT_UNREACHABLE( "unknown constant type" );
+        std::for_each( raw, raw + v.width, [&]( char c )
+                       {
+                           heap.shift( ptr, value::Int< 8 >( c ) );
+                       } );
+    }
+    else if ( dyn_cast< llvm::ConstantVector >( V ) )
+    {
+        NOT_IMPLEMENTED();
+    }
+    else
+    {
+        V->dump();
+        UNREACHABLE( "unknown constant type" );
     }
 
     if ( done )
-        doneInit.insert( C );
+        _doneinit.insert( V );
     else
-        toInit.emplace_back( v, C, global );
+        _toinit.emplace_back( [=]{ initStatic( v, V ); } );
 }
-
