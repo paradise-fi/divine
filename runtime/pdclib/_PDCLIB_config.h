@@ -383,7 +383,7 @@ typedef void *_PDCLIB_va_list;
 #define _PDCLIB_va_arg( ap, type ) (*(type *)(((*(char **)(&ap)) += sizeof(type)) - sizeof(type)))
 #define _PDCLIB_va_copy( dest, src ) ((dest) = (src))
 #define _PDCLIB_va_end( ap )
-#define _PDCLIB_va_start( ap, parmN ) ((ap) = __divine_va_start())
+#define _PDCLIB_va_start( ap, parmN ) ((ap) = __vm_query_varargs())
 
 /* -------------------------------------------------------------------------- */
 /* OS "glue", part 1                                                          */

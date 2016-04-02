@@ -17,8 +17,8 @@
 #include "fs-manager.h"
 
 #ifdef __divine__
-# define FS_MALLOC( x ) __divine_malloc( x )
-# define FS_PROBLEM( msg ) __divine_problem( 1, msg )
+# define FS_MALLOC( x ) __vm_make_object( x )
+# define FS_PROBLEM( msg ) __vm_fault( vm::Fault::Assert, msg )
 #else
 # define FS_MALLOC( x ) std::malloc( x )
 # define FS_PROBLEM( msg )

@@ -14,6 +14,7 @@
 #include "cxa_exception.hpp"
 
 #ifdef __divine__
+#include <string.h> // memset
 #include <divine.h>
 #endif
 
@@ -70,7 +71,7 @@ extern "C" {
         if ( NULL == retVal ) {
             retVal = static_cast<__cxa_eh_globals*>(
 #ifdef __divine__
-                        ::__divine_malloc (sizeof (__cxa_eh_globals))
+                        ::__vm_make_object (sizeof (__cxa_eh_globals))
 #else
                         std::calloc (1, sizeof (__cxa_eh_globals))
 #endif

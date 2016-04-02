@@ -3,7 +3,6 @@
 #include <libcxxabi/src/cxa_exception.hpp>
 #include <libcxxabi/src/private_typeinfo.h>
 #include <limits.h>
-#include <divine/problem.h>
 
 using namespace __cxxabiv1;
 
@@ -12,6 +11,8 @@ struct LPReturn
     void *e;
     int h;
 } __attribute__((packed));
+
+using F = vm::Fault;
 
 extern "C" {
 
@@ -27,11 +28,13 @@ LPReturn __gxx_personality_v0( __cxa_exception *e )
 }
 
 void __cxa_call_unexpected( void *) {
-    __divine_problem( Other, "unexpected exception" );
+    __vm_fault( F::Control, "unexpected exception" );
 }
 
 void __cxa_throw_divine( __cxa_exception *e )
 {
+    __vm_fault( F::NotImplemented );
+#if 0
     int frameid = -1, destination = 0;
     int handler = -1;
     _DivineLP_Info *lp = 0;
@@ -46,7 +49,7 @@ void __cxa_throw_divine( __cxa_exception *e )
         lp = __divine_landingpad( frameid );
 
         if ( !lp ) {
-            __divine_problem( Other, "unhandled exception" );
+            __divine_problem( F::Control, "unhandled exception" );
             __divine_unwind( INT_MIN );
         }
 
@@ -64,8 +67,8 @@ void __cxa_throw_divine( __cxa_exception *e )
                 personality = (Personality) lp->personality;
                 break; // found the right lp, stop looking
             }
-            /* TODO: Handle filters aka exception specifications, aka
-               int blee(...) throws( stuff ). The spec wants us to call the
+            /* TODO: Handle filters (exception specifications, that is `int
+               x(...) throws( exception_type )`. The spec wants us to call the
                unexpected handler. */
         }
 
@@ -79,14 +82,18 @@ void __cxa_throw_divine( __cxa_exception *e )
         ret = personality( e );
 
     __divine_unwind( destination, ret.e, ret.h );
+#endif
 }
 
 }
 
-_Unwind_Reason_Code _Unwind_RaiseException (struct _Unwind_Exception *) { __divine_assert( 0 ); return _URC_NO_REASON; }
-_Unwind_Reason_Code _Unwind_Resume_or_Rethrow (struct _Unwind_Exception *) { __divine_assert( 0 ); return _URC_NO_REASON; }
-_Unwind_Reason_Code _Unwind_ForcedUnwind (struct _Unwind_Exception *, _Unwind_Stop_Fn, void *) { __divine_assert( 0 ); return _URC_NO_REASON; }
+#define NOT_IMPLEMENTED { __vm_fault( F::NotImplemented ); return _URC_NO_REASON; }
+
+_Unwind_Reason_Code _Unwind_RaiseException (struct _Unwind_Exception *) NOT_IMPLEMENTED;
+_Unwind_Reason_Code _Unwind_Resume_or_Rethrow (struct _Unwind_Exception *) NOT_IMPLEMENTED;
+_Unwind_Reason_Code _Unwind_ForcedUnwind (struct _Unwind_Exception *, _Unwind_Stop_Fn, void *)
+    NOT_IMPLEMENTED;
 void _Unwind_DeleteException (struct _Unwind_Exception *) {} /* do nothing */
-void _Unwind_SjLj_Register (struct SjLj_Function_Context *) { __divine_assert( 0 ); }
-void _Unwind_SjLj_Unregister (struct SjLj_Function_Context *) { __divine_assert( 0 ); }
-void * _Unwind_FindEnclosingFunction (void *pc) { __divine_assert( 0 ); return 0; }
+void _Unwind_SjLj_Register (struct SjLj_Function_Context *) { __vm_fault( F::NotImplemented ); }
+void _Unwind_SjLj_Unregister (struct SjLj_Function_Context *) { __vm_fault( F::NotImplemented ); }
+void * _Unwind_FindEnclosingFunction (void *pc) { __vm_fault( F::NotImplemented ); return 0; }

@@ -267,12 +267,12 @@ struct Pipe : File {
 
     void assignReader() {
         if ( _reader )
-            __divine_problem( Other, "Pipe is opened for reading again." );
+            __vm_fault( vm::Fault::Assert, "Pipe is opened for reading again." );
         _reader = true;
     }
     void assignWriter() {
         if ( _writer )
-            __divine_problem( Other, "Pipe is opened for writing again." );
+            __vm_fault( vm::Fault::Assert, "Pipe is opened for writing again." );
         _writer = true;
     }
 

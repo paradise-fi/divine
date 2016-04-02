@@ -28,7 +28,7 @@ struct AllocatorBase {
 
     pointer allocate( size_type n, const_pointer hint = nullptr ) {
 #ifdef __divine__
-        return static_cast< pointer >( __divine_malloc( n ) );
+        return static_cast< pointer >( __vm_make_object( n ) );
 #else
         return std::allocator< char >().allocate( n, hint );
 #endif
@@ -36,7 +36,7 @@ struct AllocatorBase {
 
     void deallocate( pointer p, size_type n ) {
 #ifdef __divine__
-        __divine_free( p );
+        __vm_free_object( p );
 #else
         char *_p = static_cast< char * >( p );
         std::allocator< char >().deallocate( _p, n );

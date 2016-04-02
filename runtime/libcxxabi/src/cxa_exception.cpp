@@ -113,7 +113,7 @@ static inline  int decrementHandlerCount(__cxa_exception *exception) {
 //  Allocate some memory from _somewhere_
 static void *do_malloc(size_t size) {
 #ifdef __divine__
-    return ::__divine_malloc(size);
+    return ::__vm_make_object(size);
 #else
     void *ptr = std::malloc(size);
     if (NULL == ptr) // if malloc fails, fall back to emergency stash
@@ -124,7 +124,7 @@ static void *do_malloc(size_t size) {
 
 static void do_free(void *ptr) {
 #ifdef __divine__
-    ::__divine_free(ptr);
+    ::__vm_free_object(ptr);
 #else
     is_fallback_ptr(ptr) ? fallback_free(ptr) : std::free(ptr);
 #endif

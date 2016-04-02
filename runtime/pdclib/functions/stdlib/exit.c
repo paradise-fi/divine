@@ -49,7 +49,7 @@ void exit( int status )
         for ( int i = 1; i <= _PDCLIB_regptr; ++i )
             _PDCLIB_regstack[ _PDCLIB_regptr - i ]();
 
-    __divine_free( _PDCLIB_regstack );
+    __vm_free_object( _PDCLIB_regstack );
     _Exit( status );
 }
 

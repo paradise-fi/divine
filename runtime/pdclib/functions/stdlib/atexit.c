@@ -46,7 +46,7 @@ int atexit( void (*func)( void ) )
         else
             return 1; /* ? */
     } else if ( !_PDCLIB_regstack )
-        _PDCLIB_regstack = __divine_malloc( 32 * ptrsize );
+        _PDCLIB_regstack = __vm_make_object( 32 * ptrsize );
 
     _PDCLIB_regstack[ _PDCLIB_regptr ++ ] = func;
     return 0;

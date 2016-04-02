@@ -5,6 +5,10 @@
 #include <cstdlib>
 #include <_PDCLIB_aux.h>
 #include <divine.h>
+#include <string.h>
+#include "../filesystem/fs-manager.h"
+
+namespace divine { namespace fs { VFS vfs; } }
 
 /*
  * Glue code that ties various bits of C and C++ runtime to the divine runtime
@@ -13,44 +17,56 @@
  */
 
 /* Memory allocation */
-__attribute__((noinline)) void * malloc( size_t size ) _PDCLIB_nothrow {
-    __divine_interrupt_mask();
-    if ( __divine_choice( 2 ) )
-        return __divine_malloc( size ); // success
+[[noinline]] void * malloc( size_t size ) noexcept
+{
+    int masked = __vm_mask( 1 );
+    void *r;
+    if ( __vm_choose( 2 ) )
+        r = __vm_make_object( size ); // success
     else
-        return NULL; // failure
+        r = NULL; // failure
+    __vm_mask( masked );
+    return r;
 }
 
 #define MIN( a, b )   ((a) < (b) ? (a) : (b))
 
-__attribute__((noinline)) void *realloc( void *orig, size_t size ) _PDCLIB_nothrow {
-    __divine_interrupt_mask();
+[[noinline]] void *realloc( void *orig, size_t size ) noexcept
+{
+    int masked = __vm_mask( 1 );
+    void *r;
     if ( !size ) {
-        __divine_free( orig );
-        return NULL;
+        __vm_free_object( orig );
+        r = NULL;
     }
-    if ( __divine_choice( 2 ) ) {
-        void *n = __divine_malloc( size );
+    else if ( __vm_choose( 2 ) ) {
+        void *n = __vm_make_object( size );
         if ( orig ) {
-            ::memcpy( n, orig, MIN( size, __divine_heap_object_size( orig ) ) );
-            __divine_free( orig );
+            ::memcpy( n, orig, MIN( size, __vm_query_object_size( orig ) ) );
+            __vm_free_object( orig );
         }
-        return n;
+        r = n;
     } else
-        return NULL; // failure
+        r = NULL; // failure
+    __vm_mask( masked );
+    return r;
 }
 
-__attribute__((noinline)) void *calloc( size_t n, size_t size ) _PDCLIB_nothrow {
-    __divine_interrupt_mask();
-    if ( __divine_choice( 2 ) ) {
-        void *mem = __divine_malloc( n * size ); // success
+[[noinline]] void *calloc( size_t n, size_t size ) noexcept
+{
+    int masked = __vm_mask( 1 );
+    void *r;
+    if ( __vm_choose( 2 ) ) {
+        void *mem = __vm_make_object( n * size ); // success
         memset( mem, 0, n * size );
-        return mem;
+        r = mem;
     } else
-        return NULL; // failure
+        r = NULL; // failure
+    __vm_mask( masked );
+    return r;
 }
 
-void free( void * p) _PDCLIB_nothrow { return __divine_free( p ); }
+void free( void * p) _PDCLIB_nothrow { return __vm_free_object( p ); }
 
 /* IOStream */
 
@@ -64,16 +80,14 @@ extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_han
     return 0;
 }
 
-extern "C" void *dlsym( void *, void * ) { __divine_problem( 9, 0 ); return 0; }
-extern "C" void *__errno_location() { __divine_problem( 9, 0 ); return 0; }
+extern "C" void *dlsym( void *, void * ) { __vm_fault( vm::Fault::NotImplemented ); return 0; }
+extern "C" void *__errno_location() { __vm_fault( vm::Fault::NotImplemented ); return 0; }
 
-extern "C" { /* pdclib glue functions */
-
-    void _PDCLIB_Exit( int rv ) {
-        if ( rv )
-            __divine_problem( 1, "exit called with non-zero value" );
-        __divine_unwind( INT_MIN );
-    }
+extern "C" void _PDCLIB_Exit( int rv )
+{
+    if ( rv )
+        __vm_fault( vm::Fault::Control, "exit called with non-zero value" );
+    __vm_fault( vm::Fault::NotImplemented ); // TODO unwind
 }
 
 extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
@@ -89,6 +103,7 @@ extern "C" unsigned int sleep( unsigned int seconds ) {
 
 extern "C" int usleep( useconds_t usec ) { return 0; }
 
-extern "C" void _exit( int rv ) {
+extern "C" void _exit( int rv )
+{
     _PDCLIB_Exit( rv );
 }

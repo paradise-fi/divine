@@ -13,12 +13,13 @@
 
 void * memset( void * s, int c, size_t n )
 {
+    int masked = __vm_mask( 1 );
     unsigned char * p = (unsigned char *) s;
-    __divine_interrupt_mask();
     while ( n-- )
     {
         *p++ = (unsigned char) c;
     }
+    __vm_mask( masked );
     return s;
 }
 

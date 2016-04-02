@@ -1,7 +1,8 @@
 // divine-cflags: -std=c++11
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <weakmem.h>
+#if 0
+#include "weakmem.h"
 #include <algorithm> // reverse iterator
 #include <cstdarg>
 
@@ -366,3 +367,4 @@ void __lart_weakmem_cleanup( int cnt, ... ) {
 }
 
 #pragma GCC diagnostic pop
+#endif

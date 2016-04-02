@@ -40,7 +40,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 random_device::random_device( const string & ) { }
 random_device::~random_device() { }
 unsigned random_device::operator()() {
-    return random_device::min() + __divine_choice( random_device::max() - random_device::min() );
+    return random_device::min() + __vm_choose( random_device::max() - random_device::min() );
 }
 
 #elif defined(_WIN32)

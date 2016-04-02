@@ -23,9 +23,9 @@
 # include <divine.h>
 # include <divine/problem.h>
 
-# define FS_INTERRUPT()             __divine_interrupt()
-# define FS_ATOMIC_SECTION_BEGIN()  __divine_interrupt_mask()
-# define FS_ATOMIC_SECTION_END()    __divine_interrupt_unmask()
+# define FS_INTERRUPT()             /*__divine_interrupt()*/
+# define FS_ATOMIC_SECTION_BEGIN()  /*__divine_interrupt_mask()*/
+# define FS_ATOMIC_SECTION_END()    /*__divine_interrupt_unmask()*/
 
 #else
 # include "divine.h"

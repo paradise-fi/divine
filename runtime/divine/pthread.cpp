@@ -12,6 +12,12 @@
 #include <algorithm>
 
 /* Macros */
+#define _WAIT( cond, cancel_point )
+int __divine_get_tid() {}
+void __divine_unwind( int, ... ) {}
+int __divine_new_thread( ... ) {}
+
+#if 0
 #define _WAIT( cond, cancel_point )                                            \
                 do {                                                           \
                     while ( ( cond ) && ( !cancel_point || !_canceled() ) ) {  \
@@ -23,6 +29,7 @@
                     if ( cancel_point && _canceled() )                         \
                           _cancel();                                           \
                 } while( 0 )
+#endif
 
 #define WAIT( cond ) _WAIT( cond, false )
 #define WAIT_OR_CANCEL( cond ) _WAIT( cond, true )
@@ -56,8 +63,12 @@
 
 #define _BARRIER_COUNT_MASK        0xFFFE0000
 
-#define DBG_ASSERT( x ) __divine_assert( static_cast< int >( x ) )
+#define DBG_ASSERT(x)
+#define ATOMIC_FUN_BEGIN(x)
+#define BREAK_MASK(x)
 
+#if 0
+#define DBG_ASSERT( x ) __divine_assert( static_cast< int >( x ) )
 #define ATOMIC_FUN_BEGIN( visible_effect )                        \
                 do {                                              \
                     __divine_interrupt_mask();                    \
@@ -74,7 +85,7 @@
                     command;                     \
                     __divine_interrupt_mask();   \
                 } while( 0 );
-
+#endif
 
 /* Internal data types */
 struct Entry {
@@ -140,11 +151,11 @@ pthread_key_t keys = NULL;
 /* Helper functions */
 template< typename T >
 T* realloc( T* old_ptr, unsigned old_count, unsigned new_count ) {
-    T* new_ptr = static_cast< T* >( __divine_malloc( sizeof( T ) * new_count ) );
+    T* new_ptr = static_cast< T* >( __vm_make_object( sizeof( T ) * new_count ) );
     if ( old_ptr ) {
         memcpy( static_cast< void* >( new_ptr ), static_cast< void* >( old_ptr ),
                 sizeof( T ) * ( old_count < new_count ? old_count : new_count ));
-        __divine_free( old_ptr );
+        __vm_free_object( old_ptr );
     }
     return new_ptr;
 }
@@ -189,7 +200,7 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
 
     // allocate slot for thread metadata
     DBG_ASSERT( threads[ltid] == NULL );
-    threads[ltid] = static_cast< Thread* >( __divine_malloc( sizeof( Thread ) ) );
+    threads[ltid] = static_cast< Thread* >( __vm_make_object( sizeof( Thread ) ) );
     DBG_ASSERT( threads[ltid] != NULL );
 
     // initialize thread metadata
@@ -223,7 +234,7 @@ void _initialize( void )  {
         // etc... more initialization steps might come here
 
         // check of some assumptions
-        __divine_assert( sizeof(int) >= 4 );
+        assert( sizeof(int) >= 4 );
 
         initialized = true;
     }
@@ -239,7 +250,7 @@ void _cleanup() {
     while ( handler ) {
         next = handler->next;
         handler->routine( handler->arg );
-        __divine_free( handler );
+        __vm_free_object( handler );
         handler = next;
     }
 }
@@ -279,11 +290,11 @@ void _pthread_entry( void *_args )
     // call entry function
     thread->running = true;
     __sync_synchronize();
-    __divine_interrupt_unmask();
+    // FIXME __divine_interrupt_unmask();
     // from now on, args and _args should not be accessed
 
     thread->result = entry(arg);
-    __divine_interrupt_mask();
+    // FIXME __divine_interrupt_mask();
 
     DBG_ASSERT( thread->sleeping == false );
 
@@ -313,7 +324,7 @@ void _pthread_entry( void *_args )
     WAIT( !thread->detached );
 
     // cleanup
-    __divine_free( thread );
+    __vm_free_object( thread );
     threads[ltid] = NULL;
     __sync_synchronize();
 }
@@ -328,7 +339,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
         return EINVAL;
 
     // create new thread and pass arguments to the entry wrapper
-    Entry* args = static_cast< Entry* >( __divine_malloc( sizeof( Entry ) ) );
+    Entry* args = static_cast< Entry* >( __vm_make_object( sizeof( Entry ) ) );
     args->entry = entry;
     args->arg = arg;
     args->initialized = false;
@@ -358,7 +369,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *(*entry)(
     WAIT( !args->initialized );  // wait, do not free args yet
 
     // cleanup and return
-    __divine_free( args );
+    __vm_free_object( args );
     return 0;
 }
 
@@ -653,12 +664,12 @@ void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
         if ( holdertid < 0 || holdertid == lastthread )
             return;
         if ( holdertid == gtid ) {
-            __divine_problem( Deadlock, "Deadlock: Mutex cycle closed" );
+            __vm_fault( vm::Fault::Locking, "Deadlock: Mutex cycle closed" );
             return;
         }
         Thread *holder = _get_thread_by_gtid( holdertid );
         if ( holder == NULL || !holder->running ) {
-            __divine_problem( Deadlock, "Deadlock: Mutex locked by dead thread" );
+            __vm_fault( vm::Fault::Locking, "Deadlock: Mutex locked by dead thread" );
             return;
         }
         mutex = holder->waiting_mutex;
@@ -686,7 +697,7 @@ int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
             if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
                 return EDEADLK;
             else
-                __divine_problem( Deadlock, "Deadlock: Nonrecursive mutex locked again" );
+                __vm_fault( vm::Fault::Locking, "Deadlock: Nonrecursive mutex locked again" );
         }
     }
 
@@ -703,8 +714,9 @@ int _mutex_lock(pthread_mutex_t *mutex, bool wait) {
     thr->waiting_mutex = mutex;
     while ( !_mutex_can_lock( mutex, gtid ) ) {
         _check_deadlock( mutex, gtid );
-        __divine_interrupt_unmask();
-        __divine_interrupt_mask();
+        /* FIXME */
+        // __divine_interrupt_unmask();
+        // __divine_interrupt_mask();
     }
     thr->waiting_mutex = NULL;
 
@@ -731,7 +743,7 @@ int pthread_mutex_destroy( pthread_mutex_t *mutex ) {
         if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
              return EBUSY;
         else
-            __divine_problem( Deadlock, "Locked mutex destroyed" );
+            __vm_fault( vm::Fault::Locking, "Locked mutex destroyed" );
     }
     mutex->initialized = 0;
     return 0;
@@ -753,7 +765,7 @@ int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr 
         mutex->type = attr->type;
     else
         mutex->type = PTHREAD_MUTEX_DEFAULT;
-    __divine_interrupt_unmask();
+    // FIXME __divine_interrupt_unmask();
     return 0;
 }
 
@@ -779,13 +791,13 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
         // mutex is not locked or it is already locked by another thread
         DBG_ASSERT( mutex->lockCounter ); // count should be > 0
         if ( mutex->type == PTHREAD_MUTEX_NORMAL )
-             __divine_problem( Deadlock, "Mutex has to be released by the same thread which acquired the mutex." );
+            __vm_fault( vm::Fault::Locking, "Mutex has to be released by the same thread which acquired the mutex." );
         else
             return EPERM; // recursive mutex can also detect
     }
 
     int r = _mutex_adjust_count( mutex, -1 );
-    __divine_assert( r == 0 );
+    assert( r == 0 );
     if ( !mutex->lockCounter ) {
         mutex->owner = 0; // unlock if count == 0
         __sync_synchronize();
@@ -813,7 +825,7 @@ int pthread_mutex_timedlock( pthread_mutex_t *mutex, const struct timespec *abst
     // Consider both scenarios, one in which the mutex could not be locked
     // before the specified timeout expired, and the other in which
     // pthread_mutex_timedlock behaves basically the same as pthread_mutex_lock.
-    if ( __divine_choice( 2 ) ) {
+    if ( __vm_choose( 2 ) ) {
         return pthread_mutex_lock( mutex );
     } else {
         return ETIMEDOUT;
@@ -933,11 +945,11 @@ int pthread_key_create( pthread_key_t *p_key, void (*destructor)(void *) ) {
     PTHREAD_VISIBLE_FUN_BEGIN();
 
     // malloc
-    void* _key = __divine_malloc( sizeof( _PerThreadData ) );
+    void* _key = __vm_make_object( sizeof( _PerThreadData ) );
     pthread_key_t key = static_cast< pthread_key_t >( _key );
     if ( alloc_pslots ) {
         key->data = static_cast< void ** >
-                        ( __divine_malloc( sizeof( void* ) * alloc_pslots ) );
+                        ( __vm_make_object( sizeof( void* ) * alloc_pslots ) );
     } else key->data = NULL;
 
     // initialize
@@ -975,8 +987,8 @@ int pthread_key_delete( pthread_key_t key ) {
         key->prev->next = key->next;
     }
 
-    __divine_free( key->data );
-    __divine_free( key );
+    __vm_free_object( key->data );
+    __vm_free_object( key );
     return 0;
 }
 
@@ -995,7 +1007,7 @@ int pthread_setspecific( pthread_key_t key, const void *data ) {
 
 void *pthread_getspecific( pthread_key_t key ) {
     PTHREAD_FUN_BEGIN();
-    __divine_assert(key != NULL);
+    assert(key != NULL);
 
     int ltid = __divine_get_tid();
     DBG_ASSERT( ltid < alloc_pslots );
@@ -1019,8 +1031,8 @@ template< typename CondOrBarrier >
 int _cond_adjust_count( CondOrBarrier *cond, int adj ) {
     int count = cond->counter;
     count += adj;
-    __divine_assert( count < ( 1 << 16 ) );
-    __divine_assert( count >= 0 );
+    assert( count < ( 1 << 16 ) );
+    assert( count >= 0 );
 
     cond->counter = count;
     return count;
@@ -1034,7 +1046,7 @@ int _destroy_cond_or_barrier(CondOrBarrier *cond ) {
 
     // make sure that no thread is waiting on this condition
     // (probably better alternative when compared to: return EBUSY)
-    __divine_assert( cond->counter == 0 );
+    assert( cond->counter == 0 );
 
     cond->counter = 0;
     cond->initialized = 0;
@@ -1088,7 +1100,7 @@ int _cond_signal( CondOrBarrier *cond ) {
 
         if ( !broadcast ) {
             /* non-determinism */
-            choice = __divine_choice( ( 1 << count ) - 1 );
+            choice = __vm_choose( ( 1 << count ) - 1 );
         }
 
         for ( int i = 0; i < alloc_pslots; ++i ) {
@@ -1151,14 +1163,16 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
         return EPERM;
     }
 
-    if ( __divine_choice( 2 ) )
+    if ( __vm_choose( 2 ) )
         return 0; // simulate spurious wakeup
 
     // It is allowed to have one mutex associated with more than one conditional
     // variable. On the other hand, using more than one mutex for one
     // conditional variable results in undefined behaviour.
     if ( cond->mutex != NULL && cond->mutex != mutex )
-        __divine_problem( Deadlock, "Attempted to wait on condition variable using other mutex that already in use by this condition variable" );
+        __vm_fault( vm::Fault::Locking,
+                    "Attempted to wait on condition variable using other mutex "
+                    "that already in use by this condition variable" );
     cond->mutex = mutex;
 
     // fall asleep
@@ -1188,7 +1202,7 @@ int pthread_cond_timedwait( pthread_cond_t *cond, pthread_mutex_t *mutex,
     // Consider both scenarios, one in which the time specified by abstime has passed
     // before the function could finish, and the other in which
     // pthread_cond_timedwait behaves basically the same as pthread_cond_wait.
-    if ( __divine_choice( 2 ) ) {
+    if ( __vm_choose( 2 ) ) {
         return pthread_cond_wait( cond, mutex );
     } else {
         return ETIMEDOUT;
@@ -1302,10 +1316,11 @@ void pthread_testcancel( void ) {
 void pthread_cleanup_push( void (*routine)(void *), void *arg ) {
     PTHREAD_VISIBLE_FUN_BEGIN();
 
-    __divine_assert( routine != NULL );
+    assert( routine != NULL );
 
     int ltid = __divine_get_tid();
-    CleanupHandler* handler = reinterpret_cast< CleanupHandler* >( __divine_malloc( sizeof(CleanupHandler) ) );
+    CleanupHandler* handler = reinterpret_cast< CleanupHandler* >(
+        __vm_make_object( sizeof(CleanupHandler) ) );
     handler->routine = routine;
     handler->arg = arg;
     handler->next = threads[ltid]->cleanup_handlers;
@@ -1322,7 +1337,7 @@ void pthread_cleanup_pop( int execute ) {
         if ( execute ) {
             handler->routine( handler->arg );
         }
-        __divine_free( handler );
+        __vm_free_object( handler );
     }
 }
 
@@ -1374,7 +1389,7 @@ _ReadLock *_get_rlock( pthread_rwlock_t *rwlock, int gtid, _ReadLock **prev = NU
 }
 
 _ReadLock *_create_rlock( pthread_rwlock_t *rwlock, int gtid ) {
-    _ReadLock *rlock = reinterpret_cast< _ReadLock* >( __divine_malloc( sizeof(_ReadLock) ) );
+    _ReadLock *rlock = reinterpret_cast< _ReadLock* >( __vm_make_object( sizeof(_ReadLock) ) );
     rlock->rlock = gtid + 1;
     rlock->rlock |= 1 << 16;
     rlock->next = rwlock->rlocks;
@@ -1515,7 +1530,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t * rwlock ) {
                 prev->next = rlock->next;
             else
                 rwlock->rlocks = rlock->next;
-            __divine_free( rlock );
+            __vm_free_object( rlock );
         }
     }
     __sync_synchronize();
@@ -1604,7 +1619,7 @@ int pthread_barrier_init( pthread_barrier_t *barrier, const pthread_barrierattr_
 
     // make sure that no thread is blocked on the barrier
     // (probably better alternative when compared to: return EBUSY)
-    __divine_assert( barrier->counter == 0 );
+    assert( barrier->counter == 0 );
 
     // Set the number of threads that must call pthread_barrier_wait() before
     // any of them successfully return from the call.
@@ -1703,8 +1718,8 @@ int sched_setscheduler(pid_t, int, const struct sched_param *) {
 }
 
 int sched_yield(void) {
-    __divine_interrupt_unmask();
-    __divine_interrupt();
+    // __divine_interrupt_unmask();
+    // __divine_interrupt();
     return 0;
 }
 
@@ -1714,7 +1729,8 @@ namespace _sig {
 
 void sig_ign( int ) { }
 
-#define __sig_terminate( SIGNAME ) []( int ) { __divine_problem( Other, "Uncaught signal: " #SIGNAME ); }
+#define __sig_terminate( SIGNAME ) []( int ) { \
+        __vm_fault( vm::Fault::Control, "Uncaught signal: " #SIGNAME ); }
 
 // this is based on x86 signal numbers
 static const sighandler_t defact[] = {
@@ -1759,7 +1775,7 @@ sighandler_t def( int sig ) { return defact[ sig - 1 ]; }
 }
 
 int raise( int sig ) {
-    __divine_interrupt_mask();
+    // FIXME __divine_interrupt_mask();
     assert( sig < 32 );
 
     if ( threads == nullptr ) // initialization not done yet
@@ -1784,10 +1800,11 @@ sighandler_t signal( int sig, sighandler_t handler ) {
         int old = thread->sigmaxused;
         sighandler_t *oldptr = thread->sighandlers;
         thread->sigmaxused = sig;
-        thread->sighandlers = reinterpret_cast< sighandler_t * >(__divine_malloc( sizeof( sighandler_t ) * sig ) );
+        thread->sighandlers = reinterpret_cast< sighandler_t * >(
+            __vm_make_object( sizeof( sighandler_t ) * sig ) );
         if ( oldptr ) {
             std::copy( oldptr, oldptr + old, thread->sighandlers );
-            __divine_free( oldptr );
+            __vm_free_object( oldptr );
         }
         for ( int i = old + 1; i <= sig; ++i )
             _sig::get( thread, i ) = SIG_DFL;

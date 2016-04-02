@@ -47,11 +47,12 @@
 
 #ifdef __divine__
 #include <divine.h>
+#include <string.h>
 
 struct tm;
 size_t strftime(char *s, size_t maxsize, const char *format, const struct tm *timeptr)
 {
-    __divine_problem( 9, 0 );
+    __vm_fault( NotImplemented );
     return 0;
 }
 

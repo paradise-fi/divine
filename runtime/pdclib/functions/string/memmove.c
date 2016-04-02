@@ -13,7 +13,26 @@
 
 void * memmove( void * s1, const void * s2, size_t n )
 {
-    return __divine_memcpy( s1, ( void * )s2, n );
+    /* TODO optimize */
+    char * dest = (char *) s1;
+    const char * src = (const char *) s2;
+    if ( dest <= src )
+    {
+        while ( n-- )
+        {
+            *dest++ = *src++;
+        }
+    }
+    else
+   {
+        src += n;
+        dest += n;
+        while ( n-- )
+        {
+           *--dest = *--src;
+        }
+    }
+    return s1;
 }
 
 #endif
