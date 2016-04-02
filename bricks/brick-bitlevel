@@ -232,7 +232,8 @@ template< typename T, int width = sizeof( T ) * 8 >
 struct BitField
 {
     static const int bitwidth = width;
-    struct Virtual : BitPointer {
+    struct Virtual : BitPointer
+    {
         T set( T t ) { bitcopy( BitPointer( &t ), *this, bitwidth ); return t; }
         Virtual operator=( T t ) {
             set( t );
@@ -277,41 +278,24 @@ struct BitField
             set( value );
             return result;
         }
-        template< typename U >
-        Virtual operator+=( U value ) {
-            T t( get() );
-            t += value;
-            set( t );
-            return *this;
+
+#define OP(__op) \
+        template< typename U > \
+        Virtual operator __op( U value ) { \
+            T t( get() ); \
+            t __op value; \
+            set( t ); \
+            return *this; \
         }
-        template< typename U >
-        Virtual operator-=( U value ) {
-            T t( get() );
-            t -= value;
-            set( t );
-            return *this;
-        }
-        template< typename U >
-        Virtual operator*=( U value ) {
-            T t( get() );
-            t *= value;
-            set( t );
-            return *this;
-        }
-        template< typename U >
-        Virtual operator/=( U value ) {
-            T t( get() );
-            t /= value;
-            set( t );
-            return *this;
-        }
-        template< typename U >
-        Virtual operator%=( U value ) {
-            T t( get() );
-            t %= value;
-            set( t );
-            return *this;
-        }
+
+        OP(+=);
+        OP(-=);
+        OP(*=);
+        OP(/=);
+        OP(%=);
+        OP(|=);
+        OP(&=);
+#undef OP
     };
 };
 
