@@ -110,7 +110,7 @@ struct Pool
             chunk() = c;
         }
 
-        Raw raw() { return *static_cast< Raw * >( _v.storage ); }
+        Raw raw() { return *reinterpret_cast< Raw * >( _v.storage ); }
         explicit operator bool() const { return raw(); }
         bool operator!() const { return !raw(); }
         bool operator<= ( Pointer o ) const { return _v < o._v || _v == o._v; }
