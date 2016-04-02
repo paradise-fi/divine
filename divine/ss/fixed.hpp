@@ -1,19 +1,19 @@
 #pragma once
 
-#include <brick-shmem>
+#include <brick-hashset>
 #include <set>
 
 namespace divine {
-namespace statespace {
+namespace ss {
+
+using namespace brick;
 
 struct Fixed
 {
     using State = int;
-    using Lock = brick::shmem::SpinLock;
 
     std::set< std::pair< int, int > > _edges;
-    std::set< int > _states;
-    Lock _lock;
+    hashset::Concurrent< int > _states;
 
     Fixed( std::initializer_list< std::pair< int, int > > il )
     {
@@ -27,10 +27,8 @@ struct Fixed
         for ( auto e : _edges )
             if ( e.first == from )
             {
-                std::unique_lock< Lock > _g( _lock );
                 auto r = _states.insert( e.second );
-                _g.unlock();
-                yield( e.second, 0, r.second );
+                yield( e.second, 0, r.isnew() );
             }
     }
 
@@ -38,7 +36,6 @@ struct Fixed
     void initials( Y yield )
     {
         yield( 1 );
-        std::lock_guard< Lock > _g( _lock );
         _states.insert( 1 );
     }
 };
