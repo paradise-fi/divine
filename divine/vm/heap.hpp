@@ -120,13 +120,39 @@ struct ShadowMap
     {
     }
 
+    void update_entry( ShadowEntry *e, int offset, PointerV v )
+    {
+        e->type() = int( ShadowET::Pointer );
+        e->offset() = offset;
+        e->data() = v._s.raw() & ~3;
+        e->data() |= (v._obj_defined & 1);
+        e->data() |= (v._off_defined & 1) << 1;
+    }
+
+    void update( int offset, PointerV v )
+    {
+        bool done = false;
+        auto s = _h.shadow_begin( v._s ), last = _h.shadow_end( v._s );
+        do {
+            if ( s->offset() == offset && s->type() == int( ShadowET::Pointer ) )
+            {
+                update_entry( s, offset, v );
+                done = true;
+                break;
+            }
+        } while ( ++s < last );
+
+        auto n = _h.shadow_extend( v._s, 1 );
+        update_entry( n, offset, v );
+    }
+
     void query( int offset, PointerV &v )
     {
         v._s = Ptr();
         v._obj_defined = v._off_defined = false;
         auto s = _h.shadow_begin( _p ), last = _h.shadow_end( _p );
         do {
-            if ( s->offset() == offset && s->type() == ShadowET::Pointer )
+            if ( s->offset() == offset && s->type() == int( ShadowET::Pointer ) )
             {
                 v._obj_defined = s->data() & 1;
                 v._off_defined = s->data() & 2;
@@ -146,6 +172,7 @@ struct MutableHeap
     mem::Pool< 20, 10, uint32_t > _shadows;
     using Internal = decltype( _objects )::Pointer;
     using ShadowPtr = decltype( _shadows )::Pointer;
+    using ShadowMap = vm::ShadowMap< MutableHeap >;
 
     struct Shadow { int _size; ShadowPtr _next; };
 
@@ -191,14 +218,13 @@ struct MutableHeap
         auto p = PointerV( i2p( i ) );
         p._v.type() = PointerType::Heap;
         p._s = s;
-        ShadowMap sm( *this, s );
-        ShadowEntry entry;
+        ShadowEntry &entry = *shadow_begin( s );
+        int &s_size = *_shadows.machinePointer< int >( s );
+        s_size = 1;
         entry.fragmented() = false;
         entry.type() = uint32_t( ShadowET::UninitRun );
         entry.offset() = 0;
         entry.data() = 8 * size;
-        sm._size = 1;
-        sm._entries[0] = entry;
         return p;
     }
 
@@ -220,8 +246,26 @@ struct MutableHeap
         return false;
     }
 
-    ShadowEntry *shadow_begin( ShadowPtr );
-    ShadowEntry *shadow_end( ShadowPtr );
+    int &shadow_size( ShadowPtr p ) { return *_shadows.machinePointer< int >( p ); }
+
+    ShadowEntry *shadow_extend( ShadowPtr s, int count )
+    {
+        auto e = shadow_end( s );
+        shadow_size( s ) += count;
+        ASSERT_LEQ( shadow_size( s ) * sizeof( ShadowEntry ), _shadows.size( s ) );
+        return e;
+    }
+
+    ShadowEntry *shadow_begin( ShadowPtr s )
+    {
+        return _shadows.machinePointer< ShadowEntry >( s, sizeof( int ) );
+    }
+
+    ShadowEntry *shadow_end( ShadowPtr s )
+    {
+        return _shadows.machinePointer< ShadowEntry >( s, sizeof( int ) )
+            + *_shadows.machinePointer< int >( s );
+    }
 
     int size( PointerV p ) { return _objects.size( p2i( p.v() ) ); }
 
@@ -233,8 +277,8 @@ struct MutableHeap
         ASSERT( valid( p ) );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - pv.offset() );
         auto r = T( *_objects.machinePointer< typename T::Raw >( p2i( pv ), pv.offset() ) );
-        auto &s = *_shadows.machinePointer< ShadowMap >( p._s );
-        s.query( pv.offset(), r );
+        ShadowMap sm( *this, p._s );
+        sm.query( pv.offset(), r );
         /*
         std::cerr << "read " << r << " from " << p2i( p )
                   << ", offset = " << p.offset().get() << ", size = " << size( p ) << std::endl;
@@ -253,8 +297,8 @@ struct MutableHeap
         */
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - pv.offset() );
-        auto &s = *_shadows.machinePointer< ShadowMap >( p._s );
-        s.update( pv.offset(), t );
+        ShadowMap sm( *this, p._s );
+        sm.update( pv.offset(), t );
         *_objects.machinePointer< typename T::Raw >( p2i( pv ), pv.offset() ) = t.v();
     }
 
@@ -311,7 +355,7 @@ struct PersistentHeap
 
 namespace t_vm {
 
-struct TestMutableHeap
+struct MutableHeap
 {
     TEST(pointer)
     {
@@ -339,8 +383,8 @@ struct TestMutableHeap
         using I = vm::value::Int< 32, true >;
         vm::MutableHeap heap;
         auto p = heap.make( 16 );
-        heap.write( p.v(), I( 10 ) );
-        auto q = heap.read< I >( p.v() );
+        heap.write( p, I( 10 ) );
+        auto q = heap.read< I >( p );
         ASSERT_EQ( q.v(), 10 );
     }
 
@@ -350,6 +394,16 @@ struct TestMutableHeap
         using HP = vm::MutableHeap::Pointer;
         auto p = heap.make( 16 );
         ASSERT_EQ( HP( p.v() ), HP( vm::ConstPointer( p.v() ) ) );
+    }
+
+    TEST(write_read)
+    {
+        vm::MutableHeap heap;
+        auto p = heap.make( 16 );
+        heap.write( p, p );
+        auto q = heap.read< vm::MutableHeap::PointerV >( p );
+        ASSERT( p.v() == q.v() );
+        ASSERT_EQ( p._s, q._s );
     }
 };
 
