@@ -1,4 +1,4 @@
-string(REPLACE "-Wold-style-cast" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+add_compile_options( "-Wno-old-style-cast" )
 include_directories( . )
 add_definitions( -DDO_ITT_NOTIFY=0 )
 if ( WIN32 )

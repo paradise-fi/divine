@@ -1,19 +1,13 @@
-with_warnings()
-
 include( stringify )
-include( template-separe )
+#include( template-separe )
 
-file( GLOB CPP *.cpp )
-file( GLOB HPP *.h *.hpp )
-
-foreach( D utility vm compile ss algorithm ui )
+foreach( D vm ss alg ui )
     file( GLOB CPP_${D} ${D}/*.cpp )
     file( GLOB HPP_${D} ${D}/*.hpp )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
 endforeach()
 
-stringify( "vm" vm/problem.def )
-template_separe( VM vm/interpreter.cpp )
+#template_separe( VM vm/interpreter.cpp )
 
 set( VERSION_FILE ${divine_BINARY_DIR}/divine/version-generated.cpp )
 set( UPDATE_VERSION ${divine_SOURCE_DIR}/releng/update-version-sha.sh )
@@ -37,19 +31,8 @@ include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
-set( llvmpaths "
-#pragma once
-static const char *_cmd_cc= \"${CMD_CC}\"\;
-static const char *_cmd_cxx= \"${CMD_CXX}\"\;
-static const char *_cmd_clang= \"${CMD_CLANG}\"\;" )
-
-set( llvmpaths_file "${CMAKE_CURRENT_BINARY_DIR}/llvmpaths.h" )
-update_file( "${llvmpaths_file}" "${llvmpaths}" )
-
-set_source_files_properties( compile.h PROPERTIES OBJECT_DEPENDS ${llvmpaths_file} )
 add_library( libdivine
-  ${CPP_utility} ${CPP_vm} ${CPP_compile}
-  ${VM_TS_OUTPUTS}
+  ${CPP_vm} ${CPP_ui} ${CPP_alg} ${CPP_ss}
   "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
   ${STRINGIFIED} )
 
@@ -57,19 +40,13 @@ target_link_libraries( libdivine pthread liblart )
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
-bricks_unittest( test-divine ${HPP} ${HPP_vm} ${HPP_ui} ${HPP_statespace} )
+bricks_unittest( test-divine ${HPP_ui} ${HPP_ss} ${HPP_vm} )
 
 if( NOT WIN32 )
   set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
 endif()
 
-target_link_libraries( libdivine ${LLVM_LIBRARIES} )
-target_link_libraries( libdivine ${LLVM_SYSLIBS} )
-target_link_libraries( libdivine pdclib_str )
-target_link_libraries( libdivine m_str )
-target_link_libraries( libdivine cxxabi_str )
-target_link_libraries( libdivine cxx_str )
-target_link_libraries( libdivine vm_usr_str )
+target_link_libraries( libdivine ${LLVM_LIBRARIES} ${LLVM_SYSLIBS} )
 target_link_libraries( libdivine ${CURSES_LIBRARIES} )
 
 if ( OPT_SQL )
