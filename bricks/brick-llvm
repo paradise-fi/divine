@@ -44,6 +44,7 @@
 #include <string>
 #include <initializer_list>
 #include <unordered_set>
+#include <iostream>
 
 #ifndef BRICKS_LLVM_LINK_STRIP_H
 #define BRICKS_LLVM_LINK_STRIP_H
