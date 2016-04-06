@@ -28,6 +28,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
+#include <brick-assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -145,21 +146,25 @@ inline bool isRelative( std::string path ) {
     return !isAbsolute( path );
 }
 
-inline std::string joinPath( std::vector< std::string > paths ) {
-    if ( paths.empty() )
-        return "";
-    auto it = ++paths.begin();
-    std::string out = paths[0];
+template< typename It,
+    // prohibit taking precedence over variadic join
+    typename = typename std::enable_if< !std::is_same< It, std::string >::value >::type >
+inline std::string joinPath( It begin, It end ) {
+    std::string out;
 
-    for ( ; it != paths.end(); ++it ) {
-        if ( isAbsolute( *it ) || out.empty() )
-            out = *it;
+    for ( ; begin != end; ++begin ) {
+        if ( out.empty() || isAbsolute( *begin ) )
+            out = *begin;
         else if ( !out.empty() && isPathSeparator( out.back() ) )
-            out += *it;
+            out += *begin;
         else
-            out += pathSeparators[0] + *it;
+            out += pathSeparators[0] + *begin;
     }
     return out;
+}
+
+inline std::string joinPath( std::vector< std::string > paths ) {
+    return joinPath( paths.begin(), paths.end() );
 }
 
 template< typename... FilePaths >
@@ -168,7 +173,11 @@ inline std::string joinPath( FilePaths &&...paths ) {
 }
 
 inline std::vector< std::string > splitPath( std::string path ) {
+    auto abs = absolutePrefix( path );
+    path = abs.second;
     std::vector< std::string > out;
+    if ( !abs.first.empty() )
+        out.push_back( abs.first );
     auto last = path.begin();
     while ( true ) {
         auto next = std::find_if( last, path.end(), &isPathSeparator );
@@ -184,7 +193,19 @@ inline std::vector< std::string > splitPath( std::string path ) {
 
 inline std::string normalize( std::string path ) {
     auto abs = absolutePrefix( path );
-    return joinPath( abs.first, joinPath( splitPath( abs.second ) ) );
+    auto split = splitPath( abs.second );
+
+    for ( auto it = split.begin(); it != split.end(); ) {
+        if ( it->empty() || *it == "." )
+            it = split.erase( it );
+        else if ( *it == ".." && it != split.begin() )
+            it = split.erase( split.erase( std::prev( it ) ) );
+        else
+            ++it;
+    }
+    if ( split.empty() && abs.first.empty() )
+        split.push_back( "." );
+    return joinPath( abs.first, joinPath( split ) );
 }
 
 inline std::string distinctPaths( const std::string &prefix, const std::string &path ) {
@@ -712,6 +733,70 @@ inline bool exists(const std::string& file)
     return access(file, F_OK);
 }
 
+}
+}
+
+namespace test_bricks {
+namespace fs {
+using namespace brick::fs;
+using vs = std::vector< std::string >;
+
+struct TestSplit {
+
+    TEST( path ) {
+        ASSERT( (vs{ "a", "b", "c" }) == splitPath( "a/b/c" ) );
+        ASSERT( (vs{ "/", "a", "b", "c" }) == splitPath( "/a/b/c" ) );
+    }
+};
+
+struct TestNormalize {
+
+    TEST( basic ) {
+        ASSERT_EQ( "a/b/c", normalize( "a/b/c" ) );
+        ASSERT_EQ( "a/b/c", normalize( "a//b/c" ) );
+        ASSERT_EQ( "a/b/c", normalize( "a/b//c" ) );
+        ASSERT_EQ( "a/b/c", normalize( "a//b//c" ) );
+        ASSERT_EQ( "/a/b/c", normalize( "/a/b/c" ) );
+        ASSERT_EQ( "/a/b/c", normalize( "/a//b/c" ) );
+        ASSERT_EQ( "/a/b/c", normalize( "//a/b/c" ) );
+        ASSERT_EQ( "/a/b/c", normalize( "/a/b//c" ) );
+        ASSERT_EQ( "/a/b/c", normalize( "//a/b//c" ) );
+    }
+
+    TEST( endbackslash ) {
+        ASSERT_EQ( "a/b/c", normalize( "a/b/c/" ) );
+        ASSERT_EQ( "/a/b/c", normalize( "/a/b/c/" ) );
+    }
+
+    TEST( dot ) {
+        ASSERT_EQ( "a/b/c", normalize( "a/./b/./c" ) );
+        ASSERT_EQ( "a/b/c", normalize( "a/./b/././c" ) );
+        ASSERT_EQ( "a/b/c", normalize( "./a/./b/././c" ) );
+    }
+
+    TEST( dotdot ) {
+        ASSERT_EQ( "a/b/c", normalize( "a/b/c/d/.." ) );
+        ASSERT_EQ( "a/b", normalize( "a/b/c/d/../.." ) );
+        ASSERT_EQ( "a/b/c", normalize( "a/b/c/d/../../c" ) );
+        ASSERT_EQ( "../a", normalize( "../a" ) );
+        ASSERT_EQ( "a/b/c", normalize( "a/b/./../b/c" ) );
+    }
+
+    TEST( empty ) {
+        ASSERT_EQ( ".", normalize( "./" ) );
+        ASSERT_EQ( ".", normalize( "a/.." ) );
+        ASSERT_EQ( "/", normalize( "/." ) );
+        ASSERT_EQ( "/", normalize( "/a/.." ) );
+    }
+};
+
+struct TextExtension {
+
+    TEST( take ) {
+        ASSERT_EQ( ".b", takeExtension( "a.b" ) );
+        ASSERT_EQ( ".c", takeExtension( "a.b.c" ) );
+    }
+};
 }
 }
 
