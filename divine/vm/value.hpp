@@ -162,7 +162,7 @@ struct Pointer : Base
     }
 
     Pointer( GenericPointer<> x = nullPointer(), bool d = true )
-        : _v( x ), _obj_defined( d ), _off_defined( d ) {}
+        : _v( x ), _s(), _obj_defined( d ), _off_defined( d ) {}
 
     Pointer operator+( int off )
     {
@@ -183,6 +183,7 @@ struct Pointer : Base
     GenericPointer<> v() { return _v; }
     void v( GenericPointer<> p ) { _v = p; }
     Int< 1, false > compare( Pointer o, bool v ) { return Bool( v, o.defined() && defined() ); }
+
     template< int w, bool s > operator Int< w, s >()
     {
         using IntPtr = Int< PointerBytes, false >;

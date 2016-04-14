@@ -20,6 +20,7 @@
 
 #include <brick-types>
 #include <divine/vm/value.hpp>
+#include <divine/vm/shadow.hpp>
 
 /*
  * Both MutableHeap and PersistentHeap implement the graph memory concept. That
@@ -38,143 +39,45 @@
 namespace divine {
 namespace vm {
 
-enum class ShadowET { Pointer, GhostSM, GhostOI, Direct, InitRun, UninitRun };
-
-/*
- * Shadow entries track initialisation status and pointer locations. The shadow
- * map (see below) is made up of ShadowEntries that cover the entire object.
- * Non-pointer data is covered by Direct/InitRun/UninitRun entries, each
- * pointer, on the other hand, must be covered by a Pointer entry.
- *
- * The shadow map supports tracking fragmented pointers (this can happen during
- * byte-level copies, for example). However, such pointers are *expensive*:
- * each such pointer needs a pair of Ghost entries, and up to 8 fragment
- * entries (that is 80 bytes for a single pointer in the worst case). Each
- * fragmented pointer in a given shadow map comes with an 8 bit ID. For Ghost
- * entries, the ID is stored in the bit offset field, in the fragments, it is
- * stored in the type-specific area. The GhostSM entry holds the ShadowMap
- * object for the pointer, while the GhostOI holds the original object part of
- * the pointer. Each fragment contains a single byte of the fragmented pointer
- * (which byte this is is stored in the 'type or fragment id' field). The
- * content of that byte
- *
- * A normal (continuous) Pointer entry only needs 2 bits for tracking
- * definedness (object id, offset), the remaining 30 bits of the
- * 'type-specific' field are used to store the shadowmap object id that goes
- * along with this pointer.
- *
- * Since we only use 28 bits for the bit offset field, a single shadowmap can
- * cover at most 32M (this means that objects larger than 32M need a different
- * shadowmap representation).
- */
-struct ShadowEntry
-{
-    using Bits = bitlevel::BitTuple<
-        bitlevel::BitField< bool, 1 >, // fragmented?
-        bitlevel::BitField< uint32_t, 3 >, // type or fragment
-        bitlevel::BitField< uint32_t, 28 >, // bit offset
-        bitlevel::BitField< uint32_t, 32 > >; // type-specific
-    Bits _bits;
-    auto fragmented() { return bitlevel::get< 0 >( _bits ); }
-    auto type() { return bitlevel::get< 1 >( _bits ); }
-    auto offset() { return bitlevel::get< 2 >( _bits ); }
-    auto data() { return bitlevel::get< 3 >( _bits ); }
-
-    int size()
-    {
-        switch ( ShadowET( type().get() ) )
-        {
-            case ShadowET::Pointer: return PointerBits;
-            case ShadowET::UninitRun:
-            case ShadowET::InitRun: return data();
-            case ShadowET::Direct: return 32;
-            default: NOT_IMPLEMENTED();
-        }
-    }
-};
-
-/*
- * The shadow map is an offset-sorted vector (for now, at least) of shadow
- * entries (see above). For now, all operations scan through the entire vector,
- * although for shadowmaps larger than ~8 entries, binary searching might be
- * more suitable.
- */
-template< typename Heap >
-struct ShadowMap
-{
-    using Ptr = typename Heap::ShadowPtr;
-    using PointerV = typename Heap::PointerV;
-
-    Heap &_h;
-    Ptr _p;
-
-    ShadowMap( Heap &h, Ptr p ) : _h( h ), _p( p ) {}
-
-    void copy( ... );
-
-    template< typename V >
-    void update( int offset, V v ) {}
-
-    template< typename V > /* value::_ */
-    void query( int offset, V &v )
-    {
-    }
-
-    void update_entry( ShadowEntry *e, int offset, PointerV v )
-    {
-        e->type() = int( ShadowET::Pointer );
-        e->offset() = offset;
-        e->data() = v._s.raw() & ~3;
-        e->data() |= (v._obj_defined & 1);
-        e->data() |= (v._off_defined & 1) << 1;
-    }
-
-    void update( int offset, PointerV v )
-    {
-        bool done = false;
-        auto s = _h.shadow_begin( v._s ), last = _h.shadow_end( v._s );
-        do {
-            if ( s->offset() == offset && s->type() == int( ShadowET::Pointer ) )
-            {
-                update_entry( s, offset, v );
-                done = true;
-                break;
-            }
-        } while ( ++s < last );
-
-        auto n = _h.shadow_extend( v._s, 1 );
-        update_entry( n, offset, v );
-    }
-
-    void query( int offset, PointerV &v )
-    {
-        v._s = Ptr();
-        v._obj_defined = v._off_defined = false;
-        auto s = _h.shadow_begin( _p ), last = _h.shadow_end( _p );
-        do {
-            if ( s->offset() == offset && s->type() == int( ShadowET::Pointer ) )
-            {
-                v._obj_defined = s->data() & 1;
-                v._off_defined = s->data() & 2;
-                v._s = s->data() & ~3;
-            }
-            if ( s->offset() > offset )
-                return;
-        } while ( ++s < last );
-    }
-};
-
-using namespace brick;
+namespace mem = brick::mem;
 
 struct MutableHeap
 {
-    mem::Pool< 32, 16, uint64_t, 1, 2, 0 > _objects;
-    mem::Pool< 20, 10, uint32_t > _shadows;
-    using Internal = decltype( _objects )::Pointer;
-    using ShadowPtr = decltype( _shadows )::Pointer;
-    using ShadowMap = vm::ShadowMap< MutableHeap >;
+    using Shadows = mem::Pool< 20, 12, uint32_t >;
+    using Objects = mem::Pool< 32, 16, uint64_t, 1, 2, 0 >;
 
-    struct Shadow { int _size; ShadowPtr _next; };
+    Shadows _shadows;
+    Objects _objects;
+    using Internal = Objects::Pointer;
+
+    struct ShadowEntries
+    {
+        using Ptr = Shadows::Pointer;
+        using Hdr = struct { int _size; Ptr _next; };
+        Ptr _p;
+        Shadows &_s;
+        ShadowEntries( Shadows &s, Ptr p ) : _s( s ), _p( p ) {}
+
+        int &size() { return *_s.machinePointer< int >( _p ); }
+
+        void reserve( int count )
+        {
+            ASSERT_LEQ( size() * sizeof( ShadowEntry ), _s.size( _p ) );
+            size() += count;
+        }
+
+        ShadowEntry *begin()
+        {
+            return _s.machinePointer< ShadowEntry >( _p, sizeof( int ) );
+        }
+
+        ShadowEntry *end()
+        {
+            return _s.machinePointer< ShadowEntry >( _p, sizeof( int ) )
+                + *_s.machinePointer< int >( _p );
+        }
+
+    };
 
     /*
      * The evaluator-facing pointer structure is laid over the Internal
@@ -187,7 +90,7 @@ struct MutableHeap
         auto offset() { return this->template field< 1 >(); }
         auto object() { return this->template field< 2 >(); }
         bool null() { return object() == 0 && offset() == 0; }
-        using Shadow = ShadowPtr;
+        using Shadow = ShadowEntries::Ptr;
         Pointer() : GenericPointer( PointerType::Heap ) {}
         Pointer operator+( int off ) const
         {
@@ -198,6 +101,7 @@ struct MutableHeap
     };
 
     using PointerV = value::Pointer< Pointer >;
+    using Shadow = vm::Shadow< ShadowEntries, PointerV >;
 
     template< typename T, typename F >
     T convert( F f )
@@ -213,14 +117,14 @@ struct MutableHeap
     PointerV make( int size )
     {
         auto i = _objects.allocate( size );
-        auto s = _shadows.allocate( sizeof( Shadow )
+        auto s = _shadows.allocate( sizeof( ShadowEntries::Hdr )
                                     + std::max( size_t( size ), sizeof( ShadowEntry ) ) );
         auto p = PointerV( i2p( i ) );
         p._v.type() = PointerType::Heap;
         p._s = s;
-        ShadowEntry &entry = *shadow_begin( s );
-        int &s_size = *_shadows.machinePointer< int >( s );
-        s_size = 1;
+        ShadowEntries se( _shadows, s );
+        se.size() = 1;
+        ShadowEntry &entry = *se.begin();
         entry.fragmented() = false;
         entry.type() = uint32_t( ShadowET::UninitRun );
         entry.offset() = 0;
@@ -246,27 +150,6 @@ struct MutableHeap
         return false;
     }
 
-    int &shadow_size( ShadowPtr p ) { return *_shadows.machinePointer< int >( p ); }
-
-    ShadowEntry *shadow_extend( ShadowPtr s, int count )
-    {
-        auto e = shadow_end( s );
-        shadow_size( s ) += count;
-        ASSERT_LEQ( shadow_size( s ) * sizeof( ShadowEntry ), _shadows.size( s ) );
-        return e;
-    }
-
-    ShadowEntry *shadow_begin( ShadowPtr s )
-    {
-        return _shadows.machinePointer< ShadowEntry >( s, sizeof( int ) );
-    }
-
-    ShadowEntry *shadow_end( ShadowPtr s )
-    {
-        return _shadows.machinePointer< ShadowEntry >( s, sizeof( int ) )
-            + *_shadows.machinePointer< int >( s );
-    }
-
     int size( PointerV p ) { return _objects.size( p2i( p.v() ) ); }
 
     template< typename T >
@@ -277,12 +160,12 @@ struct MutableHeap
         ASSERT( valid( p ) );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - pv.offset() );
         auto r = T( *_objects.machinePointer< typename T::Raw >( p2i( pv ), pv.offset() ) );
-        ShadowMap sm( *this, p._s );
-        sm.query( pv.offset(), r );
         /*
         std::cerr << "read " << r << " from " << p2i( p )
                   << ", offset = " << p.offset().get() << ", size = " << size( p ) << std::endl;
         */
+        Shadow sh( _shadows, p._s );
+        sh.query( pv.offset(), r );
         return r;
     }
 
@@ -291,14 +174,11 @@ struct MutableHeap
     {
         using Raw = typename T::Raw;
         Pointer pv = p.v();
-        /*
-        std::cerr << "write " << t << " to " << p2i( p )
-                  << ", offset = " << p.offset().get()  << ", size = " << size( p ) << std::endl;
-        */
+        // std::cerr << "write " << t << " to " << p << ", size = " << size( p ) << std::endl;
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - pv.offset() );
-        ShadowMap sm( *this, p._s );
-        sm.update( pv.offset(), t );
+        Shadow sh( _shadows, p._s );
+        sh.update( pv.offset(), t );
         *_objects.machinePointer< typename T::Raw >( p2i( pv ), pv.offset() ) = t.v();
     }
 
@@ -336,7 +216,8 @@ struct MutableHeap
         if ( !from || !to || from_off + bytes > from_s || to_off + bytes > to_s )
             return false;
         memcpy( to + to_off, from + from_off, bytes );
-        /* TODO flags */
+        Shadow from_sh( _shadows, _from._s ), to_sh( _shadows, _to._s );
+        to_sh.update( from_sh, from_off, to_off, bytes );
         return true;
     }
 };
