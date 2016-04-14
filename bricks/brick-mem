@@ -583,7 +583,7 @@ struct Pool
 template< typename P >
 static inline auto operator<<( std::ostream &o, P p ) -> decltype( p.slab(), o )
 {
-    return o << p.slab().get() << ":" << p.chunk().get() << " (" << p.tag().get() << ")";
+    return o << p.slab().get() << ":" << p.chunk().get() << " " << p.tag().get();
 }
 
 }
