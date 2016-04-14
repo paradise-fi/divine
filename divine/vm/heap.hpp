@@ -224,7 +224,7 @@ struct MutableHeap
 
 static inline std::ostream &operator<<( std::ostream &o, MutableHeap::Pointer p )
 {
-    return o << "[heap " << p.object().get() << " @" << p.offset().get() << "]";
+    return o << "[heap " << p.object().get() << " " << p.offset().get() << "]";
 }
 
 struct PersistentHeap

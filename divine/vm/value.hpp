@@ -157,7 +157,7 @@ struct Pointer : Base
 
     friend std::ostream &operator<<( std::ostream &o, Pointer v )
     {
-        v.withType( [&]( auto p ) { o << p; return p; } );
+        v.withType( [&]( auto p ) { o << "[pointer " << p << ", shadow " << v._s << "]"; return p; } );
         return o;
     }
 
