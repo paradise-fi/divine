@@ -58,23 +58,23 @@ struct MutableHeap
         Shadows &_s;
         ShadowEntries( Shadows &s, Ptr p ) : _s( s ), _p( p ) {}
 
-        int &size() { return *_s.machinePointer< int >( _p ); }
+        int &size() { return _s.machinePointer< Hdr >( _p )->_size; }
 
         void reserve( int count )
         {
+            size() = count;
             ASSERT_LEQ( size() * sizeof( ShadowEntry ), _s.size( _p ) );
-            size() += count;
         }
 
         ShadowEntry *begin()
         {
-            return _s.machinePointer< ShadowEntry >( _p, sizeof( int ) );
+            ASSERT( _p );
+            return _s.machinePointer< ShadowEntry >( _p, sizeof( Hdr ) );
         }
 
         ShadowEntry *end()
         {
-            return _s.machinePointer< ShadowEntry >( _p, sizeof( int ) )
-                + *_s.machinePointer< int >( _p );
+            return _s.machinePointer< ShadowEntry >( _p, sizeof( Hdr ) ) + size();
         }
 
     };

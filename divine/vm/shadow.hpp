@@ -79,6 +79,12 @@ struct ShadowEntry
             default: NOT_IMPLEMENTED();
         }
     }
+
+    friend std::ostream &operator<<( std::ostream &o, ShadowEntry e )
+    {
+        return o << "[shadow @" << e.offset().get() << ", " << "t = " << e.type().get()
+                 << ", data = " << e.data() << "]";
+    }
 };
 
 /*
@@ -112,48 +118,48 @@ struct Shadow
     {
     }
 
-    void update_entry( ShadowEntry *e, int offset, PointerV v )
+    void update_entry( ShadowEntry &e, int offset, PointerV v )
     {
-        e->type() = int( ShadowET::Pointer );
-        e->offset() = offset;
-        e->data() = v._s.raw() & ~3;
-        e->data() |= (v._obj_defined & 1);
-        e->data() |= (v._off_defined & 1) << 1;
+        e.type() = int( ShadowET::Pointer );
+        e.offset() = offset;
+        e.data() = v._s.raw() & ~3;
+        e.data() |= (v._obj_defined & 1);
+        e.data() |= (v._off_defined & 1) << 1;
     }
 
     void update( int offset, PointerV v )
     {
-        // std::cerr << "update shadowmap for " << v << " [p = " << _p << "]" << std::endl;
-        bool done = false;
-        auto s = _e.begin(), last = _e.end();
-        do {
-            if ( s->offset() == offset && s->type() == int( ShadowET::Pointer ) )
+        for ( auto &s : _e )
+        {
+            if ( s.offset() == offset && s.type() == int( ShadowET::Pointer ) )
             {
+                std::cerr << "update " << s << " to " << std::flush;
                 update_entry( s, offset, v );
-                done = true;
-                break;
+                std::cerr << s << ", size = " << _e.size() << std::endl;
+                return;
             }
-        } while ( ++s < last );
-        _e.reserve( 1 );
+        }
+        _e.reserve( _e.size() + 1 );
         auto n = _e.end() - 1;
-        update_entry( n, offset, v );
+        update_entry( *n, offset, v );
+        std::cerr << "new entry " << *n << ", size = " << _e.size() << std::endl;
     }
 
     void query( int offset, PointerV &v )
     {
         v._s = decltype( v._s )();
         v._obj_defined = v._off_defined = false;
-        auto s = _e.begin(), last = _e.end();
-        do {
-            if ( s->offset() == offset && s->type() == int( ShadowET::Pointer ) )
+        for ( auto &s : _e )
+        {
+            if ( s.offset() == offset && s.type() == int( ShadowET::Pointer ) )
             {
-                v._obj_defined = s->data() & 1;
-                v._off_defined = s->data() & 2;
-                v._s = s->data() & ~3;
+                v._obj_defined = s.data() & 1;
+                v._off_defined = s.data() & 2;
+                v._s = s.data() & ~3;
             }
-            if ( s->offset() > offset )
+            if ( s.offset() > offset )
                 return;
-        } while ( ++s < last );
+        }
     }
 
     void update( Shadow from, int from_off, int to_off, int bytes )
@@ -162,6 +168,7 @@ struct Shadow
              t = _e.begin(), t_end = _e.end();
         std::vector< ShadowEntry > merged;
         int index = 0;
+        int diff = from_off - to_off;
 
         while ( f != f_end && f->offset() < from_off )
             ++ f;
@@ -175,28 +182,28 @@ struct Shadow
         {
             if ( t < t_end && f < f_end )
             {
-                if ( f->offset() == t->offset() )
+                if ( f->offset() + diff == t->offset() )
                 {
                     merged.push_back( *f );
+                    merged.back().offset() += diff;
                     ++ f; ++ t;
                 }
-                else if ( f->offset() < t->offset() )
+                else if ( f->offset() + diff < t->offset() && f->offset() < from_off + bytes )
+                {
                     merged.push_back( *f++ );
+                    merged.back().offset() += diff;
+                }
                 else
                     merged.push_back( *t++ );
             }
             else if ( t < t_end )
                 merged.push_back( *t++ );
             else
-                merged.push_back( *f++ );
+                break;
         }
 
         _e.reserve( index + merged.size() );
-        auto t_iter = _e.begin() + index;
-        auto m_iter = merged.begin();
-
-        while ( m_iter != merged.end() )
-            *t_iter++ = *m_iter++;
+        std::copy( merged.begin(), merged.end(), _e.begin() + index );
     }
 
 };
