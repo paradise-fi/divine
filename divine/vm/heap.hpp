@@ -62,7 +62,6 @@ struct MutableHeap
 
         void reserve( int count )
         {
-            size() = count;
             ASSERT_LEQ( size() * sizeof( ShadowEntry ), _s.size( _p ) );
         }
 
@@ -77,6 +76,8 @@ struct MutableHeap
             return _s.machinePointer< ShadowEntry >( _p, sizeof( Hdr ) ) + size();
         }
 
+        ShadowEntry &back() { return *( end() - 1 ); }
+        void emplace_back() { reserve( size() + 1 ); size() ++; }
     };
 
     /*

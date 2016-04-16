@@ -119,7 +119,12 @@ struct Float : Base
 
 struct HeapPointerPlaceholder
 {
-    using Shadow = uint32_t;
+    struct Shadow
+    {
+        uint32_t _v;
+        uint32_t raw() { return _v; }
+        Shadow &operator=( uint32_t v ) { _v = v; return *this; }
+    };
     operator GenericPointer<>() { return GenericPointer<>( PointerType::Heap ); }
     HeapPointerPlaceholder( GenericPointer<> ) {}
     friend std::ostream & operator<<( std::ostream &o, HeapPointerPlaceholder v )

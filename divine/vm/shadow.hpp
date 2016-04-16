@@ -21,6 +21,8 @@
 #include <brick-types>
 #include <utility>
 
+#include <divine/vm/value.hpp>
+
 namespace divine {
 namespace vm {
 
@@ -139,10 +141,8 @@ struct Shadow
                 return;
             }
         }
-        _e.reserve( _e.size() + 1 );
-        auto n = _e.end() - 1;
-        update_entry( *n, offset, v );
-        std::cerr << "new entry " << *n << ", size = " << _e.size() << std::endl;
+        _e.emplace_back();
+        update_entry( _e.back(), offset, v );
     }
 
     void query( int offset, PointerV &v )
@@ -209,4 +209,67 @@ struct Shadow
 };
 
 }
+
+namespace t_vm {
+
+struct Shadow
+{
+    using PointerV = vm::value::Pointer<>;
+    using Entries = std::vector< vm::ShadowEntry >;
+    using Sh = vm::Shadow< Entries, PointerV >;
+
+    TEST( query )
+    {
+        vm::ShadowEntry e;
+        e.offset() = 0;
+        e.type().set( int( vm::ShadowET::Pointer ) );
+        e.data() = 3;
+        Entries es;
+        es.push_back( e );
+        Sh s( es );
+        PointerV p( vm::nullPointer(), false );
+        ASSERT( !p.defined() );
+        s.query( 0, p );
+        ASSERT( p.defined() );
+    }
+
+    TEST( update )
+    {
+        vm::ShadowEntry e;
+        e.offset() = 0;
+        e.type().set( int( vm::ShadowET::Pointer ) );
+        e.data() = 0;
+        Sh s;
+        PointerV p;
+        ASSERT( p.defined() );
+        s.update( 0, p );
+        ASSERT_EQ( s._e.size(), 1 );
+        ASSERT_EQ( s._e[ 0 ].data(), 3 );
+        s.query( 0, p );
+        ASSERT( p.defined() );
+    }
+
+    TEST( shadowptr )
+    {
+        vm::ShadowEntry e;
+        e.offset() = 0;
+        e.type().set( int( vm::ShadowET::Pointer ) );
+        e.data() = 0;
+        Sh s;
+        PointerV p;
+        p._s = 255 << 2;
+        ASSERT( p.defined() );
+        s.update( 0, p );
+        p._s = 0;
+        ASSERT_EQ( s._e.size(), 1 );
+        ASSERT_EQ( s._e[ 0 ].data(), 3 | (255 << 2) );
+        s.query( 0, p );
+        ASSERT( p.defined() );
+        ASSERT( p.defined() );
+        ASSERT_EQ( p._s.raw(), 255 << 2 );
+    }
+};
+
+}
+
 }
