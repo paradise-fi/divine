@@ -176,7 +176,7 @@ struct RunContext
 
         auto ipc = _program.functionByName( "__sys_init" );
         ipc.instruction() = 1;
-        _control.enter( ipc, nullPointer() );
+        _control.enter( ipc, nullPointer(), PointerV( nullPointer() ) );
     }
 
     RunContext( Program &p )
