@@ -183,19 +183,19 @@ struct Eval
     PointerV s2ptr( Slot v, int off, PointerV f ) { return s2ptr( v, off, f, globals() ); }
     PointerV s2ptr( Slot v, int off = 0 ) { return s2ptr( v, off, frame(), globals() ); }
 
-    PointerV ptr2h( GenericPointer<> p ) { return ptr2h( p, globals() ); }
-    PointerV ptr2h( GenericPointer<> p, PointerV g )
+    PointerV ptr2h( PointerV p ) { return ptr2h( p, globals() ); }
+    PointerV ptr2h( PointerV p, PointerV g )
     {
-        if ( p.type() == PointerType::Heap )
+        if ( p.v().type() == PointerType::Heap )
             return p;
-        if ( p.type() == PointerType::Const )
+        if ( p.v().type() == PointerType::Const )
         {
-            ConstPointer pp = p;
+            ConstPointer pp = p.v();
             return s2ptr( program()._constants[ pp.object() ], pp.offset() );
         }
-        if ( p.type() == PointerType::Global )
+        if ( p.v().type() == PointerType::Global )
         {
-            GlobalPointer pp = p;
+            GlobalPointer pp = p.v();
             return s2ptr( program()._globals[ pp.object() ], pp.offset(), nullPointer(), g );
         }
         UNREACHABLE_F( "a bad pointer in ptr2h: %s", brick::string::fmt( PointerV( p ) ).c_str() );
@@ -233,7 +233,7 @@ struct Eval
         auto op = operand< T >( i );
         if ( !op.defined() )
             fault( _VM_F_Hypercall );
-        return op.v();
+        return op;
     }
 
     PointerV operandPtr( int i )
@@ -282,7 +282,7 @@ struct Eval
 
     void implement_store()
     {
-        GenericPointer<> to = operandCk< PointerV >( 1 );
+        auto to = operandCk< PointerV >( 1 );
         /* std::cerr << "store of *" << s2ptr( operand( 0 ) ) << " to "
            << operand< PointerV >( 1 ) << std::endl; */
         if ( !heap().copy( s2ptr( operand( 0 ) ), to, operand( 0 ).width ) )
@@ -291,7 +291,7 @@ struct Eval
 
     void implement_load()
     {
-        GenericPointer<> from = operandCk< PointerV >( 0 );
+        auto from = operandCk< PointerV >( 0 );
         // std::cerr << "load from *" << PointerV( from ) << std::endl;
         if ( !heap().copy( ptr2h( from ), s2ptr( result() ), result().width ) )
             fault( _VM_F_Memory );
@@ -361,7 +361,7 @@ struct Eval
         ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction().op );
         Type *ty = I->getAllocatedType();
 
-        int count = operandCk< IntV >( 0 );
+        int count = operandCk< IntV >( 0 ).v();
         int size = layout().getTypeAllocSize(ty); /* possibly aggregate */
 
         unsigned alloc = std::max( 1, count * size );
@@ -389,8 +389,9 @@ struct Eval
         heap().copy( s2ptr( operand( 1 ) ), s2ptr( result(), off.v() ), operand( 1 ).width );
     }
 
-    void jumpTo( CodePointer to )
+    void jumpTo( PointerV _to )
     {
+        CodePointer to( _to.v() );
         if ( pc().function() != to.function() )
             UNREACHABLE( "illegal cross-function jump" );
         switchBB( to );
@@ -431,7 +432,7 @@ struct Eval
         {
             auto rv = s2ptr( caller.operand( -2 ), 0, parent.v() );
             auto br = heap().template read< PointerV >( rv );
-            jumpTo( br.v() );
+            jumpTo( br );
         }
     }
 
@@ -584,7 +585,7 @@ struct Eval
             case Intrinsic::vacopy:
                 NOT_IMPLEMENTED(); /* TODO */
             case Intrinsic::eh_typeid_for:
-                result( IntV( program().function( pc() ).typeID( operandCk< PointerV >( 0 ) ) ) );
+                result( IntV( program().function( pc() ).typeID( operandCk< PointerV >( 0 ).v() ) ) );
                 return;
             case Intrinsic::smul_with_overflow:
             case Intrinsic::sadd_with_overflow:
@@ -639,10 +640,10 @@ struct Eval
         {
             case BuiltinChoose:
             {
-                int options = operandCk< IntV >( 0 );
+                int options = operandCk< IntV >( 0 ).v();
                 std::vector< int > p;
                 for ( int i = 1; i < int( instruction().values.size() ) - 2; ++i )
-                    p.push_back( operandCk< IntV >( i ) );
+                    p.push_back( operandCk< IntV >( i ).v() );
                 if ( !p.empty() && int( p.size() ) != options )
                     fault( _VM_F_Hypercall );
                 else
@@ -650,9 +651,9 @@ struct Eval
                 return;
             }
             case BuiltinSetSched:
-                return control().setSched( operandCk< PointerV >( 0 ) );
+                return control().setSched( operandCk< PointerV >( 0 ).v() );
             case BuiltinSetFault:
-                return control().setFault( operandCk< PointerV >( 0 ) );
+                return control().setFault( operandCk< PointerV >( 0 ).v() );
             case BuiltinSetIfl:
                 return control().setIfl( operandCk< PointerV >( 0 ) );
             case BuiltinInterrupt:
@@ -668,16 +669,16 @@ struct Eval
             {
                 // std::cerr << "======= jump" << std::endl;
                 auto tgt = operandCk< PointerV >( 0 );
-                auto forget = operandCk< IntV >( 1 );
+                auto forget = operandCk< IntV >( 1 ).v();
                 if ( forget )
                 {
                     control().mask( false );
                     clear_interrupted();
                 }
-                if ( tgt == nullPointer() )
+                if ( tgt.v() == nullPointer() )
                     return fault( _VM_F_Hypercall );
                 else
-                    return control().frame( operandCk< PointerV >( 0 ) );
+                    return control().frame( tgt );
             }
             case BuiltinTrace:
             {
@@ -697,14 +698,14 @@ struct Eval
                 return;
             }
             case BuiltinFault:
-                fault( Fault( operandCk< IntV >( 0 ) ) );
+                fault( Fault( operandCk< IntV >( 0 ).v() ) );
                 return;
             case BuiltinMask:
-                control().mask( operandCk< IntV >( 0 ) );
+                control().mask( operandCk< IntV >( 0 ).v() );
                 return;
             case BuiltinMakeObject:
             {
-                int64_t size = operandCk< IntV >( 0 );
+                int64_t size = operandCk< IntV >( 0 ).v();
                 if ( size >= ( 2ll << PointerOffBits ) || size < 1 )
                 {
                     fault( _VM_F_Hypercall );
@@ -749,7 +750,7 @@ struct Eval
                 return implement_builtin();
         }
 
-        CodePointer target = operandCk< PointerV >( invoke ? -3 : -1 );
+        CodePointer target = operandCk< PointerV >( invoke ? -3 : -1 ).v();
 
         CallSite CS( cast< ::llvm::Instruction >( instruction().op ) );
 

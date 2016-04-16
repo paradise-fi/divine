@@ -27,17 +27,18 @@ template< typename Memory >
 struct Control
 {
     using Pointer = typename Memory::Pointer;
+    using PointerV = value::Pointer< Pointer >;
 
-    Pointer _frame, _globals;
+    PointerV _frame, _globals;
     bool _mask;
 
-    Pointer frame() { return _frame; }
-    Pointer globals() { return _globals; }
+    PointerV frame() { return _frame; }
+    PointerV globals() { return _globals; }
     bool mask() { return _mask; }
     void mask( bool m ) { _mask = m; }
 
-    void setFrame( Pointer f ) { _frame = f; }
-    void setGlobals( Pointer g ) { _globals = g; }
+    void setFrame( PointerV f ) { _frame = f; }
+    void setGlobals( PointerV g ) { _globals = g; }
 };
 
 }
