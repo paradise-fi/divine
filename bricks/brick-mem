@@ -110,7 +110,7 @@ struct Pool
             chunk() = c;
         }
 
-        Raw raw() { return *reinterpret_cast< Raw * >( _v.storage ); }
+        Raw raw() const { return *reinterpret_cast< const Raw * >( _v.storage ); }
         explicit operator bool() const { return raw(); }
         bool operator!() const { return !raw(); }
         bool operator<= ( Pointer o ) const { return _v < o._v || _v == o._v; }
@@ -124,6 +124,7 @@ struct Pool
         uint64_t total:20;
         uint64_t allocated:20;
         uint64_t itemsize:24;
+        char data[];
     };
 
     struct FreeList
@@ -166,7 +167,7 @@ struct Pool
 
     struct Shared
     {
-        char *block[ blockcount ];
+        BlockHeader *block[ blockcount ];
         std::atomic< int > usedblocks;
         FreeListPtr freelist[ 4096 ];
         std::atomic< FreeListPtr * > freelist_big[ 4096 ];
@@ -272,7 +273,8 @@ struct Pool
             }
 
         for ( int i = 0; i < blockcount; ++i )
-            if ( _s->block[ i ] ) {
+            if ( _s->block[ i ] )
+            {
                 int64_t is = header( i ).itemsize;
                 int64_t b = header( i ).total * align( is, sizeof( Pointer ) );
                 bytes += b;
@@ -559,7 +561,7 @@ struct Pool
         const int allocate = allocsize ? overhead + total * allocsize : blocksize;
 
         auto mem = brick::mmap::MMap::alloc( allocate );
-        _s->block[ b ] = static_cast< char * >( mem );
+        _s->block[ b ] = static_cast< BlockHeader * >( mem );
         header( b ).itemsize = size;
         header( b ).total = total;
         header( b ).allocated = 0;
@@ -569,13 +571,19 @@ struct Pool
     }
 
     BlockHeader &header( Pointer p ) { return header( p.slab() ); }
-    BlockHeader &header( int b ) {
-        return *reinterpret_cast< BlockHeader * >( _s->block[ b ] );
+    BlockHeader &header( int b )
+    {
+        ASSERT( _s );
+        ASSERT_LEQ( b, blockcount );
+        ASSERT_LEQ( 0, b );
+        ASSERT( _s->block[ b ] );
+        return *(_s->block[ b ]);
     }
 
-    char *dereference( Pointer p ) {
-        return _s->block[ p.slab() ] + sizeof( BlockHeader ) +
-            p.chunk() * align( header( p ).itemsize, sizeof( Pointer ) );
+    char *dereference( Pointer p )
+    {
+        auto &h = header( p );
+        return h.data + p.chunk() * align( h.itemsize, sizeof( Pointer ) );
     }
 
 };
