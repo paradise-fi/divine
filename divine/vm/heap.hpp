@@ -43,7 +43,7 @@ namespace mem = brick::mem;
 
 struct MutableHeap
 {
-    using Shadows = mem::Pool< 20, 12, uint32_t >;
+    using Shadows = mem::Pool< 20, 10, uint32_t >;
     using Objects = mem::Pool< 32, 16, uint64_t, 1, 2, 0 >;
 
     Shadows _shadows;
