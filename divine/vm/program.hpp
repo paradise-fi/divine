@@ -78,7 +78,7 @@ struct ConstContext
         PointerV _constants;
         PointerV _globals;
         PointerV frame() { return PointerV(); }
-        void frame( HeapPointer ) {}
+        void frame( PointerV ) {}
         PointerV globals() { return _globals; }
         PointerV constants() { return _constants; }
         void fault( _VM_Fault ) { NOT_IMPLEMENTED(); }

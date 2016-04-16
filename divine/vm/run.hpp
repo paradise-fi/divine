@@ -141,13 +141,13 @@ struct RunContext
 
     void setup_heap()
     {
-        auto cp = (control()._constants = heap().make( _program._constants_size )).v();
+        auto cp = control()._constants = heap().make( _program._constants_size );
 
         auto pc = _program._ccontext;
         auto ph = pc.heap();
 
         /* FIXME FIXME FIXME */
-        auto cd = heap()._objects.dereference( heap().p2i( cp ) );
+        auto cd = heap()._objects.dereference( heap().p2i( cp.v() ) );
         auto p_cd = ph._objects.dereference( ph.p2i( pc.control()._constants.v() ) );
         std::copy( p_cd, p_cd + _program._constants_size, cd );
 
