@@ -253,6 +253,48 @@ struct Colour {
     Colour() : _c { 0, 0, 0 } {}
 };
 
+struct Terminal {
+    enum Type { PDF, ConTeXt, X11 } type;
+    float width, height; /* cm, because gnuplot ... */
+    std::string font;
+
+    float unit( std::string u ) {
+        if ( u == "cm" )
+            return 1;
+        if ( u == "mm" )
+            return 0.1;
+        UNREACHABLE_F( "unknown unit %s", u.c_str() );
+    }
+
+    void fromString( std::string s ) {
+        string::ERegexp rx( "([0-9.]+)([a-z]+),([0-9.]+)([a-z]+)", 5 );
+        if ( rx.match( s ) ) {
+            width = std::atof( rx[1].c_str() );
+            height = std::atof( rx[3].c_str() );
+            width *= unit( rx[2] );
+            height *= unit( rx[4] );
+        }
+    }
+
+    Terminal( Type t = PDF )
+        : type( t ), width( 14 ), height( 9 ),
+          font( "Liberation Sans,10" )
+    {}
+
+    std::string string() {
+        std::stringstream str;
+        str << "set terminal ";
+        switch ( type ) {
+            case PDF: str << "pdfcairo font '" << font << "'"; break;
+            case ConTeXt: str << "context"; break;
+            case X11: str << "x11 background '#FFFFFF'"; break;
+        }
+        if ( type != X11 )
+            str << " size " << width << "cm," << height << "cm";
+        return str.str();
+    }
+};
+
 inline bool operator<( Colour::Lab a, Colour::Lab b ) {
     return std::make_tuple( a.L, a.a, a.b ) <
            std::make_tuple( b.L, b.a, b.b );
@@ -466,17 +508,16 @@ struct Terminal {
             return 1;
         if ( u == "mm" )
             return 0.1;
-        UNREACHABLE_F( "unknown unit %s", u.c_str() );
+        ASSERT_UNREACHABLE_F( "unknown unit %s", u.c_str() );
     }
 
     void fromString( std::string s ) {
-        std::regex rx( "([0-9.]+)([a-z]+),([0-9.]+)([a-z]+)", std::regex::extended );
-        std::smatch match;
-        if ( std::regex_match( s, match, rx ) ) {
-            width = std::stof( match[1] );
-            height = std::stof( match[3] );
-            width *= unit( match[2] );
-            height *= unit( match[4] );
+        string::ERegexp rx( "([0-9.]+)([a-z]+),([0-9.]+)([a-z]+)", 5 );
+        if ( rx.match( s ) ) {
+            width = std::atof( rx[1].c_str() );
+            height = std::atof( rx[3].c_str() );
+            width *= unit( rx[2] );
+            height *= unit( rx[4] );
         }
     }
 
@@ -723,6 +764,8 @@ struct Plots {
             _terminal.type = Terminal::PDF;
         if ( t == "context" )
             _terminal.type = Terminal::ConTeXt;
+        if ( t == "x11" )
+            _terminal.type = Terminal::X11;
         _terminal.fromString( getenv( "GNUPLOT_TERMINAL_SIZE" ) ?: "" );
     }
 
@@ -775,6 +818,10 @@ struct Plots {
 
         for ( auto &p : _plots )
             str << p.plot( cm );
+
+        if ( _terminal.type == Terminal::X11 )
+            str << "pause mouse key" << std::endl;
+
         return str.str();
     }
 
