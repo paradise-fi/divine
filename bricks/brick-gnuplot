@@ -703,6 +703,8 @@ struct Plot {
                 str << std::string( d.ribbon() ? ",\\\n" : "" )
                     << " '-' using 1:2 " << (d.ribbon() ? "notitle " : "title '" + d._name + "'")
                     << " with lines ls " << seq;
+            if ( d.points() && ( d.ribbon() || d.lines() ) )
+                str << ",\\\n";
             if ( d.points() )
                 str << ",\\\n '-' using 1:2 notitle with points ls " << seq
                     << " pt 7 ps 0.1 lc rgb '#000000'";
