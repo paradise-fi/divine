@@ -307,6 +307,11 @@ struct Style {
 
     Colour::Lab _from, _to;
 
+    double pointsize( Terminal t )
+    {
+        return t.type == Terminal::X11 ? 1 : 0.1;
+    }
+
     void set( Type t, Lab from, Lab to ) {
         _type = t;
         _from = from;
@@ -690,7 +695,8 @@ struct Plot {
         return " fs pattern " + std::to_string( p[ i ] );
     }
 
-    std::string datasets() {
+    std::string datasets( Terminal t )
+    {
         std::stringstream str;
         int seq = 1;
         str << "plot \\" << std::endl;
@@ -706,8 +712,8 @@ struct Plot {
             if ( d.points() && ( d.ribbon() || d.lines() ) )
                 str << ",\\\n";
             if ( d.points() )
-                str << ",\\\n '-' using 1:2 notitle with points ls " << seq
-                    << " pt 7 ps 0.1 lc rgb '#000000'";
+                str << " '-' using 1:2 notitle with points ls " << seq
+                    << " pt 7 ps " << _style.pointsize( t ) << " lc rgb '#000000'";
             if ( d.box() )
                 str << " '-' using ($1 - offset + " << seq - 1 << " * step):4 with boxes notitle ls " << seq << pattern( 0 )
                     << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):2 with boxes notitle ls " << seq << pattern( 1 )
@@ -737,8 +743,8 @@ struct Plot {
         return str.str();
     }
 
-    std::string plot( ColourMap cm = ColourMap() ) {
-        return preamble( cm ) + setup() + datasets();
+    std::string plot( ColourMap cm = ColourMap(), Terminal t = Terminal()) {
+        return preamble( cm ) + setup() + datasets( t );
     }
 };
 
@@ -819,7 +825,7 @@ struct Plots {
         }
 
         for ( auto &p : _plots )
-            str << p.plot( cm );
+            str << p.plot( cm, _terminal );
 
         if ( _terminal.type == Terminal::X11 )
             str << "pause mouse key" << std::endl;
