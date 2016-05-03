@@ -148,7 +148,12 @@ inline bool isRelative( std::string path ) {
 
 template< typename It,
     // prohibit taking precedence over variadic join
-    typename = typename std::enable_if< !std::is_same< It, std::string >::value >::type >
+    typename = typename std::enable_if<
+            !std::is_same< It, std::string >::value &&
+            !(std::is_pointer< It >::value &&
+                std::is_same< typename std::remove_cv<
+                    typename std::remove_pointer< It >::type >::type, char >::value)
+        >::type >
 inline std::string joinPath( It begin, It end ) {
     std::string out;
 
