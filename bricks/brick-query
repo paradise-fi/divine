@@ -135,6 +135,11 @@ auto range( It &&beg, It &&end ) -> Range< It > {
     return Range< It >( std::forward< It >( beg ), std::forward< It >( end ) );
 }
 
+template< typename T >
+auto range( T *beg, T *end ) -> Range< T * > {
+    return Range< T * >( beg, end );
+}
+
 template< typename Collection >
 auto range( const Collection &col ) -> Range< _ConstIterator< Collection > > {
     return Range< _ConstIterator< Collection > >( col );
