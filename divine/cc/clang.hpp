@@ -14,8 +14,14 @@
 #include <llvm/Support/Errc.h> // for VFS
 #include <llvm/Bitcode/ReaderWriter.h>
 
+#include <divine/utility/strings.h>
+#include <divine/compile/snapshot.h>
+
 #include <brick-fs.h>
+#include <brick-string.h>
 #include <brick-llvm.h>
+#include <brick-query.h>
+#include <brick-types.h>
 
 #include <algorithm>
 #include <iterator>
@@ -24,6 +30,13 @@
 #include <thread>
 
 namespace divine {
+
+extern stringtable pdclib_list[];
+extern stringtable libm_list[];
+extern stringtable libunwind_list[];
+extern stringtable libcxxabi_list[];
+extern stringtable libcxx_list[];
+
 namespace cc {
 
 template< typename Contailer >
@@ -104,8 +117,7 @@ struct DivineVFS : clang::vfs::FileSystem {
     static auto doesNotExits() { // forward to real FS
         return std::error_code( llvm::errc::no_such_file_or_directory );
     }
-    static auto blockAccess( const llvm::Twine &t ) {
-        std::cerr << "ERROR: invalid file access to " << t.str() << std::endl;
+    static auto blockAccess( const llvm::Twine & ) {
         return std::error_code( DivineVFSError::InvalidIncludePath );
     };
 
@@ -120,7 +132,6 @@ struct DivineVFS : clang::vfs::FileSystem {
         llvm::ErrorOr< clang::vfs::Status > override
     {
         auto path = brick::fs::normalize( _path.str() );
-        std::cerr << "DVFS:status " << path << std::endl;
         auto it = filemap.find( path );
         if ( it != filemap.end() )
             return statpath( path, it->second.second );
@@ -133,7 +144,6 @@ struct DivineVFS : clang::vfs::FileSystem {
         llvm::ErrorOr< std::unique_ptr< clang::vfs::File > > override
     {
         auto path = brick::fs::normalize( _path.str() );
-        std::cerr << "DVFS:openFileForRead " << path << std::endl;
 
         auto it = filemap.find( path );
         if ( it != filemap.end() )
@@ -153,13 +163,13 @@ struct DivineVFS : clang::vfs::FileSystem {
 
     void allowPath( std::string path ) { allowedPrefixes.insert( path ); }
 
-    void addFile( std::string name, std::string contents ) {
+    void addFile( std::string name, std::string contents, bool allowOverride = false ) {
         storage.emplace_back( std::move( contents ) );
-        addFile( name, storage.back().c_str() );
+        addFile( name, storage.back().c_str(), allowOverride );
     }
 
-    void addFile( std::string path, const char *contents ) {
-        assert( !filemap.count( path ) );
+    void addFile( std::string path, const char *contents, bool allowOverride = false ) {
+        ASSERT( allowOverride || !filemap.count( path ) );
         auto &ref = filemap[ path ];
         ref.first = contents;
         auto name = llvm::sys::path::filename( path );
@@ -180,6 +190,18 @@ struct DivineVFS : clang::vfs::FileSystem {
         }
     }
 
+    std::vector< std::string > filesMappedUnder( std::string path ) {
+        auto prefix = brick::fs::splitPath( path );
+        return brick::query::query( filemap )
+            .filter( []( auto &pair ) { return !pair.second.second.isDirectory(); } )
+            .map( []( auto &pair ) { return pair.first; } )
+            .filter( [&]( auto p ) {
+                    auto split = brick::fs::splitPath( p );
+                    return split.size() >= prefix.size()
+                           && std::equal( prefix.begin(), prefix.end(), split.begin() );
+                } )
+            .freeze();
+    }
 
   private:
 
@@ -260,34 +282,48 @@ struct Compiler {
             case FileType::IR:
                 add( out, { "ir" } );
                 break;
+            case FileType::Unknown:
+                ASSERT_UNREACHABLE( "Unknown file type" );
         }
         switch ( t ) {
             case FileType::Cpp:
             case FileType::CppPreprocessed:
                 add( out, { "-fcxx-exceptions", "-fexceptions" } );
                 break;
-            defalt: ;
+            default: ;
         }
         return out;
     }
 
     Compiler() :
         divineVFS( new DivineVFS() ),
-        overlayFS( new clang::vfs::OverlayFileSystem( clang::vfs::getRealFileSystem() ) ),
-        diagopts( new clang::DiagnosticOptions ),
-        diagprinter( llvm::errs(), diagopts ),
-        diag( llvm::IntrusiveRefCntPtr< clang::DiagnosticIDs >( new clang::DiagnosticIDs() ),
-              diagopts, &diagprinter, false )
+        overlayFS( new clang::vfs::OverlayFileSystem( clang::vfs::getRealFileSystem() ) )
     {
         // setup VFS
         overlayFS->pushOverlay( divineVFS );
-        fmgr = std::make_unique< clang::FileManager >( clang::FileSystemOptions(), overlayFS );
     }
 
     template< typename T >
     Compiler &mapVirtualFile( std::string path, const T &contents ) {
         divineVFS->addFile( path, contents );
         return *this;
+    }
+
+    template< typename T >
+    Compiler &reMapVirtualFile( std::string path, const T &contents ) {
+        divineVFS->addFile( path, contents, true );
+        return *this;
+    }
+
+    template< typename T >
+    Compiler &mapVirtualFiles( std::initializer_list< std::pair< std::string, const T & > > files ) {
+        for ( auto &x : files )
+            mapVirtualFile( x.first, x.second );
+        return *this;
+    }
+
+    std::vector< std::string > filesMappedUnder( std::string path ) {
+        return divineVFS->filesMappedUnder( path );
     }
 
     Compiler &allowIncludePath( std::string path ) {
@@ -306,7 +342,7 @@ struct Compiler {
                                                 "-mrelax-all",
                                                 // "-disable-free",
                                                 // "-disable-llvm-verifier",
-                                                "-main-file-name", "test.c",
+//                                                "-main-file-name", "test.c",
                                                 "-mrelocation-model", "static",
                                                 "-mthread-model", "posix",
                                                 "-mdisable-fp-elim",
@@ -316,7 +352,6 @@ struct Compiler {
                                                 "-munwind-tables",
                                                 "-fuse-init-array",
                                                 "-target-cpu", "x86-64",
-                                                "-v",
                                                 "-dwarf-column-info",
                                                 // "-coverage-file", "/home/xstill/DiVinE/clangbuild/test.c", // ???
                                                 // "-resource-dir", "../lib/clang/3.7.1", // ???
@@ -333,30 +368,37 @@ struct Compiler {
                                                 "-fcolor-diagnostics",
                                                 // "-o", "test.o",
                                                 };
+        add( cc1args, args );
         add( cc1args, argsOfType( type ) );
         cc1args.push_back( filename );
+
 
         std::vector< const char * > cc1a;
         std::transform( cc1args.begin(), cc1args.end(),
                         std::back_inserter( cc1a ),
                         []( std::string &str ) { return str.c_str(); } );
 
+        clang::TextDiagnosticPrinter diagprinter( llvm::errs(), new clang::DiagnosticOptions() );
+        clang::DiagnosticsEngine diag(
+                llvm::IntrusiveRefCntPtr< clang::DiagnosticIDs >( new clang::DiagnosticIDs() ),
+                new clang::DiagnosticOptions(), &diagprinter, false );
         bool succ = clang::CompilerInvocation::CreateFromArgs(
                             *invocation, &cc1a[ 0 ], &*cc1a.end(), diag );
-        assert( succ );
+        ASSERT( succ );
         invocation->getDependencyOutputOpts() = clang::DependencyOutputOptions();
 
         // actually run the compiler invocation
         clang::CompilerInstance compiler( std::make_shared< clang::PCHContainerOperations>() );
+        auto fmgr = std::make_unique< clang::FileManager >( clang::FileSystemOptions(), overlayFS );
         compiler.setFileManager( fmgr.get() );
         compiler.setInvocation( invocation.release() );
-        assert( compiler.hasInvocation() );
+        ASSERT( compiler.hasInvocation() );
         compiler.createDiagnostics( &diagprinter, false );
-        assert( compiler.hasDiagnostics() );
+        ASSERT( compiler.hasDiagnostics() );
         compiler.createSourceManager( *fmgr.release() );
         auto emit = std::make_unique< clang::EmitLLVMOnlyAction >( &ctx ); // emits module in memory, does not write it info a file
         succ = compiler.ExecuteAction( *emit );
-        assert( succ );
+        ASSERT( succ );
 
         return emit->takeModule();
     }
@@ -366,7 +408,7 @@ struct Compiler {
         return compileModule( filename, typeFromFile( filename ), args );
     }
 
-    std::string serializeModule( llvm::Module &m ) {
+    static std::string serializeModule( llvm::Module &m ) {
         std::string str;
         {
             llvm::raw_string_ostream os( str );
@@ -386,6 +428,8 @@ struct Compiler {
         return std::move( llvm::parseBitcodeFile( llvm::MemoryBufferRef( str, "module.bc" ), ctx ).get() );
     }
 
+    llvm::LLVMContext &context() { return ctx; }
+
   private:
 
     template< typename A, typename B = std::initializer_list< std::decay_t<
@@ -396,11 +440,236 @@ struct Compiler {
 
     llvm::IntrusiveRefCntPtr< DivineVFS > divineVFS;
     llvm::IntrusiveRefCntPtr< clang::vfs::OverlayFileSystem > overlayFS;
-    std::unique_ptr< clang::FileManager > fmgr;
-    clang::DiagnosticOptions *diagopts;
-    clang::TextDiagnosticPrinter diagprinter;
-    clang::DiagnosticsEngine diag;
     llvm::LLVMContext ctx;
+};
+
+template< typename Namespace = std::initializer_list< std::string > >
+std::string stringifyToCode( Namespace ns, std::string name, std::string value ) {
+    std::stringstream ss;
+    for ( auto &n : ns )
+        ss << "namespace " << n << "{" << std::endl;
+
+    ss << "const char " << name << "[] = {" << std::hex << std::endl;
+    int i = 0;
+    for ( auto c : value ) {
+        ss << "0x" << c << ", ";
+        if ( ++i > 12 ) {
+            ss << std::endl;
+            i = 0;
+        }
+    }
+    ss << "};";
+
+    for ( auto &n : ns )
+        ss << "} // namespace " << n << std::endl;
+}
+
+struct Compile {
+
+    template< typename T >
+    struct Wrapper {
+        Wrapper( T &val ) : val( val ) { }
+        Wrapper( T &&val ) : val( std::move( val ) ) { }
+        T &get() { return val; }
+        const T &get() const { return val; }
+      private:
+        T val;
+    };
+
+    struct NumThreads : Wrapper< int > {
+        using Wrapper< int >::Wrapper;
+    };
+    struct Precompiled : Wrapper< std::string > {
+        using Wrapper< std::string >::Wrapper;
+    };
+    struct LibsOnly { };
+    struct DisableVFS { };
+    struct VFSInput : Wrapper< std::string > {
+        using Wrapper< std::string >::Wrapper;
+    };
+    struct VFSSnapshot : Wrapper< std::string > {
+        using Wrapper< std::string >::Wrapper;
+    };
+
+    using Options = std::vector< brick::types::Union< NumThreads, Precompiled,
+                                 LibsOnly, DisableVFS, VFSInput, VFSSnapshot > >;
+
+    std::string addSnapshot() {
+        auto path = join( srcDir, "divine/fs-snapshot.cpp" );
+        std::stringstream snapshot;
+        compile::Snapshot::writeFile( snapshot, vfsSnapshot, vfsInput );
+        mastercc().mapVirtualFile( path, snapshot.str() );
+        return path;
+    }
+
+    explicit Compile( Options opts = { } ) : compilers( 1 ), workers( 1 ) {
+        for ( auto &opt : opts )
+            opt.cases( [this]( NumThreads ) {
+                    ASSERT_UNIMPLEMENTED();
+                }, [this]( Precompiled p ) {
+                    precompiled = p.get();
+                }, [this]( LibsOnly ) {
+                    libsOnly = true;
+                }, [this]( DisableVFS ) {
+                    vfs = false;
+                    ASSERT( vfsSnapshot.empty() );
+                    ASSERT( vfsInput.empty() );
+                }, [this]( VFSInput vi ) {
+                    vfsInput = vi.get();
+                    ASSERT( vfs );
+                }, [this]( VFSSnapshot vs ) {
+                    vfsSnapshot = vs.get();
+                    ASSERT( vfs );
+                } );
+        ASSERT_LEQ( 1ul, workers.size() );
+        ASSERT_EQ( workers.size(), compilers.size() );
+
+        setupFS();
+        if ( !libsOnly && precompiled.empty() )
+            addSnapshot();
+        setupLibs();
+    }
+
+    void compileAndLink( std::string path, std::vector< std::string > flags = { } ) {
+        linker.link( compile( path, flags ) );
+    }
+
+    std::unique_ptr< llvm::Module > compile( std::string path,
+            std::vector< std::string > flags = { } )
+    {
+        std::vector< std::string > allFlags;
+        std::copy( commonFlags.begin(), commonFlags.end(), std::back_inserter( allFlags ) );
+        std::copy( flags.begin(), flags.end(), std::back_inserter( allFlags ) );
+
+        std::cerr << "compiling " << path << std::endl;
+        return mastercc().compileModule( path, allFlags );
+    }
+
+    llvm::Module *getLinked() { return linker.get(); }
+
+    void writeToFile( std::string filename ) {
+        std::error_code serr;
+        ::llvm::raw_fd_ostream outs( filename, serr, ::llvm::sys::fs::F_None );
+        WriteBitcodeToFile( linker.get(), outs );
+    }
+
+    std::string serialize() {
+        return mastercc().serializeModule( *linker.get() );
+    }
+
+    void addDirectory( std::string path ) {
+        mastercc().allowIncludePath( path );
+    }
+
+    void setFlags( std::vector< std::string > flags ) {
+        std::copy( flags.begin(), flags.end(), std::back_inserter( commonFlags ) );
+    }
+
+  private:
+    Compiler &mastercc() { return compilers[0]; }
+
+    enum class Type { Header, Source, All };
+
+    template< typename Src >
+    void prepareSources( std::string basedir, Src src, Type type = Type::All,
+            std::function< bool( std::string ) > filter = nullptr )
+    {
+        using brick::string::endsWith;
+        while ( src->n ) {
+            if ( ( !filter || filter( src->n ) )
+                 && ((type == Type::Header && ( endsWith( src->n, ".h")
+                                          || endsWith( src->n, ".hpp")
+                                          || std::string( src->n ).find( '.' ) == std::string::npos ) )
+                    || ( type == Type::Source && ( endsWith( src->n, ".c")
+                                                || endsWith( src->n, ".cpp" )
+                                                || endsWith( src->n, ".cc" ) ) )
+                    || type == Type::All ))
+            {
+                auto path = join( basedir, src->n );
+                mastercc().mapVirtualFile( path, src->c );
+            }
+            ++src;
+        }
+    }
+
+    void setupFS() {
+        prepareSources( includeDir, llvm_h_list );
+        mastercc().mapVirtualFiles< const char * >( {
+            { join( includeDir, "bits/pthreadtypes.h" ), "#include <pthread.h>\n" },
+            { join( includeDir, "divine/problem.def" ), src_llvm::llvm_problem_def_str } } );
+        prepareSources( join( srcDir, "divine" ),   llvm_list,      Type::All,
+            [&]( std::string name ) { return vfs || !brick::string::startsWith( name, "fs" ); } );
+        prepareSources( join( srcDir, "lart" ),     lart_list,      Type::Source );
+        prepareSources( join( includeDir, "lart" ), lart_list,      Type::Header );
+        prepareSources( join( srcDir, "libpdc" ),   pdclib_list,    Type::Source );
+        prepareSources( includeDir,                 pdclib_list,    Type::Header );
+        prepareSources( join( srcDir, "limb" ),     libm_list,      Type::Source );
+        prepareSources( includeDir,                 libm_list,      Type::Header );
+        prepareSources( includeDir,                 libcxxabi_list, Type::Header );
+        prepareSources( includeDir,                 libcxx_list,    Type::Header );
+        prepareSources( join( srcDir, "cxxabi" ),   libcxxabi_list, Type::Source );
+        prepareSources( join( srcDir, "cxx" ),      libcxx_list,    Type::Source );
+
+        mastercc().reMapVirtualFile( join( includeDir, "assert.h" ), "#include <divine.h>\n" ); // override PDClib's assert
+    }
+
+    void setupLibs() {
+        if ( precompiled.size() ) {
+            auto input = std::move( llvm::MemoryBuffer::getFile( precompiled ).get() );
+            ASSERT( !!input );
+
+            auto inputData = input->getMemBufferRef();
+            auto parsed = parseBitcodeFile( inputData, context() );
+            if ( !parsed )
+                throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
+            linker.load( std::move( parsed.get() ) );
+            compileAndLink( addSnapshot(), { "-std=c++14", "-Oz" } );
+        } else {
+            compileLibrary( join( srcDir, "libpdc" ), { "-D_PDCLIB_BUILD" } );
+            compileLibrary( join( srcDir, "limb" ) );
+            std::initializer_list< std::string > cxxflags = { "-std=c++14"
+                                                            // , "-fstrict-aliasing"
+                                                            , "-I/usr/include/include"
+                                                            , "-I/usr/include/src"
+                                                            , "-Oz" };
+            compileLibrary( join( srcDir, "cxxabi" ), cxxflags );
+            compileLibrary( join( srcDir, "cxx" ), cxxflags );
+            compileLibrary( join( srcDir, "divine" ), cxxflags );
+            compileLibrary( join( srcDir, "lart" ), cxxflags );
+        }
+    }
+
+    void compileLibrary( std::string path, std::initializer_list< std::string > flags = { } )
+    {
+        for ( const auto &f : mastercc().filesMappedUnder( path ) )
+            compileAndLink( f, flags );
+    }
+
+    llvm::LLVMContext &context() { return mastercc().context(); }
+
+    template< typename ... T >
+    std::string join( T &&... xs ) { return brick::fs::joinPath( std::forward< T >( xs )... ); }
+
+    const std::string includeDir = "/usr/include";
+    const std::string srcDir = "/dvc";
+
+    std::string precompiled;
+    std::vector< Compiler > compilers;
+    std::vector< std::thread > workers;
+    brick::llvm::Linker linker;
+    bool vfs = true;
+    bool libsOnly = false;
+    std::string vfsSnapshot;
+    std::string vfsInput;
+    std::vector< std::string > commonFlags = { "-D__divine__"
+                                             , "-isystem", "/usr/include"
+                                             , "-isystem", "/usr/include/std"
+                                             , "-D_POSIX_C_SOURCE=2008098L"
+                                             , "-D_LITTLE_ENDIAN=1234"
+                                             , "-D_BYTE_ORDER=1234"
+//                                             , "-fno-slp-vectorize"
+//                                             , "-fno-vectorize"
+                                             };
 };
 
 } // namespace cc
