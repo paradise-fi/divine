@@ -25,7 +25,7 @@ int main( int argc, char **argv ) {
     std::vector< std::string > files;
     std::vector< std::string > allowed;
     std::string output;
-    bool libsOnly = false;
+    bool libsOnly = false, dontLink = false;
 
     std::string includeNext = "";
     bool outputNext = false;
@@ -33,6 +33,9 @@ int main( int argc, char **argv ) {
         if ( arg == "--libraries-only" ) {
             libsOnly = true;
             driverOpts.emplace_back( Compile::LibsOnly() );
+        } else if ( arg == "--dont-link" ) {
+            dontLink = true;
+            driverOpts.emplace_back( Compile::DontLink() );
         } else if ( startsWith( arg, "--precompiled=" ) ) {
             driverOpts.emplace_back( Compile::Precompiled( substrAfter( arg, '=' ) ) );
         } else if ( arg == "--disable-vfs" ) {
@@ -52,7 +55,8 @@ int main( int argc, char **argv ) {
             if ( arg == "-I" || arg == "-isystem" )
                 includeNext = arg;
             else {
-                auto ipath = arg.substr( arg.size() );
+                auto skip = (startsWith( arg, "-I" ) ? sizeof( "-I" ) : sizeof( "-isystem" )) - 1;
+                auto ipath = arg.substr( skip );
                 allowed.emplace_back( ipath );
                 opts.emplace_back( arg );
             }

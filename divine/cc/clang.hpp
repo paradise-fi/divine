@@ -164,7 +164,12 @@ struct DivineVFS : clang::vfs::FileSystem {
         NOT_IMPLEMENTED();
     }
 
-    void allowPath( std::string path ) { allowedPrefixes.insert( path ); }
+    void allowPath( std::string path ) {
+        path = brick::fs::normalize( path );
+        allowedPrefixes.insert( path );
+        auto parts = brick::fs::splitPath( path );
+        addDir( parts.begin(), parts.end() );
+    }
 
     void addFile( std::string name, std::string contents, bool allowOverride = false ) {
         storage.emplace_back( std::move( contents ) );
@@ -181,10 +186,15 @@ struct DivineVFS : clang::vfs::FileSystem {
                         llvm::sys::TimeValue(), 0, 0, std::strlen( contents ),
                         llvm::sys::fs::file_type::regular_file,
                         llvm::sys::fs::perms::all_all );
-
         auto parts = brick::fs::splitPath( path );
-        for ( auto it = std::next( parts.begin() ); it < parts.end(); ++it ) {
-            path = brick::fs::joinPath( parts.begin(), it );
+        if ( !parts.empty() )
+            addDir( parts.begin(), parts.end() - 1 );
+    }
+
+    template< typename It >
+    void addDir( It begin, It end ) {
+        for ( auto it = begin; it < end; ++it ) {
+            auto path = brick::fs::joinPath( begin, std::next( it ) );
             filemap[ path ] = { "", clang::vfs::Status( *it, *it,
                     clang::vfs::getNextVirtualUniqueID(),
                     llvm::sys::TimeValue(), 0, 0, 0,
@@ -491,6 +501,7 @@ struct Compile {
         using Wrapper< std::string >::Wrapper;
     };
     struct LibsOnly { };
+    struct DontLink { };
     struct DisableVFS { };
     struct VFSInput : Wrapper< std::string > {
         using Wrapper< std::string >::Wrapper;
@@ -500,7 +511,8 @@ struct Compile {
     };
 
     using Options = std::vector< brick::types::Union< NumThreads, Precompiled,
-                                 LibsOnly, DisableVFS, VFSInput, VFSSnapshot > >;
+                                 LibsOnly, DisableVFS, VFSInput, VFSSnapshot,
+                                 DontLink > >;
 
     std::string addSnapshot() {
         /*
@@ -530,14 +542,17 @@ struct Compile {
                 }, [this]( VFSSnapshot vs ) {
                     vfsSnapshot = vs.get();
                     ASSERT( vfs );
+                }, [this]( DontLink ) {
+                    dontLink = true;
                 } );
         ASSERT_LEQ( 1ul, workers.size() );
         ASSERT_EQ( workers.size(), compilers.size() );
 
         setupFS();
-        if ( !libsOnly && precompiled.empty() )
+        if ( !libsOnly && precompiled.empty() && vfs )
             addSnapshot();
-        setupLibs();
+        if ( !dontLink )
+            setupLibs();
     }
 
     void compileAndLink( std::string path, std::vector< std::string > flags = { } ) {
@@ -635,7 +650,8 @@ struct Compile {
             if ( !parsed )
                 throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
             linker.load( std::move( parsed.get() ) );
-            compileAndLink( addSnapshot(), { "-std=c++14", "-Oz" } );
+            if ( vfs )
+                compileAndLink( addSnapshot(), { "-std=c++14", "-Oz" } );
         } else {
             compileLibrary( join( srcDir, "libpdc" ), { "-D_PDCLIB_BUILD" } );
             compileLibrary( join( srcDir, "limb" ) );
@@ -669,7 +685,7 @@ struct Compile {
     std::vector< Compiler > compilers;
     std::vector< std::thread > workers;
     brick::llvm::Linker linker;
-    bool vfs = true;
+    bool vfs = true, dontLink = false;
     bool libsOnly = false;
     std::string vfsSnapshot;
     std::string vfsInput;
