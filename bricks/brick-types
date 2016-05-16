@@ -677,12 +677,38 @@ struct Union : Comparable {
         return _discriminatorF< 1, T, Types... >();
     }
 
+    // this takes any number of single-parameter lambdas and calls the
+    // first one that can be called on current value
+    // note: auto lambdas are supported an can be called on any value!
+    template< typename Fn, typename... Fns >
+    bool cases( Fn &&fn, Fns &&...fns ) {
+        if ( _case< 1, Types... >( std::forward< Fn >( fn ), Preferred() ) )
+            return true;
+        return cases( std::forward< Fns >( fns )... );
+    }
+
+    bool cases() { return false; }
+
   private:
     static constexpr size_t size = _impl::MaxSizeof< 1, Types... >::value;
     static constexpr size_t alignment = _impl::MaxAlign< 1, Types... >::value;
     typename std::aligned_storage< size, alignment >::type storage;
     unsigned char _discriminator;
 
+    template< unsigned char i, typename T, typename ... Ts, typename Fn >
+    auto _case( Fn &&fn, Preferred ) -> decltype( fn( std::declval< T & >() ), true ) {
+        if ( i == _discriminator ) {
+            fn( unsafeGet< T >() );
+            return true;
+        } else
+            return _case< i + 1, Ts... >( std::forward< Fn >( fn ), Preferred() );
+    }
+    template< unsigned char i, typename T, typename ... Ts, typename Fn >
+    bool _case( Fn &&fn, NotPreferred ) {
+        return _case< i + 1, Ts... >( std::forward< Fn >( fn ), Preferred() );
+    }
+    template< unsigned i, typename Fn >
+    bool _case( Fn &&, Preferred ) { return false; }
 
     template< unsigned char i, typename Needle, typename T, typename... Ts >
     constexpr unsigned char _discriminatorF() const {
