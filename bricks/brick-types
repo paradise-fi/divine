@@ -68,35 +68,6 @@ struct NotPreferred { CONSTEXPR NotPreferred( Preferred ) {} };
 template< typename _T >
 struct Witness { using T = _T; };
 
-struct Comparable {
-    typedef bool IsComparable;
-};
-
-template< typename T >
-typename T::IsComparable operator!=( const T &a, const T &b ) {
-    return not( a == b );
-}
-
-template< typename T >
-typename T::IsComparable operator==( const T &a, const T &b ) {
-    return a <= b && b <= a;
-}
-
-template< typename T >
-typename T::IsComparable operator<( const T &a, const T &b ) {
-    return a <= b && a != b;
-}
-
-template< typename T >
-typename T::IsComparable operator>( const T &a, const T &b ) {
-    return b <= a && a != b;
-}
-
-template< typename T >
-typename T::IsComparable operator>=( const T &a, const T &b ) {
-    return b <= a;
-}
-
 struct Eq { typedef bool IsEq; };
 
 template< typename T >
@@ -112,6 +83,12 @@ typename T::IsOrd operator>( const T &a, const T &b ) { return !(a <= b); }
 
 template< typename T >
 typename T::IsOrd operator>=( const T &a, const T &b ) { return b <= a; }
+
+template< typename T >
+typename T::IsOrd operator==( const T &a, const T &b ) {
+    return a <= b && b <= a;
+}
+using Comparable = Ord;
 
 struct Defer {
     template< typename F >
@@ -1122,23 +1099,53 @@ public:
     bool operator<=( const Integer& o ) const { return val <= o.val; }
 };
 
+struct IntegerEq : Eq {
+    int val;
+public:
+    IntegerEq(int val) : val(val) {}
+    bool operator==( const IntegerEq& o ) const { return val == o.val; }
+};
+
+struct IntegerEqOrd : Ord {
+    int val;
+public:
+    IntegerEqOrd(int val) : val(val) {}
+    bool operator==( const IntegerEqOrd& o ) const { return val == o.val; }
+    bool operator<=( const IntegerEqOrd& o ) const { return val <= o.val; }
+};
+
+struct IntegerOrd : Ord {
+    int val;
+public:
+    IntegerOrd(int val) : val(val) {}
+    bool operator<=( const IntegerOrd& o ) const { return val <= o.val; }
+};
+
 struct Mixins {
 
-    TEST(comparable) {
-        Integer i10(10);
-        Integer i10a(10);
-        Integer i20(20);
-
-        ASSERT(i10 <= i10a);
-        ASSERT(i10a <= i10);
-        ASSERT(i10 <= i20);
-        ASSERT(! (i20 <= i10));
+    template< typename T >
+    void eq() {
+        T i10(10);
+        T i10a(10);
+        T i20(20);
 
         ASSERT(i10 != i20);
         ASSERT(!(i10 != i10a));
 
         ASSERT(i10 == i10a);
         ASSERT(!(i10 == i20));
+    }
+
+    template< typename T >
+    void ord() {
+        T i10(10);
+        T i10a(10);
+        T i20(20);
+
+        ASSERT(i10 <= i10a);
+        ASSERT(i10a <= i10);
+        ASSERT(i10 <= i20);
+        ASSERT(! (i20 <= i10));
 
         ASSERT(i10 < i20);
         ASSERT(!(i20 < i10));
@@ -1152,6 +1159,25 @@ struct Mixins {
         ASSERT(i10a >= i10);
         ASSERT(i20 >= i10);
         ASSERT(! (i10 >= i20));
+    }
+
+    TEST(comparable) {
+        eq< Integer >();
+        ord< Integer >();
+    }
+
+    TEST(eq) {
+        eq< IntegerEq >();
+    }
+
+    TEST(ord) {
+        eq< IntegerOrd >();
+        ord< IntegerOrd >();
+    }
+
+    TEST(eqord) {
+        eq< IntegerEqOrd >();
+        ord< IntegerEqOrd >();
     }
 
 };
