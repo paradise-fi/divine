@@ -972,6 +972,43 @@ struct Either : Union< Left, Right > {
     const Right &right() const { return this->template get< Right >(); }
 };
 
+// a pointer-like structure which can, however store values a value or a
+// referrence to type T
+template< typename T >
+struct RefOrVal {
+    static_assert( !std::is_reference< T >::value, "T must not be a reference type" );
+
+    RefOrVal() : _store( InPlace< T >() ) { }
+    RefOrVal( T &&val ) : _store( std::forward< T >( val ) ) { }
+    RefOrVal( T *ref ) : _store( ref ) { }
+    RefOrVal( T &ref ) : _store( &ref ) { }
+
+    RefOrVal &operator=( const RefOrVal & ) = default;
+    RefOrVal &operator=( RefOrVal && ) = default;
+    RefOrVal &operator=( T &v ) { _store = v; return *this; }
+    RefOrVal &operator=( T &&v ) { _store = std::move( v ); return *this; }
+    RefOrVal &operator=( T *ptr ) { _store = ptr; return *this; }
+
+    T *ptr() {
+        ASSERT( !_store.empty() );
+        auto *val = _store.template asptr< T >();
+        return val ? val : _store.template get< T * >();
+    }
+    const T *ptr() const {
+        ASSERT( !_store.empty() );
+        const auto *val = _store.template asptr< T >();
+        return val ? val : _store.template get< T * >();
+    }
+
+    T *operator->() { return ptr(); }
+    T &operator*() { return *ptr(); }
+    const T *operator->() const { return ptr(); }
+    const T &operator*() const { return *ptr(); }
+
+  private:
+    Union< T, T * > _store;
+};
+
 template< typename Fn, typename R = typename std::result_of< Fn() >::type >
 struct Lazy {
 
