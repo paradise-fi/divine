@@ -485,7 +485,6 @@ if (CLANG_BUILD_EXAMPLES)
 else()
   set(ENABLE_CLANG_EXAMPLES "0")
 endif()
-add_subdirectory(examples)
 
 option(CLANG_INCLUDE_TESTS
        "Generate build targets for the Clang unit tests."
