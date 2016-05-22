@@ -342,4 +342,4 @@ add_subdirectory(lib)
 # Setup Tests
 #===============================================================================
 
-add_subdirectory(test)
+# add_subdirectory(test)

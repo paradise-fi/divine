@@ -348,5 +348,5 @@ if(NOT LIBCXXABI_ENABLE_SHARED)
                   "LIBCXXABI_ENABLE_SHARED is on, no check target will be "
                   "available!")
 else()
-  add_subdirectory(test)
+  # add_subdirectory(test)
 endif()
