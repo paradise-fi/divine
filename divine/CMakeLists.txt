@@ -54,7 +54,7 @@ add_library( libdivine
   ${STRINGIFIED} )
 
 target_link_libraries( libdivine pthread liblart )
-target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
+# target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
 bricks_unittest( test-divine ${HPP} ${HPP_llvm} ${HPP_ui} ${HPP_statespace} )
