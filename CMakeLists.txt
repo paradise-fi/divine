@@ -10,18 +10,71 @@ set( CMAKE_C_FLAGS_RELWITHDEBUG "-O3 -g" CACHE STRING "" )
 set( CMAKE_CXX_FLAGS_RELWITHASSERT "-O3 -DNVALGRIND" CACHE STRING "" )
 set( CMAKE_C_FLAGS_RELWITHASSERT "-O3 -DNVALGRIND" CACHE STRING "" )
 
-mark_as_advanced( FORCE
-  CMAKE_CXX_FLAGS_RELWITHDEBUG CMAKE_C_FLAGS_RELWITHDEBUG
-  CMAKE_CXX_FLAGS_RELWITHASSERT CMAKE_C_FLAGS_RELWITHASSERT )
+set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+    "${CMAKE_CURRENT_SOURCE_DIR}/releng/cmake;${CMAKE_CURRENT_SOURCE_DIR}/llvm/cmake;${CMAKE_CURRENT_SOURCE_DIR}/llvm/cmake/modules" )
 
-set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/releng/cmake" )
+option( TOOLCHAIN OFF )
+set( LLVM_INCLUDE_TESTS OFF CACHE BOOL "" )
+set( LLVM_ENABLE_RTTI ON CACHE BOOL "" )
+set( LLVM_ENABLE_PIC OFF CACHE BOOL "" ) # cmake takes care of this when needed
+set( LLVM_ENABLE_TIMESTAMPS OFF CACHE BOOL "" )
+set( LIBCXXABI_USE_LLVM_UNWINDER ON CACHE BOOL "" )
 
-project( divine )
+set( LIBCXXABI_LIBUNWIND_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/runtime/libunwind/include" )
+set( LIBCXXABI_LIBCXX_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/runtime/libcxx/include" )
+
+set( LLVM_MAIN_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/llvm" )
+set( LLVM_MAIN_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/llvm/include" )
+set( LLVM_TARGET_ARCH "host" )
+# They are used as destination of target generators.
+set( LLVM_RUNTIME_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/clang/bin )
+set( LLVM_LIBRARY_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/clang/lib${LLVM_LIBDIR_SUFFIX} )
+if( WIN32 OR CYGWIN )
+  # DLL platform -- put DLLs into bin.
+  set( LLVM_SHLIB_OUTPUT_INTDIR ${LLVM_RUNTIME_OUTPUT_INTDIR} )
+else()
+  set( LLVM_SHLIB_OUTPUT_INTDIR ${LLVM_LIBRARY_OUTPUT_INTDIR} )
+endif()
+
+set( LIBCXX_CXX_ABI_LIBNAME "libcxxabi" CACHE STRING "" )
+set( LIBCXX_CXX_ABI_INCLUDE_PATHS "${CMAKE_SOURCE_DIR}/runtime/libcxxabi/include" CACHE STRING "" )
+set( LIBCXX_CXX_ABI_INTREE 1 CACHE BOOL "" )
+set( LIBCXX_CXX_ABI "libcxxabi" CACHE STRING "" )
+
+project( divine-meta )
 enable_language( CXX )
 set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
-find_package( LLVM 3.7 REQUIRED )
+include( config-ix )
+include( AddLLVM )
+include( TableGen )
+include( HandleLLVMOptions )
+
+# set( PACKAGE_VERSION "${LLVM_PACKAGE_VERSION}" )
+set( PACKAGE_VERSION "3.7.0" )
+add_subdirectory( llvm )
+include_directories( llvm/include ${CMAKE_CURRENT_BINARY_DIR}/llvm/include )
+add_subdirectory( clang )
+include_directories( clang/include ${CMAKE_CURRENT_BINARY_DIR}/clang/include )
+
+if ( TOOLCHAIN )
+    add_subdirectory( runtime/libunwind )
+    add_subdirectory( runtime/libcxxabi )
+    add_subdirectory( runtime/libcxx )
+endif()
+
+set( PACKAGE_VERSION 4.0 )
+
+mark_as_advanced( FORCE
+  CMAKE_CXX_FLAGS_RELWITHDEBUG CMAKE_C_FLAGS_RELWITHDEBUG
+  CMAKE_CXX_FLAGS_RELWITHASSERT CMAKE_C_FLAGS_RELWITHASSERT )
+
+project( divine )
+
+set( DIVINE_DEFINES "-DDIVINE_RELAX_WARNINGS=_Pragma( \"GCC diagnostic push\" ) _Pragma( \"GCC diagnostic ignored \\\"-Wold-style-cast\\\"\" ) _Pragma( \"GCC diagnostic ignored \\\"-Wunused-parameter\\\"\" )" "-DDIVINE_UNRELAX_WARNINGS=_Pragma( \"GCC diagnostic pop\" )" )
+
+# find_package( LLVM 3.7 REQUIRED )
 find_package( Perl )
 find_package( ODBC )
 find_package( PkgConfig )
@@ -94,32 +147,13 @@ endif()
 find_package( Curses REQUIRED )
 include_directories( ${CURSES_INCLUDE_PATH} )
 
-link_directories( ${LLVM_LIBRARY_DIRS} )
+add_definitions( -DBRICKS_HAVE_LLVM )
+
+# link_directories( ${LLVM_LIBRARY_DIRS} )
 # this is not very nice but it works and ncurses & zlib break builds under NixOS
-list( REMOVE_ITEM LLVM_SYSLIBS "z" "ncurses" )
+# list( REMOVE_ITEM LLVM_SYSLIBS "z" "ncurses" )
 # suppress warnings coming from LLVM headers
-add_definitions( -isystem ${LLVM_INCLUDE_DIRS} )
-
-find_program( PANDOC pandoc )
-find_program( PDFLATEX pdflatex )
-find_program( BIBTEX bibtex )
-if ( PANDOC )
-    if ( NOT PDFLATEX OR NOT BIBTEX )
-        message( WARNING "pdflatex or bibtex not found. Skipping PDF generation." )
-    endif()
-    add_subdirectory( manual )
-    add_subdirectory( website )
-endif()
-
-if( OPT_SQL )
-  include( FindODBC )
-  if( NOT ODBC_FOUND )
-    disable( OPT_SQL "" "Could not find ODBC." )
-  else()
-      add_definitions( "-DNANODBC_USE_CPP11" )
-      link_directories( ${ODBC_LIBRARY_DIRS} )
-  endif()
-endif()
+# add_compile_options( "-isystem ${LLVM_INCLUDE_DIRS}" )
 
 set( DIVINE_INCLUDES ${divine_SOURCE_DIR} ${divine_BINARY_DIR} )
 
