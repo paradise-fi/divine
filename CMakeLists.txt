@@ -142,7 +142,6 @@ endif()
 include( releng/version.cmake )
 
 add_subdirectory( doc )
-add_subdirectory( compile )
 add_subdirectory( runtime )
 add_subdirectory( lart )
 add_subdirectory( divine )
