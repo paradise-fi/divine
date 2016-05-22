@@ -29,6 +29,7 @@ struct _VM_Frame
 
 enum _VM_Fault
 {
+    _VM_F_NoFault,
     _VM_F_Assert,
     _VM_F_Arithmetic, /* division by zero */
     _VM_F_Memory,
