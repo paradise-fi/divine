@@ -7,7 +7,7 @@
 //
 //  
 //  This file implements the "Array Construction and Destruction APIs"
-//  http://www.codesourcery.com/public/cxx-abi/abi.html#array-ctor
+//  http://mentorembedded.github.io/cxx-abi/abi.html#array-ctor
 //  
 //===----------------------------------------------------------------------===//
 
@@ -17,7 +17,9 @@
 
 namespace __cxxabiv1 {
 
+#if 0
 #pragma mark --Helper routines and classes --
+#endif
 
 namespace {
     inline static size_t __get_element_count ( void *p ) {
@@ -102,7 +104,9 @@ namespace {
     };
 }
 
+#if 0
 #pragma mark --Externally visible routines--
+#endif
 
 extern "C" {
 

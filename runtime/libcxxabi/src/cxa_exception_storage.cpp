@@ -7,18 +7,25 @@
 //
 //  
 //  This file implements the storage for the "Caught Exception Stack"
-//  http://www.codesourcery.com/public/cxx-abi/abi-eh.html (section 2.2.2)
+//  http://mentorembedded.github.io/cxx-abi/abi-eh.html (section 2.2.2)
 //  
 //===----------------------------------------------------------------------===//
 
 #include "cxa_exception.hpp"
 
-#ifdef __divine__
-#include <string.h> // memset
-#include <divine.h>
-#endif
+#include "config.h"
 
-#ifdef HAS_THREAD_LOCAL
+#if LIBCXXABI_HAS_NO_THREADS
+
+namespace __cxxabiv1 {
+extern "C" {
+    static __cxa_eh_globals eh_globals;
+    __cxa_eh_globals *__cxa_get_globals() { return &eh_globals; }
+    __cxa_eh_globals *__cxa_get_globals_fast() { return &eh_globals; }
+    }
+}
+
+#elif defined(HAS_THREAD_LOCAL)
 
 namespace __cxxabiv1 {
 
@@ -69,16 +76,8 @@ extern "C" {
     
     //  If this is the first time we've been asked for these globals, create them
         if ( NULL == retVal ) {
-            retVal = static_cast<__cxa_eh_globals*>(
-#ifdef __divine__
-                        ::__vm_make_object (sizeof (__cxa_eh_globals))
-#else
-                        std::calloc (1, sizeof (__cxa_eh_globals))
-#endif
-                );
-#if __divine__
-            memset(retVal, 0, sizeof(__cxa_eh_globals));
-#endif
+            retVal = static_cast<__cxa_eh_globals*>
+                        (std::calloc (1, sizeof (__cxa_eh_globals)));
             if ( NULL == retVal )
                 abort_message("cannot allocate __cxa_eh_globals");
             if ( 0 != pthread_setspecific ( key_, retVal ) )
