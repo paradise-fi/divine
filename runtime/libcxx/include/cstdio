@@ -109,7 +109,7 @@ void perror(const char* s);
 #endif
 
 #ifdef getc
-inline _LIBCPP_INLINE_VISIBILITY int __libcpp_getc(FILE* __stream) {return getc(__stream);}
+inline int __libcpp_getc(FILE* __stream) {return getc(__stream);}
 #undef getc
 inline _LIBCPP_INLINE_VISIBILITY int getc(FILE* __stream) {return __libcpp_getc(__stream);}
 #endif  // getc
@@ -191,7 +191,7 @@ using ::tmpnam;
 #ifndef _LIBCPP_HAS_NO_STDIN
 using ::getchar;
 #if _LIBCPP_STD_VER <= 11
-using ::gets;
+// using ::gets;
 #endif
 using ::scanf;
 using ::vscanf;
