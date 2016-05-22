@@ -20,6 +20,7 @@
 
 #ifndef _LIBUNWIND_IS_BAREMETAL
 #include <dlfcn.h>
+#include <link.h>
 #endif
 
 #ifdef __APPLE__
@@ -33,6 +34,9 @@ namespace libunwind {
 #include "config.h"
 #include "dwarf2.h"
 #include "Registers.hpp"
+#include "EHHeaderParser.hpp"
+
+#define  PT_GNU_EH_FRAME 0x6474e550
 
 #if _LIBUNWIND_ARM_EHABI
 #ifdef __linux__
