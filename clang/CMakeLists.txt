@@ -477,7 +477,6 @@ list(APPEND LLVM_COMMON_DEPENDS ${CLANG_TABLEGEN_TARGETS})
 
 add_subdirectory(lib)
 add_subdirectory(tools)
-add_subdirectory(runtime)
 
 option(CLANG_BUILD_EXAMPLES "Build CLANG example programs by default." OFF)
 if (CLANG_BUILD_EXAMPLES)
