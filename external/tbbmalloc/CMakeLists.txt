@@ -6,4 +6,9 @@ if ( WIN32 )
 else()
   add_definitions( -DUSE_PTHREAD )
 endif()
+
 add_library( tbbmalloc STATIC backend.cpp frontend.cpp backref.cpp large_objects.cpp proxy.cpp tbb_function_replacement.cpp tbbmalloc.cpp )
+
+if ( "${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" )
+    target_link_libraries( tbbmalloc dl )
+endif()
