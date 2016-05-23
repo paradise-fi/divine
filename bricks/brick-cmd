@@ -122,14 +122,18 @@ using ValidatorPtr = std::shared_ptr< ValidatorInterface >;
 auto make_validator()
 {
     return std::make_shared< Validator<> >()->
-        add( "string", []( std::string s, auto good, auto bad) { return good( s ); } )->
+        add( "string", []( std::string s, auto good, auto bad) { return good( s ); } ) ->
         add( "int", []( std::string s, auto good, auto bad )
              {
-                 const char *err;
-                 auto r = strtonum( s.c_str(), INT_MIN, INT_MAX, &err );
-                 if ( err )
-                     return bad( BadFormat, err );
-                 return good( r );
+                int r;
+                try {
+                     r = std::stoi( s.c_str() );
+                } catch ( std::invalid_argument &e ) {
+                    bad( BadFormat, e.what() );
+                } catch ( std::out_of_range &e ) {
+                    bad( BadFormat, e.what() );
+                }
+                return good( r );
              } );
 }
 
