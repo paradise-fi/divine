@@ -15,7 +15,8 @@ namespace compile {
 
 struct Snapshot {
 
-    static void writeFile( std::ofstream &file, const std::string &dir, const std::string &stdin ) {
+    static void writeFile( std::ostream &file, const std::string &dir, const std::string &_stdin )
+    {
         file << "#include <fs-manager.h>\n"
              << "namespace divine{ namespace fs {\n"
              << "VFS vfs{\n";
