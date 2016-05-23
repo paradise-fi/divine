@@ -1,14 +1,35 @@
-// -*- C++ -*- (c) 2012-2014 Petr Ročkai <me@mornfall.net>
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2012-2016 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
 
 #include <brick-types>
 #include <brick-data>
 #include <brick-assert>
 #include <brick-mem>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Function.h>
 #include <llvm/IR/DataLayout.h>
-
+#include <llvm/IR/Module.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/pointer.hpp>
 #include <divine/vm/heap.hpp>
@@ -18,8 +39,6 @@
 #include <map>
 #include <unordered_map>
 
-#ifndef DIVINE_LLVM_PROGRAM_H
-#define DIVINE_LLVM_PROGRAM_H
 #undef alloca
 
 namespace llvm {
@@ -365,4 +384,3 @@ static inline std::ostream &operator<<( std::ostream &o, const Program::Instruct
 }
 }
 
-#endif
