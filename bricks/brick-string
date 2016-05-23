@@ -333,7 +333,7 @@ public:
        sub-regexp capture. The maximum *INCLUDES* the whole-regexp
        match (indexed 0). [TODO we may want to fix this to be more
        friendly?] */
-    Regexp(const std::string& expr, int match_count = 0, int flags = REG_BASIC)
+    Regexp(const std::string& expr, int match_count = 0, int flags = 0 /* FIXME: REG_BASIC */ )
 	: pmatch(0), nmatch(match_count)
     {
         if (match_count == 0)
