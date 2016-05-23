@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/Support/Signals.h>
 #include <clang/Tooling/Tooling.h> // ClangTool
 #include <clang/CodeGen/CodeGenAction.h> // EmitLLVMAction
@@ -13,15 +14,13 @@
 #include <clang/Frontend/DependencyOutputOptions.h>
 #include <llvm/Support/Errc.h> // for VFS
 #include <llvm/Bitcode/ReaderWriter.h>
+#include <brick-llvm>
+DIVINE_UNRELAX_WARNINGS
 
-#include <divine/utility/strings.h>
-#include <divine/compile/snapshot.h>
-
-#include <brick-fs.h>
-#include <brick-string.h>
-#include <brick-llvm.h>
-#include <brick-query.h>
-#include <brick-types.h>
+#include <brick-fs>
+#include <brick-assert>
+#include <brick-query>
+#include <brick-types>
 
 #include <algorithm>
 #include <iterator>
