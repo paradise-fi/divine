@@ -67,7 +67,7 @@ struct DivineVFSErrorCategory : std::error_category {
     }
 };
 
-std::error_code make_error_code( DivineVFSError derr ) {
+static std::error_code make_error_code( DivineVFSError derr ) {
     return std::error_code( int( derr ), DivineVFSErrorCategory() );
 }
 
