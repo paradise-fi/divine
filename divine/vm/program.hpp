@@ -189,13 +189,13 @@ struct Program
         Slot &operand( int i )
         {
             int idx = (i >= 0) ? (i + 1) : (i + values.size());
-            ASSERT_LEQ( idx, values.size() - 1 );
+            ASSERT_LT( idx, values.size() );
             return values[ idx ];
         }
         Slot &value( int i )
         {
             int idx = (i >= 0) ? i : (i + values.size());
-            ASSERT_LEQ( idx, values.size() - 1 );
+            ASSERT_LT( idx, values.size() );
             return values[ idx ];
         }
 
@@ -229,7 +229,7 @@ struct Program
 
         Instruction &instruction( CodePointer pc )
         {
-            ASSERT_LEQ( pc.instruction(), int( instructions.size() ) - 1 );
+            ASSERT_LT( pc.instruction(), instructions.size() );
             return instructions[ pc.instruction() ];
         }
 
