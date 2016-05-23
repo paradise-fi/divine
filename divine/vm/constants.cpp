@@ -38,8 +38,6 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
     auto ptr = eval.s2ptr( v );
     auto C = dyn_cast< llvm::Constant >( V );
 
-    // std::cerr << "ptr = " << ptr << std::endl;
-
     if ( !valuemap.count( V ) )
     {
         V->dump();
@@ -74,10 +72,6 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
         }
         eval._instruction = &comp;
         eval.dispatch(); /* compute and write out the value */
-/*
-        eval.op< decltype( eval )::Any >( 0, []( auto v )
-                                          { std::cerr << "result = " << v.get( 0 ) << std::endl; } );
-*/
     }
     else if ( isa< llvm::UndefValue >( V ) )
     {
@@ -125,8 +119,6 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
     }
     else if ( isCodePointer( V ) )
     {
-        // V->dump();
-        std::cerr << "code pointer at " << ptr << ": " << getCodePointer( V ) << std::endl;
         heap.shift( ptr, value::Pointer<>( getCodePointer( V ) ) );
     }
     else if ( V->getType()->isPointerTy() )
