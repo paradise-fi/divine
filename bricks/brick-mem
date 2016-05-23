@@ -104,13 +104,14 @@ struct Pool
         auto chunk() { return bitlevel::get< chunk_position >( _v ); }
         auto tag() { return bitlevel::get< tag_position >( _v ); }
 
-        Pointer( Raw s = 0, Raw c = 0 ) noexcept
+        explicit Pointer( Raw s = 0, Raw c = 0 ) noexcept
         {
             slab() = s;
             chunk() = c;
         }
 
         Raw raw() const { return *reinterpret_cast< const Raw * >( _v.storage ); }
+        Raw &raw() { return *reinterpret_cast< Raw * >( _v.storage ); }
         explicit operator bool() const { return raw(); }
         bool operator!() const { return !raw(); }
         bool operator<= ( Pointer o ) const { return _v < o._v || _v == o._v; }
@@ -364,10 +365,7 @@ struct Pool
         }
     }
 
-    Pool( const Pool &o ) : _s( o._s )
-    {
-        initL();
-    }
+    Pool( const Pool &o ) : _s( o._s ) { initL(); }
 
     void initL()
     {
@@ -598,21 +596,22 @@ static inline auto operator<<( std::ostream &o, P p ) -> decltype( p.slab(), o )
 
 namespace t_mem {
 
-struct TestPool
+template< int _a, int _b, int _c >
+struct Pool
 {
-    using Pool = mem::Pool<>;
+    using _Pool = mem::Pool< 20, 19, uint64_t, _a, _b, _c >;
 
     struct Checker : shmem::Thread
     {
         char padding[128];
-        Pool m_pool;
-        std::deque< Pool::Pointer > ptrs;
+        _Pool m_pool;
+        std::deque< typename _Pool::Pointer > ptrs;
         int limit;
         unsigned seedp;
         int terminate;
         char padding2[128];
 
-        Pool &pool() { return m_pool; }
+        _Pool &pool() { return m_pool; }
 
         bool decide( int i )
         {
@@ -664,13 +663,20 @@ struct TestPool
     TEST(parallel)
     {
         std::vector< Checker > c;
-        c.resize( 3, Checker() );
+        Checker x;
+        for ( int i = 0; i < 3; ++i )
+            c.emplace_back( x );
+        // c.resize( 3, Checker() );
         for ( int j = 0; j < 5; ++j ) {
             for ( auto &t : c ) t.start();
             for ( auto &t : c ) t.join();
         }
     }
 };
+
+template struct Pool< 2, 1, 0 >;
+template struct Pool< 1, 2, 0 >;
+template struct Pool< 0, 1, 2 >;
 
 }
 
