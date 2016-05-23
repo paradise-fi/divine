@@ -1294,9 +1294,23 @@ struct Eval
         ASSERT_EQ( x, 30 );
     }
 
-    TEST(call)
+    TEST(call_0)
     {
         int x = testF( "int g() { return 1; } int f( int a ) { return g() + a; }",
+                       IntV( 10 ) );
+        ASSERT_EQ( x, 11 );
+    }
+
+    TEST(call_1)
+    {
+        int x = testF( "void g(int b) { b = b+1; } int f( int a ) { g(a); return a; }",
+                       IntV( 10 ) );
+        ASSERT_EQ( x, 10 );
+    }
+
+    TEST(call_2)
+    {
+        int x = testF( "void g(int *b) { *b = (*b)+1; } int f( int a ) { g(&a); return a; }",
                        IntV( 10 ) );
         ASSERT_EQ( x, 11 );
     }
@@ -1308,8 +1322,102 @@ struct Eval
                        "return __vm_query_object_size( x ); }" );
         ASSERT_EQ( x, 10 );
     }
-};
 
+    TEST(simple_if)
+    {
+        const char* fdef = "unsigned f( int a ) { if (a > 0) { return 0; } else { return 1; } }";
+        unsigned int x;
+        x = testF( fdef, IntV( 0 ) );
+        ASSERT_EQ( x, 1 );
+        x = testF( fdef, IntV( 2 ) );
+        ASSERT_EQ( x, 0 );
+    }
+
+    TEST(simple_switch)
+    {
+        const char* fdef = "int f( int a ) { int z; switch (a) { case 0: z = 0; break; case 1: case 2: z = 2; break; case 3: case 4: return 4; default: z = 5; }; return z; }";
+        unsigned int x;
+        x = testF( fdef, IntV( 0 ) );
+        ASSERT_EQ( x, 0 );
+        x = testF( fdef, IntV( 1 ) );
+        ASSERT_EQ( x, 2 );
+        x = testF( fdef, IntV( 2 ) );
+        ASSERT_EQ( x, 2 );
+        x = testF( fdef, IntV( 3 ) );
+        ASSERT_EQ( x, 4 );
+        x = testF( fdef, IntV( 4 ) );
+        ASSERT_EQ( x, 4 );
+        x = testF( fdef, IntV( 5 ) );
+        ASSERT_EQ( x, 5 );
+        x = testF( fdef, IntV( -1 ) );
+        ASSERT_EQ( x, 5 );
+        x = testF( fdef, IntV( 6 ) );
+        ASSERT_EQ( x, 5 );
+    }
+
+
+    TEST(recursion_01)
+    {
+        const char* fdef = "unsigned int f( int a ) { if (a>0) return (1 + f( a - 1 )); else return 1; }";
+        unsigned int x;
+        x = testF( fdef, IntV( 0 ) );
+        ASSERT_EQ( x, 1 );
+        x = testF( fdef, IntV( 1 ) );
+        ASSERT_EQ( x, 2 );
+    }
+
+    TEST(go_to)
+    {
+        const char* fdef = "int f( int a ) { begin: if (a>0) { --a; goto begin; } else return -1; }";
+        int x;
+        x = testF( fdef, IntV( 0 ) );
+        ASSERT_EQ( x, -1 );
+        x = testF( fdef, IntV( 1 ) );
+        ASSERT_EQ( x, -1 );
+    }
+
+    TEST(for_cycle)
+    {
+        const char* fdef = "int f( int a ) { int i; for (i=0; i<a; i++) i=i+2; return (i-a); }";
+        int x;
+        x = testF( fdef, IntV( 0 ) );
+        ASSERT_EQ( x, 0 );
+        x = testF( fdef, IntV( 1 ) );
+        ASSERT_EQ( x, 2 );
+        x = testF( fdef, IntV( -1 ) );
+        ASSERT_EQ( x, 1 );
+    }
+
+
+    TEST(while_cycle)
+    {
+        const char* fdef = "int f( int a ) { a = a % 100; while ( 1 ) { if (a == 100) break; ++a; }; return a; }";
+        int x;
+        x = testF( fdef, IntV( 30 ) );
+        ASSERT_EQ( x, 100 );
+        x = testF( fdef, IntV( -30 ) );
+        ASSERT_EQ( x, 100 );
+    }
+
+    TEST(bit_ops)
+    {
+        const char* fdef = "int f( int a ) { int b = a | 7; b = b & 4; b = b & a; return b; }";
+        int x;
+        x = testF( fdef, IntV( 4 ) );
+        ASSERT_EQ( x, 4 );
+        x = testF( fdef, IntV( 3 ) );
+        ASSERT_EQ( x, 0 );
+    }
+
+    TEST(nested_loops)
+    {
+        const char* fdef = "int f( int a ) { int c = 0; while (a>0) { for (int b = 0; b<a; ++b) ++c; --a; } return c; }";
+        int x;
+        x = testF( fdef, IntV( 5 ) );
+        ASSERT_EQ( x, 15 );
+    }
+
+};
 
 }
 
