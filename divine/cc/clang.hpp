@@ -40,7 +40,8 @@ namespace cc {
 
 template< typename Contailer >
 void dump( const Contailer &c ) {
-    std::copy( c.begin(), c.end(), std::ostream_iterator< std::decay_t< decltype( *c.begin() ) > >( std::cerr, " " ) );
+    std::copy( c.begin(), c.end(),
+               std::ostream_iterator< std::decay_t< decltype( *c.begin() ) > >( std::cerr, " " ) );
 }
 
 template< typename Contailer >
@@ -58,7 +59,8 @@ struct DivineVFSErrorCategory : std::error_category {
     const char *name() const noexcept override { return "DIVINE VFS error"; }
     std::string message( int condition ) const override {
         switch ( DivineVFSError( condition ) ) {
-            case DivineVFSError::InvalidIncludePath: return "Invalid include path, not accessible in DIVINE";
+            case DivineVFSError::InvalidIncludePath:
+                return "Invalid include path, not accessible in DIVINE";
         }
     }
 };
@@ -395,7 +397,8 @@ struct Compiler {
         compiler.createDiagnostics( &diagprinter, false );
         ASSERT( compiler.hasDiagnostics() );
         compiler.createSourceManager( *fmgr.release() );
-        auto emit = std::make_unique< clang::EmitLLVMOnlyAction >( &ctx ); // emits module in memory, does not write it info a file
+        // emits module in memory, does not write it info a file
+        auto emit = std::make_unique< clang::EmitLLVMOnlyAction >( ctx.get() );
         succ = compiler.ExecuteAction( *emit );
         ASSERT( succ );
 
@@ -424,7 +427,8 @@ struct Compiler {
     }
 
     std::unique_ptr< llvm::Module > materializeModule( llvm::StringRef str ) {
-        return std::move( llvm::parseBitcodeFile( llvm::MemoryBufferRef( str, "module.bc" ), ctx ).get() );
+        return std::move( llvm::parseBitcodeFile(
+                              llvm::MemoryBufferRef( str, "module.bc" ), context() ).get() );
     }
 
     llvm::LLVMContext &context() { return ctx; }
