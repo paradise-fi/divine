@@ -298,12 +298,15 @@ struct Compiler {
         return out;
     }
 
-    Compiler() :
+    Compiler( std::shared_ptr< llvm::LLVMContext > ctx = nullptr ) :
         divineVFS( new DivineVFS() ),
-        overlayFS( new clang::vfs::OverlayFileSystem( clang::vfs::getRealFileSystem() ) )
+        overlayFS( new clang::vfs::OverlayFileSystem( clang::vfs::getRealFileSystem() ) ),
+        ctx( ctx )
     {
         // setup VFS
         overlayFS->pushOverlay( divineVFS );
+        if ( !ctx )
+            ctx.reset( new llvm::LLVMContext );
     }
 
     template< typename T >
@@ -433,7 +436,7 @@ struct Compiler {
                               llvm::MemoryBufferRef( str, "module.bc" ), context() ).get() );
     }
 
-    llvm::LLVMContext &context() { return ctx; }
+    llvm::LLVMContext &context() { return *ctx.get(); }
 
   private:
 
@@ -445,7 +448,7 @@ struct Compiler {
 
     llvm::IntrusiveRefCntPtr< DivineVFS > divineVFS;
     llvm::IntrusiveRefCntPtr< clang::vfs::OverlayFileSystem > overlayFS;
-    llvm::LLVMContext ctx;
+    std::shared_ptr< llvm::LLVMContext > ctx;
 };
 
 template< typename Namespace = std::initializer_list< std::string > >
