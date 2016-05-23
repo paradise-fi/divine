@@ -44,6 +44,9 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
         UNREACHABLE( "value not allocated during initialisation" );
     }
 
+    if ( _doneinit.count( V ) )
+        return;
+
     if ( C )
         for ( int i = 0; i < int( C->getNumOperands() ); ++i )
         {
