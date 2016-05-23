@@ -139,28 +139,6 @@ struct RunContext
         }
     }
 
-    void setup_heap()
-    {
-        auto cp = control()._constants = heap().make( _program._constants_size );
-
-        auto pc = _program._ccontext;
-        auto ph = pc.heap();
-
-        /* FIXME FIXME FIXME */
-        auto cd = heap()._objects.dereference( heap().p2i( cp.v() ) );
-        auto p_cd = ph._objects.dereference( ph.p2i( pc.control()._constants.v() ) );
-        std::copy( p_cd, p_cd + _program._constants_size, cd );
-
-        if ( _program._globals_size )
-        {
-            auto gp = (control()._globals = heap().make( _program._globals_size )).v();
-            auto gd = heap()._objects.dereference( heap().p2i( gp ) );
-            auto p_gd = ph._objects.dereference( ph.p2i( pc.control()._globals.v() ) );
-            std::copy( p_gd, p_gd + _program._globals_size, gd );
-        }
-
-    }
-
     template< typename C >
     void setup( const C &env )
     {
@@ -172,7 +150,7 @@ struct RunContext
 
         _program.computeStatic();
         setup_env();
-        setup_heap();
+        std::tie( _control._constants, _control._globals ) = _program.exportHeap( heap() );
 
         auto ipc = _program.functionByName( "__sys_init" );
         ipc.instruction() = 1;
