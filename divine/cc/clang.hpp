@@ -21,6 +21,9 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-assert>
 #include <brick-query>
 #include <brick-types>
+#include <brick-string>
+
+#include <divine/cc/snapshot.h>
 
 #include <algorithm>
 #include <iterator>
@@ -30,13 +33,8 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine {
 
-#if 0
-extern stringtable pdclib_list[];
-extern stringtable libm_list[];
-extern stringtable libunwind_list[];
-extern stringtable libcxxabi_list[];
-extern stringtable libcxx_list[];
-#endif
+struct stringtable { const char *n, *c; };
+extern stringtable runtime_list[];
 
 namespace cc {
 
@@ -308,11 +306,13 @@ struct Compiler {
         return out;
     }
 
-    Compiler( std::shared_ptr< llvm::LLVMContext > ctx = nullptr ) :
+    explicit Compiler( std::shared_ptr< llvm::LLVMContext > ctx = nullptr ) :
         divineVFS( new DivineVFS() ),
         overlayFS( new clang::vfs::OverlayFileSystem( clang::vfs::getRealFileSystem() ) ),
         ctx( ctx )
     {
+        if ( !ctx )
+            this->ctx = std::make_shared< llvm::LLVMContext >();
         // setup VFS
         overlayFS->pushOverlay( divineVFS );
         if ( !ctx )
@@ -443,10 +443,10 @@ struct Compiler {
 
     std::unique_ptr< llvm::Module > materializeModule( llvm::StringRef str ) {
         return std::move( llvm::parseBitcodeFile(
-                              llvm::MemoryBufferRef( str, "module.bc" ), context() ).get() );
+                    llvm::MemoryBufferRef( str, "module.bc" ), *ctx ).get() );
     }
 
-    llvm::LLVMContext &context() { return *ctx.get(); }
+    std::shared_ptr< llvm::LLVMContext > context() { return ctx; }
 
   private:
 
@@ -515,13 +515,11 @@ struct Compile {
                                  DontLink > >;
 
     std::string addSnapshot() {
-        /*
-        auto path = join( srcDir, "divine/fs-snapshot.cpp" );
+        auto path = join( srcDir, "filesystem/fs-snapshot.cpp" );
         std::stringstream snapshot;
         compile::Snapshot::writeFile( snapshot, vfsSnapshot, vfsInput );
         mastercc().mapVirtualFile( path, snapshot.str() );
         return path;
-        */
     }
 
     explicit Compile( Options opts = { } ) : compilers( 1 ), workers( 1 ) {
@@ -621,26 +619,9 @@ struct Compile {
     }
 
     void setupFS() {
-#if 0
-        prepareSources( includeDir, llvm_h_list );
-        mastercc().mapVirtualFiles< const char * >( {
-            { join( includeDir, "bits/pthreadtypes.h" ), "#include <pthread.h>\n" },
-            { join( includeDir, "divine/problem.def" ), src_llvm::llvm_problem_def_str } } );
-        prepareSources( join( srcDir, "divine" ),   llvm_list,      Type::All,
-            [&]( std::string name ) { return vfs || !brick::string::startsWith( name, "fs" ); } );
-        prepareSources( join( srcDir, "lart" ),     lart_list,      Type::Source );
-        prepareSources( join( includeDir, "lart" ), lart_list,      Type::Header );
-        prepareSources( join( srcDir, "libpdc" ),   pdclib_list,    Type::Source );
-        prepareSources( includeDir,                 pdclib_list,    Type::Header );
-        prepareSources( join( srcDir, "limb" ),     libm_list,      Type::Source );
-        prepareSources( includeDir,                 libm_list,      Type::Header );
-        prepareSources( includeDir,                 libcxxabi_list, Type::Header );
-        prepareSources( includeDir,                 libcxx_list,    Type::Header );
-        prepareSources( join( srcDir, "cxxabi" ),   libcxxabi_list, Type::Source );
-        prepareSources( join( srcDir, "cxx" ),      libcxx_list,    Type::Source );
-
-        mastercc().reMapVirtualFile( join( includeDir, "assert.h" ), "#include <divine.h>\n" ); // override PDClib's assert
-#endif
+        prepareSources( includeDir, runtime_list, Type::Header );
+        prepareSources( srcDir, runtime_list, Type::Source,
+            [&]( std::string name ) { return vfs || !brick::string::startsWith( name, "filesystem" ); } );
     }
 
     void setupLibs() {
@@ -660,12 +641,14 @@ struct Compile {
             compileLibrary( join( srcDir, "limb" ) );
             std::initializer_list< std::string > cxxflags = { "-std=c++14"
                                                             // , "-fstrict-aliasing"
-                                                            , "-I/usr/include/include"
-                                                            , "-I/usr/include/src"
+                                                            , "-I/usr/include/libcxxabi/include"
+                                                            , "-I/usr/include/libcxxabi/src"
+                                                            , "-I/usr/include/filesystem"
                                                             , "-Oz" };
             compileLibrary( join( srcDir, "cxxabi" ), cxxflags );
             compileLibrary( join( srcDir, "cxx" ), cxxflags );
             compileLibrary( join( srcDir, "divine" ), cxxflags );
+            compileLibrary( join( srcDir, "filesystem" ), cxxflags );
             compileLibrary( join( srcDir, "lart" ), cxxflags );
         }
     }
@@ -676,7 +659,7 @@ struct Compile {
             compileAndLink( f, flags );
     }
 
-    llvm::LLVMContext &context() { return mastercc().context(); }
+    llvm::LLVMContext &context() { return *mastercc().context(); }
 
     template< typename ... T >
     std::string join( T &&... xs ) { return brick::fs::joinPath( std::forward< T >( xs )... ); }
@@ -694,7 +677,9 @@ struct Compile {
     std::string vfsInput;
     std::vector< std::string > commonFlags = { "-D__divine__"
                                              , "-isystem", "/usr/include"
-                                             , "-isystem", "/usr/include/std"
+                                             , "-isystem", "/usr/include/pdclib"
+                                             , "-isystem", "/usr/include/libm"
+                                             , "-isystem", "/usr/include/libcxx/include"
                                              , "-D_POSIX_C_SOURCE=2008098L"
                                              , "-D_LITTLE_ENDIAN=1234"
                                              , "-D_BYTE_ORDER=1234"

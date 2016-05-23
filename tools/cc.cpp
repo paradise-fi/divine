@@ -1,8 +1,8 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill
 
-#include <divine/compile/cc.h>
-#include <brick-query.h>
-#include <brick-string.h>
+#include <divine/cc/clang.hpp>
+#include <brick-query>
+#include <brick-string>
 
 #include <iostream>
 

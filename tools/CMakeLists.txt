@@ -13,23 +13,29 @@ if ( GEN_LLVM )
   target_link_libraries( lart liblart ${LLVM_LIBRARIES} ${LLVM_SYSLIBS} )
 endif()
 
-if ( GEN_LLVM )
-    add_executable( divinecc cc.cpp )
-    target_link_libraries( divinecc libdivine liblart ${LLVM_LIBRARIES} 
-        clangCodeGen
-        clangFrontend
-        clangSerialization
-        clangDriver
-        clangParse
-        clangSema
-        clangAnalysis
-        clangAST
-        clangBasic
-        clangEdit
-        clangLex
-        clangTooling
-        ${LLVM_SYSLIBS} )
-endif()
+add_executable( divinecc cc.cpp )
+target_link_libraries( divinecc libdivine liblart
+    LLVMCore
+    LLVMSupport
+    LLVMMC
+    LLVMIRReader
+    LLVMBitReader
+    LLVMBitWriter
+    LLVMLinker
+    LLVMTransformUtils
+    LLVMAnalysis
+    clangCodeGen
+    clangFrontend
+    clangSerialization
+    clangDriver
+    clangParse
+    clangSema
+    clangAnalysis
+    clangAST
+    clangBasic
+    clangEdit
+    clangLex
+    clangTooling )
 
 target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine )
 

@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <iterator>
 
-#include <brick-fs.h>
+#include <brick-fs>
 
 #ifndef TOOLS_COMPILE_SNAPSHOT_H
 #define TOOLS_COMPILE_SNAPSHOT_H
