@@ -479,9 +479,6 @@ void Program::computeStatic()
 {
     _ccontext.setup( _globals_size, _constants_size );
 
-    std::cerr << "_globals_size = " << _globals_size
-              << ", _constants_size = " << _constants_size << std::endl;
-
     while ( !_toinit.empty() )
     {
         _toinit.front()();
@@ -557,12 +554,6 @@ void Program::pass()
 
             pc = p.pc;
         }
-
-        if ( name == "__sys_init" )
-            std::cerr << "processed function " << name.str() << ", number = "
-                      << pc.function() << ", size = "
-                      << functions[ pc.function() ].instructions.size() << std::endl;
-
     }
 
     _globals_size = mem::align( _globals_size, 4 );
