@@ -891,7 +891,7 @@ struct Union : Comparable {
     }
 
     template< unsigned char i >
-    void _swapSame( Union & ) { ASSERT_UNREACHABLE( "Invalid _swapSame" ); }
+    void _swapSame( Union & ) { UNREACHABLE( "Invalid _swapSame" ); }
 
     template< typename T >
     auto _doSwap( T &a, T &b, Preferred ) -> decltype( a.swap( b ) ) {
@@ -912,7 +912,7 @@ struct Union : Comparable {
     }
 
     template< unsigned char i >
-    void _swapDifferent( Union & ) { ASSERT_UNREACHABLE( "Invalid _swapDifferent" ); }
+    void _swapDifferent( Union & ) { UNREACHABLE( "Invalid _swapDifferent" ); }
 
     template< unsigned char local, typename Local, unsigned char i, typename T, typename... Ts >
     void _swapDifferent2( Union &other ) {
@@ -923,7 +923,7 @@ struct Union : Comparable {
     }
 
     template< unsigned char local, typename Local, unsigned char i >
-    void _swapDifferent2( Union & ) { ASSERT_UNREACHABLE( "Invalid _swapDifferent2" ); }
+    void _swapDifferent2( Union & ) { UNREACHABLE( "Invalid _swapDifferent2" ); }
 
     template< unsigned char l, unsigned char r, typename L, typename R >
     auto _doSwapDifferent( Union &other ) -> typename std::enable_if< l != 0 && r != 0 >::type {
@@ -953,7 +953,7 @@ struct Union : Comparable {
 
     template< unsigned char l, unsigned char r, typename L, typename R >
     auto _doSwapDifferent( Union & ) -> typename std::enable_if< l == 0 && r == 0 >::type {
-        ASSERT_UNREACHABLE( "Invalid _doSwapDifferent" );
+        UNREACHABLE( "Invalid _doSwapDifferent" );
     }
 };
 
