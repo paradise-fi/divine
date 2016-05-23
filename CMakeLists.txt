@@ -46,6 +46,7 @@ enable_language( CXX )
 set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
+include( AddLLVMDefinitions )
 include( config-ix )
 include( AddLLVM )
 include( TableGen )
