@@ -586,9 +586,12 @@ struct Compile {
         mastercc().allowIncludePath( path );
     }
 
-    void setFlags( std::vector< std::string > flags ) {
+    void addFlags( std::vector< std::string > flags ) {
         std::copy( flags.begin(), flags.end(), std::back_inserter( commonFlags ) );
     }
+
+    template< typename Roots = std::initializer_list< std::string > >
+    void prune( Roots r ) { linker.prune( r, brick::llvm::Prune::UnusedModules ); }
 
   private:
     Compiler &mastercc() { return compilers[0]; }

@@ -110,5 +110,10 @@ int main( int argc, char **argv ) {
     for ( auto &x : files )
         driver.compileAndLink( x, opts );
 
+    if ( !dontLink )
+        driver.prune(  { "_divine_start", "main", "memmove", "memset",
+                "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size"
+                } );
+
     driver.writeToFile( output );
 }
