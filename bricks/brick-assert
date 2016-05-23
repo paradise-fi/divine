@@ -39,6 +39,7 @@
 #define ASSERT_PRED(p, x) assert( p( x ) )
 #define ASSERT_EQ(x, y) assert( (x) == (y) )
 #define ASSERT_LEQ(x, y) assert( (x) <= (y) )
+#define ASSERT_LT(x, y) assert( (x) < (y) )
 #define ASSERT_NEQ(x, y) assert ( (x) != (y) )
 #define ASSERT_EQ_IDX(i, x, y) assert( (x) == (y) )
 
@@ -51,6 +52,8 @@
         BRICK_LOCWRAP( BRICK_LOCATION( #p "( " #x " )" ) ), x, p( x ) )
 #define ASSERT_EQ(x, y) ::brick::_assert::assert_eq_fn( \
         BRICK_LOCWRAP( BRICK_LOCATION( #x " == " #y ) ), x, y )
+#define ASSERT_LT(x, y) ::brick::_assert::assert_lt_fn( \
+        BRICK_LOCWRAP( BRICK_LOCATION( #x " < " #y ) ), x, y )
 #define ASSERT_LEQ(x, y) ::brick::_assert::assert_leq_fn( \
         BRICK_LOCWRAP( BRICK_LOCATION( #x " <= " #y ) ), x, y )
 #define ASSERT_NEQ(x, y) ::brick::_assert::assert_neq_fn( \
