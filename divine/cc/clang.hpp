@@ -30,11 +30,13 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine {
 
+#if 0
 extern stringtable pdclib_list[];
 extern stringtable libm_list[];
 extern stringtable libunwind_list[];
 extern stringtable libcxxabi_list[];
 extern stringtable libcxx_list[];
+#endif
 
 namespace cc {
 
@@ -498,11 +500,13 @@ struct Compile {
                                  LibsOnly, DisableVFS, VFSInput, VFSSnapshot > >;
 
     std::string addSnapshot() {
+        /*
         auto path = join( srcDir, "divine/fs-snapshot.cpp" );
         std::stringstream snapshot;
         compile::Snapshot::writeFile( snapshot, vfsSnapshot, vfsInput );
         mastercc().mapVirtualFile( path, snapshot.str() );
         return path;
+        */
     }
 
     explicit Compile( Options opts = { } ) : compilers( 1 ), workers( 1 ) {
@@ -596,6 +600,7 @@ struct Compile {
     }
 
     void setupFS() {
+#if 0
         prepareSources( includeDir, llvm_h_list );
         mastercc().mapVirtualFiles< const char * >( {
             { join( includeDir, "bits/pthreadtypes.h" ), "#include <pthread.h>\n" },
@@ -614,6 +619,7 @@ struct Compile {
         prepareSources( join( srcDir, "cxx" ),      libcxx_list,    Type::Source );
 
         mastercc().reMapVirtualFile( join( includeDir, "assert.h" ), "#include <divine.h>\n" ); // override PDClib's assert
+#endif
     }
 
     void setupLibs() {
