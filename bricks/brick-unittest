@@ -49,6 +49,9 @@
 namespace brick {
 namespace unittest {
 
+struct TestCaseBase;
+extern std::vector< TestCaseBase * > *testcases;
+
 struct TestCaseBase {
     std::string name;
     bool expect_failure;
@@ -65,7 +68,6 @@ struct TestFailed : std::exception {
 
 namespace {
 
-std::vector< TestCaseBase * > *testcases = nullptr;
 
 #if (defined( __unix__ ) || defined( POSIX )) && !defined( __divine__ )
 
