@@ -65,7 +65,7 @@ struct DefaultHasher
     bool valid( const X &t ) const { return t != X(); }
 };
 
-hash64_t highbits( hash64_t orig, int bits )
+static inline hash64_t highbits( hash64_t orig, int bits )
 {
     // use a different part of the hash than what we use for indexing
     return orig >> ( sizeof( hash64_t ) * 8 - bits );
