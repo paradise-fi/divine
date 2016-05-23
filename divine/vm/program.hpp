@@ -33,6 +33,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/pointer.hpp>
 #include <divine/vm/heap.hpp>
+#include <divine/cc/clang.hpp>
 
 #include <runtime/divine.h>
 
@@ -389,5 +390,42 @@ static inline std::ostream &operator<<( std::ostream &o, const Program::Instruct
 }
 
 }
+
+namespace t_vm {
+
+namespace {
+
+auto compileC( std::string s )
+{
+    static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
+    divine::cc::Compiler c( ctx );
+    c.mapVirtualFile( "main.c", s );
+    auto p = std::make_shared< vm::Program >( c.compileModule( "main.c" ) );
+    p->setupRR();
+    p->computeRR();
+    p->computeStatic();
+    return p;
 }
 
+}
+
+struct Program
+{
+    llvm::LLVMContext &ctx;
+    Program() : ctx( llvm::getGlobalContext() ) {}
+
+    TEST( empty )
+    {
+        auto m = std::make_shared< llvm::Module >( "test", ctx );
+        vm::Program p( m );
+    }
+
+    TEST( simple )
+    {
+        auto m = compileC( "int main() { return 0; }" );
+    }
+};
+
+}
+
+}

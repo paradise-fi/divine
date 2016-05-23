@@ -1193,25 +1193,120 @@ struct Eval
 namespace t_vm
 {
 
+using vm::CodePointer;
+
 struct TProgram
 {
     struct Slot {};
     struct Instruction {};
 };
 
+template< typename Prog >
 struct TContext
 {
     using Heap = vm::MutableHeap;
-    Heap &heap();
+    using HeapPointer = Heap::Pointer;
+    using PointerV = vm::value::Pointer< HeapPointer >;
+    using Control = TContext< Prog >; /* Self */
+
+    vm::Fault _fault;
+    PointerV _constants, _globals, _frame, _entry_frame;
+    Prog &_program;
+    Heap _heap;
+
+    PointerV globals() { return _globals; }
+    PointerV constants() { return _constants; }
+    bool mask( bool = false )  { return false; }
+    void interrupt() {}
+
+    template< typename I >
+    int choose( int, I, I ) { return 0; }
+
+    PointerV frame() { return _frame; }
+    void frame( PointerV p ) { _frame = p; }
+    bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.v() ) == fr; }
+
+    void fault( vm::Fault f ) { _fault = f; _frame = vm::nullPointer(); }
+    void doublefault() { UNREACHABLE( "double fault" ); }
+    void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
+
+    void push( PointerV ) {}
+
+    template< typename X, typename... Args >
+    void push( PointerV p, X x, Args... args )
+    {
+        _heap.shift( p, x );
+        push( p, args... );
+    }
+
+    template< typename... Args >
+    void enter( CodePointer pc, PointerV parent, Args... args )
+    {
+        int datasz = _program.function( pc ).datasize;
+        auto frameptr = _heap.make( datasz + 2 * vm::PointerBytes );
+        _frame = frameptr;
+        if ( parent.v() == vm::nullPointer() )
+            _entry_frame = _frame;
+        _heap.shift( frameptr, PointerV( pc ) );
+        _heap.shift( frameptr, parent );
+        push( frameptr, args... );
+    }
+
+    void setSched( CodePointer p ) {}
+    void setFault( CodePointer p ) {}
+    void setIfl( PointerV p ) {}
+
+    Control &control() { return *this; }
+    Heap &heap() { return _heap; }
+
+    TContext( Prog &p ) : _fault( _VM_F_NoFault ), _program( p ) {}
 };
 
-struct Execution
+struct Eval
 {
+    using IntV = vm::value::Int< 32 >;
+
     TEST(instance)
     {
         TProgram p;
-        TContext c;
-        vm::Eval< TProgram, TContext, vm::value::Void > e( p, c );
+        TContext< TProgram > c( p );
+        vm::Eval< TProgram, TContext< TProgram >, vm::value::Void > e( p, c );
+    }
+
+    template< typename... Args >
+    int testF( std::string s, Args... args )
+    {
+        auto p = compileC( s );
+        TContext< vm::Program > c( *p );
+        std::tie( c._constants, c._globals ) = p->exportHeap( c.heap() );
+        vm::Eval< vm::Program, TContext< vm::Program >, IntV > e( *p, c );
+        auto pc = p->functionByName( "f" );
+        pc.instruction() = 1;
+        c.control().enter( pc, vm::nullPointer(), args... );
+        e.run();
+        return e._result.v();
+    }
+
+    TEST(simple)
+    {
+        int x = testF( "int f( int a, int b ) { return a + b; }",
+                       IntV( 10 ), IntV( 20 ) );
+        ASSERT_EQ( x, 30 );
+    }
+
+    TEST(call)
+    {
+        int x = testF( "int g() { return 1; } int f( int a ) { return g() + a; }",
+                       IntV( 10 ) );
+        ASSERT_EQ( x, 11 );
+    }
+
+    TEST(ptr)
+    {
+        int x = testF( "void *__vm_make_object( int ); int __vm_query_object_size( void * ); "
+                       "int f() { void *x = __vm_make_object( 10 );"
+                       "return __vm_query_object_size( x ); }" );
+        ASSERT_EQ( x, 10 );
     }
 };
 
