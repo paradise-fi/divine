@@ -53,7 +53,7 @@ unit: debug-unit
 unit-%: debug-unit-%
 
 # make being too smart here?
-.PRECIOUS: $(OBJ)toolchain/configure-stamp $(OBJ)toolchain/build-stamp
+.PRECIOUS: $(OBJ)toolchain/configure-stamp $(OBJ)toolchain/build-stamp $(OBJ)debug/configure-stamp
 .PHONY: toolchain
 
 dist:
