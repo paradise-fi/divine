@@ -12,26 +12,34 @@ function( update_file name content )
   endif()
 endfunction()
 
-function( bricks_make_runner name header main defs )
+function( bricks_make_runner name main flags )
   set( file "${CMAKE_CURRENT_BINARY_DIR}/${name}-runner.cpp" )
+  set( n 0 )
+  set( libs "" )
 
   foreach( src ${ARGN} )
-    set( new "${new}\n#include <${src}>" )
+    math( EXPR n "${n} + 1" )
+    set( fn "${CMAKE_CURRENT_BINARY_DIR}/${name}-runner-${n}.cpp" )
+    update_file( "${fn}" "#include <${src}>" )
+    set_source_files_properties( ${fn} PROPERTIES COMPILE_FLAGS ${flags} )
+    add_library( "${name}-${n}" SHARED EXCLUDE_FROM_ALL ${fn} )
+    list( APPEND libs ${name}-${n} )
   endforeach( src )
 
-  set( new "
-    #include <${header}>
-    ${new}
+  set( main "
+    namespace brick { namespace unittest { std::vector< TestCaseBase * > *testcases\; } }
     int main( int argc, const char **argv ) {
+      int r = 1\;
       ${main}
-      return 0\;
+      return r\;
     }"
   )
 
-  update_file( ${file} "${new}" )
+  update_file( ${file} "${main}" )
 
   add_executable( ${name} EXCLUDE_FROM_ALL ${file} )
-  set_source_files_properties( ${file} PROPERTIES COMPILE_DEFINITIONS ${defs} )
+  target_link_libraries( ${name} ${libs} )
+  set_source_files_properties( ${file} PROPERTIES COMPILE_FLAGS ${flags} )
 endfunction()
 
 # Create a unit test driver for a bunch of header files. Syntax:
@@ -42,16 +50,13 @@ endfunction()
 # to run the testsuite.
 
 function( bricks_unittest name )
-  bricks_make_runner( ${name} "brick-unittest" "
-      return brick::unittest::run( argc > 1 ? argv[1] : \"\",
-                                   argc > 2 ? argv[2] : \"\" )\;"
-      "BRICK_UNITTEST_REG" ${ARGN} )
-  set_target_properties( ${name} PROPERTIES COMPILE_FLAGS "-UNDEBUG" )
+  bricks_make_runner( ${name} "r = brick::unittest::run( argc, argv )\;"
+                      "-UNDEBUG -DBRICK_UNITTEST_REG -include brick-unittest" ${ARGN} )
 endfunction()
 
 function( bricks_benchmark name )
   bricks_make_runner( ${name} "brick-benchmark" "brick::benchmark::run( argc, argv )\;"
-                      "BRICK_BENCHMARK_REG" ${ARGN} )
+                      "-DBRICK_BENCHMARK_REG -include brick-benchmark" ${ARGN} )
   target_link_libraries( ${name} rt )
 endfunction()
 
