@@ -449,6 +449,7 @@ struct CompileUnitInfo {
     }
 
     const std::unordered_set< ::llvm::Value * > &globals() const { return _content; }
+    bool valid() const { return _root; }
 
   private:
     ::llvm::NamedMDNode *_root;
