@@ -21,6 +21,7 @@ set( UPDATE_VERSION ${divine_SOURCE_DIR}/divine/update-version.sh )
 
 add_custom_command(
   COMMAND sh ${UPDATE_VERSION} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${VERSION_FILE}" "${DIVINE_VERSION}"
+  VERBATIM
   OUTPUT "${VERSION_FILE}.check"
 )
 set_source_files_properties( "${VERSION_FILE}.check" PROPERTIES SYMBOLIC ON )
