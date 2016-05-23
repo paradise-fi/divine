@@ -275,12 +275,12 @@ struct Program
         {
             case Slot::Constant:
                 slot.offset = _constants_size;
-                _constants_size += slot.width;
+                _constants_size = mem::align( _constants_size + slot.width, 4 );
                 _constants.push_back( slot );
                 return SlotRef( slot, _constants.size() - 1 );
             case Slot::Global:
                 slot.offset = _globals_size;
-                _globals_size += slot.width;
+                _globals_size = mem::align( _globals_size + slot.width, 4 );
                 _globals.push_back( slot );
                 return SlotRef( slot, _globals.size() - 1 );
             case Slot::Local:
