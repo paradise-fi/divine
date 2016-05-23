@@ -252,6 +252,20 @@ struct Program
 
     ConstContext _ccontext;
 
+    template< typename H >
+    auto exportHeap( H &target )
+    {
+        auto cp = target.make( _constants_size );
+        target.copy( _ccontext._heap, _ccontext.control().constants(), cp, _constants_size );
+
+        if ( !_globals_size )
+            return std::make_pair( cp, decltype( cp )( nullPointer() ) );
+
+        auto gp = target.make( _globals_size );
+        target.copy( _ccontext._heap, _ccontext.control().globals(), gp, _globals_size );
+        return std::make_pair( cp, gp );
+    }
+
     template< typename Container >
     static void makeFit( Container &c, int index ) {
         c.resize( std::max( index + 1, int( c.size() ) ) );
