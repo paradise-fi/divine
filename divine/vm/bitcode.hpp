@@ -27,29 +27,29 @@ namespace divine {
 namespace vm {
 
 struct BitCode {
-    std::unique_ptr< llvm::MemoryBuffer > _input;
     std::shared_ptr< llvm::Module > _module;
-    llvm::LLVMContext *_ctx;
-    Program *_program;
+    std::shared_ptr< llvm::LLVMContext > _ctx;
+    std::shared_ptr< Program > _program;
 
     Program &program() { ASSERT( _program ); return *_program; }
 
     BitCode( std::string file )
     {
-        _ctx = new llvm::LLVMContext();
-        _input = std::move( llvm::MemoryBuffer::getFile( file ).get() );
-        auto parsed = llvm::parseBitcodeFile( _input->getMemBufferRef(), *_ctx );
+        _ctx.reset( new llvm::LLVMContext() );
+        std::unique_ptr< llvm::MemoryBuffer > input;
+        input = std::move( llvm::MemoryBuffer::getFile( file ).get() );
+        auto parsed = llvm::parseBitcodeFile( input->getMemBufferRef(), *_ctx );
         if ( !parsed )
             throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
         _module = std::move( parsed.get() );
-        _program = new Program( _module.get() );
+        _program.reset( new Program( _module ) );
     }
 
     BitCode( std::shared_ptr< llvm::Module > m )
         : _ctx( nullptr ), _module( m )
     {
         ASSERT( _module );
-        _program = new Program( _module.get() );
+        _program.reset( new Program( _module ) );
     }
 
     ~BitCode()
@@ -57,8 +57,6 @@ struct BitCode {
         if ( _ctx )
             ASSERT_EQ( _module.use_count(), 1 );
         _module.reset();
-        delete _program;
-        delete _ctx;
     }
 };
 
