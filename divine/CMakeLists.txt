@@ -46,7 +46,7 @@ if( NOT WIN32 )
   set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
 endif()
 
-target_link_libraries( libdivine LLVMCore clang clangBasic clangCodeGen )
+target_link_libraries( libdivine LLVMCore LLVMSupport LLVMMC LLVMIRReader LLVMBitReader LLVMBitWriter LLVMLinker clang clangBasic clangCodeGen )
 
 if ( OPT_SQL )
     target_link_libraries( libdivine nanodbc )
