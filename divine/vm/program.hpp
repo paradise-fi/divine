@@ -130,7 +130,7 @@ struct ConstContext
 struct Program
 {
     llvm::IntrinsicLowering *IL;
-    llvm::Module *module;
+    std::shared_ptr< llvm::Module > module;
     llvm::DataLayout TD;
 
     /*
@@ -358,7 +358,7 @@ struct Program
        3a) (optional) set up additional constant/global data
        3b) computeRR
        4) computeStatic */
-    Program( llvm::Module *m ) : module( m ), TD( m )
+    Program( std::shared_ptr< llvm::Module > m ) : module( m ), TD( m.get() )
     {
         _constants_size = 0;
         _globals_size = 0;
