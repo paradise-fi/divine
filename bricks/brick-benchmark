@@ -390,52 +390,9 @@ ResultLog::Value repeat( BenchmarkBase *tc ) {
     return res;
 }
 
-/* TODO duplicated from brick-shelltest */
-template< typename C >
-void split( std::string s, C &c, char delim = ',' ) {
-    std::stringstream ss( s );
-    std::string item;
-    while ( std::getline( ss, item, delim ) )
-        c.push_back( item );
-}
-
-struct BeginsWith {
-    std::string p;
-    BeginsWith( std::string p ) : p( p ) {}
-    bool operator()( std::string s ) {
-        return std::string( s, 0, p.size() ) == p;
-    }
-};
-
-struct Filter {
-    using Clause = std::vector< std::string >;
-    using F = std::vector< Clause >;
-
-    F formula;
-
-    bool matches( std::string d ) {
-        for ( auto clause : formula ) {
-            bool ok = false;
-            for ( auto atom : clause )
-                if ( d.find( atom ) != std::string::npos ) {
-                    ok = true;
-                    break;
-                }
-            if ( !ok )
-                return false;
-        }
-        return true;
-    }
-
-    Filter( int argc, const char **argv ) {
-        for ( int i = 1; i < argc; ++i ) {
-            if ( BeginsWith( "--" )( argv[i] ) )
-                continue;
-            formula.emplace_back();
-            split( argv[i], formula.back() );
-        }
-    }
-};
+using unittest::BeginsWith;
+using unittest::Filter;
+using unittest::split;
 
 std::string shortdesc( std::string d, bool invert = false ) {
     std::vector< std::string > bits, keep;

@@ -133,10 +133,11 @@ void fork_test( TestCaseBase *tc, int * ) {
 
 namespace {
 
-void list() {
+int list() {
     ASSERT( testcases );
     for ( auto tc : *testcases )
         std::cerr << tc->group() << "::" << tc->name << std::endl;
+    return 0;
 }
 
 std::string simplify( std::string s, std::string l, bool fill = true ) {
@@ -161,9 +162,68 @@ std::string simplify( std::string s, std::string l, bool fill = true ) {
     return (fill ? std::string( stop, ' ' ) : "") + std::string( s, stop, std::string::npos );
 }
 
-int run( std::string only_group= "" , std::string only_case = "" ) {
+/* TODO duplicated from brick-shelltest */
+template< typename C >
+void split( std::string s, C &c, char delim = ',' ) {
+    std::stringstream ss( s );
+    std::string item;
+    while ( std::getline( ss, item, delim ) )
+        c.push_back( item );
+}
+
+struct BeginsWith {
+    std::string p;
+    BeginsWith( std::string p ) : p( p ) {}
+    bool operator()( std::string s ) {
+        return std::string( s, 0, p.size() ) == p;
+    }
+};
+
+struct Filter {
+    using Clause = std::vector< std::string >;
+    using F = std::vector< Clause >;
+
+    F formula;
+
+    bool matches( std::string d ) {
+        for ( auto clause : formula ) {
+            bool ok = false;
+            for ( auto atom : clause )
+                if ( d.find( atom ) != std::string::npos ) {
+                    ok = true;
+                    break;
+                }
+            if ( !ok )
+                return false;
+        }
+        return true;
+    }
+
+    Filter( int argc, const char **argv ) {
+        for ( int i = 1; i < argc; ++i ) {
+            if ( BeginsWith( "--" )( argv[i] ) )
+                continue;
+            formula.emplace_back();
+            split( argv[i], formula.back() );
+        }
+    }
+};
+
+void group_summary( int good, int bad )
+{
+    std::cerr << " " << good << " ok";
+    if ( bad )
+        std::cerr << ", " << bad << " failed";
+    std::cerr << std::endl;
+}
+
+int run( int argc, const char **argv )
+{
     ASSERT( testcases );
-    std::set< std::string > done;
+
+    if ( argc >= 2 && std::string( argv[1] ) == "--list" )
+        return list();
+
     std::map< std::string, int > counts;
     std::string last;
 
@@ -172,60 +232,61 @@ int run( std::string only_group= "" , std::string only_case = "" ) {
     std::sort( testcases->begin(), testcases->end(),
                []( auto a, auto b ) { return a->group() < b->group(); } );
 
-    for ( auto group : *testcases ) {
-        ++ counts[ group->group() ];
+    Filter flt( argc, argv );
+    if ( getenv( "T" ) )
+    {
+        flt.formula.emplace_back();
+        split( getenv( "T" ), flt.formula.back() );
     }
 
-    for ( auto group : *testcases ) {
-        if ( !only_group.empty() && only_group != group->group() )
-            continue;
-        if ( done.count( group->group() ) )
-            continue;
-
-        if ( only_group.empty() )
-            std::cerr << "[" << std::setw( 3 ) << 100 * group_count / counts.size() << "%] ";
-
-        std::cerr << simplify( group->group(), last ) << " " << std::flush;
-
-        group_count ++;
-
-        int all = 0, bad = 0;
-
-        for ( auto tc : *testcases ) {
-            if ( !only_case.empty() && only_case != tc->name )
-                continue;
-            if ( group->group() != tc->group() )
-                continue;
-
-            bool ok = false;
-            try {
-                ++ all; ++ total;
-                if ( !only_group.empty() && !only_case.empty() )
-                    tc->run();
-                else
-                    fork_test( tc, nullptr );
-                ok = true;
-            } catch ( const std::exception &e ) {
-                if ( e.what() != std::string( "TestFailed" ) )
-                    std::cerr << std::endl << "###### " << tc->id() << " failed."
-                              << std::endl << "###### " << e.what() << std::endl;
-                std::cerr << "[    ] " << group->group() << " " << std::flush;
-                ++ bad;
-                ++ total_bad;
-            }
-
-            if ( ok )
-                std::cerr << "." << std::flush;
+    for ( auto tc : *testcases )
+        if ( flt.matches( tc->id() ) )
+        {
+             ++ counts[ tc->group() ];
+             ++ total;
         }
 
-        std::cerr << " " << (all - bad) << " ok";
-        if ( bad )
-            std::cerr << ", " << bad << " failed";
-        std::cerr << std::endl;
-        done.insert( group->group() );
-        last = group->group();
+
+    int all = 0, bad = 0;
+
+    for ( auto tc : *testcases ) {
+        if ( !flt.matches( tc->id() ) )
+            continue;
+
+        if ( last != tc->group() )
+        {
+            if ( all )
+                group_summary( all - bad, bad );
+
+            group_count ++;
+            std::cerr << simplify( tc->group(), last ) << " " << std::flush;
+            all = bad = 0;
+        }
+
+        bool ok = false;
+        try {
+            ++ all;
+            if ( total == 1 )
+                tc->run();
+            else
+                fork_test( tc, nullptr );
+            ok = true;
+        } catch ( const std::exception &e ) {
+            if ( e.what() != std::string( "TestFailed" ) )
+                std::cerr << std::endl << "###### " << tc->id() << " failed."
+                          << std::endl << "###### " << e.what() << std::endl;
+            std::cerr << "[    ] " << tc->group() << " " << std::flush;
+            ++ bad;
+            ++ total_bad;
+        }
+
+        if ( ok )
+            std::cerr << "." << std::flush;
+
+        last = tc->group();
     }
 
+    group_summary( all - bad, bad );
     std::cerr << "# summary: " << (total - total_bad) << " ok";
     if ( total_bad )
         std::cerr << ", " << total_bad << " failed";
