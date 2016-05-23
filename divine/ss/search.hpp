@@ -7,8 +7,10 @@
 
 #include <brick-shmem>
 
-#include <divine/ss/fixed.hpp>  /* tests */
-#include <divine/ss/random.hpp> /* tests */
+/* tests */
+#include <divine/ss/listen.hpp>
+#include <divine/ss/fixed.hpp>
+#include <divine/ss/random.hpp>
 
 namespace divine {
 namespace ss {

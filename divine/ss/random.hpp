@@ -7,6 +7,8 @@
 namespace divine {
 namespace ss {
 
+namespace hashset = brick::hashset;
+
 struct Random
 {
     using State = int;
