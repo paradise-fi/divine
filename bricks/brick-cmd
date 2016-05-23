@@ -44,6 +44,7 @@ using ErrorOr = types::Union< Error, T >;
 struct ValidatorInterface
 {
     virtual bool validate( std::string t, std::string v ) = 0;
+    virtual ~ValidatorInterface() {}
 };
 
 template< typename... > struct Validator;
@@ -88,6 +89,8 @@ struct Validator< Parse, Ps... >
     Validator( std::string t, Parse parse, Next next )
         : _name( t ), _parse( parse ), _next( next )
     {}
+
+    virtual ~Validator() {}
 
     template< typename P >
     auto add( std::string t, P parse )
@@ -299,7 +302,7 @@ struct Pattern
                 std::string line, alts;
                 for ( auto i = begin; i != next; ++i )
                     line += " " + *i;
-                for ( int i = 0; i < res.size(); ++i )
+                for ( int i = 0; i < int( res.size() ); ++i )
                     if ( res[i] == next )
                         alts += "\n matched " + _subs[i]->fmt();
                 throw std::runtime_error( "Ambiguous parse:" + line + alts );
@@ -429,6 +432,7 @@ struct OptionInterface
     virtual int priority() = 0;
     virtual std::string fmt() = 0;
     virtual std::string describe() { return ""; }
+    virtual ~OptionInterface() {}
 };
 
 template< typename Validator, typename T, typename V >
@@ -465,7 +469,7 @@ struct Option : OptionInterface< T >
         }
 
         template< typename X_, typename Y >
-        auto _set( types::NotPreferred, X_ &x, Y y )
+        auto _set( types::NotPreferred, X_ &, Y )
             -> typename std::enable_if< !std::is_convertible< Y, X_ >::value >::type
         {
             UNREACHABLE( "capture type mismatch" );
@@ -487,7 +491,7 @@ struct Option : OptionInterface< T >
     {
         bool captured = false;
         auto result = _pattern.match(
-            [&]( int, bool many, std::string type, std::string val )
+            [&]( int, bool, std::string type, std::string val )
             {
                 _validator->parse( Set< decltype( _get( edit ) ) >( _get( edit ) ), type, val );
                 captured = true;
@@ -685,6 +689,8 @@ struct OptionSet
                                           + this->describe() );
         return b;
     }
+
+    virtual ~OptionSet() {}
 };
 
 template< typename T, typename V, typename... Args >
@@ -703,13 +709,13 @@ struct Command : OptionSet< Validator, T >
     std::string name()
     {
         auto s = brick::unittest::_typeid< T >();
-        int p = s.find( "<" );
+        size_t p = s.find( "<" );
         if ( p != std::string::npos )
             s = std::string( s, 0, p );
         p = s.rfind( "::" );
         if ( p != std::string::npos )
             s = std::string( s, p + 2, std::string::npos );
-        for ( int i = 0; i < s.size(); ++i )
+        for ( size_t i = 0; i < s.size(); ++i )
             s[i] = std::tolower( s[i] );
         return s;
     }
@@ -1089,7 +1095,7 @@ struct TestCmd
 
         cmd::Tokens in = { "10", "20" };
         opts.parse( x, in.begin(), in.end() );
-        ASSERT_EQ( x.a.size(), 2 );
+        ASSERT_EQ( x.a.size(), 2u );
         ASSERT_EQ( x.a[ 0 ], "10" );
         ASSERT_EQ( x.a[ 1 ], "20" );
     }

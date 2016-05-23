@@ -58,6 +58,7 @@ struct TestCaseBase {
     bool expect_failure;
     virtual void run() = 0;
     virtual std::string group() = 0;
+    virtual ~TestCaseBase() {}
     std::string id() {
         return group() + "::" + name;
     }

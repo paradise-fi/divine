@@ -125,7 +125,7 @@ struct Pool
         uint64_t total:20;
         uint64_t allocated:20;
         uint64_t itemsize:24;
-        char data[];
+        char data[0];
     };
 
     struct FreeList
@@ -425,9 +425,9 @@ struct Pool
 
     int size( Pointer p )
     {
-        if( p.slab() == _l.ephemeral_block )
+        if( int( p.slab() ) == _l.ephemeral_block )
         {
-            ASSERT_LEQ( p.chunk(), _l.ephemeral_offset );
+            ASSERT_LEQ( p.chunk().get(), _l.ephemeral_offset );
             return ephemeralSize( p );
         }
 
