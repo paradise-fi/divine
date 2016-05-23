@@ -161,7 +161,7 @@ struct DivineVFS : clang::vfs::FileSystem {
     {
         auto path = brick::fs::normalize( _path.str() );
         std::cerr << "DVFS:dir_begin " << path << std::endl;
-        ASSERT_UNIMPLEMENTED();
+        NOT_IMPLEMENTED();
     }
 
     void allowPath( std::string path ) { allowedPrefixes.insert( path ); }
@@ -286,7 +286,7 @@ struct Compiler {
                 add( out, { "ir" } );
                 break;
             case FileType::Unknown:
-                ASSERT_UNREACHABLE( "Unknown file type" );
+                UNREACHABLE( "Unknown file type" );
         }
         switch ( t ) {
             case FileType::Cpp:
@@ -511,8 +511,8 @@ struct Compile {
 
     explicit Compile( Options opts = { } ) : compilers( 1 ), workers( 1 ) {
         for ( auto &opt : opts )
-            opt.cases( [this]( NumThreads ) {
-                    ASSERT_UNIMPLEMENTED();
+            opt.match( [this]( NumThreads ) {
+                    NOT_IMPLEMENTED();
                 }, [this]( Precompiled p ) {
                     precompiled = p.get();
                 }, [this]( LibsOnly ) {
