@@ -21,6 +21,7 @@ template< typename L >
 struct SearchInterface
 {
     virtual void run( bool ) = 0;
+    virtual ~SearchInterface() {}
 };
 
 template< typename B, typename L >
@@ -166,7 +167,7 @@ struct Search
         int edgecount = 0, statecount = 0;
         ss::search(
             ss::Order::PseudoBFS, builder, threads, ss::passive_listen(
-                [&] ( auto f, auto t, auto l )
+                [&] ( auto f, auto t, auto )
                 {
                     if ( f == 1 )
                         ASSERT( t == 2 || t == 3 );
@@ -176,7 +177,7 @@ struct Search
                         ASSERT_EQ( t, 4 );
                     ++ edgecount;
                 },
-                [&] ( auto s ) { ++ statecount; } ) );
+                [&] ( auto ) { ++ statecount; } ) );
         ASSERT_EQ( edgecount, 4 );
         ASSERT_EQ( statecount, 4 );
     }
@@ -188,8 +189,8 @@ struct Search
             ss::Random builder{ 50, 120, seed };
             std::atomic< int > edgecount( 0 ), statecount( 0 );
             ss::search( ss::Order::PseudoBFS, builder, threads, ss::passive_listen(
-                            [&] ( auto f, auto t, auto l ) { ++ edgecount; },
-                            [&] ( auto s ) { ++ statecount; } ) );
+                            [&] ( auto, auto, auto ) { ++ edgecount; },
+                            [&] ( auto ) { ++ statecount; } ) );
             ASSERT_EQ( statecount.load(), 50 );
             ASSERT_EQ( edgecount.load(), 120 );
         }
