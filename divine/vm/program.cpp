@@ -30,7 +30,6 @@
 #include <llvm/ADT/StringMap.h>
 
 using namespace divine::vm;
-using namespace brick;
 using llvm::isa;
 using llvm::dyn_cast;
 using llvm::cast;
