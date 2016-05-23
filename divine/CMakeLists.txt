@@ -35,6 +35,7 @@ add_custom_command(
 include_directories( ${DIVINE_INCLUDES} ${CMAKE_BINARY_DIR} )
 include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
+add_definitions( ${DIVINE_DEFINES} )
 
 set( llvmpaths "
 #pragma once

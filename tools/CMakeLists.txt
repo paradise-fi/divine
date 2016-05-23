@@ -3,6 +3,7 @@ with_warnings()
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} ${DIVINE_INCLUDES} )
 include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${LLVM_COMPILE_FLAGS} )
+add_definitions( ${DIVINE_DEFINES} )
 
 add_executable( divine divine.cpp )
 
