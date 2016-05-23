@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <llvm/Support/Casting.h>
-#include <brick-query.h>
+#include <brick-query>
 
 #ifndef LART_SUPPORT_QUERY_H
 #define LART_SUPPORT_QUERY_H

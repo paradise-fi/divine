@@ -21,7 +21,7 @@
 #include <lart/support/pass.h>
 #include <lart/support/query.h>
 
-#include <brick-types.h>
+#include <brick-types>
 
 #include <vector>
 #include <unordered_set>
@@ -210,7 +210,7 @@ struct ConstAllocaElimination : lart::Pass {
                         var.first->dump();
                         var.second->dump();
                         val->dump();
-                        ASSERT_UNREACHABLE( "unhandled case" );
+                        UNREACHABLE( "unhandled case" );
                     } );
             var.first->eraseFromParent();
             ++deletedAllocas;

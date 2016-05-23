@@ -9,8 +9,8 @@
 #include <llvm/IR/CFG.h>
 #include <llvm/Analysis/CaptureTracking.h>
 
-#include <brick-assert.h>
-#include <brick-types.h>
+#include <brick-assert>
+#include <brick-types>
 #include <chrono>
 #include <string>
 #include <unordered_set>

@@ -5,11 +5,17 @@ add_definitions( ${DIVINE_DEFINES} )
 
 add_executable( divine divine.cpp )
 
-if ( GEN_LLVM )
-  set_source_files_properties( lart.cpp PROPERTIES COMPILE_FLAGS -fno-rtti )
-  add_executable( lart lart.cpp )
-  target_link_libraries( lart liblart ${LLVM_LIBRARIES} ${LLVM_SYSLIBS} )
-endif()
+set_source_files_properties( lart.cpp PROPERTIES COMPILE_FLAGS -fno-rtti )
+add_executable( lart lart.cpp  )
+target_link_libraries( lart
+                       liblart
+                       LLVMCore
+                       LLVMSupport
+                       LLVMIRReader
+                       LLVMBitReader
+                       LLVMBitWriter
+                       LLVMTransformUtils
+                       LLVMAnalysis )
 
 add_custom_target( divinecc
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/divine ${CMAKE_CURRENT_BINARY_DIR}/divine.cc

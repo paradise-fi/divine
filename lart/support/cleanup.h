@@ -6,7 +6,7 @@
 #include <llvm/IR/Dominators.h>
 #include <llvm/ADT/Optional.h>
 
-#include <brick-types.h>
+#include <brick-types>
 
 #include <lart/support/query.h>
 #include <lart/analysis/bbreach.h>

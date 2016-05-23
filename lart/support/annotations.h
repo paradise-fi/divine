@@ -7,7 +7,7 @@
 #include <sstream>
 #include <initializer_list>
 #include <algorithm>
-#include <brick-types.h>
+#include <brick-types>
 
 #ifndef LART_ANNOTATIONS_H
 #define LART_ANNOTATIONS_H

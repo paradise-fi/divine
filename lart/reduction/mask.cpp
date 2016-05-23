@@ -11,7 +11,7 @@
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 
-#include <brick-assert.h>
+#include <brick-assert>
 #include <lart/support/annotations.h>
 
 #include <iostream>

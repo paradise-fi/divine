@@ -12,7 +12,7 @@
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Analysis/CaptureTracking.h>
-#include <brick-string.h>
+#include <brick-string>
 #include <unordered_set>
 #include <string>
 #include <iostream>
@@ -333,7 +333,7 @@ struct Substitute : lart::Pass
             case 8: return llvm::IntegerType::getInt8Ty( ctx );
             case 1: return llvm::IntegerType::getInt1Ty( ctx );
         }
-        ASSERT_UNREACHABLE( "unhandled case" );
+        UNREACHABLE( "unhandled case" );
     }
 
     llvm::Value *getBitwidth( llvm::Type *type, llvm::LLVMContext &ctx, llvm::DataLayout &dl ) {
@@ -358,7 +358,7 @@ struct Substitute : lart::Pass
                 transformWeak( f, dl );
                 return;
         }
-        ASSERT_UNREACHABLE( "Unhandled case" );
+        UNREACHABLE( "Unhandled case" );
     }
 
     // in bypass functions we replace all memory transfer intrinsics with lart
@@ -640,7 +640,7 @@ struct Substitute : lart::Pass
             case Type::TSO: return _tso;
             case Type::PSO: return _pso;
             case Type::Bypass: return _bypass;
-            default: ASSERT_UNREACHABLE( "unhandled case" );
+            default: UNREACHABLE( "unhandled case" );
         }
     }
 

@@ -3,7 +3,7 @@
 #include <lart/interference/pass.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/CFG.h>
-#include <brick-assert.h>
+#include <brick-assert>
 
 using namespace lart::interference;
 

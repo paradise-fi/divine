@@ -1,7 +1,4 @@
-link_libraries( ${LLVM_LIBRARIES} )
-
 include_directories( ${DIVINE_INCLUDES} )
-add_definitions( ${LLVM_COMPILE_FLAGS} )
 file( GLOB SRC reduction/*.cpp analysis/*.cpp support/*.cpp aa/*.cpp interference/*.cpp weakmem/*.cpp abstract/*.cpp svcomp/*.cpp divine/*.cpp )
 add_definitions( ${DIVINE_DEFINES} )
 add_library( liblart STATIC ${SRC} )

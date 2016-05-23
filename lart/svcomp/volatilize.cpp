@@ -10,7 +10,7 @@
 #include <llvm/IR/CallSite.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
-#include <brick-string.h>
+#include <brick-string>
 #include <unordered_set>
 #include <string>
 #include <iostream>
@@ -21,8 +21,8 @@
 #include <lart/support/util.h>
 #include <lart/support/cleanup.h>
 
-#include <brick-types.h>
-#include <brick-llvm.h>
+#include <brick-types>
+#include <brick-llvm>
 
 namespace lart {
 namespace svcomp {
