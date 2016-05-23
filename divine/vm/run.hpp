@@ -84,7 +84,10 @@ struct RunContext
 
         void fault( Fault f )
         {
-            enter( _fault, _frame, value::Int< 32 >( f ) );
+            if ( _fault == CodePointer( nullPointer() ) )
+                doublefault();
+            else
+                enter( _fault, _frame, value::Int< 32 >( f ) );
         }
 
         bool mask( bool n )  { bool o = _mask; _mask = n; return o; }
@@ -102,6 +105,11 @@ struct RunContext
         void setFault( CodePointer p ) { _fault = p; }
         void setIfl( PointerV p ) { _ifl = p; }
 
+        void doublefault()
+        {
+            std::cerr << "E: Double fault, program terminated." << std::endl;
+            _frame = nullPointer();
+        }
         void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
     };
 
