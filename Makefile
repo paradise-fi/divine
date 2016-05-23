@@ -10,15 +10,15 @@ CLANG = $(TOOLDIR)/clang/
 RTBIN = $(TOOLDIR)/runtime
 RTSRC = $(PWD)/runtime
 
-CXXFLAGS = -L$(RTBIN)/libunwind/src -Wl,-rpath,$(RTBIN)/libunwind/src \
-	   -L$(RTBIN)/libcxxabi/src -Wl,-rpath,$(RTBIN)/libcxxabi/src \
-	   -L$(RTBIN)/libcxx/lib -Wl,-rpath,$(RTBIN)/libcxx/lib \
-           -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include \
-           -stdlib=libc++
+CXXFLAGS_ = -L$(RTBIN)/libunwind/src -Wl,-rpath,$(RTBIN)/libunwind/src \
+            -L$(RTBIN)/libcxxabi/src -Wl,-rpath,$(RTBIN)/libcxxabi/src \
+            -L$(RTBIN)/libcxx/lib -Wl,-rpath,$(RTBIN)/libcxx/lib \
+            -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include \
+            -stdlib=libc++
 
 TOOLCHAIN = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
 	    -DCMAKE_CXX_COMPILER=$(CLANG)/bin/clang++ \
-	    -DCMAKE_CXX_FLAGS="$(CXXFLAGS)"
+	    -DCMAKE_CXX_FLAGS="$(CXXFLAGS_)"
 
 release_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
 debug_FLAGS = -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
