@@ -19,6 +19,7 @@
 #pragma once
 
 #include <brick-bitlevel>
+#include <brick-mem>
 
 namespace divine {
 namespace vm {
