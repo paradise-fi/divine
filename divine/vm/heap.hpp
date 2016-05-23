@@ -43,41 +43,22 @@ namespace mem = brick::mem;
 
 struct MutableHeap
 {
-    using Shadows = mem::Pool< 20, 10, uint32_t >;
-    using Objects = mem::Pool< 32, 16, uint64_t, 1, 2, 0 >;
+    using ExceptionPool = mem::Pool<  2, 20, uint32_t, 2, 1, 0 >;
+    using ObjectPool = mem::Pool< 32, 16, uint64_t, 1, 2, 0 >;
 
-    Shadows _shadows;
-    Objects _objects;
-    using Internal = Objects::Pointer;
+    ExceptionPool _exceptions;
+    ObjectPool _objects, _shadows;
 
-    struct ShadowEntries
+    using Internal = ObjectPool::Pointer;
+
+    struct Bytes
     {
-        using Ptr = Shadows::Pointer;
-        using Hdr = struct { int _size; Ptr _next; };
-        Ptr _p;
-        Shadows &_s;
-        ShadowEntries( Shadows &s, Ptr p ) : _s( s ), _p( p ) {}
-
-        int &size() { return _s.machinePointer< Hdr >( _p )->_size; }
-
-        void reserve( int count )
-        {
-            ASSERT_LEQ( size() * sizeof( ShadowEntry ), _s.size( _p ) );
-        }
-
-        ShadowEntry *begin()
-        {
-            ASSERT( _p );
-            return _s.machinePointer< ShadowEntry >( _p, sizeof( Hdr ) );
-        }
-
-        ShadowEntry *end()
-        {
-            return _s.machinePointer< ShadowEntry >( _p, sizeof( Hdr ) ) + size();
-        }
-
-        ShadowEntry &back() { return *( end() - 1 ); }
-        void emplace_back() { reserve( size() + 1 ); size() ++; }
+        Internal _p;
+        ObjectPool &_o;
+        Bytes( ObjectPool &o, Internal p ) : _o( o ), _p( p ) {}
+        int size() { return _o.size( _p ); }
+        char *begin() { return _o.machinePointer< char >( _p ); }
+        char *end() { return _o.machinePointer< char >( _p, size() ); }
     };
 
     /*
@@ -91,7 +72,6 @@ struct MutableHeap
         auto offset() { return this->template field< 1 >(); }
         auto object() { return this->template field< 2 >(); }
         bool null() { return object() == 0 && offset() == 0; }
-        using Shadow = ShadowEntries::Ptr;
         Pointer() : GenericPointer( PointerType::Heap ) {}
         Pointer operator+( int off ) const
         {
@@ -102,7 +82,6 @@ struct MutableHeap
     };
 
     using PointerV = value::Pointer< Pointer >;
-    using Shadow = vm::Shadow< ShadowEntries, PointerV >;
 
     template< typename T, typename F >
     T convert( F f )
@@ -118,18 +97,11 @@ struct MutableHeap
     PointerV make( int size )
     {
         auto i = _objects.allocate( size );
-        auto s = _shadows.allocate( sizeof( ShadowEntries::Hdr )
-                                    + std::max( size_t( size ), sizeof( ShadowEntry ) ) );
+        int shsz = sizeof( ExceptionPool::Pointer ) + ( size % 4 ? 1 + size / 4 : size / 4 );
+        _shadows.materialise( i, shsz, _objects );
+
         auto p = PointerV( i2p( i ) );
         p._v.type() = PointerType::Heap;
-        p._s = s;
-        ShadowEntries se( _shadows, s );
-        se.size() = 1;
-        ShadowEntry &entry = *se.begin();
-        entry.fragmented() = false;
-        entry.type() = uint32_t( ShadowET::UninitRun );
-        entry.offset() = 0;
-        entry.data() = 8 * size;
         return p;
     }
 
@@ -138,9 +110,7 @@ struct MutableHeap
         auto i = p2i( p.v() );
         if ( !_objects.valid( i ) )
             return false;
-        ASSERT( _shadows.valid( p._s ) );
         _objects.free( i );
-        _shadows.free( p._s );
         return true;
     }
 
@@ -153,6 +123,17 @@ struct MutableHeap
 
     int size( PointerV p ) { return _objects.size( p2i( p.v() ) ); }
 
+    auto shadow( Pointer pv )
+    {
+        using Shadow = vm::Shadow< PointerV >;
+        using ExPtr = ExceptionPool::Pointer;
+        auto ex_pptr = *_shadows.machinePointer< ExPtr >( p2i( pv ) );
+        auto sh_ptr = _shadows.machinePointer< ShadowByte >( p2i( pv ), sizeof( ExPtr ) );
+        auto ex_ptr = _exceptions.valid( ex_pptr ) ?
+                      _exceptions.machinePointer< ShadowException >( ex_pptr ) : nullptr;
+        return Shadow( sh_ptr, ex_ptr, _objects.size( p2i( pv ) ) );
+    }
+
     template< typename T >
     T read( PointerV p )
     {
@@ -160,13 +141,9 @@ struct MutableHeap
         Pointer pv = p.v();
         ASSERT( valid( p ) );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - pv.offset() );
+
         auto r = T( *_objects.machinePointer< typename T::Raw >( p2i( pv ), pv.offset() ) );
-        /*
-        std::cerr << "read " << r << " from " << p2i( p )
-                  << ", offset = " << p.offset().get() << ", size = " << size( p ) << std::endl;
-        */
-        Shadow sh( _shadows, p._s );
-        sh.query( pv.offset(), r );
+        shadow( pv ).query( pv.offset(), r );
         return r;
     }
 
@@ -175,11 +152,9 @@ struct MutableHeap
     {
         using Raw = typename T::Raw;
         Pointer pv = p.v();
-        // std::cerr << "write " << t << " to " << p << ", size = " << size( p ) << std::endl;
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - pv.offset() );
-        Shadow sh( _shadows, p._s );
-        sh.update( pv.offset(), t );
+        shadow( pv ).update( pv.offset(), t );
         *_objects.machinePointer< typename T::Raw >( p2i( pv ), pv.offset() ) = t.v();
     }
 
@@ -207,20 +182,28 @@ struct MutableHeap
         p.v( pv );
     }
 
-    bool copy( PointerV _from, PointerV _to, int bytes )
+    auto unsafe_bytes( PointerV p )
     {
-        char *from = _objects.dereference( p2i( _from.v() ) );
-        char *to = _objects.dereference( p2i( _to.v() ) );
+        return Bytes( _objects, p2i( p.v() ) );
+    }
+
+    template< typename H >
+    bool copy( H &_from_heap, PointerV _from, PointerV _to, int bytes )
+    {
+        auto from = _from_heap.unsafe_bytes( _from );
+        auto to = unsafe_bytes( _to );
         Pointer from_v = _from.v(), to_v = _to.v();
         int from_s( size( _from ) ), to_s ( size( _to ) );
         int from_off( from_v.offset() ), to_off( to_v.offset() );
-        if ( !from || !to || from_off + bytes > from_s || to_off + bytes > to_s )
+        if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )
             return false;
-        memcpy( to + to_off, from + from_off, bytes );
-        Shadow from_sh( _shadows, _from._s ), to_sh( _shadows, _to._s );
+        std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
+        auto from_sh = _from_heap.shadow( _from.v() ), to_sh = shadow( _to.v() );
         to_sh.update( from_sh, from_off, to_off, bytes );
         return true;
     }
+
+    bool copy( PointerV f, PointerV t, int b ) { return copy( *this, f, t, b ); }
 };
 
 static inline std::ostream &operator<<( std::ostream &o, MutableHeap::Pointer p )
@@ -285,7 +268,6 @@ struct MutableHeap
         heap.write( p, p );
         auto q = heap.read< vm::MutableHeap::PointerV >( p );
         ASSERT( p.v() == q.v() );
-        ASSERT_EQ( p._s, q._s );
     }
 };
 
