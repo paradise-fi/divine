@@ -44,8 +44,9 @@
 
 #elif !defined NDEBUG
 
-#define ASSERT(x, ...) ::brick::_assert::assert_fn(         \
-        BRICK_LOCWRAP( BRICK_LOCATION( #x ) ), x, ## __VA_ARGS__ )
+#define BRICK_SHARP_FIRST(x, ...) #x
+#define ASSERT(...) ::brick::_assert::assert_fn(         \
+        BRICK_LOCWRAP( BRICK_LOCATION( BRICK_SHARP_FIRST( __VA_ARGS__, ignored ) ) ), __VA_ARGS__ )
 #define ASSERT_PRED(p, x) ::brick::_assert::assert_pred_fn( \
         BRICK_LOCWRAP( BRICK_LOCATION( #p "( " #x " )" ) ), x, p( x ) )
 #define ASSERT_EQ(x, y) ::brick::_assert::assert_eq_fn( \
@@ -101,7 +102,7 @@ struct Location {
         : line( l ), iteration( iter ), file( f ), stmt( st )
     {
         int slashes = 0;
-        for ( int i = 0; i < file.size(); ++i )
+        for ( int i = 0; i < int( file.size() ); ++i )
             if ( file[i] == '/' )
                 ++ slashes;
 
@@ -151,7 +152,7 @@ struct AssertFailed : std::exception
     const char *what() const noexcept { return str.c_str(); }
 };
 
-static inline void format( AssertFailed &f ) {}
+static inline void format( AssertFailed & ) {}
 
 template< typename X, typename... Y >
 void format( AssertFailed &f, X x, Y... y )
@@ -179,27 +180,35 @@ inline void assert_die_fn( Location l )
     throw AssertFailed( BRICK_LOCUNWRAP( l ), "encountered" );
 }
 
-template< typename Location, typename X, typename Y >
-void assert_eq_fn( Location l, X x, Y y )
-{
-    if ( !( x == y ) ) {
-        AssertFailed f( BRICK_LOCUNWRAP( l ) );
-        f << "\n   but got "
-          << x << " != " << y << "\n";
-        throw f;
+#define ASSERT_FN(name, op, inv)                                    \
+    template< typename Location >                                   \
+    void assert_ ## name ## _fn( Location l, int64_t x, int64_t y ) \
+    {                                                               \
+        if ( !( x op y ) ) {                                        \
+            AssertFailed f( BRICK_LOCUNWRAP( l ) );                 \
+            f << "\n   but got "                                    \
+              << x << " " #inv " " << y << "\n";                    \
+            throw f;                                                \
+        }                                                           \
+    }                                                               \
+                                                                    \
+    template< typename Location, typename X, typename Y >           \
+    auto assert_ ## name ## _fn( Location l, X x, Y y )             \
+        -> typename std::enable_if<                                 \
+        !std::is_integral< X >::value ||                            \
+        !std::is_integral< Y >::value >::type                       \
+    {                                                               \
+        if ( !( x op y ) ) {                                        \
+            AssertFailed f( BRICK_LOCUNWRAP( l ) );                 \
+            f << "\n   but got "                                    \
+              << x << " " #inv " " << y << "\n";                    \
+            throw f;                                                \
+        }                                                           \
     }
-}
 
-template< typename Location, typename X, typename Y >
-void assert_leq_fn( Location l, X x, Y y )
-{
-    if ( !( x <= y ) ) {
-        AssertFailed f( BRICK_LOCUNWRAP( l ) );
-        f << "\n   but got "
-          << x << " > " << y << "\n";
-        throw f;
-    }
-}
+ASSERT_FN(eq, ==, !=);
+ASSERT_FN(leq, <=, >);
+ASSERT_FN(lt, <, >=);
 
 template< typename Location, typename X >
 void assert_pred_fn( Location l, X x, bool p )
