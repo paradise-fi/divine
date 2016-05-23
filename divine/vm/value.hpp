@@ -18,14 +18,21 @@
 
 #pragma once
 
+#include <divine/vm/pointer.hpp>
+
 #include <brick-mem>
+#include <brick-bitlevel>
+
+#include <cmath>
 
 namespace divine {
 
 namespace vm {
 namespace value {
 
-struct Base { template< typename X > using Value = X; };
+namespace bitlevel = brick::bitlevel;
+
+struct Base { static const bool IsValue = true; static const bool IsPointer = false; };
 template< int, bool > struct Int;
 using Bool = Int< 1, false >;
 
@@ -46,6 +53,7 @@ struct Void : Base
     using Raw = struct {};
     using Cooked = Raw;
     Void( Raw = Raw() ) {}
+    friend std::ostream &operator<<( std::ostream &o, Void ) { return o << "[void]"; }
 };
 
 template< int width, bool is_signed = false >
@@ -119,12 +127,6 @@ struct Float : Base
 
 struct HeapPointerPlaceholder
 {
-    struct Shadow
-    {
-        uint32_t _v;
-        uint32_t raw() { return _v; }
-        Shadow &operator=( uint32_t v ) { _v = v; return *this; }
-    };
     operator GenericPointer<>() { return GenericPointer<>( PointerType::Heap ); }
     HeapPointerPlaceholder( GenericPointer<> ) {}
     friend std::ostream & operator<<( std::ostream &o, HeapPointerPlaceholder v )
@@ -136,11 +138,10 @@ struct HeapPointerPlaceholder
 template< typename HeapPointer = HeapPointerPlaceholder >
 struct Pointer : Base
 {
+    static const bool IsPointer = true;
     using Raw = GenericPointer<>;
-    using Shadow = typename HeapPointer::Shadow;
     using Cooked = Raw;
     Raw _v;
-    Shadow _s;
     bool _obj_defined:1, _off_defined:1;
 
     template< typename P >
@@ -162,12 +163,15 @@ struct Pointer : Base
 
     friend std::ostream &operator<<( std::ostream &o, Pointer v )
     {
-        v.withType( [&]( auto p ) { o << "[pointer " << p << ", shadow " << v._s << "]"; return p; } );
+        std::string def = "dd";
+        if ( !v._obj_defined ) def[0] = 'u';
+        if ( !v._off_defined ) def[1] = 'u';
+        v.withType( [&]( auto p ) { o << "[pointer " << p << " " << def << "]"; return p; } );
         return o;
     }
 
     Pointer( GenericPointer<> x = nullPointer(), bool d = true )
-        : _v( x ), _s(), _obj_defined( d ), _off_defined( d ) {}
+        : _v( x ), _obj_defined( d ), _off_defined( d ) {}
 
     Pointer operator+( int off )
     {
@@ -221,7 +225,9 @@ Float< T > operator%( Float< T > a, Float< T > b )
 }
 
 #define OP(meth, op) template< typename T >                          \
-    auto operator op( typename T::template Value< T > a, T b ) { return a.meth( b, a.v() op b.v() ); }
+    auto operator op(                                                \
+        typename std::enable_if< T::IsValue, T >::type a, T b )     \
+    { return a.meth( b, a.v() op b.v() ); }
 
 OP( arithmetic, + );
 OP( arithmetic, - );
