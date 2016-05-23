@@ -27,11 +27,13 @@
 
 #include <brick-data>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/DataLayout.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <algorithm>
 #include <cmath>
@@ -173,6 +175,7 @@ struct Eval
             case Slot::Local: base = f + PointerBytes * 2; break;
             case Slot::Global: base = g; break;
             case Slot::Constant: base = constants(); break;
+            default: UNREACHABLE( "impossible slot type" );
         }
         // std::cerr << "s2ptr: " << v << " -> " << (base + v.offset + off) << std::endl;
         return base + v.offset + off;
@@ -702,7 +705,7 @@ struct Eval
             case BuiltinMakeObject:
             {
                 int64_t size = operandCk< IntV >( 0 );
-                if ( size >= ( 2ull << PointerOffBits ) || size < 1 )
+                if ( size >= ( 2ll << PointerOffBits ) || size < 1 )
                 {
                     fault( _VM_F_Hypercall );
                     size = 0;
@@ -727,7 +730,7 @@ struct Eval
             {
                 auto f = _program.functions[ pc().function() ];
                 auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
-                auto vaptr = heap().template read< PointerV >( vaptr_loc );
+                // auto vaptr = heap().template read< PointerV >( vaptr_loc );
                 heap().copy( vaptr_loc, s2ptr( result() ), result().width );
                 return;
             }
