@@ -339,67 +339,26 @@ struct TestCase : TestCaseBase {
     }
 };
 
-struct RegistrationDone {};
-
-template< template < typename X, void (X::*)() > class Wrapper,
-          typename T, void (T::*tc)(), void (T::*reg)() >
-void _register_g( const char *n, bool fail ) __attribute__((constructor));
-
-template< template < typename X, void (X::*)() > class Wrapper,
-          typename T, void (T::*tc)(), void (T::*reg)() >
-void _register_g( const char *n, bool fail )
-{
-    static int entries = 0;
-
-    if ( entries == 2 )
-        return;
-
-    ++ entries;
-
-    static Wrapper< T, tc > t;
-
-    if ( entries == 1 ) {
-        try {
-            T dummy;
-            (dummy.*reg)();
-        } catch ( RegistrationDone ) {
-            return;
-        }
-    }
-
-    if ( entries == 2 ) {
-        t.name = n;
-        t.expect_failure = fail;
-        throw RegistrationDone();
-    }
-}
-
 #undef TEST
 #undef TEST_FAILING
 
 #ifndef BRICK_UNITTEST_REG
-
-template< typename T, void (T::*tc)(), void (T::*reg)() = tc >
-void _register( const char * )
-{
-}
 
 #define TEST(n)         void n()
 #define TEST_FAILING(n) void n()
 
 #else
 
-template< typename T, void (T::*tc)(), void (T::*reg)() = tc >
-void _register( const char *n, bool fail = false )
-{
-    return _register_g< TestCase, T, tc, reg >( n, fail );
-}
-
-
 #define TEST_(n, bad)                                                   \
-    void __reg_ ## n() {                                                \
-        using __T = typename std::remove_reference< decltype(*this) >::type; \
-        ::brick::unittest::_register< __T, &__T::n, &__T::__reg_ ## n >( #n, bad ); \
+    void __reg1_ ## n() {                                               \
+        using SELFR = decltype(*this);                                  \
+        using SELF = typename std::remove_reference< SELFR >::type;     \
+        &__reg2_ ## n< SELF >;                                          \
+    }                                                                   \
+    template< typename SELF >                                           \
+    static void __reg2_ ## n() __attribute__((constructor)) {           \
+        static ::brick::unittest::TestCase< SELF, &SELF::n > tc;        \
+        tc.name = #n; tc.expect_failure = bad;                          \
     }                                                                   \
     void n()
 
@@ -407,11 +366,6 @@ void _register( const char *n, bool fail = false )
 #define TEST_FAILING(n) TEST_(n, true)
 
 #endif
-
-/* The following small self-test test group demonstrates how to write unit
- * tests. The TEST(xxx) approach is preferred, but if you want to avoid using
- * macros at all costs, you can use the _register call as shown in the
- * assert_eq test. */
 
 }
 
@@ -423,13 +377,13 @@ struct SelfTest
 {
     TEST(empty) {}
 
-    TEST_FAILING(expected) {
+    TEST_FAILING(expected)
+    {
         ASSERT( false );
     }
 
-    void _assert_eq() {
-        _register< SelfTest, &SelfTest::_assert_eq >( "assert_eq" );
-
+    TEST(_assert_eq)
+    {
         bool die UNUSED = true;
         try {
             ASSERT_EQ( 1, 2 );
