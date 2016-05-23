@@ -20,6 +20,7 @@ struct Command
 {
     virtual void run() = 0;
     virtual void setup() {}
+    virtual ~Command() {}
 };
 
 struct WithBC : Command

@@ -58,6 +58,8 @@ struct Report
         return _get< Rep >( brick::types::Preferred(), std::forward< Ts >( ts )... );
     }
 
+    virtual ~Report() {}
+
   private:
     sysinfo::Info _sysinfo;
     std::string _execCommand;
@@ -68,7 +70,7 @@ struct Report
     template< typename Rep >
     static std::shared_ptr< Rep > declcheck( std::shared_ptr< Rep > ) {
         static_assert( std::is_base_of< Report, Rep >::value,
-                "Required report does not inherit from Report." );
+                       "Required report does not inherit from Report." );
         UNREACHABLE( "declcheck" );
     }
 
