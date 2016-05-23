@@ -1,7 +1,7 @@
 include( stringify )
 #include( template-separe )
 
-foreach( D vm ss alg ui )
+foreach( D vm ss alg ui cc )
     file( GLOB CPP_${D} ${D}/*.cpp )
     file( GLOB HPP_${D} ${D}/*.hpp )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
@@ -46,8 +46,7 @@ if( NOT WIN32 )
   set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
 endif()
 
-target_link_libraries( libdivine ${LLVM_LIBRARIES} ${LLVM_SYSLIBS} )
-target_link_libraries( libdivine ${CURSES_LIBRARIES} )
+target_link_libraries( libdivine LLVMCore clang clangBasic clangCodeGen )
 
 if ( OPT_SQL )
     target_link_libraries( libdivine nanodbc )
