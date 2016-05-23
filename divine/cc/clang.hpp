@@ -598,20 +598,20 @@ struct Compile {
 
     enum class Type { Header, Source, All };
 
+    static bool isSource( std::string x ) {
+        using brick::string::endsWith;
+        return endsWith( x, ".c") || endsWith( x, ".cpp" ) || endsWith( x, ".cc" );
+    }
+
     template< typename Src >
     void prepareSources( std::string basedir, Src src, Type type = Type::All,
             std::function< bool( std::string ) > filter = nullptr )
     {
-        using brick::string::endsWith;
         while ( src->n ) {
             if ( ( !filter || filter( src->n ) )
-                 && ((type == Type::Header && ( endsWith( src->n, ".h")
-                                          || endsWith( src->n, ".hpp")
-                                          || std::string( src->n ).find( '.' ) == std::string::npos ) )
-                    || ( type == Type::Source && ( endsWith( src->n, ".c")
-                                                || endsWith( src->n, ".cpp" )
-                                                || endsWith( src->n, ".cc" ) ) )
-                    || type == Type::All ))
+                 && ( ( type == Type::Header && !isSource( src->n ) )
+                    || ( type == Type::Source && isSource( src->n ) )
+                    || type == Type::All ) )
             {
                 auto path = join( basedir, src->n );
                 mastercc().mapVirtualFile( path, src->c );
