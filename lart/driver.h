@@ -1,10 +1,8 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
 #include <lart/interference/pass.h>
 #include <lart/aa/pass.h>
 #include <lart/abstract/pass.h>
-#endif
 #include <lart/weakmem/pass.h>
 #include <lart/reduction/passes.h>
 #include <lart/svcomp/passes.h>
@@ -64,7 +62,6 @@ struct Driver {
                 return true;
         }
 
-#if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
         if ( n == "aa" ) {
             aa::Pass::Type t;
 
@@ -95,20 +92,13 @@ struct Driver {
             manager.addPass( interference::Pass() );
             return true;
         }
-#else
-#warning "LART features disabled: aa, abstract, interference (requires LLVM 3.7)"
-#endif
 
         return false;
     }
 
     void process( llvm::Module *m )
     {
-#if LLVM_MAJOR == 3 && LLVM_MINOR <= 5
-        manager.run( m );
-#else
         manager.run( *m );
-#endif
     }
 
   private:

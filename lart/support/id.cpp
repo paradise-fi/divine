@@ -1,7 +1,5 @@
 #include <lart/support/id.h>
 
-#if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
-
 namespace lart {
 
 llvm::MDNode *makeUniqueMDNode( llvm::Module &m ) {
@@ -17,4 +15,3 @@ void updateIDs( llvm::Module &m ) {
 }
 
 }
-#endif

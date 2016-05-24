@@ -8,12 +8,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/CallSite.h>
-#if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
 #include <llvm/IR/Dominators.h>
-#define LART_HAS_DOMINATORS 1
-#else
-#define LART_HAS_DOMINATORS 0
-#endif
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Analysis/CaptureTracking.h>
 DIVINE_UNRELAX_WARNINGS
@@ -144,7 +139,6 @@ struct MergeBasicBlocks : lart::Pass {
     long merged = 0;
 };
 
-#if LART_HAS_DOMINATORS
 /*MD
 
 # Const Alloca Elimination
@@ -235,16 +229,9 @@ struct ConstAllocaElimination : lart::Pass {
     long deletedAllocas = 0;
 };
 
-#else
-#warning "LART features disabled: ConstAllocaElimination (requires LLVM 3.7)."
-#endif
-
 PassMeta paroptPass() {
     return compositePassMeta< ConstConditionalJumpElimination, MergeBasicBlocks
-#if LART_HAS_DOMINATORS
-        , ConstAllocaElimination
-#endif
-        >( "paropt", "Parallel-safe optimizations" );
+        , ConstAllocaElimination >( "paropt", "Parallel-safe optimizations" );
 }
 
 } // namespace reduce
