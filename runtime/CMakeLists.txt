@@ -9,7 +9,8 @@ file( GLOB SRC_RUNTIME LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DI
       pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c
       libm/*.c libm/*.h libm/bits/*.h
       libcxxabi/src/* libcxxabi/include/*
-      libcxx/src/*.cpp libcxx/src/*.h libcxx/include/* libcxx/ext/*
+      libcxx/src/*.cpp libcxx/src/*.h libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
+      libcxx/include/support/xlocale/xlocale.h libcxx/src/support/atomic_support.h
       filesystem/*.cpp filesystem/*.h )
 foreach( f ${SRC_RUNTIME} )
     stringify( "runtime" ${f} )
