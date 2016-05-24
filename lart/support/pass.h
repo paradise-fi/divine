@@ -18,6 +18,7 @@ struct Pass
     virtual llvm::PreservedAnalyses run( llvm::Module *m ) {
         return run( *m );
     }
+    virtual ~Pass() { };
     static std::string name() { return "anonymous LART pass"; }
 };
 

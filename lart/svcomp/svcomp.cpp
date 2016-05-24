@@ -182,7 +182,7 @@ struct NondetTracking : lart::Pass {
 
         bool matched = true;
         matched = llvmcase( v,
-            [&]( llvm::TruncInst *cast ) {  },
+            [&]( llvm::TruncInst * ) { },
             []( llvm::ZExtInst * ) { /* ignored */ },
             []( llvm::SExtInst * ) { /* ignored */ },
             [&]( llvm::ICmpInst *cmp ) {
@@ -249,7 +249,7 @@ struct NondetTracking : lart::Pass {
             return y;
         if ( y.empty() )
             return x;
-        ASSERT( false );
+        NOT_IMPLEMENTED();
     }
 
     Tracking trackUsers( llvm::Value *v, const Tracking tracking ) {

@@ -467,7 +467,7 @@ struct Substitute : lart::Pass
     }
 
     template< typename Inst >
-    bool withLocal( Inst *i, brick::types::NotPreferred ) { return false; }
+    bool withLocal( Inst *, brick::types::NotPreferred ) { return false; }
 
     bool local( llvm::Value *i ) {
         return llvm::isa< llvm::AllocaInst >( i ) && !llvm::PointerMayBeCaptured( i, false, true );

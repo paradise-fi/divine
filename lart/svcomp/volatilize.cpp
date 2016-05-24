@@ -11,6 +11,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/CallSite.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <brick-llvm>
 DIVINE_UNRELAX_WARNINGS
 #include <brick-string>
 #include <unordered_set>
@@ -24,7 +25,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/cleanup.h>
 
 #include <brick-types>
-#include <brick-llvm>
 
 namespace lart {
 namespace svcomp {

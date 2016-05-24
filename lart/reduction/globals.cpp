@@ -56,8 +56,8 @@ struct ReadOnlyGlobals : lart::Pass {
         return _loadmap[ pair ] = r;
     }
 
-    bool detectIsLoad( llvm::Value *v, llvm::LoadInst *l ) { return true; }
-    bool detectIsLoad( llvm::Value *v, llvm::AllocaInst *l ) { return true; }
+    bool detectIsLoad( llvm::Value *, llvm::LoadInst * ) { return true; }
+    bool detectIsLoad( llvm::Value *, llvm::AllocaInst * ) { return true; }
 
     bool detectIsLoad( llvm::Value *v, llvm::CallInst *c ) {
         return detectIsLoad( v, llvm::CallSite( c ) );
@@ -82,7 +82,7 @@ struct ReadOnlyGlobals : lart::Pass {
     }
 
     template< typename T >
-    bool detectIsLoad( llvm::Value *v, T *x ) {
+    bool detectIsLoad( llvm::Value *, T *x ) {
         ASSERT( !llvm::isa< llvm::LoadInst >( x ) );
         ASSERT( !llvm::isa< llvm::CallInst >( x ) );
         ASSERT( !llvm::isa< llvm::InvokeInst >( x ) );

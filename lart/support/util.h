@@ -315,7 +315,7 @@ auto apply( T *, TypeList, Yield && ) -> typename std::enable_if< TypeList::leng
 // if i's dynamic type matches any in TypeList yield will be called with
 // parameter of the matched type
 template< typename T, typename TypeList, typename Yield >
-auto apply( T *i, TypeList tl, Yield &&yield ) -> typename std::enable_if< TypeList::length != 0 >::type
+auto apply( T *i, TypeList, Yield &&yield ) -> typename std::enable_if< TypeList::length != 0 >::type
 {
     if ( auto *ii = llvm::dyn_cast< typename TypeList::Head >( i ) )
         yield( ii );
@@ -329,7 +329,7 @@ auto apply( T *, TypeList, R r, Yield && ) -> typename std::enable_if< TypeList:
 // parameter of the matched type and its result returned
 // otherwise def will be returned
 template< typename R, typename T, typename TypeList, typename Yield >
-auto apply( T *i, TypeList tl, R def, Yield &&yield ) -> typename std::enable_if< TypeList::length != 0, R >::type
+auto apply( T *i, TypeList, R def, Yield &&yield ) -> typename std::enable_if< TypeList::length != 0, R >::type
 {
     if ( auto *ii = llvm::dyn_cast< typename TypeList::Head >( i ) )
         return yield( ii );
@@ -470,7 +470,7 @@ llvm::Function *getCalledFunction( C *call ) {
                 if ( ce->isCast() )
                     calledVal = ce->getOperand( 0 );
             },
-            [&]( llvm::Value *v ) { calledVal = nullptr; }
+            [&]( llvm::Value * ) { calledVal = nullptr; }
         );
     } while ( !called && calledVal );
 

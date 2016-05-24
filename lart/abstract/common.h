@@ -15,6 +15,7 @@ namespace abstract {
 
 struct Common
 {
+    virtual ~Common() { }
     struct Constrain {
         llvm::BasicBlock *code;
         std::map< llvm::Value *, llvm::Value * > map;
