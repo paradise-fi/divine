@@ -15,7 +15,7 @@
 #include <lart/support/meta.h>
 #include <lart/analysis/bbreach.h>
 
-#include <brick-assert.h>
+#include <brick-assert>
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 

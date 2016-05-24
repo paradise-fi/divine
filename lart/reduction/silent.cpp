@@ -10,7 +10,7 @@
 #include <lart/support/util.h>
 #include <lart/support/query.h>
 
-#include <brick-hlist.h>
+#include <brick-hlist>
 
 namespace lart {
 namespace reduction {

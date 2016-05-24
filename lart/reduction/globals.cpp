@@ -9,7 +9,7 @@
 #include <lart/support/query.h>
 #include <llvm/IR/CallSite.h>
 
-#include <brick-hlist.h>
+#include <brick-hlist>
 
 namespace lart {
 namespace reduction {
