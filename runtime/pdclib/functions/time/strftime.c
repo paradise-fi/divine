@@ -52,7 +52,7 @@
 struct tm;
 size_t strftime(char *s, size_t maxsize, const char *format, const struct tm *timeptr)
 {
-    __vm_fault( NotImplemented );
+    __vm_fault( _VM_F_NotImplemented );
     return 0;
 }
 
