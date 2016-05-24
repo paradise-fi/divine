@@ -17,7 +17,7 @@
 #include "limits"
 #include <sys/types.h>
 #if !defined(_WIN32)
-# if !defined(__sun__) && !defined(__linux__) && !defined(_AIX) && !defined(__native_client__) && !defined(__CloudABI__)
+# if !defined(__sun__) && !defined(__linux__) && !defined(_AIX) && !defined(__native_client__) && !defined(__CloudABI__) && !defined(__divine__)
 #   include <sys/sysctl.h>
 # endif // !defined(__sun__) && !defined(__linux__) && !defined(_AIX) && !defined(__native_client__) && !defined(__CloudABI__)
 # include <unistd.h>

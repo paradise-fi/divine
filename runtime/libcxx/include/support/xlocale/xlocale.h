@@ -25,6 +25,7 @@
 extern "C" {
 #endif
 
+#ifndef _PDCLIB_LOCALE_H
 #define LC_COLLATE_MASK  (1<<0)
 #define LC_CTYPE_MASK    (1<<1)
 #define LC_MESSAGES_MASK (1<<2)
@@ -34,8 +35,16 @@ extern "C" {
 #define LC_ALL_MASK      (LC_COLLATE_MASK | LC_CTYPE_MASK | LC_MESSAGES_MASK | \
                                   LC_MONETARY_MASK | LC_NUMERIC_MASK | LC_TIME_MASK)
 #define LC_GLOBAL_LOCALE ((locale_t)-1)
+#else
+// This is missing in PDClib
+#define LC_MESSAGES_MASK     (LC_TIME_MASK << 1)
+#undef LC_ALL_MASK
+#define LC_ALL_MASK      (LC_COLLATE_MASK | LC_CTYPE_MASK | LC_MESSAGES_MASK | \
+                                  LC_MONETARY_MASK | LC_NUMERIC_MASK | LC_TIME_MASK)
+#endif
 #define MB_CUR_MAX_L(l) MB_CUR_MAX
 
+#ifndef _PDCLIB_LOCALE_H
 typedef struct _xlocale *locale_t;
 
 static inline locale_t         duplocale(locale_t base) { return base; }
@@ -43,6 +52,7 @@ static inline int              freelocale(locale_t loc) { return 0; }
 static inline locale_t         newlocale(int mask, const char *locale, locale_t base) { return base; }
 static inline const char      *querylocale(int mask, locale_t loc) { return "C"; }
 static inline locale_t         uselocale(locale_t loc) { return LC_GLOBAL_LOCALE; }
+#endif
 
 static inline int vsnprintf_l(char *__s, size_t __n, locale_t __l, const char *__format, va_list __va) {
     return vsnprintf(__s, __n, __format, __va);
