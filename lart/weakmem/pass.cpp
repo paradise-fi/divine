@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2015 Petr Rockai <me@mornfall.net>
 //             (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
@@ -12,6 +13,7 @@
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Analysis/CaptureTracking.h>
+DIVINE_UNRELAX_WARNINGS
 #include <brick-string>
 #include <unordered_set>
 #include <string>

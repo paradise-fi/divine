@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2014 Petr Rockai <me@mornfall.net>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/pass.h>
 #include <lart/aa/andersen.h>

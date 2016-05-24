@@ -1,5 +1,6 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 //
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
@@ -15,6 +16,7 @@
 #endif
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Analysis/CaptureTracking.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/util.h>
 #include <lart/support/meta.h>

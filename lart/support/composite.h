@@ -1,8 +1,11 @@
 // -*- C++ -*- (c) 2015 Petr Rockai <me@mornfall.net>
 
-#include <lart/support/pass.h>
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
+DIVINE_UNRELAX_WARNINGS
+
+#include <lart/support/pass.h>
 #include <vector>
 
 namespace lart {

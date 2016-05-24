@@ -1,6 +1,9 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/Support/Casting.h>
+DIVINE_UNRELAX_WARNINGS
+
 #include <brick-query>
 
 #ifndef LART_SUPPORT_QUERY_H

@@ -1,7 +1,9 @@
 // -*- C++ -*- (c) 2014 Petr Rockai <me@mornfall.net>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
+DIVINE_UNRELAX_WARNINGS
 
 #ifndef LART_ABSTRACT_BCP
 #define LART_ABSTRACT_BCP

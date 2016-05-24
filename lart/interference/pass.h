@@ -3,9 +3,11 @@
 #include <lart/support/id.h>
 #include <lart/support/pass.h>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <iostream>
 #include <unordered_set>

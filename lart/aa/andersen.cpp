@@ -2,9 +2,11 @@
 
 #if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/CallSite.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <lart/aa/andersen.h>
 #include <iostream>

@@ -3,11 +3,13 @@
 //
 #include <type_traits>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/Analysis/CaptureTracking.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <brick-assert>
 #include <brick-types>

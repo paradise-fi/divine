@@ -1,8 +1,11 @@
 #if LLVM_MAJOR >= 3 && LLVM_MINOR >= 7
 
-#include <lart/interference/pass.h>
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/CFG.h>
+DIVINE_UNRELAX_WARNINGS
+
+#include <lart/interference/pass.h>
 #include <brick-assert>
 
 using namespace lart::interference;

@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2014 Petr Rockai <me@mornfall.net>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
+DIVINE_UNRELAX_WARNINGS
 
 namespace lart {
 namespace aa {

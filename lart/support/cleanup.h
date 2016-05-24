@@ -1,10 +1,12 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <type_traits>
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/ADT/Optional.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <brick-types>
 

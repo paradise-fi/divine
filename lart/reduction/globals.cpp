@@ -1,13 +1,15 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/CallSite.h>
+DIVINE_UNRELAX_WARNINGS
 
 #include <lart/reduction/passes.h>
 #include <lart/support/pass.h>
 #include <lart/support/util.h>
 #include <lart/support/query.h>
-#include <llvm/IR/CallSite.h>
 
 #include <brick-hlist>
 

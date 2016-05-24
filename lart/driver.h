@@ -12,6 +12,7 @@
 
 #include <iostream>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
@@ -23,6 +24,7 @@
 #include <llvm/IR/PassManager.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
+DIVINE_UNRELAX_WARNINGS
 
 namespace lart {
 

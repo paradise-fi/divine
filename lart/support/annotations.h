@@ -1,8 +1,10 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Constants.h>
+DIVINE_UNRELAX_WARNINGS
 #include <string>
 #include <sstream>
 #include <initializer_list>

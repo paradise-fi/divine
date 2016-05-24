@@ -4,7 +4,9 @@
 #include <lart/abstract/interval.h>
 #include <lart/support/pass.h>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>
+DIVINE_UNRELAX_WARNINGS
 
 namespace lart {
 namespace abstract {

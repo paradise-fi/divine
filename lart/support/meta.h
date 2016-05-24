@@ -1,13 +1,15 @@
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/PassManager.h>
+DIVINE_UNRELAX_WARNINGS
+
 #include <iostream>
 #include <brick-assert>
-
-#ifndef LART_SUPPORT_META_H
-#define LART_SUPPORT_META_H
-
 #include <string>
 #include <sstream>
 #include <iostream>
-#include <llvm/IR/PassManager.h>
+
+#ifndef LART_SUPPORT_META_H
+#define LART_SUPPORT_META_H
 
 namespace lart {
 
