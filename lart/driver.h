@@ -8,6 +8,7 @@
 #include <lart/weakmem/pass.h>
 #include <lart/reduction/passes.h>
 #include <lart/svcomp/passes.h>
+#include <lart/divine/passes.h>
 
 #include <iostream>
 
@@ -32,6 +33,7 @@ struct Driver {
         out.push_back( weakmem::meta() );
         insertPasses( out, reduction::passes() );
         insertPasses( out, svcomp::passes() );
+        insertPasses( out, divine::passes() );
         return out;
     }
 

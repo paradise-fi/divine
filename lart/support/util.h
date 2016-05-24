@@ -297,6 +297,47 @@ void bbPreorder( llvm::BasicBlock &bb, Pre pre ) {
     return bbDfs( bb, pre, []( llvm::BasicBlock * ) { } );
 }
 
+struct BBEdge : brick::types::Ord {
+    BBEdge() = default;
+    BBEdge( llvm::BasicBlock *from, unsigned idx ) : from( from ), succIndex( idx ) { }
+    llvm::BasicBlock *from = nullptr;
+    unsigned succIndex = 0;
+
+    bool operator==( const BBEdge &o ) const {
+        return from == o.from && succIndex == o.succIndex;
+    }
+
+    bool operator<( const BBEdge &o ) const {
+        return from < o.from || (from == o.from && succIndex < o.succIndex);
+    }
+};
+
+inline util::Set< BBEdge > getBackEdges( llvm::Function &fn ) {
+    std::vector< llvm::succ_iterator > stack;
+    util::Set< llvm::BasicBlock * > inStack;
+    util::Set< llvm::BasicBlock * > seen;
+    util::Set< BBEdge > backedges;
+    stack.emplace_back( succ_begin( fn.begin() ) );
+
+    while ( !stack.empty() ) {
+        auto *bb = stack.back().getSource();
+        if ( stack.back() == succ_end( bb ) ) { // post
+            stack.pop_back();
+            inStack.erase( bb );
+        } else {
+            auto *dst = *stack.back();
+            if ( inStack.count( dst ) )
+                backedges.emplace( stack.back().getSource(), stack.back().getSuccessorIndex() );
+            ++stack.back();
+            if ( seen.insert( dst ).second ) {
+                stack.emplace_back( succ_begin( dst ) );
+                inStack.insert( dst );
+            }
+        }
+    }
+    return backedges;
+}
+
 inline llvm::Value *getCalledValue( llvm::CallInst *call ) { return call->getCalledValue(); }
 inline llvm::Value *getCalledValue( llvm::InvokeInst *call ) { return call->getCalledValue(); }
 
