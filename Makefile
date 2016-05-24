@@ -26,7 +26,7 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 		  -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_C_COMPILER=$(CC) \
 		  -DBUILD_SHARED_LIBS=ON
 
-all: debug-divine
+all: debug
 
 $(OBJ)%/configure-stamp: CMakeLists.txt
 	echo configuring $*
@@ -46,8 +46,8 @@ debug-%: toolchain $(OBJ)debug/configure-stamp
 release-%: toolchain $(OBJ)release/configure-stamp
 	cmake --build $(OBJ)release --target $*
 
-debug: debug-divine
-release: release-divine
+debug: debug-divine debug-divinecc debug-lart
+release: release-divine release-divinecc release-lart
 check: debug-check
 unit: debug-unit
 unit-%: debug-unit-%
