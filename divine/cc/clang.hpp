@@ -14,6 +14,7 @@ DIVINE_RELAX_WARNINGS
 #include <clang/Frontend/DependencyOutputOptions.h>
 #include <llvm/Support/Errc.h> // for VFS
 #include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Support/raw_os_ostream.h>
 #include <brick-llvm>
 DIVINE_UNRELAX_WARNINGS
 
@@ -353,7 +354,7 @@ struct Compiler {
         // Build an invocation
         auto invocation = std::make_unique< clang::CompilerInvocation >();
         std::vector< std::string > cc1args = { "-cc1",
-                                                "-triple", "x86_64-unknown-linux-gnu",
+                                                "-triple", "x86_64-unknown-none-elf",
                                                 "-emit-obj",
                                                 "-mrelax-all",
                                                 // "-disable-free",
@@ -571,6 +572,11 @@ struct Compile {
     llvm::Module *getLinked() { return linker.get(); }
 
     void writeToFile( std::string filename ) {
+        llvm::raw_os_ostream cerr( std::cerr );
+        if ( llvm::verifyModule( *linker.get(), &cerr ) ) {
+            cerr.flush(); // otherwise nothing will be displayed
+            UNREACHABLE( "invalid bitcode" );
+        }
         std::error_code serr;
         ::llvm::raw_fd_ostream outs( filename, serr, ::llvm::sys::fs::F_None );
         WriteBitcodeToFile( linker.get(), outs );
@@ -637,16 +643,17 @@ struct Compile {
             if ( vfs )
                 compileAndLink( addSnapshot(), { "-std=c++14", "-Oz" } );
         } else {
-            compileLibrary( join( srcDir, "libpdc" ), { "-D_PDCLIB_BUILD" } );
+            compileLibrary( join( srcDir, "pdclib" ), { "-D_PDCLIB_BUILD" } );
             compileLibrary( join( srcDir, "limb" ) );
             std::initializer_list< std::string > cxxflags = { "-std=c++14"
                                                             // , "-fstrict-aliasing"
-                                                            , "-I/usr/include/libcxxabi/include"
-                                                            , "-I/usr/include/libcxxabi/src"
-                                                            , "-I/usr/include/filesystem"
+                                                            , "-I", join( includeDir, "libcxxabi/include" )
+                                                            , "-I", join( includeDir, "libcxxabi/src" )
+                                                            , "-I", join( includeDir, "libcxx/src" )
+                                                            , "-I", join( includeDir, "filesystem" )
                                                             , "-Oz" };
-            compileLibrary( join( srcDir, "cxxabi" ), cxxflags );
-            compileLibrary( join( srcDir, "cxx" ), cxxflags );
+            compileLibrary( join( srcDir, "libcxxabi" ), cxxflags );
+            compileLibrary( join( srcDir, "libcxx" ), cxxflags );
             compileLibrary( join( srcDir, "divine" ), cxxflags );
             compileLibrary( join( srcDir, "filesystem" ), cxxflags );
             compileLibrary( join( srcDir, "lart" ), cxxflags );
@@ -664,22 +671,22 @@ struct Compile {
     template< typename ... T >
     std::string join( T &&... xs ) { return brick::fs::joinPath( std::forward< T >( xs )... ); }
 
-    const std::string includeDir = "/usr/include";
-    const std::string srcDir = "/dvc";
+    const std::string includeDir = "/divine/include";
+    const std::string srcDir = "/divine/src";
 
     std::string precompiled;
     std::vector< Compiler > compilers;
     std::vector< std::thread > workers;
     brick::llvm::Linker linker;
-    bool vfs = true, dontLink = false;
+    bool vfs = false, dontLink = false; // FIXME: VFS
     bool libsOnly = false;
     std::string vfsSnapshot;
     std::string vfsInput;
     std::vector< std::string > commonFlags = { "-D__divine__"
-                                             , "-isystem", "/usr/include"
-                                             , "-isystem", "/usr/include/pdclib"
-                                             , "-isystem", "/usr/include/libm"
-                                             , "-isystem", "/usr/include/libcxx/include"
+                                             , "-isystem", includeDir
+                                             , "-isystem", join( includeDir, "pdclib" )
+                                             , "-isystem", join( includeDir, "libm" )
+                                             , "-isystem", join( includeDir, "libcxx/include" )
                                              , "-D_POSIX_C_SOURCE=2008098L"
                                              , "-D_LITTLE_ENDIAN=1234"
                                              , "-D_BYTE_ORDER=1234"
