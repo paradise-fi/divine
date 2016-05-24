@@ -24,8 +24,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-types>
 #include <brick-string>
 
-#include <divine/cc/snapshot.h>
-
 #include <algorithm>
 #include <iterator>
 #include <iostream>
@@ -521,14 +519,6 @@ struct Compile {
                                  LibsOnly, DisableVFS, VFSInput, VFSSnapshot,
                                  DontLink > >;
 
-    std::string addSnapshot() {
-        auto path = join( srcDir, "filesystem/fs-snapshot.cpp" );
-        std::stringstream snapshot;
-        compile::Snapshot::writeFile( snapshot, vfsSnapshot, vfsInput );
-        mastercc().mapVirtualFile( path, snapshot.str() );
-        return path;
-    }
-
     explicit Compile( Options opts = { } ) : compilers( 1 ), workers( 1 ) {
         for ( auto &opt : opts )
             opt.match( [this]( NumThreads ) {
@@ -554,8 +544,6 @@ struct Compile {
         ASSERT_EQ( workers.size(), compilers.size() );
 
         setupFS();
-        if ( !libsOnly && precompiled.empty() && vfs )
-            addSnapshot();
         if ( !dontLink )
             setupLibs();
     }
@@ -646,8 +634,6 @@ struct Compile {
             if ( !parsed )
                 throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
             linker.load( std::move( parsed.get() ) );
-            if ( vfs )
-                compileAndLink( addSnapshot(), { "-std=c++14", "-Oz" } );
         } else {
             compileLibrary( join( srcDir, "pdclib" ), { "-D_PDCLIB_BUILD" } );
             compileLibrary( join( srcDir, "limb" ) );
