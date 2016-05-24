@@ -150,9 +150,9 @@ struct Mask : lart::Pass {
     }
 };
 
-PassMeta interruptPass() {
-    return compositePassMeta< EliminateInterrupt, HoistMasks, Mask >( "interrupt",
-        "Optimize use of divine interrupt pasks" );
+PassMeta maskPass() {
+    return compositePassMeta< EliminateInterrupt, HoistMasks, Mask >( "mask",
+        "Optimize use of divine interrupt masks" );
 }
 
 }
