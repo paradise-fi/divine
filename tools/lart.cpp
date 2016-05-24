@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cassert>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
@@ -11,6 +12,7 @@
 #include <llvm/Support/raw_os_ostream.h>
 
 #include <llvm/IR/LLVMContext.h>
+DIVINE_UNRELAX_WARNINGS
 
 int main( int argc, char **argv ) {
     lart::Driver driver;
