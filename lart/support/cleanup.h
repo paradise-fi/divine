@@ -104,6 +104,24 @@ void makeExceptionsVisible( EhInfo ehi, llvm::Function &fn, ShouldTransformCall 
         fn.setPersonalityFn( ehi.personality );
 }
 
+template< typename AtExit >
+void atExits( llvm::Function &fn, AtExit &&atExit ) {
+    using query::operator&&;
+    using query::operator||;
+    auto *dunwind = fn.getParent()->getFunction( "__divine_unwind" );
+    auto exits = query::query( fn ).flatten()
+            .map( query::refToPtr )
+            // exits are ret, resume and call to __divine_unwind
+            .filter( query::is< llvm::ReturnInst > || query::is< llvm::ResumeInst > ||
+                    ( ( query::is< llvm::CallInst > || query::is< llvm::InvokeInst > ) && [&]( llvm::Instruction *i ) {
+                        llvm::CallSite cs( i );
+                        return dunwind && cs.getCalledFunction() == dunwind;
+                    } ) )
+            .freeze();
+    for ( auto *exit : exits )
+        atExit( exit );
+}
+
 template< typename ShouldClean, typename Cleanup >
 void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClean, Cleanup &&cleanup,
         analysis::Reachability *reach = nullptr, llvm::DominatorTree *dt = nullptr )
@@ -214,16 +232,13 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
     }
 
     // phase 3: clean all allocas that are visible at function exit point
-    auto exits = query::query( fn ).flatten()
-            .map( query::refToPtr )
-            .filter( query::is< llvm::ReturnInst > || query::is< llvm::ResumeInst > );
-    for ( auto *exit : exits ) {
+    atExits( fn, [&]( llvm::Instruction *exit ) {
         auto exitbb = exit->getParent();
         auto reaching = query::query( reachingAllocas[ exitbb ] )
                   .map( [&]( llvm::AllocaInst *alloca ) { return allocaReprInBB( alloca, exitbb ); } )
                   .freeze();
         cleanup( exit, reaching );
-    }
+    } );
 }
 
 }
