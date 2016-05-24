@@ -1,3 +1,4 @@
+#if 0
 // -*- C++ -*- (c) 2013 Milan Lenco <lencomilan@gmail.com>
 //             (c) 2014, 2015 Vladimír Štill <xstill@fi.muni.cz>
 
@@ -1813,3 +1814,4 @@ sighandler_t signal( int sig, sighandler_t handler ) {
     _sig::get( thread, sig ) = handler;
     return old;
 }
+#endif

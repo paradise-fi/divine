@@ -6,9 +6,6 @@
 #include <_PDCLIB_aux.h>
 #include <divine.h>
 #include <string.h>
-#include "../filesystem/fs-manager.h"
-
-namespace divine { namespace fs { VFS vfs; } }
 
 /*
  * Glue code that ties various bits of C and C++ runtime to the divine runtime
@@ -80,14 +77,14 @@ extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_han
     return 0;
 }
 
-extern "C" void *dlsym( void *, void * ) { __vm_fault( vm::Fault::NotImplemented ); return 0; }
-extern "C" void *__errno_location() { __vm_fault( vm::Fault::NotImplemented ); return 0; }
+extern "C" void *dlsym( void *, void * ) { __vm_fault( _VM_F_NotImplemented ); return 0; }
+extern "C" void *__errno_location() { __vm_fault( _VM_F_NotImplemented ); return 0; }
 
 extern "C" void _PDCLIB_Exit( int rv )
 {
     if ( rv )
-        __vm_fault( vm::Fault::Control, "exit called with non-zero value" );
-    __vm_fault( vm::Fault::NotImplemented ); // TODO unwind
+        __vm_fault( _VM_F_Control, "exit called with non-zero value" );
+    __vm_fault( _VM_F_NotImplemented ); // TODO unwind
 }
 
 extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {

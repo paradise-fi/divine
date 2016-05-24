@@ -18,7 +18,7 @@ extern "C" {
             case 1: r = main( 0 ); break;
             case 2: r = main( 0, 0 ); break;
             case 3: r = main( 0, 0, 0 ); break;
-            default: __vm_fault( vm::Fault::Control, "don't know how to run main()" );
+            default: __vm_fault( _VM_F_Control, "don't know how to run main()" );
         }
         exit( r );
     }

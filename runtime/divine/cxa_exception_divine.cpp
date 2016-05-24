@@ -12,10 +12,9 @@ struct LPReturn
     int h;
 } __attribute__((packed));
 
-using F = vm::Fault;
-
 extern "C" {
 
+#if 0
 /* The return value of the personality function becomes the return value of the
  * landingpad instruction itself. Care must be taken for the type to match what
  * the C++ frontend has generated for the landingpad. */
@@ -28,12 +27,13 @@ LPReturn __gxx_personality_v0( __cxa_exception *e )
 }
 
 void __cxa_call_unexpected( void *) {
-    __vm_fault( F::Control, "unexpected exception" );
+    __vm_fault( _VM_F_Control, "unexpected exception" );
 }
+#endif
 
 void __cxa_throw_divine( __cxa_exception *e )
 {
-    __vm_fault( F::NotImplemented );
+    __vm_fault( _VM_F_NotImplemented );
 #if 0
     int frameid = -1, destination = 0;
     int handler = -1;
@@ -49,7 +49,7 @@ void __cxa_throw_divine( __cxa_exception *e )
         lp = __divine_landingpad( frameid );
 
         if ( !lp ) {
-            __divine_problem( F::Control, "unhandled exception" );
+            __divine_problem( _VM_F_Control, "unhandled exception" );
             __divine_unwind( INT_MIN );
         }
 
@@ -87,13 +87,13 @@ void __cxa_throw_divine( __cxa_exception *e )
 
 }
 
-#define NOT_IMPLEMENTED { __vm_fault( F::NotImplemented ); return _URC_NO_REASON; }
+#define NOT_IMPLEMENTED { __vm_fault( _VM_F_NotImplemented ); return _URC_NO_REASON; }
 
 _Unwind_Reason_Code _Unwind_RaiseException (struct _Unwind_Exception *) NOT_IMPLEMENTED;
 _Unwind_Reason_Code _Unwind_Resume_or_Rethrow (struct _Unwind_Exception *) NOT_IMPLEMENTED;
 _Unwind_Reason_Code _Unwind_ForcedUnwind (struct _Unwind_Exception *, _Unwind_Stop_Fn, void *)
     NOT_IMPLEMENTED;
 void _Unwind_DeleteException (struct _Unwind_Exception *) {} /* do nothing */
-void _Unwind_SjLj_Register (struct SjLj_Function_Context *) { __vm_fault( F::NotImplemented ); }
-void _Unwind_SjLj_Unregister (struct SjLj_Function_Context *) { __vm_fault( F::NotImplemented ); }
-void * _Unwind_FindEnclosingFunction (void *pc) { __vm_fault( F::NotImplemented ); return 0; }
+void _Unwind_SjLj_Register (struct SjLj_Function_Context *) { __vm_fault( _VM_F_NotImplemented ); }
+void _Unwind_SjLj_Unregister (struct SjLj_Function_Context *) { __vm_fault( _VM_F_NotImplemented ); }
+void * _Unwind_FindEnclosingFunction (void *pc) { __vm_fault( _VM_F_NotImplemented ); return 0; }

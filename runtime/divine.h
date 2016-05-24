@@ -39,8 +39,6 @@ enum _VM_FaultAction
 };
 
 #ifdef __divine__
-#undef assert
-#define assert( x ) do { if ( !(x) ) __vm_fault( _VM_F_Assert ); } while (0)
 
 EXTERN_C
 
