@@ -112,7 +112,8 @@ int main( int argc, char **argv ) {
 
     if ( !dontLink && !libsOnly )
         driver.prune(  { "__sys_init", "main", "memmove", "memset",
-                "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size"
+                "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
+                "__md_get_function_meta"
                 } );
 
     driver.writeToFile( output );
