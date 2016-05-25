@@ -63,10 +63,11 @@
 
 #else
 
-#define ASSERT(x) ((void)0)
+#define ASSERT(...) ((void)0)
 #define ASSERT_PRED(p, x) ((void)0)
 #define ASSERT_EQ(x, y) ((void)0)
 #define ASSERT_LEQ(x, y) ((void)0)
+#define ASSERT_LT(x, y) ((void)0)
 #define ASSERT_NEQ(x, y) ((void)0)
 #define ASSERT_EQ_IDX(i, x, y) ((void)0)
 #endif
