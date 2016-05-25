@@ -17,16 +17,10 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/meta.h>
 #include <lart/support/query.h>
 #include <lart/support/util.h>
+#include <lart/support/metadata.h>
 
 namespace lart {
 namespace divine {
-
-bool tagModuleWithMeta( llvm::Module &m, std::string tag ) {
-    if ( m.getNamedMetadata( tag ) )
-        return false;
-    m.getOrInsertNamedMetadata( tag );
-    return true;
-}
 
 struct CflInterrupt : lart::Pass {
 
@@ -73,7 +67,7 @@ struct CflInterrupt : lart::Pass {
 
     using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
-        if ( !tagModuleWithMeta( m, "lart.divine.interrupt.cfl" ) )
+        if ( !tagModuleWithMetadata( m, "lart.divine.interrupt.cfl" ) )
             return llvm::PreservedAnalyses::all();
 
         auto *spcty = llvm::FunctionType::get( llvm::Type::getVoidTy( m.getContext() ), false );
@@ -115,7 +109,7 @@ struct MemInterrupt : lart::Pass {
 
     using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
-        if ( !tagModuleWithMeta( m, "lart.divine.interrupt.mem" ) )
+        if ( !tagModuleWithMetadata( m, "lart.divine.interrupt.mem" ) )
             return llvm::PreservedAnalyses::all();
 
         auto *ty = llvm::FunctionType::get( llvm::Type::getVoidTy( m.getContext() ), false );
