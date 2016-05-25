@@ -53,7 +53,7 @@ add_library( libdivine
   "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
   ${STRINGIFIED} )
 
-target_link_libraries( libdivine pthread )
+target_link_libraries( libdivine pthread liblart )
 target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
