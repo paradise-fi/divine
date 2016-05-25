@@ -22,6 +22,7 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/LLVMContext.h>
+#include <lart/driver.h>
 
 namespace divine {
 namespace vm {
@@ -42,6 +43,12 @@ struct BitCode {
         if ( !parsed )
             throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
         _module = std::move( parsed.get() );
+
+        lart::Driver lart;
+        lart.setup( "interrupt" );
+        lart.setup( "functionmeta" );
+        lart.process( _module.get() );
+
         _program.reset( new Program( _module ) );
     }
 
