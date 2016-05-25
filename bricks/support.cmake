@@ -27,7 +27,10 @@ function( bricks_make_runner name main flags )
   endforeach( src )
 
   set( main "
-    namespace brick { namespace unittest { std::vector< TestCaseBase * > *testcases\; } }
+    namespace brick { namespace unittest {
+        std::vector< TestCaseBase * > *testcases\;
+        std::set< std::string > *registered\;
+    } }
     int main( int argc, const char **argv ) {
       int r = 1\;
       ${main}

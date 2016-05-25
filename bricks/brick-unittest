@@ -52,6 +52,7 @@ namespace unittest {
 
 struct TestCaseBase;
 extern std::vector< TestCaseBase * > *testcases;
+extern std::set< std::string > *registered;
 
 struct TestCaseBase {
     std::string name;
@@ -59,6 +60,8 @@ struct TestCaseBase {
     virtual void run() = 0;
     virtual std::string group() = 0;
     virtual ~TestCaseBase() {}
+    TestCaseBase( std::string name )
+        : name( name ) {}
     std::string id() {
         return group() + "::" + name;
     }
@@ -334,10 +337,18 @@ struct TestCase : TestCaseBase {
         return _typeid< TestGroup >();
     }
 
-    TestCase() {
+    TestCase( std::string n )
+        : TestCaseBase( n )
+    {
         if ( !testcases )
             testcases = new std::vector< TestCaseBase * >;
-        testcases->push_back( this );
+        if ( !registered )
+            registered = new std::set< std::string >;
+        if ( registered->find( id() ) == registered->end() )
+        {
+            testcases->push_back( this );
+            registered->insert( id() );
+        }
     }
 };
 
@@ -359,8 +370,8 @@ struct TestCase : TestCaseBase {
     }                                                                   \
     template< typename SELF >                                           \
     static void  __attribute__((constructor)) __reg2_ ## n(){           \
-        static ::brick::unittest::TestCase< SELF, &SELF::n > tc;        \
-        tc.name = #n; tc.expect_failure = bad;                          \
+        static ::brick::unittest::TestCase< SELF, &SELF::n > tc ( #n ); \
+        tc.expect_failure = bad;                                        \
     }                                                                   \
     void n()
 
