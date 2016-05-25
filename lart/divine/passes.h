@@ -10,9 +10,10 @@ namespace lart {
     namespace divine {
 
         PassMeta interruptPass();
+        PassMeta functionMetaPass();
 
         inline std::vector< PassMeta > passes() {
-            return { interruptPass() };
+            return { interruptPass(), functionMetaPass() };
         }
     }
 }
