@@ -23,10 +23,10 @@
 
 using namespace divine::vm;
 
-ConstContext::PointerV Program::s2hptr( Program::Slot v )
+ConstContext::PointerV Program::s2hptr( Program::Slot v, int offset )
 {
     Eval< Program, ConstContext, value::Void > eval( *this, _ccontext );
-    return eval.s2ptr( v );
+    return eval.s2ptr( v, offset );
 }
 
 void Program::initStatic( Program::Slot v, llvm::Value *V )

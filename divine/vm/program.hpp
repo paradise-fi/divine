@@ -317,7 +317,7 @@ struct Program
         }
     }
 
-    ConstContext::PointerV s2hptr( Slot s );
+    ConstContext::PointerV s2hptr( Slot s, int offset = 0 );
 
     using Coverage = std::vector< std::vector< llvm::Value * > >;
     std::vector< Coverage > coverage;
