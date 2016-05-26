@@ -49,7 +49,6 @@ char *getenv( const char * ) noexcept NOT_IMPLEMENTED;
 void tzset() { __vm_fault( _VM_F_NotImplemented ); }
 int gettimeofday(struct timeval *, struct timezone *) NOT_IMPLEMENTED;
 int settimeofday(const struct timeval *, const struct timezone *) NOT_IMPLEMENTED;
-int raise( int sig ) NOT_IMPLEMENTED;
 
 int mbtowc( wchar_t *, const char *s, size_t )
 {
@@ -57,6 +56,18 @@ int mbtowc( wchar_t *, const char *s, size_t )
         __vm_fault( _VM_F_NotImplemented, 0 );
     return 0;
 }
+
+ssize_t read(int fd, void *buf, size_t count) NOT_IMPLEMENTED;
+ssize_t write(int fd, void *buf, size_t count) NOT_IMPLEMENTED;
+int open(const char *path_name, int flags) NOT_IMPLEMENTED;
+int close(int fd) NOT_IMPLEMENTED;
+int chmod(const char* path, mode_t mode) NOT_IMPLEMENTED;
+int fchmod(int fd, mode_t mode) NOT_IMPLEMENTED;
+int chown(const char* path, uid_t owner, gid_t group) NOT_IMPLEMENTED;
+int fchown(int fd, uid_t owner, gid_t group) NOT_IMPLEMENTED;
+int fcntl(int fd, int cmd, ...) NOT_IMPLEMENTED;
+off_t lseek(int fd, off_t offset, int whence) NOT_IMPLEMENTED;
+
 
 locale_t newlocale( int, const char *lc, locale_t ) {
     if ( strcmp( lc, "C" ) == 0 )

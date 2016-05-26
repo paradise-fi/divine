@@ -95,6 +95,15 @@ _Unwind_Reason_Code _Unwind_RaiseException (struct _Unwind_Exception *) NOT_IMPL
 _Unwind_Reason_Code _Unwind_Resume_or_Rethrow (struct _Unwind_Exception *) NOT_IMPLEMENTED;
 _Unwind_Reason_Code _Unwind_ForcedUnwind (struct _Unwind_Exception *, _Unwind_Stop_Fn, void *)
     NOT_IMPLEMENTED;
+unsigned long _Unwind_GetLanguageSpecificData(struct _Unwind_Context *)
+    { __vm_fault( _VM_F_NotImplemented ); return 0; }
+unsigned long _Unwind_GetIP(struct _Unwind_Context *) { __vm_fault( _VM_F_NotImplemented ); return 0; };
+unsigned long _Unwind_GetIPInfo (struct _Unwind_Context *, int *) { __vm_fault( _VM_F_NotImplemented ); return 0; };
+void _Unwind_SetIP (struct _Unwind_Context *, unsigned long) { __vm_fault( _VM_F_NotImplemented ); }
+unsigned long _Unwind_GetRegionStart (struct _Unwind_Context *) { __vm_fault( _VM_F_NotImplemented ); return 0; }
+
+
+
 void _Unwind_DeleteException (struct _Unwind_Exception *) {} /* do nothing */
 void _Unwind_SjLj_Register (struct SjLj_Function_Context *) { __vm_fault( _VM_F_NotImplemented ); }
 void _Unwind_SjLj_Unregister (struct SjLj_Function_Context *) { __vm_fault( _VM_F_NotImplemented ); }
