@@ -32,9 +32,59 @@ struct WithBC : Command
     }
 };
 
+struct Help
+{
+    std::string _cmd = std::string("");
+
+    template< typename P >
+    void run( P cmds )
+    {
+        std::string description = cmd::get_desc_by_name( cmds, _cmd );
+        if ( description.compare( "" ) == 0)
+        {
+            if ( _cmd.compare("") != 0 )
+            {
+                std::cerr << "Command '" << _cmd << "' not recognized.\n\n";
+                _cmd = std::string( "" );
+            }
+        }
+        else
+            std::cerr << description << std::endl;
+        if ( _cmd.compare( "" ) == 0 )
+        {
+            std::cerr << "To print details about specific command write 'divine help [command]'.\n\n";
+            std::cerr << cmd::describe( cmds ) << std::endl;
+        }
+    }
+};
+
 struct Verify : WithBC
 {
-    void run() { NOT_IMPLEMENTED(); }
+    int _max_mem = 256; // MB
+    int _max_time = 100;  // seconds
+    int _jobs = 1;
+    bool _no_counterexample = false;
+    std::string _report;
+    std::string _statistics;
+
+    void print_args()
+    {
+        std::cerr << "Verify model " << _file << " with given options:" << std::endl;
+        std::cerr << "Max. memory allowed [MB]: " << _max_mem << std::endl;
+        std::cerr << "Max. time allowed [sec]: " << _max_time << std::endl;
+        std::cerr << "Number of jobs: " << _jobs << std::endl;
+        if ( _no_counterexample )
+            std::cerr << "Do not print counter example." << std::endl;
+        else
+            std::cerr << "If program fails, print counter example." << std::endl;
+        std::cerr << "Give report in format: " << _report << std::endl;
+        std::cerr << "Give statistics in format: " << _statistics << std::endl;
+    }
+
+    void run()
+    {
+        print_args();
+    }
 };
 
 struct Run : WithBC
@@ -44,33 +94,77 @@ struct Run : WithBC
 
 struct Draw   : WithBC
 {
-    void run() { NOT_IMPLEMENTED(); }
+    int _number = 0;
+    int _distance = 0;
+    enum { All, None, Trace } _labels = None;
+    bool _bfs = false;
+    std::string _render = std::string( "dot -Tx11" );
+
+    void print_args()
+    {
+        std::cerr << "(" << _number << ") Draw model " << _file << " with given options:" << std::endl;
+        if ( _labels == All )
+            std::cerr << "Draw all node labels." << std::endl;
+        if ( _labels == None )
+            std::cerr << "Do not draw any labels." << std::endl;
+        if ( _labels == Trace )
+            std::cerr << "Draw only trace labels." << std::endl;
+        std::cerr << "Node distance [cm]: " <<  _distance << std::endl;
+        if ( _bfs )
+            std::cerr << "Draw as BFS." << std::endl;
+        std::cerr << "Render with " << _render << std::endl;
+    }
+
+    void run()
+    {
+        print_args();
+    }
 };
 
-struct Link : Command
+struct Cc     : Command
 {
-    std::vector< std::string > _files;
-    std::string _output;
+    std::string _file;
+    std::string _precompiled;
+    std::vector< std::string > _flags;
+    std::vector< std::string > _mics;
+    bool _libraries_only = false;
+    bool _fairness = false;
+    bool _dont_link = false;
+    int _jobs = 1;
 
-    Link() : _output( "a.bc" ) {}
-    void run() override
+    void print_args()
     {
-        brick::llvm::Linker linker;
-        ::llvm::SMDiagnostic err;
-        ::llvm::LLVMContext ctx;
-        for ( auto f : _files )
-        {
-            auto mod = ::llvm::parseIRFile( f, err, ctx );
-            if ( !mod )
-                throw std::runtime_error( "error loading bitcode file " + f + "\n    " +
-                                          err.getMessage().data() );
-            std::cerr << "I: linking " << f << std::endl;
-            linker.link( std::move( mod ) );
-        }
-        linker.prune( { "__sys_init", "main", "memmove", "memset", "memcpy", "llvm.global_ctors" },
-                      brick::llvm::Prune::AllUnused /* TODO UnusedModules */ );
-        brick::llvm::writeModule( linker.get(), _output );
+        std::cerr << "File to compile: " << _file << std::endl;
+        std::cerr << "Number of jobs: " << _jobs << std::endl;
+        std::cerr << "Precompiled: " << _precompiled << std::endl;
+
+        std::cerr << "Flags:";
+        for ( std::string flag : _flags )
+            std::cerr << " " << flag;
+        std::cerr << std::endl;
+
+        std::cerr << "Other options:";
+        for ( std::string opt : _mics )
+            std::cerr << " " << opt;
+        std::cerr << std::endl;
+
+        if (_libraries_only)
+            std::cerr << "Libraries only." << std::endl;
+        if (_fairness)
+            std::cerr << "Fairness." << std::endl;
+        if (_dont_link)
+            std::cerr << "Do not link" << std::endl;
     }
+
+    void run()
+    {
+        print_args();
+    }
+};
+
+struct Info   : WithBC
+{
+    void run() { NOT_IMPLEMENTED(); }
 };
 
 struct CLI : Interface
@@ -90,30 +184,74 @@ struct CLI : Interface
         return cmd::make_validator()->
             add( "file", []( std::string s, auto good, auto bad )
                  {
-                     if ( s[0] == '-' ) /* FIXME! */
+                     if ( s[0] == '-' ) /* FIXME! zisit, kde sa to rozbije */
                          return bad( cmd::BadFormat, "file must not start with -" );
                      if ( !brick::fs::access( s, F_OK ) )
                          return bad( cmd::BadContent, "file " + s + " does not exist");
                      if ( !brick::fs::access( s, R_OK ) )
                          return bad( cmd::BadContent, "file " + s + " is not readable");
                      return good( s );
-                 } );
+                 } ) ->
+            add( "label", []( std::string s, auto good, auto bad )
+                {
+                    if ( s.compare("none") == 0 )
+                        return good( Draw::None );
+                    if ( s.compare("all") == 0 )
+                        return good( Draw::All );
+                    if ( s.compare("trace") == 0 )
+                        return good( Draw::Trace );
+                    return bad( cmd::BadContent, s + " is not a valid label type" );
+                });
     }
 
-    auto parse()
+    // @return ParserT
+    auto commands()
     {
         auto v = validator();
-        auto linkopts = cmd::make_option_set< Link >( v )
-                        .add( "[-o {string}]", &Link::_output, std::string( "the output file" ) )
-                        .add( "{file}+", &Link::_files, std::string( "files to link" ) );
+
+        auto helpopts = cmd::make_option_set< Help >( v )
+                .add( "[{string}]", &Help::_cmd, std::string( "print man to specified command" ) );
+
         auto bcopts = cmd::make_option_set< WithBC >( v )
-                      .add( "[-D {string}]", &WithBC::_env, std::string( "add to the environment" ) )
-                      .add( "{file}", &WithBC::_file, std::string( "the bitcode file to load" ) );
-        auto p = cmd::make_parser( v )
-                 .add< Verify >( bcopts )
-                 .add< Run >( bcopts )
-                 .add< Draw >( bcopts )
-                 .add< Link >( linkopts );
+                .add( "[-D {string}]", &WithBC::_env, std::string( "add to the environment" ) )
+                .add( "{file}", &WithBC::_file, std::string( "the bitcode file to load" ) );
+
+        auto ccopts = cmd::make_option_set< Cc >( v )
+                .add( "[-j {int}]", &Cc::_jobs, std::string( "number of jobs" ) )
+                .add( "[--precompiled={string}]", &Cc::_precompiled, std::string( "no idea what this is" ) ) // MIXED
+                .add( "[--fair]", &Cc::_fairness, std::string( "fairness" ) )
+                .add( "[--libraries-only]", &Cc::_libraries_only, std::string( "compile only libraries" ) )
+                .add( "[--dont-link]", &Cc::_dont_link, std::string( "do not link" ) )
+                .add( "[-o {string}+]", &Cc::_flags, std::string( "compiler flags" ) )
+                .add( "[-{string}+]", &Cc::_mics, std::string( "any other arbitrary options" ) ) // MIXED
+                .add( "{file}", &Cc::_file, std::string( "input file to compile (of type .c, .cpp, .hpp ...)" ), true );
+
+        auto vrfyopts = cmd::make_option_set< Verify >( v )
+                .add( "[--max-memory {int}]", &Verify::_max_mem, std::string( "max memory allowed to use [in MB]" ) ) // MIXED
+                .add( "[--max-time {int}]", &Verify::_max_time, std::string( "max time allowed to take [in sec]") ) // MIXED
+                .add( "[--no-counterexample]", &Verify::_no_counterexample, std::string( "do not print any counter example, if program fails") )
+                .add( "[--report {string}]", &Verify::_report, std::string( "print report with given options" ) ) // MIXED
+                .add( "[--statistics {string}]", &Verify::_statistics, std::string( "print statistics with given options" ) ); // MIXED
+
+        auto drawopts = cmd::make_option_set< Draw >( v )
+                .add( "[--distance {int}|-d {int}]", &Draw::_distance, std::string( "node distance" ) ) // MIXED
+                .add( "[--labels {label}]", &Draw::_labels, std::string( "label all, none or only trace" ) ) // MIXED
+                .add( "[--bfs-layout]", &Draw::_bfs, std::string( "draw in bfs layout (levels)" ) )
+                .add( "[{int}]", &Draw::_number, std::string("any random number") );
+
+        auto parser = cmd::make_parser( v )
+                .add< Verify >( vrfyopts, bcopts )
+                .add< Run >( bcopts )
+                .add< Draw >( drawopts, bcopts )
+                .add< Info >( bcopts )
+                .add< Cc >( ccopts )
+                .add< Help >( helpopts );
+        return parser;
+    }
+
+    template< typename P >
+    auto parse( P p )
+    {
         return p.parse( _args.begin(), _args.end() );
     }
 
@@ -127,8 +265,21 @@ struct CLI : Interface
 
     virtual int main() override
     {
-        auto cmd = parse();
-        cmd.apply( [&]( Command &c )
+        auto cmds = commands();
+        auto cmd = parse( cmds );
+
+        if ( cmd.empty()  )
+        {
+            Help help;
+            help.run( cmds );
+            return 0;
+        }
+
+        cmd.match( [&]( Help &help )
+                   {
+                       help.run( cmds );
+                   },
+                   [&]( Command &c )
                    {
                        c.setup();
                        c.run();
