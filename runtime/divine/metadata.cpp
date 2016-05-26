@@ -1,5 +1,5 @@
 #include <cstring>
-#include <runtime/divine/metadata.h>
+#include <divine/metadata.h>
 
 extern const _MD_Function __md_functions[];
 extern const int __md_functions_count;
