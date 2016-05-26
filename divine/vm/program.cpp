@@ -439,8 +439,9 @@ Program::Position Program::insert( Position p )
     }
 
     ++ p.I; /* next please */
+    p.pc.instruction( p.pc.instruction() + 1 );
 
-    if ( ! ++ p.pc.instruction() )
+    if ( !p.pc.instruction() )
         throw std::logic_error(
             "Program::insert() in " + p.I->getParent()->getParent()->getName().str() +
             "\nToo many instructions in a function, capacity exceeded" );
@@ -570,7 +571,8 @@ void Program::pass()
 
         auto name = function->getName();
 
-        if ( !++ pc.function() )
+        pc.function( pc.function() + 1 );
+        if ( !pc.function() )
             throw std::logic_error(
                 "Program::build in " + name.str() +
                 "\nToo many functions, capacity exceeded" );
@@ -582,7 +584,7 @@ void Program::pass()
 
         makeFit( functions, pc.function() );
         functionmap[ function ] = pc.function();
-        pc.instruction() = 0;
+        pc.instruction( 0 );
 
         if ( !codepointers )
         {
@@ -613,7 +615,7 @@ void Program::pass()
         for ( auto block = function->begin(); block != function->end(); ++ block )
         {
             blockmap[ &*block ] = pc;
-            ++ pc.instruction(); /* leave one out for use as a bb label */
+            pc.instruction( pc.instruction() + 1 ); /* leave one out for use as a bb label */
 
             if ( block->begin() == block->end() )
                 throw std::logic_error(

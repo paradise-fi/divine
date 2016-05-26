@@ -301,7 +301,7 @@ struct Program
         }
     }
 
-    GenericPointer<> s2ptr( SlotRef sr )
+    GenericPointer s2ptr( SlotRef sr )
     {
         switch ( sr.slot.location )
         {

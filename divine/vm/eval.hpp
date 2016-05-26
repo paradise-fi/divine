@@ -97,7 +97,7 @@ template< typename T > struct IsFloat
 template< typename T > struct IntegerComparable
 {
     static const bool value = std::is_integral< typename T::Cooked >::value ||
-                              std::is_same< typename T::Raw, GenericPointer<> >::value;
+                              std::is_same< typename T::Raw, GenericPointer >::value;
 };
 
 template< typename T > struct IsArithmetic
@@ -463,7 +463,7 @@ struct Eval
             if ( i.opcode != OpCode::PHI )
                 return;
             f( i );
-            pc.instruction() ++;
+            pc.instruction( pc.instruction() + 1 );
         }
     }
 
@@ -481,7 +481,7 @@ struct Eval
         pc( target );
         // std::cerr << "switchBB: " << pc() << std::endl;
 
-        target.instruction() ++;
+        target.instruction( target.instruction() + 1 );
         auto &i0 = _program.instruction( target );
         if ( i0.opcode != OpCode::PHI )
             return;
@@ -510,7 +510,7 @@ struct Eval
                   } );
 
         heap().free( tmp );
-        target.instruction() += count - 1;
+        target.instruction( target.instruction() + count - 1 );
         pc( target );
     }
 
@@ -820,7 +820,7 @@ struct Eval
             if ( control().frame().v() != nullPointer() )
             {
                 next = pc();
-                next.instruction() ++;
+                next.instruction( next.instruction() + 1 );
             }
         } while ( control().frame().v() != nullPointer() );
     }
@@ -1281,7 +1281,7 @@ struct Eval
         std::tie( c._constants, c._globals ) = p->exportHeap( c.heap() );
         vm::Eval< vm::Program, TContext< vm::Program >, IntV > e( *p, c );
         auto pc = p->functionByName( "f" );
-        pc.instruction() = 1;
+        pc.instruction( 1 );
         c.control().enter( pc, vm::nullPointer(), args... );
         e.run();
         return e._result.v();

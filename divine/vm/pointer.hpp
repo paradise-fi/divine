@@ -26,15 +26,14 @@ namespace vm {
 
 namespace bitlevel = brick::bitlevel;
 
-enum class PointerType { Code, Const, Global, Heap };
+enum class PointerType : unsigned { Code, Const, Global, Heap };
 
 static const int PointerBits = 64;
 static const int PointerBytes = PointerBits / 8;
+static const int PointerObjBits = 32;
 static const int PointerTypeBits = 2;
-static const int PointerObjBits = 20;
 static const int PointerOffBits = PointerBits - (PointerTypeBits + PointerObjBits);
 using PointerRaw = brick::mem::bitvec< PointerBits >;
-template< int i > using PointerField = bitlevel::BitField< PointerRaw, i >;
 
 /*
  * There are multiple pointer types, distinguished by a two-bit type tag. The
@@ -44,62 +43,54 @@ template< int i > using PointerField = bitlevel::BitField< PointerRaw, i >;
  * the heap, but for Const and Global pointers through an indirection.
  */
 
-template< typename F1 = PointerField< PointerBits - PointerTypeBits >, typename... Fs >
 struct GenericPointer : brick::types::Comparable
 {
-    using Generic = GenericPointer<>;
-    using Bits = bitlevel::BitTuple<
-        bitlevel::BitField< PointerType, PointerTypeBits >, F1, Fs... >;
-    Bits _v;
-    static_assert( sizeof( _v ) * 8 == PointerBits, "pointer size mismatch" );
+    static const int ObjBits = 32;
+    static const int TypeBits = 2;
+    static const int OffBits = PointerBits - ObjBits - TypeBits;
 
-    GenericPointer( PointerType t )
+    using ObjT = brick::mem::bitvec< PointerObjBits >;
+    using OffT = brick::mem::bitvec< PointerOffBits >;
+
+    union Rep { /* FIXME type punning */
+        PointerRaw raw;
+        struct {
+            ObjT obj;
+            PointerType type:PointerTypeBits;
+            OffT off:PointerOffBits;
+        };
+    } _rep;
+
+    static_assert( sizeof( Rep ) == PointerBytes );
+
+    explicit GenericPointer( PointerType t, ObjT obj = 0, OffT off = 0 )
     {
-        bitlevel::get< 0 >( _v ).set( t );
+        _rep.obj = obj;
+        _rep.off = off;
+        _rep.type = t;
     }
+
+    ObjT object() { return _rep.obj; }
+    OffT offset() { return _rep.off; }
+    void offset( OffT o ) { _rep.off = o; }
+    void object( ObjT o ) { _rep.obj = o; }
+    PointerRaw raw() { return _rep.raw; }
 
     bool operator<= ( GenericPointer o ) const
     {
-        return _v < o._v || _v == o._v;
+        return _rep.raw <= o._rep.raw;
     }
 
-    template< int i >
-    auto field() { return bitlevel::get< i >( _v ); }
-    auto type() { return field< 0 >(); }
-
-    template< typename P >
-    P convertTo( P x = P() )
-    {
-        std::copy( _v.storage, _v.storage + sizeof( _v.storage ), x._v.storage );
-        return x;
-    }
+    auto type() { return _rep.type; }
+    void type( PointerType t ) { _rep.type = t; }
 
     template< typename P,
               typename Q = typename std::enable_if<
-                  sizeof( _v.storage ) == sizeof( P::Bits::storage ) >::type,
-              typename R = decltype( P() ) >
-    operator P() { return convertTo< P >(); }
-    operator Generic() { return convertTo< Generic >( Generic( PointerType::Code ) ); }
+                  std::is_same< Rep, typename P::Rep >::value >::type >
+    operator P() { P rv; rv._rep = _rep; return rv; }
 };
 
-static inline GenericPointer<> nullPointer() { return GenericPointer<>( PointerType::Code ); }
-
-template< int obj_w, int off_w >
-using SplitPointerBase = GenericPointer< PointerField< obj_w >, PointerField< off_w > >;
-
-template< int obj_w = PointerObjBits, int off_w = PointerOffBits >
-struct SplitPointer : SplitPointerBase< obj_w, off_w >
-{
-    SplitPointer( PointerType t, int obj = 0, int offset = 0 )
-        : SplitPointerBase< obj_w, off_w >( t )
-    {
-        this->template field< 1 >().set( obj );
-        this->template field< 2 >().set( offset );
-    }
-
-    auto object() { return this->template field< 1 >(); }
-    auto offset() { return this->template field< 2 >(); }
-};
+static inline GenericPointer nullPointer() { return GenericPointer( PointerType::Code ); }
 
 /*
  * Points to a particular instruction in the program. Constant code pointers
@@ -108,21 +99,23 @@ struct SplitPointer : SplitPointerBase< obj_w, off_w >
  * code pointer will give you a pointer to the next instruction. Program
  * counters are implemented as code pointers.
  */
-struct CodePointer : SplitPointer<>
+struct CodePointer : GenericPointer
 {
-    CodePointer( int f = 0, int i = 0 ) : SplitPointer( PointerType::Code, f, i ) {}
+    CodePointer( ObjT f = 0, OffT i = 0 ) : GenericPointer( PointerType::Code, f, i ) {}
 
-    auto function() { return this->template field< 1 >(); }
-    auto instruction() { return this->template field< 2 >(); }
+    auto function() { return _rep.obj; }
+    void function( ObjT f ) { _rep.obj = f; }
+    auto instruction() { return _rep.off; }
+    void instruction( OffT i ) { _rep.off = i; }
 };
 
 /*
  * Pointer to constant memory. This is separate from a GlobalPointer, because
  * it allows an important optimisation of memory footprint in PersistentHeap.
  */
-struct ConstPointer : SplitPointer<>
+struct ConstPointer : GenericPointer
 {
-    ConstPointer( int obj = 0, int off = 0 ) : SplitPointer( PointerType::Const, obj, off ) {}
+    ConstPointer( ObjT obj = 0, OffT off = 0 ) : GenericPointer( PointerType::Const, obj, off ) {}
 };
 
 /*
@@ -134,9 +127,9 @@ struct ConstPointer : SplitPointer<>
  * the global variable object this pointer points to. The offset is in bytes,
  * counting from the start of the slot.
  */
-struct GlobalPointer : SplitPointer<>
+struct GlobalPointer : GenericPointer
 {
-    GlobalPointer( int obj = 0, int off = 0 ) : SplitPointer( PointerType::Global, obj, off ) {}
+    GlobalPointer( ObjT obj = 0, OffT off = 0 ) : GenericPointer( PointerType::Global, obj, off ) {}
 };
 
 /* HeapPointer does not exist here, its layout is defined by a Memory object */
@@ -148,17 +141,17 @@ static inline std::ostream &operator<<( std::ostream &o, GenericPointer p )
 
 static inline std::ostream &operator<<( std::ostream &o, CodePointer p )
 {
-    return o << "[code " << p.function().get() << " " << p.instruction().get() << "]";
+    return o << "[code " << p.function() << " " << p.instruction() << "]";
 }
 
 static inline std::ostream &operator<<( std::ostream &o, GlobalPointer p )
 {
-    return o << "[global " << p.object().get() << " " << p.offset().get() << "]";
+    return o << "[global " << p.object() << " " << p.offset() << "]";
 }
 
 static inline std::ostream &operator<<( std::ostream &o, ConstPointer p )
 {
-    return o << "[const " << p.object().get() << " " << p.offset().get() << "]";
+    return o << "[const " << p.object() << " " << p.offset() << "]";
 }
 
 }
@@ -180,11 +173,11 @@ struct TestPointer
 
 namespace std {
 
-template< typename... Bits >
-struct hash< divine::vm::GenericPointer< Bits... > > {
-    size_t operator()( divine::vm::GenericPointer< Bits... > ptr ) const
+template<>
+struct hash< divine::vm::GenericPointer > {
+    size_t operator()( divine::vm::GenericPointer ptr ) const
     {
-        return *reinterpret_cast< uint32_t * >( ptr._v.storage );
+        return *static_cast< uint32_t * >( ptr._v.storage );
     }
 };
 

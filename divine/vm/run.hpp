@@ -100,7 +100,7 @@ struct RunContext
         }
 
         bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.v() ) == fr; }
-        void setSched( CodePointer p ) { _sched = p; _sched.instruction() = 1; }
+        void setSched( CodePointer p ) { _sched = p; _sched.instruction( 1 ); }
         void setFault( CodePointer p ) { _fault = p; }
         void setIfl( PointerV p ) { _ifl = p; }
 
@@ -160,7 +160,7 @@ struct RunContext
         std::tie( _control._constants, _control._globals ) = _program.exportHeap( heap() );
 
         auto ipc = _program.functionByName( "__sys_init" );
-        ipc.instruction() = 1;
+        ipc.instruction( 1 );
         _control.enter( ipc, nullPointer(), PointerV( nullPointer() ) );
     }
 

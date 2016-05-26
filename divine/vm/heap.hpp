@@ -43,8 +43,8 @@ namespace mem = brick::mem;
 
 struct MutableHeap
 {
-    using ExceptionPool = mem::Pool<  2, 20, uint32_t, 2, 1, 0 >;
-    using ObjectPool = mem::Pool< 32, 16, uint64_t, 1, 2, 0 >;
+    using ExceptionPool = mem::Pool<>;
+    using ObjectPool = mem::Pool<>;
 
     ExceptionPool _exceptions;
     ObjectPool _objects, _shadows;
@@ -67,32 +67,21 @@ struct MutableHeap
      * start, so that the type tag of GenericPointer and the offset are stored
      * within the tag area of the Pool Pointer.
      */
-    struct Pointer : GenericPointer< PointerField< 30 >, PointerField< 32 > >
+    struct Pointer : GenericPointer
     {
-        auto offset() { return this->template field< 1 >(); }
-        auto object() { return this->template field< 2 >(); }
         bool null() { return object() == 0 && offset() == 0; }
         Pointer() : GenericPointer( PointerType::Heap ) {}
         Pointer operator+( int off ) const
         {
             Pointer r = *this;
-            r.offset() += off;
+            r.offset( r.offset() + off );
             return r;
         }
     };
 
     using PointerV = value::Pointer< Pointer >;
 
-    template< typename T, typename F >
-    T convert( F f )
-    {
-        T t;
-        std::copy( f._v.storage, f._v.storage + sizeof( f._v.storage ), t._v.storage );
-        return t;
-    }
-
-    Internal p2i( Pointer p ) { return convert< Internal >( p ); }
-    Pointer i2p( Internal p ) { return convert< Pointer >( p ); }
+    Internal p2i( Pointer p ) { Internal i; i.raw( p.object() ); return i; }
 
     PointerV make( int size )
     {
@@ -100,9 +89,10 @@ struct MutableHeap
         int shsz = sizeof( ExceptionPool::Pointer ) + ( size % 4 ? 1 + size / 4 : size / 4 );
         _shadows.materialise( i, shsz, _objects );
 
-        auto p = PointerV( i2p( i ) );
-        p._v.type() = PointerType::Heap;
-        return p;
+        Pointer p;
+        p.object( i.raw() );
+        p.offset( 0 );
+        return PointerV( p );
     }
 
     bool free( PointerV p )
@@ -163,7 +153,7 @@ struct MutableHeap
     {
         write( p, t );
         Pointer pv = p.v();
-        pv.offset() += sizeof( typename T::Raw );
+        pv.offset( pv.offset() + sizeof( typename T::Raw ) );
         p.v( pv );
     }
 
@@ -178,7 +168,7 @@ struct MutableHeap
     void skip( PointerV &p, int bytes )
     {
         Pointer pv = p.v();
-        pv.offset() += bytes;
+        pv.offset( pv.offset() + bytes );
         p.v( pv );
     }
 
@@ -208,7 +198,7 @@ struct MutableHeap
 
 static inline std::ostream &operator<<( std::ostream &o, MutableHeap::Pointer p )
 {
-    return o << "[heap " << p.object().get() << " " << p.offset().get() << "]";
+    return o << "[heap " << p.object() << " " << p.offset() << "]";
 }
 
 struct PersistentHeap
@@ -222,27 +212,6 @@ namespace t_vm {
 
 struct MutableHeap
 {
-    TEST(pointer)
-    {
-        vm::MutableHeap heap;
-        using P = vm::MutableHeap::Pointer;
-        P p;
-        ASSERT_EQ( p.offset().get(), 0 );
-        p.offset() = 10;
-        p = heap.i2p( heap.p2i( p ) );
-        ASSERT_EQ( p.offset().get(), 10 );
-    }
-
-    TEST(internal)
-    {
-        vm::MutableHeap heap;
-        using I = vm::MutableHeap::Internal;
-        I i( 10, 20 );
-        auto p = heap.i2p( i );
-        ASSERT_EQ( p.offset().get(), 0 );
-        p.offset() = 10;
-    }
-
     TEST(alloc)
     {
         using I = vm::value::Int< 32, true >;

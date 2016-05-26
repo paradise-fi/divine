@@ -127,8 +127,8 @@ struct Float : Base
 
 struct HeapPointerPlaceholder
 {
-    operator GenericPointer<>() { return GenericPointer<>( PointerType::Heap ); }
-    HeapPointerPlaceholder( GenericPointer<> ) {}
+    operator GenericPointer() { return GenericPointer( PointerType::Heap ); }
+    HeapPointerPlaceholder( GenericPointer ) {}
     friend std::ostream & operator<<( std::ostream &o, HeapPointerPlaceholder )
     {
         return o << "[placeholder]";
@@ -139,25 +139,25 @@ template< typename HeapPointer = HeapPointerPlaceholder >
 struct Pointer : Base
 {
     static const bool IsPointer = true;
-    using Raw = GenericPointer<>;
+    using Raw = GenericPointer;
     using Cooked = Raw;
     Raw _v;
     bool _obj_defined:1, _off_defined:1;
 
     template< typename P >
-    auto offset( GenericPointer<> p ) { return P( p ).offset(); }
+    auto offset( GenericPointer p ) { return P( p ).offset(); }
 
     template< typename L >
     auto withType( L l )
     {
         if ( _v.type() == PointerType::Const )
-            return GenericPointer<>( l( ConstPointer( _v ) ) );
+            return GenericPointer( l( ConstPointer( _v ) ) );
         if ( _v.type() == PointerType::Global )
-            return GenericPointer<>( l( GlobalPointer( _v ) ) );
+            return GenericPointer( l( GlobalPointer( _v ) ) );
         if ( _v.type() == PointerType::Heap )
-            return GenericPointer<>( l( HeapPointer( _v ) ) );
+            return GenericPointer( l( HeapPointer( _v ) ) );
         if ( _v.type() == PointerType::Code )
-            return GenericPointer<>( l( CodePointer( _v ) ) );
+            return GenericPointer( l( CodePointer( _v ) ) );
         UNREACHABLE( "impossible pointer type" );
     }
 
@@ -170,13 +170,13 @@ struct Pointer : Base
         return o;
     }
 
-    Pointer( GenericPointer<> x = nullPointer(), bool d = true )
+    Pointer( GenericPointer x = nullPointer(), bool d = true )
         : _v( x ), _obj_defined( d ), _off_defined( d ) {}
 
     Pointer operator+( int off )
     {
         Pointer r = *this;
-        r._v = withType( [&off]( auto p ) { p.offset() += off; return p; } );
+        r._v = withType( [&off]( auto p ) { p.offset( p.offset() + off ); return p; } );
         return r;
     }
 
@@ -189,15 +189,15 @@ struct Pointer : Base
     }
 
     bool defined() { return _obj_defined && _off_defined; }
-    GenericPointer<> v() { return _v; }
-    void v( GenericPointer<> p ) { _v = p; }
+    bool pointer() { return defined(); }
+    GenericPointer v() { return _v; }
+    void v( GenericPointer p ) { _v = p; }
     Int< 1, false > compare( Pointer o, bool v ) { return Bool( v, o.defined() && defined() ); }
 
     template< int w, bool s > operator Int< w, s >()
     {
         using IntPtr = Int< PointerBits, false >;
-        return IntPtr( *reinterpret_cast< IntPtr::Raw * >( _v._v.storage ),
-                       defined() ? IntPtr::_full : 0 );
+        return IntPtr( _v.raw(), defined() ? IntPtr::_full : 0 );
     }
 
     template< int w, bool s > Pointer( Int< w, s > i )
