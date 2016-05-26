@@ -96,8 +96,22 @@ struct Int : Base
     Int operator|( Int o ) { return bitwise( _v | o._v, (_m &  _v) | (o._m &  o._v), o ); }
     Int operator&( Int o ) { return bitwise( _v & o._v, (_m & ~_v) | (o._m & ~o._v), o ); }
     Int operator^( Int o ) { return bitwise( _v ^ o._v, 0, o ); }
-    Int operator<<( Int< width, false > sh ) { NOT_IMPLEMENTED(); }
-    Int operator>>( Int< width, false > sh ) { NOT_IMPLEMENTED(); }
+    Int operator<<( Int< width, false > sh ) {
+        if ( !sh.defined() )
+            return Int( 0, 0, false );
+        return Int( v() << sh.v(), _m << sh._v | bitlevel::fill( 1 << sh._v ) , false );
+    }
+    Int operator>>( Int< width, false > sh ) {
+        if ( !sh.defined() )
+            return Int( 0, 0, false );
+
+        const int bits = 8 * sizeof( Raw );
+        Raw mask = _m >> sh._v;
+        if ( !is_signed || _m >> ( bits - 1 ) ) // unsigned or defined sign bit
+                mask |= ~bitlevel::fill( 1 << ( bits - sh._v ) );
+
+        return Int( v() >> sh.v(), mask, false );
+    }
 
     friend std::ostream & operator<<( std::ostream &o, Int v )
     {
@@ -283,6 +297,23 @@ struct TestInt
         ASSERT( (a & b).v() == 0 );
         ASSERT( (a & b).defined() );
         ASSERT( !(a | b).defined() );
+    }
+
+    TEST ( shift_righ )
+    {
+        vm::value::Int< 16, true > a( 115, 0x7FFF );
+        vm::value::Int< 16 > b( 2, 0xFFFF );
+        auto res = a >> b;
+        ASSERT_EQ( res.v(), 115 >> 2 );
+        ASSERT_EQ( res._m, 0x1FFF );
+
+        vm::value::Int< 16 > c( 1135, 0xFFF ), d( 2, 0xFFFF );
+        auto res1 = c >> d;
+        ASSERT_EQ( res1.v(), 1135 >> 2 );
+        ASSERT_EQ( res1._m, 0x83FF );
+
+        vm::value::Int< 16 > e( 1, 0xFEFF );
+        ASSERT( !( c >> e).defined() );
     }
 };
 

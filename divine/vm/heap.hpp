@@ -183,6 +183,8 @@ struct MutableHeap
         auto from = _from_heap.unsafe_bytes( _from );
         auto to = unsafe_bytes( _to );
         Pointer from_v = _from.v(), to_v = _to.v();
+        if ( from_v.null() || to_v.null() )
+            return false;
         int from_s( size( _from ) ), to_s ( size( _to ) );
         int from_off( from_v.offset() ), to_off( to_v.offset() );
         if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )

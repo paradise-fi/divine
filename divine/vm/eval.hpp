@@ -285,7 +285,7 @@ struct Eval
         auto to = operandCk< PointerV >( 1 );
         /* std::cerr << "store of *" << s2ptr( operand( 0 ) ) << " to "
            << operand< PointerV >( 1 ) << std::endl; */
-        if ( !heap().copy( s2ptr( operand( 0 ) ), to, operand( 0 ).width ) )
+        if ( !heap().copy( s2ptr( operand( 0 ) ), ptr2h( to ), operand( 0 ).width ) )
             fault( _VM_F_Memory );
     }
 
@@ -693,6 +693,7 @@ struct Eval
                 auto f = program().functionByName( str );
                 auto p = r;
                 heap().shift( p, IntV( program().function( f ).datasize + 2 * PointerBytes ) );
+                heap().shift( p, IntV( program().function( f ).argcount ));
                 heap().shift( p, PointerV( f ) );
                 result( r );
                 return;
@@ -701,7 +702,7 @@ struct Eval
                 fault( Fault( operandCk< IntV >( 0 ).v() ) );
                 return;
             case BuiltinMask:
-                control().mask( operandCk< IntV >( 0 ).v() );
+                result( IntV( control().mask( operandCk< IntV >( 0 ).v() ) ) );
                 return;
             case BuiltinMakeObject:
             {

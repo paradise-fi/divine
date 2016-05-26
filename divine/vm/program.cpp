@@ -196,6 +196,7 @@ void Program::overlaySlot( int fun, Slot &result, llvm::Value *val )
         for ( int i = 0; good && i < result.width; ++i )
             for ( auto v : c[ result.offset + i ] )
                 if ( lifetimeOverlap( val, v ) ) {
+                    ASSERT( valuemap.find( v ) != valuemap.end());
                     auto s = valuemap[ v ].slot;
                     result.offset = s.offset + s.width;
                     good = false;
@@ -229,6 +230,7 @@ Program::SlotRef Program::insert( int function, llvm::Value *val, Slot::Location
     {
         auto r = insert( function, const_cast< llvm::GlobalObject * >( GA->getBaseObject() ), sl );
         valuemap.insert( std::make_pair( val, r ) );
+        ASSERT( r.slot.location != Slot::Invalid );
         return r;
     }
 
@@ -256,6 +258,7 @@ Program::SlotRef Program::insert( int function, llvm::Value *val, Slot::Location
         auto pointee = insert( 0, G->getInitializer(),
                                G->isConstant() ? Slot::Constant : Slot::Global );
         auto p = s2ptr( pointee );
+        ASSERT( sref.slot.location != Slot::Invalid );
         _toinit.emplace_back( [=]{
                 initStatic( sref.slot, value::Pointer<>( p ) );
                 _doneinit.insert( G );
@@ -264,12 +267,12 @@ Program::SlotRef Program::insert( int function, llvm::Value *val, Slot::Location
     else if ( isa< llvm::Constant >( val ) || isCodePointer( val ) )
         _toinit.emplace_back( [=]{ initStatic( sref.slot, val ); } );
 
+    ASSERT( sref.slot.location != Slot::Invalid );
     valuemap.insert( std::make_pair( val, sref ) );
 
-    if ( !isa< llvm::GlobalVariable >( val ) )
-        if ( auto U = dyn_cast< llvm::User >( val ) )
-            for ( int i = 0; i < int( U->getNumOperands() ); ++i )
-                insert( function, U->getOperand( i ) );
+    if ( auto U = dyn_cast< llvm::User >( val ) )
+        for ( int i = 0; i < int( U->getNumOperands() ); ++i )
+            insert( function, U->getOperand( i ) );
 
     return sref;
 }

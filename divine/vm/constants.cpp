@@ -38,6 +38,9 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
     auto ptr = eval.s2ptr( v );
     auto C = dyn_cast< llvm::Constant >( V );
 
+    if ( auto GA = dyn_cast< llvm::GlobalAlias >( V ) ) 
+        C = GA->getBaseObject();
+
     if ( !valuemap.count( V ) )
     {
         V->dump();
@@ -57,7 +60,10 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
             if ( !_doneinit.count( op ) )
                 done = false;
             if ( !isa< llvm::GlobalVariable >( op ) )
-                _toinit.emplace_back( [=]{ initStatic( valuemap[ op ].slot, op ); } );
+                _toinit.emplace_back( [= ]{
+                    ASSERT( valuemap.find(op) != valuemap.end() );
+                    initStatic( valuemap[ op ].slot, op );
+                } );
         }
 
     if ( auto CE = dyn_cast< llvm::ConstantExpr >( V ) )

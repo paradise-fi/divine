@@ -85,14 +85,44 @@ struct Shadow
 
     Shadow( ShadowByte *f, ShadowException *e, int s ) : _first( f ), _except( e ), _size( s ) {}
 
-    template< typename V >
-    typename std::enable_if< !V::IsPointer >::type update( int, V )
+    void update( int, value::Void )
     {
     }
 
-    template< typename V >
-    typename std::enable_if< !V::IsPointer >::type query( int, V& )
+    void query( int, value::Void )
     {
+    }
+
+    template < typename T >
+    void update( int, value::Float< T > )
+    {
+        // NOT_IMPLEMENTED();
+    }
+
+    template < typename T>
+    void query( int, value::Float< T > )
+    {
+        // NOT_IMPLEMENTED();
+    }
+
+    template< int Width, bool IsSigned >
+    void update( int offset, value::Int< Width, IsSigned > v )
+    {
+        if ( v._pointer ) {
+            update( offset, PointerV(v) );
+        }
+        // ToDo
+    }
+
+    template< int Width, bool IsSigned >
+    void query( int offset, value::Int< Width, IsSigned >& v )
+    {
+        auto &a = _first[ offset / 4 ];
+        if ( a.pointer && a.is_first ) {
+            v._pointer = true;
+            v.defined( true );
+        }
+        // ToDo
     }
 
     template< typename V >
