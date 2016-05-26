@@ -75,6 +75,7 @@ struct GenericPointer : brick::types::Comparable
     void offset( OffT o ) { _rep.off = o; }
     void object( ObjT o ) { _rep.obj = o; }
     PointerRaw raw() { return _rep.raw; }
+    void raw( PointerRaw r ) { _rep.raw = r; }
 
     bool operator<= ( GenericPointer o ) const
     {
