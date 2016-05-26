@@ -63,6 +63,9 @@ enum Builtin /* see divine.h for prototypes & documentation */
     BuiltinMask,
     BuiltinJump,
     BuiltinFault,
+    BuiltinCflInterrupt,
+    BuiltinMemInterrupt,
+    BuiltinInterrupt,
 
     /* feedback */
     BuiltinTrace,

@@ -299,6 +299,12 @@ Builtin Program::builtin( llvm::Function *f )
         return BuiltinJump;
     if ( name == "__vm_fault" )
         return BuiltinFault;
+    if ( name == "__vm_cfl_interrupt" )
+        return BuiltinCflInterrupt;
+    if ( name == "__vm_mem_interrupt" )
+        return BuiltinMemInterrupt;
+    if ( name == "__vm_interrupt" )
+        return BuiltinInterrupt;
 
     if ( name == "__vm_trace" )
         return BuiltinTrace;

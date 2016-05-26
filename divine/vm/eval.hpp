@@ -137,6 +137,7 @@ struct Eval
     Instruction *_instruction;
     Instruction &instruction() { return *_instruction; }
     Result _result;
+    std::unordered_set< GenericPointer<> > _cfl_visited;
     bool _interrupted;
 
     using PointerV = value::Pointer< HeapPointer >;
@@ -283,7 +284,6 @@ struct Eval
            << operand< PointerV >( 1 ) << std::endl; */
         if ( !heap().copy( s2ptr( operand( 0 ) ), to, operand( 0 ).width ) )
             fault( _VM_F_Memory );
-        _interrupted = true;
     }
 
     void implement_load()
@@ -405,8 +405,7 @@ struct Eval
             {
                 if ( instruction().values.size() > 1 )
                     _result = operand< Result >( 0 );
-            } else
-                _interrupted = true;
+            }
             control().frame( nullPointer() );
             return;
         }
@@ -614,6 +613,18 @@ struct Eval
         return str;
     }
 
+    void set_interrupted()
+    {
+        _cfl_visited.clear();
+        _interrupted = true;
+    }
+
+    void clear_interrupted()
+    {
+        _cfl_visited.clear();
+        _interrupted = false;
+    }
+
     void implement_builtin()
     {
         switch( instruction().builtin )
@@ -636,6 +647,15 @@ struct Eval
                 return control().setFault( operandCk< PointerV >( 0 ) );
             case BuiltinSetIfl:
                 return control().setIfl( operandCk< PointerV >( 0 ) );
+            case BuiltinInterrupt:
+                return set_interrupted(); /* unconditionally */
+            case BuiltinCflInterrupt:
+                if ( _cfl_visited.count( pc() ) )
+                    return set_interrupted();
+                _cfl_visited.insert( pc() );
+                return;
+            case BuiltinMemInterrupt:
+                return set_interrupted(); /* TODO */
             case BuiltinJump:
             {
                 // std::cerr << "======= jump" << std::endl;
@@ -644,7 +664,7 @@ struct Eval
                 if ( forget )
                 {
                     control().mask( false );
-                    _interrupted = false;
+                    clear_interrupted();
                 }
                 if ( tgt == nullPointer() )
                     return fault( _VM_F_Hypercall );
