@@ -406,6 +406,11 @@ struct Eval
                 if ( instruction().values.size() > 1 )
                     _result = operand< Result >( 0 );
             }
+            else
+            {
+                control().mask( false );
+                set_interrupted();
+            }
             control().frame( nullPointer() );
             return;
         }
