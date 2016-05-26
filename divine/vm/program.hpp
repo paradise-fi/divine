@@ -267,7 +267,8 @@ struct Program
     }
 
     template< typename Container >
-    static void makeFit( Container &c, int index ) {
+    static void makeFit( Container &c, int index )
+    {
         c.resize( std::max( index + 1, int( c.size() ) ) );
     }
 
@@ -278,7 +279,7 @@ struct Program
 
     Function &function( CodePointer pc )
     {
-        ASSERT_LEQ( pc.function(), int( functions.size() ) - 1 );
+        ASSERT_LT( pc.function(), functions.size() );
         ASSERT( pc.function() > 0 );
         return functions[ pc.function() ];
     }

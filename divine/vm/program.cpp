@@ -437,7 +437,7 @@ Program::Position Program::insert( Position p )
     if ( ! ++ p.pc.instruction() )
         throw std::logic_error(
             "Program::insert() in " + p.I->getParent()->getParent()->getName().str() +
-            "\nToo many instructions in a basic block, capacity exceeded" );
+            "\nToo many instructions in a function, capacity exceeded" );
 
     return p;
 }
