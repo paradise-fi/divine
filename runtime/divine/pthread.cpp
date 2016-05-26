@@ -13,7 +13,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <utility>
-// TODO include kernel
+#include <divine/dios.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"
@@ -230,7 +230,7 @@ bool _canceled() {
 }
 
 template < bool cancelPoint, typename Cond >
-static void _wait( drt::FencedInterruptMask &mask, Cond &&cond )
+static void _wait( dios::FencedInterruptMask &mask, Cond &&cond )
         __attribute__( ( __always_inline__, __flatten__ ) ) {
     while ( cond() && ( !cancelPoint || !_canceled() ) )
         mask.release();
@@ -239,19 +239,19 @@ static void _wait( drt::FencedInterruptMask &mask, Cond &&cond )
 }
 
 template < typename Cond >
-static void waitOrCancel( drt::FencedInterruptMask &mask, Cond &&cond )
+static void waitOrCancel( dios::FencedInterruptMask &mask, Cond &&cond )
         __attribute__( ( __always_inline__, __flatten__ ) ) {
     return _wait< true >( mask, std::forward< Cond >( cond ) );
 }
 
 template < typename Cond >
-static void wait( drt::FencedInterruptMask &mask, Cond &&cond )
+static void wait( dios::FencedInterruptMask &mask, Cond &&cond )
         __attribute__( ( __always_inline__, __flatten__ ) ) {
     return _wait< false >( mask, std::forward< Cond >( cond ) );
 }
 
-drt::FencedInterruptMask pthreadBegin() __attribute__( ( __always_inline__ ) ) {
-    drt::FencedInterruptMask mask;
+dios::FencedInterruptMask pthreadBegin() __attribute__( ( __always_inline__ ) ) {
+    dios::FencedInterruptMask mask;
     _initialize();
     return mask; // ownership transfer
 }
@@ -326,7 +326,8 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     args->entry = entry;
     args->arg = arg;
     args->initialized = false;
-    int ltid = __sys_start_thread( _pthread_entry, static_cast< void * >( args ) );
+    int ltid = __sys_start_thread( __sys_get_fun_ptr("_pthread_entry"),
+        static_cast< void * >( args ), nullptr );
     assert( ltid >= 0 );
 
     // generate a unique ID
@@ -645,12 +646,12 @@ void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
         if ( holdertid < 0 || holdertid == lastthread )
             return;
         if ( holdertid == gtid ) {
-            __vm_fault( vm::Fault::Locking, "Deadlock: Mutex cycle closed" );
+            __vm_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex cycle closed" );
             return;
         }
         Thread *holder = _get_thread_by_gtid( holdertid );
         if ( holder == NULL || !holder->running ) {
-            __vm_fault( vm::Fault::Locking, "Deadlock: Mutex locked by dead thread" );
+            __vm_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex locked by dead thread" );
             return;
         }
         mutex = holder->waiting_mutex;
@@ -662,7 +663,7 @@ bool _mutex_can_lock( pthread_mutex_t *mutex, int gtid ) {
     return !mutex->owner || ( mutex->owner == ( gtid + 1 ) );
 }
 
-int _mutex_lock( drt::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) {
+int _mutex_lock( dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) {
 
     Thread *thr = threads[__sys_get_thread_id()];
     int gtid = thr->gtid;
@@ -678,7 +679,7 @@ int _mutex_lock( drt::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wa
             if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
                 return EDEADLK;
             else
-                __vm_fault( vm::Fault::Locking, "Deadlock: Nonrecursive mutex locked again" );
+                __vm_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Nonrecursive mutex locked again" );
         }
     }
 
@@ -721,7 +722,7 @@ int pthread_mutex_destroy( pthread_mutex_t *mutex ) {
         if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
             return EBUSY;
         else
-            __vm_fault( vm::Fault::Locking, "Locked mutex destroyed" );
+            __vm_fault( _VM_Fault::_VM_F_Locking, "Locked mutex destroyed" );
     }
     mutex->initialized = 0;
     return 0;
@@ -768,7 +769,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
         // mutex is not locked or it is already locked by another thread
         assert( mutex->lockCounter ); // count should be > 0
         if ( mutex->type == PTHREAD_MUTEX_NORMAL )
-            __vm_fault( vm::Fault::Locking, "Mutex has to be released by the "
+            __vm_fault( _VM_Fault::_VM_F_Locking, "Mutex has to be released by the "
                                             "same thread which acquired the "
                                             "mutex." );
         else
@@ -1141,7 +1142,7 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
     // variable. On the other hand, using more than one mutex for one
     // conditional variable results in undefined behaviour.
     if ( cond->mutex != NULL && cond->mutex != mutex )
-        __vm_fault( vm::Fault::Locking, "Attempted to wait on condition variable using other mutex "
+        __vm_fault( _VM_Fault::_VM_F_Locking, "Attempted to wait on condition variable using other mutex "
                                         "that already in use by this condition variable" );
     cond->mutex = mutex;
 
@@ -1372,7 +1373,7 @@ bool _rwlock_can_lock( pthread_rwlock_t *rwlock, bool writer ) {
     return !( rwlock->wlock & _WLOCK_WRITER_MASK ) && !( writer && rwlock->rlocks );
 }
 
-int _rwlock_lock( drt::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) {
+int _rwlock_lock( dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) {
     int gtid = _get_gtid( __sys_get_thread_id() );
 
     if ( rwlock == NULL || !( rwlock->wlock & _INITIALIZED_RWLOCK ) ) {
@@ -1698,7 +1699,7 @@ namespace _sig {
 
 void sig_ign( int ) {}
 
-#define __sig_terminate( SIGNAME ) []( int ) { __vm_fault( vm::Fault::Control, "Uncaught signal: " #SIGNAME ); }
+#define __sig_terminate( SIGNAME ) []( int ) { __vm_fault( _VM_Fault::_VM_F_Control, "Uncaught signal: " #SIGNAME ); }
 
 // this is based on x86 signal numbers
 static const sighandler_t defact[] = {
@@ -1747,7 +1748,7 @@ sighandler_t def( int sig ) {
 }
 
 int raise( int sig ) {
-    drt::InterruptMask mask;
+    dios::InterruptMask mask;
     assert( sig < 32 );
 
     if ( threads == nullptr ) // initialization not done yet
@@ -1785,6 +1786,5 @@ sighandler_t signal( int sig, sighandler_t handler ) {
     _sig::get( thread, sig ) = handler;
     return old;
 }
-#endif
 
 #pragma GCC diagnostic pop
