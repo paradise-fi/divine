@@ -34,7 +34,7 @@ struct _VM_FunctionInfo
 
 struct _VM_Frame
 {
-    void *pc;
+    void (*pc)(void);
     struct _VM_Frame *parent;
 };
 
