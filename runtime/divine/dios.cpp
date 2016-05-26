@@ -5,14 +5,15 @@
 
 #include <cstdarg>
 #include <cstdio>
+
 void vm_trace( const char *fmt, ... )
 {
-    /*va_list ap;
+    va_list ap;
     char buffer[1024];
     va_start( ap, fmt );
     vsnprintf( buffer, 1024, fmt, ap );
     va_end( ap );
-    __vm_trace( buffer );*/
+    __vm_trace( buffer );
 }
 
 namespace dios {
@@ -29,6 +30,7 @@ struct Syscall {
 	static ThreadId start_thread( FunPtr routine, void *arg, FunPtr cleanup ) {
 		auto& inter = get();
 		dios_assert( inter._syscall == Type::INACTIVE );
+		dios_assert( routine );
 		inter._syscall = Type::START_THREAD;
 		inter._args.start_thread = Args::StartThread{ routine, arg, cleanup };
 		// ToDo: Interrupt
@@ -53,12 +55,12 @@ struct Syscall {
 	}
 
 	static Syscall& get() {
-		__vm_trace( "Syscall get entry" );
+		__vm_trace( "Syscall get: entry" );
 		if ( !instance ) {
 			instance = static_cast< Syscall *> ( __vm_make_object( sizeof( Syscall ) ) );
 			memset( instance, 0, sizeof( Syscall ) );
 		}
-		__vm_trace( "Syscall get exit" );
+		__vm_trace( "Syscall get: exit" );
 		return *instance;
 	}
 
@@ -105,19 +107,36 @@ struct CleanupFrame : _VM_Frame {
 };
 
 struct Thread {
-	enum class State { RUNNING, ZOMBIE, CLEANING_UP };
+	enum class State { RUNNING, CLEANING_UP, ZOMBIE };
 	_VM_Frame *_frame;
 	FunPtr _cleanup_handler;
-	State _state : 2;
+	State _state;
 
 	Thread( FunPtr fun, FunPtr cleanup = nullptr )
 		: _frame( static_cast< _VM_Frame * >( __vm_make_object( fun->frame_size ) ) ),
 		  _cleanup_handler( cleanup ),
 		  _state( State::RUNNING )
 	{
-		vm_trace( "Thread constuctor: %p", _frame );
 		_frame->pc = fun->entry_point;
 		_frame->parent = nullptr;
+		vm_trace( "Thread constuctor: %p, %p", _frame, _frame->pc );
+	}
+
+	Thread( Thread& o) = delete;
+
+	Thread( Thread&& o ) :
+		_frame( o._frame ), _cleanup_handler( o._cleanup_handler ),
+		_state( o._state )
+	{
+		o._frame = 0;
+		o._state = State::ZOMBIE;
+	}
+
+	Thread& operator=( Thread&& o ) {
+		std::swap( _frame, o._frame );
+		std::swap( _cleanup_handler, o._cleanup_handler );
+		std::swap( _state, o._state );
+		return *this;
 	}
 
 	~Thread() {
@@ -129,7 +148,7 @@ struct Thread {
 	bool zombie() const { return _state == State::ZOMBIE; }
 
 	void update_state() {
-		if ( !active() && !_frame )
+		if ( !_frame )
 			_state = State::ZOMBIE;
 	}
 
@@ -141,7 +160,7 @@ struct Thread {
 
 		clear();
 		auto* frame = reinterpret_cast< CleanupFrame * >( _frame );
-		frame->pc = _cleanup_handler;
+		frame->pc = _cleanup_handler->entry_point;
 		frame->parent = nullptr;
 		frame->reason = reason;
 		_state = State::CLEANING_UP;
@@ -165,9 +184,8 @@ struct ControlFlow {
 
 struct Scheduler {
 	Scheduler( void *cf ) : _cf( static_cast< ControlFlow * >( cf ) ) {
-		__vm_trace( "Scheduler constructor entry" );
 		dios_assert( cf );
-		__vm_trace( "Scheduler constructor exit" );
+		__vm_trace( "Scheduler constructor" );
 	}
 
 	Thread* get_threads() const noexcept {
@@ -183,7 +201,7 @@ struct Scheduler {
 		auto& inter = Syscall::get();
 
 		if ( inter._syscall == Syscall::Type::INACTIVE ) {
-			__vm_trace( "No syscall" );
+			__vm_trace( "No syscall issued" );
 			return false;
 		}
 
@@ -216,13 +234,18 @@ struct Scheduler {
 		_cf->active_thread = __vm_choose( _cf->thread_count );
 		vm_trace( "Active thread: %d", _cf->active_thread );
 		Thread& thread = get_threads()[ _cf->active_thread ];
+		__vm_trace( "Thread obtained" );
 		thread.update_state();
+		__vm_trace( "Thread updated" );
+		vm_trace( "Thread frame: %p, thread state: %d", thread._frame, thread._state );
 		if ( !thread.zombie() ) {
+			__vm_trace( "Before setting ifl" );
 			__vm_set_ifl( &( thread._frame ) );
-			vm_trace( "Thread frame: %p", thread._frame );
+			__vm_trace( "ifl set" );
 			return thread._frame;
 		}
 		else {
+			__vm_trace( "Thread exit" );
 			_cf = nullptr;
 			return nullptr;
 		}
@@ -231,11 +254,9 @@ struct Scheduler {
 	void start_main_thread( FunPtr main, int argc, char** argv, char** envp ) noexcept {
 		dios_assert( main );
 
+		new ( &( _cf->main_thread ) ) Thread( main );
 		_cf->active_thread = 0;
 		_cf->thread_count = 1;
-		_cf->main_thread = Thread( main );
-
-		vm_trace( "Main thread frame: %p", _cf->main_thread._frame );
 		
 		MainFrame *frame = reinterpret_cast< MainFrame * >( _cf->main_thread._frame );
 
@@ -254,10 +275,10 @@ struct Scheduler {
 		void *new_cf = __vm_make_object( cur_size + sizeof( Thread ) );
 		__vm_memcpy( new_cf, _cf, cur_size );
 		__vm_free_object( _cf );
-		_cf = static_cast <ControlFlow * >( new_cf );
+		_cf = static_cast< ControlFlow * >( new_cf );
 
 		Thread &t = get_threads()[ _cf->thread_count++ ];
-		t = Thread( routine, cleanup );
+		new ( &t ) Thread( routine, cleanup );
 		ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >(
 			t._frame );
 		frame->arg = arg;
@@ -290,10 +311,10 @@ void *__sys_sched( int, void *state ) noexcept {
 		if ( jmp ) {
 			vm_trace( "Scheduler pre-jump: %p", jmp );
 			__vm_jump( jmp, 1 );
-			__vm_trace( "Scheduler jump" );
+			__vm_trace( "Scheduler after jump" );
 		}
 	}
-	__vm_trace( "Scheduler exit" );
+	vm_trace( "Scheduler exit, %p", scheduler.get_cf() );
 	return scheduler.get_cf();
 }
 
@@ -314,7 +335,6 @@ void *__sys_init( void *env[] ) {
 	}
 
 	/* ToDo: Parse and forward main arguments */
-	__vm_trace( "Main thread start" );
 	scheduler.start_main_thread( main, 0, nullptr, nullptr );
 	__vm_trace( "Main thread started" );
 	
