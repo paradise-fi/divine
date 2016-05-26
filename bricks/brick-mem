@@ -59,6 +59,19 @@ template<> struct _bitvec< 64 > { using T = uint64_t; };
 
 template< int i > using bitvec = typename _bitvec< i >::T;
 
+struct Empty
+{
+    operator int() const { return 0; }
+    bool operator==( Empty ) const { return true; }
+    Empty( int = 0 ) {}
+};
+
+struct DefaultPoolPointerRep
+{
+    static const int slab_bits = 16, chunk_bits = 16, tag_bits = 0;
+    uint16_t slab, chunk; Empty tag;
+};
+
 /*
  * A pool keeps track of memory in a compact, fast, thread-optimised fashion.
  * It is organised into slabs of chunks of a single size. The Pointer type
@@ -78,47 +91,52 @@ template< int i > using bitvec = typename _bitvec< i >::T;
  * layout is customisable (so that the tag bits, which are reserved for the
  * Pool's clients, can be positioned as needed within the pointer).
  */
-template< int bits1 = 20, int bits2 = 19,
-          typename RawT = bitvec< bits1 + bits2 >,
-          int slab_position = 0, int chunk_position = 1, int tag_position = 2 >
+template< typename PointerRep = DefaultPoolPointerRep >
 struct Pool
 {
-    static_assert( tag_position + slab_position + chunk_position == 3, "bad pointer layout" );
-    static_assert( tag_position >= 0 && slab_position >= 0 && chunk_position >= 0,
-                   "negative positions" );
-    static_assert( tag_position != slab_position && tag_position != chunk_position &&
-                   slab_position != chunk_position, "position re-use" );
-    static const int _bits3 = sizeof( RawT ) * 8 - bits1 - bits2;
-    static_assert( _bits3 >= 0, "the raw type is too small" );
-
+    static const int slab_bits = PointerRep::slab_bits,
+                    chunk_bits = PointerRep::chunk_bits,
+                      tag_bits = PointerRep::tag_bits;
     struct Pointer : brick::types::Comparable
     {
-        using Raw = RawT;
-        using Bits = bitlevel::BitTuple<
-            bitlevel::BitField< Raw, bits1 >,
-            bitlevel::BitField< Raw, bits2 >,
-            bitlevel::BitField< Raw, _bits3 > >;
-        Bits _v;
+        using Raw = bitvec< 8 * sizeof( PointerRep ) >;
+        using SlabT  = decltype( PointerRep::slab );
+        using ChunkT = decltype( PointerRep::chunk );
+        using TagT   = decltype( PointerRep::tag );
 
-        auto slab() { return bitlevel::get< slab_position >( _v ); }
-        auto chunk() { return bitlevel::get< chunk_position >( _v ); }
-        auto tag() { return bitlevel::get< tag_position >( _v ); }
+        PointerRep _rep;
 
-        explicit Pointer( Raw s = 0, Raw c = 0 ) noexcept
+        auto slab() { return _rep.slab; }
+        auto chunk() { return _rep.chunk; }
+        auto tag() { return _rep.tag; }
+
+        void slab( SlabT s ) { _rep.slab = s; }
+        void chunk( ChunkT c ) { _rep.chunk = c; }
+        void tag( TagT t ) { _rep.tag = t; }
+
+        explicit Pointer( SlabT s = 0, ChunkT c = 0 ) noexcept
         {
-            slab() = s;
-            chunk() = c;
+            _rep.slab = s;
+            _rep.chunk = c;
+            _rep.tag = 0;
         }
 
-        Raw raw() const { return *reinterpret_cast< const Raw * >( _v.storage ); }
-        Raw &raw() { return *reinterpret_cast< Raw * >( _v.storage ); }
+        Raw raw() const { return ( Raw( _rep.tag ) << ( slab_bits + chunk_bits ) ) |
+                                 ( Raw( _rep.slab ) << chunk_bits ) | Raw( _rep.chunk ); }
+        void raw( Raw r )
+        {
+            Raw t = r & ( ( ( Raw( 1 ) << tag_bits ) - Raw( 1 ) ) << ( slab_bits + chunk_bits ) ),
+                s = r & ( ( ( Raw( 1 ) << slab_bits ) - Raw( 1 ) ) << chunk_bits ),
+                c = r & ( ( ( Raw( 1 ) << chunk_bits ) - Raw( 1 ) ) );
+            _rep.tag  = t >> ( slab_bits + chunk_bits );
+            _rep.slab = s >> ( chunk_bits );
+            _rep.chunk = c;
+        }
+
         explicit operator bool() const { return raw(); }
         bool operator!() const { return !raw(); }
-        bool operator<= ( Pointer o ) const { return _v < o._v || _v == o._v; }
+        bool operator<= ( Pointer o ) const { return raw() <= o.raw(); }
     };
-
-    static const int slab_bits = Pointer::Bits::template AccessAt< slab_position >::T::width;
-    static const int chunk_bits = Pointer::Bits::template AccessAt< chunk_position >::T::width;
 
     struct BlockHeader
     {
@@ -430,7 +448,7 @@ struct Pool
 #if 0
         if( int( p.slab() ) == _l.ephemeral_block )
         {
-            ASSERT_LEQ( p.chunk().get(), _l.ephemeral_offset );
+            ASSERT_LEQ( p.chunk(), _l.ephemeral_offset );
             return ephemeralSize( p );
         }
 #endif
@@ -476,8 +494,8 @@ struct Pool
             p = fromFreelist( si );
         else { /* nope. try a partially filled block */
             if ( si.active >= 0 && usable( si.active ) ) {
-                p.slab() = si.active;
-                p.chunk() = header( p ).allocated ++;
+                p.slab( si.active );
+                p.chunk( header( p ).allocated ++ );
             } else { /* still nothing. try nicking something from the shared freelist */
                 std::atomic< FreeList * > &fhead = freelist( size );
                 FreeList *fb = fhead;
@@ -488,8 +506,8 @@ struct Pool
                     delete fb;
                     p = fromFreelist( si );
                 } else { /* give up and allocate a fresh block */
-                    p.slab() = newblock( size );
-                    p.chunk() = header( p ).allocated ++;
+                    p.slab( newblock( size ) );
+                    p.chunk( header( p ).allocated ++ );
                 }
             }
         }
@@ -613,17 +631,17 @@ struct Pool
 template< typename P >
 static inline auto operator<<( std::ostream &o, P p ) -> decltype( p.slab(), o )
 {
-    return o << p.slab().get() << ":" << p.chunk().get() << " " << p.tag().get();
+    return o << p.slab() << ":" << p.chunk() << " " << p.tag();
 }
 
 }
 
 namespace t_mem {
 
-template< int _a, int _b, int _c >
+template< typename Rep >
 struct Pool
 {
-    using _Pool = mem::Pool< 20, 19, uint64_t, _a, _b, _c >;
+    using _Pool = mem::Pool< Rep >;
 
     struct Checker : shmem::Thread
     {
@@ -716,9 +734,19 @@ struct Pool
     }
 };
 
-template struct Pool< 2, 1, 0 >;
-template struct Pool< 1, 2, 0 >;
-template struct Pool< 0, 1, 2 >;
+struct R1
+{
+    static const int slab_bits = 16, chunk_bits = 16, tag_bits = 32;
+    uint16_t slab; uint16_t chunk; uint32_t tag;
+};
+struct R2
+{
+    static const int slab_bits = 8, chunk_bits = 16, tag_bits = 8;
+    uint16_t slab:slab_bits, tag:tag_bits, chunk;
+};
+
+template struct Pool< R1 >;
+template struct Pool< R2 >;
 
 }
 
