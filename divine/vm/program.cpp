@@ -484,6 +484,28 @@ void Program::computeStatic()
         _toinit.front()();
         _toinit.pop_front();
     }
+
+    auto md_func = dyn_cast< llvm::ConstantArray >(
+        module->getGlobalVariable( "__md_functions" )->getInitializer() );
+    ASSERT( valuemap.count( md_func ) );
+    auto slotref = valuemap[ md_func ];
+    for ( int i = 0; i < int( md_func->getNumOperands() ); ++i )
+    {
+        auto f = dyn_cast< llvm::ConstantStruct >( md_func->getOperand( i ) );
+        const llvm::StructLayout *SL_item = TD.getStructLayout( f->getType() );
+        auto name = std::string( f->getOperand( 0 )->getOperand( 0 )->getName(),
+                                strlen( "lart.divine.index.name." ), std::string::npos );
+        int offset = TD.getTypeAllocSize( md_func->getOperand( 0 )->getType() ) * i +
+                     SL_item->getElementOffset( 2 );
+        std::cerr << name << ": " << slotref.slot << " offset = " << offset
+                  << " ptr = " << s2hptr( slotref.slot, offset ) << std::endl;
+        auto pc = functionByName( name );
+        if ( !pc.function() )
+            continue;
+        auto &func = function( pc );
+        _ccontext.heap().write( s2hptr( slotref.slot, offset ),
+                                value::Int< 32 >( func.datasize + 2 * PointerBytes ) );
+    }
 }
 
 void Program::pass()
