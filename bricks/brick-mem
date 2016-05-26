@@ -198,7 +198,7 @@ struct Pool
             _s->vhandles[ i ] = nullptr;
     }
 
-    void valgrindAllocated( Pointer p )
+    void valgrindAllocated( Pointer p, bool materialized )
     {
         VALGRIND_MEMPOOL_ALLOC( _s->block[ p.slab() ], dereference( p ), size( p ) );
         VALGRIND_MAKE_MEM_UNDEFINED( dereference( p ), size( p ) );
@@ -213,7 +213,7 @@ struct Pool
         }
 
         ASSERT( h );
-        ASSERT( !h[ p.chunk() ].allocated );
+        ASSERT( materialized || !h[ p.chunk() ].allocated );
         VALGRIND_DISCARD( h[ p.chunk() ].handle );
         h[ p.chunk() ].handle =
             VALGRIND_CREATE_BLOCK( dereference( p ), size( p ),
@@ -307,7 +307,7 @@ struct Pool
 #define VALGRIND_MAKE_MEM_NOACCESS(x, y)
 #define VALGRIND_MAKE_MEM_UNDEFINED(x, y)
 
-    void valgrindAllocated( Pointer ) {}
+    void valgrindAllocated( Pointer, bool ) {}
     void valgrindDeallocated( Pointer ) {}
     void valgrindNewBlock( int, int ) {}
     void valgrindFini() {}
@@ -490,7 +490,7 @@ struct Pool
             }
         }
 
-        valgrindAllocated( p );
+        valgrindAllocated( p, false );
         return p;
     }
 
@@ -511,7 +511,7 @@ struct Pool
             header( b ).allocated = 0;
             valgrindNewBlock( b, total );
         }
-        valgrindAllocated( p );
+        valgrindAllocated( p, true );
     }
 
     void free( Pointer p )
