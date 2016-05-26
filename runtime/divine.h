@@ -89,7 +89,7 @@ int __vm_choose( int n, ... ) NOTHROW;
  * forget any visible effects that may have happened within the current atomic
  * section.
  */
-void __vm_jump( void *dest, int forgetful ) NOTHROW;
+void __vm_jump( struct _VM_Frame *dest, int forgetful ) NOTHROW;
 
 /*
  * Cause a fault. The first argument is passed on to the fault handler in the

@@ -212,7 +212,7 @@ struct Scheduler {
 		return true;
 	}
 
-	void *run_threads() noexcept {
+	_VM_Frame *run_threads() noexcept {
 		_cf->active_thread = __vm_choose( _cf->thread_count );
 		vm_trace( "Active thread: %d", _cf->active_thread );
 		Thread& thread = get_threads()[ _cf->active_thread ];
@@ -286,7 +286,7 @@ void *__sys_sched( int, void *state ) noexcept {
 	__vm_trace("Scheduler entry");
 	dios::Scheduler scheduler( state );
 	if ( !scheduler.handle_syscall() ) {
-		void *jmp = scheduler.run_threads();
+		_VM_Frame *jmp = scheduler.run_threads();
 		if ( jmp ) {
 			vm_trace( "Scheduler pre-jump: %p", jmp );
 			__vm_jump( jmp, 1 );
