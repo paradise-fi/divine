@@ -184,7 +184,7 @@ template<>
 struct hash< divine::vm::GenericPointer > {
     size_t operator()( divine::vm::GenericPointer ptr ) const
     {
-        return *static_cast< uint32_t * >( ptr._v.storage );
+        return ptr.raw();
     }
 };
 
