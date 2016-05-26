@@ -79,10 +79,7 @@ enum Builtin /* see divine.h for prototypes & documentation */
     /* introspection */
     BuiltinQueryVarargs,
     BuiltinQueryFrame,
-    BuiltinQueryObjectSize,
-    BuiltinQueryInstruction,
-    BuiltinQueryVariable,
-    BuiltinQueryFunction
+    BuiltinQueryObjectSize
 };
 
 struct Choice {

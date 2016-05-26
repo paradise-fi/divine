@@ -688,18 +688,6 @@ struct Eval
                 control().trace( str );
                 return;
             }
-            case BuiltinQueryFunction:
-            {
-                auto str = operandStr( 0 );
-                auto r = heap().make( PointerBytes * 2 );
-                auto f = program().functionByName( str );
-                auto p = r;
-                heap().shift( p, IntV( program().function( f ).datasize + 2 * PointerBytes ) );
-                heap().shift( p, IntV( program().function( f ).argcount ));
-                heap().shift( p, PointerV( f ) );
-                result( r );
-                return;
-            }
             case BuiltinFault:
                 fault( Fault( operandCk< IntV >( 0 ).v() ) );
                 return;

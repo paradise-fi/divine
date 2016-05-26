@@ -335,14 +335,8 @@ Builtin Program::builtin( llvm::Function *f )
         return BuiltinQueryVarargs;
     if ( name == "__vm_query_frame" )
         return BuiltinQueryFrame;
-    if ( name == "__vm_query_function" )
-        return BuiltinQueryFunction;
     if ( name == "__vm_query_object_size" )
         return BuiltinQueryObjectSize;
-    if ( name == "__vm_query_instruction" )
-        return BuiltinQueryInstruction;
-    if ( name == "__vm_query_variable" )
-        return BuiltinQueryVariable;
 
     if ( f->getIntrinsicID() != llvm::Intrinsic::not_intrinsic )
         return BuiltinIntrinsic; /* not our builtin */
