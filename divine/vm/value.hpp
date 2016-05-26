@@ -205,9 +205,7 @@ struct Pointer : Base
     {
         if ( w >= PointerBytes )
         {
-            auto r = i.raw();
-            char *bytes = reinterpret_cast< char * >( &r );
-            std::copy( bytes, bytes + PointerBytes, _v._v.storage );
+            _v.raw( i.raw() );
             _obj_defined = _off_defined = i.defined();
         }
         else /* truncated pointers are undef */
