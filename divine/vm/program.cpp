@@ -497,8 +497,6 @@ void Program::computeStatic()
                                 strlen( "lart.divine.index.name." ), std::string::npos );
         int offset = TD.getTypeAllocSize( md_func->getOperand( 0 )->getType() ) * i +
                      SL_item->getElementOffset( 2 );
-        std::cerr << name << ": " << slotref.slot << " offset = " << offset
-                  << " ptr = " << s2hptr( slotref.slot, offset ) << std::endl;
         auto pc = functionByName( name );
         if ( !pc.function() )
             continue;
