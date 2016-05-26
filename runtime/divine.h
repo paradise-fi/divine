@@ -29,6 +29,7 @@ struct _VM_InstructionInfo
 struct _VM_FunctionInfo
 {
     int frame_size;
+    int arg_count;
     void *entry_point;
 } __attribute__((packed));
 
@@ -46,7 +47,8 @@ enum _VM_Fault
     _VM_F_Control,
     _VM_F_Locking,
     _VM_F_Hypercall,
-    _VM_F_NotImplemented
+    _VM_F_NotImplemented,
+    _VM_F_Last
 };
 
 enum _VM_FaultAction
