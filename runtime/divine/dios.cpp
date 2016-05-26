@@ -297,13 +297,13 @@ private:
 
 } // namespace dios
 
-enum _VM_FaultAction __sys_fault( enum _VM_Fault what ) noexcept {
+enum _VM_FaultAction __dios_fault( enum _VM_Fault what ) noexcept {
 	/* ToDo: Handle errors */
 	__vm_trace( "VM Fault" );
 	return _VM_FA_Resume;
 }
 
-void *__sys_sched( int, void *state ) noexcept {
+void *__dios_sched( int, void *state ) noexcept {
 	__vm_trace("Scheduler entry");
 	dios::Scheduler scheduler( state );
 	if ( !scheduler.handle_syscall() ) {
@@ -319,10 +319,10 @@ void *__sys_sched( int, void *state ) noexcept {
 }
 
 
-void *__sys_init( void *env[] ) {
+void *__sys_init( void *env[] ) __attribute__((weak)) {
 	__vm_trace( "__sys_init called" );
-	__vm_set_sched( __sys_sched );
-	__vm_set_fault( __sys_fault );
+	__vm_set_sched( __dios_sched );
+	__vm_set_fault( __dios_fault );
 
 	void *cf = __vm_make_object( sizeof( dios::ControlFlow ) );
 	dios::Scheduler scheduler( cf );
