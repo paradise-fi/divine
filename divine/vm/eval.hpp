@@ -137,7 +137,7 @@ struct Eval
     Instruction *_instruction;
     Instruction &instruction() { return *_instruction; }
     Result _result;
-    std::unordered_set< GenericPointer<> > _cfl_visited;
+    std::unordered_set< GenericPointer > _cfl_visited;
     bool _interrupted;
 
     using PointerV = value::Pointer< HeapPointer >;
