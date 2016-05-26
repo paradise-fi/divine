@@ -125,16 +125,20 @@ auto make_validator()
         add( "string", []( std::string s, auto good, auto bad) { return good( s ); } ) ->
         add( "int", []( std::string s, auto good, auto bad )
              {
-                int r;
+                int r = 0;
                 try {
                      r = std::stoi( s );
                 } catch ( std::invalid_argument &e ) {
-                    bad( BadFormat, e.what() );
+                    return bad( BadFormat, e.what() );
                 } catch ( std::out_of_range &e ) {
-                    bad( BadFormat, e.what() );
+                    return bad( BadFormat, e.what() );
                 }
                 return good( r );
-             } );
+             } ) ->
+        add( "true", []( std::string s, auto good, auto bad)
+            {
+                return good( true );
+            });
 }
 
 std::pair< std::string, std::string > next_token( std::string s )
@@ -234,7 +238,8 @@ struct Pattern
             str = "{" + _capture + "}";
         if ( _type == Match )
             str = _text;
-
+        if ( _type == Mixed )
+            str = _text + "{" + _capture + "}";
         if ( !_required )
             str = "[" + str + "]";
         else if ( _next && _type == Group )
@@ -269,8 +274,15 @@ struct Pattern
             capture( _capture_id++, _many, _capture, *begin );
             next = begin + 1;
         }
-        if ( _type == Mixed )
-            NOT_IMPLEMENTED();
+        if ( _type == Mixed && ( *begin ).find( _text ) == 0 )
+        {
+            std::string rest = (*begin).substr(_text.length() );
+            if ( _validator->validate( _capture, rest ) )
+            {
+                capture( _capture_id++, false, _capture, rest );
+            }
+            next = begin + 1;
+        }
         if ( _type == Group )
         {
             std::vector< Tokens::iterator > res;
@@ -357,8 +369,20 @@ struct Pattern
 
         else
         {
-            _type = Match;
-            _text = me;
+            auto capture = me.find( "{" );
+            if ( capture != std::string::npos )
+            {
+                auto capture_end = me.find( "}" );
+
+                _text = std::string( me, 0, capture );
+                _capture = std::string( me, capture + 1, me.size() - capture - 2 );
+                _type = Mixed;
+            }
+            else
+            {
+                _type = Match;
+                _text = me;
+            }
         }
 
         if ( !rest.empty() )
@@ -387,7 +411,7 @@ struct Pattern
             ASSERT( !prev_alt->_alt );
             prev_alt->_alt.reset( this );
             return false;
-        }
+        };
 
         return true;
     }
@@ -398,6 +422,7 @@ struct OptionInterface
 {
     virtual Tokens::iterator parse( T &edit, Tokens::iterator, Tokens::iterator ) = 0;
     virtual Tokens::iterator match( Tokens::iterator, Tokens::iterator ) = 0;
+    virtual bool unique() = 0;
     virtual bool required() = 0;
     virtual int priority() = 0;
     virtual std::string fmt() = 0;
@@ -412,6 +437,7 @@ struct Option : OptionInterface< T >
     Pattern _pattern;
     Get _get;
     std::string _descr;
+    bool _unique;
 
     template< typename X >
     struct Set
@@ -444,13 +470,29 @@ struct Option : OptionInterface< T >
         }
     };
 
+    void set_true( bool &edit )
+    {
+        edit = true;
+    }
+
+    template< typename E >
+    void set_true( E &edit )
+    {
+        UNREACHABLE( "cannot set true to not bool" );
+    }
+
     Tokens::iterator parse( T &edit, Tokens::iterator b, Tokens::iterator e ) override
     {
-        return _pattern.match(
+        bool captured = false;
+        auto result = _pattern.match(
             [&]( int, bool many, std::string type, std::string val )
             {
                 _validator->parse( Set< decltype( _get( edit ) ) >( _get( edit ) ), type, val );
+                captured = true;
             }, b, e );
+        if ( !captured )
+            set_true( _get( edit ) );
+        return result;
     }
 
     Tokens::iterator match( Tokens::iterator b, Tokens::iterator e ) override
@@ -458,9 +500,15 @@ struct Option : OptionInterface< T >
         return _pattern.match( b, e );
     }
 
+    bool unique() override { return _unique; }
     bool required() override { return _pattern._required; };
     std::string fmt() override { return _pattern.fmt(); };
-    std::string describe() override { return fmt() + "\t" + _descr; };
+    std::string describe() override
+    {
+        std::stringstream str;
+        str << std::setw(30) << fmt() << "   " << _descr;
+        return str.str();
+    };
 
     int priority( Pattern &p )
     {
@@ -481,7 +529,11 @@ struct Option : OptionInterface< T >
     int priority() override { return priority( _pattern ); }
 
     Option( std::shared_ptr< Validator > v, std::string fmt, Get get, std::string descr )
-        : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr )
+            : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr ), _unique( false )
+    {}
+
+    Option( std::shared_ptr< Validator > v, std::string fmt, Get get, std::string descr, bool unique )
+        : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr ), _unique( unique )
     {}
 };
 
@@ -506,6 +558,7 @@ struct OptionWrapper : OptionInterface< T >
         return _sub->match( b, e );
     }
 
+    bool unique() override { return _sub->unique(); }
     bool required() override { return _sub->required(); }
     int priority() override { return _sub->priority(); }
     std::string fmt() override { return _sub->fmt(); }
@@ -522,12 +575,18 @@ struct OptionSet
     std::vector< OptionPtr< T > > _opts;
 
     template< typename V, typename... Args >
-    auto &add( std::string fmt, V T::*member, std::string descr, Args... args )
+    auto &add( std::string fmt, V T::*member, std::string descr, bool unique, Args... args )
     {
         auto o = new Option< Validator, T, V >(
-            _validator, fmt, [member]( auto &x ) -> auto& { return x.*member; }, descr );
+                _validator, fmt, [member]( auto &x ) -> auto& { return x.*member; }, descr, unique );
         _opts.emplace_back( o );
         return add( args... );
+    };
+
+    template< typename V, typename... Args >
+    auto &add( std::string fmt, V T::*member, std::string descr, Args... args )
+    {
+        return add( fmt, member, descr, false, args... );
     }
 
     template< typename V, typename... Args >
@@ -603,8 +662,11 @@ struct OptionSet
             if ( selected.empty() )
                 break;
             auto o = *selected.begin();
-            b = o->parse( t, b, e );
+            if ( parsed.count( o ) && o->unique() )
+                throw std::runtime_error( "Option " + o->fmt() + " is unique, cannot parse '" + *b + "'\n" );
             parsed.insert( o );
+
+            b = o->parse( t, b, e );
         }
         for ( auto o : _opts )
             if ( o->required() && !parsed.count( o ) )
@@ -639,13 +701,20 @@ struct Command : OptionSet< Validator, T >
         return s;
     }
 
-    virtual std::string describe()
+    virtual std::string describe_header()
     {
         std::stringstream req;
         for ( auto o : this->_opts )
             if ( o->required() )
                 req << o->fmt() << " ";
-        return name() + " [options] " + req.str() + "\n" + this->fmt();
+        std::stringstream res;
+        res << std::setw(10) << name() <<  " [options] " << req.str();
+        return res.str();
+    }
+
+    virtual std::string describe()
+    {
+        return describe_header() + "\n" + this->fmt();
     }
 
     template< typename... Args >
@@ -666,6 +735,10 @@ struct ParserT< Validator, T, Ts... >
     template< typename U >
     auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
     {
+        if (b == e)
+        {
+            return b;
+        }
         if ( _car.name() == *b )
         {
             T t;
@@ -677,15 +750,27 @@ struct ParserT< Validator, T, Ts... >
             return _cdr.parse( res, b, e );
     }
 
-    types::Union< T, Ts... > parse( Tokens::iterator b, Tokens::iterator e )
+    types::Union< T, Ts... > parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
     {
         types::Union< T, Ts... > _result;
         auto x = parse( _result, b, e );
-        if ( x != e )
+        while ( x != e )
+        {
+            unexpected.push_back( *x );
+            x++;
+        }
+        return _result;
+    };
+
+    types::Union< T, Ts... > parse( Tokens::iterator b, Tokens::iterator e )
+    {
+        std::vector< std::string > unexpected;
+        auto _result = parse( b, e, unexpected );
+        if ( !unexpected.empty() )
         {
             std::stringstream extra;
-            while ( x != e )
-                extra << "'" << *x++ << "' ";
+            for (std::string str : unexpected)
+                extra << "'" << str << "' ";
             throw std::runtime_error( "unexpected options: " + extra.str() );
         }
         return _result;
@@ -720,6 +805,33 @@ struct ParserT< Validator >
     ParserT( std::shared_ptr< Validator > v ) : _validator( v ) {}
 };
 
+template< typename Validator >
+std::string get_desc_by_name( ParserT< Validator >&, std::string name )
+{
+    return "";
+}
+
+template< typename Parser >
+std::string get_desc_by_name( Parser &parser, std::string name )
+{
+    if ( parser._car.name().compare(name) == 0 )
+    {
+        return parser._car.describe();
+    }
+    return get_desc_by_name( parser._cdr, name );
+};
+
+template< typename Validator >
+std::string describe( ParserT<Validator>& )
+{
+    return "";
+}
+template< typename Parser >
+std::string describe( Parser &parser )
+{
+    return parser._car.describe_header() + "\n" + describe(parser._cdr);
+}
+
 template< typename V >
 auto make_parser( std::shared_ptr< V > v )
 {
@@ -733,8 +845,10 @@ namespace t_cmd {
 struct Common
 {
     int a, b;
+    bool x,y;
     int range;
     std::vector< std::string > cflags;
+    std::vector< bool > cbool;
 };
 
 struct Foo : Common
@@ -853,6 +967,50 @@ struct TestCmd
         Common c;
 
         cmd::Tokens in = { "-a", "10" };
+        opts.parse( c, in.begin(), in.end() );
+        ASSERT_EQ( c.a, 10 );
+    }
+
+    TEST(option_bool)
+    {
+        auto v = validator();
+        auto opts = cmd::make_option_set< Common >( v )
+        .add( "[-x]", &Common::x )
+        .add( "[-y]", &Common::y );
+        Common c = { .x = false, .y = false };
+
+        cmd::Tokens in = { "-x" };
+        opts.parse( c, in.begin(), in.end() );
+        ASSERT( c.x );
+        ASSERT( !c.y );
+    }
+
+    TEST(option_bool_match)
+    {
+        auto v = validator();
+        auto opts = cmd::make_option_set< Common >( v )
+        .add( "[-x]", &Common::x )
+        .add( "[-y]", &Common::y )
+        .add( "[(-a {int}|-b {int})]", &Common::a );
+
+        Common c = { .x = false, .y = false };
+
+        cmd::Tokens in = { "-x", "-b", "10", "-y" };
+        opts.parse( c, in.begin(), in.end() );
+        ASSERT_EQ( c.a, 10 );
+        ASSERT( c.x );
+        ASSERT( c.y );
+    }
+
+    TEST(option_match_alt)
+    {
+        auto v = validator();
+        auto opts = cmd::make_option_set< Common >( v )
+        .add( "[(-a|-b) {int}]", &Common::a );
+
+        Common c;
+
+        cmd::Tokens in = { "-b", "10" };
         opts.parse( c, in.begin(), in.end() );
         ASSERT_EQ( c.a, 10 );
     }
