@@ -2,6 +2,7 @@
 #define __DIOS_H__
 
 #include <divine.h>
+#include <divine/metadata.h>
 
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
@@ -41,7 +42,7 @@ void *__sys_sched( int st_size, void *_state ) NOTHROW;
 enum _VM_FaultAction __sys_fault( enum _VM_Fault what ) NOTHROW;
 
 typedef unsigned _Sys_ThreadId;
-typedef struct _VM_FunctionInfo * _Sys_FunPtr;
+typedef const _MD_Function * _Sys_FunPtr;
 
 /*
  * Start a new thread and obtain its identifier. Thread starts executing routine

@@ -342,7 +342,7 @@ void *__sys_init( void *env[] ) {
 }
 
 _Sys_FunPtr __sys_get_fun_ptr( const char *name ) noexcept {
-	return __vm_query_function( name );
+	return __md_get_function_meta( name );
 }
 
 _Sys_ThreadId __sys_start_thread( _Sys_FunPtr routine, void *arg,
