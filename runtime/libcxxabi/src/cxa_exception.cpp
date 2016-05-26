@@ -23,6 +23,10 @@
 #include "cxa_exception.hpp"
 #include "cxa_handlers.hpp"
 
+#ifdef __divine__
+#include <divine.h>
+#endif
+
 // +---------------------------+-----------------------------+---------------+
 // | __cxa_exception           | _Unwind_Exception CLNGC++\0 | thrown object |
 // +---------------------------+-----------------------------+---------------+
@@ -236,6 +240,8 @@ __cxa_throw(void* thrown_object, std::type_info* tinfo, void (*dest)(void*))
     exception_header->unwindHeader.exception_cleanup = exception_cleanup_func;
 #ifdef __USING_SJLJ_EXCEPTIONS__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
+#elif defined(__divine__)
+    __vm_fault( _VM_F_NotImplemented );
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif
@@ -571,6 +577,8 @@ __cxa_rethrow()
     }
 #ifdef __USING_SJLJ_EXCEPTIONS__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
+#elif defined(__divine__)
+    __vm_fault( _VM_F_NotImplemented );
 #else
     _Unwind_RaiseException(&exception_header->unwindHeader);
 #endif
@@ -700,6 +708,8 @@ __cxa_rethrow_primary_exception(void* thrown_object)
         dep_exception_header->unwindHeader.exception_cleanup = dependent_exception_cleanup;
 #ifdef __USING_SJLJ_EXCEPTIONS__
         _Unwind_SjLj_RaiseException(&dep_exception_header->unwindHeader);
+#elif defined(__divine__)
+        __vm_fault( _VM_F_NotImplemented );
 #else
         _Unwind_RaiseException(&dep_exception_header->unwindHeader);
 #endif
