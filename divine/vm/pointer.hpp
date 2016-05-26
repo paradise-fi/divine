@@ -179,7 +179,7 @@ template< typename... Bits >
 struct hash< divine::vm::GenericPointer< Bits... > > {
     size_t operator()( divine::vm::GenericPointer< Bits... > ptr ) const
     {
-        return *static_cast< uint32_t * >( ptr._v.storage );
+        return *reinterpret_cast< uint32_t * >( ptr._v.storage );
     }
 };
 
