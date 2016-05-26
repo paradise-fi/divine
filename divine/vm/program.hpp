@@ -134,7 +134,7 @@ struct ConstContext
 struct Program
 {
     llvm::IntrinsicLowering *IL;
-    std::shared_ptr< llvm::Module > module;
+    llvm::Module *module;
     llvm::DataLayout TD;
 
     /*
@@ -366,7 +366,7 @@ struct Program
        3a) (optional) set up additional constant/global data
        3b) computeRR
        4) computeStatic */
-    Program( std::shared_ptr< llvm::Module > m ) : module( m ), TD( m.get() )
+    Program( llvm::Module *m ) : module( m ), TD( m )
     {
         _constants_size = 0;
         _globals_size = 0;
@@ -400,7 +400,7 @@ auto compileC( std::string s )
     static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
     divine::cc::Compiler c( ctx );
     c.mapVirtualFile( "main.c", s );
-    auto p = std::make_shared< vm::Program >( c.compileModule( "main.c" ) );
+    auto p = std::make_shared< vm::Program >( c.compileModule( "main.c" ).release() );
     p->setupRR();
     p->computeRR();
     p->computeStatic();
@@ -416,8 +416,8 @@ struct Program
 
     TEST( empty )
     {
-        auto m = std::make_shared< llvm::Module >( "test", ctx );
-        vm::Program p( m );
+        auto m = std::make_unique< llvm::Module >( "test", ctx );
+        vm::Program p( m.get() );
     }
 
     TEST( simple )

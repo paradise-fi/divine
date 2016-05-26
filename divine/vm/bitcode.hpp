@@ -28,11 +28,11 @@ namespace divine {
 namespace vm {
 
 struct BitCode {
-    std::shared_ptr< llvm::Module > _module;
-    std::shared_ptr< llvm::LLVMContext > _ctx;
-    std::shared_ptr< Program > _program;
+    std::unique_ptr< llvm::Module > _module;
+    std::unique_ptr< llvm::LLVMContext > _ctx;
+    std::unique_ptr< Program > _program;
 
-    Program &program() { ASSERT( _program ); return *_program; }
+    Program &program() { ASSERT( _program.get() ); return *_program.get(); }
 
     BitCode( std::string file )
     {
@@ -49,20 +49,19 @@ struct BitCode {
         lart.setup( "functionmeta" );
         lart.process( _module.get() );
 
-        _program.reset( new Program( _module ) );
+        _program.reset( new Program( _module.get() ) );
     }
 
-    BitCode( std::shared_ptr< llvm::Module > m )
-        : _ctx( nullptr ), _module( m )
+    BitCode( std::unique_ptr< llvm::Module > m )
+        : _ctx( nullptr ), _module( std::move( m ) )
     {
-        ASSERT( _module );
-        _program.reset( new Program( _module ) );
+        ASSERT( _module.get() );
+        _program.reset( new Program( _module.get() ) );
     }
 
     ~BitCode()
     {
-        if ( _ctx )
-            ASSERT_EQ( _module.use_count(), 1 );
+        _program.reset();
         _module.reset();
     }
 };
