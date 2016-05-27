@@ -170,7 +170,7 @@ struct Program
     {
         Slot slot;
         int seqno;
-        SlotRef( Slot s = Slot(), int n = -1 ) : slot( s ), seqno( n ) {}
+        explicit SlotRef( Slot s = Slot(), int n = -1 ) : slot( s ), seqno( n ) {}
     };
 
     struct Instruction
@@ -237,6 +237,8 @@ struct Program
     bool codepointers;
 
     std::map< const llvm::Value *, SlotRef > valuemap;
+    std::map< const llvm::Value *, SlotRef > globalmap;
+
     std::map< const llvm::Instruction *, CodePointer > pcmap;
     std::map< const llvm::Value *, std::string > anonmap;
 
@@ -311,7 +313,7 @@ struct Program
         }
     }
 
-    GenericPointer s2hptr( Slot s, int offset = 0 );
+    ConstContext::HeapPointer s2hptr( Slot s, int offset = 0 );
 
     using Coverage = std::vector< std::vector< llvm::Value * > >;
     std::vector< Coverage > coverage;
@@ -329,10 +331,10 @@ struct Program
     bool isCodePointerConst( llvm::Value *val );
     CodePointer getCodePointer( llvm::Value *val );
 
-    void initStatic( Slot slot, llvm::Value * );
+    void initConstant( Slot slot, llvm::Value * );
 
     template< typename T >
-    auto initStatic( Slot s, T t ) -> decltype( std::declval< typename T::Raw >(), void() )
+    auto initConstant( Slot s, T t ) -> decltype( std::declval< typename T::Raw >(), void() )
     {
         // std::cerr << "initial constant value " << t << " at " << s2hptr( s ) << std::endl;
         _ccontext.heap().write( s2hptr( s ), t );
@@ -353,7 +355,6 @@ struct Program
     void builtin( Position );
     Slot initSlot( llvm::Value *val, Slot::Location loc );
     SlotRef insert( int function, llvm::Value *val );
-    SlotRef insert( int function, llvm::Value *val, Slot::Location sl );
 
     void pass(); /* internal */
 

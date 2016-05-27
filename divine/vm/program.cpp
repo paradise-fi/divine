@@ -216,26 +216,28 @@ out:
 
 Program::SlotRef Program::insert( int function, llvm::Value *val )
 {
-    /* global scope is only applied to GlobalVariable initializers */
-    if ( !function )
-        return insert( 0, val, Slot::Constant );
-    if ( isa< llvm::Constant >( val ) || isCodePointer( val ) )
-        return insert( function, val, Slot::Constant );
-    return insert( function, val, Slot::Local );
-}
+    Slot::Location sl;
 
-Program::SlotRef Program::insert( int function, llvm::Value *val, Slot::Location sl )
-{
+    /* global scope is only applied to GlobalVariable initializers */
+    if ( !function || isa< llvm::Constant >( val ) || isCodePointer( val ) )
+        sl = Slot::Constant;
+    else
+        sl = Slot::Local;
+
+    auto val_i = valuemap.find( val );
+    if ( val_i != valuemap.end() )
+    {
+        ASSERT_EQ( val_i->second.slot.location, sl );
+        return val_i->second;
+    }
+
     if ( auto GA = dyn_cast< llvm::GlobalAlias >( val ) )
     {
-        auto r = insert( function, const_cast< llvm::GlobalObject * >( GA->getBaseObject() ), sl );
+        auto r = insert( function, const_cast< llvm::GlobalObject * >( GA->getBaseObject() ) );
         valuemap.insert( std::make_pair( val, r ) );
         ASSERT( r.slot.location != Slot::Invalid );
         return r;
     }
-
-    if ( valuemap.find( val ) != valuemap.end() )
-        return valuemap.find( val )->second;
 
     makeFit( functions, function );
 
@@ -255,17 +257,16 @@ Program::SlotRef Program::insert( int function, llvm::Value *val, Slot::Location
                 std::string( "Unresolved symbol (global variable): " ) +
                 G->getValueName()->getKey().str() );
 
-        auto pointee = insert( 0, G->getInitializer(),
-                               G->isConstant() ? Slot::Constant : Slot::Global );
-        auto p = s2ptr( pointee );
-        ASSERT( sref.slot.location != Slot::Invalid );
-        _toinit.emplace_back( [=]{
-                initStatic( sref.slot, value::Pointer<>( p ) );
-                _doneinit.insert( G );
-            } );
+        insert( 0, G->getInitializer() );
+
+        if ( !G->isConstant() )
+        {
+            Slot slot = initSlot( G->getInitializer(), Slot::Global );
+            globalmap[ G ] = allocateSlot( slot );
+        }
     }
-    else if ( isa< llvm::Constant >( val ) || isCodePointer( val ) )
-        _toinit.emplace_back( [=]{ initStatic( sref.slot, val ); } );
+    if ( isa< llvm::Constant >( val ) || isCodePointer( val ) )
+        _toinit.emplace_back( [=]{ initConstant( sref.slot, val ); } );
 
     ASSERT( sref.slot.location != Slot::Invalid );
     valuemap.insert( std::make_pair( val, sref ) );
@@ -375,7 +376,7 @@ void Program::insertIndices( Position p )
         Slot v( 4, Slot::Constant );
         auto sr = allocateSlot( v );
         _toinit.emplace_back(
-            [=]{ initStatic( sr.slot, value::Int< 32 >( I->getIndices()[ i ] ) ); } );
+            [=]{ initConstant( sr.slot, value::Int< 32 >( I->getIndices()[ i ] ) ); } );
         insn.values[ shift + i ] = sr.slot;
     }
 }
@@ -519,6 +520,17 @@ void Program::computeStatic()
     {
         _toinit.front()();
         _toinit.pop_front();
+    }
+
+    for ( auto var = module->global_begin(); var != module->global_end(); ++ var )
+    {
+        if ( !var->getInitializer() || var->isConstant() )
+            continue;
+        ASSERT( globalmap.find( var ) != globalmap.end() );
+        ASSERT( valuemap.find( var->getInitializer() ) != valuemap.end() );
+        auto location = valuemap[ var->getInitializer() ];
+        auto target = globalmap[ var ];
+        _ccontext.heap().copy( s2hptr( location.slot ), s2hptr( target.slot ), location.slot.width );
     }
 
     auto md_func_var = module->getGlobalVariable( "__md_functions" );

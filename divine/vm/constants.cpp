@@ -23,15 +23,17 @@
 
 using namespace divine::vm;
 
-GenericPointer Program::s2hptr( Program::Slot v, int offset )
+ConstContext::HeapPointer Program::s2hptr( Program::Slot v, int offset )
 {
     Eval< Program, ConstContext, value::Void > eval( *this, _ccontext );
     return eval.s2ptr( v, offset );
 }
 
-void Program::initStatic( Program::Slot v, llvm::Value *V )
+void Program::initConstant( Program::Slot v, llvm::Value *V )
 {
     bool done = true;
+
+    ASSERT_EQ( v.location, Slot::Constant );
 
     auto &heap = _ccontext.heap();
     Eval< Program, ConstContext, value::Void > eval( *this, _ccontext );
@@ -58,12 +60,13 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
         {
             auto op = C->getOperand( i );
             if ( !_doneinit.count( op ) )
+            {
                 done = false;
-            if ( !isa< llvm::GlobalVariable >( op ) )
-                _toinit.emplace_back( [= ]{
-                    ASSERT( valuemap.find(op) != valuemap.end() );
-                    initStatic( valuemap[ op ].slot, op );
-                } );
+            }
+            _toinit.emplace_back( [=]{
+                ASSERT( valuemap.find(op) != valuemap.end() );
+                initConstant( valuemap[ op ].slot, op );
+            } );
         }
 
     if ( auto CE = dyn_cast< llvm::ConstantExpr >( V ) )
@@ -121,9 +124,17 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
     {
         /* nothing to do, everything is zeroed by default */
     }
-    else if ( isa< llvm::GlobalVariable >( V ) )
+    else if ( auto GV = dyn_cast< llvm::GlobalVariable >( V ) )
     {
-        UNREACHABLE( "an unexpected llvm::GlobalVariable" );
+        ASSERT( valuemap.count( GV->getInitializer() ) );
+        SlotRef location;
+        if ( GV->isConstant() )
+            location = valuemap[ GV->getInitializer() ];
+        else {
+            location = globalmap[ GV ];
+        }
+        heap.shift( ptr, value::Pointer<>( s2ptr( location ) ) );
+        _doneinit.insert( GV );
     }
     else if ( isa< llvm::ConstantAggregateZero >( V ) )
     {
@@ -149,6 +160,7 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
                 offset = SLO->getElementOffset( i );
             }
 
+            ASSERT( valuemap.count( C->getOperand( i ) ) );
             auto sub = valuemap[ C->getOperand( i ) ].slot;
             heap.copy( eval.s2ptr( sub ), eval.s2ptr( v, offset ), sub.width );
             offset += sub.width;
@@ -178,5 +190,5 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
     if ( done )
         _doneinit.insert( V );
     else
-        _toinit.emplace_back( [=]{ initStatic( v, V ); } );
+        _toinit.emplace_back( [=]{ initConstant( v, V ); } );
 }
