@@ -840,10 +840,11 @@ struct Eval
 
         auto _atomicrmw = [this] ( auto impl ) -> void {
             this->op< IsIntegral >( 0, [&]( auto v ) {
-                    NOT_IMPLEMENTED();
-                    /* auto &edit = this->_deref< decltype( get( -1 ) ) >( 1 );
-                    get( 0 ) = edit;
-                    impl( edit, get( 2 ) ); */
+                    using T = decltype( v.get() );
+                    auto location = operandCk< PointerV >( 1 ).v();
+                    auto edit = heap().template read< T >( location );
+                    this->result( edit );
+                    heap().write( location, impl( edit, v.get( 2 ) ) );
                 } );
         };
 
@@ -1073,29 +1074,27 @@ struct Eval
                 switch ( cast< AtomicRMWInst >( instruction().op )->getOperation() )
                 {
                     case AtomicRMWInst::Xchg:
-                        return _atomicrmw( []( auto &v, auto &x ) { v = x; } );
+                        return _atomicrmw( []( auto v, auto x ) { return x; } );
                     case AtomicRMWInst::Add:
-                        return _atomicrmw( []( auto &v, auto &x ) { v = v + x; } );
+                        return _atomicrmw( []( auto v, auto x ) { return v + x; } );
                     case AtomicRMWInst::Sub:
-                        return _atomicrmw( []( auto &v, auto &x ) { v = v - x; } );
+                        return _atomicrmw( []( auto v, auto x ) { return v - x; } );
                     case AtomicRMWInst::And:
-                        return _atomicrmw( []( auto &v, auto &x ) { v = v & x; } );
+                        return _atomicrmw( []( auto v, auto x ) { return v & x; } );
                     case AtomicRMWInst::Nand:
-                        return _atomicrmw( []( auto &v, auto &x ) { v = ~v & x; } );
+                        return _atomicrmw( []( auto v, auto x ) { return ~v & x; } );
                     case AtomicRMWInst::Or:
-                        return _atomicrmw( []( auto &v, auto &x ) { v = v | x; } );
+                        return _atomicrmw( []( auto v, auto x ) { return v | x; } );
                     case AtomicRMWInst::Xor:
-                        return _atomicrmw( []( auto &v, auto &x ) { v = v ^ x; } );
+                        return _atomicrmw( []( auto v, auto x ) { return v ^ x; } );
                     case AtomicRMWInst::UMax:
-                        return _atomicrmw( []( auto &v, auto &x ) { v = std::max( v, x ); } );
+                        return _atomicrmw( []( auto v, auto x ) { NOT_IMPLEMENTED(); return v; } );
                     case AtomicRMWInst::Max:
-                        return _atomicrmw( []( auto &v, auto &x ) { make_signed( v ) =
-                                    std::max( make_signed( v ), make_signed( x ) ); } );
+                        return _atomicrmw( []( auto v, auto x ) { NOT_IMPLEMENTED(); return v; } );
                     case AtomicRMWInst::UMin:
-                        return _atomicrmw( []( auto &v, auto &x ) { v = std::min( v, x ); } );
+                        return _atomicrmw( []( auto v, auto x ) { NOT_IMPLEMENTED(); return v; } );
                     case AtomicRMWInst::Min:
-                        return _atomicrmw( []( auto &v, auto &x ) { make_signed( v ) =
-                                    std::min( make_signed( v ), make_signed( x ) ); } );
+                        return _atomicrmw( []( auto v, auto x ) { NOT_IMPLEMENTED(); return v; } );
                     case AtomicRMWInst::BAD_BINOP:
                         UNREACHABLE_F( "bad binop in atomicrmw" );
                 }
