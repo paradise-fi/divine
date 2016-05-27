@@ -222,11 +222,11 @@ struct CLI : Interface
         auto v = validator();
 
         auto helpopts = cmd::make_option_set< Help >( v )
-                .add( "[{string}]", &Help::_cmd, "print man to specified command"s );
+            .add( "[{string}]", &Help::_cmd, "print man to specified command"s );
 
         auto bcopts = cmd::make_option_set< WithBC >( v )
-                .add( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
-                .add( "{file}", &WithBC::_file, "the bitcode file to load"s, true );
+            .add( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
+            .add( "{file}", &WithBC::_file, "the bitcode file to load"s, true );
 
         using DrvOpt = cc::Compile::Opts;
         auto ccdrvopts = cmd::make_option_set< DrvOpt >( v )
@@ -246,26 +246,26 @@ struct CLI : Interface
             .add( "[{file}]", &Cc::_files, "input file(s) to compile (C or C++)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
-                .add( "[--max-memory {int}]", &Verify::_max_mem, "max memory allowed to use [in MB]"s )
-                .add( "[--max-time {int}]", &Verify::_max_time, "max time allowed to take [in sec]"s )
-                .add( "[--no-counterexample]", &Verify::_no_counterexample,
-                        "do not print counterexamples"s )
-                .add( "[--report {string}]", &Verify::_report, "print a report with given options"s )
-                .add( "[--statistics {string}]", &Verify::_statistics,
-                      "print statistics with given options"s );
+            .add( "[--max-memory {int}]", &Verify::_max_mem, "max memory allowed to use [in MB]"s )
+            .add( "[--max-time {int}]", &Verify::_max_time, "max time allowed to take [in sec]"s )
+            .add( "[--no-counterexample]", &Verify::_no_counterexample,
+                  "do not print counterexamples"s )
+            .add( "[--report {string}]", &Verify::_report, "print a report with given options"s )
+            .add( "[--statistics {string}]", &Verify::_statistics,
+                  "print statistics with given options"s );
 
         auto drawopts = cmd::make_option_set< Draw >( v )
-                .add( "[--distance {int}|-d {int}]", &Draw::_distance, "node distance"s )
-                .add( "[--labels {label}]", &Draw::_labels, "label all, none or only trace"s )
-                .add( "[--bfs-layout]", &Draw::_bfs, "draw in bfs layout (levels)"s );
+            .add( "[--distance {int}|-d {int}]", &Draw::_distance, "node distance"s )
+            .add( "[--labels {label}]", &Draw::_labels, "label all, none or only trace"s )
+            .add( "[--bfs-layout]", &Draw::_bfs, "draw in bfs layout (levels)"s );
 
         auto parser = cmd::make_parser( v )
-                .add< Verify >( vrfyopts, bcopts )
-                .add< Run >( bcopts )
-                .add< Draw >( drawopts, bcopts )
-                .add< Info >( bcopts )
-                .add< Cc >( ccopts )
-                .add< Help >( helpopts );
+            .add< Verify >( vrfyopts, bcopts )
+            .add< Run >( bcopts )
+            .add< Draw >( drawopts, bcopts )
+            .add< Info >( bcopts )
+            .add< Cc >( ccopts )
+            .add< Help >( helpopts );
         return parser;
     }
 
