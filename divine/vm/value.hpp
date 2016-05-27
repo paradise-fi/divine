@@ -96,6 +96,7 @@ struct Int : Base
     Int operator|( Int o ) { return bitwise( _v | o._v, (_m &  _v) | (o._m &  o._v), o ); }
     Int operator&( Int o ) { return bitwise( _v & o._v, (_m & ~_v) | (o._m & ~o._v), o ); }
     Int operator^( Int o ) { return bitwise( _v ^ o._v, 0, o ); }
+    Int operator~() { Int r = *this; r._v = ~_v; return r; }
     Int operator<<( Int< width, false > sh ) {
         if ( !sh.defined() )
             return Int( 0, 0, false );
