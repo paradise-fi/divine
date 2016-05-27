@@ -26,6 +26,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <algorithm>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -356,7 +357,7 @@ struct TestCase : TestCaseBase {
         &__reg2_ ## n< SELF >;                                          \
     }                                                                   \
     template< typename SELF >                                           \
-    static void __reg2_ ## n() __attribute__((constructor)) {           \
+    static void  __attribute__((constructor)) __reg2_ ## n(){           \
         static ::brick::unittest::TestCase< SELF, &SELF::n > tc;        \
         tc.name = #n; tc.expect_failure = bad;                          \
     }                                                                   \
