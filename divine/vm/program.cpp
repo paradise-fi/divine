@@ -219,7 +219,7 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
     Slot::Location sl;
 
     /* global scope is only applied to GlobalVariable initializers */
-    if ( !function || isa< llvm::Constant >( val ) || isCodePointer( val ) )
+    if ( !function || isa< llvm::Constant >( val ) || isCodePointerConst( val ) )
         sl = Slot::Constant;
     else
         sl = Slot::Local;
@@ -265,7 +265,7 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
             globalmap[ G ] = allocateSlot( slot );
         }
     }
-    if ( isa< llvm::Constant >( val ) || isCodePointer( val ) )
+    if ( isa< llvm::Constant >( val ) || isCodePointerConst( val ) )
         _toinit.emplace_back( [=]{ initConstant( sref.slot, val ); } );
 
     ASSERT( sref.slot.location != Slot::Invalid );
