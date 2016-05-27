@@ -508,26 +508,6 @@ struct Eval
         heap().free( tmp );
         target.instruction() += count - 1;
         pc( target );
-#if 0
-        machine::Frame &original = ccontext.frame();
-        int framesize = original.framesize( info );
-        std::vector<char> tmp;
-        tmp.resize( sizeof( machine::Frame ) + framesize );
-        machine::Frame &copy = *reinterpret_cast< machine::Frame* >( &tmp[0] );
-        copy = ccontext.frame();
-
-        std::copy( original.memory(), original.memory() + framesize, copy.memory() );
-        while ( ::llvm::PHINode *PN = dyn_cast< ::llvm::PHINode >( instruction().op ) ) {
-            /* TODO use operands directly, avoiding valuemap lookup */
-            auto v = info.valuemap[ PN->getIncomingValueForBlock(
-                    cast< ::llvm::Instruction >( info.instruction( origin ).op )->getParent() ) ];
-            FrameContext copyctx( info, copy );
-            memcopy( v, instruction().result(), v.width, econtext, copyctx );
-            ccontext.pc().instruction ++;
-            _instruction = &info.instruction( ccontext.pc() );
-        }
-        std::copy( copy.memory(), copy.memory() + framesize, original.memory() );
-#endif
     }
 
     template< typename O >
