@@ -50,68 +50,28 @@ std::string stringifyToCode( Namespace ns, std::string name, std::string value )
         ss << "} // namespace " << n << std::endl;
 }
 
-struct Compile {
+struct Compile
+{
+    struct Opts
+    {
+        int num_threads;
+        bool dont_link, libs_only;
+        std::string precompiled;
+        Opts() : num_threads( 1 ), dont_link( false ), libs_only( false ) {}
+    } _opts;
 
-    template< typename T >
-    struct Wrapper {
-        Wrapper( T &val ) : val( val ) { }
-        Wrapper( T &&val ) : val( std::move( val ) ) { }
-        T &get() { return val; }
-        const T &get() const { return val; }
-      private:
-        T val;
-    };
-
-    struct NumThreads : Wrapper< int > {
-        using Wrapper< int >::Wrapper;
-    };
-    struct Precompiled : Wrapper< std::string > {
-        using Wrapper< std::string >::Wrapper;
-    };
-    struct LibsOnly { };
-    struct DontLink { };
-    struct DisableVFS { };
-    struct VFSInput : Wrapper< std::string > {
-        using Wrapper< std::string >::Wrapper;
-    };
-    struct VFSSnapshot : Wrapper< std::string > {
-        using Wrapper< std::string >::Wrapper;
-    };
-
-    using Options = std::vector< brick::types::Union< NumThreads, Precompiled,
-                                 LibsOnly, DisableVFS, VFSInput, VFSSnapshot,
-                                 DontLink > >;
-
-    explicit Compile( Options opts = { } ) : compilers( 1 ), workers( 1 ) {
-        for ( auto &opt : opts )
-            opt.match( [this]( NumThreads ) {
-                    NOT_IMPLEMENTED();
-                }, [this]( Precompiled p ) {
-                    precompiled = p.get();
-                }, [this]( LibsOnly ) {
-                    libsOnly = true;
-                }, [this]( DisableVFS ) {
-                    vfs = false;
-                    ASSERT( vfsSnapshot.empty() );
-                    ASSERT( vfsInput.empty() );
-                }, [this]( VFSInput vi ) {
-                    vfsInput = vi.get();
-                    ASSERT( vfs );
-                }, [this]( VFSSnapshot vs ) {
-                    vfsSnapshot = vs.get();
-                    ASSERT( vfs );
-                }, [this]( DontLink ) {
-                    dontLink = true;
-                } );
+    explicit Compile( Opts opts = Opts() ) : _opts( opts ), compilers( 1 ), workers( 1 )
+    {
         ASSERT_LEQ( 1ul, workers.size() );
         ASSERT_EQ( workers.size(), compilers.size() );
 
         setupFS();
-        if ( !dontLink )
+        if ( !_opts.dont_link )
             setupLibs();
     }
 
-    void compileAndLink( std::string path, std::vector< std::string > flags = { } ) {
+    void compileAndLink( std::string path, std::vector< std::string > flags = {} )
+    {
         linker.link( compile( path, flags ) );
     }
 
@@ -224,12 +184,12 @@ struct Compile {
     void setupFS() {
         prepareSources( includeDir, runtime_list, Type::Header );
         prepareSources( srcDir, runtime_list, Type::Source,
-            [&]( std::string name ) { return vfs || !brick::string::startsWith( name, "filesystem" ); } );
+            [&]( std::string name ) { return !brick::string::startsWith( name, "filesystem" ); } );
     }
 
     void setupLibs() {
-        if ( precompiled.size() ) {
-            auto input = std::move( llvm::MemoryBuffer::getFile( precompiled ).get() );
+        if ( _opts.precompiled.size() ) {
+            auto input = std::move( llvm::MemoryBuffer::getFile( _opts.precompiled ).get() );
             ASSERT( !!input );
 
             auto inputData = input->getMemBufferRef();
@@ -270,14 +230,9 @@ struct Compile {
     const std::string includeDir = "/divine/include";
     const std::string srcDir = "/divine/src";
 
-    std::string precompiled;
     std::vector< Compiler > compilers;
     std::vector< std::thread > workers;
     brick::llvm::Linker linker;
-    bool vfs = false, dontLink = false; // FIXME: VFS
-    bool libsOnly = false;
-    std::string vfsSnapshot;
-    std::string vfsInput;
     std::vector< std::string > commonFlags = { "-D__divine__"
                                              , "-isystem", includeDir
                                              , "-isystem", join( includeDir, "pdclib" )
