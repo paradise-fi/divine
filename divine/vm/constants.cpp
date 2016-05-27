@@ -23,7 +23,7 @@
 
 using namespace divine::vm;
 
-ConstContext::PointerV Program::s2hptr( Program::Slot v, int offset )
+GenericPointer Program::s2hptr( Program::Slot v, int offset )
 {
     Eval< Program, ConstContext, value::Void > eval( *this, _ccontext );
     return eval.s2ptr( v, offset );
@@ -35,7 +35,7 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
 
     auto &heap = _ccontext.heap();
     Eval< Program, ConstContext, value::Void > eval( *this, _ccontext );
-    auto ptr = eval.s2ptr( v );
+    auto ptr = ConstContext::PointerV( eval.s2ptr( v ) );
     auto C = dyn_cast< llvm::Constant >( V );
 
     if ( auto GA = dyn_cast< llvm::GlobalAlias >( V ) ) 

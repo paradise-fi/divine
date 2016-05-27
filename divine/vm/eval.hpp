@@ -155,19 +155,19 @@ struct Eval
 
     CodePointer pc()
     {
-        auto ptr = heap().template read< PointerV >( frame() );
+        auto ptr = heap().template read< PointerV >( frame().v() );
         if ( !ptr.defined() )
             return CodePointer();
         return ptr.v();
     }
 
-    void pc( CodePointer p ) { heap().write( frame(), PointerV( p ) ); }
+    void pc( CodePointer p ) { heap().write( frame().v(), PointerV( p ) ); }
 
     PointerV frame() { return control().frame(); }
     PointerV globals() { return control().globals(); }
     PointerV constants() { return control().constants(); }
 
-    PointerV s2ptr( Slot v, int off, PointerV f, PointerV g )
+    GenericPointer s2ptr( Slot v, int off, PointerV f, PointerV g )
     {
         auto base = PointerV();
         switch ( v.location )
@@ -177,17 +177,19 @@ struct Eval
             case Slot::Constant: base = constants(); break;
             default: UNREACHABLE( "impossible slot type" );
         }
+        ASSERT( base.defined() );
         // std::cerr << "s2ptr: " << v << " -> " << (base + v.offset + off) << std::endl;
-        return base + v.offset + off;
+        return (base + v.offset + off).v();
     }
-    PointerV s2ptr( Slot v, int off, PointerV f ) { return s2ptr( v, off, f, globals() ); }
-    PointerV s2ptr( Slot v, int off = 0 ) { return s2ptr( v, off, frame(), globals() ); }
+    GenericPointer s2ptr( Slot v, int off, PointerV f ) { return s2ptr( v, off, f, globals() ); }
+    GenericPointer s2ptr( Slot v, int off = 0 ) { return s2ptr( v, off, frame(), globals() ); }
 
-    PointerV ptr2h( PointerV p ) { return ptr2h( p, globals() ); }
-    PointerV ptr2h( PointerV p, PointerV g )
+    HeapPointer ptr2h( PointerV p ) { return ptr2h( p, globals() ); }
+    HeapPointer ptr2h( PointerV p, PointerV g )
     {
+        ASSERT( p.defined() );
         if ( p.v().type() == PointerType::Heap )
-            return p;
+            return p.v();
         if ( p.v().type() == PointerType::Const )
         {
             ConstPointer pp = p.v();
@@ -214,7 +216,7 @@ struct Eval
         Eval *ev;
         V( Eval *ev ) : ev( ev ) {}
 
-        PointerV ptr( int v ) { return ev->s2ptr( ev->instruction().value( v ) ); }
+        GenericPointer ptr( int v ) { return ev->s2ptr( ev->instruction().value( v ) ); }
         T get( int v  = INT_MIN )
         {
             ASSERT_LEQ( INT_MIN + 1, v ); /* default INT_MIN is only for use in decltype */
@@ -401,7 +403,7 @@ struct Eval
     {
         auto fr = frame();
         heap().skip( fr, sizeof( typename PointerV::Raw ) );
-        auto parent = heap().template read< PointerV >( fr );
+        auto parent = heap().template read< PointerV >( fr.v() );
 
         if ( !heap().valid( parent.v() ) )
         {
@@ -503,17 +505,17 @@ struct Eval
         auto tmp = heap().make( size ), tgt = tmp;
         each_phi( target, [&]( auto &i )
                   {
-                      heap().copy( s2ptr( i.operand( idx ) ), tgt, i.result().width );
+                      heap().copy( s2ptr( i.operand( idx ) ), tgt.v(), i.result().width );
                       heap().skip( tgt, i.result().width );
                   } );
         tgt = tmp;
         each_phi( target, [&]( auto &i )
                   {
-                      heap().copy( tgt, s2ptr( i.result() ), i.result().width );
+                      heap().copy( tgt.v(), s2ptr( i.result() ), i.result().width );
                       heap().skip( tgt, i.result().width );
                   } );
 
-        heap().free( tmp );
+        heap().free( tmp.v() );
         target.instruction( target.instruction() + count - 1 );
         pc( target );
     }
@@ -573,7 +575,7 @@ struct Eval
                 }
             }
             if ( !retain )
-                heap().free( ptr );
+                heap().free( ptr.v() );
         }
     }
 
@@ -611,7 +613,7 @@ struct Eval
 
     std::string operandStr( int o )
     {
-        auto nptr = ptr2h( operandCk< PointerV >( o ) );
+        PointerV nptr = ptr2h( operandCk< PointerV >( o ) );
         std::string str;
         CharV c;
         do {
@@ -716,16 +718,16 @@ struct Eval
                 return;
             }
             case BuiltinFreeObject:
-                if ( !heap().free( operand< PointerV >( 0 ) ) )
+                if ( !heap().free( operand< PointerV >( 0 ).v() ) )
                     fault( _VM_F_Memory );
                 return;
             case BuiltinQueryObjectSize:
             {
-                auto v = operandCk< PointerV >( 0 );
-                if ( !heap().valid( v ) )
+                auto ptr = operandCk< PointerV >( 0 ).v();
+                if ( !heap().valid( ptr ) )
                     fault( _VM_F_Hypercall );
                 else
-                    result( IntV( heap().size( v ) ) );
+                    result( IntV( heap().size( ptr ) ) );
                 return;
             }
             case BuiltinQueryVarargs:
@@ -796,7 +798,7 @@ struct Eval
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
             {
                 auto op = operand( i );
-                heap().copy( s2ptr( op ), vaptr, op.width );
+                heap().copy( s2ptr( op ), vaptr.v(), op.width );
                 heap().skip( vaptr, int( op.width ) );
             }
         }

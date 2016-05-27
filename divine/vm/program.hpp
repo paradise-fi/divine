@@ -249,13 +249,13 @@ struct Program
     auto exportHeap( H &target )
     {
         auto cp = target.make( _constants_size );
-        target.copy( _ccontext._heap, _ccontext.control().constants(), cp, _constants_size );
+        target.copy( _ccontext._heap, _ccontext.control().constants().v(), cp.v(), _constants_size );
 
         if ( !_globals_size )
             return std::make_pair( cp, decltype( cp )( nullPointer() ) );
 
         auto gp = target.make( _globals_size );
-        target.copy( _ccontext._heap, _ccontext.control().globals(), gp, _globals_size );
+        target.copy( _ccontext._heap, _ccontext.control().globals().v(), gp.v(), _globals_size );
         return std::make_pair( cp, gp );
     }
 
@@ -311,7 +311,7 @@ struct Program
         }
     }
 
-    ConstContext::PointerV s2hptr( Slot s, int offset = 0 );
+    GenericPointer s2hptr( Slot s, int offset = 0 );
 
     using Coverage = std::vector< std::vector< llvm::Value * > >;
     std::vector< Coverage > coverage;

@@ -95,23 +95,23 @@ struct MutableHeap
         return PointerV( p );
     }
 
-    bool free( PointerV p )
+    bool free( Pointer p )
     {
-        auto i = p2i( p.v() );
+        auto i = p2i( p );
         if ( !_objects.valid( i ) )
             return false;
         _objects.free( i );
         return true;
     }
 
-    bool valid( PointerV p )
+    bool valid( Pointer p )
     {
-        if ( _objects.valid( p2i( p.v() ) ) )
+        if ( _objects.valid( p2i( p ) ) )
             return true;
         return false;
     }
 
-    int size( PointerV p ) { return _objects.size( p2i( p.v() ) ); }
+    int size( Pointer p ) { return _objects.size( p2i( p ) ); }
 
     auto shadow( Pointer pv )
     {
@@ -125,33 +125,31 @@ struct MutableHeap
     }
 
     template< typename T >
-    T read( PointerV p )
+    T read( Pointer p )
     {
         using Raw = typename T::Raw;
-        Pointer pv = p.v();
         ASSERT( valid( p ) );
-        ASSERT_LEQ( sizeof( Raw ), size( p ) - pv.offset() );
+        ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
 
-        auto r = T( *_objects.machinePointer< typename T::Raw >( p2i( pv ), pv.offset() ) );
-        shadow( pv ).query( pv.offset(), r );
+        auto r = T( *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) );
+        shadow( p ).query( p.offset(), r );
         return r;
     }
 
     template< typename T >
-    void write( PointerV p, T t )
+    void write( Pointer p, T t )
     {
         using Raw = typename T::Raw;
-        Pointer pv = p.v();
         ASSERT( valid( p ), p );
-        ASSERT_LEQ( sizeof( Raw ), size( p ) - pv.offset() );
-        shadow( pv ).update( pv.offset(), t );
-        *_objects.machinePointer< typename T::Raw >( p2i( pv ), pv.offset() ) = t.v();
+        ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
+        shadow( p ).update( p.offset(), t );
+        *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) = t.v();
     }
 
     template< typename T >
     void shift( PointerV &p, T t )
     {
-        write( p, t );
+        write( p.v(), t );
         Pointer pv = p.v();
         pv.offset( pv.offset() + sizeof( typename T::Raw ) );
         p.v( pv );
@@ -160,7 +158,7 @@ struct MutableHeap
     template< typename T >
     auto shift( PointerV &p )
     {
-        auto r = read< T >( p );
+        auto r = read< T >( p.v() );
         skip( p, sizeof( typename T::Raw ) );
         return r;
     }
@@ -172,30 +170,29 @@ struct MutableHeap
         p.v( pv );
     }
 
-    auto unsafe_bytes( PointerV p )
+    auto unsafe_bytes( Pointer p )
     {
-        return Bytes( _objects, p2i( p.v() ) );
+        return Bytes( _objects, p2i( p ) );
     }
 
     template< typename H >
-    bool copy( H &_from_heap, PointerV _from, PointerV _to, int bytes )
+    bool copy( H &_from_heap, Pointer _from, Pointer _to, int bytes )
     {
         auto from = _from_heap.unsafe_bytes( _from );
         auto to = unsafe_bytes( _to );
-        Pointer from_v = _from.v(), to_v = _to.v();
-        if ( from_v.null() || to_v.null() )
+        if ( _from.null() || _to.null() )
             return false;
         int from_s( size( _from ) ), to_s ( size( _to ) );
-        int from_off( from_v.offset() ), to_off( to_v.offset() );
+        int from_off( _from.offset() ), to_off( _to.offset() );
         if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )
             return false;
         std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
-        auto from_sh = _from_heap.shadow( _from.v() ), to_sh = shadow( _to.v() );
+        auto from_sh = _from_heap.shadow( _from ), to_sh = shadow( _to );
         to_sh.update( from_sh, from_off, to_off, bytes );
         return true;
     }
 
-    bool copy( PointerV f, PointerV t, int b ) { return copy( *this, f, t, b ); }
+    bool copy( Pointer f, Pointer t, int b ) { return copy( *this, f, t, b ); }
 };
 
 static inline std::ostream &operator<<( std::ostream &o, MutableHeap::Pointer p )
@@ -219,8 +216,8 @@ struct MutableHeap
         using I = vm::value::Int< 32, true >;
         vm::MutableHeap heap;
         auto p = heap.make( 16 );
-        heap.write( p, I( 10 ) );
-        auto q = heap.read< I >( p );
+        heap.write( p.v(), I( 10 ) );
+        auto q = heap.read< I >( p.v() );
         ASSERT_EQ( q.v(), 10 );
     }
 
@@ -236,8 +233,8 @@ struct MutableHeap
     {
         vm::MutableHeap heap;
         auto p = heap.make( 16 );
-        heap.write( p, p );
-        auto q = heap.read< vm::MutableHeap::PointerV >( p );
+        heap.write( p.v(), p );
+        auto q = heap.read< vm::MutableHeap::PointerV >( p.v() );
         ASSERT( p.v() == q.v() );
     }
 };

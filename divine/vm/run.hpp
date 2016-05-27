@@ -75,7 +75,7 @@ struct RunContext
         {
             HeapPointer ifl = _ifl.v();
             if ( _ifl.v() != nullPointer() )
-                _heap.write( _ifl, _frame );
+                _heap.write( _ifl.v(), _frame );
             _frame = _entry_frame;
             _ifl = PointerV();
             _mask = true;
@@ -136,7 +136,7 @@ struct RunContext
         for ( auto e : _env )
         {
             auto str = std::get< 0 >( e );
-            auto ptr = _program.s2hptr( std::get< 1 >( e ).slot );
+            auto ptr = PointerV( _program.s2hptr( std::get< 1 >( e ).slot ) );
             std::for_each( str.begin(), str.end(),
                            [&]( char c )
                            {
