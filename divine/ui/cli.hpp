@@ -12,6 +12,7 @@
 namespace divine {
 namespace ui {
 
+using namespace std::literals;
 namespace cmd = brick::cmd;
 
 struct Command
@@ -123,18 +124,16 @@ struct Draw   : WithBC
 
 struct Cc     : Command
 {
-    std::string _file;
+    std::vector< std::string > _files, _flags;
     std::string _precompiled;
-    std::vector< std::string > _flags;
-    std::vector< std::string > _mics;
+
     bool _libraries_only = false;
-    bool _fairness = false;
     bool _dont_link = false;
     int _jobs = 1;
 
     void print_args()
     {
-        std::cerr << "File to compile: " << _file << std::endl;
+        std::cerr << "Files to compile: " << brick::string::fmt( _files ) << std::endl;
         std::cerr << "Number of jobs: " << _jobs << std::endl;
         std::cerr << "Precompiled: " << _precompiled << std::endl;
 
@@ -143,15 +142,8 @@ struct Cc     : Command
             std::cerr << " " << flag;
         std::cerr << std::endl;
 
-        std::cerr << "Other options:";
-        for ( std::string opt : _mics )
-            std::cerr << " " << opt;
-        std::cerr << std::endl;
-
         if (_libraries_only)
             std::cerr << "Libraries only." << std::endl;
-        if (_fairness)
-            std::cerr << "Fairness." << std::endl;
         if (_dont_link)
             std::cerr << "Do not link" << std::endl;
     }
@@ -217,34 +209,33 @@ struct CLI : Interface
         auto v = validator();
 
         auto helpopts = cmd::make_option_set< Help >( v )
-                .add( "[{string}]", &Help::_cmd, std::string( "print man to specified command" ) );
+                .add( "[{string}]", &Help::_cmd, "print man to specified command"s );
 
         auto bcopts = cmd::make_option_set< WithBC >( v )
-                .add( "[-D {string}]", &WithBC::_env, std::string( "add to the environment" ) )
-                .add( "{file}", &WithBC::_file, std::string( "the bitcode file to load" ) );
+                .add( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
+                .add( "{file}", &WithBC::_file, "the bitcode file to load"s, true );
 
         auto ccopts = cmd::make_option_set< Cc >( v )
-                .add( "[-j {int}]", &Cc::_jobs, std::string( "number of jobs" ) )
-                .add( "[--precompiled={string}]", &Cc::_precompiled, std::string( "no idea what this is" ) ) // MIXED
-                .add( "[--fair]", &Cc::_fairness, std::string( "fairness" ) )
-                .add( "[--libraries-only]", &Cc::_libraries_only, std::string( "compile only libraries" ) )
-                .add( "[--dont-link]", &Cc::_dont_link, std::string( "do not link" ) )
-                .add( "[-o {string}+]", &Cc::_flags, std::string( "compiler flags" ) )
-                .add( "[-{string}+]", &Cc::_mics, std::string( "any other arbitrary options" ) ) // MIXED
-                .add( "{file}", &Cc::_file, std::string( "input file to compile (of type .c, .cpp, .hpp ...)" ), true );
+                .add( "[-j {int}]", &Cc::_jobs, "number of jobs"s )
+                .add( "[--precompiled {string}]", &Cc::_precompiled, "no idea what this is"s )
+                .add( "[--libraries-only]", &Cc::_libraries_only, "compile only libraries"s )
+                .add( "[--dont-link]", &Cc::_dont_link, "do not link"s )
+                .add( "[-{string}]", &Cc::_flags, "any cc1 options"s )
+                .add( "{file}", &Cc::_files, "input file(s) to compile (C or C++)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
-                .add( "[--max-memory {int}]", &Verify::_max_mem, std::string( "max memory allowed to use [in MB]" ) ) // MIXED
-                .add( "[--max-time {int}]", &Verify::_max_time, std::string( "max time allowed to take [in sec]") ) // MIXED
-                .add( "[--no-counterexample]", &Verify::_no_counterexample, std::string( "do not print any counter example, if program fails") )
-                .add( "[--report {string}]", &Verify::_report, std::string( "print report with given options" ) ) // MIXED
-                .add( "[--statistics {string}]", &Verify::_statistics, std::string( "print statistics with given options" ) ); // MIXED
+                .add( "[--max-memory {int}]", &Verify::_max_mem, "max memory allowed to use [in MB]"s )
+                .add( "[--max-time {int}]", &Verify::_max_time, "max time allowed to take [in sec]"s )
+                .add( "[--no-counterexample]", &Verify::_no_counterexample,
+                        "do not print counterexamples"s )
+                .add( "[--report {string}]", &Verify::_report, "print a report with given options"s )
+                .add( "[--statistics {string}]", &Verify::_statistics,
+                      "print statistics with given options"s );
 
         auto drawopts = cmd::make_option_set< Draw >( v )
-                .add( "[--distance {int}|-d {int}]", &Draw::_distance, std::string( "node distance" ) ) // MIXED
-                .add( "[--labels {label}]", &Draw::_labels, std::string( "label all, none or only trace" ) ) // MIXED
-                .add( "[--bfs-layout]", &Draw::_bfs, std::string( "draw in bfs layout (levels)" ) )
-                .add( "[{int}]", &Draw::_number, std::string("any random number") );
+                .add( "[--distance {int}|-d {int}]", &Draw::_distance, "node distance"s )
+                .add( "[--labels {label}]", &Draw::_labels, "label all, none or only trace"s )
+                .add( "[--bfs-layout]", &Draw::_bfs, "draw in bfs layout (levels)"s );
 
         auto parser = cmd::make_parser( v )
                 .add< Verify >( vrfyopts, bcopts )
