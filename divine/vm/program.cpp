@@ -485,8 +485,11 @@ void Program::computeStatic()
         _toinit.pop_front();
     }
 
-    auto md_func = dyn_cast< llvm::ConstantArray >(
-        module->getGlobalVariable( "__md_functions" )->getInitializer() );
+    auto md_func_var = module->getGlobalVariable( "__md_functions" );
+    if ( !md_func_var )
+        return;
+
+    auto md_func = dyn_cast< llvm::ConstantArray >( md_func_var->getInitializer() );
     ASSERT( valuemap.count( md_func ) );
     auto slotref = valuemap[ md_func ];
     for ( int i = 0; i < int( md_func->getNumOperands() ); ++i )
