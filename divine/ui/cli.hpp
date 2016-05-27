@@ -2,6 +2,7 @@
 
 #include <divine/vm/bitcode.hpp>
 #include <divine/vm/run.hpp>
+#include <divine/cc/compile.hpp>
 
 #include <divine/ui/common.hpp>
 #include <divine/ui/curses.hpp>
@@ -124,33 +125,55 @@ struct Draw   : WithBC
 
 struct Cc     : Command
 {
+    cc::Compile::Opts _drv;
     std::vector< std::string > _files, _flags;
     std::string _precompiled;
-
-    bool _libraries_only = false;
-    bool _dont_link = false;
-    int _jobs = 1;
+    std::string _output;
 
     void print_args()
     {
         std::cerr << "Files to compile: " << brick::string::fmt( _files ) << std::endl;
-        std::cerr << "Number of jobs: " << _jobs << std::endl;
-        std::cerr << "Precompiled: " << _precompiled << std::endl;
+        std::cerr << "Number of jobs: " << _drv.num_threads << std::endl;
+        std::cerr << "Precompiled: " << _drv.precompiled << std::endl;
 
         std::cerr << "Flags:";
         for ( std::string flag : _flags )
             std::cerr << " " << flag;
         std::cerr << std::endl;
 
-        if (_libraries_only)
+        if (_drv.libs_only)
             std::cerr << "Libraries only." << std::endl;
-        if (_dont_link)
+        if (_drv.dont_link)
             std::cerr << "Do not link" << std::endl;
     }
 
     void run()
     {
         print_args();
+
+        if ( _output.empty() ) {
+            if ( _drv.libs_only )
+                _output = "libdivinert.bc";
+            else {
+                _output = _files.front();
+                auto pos = _output.rend() - std::find( _output.rbegin(), _output.rend(), '.' );
+                _output = _output.substr( 0, pos - 1 ) + ".bc";
+            }
+        }
+
+        cc::Compile driver( _drv );
+
+        for ( auto &x : _flags )
+            x = "-"s + x; /* put back the leading - */
+        for ( auto &x : _files )
+            driver.compileAndLink( x, _flags );
+
+        if ( !_drv.dont_link && !_drv.libs_only )
+            driver.prune( { "__sys_init", "main", "memmove", "memset",
+                            "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
+                            "__md_get_function_meta" } );
+
+        driver.writeToFile( _output );
     }
 };
 
@@ -215,13 +238,18 @@ struct CLI : Interface
                 .add( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
                 .add( "{file}", &WithBC::_file, "the bitcode file to load"s, true );
 
+        using DrvOpt = cc::Compile::Opts;
+        auto ccdrvopts = cmd::make_option_set< DrvOpt >( v )
+            .add( "[--precompiled {file}]", &DrvOpt::precompiled, "path to a prebuilt libdivinert.bc"s )
+            .add( "[-j {int}]", &DrvOpt::num_threads, "number of jobs"s )
+            .add( "[--dont-link]", &DrvOpt::dont_link, "do not link"s )
+            .add( "[--libraries-only]", &DrvOpt::libs_only, "build libdivinert.bc for later use"s );
+
         auto ccopts = cmd::make_option_set< Cc >( v )
-                .add( "[-j {int}]", &Cc::_jobs, "number of jobs"s )
-                .add( "[--precompiled {string}]", &Cc::_precompiled, "no idea what this is"s )
-                .add( "[--libraries-only]", &Cc::_libraries_only, "compile only libraries"s )
-                .add( "[--dont-link]", &Cc::_dont_link, "do not link"s )
-                .add( "[-{string}]", &Cc::_flags, "any cc1 options"s )
-                .add( "{file}", &Cc::_files, "input file(s) to compile (C or C++)"s );
+            .add( ccdrvopts, &Cc::_drv )
+            .add( "[-o {string}]", &Cc::_output, "the name of the output file"s )
+            .add( "[-{string}]", &Cc::_flags, "any cc1 options"s )
+            .add( "{file}", &Cc::_files, "input file(s) to compile (C or C++)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
                 .add( "[--max-memory {int}]", &Verify::_max_mem, "max memory allowed to use [in MB]"s )
