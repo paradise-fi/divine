@@ -457,7 +457,24 @@ struct Option : OptionInterface< T >
     bool required() override { return _pattern._required; };
     std::string fmt() override { return _pattern.fmt(); };
     std::string describe() override { return fmt() + "\t" + _descr; };
-    int priority() override { return _pattern._type == Pattern::Capture ? 0 : 1; };
+
+    int priority( Pattern &p )
+    {
+        int r = 0;
+        switch ( p._type )
+        {
+            case Pattern::Capture: return 0;
+            case Pattern::Mixed: return 1;
+            case Pattern::Match : return 2;
+            case Pattern::Group:
+                for ( int i = 0; i < p._subs.size(); ++i )
+                    r = std::max( r, priority( *p._subs[i] ) );
+                return r;
+            default: UNREACHABLE( "impossible pattern type" );
+        }
+    }
+
+    int priority() override { return priority( _pattern ); }
 
     Option( std::shared_ptr< Validator > v, std::string fmt, Get get, std::string descr )
         : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr )
