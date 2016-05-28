@@ -170,5 +170,38 @@ struct RunContext
     {}
 };
 
+struct Run
+{
+    using Eval = vm::Eval< Program, RunContext, RunContext::PointerV >;
+    using BC = std::shared_ptr< BitCode >;
+    using Env = std::vector< std::string >;
+
+    BC _bc;
+    Env _env;
+
+    Run( BC bc, Env env ) : _bc( bc ), _env( env ) {}
+
+    void run()
+    {
+        auto &program = _bc->program();
+        vm::RunContext _ctx( program );
+        _ctx.setup( _env );
+        Eval eval( program, _ctx );
+        _ctx.control().mask( true );
+        eval.run();
+        auto state = eval._result;
+
+        while ( state.v() != vm::nullPointer() )
+        {
+            _ctx.control().enter(
+                _ctx._control._sched, vm::nullPointer(),
+                Eval::IntV( eval.heap().size( state.v() ) ), state );
+            _ctx.control().mask( true );
+            eval.run();
+            state = eval._result;
+        }
+    }
+};
+
 }
 }
