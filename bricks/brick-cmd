@@ -467,7 +467,7 @@ struct Option : OptionInterface< T >
             case Pattern::Mixed: return 1;
             case Pattern::Match : return 2;
             case Pattern::Group:
-                for ( int i = 0; i < p._subs.size(); ++i )
+                for ( size_t i = 0; i < p._subs.size(); ++i )
                     r = std::max( r, priority( *p._subs[i] ) );
                 return r;
             default: UNREACHABLE( "impossible pattern type" );
