@@ -77,7 +77,6 @@ struct RunContext
             if ( _ifl.v() != nullPointer() )
                 _heap.write( _ifl, _frame );
             _frame = _entry_frame;
-            _entry_frame = PointerV();
             _ifl = PointerV();
             _mask = true;
         }
