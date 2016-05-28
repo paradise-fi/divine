@@ -636,11 +636,11 @@ struct Eval
         _interrupted = false;
     }
 
-    void implement_builtin()
+    void implement_hypercall()
     {
-        switch( instruction().builtin )
+        switch( instruction().hypercall )
         {
-            case BuiltinChoose:
+            case HypercallChoose:
             {
                 int options = operandCk< IntV >( 0 ).v();
                 std::vector< int > p;
@@ -652,22 +652,22 @@ struct Eval
                     result( IntV( control().choose( options, p.begin(), p.end() ) ) );
                 return;
             }
-            case BuiltinSetSched:
+            case HypercallSetSched:
                 return control().setSched( operandCk< PointerV >( 0 ).v() );
-            case BuiltinSetFault:
+            case HypercallSetFault:
                 return control().setFault( operandCk< PointerV >( 0 ).v() );
-            case BuiltinSetIfl:
+            case HypercallSetIfl:
                 return control().setIfl( operandCk< PointerV >( 0 ) );
-            case BuiltinInterrupt:
+            case HypercallInterrupt:
                 return set_interrupted(); /* unconditionally */
-            case BuiltinCflInterrupt:
+            case HypercallCflInterrupt:
                 if ( _cfl_visited.count( pc() ) )
                     return set_interrupted();
                 _cfl_visited.insert( pc() );
                 return;
-            case BuiltinMemInterrupt:
+            case HypercallMemInterrupt:
                 return set_interrupted(); /* TODO */
-            case BuiltinJump:
+            case HypercallJump:
             {
                 // std::cerr << "======= jump" << std::endl;
                 auto tgt = operandCk< PointerV >( 0 );
@@ -682,19 +682,19 @@ struct Eval
                 else
                     return control().frame( tgt );
             }
-            case BuiltinTrace:
+            case HypercallTrace:
             {
                 auto str = operandStr( 0 );
                 control().trace( str );
                 return;
             }
-            case BuiltinFault:
+            case HypercallFault:
                 fault( Fault( operandCk< IntV >( 0 ).v() ) );
                 return;
-            case BuiltinMask:
+            case HypercallMask:
                 result( IntV( control().mask( operandCk< IntV >( 0 ).v() ) ) );
                 return;
-            case BuiltinMakeObject:
+            case HypercallMakeObject:
             {
                 int64_t size = operandCk< IntV >( 0 ).v();
                 if ( size >= ( 2ll << PointerOffBits ) || size < 1 )
@@ -705,11 +705,11 @@ struct Eval
                 result( size ? heap().make( size ) : PointerV( nullPointer() ) );
                 return;
             }
-            case BuiltinFreeObject:
+            case HypercallFreeObject:
                 if ( !heap().free( operand< PointerV >( 0 ).v() ) )
                     fault( _VM_F_Memory );
                 return;
-            case BuiltinQueryObjectSize:
+            case HypercallQueryObjectSize:
             {
                 auto ptr = operandCk< PointerV >( 0 ).v();
                 if ( !heap().valid( ptr ) )
@@ -718,7 +718,7 @@ struct Eval
                     result( IntV( heap().size( ptr ) ) );
                 return;
             }
-            case BuiltinQueryVarargs:
+            case HypercallQueryVarargs:
             {
                 auto f = _program.functions[ pc().function() ];
                 auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
@@ -727,22 +727,21 @@ struct Eval
                 return;
             }
             default:
-                UNREACHABLE_F( "unknown builtin %d", instruction().builtin );
+                UNREACHABLE_F( "unknown hypercall %d", instruction().hypercall );
         }
     }
 
     void implement_call( bool invoke )
     {
-        if ( instruction().builtin )
+        if ( instruction().hypercall )
         {
             if ( invoke )
                 return fault( _VM_F_Control );
             else
-                return implement_builtin();
+                return implement_hypercall();
         }
 
         CodePointer target = operandCk< PointerV >( invoke ? -3 : -1 ).v();
-
         CallSite CS( cast< ::llvm::Instruction >( instruction().op ) );
 
         if ( !target.function() )

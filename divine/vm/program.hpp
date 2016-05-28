@@ -49,37 +49,37 @@ class IntrinsicLowering;
 namespace divine {
 namespace vm {
 
-enum Builtin /* see divine.h for prototypes & documentation */
+enum Hypercall /* see divine.h for prototypes & documentation */
 {
-    NotBuiltin = 0,
-    BuiltinIntrinsic = 1,
+    NotHypercall = 0,
+    NotHypercallButIntrinsic = 1,
 
     /* system entry points */
-    BuiltinSetSched,
-    BuiltinSetFault,
-    BuiltinSetIfl,
+    HypercallSetSched,
+    HypercallSetFault,
+    HypercallSetIfl,
 
     /* control flow */
-    BuiltinChoose,
-    BuiltinMask,
-    BuiltinJump,
-    BuiltinFault,
-    BuiltinCflInterrupt,
-    BuiltinMemInterrupt,
-    BuiltinInterrupt,
+    HypercallChoose,
+    HypercallMask,
+    HypercallJump,
+    HypercallFault,
+    HypercallCflInterrupt,
+    HypercallMemInterrupt,
+    HypercallInterrupt,
 
     /* feedback */
-    BuiltinTrace,
+    HypercallTrace,
 
     /* memory management */
-    BuiltinMakeObject,
-    BuiltinFreeObject,
-    BuiltinMemcpy,
+    HypercallMakeObject,
+    HypercallFreeObject,
+    HypercallMemcpy,
 
     /* introspection */
-    BuiltinQueryVarargs,
-    BuiltinQueryFrame,
-    BuiltinQueryObjectSize
+    HypercallQueryVarargs,
+    HypercallQueryFrame,
+    HypercallQueryObjectSize
 };
 
 struct Choice {
@@ -173,7 +173,7 @@ struct Program
     struct Instruction
     {
         uint32_t opcode:16;
-        uint32_t builtin:16; /* non-zero if this is a call to a builtin */
+        uint32_t hypercall:16; /* non-zero if this is a call to a hypercall */
         brick::data::SmallVector< Slot, 4 > values;
         Slot &result() { ASSERT( values.size() ); return values[0]; }
         Slot &operand( int i )
@@ -198,7 +198,7 @@ struct Program
          * - callsite handling needs to be reworked
          */
         llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
-        Instruction() : builtin( NotBuiltin ), op( nullptr ) {}
+        Instruction() : hypercall( NotHypercall ), op( nullptr ) {}
     };
 
     struct Function
@@ -348,8 +348,8 @@ struct Program
     template< typename Insn > void insertIndices( Position p );
     Position insert( Position );
     Position lower( Position ); // convert intrinsic into normal insns
-    Builtin builtin( llvm::Function *f );
-    void builtin( Position );
+    Hypercall hypercall( llvm::Function *f );
+    void hypercall( Position );
     Slot initSlot( llvm::Value *val, Slot::Location loc );
     SlotRef insert( int function, llvm::Value *val );
 

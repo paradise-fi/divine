@@ -77,12 +77,12 @@ CodePointer Program::getCodePointer( llvm::Value *val )
         ASSERT( blockmap.count( B->getBasicBlock() ) );
         return blockmap[ B->getBasicBlock() ];
     } else if ( auto F = dyn_cast< llvm::Function >( val ) ) {
-        if ( !functionmap.count( F ) && builtin( F ) == NotBuiltin )
+        if ( !functionmap.count( F ) && hypercall( F ) == NotHypercall )
             throw std::logic_error(
                 "Program::insert: " +
                 std::string( "Unresolved symbol (function): " ) + F->getName().str() );
 
-        if ( builtin( F ) )
+        if ( hypercall( F ) )
             return CodePointer();
 
         return CodePointer( functionmap[ F ], 0 );
@@ -295,64 +295,64 @@ Program::Position Program::lower( Position p )
     return Position( p.pc, insert );
 }
 
-Builtin Program::builtin( llvm::Function *f )
+Hypercall Program::hypercall( llvm::Function *f )
 {
     std::string name = f->getName().str();
 
     if ( name == "__vm_set_sched" )
-        return BuiltinSetSched;
+        return HypercallSetSched;
     if ( name == "__vm_set_fault" )
-        return BuiltinSetFault;
+        return HypercallSetFault;
     if ( name == "__vm_set_ifl" )
-        return BuiltinSetIfl;
+        return HypercallSetIfl;
 
     if ( name == "__vm_choose" )
-        return BuiltinChoose;
+        return HypercallChoose;
     if ( name == "__vm_mask" )
-        return BuiltinMask;
+        return HypercallMask;
     if ( name == "__vm_jump" )
-        return BuiltinJump;
+        return HypercallJump;
     if ( name == "__vm_fault" )
-        return BuiltinFault;
+        return HypercallFault;
     if ( name == "__vm_cfl_interrupt" )
-        return BuiltinCflInterrupt;
+        return HypercallCflInterrupt;
     if ( name == "__vm_mem_interrupt" )
-        return BuiltinMemInterrupt;
+        return HypercallMemInterrupt;
     if ( name == "__vm_interrupt" )
-        return BuiltinInterrupt;
+        return HypercallInterrupt;
 
     if ( name == "__vm_trace" )
-        return BuiltinTrace;
+        return HypercallTrace;
 
     if ( name == "__vm_make_object" )
-        return BuiltinMakeObject;
+        return HypercallMakeObject;
     if ( name == "__vm_free_object" )
-        return BuiltinFreeObject;
+        return HypercallFreeObject;
     if ( name == "__vm_memcpy" )
-        return BuiltinMemcpy;
+        return HypercallMemcpy;
 
     if ( name == "__vm_query_varargs" )
-        return BuiltinQueryVarargs;
+        return HypercallQueryVarargs;
     if ( name == "__vm_query_frame" )
-        return BuiltinQueryFrame;
+        return HypercallQueryFrame;
     if ( name == "__vm_query_object_size" )
-        return BuiltinQueryObjectSize;
+        return HypercallQueryObjectSize;
 
     if ( f->getIntrinsicID() != llvm::Intrinsic::not_intrinsic )
-        return BuiltinIntrinsic; /* not our builtin */
+        return NotHypercallButIntrinsic;
 
-    return NotBuiltin;
+    return NotHypercall;
 }
 
-void Program::builtin( Position p )
+void Program::hypercall( Position p )
 {
     Program::Instruction &insn = instruction( p.pc );
     llvm::CallSite CS( p.I );
     llvm::Function *F = CS.getCalledFunction();
-    insn.builtin = builtin( F );
-    if ( insn.builtin == NotBuiltin )
+    insn.hypercall = hypercall( F );
+    if ( insn.hypercall == NotHypercall )
         throw std::logic_error(
-            std::string( "Program::builtin: " ) +
+            std::string( "Program::hypercall: " ) +
             "Can't call an undefined function: " + F->getName().str() );
 }
 
@@ -391,8 +391,8 @@ Program::Position Program::insert( Position p )
         if ( F ) { // you can actually invoke a label
             switch ( F->getIntrinsicID() ) {
                 case llvm::Intrinsic::not_intrinsic:
-                    if ( builtin( F ) ) {
-                        builtin( p );
+                    if ( hypercall( F ) ) {
+                        hypercall( p );
                         break;
                     }
                 case llvm::Intrinsic::eh_typeid_for:
