@@ -731,12 +731,16 @@ struct Eval
         }
     }
 
-    void implement_call()
+    void implement_call( bool invoke )
     {
         if ( instruction().builtin )
-            return implement_builtin();
+        {
+            if ( invoke )
+                return fault( _VM_F_Control );
+            else
+                return implement_builtin();
+        }
 
-        bool invoke = isa< ::llvm::InvokeInst >( instruction().op );
         CodePointer target = operandCk< PointerV >( invoke ? -3 : -1 );
 
         CallSite CS( cast< ::llvm::Instruction >( instruction().op ) );
@@ -1044,8 +1048,9 @@ struct Eval
                     } );
 
             case OpCode::Call:
+                implement_call( false ); break;
             case OpCode::Invoke:
-                implement_call(); break;
+                implement_call( true ); break;
             case OpCode::Ret:
                 implement_ret(); break;
 
