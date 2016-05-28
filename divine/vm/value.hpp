@@ -195,7 +195,7 @@ struct Pointer : Base
 
     template< int w, bool s > operator Int< w, s >()
     {
-        using IntPtr = Int< PointerBytes, false >;
+        using IntPtr = Int< PointerBits, false >;
         return IntPtr( *reinterpret_cast< IntPtr::Raw * >( _v._v.storage ),
                        defined() ? IntPtr::_full : 0 );
     }
