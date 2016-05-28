@@ -46,8 +46,8 @@ debug-%: toolchain $(OBJ)debug/configure-stamp
 release-%: toolchain $(OBJ)release/configure-stamp
 	cmake --build $(OBJ)release --target $*
 
-debug: debug-divine debug-divinecc debug-lart
-release: release-divine release-divinecc release-lart
+debug: debug-divine debug-lart
+release: release-divine release-lart
 check: debug-check
 unit: debug-unit
 unit-%: debug-unit-%
