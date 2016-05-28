@@ -6,6 +6,7 @@
 
 #include <divine/ui/common.hpp>
 #include <divine/ui/curses.hpp>
+#include <divine/ui/die.hpp>
 #include <brick-cmd>
 #include <brick-fs>
 #include <brick-llvm>
@@ -151,6 +152,11 @@ struct Cc     : Command
     {
         print_args();
 
+        if ( !_drv.libs_only && _files.empty() )
+            die( "Either a file to build or --libraries-only is required." );
+        if ( _drv.libs_only && !_files.empty() )
+            die( "Cannot specify both --libraries-only and files to compile." );
+
         if ( _output.empty() ) {
             if ( _drv.libs_only )
                 _output = "libdivinert.bc";
@@ -250,7 +256,7 @@ struct CLI : Interface
             .add( ccdrvopts, &Cc::_drv )
             .add( "[-o {string}]", &Cc::_output, "the name of the output file"s )
             .add( "[-{string}]", &Cc::_flags, "any cc1 options"s )
-            .add( "{file}", &Cc::_files, "input file(s) to compile (C or C++)"s );
+            .add( "[{file}]", &Cc::_files, "input file(s) to compile (C or C++)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
                 .add( "[--max-memory {int}]", &Verify::_max_mem, "max memory allowed to use [in MB]"s )
