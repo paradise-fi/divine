@@ -37,35 +37,9 @@ struct Verify : WithBC
     void run() { NOT_IMPLEMENTED(); }
 };
 
-struct Run    : WithBC
+struct Run : WithBC
 {
-    void run() /* yeah, well, FIXME */
-    {
-        using Eval = vm::Eval< vm::Program, vm::RunContext, vm::RunContext::PointerV >;
-
-        auto &p = _bc->program();
-        vm::RunContext _ctx( p );
-        _ctx.setup( _env );
-        Eval eval( p, _ctx );
-        std::cerr << "-------------------------" << std::endl;
-        _ctx.control().mask( true );
-        eval.run();
-        auto state = eval._result;
-        std::cerr << "state = " << state << std::endl;
-
-        while ( state.v() != vm::nullPointer() )
-        {
-            /* std::cerr << "-------------------------" << std::endl;
-            std::cerr << "-------------------------" << std::endl; */
-            _ctx.control().enter(
-                _ctx._control._sched, vm::nullPointer(),
-                Eval::IntV( eval.heap().size( state.v() ) ), state );
-            _ctx.control().mask( true );
-            eval.run();
-            state = eval._result;
-            // std::cerr << "state = " << state << std::endl;
-        }
-    }
+    void run() { vm::Run( _bc, _env ).run(); }
 };
 
 struct Draw   : WithBC
