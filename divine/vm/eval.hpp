@@ -203,10 +203,33 @@ struct Eval
         UNREACHABLE_F( "a bad pointer in ptr2h: %s", brick::string::fmt( PointerV( p ) ).c_str() );
     }
 
-    void fault( Fault f )
+    struct FaultStream : std::stringstream
     {
-        std::cerr << "FAULT " << f << std::endl;
-        return control().fault( f );
+        using Control = typename Context::Control;
+        Control *_ctrl;
+        Fault _fault;
+        bool _trace;
+
+        FaultStream( Control &c, Fault f, bool t ) : _ctrl( &c ), _fault( f ), _trace( t ) {}
+        FaultStream( FaultStream &fs ) : _ctrl( fs._ctrl ), _fault( fs._fault ), _trace( fs._trace )
+        {
+            fs._ctrl = nullptr;
+        }
+
+        ~FaultStream()
+        {
+            if ( !_ctrl )
+                return;
+            if ( _trace )
+                _ctrl->trace( "FAULT: " + str() );
+            _ctrl->fault( _fault );
+        }
+    };
+
+    FaultStream fault( Fault f )
+    {
+        FaultStream fs( control(), f, true );
+        return fs;
     }
 
     template< typename _T >
@@ -234,7 +257,7 @@ struct Eval
     {
         auto op = operand< T >( i );
         if ( !op.defined() )
-            fault( _VM_F_Hypercall );
+            fault( _VM_F_Hypercall ) << "operand " << i << " has undefined value";
         return op;
     }
 
@@ -242,7 +265,7 @@ struct Eval
     {
         auto op = operand< PointerV >( i );
         if ( !op.defined() )
-            fault( _VM_F_Hypercall );
+            fault( _VM_F_Hypercall ) << "pointer operand " << i << " has undefined value";
         return op;
     }
 
@@ -288,7 +311,7 @@ struct Eval
         /* std::cerr << "store of *" << s2ptr( operand( 0 ) ) << " to "
            << operand< PointerV >( 1 ) << std::endl; */
         if ( !heap().copy( s2ptr( operand( 0 ) ), ptr2h( to ), operand( 0 ).width ) )
-            fault( _VM_F_Memory );
+            fault( _VM_F_Memory ) << "invalid store to " << to;
     }
 
     void implement_load()
@@ -296,7 +319,7 @@ struct Eval
         auto from = operandCk< PointerV >( 0 );
         // std::cerr << "load from *" << PointerV( from ) << std::endl;
         if ( !heap().copy( ptr2h( from ), s2ptr( result() ), result().width ) )
-            fault( _VM_F_Memory );
+            fault( _VM_F_Memory ) << "invalid load from " << from;
     }
 
     template< typename > struct Any { static const bool value = true; };
@@ -695,9 +718,10 @@ struct Eval
                     set_interrupted( false );
                 }
                 if ( tgt.v() == nullPointer() )
-                    return fault( _VM_F_Hypercall );
+                    fault( _VM_F_Hypercall ) << "target frame of a jump is null";
                 else
-                    return control().frame( tgt );
+                    control().frame( tgt );
+                return;
             }
             case HypercallTrace:
             {
@@ -706,7 +730,7 @@ struct Eval
                 return;
             }
             case HypercallFault:
-                fault( Fault( operandCk< IntV >( 0 ).v() ) );
+                fault( Fault( operandCk< IntV >( 0 ).v() ) ) << "__vm_fault called";
                 return;
             case HypercallMask:
                 result( IntV( control().mask( operandCk< IntV >( 0 ).v() ) ) );
@@ -716,7 +740,7 @@ struct Eval
                 int64_t size = operandCk< IntV >( 0 ).v();
                 if ( size >= ( 2ll << PointerOffBits ) || size < 1 )
                 {
-                    fault( _VM_F_Hypercall );
+                    fault( _VM_F_Hypercall ) << "invalid size " << size << " passed to __vm_make_object";
                     size = 0;
                 }
                 result( size ? heap().make( size ) : PointerV( nullPointer() ) );
@@ -724,13 +748,14 @@ struct Eval
             }
             case HypercallFreeObject:
                 if ( !heap().free( operand< PointerV >( 0 ).v() ) )
-                    fault( _VM_F_Memory );
+                    fault( _VM_F_Memory ) << "invalid pointer passed to __vm_free_object";
                 return;
             case HypercallQueryObjectSize:
             {
                 auto ptr = operandCk< PointerV >( 0 ).v();
                 if ( !heap().valid( ptr ) )
-                    fault( _VM_F_Hypercall );
+                    fault( _VM_F_Hypercall ) << "invalid pointer " << ptr
+                                             << " passed to __vm_query_object_size";
                 else
                     result( IntV( heap().size( ptr ) ) );
                 return;
@@ -745,9 +770,10 @@ struct Eval
         if ( instruction().hypercall )
         {
             if ( invoke )
-                return fault( _VM_F_Control );
+                fault( _VM_F_Control ) << "illegal 'invoke' of a hypercall";
             else
                 return implement_hypercall();
+            return;
         }
 
         CodePointer target = operandCk< PointerV >( invoke ? -3 : -1 ).v();
@@ -763,14 +789,22 @@ struct Eval
                 if ( id != Intrinsic::not_intrinsic )
                     return implement_intrinsic( id );
             }
-            else return fault( _VM_F_Control );
+            else
+            {
+                fault( _VM_F_Control ) << "invalid call on a null pointer";
+                return;
+            }
         }
 
         const auto &function = _program.function( target );
 
         /* report problems with the call before pushing the new stackframe */
         if ( !function.vararg && int( CS.arg_size() ) > function.argcount )
-            return fault( _VM_F_Control ); /* too many actual arguments */
+        {
+            fault( _VM_F_Control ) << "too many arguments given to a call: "
+                                   << function.argcount << " expected but " << CS.arg_size() << " given";
+            return;
+        }
 
         auto frameptr = heap().make( program().function( target ).datasize + 2 * PointerBytes );
         auto p = frameptr;
@@ -849,7 +883,7 @@ struct Eval
                 {
                     if ( !v.get( 2 ).defined() || !v.get( 2 ).v() )
                     {
-                        this->fault( _VM_F_Arithmetic );
+                        this->fault( _VM_F_Arithmetic ) << "division by zero or an undefined number";
                         result( decltype( v.get() )( 0 ) );
                     } else
                         this->result( impl( v.get( 1 ), v.get( 2 ) ) );
@@ -907,7 +941,7 @@ struct Eval
                 auto select = operand< BoolV >( 0 );
 
                 if ( !select.defined() )
-                    fault( _VM_F_Control );
+                    fault( _VM_F_Control ) << "select on an undefined value";
 
                 heap().copy( s2ptr( operand( select.v() ? 1 : 2 ) ),
                              s2ptr( result() ), result().width );
@@ -1049,11 +1083,12 @@ struct Eval
             case OpCode::Switch:
                 return op< Any >( 1, [this]( auto v ) {
                         if ( !v.get( 1 ).defined() )
-                            fault( _VM_F_Control );
+                            fault( _VM_F_Control ) << "switch on an undefined value";
                         for ( int o = 2; o < int( this->instruction().values.size() ) - 1; o += 2 ) {
                             auto eq = v.get( 1 ) == v.get( o + 1 );
                             if ( !eq.defined() )
-                                fault( _VM_F_Control );
+                                fault( _VM_F_Control )
+                                    << "comparison result undefined for a switch branch";
                             if ( eq.v() )
                                 return this->jumpTo( operandCk< PointerV >( o + 1 ) );
                         }
@@ -1188,7 +1223,7 @@ struct Eval
                 return _bitwise( []( auto a, auto b ) { return a >> b; } );
 
             case OpCode::Unreachable:
-                fault( _VM_F_Control );
+                fault( _VM_F_Control ) << "unreachable executed";
                 break;
 
             case OpCode::Resume:
