@@ -124,27 +124,8 @@ struct Cc     : Command
     std::string _precompiled;
     std::string _output;
 
-    void print_args()
-    {
-        std::cerr << "Files to compile: " << brick::string::fmt( _files ) << std::endl;
-        std::cerr << "Number of jobs: " << _drv.num_threads << std::endl;
-        std::cerr << "Precompiled: " << _drv.precompiled << std::endl;
-
-        std::cerr << "Flags:";
-        for ( std::string flag : _flags )
-            std::cerr << " " << flag;
-        std::cerr << std::endl;
-
-        if (_drv.libs_only)
-            std::cerr << "Libraries only." << std::endl;
-        if (_drv.dont_link)
-            std::cerr << "Do not link" << std::endl;
-    }
-
     void run()
     {
-        print_args();
-
         if ( !_drv.libs_only && _files.empty() )
             die( "Either a file to build or --libraries-only is required." );
         if ( _drv.libs_only && !_files.empty() )
