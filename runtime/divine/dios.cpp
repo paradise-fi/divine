@@ -2,19 +2,8 @@
 #include <tuple>
 #include <utility>
 #include <cstring>
-
 #include <cstdarg>
 #include <cstdio>
-
-void vm_trace( const char *fmt, ... )
-{
-    va_list ap;
-    char buffer[1024];
-    va_start( ap, fmt );
-    vsnprintf( buffer, 1024, fmt, ap );
-    va_end( ap );
-    __vm_trace( buffer );
-}
 
 namespace dios {
 
@@ -28,45 +17,67 @@ struct Syscall {
 	}
 
 	static ThreadId start_thread( FunPtr routine, void *arg, FunPtr cleanup ) {
+		InterruptMask mask;
+		__vm_trace( "Start thread issued" );
 		auto& inter = get();
-		dios_assert( inter._syscall == Type::INACTIVE );
-		dios_assert( routine );
+		__dios_assert_v( inter._syscall == Type::INACTIVE, "Overlapped syscall" );
+		__dios_assert_v( routine, "Invalid thread routine" );
 		inter._syscall = Type::START_THREAD;
 		inter._args.start_thread = Args::StartThread{ routine, arg, cleanup };
-		// ToDo: Interrupt
+		__vm_trace( "Before interrupt" );
+		__dios_interrupt();
+		__vm_trace( "After interrupt" );
 		return inter._result.thread_id;
 	}
 
 	static ThreadId get_thread_id() {
+		InterruptMask mask;
+		__vm_trace( "Get id thread issued" );
 		auto& inter = get();
-		dios_assert( inter._syscall == Type::INACTIVE );
+		__dios_assert( inter._syscall == Type::INACTIVE );
 		inter._syscall = Type::GET_THREAD_ID;
-		// ToDo: Interrupt
+		__vm_trace( "Before interrupt" );
+		__dios_interrupt();
+		__vm_trace( "After interrupt" );
 		return inter._result.thread_id;
 	}
 
 	static void kill_thread( ThreadId t_id, int reason) {
+		InterruptMask mask;
+		__vm_trace( "Kill thread issued" );
 		auto& inter = get();
-		dios_assert( inter._syscall == Type::INACTIVE );
+		__dios_assert( inter._syscall == Type::INACTIVE );
 		inter._syscall = Type::KILL_THREAD;
 		inter._args.kill_thread = Args::KillThread{ t_id, reason };
-		// ToDo: Interrupt
+		__vm_trace( "Before interrupt" );
+		__dios_interrupt();
+		__vm_trace( "After interrupt" );
 		return;
 	}
 
+	static void dummy() {
+		InterruptMask mask;
+		__vm_trace( "Dummy syscall" );
+		auto& inter = get();
+		__dios_assert( inter._syscall == Type::INACTIVE );
+		inter._syscall = Type::DUMMY;
+
+		__vm_trace( "Before interrupt" );
+		__dios_interrupt();
+		__vm_trace( "After interrupt" );
+	}
+
 	static Syscall& get() {
-		__vm_trace( "Syscall get: entry" );
 		if ( !instance ) {
 			instance = static_cast< Syscall *> ( __vm_make_object( sizeof( Syscall ) ) );
 			memset( instance, 0, sizeof( Syscall ) );
 		}
-		__vm_trace( "Syscall get: exit" );
 		return *instance;
 	}
 
 private:
 
-	enum class Type { INACTIVE, START_THREAD, KILL_THREAD, GET_THREAD_ID };
+	enum class Type { INACTIVE, START_THREAD, KILL_THREAD, GET_THREAD_ID, DUMMY };
 	
 	Type _syscall;
 	union RetValue {
@@ -119,10 +130,11 @@ struct Thread {
 	{
 		_frame->pc = fun->entry_point;
 		_frame->parent = nullptr;
-		vm_trace( "Thread constuctor: %p, %p", _frame, _frame->pc );
+		__sys_trace( "Thread constuctor: %p, %p", _frame, _frame->pc );
 	}
 
-	Thread( Thread& o) = delete;
+	Thread( const Thread& o ) = delete;
+	Thread& operator=( const Thread& o ) = delete;
 
 	Thread( Thread&& o ) :
 		_frame( o._frame ), _cleanup_handler( o._cleanup_handler ),
@@ -184,8 +196,7 @@ struct ControlFlow {
 
 struct Scheduler {
 	Scheduler( void *cf ) : _cf( static_cast< ControlFlow * >( cf ) ) {
-		dios_assert( cf );
-		__vm_trace( "Scheduler constructor" );
+		__dios_assert( cf );
 	}
 
 	Thread* get_threads() const noexcept {
@@ -197,62 +208,73 @@ struct Scheduler {
 	}
 
 	bool handle_syscall() noexcept {
-		__vm_trace( "Syscall handle entry" );
 		auto& inter = Syscall::get();
 
 		if ( inter._syscall == Syscall::Type::INACTIVE ) {
-			__vm_trace( "No syscall issued" );
 			return false;
 		}
 
-		void *ret = this;
 		switch( inter._syscall ) {
 		case Syscall::Type::START_THREAD: {
+			__sys_trace( "Syscall issued: start_thread" );
 			auto& args = inter._args.start_thread;
 			inter._result.thread_id = start_thread(
 				std::get< 0 >( args ), std::get< 1 >( args ), std::get< 2 >( args ) );
 			break;
 			}
 		case Syscall::Type::KILL_THREAD: {
+			__sys_trace( "Syscall issued: kill_thread" );
 			auto& args = inter._args.kill_thread;
 			kill_thread( std::get< 0 >( args ), std::get< 1 >( args ) );
 			break;
 			}
 		case Syscall::Type::GET_THREAD_ID: {
+			__sys_trace( "Syscall issued: get_thread_id" );
 			inter._result.thread_id = _cf->active_thread;
 			break;
 			}
+		case Syscall::Type::DUMMY:
+			__sys_trace( "Syscall issued: dummy");
+			break;
 		default:
-			dios_assert( false );
+			__dios_assert( false );
 		}
 
 		inter._syscall = Syscall::Type::INACTIVE;
 		return true;
 	}
 
-	_VM_Frame *run_threads() noexcept {
-		_cf->active_thread = __vm_choose( _cf->thread_count );
-		vm_trace( "Active thread: %d", _cf->active_thread );
-		Thread& thread = get_threads()[ _cf->active_thread ];
-		__vm_trace( "Thread obtained" );
+	_VM_Frame *run_thread( int idx = -1 ) noexcept {
+		if ( idx < 0 )
+			idx = _cf->active_thread;
+		else
+			_cf->active_thread = idx;
+
+		Thread &thread = get_threads()[ idx ];
 		thread.update_state();
-		__vm_trace( "Thread updated" );
-		vm_trace( "Thread frame: %p, thread state: %d", thread._frame, thread._state );
+		__sys_trace( "Thread: %d, frame: %p, state: %d", _cf->active_thread, thread._frame, thread._state );
+		
 		if ( !thread.zombie() ) {
-			__vm_trace( "Before setting ifl" );
-			__vm_set_ifl( &( thread._frame ) );
-			__vm_trace( "ifl set" );
+			__vm_set_ifl( &( thread._frame) );
 			return thread._frame;
 		}
-		else {
-			__vm_trace( "Thread exit" );
-			_cf = nullptr;
-			return nullptr;
+
+		__sys_trace( "Thread exit" );
+		// ToDo: Move main thread. Neccessary only for divine run
+		if ( idx != 0 ) {
+			return run_thread(0);
 		}
+		_cf = nullptr;
+		return nullptr;
+	}
+
+	_VM_Frame *run_threads() noexcept {
+		__sys_trace( "Number of threads: %d", _cf->thread_count );
+		return run_thread( __vm_choose( _cf->thread_count ) );
 	}
 
 	void start_main_thread( FunPtr main, int argc, char** argv, char** envp ) noexcept {
-		dios_assert( main );
+		__dios_assert( main );
 
 		new ( &( _cf->main_thread ) ) Thread( main );
 		_cf->active_thread = 0;
@@ -269,11 +291,11 @@ struct Scheduler {
 	}
 
 	ThreadId start_thread( FunPtr routine, void *arg, FunPtr cleanup ) {
-		dios_assert( routine );
+		__dios_assert( routine );
 
 		int cur_size = __vm_query_object_size( _cf );
 		void *new_cf = __vm_make_object( cur_size + sizeof( Thread ) );
-		__vm_memcpy( new_cf, _cf, cur_size );
+		memcpy( new_cf, _cf, cur_size );
 		__vm_free_object( _cf );
 		_cf = static_cast< ControlFlow * >( new_cf );
 
@@ -287,8 +309,8 @@ struct Scheduler {
 	}
 
 	void kill_thread( ThreadId t_id, int reason ) {
-		dios_assert( t_id );
-		dios_assert( t_id <  _cf->thread_count );
+		__dios_assert( t_id );
+		__dios_assert( t_id <  _cf->thread_count );
 		get_threads()[ t_id ].stop_thread( reason );
 	}
 private:
@@ -300,21 +322,51 @@ private:
 enum _VM_FaultAction __dios_fault( enum _VM_Fault what ) noexcept {
 	/* ToDo: Handle errors */
 	__vm_trace( "VM Fault" );
+	switch ( what ) {
+	case _VM_F_NoFault:
+		__sys_trace( "FAULT: No fault" );
+		break;
+	case _VM_F_Assert:
+		__sys_trace( "FAULT: Assert" );
+		break;
+	case _VM_F_Arithmetic:
+		__sys_trace( "FAULT: Arithmetic" );
+		break;
+	case _VM_F_Memory:
+		__sys_trace( "FAULT: Memory" );
+		break;
+	case _VM_F_Control:
+		__sys_trace( "FAULT: Control" );
+		break;
+	case _VM_F_Locking:
+		__sys_trace( "FAULT: Locking" );
+		break;
+	case _VM_F_Hypercall:
+		__sys_trace( "FAULT: Hypercall" );
+		break;
+	case _VM_F_NotImplemented:
+		__sys_trace( "FAULT: Not Implemented" );
+		break;
+	default:
+		__sys_trace( "Unknown fault ");
+	}
 	return _VM_FA_Resume;
 }
 
 void *__dios_sched( int, void *state ) noexcept {
-	__vm_trace("Scheduler entry");
 	dios::Scheduler scheduler( state );
-	if ( !scheduler.handle_syscall() ) {
-		_VM_Frame *jmp = scheduler.run_threads();
-		if ( jmp ) {
-			vm_trace( "Scheduler pre-jump: %p", jmp );
-			__vm_jump( jmp, 1 );
-			__vm_trace( "Scheduler after jump" );
-		}
+	if ( scheduler.handle_syscall() ) {
+		__vm_jump( scheduler.run_thread(), 1 );
+		__sys_trace( "Syscall should be handled\n" );
+		return scheduler.get_cf();
 	}
-	vm_trace( "Scheduler exit, %p", scheduler.get_cf() );
+
+	_VM_Frame *jmp = scheduler.run_threads();
+	if ( jmp ) {
+		__vm_jump( jmp, 1 );
+	}
+
+	__sys_trace( "\n" );
 	return scheduler.get_cf();
 }
 
@@ -328,7 +380,7 @@ void *__sys_init( void *env[] ) __attribute__((weak)) {
 	dios::Scheduler scheduler( cf );
 
 	_Sys_FunPtr main = __sys_get_fun_ptr( "main" );
-	if (!main) {
+	if ( !main ) {
 		__vm_trace( "No main function" );
 		__vm_fault( static_cast< _VM_Fault >( _Sys_F_MissingFunction ), "main" );
 		return nullptr;
@@ -358,3 +410,30 @@ _Sys_ThreadId __sys_get_thread_id() noexcept {
 void __sys_kill_thread( _Sys_ThreadId id, int reason ) noexcept {
 	return dios::Syscall::get().kill_thread( id, reason ); 
 }
+
+void __dios_dummy() noexcept {
+	return dios::Syscall::get().dummy();
+}
+
+void __dios_interrupt() noexcept {
+	int mask = __vm_mask(1);
+	__vm_interrupt();
+	__vm_mask(0);
+	__vm_mask(1);
+	__vm_mask(mask);
+}
+
+void __sys_trace( const char *fmt, ... ) noexcept
+{
+	int mask = __vm_mask(1);
+
+	va_list ap;
+	char buffer[1024];
+	va_start( ap, fmt );
+	vsnprintf( buffer, 1024, fmt, ap );
+	va_end( ap );
+	__vm_trace( buffer );
+
+	__vm_mask(mask);
+}
+

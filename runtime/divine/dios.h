@@ -24,9 +24,16 @@ enum _Sys_Fault
 	_Sys_F_Last
 };
 
-#define dios_assert( x ) do { \
+#define __dios_assert_v( x, msg ) do { \
+        if ( !(x) ) { \
+            __sys_trace( "DiOS assert: %s", msg);\
+            __vm_fault( (_VM_Fault) _Sys_F_DiOSAssert );\
+        } \
+    } while (0)
+
+#define __dios_assert( x ) do { \
 		if ( !(x) ) { \
-			__vm_trace( "DIOS_assert");\
+			__vm_trace( "DiOS assert");\
 			__vm_fault( (_VM_Fault) _Sys_F_DiOSAssert );\
 		} \
 	} while (0)
@@ -69,6 +76,18 @@ void __sys_kill_thread( _Sys_ThreadId id, int reason ) NOTHROW;
  */
 _Sys_FunPtr __sys_get_fun_ptr( const char* name ) NOTHROW;
 
+/*
+ * Jump into DiOS kernel and then return back. Has no effect
+ */
+void __dios_dummy() NOTHROW;
+
+/*
+ * Interrupt execution and go to scheduler
+ */
+void __dios_interrupt() NOTHROW;
+
+void __sys_trace( const char *fmt, ... ) NOTHROW;
+
 CPP_END
 
 #undef EXTERN_C
@@ -83,21 +102,21 @@ namespace dios {
 template< bool fenced >
 struct _InterruptMask {
 
-    _InterruptMask() {
-        _owns = !__vm_mask( 1 );
-        _masked = true;
-        if ( fenced && _owns )
+    _InterruptMask() :  _owns( true ) {
+        _orig_state = __vm_mask( 1 );
+        if ( fenced )
             __sync_synchronize();
     }
 
     ~_InterruptMask() {
-        release();
+        if ( _owns )
+            __vm_mask( _orig_state );
     }
 
 #if __cplusplus >= 201103L
     _InterruptMask( const _InterruptMask & ) = delete;
     // ownership transfer
-    _InterruptMask( _InterruptMask &&o ) : _owns( o._owns ), _masked( o._masked ) {
+    _InterruptMask( _InterruptMask &&o ) : _owns(o._owns), _orig_state( o._orig_state ) {
         o._owns = false;
     }
 #else
@@ -107,49 +126,26 @@ struct _InterruptMask {
   public:
 #endif
 
-    // if mask isowned by this object release it
     void release() {
-        if ( _owns ) {
-            _owns = false;
-            _masked = false;
-            if ( fenced )
-                __sync_synchronize();
-            __vm_mask( 0 );
-        }
+        assert( _owns );
+        if ( fenced )
+            __sync_synchronize();
+        __vm_mask( 0 );
     }
 
     // acquire mask if not masked already
     void acquire() {
-        if ( !_masked ) {
-            _owns = !__vm_mask( 1 );
-            _masked = true;
-            if ( fenced && _owns )
-                __sync_synchronize();
-        }
-    }
-
-    // break mask, only if this owns it!
-    void breakMask() {
-        if ( _owns )
-            _unsafeBreakMask();
+        assert( _owns );
+        if ( fenced )
+            __sync_synchronize();
+        __vm_mask( 1 );
     }
 
     bool owned() const { return _owns; }
 
   private:
-    // this should not be inlined, so it does not produce register change
-    // in subsequent calls in cycle
-    void _unsafeBreakMask() __attribute__((__noinline__)) {
-        if ( fenced )
-            __sync_synchronize();
-        __vm_mask( 0 );
-        __vm_mask( 1 );
-        if ( fenced )
-            __sync_synchronize();
-    }
-
     bool _owns;
-    bool _masked;
+    int _orig_state;
 };
 
 using InterruptMask = _InterruptMask< false >;
