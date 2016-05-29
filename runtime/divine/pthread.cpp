@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2013 Milan Lenco <lencomilan@gmail.com>
 //             (c) 2014, 2015 Vladimír Štill <xstill@fi.muni.cz>
 //             (c) 2016 Henrich Lauko <xlauko@fi.muni.cz>
+//             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 /* Includes */
 #include <pthread.h>
@@ -27,43 +28,19 @@
 #define _real_pt( ptid ) ( ( real_pthread_t ){.asint = ( ptid )} )
 
 // bit masks
-#define _THREAD_ATTR_DETACH_MASK   0x1
+#define _THREAD_ATTR_DETACH_MASK 0x1
 
-#define _MUTEX_ATTR_TYPE_MASK      0x3
+#define _MUTEX_ATTR_TYPE_MASK 0x3
 
-#define _COND_COUNTER_MASK         0xFFFF
+#define _COND_COUNTER_MASK 0xFFFF
 
-#define _WLOCK_WRITER_MASK         0xFFFF
-#define _WLOCK_SHARING_MASK        0x10000
-#define _RLOCK_READER_MASK         0xFFFF
-#define _RLOCK_COUNTER_MASK        0xFF0000
-#define _RWLOCK_ATTR_SHARING_MASK  0x1
+#define _WLOCK_WRITER_MASK 0xFFFF
+#define _WLOCK_SHARING_MASK 0x10000
+#define _RLOCK_READER_MASK 0xFFFF
+#define _RLOCK_COUNTER_MASK 0xFF0000
+#define _RWLOCK_ATTR_SHARING_MASK 0x1
 
-#define _BARRIER_COUNT_MASK        0xFFFE0000
-
-#define DBG_ASSERT(x)
-#define ATOMIC_FUN_BEGIN(x)
-#define BREAK_MASK(x)
-
-#if 0
-#define DBG_ASSERT( x ) __divine_assert( static_cast< int >( x ) )
-#define ATOMIC_FUN_BEGIN( visible_effect )                        \
-                do {                                              \
-                    __divine_interrupt_mask();                    \
-                    if ( visible_effect )                         \
-                        /* FIXME: this should be automatically */ \
-                        /*        detected in the system-space */ \
-                        BREAK_MASK( __divine_interrupt() );       \
-                } while ( 0 );
-
-/* Some handy macros. */
-#define BREAK_MASK( command )                    \
-                do {                             \
-                    __divine_interrupt_unmask(); \
-                    command;                     \
-                    __divine_interrupt_mask();   \
-                } while( 0 );
-#endif
+#define _BARRIER_COUNT_MASK 0xFFFE0000
 
 /* Internal data types */
 struct Entry {
@@ -256,7 +233,7 @@ template < bool cancelPoint, typename Cond >
 static void _wait( drt::FencedInterruptMask &mask, Cond &&cond )
         __attribute__( ( __always_inline__, __flatten__ ) ) {
     while ( cond() && ( !cancelPoint || !_canceled() ) )
-        mask.breakMask();
+        mask.release();
     if ( cancelPoint && _canceled() )
         _cancel();
 }
@@ -279,19 +256,20 @@ drt::FencedInterruptMask pthreadBegin() __attribute__( ( __always_inline__ ) ) {
     return mask; // ownership transfer
 }
 
-void _pthread_entry( void *_args ) {
+extern "C" void _pthread_entry( void *_args ) {
     auto mask = pthreadBegin();
 
     Entry *args = static_cast< Entry * >( _args );
     int ltid = __sys_get_thread_id();
-    assert( ltid < alloc_pslots );
+    __dios_assert_v( ltid < alloc_pslots, "ltid < alloc_pslots" );
     Thread *thread = threads[ltid];
-    assert( thread != NULL );
+    __dios_assert_v( thread != NULL, "thread != NULL" );
     pthread_key_t key;
 
     // copy arguments
     void *arg = args->arg;
     void *( *entry )( void * ) = args->entry;
+    __vm_free_object( _args );
 
     // parent may delete args and leave pthread_create now
     args->initialized = true;
@@ -300,11 +278,10 @@ void _pthread_entry( void *_args ) {
     thread->running = true;
     mask.release();
     // from now on, args and _args should not be accessed
-
     thread->result = entry( arg );
     mask.acquire();
 
-    assert( thread->sleeping == false );
+    __dios_assert_v( thread->sleeping == false, "thread->sleeping == false" );
 
     // all thread specific data destructors are run
     key = keys;
@@ -340,6 +317,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     assert( alloc_pslots > 0 );
 
     // test input arguments
+    __dios_assert( entry );
     if ( ptid == NULL || entry == NULL )
         return EINVAL;
 
@@ -370,12 +348,8 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
 
     // thread initialization
     _init_thread( gtid, ltid, ( attr == NULL ? PTHREAD_CREATE_JOINABLE : *attr ) );
-    assert( ltid < alloc_pslots );
+    __dios_assert_v( ltid < alloc_pslots, "ltid < alloc_pslots" );
 
-    wait( mask, [&] { return !args->initialized; } ); // wait, do not free args yet
-
-    // cleanup and return
-    __vm_free_object( args );
     return 0;
 }
 
@@ -422,6 +396,7 @@ int pthread_join( pthread_t _ptid, void **result ) {
 
     // wait for the thread to finnish
     waitOrCancel( mask, [&] { return threads[ptid.ltid]->running; } );
+
 
     if ( ( ptid.gtid != _get_gtid( ptid.ltid ) ) || ( threads[ptid.ltid]->detached ) ) {
         // meanwhile detached
@@ -720,7 +695,7 @@ int _mutex_lock( drt::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wa
     thr->waiting_mutex = mutex;
     while ( !_mutex_can_lock( mutex, gtid ) ) {
         _check_deadlock( mutex, gtid );
-        mask.breakMask();
+        mask.release();
     }
     thr->waiting_mutex = NULL;
 
