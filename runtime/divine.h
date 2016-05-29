@@ -122,6 +122,15 @@ void __vm_fault( enum _VM_Fault t, ... ) NOTHROW;
  */
 int __vm_mask( int ) NOTHROW;
 
+/*
+ * When interrupts are masked (cf. __vm_mask) but an interrupt is raised, a
+ * flag is maintained by the VM and the call that clears the mask will cause an
+ * interrupt if the flag is set. The __vm_interrupt hypercall can be used to
+ * manipulate this flag. If interrupts are not masked, calling __vm_interrupt( 1 )
+ * will cause an immediate interrupt. The previous value of the flag is returned.
+ */
+int __vm_interrupt( int ) NOTHROW;
+
 void __vm_trace( const char * ) NOTHROW;
 
 /*
