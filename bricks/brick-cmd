@@ -417,13 +417,15 @@ struct Pattern
     }
 };
 
+enum class OptionFlag { Unique = 1, Final = 2, Required = 4 };
+using OptionFlags = brick::types::StrongEnumFlags< OptionFlag >;
+
 template< typename T >
 struct OptionInterface
 {
     virtual Tokens::iterator parse( T &edit, Tokens::iterator, Tokens::iterator ) = 0;
     virtual Tokens::iterator match( Tokens::iterator, Tokens::iterator ) = 0;
-    virtual bool unique() = 0;
-    virtual bool required() = 0;
+    virtual OptionFlags flags() = 0;
     virtual int priority() = 0;
     virtual std::string fmt() = 0;
     virtual std::string describe() { return ""; }
@@ -437,7 +439,7 @@ struct Option : OptionInterface< T >
     Pattern _pattern;
     Get _get;
     std::string _descr;
-    bool _unique;
+    OptionFlags _flags;
 
     template< typename X >
     struct Set
@@ -500,8 +502,13 @@ struct Option : OptionInterface< T >
         return _pattern.match( b, e );
     }
 
-    bool unique() override { return _unique; }
-    bool required() override { return _pattern._required; };
+    OptionFlags flags() override
+    {
+        if ( _pattern._required )
+            return _flags | OptionFlag::Required;
+        return _flags;
+    }
+
     std::string fmt() override { return _pattern.fmt(); };
     std::string describe() override
     {
@@ -528,12 +535,9 @@ struct Option : OptionInterface< T >
 
     int priority() override { return priority( _pattern ); }
 
-    Option( std::shared_ptr< Validator > v, std::string fmt, Get get, std::string descr )
-            : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr ), _unique( false )
-    {}
-
-    Option( std::shared_ptr< Validator > v, std::string fmt, Get get, std::string descr, bool unique )
-        : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr ), _unique( unique )
+    Option( std::shared_ptr< Validator > v, std::string fmt, Get get, std::string descr,
+            OptionFlags flags = OptionFlags() )
+            : _validator( v ), _pattern( v, fmt ), _get( get ), _descr( descr ), _flags( flags )
     {}
 };
 
@@ -558,8 +562,7 @@ struct OptionWrapper : OptionInterface< T >
         return _sub->match( b, e );
     }
 
-    bool unique() override { return _sub->unique(); }
-    bool required() override { return _sub->required(); }
+    OptionFlags flags() override { return _sub->flags(); }
     int priority() override { return _sub->priority(); }
     std::string fmt() override { return _sub->fmt(); }
     std::string describe() override { return _sub->describe(); }
@@ -575,10 +578,16 @@ struct OptionSet
     std::vector< OptionPtr< T > > _opts;
 
     template< typename V, typename... Args >
-    auto &add( std::string fmt, V T::*member, std::string descr, bool unique, Args... args )
+    auto &add( std::string fmt, V T::*member, std::string descr, OptionFlag flag, Args... args )
+    {
+        return add( fmt, member, descr, OptionFlags( flag ), args... );
+    };
+
+    template< typename V, typename... Args >
+    auto &add( std::string fmt, V T::*member, std::string descr, OptionFlags flags, Args... args )
     {
         auto o = new Option< Validator, T, V >(
-                _validator, fmt, [member]( auto &x ) -> auto& { return x.*member; }, descr, unique );
+                _validator, fmt, [member]( auto &x ) -> auto& { return x.*member; }, descr, flags );
         _opts.emplace_back( o );
         return add( args... );
     };
@@ -586,7 +595,7 @@ struct OptionSet
     template< typename V, typename... Args >
     auto &add( std::string fmt, V T::*member, std::string descr, Args... args )
     {
-        return add( fmt, member, descr, false, args... );
+        return add( fmt, member, descr, OptionFlags(), args... );
     }
 
     template< typename V, typename... Args >
@@ -662,14 +671,16 @@ struct OptionSet
             if ( selected.empty() )
                 break;
             auto o = *selected.begin();
-            if ( parsed.count( o ) && o->unique() )
-                throw std::runtime_error( "Option " + o->fmt() + " is unique, cannot parse '" + *b + "'\n" );
+            if ( parsed.count( o ) && ( o->flags() & OptionFlag::Unique ) )
+                throw std::runtime_error( "Option " + o->fmt() + " given more than once\n" );
             parsed.insert( o );
 
             b = o->parse( t, b, e );
+            if ( o->flags() & OptionFlag::Final )
+                break;
         }
         for ( auto o : _opts )
-            if ( o->required() && !parsed.count( o ) )
+            if ( ( o->flags() & OptionFlag::Required ) && !parsed.count( o ) )
                 throw std::runtime_error( "Missing option: " + o->fmt() + ", expected:\n"
                                           + this->describe() );
         return b;
@@ -685,6 +696,8 @@ auto make_option_set( std::shared_ptr< V > v, Args... args )
 template< typename Validator, typename T >
 struct Command : OptionSet< Validator, T >
 {
+    std::vector< std::string > T::*_extra;
+
     /* not foolproof, but good enough? will misfire on types nested inside
      * templates */
     std::string name()
@@ -705,7 +718,7 @@ struct Command : OptionSet< Validator, T >
     {
         std::stringstream req;
         for ( auto o : this->_opts )
-            if ( o->required() )
+            if ( o->flags() & OptionFlag::Required )
                 req << o->fmt() << " ";
         std::stringstream res;
         res << std::setw( setw ) << name() <<  " [options] " << req.str();
@@ -715,6 +728,13 @@ struct Command : OptionSet< Validator, T >
     virtual std::string describe()
     {
         return describe_header() + "\n" + this->fmt();
+    }
+
+    bool extra( T &t, std::string e )
+    {
+        if ( _extra )
+            (t.*_extra).push_back( e );
+        return _extra;
     }
 
     template< typename... Args >
@@ -743,6 +763,8 @@ struct ParserT< Validator, T, Ts... >
         {
             T t;
             auto x = _car.parse( t, b + 1, e );
+            while ( x != e && _car.extra( t, *x ) )
+                ++ x;
             res = t;
             return x;
         }
@@ -750,15 +772,13 @@ struct ParserT< Validator, T, Ts... >
             return _cdr.parse( res, b, e );
     }
 
-    types::Union< T, Ts... > parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
+    types::Union< T, Ts... > parse( Tokens::iterator b, Tokens::iterator e,
+                                    std::vector<std::string> &unexpected )
     {
         types::Union< T, Ts... > _result;
         auto x = parse( _result, b, e );
         while ( x != e )
-        {
-            unexpected.push_back( *x );
-            x++;
-        }
+            unexpected.push_back( *x++ );
         return _result;
     };
 
@@ -781,6 +801,15 @@ struct ParserT< Validator, T, Ts... >
     {
         return ParserT< Validator, S, T, Ts... >(
             Command< Validator, S >( _validator, args... ), *this );
+    }
+
+    template< typename S, typename U, Tokens (U::*extra), typename... Args,
+              typename X = decltype( std::declval< S >().*extra ) >
+    auto add( Args... args )
+    {
+        auto cmd = Command< Validator, S >( _validator, args... );
+        cmd._extra = extra;
+        return ParserT< Validator, S, T, Ts... >( cmd, *this );
     }
 
     ParserT( Command< Validator, T > car, ParserT< Validator, Ts... > cdr )
