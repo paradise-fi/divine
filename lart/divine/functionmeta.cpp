@@ -160,33 +160,7 @@ struct IndexFunctions : lart::Pass {
                     metatable.size() ) );
 
         auto *mdRootT = llvm::ArrayType::get( _funcMetaT, metatable.size() );
-        auto *newMdRoot = new llvm::GlobalVariable( mod, mdRootT, true,
-                    llvm::GlobalValue::ExternalLinkage,
-                    llvm::ConstantArray::get( mdRootT, metatable ),
-                    "lart.divine.index.functions", mdRoot );
-
-        for ( auto u : query::query( mdRoot->users() ).freeze() ) { // avoid iterating over a list while we delete from it
-            llvm::GetElementPtrInst *gep = llvm::dyn_cast< llvm::GetElementPtrInst >( u );
-            llvm::ConstantExpr *constant = nullptr;
-            if ( !gep ) {
-                constant = llvm::cast< llvm::ConstantExpr >( u );
-                gep = llvm::cast< llvm::GetElementPtrInst >(
-                                        constant->getAsInstruction() );
-            }
-            std::vector< llvm::Value * > idxs;
-            for ( auto &i : brick::query::range( gep->idx_begin(), gep->idx_end() ) )
-                idxs.push_back( *&i );
-            if ( constant ) {
-                constant->replaceAllUsesWith( llvm::ConstantExpr::getGetElementPtr(
-                                                  nullptr, newMdRoot, idxs ) );
-                delete gep;
-            } else
-                llvm::ReplaceInstWithInst( gep, llvm::GetElementPtrInst::Create(
-                                                 nullptr, newMdRoot, idxs ) );
-        }
-        auto mdRootName = mdRoot->getName().str();
-        mdRoot->eraseFromParent();
-        newMdRoot->setName( mdRootName );
+        util::replaceGlobalArray( mdRoot, llvm::ConstantArray::get( mdRootT, metatable ) );
 
         return llvm::PreservedAnalyses::none();
     }

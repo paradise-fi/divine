@@ -9,8 +9,10 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Support/Casting.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/Analysis/CaptureTracking.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/support/query.h>
 #include <brick-assert>
 #include <brick-types>
 #include <chrono>
@@ -186,6 +188,99 @@ bool canBeCaptured( llvm::Value *v, M *map = nullptr ) {
     return it != map->end()
             ? it->second
             : ( (*map)[ v ] = llvm::PointerMayBeCaptured( v, false, true ) );
+}
+
+inline llvm::ArrayType *resizeArrayType( llvm::ArrayType *t, long size ) {
+    auto *elemType = llvm::cast< llvm::ArrayType >( t )->getElementType();
+    return llvm::ArrayType::get( elemType, size );
+}
+
+inline void replaceGlobalArray( llvm::GlobalVariable *glo, llvm::Constant *init )
+{
+    auto *arrType = init->getType();
+    auto *newGlo = new llvm::GlobalVariable( *glo->getParent(), arrType, true,
+                llvm::GlobalValue::ExternalLinkage, init,
+                "lart.module." + glo->getName().str() , glo );
+
+    for ( auto u : query::query( glo->users() ).freeze() ) { // avoid iterating over a list while we delete from it
+
+        llvm::GetElementPtrInst *gep = llvm::dyn_cast< llvm::GetElementPtrInst >( u );
+        llvm::ConstantExpr *constant = nullptr;
+        if ( !gep ) {
+            constant = llvm::cast< llvm::ConstantExpr >( u );
+            gep = llvm::cast< llvm::GetElementPtrInst >(
+                                    constant->getAsInstruction() );
+        }
+        std::vector< llvm::Value * > idxs;
+        for ( auto &i : brick::query::range( gep->idx_begin(), gep->idx_end() ) )
+            idxs.push_back( *&i );
+        if ( constant ) {
+            constant->replaceAllUsesWith( llvm::ConstantExpr::getGetElementPtr(
+                                              nullptr, newGlo, idxs ) );
+            delete gep;
+        } else
+            llvm::ReplaceInstWithInst( gep, llvm::GetElementPtrInst::Create(
+                                             nullptr, newGlo, idxs ) );
+    }
+    auto name = glo->getName().str();
+    glo->eraseFromParent();
+    newGlo->setName( name );
+}
+
+template< typename GetInit >
+void replaceGlobalArray( llvm::Module &m, std::string name, GetInit init )
+{
+    auto *glo = m.getGlobalVariable( name );
+    ASSERT( glo );
+    return replaceGlobalArray( glo, init( llvm::cast< llvm::ArrayType >(
+                    llvm::cast< llvm::PointerType >( glo->getType() )->getElementType()
+                    )->getElementType() ) );
+}
+
+namespace _detail {
+
+template< typename T >
+inline llvm::Constant *getStringGlobal( const T &value, llvm::Module &m ) {
+    auto *init = llvm::ConstantDataArray::get( m.getContext(),
+                        llvm::ArrayRef< uint8_t >(
+                            reinterpret_cast< const uint8_t * >( value.data() ),
+                            value.size() ) );
+    return new llvm::GlobalVariable( m, init->getType(), true,
+                            llvm::GlobalValue::ExternalLinkage, init );
+}
+
+inline llvm::Constant *buildInit( std::vector< std::tuple< std::string, std::vector< uint8_t > > > value,
+                                       llvm::Module &m, llvm::Type *elem )
+{
+    auto *structT = llvm::cast< llvm::StructType >( elem );
+    auto *charPtrT = llvm::cast< llvm::PointerType >( structT->getElementType( 0 ) );
+    auto *intT = llvm::cast< llvm::IntegerType >( structT->getElementType( 2 ) );
+
+    auto data = query::query( value ).map( [&]( auto p ) {
+            std::get< 0 >( p ).push_back( 0 );
+            auto *key = llvm::ConstantExpr::getPointerCast(
+                                getStringGlobal( std::get< 0 >( p ), m ), charPtrT );
+            auto *value = llvm::ConstantExpr::getPointerCast(
+                                getStringGlobal( std::get< 1 >( p ), m ), charPtrT );
+            auto *size = llvm::ConstantInt::get(
+                                llvm::Type::getInt32Ty( m.getContext() ), std::get< 1 >( p ).size() );
+            return llvm::ConstantStruct::get( structT, { key, value, size } );
+        } ).freeze();
+    data.push_back( llvm::ConstantStruct::get( structT, {
+                        llvm::ConstantPointerNull::get( charPtrT ),
+                        llvm::ConstantPointerNull::get( charPtrT ),
+                        llvm::ConstantInt::get( intT, 0 ) } ) );
+
+    return llvm::ConstantArray::get( llvm::ArrayType::get( structT, data.size() ), data );
+}
+
+}
+
+template< typename T >
+void replaceGlobalArray( llvm::Module &m, std::string name, std::vector< T > value )
+{
+    replaceGlobalArray( m, name,
+            [&]( llvm::Type *t ) { return _detail::buildInit( value, m, t ); } );
 }
 
 }
