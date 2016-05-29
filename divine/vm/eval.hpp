@@ -415,7 +415,7 @@ struct Eval
             else
             {
                 control().mask( false );
-                set_interrupted();
+                set_interrupted( true );
             }
             control().frame( nullPointer() );
             return;
@@ -644,16 +644,12 @@ struct Eval
         return str;
     }
 
-    void set_interrupted()
+    bool set_interrupted( bool i )
     {
+        bool rv = _interrupted;
         _cfl_visited.clear();
-        _interrupted = true;
-    }
-
-    void clear_interrupted()
-    {
-        _cfl_visited.clear();
-        _interrupted = false;
+        _interrupted = i;
+        return rv;
     }
 
     void implement_hypercall()
@@ -679,14 +675,15 @@ struct Eval
             case HypercallSetIfl:
                 return control().setIfl( operandCk< PointerV >( 0 ) );
             case HypercallInterrupt:
-                return set_interrupted(); /* unconditionally */
+                result( IntV( set_interrupted( operandCk< IntV >( 0 ).v() ) );
             case HypercallCflInterrupt:
                 if ( _cfl_visited.count( pc() ) )
-                    return set_interrupted();
-                _cfl_visited.insert( pc() );
+                    set_interrupted( true );
+                else
+                    _cfl_visited.insert( pc() );
                 return;
             case HypercallMemInterrupt:
-                return set_interrupted(); /* TODO */
+                set_interrupted( true ); return; /* TODO */
             case HypercallJump:
             {
                 // std::cerr << "======= jump" << std::endl;
@@ -695,7 +692,7 @@ struct Eval
                 if ( forget )
                 {
                     control().mask( false );
-                    clear_interrupted();
+                    set_interrupted( false );
                 }
                 if ( tgt.v() == nullPointer() )
                     return fault( _VM_F_Hypercall );
