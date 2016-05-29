@@ -675,7 +675,7 @@ struct Eval
             case HypercallSetIfl:
                 return control().setIfl( operandCk< PointerV >( 0 ) );
             case HypercallInterrupt:
-                result( IntV( set_interrupted( operandCk< IntV >( 0 ).v() ) );
+                result( IntV( set_interrupted( operandCk< IntV >( 0 ).v() ) ) );
             case HypercallCflInterrupt:
                 if ( _cfl_visited.count( pc() ) )
                     set_interrupted( true );
