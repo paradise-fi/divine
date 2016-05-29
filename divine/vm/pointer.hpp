@@ -141,6 +141,11 @@ struct GlobalPointer : SplitPointer<>
 
 /* HeapPointer does not exist here, its layout is defined by a Memory object */
 
+static inline std::ostream &operator<<( std::ostream &o, GenericPointer p )
+{
+    return o << "[generic " << int( p.type() ) << " " << p.object() << " " << p.offset() << "]";
+}
+
 static inline std::ostream &operator<<( std::ostream &o, CodePointer p )
 {
     return o << "[code " << p.function().get() << " " << p.instruction().get() << "]";
