@@ -1,3 +1,5 @@
+// -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
+
 #ifndef __DIOS_H__
 #define __DIOS_H__
 
@@ -16,65 +18,55 @@
 
 EXTERN_C
 
-enum _Sys_Fault
+enum _DiOS_Fault
 {
-	_Sys_F_Threading = _VM_F_Last,
-	_Sys_F_DiOSAssert,
-	_Sys_F_MissingFunction,
-	_Sys_F_Last
+	_DiOS_F_Threading = _VM_F_Last,
+	_DiOS_F_DiOSAssert,
+	_DiOS_F_MissingFunction,
+	_DiOS_F_Last
 };
 
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
-            __sys_trace( "DiOS assert: %s", msg);\
-            __vm_fault( (_VM_Fault) _Sys_F_DiOSAssert );\
+            __dios_trace( "DiOS assert: %s", msg);\
+            __vm_fault( (_VM_Fault) _DiOS_F_DiOSAssert );\
         } \
     } while (0)
 
 #define __dios_assert( x ) do { \
 		if ( !(x) ) { \
 			__vm_trace( "DiOS assert");\
-			__vm_fault( (_VM_Fault) _Sys_F_DiOSAssert );\
+			__vm_fault( (_VM_Fault) _DiOS_F_DiOSAssert );\
 		} \
 	} while (0)
 
-/*
- * Sheduler main routine routine
- */
-void *__sys_sched( int st_size, void *_state ) NOTHROW;
-
-/*
- * Fault handler
- */
-enum _VM_FaultAction __sys_fault( enum _VM_Fault what ) NOTHROW;
-
-typedef unsigned _Sys_ThreadId;
-typedef const _MD_Function * _Sys_FunPtr;
+typedef unsigned _DiOS_ThreadId;
+typedef const _MD_Function * _DiOS_FunPtr;
 
 /*
  * Start a new thread and obtain its identifier. Thread starts executing routine
- * [void (*routine) (void *)] with arg. Cleanup [void (*cleanup)(int)] handler,
- * which is called when __sys_kill_thread is executed. User-specified kill
- * reason can be specified.
+ * [void (*routine) (void *)] with arg. Cleanup [void (*cleanup)(int)] handler
+ * is called when __dios_kill_thread is executed. User-specified kill reason
+ * can be specified.
  */
-_Sys_ThreadId __sys_start_thread( _Sys_FunPtr routine, void *arg,
-	_Sys_FunPtr cleanup ) NOTHROW;
+_DiOS_ThreadId __dios_start_thread( _DiOS_FunPtr routine, void *arg,
+	_DiOS_FunPtr cleanup ) NOTHROW;
 
 /*
- * Get caller _Sys_ThreadId
+ * Get caller thread id
  */
-_Sys_ThreadId __sys_get_thread_id() NOTHROW;
+_DiOS_ThreadId __dios_get_thread_id() NOTHROW;
 
 /*
  * Kill thread with given id and reason. Reason is an arbitratry user-defined
  * value.
  */
-void __sys_kill_thread( _Sys_ThreadId id, int reason ) NOTHROW;
+void __dios_kill_thread( _DiOS_ThreadId id, int reason ) NOTHROW;
 
 /*
  * Get function pointer based on function name
  */
-_Sys_FunPtr __sys_get_fun_ptr( const char* name ) NOTHROW;
+_DiOS_FunPtr __dios_get_fun_ptr( const char* name ) NOTHROW;
 
 /*
  * Jump into DiOS kernel and then return back. Has no effect
@@ -86,10 +78,9 @@ void __dios_dummy() NOTHROW;
  */
 void __dios_interrupt() NOTHROW;
 
-void __sys_trace( const char *fmt, ... ) NOTHROW;
+void __dios_trace( const char *fmt, ... ) NOTHROW;
 
 CPP_END
-
 #undef EXTERN_C
 #undef CPP_END
 #undef NOTHROW
@@ -153,6 +144,6 @@ using FencedInterruptMask = _InterruptMask< true >;
 
 } // namespace dios
 
-#endif
+#endif // __cplusplus
 
 #endif // __DIOS_H__
