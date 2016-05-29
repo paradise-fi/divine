@@ -416,11 +416,12 @@ void __dios_dummy() noexcept {
 }
 
 void __dios_interrupt() noexcept {
-	int mask = __vm_mask(1);
-	__vm_interrupt();
-	__vm_mask(0);
-	__vm_mask(1);
-	__vm_mask(mask);
+	int mask = __vm_mask( 1 );
+	int interrupt = __vm_interrupt( 1 );
+	__vm_mask( 0 );
+	__vm_mask( 1 );
+	__vm_interrupt( interrupt );
+	__vm_mask( mask );
 }
 
 void __sys_trace( const char *fmt, ... ) noexcept
