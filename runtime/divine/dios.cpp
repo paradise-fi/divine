@@ -105,7 +105,8 @@ private:
 
 Syscall *Syscall::instance;
 
-struct MainFrame : _VM_Frame {
+struct DiosMainFrame : _VM_Frame {
+	int l;
 	int argc;
 	char** argv;
 	char** envp;
@@ -276,13 +277,17 @@ struct Scheduler {
 	}
 
 	void start_main_thread( FunPtr main, int argc, char** argv, char** envp ) noexcept {
-		__dios_assert( main );
+		__dios_assert_v( main, "Invalid main function!" );
 
-		new ( &( _cf->main_thread ) ) Thread( main );
+		_DiOS_FunPtr dios_main = __dios_get_fun_ptr( "__dios_main" );
+		__dios_assert_v( dios_main, "Invalid DiOS main function" );
+
+		new ( &( _cf->main_thread ) ) Thread( dios_main );
 		_cf->active_thread = 0;
 		_cf->thread_count = 1;
 		
-		MainFrame *frame = reinterpret_cast< MainFrame * >( _cf->main_thread._frame );
+		DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( _cf->main_thread._frame );
+		frame->l = main->arg_count;
 
 		if (main->arg_count >= 1)
 			frame->argc = argc;
@@ -324,7 +329,7 @@ private:
 
 void *__dios_sched( int st_size, void *_state ) noexcept;
 enum _VM_FaultAction __dios_fault( enum _VM_Fault what ) noexcept;
-
+int main(...);
 
 enum _VM_FaultAction __dios_fault( enum _VM_Fault what ) noexcept {
 	/* ToDo: Handle errors */
@@ -354,10 +359,36 @@ enum _VM_FaultAction __dios_fault( enum _VM_Fault what ) noexcept {
 	case _VM_F_NotImplemented:
 		__dios_trace( "FAULT: Not Implemented" );
 		break;
+	case _DiOS_F_MainReturnValue:
+		__dios_trace( "FAULT: Main exited with non-zero value" );
+		break;
 	default:
 		__dios_trace( "Unknown fault ");
 	}
 	return _VM_FA_Resume;
+}
+
+extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
+	__dios_trace( "Dios started!" );
+	int res;
+	switch (l) {
+	case 0:
+		res = main();
+		break;
+	case 2:
+		res = main( argc, argv );
+		break;
+	case 3:
+		res = main( argc, argv, envp );
+		break;
+	default:
+		__dios_assert_v( false, "Unexpected prototype of main" );	
+	}
+
+	if ( res != 0 ) 
+		__vm_fault( ( _VM_Fault ) _DiOS_F_MainReturnValue );
+
+	__dios_trace( "DiOS out!" );
 }
 
 void *__dios_sched( int, void *state ) noexcept {
@@ -376,7 +407,6 @@ void *__dios_sched( int, void *state ) noexcept {
 	__dios_trace( "\n" );
 	return scheduler.get_cf();
 }
-
 
 extern "C" void *__dios_init( void *env[] ) {
 	__vm_trace( "__sys_init called" );
@@ -431,7 +461,7 @@ void __dios_interrupt() noexcept {
 	int interrupt = __vm_interrupt( 1 );
 	__vm_mask( 0 );
 	__vm_mask( 1 );
-	__vm_interrupt( interrupt );
+	//__vm_interrupt( interrupt );
 	__vm_mask( mask );
 }
 

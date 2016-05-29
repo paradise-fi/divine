@@ -21,22 +21,23 @@ EXTERN_C
 enum _DiOS_Fault
 {
 	_DiOS_F_Threading = _VM_F_Last,
-	_DiOS_F_DiOSAssert,
+	_DiOS_F_Assert,
 	_DiOS_F_MissingFunction,
+    _DiOS_F_MainReturnValue,
 	_DiOS_F_Last
 };
 
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
             __dios_trace( "DiOS assert: %s", msg);\
-            __vm_fault( (_VM_Fault) _DiOS_F_DiOSAssert );\
+            __vm_fault( (_VM_Fault) _DiOS_F_Assert );\
         } \
     } while (0)
 
 #define __dios_assert( x ) do { \
 		if ( !(x) ) { \
 			__vm_trace( "DiOS assert");\
-			__vm_fault( (_VM_Fault) _DiOS_F_DiOSAssert );\
+			__vm_fault( (_VM_Fault) _DiOS_F_Assert );\
 		} \
 	} while (0)
 
