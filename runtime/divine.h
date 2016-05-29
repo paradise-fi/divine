@@ -15,24 +15,6 @@
 #define NOTHROW __attribute__((__nothrow__))
 #endif
 
-struct _VM_ValueInfo
-{
-    int type;
-    int width;
-};
-
-struct _VM_InstructionInfo
-{
-    int opcode;
-};
-
-struct _VM_FunctionInfo
-{
-    int frame_size;
-    int arg_count;
-    void *entry_point;
-} __attribute__((packed));
-
 struct _VM_Frame
 {
     void (*pc)(void);
@@ -160,8 +142,6 @@ void *__vm_query_varargs( void ) NOTHROW;
  */
 void *__vm_query_frame( void ) NOTHROW;
 int __vm_query_object_size( void * ) NOTHROW;
-
-struct _VM_FunctionInfo *__vm_query_function( const char *name ) NOTHROW;
 
 CPP_END
 
