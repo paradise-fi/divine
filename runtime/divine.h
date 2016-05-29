@@ -38,11 +38,17 @@ enum _VM_FaultAction
     _VM_FA_Resume, _VM_FA_Abort
 };
 
+struct _VM_Env {
+    const char *key;
+    const char *value;
+    int size;
+};
+
 #ifdef __divine__
 
 EXTERN_C
 
-void *__sys_init( void *env[] );
+void *__sys_init( struct _VM_Env *env );
 
 /*
  * Set up the scheduler. After __sys_init returns, the VM will repeatedly call
