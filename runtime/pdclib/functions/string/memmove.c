@@ -7,12 +7,58 @@
 */
 
 #include <string.h>
+#include <stdint.h>
 #include <divine.h>
 
 #ifndef REGTEST
 
 void * memmove( void * s1, const void * s2, size_t n )
 {
+    char *dest = ( char * ) s1;
+    const char *src = ( const char * ) s2;
+    if ( dest <= src ) {
+        while ( ( uint64_t ) dest % 4 && ( uint64_t ) src % 4 && n ) {
+            *dest++ = *src++;
+            n--;
+        }
+
+        uint64_t *src_l = ( uint64_t * ) src;
+        uint64_t *dest_l = ( uint64_t * ) dest;
+        while ( n >= sizeof( uint64_t ) ) {
+            *dest_l++ = *src_l++;
+            n -= sizeof( uint64_t );
+        }
+
+        src = ( const char * ) src_l;
+        dest = ( char *) dest_l;
+        while ( n-- ) {
+            *dest++ = *src++;
+        }
+
+    } else {
+        src += n;
+        dest += n;
+
+        while ( ( uint64_t ) dest % 4 && ( uint64_t ) src % 4 && n ) {
+            *--dest = *--src;
+            n--;
+        }
+
+        uint64_t *src_l = ( uint64_t * ) src;
+        uint64_t *dest_l = ( uint64_t * ) dest;
+        while ( n >= sizeof( uint64_t ) ) {
+            *--dest_l = *--src_l;
+            n -= sizeof( uint64_t );
+        }
+
+        src = ( const char * ) src_l;
+        dest = ( char *) dest_l;
+        while ( n-- ) {
+            *--dest = *--src;
+        }
+    }
+
+#if 0
     /* TODO optimize */
     char * dest = (char *) s1;
     const char * src = (const char *) s2;
@@ -32,6 +78,7 @@ void * memmove( void * s1, const void * s2, size_t n )
            *--dest = *--src;
         }
     }
+#endif
     return s1;
 }
 
