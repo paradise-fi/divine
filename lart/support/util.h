@@ -239,8 +239,6 @@ void replaceGlobalArray( llvm::Module &m, std::string name, GetInit init )
                     )->getElementType() ) );
 }
 
-namespace _detail {
-
 template< typename T >
 inline llvm::Constant *getStringGlobal( const T &value, llvm::Module &m ) {
     auto *init = llvm::ConstantDataArray::get( m.getContext(),
@@ -250,6 +248,8 @@ inline llvm::Constant *getStringGlobal( const T &value, llvm::Module &m ) {
     return new llvm::GlobalVariable( m, init->getType(), true,
                             llvm::GlobalValue::ExternalLinkage, init );
 }
+
+namespace _detail {
 
 inline llvm::Constant *buildInit( std::vector< std::tuple< std::string, std::vector< uint8_t > > > value,
                                        llvm::Module &m, llvm::Type *elem )
