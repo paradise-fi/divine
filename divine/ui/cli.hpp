@@ -42,22 +42,15 @@ struct Help
     template< typename P >
     void run( P cmds )
     {
-        std::string description = cmd::get_desc_by_name( cmds, _cmd );
-        if ( description.compare( "" ) == 0)
+        std::string description = cmd::describe( cmds, _cmd );
+        if ( description.empty() && !_cmd.empty() )
+            die( "Unknown command '" + _cmd + "'. Available commands are:\n" + cmd::describe( cmds ) );
+        if ( _cmd.empty() )
         {
-            if ( _cmd.compare("") != 0 )
-            {
-                std::cerr << "Command '" << _cmd << "' not recognized.\n\n";
-                _cmd = std::string( "" );
-            }
-        }
-        else
-            std::cerr << description << std::endl;
-        if ( _cmd.compare( "" ) == 0 )
-        {
-            std::cerr << "To print details about specific command write 'divine help [command]'.\n\n";
+            std::cerr << "To print details about a specific command, run 'divine help {command}'.\n\n";
             std::cerr << cmd::describe( cmds ) << std::endl;
         }
+        else std::cerr << description << std::endl;
     }
 };
 
@@ -266,9 +259,9 @@ struct CLI : Interface
             .add( "[-o {string}]", &Cc::_output, "the name of the output file"s )
             .add( "[-{string}]", &Cc::_flags, "any cc1 options"s )
             .add( "[-I{string}|-I {string}]", &Cc::_inc,
-                    "add the specified directory to the search path for include files."s )
+                    "add the specified directory to the search path for include files"s )
             .add( "[-isystem{string}|-isystem {string}]", &Cc::_sysinc,
-                    "same as -I, but searched after -I as if it was standards system include directory"s )
+                    "like -I but searched later (along with system include dirs)"s )
             .add( "[{file}]", &Cc::_files, "input file(s) to compile (C or C++)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
