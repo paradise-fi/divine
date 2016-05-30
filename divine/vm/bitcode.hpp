@@ -33,7 +33,7 @@ using AutoTraceFlags = brick::types::StrongEnumFlags< AutoTrace >;
 
 struct BitCode {
     std::unique_ptr< llvm::Module > _module;
-    std::unique_ptr< llvm::LLVMContext > _ctx;
+    std::shared_ptr< llvm::LLVMContext > _ctx;
     std::unique_ptr< Program > _program;
     AutoTraceFlags _autotrace;
 
@@ -41,7 +41,7 @@ struct BitCode {
 
     Program &program() { ASSERT( _program.get() ); return *_program.get(); }
 
-    BitCode( std::string file, Env env, AutoTraceFlags tr = AutoTrace::Nothing )
+    BitCode( std::string file, Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing )
     {
         _ctx.reset( new llvm::LLVMContext() );
         std::unique_ptr< llvm::MemoryBuffer > input;
@@ -50,7 +50,22 @@ struct BitCode {
         if ( !parsed )
             throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
         _module = std::move( parsed.get() );
+        init( env, tr );
+    }
 
+    BitCode( std::unique_ptr< llvm::Module > m,
+             std::shared_ptr< llvm::LLVMContext > ctx = nullptr,
+             Env env = Env(),
+             AutoTraceFlags tr = AutoTrace::Nothing )
+        : _ctx( ctx ), _module( std::move( m ) )
+    {
+        ASSERT( _module.get() );
+        _program.reset( new Program( _module.get() ) );
+        init( env, tr );
+    }
+
+    void init( Env env, AutoTraceFlags tr )
+    {
         lart::Driver lart;
         lart.setup( "interrupt" );
         if ( tr )
@@ -62,15 +77,9 @@ struct BitCode {
         _program.reset( new Program( _module.get() ) );
     }
 
-    BitCode( std::unique_ptr< llvm::Module > m )
-        : _ctx( nullptr ), _module( std::move( m ) )
-    {
-        ASSERT( _module.get() );
-        _program.reset( new Program( _module.get() ) );
-    }
-
     ~BitCode()
     {
+        /* ordering is important */
         _program.reset();
         _module.reset();
     }
