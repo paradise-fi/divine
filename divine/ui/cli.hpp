@@ -165,15 +165,20 @@ struct Cc     : Command
 
         for ( auto &x : _flags )
             x = "-"s + x; /* put back the leading - */
-        for ( auto &x : _files )
-            driver.compileAndLink( x, _flags );
 
-        if ( !_drv.dont_link && !_drv.libs_only )
-            driver.prune( { "__sys_init", "main", "memmove", "memset",
-                            "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
-                            "__md_get_function_meta", "__sys_env" } );
+        try {
+            for ( auto &x : _files )
+                driver.compileAndLink( x, _flags );
 
-        driver.writeToFile( _output );
+            if ( !_drv.dont_link && !_drv.libs_only )
+                driver.prune( { "__sys_init", "main", "memmove", "memset",
+                                "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
+                                "__md_get_function_meta", "__sys_env" } );
+
+            driver.writeToFile( _output );
+        } catch ( cc::CompilationError &e ) {
+            die( e.what() );
+        }
     }
 };
 
@@ -291,26 +296,32 @@ struct CLI : Interface
 
     virtual int main() override
     {
-        auto cmds = commands();
-        auto cmd = parse( cmds );
+        try {
+            auto cmds = commands();
+            auto cmd = parse( cmds );
 
-        if ( cmd.empty()  )
-        {
-            Help help;
-            help.run( cmds );
+            if ( cmd.empty()  )
+            {
+                Help help;
+                help.run( cmds );
+                return 0;
+            }
+
+            cmd.match( [&]( Help &help )
+                       {
+                           help.run( cmds );
+                       },
+                       [&]( Command &c )
+                       {
+                           c.setup();
+                           c.run();
+                       } );
             return 0;
+        } catch ( DieException &d ) {
+            std::cerr << "Error: " << d.what() << std::endl;
+            exception( d );
+            return d.exitcode;
         }
-
-        cmd.match( [&]( Help &help )
-                   {
-                       help.run( cmds );
-                   },
-                   [&]( Command &c )
-                   {
-                       c.setup();
-                       c.run();
-                   } );
-        return 0;
     }
 };
 
