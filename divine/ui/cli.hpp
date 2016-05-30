@@ -271,7 +271,7 @@ struct CLI : Interface
 
         auto parser = cmd::make_parser( v )
             .add< Verify >( vrfyopts, bcopts )
-            .add< Run, WithBC, &WithBC::_useropts >( bcopts )
+            .add< Run >( &WithBC::_useropts, bcopts )
             .add< Draw >( drawopts, bcopts )
             .add< Info >( bcopts )
             .add< Cc >( ccopts )
