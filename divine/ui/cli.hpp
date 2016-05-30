@@ -28,6 +28,7 @@ struct WithBC : Command
     std::string _file;
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
+    vm::AutoTraceFlags _autotrace;
 
     std::shared_ptr< vm::BitCode > _bc;
     void setup()
@@ -40,7 +41,7 @@ struct WithBC : Command
         i = 0;
         for ( auto o : _useropts )
             env.emplace_back( "arg." + brick::string::fmt( i++ ), bstr( o.begin(), o.end() ) );
-        _bc = std::make_shared< vm::BitCode >( _file, env );
+        _bc = std::make_shared< vm::BitCode >( _file, env, _autotrace );
     }
 };
 
@@ -222,7 +223,15 @@ struct CLI : Interface
                     if ( s.compare("trace") == 0 )
                         return good( Draw::Trace );
                     return bad( cmd::BadContent, s + " is not a valid label type" );
-                });
+                } ) ->
+            add( "tracepoints", []( std::string s, auto good, auto bad )
+                {
+                    if ( s == "calls" )
+                        return good( vm::AutoTrace::Calls );
+                    if ( s == "none" )
+                        return good( vm::AutoTrace::Nothing );
+                    return bad( cmd::BadContent, s + " is nod a valid tracepoint specification" );
+                } );
     }
 
     // @return ParserT
@@ -235,6 +244,7 @@ struct CLI : Interface
 
         auto bcopts = cmd::make_option_set< WithBC >( v )
             .add( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
+            .add( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
             .add( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
