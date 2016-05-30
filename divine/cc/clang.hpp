@@ -81,6 +81,10 @@ namespace std {
 namespace divine {
 namespace cc {
 
+struct CompilationError : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+
 struct DivineVFS : clang::vfs::FileSystem {
   private:
     // just a wrapper over const char *
@@ -401,7 +405,8 @@ struct Compiler {
                 new clang::DiagnosticOptions(), &diagprinter, false );
         bool succ = clang::CompilerInvocation::CreateFromArgs(
                             *invocation, &cc1a[ 0 ], &*cc1a.end(), diag );
-        ASSERT( succ );
+        if ( !succ )
+            throw CompilationError( "Failed to create compiler invocation for " + filename );
         invocation->getDependencyOutputOpts() = clang::DependencyOutputOptions();
 
         // actually run the compiler invocation
@@ -416,7 +421,8 @@ struct Compiler {
         // emits module in memory, does not write it info a file
         auto emit = std::make_unique< clang::EmitLLVMOnlyAction >( ctx.get() );
         succ = compiler.ExecuteAction( *emit );
-        ASSERT( succ );
+        if ( !succ )
+            throw CompilationError( "Compilation failed for " + filename );
 
         return emit->takeModule();
     }
