@@ -127,7 +127,7 @@ struct Draw   : WithBC
 struct Cc     : Command
 {
     cc::Compile::Opts _drv;
-    std::vector< std::string > _files, _flags;
+    std::vector< std::string > _files, _flags, _inc, _sysinc;
     std::string _precompiled;
     std::string _output;
 
@@ -161,13 +161,22 @@ struct Cc     : Command
             if ( _drv.libs_only )
                 _output = "libdivinert.bc";
             else {
-                _output = _files.front();
+                _output = brick::fs::splitPath( _files.front() ).back();
                 auto pos = _output.rend() - std::find( _output.rbegin(), _output.rend(), '.' );
                 _output = _output.substr( 0, pos - 1 ) + ".bc";
             }
         }
 
         cc::Compile driver( _drv );
+
+        for ( auto &i : _inc ) {
+            driver.addDirectory( i );
+            driver.addFlags( { "-I", i } );
+        }
+        for ( auto &i : _sysinc ) {
+            driver.addDirectory( i );
+            driver.addFlags( { "-isystem", i } );
+        }
 
         for ( auto &x : _flags )
             x = "-"s + x; /* put back the leading - */
@@ -256,6 +265,10 @@ struct CLI : Interface
             .add( ccdrvopts, &Cc::_drv )
             .add( "[-o {string}]", &Cc::_output, "the name of the output file"s )
             .add( "[-{string}]", &Cc::_flags, "any cc1 options"s )
+            .add( "[-I{string}|-I {string}]", &Cc::_inc,
+                    "add the specified directory to the search path for include files."s )
+            .add( "[-isystem{string}|-isystem {string}]", &Cc::_sysinc,
+                    "same as -I, but searched after -I as if it was standards system include directory"s )
             .add( "[{file}]", &Cc::_files, "input file(s) to compile (C or C++)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
