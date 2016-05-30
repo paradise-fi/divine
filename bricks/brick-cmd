@@ -803,9 +803,8 @@ struct ParserT< Validator, T, Ts... >
             Command< Validator, S >( _validator, args... ), *this );
     }
 
-    template< typename S, typename U, Tokens (U::*extra), typename... Args,
-              typename X = decltype( std::declval< S >().*extra ) >
-    auto add( Args... args )
+    template< typename S, typename U, typename... Args >
+    auto add( Tokens (U::*extra), Args... args )
     {
         auto cmd = Command< Validator, S >( _validator, args... );
         cmd._extra = extra;
