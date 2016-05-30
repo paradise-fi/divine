@@ -171,7 +171,7 @@ struct Cc     : Command
         if ( !_drv.dont_link && !_drv.libs_only )
             driver.prune( { "__sys_init", "main", "memmove", "memset",
                             "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
-                            "__md_get_function_meta" } );
+                            "__md_get_function_meta", "__sys_env" } );
 
         driver.writeToFile( _output );
     }
