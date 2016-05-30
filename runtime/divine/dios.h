@@ -29,7 +29,7 @@ enum _DiOS_Fault
 
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
-            __dios_trace( "DiOS assert: %s", msg);\
+            __dios_trace( 0, "DiOS assert: %s", msg);\
             __vm_fault( (_VM_Fault) _DiOS_F_Assert );\
         } \
     } while (0)
@@ -79,7 +79,7 @@ void __dios_dummy() NOTHROW;
  */
 void __dios_interrupt() NOTHROW;
 
-void __dios_trace( const char *fmt, ... ) NOTHROW;
+void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
 
 CPP_END
 #undef EXTERN_C
