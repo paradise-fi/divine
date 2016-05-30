@@ -335,6 +335,19 @@ auto apply( T *i, TypeList tl, R def, Yield &&yield ) -> typename std::enable_if
     return apply( i, typename TypeList::Tail(), def, yield );
 }
 
+template< typename Yield >
+auto applyInst( llvm::Instruction *i, Yield &&y ) {
+    switch ( i->getOpcode() ) {
+#define HANDLE_INST( opcode, _x, Class ) case opcode: return y( llvm::cast< llvm::Class >( i ) );
+#include <llvm/IR/Instruction.def>
+    }
+}
+
+template< typename Yield >
+auto applyInst( llvm::Instruction &i, Yield &&y ) {
+    return applyInst( &i, std::forward< Yield >( y ) );
+}
+
 template< typename Pre, typename Post >
 void bbDfs( llvm::BasicBlock &bb, util::Set< llvm::BasicBlock * > &seen, Pre pre, Post post ) {
     std::vector< util::PtrPlusBit< llvm::BasicBlock > > stack;

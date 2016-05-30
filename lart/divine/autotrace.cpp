@@ -56,11 +56,12 @@ struct Autotrace : lart::Pass {
             cleanup::makeExceptionsVisible( ehInfo, fn, []( const auto & ) { return true; } );
             cleanup::atExits( fn, [&]( llvm::Instruction *i ) {
                     llvm::IRBuilder<> irb( i );
-                    irb.CreateCall( trace, retArgs( fn, i, irb ) );
+                    irb.CreateCall( trace, applyInst( i, [&]( auto *i ) {
+                                              return retArgs( fn, i, irb ); } ) );
                     ++exit;
                 } );
         }
-        std::cout << "Annotated " << entry << " and " << exit << " exit points" << std::endl;
+        std::cout << "Annotated " << entry << " calls and " << exit << " exit points" << std::endl;
         return llvm::PreservedAnalyses::none();
     }
 
@@ -75,6 +76,44 @@ struct Autotrace : lart::Pass {
         return x;
     }
 
+    std::pair< std::string, llvm::Value * > fmtVal( llvm::Value &arg, llvm::IRBuilder<> &irb ) {
+        std::string lit;
+        llvm::Value *val = nullptr;
+
+        auto t = arg.getType();
+
+        if ( t->isPointerTy() )
+        {
+            lit = "%p";
+            val = &arg;
+        }
+        else if ( auto *it = llvm::dyn_cast< llvm::IntegerType >( t ) )
+        {
+            if ( it->getBitWidth() < 64 )
+                val = irb.CreateSExt( &arg, irb.getInt64Ty() );
+            else if ( it->getBitWidth() == 64 )
+                val = &arg;
+            else {
+                lit = "(truncated) ";
+                val = irb.CreateTrunc( &arg, irb.getInt64Ty() );
+            }
+            lit += "%lld";
+        }
+        else if ( t->isFloatTy() )
+        {
+            lit += "%f";
+            val = irb.CreateFPCast( &arg, irb.getDoubleTy() );
+        }
+        else if ( t->isDoubleTy() )
+        {
+            lit = "%f, ";
+            val = &arg;
+        }
+        else
+            lit = "(unknown struct or weird type), ";
+        return { lit, val };
+    }
+
     Vals callArgs( llvm::Function &fn, llvm::IRBuilder<> &irb ) {
         auto name = demangle( fn.getName().str() );
         std::string fmt = "Call to " + name;
@@ -87,48 +126,44 @@ struct Autotrace : lart::Pass {
             fmt += " with ";
 
         for ( auto &arg : fn.args() ) {
-            auto t = arg.getType();
-
-            if ( t->isPointerTy() )
-            {
-                fmt += "%p, ";
-                vals.push_back( &arg );
-            }
-            else if ( auto *it = llvm::dyn_cast< llvm::IntegerType >( t ) )
-            {
-                if ( it->getBitWidth() < 64 )
-                    vals.push_back( irb.CreateSExt( &arg, irb.getInt64Ty() ) );
-                else if ( it->getBitWidth() == 64 )
-                    vals.push_back( &arg );
-                else {
-                    fmt += "(truncated) ";
-                    vals.push_back( irb.CreateTrunc( &arg, irb.getInt64Ty() ) );
-                }
-                fmt += "%lld, ";
-            }
-            else if ( t->isFloatTy() )
-            {
-                fmt += "%f, ";
-                vals.push_back( irb.CreateFPCast( &arg, irb.getDoubleTy() ) );
-            }
-            else if ( t->isDoubleTy() )
-            {
-                fmt += "%f, ";
-                vals.push_back( &arg );
-            }
-            else
-                fmt += "(unknown struct or weird type), ";
+            auto f = fmtVal( arg, irb );
+            fmt += f.first + ", ";
+            if ( f.second )
+                vals.push_back( f.second );
         }
         if ( fmt.back() == ' ' )
             fmt.pop_back();
         if ( fmt.back() == ',' )
             fmt.pop_back();
-        fmt.push_back( 0 ); // null-terminate cstring
 
-        vals[ 1 ] = irb.CreatePointerCast( util::getStringGlobal( fmt, *fn.getParent() ),
-                                           irb.getInt8PtrTy() );
+        vals[ 1 ] = getLit( fmt, irb );
 
         return vals;
+    }
+
+    llvm::Value *getLit( std::string lit, llvm::IRBuilder<> irb ) {
+        lit.push_back( 0 );
+        auto it = litmap.find( lit );
+        if ( it != litmap.end() )
+            return it->second;
+        return litmap.emplace( lit, irb.CreatePointerCast( util::getStringGlobal( lit,
+                                      *irb.GetInsertBlock()->getParent()->getParent() ),
+                                  irb.getInt8PtrTy() ) ).first->second;
+    }
+
+    Vals retArgs( llvm::Function &fn, llvm::ReturnInst *i, llvm::IRBuilder<> &irb ) {
+        if ( !i->getReturnValue() )
+            return { traceDown, getLit( "return void", irb ) };
+
+        auto f = fmtVal( *i->getReturnValue(), irb );
+        Vals vals { traceDown, getLit( "return " + f.first, irb ) };
+        if ( f.second )
+            vals.push_back( f.second );
+        return vals;
+    }
+
+    Vals retArgs( llvm::Function &fn, llvm::ResumeInst *i, llvm::IRBuilder<> &irb ) {
+        return { traceDown, getLit( "exiting function with active exception", irb ) };
     }
 
     Vals retArgs( llvm::Function &fn, llvm::Instruction *i, llvm::IRBuilder<> &irb )
@@ -138,6 +173,7 @@ struct Autotrace : lart::Pass {
 
     long entry = 0, exit = 0;
     llvm::Constant *traceUp = nullptr, *traceDown = nullptr;
+    util::Map< std::string, llvm::Value * > litmap;
 };
 
 PassMeta autotracePass() {
