@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/Analysis/CaptureTracking.h>
