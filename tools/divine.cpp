@@ -41,7 +41,7 @@ int main( int argc, const char **argv )
 {
 #ifdef __unix__
     for ( int i = 0; i <= 32; ++i )
-        if ( i == SIGCHLD || i == SIGWINCH || i == SIGURG )
+        if ( i == SIGCHLD || i == SIGWINCH || i == SIGURG || i == SIGTSTP || i == SIGCONT )
             continue;
         else
             signal( i, handler );
