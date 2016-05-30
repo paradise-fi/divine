@@ -27,11 +27,20 @@ struct WithBC : Command
 {
     std::string _file;
     std::vector< std::string > _env;
+    std::vector< std::string > _useropts;
 
     std::shared_ptr< vm::BitCode > _bc;
     void setup()
     {
-        _bc = std::make_shared< vm::BitCode >( _file );
+        vm::BitCode::Env env;
+        using bstr = std::vector< uint8_t >;
+        int i = 0;
+        for ( auto s : _env )
+            env.emplace_back( "env." + brick::string::fmt( i++ ), bstr( s.begin(), s.end() ) );
+        i = 0;
+        for ( auto o : _useropts )
+            env.emplace_back( "arg." + brick::string::fmt( i++ ), bstr( o.begin(), o.end() ) );
+        _bc = std::make_shared< vm::BitCode >( _file, env );
     }
 };
 
@@ -226,7 +235,8 @@ struct CLI : Interface
 
         auto bcopts = cmd::make_option_set< WithBC >( v )
             .add( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
-            .add( "{file}", &WithBC::_file, "the bitcode file to load"s, true );
+            .add( "{file}", &WithBC::_file, "the bitcode file to load"s,
+                  cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
         using DrvOpt = cc::Compile::Opts;
         auto ccdrvopts = cmd::make_option_set< DrvOpt >( v )
@@ -261,7 +271,7 @@ struct CLI : Interface
 
         auto parser = cmd::make_parser( v )
             .add< Verify >( vrfyopts, bcopts )
-            .add< Run >( bcopts )
+            .add< Run, WithBC, &WithBC::_useropts >( bcopts )
             .add< Draw >( drawopts, bcopts )
             .add< Info >( bcopts )
             .add< Cc >( ccopts )
