@@ -20,6 +20,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <system_error>
 #include <thread>
 
+extern const char *DIVINE_RUNTIME_SHA;
+
 namespace divine {
 
 struct stringtable { const char *n, *c; };
@@ -121,20 +123,26 @@ struct Compile {
         std::copy( flags.begin(), flags.end(), std::back_inserter( allFlags ) );
 
         std::cerr << "compiling " << path << std::endl;
-        return mastercc().compileModule( path, allFlags );
+        auto mod = mastercc().compileModule( path, allFlags );
+        tagWithRuntimeVersionSha( *mod );
+        return mod;
     }
 
-    llvm::Module *getLinked() { return linker.get(); }
+    llvm::Module *getLinked() {
+        tagWithRuntimeVersionSha( *linker.get() );
+        return linker.get();
+    }
 
     void writeToFile( std::string filename ) {
         llvm::raw_os_ostream cerr( std::cerr );
-        if ( llvm::verifyModule( *linker.get(), &cerr ) ) {
+        auto *mod = getLinked();
+        if ( llvm::verifyModule( *mod, &cerr ) ) {
             cerr.flush(); // otherwise nothing will be displayed
             UNREACHABLE( "invalid bitcode" );
         }
         std::error_code serr;
         ::llvm::raw_fd_ostream outs( filename, serr, ::llvm::sys::fs::F_None );
-        WriteBitcodeToFile( linker.get(), outs );
+        WriteBitcodeToFile( mod, outs );
     }
 
     std::string serialize() {
@@ -151,6 +159,26 @@ struct Compile {
 
     template< typename Roots = std::initializer_list< std::string > >
     void prune( Roots r ) { linker.prune( r, brick::llvm::Prune::UnusedModules ); }
+
+    void tagWithRuntimeVersionSha( llvm::Module &m ) const {
+        auto *meta = m.getNamedMetadata( runtimeVersMeta );
+        // make sure we remove old metadata which can contain duplicates from linking
+        if ( meta )
+            m.eraseNamedMetadata( meta );
+        meta = m.getOrInsertNamedMetadata( runtimeVersMeta );
+        auto *tag = llvm::MDNode::get( m.getContext(),
+                        llvm::MDString::get( m.getContext(), DIVINE_RUNTIME_SHA ) );
+        meta->addOperand( tag );
+    }
+
+    std::string getRuntimeVersionSha( llvm::Module &m ) const {
+        auto *meta = m.getNamedMetadata( runtimeVersMeta );
+        if ( !meta )
+            return "";
+        auto *op = llvm::cast< llvm::MDTuple >( meta->getOperand( 0 ) );
+        auto *str = llvm::cast< llvm::MDString >( op->getOperand( 0 ).get() );
+        return str->getString().str();
+    }
 
   private:
     Compiler &mastercc() { return compilers[0]; }
@@ -194,6 +222,9 @@ struct Compile {
             auto parsed = parseBitcodeFile( inputData, context() );
             if ( !parsed )
                 throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
+            if ( getRuntimeVersionSha( *parsed.get() ) != DIVINE_RUNTIME_SHA )
+                std::cerr << "WARNING: runtime version of the precompiled library does not match the current runtime version"
+                          << std::endl;
             linker.load( std::move( parsed.get() ) );
         } else {
             compileLibrary( join( srcDir, "pdclib" ), { "-D_PDCLIB_BUILD" } );
@@ -246,6 +277,7 @@ struct Compile {
 //                                             , "-fno-slp-vectorize"
 //                                             , "-fno-vectorize"
                                              };
+    std::string runtimeVersMeta = "divine.compile.runtime.version";
 };
 
 }
