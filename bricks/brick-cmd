@@ -274,9 +274,9 @@ struct Pattern
             capture( _capture_id++, _many, _capture, *begin );
             next = begin + 1;
         }
-        if ( _type == Mixed && ( *begin ).find( _text ) == 0 )
+        if ( _type == Mixed && begin->find( _text ) == 0 && begin->size() > _text.size() )
         {
-            std::string rest = (*begin).substr(_text.length() );
+            std::string rest = begin->substr( _text.length() );
             if ( _validator->validate( _capture, rest ) )
             {
                 capture( _capture_id++, false, _capture, rest );
