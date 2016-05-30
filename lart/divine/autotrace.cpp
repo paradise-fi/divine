@@ -46,7 +46,7 @@ struct Autotrace : lart::Pass {
         auto ehInfo = cleanup::EhInfo::cpp( m );
 
         for ( auto &fn : m ) {
-            if ( fn.empty() )
+            if ( fn.empty() || &fn == trace )
                 continue;
 
             llvm::IRBuilder<> irb( fn.front().getFirstInsertionPt() );
