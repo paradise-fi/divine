@@ -8,7 +8,7 @@
 #else
 #define EXTERN_C
 #define CPP_END
-#define NOTHROW
+#define NOTHROW __attribute__((__nothrow__))
 #endif
 
 EXTERN_C
@@ -31,7 +31,7 @@ typedef struct {
     _MD_InstInfo *inst_table;
 } _MD_Function;
 
-const _MD_Function *__md_get_function_meta( const char *name );
+const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW;
 
 CPP_END
 

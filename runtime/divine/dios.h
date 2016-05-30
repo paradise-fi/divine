@@ -10,7 +10,7 @@
 #else
 #define EXTERN_C
 #define CPP_END
-#define NOTHROW
+#define NOTHROW __attribute__((__nothrow__))
 #endif
 
 EXTERN_C
