@@ -22,6 +22,7 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/DiagnosticPrinter.h>
 #include <lart/driver.h>
 #include <lart/support/util.h>
 
@@ -30,6 +31,8 @@ namespace vm {
 
 enum class AutoTrace { Nothing, Calls };
 using AutoTraceFlags = brick::types::StrongEnumFlags< AutoTrace >;
+
+struct BCParseError : brick::except::Error { using brick::except::Error::Error; };
 
 struct BitCode {
     std::unique_ptr< llvm::Module > _module;
@@ -46,9 +49,16 @@ struct BitCode {
         _ctx.reset( new llvm::LLVMContext() );
         std::unique_ptr< llvm::MemoryBuffer > input;
         input = std::move( llvm::MemoryBuffer::getFile( file ).get() );
-        auto parsed = llvm::parseBitcodeFile( input->getMemBufferRef(), *_ctx );
+        auto error = []( auto &info ) {
+            std::string err;
+            llvm::raw_string_ostream ostr( err );
+            llvm::DiagnosticPrinterRawOStream print( ostr );
+            info.print( print );
+            throw BCParseError( ostr.str() );
+        };
+        auto parsed = llvm::parseBitcodeFile( input->getMemBufferRef(), *_ctx, error );
         if ( !parsed )
-            throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
+            throw BCParseError( "Error parsing input model; probably not a valid bitcode file." );
         _module = std::move( parsed.get() );
         init( env, tr );
     }
