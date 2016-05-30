@@ -16,6 +16,12 @@ namespace ui {
 
 using namespace std::literals;
 namespace cmd = brick::cmd;
+void pruneBC( cc::Compile &driver )
+{
+    driver.prune( { "__sys_init", "main", "memmove", "memset",
+                "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
+                "__md_get_function_meta", "__sys_env" } );
+}
 
 struct Command
 {
@@ -41,7 +47,19 @@ struct WithBC : Command
         i = 0;
         for ( auto o : _useropts )
             env.emplace_back( "arg." + brick::string::fmt( i++ ), bstr( o.begin(), o.end() ) );
-        _bc = std::make_shared< vm::BitCode >( _file, env, _autotrace );
+        try {
+            _bc = std::make_shared< vm::BitCode >( _file, env, _autotrace );
+        } catch ( vm::BCParseError &err ) /* probably not a bitcode file */
+        {
+            cc::Compile::Opts ccopt;
+            ccopt.precompiled = "libdivinert.bc";
+            cc::Compile driver( ccopt );
+            driver.compileAndLink( _file, {} );
+            pruneBC( driver );
+            _bc = std::make_shared< vm::BitCode >(
+                std::unique_ptr< llvm::Module >( driver.getLinked() ),
+                driver.mastercc().context(), env, _autotrace );
+        }
     }
 };
 
@@ -169,9 +187,7 @@ struct Cc     : Command
             driver.compileAndLink( x, _flags );
 
         if ( !_drv.dont_link && !_drv.libs_only )
-            driver.prune( { "__sys_init", "main", "memmove", "memset",
-                            "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
-                            "__md_get_function_meta", "__sys_env" } );
+            pruneBC( driver );
 
         driver.writeToFile( _output );
     }
