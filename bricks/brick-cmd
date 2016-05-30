@@ -701,14 +701,14 @@ struct Command : OptionSet< Validator, T >
         return s;
     }
 
-    virtual std::string describe_header()
+    virtual std::string describe_header( int setw = 0 )
     {
         std::stringstream req;
         for ( auto o : this->_opts )
             if ( o->required() )
                 req << o->fmt() << " ";
         std::stringstream res;
-        res << std::setw(10) << name() <<  " [options] " << req.str();
+        res << std::setw( setw ) << name() <<  " [options] " << req.str();
         return res.str();
     }
 
@@ -806,19 +806,17 @@ struct ParserT< Validator >
 };
 
 template< typename Validator >
-std::string get_desc_by_name( ParserT< Validator >&, std::string name )
+std::string describe( ParserT< Validator >&, std::string name )
 {
     return "";
 }
 
 template< typename Parser >
-std::string get_desc_by_name( Parser &parser, std::string name )
+std::string describe( Parser &parser, std::string name )
 {
-    if ( parser._car.name().compare(name) == 0 )
-    {
+    if ( parser._car.name() == name )
         return parser._car.describe();
-    }
-    return get_desc_by_name( parser._cdr, name );
+    return describe( parser._cdr, name );
 };
 
 template< typename Validator >
@@ -829,7 +827,7 @@ std::string describe( ParserT<Validator>& )
 template< typename Parser >
 std::string describe( Parser &parser )
 {
-    return parser._car.describe_header() + "\n" + describe(parser._cdr);
+    return parser._car.describe_header( 10 ) + "\n" + describe( parser._cdr );
 }
 
 template< typename V >
