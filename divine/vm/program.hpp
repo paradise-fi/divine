@@ -323,6 +323,7 @@ struct Program
     std::set< llvm::Value * > _doneinit;
 
     CodePointer functionByName( std::string s );
+    GenericPointer globalByName( std::string s );
 
     bool isCodePointer( llvm::Value *val );
     bool isCodePointerConst( llvm::Value *val );

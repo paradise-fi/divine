@@ -42,6 +42,17 @@ CodePointer Program::functionByName( std::string s )
     return functionmap[ f ];
 }
 
+GenericPointer Program::globalByName( std::string s )
+{
+    llvm::GlobalVariable *g = module->getGlobalVariable( s );
+    if ( !g )
+        return GlobalPointer();
+    if ( g->isConstant() )
+        return s2ptr( valuemap.find( g->getInitializer() )->second );
+    else
+        return s2ptr( globalmap.find( g )->second );
+}
+
 bool Program::isCodePointerConst( llvm::Value *val )
 {
     return ( isa< llvm::Function >( val ) ||

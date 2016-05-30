@@ -160,8 +160,9 @@ struct RunContext
         std::tie( _control._constants, _control._globals ) = _program.exportHeap( heap() );
 
         auto ipc = _program.functionByName( "__sys_init" );
+        auto envptr = _program.globalByName( "__sys_env" );
         ipc.instruction( 1 );
-        _control.enter( ipc, nullPointer(), PointerV( nullPointer() ) );
+        _control.enter( ipc, nullPointer(), PointerV( envptr ) );
     }
 
     RunContext( Program &p )
