@@ -7,34 +7,41 @@ empty="0000000000000000000000000000000000000000";
 
 cd $from
 
-interesting='^./divine.*(\.c$|\.cpp$|\.h$|\.cc$|\.hh$)';
+interesting='.*(\.c$|\.cpp$|\.h$|\.cc$|\.hh$)';
 boring='\.orig$|~$';
 if test -e release/manifest; then
     manifest=`cat release/manifest`;
 else
     if ! test -d _darcs || ! darcs --version > /dev/null; then
-        manifest=`find divine -type f` # assume...
+        manifest=`find . -type f ! -path './_build*' ! -path './_darcs*'` # assume...
     else
-        manifest=`darcs query manifest`
+        manifest=`darcs show files`
     fi
 fi
 
 relsha=`cat release/checksum`
 
+sha() {
+    echo "$manifest" | egrep "^./$1/$interesting" | egrep -v "$boring" \
+        | xargs $sha1sum | cut -d' ' -f1 | $sha1sum | cut -d' ' -f1
+}
+
 test -z "$old" && old=`cat $where.cached 2> /dev/null`
 testsha=`echo | $sha1sum 2> /dev/null`
 if test -n "$testsha" ; then
     test -z "$new" && \
-        new=`echo "$manifest" | egrep "$interesting" | egrep -v "$boring" | xargs $sha1sum \
-        | cut -d' ' -f1 | $sha1sum | cut -d' ' -f1`
+        new="`sha divine` `sha runtime`"
 else
     old="na"
     new=$empty
 fi
 
 if test "$old" != "$new"; then
+    src=`echo $new | cut -d' ' -f1`
+    runtime=`echo $new | cut -d' ' -f2`
     echo "const char *DIVINE_VERSION = \"$version\";" > $where
-    echo "const char *DIVINE_SOURCE_SHA = \"$new\";" >> $where
+    echo "const char *DIVINE_SOURCE_SHA = \"$src\";" >> $where
+    echo "const char *DIVINE_RUNTIME_SHA = \"$runtime\";" >> $where
     echo "const char *DIVINE_BUILD_DATE = \"$(date -u "+%Y-%m-%d, %H:%M UTC")\";" >> $where
     echo "const char *DIVINE_RELEASE_SHA = \"$relsha\";" >> $where
     echo $new > $where.cached
