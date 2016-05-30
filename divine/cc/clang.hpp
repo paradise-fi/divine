@@ -20,6 +20,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-fs>
 #include <brick-assert>
 #include <brick-query>
+#include <brick-except>
 
 #include <iostream>
 
@@ -68,8 +69,9 @@ namespace std {
 namespace divine {
 namespace cc {
 
-struct CompilationError : std::runtime_error {
-    using std::runtime_error::runtime_error;
+struct CompileError : brick::except::Error
+{
+    using brick::except::Error::Error;
 };
 
 struct DivineVFS : clang::vfs::FileSystem {
@@ -393,7 +395,7 @@ struct Compiler {
         bool succ = clang::CompilerInvocation::CreateFromArgs(
                             *invocation, &cc1a[ 0 ], &*cc1a.end(), diag );
         if ( !succ )
-            throw CompilationError( "Failed to create compiler invocation for " + filename );
+            throw CompileError( "Failed to create a compiler invocation for " + filename );
         invocation->getDependencyOutputOpts() = clang::DependencyOutputOptions();
 
         // actually run the compiler invocation
@@ -409,7 +411,7 @@ struct Compiler {
         auto emit = std::make_unique< clang::EmitLLVMOnlyAction >( ctx.get() );
         succ = compiler.ExecuteAction( *emit );
         if ( !succ )
-            throw CompilationError( "Compilation failed for " + filename );
+            throw CompileError( "Error building " + filename );
 
         return emit->takeModule();
     }
