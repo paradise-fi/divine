@@ -166,19 +166,15 @@ struct Cc     : Command
         for ( auto &x : _flags )
             x = "-"s + x; /* put back the leading - */
 
-        try {
-            for ( auto &x : _files )
-                driver.compileAndLink( x, _flags );
+        for ( auto &x : _files )
+            driver.compileAndLink( x, _flags );
 
-            if ( !_drv.dont_link && !_drv.libs_only )
-                driver.prune( { "__sys_init", "main", "memmove", "memset",
-                                "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
-                                "__md_get_function_meta", "__sys_env" } );
+        if ( !_drv.dont_link && !_drv.libs_only )
+            driver.prune( { "__sys_init", "main", "memmove", "memset",
+                            "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
+                            "__md_get_function_meta", "__sys_env" } );
 
-            driver.writeToFile( _output );
-        } catch ( cc::CompilationError &e ) {
-            die( e.what() );
-        }
+        driver.writeToFile( _output );
     }
 };
 
@@ -317,10 +313,12 @@ struct CLI : Interface
                            c.run();
                        } );
             return 0;
-        } catch ( DieException &d ) {
-            std::cerr << "Error: " << d.what() << std::endl;
-            exception( d );
-            return d.exitcode;
+        }
+        catch ( brick::except::Error &e )
+        {
+            std::cerr << "ERROR: " << e.what() << std::endl;
+            exception( e );
+            return e._exit;
         }
     }
 };
