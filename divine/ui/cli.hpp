@@ -167,17 +167,24 @@ struct Info   : WithBC
     void run() { NOT_IMPLEMENTED(); }
 };
 
+std::vector< std::string > fromArgv( int argc, const char **argv ) {
+    std::vector< std::string > args;
+    std::copy( argv + 1, argv + argc, std::back_inserter( args ) );
+    return args;
+}
+
 struct CLI : Interface
 {
     bool _batch;
     std::vector< std::string > _args;
 
-    CLI( int argc, const char **argv )
-        : _batch( true )
-    {
-        for ( int i = 1; i < argc; ++i )
-            _args.emplace_back( argv[ i ] );
-    }
+    CLI( int argc, const char **argv ) :
+        _batch( true ), _args( fromArgv( argc, argv ) )
+    { }
+
+    CLI( std::vector< std::string > args ) :
+        _batch( true ), _args( args )
+    { }
 
     auto validator()
     {

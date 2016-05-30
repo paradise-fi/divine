@@ -47,7 +47,15 @@ int main( int argc, const char **argv )
             signal( i, handler );
 #endif
     std::set_terminate( panic );
-    _ui = std::make_shared< divine::ui::CLI >( argc, argv );
-    _ui = _ui->resolve();
+
+    // accept divine.ARG as divine ARG
+    auto args = divine::ui::fromArgv( argc, argv );
+    std::string progName = argv[ 0 ];
+    std::string prefix = "divine.";
+    auto dot = progName.rfind( prefix );
+    if ( dot != std::string::npos )
+        args.insert( args.begin(), progName.substr( dot + prefix.size() ) );
+
+    _ui = std::make_shared< divine::ui::CLI >( args )->resolve();
     return _ui->main();
 }
