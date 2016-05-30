@@ -14,6 +14,7 @@ CXXFLAGS_ = -L$(RTBIN)/libunwind/src -Wl,-rpath,$(RTBIN)/libunwind/src \
             -L$(RTBIN)/libcxxabi/src -Wl,-rpath,$(RTBIN)/libcxxabi/src \
             -L$(RTBIN)/libcxx/lib -Wl,-rpath,$(RTBIN)/libcxx/lib \
             -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include \
+            -isystem $(RTSRC)/libunwind/include \
             -stdlib=libc++
 
 TOOLCHAIN = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
