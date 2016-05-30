@@ -28,16 +28,20 @@
 namespace divine {
 namespace vm {
 
+enum class AutoTrace { Nothing, Calls };
+using AutoTraceFlags = brick::types::StrongEnumFlags< AutoTrace >;
+
 struct BitCode {
     std::unique_ptr< llvm::Module > _module;
     std::unique_ptr< llvm::LLVMContext > _ctx;
     std::unique_ptr< Program > _program;
+    AutoTraceFlags _autotrace;
 
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
     Program &program() { ASSERT( _program.get() ); return *_program.get(); }
 
-    BitCode( std::string file, Env env )
+    BitCode( std::string file, Env env, AutoTraceFlags tr = AutoTrace::Nothing )
     {
         _ctx.reset( new llvm::LLVMContext() );
         std::unique_ptr< llvm::MemoryBuffer > input;
@@ -49,6 +53,8 @@ struct BitCode {
 
         lart::Driver lart;
         lart.setup( "interrupt" );
+        if ( tr )
+            lart.setup( "autotrace" );
         lart.setup( "functionmeta" );
         lart::util::replaceGlobalArray( *_module.get(), "__sys_env", env );
         lart.process( _module.get() );
