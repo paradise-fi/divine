@@ -408,7 +408,7 @@ void *__dios_sched( int, void *state ) noexcept {
 	return scheduler.get_cf();
 }
 
-extern "C" void *__dios_init( void *env[] ) {
+extern "C" void *__dios_init( const _VM_Env *env ) {
 	__vm_trace( "__sys_init called" );
 	__vm_set_sched( __dios_sched );
 	__vm_set_fault( __dios_fault );
@@ -430,7 +430,7 @@ extern "C" void *__dios_init( void *env[] ) {
 	return scheduler.get_cf();
 }
 
-void *__sys_init( void *env[] ) __attribute__((weak)) {
+extern "C" void *__sys_init( const _VM_Env *env ) __attribute__((weak)) {
 	return __dios_init( env );
 }
 
