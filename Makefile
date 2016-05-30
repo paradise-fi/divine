@@ -4,6 +4,7 @@ CXX ?= c++
 GENERATOR ?= Ninja
 CONFIG ?= -DBUILD_SHARED_LIBS=ON
 OBJ ?= $(PWD)/_build.
+VERB = $(if $(filter $(GENERATOR),Ninja),-- $(if $(VERBOSE),-v))
 
 TOOLDIR = $(OBJ)toolchain/
 CLANG = $(TOOLDIR)/clang/
@@ -36,16 +37,16 @@ $(OBJ)%/configure-stamp: CMakeLists.txt
 	touch $@
 
 $(OBJ)toolchain/build-stamp: $(OBJ)toolchain/configure-stamp
-	cmake --build $(OBJ)toolchain --target cxx
-	cmake --build $(OBJ)toolchain --target clang
+	cmake --build $(OBJ)toolchain --target cxx $(VERB)
+	cmake --build $(OBJ)toolchain --target clang $(VERB)
 	touch $@
 
 toolchain: $(OBJ)toolchain/build-stamp
 
 debug-%: toolchain $(OBJ)debug/configure-stamp
-	cmake --build $(OBJ)debug --target $*
+	cmake --build $(OBJ)debug --target $* $(VERB)
 release-%: toolchain $(OBJ)release/configure-stamp
-	cmake --build $(OBJ)release --target $*
+	cmake --build $(OBJ)release --target $* $(VERB)
 
 debug: debug-divine debug-lart
 release: release-divine release-lart
@@ -58,5 +59,5 @@ unit-%: debug-unit-%
 .PHONY: toolchain
 
 dist:
-	cmake --build $(OBJ)debug --target package_source
+	cmake --build $(OBJ)debug --target package_source $(VERB)
 	cp $(OBJ)debug/divine-*.tar.gz .
