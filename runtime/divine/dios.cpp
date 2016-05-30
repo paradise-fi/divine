@@ -465,9 +465,15 @@ void __dios_interrupt() noexcept {
 	__vm_mask( mask );
 }
 
+static bool inTrace;
+
 void __dios_trace( int indent, const char *fmt, ... ) noexcept
 {
 	int mask = __vm_mask(1);
+
+    if ( inTrace )
+        goto unmask;
+    inTrace = true;
 
 	va_list ap;
 	char buffer[1024];
@@ -476,6 +482,8 @@ void __dios_trace( int indent, const char *fmt, ... ) noexcept
 	va_end( ap );
 	__vm_trace( buffer );
 
+    inTrace = false;
+unmask:
 	__vm_mask(mask);
 }
 
