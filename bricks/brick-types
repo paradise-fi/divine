@@ -351,21 +351,6 @@ struct StrongEnumFlags {
     UnderlyingType store;
 };
 
-// don't catch integral types and classical enum!
-template< typename Self, typename = typename
-          std::enable_if< is_enum_class< Self >::value >::type >
-constexpr StrongEnumFlags< Self > operator|( Self a, Self b ) noexcept {
-    using Ret = StrongEnumFlags< Self >;
-    return Ret( a ) | Ret( b );
-}
-
-template< typename Self, typename = typename
-          std::enable_if< is_enum_class< Self >::value >::type >
-constexpr StrongEnumFlags< Self > operator&( Self a, Self b ) noexcept {
-    using Ret = StrongEnumFlags< Self >;
-    return Ret( a ) & Ret( b );
-}
-
 /* implementation of Union */
 
 namespace _impl {
@@ -1116,7 +1101,24 @@ auto operator>=( const A &a, const B &b ) -> typename _OneUnion< A, B >::type
 #endif // C++11
 
 }
+}
 
+// don't catch integral types and classical enum!
+template< typename Self, typename = typename
+          std::enable_if< brick::types::is_enum_class< Self >::value >::type >
+constexpr brick::types::StrongEnumFlags< Self > operator|( Self a, Self b ) noexcept {
+    using Ret = brick::types::StrongEnumFlags< Self >;
+    return Ret( a ) | Ret( b );
+}
+
+template< typename Self, typename = typename
+          std::enable_if< brick::types::is_enum_class< Self >::value >::type >
+constexpr brick::types::StrongEnumFlags< Self > operator&( Self a, Self b ) noexcept {
+    using Ret = brick::types::StrongEnumFlags< Self >;
+    return Ret( a ) & Ret( b );
+}
+
+namespace brick {
 namespace t_types {
 
 using namespace types;
@@ -1436,6 +1438,7 @@ struct StrongEnumFlagsTest {
 
 }
 }
+
 
 #endif
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
