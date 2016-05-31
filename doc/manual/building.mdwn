@@ -1,105 +1,47 @@
 Installation
 ============
 
-If you are using the Windows installer, just execute the downloaded file and
-follow the installation wizard. Consult your distribution's manual for
-instructions on installing binary packages. The rest of this section is only
-relevant when you are installing from source.
-
-We will assume that you have obtained a source tarball from
-http://divine.fi.muni.cz, eg. `divine-3.0.tar.gz`.
+This section is only relevant when you are installing from source.  We will
+assume that you have obtained a source tarball from http://divine.fi.muni.cz,
+eg. `divine-4.0.tar.gz`.
 
 Prerequisites
 -------------
 
-* A POSIX-compatible operating system (tested on Linux), or NT-based 32 bit Windows.
-* Recent GNU C++ (4.7.3 or later) or clang (3.2 or later). MinGW on Windows.
-* Cmake \[[www.cmake.org](http://www.cmake.org)\]
-  Note: If your computer is connected to the Internet during installation, the
-  configure script is able to download and compile cmake package for you.
-* About 2GB of disk space. 4GB of RAM is recommended.
-* Various optional components of DIVINE have further dependencies. Please
-  consult the output from `cmake` to determine what other libraries or tools
-  you may need:
+* A POSIX-compatible operating system
+* GNU C++ (4.9 or newer) or clang (3.2 or newer)
+* CMake \[[www.cmake.org](http://www.cmake.org)\] 3.2 or newer
+* About 6GB of disk space and 4GB of RAM
+* Pandoc (optional) for formatting the manual (HTML and PDF with pdflatex)
 
-    - LLVM 3.2 or later (headers and libraries) are required for LLVM bitcode verification.
-    - CLang 3.2 or later is required at *runtime* for `divine compile --llvm`.
-    - Qt 4.5 or later is required for the GUI.
-    - Boost libraries and libxml2 are required for verification of UPPAAL timed
-      automata.
-    - Pandoc is required for building HTML and PDF (also needs pdflatex) manual.
-    - MPI header files and libraries (preferably OpenMPI) for distributed
-      verification.
-    - `flex` and `byacc` for verification of Murphi models.
-
-Instructions
-------------
+Building & Installing
+---------------------
 
 First, unzip the distribution tarball and enter the newly created directory
 
-    $ tar xvzf divine-3.0.tar.gz
-    $ cd divine-3.0
+    $ tar xvzf divine-4.0.tar.gz
+    $ cd divine-4.0
 
-### Configuration
-
-    $ ./configure
-
-The configure script will tell you what options you have available and what
-external packages you may be missing. To inspect configuration variables in
-more detail, you can use `ccmake`:
-
-    $ (cd _build ; ccmake .)
-
-Edit the variable content to your liking and use `c` and `g` keys to re-run
-configuration and re-generate makefiles, respectively.
-
-### External Programs
-
-Some parts of DIVINE, especially the `compile` and `combine` sub-commands will
-need to run external tools. By default, DIVINE will expect to find these
-commands in your `PATH` under their common names. Please pay close attention to
-the `CMD_` variables, as they are not checked at configure time, *especially if
-your system provides multiple versions of LLVM*. While you can override the
-commands to use on DIVINE's command-line later (using `--cmd-xxx=yyy`
-switches), this may be inconvenient.
-
-**NB.** Please take extra care that the "GNU gold" linker you are providing to
-DIVINE has plugin support, and that you provide correct path to the
-`LLVMgold.so` plugin. A working installation of both is mandatory for `divine
-compile --llvm`. Moreover, you *must* provide matching versions of `clang`, the
-llvm tools and the `LLVMgold.so` plugin (most importantly, they must all be
-based on the same LLVM version as your DIVINE build!). Version mismatches will
-lead to bitcode linking or loading failures. Finally, versions of `clang` prior
-to 3.2 will fail to correctly compile the C standard library provided by
-DIVINE.
-
-Alternatively, you can use `--cmd-*` options to `divine compile --llvm` at
-runtime to specify the correct tools to use.
-
-
-### Build and Installation
-
-When you are satisfied with the configuration options, start the build with:
+The build is driven by a GNU Makefile, and should be fully automatic. You only
+need to run:
 
     $ make
 
-and relax, this is going to take a while. When the build is done, you should
-check that your installation is working as expected:
+(On non-GNU systems, GNU make may be available as `gmake`). This will first
+build a C++14 toolchain and a runtime required to build DIVINE itself, then
+proceed to compile DIVINE.
 
-    $ cd _build/tools
-    $ ./divine help
-    $ ./divine verify ../../examples/dve/shuffle.dve
-    $ ./divine verify -p LTL ../../examples/dve/peterson-liveness.dve
-    $ ./divine verify -p LTL ../../examples/dve/peterson-naive.dve
+After a while, you should obtain the main DIVINE binary. You can check that
+this is indeed the case by running:
 
-You can also run the test-suites, to ensure that DIVINE is working properly on
-your system and with your versions of libraries and tools:
+    $ ./_build.release/tools/divine help
+
+You can now run DIVINE from its build directory, or you can optionally install
+it by issuing
+
+    $ make install
+
+You can also run the test-suite if you like:
 
     $ make check
-
-While there is no need to install the binary (it is self-contained and you can
-move or copy it to a location of your choice), you can easily install DIVINE
-system-wide for convenient access:
-
-    # make install
 

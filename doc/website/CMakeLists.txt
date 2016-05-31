@@ -43,10 +43,7 @@ macro( resources )
 endmacro()
 
 page( whatsnew.html .. "--toc" NEWS )
-page( manual.html ../manual "--toc;-N"
-        title.mdwn overview.mdwn building.mdwn commands.mdwn
-        using.mdwn llvm.mdwn dve.mdwn timed.mdwn cesmi.mdwn
-        dess.mdwn ../HACKING )
+page( manual.html ../manual "--toc;-N" ${MANUAL_SRC} )
 pages( . download.mdwn index.mdwn status.mdwn )
 resources( style.css hydra-api.js button.png button-over.png divine-logo.png trac-logo.png )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} )

@@ -69,7 +69,7 @@ typedef struct {
     cesmi_node (*make_node)( const cesmi_setup *, int );
     cesmi_node (*clone_node)( const cesmi_setup *, cesmi_node );
     int (*add_property)( cesmi_setup *, char *, char *, int );
-    void *instance; // per-instance data; never touched by DIVINE
+    void *instance; // per-instance data; never touched by divine
     int property_count; /* filled in by setup */
     int property; /* filled in by loader */
     int instance_initialised;
