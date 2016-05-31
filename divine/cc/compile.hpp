@@ -186,6 +186,8 @@ struct Compile {
         return getWrappedMDS( meta );
     }
 
+    std::shared_ptr< llvm::LLVMContext > context() { return mastercc().context(); }
+
   private:
     Compiler &mastercc() { return compilers[0]; }
 
@@ -231,7 +233,7 @@ struct Compile {
             ASSERT( !!input );
 
             auto inputData = input->getMemBufferRef();
-            auto parsed = parseBitcodeFile( inputData, context() );
+            auto parsed = parseBitcodeFile( inputData, *context() );
             if ( !parsed )
                 throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
             if ( getRuntimeVersionSha( *parsed.get() ) != DIVINE_RUNTIME_SHA )
@@ -261,8 +263,6 @@ struct Compile {
         for ( const auto &f : mastercc().filesMappedUnder( path ) )
             compileAndLink( f, flags );
     }
-
-    llvm::LLVMContext &context() { return *mastercc().context(); }
 
     template< typename ... T >
     std::string join( T &&... xs ) { return brick::fs::joinPath( std::forward< T >( xs )... ); }
