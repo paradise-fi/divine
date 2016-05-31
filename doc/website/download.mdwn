@@ -1,81 +1,38 @@
-Licence
-=======
-
-DIVINE is **free software**, distributed under a 3-clause **BSD
-licence**. Detailed licence texts may be found in the COPYING file in the
-distribution tarball. The tool is a product of the ParaDiSe Laboratory, Faculty
-of Informatics of Masaryk University.
-
-This distribution includes freely redistributable **third-party code**. Please
-refer to AUTHORS and COPYING included in the distribution for copyright and
-licensing details.
+DIVINE is **free software**, distributed under the **ISC licence** (2-clause
+**BSD**). De­tailed licence texts may be found in the doc/COPYING file in the
+distribution tarball. The distribution tarball includes freely redistributable
+**third-party code**. Please refer to AUTHORS and COPYING included in the
+distribution for co­pyright and licensing details.
 
 Download
 ========
 
-The source code of the latest version of DIVINE is available for download.
-Windows builds are currently not provided, please contact us if you need them.
-Please also note that DiVinE Cluster, DiVinE Multi-Core and ProbDiVinE have
-been discontinued.
+The source code of the version 4 of DIVINE will be made available for download
+during summer 2016.  Please also note that DiVinE Cluster, DiVinE Multi-Core
+and ProbDiVinE have been discontinued. The 3.x branch of DIVINE is no longer
+activaly maintained.
 
-> * Latest source code: **[divine-@version@.tar.gz](download/divine-@version@.tar.gz)**.
->
-> Please consult [release notes] [1] for a summary of changes between
-> releases. Binaries and source tarballs of development snapshots can be
-> obtained from [hydra] [2]. Check the [installation instructions] [7] in the
-> manual.
+For the time being, you can download [older versions] [2] or contact us if you
+would like to contribute to the development of DIVINE 4 (the mainline
+repository listed below still points at version 3.x but we will share the
+version 4 repository upon request).
 
-NB. When built on **windows**, DIVINE currently does not include support for
-LLVM bitcode verification (this is work in progress) nor does it offer
-distributed execution through MPI (currently not planned).
+Please consult [release notes] [1] for a summary of changes between releases.
+Check the [installation instructions] [7] in the manual.
 
 [1]: whatsnew.html
-[2]: http://divine.fi.muni.cz/hydra/jobset/divine/mainline-debug
+[2]: download
 
 Alternatively, you can obtain the latest source code for DIVINE by fetching it
 directly from our version control system, using [darcs] [6]:
 
-    darcs get http://divine.fi.muni.cz/darcs/mainline divine
+    $ darcs get http://divine.fi.muni.cz/darcs/mainline divine
 
 If you experience any problem downloading our source repository please try
 
-    darcs get --no-http-pipelining http://divine.fi.muni.cz/darcs/mainline divine
+    $ darcs get --no-http-pipelining http://divine.fi.muni.cz/darcs/mainline divine
 
-or update to newest available version of darcs.
+or update to the newest available version of darcs.
 
 [6]: http://darcs.net
 [7]: manual.html#installation
-
-Old Releases
-============
-
-* [divine-2.5.2.tar.gz](download/divine-2.5.2.tar.gz)  
-  [divine-2.5-win32.exe](download/divine-2.5-win32.exe)
-* [divine-2.4.tar.gz](download/divine-2.4.tar.gz)  
-  [divine-2.4-win32.exe](download/divine-2.4-win32.exe) (Windows installer)
-* [divine-2.3.tar.gz](download/divine-2.3.tar.gz)
-* [divine-2.2.tar.gz](download/divine-2.2.tar.gz)
-* [divine-2.1.1.tar.gz](download/divine-2.1.1.tar.gz)  
-  [divine-2.1.1.exe](download/divine-2.1.1.exe) (Windows CLI)  
-  [divine-2.1.1-win32.exe](download/divine-2.1.1-win32.exe) (Windows installer)
-* [divine-2.1.tar.gz](download/divine-2.1.tar.gz)
-* [divine-2.0.tar.gz](download/divine-2.0.tar.gz)
-
-DiVinE Multi-Core:
-
-* [divine-mc-1.4.tar.gz](download/divine-mc-1.4.tar.gz)
-* [divine-mc-1.3.1.tar.gz](download/divine-mc-1.3.1.tar.gz)
-* [divine-mc-1.3.tar.gz](download/divine-mc-1.3.tar.gz)
-* [divine-mc-1.2.1.tar.gz](download/divine-mc-1.2.1.tar.gz)
-* [divine-mc-1.1.tar.gz](download/divine-mc-1.1.tar.gz)
-* [divine-mc-1.0-beta1.tar.gz](download/divine-mc-1.0-beta1.tar.gz)
-
-DiVinE Cluster:
-
-* [divine-cluster-0.8.3.tar.gz](download/divine-cluster-0.8.3.tar.gz)
-* [divine-cluster-0.8.2.tar.gz](download/divine-cluster-0.8.2.tar.gz)
-* [divine-cluster-0.8.0.tar.gz](download/divine-cluster-0.8.0.tar.gz)
-* [divine-0.7.2.tar.gz](download/divine-0.7.2.tar.gz)
-* [divine-0.7.1.tar.gz](download/divine-0.7.1.tar.gz)
-* [divine-0.7.0.tar.gz](download/divine-0.7.0.tar.gz)
-
