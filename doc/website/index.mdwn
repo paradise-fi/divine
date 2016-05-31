@@ -1,51 +1,31 @@
-> <span class="divine">DIVINE</span> is a modern explicit-state model
-> checker. Building on high­-per­for­mance algorithms and data structures, it
-> offers unparalleled versatility, sca­ling from a typical developer's laptop,
-> up to a high-end compute cluster. What more, it can verify a wide range of
-> languages, including **C** and **C++**. Learn more in the
-> [manual](manual.html), or [try it out](try.cgi).
+DIVINE is a modern, explicit-state model checker. Based on the LLVM toolchain,
+it can verify programs written in multiple real-world programming languages,
+including **C** and **C++**.  The verification core is built on a foundation of
+high­-per­for­mance algorithms and data structures, scaling all the way from a
+laptop to a high-end cluster.  Learn more in the [manual](manual.html).
 
-Feature Highlights
-==================
+DIVINE 4 Coming This Summer
+===========================
 
- * Verifies models in multiple **input formats**:
-    - **LLVM** bitcode (suitable for model checking C and C++ code)
-    - **UPPAAL** timed automata
-    - **DVE** -- the original DIVINE modelling language
-    - user-implemented, compiled models via [CESMI] [3]
-    - **MurPHI**, including symmetry reduction
-    - **CoIn** -- for modelling with component interaction automata
- * Executes on a cluster of multi-core machines
- * Partial order reduction for DVE, CoIn
- * Runs on **Linux** and **MS Windows** (a Windows installer is available)
- * A **GUI**, with a simulator and a counter-example analyser for DVE
-
-Automated Release Process
-=========================
-
-(2014-11-30) A new automated release process has been rolled out for DIVINE,
-based on results from our Continuous Integration system. The latest available
-release is always available from the [download page] [1] as a source
-tarball. Automatically built binaries for major operating systems will be made
-available in the future as well. The [release notes] [2] document lists
-important user-visible changes between releases.
-
-[1]: download.html
-[2]: whatsnew.html
+[2016-05-31] A major update of our class-leading model checker is scheduled for
+release in summer 2016. The new release will bring a new, flexible execution
+environment, based on the traditional hypervisor -- operating system -- user
+pro­gram division, along with a more efficient multi-threaded verification core.
+The user interface has also seen major improvements. Finally, the upcoming
+version of DIVINE will make working with counterexamples a much smoother and
+more pleasant experience.
 
 Contacting Us
 =============
 
-If you have comments or questions about DIVINE, please email divine at
-fi.muni.cz. To file a bug report or an enhancement request, please [use our
-trac](http://divine.fi.muni.cz/trac/newticket).
+If you have comments or questions about DIVINE, please send an email to divine
+at fi.muni.cz.
 
 Use in Publications
 ===================
 
 When you refer to DIVINE in an academic paper, we would appreciate if you could
-use the following reference (the currently most up-to-date tool paper on
-DIVINE):
+use the following reference (our currently most up-to-date tool paper):
 
     @InProceedings{BBH+13,
       author    = "Jiří Barnat and Luboš Brim and Vojtěch Havel
@@ -58,5 +38,4 @@ DIVINE):
       volume    = "8044",
       series    = "LNCS",
       year      = "2013",
-      publisher = "Springer"
-    }
+      publisher = "Springer"}
