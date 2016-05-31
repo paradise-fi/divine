@@ -162,12 +162,20 @@ struct Compile {
 
     void tagWithRuntimeVersionSha( llvm::Module &m ) const {
         auto *meta = m.getNamedMetadata( runtimeVersMeta );
-        // make sure we remove old metadata which can contain duplicates from linking
-        if ( meta )
+        // check old metadata
+        std::set< std::string > found;
+        found.emplace( DIVINE_RUNTIME_SHA );
+        if ( meta ) {
+            for ( int i = 0; i < meta->getNumOperands(); ++i )
+                found.emplace( getWrappedMDS( meta, i ) );
             m.eraseNamedMetadata( meta );
+        }
         meta = m.getOrInsertNamedMetadata( runtimeVersMeta );
         auto *tag = llvm::MDNode::get( m.getContext(),
-                        llvm::MDString::get( m.getContext(), DIVINE_RUNTIME_SHA ) );
+                        llvm::MDString::get( m.getContext(),
+                            found.size() == 1
+                                ? DIVINE_RUNTIME_SHA
+                                : "!mismatched version of divine cc and runtime!" ) );
         meta->addOperand( tag );
     }
 
@@ -175,15 +183,19 @@ struct Compile {
         auto *meta = m.getNamedMetadata( runtimeVersMeta );
         if ( !meta )
             return "";
-        auto *op = llvm::cast< llvm::MDTuple >( meta->getOperand( 0 ) );
-        auto *str = llvm::cast< llvm::MDString >( op->getOperand( 0 ).get() );
-        return str->getString().str();
+        return getWrappedMDS( meta );
     }
 
   private:
     Compiler &mastercc() { return compilers[0]; }
 
     enum class Type { Header, Source, All };
+
+    static std::string getWrappedMDS( llvm::NamedMDNode *meta, int i = 0, int j = 0 ) {
+        auto *op = llvm::cast< llvm::MDTuple >( meta->getOperand( i ) );
+        auto *str = llvm::cast< llvm::MDString >( op->getOperand( j ).get() );
+        return str->getString().str();
+    }
 
     static bool isSource( std::string x ) {
         using brick::string::endsWith;
