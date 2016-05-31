@@ -32,7 +32,7 @@ add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
 add_library( libdivine
-  ${CPP_vm} ${CPP_ui} ${CPP_alg} ${CPP_ss}
+  ${CPP_vm} ${CPP_ui} ${CPP_alg} ${CPP_ss} ${CPP_cc}
   "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
   ${STRINGIFIED} )
 
