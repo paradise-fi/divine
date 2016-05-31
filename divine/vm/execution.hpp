@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <type_traits>
+#include <unordered_set>
 
 #ifndef DIVINE_LLVM_EXECUTION_H
 #define DIVINE_LLVM_EXECUTION_H
