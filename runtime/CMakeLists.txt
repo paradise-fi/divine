@@ -17,3 +17,6 @@ endforeach()
 stringlist( "runtime" runtime )
 
 add_library( libdivinert_str STATIC ${STRINGIFIED} runtime_list.cpp )
+if( NOT WIN32 )
+    set_target_properties( libdivinert_str PROPERTIES POSITION_INDEPENDENT_CODE ON )
+endif()

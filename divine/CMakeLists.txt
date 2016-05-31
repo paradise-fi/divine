@@ -43,7 +43,7 @@ set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 bricks_unittest( test-divine ${HPP_ui} ${HPP_ss} ${HPP_vm} )
 
 if( NOT WIN32 )
-  set_target_properties( libdivine PROPERTIES COMPILE_FLAGS -fPIC )
+  set_target_properties( libdivine PROPERTIES POSITION_INDEPENDENT_CODE ON )
 endif()
 
 target_link_libraries( libdivine LLVMCore LLVMSupport LLVMMC LLVMIRReader LLVMBitReader LLVMBitWriter LLVMLinker clang clangBasic clangCodeGen libdivinert_str )
