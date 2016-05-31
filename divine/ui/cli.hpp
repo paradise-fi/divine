@@ -60,7 +60,7 @@ struct WithBC : Command
             pruneBC( driver );
             _bc = std::make_shared< vm::BitCode >(
                 std::unique_ptr< llvm::Module >( driver.getLinked() ),
-                driver.mastercc().context(), env, _autotrace );
+                driver.context(), env, _autotrace );
         }
     }
 };
