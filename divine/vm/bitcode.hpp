@@ -17,17 +17,20 @@
  */
 
 #pragma once
+#include <brick-types>
+#include <brick-except>
+#include <memory>
+#include <vector>
 
-#include <divine/vm/program.hpp>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Bitcode/ReaderWriter.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/DiagnosticPrinter.h>
-#include <lart/driver.h>
-#include <lart/support/util.h>
+namespace llvm {
+struct LLVMContext;
+struct Module;
+}
 
 namespace divine {
 namespace vm {
+
+struct Program;
 
 enum class AutoTrace { Nothing, Calls };
 using AutoTraceFlags = brick::types::StrongEnumFlags< AutoTrace >;
@@ -44,55 +47,14 @@ struct BitCode {
 
     Program &program() { ASSERT( _program.get() ); return *_program.get(); }
 
-    BitCode( std::string file, Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing )
-    {
-        _ctx.reset( new llvm::LLVMContext() );
-        std::unique_ptr< llvm::MemoryBuffer > input;
-        input = std::move( llvm::MemoryBuffer::getFile( file ).get() );
-        auto error = []( auto &info ) {
-            std::string err;
-            llvm::raw_string_ostream ostr( err );
-            llvm::DiagnosticPrinterRawOStream print( ostr );
-            info.print( print );
-            throw BCParseError( ostr.str() );
-        };
-        auto parsed = llvm::parseBitcodeFile( input->getMemBufferRef(), *_ctx, error );
-        if ( !parsed )
-            throw BCParseError( "Error parsing input model; probably not a valid bitcode file." );
-        _module = std::move( parsed.get() );
-        init( env, tr );
-    }
+    BitCode( std::string file, Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing );
 
     BitCode( std::unique_ptr< llvm::Module > m,
              std::shared_ptr< llvm::LLVMContext > ctx = nullptr,
-             Env env = Env(),
-             AutoTraceFlags tr = AutoTrace::Nothing )
-        : _ctx( ctx ), _module( std::move( m ) )
-    {
-        ASSERT( _module.get() );
-        _program.reset( new Program( _module.get() ) );
-        init( env, tr );
-    }
+             Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing );
 
-    void init( Env env, AutoTraceFlags tr )
-    {
-        lart::Driver lart;
-        lart.setup( "interrupt" );
-        if ( tr )
-            lart.setup( "autotrace" );
-        lart.setup( "functionmeta" );
-        lart::util::replaceGlobalArray( *_module.get(), "__sys_env", env );
-        lart.process( _module.get() );
-
-        _program.reset( new Program( _module.get() ) );
-    }
-
-    ~BitCode()
-    {
-        /* ordering is important */
-        _program.reset();
-        _module.reset();
-    }
+    void init( Env env, AutoTraceFlags tr );
+    ~BitCode();
 };
 
 }
