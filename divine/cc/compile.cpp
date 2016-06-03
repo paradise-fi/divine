@@ -48,7 +48,7 @@ static std::string getWrappedMDS( llvm::NamedMDNode *meta, int i = 0, int j = 0 
 template< typename ... T >
 static std::string join( T &&... xs ) { return brick::fs::joinPath( std::forward< T >( xs )... ); }
 
-Compile::Compile( Opts opts ) :
+Compile::Compile( Options opts ) :
     opts( opts ), compilers( 1 ), workers( 1 ), linker( new brick::llvm::Linker() )
 {
     ASSERT_LEQ( 1ul, workers.size() );

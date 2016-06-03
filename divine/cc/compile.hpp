@@ -2,6 +2,7 @@
 #pragma once
 
 #include <divine/cc/clang.hpp>
+#include <divine/cc/options.hpp>
 
 #include <brick-assert>
 #include <thread>
@@ -18,15 +19,7 @@ std::string stringifyToCode( std::vector< std::string > ns, std::string name, st
 
 struct Compile
 {
-    struct Opts
-    {
-        int num_threads;
-        bool dont_link, libs_only;
-        std::string precompiled;
-        Opts() : num_threads( 1 ), dont_link( false ), libs_only( false ) {}
-    };
-
-    explicit Compile( Opts opts = Opts() );
+    explicit Compile( Options opts = Options() );
     ~Compile();
 
     void compileAndLink( std::string path, std::vector< std::string > flags = {} );
@@ -62,7 +55,7 @@ struct Compile
     const std::string includeDir = "/divine/include";
     const std::string srcDir = "/divine/src";
 
-    Opts opts;
+    Options opts;
     std::vector< Compiler > compilers;
     std::vector< std::thread > workers;
     std::unique_ptr< brick::llvm::Linker > linker;
