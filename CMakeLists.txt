@@ -139,6 +139,8 @@ if( OPT_SQL )
   add_subdirectory( external/nanodbc )
 endif()
 
+include( releng/version.cmake )
+
 add_subdirectory( doc )
 add_subdirectory( compile )
 add_subdirectory( runtime )
@@ -149,7 +151,6 @@ add_subdirectory( test )
 add_dependencies( check unit )
 add_dependencies( check functional )
 
-include( releng/version.cmake )
 include( releng/install.cmake )
 
 message( "## -----------------------------------------------------------------" )
