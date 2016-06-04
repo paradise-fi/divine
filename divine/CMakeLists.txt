@@ -31,22 +31,29 @@ include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
-add_library( libdivine
-  ${CPP_vm} ${CPP_ui} ${CPP_alg} ${CPP_ss} ${CPP_cc}
-  "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp"
-  ${STRINGIFIED} )
+add_library( divine-cc ${CPP_cc} ${STRINGIFIED} )
+# add_library( divine-ss ${CPP_ss} )
+# add_library( divine-alg ${CPP_alg} )
+add_library( divine-ui ${CPP_ui} )
+add_library( divine-vm ${CPP_vm} )
 
-target_link_libraries( libdivine pthread liblart )
+add_library( libdivine "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp" )
+
+target_link_libraries( libdivine divine-cc # divine-ss divine-alg
+                                 divine-ui divine-vm pthread liblart )
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
 bricks_unittest( test-divine ${HPP_ui} ${HPP_ss} ${HPP_vm} )
 
-if( NOT WIN32 )
-  set_target_properties( libdivine PROPERTIES POSITION_INDEPENDENT_CODE ON )
-endif()
+foreach( D vm ui cc )
+  set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
+endforeach()
 
-target_link_libraries( libdivine LLVMCore LLVMSupport LLVMMC LLVMIRReader LLVMBitReader LLVMBitWriter LLVMLinker clang clangBasic clangCodeGen libdivinert_str )
+target_link_libraries( divine-cc libdivinert_str )
+target_link_libraries( libdivine LLVMCore LLVMSupport LLVMMC LLVMIRReader
+                                 LLVMBitReader LLVMBitWriter LLVMLinker
+                                 clang clangBasic clangCodeGen )
 
 if ( OPT_SQL )
     target_link_libraries( libdivine nanodbc )
