@@ -50,6 +50,7 @@ debug-%: toolchain $(OBJ)debug/configure-stamp
 release-%: toolchain $(OBJ)release/configure-stamp
 	cmake --build $(OBJ)release --target $* $(VERB)
 
+website: debug-website
 debug: debug-divine debug-lart
 release: release-divine release-lart
 check: debug-check
@@ -58,7 +59,7 @@ unit-%: debug-unit-%
 
 # make being too smart here?
 .PRECIOUS: $(OBJ)toolchain/configure-stamp $(OBJ)toolchain/build-stamp $(OBJ)debug/configure-stamp $(OBJ)release/configure-stamp
-.PHONY: toolchain
+.PHONY: toolchain website debug debug-% release release-% check unit unit-%
 
 dist:
 	cmake --build $(OBJ)debug --target package_source $(VERB)
