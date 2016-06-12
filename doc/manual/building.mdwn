@@ -11,8 +11,12 @@ Prerequisites
 * A POSIX-compatible operating system
 * GNU C++ (4.9 or newer) or clang (3.2 or newer)
 * CMake \[[www.cmake.org](http://www.cmake.org)\] 3.2 or newer
-* About 6GB of disk space and 4GB of RAM
-* Pandoc (optional) for formatting the manual (HTML and PDF with pdflatex)
+* About 12GB of disk space and 4GB of RAM (18GB for both release and debug
+  builds)
+* ninja build system (optional)
+  \[[ninja-build.org](https://ninja-build.org)\] for faster build
+* Pandoc (optional) \[[pandoc.org](http://pandoc.org)\] for formatting the
+  manual (HTML and PDF with pdflatex)
 
 Building & Installing
 ---------------------

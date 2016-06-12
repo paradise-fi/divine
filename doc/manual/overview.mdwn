@@ -23,6 +23,6 @@ much more sense in a language you understand well and use daily.
 
 Current versions of DIVINE provide out-of-the box support for the C programming
 language (C99), including most of the standard library, and for C++
-(C++11). Additionally, users can compile and use other libraries, including the
+(C++14). Additionally, users can compile and use other libraries, including the
 standard C++ library.
 
