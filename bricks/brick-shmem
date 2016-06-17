@@ -79,7 +79,7 @@ struct Thread {
         _interrupted( other.interrupted() )
     {}
 
-    ~Thread() { stop(); }
+    virtual ~Thread() { stop(); }
 
     Thread &operator=( const Thread &other ) {
         if ( _thread )
