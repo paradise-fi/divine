@@ -836,7 +836,7 @@ struct TestCmd
         ASSERT_EQ( c.a, 10 );
     }
 
-    TEST(nonoption)
+    TEST(nonoption_int)
     {
         struct X { int a, b; };
         auto v = validator();
