@@ -19,8 +19,8 @@ sub dir() {
 };
 
 my @files = grep { &want($_) }
-    map { $_ =~ s,^\./,,; $_ } grep /\.cc$|\.cpp$|\.h$|\.hh$/,
-        (split /\0/,` find -type f -print0`);
+    map { $_ =~ s,^\./,,; $_ } grep /\*.c|\.cc$|\.cpp$|\.h$|\.hh|\.hpp$/,
+        (split /\0/,` find . -type f -print0`);
         
 
 for my $f (@files) {
@@ -75,7 +75,7 @@ for my $f (@files) {
 
         print "\"$a\" -> \"$b\"";
 
-        print "[color=gray]" if (&dir($a) eq &dir($b));
+        print "[color=gray]" if ( $a =~ /.cpp$/ );
         print "[color=red]" if ($a =~ /toolkit/ && $b !~ /toolkit/);
         print "[color=red]" if ($a =~ /utility/ && $b !~ /utility/);
         print ";\n";
