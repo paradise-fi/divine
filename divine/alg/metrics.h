@@ -2,7 +2,7 @@
 
 #include <iomanip>
 
-#include <divine/algorithm/common.h>
+#include <divine/alg/common.h>
 
 #ifndef DIVINE_ALGORITHM_METRICS_H
 #define DIVINE_ALGORITHM_METRICS_H

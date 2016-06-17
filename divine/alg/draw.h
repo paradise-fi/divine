@@ -8,7 +8,7 @@
 #include <brick-process.h>
 #include <brick-types.h>
 
-#include <divine/algorithm/common.h>
+#include <divine/alg/common.h>
 #include <divine/utility/statistics.h>
 
 #ifndef DIVINE_DRAW_H

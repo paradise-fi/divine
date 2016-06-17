@@ -1,9 +1,9 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 //             (c) 2013, 2014 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <divine/algorithm/common.h>
-#include <divine/algorithm/metrics.h>
-#include <divine/algorithm/por-c3.h>
+#include <divine/alg/common.h>
+#include <divine/alg/metrics.h>
+#include <divine/alg/por-c3.h>
 #include <divine/graph/ltlce.h>
 #include <atomic>
 

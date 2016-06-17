@@ -10,8 +10,8 @@
 
 #include <brick-string.h>
 
-#include <divine/algorithm/common.h>
-#include <divine/algorithm/metrics.h>
+#include <divine/alg/common.h>
+#include <divine/alg/metrics.h>
 #include <divine/explicit/explicit.h>
 #include <divine/explicit/transpose.h>
 #include <divine/graph/probability.h>

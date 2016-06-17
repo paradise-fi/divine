@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2009 Petr Rockai <me@mornfall.net>
 
-#include <divine/algorithm/common.h>
+#include <divine/alg/common.h>
 #include <divine/graph/por.h>
 
 #ifndef DIVINE_ALGORITHM_POR_C3_H

@@ -3,7 +3,7 @@
 #include <type_traits>
 
 #include <divine/graph/label.h>
-#include <divine/algorithm/reachability.h>
+#include <divine/alg/reachability.h>
 
 #ifndef DIVINE_ALGORITHM_CSDR_H
 #define DIVINE_ALGORITHM_CSDR_H

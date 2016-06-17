@@ -2,8 +2,8 @@
 
 #include <brick-bitlevel.h>
 
-#include <divine/algorithm/common.h>
-#include <divine/algorithm/metrics.h>
+#include <divine/alg/common.h>
+#include <divine/alg/metrics.h>
 
 #include <divine/graph/ltlce.h>
 

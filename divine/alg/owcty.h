@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2007, 2008 Petr Rockai <me@mornfall.net>
 
-#include <divine/algorithm/common.h>
-#include <divine/algorithm/map.h> // for MapVertexId
+#include <divine/alg/common.h>
+#include <divine/alg/map.h> // for MapVertexId
 #include <divine/graph/ltlce.h>
 
 #ifndef DIVINE_ALGORITHM_OWCTY_H
