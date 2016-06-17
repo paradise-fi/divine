@@ -127,7 +127,7 @@ auto make_validator()
              {
                 int r;
                 try {
-                     r = std::stoi( s.c_str() );
+                     r = std::stoi( s );
                 } catch ( std::invalid_argument &e ) {
                     bad( BadFormat, e.what() );
                 } catch ( std::out_of_range &e ) {
