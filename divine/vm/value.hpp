@@ -129,7 +129,7 @@ struct HeapPointerPlaceholder
 {
     operator GenericPointer<>() { return GenericPointer<>( PointerType::Heap ); }
     HeapPointerPlaceholder( GenericPointer<> ) {}
-    friend std::ostream & operator<<( std::ostream &o, HeapPointerPlaceholder v )
+    friend std::ostream & operator<<( std::ostream &o, HeapPointerPlaceholder )
     {
         return o << "[placeholder]";
     }

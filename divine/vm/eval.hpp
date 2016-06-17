@@ -1088,13 +1088,13 @@ struct Eval
                     case AtomicRMWInst::Xor:
                         return _atomicrmw( []( auto v, auto x ) { return v ^ x; } );
                     case AtomicRMWInst::UMax:
-                        return _atomicrmw( []( auto v, auto x ) { NOT_IMPLEMENTED(); return v; } );
+                        return _atomicrmw( []( auto v, auto   ) { NOT_IMPLEMENTED(); return v; } );
                     case AtomicRMWInst::Max:
-                        return _atomicrmw( []( auto v, auto x ) { NOT_IMPLEMENTED(); return v; } );
+                        return _atomicrmw( []( auto v, auto   ) { NOT_IMPLEMENTED(); return v; } );
                     case AtomicRMWInst::UMin:
-                        return _atomicrmw( []( auto v, auto x ) { NOT_IMPLEMENTED(); return v; } );
+                        return _atomicrmw( []( auto v, auto   ) { NOT_IMPLEMENTED(); return v; } );
                     case AtomicRMWInst::Min:
-                        return _atomicrmw( []( auto v, auto x ) { NOT_IMPLEMENTED(); return v; } );
+                        return _atomicrmw( []( auto v, auto   ) { NOT_IMPLEMENTED(); return v; } );
                     case AtomicRMWInst::BAD_BINOP:
                         UNREACHABLE_F( "bad binop in atomicrmw" );
                 }
