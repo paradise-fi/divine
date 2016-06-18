@@ -243,8 +243,10 @@ struct Linker {
         }
     }
 
-    template< typename Roots = std::initializer_list< std::string > >
-    void prune( Roots roots, Prune prune = Prune::UnusedModules ) {
+    void prune( std::vector< std::string > roots,
+                Prune prune = Prune::UnusedModules,
+                bool includeAutoRoots = true )
+    {
         using ::llvm::ConstantArray;
         using ::llvm::GlobalVariable;
         using ::llvm::GlobalValue;
@@ -252,8 +254,13 @@ struct Linker {
         using ::llvm::Constant;
         using ::llvm::ArrayRef;
         using ::llvm::cast;
+        using ::llvm::Function;
 
-
+        if ( includeAutoRoots )
+            enumerateFunctionsForAnno( "brick.llvm.prune.root", *get(),
+                [&roots]( Function *fn ) {
+                    roots.emplace_back( fn->getName().str() );
+                } );
         _Prune pruner( this, roots );
         pruner.pruneModules();
 
