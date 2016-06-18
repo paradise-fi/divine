@@ -393,6 +393,10 @@ struct Linker {
             if ( auto fn = ::llvm::dyn_cast< ::llvm::Function >( val ) ) {
                 ++_functions;
 
+                // avoid losing personality function
+                if ( fn->hasPersonalityFn() )
+                    push( fn->getPersonalityFn() );
+
                 for ( const auto &bb : *fn )
                     for ( const auto &ins : bb )
                         for ( auto op = ins.op_begin(); op != ins.op_end(); ++op )
