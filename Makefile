@@ -50,6 +50,16 @@ debug-%: toolchain $(OBJ)debug/configure-stamp
 release-%: toolchain $(OBJ)release/configure-stamp
 	cmake --build $(OBJ)release --target $* $(VERB)
 
+debug-env : debug-divine
+	env PATH=$(OBJ)debug/clang/bin:$(OBJ)debug/llvm/bin:$(OBJ)debug/tools:$$PATH \
+		$$SHELL
+
+release-env : release-divine
+	env PATH=$(OBJ)release/clang/bin:$(OBJ)release/llvm/bin:$(OBJ)release/tools:$$PATH \
+		$$SHELL
+
+env : debug-env
+
 website: debug-website
 debug: debug-divine debug-lart
 release: release-divine release-lart
@@ -59,7 +69,7 @@ unit-%: debug-unit-%
 
 # make being too smart here?
 .PRECIOUS: $(OBJ)toolchain/configure-stamp $(OBJ)toolchain/build-stamp $(OBJ)debug/configure-stamp $(OBJ)release/configure-stamp
-.PHONY: toolchain website debug debug-% release release-% check unit unit-%
+.PHONY: toolchain website debug debug-% release release-% check unit unit-% debug-env release-env env
 
 dist:
 	cmake --build $(OBJ)debug --target package_source $(VERB)
