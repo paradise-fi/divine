@@ -9,7 +9,9 @@
 #include <divine/ui/die.hpp>
 #include <brick-cmd>
 #include <brick-fs>
+DIVINE_RELAX_WARNINGS
 #include <brick-llvm>
+DIVINE_UNRELAX_WARNINGS
 
 namespace divine {
 namespace ui {
@@ -159,15 +161,8 @@ struct Cc     : Command
         if ( _drv.libs_only && !_files.empty() )
             die( "Cannot specify both --libraries-only and files to compile." );
 
-        if ( _output.empty() ) {
-            if ( _drv.libs_only )
-                _output = "libdivinert.bc";
-            else {
-                _output = brick::fs::splitPath( _files.front() ).back();
-                auto pos = _output.rend() - std::find( _output.rbegin(), _output.rend(), '.' );
-                _output = _output.substr( 0, pos - 1 ) + ".bc";
-            }
-        }
+        if ( _output.empty() && _drv.libs_only )
+            _output = "libdivinert.bc";
 
         cc::Compile driver( _drv );
 
@@ -183,13 +178,26 @@ struct Cc     : Command
         for ( auto &x : _flags )
             x = "-"s + x; /* put back the leading - */
 
-        for ( auto &x : _files )
-            driver.compileAndLink( x, _flags );
+        if ( _drv.dont_link ) {
+            for ( auto &x : _files ) {
+                auto m = driver.compile( x, _flags );
+                driver.writeToFile(
+                        _output.empty() ? outputName( x ) : _output,
+                        m.get() );
+            }
+        } else {
+            for ( auto &x : _files )
+                driver.compileAndLink( x, _flags );
 
-        if ( !_drv.dont_link && !_drv.libs_only )
-            pruneBC( driver );
+            if ( !_drv.dont_link && !_drv.libs_only )
+                pruneBC( driver );
 
-        driver.writeToFile( _output );
+            driver.writeToFile( _output.empty() ? outputName( _files.front() ) : _output );
+        }
+    }
+
+    std::string outputName( std::string path ) {
+        return brick::fs::replaceExtension( brick::fs::basename( path ), "bc" );
     }
 };
 
@@ -268,7 +276,7 @@ struct CLI : Interface
         auto ccdrvopts = cmd::make_option_set< DrvOpt >( v )
             .add( "[--precompiled {file}]", &DrvOpt::precompiled, "path to a prebuilt libdivinert.bc"s )
             .add( "[-j {int}]", &DrvOpt::num_threads, "number of jobs"s )
-            .add( "[--dont-link]", &DrvOpt::dont_link, "do not link"s )
+            .add( "[-c|--dont-link]", &DrvOpt::dont_link, "do not link"s )
             .add( "[--libraries-only]", &DrvOpt::libs_only, "build libdivinert.bc for later use"s );
 
         auto ccopts = cmd::make_option_set< Cc >( v )
