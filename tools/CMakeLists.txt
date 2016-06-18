@@ -13,29 +13,10 @@ if ( GEN_LLVM )
   target_link_libraries( lart liblart ${LLVM_LIBRARIES} ${LLVM_SYSLIBS} )
 endif()
 
-add_executable( divinecc cc.cpp )
-target_link_libraries( divinecc libdivine liblart
-    LLVMCore
-    LLVMSupport
-    LLVMMC
-    LLVMIRReader
-    LLVMBitReader
-    LLVMBitWriter
-    LLVMLinker
-    LLVMTransformUtils
-    LLVMAnalysis
-    clangCodeGen
-    clangFrontend
-    clangSerialization
-    clangDriver
-    clangParse
-    clangSema
-    clangAnalysis
-    clangAST
-    clangBasic
-    clangEdit
-    clangLex
-    clangTooling )
+add_custom_target( divinecc
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/divine ${CMAKE_CURRENT_BINARY_DIR}/divine.cc
+    VERBATIM )
+add_dependencies( divine divinecc )
 
 target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine )
 
