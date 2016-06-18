@@ -196,6 +196,10 @@ inline std::vector< std::string > splitPath( std::string path ) {
     }
 }
 
+inline std::string basename( std::string path ) {
+    return splitPath( path ).back();
+}
+
 inline std::string normalize( std::string path ) {
     auto abs = absolutePrefix( path );
     auto split = splitPath( abs.second );
