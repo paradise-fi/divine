@@ -46,6 +46,31 @@ static std::string getWrappedMDS( llvm::NamedMDNode *meta, int i = 0, int j = 0 
     return str->getString().str();
 }
 
+struct MergeFlags_ { // hide in clas so they can be mutually recursive
+    void operator()( std::vector< std::string > & ) { }
+
+    template< typename ... Xs >
+    void operator()( std::vector< std::string > &out, std::string first, Xs &&... xs ) {
+        out.emplace_back( std::move( first ) );
+        (*this)( out, std::forward< Xs >( xs )... );
+    }
+
+    template< typename C, typename ... Xs >
+    auto operator()( std::vector< std::string > &out, C &&c, Xs &&... xs )
+        -> decltype( void( (c.begin(), c.end()) ) )
+    {
+        out.insert( out.end(), c.begin(), c.end() );
+        (*this)( out, std::forward< Xs >( xs )... );
+    }
+};
+
+template< typename ... Xs >
+static std::vector< std::string > mergeFlags( Xs &&... xs ) {
+    std::vector< std::string > out;
+    MergeFlags_()( out, std::forward< Xs >( xs )... );
+    return out;
+}
+
 template< typename ... T >
 static std::string join( T &&... xs ) { return brick::fs::joinPath( std::forward< T >( xs )... ); }
 
@@ -63,8 +88,6 @@ Compile::Compile( Options opts ) :
                   , "-D_POSIX_C_SOURCE=2008098L"
                   , "-D_LITTLE_ENDIAN=1234"
                   , "-D_BYTE_ORDER=1234"
-//                  , "-fno-slp-vectorize"
-//                  , "-fno-vectorize"
                   };
 
     setupFS();
@@ -203,8 +226,9 @@ void Compile::setupLibs() {
                       << std::endl;
         linker->load( std::move( parsed.get() ) );
     } else {
-        compileLibrary( join( srcDir, "pdclib" ), { "-D_PDCLIB_BUILD" } );
-        compileLibrary( join( srcDir, "limb" ) );
+        auto libflags = []( auto... xs ) {
+            return mergeFlags( "-Wall", "-Wextra", "-Wno-gcc-compat", "-Wno-unused-parameter", xs... );
+        };
         std::initializer_list< std::string > cxxflags = { "-std=c++14"
                                                         // , "-fstrict-aliasing"
                                                         , "-I", join( includeDir, "libcxxabi/include" )
@@ -212,15 +236,17 @@ void Compile::setupLibs() {
                                                         , "-I", join( includeDir, "libcxx/src" )
                                                         , "-I", join( includeDir, "filesystem" )
                                                         , "-Oz" };
-        compileLibrary( join( srcDir, "libcxxabi" ), cxxflags );
-        compileLibrary( join( srcDir, "libcxx" ), cxxflags );
-        compileLibrary( join( srcDir, "divine" ), cxxflags );
-        compileLibrary( join( srcDir, "filesystem" ), cxxflags );
-        compileLibrary( join( srcDir, "lart" ), cxxflags );
+        compileLibrary( join( srcDir, "pdclib" ), libflags( "-D_PDCLIB_BUILD" ) );
+        compileLibrary( join( srcDir, "limb" ), libflags() );
+        compileLibrary( join( srcDir, "libcxxabi" ), libflags( cxxflags ) );
+        compileLibrary( join( srcDir, "libcxx" ), libflags( cxxflags ) );
+        compileLibrary( join( srcDir, "divine" ), libflags( cxxflags ) );
+        compileLibrary( join( srcDir, "filesystem" ), libflags( cxxflags ) );
+        compileLibrary( join( srcDir, "lart" ), libflags( cxxflags ) );
     }
 }
 
-void Compile::compileLibrary( std::string path, std::initializer_list< std::string > flags )
+void Compile::compileLibrary( std::string path, std::vector< std::string > flags )
 {
     for ( const auto &f : mastercc().filesMappedUnder( path ) )
         compileAndLink( f, flags );

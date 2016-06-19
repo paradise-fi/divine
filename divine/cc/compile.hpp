@@ -51,7 +51,7 @@ struct Compile
 
     void setupFS();
     void setupLibs();
-    void compileLibrary( std::string path, std::initializer_list< std::string > flags = { } );
+    void compileLibrary( std::string path, std::vector< std::string > flags = { } );
 
     const std::string includeDir = "/divine/include";
     const std::string srcDir = "/divine/src";
