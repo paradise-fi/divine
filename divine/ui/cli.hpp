@@ -18,9 +18,9 @@ using namespace std::literals;
 namespace cmd = brick::cmd;
 void pruneBC( cc::Compile &driver )
 {
-    driver.prune( { "__sys_init", "main", "memmove", "memset",
-                "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
-                "__md_get_function_meta", "__sys_env" } );
+    // roots which are part of DIVINE interface are annotated at their definition
+    // and need not be mentioned here (i.e. __sys_start)
+    driver.prune( { "main", "memmove", "memset", "memcpy", "llvm.global_ctors" } );
 }
 
 struct Command
