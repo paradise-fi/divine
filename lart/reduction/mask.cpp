@@ -8,13 +8,13 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/CallSite.h>
+#include <brick-llvm>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 
 #include <brick-assert>
-#include <lart/support/annotations.h>
 
 #include <iostream>
 #include <unordered_set>
@@ -144,7 +144,7 @@ struct Mask : lart::Pass {
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         auto mask = m.getFunction( "__divine_interrupt_mask" );
         ASSERT( mask );
-        annos::enumerateFunctionsForAnno( "lart.interrupt.masked", m, [&]( llvm::Function *fn ) {
+        brick::llvm::enumerateFunctionsForAnno( "lart.interrupt.masked", m, [&]( llvm::Function *fn ) {
                 ASSERT( !fn->empty() );
                 llvm::CallInst::Create( mask )->insertBefore( fn->front().begin() );
             } );
