@@ -28,6 +28,7 @@ struct Compile
 
     llvm::Module *getLinked();
     void writeToFile( std::string filename );
+    void writeToFile( std::string filename, llvm::Module *module );
     std::string serialize();
 
     void addDirectory( std::string path );

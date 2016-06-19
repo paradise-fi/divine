@@ -100,8 +100,12 @@ llvm::Module *Compile::getLinked() {
 }
 
 void Compile::writeToFile( std::string filename ) {
+    writeToFile( filename, getLinked() );
+}
+
+void Compile::writeToFile( std::string filename, llvm::Module *mod )
+{
     llvm::raw_os_ostream cerr( std::cerr );
-    auto *mod = getLinked();
     if ( llvm::verifyModule( *mod, &cerr ) ) {
         cerr.flush(); // otherwise nothing will be displayed
         UNREACHABLE( "invalid bitcode" );
