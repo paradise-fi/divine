@@ -306,9 +306,10 @@ void throw_regerror( regex_t *re, int code ) __attribute__((noreturn));
 
 void throw_regerror( regex_t *re, int code ) {
     int size = regerror( code, re, nullptr, 0 );
-    char err[size];
-    regerror( code, re, err, size );
-    throw std::runtime_error( fmtf( "regexp error: %s", err ) );
+    std::string err;
+    err.resize( size );
+    regerror( code, re, &err[0], size );
+    throw std::runtime_error( fmtf( "regexp error: %s", err.c_str() ) );
 }
 
 }
