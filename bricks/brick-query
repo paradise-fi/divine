@@ -379,10 +379,91 @@ struct Flatten {
     Range _range;
 };
 
+template< typename Range1, typename Range2 >
+struct Append {
+
+    using It1 = typename Range1::iterator;
+    using It2 = typename Range2::iterator;
+    static_assert( std::is_same< typename Range1::value_type, typename Range2::value_type >::value,
+                   "Both ranges in append must have same value_type" );
+    using ValueType = typename Range1::value_type;
+
+    Append() = default;
+    Append( Range1 range1, Range2 range2 ) : _range1( range1 ), _range2( range2 ) { }
+
+    struct Iterator : std::iterator< std::forward_iterator_tag, ValueType > {
+        Iterator() : _append( nullptr ) { }
+        Iterator( const Iterator &o ) :
+            _it1( o._it1 ? new It1( *o._it1 ) : nullptr ),
+            _it2( o._it2 ? new It2( *o._it2 ) : nullptr ),
+            _append( o._append )
+        { }
+
+        Iterator( It1 it1, It2 it2, Append *append ) :
+            _it1( new It1( it1 ) ), _it2( new It2( it2 ) ), _append( append )
+        { }
+        Iterator( It2 it2, Append *append ) :
+            _it1( nullptr ), _it2( new It2( it2 ) ), _append( append )
+        { }
+
+        friend bool operator==( const Iterator &a, const Iterator &b ) {
+            return peq( a._it1, b._it1 ) && peq( a._it2, b._it2 );
+        }
+        friend bool operator !=( const Iterator &a, const Iterator &b ) {
+            return !( a == b );
+        }
+
+        ValueType &operator*() { return _it1 ? **_it1 : **_it2; }
+        const ValueType &operator*() const { return _it1 ? **_it1 : **_it2; }
+        ValueType *operator->() { return &**this; }
+        const ValueType *operator->() const { return &**this; }
+
+        Iterator &operator++() {
+            if ( _it1 ) {
+                ++(*_it1);
+                if ( *_it1 == _append->_range1.end() )
+                    _it1.reset();
+            } else {
+                ASSERT( !!_it2 );
+                ASSERT( *_it2 != _append->_range2.end() );
+                ++(*_it2);
+            }
+            return *this;
+        }
+
+        Iterator operator++( int ) {
+            Iterator x = *this;
+            ++(*this);
+            return x;
+        }
+
+      private:
+        std::unique_ptr< It1 > _it1;
+        std::unique_ptr< It2 > _it2;
+        Append *_append;
+
+        template< typename P >
+        static bool peq( const P &a, const P &b ) {
+            return (!a && !b) || (a && b && *a == *b);
+        }
+    };
+
+    Iterator begin() { return Iterator( _range1.begin(), _range2.begin(), this ); }
+    Iterator end() { return Iterator( _range2.end(), this ); }
+
+    using iterator = Iterator;
+    using value_type = ValueType;
+
+  private:
+    Range1 _range1;
+    Range2 _range2;
+};
+
 template< typename Range >
 struct Query {
     Query() = default;
     Query( const Query & ) = default;
+    Query( Query & ) = default; // avoid vararg constructor to precede non-const copy
     Query( Query && ) = default;
 
     template< typename... Args >
@@ -420,6 +501,11 @@ struct Query {
 
     auto flatten() -> Query< Flatten< Range > > {
         return Query< Flatten< Range > >( _range );
+    }
+
+    template< typename Range2 >
+    auto append( Range2 range ) -> Query< Append< Range, Range2 > > {
+        return Query< Append< Range, Range2 > >( _range, range );
     }
 
     template< typename UnaryFn >
