@@ -15,6 +15,12 @@
 #define NOTHROW __attribute__((__nothrow__))
 #endif
 
+#ifdef DIVINE_NATIVE_RUNTIME
+#define NATIVE_VISIBLE __attribute__ ((visibility("default")))
+#else
+#define NATIVE_VISIBLE
+#endif
+
 struct _VM_Frame
 {
     void (*pc)(void);
@@ -44,7 +50,7 @@ struct _VM_Env {
     int size;
 };
 
-#ifdef __divine__
+#if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
 
 EXTERN_C
 
@@ -62,15 +68,15 @@ void *__sys_init( struct _VM_Env *env );
  * (i.e. if the scheduler invokes __vm_jump and the jumped-to function is then
  * interrupted, control returns to the instruction right after the __vm_jump).
  */
-void __vm_set_sched( void *(*f)( int, void * ) ) NOTHROW;
-void __vm_set_fault( enum _VM_FaultAction (*f)( enum _VM_Fault ) ) NOTHROW;
+void __vm_set_sched( void *(*f)( int, void * ) ) NOTHROW NATIVE_VISIBLE;
+void __vm_set_fault( enum _VM_FaultAction (*f)( enum _VM_Fault ) ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * When execution is interrupted, the VM will store the address of the
  * interrupted frame into *where (unless where is NULL). This address is reset
  * to NULL upon every new invocation of the scheduler.
  */
-void __vm_set_ifl( struct _VM_Frame **where ) NOTHROW;
+void __vm_set_ifl( struct _VM_Frame **where ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Non-deterministic choice: when __vm_choose is encountered, the "universe" of
@@ -82,7 +88,7 @@ void __vm_set_ifl( struct _VM_Frame **where ) NOTHROW;
  * weight of a given alternative (numbering from 0). E.g.  `__vm_choose( 2, 1,
  * 9 )` will return 0 with probability 1/10 and 1 with probability 9/10.
  */
-int __vm_choose( int n, ... ) NOTHROW;
+int __vm_choose( int n, ... ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Transfer control to a given frame. The program counter of the current frame
@@ -93,7 +99,7 @@ int __vm_choose( int n, ... ) NOTHROW;
  * forget any visible effects that may have happened within the current atomic
  * section.
  */
-void __vm_jump( struct _VM_Frame *dest, int forgetful ) NOTHROW;
+void __vm_jump( struct _VM_Frame *dest, int forgetful ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Cause a fault. The first argument is passed on to the fault handler in the
@@ -101,14 +107,14 @@ void __vm_jump( struct _VM_Frame *dest, int forgetful ) NOTHROW;
  * fault handler, since it will obtain a pointer to the call instruction which
  * invoked __vm_fault as its 'fault location' parameter.
  */
-void __vm_fault( enum _VM_Fault t, ... ) NOTHROW;
+void __vm_fault( enum _VM_Fault t, ... ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Setting the mask to 1 disables interrupts, i.e. the program executes
  * atomically until the mask is reset to 0. Returns the previous value of
  * mask.
  */
-int __vm_mask( int ) NOTHROW;
+int __vm_mask( int ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * When interrupts are masked (cf. __vm_mask) but an interrupt is raised, a
@@ -117,15 +123,17 @@ int __vm_mask( int ) NOTHROW;
  * manipulate this flag. If interrupts are not masked, calling __vm_interrupt( 1 )
  * will cause an immediate interrupt. The previous value of the flag is returned.
  */
-int __vm_interrupt( int ) NOTHROW;
+int __vm_interrupt( int ) NOTHROW NATIVE_VISIBLE;
+void __vm_cfl_interrupt( void ) NOTHROW NATIVE_VISIBLE;
+void __vm_mem_interrupt( void ) NOTHROW NATIVE_VISIBLE;
 
-void __vm_trace( const char * ) NOTHROW;
+void __vm_trace( const char * ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Create and destroy heap objects.
  */
-void *__vm_make_object( int size ) NOTHROW;
-void  __vm_free_object( void *ptr ) NOTHROW;
+void *__vm_make_object( int size ) NOTHROW NATIVE_VISIBLE;
+void  __vm_free_object( void *ptr ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Efficient, atomic memory copy. Should have the same effect as a loop-based
@@ -139,13 +147,13 @@ void  __vm_memcpy( void *, void *, int ) NOTHROW;
  * to a monolithic block of memory that contains all the varargs, successively
  * assigned higher addresses (going from left to right in the argument list).
  */
-void *__vm_query_varargs( void ) NOTHROW;
+void *__vm_query_varargs( void ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Get the address of the currently executing frame.
  */
-void *__vm_query_frame( void ) NOTHROW;
-int __vm_query_object_size( void * ) NOTHROW;
+void *__vm_query_frame( void ) NOTHROW NATIVE_VISIBLE;
+int __vm_query_object_size( void * ) NOTHROW NATIVE_VISIBLE;
 
 CPP_END
 
@@ -154,5 +162,6 @@ CPP_END
 #undef EXTERN_C
 #undef CPP_END
 #undef NOTHROW
+#undef NATIVE_VISIBLE
 
 #endif // __DIVINE_H__
