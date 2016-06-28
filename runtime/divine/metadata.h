@@ -31,7 +31,7 @@ typedef struct {
     _MD_InstInfo *inst_table;
 } _MD_Function;
 
-const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW;
+const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW __attribute__((__annotate__("brick.llvm.prune.root")));
 
 CPP_END
 
