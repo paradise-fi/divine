@@ -379,11 +379,24 @@ struct _PDCLIB_imaxdiv_t
    your compiler.
 */
 
-typedef void *_PDCLIB_va_list;
-#define _PDCLIB_va_arg( ap, type ) (*(type *)(((*(char **)(&ap)) += sizeof(type)) - sizeof(type)))
-#define _PDCLIB_va_copy( dest, src ) ((dest) = (src))
-#define _PDCLIB_va_end( ap )
-#define _PDCLIB_va_start( ap, parmN ) ((ap) = __vm_query_varargs())
+#ifdef __GNUC__
+  typedef __builtin_va_list _PDCLIB_va_list;
+  #define _PDCLIB_va_arg( ap, type ) (__builtin_va_arg( (ap), type ))
+  #define _PDCLIB_va_copy( dest, src ) (__builtin_va_copy( (dest), (src) ))
+  #define _PDCLIB_va_end( ap ) (__builtin_va_end( ap ) )
+  #define _PDCLIB_va_start( ap, parmN ) (__builtin_va_start( (ap), (parmN) ))
+#elif (defined(__i386__) || defined(__i386) || defined(_M_IX86)) && !(defined(__amd64__) || defined(__x86_64__) || defined(_M_AMD64))
+  /* Internal helper macro. va_round is not part of <stdarg.h>. */
+  #define _PDCLIB_va_round( type ) ( (sizeof(type) + sizeof(void *) - 1) & ~(sizeof(void *) - 1) )
+
+  typedef char * _PDCLIB_va_list;
+  #define _PDCLIB_va_arg( ap, type ) ( (ap) += (_PDCLIB_va_round(type)), ( *(type*) ( (ap) - (_PDCLIB_va_round(type)) ) ) )
+  #define _PDCLIB_va_copy( dest, src ) ( (dest) = (src), (void)0 )
+  #define _PDCLIB_va_end( ap ) ( (ap) = (void *)0, (void)0 )
+  #define _PDCLIB_va_start( ap, parmN ) ( (ap) = (char *) &parmN + ( _PDCLIB_va_round(parmN) ), (void)0 )
+#else
+  #error Compiler/Architecture support please
+#endif
 
 /* -------------------------------------------------------------------------- */
 /* OS "glue", part 1                                                          */
