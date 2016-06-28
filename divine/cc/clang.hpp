@@ -33,7 +33,7 @@ struct Compiler {
 
     enum class FileType {
         Unknown,
-        C, Cpp, CPrepocessed, CppPreprocessed, IR, BC
+        C, Cpp, CPrepocessed, CppPreprocessed, IR, BC, Asm
     };
 
     static FileType typeFromFile( std::string name );

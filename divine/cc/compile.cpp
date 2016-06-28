@@ -85,9 +85,11 @@ Compile::Compile( Options opts ) :
                   , "-isystem", join( includeDir, "pdclib" )
                   , "-isystem", join( includeDir, "libm" )
                   , "-isystem", join( includeDir, "libcxx/include" )
+                  , "-isystem", join( includeDir, "libunwind/include" )
                   , "-D_POSIX_C_SOURCE=2008098L"
                   , "-D_LITTLE_ENDIAN=1234"
                   , "-D_BYTE_ORDER=1234"
+                  , "-g"
                   };
 
     setupFS();

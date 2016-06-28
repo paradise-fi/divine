@@ -246,6 +246,8 @@ Compiler::FileType Compiler::typeFromFile( std::string name ) {
         return FileType::BC;
     if ( ext == ".ll" )
         return FileType::IR;
+    if ( ext == ".S" || ext == ".s" )
+        return FileType::Asm;
     return FileType::Unknown;
 }
 
@@ -267,6 +269,9 @@ std::vector< std::string > Compiler::argsOfType( FileType t ) {
         case FileType::BC:
         case FileType::IR:
             add( out, { "ir" } );
+            break;
+        case FileType::Asm:
+            add( out, { "assembler-with-cpp" } );
             break;
         case FileType::Unknown:
             UNREACHABLE( "Unknown file type" );
