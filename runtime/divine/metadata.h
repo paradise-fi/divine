@@ -10,6 +10,7 @@
 #define CPP_END
 #define NOTHROW __attribute__((__nothrow__))
 #endif
+#define _ROOT __attribute__((__annotate__("brick.llvm.prune.root")))
 
 EXTERN_C
 
@@ -31,7 +32,8 @@ typedef struct {
     _MD_InstInfo *inst_table;
 } _MD_Function;
 
-const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW __attribute__((__annotate__("brick.llvm.prune.root")));
+const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW _ROOT;
+const _MD_Function *__md_get_pc_meta( void (*)( void ) ) NOTHROW _ROOT;
 
 CPP_END
 
