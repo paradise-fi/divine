@@ -1,3 +1,5 @@
+add_subdirectory( native )
+
 include( stringify )
 
 file( GLOB SRC_LLVM_USR_CPP RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *.cpp divine/*.cpp )
