@@ -73,6 +73,8 @@ struct CflInterrupt : lart::Pass {
         auto *spcty = llvm::FunctionType::get( llvm::Type::getVoidTy( m.getContext() ), false );
         _cflInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_cfl_interrupt", spcty ) );
         ASSERT( _cflInterrupt );
+        _cflInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
+
         for ( auto &fn : m ) {
             if ( fn.empty() )
                 continue;
@@ -115,6 +117,8 @@ struct MemInterrupt : lart::Pass {
         auto *ty = llvm::FunctionType::get( llvm::Type::getVoidTy( m.getContext() ), false );
         _memInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_mem_interrupt", ty ) );
         ASSERT( _memInterrupt );
+        _memInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
+
         for ( auto &fn : m ) {
             if ( fn.empty() )
                 continue;
