@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill
 
 #include <divine/cc/compile.hpp>
+#include <lart/divine/vaarg.h>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/Support/raw_os_ostream.h>
@@ -88,6 +89,8 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
     std::cerr << "compiling " << path << std::endl;
     auto mod = mastercc().compileModule( path, allFlags );
     tagWithRuntimeVersionSha( *mod );
+
+    lart::divine::VaArgInstr().run( *mod );
     return mod;
 }
 
