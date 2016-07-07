@@ -146,13 +146,6 @@ void  __vm_free_object( void *ptr ) NOTHROW NATIVE_VISIBLE;
 void  __vm_memcpy( void *, void *, int ) NOTHROW;
 
 /*
- * Variable argument handling. Calling __vm_query_varargs gives you a pointer
- * to a monolithic block of memory that contains all the varargs, successively
- * assigned higher addresses (going from left to right in the argument list).
- */
-void *__vm_query_varargs( void ) NOTHROW NATIVE_VISIBLE;
-
-/*
  * Get the address of the currently executing frame.
  */
 void *__vm_query_frame( void ) NOTHROW NATIVE_VISIBLE;
