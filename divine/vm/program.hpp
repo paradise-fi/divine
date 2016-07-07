@@ -77,7 +77,6 @@ enum Hypercall /* see divine.h for prototypes & documentation */
     HypercallMemcpy,
 
     /* introspection */
-    HypercallQueryVarargs,
     HypercallQueryFrame,
     HypercallQueryObjectSize
 };

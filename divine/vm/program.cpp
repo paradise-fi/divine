@@ -331,8 +331,6 @@ Hypercall Program::hypercall( llvm::Function *f )
     if ( name == "__vm_memcpy" )
         return HypercallMemcpy;
 
-    if ( name == "__vm_query_varargs" )
-        return HypercallQueryVarargs;
     if ( name == "__vm_query_frame" )
         return HypercallQueryFrame;
     if ( name == "__vm_query_object_size" )

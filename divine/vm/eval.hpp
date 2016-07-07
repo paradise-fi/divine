@@ -582,9 +582,29 @@ struct Eval
     void implement_intrinsic( int id ) {
         switch ( id ) {
             case Intrinsic::vastart:
-            case Intrinsic::trap:
-            case Intrinsic::vaend:
+            {
+                // writes a pointer to a monolithic block of memory that
+                // contains all the varargs, successively assigned higher
+                // addresses (going from left to right in the argument list) to
+                // the argument of the intrinsic
+                auto f = _program.functions[ pc().function() ];
+                auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
+                auto vaListPtr = operandPtr( 0 );
+                if ( !heap().copy( vaptr_loc, ptr2h( vaListPtr ), operand( 0 ).width ) )
+                    fault( _VM_F_Memory ) << "invalid va_start with va_list = " << vaListPtr;
+                return;
+            }
+            case Intrinsic::vaend: return;
             case Intrinsic::vacopy:
+            {
+                auto from = operandPtr( 1 );
+                auto to = operandPtr( 0 );
+                // note: we are writting pointer, so with of from/to is also with of operand
+                if ( !heap().copy( ptr2h( from ), ptr2h( to ), operand( 0 ).width ) )
+                    fault( _VM_F_Memory ) << "invalid va_copy from " << from << " to " << to;
+                return;
+            }
+            case Intrinsic::trap:
                 NOT_IMPLEMENTED(); /* TODO */
             case Intrinsic::eh_typeid_for:
                 result( IntV( program().function( pc() ).typeID( operandCk< PointerV >( 0 ).v() ) ) );
@@ -716,14 +736,6 @@ struct Eval
                     fault( _VM_F_Hypercall );
                 else
                     result( IntV( heap().size( ptr ) ) );
-                return;
-            }
-            case HypercallQueryVarargs:
-            {
-                auto f = _program.functions[ pc().function() ];
-                auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
-                // auto vaptr = heap().template read< PointerV >( vaptr_loc );
-                heap().copy( vaptr_loc, s2ptr( result() ), result().width );
                 return;
             }
             default:
@@ -1184,6 +1196,22 @@ struct Eval
 
             case OpCode::Resume:
                 NOT_IMPLEMENTED();
+                break;
+
+            case OpCode::VAArg:
+                {
+                    // note: although the va_list type might not be a pointer (as on x86)
+                    // we will use it so, assuming that it will be at least as big as a
+                    // pointer (for example, on x86_64 va_list is { i32, i32, i64*, i64* })
+                    auto vaListPtr = ptr2h( operandPtr( 0 ) );
+                    if ( !heap().valid( vaListPtr ) )
+                        fault( _VM_F_Memory ) << "invalid va_list " << operandPtr( 0 );
+                    auto vaArgs = heap().template read< PointerV >( vaListPtr );
+                    if ( !heap().copy( vaArgs.v(), s2ptr( result() ), result().width ) )
+                        fault( _VM_F_Memory ) << "invalid load of va_arg from " << vaArgs;
+                    heap().template write< PointerV >( vaListPtr, vaArgs + result().width );
+                    break;
+                }
                 break;
 
             case OpCode::LandingPad:
