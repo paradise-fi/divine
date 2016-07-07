@@ -381,7 +381,18 @@ struct _PDCLIB_imaxdiv_t
 
 #ifdef __GNUC__
   typedef __builtin_va_list _PDCLIB_va_list;
+#ifndef __divine__
   #define _PDCLIB_va_arg( ap, type ) (__builtin_va_arg( (ap), type ))
+#else
+  // this will be replaced by the va_arg instruction using LART
+#ifdef __cplusplus
+  extern "C" void *__lart_llvm_va_arg( _PDCLIB_va_list va ) throw();
+  #define _PDCLIB_va_arg( ap, type ) (*reinterpret_cast< type * >(__lart_llvm_va_arg( (ap) )))
+#else
+  void *__lart_llvm_va_arg( _PDCLIB_va_list va ) __attribute__((__nothrow__));
+  #define _PDCLIB_va_arg( ap, type ) (*(type *)__lart_llvm_va_arg( (ap) ))
+#endif
+#endif
   #define _PDCLIB_va_copy( dest, src ) (__builtin_va_copy( (dest), (src) ))
   #define _PDCLIB_va_end( ap ) (__builtin_va_end( ap ) )
   #define _PDCLIB_va_start( ap, parmN ) (__builtin_va_start( (ap), (parmN) ))
