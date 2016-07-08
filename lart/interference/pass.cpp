@@ -12,9 +12,8 @@ using MDsRef = llvm::ArrayRef< llvm::Metadata * >;
 
 void Pass::propagate( llvm::Instruction *def, llvm::Value *use )
 {
-    if ( _interference[ def ].count( use ) )
+    if ( !_interference[ def ].insert( use ).second )
         return; /* already covered */
-    _interference[ def ].insert( use );
     if ( def == use )
         return;
     llvm::BasicBlock::iterator I = cast< llvm::Instruction >( use );
@@ -27,12 +26,12 @@ void Pass::propagate( llvm::Instruction *def, llvm::Value *use )
             propagate( def, (*J)->getTerminator() );
 }
 
-void Pass::annotate( llvm::Function *f )
+void Pass::annotate( llvm::Function &f )
 {
-    for ( auto &b: *f )
+    for ( auto &b: f )
         for ( auto &i : b )
-            for ( auto u = i.use_begin(); u != i.use_end(); ++u )
-                propagate( &i, *u );
+            for ( auto *u : i.users() )
+                propagate( &i, u );
 
     for ( auto i : _interference ) {
         auto &vals = i.second;
@@ -40,7 +39,7 @@ void Pass::annotate( llvm::Function *f )
         std::transform( vals.begin(), vals.end(), v,
                         []( llvm::Value *i ) { return cast< llvm::Instruction >( i )->getMetadata( "lart.id" ); } );
         i.first->setMetadata( "lart.interference",
-                              llvm::MDNode::get( f->getParent()->getContext(),
+                              llvm::MDNode::get( f.getParent()->getContext(),
                                                  MDsRef( v, vals.size() ) ) );
     }
 }

@@ -18,7 +18,7 @@ struct Pass : lart::Pass
 {
     std::unordered_map< llvm::Instruction *, std::unordered_set< llvm::Value * > > _interference;
 
-    void annotate( llvm::Function *f );
+    void annotate( llvm::Function &f );
     void clear() { _interference.clear(); }
     void propagate( llvm::Instruction *def, llvm::Value *use );
 
@@ -29,8 +29,8 @@ struct Pass : lart::Pass
             ++ total;
 
         int i = 0;
-        for ( auto f = m.begin(); f != m.end(); ++ f ) {
-            std::cerr << " [" << (++i) << "/" << total << "] annotating function " << f->getName().str() << std::endl;
+        for ( auto &f : m ) {
+            std::cerr << " [" << (++i) << "/" << total << "] annotating function " << f.getName().str() << std::endl;
             annotate( f );
             clear();
         }
