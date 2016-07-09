@@ -18,11 +18,11 @@ namespace interference {
 
 struct Pass : lart::Pass
 {
-    std::unordered_map< llvm::Instruction *, std::unordered_set< llvm::Value * > > _interference;
+    std::unordered_map< llvm::Instruction *, std::unordered_set< llvm::Instruction * > > _interference;
 
     void annotate( llvm::Function &f );
     void clear() { _interference.clear(); }
-    void propagate( llvm::Instruction *def, llvm::Value *use );
+    void propagate( llvm::Instruction *def, llvm::Instruction *use );
 
     llvm::PreservedAnalyses run( llvm::Module &m ) {
         updateIDs( m );

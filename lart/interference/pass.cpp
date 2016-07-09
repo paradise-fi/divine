@@ -6,44 +6,46 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/interference/pass.h>
+#include <lart/support/util.h>
 #include <brick-assert>
 
 using namespace lart::interference;
 
-using llvm::cast;
 using MDsRef = llvm::ArrayRef< llvm::Metadata * >;
 
-void Pass::propagate( llvm::Instruction *def, llvm::Value *use )
+void Pass::propagate( llvm::Instruction *def, llvm::Instruction *use )
 {
     if ( !_interference[ def ].insert( use ).second )
         return; /* already covered */
     if ( def == use )
         return;
-    llvm::BasicBlock::iterator I = cast< llvm::Instruction >( use );
-    _interference[ &*I ].insert( def );
-    auto BB = I->getParent();
-    if ( I != BB->begin() )
-        return propagate( def, --I );
+    llvm::BasicBlock::iterator useit{ use };
+    _interference[ use ].insert( def );
+    auto bb = useit->getParent();
+    if ( useit != bb->begin() )
+        return propagate( def, --useit );
     else
-        for ( auto J = llvm::pred_begin( BB ); J != llvm::pred_end( BB ); ++J )
-            propagate( def, (*J)->getTerminator() );
+        for ( auto &j : util::preds( bb ) )
+            propagate( def, j.getTerminator() );
 }
 
 void Pass::annotate( llvm::Function &f )
 {
     for ( auto &b: f )
         for ( auto &i : b )
-            for ( auto *u : i.users() )
-                propagate( &i, u );
+            // alloca must live as long as any pointer to it might live, so if use is
+            // such a pointer (or might contain pointer) we must propagate further
+            for ( auto *u : pointerTransitiveUsers( i, TrackPointers::Alloca ) )
+                propagate( &i, llvm::cast< llvm::Instruction >( u ) );
 
     for ( auto i : _interference ) {
         auto &vals = i.second;
-        llvm::Metadata **v = new llvm::Metadata *[vals.size()];
-        std::transform( vals.begin(), vals.end(), v,
-                        []( llvm::Value *i ) { return cast< llvm::Instruction >( i )->getMetadata( "lart.id" ); } );
+        std::vector< llvm::Metadata * > v( vals.size() );
+        std::transform( vals.begin(), vals.end(), v.begin(),
+                        []( llvm::Instruction *i ) { return i->getMetadata( "lart.id" ); } );
         i.first->setMetadata( "lart.interference",
                               llvm::MDNode::get( f.getParent()->getContext(),
-                                                 MDsRef( v, vals.size() ) ) );
+                                                 MDsRef( v ) ) );
     }
 }
 

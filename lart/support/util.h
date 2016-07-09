@@ -6,10 +6,12 @@
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Support/Casting.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/Analysis/CaptureTracking.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/IR/CallSite.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/query.h>
@@ -457,6 +459,148 @@ llvm::Function *getCalledFunction( C *call ) {
     } while ( !called && calledVal );
 
     return called;
+}
+
+using UserSet = util::Set< llvm::User * >;
+using OpCode = llvm::Instruction;
+
+// can the type fit a pointer type inside?
+inline bool canContainPointer( llvm::Type *ty, const llvm::DataLayout &dl ) {
+    return ty->isSized() && dl.getTypeSizeInBits( ty ) >= dl.getPointerSizeInBits();
+}
+
+inline bool canContainPointer( llvm::Type *ty, const llvm::Module *m ) {
+    return canContainPointer( ty, m->getDataLayout() );
+}
+
+inline llvm::Value *getPointerOperand( llvm::Value *v ) {
+    llvm::Value *ptr = nullptr;
+    llvmcase( v,
+            [&]( llvm::LoadInst *l ) { ptr = l->getPointerOperand(); },
+            [&]( llvm::AtomicCmpXchgInst *c ) { ptr = c->getPointerOperand(); },
+            [&]( llvm::StoreInst *s ) { ptr = s->getPointerOperand(); },
+            [&]( llvm::AtomicRMWInst *r ) { ptr = r->getPointerOperand(); } );
+    return ptr;
+}
+
+inline llvm::Value *getStoredPtr( llvm::Value *v ) {
+    llvm::Value *ptr = nullptr;
+    llvmcase( v,
+            [&]( llvm::AtomicCmpXchgInst *c ) { ptr = c->getNewValOperand(); },
+            [&]( llvm::StoreInst *s ) { ptr = s->getValueOperand(); },
+            [&]( llvm::AtomicRMWInst *r ) { ptr = r->getValOperand(); } );
+    return ptr;
+}
+
+namespace _detail {
+    inline void pointerTransitiveUsers( UserSet &users,
+                                        util::Set< std::pair< llvm::Value *, llvm::User * > > &edges,
+                                        llvm::Value *def, llvm::User *_use,
+                                        int maxRefDepth )
+    {
+        auto *use = llvm::dyn_cast< llvm::Instruction >( _use );
+        if ( !def || !use || !llvm::isa< llvm::Instruction >( def ) )
+            return; // constats can't really use any pointer, they are spurious
+        if ( !edges.emplace( def, use ).second )
+            return; // already done
+        users.insert( use );
+
+        auto op = use->getOpcode();
+        bool captures = false;
+        switch ( op ) {
+            case OpCode::BitCast:
+            case OpCode::GetElementPtr:
+            case OpCode::PHI:
+            case OpCode::Select:
+                captures = true;
+                break;
+            case OpCode::Call:
+                if ( llvm::isa< llvm::IntrinsicInst >( use ) ) {
+                    if ( auto *trans = llvm::dyn_cast< llvm::MemTransferInst >( use ) ) {
+                        // if it is possible that alloca's address is in memory,
+                        // we need to look for uses of copy destination
+                        if ( maxRefDepth > 0 && trans->getRawSource() == def )
+                            for ( auto *u : trans->getDest()->users() )
+                                pointerTransitiveUsers( users, edges, trans->getDest(),
+                                                        u, maxRefDepth );
+                    }
+                    break; // all other intrinsics should be safe to ignore
+                }
+            case OpCode::Invoke:
+            {
+                // if it is a call and we don't have capture information we
+                // must assume the return value depend on the alloca argument
+                // if it can fit a pointer inside
+                llvm::CallSite cs( use );
+
+                for ( unsigned i = 0; i < cs.arg_size(); ++i )
+                    if ( cs.getArgument( i ) == def && !cs.doesNotCapture( i ) )
+                        captures = true;
+                // track arguments which can possible receive a copy of 'def'
+                if ( captures ) {
+                    for ( unsigned i = 0; i < cs.arg_size(); ++i ) {
+                        if ( cs.getArgument( i ) != def && !cs.onlyReadsMemory()
+                                && !cs.onlyReadsMemory( i ) )
+                        {
+                            for ( auto *u : cs.getArgument( i )->users() )
+                                pointerTransitiveUsers( users, edges,
+                                        cs.getArgument( i ),
+                                        u, std::numeric_limits< int >::max() );
+                        }
+                    }
+                }
+                auto *ty = use->getType();
+                auto *module = cs->getParent()->getParent()->getParent();
+                captures = captures && canContainPointer( ty, module );
+                maxRefDepth = std::numeric_limits< int >::max(); // can't do any better :-/
+                break;
+            }
+            case OpCode::Load:
+            case OpCode::Store:
+            case OpCode::AtomicRMW:
+            case OpCode::AtomicCmpXchg:
+            {
+                // dyn_cast: if it is a constant or argument, we don't even need to look at it
+                auto *storedPtr = llvm::dyn_cast_or_null< llvm::Instruction >( getStoredPtr( use ) );
+                auto *ptr = getPointerOperand( use );
+                if ( storedPtr == def ) {
+                    // track the stored-to pointer
+                    for ( auto *u : ptr->users() )
+                        pointerTransitiveUsers( users, edges, ptr, u, maxRefDepth + 1 );
+                } else if ( op == OpCode::Load && maxRefDepth > 0 && ptr == def ) {
+                    --maxRefDepth;
+                    captures = true;
+                }
+                break;
+            }
+            default:
+                captures = llvm::isa< llvm::BinaryOperator >( use );
+        }
+        if ( captures )
+            for ( auto *u : use->users() )
+                pointerTransitiveUsers( users, edges, use, u, maxRefDepth );
+    }
+}
+
+enum class TrackPointers { None, Alloca, All };
+
+// if v is of specified pointer type (either alloca or any type which can contain
+// pointer) returns all uses which can depend on the ponted-to value
+// for v of other type returns v.users() (as a set)
+inline UserSet pointerTransitiveUsers( llvm::Instruction &v, TrackPointers track )
+{
+    auto *m = v.getParent()->getParent()->getParent();
+
+    if ( ( track >= TrackPointers::Alloca && llvm::isa< llvm::AllocaInst >( v ) )
+            || ( canContainPointer( v.getType(), m ) && track == TrackPointers::All ) )
+    {
+        UserSet users;
+        util::Set< std::pair< llvm::Value *, llvm::User * > > edges;
+        for ( auto *u : v.users() )
+            _detail::pointerTransitiveUsers( users, edges, &v, u, 0 );
+        return users;
+    }
+    return UserSet{ v.user_begin(), v.user_end() };
 }
 
 }
