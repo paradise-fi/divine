@@ -50,6 +50,8 @@ struct _VM_Env {
     int size;
 };
 
+enum _VM_MemAccessType { _VM_MAT_Load = 0x1, _VM_MAT_Store = 0x2, _VM_MAT_Both = 0x3 };
+
 #if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
 
 EXTERN_C
@@ -125,7 +127,7 @@ int __vm_mask( int ) NOTHROW NATIVE_VISIBLE;
  */
 int __vm_interrupt( int ) NOTHROW NATIVE_VISIBLE;
 void __vm_cfl_interrupt( void ) NOTHROW NATIVE_VISIBLE;
-void __vm_mem_interrupt( void ) NOTHROW NATIVE_VISIBLE;
+void __vm_mem_interrupt( void *, _VM_MemAccessType ) NOTHROW NATIVE_VISIBLE;
 
 void __vm_trace( const char * ) NOTHROW NATIVE_VISIBLE;
 
