@@ -57,7 +57,7 @@ struct Autotrace : lart::Pass {
             cleanup::atExits( fn, [&]( llvm::Instruction *i ) {
                     llvm::IRBuilder<> irb( i );
                     irb.CreateCall( trace, applyInst( i, [&]( auto *i ) {
-                                              return retArgs( fn, i, irb ); } ) );
+                                              return retArgs( i, irb ); } ) );
                     ++exit;
                 } );
         }
@@ -117,7 +117,6 @@ struct Autotrace : lart::Pass {
     Vals callArgs( llvm::Function &fn, llvm::IRBuilder<> &irb ) {
         auto name = demangle( fn.getName().str() );
         std::string fmt = "Call to " + name;
-        auto *typ = fn.getFunctionType();
         Vals vals;
         vals.push_back( traceUp );
         vals.push_back( 0 );
@@ -151,7 +150,7 @@ struct Autotrace : lart::Pass {
                                   irb.getInt8PtrTy() ) ).first->second;
     }
 
-    Vals retArgs( llvm::Function &fn, llvm::ReturnInst *i, llvm::IRBuilder<> &irb ) {
+    Vals retArgs( llvm::ReturnInst *i, llvm::IRBuilder<> &irb ) {
         if ( !i->getReturnValue() )
             return { traceDown, getLit( "return void", irb ) };
 
@@ -162,11 +161,11 @@ struct Autotrace : lart::Pass {
         return vals;
     }
 
-    Vals retArgs( llvm::Function &fn, llvm::ResumeInst *i, llvm::IRBuilder<> &irb ) {
+    Vals retArgs( llvm::ResumeInst *, llvm::IRBuilder<> &irb ) {
         return { traceDown, getLit( "exiting function with active exception", irb ) };
     }
 
-    Vals retArgs( llvm::Function &fn, llvm::Instruction *i, llvm::IRBuilder<> &irb )
+    Vals retArgs( llvm::Instruction *, llvm::IRBuilder<> &irb )
     {
         return { traceDown, llvm::ConstantPointerNull::get( irb.getInt8PtrTy() ) };
     }

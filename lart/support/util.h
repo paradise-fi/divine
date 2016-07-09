@@ -17,6 +17,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <brick-assert>
 #include <brick-types>
+#include <brick-string>
 #include <chrono>
 #include <string>
 #include <unordered_set>
@@ -340,6 +341,8 @@ auto applyInst( llvm::Instruction *i, Yield &&y ) {
     switch ( i->getOpcode() ) {
 #define HANDLE_INST( opcode, _x, Class ) case opcode: return y( llvm::cast< llvm::Class >( i ) );
 #include <llvm/IR/Instruction.def>
+        default:
+            UNREACHABLE_F( "Invalid instruction %d", i->getOpcode() );
     }
 }
 
