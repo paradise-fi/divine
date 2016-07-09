@@ -19,6 +19,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/util.h>
 #include <lart/support/metadata.h>
 
+#include <runtime/divine.h>
+
 namespace lart {
 namespace divine {
 
@@ -94,6 +96,16 @@ struct MemInterrupt : lart::Pass {
         return passMeta< MemInterrupt >( "MemInterrupt", "Instrument all memory accesses with __vm_mem_interrupt intrinsic." );
     }
 
+    _VM_MemAccessType opType( unsigned op ) {
+        if ( op == llvm::Instruction::Load )
+            return _VM_MAT_Load;
+        if ( op == llvm::Instruction::Store )
+            return _VM_MAT_Store;
+        if ( op == llvm::Instruction::AtomicCmpXchg || op == llvm::Instruction::AtomicRMW )
+            return _VM_MAT_Both;
+        UNREACHABLE_F( "Not a memory instruction (opcode %d)", op );
+    }
+
     void annotateFn( llvm::Function &fn ) {
         // avoid changing bb while we iterate over it
         for ( auto inst : query::query( fn ).flatten().map( query::refToPtr ).freeze() ) {
@@ -102,8 +114,12 @@ struct MemInterrupt : lart::Pass {
                 || op == llvm::Instruction::AtomicRMW
                 || op == llvm::Instruction::AtomicCmpXchg )
             {
-                llvm::IRBuilder<>( std::next( llvm::BasicBlock::iterator( inst ) ) )
-                    .CreateCall( _memInterrupt, { } );
+                auto *type = _memInterrupt->getFunctionType();
+                llvm::IRBuilder<> irb( std::next( llvm::BasicBlock::iterator( inst ) ) );
+                irb.CreateCall( _memInterrupt, {
+                                irb.CreateBitCast( getPointerOperand( inst ), type->getParamType( 0 ) ),
+                                irb.getInt32( opType( op ) )
+                            } );
                 ++_mem;
             }
         }
@@ -114,7 +130,10 @@ struct MemInterrupt : lart::Pass {
         if ( !tagModuleWithMetadata( m, "lart.divine.interrupt.mem" ) )
             return llvm::PreservedAnalyses::all();
 
-        auto *ty = llvm::FunctionType::get( llvm::Type::getVoidTy( m.getContext() ), false );
+        auto &ctx = m.getContext();
+        auto *ty = llvm::FunctionType::get( llvm::Type::getVoidTy( ctx ),
+                            { llvm::Type::getInt8PtrTy( ctx ), llvm::Type::getInt32Ty( ctx ) },
+                            false );
         _memInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_mem_interrupt", ty ) );
         ASSERT( _memInterrupt );
         _memInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
