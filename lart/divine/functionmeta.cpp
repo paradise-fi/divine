@@ -54,22 +54,11 @@ struct FunctionMeta {
         argCount( fn.arg_size() ),
         isVariadic( fn.isVarArg() ),
         type( encLLVMFunType( fn.getFunctionType() ) ),
-        insts( query::query( fn ).flatten().map( [&]( llvm::Instruction &i ) {
-                // Instructio info contains opcode and suboperation (for ARMW and *CMP)
-                return llvm::ConstantStruct::get( index._instMetaT, {
-                        index.mkint( index._instMetaT, 0, i.getOpcode() ),
-                        index.mkint( index._instMetaT, 1, getOperation( i ) )
-                    } );
-            } ).freeze() )
+        // divine has 1 pc value for every instruction + one special at the
+        // beginning of each basic block
+        instTableSize( query::query( fn ).fold( 0,
+                        []( int x, llvm::BasicBlock &bb ) { return x + bb.size() + 1; } ) )
     { }
-
-    static int getOperation( llvm::Instruction &i ) {
-        if ( auto *armw = llvm::dyn_cast< llvm::AtomicRMWInst >( &i ) )
-            return armw->getOperation();
-        if ( auto *cmp = llvm::dyn_cast< llvm::CmpInst >( &i ) )
-            return cmp->getPredicate();
-        return 0;
-    }
 
     template< typename Index >
     static int argsSize( llvm::Function &fn, Index &index ) {
@@ -84,7 +73,7 @@ struct FunctionMeta {
     int argCount;
     bool isVariadic;
     std::string type;
-    std::vector< llvm::Constant * > insts;
+    int instTableSize;
 };
 
 struct IndexFunctions : lart::Pass {
@@ -106,12 +95,11 @@ struct IndexFunctions : lart::Pass {
         _funcMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::ArrayType >(
                             mdRoot->getType()->getElementType() )->getElementType() );
         ASSERT( _funcMetaT && "The bitcode must define _MD_Function" );
-        ASSERT( _funcMetaT->getNumElements() == 8 && "Incompatible _MD_Function" );
+        ASSERT( _funcMetaT->getNumElements() == 10 && "Incompatible _MD_Function" );
 
         _instMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::PointerType >(
                             _funcMetaT->getElementType( 7 ) )->getElementType() );
         ASSERT( _instMetaT && "The bitcode must define _MD_InstInfo" );
-        ASSERT( _instMetaT->getNumElements() == 2 && "Incompatible _MD_InstInfo" );
 
         llvm::GlobalVariable *mdSize = mod.getGlobalVariable( "__md_functions_count" );
         ASSERT( mdSize && "The bitcode must define __md_functions_count" );
@@ -131,10 +119,10 @@ struct IndexFunctions : lart::Pass {
             std::string funNameCStr = funNameStr;
             funNameCStr.push_back( 0 );
 
-            auto *instArrayT = llvm::ArrayType::get( _instMetaT, m.second.insts.size() );
+            auto *instArrayT = llvm::ArrayType::get( _instMetaT, m.second.instTableSize );
             auto *instTable = new llvm::GlobalVariable( mod, instArrayT, true,
                                 llvm::GlobalValue::ExternalLinkage,
-                                llvm::ConstantArray::get( instArrayT, m.second.insts ),
+                                llvm::UndefValue::get( instArrayT ),
                                 "lart.divine.index.table." + funNameStr );
 
             auto *funName = util::getStringGlobal( funNameCStr, mod );
@@ -142,6 +130,13 @@ struct IndexFunctions : lart::Pass {
             auto type = m.second.type;
             type.push_back( 0 );
             auto *funType = util::getStringGlobal( type, mod );
+            auto *persT = llvm::cast< llvm::PointerType >( _funcMetaT->getElementType( 8 ) );
+            auto *pers = m.second.entryPoint->hasPersonalityFn()
+                            ? llvm::ConstantExpr::getPointerCast(
+                                    m.second.entryPoint->getPersonalityFn(), persT )
+                            : llvm::ConstantPointerNull::get( persT );
+            auto *lsdaT = llvm::cast< llvm::PointerType >( _funcMetaT->getElementType( 9 ) );
+            auto *lsda = llvm::ConstantPointerNull::get( lsdaT );
 
             metatable.push_back( llvm::ConstantStruct::get( _funcMetaT, {
                     llvm::ConstantExpr::getPointerCast( funName, _funcMetaT->getElementType( 0 ) ),
@@ -152,9 +147,10 @@ struct IndexFunctions : lart::Pass {
                     mkint( _funcMetaT, 4, m.second.isVariadic ),
                     llvm::ConstantExpr::getPointerCast( funType,
                                             _funcMetaT->getElementType( 5 ) ),
-                    mkint( _funcMetaT, 6, m.second.insts.size() ),
+                    mkint( _funcMetaT, 6, m.second.instTableSize ),
                     llvm::ConstantExpr::getPointerCast( instTable,
-                            llvm::PointerType::getUnqual(  _instMetaT ) )
+                            llvm::PointerType::getUnqual( _instMetaT ) ),
+                    pers, lsda
                 } ) );
         }
 
