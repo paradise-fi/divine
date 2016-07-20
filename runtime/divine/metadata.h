@@ -1,3 +1,8 @@
+#ifdef __divine__
+#include <divine.h>
+#endif
+#include <stdint.h>
+
 #ifndef __DIVINE_METADATA_H__
 #define __DIVINE_METADATA_H__
 
@@ -17,23 +22,53 @@ EXTERN_C
 typedef struct {
     int opcode;
     int subop;
+    int val_offset;
+    int val_width;
 } _MD_InstInfo;
 
 typedef struct {
     char *name;
-    void (*entry_point)();
+    void (*entry_point)( void );
     int frame_size;
     int arg_count;
     int is_variadic;
-    char *type; // similar to Itanium ABI mangle, first return type, then
-                // arguments, all pointers are under p, all integers except for
-                // char are set as unsigned, all chars are 'c' (char)
+    char *type; /* similar to Itanium ABI mangle, first return type, then
+                *  arguments, all pointers are under p, all integers except for
+                *  char are set as unsigned, all chars are 'c' (char) */
     int inst_table_size;
     _MD_InstInfo *inst_table;
+    void (*ehPersonality)( void );
+    void *ehLSDA; // language-specific exception handling tables
 } _MD_Function;
 
+typedef struct {
+    void *start;
+    int width;
+} _MD_RegInfo;
+
+/* Query function metadata by function name, this is the mangled name in case
+ * of C++ or other languages which employ name mangling */
 const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW _ROOT;
-const _MD_Function *__md_get_pc_meta( void (*)( void ) ) NOTHROW _ROOT;
+
+/* Query function metadata program counter value */
+const _MD_Function *__md_get_pc_meta( uintptr_t pc ) NOTHROW _ROOT;
+
+/* Given function frame, program counter and metadata extracts pointer to
+ * register corresponding to instruction with given PC from the frame.
+ *
+ * If the PC is out of range, or any argument is invalid return { nullptr, 0 },
+ * while for void values (registers of instructions which do no return) returns
+ * { ptr-somewhere-to-the-frame, 0 }.
+ *
+ * Be aware that registers can be reused/overlapping if they do not interfere
+ * or are guaranteed to have same value any time they are both defined in a
+ * valid run.
+ * Examples of safe use:
+ * * writing landingpad's register before jumping to the instruction after the
+ *   landingpad
+ * * reading register of value of call/invoke
+ * */
+_MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, _MD_Function *funMeta ) NOTHROW _ROOT;
 
 CPP_END
 
@@ -41,9 +76,7 @@ CPP_END
 
 #include <type_traits>
 #include <cstdint>
-#ifdef __divine__
-#include <divine.h>
-#else
+#ifndef __divine__
 #include <brick-assert>
 #endif
 

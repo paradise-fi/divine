@@ -148,7 +148,7 @@ void  __vm_memcpy( void *, void *, int ) NOTHROW;
 /*
  * Get the address of the currently executing frame.
  */
-void *__vm_query_frame( void ) NOTHROW NATIVE_VISIBLE;
+struct _VM_Frame *__vm_query_frame( void ) NOTHROW NATIVE_VISIBLE;
 int __vm_query_object_size( void * ) NOTHROW NATIVE_VISIBLE;
 
 CPP_END

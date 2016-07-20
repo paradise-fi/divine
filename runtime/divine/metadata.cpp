@@ -21,7 +21,7 @@ const _MD_Function *__md_get_function_meta( const char *name ) {
     return nullptr;
 }
 
-const _MD_Function *__md_get_pc_meta( void (*_pc)( void ) ) {
+const _MD_Function *__md_get_pc_meta( uintptr_t _pc ) {
     uintptr_t pc = uintptr_t(_pc );
     uintptr_t dist = std::numeric_limits< intptr_t >::max();
     const _MD_Function *it = __md_functions,
@@ -36,4 +36,18 @@ const _MD_Function *__md_get_pc_meta( void (*_pc)( void ) ) {
         }
     }
     return ptr;
+}
+
+_MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, _MD_Function *funMeta )
+{
+    if ( !frame || !funMeta || !pc )
+        return { nullptr, 0 };
+    uintptr_t entry = uintptr_t( funMeta->entry_point );
+    intptr_t offset = pc - entry;
+    if ( offset < 0 || offset > funMeta->inst_table_size )
+        return { nullptr, 0 };
+
+    char *base = reinterpret_cast< char * >( frame + 1 ); // skip frame header
+    auto &imeta = funMeta->inst_table[ offset ];
+    return { base + imeta.val_offset, imeta.val_width };
 }

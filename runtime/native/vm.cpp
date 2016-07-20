@@ -224,7 +224,7 @@ struct ActivateNewAction : ThreadAction {
     }
 
     void doRun( MutexGuard &g ) override {
-        auto *meta = __md_get_pc_meta( f->pc );
+        auto *meta = __md_get_pc_meta( uintptr_t( f->pc ) );
         metadata::TypeSig sig( meta->type );
         NATIVE_ASSERT( meta->arg_count <= argCountLimit );
 
@@ -508,7 +508,7 @@ int __vm_query_object_size( void *ptr ) noexcept {
 // this will be repalced by LART with ‘llvm.va_start‘ Intrinsic
 void *__vm_query_varargs() noexcept;
 
-void *__vm_query_frame() noexcept {
+Frame *__vm_query_frame() noexcept {
     MutexGuard _( rtMutex );
     return buildStackShadow()->parent;
 }
