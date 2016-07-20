@@ -866,7 +866,11 @@ struct Eval
         auto _atomicrmw = [this] ( auto impl ) -> void {
             this->op< IsIntegral >( 0, [&]( auto v ) {
                     using T = decltype( v.get() );
-                    auto location = operandCk< PointerV >( 1 ).v();
+                    auto location = operandPtr( 0 ).v();
+                    if ( !heap().valid( location ) ) {
+                        this->fault( _VM_F_Memory ) << "invalid AtomicRMW at " << location;
+                        return; // TODO: destory pre-existing register value
+                    }
                     auto edit = heap().template read< T >( location );
                     this->result( edit );
                     heap().write( location, impl( edit, v.get( 2 ) ) );
@@ -1071,31 +1075,42 @@ struct Eval
             case OpCode::Alloca:
                 implement_alloca(); break;
 
-            case OpCode::AtomicCmpXchg:
-                return op< Any >( 2, [&]( auto get ) {
-                        NOT_IMPLEMENTED();
-#if 0
-                        auto &r = get( 0 );
-                        auto &pointer = this->_deref< decltype( get( -1 ) ) >( 1 );
-                        auto &cmp = get( 2 );
-                        auto &_new = get( 3 );
+            case OpCode::AtomicCmpXchg: // { old, changed } = cmpxchg ptr, expected, new
+                return op< Any >( 2, [&]( auto v ) {
+                        using T = decltype( v.get() );
+                        auto ptr = operandPtr( 0 );
+                        auto expected = v.get( 2 );
+                        auto newval = v.get( 3 );
 
-                        auto over = this->instruction().result();
-                        over.width = 1; // hmmm
-                        over.type = ProgramInfo::Value::Integer;
-                        over.offset += this->compositeOffset(
-                            this->instruction().op->getType(), 1 ).first;
+                        if ( !heap().valid( ptr.v() ) ) {
+                            this->fault( _VM_F_Memory ) << "invalid pointer in cmpxchg" << ptr;
+                            return;
+                        }
+                        auto oldval = heap().template read< T >( ptr.v() );
+                        auto change = oldval == expected;
+                        auto resptr = s2ptr( result() );
 
-                        r = pointer;
-                        if ( pointer == cmp ) {
-                            pointer = _new;
-                            this->_get< bool >( over ) = true;
-                        } else
-                            this->_get< bool >( over ) = false;
-#endif
+                        if ( change.v() ) {
+                            if ( !change.defined() || !ptr.defined() ) // undefine if one of the inputs was not defined
+                                newval.defined( false );
+                            heap().write( ptr.v(), newval );
+                        }
+                        heap().write( resptr, oldval );
+                        resptr.offset( resptr.offset() + sizeof( typename T::Raw ) );
+                        heap().write( resptr, change );
                     } );
 
             case OpCode::AtomicRMW:
+            {
+                auto minmax = []( auto cmp ) {
+                    return [cmp]( auto v, auto x ) {
+                        auto c = cmp( v, x );
+                        auto out = c.v() ? v : x;
+                        if ( !c.defined() )
+                            out.defined( false );
+                        return out;
+                    };
+                };
                 switch ( cast< AtomicRMWInst >( instruction().op )->getOperation() )
                 {
                     case AtomicRMWInst::Xchg:
@@ -1113,16 +1128,19 @@ struct Eval
                     case AtomicRMWInst::Xor:
                         return _atomicrmw( []( auto v, auto x ) { return v ^ x; } );
                     case AtomicRMWInst::UMax:
-                        return _atomicrmw( []( auto v, auto   ) { NOT_IMPLEMENTED(); return v; } );
+                        return _atomicrmw( minmax( []( auto v, auto x ) { return v > x; } ) );
                     case AtomicRMWInst::Max:
-                        return _atomicrmw( []( auto v, auto   ) { NOT_IMPLEMENTED(); return v; } );
+                        return _atomicrmw( minmax( []( auto v, auto x ) {
+                                    return v.make_signed() > x.make_signed(); } ) );
                     case AtomicRMWInst::UMin:
-                        return _atomicrmw( []( auto v, auto   ) { NOT_IMPLEMENTED(); return v; } );
+                        return _atomicrmw( minmax( []( auto v, auto x ) { return v < x; } ) );
                     case AtomicRMWInst::Min:
-                        return _atomicrmw( []( auto v, auto   ) { NOT_IMPLEMENTED(); return v; } );
+                        return _atomicrmw( minmax( []( auto v, auto x ) {
+                                    return v.make_signed() < x.make_signed(); } ) );
                     case AtomicRMWInst::BAD_BINOP:
                         UNREACHABLE_F( "bad binop in atomicrmw" );
                 }
+            }
 
             case OpCode::ExtractValue:
                 implement_extractvalue(); break;
@@ -1417,6 +1435,61 @@ struct Eval
         ASSERT_EQ( x, 15 );
     }
 
+    TEST(cmpxchg_bool)
+    {
+        const char *fdef = "int f( int a ) { _Atomic int v = 0; "
+                            "return __c11_atomic_compare_exchange_strong( &v, &a, 42, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST );"
+                            "}";
+        int x;
+        x = testF( fdef, IntV( 4 ) );
+        ASSERT( !x );
+        x = testF( fdef, IntV( 0 ) );
+    }
+
+    TEST(cmpxchg_val) {
+        const char *fdef = "int f( int a ) { _Atomic int v = 1; "
+                           "__c11_atomic_compare_exchange_strong( &v, &a, 42, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST );"
+                           "return v; }";
+        int x;
+        x = testF( fdef, IntV( 4 ) );
+        ASSERT_EQ( x, 1 );
+        x = testF( fdef, IntV( 1 ) );
+        ASSERT_EQ( x, 42 );
+    }
+
+    void testARMW( std::string op, int orig, int val, int res ) {
+        std::string fdefBase = "int f( int a ) { _Atomic int v = " + std::to_string( orig ) + ";"
+                             + "int r = __c11_atomic_" + op + "( &v, a, __ATOMIC_SEQ_CST );";
+        std::string fdefO = fdefBase + "return r;}";
+        std::string fdefN = fdefBase + "return v;}";
+
+        ASSERT_EQ( testF( fdefO, IntV( val ) ), orig );
+        ASSERT_EQ( testF( fdefN, IntV( val ) ), res );
+    }
+
+    TEST(armw_add) {
+        testARMW( "fetch_add", 4, 38, 42 );
+    }
+
+    TEST(armw_sub) {
+        testARMW( "fetch_sub", 4, 3, 1 );
+    }
+
+    TEST(armw_and) {
+        testARMW( "fetch_and", 0xff, 0xf0, 0xf0 );
+    }
+
+    TEST(armw_or) {
+        testARMW( "fetch_or", 0x0f, 0xf0, 0xff );
+    }
+
+    TEST(armw_xor) {
+        testARMW( "fetch_xor", 0xf0f0, 0xf00f, 0x00ff );
+    }
+
+    TEST(armw_exchange) {
+        testARMW( "exchange", 1, 2, 2 );
+    }
 };
 
 }

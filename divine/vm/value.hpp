@@ -117,6 +117,7 @@ struct Float : Base
     template< int w, bool sig > Float( Int< w, sig > ) { NOT_IMPLEMENTED(); }
     template< typename S > Float( Float< S > ) { NOT_IMPLEMENTED(); }
     bool defined() { return _defined; }
+    void defined( bool d ) { _defined = d; }
     bool isnan() { NOT_IMPLEMENTED(); }
     T v() { return _v; }
     Int< 1, false > compare( Float o, bool v ) { return Bool( v, o.defined() && defined() ); }
@@ -189,6 +190,7 @@ struct Pointer : Base
     }
 
     bool defined() { return _obj_defined && _off_defined; }
+    void defined( bool d ) { _obj_defined = _off_defined = d; }
     bool pointer() { return defined(); }
     GenericPointer v() { return _v; }
     void v( GenericPointer p ) { _v = p; }
