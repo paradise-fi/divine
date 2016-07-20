@@ -47,7 +47,10 @@ void Program::initStatic( Program::Slot v, llvm::Value *V )
     if ( _doneinit.count( V ) )
         return;
 
-    if ( C )
+    // functions have only personality, it need not be initialized before the
+    // function besides, some transformations might add personality even to the
+    // personality function, making this go into infinite loop
+    if ( C && !isa< llvm::Function >( C ) )
         for ( int i = 0; i < int( C->getNumOperands() ); ++i )
         {
             auto op = C->getOperand( i );
