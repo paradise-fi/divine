@@ -57,7 +57,7 @@ enum _VM_MemAccessType { _VM_MAT_Load = 0x1, _VM_MAT_Store = 0x2, _VM_MAT_Both =
 
 EXTERN_C
 
-void *__sys_init( struct _VM_Env *env );
+void *__sys_init( const struct _VM_Env *env ) __attribute__((__annotate__("brick.llvm.prune.root")));
 
 /*
  * Set up the scheduler. After __sys_init returns, the VM will repeatedly call
