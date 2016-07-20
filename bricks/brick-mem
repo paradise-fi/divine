@@ -182,8 +182,8 @@ struct Pool
         std::vector< int > emptyblocks;
         SizeInfo size[ 4096 ];
         SizeInfo *size_big[ 4096 ];
-        int ephemeral_block;
-        int ephemeral_offset;
+//        int ephemeral_block;
+//        int ephemeral_offset;
     } _l;
 
     const std::shared_ptr< Shared > _s;
@@ -398,6 +398,7 @@ struct Pool
         return *reinterpret_cast< int * >( dereference( p ) - sizeof( int ) );
     }
 
+    #if 0
     Pointer ephemeralAllocate( int sz )
     {
         /* TODO valgrind */
@@ -414,6 +415,7 @@ struct Pool
         /* TODO valgrind */
         _l.ephemeral_offset = 0;
     }
+    #endif
 
     bool valid( Pointer p ) { return p.slab(); }
 
@@ -425,11 +427,13 @@ struct Pool
 
     int size( Pointer p )
     {
+#if 0
         if( int( p.slab() ) == _l.ephemeral_block )
         {
             ASSERT_LEQ( p.chunk().get(), _l.ephemeral_offset );
             return ephemeralSize( p );
         }
+#endif
 
         ASSERT( header( p ).total > 0 && "invalid size() call on a foreign ephemeral block" );
         ASSERT( header( p ).itemsize );
