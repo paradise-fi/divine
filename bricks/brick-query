@@ -546,6 +546,11 @@ struct Query {
         return std::accumulate( begin(), end(), init, op );
     }
 
+    template< typename VT = ValueType, typename = decltype( VT( 0 ) + VT( 0 ) ) >
+    VT sum() {
+        return fold( VT( 0 ), []( const VT &acc, const VT &val ) { return acc + val; } );
+    }
+
     template< typename X >
     using Copyable = typename std::enable_if< std::is_copy_constructible< X >::value >::type;
 
