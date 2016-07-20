@@ -474,6 +474,21 @@ void Program::computeRR()
     coverage.clear();
 }
 
+static int getOpcode( llvm::User *u ) {
+    if ( auto *i = dyn_cast< llvm::Instruction >( u ) )
+        return i->getOpcode();
+    if ( auto *c = dyn_cast< llvm::ConstantExpr >( u ) )
+        return c->getOpcode();
+    return 0;
+}
+
+static int getSubOp( llvm::User *u ) {
+    if ( auto *armw = dyn_cast< llvm::AtomicRMWInst >( u ) )
+        return armw->getOperation();
+    if ( auto *cmp = dyn_cast< llvm::CmpInst >( u ) )
+        return cmp->getPredicate();
+    return 0;
+}
 
 void Program::computeStatic()
 {
@@ -506,6 +521,34 @@ void Program::computeStatic()
         auto &func = function( pc );
         _ccontext.heap().write( s2hptr( slotref.slot, offset ),
                                 value::Int< 32 >( func.datasize + 2 * PointerBytes ) );
+
+        auto instTable = llvm::cast< llvm::GlobalVariable >(
+                            f->getOperand( 7 )->getOperand( 0 ) )->getInitializer();
+        auto instTableT = cast< llvm::ArrayType >( instTable->getType() );
+        ASSERT( valuemap.count( instTable ) );
+        auto &instTableSlotref = valuemap[ instTable ];
+        // there can be less instructions in DIVINE as it ignores some, such as
+        // calls to llvm.dbg.declare
+        ASSERT_LEQ( func.instructions.size(), instTableT->getNumElements() );
+        auto SL_instMeta = TD.getStructLayout( cast< llvm::StructType >(
+                                instTableT->getElementType() ) );
+        for ( int j = 0; j < int( func.instructions.size() ); ++j )
+        {
+            auto &inst = func.instructions[ j ];
+            if ( inst.op )
+            {
+                int base = TD.getTypeAllocSize( instTableT->getElementType() ) * j;
+                auto write = [&]( int idx, int val ) {
+                    _ccontext.heap().write( s2hptr( instTableSlotref.slot,
+                                                    base + SL_instMeta->getElementOffset( idx ) ),
+                                            value::Int< 32 >( val ) );
+                };
+                write( 0, getOpcode( inst.op ) );
+                write( 1, getSubOp( inst.op ) );
+                write( 2, inst.values.empty() ? 0 : inst.result().offset );
+                write( 3, inst.values.empty() ? 0 : inst.result().width );
+            }
+        }
     }
 }
 

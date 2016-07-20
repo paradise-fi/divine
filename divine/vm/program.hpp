@@ -150,23 +150,12 @@ struct Program
         uint32_t width:29;
         uint32_t offset:30;
 
-        bool operator<( Slot v ) const
-        {
-            return static_cast< uint32_t >( *this )
-                 < static_cast< uint32_t >( v );
-        }
-
         bool pointer() { return type == Pointer || type == Alloca; }
         bool alloca() { return type == Alloca; }
         bool integer() { return type == Integer; }
         bool isfloat() { return type == Float; }
         bool aggregate() { return type == Aggregate; }
         bool codePointer() { return type == CodePointer; }
-
-        explicit operator uint32_t() const
-        {
-            return *reinterpret_cast< const uint32_t * >( this );
-        }
 
         Slot( int w = 0, Location l = Invalid )
             : type( Integer ), location( l ), width( w ), offset( 0 )
@@ -284,7 +273,7 @@ struct Program
         return functions[ pc.function() ];
     }
 
-    SlotRef allocateSlot( Slot slot , int function = 0, llvm::Value *val = nullptr )
+    SlotRef allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr )
     {
         switch ( slot.location )
         {
