@@ -1,29 +1,20 @@
 #pragma once
 
 #include <divine/vm/bitcode.hpp>
-#include <divine/vm/run.hpp>
-#include <divine/cc/compile.hpp>
+#include <divine/cc/options.hpp>
 
 #include <divine/ui/common.hpp>
 #include <divine/ui/curses.hpp>
 #include <divine/ui/die.hpp>
+
 #include <brick-cmd>
 #include <brick-fs>
-DIVINE_RELAX_WARNINGS
-#include <brick-llvm>
-DIVINE_UNRELAX_WARNINGS
 
 namespace divine {
 namespace ui {
 
 using namespace std::literals;
 namespace cmd = brick::cmd;
-void pruneBC( cc::Compile &driver )
-{
-    // roots which are part of DIVINE interface are annotated at their definition
-    // and need not be mentioned here (i.e. __sys_start)
-    driver.prune( { "main", "memmove", "memset", "memcpy", "llvm.global_ctors" } );
-}
 
 struct Command
 {
@@ -39,30 +30,7 @@ struct WithBC : Command
     vm::AutoTraceFlags _autotrace;
 
     std::shared_ptr< vm::BitCode > _bc;
-    void setup()
-    {
-        vm::BitCode::Env env;
-        using bstr = std::vector< uint8_t >;
-        int i = 0;
-        for ( auto s : _env )
-            env.emplace_back( "env." + brick::string::fmt( i++ ), bstr( s.begin(), s.end() ) );
-        i = 0;
-        for ( auto o : _useropts )
-            env.emplace_back( "arg." + brick::string::fmt( i++ ), bstr( o.begin(), o.end() ) );
-        try {
-            _bc = std::make_shared< vm::BitCode >( _file, env, _autotrace );
-        } catch ( vm::BCParseError &err ) /* probably not a bitcode file */
-        {
-            cc::Compile::Opts ccopt;
-            ccopt.precompiled = "libdivinert.bc";
-            cc::Compile driver( ccopt );
-            driver.compileAndLink( _file, {} );
-            pruneBC( driver );
-            _bc = std::make_shared< vm::BitCode >(
-                std::unique_ptr< llvm::Module >( driver.getLinked() ),
-                driver.context(), env, _autotrace );
-        }
-    }
+    void setup();
 };
 
 struct Help
@@ -113,12 +81,9 @@ struct Verify : WithBC
     }
 };
 
-struct Run : WithBC
-{
-    void run() { vm::Run( _bc, _env ).run(); }
-};
+struct Run : WithBC { void run(); };
 
-struct Draw   : WithBC
+struct Draw : WithBC
 {
     int _number = 0;
     int _distance = 0;
@@ -147,58 +112,14 @@ struct Draw   : WithBC
     }
 };
 
-struct Cc     : Command
+struct Cc : Command
 {
-    cc::Compile::Opts _drv;
+    cc::Options _drv;
     std::vector< std::string > _files, _flags, _inc, _sysinc;
     std::string _precompiled;
     std::string _output;
 
-    void run()
-    {
-        if ( !_drv.libs_only && _files.empty() )
-            die( "Either a file to build or --libraries-only is required." );
-        if ( _drv.libs_only && !_files.empty() )
-            die( "Cannot specify both --libraries-only and files to compile." );
-
-        if ( _output.empty() && _drv.libs_only )
-            _output = "libdivinert.bc";
-
-        cc::Compile driver( _drv );
-
-        for ( auto &i : _inc ) {
-            driver.addDirectory( i );
-            driver.addFlags( { "-I", i } );
-        }
-        for ( auto &i : _sysinc ) {
-            driver.addDirectory( i );
-            driver.addFlags( { "-isystem", i } );
-        }
-
-        for ( auto &x : _flags )
-            x = "-"s + x; /* put back the leading - */
-
-        if ( _drv.dont_link ) {
-            for ( auto &x : _files ) {
-                auto m = driver.compile( x, _flags );
-                driver.writeToFile(
-                        _output.empty() ? outputName( x ) : _output,
-                        m.get() );
-            }
-        } else {
-            for ( auto &x : _files )
-                driver.compileAndLink( x, _flags );
-
-            if ( !_drv.dont_link && !_drv.libs_only )
-                pruneBC( driver );
-
-            driver.writeToFile( _output.empty() ? outputName( _files.front() ) : _output );
-        }
-    }
-
-    std::string outputName( std::string path ) {
-        return brick::fs::replaceExtension( brick::fs::basename( path ), "bc" );
-    }
+    void run();
 };
 
 struct Info   : WithBC
@@ -206,7 +127,8 @@ struct Info   : WithBC
     void run() { NOT_IMPLEMENTED(); }
 };
 
-std::vector< std::string > fromArgv( int argc, const char **argv ) {
+std::vector< std::string > fromArgv( int argc, const char **argv )
+{
     std::vector< std::string > args;
     std::copy( argv + 1, argv + argc, std::back_inserter( args ) );
     return args;
@@ -258,7 +180,6 @@ struct CLI : Interface
                 } );
     }
 
-    // @return ParserT
     auto commands()
     {
         auto v = validator();
@@ -272,7 +193,7 @@ struct CLI : Interface
             .add( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
-        using DrvOpt = cc::Compile::Opts;
+        using DrvOpt = cc::Options;
         auto ccdrvopts = cmd::make_option_set< DrvOpt >( v )
             .add( "[--precompiled {file}]", &DrvOpt::precompiled, "path to a prebuilt libdivinert.bc"s )
             .add( "[-j {int}]", &DrvOpt::num_threads, "number of jobs"s )
@@ -335,8 +256,7 @@ struct CLI : Interface
 
             if ( cmd.empty()  )
             {
-                Help help;
-                help.run( cmds );
+                Help().run( cmds );
                 return 0;
             }
 
