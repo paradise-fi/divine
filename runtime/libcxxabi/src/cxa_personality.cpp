@@ -23,6 +23,10 @@
 #include "private_typeinfo.h"
 #include "unwind.h"
 
+#if !LIBCXXABI_USE_LLVM_UNWINDER && defined(__divine__)
+#error only LLVM unwinder supported with DIVINE
+#endif
+
 /*
     Exception Header Layout:
 
@@ -514,15 +518,11 @@ void
 set_registers(_Unwind_Exception* unwind_exception, _Unwind_Context* context,
               const scan_results& results)
 {
-#ifdef __divine__
-    __vm_fault( _VM_F_NotImplemented );
-#else
     _Unwind_SetGR(context, __builtin_eh_return_data_regno(0),
                                  reinterpret_cast<uintptr_t>(unwind_exception));
     _Unwind_SetGR(context, __builtin_eh_return_data_regno(1),
                                     static_cast<uintptr_t>(results.ttypeIndex));
     _Unwind_SetIP(context, results.landingPad);
-#endif
 }
 
 /*
@@ -550,9 +550,6 @@ static void scan_eh_tab(scan_results &results, _Unwind_Action actions,
                         bool native_exception,
                         _Unwind_Exception *unwind_exception,
                         _Unwind_Context *context) {
-#ifdef __divine__
-    __vm_fault( _VM_F_NotImplemented );
-#else
     // Initialize results to found nothing but an error
     results.ttypeIndex = 0;
     results.actionRecord = 0;
@@ -881,7 +878,6 @@ static void scan_eh_tab(scan_results &results, _Unwind_Action actions,
     // It is possible that no eh table entry specify how to handle
     // this exception. By spec, terminate it immediately.
     call_terminate(native_exception, unwind_exception);
-#endif
 }
 
 // public API
@@ -1071,9 +1067,6 @@ __gxx_personality_v0(_Unwind_State state,
 {
     if (unwind_exception == 0 || context == 0)
         return _URC_FATAL_PHASE1_ERROR;
-#ifdef __divine__
-    __vm_fault( _VM_F_NotImplemented );
-#else
     bool native_exception = (unwind_exception->exception_class & get_vendor_and_language) ==
                             (kOurExceptionClass & get_vendor_and_language);
 
@@ -1165,7 +1158,6 @@ __gxx_personality_v0(_Unwind_State state,
         return continue_unwind(unwind_exception, context);
     }
 
-#endif // ifdef __divine__
     // We were called improperly: neither a phase 1 or phase 2 search
     return _URC_FATAL_PHASE1_ERROR;
 }

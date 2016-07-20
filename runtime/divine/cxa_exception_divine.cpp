@@ -1,3 +1,4 @@
+#if 0
 #include <divine.h>
 #include "unwind.h"
 #include <libcxxabi/src/cxa_exception.hpp>
@@ -87,6 +88,7 @@ void __cxa_throw_divine( __cxa_exception *e )
 
 }
 
+#if 0
 #define NOT_IMPLEMENTED { __vm_fault( _VM_F_NotImplemented ); return _URC_NO_REASON; }
 
 _Unwind_Reason_Code _Unwind_RaiseException (struct _Unwind_Exception *) NOT_IMPLEMENTED;
@@ -97,3 +99,5 @@ void _Unwind_DeleteException (struct _Unwind_Exception *) {} /* do nothing */
 void _Unwind_SjLj_Register (struct SjLj_Function_Context *) { __vm_fault( _VM_F_NotImplemented ); }
 void _Unwind_SjLj_Unregister (struct SjLj_Function_Context *) { __vm_fault( _VM_F_NotImplemented ); }
 void * _Unwind_FindEnclosingFunction (void *pc) { __vm_fault( _VM_F_NotImplemented ); return 0; }
+#endif
+#endif
