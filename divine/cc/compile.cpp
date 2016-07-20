@@ -238,7 +238,8 @@ void Compile::setupLibs() {
                                                         , "-Oz" };
         compileLibrary( join( srcDir, "pdclib" ), libflags( "-D_PDCLIB_BUILD" ) );
         compileLibrary( join( srcDir, "limb" ), libflags() );
-        compileLibrary( join( srcDir, "libcxxabi" ), libflags( cxxflags ) );
+        compileLibrary( join( srcDir, "libcxxabi" ),
+                        libflags( cxxflags, "-DLIBCXXABI_USE_LLVM_UNWINDER" ) );
         compileLibrary( join( srcDir, "libcxx" ), libflags( cxxflags ) );
         compileLibrary( join( srcDir, "divine" ), libflags( cxxflags ) );
         compileLibrary( join( srcDir, "filesystem" ), libflags( cxxflags ) );
