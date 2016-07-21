@@ -78,13 +78,3 @@ locale_t newlocale( int, const char *lc, locale_t ) {
 }
 
 }
-
-locale_t newlocale( int, const char *lc, locale_t ) {
-    if ( strcmp( lc, "C" ) == 0 )
-        return const_cast< locale_t >( &_PDCLIB_global_locale );
-
-    __vm_fault( F::NotImplemented, 0 );
-    return 0;
-}
-
-//}
