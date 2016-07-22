@@ -122,7 +122,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     }
     else if ( isa< llvm::ConstantPointerNull >( V ) )
     {
-        /* nothing to do, everything is zeroed by default */
+        heap.shift( ptr, value::Pointer<>() );
     }
     else if ( auto GV = dyn_cast< llvm::GlobalVariable >( V ) )
     {
@@ -138,7 +138,8 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     }
     else if ( isa< llvm::ConstantAggregateZero >( V ) )
     {
-        /* nothing to do, everything is zeroed by default */
+        for ( int i = 0; i < v.width; ++i )
+            heap.shift( ptr, value::Int< 8 >( 0 ) );
     }
     else if ( isCodePointer( V ) )
     {
