@@ -774,6 +774,9 @@ struct Eval
                     result( IntV( heap().size( ptr ) ) );
                 return;
             }
+            case HypercallQueryFrame:
+                heap().write( s2ptr( result() ), PointerV( frame() ) );
+                return;
             default:
                 UNREACHABLE_F( "unknown hypercall %d", instruction().hypercall );
         }
