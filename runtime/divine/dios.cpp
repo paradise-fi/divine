@@ -317,7 +317,7 @@ struct Scheduler {
 
 	void kill_thread( ThreadId t_id, int reason ) {
 		__dios_assert( t_id );
-		__dios_assert( t_id <  _cf->thread_count );
+		__dios_assert( int( t_id ) < _cf->thread_count );
 		get_threads()[ t_id ].stop_thread( reason );
 	}
 private:
@@ -382,10 +382,11 @@ extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
 		res = main( argc, argv, envp );
 		break;
 	default:
-		__dios_assert_v( false, "Unexpected prototype of main" );	
+		__dios_assert_v( false, "Unexpected prototype of main" );
+        res = 256;
 	}
 
-	if ( res != 0 ) 
+	if ( res != 0 )
 		__vm_fault( ( _VM_Fault ) _DiOS_F_MainReturnValue );
 
 	__dios_trace( 0, "DiOS out!" );
