@@ -61,7 +61,7 @@ struct RunContext
             int datasz = _program.function( pc ).datasize;
             auto frameptr = _heap.make( datasz + 2 * PointerBytes );
             _frame = frameptr;
-            if ( parent.v() == nullPointer() )
+            if ( parent.cooked() == nullPointer() )
                 _entry_frame = _frame;
             _heap.shift( frameptr, PointerV( pc ) );
             _heap.shift( frameptr, parent );
@@ -70,9 +70,9 @@ struct RunContext
 
         void interrupt()
         {
-            HeapPointer ifl = _ifl.v();
-            if ( _ifl.v() != nullPointer() )
-                _heap.write( _ifl.v(), _frame );
+            HeapPointer ifl = _ifl.cooked();
+            if ( _ifl.cooked() != nullPointer() )
+                _heap.write( _ifl.cooked(), _frame );
             _frame = _entry_frame;
             _ifl = PointerV();
             _mask = true;
@@ -96,7 +96,7 @@ struct RunContext
             return dist( _rand );
         }
 
-        bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.v() ) == fr; }
+        bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.cooked() ) == fr; }
         void setSched( CodePointer p ) { _sched = p; _sched.instruction( 1 ); }
         void setFault( CodePointer p ) { _fault = p; }
         void setIfl( PointerV p ) { _ifl = p; }
@@ -178,11 +178,11 @@ void Run::run()
     eval.run();
     auto state = eval._result;
 
-    while ( state.v() != vm::nullPointer() )
+    while ( state.cooked() != vm::nullPointer() )
     {
         _ctx.control().enter(
             _ctx._control._sched, vm::nullPointer(),
-            Eval::IntV( eval.heap().size( state.v() ) ), state );
+            Eval::IntV( eval.heap().size( state.cooked() ) ), state );
         _ctx.control().mask( true );
         eval.run();
         state = eval._result;

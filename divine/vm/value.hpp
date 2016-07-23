@@ -48,30 +48,41 @@ template< typename A, typename B > struct _choose< false, A, B > { using T = B; 
 template< bool l, typename A, typename B > using Choose = typename _choose< l, A, B >::T;
 template< typename T > struct Float;
 
+template< typename T >
+constexpr T full() { return bitlevel::compiletime::ones< T >( 8 * sizeof( T ) ); }
+
 struct Void : Base
 {
     using Raw = struct {};
     using Cooked = Raw;
     Void( Raw = Raw() ) {}
     friend std::ostream &operator<<( std::ostream &o, Void ) { return o << "[void]"; }
+
+    Raw raw() { return Raw(); }
+    void raw( Raw ) {}
 };
 
 template< int width, bool is_signed = false >
 struct Int : Base
 {
-    using Raw = brick::mem::bitvec< width >;
+    using Raw = brick::bitlevel::bitvec< width >;
     using Cooked = Choose< is_signed, typename _signed< width >::T, Raw >;
 
-    static const Raw _full = bitlevel::compiletime::fill( Raw( 1 ) << ( width - 1 ) );
-    Raw _v, _m;
-    bool _pointer:1;
-    PointerType _pointer_type:7;
+    union {
+        Raw _raw;
+        Cooked _cooked;
+        GenericPointer _pointer;
+    };
+
+    Raw _m;
+    bool _ispointer:1;
 
     Int arithmetic( Int o, Raw r )
     {
-        if ( _pointer )
-            NOT_IMPLEMENTED();
-        return Int( r, (_m & o._m) == _full ? _full : 0 );
+        auto result = Int( r, (_m & o._m) == full< Raw >() ? full< Raw >() : 0, false );
+        if ( _ispointer && !o._ispointer && result._pointer.object() == _pointer.object() )
+            result._ispointer = true;
+        return result;
     }
     Int bitwise( Raw r, Raw m, Int o ) { return Int( r, (_m & o._m) | m, false ); }
     Int< 1, false > compare( Int o, bool v )
@@ -80,65 +91,90 @@ struct Int : Base
         res.defined( defined() && o.defined() );
         return res;
     }
-    bool defined() { return _m == _full; }
-    void defined( bool b ) { if ( b ) _m = _full; else _m = 0; }
 
-    auto v() { return *reinterpret_cast< Cooked * >( &_v ); }
-    auto raw() { return _v; }
+    Raw defbits() { return _m; }
+    void defbits( Raw b ) { _m = b; }
+    bool defined() { return defbits() == full< Raw >(); }
+    void defined( bool d ) { defbits( d ? full< Raw >() : 0 ); }
+    bool pointer() { return _ispointer; }
+    void pointer( bool p ) { _ispointer = p; }
+    auto raw() { return _raw; }
+    void raw( Raw r ) { _raw = r; }
+    auto cooked() { return _cooked; }
 
-    Int( int i = 0 ) : Int( i, _full ) {}
-    Int( Raw v, Raw m, bool ptr = false ) : _v( v ), _m( m ), _pointer( ptr ) {}
-    Int< width, true > make_signed() { return Int< width, true >( _v, _m ); }
+    Int() : _raw( 0 ), _m( 0 ) {}
+    explicit Int( Cooked i ) : _cooked( i ), _m( full< Raw >() ), _ispointer( false ) {}
+    Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m ), _ispointer( ptr ) {}
+    Int< width, true > make_signed() { return Int< width, true >( _raw, _m, _ispointer ); }
     template< int w > Int( Int< w, is_signed > i )
-        : _v( i._v ), _m( i._m ), _pointer( i._pointer ) {} // ?
+        : _raw( i._raw ), _m( i._m ), _ispointer( i._ispointer )
+    {
+        if ( width > w && ( !is_signed || ( _m & ( Raw( 1 ) << ( w - 1 ) ) ) ) )
+            _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
+    }
     template< typename T > Int( Float< T > ) { NOT_IMPLEMENTED(); }
 
-    Int operator|( Int o ) { return bitwise( _v | o._v, (_m &  _v) | (o._m &  o._v), o ); }
-    Int operator&( Int o ) { return bitwise( _v & o._v, (_m & ~_v) | (o._m & ~o._v), o ); }
-    Int operator^( Int o ) { return bitwise( _v ^ o._v, 0, o ); }
-    Int operator~() { Int r = *this; r._v = ~_v; return r; }
+    Int operator|( Int o ) { return bitwise( _raw | o._raw, (_m &  _raw) | (o._m &  o._raw), o ); }
+    Int operator&( Int o ) { return bitwise( _raw & o._raw, (_m & ~_raw) | (o._m & ~o._raw), o ); }
+    Int operator^( Int o ) { return bitwise( _raw ^ o._raw, 0, o ); }
+    Int operator~() { Int r = *this; r._raw = ~_raw; return r; }
     Int operator<<( Int< width, false > sh ) {
         if ( !sh.defined() )
             return Int( 0, 0, false );
-        return Int( v() << sh.v(), _m << sh._v | bitlevel::fill( 1 << sh._v ) , false );
+        return Int( raw() << sh.cooked(),
+                    _m << sh.cooked() | bitlevel::fill( 1 << sh.cooked() ) , false );
     }
     Int operator>>( Int< width, false > sh ) {
         if ( !sh.defined() )
             return Int( 0, 0, false );
 
         const int bits = 8 * sizeof( Raw );
-        Raw mask = _m >> sh._v;
+        Raw mask = _m >> sh._raw;
         if ( !is_signed || _m >> ( bits - 1 ) ) // unsigned or defined sign bit
-                mask |= ~bitlevel::fill( 1 << ( bits - sh._v ) );
+                mask |= ~bitlevel::fill( 1 << ( bits - sh._raw ) );
 
-        return Int( v() >> sh.v(), mask, false );
+        return Int( cooked() >> sh.cooked(), mask, false );
     }
 
     friend std::ostream & operator<<( std::ostream &o, Int v )
     {
-        return o << "[int " << brick::string::fmt( v.v() ) << "]";
+        return o << "[int " << brick::string::fmt( v.cooked() ) << "]";
     }
 };
 
 template< typename T >
 struct Float : Base
 {
-    using Raw = T;
-    using Cooked = Raw;
-    Raw _v;
+    using Raw = brick::bitlevel::bitvec< sizeof( T ) * 8 >;
+    using Cooked = T;
+
+    union {
+        Raw _raw;
+        Cooked _cooked;
+    };
+
     bool _defined;
 
-    Float( T t, bool def = true ) : _v( t ), _defined( def ) {}
+    Float( T t = 0, bool def = true ) : _cooked( t ), _defined( def ) {}
     template< int w, bool sig > Float( Int< w, sig > ) { NOT_IMPLEMENTED(); }
     template< typename S > Float( Float< S > ) { NOT_IMPLEMENTED(); }
-    bool defined() { return _defined; }
+
+    Raw defbits() { return _defined ? full< Raw >() : 0; }
+    void defbits( Raw r ) { _defined = ( r == full< Raw >() ); }
+    Raw raw() { return _raw; }
+    void raw( Raw r ) { _raw = r; }
+
+    bool defined() { return defbits() == full< Raw >(); }
     void defined( bool d ) { _defined = d; }
+    bool pointer() { return false; }
+    void pointer( bool ) {} /* ignore */
+
     bool isnan() { NOT_IMPLEMENTED(); }
-    T v() { return _v; }
-    Int< 1, false > compare( Float o, bool v ) { return Bool( v, o.defined() && defined() ); }
+    T cooked() { return _cooked; }
+    Int< 1, false > compare( Float o, bool v ) { return Bool( v, o.defined() && defined(), false ); }
     Float make_signed() { return *this; }
-    Float arithmetic( Float o, Raw r ) { return Float( r, defined() && o.defined() ); }
-    friend std::ostream & operator<<( std::ostream &o, Float v ) { return o << v.v(); }
+    Float arithmetic( Float o, Cooked r ) { return Float( r, defined() && o.defined() ); }
+    friend std::ostream & operator<<( std::ostream &o, Float v ) { return o << v.cooked(); }
 };
 
 struct HeapPointerPlaceholder
@@ -155,9 +191,14 @@ template< typename HeapPointer = HeapPointerPlaceholder >
 struct Pointer : Base
 {
     static const bool IsPointer = true;
-    using Raw = GenericPointer;
-    using Cooked = Raw;
-    Raw _v;
+    using Cooked = GenericPointer;
+    using Raw = brick::bitlevel::bitvec< sizeof( Cooked ) * 8 >;
+
+    union {
+        Raw _raw;
+        Cooked _cooked;
+    };
+
     bool _obj_defined:1, _off_defined:1;
 
     template< typename P >
@@ -166,14 +207,14 @@ struct Pointer : Base
     template< typename L >
     auto withType( L l )
     {
-        if ( _v.type() == PointerType::Const )
-            return GenericPointer( l( ConstPointer( _v ) ) );
-        if ( _v.type() == PointerType::Global )
-            return GenericPointer( l( GlobalPointer( _v ) ) );
-        if ( _v.type() == PointerType::Heap )
-            return GenericPointer( l( HeapPointer( _v ) ) );
-        if ( _v.type() == PointerType::Code )
-            return GenericPointer( l( CodePointer( _v ) ) );
+        if ( _cooked.type() == PointerType::Const )
+            return GenericPointer( l( ConstPointer( _cooked ) ) );
+        if ( _cooked.type() == PointerType::Global )
+            return GenericPointer( l( GlobalPointer( _cooked ) ) );
+        if ( _cooked.type() == PointerType::Heap )
+            return GenericPointer( l( HeapPointer( _cooked ) ) );
+        if ( _cooked.type() == PointerType::Code )
+            return GenericPointer( l( CodePointer( _cooked ) ) );
         UNREACHABLE( "impossible pointer type" );
     }
 
@@ -186,48 +227,58 @@ struct Pointer : Base
         return o;
     }
 
-    Pointer( GenericPointer x = nullPointer(), bool d = true )
-        : _v( x ), _obj_defined( d ), _off_defined( d ) {}
+    Pointer( Cooked x = nullPointer(), bool d = true )
+        : _cooked( x ), _obj_defined( d ), _off_defined( d ) {}
+
+    explicit Pointer( Raw x )
+        : _raw( x ), _obj_defined( false ), _off_defined( false ) {}
 
     Pointer operator+( int off )
     {
         Pointer r = *this;
-        r._v = withType( [&off]( auto p ) { p.offset( p.offset() + off ); return p; } );
+        r._cooked = withType( [&off]( auto p ) { p.offset( p.offset() + off ); return p; } );
         return r;
     }
 
     template< int w > Pointer operator+( Int< w, true > off )
     {
-        Pointer r = *this + off.v();
+        Pointer r = *this + off.cooked();
         if ( !off.defined() )
             r._off_defined = false;
         return r;
     }
 
+    Raw defbits() { return defined() ? full< Raw >() : 0; } /* FIXME */
+    void defbits( Raw r ) { _obj_defined = _off_defined = ( r == full< Raw >() ); }
+    Raw raw() { return _raw; }
+    void raw( Raw r ) { _raw = r; }
+
     bool defined() { return _obj_defined && _off_defined; }
     void defined( bool d ) { _obj_defined = _off_defined = d; }
+
     bool pointer() { return defined(); }
-    GenericPointer v() { return _v; }
-    void v( GenericPointer p ) { _v = p; }
-    Int< 1, false > compare( Pointer o, bool v ) { return Bool( v, o.defined() && defined() ); }
+    void pointer( bool b ) { if ( !b ) defbits( 0 ); }
+    GenericPointer cooked() { return _cooked; }
+    void v( GenericPointer p ) { _cooked = p; }
+    Int< 1, false > compare( Pointer o, bool v ) { return Bool( v, o.defined() && defined(), false ); }
 
     template< int w, bool s > operator Int< w, s >()
     {
         using IntPtr = Int< PointerBits, false >;
-        return IntPtr( _v.raw(), defined() ? IntPtr::_full : 0 );
+        return IntPtr( _cooked.raw(), defined(), true );
     }
 
-    template< int w, bool s > Pointer( Int< w, s > i )
-        : _v( PointerType::Const )
+    template< int w, bool s > explicit Pointer( Int< w, s > i )
+        : _cooked( PointerType::Const )
     {
         if ( w >= PointerBytes )
         {
-            _v.raw( i.raw() );
+            _cooked.raw( i.raw() );
             _obj_defined = _off_defined = i.defined();
         }
         else /* truncated pointers are undef */
         {
-            _v = nullPointer();
+            _cooked = nullPointer();
             _obj_defined = _off_defined = false;
         }
     }
@@ -236,13 +287,13 @@ struct Pointer : Base
 template< typename T >
 Float< T > operator%( Float< T > a, Float< T > b )
 {
-    return a.arithmetic( b, std::fmod( a.v(), b.v() ) );
+    return a.arithmetic( b, std::fmod( a.cooked(), b.cooked() ) );
 }
 
 #define OP(meth, op) template< typename T >                          \
     auto operator op(                                                \
         typename std::enable_if< T::IsValue, T >::type a, T b )     \
-    { return a.meth( b, a.v() op b.v() ); }
+    { return a.meth( b, a.cooked() op b.cooked() ); }
 
 OP( arithmetic, + );
 OP( arithmetic, - );
@@ -267,6 +318,8 @@ namespace t_vm
 
 struct TestInt
 {
+    using Int16 = vm::value::Int< 16 >;
+
     TEST( size )
     {
         ASSERT_EQ( sizeof( vm::value::Int< 16 >::Raw ), 2 );
@@ -278,43 +331,56 @@ struct TestInt
 
     TEST( arithmetic )
     {
-        vm::value::Int< 16 > a( 0 ), b( 0 );
+        Int16 a( 0 ), b( 0 );
         vm::value::Bool x = ( a + b == a );
-        ASSERT( x._v == 1 );
-        ASSERT( x._m == 1 );
-        a = 4;
-        ASSERT( ( a != b ).v() );
+        ASSERT( x._raw == 1 );
+        ASSERT( x._m == 255 );
+        a = Int16( 4 );
+        ASSERT( ( a != b ).cooked() );
         b = a;
-        ASSERT( ( a == b ).v() );
+        ASSERT( ( a == b ).cooked() );
         ASSERT( ( a == b ).defined() );
-        b = vm::value::Int< 16 >( 4, 0 );
+        b = Int16( 4, 0, false );
         ASSERT( !( a == b ).defined() );
-        ASSERT( ( a == b ).v() );
+        ASSERT( ( a == b ).cooked() );
     }
 
     TEST( bitwise )
     {
-        vm::value::Int< 16 > a( 1, 0xFFFE ), b( 2, 0xFFFD );
-        ASSERT( (a & b).v() == 0 );
+        Int16 a( 1, 0xFFFE, false ), b( 2, 0xFFFD, false );
+        ASSERT( (a & b).cooked() == 0 );
         ASSERT( (a & b).defined() );
         ASSERT( !(a | b).defined() );
     }
 
-    TEST ( shift_righ )
+    TEST ( shift_right )
     {
-        vm::value::Int< 16, true > a( 115, 0x7FFF );
-        vm::value::Int< 16 > b( 2, 0xFFFF );
+        vm::value::Int< 16, true > a( 115, 0x7FFF, false );
+        Int16 b( 2, 0xFFFF, false );
         auto res = a >> b;
-        ASSERT_EQ( res.v(), 115 >> 2 );
+        ASSERT_EQ( res.cooked(), 115 >> 2 );
         ASSERT_EQ( res._m, 0x1FFF );
 
-        vm::value::Int< 16 > c( 1135, 0xFFF ), d( 2, 0xFFFF );
+        Int16 c( 1135, 0xFFF, false ), d( 2, 0xFFFF, false );
         auto res1 = c >> d;
-        ASSERT_EQ( res1.v(), 1135 >> 2 );
+        ASSERT_EQ( res1.cooked(), 1135 >> 2 );
         ASSERT_EQ( res1._m, 0x83FF );
 
-        vm::value::Int< 16 > e( 1, 0xFEFF );
-        ASSERT( !( c >> e).defined() );
+        Int16 e( 1, 0xFEFF, false );
+        ASSERT( !( c >> e ).defined() );
+    }
+};
+
+struct TestPtr
+{
+    TEST( defined )
+    {
+        vm::value::Pointer<> p( vm::nullPointer(), true );
+        ASSERT( p.defined() );
+        p.defbits( -1 );
+        ASSERT( p.defined() );
+        p.defbits( 32 );
+        ASSERT( !p.defined() );
     }
 };
 

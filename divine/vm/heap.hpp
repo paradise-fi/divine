@@ -131,7 +131,8 @@ struct MutableHeap
         ASSERT( valid( p ) );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
 
-        auto r = T( *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) );
+        T r;
+        r.raw( *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) );
         shadow( p ).query( p.offset(), r );
         return r;
     }
@@ -143,14 +144,14 @@ struct MutableHeap
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
         shadow( p ).update( p.offset(), t );
-        *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) = t.v();
+        *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) = t.raw();
     }
 
     template< typename T >
     void shift( PointerV &p, T t )
     {
-        write( p.v(), t );
-        Pointer pv = p.v();
+        write( p.cooked(), t );
+        Pointer pv = p.cooked();
         pv.offset( pv.offset() + sizeof( typename T::Raw ) );
         p.v( pv );
     }
@@ -158,14 +159,14 @@ struct MutableHeap
     template< typename T >
     auto shift( PointerV &p )
     {
-        auto r = read< T >( p.v() );
+        auto r = read< T >( p.cooked() );
         skip( p, sizeof( typename T::Raw ) );
         return r;
     }
 
     void skip( PointerV &p, int bytes )
     {
-        Pointer pv = p.v();
+        Pointer pv = p.cooked();
         pv.offset( pv.offset() + bytes );
         p.v( pv );
     }
@@ -216,9 +217,9 @@ struct MutableHeap
         using I = vm::value::Int< 32, true >;
         vm::MutableHeap heap;
         auto p = heap.make( 16 );
-        heap.write( p.v(), I( 10 ) );
-        auto q = heap.read< I >( p.v() );
-        ASSERT_EQ( q.v(), 10 );
+        heap.write( p.cooked(), I( 10 ) );
+        auto q = heap.read< I >( p.cooked() );
+        ASSERT_EQ( q.cooked(), 10 );
     }
 
     TEST(conversion)
@@ -226,16 +227,16 @@ struct MutableHeap
         vm::MutableHeap heap;
         using HP = vm::MutableHeap::Pointer;
         auto p = heap.make( 16 );
-        ASSERT_EQ( HP( p.v() ), HP( vm::ConstPointer( p.v() ) ) );
+        ASSERT_EQ( HP( p.cooked() ), HP( vm::ConstPointer( p.cooked() ) ) );
     }
 
     TEST(write_read)
     {
         vm::MutableHeap heap;
         auto p = heap.make( 16 );
-        heap.write( p.v(), p );
-        auto q = heap.read< vm::MutableHeap::PointerV >( p.v() );
-        ASSERT( p.v() == q.v() );
+        heap.write( p.cooked(), p );
+        auto q = heap.read< vm::MutableHeap::PointerV >( p.cooked() );
+        ASSERT( p.cooked() == q.cooked() );
     }
 };
 

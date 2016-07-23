@@ -108,7 +108,7 @@ struct Shadow
     template< int Width, bool IsSigned >
     void update( int offset, value::Int< Width, IsSigned > v )
     {
-        if ( v._pointer ) {
+        if ( v._ispointer ) {
             update( offset, PointerV(v) );
         }
         // ToDo
@@ -119,9 +119,10 @@ struct Shadow
     {
         auto &a = _first[ offset / 4 ];
         if ( a.pointer && a.is_first ) {
-            v._pointer = true;
+            v._ispointer = true;
             v.defined( true );
         }
+        v.defined( true ); /* FIXME */
         // ToDo
     }
 

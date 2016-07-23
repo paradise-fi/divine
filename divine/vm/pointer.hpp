@@ -33,7 +33,7 @@ static const int PointerBytes = PointerBits / 8;
 static const int PointerObjBits = 32;
 static const int PointerTypeBits = 2;
 static const int PointerOffBits = PointerBits - (PointerTypeBits + PointerObjBits);
-using PointerRaw = brick::mem::bitvec< PointerBits >;
+using PointerRaw = bitlevel::bitvec< PointerBits >;
 
 /*
  * There are multiple pointer types, distinguished by a two-bit type tag. The
@@ -49,8 +49,8 @@ struct GenericPointer : brick::types::Comparable
     static const int TypeBits = 2;
     static const int OffBits = PointerBits - ObjBits - TypeBits;
 
-    using ObjT = brick::mem::bitvec< PointerObjBits >;
-    using OffT = brick::mem::bitvec< PointerOffBits >;
+    using ObjT = bitlevel::bitvec< PointerObjBits >;
+    using OffT = bitlevel::bitvec< PointerOffBits >;
 
     union Rep { /* note: type punning is OK in clang */
         PointerRaw raw;

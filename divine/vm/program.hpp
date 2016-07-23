@@ -247,13 +247,15 @@ struct Program
     auto exportHeap( H &target )
     {
         auto cp = target.make( _constants_size );
-        target.copy( _ccontext._heap, _ccontext.control().constants().v(), cp.v(), _constants_size );
+        target.copy( _ccontext._heap, _ccontext.control().constants().cooked(),
+                     cp.cooked(), _constants_size );
 
         if ( !_globals_size )
             return std::make_pair( cp, decltype( cp )( nullPointer() ) );
 
         auto gp = target.make( _globals_size );
-        target.copy( _ccontext._heap, _ccontext.control().globals().v(), gp.v(), _globals_size );
+        target.copy( _ccontext._heap, _ccontext.control().globals().cooked(),
+                     gp.cooked(), _globals_size );
         return std::make_pair( cp, gp );
     }
 
