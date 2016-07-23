@@ -328,44 +328,7 @@ private:
 
 
 void *__dios_sched( int st_size, void *_state ) noexcept;
-void __dios_fault( enum _VM_Fault what ) noexcept;
 int main(...);
-
-void __dios_fault( enum _VM_Fault what ) noexcept {
-	/* ToDo: Handle errors */
-	__vm_trace( "VM Fault" );
-	switch ( what ) {
-	case _VM_F_NoFault:
-		__dios_trace( 0, "FAULT: No fault" );
-		break;
-	case _VM_F_Assert:
-		__dios_trace( 0, "FAULT: Assert" );
-		break;
-	case _VM_F_Arithmetic:
-		__dios_trace( 0, "FAULT: Arithmetic" );
-		break;
-	case _VM_F_Memory:
-		__dios_trace( 0, "FAULT: Memory" );
-		break;
-	case _VM_F_Control:
-		__dios_trace( 0, "FAULT: Control" );
-		break;
-	case _VM_F_Locking:
-		__dios_trace( 0, "FAULT: Locking" );
-		break;
-	case _VM_F_Hypercall:
-		__dios_trace( 0, "FAULT: Hypercall" );
-		break;
-	case _VM_F_NotImplemented:
-		__dios_trace( 0, "FAULT: Not Implemented" );
-		break;
-	case _DiOS_F_MainReturnValue:
-		__dios_trace( 0, "FAULT: Main exited with non-zero value" );
-		break;
-	default:
-		__dios_trace( 0, "Unknown fault ");
-	}
-}
 
 extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
 	__dios_trace( 0, "Dios started!" );
@@ -407,6 +370,8 @@ void *__dios_sched( int, void *state ) noexcept {
 	__dios_trace( 0, "\n" );
 	return scheduler.get_cf();
 }
+
+void __dios_fault( enum _VM_Fault what ) noexcept;
 
 extern "C" void *__dios_init( const _VM_Env *env ) {
 	__vm_trace( "__sys_init called" );
@@ -465,30 +430,98 @@ void __dios_interrupt() noexcept {
 	__vm_mask( mask );
 }
 
-void __dios_trace( int indent, const char *fmt, ... ) noexcept
+namespace {
+static bool inTrace = false;
+
+struct InTrace {
+    InTrace() : prev( inTrace ) {
+        inTrace = true;
+    }
+    ~InTrace() { inTrace = prev; }
+
+    bool prev;
+};
+
+void diosTraceInternalV( int indent, const char *fmt, va_list ap ) noexcept __attribute__((always_inline))
 {
-    static bool inTrace = false;
     static int fmtIndent = 0;
+    InTrace _;
 
-	int mask = __vm_mask(1);
-
-    if ( inTrace )
-        goto unmask;
-    inTrace = true;
-
-	va_list ap;
 	char buffer[1024];
     for ( int i = 0; i < fmtIndent; ++i )
         buffer[ i ] = ' ';
 
-	va_start( ap, fmt );
 	vsnprintf( buffer + fmtIndent, 1024, fmt, ap );
-	va_end( ap );
 	__vm_trace( buffer );
 
     fmtIndent += indent * 4;
-    inTrace = false;
+}
+
+void diosTraceInternal( int indent, const char *fmt, ... ) noexcept
+{
+	va_list ap;
+    va_start( ap, fmt );
+    diosTraceInternalV( indent, fmt, ap );
+    va_end( ap );
+}
+}
+
+void __dios_trace( int indent, const char *fmt, ... ) noexcept
+{
+	int mask = __vm_mask(1);
+
+    if ( inTrace )
+        goto unmask;
+
+	va_list ap;
+	va_start( ap, fmt );
+    diosTraceInternalV( indent, fmt, ap );
+	va_end( ap );
 unmask:
 	__vm_mask(mask);
 }
 
+void __dios_fault( enum _VM_Fault what ) noexcept {
+    auto mask = __vm_mask( 1 );
+    InTrace _; // avoid dumping what we do
+
+	/* ToDo: Handle errors */
+	__vm_trace( "VM Fault" );
+	switch ( what ) {
+	case _VM_F_NoFault:
+		diosTraceInternal( 0, "FAULT: No fault" );
+		break;
+	case _VM_F_Assert:
+		diosTraceInternal( 0, "FAULT: Assert" );
+		break;
+	case _VM_F_Arithmetic:
+		diosTraceInternal( 0, "FAULT: Arithmetic" );
+		break;
+	case _VM_F_Memory:
+		diosTraceInternal( 0, "FAULT: Memory" );
+		break;
+	case _VM_F_Control:
+		diosTraceInternal( 0, "FAULT: Control" );
+		break;
+	case _VM_F_Locking:
+		diosTraceInternal( 0, "FAULT: Locking" );
+		break;
+	case _VM_F_Hypercall:
+		diosTraceInternal( 0, "FAULT: Hypercall" );
+		break;
+	case _VM_F_NotImplemented:
+		diosTraceInternal( 0, "FAULT: Not Implemented" );
+		break;
+	case _DiOS_F_MainReturnValue:
+		diosTraceInternal( 0, "FAULT: Main exited with non-zero value" );
+		break;
+	default:
+		diosTraceInternal( 0, "Unknown fault ");
+	}
+    diosTraceInternal( 0, "Backtrace:" );
+    int i = 0;
+    for ( auto *f = __vm_query_frame()->parent; f != nullptr; f = f->parent )
+        diosTraceInternal( 0, "%d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );
+
+    __vm_mask( mask );
+}
