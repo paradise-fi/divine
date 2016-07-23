@@ -618,8 +618,14 @@ struct Eval
                 // addresses (going from left to right in the argument list) to
                 // the argument of the intrinsic
                 auto f = _program.functions[ pc().function() ];
+                if ( !f.vararg ) {
+                    fault( _VM_F_Hypercall ) << "va_start called in non-variadic function";
+                    return;
+                }
                 auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
                 auto vaListPtr = operandPtr( 0 );
+                if ( !vaListPtr.defined() )
+                    return;
                 if ( !heap().copy( vaptr_loc, ptr2h( vaListPtr ), operand( 0 ).width ) )
                     fault( _VM_F_Memory ) << "invalid va_start with va_list = " << vaListPtr;
                 return;
@@ -718,7 +724,8 @@ struct Eval
             {
                 // std::cerr << "======= jump" << std::endl;
                 auto tgt = operandCk< PointerV >( 0 );
-                auto forget = operandCk< IntV >( 1 ).v();
+                CodePointer pc = operandCk< PointerV >( 1 ).v();
+                auto forget = operandCk< IntV >( 2 ).v();
                 if ( forget )
                 {
                     control().mask( false );
@@ -1244,17 +1251,28 @@ struct Eval
                 {
                     // note: although the va_list type might not be a pointer (as on x86)
                     // we will use it so, assuming that it will be at least as big as a
-                    // pointer (for example, on x86_64 va_list is { i32, i32, i64*, i64* })
-                    auto vaListPtr = ptr2h( operandPtr( 0 ) );
+                    // pointer (for example, on x86_64 va_list is { i32, i32, i64*, i64* }*)
+                    auto vaListRaw = operandPtr( 0 );
+                    if ( !vaListRaw.defined() )
+                        return;
+                    auto vaListPtr = ptr2h( vaListRaw );
                     if ( !heap().valid( vaListPtr ) )
-                        fault( _VM_F_Memory ) << "invalid va_list " << operandPtr( 0 );
-                    auto vaArgs = heap().template read< PointerV >( vaListPtr );
-                    if ( !heap().copy( vaArgs.v(), s2ptr( result() ), result().width ) )
+                        fault( _VM_F_Memory ) << "invalid va_list " << vaListRaw;
+                    auto vaArgsRaw = heap().template read< PointerV >( vaListPtr );
+                    if ( !vaArgsRaw.defined() ) {
+                        fault( _VM_F_Hypercall ) << "undefined va_list value " << vaArgsRaw;
+                        return;
+                    }
+                    auto vaArgs = ptr2h( vaArgsRaw );
+                    if ( !heap().valid( vaArgs ) ) {
+                        fault( _VM_F_Memory ) << "invalid va_list arg " << vaArgs;
+                        return;
+                    }
+                    if ( !heap().copy( ptr2h( vaArgs ), s2ptr( result() ), result().width ) )
                         fault( _VM_F_Memory ) << "invalid load of va_arg from " << vaArgs;
                     heap().template write< PointerV >( vaListPtr, vaArgs + result().width );
-                    break;
                 }
-                break;
+                return;
 
             case OpCode::LandingPad:
                 break; /* nothing to do, handled by the unwinder */
@@ -1620,6 +1638,98 @@ struct Eval
 
     TEST(armw_exchange) {
         testARMW( "exchange", 1, 2, 2 );
+    }
+
+    TEST(vastart) {
+        ASSERT( testF( R"(int g( int x, ... ) {
+                              __builtin_va_list va;
+                              __builtin_va_start( va, x );
+                              return 1;
+                          }
+                          int f() { return g( 0, 1 ); }
+                          )" ) );
+    }
+
+    TEST(vaend) {
+        ASSERT( testF( R"(int g( int x, ... ) {
+                              __builtin_va_list va;
+                              __builtin_va_start( va, x );
+                              __builtin_va_end( va );
+                              return 1;
+                          }
+                          int f() { return g( 0, 1 ); }
+                          )" ) );
+    }
+
+    TEST(vacopy) {
+        ASSERT( testF( R"(int g( int x, ... ) {
+                              __builtin_va_list va, v2;
+                              __builtin_va_start( va, x );
+                              __builtin_va_copy( v2, va );
+                              __builtin_va_end( va );
+                              __builtin_va_end( v2 );
+                              return 1;
+                          }
+                          int f() { return g( 0, 1 ); }
+                          )" ) );
+    }
+
+    TEST(vaarg_1) {
+        ASSERT_EQ( testF( R"(void *__lart_llvm_va_arg( __builtin_va_list va );
+                             int g( int x, ... ) {
+                                 __builtin_va_list va;
+                                 __builtin_va_start( va, x );
+                                 int v = *(int*)__lart_llvm_va_arg( va );
+                                 __builtin_va_end( va );
+                                 return v;
+                             }
+                             int f() { return g( 0, 1 ); }
+                             )" ), 1 );
+    }
+
+    TEST(vaarg_2) {
+        ASSERT_EQ( testF( R"(void *__lart_llvm_va_arg( __builtin_va_list va );
+                             int g( int x, ... ) {
+                                 __builtin_va_list va;
+                                 __builtin_va_start( va, x );
+                                 int v = *(int*)__lart_llvm_va_arg( va );
+                                 v <<= 8;
+                                 v |= *(int*)__lart_llvm_va_arg( va );
+                                 v <<= 8;
+                                 v |= *(int*)__lart_llvm_va_arg( va );
+                                 __builtin_va_end( va );
+                                 return v;
+                             }
+                             int f() { return g( 0, 1, 2, 3, 4 ); }
+                             )" ), (1 << 16) | (2 << 8) | 3 );
+    }
+
+    TEST(vaarg_3) {
+        ASSERT_EQ( testF( R"(void *__lart_llvm_va_arg( __builtin_va_list va );
+                             int g( int x, ... ) {
+                                 __builtin_va_list va;
+                                 __builtin_va_start( va, x );
+                                 int *p = *(int**)__lart_llvm_va_arg( va );
+                                 __builtin_va_end( va );
+                                 return *p;
+                             }
+                             int f() { int x = 42; return g( 0, &x ); }
+                             )" ), 42 );
+    }
+
+    TEST(vaarg_4) {
+        ASSERT_EQ( testF( R"(void *__lart_llvm_va_arg( __builtin_va_list va );
+                             int g( int x, ... ) {
+                                 __builtin_va_list va;
+                                 __builtin_va_start( va, x );
+                                 int v = *(int*)__lart_llvm_va_arg( va );
+                                 int *p = *(int**)__lart_llvm_va_arg( va );
+                                 int v2 = *(int*)__lart_llvm_va_arg( va );
+                                 __builtin_va_end( va );
+                                 return v + *p + v2;
+                             }
+                             int f() { int x = 30; return g( 0, 2, &x, 10 ); }
+                             )" ), 42 );
     }
 };
 
