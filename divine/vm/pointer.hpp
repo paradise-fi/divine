@@ -52,16 +52,16 @@ struct GenericPointer : brick::types::Comparable
     using ObjT = brick::mem::bitvec< PointerObjBits >;
     using OffT = brick::mem::bitvec< PointerOffBits >;
 
-    struct Rep {
-        ObjT obj;
-        PointerType type:PointerTypeBits;
-        OffT off:PointerOffBits;
+    union Rep { /* note: type punning is OK in clang */
+        PointerRaw raw;
+        struct {
+            ObjT obj;
+            PointerType type:PointerTypeBits;
+            OffT off:PointerOffBits;
+        };
     } _rep;
 
-    using Raw = PointerRaw;
-
     static_assert( sizeof( Rep ) == PointerBytes );
-    static_assert( sizeof( Rep ) == sizeof( PointerRaw ) );
 
     explicit GenericPointer( PointerType t, ObjT obj = 0, OffT off = 0 )
     {
@@ -74,20 +74,14 @@ struct GenericPointer : brick::types::Comparable
     OffT offset() { return _rep.off; }
     void offset( OffT o ) { _rep.off = o; }
     void object( ObjT o ) { _rep.obj = o; }
-    Raw raw() const { return ( Raw( _rep.obj ) << (PointerTypeBits + PointerOffBits) ) |
-                             ( Raw( _rep.type ) << PointerOffBits ) | Raw( _rep.off ); }
-    void raw( Raw r )
+    PointerRaw raw() { return _rep.raw; }
+    void raw( PointerRaw r ) { _rep.raw = r; }
+
+    bool operator<= ( GenericPointer o ) const
     {
-        const Raw one = 1;
-        const int ObjOff = PointerTypeBits + PointerOffBits;
-        const int TypeOff = PointerOffBits;
-        Raw obj =  r & ( ( ( one << ObjBits ) - one ) << ObjOff ),
-            type = r & ( ( ( one << PointerTypeBits ) - one ) << TypeOff ),
-            off =  r &   ( ( one << PointerOffBits ) - one );
-        _rep.obj = obj >> ObjOff; _rep.type = PointerType( type >> TypeOff ); _rep.off = off;
+        return _rep.raw <= o._rep.raw;
     }
 
-    bool operator<= ( GenericPointer o ) const { return raw() <= o.raw(); }
     auto type() { return _rep.type; }
     void type( PointerType t ) { _rep.type = t; }
 
