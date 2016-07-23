@@ -16,6 +16,11 @@ file( GLOB SRC_RUNTIME LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DI
 foreach( f ${SRC_RUNTIME} )
     stringify( "runtime" ${f} )
 endforeach()
+
+set( OPS_src "${CMAKE_SOURCE_DIR}/llvm/include/llvm/IR/Instruction.def" )
+set( OPS_dest "divine/Instruction.def" )
+file( COPY ${OPS_src} DESTINATION "divine" )
+stringifyInDir( "runtime" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
 stringlist( "runtime" runtime )
 
 add_library( libdivinert_str STATIC ${STRINGIFIED} runtime_list.cpp )
