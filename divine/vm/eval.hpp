@@ -1395,6 +1395,73 @@ struct Eval
         ASSERT_EQ( x, 10 );
     }
 
+    TEST(array_1g)
+    {
+        auto f = [this]( int i ) {
+            return testF( "int array[8] = { 0, 1, 2, 3 }; int f() { return array[ " + std::to_string( i ) + " ]; }" );
+        };
+        ASSERT_EQ( f( 0 ), 0 );
+        ASSERT_EQ( f( 1 ), 1 );
+        ASSERT_EQ( f( 2 ), 2 );
+        ASSERT_EQ( f( 3 ), 3 );
+        ASSERT_EQ( f( 4 ), 0 );
+        ASSERT_EQ( f( 7 ), 0 );
+    }
+
+    TEST(array_2g)
+    {
+        auto f = [this]( int i ) {
+            return testF( "int array[8] = { 0 }; int f() { for ( int i = 0; i < 4; ++i ) array[i] = i; return array[ " + std::to_string( i ) + " ]; }" );
+        };
+        ASSERT_EQ( f( 0 ), 0 );
+        ASSERT_EQ( f( 1 ), 1 );
+        ASSERT_EQ( f( 2 ), 2 );
+        ASSERT_EQ( f( 3 ), 3 );
+        ASSERT_EQ( f( 4 ), 0 );
+        ASSERT_EQ( f( 7 ), 0 );
+    }
+
+    TEST(array_3)
+    {
+        // note can't use unitializer, requires memcpy
+        auto f = [this]( int i ) {
+            return testF( "int f() { int array[4]; for ( int i = 0; i < 4; ++i ) array[i] = i; return array[ " + std::to_string( i ) + " ]; }" );
+        };
+        ASSERT_EQ( f( 0 ), 0 );
+        ASSERT_EQ( f( 1 ), 1 );
+        ASSERT_EQ( f( 2 ), 2 );
+        ASSERT_EQ( f( 3 ), 3 );
+    }
+
+    TEST(ptrarith)
+    {
+        const char *fdef = R"|(void __vm_trace( const char *v );
+                               int r = 1;
+                               void fail( const char *v ) { __vm_trace( v ); r = 0; }
+                               int f() {
+                                   char array[ 2 ];
+                                   char *p = array;
+                                   unsigned long ulong = (unsigned long)p;
+                                   if ( p != array )
+                                       fail( "completely broken" );
+                                   if ( p != (char*)ulong )
+                                       fail( "int2ptr . ptr2int != id" );
+                                   if ( p + 1 != (char*)(ulong + 1) )
+                                       fail( "int2ptr . (+1) . ptr2int != (+1)" );
+
+                                   unsigned long v = 42;
+                                   char *vp = (void*)v;
+                                   if ( 42 != (unsigned long)vp )
+                                       fail( "ptr2int . int2ptr != id" );
+                                   if ( 43 != (unsigned long)(vp + 1) )
+                                       fail( "ptr2int . (+1) . int2ptr != (+1)" );
+                                   return r;
+                               }
+                           )|";
+
+        ASSERT( testF( fdef ) );
+    }
+
     TEST(simple_if)
     {
         const char* fdef = "unsigned f( int a ) { if (a > 0) { return 0; } else { return 1; } }";
