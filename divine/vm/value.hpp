@@ -102,7 +102,7 @@ struct Int : Base
     void raw( Raw r ) { _raw = r; }
     auto cooked() { return _cooked; }
 
-    Int() : _raw( 0 ), _m( 0 ) {}
+    Int() : _raw( 0 ), _m( 0 ), _ispointer( false ) {}
     explicit Int( Cooked i ) : _cooked( i ), _m( full< Raw >() ), _ispointer( false ) {}
     Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m ), _ispointer( ptr ) {}
     Int< width, true > make_signed() { return Int< width, true >( _raw, _m, _ispointer ); }
