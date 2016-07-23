@@ -73,7 +73,7 @@ constexpr size_t sizeOf() {
 template< typename T >
 constexpr T ones( int bits )
 {
-    return fill( T( 1 ) << ( bits - 1 ) );
+    return bits ? ( T(1) << ( bits - 1 ) ) | compiletime::ones< T >( bits - 1 ) : 0;
 }
 
 }
@@ -675,6 +675,16 @@ struct BitTupleTest {
         CHECK( 9, bt, 42, 9, item %= 11 );
     }
 #undef CHECK
+
+    TEST(ones)
+    {
+        ASSERT_EQ( bitlevel::ones< uint32_t >( 0 ), 0 );
+        ASSERT_EQ( bitlevel::ones< uint32_t >( 1 ), 1 );
+        ASSERT_EQ( bitlevel::ones< uint32_t >( 2 ), 3 );
+        ASSERT_EQ( bitlevel::ones< uint32_t >( 31 ), UINT32_MAX >> 1 );
+        ASSERT_EQ( bitlevel::ones< uint32_t >( 32 ), UINT32_MAX );
+        ASSERT_EQ( bitlevel::ones< uint32_t >( 33 ), UINT32_MAX );
+    }
 };
 
 }
