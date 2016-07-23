@@ -62,7 +62,7 @@ constexpr unsigned MSB( T x ) {
 
 template< typename T >
 constexpr T fill( T x ) {
-    return x ? x | fill( x >> 1 ) : x;
+    return x ? x | compiletime::fill( x >> 1 ) : x;
 }
 
 template< typename T >
