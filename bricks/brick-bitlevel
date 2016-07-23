@@ -70,7 +70,15 @@ constexpr size_t sizeOf() {
     return std::is_empty< T >::value ? 0 : sizeof( T );
 }
 
+template< typename T >
+constexpr T ones( int bits )
+{
+    return fill( T( 1 ) << ( bits - 1 ) );
 }
+
+}
+
+using compiletime::ones;
 
 /*
  *  Fills `x` by bits up to the most si significant bit.
