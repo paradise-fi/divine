@@ -497,11 +497,19 @@ static int getOpcode( llvm::User *u ) {
     return 0;
 }
 
-static int getSubOp( llvm::User *u ) {
+static int getSubOp( llvm::User *u, Program &p ) {
     if ( auto *armw = dyn_cast< llvm::AtomicRMWInst >( u ) )
         return armw->getOperation();
     if ( auto *cmp = dyn_cast< llvm::CmpInst >( u ) )
         return cmp->getPredicate();
+    if ( auto *inv = dyn_cast< llvm::InvokeInst >( u ) ) {
+        // save location of landing block as suboperation
+        auto *unwbb = inv->getUnwindDest();
+        ASSERT( p.blockmap.count( unwbb ) );
+        ASSERT( llvm::isa< llvm::LandingPadInst >( unwbb->begin() ) );
+        auto unwoffset = p.blockmap[ unwbb ].instruction();
+        return unwoffset;
+    }
     return 0;
 }
 
@@ -570,7 +578,7 @@ void Program::computeStatic()
                                             value::Int< 32 >( val ) );
                 };
                 write( 0, getOpcode( inst.op ) );
-                write( 1, getSubOp( inst.op ) );
+                write( 1, getSubOp( inst.op, *this ) );
                 write( 2, inst.values.empty() ? 0 : inst.result().offset );
                 write( 3, inst.values.empty() ? 0 : inst.result().width );
             }
