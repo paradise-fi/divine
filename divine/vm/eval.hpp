@@ -307,7 +307,9 @@ struct Eval
 
     void implement_store()
     {
-        auto to = operandCk< PointerV >( 1 );
+        auto to = operandPtr( 1 );
+        if ( !to.defined() )
+            return;
         /* std::cerr << "store of *" << s2ptr( operand( 0 ) ) << " to "
            << operand< PointerV >( 1 ) << std::endl; */
         if ( !heap().copy( s2ptr( operand( 0 ) ), ptr2h( to ), operand( 0 ).width ) )
@@ -725,7 +727,8 @@ struct Eval
             {
                 // std::cerr << "======= jump" << std::endl;
                 auto tgt = operandCk< PointerV >( 0 );
-                auto forget = operandCk< IntV >( 1 ).cooked();
+                CodePointer pc = operandCk< PointerV >( 1 ).cooked();
+                auto forget = operandCk< IntV >( 2 ).cooked();
                 if ( forget )
                 {
                     control().mask( false );
@@ -733,8 +736,13 @@ struct Eval
                 }
                 if ( tgt.cooked() == nullPointer() )
                     fault( _VM_F_Hypercall ) << "target frame of a jump is null";
-                else
+                else {
                     control().frame( tgt );
+                    if ( pc != CodePointer( nullPointer() ) ) {
+                        // TODO: validate jump is in function
+                        switchBB( pc );
+                    }
+                }
                 return;
             }
             case HypercallTrace:
