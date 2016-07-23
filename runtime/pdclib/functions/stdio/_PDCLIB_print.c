@@ -106,6 +106,9 @@ static void int2base( uintmax_t value, struct _PDCLIB_status_t * status )
     char * outend = outbuf + bufLen;
     int written = 0;
 
+    if ( status->prec == EOF )
+        status->prec = 0;
+
     // Build up our output string - backwards
     {
         const char * digits = (status->flags & E_lower) ? 
