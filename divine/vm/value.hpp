@@ -171,7 +171,12 @@ struct Float : Base
 
     bool isnan() { NOT_IMPLEMENTED(); }
     T cooked() { return _cooked; }
-    Int< 1, false > compare( Float o, bool v ) { return Bool( v, o.defined() && defined(), false ); }
+    Int< 1, false > compare( Float o, bool v )
+    {
+        Int< 1, false > res( v );
+        res.defined( defined() && o.defined() );
+        return res;
+    }
     Float make_signed() { return *this; }
     Float arithmetic( Float o, Cooked r ) { return Float( r, defined() && o.defined() ); }
     friend std::ostream & operator<<( std::ostream &o, Float v ) { return o << v.cooked(); }
@@ -260,7 +265,12 @@ struct Pointer : Base
     void pointer( bool b ) { if ( !b ) defbits( 0 ); }
     GenericPointer cooked() { return _cooked; }
     void v( GenericPointer p ) { _cooked = p; }
-    Int< 1, false > compare( Pointer o, bool v ) { return Bool( v, o.defined() && defined(), false ); }
+    Int< 1, false > compare( Pointer o, bool v )
+    {
+        Int< 1, false > res( v );
+        res.defined( defined() && o.defined() );
+        return res;
+    }
 
     template< int w, bool s > operator Int< w, s >()
     {
