@@ -118,10 +118,8 @@ struct Shadow
     void query( int offset, value::Int< Width, IsSigned >& v )
     {
         auto &a = _first[ offset / 4 ];
-        if ( a.pointer && a.is_first ) {
+        if ( a.pointer && a.is_first && Width >= PointerBits )
             v._ispointer = true;
-            v.defined( true );
-        }
         v.defined( true ); /* FIXME */
         // ToDo
     }
