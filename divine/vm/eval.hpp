@@ -447,10 +447,16 @@ struct Eval
 
         auto caller_pc = heap().template read< PointerV >( parent.v() );
         auto caller = _program.instruction( caller_pc.v() );
-        if ( instruction().values.size() > 1 ) /* return value */
-            heap().copy( s2ptr( operand( 0 ) ),
-                         s2ptr( caller.result(), 0, parent.v() ),
-                         caller.result().width );
+        if ( instruction().values.size() > 1 ) { /* return value */
+            if ( caller.values.size() == 0 )
+                fault( _VM_F_Control ) << "Function which was called as void returned a value";
+            else if ( caller.result().width < operand( 0 ).width )
+                fault( _VM_F_Control ) << "Returned value is bigger then expected by caller";
+            else if ( !heap().copy( s2ptr( operand( 0 ) ),
+                             s2ptr( caller.result(), 0, parent.v() ),
+                             caller.result().width ) )
+                fault( _VM_F_Memory ) << "Cound not return value";
+        }
 
         control().frame( parent.v() );
 
