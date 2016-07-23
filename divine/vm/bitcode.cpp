@@ -17,14 +17,16 @@
  */
 
 #include <divine/vm/bitcode.hpp>
-
 #include <divine/vm/program.hpp>
+#include <lart/driver.h>
+#include <lart/support/util.h>
+
+DIVINE_RELAX_WARNINGS
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DiagnosticPrinter.h>
-#include <lart/driver.h>
-#include <lart/support/util.h>
+DIVINE_UNRELAX_WARNINGS
 
 using namespace divine::vm;
 

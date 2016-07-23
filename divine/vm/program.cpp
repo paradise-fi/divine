@@ -20,14 +20,15 @@
 
 #include <divine/vm/program.hpp>
 
+DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Type.h>
 #include <llvm/IR/GlobalVariable.h>
-
-#include <llvm/CodeGen/IntrinsicLowering.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
+#include <llvm/CodeGen/IntrinsicLowering.h>
 #include <llvm/ADT/StringMap.h>
+DIVINE_UNRELAX_WARNINGS
 
 using namespace divine::vm;
 using llvm::isa;
