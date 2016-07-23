@@ -478,7 +478,7 @@ struct Eval
         {
             auto cond = operand< BoolV >( 0 );
             if ( !cond.defined() )
-                fault( _VM_F_Control );
+                fault( _VM_F_Control ) << " conditional jump depends on an undefined value";
             if ( cond.cooked() )
                 jumpTo( operandCk< PointerV >( 2 ) );
             else
@@ -584,7 +584,7 @@ struct Eval
         auto r = operandPtr( 0 );
         auto count = heap().template shift< IntV >( r );
         if ( !count.defined() )
-            fault( _VM_F_Hypercall );
+            fault( _VM_F_Hypercall ) << " stackrestore with undefined count";
         auto s = r;
 
         for ( auto ptr : ptrs )
@@ -597,7 +597,8 @@ struct Eval
                 auto eq = ptr == p;
                 if ( !eq.defined() )
                 {
-                    fault( _VM_F_Hypercall );
+                    fault( _VM_F_Hypercall ) << " undefined pointer at index "
+                                             << i << " in stackrestore";
                     break;
                 }
                 if ( eq.cooked() )
