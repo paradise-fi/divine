@@ -111,6 +111,8 @@ struct Int : Base
     {
         if ( width > w && ( !is_signed || ( _m & ( Raw( 1 ) << ( w - 1 ) ) ) ) )
             _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
+        if ( width < PointerBits )
+            _ispointer = false;
     }
     template< typename T > Int( Float< T > ) { NOT_IMPLEMENTED(); }
 
