@@ -54,10 +54,10 @@ struct GenericPointer : brick::types::Comparable
 
     union Rep { /* note: type punning is OK in clang */
         PointerRaw raw;
-        struct {
-            ObjT obj;
+        struct { // beware: bitfields seem to be little-endian in clang but it is impmentation defined
+            OffT off:PointerOffBits; // offset must be last (for the sake of arithmetic)
             PointerType type:PointerTypeBits;
-            OffT off:PointerOffBits;
+            ObjT obj;
         };
     } _rep;
 
