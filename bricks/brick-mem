@@ -51,14 +51,6 @@ constexpr inline int align( int v, int a ) {
     return (v % a) ? (v + a - (v % a)) : v;
 }
 
-template< int i > struct _bitvec { using T = typename _bitvec< i + 1 >::T; };
-template<> struct _bitvec<  8 > { using T = uint8_t; };
-template<> struct _bitvec< 16 > { using T = uint16_t; };
-template<> struct _bitvec< 32 > { using T = uint32_t; };
-template<> struct _bitvec< 64 > { using T = uint64_t; };
-
-template< int i > using bitvec = typename _bitvec< i >::T;
-
 struct Empty
 {
     operator int() const { return 0; }
@@ -99,7 +91,7 @@ struct Pool
                       tag_bits = PointerRep::tag_bits;
     struct Pointer : brick::types::Comparable
     {
-        using Raw = bitvec< 8 * sizeof( PointerRep ) >;
+        using Raw = bitlevel::bitvec< 8 * sizeof( PointerRep ) >;
         using SlabT  = decltype( PointerRep::slab );
         using ChunkT = decltype( PointerRep::chunk );
         using TagT   = decltype( PointerRep::tag );

@@ -80,6 +80,49 @@ constexpr T ones( int bits )
 
 using compiletime::ones;
 
+template< typename L, typename H >
+struct bvpair
+{
+    L low; H high;
+    constexpr bvpair( L l, H h = 0 ) : low( l ), high( h ) {}
+    constexpr bvpair() = default;
+    explicit constexpr operator bool() const { return low || high; }
+    constexpr bvpair operator<<( int s ) const
+    {
+        int rem = 8 * sizeof( low ) - s;
+        int unshift = std::max( rem, 0 );
+        int shift = rem < 0 ? -rem : 0;
+        H carry = ( low & ~ones< L >( unshift ) ) >> unshift;
+        return bvpair( low << s, ( high << s ) | ( carry << shift ) );
+    }
+    constexpr bvpair operator>>( int s ) const
+    {
+        int rem = 8 * sizeof( low ) - s;
+        int unshift = std::max( rem, 0 );
+        int shift = rem < 0 ? -rem : 0;
+        L carry = L( high & ones< H >( s ) ) << unshift;
+        return bvpair( ( low >> s ) | ( carry >> shift ), high >> s );
+    }
+    constexpr bvpair operator&( bvpair o ) const { return bvpair( o.low & low, o.high & high ); }
+    constexpr bvpair operator|( bvpair o ) const { return bvpair( o.low | low, o.high | high ); }
+    bvpair &operator|=( bvpair o ) { return *this = *this | o; }
+    constexpr bool operator==( bvpair o ) const { return o.low == low && o.high == high; }
+    constexpr bool operator!=( bvpair o ) const { return o.low != low || o.high != high; }
+    constexpr bvpair operator+() const { return *this; }
+    friend std::ostream &operator<<( std::ostream &o, bvpair p ) {
+        return o << p.high << "_" << p.low; }
+} __attribute__((packed));
+
+template< int i > struct _bitvec { using T = typename _bitvec< i + 1 >::T; };
+template<> struct _bitvec<   8 > { using T = uint8_t; };
+template<> struct _bitvec<  16 > { using T = uint16_t; };
+template<> struct _bitvec<  32 > { using T = uint32_t; };
+template<> struct _bitvec<  64 > { using T = uint64_t; };
+template<> struct _bitvec<  80 > { using T = bvpair< uint64_t, uint16_t >; };
+template<> struct _bitvec< 128 > { using T = bvpair< uint64_t, uint64_t >; };
+
+template< int i > using bitvec = typename _bitvec< i >::T;
+
 /*
  *  Fills `x` by bits up to the most si significant bit.
  *  Comlexity is O(log n), n is sizeof(x)*8
@@ -684,6 +727,55 @@ struct BitTupleTest {
         ASSERT_EQ( bitlevel::ones< uint32_t >( 31 ), UINT32_MAX >> 1 );
         ASSERT_EQ( bitlevel::ones< uint32_t >( 32 ), UINT32_MAX );
         ASSERT_EQ( bitlevel::ones< uint32_t >( 33 ), UINT32_MAX );
+    }
+};
+
+struct BitVecTest
+{
+    TEST(bvpair_shiftl)
+    {
+        using bvp32 = bitlevel::bvpair< uint16_t, uint16_t >;
+        union {
+            bvp32 bvp;
+            uint32_t val;
+        };
+        bvp = bvp32( 23, 13 );
+        uint32_t check = ( 13u << 16 ) | 23u;
+        ASSERT_EQ( val, check );
+        bvp = bvp << 7;
+        check = check << 7;
+        ASSERT_EQ( val, check );
+        bvp = bvp << 18;
+        check = check << 18;
+        ASSERT_EQ( val, check );
+        bvp = bvp32( 0xFF, 0xFF );
+        check = (0xFF << 16) | 0xFF;
+        bvp = bvp << 20;
+        check = check << 20;
+        ASSERT_EQ( val, check );
+    }
+
+    TEST(bvpair_shiftr)
+    {
+        using bvp32 = bitlevel::bvpair< uint16_t, uint16_t >;
+        union {
+            bvp32 bvp;
+            uint32_t val;
+        };
+        bvp = bvp32( 23, 13 );
+        uint32_t check = ( 13u << 16 ) | 23u;
+        ASSERT_EQ( val, check );
+        bvp = bvp >> 7;
+        check = check >> 7;
+        ASSERT_EQ( val, check );
+        bvp = bvp >> 18;
+        check = check >> 18;
+        ASSERT_EQ( val, check );
+        bvp = bvp32( 0xFF, 0xFF );
+        check = (0xFF << 16) | 0xFF;
+        bvp = bvp >> 20;
+        check = check >> 20;
+        ASSERT_EQ( val, check );
     }
 };
 
