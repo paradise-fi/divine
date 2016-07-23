@@ -316,8 +316,9 @@ struct Eval
 
     void implement_load()
     {
-        auto from = operandCk< PointerV >( 0 );
-        // std::cerr << "load from *" << PointerV( from ) << std::endl;
+        auto from = operandPtr( 0 );
+        if ( !from.defined() )
+            return; // handled in operandPtr
         if ( !heap().copy( ptr2h( from ), s2ptr( result() ), result().width ) )
             fault( _VM_F_Memory ) << "invalid load from " << from;
     }
@@ -903,14 +904,17 @@ struct Eval
         auto _atomicrmw = [this] ( auto impl ) -> void {
             this->op< IsIntegral >( 0, [&]( auto v ) {
                     using T = decltype( v.get() );
-                    auto location = operandPtr( 0 ).v();
-                    if ( !heap().valid( location ) ) {
-                        this->fault( _VM_F_Memory ) << "invalid AtomicRMW at " << location;
+                    auto loc = operandPtr( 0 );
+                    if ( !loc.defined() )
+                        return;
+                    HeapPointer hloc = ptr2h( loc );
+                    if ( !heap().valid( hloc ) ) {
+                        this->fault( _VM_F_Memory ) << "invalid AtomicRMW at " << loc;
                         return; // TODO: destory pre-existing register value
                     }
-                    auto edit = heap().template read< T >( location );
+                    auto edit = heap().template read< T >( hloc );
                     this->result( edit );
-                    heap().write( location, impl( edit, v.get( 2 ) ) );
+                    heap().write( hloc, impl( edit, v.get( 2 ) ) );
                 } );
         };
 
