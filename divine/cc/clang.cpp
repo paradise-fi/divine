@@ -22,6 +22,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <iostream>
 
 #include <divine/cc/clang.hpp>
+#include <lart/divine/vaarg.h>
 
 namespace divine {
 namespace cc {
@@ -388,7 +389,9 @@ std::unique_ptr< llvm::Module > Compiler::compileModule( std::string filename,
     if ( !succ )
         throw CompileError( "Error building " + filename );
 
-    return emit->takeModule();
+    auto mod = emit->takeModule();
+    lart::divine::VaArgInstr().run( *mod );
+    return mod;
 }
 
 std::string Compiler::serializeModule( llvm::Module &m ) {
