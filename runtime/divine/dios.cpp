@@ -328,10 +328,10 @@ private:
 
 
 void *__dios_sched( int st_size, void *_state ) noexcept;
-enum _VM_FaultAction __dios_fault( enum _VM_Fault what ) noexcept;
+void __dios_fault( enum _VM_Fault what ) noexcept;
 int main(...);
 
-enum _VM_FaultAction __dios_fault( enum _VM_Fault what ) noexcept {
+void __dios_fault( enum _VM_Fault what ) noexcept {
 	/* ToDo: Handle errors */
 	__vm_trace( "VM Fault" );
 	switch ( what ) {
@@ -365,7 +365,6 @@ enum _VM_FaultAction __dios_fault( enum _VM_Fault what ) noexcept {
 	default:
 		__dios_trace( 0, "Unknown fault ");
 	}
-	return _VM_FA_Resume;
 }
 
 extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {

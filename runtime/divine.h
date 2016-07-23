@@ -72,7 +72,7 @@ void *__sys_init( const struct _VM_Env *env ) __attribute__((__annotate__("brick
  * interrupted, control returns to the instruction right after the __vm_jump).
  */
 void __vm_set_sched( void *(*f)( int, void * ) ) NOTHROW NATIVE_VISIBLE;
-void __vm_set_fault( enum _VM_FaultAction (*f)( enum _VM_Fault ) ) NOTHROW NATIVE_VISIBLE;
+void __vm_set_fault( void (*f)( enum _VM_Fault ) ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * When execution is interrupted, the VM will store the address of the
