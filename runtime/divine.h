@@ -100,9 +100,10 @@ int __vm_choose( int n, ... ) NOTHROW NATIVE_VISIBLE;
  * after the call which caused the first __vm_jump. If `forgetful` is non-zero,
  * the jump will also atomically clear the mask flag (see `__vm_mask`) and
  * forget any visible effects that may have happened within the current atomic
- * section.
+ * section. If pc is not zero, also jump to given PC after re-activating the
+ * frame (must be within the same function).
  */
-void __vm_jump( struct _VM_Frame *dest, int forgetful ) NOTHROW NATIVE_VISIBLE;
+void __vm_jump( struct _VM_Frame *dest, void (*pc)( void ), int forgetful ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Cause a fault. The first argument is passed on to the fault handler in the

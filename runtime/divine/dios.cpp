@@ -357,14 +357,14 @@ extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
 void *__dios_sched( int, void *state ) noexcept {
 	dios::Scheduler scheduler( state );
 	if ( scheduler.handle_syscall() ) {
-		__vm_jump( scheduler.run_thread(), 1 );
+		__vm_jump( scheduler.run_thread(), nullptr, 1 );
 		__dios_trace( 0, "Syscall should be handled\n" );
 		return scheduler.get_cf();
 	}
 
 	_VM_Frame *jmp = scheduler.run_threads();
 	if ( jmp ) {
-		__vm_jump( jmp, 1 );
+		__vm_jump( jmp, nullptr, 1 );
 	}
 
 	__dios_trace( 0, "\n" );
