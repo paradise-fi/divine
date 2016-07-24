@@ -38,7 +38,7 @@ const _MD_Function *__md_get_pc_meta( uintptr_t _pc ) {
     return ptr;
 }
 
-_MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, _MD_Function *funMeta )
+_MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, const _MD_Function *funMeta )
 {
     if ( !frame || !funMeta || !pc )
         return { nullptr, 0 };

@@ -81,6 +81,8 @@ void __dios_interrupt() NOTHROW;
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
 
+_Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) NOTHROW;
+
 CPP_END
 #undef EXTERN_C
 #undef CPP_END

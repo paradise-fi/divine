@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 #include <divine/dios.h>
+#include <divine/opcodes.h>
 #include <tuple>
 #include <utility>
 #include <cstring>
@@ -524,4 +525,23 @@ void __dios_fault( enum _VM_Fault what ) noexcept {
         diosTraceInternal( 0, "%d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );
 
     __vm_mask( mask );
+}
+
+_Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept {
+    // clean the frames, drop their allocas, jump
+    // note: it is not necessary to clean the frames, it is only to prevent
+    // accidental use of their variables, therefore it is also OK to not clean
+    // current frame (heap will garbage-colect it)
+    for ( auto *f = __vm_query_frame()->parent; f != to; ) {
+        auto *meta = __md_get_pc_meta( uintptr_t( f->pc ) );
+        auto *inst = meta->inst_table;
+        for ( int i = 0; i < meta->inst_table_size; ++i, ++inst ) {
+            if ( inst->opcode == OpCode::Alloca )
+                __vm_free_object( __md_get_register_info( f, uintptr_t( meta->entry_point ) + i, meta ).start );
+        }
+        auto *old = f;
+        f = f->parent;
+        __vm_free_object( old );
+    }
+    __vm_jump( to, pc, false );
 }

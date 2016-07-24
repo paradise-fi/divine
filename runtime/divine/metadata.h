@@ -20,9 +20,17 @@
 EXTERN_C
 
 typedef struct {
+    /* LLVM instruction opcode (use divine/opcodes.h, enum OpCode to decode) */
     int opcode;
+    /* suboperation for cmp, armw, and ivoke (in case of invoke it is the
+     * offset of landing block from the beginning of the function (that is,
+     * instruction index of landing block)) */
     int subop;
+    /* offset of return value in frame, do not use directly, use
+     * __md_get_register_info instead */
     int val_offset;
+    /* width of return value in frame, do not use directly, use
+     * __md_get_register_info instead */
     int val_width;
 } _MD_InstInfo;
 
@@ -38,7 +46,7 @@ typedef struct {
     int inst_table_size;
     _MD_InstInfo *inst_table;
     void (*ehPersonality)( void );
-    void *ehLSDA; // language-specific exception handling tables
+    void *ehLSDA; /* language-specific exception handling tables */
 } _MD_Function;
 
 typedef struct {
@@ -68,7 +76,7 @@ const _MD_Function *__md_get_pc_meta( uintptr_t pc ) NOTHROW _ROOT;
  *   landingpad
  * * reading register of value of call/invoke
  * */
-_MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, _MD_Function *funMeta ) NOTHROW _ROOT;
+_MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, const _MD_Function *funMeta ) NOTHROW _ROOT;
 
 CPP_END
 
