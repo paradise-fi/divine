@@ -189,7 +189,7 @@ struct Eval
     HeapPointer ptr2h( PointerV p, PointerV g )
     {
         ASSERT( p.defined() );
-        if ( p.cooked().type() == PointerType::Heap )
+        if ( p.cooked().type() == PointerType::Heap || p.cooked() == nullPointer() )
             return p.cooked();
         if ( p.cooked().type() == PointerType::Const )
         {
