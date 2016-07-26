@@ -277,7 +277,7 @@ struct Pointer : Base
     template< int w, bool s > operator Int< w, s >()
     {
         using IntPtr = Int< PointerBits, false >;
-        return IntPtr( _cooked.raw(), defined(), true );
+        return IntPtr( _cooked.raw(), defbits(), true );
     }
 
     template< int w, bool s > explicit Pointer( Int< w, s > i )
