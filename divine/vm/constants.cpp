@@ -122,7 +122,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     }
     else if ( isa< llvm::ConstantPointerNull >( V ) )
     {
-        heap.write_shift( ptr, value::Pointer<>() );
+        heap.write_shift( ptr, value::Pointer<>( nullPointer() ) );
     }
     else if ( auto GV = dyn_cast< llvm::GlobalVariable >( V ) )
     {
