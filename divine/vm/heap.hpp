@@ -104,13 +104,7 @@ struct MutableHeap
         return true;
     }
 
-    bool valid( Pointer p )
-    {
-        if ( _objects.valid( p2i( p ) ) )
-            return true;
-        return false;
-    }
-
+    bool valid( Pointer p ) { return _objects.valid( p2i( p ) ); }
     int size( Pointer p ) { return _objects.size( p2i( p ) ); }
 
     auto shadow( Pointer pv )
