@@ -157,7 +157,8 @@ struct Float : Base
 
     bool _defined;
 
-    Float( T t = 0, bool def = true ) : _cooked( t ), _defined( def ) {}
+    Float() : Float( 0, false ) {}
+    explicit Float( T t, bool def = true ) : _cooked( t ), _defined( def ) {}
     template< int w, bool sig > Float( Int< w, sig > ) { NOT_IMPLEMENTED(); }
     template< typename S > Float( Float< S > ) { NOT_IMPLEMENTED(); }
 
@@ -234,7 +235,8 @@ struct Pointer : Base
         return o;
     }
 
-    Pointer( Cooked x = nullPointer(), bool d = true )
+    Pointer() : Pointer( nullPointer(), false ) {}
+    Pointer( Cooked x, bool d = true )
         : _cooked( x ), _obj_defined( d ), _off_defined( d ) {}
 
     explicit Pointer( Raw x )
