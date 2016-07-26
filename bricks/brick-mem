@@ -92,6 +92,7 @@ struct Pool
     struct Pointer : brick::types::Comparable
     {
         using Raw = bitlevel::bitvec< 8 * sizeof( PointerRep ) >;
+        using Rep = PointerRep;
         using SlabT  = decltype( PointerRep::slab );
         using ChunkT = decltype( PointerRep::chunk );
         using TagT   = decltype( PointerRep::tag );
