@@ -118,7 +118,7 @@ struct MutableHeap
         ASSERT( valid( p ) );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
 
-        t = T( *_objects.machinePointer< typename T::Cooked >( p2i( p ), p.offset() ) );
+        t.raw( *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) );
         _shadows.read( shloc( p ), t );
     }
 
