@@ -51,7 +51,7 @@ struct RunContext
         template< typename X, typename... Args >
         void push( PointerV p, X x, Args... args )
         {
-            _heap.shift( p, x );
+            _heap.write_shift( p, x );
             push( p, args... );
         }
 
@@ -63,8 +63,8 @@ struct RunContext
             _frame = frameptr;
             if ( parent.cooked() == nullPointer() )
                 _entry_frame = _frame;
-            _heap.shift( frameptr, PointerV( pc ) );
-            _heap.shift( frameptr, parent );
+            _heap.write_shift( frameptr, PointerV( pc ) );
+            _heap.write_shift( frameptr, parent );
             push( frameptr, args... );
         }
 
@@ -137,9 +137,9 @@ struct RunContext
             std::for_each( str.begin(), str.end(),
                            [&]( char c )
                            {
-                               heap.shift( ptr, value::Int< 8 >( c ) );
+                               heap.write_shift( ptr, value::Int< 8 >( c ) );
                            } );
-            heap.shift( ptr, value::Int< 8 >( 0 ) );
+            heap.write_shift( ptr, value::Int< 8 >( 0 ) );
         }
     }
 

@@ -155,7 +155,8 @@ struct Eval
 
     CodePointer pc()
     {
-        auto ptr = heap().template read< PointerV >( frame().cooked() );
+        PointerV ptr;
+        heap().read( frame().cooked(), ptr );
         if ( !ptr.defined() )
             return CodePointer();
         return ptr.cooked();
@@ -243,7 +244,9 @@ struct Eval
         T get( int v  = INT_MIN )
         {
             ASSERT_LEQ( INT_MIN + 1, v ); /* default INT_MIN is only for use in decltype */
-            return ev->heap().template read< T >( ptr( v ) );
+            T result;
+            ev->heap().read( ptr( v ), result );
+            return result;
         }
         void set( int v, T t ) { ev->heap().write( ptr( v ), t ); }
     };
@@ -429,7 +432,8 @@ struct Eval
     {
         auto fr = frame();
         heap().skip( fr, sizeof( typename PointerV::Raw ) );
-        auto parent = heap().template read< PointerV >( fr.cooked() );
+        PointerV parent, br;
+        heap().read( fr.cooked(), parent );
 
         if ( !heap().valid( parent.cooked() ) )
         {
@@ -447,7 +451,8 @@ struct Eval
             return;
         }
 
-        auto caller_pc = heap().template read< PointerV >( parent.cooked() );
+        PointerV caller_pc;
+        heap().read( parent.cooked(), caller_pc );
         auto caller = _program.instruction( caller_pc.cooked() );
         if ( instruction().values.size() > 1 ) { /* return value */
             if ( caller.values.size() == 0 )
@@ -465,7 +470,7 @@ struct Eval
         if ( isa< ::llvm::InvokeInst >( caller.op ) )
         {
             auto rv = s2ptr( caller.operand( -2 ), 0, parent.cooked() );
-            auto br = heap().template read< PointerV >( rv );
+            heap().read( rv, br );
             jumpTo( br );
         }
     }
@@ -559,7 +564,8 @@ struct Eval
         for ( auto &i : f.instructions )
             if ( i.opcode == OpCode::Alloca )
             {
-                auto ptr = heap().template read< PointerV >( s2ptr( i.result() ) );
+                PointerV ptr;
+                heap().read( s2ptr( i.result() ), ptr );
                 if ( heap().valid( ptr.cooked() ) )
                     *o++ = ptr;
             }
@@ -571,9 +577,9 @@ struct Eval
         collect_allocas( std::back_inserter( ptrs ) );
         auto r = heap().make( sizeof( IntV::Raw ) + ptrs.size() * PointerBytes );
         auto p = r;
-        heap().shift( p, IntV( ptrs.size() ) );
+        heap().write_shift( p, IntV( ptrs.size() ) );
         for ( auto ptr : ptrs )
-            heap().shift( p, ptr );
+            heap().write_shift( p, ptr );
         result( r );
     }
 
@@ -582,7 +588,8 @@ struct Eval
         std::vector< PointerV > ptrs;
         collect_allocas( std::back_inserter( ptrs ) );
         auto r = operandPtr( 0 );
-        auto count = heap().template shift< IntV >( r );
+        IntV count;
+        heap().read_shift( r, count );
         if ( !count.defined() )
             fault( _VM_F_Hypercall ) << " stackrestore with undefined count";
         auto s = r;
@@ -593,7 +600,8 @@ struct Eval
             r = s;
             for ( int i = 0; i < count.cooked(); ++i )
             {
-                auto p = heap().template shift< PointerV >( r );
+                PointerV p;
+                heap().read_shift( r, p );
                 auto eq = ptr == p;
                 if ( !eq.defined() )
                 {
@@ -677,7 +685,7 @@ struct Eval
         std::string str;
         CharV c;
         do {
-            c = heap().template shift< CharV >( nptr );
+            heap().read_shift( nptr, c );
             if ( c.cooked() )
                 str += c.cooked();
         } while ( c.cooked() );
@@ -834,8 +842,8 @@ struct Eval
 
         auto frameptr = heap().make( program().function( target ).datasize + 2 * PointerBytes );
         auto p = frameptr;
-        heap().shift( p, PointerV( target ) );
-        heap().shift( p, PointerV( frame() ) );
+        heap().write_shift( p, PointerV( target ) );
+        heap().write_shift( p, PointerV( frame() ) );
 
         /* Copy arguments to the new frame. */
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.argcount ); ++i )
@@ -928,18 +936,17 @@ struct Eval
 
         auto _atomicrmw = [this] ( auto impl ) -> void {
             this->op< IsIntegral >( 0, [&]( auto v ) {
-                    using T = decltype( v.get() );
+                    decltype( v.get() ) edit;
                     auto loc = operandPtr( 0 );
                     if ( !loc.defined() )
                         return;
-                    HeapPointer hloc = ptr2h( loc );
-                    if ( !heap().valid( hloc ) ) {
+                    if ( !heap().valid( ptr2h( loc ) ) ) {
                         this->fault( _VM_F_Memory ) << "invalid AtomicRMW at " << loc;
                         return; // TODO: destory pre-existing register value
                     }
-                    auto edit = heap().template read< T >( hloc );
+                    heap().read( ptr2h( loc ), edit );
                     this->result( edit );
-                    heap().write( hloc, impl( edit, v.get( 2 ) ) );
+                    heap().write( ptr2h( loc ), impl( edit, v.get( 2 ) ) );
                 } );
         };
 
@@ -956,6 +963,7 @@ struct Eval
         std::cerr << " | " << std::flush;
         instruction().op->dump();
 */
+
         switch ( instruction().opcode )
         {
 
@@ -1153,12 +1161,14 @@ struct Eval
                             this->fault( _VM_F_Memory ) << "invalid pointer in cmpxchg" << ptr;
                             return;
                         }
-                        auto oldval = heap().template read< T >( ptr.cooked() );
+                        T oldval;
+                        heap().read( ptr.cooked(), oldval );
                         auto change = oldval == expected;
                         auto resptr = s2ptr( result() );
 
                         if ( change.cooked() ) {
-                            if ( !change.defined() || !ptr.defined() ) // undefine if one of the inputs was not defined
+                            // undefined if one of the inputs was not defined
+                            if ( !change.defined() || !ptr.defined() )
                                 newval.defined( false );
                             heap().write( ptr.cooked(), newval );
                         }
@@ -1261,28 +1271,27 @@ struct Eval
 
             case OpCode::VAArg:
                 {
+                    PointerV vaList = operandPtr( 0 ), vaArgs;
                     // note: although the va_list type might not be a pointer (as on x86)
                     // we will use it so, assuming that it will be at least as big as a
                     // pointer (for example, on x86_64 va_list is { i32, i32, i64*, i64* }*)
-                    auto vaListRaw = operandPtr( 0 );
-                    if ( !vaListRaw.defined() )
+                    if ( !vaList.defined() )
                         return;
-                    auto vaListPtr = ptr2h( vaListRaw );
-                    if ( !heap().valid( vaListPtr ) )
-                        fault( _VM_F_Memory ) << "invalid va_list " << vaListRaw;
-                    auto vaArgsRaw = heap().template read< PointerV >( vaListPtr );
-                    if ( !vaArgsRaw.defined() ) {
-                        fault( _VM_F_Hypercall ) << "undefined va_list value " << vaArgsRaw;
+                    if ( !heap().valid( ptr2h( vaList ) ) )
+                        fault( _VM_F_Memory ) << "invalid va_list " << vaList;
+                    heap().read( ptr2h( vaList ), vaArgs );
+                    if ( !vaArgs.defined() ) {
+                        fault( _VM_F_Hypercall ) << "undefined va_list value " << vaArgs;
                         return;
                     }
-                    auto vaArgs = ptr2h( vaArgsRaw );
-                    if ( !heap().valid( vaArgs ) ) {
+                    if ( !heap().valid( ptr2h( vaArgs ) ) ) {
                         fault( _VM_F_Memory ) << "invalid va_list arg " << vaArgs;
                         return;
                     }
                     if ( !heap().copy( ptr2h( vaArgs ), s2ptr( result() ), result().width ) )
                         fault( _VM_F_Memory ) << "invalid load of va_arg from " << vaArgs;
-                    heap().template write< PointerV >( vaListPtr, vaArgs + result().width );
+                    heap().write( ptr2h( vaList ), PointerV( vaArgs + result().width ) );
+                    break;
                 }
                 return;
 
@@ -1347,7 +1356,7 @@ struct TContext
     template< typename X, typename... Args >
     void push( PointerV p, X x, Args... args )
     {
-        _heap.shift( p, x );
+        _heap.write_shift( p, x );
         push( p, args... );
     }
 
@@ -1359,8 +1368,8 @@ struct TContext
         _frame = frameptr;
         if ( parent.cooked() == vm::nullPointer() )
             _entry_frame = _frame;
-        _heap.shift( frameptr, PointerV( pc ) );
-        _heap.shift( frameptr, parent );
+        _heap.write_shift( frameptr, PointerV( pc ) );
+        _heap.write_shift( frameptr, parent );
         push( frameptr, args... );
     }
 

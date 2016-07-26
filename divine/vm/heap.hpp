@@ -118,17 +118,18 @@ struct MutableHeap
         return Shadow( sh_ptr, ex_ptr, _objects.size( p2i( pv ) ) );
     }
 
+    void write( Pointer, value::Void ) {}
+    void read( Pointer, value::Void& ) {}
+
     template< typename T >
-    T read( Pointer p )
+    void read( Pointer p, T &t )
     {
         using Raw = typename T::Raw;
         ASSERT( valid( p ) );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
 
-        T r;
         r.raw( *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) );
         shadow( p ).query( p.offset(), r );
-        return r;
     }
 
     template< typename T >
@@ -142,20 +143,17 @@ struct MutableHeap
     }
 
     template< typename T >
-    void shift( PointerV &p, T t )
+    void write_shift( PointerV &p, T t )
     {
         write( p.cooked(), t );
-        Pointer pv = p.cooked();
-        pv.offset( pv.offset() + sizeof( typename T::Raw ) );
-        p.v( pv );
+        skip( p, sizeof( typename T::Raw ) );
     }
 
     template< typename T >
-    auto shift( PointerV &p )
+    void read_shift( PointerV &p, T &t )
     {
-        auto r = read< T >( p.cooked() );
+        read( p.cooked(), t );
         skip( p, sizeof( typename T::Raw ) );
-        return r;
     }
 
     void skip( PointerV &p, int bytes )
@@ -212,7 +210,8 @@ struct MutableHeap
         vm::MutableHeap heap;
         auto p = heap.make( 16 );
         heap.write( p.cooked(), I( 10 ) );
-        auto q = heap.read< I >( p.cooked() );
+        I q;
+        heap.read( p.cooked(), q );
         ASSERT_EQ( q.cooked(), 10 );
     }
 
@@ -227,9 +226,10 @@ struct MutableHeap
     TEST(write_read)
     {
         vm::MutableHeap heap;
-        auto p = heap.make( 16 );
+        vm::MutableHeap::PointerV p, q;
+        p = heap.make( 16 );
         heap.write( p.cooked(), p );
-        auto q = heap.read< vm::MutableHeap::PointerV >( p.cooked() );
+        heap.read( p.cooked(), q );
         ASSERT( p.cooked() == q.cooked() );
     }
 };

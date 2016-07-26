@@ -97,24 +97,24 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
         const uint8_t *mem = reinterpret_cast< const uint8_t * >( I->getValue().getRawData() );
         std::for_each( mem, mem + v.width, [&]( char c )
                        {
-                           heap.shift( ptr, value::Int< 8 >( c ) );
+                           heap.write_shift( ptr, value::Int< 8 >( c ) );
                        } );
     }
     else if ( auto FP = dyn_cast< llvm::ConstantFP >( V ) )
     {
         switch ( v.width ) {
             case sizeof( float ):
-                heap.shift( ptr, value::Float< float >( FP->getValueAPF().convertToFloat() ) );
+                heap.write_shift( ptr, value::Float< float >( FP->getValueAPF().convertToFloat() ) );
                 break;
             case sizeof( double ):
-                heap.shift( ptr, value::Float< double >( FP->getValueAPF().convertToDouble() ) );
+                heap.write_shift( ptr, value::Float< double >( FP->getValueAPF().convertToDouble() ) );
                 break;
             case sizeof( long double ): {
                 bool lossy;
                 llvm::APFloat x = FP->getValueAPF();
                 x.convert( llvm::APFloat::IEEEdouble, llvm::APFloat::rmNearestTiesToEven, &lossy );
                 /* FIXME? */
-                heap.shift( ptr, value::Float< long double >( x.convertToDouble() ) );
+                heap.write_shift( ptr, value::Float< long double >( x.convertToDouble() ) );
                 break;
             }
             default: UNREACHABLE( "non-double, non-float FP constant" );
@@ -122,7 +122,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     }
     else if ( isa< llvm::ConstantPointerNull >( V ) )
     {
-        heap.shift( ptr, value::Pointer<>() );
+        heap.write_shift( ptr, value::Pointer<>() );
     }
     else if ( auto GV = dyn_cast< llvm::GlobalVariable >( V ) )
     {
@@ -133,17 +133,17 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
         else {
             location = globalmap[ GV ];
         }
-        heap.shift( ptr, value::Pointer<>( s2ptr( location ) ) );
+        heap.write_shift( ptr, value::Pointer<>( s2ptr( location ) ) );
         _doneinit.insert( GV );
     }
     else if ( isa< llvm::ConstantAggregateZero >( V ) )
     {
         for ( int i = 0; i < v.width; ++i )
-            heap.shift( ptr, value::Int< 8 >( 0 ) );
+            heap.write_shift( ptr, value::Int< 8 >( 0 ) );
     }
     else if ( isCodePointer( V ) )
     {
-        heap.shift( ptr, value::Pointer<>( getCodePointer( V ) ) );
+        heap.write_shift( ptr, value::Pointer<>( getCodePointer( V ) ) );
     }
     else if ( V->getType()->isPointerTy() )
     {
@@ -175,7 +175,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
         const char *raw = CDS->getRawDataValues().data();
         std::for_each( raw, raw + v.width, [&]( char c )
                        {
-                           heap.shift( ptr, value::Int< 8 >( c ) );
+                           heap.write_shift( ptr, value::Int< 8 >( c ) );
                        } );
     }
     else if ( dyn_cast< llvm::ConstantVector >( V ) )
