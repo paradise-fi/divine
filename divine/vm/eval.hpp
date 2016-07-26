@@ -634,11 +634,11 @@ struct Eval
                     return;
                 }
                 auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
-                auto vaListPtr = operandPtr( 0 );
-                if ( !vaListPtr.defined() )
+                auto vaList = operandPtr( 0 );
+                if ( !vaList.defined() )
                     return;
-                if ( !heap().copy( vaptr_loc, ptr2h( vaListPtr ), operand( 0 ).width ) )
-                    fault( _VM_F_Memory ) << "invalid va_start with va_list = " << vaListPtr;
+                if ( !heap().copy( vaptr_loc, ptr2h( vaList ), operand( 0 ).width ) )
+                    fault( _VM_F_Memory ) << "invalid va_start with va_list = " << vaList;
                 return;
             }
             case Intrinsic::vaend: return;
@@ -654,8 +654,7 @@ struct Eval
             case Intrinsic::trap:
                 NOT_IMPLEMENTED(); /* TODO */
             case Intrinsic::eh_typeid_for:
-                result( IntV( program().function( pc() ).typeID(
-                                  operandCk< PointerV >( 0 ).cooked() ) ) );
+                result( IntV( program().function( pc() ).typeID( operandCk< PointerV >( 0 ).cooked() ) ) );
                 return;
             case Intrinsic::smul_with_overflow:
             case Intrinsic::sadd_with_overflow:
