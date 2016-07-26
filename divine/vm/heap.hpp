@@ -43,24 +43,6 @@ namespace mem = brick::mem;
 
 struct MutableHeap
 {
-    using ExceptionPool = mem::Pool<>;
-    using ObjectPool = mem::Pool<>;
-
-    ExceptionPool _exceptions;
-    ObjectPool _objects, _shadows;
-
-    using Internal = ObjectPool::Pointer;
-
-    struct Bytes
-    {
-        Internal _p;
-        ObjectPool &_o;
-        Bytes( ObjectPool &o, Internal p ) : _o( o ), _p( p ) {}
-        int size() { return _o.size( _p ); }
-        char *begin() { return _o.machinePointer< char >( _p ); }
-        char *end() { return _o.machinePointer< char >( _p, size() ); }
-    };
-
     /*
      * The evaluator-facing pointer structure is laid over the Internal
      * (pool-derived) pointer type. The Internal pointer has tag bits at the
@@ -79,15 +61,33 @@ struct MutableHeap
         }
     };
 
+    using Pool = mem::Pool<>;
+    using Internal = Pool::Pointer;
+    using Shadows = MutableShadow< Internal >;
     using PointerV = value::Pointer< Pointer >;
 
+    Pool _objects;
+    Shadows _shadows;
+
+    Shadows &shadows() { return _shadows; }
+
+    struct Bytes
+    {
+        Internal _p;
+        Pool &_o;
+        Bytes( Pool &o, Internal p ) : _o( o ), _p( p ) {}
+        int size() { return _o.size( _p ); }
+        char *begin() { return _o.machinePointer< char >( _p ); }
+        char *end() { return _o.machinePointer< char >( _p, size() ); }
+    };
+
     Internal p2i( Pointer p ) { Internal i; i.raw( p.object() ); return i; }
+    Shadows::Loc shloc( Pointer p ) { return Shadows::Loc( p2i( p ), Shadows::Anchor(), p.offset() ); }
 
     PointerV make( int size )
     {
         auto i = _objects.allocate( size );
-        int shsz = sizeof( ExceptionPool::Pointer ) + ( size % 4 ? 1 + size / 4 : size / 4 );
-        _shadows.materialise( i, shsz, _objects );
+        _shadows.make( _objects, i, size );
 
         Pointer p;
         p.object( i.raw() );
@@ -100,23 +100,13 @@ struct MutableHeap
         auto i = p2i( p );
         if ( !_objects.valid( i ) )
             return false;
+        _shadows.free( shloc( p ) );
         _objects.free( i );
         return true;
     }
 
     bool valid( Pointer p ) { return _objects.valid( p2i( p ) ); }
     int size( Pointer p ) { return _objects.size( p2i( p ) ); }
-
-    auto shadow( Pointer pv )
-    {
-        using Shadow = vm::Shadow< PointerV >;
-        using ExPtr = ExceptionPool::Pointer;
-        auto ex_pptr = *_shadows.machinePointer< ExPtr >( p2i( pv ) );
-        auto sh_ptr = _shadows.machinePointer< ShadowByte >( p2i( pv ), sizeof( ExPtr ) );
-        auto ex_ptr = _exceptions.valid( ex_pptr ) ?
-                      _exceptions.machinePointer< ShadowException >( ex_pptr ) : nullptr;
-        return Shadow( sh_ptr, ex_ptr, _objects.size( p2i( pv ) ) );
-    }
 
     void write( Pointer, value::Void ) {}
     void read( Pointer, value::Void& ) {}
@@ -128,8 +118,8 @@ struct MutableHeap
         ASSERT( valid( p ) );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
 
-        r.raw( *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) );
-        shadow( p ).query( p.offset(), r );
+        t = T( *_objects.machinePointer< typename T::Cooked >( p2i( p ), p.offset() ) );
+        _shadows.read( shloc( p ), t );
     }
 
     template< typename T >
@@ -138,7 +128,7 @@ struct MutableHeap
         using Raw = typename T::Raw;
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
-        shadow( p ).update( p.offset(), t );
+        _shadows.write( shloc( p ), t, []( auto, auto ) {} );
         *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) = t.raw();
     }
 
@@ -168,20 +158,19 @@ struct MutableHeap
         return Bytes( _objects, p2i( p ) );
     }
 
-    template< typename H >
-    bool copy( H &_from_heap, Pointer _from, Pointer _to, int bytes )
+    template< typename FromH >
+    bool copy( FromH &from_h, Pointer _from, Pointer _to, int bytes )
     {
-        auto from = _from_heap.unsafe_bytes( _from );
-        auto to = unsafe_bytes( _to );
+        auto from = from_h.unsafe_bytes( _from ), to = unsafe_bytes( _to );
         if ( _from.null() || _to.null() )
             return false;
-        int from_s( size( _from ) ), to_s ( size( _to ) );
+        int from_s( from_h.size( _from ) ), to_s( size( _to ) );
         int from_off( _from.offset() ), to_off( _to.offset() );
         if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )
             return false;
         std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
-        auto from_sh = _from_heap.shadow( _from ), to_sh = shadow( _to );
-        to_sh.update( from_sh, from_off, to_off, bytes );
+        _shadows.copy( from_h.shadows(), from_h.shloc( _from ),
+                       shloc( _to ), bytes,  []( auto, auto ) {} );
         return true;
     }
 

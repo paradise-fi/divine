@@ -20,6 +20,7 @@
 
 #include <brick-types>
 #include <utility>
+#include <unordered_map>
 
 #include <divine/vm/value.hpp>
 
@@ -27,321 +28,307 @@ namespace divine {
 namespace vm {
 
 namespace bitlevel = brick::bitlevel;
+namespace mem = brick::mem;
 
-/*
- * ShadowByte structure
- * - 1 bit: is this an exception? if so, remaining 7 bits are exception id
- * - 1 bit: Data vs Pointer
- * - for Data: one bit per byte of 'initialised' status
- * - for Pointer: 2 bits of offset init'd
- */
-
-union ShadowByte
+template< typename InternalPtr >
+struct InObject
 {
-    struct {
-        /* unaligned pointers, semi-initialised bytes */
-        bool exception:1;
-        uint8_t id:7;
-    };
-    struct {
-        bool _ptr_exception:1;
-        bool pointer:1;
-        bool is_first:1;
-        /* only valid if is_first is true */
-        bool obj_defined:1;
-        bool off_defined:1;
-        uint8_t ptr_type:2;
-    };
-    struct {
-        bool _data_exception:1;
-        bool _data_pointer:1;
-        uint8_t bytes_defined:4;
-    };
-
-    ShadowByte() { exception = 0; pointer = 0; bytes_defined = 0; }
-    friend std::ostream &operator<<( std::ostream &o, ShadowByte b )
-    {
-        if ( b.exception )
-            return o << "[exception]";
-        if ( b.pointer && b.is_first )
-            return o << "[pointer " << (b.obj_defined ? "d" : "u")
-                     << (b.off_defined ? "d" : "u") << "]";
-        if ( b.pointer )
-            return o << "[pointer cont]";
-        return o << "[data " << int( b.bytes_defined ) << "]";
-    }
+    InternalPtr object;
+    int offset, size;
+    InObject( InternalPtr p, int o, int s ) : object( p ), offset( o ), size( s ) {}
 };
 
-static_assert( sizeof( ShadowByte ) == 1 );
+struct InVoid {};
+struct InValue {};
 
-struct ShadowException {};
-
-template< typename PointerV >
-struct Shadow
+template< typename Proxy, typename Pool >
+struct BitContainer
 {
-    ShadowByte *_first;
-    ShadowException *_except;
-    int _size;
-
-    Shadow( ShadowByte *f, ShadowException *e, int s ) : _first( f ), _except( e ), _size( s ) {}
-
-    void update( int, value::Void )
+    struct iterator
     {
+        uint8_t *_base; int _pos;
+        Proxy operator*() { return Proxy( _base, _pos ); }
+        Proxy operator->() { return Proxy( _base, _pos ); }
+        iterator &operator++() { _pos ++; return *this; }
+        iterator operator+( int off ) { auto r = *this; r._pos += off; return r; }
+        iterator( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
+        bool operator!=( iterator o ) const { return _base != o._base || _pos != o._pos; }
+        bool operator<( iterator o ) const { return _pos < o._pos; }
+    };
+    using Ptr = typename Pool::Pointer;
+
+    Ptr _base;
+    Pool &_pool;
+    int _from, _to;
+
+    BitContainer( Pool &p, Ptr b, int f, int t ) : _base( b ), _pool( p ), _from( f ), _to( t ) {}
+    iterator begin() { return iterator( _pool.template machinePointer< uint8_t >( _base ), _from ); }
+    iterator end() { return iterator( _pool.template machinePointer< uint8_t >( _base ), _to ); }
+    Proxy operator[]( int i ) {
+        return Proxy( _pool.template machinePointer< uint8_t >( _base ), _from + i ); }
+};
+
+template< typename IP >
+using PointerLocation = brick::types::Union< InObject< IP >, InVoid, InValue >;
+
+enum class ShadowType { Data, Pointer1, Pointer2, Exception };
+enum class ExceptionType { Pointer, Data };
+
+inline std::ostream &operator<<( std::ostream &o, ShadowType t )
+{
+    switch ( t ) {
+        case ShadowType::Exception: return o << "e";
+        case ShadowType::Pointer1: return o << "1";
+        case ShadowType::Pointer2: return o << "2";
+        case ShadowType::Data: return o << "d";
+        default: return o << "?";
     }
+}
 
-    void query( int, value::Void )
+union ShadowException
+{
+    struct
     {
-    }
+        ExceptionType type   : 1;
+        uint32_t offset      : 30;
+        uint32_t unalignment : 2;
+        /* within the pointer */
+        uint32_t ptr_off     : 3;
+        uint32_t ptr_len     : 3;
+    };
+    struct
+    {
+        ExceptionType : 1;
+        uint32_t      : 30;
+        uint32_t bitmask;
+    };
+};
 
-    template < typename T >
-    void update( int, value::Float< T > )
-    {
-        // NOT_IMPLEMENTED();
-    }
+template< typename _Internal >
+struct MutableShadow
+{
+    struct Anchor {};
+    using Internal = _Internal;
+    using InObj = InObject< Internal >;
+    using Pool = mem::Pool< typename Internal::Rep >;
 
-    template < typename T>
-    void query( int, value::Float< T > )
-    {
-        // NOT_IMPLEMENTED();
-    }
+    Pool _type, _defined;
 
-    template< int Width, bool IsSigned >
-    void update( int offset, value::Int< Width, IsSigned > v )
+    struct Loc
     {
-        if ( v._ispointer ) {
-            update( offset, PointerV(v) );
+        Internal object;
+        Anchor anchor;
+        int offset;
+        Loc( Internal o, Anchor a, int off = 0 ) : object( o ), anchor( a ), offset( off ) {}
+        Loc operator-( int i ) const { Loc r = *this; r.offset -= i; return r; }
+        Loc operator+( int i ) const { Loc r = *this; r.offset += i; return r; }
+    };
+
+    struct TypeProxy
+    {
+        uint8_t *_base; int _pos;
+        int shift() const { return 2 * ( ( _pos % 16 ) / 4 ); }
+        uint8_t mask() const { return uint8_t( 0b11 ) << shift(); }
+        uint8_t &word() const { return *( _base + _pos / 16 ); }
+        TypeProxy &operator=( const TypeProxy &o ) { return *this = ShadowType( o ); }
+        TypeProxy &operator=( ShadowType st )
+        {
+            word() &= ~mask();
+            word() |= uint8_t( st ) << shift();
+            return *this;
         }
-        // ToDo
-    }
+        ShadowType get() const
+        {
+            return ShadowType( ( word() & mask() ) >> shift() );
+        }
+        operator ShadowType() const { return get(); }
+        TypeProxy *operator->() { return this; }
+        TypeProxy( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
+    };
 
-    template< int Width, bool IsSigned >
-    void query( int offset, value::Int< Width, IsSigned >& v )
+    struct DefinedProxy
     {
-        auto &a = _first[ offset / 4 ];
-        if ( a.pointer && a.is_first && Width >= PointerBits )
-            v._ispointer = true;
-        v.defined( true ); /* FIXME */
-        // ToDo
-    }
-
-    template< typename V >
-    typename std::enable_if< V::IsPointer >::type update( int offset, V v )
-    {
-        if ( offset % 4 )
-            NOT_IMPLEMENTED();
-        static_assert( PointerBytes == 8 );
-        auto &a = _first[ offset / 4 ], &b = _first[ offset / 4 + 1 ];
-        a.exception = b.exception = false;
-        a.pointer = b.pointer = true;
-        a.is_first = true;
-        b.is_first = false;
-        a.obj_defined = v._obj_defined;
-        a.off_defined = v._off_defined;
-    }
-
-    template< typename V >
-    typename std::enable_if< V::IsPointer >::type query( int offset, V &v )
-    {
-        if ( offset % 4 )
-            NOT_IMPLEMENTED();
-
-        auto &a = _first[ offset / 4 ], &b = _first[ offset / 4 + 1 ];
-        v._obj_defined = v._off_defined = false;
-        if ( !a.pointer || !a.is_first )
-            return;
-        ASSERT( b.pointer );
-        ASSERT( !b.is_first );
-        v._obj_defined = a.obj_defined;
-        v._off_defined = a.off_defined;
-    }
-
-    void update_slowpath( Shadow from_sh, int from_off, int to_off, int bytes )
-    {
-        int clearance = 0;
-
-        /* scan PointerBytes-1 backwards to see if we may be damaging something */
-        for ( int i = 1; i < PointerBytes - 1 && i < to_off; ++i )
+        uint8_t *_base; int _pos;
+        uint8_t mask() const { return uint8_t( 1 ) << ( _pos % 8 ); }
+        uint8_t &word() const { return *( _base + ( _pos / 8 ) ); };
+        DefinedProxy &operator=( const DefinedProxy &o ) { return *this = uint8_t( o ); }
+        DefinedProxy &operator=( uint8_t b )
         {
-            ShadowByte *t = _first + (to_off - i) / 4;
-            if ( t->exception )
-                NOT_IMPLEMENTED();
-            if ( t->pointer && t->is_first )
-                clearance = i;
-        }
-        for ( int i = 1; i < PointerBytes - 1 && i < to_off; ++i )
-        {
-            ShadowByte *t = _first + (to_off - i) / 4;
-            if ( t->pointer && !t->is_first && i >= PointerBytes / 2 )
-                clearance = 0;
-        }
-
-        to_off -= clearance;
-        bytes += clearance;
-
-        uint8_t topbit = 8;
-
-        struct
-        {
-            uint8_t defined;
-            bool obj_defined:1;
-            bool off_defined:1;
-            bool pointer:1;
-            bool exception:1;
-        } v[bytes];
-
-        int b = 0;
-        while ( b < clearance )
-        {
-            ShadowByte *t = _first + (to_off + b) / 4;
-            int k = (to_off + b) % 4;
-            v[b].exception = false;
-            v[b].pointer = false;
-            v[b].defined = 0;
-            if ( t->exception )
-                NOT_IMPLEMENTED();
-            if ( !t->pointer )
-                v[b].defined = t->bytes_defined & (topbit >> k) ? 255 : 0;
-            ++b;
-        }
-
-        b = clearance;
-        while ( b < bytes )
-        {
-            v[b].exception = false;
-            v[b].pointer = false;
-            ShadowByte *f = from_sh._first + (from_off + b - clearance) / 4;
-            int k = (from_off + b - clearance) % 4;
-            if ( f->exception )
-                NOT_IMPLEMENTED();
-            if ( f->pointer && bytes - b >= PointerBytes )
-            {
-                ASSERT( !k );
-                ASSERT( f->is_first );
-                v[ b ].pointer = true;
-                v[ b ].obj_defined = true;
-                v[ b ].off_defined = true;
-                for ( int i = 0; i < PointerBytes; ++i )
-                    v[ b++ ].defined = 0;
-                continue;
-            }
-            v[ b++ ].defined = f->pointer ? 0 : f->bytes_defined & (topbit >> k) ? 255 : 0;
-        }
-
-        b = 0;
-        while ( b < bytes )
-        {
-            ShadowByte *t = _first + (to_off + b) / 4;
-            int k = (to_off + b) % 4;
-            if ( t->exception )
-                NOT_IMPLEMENTED();
-            if ( !k && v[ b ].pointer && bytes - b >= PointerBytes )
-            {
-                t->pointer = true;
-                t->obj_defined = v[ b ].obj_defined;
-                t->off_defined = v[ b ].off_defined;
-                t->is_first = true;
-                (t + 1)->pointer = true;
-                (t + 1)->is_first = false;
-                b += PointerBytes;
-                continue;
-            }
-            t->pointer = false;
-            t->bytes_defined &= ~(topbit >> k);
-            if ( v[ b ].defined == 255 )
-                t->bytes_defined |= topbit >> k;
-            else if ( v[ b ].defined )
-                NOT_IMPLEMENTED(); // exception
-            ++ b;
-        }
-
-        ASSERT_EQ( b, bytes );
-
-        for ( int i = 0; i < PointerBytes / 2 && to_off + b + i < _size; ++i )
-        {
-            ShadowByte *t = _first + (to_off + b + i) / 4;
-            int k = (to_off + b + i) % 4;
-            if ( t->exception )
-                NOT_IMPLEMENTED();
-            if ( !k && t->pointer && !t->is_first)
-            {
-                t->pointer = false;
-                t->bytes_defined = 0;
-            }
-        }
-    }
-
-    void update_boundary( Shadow from_sh, int from_off, int to_off, int bytes, int polarity )
-    {
-        ASSERT( polarity );
-        ASSERT_LT( bytes, 4 );
-
-        if ( bytes )
-        {
-            ShadowByte *from = from_sh._first + from_off / 4, *to = _first + to_off / 4;
-            if ( from->exception || to->exception )
-                NOT_IMPLEMENTED();
-            to->pointer = false; /* TODO form an exception if *to was a pointer */
-            if ( from->pointer ) /* TODO form an exception instead */
-                to->bytes_defined = 0;
+            if ( b == 0xff )
+                word() |= mask();
             else
-            {
-                uint8_t mask = bitlevel::fill< uint8_t >( bytes );
-                if ( polarity > 0 ) /* first 'bytes' bytes are affected */
-                    mask = mask << ( 4 - bytes );
-                to->bytes_defined &= ~mask;
-                to->bytes_defined |= from->bytes_defined & mask;
-            }
+                word() &= ~mask();
+            return *this;
         }
-
-        ShadowByte *affected = nullptr;
-        if ( polarity < 0 && to_off > 0 )
-            affected = _first + ( to_off - 1 ) / 4;
-        if ( polarity > 0 && to_off < _size )
-            affected = _first + to_off / 4;
-        if ( affected && affected->exception )
-            NOT_IMPLEMENTED();
-        if ( affected && affected->pointer )
+        operator uint8_t() const
         {
-            affected->pointer = 0;
-            affected->bytes_defined = 0;
+            return word() & mask() ? 0xff : 0;
+        }
+        DefinedProxy( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
+    };
+
+    using TypeC = BitContainer< TypeProxy, Pool >;
+    using DefinedC = BitContainer< DefinedProxy, Pool >;
+
+    struct PointerC
+    {
+        using t_iterator = typename TypeC::iterator;
+        struct proxy
+        {
+            PointerC *_parent;
+            t_iterator _i;
+            proxy( PointerC * p, t_iterator i ) : _parent( p ), _i( i )
+            {
+                ASSERT( *i == ShadowType::Pointer1 || *i == ShadowType::Exception );
+            }
+            proxy *operator->() { return this; }
+            int offset() { return _i._pos - _parent->types.begin()._pos; }
+            int size()
+            {
+                if ( *_i == ShadowType::Pointer1 && *(_i + 4) == ShadowType::Pointer2 )
+                    return 8;
+                if ( *_i == ShadowType::Pointer1 )
+                    return 4;
+                NOT_IMPLEMENTED();
+            }
+        };
+
+        struct iterator
+        {
+            PointerC *_parent;
+            t_iterator _self;
+            void seek()
+            {
+                while ( _self < _parent->types.end() &&
+                        *_self != ShadowType::Pointer1 &&
+                        *_self != ShadowType::Exception ) _self = _self + 4;
+                if ( ! ( _self < _parent->types.end() ) )
+                    _self = _parent->types.end();
+            }
+            iterator &operator++() { _self = _self + 4; seek(); return *this; }
+            proxy operator*() { return proxy( _parent, _self ); }
+            proxy operator->() { return proxy( _parent, _self ); }
+            bool operator!=( iterator o ) const { return _parent != o._parent || _self != o._self; }
+            iterator( PointerC *p, t_iterator s ) : _parent( p ), _self( s ) {}
+        };
+
+        TypeC types;
+        iterator begin() { auto b = iterator( this, types.begin() ); b.seek(); return b; }
+        iterator end() { return iterator( this, types.end() ); }
+        proxy atoffset( int i ) { return *iterator( types.begin() + i ); }
+        PointerC( Pool &p, Internal i, int f, int t ) : types( p, i, f, t ) {}
+    };
+
+    template< typename OP >
+    Anchor make( OP &origin, Internal p, int size )
+    {
+        /* types: 2 bits per word (= 1/2 bit per byte), defined: 1 bit per byte */
+        _type.materialise( p, ( size / 16 ) + ( size % 16 ? 1 : 0 ), origin );
+        _defined.materialise( p, ( size / 8 )  + ( size % 8  ? 1 : 0 ), origin );
+        return Anchor();
+    }
+
+    void free( Loc ) {} /* noop */
+
+    auto type( Loc l, int sz ) { return TypeC( _type, l.object, l.offset, l.offset + sz ); }
+    auto defined( Loc l, int sz ) { return DefinedC( _defined, l.object, l.offset, l.offset + sz ); }
+    auto pointers( Loc l, int sz ) { return PointerC( _type, l.object, l.offset, l.offset + sz ); }
+
+    template< typename CB >
+    void fix_boundary( Loc l, int size, CB cb )
+    {
+        auto t = type( l - 4, size + 8 );
+
+        if ( t[ 4 ] == ShadowType::Pointer2 ) /* first word of the write */
+        {
+            t[ 0 ] = ShadowType::Data; /* TODO exception */
+            cb( InVoid(), InObj( l.object, l.offset - 4, 4 ) );
+        }
+        /* last word of the write */
+        if ( t[ size + 4 ] == ShadowType::Pointer1 )
+        {
+            t[ size + 4 ] = ShadowType::Data; /* TODO exception */
+            cb( InVoid(), InObj( l.object, l.offset + 4, 4 ) );
         }
     }
 
-    void update_fastpath( Shadow from, int from_off, int to_off, int bytes )
+    template< typename V, typename CB >
+    void write( Loc l, V value, CB cb )
     {
-        ASSERT_EQ( from_off % 4, to_off % 4 );
-        if ( from._first == _first )
-            ASSERT_LEQ( bytes, abs( from_off - to_off ) );
+        const int size = sizeof( typename V::Raw );
+        fix_boundary( l, size, cb );
+        auto t = type( l, size );
+        if ( value.pointer() )
+        {
+            t[ 0 ] = ShadowType::Pointer1;
+            t[ 4 ] = ShadowType::Pointer2;
+            cb( InValue(), InObj( l.object, l.offset, 8 ) );
+        }
+        else
+            for ( int i = 0; i < size; i += 4 )
+                t[ i ] = ShadowType::Data;
 
-        /* copy non-overlapping regions with equal (mis)alignment */
+        union {
+            typename V::Raw _def;
+            uint8_t _def_bytes[ size ];
+        };
 
-        int head = to_off % 4 ? 4 - to_off % 4 : 0;
-        update_boundary( from, from_off, to_off, head, -1 );
-        to_off += head;
-        from_off += head;
-        int tail = ( to_off + bytes ) % 4;
-        update_boundary( from, from_off + bytes, to_off + bytes, tail, 1 );
-        bytes -= tail;
-
-        ASSERT_EQ( to_off % 4, 0 );
-        ASSERT_EQ( from_off % 4, 0 );
-        ASSERT_EQ( bytes % 4, 0 );
-
-        auto f = from._first + from_off / 4;
-        std::copy( f, f + bytes / 4, _first + to_off / 4 );
+        _def = value.defbits();
+        std::copy( _def_bytes, _def_bytes + size, defined( l, size ).begin() );
     }
 
-    void update( Shadow from, int from_off, int to_off, int bytes )
+    template< typename V >
+    void read( Loc l, V &value )
     {
-        return update_slowpath( from, from_off, to_off, bytes );
-#if 0 /* TODO */
-        if ( from_off % 4 != to_off % 4 )
-            return update_slowpath( from, from_off, to_off, bytes );
-        if ( from._first == _first && abs( from_off - to_off ) <= bytes )
-            return update_slowpath( from, from_off, to_off, bytes );
+        const int size = sizeof( typename V::Raw );
 
-        return update_fastpath( from, from_off, to_off, bytes );
-#endif
+        union {
+            typename V::Raw _def;
+            uint8_t _def_bytes[ size ];
+        };
+
+        auto def = defined( l, size );
+        std::copy( def.begin(), def.end(), _def_bytes );
+        value.defbits( _def );
+
+        auto t = type( l, size );
+        value.pointer( t[ 0 ] == ShadowType::Pointer1 && t[ 4 ] == ShadowType::Pointer2 );
+    }
+
+    template< typename FromSh, typename CB >
+    void copy( FromSh &from_sh, typename FromSh::Loc from, Loc to, int sz, CB cb )
+    {
+        fix_boundary( to, sz, cb );
+
+        auto from_def = from_sh.defined( from, sz ), to_def = defined( to, sz );
+        std::copy( from_def.begin(), from_def.end(), to_def.begin() );
+
+        auto t = type( to, sz );
+
+        for ( auto dt : t )
+            dt = ShadowType::Data;
+
+        for ( auto ptrloc : from_sh.pointers( from, sz ) )
+        {
+            if ( ptrloc.size() != 8 )
+                NOT_IMPLEMENTED(); /* exception */
+            t[ ptrloc.offset() ] = ShadowType::Pointer1;
+            t[ ptrloc.offset() + 4 ] = ShadowType::Pointer2;
+        }
+    }
+
+    template< typename CB >
+    void copy( Loc from, Loc to, int sz, CB cb ) { return copy( *this, from, to, sz, cb ); }
+
+    void dump( std::string what, Loc l, int sz )
+    {
+        std::cerr << what << ", obj = " << l.object << ", off = " << l.offset << ": ";
+        for ( auto t : type( l, sz ) )
+            std::cerr << t;
+        std::cerr << " ... ";
+        for ( auto d : defined( l, sz ) )
+            std::cerr << +d << " ";
+        std::cerr << std::endl;
     }
 };
 
@@ -349,14 +336,50 @@ struct Shadow
 
 namespace t_vm {
 
-struct Shadow
+using Pool = brick::mem::Pool<>;
+
+template< template< typename > class Shadow >
+struct NonHeap
+{
+    using Ptr = Pool::Pointer;
+    Pool pool;
+    Shadow< Ptr > shadows;
+    using Loc = typename Shadow< Ptr >::Loc;
+    using Anchor = typename Shadow< Ptr >::Anchor;
+
+    Anchor &anchor( Ptr p ) { return *pool.template machinePointer< Anchor >( p ); }
+    Loc shloc( Ptr p, int off ) { return Loc( p, anchor( p ), off ); }
+
+    Ptr make( int sz )
+    {
+        auto r = pool.allocate( sizeof( Ptr ) );
+        anchor( r ) = shadows.make( pool, r, sz );
+        return r;
+    }
+
+    template< typename T, typename CB >
+    void write( Ptr p, int off, T t, CB cb ) { shadows.write( shloc( p, off ), t, cb ); }
+
+    template< typename T >
+    void read( Ptr p, int off, T &t ) { shadows.read( shloc( p, off ), t ); }
+
+    template< typename CB >
+    void copy( Ptr pf, int of, Ptr pt, int ot, int sz, CB cb )
+    {
+        shadows.copy( shloc( pf, of ), shloc( pt, ot ), sz, cb );
+    }
+};
+
+struct MutableShadow
 {
     using PointerV = vm::value::Pointer<>;
-    using Sh = vm::Shadow< PointerV >;
+    using H = NonHeap< vm::MutableShadow >;
+    H heap;
+    H::Ptr obj;
 
-    std::vector< vm::ShadowByte > _shb;
-    Shadow() { _shb.resize( 100 ); }
+    MutableShadow() { obj = heap.make( 100 ); }
 
+#if 0
     void set_pointer( int off, bool offd = true, bool objd = true )
     {
         _shb[ off ].exception = false;
@@ -394,16 +417,57 @@ struct Shadow
     }
 
     Sh shadow() { return Sh{ &_shb.front(), nullptr, 400 }; }
+#endif
 
-    TEST( query )
+    TEST( read_int )
     {
-        set_pointer( 0 );
-        PointerV p( vm::nullPointer(), false );
-        ASSERT( !p.defined() );
-        shadow().query( 0, p );
-        ASSERT( p.defined() );
+        vm::value::Int< 16 > i1( 32, 0xFFFF, false ), i2;
+        heap.write( obj, 0, i1, []( auto, auto ) {} );
+        heap.read( obj, 0, i2 );
+        ASSERT( i2.defined() );
     }
 
+    TEST( copy_int )
+    {
+        vm::value::Int< 16 > i1( 32, 0xFFFF, false ), i2;
+        heap.write( obj, 0, i1, []( auto, auto ) {} );
+        heap.copy( obj, 0, obj, 2, 2, []( auto, auto ) {} );
+        heap.read( obj, 2, i2 );
+        ASSERT( i2.defined() );
+    }
+
+    TEST( read_ptr )
+    {
+        PointerV p1( vm::nullPointer(), true ), p2;
+        heap.write( obj, 0, p1, []( auto, auto ) {} );
+        heap.read< PointerV >( obj, 0, p2 );
+        ASSERT( p2.defined() );
+    }
+
+    TEST( read_2_ptr )
+    {
+        PointerV p1( vm::nullPointer(), true ), p2;
+        heap.write( obj, 0, p1, []( auto, auto ) {} );
+        heap.write( obj, 8, p1, []( auto, auto ) {} );
+        heap.read< PointerV >( obj, 0, p2 );
+        ASSERT( p2.defined() );
+        heap.read< PointerV >( obj, 8, p2 );
+        ASSERT( p2.defined() );
+    }
+
+    TEST( copy_ptr )
+    {
+        PointerV p1( vm::nullPointer(), true ), p2;
+        ASSERT( p1.pointer() );
+        heap.write( obj, 0, p1, []( auto, auto ) {} );
+        auto ptrs = heap.shadows.pointers( heap.shloc( obj, 0 ), 8 );
+        auto b = ptrs.begin();
+        heap.copy( obj, 0, obj, 8, 8, []( auto, auto ) {} );
+        heap.read< PointerV >( obj, 8, p2 );
+        ASSERT( p2.defined() );
+    }
+
+#if 0
     TEST( copy_aligned_ptr )
     {
         set_pointer( 0 );
@@ -583,6 +647,7 @@ struct Shadow
         check_data( 2, 12 );
         check_pointer( 3 );
     }
+#endif
 };
 
 }
