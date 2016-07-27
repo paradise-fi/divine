@@ -1,8 +1,8 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
-#include "dios.h"
-#include "dios_syscall.h"
-#include "opcodes.h"
+#include <divine/dios.h>
+#include <divine/dios_syscall.h>
+#include <divine/opcodes.h>
 
 #include <tuple>
 #include <utility>
