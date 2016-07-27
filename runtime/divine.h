@@ -40,11 +40,6 @@ enum _VM_Fault
     _VM_F_Last
 };
 
-enum _VM_FaultAction
-{
-    _VM_FA_Resume, _VM_FA_Abort
-};
-
 struct _VM_Env {
     const char *key;
     const char *value;
@@ -58,6 +53,7 @@ enum _VM_MemAccessType { _VM_MAT_Load = 0x1, _VM_MAT_Store = 0x2, _VM_MAT_Both =
 EXTERN_C
 
 void *__sys_init( const struct _VM_Env *env ) __attribute__((__annotate__("brick.llvm.prune.root")));
+typedef void (*__sys_fault_t)( enum _VM_Fault type, struct _VM_Frame *cont_frame, void (*cont_pc)(void) ) __attribute__((__noreturn__));
 
 /*
  * Set up the scheduler. After __sys_init returns, the VM will repeatedly call
@@ -72,7 +68,7 @@ void *__sys_init( const struct _VM_Env *env ) __attribute__((__annotate__("brick
  * interrupted, control returns to the instruction right after the __vm_jump).
  */
 void __vm_set_sched( void *(*f)( int, void * ) ) NOTHROW NATIVE_VISIBLE;
-void __vm_set_fault( void (*f)( enum _VM_Fault ) ) NOTHROW NATIVE_VISIBLE;
+void __vm_set_fault( __sys_fault_t ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * When execution is interrupted, the VM will store the address of the
