@@ -211,6 +211,7 @@ struct Pointer : Base
     };
 
     bool _obj_defined:1, _off_defined:1;
+    bool _ispointer:1;
 
     template< typename P >
     auto offset( GenericPointer p ) { return P( p ).offset(); }
@@ -238,12 +239,12 @@ struct Pointer : Base
         return o;
     }
 
-    Pointer() : Pointer( nullPointer(), false ) {}
-    Pointer( Cooked x, bool d = true )
-        : _cooked( x ), _obj_defined( d ), _off_defined( d ) {}
+    Pointer() : Pointer( nullPointer(), false, false ) {}
+    Pointer( Cooked x, bool d = true, bool isptr = true )
+        : _cooked( x ), _obj_defined( d ), _off_defined( d ), _ispointer( isptr ) {}
 
     explicit Pointer( Raw x )
-        : _raw( x ), _obj_defined( false ), _off_defined( false ) {}
+        : _raw( x ), _obj_defined( false ), _off_defined( false ), _ispointer( false ) {}
 
     Pointer operator+( int off )
     {
@@ -262,14 +263,16 @@ struct Pointer : Base
 
     Raw defbits() { return defined() ? full< Raw >() : 0; } /* FIXME */
     void defbits( Raw r ) { _obj_defined = _off_defined = ( r == full< Raw >() ); }
+
     Raw raw() { return _raw; }
     void raw( Raw r ) { _raw = r; }
 
     bool defined() { return _obj_defined && _off_defined; }
     void defined( bool d ) { _obj_defined = _off_defined = d; }
 
-    bool pointer() { return defined(); }
-    void pointer( bool b ) { if ( !b ) defined( 0 ); }
+    bool pointer() { return _ispointer; }
+    void pointer( bool b ) { _ispointer = true; }
+
     GenericPointer cooked() { return _cooked; }
     void v( GenericPointer p ) { _cooked = p; }
     Int< 1, false > compare( Pointer o, bool v )
