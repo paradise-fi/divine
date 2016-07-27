@@ -209,13 +209,21 @@ struct Eval
         using Control = typename Context::Control;
         Control *_ctrl;
         Fault _fault;
+        PointerV _frame;
+        CodePointer _pc;
         bool _trace;
 
-        FaultStream( Control &c, Fault f, bool t ) : _ctrl( &c ), _fault( f ), _trace( t ) {}
-        FaultStream( FaultStream &fs ) : _ctrl( fs._ctrl ), _fault( fs._fault ), _trace( fs._trace )
+        FaultStream( Control &c, Fault f, PointerV frame, CodePointer pc, bool t )
+            : _ctrl( &c ), _fault( f ), _frame( frame ), _pc( pc ), _trace( t )
+        {}
+
+        FaultStream( FaultStream &&s )
+            : FaultStream( *s._ctrl, s._fault, s._frame, s._pc, s._trace )
         {
-            fs._ctrl = nullptr;
+            s._ctrl = nullptr;
         }
+
+        FaultStream( const FaultStream & ) = delete;
 
         ~FaultStream()
         {
@@ -223,13 +231,14 @@ struct Eval
                 return;
             if ( _trace )
                 _ctrl->trace( "FAULT: " + str() );
-            _ctrl->fault( _fault );
+            _ctrl->fault( _fault, _frame, _pc );
         }
     };
 
-    FaultStream fault( Fault f )
+    FaultStream fault( Fault f ) { return fault( f, frame(), pc() + 1 ); }
+    FaultStream fault( Fault f, PointerV frame, CodePointer c )
     {
-        FaultStream fs( control(), f, true );
+        FaultStream fs( control(), f, frame, c, true );
         return fs;
     }
 
@@ -482,12 +491,12 @@ struct Eval
         else
         {
             auto cond = operand< BoolV >( 0 );
+            auto target = operandCk< PointerV >( cond.cooked() ? 2 : 1 );
             if ( !cond.defined() )
-                fault( _VM_F_Control ) << " conditional jump depends on an undefined value";
-            if ( cond.cooked() )
-                jumpTo( operandCk< PointerV >( 2 ) );
+                fault( _VM_F_Control, frame(), target.cooked() )
+                    << " conditional jump depends on an undefined value";
             else
-                jumpTo( operandCk< PointerV >( 1 ) );
+                jumpTo( target );
         }
     }
 
@@ -1346,7 +1355,7 @@ struct TContext
     void frame( PointerV p ) { _frame = p; }
     bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.cooked() ) == fr; }
 
-    void fault( vm::Fault f ) { _fault = f; _frame = vm::nullPointer(); }
+    void fault( vm::Fault f, PointerV, CodePointer ) { _fault = f; _frame = vm::nullPointer(); }
     void doublefault() { UNREACHABLE( "double fault" ); }
     void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
 

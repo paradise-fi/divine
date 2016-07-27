@@ -100,7 +100,7 @@ struct ConstContext
         void frame( PointerV ) {}
         PointerV globals() { return _globals; }
         PointerV constants() { return _constants; }
-        void fault( _VM_Fault ) { NOT_IMPLEMENTED(); }
+        void fault( _VM_Fault, PointerV, CodePointer ) { NOT_IMPLEMENTED(); }
         bool mask( bool )  { NOT_IMPLEMENTED(); }
         template< typename I >
         int choose( int, I, I ) { NOT_IMPLEMENTED(); }

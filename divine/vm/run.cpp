@@ -78,12 +78,12 @@ struct RunContext
             _mask = true;
         }
 
-        void fault( Fault f )
+        void fault( Fault f, PointerV frame, CodePointer pc )
         {
             if ( _fault == CodePointer( nullPointer() ) )
                 doublefault();
             else
-                enter( _fault, _frame, value::Int< 32 >( f ) );
+                enter( _fault, _frame, value::Int< 32 >( f ), frame, PointerV( pc ) );
         }
 
         bool mask( bool n )  { bool o = _mask; _mask = n; return o; }
