@@ -17,8 +17,7 @@
 namespace nativeRuntime {
 
 using Fault = _VM_Fault;
-using FaultAction = _VM_FaultAction;
-using FaultHandler = FaultAction (*)( Fault );
+using FaultHandler = __sys_fault_t;
 using SchedFn = void *(*)( int, void * );
 using Frame = _VM_Frame;
 
@@ -461,10 +460,9 @@ void __vm_set_fault( FaultHandler f ) noexcept {
 void __vm_fault( enum _VM_Fault t, ... ) noexcept {
     MutexGuard g( rtMutex );
     FaultGuard _( t );
-    if ( faultHandler( t ) == _VM_FA_Abort ) {
-        fprintf( stderr, "Fatal fault: %d, exiting.", int( t ) );
-        std::abort();
-    }
+    faultHandler( t, 0, 0 ); /* FIXME */
+    fprintf( stderr, "Fault handler returned, aborting." );
+    std::abort();
 }
 
 void __vm_set_sched( SchedFn s ) noexcept {
