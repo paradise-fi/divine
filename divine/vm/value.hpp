@@ -170,7 +170,7 @@ struct Float : Base
     Raw raw() { return _raw; }
     void raw( Raw r ) { _raw = r; }
 
-    bool defined() { return defbits() == full< Raw >(); }
+    bool defined() { return _defined; }
     void defined( bool d ) { _defined = d; }
     bool pointer() { return false; }
     void pointer( bool ) {} /* ignore */
@@ -269,7 +269,7 @@ struct Pointer : Base
     void defined( bool d ) { _obj_defined = _off_defined = d; }
 
     bool pointer() { return defined(); }
-    void pointer( bool b ) { if ( !b ) defbits( 0 ); }
+    void pointer( bool b ) { if ( !b ) defined( 0 ); }
     GenericPointer cooked() { return _cooked; }
     void v( GenericPointer p ) { _cooked = p; }
     Int< 1, false > compare( Pointer o, bool v )
