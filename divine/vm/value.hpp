@@ -125,7 +125,7 @@ struct Int : Base
         if ( !sh.defined() )
             return Int( 0, 0, false );
         return Int( raw() << sh.cooked(),
-                    _m << sh.cooked() | bitlevel::fill( 1 << sh.cooked() ) , false );
+                    _m << sh.cooked() | bitlevel::ones< Raw >( sh.cooked() ), false );
     }
     Int operator>>( Int< width, false > sh ) {
         if ( !sh.defined() )
@@ -134,7 +134,7 @@ struct Int : Base
         const int bits = 8 * sizeof( Raw );
         Raw mask = _m >> sh._raw;
         if ( !is_signed || _m >> ( bits - 1 ) ) // unsigned or defined sign bit
-                mask |= ~bitlevel::fill( 1 << ( bits - sh._raw ) );
+                mask |= ~bitlevel::ones< Raw >( bits - sh._raw );
 
         return Int( cooked() >> sh.cooked(), mask, false );
     }
