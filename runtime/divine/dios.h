@@ -20,11 +20,11 @@ EXTERN_C
 
 enum _DiOS_Fault
 {
-	_DiOS_F_Threading = _VM_F_Last,
-	_DiOS_F_Assert,
-	_DiOS_F_MissingFunction,
+    _DiOS_F_Threading = _VM_F_Last,
+    _DiOS_F_Assert,
+    _DiOS_F_MissingFunction,
     _DiOS_F_MainReturnValue,
-	_DiOS_F_Last
+    _DiOS_F_Last
 };
 
 #define __dios_assert_v( x, msg ) do { \
@@ -35,11 +35,11 @@ enum _DiOS_Fault
     } while (0)
 
 #define __dios_assert( x ) do { \
-		if ( !(x) ) { \
-			__vm_trace( "DiOS assert");\
-			__vm_fault( (_VM_Fault) _DiOS_F_Assert );\
-		} \
-	} while (0)
+        if ( !(x) ) { \
+            __vm_trace( "DiOS assert");\
+            __vm_fault( (_VM_Fault) _DiOS_F_Assert );\
+        } \
+    } while (0)
 
 typedef unsigned _DiOS_ThreadId;
 typedef const _MD_Function * _DiOS_FunPtr;
@@ -51,7 +51,7 @@ typedef const _MD_Function * _DiOS_FunPtr;
  * can be specified.
  */
 _DiOS_ThreadId __dios_start_thread( _DiOS_FunPtr routine, void *arg,
-	_DiOS_FunPtr cleanup ) NOTHROW;
+    _DiOS_FunPtr cleanup ) NOTHROW;
 
 /*
  * Get caller thread id
