@@ -41,6 +41,39 @@ namespace vm {
 
 namespace mem = brick::mem;
 
+template< typename FromH, typename ToH >
+typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
+                             std::map< typename FromH::Pointer, typename ToH::Pointer > &visited )
+{
+    auto seen = visited.find( root );
+    if ( seen != visited.end() )
+        return seen->second;
+
+    auto result = t.make( f.size( root ) ).cooked();
+    visited.emplace( root, result );
+    for ( auto pos : f.shadows().pointers( f.shloc( root ), f.size( root ) ) )
+    {
+        typename FromH::PointerV ptr;
+        typename ToH::PointerV ptr_c;
+        root.offset( pos.offset() );
+        result.offset( pos.offset() );
+        f.read( root, ptr );
+        auto obj = ptr.cooked();
+        obj.offset( 0 );
+        auto cloned = clone( f, t, obj, visited );
+        cloned.offset( ptr.cooked().offset() );
+        t.write( result, typename ToH::PointerV( cloned ) );
+    }
+    return result;
+}
+
+template< typename FromH, typename ToH >
+typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root )
+{
+    std::map< typename FromH::Pointer, typename ToH::Pointer > visited;
+    return clone( f, t, root, visited );
+}
+
 struct MutableHeap
 {
     /*
@@ -220,6 +253,19 @@ struct MutableHeap
         heap.write( p.cooked(), p );
         heap.read( p.cooked(), q );
         ASSERT( p.cooked() == q.cooked() );
+    }
+
+    TEST(clone)
+    {
+        vm::MutableHeap heap, cloned;
+        auto p = heap.make( 16 ), q = heap.make( 16 );
+        heap.write( p.cooked(), q );
+        heap.write( q.cooked(), p );
+        auto c_p1 = vm::clone( heap, cloned, p.cooked() );
+        vm::MutableHeap::PointerV c_q, c_p2;
+        cloned.read( c_p1, c_q );
+        cloned.read( c_q.cooked(), c_p2 );
+        ASSERT( vm::GenericPointer( c_p1 ) == c_p2.cooked() );
     }
 };
 
