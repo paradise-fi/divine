@@ -77,7 +77,9 @@ void __dios_dummy() NOTHROW;
 /*
  * Interrupt execution and go to scheduler
  */
-void __dios_interrupt() NOTHROW;
+void __dios_syscall_trap() NOTHROW;
+
+void __dios_syscall(int syscode, void* ret, ...);
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
 

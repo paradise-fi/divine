@@ -1,7 +1,9 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
-#include <divine/dios.h>
-#include <divine/opcodes.h>
+#include "dios.h"
+#include "dios_syscall.h"
+#include "opcodes.h"
+
 #include <tuple>
 #include <utility>
 #include <cstring>
@@ -12,96 +14,41 @@ namespace dios {
 
 using ThreadId = _DiOS_ThreadId;
 using FunPtr   = _DiOS_FunPtr;
-struct Scheduler;
 
 struct Syscall {
-	Syscall() : _syscall( Type::INACTIVE ) {
-		__vm_trace( "Syscall constructor" );
-	}
+    Syscall() noexcept : _syscode( _SC_INACTIVE ) { }
 
-	static ThreadId start_thread( FunPtr routine, void *arg, FunPtr cleanup ) {
-		InterruptMask mask;
-		__vm_trace( "Start thread issued" );
-		auto& inter = get();
-		__dios_assert_v( inter._syscall == Type::INACTIVE, "Overlapped syscall" );
-		__dios_assert_v( routine, "Invalid thread routine" );
-		inter._syscall = Type::START_THREAD;
-		inter._args.start_thread = Args::StartThread{ routine, arg, cleanup };
-		__vm_trace( "Before interrupt" );
-		__dios_interrupt();
-		__vm_trace( "After interrupt" );
-		return inter._result.thread_id;
-	}
+    void call(int syscode, void* ret, va_list& args) noexcept {
+        _syscode = static_cast< _DiOS_SC >( syscode );
+        _ret = ret;
+        va_copy( _args, args );
+        __dios_syscall_trap();
+        va_end( _args );
+    }
 
-	static ThreadId get_thread_id() {
-		InterruptMask mask;
-		__vm_trace( "Get id thread issued" );
-		auto& inter = get();
-		__dios_assert( inter._syscall == Type::INACTIVE );
-		inter._syscall = Type::GET_THREAD_ID;
-		__vm_trace( "Before interrupt" );
-		__dios_interrupt();
-		__vm_trace( "After interrupt" );
-		return inter._result.thread_id;
-	}
+    bool handle() noexcept {
+        if ( _syscode != _SC_INACTIVE ) {
+            ( *( _DiOS_SysCalls[ _syscode ] ) )( _ret, _args );
+            _syscode = _SC_INACTIVE;
+            return true;
+        }
+        return false;
+    }
 
-	static void kill_thread( ThreadId t_id, int reason) {
-		InterruptMask mask;
-		__vm_trace( "Kill thread issued" );
-		auto& inter = get();
-		__dios_assert( inter._syscall == Type::INACTIVE );
-		inter._syscall = Type::KILL_THREAD;
-		inter._args.kill_thread = Args::KillThread{ t_id, reason };
-		__vm_trace( "Before interrupt" );
-		__dios_interrupt();
-		__vm_trace( "After interrupt" );
-		return;
-	}
-
-	static void dummy() {
-		InterruptMask mask;
-		__vm_trace( "Dummy syscall" );
-		auto& inter = get();
-		__dios_assert( inter._syscall == Type::INACTIVE );
-		inter._syscall = Type::DUMMY;
-
-		__vm_trace( "Before interrupt" );
-		__dios_interrupt();
-		__vm_trace( "After interrupt" );
-	}
-
-	static Syscall& get() {
-		if ( !instance ) {
-			instance = static_cast< Syscall *> ( __vm_make_object( sizeof( Syscall ) ) );
-			memset( instance, 0, sizeof( Syscall ) );
-		}
-		return *instance;
-	}
+    static Syscall& get() noexcept {
+        if ( !instance ) {
+            instance = static_cast< Syscall *> ( __vm_make_object( sizeof( Syscall ) ) );
+            new ( instance ) Syscall();
+        }
+        return *instance;
+    }
 
 private:
-
-	enum class Type { INACTIVE, START_THREAD, KILL_THREAD, GET_THREAD_ID, DUMMY };
-	
-	Type _syscall;
-	union RetValue {
-		ThreadId thread_id;
-
-		RetValue() {}
-	} _result;
-
-	union Args {
-		using StartThread = std::tuple< FunPtr, void *, FunPtr >;
-		using KillThread  = std::tuple< ThreadId, int >;
-		
-		StartThread start_thread;
-		KillThread  kill_thread;
-
-		Args() {}
-	} _args;
-
-	static Syscall *instance;
-
-	friend struct Scheduler;
+    _DiOS_SC _syscode;
+    void *_ret;
+    va_list _args;
+    
+    static Syscall *instance;
 };
 
 Syscall *Syscall::instance;
@@ -322,13 +269,16 @@ struct Scheduler {
 		get_threads()[ t_id ].stop_thread( reason );
 	}
 private:
-	ControlFlow* _cf;
+    static ControlFlow* _cf;
 };
+
+ControlFlow *Scheduler::_cf;
 
 } // namespace dios
 
 
 void *__dios_sched( int st_size, void *_state ) noexcept;
+void __dios_fault( enum _VM_Fault what ) noexcept;
 int main(...);
 
 extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
@@ -356,23 +306,22 @@ extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
 }
 
 void *__dios_sched( int, void *state ) noexcept {
-	dios::Scheduler scheduler( state );
-	if ( scheduler.handle_syscall() ) {
-		__vm_jump( scheduler.run_thread(), nullptr, 1 );
-		__dios_trace( 0, "Syscall should be handled\n" );
-		return scheduler.get_cf();
-	}
+    dios::Scheduler scheduler( state );
+    if ( dios::Syscall::get().handle() ) {
+        __vm_jump( scheduler.run_thread(), nullptr, 1 );
+        return scheduler.get_cf();
+    }
 
-	_VM_Frame *jmp = scheduler.run_threads();
-	if ( jmp ) {
-		__vm_jump( jmp, nullptr, 1 );
-	}
+    _VM_Frame *jmp = scheduler.run_threads();
+    if ( jmp ) {
+        __vm_jump( jmp, nullptr, 1 );
+    }
 
-	__dios_trace( 0, "\n" );
-	return scheduler.get_cf();
+    __dios_trace( 0, "\n" );
+    return scheduler.get_cf();
 }
 
-void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept __attribute__((__noreturn__));
+void __dios_fault( enum _VM_Fault what ) noexcept;
 
 extern "C" void *__dios_init( const _VM_Env *env ) {
 	__vm_trace( "__sys_init called" );
@@ -407,28 +356,41 @@ _DiOS_FunPtr __dios_get_fun_ptr( const char *name ) noexcept {
 _DiOS_ThreadId __dios_start_thread( _DiOS_FunPtr routine, void *arg,
 	_DiOS_FunPtr cleanup ) noexcept
 {
-	return dios::Syscall::get().start_thread( routine, arg, cleanup );
+    _DiOS_ThreadId ret;
+    __dios_syscall( _SC_START_THREAD, &ret, routine, arg, cleanup );
+    return ret;
 }
 
 _DiOS_ThreadId __dios_get_thread_id() noexcept {
-	return dios::Syscall::get().get_thread_id();
+    _DiOS_ThreadId ret;
+    __dios_syscall( _SC_GET_THREAD_ID, &ret );
+    return ret;
 }
 
 void __dios_kill_thread( _DiOS_ThreadId id, int reason ) noexcept {
-	return dios::Syscall::get().kill_thread( id, reason ); 
+    __dios_syscall( _SC_KILL_THREAD, nullptr, id, reason );
 }
 
 void __dios_dummy() noexcept {
-	return dios::Syscall::get().dummy();
+    __dios_syscall( _SC_DUMMY, nullptr );
 }
 
-void __dios_interrupt() noexcept {
-	int mask = __vm_mask( 1 );
-	int interrupt = __vm_interrupt( 1 );
-	__vm_mask( 0 );
-	__vm_mask( 1 );
-	//__vm_interrupt( interrupt );
-	__vm_mask( mask );
+void __dios_syscall_trap() noexcept {
+    int mask = __vm_mask( 1 );
+    __vm_interrupt( 1 );
+    __vm_mask( 0 );
+    __vm_mask( 1 );
+    __vm_mask( mask );
+}
+
+void __dios_syscall( int syscode, void* ret, ... ) {
+    int mask = __vm_mask( 1 );
+
+    va_list vl;
+    va_start( vl, ret );
+    dios::Syscall::get().call( syscode, ret, vl );
+    va_end( vl );
+    __vm_mask( mask );
 }
 
 namespace {
@@ -482,7 +444,7 @@ unmask:
 	__vm_mask(mask);
 }
 
-void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept {
+void __dios_fault( enum _VM_Fault what ) noexcept {
     auto mask = __vm_mask( 1 );
     InTrace _; // avoid dumping what we do
 
