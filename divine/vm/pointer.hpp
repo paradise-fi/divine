@@ -104,10 +104,17 @@ struct CodePointer : GenericPointer
 {
     CodePointer( ObjT f = 0, OffT i = 0 ) : GenericPointer( PointerType::Code, f, i ) {}
 
-    auto function() { return _rep.obj; }
+    auto function() const { return _rep.obj; }
     void function( ObjT f ) { _rep.obj = f; }
-    auto instruction() { return _rep.off; }
+    auto instruction() const { return _rep.off; }
     void instruction( OffT i ) { _rep.off = i; }
+
+    CodePointer operator+( int i ) const
+    {
+        CodePointer r( *this );
+        r.instruction( instruction() + 1 );
+        return r;
+    }
 };
 
 /*
