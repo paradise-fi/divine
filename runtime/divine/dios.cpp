@@ -247,9 +247,7 @@ ControlFlow *Scheduler::_cf;
 
 } // namespace dios
 
-
 void *__dios_sched( int st_size, void *_state ) noexcept;
-void __dios_fault( enum _VM_Fault what ) noexcept;
 int main(...);
 
 extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
@@ -292,7 +290,7 @@ void *__dios_sched( int, void *state ) noexcept {
     return scheduler.get_cf();
 }
 
-void __dios_fault( enum _VM_Fault what ) noexcept;
+void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept __attribute__((__noreturn__));
 
 extern "C" void *__dios_init( const _VM_Env *env ) {
     while ( env->key ) {
@@ -420,7 +418,32 @@ unmask:
     __vm_mask(mask);
 }
 
-void __dios_fault( enum _VM_Fault what ) noexcept {
+void __sc_start_thread( void *retval, va_list vl ) {
+    auto routine = va_arg( vl, dios::FunPtr );
+    auto arg = va_arg( vl, void * );
+    auto cleanup = va_arg( vl, dios::FunPtr );
+    auto ret = static_cast< dios::ThreadId * >( retval );
+
+    *ret = dios::Scheduler().start_thread( routine, arg, cleanup );
+}
+
+void __sc_kill_thread( void *, va_list vl ) {
+    auto id = va_arg( vl, dios::ThreadId );
+    auto reason = va_arg( vl, int );
+
+    dios::Scheduler().kill_thread( id, reason );
+}
+
+void __sc_get_thread_id( void *retval, va_list vl ) {
+    auto ret = static_cast< dios::ThreadId * >( retval );
+    *ret = dios::Scheduler().get_thread_id();
+}
+
+void __sc_dummy( void *ret, va_list vl ) {
+    __vm_trace( "Dummy syscall issued!" );
+}
+
+void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept {
     auto mask = __vm_mask( 1 );
     InTrace _; // avoid dumping what we do
 
