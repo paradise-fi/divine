@@ -372,7 +372,7 @@ void *__dios_sched( int, void *state ) noexcept {
 	return scheduler.get_cf();
 }
 
-void __dios_fault( enum _VM_Fault what ) noexcept;
+void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept __attribute__((__noreturn__));
 
 extern "C" void *__dios_init( const _VM_Env *env ) {
 	__vm_trace( "__sys_init called" );
@@ -482,7 +482,7 @@ unmask:
 	__vm_mask(mask);
 }
 
-void __dios_fault( enum _VM_Fault what ) noexcept {
+void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept {
     auto mask = __vm_mask( 1 );
     InTrace _; // avoid dumping what we do
 
@@ -524,7 +524,7 @@ void __dios_fault( enum _VM_Fault what ) noexcept {
     for ( auto *f = __vm_query_frame()->parent; f != nullptr; f = f->parent )
         diosTraceInternal( 0, "%d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );
 
-    __vm_mask( mask );
+    __vm_jump( cont_frame, cont_pc, !mask );
 }
 
 _Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept {
