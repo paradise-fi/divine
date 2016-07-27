@@ -142,7 +142,7 @@ struct Int : Base
     friend std::ostream & operator<<( std::ostream &o, Int v )
     {
         std::stringstream def;
-        def << std::hex << std::setw( width / 4 ) << std::setfill( '0' )  << v._m;
+        def << std::hex << std::setw( width / 4 ) << std::setfill( '0' ) << +v._m;
         return o << "[int " << brick::string::fmt( v.cooked() ) << " " << def.str() << "]";
     }
 };
