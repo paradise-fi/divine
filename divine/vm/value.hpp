@@ -384,7 +384,7 @@ struct TestInt
         Int16 c( 1135, 0xFFF, false ), d( 2, 0xFFFF, false );
         auto res1 = c >> d;
         ASSERT_EQ( res1.cooked(), 1135 >> 2 );
-        ASSERT_EQ( res1._m, 0x83FF );
+        ASSERT_EQ( res1._m, 0xC3FF );
 
         Int16 e( 1, 0xFEFF, false );
         ASSERT( !( c >> e ).defined() );
