@@ -237,18 +237,18 @@ struct MutableShadow
     template< typename CB >
     void fix_boundary( Loc l, int size, CB cb )
     {
-        auto t = type( l - 4, size + 8 );
+        auto t = type( l, size );
 
-        if ( t[ 4 ] == ShadowType::Pointer2 ) /* first word of the write */
+        if ( t[ 0 ] == ShadowType::Pointer2 ) /* first word of the write */
         {
-            t[ 0 ] = ShadowType::Data; /* TODO exception */
+            t[ -4 ] = ShadowType::Data; /* TODO exception */
             cb( InVoid(), InObj( l.object, l.offset - 4, 4 ) );
         }
         /* last word of the write */
-        if ( t[ size + 4 ] == ShadowType::Pointer1 )
+        if ( t[ size - 4 ] == ShadowType::Pointer1 )
         {
-            t[ size + 4 ] = ShadowType::Data; /* TODO exception */
-            cb( InVoid(), InObj( l.object, l.offset + 4, 4 ) );
+            t[ size ] = ShadowType::Data; /* TODO exception */
+            cb( InVoid(), InObj( l.object, l.offset + size - 4, 4 ) );
         }
     }
 
