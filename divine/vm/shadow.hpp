@@ -53,6 +53,7 @@ struct BitContainer
         iterator operator+( int off ) { auto r = *this; r._pos += off; return r; }
         iterator( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
         bool operator!=( iterator o ) const { return _base != o._base || _pos != o._pos; }
+        bool operator==( iterator o ) const { return _base == o._base && _pos == o._pos; }
         bool operator<( iterator o ) const { return _pos < o._pos; }
     };
     using Ptr = typename Pool::Pointer;
@@ -209,6 +210,7 @@ struct MutableShadow
             proxy operator*() { return proxy( _parent, _self ); }
             proxy operator->() { return proxy( _parent, _self ); }
             bool operator!=( iterator o ) const { return _parent != o._parent || _self != o._self; }
+            bool operator==( iterator o ) const { return _parent == o._parent && _self == o._self; }
             iterator( PointerC *p, t_iterator s ) : _parent( p ), _self( s ) {}
         };
 

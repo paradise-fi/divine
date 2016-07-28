@@ -41,6 +41,68 @@ namespace vm {
 
 namespace mem = brick::mem;
 
+template< typename H1, typename H2 >
+int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H2::Pointer r2,
+             std::set< typename H1::Pointer > &visited )
+{
+    if ( visited.count( r1 ) )
+        return 0;
+    visited.insert( r1 );
+    int s1 = h1.size( r1 ), s2 = h2.size( r2 );
+    if ( s1 - s2 )
+        return s1 - s2;
+    r1.offset( 0 ); r2.offset( 0 );
+    auto b1 = h1.unsafe_bytes( r1 ), b2 = h2.unsafe_bytes( r2 );
+    auto p1 = h1.pointers( r1 ), p2 = h2.pointers( r2 );
+    int offset = 0;
+    auto p1i = p1.begin(), p2i = p2.begin();
+    while ( true )
+    {
+        if ( ( p1i == p1.end() ) ^ ( p2i == p2.end() ) )
+            return p1i == p1.end() ? -1 : 1;
+
+        if ( p1i != p1.end() )
+        {
+            if ( p1i->offset() != p2i->offset() )
+                return p1i->offset() - p2i->offset();
+            if ( p1i->size() != p2i->size() )
+                return p1i->size() - p2i->size();
+        }
+
+        int end = p1i == p1.end() ? s1 : p1i->offset();
+        while ( offset < end )
+        {
+            if ( b1[ offset ] != b2[ offset ] )
+                return b1[ offset ] - b2[ offset ];
+            ++ offset;
+        }
+
+        if ( p1i == p1.end() )
+            return 0;
+
+        /* recurse */
+        typename H1::PointerV p1p;
+        typename H2::PointerV p2p;
+        r1.offset( p1i->offset() );
+        r2.offset( p1i->offset() );
+        h1.read( r1, p1p );
+        h2.read( r2, p2p );
+        int pdiff = compare( h1, h2, p1p.cooked(), p2p.cooked(), visited );
+        if ( pdiff )
+            return pdiff;
+        offset += p1i->size();
+        ++ p1i; ++ p2i;
+    }
+    UNREACHABLE( "heap comparison fell through" );
+}
+
+template< typename H1, typename H2 >
+int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H2::Pointer r2 )
+{
+    std::set< typename H1::Pointer > visited;
+    return compare( h1, h2, r1, r2, visited );
+}
+
 template< typename FromH, typename ToH >
 typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
                              std::map< typename FromH::Pointer, typename ToH::Pointer > &visited )
@@ -112,10 +174,18 @@ struct MutableHeap
         int size() { return _o.size( _p ); }
         char *begin() { return _o.machinePointer< char >( _p ); }
         char *end() { return _o.machinePointer< char >( _p, size() ); }
+        char &operator[]( int i ) { return *( begin() + i ); }
     };
 
     Internal p2i( Pointer p ) { Internal i; i.raw( p.object() ); return i; }
     Shadows::Loc shloc( Pointer p ) { return Shadows::Loc( p2i( p ), Shadows::Anchor(), p.offset() ); }
+
+    auto pointers( Pointer p, int from = 0, int sz = 0 )
+    {
+        sz = sz ?: size( p ) - from;
+        p.offset( from );
+        return shadows().pointers( shloc( p ), sz );
+    }
 
     PointerV make( int size )
     {
@@ -266,6 +336,20 @@ struct MutableHeap
         cloned.read( c_p1, c_q );
         cloned.read( c_q.cooked(), c_p2 );
         ASSERT( vm::GenericPointer( c_p1 ) == c_p2.cooked() );
+    }
+
+    TEST(compare)
+    {
+        using PointerV = vm::MutableHeap::PointerV;
+        vm::MutableHeap heap, cloned;
+        auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
+        heap.write( p, PointerV( q ) );
+        heap.write( q, PointerV( p ) );
+        auto c_p = vm::clone( heap, cloned, p );
+        ASSERT_EQ( vm::compare( heap, cloned, p, c_p ), 0 );
+        p.offset( 8 );
+        heap.write( p, vm::value::Int< 32 >( 1 ) );
+        ASSERT_LT( 0, vm::compare( heap, cloned, p, c_p ) );
     }
 };
 
