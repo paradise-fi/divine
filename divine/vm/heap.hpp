@@ -113,7 +113,7 @@ typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
 
     auto result = t.make( f.size( root ) ).cooked();
     visited.emplace( root, result );
-    for ( auto pos : f.shadows().pointers( f.shloc( root ), f.size( root ) ) )
+    for ( auto pos : f.pointers( root ) )
     {
         typename FromH::PointerV ptr;
         typename ToH::PointerV ptr_c;

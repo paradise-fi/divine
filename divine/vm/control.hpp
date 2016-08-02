@@ -23,22 +23,76 @@
 namespace divine {
 namespace vm {
 
-template< typename Memory >
+using Fault = ::_VM_Fault;
+
+template< typename Heap >
 struct Control
 {
-    using Pointer = typename Memory::Pointer;
-    using PointerV = value::Pointer< Pointer >;
+    using HeapPointer = typename Heap::Pointer;
+    using PointerV = typename Heap::PointerV;
 
-    PointerV _frame, _globals;
+    Heap &_heap;
+    Program &_program;
+    PointerV _constants, _globals, _frame, _entry_frame, _ifl;
+    CodePointer _sched, _fault;
     bool _mask;
 
-    PointerV frame() { return _frame; }
-    PointerV globals() { return _globals; }
-    bool mask() { return _mask; }
-    void mask( bool m ) { _mask = m; }
+    Control( Heap &h, Program &p ) : _heap( h ), _program( p ) {}
 
-    void setFrame( PointerV f ) { _frame = f; }
-    void setGlobals( PointerV g ) { _globals = g; }
+    PointerV frame() { return _frame; }
+    void frame( PointerV p ) { _frame = p; }
+    PointerV globals() { return _globals; }
+    PointerV constants() { return _constants; }
+
+    void push( PointerV ) {}
+
+    template< typename X, typename... Args >
+    void push( PointerV p, X x, Args... args )
+    {
+        _heap.write_shift( p, x );
+        push( p, args... );
+    }
+
+    template< typename... Args >
+    void enter( CodePointer pc, PointerV parent, Args... args )
+    {
+        int datasz = _program.function( pc ).datasize;
+        auto frameptr = _heap.make( datasz + 2 * PointerBytes );
+        _frame = frameptr;
+        if ( parent.cooked() == nullPointer() )
+            _entry_frame = _frame;
+        _heap.write_shift( frameptr, PointerV( pc ) );
+        _heap.write_shift( frameptr, parent );
+        push( frameptr, args... );
+    }
+
+    void interrupt()
+    {
+        HeapPointer ifl = _ifl.cooked();
+        if ( _ifl.cooked() != nullPointer() )
+            _heap.write( _ifl.cooked(), _frame );
+        _frame = _entry_frame;
+        _ifl = PointerV();
+        _mask = true;
+    }
+
+    virtual void doublefault() = 0;
+
+    void fault( Fault f, PointerV frame, CodePointer pc )
+    {
+        if ( _fault == CodePointer( nullPointer() ) )
+            doublefault();
+        else
+            enter( _fault, _frame, value::Int< 32 >( f ), frame, PointerV( pc ) );
+    }
+
+    bool mask( bool n )  { bool o = _mask; _mask = n; return o; }
+    bool mask() { return _mask; }
+
+    bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.cooked() ) == fr; }
+    void setSched( CodePointer p ) { _sched = p; _sched.instruction( 1 ); }
+    void setFault( CodePointer p ) { _fault = p; }
+    void setIfl( PointerV p ) { _ifl = p; }
 };
 
 }
