@@ -19,8 +19,15 @@
 #pragma once
 #include <brick-types>
 #include <brick-except>
+
 #include <memory>
 #include <vector>
+
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/LLVMContext.h>
+DIVINE_UNRELAX_WARNINGS
+
+#include <divine/cc/clang.hpp>
 
 namespace llvm {
 struct LLVMContext;
@@ -58,4 +65,19 @@ struct BitCode {
 };
 
 }
+
+namespace t_vm {
+
+namespace {
+auto c2bc( std::string s )
+{
+    static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
+    divine::cc::Compiler c( ctx );
+    c.mapVirtualFile( "main.c", s );
+    return std::make_shared< vm::BitCode >( c.compileModule( "main.c" ), ctx );
+}
+}
+
+}
+
 }
