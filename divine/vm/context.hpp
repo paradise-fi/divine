@@ -18,73 +18,89 @@
 
 #pragma once
 
+#include <divine/vm/value.hpp>
+#include <divine/vm/program.hpp>
+#include <divine/vm/setup.hpp>
+
 namespace divine {
 namespace vm {
 
-template< typename _Control, typename _Heap >
+using Fault = ::_VM_Fault;
+
+template< typename _Heap >
 struct Context
 {
     using Heap = _Heap;
-    using HeapPointer = typename Heap::Pointer;
-    using PointerV = value::Pointer< HeapPointer >;
-    using Control = _Control;
 
-    std::vector< std::tuple< std::string, Program::SlotRef > > _env;
+    using HeapPointer = typename Heap::Pointer;
+    using PointerV = typename Heap::PointerV;
 
     Heap _heap;
-    Control _control;
     Program &_program;
+    PointerV _constants, _globals, _frame, _entry_frame, _ifl;
+    CodePointer _sched, _fault;
+    bool _mask;
+
+    Context( Program &p ) : _program( p ) {}
 
     Heap &heap() { return _heap; }
-    Control &control() { return _control; }
+    PointerV frame() { return _frame; }
+    void frame( PointerV p ) { _frame = p; }
+    PointerV globals() { return _globals; }
+    PointerV constants() { return _constants; }
 
-    /* must be called before setup() */
-    void putenv( std::string str )
+    void globals( PointerV v ) { _globals = v; }
+    void constants( PointerV v ) { _constants = v; }
+
+    void push( PointerV ) {}
+
+    template< typename X, typename... Args >
+    void push( PointerV p, X x, Args... args )
     {
-        Program::Slot s( str.size() + 1, Program::Slot::Constant );
-        s.type = Program::Slot::Aggregate;
-        auto sref = _program.allocateSlot( s );
-        _env.push_back( std::make_tuple( str, sref ) );
+        _heap.write_shift( p, x );
+        push( p, args... );
     }
 
-    void setup_env()
+    template< typename... Args >
+    void enter( CodePointer pc, PointerV parent, Args... args )
     {
-        auto &heap = _program._ccontext.heap();
-        for ( auto e : _env )
-        {
-            auto str = std::get< 0 >( e );
-            auto ptr = PointerV( _program.s2hptr( std::get< 1 >( e ).slot ) );
-            std::for_each( str.begin(), str.end(),
-                           [&]( char c )
-                           {
-                               heap.write_shift( ptr, value::Int< 8 >( c ) );
-                           } );
-            heap.write_shift( ptr, value::Int< 8 >( 0 ) );
-        }
+        int datasz = _program.function( pc ).datasize;
+        auto frameptr = _heap.make( datasz + 2 * PointerBytes );
+        _frame = frameptr;
+        if ( parent.cooked() == nullPointer() )
+            _entry_frame = _frame;
+        _heap.write_shift( frameptr, PointerV( pc ) );
+        _heap.write_shift( frameptr, parent );
+        push( frameptr, args... );
     }
 
-    template< typename C >
-    void setup( const C &env )
+    void interrupt()
     {
-        _program.setupRR();
-        _program.computeRR();
-
-        for ( auto e : env )
-            putenv( e );
-
-        _program.computeStatic();
-        setup_env();
-        std::tie( _control._constants, _control._globals ) = _program.exportHeap( heap() );
-
-        auto ipc = _program.functionByName( "__sys_init" );
-        auto envptr = _program.globalByName( "__sys_env" );
-        ipc.instruction( 1 );
-        _control.enter( ipc, nullPointer(), PointerV( envptr ) );
+        HeapPointer ifl = _ifl.cooked();
+        if ( _ifl.cooked() != nullPointer() )
+            _heap.write( _ifl.cooked(), _frame );
+        _frame = _entry_frame;
+        _ifl = PointerV();
+        _mask = true;
     }
 
-    Context( Program &p )
-        : _program( p ), _control( _heap, p )
-    {}
+    virtual void doublefault() = 0;
+
+    void fault( Fault f, PointerV frame, CodePointer pc )
+    {
+        if ( _fault == CodePointer( nullPointer() ) )
+            doublefault();
+        else
+            enter( _fault, _frame, value::Int< 32 >( f ), frame, PointerV( pc ) );
+    }
+
+    bool mask( bool n )  { bool o = _mask; _mask = n; return o; }
+    bool mask() { return _mask; }
+
+    bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.cooked() ) == fr; }
+    void setSched( CodePointer p ) { _sched = p; _sched.instruction( 1 ); }
+    void setFault( CodePointer p ) { _fault = p; }
+    void setIfl( PointerV p ) { _ifl = p; }
 };
 
 }

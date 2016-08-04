@@ -127,7 +127,7 @@ struct Eval
     using HeapPointer = typename Context::Heap::Pointer;
 
     auto &heap() { return _context.heap(); }
-    auto &control() { return _context.control(); }
+    auto &context() { return _context; }
     auto &program() { return _program; }
     auto &layout() { return program().TD; }
 
@@ -164,9 +164,9 @@ struct Eval
 
     void pc( CodePointer p ) { heap().write( frame().cooked(), PointerV( p ) ); }
 
-    PointerV frame() { return control().frame(); }
-    PointerV globals() { return control().globals(); }
-    PointerV constants() { return control().constants(); }
+    PointerV frame() { return context().frame(); }
+    PointerV globals() { return context().globals(); }
+    PointerV constants() { return context().constants(); }
 
     GenericPointer s2ptr( Slot v, int off, PointerV f, PointerV g )
     {
@@ -206,39 +206,38 @@ struct Eval
 
     struct FaultStream : std::stringstream
     {
-        using Control = typename Context::Control;
-        Control *_ctrl;
+        Context *_ctx;
         Fault _fault;
         PointerV _frame;
         CodePointer _pc;
         bool _trace;
 
-        FaultStream( Control &c, Fault f, PointerV frame, CodePointer pc, bool t )
-            : _ctrl( &c ), _fault( f ), _frame( frame ), _pc( pc ), _trace( t )
+        FaultStream( Context &c, Fault f, PointerV frame, CodePointer pc, bool t )
+            : _ctx( &c ), _fault( f ), _frame( frame ), _pc( pc ), _trace( t )
         {}
 
         FaultStream( FaultStream &&s )
-            : FaultStream( *s._ctrl, s._fault, s._frame, s._pc, s._trace )
+            : FaultStream( *s._ctx, s._fault, s._frame, s._pc, s._trace )
         {
-            s._ctrl = nullptr;
+            s._ctx = nullptr;
         }
 
         FaultStream( const FaultStream & ) = delete;
 
         ~FaultStream()
         {
-            if ( !_ctrl )
+            if ( !_ctx )
                 return;
             if ( _trace )
-                _ctrl->trace( "FAULT: " + str() );
-            _ctrl->fault( _fault, _frame, _pc );
+                _ctx->trace( "FAULT: " + str() );
+            _ctx->fault( _fault, _frame, _pc );
         }
     };
 
     FaultStream fault( Fault f ) { return fault( f, frame(), pc() + 1 ); }
     FaultStream fault( Fault f, PointerV frame, CodePointer c )
     {
-        FaultStream fs( control(), f, frame, c, true );
+        FaultStream fs( context(), f, frame, c, true );
         return fs;
     }
 
@@ -446,17 +445,17 @@ struct Eval
 
         if ( !heap().valid( parent.cooked() ) )
         {
-            if ( control().isEntryFrame( frame().cooked() ) )
+            if ( context().isEntryFrame( frame().cooked() ) )
             {
                 if ( instruction().values.size() > 1 )
                     _result = operand< Result >( 0 );
             }
             else
             {
-                control().mask( false );
+                context().mask( false );
                 set_interrupted( true );
             }
-            control().frame( nullPointer() );
+            context().frame( nullPointer() );
             return;
         }
 
@@ -474,7 +473,7 @@ struct Eval
                 fault( _VM_F_Memory ) << "Cound not return value";
         }
 
-        control().frame( parent.cooked() );
+        context().frame( parent.cooked() );
 
         if ( isa< ::llvm::InvokeInst >( caller.op ) )
         {
@@ -721,15 +720,15 @@ struct Eval
                 if ( !p.empty() && int( p.size() ) != options )
                     fault( _VM_F_Hypercall );
                 else
-                    result( IntV( control().choose( options, p.begin(), p.end() ) ) );
+                    result( IntV( context().choose( options, p.begin(), p.end() ) ) );
                 return;
             }
             case HypercallSetSched:
-                return control().setSched( operandCk< PointerV >( 0 ).cooked() );
+                return context().setSched( operandCk< PointerV >( 0 ).cooked() );
             case HypercallSetFault:
-                return control().setFault( operandCk< PointerV >( 0 ).cooked() );
+                return context().setFault( operandCk< PointerV >( 0 ).cooked() );
             case HypercallSetIfl:
-                return control().setIfl( operandCk< PointerV >( 0 ) );
+                return context().setIfl( operandCk< PointerV >( 0 ) );
             case HypercallInterrupt:
                 result( IntV( set_interrupted( operandCk< IntV >( 0 ).cooked() ) ) );
                 return;
@@ -749,13 +748,13 @@ struct Eval
                 auto forget = operandCk< IntV >( 2 ).cooked();
                 if ( forget )
                 {
-                    control().mask( false );
+                    context().mask( false );
                     set_interrupted( false );
                 }
                 if ( tgt.cooked() == nullPointer() )
                     fault( _VM_F_Hypercall ) << "target frame of a jump is null";
                 else {
-                    control().frame( tgt );
+                    context().frame( tgt );
                     if ( pc != CodePointer( nullPointer() ) ) {
                         // TODO: validate jump is in function
                         switchBB( pc );
@@ -766,14 +765,14 @@ struct Eval
             case HypercallTrace:
             {
                 auto str = operandStr( 0 );
-                control().trace( str );
+                context().trace( str );
                 return;
             }
             case HypercallFault:
                 fault( Fault( operandCk< IntV >( 0 ).cooked() ) ) << "__vm_fault called";
                 return;
             case HypercallMask:
-                result( IntV( control().mask( operandCk< IntV >( 0 ).cooked() ) ) );
+                result( IntV( context().mask( operandCk< IntV >( 0 ).cooked() ) ) );
                 return;
             case HypercallMakeObject:
             {
@@ -877,7 +876,7 @@ struct Eval
         }
 
         ASSERT( !isa< ::llvm::PHINode >( instruction().op ) );
-        control().frame( frameptr.cooked() );
+        context().frame( frameptr.cooked() );
     }
 
     void run()
@@ -891,18 +890,18 @@ struct Eval
             // _instruction->op->dump();
             dispatch();
             // op< Any >( 0, []( auto v ) { std::cerr << "  result = " << v.get( 0 ) << std::endl; } );
-            if ( _interrupted && !control().mask() )
+            if ( _interrupted && !context().mask() )
             {
                 // std::cerr << "======= interrupt" << std::endl;
-                control().interrupt();
+                context().interrupt();
                 _interrupted = false;
             }
-            if ( control().frame().cooked() != nullPointer() )
+            if ( context().frame().cooked() != nullPointer() )
             {
                 next = pc();
                 next.instruction( next.instruction() + 1 );
             }
-        } while ( control().frame().cooked() != nullPointer() );
+        } while ( context().frame().cooked() != nullPointer() );
     }
 
     void dispatch() /* evaluate a single instruction */
@@ -1337,7 +1336,6 @@ struct TContext
     using Heap = vm::MutableHeap;
     using HeapPointer = Heap::Pointer;
     using PointerV = vm::value::Pointer< HeapPointer >;
-    using Control = TContext< Prog >; /* Self */
 
     vm::Fault _fault;
     PointerV _constants, _globals, _frame, _entry_frame;
@@ -1386,7 +1384,6 @@ struct TContext
     void setFault( CodePointer p ) {}
     void setIfl( PointerV p ) {}
 
-    Control &control() { return *this; }
     Heap &heap() { return _heap; }
 
     TContext( Prog &p ) : _fault( _VM_F_NoFault ), _program( p ) {}
@@ -1412,7 +1409,7 @@ struct Eval
         vm::Eval< vm::Program, TContext< vm::Program >, IntV > e( *p, c );
         auto pc = p->functionByName( "f" );
         pc.instruction( 1 );
-        c.control().enter( pc, vm::nullPointer(), args... );
+        c.enter( pc, vm::nullPointer(), args... );
         e.run();
         return e._result.cooked();
     }

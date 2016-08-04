@@ -92,35 +92,31 @@ struct ConstContext
     using Heap = MutableHeap;
     using HeapPointer = Heap::Pointer;
     using PointerV = value::Pointer< HeapPointer >;
-    struct Control
-    {
-        PointerV _constants;
-        PointerV _globals;
-        PointerV frame() { return PointerV(); }
-        void frame( PointerV ) {}
-        PointerV globals() { return _globals; }
-        PointerV constants() { return _constants; }
-        void fault( _VM_Fault, PointerV, CodePointer ) { NOT_IMPLEMENTED(); }
-        bool mask( bool )  { NOT_IMPLEMENTED(); }
-        template< typename I >
-        int choose( int, I, I ) { NOT_IMPLEMENTED(); }
-        void setSched( CodePointer ) { NOT_IMPLEMENTED(); }
-        void setFault( CodePointer ) { NOT_IMPLEMENTED(); }
-        void setIfl( PointerV ) { NOT_IMPLEMENTED(); }
-        bool isEntryFrame( HeapPointer ) { NOT_IMPLEMENTED(); }
-        void trace( std::string ) { NOT_IMPLEMENTED(); }
-    };
+
+    PointerV _constants;
+    PointerV _globals;
+    PointerV frame() { return PointerV(); }
+    void frame( PointerV ) {}
+    PointerV globals() { return _globals; }
+    PointerV constants() { return _constants; }
+    void fault( _VM_Fault, PointerV, CodePointer ) { NOT_IMPLEMENTED(); }
+    bool mask( bool )  { NOT_IMPLEMENTED(); }
+    template< typename I >
+    int choose( int, I, I ) { NOT_IMPLEMENTED(); }
+    void setSched( CodePointer ) { NOT_IMPLEMENTED(); }
+    void setFault( CodePointer ) { NOT_IMPLEMENTED(); }
+    void setIfl( PointerV ) { NOT_IMPLEMENTED(); }
+    bool isEntryFrame( HeapPointer ) { NOT_IMPLEMENTED(); }
+    void trace( std::string ) { NOT_IMPLEMENTED(); }
 
     Heap _heap;
-    Control _control;
 
     Heap &heap() { return _heap; }
-    Control &control() { return _control; }
     void setup( int gds, int cds )
     {
-        control()._constants = heap().make( cds );
+        _constants = heap().make( cds );
         if ( gds )
-            control()._globals = heap().make( gds );
+            _globals = heap().make( gds );
     }
 };
 
@@ -247,14 +243,14 @@ struct Program
     auto exportHeap( H &target )
     {
         auto cp = target.make( _constants_size );
-        target.copy( _ccontext._heap, _ccontext.control().constants().cooked(),
+        target.copy( _ccontext._heap, _ccontext.constants().cooked(),
                      cp.cooked(), _constants_size );
 
         if ( !_globals_size )
             return std::make_pair( cp, decltype( cp )( nullPointer() ) );
 
         auto gp = target.make( _globals_size );
-        target.copy( _ccontext._heap, _ccontext.control().globals().cooked(),
+        target.copy( _ccontext._heap, _ccontext.globals().cooked(),
                      gp.cooked(), _globals_size );
         return std::make_pair( cp, gp );
     }

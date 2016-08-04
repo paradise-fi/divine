@@ -21,15 +21,14 @@
 #include <divine/vm/heap.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/context.hpp>
-#include <divine/vm/control.hpp>
 
 namespace divine {
 namespace vm {
 
-struct RunControl : Control< MutableHeap >
+struct RunContext : Context< MutableHeap >
 {
     std::mt19937 _rand;
-    using Control::Control;
+    using Context::Context;
 
     template< typename I >
     int choose( int o, I, I )
@@ -47,28 +46,23 @@ struct RunControl : Control< MutableHeap >
     void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
 };
 
-struct RunContext : Context< RunControl, MutableHeap >
-{
-    RunContext( Program &p ) : Context( p ) {}
-};
-
 void Run::run()
 {
     using Eval = vm::Eval< Program, RunContext, RunContext::PointerV >;
     auto &program = _bc->program();
-    vm::RunContext _ctx( program );
-    _ctx.setup( _env );
+    RunContext _ctx( program );
     Eval eval( program, _ctx );
-    _ctx.control().mask( true );
+
+    setup( program, _ctx, _env );
+    _ctx.mask( true );
     eval.run();
     auto state = eval._result;
 
     while ( state.cooked() != vm::nullPointer() )
     {
-        _ctx.control().enter(
-            _ctx._control._sched, vm::nullPointer(),
-            Eval::IntV( eval.heap().size( state.cooked() ) ), state );
-        _ctx.control().mask( true );
+        _ctx.enter( _ctx._sched, vm::nullPointer(),
+                    Eval::IntV( eval.heap().size( state.cooked() ) ), state );
+        _ctx.mask( true );
         eval.run();
         state = eval._result;
     }
