@@ -66,11 +66,15 @@ void BitCode::init( BitCode::Env env, AutoTraceFlags tr )
     lart.setup( "interrupt" );
     if ( tr )
         lart.setup( "autotrace" );
-    lart.setup( "functionmeta" );
-    lart::util::replaceGlobalArray( *_module.get(), "__sys_env", env );
-    lart.process( _module.get() );
 
-    _program.reset( new Program( _module.get() ) );
+    auto mod = _module.get();
+    if ( mod->getGlobalVariable( "__md_functions" ) )
+        lart.setup( "functionmeta" );
+    if ( mod->getGlobalVariable( "__sys_env" ) )
+        lart::util::replaceGlobalArray( *mod, "__sys_env", env );
+    lart.process( mod );
+
+    _program.reset( new Program( mod ) );
 }
 
 BitCode::~BitCode()
