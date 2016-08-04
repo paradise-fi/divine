@@ -395,7 +395,7 @@ namespace t_vm {
 
 namespace {
 
-auto compileC( std::string s )
+auto c2prog( std::string s )
 {
     static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
     divine::cc::Compiler c( ctx );
@@ -422,7 +422,7 @@ struct Program
 
     TEST( simple )
     {
-        auto m = compileC( "int main() { return 0; }" );
+        auto m = c2prog( "int main() { return 0; }" );
     }
 };
 

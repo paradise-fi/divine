@@ -1406,7 +1406,7 @@ struct Eval
     template< typename... Args >
     int testF( std::string s, Args... args )
     {
-        auto p = compileC( s );
+        auto p = c2prog( s );
         TContext< vm::Program > c( *p );
         std::tie( c._constants, c._globals ) = p->exportHeap( c.heap() );
         vm::Eval< vm::Program, TContext< vm::Program >, IntV > e( *p, c );
