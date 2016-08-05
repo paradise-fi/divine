@@ -143,7 +143,13 @@ auto do_search( const B &b, const L &l, int threads )
 template< typename B, typename L >
 auto search( Order o, B b, int threads, L l )
 {
-    if ( /* g.peers().empty() && */ o == Order::PseudoBFS )
+    if ( threads == 1 && o == Order::PseudoBFS )
+    {
+        BFS< B, L > search( b, l );
+        search.run( true );
+        return search.result();
+    }
+    else if ( /* g.peers().empty() && */ o == Order::PseudoBFS )
         return do_search< BFS >( b, l, threads );
     else if ( o == Order::PseudoBFS )
         return do_search< DistributedBFS >( b, l, threads );
