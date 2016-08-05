@@ -296,9 +296,10 @@ namespace t_vm {
 
 struct MutableHeap
 {
+    using I = vm::value::Int< 32, true >;
+
     TEST(alloc)
     {
-        using I = vm::value::Int< 32, true >;
         vm::MutableHeap heap;
         auto p = heap.make( 16 );
         heap.write( p.cooked(), I( 10 ) );
@@ -325,7 +326,19 @@ struct MutableHeap
         ASSERT( p.cooked() == q.cooked() );
     }
 
-    TEST(clone)
+    TEST(clone_int)
+    {
+        vm::MutableHeap heap, cloned;
+        auto p = heap.make( 16 );
+        heap.write( p.cooked(), I( 33 ) );
+        auto c = vm::clone( heap, cloned, p.cooked() );
+        I i;
+        cloned.read( c, i );
+        ASSERT( ( i == I( 33 ) ).cooked() );
+        ASSERT( ( i == I( 33 ) ).defined() );
+    }
+
+    TEST(clone_ptr)
     {
         vm::MutableHeap heap, cloned;
         auto p = heap.make( 16 ), q = heap.make( 16 );
@@ -333,6 +346,7 @@ struct MutableHeap
         heap.write( q.cooked(), p );
         auto c_p1 = vm::clone( heap, cloned, p.cooked() );
         vm::MutableHeap::PointerV c_q, c_p2;
+        I i;
         cloned.read( c_p1, c_q );
         cloned.read( c_q.cooked(), c_p2 );
         ASSERT( vm::GenericPointer( c_p1 ) == c_p2.cooked() );
