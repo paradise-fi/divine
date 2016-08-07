@@ -86,54 +86,54 @@ struct Explore
     BC _bc;
     Env _env;
 
+    explore::Context _ctx;
+
     std::set< explore::State > _states;
 
     auto &program() { return _bc->program(); }
 
     Explore( BC bc, Env env = Env() )
-        : _bc( bc ), _env( env )
+        : _bc( bc ), _env( env ), _ctx( _bc->program() )
     {
     }
 
-    explore::State snap( explore::Context &ctx, Eval &ev )
+    explore::State snap( Eval &ev )
     {
         explore::State st;
         st.heap = std::make_shared< MutableHeap >();
-        st.root = clone( ctx.heap(), *st.heap, ev._result.cooked() );
+        st.root = clone( _ctx.heap(), *st.heap, ev._result.cooked() );
         return st;
     }
 
     template< typename Y >
     void edges( explore::State from, Y yield )
     {
-        explore::Context ctx( program() );
-        Eval eval( program(), ctx );
-        auto root = clone( *from.heap, ctx.heap(), from.root );
+        Eval eval( program(), _ctx );
+        auto root = clone( *from.heap, _ctx.heap(), from.root );
 
         do {
-            std::cerr << "sched = " << ctx._sched << std::endl;
-            ctx.enter( ctx._sched, nullPointer(),
-                       Eval::IntV( eval.heap().size( root ) ), PointerV( root ) );
-            ctx.mask( true );
+            std::cerr << "sched = " << _ctx._sched << std::endl;
+            _ctx.enter( _ctx._sched, nullPointer(),
+                        Eval::IntV( eval.heap().size( root ) ), PointerV( root ) );
+            _ctx.mask( true );
             eval.run();
-            explore::State st = snap( ctx, eval );
+            explore::State st = snap( eval );
             auto r = _states.insert( st );
             if ( !st.root.null() )
                 yield( st, 0, r.second );
-        } while ( !ctx.finished() );
+        } while ( !_ctx.finished() );
     }
 
     template< typename Y >
     void initials( Y yield )
     {
-        explore::Context ctx( program() );
-        Eval eval( program(), ctx );
+        Eval eval( program(), _ctx );
 
-        setup( program(), ctx, _env );
-        ctx.mask( true );
+        setup( program(), _ctx, _env );
+        _ctx.mask( true );
         eval.run(); /* run __sys_init */
 
-        auto st = snap( ctx, eval );
+        auto st = snap( eval );
         _states.insert( st );
         yield( st );
     }
