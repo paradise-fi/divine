@@ -70,7 +70,7 @@ int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H2::Pointer r2,
         }
 
         int end = p1i == p1.end() ? s1 : p1i->offset();
-        while ( offset < end )
+        while ( offset < end ) /* TODO definedness! */
         {
             if ( b1[ offset ] != b2[ offset ] )
                 return b1[ offset ] - b2[ offset ];
@@ -113,6 +113,15 @@ typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
 
     auto result = t.make( f.size( root ) ).cooked();
     visited.emplace( root, result );
+    auto fb = f.unsafe_bytes( root ), tb = t.unsafe_bytes( result );
+    auto fd = f.defined( root ), td = t.defined( result );
+
+    for ( int i  = 0; i < f.size( root ); ++i ) /* TODO speed */
+    {
+        tb[ i ] = fb[ i ];
+        td[ i ] = fd[ i ];
+    }
+
     for ( auto pos : f.pointers( root ) )
     {
         typename FromH::PointerV ptr;
@@ -179,12 +188,21 @@ struct MutableHeap
 
     Internal p2i( Pointer p ) { Internal i; i.raw( p.object() ); return i; }
     Shadows::Loc shloc( Pointer p ) { return Shadows::Loc( p2i( p ), Shadows::Anchor(), p.offset() ); }
-
-    auto pointers( Pointer p, int from = 0, int sz = 0 )
+    Shadows::Loc shloc( Pointer &p, int &from, int &sz )
     {
         sz = sz ?: size( p ) - from;
         p.offset( from );
-        return shadows().pointers( shloc( p ), sz );
+        return shloc( p );
+    }
+
+    auto pointers( Pointer p, int from = 0, int sz = 0 )
+    {
+        return shadows().pointers( shloc( p, from, sz ), sz );
+    }
+
+    auto defined( Pointer p, int from = 0, int sz = 0 )
+    {
+        return shadows().defined( shloc( p, from, sz ), sz );
     }
 
     PointerV make( int size )
