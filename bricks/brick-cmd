@@ -123,6 +123,9 @@ struct Validator<> : ValidatorInterface, std::enable_shared_from_this< Validator
 };
 
 using ValidatorPtr = std::shared_ptr< ValidatorInterface >;
+
+namespace {
+
 auto make_validator()
 {
     return std::make_shared< Validator<> >()->
@@ -186,6 +189,8 @@ std::pair< std::string, std::string > next_token( std::string s )
 
     return std::make_pair( std::string( s, skip, i ),
                            std::string( s, j, std::string::npos ) );
+}
+
 }
 
 /*
