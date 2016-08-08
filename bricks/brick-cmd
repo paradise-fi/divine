@@ -581,67 +581,63 @@ struct OptionWrapper : OptionInterface< T >
 template< typename T >
 using OptionPtr = std::shared_ptr< OptionInterface< T > >;
 
+template< typename T, typename Value, typename Validator >
+OptionPtr< T > make_option( std::shared_ptr< Validator > validator, std::string pattern,
+                  Value T::*member, std::string descr = "", OptionFlags flags = OptionFlags() )
+{
+    return std::make_shared< Option< Validator, T, Value > >(
+        validator, pattern, [member]( auto &x ) -> auto& { return x.*member; }, descr, flags );
+}
+
 template< typename Validator, typename T >
 struct OptionSet
 {
     std::shared_ptr< Validator > _validator;
     std::vector< OptionPtr< T > > _opts;
 
-    template< typename V, typename... Args >
-    auto &add( std::string fmt, V T::*member, std::string descr, OptionFlag flag, Args... args )
+    template< typename V >
+    auto &option( std::string fmt, V T::*member, std::string desc = "",
+                  OptionFlags flags = OptionFlags() )
     {
-        return add( fmt, member, descr, OptionFlags( flag ), args... );
+        _opts.emplace_back( make_option( _validator, fmt, member, desc, flags ) );
+        return *this;
     };
 
-    template< typename V, typename... Args >
-    auto &add( std::string fmt, V T::*member, std::string descr, OptionFlags flags, Args... args )
+    template< typename... Args >
+    auto &options( OptionPtr< T > opt, Args... args )
     {
-        auto o = new Option< Validator, T, V >(
-                _validator, fmt, [member]( auto &x ) -> auto& { return x.*member; }, descr, flags );
-        _opts.emplace_back( o );
-        return add( args... );
+        _opts.emplace_back( opt );
+        return options( args... );
     };
-
-    template< typename V, typename... Args >
-    auto &add( std::string fmt, V T::*member, std::string descr, Args... args )
-    {
-        return add( fmt, member, descr, OptionFlags(), args... );
-    }
-
-    template< typename V, typename... Args >
-    auto &add( std::string fmt, V T::*member, Args... args )
-    {
-        return add( fmt, member, std::string( "(no description)" ), args... );
-    }
 
     template< typename S, typename... Args >
-    auto &add( OptionSet< Validator, S > opts, S T::*member, Args... args )
+    auto &options( OptionSet< Validator, S > opts, S T::*member, Args... args )
     {
         for ( auto o : opts._opts )
             _opts.emplace_back(
                 new OptionWrapper< T, S >(
                     o, [member]( T &x ) -> S& { return x.*member; } ) );
-        return add( args... );
+        return options( args... );
     }
 
     template< typename S, typename... Args >
-    auto &add( OptionSet< Validator, S > opts, Args... args )
+    auto &options( OptionSet< Validator, S > opts, Args... args )
     {
         for ( auto o : opts._opts )
             _opts.emplace_back(
                 new OptionWrapper< T, S >(
                     o, []( T &x ) -> S& { return x; } ) );
-        return add( args... );
+        return options( args... );
     }
-
-    auto &add() { return *this; }
 
     template< typename... Args >
     explicit OptionSet( std::shared_ptr< Validator > v, Args... args )
         : _validator( v )
     {
-        add( args... );
+        options( args... );
     }
+
+    auto &options() { return *this; }
 
     virtual std::string describe()
     {
@@ -709,6 +705,7 @@ template< typename Validator, typename T >
 struct Command : OptionSet< Validator, T >
 {
     std::vector< std::string > T::*_extra;
+    std::string _description;
 
     /* not foolproof, but good enough? will misfire on types nested inside
      * templates */
@@ -733,7 +730,7 @@ struct Command : OptionSet< Validator, T >
             if ( o->flags() & OptionFlag::Required )
                 req << o->fmt() << " ";
         std::stringstream res;
-        res << std::setw( setw ) << name() <<  " [options] " << req.str();
+        res << std::setw( setw ) << name() <<  " [options] " << req.str() << " " << _description;
         return res.str();
     }
 
@@ -760,41 +757,73 @@ template< typename... > struct ParserT;
 template< typename Validator, typename T, typename... Ts >
 struct ParserT< Validator, T, Ts... >
 {
-    Command< Validator, T > _car;
-    ParserT< Validator, Ts... > _cdr;
-    std::shared_ptr< Validator > _validator;
+    Command< Validator, T > car;
+    ParserT< Validator, Ts... > cdr;
+    std::shared_ptr< Validator > validator;
+
+    using Type = T;
+    using Types = types::Union< T, Ts... >;
+
+    template< typename... Args >
+    ParserT( std::shared_ptr< Validator > v, ParserT< Validator, Ts... > cdr,
+             Args... args ) : car( v, args... ), cdr( cdr ), validator( v ) {}
+};
+
+template< typename Validator >
+struct ParserT< Validator >
+{
+    std::shared_ptr< Validator > validator;
+    ParserT( std::shared_ptr< Validator > v ) : validator( v ) {}
+};
+
+template< typename Validator, typename... Ts >
+struct Parser
+{
+    using PT = ParserT< Validator, Ts... >;
+    PT _rep;
 
     template< typename U >
     auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
+    {
+        return parse_rec( _rep, res, b, e );
+    }
+
+    template< typename U >
+    auto parse_rec( ParserT< Validator > &, U &res, Tokens::iterator b, Tokens::iterator e )
+    {
+        return b;
+    }
+
+    template< typename Rec, typename U >
+    auto parse_rec( Rec &rec, U &res, Tokens::iterator b, Tokens::iterator e )
     {
         if (b == e)
         {
             return b;
         }
-        if ( _car.name() == *b )
+        if ( rec.car.name() == *b )
         {
-            T t;
-            auto x = _car.parse( t, b + 1, e );
-            while ( x != e && _car.extra( t, *x ) )
+            typename Rec::Type t;
+            auto x = rec.car.parse( t, b + 1, e );
+            while ( x != e && rec.car.extra( t, *x ) )
                 ++ x;
             res = t;
             return x;
         }
         else
-            return _cdr.parse( res, b, e );
+            return parse_rec( rec.cdr, res, b, e );
     }
 
-    types::Union< T, Ts... > parse( Tokens::iterator b, Tokens::iterator e,
-                                    std::vector<std::string> &unexpected )
+    auto parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
     {
-        types::Union< T, Ts... > _result;
+        typename PT::Types _result;
         auto x = parse( _result, b, e );
         while ( x != e )
             unexpected.push_back( *x++ );
         return _result;
     };
 
-    types::Union< T, Ts... > parse( Tokens::iterator b, Tokens::iterator e )
+    auto parse( Tokens::iterator b, Tokens::iterator e )
     {
         std::vector< std::string > unexpected;
         auto _result = parse( b, e, unexpected );
@@ -808,72 +837,50 @@ struct ParserT< Validator, T, Ts... >
         return _result;
     }
 
-    template< typename S, typename... Args >
-    auto add( Args... args )
+    template< typename T, typename... Args >
+    auto command( Args... args )
     {
-        return ParserT< Validator, S, T, Ts... >(
-            Command< Validator, S >( _validator, args... ), *this );
+        return Parser< Validator, T, Ts... >(
+            ParserT< Validator, T, Ts... >( _rep.validator, _rep, args... ) );
     }
 
-    template< typename S, typename U, typename... Args >
-    auto add( Tokens (U::*extra), Args... args )
+    template< typename T, typename U, typename... Args >
+    auto command( Tokens (U::*extra), Args... args )
     {
-        auto cmd = Command< Validator, S >( _validator, args... );
-        cmd._extra = extra;
-        return ParserT< Validator, S, T, Ts... >( cmd, *this );
+        auto cmd = command< T >( args... );
+        cmd._rep.car._extra = extra;
+        return cmd;
     }
-
-    ParserT( Command< Validator, T > car, ParserT< Validator, Ts... > cdr )
-        : _car( car ), _cdr( cdr ), _validator( cdr._validator )
-    {}
-};
-
-template< typename Validator >
-struct ParserT< Validator >
-{
-    std::shared_ptr< Validator > _validator;
 
     template< typename T, typename... Args >
-    auto add( Args... args ) -> ParserT< Validator, T >
+    auto command( std::string dsc, Args... args )
     {
-        return ParserT< Validator, T >( Command< Validator, T >( _validator, args... ), *this );
+        auto cmd = command< T >( args... );
+        cmd._rep.car._description = dsc;
+        return cmd;
     }
 
-    template< typename U >
-    auto parse( U &, Tokens::iterator b, Tokens::iterator e ) { return b; }
+    std::string describe( std::string name = "" ) { return describe_rec( _rep, name ); }
 
-    ParserT( std::shared_ptr< Validator > v ) : _validator( v ) {}
+    template< typename Rec >
+    std::string describe_rec( Rec &rec, std::string name )
+    {
+        if ( name.empty() )
+            return rec.car.describe_header( 10 ) + "\n" + describe_rec( rec.cdr, name );
+        if ( rec.car.name() == name )
+            return rec.car.describe();
+        return describe_rec( rec.cdr, name );
+    }
+
+    std::string describe_rec( ParserT< Validator > &, std::string ) { return ""; }
+
+    Parser( PT rep ) : _rep( rep ) {}
 };
-
-template< typename Validator >
-std::string describe( ParserT< Validator >&, std::string name )
-{
-    return "";
-}
-
-template< typename Parser >
-std::string describe( Parser &parser, std::string name )
-{
-    if ( parser._car.name() == name )
-        return parser._car.describe();
-    return describe( parser._cdr, name );
-};
-
-template< typename Validator >
-std::string describe( ParserT<Validator>& )
-{
-    return "";
-}
-template< typename Parser >
-std::string describe( Parser &parser )
-{
-    return parser._car.describe_header( 10 ) + "\n" + describe( parser._cdr );
-}
 
 template< typename V >
 auto make_parser( std::shared_ptr< V > v )
 {
-    return ParserT< V >( v );
+    return Parser< V >( ParserT< V >( v ) );
 }
 
 }
@@ -974,17 +981,17 @@ struct TestCmd
     {
         auto v = validator();
 
-        auto common = cmd::make_option_set< Common >
-            ( v, "[-r {int}|--range {int}]", &Common::range,
-                 "[-Wc,{string}|-Xcompiler {string}]", &Common::cflags );
+        auto common = cmd::make_option_set< Common >( v )
+                      .option( "[-r {int}|--range {int}]", &Common::range )
+                      .option( "[-Wc,{string}|-Xcompiler {string}]", &Common::cflags );
 
         auto p = cmd::make_parser( v )
-                 .add< Foo >( common,
-                              "[--bar|--no-bar]", &Foo::bar,
-                              "{int}", &Foo::value )
-                 .add< Bar >( common );
+                 .command< Foo >( common,
+                                  cmd::make_option( v, "[--bar|--no-bar]", &Foo::bar ),
+                                  cmd::make_option( v, "{int}", &Foo::value ) )
+                 .command< Bar >( common );
 
-        ASSERT_EQ( p._car.name(), "bar" );
+        ASSERT_EQ( p._rep.car.name(), "bar" );
 
         cmd::Tokens in = { "foo", "32" };
         bool is_foo = false;
@@ -1000,8 +1007,8 @@ struct TestCmd
     {
         auto v = validator();
         auto opts = cmd::make_option_set< Common >( v )
-                    .add( "[-a {int}]", &Common::a )
-                    .add( "[-b {int}]", &Common::b );
+                    .option( "[-a {int}]", &Common::a )
+                    .option( "[-b {int}]", &Common::b );
         Common c;
 
         cmd::Tokens in = { "-a", "10" };
@@ -1013,8 +1020,8 @@ struct TestCmd
     {
         auto v = validator();
         auto opts = cmd::make_option_set< Common >( v )
-        .add( "[-x]", &Common::x )
-        .add( "[-y]", &Common::y );
+                    .option( "[-x]", &Common::x )
+                    .option( "[-y]", &Common::y );
         Common c = { .x = false, .y = false };
 
         cmd::Tokens in = { "-x" };
@@ -1027,9 +1034,9 @@ struct TestCmd
     {
         auto v = validator();
         auto opts = cmd::make_option_set< Common >( v )
-        .add( "[-x]", &Common::x )
-        .add( "[-y]", &Common::y )
-        .add( "[(-a {int}|-b {int})]", &Common::a );
+                    .option( "[-x]", &Common::x )
+                    .option( "[-y]", &Common::y )
+                    .option( "[(-a {int}|-b {int})]", &Common::a );
 
         Common c = { .x = false, .y = false };
 
@@ -1044,7 +1051,7 @@ struct TestCmd
     {
         auto v = validator();
         auto opts = cmd::make_option_set< Common >( v )
-        .add( "[(-a|-b) {int}]", &Common::a );
+                    .option( "[(-a|-b) {int}]", &Common::a );
 
         Common c;
 
@@ -1058,8 +1065,8 @@ struct TestCmd
         struct X { int a, b; };
         auto v = validator();
         auto opts = cmd::make_option_set< X >( v )
-                    .add( "[-a {int}]", &X::a )
-                    .add( "{int}", &X::b );
+                    .option( "[-a {int}]", &X::a )
+                    .option( "{int}", &X::b );
         X x;
 
         cmd::Tokens in = { "10" };
@@ -1077,8 +1084,8 @@ struct TestCmd
         struct X { std::string a, b; };
         auto v = validator();
         auto opts = cmd::make_option_set< X >( v )
-                    .add( "[-a {string}]", &X::a )
-                    .add( "{string}", &X::b );
+                    .option( "[-a {string}]", &X::a )
+                    .option( "{string}", &X::b );
         X x;
 
         cmd::Tokens in = { "10" };
@@ -1096,7 +1103,7 @@ struct TestCmd
         struct X { std::vector< std::string > a; };
         auto v = validator();
         auto opts = cmd::make_option_set< X >( v )
-                    .add( "{string}+", &X::a );
+                    .option( "{string}+", &X::a );
         X x;
 
         cmd::Tokens in = { "10", "20" };
@@ -1111,10 +1118,9 @@ struct TestCmd
         struct X { std::vector< std::string > a; int x; };
         auto v = validator();
         auto opts = cmd::make_option_set< X >( v )
-                    .add( "[-y {int}]", &X::x )
-                    .add( "{string}+", &X::a );
-        auto p = cmd::make_parser( v )
-                 .add< X >( opts );
+                    .option( "[-y {int}]", &X::x )
+                    .option( "{string}+", &X::a );
+        auto p = cmd::make_parser( v ).command< X >( opts );
 
         cmd::Tokens in = { "x", "10", "20" };
         auto r = p.parse( in.begin(), in.end() );
