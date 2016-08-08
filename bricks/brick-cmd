@@ -751,7 +751,7 @@ struct Command : OptionSet< Validator, T >
 
     template< typename... Args >
     Command( std::shared_ptr< Validator > v, Args... args )
-        : OptionSet< Validator, T >( v, args... )
+        : OptionSet< Validator, T >( v, args... ), _extra( nullptr )
     {}
 };
 
