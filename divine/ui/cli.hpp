@@ -41,13 +41,13 @@ struct Help
     template< typename P >
     void run( P cmds )
     {
-        std::string description = cmd::describe( cmds, _cmd );
+        std::string description = cmds.describe( _cmd );
         if ( description.empty() && !_cmd.empty() )
-            die( "Unknown command '" + _cmd + "'. Available commands are:\n" + cmd::describe( cmds ) );
+            die( "Unknown command '" + _cmd + "'. Available commands are:\n" + cmds.describe() );
         if ( _cmd.empty() )
         {
             std::cerr << "To print details about a specific command, run 'divine help {command}'.\n\n";
-            std::cerr << cmd::describe( cmds ) << std::endl;
+            std::cerr << cmds.describe() << std::endl;
         }
         else std::cerr << description << std::endl;
     }
@@ -186,52 +186,53 @@ struct CLI : Interface
         auto v = validator();
 
         auto helpopts = cmd::make_option_set< Help >( v )
-            .add( "[{string}]", &Help::_cmd, "print man to specified command"s );
+            .option( "[{string}]", &Help::_cmd, "print man to specified command"s );
 
         auto bcopts = cmd::make_option_set< WithBC >( v )
-            .add( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
-            .add( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
-            .add( "{file}", &WithBC::_file, "the bitcode file to load"s,
+            .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
+            .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
+            .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
         using DrvOpt = cc::Options;
         auto ccdrvopts = cmd::make_option_set< DrvOpt >( v )
-            .add( "[--precompiled {file}]", &DrvOpt::precompiled, "path to a prebuilt libdivinert.bc"s )
-            .add( "[-j {int}]", &DrvOpt::num_threads, "number of jobs"s )
-            .add( "[-c|--dont-link]", &DrvOpt::dont_link, "do not link"s )
-            .add( "[--libraries-only]", &DrvOpt::libs_only, "build libdivinert.bc for later use"s );
+            .option( "[--precompiled {file}]", &DrvOpt::precompiled,
+                     "path to a prebuilt libdivinert.bc"s )
+            .option( "[-j {int}]", &DrvOpt::num_threads, "number of jobs"s )
+            .option( "[-c|--dont-link]", &DrvOpt::dont_link, "do not link"s )
+            .option( "[--libraries-only]", &DrvOpt::libs_only, "build libdivinert.bc for later use"s );
 
         auto ccopts = cmd::make_option_set< Cc >( v )
-            .add( ccdrvopts, &Cc::_drv )
-            .add( "[-o {string}]", &Cc::_output, "the name of the output file"s )
-            .add( "[-{string}]", &Cc::_flags, "any cc1 options"s )
-            .add( "[-I{string}|-I {string}]", &Cc::_inc,
+            .options( ccdrvopts, &Cc::_drv )
+            .option( "[-o {string}]", &Cc::_output, "the name of the output file"s )
+            .option( "[-{string}]", &Cc::_flags, "any cc1 options"s )
+            .option( "[-I{string}|-I {string}]", &Cc::_inc,
                     "add the specified directory to the search path for include files"s )
-            .add( "[-isystem{string}|-isystem {string}]", &Cc::_sysinc,
+            .option( "[-isystem{string}|-isystem {string}]", &Cc::_sysinc,
                     "like -I but searched later (along with system include dirs)"s )
-            .add( "[{file}]", &Cc::_files, "input file(s) to compile (C or C++)"s );
+            .option( "[{file}]", &Cc::_files, "input file(s) to compile (C or C++)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
-            .add( "[--max-memory {int}]", &Verify::_max_mem, "max memory allowed to use [in MB]"s )
-            .add( "[--max-time {int}]", &Verify::_max_time, "max time allowed to take [in sec]"s )
-            .add( "[--no-counterexample]", &Verify::_no_counterexample,
-                  "do not print counterexamples"s )
-            .add( "[--report {string}]", &Verify::_report, "print a report with given options"s )
-            .add( "[--statistics {string}]", &Verify::_statistics,
-                  "print statistics with given options"s );
+            .option( "[--max-memory {int}]", &Verify::_max_mem, "max memory allowed to use [in MB]"s )
+            .option( "[--max-time {int}]", &Verify::_max_time, "max time allowed to take [in sec]"s )
+            .option( "[--no-counterexample]", &Verify::_no_counterexample,
+                     "do not print counterexamples"s )
+            .option( "[--report {string}]", &Verify::_report, "print a report with given options"s )
+            .option( "[--statistics {string}]", &Verify::_statistics,
+                     "print statistics with given options"s );
 
         auto drawopts = cmd::make_option_set< Draw >( v )
-            .add( "[--distance {int}|-d {int}]", &Draw::_distance, "node distance"s )
-            .add( "[--labels {label}]", &Draw::_labels, "label all, none or only trace"s )
-            .add( "[--bfs-layout]", &Draw::_bfs, "draw in bfs layout (levels)"s );
+            .option( "[--distance {int}|-d {int}]", &Draw::_distance, "node distance"s )
+            .option( "[--labels {label}]", &Draw::_labels, "label all, none or only trace"s )
+            .option( "[--bfs-layout]", &Draw::_bfs, "draw in bfs layout (levels)"s );
 
         auto parser = cmd::make_parser( v )
-            .add< Verify >( vrfyopts, bcopts )
-            .add< Run >( &WithBC::_useropts, bcopts )
-            .add< Draw >( drawopts, bcopts )
-            .add< Info >( bcopts )
-            .add< Cc >( ccopts )
-            .add< Help >( helpopts );
+            .command< Verify >( vrfyopts, bcopts )
+            .command< Run >( &WithBC::_useropts, bcopts )
+            .command< Draw >( drawopts, bcopts )
+            .command< Info >( bcopts )
+            .command< Cc >( ccopts )
+            .command< Help >( helpopts );
         return parser;
     }
 
