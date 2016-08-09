@@ -201,7 +201,7 @@ struct Eval
             GlobalPointer pp = p.cooked();
             return s2ptr( program()._globals[ pp.object() ], pp.offset(), nullPointer(), g );
         }
-        UNREACHABLE_F( "a bad pointer in ptr2h: %s", brick::string::fmt( PointerV( p ) ).c_str() );
+        return nullPointer();
     }
 
     struct FaultStream : std::stringstream
