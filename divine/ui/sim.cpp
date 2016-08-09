@@ -22,7 +22,9 @@
 #include <divine/ui/cli.hpp>
 #include <brick-string>
 #include <cstring>
+
 #include <histedit.h>
+#include <pwd.h>
 
 namespace divine {
 namespace ui {
@@ -282,7 +284,16 @@ void Sim::run()
     HistEvent hist_ev;
     sim::Interpreter interp( _bc );;
 
+    std::string hist_path;
+
+    if ( passwd *p = getpwuid( getuid() ) )
+    {
+        hist_path = p->pw_dir;
+        hist_path += "/.divine.history";
+    }
+
     history( hist, &hist_ev, H_SETSIZE, 1000 );
+    history( hist, &hist_ev, H_LOAD, hist_path.c_str() );
     el_set( el, EL_HIST, history, hist );
     el_set( el, EL_PROMPT, sim::prompt );
     el_set( el, EL_CLIENTDATA, &interp );
@@ -314,6 +325,7 @@ void Sim::run()
         interp.command( tok );
     }
 
+    history( hist, &hist_ev, H_SAVE, hist_path.c_str() );
     history_end( hist );
     el_end( el );
 }
