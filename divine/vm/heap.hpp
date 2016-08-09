@@ -205,6 +205,11 @@ struct MutableHeap
         return shadows().defined( shloc( p, from, sz ), sz );
     }
 
+    auto type( Pointer p, int from = 0, int sz = 0 )
+    {
+        return shadows().type( shloc( p, from, sz ), sz );
+    }
+
     PointerV make( int size )
     {
         auto i = _objects.allocate( size );
