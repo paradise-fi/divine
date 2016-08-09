@@ -76,7 +76,7 @@ const _MD_Function *__md_get_pc_meta( uintptr_t pc ) NOTHROW _ROOT;
  *   landingpad
  * * reading register of value of call/invoke
  * */
-_MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, const _MD_Function *funMeta ) NOTHROW _ROOT;
+_MD_RegInfo __md_get_register_info( struct _VM_Frame *frame, uintptr_t pc, const _MD_Function *funMeta ) NOTHROW _ROOT;
 
 CPP_END
 

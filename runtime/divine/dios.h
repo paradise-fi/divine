@@ -83,7 +83,7 @@ void __dios_syscall(int syscode, void* ret, ...);
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
 
-_Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) NOTHROW;
+_Noreturn void __dios_unwind( struct _VM_Frame *to, void (*pc)( void ) ) NOTHROW;
 
 CPP_END
 #undef EXTERN_C
