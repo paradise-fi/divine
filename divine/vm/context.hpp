@@ -43,6 +43,7 @@ struct Context
 
     Context( Program &p ) : _program( p ) {}
 
+    Program &program() { return _program; }
     Heap &heap() { return _heap; }
     PointerV frame() { return _frame; }
     void frame( PointerV p ) { _frame = p; }
