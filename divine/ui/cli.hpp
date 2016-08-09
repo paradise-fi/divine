@@ -129,11 +129,15 @@ struct Info   : WithBC
     void run() { NOT_IMPLEMENTED(); }
 };
 
+namespace {
+
 std::vector< std::string > fromArgv( int argc, const char **argv )
 {
     std::vector< std::string > args;
     std::copy( argv + 1, argv + argc, std::back_inserter( args ) );
     return args;
+}
+
 }
 
 struct CLI : Interface
