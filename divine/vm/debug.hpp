@@ -18,20 +18,122 @@
 
 #pragma once
 
-#include <divine/vm/bitcode.hpp>
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/DebugInfo.h>
+DIVINE_UNRELAX_WARNINGS
+
+#include <divine/vm/eval.hpp>
+#include <brick-string>
 
 namespace divine {
 namespace vm {
 
-template< typename Heap >
-struct Debug
+enum class DNKind { Frame, Object };
+
+static std::ostream &operator<<( std::ostream &o, DNKind dnk )
 {
-    Heap &_heap;
-    using HeapPointer = typename Heap::Pointer;
-    Debug( Heap &h ) : _heap( h ) {}
+    switch ( dnk )
+    {
+        case DNKind::Frame: return o << "frame";
+        case DNKind::Object: return o << "object";
+    }
+}
+
+static std::string fileline( const llvm::Instruction &insn )
+{
+    auto loc = insn.getDebugLoc().get();
+    if ( loc && loc->getNumOperands() )
+        return loc->getFilename().str() + std::string( ":" ) +
+            brick::string::fmt( loc->getLine() );
+    return "unknown location";
+}
+
+template< typename Context >
+struct DebugNode
+{
+    Context *_ctx;
+    GenericPointer _address;
+    DNKind _kind;
+    llvm::Type *_type; /* applies only to Objects */
+
+    using HeapPointer = typename Context::Heap::Pointer;
+    using PointerV = value::Pointer< HeapPointer >;
+
+    DebugNode( Context &c, GenericPointer l, DNKind k, llvm::Type *t )
+        : _ctx( &c ), _address( l ), _kind( k ), _type( t )
+    {}
+
+    DebugNode( const DebugNode &o ) = default;
+    DebugNode() : _ctx( nullptr ), _address( vm::nullPointer() ) {}
+
+    DNKind kind() { return _kind; }
+
+    template< typename Y >
+    void attributes( Y yield )
+    {
+        Eval< Program, Context, value::Void > eval( _ctx->program(), *_ctx );
+        Program &program = _ctx->program();
+
+        yield( "address", brick::string::fmt( PointerV( _address ) ) );
+
+        if ( _address == nullPointer() )
+            return;
+
+        std::stringstream raw, types, def;
+        int sz = eval.ptr2sz( _address );
+
+        for ( int i = 0; i < sz; ++i )
+        {
+            if ( i % 32 == 0 )
+                raw << std::endl;
+            else if ( i % 16 == 0 )
+                raw << " | ";
+            else if ( i % 2 == 0 )
+                raw << " ";
+            raw << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 )
+                << +_ctx->heap().unsafe_bytes( _address )[ i ];
+        }
+
+        for ( auto t : _ctx->heap().shadows().type( _ctx->heap().shloc( _address ), sz ) )
+            types << t;
+
+        for ( auto t : _ctx->heap().defined( _address ) )
+            def << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 )
+                << +t << " ";
+
+        yield( "_raw", raw.str() );
+        yield( "_types", types.str() );
+        yield( "_defined", def.str() );
+
+        if ( _kind == DNKind::Frame )
+        {
+            PointerV pc;
+            _ctx->heap().read( _address, pc );
+            auto insn = program.instruction( pc.cooked() ).op;
+            if ( insn )
+                yield( "pc", fileline( *llvm::cast< llvm::Instruction >( insn ) ) );
+        }
+    }
+
+    template< typename Y >
+    void related( Y yield )
+    {
+        if ( _address == nullPointer() )
+            return;
+
+        if ( _kind == DNKind::Frame )
+        {
+            PointerV fr = _address;
+            _ctx->heap().skip( fr, PointerBytes );
+            _ctx->heap().read( fr.cooked(), fr );
+            if ( fr.cooked() != nullPointer() )
+                yield( "parent", DebugNode( *_ctx, fr.cooked(), DNKind::Frame, nullptr ) );
+        }
+    }
+
     void dump( std::ostream &o );
     void dot( std::ostream &o );
-    void backtrace( HeapPointer top, std::ostream &o );
+    void backtrace( typename Context::Heap::Pointer top, std::ostream &o );
 };
 
 }
