@@ -38,7 +38,7 @@ struct Command {};
 struct WithDirection { std::string _where; };
 struct Step : Command {};
 struct Walk : WithDirection {};
-struct Look : WithDirection { bool _detailed; };
+struct Look : WithDirection { bool _raw; };
 struct Jump : WithDirection {};
 struct Trace : Command {};
 struct Exit : Command {};
@@ -88,10 +88,13 @@ struct Interpreter
         _prompt = strdup( "> " );
     }
 
-    void frame( vm::GenericPointer fr )
+    void dump( DN dn, std::string key )
     {
-        _dbg.clear();
-        _dbg.emplace_back( _ctx, fr, vm::DNKind::Frame, nullptr );
+        dn.attributes( [&]( auto k, auto v )
+            {
+                if ( k == key )
+                    std::cerr << v << std::endl;
+            } );
     }
 
     void look( DN dn, bool detailed = false )
@@ -231,7 +234,10 @@ struct Interpreter
                                   } );
         if ( dn._address == vm::nullPointer() )
             return directions( l._where );
-        look( dn, l._detailed );
+        if ( l._raw )
+            dump( dn, "_raw" );
+        else
+            look( dn, false );
     }
 
     void go( Help ) { UNREACHABLE( "impossible case" ); }
@@ -251,7 +257,7 @@ void Interpreter::command( cmd::Tokens tok )
     auto diropts = cmd::make_option_set< WithDirection >( v )
                    .option( "[{string}]", &WithDirection::_where, "direction"s );
     auto lookopts = cmd::make_option_set< Look >( v )
-                    .option( "[--details]", &Look::_detailed, "show minutae"s );
+                    .option( "[--raw]", &Look::_raw, "dump raw data"s );
 
     auto parser = cmd::make_parser( v )
                   .command< Exit >( "exit from divine"s )
