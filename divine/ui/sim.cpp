@@ -138,14 +138,16 @@ struct Interpreter
         Eval eval( _bc->program(), _ctx );
         eval.advance();
         for ( int i = 1; i < eval.instruction().values.size(); ++i )
+        {
+            std::cerr << " op[" << i << "], " << eval.instruction().value( i ) << " = ";
             eval.op< Eval::Any >( i, [&]( auto v )
-                                  { std::cerr << " op[" << i << "] = " << v.get( i ) << std::endl; } );
+                                  { std::cerr << v.get( i ) << std::endl; } );
+        }
         eval.instruction().op->dump();
         eval.dispatch();
-        /*
+        std::cerr << " result, " << eval.instruction().value( 0 ) << " = ";
         eval.op< Eval::Any >( 0, [&]( auto v )
-                              { std::cerr << " result = " << v.get( 0 ) << std::endl; } );
-        */
+                              { std::cerr << v.get( 0 ) << std::endl; } );
         schedule( eval );
     }
 
