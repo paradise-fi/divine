@@ -79,36 +79,41 @@ struct DebugNode
         if ( _address == nullPointer() )
             return;
 
-        std::stringstream raw, types, def;
+        std::stringstream hex, ascii, types, def;
         int sz = eval.ptr2sz( _address );
+        auto hloc = eval.ptr2h( _address );
+        auto bytes = _ctx->heap().unsafe_bytes( hloc, hloc.offset(), sz );
 
         for ( int i = 0; i < sz; ++i )
         {
-            if ( i % 32 == 0 )
-                raw << std::endl;
-            else if ( i % 16 == 0 )
-                raw << " | ";
-            else if ( i % 2 == 0 )
-                raw << " ";
-            raw << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 )
-                << +_ctx->heap().unsafe_bytes( _address )[ i ];
+            hex << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 ) << +bytes[ i ];
+            if ( i % 32 == 31 )
+                hex << std::endl << "     ";
+            else if ( i % 16 == 15 )
+                hex << " | ";
+            else if ( i % 2 == 1 )
+                hex << " ";
         }
 
-        for ( auto t : _ctx->heap().shadows().type( _ctx->heap().shloc( _address ), sz ) )
+        for ( int i = 0; i < sz; ++i )
+            ascii << bytes[ i ];
+
+        for ( auto t : _ctx->heap().type( hloc, hloc.offset(), sz ) )
             types << t;
 
-        for ( auto t : _ctx->heap().defined( _address ) )
+        for ( auto t : _ctx->heap().defined( hloc, hloc.offset(), sz ) )
             def << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 )
                 << +t << " ";
 
-        yield( "_raw", raw.str() );
+        yield( "_hex", hex.str() );
+        yield( "_ascii", ascii.str() );
         yield( "_types", types.str() );
         yield( "_defined", def.str() );
 
         if ( _kind == DNKind::Frame )
         {
             PointerV pc;
-            _ctx->heap().read( _address, pc );
+            _ctx->heap().read( hloc, pc );
             auto insn = program.instruction( pc.cooked() ).op;
             if ( insn )
                 yield( "pc", fileline( *llvm::cast< llvm::Instruction >( insn ) ) );
