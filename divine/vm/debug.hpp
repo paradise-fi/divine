@@ -138,6 +138,21 @@ struct DebugNode
         if ( _address == nullPointer() )
             return;
 
+        Eval< Program, Context, value::Void > eval( _ctx->program(), *_ctx );
+
+        PointerV ptr;
+        auto hloc = eval.ptr2h( _address );
+        int sz = eval.ptr2sz( _address ), hoff = hloc.offset();
+
+        int i = 0;
+        for ( auto ptroff : _ctx->heap().pointers( hloc, hloc.offset(), sz ) )
+        {
+            hloc.offset( hoff + ptroff->offset() );
+            _ctx->heap().read( hloc, ptr );
+            yield( "_ptr_" + brick::string::fmt( i++ ),
+                    DebugNode( *_ctx, ptr.cooked(), DNKind::Object, nullptr ) );
+        }
+
         if ( _kind == DNKind::Frame )
         {
             PointerV fr = _address;
