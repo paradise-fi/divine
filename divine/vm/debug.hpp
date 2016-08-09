@@ -110,6 +110,18 @@ struct DebugNode
         yield( "_types", types.str() );
         yield( "_defined", def.str() );
 
+        if ( _address.type() == PointerType::Const )
+        {
+            ConstPointer pp = _address;
+            yield( "slot", brick::string::fmt( program._constants[ pp.object() ] ) );
+        }
+
+        if ( _address.type() == PointerType::Global )
+        {
+            GlobalPointer pp = _address;
+            yield( "slot", brick::string::fmt( program._globals[ pp.object() ] ) );
+        }
+
         if ( _kind == DNKind::Frame )
         {
             PointerV pc;
