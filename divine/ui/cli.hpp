@@ -83,6 +83,7 @@ struct Verify : WithBC
 };
 
 struct Run : WithBC { void run(); };
+struct Sim : WithBC { void run(); };
 
 struct Draw : WithBC
 {
@@ -229,6 +230,7 @@ struct CLI : Interface
         auto parser = cmd::make_parser( v )
             .command< Verify >( vrfyopts, bcopts )
             .command< Run >( &WithBC::_useropts, bcopts )
+            .command< Sim >( &WithBC::_useropts, bcopts )
             .command< Draw >( drawopts, bcopts )
             .command< Info >( bcopts )
             .command< Cc >( ccopts )
