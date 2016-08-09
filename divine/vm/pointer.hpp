@@ -85,6 +85,8 @@ struct GenericPointer : brick::types::Comparable
     auto type() { return _rep.type; }
     void type( PointerType t ) { _rep.type = t; }
 
+    GenericPointer operator+( int o ) { return GenericPointer( type(), object(), offset() + o ); }
+
     template< typename P,
               typename Q = typename std::enable_if<
                   std::is_same< Rep, typename P::Rep >::value >::type >
