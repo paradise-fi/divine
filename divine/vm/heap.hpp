@@ -181,9 +181,9 @@ struct MutableHeap
         Pool &_o;
         Bytes( Pool &o, Internal p ) : _o( o ), _p( p ) {}
         int size() { return _o.size( _p ); }
-        char *begin() { return _o.machinePointer< char >( _p ); }
-        char *end() { return _o.machinePointer< char >( _p, size() ); }
-        char &operator[]( int i ) { return *( begin() + i ); }
+        uint8_t *begin() { return _o.machinePointer< uint8_t >( _p ); }
+        uint8_t *end() { return _o.machinePointer< uint8_t >( _p, size() ); }
+        uint8_t &operator[]( int i ) { return *( begin() + i ); }
     };
 
     Internal p2i( Pointer p ) { Internal i; i.raw( p.object() ); return i; }
