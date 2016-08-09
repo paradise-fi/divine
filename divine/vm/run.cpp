@@ -60,9 +60,10 @@ void Run::run()
 
     while ( state.cooked() != vm::nullPointer() )
     {
-        _ctx.enter( _ctx._sched, vm::nullPointer(),
+        _ctx.enter( _ctx._sched, nullPointer(),
                     Eval::IntV( eval.heap().size( state.cooked() ) ), state );
         _ctx.mask( true );
+        eval._result = nullPointer();
         eval.run();
         state = eval._result;
     }
