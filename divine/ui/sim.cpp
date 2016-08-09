@@ -201,13 +201,17 @@ struct Interpreter
         if ( _dbg.empty() )
             throw brick::except::Error( "need a starting point" );
         bool found = false;
+        DN found_dn;
         _dbg.back().related( [&]( auto n, auto dn )
                              {
                                  if ( w._where == n )
-                                     _dbg.push_back( dn ), found = true;
+                                    found_dn = dn, found = true;
                              } );
         if ( found )
+        {
+            _dbg.push_back( found_dn );
             return;
+        }
         directions( w._where );
     }
 
