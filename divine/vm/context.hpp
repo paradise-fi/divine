@@ -98,7 +98,7 @@ struct Context
     bool mask() { return _mask; }
 
     bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.cooked() ) == fr; }
-    void setSched( CodePointer p ) { _sched = p; _sched.instruction( 1 ); }
+    void setSched( CodePointer p ) { _sched = p; }
     void setFault( CodePointer p ) { _fault = p; }
     void setIfl( PointerV p ) { _ifl = p; }
 };

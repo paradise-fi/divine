@@ -882,31 +882,26 @@ struct Eval
     void run()
     {
         _interrupted = false;
-        CodePointer next = pc();
         do {
-            pc( next );
-            // std::cerr << "pc = " << pc() << std::endl;
-            _instruction = &program().instruction( pc() );
-            // _instruction->op->dump();
+            advance();
             dispatch();
-            // op< Any >( 0, []( auto v ) { std::cerr << "  result = " << v.get( 0 ) << std::endl; } );
-            if ( _interrupted && !context().mask() )
-            {
-                // std::cerr << "======= interrupt" << std::endl;
-                context().interrupt();
-                _interrupted = false;
-            }
-            if ( context().frame().cooked() != nullPointer() )
-            {
-                next = pc();
-                next.instruction( next.instruction() + 1 );
-            }
         } while ( context().frame().cooked() != nullPointer() );
+    }
+
+    void advance()
+    {
+        if ( _interrupted && !context().mask() )
+        {
+            context().interrupt();
+            _interrupted = false;
+        }
+        if ( context().frame().cooked() != nullPointer() )
+            pc( pc() + 1 );
+        _instruction = &program().instruction( pc() );
     }
 
     void dispatch() /* evaluate a single instruction */
     {
-
         /* operation templates */
 
         auto _icmp = [this] ( auto impl ) -> void {
@@ -974,7 +969,6 @@ struct Eval
 
         switch ( instruction().opcode )
         {
-
             case OpCode::GetElementPtr:
                 result( operand< PointerV >( 0 ) + compositeOffsetFromInsn(
                             instruction().op->getOperand(0)->getType(), 1,
