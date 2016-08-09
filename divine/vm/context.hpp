@@ -22,6 +22,8 @@
 #include <divine/vm/program.hpp>
 #include <divine/vm/setup.hpp>
 
+#include <unordered_set>
+
 namespace divine {
 namespace vm {
 
@@ -39,7 +41,9 @@ struct Context
     Program &_program;
     PointerV _constants, _globals, _frame, _entry_frame, _ifl;
     CodePointer _sched, _fault;
-    bool _mask;
+
+    std::unordered_set< GenericPointer > _cfl_visited;
+    bool _mask, _interrupted;
 
     Context( Program &p ) : _program( p ) {}
 
@@ -75,14 +79,33 @@ struct Context
         push( frameptr, args... );
     }
 
-    void interrupt()
+    bool set_interrupted( bool i )
     {
+        bool rv = _interrupted;
+        _cfl_visited.clear();
+        _interrupted = i;
+        return rv;
+    }
+
+    void cfl_interrupt( CodePointer pc )
+    {
+        if ( _cfl_visited.count( pc ) )
+            set_interrupted( true );
+        else
+            _cfl_visited.insert( pc );
+    }
+
+    void check_interrupt()
+    {
+        if ( _mask || !_interrupted )
+            return;
         HeapPointer ifl = _ifl.cooked();
         if ( _ifl.cooked() != nullPointer() )
             _heap.write( _ifl.cooked(), _frame );
         _frame = _entry_frame;
         _ifl = PointerV();
         _mask = true;
+        _interrupted = false;
     }
 
     virtual void doublefault() = 0;

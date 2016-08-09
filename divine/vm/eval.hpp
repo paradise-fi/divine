@@ -136,11 +136,11 @@ struct Eval
     {}
 
     using OpCode = llvm::Instruction;
+
     Instruction *_instruction;
-    Instruction &instruction() { return *_instruction; }
     Result _result;
-    std::unordered_set< GenericPointer > _cfl_visited;
-    bool _interrupted;
+
+    Instruction &instruction() { return *_instruction; }
 
     using PointerV = value::Pointer< HeapPointer >;
     using BoolV = value::Bool;
@@ -470,7 +470,7 @@ struct Eval
             else
             {
                 context().mask( false );
-                set_interrupted( true );
+                context().set_interrupted( true );
             }
             context().frame( nullPointer() );
             return;
@@ -716,14 +716,6 @@ struct Eval
         return str;
     }
 
-    bool set_interrupted( bool i )
-    {
-        bool rv = _interrupted;
-        _cfl_visited.clear();
-        _interrupted = i;
-        return rv;
-    }
-
     void implement_hypercall()
     {
         switch( instruction().hypercall )
@@ -747,16 +739,13 @@ struct Eval
             case HypercallSetIfl:
                 return context().setIfl( operandCk< PointerV >( 0 ) );
             case HypercallInterrupt:
-                result( IntV( set_interrupted( operandCk< IntV >( 0 ).cooked() ) ) );
+                result( IntV( context().set_interrupted( operandCk< IntV >( 0 ).cooked() ) ) );
                 return;
             case HypercallCflInterrupt:
-                if ( _cfl_visited.count( pc() ) )
-                    set_interrupted( true );
-                else
-                    _cfl_visited.insert( pc() );
+                context().cfl_interrupt( pc() );
                 return;
             case HypercallMemInterrupt:
-                set_interrupted( true ); return; /* TODO */
+                context().set_interrupted( true ); return; /* TODO */
             case HypercallJump:
             {
                 // std::cerr << "======= jump" << std::endl;
@@ -766,7 +755,7 @@ struct Eval
                 if ( forget )
                 {
                     context().mask( false );
-                    set_interrupted( false );
+                    context().set_interrupted( false );
                 }
                 if ( tgt.cooked() == nullPointer() )
                     fault( _VM_F_Hypercall ) << "target frame of a jump is null";
@@ -898,7 +887,7 @@ struct Eval
 
     void run()
     {
-        _interrupted = false;
+        context().set_interrupted( false );
         do {
             advance();
             dispatch();
@@ -907,11 +896,7 @@ struct Eval
 
     void advance()
     {
-        if ( _interrupted && !context().mask() )
-        {
-            context().interrupt();
-            _interrupted = false;
-        }
+        context().check_interrupt();
         if ( context().frame().cooked() != nullPointer() )
             pc( pc() + 1 );
         _instruction = &program().instruction( pc() );
@@ -1355,8 +1340,10 @@ struct TContext
 
     PointerV globals() { return _globals; }
     PointerV constants() { return _constants; }
-    bool mask( bool = false )  { return false; }
-    void interrupt() {}
+    bool mask( bool = false ) { return false; }
+    bool set_interrupted( bool = false ) { return false; }
+    void check_interrupt() {}
+    void cfl_interrupt( vm::CodePointer ) {}
 
     template< typename I >
     int choose( int, I, I ) { return 0; }

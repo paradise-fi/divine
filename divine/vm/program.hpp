@@ -101,6 +101,10 @@ struct ConstContext
     PointerV constants() { return _constants; }
     void fault( _VM_Fault, PointerV, CodePointer ) { NOT_IMPLEMENTED(); }
     bool mask( bool )  { NOT_IMPLEMENTED(); }
+    bool set_interrupted( bool )  { NOT_IMPLEMENTED(); }
+    void cfl_interrupt( CodePointer )  { NOT_IMPLEMENTED(); }
+    void check_interrupt()  { NOT_IMPLEMENTED(); }
+
     template< typename I >
     int choose( int, I, I ) { NOT_IMPLEMENTED(); }
     void setSched( CodePointer ) { NOT_IMPLEMENTED(); }
