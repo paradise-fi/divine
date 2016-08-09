@@ -153,15 +153,15 @@ struct TestExplore
 
     static constexpr const char * const lin5 =
         "void *__vm_make_object( int );"
-        "void *__vm_set_sched( void *(*)( void * ) );"
-        "void *__sys_sched( void *s ) { int *r = s; *r = *r - 1; return *r > 0 ? s : 0; }"
+        "void *__vm_set_sched( void *(*)( int, void * ) );"
+        "void *__sys_sched( int sz, void *s ) { int *r = s; *r = *r - 1; return *r > 0 ? s : 0; }"
         "void *__sys_init( void *e ) { __vm_set_sched( __sys_sched ); "
         "int *r = __vm_make_object( 4 ); *r = 5; return r; }";
 
     static constexpr const char * const cir5 =
         "void *__vm_make_object( int );"
-        "void *__vm_set_sched( void *(*)( void * ) );"
-        "void *__sys_sched( void *s ) { int *r = s; *r = ( *r + 1 ) % 5; return s; }"
+        "void *__vm_set_sched( void *(*)( int, void * ) );"
+        "void *__sys_sched( int sz, void *s ) { int *r = s; *r = ( *r + 1 ) % 5; return s; }"
         "void *__sys_init( void *e ) { __vm_set_sched( __sys_sched ); "
         "int *r = __vm_make_object( 4 ); *r = 5; return r; }";
 
