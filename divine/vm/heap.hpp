@@ -179,10 +179,11 @@ struct MutableHeap
     {
         Internal _p;
         Pool &_o;
-        Bytes( Pool &o, Internal p ) : _o( o ), _p( p ) {}
-        int size() { return _o.size( _p ); }
-        uint8_t *begin() { return _o.machinePointer< uint8_t >( _p ); }
-        uint8_t *end() { return _o.machinePointer< uint8_t >( _p, size() ); }
+        int _start, _end;
+        Bytes( Pool &o, Internal p, int off, int end ) : _o( o ), _p( p ), _start( off ), _end( end ) {}
+        int size() { return _end - _start; }
+        uint8_t *begin() { return _o.machinePointer< uint8_t >( _p, _start ); }
+        uint8_t *end() { return _o.machinePointer< uint8_t >( _p, _end ); }
         uint8_t &operator[]( int i ) { return *( begin() + i ); }
     };
 
@@ -279,9 +280,9 @@ struct MutableHeap
         p.v( pv );
     }
 
-    auto unsafe_bytes( Pointer p )
+    auto unsafe_bytes( Pointer p, int off = 0, int sz = 0 )
     {
-        return Bytes( _objects, p2i( p ) );
+        return Bytes( _objects, p2i( p ), off, sz ? off + sz : size( p ) );
     }
 
     template< typename FromH >
