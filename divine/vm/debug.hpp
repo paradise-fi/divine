@@ -68,6 +68,31 @@ struct DebugNode
 
     DNKind kind() { return _kind; }
 
+    template< typename B >
+    void hexbyte( std::ostream &o, int &col, int index, B byte )
+    {
+        o << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 ) << +byte;
+        col += 2;
+        if ( index % 2 == 1 )
+            ++col, o << " ";
+    }
+
+    template< typename B >
+    void ascbyte( std::ostream &o, int &col, B byte )
+    {
+        std::stringstream os;
+        os << byte;
+        char b = os.str()[ 0 ];
+        o << ( std::isprint( b ) ? b : '~' );
+        ++ col;
+    }
+
+    void pad( std::ostream &o, int &col, int target )
+    {
+        while ( col < target )
+            ++col, o << " ";
+    }
+
     template< typename Y >
     void attributes( Y yield )
     {
@@ -79,36 +104,33 @@ struct DebugNode
         if ( _address == nullPointer() )
             return;
 
-        std::stringstream hex, ascii, types, def;
+        std::stringstream raw;
+
         int sz = eval.ptr2sz( _address );
         auto hloc = eval.ptr2h( _address );
         auto bytes = _ctx->heap().unsafe_bytes( hloc, hloc.offset(), sz );
+        auto types = _ctx->heap().type( hloc, hloc.offset(), sz );
+        auto defined = _ctx->heap().defined( hloc, hloc.offset(), sz );
 
-        for ( int i = 0; i < sz; ++i )
+        for ( int c = 0; c < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ); ++c )
         {
-            hex << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 ) << +bytes[ i ];
-            if ( i % 32 == 31 )
-                hex << std::endl << "     ";
-            else if ( i % 16 == 15 )
-                hex << " | ";
-            else if ( i % 2 == 1 )
-                hex << " ";
+            int col = 0;
+            for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
+                hexbyte( raw, col, i, bytes[ i ] );
+            pad( raw, col, 30 ); raw << "| ";
+            for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
+                hexbyte( raw, col, i, defined[ i ] );
+            pad( raw, col, 60 ); raw << "| ";
+            for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
+                ascbyte( raw, col, bytes[ i ] );
+            pad( raw, col, 72 ); raw << " | ";
+            for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
+                ascbyte( raw, col, types[ i ] );
+            if ( c + 1 < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ) )
+                raw << std::endl;
         }
 
-        for ( int i = 0; i < sz; ++i )
-            ascii << bytes[ i ];
-
-        for ( auto t : _ctx->heap().type( hloc, hloc.offset(), sz ) )
-            types << t;
-
-        for ( auto t : _ctx->heap().defined( hloc, hloc.offset(), sz ) )
-            def << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 )
-                << +t << " ";
-
-        yield( "_hex", hex.str() );
-        yield( "_ascii", ascii.str() );
-        yield( "_types", types.str() );
-        yield( "_defined", def.str() );
+        yield( "_raw", raw.str() );
 
         if ( _address.type() == PointerType::Const )
         {
