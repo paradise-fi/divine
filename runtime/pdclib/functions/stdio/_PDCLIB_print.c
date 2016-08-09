@@ -180,8 +180,8 @@ static void printstr( const char * str, struct _PDCLIB_status_t * status )
     if ( status->width == 0 || status->flags & E_minus )
     {
         // Simple case or left justification
-        while ( str[status->current] && 
-            ( status->prec < 0 || (long)status->current < status->prec ) )
+        while ( ( status->prec < 0 || (long)status->current < status->prec ) &&
+            str[status->current] )
         {
             PUT( str[status->current++] );
         }
