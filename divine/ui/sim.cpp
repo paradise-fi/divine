@@ -276,9 +276,11 @@ void Sim::run()
     HistEvent hist_ev;
     sim::Interpreter interp( _bc );;
 
+    history( hist, &hist_ev, H_SETSIZE, 1000 );
     el_set( el, EL_HIST, history, hist );
     el_set( el, EL_PROMPT, sim::prompt );
     el_set( el, EL_CLIENTDATA, &interp );
+    el_set( el, EL_EDITOR, "emacs" );
     el_source( el, nullptr );
 
     while ( !interp._exit )
