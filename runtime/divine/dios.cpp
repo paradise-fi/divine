@@ -37,7 +37,7 @@ struct Syscall {
 
     static Syscall& get() noexcept {
         if ( !instance ) {
-            instance = static_cast< Syscall *> ( __vm_make_object( sizeof( Syscall ) ) );
+            instance = static_cast< Syscall * > ( __vm_make_object( sizeof( Syscall ) ) );
             new ( instance ) Syscall();
         }
         return *instance;
@@ -52,6 +52,43 @@ private:
 };
 
 Syscall *Syscall::instance;
+
+// Constructs argument for main (argv, envp) from env and returns count and
+// the constructed argument
+std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *env ) {
+    int argc = 0;
+    int pref_len = strlen( prefix );
+    const _VM_Env *e = env;
+    while ( e->key ) {
+        if ( memcmp( prefix, e->key, pref_len ) == 0 )
+            argc++;
+        e++;
+    }
+    auto argv = static_cast< char ** >( __vm_make_object( ( argc + 1 ) * sizeof( char * ) ) );
+
+    char **arg = argv;
+    while ( env->key ) {
+        if ( memcmp( prefix, env->key, pref_len ) == 0 ) {
+            *arg = static_cast< char * > ( __vm_make_object( env->size + 1 ) );
+            memcpy( *arg, env->value, env->size );
+            ( *arg )[ env->size ] = '\0';
+            arg++;
+        }
+        env++;
+    }
+    *arg = nullptr;
+
+    return { argc, argv };
+}
+
+// Free resources allocated for arguments of the main function
+void free_main_arg( char** argv ) {
+    while( *argv ) {
+        __vm_free_object( *argv );
+        ++argv;
+    }
+    __vm_free_object( argv );
+}
 
 struct DiosMainFrame : _VM_Frame {
     int l;
@@ -171,7 +208,7 @@ struct Scheduler {
 
         Thread &thread = get_threads()[ idx ];
         thread.update_state();
-        
+
         if ( !thread.zombie() ) {
             __vm_set_ifl( &( thread._frame) );
             return thread._frame;
@@ -200,16 +237,13 @@ struct Scheduler {
         new ( &( _cf->main_thread ) ) Thread( dios_main );
         _cf->active_thread = 0;
         _cf->thread_count = 1;
-        
+
         DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( _cf->main_thread._frame );
         frame->l = main->arg_count;
 
-        if (main->arg_count >= 1)
-            frame->argc = argc;
-        if (main->arg_count >= 2)
-            frame->argv = argv;
-        if (main->arg_count >= 3)
-            frame->envp = envp;
+        frame->argc = argc;
+        frame->argv = argv;
+        frame->envp = envp;
     }
 
     ThreadId start_thread( FunPtr routine, void *arg, FunPtr cleanup ) {
@@ -271,6 +305,9 @@ extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
     if ( res != 0 )
         __vm_fault( ( _VM_Fault ) _DiOS_F_MainReturnValue );
 
+    dios::free_main_arg( argv );
+    dios::free_main_arg( envp );
+
     __dios_trace( 0, "DiOS out!" );
 }
 
@@ -286,16 +323,16 @@ void *__dios_sched( int, void *state ) noexcept {
         __vm_jump( jmp, nullptr, 1 );
     }
 
-    __dios_trace( 0, "\n" );
     return scheduler.get_cf();
 }
 
 void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept __attribute__((__noreturn__));
 
 extern "C" void *__dios_init( const _VM_Env *env ) {
-    while ( env->key ) {
-        __dios_trace( 0, "Key: %s, Value: %s", env->key, env->value );
-        ++env;
+    const _VM_Env *e = env;
+    while ( e->key ) {
+        __dios_trace( 0, "Key: %s, Value: %.*s", e->key, e->size, e->value );
+        ++e;
     }
 
     __vm_trace( "__sys_init called" );
@@ -313,9 +350,11 @@ extern "C" void *__dios_init( const _VM_Env *env ) {
     }
 
     /* ToDo: Parse and forward main arguments */
-    scheduler.start_main_thread( main, 0, nullptr, nullptr );
+    auto argv = dios::construct_main_arg( "arg.", env );
+    auto envp = dios::construct_main_arg( "env.", env );
+    scheduler.start_main_thread( main, argv.first, argv.second, envp.second );
     __vm_trace( "Main thread started" );
-    
+
     return scheduler.get_cf();
 }
 
