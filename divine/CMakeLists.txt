@@ -37,6 +37,8 @@ add_library( divine-cc ${CPP_cc} ${STRINGIFIED} )
 add_library( divine-ui ${CPP_ui} )
 add_library( divine-vm ${CPP_vm} )
 
+target_link_libraries( divine-ui edit )
+
 add_library( libdivine "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp" )
 
 target_link_libraries( libdivine divine-cc # divine-ss divine-alg
