@@ -1419,7 +1419,6 @@ struct Eval
         std::tie( c._constants, c._globals ) = p->exportHeap( c.heap() );
         vm::Eval< vm::Program, TContext< vm::Program >, IntV > e( *p, c );
         auto pc = p->functionByName( "f" );
-        pc.instruction( 1 );
         c.enter( pc, vm::nullPointer(), args... );
         e.run();
         return e._result.cooked();
