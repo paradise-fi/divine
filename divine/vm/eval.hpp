@@ -204,6 +204,23 @@ struct Eval
         return nullPointer();
     }
 
+    int ptr2sz( PointerV p )
+    {
+        if ( p.cooked().type() == PointerType::Heap )
+            return heap().size( p.cooked() );
+        if ( p.cooked().type() == PointerType::Const )
+        {
+            ConstPointer pp = p.cooked();
+            return program()._constants[ pp.object() ].width;
+        }
+        if ( p.cooked().type() == PointerType::Global )
+        {
+            ConstPointer pp = p.cooked();
+            return program()._globals[ pp.object() ].width;
+        }
+        UNREACHABLE_F( "a bad pointer in ptr2sz: %s", brick::string::fmt( PointerV( p ) ).c_str() );
+    }
+
     struct FaultStream : std::stringstream
     {
         Context *_ctx;
