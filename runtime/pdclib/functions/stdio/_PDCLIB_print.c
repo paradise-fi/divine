@@ -107,7 +107,7 @@ static void int2base( uintmax_t value, struct _PDCLIB_status_t * status )
     int written = 0;
 
     if ( status->prec == EOF )
-        status->prec = 0;
+        status->prec = 1;
 
     // Build up our output string - backwards
     {
