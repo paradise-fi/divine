@@ -49,6 +49,8 @@ void WithBC::setup()
     i = 0;
     for ( auto o : _useropts )
         env.emplace_back( "arg." + brick::string::fmt( i++ ), bstr( o.begin(), o.end() ) );
+    env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
+
     try {
         _bc = std::make_shared< vm::BitCode >( _file, env, _autotrace );
     } catch ( vm::BCParseError &err ) /* probably not a bitcode file */
