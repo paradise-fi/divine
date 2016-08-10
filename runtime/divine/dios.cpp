@@ -47,34 +47,52 @@ private:
     _DiOS_SC _syscode;
     void *_ret;
     va_list _args;
-    
+
     static Syscall *instance;
 };
 
 Syscall *Syscall::instance;
 
+char *construct_argument( const _VM_Env *env ) {
+    auto arg = static_cast< char * >( __vm_make_object( env->size + 1 ) );
+    memcpy( arg, env->value, env->size );
+    arg[ env->size ] = '\0';
+    return arg;
+}
+
 // Constructs argument for main (argv, envp) from env and returns count and
 // the constructed argument
-std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *env ) {
-    int argc = 0;
+std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *env,
+    bool prepend_name = false )
+{
+    int argc = prepend_name ? 1 : 0;
     int pref_len = strlen( prefix );
+    const _VM_Env *name = nullptr;
     const _VM_Env *e = env;
-    while ( e->key ) {
-        if ( memcmp( prefix, e->key, pref_len ) == 0 )
+    for ( ; e->key; e++ ) {
+        __dios_trace( 0, "Arg: %s", e->key );
+        if ( memcmp( prefix, e->key, pref_len ) == 0 ) {
             argc++;
-        e++;
+        }
+        else if ( strcmp( e->key, "divine.bcname" ) == 0 ) {
+            __dios_assert_v( !name, "Multiple divine.bcname provided" );
+            name = e;
+        }
     }
     auto argv = static_cast< char ** >( __vm_make_object( ( argc + 1 ) * sizeof( char * ) ) );
 
     char **arg = argv;
-    while ( env->key ) {
+    if (prepend_name) {
+        __dios_assert_v( name, "Missing binary name: divine.bcname" );
+        *argv = construct_argument( name );
+        arg++;
+    }
+
+    for ( ; env->key; env++ ) {
         if ( memcmp( prefix, env->key, pref_len ) == 0 ) {
-            *arg = static_cast< char * > ( __vm_make_object( env->size + 1 ) );
-            memcpy( *arg, env->value, env->size );
-            ( *arg )[ env->size ] = '\0';
+            *arg = construct_argument( env );
             arg++;
         }
-        env++;
     }
     *arg = nullptr;
 
@@ -350,7 +368,7 @@ extern "C" void *__dios_init( const _VM_Env *env ) {
     }
 
     /* ToDo: Parse and forward main arguments */
-    auto argv = dios::construct_main_arg( "arg.", env );
+    auto argv = dios::construct_main_arg( "arg.", env, true );
     auto envp = dios::construct_main_arg( "env.", env );
     scheduler.start_main_thread( main, argv.first, argv.second, envp.second );
     __vm_trace( "Main thread started" );
