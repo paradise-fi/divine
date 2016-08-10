@@ -185,23 +185,63 @@ struct Eval
     GenericPointer s2ptr( Slot v, int off, PointerV f ) { return s2ptr( v, off, f, globals() ); }
     GenericPointer s2ptr( Slot v, int off = 0 ) { return s2ptr( v, off, frame(), globals() ); }
 
-    HeapPointer ptr2h( PointerV p ) { return ptr2h( p, globals() ); }
-    HeapPointer ptr2h( PointerV p, PointerV g )
+    typename Program::Slot ptr2s( GenericPointer p )
+    {
+        if ( p.type() == PointerType::Const )
+            return program()._constants[ p.object() ];
+        else if ( p.type() == PointerType::Global )
+            return program()._globals[ p.object() ];
+        else UNREACHABLE( "bad pointer in ptr2s" );
+    }
+
+    HeapPointer ptr2h( PointerV p, int sz = 1 ) { return ptr2h( p, globals() ); }
+    HeapPointer ptr2h( PointerV p, PointerV g, int sz = 1 )
     {
         ASSERT( p.defined() );
-        if ( p.cooked().type() == PointerType::Heap || p.cooked() == nullPointer() )
-            return p.cooked();
-        if ( p.cooked().type() == PointerType::Const )
+        auto pp = p.cooked();
+
+        if ( pp.type() == PointerType::Heap || pp == nullPointer() )
+            return pp;
+
+        return s2ptr( ptr2s( pp ), pp.offset() );
+    }
+
+    bool boundcheck( PointerV p, int sz, std::string dsc = "" )
+    {
+        auto pp = p.cooked();
+        int width = 0;
+
+        if ( !p.defined() )
         {
-            ConstPointer pp = p.cooked();
-            return s2ptr( program()._constants[ pp.object() ], pp.offset() );
+            fault( _VM_F_Memory ) << "dereferenc of undefined pointer " << p << dsc;
+            return false;
         }
-        if ( p.cooked().type() == PointerType::Global )
+
+        if ( pp == nullPointer() )
         {
-            GlobalPointer pp = p.cooked();
-            return s2ptr( program()._globals[ pp.object() ], pp.offset(), nullPointer(), g );
+            fault( _VM_F_Memory ) << "null pointer dereference" << dsc;
+            return false;
         }
-        return nullPointer();
+
+        if ( pp.type() == PointerType::Heap )
+        {
+            HeapPointer hp = pp;
+            if ( hp.null() || !heap().valid( hp ) )
+            {
+                fault( _VM_F_Memory ) << "invalid heap pointer dereference " << p << dsc;
+                return false;
+            }
+            width = heap().size( hp );
+        } else width = ptr2s( pp ).width;
+
+        if ( pp.offset() + sz > width )
+        {
+            fault( _VM_F_Memory ) << "access of size " << sz << " at " << p
+                                  << " is " << pp.offset() + sz - width
+                                  << " bytes out of bounds";
+            return false;
+        }
+        return true;
     }
 
     int ptr2sz( PointerV p )
@@ -336,21 +376,19 @@ struct Eval
     void implement_store()
     {
         auto to = operandPtr( 1 );
-        if ( !to.defined() )
+        int sz = operand( 0 ).width;
+        if ( !boundcheck( to, sz ) )
             return;
-        /* std::cerr << "store of *" << s2ptr( operand( 0 ) ) << " to "
-           << operand< PointerV >( 1 ) << std::endl; */
-        if ( !heap().copy( s2ptr( operand( 0 ) ), ptr2h( to ), operand( 0 ).width ) )
-            fault( _VM_F_Memory ) << "invalid store to " << to;
+        heap().copy( s2ptr( operand( 0 ) ), ptr2h( to ), sz );
     }
 
     void implement_load()
     {
         auto from = operandPtr( 0 );
-        if ( !from.defined() )
-            return; // handled in operandPtr
-        if ( !heap().copy( ptr2h( from ), s2ptr( result() ), result().width ) )
-            fault( _VM_F_Memory ) << "invalid load from " << from;
+        int sz = result().width;
+        if ( !boundcheck( from, sz ) )
+            return;
+        heap().copy( ptr2h( from ), s2ptr( result() ), sz );
     }
 
     template< typename > struct Any { static const bool value = true; };
@@ -660,10 +698,9 @@ struct Eval
                 }
                 auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
                 auto vaList = operandPtr( 0 );
-                if ( !vaList.defined() )
+                if ( !boundcheck( vaList, operand( 0 ).width ) )
                     return;
-                if ( !heap().copy( vaptr_loc, ptr2h( vaList ), operand( 0 ).width ) )
-                    fault( _VM_F_Memory ) << "invalid va_start with va_list = " << vaList;
+                heap().copy( vaptr_loc, ptr2h( vaList ), operand( 0 ).width );
                 return;
             }
             case Intrinsic::vaend: return;
@@ -671,9 +708,10 @@ struct Eval
             {
                 auto from = operandPtr( 1 );
                 auto to = operandPtr( 0 );
-                // note: we are writting pointer, so with of from/to is also with of operand
-                if ( !heap().copy( ptr2h( from ), ptr2h( to ), operand( 0 ).width ) )
-                    fault( _VM_F_Memory ) << "invalid va_copy from " << from << " to " << to;
+                if ( !boundcheck( from, operand( 0 ).width ) ||
+                     !boundcheck( to, operand( 0 ).width ) )
+                    return;
+                heap().copy( ptr2h( from ), ptr2h( to ), operand( 0 ).width );
                 return;
             }
             case Intrinsic::trap:
@@ -709,6 +747,8 @@ struct Eval
         std::string str;
         CharV c;
         do {
+            if ( !boundcheck( nptr, 1 ) )
+                return "<out of bounds>";
             heap().read_shift( nptr, c );
             if ( c.cooked() )
                 str += c.cooked();
@@ -945,10 +985,8 @@ struct Eval
                     auto loc = operandPtr( 0 );
                     if ( !loc.defined() )
                         return;
-                    if ( !heap().valid( ptr2h( loc ) ) ) {
-                        this->fault( _VM_F_Memory ) << "invalid AtomicRMW at " << loc;
+                    if ( !boundcheck( loc, sizeof( typename decltype( v.get() )::Raw ) ) )
                         return; // TODO: destory pre-existing register value
-                    }
                     heap().read( ptr2h( loc ), edit );
                     this->result( edit );
                     heap().write( ptr2h( loc ), impl( edit, v.get( 2 ) ) );
@@ -1279,21 +1317,12 @@ struct Eval
                     // note: although the va_list type might not be a pointer (as on x86)
                     // we will use it so, assuming that it will be at least as big as a
                     // pointer (for example, on x86_64 va_list is { i32, i32, i64*, i64* }*)
-                    if ( !vaList.defined() )
+                    if ( !boundcheck( vaList, PointerBytes ) )
                         return;
-                    if ( !heap().valid( ptr2h( vaList ) ) )
-                        fault( _VM_F_Memory ) << "invalid va_list " << vaList;
                     heap().read( ptr2h( vaList ), vaArgs );
-                    if ( !vaArgs.defined() ) {
-                        fault( _VM_F_Hypercall ) << "undefined va_list value " << vaArgs;
+                    if ( !boundcheck( vaArgs, result().width ) )
                         return;
-                    }
-                    if ( !heap().valid( ptr2h( vaArgs ) ) ) {
-                        fault( _VM_F_Memory ) << "invalid va_list arg " << vaArgs;
-                        return;
-                    }
-                    if ( !heap().copy( ptr2h( vaArgs ), s2ptr( result() ), result().width ) )
-                        fault( _VM_F_Memory ) << "invalid load of va_arg from " << vaArgs;
+                    heap().copy( ptr2h( vaArgs ), s2ptr( result() ), result().width );
                     heap().write( ptr2h( vaList ), PointerV( vaArgs + result().width ) );
                     break;
                 }
