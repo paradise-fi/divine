@@ -9,7 +9,11 @@
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
 #define CPP_END }
+#if __cplusplus >= 201103L
 #define NOTHROW noexcept
+#else
+#define NOTHROW throw()
+#endif
 #else
 #define EXTERN_C
 #define CPP_END
