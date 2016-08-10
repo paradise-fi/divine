@@ -84,7 +84,6 @@ struct Explore
     using State = explore::State;
 
     BC _bc;
-    Env _env;
 
     explore::Context _ctx;
 
@@ -92,8 +91,8 @@ struct Explore
 
     auto &program() { return _bc->program(); }
 
-    Explore( BC bc, Env env = Env() )
-        : _bc( bc ), _env( env ), _ctx( _bc->program() )
+    Explore( BC bc )
+        : _bc( bc ), _ctx( _bc->program() )
     {
     }
 
@@ -129,7 +128,7 @@ struct Explore
     {
         Eval eval( program(), _ctx );
 
-        setup( program(), _ctx, _env );
+        setup( program(), _ctx );
         _ctx.mask( true );
         eval.run(); /* run __sys_init */
 

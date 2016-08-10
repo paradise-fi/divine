@@ -84,7 +84,7 @@ struct Interpreter
 
     Interpreter( BC bc ) : _exit( false ), _bc( bc ), _ctx( _bc->program() )
     {
-        setup( _bc->program(), _ctx, _env );
+        setup( _bc->program(), _ctx );
         _ctx.mask( true );
         _prompt = strdup( "> " );
     }

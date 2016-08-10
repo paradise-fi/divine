@@ -53,7 +53,7 @@ void Run::run()
     RunContext _ctx( program );
     Eval eval( program, _ctx );
 
-    setup( program, _ctx, _env );
+    setup( program, _ctx );
     _ctx.mask( true );
     eval.run();
     auto state = eval._result;

@@ -30,8 +30,7 @@ struct Run
     using BC = std::shared_ptr< BitCode >;
     using Env = std::vector< std::string >;
     BC _bc;
-    Env _env;
-    Run( BC bc, Env env ) : _bc( bc ), _env( env ) {}
+    Run( BC bc ) : _bc( bc ) {}
     void run();
 };
 

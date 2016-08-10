@@ -108,7 +108,7 @@ void Cc::run()
     }
 }
 
-void Run::run() { vm::Run( _bc, _env ).run(); }
+void Run::run() { vm::Run( _bc ).run(); }
 
 }
 }
