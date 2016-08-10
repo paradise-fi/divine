@@ -198,6 +198,14 @@ inline llvm::ArrayType *resizeArrayType( llvm::ArrayType *t, long size ) {
     return llvm::ArrayType::get( elemType, size );
 }
 
+inline unsigned getOpcode( llvm::Value *v ) {
+    if ( auto *i = llvm::dyn_cast< llvm::Instruction >( v ) )
+        return i->getOpcode();
+    if ( auto *ce = llvm::dyn_cast< llvm::ConstantExpr >( v ) )
+        return ce->getOpcode();
+    return 0;
+}
+
 inline void replaceGlobalArray( llvm::GlobalVariable *glo, llvm::Constant *init )
 {
     auto *arrType = init->getType();
@@ -206,24 +214,49 @@ inline void replaceGlobalArray( llvm::GlobalVariable *glo, llvm::Constant *init 
                 "lart.module." + glo->getName().str() , glo );
 
     for ( auto u : query::query( glo->users() ).freeze() ) { // avoid iterating over a list while we delete from it
-
-        llvm::GetElementPtrInst *gep = llvm::dyn_cast< llvm::GetElementPtrInst >( u );
+        auto *inst = llvm::dyn_cast< llvm::Instruction >( u );
         llvm::ConstantExpr *constant = nullptr;
-        if ( !gep ) {
+        if ( !inst ) {
             constant = llvm::cast< llvm::ConstantExpr >( u );
-            gep = llvm::cast< llvm::GetElementPtrInst >(
-                                    constant->getAsInstruction() );
+            inst = constant->getAsInstruction();
         }
-        std::vector< llvm::Value * > idxs;
-        for ( auto &i : brick::query::range( gep->idx_begin(), gep->idx_end() ) )
-            idxs.push_back( *&i );
-        if ( constant ) {
-            constant->replaceAllUsesWith( llvm::ConstantExpr::getGetElementPtr(
-                                              nullptr, newGlo, idxs ) );
-            delete gep;
-        } else
-            llvm::ReplaceInstWithInst( gep, llvm::GetElementPtrInst::Create(
-                                             nullptr, newGlo, idxs ) );
+        ASSERT( inst );
+
+        switch ( inst->getOpcode() ) {
+            case llvm::Instruction::GetElementPtr:
+            {
+                llvm::GetElementPtrInst *gep = llvm::cast< llvm::GetElementPtrInst >( inst );
+                std::vector< llvm::Value * > idxs;
+                for ( auto &i : brick::query::range( gep->idx_begin(), gep->idx_end() ) )
+                    idxs.push_back( *&i );
+                if ( constant )
+                    constant->replaceAllUsesWith( llvm::ConstantExpr::getGetElementPtr(
+                                                      nullptr, newGlo, idxs ) );
+                else
+                    llvm::ReplaceInstWithInst( gep, llvm::GetElementPtrInst::Create(
+                                                     nullptr, newGlo, idxs ) );
+                break;
+            }
+            case llvm::Instruction::PtrToInt:
+                if ( constant )
+                    constant->replaceAllUsesWith( llvm::ConstantExpr::getPtrToInt( newGlo, inst->getType() ) );
+                else
+                    llvm::ReplaceInstWithInst( inst, new llvm::PtrToIntInst( newGlo, inst->getType() ) );
+                break;
+            case llvm::Instruction::BitCast:
+                if ( constant )
+                    constant->replaceAllUsesWith( llvm::ConstantExpr::getBitCast( newGlo, inst->getType() ) );
+                else
+                    llvm::ReplaceInstWithInst( inst, new llvm::BitCastInst( newGlo, inst->getType() ) );
+                break;
+            default:
+                u->dump();
+                inst->dump();
+                UNREACHABLE_F( "Unsupported ocode in replaceGlobalArray: %d", inst->getOpcode() );
+        }
+
+        if ( constant )
+            delete inst;
     }
     auto name = glo->getName().str();
     glo->eraseFromParent();

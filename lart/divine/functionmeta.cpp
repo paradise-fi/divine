@@ -76,6 +76,19 @@ struct FunctionMeta {
     int instTableSize;
 };
 
+struct GlobalMeta {
+    template< typename Index >
+    GlobalMeta( llvm::GlobalVariable &g, Index &index ) :
+        address( &g ), size( index._dl->getTypeStoreSize(
+                    llvm::cast< llvm::PointerType >( g.getType() )->getElementType() ) )
+    { }
+
+    llvm::GlobalVariable *address;
+    long size;
+    bool isConstant() const { return address->isConstant(); }
+    llvm::StringRef name() const { return address->getName(); }
+};
+
 struct IndexFunctions : lart::Pass {
 
     static PassMeta meta() {
@@ -92,34 +105,46 @@ struct IndexFunctions : lart::Pass {
         llvm::GlobalVariable *mdRoot = mod.getGlobalVariable( "__md_functions" );
         ASSERT( mdRoot && "The bitcode must define __md_functions" );
 
-        _funcMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::ArrayType >(
+        auto *funcMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::ArrayType >(
                             mdRoot->getType()->getElementType() )->getElementType() );
-        ASSERT( _funcMetaT && "The bitcode must define _MD_Function" );
-        ASSERT( _funcMetaT->getNumElements() == 10 && "Incompatible _MD_Function" );
+        ASSERT( funcMetaT && "The bitcode must define _MD_Function" );
+        ASSERT( funcMetaT->getNumElements() == 10 && "Incompatible _MD_Function" );
 
-        _instMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::PointerType >(
-                            _funcMetaT->getElementType( 7 ) )->getElementType() );
-        ASSERT( _instMetaT && "The bitcode must define _MD_InstInfo" );
+        auto *instMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::PointerType >(
+                            funcMetaT->getElementType( 7 ) )->getElementType() );
+        ASSERT( instMetaT && "The bitcode must define _MD_InstInfo" );
 
         llvm::GlobalVariable *mdSize = mod.getGlobalVariable( "__md_functions_count" );
         ASSERT( mdSize && "The bitcode must define __md_functions_count" );
 
+        llvm::GlobalVariable *mdGlobals = mod.getGlobalVariable( "__md_globals" );
+        ASSERT( mdGlobals && "The bitcode must define __md_globals" );
+
+        auto *gloMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::ArrayType >(
+                            mdGlobals->getType()->getElementType() )->getElementType() );
+        ASSERT( gloMetaT && "The bitcode must define _MD_Global" );
+        ASSERT( gloMetaT->getNumElements() == 4 && "Incompatible _MD_Global" );
+
+        llvm::GlobalVariable *mdGlobalsCount = mod.getGlobalVariable( "__md_globals_count" );
+        ASSERT( mdGlobalsCount && "The bitcode must define __md_globals_count" );
+
+        std::map< llvm::StringRef, FunctionMeta > funMetaMap;
         for ( auto &fn : mod ) {
             if ( fn.isIntrinsic() )
                 continue;
-            auto r = _meta.emplace( fn.getName(), FunctionMeta( fn, *this ) );
+            auto r = funMetaMap.emplace( fn.getName(), FunctionMeta( fn, *this ) );
             ASSERT( r.second );
         }
 
         // build metadata table
         std::vector< llvm::Constant * > metatable;
-        metatable.reserve( _meta.size() );
-        for ( auto &m : _meta ) {
+        metatable.reserve( funMetaMap.size() );
+        for ( auto &m : funMetaMap ) {
             std::string funNameStr = m.second.entryPoint->getName().str();
             std::string funNameCStr = funNameStr;
             funNameCStr.push_back( 0 );
 
-            auto *instArrayT = llvm::ArrayType::get( _instMetaT, m.second.instTableSize );
+            auto *instArrayT = llvm::ArrayType::get( instMetaT, m.second.instTableSize );
             auto *instTable = new llvm::GlobalVariable( mod, instArrayT, true,
                                 llvm::GlobalValue::ExternalLinkage,
                                 llvm::UndefValue::get( instArrayT ),
@@ -130,26 +155,26 @@ struct IndexFunctions : lart::Pass {
             auto type = m.second.type;
             type.push_back( 0 );
             auto *funType = util::getStringGlobal( type, mod );
-            auto *persT = llvm::cast< llvm::PointerType >( _funcMetaT->getElementType( 8 ) );
+            auto *persT = llvm::cast< llvm::PointerType >( funcMetaT->getElementType( 8 ) );
             auto *pers = m.second.entryPoint->hasPersonalityFn()
                             ? llvm::ConstantExpr::getPointerCast(
                                     m.second.entryPoint->getPersonalityFn(), persT )
                             : llvm::ConstantPointerNull::get( persT );
-            auto *lsdaT = llvm::cast< llvm::PointerType >( _funcMetaT->getElementType( 9 ) );
+            auto *lsdaT = llvm::cast< llvm::PointerType >( funcMetaT->getElementType( 9 ) );
             auto *lsda = llvm::ConstantPointerNull::get( lsdaT );
 
-            metatable.push_back( llvm::ConstantStruct::get( _funcMetaT, {
-                    llvm::ConstantExpr::getPointerCast( funName, _funcMetaT->getElementType( 0 ) ),
+            metatable.push_back( llvm::ConstantStruct::get( funcMetaT, {
+                    llvm::ConstantExpr::getPointerCast( funName, funcMetaT->getElementType( 0 ) ),
                     llvm::ConstantExpr::getPointerCast( m.second.entryPoint,
-                            _funcMetaT->getElementType( 1 ) ),
-                    mkint( _funcMetaT, 2, m.second.frameSize ),
-                    mkint( _funcMetaT, 3, m.second.argCount ),
-                    mkint( _funcMetaT, 4, m.second.isVariadic ),
+                            funcMetaT->getElementType( 1 ) ),
+                    mkint( funcMetaT, 2, m.second.frameSize ),
+                    mkint( funcMetaT, 3, m.second.argCount ),
+                    mkint( funcMetaT, 4, m.second.isVariadic ),
                     llvm::ConstantExpr::getPointerCast( funType,
-                                            _funcMetaT->getElementType( 5 ) ),
-                    mkint( _funcMetaT, 6, m.second.instTableSize ),
+                                            funcMetaT->getElementType( 5 ) ),
+                    mkint( funcMetaT, 6, m.second.instTableSize ),
                     llvm::ConstantExpr::getPointerCast( instTable,
-                            llvm::PointerType::getUnqual( _instMetaT ) ),
+                            llvm::PointerType::getUnqual( instMetaT ) ),
                     pers, lsda
                 } ) );
         }
@@ -159,8 +184,40 @@ struct IndexFunctions : lart::Pass {
                     llvm::cast< llvm::PointerType >( mdSize->getType() )->getElementType(),
                     metatable.size() ) );
 
-        auto *mdRootT = llvm::ArrayType::get( _funcMetaT, metatable.size() );
+        auto *mdRootT = llvm::ArrayType::get( funcMetaT, metatable.size() );
         util::replaceGlobalArray( mdRoot, llvm::ConstantArray::get( mdRootT, metatable ) );
+
+        // now build global variable metadata
+        std::map< llvm::StringRef, GlobalMeta > gloMetaMap;
+        for ( auto &g : mod.globals() ) {
+            if ( g.hasName() ) {
+                auto r = gloMetaMap.emplace( g.getName(), GlobalMeta( g, *this ) );
+                ASSERT( r.second || (g.dump(), false) );
+            }
+        }
+
+        std::vector< llvm::Constant * > glometa;
+        for ( auto &m : gloMetaMap ) {
+            std::string name = m.second.name().str();
+            name.push_back( 0 );
+            auto *llvmname = util::getStringGlobal( name, mod );
+            llvmname->setName( "lart.divine.index.globalname." + m.second.name().str() );
+
+            glometa.push_back( llvm::ConstantStruct::get( gloMetaT, {
+                        llvm::ConstantExpr::getPointerCast( llvmname,
+                                                            gloMetaT->getElementType( 0 ) ),
+                        llvm::ConstantExpr::getPointerCast( m.second.address,
+                                                            gloMetaT->getElementType( 1 ) ),
+                        mkint( gloMetaT, 2, m.second.size ),
+                        mkint( gloMetaT, 3, m.second.isConstant() )
+                    } ) );
+        }
+
+        mdGlobalsCount->setInitializer( llvm::ConstantInt::get(
+                    llvm::cast< llvm::PointerType >( mdGlobalsCount->getType() )->getElementType(),
+                    glometa.size() ) );
+        auto *gloArrayT = llvm::ArrayType::get( gloMetaT, glometa.size() );
+        util::replaceGlobalArray( mdGlobals, llvm::ConstantArray::get( gloArrayT, glometa ) );
 
         return llvm::PreservedAnalyses::none();
     }
@@ -169,9 +226,6 @@ struct IndexFunctions : lart::Pass {
         return llvm::ConstantInt::get( st->getElementType( i ), val );
     }
 
-    std::map< llvm::StringRef, FunctionMeta > _meta;
-    llvm::StructType *_funcMetaT;
-    llvm::StructType *_instMetaT;
     std::unique_ptr< llvm::DataLayout > _dl;
 };
 
