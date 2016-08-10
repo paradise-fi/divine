@@ -1341,8 +1341,11 @@ struct Eval
                 break;
 
             default:
-                instruction().op->dump();
-                UNREACHABLE_F( "unknown opcode %d", instruction().opcode );
+                if ( instruction().op ) {
+                    instruction().op->dump();
+                    UNREACHABLE_F( "unknown opcode %d", instruction().opcode );
+                } else
+                    UNREACHABLE( "attempted to execute null instruction" );
         }
     }
 };
