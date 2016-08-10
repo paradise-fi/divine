@@ -206,20 +206,26 @@ struct Eval
         return s2ptr( ptr2s( pp ), pp.offset() );
     }
 
-    bool boundcheck( PointerV p, int sz, std::string dsc = "" )
+    bool boundcheck( PointerV p, int sz, bool write, std::string dsc = "" )
     {
         auto pp = p.cooked();
         int width = 0;
 
         if ( !p.defined() )
         {
-            fault( _VM_F_Memory ) << "dereferenc of undefined pointer " << p << dsc;
+            fault( _VM_F_Memory ) << "dereference of undefined pointer " << p << dsc;
             return false;
         }
 
         if ( pp == nullPointer() )
         {
             fault( _VM_F_Memory ) << "null pointer dereference" << dsc;
+            return false;
+        }
+
+        if ( write && pp.type() == PointerType::Const )
+        {
+            fault( _VM_F_Memory ) << "attempted write to a constant location " << p << dsc;
             return false;
         }
 
@@ -377,7 +383,7 @@ struct Eval
     {
         auto to = operandPtr( 1 );
         int sz = operand( 0 ).width;
-        if ( !boundcheck( to, sz ) )
+        if ( !boundcheck( to, sz, true ) )
             return;
         heap().copy( s2ptr( operand( 0 ) ), ptr2h( to ), sz );
     }
@@ -386,7 +392,7 @@ struct Eval
     {
         auto from = operandPtr( 0 );
         int sz = result().width;
-        if ( !boundcheck( from, sz ) )
+        if ( !boundcheck( from, sz, false ) )
             return;
         heap().copy( ptr2h( from ), s2ptr( result() ), sz );
     }
@@ -698,7 +704,7 @@ struct Eval
                 }
                 auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
                 auto vaList = operandPtr( 0 );
-                if ( !boundcheck( vaList, operand( 0 ).width ) )
+                if ( !boundcheck( vaList, operand( 0 ).width, true ) )
                     return;
                 heap().copy( vaptr_loc, ptr2h( vaList ), operand( 0 ).width );
                 return;
@@ -708,8 +714,8 @@ struct Eval
             {
                 auto from = operandPtr( 1 );
                 auto to = operandPtr( 0 );
-                if ( !boundcheck( from, operand( 0 ).width ) ||
-                     !boundcheck( to, operand( 0 ).width ) )
+                if ( !boundcheck( from, operand( 0 ).width, false ) ||
+                     !boundcheck( to, operand( 0 ).width, true ) )
                     return;
                 heap().copy( ptr2h( from ), ptr2h( to ), operand( 0 ).width );
                 return;
@@ -747,7 +753,7 @@ struct Eval
         std::string str;
         CharV c;
         do {
-            if ( !boundcheck( nptr, 1 ) )
+            if ( !boundcheck( nptr, 1, false ) )
                 return "<out of bounds>";
             heap().read_shift( nptr, c );
             if ( c.cooked() )
@@ -985,7 +991,7 @@ struct Eval
                     auto loc = operandPtr( 0 );
                     if ( !loc.defined() )
                         return;
-                    if ( !boundcheck( loc, sizeof( typename decltype( v.get() )::Raw ) ) )
+                    if ( !boundcheck( loc, sizeof( typename decltype( v.get() )::Raw ), true ) )
                         return; // TODO: destory pre-existing register value
                     heap().read( ptr2h( loc ), edit );
                     this->result( edit );
@@ -1317,10 +1323,10 @@ struct Eval
                     // note: although the va_list type might not be a pointer (as on x86)
                     // we will use it so, assuming that it will be at least as big as a
                     // pointer (for example, on x86_64 va_list is { i32, i32, i64*, i64* }*)
-                    if ( !boundcheck( vaList, PointerBytes ) )
+                    if ( !boundcheck( vaList, PointerBytes, true ) )
                         return;
                     heap().read( ptr2h( vaList ), vaArgs );
-                    if ( !boundcheck( vaArgs, result().width ) )
+                    if ( !boundcheck( vaArgs, result().width, false ) )
                         return;
                     heap().copy( ptr2h( vaArgs ), s2ptr( result() ), result().width );
                     heap().write( ptr2h( vaList ), PointerV( vaArgs + result().width ) );
