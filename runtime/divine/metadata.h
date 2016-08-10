@@ -58,6 +58,13 @@ typedef struct {
     int width;
 } _MD_RegInfo;
 
+typedef struct {
+    char *name;
+    void *address;
+    long size;
+    int is_constant;
+} _MD_Global;
+
 /* Query function metadata by function name, this is the mangled name in case
  * of C++ or other languages which employ name mangling */
 const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW _ROOT;
@@ -81,6 +88,8 @@ const _MD_Function *__md_get_pc_meta( uintptr_t pc ) NOTHROW _ROOT;
  * * reading register of value of call/invoke
  * */
 _MD_RegInfo __md_get_register_info( struct _VM_Frame *frame, uintptr_t pc, const _MD_Function *funMeta ) NOTHROW _ROOT;
+
+const _MD_Global *__md_get_global_meta( const char *name ) NOTHROW _ROOT;
 
 CPP_END
 

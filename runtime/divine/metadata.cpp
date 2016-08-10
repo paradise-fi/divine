@@ -1,9 +1,12 @@
 #include <cstring>
 #include <divine/metadata.h>
 #include <limits>
+#include <algorithm>
 
 extern const _MD_Function __md_functions[];
 extern const int __md_functions_count;
+extern const _MD_Global __md_globals[];
+extern const int __md_globals_count;
 
 const _MD_Function *__md_get_function_meta( const char *name ) {
     long from = 0;
@@ -50,4 +53,21 @@ _MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, const _MD_Fu
     char *base = reinterpret_cast< char * >( frame + 1 ); // skip frame header
     auto &imeta = funMeta->inst_table[ offset ];
     return { base + imeta.val_offset, imeta.val_width };
+}
+
+bool cmpGlobal( const _MD_Global &g, const char *name ) noexcept {
+    return std::strcmp( g.name, name ) < 0;
+}
+
+bool cmpGlobal( const char *name, const _MD_Global &g ) noexcept {
+    return std::strcmp( name, g.name ) < 0;
+}
+
+const _MD_Global *__md_get_global_meta( const char *name ) noexcept {
+    const auto *end = __md_globals + __md_globals_count;
+    auto range = std::equal_range( __md_globals, end, name,
+            []( const auto &a, const auto &b ) { return cmpGlobal( a, b ); } );
+    if ( range.first == end || range.first == range.second )
+        return nullptr;
+    return range.first;
 }
