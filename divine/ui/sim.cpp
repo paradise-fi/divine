@@ -68,17 +68,18 @@ struct Interpreter
     void info()
     {
         if ( _dbg.empty() )
-        {
-            std::cerr << "you are standing nowhere and there is nowhere to go" << std::endl;
-            return;
-        }
-
-        _dbg.back().attributes(
-            [&]( std::string k, std::string v )
-            {
-                if ( k == "address" )
-                    std::cerr << "you are standing at " << _dbg.back().kind() << " " << v << std::endl;
-            } );
+            std::cerr << "# you are standing nowhere and there is nowhere to go" << std::endl;
+        else
+            std::cerr << "# you are standing at " << _dbg.back().kind() << " "
+                    << attr( _dbg.back(), "address" ) << std::endl;
+        DN frame( _ctx, _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
+        auto sym = attr( frame, "symbol" ), loc = attr( frame, "location" );
+        std::cerr << "# executing " << sym;
+        if ( sym.size() + loc.size() > 60 )
+            std::cerr << std::endl << "#        at ";
+        else
+            std::cerr << " at ";
+        std::cerr << loc << std::endl;
     }
 
     Interpreter( BC bc ) : _exit( false ), _bc( bc ), _ctx( _bc->program() )
@@ -88,13 +89,15 @@ struct Interpreter
         _prompt = strdup( "> " );
     }
 
-    void dump( DN dn, std::string key )
+    std::string attr( DN dn, std::string key )
     {
+        std::string res = "-";
         dn.attributes( [&]( auto k, auto v )
             {
                 if ( k == key )
-                    std::cerr << v << std::endl;
+                    res = v;
             } );
+        return res;
     }
 
     void look( DN dn, bool detailed = false )
@@ -235,7 +238,7 @@ struct Interpreter
         if ( dn._address == vm::nullPointer() )
             return directions( l._where );
         if ( l._raw )
-            dump( dn, "_raw" );
+            std::cerr << attr( dn, "_raw" ) << std::endl;
         else
             look( dn, false );
     }
