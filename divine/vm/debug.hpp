@@ -45,7 +45,7 @@ static std::string fileline( const llvm::Instruction &insn )
     if ( loc && loc->getNumOperands() )
         return loc->getFilename().str() + std::string( ":" ) +
             brick::string::fmt( loc->getLine() );
-    return "unknown location";
+    return "(unknown location)";
 }
 
 template< typename Context >
@@ -148,9 +148,13 @@ struct DebugNode
         {
             PointerV pc;
             _ctx->heap().read( hloc, pc );
-            auto insn = program.instruction( pc.cooked() ).op;
-            if ( insn )
-                yield( "pc", fileline( *llvm::cast< llvm::Instruction >( insn ) ) );
+            auto op = program.instruction( pc.cooked() ).op;
+            if ( op )
+            {
+                auto &insn = *llvm::cast< llvm::Instruction >( op );
+                yield( "location", fileline( insn ) );
+                yield( "symbol", insn.getParent()->getParent()->getName().str() );
+            }
         }
     }
 
