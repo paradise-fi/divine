@@ -116,10 +116,12 @@ struct Explore
                         Eval::IntV( eval.heap().size( root ) ), PointerV( root ) );
             _ctx.mask( true );
             eval.run();
-            explore::State st = snap( eval );
-            auto r = _states.insert( st );
-            if ( !st.root.null() )
+            if ( eval._result.cooked() != nullPointer() )
+            {
+                explore::State st = snap( eval );
+                auto r = _states.insert( st );
                 yield( st, 0, r.second );
+            }
         } while ( !_ctx.finished() );
     }
 
@@ -182,7 +184,7 @@ struct TestExplore
                         [&]( auto, auto, auto ) { ++edgecount; },
                         [&]( auto ) { ++statecount; } ) );
         ASSERT_EQ( statecount, 5 );
-        ASSERT_EQ( edgecount, 5 );
+        ASSERT_EQ( edgecount, 4 );
     }
 };
 
