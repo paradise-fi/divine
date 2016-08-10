@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cstdarg>
 #include <cstdio>
+#include <algorithm>
 
 namespace dios {
 
@@ -302,8 +303,37 @@ ControlFlow *Scheduler::_cf;
 void *__dios_sched( int st_size, void *_state ) noexcept;
 int main(...);
 
+struct CtorDtorEntry {
+    int32_t prio;
+    void (*fn)();
+    void *ignored; // should be used only by linker to discard entries
+};
+
+template< typename Sort >
+static void runCtorsDtors( const char *name, Sort sort ) {
+    auto *meta = __md_get_global_meta( name );
+    if ( !meta )
+        return;
+    auto *begin = reinterpret_cast< CtorDtorEntry * >( meta->address ),
+         *end = begin + meta->size / sizeof( CtorDtorEntry );
+    std::sort( begin, end, sort );
+    for ( ; begin != end; ++begin )
+        begin->fn();
+}
+
+static void runCtors() {
+    runCtorsDtors( "llvm.global_ctors",
+            []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio < b.prio; } );
+}
+
+static void runDtors() {
+    runCtorsDtors( "llvm.global_dtors",
+            []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio > b.prio; } );
+}
+
 extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
     __dios_trace( 0, "Dios started!" );
+    runCtors();
     int res;
     switch (l) {
     case 0:
@@ -322,6 +352,8 @@ extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
 
     if ( res != 0 )
         __vm_fault( ( _VM_Fault ) _DiOS_F_MainReturnValue );
+
+    runDtors();
 
     dios::free_main_arg( argv );
     dios::free_main_arg( envp );
