@@ -128,7 +128,7 @@ struct Interpreter
         st.root = vm::clone( _ctx.heap(), *st.heap, _last );
         _states.push_back( st );
 
-        _ctx.enter( _ctx._sched, vm::nullPointer(),
+        _ctx.enter( _ctx.sched(), vm::nullPointer(),
                     Eval::IntV( eval.heap().size( _last ) ), PointerV( _last ) );
 
         return true;
