@@ -140,22 +140,15 @@ struct Interpreter
     }
 
     void go( Exit ) { _exit = true; }
+
     void go( Step )
     {
         check_running();
         Eval eval( _bc->program(), _ctx );
         eval.advance();
-        for ( int i = 1; i < eval.instruction().values.size(); ++i )
-        {
-            std::cerr << " op[" << i << "], " << eval.instruction().value( i ) << " = ";
-            eval.op< Eval::Any >( i, [&]( auto v )
-                                  { std::cerr << v.get( i ) << std::endl; } );
-        }
-        eval.instruction().op->dump();
+        DN frame( _ctx, _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
         eval.dispatch();
-        std::cerr << " result, " << eval.instruction().value( 0 ) << " = ";
-        eval.op< Eval::Any >( 0, [&]( auto v )
-                              { std::cerr << v.get( 0 ) << std::endl; } );
+        std::cerr << attr( frame, "instruction" ) << std::endl;
         schedule( eval );
     }
 
