@@ -95,7 +95,7 @@ set( DIVINE_DEFINES "-DDIVINE_RELAX_WARNINGS=_Pragma( \"GCC diagnostic push\" ) 
  _Pragma( \"GCC diagnostic ignored \\\"-Wunused-parameter\\\"\" )"
  "-DDIVINE_UNRELAX_WARNINGS=_Pragma( \"GCC diagnostic pop\" )"
  -Wno-c99-extensions -Wno-vla-extension
- -Wno-gnu-anonymous-struct -Wno-zero-length-array )
+ -Wno-c++1z-extensions -Wno-gnu-anonymous-struct -Wno-zero-length-array )
 
 # find_package( LLVM 3.7 REQUIRED )
 find_package( Perl )
