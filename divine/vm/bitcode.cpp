@@ -52,7 +52,7 @@ BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr )
 
 BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVMContext > ctx,
                   BitCode::Env env, AutoTraceFlags tr )
-    : _ctx( ctx ), _module( std::move( m ) )
+    : _module( std::move( m ) ), _ctx( ctx )
 {
     ASSERT( _module.get() );
     _program.reset( new Program( _module.get() ) );

@@ -34,7 +34,7 @@ void opcode_tolower()
     static bool done = false;
     if ( done )
         return;
-    for ( int i = 0; i < sizeof( _opcode ) / sizeof( _opcode[0] ); ++i )
+    for ( int i = 0; i < int( sizeof( _opcode ) / sizeof( _opcode[0] ) ); ++i )
         std::transform( _opcode[i].begin(), _opcode[i].end(),
                         _opcode[i].begin(), ::tolower );
     done = true;
