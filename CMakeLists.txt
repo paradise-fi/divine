@@ -1,5 +1,9 @@
 cmake_minimum_required( VERSION 3.2 )
 
+# file( COPY ) happens at configure time and confuses cmake into thinking
+# the old policy is required
+cmake_policy( SET CMP0058 NEW )
+
 # this must be set BEFORE project
 set( CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" CACHE STRING "" )
 set( CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -DNVALGRIND" CACHE STRING "" )
@@ -17,6 +21,7 @@ option( TOOLCHAIN OFF )
 set( LLVM_INCLUDE_TESTS OFF CACHE BOOL "" )
 set( LLVM_INCLUDE_EXAMPLES OFF CACHE BOOL "" )
 set( LLVM_INCLUDE_DOCS OFF CACHE BOOL "" )
+set( LLVM_ENABLE_PIC OFF CACHE BOOL "" )
 set( LLVM_ENABLE_RTTI ON CACHE BOOL "" )
 set( LLVM_ENABLE_TIMESTAMPS OFF CACHE BOOL "" )
 set( CLANG_INCLUDE_DOCS OFF CACHE BOOL "" )
