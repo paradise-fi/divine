@@ -37,94 +37,101 @@ struct Context
     using HeapPointer = typename Heap::Pointer;
     using PointerV = typename Heap::PointerV;
 
-    Heap _heap;
-    Program &_program;
-    PointerV _constants, _globals, _frame, _entry_frame, _ifl;
-    CodePointer _sched, _fault;
+    struct Persistent
+    {
+        PointerV constants;
+        CodePointer sched, fault;
+        Heap heap;
+        Program *program;
+    } _p;
 
-    std::unordered_set< GenericPointer > _cfl_visited;
-    bool _mask, _interrupted;
+    struct Transient
+    {
+        PointerV globals, frame, entry_frame, ifl;
+        bool mask, interrupted;
+        std::unordered_set< GenericPointer > cfl_visited;
 
-    Context( Program &p ) : _program( p ) {}
+    } _t;
 
-    Program &program() { return _program; }
-    Heap &heap() { return _heap; }
-    PointerV frame() { return _frame; }
-    void frame( PointerV p ) { _frame = p; }
-    PointerV globals() { return _globals; }
-    PointerV constants() { return _constants; }
+    Context( Program &p ) { _p.program = &p; }
 
-    void globals( PointerV v ) { _globals = v; }
-    void constants( PointerV v ) { _constants = v; }
+    Program &program() { return *_p.program; }
+    Heap &heap() { return _p.heap; }
+    PointerV frame() { return _t.frame; }
+    PointerV globals() { return _t.globals; }
+    PointerV constants() { return _p.constants; }
+
+    void frame( PointerV p ) { _t.frame = p; }
+    void globals( PointerV v ) { _t.globals = v; }
+    void constants( PointerV v ) { _p.constants = v; }
 
     void push( PointerV ) {}
 
     template< typename X, typename... Args >
     void push( PointerV p, X x, Args... args )
     {
-        _heap.write_shift( p, x );
+        heap().write_shift( p, x );
         push( p, args... );
     }
 
     template< typename... Args >
     void enter( CodePointer pc, PointerV parent, Args... args )
     {
-        int datasz = _program.function( pc ).datasize;
-        auto frameptr = _heap.make( datasz + 2 * PointerBytes );
-        _frame = frameptr;
+        int datasz = program().function( pc ).datasize;
+        auto frameptr = heap().make( datasz + 2 * PointerBytes );
+        _t.frame = frameptr;
         if ( parent.cooked() == nullPointer() )
-            _entry_frame = _frame;
-        _heap.write_shift( frameptr, PointerV( pc ) );
-        _heap.write_shift( frameptr, parent );
+            _t.entry_frame = _t.frame;
+        heap().write_shift( frameptr, PointerV( pc ) );
+        heap().write_shift( frameptr, parent );
         push( frameptr, args... );
     }
 
     bool set_interrupted( bool i )
     {
-        bool rv = _interrupted;
-        _cfl_visited.clear();
-        _interrupted = i;
+        bool rv = _t.interrupted;
+        _t.cfl_visited.clear();
+        _t.interrupted = i;
         return rv;
     }
 
     void cfl_interrupt( CodePointer pc )
     {
-        if ( _cfl_visited.count( pc ) )
+        if ( _t.cfl_visited.count( pc ) )
             set_interrupted( true );
         else
-            _cfl_visited.insert( pc );
+            _t.cfl_visited.insert( pc );
     }
 
     void check_interrupt()
     {
-        if ( _mask || !_interrupted )
+        if ( _t.mask || !_t.interrupted )
             return;
-        HeapPointer ifl = _ifl.cooked();
-        if ( _ifl.cooked() != nullPointer() )
-            _heap.write( _ifl.cooked(), _frame );
-        _frame = _entry_frame;
-        _ifl = PointerV();
-        _mask = true;
-        _interrupted = false;
+        if ( _t.ifl.cooked() != nullPointer() )
+            heap().write( _t.ifl.cooked(), _t.frame );
+        frame( _t.entry_frame );
+        _t.ifl = PointerV();
+        _t.mask = true;
+        _t.interrupted = false;
     }
 
     virtual void doublefault() = 0;
 
     void fault( Fault f, PointerV frame, CodePointer pc )
     {
-        if ( _fault == CodePointer( nullPointer() ) )
+        if ( _p.fault == CodePointer( nullPointer() ) )
             doublefault();
         else
-            enter( _fault, _frame, value::Int< 32 >( f ), frame, PointerV( pc ) );
+            enter( _p.fault, _t.frame, value::Int< 32 >( f ), frame, PointerV( pc ) );
     }
 
-    bool mask( bool n )  { bool o = _mask; _mask = n; return o; }
-    bool mask() { return _mask; }
+    bool mask( bool n )  { bool o = _t.mask; _t.mask = n; return o; }
+    bool mask() { return _t.mask; }
 
-    bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.cooked() ) == fr; }
-    void setSched( CodePointer p ) { _sched = p; }
-    void setFault( CodePointer p ) { _fault = p; }
-    void setIfl( PointerV p ) { _ifl = p; }
+    bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _t.entry_frame.cooked() ) == fr; }
+    void setSched( CodePointer p ) { _p.sched = p; }
+    void setFault( CodePointer p ) { _p.fault = p; }
+    void setIfl( PointerV p ) { _t.ifl = p; }
 };
 
 }

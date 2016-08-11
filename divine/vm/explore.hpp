@@ -57,7 +57,7 @@ struct Context : vm::Context< MutableHeap >
     void doublefault()
     {
         trace( "fatal double fault" );
-        _frame = nullPointer();
+        _t.frame = nullPointer();
     }
 
     void trace( std::string s )
@@ -108,8 +108,7 @@ struct Explore
         auto root = clone( *from.heap, _ctx.heap(), from.root );
 
         do {
-            std::cerr << "sched = " << _ctx._sched << std::endl;
-            _ctx.enter( _ctx._sched, nullPointer(),
+            _ctx.enter( _ctx.sched(), nullPointer(),
                         Eval::IntV( eval.heap().size( root ) ), PointerV( root ) );
             _ctx.mask( true );
             eval.run();
