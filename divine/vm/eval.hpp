@@ -779,9 +779,13 @@ struct Eval
                 return;
             }
             case HypercallSetSched:
-                return context().setSched( operandCk< PointerV >( 0 ).cooked() );
+                if ( !context().sched( operandCk< PointerV >( 0 ).cooked() ) )
+                    fault( _VM_F_Hypercall ) << "scheduler can only be set once";
+                return;
             case HypercallSetFault:
-                return context().setFault( operandCk< PointerV >( 0 ).cooked() );
+                if ( !context().fault_handler( operandCk< PointerV >( 0 ).cooked() ) )
+                    fault( _VM_F_Hypercall ) << "the fault handler can only be set once";
+                return;
             case HypercallSetIfl:
                 return context().setIfl( operandCk< PointerV >( 0 ) );
             case HypercallInterrupt:
@@ -1416,9 +1420,9 @@ struct TContext
         push( frameptr, args... );
     }
 
-    void setSched( CodePointer p ) {}
-    void setFault( CodePointer p ) {}
-    void setIfl( PointerV p ) {}
+    bool sched( CodePointer ) { return true; }
+    bool fault_handler( CodePointer ) { return true; }
+    void setIfl( PointerV ) {}
 
     Heap &heap() { return _heap; }
 

@@ -128,9 +128,24 @@ struct Context
     bool mask( bool n )  { bool o = _t.mask; _t.mask = n; return o; }
     bool mask() { return _t.mask; }
 
+    CodePointer sched() { return _p.sched; }
+    bool sched( CodePointer p )
+    {
+        if ( _p.sched != CodePointer( nullPointer() ) )
+            return false;
+        _p.sched = p;
+        return true;
+    }
+
+    bool fault_handler( CodePointer p )
+    {
+        if ( _p.fault != CodePointer( nullPointer() ) )
+            return false;
+        _p.fault = p;
+        return true;
+    }
+
     bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _t.entry_frame.cooked() ) == fr; }
-    void setSched( CodePointer p ) { _p.sched = p; }
-    void setFault( CodePointer p ) { _p.fault = p; }
     void setIfl( PointerV p ) { _t.ifl = p; }
 };
 

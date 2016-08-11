@@ -107,8 +107,9 @@ struct ConstContext
 
     template< typename I >
     int choose( int, I, I ) { NOT_IMPLEMENTED(); }
-    void setSched( CodePointer ) { NOT_IMPLEMENTED(); }
-    void setFault( CodePointer ) { NOT_IMPLEMENTED(); }
+    bool sched( CodePointer ) { NOT_IMPLEMENTED(); }
+    CodePointer sched() { NOT_IMPLEMENTED(); }
+    bool fault_handler( CodePointer ) { NOT_IMPLEMENTED(); }
     void setIfl( PointerV ) { NOT_IMPLEMENTED(); }
     bool isEntryFrame( HeapPointer ) { NOT_IMPLEMENTED(); }
     void trace( std::string ) { NOT_IMPLEMENTED(); }
