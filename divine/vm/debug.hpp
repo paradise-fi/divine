@@ -158,6 +158,17 @@ struct DebugNode
         }
     }
 
+    void bitcode( std::ostream &out )
+    {
+        if ( _kind != DNKind::Frame )
+            return;
+        Eval< Program, Context, value::Void > eval( _ctx->program(), *_ctx );
+        PointerV pc;
+        _ctx->heap().read( eval.ptr2h( _address ), pc );
+        for ( auto &i : _ctx->program().function( pc.cooked() ).instructions )
+            out << instruction( i, eval ) << std::endl;
+    }
+
     template< typename Y >
     void related( Y yield )
     {
