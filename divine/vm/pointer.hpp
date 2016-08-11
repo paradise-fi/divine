@@ -114,7 +114,7 @@ struct CodePointer : GenericPointer
     CodePointer operator+( int i ) const
     {
         CodePointer r( *this );
-        r.instruction( instruction() + 1 );
+        r.instruction( instruction() + i );
         return r;
     }
 };

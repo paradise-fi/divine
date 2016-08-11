@@ -49,12 +49,9 @@ struct Context : vm::Context< MutableHeap >
     using vm::Context< MutableHeap >::Context;
 
     template< typename I >
-    int choose( int o, I, I )
+    int choose( int, I, I )
     {
-        _stack.emplace();
-        // auto &st = _stack.top();
-        // st.heap = std::make_shared< MutableHeap >();
-        // st.root = freeze();
+        NOT_IMPLEMENTED();
     }
 
     void doublefault()
@@ -171,7 +168,7 @@ struct TestExplore
         auto bc = c2bc( lin5 );
         vm::Explore ex( bc );
         bool found = false;
-        ex.initials( [&]( auto st ) { found = true; } );
+        ex.initials( [&]( auto ) { found = true; } );
         ASSERT( found );
     }
 

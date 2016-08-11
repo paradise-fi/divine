@@ -177,8 +177,8 @@ struct MutableHeap
 
     struct Bytes
     {
-        Internal _p;
         Pool &_o;
+        Internal _p;
         int _start, _end;
         Bytes( Pool &o, Internal p, int off, int end ) : _o( o ), _p( p ), _start( off ), _end( end ) {}
         int size() { return _end - _start; }
@@ -191,7 +191,7 @@ struct MutableHeap
     Shadows::Loc shloc( Pointer p ) { return Shadows::Loc( p2i( p ), Shadows::Anchor(), p.offset() ); }
     Shadows::Loc shloc( Pointer &p, int &from, int &sz )
     {
-        sz = sz ?: size( p ) - from;
+        sz = sz ? sz : size( p ) - from;
         p.offset( from );
         return shloc( p );
     }

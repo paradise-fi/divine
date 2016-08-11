@@ -196,8 +196,8 @@ struct Eval
         else UNREACHABLE( "bad pointer in ptr2s" );
     }
 
-    HeapPointer ptr2h( PointerV p, int sz = 1 ) { return ptr2h( p, globals() ); }
-    HeapPointer ptr2h( PointerV p, PointerV g, int sz = 1 )
+    HeapPointer ptr2h( PointerV p ) { return ptr2h( p, globals() ); }
+    HeapPointer ptr2h( PointerV p, PointerV g )
     {
         ASSERT( p.defined() );
         auto pp = p.cooked();
@@ -205,7 +205,7 @@ struct Eval
         if ( pp.type() == PointerType::Heap || pp == nullPointer() )
             return pp;
 
-        return s2ptr( ptr2s( pp ), pp.offset() );
+        return s2ptr( ptr2s( pp ), pp.offset(), nullPointer(), g );
     }
 
     bool boundcheck( PointerV p, int sz, bool write, std::string dsc = "" )
@@ -242,7 +242,7 @@ struct Eval
             width = heap().size( hp );
         } else width = ptr2s( pp ).width;
 
-        if ( pp.offset() + sz > width )
+        if ( int( pp.offset() ) + sz > width )
         {
             fault( _VM_F_Memory ) << "access of size " << sz << " at " << p
                                   << " is " << pp.offset() + sz - width
@@ -598,7 +598,7 @@ struct Eval
         if ( i0.opcode != OpCode::PHI )
             return;
 
-        int size = 0, offset = 0, count = 0;
+        int size = 0, count = 0;
         auto BB = cast< llvm::Instruction >( _program.instruction( origin ).op )->getParent();
         int idx = cast< llvm::PHINode >( i0.op )->getBasicBlockIndex( BB );
 
@@ -1239,7 +1239,7 @@ struct Eval
                 switch ( cast< AtomicRMWInst >( instruction().op )->getOperation() )
                 {
                     case AtomicRMWInst::Xchg:
-                        return _atomicrmw( []( auto v, auto x ) { return x; } );
+                        return _atomicrmw( []( auto, auto x ) { return x; } );
                     case AtomicRMWInst::Add:
                         return _atomicrmw( []( auto v, auto x ) { return v + x; } );
                     case AtomicRMWInst::Sub:

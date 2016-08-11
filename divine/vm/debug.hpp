@@ -60,7 +60,7 @@ static std::string instruction( typename Eval::Instruction &insn, Eval &eval )
         skip = 1;
         out << "@" << insn.op->getOperand( insn.op->getNumOperands() - 1 )->getName().str() << " ";
     }
-    for ( int i = 1; i < insn.op->getNumOperands() - skip; ++i )
+    for ( int i = 1; i < int( insn.op->getNumOperands() ) - skip; ++i )
     {
         auto val = insn.op->getOperand( i - 1 );
         auto oname = val->getName().str();

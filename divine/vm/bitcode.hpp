@@ -30,8 +30,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/cc/clang.hpp>
 
 namespace llvm {
-struct LLVMContext;
-struct Module;
+class LLVMContext;
+class Module;
 }
 
 namespace divine {

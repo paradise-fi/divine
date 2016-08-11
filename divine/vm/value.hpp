@@ -110,8 +110,17 @@ struct Int : Base
     template< int w > Int( Int< w, is_signed > i )
         : _raw( i._raw ), _m( i._m ), _ispointer( i._ispointer )
     {
-        if ( width > w && ( !is_signed || ( _m & ( Raw( 1 ) << ( w - 1 ) ) ) ) )
-            _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
+        const Raw extbits = bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w );
+        using FromRaw = typename Int< w, is_signed >::Raw;
+
+        /* clang can't figure out that width > w implies the sizeof inequality below */
+        if ( sizeof( Raw ) > sizeof( FromRaw ) && is_signed )
+            if ( _m & ( Raw( 1 ) << ( 8 * sizeof( FromRaw ) - 1 ) ) )
+                _m |= extbits;
+
+        if ( width > w && !is_signed )
+            _m |= extbits;
+
         if ( width < PointerBits )
             _ispointer = false;
     }
@@ -271,7 +280,7 @@ struct Pointer : Base
     void defined( bool d ) { _obj_defined = _off_defined = d; }
 
     bool pointer() { return _ispointer; }
-    void pointer( bool b ) { _ispointer = true; }
+    void pointer( bool b ) { _ispointer = b; }
 
     GenericPointer cooked() { return _cooked; }
     void v( GenericPointer p ) { _cooked = p; }

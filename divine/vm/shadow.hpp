@@ -462,8 +462,6 @@ struct MutableShadow
         PointerV p1( vm::nullPointer(), true ), p2;
         ASSERT( p1.pointer() );
         heap.write( obj, 0, p1, []( auto, auto ) {} );
-        auto ptrs = heap.shadows.pointers( heap.shloc( obj, 0 ), 8 );
-        auto b = ptrs.begin();
         heap.copy( obj, 0, obj, 8, 8, []( auto, auto ) {} );
         heap.read< PointerV >( obj, 8, p2 );
         ASSERT( p2.defined() );
