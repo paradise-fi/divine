@@ -160,7 +160,7 @@ struct TestExplore
         "void *__vm_set_sched( void *(*)( int, void * ) );"
         "void *__sys_sched( int sz, void *s ) { int *r = s; *r = ( *r + 1 ) % 5; return s; }"
         "void *__sys_init( void *e ) { __vm_set_sched( __sys_sched ); "
-        "int *r = __vm_make_object( 4 ); *r = 5; return r; }";
+        "int *r = __vm_make_object( 4 ); *r = 0; return r; }";
 
     TEST(simple)
     {
@@ -171,16 +171,22 @@ struct TestExplore
         ASSERT( found );
     }
 
-    TEST(search)
+    void _search( const char *prog, int sc, int ec )
     {
-        auto bc = c2bc( lin5 );
+        auto bc = c2bc( prog );
         vm::Explore ex( bc );
         int edgecount = 0, statecount = 0;
         ss::search( ss::Order::PseudoBFS, ex, 1, ss::passive_listen(
                         [&]( auto, auto, auto ) { ++edgecount; },
                         [&]( auto ) { ++statecount; } ) );
-        ASSERT_EQ( statecount, 5 );
-        ASSERT_EQ( edgecount, 4 );
+        ASSERT_EQ( statecount, sc );
+        ASSERT_EQ( edgecount, ec );
+    }
+
+    TEST(search)
+    {
+        _search( lin5, 5, 4 );
+        _search( cir5, 5, 5 );
     }
 };
 
