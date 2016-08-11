@@ -161,7 +161,7 @@ include_directories( bricks )
 pkg_check_modules( VALGRIND valgrind )
 
 if ( VALGRIND_FOUND )
-  include_directories( ${VALGRIND_INCLUDEDIR} )
+  include_directories( ${VALGRIND_INCLUDE_DIRS} )
 else()
   message( WARNING "Valgrind (headers) not found! Pool debugging will not work." )
   add_definitions( -DNVALGRIND )
