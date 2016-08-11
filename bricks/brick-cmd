@@ -81,7 +81,7 @@ struct Validator< Parse, Ps... >
         if ( _name != t )
             return _next->parse( set, t, v );
         return _parse( v, set,
-                       []( auto err, std::string s )
+                       []( auto, std::string s )
                        {
                            throw std::logic_error( "validator error: " + s );
                        } );
@@ -110,7 +110,7 @@ struct Validator<> : ValidatorInterface, std::enable_shared_from_this< Validator
     }
 
     template< typename S >
-    void parse( S set, std::string t, std::string v )
+    void parse( S, std::string t, std::string )
     {
         throw std::logic_error( "Unknown or mismatched capture of type " + t );
     }
@@ -129,7 +129,7 @@ namespace {
 auto make_validator()
 {
     return std::make_shared< Validator<> >()->
-        add( "string", []( std::string s, auto good, auto bad) { return good( s ); } ) ->
+        add( "string", []( std::string s, auto good, auto ) { return good( s ); } ) ->
         add( "int", []( std::string s, auto good, auto bad )
              {
                 int r = 0;
@@ -141,11 +141,7 @@ auto make_validator()
                     return bad( BadFormat, e.what() );
                 }
                 return good( r );
-             } ) ->
-        add( "true", []( std::string s, auto good, auto bad)
-            {
-                return good( true );
-            });
+             } );
 }
 
 std::pair< std::string, std::string > next_token( std::string s )
@@ -156,11 +152,11 @@ std::pair< std::string, std::string > next_token( std::string s )
     int skip = 0;
     int i = 0; /* index */
 
-    for ( ; skip < s.size(); ++skip )
+    for ( ; skip < int( s.size() ); ++skip )
         if ( !std::isblank( s[skip] ) )
             break;
 
-    for ( i = skip; i < s.size(); ++i )
+    for ( i = skip; i < int( s.size() ); ++i )
     {
         if ( stack.empty() )
             if ( ( i > skip && s[i] == '|' ) || std::isblank( s[i] ) )
@@ -184,7 +180,7 @@ std::pair< std::string, std::string > next_token( std::string s )
     }
 
     int j = i;
-    while ( std::isblank( s[j] ) && j < s.size() )
+    while ( std::isblank( s[j] ) && j < int( s.size() ) )
         ++ j;
 
     return std::make_pair( std::string( s, skip, i ),
@@ -381,8 +377,6 @@ struct Pattern
             auto capture = me.find( "{" );
             if ( capture != std::string::npos )
             {
-                auto capture_end = me.find( "}" );
-
                 _text = std::string( me, 0, capture );
                 _capture = std::string( me, capture + 1, me.size() - capture - 2 );
                 _type = Mixed;
@@ -488,7 +482,7 @@ struct Option : OptionInterface< T >
     }
 
     template< typename E >
-    void set_true( E &edit )
+    void set_true( E & )
     {
         UNREACHABLE( "cannot set true to not bool" );
     }
@@ -789,7 +783,7 @@ struct Parser
     }
 
     template< typename U >
-    auto parse_rec( ParserT< Validator > &, U &res, Tokens::iterator b, Tokens::iterator e )
+    auto parse_rec( ParserT< Validator > &, U &, Tokens::iterator b, Tokens::iterator )
     {
         return b;
     }
