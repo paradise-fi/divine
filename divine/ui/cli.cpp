@@ -22,7 +22,10 @@
 #include <divine/vm/run.hpp>
 #include <divine/cc/compile.hpp>
 #include <brick-string>
+
+DIVINE_RELAX_WARNINGS
 #include <brick-llvm>
+DIVINE_UNRELAX_WARNINGS
 
 namespace divine {
 namespace ui {
