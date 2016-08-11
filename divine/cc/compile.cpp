@@ -37,6 +37,7 @@ std::string stringifyToCode( std::vector< std::string > ns, std::string name, st
 
     for ( auto &n : ns )
         ss << "} // namespace " << n << std::endl;
+    return ss.str();
 }
 
 static std::string getWrappedMDS( llvm::NamedMDNode *meta, int i = 0, int j = 0 ) {
