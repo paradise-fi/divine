@@ -40,6 +40,7 @@ struct Step : Command {};
 struct Walk : WithDirection {};
 struct Look : WithDirection { bool _raw; };
 struct Jump : WithDirection {};
+struct BitCode : Command {};
 struct Trace : Command {};
 struct Exit : Command {};
 struct Help : Command { std::string _cmd; };
@@ -236,6 +237,13 @@ struct Interpreter
             look( dn, false );
     }
 
+    void go( BitCode )
+    {
+        if ( _dbg.empty() || _dbg.back().kind() != vm::DNKind::Frame )
+            throw brick::except::Error( "this command only works when you stand in a frame" );
+        _dbg.back().bitcode( std::cerr );
+    }
+
     void go( Help ) { UNREACHABLE( "impossible case" ); }
 };
 
@@ -262,6 +270,7 @@ void Interpreter::command( cmd::Tokens tok )
                   .command< Run >( "execute the program until interrupted"s )
                   .command< Walk >( "move to a different memory location"s, diropts )
                   .command< Jump >( "jump to a different memory location"s, diropts )
+                  .command< BitCode >( "show the bitcode of the current function"s )
                   .command< Look >( "look at a memory location without moving"s, diropts, lookopts )
                   .command< Trace >( "show the stack trace of current thread"s );
 
