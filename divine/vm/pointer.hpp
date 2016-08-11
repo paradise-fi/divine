@@ -146,22 +146,22 @@ struct GlobalPointer : GenericPointer
 
 static inline std::ostream &operator<<( std::ostream &o, GenericPointer p )
 {
-    return o << "[generic " << int( p.type() ) << " " << p.object() << " " << p.offset() << "]";
+    return o << "generic " << int( p.type() ) << " " << p.object() << " " << p.offset();
 }
 
 static inline std::ostream &operator<<( std::ostream &o, CodePointer p )
 {
-    return o << "[code " << p.function() << " " << p.instruction() << "]";
+    return o << "code " << p.function() << " " << p.instruction();
 }
 
 static inline std::ostream &operator<<( std::ostream &o, GlobalPointer p )
 {
-    return o << "[global " << p.object() << " " << p.offset() << "]";
+    return o << "global " << p.object() << " " << p.offset();
 }
 
 static inline std::ostream &operator<<( std::ostream &o, ConstPointer p )
 {
-    return o << "[const " << p.object() << " " << p.offset() << "]";
+    return o << "const " << p.object() << " " << p.offset();
 }
 
 }
