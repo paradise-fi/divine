@@ -107,6 +107,8 @@ template< typename T > struct IsArithmetic
     static const bool value = std::is_arithmetic< typename T::Cooked >::value;
 };
 
+template< typename > struct Any { static const bool value = true; };
+
 /*
  * An efficient evaluator for the LLVM instruction set. Current semantics
  * (mainly) for arithmetic are derived from C++ semantics, which may not be
@@ -396,8 +398,6 @@ struct Eval
             return;
         heap().copy( ptr2h( from ), s2ptr( result() ), sz );
     }
-
-    template< typename > struct Any { static const bool value = true; };
 
     template< template< typename > class Guard, typename T, typename Op >
     auto op( Op _op ) -> typename std::enable_if< Guard< T >::value >::type

@@ -39,13 +39,49 @@ static std::ostream &operator<<( std::ostream &o, DNKind dnk )
     }
 }
 
-static std::string fileline( const llvm::Instruction &insn )
+std::string fileline( const llvm::Instruction &insn );
+std::string opcode( int );
+
+template< typename Eval >
+static std::string instruction( typename Eval::Instruction &insn, Eval &eval )
 {
-    auto loc = insn.getDebugLoc().get();
-    if ( loc && loc->getNumOperands() )
-        return loc->getFilename().str() + std::string( ":" ) +
-            brick::string::fmt( loc->getLine() );
-    return "(unknown location)";
+    if ( !insn.op )
+        return "<label>?";
+    eval._instruction = &insn;
+    std::stringstream out;
+    llvm::Instruction *I = llvm::cast< llvm::Instruction >( insn.op );
+    std::string iname = I->getName();
+    if ( iname.empty() )
+        iname = brick::string::fmt( eval.program().pcmap[ I ].instruction() );
+    out << "%" << iname << " = " << opcode( insn.opcode ) << " ";
+    int skip = 0;
+    if ( insn.opcode == llvm::Instruction::Call )
+    {
+        skip = 1;
+        out << "@" << insn.op->getOperand( insn.op->getNumOperands() - 1 )->getName().str() << " ";
+    }
+    for ( int i = 1; i < insn.op->getNumOperands() - skip; ++i )
+    {
+        auto val = insn.op->getOperand( i - 1 );
+        auto oname = val->getName().str();
+        if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
+            oname = "%" + (oname.empty() ?
+                           brick::string::fmt( eval.program().pcmap[ I ].instruction() ) : oname);
+        if ( insn.value( i ).type == Eval::Slot::Aggregate )
+            oname = "<aggregate>";
+        if ( oname.empty() )
+            eval.template op< Any >( i, [&]( auto v )
+            {
+                oname = brick::string::fmt( v.get( i ) );
+            } );
+        out << oname << " ";
+    }
+    if ( insn.result().type != Eval::Slot::Aggregate )
+        eval.template op< Any >( 0, [&]( auto v )
+        {
+            out << " # result = " << brick::string::fmt( v.get( 0 ) );
+        } );
+    return out.str();
 }
 
 template< typename Context >
@@ -148,13 +184,15 @@ struct DebugNode
         {
             PointerV pc;
             _ctx->heap().read( hloc, pc );
-            auto op = program.instruction( pc.cooked() ).op;
-            if ( op )
-            {
-                auto &insn = *llvm::cast< llvm::Instruction >( op );
-                yield( "location", fileline( insn ) );
-                yield( "symbol", insn.getParent()->getParent()->getName().str() );
-            }
+            auto *insn = &program.instruction( pc.cooked() );
+            if ( insn->op )
+                yield( "instruction", instruction( *insn, eval ) );
+            if ( !insn->op )
+                insn = &program.instruction( pc.cooked() + 1 );
+            ASSERT( insn->op );
+            auto op = llvm::cast< llvm::Instruction >( insn->op );
+            yield( "location", fileline( *op ) );
+            yield( "symbol", op->getParent()->getParent()->getName().str() );
         }
     }
 
