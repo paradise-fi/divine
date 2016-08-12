@@ -127,6 +127,7 @@ struct Explore
     Explore( BC bc )
         : _bc( bc ), _ctx( _bc->program() )
     {
+        setup( program(), _ctx );
     }
 
     template< typename Y >
@@ -153,8 +154,6 @@ struct Explore
     void initials( Y yield )
     {
         Eval eval( program(), _ctx );
-
-        setup( program(), _ctx );
         _ctx.mask( true );
         eval.run(); /* run __sys_init */
 
