@@ -37,7 +37,7 @@ namespace explore {
 struct State
 {
     std::shared_ptr< MutableHeap > heap;
-    MutableHeap::Pointer root;
+    MutableHeap::Pointer root, constants, globals;
     bool operator<( State s ) const { return compare( *heap, *s.heap, root, s.root ) < 0; }
 };
 
@@ -52,9 +52,21 @@ struct Context : vm::Context< MutableHeap >
     explore::State snap( HeapPointer root )
     {
         explore::State st;
+        std::map< HeapPointer, HeapPointer > pmap;
         st.heap = std::make_shared< MutableHeap >();
-        st.root = clone( heap(), *st.heap, root );
+        st.constants = clone( heap(), *st.heap, constants().cooked(), pmap );
+        st.globals = clone( heap(), *st.heap, globals().cooked(), pmap );
+        st.root = clone( heap(), *st.heap, root, pmap );
         return st;
+    }
+
+    HeapPointer load( explore::State st )
+    {
+        _t.entry_frame = nullPointer();
+        std::map< HeapPointer, HeapPointer > pmap;
+        constants( clone( *st.heap, heap(), st.constants, pmap ) );
+        globals( clone( *st.heap, heap(), st.globals, pmap ) );
+        return clone( *st.heap, heap(), st.root, pmap );
     }
 
     template< typename I >
@@ -121,7 +133,7 @@ struct Explore
         Eval eval( program(), _ctx );
 
         do {
-            auto root = clone( *from.heap, _ctx.heap(), from.root );
+            auto root = _ctx.load( from );
             _ctx.enter( _ctx.sched(), nullPointer(),
                         Eval::IntV( eval.heap().size( root ) ), PointerV( root ) );
             _ctx.mask( true );
