@@ -96,6 +96,8 @@ struct Context : vm::Context< MutableHeap >
     bool finished()
     {
         _level = 0;
+        _trace.clear();
+        _t.entry_frame = nullPointer();
         while ( !_stack.empty() && _stack.back().first + 1 == _stack.back().second )
             _stack.pop_back();
         return _stack.empty();
