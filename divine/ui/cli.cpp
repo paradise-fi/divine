@@ -113,7 +113,5 @@ void Cc::run()
     }
 }
 
-void Run::run() { vm::Run( _bc ).run(); }
-
 }
 }
