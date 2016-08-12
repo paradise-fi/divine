@@ -76,10 +76,7 @@ struct Verify : WithBC
         std::cerr << "Give statistics in format: " << _statistics << std::endl;
     }
 
-    void run()
-    {
-        print_args();
-    }
+    void run();
 };
 
 struct Run : WithBC { void run(); };
