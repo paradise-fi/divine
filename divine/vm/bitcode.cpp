@@ -68,7 +68,7 @@ void BitCode::init( BitCode::Env env, AutoTraceFlags tr )
         lart.setup( "autotrace" );
 
     auto mod = _module.get();
-    if ( mod->getGlobalVariable( "__md_functions" ) )
+    if ( mod->getGlobalVariable( "__md_functions" ) && mod->getGlobalVariable( "__md_globals" ) )
         lart.setup( "functionmeta" );
     if ( mod->getGlobalVariable( "__sys_env" ) )
         lart::util::replaceGlobalArray( *mod, "__sys_env", env );
