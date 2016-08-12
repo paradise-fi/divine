@@ -87,7 +87,17 @@ int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H2::Pointer r2,
         r2.offset( p1i->offset() );
         h1.read( r1, p1p );
         h2.read( r2, p2p );
-        int pdiff = compare( h1, h2, p1p.cooked(), p2p.cooked(), visited );
+        int pdiff = 0;
+        auto p1pp = p1p.cooked(), p2pp = p2p.cooked();
+        if ( p1pp.type() == p2pp.type() )
+        {
+            if ( p1pp.type() == PointerType::Heap )
+                pdiff = compare( h1, h2, p1pp, p2pp, visited );
+            else if ( p1pp.object() == p2pp.object() )
+                pdiff = p1pp.offset() - p2pp.offset();
+            else
+                pdiff = p1pp.object() - p2pp.object();
+        } else pdiff = int( p1pp.type() ) - int( p2pp.type() );
         if ( pdiff )
             return pdiff;
         offset += p1i->size();
