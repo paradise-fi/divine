@@ -49,6 +49,14 @@ struct Context : vm::Context< MutableHeap >
 
     Context( Program &p ) : vm::Context< MutableHeap >( p ), _level( 0 ) {}
 
+    explore::State snap( HeapPointer root )
+    {
+        explore::State st;
+        st.heap = std::make_shared< MutableHeap >();
+        st.root = clone( heap(), *st.heap, root );
+        return st;
+    }
+
     template< typename I >
     int choose( int count, I, I )
     {
@@ -107,14 +115,6 @@ struct Explore
     {
     }
 
-    explore::State snap( Eval &ev )
-    {
-        explore::State st;
-        st.heap = std::make_shared< MutableHeap >();
-        st.root = clone( _ctx.heap(), *st.heap, ev._result.cooked() );
-        return st;
-    }
-
     template< typename Y >
     void edges( explore::State from, Y yield )
     {
@@ -128,7 +128,7 @@ struct Explore
             eval.run();
             if ( eval._result.cooked() != nullPointer() )
             {
-                explore::State st = snap( eval );
+                explore::State st = _ctx.snap( eval._result.cooked() );
                 auto r = _states.insert( st );
                 yield( st, 0, r.second );
             }
@@ -144,7 +144,7 @@ struct Explore
         _ctx.mask( true );
         eval.run(); /* run __sys_init */
 
-        auto st = snap( eval );
+        auto st = _ctx.snap( eval._result.cooked() );
         _states.insert( st );
         yield( st );
     }
