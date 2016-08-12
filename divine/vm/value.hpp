@@ -107,20 +107,17 @@ struct Int : Base
     explicit Int( Cooked i ) : _cooked( i ), _m( full< Raw >() ), _ispointer( false ) {}
     Int( Raw r, Raw m, bool ptr ) : _raw( r ), _m( m ), _ispointer( ptr ) {}
     Int< width, true > make_signed() { return Int< width, true >( _raw, _m, _ispointer ); }
+
+    template< int w >
+    typename std::enable_if< (width > w), Raw >::type signbit() { return Raw( 1 ) << ( w - 1 ); }
+    template< int w >
+    typename std::enable_if< (width < w), Raw >::type signbit() { return 0; }
+
     template< int w > Int( Int< w, is_signed > i )
         : _raw( i._raw ), _m( i._m ), _ispointer( i._ispointer )
     {
-        const Raw extbits = bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w );
-        using FromRaw = typename Int< w, is_signed >::Raw;
-
-        /* clang can't figure out that width > w implies the sizeof inequality below */
-        if ( sizeof( Raw ) > sizeof( FromRaw ) && is_signed )
-            if ( _m & ( Raw( 1 ) << ( 8 * sizeof( FromRaw ) - 1 ) ) )
-                _m |= extbits;
-
-        if ( width > w && !is_signed )
-            _m |= extbits;
-
+        if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
+            _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
         if ( width < PointerBits )
             _ispointer = false;
     }
