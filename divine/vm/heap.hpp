@@ -117,6 +117,8 @@ template< typename FromH, typename ToH >
 typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
                              std::map< typename FromH::Pointer, typename ToH::Pointer > &visited )
 {
+    if ( root.null() )
+        return root;
     auto seen = visited.find( root );
     if ( seen != visited.end() )
         return seen->second;
@@ -141,10 +143,11 @@ typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
         f.read( root, ptr );
         auto obj = ptr.cooked();
         obj.offset( 0 );
-        auto cloned = clone( f, t, obj, visited );
+        auto cloned = obj.type() == PointerType::Heap ? clone( f, t, obj, visited ) : obj;
         cloned.offset( ptr.cooked().offset() );
         t.write( result, typename ToH::PointerV( cloned ) );
     }
+    result.offset( 0 );
     return result;
 }
 
