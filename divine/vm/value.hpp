@@ -301,11 +301,13 @@ struct Pointer : Base
         {
             _cooked.raw( i.raw() );
             _obj_defined = _off_defined = i.defined();
+            _ispointer = i.pointer();
         }
         else /* truncated pointers are undef */
         {
             _cooked = nullPointer();
             _obj_defined = _off_defined = false;
+            _ispointer = false;
         }
     }
 };
