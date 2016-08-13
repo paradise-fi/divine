@@ -198,7 +198,7 @@ struct Program
          * - callsite handling needs to be reworked
          */
         llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
-        Instruction() : hypercall( NotHypercall ), op( nullptr ) {}
+        Instruction() : hypercall( NotHypercall ), op( nullptr ), opcode( 0 ) {}
     };
 
     struct Function
