@@ -105,10 +105,7 @@ struct Draw : WithBC
         std::cerr << "Render with " << _render << std::endl;
     }
 
-    void run()
-    {
-        print_args();
-    }
+    void run();
 };
 
 struct Cc : Command
