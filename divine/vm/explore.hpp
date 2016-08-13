@@ -190,7 +190,7 @@ struct Explore
             {
                 explore::State st = _ctx.snap( eval._result.cooked() );
                 auto r = _states.insert( st );
-                yield( st, 0, r.second );
+                yield( st, _ctx._trace, r.second );
             }
         } while ( !_ctx.finished() );
     }
