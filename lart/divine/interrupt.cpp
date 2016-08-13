@@ -82,7 +82,7 @@ struct CflInterrupt : lart::Pass {
                 continue;
             annotateFn( fn );
         }
-        std::cout << "Found " << _backedges << " backedges" << std::endl;
+        // std::cout << "Found " << _backedges << " backedges" << std::endl;
         return llvm::PreservedAnalyses::none();
     }
 
@@ -143,7 +143,7 @@ struct MemInterrupt : lart::Pass {
                 continue;
             annotateFn( fn );
         }
-        std::cout << "Found " << _mem << " memory accesses" << std::endl;
+        // std::cout << "Found " << _mem << " memory accesses" << std::endl;
         return llvm::PreservedAnalyses::none();
     }
 
