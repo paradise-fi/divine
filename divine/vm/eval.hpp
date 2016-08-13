@@ -1395,7 +1395,6 @@ struct TContext
     bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.cooked() ) == fr; }
 
     void fault( vm::Fault f, PointerV, CodePointer ) { _fault = f; _frame = vm::nullPointer(); }
-    void doublefault() { UNREACHABLE( "double fault" ); }
     void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
 
     void push( PointerV ) {}
