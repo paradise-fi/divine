@@ -162,6 +162,7 @@ struct DebugNode
             pad( raw, col, 72 ); raw << " | ";
             for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
                 ascbyte( raw, col, types[ i ] );
+            pad( raw, col, 84 );
             if ( c + 1 < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ) )
                 raw << std::endl;
         }
