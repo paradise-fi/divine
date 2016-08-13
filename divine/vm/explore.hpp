@@ -36,9 +36,13 @@ namespace explore {
 
 struct State
 {
-    std::shared_ptr< MutableHeap > heap;
-    MutableHeap::Pointer root, constants, globals;
-    bool operator<( State s ) const { return compare( *heap, *s.heap, root, s.root ) < 0; }
+    MutableHeap *_heap; /* for operator< */
+    MutableHeap::Pointer root, globals;
+    bool operator<( State s ) const
+    {
+        ASSERT_EQ( _heap, s._heap );
+        return compare( *_heap, *_heap, root, s.root ) < 0;
+    }
 };
 
 struct Context : vm::Context< MutableHeap >
@@ -53,10 +57,9 @@ struct Context : vm::Context< MutableHeap >
     {
         explore::State st;
         std::map< HeapPointer, HeapPointer > pmap;
-        st.heap = std::make_shared< MutableHeap >();
-        st.constants = clone( heap(), *st.heap, constants().cooked(), pmap );
-        st.globals = clone( heap(), *st.heap, globals().cooked(), pmap );
-        st.root = clone( heap(), *st.heap, root, pmap );
+        st.globals = clone( heap(), heap(), globals().cooked(), pmap );
+        st.root = clone( heap(), heap(), root, pmap );
+        st._heap = &heap();
         return st;
     }
 
@@ -64,9 +67,8 @@ struct Context : vm::Context< MutableHeap >
     {
         _t.entry_frame = nullPointer();
         std::map< HeapPointer, HeapPointer > pmap;
-        constants( clone( *st.heap, heap(), st.constants, pmap ) );
-        globals( clone( *st.heap, heap(), st.globals, pmap ) );
-        return clone( *st.heap, heap(), st.root, pmap );
+        globals( clone( heap(), heap(), st.globals, pmap ) );
+        return clone( heap(), heap(), st.root, pmap );
     }
 
     template< typename I >
