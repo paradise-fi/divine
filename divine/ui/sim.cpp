@@ -123,11 +123,7 @@ struct Interpreter
         if ( _last.null() )
             return true;
 
-        vm::explore::State st;
-        st.heap = std::make_shared< vm::MutableHeap >();
-        st.root = vm::clone( _ctx.heap(), *st.heap, _last );
-        _states.push_back( st );
-
+        _states.push_back( _ctx.snap( _last ) );
         _ctx.enter( _ctx.sched(), vm::nullPointer(),
                     Eval::IntV( eval.heap().size( _last ) ), PointerV( _last ) );
 
