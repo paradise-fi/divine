@@ -156,7 +156,7 @@ bool Program::lifetimeOverlap( llvm::Value *v_a, llvm::Value *v_b ) {
 
     if ( !list || !id )
         return true;
-    for ( int i = 0; i < list->getNumOperands(); ++i ) {
+    for ( int i = 0; i < int( list->getNumOperands() ); ++i ) {
         auto item = dyn_cast< llvm::MDNode >( list->getOperand( i ) );
         if ( item == id )
             return true;
