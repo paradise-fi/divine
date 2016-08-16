@@ -28,10 +28,14 @@ struct WithBC : Command
     std::string _file;
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
+    std::string _run_mode;
     vm::AutoTraceFlags _autotrace;
 
     std::shared_ptr< vm::BitCode > _bc;
     void setup();
+
+    WithBC( const std::string& run_mode = "not_specified" )
+        : _run_mode(run_mode) {}
 };
 
 struct Help
@@ -77,10 +81,18 @@ struct Verify : WithBC
     }
 
     void run();
+    Verify() : WithBC( "verify" ) {}
 };
 
-struct Run : WithBC { void run(); };
-struct Sim : WithBC { void run(); };
+struct Run : WithBC {
+    void run();
+    Run() : WithBC( "run" ) {}
+};
+
+struct Sim : WithBC {
+    void run();
+    Sim() : WithBC( "sim" ) {}
+};
 
 struct Draw : WithBC
 {
