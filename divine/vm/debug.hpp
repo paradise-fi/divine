@@ -42,44 +42,62 @@ static std::ostream &operator<<( std::ostream &o, DNKind dnk )
 std::string fileline( const llvm::Instruction &insn );
 std::string opcode( int );
 
+static void pad( std::ostream &o, int &col, int target )
+{
+    while ( col < target )
+        ++col, o << " ";
+}
+
 template< typename Eval >
 static std::string instruction( typename Eval::Instruction &insn, Eval &eval )
 {
-    if ( !insn.op )
-        return "<label>?";
+    ASSERT( insn.op );
     eval._instruction = &insn;
     std::stringstream out;
     llvm::Instruction *I = llvm::cast< llvm::Instruction >( insn.op );
     std::string iname = I->getName();
     if ( iname.empty() )
         iname = brick::string::fmt( eval.program().pcmap[ I ].instruction() );
-    out << "%" << iname << " = " << opcode( insn.opcode ) << " ";
+    if ( insn.result().type != Program::Slot::Void )
+        out << "  %" << iname << " = ";
+    else
+        out << "  ";
+    out << opcode( insn.opcode ) << " ";
     int skip = 0;
     if ( insn.opcode == llvm::Instruction::Call )
     {
         skip = 1;
         out << "@" << insn.op->getOperand( insn.op->getNumOperands() - 1 )->getName().str() << " ";
     }
-    for ( int i = 1; i < int( insn.op->getNumOperands() ) - skip; ++i )
+    for ( int i = 1; i < int( insn.op->getNumOperands() + 1 ) - skip; ++i )
     {
         auto val = insn.op->getOperand( i - 1 );
         auto oname = val->getName().str();
         if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
-            oname = "%" + (oname.empty() ?
-                           brick::string::fmt( eval.program().pcmap[ I ].instruction() ) : oname);
-        if ( insn.value( i ).type == Eval::Slot::Aggregate )
-            oname = "<aggregate>";
+            oname = "%" + ( oname.empty() ?
+                            brick::string::fmt( eval.program().pcmap[ I ].instruction() ) : oname );
+        if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
+            oname = "label %" + ( oname.empty() ?
+                            brick::string::fmt( eval.program().blockmap[ B ].instruction() ) : oname );
         if ( oname.empty() )
-            eval.template op< Any >( i, [&]( auto v )
+        {
+            if ( insn.value( i ).type == Eval::Slot::Aggregate )
+                oname = "<aggregate>";
+            else eval.template op< Any >( i, [&]( auto v )
             {
                 oname = brick::string::fmt( v.get( i ) );
             } );
-        out << oname << " ";
+        }
+        out << ( oname.empty() ? "?" : oname ) << " ";
     }
     if ( insn.result().type != Eval::Slot::Aggregate )
         eval.template op< Any >( 0, [&]( auto v )
         {
-            out << " # result = " << brick::string::fmt( v.get( 0 ) );
+            int col = out.str().size();
+            if ( col >= 60 )
+                col = -2, out << std::endl;
+            pad( out, col, 60 );
+            out << " # " << brick::string::fmt( v.get( 0 ) );
         } );
     return out.str();
 }
@@ -121,12 +139,6 @@ struct DebugNode
         char b = os.str()[ 0 ];
         o << ( std::isprint( b ) ? b : '~' );
         ++ col;
-    }
-
-    void pad( std::ostream &o, int &col, int target )
-    {
-        while ( col < target )
-            ++col, o << " ";
     }
 
     template< typename Y >
@@ -202,10 +214,26 @@ struct DebugNode
         if ( _kind != DNKind::Frame )
             return;
         Eval< Program, Context, value::Void > eval( _ctx->program(), *_ctx );
-        PointerV pc;
-        _ctx->heap().read( eval.ptr2h( _address ), pc );
-        for ( auto &i : _ctx->program().function( pc.cooked() ).instructions )
-            out << instruction( i, eval ) << std::endl;
+        PointerV pcv;
+        _ctx->heap().read( eval.ptr2h( _address ), pcv );
+        CodePointer pc = pcv.cooked();
+        pc.instruction( 0 );
+        auto &instructions = _ctx->program().function( pc ).instructions;
+        for ( auto &i : instructions )
+        {
+            out << (pc == CodePointer( pcv.cooked() ) ? ">>" : "  ");
+            if ( i.op )
+                out << instruction( i, eval ) << std::endl;
+            else
+            {
+                auto iop = llvm::cast< llvm::Instruction >( instructions[ pc.instruction() + 1 ].op );
+                auto name = iop->getParent()->getName().str();
+                out << "label %"
+                    << ( name.empty() ? brick::string::fmt( pc.instruction() ) : name )
+                    << ":" << std::endl;
+            }
+            pc = pc + 1;
+        }
     }
 
     template< typename Y >
