@@ -123,6 +123,7 @@ struct RMap : std::map< K, V > {
     template< typename... Args >
     RMap( Args &&...args ) : std::map< K, V >( std::forward< Args >( args )... ) { }
 
+    using std::map< K, V >::operator[]; // non-const one
     const V &operator[]( const K &key ) const {
         return this->at( key );
     }
