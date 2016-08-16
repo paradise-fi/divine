@@ -150,6 +150,11 @@ auto crange( const Collection &col ) -> Range< _ConstIterator< Collection > > {
     return Range< _ConstIterator< Collection > >( col );
 }
 
+template< typename Collection >
+auto reversed( Collection &col ) {
+    return Range< typename Collection::reverse_iterator >( col.rbegin(), col.rend() );
+}
+
 template< typename InputIt, typename UnaryPred >
 bool all( InputIt first, InputIt last, UnaryPred pred ) {
     return std::all_of( first, last, pred );
@@ -378,6 +383,24 @@ struct Flatten {
   private:
     Range _range;
 };
+
+template< typename Container >
+Flatten< Range< typename Container::iterator > > flatten( Container &r ) {
+    return { { r.begin(), r.end() } };
+}
+
+
+template< typename Container,
+    typename = typename std::enable_if< std::is_rvalue_reference< Container && >::value >::type >
+Flatten< Container > flatten( Container &&r ) { return { std::move( r ) }; }
+
+template< typename It >
+Flatten< Range< It > > flatten( Range< It > r ) { return { r }; }
+
+template< typename It >
+Flatten< Range< It > > flatten( It begin, It end ) {
+    return { { begin, end } };
+}
 
 template< typename Range1, typename Range2 >
 struct Append {
