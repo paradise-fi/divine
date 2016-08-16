@@ -186,7 +186,7 @@ struct Explore
                         Eval::IntV( eval.heap().size( root ) ), PointerV( root ) );
             _ctx.mask( true );
             eval.run();
-            if ( eval._result.cooked() != nullPointer() )
+            if ( !eval._result.cooked().null() )
             {
                 explore::State st = _ctx.snap( eval._result.cooked() );
                 auto r = _states.insert( st );

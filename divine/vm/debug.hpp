@@ -137,7 +137,7 @@ struct DebugNode
 
         yield( "address", brick::string::fmt( PointerV( _address ) ) );
 
-        if ( _address == nullPointer() )
+        if ( _address.null() )
             return;
 
         std::stringstream raw;
@@ -211,7 +211,7 @@ struct DebugNode
     template< typename Y >
     void related( Y yield )
     {
-        if ( _address == nullPointer() )
+        if ( _address.null() )
             return;
 
         Eval< Program, Context, value::Void > eval( _ctx->program(), *_ctx );
@@ -234,7 +234,7 @@ struct DebugNode
             PointerV fr = _address;
             _ctx->heap().skip( fr, PointerBytes );
             _ctx->heap().read( fr.cooked(), fr );
-            if ( fr.cooked() != nullPointer() )
+            if ( !fr.cooked().null() )
                 yield( "parent", DebugNode( *_ctx, fr.cooked(), DNKind::Frame, nullptr ) );
         }
     }

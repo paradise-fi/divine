@@ -80,7 +80,7 @@ struct Context
         int datasz = program().function( pc ).datasize;
         auto frameptr = heap().make( datasz + 2 * PointerBytes );
         _t.frame = frameptr;
-        if ( parent.cooked() == nullPointer() )
+        if ( parent.cooked().null() )
             _t.entry_frame = _t.frame;
         heap().write_shift( frameptr, PointerV( pc ) );
         heap().write_shift( frameptr, parent );
@@ -107,7 +107,7 @@ struct Context
     {
         if ( _t.mask || !_t.interrupted )
             return;
-        if ( _t.ifl.cooked() != nullPointer() )
+        if ( !_t.ifl.cooked().null() )
             heap().write( _t.ifl.cooked(), _t.frame );
         frame( _t.entry_frame );
         _t.ifl = PointerV();
@@ -119,7 +119,7 @@ struct Context
 
     void fault( Fault f, PointerV frame, CodePointer pc )
     {
-        if ( _p.fault == CodePointer( nullPointer() ) )
+        if ( _p.fault.null() )
             doublefault();
         else
             enter( _p.fault, _t.frame, value::Int< 32 >( f ), frame, PointerV( pc ) );
@@ -131,7 +131,7 @@ struct Context
     CodePointer sched() { return _p.sched; }
     bool sched( CodePointer p )
     {
-        if ( _p.sched != CodePointer( nullPointer() ) )
+        if ( !_p.sched.null() )
             return false;
         _p.sched = p;
         return true;
@@ -139,7 +139,7 @@ struct Context
 
     bool fault_handler( CodePointer p )
     {
-        if ( _p.fault != CodePointer( nullPointer() ) )
+        if ( !_p.fault.null() )
             return false;
         _p.fault = p;
         return true;

@@ -76,6 +76,7 @@ struct GenericPointer : brick::types::Comparable
     void object( ObjT o ) { _rep.obj = o; }
     PointerRaw raw() { return _rep.raw; }
     void raw( PointerRaw r ) { _rep.raw = r; }
+    bool null() { return object() == 0; } /* check whether a pointer is null */
 
     bool operator<= ( GenericPointer o ) const
     {
@@ -93,6 +94,8 @@ struct GenericPointer : brick::types::Comparable
     operator P() { P rv; rv._rep = _rep; return rv; }
 };
 
+/* the canonic null pointer, do *not* use as a null check through comparison;
+ * see GenericPointer::null() instead */
 static inline GenericPointer nullPointer() { return GenericPointer( PointerType::Code ); }
 
 /*

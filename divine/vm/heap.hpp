@@ -168,7 +168,6 @@ struct MutableHeap
      */
     struct Pointer : GenericPointer
     {
-        bool null() { return object() == 0 && offset() == 0; }
         Pointer() : GenericPointer( PointerType::Heap ) {}
         Pointer operator+( int off ) const
         {

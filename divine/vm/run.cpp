@@ -58,7 +58,7 @@ void Run::run()
     eval.run();
     auto state = eval._result;
 
-    while ( state.cooked() != vm::nullPointer() )
+    while ( !state.cooked().null() )
     {
         _ctx.enter( _ctx.sched(), nullPointer(),
                     Eval::IntV( eval.heap().size( state.cooked() ) ), state );

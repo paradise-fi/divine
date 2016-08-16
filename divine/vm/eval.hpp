@@ -202,7 +202,7 @@ struct Eval
         ASSERT( p.defined() );
         auto pp = p.cooked();
 
-        if ( pp.type() == PointerType::Heap || pp == nullPointer() )
+        if ( pp.type() == PointerType::Heap || pp.null() )
             return pp;
 
         return s2ptr( ptr2s( pp ), pp.offset(), nullPointer(), g );
@@ -215,13 +215,13 @@ struct Eval
 
         if ( !p.defined() )
         {
-            fault( _VM_F_Memory ) << "dereference of undefined pointer " << p << dsc;
+            fault( _VM_F_Memory ) << "undefined pointer dereference: " << p << dsc;
             return false;
         }
 
-        if ( pp == nullPointer() )
+        if ( pp.null() )
         {
-            fault( _VM_F_Memory ) << "null pointer dereference" << dsc;
+            fault( _VM_F_Memory ) << "null pointer dereference: " << p << dsc;
             return false;
         }
 
@@ -807,14 +807,13 @@ struct Eval
                     context().mask( false );
                     context().set_interrupted( false );
                 }
-                if ( tgt.cooked() == nullPointer() )
+                if ( tgt.cooked().null() )
                     fault( _VM_F_Hypercall ) << "target frame of a jump is null";
-                else {
+                else
+                {
                     context().frame( tgt );
-                    if ( pc != CodePointer( nullPointer() ) ) {
-                        // TODO: validate jump is in function
+                    if ( !pc.null() ) // TODO: validate jump is in function
                         switchBB( pc );
-                    }
                 }
                 return;
             }
@@ -941,13 +940,13 @@ struct Eval
         do {
             advance();
             dispatch();
-        } while ( context().frame().cooked() != nullPointer() );
+        } while ( !context().frame().cooked().null() );
     }
 
     void advance()
     {
         context().check_interrupt();
-        if ( context().frame().cooked() != nullPointer() )
+        if ( !context().frame().cooked().null() )
             pc( pc() + 1 );
         _instruction = &program().instruction( pc() );
     }
@@ -1412,7 +1411,7 @@ struct TContext
         int datasz = _program.function( pc ).datasize;
         auto frameptr = _heap.make( datasz + 2 * vm::PointerBytes );
         _frame = frameptr;
-        if ( parent.cooked() == vm::nullPointer() )
+        if ( parent.cooked().null() )
             _entry_frame = _frame;
         _heap.write_shift( frameptr, PointerV( pc ) );
         _heap.write_shift( frameptr, parent );
