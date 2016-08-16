@@ -61,6 +61,18 @@ char *construct_argument( const _VM_Env *env ) {
     return arg;
 }
 
+const _VM_Env *get_env_key( const char* key, const _VM_Env *e ) {
+    for ( ; e->key; e++ ) {
+        if ( strcmp( e->key, key ) == 0)
+            return e;
+    }
+    return nullptr;
+}
+
+bool env_string_eq( const char* str, const _VM_Env *env ) {
+    return strlen( str ) == env->size && memcmp( str, env->value, env->size ) == 0;
+}
+
 // Constructs argument for main (argv, envp) from env and returns count and
 // the constructed argument
 std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *env,
@@ -71,7 +83,6 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
     const _VM_Env *name = nullptr;
     const _VM_Env *e = env;
     for ( ; e->key; e++ ) {
-        __dios_trace( 0, "Arg: %s", e->key );
         if ( memcmp( prefix, e->key, pref_len ) == 0 ) {
             argc++;
         }
@@ -219,6 +230,28 @@ struct Scheduler {
         return _cf;
     }
 
+    _VM_Frame *run_live_thread() {
+        int count = 0;
+        for ( int i = 0; i != _cf->thread_count; i++ ) {
+            if ( get_threads()[ i ].active() )
+                count++;
+        }
+
+        int sel = __vm_choose( count );
+        auto thr = get_threads();
+        while ( sel != 0 ) {
+            if ( thr->active() )
+                --sel;
+            ++thr;
+        }
+
+        thr->update_state();
+        __vm_set_ifl( &( thr->_frame) );
+        __dios_assert( thr->_frame );
+        return thr->_frame;
+    }
+
+    template < bool THREAD_AWARE >
     _VM_Frame *run_thread( int idx = -1 ) noexcept {
         if ( idx < 0 )
             idx = _cf->active_thread;
@@ -234,17 +267,21 @@ struct Scheduler {
         }
 
         __dios_trace( 0, "Thread exit" );
-        // ToDo: Move main thread. Neccessary only for divine run
-        if ( idx != 0 ) {
-            return run_thread(0);
+
+        if ( THREAD_AWARE ) {
+            if ( idx != 0 ) {
+                return run_live_thread();
+            }
         }
+
         _cf = nullptr;
         return nullptr;
     }
 
+    template < bool THREAD_AWARE >
     _VM_Frame *run_threads() noexcept {
         // __dios_trace( 0, "Number of threads: %d", _cf->thread_count );
-        return run_thread( __vm_choose( _cf->thread_count ) );
+        return run_thread< THREAD_AWARE >( __vm_choose( _cf->thread_count ) );
     }
 
     void start_main_thread( FunPtr main, int argc, char** argv, char** envp ) noexcept {
@@ -366,14 +403,15 @@ extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
     __dios_trace( 0, "DiOS out!" );
 }
 
+template < bool THREAD_AWARE_SCHED >
 void *__dios_sched( int, void *state ) noexcept {
     dios::Scheduler scheduler( state );
     if ( dios::Syscall::get().handle() ) {
-        __vm_jump( scheduler.run_thread(), nullptr, 1 );
+        __vm_jump( scheduler.run_thread< THREAD_AWARE_SCHED >(), nullptr, 1 );
         return scheduler.get_cf();
     }
 
-    _VM_Frame *jmp = scheduler.run_threads();
+    _VM_Frame *jmp = scheduler.run_threads< THREAD_AWARE_SCHED >();
     if ( jmp ) {
         __vm_jump( jmp, nullptr, 1 );
     }
@@ -391,12 +429,23 @@ extern "C" void *__dios_init( const _VM_Env *env ) {
     }
 
     __vm_trace( "__sys_init called" );
-    __vm_set_sched( __dios_sched );
     __vm_set_fault( __dios_fault );
 
+    // Select scheduling mode
+    auto sched_arg = dios::get_env_key( "divine.runmode", env );
+    __dios_assert_v( sched_arg, "divine.runmode not provided" );
+    bool thread_aware_sched = dios::env_string_eq( "run", sched_arg ) ||
+        dios::env_string_eq( "sim", sched_arg );
+    if (thread_aware_sched)
+        __vm_set_sched( __dios_sched<true> );
+    else
+        __vm_set_sched( __dios_sched<false> );
+
+    // Create scheduler context
     void *cf = __vm_make_object( sizeof( dios::ControlFlow ) );
     dios::Scheduler scheduler( cf );
 
+    // Find & run main function
     _DiOS_FunPtr main = __dios_get_fun_ptr( "main" );
     if ( !main ) {
         __vm_trace( "No main function" );
@@ -404,7 +453,6 @@ extern "C" void *__dios_init( const _VM_Env *env ) {
         return nullptr;
     }
 
-    /* ToDo: Parse and forward main arguments */
     auto argv = dios::construct_main_arg( "arg.", env, true );
     auto envp = dios::construct_main_arg( "env.", env );
     scheduler.start_main_thread( main, argv.first, argv.second, envp.second );
