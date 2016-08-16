@@ -332,23 +332,28 @@ static void runDtors() {
 }
 
 extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
+    __vm_mask( 1 );
     __dios_trace( 0, "Dios started!" );
     runCtors();
     int res;
     switch (l) {
     case 0:
+        __vm_mask( 0 );
         res = main();
         break;
     case 2:
+        __vm_mask( 0 );
         res = main( argc, argv );
         break;
     case 3:
+        __vm_mask( 0 );
         res = main( argc, argv, envp );
         break;
     default:
         __dios_assert_v( false, "Unexpected prototype of main" );
         res = 256;
     }
+    __vm_mask( 1 );
 
     if ( res != 0 )
         __vm_fault( ( _VM_Fault ) _DiOS_F_MainReturnValue );
