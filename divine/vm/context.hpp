@@ -33,9 +33,7 @@ template< typename _Heap >
 struct Context
 {
     using Heap = _Heap;
-
-    using HeapPointer = typename Heap::Pointer;
-    using PointerV = typename Heap::PointerV;
+    using PointerV = value::Pointer;
 
     struct Persistent
     {

@@ -81,8 +81,7 @@ int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H2::Pointer r2,
             return 0;
 
         /* recurse */
-        typename H1::PointerV p1p;
-        typename H2::PointerV p2p;
+        value::Pointer p1p, p2p;
         r1.offset( p1i->offset() );
         r2.offset( p1i->offset() );
         h1.read( r1, p1p );
@@ -136,8 +135,7 @@ typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
 
     for ( auto pos : f.pointers( root ) )
     {
-        typename FromH::PointerV ptr;
-        typename ToH::PointerV ptr_c;
+        value::Pointer ptr, ptr_c;
         root.offset( pos.offset() );
         result.offset( pos.offset() );
         f.read( root, ptr );
@@ -145,7 +143,7 @@ typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
         obj.offset( 0 );
         auto cloned = obj.type() == PointerType::Heap ? clone( f, t, obj, visited ) : obj;
         cloned.offset( ptr.cooked().offset() );
-        t.write( result, typename ToH::PointerV( cloned ) );
+        t.write( result, value::Pointer( cloned ) );
     }
     result.offset( 0 );
     return result;
@@ -323,14 +321,15 @@ namespace t_vm {
 
 struct MutableHeap
 {
-    using I = vm::value::Int< 32, true >;
+    using IntV = vm::value::Int< 32, true >;
+    using PointerV = vm::value::Pointer;
 
     TEST(alloc)
     {
         vm::MutableHeap heap;
         auto p = heap.make( 16 );
-        heap.write( p.cooked(), I( 10 ) );
-        I q;
+        heap.write( p.cooked(), IntV( 10 ) );
+        IntV q;
         heap.read( p.cooked(), q );
         ASSERT_EQ( q.cooked(), 10 );
     }
@@ -346,7 +345,7 @@ struct MutableHeap
     TEST(write_read)
     {
         vm::MutableHeap heap;
-        vm::MutableHeap::PointerV p, q;
+        PointerV p, q;
         p = heap.make( 16 );
         heap.write( p.cooked(), p );
         heap.read( p.cooked(), q );
@@ -357,12 +356,12 @@ struct MutableHeap
     {
         vm::MutableHeap heap, cloned;
         auto p = heap.make( 16 );
-        heap.write( p.cooked(), I( 33 ) );
+        heap.write( p.cooked(), IntV( 33 ) );
         auto c = vm::clone( heap, cloned, p.cooked() );
-        I i;
+        IntV i;
         cloned.read( c, i );
-        ASSERT( ( i == I( 33 ) ).cooked() );
-        ASSERT( ( i == I( 33 ) ).defined() );
+        ASSERT( ( i == IntV( 33 ) ).cooked() );
+        ASSERT( ( i == IntV( 33 ) ).defined() );
     }
 
     TEST(clone_ptr)
@@ -372,8 +371,8 @@ struct MutableHeap
         heap.write( p.cooked(), q );
         heap.write( q.cooked(), p );
         auto c_p1 = vm::clone( heap, cloned, p.cooked() );
-        vm::MutableHeap::PointerV c_q, c_p2;
-        I i;
+        PointerV c_q, c_p2;
+        IntV i;
         cloned.read( c_p1, c_q );
         cloned.read( c_q.cooked(), c_p2 );
         ASSERT( vm::GenericPointer( c_p1 ) == c_p2.cooked() );
@@ -381,7 +380,6 @@ struct MutableHeap
 
     TEST(compare)
     {
-        using PointerV = vm::MutableHeap::PointerV;
         vm::MutableHeap heap, cloned;
         auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
         heap.write( p, PointerV( q ) );

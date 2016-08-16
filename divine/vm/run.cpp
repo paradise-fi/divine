@@ -48,7 +48,7 @@ struct RunContext : Context< MutableHeap >
 
 void Run::run()
 {
-    using Eval = vm::Eval< Program, RunContext, RunContext::PointerV >;
+    using Eval = vm::Eval< Program, RunContext, value::Pointer >;
     auto &program = _bc->program();
     RunContext _ctx( program );
     Eval eval( program, _ctx );

@@ -37,7 +37,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
 
     auto &heap = _ccontext.heap();
     Eval< Program, ConstContext, value::Void > eval( *this, _ccontext );
-    auto ptr = ConstContext::PointerV( eval.s2ptr( v ) );
+    auto ptr = value::Pointer( eval.s2ptr( v ) );
     auto C = dyn_cast< llvm::Constant >( V );
 
     if ( auto GA = dyn_cast< llvm::GlobalAlias >( V ) ) 
