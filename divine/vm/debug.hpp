@@ -253,6 +253,8 @@ struct DebugNode
         {
             hloc.offset( hoff + ptroff->offset() );
             _ctx->heap().read( hloc, ptr );
+            if ( ptr.cooked().type() == PointerType::Code )
+                continue;
             yield( "_ptr_" + brick::string::fmt( i++ ),
                     DebugNode( *_ctx, ptr.cooked(), DNKind::Object, nullptr ) );
         }
