@@ -166,21 +166,12 @@ struct MutableHeap
      * start, so that the type tag of GenericPointer and the offset are stored
      * within the tag area of the Pool Pointer.
      */
-    struct Pointer : GenericPointer
-    {
-        Pointer() : GenericPointer( PointerType::Heap ) {}
-        Pointer operator+( int off ) const
-        {
-            Pointer r = *this;
-            r.offset( r.offset() + off );
-            return r;
-        }
-    };
 
     using Pool = mem::Pool<>;
     using Internal = Pool::Pointer;
     using Shadows = MutableShadow< Internal >;
-    using PointerV = value::Pointer< Pointer >;
+    using Pointer = HeapPointer;
+    using PointerV = value::Pointer;
 
     Pool _objects;
     Shadows _shadows;

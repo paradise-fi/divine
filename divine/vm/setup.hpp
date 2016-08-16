@@ -28,7 +28,6 @@ template< typename Context >
 struct Setup
 {
     using Heap = typename Context::Heap;
-    using PointerV = value::Pointer< typename Heap::Pointer >;
 
     Program &_program;
     Context &_ctx;
@@ -45,7 +44,7 @@ struct Setup
 
         auto ipc = _program.functionByName( "__sys_init" );
         auto envptr = _program.globalByName( "__sys_env" );
-        _ctx.enter( ipc, nullPointer(), PointerV( envptr ) );
+        _ctx.enter( ipc, nullPointer(), value::Pointer( envptr ) );
     }
 
     Setup( Program &p, Context &c )

@@ -194,17 +194,6 @@ struct Float : Base
     friend std::ostream & operator<<( std::ostream &o, Float v ) { return o << v.cooked(); }
 };
 
-struct HeapPointerPlaceholder
-{
-    operator GenericPointer() { return GenericPointer( PointerType::Heap ); }
-    HeapPointerPlaceholder( GenericPointer ) {}
-    friend std::ostream & operator<<( std::ostream &o, HeapPointerPlaceholder )
-    {
-        return o << "[placeholder]";
-    }
-};
-
-template< typename HeapPointer = HeapPointerPlaceholder >
 struct Pointer : Base
 {
     static const bool IsPointer = true;
@@ -403,7 +392,7 @@ struct TestPtr
 {
     TEST( defined )
     {
-        vm::value::Pointer<> p( vm::nullPointer(), true );
+        vm::value::Pointer p( vm::nullPointer(), true );
         ASSERT( p.defined() );
         p.defbits( -1 );
         ASSERT( p.defined() );

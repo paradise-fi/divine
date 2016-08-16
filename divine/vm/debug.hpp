@@ -93,7 +93,7 @@ struct DebugNode
     llvm::Type *_type; /* applies only to Objects */
 
     using HeapPointer = typename Context::Heap::Pointer;
-    using PointerV = value::Pointer< HeapPointer >;
+    using PointerV = value::Pointer;
 
     DebugNode( Context &c, GenericPointer l, DNKind k, llvm::Type *t )
         : _ctx( &c ), _address( l ), _kind( k ), _type( t )

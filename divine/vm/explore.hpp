@@ -110,7 +110,7 @@ struct StContext
 {
     using Heap = Context::Heap;
     using HeapPointer = Heap::Pointer;
-    using PointerV = value::Pointer< HeapPointer >;
+    using PointerV = value::Pointer;
 
     State _state;
     Context &_ctx;
@@ -154,7 +154,7 @@ struct StContext
 struct Explore
 {
     using Heap = MutableHeap;
-    using PointerV = value::Pointer< Heap::Pointer >;
+    using PointerV = value::Pointer;
     using Eval = vm::Eval< Program, explore::Context, PointerV >;
 
     using BC = std::shared_ptr< BitCode >;

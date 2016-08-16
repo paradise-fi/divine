@@ -144,7 +144,7 @@ struct Eval
 
     Instruction &instruction() { return *_instruction; }
 
-    using PointerV = value::Pointer< HeapPointer >;
+    using PointerV = value::Pointer;
     using BoolV = value::Bool;
     /* TODO should be sizeof( int ) of the *bitcode*, not ours! */
     using IntV = value::Int< 8 * sizeof( int ), true >;
@@ -1372,7 +1372,7 @@ struct TContext
 {
     using Heap = vm::MutableHeap;
     using HeapPointer = Heap::Pointer;
-    using PointerV = vm::value::Pointer< HeapPointer >;
+    using PointerV = vm::value::Pointer;
 
     vm::Fault _fault;
     PointerV _constants, _globals, _frame, _entry_frame;

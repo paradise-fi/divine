@@ -113,18 +113,12 @@ struct CodePointer : GenericPointer
     void function( ObjT f ) { _rep.obj = f; }
     auto instruction() const { return _rep.off; }
     void instruction( OffT i ) { _rep.off = i; }
-
-    CodePointer operator+( int i ) const
-    {
-        CodePointer r( *this );
-        r.instruction( instruction() + i );
-        return r;
-    }
 };
 
 /*
  * Pointer to constant memory. This is separate from a GlobalPointer, because
- * it allows an important optimisation of memory footprint in PersistentHeap.
+ * a) it allows an important optimisation of memory footprint b) improves
+ * clarity and error checking.
  */
 struct ConstPointer : GenericPointer
 {
@@ -145,7 +139,11 @@ struct GlobalPointer : GenericPointer
     GlobalPointer( ObjT obj = 0, OffT off = 0 ) : GenericPointer( PointerType::Global, obj, off ) {}
 };
 
-/* HeapPointer does not exist here, its layout is defined by a Memory object */
+struct HeapPointer : GenericPointer
+{
+    HeapPointer( ObjT obj = 0, OffT off = 0 ) : GenericPointer( PointerType::Heap, obj, off ) {}
+};
+
 
 static inline std::ostream &operator<<( std::ostream &o, GenericPointer p )
 {

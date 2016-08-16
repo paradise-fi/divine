@@ -91,7 +91,7 @@ struct ConstContext
 {
     using Heap = MutableHeap;
     using HeapPointer = Heap::Pointer;
-    using PointerV = value::Pointer< HeapPointer >;
+    using PointerV = value::Pointer;
 
     PointerV _constants;
     PointerV _globals;

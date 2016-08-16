@@ -122,7 +122,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     }
     else if ( isa< llvm::ConstantPointerNull >( V ) )
     {
-        heap.write_shift( ptr, value::Pointer<>( nullPointer() ) );
+        heap.write_shift( ptr, value::Pointer( nullPointer() ) );
     }
     else if ( auto GV = dyn_cast< llvm::GlobalVariable >( V ) )
     {
@@ -133,7 +133,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
         else {
             location = globalmap[ GV ];
         }
-        heap.write_shift( ptr, value::Pointer<>( s2ptr( location ) ) );
+        heap.write_shift( ptr, value::Pointer( s2ptr( location ) ) );
         _doneinit.insert( GV );
     }
     else if ( isa< llvm::ConstantAggregateZero >( V ) )
@@ -143,7 +143,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     }
     else if ( isCodePointer( V ) )
     {
-        heap.write_shift( ptr, value::Pointer<>( getCodePointer( V ) ) );
+        heap.write_shift( ptr, value::Pointer( getCodePointer( V ) ) );
     }
     else if ( V->getType()->isPointerTy() )
     {

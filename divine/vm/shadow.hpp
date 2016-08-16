@@ -374,7 +374,7 @@ struct NonHeap
 
 struct MutableShadow
 {
-    using PointerV = vm::value::Pointer<>;
+    using PointerV = vm::value::Pointer;
     using H = NonHeap< vm::MutableShadow >;
     H heap;
     H::Ptr obj;
