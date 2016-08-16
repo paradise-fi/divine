@@ -19,6 +19,7 @@
 #include <stdexcept>
 
 #include <divine/vm/program.hpp>
+#include <lart/divine/cppeh.h>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Type.h>
@@ -563,6 +564,7 @@ void Program::computeStatic()
         _ccontext.heap().write( s2hptr( slotref.slot, offset ),
                                 value::Int< 32 >( func.datasize + 2 * PointerBytes ) );
 
+        // write instruction table
         auto instTable = llvm::cast< llvm::GlobalVariable >(
                             f->getOperand( 7 )->getOperand( 0 ) )->getInitializer();
         auto instTableT = cast< llvm::ArrayType >( instTable->getType() );
@@ -590,6 +592,15 @@ void Program::computeStatic()
                 write( 3, inst.values.empty() ? 0 : inst.result().size() ); /* fixme? */
             }
         }
+
+        // write language specific data for C++ exceptions
+        llvm::Function *llvmfn = module->getFunction( name );
+        ASSERT( llvmfn );
+        lart::divine::CppEhTab tab( *llvmfn );
+
+        auto *lsda = llvm::cast< llvm::GlobalVariable >(
+                        f->getOperand( 9 )->getOperand( 0 ) )->getInitializer();
+        tab.insertEhTable( *this, s2hptr( valuemap[ lsda ].slot ) );
     }
 }
 

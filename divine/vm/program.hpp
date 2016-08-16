@@ -261,6 +261,8 @@ struct Program
 
     ConstContext< Program > _ccontext;
 
+    auto &heap() { return _ccontext.heap(); }
+
     template< typename H >
     auto exportHeap( H &target )
     {
