@@ -106,7 +106,7 @@ union ShadowException
 };
 
 template< typename _Internal >
-struct MutableShadow
+struct PooledShadow
 {
     struct Anchor {};
     using Internal = _Internal;
@@ -372,14 +372,14 @@ struct NonHeap
     }
 };
 
-struct MutableShadow
+struct PooledShadow
 {
     using PointerV = vm::value::Pointer;
-    using H = NonHeap< vm::MutableShadow >;
+    using H = NonHeap< vm::PooledShadow >;
     H heap;
     H::Ptr obj;
 
-    MutableShadow() { obj = heap.make( 100 ); }
+    PooledShadow() { obj = heap.make( 100 ); }
 
 #if 0
     void set_pointer( int off, bool offd = true, bool objd = true )

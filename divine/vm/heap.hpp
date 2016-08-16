@@ -169,7 +169,7 @@ struct MutableHeap
 
     using Pool = mem::Pool<>;
     using Internal = Pool::Pointer;
-    using Shadows = MutableShadow< Internal >;
+    using Shadows = PooledShadow< Internal >;
     using Pointer = HeapPointer;
     using PointerV = value::Pointer;
 
