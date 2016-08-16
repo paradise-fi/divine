@@ -237,7 +237,10 @@ struct Interpreter
     {
         if ( _dbg.empty() || _dbg.back().kind() != vm::DNKind::Frame )
             throw brick::except::Error( "this command only works when you stand in a frame" );
+        auto fr = _ctx.frame();
+        _ctx.frame( _dbg.back()._address );
         _dbg.back().bitcode( std::cerr );
+        _ctx.frame( fr );
     }
 
     void go( Help ) { UNREACHABLE( "impossible case" ); }
