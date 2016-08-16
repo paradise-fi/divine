@@ -632,18 +632,13 @@ struct Union : Comparable {
 
     bool operator==( const Union &other ) const {
         return _discriminator == other._discriminator
-            && _compare< std::equal_to >( other );
-    }
-
-    bool operator!=( const Union &other ) const {
-        return _discriminator != other._discriminator
-            || _compare< std::not_equal_to >( other );
+            && (_discriminator == 0 || _compare< std::equal_to >( other ));
     }
 
     bool operator<( const Union &other ) const {
         return _discriminator < other._discriminator
             || (_discriminator == other._discriminator
-                    && _compare< std::less >( other ) );
+                    && (_discriminator == 0 || _compare< std::less >( other )) );
     }
 
     unsigned char discriminator() const { return _discriminator; }
