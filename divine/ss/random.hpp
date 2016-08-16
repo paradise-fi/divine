@@ -25,7 +25,7 @@ struct Random
         int last = 1;
 
         /* first connect everything */
-        while ( connected.size() < vertices ) {
+        while ( int( connected.size() ) < vertices ) {
             int next = dist( rand );
             if ( connected.count( next ) )
                 continue;
