@@ -221,15 +221,8 @@ struct HeapMixin
         sz = sz ? sz : self().size( p ) - off;
         ASSERT_LEQ( off, sz );
         ASSERT_LEQ( off + sz, self().size( p ) );
-        auto start = self().ptr2mem( p );
-        return this->make_bytes( start + off, start + off + sz );
-    }
-
-protected:
-
-    HeapBytes make_bytes( uint8_t *start, uint8_t *end )
-    {
-        return HeapBytes( start, end );
+        auto start = self().unsafe_ptr2mem( p );
+        return HeapBytes( start + off, start + off + sz );
     }
 };
 
@@ -267,9 +260,8 @@ struct SimpleHeap : HeapMixin< Self >
         return Shadows::Loc( ptr2i( p ), Shadows::Anchor(), p.offset() );
     }
 
-    uint8_t *ptr2mem( HeapPointer p )
+    uint8_t *unsafe_ptr2mem( HeapPointer p )
     {
-        self().detach( p );
         return _objects.machinePointer< uint8_t >( ptr2i( p ) );
     }
 
@@ -334,9 +326,9 @@ struct SimpleHeap : HeapMixin< Self >
     template< typename FromH >
     bool copy( FromH &from_h, HeapPointer _from, HeapPointer _to, int bytes )
     {
-        self().detach( _to );
         if ( _from.null() || _to.null() )
             return false;
+        self().detach( _to );
         auto from = from_h.unsafe_bytes( _from ), to = self().unsafe_bytes( _to );
         int from_s( from_h.size( _from ) ), to_s( size( _to ) );
         int from_off( _from.offset() ), to_off( _to.offset() );
@@ -369,10 +361,19 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
     {
         if ( _ext.readonly.count( p.object() ) == 0 )
             return;
+        p.offset( 0 );
         int sz = size( p );
+        auto oldloc = shloc( p );
+        auto oldbytes = unsafe_bytes( p );
+
         auto obj = _objects.allocate( sz );
         _shadows.make( _objects, obj, sz );
+
         _l.objmap[ p.object() ] = obj;
+        auto newloc = shloc( p );
+        auto newbytes = unsafe_bytes( p );
+        _shadows.copy( _shadows, oldloc, newloc, sz, []( auto, auto ) {} );
+        std::copy( oldbytes.begin(), oldbytes.end(), newbytes.begin() );
     }
 
     Snapshot snapshot()
