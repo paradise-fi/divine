@@ -110,48 +110,6 @@ struct Context : vm::Context< CowHeap >
     }
 };
 
-struct StContext
-{
-    using Heap = Context::Heap;
-    using PointerV = value::Pointer;
-
-    State _state;
-    Context &_ctx;
-
-    Program &program() { return _ctx.program(); }
-    PointerV globals() { return _state.globals; }
-    PointerV constants() { return _ctx.constants(); }
-    bool mask( bool = false ) { return false; }
-    bool set_interrupted( bool = false ) { return false; }
-    void check_interrupt() {}
-    void cfl_interrupt( CodePointer ) {}
-
-    template< typename I >
-    int choose( int, I, I ) { return 0; }
-
-    PointerV frame() { NOT_IMPLEMENTED(); }
-    void frame( PointerV p ) { NOT_IMPLEMENTED(); }
-    bool isEntryFrame( HeapPointer fr ) { NOT_IMPLEMENTED(); }
-
-    void fault( Fault f, PointerV, CodePointer ) { NOT_IMPLEMENTED(); }
-    void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
-
-    template< typename... Args >
-    void enter( CodePointer pc, PointerV parent, Args... args )
-    {
-        NOT_IMPLEMENTED();
-    }
-
-    bool sched( CodePointer ) { return true; }
-    bool fault_handler( CodePointer ) { return true; }
-    void setIfl( PointerV ) {}
-
-    Heap &heap() { return _ctx.heap(); }
-    StContext( Context &ctx, State &st )
-        : _ctx( ctx ), _state( st )
-    {}
-};
-
 }
 
 struct Explore
