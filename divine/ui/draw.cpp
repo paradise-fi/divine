@@ -25,8 +25,6 @@
 namespace divine {
 namespace ui {
 
-using vm::explore::StContext;
-
 std::string escape( std::string s )
 {
     std::string buf;
@@ -44,8 +42,8 @@ std::string escape( std::string s )
     return std::string( buf, 0, j );
 }
 
-int dump( vm::DebugNode< StContext > dn, std::map< vm::GenericPointer, int > &dumped, int &seq,
-           std::string prefix )
+template< typename DN >
+int dump( DN dn, std::map< vm::GenericPointer, int > &dumped, int &seq, std::string prefix )
 {
     if ( dn._address.type() != vm::PointerType::Heap )
         return 0;
@@ -91,8 +89,7 @@ void Draw::run()
             [&]( auto st )
             {
                 int id = _ids[ st ];
-                StContext ctx( ex._ctx, st );
-                vm::DebugNode< StContext > dn( ctx, st.root, vm::DNKind::Object, nullptr );
+                vm::DebugNode< vm::explore::Context > dn( ex._ctx, ex._ctx.heap().snapshot(), st.root, vm::DNKind::Object, nullptr );
                 std::map< vm::GenericPointer, int > _dumped;
                 int hseq = 0;
                 std::cerr << "# new state" << std::endl;
