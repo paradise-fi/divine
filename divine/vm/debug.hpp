@@ -162,6 +162,8 @@ struct DebugNode
 
         std::stringstream raw;
 
+        if ( _address.type() == PointerType::Heap )
+            ASSERT_EQ( _address.offset(), 0 );
         int sz = eval.ptr2sz( _address );
         auto hloc = eval.ptr2h( _address );
         auto bytes = _ctx->heap().unsafe_bytes( hloc, hloc.offset(), sz );
@@ -261,10 +263,12 @@ struct DebugNode
         {
             hloc.offset( hoff + ptroff->offset() );
             _ctx->heap().read( hloc, ptr );
-            if ( ptr.cooked().type() == PointerType::Code )
+            auto pp = ptr.cooked();
+            if ( pp.type() == PointerType::Code )
                 continue;
+            pp.offset( 0 );
             yield( "_ptr_" + brick::string::fmt( i++ ),
-                    DebugNode( *_ctx, ptr.cooked(), DNKind::Object, nullptr ) );
+                    DebugNode( *_ctx, pp, DNKind::Object, nullptr ) );
         }
 
         if ( _kind == DNKind::Frame )
