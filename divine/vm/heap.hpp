@@ -174,21 +174,35 @@ struct MutableHeap
     Pool _objects;
     Shadows _shadows;
 
-    Shadows &shadows() { return _shadows; }
+    struct Shared
+    {
+        std::map< int, Internal > objmap;
+        std::set< int > freed;
+        int seq;
+    };
+
+    std::shared_ptr< Shared > _s;
+
+    MutableHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
 
     struct Bytes
     {
-        Pool &_o;
-        Internal _p;
-        int _start, _end;
-        Bytes( Pool &o, Internal p, int off, int end ) : _o( o ), _p( p ), _start( off ), _end( end ) {}
+        uint8_t *_start, *_end;
+        Bytes( uint8_t *start, uint8_t *end ) : _start( start ), _end( end ) {}
         int size() { return _end - _start; }
-        uint8_t *begin() { return _o.machinePointer< uint8_t >( _p, _start ); }
-        uint8_t *end() { return _o.machinePointer< uint8_t >( _p, _end ); }
-        uint8_t &operator[]( int i ) { return *( begin() + i ); }
+        uint8_t *begin() { return _start; }
+        uint8_t *end() { return _end; }
+        uint8_t &operator[]( int i ) { return *( _start + i ); }
     };
 
-    Internal p2i( Pointer p ) { Internal i; i.raw( p.object() ); return i; }
+    Internal p2i( HeapPointer p )
+    {
+        auto hp = _s->objmap.find( p.object() );
+        ASSERT( hp != _s->objmap.end() );
+        return hp->second;
+    }
+
+    Shadows &shadows() { return _shadows; }
     Shadows::Loc shloc( Pointer p ) { return Shadows::Loc( p2i( p ), Shadows::Anchor(), p.offset() ); }
     Shadows::Loc shloc( Pointer &p, int &from, int &sz )
     {
@@ -214,12 +228,11 @@ struct MutableHeap
 
     PointerV make( int size )
     {
-        auto i = _objects.allocate( size );
-        _shadows.make( _objects, i, size );
-
         Pointer p;
-        p.object( i.raw() );
+        p.object( _s->seq++ );
         p.offset( 0 );
+        auto obj = _s->objmap[ p.object() ] = _objects.allocate( size );
+        _shadows.make( _objects, obj, size );
         return PointerV( p );
     }
 
@@ -233,7 +246,9 @@ struct MutableHeap
         return true;
     }
 
-    bool valid( Pointer p ) { return _objects.valid( p2i( p ) ); }
+    bool valid( Pointer p ) { return p.object() && p.object() < _s->seq; }
+    bool accessible( Pointer p ) { return valid( p ) && _s->freed.count( p.object() ) == 0; }
+
     int size( Pointer p ) { return _objects.size( p2i( p ) ); }
 
     void write( Pointer, value::Void ) {}
@@ -283,7 +298,11 @@ struct MutableHeap
 
     auto unsafe_bytes( Pointer p, int off = 0, int sz = 0 )
     {
-        return Bytes( _objects, p2i( p ), off, sz ? off + sz : size( p ) );
+        sz = sz ? sz : size( p );
+        ASSERT_LEQ( off, sz );
+        ASSERT_LEQ( off + sz, size( p ) );
+        auto start = _objects.machinePointer< uint8_t >( p2i( p ) );
+        return Bytes( start + off, start + off + sz );
     }
 
     template< typename FromH >
