@@ -87,17 +87,24 @@ struct Choice {
     std::vector< int > p;
 };
 
+template< typename Program, typename _Heap = MutableHeap >
 struct ConstContext
 {
-    using Heap = MutableHeap;
+    using Heap = _Heap;
     using PointerV = value::Pointer;
 
-    PointerV _constants;
-    PointerV _globals;
-    PointerV frame() { return PointerV(); }
-    void frame( PointerV ) {}
+    Program &_program;
+
+    PointerV _constants, _globals, _frame;
+    PointerV frame() { return _frame; }
+
+    Program &program() { return _program; }
+    void frame( PointerV f ) { _frame = f; }
     PointerV globals() { return _globals; }
     PointerV constants() { return _constants; }
+    void globals( PointerV g ) { _globals = g; }
+    void constants( PointerV c ) { _constants = c; }
+
     void fault( _VM_Fault, PointerV, CodePointer ) { NOT_IMPLEMENTED(); }
     bool mask( bool )  { NOT_IMPLEMENTED(); }
     bool set_interrupted( bool )  { NOT_IMPLEMENTED(); }
@@ -114,6 +121,10 @@ struct ConstContext
     void trace( std::string ) { NOT_IMPLEMENTED(); }
 
     Heap _heap;
+
+    ConstContext( Program &p, const Heap &h ) : _program( p ), _heap( h ) {}
+    ConstContext( Program &p ) : _program( p ) {}
+    ConstContext( const ConstContext & ) = default;
 
     Heap &heap() { return _heap; }
     void setup( int gds, int cds )
@@ -241,7 +252,7 @@ struct Program
     std::map< const llvm::BasicBlock *, CodePointer > blockmap;
     std::map< const llvm::Function *, int > functionmap;
 
-    ConstContext _ccontext;
+    ConstContext< Program > _ccontext;
 
     template< typename H >
     auto exportHeap( H &target )
@@ -366,7 +377,7 @@ struct Program
        3a) (optional) set up additional constant/global data
        3b) computeRR
        4) computeStatic */
-    Program( llvm::Module *m ) : module( m ), TD( m )
+    Program( llvm::Module *m ) : module( m ), TD( m ), _ccontext( *this )
     {
         _constants_size = 0;
         _globals_size = 0;
