@@ -110,7 +110,6 @@ struct DebugNode
     DNKind _kind;
     llvm::Type *_type; /* applies only to Objects */
 
-    using HeapPointer = typename Context::Heap::Pointer;
     using PointerV = value::Pointer;
 
     DebugNode( Context &c, GenericPointer l, DNKind k, llvm::Type *t )
@@ -283,7 +282,6 @@ struct DebugNode
 
     void dump( std::ostream &o );
     void dot( std::ostream &o );
-    void backtrace( typename Context::Heap::Pointer top, std::ostream &o );
 };
 
 }

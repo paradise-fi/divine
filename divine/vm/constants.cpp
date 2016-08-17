@@ -23,7 +23,7 @@
 
 using namespace divine::vm;
 
-ConstContext::HeapPointer Program::s2hptr( Program::Slot v, int offset )
+HeapPointer Program::s2hptr( Program::Slot v, int offset )
 {
     Eval< Program, ConstContext, value::Void > eval( *this, _ccontext );
     return eval.s2ptr( v, offset );

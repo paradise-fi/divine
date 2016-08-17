@@ -90,7 +90,6 @@ struct Choice {
 struct ConstContext
 {
     using Heap = MutableHeap;
-    using HeapPointer = Heap::Pointer;
     using PointerV = value::Pointer;
 
     PointerV _constants;
@@ -312,7 +311,7 @@ struct Program
         }
     }
 
-    ConstContext::HeapPointer s2hptr( Slot s, int offset = 0 );
+    HeapPointer s2hptr( Slot s, int offset = 0 );
 
     using Coverage = std::vector< std::vector< llvm::Value * > >;
     std::vector< Coverage > coverage;

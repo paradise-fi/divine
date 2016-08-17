@@ -126,7 +126,6 @@ struct Eval
 
     using Slot = typename Program::Slot;
     using Instruction = typename Program::Instruction;
-    using HeapPointer = typename Context::Heap::Pointer;
 
     auto &heap() { return _context.heap(); }
     auto &context() { return _context; }
@@ -1371,7 +1370,6 @@ template< typename Prog >
 struct TContext
 {
     using Heap = vm::MutableHeap;
-    using HeapPointer = Heap::Pointer;
     using PointerV = vm::value::Pointer;
 
     vm::Fault _fault;
@@ -1391,7 +1389,7 @@ struct TContext
 
     PointerV frame() { return _frame; }
     void frame( PointerV p ) { _frame = p; }
-    bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _entry_frame.cooked() ) == fr; }
+    bool isEntryFrame( vm::HeapPointer fr ) { return vm::HeapPointer( _entry_frame.cooked() ) == fr; }
 
     void fault( vm::Fault f, PointerV, CodePointer ) { _fault = f; _frame = vm::nullPointer(); }
     void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }

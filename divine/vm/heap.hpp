@@ -42,8 +42,7 @@ namespace vm {
 namespace mem = brick::mem;
 
 template< typename H1, typename H2 >
-int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H2::Pointer r2,
-             std::set< typename H1::Pointer > &visited )
+int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2, std::set< HeapPointer > &visited )
 {
     if ( visited.count( r1 ) )
         return 0;
@@ -106,15 +105,15 @@ int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H2::Pointer r2,
 }
 
 template< typename H1, typename H2 >
-int compare( H1 &h1, H2 &h2, typename H1::Pointer r1, typename H2::Pointer r2 )
+int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2 )
 {
-    std::set< typename H1::Pointer > visited;
+    std::set< HeapPointer > visited;
     return compare( h1, h2, r1, r2, visited );
 }
 
 template< typename FromH, typename ToH >
-typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
-                             std::map< typename FromH::Pointer, typename ToH::Pointer > &visited )
+HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
+                   std::map< HeapPointer, HeapPointer > &visited )
 {
     if ( root.null() )
         return root;
@@ -150,9 +149,9 @@ typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root,
 }
 
 template< typename FromH, typename ToH >
-typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root )
+HeapPointer clone( FromH &f, ToH &t, HeapPointer root )
 {
-    std::map< typename FromH::Pointer, typename ToH::Pointer > visited;
+    std::map< HeapPointer, HeapPointer > visited;
     return clone( f, t, root, visited );
 }
 
@@ -239,7 +238,6 @@ struct MutableHeap : HeapMixin< MutableHeap >
     using Pool = mem::Pool<>;
     using Internal = Pool::Pointer;
     using Shadows = PooledShadow< Internal >;
-    using Pointer = HeapPointer;
     using PointerV = value::Pointer;
 
     Pool _objects;
@@ -256,7 +254,7 @@ struct MutableHeap : HeapMixin< MutableHeap >
 
     MutableHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
 
-    Shadows::Loc shloc( Pointer p ) { return Shadows::Loc( ptr2i( p ), Shadows::Anchor(), p.offset() ); }
+    Shadows::Loc shloc( HeapPointer p ) { return Shadows::Loc( ptr2i( p ), Shadows::Anchor(), p.offset() ); }
     uint8_t *ptr2mem( HeapPointer p ) { return _objects.machinePointer< uint8_t >( ptr2i( p ) ); }
 
     Internal ptr2i( HeapPointer p )
@@ -268,7 +266,7 @@ struct MutableHeap : HeapMixin< MutableHeap >
 
     PointerV make( int size )
     {
-        Pointer p;
+        HeapPointer p;
         p.object( _s->seq++ );
         p.offset( 0 );
         auto obj = _s->objmap[ p.object() ] = _objects.allocate( size );
@@ -276,7 +274,7 @@ struct MutableHeap : HeapMixin< MutableHeap >
         return PointerV( p );
     }
 
-    bool free( Pointer p )
+    bool free( HeapPointer p )
     {
         auto i = ptr2i( p );
         if ( !_objects.valid( i ) )
@@ -286,16 +284,16 @@ struct MutableHeap : HeapMixin< MutableHeap >
         return true;
     }
 
-    bool valid( Pointer p ) { return p.object() && p.object() < _s->seq; }
-    bool accessible( Pointer p ) { return valid( p ) && _s->freed.count( p.object() ) == 0; }
+    bool valid( HeapPointer p ) { return p.object() && p.object() < _s->seq; }
+    bool accessible( HeapPointer p ) { return valid( p ) && _s->freed.count( p.object() ) == 0; }
 
-    int size( Pointer p ) { return _objects.size( ptr2i( p ) ); }
+    int size( HeapPointer p ) { return _objects.size( ptr2i( p ) ); }
 
-    void write( Pointer, value::Void ) {}
-    void read( Pointer, value::Void& ) {}
+    void write( HeapPointer, value::Void ) {}
+    void read( HeapPointer, value::Void& ) {}
 
     template< typename T >
-    void read( Pointer p, T &t )
+    void read( HeapPointer p, T &t )
     {
         using Raw = typename T::Raw;
         ASSERT( valid( p ) );
@@ -306,7 +304,7 @@ struct MutableHeap : HeapMixin< MutableHeap >
     }
 
     template< typename T >
-    void write( Pointer p, T t )
+    void write( HeapPointer p, T t )
     {
         using Raw = typename T::Raw;
         ASSERT( valid( p ), p );
@@ -316,7 +314,7 @@ struct MutableHeap : HeapMixin< MutableHeap >
     }
 
     template< typename FromH >
-    bool copy( FromH &from_h, Pointer _from, Pointer _to, int bytes )
+    bool copy( FromH &from_h, HeapPointer _from, HeapPointer _to, int bytes )
     {
         if ( _from.null() || _to.null() )
             return false;
@@ -331,7 +329,7 @@ struct MutableHeap : HeapMixin< MutableHeap >
         return true;
     }
 
-    bool copy( Pointer f, Pointer t, int b ) { return copy( *this, f, t, b ); }
+    bool copy( HeapPointer f, HeapPointer t, int b ) { return copy( *this, f, t, b ); }
 };
 
 struct PersistentHeap
@@ -361,9 +359,9 @@ struct MutableHeap
     TEST(conversion)
     {
         vm::MutableHeap heap;
-        using HP = vm::MutableHeap::Pointer;
         auto p = heap.make( 16 );
-        ASSERT_EQ( HP( p.cooked() ), HP( vm::ConstPointer( p.cooked() ) ) );
+        ASSERT_EQ( vm::HeapPointer( p.cooked() ),
+                   vm::HeapPointer( vm::ConstPointer( p.cooked() ) ) );
     }
 
     TEST(write_read)

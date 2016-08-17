@@ -37,7 +37,7 @@ namespace explore {
 struct State
 {
     MutableHeap *_heap; /* for operator< */
-    MutableHeap::Pointer root, globals;
+    HeapPointer root, globals;
     bool operator<( State s ) const
     {
         ASSERT_EQ( _heap, s._heap );
@@ -109,7 +109,6 @@ struct Context : vm::Context< MutableHeap >
 struct StContext
 {
     using Heap = Context::Heap;
-    using HeapPointer = Heap::Pointer;
     using PointerV = value::Pointer;
 
     State _state;
