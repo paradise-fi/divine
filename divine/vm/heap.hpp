@@ -305,11 +305,6 @@ struct MutableHeap
     bool copy( Pointer f, Pointer t, int b ) { return copy( *this, f, t, b ); }
 };
 
-static inline std::ostream &operator<<( std::ostream &o, MutableHeap::Pointer p )
-{
-    return o << "[heap " << std::hex << p.object() << std::dec << " " << p.offset() << "]";
-}
-
 struct PersistentHeap
 {
     // ShapeStore, DataStore, commit(), ...

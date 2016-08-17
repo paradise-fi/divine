@@ -165,6 +165,11 @@ static inline std::ostream &operator<<( std::ostream &o, ConstPointer p )
     return o << "const " << p.object() << " " << p.offset();
 }
 
+static inline std::ostream &operator<<( std::ostream &o, HeapPointer p )
+{
+    return o << "[heap " << p.object() << " " << p.offset() << "]";
+}
+
 }
 
 namespace t_vm {
