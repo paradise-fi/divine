@@ -233,8 +233,16 @@ protected:
     }
 };
 
-struct MutableHeap : HeapMixin< MutableHeap >
+struct SimpleHeapShared
 {
+    std::atomic< int > seq;
+};
+
+template< typename Self, typename Shared >
+struct SimpleHeap : HeapMixin< Self >
+{
+    Self &self() { return *static_cast< Self * >( this ); }
+
     using Pool = mem::Pool<>;
     using Internal = Pool::Pointer;
     using Shadows = PooledShadow< Internal >;
@@ -243,24 +251,32 @@ struct MutableHeap : HeapMixin< MutableHeap >
     Pool _objects;
     Shadows _shadows;
 
-    struct Shared
+    struct Local
     {
-        std::map< int, Internal > objmap;
-        std::set< int > freed;
-        int seq;
-    };
+        std::map< int, mem::Pool<>::Pointer > objmap;
+    } _l;
 
     std::shared_ptr< Shared > _s;
 
-    MutableHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
+    void detach( HeapPointer ) {}
 
-    Shadows::Loc shloc( HeapPointer p ) { return Shadows::Loc( ptr2i( p ), Shadows::Anchor(), p.offset() ); }
-    uint8_t *ptr2mem( HeapPointer p ) { return _objects.machinePointer< uint8_t >( ptr2i( p ) ); }
+    SimpleHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
+
+    Shadows::Loc shloc( HeapPointer p )
+    {
+        return Shadows::Loc( ptr2i( p ), Shadows::Anchor(), p.offset() );
+    }
+
+    uint8_t *ptr2mem( HeapPointer p )
+    {
+        self().detach( p );
+        return _objects.machinePointer< uint8_t >( ptr2i( p ) );
+    }
 
     Internal ptr2i( HeapPointer p )
     {
-        auto hp = _s->objmap.find( p.object() );
-        ASSERT( hp != _s->objmap.end() );
+        auto hp = _l.objmap.find( p.object() );
+        ASSERT( hp != _l.objmap.end() );
         return hp->second;
     }
 
@@ -269,7 +285,7 @@ struct MutableHeap : HeapMixin< MutableHeap >
         HeapPointer p;
         p.object( _s->seq++ );
         p.offset( 0 );
-        auto obj = _s->objmap[ p.object() ] = _objects.allocate( size );
+        auto obj = _l.objmap[ p.object() ] = _objects.allocate( size );
         _shadows.make( _objects, obj, size );
         return PointerV( p );
     }
@@ -279,13 +295,14 @@ struct MutableHeap : HeapMixin< MutableHeap >
         auto i = ptr2i( p );
         if ( !_objects.valid( i ) )
             return false;
-        _shadows.free( shloc( p ) );
-        _objects.free( i );
+        // _shadows.free( shloc( p ) );
+        // _objects.free( i );
+        _l.objmap.erase( p.object() );
         return true;
     }
 
-    bool valid( HeapPointer p ) { return p.object() && p.object() < _s->seq; }
-    bool accessible( HeapPointer p ) { return valid( p ) && _s->freed.count( p.object() ) == 0; }
+    bool valid( HeapPointer p ) { return p.object() && int( p.object() ) < _s->seq; }
+    bool accessible( HeapPointer p ) { return valid( p ) && _l.objmap.count( p.object() ); }
 
     int size( HeapPointer p ) { return _objects.size( ptr2i( p ) ); }
 
@@ -306,6 +323,7 @@ struct MutableHeap : HeapMixin< MutableHeap >
     template< typename T >
     void write( HeapPointer p, T t )
     {
+        self().detach( p );
         using Raw = typename T::Raw;
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
@@ -316,9 +334,10 @@ struct MutableHeap : HeapMixin< MutableHeap >
     template< typename FromH >
     bool copy( FromH &from_h, HeapPointer _from, HeapPointer _to, int bytes )
     {
+        self().detach( _to );
         if ( _from.null() || _to.null() )
             return false;
-        auto from = from_h.unsafe_bytes( _from ), to = unsafe_bytes( _to );
+        auto from = from_h.unsafe_bytes( _from ), to = self().unsafe_bytes( _to );
         int from_s( from_h.size( _from ) ), to_s( size( _to ) );
         int from_off( _from.offset() ), to_off( _to.offset() );
         if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )
@@ -332,9 +351,55 @@ struct MutableHeap : HeapMixin< MutableHeap >
     bool copy( HeapPointer f, HeapPointer t, int b ) { return copy( *this, f, t, b ); }
 };
 
-struct PersistentHeap
+struct MutableHeap : SimpleHeap< MutableHeap, SimpleHeapShared >
 {
-    // ShapeStore, DataStore, commit(), ...
+};
+
+struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
+{
+    struct Ext
+    {
+        std::set< int > readonly;
+    } _ext;
+
+    using SnapItem = std::pair< int, mem::Pool<>::Pointer >;
+    using Snapshot = mem::Pool<>::Pointer;
+
+    void detach( HeapPointer p )
+    {
+        if ( _ext.readonly.count( p.object() ) == 0 )
+            return;
+        int sz = size( p );
+        auto obj = _objects.allocate( sz );
+        _shadows.make( _objects, obj, sz );
+        _l.objmap[ p.object() ] = obj;
+    }
+
+    Snapshot snapshot()
+    {
+        _ext.readonly.clear(); /* need to clean up at some point, so why not now */
+        auto s = _objects.allocate( _l.objmap.size() * sizeof( SnapItem ) );
+        auto si = _objects.machinePointer< SnapItem >( s );
+        for ( auto i : _l.objmap )
+        {
+            _ext.readonly.insert( i.first );
+            *si++ = i;
+        }
+        return s;
+    }
+
+    void restore( Snapshot s )
+    {
+        _l.objmap.clear();
+        _ext.readonly.clear();
+        auto si = _objects.machinePointer< SnapItem >( s );
+        int count = _objects.size( s ) / sizeof( SnapItem );
+        for ( int i = 0; i < count; ++i )
+        {
+            _ext.readonly.insert( si[ i ].first );
+            _l.objmap.insert( si[ i ] );
+        }
+    }
 };
 
 }
@@ -411,6 +476,19 @@ struct MutableHeap
         p.offset( 8 );
         heap.write( p, vm::value::Int< 32 >( 1 ) );
         ASSERT_LT( 0, vm::compare( heap, cloned, p, c_p ) );
+    }
+
+    TEST(cow)
+    {
+        vm::CowHeap heap;
+        auto p = heap.make( 16 ).cooked();
+        heap.write( p, PointerV( p ) );
+        auto snap = heap.snapshot();
+        heap.write( p, PointerV( vm::nullPointer() ) );
+        PointerV check;
+        heap.restore( snap );
+        heap.read( p, check );
+        ASSERT_EQ( check.cooked(), p );
     }
 };
 
