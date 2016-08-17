@@ -298,7 +298,7 @@ struct Eval
         }
     };
 
-    FaultStream fault( Fault f ) { return fault( f, frame(), pc() + 1 ); }
+    FaultStream fault( Fault f ) { return fault( f, frame(), pc() ); }
     FaultStream fault( Fault f, PointerV frame, CodePointer c )
     {
         FaultStream fs( context(), f, frame, c, true );
