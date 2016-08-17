@@ -35,13 +35,28 @@ namespace cmd = brick::cmd;
 namespace sim {
 
 struct Command {};
-struct WithDirection { std::string _where; };
-struct Step : Command {};
-struct Walk : WithDirection {};
-struct Look : WithDirection { bool _raw; };
-struct Jump : WithDirection {};
-struct BitCode : Command {};
-struct Trace : Command {};
+
+struct WithVar : Command
+{
+    std::string var;
+    WithVar( std::string v = "$_" ) : var( v ) {}
+};
+
+struct WithFrame : WithVar
+{
+    WithFrame() : WithVar( "$frame" ) {}
+};
+
+struct Set : WithVar { std::string value; };
+struct Step : WithFrame {};
+struct Show : WithVar { bool raw; };
+struct BitCode : WithFrame {};
+
+struct BackTrace : WithVar
+{
+    BackTrace() : WithVar( "$top" ) {}
+};
+
 struct Exit : Command {};
 struct Help : Command { std::string _cmd; };
 
@@ -55,26 +70,105 @@ struct Interpreter
     BC _bc;
 
     std::vector< std::string > _env;
-    std::vector< vm::explore::State > _states;
-    vm::HeapPointer _last;
+
+    std::map< std::string, DN > _dbg;
 
     vm::explore::Context _ctx;
-    std::vector< DN > _dbg;
-    char *_prompt;
     std::set< vm::CodePointer > _breaks;
+    char *_prompt;
 
     void command( cmd::Tokens cmd );
     char *prompt() { return _prompt; }
 
+    void set( std::string n, DN dn ) { _dbg.erase( n ); _dbg.emplace( n, dn ); }
+    void set( std::string n, vm::GenericPointer p, vm::DNKind k, llvm::Type *t )
+    {
+        set( n, DN( _ctx, _ctx.heap().snapshot(), p, k, t ) );
+    }
+
+    DN nullDN() { return DN( _ctx, _ctx.heap().snapshot(), vm::nullPointer(), vm::DNKind::Object, nullptr ); }
+
+    DN get( std::string n, bool silent = false )
+    {
+        brick::string::Splitter split( "\\.", REG_EXTENDED );
+        auto comp = split.begin( n );
+
+        auto i = _dbg.find( *comp );
+        if ( i == _dbg.end() )
+            throw brick::except::Error( "variable " + *comp + " is not defined" );
+
+        auto dn = i->second;
+        switch ( n[0] )
+        {
+            case '$': dn.relocate( _ctx.heap().snapshot() ); break;
+            case '#': break;
+            default: throw brick::except::Error( "variable names must start with $ or #" );
+        }
+
+        auto _dn = std::make_unique< DN >( dn );
+
+        for ( ++comp ; comp != split.end(); ++comp )
+        {
+            bool found = false;
+            dn.related( [&]( auto n, auto rel )
+                         {
+                             if ( *comp == n )
+                                found = true, _dn = std::make_unique< DN >( rel );
+                         } );
+            if ( silent && !found )
+                return nullDN();
+            if ( !found )
+                throw brick::except::Error( "lookup failed at " + *comp );
+        }
+        return *_dn;
+    }
+
+    void set( std::string n, std::string value, bool silent = false )
+    {
+        set( n, get( value, silent ) );
+    }
+
+    void update()
+    {
+        set( "$top", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
+        auto dn = get( "$_" );
+        if ( dn.kind() == vm::DNKind::Frame )
+            set( "$frame", "$_" );
+        else
+            set( "$data", "$_" );
+    }
+
+    void directions( std::string bad )
+    {
+
+        if ( !bad.empty() )
+            throw brick::except::Error( "unknown direction '" + bad + "'" );
+    }
+
+    void show( DN dn, bool detailed = false )
+    {
+        dn.attributes(
+            [&]( auto k, auto v )
+            {
+                if ( k[0] != '_' || detailed )
+                    std::cerr << k << ": " << v << std::endl;
+            } );
+        std::cerr << "related:" << std::flush;
+        int col = 0;
+        dn.related( [&]( std::string n, auto )
+                    {
+                        if ( col + n.size() >= 68 )
+                            col = 0, std::cerr << std::endl << "        ";
+                        std::cerr << " " << n;
+                        col += n.size();
+                    } );
+        std::cerr << std::endl;
+    }
+
     void info()
     {
-        if ( _dbg.empty() )
-            std::cerr << "# you are standing nowhere and there is nowhere to go" << std::endl;
-        else
-            std::cerr << "# you are standing at " << _dbg.back().kind() << " "
-                    << attr( _dbg.back(), "address" ) << std::endl;
-        DN frame( _ctx, _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
-        auto sym = attr( frame, "symbol" ), loc = attr( frame, "location" );
+        auto dn = get( "$top" );
+        auto sym = attr( dn, "symbol" ), loc = attr( dn, "location" );
         std::cerr << "# executing " << sym;
         if ( sym.size() + loc.size() > 60 )
             std::cerr << std::endl << "#        at ";
@@ -88,6 +182,8 @@ struct Interpreter
         setup( _bc->program(), _ctx );
         _ctx.mask( true );
         _prompt = strdup( "> " );
+        set( "$_", nullDN() );
+        update();
     }
 
     std::string attr( DN dn, std::string key )
@@ -101,31 +197,21 @@ struct Interpreter
         return res;
     }
 
-    void look( DN dn, bool detailed = false )
-    {
-        dn.attributes(
-            [&]( auto k, auto v )
-            {
-                if ( k[0] != '_' || detailed )
-                    std::cerr << k << ": " << v << std::endl;
-            } );
-    }
-
     using Eval = vm::Eval< vm::Program, vm::explore::Context, PointerV >;
 
     bool schedule( Eval &eval )
     {
-        if ( _ctx.frame().cooked() != vm::nullPointer() )
+        if ( !_ctx.frame().cooked().null() )
             return false; /* nothing to be done */
 
-        _last = eval._result.cooked();
+        auto st = eval._result.cooked();
 
-        if ( _last.null() )
+        if ( st.null() )
             return true;
 
-        _states.push_back( _ctx.snap( _last ) );
+        // _states.push_back( _ctx.snap( _last ) );
         _ctx.enter( _ctx.sched(), vm::nullPointer(),
-                    Eval::IntV( eval.heap().size( _last ) ), PointerV( _last ) );
+                    Eval::IntV( eval.heap().size( st ) ), PointerV( st ) );
 
         return true;
     }
@@ -143,10 +229,11 @@ struct Interpreter
         check_running();
         Eval eval( _bc->program(), _ctx );
         eval.advance();
-        DN frame( _ctx, _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
         eval.dispatch();
-        std::cerr << attr( frame, "instruction" ) << std::endl;
+        /* $top was not updated yet */
+        std::cerr << attr( get( "$top" ), "instruction" ) << std::endl;
         schedule( eval );
+        set( "$_", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
     }
 
     void go( Run )
@@ -162,87 +249,27 @@ struct Interpreter
         }
     }
 
-    void go( Trace )
+    void go( BackTrace bt )
     {
-        auto fr = _ctx.frame();
-        while ( fr.cooked() != vm::nullPointer() )
-        {
-            look( DN( _ctx, fr.cooked(), vm::DNKind::Frame, nullptr ) );
+        set( "$$", bt.var );
+        do {
+            show( get( "$$" ) );
+            set( "$$", "$$.parent", true );
             std::cerr << std::endl;
-            _ctx.heap().skip( fr, vm::PointerBytes );
-            _ctx.heap().read( fr.cooked(), fr );
-        }
+        } while ( get( "$$" ).valid() );
     }
 
-    void go( Jump j )
+    void go( Show s )
     {
-        _dbg.clear();
-        if ( j._where == "state" )
-            _dbg.emplace_back( _ctx, _last, vm::DNKind::Object, nullptr );
-        else if ( j._where == "frame" )
-            _dbg.emplace_back( _ctx, _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
-        else
-            throw brick::except::Error( "unknown jump destination '" + j._where + "'" );
-    }
-
-    void directions( std::string bad )
-    {
-        std::cerr << "available directions:" << std::endl;
-        _dbg.back().related( [&]( auto n, auto ) { std::cerr << "  " << n << std::endl; } );
-
-        if ( !bad.empty() )
-            throw brick::except::Error( "unknown direction '" + bad + "'" );
-    }
-
-    void go( Walk w )
-    {
-        if ( _dbg.empty() )
-            throw brick::except::Error( "need a starting point" );
-        bool found = false;
-        DN found_dn;
-        _dbg.back().related( [&]( auto n, auto dn )
-                             {
-                                 if ( w._where == n )
-                                    found_dn = dn, found = true;
-                             } );
-        if ( found )
-        {
-            _dbg.push_back( found_dn );
-            return;
-        }
-        directions( w._where );
-    }
-
-    void go( Look l )
-    {
-        if ( _dbg.empty() )
-            throw brick::except::Error( "need to be somewhere first" );
-        DN dn;
-        if ( l._where.empty() )
-            dn = _dbg.back();
-        else _dbg.back().related( [&] ( auto n, auto _dn )
-                                  {
-                                      if ( n == l._where )
-                                          dn = _dn;
-                                  } );
-        if ( dn._address == vm::nullPointer() )
-            return directions( l._where );
-        if ( l._raw )
+        auto dn = get( s.var );
+        if ( s.raw )
             std::cerr << attr( dn, "_raw" ) << std::endl;
         else
-            look( dn, false );
+            show( dn );
     }
 
-    void go( BitCode )
-    {
-        if ( _dbg.empty() || _dbg.back().kind() != vm::DNKind::Frame )
-            throw brick::except::Error( "this command only works when you stand in a frame" );
-        auto fr = _ctx.frame();
-        _ctx.frame( _dbg.back()._address );
-        _dbg.back().bitcode( std::cerr );
-        _ctx.frame( fr );
-    }
-
+    void go( Set s ) { set( s.var, s.value ); }
+    void go( BitCode bc ) { get( bc.var ).bitcode( std::cerr ); }
     void go( Help ) { UNREACHABLE( "impossible case" ); }
 };
 
@@ -257,26 +284,26 @@ void Interpreter::command( cmd::Tokens tok )
 {
     auto v = cmd::make_validator();
 
-    auto diropts = cmd::make_option_set< WithDirection >( v )
-                   .option( "[{string}]", &WithDirection::_where, "direction"s );
-    auto lookopts = cmd::make_option_set< Look >( v )
-                    .option( "[--raw]", &Look::_raw, "dump raw data"s );
+    auto varopts = cmd::make_option_set< WithVar >( v )
+                   .option( "[{string}]", &WithVar::var, "a variable reference"s );
+    auto showopts = cmd::make_option_set< Show >( v )
+                    .option( "[--raw]", &Show::raw, "dump raw data"s );
 
     auto parser = cmd::make_parser( v )
                   .command< Exit >( "exit from divine"s )
                   .command< Help >( cmd::make_option( v, "[{string}]", &Help::_cmd ) )
                   .command< Step >( "execute one instruction"s )
                   .command< Run >( "execute the program until interrupted"s )
-                  .command< Walk >( "move to a different memory location"s, diropts )
-                  .command< Jump >( "jump to a different memory location"s, diropts )
-                  .command< BitCode >( "show the bitcode of the current function"s )
-                  .command< Look >( "look at a memory location without moving"s, diropts, lookopts )
-                  .command< Trace >( "show the stack trace of current thread"s );
+                  .command< Set >( "set a variable "s, varopts )
+                  .command< BitCode >( "show the bitcode of the current function"s, varopts )
+                  .command< Show >( "show an object"s, varopts, showopts )
+                  .command< BackTrace >( "show a stack trace"s, varopts );
 
     try {
         auto cmd = parser.parse( tok.begin(), tok.end() );
         cmd.match( [&] ( Help h ) { std::cerr << parser.describe( h._cmd ) << std::endl; },
                    [&] ( auto opt ) { go( opt ); } );
+        update();
     }
     catch ( brick::except::Error &e )
     {
