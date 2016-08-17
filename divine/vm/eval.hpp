@@ -234,7 +234,7 @@ struct Eval
         if ( pp.type() == PointerType::Heap )
         {
             HeapPointer hp = pp;
-            if ( hp.null() || !heap().valid( hp ) )
+            if ( hp.null() || !heap().accessible( hp ) )
             {
                 fault( _VM_F_Memory ) << "invalid heap pointer dereference " << p << dsc;
                 return false;
