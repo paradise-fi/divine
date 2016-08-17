@@ -156,15 +156,86 @@ typename ToH::Pointer clone( FromH &f, ToH &t, typename FromH::Pointer root )
     return clone( f, t, root, visited );
 }
 
-struct MutableHeap
+struct HeapBytes
 {
-    /*
-     * The evaluator-facing pointer structure is laid over the Internal
-     * (pool-derived) pointer type. The Internal pointer has tag bits at the
-     * start, so that the type tag of GenericPointer and the offset are stored
-     * within the tag area of the Pool Pointer.
-     */
+    uint8_t *_start, *_end;
+    HeapBytes( uint8_t *start, uint8_t *end ) : _start( start ), _end( end ) {}
+    int size() { return _end - _start; }
+    uint8_t *begin() { return _start; }
+    uint8_t *end() { return _end; }
+    uint8_t &operator[]( int i ) { return *( _start + i ); }
+};
 
+template< typename Self >
+struct HeapMixin
+{
+    using PointerV = value::Pointer;
+
+    Self &self() { return *static_cast< Self * >( this ); }
+
+    auto &shadows() { return self()._shadows; }
+    auto shloc( HeapPointer &p, int &from, int &sz )
+    {
+        sz = sz ? sz : self().size( p ) - from;
+        p.offset( from );
+        return self().shloc( p );
+    }
+
+    auto pointers( HeapPointer p, int from = 0, int sz = 0 )
+    {
+        return shadows().pointers( shloc( p, from, sz ), sz );
+    }
+
+    auto defined( HeapPointer p, int from = 0, int sz = 0 )
+    {
+        return shadows().defined( shloc( p, from, sz ), sz );
+    }
+
+    auto type( HeapPointer p, int from = 0, int sz = 0 )
+    {
+        return shadows().type( shloc( p, from, sz ), sz );
+    }
+
+    template< typename T >
+    void write_shift( PointerV &p, T t )
+    {
+        self().write( p.cooked(), t );
+        skip( p, sizeof( typename T::Raw ) );
+    }
+
+    template< typename T >
+    void read_shift( PointerV &p, T &t )
+    {
+        self().read( p.cooked(), t );
+        skip( p, sizeof( typename T::Raw ) );
+    }
+
+    void skip( PointerV &p, int bytes )
+    {
+        HeapPointer pv = p.cooked();
+        pv.offset( pv.offset() + bytes );
+        p.v( pv );
+    }
+
+    HeapBytes unsafe_bytes( HeapPointer p, int off = 0, int sz = 0 )
+    {
+        sz = sz ? sz : self().size( p ) - off;
+        ASSERT_LEQ( off, sz );
+        ASSERT_LEQ( off + sz, self().size( p ) );
+        auto start = self().ptr2mem( p );
+        return this->make_bytes( start + off, start + off + sz );
+    }
+
+protected:
+
+    HeapBytes make_bytes( uint8_t *start, uint8_t *end )
+    {
+        return HeapBytes( start, end );
+    }
+};
+
+struct MutableHeap : HeapMixin< MutableHeap >
+{
     using Pool = mem::Pool<>;
     using Internal = Pool::Pointer;
     using Shadows = PooledShadow< Internal >;
@@ -185,45 +256,14 @@ struct MutableHeap
 
     MutableHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
 
-    struct Bytes
-    {
-        uint8_t *_start, *_end;
-        Bytes( uint8_t *start, uint8_t *end ) : _start( start ), _end( end ) {}
-        int size() { return _end - _start; }
-        uint8_t *begin() { return _start; }
-        uint8_t *end() { return _end; }
-        uint8_t &operator[]( int i ) { return *( _start + i ); }
-    };
+    Shadows::Loc shloc( Pointer p ) { return Shadows::Loc( ptr2i( p ), Shadows::Anchor(), p.offset() ); }
+    uint8_t *ptr2mem( HeapPointer p ) { return _objects.machinePointer< uint8_t >( ptr2i( p ) ); }
 
-    Internal p2i( HeapPointer p )
+    Internal ptr2i( HeapPointer p )
     {
         auto hp = _s->objmap.find( p.object() );
         ASSERT( hp != _s->objmap.end() );
         return hp->second;
-    }
-
-    Shadows &shadows() { return _shadows; }
-    Shadows::Loc shloc( Pointer p ) { return Shadows::Loc( p2i( p ), Shadows::Anchor(), p.offset() ); }
-    Shadows::Loc shloc( Pointer &p, int &from, int &sz )
-    {
-        sz = sz ? sz : size( p ) - from;
-        p.offset( from );
-        return shloc( p );
-    }
-
-    auto pointers( Pointer p, int from = 0, int sz = 0 )
-    {
-        return shadows().pointers( shloc( p, from, sz ), sz );
-    }
-
-    auto defined( Pointer p, int from = 0, int sz = 0 )
-    {
-        return shadows().defined( shloc( p, from, sz ), sz );
-    }
-
-    auto type( Pointer p, int from = 0, int sz = 0 )
-    {
-        return shadows().type( shloc( p, from, sz ), sz );
     }
 
     PointerV make( int size )
@@ -238,7 +278,7 @@ struct MutableHeap
 
     bool free( Pointer p )
     {
-        auto i = p2i( p );
+        auto i = ptr2i( p );
         if ( !_objects.valid( i ) )
             return false;
         _shadows.free( shloc( p ) );
@@ -249,7 +289,7 @@ struct MutableHeap
     bool valid( Pointer p ) { return p.object() && p.object() < _s->seq; }
     bool accessible( Pointer p ) { return valid( p ) && _s->freed.count( p.object() ) == 0; }
 
-    int size( Pointer p ) { return _objects.size( p2i( p ) ); }
+    int size( Pointer p ) { return _objects.size( ptr2i( p ) ); }
 
     void write( Pointer, value::Void ) {}
     void read( Pointer, value::Void& ) {}
@@ -261,7 +301,7 @@ struct MutableHeap
         ASSERT( valid( p ) );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
 
-        t.raw( *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) );
+        t.raw( *_objects.machinePointer< typename T::Raw >( ptr2i( p ), p.offset() ) );
         _shadows.read( shloc( p ), t );
     }
 
@@ -272,45 +312,15 @@ struct MutableHeap
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
         _shadows.write( shloc( p ), t, []( auto, auto ) {} );
-        *_objects.machinePointer< typename T::Raw >( p2i( p ), p.offset() ) = t.raw();
-    }
-
-    template< typename T >
-    void write_shift( PointerV &p, T t )
-    {
-        write( p.cooked(), t );
-        skip( p, sizeof( typename T::Raw ) );
-    }
-
-    template< typename T >
-    void read_shift( PointerV &p, T &t )
-    {
-        read( p.cooked(), t );
-        skip( p, sizeof( typename T::Raw ) );
-    }
-
-    void skip( PointerV &p, int bytes )
-    {
-        Pointer pv = p.cooked();
-        pv.offset( pv.offset() + bytes );
-        p.v( pv );
-    }
-
-    auto unsafe_bytes( Pointer p, int off = 0, int sz = 0 )
-    {
-        sz = sz ? sz : size( p );
-        ASSERT_LEQ( off, sz );
-        ASSERT_LEQ( off + sz, size( p ) );
-        auto start = _objects.machinePointer< uint8_t >( p2i( p ) );
-        return Bytes( start + off, start + off + sz );
+        *_objects.machinePointer< typename T::Raw >( ptr2i( p ), p.offset() ) = t.raw();
     }
 
     template< typename FromH >
     bool copy( FromH &from_h, Pointer _from, Pointer _to, int bytes )
     {
-        auto from = from_h.unsafe_bytes( _from ), to = unsafe_bytes( _to );
         if ( _from.null() || _to.null() )
             return false;
+        auto from = from_h.unsafe_bytes( _from ), to = unsafe_bytes( _to );
         int from_s( from_h.size( _from ) ), to_s( size( _to ) );
         int from_off( _from.offset() ), to_off( _to.offset() );
         if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )
