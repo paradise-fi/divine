@@ -141,6 +141,15 @@ struct DebugNode
         ++ col;
     }
 
+    bool valid()
+    {
+        if ( _address.null() )
+            return false;
+        if ( _address.type() == PointerType::Heap && !_ctx->heap().valid( _address ) )
+            return false;
+        return true;
+    }
+
     template< typename Y >
     void attributes( Y yield )
     {
@@ -148,8 +157,7 @@ struct DebugNode
         Program &program = _ctx->program();
 
         yield( "address", brick::string::fmt( PointerV( _address ) ) );
-
-        if ( _address.null() )
+        if ( !valid() )
             return;
 
         std::stringstream raw;
@@ -239,7 +247,7 @@ struct DebugNode
     template< typename Y >
     void related( Y yield )
     {
-        if ( _address.null() )
+        if ( !valid() )
             return;
 
         Eval< Program, Context, value::Void > eval( _ctx->program(), *_ctx );
