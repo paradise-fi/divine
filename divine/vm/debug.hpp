@@ -105,19 +105,38 @@ static std::string instruction( typename Eval::Instruction &insn, Eval &eval )
 template< typename Context >
 struct DebugNode
 {
-    Context *_ctx;
+    using Heap = typename Context::Heap;
+    using Program = typename Context::Program;
+    using Eval = Eval< Program, ConstContext< Program, Heap >, value::Void >;
+
+    ConstContext< Program, Heap > _ctx;
+
     GenericPointer _address;
     DNKind _kind;
     llvm::Type *_type; /* applies only to Objects */
 
     using PointerV = value::Pointer;
 
-    DebugNode( Context &c, GenericPointer l, DNKind k, llvm::Type *t )
-        : _ctx( &c ), _address( l ), _kind( k ), _type( t )
+    DebugNode( Context ctx, typename Heap::Snapshot s, GenericPointer l, DNKind k, llvm::Type *t )
+        : _ctx( ctx.program(), ctx.heap() ), _address( l ), _kind( k ), _type( t )
+    {
+        _ctx.heap().restore( s );
+        _ctx.globals( ctx.globals() );
+        _ctx.constants( ctx.constants() );
+        if ( k == DNKind::Frame )
+            _ctx.frame( l );
+    }
+
+    DebugNode( ConstContext< Program, Heap > ctx, GenericPointer l, DNKind k, llvm::Type *t )
+        : _ctx( ctx ), _address( l ), _kind( k ), _type( t )
     {}
 
     DebugNode( const DebugNode &o ) = default;
-    DebugNode() : _ctx( nullptr ), _address( vm::nullPointer() ) {}
+
+    void relocate( typename Heap::Snapshot s )
+    {
+        _ctx.heap().restore( s );
+    }
 
     DNKind kind() { return _kind; }
 
@@ -144,7 +163,7 @@ struct DebugNode
     {
         if ( _address.null() )
             return false;
-        if ( _address.type() == PointerType::Heap && !_ctx->heap().valid( _address ) )
+        if ( _address.type() == PointerType::Heap && !_ctx.heap().valid( _address ) )
             return false;
         return true;
     }
@@ -152,8 +171,8 @@ struct DebugNode
     template< typename Y >
     void attributes( Y yield )
     {
-        Eval< Program, Context, value::Void > eval( _ctx->program(), *_ctx );
-        Program &program = _ctx->program();
+        Eval eval( _ctx.program(), _ctx );
+        Program &program = _ctx.program();
 
         yield( "address", brick::string::fmt( PointerV( _address ) ) );
         if ( !valid() )
@@ -165,9 +184,9 @@ struct DebugNode
             ASSERT_EQ( _address.offset(), 0 );
         int sz = eval.ptr2sz( _address );
         auto hloc = eval.ptr2h( _address );
-        auto bytes = _ctx->heap().unsafe_bytes( hloc, hloc.offset(), sz );
-        auto types = _ctx->heap().type( hloc, hloc.offset(), sz );
-        auto defined = _ctx->heap().defined( hloc, hloc.offset(), sz );
+        auto bytes = _ctx.heap().unsafe_bytes( hloc, hloc.offset(), sz );
+        auto types = _ctx.heap().type( hloc, hloc.offset(), sz );
+        auto defined = _ctx.heap().defined( hloc, hloc.offset(), sz );
 
         for ( int c = 0; c < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ); ++c )
         {
@@ -205,7 +224,9 @@ struct DebugNode
         if ( _kind == DNKind::Frame )
         {
             PointerV pc;
-            _ctx->heap().read( hloc, pc );
+            _ctx.heap().read( hloc, pc );
+            if ( pc.cooked().null() )
+                return;
             auto *insn = &program.instruction( pc.cooked() );
             if ( insn->op )
                 yield( "instruction", instruction( *insn, eval ) );
@@ -222,12 +243,12 @@ struct DebugNode
     {
         if ( _kind != DNKind::Frame )
             return;
-        Eval< Program, Context, value::Void > eval( _ctx->program(), *_ctx );
+        Eval eval( _ctx.program(), _ctx );
         PointerV pcv;
-        _ctx->heap().read( eval.ptr2h( _address ), pcv );
+        _ctx.heap().read( eval.ptr2h( _address ), pcv );
         CodePointer pc = pcv.cooked();
         pc.instruction( 0 );
-        auto &instructions = _ctx->program().function( pc ).instructions;
+        auto &instructions = _ctx.program().function( pc ).instructions;
         for ( auto &i : instructions )
         {
             out << (pc == CodePointer( pcv.cooked() ) ? ">>" : "  ");
@@ -251,32 +272,32 @@ struct DebugNode
         if ( !valid() )
             return;
 
-        Eval< Program, Context, value::Void > eval( _ctx->program(), *_ctx );
+        Eval eval( _ctx.program(), _ctx );
 
         PointerV ptr;
         auto hloc = eval.ptr2h( _address );
         int sz = eval.ptr2sz( _address ), hoff = hloc.offset();
 
         int i = 0;
-        for ( auto ptroff : _ctx->heap().pointers( hloc, hloc.offset(), sz ) )
+        for ( auto ptroff : _ctx.heap().pointers( hloc, hloc.offset(), sz ) )
         {
             hloc.offset( hoff + ptroff->offset() );
-            _ctx->heap().read( hloc, ptr );
+            _ctx.heap().read( hloc, ptr );
             auto pp = ptr.cooked();
             if ( pp.type() == PointerType::Code )
                 continue;
             pp.offset( 0 );
             yield( "_ptr_" + brick::string::fmt( i++ ),
-                    DebugNode( *_ctx, pp, DNKind::Object, nullptr ) );
+                    DebugNode( _ctx, pp, DNKind::Object, nullptr ) );
         }
 
         if ( _kind == DNKind::Frame )
         {
             PointerV fr = _address;
-            _ctx->heap().skip( fr, PointerBytes );
-            _ctx->heap().read( fr.cooked(), fr );
+            _ctx.heap().skip( fr, PointerBytes );
+            _ctx.heap().read( fr.cooked(), fr );
             if ( !fr.cooked().null() )
-                yield( "parent", DebugNode( *_ctx, fr.cooked(), DNKind::Frame, nullptr ) );
+                yield( "parent", DebugNode( _ctx, fr.cooked(), DNKind::Frame, nullptr ) );
         }
     }
 
