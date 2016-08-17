@@ -503,7 +503,7 @@ struct Eval
         PointerV parent, br;
         heap().read( fr.cooked(), parent );
 
-        if ( !heap().valid( parent.cooked() ) )
+        if ( parent.cooked().null() )
         {
             if ( context().isEntryFrame( frame().cooked() ) )
             {
