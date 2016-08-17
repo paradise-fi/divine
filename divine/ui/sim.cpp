@@ -56,7 +56,7 @@ struct Interpreter
 
     std::vector< std::string > _env;
     std::vector< vm::explore::State > _states;
-    vm::MutableHeap::Pointer _last;
+    vm::HeapPointer _last;
 
     vm::explore::Context _ctx;
     std::vector< DN > _dbg;
