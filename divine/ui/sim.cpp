@@ -133,11 +133,12 @@ struct Interpreter
     void update()
     {
         set( "$top", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
-        auto dn = get( "$_" );
-        if ( dn.kind() == vm::DNKind::Frame )
+        if ( get( "$_" ).kind() == vm::DNKind::Frame )
             set( "$frame", "$_" );
         else
             set( "$data", "$_" );
+        if ( !get( "$frame", true ).valid() )
+            set( "$frame", "$top" );
     }
 
     void directions( std::string bad )
