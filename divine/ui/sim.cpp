@@ -267,6 +267,8 @@ struct Interpreter
         check_running();
         Eval eval( _bc->program(), _ctx );
         int lines = 0, instructions = 0, line = 0;
+        bool in_fault = eval.pc().function() == _ctx.fault_handler().function();
+        bool jumped = false;
         while ( true )
         {
             for ( auto bp : bps )
@@ -292,6 +294,10 @@ struct Interpreter
             }
 
             eval.advance();
+
+            if ( eval.instruction().hypercall == vm::HypercallJump )
+                jumped = true;
+
             if ( verbose )
             {
                 auto frame = _ctx.frame().cooked();
@@ -316,6 +322,10 @@ struct Interpreter
                 std::cerr << "T: " << t << std::endl;
             _ctx._trace.clear();
             if ( _ctx.frame().cooked().null() )
+                goto end;
+            if ( jumped )
+                goto end;
+            if ( !in_fault && eval.pc().function() == _ctx.fault_handler().function() )
                 goto end;
         }
     end:
