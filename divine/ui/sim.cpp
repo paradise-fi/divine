@@ -94,6 +94,8 @@ struct Interpreter
         auto comp = split.begin( n );
 
         auto i = _dbg.find( *comp );
+        if ( i == _dbg.end() && silent )
+            return nullDN();
         if ( i == _dbg.end() )
             throw brick::except::Error( "variable " + *comp + " is not defined" );
 
