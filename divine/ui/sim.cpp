@@ -111,7 +111,8 @@ struct Interpreter
         set( n, DN( _ctx, _ctx.heap().snapshot(), p, k, t ) );
     }
 
-    DN nullDN() { return DN( _ctx, _ctx.heap().snapshot(), vm::nullPointer(), vm::DNKind::Object, nullptr ); }
+    DN nullDN() { return DN( _ctx, _ctx.heap().snapshot(), vm::nullPointer(),
+                             vm::DNKind::Object, nullptr ); }
 
     DN get( std::string n, bool silent = false )
     {
