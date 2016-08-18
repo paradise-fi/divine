@@ -13,6 +13,10 @@
 
 namespace dios {
 
+enum RunMode {
+    ModeUnspecified = 0, ModeRun, ModeVerify, ModeSim
+};
+
 using ThreadId = _DiOS_ThreadId;
 using FunPtr   = _DiOS_FunPtr;
 
@@ -434,9 +438,9 @@ extern "C" void *__dios_init( const _VM_Env *env ) {
     // Select scheduling mode
     auto sched_arg = dios::get_env_key( "divine.runmode", env );
     __dios_assert_v( sched_arg, "divine.runmode not provided" );
-    bool thread_aware_sched = dios::env_string_eq( "run", sched_arg ) ||
-        dios::env_string_eq( "sim", sched_arg );
-    if (thread_aware_sched)
+    __dios_assert_v( sched_arg->size == 1, "divine.runmode has unxpected size (uint8_t expected)" );
+    auto mode = reinterpret_cast< const uint8_t * >( sched_arg->value )[0];
+    if ( mode == dios::RunMode::ModeRun || mode == dios::RunMode::ModeSim )
         __vm_set_sched( __dios_sched<true> );
     else
         __vm_set_sched( __dios_sched<false> );
