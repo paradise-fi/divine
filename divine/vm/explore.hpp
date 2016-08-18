@@ -39,8 +39,11 @@ struct State
     CowHeap *_heap; /* for operator< */
     CowHeap::Snapshot snap;
     HeapPointer root, globals;
+    State() : _heap( nullptr ) {}
     bool operator<( State s ) const
     {
+        ASSERT( _heap );
+        ASSERT( s._heap );
         CowHeap a( *_heap ), b( *s._heap );
         a.restore( snap );
         b.restore( s.snap );
