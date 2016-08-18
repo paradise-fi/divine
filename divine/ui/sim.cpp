@@ -266,7 +266,6 @@ struct Interpreter
     {
         check_running();
         Eval eval( _bc->program(), _ctx );
-        bool end = false;
         int lines = 0, instructions = 0, line = 0;
         while ( true )
         {
