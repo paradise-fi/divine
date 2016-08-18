@@ -248,28 +248,25 @@ struct DebugNode
 
     void bitcode( std::ostream &out )
     {
-        if ( _kind != DNKind::Frame )
-            return;
+        ASSERT_EQ( _kind, DNKind::Frame );
         Eval eval( _ctx.program(), _ctx );
-        PointerV pcv;
-        _ctx.heap().read( eval.ptr2h( _address ), pcv );
-        CodePointer pc = pcv.cooked();
-        pc.instruction( 0 );
-        auto &instructions = _ctx.program().function( pc ).instructions;
+        CodePointer iter = pc();
+        iter.instruction( 0 );
+        auto &instructions = _ctx.program().function( iter ).instructions;
         for ( auto &i : instructions )
         {
-            out << (pc == CodePointer( pcv.cooked() ) ? ">>" : "  ");
+            out << ( iter == pc() ? ">>" : "  " );
             if ( i.op )
                 out << instruction( i, eval, 2 ) << std::endl;
             else
             {
-                auto iop = llvm::cast< llvm::Instruction >( instructions[ pc.instruction() + 1 ].op );
+                auto iop = llvm::cast< llvm::Instruction >( instructions[ iter.instruction() + 1 ].op );
                 auto name = iop->getParent()->getName().str();
                 out << "label %"
-                    << ( name.empty() ? brick::string::fmt( pc.instruction() ) : name )
+                    << ( name.empty() ? brick::string::fmt( iter.instruction() ) : name )
                     << ":" << std::endl;
             }
-            pc = pc + 1;
+            iter = iter + 1;
         }
     }
 
