@@ -288,6 +288,12 @@ struct Program
         return functions[ pc.function() ];
     }
 
+    llvm::Function *llvmfunction( CodePointer pc ) /* eww. */
+    {
+        return llvm::cast< llvm::Instruction >( function( pc ).instructions[ 1 ].op )->
+            getParent()->getParent();
+    }
+
     SlotRef allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr )
     {
         switch ( slot.location )

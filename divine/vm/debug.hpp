@@ -23,6 +23,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/eval.hpp>
+#include <divine/cc/runtime.hpp>
 #include <brick-string>
 
 namespace divine {
@@ -246,6 +247,13 @@ struct DebugNode
         return pc.cooked();
     }
 
+    llvm::DISubprogram *subprogram()
+    {
+        ASSERT_EQ( kind(), DNKind::Frame );
+        auto F = _ctx.program().llvmfunction( pc() );
+        return llvm::getDISubprogram( F );
+    }
+
     void bitcode( std::ostream &out )
     {
         ASSERT_EQ( _kind, DNKind::Frame );
@@ -268,6 +276,43 @@ struct DebugNode
             }
             iter = iter + 1;
         }
+    }
+
+    void source( std::ostream &out )
+    {
+        ASSERT_EQ( _kind, DNKind::Frame );
+        brick::string::Splitter split( "\n", REG_EXTENDED );
+        auto di = subprogram();
+        /* TODO: also deal with sources outside of runtime! */
+        auto line = split.begin( cc::runtime::source( di->getFilename() ) );
+        unsigned lineno = 1, active = 0;
+        while ( lineno < di->getLine() )
+            ++ line, ++ lineno;
+        unsigned endline = lineno;
+
+        /* figure out the source code span the function covers; painfully */
+        for ( auto &i : _ctx.program().function( pc() ).instructions )
+        {
+            if ( !i.op )
+                continue;
+            auto op = llvm::cast< llvm::Instruction >( i.op );
+            auto dl = op->getDebugLoc().get();
+            if ( !dl )
+                continue;
+            dl = dl->getInlinedAt() ?: dl;
+            if ( _ctx.program().instruction( pc() ).op == i.op )
+                active = dl->getLine();
+            endline = std::max( endline, dl->getLine() );
+        }
+
+        /* print it */
+        while ( line != split.end() && lineno <= endline )
+            std::cerr << (lineno == active ? ">>" : "  ")
+                      << std::setw( 5 ) << lineno++
+                      << " " << *line++ << std::endl;
+        brick::string::ERegexp endbrace( "^[ \t]*}" );
+        if ( endbrace.match( *line ) )
+            std::cerr << "  " << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
     }
 
     template< typename Y >
