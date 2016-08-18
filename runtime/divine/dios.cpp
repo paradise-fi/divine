@@ -620,8 +620,17 @@ void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)()
     case _VM_F_NotImplemented:
         diosTraceInternal( 0, "FAULT: Not Implemented" );
         break;
+    case _DiOS_F_Threading:
+        diosTraceInternal( 0, "FAULT: Threading error occured" );
+        break;
+    case _DiOS_F_Assert:
+        diosTraceInternal( 0, "FAULT: DiOS assert" );
+        break;
+    case _DiOS_F_MissingFunction:
+        diosTraceInternal( 0, "FAULT: Missing function" );
+        break;
     case _DiOS_F_MainReturnValue:
-        diosTraceInternal( 0, "FAULT: Main exited with non-zero value" );
+        diosTraceInternal( 0, "FAULT: main exited with non-zero code" );
         break;
     default:
         diosTraceInternal( 0, "Unknown fault ");
