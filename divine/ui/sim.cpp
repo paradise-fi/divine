@@ -48,7 +48,12 @@ struct WithFrame : WithVar
 };
 
 struct Set : WithVar { std::string value; };
-struct Step : WithFrame {};
+struct Step : WithFrame
+{
+    bool over; int count;
+    Step() : over( false ), count( 1 ) {}
+};
+
 struct Show : WithVar { bool raw; };
 struct BitCode : WithFrame {};
 
@@ -65,6 +70,26 @@ struct Interpreter
     using BC = std::shared_ptr< vm::BitCode >;
     using DN = vm::DebugNode< vm::explore::Context >;
     using PointerV = vm::explore::Context::PointerV;
+
+    struct BreakPoint
+    {
+        vm::CodePointer pc;
+        vm::GenericPointer frame;
+        BreakPoint( vm::CodePointer pc, vm::HeapPointer frame ) : pc( pc ), frame( frame ) {}
+        bool operator<( BreakPoint o ) const
+        {
+            if ( pc == o.pc )
+                return frame < o.frame;
+            return pc < o.pc;
+        }
+    };
+
+    struct Counter
+    {
+        vm::GenericPointer frame;
+        int count;
+        Counter( vm::GenericPointer fr, int cnt ) : frame( fr ), count( cnt ) {}
+    };
 
     bool _exit;
     BC _bc;
@@ -227,18 +252,53 @@ struct Interpreter
             throw brick::except::Error( "the program has already terminated" );
     }
 
-    void go( Exit ) { _exit = true; }
-
-    void go( Step )
+    void run( std::set< BreakPoint > bps, std::vector< Counter > ctrs )
     {
         check_running();
         Eval eval( _bc->program(), _ctx );
-        eval.advance();
-        eval.dispatch();
-        /* $top was not updated yet */
-        std::cerr << attr( get( "$top" ), "instruction" ) << std::endl;
-        schedule( eval );
-        set( "$_", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
+        bool end = false;
+        while ( true )
+        {
+            for ( auto bp : bps )
+            {
+                if ( !bp.frame.null() && bp.frame != _ctx.frame().cooked() )
+                    continue;
+                if ( eval.pc() == bp.pc )
+                    end = true;
+            }
+
+            for ( auto &ctr : ctrs )
+            {
+                if ( !ctr.frame.null() && !_ctx.heap().accessible( ctr.frame ) )
+                    end = true; /* the frame went out of scope, halt */
+                if ( !ctr.frame.null() && ctr.frame != _ctx.frame().cooked() )
+                    continue;
+                if ( !ctr.count-- )
+                    end = true;
+            }
+
+            if ( end )
+                break;
+            eval.advance();
+            eval.dispatch();
+            schedule( eval );
+            for ( auto t : _ctx._trace )
+                std::cerr << "T: " << t << std::endl;
+            _ctx._trace.clear();
+            if ( _ctx.frame().cooked().null() )
+                break;
+        }
+    }
+
+    void go( Exit ) { _exit = true; }
+
+    void go( Step s )
+    {
+        check_running();
+        auto frame = get( s.var );
+        run( {}, { Counter( s.over ? frame.address() : vm::nullPointer(), s.count ) } );
+        std::cerr << attr( get( s.var ), "instruction" ) << std::endl;
+        set( "$_", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr ); /* hmm */
     }
 
     void go( Run )
@@ -293,11 +353,16 @@ void Interpreter::command( cmd::Tokens tok )
                    .option( "[{string}]", &WithVar::var, "a variable reference"s );
     auto showopts = cmd::make_option_set< Show >( v )
                     .option( "[--raw]", &Show::raw, "dump raw data"s );
+    auto stepopts = cmd::make_option_set< Step >( v )
+                    .option( "[--over]", &Step::over,
+                            "execute call instructions as one step"s )
+                    .option( "[--count {int}]", &Step::count,
+                             "execute {int} instructions (default = 1)"s );
 
     auto parser = cmd::make_parser( v )
                   .command< Exit >( "exit from divine"s )
                   .command< Help >( cmd::make_option( v, "[{string}]", &Help::_cmd ) )
-                  .command< Step >( "execute one instruction"s )
+                  .command< Step >( "execute one instruction"s, varopts, stepopts )
                   .command< Run >( "execute the program until interrupted"s )
                   .command< Set >( "set a variable "s, varopts )
                   .command< BitCode >( "show the bitcode of the current function"s, varopts )
