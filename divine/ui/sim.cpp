@@ -107,6 +107,7 @@ struct Interpreter
     vm::explore::Context _ctx;
     std::set< vm::CodePointer > _breaks;
     char *_prompt;
+    int _state_count;
 
     void command( cmd::Tokens cmd );
     char *prompt() { return _prompt; }
@@ -217,7 +218,8 @@ struct Interpreter
             std::cerr << "# NOTE: $frame in " << attr( frame, "symbol" ) << std::endl;
     }
 
-    Interpreter( BC bc ) : _exit( false ), _bc( bc ), _ctx( _bc->program() )
+    Interpreter( BC bc )
+        : _exit( false ), _bc( bc ), _ctx( _bc->program() ), _state_count( 0 )
     {
         setup( _bc->program(), _ctx );
         _ctx.mask( true );
@@ -248,6 +250,11 @@ struct Interpreter
 
         if ( st.null() )
             return true;
+
+        /* TODO do not allocate a new #NNN for already-visited states */
+        auto name = "#"s + brick::string::fmt( ++_state_count );
+        set( name, st, vm::DNKind::Object, nullptr );
+        std::cerr << "# a new program state was stored as " << name << std::endl;
 
         // _states.push_back( _ctx.snap( _last ) );
         _ctx.enter( _ctx.sched(), vm::nullPointer(),
