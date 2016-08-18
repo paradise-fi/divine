@@ -270,7 +270,7 @@ struct Interpreter
 
             for ( auto &ctr : ctrs )
             {
-                if ( !ctr.frame.null() && !_ctx.heap().accessible( ctr.frame ) )
+                if ( !ctr.frame.null() && !_ctx.heap().valid( ctr.frame ) )
                     end = true; /* the frame went out of scope, halt */
                 if ( !ctr.frame.null() && ctr.frame != _ctx.frame().cooked() )
                     continue;

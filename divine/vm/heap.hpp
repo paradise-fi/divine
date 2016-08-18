@@ -293,8 +293,8 @@ struct SimpleHeap : HeapMixin< Self >
         return true;
     }
 
-    bool valid( HeapPointer p ) { return p.object() && int( p.object() ) < _s->seq; }
-    bool accessible( HeapPointer p ) { return valid( p ) && _l.objmap.count( p.object() ); }
+    bool valid( HeapPointer p ) { return p.object() && int( p.object() ) < _s->seq &&
+                                         _l.objmap.count( p.object() ); }
 
     int size( HeapPointer p ) { return _objects.size( ptr2i( p ) ); }
 
