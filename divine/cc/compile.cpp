@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill
 
 #include <divine/cc/compile.hpp>
+#include <divine/cc/runtime.hpp>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/Support/raw_os_ostream.h>
@@ -13,11 +14,8 @@ DIVINE_UNRELAX_WARNINGS
 extern const char *DIVINE_RUNTIME_SHA;
 
 namespace divine {
-
-struct stringtable { const char *n, *c; };
-extern stringtable runtime_list[];
-
 namespace cc {
+
 
 std::string stringifyToCode( std::vector< std::string > ns, std::string name, std::string value ) {
     std::stringstream ss;
@@ -81,11 +79,11 @@ Compile::Compile( Options opts ) :
     ASSERT_EQ( workers.size(), compilers.size() );
 
     commonFlags = { "-D__divine__"
-                  , "-isystem", includeDir
-                  , "-isystem", join( includeDir, "pdclib" )
-                  , "-isystem", join( includeDir, "libm" )
-                  , "-isystem", join( includeDir, "libcxx/include" )
-                  , "-isystem", join( includeDir, "libunwind/include" )
+                  , "-isystem", runtime::includeDir
+                  , "-isystem", join( runtime::includeDir, "pdclib" )
+                  , "-isystem", join( runtime::includeDir, "libm" )
+                  , "-isystem", join( runtime::includeDir, "libcxx/include" )
+                  , "-isystem", join( runtime::includeDir, "libunwind/include" )
                   , "-D_POSIX_C_SOURCE=2008098L"
                   , "-D_LITTLE_ENDIAN=1234"
                   , "-D_BYTE_ORDER=1234"
@@ -185,32 +183,17 @@ std::shared_ptr< llvm::LLVMContext > Compile::context() { return mastercc().cont
 
 Compiler &Compile::mastercc() { return compilers[0]; }
 
-static bool isSource( std::string x ) {
-    using brick::string::endsWith;
-    return endsWith( x, ".c") || endsWith( x, ".cpp" ) || endsWith( x, ".cc" );
-}
-
-template< typename Src >
-void Compile::prepareSources( std::string basedir, Src src, Type type,
-                              std::function< bool( std::string ) > filter )
+void Compile::setupFS()
 {
-    while ( src->n ) {
-        if ( ( !filter || filter( src->n ) )
-             && ( ( type == Type::Header && !isSource( src->n ) )
-                || ( type == Type::Source && isSource( src->n ) )
-                || type == Type::All ) )
-        {
-            auto path = join( basedir, src->n );
-            mastercc().mapVirtualFile( path, src->c );
-        }
-        ++src;
-    }
-}
+    using brick::string::startsWith;
 
-void Compile::setupFS() {
-    prepareSources( includeDir, runtime_list, Type::Header );
-    prepareSources( srcDir, runtime_list, Type::Source,
-        [&]( std::string name ) { return !brick::string::startsWith( name, "filesystem" ); } );
+    runtime::each(
+        [&]( auto path, auto c )
+        {
+            if ( startsWith( path, join( runtime::srcDir, "filesystem" ) ) )
+                return; /* ignore */
+            mastercc().mapVirtualFile( path, c );
+        } );
 }
 
 void Compile::setupLibs() {
@@ -230,21 +213,22 @@ void Compile::setupLibs() {
         auto libflags = []( auto... xs ) {
             return mergeFlags( "-Wall", "-Wextra", "-Wno-gcc-compat", "-Wno-unused-parameter", xs... );
         };
-        std::initializer_list< std::string > cxxflags = { "-std=c++14"
-                                                        // , "-fstrict-aliasing"
-                                                        , "-I", join( includeDir, "libcxxabi/include" )
-                                                        , "-I", join( includeDir, "libcxxabi/src" )
-                                                        , "-I", join( includeDir, "libcxx/src" )
-                                                        , "-I", join( includeDir, "filesystem" )
-                                                        , "-Oz" };
-        compileLibrary( join( srcDir, "pdclib" ), libflags( "-D_PDCLIB_BUILD" ) );
-        compileLibrary( join( srcDir, "limb" ), libflags() );
-        compileLibrary( join( srcDir, "libcxxabi" ),
+        std::initializer_list< std::string > cxxflags =
+            { "-std=c++14"
+              // , "-fstrict-aliasing"
+              , "-I", join( runtime::includeDir, "libcxxabi/include" )
+              , "-I", join( runtime::includeDir, "libcxxabi/src" )
+              , "-I", join( runtime::includeDir, "libcxx/src" )
+              , "-I", join( runtime::includeDir, "filesystem" )
+              , "-Oz" };
+        compileLibrary( join( runtime::srcDir, "pdclib" ), libflags( "-D_PDCLIB_BUILD" ) );
+        compileLibrary( join( runtime::srcDir, "limb" ), libflags() );
+        compileLibrary( join( runtime::srcDir, "libcxxabi" ),
                         libflags( cxxflags, "-DLIBCXXABI_USE_LLVM_UNWINDER" ) );
-        compileLibrary( join( srcDir, "libcxx" ), libflags( cxxflags ) );
-        compileLibrary( join( srcDir, "divine" ), libflags( cxxflags ) );
-        compileLibrary( join( srcDir, "filesystem" ), libflags( cxxflags ) );
-        compileLibrary( join( srcDir, "lart" ), libflags( cxxflags ) );
+        compileLibrary( join( runtime::srcDir, "libcxx" ), libflags( cxxflags ) );
+        compileLibrary( join( runtime::srcDir, "divine" ), libflags( cxxflags ) );
+        compileLibrary( join( runtime::srcDir, "filesystem" ), libflags( cxxflags ) );
+        compileLibrary( join( runtime::srcDir, "lart" ), libflags( cxxflags ) );
     }
 }
 

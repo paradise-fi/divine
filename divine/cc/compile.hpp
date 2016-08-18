@@ -10,7 +10,6 @@
 namespace brick { namespace llvm { struct Linker; } } // avoid header dependency
 
 namespace divine {
-
 namespace cc {
 
 // get generate source which defines symbol with name 'name' in namespaces 'ns'
@@ -44,17 +43,9 @@ struct Compile
   private:
     Compiler &mastercc();
 
-    enum class Type { Header, Source, All };
-    template< typename Src >
-    void prepareSources( std::string basedir, Src src, Type type = Type::All,
-                         std::function< bool( std::string ) > filter = nullptr );
-
     void setupFS();
     void setupLibs();
     void compileLibrary( std::string path, std::vector< std::string > flags = { } );
-
-    const std::string includeDir = "/divine/include";
-    const std::string srcDir = "/divine/src";
 
     Options opts;
     std::vector< Compiler > compilers;
