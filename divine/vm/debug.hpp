@@ -139,6 +139,7 @@ struct DebugNode
     }
 
     DNKind kind() { return _kind; }
+    GenericPointer address() { return _address; }
 
     template< typename B >
     void hexbyte( std::ostream &o, int &col, int index, B byte )
@@ -223,20 +224,26 @@ struct DebugNode
 
         if ( _kind == DNKind::Frame )
         {
-            PointerV pc;
-            _ctx.heap().read( hloc, pc );
-            if ( pc.cooked().null() )
+            if ( pc().null() )
                 return;
-            auto *insn = &program.instruction( pc.cooked() );
+            auto *insn = &program.instruction( pc() );
             if ( insn->op )
                 yield( "instruction", instruction( *insn, eval ) );
             if ( !insn->op )
-                insn = &program.instruction( pc.cooked() + 1 );
+                insn = &program.instruction( pc() + 1 );
             ASSERT( insn->op );
             auto op = llvm::cast< llvm::Instruction >( insn->op );
             yield( "location", fileline( *op ) );
             yield( "symbol", op->getParent()->getParent()->getName().str() );
         }
+    }
+
+    CodePointer pc()
+    {
+        ASSERT_EQ( kind(), DNKind::Frame );
+        PointerV pc;
+        _ctx.heap().read( _address, pc );
+        return pc.cooked();
     }
 
     void bitcode( std::ostream &out )
