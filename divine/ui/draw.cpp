@@ -85,6 +85,7 @@ void Draw::run()
                 std::cout << f_id << " -> " << t_id
                           << " [ label = \"" << escape( brick::string::fmt( trace ) ) << "\"]"
                           << std::endl;
+                ++statecount;
             },
             [&]( auto st )
             {
@@ -96,6 +97,7 @@ void Draw::run()
                 std::cout << id << " [ style=filled fillcolor=yellow ]" << std::endl;
                 std::cout << id << " -> " << id << ".1 [ label=root ]" << std::endl;
                 dump( dn, _dumped, hseq, brick::string::fmt( id ) + "." );
+                ++edgecount;
             } ) );
     std::cout << "}";
     std::cerr << "found " << statecount << " states and " << edgecount << " edges" << std::endl;
