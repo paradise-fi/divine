@@ -16,6 +16,10 @@ namespace ui {
 using namespace std::literals;
 namespace cmd = brick::cmd;
 
+enum RunMode {
+    ModeUnspecified = 0, ModeRun, ModeVerify, ModeSim
+};
+
 struct Command
 {
     virtual void run() = 0;
@@ -28,13 +32,13 @@ struct WithBC : Command
     std::string _file;
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
-    std::string _run_mode;
+    RunMode _run_mode;
     vm::AutoTraceFlags _autotrace;
 
     std::shared_ptr< vm::BitCode > _bc;
     void setup();
 
-    WithBC( const std::string& run_mode = "not_specified" )
+    WithBC( RunMode run_mode = RunMode::ModeUnspecified )
         : _run_mode(run_mode) {}
 };
 
@@ -81,17 +85,17 @@ struct Verify : WithBC
     }
 
     void run();
-    Verify() : WithBC( "verify" ) {}
+    Verify() : WithBC( RunMode::ModeVerify ) {}
 };
 
 struct Run : WithBC {
     void run();
-    Run() : WithBC( "run" ) {}
+    Run() : WithBC( RunMode::ModeRun ) {}
 };
 
 struct Sim : WithBC {
     void run();
-    Sim() : WithBC( "sim" ) {}
+    Sim() : WithBC( RunMode::ModeSim ) {}
 };
 
 struct Draw : WithBC
