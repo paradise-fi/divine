@@ -516,6 +516,7 @@ struct Eval
                 context().set_interrupted( true );
             }
             context().frame( nullPointer() );
+            heap().free( fr.cooked() );
             return;
         }
 
@@ -541,6 +542,7 @@ struct Eval
             heap().read( rv, br );
             jumpTo( br );
         }
+        heap().free( fr.cooked() );
     }
 
     void implement_br()
