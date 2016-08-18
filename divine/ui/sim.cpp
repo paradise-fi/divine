@@ -167,14 +167,16 @@ struct Interpreter
 
     void info()
     {
-        auto dn = get( "$top" );
-        auto sym = attr( dn, "symbol" ), loc = attr( dn, "location" );
+        auto top = get( "$top" ), frame = get( "$frame" );
+        auto sym = attr( top, "symbol" ), loc = attr( top, "location" );
         std::cerr << "# executing " << sym;
         if ( sym.size() + loc.size() > 60 )
             std::cerr << std::endl << "#        at ";
         else
             std::cerr << " at ";
         std::cerr << loc << std::endl;
+        if ( frame._address != top._address )
+            std::cerr << "# NOTE: $frame in " << attr( frame, "symbol" ) << std::endl;
     }
 
     Interpreter( BC bc ) : _exit( false ), _bc( bc ), _ctx( _bc->program() )
