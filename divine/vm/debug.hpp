@@ -49,7 +49,7 @@ static void pad( std::ostream &o, int &col, int target )
 }
 
 template< typename Eval >
-static std::string instruction( typename Eval::Instruction &insn, Eval &eval )
+static std::string instruction( typename Eval::Instruction &insn, Eval &eval, int padding = 0 )
 {
     ASSERT( insn.op );
     eval._instruction = &insn;
@@ -95,7 +95,7 @@ static std::string instruction( typename Eval::Instruction &insn, Eval &eval )
         {
             int col = out.str().size();
             if ( col >= 60 )
-                col = -2, out << std::endl;
+                col = -padding, out << std::endl;
             pad( out, col, 60 );
             out << " # " << brick::string::fmt( v.get( 0 ) );
         } );
@@ -260,7 +260,7 @@ struct DebugNode
         {
             out << (pc == CodePointer( pcv.cooked() ) ? ">>" : "  ");
             if ( i.op )
-                out << instruction( i, eval ) << std::endl;
+                out << instruction( i, eval, 2 ) << std::endl;
             else
             {
                 auto iop = llvm::cast< llvm::Instruction >( instructions[ pc.instruction() + 1 ].op );
