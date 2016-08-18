@@ -59,6 +59,7 @@ struct Step : WithSteps {};
 
 struct Show : WithVar { bool raw; };
 struct BitCode : WithFrame {};
+struct Source : WithFrame {};
 
 struct BackTrace : WithVar
 {
@@ -367,6 +368,7 @@ struct Interpreter
 
     void go( Set s ) { set( s.var, s.value ); }
     void go( BitCode bc ) { get( bc.var ).bitcode( std::cerr ); }
+    void go( Source src ) { get( src.var ).source( std::cerr ); }
     void go( Help ) { UNREACHABLE( "impossible case" ); }
 };
 
@@ -401,6 +403,7 @@ void Interpreter::command( cmd::Tokens tok )
                   .command< Run >( "execute the program until interrupted"s )
                   .command< Set >( "set a variable "s, varopts )
                   .command< BitCode >( "show the bitcode of the current function"s, varopts )
+                  .command< Source >( "show the source code of the current function"s, varopts )
                   .command< Show >( "show an object"s, varopts, showopts )
                   .command< BackTrace >( "show a stack trace"s, varopts );
 
