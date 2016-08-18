@@ -87,8 +87,10 @@ struct Interpreter
     struct Counter
     {
         vm::GenericPointer frame;
-        int count;
-        Counter( vm::GenericPointer fr, int cnt ) : frame( fr ), count( cnt ) {}
+        int lines, instructions;
+        Counter( vm::GenericPointer fr, int lines, int instructions )
+            : frame( fr ), lines( lines ), instructions( instructions )
+        {}
     };
 
     bool _exit;
@@ -105,14 +107,17 @@ struct Interpreter
     void command( cmd::Tokens cmd );
     char *prompt() { return _prompt; }
 
+    DN dn( vm::GenericPointer p, vm::DNKind k, llvm::Type *t )
+    {
+        return DN( _ctx, _ctx.heap().snapshot(), p, k, t );
+    }
+    DN nullDN() { return dn( vm::nullPointer(), vm::DNKind::Object, nullptr ); }
+
     void set( std::string n, DN dn ) { _dbg.erase( n ); _dbg.emplace( n, dn ); }
     void set( std::string n, vm::GenericPointer p, vm::DNKind k, llvm::Type *t )
     {
-        set( n, DN( _ctx, _ctx.heap().snapshot(), p, k, t ) );
+        set( n, dn( p, k, t ) );
     }
-
-    DN nullDN() { return DN( _ctx, _ctx.heap().snapshot(), vm::nullPointer(),
-                             vm::DNKind::Object, nullptr ); }
 
     DN get( std::string n, bool silent = false )
     {
@@ -253,11 +258,12 @@ struct Interpreter
             throw brick::except::Error( "the program has already terminated" );
     }
 
-    void run( std::set< BreakPoint > bps, std::vector< Counter > ctrs )
+    void run( std::set< BreakPoint > bps, Counter ctr, bool verbose )
     {
         check_running();
         Eval eval( _bc->program(), _ctx );
         bool end = false;
+        int lines = 0, instructions = 0, line = 0;
         while ( true )
         {
             for ( auto bp : bps )
@@ -265,30 +271,52 @@ struct Interpreter
                 if ( !bp.frame.null() && bp.frame != _ctx.frame().cooked() )
                     continue;
                 if ( eval.pc() == bp.pc )
-                    end = true;
+                    goto end;
             }
 
-            for ( auto &ctr : ctrs )
+            if ( !ctr.frame.null() && !_ctx.heap().valid( ctr.frame ) )
+                goto end; /* the frame went out of scope, halt */
+
+            if ( ctr.frame.null() || ctr.frame == _ctx.frame().cooked() )
             {
-                if ( !ctr.frame.null() && !_ctx.heap().valid( ctr.frame ) )
-                    end = true; /* the frame went out of scope, halt */
-                if ( !ctr.frame.null() && ctr.frame != _ctx.frame().cooked() )
-                    continue;
-                if ( !ctr.count-- )
-                    end = true;
+                if ( ctr.instructions && ctr.instructions == instructions )
+                    goto end;
+                if ( ctr.lines && ctr.lines == lines )
+                    goto end;
+
+                ++ instructions;
+                /* TODO line counter */
             }
 
-            if ( end )
-                break;
             eval.advance();
-            eval.dispatch();
+            if ( verbose )
+            {
+                auto frame = _ctx.frame().cooked();
+                auto &insn = eval.instruction();
+                std::string before = vm::instruction( insn, eval );
+                eval.dispatch();
+                if ( _ctx.heap().valid( frame ) )
+                {
+                    auto newframe = _ctx.frame();
+                    _ctx.frame( frame ); /* :-( */
+                    std::cerr << vm::instruction( insn, eval ) << std::endl;
+                    _ctx.frame( newframe );
+                }
+                else
+                    std::cerr << before << std::endl;
+            }
+            else
+                eval.dispatch();
+
             schedule( eval );
             for ( auto t : _ctx._trace )
                 std::cerr << "T: " << t << std::endl;
             _ctx._trace.clear();
             if ( _ctx.frame().cooked().null() )
-                break;
+                goto end;
         }
+    end:
+        ;
     }
 
     void go( Exit ) { _exit = true; }
@@ -297,7 +325,7 @@ struct Interpreter
     {
         check_running();
         auto frame = get( s.var );
-        run( {}, { Counter( s.over ? frame.address() : vm::nullPointer(), s.count ) } );
+        run( {}, Counter( s.over ? frame.address() : vm::nullPointer(), 0, s.count ), true );
         std::cerr << attr( get( s.var ), "instruction" ) << std::endl;
         set( "$_", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr ); /* hmm */
     }
