@@ -308,7 +308,9 @@ const char * _PDCLIB_print( const char * spec, struct _PDCLIB_status_t * status 
            strtol() will return zero. In both cases, endptr will point to the
            rest of the conversion specifier - just what we need.
         */
-        status->width = (int)strtol( spec, (char**)&spec, 10 );
+        // Original: status->width = (int)strtol( spec, (char**)&spec, 10 );
+        // See _PDCLIB_io.h
+        status->width = ( int ) _DIVINE_strtol( spec, ( char ** )&spec );
     }
 
     /* Optional precision */
@@ -326,7 +328,9 @@ const char * _PDCLIB_print( const char * spec, struct _PDCLIB_status_t * status 
         }
         else
         {
-            status->prec = (int)strtol( spec, (char**) &spec, 10 );
+            // Original: status->prec = (int)strtol( spec, (char**) &spec, 10 );
+            // See _PDCLIB_io.h
+            status->prec = ( int ) _DIVINE_strtol( spec, ( char ** ) &spec );
         }
         /* Having a precision cancels out any zero flag. */
         status->flags &= ~E_zero;

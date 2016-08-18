@@ -57,6 +57,12 @@ union _PDCLIB_fd
 */
 const char * _PDCLIB_print( const char * spec, struct _PDCLIB_status_t * status );
 
+/* Simple implementation of strtol, which expects base 10 positive number. Used
+   in _PDCLIB_print - strtol uses pthread local storage and breaks __dios_trace.
+   Implementation is simple and naive (as the rest of _PDCLIB_print)
+*/
+long int _DIVINE_strtol( const char *s, char **endptr );
+
 /* The worker for all scanf() type of functions. The pointer spec should point
    to the introducing '%' of a conversion specifier. The status structure is to
    be that of the current scanf() function, of which the member stream will be
