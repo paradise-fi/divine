@@ -142,6 +142,7 @@ struct Context
         _p.fault = p;
         return true;
     }
+    CodePointer fault_handler() { return _p.fault; }
 
     bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _t.entry_frame.cooked() ) == fr; }
     void setIfl( PointerV p ) { _t.ifl = p; }
