@@ -474,6 +474,13 @@ public:
             return *this;
         }
 
+        const_iterator operator++( int )
+        {
+            const_iterator rv = *this;
+            ++*this;
+            return rv;
+        }
+
         const std::string& operator*() const
         {
             return cur;
