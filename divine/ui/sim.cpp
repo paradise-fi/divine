@@ -48,11 +48,14 @@ struct WithFrame : WithVar
 };
 
 struct Set : WithVar { std::string value; };
-struct Step : WithFrame
+struct WithSteps : WithFrame
 {
-    bool over; int count;
-    Step() : over( false ), count( 1 ) {}
+    bool over, quiet; int count;
+    WithSteps() : over( false ), quiet( false ), count( 1 ) {}
 };
+
+struct StepI : WithSteps {};
+struct Step : WithSteps {};
 
 struct Show : WithVar { bool raw; };
 struct BitCode : WithFrame {};
@@ -320,13 +323,13 @@ struct Interpreter
     }
 
     void go( Exit ) { _exit = true; }
+    void go( Step s ) { NOT_IMPLEMENTED(); }
 
-    void go( Step s )
+    void go( StepI s )
     {
         check_running();
         auto frame = get( s.var );
-        run( {}, Counter( s.over ? frame.address() : vm::nullPointer(), 0, s.count ), true );
-        std::cerr << attr( get( s.var ), "instruction" ) << std::endl;
+        run( {}, Counter( s.over ? frame.address() : vm::nullPointer(), 0, s.count ), !s.quiet );
         set( "$_", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr ); /* hmm */
     }
 
@@ -382,15 +385,18 @@ void Interpreter::command( cmd::Tokens tok )
                    .option( "[{string}]", &WithVar::var, "a variable reference"s );
     auto showopts = cmd::make_option_set< Show >( v )
                     .option( "[--raw]", &Show::raw, "dump raw data"s );
-    auto stepopts = cmd::make_option_set< Step >( v )
-                    .option( "[--over]", &Step::over,
-                            "execute call instructions as one step"s )
-                    .option( "[--count {int}]", &Step::count,
-                             "execute {int} instructions (default = 1)"s );
+    auto stepopts = cmd::make_option_set< WithSteps >( v )
+                    .option( "[--over]", &WithSteps::over,
+                            "execute calls as one step"s )
+                    .option( "[--quiet]", &WithSteps::quiet,
+                            "do not print what is being executed"s )
+                    .option( "[--count {int}]", &WithSteps::count,
+                             "execute {int} steps (default = 1)"s );
 
     auto parser = cmd::make_parser( v )
                   .command< Exit >( "exit from divine"s )
                   .command< Help >( cmd::make_option( v, "[{string}]", &Help::_cmd ) )
+                  .command< StepI >( "execute source line"s, varopts, stepopts )
                   .command< Step >( "execute one instruction"s, varopts, stepopts )
                   .command< Run >( "execute the program until interrupted"s )
                   .command< Set >( "set a variable "s, varopts )
