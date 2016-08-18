@@ -35,7 +35,7 @@ using brick::string::endsWith;
 const std::string includeDir = "/divine/include";
 const std::string srcDir = "/divine/src";
 
-std::string directory( std::string name )
+static std::string directory( std::string name )
 {
     for ( auto suffix : { ".c", ".cpp", ".cc" } )
         if ( endsWith( name, suffix ) )
@@ -44,13 +44,13 @@ std::string directory( std::string name )
 }
 
 template< typename Y >
-void each( Y yield )
+static void each( Y yield )
 {
     for ( auto src = runtime_list; src->n; ++src )
         yield( joinPath( directory( src->n ), src->n ), src->c );
 }
 
-std::string source( std::string path )
+static std::string source( std::string path )
 {
     std::string res;
     each( [&]( auto n, auto c ) { if ( n == path ) res = c; } );
