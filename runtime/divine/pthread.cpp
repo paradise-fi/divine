@@ -269,7 +269,7 @@ extern "C" void _pthread_entry( void *_args ) {
     // copy arguments
     void *arg = args->arg;
     void *( *entry )( void * ) = args->entry;
-    __vm_free_object( _args );
+    // __vm_free_object( _args );
 
     // parent may delete args and leave pthread_create now
     args->initialized = true;
