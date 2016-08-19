@@ -307,12 +307,13 @@ struct DebugNode
 
         /* print it */
         while ( line != split.end() && lineno <= endline )
-            std::cerr << (lineno == active ? ">>" : "  ")
-                      << std::setw( 5 ) << lineno++
-                      << " " << *line++ << std::endl;
+        {
+            out << (lineno == active ? ">>" : "  ");
+            out << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
+        }
         brick::string::ERegexp endbrace( "^[ \t]*}" );
         if ( endbrace.match( *line ) )
-            std::cerr << "  " << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
+            out << "  " << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
     }
 
     template< typename Y >
