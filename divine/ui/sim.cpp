@@ -58,6 +58,7 @@ struct StepI : WithSteps {};
 struct Step : WithSteps {};
 
 struct Show : WithVar { bool raw; };
+struct Inspect : Show {};
 struct BitCode : WithFrame {};
 struct Source : WithFrame {};
 
@@ -382,6 +383,15 @@ struct Interpreter
             show( dn );
     }
 
+    void go( Inspect i )
+    {
+        Show s;
+        s.var = i.var;
+        s.raw = i.raw;
+        go( s );
+        set( "$_", s.var );
+    }
+
     void go( Set s )
     {
         if ( s.options.size() != 2 )
@@ -426,6 +436,7 @@ void Interpreter::command( cmd::Tokens tok )
                   .command< BitCode >( "show the bitcode of the current function"s, varopts )
                   .command< Source >( "show the source code of the current function"s, varopts )
                   .command< Show >( "show an object"s, varopts, showopts )
+                  .command< Inspect >( "like show, but also set $_"s, varopts, showopts )
                   .command< BackTrace >( "show a stack trace"s, varopts );
 
     try {
