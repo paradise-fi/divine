@@ -31,7 +31,7 @@ using Fault = ::_VM_Fault;
 
 struct TraceText { value::Pointer text; };
 struct TraceFlag { int flag; };
-struct TraceSchedChoice { value::Pointer dsc; };
+struct TraceSchedChoice { value::Pointer list; };
 struct TraceSchedInfo { int pid; int tid; };
 
 template< typename _Heap >
