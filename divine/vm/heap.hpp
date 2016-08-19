@@ -215,6 +215,21 @@ struct HeapMixin
         skip( p, sizeof( typename T::Raw ) );
     }
 
+    std::string read_string( PointerV ptr )
+    {
+        std::string str;
+        value::Int< 8, false > c;
+        int sz = self().size( ptr.cooked() );
+        do {
+            if ( ptr.cooked().offset() >= sz )
+                return "<out of bounds>";
+            read_shift( ptr, c );
+            if ( c.cooked() )
+                str += c.cooked();
+        } while ( c.cooked() );
+        return str;
+    }
+
     void skip( PointerV &p, int bytes )
     {
         HeapPointer pv = p.cooked();

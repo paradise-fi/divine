@@ -43,7 +43,10 @@ struct RunContext : Context< MutableHeap >
         _t.frame = nullPointer();
     }
 
-    void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
+    void trace( vm::TraceText tt ) { std::cerr << "T: " << heap().read_string( tt.text ) << std::endl; }
+    void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
+    void trace( vm::TraceSchedChoice ) { NOT_IMPLEMENTED(); }
+    void trace( vm::TraceFlag ) { NOT_IMPLEMENTED(); }
 };
 
 void Run::run()

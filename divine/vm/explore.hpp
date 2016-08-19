@@ -93,14 +93,18 @@ struct Context : vm::Context< CowHeap >
 
     void doublefault()
     {
-        trace( "fatal double fault" );
+        _trace.push_back( "fatal double fault" );
         _t.frame = nullPointer();
     }
 
-    void trace( std::string s )
+    void trace( TraceText tt )
     {
-        _trace.push_back( s );
+        _trace.push_back( heap().read_string( tt.text ) );
     }
+
+    void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
+    void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
+    void trace( TraceFlag ) { NOT_IMPLEMENTED(); }
 
     bool finished()
     {

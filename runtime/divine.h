@@ -40,7 +40,16 @@ enum _VM_Fault
     _VM_F_Last
 };
 
-struct _VM_Env {
+enum _VM_Trace
+{
+    _VM_T_Text, /* takes one const char * parameter */
+    _VM_T_SchedChoice, /* takes one void * parameter */
+    _VM_T_SchedInfo, /* takes two integer parameters */
+    _VM_T_Flag /* takes one integer parameter */
+};
+
+struct _VM_Env
+{
     const char *key;
     const char *value;
     int size;
@@ -127,7 +136,18 @@ int __vm_interrupt( int ) NOTHROW NATIVE_VISIBLE;
 void __vm_cfl_interrupt( void ) NOTHROW NATIVE_VISIBLE;
 void __vm_mem_interrupt( void *, _VM_MemAccessType ) NOTHROW NATIVE_VISIBLE;
 
-void __vm_trace( const char * ) NOTHROW NATIVE_VISIBLE;
+/*
+ * Provides meta-information about the executing code. The 'type' parameter
+ * distinguishes between multiple categories of said meta-information. How the
+ * trace info is used or presented to the user depends on the particular
+ * frontend: text traces may be printed out as the program executes, or they
+ * may show up as arrow labels in visual state space representation. The
+ * scheduling trace data can be used for annotating counterexamples, for
+ * guiding heuristic searches (minimising the number of context switches, for
+ * example) or in an interactive simulator/debugger for constructing a
+ * high-level view of thread/process structure of the program.
+ */
+void __vm_trace( enum _VM_Trace type, ... ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Create and destroy heap objects.

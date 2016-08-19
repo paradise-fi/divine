@@ -118,7 +118,7 @@ struct ConstContext
     bool fault_handler( CodePointer ) { NOT_IMPLEMENTED(); }
     void setIfl( PointerV ) { NOT_IMPLEMENTED(); }
     bool isEntryFrame( HeapPointer ) { NOT_IMPLEMENTED(); }
-    void trace( std::string ) { NOT_IMPLEMENTED(); }
+    void trace( ... ) { NOT_IMPLEMENTED(); }
 
     Heap _heap;
 

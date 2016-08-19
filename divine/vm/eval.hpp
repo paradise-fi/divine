@@ -21,6 +21,7 @@
 
 #include <divine/vm/program.hpp>
 #include <divine/vm/value.hpp>
+#include <divine/vm/context.hpp>
 #include <divine/vm/heap.hpp> /* for tests */
 
 #include <runtime/divine.h>
@@ -47,8 +48,6 @@ typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 
 namespace divine {
 namespace vm {
-
-using Fault = ::_VM_Fault;
 
 using ::llvm::dyn_cast;
 using ::llvm::cast;
@@ -293,7 +292,12 @@ struct Eval
             if ( !_ctx )
                 return;
             if ( _trace )
-                _ctx->trace( "FAULT: " + str() );
+            {
+                std::string s = "FAULT: " + str();
+                auto ptr = _ctx->heap().make( s.size() + 1 );
+                std::copy( s.begin(), s.end(), _ctx->heap().unsafe_bytes( ptr.cooked() ).begin() );
+                _ctx->trace( TraceText{ ptr } );
+            }
             _ctx->fault( _fault, _frame, _pc );
         }
     };
@@ -748,21 +752,6 @@ struct Eval
     template< typename V >
     void check( V v ) { if ( !v.defined() ) fault( _VM_F_Hypercall ); }
 
-    std::string operandStr( int o )
-    {
-        PointerV nptr = ptr2h( operandCk< PointerV >( o ) );
-        std::string str;
-        CharV c;
-        do {
-            if ( !boundcheck( nptr, 1, false ) )
-                return "<out of bounds>";
-            heap().read_shift( nptr, c );
-            if ( c.cooked() )
-                str += c.cooked();
-        } while ( c.cooked() );
-        return str;
-    }
-
     void implement_hypercall()
     {
         switch( instruction().hypercall )
@@ -820,8 +809,25 @@ struct Eval
             }
             case HypercallTrace:
             {
-                auto str = operandStr( 0 );
-                context().trace( str );
+                _VM_Trace t = _VM_Trace( operandCk< IntV >( 0 ).cooked() );
+                switch ( t )
+                {
+                    case _VM_T_Text:
+                        context().trace( TraceText{ ptr2h( operandCk< PointerV >( 1 ) ) } );
+                        return;
+                    case _VM_T_Flag:
+                        context().trace( TraceFlag{ operandCk< IntV >( 1 ).cooked() } );
+                        return;
+                    case _VM_T_SchedChoice:
+                        context().trace( TraceSchedChoice{ ptr2h( operandCk< PointerV >( 1 ) ) } );
+                        return;
+                    case _VM_T_SchedInfo:
+                        context().trace( TraceSchedInfo{ operandCk< IntV >( 1 ).cooked(),
+                                                         operandCk< IntV >( 2 ).cooked() } );
+                        return;
+                    default:
+                        fault( _VM_F_Hypercall ) << "invalid __vm_trace type " << t;
+                }
                 return;
             }
             case HypercallFault:
@@ -1394,7 +1400,11 @@ struct TContext
     bool isEntryFrame( vm::HeapPointer fr ) { return vm::HeapPointer( _entry_frame.cooked() ) == fr; }
 
     void fault( vm::Fault f, PointerV, CodePointer ) { _fault = f; _frame = vm::nullPointer(); }
-    void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
+    void trace( vm::TraceText tt ) { std::cerr << "T: " << _heap.read_string( tt.text ) << std::endl; }
+    void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
+    void trace( vm::TraceSchedChoice ) { NOT_IMPLEMENTED(); }
+    void trace( vm::TraceFlag ) { NOT_IMPLEMENTED(); }
+
 
     void push( PointerV ) {}
 
@@ -1527,9 +1537,9 @@ struct Eval
 
     TEST(ptrarith)
     {
-        const char *fdef = R"|(void __vm_trace( const char *v );
+        const char *fdef = R"|(void __vm_trace( int, const char *v );
                                int r = 1;
-                               void fail( const char *v ) { __vm_trace( v ); r = 0; }
+                               void fail( const char *v ) { __vm_trace( 0, v ); r = 0; }
                                int f() {
                                    char array[ 2 ];
                                    char *p = array;
