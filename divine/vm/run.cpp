@@ -45,7 +45,7 @@ struct RunContext : Context< MutableHeap >
 
     void trace( vm::TraceText tt ) { std::cerr << "T: " << heap().read_string( tt.text ) << std::endl; }
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
-    void trace( vm::TraceSchedChoice ) { NOT_IMPLEMENTED(); }
+    void trace( vm::TraceSchedChoice ) {}
     void trace( vm::TraceFlag ) { NOT_IMPLEMENTED(); }
 };
 
