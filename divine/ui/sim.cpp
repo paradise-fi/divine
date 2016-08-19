@@ -130,23 +130,24 @@ struct Interpreter
         brick::string::Splitter split( "\\.", REG_EXTENDED );
         auto comp = split.begin( n );
 
-        auto i = _dbg.find( *comp );
+        auto var = ( n[0] == '$' || n[0] == '#' ) ? *comp++ : "$_";
+        auto i = _dbg.find( var );
         if ( i == _dbg.end() && silent )
             return nullDN();
         if ( i == _dbg.end() )
-            throw brick::except::Error( "variable " + *comp + " is not defined" );
+            throw brick::except::Error( "variable " + var + " is not defined" );
 
         auto dn = i->second;
-        switch ( n[0] )
+        switch ( var[0] )
         {
             case '$': dn.relocate( _ctx.heap().snapshot() ); break;
             case '#': break;
-            default: throw brick::except::Error( "variable names must start with $ or #" );
+            default: UNREACHABLE( "impossible case" );
         }
 
         auto _dn = std::make_unique< DN >( dn );
 
-        for ( ++comp ; comp != split.end(); ++comp )
+        for ( ; comp != split.end(); ++comp )
         {
             bool found = false;
             dn.related( [&]( auto n, auto rel )
