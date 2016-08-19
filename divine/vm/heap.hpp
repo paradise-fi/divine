@@ -225,7 +225,6 @@ struct HeapMixin
     HeapBytes unsafe_bytes( HeapPointer p, int off = 0, int sz = 0 )
     {
         sz = sz ? sz : self().size( p ) - off;
-        ASSERT_LEQ( off, sz );
         ASSERT_LEQ( off + sz, self().size( p ) );
         auto start = self().unsafe_ptr2mem( p );
         return HeapBytes( start + off, start + off + sz );
