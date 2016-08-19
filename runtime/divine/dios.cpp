@@ -241,6 +241,18 @@ struct Scheduler {
                 count++;
         }
 
+        struct PI { int pid, tid, choice; };
+        PI *pi = reinterpret_cast< PI * >( __vm_make_object( count * sizeof( PI ) ) );
+        count = 0;
+        for ( int i = 0; i != _cf->thread_count; i++ )
+            if ( get_threads()[ i ].active() )
+            {
+                pi[ i ].pid = 0;
+                pi[ i ].tid = i;
+                pi[ i ].choice = count++;
+            }
+
+        __vm_trace( _VM_T_SchedChoice, pi );
         int sel = __vm_choose( count );
         auto thr = get_threads();
         while ( sel != 0 ) {
@@ -257,26 +269,26 @@ struct Scheduler {
 
     template < bool THREAD_AWARE >
     _VM_Frame *run_thread( int idx = -1 ) noexcept {
-        if ( idx < 0 )
-            idx = _cf->active_thread;
-        else
-            _cf->active_thread = idx;
+        if ( !THREAD_AWARE )
+        {
+            if ( idx < 0 )
+                idx = _cf->active_thread;
+            else
+                _cf->active_thread = idx;
 
-        Thread &thread = get_threads()[ idx ];
-        thread.update_state();
+            Thread &thread = get_threads()[ idx ];
+            thread.update_state();
 
-        if ( !thread.zombie() ) {
-            __vm_set_ifl( &( thread._frame) );
-            return thread._frame;
-        }
-
-        __dios_trace_t( "Thread exit" );
-
-        if ( THREAD_AWARE ) {
-            if ( idx != 0 ) {
-                return run_live_thread();
+            if ( !thread.zombie() ) {
+                __vm_set_ifl( &( thread._frame) );
+                return thread._frame;
             }
+
+            __dios_trace_t( "Thread exit" );
         }
+
+        if ( THREAD_AWARE )
+            return run_live_thread();
 
         _cf = nullptr;
         return nullptr;
@@ -285,7 +297,7 @@ struct Scheduler {
     template < bool THREAD_AWARE >
     _VM_Frame *run_threads() noexcept {
         // __dios_trace( 0, "Number of threads: %d", _cf->thread_count );
-        return run_thread< THREAD_AWARE >( __vm_choose( _cf->thread_count ) );
+        return run_thread< THREAD_AWARE >( THREAD_AWARE ? 0 : __vm_choose( _cf->thread_count ) );
     }
 
     void start_main_thread( FunPtr main, int argc, char** argv, char** envp ) noexcept {
