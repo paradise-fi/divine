@@ -47,7 +47,7 @@ struct WithFrame : WithVar
     WithFrame() : WithVar( "$frame" ) {}
 };
 
-struct Set : WithVar { std::string value; };
+struct Set : Command { std::vector< std::string > options; };
 struct WithSteps : WithFrame
 {
     bool over, quiet; int count;
@@ -382,7 +382,12 @@ struct Interpreter
             show( dn );
     }
 
-    void go( Set s ) { set( s.var, s.value ); }
+    void go( Set s )
+    {
+        if ( s.options.size() != 2 )
+            throw brick::except::Error( "2 options are required for set, the variable and the value" );
+        set( s.options[0], s.options[1] );
+    }
     void go( BitCode bc ) { get( bc.var ).bitcode( std::cerr ); }
     void go( Source src ) { get( src.var ).source( std::cerr ); }
     void go( Help ) { UNREACHABLE( "impossible case" ); }
@@ -417,7 +422,7 @@ void Interpreter::command( cmd::Tokens tok )
                   .command< StepI >( "execute source line"s, varopts, stepopts )
                   .command< Step >( "execute one instruction"s, varopts, stepopts )
                   .command< Run >( "execute the program until interrupted"s )
-                  .command< Set >( "set a variable "s, varopts )
+                  .command< Set >( "set a variable "s, &Set::options )
                   .command< BitCode >( "show the bitcode of the current function"s, varopts )
                   .command< Source >( "show the source code of the current function"s, varopts )
                   .command< Show >( "show an object"s, varopts, showopts )
