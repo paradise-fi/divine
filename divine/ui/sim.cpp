@@ -34,9 +34,9 @@ namespace cmd = brick::cmd;
 
 namespace sim {
 
-struct Command {};
+namespace command {
 
-struct WithVar : Command
+struct WithVar
 {
     std::string var;
     WithVar( std::string v = "$_" ) : var( v ) {}
@@ -47,7 +47,7 @@ struct WithFrame : WithVar
     WithFrame() : WithVar( "$frame" ) {}
 };
 
-struct Set : Command { std::vector< std::string > options; };
+struct Set { std::vector< std::string > options; };
 struct WithSteps : WithFrame
 {
     bool over, quiet; int count;
@@ -55,7 +55,9 @@ struct WithSteps : WithFrame
 };
 
 struct StepI : WithSteps {};
+struct StepS : WithSteps {};
 struct Step : WithSteps {};
+struct Run { bool verbose; };
 
 struct Show : WithVar { bool raw; };
 struct Inspect : Show {};
@@ -67,9 +69,10 @@ struct BackTrace : WithVar
     BackTrace() : WithVar( "$top" ) {}
 };
 
-struct Exit : Command {};
-struct Help : Command { std::string _cmd; };
+struct Exit {};
+struct Help { std::string _cmd; };
 
+}
 
 using ProcInfo = std::vector< std::pair< std::pair< int, int >, int > >;
 
@@ -424,10 +427,10 @@ struct Interpreter
         ;
     }
 
-    void go( Exit ) { _exit = true; }
-    void go( Step s ) { NOT_IMPLEMENTED(); }
+    void go( command::Exit ) { _exit = true; }
+    void go( command::Step s ) { NOT_IMPLEMENTED(); }
 
-    void go( StepI s )
+    void go( command::StepI s )
     {
         check_running();
         auto frame = get( s.var );
@@ -435,7 +438,7 @@ struct Interpreter
         set( "$_", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr ); /* hmm */
     }
 
-    void go( Run )
+    void go( command::Run )
     {
         check_running();
         Eval eval( _bc->program(), _ctx );
@@ -448,7 +451,7 @@ struct Interpreter
         }
     }
 
-    void go( BackTrace bt )
+    void go( command::BackTrace bt )
     {
         set( "$$", bt.var );
         do {
@@ -458,7 +461,7 @@ struct Interpreter
         } while ( get( "$$" ).valid() );
     }
 
-    void go( Show s )
+    void go( command::Show s )
     {
         auto dn = get( s.var );
         if ( s.raw )
@@ -467,25 +470,25 @@ struct Interpreter
             show( dn );
     }
 
-    void go( Inspect i )
+    void go( command::Inspect i )
     {
-        Show s;
+        command::Show s;
         s.var = i.var;
         s.raw = i.raw;
         go( s );
         set( "$_", s.var );
     }
 
-    void go( Set s )
+    void go( command::Set s )
     {
         if ( s.options.size() != 2 )
             throw brick::except::Error( "2 options are required for set, the variable and the value" );
         set( s.options[0], s.options[1] );
     }
 
-    void go( BitCode bc ) { get( bc.var ).bitcode( std::cerr ); }
-    void go( Source src ) { get( src.var ).source( std::cerr ); }
-    void go( Help ) { UNREACHABLE( "impossible case" ); }
+    void go( command::BitCode bc ) { get( bc.var ).bitcode( std::cerr ); }
+    void go( command::Source src ) { get( src.var ).source( std::cerr ); }
+    void go( command::Help ) { UNREACHABLE( "impossible case" ); }
 };
 
 char *prompt( EditLine *el )
@@ -499,31 +502,31 @@ void Interpreter::command( cmd::Tokens tok )
 {
     auto v = cmd::make_validator();
 
-    auto varopts = cmd::make_option_set< WithVar >( v )
-        .option( "[{string}]", &WithVar::var, "a variable reference"s );
-    auto showopts = cmd::make_option_set< Show >( v )
-        .option( "[--raw]", &Show::raw, "dump raw data"s );
-    auto stepopts = cmd::make_option_set< WithSteps >( v )
-        .option( "[--over]", &WithSteps::over, "execute calls as one step"s )
-        .option( "[--quiet]", &WithSteps::quiet, "do not print what is being executed"s )
-        .option( "[--count {int}]", &WithSteps::count, "execute {int} steps (default = 1)"s );
+    auto varopts = cmd::make_option_set< command::WithVar >( v )
+        .option( "[{string}]", &command::WithVar::var, "a variable reference"s );
+    auto showopts = cmd::make_option_set< command::Show >( v )
+        .option( "[--raw]", &command::Show::raw, "dump raw data"s );
+    auto stepopts = cmd::make_option_set< command::WithSteps >( v )
+        .option( "[--over]", &command::WithSteps::over, "execute calls as one step"s )
+        .option( "[--quiet]", &command::WithSteps::quiet, "do not print what is being executed"s )
+        .option( "[--count {int}]", &command::WithSteps::count, "execute {int} steps (default = 1)"s );
 
     auto parser = cmd::make_parser( v )
-        .command< Exit >( "exit from divine"s )
-        .command< Help >( cmd::make_option( v, "[{string}]", &Help::_cmd ) )
-        .command< StepI >( "execute source line"s, varopts, stepopts )
-        .command< Step >( "execute one instruction"s, varopts, stepopts )
-        .command< Run >( "execute the program until interrupted"s )
-        .command< Set >( "set a variable "s, &Set::options )
-        .command< BitCode >( "show the bitcode of the current function"s, varopts )
-        .command< Source >( "show the source code of the current function"s, varopts )
-        .command< Show >( "show an object"s, varopts, showopts )
-        .command< Inspect >( "like show, but also set $_"s, varopts, showopts )
-        .command< BackTrace >( "show a stack trace"s, varopts );
+        .command< command::Exit >( "exit from divine"s )
+        .command< command::Help >( cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
+        .command< command::StepI >( "execute source line"s, varopts, stepopts )
+        .command< command::Step >( "execute one instruction"s, varopts, stepopts )
+        .command< command::Run >( "execute the program until interrupted"s )
+        .command< command::Set >( "set a variable "s, &command::Set::options )
+        .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
+        .command< command::Source >( "show the source code of the current function"s, varopts )
+        .command< command::Show >( "show an object"s, varopts, showopts )
+        .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
+        .command< command::BackTrace >( "show a stack trace"s, varopts );
 
     try {
         auto cmd = parser.parse( tok.begin(), tok.end() );
-        cmd.match( [&] ( Help h ) { std::cerr << parser.describe( h._cmd ) << std::endl; },
+        cmd.match( [&] ( command::Help h ) { std::cerr << parser.describe( h._cmd ) << std::endl; },
                    [&] ( auto opt ) { go( opt ); } );
         update();
     }
