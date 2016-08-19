@@ -219,7 +219,7 @@ struct HeapMixin
     {
         std::string str;
         value::Int< 8, false > c;
-        int sz = self().size( ptr.cooked() );
+        unsigned sz = self().size( ptr.cooked() );
         do {
             if ( ptr.cooked().offset() >= sz )
                 return "<out of bounds>";
