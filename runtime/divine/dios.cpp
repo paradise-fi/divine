@@ -152,7 +152,7 @@ struct Thread {
     {
         _frame->pc = fun->entry_point;
         _frame->parent = nullptr;
-        __dios_trace( 0, "Thread constuctor: %p, %p", _frame, _frame->pc );
+        __dios_trace_f( "Thread constuctor: %p, %p", _frame, _frame->pc );
     }
 
     Thread( const Thread& o ) = delete;
@@ -270,7 +270,7 @@ struct Scheduler {
             return thread._frame;
         }
 
-        __dios_trace( 0, "Thread exit" );
+        __dios_trace_t( "Thread exit" );
 
         if ( THREAD_AWARE ) {
             if ( idx != 0 ) {
@@ -374,7 +374,7 @@ static void runDtors() {
 
 extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
     __vm_mask( 1 );
-    __dios_trace( 0, "Dios started!" );
+    __dios_trace_t( "Dios started!" );
     runCtors();
     int res;
     switch (l) {
@@ -404,7 +404,7 @@ extern "C" void __dios_main( int l, int argc, char **argv, char **envp ) {
     dios::free_main_arg( argv );
     dios::free_main_arg( envp );
 
-    __dios_trace( 0, "DiOS out!" );
+    __dios_trace_t( "DiOS out!" );
 }
 
 template < bool THREAD_AWARE_SCHED >
@@ -428,11 +428,11 @@ void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)()
 extern "C" void *__dios_init( const _VM_Env *env ) {
     const _VM_Env *e = env;
     while ( e->key ) {
-        __dios_trace( 0, "Key: %s, Value: %.*s", e->key, e->size, e->value );
+        __dios_trace_f( "Key: %s, Value: %.*s", e->key, e->size, e->value );
         ++e;
     }
 
-    __vm_trace( "__sys_init called" );
+    __dios_trace_t( "__sys_init called" );
     __vm_set_fault( __dios_fault );
 
     // Select scheduling mode
@@ -452,7 +452,7 @@ extern "C" void *__dios_init( const _VM_Env *env ) {
     // Find & run main function
     _DiOS_FunPtr main = __dios_get_fun_ptr( "main" );
     if ( !main ) {
-        __vm_trace( "No main function" );
+        __dios_trace_t( "No main function" );
         __vm_fault( static_cast< _VM_Fault >( _DiOS_F_MissingFunction ), "main" );
         return nullptr;
     }
@@ -460,7 +460,7 @@ extern "C" void *__dios_init( const _VM_Env *env ) {
     auto argv = dios::construct_main_arg( "arg.", env, true );
     auto envp = dios::construct_main_arg( "env.", env );
     scheduler.start_main_thread( main, argv.first, argv.second, envp.second );
-    __vm_trace( "Main thread started" );
+    __dios_trace_t( "Main thread started" );
 
     return scheduler.get_cf();
 }
@@ -535,7 +535,7 @@ void diosTraceInternalV( int indent, const char *fmt, va_list ap ) noexcept __at
         buffer[ i ] = ' ';
 
     vsnprintf( buffer + fmtIndent, 1024, fmt, ap );
-    __vm_trace( buffer );
+    __vm_trace( _VM_T_Text, buffer );
 
     fmtIndent += indent * 4;
 }
@@ -547,6 +547,26 @@ void diosTraceInternal( int indent, const char *fmt, ... ) noexcept
     diosTraceInternalV( indent, fmt, ap );
     va_end( ap );
 }
+}
+
+void __dios_trace_t( const char *txt ) noexcept
+{
+    __vm_trace( _VM_T_Text, txt );
+}
+
+void __dios_trace_f( const char *fmt, ... ) noexcept
+{
+    int mask = __vm_mask(1);
+
+    if ( inTrace )
+        goto unmask;
+
+    va_list ap;
+    va_start( ap, fmt );
+    diosTraceInternalV( 0, fmt, ap );
+    va_end( ap );
+unmask:
+    __vm_mask(mask);
 }
 
 void __dios_trace( int indent, const char *fmt, ... ) noexcept
@@ -586,7 +606,7 @@ void __sc_get_thread_id( void *retval, va_list vl ) {
 }
 
 void __sc_dummy( void *ret, va_list vl ) {
-    __vm_trace( "Dummy syscall issued!" );
+    __dios_trace_t( "Dummy syscall issued!" );
 }
 
 void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept {
@@ -594,48 +614,48 @@ void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)()
     InTrace _; // avoid dumping what we do
 
     /* ToDo: Handle errors */
-    __vm_trace( "VM Fault" );
+    __dios_trace_t( "VM Fault" );
     switch ( what ) {
     case _VM_F_NoFault:
-        diosTraceInternal( 0, "FAULT: No fault" );
+        __dios_trace_t( "FAULT: No fault" );
         break;
     case _VM_F_Assert:
-        diosTraceInternal( 0, "FAULT: Assert" );
+        __dios_trace_t( "FAULT: Assert" );
         break;
     case _VM_F_Arithmetic:
-        diosTraceInternal( 0, "FAULT: Arithmetic" );
+        __dios_trace_t( "FAULT: Arithmetic" );
         break;
     case _VM_F_Memory:
-        diosTraceInternal( 0, "FAULT: Memory" );
+        __dios_trace_t( "FAULT: Memory" );
         break;
     case _VM_F_Control:
-        diosTraceInternal( 0, "FAULT: Control" );
+        __dios_trace_t( "FAULT: Control" );
         break;
     case _VM_F_Locking:
-        diosTraceInternal( 0, "FAULT: Locking" );
+        __dios_trace_t( "FAULT: Locking" );
         break;
     case _VM_F_Hypercall:
-        diosTraceInternal( 0, "FAULT: Hypercall" );
+        __dios_trace_t( "FAULT: Hypercall" );
         break;
     case _VM_F_NotImplemented:
-        diosTraceInternal( 0, "FAULT: Not Implemented" );
+        __dios_trace_t( "FAULT: Not Implemented" );
         break;
     case _DiOS_F_Threading:
-        diosTraceInternal( 0, "FAULT: Threading error occured" );
+        __dios_trace_t( "FAULT: Threading error occured" );
         break;
     case _DiOS_F_Assert:
-        diosTraceInternal( 0, "FAULT: DiOS assert" );
+        __dios_trace_t( "FAULT: DiOS assert" );
         break;
     case _DiOS_F_MissingFunction:
-        diosTraceInternal( 0, "FAULT: Missing function" );
+        __dios_trace_t( "FAULT: Missing function" );
         break;
     case _DiOS_F_MainReturnValue:
-        diosTraceInternal( 0, "FAULT: main exited with non-zero code" );
+        __dios_trace_t( "FAULT: main exited with non-zero code" );
         break;
     default:
-        diosTraceInternal( 0, "Unknown fault ");
+        __dios_trace_t( "Unknown fault ");
     }
-    diosTraceInternal( 0, "Backtrace:" );
+    __dios_trace_t( "Backtrace:" );
     int i = 0;
     for ( auto *f = __vm_query_frame()->parent; f != nullptr; f = f->parent )
         diosTraceInternal( 0, "%d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );

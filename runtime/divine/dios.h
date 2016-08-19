@@ -40,7 +40,7 @@ enum _DiOS_Fault
 
 #define __dios_assert( x ) do { \
         if ( !(x) ) { \
-            __vm_trace( "DiOS assert");\
+            __dios_trace_t( "DiOS assert");\
             __vm_fault( (_VM_Fault) _DiOS_F_Assert );\
         } \
     } while (0)
@@ -86,6 +86,8 @@ void __dios_syscall_trap() NOTHROW;
 void __dios_syscall(int syscode, void* ret, ...);
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
+void __dios_trace_t( const char *str ) NOTHROW;
+void __dios_trace_f( const char *fmt, ... ) NOTHROW;
 
 _Noreturn void __dios_unwind( struct _VM_Frame *to, void (*pc)( void ) ) NOTHROW;
 
