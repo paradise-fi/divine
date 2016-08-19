@@ -47,6 +47,12 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2, std::set< HeapPoint
     if ( visited.count( r1 ) )
         return 0;
     visited.insert( r1 );
+
+    if ( h1.valid( r1 ) != h2.valid( r2 ) )
+        return h1.valid( r1 ) - h2.valid( r2 );
+    if ( !h1.valid( r1 ) )
+        return 0;
+
     int s1 = h1.size( r1 ), s2 = h2.size( r2 );
     if ( s1 - s2 )
         return s1 - s2;
