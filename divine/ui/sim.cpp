@@ -70,11 +70,65 @@ struct BackTrace : WithVar
 struct Exit : Command {};
 struct Help : Command { std::string _cmd; };
 
+
+using ProcInfo = std::vector< std::pair< std::pair< int, int >, int > >;
+
+struct Context : vm::Context< vm::CowHeap >
+{
+    using Program = vm::Program;
+    std::vector< std::string > _trace;
+    ProcInfo _proc;
+    int _choice;
+
+    Context( Program &p ) : vm::Context< vm::CowHeap >( p ), _choice( 0 ) {}
+
+    template< typename I >
+    int choose( int count, I, I )
+    {
+        ASSERT_LT( _choice, count );
+        ASSERT_LEQ( 0, _choice );
+        if ( !_proc.empty() )
+            _proc.clear();
+        return _choice;
+    }
+
+    void doublefault()
+    {
+        _trace.push_back( "fatal double fault" );
+        _t.frame = vm::nullPointer();
+    }
+
+    void trace( vm::TraceText tt )
+    {
+        _trace.push_back( heap().read_string( tt.text ) );
+    }
+
+    void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
+    void trace( vm::TraceFlag ) { NOT_IMPLEMENTED(); }
+
+    void trace( vm::TraceSchedChoice tsc )
+    {
+        std::cerr << "tsc = " << tsc.list << std::endl;
+        auto ptr = tsc.list;
+        int size = heap().size( ptr.cooked() );
+        if ( size % 12 )
+            return; /* invalid */
+        for ( int i = 0; i < size / 12; ++i )
+        {
+            vm::value::Int< 32, true > pid, tid, choice;
+            heap().read_shift( ptr, pid );
+            heap().read_shift( ptr, tid );
+            heap().read_shift( ptr, choice );
+            _proc.emplace_back( std::make_pair( pid.cooked(), tid.cooked() ), choice.cooked() );
+        }
+    }
+};
+
 struct Interpreter
 {
     using BC = std::shared_ptr< vm::BitCode >;
-    using DN = vm::DebugNode< vm::explore::Context >;
-    using PointerV = vm::explore::Context::PointerV;
+    using DN = vm::DebugNode< Context >;
+    using PointerV = Context::PointerV;
 
     struct BreakPoint
     {
@@ -104,8 +158,11 @@ struct Interpreter
     std::vector< std::string > _env;
 
     std::map< std::string, DN > _dbg;
+    std::pair< int, int > _sticky_tid;
+    std::mt19937 _rand;
+    bool _sched_random;
 
-    vm::explore::Context _ctx;
+    Context _ctx;
     std::set< vm::CodePointer > _breaks;
     char *_prompt;
     int _state_count;
@@ -221,7 +278,8 @@ struct Interpreter
     }
 
     Interpreter( BC bc )
-        : _exit( false ), _bc( bc ), _ctx( _bc->program() ), _state_count( 0 )
+        : _exit( false ), _bc( bc ), _ctx( _bc->program() ), _state_count( 0 ),
+          _sticky_tid( -1, 0 ), _sched_random( false )
     {
         setup( _bc->program(), _ctx );
         _ctx.mask( true );
@@ -241,7 +299,7 @@ struct Interpreter
         return res;
     }
 
-    using Eval = vm::Eval< vm::Program, vm::explore::Context, PointerV >;
+    using Eval = vm::Eval< vm::Program, Context, PointerV >;
 
     bool schedule( Eval &eval )
     {
@@ -263,6 +321,20 @@ struct Interpreter
                     Eval::IntV( eval.heap().size( st ) ), PointerV( st ) );
 
         return true;
+    }
+
+    int sched_policy( const ProcInfo &proc )
+    {
+        std::uniform_int_distribution< int > dist( 0, proc.size() - 1 );
+        if ( _sched_random )
+            return dist( _rand );
+        for ( auto pi : proc )
+            if ( pi.first == _sticky_tid )
+                return pi.second;
+        /* thread is gone, pick a replacement at random */
+        int seq = dist( _rand );
+        _sticky_tid = proc[ seq ].first;
+        return proc[ seq ].second;
     }
 
     void check_running()
@@ -327,9 +399,20 @@ struct Interpreter
                 eval.dispatch();
 
             schedule( eval );
+
+            if ( !_ctx._proc.empty() )
+            {
+                std::cerr << "# active threads:";
+                for ( auto pi : _ctx._proc )
+                    std::cerr << " " << pi.first.first << ":" << pi.first.second;
+                std::cerr << std::endl;
+                _ctx._choice = sched_policy( _ctx._proc );
+            }
+
             for ( auto t : _ctx._trace )
                 std::cerr << "T: " << t << std::endl;
             _ctx._trace.clear();
+
             if ( _ctx.frame().cooked().null() )
                 goto end;
             if ( jumped )
@@ -399,6 +482,7 @@ struct Interpreter
             throw brick::except::Error( "2 options are required for set, the variable and the value" );
         set( s.options[0], s.options[1] );
     }
+
     void go( BitCode bc ) { get( bc.var ).bitcode( std::cerr ); }
     void go( Source src ) { get( src.var ).source( std::cerr ); }
     void go( Help ) { UNREACHABLE( "impossible case" ); }
