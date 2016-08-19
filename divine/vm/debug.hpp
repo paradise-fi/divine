@@ -130,7 +130,10 @@ struct DebugNode
 
     DebugNode( ConstContext< Program, Heap > ctx, GenericPointer l, DNKind k, llvm::Type *t )
         : _ctx( ctx ), _address( l ), _kind( k ), _type( t )
-    {}
+    {
+        if ( k == DNKind::Frame )
+            _ctx.frame( l );
+    }
 
     DebugNode( const DebugNode &o ) = default;
 
