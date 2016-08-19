@@ -509,6 +509,7 @@ struct Eval
 
         if ( parent.cooked().null() )
         {
+            bool trampoline = false;
             if ( context().isEntryFrame( frame().cooked() ) )
             {
                 if ( instruction().values.size() > 1 )
@@ -518,9 +519,12 @@ struct Eval
             {
                 context().mask( false );
                 context().set_interrupted( true );
+                trampoline = true;
             }
             context().frame( nullPointer() );
             heap().free( fr.cooked() );
+            if ( trampoline )
+                context().check_interrupt();
             return;
         }
 
