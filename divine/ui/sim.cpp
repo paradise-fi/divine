@@ -415,29 +415,26 @@ void Interpreter::command( cmd::Tokens tok )
     auto v = cmd::make_validator();
 
     auto varopts = cmd::make_option_set< WithVar >( v )
-                   .option( "[{string}]", &WithVar::var, "a variable reference"s );
+        .option( "[{string}]", &WithVar::var, "a variable reference"s );
     auto showopts = cmd::make_option_set< Show >( v )
-                    .option( "[--raw]", &Show::raw, "dump raw data"s );
+        .option( "[--raw]", &Show::raw, "dump raw data"s );
     auto stepopts = cmd::make_option_set< WithSteps >( v )
-                    .option( "[--over]", &WithSteps::over,
-                            "execute calls as one step"s )
-                    .option( "[--quiet]", &WithSteps::quiet,
-                            "do not print what is being executed"s )
-                    .option( "[--count {int}]", &WithSteps::count,
-                             "execute {int} steps (default = 1)"s );
+        .option( "[--over]", &WithSteps::over, "execute calls as one step"s )
+        .option( "[--quiet]", &WithSteps::quiet, "do not print what is being executed"s )
+        .option( "[--count {int}]", &WithSteps::count, "execute {int} steps (default = 1)"s );
 
     auto parser = cmd::make_parser( v )
-                  .command< Exit >( "exit from divine"s )
-                  .command< Help >( cmd::make_option( v, "[{string}]", &Help::_cmd ) )
-                  .command< StepI >( "execute source line"s, varopts, stepopts )
-                  .command< Step >( "execute one instruction"s, varopts, stepopts )
-                  .command< Run >( "execute the program until interrupted"s )
-                  .command< Set >( "set a variable "s, &Set::options )
-                  .command< BitCode >( "show the bitcode of the current function"s, varopts )
-                  .command< Source >( "show the source code of the current function"s, varopts )
-                  .command< Show >( "show an object"s, varopts, showopts )
-                  .command< Inspect >( "like show, but also set $_"s, varopts, showopts )
-                  .command< BackTrace >( "show a stack trace"s, varopts );
+        .command< Exit >( "exit from divine"s )
+        .command< Help >( cmd::make_option( v, "[{string}]", &Help::_cmd ) )
+        .command< StepI >( "execute source line"s, varopts, stepopts )
+        .command< Step >( "execute one instruction"s, varopts, stepopts )
+        .command< Run >( "execute the program until interrupted"s )
+        .command< Set >( "set a variable "s, &Set::options )
+        .command< BitCode >( "show the bitcode of the current function"s, varopts )
+        .command< Source >( "show the source code of the current function"s, varopts )
+        .command< Show >( "show an object"s, varopts, showopts )
+        .command< Inspect >( "like show, but also set $_"s, varopts, showopts )
+        .command< BackTrace >( "show a stack trace"s, varopts );
 
     try {
         auto cmd = parser.parse( tok.begin(), tok.end() );
