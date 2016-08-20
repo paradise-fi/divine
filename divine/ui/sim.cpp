@@ -63,6 +63,7 @@ struct Show : WithVar { bool raw; };
 struct Inspect : Show {};
 struct BitCode : WithFrame {};
 struct Source : WithFrame {};
+struct Thread  { std::string spec; bool random; };
 
 struct BackTrace : WithVar
 {
@@ -405,11 +406,16 @@ struct Interpreter
 
             if ( !_ctx._proc.empty() )
             {
+                _ctx._choice = sched_policy( _ctx._proc );
                 std::cerr << "# active threads:";
                 for ( auto pi : _ctx._proc )
-                    std::cerr << " " << pi.first.first << ":" << pi.first.second;
+                {
+                    bool active = pi.second == _ctx._choice;
+                    std::cerr << ( active ? " [" : " " )
+                              << pi.first.first << ":" << pi.first.second
+                              << ( active ? "]" : "" );
+                }
                 std::cerr << std::endl;
-                _ctx._choice = sched_policy( _ctx._proc );
             }
 
             for ( auto t : _ctx._trace )
@@ -486,6 +492,20 @@ struct Interpreter
         set( s.options[0], s.options[1] );
     }
 
+    void go( command::Thread thr )
+    {
+        _sched_random = thr.random;
+        if ( !thr.spec.empty() )
+        {
+            std::istringstream istr( thr.spec );
+            char c;
+            istr >> _sticky_tid.first >> c >> _sticky_tid.second;
+            if ( c != ':' )
+                throw brick::except::Error( "expected thread specifier format: <pid>:<tid>" );
+            std::cerr << "tid = " << _sticky_tid.first << ":" << _sticky_tid.second << std::endl;
+        }
+    }
+
     void go( command::BitCode bc ) { get( bc.var ).bitcode( std::cerr ); }
     void go( command::Source src ) { get( src.var ).source( std::cerr ); }
     void go( command::Help ) { UNREACHABLE( "impossible case" ); }
@@ -510,6 +530,9 @@ void Interpreter::command( cmd::Tokens tok )
         .option( "[--over]", &command::WithSteps::over, "execute calls as one step"s )
         .option( "[--quiet]", &command::WithSteps::quiet, "do not print what is being executed"s )
         .option( "[--count {int}]", &command::WithSteps::count, "execute {int} steps (default = 1)"s );
+    auto threadopts = cmd::make_option_set< command::Thread >( v )
+        .option( "[--random]", &command::Thread::random, "pick the thread to run randomly"s )
+        .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
 
     auto parser = cmd::make_parser( v )
         .command< command::Exit >( "exit from divine"s )
@@ -520,6 +543,7 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::Set >( "set a variable "s, &command::Set::options )
         .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
         .command< command::Source >( "show the source code of the current function"s, varopts )
+        .command< command::Thread >( "control thread scheduling"s, threadopts )
         .command< command::Show >( "show an object"s, varopts, showopts )
         .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
         .command< command::BackTrace >( "show a stack trace"s, varopts );
