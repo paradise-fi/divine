@@ -247,7 +247,7 @@ struct Scheduler {
         for ( int i = 0; i != _cf->thread_count; i++ )
             if ( get_threads()[ i ].active() )
             {
-                pi[ i ].pid = 0;
+                pi[ i ].pid = 1;
                 pi[ i ].tid = i;
                 pi[ i ].choice = count++;
             }
