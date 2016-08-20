@@ -158,7 +158,7 @@ struct Program
     {
         enum { Void, Pointer, Integer, Float, Aggregate, CodePointer, Alloca } type:3;
         enum Location { Global, Local, Constant, Invalid } location:2;
-        uint32_t width:29;
+        uint32_t _width:29;
         uint32_t offset:30;
 
         bool pointer() { return type == Pointer || type == Alloca; }
@@ -168,9 +168,13 @@ struct Program
         bool aggregate() { return type == Aggregate; }
         bool codePointer() { return type == CodePointer; }
 
-        Slot( int w = 0, Location l = Invalid )
-            : type( Integer ), location( l ), width( w ), offset( 0 )
-        {}
+        int size() const { return _width % 8 ? _width / 8 + 1 : _width / 8; }
+        int width() const { return _width; }
+
+        explicit Slot( Location l = Invalid )
+            : type( Integer ), location( l ), _width( 0 ), offset( 0 )
+        {
+        }
     };
 
     struct SlotRef
@@ -300,12 +304,12 @@ struct Program
         {
             case Slot::Constant:
                 slot.offset = _constants_size;
-                _constants_size = mem::align( _constants_size + slot.width, 4 );
+                _constants_size = mem::align( _constants_size + slot.size(), 4 );
                 _constants.push_back( slot );
                 return SlotRef( slot, _constants.size() - 1 );
             case Slot::Global:
                 slot.offset = _globals_size;
-                _globals_size = mem::align( _globals_size + slot.width, 4 );
+                _globals_size = mem::align( _globals_size + slot.size(), 4 );
                 _globals.push_back( slot );
                 return SlotRef( slot, _globals.size() - 1 );
             case Slot::Local:
@@ -396,7 +400,7 @@ static inline std::ostream &operator<<( std::ostream &o, Program::Slot p )
     static std::vector< std::string > t = { "void", "ptr", "int", "float", "agg", "code", "alloca" };
     static std::vector< std::string > l = { "global", "local", "const", "invalid" };
     return o << "[" << l[ p.location ] << " " << t[ p.type ] << " @" << p.offset << " ↔"
-             << p.width << "]";
+             << p.width() << "]";
 }
 
 static inline std::ostream &operator<<( std::ostream &o, const Program::Instruction &i )

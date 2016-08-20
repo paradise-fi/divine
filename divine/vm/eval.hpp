@@ -238,7 +238,7 @@ struct Eval
                 return false;
             }
             width = heap().size( hp );
-        } else width = ptr2s( pp ).width;
+        } else width = ptr2s( pp ).size();
 
         if ( int( pp.offset() ) + sz > width )
         {
@@ -257,12 +257,12 @@ struct Eval
         if ( p.cooked().type() == PointerType::Const )
         {
             ConstPointer pp = p.cooked();
-            return program()._constants[ pp.object() ].width;
+            return program()._constants[ pp.object() ].size();
         }
         if ( p.cooked().type() == PointerType::Global )
         {
             ConstPointer pp = p.cooked();
-            return program()._globals[ pp.object() ].width;
+            return program()._globals[ pp.object() ].size();
         }
         UNREACHABLE_F( "a bad pointer in ptr2sz: %s", brick::string::fmt( PointerV( p ) ).c_str() );
     }
@@ -387,7 +387,7 @@ struct Eval
     void implement_store()
     {
         auto to = operandPtr( 1 );
-        int sz = operand( 0 ).width;
+        int sz = operand( 0 ).size();
         if ( !boundcheck( to, sz, true ) )
             return;
         heap().copy( s2ptr( operand( 0 ) ), ptr2h( to ), sz );
@@ -396,7 +396,7 @@ struct Eval
     void implement_load()
     {
         auto from = operandPtr( 0 );
-        int sz = result().width;
+        int sz = result().size();
         if ( !boundcheck( from, sz, false ) )
             return;
         heap().copy( ptr2h( from ), s2ptr( result() ), sz );
@@ -423,18 +423,18 @@ struct Eval
         auto &v = instruction().value( off );
         switch ( v.type ) {
             case Slot::Integer:
-                switch ( v.width )
+                switch ( v.width() )
                 {
-                    case 1: return op< Guard, value::Int<  8 > >( _op );
-                    case 2: return op< Guard, value::Int< 16 > >( _op );
-                    case 4: return op< Guard, value::Int< 32 > >( _op );
-                    case 8: return op< Guard, value::Int< 64 > >( _op );
+                    case  8: return op< Guard, value::Int<  8 > >( _op );
+                    case 16: return op< Guard, value::Int< 16 > >( _op );
+                    case 32: return op< Guard, value::Int< 32 > >( _op );
+                    case 64: return op< Guard, value::Int< 64 > >( _op );
                 }
-                UNREACHABLE_F( "Unsupported integer width %d", v.width );
+                UNREACHABLE_F( "Unsupported integer width %d", v.width() );
             case Slot::Pointer: case Slot::Alloca: case Slot::CodePointer:
                 return op< Guard, PointerV >( _op );
             case Slot::Float:
-                switch ( v.width )
+                switch ( v.size() )
                 {
                     case sizeof( float ):
                         return op< Guard, value::Float< float > >( _op );
@@ -478,18 +478,18 @@ struct Eval
         auto off = compositeOffsetFromInsn( instruction().op->getOperand(0)->getType(), 1,
                                             instruction().values.size() - 1 );
         ASSERT( off.defined() );
-        heap().copy( s2ptr( operand( 0 ), off.cooked() ), s2ptr( result() ), result().width );
+        heap().copy( s2ptr( operand( 0 ), off.cooked() ), s2ptr( result() ), result().size() );
     }
 
     void implement_insertvalue()
     {
         /* first copy the original */
-        heap().copy( s2ptr( operand( 0 ) ), s2ptr( result() ), result().width );
+        heap().copy( s2ptr( operand( 0 ) ), s2ptr( result() ), result().size() );
         auto off = compositeOffsetFromInsn( instruction().op->getOperand(0)->getType(), 2,
                                             instruction().values.size() - 1 );
         ASSERT( off.defined() );
         /* write the new value over the selected field */
-        heap().copy( s2ptr( operand( 1 ) ), s2ptr( result(), off.cooked() ), operand( 1 ).width );
+        heap().copy( s2ptr( operand( 1 ) ), s2ptr( result(), off.cooked() ), operand( 1 ).size() );
     }
 
     void jumpTo( PointerV _to )
@@ -534,11 +534,11 @@ struct Eval
         if ( instruction().values.size() > 1 ) { /* return value */
             if ( caller.values.size() == 0 )
                 fault( _VM_F_Control ) << "Function which was called as void returned a value";
-            else if ( caller.result().width < operand( 0 ).width )
+            else if ( caller.result().size() < operand( 0 ).size() )
                 fault( _VM_F_Control ) << "Returned value is bigger then expected by caller";
             else if ( !heap().copy( s2ptr( operand( 0 ) ),
                              s2ptr( caller.result(), 0, parent.cooked() ),
-                             caller.result().width ) )
+                                    caller.result().size() ) )
                 fault( _VM_F_Memory ) << "Cound not return value";
         }
 
@@ -614,20 +614,20 @@ struct Eval
         each_phi( target, [&]( auto &i )
                   {
                       ASSERT_EQ( cast< llvm::PHINode >( i.op )->getBasicBlockIndex( BB ), idx );
-                      size += i.result().width;
+                      size += i.result().size();
                       ++ count;
                   } );
         auto tmp = heap().make( size ), tgt = tmp;
         each_phi( target, [&]( auto &i )
                   {
-                      heap().copy( s2ptr( i.operand( idx ) ), tgt.cooked(), i.result().width );
-                      heap().skip( tgt, i.result().width );
+                      heap().copy( s2ptr( i.operand( idx ) ), tgt.cooked(), i.result().size() );
+                      heap().skip( tgt, i.result().size() );
                   } );
         tgt = tmp;
         each_phi( target, [&]( auto &i )
                   {
-                      heap().copy( tgt.cooked(), s2ptr( i.result() ), i.result().width );
-                      heap().skip( tgt, i.result().width );
+                      heap().copy( tgt.cooked(), s2ptr( i.result() ), i.result().size() );
+                      heap().skip( tgt, i.result().size() );
                   } );
 
         heap().free( tmp.cooked() );
@@ -713,9 +713,9 @@ struct Eval
                 }
                 auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
                 auto vaList = operandPtr( 0 );
-                if ( !boundcheck( vaList, operand( 0 ).width, true ) )
+                if ( !boundcheck( vaList, operand( 0 ).size(), true ) )
                     return;
-                heap().copy( vaptr_loc, ptr2h( vaList ), operand( 0 ).width );
+                heap().copy( vaptr_loc, ptr2h( vaList ), operand( 0 ).size() );
                 return;
             }
             case Intrinsic::vaend: return;
@@ -723,10 +723,10 @@ struct Eval
             {
                 auto from = operandPtr( 1 );
                 auto to = operandPtr( 0 );
-                if ( !boundcheck( from, operand( 0 ).width, false ) ||
-                     !boundcheck( to, operand( 0 ).width, true ) )
+                if ( !boundcheck( from, operand( 0 ).size(), false ) ||
+                     !boundcheck( to, operand( 0 ).size(), true ) )
                     return;
-                heap().copy( ptr2h( from ), ptr2h( to ), operand( 0 ).width );
+                heap().copy( ptr2h( from ), ptr2h( to ), operand( 0 ).size() );
                 return;
             }
             case Intrinsic::trap:
@@ -923,21 +923,21 @@ struct Eval
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.argcount ); ++i )
             heap().copy( s2ptr( operand( i ) ),
                          s2ptr( function.values[ i ], 0, frameptr.cooked() ),
-                         function.values[ i ].width );
+                         function.values[ i ].size() );
 
         if ( function.vararg )
         {
             int size = 0;
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
-                size += operand( i ).width;
+                size += operand( i ).size();
             auto vaptr = size ? heap().make( size ) : PointerV( nullPointer() );
             auto vaptr_loc = s2ptr( function.values[ function.argcount ], 0, frameptr.cooked() );
             heap().write( vaptr_loc, vaptr );
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
             {
                 auto op = operand( i );
-                heap().copy( s2ptr( op ), vaptr.cooked(), op.width );
-                heap().skip( vaptr, int( op.width ) );
+                heap().copy( s2ptr( op ), vaptr.cooked(), op.size() );
+                heap().skip( vaptr, int( op.size() ) );
             }
         }
 
@@ -1043,7 +1043,7 @@ struct Eval
                     fault( _VM_F_Control ) << "select on an undefined value";
 
                 heap().copy( s2ptr( operand( select.cooked() ? 1 : 2 ) ),
-                             s2ptr( result() ), result().width );
+                             s2ptr( result() ), result().size() );
                 /* TODO make the result undefined if !select.defined()? */
                 return;
             }
@@ -1202,7 +1202,7 @@ struct Eval
                 implement_ret(); break;
 
             case OpCode::BitCast:
-                heap().copy( s2ptr( operand( 0 ) ), s2ptr( result() ), result().width );
+                heap().copy( s2ptr( operand( 0 ) ), s2ptr( result() ), result().size() );
                 break;
 
             case OpCode::Load:
@@ -1340,10 +1340,10 @@ struct Eval
                     if ( !boundcheck( vaList, PointerBytes, true ) )
                         return;
                     heap().read( ptr2h( vaList ), vaArgs );
-                    if ( !boundcheck( vaArgs, result().width, false ) )
+                    if ( !boundcheck( vaArgs, result().size(), false ) )
                         return;
-                    heap().copy( ptr2h( vaArgs ), s2ptr( result() ), result().width );
-                    heap().write( ptr2h( vaList ), PointerV( vaArgs + result().width ) );
+                    heap().copy( ptr2h( vaArgs ), s2ptr( result() ), result().size() );
+                    heap().write( ptr2h( vaList ), PointerV( vaArgs + result().size() ) );
                     break;
                 }
                 return;

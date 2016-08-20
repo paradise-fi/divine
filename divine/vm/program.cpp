@@ -112,17 +112,17 @@ Program::Slot Program::initSlot( llvm::Value *val, Slot::Location loc )
     result.location = loc;
 
     if ( val->getType()->isVoidTy() ) {
-        result.width = 0;
+        result._width = 0;
         result.type = Slot::Void;
     } else if ( isCodePointer( val ) ) {
-        result.width = val->getType()->isPointerTy() ? TD.getTypeAllocSize( val->getType() )
-                       : sizeof( CodePointer );
+        result._width = val->getType()->isPointerTy() ? 8 * TD.getTypeAllocSize( val->getType() )
+                        : 8 * sizeof( CodePointer );
         result.type = Slot::CodePointer;
     } else if ( val->getType()->isPointerTy() ) {
-        result.width = TD.getTypeAllocSize( val->getType() );
+        result._width = 8 * TD.getTypeAllocSize( val->getType() );
         result.type = Slot::Pointer;
     } else {
-        result.width = TD.getTypeAllocSize( val->getType() );
+        result._width = 8 * TD.getTypeAllocSize( val->getType() );
         if ( val->getType()->isIntegerTy() )
             result.type = Slot::Integer;
         else if ( val->getType()->isFloatTy() || val->getType()->isDoubleTy() )
@@ -133,7 +133,7 @@ Program::Slot Program::initSlot( llvm::Value *val, Slot::Location loc )
 
     if ( auto CDS = dyn_cast< llvm::ConstantDataSequential >( val ) ) {
         result.type = Slot::Aggregate;
-        result.width = CDS->getNumElements() * CDS->getElementByteSize();
+        result._width = 8 * CDS->getNumElements() * CDS->getElementByteSize();
     }
 
     if ( isa< llvm::AllocaInst >( val ) ||
@@ -166,7 +166,7 @@ bool Program::lifetimeOverlap( llvm::Value *v_a, llvm::Value *v_b ) {
 
 void Program::overlaySlot( int fun, Slot &result, llvm::Value *val )
 {
-    if ( !result.width )
+    if ( !result.width() )
     {
         result.offset = 0;
         return;
@@ -190,16 +190,16 @@ void Program::overlaySlot( int fun, Slot &result, llvm::Value *val )
 
     for ( result.offset = 0; result.offset < f.datasize; ) {
         iter ++;
-        if ( result.offset + result.width > f.datasize )
+        if ( result.offset + result.size() > f.datasize )
             goto alloc;
 
         bool good = true;
-        for ( int i = 0; good && i < result.width; ++i )
+        for ( int i = 0; good && i < result.size(); ++i )
             for ( auto v : c[ result.offset + i ] )
                 if ( lifetimeOverlap( val, v ) ) {
                     ASSERT( valuemap.find( v ) != valuemap.end());
                     auto s = valuemap[ v ].slot;
-                    result.offset = s.offset + s.width;
+                    result.offset = s.offset + s.size();
                     good = false;
                     break;
                 }
@@ -209,7 +209,7 @@ void Program::overlaySlot( int fun, Slot &result, llvm::Value *val )
     }
 alloc:
     result.offset = f.datasize;
-    f.datasize += result.width;
+    f.datasize += result.size();
     c.resize( f.datasize );
 out:
     c[ result.offset ].push_back( val );
@@ -244,7 +244,7 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
 
     auto slot = initSlot( val, sl );
 
-    if ( slot.width % framealign )
+    if ( slot.size() % framealign )
         return SlotRef(); /* ignore for now, later pass will assign this one */
 
     auto sref = allocateSlot( slot, function, val );
@@ -366,7 +366,8 @@ void Program::insertIndices( Position p )
 
     for ( unsigned i = 0; i < I->getNumIndices(); ++i )
     {
-        Slot v( 4, Slot::Constant );
+        Slot v( Slot::Constant );
+        v._width = 32;
         auto sr = allocateSlot( v );
         _toinit.emplace_back(
             [=]{ initConstant( sr.slot, value::Int< 32 >( I->getIndices()[ i ] ) ); } );
@@ -461,7 +462,7 @@ void Program::setupRR()
 {
     /* null pointers are heap = 0, segment = 0, where segment is an index into
      * the "globals" vector */
-    Slot nullpage( 0, Slot::Global );
+    Slot nullpage( Slot::Global );
     _globals.push_back( nullpage );
 
     for ( auto &f : *module )
@@ -531,7 +532,7 @@ void Program::computeStatic()
         ASSERT( valuemap.find( var->getInitializer() ) != valuemap.end() );
         auto location = valuemap[ var->getInitializer() ];
         auto target = globalmap[ var ];
-        _ccontext.heap().copy( s2hptr( location.slot ), s2hptr( target.slot ), location.slot.width );
+        _ccontext.heap().copy( s2hptr( location.slot ), s2hptr( target.slot ), location.slot.size() );
     }
 
     auto md_func_var = module->getGlobalVariable( "__md_functions" );
@@ -580,7 +581,7 @@ void Program::computeStatic()
                 write( 0, getOpcode( inst.op ) );
                 write( 1, getSubOp( inst.op, *this ) );
                 write( 2, inst.values.empty() ? 0 : inst.result().offset );
-                write( 3, inst.values.empty() ? 0 : inst.result().width );
+                write( 3, inst.values.empty() ? 0 : inst.result().size() ); /* fixme? */
             }
         }
     }
@@ -628,7 +629,8 @@ void Program::pass()
             }
 
             if ( ( pi_function.vararg = function->isVarArg() ) ) {
-                Slot vaptr( PointerBytes, Slot::Local );
+                Slot vaptr( Slot::Local );
+                vaptr._width = PointerBits;
                 vaptr.type = Slot::Pointer;
                 allocateSlot( vaptr, pc.function() );
             }

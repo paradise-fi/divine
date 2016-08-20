@@ -95,14 +95,14 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     else if ( auto I = dyn_cast< llvm::ConstantInt >( V ) )
     {
         const uint8_t *mem = reinterpret_cast< const uint8_t * >( I->getValue().getRawData() );
-        std::for_each( mem, mem + v.width, [&]( char c )
+        std::for_each( mem, mem + v.size(), [&]( char c )
                        {
                            heap.write_shift( ptr, value::Int< 8 >( c ) );
                        } );
     }
     else if ( auto FP = dyn_cast< llvm::ConstantFP >( V ) )
     {
-        switch ( v.width ) {
+        switch ( v.size() ) {
             case sizeof( float ):
                 heap.write_shift( ptr, value::Float< float >( FP->getValueAPF().convertToFloat() ) );
                 break;
@@ -138,7 +138,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     }
     else if ( isa< llvm::ConstantAggregateZero >( V ) )
     {
-        for ( int i = 0; i < v.width; ++i )
+        for ( int i = 0; i < v.size(); ++i )
             heap.write_shift( ptr, value::Int< 8 >( 0 ) );
     }
     else if ( isCodePointer( V ) )
@@ -163,17 +163,17 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
 
             ASSERT( valuemap.count( C->getOperand( i ) ) );
             auto sub = valuemap[ C->getOperand( i ) ].slot;
-            heap.copy( eval.s2ptr( sub ), eval.s2ptr( v, offset ), sub.width );
-            offset += sub.width;
-            ASSERT_LEQ( offset, int( v.width ) );
+            heap.copy( eval.s2ptr( sub ), eval.s2ptr( v, offset ), sub.size() );
+            offset += sub.size();
+            ASSERT_LEQ( offset, v.size() );
         }
         /* and padding at the end ... */
     }
     else if ( auto CDS = dyn_cast< llvm::ConstantDataSequential >( V ) )
     {
-        ASSERT_EQ( v.width, CDS->getNumElements() * CDS->getElementByteSize() );
+        ASSERT_EQ( v.size(), CDS->getNumElements() * CDS->getElementByteSize() );
         const char *raw = CDS->getRawDataValues().data();
-        std::for_each( raw, raw + v.width, [&]( char c )
+        std::for_each( raw, raw + v.size(), [&]( char c )
                        {
                            heap.write_shift( ptr, value::Int< 8 >( c ) );
                        } );
