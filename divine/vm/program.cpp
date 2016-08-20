@@ -124,7 +124,10 @@ Program::Slot Program::initSlot( llvm::Value *val, Slot::Location loc )
     } else {
         result._width = 8 * TD.getTypeAllocSize( val->getType() );
         if ( val->getType()->isIntegerTy() )
+        {
+            result._width = val->getType()->getIntegerBitWidth();
             result.type = Slot::Integer;
+        }
         else if ( val->getType()->isFloatTy() || val->getType()->isDoubleTy() )
             result.type = Slot::Float;
         else
