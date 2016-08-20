@@ -120,7 +120,10 @@ struct Int : Base
             _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
         if ( width < PointerBits )
             _ispointer = false;
+        if ( is_signed && w == 1 ) /* TODO cover other bitwidths? */
+            _cooked = i._cooked ? -1 : 0;
     }
+
     template< typename T > Int( Float< T > ) { NOT_IMPLEMENTED(); }
 
     Int operator|( Int o ) { return bitwise( _raw | o._raw, (_m &  _raw) | (o._m &  o._raw), o ); }
