@@ -486,7 +486,7 @@ struct Interpreter
     void go( command::Step s )
     {
         auto step = stepper( s, true );
-        step.lines( 1 );
+        step.lines( s.count );
         run( step, !s.quiet );
         set( "$_", frameDN() );
     }
@@ -502,7 +502,7 @@ struct Interpreter
     void go( command::StepA s )
     {
         auto step = stepper( s, false );
-        step.states( 1 );
+        step.states( s.count );
         run( step, s.verbose );
         set( "$_", frameDN() );
     }
