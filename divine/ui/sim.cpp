@@ -57,6 +57,10 @@ struct WithSteps : WithFrame
 struct StepI : WithSteps {};
 struct StepS : WithSteps {};
 struct Step : WithSteps {};
+struct Rewind : WithVar
+{
+    Rewind() : WithVar( "#last" ) {}
+};
 struct Run { bool verbose; };
 
 struct Show : WithVar { bool raw; };
@@ -318,6 +322,7 @@ struct Interpreter
         /* TODO do not allocate a new #NNN for already-visited states */
         auto name = "#"s + brick::string::fmt( ++_state_count );
         set( name, st, vm::DNKind::Object, nullptr );
+        set( "#last", name );
         std::cerr << "# a new program state was stored as " << name << std::endl;
 
         // _states.push_back( _ctx.snap( _last ) );
@@ -457,6 +462,17 @@ struct Interpreter
         }
     }
 
+    void go( command::Rewind re )
+    {
+        auto tgt = get( re.var );
+        _ctx.heap().restore( tgt.snapshot() );
+        _ctx.frame( vm::nullPointer() );
+        _ctx.globals( tgt._ctx.globals() );
+        _ctx.enter( _ctx.sched(), vm::nullPointer(),
+                    Eval::IntV( _ctx.heap().size( tgt.address() ) ), PointerV( tgt.address() ) );
+        set( "$_", re.var );
+    }
+
     void go( command::BackTrace bt )
     {
         set( "$$", bt.var );
@@ -540,6 +556,7 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::StepI >( "execute source line"s, varopts, stepopts )
         .command< command::Step >( "execute one instruction"s, varopts, stepopts )
         .command< command::Run >( "execute the program until interrupted"s )
+        .command< command::Rewind >( "rewind to a stored program state"s, varopts )
         .command< command::Set >( "set a variable "s, &command::Set::options )
         .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
         .command< command::Source >( "show the source code of the current function"s, varopts )
