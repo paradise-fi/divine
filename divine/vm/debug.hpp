@@ -25,6 +25,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/vm/eval.hpp>
 #include <divine/cc/runtime.hpp>
 #include <brick-string>
+#include <cxxabi.h>
 
 namespace divine {
 namespace vm {
@@ -241,8 +242,20 @@ struct DebugNode
             ASSERT( insn->op );
             auto op = llvm::cast< llvm::Instruction >( insn->op );
             yield( "location", fileline( *op ) );
-            yield( "symbol", op->getParent()->getParent()->getName().str() );
+
+            auto sym = op->getParent()->getParent()->getName().str();
+            yield( "symbol", demangle( sym ) );
         }
+    }
+
+
+    std::string demangle( std::string mangled )
+    {
+        int stat;
+        auto x = abi::__cxa_demangle( mangled.c_str(), nullptr, nullptr, &stat );
+        auto ret = stat == 0 && x ? std::string( x ) : mangled;
+        std::free( x );
+        return ret;
     }
 
     CodePointer pc()
