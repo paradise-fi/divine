@@ -147,12 +147,14 @@ struct Stepper
 
     vm::GenericPointer _frame, _frame_cur;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
+    std::pair< std::string, int > _line;
     std::set< BreakPoint > _bps;
 
     Stepper()
         : _frame( vm::nullPointer() ), _frame_cur( vm::nullPointer() ),
           _lines( 0, 0 ), _instructions( 0, 0 ),
-          _states( 0, 0 ), _jumps( 0, 0 )
+          _states( 0, 0 ), _jumps( 0, 0 ),
+          _line( "", 0 )
     {}
 
     void lines( int l ) { _lines.second = l; }
@@ -185,15 +187,29 @@ struct Stepper
         }
 
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
+            return true;
+        if ( !_frame.null() && _frame_cur != _frame )
             return false;
         return _check( _lines ) || _check( _instructions ) ||
                _check( _states ) || _check( _jumps );
     }
 
-    void line() { add( _lines ); }
-    void instruction() { add( _instructions  ); }
+    void instruction( vm::Program::Instruction &i )
+    {
+        add( _instructions );
+        if ( i.op )
+        {
+            auto l = vm::fileline( *llvm::cast< llvm::Instruction >( i.op ) );
+            if ( _line.second && l != _line )
+                add( _lines );
+            if ( _frame.null() || _frame == _frame_cur )
+                _line = l;
+        }
+        if ( i.opcode == vm::HypercallJump )
+            add( _jumps );
+    }
+
     void state() { add( _states ); }
-    void jump() { add( _jumps ); }
     void in_frame( vm::GenericPointer f ) { _frame_cur = f; }
 };
 
@@ -400,15 +416,12 @@ struct Interpreter
     {
         check_running();
         Eval eval( _bc->program(), _ctx );
-        int line = 0;
         bool in_fault = eval.pc().function() == _ctx.fault_handler().function();
 
         do {
             step.in_frame( _ctx.frame().cooked() );
-            step.instruction();
             eval.advance();
-            if ( eval.instruction().hypercall == vm::HypercallJump )
-                 step.jump();
+            step.instruction( eval.instruction() );
 
             if ( verbose )
             {
@@ -431,6 +444,8 @@ struct Interpreter
 
             if ( schedule( eval ) )
                 step.state();
+
+            step.in_frame( _ctx.frame().cooked() );
 
             if ( !_ctx._proc.empty() )
             {
