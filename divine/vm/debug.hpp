@@ -96,9 +96,9 @@ static std::string instruction( typename Eval::Instruction &insn, Eval &eval, in
         eval.template op< Any >( 0, [&]( auto v )
         {
             int col = out.str().size();
-            if ( col >= 60 )
+            if ( col >= 45 )
                 col = -padding, out << std::endl;
-            pad( out, col, 60 );
+            pad( out, col, 45 );
             out << " # " << brick::string::fmt( v.get( 0 ) );
         } );
     return out.str();
