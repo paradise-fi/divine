@@ -115,8 +115,8 @@ struct DebugNode
     ConstContext< Program, Heap > _ctx;
 
     GenericPointer _address;
-    DNKind _kind;
     Snapshot _snapshot;
+    DNKind _kind;
     llvm::Type *_type; /* applies only to Objects */
 
     using PointerV = value::Pointer;
@@ -131,7 +131,8 @@ struct DebugNode
             _ctx.frame( l );
     }
 
-    DebugNode( ConstContext< Program, Heap > ctx, Snapshot s, GenericPointer l, DNKind k, llvm::Type *t )
+    DebugNode( ConstContext< Program, Heap > ctx, Snapshot s,
+               GenericPointer l, DNKind k, llvm::Type *t )
         : _ctx( ctx ), _address( l ), _snapshot( s ), _kind( k ), _type( t )
     {
         if ( k == DNKind::Frame )
