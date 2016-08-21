@@ -55,13 +55,12 @@ struct WithSteps : WithFrame
 };
 
 struct StepI : WithSteps {};
-struct StepS : WithSteps {};
+struct StepA : WithSteps {};
 struct Step : WithSteps {};
 struct Rewind : WithVar
 {
     Rewind() : WithVar( "#last" ) {}
 };
-struct Run { bool verbose; };
 
 struct Show : WithVar { bool raw; };
 struct Inspect : Show {};
@@ -132,12 +131,8 @@ struct Context : vm::Context< vm::CowHeap >
     }
 };
 
-struct Interpreter
+struct Stepper
 {
-    using BC = std::shared_ptr< vm::BitCode >;
-    using DN = vm::DebugNode< Context >;
-    using PointerV = Context::PointerV;
-
     struct BreakPoint
     {
         vm::CodePointer pc;
@@ -151,14 +146,63 @@ struct Interpreter
         }
     };
 
-    struct Counter
+    vm::GenericPointer _frame, _frame_cur;
+    std::pair< int, int > _lines, _instructions, _states, _jumps;
+    std::set< BreakPoint > _bps;
+
+    Stepper()
+        : _frame( vm::nullPointer() ), _frame_cur( vm::nullPointer() ),
+          _lines( 0, 0 ), _instructions( 0, 0 ),
+          _states( 0, 0 ), _jumps( 0, 0 )
+    {}
+
+    void lines( int l ) { _lines.second = l; }
+    void instructions( int i ) { _instructions.second = i; }
+    void states( int s ) { _states.second = s; }
+    void jumps( int j ) { _jumps.second = j; }
+    void frame( vm::GenericPointer f ) { _frame = f; }
+    auto frame() { return _frame; }
+
+    void add( std::pair< int, int > &p )
     {
-        vm::GenericPointer frame;
-        int lines, instructions;
-        Counter( vm::GenericPointer fr, int lines, int instructions )
-            : frame( fr ), lines( lines ), instructions( instructions )
-        {}
-    };
+        if ( _frame.null() || _frame == _frame_cur )
+            p.first ++;
+    }
+
+    bool _check( std::pair< int, int > &p )
+    {
+        return p.second && p.first == p.second;
+    }
+
+    template< typename Eval >
+    bool check( Context &ctx, Eval &eval )
+    {
+        for ( auto bp : _bps )
+        {
+            if ( !bp.frame.null() && bp.frame != ctx.frame().cooked() )
+                continue;
+            if ( eval.pc() == bp.pc )
+                return true;
+        }
+
+        if ( !_frame.null() && !ctx.heap().valid( _frame ) )
+            return false;
+        return _check( _lines ) || _check( _instructions ) ||
+               _check( _states ) || _check( _jumps );
+    }
+
+    void line() { add( _lines ); }
+    void instruction() { add( _instructions  ); }
+    void state() { add( _states ); }
+    void jump() { add( _jumps ); }
+    void in_frame( vm::GenericPointer f ) { _frame_cur = f; }
+};
+
+struct Interpreter
+{
+    using BC = std::shared_ptr< vm::BitCode >;
+    using DN = vm::DebugNode< Context >;
+    using PointerV = Context::PointerV;
 
     bool _exit;
     BC _bc;
@@ -183,6 +227,7 @@ struct Interpreter
         return DN( _ctx, _ctx.heap().snapshot(), p, k, t );
     }
     DN nullDN() { return dn( vm::nullPointer(), vm::DNKind::Object, nullptr ); }
+    DN frameDN() { return dn( _ctx.frame().cooked(), vm::DNKind::Frame, nullptr ); }
 
     void set( std::string n, DN dn ) { _dbg.erase( n ); _dbg.emplace( n, dn ); }
     void set( std::string n, vm::GenericPointer p, vm::DNKind k, llvm::Type *t )
@@ -352,41 +397,19 @@ struct Interpreter
             throw brick::except::Error( "the program has already terminated" );
     }
 
-    void run( std::set< BreakPoint > bps, Counter ctr, bool verbose )
+    void run( Stepper step, bool verbose )
     {
         check_running();
         Eval eval( _bc->program(), _ctx );
-        int lines = 0, instructions = 0, line = 0;
+        int line = 0;
         bool in_fault = eval.pc().function() == _ctx.fault_handler().function();
-        bool jumped = false;
-        while ( true )
-        {
-            for ( auto bp : bps )
-            {
-                if ( !bp.frame.null() && bp.frame != _ctx.frame().cooked() )
-                    continue;
-                if ( eval.pc() == bp.pc )
-                    goto end;
-            }
 
-            if ( !ctr.frame.null() && !_ctx.heap().valid( ctr.frame ) )
-                goto end; /* the frame went out of scope, halt */
-
-            if ( ctr.frame.null() || ctr.frame == _ctx.frame().cooked() )
-            {
-                if ( ctr.instructions && ctr.instructions == instructions )
-                    goto end;
-                if ( ctr.lines && ctr.lines == lines )
-                    goto end;
-
-                ++ instructions;
-                /* TODO line counter */
-            }
-
+        do {
+            step.in_frame( _ctx.frame().cooked() );
+            step.instruction();
             eval.advance();
-
             if ( eval.instruction().hypercall == vm::HypercallJump )
-                jumped = true;
+                 step.jump();
 
             if ( verbose )
             {
@@ -427,39 +450,46 @@ struct Interpreter
                 std::cerr << "T: " << t << std::endl;
             _ctx._trace.clear();
 
-            if ( _ctx.frame().cooked().null() )
-                goto end;
-            if ( jumped )
-                goto end;
-            if ( !in_fault && eval.pc().function() == _ctx.fault_handler().function() )
-                goto end;
-        }
-    end:
-        ;
+        } while ( !_ctx.frame().cooked().null() &&
+                  !step.check( _ctx, eval ) &&
+                  ( in_fault || eval.pc().function() != _ctx.fault_handler().function() ) );
     }
 
     void go( command::Exit ) { _exit = true; }
-    void go( command::Step s ) { NOT_IMPLEMENTED(); }
+
+    Stepper stepper( command::WithSteps s, bool jmp )
+    {
+        Stepper step;
+        check_running();
+        if ( jmp )
+            step.jumps( 1 );
+        if ( s.over )
+            step.frame( get( s.var ).address() );
+        return step;
+    }
+
+    void go( command::Step s )
+    {
+        auto step = stepper( s, true );
+        step.lines( 1 );
+        run( step, !s.quiet );
+        set( "$_", frameDN() );
+    }
 
     void go( command::StepI s )
     {
-        check_running();
-        auto frame = get( s.var );
-        run( {}, Counter( s.over ? frame.address() : vm::nullPointer(), 0, s.count ), !s.quiet );
-        set( "$_", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr ); /* hmm */
+        auto step = stepper( s, true );
+        step.instructions( s.count );
+        run( step, !s.quiet );
+        set( "$_", frameDN() );
     }
 
-    void go( command::Run )
+    void go( command::StepA s )
     {
-        check_running();
-        Eval eval( _bc->program(), _ctx );
-        while ( true )
-        {
-            eval.advance();
-            eval.dispatch();
-            if ( schedule( eval ) )
-                break;
-        }
+        auto step = stepper( s, false );
+        step.states( 1 );
+        run( step, !s.quiet );
+        set( "$_", frameDN() );
     }
 
     void go( command::Rewind re )
@@ -554,8 +584,8 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::Exit >( "exit from divine"s )
         .command< command::Help >( cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
         .command< command::StepI >( "execute source line"s, varopts, stepopts )
+        .command< command::StepA >( "execute one atomic action"s, varopts, stepopts )
         .command< command::Step >( "execute one instruction"s, varopts, stepopts )
-        .command< command::Run >( "execute the program until interrupted"s )
         .command< command::Rewind >( "rewind to a stored program state"s, varopts )
         .command< command::Set >( "set a variable "s, &command::Set::options )
         .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
