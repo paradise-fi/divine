@@ -50,8 +50,8 @@ struct WithFrame : WithVar
 struct Set { std::vector< std::string > options; };
 struct WithSteps : WithFrame
 {
-    bool over, quiet; int count;
-    WithSteps() : over( false ), quiet( false ), count( 1 ) {}
+    bool over, quiet, verbose; int count;
+    WithSteps() : over( false ), quiet( false ), verbose( false ), count( 1 ) {}
 };
 
 struct StepI : WithSteps {};
@@ -115,7 +115,6 @@ struct Context : vm::Context< vm::CowHeap >
 
     void trace( vm::TraceSchedChoice tsc )
     {
-        std::cerr << "tsc = " << tsc.list << std::endl;
         auto ptr = tsc.list;
         int size = heap().size( ptr.cooked() );
         if ( size % 12 )
@@ -489,7 +488,7 @@ struct Interpreter
     {
         auto step = stepper( s, false );
         step.states( 1 );
-        run( step, !s.quiet );
+        run( step, s.verbose );
         set( "$_", frameDN() );
     }
 
@@ -575,7 +574,8 @@ void Interpreter::command( cmd::Tokens tok )
         .option( "[--raw]", &command::Show::raw, "dump raw data"s );
     auto stepopts = cmd::make_option_set< command::WithSteps >( v )
         .option( "[--over]", &command::WithSteps::over, "execute calls as one step"s )
-        .option( "[--quiet]", &command::WithSteps::quiet, "do not print what is being executed"s )
+        .option( "[--quiet]", &command::WithSteps::quiet, "suppress output"s )
+        .option( "[--verbose]", &command::WithSteps::verbose, "increase verbosity"s )
         .option( "[--count {int}]", &command::WithSteps::count, "execute {int} steps (default = 1)"s );
     auto threadopts = cmd::make_option_set< command::Thread >( v )
         .option( "[--random]", &command::Thread::random, "pick the thread to run randomly"s )
@@ -583,10 +583,11 @@ void Interpreter::command( cmd::Tokens tok )
 
     auto parser = cmd::make_parser( v )
         .command< command::Exit >( "exit from divine"s )
-        .command< command::Help >( cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
-        .command< command::StepI >( "execute source line"s, varopts, stepopts )
+        .command< command::Help >( "show this help, or describe a particular command in more detail"s,
+                                   cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
         .command< command::StepA >( "execute one atomic action"s, varopts, stepopts )
-        .command< command::Step >( "execute one instruction"s, varopts, stepopts )
+        .command< command::Step >( "execute source line"s, varopts, stepopts )
+        .command< command::StepI >( "execute one instruction"s, varopts, stepopts )
         .command< command::Rewind >( "rewind to a stored program state"s, varopts )
         .command< command::Set >( "set a variable "s, &command::Set::options )
         .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
