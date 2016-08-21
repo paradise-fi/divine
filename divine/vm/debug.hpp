@@ -109,17 +109,19 @@ struct DebugNode
     using Heap = typename Context::Heap;
     using Program = typename Context::Program;
     using Eval = Eval< Program, ConstContext< Program, Heap >, value::Void >;
+    using Snapshot = typename Heap::Snapshot;
 
     ConstContext< Program, Heap > _ctx;
 
     GenericPointer _address;
     DNKind _kind;
+    Snapshot _snapshot;
     llvm::Type *_type; /* applies only to Objects */
 
     using PointerV = value::Pointer;
 
-    DebugNode( Context ctx, typename Heap::Snapshot s, GenericPointer l, DNKind k, llvm::Type *t )
-        : _ctx( ctx.program(), ctx.heap() ), _address( l ), _kind( k ), _type( t )
+    DebugNode( Context ctx, Snapshot s, GenericPointer l, DNKind k, llvm::Type *t )
+        : _ctx( ctx.program(), ctx.heap() ), _address( l ), _snapshot( s ), _kind( k ), _type( t )
     {
         _ctx.heap().restore( s );
         _ctx.globals( ctx.globals() );
@@ -128,8 +130,8 @@ struct DebugNode
             _ctx.frame( l );
     }
 
-    DebugNode( ConstContext< Program, Heap > ctx, GenericPointer l, DNKind k, llvm::Type *t )
-        : _ctx( ctx ), _address( l ), _kind( k ), _type( t )
+    DebugNode( ConstContext< Program, Heap > ctx, Snapshot s, GenericPointer l, DNKind k, llvm::Type *t )
+        : _ctx( ctx ), _address( l ), _snapshot( s ), _kind( k ), _type( t )
     {
         if ( k == DNKind::Frame )
             _ctx.frame( l );
@@ -144,6 +146,7 @@ struct DebugNode
 
     DNKind kind() { return _kind; }
     GenericPointer address() { return _address; }
+    Snapshot snapshot() { return _snapshot; }
 
     template< typename B >
     void hexbyte( std::ostream &o, int &col, int index, B byte )
@@ -341,7 +344,7 @@ struct DebugNode
                 continue;
             pp.offset( 0 );
             yield( "_ptr_" + brick::string::fmt( i++ ),
-                    DebugNode( _ctx, pp, DNKind::Object, nullptr ) );
+                   DebugNode( _ctx, _snapshot, pp, DNKind::Object, nullptr ) );
         }
 
         if ( _kind == DNKind::Frame )
@@ -350,7 +353,7 @@ struct DebugNode
             _ctx.heap().skip( fr, PointerBytes );
             _ctx.heap().read( fr.cooked(), fr );
             if ( !fr.cooked().null() )
-                yield( "parent", DebugNode( _ctx, fr.cooked(), DNKind::Frame, nullptr ) );
+                yield( "parent", DebugNode( _ctx, _snapshot, fr.cooked(), DNKind::Frame, nullptr ) );
         }
     }
 
