@@ -563,7 +563,6 @@ struct Interpreter
             istr >> _sticky_tid.first >> c >> _sticky_tid.second;
             if ( c != ':' )
                 throw brick::except::Error( "expected thread specifier format: <pid>:<tid>" );
-            std::cerr << "tid = " << _sticky_tid.first << ":" << _sticky_tid.second << std::endl;
         }
     }
 
