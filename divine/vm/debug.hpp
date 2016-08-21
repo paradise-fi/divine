@@ -41,7 +41,8 @@ static std::ostream &operator<<( std::ostream &o, DNKind dnk )
     }
 }
 
-std::string fileline( const llvm::Instruction &insn );
+std::pair< std::string, int > fileline( const llvm::Instruction &insn );
+std::string location( const llvm::Instruction &insn );
 std::string opcode( int );
 
 static void pad( std::ostream &o, int &col, int target )
@@ -242,7 +243,7 @@ struct DebugNode
                 insn = &program.instruction( pc() + 1 );
             ASSERT( insn->op );
             auto op = llvm::cast< llvm::Instruction >( insn->op );
-            yield( "location", fileline( *op ) );
+            yield( "location", location( *op ) );
 
             auto sym = op->getParent()->getParent()->getName().str();
             yield( "symbol", demangle( sym ) );

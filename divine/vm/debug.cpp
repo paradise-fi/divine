@@ -40,12 +40,24 @@ void opcode_tolower()
     done = true;
 }
 
-std::string fileline( const llvm::Instruction &insn )
+std::pair< std::string, int > fileline( const llvm::Instruction &insn )
 {
     auto loc = insn.getDebugLoc().get();
     if ( loc && loc->getNumOperands() )
-        return loc->getFilename().str() + std::string( ":" ) +
-            brick::string::fmt( loc->getLine() );
+        return std::make_pair( loc->getFilename().str(),
+                               loc->getLine() );
+    auto prog = llvm::getDISubprogram( insn.getParent()->getParent() );
+    if ( prog )
+        return std::make_pair( prog->getFilename().str(),
+                               prog->getScopeLine() );
+    return std::make_pair( "", 0 );
+}
+
+std::string location( const llvm::Instruction &insn )
+{
+    auto fl = fileline( insn );
+    if ( fl.second )
+        return fl.first + ":" + brick::string::fmt( fl.second );
     return "(unknown location)";
 }
 
