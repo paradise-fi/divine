@@ -430,7 +430,8 @@ struct Interpreter
             else
                 eval.dispatch();
 
-            schedule( eval );
+            if ( schedule( eval ) )
+                step.state();
 
             if ( !_ctx._proc.empty() )
             {
