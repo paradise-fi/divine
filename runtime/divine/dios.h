@@ -33,15 +33,17 @@ enum _DiOS_Fault
 
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
-            __dios_trace( 0, "DiOS assert: %s", msg);\
-            __vm_fault( (_VM_Fault) _DiOS_F_Assert );\
+            __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \
+                __FILE__, __LINE__, msg ); \
+            __vm_fault( (_VM_Fault) _DiOS_F_Assert ); \
         } \
     } while (0)
 
 #define __dios_assert( x ) do { \
         if ( !(x) ) { \
-            __dios_trace_t( "DiOS assert");\
-            __vm_fault( (_VM_Fault) _DiOS_F_Assert );\
+            __dios_trace( 0, "DiOS assert failed at %s:%d", \
+                __FILE__, __LINE__ ); \
+            __vm_fault( (_VM_Fault) _DiOS_F_Assert ); \
         } \
     } while (0)
 
