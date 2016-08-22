@@ -555,14 +555,17 @@ void Program::computeStatic()
         const llvm::StructLayout *SL_item = TD.getStructLayout( f->getType() );
         auto name = std::string( f->getOperand( 0 )->getOperand( 0 )->getName(),
                                 strlen( "lart.divine.index.name." ), std::string::npos );
-        int offset = TD.getTypeAllocSize( md_func->getOperand( 0 )->getType() ) * i +
-                     SL_item->getElementOffset( 2 );
+        int offsetBase = TD.getTypeAllocSize( md_func->getOperand( 0 )->getType() ) * i;
+        int frameSizeOffset = offsetBase + SL_item->getElementOffset( 2 );
+        int instCountOffset = offsetBase + SL_item->getElementOffset( 6 );
         auto pc = functionByName( name );
         if ( !pc.function() )
             continue;
         auto &func = function( pc );
-        _ccontext.heap().write( s2hptr( slotref.slot, offset ),
+        _ccontext.heap().write( s2hptr( slotref.slot, frameSizeOffset ),
                                 value::Int< 32 >( func.datasize + 2 * PointerBytes ) );
+        _ccontext.heap().write( s2hptr( slotref.slot, instCountOffset ),
+                                value::Int< 32 >( func.instructions.size() ) );
 
         // write instruction table
         auto instTable = llvm::cast< llvm::GlobalVariable >(
@@ -578,19 +581,25 @@ void Program::computeStatic()
         for ( int j = 0; j < int( func.instructions.size() ); ++j )
         {
             auto &inst = func.instructions[ j ];
+            int base = TD.getTypeAllocSize( instTableT->getElementType() ) * j;
+            auto write = [&]( int idx, int val ) {
+                _ccontext.heap().write( s2hptr( instTableSlotref.slot,
+                                                base + SL_instMeta->getElementOffset( idx ) ),
+                                        value::Int< 32 >( val ) );
+            };
+            int opcode = 0, subop = 0, offset = 0, size = 0;
+
             if ( inst.op )
             {
-                int base = TD.getTypeAllocSize( instTableT->getElementType() ) * j;
-                auto write = [&]( int idx, int val ) {
-                    _ccontext.heap().write( s2hptr( instTableSlotref.slot,
-                                                    base + SL_instMeta->getElementOffset( idx ) ),
-                                            value::Int< 32 >( val ) );
-                };
-                write( 0, getOpcode( inst.op ) );
-                write( 1, getSubOp( inst.op, *this ) );
-                write( 2, inst.values.empty() ? 0 : inst.result().offset );
-                write( 3, inst.values.empty() ? 0 : inst.result().size() ); /* fixme? */
+                opcode = getOpcode( inst.op );
+                subop = getSubOp( inst.op, *this );
+                offset = inst.values.empty() ? 0 : inst.result().offset;
+                size = inst.values.empty() ? 0 : inst.result().size(); /* fixme? in bytes? */
             }
+            write( 0, opcode );
+            write( 1, subop );
+            write( 2, offset );
+            write( 3, size );
         }
 
         // write language specific data for C++ exceptions
