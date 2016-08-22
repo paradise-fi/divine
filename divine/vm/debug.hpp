@@ -20,6 +20,7 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/DebugInfo.h>
+#include <llvm/IR/IntrinsicInst.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/eval.hpp>
@@ -122,12 +123,16 @@ struct DebugNode
     GenericPointer _address;
     Snapshot _snapshot;
     DNKind _kind;
-    llvm::Type *_type; /* applies only to Objects */
+
+    /* applies only to Objects */
+    llvm::Type *_type;
+    llvm::DIType *_di_type;
 
     using PointerV = value::Pointer;
 
-    DebugNode( Context ctx, Snapshot s, GenericPointer l, DNKind k, llvm::Type *t )
-        : _ctx( ctx.program(), ctx.heap() ), _address( l ), _snapshot( s ), _kind( k ), _type( t )
+    DebugNode( Context ctx, Snapshot s, GenericPointer l, DNKind k, llvm::Type *t, llvm::DIType *dit )
+        : _ctx( ctx.program(), ctx.heap() ), _address( l ), _snapshot( s ), _kind( k ),
+          _type( t ), _di_type( dit )
     {
         _ctx.heap().restore( s );
         _ctx.globals( ctx.globals() );
@@ -137,8 +142,8 @@ struct DebugNode
     }
 
     DebugNode( ConstContext< Program, Heap > ctx, Snapshot s,
-               GenericPointer l, DNKind k, llvm::Type *t )
-        : _ctx( ctx ), _address( l ), _snapshot( s ), _kind( k ), _type( t )
+               GenericPointer l, DNKind k, llvm::Type *t, llvm::DIType *dit )
+        : _ctx( ctx ), _address( l ), _snapshot( s ), _kind( k ), _type( t ), _di_type( dit )
     {
         if ( k == DNKind::Frame )
             _ctx.frame( l );
@@ -190,6 +195,10 @@ struct DebugNode
         Program &program = _ctx.program();
 
         yield( "address", brick::string::fmt( PointerV( _address ) ) );
+
+        if ( _di_type )
+            yield( "type", _di_type->getName().str() );
+
         if ( !valid() )
             return;
 
@@ -366,7 +375,7 @@ struct DebugNode
                 continue;
             pp.offset( 0 );
             yield( "_ptr_" + brick::string::fmt( i++ ),
-                   DebugNode( _ctx, _snapshot, pp, DNKind::Object, nullptr ) );
+                   DebugNode( _ctx, _snapshot, pp, DNKind::Object, nullptr, nullptr ) );
         }
 
         if ( _kind == DNKind::Frame )
@@ -375,7 +384,7 @@ struct DebugNode
             _ctx.heap().skip( fr, PointerBytes );
             _ctx.heap().read( fr.cooked(), fr );
             if ( !fr.cooked().null() )
-                yield( "parent", DebugNode( _ctx, _snapshot, fr.cooked(), DNKind::Frame, nullptr ) );
+                yield( "parent", DebugNode( _ctx, _snapshot, fr.cooked(), DNKind::Frame, nullptr, nullptr ) );
         }
     }
 
