@@ -172,7 +172,7 @@ struct Stepper
 
     bool _check( std::pair< int, int > &p )
     {
-        return p.second && p.first == p.second;
+        return p.second && p.first >= p.second;
     }
 
     template< typename Eval >
@@ -188,10 +188,11 @@ struct Stepper
 
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
             return true;
+        if ( _check( _jumps ) )
+            return true;
         if ( !_frame.null() && _frame_cur != _frame )
             return false;
-        return _check( _lines ) || _check( _instructions ) ||
-               _check( _states ) || _check( _jumps );
+        return _check( _lines ) || _check( _instructions ) || _check( _states );
     }
 
     void instruction( vm::Program::Instruction &i )
@@ -205,8 +206,8 @@ struct Stepper
             if ( _frame.null() || _frame == _frame_cur )
                 _line = l;
         }
-        if ( i.opcode == vm::HypercallJump )
-            add( _jumps );
+        if ( i.hypercall == vm::HypercallJump )
+            ++ _jumps.first;
     }
 
     void state() { add( _states ); }
