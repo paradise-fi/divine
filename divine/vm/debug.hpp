@@ -304,8 +304,11 @@ struct DebugNode
         ASSERT_EQ( _kind, DNKind::Frame );
         brick::string::Splitter split( "\n", REG_EXTENDED );
         auto di = subprogram();
+        auto src = cc::runtime::source( di->getFilename() );
+        if ( src.empty() )
+            src = brick::fs::readFile( di->getFilename() );
         /* TODO: also deal with sources outside of runtime! */
-        auto line = split.begin( cc::runtime::source( di->getFilename() ) );
+        auto line = split.begin( src );
         unsigned lineno = 1, active = 0;
         while ( lineno < di->getLine() )
             ++ line, ++ lineno;
