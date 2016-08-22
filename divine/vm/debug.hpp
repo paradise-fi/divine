@@ -79,9 +79,12 @@ static std::string instruction( typename Eval::Instruction &insn, Eval &eval, in
         if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
             oname = "%" + ( oname.empty() ?
                             brick::string::fmt( eval.program().pcmap[ I ].instruction() ) : oname );
-        if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
+        else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
             oname = "label %" + ( oname.empty() ?
-                            brick::string::fmt( eval.program().blockmap[ B ].instruction() ) : oname );
+                                  brick::string::fmt( eval.program().blockmap[ B ].instruction() ) : oname );
+        else if ( !oname.empty() )
+            oname = "%" + oname;
+
         if ( oname.empty() )
         {
             if ( insn.value( i ).type == Eval::Slot::Aggregate )
@@ -91,6 +94,7 @@ static std::string instruction( typename Eval::Instruction &insn, Eval &eval, in
                 oname = brick::string::fmt( v.get( i ) );
             } );
         }
+
         out << ( oname.empty() ? "?" : oname ) << " ";
     }
     if ( insn.result().type != Eval::Slot::Aggregate )
