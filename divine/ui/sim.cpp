@@ -62,7 +62,12 @@ struct Rewind : WithVar
     Rewind() : WithVar( "#last" ) {}
 };
 
-struct Show : WithVar { bool raw; };
+struct Show : WithVar
+{
+    bool raw;
+    Show() : raw( false ) {}
+};
+
 struct Inspect : Show {};
 struct BitCode : WithFrame {};
 struct Source : WithFrame {};
