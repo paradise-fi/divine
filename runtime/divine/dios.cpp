@@ -241,16 +241,21 @@ struct Scheduler {
                 count++;
         }
 
+        if ( count == 0 )
+            return nullptr;
+
         struct PI { int pid, tid, choice; };
         PI *pi = reinterpret_cast< PI * >( __vm_make_object( count * sizeof( PI ) ) );
+        PI *pi_it = pi;
         count = 0;
-        for ( int i = 0; i != _cf->thread_count; i++ )
-            if ( get_threads()[ i ].active() )
-            {
-                pi[ i ].pid = 1;
-                pi[ i ].tid = i;
-                pi[ i ].choice = count++;
+        for ( int i = 0; i != _cf->thread_count; i++ ) {
+            if ( get_threads()[ i ].active() ) {
+                pi_it->pid = 1;
+                pi_it->tid = i;
+                pi_it->choice = count++;
+                ++pi_it;
             }
+        }
 
         __vm_trace( _VM_T_SchedChoice, pi );
         int sel = __vm_choose( count );
@@ -261,14 +266,15 @@ struct Scheduler {
             ++thr;
         }
 
-        thr->update_state();
+        _cf->active_thread = thr - get_threads();
         __vm_set_ifl( &( thr->_frame) );
-        __dios_assert( thr->_frame );
+        __dios_assert_v( thr->_frame, "Frame is invalid" );
         return thr->_frame;
     }
 
     template < bool THREAD_AWARE >
     _VM_Frame *run_thread( int idx = -1 ) noexcept {
+        get_threads()[ _cf->active_thread ].update_state();
         if ( !THREAD_AWARE )
         {
             if ( idx < 0 )
@@ -277,8 +283,6 @@ struct Scheduler {
                 _cf->active_thread = idx;
 
             Thread &thread = get_threads()[ idx ];
-            thread.update_state();
-
             if ( !thread.zombie() ) {
                 __vm_set_ifl( &( thread._frame) );
                 return thread._frame;
@@ -353,7 +357,6 @@ ControlFlow *Scheduler::_cf;
 
 } // namespace dios
 
-void *__dios_sched( int st_size, void *_state ) noexcept;
 int main(...);
 
 struct CtorDtorEntry {
@@ -430,9 +433,10 @@ void *__dios_sched( int, void *state ) noexcept {
     _VM_Frame *jmp = scheduler.run_threads< THREAD_AWARE_SCHED >();
     if ( jmp ) {
         __vm_jump( jmp, nullptr, 1 );
+        return scheduler.get_cf();
     }
 
-    return scheduler.get_cf();
+    return nullptr;
 }
 
 void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept __attribute__((__noreturn__));
