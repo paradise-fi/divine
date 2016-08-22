@@ -243,17 +243,17 @@ struct Interpreter
     void command( cmd::Tokens cmd );
     char *prompt() { return _prompt; }
 
-    DN dn( vm::GenericPointer p, vm::DNKind k, llvm::Type *t )
+    DN dn( vm::GenericPointer p, vm::DNKind k, llvm::Type *t, llvm::DIType *dit )
     {
-        return DN( _ctx, _ctx.heap().snapshot(), p, k, t );
+        return DN( _ctx, _ctx.heap().snapshot(), p, k, t, dit );
     }
-    DN nullDN() { return dn( vm::nullPointer(), vm::DNKind::Object, nullptr ); }
-    DN frameDN() { return dn( _ctx.frame().cooked(), vm::DNKind::Frame, nullptr ); }
+    DN nullDN() { return dn( vm::nullPointer(), vm::DNKind::Object, nullptr, nullptr ); }
+    DN frameDN() { return dn( _ctx.frame().cooked(), vm::DNKind::Frame, nullptr, nullptr ); }
 
     void set( std::string n, DN dn ) { _dbg.erase( n ); _dbg.emplace( n, dn ); }
-    void set( std::string n, vm::GenericPointer p, vm::DNKind k, llvm::Type *t )
+    void set( std::string n, vm::GenericPointer p, vm::DNKind k, llvm::Type *t, llvm::DIType *dit )
     {
-        set( n, dn( p, k, t ) );
+        set( n, dn( p, k, t, dit ) );
     }
 
     DN get( std::string n, bool silent = false )
@@ -301,7 +301,7 @@ struct Interpreter
 
     void update()
     {
-        set( "$top", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr );
+        set( "$top", _ctx.frame().cooked(), vm::DNKind::Frame, nullptr, nullptr );
         if ( get( "$_" ).kind() == vm::DNKind::Frame )
             set( "$frame", "$_" );
         else
@@ -387,7 +387,7 @@ struct Interpreter
 
         /* TODO do not allocate a new #NNN for already-visited states */
         auto name = "#"s + brick::string::fmt( ++_state_count );
-        set( name, st, vm::DNKind::Object, nullptr );
+        set( name, st, vm::DNKind::Object, nullptr, nullptr );
         set( "#last", name );
         std::cerr << "# a new program state was stored as " << name << std::endl;
 
