@@ -43,17 +43,17 @@ _MD_RegInfo getLPInfo( _Unwind_Context *ctx ) {
     // get landingpad correspoding to current invoke
     uintptr_t base = uintptr_t( ctx->meta().entry_point );
     intptr_t invoke = intptr_t( ctx->frame().pc ) - base;
-    __dios_assert_v( invoke <= 0, "invalid PC in frame" );
+    __dios_assert_v( invoke > 0, "invalid PC in frame" );
     auto &insts = ctx->meta().inst_table;
     intptr_t lblock = insts[ invoke ].subop;
     intptr_t lp = lblock + 1;
     while ( insts[ invoke ].opcode != OpCode::Invoke && insts[ invoke ].opcode != 0 )
         ++lp;
-    __dios_assert_v( insts[ invoke ].opcode != OpCode::Invoke,
+    __dios_assert_v( insts[ invoke ].opcode == OpCode::Invoke,
                      "Could not find invoke in the landing block" );
     // get register of landingpad
     auto info = __md_get_register_info( &ctx->frame(), base + lp, &ctx->meta() );
-    __dios_assert( info.width == sizeof( void * ) + sizeof( int ) );
+    __dios_assert_v( info.width >= sizeof( void * ) + sizeof( int ), "invalid info.width of landingpad" );
     return info;
 }
 
@@ -67,8 +67,9 @@ _MD_RegInfo getLPInfo( _Unwind_Context *ctx ) {
 //  scratch registers are reserved for passing arguments between the
 //  personality routine and the landing pads.
 void _Unwind_SetGR( _Unwind_Context *ctx, int index, uintptr_t value ) {
-    __dios_assert_v( index < 0, "Register index cannot be negative" );
-    __dios_assert_v( index > 1, "Unsupported register" );
+    __dios_trace_f( "_Unwind_SetGR ctx = %p, index = %d, value = 0x%lx", ctx, index, value );
+    __dios_assert_v( index >= 0, "Register index cannot be negative" );
+    __dios_assert_v( index <= 1, "Unsupported register" );
     // reg 0 - exception object
     // reg 1 - type ID
     // landingpad { i8*, i32 }
@@ -109,8 +110,8 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
     // from doc: only GR1 has a guaranteed value, which the Global Pointer (GP)
     // of the frame referenced by the unwind context
 
-    __dios_assert_v( index < 0, "Register index cannot be negative" );
-    __dios_assert_v( index > 1, "Unsupported register" );
+    __dios_assert_v( index >= 0, "Register index cannot be negative" );
+    __dios_assert_v( index <= 1, "Unsupported register" );
     // reg 0 - exception object
     // reg 1 - type ID
     // landingpad { i8*, i32 }
@@ -121,6 +122,7 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
         return uintptr_t( *exprt );
     else if ( index == 1 )
         return *reinterpret_cast< int * >( exprt + 1 );
+    __vm_fault( _VM_F_NotImplemented, "invalid register" );
 }
 
 //  This function returns the 64-bit value of the instruction pointer (IP).
@@ -157,6 +159,7 @@ uintptr_t _Unwind_GetIP( _Unwind_Context *ctx ) {
 //  return _URC_FATAL_PHASE2_ERROR to its caller. In C++, this will usually be
 //  __cxa_throw, which will call terminate().
 _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
+    // TODO: report fault in nounwind function is encountered
     auto *topFrame = __vm_query_frame()->parent; // frame of _Unwind_RaiseException's caller
     _Unwind_Context topCtx( topFrame->parent );
     _Unwind_Context foundCtx;

@@ -680,20 +680,24 @@ void __dios_fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)()
 }
 
 _Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept {
+    auto m = __vm_mask( 1 );
     // clean the frames, drop their allocas, jump
     // note: it is not necessary to clean the frames, it is only to prevent
     // accidental use of their variables, therefore it is also OK to not clean
     // current frame (heap will garbage-colect it)
-    for ( auto *f = __vm_query_frame()->parent; f != to; ) {
+    auto *top = __vm_query_frame();
+    for ( auto *f = top->parent; f != to; top->parent = f ) {
         auto *meta = __md_get_pc_meta( uintptr_t( f->pc ) );
         auto *inst = meta->inst_table;
         for ( int i = 0; i < meta->inst_table_size; ++i, ++inst ) {
             if ( inst->opcode == OpCode::Alloca )
-                __vm_free_object( __md_get_register_info( f, uintptr_t( meta->entry_point ) + i, meta ).start );
+                __vm_free_object( *static_cast< void ** >( __md_get_register_info( f,
+                                        uintptr_t( meta->entry_point ) + i, meta ).start ) );
         }
         auto *old = f;
         f = f->parent;
         __vm_free_object( old );
+        __dios_assert_v( f, "__dios_unwind reached end of the stack and did not found target frame" );
     }
-    __vm_jump( to, pc, false );
+    __vm_jump( to, pc, !m );
 }
