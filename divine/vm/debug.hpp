@@ -385,6 +385,31 @@ struct DebugNode
             _ctx.heap().read( fr.cooked(), fr );
             if ( !fr.cooked().null() )
                 yield( "parent", DebugNode( _ctx, _snapshot, fr.cooked(), DNKind::Frame, nullptr, nullptr ) );
+
+            auto *insn = &_ctx.program().instruction( pc() );
+            if ( !insn->op )
+                insn = &_ctx.program().instruction( pc() + 1 );
+            auto op = llvm::cast< llvm::Instruction >( insn->op );
+            auto F = op->getParent()->getParent();
+
+            for ( auto &BB : *F )
+                for ( auto &I : BB )
+                    if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
+                    {
+                        auto divar = DDI->getVariable();
+                        auto ditype = divar->getType().resolve( _ctx.program().ditypemap );
+                        auto var = DDI->getAddress();
+                        auto &vmap = _ctx.program().valuemap;
+                        if ( vmap.find( var ) == vmap.end() )
+                            continue;
+
+                        PointerV ptr;
+                        _ctx.heap().read( eval.s2ptr( _ctx.program().valuemap[ var ].slot ), ptr );
+
+                        yield( std::string( "+" ) + divar->getName().str(),
+                               DebugNode( _ctx, _snapshot, ptr.cooked(), DNKind::Object,
+                                          var->getType()->getPointerElementType(), ditype ) );
+                    }
         }
     }
 
