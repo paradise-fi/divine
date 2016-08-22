@@ -28,6 +28,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/DebugInfo.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -255,6 +256,8 @@ struct Program
 
     std::map< const llvm::BasicBlock *, CodePointer > blockmap;
     std::map< const llvm::Function *, int > functionmap;
+
+    llvm::DITypeIdentifierMap ditypemap;
 
     ConstContext< Program > _ccontext;
 
