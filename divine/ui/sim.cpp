@@ -459,6 +459,7 @@ struct Interpreter
                               << pi.first.first << ":" << pi.first.second
                               << ( active ? "]" : "" );
                 }
+                _ctx._proc.clear();
                 std::cerr << std::endl;
             }
 
