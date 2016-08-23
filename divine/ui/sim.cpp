@@ -432,14 +432,13 @@ struct Interpreter
             if ( verbose )
             {
                 auto frame = _ctx.frame().cooked();
-                auto &insn = eval.instruction();
-                std::string before = vm::instruction( insn, eval );
+                std::string before = vm::print::instruction( eval );
                 eval.dispatch();
                 if ( _ctx.heap().valid( frame ) )
                 {
                     auto newframe = _ctx.frame();
                     _ctx.frame( frame ); /* :-( */
-                    std::cerr << vm::instruction( insn, eval ) << std::endl;
+                    std::cerr << vm::print::instruction( eval ) << std::endl;
                     _ctx.frame( newframe );
                 }
                 else
