@@ -19,6 +19,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 #include <lart/support/metadata.h>
+#include <lart/divine/cppeh.h>
 
 // used to calculate frame size & encode function types
 #include <runtime/divine.h>
@@ -160,8 +161,15 @@ struct IndexFunctions : lart::Pass {
                             ? llvm::ConstantExpr::getPointerCast(
                                     m.second.entryPoint->getPersonalityFn(), persT )
                             : llvm::ConstantPointerNull::get( persT );
+
+            CppEhTab ehtab( *m.second.entryPoint );
             auto *lsdaT = llvm::cast< llvm::PointerType >( funcMetaT->getElementType( 9 ) );
-            auto *lsda = llvm::ConstantPointerNull::get( lsdaT );
+            auto *lsdaAT = llvm::ArrayType::get( lsdaT->getElementType(),
+                                                 ehtab.tableSizeBound() );
+            auto *lsda = new llvm::GlobalVariable( mod, lsdaAT, true,
+                                llvm::GlobalValue::ExternalLinkage,
+                                llvm::UndefValue::get( lsdaAT ),
+                                "lart.divine.index.lsda." + funNameStr );
 
             metatable.push_back( llvm::ConstantStruct::get( funcMetaT, {
                     llvm::ConstantExpr::getPointerCast( funName, funcMetaT->getElementType( 0 ) ),
@@ -175,7 +183,8 @@ struct IndexFunctions : lart::Pass {
                     mkint( funcMetaT, 6, m.second.instTableSize ),
                     llvm::ConstantExpr::getPointerCast( instTable,
                             llvm::PointerType::getUnqual( instMetaT ) ),
-                    pers, lsda
+                    pers,
+                    llvm::ConstantExpr::getPointerCast( lsda, lsdaT )
                 } ) );
         }
 
