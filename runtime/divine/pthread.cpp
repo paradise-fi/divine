@@ -230,7 +230,7 @@ bool _canceled() {
 }
 
 template < bool cancelPoint, typename Cond >
-static void _wait( dios::FencedInterruptMask &mask, Cond &&cond )
+static void _wait( __dios::FencedInterruptMask &mask, Cond &&cond )
         __attribute__( ( __always_inline__, __flatten__ ) ) {
     while ( cond() && ( !cancelPoint || !_canceled() ) )
         mask.release();
@@ -239,19 +239,19 @@ static void _wait( dios::FencedInterruptMask &mask, Cond &&cond )
 }
 
 template < typename Cond >
-static void waitOrCancel( dios::FencedInterruptMask &mask, Cond &&cond )
+static void waitOrCancel( __dios::FencedInterruptMask &mask, Cond &&cond )
         __attribute__( ( __always_inline__, __flatten__ ) ) {
     return _wait< true >( mask, std::forward< Cond >( cond ) );
 }
 
 template < typename Cond >
-static void wait( dios::FencedInterruptMask &mask, Cond &&cond )
+static void wait( __dios::FencedInterruptMask &mask, Cond &&cond )
         __attribute__( ( __always_inline__, __flatten__ ) ) {
     return _wait< false >( mask, std::forward< Cond >( cond ) );
 }
 
-dios::FencedInterruptMask pthreadBegin() __attribute__( ( __always_inline__ ) ) {
-    dios::FencedInterruptMask mask;
+__dios::FencedInterruptMask pthreadBegin() __attribute__( ( __always_inline__ ) ) {
+    __dios::FencedInterruptMask mask;
     _initialize();
     return mask; // ownership transfer
 }
@@ -377,6 +377,7 @@ void pthread_exit( void *result ) {
 }
 
 int pthread_join( pthread_t _ptid, void **result ) {
+    __dios_trace_t( "Pthread_join" );
     auto mask = pthreadBegin();
     real_pthread_t ptid = _real_pt( _ptid );
 
@@ -663,7 +664,7 @@ bool _mutex_can_lock( pthread_mutex_t *mutex, int gtid ) {
     return !mutex->owner || ( mutex->owner == ( gtid + 1 ) );
 }
 
-int _mutex_lock( dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) {
+int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) {
 
     Thread *thr = threads[__dios_get_thread_id()];
     int gtid = thr->gtid;
@@ -1373,7 +1374,7 @@ bool _rwlock_can_lock( pthread_rwlock_t *rwlock, bool writer ) {
     return !( rwlock->wlock & _WLOCK_WRITER_MASK ) && !( writer && rwlock->rlocks );
 }
 
-int _rwlock_lock( dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) {
+int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) {
     int gtid = _get_gtid( __dios_get_thread_id() );
 
     if ( rwlock == NULL || !( rwlock->wlock & _INITIALIZED_RWLOCK ) ) {
@@ -1748,7 +1749,7 @@ sighandler_t def( int sig ) {
 }
 
 int raise( int sig ) {
-    dios::InterruptMask mask;
+    __dios::InterruptMask mask;
     assert( sig < 32 );
 
     if ( threads == nullptr ) // initialization not done yet
