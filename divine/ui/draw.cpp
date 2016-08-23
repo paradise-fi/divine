@@ -91,7 +91,7 @@ void Draw::run()
             {
                 int id = _ids[ st ];
                 vm::DebugNode< vm::explore::Context > dn( ex._ctx, ex._ctx.heap().snapshot(),
-                                                          st.root, vm::DNKind::Object, nullptr, nullptr );
+                                                          st.root, 0, vm::DNKind::Object, nullptr, nullptr );
                 std::map< vm::GenericPointer, int > _dumped;
                 int hseq = 0;
                 std::cerr << "# new state" << std::endl;
