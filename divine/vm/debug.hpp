@@ -171,10 +171,15 @@ struct DebugNode
                 {
                     auto raw = v.get( _address + _offset );
                     using V = decltype( raw );
-                    yield( "raw_value", brick::string::fmt( raw ) );
-                    auto val = raw >> value::Int< 32 >( bitoffset() );
-                    val = val & V( bitlevel::ones< typename V::Raw >( width() ) );
-                    yield( "value", brick::string::fmt( val ) );
+                    if ( bitoffset() || width() != size() * 8 )
+                    {
+                        yield( "raw_value", brick::string::fmt( raw ) );
+                        auto val = raw >> value::Int< 32 >( bitoffset() );
+                        val = val & V( bitlevel::ones< typename V::Raw >( width() ) );
+                        yield( "value", brick::string::fmt( val ) );
+                    }
+                    else
+                        yield( "value", brick::string::fmt( raw ) );
                 } );
     }
 
