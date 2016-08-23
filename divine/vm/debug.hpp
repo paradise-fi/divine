@@ -212,6 +212,15 @@ struct DebugNode
         auto types = _ctx.heap().type( hloc, hloc.offset(), sz );
         auto defined = _ctx.heap().defined( hloc, hloc.offset(), sz );
 
+        if ( _type && ( _type->isIntegerTy() || _type->isFloatingPointTy() ))
+            eval.template type_dispatch< Any >(
+                _type->getPrimitiveSizeInBits(),
+                _type->isFloatingPointTy() ? Program::Slot::Float : Program::Slot::Integer,
+                [&]( auto v )
+                {
+                    yield( "value", brick::string::fmt( v.get( _address ) ) );
+                } );
+
         for ( int c = 0; c < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ); ++c )
         {
             int col = 0;

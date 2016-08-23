@@ -320,10 +320,16 @@ struct Eval
         T get( int v  = INT_MIN )
         {
             ASSERT_LEQ( INT_MIN + 1, v ); /* default INT_MIN is only for use in decltype */
+            return get( ptr( v ) );
+        }
+
+        T get( GenericPointer pp )
+        {
             T result;
-            ev->heap().read( ptr( v ), result );
+            ev->heap().read( pp, result );
             return result;
         }
+
         void set( int v, T t ) { ev->heap().write( ptr( v ), t ); }
     };
 
@@ -421,9 +427,15 @@ struct Eval
     void op( int off, Op _op )
     {
         auto &v = instruction().value( off );
-        switch ( v.type ) {
+        return type_dispatch< Guard >( v.width(), v.type, _op );
+    }
+
+    template< template< typename > class Guard, typename Op >
+    void type_dispatch( int width, typename Slot::Type type, Op _op )
+    {
+        switch ( type ) {
             case Slot::Integer:
-                switch ( v.width() )
+                switch ( width )
                 {
                     case  1: return op< Guard, value::Int<  1 > >( _op );
                     case  8: return op< Guard, value::Int<  8 > >( _op );
@@ -431,23 +443,23 @@ struct Eval
                     case 32: return op< Guard, value::Int< 32 > >( _op );
                     case 64: return op< Guard, value::Int< 64 > >( _op );
                 }
-                UNREACHABLE_F( "Unsupported integer width %d", v.width() );
+                UNREACHABLE_F( "Unsupported integer width %d", width );
             case Slot::Pointer: case Slot::Alloca: case Slot::CodePointer:
                 return op< Guard, PointerV >( _op );
             case Slot::Float:
-                switch ( v.size() )
+                switch ( width )
                 {
-                    case sizeof( float ):
+                    case 8 * sizeof( float ):
                         return op< Guard, value::Float< float > >( _op );
-                    case sizeof( double ):
+                    case 8 * sizeof( double ):
                         return op< Guard, value::Float< double > >( _op );
-                    case sizeof( long double ):
+                    case 8 * sizeof( long double ):
                         return op< Guard, value::Float< long double > >( _op );
                 }
             case Slot::Void:
                 return;
             default:
-                UNREACHABLE_F( "an unexpected dispatch type %d", v.type );
+                UNREACHABLE_F( "an unexpected dispatch type %d", type );
         }
     }
 
@@ -1375,7 +1387,7 @@ using vm::CodePointer;
 
 struct TProgram
 {
-    struct Slot {};
+    struct Slot { using Type = int; };
     struct Instruction {};
 };
 

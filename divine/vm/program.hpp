@@ -157,7 +157,7 @@ struct Program
      */
     struct Slot
     {
-        enum { Void, Pointer, Integer, Float, Aggregate, CodePointer, Alloca } type:3;
+        enum Type { Void, Pointer, Integer, Float, Aggregate, CodePointer, Alloca } type:3;
         enum Location { Global, Local, Constant, Invalid } location:2;
         uint32_t _width:29;
         uint32_t offset:30;
