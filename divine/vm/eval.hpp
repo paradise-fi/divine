@@ -317,6 +317,7 @@ struct Eval
         V( Eval *ev ) : ev( ev ) {}
 
         GenericPointer ptr( int v ) { return ev->s2ptr( ev->instruction().value( v ) ); }
+
         T get( int v  = INT_MIN )
         {
             ASSERT_LEQ( INT_MIN + 1, v ); /* default INT_MIN is only for use in decltype */

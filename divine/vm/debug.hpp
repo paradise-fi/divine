@@ -387,6 +387,24 @@ struct DebugNode
                    DebugNode( _ctx, _snapshot, pp, DNKind::Object, nullptr, nullptr ) );
         }
 
+        if ( _type && _di_type && _type->isStructTy() )
+        {
+            auto CT = llvm::cast< llvm::DICompositeType >( _di_type );
+            auto ST = llvm::cast< llvm::StructType >( _type );
+            auto STE = ST->element_begin();
+            auto SLO = _ctx.program().TD.getStructLayout( ST );
+            int idx = 0;
+            for ( auto subtype : CT->getElements() )
+                if ( auto CTE = llvm::dyn_cast< llvm::DIDerivedType >( subtype ) )
+                {
+                    yield( "+" + CTE->getName().str(),
+                           DebugNode( _ctx, _snapshot, _address + SLO->getElementOffset( idx ),
+                                      DNKind::Object, *STE, CTE ) );
+                    STE ++;
+                    idx ++;
+                }
+        }
+
         if ( _kind == DNKind::Frame )
         {
             PointerV fr = _address;
