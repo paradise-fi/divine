@@ -31,6 +31,10 @@ enum _DiOS_Fault
     _DiOS_F_Last
 };
 
+enum _DiOS_RunMode {
+    ModeUnspecified = 0, ModeRun, ModeVerify, ModeSim
+};
+
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
             __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \
@@ -85,6 +89,9 @@ void __dios_dummy() NOTHROW;
  */
 void __dios_syscall_trap() NOTHROW;
 
+/*
+ * Issue DiOS syscall with given args. Return value is stored in ret.
+ */
 void __dios_syscall(int syscode, void* ret, ...);
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
@@ -101,7 +108,7 @@ CPP_END
 
 #ifdef __cplusplus
 
-namespace dios {
+namespace __dios {
 
 template< bool fenced >
 struct _InterruptMask {
@@ -155,7 +162,7 @@ struct _InterruptMask {
 using InterruptMask = _InterruptMask< false >;
 using FencedInterruptMask = _InterruptMask< true >;
 
-} // namespace dios
+} // namespace __dios
 
 #endif // __cplusplus
 
