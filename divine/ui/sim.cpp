@@ -50,8 +50,8 @@ struct WithFrame : WithVar
 struct Set { std::vector< std::string > options; };
 struct WithSteps : WithFrame
 {
-    bool over, quiet, verbose; int count;
-    WithSteps() : over( false ), quiet( false ), verbose( false ), count( 1 ) {}
+    bool over, out, quiet, verbose; int count;
+    WithSteps() : over( false ), out( false ), quiet( false ), verbose( false ), count( 1 ) {}
 };
 
 struct StepI : WithSteps {};
@@ -485,7 +485,7 @@ struct Interpreter
         check_running();
         if ( jmp )
             step.jumps( 1 );
-        if ( s.over )
+        if ( s.over || s.out )
             step.frame( get( s.var ).address() );
         return step;
     }
@@ -493,7 +493,8 @@ struct Interpreter
     void go( command::Step s )
     {
         auto step = stepper( s, true );
-        step.lines( s.count );
+        if ( !s.out )
+            step.lines( s.count );
         run( step, !s.quiet );
         set( "$_", frameDN() );
     }
@@ -598,6 +599,8 @@ void Interpreter::command( cmd::Tokens tok )
         .option( "[--quiet]", &command::WithSteps::quiet, "suppress output"s )
         .option( "[--verbose]", &command::WithSteps::verbose, "increase verbosity"s )
         .option( "[--count {int}]", &command::WithSteps::count, "execute {int} steps (default = 1)"s );
+    auto stepoutopts = cmd::make_option_set< command::WithSteps >( v )
+        .option( "[--out]", &command::WithSteps::out, "execute until the current function returns"s );
     auto threadopts = cmd::make_option_set< command::Thread >( v )
         .option( "[--random]", &command::Thread::random, "pick the thread to run randomly"s )
         .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
@@ -607,7 +610,7 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::Help >( "show this help, or describe a particular command in more detail"s,
                                    cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
         .command< command::StepA >( "execute one atomic action"s, varopts, stepopts )
-        .command< command::Step >( "execute source line"s, varopts, stepopts )
+        .command< command::Step >( "execute source line"s, varopts, stepopts, stepoutopts )
         .command< command::StepI >( "execute one instruction"s, varopts, stepopts )
         .command< command::Rewind >( "rewind to a stored program state"s, varopts )
         .command< command::Set >( "set a variable "s, &command::Set::options )
