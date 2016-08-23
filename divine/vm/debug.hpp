@@ -86,11 +86,16 @@ struct DebugNode
         return nullptr;
     }
 
+    llvm::DIType *di_type()
+    {
+        if ( di_member() )
+            return di_member()->getBaseType().resolve( _ctx.program().ditypemap );
+        return _di_type;
+    }
+
     llvm::DICompositeType *di_composite()
     {
-        auto base = di_member() ?
-                    di_member()->getBaseType().resolve( _ctx.program().ditypemap ) : _di_type;
-        return llvm::dyn_cast< llvm::DICompositeType >( base );
+        return llvm::dyn_cast< llvm::DICompositeType >( di_type() );
     }
 
     int width()
@@ -182,7 +187,7 @@ struct DebugNode
         yield( "address", brick::string::fmt( PointerV( _address ) ) );
 
         if ( _di_type )
-            yield( "type", _di_type->getName().str() );
+            yield( "type", di_type()->getName().str() );
 
         if ( !valid() )
             return;
