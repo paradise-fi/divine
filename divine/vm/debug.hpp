@@ -136,17 +136,8 @@ struct DebugNode
 
         yield( "_raw", print::raw( _ctx.heap(), hloc, sz ) );
 
-        if ( _address.type() == PointerType::Const )
-        {
-            ConstPointer pp = _address;
-            yield( "slot", brick::string::fmt( program._constants[ pp.object() ] ) );
-        }
-
-        if ( _address.type() == PointerType::Global )
-        {
-            GlobalPointer pp = _address;
-            yield( "slot", brick::string::fmt( program._globals[ pp.object() ] ) );
-        }
+        if ( _address.type() == PointerType::Const || _address.type() == PointerType::Global )
+            yield( "slot", brick::string::fmt( eval.ptr2s( _address ) ) );
 
         if ( _kind == DNKind::Frame )
         {
@@ -246,56 +237,68 @@ struct DebugNode
         }
 
         if ( _type && _di_type && _type->isStructTy() )
-        {
-            auto CT = llvm::cast< llvm::DICompositeType >( _di_type );
-            auto ST = llvm::cast< llvm::StructType >( _type );
-            auto STE = ST->element_begin();
-            auto SLO = _ctx.program().TD.getStructLayout( ST );
-            int idx = 0;
-            for ( auto subtype : CT->getElements() )
-                if ( auto CTE = llvm::dyn_cast< llvm::DIDerivedType >( subtype ) )
-                {
-                    yield( "+" + CTE->getName().str(),
-                           DebugNode( _ctx, _snapshot, _address + SLO->getElementOffset( idx ),
-                                      DNKind::Object, *STE, CTE ) );
-                    STE ++;
-                    idx ++;
-                }
-        }
-
+            struct_fields( yield );
         if ( _kind == DNKind::Frame )
-        {
-            PointerV fr = _address;
-            _ctx.heap().skip( fr, PointerBytes );
-            _ctx.heap().read( fr.cooked(), fr );
-            if ( !fr.cooked().null() )
-                yield( "parent", DebugNode( _ctx, _snapshot, fr.cooked(), DNKind::Frame, nullptr, nullptr ) );
+            framevars( yield, eval );
+    }
 
-            auto *insn = &_ctx.program().instruction( pc() );
-            if ( !insn->op )
-                insn = &_ctx.program().instruction( pc() + 1 );
-            auto op = llvm::cast< llvm::Instruction >( insn->op );
-            auto F = op->getParent()->getParent();
 
-            for ( auto &BB : *F )
-                for ( auto &I : BB )
-                    if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
-                    {
-                        auto divar = DDI->getVariable();
-                        auto ditype = divar->getType().resolve( _ctx.program().ditypemap );
-                        auto var = DDI->getAddress();
-                        auto &vmap = _ctx.program().valuemap;
-                        if ( vmap.find( var ) == vmap.end() )
-                            continue;
+    template< typename Y >
+    void struct_fields( Y yield )
+    {
+        auto CT = llvm::cast< llvm::DICompositeType >( _di_type );
+        auto ST = llvm::cast< llvm::StructType >( _type );
+        auto STE = ST->element_begin();
+        auto SLO = _ctx.program().TD.getStructLayout( ST );
+        int idx = 0;
+        for ( auto subtype : CT->getElements() )
+            if ( auto CTE = llvm::dyn_cast< llvm::DIDerivedType >( subtype ) )
+            {
+                yield( "+" + CTE->getName().str(),
+                       DebugNode( _ctx, _snapshot, _address + SLO->getElementOffset( idx ),
+                                  DNKind::Object, *STE, CTE ) );
+                STE ++;
+                idx ++;
+            }
+    }
 
-                        PointerV ptr;
-                        _ctx.heap().read( eval.s2ptr( _ctx.program().valuemap[ var ].slot ), ptr );
+    template< typename Y >
+    void localvar( Y yield, Eval &eval, llvm::DbgDeclareInst *DDI )
+    {
+        auto divar = DDI->getVariable();
+        auto ditype = divar->getType().resolve( _ctx.program().ditypemap );
+        auto var = DDI->getAddress();
+        auto &vmap = _ctx.program().valuemap;
+        if ( vmap.find( var ) == vmap.end() )
+            return;
 
-                        yield( std::string( "+" ) + divar->getName().str(),
-                               DebugNode( _ctx, _snapshot, ptr.cooked(), DNKind::Object,
-                                          var->getType()->getPointerElementType(), ditype ) );
-                    }
-        }
+        PointerV ptr;
+        _ctx.heap().read( eval.s2ptr( _ctx.program().valuemap[ var ].slot ), ptr );
+
+        yield( std::string( "+" ) + divar->getName().str(),
+               DebugNode( _ctx, _snapshot, ptr.cooked(), DNKind::Object,
+                          var->getType()->getPointerElementType(), ditype ) );
+    }
+
+    template< typename Y >
+    void framevars( Y yield, Eval &eval )
+    {
+        PointerV fr = _address;
+        _ctx.heap().skip( fr, PointerBytes );
+        _ctx.heap().read( fr.cooked(), fr );
+        if ( !fr.cooked().null() )
+            yield( "parent", DebugNode( _ctx, _snapshot, fr.cooked(), DNKind::Frame, nullptr, nullptr ) );
+
+        auto *insn = &_ctx.program().instruction( pc() );
+        if ( !insn->op )
+            insn = &_ctx.program().instruction( pc() + 1 );
+        auto op = llvm::cast< llvm::Instruction >( insn->op );
+        auto F = op->getParent()->getParent();
+
+        for ( auto &BB : *F )
+            for ( auto &I : BB )
+                if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
+                    localvar( yield, eval, DDI );
     }
 
     void dump( std::ostream &o );
