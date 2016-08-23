@@ -56,6 +56,7 @@ struct DebugNode
     ConstContext< Program, Heap > _ctx;
 
     GenericPointer _address;
+    int _offset;
     Snapshot _snapshot;
     DNKind _kind;
 
@@ -65,23 +66,73 @@ struct DebugNode
 
     using PointerV = value::Pointer;
 
-    DebugNode( Context ctx, Snapshot s, GenericPointer l, DNKind k, llvm::Type *t, llvm::DIType *dit )
-        : _ctx( ctx.program(), ctx.heap() ), _address( l ), _snapshot( s ), _kind( k ),
-          _type( t ), _di_type( dit )
+    int size()
+    {
+        Eval eval( _ctx.program(), _ctx );
+        if ( _type )
+            return _ctx.program().TD.getTypeAllocSize( _type );
+        if ( !_address.null() )
+            return eval.ptr2sz( _address );
+        return 0;
+    }
+
+    llvm::DIDerivedType *di_member()
+    {
+        if ( !_di_type )
+            return nullptr;
+        auto derived = llvm::dyn_cast< llvm::DIDerivedType >( _di_type );
+        if ( derived && derived->getTag() == llvm::dwarf::DW_TAG_member )
+            return derived;
+        return nullptr;
+    }
+
+    llvm::DICompositeType *di_composite()
+    {
+        auto base = di_member() ?
+                    di_member()->getBaseType().resolve( _ctx.program().ditypemap ) : _di_type;
+        return llvm::dyn_cast< llvm::DICompositeType >( base );
+    }
+
+    int width()
+    {
+        if ( di_member() )
+            return di_member()->getSizeInBits();
+        return 8 * size();
+    }
+
+    int bitoffset()
+    {
+        int rv = 0;
+        if ( di_member() )
+            rv = di_member()->getOffsetInBits() - 8 * _offset;
+        ASSERT_LEQ( rv, 8 * size() );
+        ASSERT_LEQ( rv + width(), 8 * size() );
+        return rv;
+    }
+
+    void init()
+    {
+        if ( _kind == DNKind::Frame )
+            _ctx.frame( _address );
+    }
+
+    DebugNode( Context ctx, Snapshot s, GenericPointer l, int off,
+               DNKind k, llvm::Type *t, llvm::DIType *dit )
+        : _ctx( ctx.program(), ctx.heap() ), _address( l ), _offset( off ),
+          _snapshot( s ), _kind( k ), _type( t ), _di_type( dit )
     {
         _ctx.heap().restore( s );
         _ctx.globals( ctx.globals() );
         _ctx.constants( ctx.constants() );
-        if ( k == DNKind::Frame )
-            _ctx.frame( l );
+        init();
     }
 
     DebugNode( ConstContext< Program, Heap > ctx, Snapshot s,
-               GenericPointer l, DNKind k, llvm::Type *t, llvm::DIType *dit )
-        : _ctx( ctx ), _address( l ), _snapshot( s ), _kind( k ), _type( t ), _di_type( dit )
+               GenericPointer l, int off, DNKind k, llvm::Type *t, llvm::DIType *dit )
+        : _ctx( ctx ), _address( l ), _offset( off ),
+          _snapshot( s ), _kind( k ), _type( t ), _di_type( dit )
     {
-        if ( k == DNKind::Frame )
-            _ctx.frame( l );
+        init();
     }
 
     DebugNode( const DebugNode &o ) = default;
@@ -106,6 +157,23 @@ struct DebugNode
     }
 
     template< typename Y >
+    void value( Y yield, Eval &eval )
+    {
+        if ( _type && _type->isIntegerTy() )
+            eval.template type_dispatch< IsIntegral >(
+                _type->getPrimitiveSizeInBits(), Program::Slot::Integer,
+                [&]( auto v )
+                {
+                    auto raw = v.get( _address );
+                    using V = decltype( raw );
+                    yield( "raw_value", brick::string::fmt( raw ) );
+                    auto val = raw >> value::Int< 32 >( bitoffset() );
+                    val = val & V( bitlevel::ones< typename V::Raw >( width() ) );
+                    yield( "value", brick::string::fmt( val ) );
+                } );
+    }
+
+    template< typename Y >
     void attributes( Y yield )
     {
         Eval eval( _ctx.program(), _ctx );
@@ -119,22 +187,10 @@ struct DebugNode
         if ( !valid() )
             return;
 
-        if ( _address.type() == PointerType::Heap )
-            ASSERT_EQ( _address.offset(), 0 );
-
-        int sz = eval.ptr2sz( _address );
         auto hloc = eval.ptr2h( _address );
+        value( yield, eval );
 
-        if ( _type && ( _type->isIntegerTy() || _type->isFloatingPointTy() ))
-            eval.template type_dispatch< Any >(
-                _type->getPrimitiveSizeInBits(),
-                _type->isFloatingPointTy() ? Program::Slot::Float : Program::Slot::Integer,
-                [&]( auto v )
-                {
-                    yield( "value", brick::string::fmt( v.get( _address ) ) );
-                } );
-
-        yield( "_raw", print::raw( _ctx.heap(), hloc, sz ) );
+        yield( "_raw", print::raw( _ctx.heap(), hloc, size() ) );
 
         if ( _address.type() == PointerType::Const || _address.type() == PointerType::Global )
             yield( "slot", brick::string::fmt( eval.ptr2s( _address ) ) );
@@ -221,10 +277,10 @@ struct DebugNode
 
         PointerV ptr;
         auto hloc = eval.ptr2h( _address );
-        int sz = eval.ptr2sz( _address ), hoff = hloc.offset();
+        int hoff = hloc.offset();
 
         int i = 0;
-        for ( auto ptroff : _ctx.heap().pointers( hloc, hloc.offset(), sz ) )
+        for ( auto ptroff : _ctx.heap().pointers( hloc, hloc.offset(), size() ) )
         {
             hloc.offset( hoff + ptroff->offset() );
             _ctx.heap().read( hloc, ptr );
@@ -233,7 +289,7 @@ struct DebugNode
                 continue;
             pp.offset( 0 );
             yield( "_ptr_" + brick::string::fmt( i++ ),
-                   DebugNode( _ctx, _snapshot, pp, DNKind::Object, nullptr, nullptr ) );
+                   DebugNode( _ctx, _snapshot, pp, 0, DNKind::Object, nullptr, nullptr ) );
         }
 
         if ( _type && _di_type && _type->isStructTy() )
@@ -242,23 +298,31 @@ struct DebugNode
             framevars( yield, eval );
     }
 
-
     template< typename Y >
     void struct_fields( Y yield )
     {
-        auto CT = llvm::cast< llvm::DICompositeType >( _di_type );
+        auto CT = llvm::dyn_cast< llvm::DICompositeType >( _di_type );
+        if ( !CT )
+        {
+            auto DIT = llvm::cast< llvm::DIDerivedType >( _di_type );
+            auto base = DIT->getBaseType().resolve( _ctx.program().ditypemap );
+            CT = llvm::dyn_cast< llvm::DICompositeType >( base );
+            ASSERT( CT );
+        }
         auto ST = llvm::cast< llvm::StructType >( _type );
         auto STE = ST->element_begin();
         auto SLO = _ctx.program().TD.getStructLayout( ST );
-        int idx = 0;
+        int idx = 0, bitoffset = 0;
         for ( auto subtype : CT->getElements() )
             if ( auto CTE = llvm::dyn_cast< llvm::DIDerivedType >( subtype ) )
             {
+                if ( idx + 1 < int( ST->getNumElements() ) &&
+                     CTE->getOffsetInBits() > 8 * SLO->getElementOffset( idx + 1 ) )
+                    idx ++;
                 yield( "+" + CTE->getName().str(),
-                       DebugNode( _ctx, _snapshot, _address + SLO->getElementOffset( idx ),
+                       DebugNode( _ctx, _snapshot, _address, SLO->getElementOffset( idx ),
                                   DNKind::Object, *STE, CTE ) );
                 STE ++;
-                idx ++;
             }
     }
 
@@ -275,9 +339,9 @@ struct DebugNode
         PointerV ptr;
         _ctx.heap().read( eval.s2ptr( _ctx.program().valuemap[ var ].slot ), ptr );
 
+        auto type = var->getType()->getPointerElementType();
         yield( std::string( "+" ) + divar->getName().str(),
-               DebugNode( _ctx, _snapshot, ptr.cooked(), DNKind::Object,
-                          var->getType()->getPointerElementType(), ditype ) );
+               DebugNode( _ctx, _snapshot, ptr.cooked(), 0, DNKind::Object, type, ditype ) );
     }
 
     template< typename Y >
@@ -287,7 +351,8 @@ struct DebugNode
         _ctx.heap().skip( fr, PointerBytes );
         _ctx.heap().read( fr.cooked(), fr );
         if ( !fr.cooked().null() )
-            yield( "parent", DebugNode( _ctx, _snapshot, fr.cooked(), DNKind::Frame, nullptr, nullptr ) );
+            yield( "parent", DebugNode( _ctx, _snapshot, fr.cooked(), 0,
+                                        DNKind::Frame, nullptr, nullptr ) );
 
         auto *insn = &_ctx.program().instruction( pc() );
         if ( !insn->op )
