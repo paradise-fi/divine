@@ -169,7 +169,7 @@ struct DebugNode
                 _type->getPrimitiveSizeInBits(), Program::Slot::Integer,
                 [&]( auto v )
                 {
-                    auto raw = v.get( _address );
+                    auto raw = v.get( _address + _offset );
                     using V = decltype( raw );
                     yield( "raw_value", brick::string::fmt( raw ) );
                     auto val = raw >> value::Int< 32 >( bitoffset() );
@@ -317,17 +317,16 @@ struct DebugNode
         auto ST = llvm::cast< llvm::StructType >( _type );
         auto STE = ST->element_begin();
         auto SLO = _ctx.program().TD.getStructLayout( ST );
-        int idx = 0, bitoffset = 0;
+        int idx = 0;
         for ( auto subtype : CT->getElements() )
             if ( auto CTE = llvm::dyn_cast< llvm::DIDerivedType >( subtype ) )
             {
                 if ( idx + 1 < int( ST->getNumElements() ) &&
                      CTE->getOffsetInBits() > 8 * SLO->getElementOffset( idx + 1 ) )
-                    idx ++;
+                    idx ++, STE ++;
                 yield( "+" + CTE->getName().str(),
                        DebugNode( _ctx, _snapshot, _address, SLO->getElementOffset( idx ),
                                   DNKind::Object, *STE, CTE ) );
-                STE ++;
             }
     }
 
