@@ -471,7 +471,9 @@ void Program::setupRR()
     for ( auto &f : *module )
         if ( f.getName() == "memset" || f.getName() == "memmove" || f.getName() == "memcpy" )
             f.setLinkage( llvm::GlobalValue::ExternalLinkage );
-    ditypemap = llvm::generateDITypeIdentifierMap( module->getNamedMetadata( "llvm.dbg.cu" ) );
+    auto dbg_cu = module->getNamedMetadata( "llvm.dbg.cu" );
+    if ( dbg_cu )
+        ditypemap = llvm::generateDITypeIdentifierMap( dbg_cu );
 }
 
 void Program::computeRR()
