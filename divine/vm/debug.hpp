@@ -96,25 +96,6 @@ struct DebugNode
     GenericPointer address() { return _address; }
     Snapshot snapshot() { return _snapshot; }
 
-    template< typename B >
-    void hexbyte( std::ostream &o, int &col, int index, B byte )
-    {
-        o << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 ) << +byte;
-        col += 2;
-        if ( index % 2 == 1 )
-            ++col, o << " ";
-    }
-
-    template< typename B >
-    void ascbyte( std::ostream &o, int &col, B byte )
-    {
-        std::stringstream os;
-        os << byte;
-        char b = os.str()[ 0 ];
-        o << ( std::isprint( b ) ? b : '~' );
-        ++ col;
-    }
-
     bool valid()
     {
         if ( _address.null() )
@@ -161,16 +142,16 @@ struct DebugNode
         {
             int col = 0;
             for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-                hexbyte( raw, col, i, bytes[ i ] );
+                print::hexbyte( raw, col, i, bytes[ i ] );
             print::pad( raw, col, 30 ); raw << "| ";
             for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-                hexbyte( raw, col, i, defined[ i ] );
+                print::hexbyte( raw, col, i, defined[ i ] );
             print::pad( raw, col, 60 ); raw << "| ";
             for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-                ascbyte( raw, col, bytes[ i ] );
+                print::ascbyte( raw, col, bytes[ i ] );
             print::pad( raw, col, 72 ); raw << " | ";
             for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-                ascbyte( raw, col, types[ i ] );
+                print::ascbyte( raw, col, types[ i ] );
             print::pad( raw, col, 84 );
             if ( c + 1 < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ) )
                 raw << std::endl;

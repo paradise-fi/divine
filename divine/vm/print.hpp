@@ -33,6 +33,25 @@ static void pad( std::ostream &o, int &col, int target )
         ++col, o << " ";
 }
 
+template< typename B >
+void hexbyte( std::ostream &o, int &col, int index, B byte )
+{
+    o << std::setw( 2 ) << std::setfill( '0' ) << std::setbase( 16 ) << +byte;
+    col += 2;
+    if ( index % 2 == 1 )
+        ++col, o << " ";
+}
+
+template< typename B >
+void ascbyte( std::ostream &o, int &col, B byte )
+{
+    std::stringstream os;
+    os << byte;
+    char b = os.str()[ 0 ];
+    o << ( std::isprint( b ) ? b : '~' );
+    ++ col;
+}
+
 template< typename Eval >
 static std::string instruction( Eval &eval, int padding = 0 )
 {
