@@ -154,7 +154,10 @@ struct DebugNode
                 return;
             auto *insn = &program.instruction( pc() );
             if ( insn->op )
+            {
+                eval._instruction = insn;
                 yield( "instruction", print::instruction( eval ) );
+            }
             if ( !insn->op )
                 insn = &program.instruction( pc() + 1 );
             ASSERT( insn->op );
