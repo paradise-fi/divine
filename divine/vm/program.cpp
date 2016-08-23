@@ -432,21 +432,6 @@ Program::Position Program::insert( Position p )
         if ( isa< llvm::InsertValueInst >( p.I ) )
             insertIndices< llvm::InsertValueInst >( p );
 
-/* TODO (broken since all constants are now initialised at the end of build())
-        if ( auto LPI = dyn_cast< llvm::LandingPadInst >( p.I ) )
-        {
-            int off = LPI->getNumOperands() - LPI->getNumClauses();
-            for ( int i = 0; i < int( LPI->getNumClauses() ); ++i ) {
-                if ( LPI->isFilter( i ) )
-                    continue;
-                auto ptr = constant< ConstPointer >( insn.operand( i + off ) );
-                if ( !function( p.pc ).typeID( ptr ) )
-                    function( p.pc ).typeIDs.push_back( ptr );
-                ASSERT( function( p.pc ).typeID( ptr ) );
-            }
-        }
-*/
-
         pcmap.insert( std::make_pair( p.I, p.pc ) );
         insn.result() = insert( p.pc.function(), &*p.I ).slot;
     }
@@ -564,15 +549,16 @@ void Program::computeStatic()
         auto &func = function( pc );
         _ccontext.heap().write( s2hptr( slotref.slot, frameSizeOffset ),
                                 value::Int< 32 >( func.datasize + 2 * PointerBytes ) );
+        ASSERT_LEQ( func.instructions.size(),  llvm::cast< llvm::ConstantInt >( f->getOperand( 6 ) )->getZExtValue() );
         _ccontext.heap().write( s2hptr( slotref.slot, instCountOffset ),
                                 value::Int< 32 >( func.instructions.size() ) );
 
         // write instruction table
         auto instTable = llvm::cast< llvm::GlobalVariable >(
-                            f->getOperand( 7 )->getOperand( 0 ) )->getInitializer();
-        auto instTableT = cast< llvm::ArrayType >( instTable->getType() );
+                            f->getOperand( 7 )->getOperand( 0 ) );
+        auto instTableT = cast< llvm::ArrayType >( instTable->getInitializer()->getType() );
         ASSERT( valuemap.count( instTable ) );
-        auto &instTableSlotref = valuemap[ instTable ];
+        const auto &instTableSlotref = globalmap[ instTable ];
         // there can be less instructions in DIVINE as it ignores some, such as
         // calls to llvm.dbg.declare
         ASSERT_LEQ( func.instructions.size(), instTableT->getNumElements() );
@@ -583,14 +569,17 @@ void Program::computeStatic()
             auto &inst = func.instructions[ j ];
             int base = TD.getTypeAllocSize( instTableT->getElementType() ) * j;
             auto write = [&]( int idx, int val ) {
-                _ccontext.heap().write( s2hptr( instTableSlotref.slot,
-                                                base + SL_instMeta->getElementOffset( idx ) ),
+                auto off = base + SL_instMeta->getElementOffset( idx );
+                ASSERT_LEQ( off, instTableSlotref.slot.size() );
+                _ccontext.heap().write( s2hptr( instTableSlotref.slot, off ),
                                         value::Int< 32 >( val ) );
             };
             int opcode = 0, subop = 0, offset = 0, size = 0;
 
             if ( inst.op )
             {
+                ASSERT_EQ( llvm::cast< llvm::Instruction >( inst.op )->getParent()->getParent(),
+                           module->getFunction( name ) );
                 opcode = getOpcode( inst.op );
                 subop = getSubOp( inst.op, *this );
                 offset = inst.values.empty() ? 0 : inst.result().offset;
@@ -608,8 +597,8 @@ void Program::computeStatic()
         lart::divine::CppEhTab tab( *llvmfn );
 
         auto *lsda = llvm::cast< llvm::GlobalVariable >(
-                        f->getOperand( 9 )->getOperand( 0 ) )->getInitializer();
-        tab.insertEhTable( *this, s2hptr( valuemap[ lsda ].slot ) );
+                        f->getOperand( 9 )->getOperand( 0 ) );
+        tab.insertEhTable( *this, s2hptr( globalmap[ lsda ].slot ), func.typeIDs );
     }
 }
 
