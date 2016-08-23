@@ -24,6 +24,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/eval.hpp>
+#include <divine/vm/print.hpp>
 #include <divine/cc/runtime.hpp>
 #include <brick-string>
 #include <cxxabi.h>
@@ -44,71 +45,6 @@ static std::ostream &operator<<( std::ostream &o, DNKind dnk )
 
 std::pair< std::string, int > fileline( const llvm::Instruction &insn );
 std::string location( const llvm::Instruction &insn );
-std::string opcode( int );
-
-static void pad( std::ostream &o, int &col, int target )
-{
-    while ( col < target )
-        ++col, o << " ";
-}
-
-template< typename Eval >
-static std::string instruction( typename Eval::Instruction &insn, Eval &eval, int padding = 0 )
-{
-    ASSERT( insn.op );
-    eval._instruction = &insn;
-    std::stringstream out;
-    llvm::Instruction *I = llvm::cast< llvm::Instruction >( insn.op );
-    std::string iname = I->getName();
-    if ( iname.empty() )
-        iname = brick::string::fmt( eval.program().pcmap[ I ].instruction() );
-    if ( insn.result().type != Program::Slot::Void )
-        out << "  %" << iname << " = ";
-    else
-        out << "  ";
-    out << opcode( insn.opcode ) << " ";
-    int skip = 0;
-    if ( insn.opcode == llvm::Instruction::Call )
-    {
-        skip = 1;
-        out << "@" << insn.op->getOperand( insn.op->getNumOperands() - 1 )->getName().str() << " ";
-    }
-    for ( int i = 1; i < int( insn.op->getNumOperands() + 1 ) - skip; ++i )
-    {
-        auto val = insn.op->getOperand( i - 1 );
-        auto oname = val->getName().str();
-        if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
-            oname = "%" + ( oname.empty() ?
-                            brick::string::fmt( eval.program().pcmap[ I ].instruction() ) : oname );
-        else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
-            oname = "label %" + ( oname.empty() ?
-                                  brick::string::fmt( eval.program().blockmap[ B ].instruction() ) : oname );
-        else if ( !oname.empty() )
-            oname = "%" + oname;
-
-        if ( oname.empty() )
-        {
-            if ( insn.value( i ).type == Eval::Slot::Aggregate )
-                oname = "<aggregate>";
-            else eval.template op< Any >( i, [&]( auto v )
-            {
-                oname = brick::string::fmt( v.get( i ) );
-            } );
-        }
-
-        out << ( oname.empty() ? "?" : oname ) << " ";
-    }
-    if ( insn.result().type != Eval::Slot::Aggregate )
-        eval.template op< Any >( 0, [&]( auto v )
-        {
-            int col = out.str().size();
-            if ( col >= 45 )
-                col = -padding, out << std::endl;
-            pad( out, col, 45 );
-            out << " # " << brick::string::fmt( v.get( 0 ) );
-        } );
-    return out.str();
-}
 
 template< typename Context >
 struct DebugNode
@@ -226,16 +162,16 @@ struct DebugNode
             int col = 0;
             for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
                 hexbyte( raw, col, i, bytes[ i ] );
-            pad( raw, col, 30 ); raw << "| ";
+            print::pad( raw, col, 30 ); raw << "| ";
             for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
                 hexbyte( raw, col, i, defined[ i ] );
-            pad( raw, col, 60 ); raw << "| ";
+            print::pad( raw, col, 60 ); raw << "| ";
             for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
                 ascbyte( raw, col, bytes[ i ] );
-            pad( raw, col, 72 ); raw << " | ";
+            print::pad( raw, col, 72 ); raw << " | ";
             for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
                 ascbyte( raw, col, types[ i ] );
-            pad( raw, col, 84 );
+            print::pad( raw, col, 84 );
             if ( c + 1 < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ) )
                 raw << std::endl;
         }
@@ -260,7 +196,7 @@ struct DebugNode
                 return;
             auto *insn = &program.instruction( pc() );
             if ( insn->op )
-                yield( "instruction", instruction( *insn, eval ) );
+                yield( "instruction", print::instruction( eval ) );
             if ( !insn->op )
                 insn = &program.instruction( pc() + 1 );
             ASSERT( insn->op );
@@ -306,9 +242,10 @@ struct DebugNode
         auto &instructions = _ctx.program().function( iter ).instructions;
         for ( auto &i : instructions )
         {
+            eval._instruction = &i;
             out << ( iter == pc() ? ">>" : "  " );
             if ( i.op )
-                out << instruction( i, eval, 2 ) << std::endl;
+                out << print::instruction( eval, 2 ) << std::endl;
             else
             {
                 auto iop = llvm::cast< llvm::Instruction >( instructions[ iter.instruction() + 1 ].op );

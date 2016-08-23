@@ -21,25 +21,6 @@
 namespace divine {
 namespace vm {
 
-using namespace std::literals;
-
-#define HANDLE_INST(num, opc, class) [num] = #opc ## s,
-static std::string _opcode[] = {
-#include <llvm/IR/Instruction.def>
-};
-#undef HANDLE_INST
-
-void opcode_tolower()
-{
-    static bool done = false;
-    if ( done )
-        return;
-    for ( int i = 0; i < int( sizeof( _opcode ) / sizeof( _opcode[0] ) ); ++i )
-        std::transform( _opcode[i].begin(), _opcode[i].end(),
-                        _opcode[i].begin(), ::tolower );
-    done = true;
-}
-
 std::pair< std::string, int > fileline( const llvm::Instruction &insn )
 {
     auto loc = insn.getDebugLoc().get();
@@ -59,12 +40,6 @@ std::string location( const llvm::Instruction &insn )
     if ( fl.second )
         return fl.first + ":" + brick::string::fmt( fl.second );
     return "(unknown location)";
-}
-
-std::string opcode( int op )
-{
-    opcode_tolower();
-    return _opcode[ op ];
 }
 
 }
