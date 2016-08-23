@@ -19,6 +19,10 @@
 #pragma once
 
 #include <divine/vm/eval.hpp>
+#include <divine/cc/runtime.hpp>
+
+#include <cxxabi.h>
+#include <brick-fs>
 
 namespace divine {
 namespace vm {
@@ -112,6 +116,90 @@ static std::string instruction( Eval &eval, int padding = 0 )
             pad( out, col, 45 );
             out << " # " << brick::string::fmt( v.get( 0 ) );
         } );
+
+    return out.str();
+}
+
+template< typename Heap >
+std::string raw( Heap &heap, HeapPointer hloc, int sz )
+{
+    std::stringstream out;
+
+    auto bytes = heap.unsafe_bytes( hloc, hloc.offset(), sz );
+    auto types = heap.type( hloc, hloc.offset(), sz );
+    auto defined = heap.defined( hloc, hloc.offset(), sz );
+
+    for ( int c = 0; c < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ); ++c )
+    {
+        int col = 0;
+        for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
+            print::hexbyte( out, col, i, bytes[ i ] );
+        print::pad( out, col, 30 ); out << "| ";
+        for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
+            print::hexbyte( out, col, i, defined[ i ] );
+        print::pad( out, col, 60 ); out << "| ";
+        for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
+            print::ascbyte( out, col, bytes[ i ] );
+        print::pad( out, col, 72 ); out << " | ";
+        for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
+            print::ascbyte( out, col, types[ i ] );
+        print::pad( out, col, 84 );
+        if ( c + 1 < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ) )
+            out << std::endl;
+    }
+
+    return out.str();
+}
+
+static std::string demangle( std::string mangled )
+{
+    int stat;
+    auto x = abi::__cxa_demangle( mangled.c_str(), nullptr, nullptr, &stat );
+    auto ret = stat == 0 && x ? std::string( x ) : mangled;
+    std::free( x );
+    return ret;
+}
+
+template< typename Program >
+static std::string source( llvm::DISubprogram *di, Program &program, CodePointer pc )
+{
+    std::stringstream out;
+
+    brick::string::Splitter split( "\n", REG_EXTENDED );
+    auto src = cc::runtime::source( di->getFilename() );
+    if ( src.empty() )
+        src = brick::fs::readFile( di->getFilename() );
+
+    auto line = split.begin( src );
+    unsigned lineno = 1, active = 0;
+    while ( lineno < di->getLine() )
+        ++ line, ++ lineno;
+    unsigned endline = lineno;
+
+    /* figure out the source code span the function covers; painfully */
+    for ( auto &i : program.function( di->getFunction()  ).instructions )
+    {
+        if ( !i.op )
+            continue;
+        auto op = llvm::cast< llvm::Instruction >( i.op );
+        auto dl = op->getDebugLoc().get();
+        if ( !dl )
+            continue;
+        dl = dl->getInlinedAt() ?: dl;
+        if ( program.instruction( pc ).op == i.op )
+            active = dl->getLine();
+        endline = std::max( endline, dl->getLine() );
+    }
+
+    /* print it */
+    while ( line != split.end() && lineno <= endline )
+    {
+        out << (lineno == active ? ">>" : "  ");
+            out << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
+    }
+    brick::string::ERegexp endbrace( "^[ \t]*}" );
+    if ( endbrace.match( *line ) )
+        out << "  " << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
 
     return out.str();
 }

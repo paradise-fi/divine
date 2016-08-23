@@ -295,6 +295,11 @@ struct Program
         return functions[ pc.function() ];
     }
 
+    Function &function( llvm::Function *F )
+    {
+        return functions[ functionmap[ F ] ];
+    }
+
     llvm::Function *llvmfunction( CodePointer pc ) /* eww. */
     {
         return llvm::cast< llvm::Instruction >( function( pc ).instructions[ 1 ].op )->

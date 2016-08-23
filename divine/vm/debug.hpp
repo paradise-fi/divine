@@ -27,7 +27,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/vm/print.hpp>
 #include <divine/cc/runtime.hpp>
 #include <brick-string>
-#include <cxxabi.h>
 
 namespace divine {
 namespace vm {
@@ -95,6 +94,7 @@ struct DebugNode
     DNKind kind() { return _kind; }
     GenericPointer address() { return _address; }
     Snapshot snapshot() { return _snapshot; }
+    std::string raw();
 
     bool valid()
     {
@@ -119,15 +119,11 @@ struct DebugNode
         if ( !valid() )
             return;
 
-        std::stringstream raw;
-
         if ( _address.type() == PointerType::Heap )
             ASSERT_EQ( _address.offset(), 0 );
+
         int sz = eval.ptr2sz( _address );
         auto hloc = eval.ptr2h( _address );
-        auto bytes = _ctx.heap().unsafe_bytes( hloc, hloc.offset(), sz );
-        auto types = _ctx.heap().type( hloc, hloc.offset(), sz );
-        auto defined = _ctx.heap().defined( hloc, hloc.offset(), sz );
 
         if ( _type && ( _type->isIntegerTy() || _type->isFloatingPointTy() ))
             eval.template type_dispatch< Any >(
@@ -138,26 +134,7 @@ struct DebugNode
                     yield( "value", brick::string::fmt( v.get( _address ) ) );
                 } );
 
-        for ( int c = 0; c < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ); ++c )
-        {
-            int col = 0;
-            for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-                print::hexbyte( raw, col, i, bytes[ i ] );
-            print::pad( raw, col, 30 ); raw << "| ";
-            for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-                print::hexbyte( raw, col, i, defined[ i ] );
-            print::pad( raw, col, 60 ); raw << "| ";
-            for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-                print::ascbyte( raw, col, bytes[ i ] );
-            print::pad( raw, col, 72 ); raw << " | ";
-            for ( int i = c * 12; i < std::min( (c + 1) * 12, sz ); ++i )
-                print::ascbyte( raw, col, types[ i ] );
-            print::pad( raw, col, 84 );
-            if ( c + 1 < ( sz / 12 ) + ( sz % 12 ? 1 : 0 ) )
-                raw << std::endl;
-        }
-
-        yield( "_raw", raw.str() );
+        yield( "_raw", print::raw( _ctx.heap(), hloc, sz ) );
 
         if ( _address.type() == PointerType::Const )
         {
@@ -185,18 +162,8 @@ struct DebugNode
             yield( "location", location( *op ) );
 
             auto sym = op->getParent()->getParent()->getName().str();
-            yield( "symbol", demangle( sym ) );
+            yield( "symbol", print::demangle( sym ) );
         }
-    }
-
-
-    std::string demangle( std::string mangled )
-    {
-        int stat;
-        auto x = abi::__cxa_demangle( mangled.c_str(), nullptr, nullptr, &stat );
-        auto ret = stat == 0 && x ? std::string( x ) : mangled;
-        std::free( x );
-        return ret;
     }
 
     CodePointer pc()
@@ -207,11 +174,15 @@ struct DebugNode
         return pc.cooked();
     }
 
-    llvm::DISubprogram *subprogram()
+    llvm::Function *llvmfunction()
     {
         ASSERT_EQ( kind(), DNKind::Frame );
-        auto F = _ctx.program().llvmfunction( pc() );
-        return llvm::getDISubprogram( F );
+        return _ctx.program().llvmfunction( pc() );
+    }
+
+    llvm::DISubprogram *subprogram()
+    {
+        return llvm::getDISubprogram( llvmfunction() );
     }
 
     void bitcode( std::ostream &out )
@@ -242,42 +213,8 @@ struct DebugNode
     void source( std::ostream &out )
     {
         ASSERT_EQ( _kind, DNKind::Frame );
-        brick::string::Splitter split( "\n", REG_EXTENDED );
         auto di = subprogram();
-        auto src = cc::runtime::source( di->getFilename() );
-        if ( src.empty() )
-            src = brick::fs::readFile( di->getFilename() );
-        /* TODO: also deal with sources outside of runtime! */
-        auto line = split.begin( src );
-        unsigned lineno = 1, active = 0;
-        while ( lineno < di->getLine() )
-            ++ line, ++ lineno;
-        unsigned endline = lineno;
-
-        /* figure out the source code span the function covers; painfully */
-        for ( auto &i : _ctx.program().function( pc() ).instructions )
-        {
-            if ( !i.op )
-                continue;
-            auto op = llvm::cast< llvm::Instruction >( i.op );
-            auto dl = op->getDebugLoc().get();
-            if ( !dl )
-                continue;
-            dl = dl->getInlinedAt() ?: dl;
-            if ( _ctx.program().instruction( pc() ).op == i.op )
-                active = dl->getLine();
-            endline = std::max( endline, dl->getLine() );
-        }
-
-        /* print it */
-        while ( line != split.end() && lineno <= endline )
-        {
-            out << (lineno == active ? ">>" : "  ");
-            out << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
-        }
-        brick::string::ERegexp endbrace( "^[ \t]*}" );
-        if ( endbrace.match( *line ) )
-            out << "  " << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
+        out << print::source( subprogram(), _ctx.program(), pc() );
     }
 
     template< typename Y >
