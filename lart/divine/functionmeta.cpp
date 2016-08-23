@@ -146,7 +146,7 @@ struct IndexFunctions : lart::Pass {
             funNameCStr.push_back( 0 );
 
             auto *instArrayT = llvm::ArrayType::get( instMetaT, m.second.instTableSize );
-            auto *instTable = new llvm::GlobalVariable( mod, instArrayT, true,
+            auto *instTable = new llvm::GlobalVariable( mod, instArrayT, false,
                                 llvm::GlobalValue::ExternalLinkage,
                                 llvm::UndefValue::get( instArrayT ),
                                 "lart.divine.index.table." + funNameStr );
@@ -166,7 +166,7 @@ struct IndexFunctions : lart::Pass {
             auto *lsdaT = llvm::cast< llvm::PointerType >( funcMetaT->getElementType( 9 ) );
             auto *lsdaAT = llvm::ArrayType::get( lsdaT->getElementType(),
                                                  ehtab.tableSizeBound() );
-            auto *lsda = new llvm::GlobalVariable( mod, lsdaAT, true,
+            auto *lsda = new llvm::GlobalVariable( mod, lsdaAT, false,
                                 llvm::GlobalValue::ExternalLinkage,
                                 llvm::UndefValue::get( lsdaAT ),
                                 "lart.divine.index.lsda." + funNameStr );
