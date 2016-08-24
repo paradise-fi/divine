@@ -289,13 +289,18 @@ struct DebugNode
         auto hloc = eval.ptr2h( _address );
         int hoff = hloc.offset();
 
+        std::set< GenericPointer > ptrs;
+
+        if ( _kind == DNKind::Frame )
+            framevars( yield, eval, ptrs );
+
         int i = 0;
         for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
         {
             hloc.offset( hoff + _offset + ptroff->offset() );
             _ctx.heap().read( hloc, ptr );
             auto pp = ptr.cooked();
-            if ( pp.type() == PointerType::Code )
+            if ( pp.type() == PointerType::Code || ptrs.find( pp ) != ptrs.end() )
                 continue;
             pp.offset( 0 );
             yield( "@" + brick::string::fmt( i++ ),
@@ -304,8 +309,6 @@ struct DebugNode
 
         if ( _type && _di_type && _type->isStructTy() )
             struct_fields( yield );
-        if ( _kind == DNKind::Frame )
-            framevars( yield, eval );
     }
 
     template< typename Y >
@@ -336,7 +339,7 @@ struct DebugNode
     }
 
     template< typename Y >
-    void localvar( Y yield, Eval &eval, llvm::DbgDeclareInst *DDI )
+    void localvar( Y yield, Eval &eval, llvm::DbgDeclareInst *DDI, std::set< GenericPointer > &ptrs )
     {
         auto divar = DDI->getVariable();
         auto ditype = divar->getType().resolve( _ctx.program().ditypemap );
@@ -347,6 +350,7 @@ struct DebugNode
 
         PointerV ptr;
         _ctx.heap().read( eval.s2ptr( _ctx.program().valuemap[ var ].slot ), ptr );
+        ptrs.insert( ptr.cooked() );
 
         auto type = var->getType()->getPointerElementType();
         yield( divar->getName().str(),
@@ -354,14 +358,17 @@ struct DebugNode
     }
 
     template< typename Y >
-    void framevars( Y yield, Eval &eval )
+    void framevars( Y yield, Eval &eval, std::set< GenericPointer > &ptrs )
     {
         PointerV fr = _address;
         _ctx.heap().skip( fr, PointerBytes );
         _ctx.heap().read( fr.cooked(), fr );
         if ( !fr.cooked().null() )
+        {
+            ptrs.insert( fr.cooked() );
             yield( "@parent", DebugNode( _ctx, _snapshot, fr.cooked(), 0,
                                          DNKind::Frame, nullptr, nullptr ) );
+        }
 
         auto *insn = &_ctx.program().instruction( pc() );
         if ( !insn->op )
@@ -372,7 +379,7 @@ struct DebugNode
         for ( auto &BB : *F )
             for ( auto &I : BB )
                 if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
-                    localvar( yield, eval, DDI );
+                    localvar( yield, eval, DDI, ptrs );
     }
 
     void dump( std::ostream &o );
