@@ -540,40 +540,31 @@ void Program::computeStatic()
         const llvm::StructLayout *SL_item = TD.getStructLayout( f->getType() );
         auto name = std::string( f->getOperand( 0 )->getOperand( 0 )->getName(),
                                 strlen( "lart.divine.index.name." ), std::string::npos );
-        int offsetBase = TD.getTypeAllocSize( md_func->getOperand( 0 )->getType() ) * i;
-        int frameSizeOffset = offsetBase + SL_item->getElementOffset( 2 );
-        int instCountOffset = offsetBase + SL_item->getElementOffset( 6 );
         auto pc = functionByName( name );
         if ( !pc.function() )
             continue;
         auto &func = function( pc );
-        _ccontext.heap().write( s2hptr( slotref.slot, frameSizeOffset ),
-                                value::Int< 32 >( func.datasize + 2 * PointerBytes ) );
-        ASSERT_LEQ( func.instructions.size(),  llvm::cast< llvm::ConstantInt >( f->getOperand( 6 ) )->getZExtValue() );
-        _ccontext.heap().write( s2hptr( slotref.slot, instCountOffset ),
-                                value::Int< 32 >( func.instructions.size() ) );
 
-        // write instruction table
-        auto instTable = llvm::cast< llvm::GlobalVariable >(
-                            f->getOperand( 7 )->getOperand( 0 ) );
-        auto instTableT = cast< llvm::ArrayType >( instTable->getInitializer()->getType() );
-        ASSERT( valuemap.count( instTable ) );
-        const auto &instTableSlotref = globalmap[ instTable ];
-        // there can be less instructions in DIVINE as it ignores some, such as
-        // calls to llvm.dbg.declare
-        ASSERT_LEQ( func.instructions.size(), instTableT->getNumElements() );
-        auto SL_instMeta = TD.getStructLayout( cast< llvm::StructType >(
-                                instTableT->getElementType() ) );
+        auto writeMetaElem = [&]( int idx, auto val ) {
+            int offset = TD.getTypeAllocSize( md_func->getOperand( 0 )->getType() ) * i
+                          + SL_item->getElementOffset( idx );
+            _ccontext.heap().write( s2hptr( slotref.slot, offset ), val );
+        };
+        writeMetaElem( 2, value::Int< 32 >( func.datasize + 2 * PointerBytes ) ); // frame size
+        writeMetaElem( 6, value::Int< 32 >( func.instructions.size() ) ); // inst count
+
+        // create and write write instruction table
+        auto instTableT = llvm::cast< llvm::PointerType >( f->getOperand( 7 )->getType() )->getElementType();
+        auto instTableSize = TD.getTypeAllocSize( instTableT ) * func.instructions.size();
+        auto instTable = _ccontext.heap().make( instTableSize );
+        writeMetaElem( 7, instTable );
+
+        auto writeInst = [&]( int val ) {
+            _ccontext.heap().write_shift( instTable, value::Int< 32 >( val ) );
+        };
         for ( int j = 0; j < int( func.instructions.size() ); ++j )
         {
             auto &inst = func.instructions[ j ];
-            int base = TD.getTypeAllocSize( instTableT->getElementType() ) * j;
-            auto write = [&]( int idx, int val ) {
-                auto off = base + SL_instMeta->getElementOffset( idx );
-                ASSERT_LEQ( off, instTableSlotref.slot.size() );
-                _ccontext.heap().write( s2hptr( instTableSlotref.slot, off ),
-                                        value::Int< 32 >( val ) );
-            };
             int opcode = 0, subop = 0, offset = 0, size = 0;
 
             if ( inst.op )
@@ -585,20 +576,21 @@ void Program::computeStatic()
                 offset = inst.values.empty() ? 0 : inst.result().offset;
                 size = inst.values.empty() ? 0 : inst.result().size(); /* fixme? in bytes? */
             }
-            write( 0, opcode );
-            write( 1, subop );
-            write( 2, offset );
-            write( 3, size );
+            writeInst( opcode );
+            writeInst( subop );
+            writeInst( offset );
+            writeInst( size );
         }
+        ASSERT_EQ( instTable.cooked().offset(), instTableSize );
 
         // write language specific data for C++ exceptions
         llvm::Function *llvmfn = module->getFunction( name );
         ASSERT( llvmfn );
         lart::divine::CppEhTab tab( *llvmfn );
 
-        auto *lsda = llvm::cast< llvm::GlobalVariable >(
-                        f->getOperand( 9 )->getOperand( 0 ) );
-        tab.insertEhTable( *this, s2hptr( globalmap[ lsda ].slot ), func.typeIDs );
+        auto lsda = _ccontext.heap().make( tab.tableSizeBound() );
+        writeMetaElem( 9, lsda );
+        tab.insertEhTable( *this, lsda.cooked(), func.typeIDs );
     }
 }
 
