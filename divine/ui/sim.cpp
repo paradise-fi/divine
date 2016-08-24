@@ -329,15 +329,22 @@ struct Interpreter
                     std::cerr << k << ": " << v << std::endl;
             } );
         std::cerr << "related:" << std::flush;
+        std::stringstream valued;
         int col = 0;
-        dn.related( [&]( std::string n, auto )
+        dn.related( [&]( std::string n, auto sub )
                     {
                         if ( col + n.size() >= 68 )
                             col = 0, std::cerr << std::endl << "        ";
-                        std::cerr << " " << n;
-                        col += n.size();
+                        auto val = attr( sub, "@value" );
+                        if ( val == "-" )
+                        {
+                            std::cerr << " " << n;
+                            col += n.size();
+                        }
+                        else
+                            valued << "  " << n << ": " << val << std::endl;
                     } );
-        std::cerr << std::endl;
+        std::cerr << std::endl << valued.str();
     }
 
     void info()
