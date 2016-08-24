@@ -66,6 +66,7 @@ void BitCode::init( BitCode::Env env, AutoTraceFlags tr )
     lart.setup( "interrupt" );
     if ( tr )
         lart.setup( "autotrace" );
+    lart.setup( "lowereh" );
 
     auto mod = _module.get();
     if ( mod->getGlobalVariable( "__md_functions" ) && mod->getGlobalVariable( "__md_globals" ) )
