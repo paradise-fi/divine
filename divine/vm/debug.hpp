@@ -76,26 +76,31 @@ struct DebugNode
         return 0;
     }
 
-    llvm::DIDerivedType *di_member()
+    llvm::DIDerivedType *di_derived( uint64_t tag )
     {
         if ( !_di_type )
             return nullptr;
         auto derived = llvm::dyn_cast< llvm::DIDerivedType >( _di_type );
-        if ( derived && derived->getTag() == llvm::dwarf::DW_TAG_member )
+        if ( derived && derived->getTag() == tag )
             return derived;
         return nullptr;
     }
 
-    llvm::DIType *di_type()
+    llvm::DIDerivedType *di_member() { return di_derived( llvm::dwarf::DW_TAG_member ); }
+    llvm::DIDerivedType *di_pointer() { return di_derived( llvm::dwarf::DW_TAG_pointer_type ); }
+
+    llvm::DIType *di_base()
     {
         if ( di_member() )
             return di_member()->getBaseType().resolve( _ctx.program().ditypemap );
+        if ( di_pointer() )
+            return di_pointer()->getBaseType().resolve( _ctx.program().ditypemap );
         return _di_type;
     }
 
     llvm::DICompositeType *di_composite()
     {
-        return llvm::dyn_cast< llvm::DICompositeType >( di_type() );
+        return llvm::dyn_cast< llvm::DICompositeType >( di_base() );
     }
 
     int width()
@@ -193,7 +198,7 @@ struct DebugNode
         yield( "@address", brick::string::fmt( PointerV( _address ) ) );
 
         if ( _di_type )
-            yield( "@type", di_type()->getName().str() );
+            yield( "@type", di_base()->getName().str() );
 
         if ( !valid() )
             return;
@@ -294,6 +299,15 @@ struct DebugNode
 
         if ( _kind == DNKind::Frame )
             framevars( yield, eval, ptrs );
+
+        if ( _type && _di_type && _type->isPointerTy() )
+        {
+            PointerV addr;
+            _ctx.heap().read( hloc + _offset, addr );
+            ptrs.insert( addr.cooked() );
+            yield( "@deref", DebugNode( _ctx, _snapshot, addr.cooked(), 0, DNKind::Object,
+                                        _type->getPointerElementType(), di_base() ) );
+        }
 
         for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
         {
