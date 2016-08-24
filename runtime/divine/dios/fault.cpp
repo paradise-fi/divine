@@ -12,7 +12,7 @@ void fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noex
     InTrace _; // avoid dumping what we do
 
     __dios_trace_t( "VM Fault" );
-    switch ( what ) {
+    switch ( static_cast< int >( what ) ) {
     case _VM_F_NoFault:
         __dios_trace_t( "FAULT: No fault" );
         break;
@@ -58,6 +58,7 @@ void fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noex
         traceInternal( 0, "%d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );
 
     __vm_jump( cont_frame, cont_pc, !mask );
+    __builtin_unreachable();
 }
 
 } // namespace __dios

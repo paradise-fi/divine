@@ -56,7 +56,7 @@ void *init( const _VM_Env *env ) {
 /*
  * DiOS entry point. Defined weak to allow user to redefine it.
  */
-extern "C" void *__sys_init( const _VM_Env *env ) __attribute__((weak)) {
+extern "C" void *  __attribute__((weak)) __sys_init( const _VM_Env *env ) {
     return __dios::init( env );
 }
 
@@ -93,4 +93,5 @@ _Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept {
         __dios_assert_v( f, "__dios_unwind reached end of the stack and did not found target frame" );
     }
     __vm_jump( to, pc, !m );
+    __builtin_unreachable();
 }

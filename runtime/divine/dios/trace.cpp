@@ -8,7 +8,7 @@ namespace __dios {
 
 bool InTrace::inTrace = false;
 
-void traceInternalV( int indent, const char *fmt, va_list ap ) noexcept __attribute__((always_inline))
+void __attribute__((always_inline)) traceInternalV( int indent, const char *fmt, va_list ap ) noexcept
 {
     static int fmtIndent = 0;
     InTrace _;
