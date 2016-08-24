@@ -200,7 +200,7 @@ struct DebugNode
         auto hloc = eval.ptr2h( _address );
         value( yield, eval );
 
-        yield( "@raw", print::raw( _ctx.heap(), hloc, size() ) );
+        yield( "@raw", print::raw( _ctx.heap(), hloc + _offset, size() ) );
 
         if ( _address.type() == PointerType::Const || _address.type() == PointerType::Global )
             yield( "@slot", brick::string::fmt( eval.ptr2s( _address ) ) );
@@ -290,9 +290,9 @@ struct DebugNode
         int hoff = hloc.offset();
 
         int i = 0;
-        for ( auto ptroff : _ctx.heap().pointers( hloc, hloc.offset(), size() ) )
+        for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
         {
-            hloc.offset( hoff + ptroff->offset() );
+            hloc.offset( hoff + _offset + ptroff->offset() );
             _ctx.heap().read( hloc, ptr );
             auto pp = ptr.cooked();
             if ( pp.type() == PointerType::Code )
