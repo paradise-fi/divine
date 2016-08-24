@@ -169,10 +169,14 @@ struct Explore
         Eval eval( program(), _ctx );
         _ctx.mask( true );
         eval.run(); /* run __sys_init */
+        auto result = eval._result.cooked();
 
-        auto st = _ctx.snap( eval._result.cooked() );
-        _states.insert( st );
-        yield( st );
+        if ( !result.null() )
+        {
+            auto st = _ctx.snap( result );
+            _states.insert( st );
+            yield( st );
+        }
     }
 };
 
