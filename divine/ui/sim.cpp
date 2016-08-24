@@ -323,9 +323,9 @@ struct Interpreter
     void show( DN dn, bool detailed = false )
     {
         dn.attributes(
-            [&]( auto k, auto v )
+            [&]( std::string k, auto v )
             {
-                if ( k[0] != '_' || detailed )
+                if ( k != "@raw" || detailed )
                     std::cerr << k << ": " << v << std::endl;
             } );
         std::cerr << "related:" << std::flush;
@@ -343,7 +343,7 @@ struct Interpreter
     void info()
     {
         auto top = get( "$top" ), frame = get( "$frame" );
-        auto sym = attr( top, "symbol" ), loc = attr( top, "location" );
+        auto sym = attr( top, "@symbol" ), loc = attr( top, "@location" );
         std::cerr << "# executing " << sym;
         if ( sym.size() + loc.size() > 60 )
             std::cerr << std::endl << "#        at ";
@@ -351,7 +351,7 @@ struct Interpreter
             std::cerr << " at ";
         std::cerr << loc << std::endl;
         if ( frame._address != top._address )
-            std::cerr << "# NOTE: $frame in " << attr( frame, "symbol" ) << std::endl;
+            std::cerr << "# NOTE: $frame in " << attr( frame, "@symbol" ) << std::endl;
     }
 
     Interpreter( BC bc )
@@ -533,7 +533,7 @@ struct Interpreter
         set( "$$", bt.var );
         do {
             show( get( "$$" ) );
-            set( "$$", "$$.parent", true );
+            set( "$$", "$$.@parent", true );
             std::cerr << std::endl;
         } while ( get( "$$" ).valid() );
     }
@@ -542,7 +542,7 @@ struct Interpreter
     {
         auto dn = get( s.var );
         if ( s.raw )
-            std::cerr << attr( dn, "_raw" ) << std::endl;
+            std::cerr << attr( dn, "@raw" ) << std::endl;
         else
             show( dn );
     }

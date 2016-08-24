@@ -173,13 +173,13 @@ struct DebugNode
                     using V = decltype( raw );
                     if ( bitoffset() || width() != size() * 8 )
                     {
-                        yield( "raw_value", brick::string::fmt( raw ) );
+                        yield( "@raw_value", brick::string::fmt( raw ) );
                         auto val = raw >> value::Int< 32 >( bitoffset() );
                         val = val & V( bitlevel::ones< typename V::Raw >( width() ) );
-                        yield( "value", brick::string::fmt( val ) );
+                        yield( "@value", brick::string::fmt( val ) );
                     }
                     else
-                        yield( "value", brick::string::fmt( raw ) );
+                        yield( "@value", brick::string::fmt( raw ) );
                 } );
     }
 
@@ -189,10 +189,10 @@ struct DebugNode
         Eval eval( _ctx.program(), _ctx );
         Program &program = _ctx.program();
 
-        yield( "address", brick::string::fmt( PointerV( _address ) ) );
+        yield( "@address", brick::string::fmt( PointerV( _address ) ) );
 
         if ( _di_type )
-            yield( "type", di_type()->getName().str() );
+            yield( "@type", di_type()->getName().str() );
 
         if ( !valid() )
             return;
@@ -200,10 +200,10 @@ struct DebugNode
         auto hloc = eval.ptr2h( _address );
         value( yield, eval );
 
-        yield( "_raw", print::raw( _ctx.heap(), hloc, size() ) );
+        yield( "@raw", print::raw( _ctx.heap(), hloc, size() ) );
 
         if ( _address.type() == PointerType::Const || _address.type() == PointerType::Global )
-            yield( "slot", brick::string::fmt( eval.ptr2s( _address ) ) );
+            yield( "@slot", brick::string::fmt( eval.ptr2s( _address ) ) );
 
         if ( _kind == DNKind::Frame )
         {
@@ -213,16 +213,16 @@ struct DebugNode
             if ( insn->op )
             {
                 eval._instruction = insn;
-                yield( "instruction", print::instruction( eval ) );
+                yield( "@instruction", print::instruction( eval ) );
             }
             if ( !insn->op )
                 insn = &program.instruction( pc() + 1 );
             ASSERT( insn->op );
             auto op = llvm::cast< llvm::Instruction >( insn->op );
-            yield( "location", location( *op ) );
+            yield( "@location", location( *op ) );
 
             auto sym = op->getParent()->getParent()->getName().str();
-            yield( "symbol", print::demangle( sym ) );
+            yield( "@symbol", print::demangle( sym ) );
         }
     }
 
@@ -298,7 +298,7 @@ struct DebugNode
             if ( pp.type() == PointerType::Code )
                 continue;
             pp.offset( 0 );
-            yield( "_ptr_" + brick::string::fmt( i++ ),
+            yield( "@" + brick::string::fmt( i++ ),
                    DebugNode( _ctx, _snapshot, pp, 0, DNKind::Object, nullptr, nullptr ) );
         }
 
@@ -360,8 +360,8 @@ struct DebugNode
         _ctx.heap().skip( fr, PointerBytes );
         _ctx.heap().read( fr.cooked(), fr );
         if ( !fr.cooked().null() )
-            yield( "parent", DebugNode( _ctx, _snapshot, fr.cooked(), 0,
-                                        DNKind::Frame, nullptr, nullptr ) );
+            yield( "@parent", DebugNode( _ctx, _snapshot, fr.cooked(), 0,
+                                         DNKind::Frame, nullptr, nullptr ) );
 
         auto *insn = &_ctx.program().instruction( pc() );
         if ( !insn->op )
