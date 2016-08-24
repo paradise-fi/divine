@@ -319,13 +319,12 @@ struct CppEhTab {
             for ( auto &h : a.handlers ) {
                 auto base = table.size();
                 pushLeb_n( table, typeIndex[ h ] );
+
                 // push next action offset for this call site
                 if ( &h == &a.handlers.back() ) {
                     pushLeb_n( table, 0 ); // end
-                } else {
-                    auto offset = (((table.size() - base) * 2) + 7) % 8; // should be enough
-                    pushLeb_n( table, offset );
-                }
+                } else
+                    pushLeb_n( table, 4, 4 ); // offset 4 written in 4 bytes
             }
         }
         return table;
@@ -334,7 +333,7 @@ struct CppEhTab {
     std::string exceptionSpecTable() {
         std::string table;
         for ( auto &es : exceptSpecs ) {
-            typeIndex[ &es ] = table.size() + 1; // indices start with 1
+            typeIndex[ &es ] = -( table.size() + 1 ); // indices start with 1 and are negative
             for ( auto *ti : es.typeInfos )
                 pushLeb_n( table, typeIndex[ ti ] );
             pushLeb_n( table, 0 ); // end of record
