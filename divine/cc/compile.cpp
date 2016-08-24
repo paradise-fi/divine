@@ -225,6 +225,7 @@ void Compile::setupLibs() {
                         libflags( cxxflags, "-DLIBCXXABI_USE_LLVM_UNWINDER" ) );
         compileLibrary( joinPath( runtime::srcDir, "libcxx" ), libflags( cxxflags ) );
         compileLibrary( joinPath( runtime::srcDir, "divine" ), libflags( cxxflags ) );
+        compileLibrary( joinPath( runtime::srcDir, "dios" ), libflags( cxxflags ) );
         compileLibrary( joinPath( runtime::srcDir, "filesystem" ), libflags( cxxflags ) );
         compileLibrary( joinPath( runtime::srcDir, "lart" ), libflags( cxxflags ) );
     }
