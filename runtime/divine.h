@@ -48,6 +48,13 @@ enum _VM_Trace
     _VM_T_Flag /* takes one integer parameter */
 };
 
+enum _VM_RunMode {
+    _VM_R_Unspecified = 0,
+    _VM_R_Run,
+    _VM_R_Verify,
+    _VM_R_Sim
+};
+
 struct _VM_Env
 {
     const char *key;
