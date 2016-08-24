@@ -10,15 +10,13 @@
 #include <brick-cmd>
 #include <brick-fs>
 
+#include <runtime/divine.h>
+
 namespace divine {
 namespace ui {
 
 using namespace std::literals;
 namespace cmd = brick::cmd;
-
-enum RunMode {
-    ModeUnspecified = 0, ModeRun, ModeVerify, ModeSim
-};
 
 struct Command
 {
@@ -32,13 +30,13 @@ struct WithBC : Command
     std::string _file;
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
-    RunMode _run_mode;
+    _VM_RunMode _run_mode;
     vm::AutoTraceFlags _autotrace;
 
     std::shared_ptr< vm::BitCode > _bc;
     void setup();
 
-    WithBC( RunMode run_mode = RunMode::ModeUnspecified )
+    WithBC( _VM_RunMode run_mode = _VM_R_Unspecified )
         : _run_mode(run_mode) {}
 };
 
@@ -85,17 +83,17 @@ struct Verify : WithBC
     }
 
     void run();
-    Verify() : WithBC( RunMode::ModeVerify ) {}
+    Verify() : WithBC( _VM_R_Verify ) {}
 };
 
 struct Run : WithBC {
     void run();
-    Run() : WithBC( RunMode::ModeRun ) {}
+    Run() : WithBC( _VM_R_Run ) {}
 };
 
 struct Sim : WithBC {
     void run();
-    Sim() : WithBC( RunMode::ModeSim ) {}
+    Sim() : WithBC( _VM_R_Sim ) {}
 };
 
 struct Draw : WithBC
