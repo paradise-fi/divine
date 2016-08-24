@@ -29,18 +29,31 @@ void Verify::run()
 {
     vm::Explore ex( _bc );
     int edgecount = 0, statecount = 0;
+    timeval start, now;
+    ::gettimeofday(&start, NULL);
 
     ss::search( ss::Order::PseudoBFS, ex, 1, ss::passive_listen(
                     [&]( auto, auto, auto trace )
                     {
-                        std::cerr << "T: " << brick::string::fmt( trace ) << std::endl;
                         ++edgecount;
                     },
                     [&]( auto st )
                     {
                         ++statecount;
+                        if ( statecount % 100 == 0 )
+                        {
+                            ::gettimeofday(&now, NULL);
+                            std::stringstream time;
+                            int seconds = now.tv_sec - start.tv_sec;
+                            float avg = float( statecount ) / seconds;
+                            time << seconds / 60 << ":"
+                                 << std::setw( 2 ) << std::setfill( '0' ) << seconds % 60;
+                            std::cerr << "\rsearching: " << edgecount << " edges and "
+                                      << statecount << " states found in " << time.str() << ", for "
+                                      << std::fixed << std::setprecision( 1 ) << avg << " states/s average";
+                        }
                     } ) );
-    std::cerr << "found " << statecount << " states and " << edgecount << " edges" << std::endl;
+    std::cerr << std::endl << "found " << statecount << " states and " << edgecount << " edges" << std::endl;
 }
 
 }
