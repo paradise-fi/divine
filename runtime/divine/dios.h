@@ -31,10 +31,6 @@ enum _DiOS_Fault
     _DiOS_F_Last
 };
 
-enum _DiOS_RunMode {
-    ModeUnspecified = 0, ModeRun, ModeVerify, ModeSim
-};
-
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
             __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \

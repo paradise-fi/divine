@@ -26,7 +26,7 @@ void *init( const _VM_Env *env ) {
     __dios_assert_v( sched_arg, "divine.runmode not provided" );
     __dios_assert_v( sched_arg->size == 1, "divine.runmode has unxpected size (uint8_t expected)" );
     auto mode = reinterpret_cast< const uint8_t * >( sched_arg->value )[0];
-    if ( mode == _DiOS_RunMode::ModeRun || mode == _DiOS_RunMode::ModeSim )
+    if ( mode == _VM_R_Run || mode == _VM_R_Sim )
         __vm_set_sched( __dios::sched<true> );
     else
         __vm_set_sched( __dios::sched<false> );
