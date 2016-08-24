@@ -327,7 +327,7 @@ struct DebugNode
             if ( auto CTE = llvm::dyn_cast< llvm::DIDerivedType >( subtype ) )
             {
                 if ( idx + 1 < int( ST->getNumElements() ) &&
-                     CTE->getOffsetInBits() > 8 * SLO->getElementOffset( idx + 1 ) )
+                     CTE->getOffsetInBits() >= 8 * SLO->getElementOffset( idx + 1 ) )
                     idx ++, STE ++;
                 yield( CTE->getName().str(),
                        DebugNode( _ctx, _snapshot, _address, SLO->getElementOffset( idx ),
