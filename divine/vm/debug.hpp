@@ -329,7 +329,7 @@ struct DebugNode
                 if ( idx + 1 < int( ST->getNumElements() ) &&
                      CTE->getOffsetInBits() > 8 * SLO->getElementOffset( idx + 1 ) )
                     idx ++, STE ++;
-                yield( "+" + CTE->getName().str(),
+                yield( CTE->getName().str(),
                        DebugNode( _ctx, _snapshot, _address, SLO->getElementOffset( idx ),
                                   DNKind::Object, *STE, CTE ) );
             }
@@ -349,7 +349,7 @@ struct DebugNode
         _ctx.heap().read( eval.s2ptr( _ctx.program().valuemap[ var ].slot ), ptr );
 
         auto type = var->getType()->getPointerElementType();
-        yield( std::string( "+" ) + divar->getName().str(),
+        yield( divar->getName().str(),
                DebugNode( _ctx, _snapshot, ptr.cooked(), 0, DNKind::Object, type, ditype ) );
     }
 
