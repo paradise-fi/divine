@@ -294,7 +294,6 @@ struct DebugNode
         if ( _kind == DNKind::Frame )
             framevars( yield, eval, ptrs );
 
-        int i = 0;
         for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
         {
             hloc.offset( hoff + _offset + ptroff->offset() );
@@ -303,7 +302,7 @@ struct DebugNode
             if ( pp.type() == PointerType::Code || ptrs.find( pp ) != ptrs.end() )
                 continue;
             pp.offset( 0 );
-            yield( "@" + brick::string::fmt( i++ ),
+            yield( "@" + brick::string::fmt( ptroff->offset() ),
                    DebugNode( _ctx, _snapshot, pp, 0, DNKind::Object, nullptr, nullptr ) );
         }
 
