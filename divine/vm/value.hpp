@@ -115,7 +115,7 @@ struct Int : Base
     typename std::enable_if< (width < w), Raw >::type signbit() { return 0; }
 
     template< int w > Int( Int< w, is_signed > i )
-        : _raw( i._raw ), _m( i._m ), _ispointer( i._ispointer )
+        : _cooked( i._cooked ), _m( i._m ), _ispointer( i._ispointer )
     {
         if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
             _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );

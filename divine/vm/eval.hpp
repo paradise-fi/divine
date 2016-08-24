@@ -1824,6 +1824,13 @@ struct Eval
                              int f() { int x = 30; return g( 0, 2, &x, 10 ); }
                              )" ), 42 );
     }
+
+    TEST(sext)
+    {
+        int x = testF( "int f( int a, char b ) { return a + b; }",
+                       IntV( 1 ), vm::value::Int< 8 >( -2 ) );
+        ASSERT_EQ( x, -1 );
+    }
 };
 
 }
