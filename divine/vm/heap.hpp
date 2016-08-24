@@ -304,11 +304,8 @@ struct SimpleHeap : HeapMixin< Self >
 
     bool free( HeapPointer p )
     {
-        auto i = ptr2i( p );
-        if ( !_objects.valid( i ) )
+        if ( !valid( p ) )
             return false;
-        // _shadows.free( shloc( p ) );
-        // _objects.free( i );
         _l.objmap.erase( p.object() );
         return true;
     }
