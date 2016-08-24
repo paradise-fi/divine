@@ -145,12 +145,6 @@ struct IndexFunctions : lart::Pass {
             std::string funNameCStr = funNameStr;
             funNameCStr.push_back( 0 );
 
-            auto *instArrayT = llvm::ArrayType::get( instMetaT, m.second.instTableSize );
-            auto *instTable = new llvm::GlobalVariable( mod, instArrayT, false,
-                                llvm::GlobalValue::ExternalLinkage,
-                                llvm::UndefValue::get( instArrayT ),
-                                "lart.divine.index.table." + funNameStr );
-
             auto *funName = util::getStringGlobal( funNameCStr, mod );
             funName->setName( "lart.divine.index.name." + funNameStr );
             auto type = m.second.type;
@@ -162,14 +156,7 @@ struct IndexFunctions : lart::Pass {
                                     m.second.entryPoint->getPersonalityFn(), persT )
                             : llvm::ConstantPointerNull::get( persT );
 
-            CppEhTab ehtab( *m.second.entryPoint );
             auto *lsdaT = llvm::cast< llvm::PointerType >( funcMetaT->getElementType( 9 ) );
-            auto *lsdaAT = llvm::ArrayType::get( lsdaT->getElementType(),
-                                                 ehtab.tableSizeBound() );
-            auto *lsda = new llvm::GlobalVariable( mod, lsdaAT, false,
-                                llvm::GlobalValue::ExternalLinkage,
-                                llvm::UndefValue::get( lsdaAT ),
-                                "lart.divine.index.lsda." + funNameStr );
 
             metatable.push_back( llvm::ConstantStruct::get( funcMetaT, {
                     llvm::ConstantExpr::getPointerCast( funName, funcMetaT->getElementType( 0 ) ),
@@ -181,10 +168,9 @@ struct IndexFunctions : lart::Pass {
                     llvm::ConstantExpr::getPointerCast( funType,
                                             funcMetaT->getElementType( 5 ) ),
                     mkint( funcMetaT, 6, m.second.instTableSize ),
-                    llvm::ConstantExpr::getPointerCast( instTable,
-                            llvm::PointerType::getUnqual( instMetaT ) ),
+                    llvm::ConstantPointerNull::get( llvm::PointerType::getUnqual( instMetaT ) ),
                     pers,
-                    llvm::ConstantExpr::getPointerCast( lsda, lsdaT )
+                    llvm::ConstantPointerNull::get( lsdaT )
                 } ) );
         }
 
