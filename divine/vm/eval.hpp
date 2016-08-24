@@ -441,6 +441,7 @@ struct Eval
                     case  1: return op< Guard, value::Int<  1 > >( _op );
                     case  8: return op< Guard, value::Int<  8 > >( _op );
                     case 16: return op< Guard, value::Int< 16 > >( _op );
+                    case 24: return op< Guard, value::Int< 24 > >( _op );
                     case 32: return op< Guard, value::Int< 32 > >( _op );
                     case 64: return op< Guard, value::Int< 64 > >( _op );
                 }
