@@ -278,18 +278,19 @@ struct Interpreter
             default: UNREACHABLE( "impossible case" );
         }
 
-        auto _dn = std::make_unique< DN >( dn );
+        std::unique_ptr< DN > _dn = std::make_unique< DN >( dn ), _dn_next;
 
         for ( ; comp != split.end(); ++comp )
         {
             bool found = false;
-            dn.related( [&]( auto n, auto rel )
-                         {
-                             if ( *comp == n )
-                                found = true, _dn = std::make_unique< DN >( rel );
-                         } );
+            _dn->related( [&]( auto n, auto rel )
+                          {
+                              if ( *comp == n )
+                                  found = true, _dn_next = std::make_unique< DN >( rel );
+                          } );
             if ( silent && !found )
                 return nullDN();
+            _dn = std::move( _dn_next );
             if ( !found )
                 throw brick::except::Error( "lookup failed at " + *comp );
         }
