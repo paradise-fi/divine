@@ -63,9 +63,10 @@ struct Void : Base
     void raw( Raw ) {}
 };
 
-template< int width, bool is_signed = false >
+template< int _width, bool is_signed = false >
 struct Int : Base
 {
+    static const int width = _width;
     using Raw = brick::bitlevel::bitvec< width >;
     using Cooked = Choose< is_signed, typename _signed< width >::T, Raw >;
 
