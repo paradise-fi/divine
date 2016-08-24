@@ -131,13 +131,17 @@ struct Int : Base
     Int operator&( Int o ) { return bitwise( _raw & o._raw, (_m & ~_raw) | (o._m & ~o._raw), o ); }
     Int operator^( Int o ) { return bitwise( _raw ^ o._raw, 0, o ); }
     Int operator~() { Int r = *this; r._raw = ~_raw; return r; }
-    Int operator<<( Int< width, false > sh ) {
+
+    template< int w >
+    Int operator<<( Int< w, false > sh ) {
         if ( !sh.defined() )
             return Int( 0, 0, false );
         return Int( raw() << sh.cooked(),
                     _m << sh.cooked() | bitlevel::ones< Raw >( sh.cooked() ), false );
     }
-    Int operator>>( Int< width, false > sh ) {
+
+    template< int w >
+    Int operator>>( Int< w, false > sh ) {
         if ( !sh.defined() )
             return Int( 0, 0, false );
 
