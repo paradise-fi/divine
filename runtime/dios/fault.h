@@ -4,7 +4,7 @@
 #ifndef __DIOS_FAULT_H__
 #define __DIOS_FAULT_H__
 
-#include <divine/dios.h>
+#include <dios.h>
 
 namespace __dios {
 

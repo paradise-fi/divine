@@ -13,7 +13,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <utility>
-#include <divine/dios.h>
+#include <dios.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"

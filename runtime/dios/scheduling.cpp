@@ -2,7 +2,7 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 //                 2016 Petr Rockai <me@mornfall.net>
 
-#include <divine/dios/scheduling.h>
+#include <dios/scheduling.h>
 
 __dios::ControlFlow *__dios::Scheduler::_cf;
 

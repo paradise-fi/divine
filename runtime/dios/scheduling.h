@@ -6,8 +6,8 @@
 #define __DIOS_SCHEDULING_H__
 
 #include <cstring>
-#include <divine/dios.h>
-#include <divine/dios/syscall.h>
+#include <dios.h>
+#include <dios/syscall.h>
 
 // Syscall implementation prototypes
 void __sc_start_thread( void *retval, va_list vl );

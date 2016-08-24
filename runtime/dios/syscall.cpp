@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
-#include <divine/dios/syscall.h>
-#include <divine/dios/scheduling.h>
+#include <dios/syscall.h>
+#include <dios/scheduling.h>
 
 __dios::Syscall *__dios::Syscall::instance;
 

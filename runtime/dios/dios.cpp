@@ -2,12 +2,12 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 //                 2016 Petr Rockai <me@mornfall.net>
 
-#include <divine/dios.h>
+#include <dios.h>
 #include <divine/opcodes.h>
-#include <divine/dios/main.h>
-#include <divine/dios/scheduling.h>
-#include <divine/dios/trace.h>
-#include <divine/dios/fault.h>
+#include <dios/main.h>
+#include <dios/scheduling.h>
+#include <dios/trace.h>
+#include <dios/fault.h>
 
 namespace __dios {
 

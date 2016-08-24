@@ -3,7 +3,7 @@
 
 
 #include <algorithm>
-#include <divine/dios/main.h>
+#include <dios/main.h>
 
 
 int main(...);

@@ -2,8 +2,8 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 
 
-#include <divine/dios/fault.h>
-#include <divine/dios/trace.h>
+#include <dios/fault.h>
+#include <dios/trace.h>
 
 namespace __dios {
 

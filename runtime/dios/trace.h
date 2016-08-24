@@ -5,7 +5,7 @@
 #define __DIOS_TRACE_H__
 
 #include <cstdarg>
-#include <divine/dios.h>
+#include <dios.h>
 
 namespace __dios {
 

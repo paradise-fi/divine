@@ -3,8 +3,8 @@ add_subdirectory( native )
 include( stringify )
 
 file( GLOB SRC_RUNTIME LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-      *.cpp divine/*.cpp divine/dios/*.cpp
-      *.h divine/*.h divine/dios/*.h atomic sys/*.h bits/*.h
+      *.cpp divine/*.cpp dios/*.cpp
+      *.h divine/*.h dios/*.h atomic sys/*.h bits/*.h
       pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h pdclib/functions/*/*.c
       pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c
       libm/*.c libm/*.h libm/bits/*.h

@@ -4,7 +4,7 @@
 #define __DIOS_MAIN_H__
 
 #include <utility>
-#include <divine/dios.h>
+#include <dios.h>
 
 namespace __dios {
 

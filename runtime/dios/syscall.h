@@ -5,7 +5,7 @@
 
 #include <cstdarg>
 #include <new>
-#include <divine/dios.h>
+#include <dios.h>
 
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {

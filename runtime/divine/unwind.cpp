@@ -6,7 +6,7 @@
 #include <divine.h>
 #include <divine/metadata.h>
 #include <divine/opcodes.h>
-#include <divine/dios.h>
+#include <dios.h>
 #include <climits>
 
 struct _Unwind_Context {
