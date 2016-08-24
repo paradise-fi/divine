@@ -3,8 +3,6 @@
 #include <dios/syscall.h>
 #include <dios/scheduling.h>
 
-__dios::Syscall *__dios::Syscall::instance;
-
 void __dios_syscall_trap() noexcept {
     int mask = __vm_mask( 1 );
     __vm_interrupt( 1 );
@@ -18,7 +16,7 @@ void __dios_syscall( int syscode, void* ret, ... ) {
 
     va_list vl;
     va_start( vl, ret );
-    __dios::Syscall::get().call( syscode, ret, vl );
+    __dios::Context::get()->syscall->call( syscode, ret, vl );
     va_end( vl );
     __vm_mask( mask );
 }

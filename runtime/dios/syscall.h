@@ -41,7 +41,9 @@ CPP_END
 namespace __dios {
 
 struct Syscall {
-    Syscall() noexcept : _syscode( _SC_INACTIVE ) { }
+    Syscall( Context *cont ) noexcept : _syscode( _SC_INACTIVE ), _cont( cont ) {
+        __dios_assert( cont );
+    }
 
     void call(int syscode, void* ret, va_list& args) noexcept {
         _syscode = static_cast< _DiOS_SC >( syscode );
@@ -60,12 +62,8 @@ struct Syscall {
         return false;
     }
 
-    static Syscall& get() noexcept {
-        if ( !instance ) {
-            instance = static_cast< Syscall * > ( __vm_make_object( sizeof( Syscall ) ) );
-            new ( instance ) Syscall();
-        }
-        return *instance;
+    Context *get_context() {
+        return _cont;
     }
 
 private:
@@ -73,7 +71,7 @@ private:
     void *_ret;
     va_list _args;
 
-    static Syscall *instance;
+    Context *_cont;
 };
 
 } // namespace __dios

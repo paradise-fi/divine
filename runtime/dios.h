@@ -106,6 +106,26 @@ CPP_END
 
 namespace __dios {
 
+template < class T, class... Args >
+T *new_object( Args... args ) {
+    T* obj = static_cast< T * >( __vm_make_object( sizeof( T ) ) );
+    new (obj) T( args... );
+    return obj;
+}
+
+struct Scheduler;
+struct Syscall;
+
+struct Context {
+    Scheduler *scheduler;
+    Syscall *syscall;
+
+    static Context *_ctx;
+
+    Context();
+    static Context *get() { return _ctx; }
+};
+
 template< bool fenced >
 struct _InterruptMask {
 

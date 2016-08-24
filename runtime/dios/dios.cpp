@@ -6,10 +6,21 @@
 #include <divine/opcodes.h>
 #include <dios/main.h>
 #include <dios/scheduling.h>
+#include <dios/syscall.h>
 #include <dios/trace.h>
 #include <dios/fault.h>
 
 namespace __dios {
+
+Context::Context() :
+        scheduler( __dios::new_object< Scheduler >() ),
+        syscall( __dios::new_object< Syscall >( this ) )
+    {
+        __dios_assert( !_ctx );
+        _ctx = this;
+    };
+
+Context *Context::_ctx;
 
 void *init( const _VM_Env *env ) {
     const _VM_Env *e = env;
@@ -31,9 +42,7 @@ void *init( const _VM_Env *env ) {
     else
         __vm_set_sched( __dios::sched<false> );
 
-    // Create scheduler context
-    void *cf = __vm_make_object( sizeof( ControlFlow ) );
-    Scheduler scheduler( cf );
+    auto context = new_object< Context >();
 
     // Find & run main function
     _DiOS_FunPtr main = __dios_get_fun_ptr( "main" );
@@ -45,10 +54,10 @@ void *init( const _VM_Env *env ) {
 
     auto argv = construct_main_arg( "arg.", env, true );
     auto envp = construct_main_arg( "env.", env );
-    scheduler.start_main_thread( main, argv.first, argv.second, envp.second );
+    context->scheduler->start_main_thread( main, argv.first, argv.second, envp.second );
     __dios_trace_t( "Main thread started" );
 
-    return scheduler.get_cf();
+    return context;
 }
 
 } // namespace __dios

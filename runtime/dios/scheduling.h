@@ -112,14 +112,7 @@ struct ControlFlow {
 };
 
 struct Scheduler {
-    Scheduler() {
-        __dios_assert( _cf );
-    }
-
-    Scheduler( void *cf ) {
-        _cf =  static_cast< ControlFlow * >( cf );
-        __dios_assert( cf );
-    }
+    Scheduler() : _cf( static_cast< ControlFlow * >( __vm_make_object( sizeof( ControlFlow ) ) ) ) { }
 
     Thread* get_threads() const noexcept {
         return &( _cf->main_thread );
@@ -245,21 +238,21 @@ struct Scheduler {
         return _cf->active_thread;
     }
 private:
-    static ControlFlow* _cf;
+    ControlFlow* _cf;
 };
 
 template < bool THREAD_AWARE_SCHED >
 void *sched( int, void *state ) noexcept {
-    Scheduler scheduler( state );
-    if ( Syscall::get().handle() ) {
-        __vm_jump( scheduler.run_thread< THREAD_AWARE_SCHED >(), nullptr, 1 );
-        return scheduler.get_cf();
+    auto ctx = static_cast< Context * >( state );
+    if ( ctx->syscall->handle() ) {
+        __vm_jump( ctx->scheduler->run_thread< THREAD_AWARE_SCHED >(), nullptr, 1 );
+        return ctx;
     }
 
-    _VM_Frame *jmp = scheduler.run_threads< THREAD_AWARE_SCHED >();
+    _VM_Frame *jmp = ctx->scheduler->run_threads< THREAD_AWARE_SCHED >();
     if ( jmp ) {
         __vm_jump( jmp, nullptr, 1 );
-        return scheduler.get_cf();
+        return ctx;
     }
 
     return nullptr;

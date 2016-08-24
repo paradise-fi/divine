@@ -4,8 +4,6 @@
 
 #include <dios/scheduling.h>
 
-__dios::ControlFlow *__dios::Scheduler::_cf;
-
 _DiOS_ThreadId __dios_start_thread( _DiOS_FunPtr routine, void *arg,
     _DiOS_FunPtr cleanup ) noexcept
 {
@@ -30,17 +28,17 @@ void __sc_start_thread( void *retval, va_list vl ) {
     auto cleanup = va_arg( vl, __dios::FunPtr );
     auto ret = static_cast< __dios::ThreadId * >( retval );
 
-    *ret = __dios::Scheduler().start_thread( routine, arg, cleanup );
+    *ret = __dios::Context::get()->scheduler->start_thread( routine, arg, cleanup );
 }
 
 void __sc_kill_thread( void *, va_list vl ) {
     auto id = va_arg( vl, __dios::ThreadId );
     auto reason = va_arg( vl, int );
 
-    __dios::Scheduler().kill_thread( id, reason );
+    __dios::Context::get()->scheduler->kill_thread( id, reason );
 }
 
 void __sc_get_thread_id( void *retval, va_list vl ) {
     auto ret = static_cast< __dios::ThreadId * >( retval );
-    *ret = __dios::Scheduler().get_thread_id();
+    *ret = __dios::Context::get()->scheduler->get_thread_id();
 }
