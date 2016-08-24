@@ -22,6 +22,8 @@
 #include <divine/ss/search.hpp>
 #include <divine/ui/cli.hpp>
 
+#include <sys/time.h>
+
 namespace divine {
 namespace ui {
 
