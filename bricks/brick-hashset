@@ -60,9 +60,6 @@ struct DefaultHasher
     {
         return s == t;
     }
-
-    template< typename X >
-    bool valid( const X &t ) const { return t != X(); }
 };
 
 static inline hash64_t highbits( hash64_t orig, int bits )
@@ -1085,7 +1082,6 @@ struct test_hasher {
     template< typename X >
     uint64_t operator()( const X &x ) const { return hash( x ).first; }
 
-    bool valid( int t ) const { return t != 0; }
     bool equal( int a, int b ) const { return a == b; }
 };
 
@@ -1093,7 +1089,6 @@ template< typename T >
 struct ptr_hasher
 {
     hash128_t hash( const T *x ) const { return x->hash(); }
-    bool valid( const T *x ) const { return x; }
     bool equal( const T *x, const T *y ) const { return *x == *y; }
     uint64_t operator()( const T *x ) const { return hash( x ).first; }
 };
