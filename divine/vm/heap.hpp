@@ -19,6 +19,8 @@
 #pragma once
 
 #include <brick-types>
+#include <unordered_set>
+
 #include <divine/vm/value.hpp>
 #include <divine/vm/shadow.hpp>
 
@@ -42,7 +44,8 @@ namespace vm {
 namespace mem = brick::mem;
 
 template< typename H1, typename H2 >
-int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2, std::set< HeapPointer > &visited )
+int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
+             std::unordered_set< HeapPointer > &visited )
 {
     if ( visited.count( r1 ) )
         return 0;
@@ -113,7 +116,7 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2, std::set< HeapPoint
 template< typename H1, typename H2 >
 int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2 )
 {
-    std::set< HeapPointer > visited;
+    std::unordered_set< HeapPointer > visited;
     return compare( h1, h2, r1, r2, visited );
 }
 
@@ -409,7 +412,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
 {
     struct Ext
     {
-        std::set< int > writable;
+        std::unordered_set< int > writable;
     } _ext;
 
     using Snapshot = Internal;

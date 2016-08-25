@@ -197,4 +197,12 @@ struct hash< divine::vm::GenericPointer > {
     }
 };
 
+template<>
+struct hash< divine::vm::HeapPointer > {
+    size_t operator()( divine::vm::GenericPointer ptr ) const
+    {
+        return ptr.raw();
+    }
+};
+
 }
