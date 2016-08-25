@@ -43,6 +43,8 @@ namespace vm {
 
 namespace mem = brick::mem;
 
+namespace heap {
+
 template< typename H1, typename H2 >
 int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
              std::unordered_set< HeapPointer > &visited )
@@ -162,6 +164,8 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root )
 {
     std::map< HeapPointer, HeapPointer > visited;
     return clone( f, t, root, visited );
+}
+
 }
 
 struct HeapBytes
@@ -539,7 +543,7 @@ struct MutableHeap
         vm::MutableHeap heap, cloned;
         auto p = heap.make( 16 );
         heap.write( p.cooked(), IntV( 33 ) );
-        auto c = vm::clone( heap, cloned, p.cooked() );
+        auto c = vm::heap::clone( heap, cloned, p.cooked() );
         IntV i;
         cloned.read( c, i );
         ASSERT( ( i == IntV( 33 ) ).cooked() );
@@ -552,7 +556,7 @@ struct MutableHeap
         auto p = heap.make( 16 ), q = heap.make( 16 );
         heap.write( p.cooked(), q );
         heap.write( q.cooked(), p );
-        auto c_p1 = vm::clone( heap, cloned, p.cooked() );
+        auto c_p1 = vm::heap::clone( heap, cloned, p.cooked() );
         PointerV c_q, c_p2;
         IntV i;
         cloned.read( c_p1, c_q );
@@ -566,11 +570,11 @@ struct MutableHeap
         auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
         heap.write( p, PointerV( q ) );
         heap.write( q, PointerV( p ) );
-        auto c_p = vm::clone( heap, cloned, p );
-        ASSERT_EQ( vm::compare( heap, cloned, p, c_p ), 0 );
+        auto c_p = vm::heap::clone( heap, cloned, p );
+        ASSERT_EQ( vm::heap::compare( heap, cloned, p, c_p ), 0 );
         p.offset( 8 );
         heap.write( p, vm::value::Int< 32 >( 1 ) );
-        ASSERT_LT( 0, vm::compare( heap, cloned, p, c_p ) );
+        ASSERT_LT( 0, vm::heap::compare( heap, cloned, p, c_p ) );
     }
 };
 

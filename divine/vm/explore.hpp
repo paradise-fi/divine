@@ -47,7 +47,7 @@ struct State
         CowHeap a( *_heap ), b( *s._heap );
         a.restore( snap );
         b.restore( s.snap );
-        return compare( a, b, root, s.root ) < 0;
+        return heap::compare( a, b, root, s.root );
     }
 };
 
