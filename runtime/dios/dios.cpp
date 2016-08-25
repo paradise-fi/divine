@@ -64,6 +64,12 @@ void *init( const _VM_Env *env ) {
 
 } // namespace __dios
 
+namespace __sc {
+void  dummy( void *ret, va_list vl ) {
+    __dios_trace_t( "Dummy syscall issued!" );
+}
+} // namespace __sc
+
 /*
  * DiOS entry point. Defined weak to allow user to redefine it.
  */
@@ -79,9 +85,6 @@ void __dios_dummy() noexcept {
     __dios_syscall( _SC_DUMMY, nullptr );
 }
 
-void __sc_dummy( void *ret, va_list vl ) {
-    __dios_trace_t( "Dummy syscall issued!" );
-}
 
 _Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept {
     auto m = __vm_mask( 1 );

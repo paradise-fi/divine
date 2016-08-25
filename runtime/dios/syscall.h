@@ -3,10 +3,6 @@
 #ifndef __DIOS_SYSCALL_H__
 #define __DIOS_SYSCALL_H__
 
-#include <cstdarg>
-#include <new>
-#include <dios.h>
-
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
 #define CPP_END }
@@ -33,13 +29,20 @@ enum _DiOS_SC {
     _SC_LAST
 };
 
-// Mapping of syscodes to implementations
-extern void ( *_DiOS_SysCalls[_SC_LAST] ) ( void* retval, va_list vl );
-
-void __sc_dummy( void* retval, va_list vl );
-
-
 CPP_END
+
+#ifdef __cplusplus
+
+#include <cstdarg>
+#include <new>
+#include <dios.h>
+
+// Mapping of syscodes to implementations
+extern void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( void* retval, va_list vl );
+
+namespace __sc {
+    void dummy( void* retval, va_list vl );
+}
 
 namespace __dios {
 
@@ -78,5 +81,7 @@ private:
 };
 
 } // namespace __dios
+
+#endif // __cplusplus
 
 #endif // __DIOS_SYSCALL_H__
