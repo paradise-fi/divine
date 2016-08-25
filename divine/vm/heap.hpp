@@ -260,18 +260,21 @@ struct SimpleHeap : HeapMixin< Self >
     using Internal = Pool::Pointer;
     using Shadows = PooledShadow< Internal >;
     using PointerV = value::Pointer;
+    using SnapItem = std::pair< int, Internal >;
 
     Pool _objects;
     Shadows _shadows;
 
     struct Local
     {
-        std::map< int, mem::Pool<>::Pointer > objmap;
+        std::map< int, mem::Pool<>::Pointer > exceptions;
+        Internal snapshot;
     } _l;
 
     std::shared_ptr< Shared > _s;
 
     void detach( HeapPointer ) {}
+    void made( HeapPointer ) {}
 
     SimpleHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
 
@@ -285,11 +288,44 @@ struct SimpleHeap : HeapMixin< Self >
         return _objects.machinePointer< uint8_t >( ptr2i( p ) );
     }
 
+    int snap_size()
+    {
+        if ( !_objects.valid( _l.snapshot ) )
+            return 0;
+        return _objects.size( _l.snapshot ) / sizeof( SnapItem );
+    }
+
+    SnapItem *snap_begin()
+    {
+        if ( !_objects.valid( _l.snapshot ) )
+            return nullptr;
+        return _objects.machinePointer< SnapItem >( _l.snapshot );
+    }
+
+    SnapItem *snap_end() { return snap_begin() + snap_size(); }
+
     Internal ptr2i( HeapPointer p )
     {
-        auto hp = _l.objmap.find( p.object() );
-        ASSERT( hp != _l.objmap.end() );
-        return hp->second;
+        auto hp = _l.exceptions.find( p.object() );
+        if ( hp != _l.exceptions.end() )
+            return hp->second;
+
+        auto begin = snap_begin(), end = snap_end();
+        if ( !begin )
+            return Internal();
+
+        while ( begin < end )
+        {
+            auto pivot = begin + (end - begin) / 2;
+            if ( pivot->first > p.object() )
+                end = pivot;
+            else if ( pivot->first < p.object() )
+                begin = pivot + 1;
+            else
+                return pivot->second;
+        }
+
+        return Internal();
     }
 
     PointerV make( int size )
@@ -297,8 +333,9 @@ struct SimpleHeap : HeapMixin< Self >
         HeapPointer p;
         p.object( _s->seq++ );
         p.offset( 0 );
-        auto obj = _l.objmap[ p.object() ] = _objects.allocate( size );
+        auto obj = _l.exceptions[ p.object() ] = _objects.allocate( size );
         _shadows.make( _objects, obj, size );
+        self().made( p );
         return PointerV( p );
     }
 
@@ -306,12 +343,16 @@ struct SimpleHeap : HeapMixin< Self >
     {
         if ( !valid( p ) )
             return false;
-        _l.objmap.erase( p.object() );
+        _l.exceptions[ p.object() ] = Internal();
         return true;
     }
 
-    bool valid( HeapPointer p ) { return p.object() && int( p.object() ) < _s->seq &&
-                                         _l.objmap.count( p.object() ); }
+    bool valid( HeapPointer p )
+    {
+        if ( !p.object() || int( p.object() ) >= _s->seq )
+            return false;
+        return ptr2i( p ).slab();
+    }
 
     int size( HeapPointer p ) { return _objects.size( ptr2i( p ) ); }
 
@@ -322,7 +363,7 @@ struct SimpleHeap : HeapMixin< Self >
     void read( HeapPointer p, T &t )
     {
         using Raw = typename T::Raw;
-        ASSERT( valid( p ) );
+        ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
 
         t.raw( *_objects.machinePointer< typename T::Raw >( ptr2i( p ), p.offset() ) );
@@ -368,16 +409,21 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
 {
     struct Ext
     {
-        std::set< int > readonly;
+        std::set< int > writable;
     } _ext;
 
-    using SnapItem = std::pair< int, mem::Pool<>::Pointer >;
-    using Snapshot = mem::Pool<>::Pointer;
+    using Snapshot = Internal;
+
+    void made( HeapPointer p )
+    {
+        _ext.writable.insert( p.object() );
+    }
 
     void detach( HeapPointer p )
     {
-        if ( _ext.readonly.count( p.object() ) == 0 )
+        if ( _ext.writable.count( p.object() ) )
             return;
+        _ext.writable.insert( p.object() );
         p.offset( 0 );
         int sz = size( p );
         auto oldloc = shloc( p );
@@ -386,7 +432,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         auto obj = _objects.allocate( sz );
         _shadows.make( _objects, obj, sz );
 
-        _l.objmap[ p.object() ] = obj;
+        _l.exceptions[ p.object() ] = obj;
         auto newloc = shloc( p );
         auto newbytes = unsafe_bytes( p );
         _shadows.copy( _shadows, oldloc, newloc, sz, []( auto, auto ) {} );
@@ -395,28 +441,56 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
 
     Snapshot snapshot()
     {
-        _ext.readonly.clear(); /* need to clean up at some point, so why not now */
-        auto s = _objects.allocate( _l.objmap.size() * sizeof( SnapItem ) );
-        auto si = _objects.machinePointer< SnapItem >( s );
-        for ( auto i : _l.objmap )
+        _ext.writable.clear();
+        int count = 0;
+
+        auto snap = snap_begin();
+
+        for ( auto &except : _l.exceptions )
         {
-            _ext.readonly.insert( i.first );
-            *si++ = i;
+            while ( snap != snap_end() && snap->first < except.first )
+                ++ snap, ++ count;
+            if ( snap != snap_end() && snap->first == except.first )
+                snap++;
+            if ( _objects.valid( except.second ) )
+                ++ count;
         }
+
+        while ( snap != snap_end() )
+            ++ snap, ++ count;
+
+        auto s = _objects.allocate( count * sizeof( SnapItem ) );
+        auto si = _objects.machinePointer< SnapItem >( s );
+        snap = snap_begin();
+
+        for ( auto &except : _l.exceptions )
+        {
+            while ( snap != snap_end() && snap->first < except.first )
+            {
+                *si++ = *snap++;
+            }
+            if ( snap != snap_end() && snap->first == except.first )
+                snap++;
+            if ( _objects.valid( except.second ) )
+            {
+                *si++ = except;
+            }
+        }
+
+        while ( snap != snap_end() )
+        {
+            *si++ = *snap++;
+        }
+        ASSERT_EQ( si, _objects.machinePointer< SnapItem >( s ) + count );
+
         return s;
     }
 
     void restore( Snapshot s )
     {
-        _l.objmap.clear();
-        _ext.readonly.clear();
-        auto si = _objects.machinePointer< SnapItem >( s );
-        int count = _objects.size( s ) / sizeof( SnapItem );
-        for ( int i = 0; i < count; ++i )
-        {
-            _ext.readonly.insert( si[ i ].first );
-            _l.objmap.insert( si[ i ] );
-        }
+        _l.exceptions.clear();
+        _ext.writable.clear();
+        _l.snapshot = s;
     }
 };
 
@@ -495,8 +569,14 @@ struct MutableHeap
         heap.write( p, vm::value::Int< 32 >( 1 ) );
         ASSERT_LT( 0, vm::compare( heap, cloned, p, c_p ) );
     }
+};
 
-    TEST(cow)
+struct CowHeap
+{
+    using IntV = vm::value::Int< 32, true >;
+    using PointerV = vm::value::Pointer;
+
+    TEST(basic)
     {
         vm::CowHeap heap;
         auto p = heap.make( 16 ).cooked();
