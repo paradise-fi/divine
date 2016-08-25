@@ -471,10 +471,10 @@ struct _HashSet : HashSetBase< Cell >
     }
 };
 
-template< typename T, typename Hasher >
+template< typename T, typename Hasher = DefaultHasher >
 using Fast = _HashSet< FastCell< T, Hasher > >;
 
-template< typename T, typename Hasher >
+template< typename T, typename Hasher = DefaultHasher >
 using Compact = _HashSet< CompactCell< T, Hasher > >;
 
 template< typename Cell >
