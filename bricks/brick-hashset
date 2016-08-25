@@ -43,10 +43,9 @@ using hash::hash128_t;
 
 struct DefaultHasher
 {
-    template< typename X >
-    auto hash( const X &t ) const -> decltype ( std::hash< X >()( t ), hash128_t() )
+    auto hash( int64_t v ) const
     {
-        return std::make_pair( std::hash< X >()( t ), ~std::hash< X >()( t ) );
+        return std::make_pair( v, ~v );
     }
 
     template< typename X >
