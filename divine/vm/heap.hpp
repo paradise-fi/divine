@@ -19,6 +19,7 @@
 #pragma once
 
 #include <brick-types>
+#include <brick-hash>
 #include <unordered_set>
 
 #include <divine/vm/value.hpp>
@@ -115,11 +116,53 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
     UNREACHABLE( "heap comparison fell through" );
 }
 
+template< typename Heap >
+void hash( Heap &heap, HeapPointer root,
+           std::unordered_set< HeapPointer > &visited,
+           brick::hash::jenkins::SpookyState &state )
+{
+    if ( visited.count( root ) )
+        return;
+    visited.emplace( root );
+
+    auto bytes =  heap.unsafe_bytes( root );
+    int offset = 0;
+
+    for ( auto pos : heap.pointers( root ) )
+    {
+        value::Pointer ptr;
+        ASSERT_LEQ( offset, pos->offset() );
+        ASSERT_LT( offset, heap.size( root ) );
+        state.update( bytes.begin() + offset, pos->offset() - offset );
+        root.offset( pos.offset() );
+        heap.read( root, ptr );
+        auto obj = ptr.cooked();
+        int ptr_off = obj.offset();
+        obj.offset( 0 );
+        state.update( &ptr_off, sizeof( int ) );
+        if ( heap.valid( obj ) )
+            hash( heap, obj, visited, state );
+        offset = pos.offset() + PointerBytes;
+    }
+
+    ASSERT_LEQ( offset, heap.size( root ) );
+    state.update( bytes.begin() + offset, heap.size( root ) - offset );
+}
+
 template< typename H1, typename H2 >
 int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2 )
 {
     std::unordered_set< HeapPointer > visited;
     return compare( h1, h2, r1, r2, visited );
+}
+
+template< typename Heap >
+brick::hash::hash128_t hash( Heap &heap, HeapPointer root )
+{
+    std::unordered_set< HeapPointer > visited;
+    brick::hash::jenkins::SpookyState state( 0, 0 );
+    hash( heap, root, visited, state );
+    return state.finalize();
 }
 
 template< typename FromH, typename ToH >
@@ -576,6 +619,20 @@ struct MutableHeap
         heap.write( p, vm::value::Int< 32 >( 1 ) );
         ASSERT_LT( 0, vm::heap::compare( heap, cloned, p, c_p ) );
     }
+
+    TEST(hash)
+    {
+        vm::MutableHeap heap, cloned;
+        auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
+        heap.write( p, PointerV( q ) );
+        heap.write( p + vm::PointerBytes, IntV( 5 ) );
+        heap.write( q, PointerV( p ) );
+        auto c_p = vm::heap::clone( heap, cloned, p );
+        ASSERT_EQ( vm::heap::hash( heap, p ).first,
+                   vm::heap::hash( cloned, c_p ).first );
+        ASSERT( vm::heap::hash( heap, p ).first != vm::heap::hash( heap, q ).first );
+    }
+
 };
 
 struct CowHeap
