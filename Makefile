@@ -1,7 +1,7 @@
 -include local.make
 CC ?= cc
 CXX ?= c++
-GENERATOR ?= $(if $(shell ninja --version 2> /dev/null),Ninja,"Unix Makefiles")
+GENERATOR ?= $(if $(shell ninja --version 2> /dev/null || ninja-build --version 2> /dev/null),Ninja,"Unix Makefiles")
 CONFIG ?= -DBUILD_SHARED_LIBS=ON
 OBJ ?= $(PWD)/_build.
 VERB = $(if $(filter $(GENERATOR),Ninja),-- $(if $(VERBOSE),-v))
