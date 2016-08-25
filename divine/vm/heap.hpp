@@ -367,9 +367,9 @@ struct SimpleHeap : HeapMixin< Self >
         while ( begin < end )
         {
             auto pivot = begin + (end - begin) / 2;
-            if ( pivot->first > p.object() )
+            if ( pivot->first > int( p.object() ) )
                 end = pivot;
-            else if ( pivot->first < p.object() )
+            else if ( pivot->first < int( p.object() ) )
                 begin = pivot + 1;
             else
                 return pivot->second;
