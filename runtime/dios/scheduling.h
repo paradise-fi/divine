@@ -8,6 +8,7 @@
 #include <cstring>
 #include <dios.h>
 #include <dios/syscall.h>
+#include <dios/fault.h>
 
 // Syscall implementation prototypes
 void __sc_start_thread( void *retval, va_list vl );
@@ -81,7 +82,7 @@ struct Thread {
             _state = State::ZOMBIE;
     }
 
-    void stop_thread( int reason ) {
+    void stop( int reason ) {
         if ( !active() ) {
             __vm_fault( static_cast< _VM_Fault >( _DiOS_F_Threading ) );
             return;
@@ -93,6 +94,11 @@ struct Thread {
         frame->parent = nullptr;
         frame->reason = reason;
         _state = State::CLEANING_UP;
+    }
+
+    void hard_stop() {
+        _state = State::ZOMBIE;
+        clear();
     }
 
 private:
@@ -231,7 +237,14 @@ struct Scheduler {
     void kill_thread( ThreadId t_id, int reason ) {
         __dios_assert( t_id );
         __dios_assert( int( t_id ) < _cf->thread_count );
-        get_threads()[ t_id ].stop_thread( reason );
+        get_threads()[ t_id ].stop( reason );
+    }
+
+    void kill_all() {
+        for ( int i = 0; i != _cf->thread_count; i++ ) {
+            if ( get_threads()[ i ].active() )
+                get_threads()[ i ].hard_stop();
+        }
     }
 
     ThreadId get_thread_id() {
@@ -244,6 +257,12 @@ private:
 template < bool THREAD_AWARE_SCHED >
 void *sched( int, void *state ) noexcept {
     auto ctx = static_cast< Context * >( state );
+    if ( ctx->fault->triggered ) {
+        ctx->scheduler->kill_all();
+        ctx->fault->triggered = false;
+        return ctx;
+    }
+
     if ( ctx->syscall->handle() ) {
         __vm_jump( ctx->scheduler->run_thread< THREAD_AWARE_SCHED >(), nullptr, 1 );
         return ctx;

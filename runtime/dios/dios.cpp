@@ -13,12 +13,13 @@
 namespace __dios {
 
 Context::Context() :
-        scheduler( __dios::new_object< Scheduler >() ),
-        syscall( __dios::new_object< Syscall >( this ) )
-    {
-        __dios_assert( !_ctx );
-        _ctx = this;
-    };
+    scheduler( __dios::new_object< Scheduler >() ),
+    syscall( __dios::new_object< Syscall >( this ) ),
+    fault( __dios::new_object< Fault >() )
+{
+    __dios_assert( !_ctx );
+    _ctx = this;
+};
 
 Context *Context::_ctx;
 
@@ -43,6 +44,7 @@ void *init( const _VM_Env *env ) {
         __vm_set_sched( __dios::sched<false> );
 
     auto context = new_object< Context >();
+    context->fault->load_user_pref( env );
 
     // Find & run main function
     _DiOS_FunPtr main = __dios_get_fun_ptr( "main" );

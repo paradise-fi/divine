@@ -27,6 +27,9 @@ enum _DiOS_SC {
     _SC_KILL_THREAD,
     _SC_DUMMY,
 
+    _SC_CONFIGURE_FAULT,
+    _SC_GET_FAULT_CONFIG,
+
     _SC_LAST
 };
 

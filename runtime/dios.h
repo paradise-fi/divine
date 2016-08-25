@@ -31,6 +31,15 @@ enum _DiOS_Fault
     _DiOS_F_Last
 };
 
+enum _DiOS_FaultFlag
+{
+    _DiOS_FF_Enabled       = 0x01,
+    _DiOS_FF_Continue      = 0x02,
+    _DiOS_FF_UserSpec      = 0x04,
+    _DiOS_FF_AllowOverride = 0x08,
+    _DiOS_FF_InvalidFault  = 0x10
+};
+
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
             __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \
@@ -90,6 +99,23 @@ void __dios_syscall_trap() NOTHROW;
  */
 void __dios_syscall(int syscode, void* ret, ...);
 
+/*
+ * If _DiOS_FF_AllowOverride is not specified for given fault, configure, if
+ * fault should be active and if execution should continue after triggering or not.
+ * Negative value keeps original value, zero disables and a positive enables.
+ * Returns original configuration.
+ * If invalid fault number is passed, result will have _DiOS_FF_InvalidFault bit
+ * set.
+ */
+int __dios_configure_fault( int fault, int enable, int cont );
+
+/*
+ * Return fault configuration as a bitmask of _DiOS_FaultState flags.
+ * If invalid fault number is passed, result will have _DiOS_FF_InvalidFault bit
+ * set.
+ */
+int __dios_get_fault_config( int fault );
+
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
 void __dios_trace_t( const char *str ) NOTHROW;
 void __dios_trace_f( const char *fmt, ... ) NOTHROW;
@@ -115,10 +141,12 @@ T *new_object( Args... args ) {
 
 struct Scheduler;
 struct Syscall;
+struct Fault;
 
 struct Context {
     Scheduler *scheduler;
     Syscall *syscall;
+    Fault *fault;
 
     static Context *_ctx;
 
