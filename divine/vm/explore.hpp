@@ -40,7 +40,11 @@ struct State
     CowHeap::Snapshot snap;
     HeapPointer root, globals;
     State() : _heap( nullptr ) {}
-    bool operator<( State s ) const
+
+    bool operator==( State s ) const { return compare( s ) == 0; }
+    bool operator<( State s ) const { return compare( s ) < 0; }
+
+    int compare( State s ) const
     {
         ASSERT( _heap );
         ASSERT( s._heap );
@@ -48,6 +52,14 @@ struct State
         a.restore( snap );
         b.restore( s.snap );
         return heap::compare( a, b, root, s.root );
+    }
+
+    brick::hash::hash128_t hash() const
+    {
+        ASSERT( _heap );
+        CowHeap h( *_heap );
+        h.restore( snap );
+        return heap::hash( h, root );
     }
 };
 
@@ -133,7 +145,7 @@ struct Explore
 
     explore::Context _ctx;
 
-    std::set< explore::State > _states;
+    hashset::Fast< explore::State > _states;
 
     auto &program() { return _bc->program(); }
 
@@ -158,7 +170,7 @@ struct Explore
             {
                 explore::State st = _ctx.snap( eval._result.cooked() );
                 auto r = _states.insert( st );
-                yield( st, _ctx._trace, r.second );
+                yield( *r, _ctx._trace, r.isnew() );
             }
         } while ( !_ctx.finished() );
     }
@@ -174,8 +186,8 @@ struct Explore
         if ( !result.null() )
         {
             auto st = _ctx.snap( result );
-            _states.insert( st );
-            yield( st );
+            auto r = _states.insert( st );
+            yield( *r );
         }
     }
 };
