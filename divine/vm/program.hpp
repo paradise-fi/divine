@@ -266,9 +266,7 @@ struct Program
     template< typename H >
     auto exportHeap( H &target )
     {
-        auto cp = target.make( _constants_size );
-        target.copy( _ccontext._heap, _ccontext.constants().cooked(),
-                     cp.cooked(), _constants_size );
+        auto cp = value::Pointer( clone( _ccontext._heap, target, _ccontext.constants().cooked() ) );
 
         if ( !_globals_size )
             return std::make_pair( cp, decltype( cp )( nullPointer() ) );
