@@ -10,10 +10,13 @@
 #include <dios/syscall.h>
 #include <dios/fault.h>
 
-// Syscall implementation prototypes
-void __sc_start_thread( __dios::Context& ctx, void *retval, va_list vl );
-void __sc_kill_thread( __dios::Context& ctx, void *retval, va_list vl );
-void __sc_get_thread_id( __dios::Context& ctx, void *retval, va_list vl );
+namespace __sc {
+
+void start_thread( __dios::Context& ctx, void *retval, va_list vl );
+void kill_thread( __dios::Context& ctx, void *retval, va_list vl );
+void get_thread_id( __dios::Context& ctx, void *retval, va_list vl );
+
+} // namespace __sc
 
 namespace __dios {
 

@@ -26,10 +26,11 @@ namespace __dios {
 Syscall *Syscall::_inst;
 
 void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, void* retval, va_list vl ) = {
-    [ _SC_START_THREAD ] = __sc_start_thread,
-    [ _SC_GET_THREAD_ID ] = __sc_get_thread_id,
-    [ _SC_KILL_THREAD ] = __sc_kill_thread,
+    [ _SC_START_THREAD ] = __sc::start_thread,
+    [ _SC_GET_THREAD_ID ] = __sc::get_thread_id,
+    [ _SC_KILL_THREAD ] = __sc::kill_thread,
     [ _SC_DUMMY ] = __sc::dummy,
+
     [ _SC_CONFIGURE_FAULT ] = __sc::configure_fault,
     [ _SC_GET_FAULT_CONFIG ] = __sc::get_fault_config
 };
