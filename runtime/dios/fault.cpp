@@ -2,9 +2,9 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 
 
-#include <dios/fault.h>
-#include <dios/trace.h>
-#include <dios/syscall.h>
+#include <dios/fault.hpp>
+#include <dios/trace.hpp>
+#include <dios/syscall.hpp>
 
 namespace __dios {
 

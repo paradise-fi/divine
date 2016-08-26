@@ -3,7 +3,7 @@
 
 
 #include <algorithm>
-#include <dios/main.h>
+#include <dios/main.hpp>
 
 
 int main(...);

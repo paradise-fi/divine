@@ -7,8 +7,8 @@
 
 #include <cstring>
 #include <dios.h>
-#include <dios/syscall.h>
-#include <dios/fault.h>
+#include <dios/syscall.hpp>
+#include <dios/fault.hpp>
 
 namespace __sc {
 

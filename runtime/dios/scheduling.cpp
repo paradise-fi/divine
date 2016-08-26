@@ -2,7 +2,7 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 //                 2016 Petr Rockai <me@mornfall.net>
 
-#include <dios/scheduling.h>
+#include <dios/scheduling.hpp>
 
 _DiOS_ThreadId __dios_start_thread( _DiOS_FunPtr routine, void *arg,
     _DiOS_FunPtr cleanup ) noexcept

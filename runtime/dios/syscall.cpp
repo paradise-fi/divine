@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
-#include <dios/syscall.h>
-#include <dios/scheduling.h>
+#include <dios/syscall.hpp>
+#include <dios/scheduling.hpp>
 
 void __dios_syscall_trap() noexcept {
     int mask = __vm_mask( 1 );

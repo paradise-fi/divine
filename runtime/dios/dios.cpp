@@ -4,11 +4,11 @@
 
 #include <dios.h>
 #include <divine/opcodes.h>
-#include <dios/main.h>
-#include <dios/scheduling.h>
-#include <dios/syscall.h>
-#include <dios/trace.h>
-#include <dios/fault.h>
+#include <dios/main.hpp>
+#include <dios/scheduling.hpp>
+#include <dios/syscall.hpp>
+#include <dios/trace.hpp>
+#include <dios/fault.hpp>
 
 namespace __dios {
 
