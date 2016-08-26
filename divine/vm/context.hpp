@@ -82,7 +82,7 @@ struct Context
     {
         int datasz = program().function( pc ).datasize;
         auto frameptr = heap().make( datasz + 2 * PointerBytes );
-        _t.frame = frameptr;
+        frame( frameptr );
         if ( parent.cooked().null() )
             _t.entry_frame = _t.frame;
         heap().write_shift( frameptr, PointerV( pc ) );

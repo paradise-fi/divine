@@ -72,7 +72,7 @@ struct DebugNode
         if ( _type )
             return _ctx.program().TD.getTypeAllocSize( _type );
         if ( !_address.null() )
-            return eval.ptr2sz( _address );
+            return eval.ptr2sz( PointerV( _address ) );
         return 0;
     }
 
@@ -123,7 +123,7 @@ struct DebugNode
     void init()
     {
         if ( _kind == DNKind::Frame )
-            _ctx.frame( _address );
+            _ctx.frame( PointerV( _address ) );
     }
 
     DebugNode( Context ctx, Snapshot s, GenericPointer l, int off,
@@ -203,7 +203,7 @@ struct DebugNode
         if ( !valid() )
             return;
 
-        auto hloc = eval.ptr2h( _address );
+        auto hloc = eval.ptr2h( PointerV( _address ) );
         value( yield, eval );
 
         yield( "@raw", print::raw( _ctx.heap(), hloc + _offset, size() ) );
@@ -292,7 +292,7 @@ struct DebugNode
         Eval eval( _ctx.program(), _ctx );
 
         PointerV ptr;
-        auto hloc = eval.ptr2h( _address );
+        auto hloc = eval.ptr2h( PointerV( _address ) );
         int hoff = hloc.offset();
 
         std::set< GenericPointer > ptrs;
@@ -374,7 +374,7 @@ struct DebugNode
     template< typename Y >
     void framevars( Y yield, Eval &eval, std::set< GenericPointer > &ptrs )
     {
-        PointerV fr = _address;
+        PointerV fr( _address );
         _ctx.heap().skip( fr, PointerBytes );
         _ctx.heap().read( fr.cooked(), fr );
         if ( !fr.cooked().null() )

@@ -84,7 +84,7 @@ struct Context : vm::Context< CowHeap >
 
     HeapPointer load( explore::State st )
     {
-        _t.entry_frame = nullPointer();
+        _t.entry_frame = nullPointerV();
         heap().restore( st.snap );
         globals( st.globals );
         return st.root;
@@ -106,7 +106,7 @@ struct Context : vm::Context< CowHeap >
     void doublefault()
     {
         _trace.push_back( "fatal double fault" );
-        _t.frame = nullPointer();
+        frame( nullPointerV() );
     }
 
     void trace( TraceText tt )
@@ -122,7 +122,7 @@ struct Context : vm::Context< CowHeap >
     {
         _level = 0;
         _trace.clear();
-        _t.entry_frame = nullPointer();
+        _t.entry_frame = nullPointerV();
         while ( !_stack.empty() && _stack.back().first + 1 == _stack.back().second )
             _stack.pop_back();
         return _stack.empty();
@@ -162,7 +162,7 @@ struct Explore
 
         do {
             auto root = _ctx.load( from );
-            _ctx.enter( _ctx.sched(), nullPointer(),
+            _ctx.enter( _ctx.sched(), nullPointerV(),
                         Eval::IntV( eval.heap().size( root ) ), PointerV( root ) );
             _ctx.mask( true );
             eval.run();

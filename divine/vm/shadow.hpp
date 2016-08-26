@@ -440,7 +440,7 @@ struct PooledShadow
 
     TEST( read_ptr )
     {
-        PointerV p1( vm::nullPointer(), true ), p2;
+        PointerV p1( vm::nullPointer() ), p2;
         heap.write( obj, 0, p1, []( auto, auto ) {} );
         heap.read< PointerV >( obj, 0, p2 );
         ASSERT( p2.defined() );
@@ -448,7 +448,7 @@ struct PooledShadow
 
     TEST( read_2_ptr )
     {
-        PointerV p1( vm::nullPointer(), true ), p2;
+        PointerV p1( vm::nullPointer() ), p2;
         heap.write( obj, 0, p1, []( auto, auto ) {} );
         heap.write( obj, 8, p1, []( auto, auto ) {} );
         heap.read< PointerV >( obj, 0, p2 );
@@ -459,7 +459,7 @@ struct PooledShadow
 
     TEST( copy_ptr )
     {
-        PointerV p1( vm::nullPointer(), true ), p2;
+        PointerV p1( vm::nullPointer() ), p2;
         ASSERT( p1.pointer() );
         heap.write( obj, 0, p1, []( auto, auto ) {} );
         heap.copy( obj, 0, obj, 8, 8, []( auto, auto ) {} );

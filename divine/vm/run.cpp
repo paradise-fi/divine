@@ -40,7 +40,7 @@ struct RunContext : Context< MutableHeap >
     void doublefault()
     {
         std::cerr << "E: Double fault, program terminated." << std::endl;
-        _t.frame = nullPointer();
+        frame( nullPointerV() );
     }
 
     void trace( vm::TraceText tt ) { std::cerr << "T: " << heap().read_string( tt.text ) << std::endl; }
@@ -63,10 +63,10 @@ void Run::run()
 
     while ( !state.cooked().null() )
     {
-        _ctx.enter( _ctx.sched(), nullPointer(),
+        _ctx.enter( _ctx.sched(), nullPointerV(),
                     Eval::IntV( eval.heap().size( state.cooked() ) ), state );
         _ctx.mask( true );
-        eval._result = nullPointer();
+        eval._result = nullPointerV();
         eval.run();
         state = eval._result;
     }

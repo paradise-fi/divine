@@ -107,7 +107,7 @@ struct Context : vm::Context< vm::CowHeap >
     void doublefault()
     {
         _trace.push_back( "fatal double fault" );
-        _t.frame = vm::nullPointer();
+        _t.frame = vm::nullPointerV();
     }
 
     void trace( vm::TraceText tt )
@@ -402,7 +402,7 @@ struct Interpreter
         std::cerr << "# a new program state was stored as " << name << std::endl;
 
         // _states.push_back( _ctx.snap( _last ) );
-        _ctx.enter( _ctx.sched(), vm::nullPointer(),
+        _ctx.enter( _ctx.sched(), vm::nullPointerV(),
                     Eval::IntV( eval.heap().size( st ) ), PointerV( st ) );
 
         return true;
@@ -441,10 +441,10 @@ struct Interpreter
 
             if ( verbose )
             {
-                auto frame = _ctx.frame().cooked();
+                auto frame = _ctx.frame();
                 std::string before = vm::print::instruction( eval );
                 eval.dispatch();
-                if ( _ctx.heap().valid( frame ) )
+                if ( _ctx.heap().valid( frame.cooked() ) )
                 {
                     auto newframe = _ctx.frame();
                     _ctx.frame( frame ); /* :-( */
@@ -528,9 +528,9 @@ struct Interpreter
     {
         auto tgt = get( re.var );
         _ctx.heap().restore( tgt.snapshot() );
-        _ctx.frame( vm::nullPointer() );
+        _ctx.frame( vm::nullPointerV() );
         _ctx.globals( tgt._ctx.globals() );
-        _ctx.enter( _ctx.sched(), vm::nullPointer(),
+        _ctx.enter( _ctx.sched(), vm::nullPointerV(),
                     Eval::IntV( _ctx.heap().size( tgt.address() ) ), PointerV( tgt.address() ) );
         set( "$_", re.var );
     }

@@ -244,11 +244,8 @@ struct Pointer : Base
     }
 
     Pointer() : Pointer( nullPointer(), false, false ) {}
-    Pointer( Cooked x, bool d = true, bool isptr = true )
-        : _cooked( x ), _obj_defined( d ), _off_defined( d ), _ispointer( isptr ) {}
-
-    explicit Pointer( Raw x )
-        : _raw( x ), _obj_defined( false ), _off_defined( false ), _ispointer( false ) {}
+    explicit Pointer( Cooked x, bool d = true, bool isptr = true )
+        : _cooked( x ), _obj_defined( true ), _off_defined( true ), _ispointer( true ) {}
 
     Pointer operator+( int off )
     {
@@ -337,6 +334,9 @@ OP( compare, >= );
 #undef OP
 
 }
+
+static inline value::Pointer nullPointerV() { return value::Pointer( nullPointer() ); }
+
 }
 
 namespace t_vm

@@ -44,7 +44,7 @@ struct Setup
 
         auto ipc = _program.functionByName( "__sys_init" );
         auto envptr = _program.globalByName( "__sys_env" );
-        _ctx.enter( ipc, nullPointer(), value::Pointer( envptr ) );
+        _ctx.enter( ipc, nullPointerV(), value::Pointer( envptr ) );
     }
 
     Setup( Program &p, Context &c )

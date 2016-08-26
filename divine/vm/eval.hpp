@@ -203,7 +203,7 @@ struct Eval
         if ( pp.type() == PointerType::Heap || pp.null() )
             return pp;
 
-        return s2ptr( ptr2s( pp ), pp.offset(), nullPointer(), g );
+        return s2ptr( ptr2s( pp ), pp.offset(), nullPointerV(), g );
     }
 
     bool boundcheck( PointerV p, int sz, bool write, std::string dsc = "" )
@@ -536,7 +536,7 @@ struct Eval
                 context().set_interrupted( true );
                 trampoline = true;
             }
-            context().frame( nullPointer() );
+            context().frame( nullPointerV() );
             heap().free( fr.cooked() );
             if ( trampoline )
                 context().check_interrupt();
@@ -552,16 +552,16 @@ struct Eval
             else if ( caller.result().size() < operand( 0 ).size() )
                 fault( _VM_F_Control ) << "Returned value is bigger then expected by caller";
             else if ( !heap().copy( s2ptr( operand( 0 ) ),
-                             s2ptr( caller.result(), 0, parent.cooked() ),
+                             s2ptr( caller.result(), 0, parent ),
                                     caller.result().size() ) )
                 fault( _VM_F_Memory ) << "Cound not return value";
         }
 
-        context().frame( parent.cooked() );
+        context().frame( parent );
 
         if ( isa< ::llvm::InvokeInst >( caller.op ) )
         {
-            auto rv = s2ptr( caller.operand( -2 ), 0, parent.cooked() );
+            auto rv = s2ptr( caller.operand( -2 ), 0, parent );
             heap().read( rv, br );
             jumpTo( br );
         }
@@ -832,13 +832,14 @@ struct Eval
                 switch ( t )
                 {
                     case _VM_T_Text:
-                        context().trace( TraceText{ ptr2h( operandCk< PointerV >( 1 ) ) } );
+                        context().trace( TraceText{ PointerV( ptr2h( operandCk< PointerV >( 1 ) ) ) } );
                         return;
                     case _VM_T_Flag:
                         context().trace( TraceFlag{ operandCk< IntV >( 1 ).cooked() } );
                         return;
                     case _VM_T_SchedChoice:
-                        context().trace( TraceSchedChoice{ ptr2h( operandCk< PointerV >( 1 ) ) } );
+                        context().trace( TraceSchedChoice{
+                                PointerV( ptr2h( operandCk< PointerV >( 1 ) ) ) } );
                         return;
                     case _VM_T_SchedInfo:
                         context().trace( TraceSchedInfo{ operandCk< IntV >( 1 ).cooked(),
@@ -863,7 +864,7 @@ struct Eval
                     fault( _VM_F_Hypercall ) << "invalid size " << size << " passed to __vm_make_object";
                     size = 0;
                 }
-                result( size ? heap().make( size ) : PointerV( nullPointer() ) );
+                result( size ? heap().make( size ) : nullPointerV() );
                 return;
             }
             case HypercallFreeObject:
@@ -937,7 +938,7 @@ struct Eval
         /* Copy arguments to the new frame. */
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.argcount ); ++i )
             heap().copy( s2ptr( operand( i ) ),
-                         s2ptr( function.values[ i ], 0, frameptr.cooked() ),
+                         s2ptr( function.values[ i ], 0, frameptr ),
                          function.values[ i ].size() );
 
         if ( function.vararg )
@@ -945,8 +946,8 @@ struct Eval
             int size = 0;
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
                 size += operand( i ).size();
-            auto vaptr = size ? heap().make( size ) : PointerV( nullPointer() );
-            auto vaptr_loc = s2ptr( function.values[ function.argcount ], 0, frameptr.cooked() );
+            auto vaptr = size ? heap().make( size ) : nullPointerV();
+            auto vaptr_loc = s2ptr( function.values[ function.argcount ], 0, frameptr );
             heap().write( vaptr_loc, vaptr );
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
             {
@@ -957,7 +958,7 @@ struct Eval
         }
 
         ASSERT( !isa< ::llvm::PHINode >( instruction().op ) );
-        context().frame( frameptr.cooked() );
+        context().frame( frameptr );
     }
 
     void run()
@@ -1394,18 +1395,13 @@ struct TProgram
 };
 
 template< typename Prog >
-struct TContext
+struct TContext : vm::ConstContext< Prog >
 {
-    using Heap = vm::MutableHeap;
-    using PointerV = vm::value::Pointer;
+    using PointerV = typename vm::ConstContext< Prog >::PointerV;
 
     vm::Fault _fault;
-    PointerV _constants, _globals, _frame, _entry_frame;
-    Prog &_program;
-    Heap _heap;
+    PointerV _entry_frame;
 
-    PointerV globals() { return _globals; }
-    PointerV constants() { return _constants; }
     bool mask( bool = false ) { return false; }
     bool set_interrupted( bool = false ) { return false; }
     void check_interrupt() {}
@@ -1414,36 +1410,36 @@ struct TContext
     template< typename I >
     int choose( int, I, I ) { return 0; }
 
-    PointerV frame() { return _frame; }
-    void frame( PointerV p ) { _frame = p; }
     bool isEntryFrame( vm::HeapPointer fr ) { return vm::HeapPointer( _entry_frame.cooked() ) == fr; }
 
-    void fault( vm::Fault f, PointerV, CodePointer ) { _fault = f; _frame = vm::nullPointer(); }
-    void trace( vm::TraceText tt ) { std::cerr << "T: " << _heap.read_string( tt.text ) << std::endl; }
+    void fault( vm::Fault f, PointerV, CodePointer ) { _fault = f; this->_frame = vm::nullPointerV(); }
+    void trace( vm::TraceText tt )
+    {
+        std::cerr << "T: " << this->_heap.read_string( tt.text ) << std::endl;
+    }
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceSchedChoice ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceFlag ) { NOT_IMPLEMENTED(); }
-
 
     void push( PointerV ) {}
 
     template< typename X, typename... Args >
     void push( PointerV p, X x, Args... args )
     {
-        _heap.write_shift( p, x );
+        this->_heap.write_shift( p, x );
         push( p, args... );
     }
 
     template< typename... Args >
     void enter( CodePointer pc, PointerV parent, Args... args )
     {
-        int datasz = _program.function( pc ).datasize;
-        auto frameptr = _heap.make( datasz + 2 * vm::PointerBytes );
-        _frame = frameptr;
+        int datasz = this->_program.function( pc ).datasize;
+        auto frameptr = this->_heap.make( datasz + 2 * vm::PointerBytes );
+        this->_frame = frameptr;
         if ( parent.cooked().null() )
-            _entry_frame = _frame;
-        _heap.write_shift( frameptr, PointerV( pc ) );
-        _heap.write_shift( frameptr, parent );
+            _entry_frame = this->_frame;
+        this->heap().write_shift( frameptr, PointerV( pc ) );
+        this->heap().write_shift( frameptr, parent );
         push( frameptr, args... );
     }
 
@@ -1451,9 +1447,7 @@ struct TContext
     bool fault_handler( CodePointer ) { return true; }
     void setIfl( PointerV ) {}
 
-    Heap &heap() { return _heap; }
-
-    TContext( Prog &p ) : _fault( _VM_F_NoFault ), _program( p ) {}
+    TContext( Prog &p ) : vm::ConstContext< Prog >( p ), _fault( _VM_F_NoFault ) {}
 };
 
 struct Eval
@@ -1475,7 +1469,7 @@ struct Eval
         std::tie( c._constants, c._globals ) = p->exportHeap( c.heap() );
         vm::Eval< vm::Program, TContext< vm::Program >, IntV > e( *p, c );
         auto pc = p->functionByName( "f" );
-        c.enter( pc, vm::nullPointer(), args... );
+        c.enter( pc, vm::nullPointerV(), args... );
         e.run();
         return e._result.cooked();
     }
