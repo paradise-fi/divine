@@ -16,12 +16,16 @@ void __dios_syscall( int syscode, void* ret, ... ) {
 
     va_list vl;
     va_start( vl, ret );
-    __dios::Context::get()->syscall->call( syscode, ret, vl );
+    __dios::Syscall::call( syscode, ret, vl );
     va_end( vl );
     __vm_mask( mask );
 }
 
-void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( void* retval, va_list vl ) = {
+namespace __dios {
+
+Syscall *Syscall::_inst;
+
+void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, void* retval, va_list vl ) = {
     [ _SC_START_THREAD ] = __sc_start_thread,
     [ _SC_GET_THREAD_ID ] = __sc_get_thread_id,
     [ _SC_KILL_THREAD ] = __sc_kill_thread,
@@ -30,3 +34,4 @@ void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( void* retval, va_list vl ) = {
     [ _SC_GET_FAULT_CONFIG ] = __sc::get_fault_config
 };
 
+} // namespace _dios

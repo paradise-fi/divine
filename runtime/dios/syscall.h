@@ -3,17 +3,11 @@
 #ifndef __DIOS_SYSCALL_H__
 #define __DIOS_SYSCALL_H__
 
-#ifdef __cplusplus
-#define EXTERN_C extern "C" {
-#define CPP_END }
-#define NOTHROW noexcept
-#else
-#define EXTERN_C
-#define CPP_END
-#define NOTHROW __attribute__((__nothrow__))
-#endif
+#include <cstdarg>
+#include <new>
+#include <dios.h>
 
-EXTERN_C
+namespace __dios {
 
 // Syscodes
 enum _DiOS_SC {
@@ -29,47 +23,29 @@ enum _DiOS_SC {
     _SC_LAST
 };
 
-CPP_END
-
-#ifdef __cplusplus
-
-#include <cstdarg>
-#include <new>
-#include <dios.h>
-
 // Mapping of syscodes to implementations
-extern void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( void* retval, va_list vl );
-
-namespace __sc {
-    void dummy( void* retval, va_list vl );
-}
-
-namespace __dios {
+extern void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, void* retval, va_list vl );
 
 struct Syscall {
-    Syscall( Context *cont ) noexcept : _syscode( _SC_INACTIVE ), _cont( cont ) {
-        __dios_assert( cont );
+    Syscall() noexcept : _syscode( _SC_INACTIVE ) {
+        _inst = this;
     }
 
-    void call(int syscode, void* ret, va_list& args) noexcept {
-        _syscode = static_cast< _DiOS_SC >( syscode );
-        _ret = ret;
-        va_copy( _args, args );
+    static void call(int syscode, void* ret, va_list& args) noexcept {
+        _inst->_syscode = static_cast< _DiOS_SC >( syscode );
+        _inst->_ret = ret;
+        va_copy( _inst->_args, args );
         __dios_syscall_trap();
-        va_end( _args );
+        va_end( _inst->_args );
     }
 
-    bool handle() noexcept {
+    bool handle( Context *ctx ) noexcept {
         if ( _syscode != _SC_INACTIVE ) {
-            ( *( _DiOS_SysCalls[ _syscode ] ) )( _ret, _args );
+            ( *( _DiOS_SysCalls[ _syscode ] ) )( *ctx, _ret, _args );
             _syscode = _SC_INACTIVE;
             return true;
         }
         return false;
-    }
-
-    Context *get_context() {
-        return _cont;
     }
 
 private:
@@ -77,11 +53,16 @@ private:
     void *_ret;
     va_list _args;
 
-    Context *_cont;
+    static Syscall *_inst;
 };
 
 } // namespace __dios
 
-#endif // __cplusplus
+namespace __sc {
+
+    void dummy( __dios::Context& c, void* retval, va_list vl );
+
+} // namespace __sc
+
 
 #endif // __DIOS_SYSCALL_H__

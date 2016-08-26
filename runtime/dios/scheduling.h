@@ -11,9 +11,9 @@
 #include <dios/fault.h>
 
 // Syscall implementation prototypes
-void __sc_start_thread( void *retval, va_list vl );
-void __sc_kill_thread( void *retval, va_list vl );
-void __sc_get_thread_id( void *retval, va_list vl );
+void __sc_start_thread( __dios::Context& ctx, void *retval, va_list vl );
+void __sc_kill_thread( __dios::Context& ctx, void *retval, va_list vl );
+void __sc_get_thread_id( __dios::Context& ctx, void *retval, va_list vl );
 
 namespace __dios {
 
@@ -263,7 +263,7 @@ void *sched( int, void *state ) noexcept {
         return ctx;
     }
 
-    if ( ctx->syscall->handle() ) {
+    if ( ctx->syscall->handle( ctx ) ) {
         __vm_jump( ctx->scheduler->run_thread< THREAD_AWARE_SCHED >(), nullptr, 1 );
         return ctx;
     }

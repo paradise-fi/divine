@@ -17,20 +17,22 @@ struct Fault {
     Fault() : triggered( false ) {
         config.fill( _DiOS_FaultFlag::_DiOS_FF_Enabled |
                      _DiOS_FaultFlag::_DiOS_FF_AllowOverride );
+        _inst = this;
     }
 
     void load_user_pref( const _VM_Env *env );
-    void __attribute__((__noreturn__)) handle_fault( _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept;
-};
+    static void __attribute__((__noreturn__)) handler( _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept;
 
-void fault( enum _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept __attribute__((__noreturn__));
+private:
+    static Fault *_inst;
+};
 
 } // namespace __dios
 
 namespace __sc {
 
-void configure_fault( void* retval, va_list vl );
-void get_fault_config( void* retval, va_list vl );
+void configure_fault( __dios::Context& ctx, void* retval, va_list vl );
+void get_fault_config( __dios::Context& ctx, void* retval, va_list vl );
 
 } // namespace __sc
 

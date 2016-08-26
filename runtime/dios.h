@@ -148,10 +148,7 @@ struct Context {
     Syscall *syscall;
     Fault *fault;
 
-    static Context *_ctx;
-
     Context();
-    static Context *get() { return _ctx; }
 };
 
 template< bool fenced >

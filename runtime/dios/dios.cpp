@@ -14,14 +14,8 @@ namespace __dios {
 
 Context::Context() :
     scheduler( __dios::new_object< Scheduler >() ),
-    syscall( __dios::new_object< Syscall >( this ) ),
-    fault( __dios::new_object< Fault >() )
-{
-    __dios_assert( !_ctx );
-    _ctx = this;
-};
-
-Context *Context::_ctx;
+    syscall( __dios::new_object< Syscall >() ),
+    fault( __dios::new_object< Fault >() ) {}
 
 void *init( const _VM_Env *env ) {
     const _VM_Env *e = env;
@@ -31,7 +25,7 @@ void *init( const _VM_Env *env ) {
     }
 
     __dios_trace_t( "__sys_init called" );
-    __vm_set_fault( __dios::fault );
+    __vm_set_fault( __dios::Fault::handler );
 
     // Select scheduling mode
     auto sched_arg = get_env_key( "divine.runmode", env );
@@ -65,9 +59,11 @@ void *init( const _VM_Env *env ) {
 } // namespace __dios
 
 namespace __sc {
-void  dummy( void *ret, va_list vl ) {
+
+void  dummy( __dios::Context&, void *ret, va_list vl ) {
     __dios_trace_t( "Dummy syscall issued!" );
 }
+
 } // namespace __sc
 
 /*
@@ -82,7 +78,7 @@ _DiOS_FunPtr __dios_get_fun_ptr( const char *name ) noexcept {
 }
 
 void __dios_dummy() noexcept {
-    __dios_syscall( _SC_DUMMY, nullptr );
+    __dios_syscall( __dios::_SC_DUMMY, nullptr );
 }
 
 
