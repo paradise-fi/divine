@@ -229,26 +229,28 @@ struct HeapMixin
     Self &self() { return *static_cast< Self * >( this ); }
 
     auto &shadows() { return self()._shadows; }
-    auto shloc( HeapPointer &p, int &from, int &sz )
+
+    template< typename Internal >
+    auto shloc( HeapPointer &p, int &from, int &sz, Internal i )
     {
-        sz = sz ? sz : self().size( p ) - from;
+        sz = sz ? sz : self().size( p, i ) - from;
         p.offset( from );
-        return self().shloc( p );
+        return self().shloc( p, i );
     }
 
     auto pointers( HeapPointer p, int from = 0, int sz = 0 )
     {
-        return shadows().pointers( shloc( p, from, sz ), sz );
+        return shadows().pointers( shloc( p, from, sz, self().ptr2i( p ) ), sz );
     }
 
     auto defined( HeapPointer p, int from = 0, int sz = 0 )
     {
-        return shadows().defined( shloc( p, from, sz ), sz );
+        return shadows().defined( shloc( p, from, sz, self().ptr2i( p ) ), sz );
     }
 
     auto type( HeapPointer p, int from = 0, int sz = 0 )
     {
-        return shadows().type( shloc( p, from, sz ), sz );
+        return shadows().type( shloc( p, from, sz, self().ptr2i( p ) ), sz );
     }
 
     template< typename T >
@@ -287,12 +289,18 @@ struct HeapMixin
         p.v( pv );
     }
 
+    template< typename Internal >
+    HeapBytes unsafe_bytes( HeapPointer p, Internal i, int off, int sz )
+    {
+        sz = sz ? sz : self().size( p, i ) - off;
+        ASSERT_LEQ( off + sz, self().size( p, i ) );
+        auto start = self().unsafe_ptr2mem( p, i );
+        return HeapBytes( start + off, start + off + sz );
+    }
+
     HeapBytes unsafe_bytes( HeapPointer p, int off = 0, int sz = 0 )
     {
-        sz = sz ? sz : self().size( p ) - off;
-        ASSERT_LEQ( off + sz, self().size( p ) );
-        auto start = self().unsafe_ptr2mem( p );
-        return HeapBytes( start + off, start + off + sz );
+        return unsafe_bytes( p, self().ptr2i( p ), off, sz );
     }
 };
 
@@ -323,19 +331,21 @@ struct SimpleHeap : HeapMixin< Self >
 
     std::shared_ptr< Shared > _s;
 
-    void detach( HeapPointer ) {}
+    Internal detach( HeapPointer, Internal i ) { return i; }
     void made( HeapPointer ) {}
 
     SimpleHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
 
-    Shadows::Loc shloc( HeapPointer p )
+    Shadows::Loc shloc( HeapPointer p, Internal i )
     {
-        return Shadows::Loc( ptr2i( p ), Shadows::Anchor(), p.offset() );
+        return Shadows::Loc( i, Shadows::Anchor(), p.offset() );
     }
 
-    uint8_t *unsafe_ptr2mem( HeapPointer p )
+    Shadows::Loc shloc( HeapPointer p ) { return shloc( p, ptr2i( p ) ); }
+
+    uint8_t *unsafe_ptr2mem( HeapPointer, Internal i )
     {
-        return _objects.machinePointer< uint8_t >( ptr2i( p ) );
+        return _objects.machinePointer< uint8_t >( i );
     }
 
     int snap_size()
@@ -404,41 +414,52 @@ struct SimpleHeap : HeapMixin< Self >
         return ptr2i( p ).slab();
     }
 
-    int size( HeapPointer p ) { return _objects.size( ptr2i( p ) ); }
+    int size( HeapPointer, Internal i ) { return _objects.size( i ); }
+    int size( HeapPointer p ) { return size( p, ptr2i( p ) ); }
 
     void write( HeapPointer, value::Void ) {}
+    void write( HeapPointer, value::Void, Internal ) {}
     void read( HeapPointer, value::Void& ) {}
+    void read( HeapPointer, value::Void&, Internal ) {}
 
     template< typename T >
-    void read( HeapPointer p, T &t )
+    void read( HeapPointer p, T &t, Internal i )
     {
         using Raw = typename T::Raw;
         ASSERT( valid( p ), p );
-        ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
+        ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
 
-        t.raw( *_objects.machinePointer< typename T::Raw >( ptr2i( p ), p.offset() ) );
+        t.raw( *_objects.machinePointer< typename T::Raw >( i, p.offset() ) );
         _shadows.read( shloc( p ), t );
     }
 
     template< typename T >
-    void write( HeapPointer p, T t )
+    void read( HeapPointer p, T &t ) { read( p, t, ptr2i( p ) ); }
+
+    template< typename T >
+    Internal write( HeapPointer p, T t, Internal i )
     {
-        self().detach( p );
+        i = self().detach( p, i );
         using Raw = typename T::Raw;
         ASSERT( valid( p ), p );
-        ASSERT_LEQ( sizeof( Raw ), size( p ) - p.offset() );
+        ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
         _shadows.write( shloc( p ), t, []( auto, auto ) {} );
-        *_objects.machinePointer< typename T::Raw >( ptr2i( p ), p.offset() ) = t.raw();
+        *_objects.machinePointer< typename T::Raw >( i, p.offset() ) = t.raw();
+        return i;
     }
+
+    template< typename T >
+    void write( HeapPointer p, T t ) { write( p, t, ptr2i( p ) ); }
 
     template< typename FromH >
     bool copy( FromH &from_h, HeapPointer _from, HeapPointer _to, int bytes )
     {
         if ( _from.null() || _to.null() )
             return false;
-        self().detach( _to );
-        auto from = from_h.unsafe_bytes( _from ), to = self().unsafe_bytes( _to );
-        int from_s( from_h.size( _from ) ), to_s( size( _to ) );
+        auto _to_i = self().detach( _to, ptr2i( _to ) );
+        int from_s( from_h.size( _from ) ), to_s( size( _to, _to_i ) );
+        auto from = from_h.unsafe_bytes( _from, ptr2i( _from ), 0, from_s ),
+               to = self().unsafe_bytes( _to, _to_i, 0, to_s );
         int from_off( _from.offset() ), to_off( _to.offset() );
         if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )
             return false;
@@ -469,24 +490,25 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         _ext.writable.insert( p.object() );
     }
 
-    void detach( HeapPointer p )
+    Internal detach( HeapPointer p, Internal i )
     {
         if ( _ext.writable.count( p.object() ) )
-            return;
+            return i;
         _ext.writable.insert( p.object() );
         p.offset( 0 );
-        int sz = size( p );
-        auto oldloc = shloc( p );
-        auto oldbytes = unsafe_bytes( p );
+        int sz = size( p, i );
+        auto oldloc = shloc( p, i );
+        auto oldbytes = unsafe_bytes( p, i, 0, sz );
 
         auto obj = _objects.allocate( sz );
         _shadows.make( _objects, obj, sz );
 
         _l.exceptions[ p.object() ] = obj;
-        auto newloc = shloc( p );
-        auto newbytes = unsafe_bytes( p );
+        auto newloc = shloc( p, obj );
+        auto newbytes = unsafe_bytes( p, obj, 0, sz );
         _shadows.copy( _shadows, oldloc, newloc, sz, []( auto, auto ) {} );
         std::copy( oldbytes.begin(), oldbytes.end(), newbytes.begin() );
+        return obj;
     }
 
     Snapshot snapshot()
