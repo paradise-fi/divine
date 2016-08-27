@@ -321,6 +321,7 @@ struct SimpleHeap : HeapMixin< Self >
     using SnapItem = std::pair< int, Internal >;
 
     Pool _objects;
+    Pool _snapshots;
     Shadows _shadows;
 
     struct Local
@@ -350,16 +351,16 @@ struct SimpleHeap : HeapMixin< Self >
 
     int snap_size()
     {
-        if ( !_objects.valid( _l.snapshot ) )
+        if ( !_snapshots.valid( _l.snapshot ) )
             return 0;
-        return _objects.size( _l.snapshot ) / sizeof( SnapItem );
+        return _snapshots.size( _l.snapshot ) / sizeof( SnapItem );
     }
 
     SnapItem *snap_begin()
     {
-        if ( !_objects.valid( _l.snapshot ) )
+        if ( !_snapshots.valid( _l.snapshot ) )
             return nullptr;
-        return _objects.machinePointer< SnapItem >( _l.snapshot );
+        return _snapshots.machinePointer< SnapItem >( _l.snapshot );
     }
 
     SnapItem *snap_end() { return snap_begin() + snap_size(); }
@@ -531,8 +532,8 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         while ( snap != snap_end() )
             ++ snap, ++ count;
 
-        auto s = _objects.allocate( count * sizeof( SnapItem ) );
-        auto si = _objects.machinePointer< SnapItem >( s );
+        auto s = _snapshots.allocate( count * sizeof( SnapItem ) );
+        auto si = _snapshots.machinePointer< SnapItem >( s );
         snap = snap_begin();
 
         for ( auto &except : _l.exceptions )
@@ -553,7 +554,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         {
             *si++ = *snap++;
         }
-        ASSERT_EQ( si, _objects.machinePointer< SnapItem >( s ) + count );
+        ASSERT_EQ( si, _snapshots.machinePointer< SnapItem >( s ) + count );
 
         return s;
     }
