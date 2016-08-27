@@ -66,6 +66,8 @@ int dump( DN dn, std::map< vm::GenericPointer, int > &dumped, int &seq, std::str
 
 void Draw::run()
 {
+    NOT_IMPLEMENTED();
+#if 0
     vm::Explore ex( _bc );
     int edgecount = 0, statecount = 0;
 
@@ -102,6 +104,7 @@ void Draw::run()
             } ) );
     std::cout << "}";
     std::cerr << "found " << statecount << " states and " << edgecount << " edges" << std::endl;
+#endif
 }
 
 }
