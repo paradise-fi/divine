@@ -36,31 +36,8 @@ namespace explore {
 
 struct State
 {
-    CowHeap *_heap; /* for operator< */
     CowHeap::Snapshot snap;
-    HeapPointer root, globals;
-    State() : _heap( nullptr ) {}
-
-    bool operator==( State s ) const { return compare( s ) == 0; }
-    bool operator<( State s ) const { return compare( s ) < 0; }
-
-    int compare( State s ) const
-    {
-        ASSERT( _heap );
-        ASSERT( s._heap );
-        CowHeap a( *_heap ), b( *s._heap );
-        a.restore( snap );
-        b.restore( s.snap );
-        return heap::compare( a, b, root, s.root );
-    }
-
-    brick::hash::hash128_t hash() const
-    {
-        ASSERT( _heap );
-        CowHeap h( *_heap );
-        h.restore( snap );
-        return heap::hash( h, root );
-    }
+    HeapPointer root;
 };
 
 struct Context : vm::Context< CowHeap >
@@ -76,8 +53,6 @@ struct Context : vm::Context< CowHeap >
     {
         explore::State st;
         st.root = root;
-        st.globals = globals().cooked();
-        st._heap = &heap();
         st.snap = heap().snapshot();
         return st;
     }
@@ -86,7 +61,6 @@ struct Context : vm::Context< CowHeap >
     {
         _t.entry_frame = nullPointerV();
         heap().restore( st.snap );
-        globals( st.globals );
         return st.root;
     }
 
@@ -145,12 +119,34 @@ struct Explore
 
     explore::Context _ctx;
 
-    hashset::Fast< explore::State > _states;
+    struct Hasher
+    {
+        mutable CowHeap h1, h2;
+
+        Hasher( const CowHeap &heap )
+            : h1( heap ), h2( heap )
+        {}
+
+        bool equal( State a, State b ) const
+        {
+            h1.restore( a.snap );
+            h2.restore( b.snap );
+            return heap::compare( h1, h2, a.root, b.root ) == 0;
+        }
+
+        brick::hash::hash128_t hash( State s ) const
+        {
+            h1.restore( s.snap );
+            return heap::hash( h1, s.root );
+        }
+    };
+
+    hashset::Fast< explore::State, Hasher > _states;
 
     auto &program() { return _bc->program(); }
 
     Explore( BC bc )
-        : _bc( bc ), _ctx( _bc->program() )
+        : _bc( bc ), _ctx( _bc->program() ), _states( Hasher( _ctx.heap() ) )
     {
         setup( program(), _ctx );
     }
