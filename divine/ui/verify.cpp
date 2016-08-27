@@ -35,11 +35,11 @@ void Verify::run()
     ::gettimeofday(&start, NULL);
 
     ss::search( ss::Order::PseudoBFS, ex, 1, ss::passive_listen(
-                    [&]( auto, auto, auto trace )
+                    [&]( auto, auto, auto )
                     {
                         ++edgecount;
                     },
-                    [&]( auto st )
+                    [&]( auto )
                     {
                         ++statecount;
                         if ( statecount % 100 == 0 )
