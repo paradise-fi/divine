@@ -431,7 +431,7 @@ struct SimpleHeap : HeapMixin< Self >
         ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
 
         t.raw( *_objects.machinePointer< typename T::Raw >( i, p.offset() ) );
-        _shadows.read( shloc( p ), t );
+        _shadows.read( shloc( p, i ), t );
     }
 
     template< typename T >
@@ -444,7 +444,7 @@ struct SimpleHeap : HeapMixin< Self >
         using Raw = typename T::Raw;
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
-        _shadows.write( shloc( p ), t, []( auto, auto ) {} );
+        _shadows.write( shloc( p, i ), t, []( auto, auto ) {} );
         *_objects.machinePointer< typename T::Raw >( i, p.offset() ) = t.raw();
         return i;
     }
@@ -466,7 +466,7 @@ struct SimpleHeap : HeapMixin< Self >
             return false;
         std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
         _shadows.copy( from_h.shadows(), from_h.shloc( _from ),
-                       shloc( _to ), bytes,  []( auto, auto ) {} );
+                       shloc( _to, _to_i ), bytes,  []( auto, auto ) {} );
         return true;
     }
 
