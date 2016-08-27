@@ -245,7 +245,7 @@ struct Pointer : Base
 
     Pointer() : Pointer( nullPointer(), false, false ) {}
     explicit Pointer( Cooked x, bool d = true, bool isptr = true )
-        : _cooked( x ), _obj_defined( true ), _off_defined( true ), _ispointer( true ) {}
+        : _cooked( x ), _obj_defined( d ), _off_defined( d ), _ispointer( isptr ) {}
 
     Pointer operator+( int off )
     {
