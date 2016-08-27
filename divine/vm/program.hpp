@@ -98,6 +98,9 @@ struct ConstContext
 
     PointerV _constants, _globals, _frame;
     PointerV frame() { return _frame; }
+    auto frame_i() { return heap().ptr2i( _frame.cooked() ); }
+    auto constants_i() { return heap().ptr2i( _constants.cooked() ); }
+    void frame_i( typename Heap::Internal ) {}
 
     Program &program() { return _program; }
     void frame( PointerV f ) { _frame = f; }

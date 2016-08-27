@@ -156,13 +156,18 @@ struct Eval
     CodePointer pc()
     {
         PointerV ptr;
-        heap().read( frame().cooked(), ptr );
+        ASSERT_EQ( heap().ptr2i( frame().cooked() ), context().frame_i() );
+        heap().read( frame().cooked(), ptr, context().frame_i() );
         if ( !ptr.defined() )
             return CodePointer();
         return ptr.cooked();
     }
 
-    void pc( CodePointer p ) { heap().write( frame().cooked(), PointerV( p ) ); }
+    void pc( CodePointer p )
+    {
+        ASSERT_EQ( heap().ptr2i( frame().cooked() ), context().frame_i() );
+        context().frame_i( heap().write( frame().cooked(), PointerV( p ), context().frame_i() ) );
+    }
 
     PointerV frame() { return context().frame(); }
     PointerV globals() { return context().globals(); }
@@ -324,14 +329,26 @@ struct Eval
             return get( ptr( v ) );
         }
 
-        T get( GenericPointer pp )
+        T get( HeapPointer pp )
         {
             T result;
-            ev->heap().read( pp, result );
+            if ( pp.object() == ev->context().frame().cooked().object() )
+                ev->heap().read( pp, result, ev->context().frame_i() );
+            else if ( pp.object() == ev->context().constants().cooked().object() )
+                ev->heap().read( pp, result, ev->context().constants_i() );
+            else
+                ev->heap().read( pp, result );
             return result;
         }
 
-        void set( int v, T t ) { ev->heap().write( ptr( v ), t ); }
+        void set( int v, T t )
+        {
+            auto pp = ptr( v );
+            if ( pp.object() == ev->context().frame().cooked().object() )
+                ev->heap().write( pp, t, ev->context().frame_i() );
+            else
+                ev->heap().write( pp, t );
+        }
     };
 
     template< typename T > T operand( int i ) { return V< T >( this ).get( i >= 0 ? i + 1 : i ); }

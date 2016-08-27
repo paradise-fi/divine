@@ -43,6 +43,7 @@ struct Context
     struct Persistent
     {
         PointerV constants;
+        typename Heap::Internal constants_i;
         CodePointer sched, fault;
         Heap heap;
         Program *program;
@@ -51,6 +52,7 @@ struct Context
     struct Transient
     {
         PointerV globals, frame, entry_frame, ifl;
+        typename Heap::Internal frame_i;
         bool mask, interrupted;
         std::unordered_set< GenericPointer > cfl_visited;
 
@@ -61,12 +63,19 @@ struct Context
     Program &program() { return *_p.program; }
     Heap &heap() { return _p.heap; }
     PointerV frame() { return _t.frame; }
+    auto frame_i() { return _t.frame_i; }
+    auto constants_i() { return _p.constants_i; }
     PointerV globals() { return _t.globals; }
     PointerV constants() { return _p.constants; }
 
-    void frame( PointerV p ) { _t.frame = p; }
+    void frame( PointerV p ) { _t.frame = p; _t.frame_i = heap().ptr2i( p.cooked() ); }
+    void frame_i( typename Heap::Internal i )
+    {
+        ASSERT_EQ( i, heap().ptr2i( _t.frame.cooked() ) );
+        _t.frame_i = i;
+    }
     void globals( PointerV v ) { _t.globals = v; }
-    void constants( PointerV v ) { _p.constants = v; }
+    void constants( PointerV v ) { _p.constants = v; _p.constants_i = heap().ptr2i( v.cooked() ); }
 
     void push( PointerV ) {}
 
