@@ -426,7 +426,7 @@ struct Eval
         heap().copy( ptr2h( from ), s2ptr( result() ), sz );
     }
 
-    template< template< typename > class Guard, typename T, typename Op >
+    template< template< typename > class Guard = Any, typename T, typename Op >
     auto op( Op _op ) -> typename std::enable_if< Guard< T >::value >::type
     {
         // std::cerr << "op called on type " << typeid( T ).name() << std::endl;
@@ -434,14 +434,14 @@ struct Eval
         _op( V< T >( this ) );
     }
 
-    template< template< typename > class Guard, typename T >
+    template< template< typename > class Guard = Any, typename T >
     void op( NoOp )
     {
         instruction().op->dump();
         UNREACHABLE_F( "invalid operation on %s", typeid( T ).name() );
     }
 
-    template< template< typename > class Guard, typename Op >
+    template< template< typename > class Guard = Any, typename Op >
     void op( int off, Op _op )
     {
         auto &v = instruction().value( off );
@@ -482,7 +482,7 @@ struct Eval
         }
     }
 
-    template< template< typename > class Guard, typename Op >
+    template< template< typename > class Guard = Any, typename Op >
     void op( int off1, int off2, Op _op )
     {
         op< Any >( off1, [&]( auto v1 ) {
