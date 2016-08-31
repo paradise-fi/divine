@@ -239,6 +239,12 @@ struct Eval
             return false;
         }
 
+        if ( pp.type() == PointerType::Code )
+        {
+            fault( _VM_F_Memory ) << "attempted to dereference a code pointer" << p << dsc;
+            return false;
+        }
+
         if ( write && pp.type() == PointerType::Const )
         {
             fault( _VM_F_Memory ) << "attempted write to a constant location " << p << dsc;
