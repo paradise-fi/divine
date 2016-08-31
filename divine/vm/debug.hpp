@@ -68,12 +68,13 @@ struct DebugNode
 
     int size()
     {
+        int sz = INT_MAX;
         Eval eval( _ctx.program(), _ctx );
         if ( _type )
-            return _ctx.program().TD.getTypeAllocSize( _type );
+            sz = _ctx.program().TD.getTypeAllocSize( _type );
         if ( !_address.null() )
-            return eval.ptr2sz( PointerV( _address ) );
-        return 0;
+            sz = std::min( sz, eval.ptr2sz( PointerV( _address ) ) - _offset );
+        return sz;
     }
 
     llvm::DIDerivedType *di_derived( uint64_t tag )
