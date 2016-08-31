@@ -73,6 +73,11 @@ void Draw::run()
     vm::Explore ex( _bc );
     ex.start();
 
+    vm::DebugContext dbg( _bc->program() );
+    vm::setup::boot( dbg );
+    vm::Eval< vm::Program, vm::DebugContext, vm::value::Void > dbg_eval( dbg.program(), dbg );
+    dbg_eval.run();
+
     int edgecount = 0, statecount = 0;
 
     typename vm::CowHeap::Pool ext;
@@ -102,7 +107,8 @@ void Draw::run()
                 ext.materialise( st.snap, sizeof( int ), ex.pool() );
                 int *id = ext.machinePointer< int >( st.snap );
                 vm::DebugNode< vm::explore::Context > dn( ex._ctx, ex._ctx.heap().snapshot(),
-                                                          ex._ctx.get( _VM_CR_State ).pointer, 0, vm::DNKind::Object, nullptr, nullptr );
+                                                          ex._ctx.get( _VM_CR_State ).pointer, 0, vm::DNKind::Object,
+                                                          dbg._state_type, dbg._state_di_type );
                 DNMap _dumped;
                 int hseq = 0;
                 std::cerr << "# new state" << std::endl;
