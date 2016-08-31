@@ -56,6 +56,16 @@ struct Context
     Program *_program;
     std::unordered_set< GenericPointer > _cfl_visited;
 
+    template< typename Ctx >
+    void load( const Ctx &ctx )
+    {
+        for ( int i = 0; i < _VM_CR_Last; ++i )
+            if ( i == _VM_CR_Flags || i == _VM_CR_User2 )
+                set( i, ctx.get( i ).integer );
+            else
+                set( i, ctx.get( i ).pointer );
+    }
+
     template< typename I >
     int choose( int, I, I ) { return 0; }
 

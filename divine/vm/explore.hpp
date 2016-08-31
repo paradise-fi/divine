@@ -147,6 +147,14 @@ struct Explore
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
     }
 
+    template< typename Ctx >
+    void start( const Ctx &ctx, CowHeap::Snapshot snap )
+    {
+        _ctx.load( ctx ); /* copy over registers */
+        _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
+        _initial.snap = snap;
+    }
+
     template< typename Y >
     void edges( explore::State from, Y yield )
     {
