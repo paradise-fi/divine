@@ -23,6 +23,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IntrinsicInst.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <divine/vm/context.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/print.hpp>
 #include <divine/cc/runtime.hpp>
@@ -408,6 +409,72 @@ struct DebugNode
 
     void dump( std::ostream &o );
     void dot( std::ostream &o );
+};
+
+using ProcInfo = std::vector< std::pair< std::pair< int, int >, int > >;
+
+struct DebugContext : Context< vm::Program, vm::CowHeap >
+{
+    std::vector< std::string > _trace;
+    ProcInfo _proc;
+
+    llvm::DIType *_state_di_type;
+    llvm::Type   *_state_type;
+
+    DebugContext( vm::Program &p )
+        : Context< vm::Program, vm::CowHeap >( p ),
+          _state_di_type( nullptr ), _state_type( nullptr )
+    {}
+
+    void doublefault()
+    {
+        _trace.push_back( "fatal double fault" );
+        set( _VM_CR_Frame, vm::nullPointer() );
+    }
+
+    void trace( vm::TraceText tt )
+    {
+        _trace.push_back( heap().read_string( tt.text ) );
+    }
+
+    void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
+
+    void trace( vm::TraceSchedChoice tsc )
+    {
+        auto ptr = tsc.list;
+        int size = heap().size( ptr.cooked() );
+        if ( size % 12 )
+            return; /* invalid */
+        for ( int i = 0; i < size / 12; ++i )
+        {
+            vm::value::Int< 32, true > pid, tid, choice;
+            heap().read_shift( ptr, pid );
+            heap().read_shift( ptr, tid );
+            heap().read_shift( ptr, choice );
+            _proc.emplace_back( std::make_pair( pid.cooked(), tid.cooked() ), choice.cooked() );
+        }
+    }
+
+    void state_type( llvm::DIVariable *di )
+    {
+        auto ptrtype = llvm::cast< llvm::DIDerivedType >( di->getType().resolve( program().ditypemap ) );
+        _state_di_type = ptrtype->getBaseType().resolve( program().ditypemap );
+    }
+
+    void trace( vm::TraceStateType s )
+    {
+        _state_type = s.stateptr->getType()->getPointerElementType();
+        for ( auto &BB : *llvm::cast< llvm::Instruction >( s.stateptr )->getParent()->getParent() )
+            for ( auto &I : BB )
+            {
+                if ( auto DVI = llvm::dyn_cast< llvm::DbgValueInst >( &I ) )
+                    if ( DVI->getValue() == s.stateptr )
+                        state_type( DVI->getVariable() );
+                if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
+                    if ( DDI->getAddress() == s.stateptr )
+                        state_type( DDI->getVariable() );
+            }
+    }
 };
 
 }
