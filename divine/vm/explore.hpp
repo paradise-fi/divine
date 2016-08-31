@@ -38,6 +38,8 @@ namespace explore {
 struct State
 {
     CowHeap::Snapshot snap;
+    bool accepting:1;
+    bool error:1;
 };
 
 struct Context : vm::Context< Program, CowHeap >
@@ -48,18 +50,6 @@ struct Context : vm::Context< Program, CowHeap >
     int _level;
 
     Context( Program &p ) : vm::Context< Program, CowHeap >( p ), _level( 0 ) {}
-
-    explore::State snap()
-    {
-        explore::State st;
-        st.snap = heap().snapshot();
-        return st;
-    }
-
-    void load( explore::State st )
-    {
-        heap().restore( st.snap );
-    }
 
     template< typename I >
     int choose( int count, I, I )
@@ -101,13 +91,13 @@ struct Context : vm::Context< Program, CowHeap >
 
 struct Explore
 {
-    using Heap = MutableHeap;
     using PointerV = value::Pointer;
     using Eval = vm::Eval< Program, explore::Context, value::Void >;
 
     using BC = std::shared_ptr< BitCode >;
     using Env = std::vector< std::string >;
     using State = explore::State;
+    using Snapshot = CowHeap::Snapshot;
 
     BC _bc;
 
@@ -122,21 +112,21 @@ struct Explore
             : h1( heap ), h2( heap )
         {}
 
-        bool equal( State a, State b ) const
+        bool equal( Snapshot a, Snapshot b ) const
         {
-            h1.restore( a.snap );
-            h2.restore( b.snap );
+            h1.restore( a );
+            h2.restore( b );
             return heap::compare( h1, h2, root, root ) == 0;
         }
 
-        brick::hash::hash128_t hash( State s ) const
+        brick::hash::hash128_t hash( Snapshot s ) const
         {
-            h1.restore( s.snap );
+            h1.restore( s );
             return heap::hash( h1, root );
         }
     };
 
-    hashset::Fast< explore::State, Hasher > _states;
+    hashset::Fast< Snapshot, Hasher > _states;
     explore::State _initial;
 
     auto &program() { return _bc->program(); }
@@ -144,6 +134,7 @@ struct Explore
     Explore( BC bc )
         : _bc( bc ), _ctx( _bc->program() ), _states( Hasher( _ctx.heap() ) )
     {
+        _initial.error = _initial.accepting = 0;
     }
 
     void start()
@@ -153,15 +144,19 @@ struct Explore
         eval.run();
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
         if ( !(_ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
-            _initial = _ctx.snap();
+        {
+            _initial.snap = _ctx.heap().snapshot();
+            _states.insert( _initial.snap );
+        }
     }
 
     template< typename Ctx >
-    void start( const Ctx &ctx, CowHeap::Snapshot snap )
+    void start( const Ctx &ctx, State st )
     {
         _ctx.load( ctx ); /* copy over registers */
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
-        _initial.snap = snap;
+        _initial = st;
+        _states.insert( st.snap );
     }
 
     template< typename Y >
@@ -170,14 +165,17 @@ struct Explore
         Eval eval( program(), _ctx );
 
         do {
-            _ctx.load( from );
+            _ctx.heap().restore( from.snap );
             setup::scheduler( _ctx );
             eval.run();
             if ( !( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
             {
-                explore::State st = _ctx.snap();
-                auto r = _states.insert( st );
-                yield( *r, _ctx._trace, r.isnew() );
+                explore::State st;
+                auto r = _states.insert( _ctx.heap().snapshot() );
+                st.snap = *r;
+                st.accepting = _ctx.ref( _VM_CR_Flags ) & _VM_CF_Accepting;
+                st.error = _ctx.ref( _VM_CR_Flags ) & _VM_CF_Error;
+                yield( st, _ctx._trace, r.isnew() );
             }
         } while ( !_ctx.finished() );
     }
@@ -186,10 +184,7 @@ struct Explore
     void initials( Y yield )
     {
         if ( _initial.snap.slab() ) /* fixme, better validity check */
-        {
-            auto r = _states.insert( _initial );
-            yield( *r );
-        }
+            yield( _initial );
     }
 };
 
