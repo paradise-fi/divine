@@ -31,11 +31,13 @@ struct Syscall {
         _inst = this;
     }
 
-    static void call(int syscode, void* ret, va_list& args) noexcept {
+    static void trap(int syscode, void* ret, va_list& args) noexcept
+    {
         _inst->_syscode = static_cast< _DiOS_SC >( syscode );
         _inst->_ret = ret;
         va_copy( _inst->_args, args );
-        __dios_syscall_trap();
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
         va_end( _inst->_args );
     }
 

@@ -32,7 +32,7 @@ void __attribute__((__noreturn__)) Fault::handler( _VM_Fault _what, _VM_Frame *c
 
         if ( !( fault & _DiOS_FF_Continue ) ) {
             _inst->triggered = true;
-            __dios_syscall_trap();
+            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
         }
     }
 

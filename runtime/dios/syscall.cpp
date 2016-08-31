@@ -3,20 +3,15 @@
 #include <dios/syscall.hpp>
 #include <dios/scheduling.hpp>
 
-void __dios_syscall_trap() noexcept
-{
+void __dios_syscall( int syscode, void* ret, ... ) {
     uintptr_t fl = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, fl ); /*  restore */
-}
-
-void __dios_syscall( int syscode, void* ret, ... ) {
     va_list vl;
     va_start( vl, ret );
-    __dios::Syscall::call( syscode, ret, vl );
+    __dios::Syscall::trap( syscode, ret, vl );
     va_end( vl );
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, fl | _VM_CF_Interrupted ); /*  restore */
 }
 
 namespace __dios {
