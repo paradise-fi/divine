@@ -260,7 +260,15 @@ struct Eval
                 return false;
             }
             width = heap().size( hp );
-        } else width = ptr2s( pp ).size();
+        } else if ( ( pp.type() == PointerType::Const &&
+                      pp.object() >= program()._constants.size() ) ||
+                    ( pp.type() == PointerType::Global &&
+                      pp.object() >= program()._globals.size() ) )
+        {
+            fault( _VM_F_Memory ) << "pointer object out of bounds in " << p << dsc;
+            return false;
+        } else
+            width = ptr2s( pp ).size();
 
         if ( int( pp.offset() ) + sz > width )
         {
