@@ -50,7 +50,7 @@
 #ifdef RC_INVOKED
 #define __TBB_DATETIME "Unknown"
 #else
-#define __TBB_DATETIME __DATE__ __TIME__
+#define __TBB_DATETIME "..."
 #endif
 #endif
 
