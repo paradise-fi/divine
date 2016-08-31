@@ -364,7 +364,7 @@ struct Interpreter
 
         /* TODO do not allocate a new #NNN for already-visited states */
         auto name = "#"s + brick::string::fmt( ++_state_count );
-        set( name, objDN( _ctx.get( _VM_CR_State ).pointer, nullptr, nullptr ) );
+        set( name, objDN( _ctx.get( _VM_CR_State ).pointer, _ctx._state_type, _ctx._state_di_type ) );
         set( "#last", name );
         std::cerr << "# a new program state was stored as " << name << std::endl;
 
