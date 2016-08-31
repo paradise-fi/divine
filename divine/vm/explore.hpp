@@ -131,6 +131,7 @@ struct Explore
     explore::State _initial;
 
     auto &program() { return _bc->program(); }
+    auto &pool() { return _ctx.heap()._snapshots; }
 
     Explore( BC bc )
         : _bc( bc ), _ctx( _bc->program() ), _states( Hasher( _ctx.heap() ) )
