@@ -85,14 +85,14 @@ struct Help { std::string _cmd; };
 
 using ProcInfo = std::vector< std::pair< std::pair< int, int >, int > >;
 
-struct Context : vm::Context< vm::CowHeap >
+struct Context : vm::Context< vm::Program, vm::CowHeap >
 {
     using Program = vm::Program;
     std::vector< std::string > _trace;
     ProcInfo _proc;
     int _choice;
 
-    Context( Program &p ) : vm::Context< vm::CowHeap >( p ), _choice( 0 ) {}
+    Context( Program &p ) : vm::Context< vm::Program, vm::CowHeap >( p ), _choice( 0 ) {}
 
     template< typename I >
     int choose( int count, I, I )
@@ -107,7 +107,7 @@ struct Context : vm::Context< vm::CowHeap >
     void doublefault()
     {
         _trace.push_back( "fatal double fault" );
-        _t.frame = vm::nullPointerV();
+        set( _VM_CR_Frame, vm::nullPointer() );
     }
 
     void trace( vm::TraceText tt )
@@ -116,7 +116,6 @@ struct Context : vm::Context< vm::CowHeap >
     }
 
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
-    void trace( vm::TraceFlag ) { NOT_IMPLEMENTED(); }
 
     void trace( vm::TraceSchedChoice tsc )
     {
@@ -185,7 +184,7 @@ struct Stepper
     {
         for ( auto bp : _bps )
         {
-            if ( !bp.frame.null() && bp.frame != ctx.frame().cooked() )
+            if ( !bp.frame.null() && vm::HeapPointer( bp.frame ) != ctx.frame() )
                 continue;
             if ( eval.pc() == bp.pc )
                 return true;
@@ -211,8 +210,10 @@ struct Stepper
             if ( _frame.null() || _frame == _frame_cur )
                 _line = l;
         }
+        /* FIXME
         if ( i.hypercall == vm::HypercallJump )
             ++ _jumps.first;
+        */
     }
 
     void state() { add( _states ); }
@@ -249,7 +250,7 @@ struct Interpreter
     }
 
     DN nullDN() { return dn( vm::nullPointer(), vm::DNKind::Object, nullptr, nullptr ); }
-    DN frameDN() { return dn( _ctx.frame().cooked(), vm::DNKind::Frame, nullptr, nullptr ); }
+    DN frameDN() { return dn( _ctx.frame(), vm::DNKind::Frame, nullptr, nullptr ); }
 
     DN objDN( vm::GenericPointer p, llvm::Type *t, llvm::DIType *dit )
     {
@@ -365,8 +366,7 @@ struct Interpreter
         : _exit( false ), _bc( bc ), _ctx( _bc->program() ), _state_count( 0 ),
           _sticky_tid( -1, 0 ), _sched_random( false )
     {
-        setup( _bc->program(), _ctx );
-        _ctx.mask( true );
+        vm::setup::boot( _ctx );
         _prompt = strdup( "> " );
         set( "$_", nullDN() );
         update();
@@ -387,23 +387,22 @@ struct Interpreter
 
     bool schedule( Eval &eval )
     {
-        if ( !_ctx.frame().cooked().null() )
+        if ( !_ctx.frame().null() )
             return false; /* nothing to be done */
 
         auto st = eval._result.cooked();
 
-        if ( st.null() )
+        if ( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel )
             return true;
 
         /* TODO do not allocate a new #NNN for already-visited states */
         auto name = "#"s + brick::string::fmt( ++_state_count );
-        set( name, objDN( st, nullptr, nullptr ) );
+        set( name, objDN( _ctx.get( _VM_CR_State ).pointer, nullptr, nullptr ) );
         set( "#last", name );
         std::cerr << "# a new program state was stored as " << name << std::endl;
 
         // _states.push_back( _ctx.snap( _last ) );
-        _ctx.enter( _ctx.sched(), vm::nullPointerV(),
-                    Eval::IntV( eval.heap().size( st ) ), PointerV( st ) );
+        vm::setup::scheduler( _ctx );
 
         return true;
     }
@@ -424,7 +423,7 @@ struct Interpreter
 
     void check_running()
     {
-        if ( _ctx.frame().cooked() == vm::nullPointer() )
+        if ( _ctx.frame().null() )
             throw brick::except::Error( "the program has already terminated" );
     }
 
@@ -432,10 +431,10 @@ struct Interpreter
     {
         check_running();
         Eval eval( _bc->program(), _ctx );
-        bool in_fault = eval.pc().function() == _ctx.fault_handler().function();
+        bool in_fault = eval.pc().function() == _ctx.get( _VM_CR_FaultHandler ).pointer.object();
 
         do {
-            step.in_frame( _ctx.frame().cooked() );
+            step.in_frame( _ctx.frame() );
             eval.advance();
             step.instruction( eval.instruction() );
 
@@ -444,12 +443,12 @@ struct Interpreter
                 auto frame = _ctx.frame();
                 std::string before = vm::print::instruction( eval );
                 eval.dispatch();
-                if ( _ctx.heap().valid( frame.cooked() ) )
+                if ( _ctx.heap().valid( frame ) )
                 {
                     auto newframe = _ctx.frame();
-                    _ctx.frame( frame ); /* :-( */
+                    _ctx.set( _VM_CR_Frame, frame ); /* :-( */
                     std::cerr << vm::print::instruction( eval ) << std::endl;
-                    _ctx.frame( newframe );
+                    _ctx.set( _VM_CR_Frame, newframe );
                 }
                 else
                     std::cerr << before << std::endl;
@@ -460,7 +459,7 @@ struct Interpreter
             if ( schedule( eval ) )
                 step.state();
 
-            step.in_frame( _ctx.frame().cooked() );
+            step.in_frame( _ctx.frame() );
 
             if ( !_ctx._proc.empty() )
             {
@@ -481,9 +480,10 @@ struct Interpreter
                 std::cerr << "T: " << t << std::endl;
             _ctx._trace.clear();
 
-        } while ( !_ctx.frame().cooked().null() &&
+        } while ( !_ctx.frame().null() &&
                   !step.check( _ctx, eval ) &&
-                  ( in_fault || eval.pc().function() != _ctx.fault_handler().function() ) );
+                  ( in_fault || eval.pc().function()
+                    != _ctx.get( _VM_CR_FaultHandler ).pointer.object() ) );
     }
 
     void go( command::Exit ) { _exit = true; }
@@ -528,10 +528,7 @@ struct Interpreter
     {
         auto tgt = get( re.var );
         _ctx.heap().restore( tgt.snapshot() );
-        _ctx.frame( vm::nullPointerV() );
-        _ctx.globals( tgt._ctx.globals() );
-        _ctx.enter( _ctx.sched(), vm::nullPointerV(),
-                    Eval::IntV( _ctx.heap().size( tgt.address() ) ), PointerV( tgt.address() ) );
+        vm::setup::scheduler( _ctx );
         set( "$_", re.var );
     }
 
