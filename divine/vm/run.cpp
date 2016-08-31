@@ -21,11 +21,12 @@
 #include <divine/vm/heap.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/context.hpp>
+#include <divine/vm/setup.hpp>
 
 namespace divine {
 namespace vm {
 
-struct RunContext : Context< MutableHeap >
+struct RunContext : Context< Program, MutableHeap >
 {
     std::mt19937 _rand;
     using Context::Context;
@@ -40,13 +41,12 @@ struct RunContext : Context< MutableHeap >
     void doublefault()
     {
         std::cerr << "E: Double fault, program terminated." << std::endl;
-        frame( nullPointerV() );
+        this->set( _VM_CR_Frame, nullPointer() );
     }
 
     void trace( vm::TraceText tt ) { std::cerr << "T: " << heap().read_string( tt.text ) << std::endl; }
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceSchedChoice ) {}
-    void trace( vm::TraceFlag ) { NOT_IMPLEMENTED(); }
 };
 
 void Run::run()
@@ -56,19 +56,12 @@ void Run::run()
     RunContext _ctx( program );
     Eval eval( program, _ctx );
 
-    setup( program, _ctx );
-    _ctx.mask( true );
-    eval.run();
-    auto state = eval._result;
+    setup( _ctx );
 
-    while ( !state.cooked().null() )
+    while ( !( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
     {
-        _ctx.enter( _ctx.sched(), nullPointerV(),
-                    Eval::IntV( eval.heap().size( state.cooked() ) ), state );
-        _ctx.mask( true );
-        eval._result = nullPointerV();
+        schedule( eval );
         eval.run();
-        state = eval._result;
     }
 }
 

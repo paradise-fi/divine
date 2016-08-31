@@ -123,7 +123,7 @@ struct DebugNode
     void init()
     {
         if ( _kind == DNKind::Frame )
-            _ctx.frame( PointerV( _address ) );
+            _ctx.set( _VM_CR_Frame, _address );
     }
 
     DebugNode( Context ctx, Snapshot s, GenericPointer l, int off,
@@ -132,8 +132,8 @@ struct DebugNode
           _snapshot( s ), _kind( k ), _type( t ), _di_type( dit )
     {
         _ctx.heap().restore( s );
-        _ctx.globals( ctx.globals() );
-        _ctx.constants( ctx.constants() );
+        _ctx.set( _VM_CR_Globals, ctx.globals() );
+        _ctx.set( _VM_CR_Constants, ctx.constants() );
         init();
     }
 
@@ -174,7 +174,7 @@ struct DebugNode
                 _type->getPrimitiveSizeInBits(), Program::Slot::Integer,
                 [&]( auto v )
                 {
-                    auto raw = v.get( _address + _offset );
+                    auto raw = v.get( PointerV( _address + _offset ) );
                     using V = decltype( raw );
                     if ( bitoffset() || width() != size() * 8 )
                     {

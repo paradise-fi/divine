@@ -34,6 +34,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/pointer.hpp>
 #include <divine/vm/heap.hpp>
+#include <divine/vm/context.hpp>
 #include <divine/cc/clang.hpp>
 
 #include <runtime/divine.h>
@@ -55,31 +56,20 @@ enum Hypercall /* see divine.h for prototypes & documentation */
     NotHypercall = 0,
     NotHypercallButIntrinsic = 1,
 
-    /* system entry points */
-    HypercallSetSched,
-    HypercallSetFault,
-    HypercallSetIfl,
-
-    /* control flow */
+    HypercallControl,
     HypercallChoose,
-    HypercallMask,
-    HypercallJump,
     HypercallFault,
-    HypercallCflInterrupt,
-    HypercallMemInterrupt,
-    HypercallInterrupt,
+    HypercallInterruptCfl,
+    HypercallInterruptMem,
 
     /* feedback */
     HypercallTrace,
 
     /* memory management */
-    HypercallMakeObject,
-    HypercallFreeObject,
-    HypercallMemcpy,
-
-    /* introspection */
-    HypercallQueryFrame,
-    HypercallQueryObjectSize
+    HypercallObjMake,
+    HypercallObjFree,
+    HypercallObjResize,
+    HypercallObjSize
 };
 
 struct Choice {
@@ -89,54 +79,17 @@ struct Choice {
 };
 
 template< typename Program, typename _Heap = MutableHeap >
-struct ConstContext
+struct ConstContext : Context< Program, _Heap >
 {
-    using Heap = _Heap;
-    using PointerV = value::Pointer;
-
-    Program &_program;
-
-    PointerV _constants, _globals, _frame;
-    PointerV frame() { return _frame; }
-    auto frame_i() { return heap().ptr2i( _frame.cooked() ); }
-    auto constants_i() { return heap().ptr2i( _constants.cooked() ); }
-    void frame_i( typename Heap::Internal ) {}
-
-    Program &program() { return _program; }
-    void frame( PointerV f ) { _frame = f; }
-    PointerV globals() { return _globals; }
-    PointerV constants() { return _constants; }
-    void globals( PointerV g ) { _globals = g; }
-    void constants( PointerV c ) { _constants = c; }
-
-    void fault( _VM_Fault, PointerV, CodePointer ) { NOT_IMPLEMENTED(); }
-    bool mask( bool )  { NOT_IMPLEMENTED(); }
-    bool set_interrupted( bool )  { NOT_IMPLEMENTED(); }
-    void cfl_interrupt( CodePointer )  { NOT_IMPLEMENTED(); }
-    void check_interrupt()  { NOT_IMPLEMENTED(); }
-
-    template< typename I >
-    int choose( int, I, I ) { NOT_IMPLEMENTED(); }
-    bool sched( CodePointer ) { NOT_IMPLEMENTED(); }
-    CodePointer sched() { NOT_IMPLEMENTED(); }
-    bool fault_handler( CodePointer ) { NOT_IMPLEMENTED(); }
-    void setIfl( PointerV ) { NOT_IMPLEMENTED(); }
-    bool isEntryFrame( HeapPointer ) { NOT_IMPLEMENTED(); }
-    void trace( ... ) { NOT_IMPLEMENTED(); }
-
-    Heap _heap;
-
-    ConstContext( Program &p, const Heap &h ) : _program( p ), _heap( h ) {}
-    ConstContext( Program &p ) : _program( p ) {}
-    ConstContext( const ConstContext & ) = default;
-
-    Heap &heap() { return _heap; }
     void setup( int gds, int cds )
     {
-        _constants = heap().make( cds );
+        this->set( _VM_CR_Constants, this->heap().make( cds ).cooked() );
         if ( gds )
-            _globals = heap().make( gds );
+            this->set( _VM_CR_Globals, this->heap().make( gds ).cooked() );
     }
+
+    ConstContext( Program &p ) : Context< Program, _Heap >( p ) {}
+    ConstContext( Program &p, const _Heap &h ) : Context< Program, _Heap >( p, h ) {}
 };
 
 /*
@@ -161,7 +114,9 @@ struct Program
     struct Slot
     {
         enum Type { Void, Pointer, Integer, Float, Aggregate, CodePointer, Alloca } type:3;
-        enum Location { Global, Local, Constant, Invalid } location:2;
+        /* NB. The numeric value of Location has to agree with the
+           corresponding register's index in the _VM_ControlRegister enum */
+        enum Location { Constant, Global, Local, Invalid } location:2;
         uint32_t _width:29;
         uint32_t offset:30;
 
@@ -221,7 +176,7 @@ struct Program
 
     struct Function
     {
-        int datasize;
+        int framesize;
         int argcount:31;
         bool vararg:1;
         Slot personality;
@@ -241,7 +196,7 @@ struct Program
             return instructions[ pc.instruction() ];
         }
 
-        Function() : datasize( 0 ) {}
+        Function() : framesize( PointerBytes * 2 ) {}
     };
 
     std::vector< Function > functions;
@@ -270,15 +225,15 @@ struct Program
     auto exportHeap( H &target )
     {
         auto cp = value::Pointer(
-                heap::clone( _ccontext._heap, target, _ccontext.constants().cooked() ) );
+                heap::clone( _ccontext._heap, target, _ccontext.constants() ) );
 
         if ( !_globals_size )
-            return std::make_pair( cp, decltype( cp )( nullPointer() ) );
+            return std::make_pair( cp.cooked(), nullPointer() );
 
         auto gp = target.make( _globals_size );
-        target.copy( _ccontext._heap, _ccontext.globals().cooked(),
+        target.copy( _ccontext._heap, _ccontext.globals(),
                      gp.cooked(), _globals_size );
-        return std::make_pair( cp, gp );
+        return std::make_pair( cp.cooked(), gp.cooked() );
     }
 
     template< typename Container >

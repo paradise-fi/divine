@@ -19,8 +19,8 @@
 #pragma once
 
 #include <divine/vm/value.hpp>
-#include <divine/vm/program.hpp>
-#include <divine/vm/setup.hpp>
+
+#include <runtime/divine.h>
 
 #include <unordered_set>
 
@@ -30,52 +30,60 @@ namespace vm {
 using Fault = ::_VM_Fault;
 
 struct TraceText { value::Pointer text; };
-struct TraceFlag { int flag; };
 struct TraceSchedChoice { value::Pointer list; };
 struct TraceSchedInfo { int pid; int tid; };
 
-template< typename _Heap >
+template< typename _Program, typename _Heap >
 struct Context
 {
+    using Program = _Program;
     using Heap = _Heap;
     using PointerV = value::Pointer;
+    using HeapInternal = typename Heap::Internal;
+    using Location = typename Program::Slot::Location;
 
-    struct Persistent
+    union Register
     {
-        PointerV constants;
-        typename Heap::Internal constants_i;
-        CodePointer sched, fault;
-        Heap heap;
-        Program *program;
-    } _p;
+        GenericPointer pointer;
+        uint64_t integer;
+        Register() : integer( 0 ) {}
+    } _reg[ _VM_CR_Last ];
 
-    struct Transient
+    /* indexed by _VM_ControlRegister */
+    HeapInternal _ptr2i[ _VM_CR_Frame + 1 ];
+
+    Heap _heap;
+    Program *_program;
+    std::unordered_set< GenericPointer > _cfl_visited;
+
+    template< typename I >
+    int choose( int, I, I ) { return 0; }
+
+    void set( _VM_ControlRegister r, uint64_t v ) { _reg[ r ].integer = v; }
+    void set( _VM_ControlRegister r, GenericPointer v )
     {
-        PointerV globals, frame, entry_frame, ifl;
-        typename Heap::Internal frame_i;
-        bool mask, interrupted;
-        std::unordered_set< GenericPointer > cfl_visited;
-
-    } _t;
-
-    Context( Program &p ) { _p.program = &p; }
-
-    Program &program() { return *_p.program; }
-    Heap &heap() { return _p.heap; }
-    PointerV frame() { return _t.frame; }
-    auto frame_i() { return _t.frame_i; }
-    auto constants_i() { return _p.constants_i; }
-    PointerV globals() { return _t.globals; }
-    PointerV constants() { return _p.constants; }
-
-    void frame( PointerV p ) { _t.frame = p; _t.frame_i = heap().ptr2i( p.cooked() ); }
-    void frame_i( typename Heap::Internal i )
-    {
-        ASSERT_EQ( i, heap().ptr2i( _t.frame.cooked() ) );
-        _t.frame_i = i;
+        _reg[ r ].pointer = v;
+        if ( r <= _VM_CR_Frame )
+            _ptr2i[ r ] = v.null() ? HeapInternal() : _heap.ptr2i( v );
     }
-    void globals( PointerV v ) { _t.globals = v; }
-    void constants( PointerV v ) { _p.constants = v; _p.constants_i = heap().ptr2i( v.cooked() ); }
+
+    Register get( _VM_ControlRegister r ) { return _reg[ r ]; }
+    Register get( Location l ) { ASSERT_LT( l, Program::Slot::Invalid ); return _reg[ l ]; }
+    uint64_t &ref( _VM_ControlRegister r ) { return _reg[ r ].integer; }
+
+    HeapInternal ptr2i( _VM_ControlRegister r ) { return _ptr2i[ r ]; }
+    HeapInternal ptr2i( Location l ) { ASSERT_LT( l, Program::Slot::Invalid ); return _ptr2i[ l ]; }
+    void ptr2i( Location l, HeapInternal i ) { _ptr2i[ l ] = i; }
+    void ptr2i( _VM_ControlRegister r, HeapInternal i ) { _ptr2i[ r ] = i; }
+
+    Context( Program &p ) : _program( &p ) {}
+    Context( Program &p, const Heap &h ) : _program( &p ), _heap( h ) {}
+
+    Program &program() { return *_program; }
+    Heap &heap() { return _heap; }
+    HeapPointer frame() { return get( _VM_CR_Frame ).pointer; }
+    HeapPointer globals() { return get( _VM_CR_Globals ).pointer; }
+    HeapPointer constants() { return get( _VM_CR_Constants ).pointer; }
 
     void push( PointerV ) {}
 
@@ -89,11 +97,10 @@ struct Context
     template< typename... Args >
     void enter( CodePointer pc, PointerV parent, Args... args )
     {
-        int datasz = program().function( pc ).datasize;
-        auto frameptr = heap().make( datasz + 2 * PointerBytes );
-        frame( frameptr );
-        if ( parent.cooked().null() )
-            _t.entry_frame = _t.frame;
+        auto frameptr = heap().make( program().function( pc ).framesize );
+        set( _VM_CR_Frame, frameptr.cooked() );
+        if ( get( _VM_CR_IntFrame ).pointer.null() && parent.cooked().null() )
+            set( _VM_CR_IntFrame, frameptr.cooked() );
         heap().write_shift( frameptr, PointerV( pc ) );
         heap().write_shift( frameptr, parent );
         push( frameptr, args... );
@@ -101,65 +108,63 @@ struct Context
 
     bool set_interrupted( bool i )
     {
-        bool rv = _t.interrupted;
-        _t.cfl_visited.clear();
-        _t.interrupted = i;
+        auto &fl = ref( _VM_CR_Flags );
+        bool rv = fl & _VM_CF_Interrupted;
+        _cfl_visited.clear();
+        fl &= ~_VM_CF_Interrupted;
+        fl |= i ? _VM_CF_Interrupted : 0;
         return rv;
     }
 
     void cfl_interrupt( CodePointer pc )
     {
-        if ( _t.cfl_visited.count( pc ) )
+        if ( _cfl_visited.count( pc ) )
             set_interrupted( true );
         else
-            _t.cfl_visited.insert( pc );
+            _cfl_visited.insert( pc );
     }
 
     void check_interrupt()
     {
-        if ( _t.mask || !_t.interrupted )
+        if ( mask() || ( ref( _VM_CR_Flags ) & _VM_CF_Interrupted ) == 0 )
             return;
-        if ( !_t.ifl.cooked().null() )
-            heap().write( _t.ifl.cooked(), _t.frame );
-        frame( _t.entry_frame );
-        _t.ifl = PointerV();
-        _t.mask = true;
-        _t.interrupted = false;
+        auto interrupted = get( _VM_CR_Frame ).pointer;
+        set( _VM_CR_Frame, get( _VM_CR_IntFrame ).pointer );
+        set( _VM_CR_IntFrame, interrupted );
+        mask( true );
+        set_interrupted( false );
     }
 
-    virtual void doublefault() = 0;
+    virtual void trace( TraceText tt ) {} // fixme?
+    virtual void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
+    virtual void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
 
-    void fault( Fault f, PointerV frame, CodePointer pc )
+    virtual void doublefault()
     {
-        if ( _p.fault.null() )
+        /* TODO trace? */
+        set( _VM_CR_Frame, nullPointer() );
+    }
+
+    void fault( Fault f, HeapPointer frame, CodePointer pc )
+    {
+        auto fh = get( _VM_CR_FaultHandler ).pointer;
+        if ( fh.null() )
             doublefault();
         else
-            enter( _p.fault, _t.frame, value::Int< 32 >( f ), frame, PointerV( pc ) );
+            enter( fh, PointerV( get( _VM_CR_Frame ).pointer ),
+                   value::Int< 32 >( f ), PointerV( frame ), PointerV( pc ) );
     }
 
-    bool mask( bool n )  { bool o = _t.mask; _t.mask = n; return o; }
-    bool mask() { return _t.mask; }
-
-    CodePointer sched() { return _p.sched; }
-    bool sched( CodePointer p )
+    bool mask( bool n )
     {
-        if ( !_p.sched.null() )
-            return false;
-        _p.sched = p;
-        return true;
+        auto &fl = ref( _VM_CR_Flags );
+        bool rv = fl & _VM_CF_Mask;
+        fl &= ~_VM_CF_Mask;
+        fl |= n ? _VM_CF_Mask : 0;
+        return rv;
     }
 
-    bool fault_handler( CodePointer p )
-    {
-        if ( !_p.fault.null() )
-            return false;
-        _p.fault = p;
-        return true;
-    }
-    CodePointer fault_handler() { return _p.fault; }
-
-    bool isEntryFrame( HeapPointer fr ) { return HeapPointer( _t.entry_frame.cooked() ) == fr; }
-    void setIfl( PointerV p ) { _t.ifl = p; }
+    bool mask() { return ref( _VM_CR_Flags ) & _VM_CF_Mask; }
 };
 
 }

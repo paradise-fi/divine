@@ -400,6 +400,17 @@ struct SimpleHeap : HeapMixin< Self >
         return PointerV( p );
     }
 
+    void resize( HeapPointer p, int sz_new )
+    {
+        int sz_old = size( p );
+        auto obj_old = ptr2i( p );
+        auto obj_new = _objects.allocate( sz_new );
+        _shadows.make( _objects, obj_new, sz_new );
+        copy( *this, p, obj_old, p, obj_new, std::min( sz_new, sz_old ) );
+        _l.exceptions[ p.object() ] = obj_new;
+        self().made( p ); /* fixme? */
+    }
+
     bool free( HeapPointer p )
     {
         if ( !valid( p ) )
@@ -453,21 +464,29 @@ struct SimpleHeap : HeapMixin< Self >
     void write( HeapPointer p, T t ) { write( p, t, ptr2i( p ) ); }
 
     template< typename FromH >
-    bool copy( FromH &from_h, HeapPointer _from, HeapPointer _to, int bytes )
+    bool copy( FromH &from_h, HeapPointer _from, typename FromH::Internal _from_i,
+               HeapPointer _to, Internal &_to_i, int bytes )
     {
         if ( _from.null() || _to.null() )
             return false;
-        auto _to_i = self().detach( _to, ptr2i( _to ) );
-        int from_s( from_h.size( _from ) ), to_s( size( _to, _to_i ) );
-        auto from = from_h.unsafe_bytes( _from, ptr2i( _from ), 0, from_s ),
+        _to_i = self().detach( _to, _to_i );
+        int from_s( from_h.size( _from, _from_i ) ), to_s( size( _to, _to_i ) );
+        auto from = from_h.unsafe_bytes( _from, _from_i, 0, from_s ),
                to = self().unsafe_bytes( _to, _to_i, 0, to_s );
         int from_off( _from.offset() ), to_off( _to.offset() );
         if ( !from.begin() || !to.begin() || from_off + bytes > from_s || to_off + bytes > to_s )
             return false;
         std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
-        _shadows.copy( from_h.shadows(), from_h.shloc( _from ),
+        _shadows.copy( from_h.shadows(), from_h.shloc( _from, _from_i ),
                        shloc( _to, _to_i ), bytes,  []( auto, auto ) {} );
         return true;
+    }
+
+    template< typename FromH >
+    bool copy( FromH &from_h, HeapPointer _from, HeapPointer _to, int bytes )
+    {
+        auto _to_i = ptr2i( _to );
+        return copy( from_h, _from, from_h.ptr2i( _from ), _to, _to_i, bytes );
     }
 
     bool copy( HeapPointer f, HeapPointer t, int b ) { return copy( *this, f, t, b ); }
@@ -591,7 +610,7 @@ struct MutableHeap
         vm::MutableHeap heap;
         auto p = heap.make( 16 );
         ASSERT_EQ( vm::HeapPointer( p.cooked() ),
-                   vm::HeapPointer( vm::ConstPointer( p.cooked() ) ) );
+                   vm::HeapPointer( vm::GenericPointer( p.cooked() ) ) );
     }
 
     TEST(write_read)
@@ -602,6 +621,18 @@ struct MutableHeap
         heap.write( p.cooked(), p );
         heap.read( p.cooked(), q );
         ASSERT( p.cooked() == q.cooked() );
+    }
+
+    TEST(resize)
+    {
+        vm::MutableHeap heap;
+        PointerV p, q;
+        p = heap.make( 16 );
+        heap.write( p.cooked(), p );
+        heap.resize( p.cooked(), 8 );
+        heap.read( p.cooked(), q );
+        ASSERT_EQ( p.cooked(), q.cooked() );
+        ASSERT_EQ( heap.size( p.cooked() ), 8 );
     }
 
     TEST(clone_int)

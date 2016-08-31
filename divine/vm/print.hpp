@@ -18,7 +18,8 @@
 
 #pragma once
 
-#include <divine/vm/eval.hpp>
+#include <divine/vm/pointer.hpp>
+#include <divine/vm/program.hpp>
 #include <divine/cc/runtime.hpp>
 
 #include <cxxabi.h>
@@ -98,7 +99,7 @@ static std::string instruction( Eval &eval, int padding = 0 )
         {
             if ( insn.value( i ).type == Eval::Slot::Aggregate )
                 oname = "<aggregate>";
-            else eval.template op< Any >( i, [&]( auto v )
+            else eval.template op<>( i, [&]( auto v )
             {
                 oname = brick::string::fmt( v.get( i ) );
             } );
@@ -108,7 +109,7 @@ static std::string instruction( Eval &eval, int padding = 0 )
     }
 
     if ( insn.result().type != Eval::Slot::Aggregate )
-        eval.template op< Any >( 0, [&]( auto v )
+        eval.template op<>( 0, [&]( auto v )
         {
             int col = out.str().size();
             if ( col >= 45 )

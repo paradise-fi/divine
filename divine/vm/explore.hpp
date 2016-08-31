@@ -20,6 +20,7 @@
 
 #include <divine/vm/heap.hpp>
 #include <divine/vm/context.hpp>
+#include <divine/vm/setup.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/bitcode.hpp>
 #include <divine/ss/search.hpp> /* unit tests */
@@ -37,31 +38,27 @@ namespace explore {
 struct State
 {
     CowHeap::Snapshot snap;
-    HeapPointer root;
 };
 
-struct Context : vm::Context< CowHeap >
+struct Context : vm::Context< Program, CowHeap >
 {
     using Program = Program;
     std::vector< std::string > _trace;
     std::vector< std::pair< int, int > > _stack;
     int _level;
 
-    Context( Program &p ) : vm::Context< CowHeap >( p ), _level( 0 ) {}
+    Context( Program &p ) : vm::Context< Program, CowHeap >( p ), _level( 0 ) {}
 
-    explore::State snap( HeapPointer root )
+    explore::State snap()
     {
         explore::State st;
-        st.root = root;
         st.snap = heap().snapshot();
         return st;
     }
 
-    HeapPointer load( explore::State st )
+    void load( explore::State st )
     {
-        _t.entry_frame = nullPointerV();
         heap().restore( st.snap );
-        return st.root;
     }
 
     template< typename I >
@@ -79,8 +76,7 @@ struct Context : vm::Context< CowHeap >
 
     void doublefault()
     {
-        _trace.push_back( "fatal double fault" );
-        frame( nullPointerV() );
+        set( _VM_CR_Frame, nullPointer() );
     }
 
     void trace( TraceText tt )
@@ -90,13 +86,11 @@ struct Context : vm::Context< CowHeap >
 
     void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
-    void trace( TraceFlag ) { NOT_IMPLEMENTED(); }
 
     bool finished()
     {
         _level = 0;
         _trace.clear();
-        _t.entry_frame = nullPointerV();
         while ( !_stack.empty() && _stack.back().first + 1 == _stack.back().second )
             _stack.pop_back();
         return _stack.empty();
@@ -109,7 +103,7 @@ struct Explore
 {
     using Heap = MutableHeap;
     using PointerV = value::Pointer;
-    using Eval = vm::Eval< Program, explore::Context, PointerV >;
+    using Eval = vm::Eval< Program, explore::Context, value::Void >;
 
     using BC = std::shared_ptr< BitCode >;
     using Env = std::vector< std::string >;
@@ -122,6 +116,7 @@ struct Explore
     struct Hasher
     {
         mutable CowHeap h1, h2;
+        HeapPointer root;
 
         Hasher( const CowHeap &heap )
             : h1( heap ), h2( heap )
@@ -131,13 +126,13 @@ struct Explore
         {
             h1.restore( a.snap );
             h2.restore( b.snap );
-            return heap::compare( h1, h2, a.root, b.root ) == 0;
+            return heap::compare( h1, h2, root, root ) == 0;
         }
 
         brick::hash::hash128_t hash( State s ) const
         {
             h1.restore( s.snap );
-            return heap::hash( h1, s.root );
+            return heap::hash( h1, root );
         }
     };
 
@@ -148,7 +143,8 @@ struct Explore
     Explore( BC bc )
         : _bc( bc ), _ctx( _bc->program() ), _states( Hasher( _ctx.heap() ) )
     {
-        setup( program(), _ctx );
+        setup( _ctx );
+        _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
     }
 
     template< typename Y >
@@ -157,14 +153,12 @@ struct Explore
         Eval eval( program(), _ctx );
 
         do {
-            auto root = _ctx.load( from );
-            _ctx.enter( _ctx.sched(), nullPointerV(),
-                        Eval::IntV( eval.heap().size( root ) ), PointerV( root ) );
-            _ctx.mask( true );
+            _ctx.load( from );
+            schedule( eval );
             eval.run();
-            if ( !eval._result.cooked().null() )
+            if ( !( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
             {
-                explore::State st = _ctx.snap( eval._result.cooked() );
+                explore::State st = _ctx.snap();
                 auto r = _states.insert( st );
                 yield( *r, _ctx._trace, r.isnew() );
             }
@@ -174,14 +168,10 @@ struct Explore
     template< typename Y >
     void initials( Y yield )
     {
-        Eval eval( program(), _ctx );
-        _ctx.mask( true );
-        eval.run(); /* run __sys_init */
-        auto result = eval._result.cooked();
-
-        if ( !result.null() )
+        /* FIXME */
+        if ( !( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
         {
-            auto st = _ctx.snap( result );
+            auto st = _ctx.snap();
             auto r = _states.insert( st );
             yield( *r );
         }
@@ -196,29 +186,34 @@ using namespace std::literals;
 
 struct TestExplore
 {
-    TEST(instance)
-    {
-        auto bc = c2bc( "void *__sys_init( void *e ) { return 0; }" );
-        vm::Explore ex( bc );
-    }
-
     auto prog( std::string p )
     {
         return c2bc(
-            "void *__vm_make_object( int );"s +
-            "void *__vm_set_sched( void *(*)( int, void * ) );"s +
+            "void *__vm_obj_make( int );"s +
+            "void *__vm_control( int, ... );"s +
             "int __vm_choose( int, ... );"s +
-            "void *__sys_sched( int, void * );"s + p );
+            "void __boot( void * );"s + p );
+    }
+
+    TEST(instance)
+    {
+        auto bc = prog( "void __boot( void *e ) { __vm_control( 2, 7, 0b10000ull, 0b10000ull ); }" );
+        vm::Explore ex( bc );
     }
 
     auto prog_int( std::string first, std::string next )
     {
         return prog(
-            "void *__sys_sched( int sz, void *s ) { int *r = s; *r = "s
-            + next + "; return *r < 0 ? 0 : s; }"s +
-            "void *__sys_init( void *e ) {"s +
-            "    __vm_set_sched( __sys_sched ); "s +
-            "    int *r = __vm_make_object( 4 ); *r = "s + first + "; return r; }"s );
+            R"(void __sched() {
+                int *r = __vm_control( 1, 5 );
+                *r = )" + next + R"(;
+                if ( *r < 0 ) __vm_control( 2, 7, 0b10000ull, 0b10000ull );
+            }
+            void __boot( void *environ ) {
+                __vm_control( 0, 4, __sched );
+                void *e = __vm_obj_make( sizeof( int ) );
+                __vm_control( 0, 5, e );
+                int *r = e; *r = )" + first + "; }"s );
     }
 
     TEST(simple)

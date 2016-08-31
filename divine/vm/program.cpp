@@ -190,11 +190,11 @@ void Program::overlaySlot( int fun, Slot &result, llvm::Value *val )
         goto alloc;
 
     ASSERT( !f.instructions.empty() );
-    c.resize( f.datasize );
+    c.resize( f.framesize );
 
-    for ( result.offset = 0; result.offset < f.datasize; ) {
+    for ( result.offset = 2 * PointerBytes; result.offset < f.framesize; ) {
         iter ++;
-        if ( result.offset + result.size() > f.datasize )
+        if ( result.offset + result.size() > f.framesize )
             goto alloc;
 
         bool good = true;
@@ -212,9 +212,9 @@ void Program::overlaySlot( int fun, Slot &result, llvm::Value *val )
             goto out;
     }
 alloc:
-    result.offset = f.datasize;
-    f.datasize += result.size();
-    c.resize( f.datasize );
+    result.offset = f.framesize;
+    f.framesize += result.size();
+    c.resize( f.framesize );
 out:
     c[ result.offset ].push_back( val );
 }
@@ -304,42 +304,29 @@ Hypercall Program::hypercall( llvm::Function *f )
 {
     std::string name = f->getName().str();
 
-    if ( name == "__vm_set_sched" )
-        return HypercallSetSched;
-    if ( name == "__vm_set_fault" )
-        return HypercallSetFault;
-    if ( name == "__vm_set_ifl" )
-        return HypercallSetIfl;
-
+    if ( name == "__vm_control" )
+        return HypercallControl;
     if ( name == "__vm_choose" )
         return HypercallChoose;
-    if ( name == "__vm_mask" )
-        return HypercallMask;
-    if ( name == "__vm_jump" )
-        return HypercallJump;
     if ( name == "__vm_fault" )
         return HypercallFault;
-    if ( name == "__vm_cfl_interrupt" )
-        return HypercallCflInterrupt;
-    if ( name == "__vm_mem_interrupt" )
-        return HypercallMemInterrupt;
-    if ( name == "__vm_interrupt" )
-        return HypercallInterrupt;
+
+    if ( name == "__vm_interrupt_cfl" )
+        return HypercallInterruptCfl;
+    if ( name == "__vm_interrupt_mem" )
+        return HypercallInterruptMem;
 
     if ( name == "__vm_trace" )
         return HypercallTrace;
 
-    if ( name == "__vm_make_object" )
-        return HypercallMakeObject;
-    if ( name == "__vm_free_object" )
-        return HypercallFreeObject;
-    if ( name == "__vm_memcpy" )
-        return HypercallMemcpy;
-
-    if ( name == "__vm_query_frame" )
-        return HypercallQueryFrame;
-    if ( name == "__vm_query_object_size" )
-        return HypercallQueryObjectSize;
+    if ( name == "__vm_obj_make" )
+        return HypercallObjMake;
+    if ( name == "__vm_obj_free" )
+        return HypercallObjFree;
+    if ( name == "__vm_obj_resize" )
+        return HypercallObjResize;
+    if ( name == "__vm_obj_size" )
+        return HypercallObjSize;
 
     if ( f->getIntrinsicID() != llvm::Intrinsic::not_intrinsic )
         return NotHypercallButIntrinsic;
@@ -550,7 +537,7 @@ void Program::computeStatic()
                           + SL_item->getElementOffset( idx );
             _ccontext.heap().write( s2hptr( slotref.slot, offset ), val );
         };
-        writeMetaElem( 2, value::Int< 32 >( func.datasize + 2 * PointerBytes ) ); // frame size
+        writeMetaElem( 2, value::Int< 32 >( func.framesize ) ); // frame size
         writeMetaElem( 6, value::Int< 32 >( func.instructions.size() ) ); // inst count
 
         // create and write write instruction table
@@ -644,8 +631,8 @@ void Program::pass()
 
             framealign = _framealign;
 
-            this->function( pc ).datasize =
-                mem::align( this->function( pc ).datasize, framealign );
+            this->function( pc ).framesize =
+                mem::align( this->function( pc ).framesize, framealign );
         }
 
         for ( auto block = function->begin(); block != function->end(); ++ block )

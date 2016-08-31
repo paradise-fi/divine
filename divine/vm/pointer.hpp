@@ -26,7 +26,7 @@ namespace vm {
 
 namespace bitlevel = brick::bitlevel;
 
-enum class PointerType : unsigned { Code, Const, Global, Heap };
+enum class PointerType : unsigned { Const, Global, Heap, Code };
 
 static const int PointerBits = 64;
 static const int PointerBytes = PointerBits / 8;
@@ -70,6 +70,8 @@ struct GenericPointer : brick::types::Comparable
         _rep.type = t;
     }
 
+    explicit GenericPointer( Rep r = Rep() ) : _rep( r ) {}
+
     ObjT object() { return _rep.obj; }
     OffT offset() { return _rep.off; }
     void offset( OffT o ) { _rep.off = o; }
@@ -87,11 +89,6 @@ struct GenericPointer : brick::types::Comparable
     void type( PointerType t ) { _rep.type = t; }
 
     GenericPointer operator+( int o ) { return GenericPointer( type(), object(), offset() + o ); }
-
-    template< typename P,
-              typename Q = typename std::enable_if<
-                  std::is_same< Rep, typename P::Rep >::value >::type >
-    operator P() { P rv; rv._rep = _rep; return rv; }
 };
 
 /* the canonic null pointer, do *not* use as a null check through comparison;
@@ -108,6 +105,7 @@ static inline GenericPointer nullPointer() { return GenericPointer( PointerType:
 struct CodePointer : GenericPointer
 {
     CodePointer( ObjT f = 0, OffT i = 0 ) : GenericPointer( PointerType::Code, f, i ) {}
+    CodePointer( GenericPointer r ) : GenericPointer( r ) { ASSERT_EQ( type(), PointerType::Code ); }
 
     auto function() const { return _rep.obj; }
     void function( ObjT f ) { _rep.obj = f; }
@@ -122,7 +120,14 @@ struct CodePointer : GenericPointer
  */
 struct ConstPointer : GenericPointer
 {
-    ConstPointer( ObjT obj = 0, OffT off = 0 ) : GenericPointer( PointerType::Const, obj, off ) {}
+    ConstPointer( ObjT obj = 0, OffT off = 0 )
+        : GenericPointer( PointerType::Const, obj, off ) {}
+    ConstPointer( GenericPointer r ) : GenericPointer( r )
+    {
+        if ( null() )
+            type( PointerType::Const );
+        ASSERT_EQ( type(), PointerType::Const );
+    }
 };
 
 /*
@@ -136,38 +141,45 @@ struct ConstPointer : GenericPointer
  */
 struct GlobalPointer : GenericPointer
 {
-    GlobalPointer( ObjT obj = 0, OffT off = 0 ) : GenericPointer( PointerType::Global, obj, off ) {}
+    explicit GlobalPointer( ObjT obj = 0, OffT off = 0 )
+        : GenericPointer( PointerType::Global, obj, off ) {}
+    GlobalPointer( GenericPointer r ) : GenericPointer( r )
+    {
+        if ( null() )
+            type( PointerType::Global );
+        ASSERT_EQ( type(), PointerType::Global );
+    }
 };
 
 struct HeapPointer : GenericPointer
 {
     HeapPointer( ObjT obj = 0, OffT off = 0 ) : GenericPointer( PointerType::Heap, obj, off ) {}
+    HeapPointer( GenericPointer r ) : GenericPointer( r )
+    {
+        if ( null() )
+            type( PointerType::Heap );
+        ASSERT_EQ( type(), PointerType::Heap );
+    }
 };
 
 
-static inline std::ostream &operator<<( std::ostream &o, GenericPointer p )
+static inline std::ostream &operator<<( std::ostream &o, PointerType p )
 {
-    return o << "generic " << int( p.type() ) << " " << p.object() << " " << p.offset();
+    switch ( p )
+    {
+        case PointerType::Const: return o << "const";
+        case PointerType::Global: return o << "global";
+        case PointerType::Code: return o << "code";
+        case PointerType::Heap: return o << "heap";
+    }
 }
 
-static inline std::ostream &operator<<( std::ostream &o, CodePointer p )
+template< typename P,
+          typename Q = typename std::enable_if<
+              std::is_same< decltype( P().type() ), PointerType >::value >::type >
+static inline std::ostream &operator<<( std::ostream &o, P p )
 {
-    return o << "code " << p.function() << " " << p.instruction();
-}
-
-static inline std::ostream &operator<<( std::ostream &o, GlobalPointer p )
-{
-    return o << "global " << p.object() << " " << p.offset();
-}
-
-static inline std::ostream &operator<<( std::ostream &o, ConstPointer p )
-{
-    return o << "const " << p.object() << " " << p.offset();
-}
-
-static inline std::ostream &operator<<( std::ostream &o, HeapPointer p )
-{
-    return o << "[heap " << p.object() << " " << p.offset() << "]";
+    return o << p.type() << " " << p.object() << " " << p.offset();
 }
 
 }
@@ -179,7 +191,7 @@ struct TestPointer
     TEST(conversion)
     {
         vm::ConstPointer c( 1, 3 );
-        ASSERT_EQ( c, vm::ConstPointer( vm::CodePointer( c ) ) );
+        ASSERT_EQ( c, vm::ConstPointer( vm::GenericPointer( c ) ) );
     }
 };
 

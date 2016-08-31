@@ -147,6 +147,7 @@ struct Eval
     /* TODO should be sizeof( int ) of the *bitcode*, not ours! */
     using IntV = value::Int< 8 * sizeof( int ), true >;
     using CharV = value::Int< 1, false >;
+    using PtrIntV = vm::value::Int< PointerBits >;
 
     static_assert( Convertible< PointerV >::template Guard< IntV >::value, "" );
     static_assert( Convertible< IntV >::template Guard< PointerV >::value, "" );
@@ -156,8 +157,8 @@ struct Eval
     CodePointer pc()
     {
         PointerV ptr;
-        ASSERT_EQ( heap().ptr2i( frame().cooked() ), context().frame_i() );
-        heap().read( frame().cooked(), ptr, context().frame_i() );
+        ASSERT_EQ( heap().ptr2i( frame() ), context().ptr2i( _VM_CR_Frame ) );
+        heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
         if ( !ptr.defined() )
             return CodePointer();
         return ptr.cooked();
@@ -165,30 +166,41 @@ struct Eval
 
     void pc( CodePointer p )
     {
-        ASSERT_EQ( heap().ptr2i( frame().cooked() ), context().frame_i() );
-        context().frame_i( heap().write( frame().cooked(), PointerV( p ), context().frame_i() ) );
+        ASSERT_EQ( heap().ptr2i( frame() ), context().ptr2i( _VM_CR_Frame ) );
+        context().ptr2i( _VM_CR_Frame,
+                         heap().write( frame(), PointerV( p ),
+                                       context().ptr2i( _VM_CR_Frame ) ) );
     }
 
-    PointerV frame() { return context().frame(); }
-    PointerV globals() { return context().globals(); }
-    PointerV constants() { return context().constants(); }
+    HeapPointer frame() { return context().frame(); }
+    HeapPointer globals() { return context().globals(); }
+    HeapPointer constants() { return context().constants(); }
 
-    GenericPointer s2ptr( Slot v, int off, PointerV f, PointerV g )
+    GenericPointer s2ptr( Slot v, int off = 0 )
     {
-        auto base = PointerV();
-        switch ( v.location )
-        {
-            case Slot::Local: base = f + PointerBytes * 2; break;
-            case Slot::Global: base = g; break;
-            case Slot::Constant: base = constants(); break;
-            default: UNREACHABLE( "impossible slot type" );
-        }
-        ASSERT( base.defined() );
-        // std::cerr << "s2ptr: " << v << " -> " << (base + v.offset + off) << std::endl;
-        return (base + v.offset + off).cooked();
+        ASSERT_LT( v.location, Program::Slot::Invalid );
+        return context().get( v.location ).pointer + v.offset + off;
     }
-    GenericPointer s2ptr( Slot v, int off, PointerV f ) { return s2ptr( v, off, f, globals() ); }
-    GenericPointer s2ptr( Slot v, int off = 0 ) { return s2ptr( v, off, frame(), globals() ); }
+
+    GenericPointer s2ptr( Slot v, int off, PointerV f )
+    {
+        if ( v.location == Program::Slot::Local )
+            return f.cooked() + v.offset + off;
+        return s2ptr( v, off );
+    }
+
+    template< typename V >
+    void slot_write( Slot s, V v )
+    {
+        context().ptr2i( s.location,
+                         heap().write( s2ptr( s ), v, context().ptr2i( s.location ) ) );
+    }
+
+    template< typename V >
+    void slot_read( Slot s, V &v )
+    {
+        heap().read( s2ptr( s ), v, context().ptr2i( s.location ) );
+    }
 
     typename Program::Slot ptr2s( GenericPointer p )
     {
@@ -199,8 +211,7 @@ struct Eval
         else UNREACHABLE( "bad pointer in ptr2s" );
     }
 
-    HeapPointer ptr2h( PointerV p ) { return ptr2h( p, globals() ); }
-    HeapPointer ptr2h( PointerV p, PointerV g )
+    HeapPointer ptr2h( PointerV p )
     {
         ASSERT( p.defined() );
         auto pp = p.cooked();
@@ -208,7 +219,7 @@ struct Eval
         if ( pp.type() == PointerType::Heap || pp.null() )
             return pp;
 
-        return s2ptr( ptr2s( pp ), pp.offset(), nullPointerV(), g );
+        return s2ptr( ptr2s( pp ), pp.offset() );
     }
 
     bool boundcheck( PointerV p, int sz, bool write, std::string dsc = "" )
@@ -257,18 +268,13 @@ struct Eval
 
     int ptr2sz( PointerV p )
     {
-        if ( p.cooked().type() == PointerType::Heap )
-            return heap().size( p.cooked() );
-        if ( p.cooked().type() == PointerType::Const )
-        {
-            ConstPointer pp = p.cooked();
+        auto pp = p.cooked();
+        if ( pp.type() == PointerType::Heap )
+            return heap().size( pp );
+        if ( pp.type() == PointerType::Const )
             return program()._constants[ pp.object() ].size();
-        }
-        if ( p.cooked().type() == PointerType::Global )
-        {
-            ConstPointer pp = p.cooked();
+        if ( pp.type() == PointerType::Global )
             return program()._globals[ pp.object() ].size();
-        }
         UNREACHABLE_F( "a bad pointer in ptr2sz: %s", brick::string::fmt( PointerV( p ) ).c_str() );
     }
 
@@ -276,11 +282,11 @@ struct Eval
     {
         Context *_ctx;
         Fault _fault;
-        PointerV _frame;
+        HeapPointer _frame;
         CodePointer _pc;
         bool _trace;
 
-        FaultStream( Context &c, Fault f, PointerV frame, CodePointer pc, bool t )
+        FaultStream( Context &c, Fault f, HeapPointer frame, CodePointer pc, bool t )
             : _ctx( &c ), _fault( f ), _frame( frame ), _pc( pc ), _trace( t )
         {}
 
@@ -308,7 +314,7 @@ struct Eval
     };
 
     FaultStream fault( Fault f ) { return fault( f, frame(), pc() ); }
-    FaultStream fault( Fault f, PointerV frame, CodePointer c )
+    FaultStream fault( Fault f, HeapPointer frame, CodePointer c )
     {
         FaultStream fs( context(), f, frame, c, true );
         return fs;
@@ -321,33 +327,15 @@ struct Eval
         Eval *ev;
         V( Eval *ev ) : ev( ev ) {}
 
-        GenericPointer ptr( int v ) { return ev->s2ptr( ev->instruction().value( v ) ); }
+        T get() { UNREACHABLE( "may only be used in decltype()" ); }
 
-        T get( int v  = INT_MIN )
-        {
-            ASSERT_LEQ( INT_MIN + 1, v ); /* default INT_MIN is only for use in decltype */
-            return get( ptr( v ) );
-        }
-
-        T get( HeapPointer pp )
-        {
-            T result;
-            if ( pp.object() == ev->context().frame().cooked().object() )
-                ev->heap().read( pp, result, ev->context().frame_i() );
-            else if ( pp.object() == ev->context().constants().cooked().object() )
-                ev->heap().read( pp, result, ev->context().constants_i() );
-            else
-                ev->heap().read( pp, result );
-            return result;
-        }
+        T get( Slot s ) { T result; ev->slot_read( s, result ); return result; }
+        T get( int v ) { return get( ev->instruction().value( v ) ); }
+        T get( PointerV p ) { T r; ev->heap().read( ev->ptr2h( p ), r ); return r; }
 
         void set( int v, T t )
         {
-            auto pp = ptr( v );
-            if ( pp.object() == ev->context().frame().cooked().object() )
-                ev->heap().write( pp, t, ev->context().frame_i() );
-            else
-                ev->heap().write( pp, t );
+            ev->slot_write( ev->instruction().value( v ), t );
         }
     };
 
@@ -534,7 +522,7 @@ struct Eval
 
     void implement_ret()
     {
-        auto fr = frame();
+        PointerV fr( frame() );
         heap().skip( fr, sizeof( typename PointerV::Raw ) );
         PointerV parent, br;
         heap().read( fr.cooked(), parent );
@@ -542,7 +530,7 @@ struct Eval
         if ( parent.cooked().null() )
         {
             bool trampoline = false;
-            if ( context().isEntryFrame( frame().cooked() ) )
+            if ( HeapPointer( context().get( _VM_CR_IntFrame ).pointer ) == frame() )
             {
                 if ( instruction().values.size() > 1 )
                     _result = operand< Result >( 0 );
@@ -553,7 +541,7 @@ struct Eval
                 context().set_interrupted( true );
                 trampoline = true;
             }
-            context().frame( nullPointerV() );
+            context().set( _VM_CR_Frame, nullPointer() );
             heap().free( fr.cooked() );
             if ( trampoline )
                 context().check_interrupt();
@@ -574,7 +562,7 @@ struct Eval
                 fault( _VM_F_Memory ) << "Cound not return value";
         }
 
-        context().frame( parent );
+        context().set( _VM_CR_Frame, parent.cooked() );
 
         if ( isa< ::llvm::InvokeInst >( caller.op ) )
         {
@@ -675,7 +663,7 @@ struct Eval
             if ( i.opcode == OpCode::Alloca )
             {
                 PointerV ptr;
-                heap().read( s2ptr( i.result() ), ptr );
+                slot_read( i.result(), ptr );
                 if ( heap().valid( ptr.cooked() ) )
                     *o++ = ptr;
             }
@@ -788,6 +776,36 @@ struct Eval
     template< typename V >
     void check( V v ) { if ( !v.defined() ) fault( _VM_F_Hypercall ); }
 
+    void implement_hypercall_control()
+    {
+        int idx = 0;
+        while ( idx < instruction().values.size() - 2 )
+        {
+            int action = operandCk< IntV >( idx++ ).cooked();
+            _VM_ControlRegister reg = _VM_ControlRegister( operandCk< IntV >( idx++ ).cooked() );
+            if ( action == _VM_CA_Set && reg == _VM_CR_Flags )
+                context().set( reg, operandCk< IntV >( idx++ ).cooked() );
+            else if ( action == _VM_CA_Set && reg == _VM_CR_PC )
+                NOT_IMPLEMENTED(); /* needs to switchBB */
+            else if ( action == _VM_CA_Set )
+                context().set( reg, operandPtr( idx++ ).cooked() );
+            else if ( action == _VM_CA_Get && reg == _VM_CR_Flags )
+                result( PtrIntV( context().get( reg ).integer ) );
+            else if ( action == _VM_CA_Get )
+                result( PointerV( context().get( reg ).pointer ) );
+            else if ( action == _VM_CA_Bit && reg == _VM_CR_Flags )
+            {
+                context().ref( reg ) &= ~operandCk< PtrIntV >( idx++ ).cooked();
+                context().ref( reg ) |= operandCk< PtrIntV >( idx++ ).cooked();
+            }
+            else
+            {
+                fault( _VM_F_Hypercall ) << "invalid __vm_control sequence at index " << idx;
+                return;
+            }
+        }
+    }
+
     void implement_hypercall()
     {
         switch( instruction().hypercall )
@@ -804,45 +822,15 @@ struct Eval
                     result( IntV( context().choose( options, p.begin(), p.end() ) ) );
                 return;
             }
-            case HypercallSetSched:
-                if ( !context().sched( operandCk< PointerV >( 0 ).cooked() ) )
-                    fault( _VM_F_Hypercall ) << "scheduler can only be set once";
-                return;
-            case HypercallSetFault:
-                if ( !context().fault_handler( operandCk< PointerV >( 0 ).cooked() ) )
-                    fault( _VM_F_Hypercall ) << "the fault handler can only be set once";
-                return;
-            case HypercallSetIfl:
-                return context().setIfl( operandCk< PointerV >( 0 ) );
-            case HypercallInterrupt:
-                result( IntV( context().set_interrupted( operandCk< IntV >( 0 ).cooked() ) ) );
-                return;
-            case HypercallCflInterrupt:
+            case HypercallControl:
+                implement_hypercall_control();
+
+            case HypercallInterruptCfl:
                 context().cfl_interrupt( pc() );
                 return;
-            case HypercallMemInterrupt:
+            case HypercallInterruptMem:
                 context().set_interrupted( true ); return; /* TODO */
-            case HypercallJump:
-            {
-                // std::cerr << "======= jump" << std::endl;
-                auto tgt = operandCk< PointerV >( 0 );
-                CodePointer pc = operandCk< PointerV >( 1 ).cooked();
-                auto forget = operandCk< IntV >( 2 ).cooked();
-                if ( forget )
-                {
-                    context().mask( false );
-                    context().set_interrupted( false );
-                }
-                if ( tgt.cooked().null() )
-                    fault( _VM_F_Hypercall ) << "target frame of a jump is null";
-                else
-                {
-                    context().frame( tgt );
-                    if ( !pc.null() ) // TODO: validate jump is in function
-                        switchBB( pc );
-                }
-                return;
-            }
+
             case HypercallTrace:
             {
                 _VM_Trace t = _VM_Trace( operandCk< IntV >( 0 ).cooked() );
@@ -850,9 +838,6 @@ struct Eval
                 {
                     case _VM_T_Text:
                         context().trace( TraceText{ PointerV( ptr2h( operandCk< PointerV >( 1 ) ) ) } );
-                        return;
-                    case _VM_T_Flag:
-                        context().trace( TraceFlag{ operandCk< IntV >( 1 ).cooked() } );
                         return;
                     case _VM_T_SchedChoice:
                         context().trace( TraceSchedChoice{
@@ -867,28 +852,32 @@ struct Eval
                 }
                 return;
             }
+
             case HypercallFault:
                 fault( Fault( operandCk< IntV >( 0 ).cooked() ) ) << "__vm_fault called";
                 return;
-            case HypercallMask:
-                result( IntV( context().mask( operandCk< IntV >( 0 ).cooked() ) ) );
-                return;
-            case HypercallMakeObject:
+
+            case HypercallObjMake:
             {
                 int64_t size = operandCk< IntV >( 0 ).cooked();
                 if ( size >= ( 2ll << PointerOffBits ) || size < 1 )
                 {
-                    fault( _VM_F_Hypercall ) << "invalid size " << size << " passed to __vm_make_object";
+                    fault( _VM_F_Hypercall ) << "invalid size " << size
+                                             << " passed to __vm_make_object";
                     size = 0;
                 }
                 result( size ? heap().make( size ) : nullPointerV() );
                 return;
             }
-            case HypercallFreeObject:
+            case HypercallObjFree:
                 if ( !heap().free( operand< PointerV >( 0 ).cooked() ) )
                     fault( _VM_F_Memory ) << "invalid pointer passed to __vm_free_object";
                 return;
-            case HypercallQueryObjectSize:
+            case HypercallObjResize:
+                heap().resize( operandCk< PointerV >( 0 ).cooked(),
+                               operandCk< IntV >( 1 ).cooked() );
+                return;
+            case HypercallObjSize:
             {
                 auto ptr = operandCk< PointerV >( 0 ).cooked();
                 if ( !heap().valid( ptr ) )
@@ -898,9 +887,6 @@ struct Eval
                     result( IntV( heap().size( ptr ) ) );
                 return;
             }
-            case HypercallQueryFrame:
-                heap().write( s2ptr( result() ), PointerV( frame() ) );
-                return;
             default:
                 UNREACHABLE_F( "unknown hypercall %d", instruction().hypercall );
         }
@@ -947,7 +933,7 @@ struct Eval
             return;
         }
 
-        auto frameptr = heap().make( program().function( target ).datasize + 2 * PointerBytes );
+        auto frameptr = heap().make( program().function( target ).framesize );
         auto p = frameptr;
         heap().write_shift( p, PointerV( target ) );
         heap().write_shift( p, PointerV( frame() ) );
@@ -975,7 +961,7 @@ struct Eval
         }
 
         ASSERT( !isa< ::llvm::PHINode >( instruction().op ) );
-        context().frame( frameptr );
+        context().set( _VM_CR_Frame, frameptr.cooked() );
     }
 
     void run()
@@ -984,13 +970,13 @@ struct Eval
         do {
             advance();
             dispatch();
-        } while ( !context().frame().cooked().null() );
+        } while ( !context().frame().null() );
     }
 
     void advance()
     {
         context().check_interrupt();
-        if ( !context().frame().cooked().null() )
+        if ( !context().frame().null() )
             pc( pc() + 1 );
         _instruction = &program().instruction( pc() );
     }
@@ -1397,9 +1383,9 @@ struct Eval
     }
 };
 
-
 }
 
+#ifdef BRICK_UNITTEST_REG
 namespace t_vm
 {
 
@@ -1407,64 +1393,29 @@ using vm::CodePointer;
 
 struct TProgram
 {
-    struct Slot { using Type = int; };
+    struct Slot { using Location = int; using Type = int; };
     struct Instruction {};
 };
 
 template< typename Prog >
-struct TContext : vm::ConstContext< Prog >
+struct TContext : vm::Context< Prog, vm::MutableHeap >
 {
-    using PointerV = typename vm::ConstContext< Prog >::PointerV;
-
     vm::Fault _fault;
-    PointerV _entry_frame;
 
-    bool mask( bool = false ) { return false; }
-    bool set_interrupted( bool = false ) { return false; }
-    void check_interrupt() {}
-    void cfl_interrupt( vm::CodePointer ) {}
+    void fault( vm::Fault f, vm::HeapPointer, CodePointer )
+    {
+        _fault = f;
+        this->set( _VM_CR_Frame, vm::nullPointer() );
+    }
 
-    template< typename I >
-    int choose( int, I, I ) { return 0; }
-
-    bool isEntryFrame( vm::HeapPointer fr ) { return vm::HeapPointer( _entry_frame.cooked() ) == fr; }
-
-    void fault( vm::Fault f, PointerV, CodePointer ) { _fault = f; this->_frame = vm::nullPointerV(); }
     void trace( vm::TraceText tt )
     {
         std::cerr << "T: " << this->_heap.read_string( tt.text ) << std::endl;
     }
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceSchedChoice ) { NOT_IMPLEMENTED(); }
-    void trace( vm::TraceFlag ) { NOT_IMPLEMENTED(); }
 
-    void push( PointerV ) {}
-
-    template< typename X, typename... Args >
-    void push( PointerV p, X x, Args... args )
-    {
-        this->_heap.write_shift( p, x );
-        push( p, args... );
-    }
-
-    template< typename... Args >
-    void enter( CodePointer pc, PointerV parent, Args... args )
-    {
-        int datasz = this->_program.function( pc ).datasize;
-        auto frameptr = this->_heap.make( datasz + 2 * vm::PointerBytes );
-        this->_frame = frameptr;
-        if ( parent.cooked().null() )
-            _entry_frame = this->_frame;
-        this->heap().write_shift( frameptr, PointerV( pc ) );
-        this->heap().write_shift( frameptr, parent );
-        push( frameptr, args... );
-    }
-
-    bool sched( CodePointer ) { return true; }
-    bool fault_handler( CodePointer ) { return true; }
-    void setIfl( PointerV ) {}
-
-    TContext( Prog &p ) : vm::ConstContext< Prog >( p ), _fault( _VM_F_NoFault ) {}
+    TContext( Prog &p ) : vm::Context< Prog, vm::MutableHeap >( p ), _fault( _VM_F_NoFault ) {}
 };
 
 struct Eval
@@ -1483,7 +1434,9 @@ struct Eval
     {
         auto p = c2prog( s );
         TContext< vm::Program > c( *p );
-        std::tie( c._constants, c._globals ) = p->exportHeap( c.heap() );
+        auto data = p->exportHeap( c.heap() );
+        c.set( _VM_CR_Constants, data.first );
+        c.set( _VM_CR_Globals , data.second );
         vm::Eval< vm::Program, TContext< vm::Program >, IntV > e( *p, c );
         auto pc = p->functionByName( "f" );
         c.enter( pc, vm::nullPointerV(), args... );
@@ -1521,9 +1474,9 @@ struct Eval
 
     TEST(ptr)
     {
-        int x = testF( "void *__vm_make_object( int ); int __vm_query_object_size( void * ); "
-                       "int f() { void *x = __vm_make_object( 10 );"
-                       "return __vm_query_object_size( x ); }" );
+        int x = testF( "void *__vm_obj_make( int ); int __vm_obj_size( void * ); "
+                       "int f() { void *x = __vm_obj_make( 10 );"
+                       "return __vm_obj_size( x ); }" );
         ASSERT_EQ( x, 10 );
     }
 
@@ -1845,5 +1798,6 @@ struct Eval
 };
 
 }
+#endif
 
 }
