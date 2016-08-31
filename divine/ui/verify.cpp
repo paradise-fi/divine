@@ -30,32 +30,42 @@ namespace ui {
 void Verify::run()
 {
     vm::Explore ex( _bc );
-    int edgecount = 0, statecount = 0;
+
+    std::atomic< int > edgecount( 0 ), statecount( 0 );
+    std::atomic< bool > done( false );
+
     timeval start, now;
     ::gettimeofday(&start, NULL);
 
-    ss::search( ss::Order::PseudoBFS, ex, 1, ss::passive_listen(
-                    [&]( auto, auto, auto )
-                    {
-                        ++edgecount;
-                    },
-                    [&]( auto )
-                    {
-                        ++statecount;
-                        if ( statecount % 100 == 0 )
-                        {
-                            ::gettimeofday(&now, NULL);
-                            std::stringstream time;
-                            int seconds = now.tv_sec - start.tv_sec;
-                            float avg = float( statecount ) / seconds;
-                            time << seconds / 60 << ":"
-                                 << std::setw( 2 ) << std::setfill( '0' ) << seconds % 60;
-                            std::cerr << "\rsearching: " << edgecount << " edges and "
-                                      << statecount << " states found in " << time.str() << ", for "
-                                      << std::fixed << std::setprecision( 1 ) << avg << " states/s average";
-                        }
-                    } ) );
-    std::cerr << std::endl << "found " << statecount << " states and " << edgecount << " edges" << std::endl;
+    auto progress = std::thread(
+        [&]()
+        {
+            while ( !done )
+            {
+                std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
+                ::gettimeofday(&now, NULL);
+                std::stringstream time;
+                int seconds = now.tv_sec - start.tv_sec;
+                float avg = float( statecount ) / seconds;
+                time << seconds / 60 << ":"
+                     << std::setw( 2 ) << std::setfill( '0' ) << seconds % 60;
+                std::cerr << "\rsearching: " << edgecount << " edges and "
+                          << statecount << " states found in " << time.str() << ", averaging "
+                          << std::fixed << std::setprecision( 1 ) << avg << " states/s    ";
+            }
+        } );
+
+    ex.start();
+    ss::search(
+        ss::Order::PseudoBFS, ex, 1,
+        ss::passive_listen(
+            [&]( auto, auto, auto ) { ++edgecount; },
+            [&]( auto ) { ++statecount; } ) );
+
+    done = true;
+    progress.join();
+    std::cerr << std::endl << "found " << statecount << " states and "
+              << edgecount << " edges" << std::endl;
 }
 
 }
