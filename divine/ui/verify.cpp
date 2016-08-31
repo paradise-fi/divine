@@ -22,8 +22,6 @@
 #include <divine/ss/search.hpp>
 #include <divine/ui/cli.hpp>
 
-#include <sys/time.h>
-
 namespace divine {
 namespace ui {
 
@@ -34,21 +32,21 @@ void Verify::run()
     std::atomic< int > edgecount( 0 ), statecount( 0 );
     std::atomic< bool > done( false );
 
-    timeval start, now;
-    ::gettimeofday(&start, NULL);
+    using clock = std::chrono::steady_clock;
+    using msecs = std::chrono::milliseconds;
+    clock::time_point start = clock::now();
 
     auto progress = std::thread(
         [&]()
         {
             while ( !done )
             {
-                std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
-                ::gettimeofday(&now, NULL);
+                std::this_thread::sleep_for( msecs( 500 ) );
                 std::stringstream time;
-                int msec = now.tv_sec * 1000 + now.tv_usec / 1000 - start.tv_sec * 1000 - start.tv_usec / 1000;
-                float avg = 1000 * float( statecount ) / msec;
-                time << msec / 60000 << ":"
-                     << std::setw( 2 ) << std::setfill( '0' ) << int(msec / 1000) % 60;
+                auto interval = std::chrono::duration_cast< msecs >( clock::now() - start );
+                float avg = 1000 * float( statecount ) / interval.count();
+                time << int( interval.count() / 60000 ) << ":"
+                     << std::setw( 2 ) << std::setfill( '0' ) << int(interval.count() / 1000) % 60;
                 std::cerr << "\rsearching: " << edgecount << " edges and "
                           << statecount << " states found in " << time.str() << ", averaging "
                           << std::fixed << std::setprecision( 1 ) << avg << " states/s    ";
