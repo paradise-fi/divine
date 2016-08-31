@@ -83,16 +83,12 @@ struct Help { std::string _cmd; };
 
 }
 
-using ProcInfo = std::vector< std::pair< std::pair< int, int >, int > >;
-
-struct Context : vm::Context< vm::Program, vm::CowHeap >
+struct Context : vm::DebugContext
 {
     using Program = vm::Program;
-    std::vector< std::string > _trace;
-    ProcInfo _proc;
     int _choice;
 
-    Context( Program &p ) : vm::Context< vm::Program, vm::CowHeap >( p ), _choice( 0 ) {}
+    Context( Program &p ) : vm::DebugContext( p ), _choice( 0 ) {}
 
     template< typename I >
     int choose( int count, I, I )
@@ -102,35 +98,6 @@ struct Context : vm::Context< vm::Program, vm::CowHeap >
         if ( !_proc.empty() )
             _proc.clear();
         return _choice;
-    }
-
-    void doublefault()
-    {
-        _trace.push_back( "fatal double fault" );
-        set( _VM_CR_Frame, vm::nullPointer() );
-    }
-
-    void trace( vm::TraceText tt )
-    {
-        _trace.push_back( heap().read_string( tt.text ) );
-    }
-
-    void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
-
-    void trace( vm::TraceSchedChoice tsc )
-    {
-        auto ptr = tsc.list;
-        int size = heap().size( ptr.cooked() );
-        if ( size % 12 )
-            return; /* invalid */
-        for ( int i = 0; i < size / 12; ++i )
-        {
-            vm::value::Int< 32, true > pid, tid, choice;
-            heap().read_shift( ptr, pid );
-            heap().read_shift( ptr, tid );
-            heap().read_shift( ptr, choice );
-            _proc.emplace_back( std::make_pair( pid.cooked(), tid.cooked() ), choice.cooked() );
-        }
     }
 };
 
@@ -407,7 +374,7 @@ struct Interpreter
         return true;
     }
 
-    int sched_policy( const ProcInfo &proc )
+    int sched_policy( const vm::ProcInfo &proc )
     {
         std::uniform_int_distribution< int > dist( 0, proc.size() - 1 );
         if ( _sched_random )
