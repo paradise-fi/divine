@@ -27,7 +27,8 @@ namespace divine {
 struct CflInterrupt : lart::Pass {
 
     static PassMeta meta() {
-        return passMeta< CflInterrupt >( "CflInterrupt", "Instrument all control flow cycles with __vm_cfl_interrupt intrinsic." );
+        return passMeta< CflInterrupt >( "CflInterrupt", "Instrument all control flow cycles "
+                                         "with __vm_interrupt_cfl intrinsic." );
     }
 
     void annotateFn( llvm::Function &fn ) {
@@ -73,7 +74,7 @@ struct CflInterrupt : lart::Pass {
             return llvm::PreservedAnalyses::all();
 
         auto *spcty = llvm::FunctionType::get( llvm::Type::getVoidTy( m.getContext() ), false );
-        _cflInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_cfl_interrupt", spcty ) );
+        _cflInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_interrupt_cfl", spcty ) );
         ASSERT( _cflInterrupt );
         _cflInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
 
@@ -93,7 +94,8 @@ struct CflInterrupt : lart::Pass {
 struct MemInterrupt : lart::Pass {
 
     static PassMeta meta() {
-        return passMeta< MemInterrupt >( "MemInterrupt", "Instrument all memory accesses with __vm_mem_interrupt intrinsic." );
+        return passMeta< MemInterrupt >( "MemInterrupt", "Instrument all memory accesses with "
+                                         "__vm_interrupt_mem intrinsic." );
     }
 
     _VM_MemAccessType opType( unsigned op ) {
@@ -134,7 +136,7 @@ struct MemInterrupt : lart::Pass {
         auto *ty = llvm::FunctionType::get( llvm::Type::getVoidTy( ctx ),
                             { llvm::Type::getInt8PtrTy( ctx ), llvm::Type::getInt32Ty( ctx ) },
                             false );
-        _memInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_mem_interrupt", ty ) );
+        _memInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_interrupt_mem", ty ) );
         ASSERT( _memInterrupt );
         _memInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
 
@@ -151,9 +153,12 @@ struct MemInterrupt : lart::Pass {
     long _mem = 0;
 };
 
-PassMeta interruptPass() {
-    return compositePassMeta< CflInterrupt, MemInterrupt >( "interrupt",
-            "Instrument bitcode for DIVINE: add __vm_mem_interrupt and __vm_cfl_interrupt calls to appropriate locations." );
+PassMeta interruptPass()
+{
+    return compositePassMeta< CflInterrupt, MemInterrupt >(
+        "interrupt",
+        "Instrument bitcode for DIVINE: add __vm_interrupt_mem and "
+        "__vm_interrupt_cfl calls to appropriate locations." );
 }
 
 }
