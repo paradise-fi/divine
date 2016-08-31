@@ -56,6 +56,7 @@ void init( const _VM_Env *env )
     context->scheduler->start_main_thread( main, argv.first, argv.second, envp.second );
     __dios_trace_t( "Main thread started" );
 
+    __vm_trace( _VM_T_StateType, context );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
 }
 
