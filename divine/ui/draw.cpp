@@ -59,7 +59,7 @@ int dump( DN dn, std::map< vm::GenericPointer, int > &dumped, int &seq, std::str
                 {
                     if ( int t = dump( rel, dumped, seq, prefix ) )
                         std::cout << prefix << hid << " -> "  << prefix << t
-                                  << " [ label=" << k << " ]" << std::endl;
+                                  << " [ label=\"" << k << "\" ]" << std::endl;
                 } );
     return hid;
 }
