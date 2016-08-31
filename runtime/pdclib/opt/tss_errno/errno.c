@@ -14,7 +14,7 @@ static pthread_key_t key;
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 
 void  _PDCLIB_delete_errno( void *errno ) {
-    __vm_free_object( errno );
+    __vm_obj_free( errno );
 }
 
 void  _PDCLIB_init_errno ( void ) {
@@ -25,7 +25,7 @@ int * _PDCLIB_errno_func() {
     pthread_once( &once, _PDCLIB_init_errno );
 
     if ( !pthread_getspecific( key )) {
-        int *errno = __vm_make_object( sizeof( int ) );
+        int *errno = __vm_obj_make( sizeof( int ) );
         *errno = 0;
         pthread_setspecific( key, errno );
     }

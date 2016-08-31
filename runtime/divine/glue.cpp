@@ -19,7 +19,7 @@
     int masked = __vm_mask( 1 );
     void *r;
     if ( __vm_choose( 2 ) )
-        r = __vm_make_object( size ); // success
+        r = __vm_obj_make( size ); // success
     else
         r = NULL; // failure
     __vm_mask( masked );
@@ -33,14 +33,14 @@
     int masked = __vm_mask( 1 );
     void *r;
     if ( !size ) {
-        __vm_free_object( orig );
+        __vm_obj_free( orig );
         r = NULL;
     }
     else if ( __vm_choose( 2 ) ) {
-        void *n = __vm_make_object( size );
+        void *n = __vm_obj_make( size );
         if ( orig ) {
-            ::memcpy( n, orig, MIN( size, __vm_query_object_size( orig ) ) );
-            __vm_free_object( orig );
+            ::memcpy( n, orig, MIN( size, __vm_obj_size( orig ) ) );
+            __vm_obj_free( orig );
         }
         r = n;
     } else
@@ -54,7 +54,7 @@
     int masked = __vm_mask( 1 );
     void *r;
     if ( __vm_choose( 2 ) ) {
-        void *mem = __vm_make_object( n * size ); // success
+        void *mem = __vm_obj_make( n * size ); // success
         memset( mem, 0, n * size );
         r = mem;
     } else
@@ -63,7 +63,7 @@
     return r;
 }
 
-void free( void * p) _PDCLIB_nothrow { return __vm_free_object( p ); }
+void free( void * p) _PDCLIB_nothrow { return __vm_obj_free( p ); }
 
 /* IOStream */
 

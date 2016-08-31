@@ -110,12 +110,12 @@ pthread_key_t keys = NULL;
 template < typename T >
 T *realloc( T *old_ptr, unsigned old_count, unsigned new_count ) {
     T *new_ptr =
-            static_cast< T * >( __vm_make_object( sizeof( T ) * new_count ) );
+            static_cast< T * >( __vm_obj_make( sizeof( T ) * new_count ) );
     if ( old_ptr ) {
         memcpy( static_cast< void * >( new_ptr ),
                 static_cast< void * >( old_ptr ),
                 sizeof( T ) * ( old_count < new_count ? old_count : new_count ) );
-        __vm_free_object( old_ptr );
+        __vm_obj_free( old_ptr );
     }
     return new_ptr;
 }
@@ -160,7 +160,7 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
 
     // allocate slot for thread metadata
     assert( threads[ltid] == NULL );
-    threads[ltid] = static_cast< Thread * >( __vm_make_object( sizeof( Thread ) ) );
+    threads[ltid] = static_cast< Thread * >( __vm_obj_make( sizeof( Thread ) ) );
     assert( threads[ltid] != NULL );
 
     // initialize thread metadata
@@ -210,7 +210,7 @@ void _cleanup() {
     while ( handler ) {
         next = handler->next;
         handler->routine( handler->arg );
-        __vm_free_object( handler );
+        __vm_obj_free( handler );
         handler = next;
     }
 }
@@ -308,7 +308,7 @@ extern "C" void _pthread_entry( void *_args ) {
     wait( mask, [&] { return !thread->detached; } );
 
     // cleanup
-    __vm_free_object( thread );
+    __vm_obj_free( thread );
     threads[ltid] = NULL;
 }
 
@@ -322,7 +322,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
         return EINVAL;
 
     // create new thread and pass arguments to the entry wrapper
-    Entry *args = static_cast< Entry * >( __vm_make_object( sizeof( Entry ) ) );
+    Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ) ) );
     args->entry = entry;
     args->arg = arg;
     args->initialized = false;
@@ -923,10 +923,10 @@ int pthread_key_create( pthread_key_t *p_key, void ( *destructor )( void * ) ) {
     auto mask = pthreadBegin();
 
     // malloc
-    void *_key = __vm_make_object( sizeof( _PerThreadData ) );
+    void *_key = __vm_obj_make( sizeof( _PerThreadData ) );
     pthread_key_t key = static_cast< pthread_key_t >( _key );
     if ( alloc_pslots ) {
-        key->data = static_cast< void ** >( __vm_make_object( sizeof( void * ) * alloc_pslots ) );
+        key->data = static_cast< void ** >( __vm_obj_make( sizeof( void * ) * alloc_pslots ) );
     } else
         key->data = NULL;
 
@@ -965,8 +965,8 @@ int pthread_key_delete( pthread_key_t key ) {
         key->prev->next = key->next;
     }
 
-    __vm_free_object( key->data );
-    __vm_free_object( key );
+    __vm_obj_free( key->data );
+    __vm_obj_free( key );
     return 0;
 }
 
@@ -1290,7 +1290,7 @@ void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) {
 
     int ltid = __dios_get_thread_id();
     CleanupHandler *handler = reinterpret_cast< CleanupHandler * >(
-            __vm_make_object( sizeof( CleanupHandler ) ) );
+            __vm_obj_make( sizeof( CleanupHandler ) ) );
     handler->routine = routine;
     handler->arg = arg;
     handler->next = threads[ltid]->cleanup_handlers;
@@ -1307,7 +1307,7 @@ void pthread_cleanup_pop( int execute ) {
         if ( execute ) {
             handler->routine( handler->arg );
         }
-        __vm_free_object( handler );
+        __vm_obj_free( handler );
     }
 }
 
@@ -1362,7 +1362,7 @@ _ReadLock *_get_rlock( pthread_rwlock_t *rwlock, int gtid, _ReadLock **prev = NU
 }
 
 _ReadLock *_create_rlock( pthread_rwlock_t *rwlock, int gtid ) {
-    _ReadLock *rlock = reinterpret_cast< _ReadLock * >( __vm_make_object( sizeof( _ReadLock ) ) );
+    _ReadLock *rlock = reinterpret_cast< _ReadLock * >( __vm_obj_make( sizeof( _ReadLock ) ) );
     rlock->rlock = gtid + 1;
     rlock->rlock |= 1 << 16;
     rlock->next = rwlock->rlocks;
@@ -1501,7 +1501,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) {
                 prev->next = rlock->next;
             else
                 rwlock->rlocks = rlock->next;
-            __vm_free_object( rlock );
+            __vm_obj_free( rlock );
         }
     }
     return 0;
@@ -1775,10 +1775,10 @@ sighandler_t signal( int sig, sighandler_t handler ) {
         sighandler_t *oldptr = thread->sighandlers;
         thread->sigmaxused = sig;
         thread->sighandlers = reinterpret_cast< sighandler_t * >(
-                __vm_make_object( sizeof( sighandler_t ) * sig ) );
+                __vm_obj_make( sizeof( sighandler_t ) * sig ) );
         if ( oldptr ) {
             std::copy( oldptr, oldptr + old, thread->sighandlers );
-            __vm_free_object( oldptr );
+            __vm_obj_free( oldptr );
         }
         for ( int i = old + 1; i <= sig; ++i )
             _sig::get( thread, i ) = SIG_DFL;

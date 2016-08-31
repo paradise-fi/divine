@@ -94,12 +94,12 @@ _Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept {
         auto *inst = meta->inst_table;
         for ( int i = 0; i < meta->inst_table_size; ++i, ++inst ) {
             if ( inst->opcode == OpCode::Alloca )
-                __vm_free_object( *static_cast< void ** >( __md_get_register_info( f,
+                __vm_obj_free( *static_cast< void ** >( __md_get_register_info( f,
                                         uintptr_t( meta->entry_point ) + i, meta ).start ) );
         }
         auto *old = f;
         f = f->parent;
-        __vm_free_object( old );
+        __vm_obj_free( old );
         __dios_assert_v( f, "__dios_unwind reached end of the stack and did not found target frame" );
     }
     __vm_jump( to, pc, !m );

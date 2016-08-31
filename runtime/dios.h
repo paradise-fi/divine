@@ -134,7 +134,7 @@ namespace __dios {
 
 template < class T, class... Args >
 T *new_object( Args... args ) {
-    T* obj = static_cast< T * >( __vm_make_object( sizeof( T ) ) );
+    T* obj = static_cast< T * >( __vm_obj_make( sizeof( T ) ) );
     new (obj) T( args... );
     return obj;
 }

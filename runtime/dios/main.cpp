@@ -39,7 +39,7 @@ static void runDtors() {
 }
 
 char *env_to_string( const _VM_Env *env ) noexcept {
-    auto arg = static_cast< char * >( __vm_make_object( env->size + 1 ) );
+    auto arg = static_cast< char * >( __vm_obj_make( env->size + 1 ) );
     memcpy( arg, env->value, env->size );
     arg[ env->size ] = '\0';
     return arg;
@@ -69,7 +69,7 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
             name = e;
         }
     }
-    auto argv = static_cast< char ** >( __vm_make_object( ( argc + 1 ) * sizeof( char * ) ) );
+    auto argv = static_cast< char ** >( __vm_obj_make( ( argc + 1 ) * sizeof( char * ) ) );
 
     char **arg = argv;
     if (prepend_name) {
@@ -91,10 +91,10 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
 
 void free_main_arg( char** argv ) noexcept {
     while( *argv ) {
-        __vm_free_object( *argv );
+        __vm_obj_free( *argv );
         ++argv;
     }
-    __vm_free_object( argv );
+    __vm_obj_free( argv );
 }
 
 } // namespace __dios

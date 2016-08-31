@@ -45,7 +45,7 @@ struct Thread {
     State _state;
 
     Thread( FunPtr fun, FunPtr cleanup = nullptr )
-        : _frame( static_cast< _VM_Frame * >( __vm_make_object( fun->frame_size ) ) ),
+        : _frame( static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) ) ),
           _cleanup_handler( cleanup ),
           _state( State::RUNNING )
     {
@@ -108,7 +108,7 @@ private:
     void clear() {
         while ( _frame ) {
             _VM_Frame *f = _frame->parent;
-            __vm_free_object( _frame );
+            __vm_obj_free( _frame );
             _frame = f;
         }
     }
@@ -121,7 +121,7 @@ struct ControlFlow {
 };
 
 struct Scheduler {
-    Scheduler() : _cf( static_cast< ControlFlow * >( __vm_make_object( sizeof( ControlFlow ) ) ) ) { }
+    Scheduler() : _cf( static_cast< ControlFlow * >( __vm_obj_make( sizeof( ControlFlow ) ) ) ) { }
 
     Thread* get_threads() const noexcept {
         return &( _cf->main_thread );
@@ -142,7 +142,7 @@ struct Scheduler {
             return nullptr;
 
         struct PI { int pid, tid, choice; };
-        PI *pi = reinterpret_cast< PI * >( __vm_make_object( count * sizeof( PI ) ) );
+        PI *pi = reinterpret_cast< PI * >( __vm_obj_make( count * sizeof( PI ) ) );
         PI *pi_it = pi;
         count = 0;
         for ( int i = 0; i != _cf->thread_count; i++ ) {
