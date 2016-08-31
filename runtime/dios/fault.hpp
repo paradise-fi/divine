@@ -13,18 +13,16 @@ namespace __dios {
 struct Fault {
     std::array< int, _DiOS_Fault::_DiOS_F_Last > config;
     bool triggered;
+    bool ready;
 
-    Fault() : triggered( false ) {
+    Fault() : triggered( false ), ready( false ) {
         config.fill( _DiOS_FaultFlag::_DiOS_FF_Enabled |
                      _DiOS_FaultFlag::_DiOS_FF_AllowOverride );
-        _inst = this;
+        ready = true;
     }
 
     void load_user_pref( const _VM_Env *env );
     static void __attribute__((__noreturn__)) handler( _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept;
-
-private:
-    static Fault *_inst;
 };
 
 } // namespace __dios

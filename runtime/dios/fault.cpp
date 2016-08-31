@@ -8,20 +8,19 @@
 
 namespace __dios {
 
-Fault *Fault::_inst;
-
 void __attribute__((__noreturn__)) Fault::handler( _VM_Fault _what, _VM_Frame *cont_frame,
                                                    void (*cont_pc)() ) noexcept
 {
+    auto ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
     auto what = static_cast< int >( _what );
     auto mask = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) ) & _VM_CF_Mask;
     InTrace _; // avoid dumping what we do
 
-    __dios_assert_v( what < _DiOS_Fault::_DiOS_F_Last, "Unknown falt" );
-    int fault = _inst->config[ what ];
-    if ( fault & _DiOS_FF_Enabled ) {
+    __dios_assert_v( what < _DiOS_Fault::_DiOS_F_Last, "Unknown fault" );
+    int fault = ctx->fault->config[ what ];
+    if ( !ctx->fault->ready || fault & _DiOS_FF_Enabled ) {
         __dios_trace_t( "VM Fault" );
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         __dios_trace_t( "Backtrace:" );
@@ -30,8 +29,8 @@ void __attribute__((__noreturn__)) Fault::handler( _VM_Fault _what, _VM_Frame *c
               f != nullptr; f = f->parent )
             traceInternal( 0, "%d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );
 
-        if ( !( fault & _DiOS_FF_Continue ) ) {
-            _inst->triggered = true;
+        if ( !ctx->fault->ready || !( fault & _DiOS_FF_Continue ) ) {
+            ctx->fault->triggered = true;
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
         }
     }
@@ -61,7 +60,6 @@ void configure_fault( __dios::Context& ctx, void* retval, va_list vl ) {
 
     int& fc = ctx.fault->config[ fault ];
     *res = fc;
-
     if ( !( fc & _DiOS_FaultFlag::_DiOS_FF_AllowOverride ) )
         return;
 
