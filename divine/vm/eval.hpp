@@ -530,7 +530,12 @@ struct Eval
         if ( parent.cooked().null() )
         {
             bool usermode = false;
-            if ( ! ( context().ref( _VM_CR_Flags ) & _VM_CF_KernelMode ) )
+            if ( context().ref( _VM_CR_Flags ) & _VM_CF_KernelMode )
+            {
+                if ( instruction().values.size() > 1 )
+                    _result = operand< Result >( 0 );
+            }
+            else
             {
                 context().mask( false );
                 context().set_interrupted( true );
@@ -1435,6 +1440,7 @@ struct Eval
         vm::Eval< vm::Program, TContext< vm::Program >, IntV > e( *p, c );
         auto pc = p->functionByName( "f" );
         c.enter( pc, vm::nullPointerV(), args... );
+        c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_Mask );
         e.run();
         return e._result.cooked();
     }
