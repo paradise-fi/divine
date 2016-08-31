@@ -76,6 +76,7 @@ struct Context : vm::Context< Program, CowHeap >
 
     void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
+    void trace( TraceStateType ) {}
 
     bool finished()
     {

@@ -839,6 +839,9 @@ struct Eval
                     case _VM_T_Text:
                         context().trace( TraceText{ PointerV( ptr2h( operandCk< PointerV >( 1 ) ) ) } );
                         return;
+                    case _VM_T_StateType:
+                        context().trace( TraceStateType{ instruction().op->getOperand( 1 ) } );
+                        return;
                     case _VM_T_SchedChoice:
                         context().trace( TraceSchedChoice{
                                 PointerV( ptr2h( operandCk< PointerV >( 1 ) ) ) } );

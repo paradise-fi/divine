@@ -24,6 +24,8 @@
 
 #include <unordered_set>
 
+namespace llvm { class Value; }
+
 namespace divine {
 namespace vm {
 
@@ -32,6 +34,7 @@ using Fault = ::_VM_Fault;
 struct TraceText { value::Pointer text; };
 struct TraceSchedChoice { value::Pointer list; };
 struct TraceSchedInfo { int pid; int tid; };
+struct TraceStateType { llvm::Value *stateptr; };
 
 template< typename _Program, typename _Heap >
 struct Context
@@ -148,6 +151,7 @@ struct Context
     virtual void trace( TraceText tt ) {} // fixme?
     virtual void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
+    virtual void trace( TraceStateType ) { NOT_IMPLEMENTED(); }
 
     virtual void doublefault()
     {
