@@ -93,7 +93,10 @@ struct GenericPointer : brick::types::Comparable
 
 /* the canonic null pointer, do *not* use as a null check through comparison;
  * see GenericPointer::null() instead */
-static inline GenericPointer nullPointer() { return GenericPointer( PointerType::Const ); }
+static inline GenericPointer nullPointer( PointerType t = PointerType::Const )
+{
+    return GenericPointer( t );
+}
 
 /*
  * Points to a particular instruction in the program. Constant code pointers

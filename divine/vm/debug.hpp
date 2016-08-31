@@ -171,6 +171,12 @@ struct DebugNode
             return false;
         if ( _address.type() == PointerType::Heap && !_ctx.heap().valid( _address ) )
             return false;
+        Eval eval( _ctx.program(), _ctx );
+        PointerV addr( _address );
+        if ( !eval.boundcheck( addr, 1, false ) )
+            return false;
+        if ( !eval.boundcheck( addr, size(), false ) )
+            return false;
         return true;
     }
 

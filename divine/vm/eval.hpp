@@ -327,7 +327,15 @@ struct Eval
         }
     };
 
-    FaultStream fault( Fault f ) { return fault( f, frame(), pc() ); }
+    FaultStream fault( Fault f )
+    {
+        if ( frame().null() )
+            return fault( f, nullPointer( PointerType::Heap ),
+                             nullPointer( PointerType::Code ) );
+        else
+            return fault( f, frame(), pc() );
+    }
+
     FaultStream fault( Fault f, HeapPointer frame, CodePointer c )
     {
         FaultStream fs( context(), f, frame, c, true );
