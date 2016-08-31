@@ -369,7 +369,7 @@ struct DebugNode
                 }
 
                 yield( CTE->getName().str(),
-                       DebugNode( _ctx, _snapshot, _address, offset,
+                       DebugNode( _ctx, _snapshot, _address, _offset + offset,
                                   DNKind::Object, *STE, CTE ) );
             }
     }
