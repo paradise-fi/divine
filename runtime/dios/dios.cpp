@@ -24,7 +24,7 @@ void init( const _VM_Env *env )
 
     const _VM_Env *e = env;
     while ( e->key ) {
-        __dios_trace_f( "env: size(%s) = %d", e->key, e->size );
+        __dios_trace_f( "env: %s = %.*s", e->key, e->size, e->value );
         ++e;
     }
 
