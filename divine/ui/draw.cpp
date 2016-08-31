@@ -66,12 +66,12 @@ int dump( DN dn, std::map< vm::GenericPointer, int > &dumped, int &seq, std::str
 
 void Draw::run()
 {
-    NOT_IMPLEMENTED();
-#if 0
     vm::Explore ex( _bc );
+    ex.start();
+
     int edgecount = 0, statecount = 0;
 
-    std::map< vm::explore::State, int > _ids;
+    typename vm::CowHeap::Pool ext;
 
     int seq = 0;
 
@@ -81,30 +81,34 @@ void Draw::run()
         ss::Order::PseudoBFS, ex, 1, ss::passive_listen(
             [&]( auto f, auto t, auto trace )
             {
-                int f_id = _ids[ f ], t_id = _ids[ t ];
-                if ( !t_id )
-                    t_id = _ids[ t ] = ++seq;
-                std::cout << f_id << " -> " << t_id
+                ext.materialise( f.snap, sizeof( int ), ex.pool() );
+                ext.materialise( t.snap, sizeof( int ), ex.pool() );
+                int *f_id = ext.machinePointer< int >( f.snap ),
+                    *t_id = ext.machinePointer< int >( t.snap );
+
+                if ( !*t_id )
+                    *t_id = ++seq;
+                std::cout << *f_id << " -> " << *t_id
                           << " [ label = \"" << escape( brick::string::fmt( trace ) ) << "\"]"
                           << std::endl;
                 ++statecount;
             },
             [&]( auto st )
             {
-                int id = _ids[ st ];
+                ext.materialise( st.snap, sizeof( int ), ex.pool() );
+                int *id = ext.machinePointer< int >( st.snap );
                 vm::DebugNode< vm::explore::Context > dn( ex._ctx, ex._ctx.heap().snapshot(),
-                                                          st.root, 0, vm::DNKind::Object, nullptr, nullptr );
+                                                          ex._ctx.get( _VM_CR_State ).pointer, 0, vm::DNKind::Object, nullptr, nullptr );
                 std::map< vm::GenericPointer, int > _dumped;
                 int hseq = 0;
                 std::cerr << "# new state" << std::endl;
-                std::cout << id << " [ style=filled fillcolor=yellow ]" << std::endl;
-                std::cout << id << " -> " << id << ".1 [ label=root ]" << std::endl;
-                dump( dn, _dumped, hseq, brick::string::fmt( id ) + "." );
+                std::cout << *id << " [ style=filled fillcolor=yellow ]" << std::endl;
+                std::cout << *id << " -> " << *id << ".1 [ label=root ]" << std::endl;
+                dump( dn, _dumped, hseq, brick::string::fmt( *id ) + "." );
                 ++edgecount;
             } ) );
     std::cout << "}";
     std::cerr << "found " << statecount << " states and " << edgecount << " edges" << std::endl;
-#endif
 }
 
 }
