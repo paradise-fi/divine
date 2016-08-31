@@ -236,6 +236,7 @@ struct TestExplore
         auto bc = prog_int( "4", "*r - 1" );
         vm::Explore ex( bc );
         bool found = false;
+        ex.start();
         ex.initials( [&]( auto ) { found = true; } );
         ASSERT( found );
     }
@@ -244,6 +245,7 @@ struct TestExplore
     {
         vm::Explore ex( bc );
         int edgecount = 0, statecount = 0;
+        ex.start();
         ss::search( ss::Order::PseudoBFS, ex, 1, ss::passive_listen(
                         [&]( auto, auto, auto ) { ++edgecount; },
                         [&]( auto ) { ++statecount; } ) );
