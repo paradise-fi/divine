@@ -53,7 +53,7 @@ int dump( DN dn, std::map< vm::GenericPointer, int > &dumped, int &seq, std::str
     dumped.emplace( dn._address, hid );
     std::cout << prefix << hid << " [ shape=rectangle label=\"";
     dn.attributes( []( std::string k, std::string v )
-                   { if ( k == "_raw" ) std::cout << escape( v ) << std::endl; } );
+                   { if ( k == "@raw" ) std::cout << escape( v ) << std::endl; } );
     std::cout << "\" ]" << std::endl;
     dn.related( [&]( std::string k, auto rel )
                 {
