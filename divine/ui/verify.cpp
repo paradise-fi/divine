@@ -45,10 +45,10 @@ void Verify::run()
                 std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
                 ::gettimeofday(&now, NULL);
                 std::stringstream time;
-                int seconds = now.tv_sec - start.tv_sec;
-                float avg = float( statecount ) / seconds;
-                time << seconds / 60 << ":"
-                     << std::setw( 2 ) << std::setfill( '0' ) << seconds % 60;
+                int msec = now.tv_sec * 1000 + now.tv_usec / 1000 - start.tv_sec * 1000 - start.tv_usec / 1000;
+                float avg = 1000 * float( statecount ) / msec;
+                time << msec / 60000 << ":"
+                     << std::setw( 2 ) << std::setfill( '0' ) << int(msec / 1000) % 60;
                 std::cerr << "\rsearching: " << edgecount << " edges and "
                           << statecount << " states found in " << time.str() << ", averaging "
                           << std::fixed << std::setprecision( 1 ) << avg << " states/s    ";
