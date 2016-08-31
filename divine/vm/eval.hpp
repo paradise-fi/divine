@@ -779,7 +779,7 @@ struct Eval
             int action = operandCk< IntV >( idx++ ).cooked();
             _VM_ControlRegister reg = _VM_ControlRegister( operandCk< IntV >( idx++ ).cooked() );
             if ( action == _VM_CA_Set && reg == _VM_CR_Flags )
-                context().set( reg, operandCk< IntV >( idx++ ).cooked() );
+                context().set( reg, operandCk< PtrIntV >( idx++ ).cooked() );
             else if ( action == _VM_CA_Set && reg == _VM_CR_PC )
                 NOT_IMPLEMENTED(); /* needs to switchBB */
             else if ( action == _VM_CA_Set )

@@ -183,7 +183,7 @@ typedef void (*__vm_sched_t)( void *state );
  * register values atomically (eg. clear the interrupt flag or unmask
  * interrupts, or to also transfer control within the target frame).
  */
-int __vm_control( enum _VM_ControlRegister, ... ) NOTHROW NATIVE_VISIBLE;
+void *__vm_control( enum _VM_ControlAction, ... ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Non-deterministic choice: when __vm_choose is encountered, the "universe" of
