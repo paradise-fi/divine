@@ -140,7 +140,7 @@ void hash( Heap &heap, HeapPointer root,
         int ptr_off = obj.offset();
         obj.offset( 0 );
         state.update( &ptr_off, sizeof( int ) );
-        if ( heap.valid( obj ) )
+        if ( obj.type() == PointerType::Heap && heap.valid( obj ) )
             hash( heap, obj, visited, state );
         offset = pos.offset() + PointerBytes;
     }
