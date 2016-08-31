@@ -67,6 +67,8 @@ struct DebugNode
 
     using PointerV = value::Pointer;
 
+    auto sortkey() { return std::make_tuple( _address, _offset, _di_type ); }
+
     int size()
     {
         int sz = INT_MAX;

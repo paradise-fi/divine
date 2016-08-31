@@ -42,15 +42,15 @@ std::string escape( std::string s )
     return std::string( buf, 0, j );
 }
 
+using DNMap = std::map< std::tuple< vm::GenericPointer, int, llvm::DIType * >, int >;
+
 template< typename DN >
-int dump( bool raw, DN dn, std::map< vm::GenericPointer, int > &dumped, int &seq, std::string prefix )
+int dump( bool raw, DN dn, DNMap &dumped, int &seq, std::string prefix )
 {
-    if ( dn._address.type() != vm::PointerType::Heap )
-        return 0;
-    if ( dumped.find( dn._address ) != dumped.end() )
-        return dumped[ dn._address ];
+    if ( dumped.find( dn.sortkey() ) != dumped.end() )
+        return dumped[ dn.sortkey() ];
     int hid = ++seq;
-    dumped.emplace( dn._address, hid );
+    dumped.emplace( dn.sortkey(), hid );
     std::cout << prefix << hid << " [ shape=rectangle label=\"";
     if ( raw )
         dn.attributes( []( std::string k, std::string v )
@@ -103,7 +103,7 @@ void Draw::run()
                 int *id = ext.machinePointer< int >( st.snap );
                 vm::DebugNode< vm::explore::Context > dn( ex._ctx, ex._ctx.heap().snapshot(),
                                                           ex._ctx.get( _VM_CR_State ).pointer, 0, vm::DNKind::Object, nullptr, nullptr );
-                std::map< vm::GenericPointer, int > _dumped;
+                DNMap _dumped;
                 int hseq = 0;
                 std::cerr << "# new state" << std::endl;
                 std::cout << *id << " [ style=filled fillcolor=" << ( st.error ? "red" : "yellow" ) << " ]" << std::endl;
