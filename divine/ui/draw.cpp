@@ -102,7 +102,7 @@ void Draw::run()
                 std::map< vm::GenericPointer, int > _dumped;
                 int hseq = 0;
                 std::cerr << "# new state" << std::endl;
-                std::cout << *id << " [ style=filled fillcolor=yellow ]" << std::endl;
+                std::cout << *id << " [ style=filled fillcolor=" << ( st.error ? "red" : "yellow" ) << " ]" << std::endl;
                 std::cout << *id << " -> " << *id << ".1 [ label=root ]" << std::endl;
                 dump( dn, _dumped, hseq, brick::string::fmt( *id ) + "." );
                 ++edgecount;
