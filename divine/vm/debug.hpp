@@ -78,31 +78,37 @@ struct DebugNode
         return sz;
     }
 
-    llvm::DIDerivedType *di_derived( uint64_t tag )
+    llvm::DIDerivedType *di_derived( uint64_t tag, llvm::DIType *t = nullptr )
     {
-        if ( !_di_type )
+        t = t ?: _di_type;
+        if ( !t )
             return nullptr;
-        auto derived = llvm::dyn_cast< llvm::DIDerivedType >( _di_type );
+        auto derived = llvm::dyn_cast< llvm::DIDerivedType >( t );
         if ( derived && derived->getTag() == tag )
             return derived;
         return nullptr;
     }
 
-    llvm::DIDerivedType *di_member() { return di_derived( llvm::dwarf::DW_TAG_member ); }
-    llvm::DIDerivedType *di_pointer() { return di_derived( llvm::dwarf::DW_TAG_pointer_type ); }
-
-    llvm::DIType *di_base()
+    llvm::DIDerivedType *di_member( llvm::DIType *t = nullptr )
     {
-        if ( di_member() )
-            return di_member()->getBaseType().resolve( _ctx.program().ditypemap );
-        if ( di_pointer() )
-            return di_pointer()->getBaseType().resolve( _ctx.program().ditypemap );
-        return _di_type;
+        return di_derived( llvm::dwarf::DW_TAG_member, t );
+    }
+
+    llvm::DIDerivedType *di_pointer( llvm::DIType *t = nullptr )
+    { return di_derived( llvm::dwarf::DW_TAG_pointer_type, t ); }
+
+    llvm::DIType *di_base( llvm::DIType *t = nullptr )
+    {
+        if ( di_member( t ) )
+            return di_member( t )->getBaseType().resolve( _ctx.program().ditypemap );
+        if ( di_pointer( t ) )
+            return di_pointer( t )->getBaseType().resolve( _ctx.program().ditypemap );
+        return nullptr;
     }
 
     llvm::DICompositeType *di_composite()
     {
-        return llvm::dyn_cast< llvm::DICompositeType >( di_base() );
+        return llvm::dyn_cast< llvm::DICompositeType >( di_base() ?: _di_type );
     }
 
     int width()
@@ -199,8 +205,13 @@ struct DebugNode
 
         yield( "@address", brick::string::fmt( PointerV( _address ) ) );
 
-        if ( _di_type )
-            yield( "@type", di_base()->getName().str() );
+        std::string typesuf;
+        auto dit = _di_type, base = di_base();
+        while ( dit = di_base( dit ) )
+            typesuf += di_pointer( dit ) ? "*" : "", base = dit;
+
+        if ( base )
+            yield( "@type", base->getName().str() + typesuf );
 
         if ( !valid() )
             return;
