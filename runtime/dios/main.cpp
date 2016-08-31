@@ -100,28 +100,28 @@ void free_main_arg( char** argv ) noexcept {
 } // namespace __dios
 
 void __dios_main( int l, int argc, char **argv, char **envp ) noexcept {
-    __vm_mask( 1 );
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
     __dios_trace_t( "Dios started!" );
     __dios::runCtors();
     int res;
     switch (l) {
     case 0:
-        __vm_mask( 0 );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_None );
         res = main();
         break;
     case 2:
-        __vm_mask( 0 );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_None );
         res = main( argc, argv );
         break;
     case 3:
-        __vm_mask( 0 );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_None );
         res = main( argc, argv, envp );
         break;
     default:
         __dios_assert_v( false, "Unexpected prototype of main" );
         res = 256;
     }
-    __vm_mask( 1 );
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
 
     if ( res != 0 )
         __vm_fault( ( _VM_Fault ) _DiOS_F_MainReturnValue );

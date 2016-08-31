@@ -2,6 +2,7 @@
 
 #include <limits.h>
 #include <unistd.h>
+#include <stdint.h>
 #include <cstdlib>
 #include <_PDCLIB_aux.h>
 #include <divine.h>
@@ -12,6 +13,11 @@
  * support. It's not particularly pretty. Other bits of this code are also
  * exploded over external/ which is even worse.
  */
+
+#define __vm_mask(x) ( uintptr_t( \
+                           __vm_control( _VM_CA_Get, _VM_CR_Flags,      \
+                                         _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, \
+                                         (x) ? _VM_CF_Mask : 0 ) ) & _VM_CF_Mask )
 
 /* Memory allocation */
 [[noinline]] void * malloc( size_t size ) noexcept

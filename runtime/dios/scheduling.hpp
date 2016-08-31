@@ -131,7 +131,8 @@ struct Scheduler {
         return _cf;
     }
 
-    _VM_Frame *run_live_thread() {
+    Thread *run_live_thread()
+    {
         int count = 0;
         for ( int i = 0; i != _cf->thread_count; i++ ) {
             if ( get_threads()[ i ].active() )
@@ -164,13 +165,12 @@ struct Scheduler {
         }
 
         _cf->active_thread = thr - get_threads();
-        __vm_set_ifl( &( thr->_frame) );
         __dios_assert_v( thr->_frame, "Frame is invalid" );
-        return thr->_frame;
+        return thr;
     }
 
     template < bool THREAD_AWARE >
-    _VM_Frame *run_thread( int idx = -1 ) noexcept {
+    Thread *run_thread( int idx = -1 ) noexcept {
         get_threads()[ _cf->active_thread ].update_state();
         if ( !THREAD_AWARE )
         {
@@ -180,10 +180,8 @@ struct Scheduler {
                 _cf->active_thread = idx;
 
             Thread &thread = get_threads()[ idx ];
-            if ( !thread.zombie() ) {
-                __vm_set_ifl( &( thread._frame) );
-                return thread._frame;
-            }
+            if ( !thread.zombie() )
+                return &thread;
 
             __dios_trace_t( "Thread exit" );
         }
@@ -196,7 +194,7 @@ struct Scheduler {
     }
 
     template < bool THREAD_AWARE >
-    _VM_Frame *run_threads() noexcept {
+    Thread *run_threads() noexcept {
         // __dios_trace( 0, "Number of threads: %d", _cf->thread_count );
         return run_thread< THREAD_AWARE >( THREAD_AWARE ? 0 : __vm_choose( _cf->thread_count ) );
     }
@@ -222,16 +220,11 @@ struct Scheduler {
     ThreadId start_thread( FunPtr routine, void *arg, FunPtr cleanup ) {
         __dios_assert( routine );
 
-        int cur_size = __vm_query_object_size( _cf );
-        void *new_cf = __vm_make_object( cur_size + sizeof( Thread ) );
-        memcpy( new_cf, _cf, cur_size );
-        __vm_free_object( _cf );
-        _cf = static_cast< ControlFlow * >( new_cf );
+        __vm_obj_resize( _cf, __vm_obj_size( _cf ) + sizeof( Thread ) );
 
         Thread &t = get_threads()[ _cf->thread_count++ ];
         new ( &t ) Thread( routine, cleanup );
-        ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >(
-            t._frame );
+        ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >( t._frame );
         frame->arg = arg;
 
         return _cf->thread_count - 1;
@@ -258,26 +251,46 @@ private:
 };
 
 template < bool THREAD_AWARE_SCHED >
-void *sched( int, void *state ) noexcept {
-    auto ctx = static_cast< Context * >( state );
+void sched() noexcept
+{
+    auto ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
     if ( ctx->fault->triggered ) {
         ctx->scheduler->kill_all();
         ctx->fault->triggered = false;
         return ctx;
     }
 
-    if ( ctx->syscall->handle( ctx ) ) {
-        __vm_jump( ctx->scheduler->run_thread< THREAD_AWARE_SCHED >(), nullptr, 1 );
-        return ctx;
+    if ( ctx->syscall->handle( ctx ) )
+    {
+        Thread *t = ctx->scheduler->run_thread< THREAD_AWARE_SCHED >();
+        if ( t->_frame )
+        {
+            __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
+                          _VM_CA_Bit, _VM_CR_Flags,
+                          uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
+            t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
+        }
+        else
+            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+        return;
     }
 
-    _VM_Frame *jmp = ctx->scheduler->run_threads< THREAD_AWARE_SCHED >();
-    if ( jmp ) {
-        __vm_jump( jmp, nullptr, 1 );
-        return ctx;
+    Thread *t = ctx->scheduler->run_threads< THREAD_AWARE_SCHED >();
+    if ( t )
+    {
+        if ( t->_frame )
+        {
+            __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
+                          _VM_CA_Bit, _VM_CR_Flags,
+                          uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ul );
+            t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
+        }
+        else
+            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+        return;
     }
 
-    return nullptr;
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
 }
 
 } // namespace __dios

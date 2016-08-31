@@ -154,15 +154,22 @@ struct Context {
 template< bool fenced >
 struct _InterruptMask {
 
-    _InterruptMask() :  _owns( true ) {
-        _orig_state = __vm_mask( 1 );
+    _InterruptMask()
+        : _owns( true )
+    {
+        _orig_state = uintptr_t( __vm_control( _VM_CA_Get, _VM_CR_Flags,
+                                               _VM_CA_Bit, _VM_CR_Flags,
+                                               uintptr_t( _VM_CF_Mask ),
+                                               uintptr_t( _VM_CF_Mask ) ) )
+                      & _VM_CF_Mask;
         if ( fenced )
             __sync_synchronize();
     }
 
     ~_InterruptMask() {
         if ( _owns )
-            __vm_mask( _orig_state );
+            __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ),
+                          _orig_state ? uintptr_t( _VM_CF_Mask ) : 0ull );
     }
 
 #if __cplusplus >= 201103L
@@ -178,26 +185,29 @@ struct _InterruptMask {
   public:
 #endif
 
-    void release() {
+    void release()
+    {
         assert( _owns );
         if ( fenced )
             __sync_synchronize();
-        __vm_mask( 0 );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ), 0ull );
     }
 
     // acquire mask if not masked already
-    void acquire() {
+    void acquire()
+    {
         assert( _owns );
         if ( fenced )
             __sync_synchronize();
-        __vm_mask( 1 );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags,
+                      uintptr_t( _VM_CF_Mask ), uintptr_t( _VM_CF_Mask ) );
     }
 
     bool owned() const { return _owns; }
 
   private:
     bool _owns;
-    int _orig_state;
+    bool _orig_state;
 };
 
 using InterruptMask = _InterruptMask< false >;

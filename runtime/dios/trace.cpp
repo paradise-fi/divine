@@ -40,7 +40,9 @@ void __dios_trace_t( const char *txt ) noexcept
 
 void __dios_trace_f( const char *fmt, ... ) noexcept
 {
-    int mask = __vm_mask(1);
+    uintptr_t flags = reinterpret_cast< uintptr_t >(
+        __vm_control( _VM_CA_Get, _VM_CR_Flags,
+                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
 
     if ( __dios::InTrace::inTrace )
         goto unmask;
@@ -50,12 +52,14 @@ void __dios_trace_f( const char *fmt, ... ) noexcept
     __dios::traceInternalV( 0, fmt, ap );
     va_end( ap );
 unmask:
-    __vm_mask(mask);
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
 void __dios_trace( int indent, const char *fmt, ... ) noexcept
 {
-    int mask = __vm_mask(1);
+    uintptr_t flags = reinterpret_cast< uintptr_t >(
+        __vm_control( _VM_CA_Get, _VM_CR_Flags,
+                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
 
     if ( __dios::InTrace::inTrace )
         goto unmask;
@@ -65,5 +69,5 @@ void __dios_trace( int indent, const char *fmt, ... ) noexcept
     __dios::traceInternalV( indent, fmt, ap );
     va_end( ap );
 unmask:
-    __vm_mask(mask);
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }

@@ -176,7 +176,9 @@ bool shouldCallPersonality( _Unwind_Context &ctx ) {
 //  __cxa_throw, which will call terminate().
 _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
     // TODO: report fault in nounwind function is encountered
-    auto *topFrame = __vm_query_frame()->parent; // frame of _Unwind_RaiseException's caller
+    // frame of _Unwind_RaiseException's caller
+    auto *topFrame = static_cast< struct _VM_Frame * >(
+        __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
     _Unwind_Context topCtx( topFrame );
     _Unwind_Context foundCtx;
     __personality_routine pers;
