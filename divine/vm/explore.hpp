@@ -137,14 +137,23 @@ struct Explore
     };
 
     hashset::Fast< explore::State, Hasher > _states;
+    explore::State _initial;
 
     auto &program() { return _bc->program(); }
 
     Explore( BC bc )
         : _bc( bc ), _ctx( _bc->program() ), _states( Hasher( _ctx.heap() ) )
     {
-        setup( _ctx );
+    }
+
+    void start()
+    {
+        Eval eval( program(), _ctx );
+        setup::boot( _ctx );
+        eval.run();
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
+        if ( !(_ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
+            _initial = _ctx.snap();
     }
 
     template< typename Ctx >
@@ -162,7 +171,7 @@ struct Explore
 
         do {
             _ctx.load( from );
-            schedule( eval );
+            setup::scheduler( _ctx );
             eval.run();
             if ( !( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
             {
@@ -176,11 +185,9 @@ struct Explore
     template< typename Y >
     void initials( Y yield )
     {
-        /* FIXME */
-        if ( !( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
+        if ( _initial.snap.slab() ) /* fixme, better validity check */
         {
-            auto st = _ctx.snap();
-            auto r = _states.insert( st );
+            auto r = _states.insert( _initial );
             yield( *r );
         }
     }

@@ -529,21 +529,16 @@ struct Eval
 
         if ( parent.cooked().null() )
         {
-            bool trampoline = false;
-            if ( HeapPointer( context().get( _VM_CR_IntFrame ).pointer ) == frame() )
-            {
-                if ( instruction().values.size() > 1 )
-                    _result = operand< Result >( 0 );
-            }
-            else
+            bool usermode = false;
+            if ( ! ( context().ref( _VM_CR_Flags ) & _VM_CF_KernelMode ) )
             {
                 context().mask( false );
                 context().set_interrupted( true );
-                trampoline = true;
+                usermode = true;
             }
             context().set( _VM_CR_Frame, nullPointer() );
             heap().free( fr.cooked() );
-            if ( trampoline )
+            if ( usermode )
                 context().check_interrupt();
             return;
         }

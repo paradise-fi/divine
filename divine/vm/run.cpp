@@ -56,11 +56,14 @@ void Run::run()
     RunContext _ctx( program );
     Eval eval( program, _ctx );
 
-    setup( _ctx );
+    setup::boot( _ctx );
+    eval.run();
+    if ( !(_ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
+        ASSERT( !_ctx.get( _VM_CR_State ).pointer.null() );
 
     while ( !( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
     {
-        schedule( eval );
+        setup::scheduler( _ctx );
         eval.run();
     }
 }

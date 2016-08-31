@@ -76,6 +76,10 @@ void BitCode::init( BitCode::Env env, AutoTraceFlags tr )
     lart.process( mod );
 
     _program.reset( new Program( mod ) );
+
+    _program->setupRR();
+    _program->computeRR();
+    _program->computeStatic();
 }
 
 BitCode::~BitCode()

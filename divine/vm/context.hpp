@@ -109,8 +109,6 @@ struct Context
     {
         auto frameptr = heap().make( program().function( pc ).framesize );
         set( _VM_CR_Frame, frameptr.cooked() );
-        if ( get( _VM_CR_IntFrame ).pointer.null() && parent.cooked().null() )
-            set( _VM_CR_IntFrame, frameptr.cooked() );
         heap().write_shift( frameptr, PointerV( pc ) );
         heap().write_shift( frameptr, parent );
         push( frameptr, args... );
@@ -138,11 +136,13 @@ struct Context
     {
         if ( mask() || ( ref( _VM_CR_Flags ) & _VM_CF_Interrupted ) == 0 )
             return;
+        ASSERT_EQ( ref( _VM_CR_Flags ) & _VM_CF_KernelMode, 0 );
         auto interrupted = get( _VM_CR_Frame ).pointer;
         set( _VM_CR_Frame, get( _VM_CR_IntFrame ).pointer );
         set( _VM_CR_IntFrame, interrupted );
         mask( true );
         set_interrupted( false );
+        ref( _VM_CR_Flags ) |= _VM_CF_KernelMode;
     }
 
     virtual void trace( TraceText tt ) {} // fixme?

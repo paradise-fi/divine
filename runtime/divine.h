@@ -72,11 +72,14 @@ enum _VM_ControlAction
  */
 enum _VM_ControlFlags
 {
-    _VM_CF_Mask        = 0b00001,
-    _VM_CF_Interrupted = 0b00010,
-    _VM_CF_Accepting   = 0b00100,
-    _VM_CF_Error       = 0b01000,
-    _VM_CF_Cancel      = 0b10000
+    _VM_CF_None        = 0,
+    _VM_CF_Mask        = 0b000001,
+    _VM_CF_Interrupted = 0b000010,
+    _VM_CF_Accepting   = 0b000100,
+    _VM_CF_Error       = 0b001000,
+    _VM_CF_Cancel      = 0b010000,
+    _VM_CF_KernelMode  = 0b100000,
+    _VM_CF__64bit__    = 1ull << 33
 };
 
 /*
