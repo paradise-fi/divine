@@ -43,7 +43,7 @@ std::string escape( std::string s )
 }
 
 template< typename DN >
-int dump( DN dn, std::map< vm::GenericPointer, int > &dumped, int &seq, std::string prefix )
+int dump( bool raw, DN dn, std::map< vm::GenericPointer, int > &dumped, int &seq, std::string prefix )
 {
     if ( dn._address.type() != vm::PointerType::Heap )
         return 0;
@@ -52,12 +52,16 @@ int dump( DN dn, std::map< vm::GenericPointer, int > &dumped, int &seq, std::str
     int hid = ++seq;
     dumped.emplace( dn._address, hid );
     std::cout << prefix << hid << " [ shape=rectangle label=\"";
-    dn.attributes( []( std::string k, std::string v )
-                   { if ( k == "@raw" ) std::cout << escape( v ) << std::endl; } );
+    if ( raw )
+        dn.attributes( []( std::string k, std::string v )
+                       { if ( k == "@raw" ) std::cout << escape( v ) << std::endl; } );
+    else
+        dn.attributes( []( std::string k, std::string v )
+                       { if ( k != "@raw" ) std::cout << escape( k ) << ": " << escape( v ) << std::endl; } );
     std::cout << "\" ]" << std::endl;
     dn.related( [&]( std::string k, auto rel )
                 {
-                    if ( int t = dump( rel, dumped, seq, prefix ) )
+                    if ( int t = dump( raw, rel, dumped, seq, prefix ) )
                         std::cout << prefix << hid << " -> "  << prefix << t
                                   << " [ label=\"" << k << "\" ]" << std::endl;
                 } );
@@ -104,7 +108,7 @@ void Draw::run()
                 std::cerr << "# new state" << std::endl;
                 std::cout << *id << " [ style=filled fillcolor=" << ( st.error ? "red" : "yellow" ) << " ]" << std::endl;
                 std::cout << *id << " -> " << *id << ".1 [ label=root ]" << std::endl;
-                dump( dn, _dumped, hseq, brick::string::fmt( *id ) + "." );
+                dump( _raw, dn, _dumped, hseq, brick::string::fmt( *id ) + "." );
                 ++edgecount;
             } ) );
     std::cout << "}";
