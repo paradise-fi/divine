@@ -310,6 +310,9 @@ struct DebugNode
                                         _type->getPointerElementType(), di_base() ) );
         }
 
+        if ( _type && _di_type && _type->isStructTy() )
+            struct_fields( hloc, yield, ptrs );
+
         for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
         {
             hloc.offset( hoff + _offset + ptroff->offset() );
@@ -321,13 +324,10 @@ struct DebugNode
             yield( "@" + brick::string::fmt( ptroff->offset() ),
                    DebugNode( _ctx, _snapshot, pp, 0, DNKind::Object, nullptr, nullptr ) );
         }
-
-        if ( _type && _di_type && _type->isStructTy() )
-            struct_fields( yield );
     }
 
     template< typename Y >
-    void struct_fields( Y yield )
+    void struct_fields( HeapPointer hloc, Y yield, std::set< GenericPointer > &ptrs )
     {
         auto CT = llvm::dyn_cast< llvm::DICompositeType >( _di_type );
         if ( !CT )
@@ -347,8 +347,17 @@ struct DebugNode
                 if ( idx + 1 < int( ST->getNumElements() ) &&
                      CTE->getOffsetInBits() >= 8 * SLO->getElementOffset( idx + 1 ) )
                     idx ++, STE ++;
+
+                int offset = SLO->getElementOffset( idx );
+                if ( (*STE)->isPointerTy() )
+                {
+                    PointerV ptr;
+                    _ctx.heap().read( hloc + offset, ptr );
+                    ptrs.insert( ptr.cooked() );
+                }
+
                 yield( CTE->getName().str(),
-                       DebugNode( _ctx, _snapshot, _address, SLO->getElementOffset( idx ),
+                       DebugNode( _ctx, _snapshot, _address, offset,
                                   DNKind::Object, *STE, CTE ) );
             }
     }
