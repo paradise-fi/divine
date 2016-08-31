@@ -203,7 +203,8 @@ struct DebugNode
         Eval eval( _ctx.program(), _ctx );
         Program &program = _ctx.program();
 
-        yield( "@address", brick::string::fmt( PointerV( _address ) ) );
+        yield( "@address", brick::string::fmt( _address ) + "+" +
+                           brick::string::fmt( _offset ) );
 
         std::string typesuf;
         auto dit = _di_type, base = di_base();
