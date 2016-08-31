@@ -131,8 +131,22 @@ struct Scheduler {
         return _cf;
     }
 
-    Thread *run_live_thread()
-    {
+    Thread *get_active_thread() {
+        return &get_threads()[ _cf->active_thread ];
+    }
+
+    Thread *choose_thread() {
+        get_active_thread()->update_state();
+        int idx = __vm_choose( _cf->thread_count );
+        _cf->active_thread = idx;
+        Thread &thread = get_threads()[ idx ];
+        if ( !thread.zombie() )
+            return &thread;
+        return nullptr;
+    }
+
+    Thread *choose_live_thread() {
+        get_active_thread()->update_state();
         int count = 0;
         for ( int i = 0; i != _cf->thread_count; i++ ) {
             if ( get_threads()[ i ].active() )
@@ -167,36 +181,6 @@ struct Scheduler {
         _cf->active_thread = thr - get_threads();
         __dios_assert_v( thr->_frame, "Frame is invalid" );
         return thr;
-    }
-
-    template < bool THREAD_AWARE >
-    Thread *run_thread( int idx = -1 ) noexcept {
-        get_threads()[ _cf->active_thread ].update_state();
-        if ( !THREAD_AWARE )
-        {
-            if ( idx < 0 )
-                idx = _cf->active_thread;
-            else
-                _cf->active_thread = idx;
-
-            Thread &thread = get_threads()[ idx ];
-            if ( !thread.zombie() )
-                return &thread;
-
-            __dios_trace_t( "Thread exit" );
-        }
-
-        if ( THREAD_AWARE )
-            return run_live_thread();
-
-        _cf = nullptr;
-        return nullptr;
-    }
-
-    template < bool THREAD_AWARE >
-    Thread *run_threads() noexcept {
-        // __dios_trace( 0, "Number of threads: %d", _cf->thread_count );
-        return run_thread< THREAD_AWARE >( THREAD_AWARE ? 0 : __vm_choose( _cf->thread_count ) );
     }
 
     void start_main_thread( FunPtr main, int argc, char** argv, char** envp ) noexcept {
@@ -257,36 +241,23 @@ void sched() noexcept
     if ( ctx->fault->triggered ) {
         ctx->scheduler->kill_all();
         ctx->fault->triggered = false;
-        return ctx;
-    }
-
-    if ( ctx->syscall->handle( ctx ) )
-    {
-        Thread *t = ctx->scheduler->run_thread< THREAD_AWARE_SCHED >();
-        if ( t->_frame )
-        {
-            __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
-                          _VM_CA_Bit, _VM_CR_Flags,
-                          uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
-            t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
-        }
-        else
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
         return;
     }
 
-    Thread *t = ctx->scheduler->run_threads< THREAD_AWARE_SCHED >();
-    if ( t )
-    {
-        if ( t->_frame )
-        {
-            __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
-                          _VM_CA_Bit, _VM_CR_Flags,
-                          uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ul );
-            t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
-        }
-        else
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+    Thread *t;
+    if ( ctx->syscall->handle( ctx ) ) {
+        // Allow thread to obtain syscall result
+        t = ctx->scheduler->get_active_thread();
+    else
+        t = THREAD_AWARE_SCHED ?
+                ctx->scheduler->choose_live_thread() :
+                ctx->scheduler->choose_thread();
+
+    if ( t && t->_frame ) {
+        __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
+                      _VM_CA_Bit, _VM_CR_Flags,
+                      uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
+        t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
         return;
     }
 
