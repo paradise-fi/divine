@@ -108,7 +108,7 @@ void Draw::run()
             {
                 ext.materialise( st.snap, sizeof( int ), ex.pool() );
                 int *id = ext.machinePointer< int >( st.snap );
-                vm::DebugNode< vm::explore::Context > dn(
+                vm::DebugNode< vm::Program, vm::CowHeap > dn(
                         ex._ctx, st.snap,
                         ex._ctx.get( _VM_CR_State ).pointer, 0, vm::DNKind::Object,
                         dbg._state_type, dbg._state_di_type );

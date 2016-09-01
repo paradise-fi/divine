@@ -209,7 +209,7 @@ struct Stepper
 struct Interpreter
 {
     using BC = std::shared_ptr< vm::BitCode >;
-    using DN = vm::DebugNode< Context >;
+    using DN = vm::DebugNode< vm::Program, vm::CowHeap >;
     using PointerV = Context::PointerV;
 
     bool _exit;
