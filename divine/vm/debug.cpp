@@ -17,6 +17,8 @@
  */
 
 #include <divine/vm/debug.hpp>
+#include <divine/vm/print.hpp>
+#include <divine/vm/eval.hpp>
 
 namespace divine {
 namespace vm {

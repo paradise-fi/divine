@@ -24,9 +24,6 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/context.hpp>
-#include <divine/vm/eval.hpp>
-#include <divine/vm/print.hpp>
-#include <divine/cc/runtime.hpp>
 #include <brick-string>
 
 namespace divine {
