@@ -150,7 +150,8 @@ struct DebugNode
 
 using ProcInfo = std::vector< std::pair< std::pair< int, int >, int > >;
 
-struct DebugContext : Context< vm::Program, vm::CowHeap >
+template< typename Program, typename Heap >
+struct DebugContext : Context< Program, Heap >
 {
     std::vector< std::string > _trace;
     ProcInfo _proc;
@@ -158,20 +159,20 @@ struct DebugContext : Context< vm::Program, vm::CowHeap >
     llvm::DIType *_state_di_type;
     llvm::Type   *_state_type;
 
-    DebugContext( vm::Program &p )
-        : Context< vm::Program, vm::CowHeap >( p ),
+    DebugContext( Program &p )
+        : Context< Program, Heap >( p ),
           _state_di_type( nullptr ), _state_type( nullptr )
     {}
 
     void doublefault()
     {
         _trace.push_back( "fatal double fault" );
-        set( _VM_CR_Frame, vm::nullPointer() );
+        this->set( _VM_CR_Frame, vm::nullPointer() );
     }
 
     void trace( vm::TraceText tt )
     {
-        _trace.push_back( heap().read_string( tt.text ) );
+        _trace.push_back( this->heap().read_string( tt.text ) );
     }
 
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
@@ -179,23 +180,24 @@ struct DebugContext : Context< vm::Program, vm::CowHeap >
     void trace( vm::TraceSchedChoice tsc )
     {
         auto ptr = tsc.list;
-        int size = heap().size( ptr.cooked() );
+        int size = this->heap().size( ptr.cooked() );
         if ( size % 12 )
             return; /* invalid */
         for ( int i = 0; i < size / 12; ++i )
         {
             vm::value::Int< 32, true > pid, tid, choice;
-            heap().read_shift( ptr, pid );
-            heap().read_shift( ptr, tid );
-            heap().read_shift( ptr, choice );
+            this->heap().read_shift( ptr, pid );
+            this->heap().read_shift( ptr, tid );
+            this->heap().read_shift( ptr, choice );
             _proc.emplace_back( std::make_pair( pid.cooked(), tid.cooked() ), choice.cooked() );
         }
     }
 
     void state_type( llvm::DIVariable *di )
     {
-        auto ptrtype = llvm::cast< llvm::DIDerivedType >( di->getType().resolve( program().ditypemap ) );
-        _state_di_type = ptrtype->getBaseType().resolve( program().ditypemap );
+        auto ptrtype = llvm::cast< llvm::DIDerivedType >(
+            di->getType().resolve( this->program().ditypemap ) );
+        _state_di_type = ptrtype->getBaseType().resolve( this->program().ditypemap );
     }
 
     void trace( vm::TraceStateType s )

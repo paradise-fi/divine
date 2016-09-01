@@ -83,12 +83,13 @@ struct Help { std::string _cmd; };
 
 }
 
-struct Context : vm::DebugContext
+using DebugContext = vm::DebugContext< vm::Program, vm::CowHeap >;
+
+struct Context : DebugContext
 {
-    using Program = vm::Program;
     int _choice;
 
-    Context( Program &p ) : vm::DebugContext( p ), _choice( 0 ) {}
+    Context( vm::Program &p ) : DebugContext( p ), _choice( 0 ) {}
 
     template< typename I >
     int choose( int count, I, I )

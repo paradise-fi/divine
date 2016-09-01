@@ -75,9 +75,9 @@ void Draw::run()
     vm::Explore ex( _bc );
     ex.start();
 
-    vm::DebugContext dbg( _bc->program() );
+    vm::DebugContext< vm::Program, vm::CowHeap > dbg( _bc->program() );
     vm::setup::boot( dbg );
-    vm::Eval< vm::Program, vm::DebugContext, vm::value::Void > dbg_eval( dbg.program(), dbg );
+    vm::Eval< vm::Program, decltype( dbg ), vm::value::Void > dbg_eval( dbg.program(), dbg );
     dbg_eval.run();
 
     int edgecount = 0, statecount = 0;
