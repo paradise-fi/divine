@@ -116,13 +116,15 @@ struct Stepper
         }
     };
 
-    vm::GenericPointer _frame, _frame_cur;
+    vm::GenericPointer _frame, _frame_cur, _parent_cur;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
     std::pair< std::string, int > _line;
     std::set< BreakPoint > _bps;
 
     Stepper()
-        : _frame( vm::nullPointer() ), _frame_cur( vm::nullPointer() ),
+        : _frame( vm::nullPointer() ),
+          _frame_cur( vm::nullPointer() ),
+          _parent_cur( vm::nullPointer() ),
           _lines( 0, 0 ), _instructions( 0, 0 ),
           _states( 0, 0 ), _jumps( 0, 0 ),
           _line( "", 0 )
@@ -177,14 +179,31 @@ struct Stepper
             if ( _frame.null() || _frame == _frame_cur )
                 _line = l;
         }
-        /* FIXME
-        if ( i.hypercall == vm::HypercallJump )
-            ++ _jumps.first;
-        */
     }
 
     void state() { add( _states ); }
-    void in_frame( vm::GenericPointer f ) { _frame_cur = f; }
+    void in_frame( vm::GenericPointer next, vm::CowHeap &heap )
+    {
+        vm::GenericPointer last = _frame_cur, last_parent = _parent_cur;
+        vm::value::Pointer next_parent;
+
+        heap.read( next + vm::PointerBytes, next_parent );
+
+        _frame_cur = next;
+        _parent_cur = next_parent.cooked();
+
+        if ( last == next )
+            return; /* no change */
+        if ( last.null() || next.null() )
+            return; /* entry or exit */
+
+        if ( next == last_parent )
+            return; /* return from last into next */
+        if ( next_parent.cooked() == last )
+            return; /* call from last into next */
+
+        ++ _jumps.first;
+    }
 };
 
 struct Interpreter
@@ -401,7 +420,7 @@ struct Interpreter
         bool in_fault = eval.pc().function() == _ctx.get( _VM_CR_FaultHandler ).pointer.object();
 
         do {
-            step.in_frame( _ctx.frame() );
+            step.in_frame( _ctx.frame(), _ctx.heap() );
             eval.advance();
             step.instruction( eval.instruction() );
 
@@ -426,7 +445,7 @@ struct Interpreter
             if ( schedule( eval ) )
                 step.state();
 
-            step.in_frame( _ctx.frame() );
+            step.in_frame( _ctx.frame(), _ctx.heap() );
 
             if ( !_ctx._proc.empty() )
             {
