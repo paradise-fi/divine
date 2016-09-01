@@ -19,6 +19,7 @@
 
 #include <divine/vm/explore.hpp>
 #include <divine/vm/debug.hpp>
+#include <divine/vm/print.hpp>
 #include <divine/ui/cli.hpp>
 #include <brick-string>
 #include <cstring>
