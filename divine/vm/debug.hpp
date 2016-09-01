@@ -327,7 +327,11 @@ struct DebugNode
             PointerV addr;
             _ctx.heap().read( hloc + _offset, addr );
             ptrs.insert( addr.cooked() );
-            yield( "@deref", DebugNode( _ctx, _snapshot, addr.cooked(), 0, DNKind::Object,
+            auto kind = DNKind::Object;
+            auto base = di_base( di_base() );
+            if ( base && base->getName() == "_VM_Frame" )
+                kind = DNKind::Frame;
+            yield( "@deref", DebugNode( _ctx, _snapshot, addr.cooked(), 0, kind,
                                         _type->getPointerElementType(), di_base() ) );
         }
 
