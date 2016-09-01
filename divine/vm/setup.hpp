@@ -34,8 +34,7 @@ void boot( Context &ctx )
     auto ipc = ctx.program().functionByName( "__boot" );
     auto envptr = ctx.program().globalByName( "__sys_env" );
     ctx.enter( ipc, nullPointerV(), value::Pointer( envptr ) );
-    ctx.ref( _VM_CR_Flags ) |= _VM_CF_KernelMode;
-    ctx.mask( true );
+    ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Mask;
 }
 
 template< typename Context >
@@ -43,7 +42,7 @@ void scheduler( Context &ctx )
 {
     ctx.enter( ctx.get( _VM_CR_Scheduler ).pointer, nullPointerV() );
     ctx.set( _VM_CR_IntFrame, ctx.frame() );
-    ctx.ref( _VM_CR_Flags ) = _VM_CF_KernelMode | _VM_CF_Mask;
+    ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Mask;
 }
 
 }

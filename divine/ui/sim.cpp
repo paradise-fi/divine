@@ -378,7 +378,7 @@ struct Interpreter
 
         auto st = eval._result.cooked();
 
-        if ( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel )
+        if ( _ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Cancel )
             return true;
 
         /* TODO do not allocate a new #NNN for already-visited states */

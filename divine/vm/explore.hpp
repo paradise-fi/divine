@@ -145,7 +145,7 @@ struct Explore
         setup::boot( _ctx );
         eval.run();
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
-        if ( !(_ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
+        if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
         {
             _initial.snap = _ctx.heap().snapshot();
             _states.insert( _initial.snap );
@@ -170,13 +170,13 @@ struct Explore
             _ctx.heap().restore( from.snap );
             setup::scheduler( _ctx );
             eval.run();
-            if ( !( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
+            if ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
             {
                 explore::State st;
                 auto r = _states.insert( _ctx.heap().snapshot() );
                 st.snap = *r;
-                st.accepting = _ctx.ref( _VM_CR_Flags ) & _VM_CF_Accepting;
-                st.error = _ctx.ref( _VM_CR_Flags ) & _VM_CF_Error;
+                st.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
+                st.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
                 yield( st, _ctx._trace, r.isnew() );
             }
         } while ( !_ctx.finished() );

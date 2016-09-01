@@ -59,10 +59,10 @@ void Run::run()
 
     setup::boot( _ctx );
     eval.run();
-    if ( !(_ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
+    if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
         ASSERT( !_ctx.get( _VM_CR_State ).pointer.null() );
 
-    while ( !( _ctx.ref( _VM_CR_Flags ) & _VM_CF_Cancel ) )
+    while ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
     {
         setup::scheduler( _ctx );
         eval.run();

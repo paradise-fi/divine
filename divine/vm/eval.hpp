@@ -552,7 +552,7 @@ struct Eval
         if ( parent.cooked().null() )
         {
             bool usermode = false;
-            if ( context().ref( _VM_CR_Flags ) & _VM_CF_KernelMode )
+            if ( context().ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode )
             {
                 if ( instruction().values.size() > 1 )
                     _result = operand< Result >( 0 );
@@ -817,8 +817,8 @@ struct Eval
                 result( PointerV( context().get( reg ).pointer ) );
             else if ( action == _VM_CA_Bit && reg == _VM_CR_Flags )
             {
-                context().ref( reg ) &= ~operandCk< PtrIntV >( idx++ ).cooked();
-                context().ref( reg ) |= operandCk< PtrIntV >( idx++ ).cooked();
+                context().ref( reg ).integer &= ~operandCk< PtrIntV >( idx++ ).cooked();
+                context().ref( reg ).integer |= operandCk< PtrIntV >( idx++ ).cooked();
             }
             else
             {

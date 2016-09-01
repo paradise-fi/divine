@@ -82,7 +82,7 @@ struct Context
 
     Register get( _VM_ControlRegister r ) { return _reg[ r ]; }
     Register get( Location l ) { ASSERT_LT( l, Program::Slot::Invalid ); return _reg[ l ]; }
-    uint64_t &ref( _VM_ControlRegister r ) { return _reg[ r ].integer; }
+    Register &ref( _VM_ControlRegister r ) { return _reg[ r ]; }
 
     HeapInternal ptr2i( _VM_ControlRegister r ) { return _ptr2i[ r ]; }
     HeapInternal ptr2i( Location l ) { ASSERT_LT( l, Program::Slot::Invalid ); return _ptr2i[ l ]; }
@@ -119,7 +119,7 @@ struct Context
 
     bool set_interrupted( bool i )
     {
-        auto &fl = ref( _VM_CR_Flags );
+        auto &fl = ref( _VM_CR_Flags ).integer;
         bool rv = fl & _VM_CF_Interrupted;
         _cfl_visited.clear();
         fl &= ~_VM_CF_Interrupted;
@@ -137,15 +137,15 @@ struct Context
 
     void check_interrupt()
     {
-        if ( mask() || ( ref( _VM_CR_Flags ) & _VM_CF_Interrupted ) == 0 )
+        if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
             return;
-        ASSERT_EQ( ref( _VM_CR_Flags ) & _VM_CF_KernelMode, 0 );
+        ASSERT_EQ( ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode, 0 );
         auto interrupted = get( _VM_CR_Frame ).pointer;
         set( _VM_CR_Frame, get( _VM_CR_IntFrame ).pointer );
         set( _VM_CR_IntFrame, interrupted );
         mask( true );
         set_interrupted( false );
-        ref( _VM_CR_Flags ) |= _VM_CF_KernelMode;
+        ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
     }
 
     virtual void trace( TraceText tt ) {} // fixme?
@@ -171,14 +171,14 @@ struct Context
 
     bool mask( bool n )
     {
-        auto &fl = ref( _VM_CR_Flags );
+        auto &fl = ref( _VM_CR_Flags ).integer;
         bool rv = fl & _VM_CF_Mask;
         fl &= ~_VM_CF_Mask;
         fl |= n ? _VM_CF_Mask : 0;
         return rv;
     }
 
-    bool mask() { return ref( _VM_CR_Flags ) & _VM_CF_Mask; }
+    bool mask() { return ref( _VM_CR_Flags ).integer & _VM_CF_Mask; }
 };
 
 }
