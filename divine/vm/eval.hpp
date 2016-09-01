@@ -196,6 +196,13 @@ struct Eval
                          heap().write( s2ptr( s ), v, context().ptr2i( s.location ) ) );
     }
 
+    void slot_copy( HeapPointer from, Slot to, int size, int offset = 0 )
+    {
+        auto to_i = context().ptr2i( to.location );
+        heap().copy( heap(), from, heap().ptr2i( from ), s2ptr( to, offset ), to_i, size );
+        context().ptr2i( to.location, to_i );
+    }
+
     template< typename V >
     void slot_read( Slot s, V &v )
     {
@@ -433,7 +440,7 @@ struct Eval
         int sz = result().size();
         if ( !boundcheck( from, sz, false ) )
             return;
-        heap().copy( ptr2h( from ), s2ptr( result() ), sz );
+        slot_copy( ptr2h( from ), result(), sz );
     }
 
     template< template< typename > class Guard = Any, typename T, typename Op >
@@ -520,18 +527,18 @@ struct Eval
         auto off = compositeOffsetFromInsn( instruction().op->getOperand(0)->getType(), 1,
                                             instruction().values.size() - 1 );
         ASSERT( off.defined() );
-        heap().copy( s2ptr( operand( 0 ), off.cooked() ), s2ptr( result() ), result().size() );
+        slot_copy( s2ptr( operand( 0 ), off.cooked() ), result(), result().size() );
     }
 
     void implement_insertvalue()
     {
         /* first copy the original */
-        heap().copy( s2ptr( operand( 0 ) ), s2ptr( result() ), result().size() );
+        slot_copy( s2ptr( operand( 0 ) ), result(), result().size() );
         auto off = compositeOffsetFromInsn( instruction().op->getOperand(0)->getType(), 2,
                                             instruction().values.size() - 1 );
         ASSERT( off.defined() );
         /* write the new value over the selected field */
-        heap().copy( s2ptr( operand( 1 ) ), s2ptr( result(), off.cooked() ), operand( 1 ).size() );
+        slot_copy( s2ptr( operand( 1 ) ), result(), operand( 1 ).size(), off.cooked() );
     }
 
     void jumpTo( PointerV _to )
@@ -668,7 +675,7 @@ struct Eval
         tgt = tmp;
         each_phi( target, [&]( auto &i )
                   {
-                      heap().copy( tgt.cooked(), s2ptr( i.result() ), i.result().size() );
+                      slot_copy( tgt.cooked(), i.result(), i.result().size() );
                       heap().skip( tgt, i.result().size() );
                   } );
 
@@ -1086,8 +1093,8 @@ struct Eval
                 if ( !select.defined() )
                     fault( _VM_F_Control ) << "select on an undefined value";
 
-                heap().copy( s2ptr( operand( select.cooked() ? 1 : 2 ) ),
-                             s2ptr( result() ), result().size() );
+                slot_copy( s2ptr( operand( select.cooked() ? 1 : 2 ) ),
+                           result(), result().size() );
                 /* TODO make the result undefined if !select.defined()? */
                 return;
             }
@@ -1246,7 +1253,7 @@ struct Eval
                 implement_ret(); break;
 
             case OpCode::BitCast:
-                heap().copy( s2ptr( operand( 0 ) ), s2ptr( result() ), result().size() );
+                slot_copy( s2ptr( operand( 0 ) ), result(), result().size() );
                 break;
 
             case OpCode::Load:
@@ -1386,7 +1393,7 @@ struct Eval
                     heap().read( ptr2h( vaList ), vaArgs );
                     if ( !boundcheck( vaArgs, result().size(), false ) )
                         return;
-                    heap().copy( ptr2h( vaArgs ), s2ptr( result() ), result().size() );
+                    slot_copy( ptr2h( vaArgs ), result(), result().size() );
                     heap().write( ptr2h( vaList ), PointerV( vaArgs + result().size() ) );
                     break;
                 }
