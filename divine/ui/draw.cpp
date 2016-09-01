@@ -47,6 +47,8 @@ using DNMap = std::map< std::tuple< vm::GenericPointer, int, llvm::DIType * >, i
 template< typename DN >
 int dump( bool raw, DN dn, DNMap &dumped, int &seq, std::string prefix )
 {
+    if ( dn._address.type() != vm::PointerType::Heap )
+        return 0;
     if ( dumped.find( dn.sortkey() ) != dumped.end() )
         return dumped[ dn.sortkey() ];
     int hid = ++seq;
@@ -106,9 +108,10 @@ void Draw::run()
             {
                 ext.materialise( st.snap, sizeof( int ), ex.pool() );
                 int *id = ext.machinePointer< int >( st.snap );
-                vm::DebugNode< vm::explore::Context > dn( ex._ctx, ex._ctx.heap().snapshot(),
-                                                          ex._ctx.get( _VM_CR_State ).pointer, 0, vm::DNKind::Object,
-                                                          dbg._state_type, dbg._state_di_type );
+                vm::DebugNode< vm::explore::Context > dn(
+                        ex._ctx, st.snap,
+                        ex._ctx.get( _VM_CR_State ).pointer, 0, vm::DNKind::Object,
+                        dbg._state_type, dbg._state_di_type );
                 DNMap _dumped;
                 int hseq = 0;
                 std::cerr << "# new state" << std::endl;
