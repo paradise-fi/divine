@@ -580,13 +580,14 @@ struct Eval
         PointerV caller_pc;
         heap().read( parent.cooked(), caller_pc );
         auto caller = _program.instruction( caller_pc.cooked() );
-        if ( instruction().values.size() > 1 ) { /* return value */
+        if ( instruction().values.size() > 1 ) /* return value */
+        {
             if ( caller.values.size() == 0 )
                 fault( _VM_F_Control ) << "Function which was called as void returned a value";
             else if ( caller.result().size() < operand( 0 ).size() )
                 fault( _VM_F_Control ) << "Returned value is bigger then expected by caller";
             else if ( !heap().copy( s2ptr( operand( 0 ) ),
-                             s2ptr( caller.result(), 0, parent ),
+                                    s2ptr( caller.result(), 0, parent ),
                                     caller.result().size() ) )
                 fault( _VM_F_Memory ) << "Cound not return value";
         }
@@ -781,7 +782,8 @@ struct Eval
             case Intrinsic::trap:
                 NOT_IMPLEMENTED(); /* TODO */
             case Intrinsic::eh_typeid_for:
-                result( IntV( program().function( pc() ).typeID( operandCk< PointerV >( 0 ).cooked() ) ) );
+                result( IntV( program().function( pc() ).typeID(
+                                  operandCk< PointerV >( 0 ).cooked() ) ) );
                 return;
             case Intrinsic::smul_with_overflow:
             case Intrinsic::sadd_with_overflow:
@@ -961,7 +963,8 @@ struct Eval
         if ( !function.vararg && int( CS.arg_size() ) > function.argcount )
         {
             fault( _VM_F_Control ) << "too many arguments given to a call: "
-                                   << function.argcount << " expected but " << CS.arg_size() << " given";
+                                   << function.argcount << " expected but "
+                                   << CS.arg_size() << " given";
             return;
         }
 
