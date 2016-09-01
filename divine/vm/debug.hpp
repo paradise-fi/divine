@@ -61,6 +61,9 @@ struct DebugNode
     Snapshot _snapshot;
     DNKind _kind;
 
+    using YieldAttr = std::function< void( std::string, std::string ) >;
+    using YieldDN   = std::function< void( std::string, DebugNode< Context > ) >;
+
     /* applies only to Objects */
     llvm::Type *_type;
     llvm::DIType *_di_type;
@@ -182,8 +185,7 @@ struct DebugNode
         return true;
     }
 
-    template< typename Y >
-    void value( Y yield, Eval &eval )
+    void value( YieldAttr yield, Eval &eval )
     {
         if ( _type && _type->isIntegerTy() )
             eval.template type_dispatch< IsIntegral >(
@@ -205,8 +207,7 @@ struct DebugNode
                 } );
     }
 
-    template< typename Y >
-    void attributes( Y yield )
+    void attributes( YieldAttr yield )
     {
         Eval eval( _ctx.program(), _ctx );
         Program &program = _ctx.program();
@@ -305,8 +306,7 @@ struct DebugNode
         out << print::source( subprogram(), _ctx.program(), pc() );
     }
 
-    template< typename Y >
-    void related( Y yield )
+    void related( YieldDN yield )
     {
         if ( !valid() )
             return;
@@ -351,8 +351,7 @@ struct DebugNode
         }
     }
 
-    template< typename Y >
-    void struct_fields( HeapPointer hloc, Y yield, std::set< GenericPointer > &ptrs )
+    void struct_fields( HeapPointer hloc, YieldDN yield, std::set< GenericPointer > &ptrs )
     {
         auto CT = llvm::dyn_cast< llvm::DICompositeType >( _di_type );
         if ( !CT )
@@ -387,8 +386,8 @@ struct DebugNode
             }
     }
 
-    template< typename Y >
-    void localvar( Y yield, Eval &eval, llvm::DbgDeclareInst *DDI, std::set< GenericPointer > &ptrs )
+    void localvar( YieldDN yield, Eval &eval, llvm::DbgDeclareInst *DDI,
+                   std::set< GenericPointer > &ptrs )
     {
         auto divar = DDI->getVariable();
         auto ditype = divar->getType().resolve( _ctx.program().ditypemap );
@@ -406,8 +405,7 @@ struct DebugNode
                DebugNode( _ctx, _snapshot, ptr.cooked(), 0, DNKind::Object, type, ditype ) );
     }
 
-    template< typename Y >
-    void framevars( Y yield, Eval &eval, std::set< GenericPointer > &ptrs )
+    void framevars( YieldDN yield, Eval &eval, std::set< GenericPointer > &ptrs )
     {
         PointerV fr( _address );
         _ctx.heap().skip( fr, PointerBytes );
