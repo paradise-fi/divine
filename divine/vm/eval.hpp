@@ -154,23 +154,7 @@ struct Eval
     static_assert( Convertible< value::Int< 64, true > >::template Guard< PointerV >::value, "" );
     static_assert( IntegerComparable< IntV >::value, "" );
 
-    CodePointer pc()
-    {
-        PointerV ptr;
-        ASSERT_EQ( heap().ptr2i( frame() ), context().ptr2i( _VM_CR_Frame ) );
-        heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
-        if ( !ptr.defined() )
-            return CodePointer();
-        return ptr.cooked();
-    }
-
-    void pc( CodePointer p )
-    {
-        ASSERT_EQ( heap().ptr2i( frame() ), context().ptr2i( _VM_CR_Frame ) );
-        context().ptr2i( _VM_CR_Frame,
-                         heap().write( frame(), PointerV( p ),
-                                       context().ptr2i( _VM_CR_Frame ) ) );
-    }
+    CodePointer pc() { return context().get( _VM_CR_PC ).pointer; }
 
     HeapPointer frame() { return context().frame(); }
     HeapPointer globals() { return context().globals(); }
@@ -593,6 +577,7 @@ struct Eval
         }
 
         context().set( _VM_CR_Frame, parent.cooked() );
+        context().set( _VM_CR_PC, caller_pc.cooked() );
 
         if ( isa< ::llvm::InvokeInst >( caller.op ) )
         {
@@ -649,7 +634,7 @@ struct Eval
     void switchBB( CodePointer target )
     {
         auto origin = pc();
-        pc( target );
+        context().set( _VM_CR_PC, target );
         // std::cerr << "switchBB: " << pc() << std::endl;
 
         target.instruction( target.instruction() + 1 );
@@ -682,7 +667,7 @@ struct Eval
 
         heap().free( tmp.cooked() );
         target.instruction( target.instruction() + count - 1 );
-        pc( target );
+        context().set( _VM_CR_PC, target );
     }
 
     template< typename O >
@@ -819,7 +804,10 @@ struct Eval
             else if ( action == _VM_CA_Set && reg == _VM_CR_PC )
                 NOT_IMPLEMENTED(); /* needs to switchBB */
             else if ( action == _VM_CA_Set )
+            {
+                context().sync_pc();
                 context().set( reg, operandPtr( idx++ ).cooked() );
+            }
             else if ( action == _VM_CA_Get && reg == _VM_CR_Flags )
                 result( PtrIntV( context().get( reg ).integer ) );
             else if ( action == _VM_CA_Get )
@@ -833,6 +821,12 @@ struct Eval
             {
                 fault( _VM_F_Hypercall ) << "invalid __vm_control sequence at index " << idx;
                 return;
+            }
+            if ( action == _VM_CA_Set && reg == _VM_CR_Frame )
+            {
+                PointerV ptr;
+                heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
+                context().set( _VM_CR_PC, ptr.cooked() );
             }
         }
     }
@@ -996,7 +990,9 @@ struct Eval
         }
 
         ASSERT( !isa< ::llvm::PHINode >( instruction().op ) );
+        context().sync_pc();
         context().set( _VM_CR_Frame, frameptr.cooked() );
+        context().set( _VM_CR_PC, target );
     }
 
     void run()
@@ -1010,9 +1006,10 @@ struct Eval
 
     void advance()
     {
+        ASSERT_EQ( CodePointer( context().get( _VM_CR_PC ).pointer ), pc() );
         context().check_interrupt();
         if ( !context().frame().null() )
-            pc( pc() + 1 );
+            context().set( _VM_CR_PC, pc() + 1 );
         _instruction = &program().instruction( pc() );
     }
 

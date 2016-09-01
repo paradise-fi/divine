@@ -112,6 +112,7 @@ struct Context
     {
         auto frameptr = heap().make( program().function( pc ).framesize );
         set( _VM_CR_Frame, frameptr.cooked() );
+        set( _VM_CR_PC, pc );
         heap().write_shift( frameptr, PointerV( pc ) );
         heap().write_shift( frameptr, parent );
         push( frameptr, args... );
@@ -140,10 +141,13 @@ struct Context
         if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
             return;
         ASSERT_EQ( ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode, 0 );
+        sync_pc();
         auto interrupted = get( _VM_CR_Frame ).pointer;
         set( _VM_CR_Frame, get( _VM_CR_IntFrame ).pointer );
         set( _VM_CR_IntFrame, interrupted );
-        mask( true );
+        PointerV pc;
+        heap().read( frame(), pc );
+        set( _VM_CR_PC, pc.cooked() );
         set_interrupted( false );
         ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
     }
@@ -176,6 +180,16 @@ struct Context
         fl &= ~_VM_CF_Mask;
         fl |= n ? _VM_CF_Mask : 0;
         return rv;
+    }
+
+    void sync_pc()
+    {
+        auto frame = get( _VM_CR_Frame ).pointer;
+        if ( frame.null() )
+            return;
+        auto pc = get( _VM_CR_PC ).pointer;
+        ptr2i( _VM_CR_Frame,
+               heap().write( frame, PointerV( pc ), ptr2i( _VM_CR_Frame ) ) );
     }
 
     bool mask() { return ref( _VM_CR_Flags ).integer & _VM_CF_Mask; }
