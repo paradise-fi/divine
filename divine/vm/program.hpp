@@ -78,20 +78,6 @@ struct Choice {
     std::vector< int > p;
 };
 
-template< typename Program, typename _Heap = MutableHeap >
-struct ConstContext : Context< Program, _Heap >
-{
-    void setup( int gds, int cds )
-    {
-        this->set( _VM_CR_Constants, this->heap().make( cds ).cooked() );
-        if ( gds )
-            this->set( _VM_CR_Globals, this->heap().make( gds ).cooked() );
-    }
-
-    ConstContext( Program &p ) : Context< Program, _Heap >( p ) {}
-    ConstContext( Program &p, const _Heap &h ) : Context< Program, _Heap >( p, h ) {}
-};
-
 /*
  * A representation of the LLVM program that is suitable for execution.
  */
@@ -217,7 +203,7 @@ struct Program
 
     llvm::DITypeIdentifierMap ditypemap;
 
-    ConstContext< Program > _ccontext;
+    ConstContext< Program, MutableHeap > _ccontext;
 
     auto &heap() { return _ccontext.heap(); }
 

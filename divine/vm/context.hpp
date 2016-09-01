@@ -181,5 +181,19 @@ struct Context
     bool mask() { return ref( _VM_CR_Flags ).integer & _VM_CF_Mask; }
 };
 
+template< typename Program, typename _Heap >
+struct ConstContext : Context< Program, _Heap >
+{
+    void setup( int gds, int cds )
+    {
+        this->set( _VM_CR_Constants, this->heap().make( cds ).cooked() );
+        if ( gds )
+            this->set( _VM_CR_Globals, this->heap().make( gds ).cooked() );
+    }
+
+    ConstContext( Program &p ) : Context< Program, _Heap >( p ) {}
+    ConstContext( Program &p, const _Heap &h ) : Context< Program, _Heap >( p, h ) {}
+};
+
 }
 }
