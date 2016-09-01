@@ -55,8 +55,8 @@ struct Context
     /* indexed by _VM_ControlRegister */
     HeapInternal _ptr2i[ _VM_CR_Frame + 1 ];
 
-    Heap _heap;
     Program *_program;
+    Heap _heap;
     std::unordered_set< GenericPointer > _cfl_visited;
 
     template< typename Ctx >
