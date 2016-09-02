@@ -28,6 +28,8 @@ namespace ui {
 void Verify::run()
 {
     vm::Explore ex( _bc );
+    vm::explore::State error;
+    bool error_found = false;
 
     std::atomic< int > edgecount( 0 ), statecount( 0 );
     std::atomic< bool > done( false );
@@ -56,14 +58,26 @@ void Verify::run()
     ex.start();
     ss::search(
         ss::Order::PseudoBFS, ex, 1,
-        ss::passive_listen(
-            [&]( auto, auto, auto ) { ++edgecount; },
-            [&]( auto ) { ++statecount; } ) );
+        ss::listen(
+            [&]( auto st, auto, auto )
+            {
+                ++edgecount;
+                if ( st.error )
+                {
+                    error_found = true;
+                    error = st;
+                    return ss::Listen::Terminate;
+                }
+                return ss::Listen::AsNeeded;
+            },
+            [&]( auto ) { ++statecount; return ss::Listen::AsNeeded; } ) );
 
     done = true;
     progress.join();
     std::cerr << std::endl << "found " << statecount << " states and "
               << edgecount << " edges" << std::endl;
+    if ( error_found )
+        std::cerr << "found an error" << std::endl;
 }
 
 }
