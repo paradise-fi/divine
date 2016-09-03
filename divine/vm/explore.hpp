@@ -127,14 +127,15 @@ struct Explore
         }
     };
 
-    hashset::Fast< Snapshot, Hasher > _states;
+    using HT = hashset::Fast< Snapshot, Hasher >;
+    std::shared_ptr< HT > _states;
     explore::State _initial;
 
     auto &program() { return _bc->program(); }
     auto &pool() { return _ctx.heap()._snapshots; }
 
     Explore( BC bc )
-        : _bc( bc ), _ctx( _bc->program() ), _states( Hasher( _ctx.heap() ) )
+        : _bc( bc ), _ctx( _bc->program() ), _states( std::make_shared< HT >( _ctx.heap(), 1024 ) )
     {
         _initial.error = _initial.accepting = 0;
     }
@@ -144,11 +145,11 @@ struct Explore
         Eval eval( program(), _ctx );
         setup::boot( _ctx );
         eval.run();
-        _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
+        _states->hasher.root = _ctx.get( _VM_CR_State ).pointer;
         if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
         {
             _initial.snap = _ctx.heap().snapshot();
-            _states.insert( _initial.snap );
+            _states->insert( _initial.snap );
         }
     }
 
@@ -156,9 +157,9 @@ struct Explore
     void start( const Ctx &ctx, State st )
     {
         _ctx.load( ctx ); /* copy over registers */
-        _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
+        _states->hasher.root = _ctx.get( _VM_CR_State ).pointer;
         _initial = st;
-        _states.insert( st.snap );
+        _states->insert( st.snap );
     }
 
     template< typename Y >
@@ -173,7 +174,8 @@ struct Explore
             if ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
             {
                 explore::State st;
-                auto r = _states.insert( _ctx.heap().snapshot() );
+                auto snap = _ctx.heap().snapshot();
+                auto r = _states->insert( snap );
                 st.snap = *r;
                 st.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
                 st.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
