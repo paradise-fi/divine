@@ -55,6 +55,8 @@ struct WithSteps : WithFrame
     WithSteps() : over( false ), out( false ), quiet( false ), verbose( false ), count( 1 ) {}
 };
 
+struct Start {};
+
 struct Break
 {
     std::vector< std::string > where;
@@ -478,6 +480,15 @@ struct Interpreter
         return step;
     }
 
+    void go( command::Start st )
+    {
+        vm::setup::boot( _ctx );
+        Stepper step;
+        step._bps.insert( _bc->program().functionByName( "main" ) );
+        run( step, false );
+        set( "$_", frameDN() );
+    }
+
     void go( command::Break b )
     {
         if ( b.list )
@@ -618,6 +629,7 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::Exit >( "exit from divine"s )
         .command< command::Help >( "show this help, or describe a particular command in more detail"s,
                                    cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
+        .command< command::Start >( "boot the system and stop at main()"s )
         .command< command::Break >( "insert a breakpoint"s, &command::Break::where, breakopts )
         .command< command::StepA >( "execute one atomic action"s, varopts, stepopts )
         .command< command::Step >( "execute source line"s, varopts, stepopts, stepoutopts )
