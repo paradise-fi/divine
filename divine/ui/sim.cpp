@@ -55,6 +55,13 @@ struct WithSteps : WithFrame
     WithSteps() : over( false ), out( false ), quiet( false ), verbose( false ), count( 1 ) {}
 };
 
+struct Break
+{
+    std::vector< std::string > where;
+    bool remove, list;
+    Break() : remove( false ), list( false ) {}
+};
+
 struct StepI : WithSteps {};
 struct StepA : WithSteps {};
 struct Step : WithSteps {};
@@ -105,23 +112,10 @@ struct Context : DebugContext
 
 struct Stepper
 {
-    struct BreakPoint
-    {
-        vm::CodePointer pc;
-        vm::GenericPointer frame;
-        BreakPoint( vm::CodePointer pc, vm::HeapPointer frame ) : pc( pc ), frame( frame ) {}
-        bool operator<( BreakPoint o ) const
-        {
-            if ( pc == o.pc )
-                return frame < o.frame;
-            return pc < o.pc;
-        }
-    };
-
     vm::GenericPointer _frame, _frame_cur, _parent_cur;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
     std::pair< std::string, int > _line;
-    std::set< BreakPoint > _bps;
+    std::set< vm::CodePointer > _bps;
 
     Stepper()
         : _frame( vm::nullPointer() ),
@@ -154,12 +148,8 @@ struct Stepper
     bool check( Context &ctx, Eval &eval )
     {
         for ( auto bp : _bps )
-        {
-            if ( !bp.frame.null() && vm::HeapPointer( bp.frame ) != ctx.frame() )
-                continue;
-            if ( eval.pc() == bp.pc )
+            if ( eval.pc() == bp )
                 return true;
-        }
 
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
             return true;
@@ -225,7 +215,7 @@ struct Interpreter
     bool _sched_random;
 
     Context _ctx;
-    std::set< vm::CodePointer > _breaks;
+    std::set< vm::CodePointer > _bps;
     char *_prompt;
     int _state_count;
 
@@ -479,12 +469,34 @@ struct Interpreter
     Stepper stepper( command::WithSteps s, bool jmp )
     {
         Stepper step;
+        step._bps = _bps;
         check_running();
         if ( jmp )
             step.jumps( 1 );
         if ( s.over || s.out )
             step.frame( get( s.var ).address() );
         return step;
+    }
+
+    void go( command::Break b )
+    {
+        if ( b.list )
+        {
+            for ( auto pc : _bps )
+                std::cerr << _bc->program().llvmfunction( pc )->getName().str() << std::endl;
+            return;
+        }
+
+        for ( auto w : b.where )
+        {
+            auto pc = _bc->program().functionByName( w );
+            if ( pc.null() )
+                throw brick::except::Error( "Could not find " + w );
+            if ( b.remove )
+                _bps.erase( pc );
+            else
+                _bps.insert( pc );
+        }
     }
 
     void go( command::Step s )
@@ -586,6 +598,9 @@ void Interpreter::command( cmd::Tokens tok )
 
     auto varopts = cmd::make_option_set< command::WithVar >( v )
         .option( "[{string}]", &command::WithVar::var, "a variable reference"s );
+    auto breakopts = cmd::make_option_set< command::Break >( v )
+        .option( "[--delete]", &command::Break::remove, "delete the designated breakpoint(s)"s )
+        .option( "[--list]", &command::Break::list, "list breakpoints"s );
     auto showopts = cmd::make_option_set< command::Show >( v )
         .option( "[--raw]", &command::Show::raw, "dump raw data"s );
     auto stepopts = cmd::make_option_set< command::WithSteps >( v )
@@ -603,6 +618,7 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::Exit >( "exit from divine"s )
         .command< command::Help >( "show this help, or describe a particular command in more detail"s,
                                    cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
+        .command< command::Break >( "insert a breakpoint"s, &command::Break::where, breakopts )
         .command< command::StepA >( "execute one atomic action"s, varopts, stepopts )
         .command< command::Step >( "execute source line"s, varopts, stepopts, stepoutopts )
         .command< command::StepI >( "execute one instruction"s, varopts, stepopts )
