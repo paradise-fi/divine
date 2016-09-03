@@ -88,6 +88,12 @@ struct BackTrace : WithVar
     BackTrace() : WithVar( "$top" ) {}
 };
 
+struct Setup
+{
+    bool debug_kernel;
+    Setup() : debug_kernel( false ) {}
+};
+
 struct Exit {};
 struct Help { std::string _cmd; };
 
@@ -214,7 +220,7 @@ struct Interpreter
     std::map< std::string, DN > _dbg;
     std::pair< int, int > _sticky_tid;
     std::mt19937 _rand;
-    bool _sched_random;
+    bool _sched_random, _debug_kernel;
 
     Context _ctx;
     std::set< vm::CodePointer > _bps;
@@ -344,7 +350,7 @@ struct Interpreter
 
     Interpreter( BC bc )
         : _exit( false ), _bc( bc ), _ctx( _bc->program() ), _state_count( 0 ),
-          _sticky_tid( -1, 0 ), _sched_random( false )
+          _sticky_tid( -1, 0 ), _sched_random( false ), _debug_kernel( false )
     {
         vm::setup::boot( _ctx );
         _prompt = strdup( "> " );
@@ -412,13 +418,21 @@ struct Interpreter
         check_running();
         Eval eval( _bc->program(), _ctx );
         bool in_fault = eval.pc().function() == _ctx.get( _VM_CR_FaultHandler ).pointer.object();
+        bool in_kernel = false;
 
         do {
-            step.in_frame( _ctx.frame(), _ctx.heap() );
-            eval.advance();
-            step.instruction( eval.instruction() );
+            in_kernel = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
 
-            if ( verbose )
+            if ( in_kernel && !_debug_kernel )
+                eval.advance();
+            else
+            {
+                step.in_frame( _ctx.frame(), _ctx.heap() );
+                eval.advance();
+                step.instruction( eval.instruction() );
+            }
+
+            if ( verbose && ( !in_kernel || _debug_kernel ) )
             {
                 auto frame = _ctx.frame();
                 std::string before = vm::print::instruction( eval );
@@ -439,7 +453,9 @@ struct Interpreter
             if ( schedule( eval ) )
                 step.state();
 
-            step.in_frame( _ctx.frame(), _ctx.heap() );
+            in_kernel = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
+            if ( !in_kernel || _debug_kernel )
+                step.in_frame( _ctx.frame(), _ctx.heap() );
 
             if ( !_ctx._proc.empty() )
             {
@@ -461,7 +477,7 @@ struct Interpreter
             _ctx._trace.clear();
 
         } while ( !_ctx.frame().null() &&
-                  !step.check( _ctx, eval ) &&
+                  ( ( !_debug_kernel && in_kernel ) || !step.check( _ctx, eval ) ) &&
                   ( in_fault || eval.pc().function()
                     != _ctx.get( _VM_CR_FaultHandler ).pointer.object() ) );
     }
@@ -593,6 +609,11 @@ struct Interpreter
 
     void go( command::BitCode bc ) { get( bc.var ).bitcode( std::cerr ); }
     void go( command::Source src ) { get( src.var ).source( std::cerr ); }
+    void go( command::Setup set )
+    {
+        _debug_kernel = set.debug_kernel;
+    }
+
     void go( command::Help ) { UNREACHABLE( "impossible case" ); }
 };
 
@@ -624,6 +645,8 @@ void Interpreter::command( cmd::Tokens tok )
     auto threadopts = cmd::make_option_set< command::Thread >( v )
         .option( "[--random]", &command::Thread::random, "pick the thread to run randomly"s )
         .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
+    auto setupopts = cmd::make_option_set< command::Setup >( v )
+        .option( "[--debug-kernel]", &command::Setup::debug_kernel, "enable kernel debugging"s );
 
     auto parser = cmd::make_parser( v )
         .command< command::Exit >( "exit from divine"s )
@@ -640,6 +663,7 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::Source >( "show the source code of the current function"s, varopts )
         .command< command::Thread >( "control thread scheduling"s, threadopts )
         .command< command::Show >( "show an object"s, varopts, showopts )
+        .command< command::Setup >( "set configuration options"s, setupopts )
         .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
         .command< command::BackTrace >( "show a stack trace"s, varopts );
 
