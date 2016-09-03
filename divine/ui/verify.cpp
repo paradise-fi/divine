@@ -55,29 +55,67 @@ void Verify::run()
             }
         } );
 
+    typename vm::CowHeap::Pool ext;
+    using Parent = std::atomic< vm::explore::State >;
+
     ex.start();
     ss::search(
         ss::Order::PseudoBFS, ex, 1,
         ss::listen(
-            [&]( auto st, auto, auto )
+            [&]( auto from, auto to, auto label )
             {
+                ext.materialise( to.snap, sizeof( from ), ex.pool() );
+                Parent &parent = *ext.machinePointer< Parent >( to.snap );
+                if ( !parent.load().snap.slab() )
+                    parent = from;
                 ++edgecount;
-                if ( st.error )
+                if ( to.error )
                 {
                     error_found = true;
-                    error = st;
+                    error = to;
                     return ss::Listen::Terminate;
                 }
                 return ss::Listen::AsNeeded;
             },
-            [&]( auto ) { ++statecount; return ss::Listen::AsNeeded; } ) );
+            [&]( auto st )
+            {
+                ext.materialise( st.snap, sizeof( st ), ex.pool() );
+                ++statecount; return ss::Listen::AsNeeded;
+            } ) );
 
     done = true;
     progress.join();
     std::cerr << std::endl << "found " << statecount << " states and "
               << edgecount << " edges" << std::endl;
+    auto hasher = ex._states->hasher; /* fixme */
+
     if ( error_found )
+    {
+        std::deque< vm::explore::State > trace;
         std::cerr << "found an error" << std::endl;
+        while ( error.snap.slab() )
+        {
+            trace.push_front( error );
+            error = *ext.machinePointer< Parent >( error.snap );
+        }
+        auto last = trace.begin(), next = last;
+        next ++;
+        ss::search( ss::Order::PseudoBFS, ex, 1,
+                    ss::listen(
+                        [&]( auto from, auto to, auto label )
+                        {
+                            if ( hasher.equal( from.snap, last->snap ) &&
+                                 hasher.equal( to.snap, next->snap ) )
+                            {
+                                for ( auto l : label )
+                                    std::cerr << l << std::endl;
+                                ++last, ++next;
+                                return ss::Listen::Process;
+                            }
+                            return ss::Listen::Ignore;
+                        }, []( auto ) { return ss::Listen::Process; } ) );
+    }
+
 }
 
 }
