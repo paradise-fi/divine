@@ -138,7 +138,7 @@ inline Listing listdir( std::string p, bool recurse = false, std::string prefix 
             if ( S_ISDIR(stat.st_mode) ) {
                 Listing sl = listdir( s, true, prefix + ename + "/" );
                 for ( Listing::iterator i = sl.begin(); i != sl.end(); ++i )
-                    r.push_back( prefix + *i );
+                    r.push_back( *i );
             } else
                 r.push_back( prefix + ename );
         } else
