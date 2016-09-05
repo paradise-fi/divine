@@ -625,6 +625,7 @@ struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts, kmsg;
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, filter, watch, flavourFilter, exclude;
+    std::vector< std::pair< std::string, std::string > > interpreters;
     std::string flavour_envvar;
     int timeout, total_timeout;
     Options() : verbose( false ), batch( false ), interactive( false ),
@@ -634,7 +635,7 @@ struct Options {
 
 struct TestProcess
 {
-    std::string filename;
+    std::string filename, interpreter;
     bool interactive;
     int fd;
 
@@ -654,13 +655,16 @@ struct TestProcess
 
         setpgid( 0, 0 );
 
-        execlp( "bash", "bash", "-noprofile", "-norc", filename.c_str(), NULL );
+        if ( interpreter.empty() )
+            execlp( "bash", "bash", "-noprofile", "-norc", filename.c_str(), NULL );
+        else
+            execlp( "bash", "bash", "-noprofile", "-norc", interpreter.c_str(), filename.c_str(), NULL );
         perror( "execlp" );
         _exit( 202 );
     }
 
-    TestProcess( std::string file )
-        : filename( file ), interactive( false ), fd( -1 )
+    TestProcess( std::string file, std::string interp )
+        : filename( file ), interpreter( interp ), interactive( false ), fd( -1 )
     {}
 };
 
@@ -908,8 +912,9 @@ struct TestCase {
             io.sources.push_back( new KMsg );
     }
 
-    TestCase( Journal &j, Options opt, std::string path, std::string name, std::string flavour )
-        : child( path ), name( name ), flavour( flavour ), timeout( false ),
+    TestCase( Journal &j, Options opt, std::string path, std::string interp,
+              std::string name, std::string flavour )
+        : child( path, interp ), name( name ), flavour( flavour ), timeout( false ),
           last_update( 0 ), last_heartbeat( 0 ), options( opt ), journal( &j )
     {
     }
@@ -949,18 +954,38 @@ struct Main {
                 continue;
 
             for ( Listing::iterator i = l.begin(); i != l.end(); ++i ) {
-                if ( i->substr( i->length() - 3, i->length() ) != ".sh" )
-                    continue;
-                if ( i->substr( 0, 4 ) == "lib/" )
-                    continue;
+                bool runnable = false;
+                std::string interpreter;
+
+                if ( i->substr( i->length() - 3, i->length() ) == ".sh" )
+                    runnable = true;
+
+                for ( auto interp : options.interpreters )
+                {
+                    if ( i->size() > interp.first.size() &&
+                         i->substr( i->length() - interp.first.size() - 1, i->length() ) ==
+                         "." + interp.first )
+                    {
+                         runnable = true;
+                         interpreter = interp.second;
+                    }
+                }
+
+                if ( i->substr( 0, 4 ) == "lib/" || i->substr( 0, 5 ) == "data/" )
+                    runnable = false;
 
                 if ( skip( *i, options.filter, false ) )
-                    continue;
+                    runnable = false;
 
                 if ( !skip( *i, options.exclude, true ) )
+                    runnable = false;
+
+                    if ( !runnable )
                     continue;
 
-                cases.push_back( TestCase( journal, options, options.testdir + *i, *i, *flav ) );
+                cases.push_back( TestCase( journal, options, options.testdir + *i,
+                                           interpreter.empty() ? "" : options.testdir + interpreter,
+                                           *i, *flav ) );
                 cases.back().options = options;
             }
         }
@@ -1062,6 +1087,21 @@ struct Args {
             return "";
         return *(i + 1);
     }
+
+    V opts( std::string fl )
+    {
+        V acc;
+        V::iterator i = args.begin();
+        while ( i != args.end() )
+        {
+            i = std::find( i, args.end(), fl );
+            if ( i == args.end() || i + 1 == args.end() )
+                return acc;
+            acc.push_back( *(i + 1) );
+            ++ i;
+        }
+        return acc;
+    }
 };
 
 namespace {
@@ -1076,10 +1116,10 @@ bool hasenv( const char *name ) {
 }
 
 template< typename C >
-void split( std::string s, C &c ) {
+void split( std::string s, C &c, char sep = ',' ) {
     std::stringstream ss( s );
     std::string item;
-    while ( std::getline( ss, item, ',' ) )
+    while ( std::getline( ss, item, sep ) )
         c.push_back( item );
 }
 
@@ -1149,6 +1189,17 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     opt.outdir = args.opt( "--outdir" );
     opt.testdir = args.opt( "--testdir" );
     opt.workdir = args.opt( "--workdir" );
+    for ( auto i : args.opts( "--interpreter" ) )
+    {
+        std::vector< std::string > s;
+        split( i, s, ':' );
+        if ( s.size() != 2 )
+        {
+            std::cerr << "FATAL: the --interpreter option must contain exactly one ':'" << std::endl;
+            exit( 1 );
+        }
+        opt.interpreters.push_back( std::make_pair( s[0], s[1] ) );
+    }
 
     if ( opt.testdir.empty() )
         opt.testdir = "/usr/share/lvm2-testsuite";
