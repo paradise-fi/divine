@@ -216,8 +216,14 @@ struct Linker {
         ASSERT( prelinked != nullptr );
         _link.reset( new ::llvm::Linker( prelinked.get() ) );
         _root = std::move( prelinked );
+        updateModules( _root );
+    }
 
-        auto modlist = _root->getOrInsertNamedMetadata( moduleRoot );
+    void updateModules( const std::unique_ptr< Module > &mod )
+    {
+        auto modlist = mod->getNamedMetadata( moduleRoot );
+        if ( !modlist )
+            return;
         for ( int i = 0, count = modlist->getNumOperands(); i < count; ++i ) {
             std::string mod = ::llvm::cast< ::llvm::MDString >(
                     modlist->getOperand( i )->getOperand( 0 ) )->getString().data();
@@ -226,15 +232,16 @@ struct Linker {
     }
 
     // link bitcode module fresh from source (not yet linked)
-    void link( std::unique_ptr< Module > &&src ) {
+    void link( std::unique_ptr< Module > &&src, bool ann = true ) {
         ASSERT( src != nullptr );
+        updateModules( src );
         if ( !_link ) {
             ASSERT( !_root );
             _root = std::move( src );
-            _link.reset( new ::llvm::Linker( _annotate( _root.get() ) ) );
+            _link.reset( new ::llvm::Linker( ann ? _annotate( _root.get() ) : _root.get() ) );
         } else {
             std::string err;
-            auto r = _link->linkInModule( _annotate( src.get() ) );
+            auto r = _link->linkInModule( ann ? _annotate( src.get() ) : src.get() );
             src.release(); // FIXME!? _owned.emplace_back( std::move( src ) );
             if ( r ) {
                 std::cerr << "ERROR: " << err << " while linking '"
