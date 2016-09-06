@@ -15,19 +15,20 @@ file( WRITE "${CMAKE_CURRENT_BINARY_DIR}/environment" "
  ${EXPORT_OPTIONS}" )
 
 add_custom_target( functional
+  COMMAND rm -rf data examples lib
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/data .
-  COMMAND rm -rf llvm_examples
-  COMMAND cp -R ${CMAKE_SOURCE_DIR}/examples/llvm llvm_examples
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib .
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/flavour .
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/util .
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/check .
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/run .
+  COMMAND cp -R ${CMAKE_SOURCE_DIR}/doc/examples .
+  COMMAND mkdir -p lib
+  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/testcase lib
+  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/flavour lib
+  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/util lib
+  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/check lib
+  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/run lib
   COMMAND mkdir -p results
   COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ./runner --flavours vanilla,part+none,shared+none,part+tree,shared+tree --total-timeout 28800 --timeout 600 --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
   USES_TERMINAL
   DEPENDS runner
 )
 
-add_executable( runner runner.cpp )
+add_executable( runner lib/runner.cpp )
 add_dependencies( functional divine )
