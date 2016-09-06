@@ -25,6 +25,28 @@
 namespace divine {
 namespace ui {
 
+using DNSet = std::set< std::tuple< vm::GenericPointer, int, llvm::DIType * > >;
+
+template< typename DN >
+void dump( DN dn, DNSet &visited )
+{
+    if ( visited.count( dn.sortkey() ) || dn.address().type() != vm::PointerType::Heap )
+        return;
+    visited.insert( dn.sortkey() );
+
+    if ( dn.kind() == vm::DNKind::Frame )
+    {
+        dn.attributes( []( std::string k, std::string v )
+                       { if ( k != "@raw" ) std::cout << k << ": " << v << std::endl; } );
+        std::cout << std::endl;
+    }
+
+    dn.related( [&]( std::string k, auto rel )
+                {
+                    dump( rel, visited );
+                } );
+}
+
 void Verify::run()
 {
     vm::Explore ex( _bc );
@@ -85,37 +107,54 @@ void Verify::run()
 
     done = true;
     progress.join();
-    std::cerr << std::endl << "found " << statecount << " states and "
+    std::cout << std::endl << "found " << statecount << " states and "
               << edgecount << " edges" << std::endl;
-    auto hasher = ex._states->hasher; /* fixme */
 
-    if ( error_found )
+    if ( !error_found )
     {
-        std::deque< vm::explore::State > trace;
-        std::cerr << "found an error" << std::endl;
-        while ( error.snap.slab() )
-        {
-            trace.push_front( error );
-            error = *ext.machinePointer< Parent >( error.snap );
-        }
-        auto last = trace.begin(), next = last;
-        next ++;
-        ss::search( ss::Order::PseudoBFS, ex, 1,
-                    ss::listen(
-                        [&]( auto from, auto to, auto label )
-                        {
-                            if ( hasher.equal( from.snap, last->snap ) &&
-                                 hasher.equal( to.snap, next->snap ) )
-                            {
-                                for ( auto l : label )
-                                    std::cerr << l << std::endl;
-                                ++last, ++next;
-                                return ss::Listen::Process;
-                            }
-                            return ss::Listen::Ignore;
-                        }, []( auto ) { return ss::Listen::Process; } ) );
+        std::cout << "no errors found" << std::endl;
+        return;
     }
 
+    auto hasher = ex._states->hasher; /* fixme */
+
+    vm::DebugContext< vm::Program, vm::CowHeap > dbg( _bc->program() );
+    vm::setup::boot( dbg );
+    vm::Eval< vm::Program, decltype( dbg ), vm::value::Void > dbg_eval( dbg.program(), dbg );
+    dbg_eval.run();
+
+    std::deque< vm::explore::State > trace;
+    std::cout << "found an error" << std::endl;
+
+    while ( error.snap.slab() )
+    {
+        trace.push_front( error );
+        error = *ext.machinePointer< Parent >( error.snap );
+    }
+    auto last = trace.begin(), next = last;
+    next ++;
+    ss::search( ss::Order::PseudoBFS, ex, 1,
+                ss::listen(
+                    [&]( auto from, auto to, auto label )
+                    {
+                        if ( hasher.equal( from.snap, last->snap ) &&
+                             hasher.equal( to.snap, next->snap ) )
+                        {
+                            for ( auto l : label )
+                                std::cerr << l << std::endl;
+                            ++last, ++next;
+                            if ( next == trace.end() )
+                                return ss::Listen::Terminate;
+                            return ss::Listen::Process;
+                        }
+                        return ss::Listen::Ignore;
+                    }, []( auto ) { return ss::Listen::Process; } ) );
+
+    vm::DebugNode< vm::Program, vm::CowHeap > dn(
+            ex._ctx, trace.back().snap, ex._ctx.get( _VM_CR_State ).pointer, 0,
+            vm::DNKind::Object, dbg._state_type, dbg._state_di_type );
+    DNSet visited;
+    dump( dn, visited );
 }
 
 }
