@@ -16,35 +16,19 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#pragma once
-
-#include <brick-fs>
-#include <brick-string>
+#include <divine/rt/runtime.hpp>
 
 namespace divine {
+
+struct stringtable { std::string n; const std::string &c; };
+extern stringtable runtime_list[];
+
 namespace rt {
 
-using brick::fs::joinPath;
-using brick::string::endsWith;
-
-const std::string includeDir = "/divine/include";
-const std::string srcDir = "/divine/src";
-
-static std::string directory( std::string name )
+void each( std::function< void( std::string, const std::string & ) > yield )
 {
-    for ( auto suffix : { ".c", ".cpp", ".cc" } )
-        if ( endsWith( name, suffix ) )
-            return srcDir;
-    return includeDir;
-}
-
-void each( std::function< void( std::string, const std::string & ) > yield );
-
-static std::string source( std::string path )
-{
-    std::string res;
-    each( [&]( auto n, auto c ) { if ( n == path ) res = c; } );
-    return res;
+    for ( auto src = runtime_list; !src->n.empty(); ++src )
+        yield( joinPath( directory( src->n ), src->n ), src->c );
 }
 
 }

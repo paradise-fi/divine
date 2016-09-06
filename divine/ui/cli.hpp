@@ -209,11 +209,7 @@ struct CLI : Interface
 
         using DrvOpt = cc::Options;
         auto ccdrvopts = cmd::make_option_set< DrvOpt >( v )
-            .option( "[--precompiled {file}]", &DrvOpt::precompiled,
-                     "path to a prebuilt libdivinert.bc"s )
-            .option( "[-j {int}]", &DrvOpt::num_threads, "number of jobs"s )
-            .option( "[-c|--dont-link]", &DrvOpt::dont_link, "do not link"s )
-            .option( "[--libraries-only]", &DrvOpt::libs_only, "build libdivinert.bc for later use"s );
+            .option( "[-c|--dont-link]", &DrvOpt::dont_link, "do not link"s );
 
         auto ccopts = cmd::make_option_set< Cc >( v )
             .options( ccdrvopts, &Cc::_drv )

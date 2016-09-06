@@ -11,8 +11,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-fs>
 #include <brick-string>
 
-extern const char *DIVINE_RUNTIME_SHA;
-
 namespace divine {
 namespace cc {
 
@@ -87,10 +85,6 @@ Compile::Compile( Options opts ) :
                   , "-D_BYTE_ORDER=1234"
                   , "-g"
                   };
-
-    setupFS();
-    if ( !opts.dont_link )
-        setupLibs();
 }
 
 Compile::~Compile() { }
@@ -111,13 +105,11 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
     if ( path[0] == '/' )
         mastercc().allowIncludePath( std::string( path, 0, path.rfind( '/' ) ) );
     auto mod = mastercc().compileModule( path, allFlags );
-    tagWithRuntimeVersionSha( *mod );
 
     return mod;
 }
 
 llvm::Module *Compile::getLinked() {
-    tagWithRuntimeVersionSha( *linker->get() );
     return linker->get();
 }
 
@@ -153,84 +145,20 @@ void Compile::prune( std::vector< std::string > r ) {
     linker->prune( r, brick::llvm::Prune::UnusedModules );
 }
 
-void Compile::tagWithRuntimeVersionSha( llvm::Module &m ) const {
-    auto *meta = m.getNamedMetadata( runtimeVersMeta );
-    // check old metadata
-    std::set< std::string > found;
-    found.emplace( DIVINE_RUNTIME_SHA );
-    if ( meta ) {
-        for ( unsigned i = 0; i < meta->getNumOperands(); ++i )
-            found.emplace( getWrappedMDS( meta, i ) );
-        m.eraseNamedMetadata( meta );
-    }
-    meta = m.getOrInsertNamedMetadata( runtimeVersMeta );
-    auto *tag = llvm::MDNode::get( m.getContext(),
-                    llvm::MDString::get( m.getContext(),
-                        found.size() == 1
-                            ? DIVINE_RUNTIME_SHA
-                            : "!mismatched version of divine cc and runtime!" ) );
-    meta->addOperand( tag );
-}
-
-std::string Compile::getRuntimeVersionSha( llvm::Module &m ) const {
-    auto *meta = m.getNamedMetadata( runtimeVersMeta );
-    if ( !meta )
-        return "";
-    return getWrappedMDS( meta );
-}
-
 std::shared_ptr< llvm::LLVMContext > Compile::context() { return mastercc().context(); }
 
 Compiler &Compile::mastercc() { return compilers[0]; }
 
-void Compile::setupFS()
+void Compile::setupLib( std::string name, const std::string &content )
 {
-    using brick::string::startsWith;
-
-    rt::each(
-        [&]( auto path, auto c )
-        {
-            if ( startsWith( path, joinPath( rt::srcDir, "filesystem" ) ) )
-                return; /* ignore */
-            mastercc().mapVirtualFile( path, c );
-        } );
-}
-
-void Compile::setupLibs() {
-    if ( opts.precompiled.size() ) {
-        auto input = std::move( llvm::MemoryBuffer::getFile( opts.precompiled ).get() );
-        ASSERT( !!input );
-
-        auto inputData = input->getMemBufferRef();
-        auto parsed = parseBitcodeFile( inputData, *context() );
-        if ( !parsed )
-            throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
-        if ( getRuntimeVersionSha( *parsed.get() ) != DIVINE_RUNTIME_SHA )
-            std::cerr << "WARNING: runtime version of the precompiled library does not match the current runtime version"
-                      << std::endl;
-        linker->load( std::move( parsed.get() ) );
-    } else {
-        auto libflags = []( auto... xs ) {
-            return mergeFlags( "-Wall", "-Wextra", "-Wno-gcc-compat", "-Wno-unused-parameter", xs... );
-        };
-        std::initializer_list< std::string > cxxflags =
-            { "-std=c++14"
-              // , "-fstrict-aliasing"
-              , "-I", joinPath( rt::includeDir, "libcxxabi/include" )
-              , "-I", joinPath( rt::includeDir, "libcxxabi/src" )
-              , "-I", joinPath( rt::includeDir, "libcxx/src" )
-              , "-I", joinPath( rt::includeDir, "filesystem" )
-              , "-Oz" };
-        compileLibrary( joinPath( rt::srcDir, "pdclib" ), libflags( "-D_PDCLIB_BUILD" ) );
-        compileLibrary( joinPath( rt::srcDir, "limb" ), libflags() );
-        compileLibrary( joinPath( rt::srcDir, "libcxxabi" ),
-                        libflags( cxxflags, "-DLIBCXXABI_USE_LLVM_UNWINDER" ) );
-        compileLibrary( joinPath( rt::srcDir, "libcxx" ), libflags( cxxflags ) );
-        compileLibrary( joinPath( rt::srcDir, "divine" ), libflags( cxxflags ) );
-        compileLibrary( joinPath( rt::srcDir, "dios" ), libflags( cxxflags ) );
-        compileLibrary( joinPath( rt::srcDir, "filesystem" ), libflags( cxxflags ) );
-        compileLibrary( joinPath( rt::srcDir, "lart" ), libflags( cxxflags ) );
-    }
+    std::cerr << "loading " << name << "..." << std::flush;
+    auto input = llvm::MemoryBuffer::getMemBuffer( content );
+    auto parsed = parseBitcodeFile( input->getMemBufferRef(), *context() );
+    if ( !parsed )
+        throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
+    std::cerr << " linking..." << std::flush;
+    linker->link( std::move( parsed.get() ), false );
+    std::cerr << " done" << std::endl;
 }
 
 void Compile::compileLibrary( std::string path, std::vector< std::string > flags )

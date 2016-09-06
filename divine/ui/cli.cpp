@@ -21,6 +21,7 @@
 #include <divine/vm/bitcode.hpp>
 #include <divine/vm/run.hpp>
 #include <divine/cc/compile.hpp>
+#include <divine/rt/runtime.hpp>
 #include <brick-string>
 
 DIVINE_RELAX_WARNINGS
@@ -60,8 +61,8 @@ void WithBC::setup()
     } catch ( vm::BCParseError &err ) /* probably not a bitcode file */
     {
         cc::Options ccopt;
-        ccopt.precompiled = "libdivinert.bc";
         cc::Compile driver( ccopt );
+        driver.setupFS( rt::each );
         driver.compileAndLink( _file, {} );
         pruneBC( driver );
         _bc = std::make_shared< vm::BitCode >(
@@ -72,17 +73,13 @@ void WithBC::setup()
 
 void Cc::run()
 {
-    if ( !_drv.libs_only && _files.empty() )
-        die( "Either a file to build or --libraries-only is required." );
-    if ( _drv.libs_only && !_files.empty() )
-        die( "Cannot specify both --libraries-only and files to compile." );
+    if ( _files.empty() )
+        die( "You must specify at least one source file." );
     if ( !_output.empty() && _drv.dont_link && _files.size() > 1 )
         die( "Cannot specify --dont-link -o with multiple input files." );
 
-    if ( _output.empty() && _drv.libs_only )
-        _output = "libdivinert.bc";
-
     cc::Compile driver( _drv );
+    driver.setupFS( rt::each );
 
     for ( auto &i : _inc ) {
         driver.addDirectory( i );
@@ -107,7 +104,7 @@ void Cc::run()
         for ( auto &x : _files )
             driver.compileAndLink( x, _flags );
 
-        if ( !_drv.dont_link && !_drv.libs_only )
+        if ( !_drv.dont_link )
             pruneBC( driver );
 
         driver.writeToFile( _output.empty() ? outputName( _files.front() ) : _output );

@@ -5,6 +5,7 @@
 #include <divine/cc/options.hpp>
 
 #include <brick-assert>
+#include <brick-string>
 #include <thread>
 
 namespace brick { namespace llvm { struct Linker; } } // avoid header dependency
@@ -35,16 +36,24 @@ struct Compile
 
     void prune( std::vector< std::string > r );
 
-    void tagWithRuntimeVersionSha( llvm::Module &m ) const;
-    std::string getRuntimeVersionSha( llvm::Module &m ) const;
-
     std::shared_ptr< llvm::LLVMContext > context();
+
+    template< typename RT >
+    void setupFS( RT each )
+    {
+        each( [&]( auto path, auto c )
+              {
+                  if ( brick::string::endsWith( path, ".bc" ) )
+                      setupLib( path, c );
+                  else
+                      mastercc().mapVirtualFile( path, c );
+              } );
+    }
 
   private:
     Compiler &mastercc();
 
-    void setupFS();
-    void setupLibs();
+    void setupLib( std::string name, const std::string &content );
     void compileLibrary( std::string path, std::vector< std::string > flags = { } );
 
     Options opts;
