@@ -20,7 +20,7 @@
 
 #include <divine/vm/pointer.hpp>
 #include <divine/vm/program.hpp>
-#include <divine/cc/runtime.hpp>
+#include <divine/rt/runtime.hpp>
 
 #include <cxxabi.h>
 #include <brick-fs>
@@ -167,7 +167,7 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
     std::stringstream out;
 
     brick::string::Splitter split( "\n", REG_EXTENDED );
-    auto src = cc::runtime::source( di->getFilename() );
+    auto src = rt::source( di->getFilename() );
     if ( src.empty() )
         src = brick::fs::readFile( di->getFilename() );
 

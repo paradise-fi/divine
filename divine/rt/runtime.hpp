@@ -26,8 +26,7 @@ namespace divine {
 struct stringtable { const char *n, *c; };
 extern stringtable runtime_list[];
 
-namespace cc {
-namespace runtime {
+namespace rt {
 
 using brick::fs::joinPath;
 using brick::string::endsWith;
@@ -57,6 +56,5 @@ static std::string source( std::string path )
     return res;
 }
 
-}
 }
 }
