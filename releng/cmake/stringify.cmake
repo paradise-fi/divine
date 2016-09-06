@@ -1,4 +1,4 @@
-set( STRINGIFY ${CMAKE_SOURCE_DIR}/releng/cmake/stringify.sh )
+set( STRINGIFY ${CMAKE_SOURCE_DIR}/releng/cmake/stringify.pl )
 
 macro( stringifyInDir namespace dir file )
   string( REPLACE "." "_" fileu "${file}" )
@@ -8,7 +8,7 @@ macro( stringifyInDir namespace dir file )
   add_custom_command(
     OUTPUT ${fileu}_str.cpp
     DEPENDS "${dir}/${file}" ${STRINGIFY}
-    COMMAND sh ${STRINGIFY} "${namespace}" "${dir}" "${file}"
+    COMMAND perl ${STRINGIFY} "${namespace}" "${dir}" "${file}"
     VERBATIM
   )
   list( APPEND STRINGIFIED_FILES "${file}" )
@@ -23,7 +23,7 @@ macro( stringlist namespace out )
   add_custom_command(
     OUTPUT ${out}_list.cpp
     DEPENDS ${STRINGIFY}
-    COMMAND sh ${STRINGIFY} ${namespace} "-l" "${out}" ${STRINGIFIED_FILES}
+    COMMAND perl ${STRINGIFY} ${namespace} "-l" "${out}" ${STRINGIFIED_FILES}
     VERBATIM
   )
 endmacro( stringlist )
