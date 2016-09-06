@@ -108,6 +108,8 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
     std::copy( flags.begin(), flags.end(), std::back_inserter( allFlags ) );
 
     std::cerr << "compiling " << path << std::endl;
+    if ( path[0] == '/' )
+        mastercc().allowIncludePath( std::string( path, 0, path.rfind( '/' ) ) );
     auto mod = mastercc().compileModule( path, allFlags );
     tagWithRuntimeVersionSha( *mod );
 
