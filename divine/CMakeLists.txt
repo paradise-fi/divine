@@ -52,10 +52,11 @@ foreach( D vm ui cc )
   set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
 endforeach()
 
-target_link_libraries( divine-cc libdivinert_str )
-target_link_libraries( libdivine LLVMCore LLVMSupport LLVMMC LLVMIRReader
+target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
                                  clang clangBasic clangCodeGen )
+target_link_libraries( divine-ui divine-rt )
+target_link_libraries( libdivine LLVMBitReader LLVMBitWriter LLVMLinker )
 
 if ( OPT_SQL )
     target_link_libraries( libdivine nanodbc )
