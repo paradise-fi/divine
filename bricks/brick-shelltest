@@ -1202,7 +1202,10 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     }
 
     if ( opt.testdir.empty() )
-        opt.testdir = "/usr/share/lvm2-testsuite";
+    {
+        std::cerr << "FATAL: --testdir must be specified" << std::endl;
+        exit( 1 );
+    }
 
     if ( opt.workdir.empty() )
         opt.workdir = opt.testdir;
