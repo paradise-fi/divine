@@ -63,10 +63,14 @@ struct Context
     void load( const Ctx &ctx )
     {
         for ( int i = 0; i < _VM_CR_Last; ++i )
-            if ( i == _VM_CR_Flags || i == _VM_CR_User2 )
-                set( i, ctx.get( i ).integer );
+        {
+            auto cr = _VM_ControlRegister( i );
+            if ( cr == _VM_CR_Flags || cr == _VM_CR_User2 )
+                set( cr, ctx.get( cr ).integer );
             else
-                set( i, ctx.get( i ).pointer );
+                set( cr, ctx.get( cr ).pointer );
+        }
+        _heap = ctx.heap();
     }
 
     template< typename I >
@@ -80,8 +84,8 @@ struct Context
             _ptr2i[ r ] = v.null() ? HeapInternal() : _heap.ptr2i( v );
     }
 
-    Register get( _VM_ControlRegister r ) { return _reg[ r ]; }
-    Register get( Location l ) { ASSERT_LT( l, Program::Slot::Invalid ); return _reg[ l ]; }
+    Register get( _VM_ControlRegister r ) const { return _reg[ r ]; }
+    Register get( Location l ) const { ASSERT_LT( l, Program::Slot::Invalid ); return _reg[ l ]; }
     Register &ref( _VM_ControlRegister r ) { return _reg[ r ]; }
 
     HeapInternal ptr2i( _VM_ControlRegister r ) { return _ptr2i[ r ]; }
@@ -94,6 +98,7 @@ struct Context
 
     Program &program() { return *_program; }
     Heap &heap() { return _heap; }
+    const Heap &heap() const { return _heap; }
     HeapPointer frame() { return get( _VM_CR_Frame ).pointer; }
     HeapPointer globals() { return get( _VM_CR_Globals ).pointer; }
     HeapPointer constants() { return get( _VM_CR_Constants ).pointer; }
