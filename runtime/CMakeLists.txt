@@ -2,19 +2,72 @@
 
 include( stringify )
 
-file( GLOB SRC_RUNTIME LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-      *.cpp divine/*.cpp dios/*.cpp
+file( GLOB H_RUNTIME LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
       *.h divine/*.h dios/*.hpp atomic sys/*.h bits/*.h
-      pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h pdclib/functions/*/*.c
-      pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c
-      libm/*.c libm/*.h libm/bits/*.h
-      libcxxabi/src/* libcxxabi/include/*
-      libcxx/src/*.cpp libcxx/src/*.h libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
+      pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h
+      libm/*.h libm/bits/*.h
+      libcxxabi/include/*
+      libcxxabi/src/*.h libcxxabi/src/*.hpp libcxxabi/src/*.ipp
+      libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
+      libcxx/src/*.h
       libcxx/include/support/xlocale/xlocale.h libcxx/src/support/atomic_support.h
-      libunwind/include/* libunwind/src/* libunwind/include/mach-o/*
-      filesystem/*.cpp filesystem/*.h )
-foreach( f ${SRC_RUNTIME} )
+      libunwind/include/* libunwind/include/mach-o/* filesystem/*.h )
+
+file( GLOB SRC_libdios RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+      divine/*.cpp dios/*.cpp ) # filesystem/*.cpp
+
+file( GLOB SRC_libc RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+      pdclib/functions/*/*.c pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c )
+
+file( GLOB SRC_libm RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} libm/*.c )
+file( GLOB SRC_libcxxabi RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} libcxxabi/src/*.cpp )
+file( GLOB SRC_libcxx RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} libcxx/src/*.cpp  )
+
+macro( mklib lib flags )
+  foreach( f ${SRC_${lib}} )
+    string( REGEX REPLACE "\\.[a-z]+" ".bc" out ${f} )
+    list( APPEND BC_${lib} ${out} )
+    add_custom_command(
+        DEPENDS runtime-cc ${f}
+        OUTPUT ${out}
+        COMMAND runtime-cc ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
+                           ${CMAKE_CURRENT_SOURCE_DIR}/${f} ${out} ${flags} )
     stringify( "runtime" ${f} )
+  endforeach()
+
+  add_custom_command(
+    DEPENDS runtime-ld ${BC_${lib}}
+    OUTPUT "${lib}.bc"
+    COMMAND runtime-ld ${lib}.bc ${BC_${lib}}
+  )
+
+  stringifyInDir( "runtime" ${CMAKE_CURRENT_BINARY_DIR} "${lib}.bc" )
+endmacro()
+
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR} )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include )
+list( APPEND flags -Oz )
+list( APPEND flags -g )
+list( APPEND flags -D__divine__ )
+list( APPEND flags -D_POSIX_C_SOURCE=2008098L )
+list( APPEND flags -D_LITTLE_ENDIAN=1234 )
+list( APPEND flags -D_BYTE_ORDER=1234 )
+
+mklib( libc "${flags};-D_PDCLIB_BUILD" )
+
+list( APPEND flags -std=c++14 )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/include )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
+
+mklib( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
+mklib( libcxx "${flags}" )
+mklib( libdios "${flags};-I${CMAKE_CURRENT_BINARY_DIR}" )
+
+foreach( f ${H_RUNTIME} )
+  stringify( "runtime" ${f} )
 endforeach()
 
 set( OPS_src "${CMAKE_SOURCE_DIR}/llvm/include/llvm/IR/Instruction.def" )
@@ -23,7 +76,7 @@ file( COPY ${OPS_src} DESTINATION "divine" )
 stringifyInDir( "runtime" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
 stringlist( "runtime" runtime )
 
-add_library( libdivinert_str STATIC ${STRINGIFIED} runtime_list.cpp )
-if( NOT WIN32 )
-    set_target_properties( libdivinert_str PROPERTIES POSITION_INDEPENDENT_CODE ON )
-endif()
+include_directories( ${divine_SOURCE_DIR} )
+add_library( divine-rt ${divine_SOURCE_DIR}/divine/rt/runtime.cpp
+                       ${STRINGIFIED} runtime_list.cpp
+                       ${CMAKE_CURRENT_BINARY_DIR}/libc_bc_str.cpp )
