@@ -434,9 +434,13 @@ struct Interpreter
         check_running();
         Eval eval( _bc->program(), _ctx );
         bool in_fault = eval.pc().function() == _ctx.get( _VM_CR_FaultHandler ).pointer.object();
-        bool in_kernel = false;
+        bool in_kernel = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
 
-        do {
+        while ( !_ctx.frame().null() &&
+                ( ( !_debug_kernel && in_kernel ) || !step.check( _ctx, eval ) ) &&
+                ( in_fault || eval.pc().function()
+                  != _ctx.get( _VM_CR_FaultHandler ).pointer.object() ) )
+        {
             in_kernel = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
 
             if ( in_kernel && !_debug_kernel )
@@ -491,11 +495,7 @@ struct Interpreter
             for ( auto t : _ctx._trace )
                 std::cerr << "T: " << t << std::endl;
             _ctx._trace.clear();
-
-        } while ( !_ctx.frame().null() &&
-                  ( ( !_debug_kernel && in_kernel ) || !step.check( _ctx, eval ) ) &&
-                  ( in_fault || eval.pc().function()
-                    != _ctx.get( _VM_CR_FaultHandler ).pointer.object() ) );
+        }
     }
 
     void go( command::Exit ) { _exit = true; }
@@ -569,9 +569,12 @@ struct Interpreter
 
     void go( command::Rewind re )
     {
+        Stepper step;
+        step._instructions = std::make_pair( 1, 1 );
         auto tgt = get( re.var );
         _ctx.heap().restore( tgt.snapshot() );
         vm::setup::scheduler( _ctx );
+        run( step, false ); /* make 0 (user mode) steps */
         set( "$_", re.var );
     }
 
