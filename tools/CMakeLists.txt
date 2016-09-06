@@ -3,6 +3,12 @@ include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
+add_executable( runtime-cc runtime-cc.cpp )
+add_executable( runtime-ld runtime-ld.cpp )
+
+target_link_libraries( runtime-cc divine-cc )
+target_link_libraries( runtime-ld divine-cc )
+
 add_executable( divine divine.cpp )
 
 set_source_files_properties( lart.cpp PROPERTIES COMPILE_FLAGS -fno-rtti )
