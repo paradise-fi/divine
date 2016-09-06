@@ -28,6 +28,7 @@ namespace setup {
 template< typename Context >
 void boot( Context &ctx )
 {
+    ctx.heap().reset();
     auto data = ctx.program().exportHeap( ctx.heap() );
     ctx.set( _VM_CR_Constants, data.first );
     ctx.set( _VM_CR_Globals, data.second );

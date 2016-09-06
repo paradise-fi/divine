@@ -336,6 +336,7 @@ struct SimpleHeap : HeapMixin< Self >
     void made( HeapPointer ) {}
 
     SimpleHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
+    void reset() { _s->seq = 1; _l.exceptions.clear(); _l.snapshot = Internal(); }
 
     Shadows::Loc shloc( HeapPointer p, Internal i )
     {
@@ -508,6 +509,12 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
     void made( HeapPointer p )
     {
         _ext.writable.insert( p.object() );
+    }
+
+    void reset()
+    {
+        SimpleHeap< CowHeap, SimpleHeapShared >::reset();
+        _ext.writable.clear();
     }
 
     Internal detach( HeapPointer p, Internal i )
