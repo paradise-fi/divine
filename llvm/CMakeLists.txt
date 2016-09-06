@@ -242,6 +242,7 @@ list(REMOVE_DUPLICATES LLVM_TARGETS_TO_BUILD)
 
 include(AddLLVMDefinitions)
 
+option(LLVM_ENABLE_OPTIMIZE "Enable -O even for debug builds." ON)
 option(LLVM_ENABLE_PIC "Build Position-Independent Code" ON)
 option(LLVM_ENABLE_WARNINGS "Enable compiler warnings." ON)
 option(LLVM_ENABLE_MODULES "Compile with C++ modules enabled." OFF)
@@ -561,6 +562,10 @@ set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
 include(AddLLVM)
 include(TableGen)
+
+if( LLVM_ENABLE_OPTIMIZE )
+  llvm_replace_compiler_option( CMAKE_CXX_FLAGS_DEBUG "-O0" "-O" )
+endif()
 
 if( MINGW )
   # People report that -O3 is unreliable on MinGW. The traditional
