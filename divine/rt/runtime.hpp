@@ -35,6 +35,8 @@ static std::string directory( std::string name )
     for ( auto suffix : { ".c", ".cpp", ".cc" } )
         if ( endsWith( name, suffix ) )
             return srcDir;
+    if ( endsWith( name, ".bc" ) )
+        return "/lib";
     return includeDir;
 }
 
