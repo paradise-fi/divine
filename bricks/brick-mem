@@ -197,7 +197,7 @@ struct Pool
 //        int ephemeral_offset;
     } _l;
 
-    const std::shared_ptr< Shared > _s;
+    std::shared_ptr< Shared > _s;
 
 #ifndef NVALGRIND
 #pragma GCC diagnostic push
@@ -350,6 +350,8 @@ struct Pool
         for ( int i = 0; i < 4096; ++i )
             delete[] _l.size_big[ i ];
 
+        /* TODO: return all locally held memory to shared freelists */
+
         if ( _s.use_count() > 1 )
             return;
 
@@ -377,6 +379,15 @@ struct Pool
     }
 
     Pool( const Pool &o ) : _s( o._s ) { initL(); }
+    Pool &operator=( const Pool &o )
+    {
+        if ( _s != o._s )
+        {
+            _s = o._s;
+            initL();
+        }
+        return *this;
+    }
 
     void initL()
     {
