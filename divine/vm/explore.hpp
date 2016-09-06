@@ -154,12 +154,13 @@ struct Explore
     }
 
     template< typename Ctx >
-    void start( const Ctx &ctx, State st )
+    Snapshot start( const Ctx &ctx, Snapshot snap )
     {
         _ctx.load( ctx ); /* copy over registers */
+        _states->hasher = Hasher( _ctx.heap() );
         _states->hasher.root = _ctx.get( _VM_CR_State ).pointer;
-        _initial = st;
-        _states->insert( st.snap );
+        _initial.snap = snap;
+        return *_states->insert( snap );
     }
 
     template< typename Y >
