@@ -25,7 +25,7 @@ add_custom_target( functional
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/check lib
   COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/run lib
   COMMAND mkdir -p results
-  COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ./runner --flavours vanilla,part+none,shared+none,part+tree,shared+tree --total-timeout 28800 --timeout 600 --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
+  COMMAND ${WITH_LCOV} ./runner --total-timeout 28800 --timeout 600 --interpreter cpp:lib/verify --interpreter c:lib/verify --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
   USES_TERMINAL
   DEPENDS runner
 )
