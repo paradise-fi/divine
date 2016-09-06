@@ -218,6 +218,9 @@ struct Interpreter
     std::vector< std::string > _env;
 
     std::map< std::string, DN > _dbg;
+    std::map< vm::CowHeap::Snapshot, std::string > _state_names;
+    vm::Explore _explore;
+
     std::pair< int, int > _sticky_tid;
     std::mt19937 _rand;
     bool _sched_random, _debug_kernel;
@@ -349,7 +352,7 @@ struct Interpreter
     }
 
     Interpreter( BC bc )
-        : _exit( false ), _bc( bc ), _ctx( _bc->program() ), _state_count( 0 ),
+        : _exit( false ), _bc( bc ), _explore( bc ), _ctx( _bc->program() ), _state_count( 0 ),
           _sticky_tid( -1, 0 ), _sched_random( false ), _debug_kernel( false )
     {
         vm::setup::boot( _ctx );
@@ -376,16 +379,29 @@ struct Interpreter
         if ( !_ctx.frame().null() )
             return false; /* nothing to be done */
 
-        auto st = eval._result.cooked();
-
         if ( _ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Cancel )
             return true;
 
-        /* TODO do not allocate a new #NNN for already-visited states */
-        auto name = "#"s + brick::string::fmt( ++_state_count );
-        set( name, objDN( _ctx.get( _VM_CR_State ).pointer, _ctx._state_type, _ctx._state_di_type ) );
+        auto snap = _explore.start( _ctx, _ctx.heap().snapshot() );
+        bool isnew = false;
+        std::string name;
+
+        if ( _state_names.count( snap ) )
+            name = _state_names[ snap ];
+        else
+        {
+            isnew = true;
+            name = _state_names[ snap ] = "#"s + brick::string::fmt( ++_state_count );
+            set( name, DN( _ctx, snap, _ctx.get( _VM_CR_State ).pointer, 0, vm::DNKind::Object,
+                           _ctx._state_type, _ctx._state_di_type ) );
+        }
+
         set( "#last", name );
-        std::cerr << "# a new program state was stored as " << name << std::endl;
+
+        if ( isnew )
+            std::cerr << "# a new program state was stored as " << name << std::endl;
+        else
+            std::cerr << "# program entered state " << name << " (already seen)" << std::endl;
 
         // _states.push_back( _ctx.snap( _last ) );
         vm::setup::scheduler( _ctx );
