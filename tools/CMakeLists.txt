@@ -28,7 +28,7 @@ add_custom_target( divinecc
     VERBATIM )
 add_dependencies( divine divinecc )
 
-target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine )
+target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine divine-rt )
 
 if( NOT WIN32 )
   target_link_libraries( divine pthread )
