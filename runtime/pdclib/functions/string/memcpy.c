@@ -11,6 +11,7 @@
 
 #ifndef REGTEST
 
+__attribute__((optnone)) /* do not replace the memmove call below with a (recursive) memcpy */
 void * memcpy( void * _PDCLIB_restrict s1, const void * _PDCLIB_restrict s2, size_t n )
 {
     size_t distance = s1 > s2 ? s1 - s2 : s2 - s1;
