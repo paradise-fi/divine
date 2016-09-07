@@ -74,6 +74,7 @@ asan: asan-divine asan-lart
 release: release-divine release-lart
 check: debug-check
 unit: debug-unit
+functional: debug-functional
 unit-%: debug-unit-%
 
 # make being too smart here?
