@@ -1,0 +1,145 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
+ */
+
+/* Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE. */
+
+#include <llvm/Support/ELF.h>
+#include <brick-assert>
+#include <brick-mmap>
+#include <memory>
+#include <string>
+
+namespace brick {
+namespace elf {
+
+struct Section {
+
+    using iterator = char *;
+
+    Section() : _data( nullptr ), _size( 0 ) { }
+    Section( const char *data, size_t size ) : _data( data ), _size( size ) { }
+
+    const char *data() const { return _data; }
+    size_t size() const { return _size; }
+
+    const char *begin() const { return _data; }
+    const char *end() const { return _data + _size; }
+
+    explicit operator bool() const { return _data; }
+    explicit operator std::string() const { return std::string( begin(), end() ); }
+
+  private:
+    const char *_data;
+    size_t _size;
+};
+
+struct ElfObject {
+
+    using Ehdr = ::llvm::ELF::Elf64_Ehdr;
+    using Shdr = ::llvm::ELF::Elf64_Shdr;
+
+    explicit ElfObject( std::string path, bool validate = true ) :
+        _mmap( path ),
+        _ehdr( &_mmap.template get< ::llvm::ELF::Elf64_Ehdr >( 0 ) )
+    {
+        if ( validate )
+            _validate();
+    }
+
+    explicit ElfObject( const char *data, bool validate = true ) :
+        _ehdr( reinterpret_cast< const ::llvm::ELF::Elf64_Ehdr * >( data ) )
+    {
+        if ( validate )
+            _validate();
+    }
+
+    bool valid() const {
+        return _ehdr
+            && _ehdr->checkMagic()
+            && _ehdr->getFileClass() == ::llvm::ELF::ELFCLASS64
+            && _ehdr->getDataEncoding() == ::llvm::ELF::ELFDATA2LSB;
+    }
+
+    const Shdr &sectionHeader( int i ) const {
+        ASSERT_LEQ( 0, i );
+        ASSERT_LT( i, sectionsCount() );
+        return *reinterpret_cast< const Shdr * >( raw() + _ehdr->e_shoff + i * _ehdr->e_shentsize );
+    }
+
+    const char *sectionStart( int i ) const { return sectionStart( sectionHeader( i ) ); }
+    const char *sectionStart( const Shdr &hdr ) const {
+        return raw() + hdr.sh_offset;
+    }
+
+    size_t sectionSize( int i ) const { return sectionSize( sectionHeader( i ) ); }
+    size_t sectionSize( const Shdr &hdr ) const { return hdr.sh_size; }
+
+    Section section( int i ) const { return section( sectionHeader( i ) ); }
+    Section section( const Shdr &hdr ) const {
+        return Section( sectionStart( hdr ), sectionSize( hdr ) );
+    }
+
+    std::vector< Section > sectionsByName( std::string name ) {
+        std::vector< Section > out;
+        for ( int i = 0, end = sectionsCount(); i != end; ++i ) {
+            if ( sectionName( i ) == name )
+                out.emplace_back( section( i ) );
+        }
+        return out;
+    }
+
+    const Shdr &sectionNamesSection() const {
+        return sectionHeader( _ehdr->e_shstrndx );
+    }
+
+    const char *sectionNames() const {
+        return sectionStart( sectionNamesSection() );
+    }
+
+    int sectionsCount() const { return _ehdr->e_shnum; }
+
+    std::string sectionName( int i ) const {
+        auto idx = sectionHeader( i ).sh_name;
+        return sectionNames() + idx;
+    }
+
+  private:
+    const char *raw() const { return reinterpret_cast< const char * >( _ehdr ); }
+
+    void _validate() {
+        ASSERT( _ehdr->checkMagic() );
+        ASSERT( _ehdr->getFileClass() == ::llvm::ELF::ELFCLASS64 );
+        ASSERT( _ehdr->getDataEncoding() == ::llvm::ELF::ELFDATA2LSB );
+    }
+
+    brick::mmap::MMap _mmap;
+    const Ehdr *_ehdr;
+};
+
+}
+}
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
