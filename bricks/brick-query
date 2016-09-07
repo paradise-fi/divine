@@ -155,6 +155,18 @@ auto reversed( Collection &col ) {
     return Range< typename Collection::reverse_iterator >( col.rbegin(), col.rend() );
 }
 
+template< typename Collection >
+auto reversed( Collection &&col ) {
+    struct R : Collection {
+        R( Collection &&c ) : Collection( std::move( c ) ) { }
+
+        using iterator = typename Collection::reverse_iterator;
+        auto begin() { return Collection::rbegin(); }
+        auto end() { return Collection::rend(); }
+    };
+    return R( std::move( col ) );
+}
+
 template< typename InputIt, typename UnaryPred >
 bool all( InputIt first, InputIt last, UnaryPred pred ) {
     return std::all_of( first, last, pred );
@@ -949,4 +961,4 @@ struct Query {
 
 #endif // BRICK_QUERY_H
 
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
