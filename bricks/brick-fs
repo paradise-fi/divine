@@ -56,8 +56,6 @@
 namespace brick {
 namespace fs {
 
-enum class AutoDelete : bool { No = false, Yes = true };
-
 struct SystemException : std::exception {
     // make sure we don't override errno accidentaly when constructing std::string
     explicit SystemException( std::string what ) : SystemException{ errno, what } { }
@@ -680,17 +678,46 @@ struct ChangeCwd {
     const std::string oldcwd;
 };
 
+inline std::string tempDir() {
+#ifdef __unix__
+    auto *tmpdir = std::getenv( "TMPDIR" );
+    if ( tmpdir )
+        return tmpdir;
+    return "/tmp";
+#else
+#error unimplemented brick::fs::tempDir
+#endif
+}
+
+enum class AutoDelete : bool { No = false, Yes = true };
+enum class UseSystemTemp : bool { No = false, Yes = true };
+
 struct TempDir {
-    TempDir( std::string nameTemplate, AutoDelete autoDelete ) :
-        path( mkdtemp( nameTemplate ) ), autoDelete( autoDelete )
+    explicit TempDir( std::string nameTemplate, AutoDelete autoDelete = AutoDelete::Yes,
+                      UseSystemTemp useSystemTemp = UseSystemTemp::No ) :
+        path( mkdtemp( _getPath( nameTemplate, useSystemTemp ) ) ), _autoDelete( autoDelete )
     { }
+    TempDir( const TempDir & ) = delete;
+    TempDir( TempDir &&o ) : path( std::move( o.path ) ), _autoDelete( o._autoDelete ) {
+        o._autoDelete = AutoDelete::No;
+    }
+
+    operator std::string() const { return path; }
+
     ~TempDir() {
-        if ( bool( autoDelete ) )
+        if ( _autoDelete == AutoDelete::Yes )
             rmtree( path );
     }
 
     const std::string path;
-    AutoDelete autoDelete;
+  private:
+    AutoDelete _autoDelete;
+
+    static std::string _getPath( std::string nameTemplate, UseSystemTemp useTmp ) {
+        if ( useTmp == UseSystemTemp::No || isAbsolute( nameTemplate ) )
+            return nameTemplate;
+        return joinPath( tempDir(), nameTemplate );
+    }
 };
 
 namespace {
@@ -818,4 +845,4 @@ inline std::pair< std::string, std::string > absolutePrefix( std::string path ) 
 
 #endif // BRICK_FS_H
 
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
