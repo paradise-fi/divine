@@ -157,10 +157,19 @@ debris() {
 
 verify() {
     if fgrep -q '/* ERROR' "$1"; then
-        location=`fgrep -Hn '/* ERROR */' "$1" | cut -d: -f1-2`
-        grep "^@location: $location" verify.out
+        location=`fgrep -Hn '/* ERROR' "$1" | cut -d: -f1-2`
+        if ! grep -q "^@location: $location" verify.out; then
+            nl -ba "$1"
+            echo "# expected error to be found at $location, but it was not"
+            exit 1
+        fi
     else
-        grep "no errors found" verify.out
+        if ! grep -q "no errors found" verify.out; then
+            nl -ba "$1"
+            grep ^@location verify.out
+            echo "# no errors were expected but one was found anyway"
+            exit 1
+        fi
     fi
 }
 
