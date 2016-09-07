@@ -110,7 +110,6 @@ struct Abstraction : lart::Pass {
             annotateAnonym( a.first, a.second );
             a.first->eraseFromParent();
         }
-        m.dump();
 
         return llvm::PreservedAnalyses::none();
 	}
@@ -190,9 +189,6 @@ struct Abstraction : lart::Pass {
 				std::cerr << "ERR: unknown instruction: ";
                 inst->dump();
 			} );
-            inst->dump();
-            inst->getParent()->getParent()->dump();
-
     }
 
     llvm::CallInst * annotate( I * inst, T * rty, const std::string &tag,
@@ -261,29 +257,13 @@ struct Abstraction : lart::Pass {
 
         for ( unsigned int i = 0; i < niv; ++i ) {
             auto val = llvm::cast< I >( n->getIncomingValue( i ) );
-            auto parent = val->getParent();
+            auto parent = n->getIncomingBlock( i );
             if ( value_store.contains( val ) ) {
-                if ( isAbstractType( sub->getType() ) )
-                    parent = n->getIncomingBlock( i );
                 sub->addIncoming( value_store[ val ], parent );
             } else {
                 auto nbb =  parent->splitBasicBlock( parent->getTerminator() );
                 auto nval = lift( val, t, nbb->getTerminator() );
                 sub->addIncoming( nval, nbb );
-                //parent->replaceSuccessorsPhiUsesWith( nbb );
-
-                /*for ( auto &succ : util::succs( nbb ) )
-                    for ( auto &i : succ )
-                        if ( auto phi = llvm::dyn_cast< llvm::PHINode >( &i ) ) {
-                            llvm::errs() << "PHI: ";
-                            phi->dump();
-                            unsigned n = phi->getNumIncomingValues();
-                            for ( unsigned i = 0; i < n; ++i )
-                                if ( phi->getIncomingBlock( i ) == parent ) {
-                                    phi->getIncomingBlock
-                                    phi->setIncomingBlock( i, nbb );
-                                }
-                        }*/
             }
         }
 
