@@ -47,13 +47,14 @@ struct Driver {
         }
     }
 
-    bool setup( std::string p ) {
+    bool setup( std::string p, bool verbose = true ) {
         std::string name( p, 0, p.find( ':' ) ), opt;
 
         if ( p.find( ':' ) != std::string::npos )
             opt = std::string( p, p.find( ':' ) + 1, std::string::npos );
 
-        std::cerr << "setting up pass: " << name << ", options = " << opt << std::endl;
+        if ( verbose )
+            std::cerr << "setting up pass: " << name << ", options = " << opt << std::endl;
         return addPass( name, opt );
     }
 
