@@ -54,13 +54,15 @@ struct BitCode {
 
     Program &program() { ASSERT( _program.get() ); return *_program.get(); }
 
-    BitCode( std::string file, Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing );
+    BitCode( std::string file, Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing,
+             bool verbose = false );
 
     BitCode( std::unique_ptr< llvm::Module > m,
              std::shared_ptr< llvm::LLVMContext > ctx = nullptr,
-             Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing );
+             Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing,
+             bool verbose = false );
 
-    void init( Env env, AutoTraceFlags tr );
+    void init( Env env, AutoTraceFlags tr, bool verbose );
     ~BitCode();
 };
 

@@ -30,7 +30,7 @@ DIVINE_UNRELAX_WARNINGS
 
 using namespace divine::vm;
 
-BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr )
+BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr, bool verbose )
 {
     _ctx.reset( new llvm::LLVMContext() );
     std::unique_ptr< llvm::MemoryBuffer > input;
@@ -46,40 +46,50 @@ BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr )
     if ( !parsed )
         throw BCParseError( "Error parsing input model; probably not a valid bitcode file." );
     _module = std::move( parsed.get() );
-    init( env, tr );
+    init( env, tr, verbose );
 }
 
 
 BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVMContext > ctx,
-                  BitCode::Env env, AutoTraceFlags tr )
+                  BitCode::Env env, AutoTraceFlags tr, bool verbose )
     : _module( std::move( m ) ), _ctx( ctx )
 {
     ASSERT( _module.get() );
     _program.reset( new Program( _module.get() ) );
-    init( env, tr );
+    init( env, tr, verbose );
 }
 
 
-void BitCode::init( BitCode::Env env, AutoTraceFlags tr )
+void BitCode::init( BitCode::Env env, AutoTraceFlags tr, bool verbose )
 {
     lart::Driver lart;
-    lart.setup( "interrupt" );
+    lart.setup( "interrupt", false );
     if ( tr )
-        lart.setup( "autotrace" );
-    lart.setup( "lowereh" );
+        lart.setup( "autotrace", false );
+    lart.setup( "lowereh", false );
 
     auto mod = _module.get();
     if ( mod->getGlobalVariable( "__md_functions" ) && mod->getGlobalVariable( "__md_globals" ) )
-        lart.setup( "functionmeta" );
+        lart.setup( "functionmeta", false );
     if ( mod->getGlobalVariable( "__sys_env" ) )
         lart::util::replaceGlobalArray( *mod, "__sys_env", env );
+    if ( verbose )
+        std::cerr << "annotating bitcode..." << std::flush;
     lart.process( mod );
+    if ( verbose )
+        std::cerr << " done" << std::endl;
 
     _program.reset( new Program( mod ) );
 
+    if ( verbose )
+        std::cerr << "computing RR..." << std::flush;
     _program->setupRR();
     _program->computeRR();
+    if ( verbose )
+        std::cerr << " constants..." << std::flush;
     _program->computeStatic();
+    if ( verbose )
+        std::cerr << " done" << std::endl;
 }
 
 BitCode::~BitCode()
