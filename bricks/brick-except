@@ -18,6 +18,7 @@
 
 #pragma once
 #include <stdexcept>
+#include <string>
 
 namespace brick {
 namespace except {
@@ -39,3 +40,4 @@ struct Error : std::runtime_error
 }
 }
 
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
