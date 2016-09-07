@@ -161,7 +161,7 @@ debris() {
 }
 
 verify() {
-    if fgrep -q '/* ERROR' $1; then
+    if fgrep -q '/* ERROR' "$1"; then
         location=`fgrep -Hn '/* ERROR */' "$1" | cut -d: -f1-2`
         grep "^@location: $location" verify.out
     else

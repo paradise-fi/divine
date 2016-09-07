@@ -320,5 +320,6 @@ export cesmiext=.so
 test "$WIN32" = 1 && cesmiext=.dll
 
 trap "check debris" EXIT
+check cleanup
 set -ex -o pipefail
 
