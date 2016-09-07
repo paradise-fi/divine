@@ -191,8 +191,8 @@ struct Pool
     struct Local
     {
         std::vector< int > emptyblocks;
-        SizeInfo size[ 4096 ];
-        SizeInfo *size_big[ 4096 ];
+        SizeInfo *size;
+        SizeInfo **size_big;
 //        int ephemeral_block;
 //        int ephemeral_offset;
     } _l;
@@ -349,6 +349,8 @@ struct Pool
     {
         for ( int i = 0; i < 4096; ++i )
             delete[] _l.size_big[ i ];
+        delete[] _l.size_big;
+        delete[] _l.size;
 
         /* TODO: return all locally held memory to shared freelists */
 
@@ -391,11 +393,11 @@ struct Pool
 
     void initL()
     {
+        _l.size = new SizeInfo[ 4096 ];
+        _l.size_big = new SizeInfo *[ 4096 ];
         for ( int i = 0; i < 4096; ++i )
             _l.size_big[ i ] = nullptr;
         _l.size[ 0 ].blocksize = blocksize;
-        // _l.ephemeral_block = newblock( 0 );
-        // header( _l.ephemeral_block ).itemsize = 4;
     }
 
     std::atomic< FreeList * > &freelist( int size )
