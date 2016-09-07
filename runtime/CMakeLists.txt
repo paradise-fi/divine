@@ -2,7 +2,7 @@
 
 include( stringify )
 
-file( GLOB H_RUNTIME LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+file( GLOB H_RUNTIME LIST_DIRECTORIES false
       *.h divine/*.h dios/*.hpp atomic sys/*.h bits/*.h
       pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h
       libm/*.h libm/bits/*.h
@@ -13,25 +13,25 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
       libcxx/include/support/xlocale/xlocale.h libcxx/src/support/atomic_support.h
       libunwind/include/* libunwind/include/mach-o/* filesystem/*.h )
 
-file( GLOB SRC_libdios RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+file( GLOB SRC_libdios
       divine/*.cpp dios/*.cpp ) # filesystem/*.cpp
 
-file( GLOB SRC_libc RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+file( GLOB SRC_libc
       pdclib/functions/*/*.c pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c )
 
-file( GLOB SRC_libm RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} libm/*.c )
-file( GLOB SRC_libcxxabi RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} libcxxabi/src/*.cpp )
-file( GLOB SRC_libcxx RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} libcxx/src/*.cpp  )
+file( GLOB SRC_libm libm/*.c )
+file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
+file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 
 macro( mklib lib flags )
   foreach( f ${SRC_${lib}} )
     string( REGEX REPLACE "\\.[a-z]+" ".bc" out ${f} )
     list( APPEND BC_${lib} ${out} )
     add_custom_command(
-        DEPENDS runtime-cc ${f}
+        DEPENDS runtime-cc ${f} ${H_RUNTIME}
         OUTPUT ${out}
         COMMAND runtime-cc ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
-                           ${CMAKE_CURRENT_SOURCE_DIR}/${f} ${out} ${flags} )
+                           ${f} ${out} ${flags} )
     stringify( "runtime" ${f} )
   endforeach()
 
@@ -41,7 +41,7 @@ macro( mklib lib flags )
     COMMAND runtime-ld ${lib}.bc ${BC_${lib}}
   )
 
-  stringifyInDir( "runtime" ${CMAKE_CURRENT_BINARY_DIR} "${lib}.bc" )
+  stringifyInDir( "runtime" "${CMAKE_CURRENT_BINARY_DIR}" "${lib}.bc" )
 endmacro()
 
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR} )
@@ -73,7 +73,7 @@ endforeach()
 set( OPS_src "${CMAKE_SOURCE_DIR}/llvm/include/llvm/IR/Instruction.def" )
 set( OPS_dest "divine/Instruction.def" )
 file( COPY ${OPS_src} DESTINATION "divine" )
-stringifyInDir( "runtime" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
+stringifyInDir( "runtime" "${CMAKE_CURRENT_BINARY_DIR}" ${OPS_dest} )
 stringlist( "runtime" runtime )
 
 include_directories( ${divine_SOURCE_DIR} )

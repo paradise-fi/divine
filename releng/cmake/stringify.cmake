@@ -1,13 +1,18 @@
 set( STRINGIFY ${CMAKE_SOURCE_DIR}/releng/cmake/stringify.pl )
 
-macro( stringifyInDir namespace dir file )
+macro( stringifyInDir namespace dir path )
+  get_filename_component( absdir "${dir}" ABSOLUTE BASE_DIR ${CMAKE_CURRENT_BINARY_DIR} )
+  get_filename_component( abspath "${path}" ABSOLUTE BASE_DIR ${CMAKE_CURRENT_BINARY_DIR} )
+  file( RELATIVE_PATH file "${absdir}" "${abspath}" )
+
   string( REPLACE "." "_" fileu "${file}" )
   string( REPLACE "/" "_" fileu "${fileu}" )
   string( REPLACE "+" "_" fileu "${fileu}" )
   string( REPLACE "-" "_" fileu "${fileu}" )
+
   add_custom_command(
     OUTPUT ${fileu}_str.cpp
-    DEPENDS "${dir}/${file}" ${STRINGIFY}
+    DEPENDS ${abspath} ${STRINGIFY}
     COMMAND perl ${STRINGIFY} "${namespace}" "${dir}" "${file}"
     VERBATIM
   )
