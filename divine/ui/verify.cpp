@@ -140,7 +140,7 @@ void Verify::run()
                         if ( hasher.equal( from.snap, last->snap ) &&
                              hasher.equal( to.snap, next->snap ) )
                         {
-                            for ( auto l : label )
+                            for ( auto l : label.first )
                                 std::cerr << l << std::endl;
                             ++last, ++next;
                             if ( next == trace.end() )

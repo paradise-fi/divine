@@ -180,7 +180,7 @@ struct Explore
                 st.snap = *r;
                 st.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
                 st.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-                yield( st, _ctx._trace, r.isnew() );
+                yield( st, std::make_pair( _ctx._trace, _ctx._stack ), r.isnew() );
             }
         } while ( !_ctx.finished() );
     }

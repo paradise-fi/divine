@@ -100,7 +100,7 @@ void Draw::run()
                 if ( !*t_id )
                     *t_id = ++seq;
                 std::cout << *f_id << " -> " << *t_id
-                          << " [ label = \"" << escape( brick::string::fmt( trace ) ) << "\"]"
+                          << " [ label = \"" << escape( brick::string::fmt( trace.first ) ) << "\"]"
                           << std::endl;
                 ++statecount;
             },
