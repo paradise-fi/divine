@@ -16,27 +16,6 @@ namespace cc {
 
 using brick::fs::joinPath;
 
-std::string stringifyToCode( std::vector< std::string > ns, std::string name, std::string value ) {
-    std::stringstream ss;
-    for ( auto &n : ns )
-        ss << "namespace " << n << "{" << std::endl;
-
-    ss << "const char " << name << "[] = {" << std::hex << std::endl;
-    int i = 0;
-    for ( auto c : value ) {
-        ss << "0x" << c << ", ";
-        if ( ++i > 12 ) {
-            ss << std::endl;
-            i = 0;
-        }
-    }
-    ss << "};";
-
-    for ( auto &n : ns )
-        ss << "} // namespace " << n << std::endl;
-    return ss.str();
-}
-
 static std::string getWrappedMDS( llvm::NamedMDNode *meta, int i = 0, int j = 0 ) {
     auto *op = llvm::cast< llvm::MDTuple >( meta->getOperand( i ) );
     auto *str = llvm::cast< llvm::MDString >( op->getOperand( j ).get() );
