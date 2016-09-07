@@ -82,6 +82,11 @@ struct Inspect : Show {};
 struct BitCode : WithFrame {};
 struct Source : WithFrame {};
 struct Thread  { std::string spec; bool random; };
+struct Trace
+{
+    std::string from;
+    std::vector< std::string > choices;
+};
 
 struct BackTrace : WithVar
 {
@@ -224,6 +229,7 @@ struct Interpreter
 
     std::map< std::string, DN > _dbg;
     std::map< vm::CowHeap::Snapshot, std::string > _state_names;
+    std::map< vm::CowHeap::Snapshot, std::deque< int > > _trace;
     vm::Explore _explore;
 
     std::pair< int, int > _sticky_tid;
@@ -379,7 +385,7 @@ struct Interpreter
 
     using Eval = vm::Eval< vm::Program, Context, PointerV >;
 
-    bool schedule( Eval &eval )
+    bool schedule( Eval &eval, bool update_choices = true, bool terse = false )
     {
         if ( !_ctx.frame().null() )
             return false; /* nothing to be done */
@@ -392,7 +398,11 @@ struct Interpreter
         std::string name;
 
         if ( _state_names.count( snap ) )
+        {
             name = _state_names[ snap ];
+            if ( update_choices && _trace.count( snap ) )
+                _ctx._choices = _trace[ snap ];
+        }
         else
         {
             isnew = true;
@@ -403,12 +413,13 @@ struct Interpreter
 
         set( "#last", name );
 
-        if ( isnew )
+        if ( terse )
+            std::cerr << " " << name << std::flush;
+        else if ( isnew )
             std::cerr << "# a new program state was stored as " << name << std::endl;
         else
             std::cerr << "# program entered state " << name << " (already seen)" << std::endl;
 
-        // _states.push_back( _ctx.snap( _last ) );
         vm::setup::scheduler( _ctx );
 
         return true;
@@ -580,6 +591,8 @@ struct Interpreter
         auto tgt = get( re.var );
         _ctx.heap().restore( tgt.snapshot() );
         vm::setup::scheduler( _ctx );
+        if ( _trace.count( tgt.snapshot() ) )
+            _ctx._choices = _trace[ tgt.snapshot() ];
         run( step, false ); /* make 0 (user mode) steps */
         set( "$_", re.var );
     }
@@ -617,6 +630,46 @@ struct Interpreter
         if ( s.options.size() != 2 )
             throw brick::except::Error( "2 options are required for set, the variable and the value" );
         set( s.options[0], s.options[1] );
+    }
+
+    void go( command::Trace tr )
+    {
+        if ( tr.from.empty() )
+            vm::setup::boot( _ctx );
+        else
+        {
+            _ctx.heap().restore( get( tr.from ).snapshot() );
+            vm::setup::scheduler( _ctx );
+        }
+
+        _trace.clear();
+        std::deque< int > choices;
+        for ( auto c : tr.choices )
+            choices.push_back( std::stoi( c ) );
+        _ctx._choices = choices;
+
+        Eval eval( _bc->program(), _ctx );
+        auto last = get( "#last", true ).snapshot();
+        std::cerr << "traced states:";
+        while ( !_ctx._choices.empty() )
+        {
+            eval.advance();
+            eval.dispatch();
+            if ( schedule( eval, false, true ) )
+            {
+                int count = choices.size() - _ctx._choices.size();
+                auto b = choices.begin(), e = b + count;
+                _trace[ last ] = std::deque< int >( b, e );
+                choices.erase( b, e );
+                last = get( "#last", true ).snapshot();
+            }
+        }
+
+        std::cerr << std::endl;
+        _ctx._trace.clear();
+        Stepper step;
+        step._instructions = std::make_pair( 1, 1 );
+        run( step, false ); /* make 0 (user mode) steps */
     }
 
     void go( command::Thread thr )
@@ -672,6 +725,8 @@ void Interpreter::command( cmd::Tokens tok )
         .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
     auto setupopts = cmd::make_option_set< command::Setup >( v )
         .option( "[--debug-kernel]", &command::Setup::debug_kernel, "enable kernel debugging"s );
+    auto o_trace = cmd::make_option_set< command::Trace >( v )
+        .option( "[--from {string}]", &command::Trace::from, "start in a given state, instead of initial"s );
 
     auto parser = cmd::make_parser( v )
         .command< command::Exit >( "exit from divine"s )
@@ -687,6 +742,8 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
         .command< command::Source >( "show the source code of the current function"s, varopts )
         .command< command::Thread >( "control thread scheduling"s, threadopts )
+        .command< command::Trace >( "load a counterexample trace"s,
+                                    &command::Trace::choices, o_trace )
         .command< command::Show >( "show an object"s, varopts, showopts )
         .command< command::Setup >( "set configuration options"s, setupopts )
         .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
