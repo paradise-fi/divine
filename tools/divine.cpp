@@ -2,6 +2,7 @@
 
 #include <divine/ui/cli.hpp>
 #include <divine/ui/curses.hpp>
+#include <brick-fs>
 
 #ifdef __unix__
 #include <signal.h>
@@ -48,13 +49,12 @@ int main( int argc, const char **argv )
 #endif
     std::set_terminate( panic );
 
-    // accept divine.ARG as divine ARG
     auto args = divine::ui::fromArgv( argc, argv );
-    std::string progName = argv[ 0 ];
-    std::string prefix = "divine.";
-    auto dot = progName.rfind( prefix );
-    if ( dot != std::string::npos )
-        args.insert( args.begin(), progName.substr( dot + prefix.size() ) );
+    std::string progName = brick::fs::basename( argv[ 0 ] );
+    if ( progName == "divine-cc" )
+        args.insert( args.begin(), "divinecc" );
+    else if ( progName == "divine-ld" )
+        args.insert( args.begin(), "divineld" );
 
     _ui = std::make_shared< divine::ui::CLI >( args )->resolve();
     return _ui->main();
