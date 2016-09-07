@@ -124,6 +124,7 @@ void Verify::run()
     dbg_eval.run();
 
     std::deque< vm::explore::State > trace;
+    std::vector< int > choices;
     std::cout << "found an error" << std::endl;
 
     while ( error.snap.slab() )
@@ -142,6 +143,9 @@ void Verify::run()
                         {
                             for ( auto l : label.first )
                                 std::cerr << l << std::endl;
+                            std::transform( label.second.begin(), label.second.end(),
+                                            std::back_inserter( choices ),
+                                            []( auto x ) { return x.first; } );
                             ++last, ++next;
                             if ( next == trace.end() )
                                 return ss::Listen::Terminate;
@@ -149,6 +153,11 @@ void Verify::run()
                         }
                         return ss::Listen::Ignore;
                     }, []( auto ) { return ss::Listen::Process; } ) );
+
+    std::cout << "choices made:";
+    for ( int c : choices )
+        std::cout << " " << c;
+    std::cout << std::endl;
 
     vm::DebugNode< vm::Program, vm::CowHeap > dn(
             ex._ctx, trace.back().snap, ex._ctx.get( _VM_CR_State ).pointer, 0,
