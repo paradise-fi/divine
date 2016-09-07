@@ -37,7 +37,9 @@ void dump( DN dn, DNSet &visited )
     if ( dn.kind() == vm::DNKind::Frame )
     {
         dn.attributes( []( std::string k, std::string v )
-                       { if ( k != "@raw" ) std::cout << k << ": " << v << std::endl; } );
+                       { if ( k == "@address" || k == "@location" || k == "@symbol" )
+                             std::cout << k << ": " << v << std::endl;
+                       } );
         std::cout << std::endl;
     }
 
