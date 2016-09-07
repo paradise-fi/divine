@@ -1,0 +1,223 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
+ */
+
+/* Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE. */
+
+#include <brick-except>
+
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <iterator>
+#include <sstream>
+#include <iostream>
+#include <future>
+
+#ifdef __unix__
+#include <unistd.h>
+#include <sys/wait.h>
+#endif
+
+#ifndef BRICK_PROC
+#define BRICK_PROC
+
+namespace brick {
+namespace proc {
+
+struct ProcError : brick::except::Error
+{
+    using brick::except::Error::Error;
+};
+
+enum SpawnOpts {
+    None = 0,
+    CaptureStdout = 0x1,
+    CaptureStderr = 0x2,
+    ShowCmd = 0x100
+};
+
+struct SystemOutput {
+
+    SystemOutput( int exitcode, int signal, std::string out, std::string err ) :
+        _exitcode( exitcode ), _signal( signal ), _out( out ), _err( err )
+    { }
+
+    bool ok() const { return _exitcode == 0 && _signal == 0; }
+    explicit operator bool() const { return ok(); }
+
+    int exitcode() const { return _exitcode; }
+    int signal() const { return _signal; }
+
+    const std::string &out() const { return _out; }
+    const std::string &err() const { return _err; }
+
+  private:
+    int _exitcode;
+    int _signal;
+    std::string _out;
+    std::string _err;
+};
+
+std::string to_string( const SystemOutput &o ) {
+    std::stringstream ss;
+    ss << "exitcode = " << o.exitcode() << ", signal = " << o.signal() << std::endl;
+    for ( auto x : { std::make_pair( "stdout", &o.out() ), std::make_pair( "stderr", &o.err() ) } ) {
+        if ( !x.second->empty() ) {
+            ss << x.first << ":" << std::endl;
+            std::stringstream data( *x.second );
+            std::string line;
+            while ( std::getline( ss, line ) )
+                ss << "    " << line << std::endl;
+            ss << std::endl;
+        }
+    }
+    return ss.str();
+}
+
+struct Pipe {
+    Pipe() {
+        if ( ::pipe( _fds ) == -1 )
+            throw ProcError( "could not creare pipe" );
+    }
+
+    ~Pipe() { close(); }
+
+    void close() {
+        closeRead();
+        closeWrite();
+    }
+
+    void closeRead() {
+        if ( _fds[0] >= 0 )
+            ::close( _fds[0] );
+    }
+
+    void closeWrite() {
+        if ( _fds[1] >= 0 )
+            ::close( _fds[1] );
+    }
+
+    std::string drain() const {
+        std::string str;
+        char data[ 1024 ];
+        long n;
+        do {
+            n = ::read( read(), data, sizeof( data ) );
+            if ( n > 0 )
+                str += std::string( data, n );
+        } while( n > 0 );
+        return str;
+    }
+
+    int read() const { return _fds[0]; }
+    int write() const { return _fds[1]; }
+
+  private:
+    int _fds[2];
+};
+
+SystemOutput spawnAndWait( SpawnOpts opts, std::vector< std::string > args )
+{
+    if ( (opts & SpawnOpts::ShowCmd) == SpawnOpts::ShowCmd ) {
+        std::cerr << "+ ";
+        std::copy( args.begin(), args.end(), std::ostream_iterator< std::string >( std::cerr, " " ) );
+        std::cerr << std::endl;
+    }
+    std::vector< const char * > cargs;
+    std::transform( args.begin(), args.end(), std::back_inserter( cargs ),
+                    []( const std::string &s ) { return s.c_str(); } );
+    cargs.push_back( nullptr );
+    std::string out, err;
+#ifdef __unix__
+
+    std::future< std::string > outf, errf;
+    std::unique_ptr< Pipe > outp, errp;
+    if ( (opts & SpawnOpts::CaptureStdout) == SpawnOpts::CaptureStdout )
+        outp = std::make_unique< Pipe >();
+    if ( (opts & SpawnOpts::CaptureStderr) == SpawnOpts::CaptureStderr )
+        errp = std::make_unique< Pipe >();
+
+    pid_t pid;
+    if ( (pid = ::fork()) == 0 ) {
+        if ( outp ) {
+            ::dup2( outp->write(), STDOUT_FILENO );
+            outp->close();
+        }
+        if ( errp ) {
+            ::dup2( errp->write(), STDERR_FILENO );
+            errp->close();
+        }
+
+        ::execvp( cargs[ 0 ], const_cast< char *const * >( cargs.data() ) );
+        std::terminate();
+    } else if ( pid > 0 ) {
+        if ( outp ) {
+            outp->closeWrite();
+            outf = std::async( std::launch::async, [&] { return outp->drain(); } );
+        }
+        if ( errp ) {
+            errp->closeWrite();
+            errf = std::async( std::launch::async, [&] { return errp->drain(); } );
+        }
+        int status;
+        int r = ::waitpid( pid, &status, 0 );
+
+        out = outf.valid() ? outf.get() : "";
+        err = errf.valid() ? errf.get() : "";
+
+        if ( r < 0 )
+            throw ProcError( "waitpid error" );
+        return SystemOutput( WIFEXITED( status ) ? WEXITSTATUS( status ) : 0,
+                             WIFSIGNALED( status ) ? WTERMSIG( status ) : 0,
+                             out, err );
+    } else
+        throw ProcError( "fork failed" );
+#else
+#error implementation of brick::proc::spawnAndWait for this platform is missing
+#endif
+}
+
+SystemOutput spawnAndWait( std::vector< std::string > args ) {
+    return spawnAndWait( SpawnOpts::None, args );
+}
+
+template< typename... Args >
+SystemOutput spawnAndWait( SpawnOpts opts, Args &&...args ) {
+    return spawnAndWait( opts, std::vector< std::string >{ std::forward< Args >( args )... } );
+}
+
+template< typename... Args >
+SystemOutput spawnAndWait( Args &&...args ) {
+    return spawnAndWait( SpawnOpts::None, std::forward< Args >( args )... );
+}
+
+
+}
+}
+
+#endif // BRICK_PROC
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
