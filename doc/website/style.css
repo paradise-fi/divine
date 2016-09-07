@@ -20,7 +20,11 @@ pre, tt, code {
 }
 code { color: #1A001A; }
 
-pre.logo { white-space: pre; text-align: center; transform: scaleX(1.2); font-size: 16px; }
+pre#logo {
+    white-space: pre; text-align: center;
+    transform: scaleX(1.2); font-size: 16px; font-weight: bold;
+}
+
 ul { list-style-type: none; }
 strong { color: #200020; }
 p > .divine { color: #3A103A; font-weight: normal; }
@@ -52,8 +56,8 @@ div#footer {
 #linkbar a { margin-left: 2em; }
 #linkbar a:link, #linkbar a:visited { color: white; }
 #linkbar a:link:hover, #linkbar a:visited:hover { color: pink; }
-#footer a:link, #linkbar a:visited { color: white; }
-#footer a:link:hover, #linkbar a:visited:hover { color: pink; }
+#footer a:link, #footer a:visited { color: white; }
+#footer a:link:hover, #footer a:visited:hover { color: pink; }
 
 h1 {
     font-weight: bold;
