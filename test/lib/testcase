@@ -312,13 +312,13 @@ dve_shape() {
     check clear
 }
 
-chmod +x check run
+chmod +x lib/check lib/run
 
-PATH=".:$PATH"
+PATH="lib:$PATH"
 extracheck=:
 export cesmiext=.so
 test "$WIN32" = 1 && cesmiext=.dll
 
-set -vex -o pipefail
 trap "check debris" EXIT
+set -ex -o pipefail
 

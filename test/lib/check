@@ -158,8 +158,15 @@ debris() {
 
     test -f complaint && cat complaint || true
     cleanup
-    echo
-    echo "."
+}
+
+verify() {
+    if fgrep -q '/* ERROR' $1; then
+        location=`fgrep -Hn '/* ERROR */' "$1" | cut -d: -f1-2`
+        grep "^@location: $location" verify.out
+    else
+        grep "no errors found" verify.out
+    fi
 }
 
 "$@"
