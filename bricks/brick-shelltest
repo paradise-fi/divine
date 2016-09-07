@@ -371,14 +371,15 @@ struct Format {
     bool stamp;
     Substitute subst;
 
-    std::string format( TimedBuffer::Line l ) {
-        std::stringstream result;
-        if ( stamp ) {
-            int rel = l.first - start;
-            result << "[" << std::setw( 2 ) << std::setfill( ' ' ) << rel / 60
-                   << ":" << std::setw( 2 ) << std::setfill( '0' ) << rel % 60 << "] ";
-        }
-        result << subst.map( l.second );
+    std::string format( TimedBuffer::Line l, bool suppress = false ) {
+        std::stringstream ts, result;
+        int rel = l.first - start;
+        ts << "[" << std::setw( 2 ) << std::setfill( ' ' ) << rel / 60
+           << ":" << std::setw( 2 ) << std::setfill( '0' ) << rel % 60 << "] ";
+        if ( stamp && !suppress )
+            result << ts.str();
+        for ( auto c : subst.map( l.second ) )
+            result << c << ( stamp && c == '\r' ? ts.str() : "" );
         return result.str();
     }
 
@@ -405,12 +406,13 @@ struct FdSink : Sink {
 
     TimedBuffer stream;
     Format fmt;
-    bool killed;
+    bool killed, suppress;
 
     virtual void outline( bool force )
     {
         TimedBuffer::Line line = stream.shift( force );
-        std::string out = fmt.format( line );
+        std::string out = fmt.format( line, suppress );
+        suppress = line.second.back() != '\n';
         write( fd, out.c_str(), out.length() );
     }
 
@@ -426,7 +428,7 @@ struct FdSink : Sink {
             stream.push( x );
     }
 
-    FdSink( int _fd ) : fd( _fd ), killed( false ) {}
+    FdSink( int _fd ) : fd( _fd ), killed( false ), suppress( false ) {}
 };
 
 struct FileSink : FdSink {
