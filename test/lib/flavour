@@ -14,7 +14,7 @@ test -z "$TEST_FLAVOUR" && return 0
 if [ $# -gt 0 ]; then
     OK=0
     for p in "$@"; do
-        echo "$TEST_FLAVOUR" | grep "$p" && OK=1
+        echo "$TEST_FLAVOUR" | grep -q "$p" && OK=1
     done
     test $OK -eq 0 && skip
 fi

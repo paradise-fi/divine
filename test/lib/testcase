@@ -5,7 +5,7 @@ test "x$_DIVINE_TEST_LIB_SOURCED" = "x1" && return 0
 _DIVINE_TEST_LIB_SOURCED=1
 
 . environment
-. util
+. lib/util
 
 test -d "$TOOLS" -a -f "$TOOLS/divine" || {
     echo "TOOLS has to be directory with your divine binary."

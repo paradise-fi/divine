@@ -1,9 +1,7 @@
 #!/bin/sh
 # -*- sh -*-
 set -e
-
-esed="sed -r"
-$esed 2>/dev/null || esed="sed -E"
+. lib/util
 
 complain() {
     echo "### $@" > complaint
@@ -132,9 +130,6 @@ owcty_sizes() {
 }
 
 debris() {
-    echo
-    echo "#### TEST END"
-    echo
     test -f progress && (cat progress; echo) || true
 
     for T in testcase.{c,cpp,dve}; do
