@@ -103,18 +103,23 @@ using DebugContext = vm::DebugContext< vm::Program, vm::CowHeap >;
 
 struct Context : DebugContext
 {
-    int _choice;
+    std::deque< int > _choices;
 
-    Context( vm::Program &p ) : DebugContext( p ), _choice( 0 ) {}
+    Context( vm::Program &p ) : DebugContext( p ) {}
 
     template< typename I >
     int choose( int count, I, I )
     {
-        ASSERT_LT( _choice, count );
-        ASSERT_LEQ( 0, _choice );
+        if ( _choices.empty() )
+            _choices.emplace_back( 0 );
+
+        ASSERT_LT( _choices.front(), count );
+        ASSERT_LEQ( 0, _choices.front() );
         if ( !_proc.empty() )
             _proc.clear();
-        return _choice;
+        auto rv = _choices.front();
+        _choices.pop_front();
+        return rv;
     }
 };
 
@@ -479,11 +484,12 @@ struct Interpreter
 
             if ( !_ctx._proc.empty() )
             {
-                _ctx._choice = sched_policy( _ctx._proc );
+                if ( _ctx._choices.empty() )
+                    _ctx._choices.push_back( sched_policy( _ctx._proc ) );
                 std::cerr << "# active threads:";
                 for ( auto pi : _ctx._proc )
                 {
-                    bool active = pi.second == _ctx._choice;
+                    bool active = pi.second == _ctx._choices.front();
                     std::cerr << ( active ? " [" : " " )
                               << pi.first.first << ":" << pi.first.second
                               << ( active ? "]" : "" );
