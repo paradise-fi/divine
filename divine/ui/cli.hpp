@@ -28,6 +28,7 @@
 
 #include <brick-cmd>
 #include <brick-fs>
+#include <regex>
 
 #include <runtime/divine.h>
 
@@ -151,6 +152,25 @@ struct Cc : Command
     void run();
 };
 
+struct DivineCc : Command
+{
+    void run() override;
+
+    std::string _output;
+    bool _dontLink = false;
+    std::vector< std::string > _flags;
+    std::vector< std::string > _libPaths;
+};
+
+struct DivineLd : Command
+{
+    void run() override;
+
+    std::string _output;
+    bool _incremental = false;
+    std::vector< std::string > _flags;
+};
+
 struct Info   : WithBC
 {
     void run() { NOT_IMPLEMENTED(); }
@@ -210,6 +230,14 @@ struct CLI : Interface
                     if ( s == "none" )
                         return good( vm::AutoTrace::Nothing );
                     return bad( cmd::BadContent, s + " is nod a valid tracepoint specification" );
+                } ) ->
+            add( "paths", []( std::string s, auto good, auto )
+                {
+                    std::vector< std::string > out;
+                    std::regex sep(":");
+                    std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
+                    std::copy( it, std::sregex_token_iterator(), std::back_inserter( out ) );
+                    return good( out );
                 } );
     }
 
@@ -259,6 +287,17 @@ struct CLI : Interface
             .option( "[--labels {label}]", &Draw::_labels, "label all, none or only trace"s )
             .option( "[--bfs-layout]", &Draw::_bfs, "draw in bfs layout (levels)"s );
 
+        auto dccopts = cmd::make_option_set< DivineCc >( v )
+            .option( "[-o {string}]", &DivineCc::_output, "output file"s )
+            .option( "[-c]", &DivineCc::_dontLink, "Compile or assemble the source files, but do not link."s )
+            .option( "[--divinert-path {paths}]", &DivineCc::_libPaths, "paths to DIVINE runtime libraries (':' separated)"s )
+            .option( "[{string}]", &DivineCc::_flags,
+                     "any clang options including input file(s) to compile (C, C++, object, bitcode)"s );
+        auto dldopts = cmd::make_option_set< DivineLd >( v )
+            .option( "[-o {string}]", &DivineLd::_output, "output file"s )
+            .option( "[-r|-i|--relocable]", &DivineLd::_incremental, "Generate incremental/relocable object file"s )
+            .option( "[{string}]", &DivineLd::_flags, "any ld options including input file(s) to link"s );
+
         auto parser = cmd::make_parser( v )
             .command< Verify >( vrfyopts, bcopts )
             .command< Run >( &WithBC::_useropts, bcopts )
@@ -266,6 +305,8 @@ struct CLI : Interface
             .command< Draw >( drawopts, bcopts )
             .command< Info >( bcopts )
             .command< Cc >( ccopts )
+            .command< DivineCc >( dccopts )
+            .command< DivineLd >( dldopts )
             .command< Help >( helpopts );
         return parser;
     }
