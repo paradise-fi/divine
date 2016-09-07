@@ -323,7 +323,7 @@ std::unique_ptr< CodeGenAction > Compiler::cc1( std::string filename,
     // Build an invocation
     auto invocation = std::make_unique< clang::CompilerInvocation >();
     std::vector< std::string > cc1args = { "-cc1",
-                                            "-triple", "x86_64-unknown-linux-gnu", //  "x86_64-unknown-none-elf",
+                                            "-triple", "x86_64-unknown-none-elf",
                                             "-emit-obj",
                                             "-mrelax-all",
                                             // "-disable-free",
