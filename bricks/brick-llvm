@@ -311,6 +311,9 @@ struct Linker {
     Module *get() { return _root.get(); }
     const Module *get() const { return _root.get(); }
 
+    std::unique_ptr< Module > take() {
+        return std::move( _root );
+    }
 
   private:
     std::unique_ptr< ::llvm::Linker > _link;
