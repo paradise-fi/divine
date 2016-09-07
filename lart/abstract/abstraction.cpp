@@ -286,6 +286,8 @@ struct Abstraction : lart::Pass {
                         }*/
             }
         }
+
+        removeRedundantLifts( n, sub );
     }
 
     void doCall( llvm::CallInst * i, T * t ) {
@@ -446,6 +448,20 @@ struct Abstraction : lart::Pass {
         return call->getCalledFunction()->getName() == "lart.tristate.explicate";
     }
 
+    void removeRedundantLifts( I * i, I * ni ) {
+        std::vector< llvm::CallInst * > toRemove;
+
+        for ( auto user : i->users() )
+            if ( auto call = llvm::dyn_cast< llvm::CallInst >( user ) )
+                if ( isLift( call ) ) {
+                    call->replaceAllUsesWith( ni );
+                    toRemove.push_back( call );
+                }
+
+        for ( auto call : toRemove )
+            call->eraseFromParent();
+    }
+
     //Function manipulations
 	F * cloneFn( F *fn, std::vector< T * > &arg_types, llvm::ValueToValueMapTy &vmap ) {
 		auto fty = llvm::FunctionType::get( fn->getFunctionType()->getReturnType(),
@@ -506,17 +522,7 @@ struct Abstraction : lart::Pass {
         to_annotate.insert( { acall->getCalledFunction(), tag } );
         value_store.insert( { i, acall } );
 
-        std::vector< llvm::CallInst * > toRemove;
-
-        for ( auto user : i->users() )
-            if ( auto call = llvm::dyn_cast< llvm::CallInst >( user ) )
-                if ( isLift( call ) ) {
-                    call->replaceAllUsesWith( acall );
-                    toRemove.push_back( call );
-                }
-
-        for ( auto call : toRemove )
-            call->eraseFromParent();
+        removeRedundantLifts( i, acall );
     }
 
     void annotateAnonym( F * f, std::string name ) {
