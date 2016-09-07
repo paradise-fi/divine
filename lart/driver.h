@@ -3,6 +3,7 @@
 #include <lart/interference/pass.h>
 #include <lart/aa/pass.h>
 #include <lart/abstract/pass.h>
+#include <lart/abstract/passes.h>
 #include <lart/weakmem/pass.h>
 #include <lart/reduction/passes.h>
 #include <lart/svcomp/passes.h>
@@ -34,6 +35,7 @@ struct Driver {
         insertPasses( out, reduction::passes() );
         insertPasses( out, svcomp::passes() );
         insertPasses( out, divine::passes() );
+        insertPasses( out, abstract::passes() );
         return out;
     }
 
