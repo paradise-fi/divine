@@ -24,7 +24,8 @@ target_link_libraries( lart
                        LLVMAnalysis )
 
 add_custom_target( divinecc
-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/divine ${CMAKE_CURRENT_BINARY_DIR}/divine.cc
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/divine ${CMAKE_CURRENT_BINARY_DIR}/divine-cc
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/divine ${CMAKE_CURRENT_BINARY_DIR}/divine-ld
     VERBATIM )
 add_dependencies( divine divinecc )
 
