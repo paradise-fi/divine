@@ -42,7 +42,7 @@ struct Compiler {
     explicit Compiler( std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
     ~Compiler();
 
-    void mapVirtualFile( std::string path, const char *contents );
+    void mapVirtualFile( std::string path, llvm::StringRef contents );
     void mapVirtualFile( std::string path, const std::string &contents );
 
     template< typename T >
@@ -56,6 +56,8 @@ struct Compiler {
 
     std::unique_ptr< llvm::Module > compileModule( std::string filename,
                                 FileType type, std::vector< std::string > args );
+
+    void emitObjFile( llvm::Module &m, std::string filename, std::vector< std::string > args );
 
     auto compileModule( std::string filename, std::vector< std::string > args = { } )
     {
@@ -76,6 +78,11 @@ struct Compiler {
     std::shared_ptr< llvm::LLVMContext > context() { return ctx; }
 
   private:
+    template< typename CodeGenAction >
+    std::unique_ptr< CodeGenAction > cc1( std::string filename,
+                                FileType type, std::vector< std::string > args,
+                                llvm::IntrusiveRefCntPtr< clang::vfs::FileSystem > vfs = nullptr );
+
     llvm::IntrusiveRefCntPtr< DivineVFS > divineVFS;
     llvm::IntrusiveRefCntPtr< clang::vfs::OverlayFileSystem > overlayFS;
     std::shared_ptr< llvm::LLVMContext > ctx;

@@ -151,14 +151,52 @@ Compiler &Compile::mastercc() { return compilers[0]; }
 
 void Compile::setupLib( std::string name, const std::string &content )
 {
-    std::cerr << "loading " << name << "..." << std::flush;
-    auto input = llvm::MemoryBuffer::getMemBuffer( content );
-    auto parsed = parseBitcodeFile( input->getMemBufferRef(), *context() );
-    if ( !parsed )
-        throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
-    std::cerr << " linking..." << std::flush;
-    linker->link( std::move( parsed.get() ), false );
-    std::cerr << " done" << std::endl;
+    using brick::string::startsWith;
+
+    rt::each(
+        [&]( auto path, auto c )
+        {
+            if ( startsWith( path, joinPath( rt::srcDir, "filesystem" ) ) )
+                return; /* ignore */
+            mastercc().mapVirtualFile( path, c );
+        } );
+}
+
+void Compile::setupLibs() {
+    if ( opts.precompiled.size() ) {
+        auto input = std::move( llvm::MemoryBuffer::getFile( opts.precompiled ).get() );
+        ASSERT( !!input );
+
+        auto inputData = input->getMemBufferRef();
+        auto parsed = parseBitcodeFile( inputData, *context() );
+        if ( !parsed )
+            throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
+        if ( getRuntimeVersionSha( *parsed.get() ) != DIVINE_RUNTIME_SHA )
+            std::cerr << "WARNING: runtime version of the precompiled library does not match the current runtime version"
+                      << std::endl;
+        linker->load( std::move( parsed.get() ) );
+    } else {
+        auto libflags = []( auto... xs ) {
+            return mergeFlags( "-Wall", "-Wextra", "-Wno-gcc-compat", "-Wno-unused-parameter", xs... );
+        };
+        std::initializer_list< std::string > cxxflags =
+            { "-std=c++14"
+              // , "-fstrict-aliasing"
+              , "-I", joinPath( rt::includeDir, "libcxxabi/include" )
+              , "-I", joinPath( rt::includeDir, "libcxxabi/src" )
+              , "-I", joinPath( rt::includeDir, "libcxx/src" )
+              , "-I", joinPath( rt::includeDir, "filesystem" )
+              , "-Oz" };
+        compileLibrary( joinPath( rt::srcDir, "pdclib" ), libflags( "-D_PDCLIB_BUILD" ) );
+        compileLibrary( joinPath( rt::srcDir, "limb" ), libflags() );
+        compileLibrary( joinPath( rt::srcDir, "libcxxabi" ),
+                        libflags( cxxflags, "-DLIBCXXABI_USE_LLVM_UNWINDER" ) );
+        compileLibrary( joinPath( rt::srcDir, "libcxx" ), libflags( cxxflags ) );
+        compileLibrary( joinPath( rt::srcDir, "divine" ), libflags( cxxflags ) );
+        compileLibrary( joinPath( rt::srcDir, "dios" ), libflags( cxxflags ) );
+        compileLibrary( joinPath( rt::srcDir, "filesystem" ), libflags( cxxflags ) );
+        compileLibrary( joinPath( rt::srcDir, "lart" ), libflags( cxxflags ) );
+    }
 }
 
 void Compile::compileLibrary( std::string path, std::vector< std::string > flags )

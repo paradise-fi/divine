@@ -12,6 +12,7 @@ DIVINE_RELAX_WARNINGS
 #include <clang/Frontend/DependencyOutputOptions.h>
 #include <llvm/Support/Errc.h> // for VFS
 #include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Support/TargetSelect.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-fs>
@@ -20,6 +21,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-except>
 
 #include <iostream>
+#include <mutex> // call_once
 
 #include <divine/cc/clang.hpp>
 #include <lart/divine/vaarg.h>
@@ -77,17 +79,10 @@ namespace cc {
 
 struct DivineVFS : clang::vfs::FileSystem {
   private:
-    // just a wrapper over const char *
-    struct CharMemBuf : llvm::MemoryBuffer {
-        BufferKind getBufferKind() const override { return BufferKind( 2 ); } // meh
-        CharMemBuf( const char *data ) {
-            init( data, data + std::strlen( data ), false );
-        }
-    };
 
     // adapt file map to the expectations of LLVM's VFS
     struct File : clang::vfs::File {
-        File( const char *content, clang::vfs::Status stat ) :
+        File( llvm::StringRef content, clang::vfs::Status stat ) :
             content( content ), stat( stat )
         { }
 
@@ -98,7 +93,7 @@ struct DivineVFS : clang::vfs::FileSystem {
                         bool /* IsVolatile */ = false ) ->
             llvm::ErrorOr< std::unique_ptr< llvm::MemoryBuffer > > override
         {
-            return { std::make_unique< CharMemBuf >( content ) };
+            return { llvm::MemoryBuffer::getMemBuffer( content ) };
         }
 
         void setName( llvm::StringRef ) override { }
@@ -106,7 +101,7 @@ struct DivineVFS : clang::vfs::FileSystem {
         std::error_code close() override { return std::error_code(); }
 
       private:
-        const char *content;
+        llvm::StringRef content;
         clang::vfs::Status stat;
     };
 
@@ -166,17 +161,17 @@ struct DivineVFS : clang::vfs::FileSystem {
 
     void addFile( std::string name, std::string contents, bool allowOverride = false ) {
         storage.emplace_back( std::move( contents ) );
-        addFile( name, storage.back().c_str(), allowOverride );
+        addFile( name, llvm::StringRef( storage.back() ), allowOverride );
     }
 
-    void addFile( std::string path, const char *contents, bool allowOverride = false ) {
+    void addFile( std::string path, llvm::StringRef contents, bool allowOverride = false ) {
         ASSERT( allowOverride || !filemap.count( path ) );
         auto &ref = filemap[ path ];
         ref.first = contents;
         auto name = llvm::sys::path::filename( path );
         ref.second = clang::vfs::Status( name, name,
                         clang::vfs::getNextVirtualUniqueID(),
-                        llvm::sys::TimeValue(), 0, 0, std::strlen( contents ),
+                        llvm::sys::TimeValue(), 0, 0, contents.size(),
                         llvm::sys::fs::file_type::regular_file,
                         llvm::sys::fs::perms::all_all );
         auto parts = brick::fs::splitPath( path );
@@ -227,7 +222,7 @@ struct DivineVFS : clang::vfs::FileSystem {
         return std::make_unique< File >( it->second.first, stat );
     }
 
-    std::map< std::string, std::pair< const char *, clang::vfs::Status > > filemap;
+    std::map< std::string, std::pair< llvm::StringRef, clang::vfs::Status > > filemap;
     std::vector< std::string > storage;
     std::set< std::string > allowedPrefixes;
 };
@@ -302,7 +297,7 @@ Compiler::Compiler( std::shared_ptr< llvm::LLVMContext > ctx ) :
 
 Compiler::~Compiler() { }
 
-void Compiler::mapVirtualFile( std::string path, const char *contents ) {
+void Compiler::mapVirtualFile( std::string path, llvm::StringRef contents ) {
     divineVFS->addFile( path, contents );
 }
 void Compiler::mapVirtualFile( std::string path, const std::string &contents ) {
@@ -317,13 +312,18 @@ void Compiler::allowIncludePath( std::string path ) {
     divineVFS->allowPath( path );
 }
 
-std::unique_ptr< llvm::Module > Compiler::compileModule( std::string filename,
-                            FileType type, std::vector< std::string > args )
+template< typename CodeGenAction >
+std::unique_ptr< CodeGenAction > Compiler::cc1( std::string filename,
+                            FileType type, std::vector< std::string > args,
+                            llvm::IntrusiveRefCntPtr< clang::vfs::FileSystem > vfs )
 {
+    if ( !vfs )
+        vfs = overlayFS;
+
     // Build an invocation
     auto invocation = std::make_unique< clang::CompilerInvocation >();
     std::vector< std::string > cc1args = { "-cc1",
-                                            "-triple", "x86_64-unknown-none-elf",
+                                            "-triple", "x86_64-unknown-linux-gnu", //  "x86_64-unknown-none-elf",
                                             "-emit-obj",
                                             "-mrelax-all",
                                             // "-disable-free",
@@ -376,22 +376,53 @@ std::unique_ptr< llvm::Module > Compiler::compileModule( std::string filename,
 
     // actually run the compiler invocation
     clang::CompilerInstance compiler( std::make_shared< clang::PCHContainerOperations>() );
-    auto fmgr = std::make_unique< clang::FileManager >( clang::FileSystemOptions(), overlayFS );
+    auto fmgr = std::make_unique< clang::FileManager >( clang::FileSystemOptions(), vfs );
     compiler.setFileManager( fmgr.get() );
     compiler.setInvocation( invocation.release() );
     ASSERT( compiler.hasInvocation() );
     compiler.createDiagnostics( &diagprinter, false );
     ASSERT( compiler.hasDiagnostics() );
     compiler.createSourceManager( *fmgr.release() );
-    // emits module in memory, does not write it info a file
-    auto emit = std::make_unique< clang::EmitLLVMOnlyAction >( ctx.get() );
+    auto emit = std::make_unique< CodeGenAction >( ctx.get() );
     succ = compiler.ExecuteAction( *emit );
     if ( !succ )
         throw CompileError( "Error building " + filename );
 
+    return emit;
+}
+
+std::unique_ptr< llvm::Module > Compiler::compileModule( std::string filename,
+                            FileType type, std::vector< std::string > args )
+{
+    // EmitLLVMOnlyAction emits module in memory, does not write it info a file
+    auto emit = cc1< clang::EmitLLVMOnlyAction >( filename, type, args );
     auto mod = emit->takeModule();
     lart::divine::VaArgInstr().run( *mod );
     return mod;
+}
+
+static std::once_flag initTargetsFlags;
+
+static void initTargets() {
+    std::call_once( initTargetsFlags, [] {
+            llvm::InitializeAllTargets();
+            llvm::InitializeAllTargetMCs();
+            llvm::InitializeAllAsmPrinters();
+            llvm::InitializeAllAsmParsers();
+        } );
+}
+
+void Compiler::emitObjFile( llvm::Module &m, std::string filename, std::vector< std::string > args ) {
+    args.push_back( "-o" );
+    args.push_back( filename );
+
+    std::string modulepath = "/divine/module.bc";
+
+    llvm::IntrusiveRefCntPtr< DivineVFS > modulefs( new DivineVFS() );
+    modulefs->addFile( modulepath, serializeModule( m ) );
+
+    initTargets();
+    cc1< clang::EmitObjAction >( modulepath, FileType::BC, args, modulefs );
 }
 
 std::string Compiler::serializeModule( llvm::Module &m ) {
