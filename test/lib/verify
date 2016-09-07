@@ -1,0 +1,5 @@
+. lib/flavour vanilla
+. lib/testcase
+
+divine verify "$1" | tee verify.out
+check verify
