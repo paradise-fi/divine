@@ -87,8 +87,8 @@ template< typename PointerRep = DefaultPoolPointerRep >
 struct Pool
 {
     static const int slab_bits = PointerRep::slab_bits,
-                    chunk_bits = PointerRep::chunk_bits,
-                      tag_bits = PointerRep::tag_bits;
+                    chunk_bits = PointerRep::chunk_bits;
+
     struct Pointer : brick::types::Comparable
     {
         using Raw = bitlevel::bitvec< 8 * sizeof( PointerRep ) >;
@@ -96,6 +96,8 @@ struct Pool
         using SlabT  = decltype( PointerRep::slab );
         using ChunkT = decltype( PointerRep::chunk );
         using TagT   = decltype( PointerRep::tag );
+
+        static const int tag_bits = PointerRep::tag_bits;
 
         PointerRep _rep;
 
