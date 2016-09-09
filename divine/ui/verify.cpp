@@ -28,7 +28,7 @@ namespace ui {
 using DNSet = std::set< std::tuple< vm::GenericPointer, int, llvm::DIType * > >;
 
 template< typename DN >
-void dump( DN dn, DNSet &visited )
+void dump( DN dn, DNSet &visited, int &stacks )
 {
     if ( visited.count( dn.sortkey() ) || dn.address().type() != vm::PointerType::Heap )
         return;
@@ -45,7 +45,14 @@ void dump( DN dn, DNSet &visited )
 
     dn.related( [&]( std::string k, auto rel )
                 {
-                    dump( rel, visited );
+                    if ( rel.kind() == vm::DNKind::Frame && k != "@parent" &&
+                         !visited.count( rel.sortkey() ) )
+                    {
+                        if ( stacks )
+                            std::cerr << "--------------------" << std::endl << std::endl;
+                        ++ stacks;
+                    }
+                    dump( rel, visited, stacks );
                 } );
 }
 
@@ -169,7 +176,8 @@ void Verify::run()
             ex._ctx, trace.back(), ex._ctx.get( _VM_CR_State ).pointer, 0,
             vm::DNKind::Object, dbg._state_type, dbg._state_di_type );
     DNSet visited;
-    dump( dn, visited );
+    int stacks = 0;
+    dump( dn, visited, stacks );
 }
 
 }
