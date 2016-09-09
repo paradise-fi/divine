@@ -185,20 +185,20 @@ struct Tagged
     T t;
     uint32_t _tag;
 
-    static const int tagBits = 16;
-    void setTag( uint32_t v ) { _tag = v; }
+    static const int tag_bits = 16;
+    void tag( uint32_t v ) { _tag = v; }
     uint32_t tag() { return _tag; }
     Tagged() noexcept : t(), _tag( 0 ) {}
     Tagged( const T &t ) : t( t ), _tag( 0 ) {}
 };
 
 template< typename T >
-struct Tagged< T, typename std::enable_if< (T::tagBits > 0) >::type >
+struct Tagged< T, typename std::enable_if< (T::tag_bits > 0) >::type >
 {
     T t;
 
-    static const int tagBits = T::tagBits;
-    void setTag( uint32_t value ) { t.setTag( value ); }
+    static const int tag_bits = T::tag_bits;
+    void tag( uint32_t value ) { t.tag( value ); }
     uint32_t tag() { return t.tag(); }
     Tagged() noexcept : t() {}
     Tagged( const T &t ) : t( t ) {}
@@ -211,7 +211,7 @@ struct AtomicCell : CellBase< T, Hasher >
 
     static_assert( sizeof( std::atomic< Tagged< T > > ) == sizeof( Tagged< T > ),
                    "std::atomic< Tagged< T > > must be lock-free" );
-    static_assert( Tagged< T >::tagBits > 0, "T has at least a one-bit tagspace" );
+    static_assert( Tagged< T >::tag_bits > 0, "T has at least a one-bit tagspace" );
 
     bool empty() { return !value.load().t; }
     bool invalid() {
@@ -222,7 +222,7 @@ struct AtomicCell : CellBase< T, Hasher >
     /* returns old cell value */
     AtomicCell invalidate() {
         Tagged< T > v = value;
-        v.setTag( v.tag() ? 0 : 1 ); // set tag to 1 if it was empty -> empty != invalid
+        v.tag( v.tag() ? 0 : 1 ); // set tag to 1 if it was empty -> empty != invalid
         return AtomicCell( value.exchange( v ) );
     }
 
@@ -232,7 +232,7 @@ struct AtomicCell : CellBase< T, Hasher >
     }
 
     T &fetch() { return deatomize().t; }
-    T copy() { Tagged< T > v = value; v.setTag( 0 ); return v.t; }
+    T copy() { Tagged< T > v = value; v.tag( 0 ); return v.t; }
     bool wait() { return !invalid(); }
 
     void store( T bn, hash64_t hash ) {
@@ -242,14 +242,14 @@ struct AtomicCell : CellBase< T, Hasher >
     bool tryStore( T b, hash64_t hash ) {
         Tagged< T > zero;
         Tagged< T > next( b );
-        next.setTag( highbits( hash, Tagged< T >::tagBits ) | 1 );
+        next.tag( highbits( hash, Tagged< T >::tag_bits ) | 1 );
         auto rv = value.compare_exchange_strong( zero, next );
         return rv;
     }
 
     template< typename Value >
     bool is( Value v, hash64_t hash, Hasher &h ) {
-        return value.load().tag() == ( highbits( hash, Tagged< T >::tagBits ) | 1 ) &&
+        return value.load().tag() == ( highbits( hash, Tagged< T >::tag_bits ) | 1 ) &&
             h.equal( value.load().t, v );
     }
 
