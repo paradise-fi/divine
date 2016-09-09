@@ -80,7 +80,7 @@ void Verify::run()
         } );
 
     typename vm::CowHeap::Pool ext;
-    using Parent = std::atomic< vm::explore::State >;
+    using Parent = std::atomic< vm::CowHeap::Snapshot >;
 
     ex.start();
     ss::search(
@@ -90,8 +90,8 @@ void Verify::run()
             {
                 ext.materialise( to.snap, sizeof( from ), ex.pool() );
                 Parent &parent = *ext.machinePointer< Parent >( to.snap );
-                if ( !parent.load().snap.slab() )
-                    parent = from;
+                if ( !parent.load().slab() )
+                    parent = from.snap;
                 ++edgecount;
                 if ( to.error )
                 {
@@ -125,14 +125,15 @@ void Verify::run()
     vm::Eval< vm::Program, decltype( dbg ), vm::value::Void > dbg_eval( dbg.program(), dbg );
     dbg_eval.run();
 
-    std::deque< vm::explore::State > trace;
+    std::deque< vm::CowHeap::Snapshot > trace;
     std::vector< int > choices;
     std::cout << "found an error" << std::endl;
 
-    while ( error.snap.slab() )
+    auto i = error.snap;
+    while ( i.slab() )
     {
-        trace.push_front( error );
-        error = *ext.machinePointer< Parent >( error.snap );
+        trace.push_front( i );
+        i = *ext.machinePointer< vm::CowHeap::Snapshot >( i );
     }
     auto last = trace.begin(), next = last;
     next ++;
@@ -140,8 +141,8 @@ void Verify::run()
                 ss::listen(
                     [&]( auto from, auto to, auto label )
                     {
-                        if ( hasher.equal( from.snap, last->snap ) &&
-                             hasher.equal( to.snap, next->snap ) )
+                        if ( hasher.equal( from.snap, *last ) &&
+                             hasher.equal( to.snap, *next ) )
                         {
                             for ( auto l : label.first )
                                 std::cerr << l << std::endl;
@@ -162,7 +163,7 @@ void Verify::run()
     std::cout << std::endl;
 
     vm::DebugNode< vm::Program, vm::CowHeap > dn(
-            ex._ctx, trace.back().snap, ex._ctx.get( _VM_CR_State ).pointer, 0,
+            ex._ctx, trace.back(), ex._ctx.get( _VM_CR_State ).pointer, 0,
             vm::DNKind::Object, dbg._state_type, dbg._state_di_type );
     DNSet visited;
     dump( dn, visited );
