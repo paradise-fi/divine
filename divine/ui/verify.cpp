@@ -55,6 +55,9 @@ void Verify::run()
     vm::explore::State error;
     bool error_found = false;
 
+    if ( !_threads )
+        _threads = std::min( 4u, std::thread::hardware_concurrency() );
+
     std::atomic< int > edgecount( 0 ), statecount( 0 );
     std::atomic< bool > done( false );
 
@@ -84,7 +87,7 @@ void Verify::run()
 
     ex.start();
     ss::search(
-        ss::Order::PseudoBFS, ex, 1,
+        ss::Order::PseudoBFS, ex, _threads,
         ss::listen(
             [&]( auto from, auto to, auto label )
             {

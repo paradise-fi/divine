@@ -63,7 +63,7 @@ struct Verify : WithBC
 {
     int _max_mem = 256; // MB
     int _max_time = 100;  // seconds
-    int _jobs = 1;
+    int _threads = 0;
     bool _no_counterexample = false;
     std::string _report;
     std::string _statistics;
@@ -73,7 +73,6 @@ struct Verify : WithBC
         std::cerr << "Verify model " << _file << " with given options:" << std::endl;
         std::cerr << "Max. memory allowed [MB]: " << _max_mem << std::endl;
         std::cerr << "Max. time allowed [sec]: " << _max_time << std::endl;
-        std::cerr << "Number of jobs: " << _jobs << std::endl;
         if ( _no_counterexample )
             std::cerr << "Do not print counter example." << std::endl;
         else
@@ -222,6 +221,7 @@ struct CLI : Interface
             .option( "[{file}]", &Cc::_files, "input file(s) to compile (C or C++)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
+            .option( "[--threads {int}|-T {int}]", &Verify::_threads, "number of threads to use"s )
             .option( "[--max-memory {int}]", &Verify::_max_mem, "max memory allowed to use [in MB]"s )
             .option( "[--max-time {int}]", &Verify::_max_time, "max time allowed to take [in sec]"s )
             .option( "[--no-counterexample]", &Verify::_no_counterexample,
