@@ -183,52 +183,48 @@ struct ApproximateCounter {
         Shared( const Shared& ) = delete;
     };
 
-    Shared &shared;
-    intptr_t local;
+    std::shared_ptr< Shared > _s;
+    intptr_t _l;
 
-    ApproximateCounter( Shared &s ) : shared( s ), local( 0 ) {}
+    ApproximateCounter() : _s( new Shared ), _l( 0 ) {}
     ~ApproximateCounter() { sync(); }
 
     void sync() {
-        intptr_t value = shared.counter;
+        intptr_t value = _s->counter;
 
-        while ( local > 0 ) {
-            if ( value >= local ) {
-                if ( shared.counter.compare_exchange_weak( value, value - local ) )
-                    local = 0;
+        while ( _l > 0 ) {
+            if ( value >= _l ) {
+                if ( _s->counter.compare_exchange_weak( value, value - _l ) )
+                    _l = 0;
             } else {
-                if ( shared.counter.compare_exchange_weak( value, 0 ) )
-                    local = 0;
+                if ( _s->counter.compare_exchange_weak( value, 0 ) )
+                    _l = 0;
             }
         }
     }
 
     ApproximateCounter& operator++() {
-        if ( local == 0 ) {
-            shared.counter += step;
-            local = step;
+        if ( _l == 0 ) {
+            _s->counter += step;
+            _l = step;
         }
 
-        --local;
+        -- _l;
 
         return *this;
     }
 
     ApproximateCounter &operator--() {
-        ++local;
+        ++ _l;
         return *this;
     }
 
-    // NB. sync() must be called manually as this method is called too often
-    bool isZero() {
-        return shared.counter == 0;
-    }
+    // NB. may return false spuriously; call sync() to ensure a correct result
+    operator bool() { return _s->counter; }
+    bool operator!() { return _s->counter == 0; }
 
-    void reset() { shared.counter = 0; }
+    void reset() { _s->counter = 0; } /* fixme misleading? */
 
-    ApproximateCounter( const ApproximateCounter &a )
-        : shared( a.shared ), local( a.local )
-    {}
     ApproximateCounter operator=( const ApproximateCounter & ) = delete;
 };
 
@@ -670,10 +666,9 @@ struct Utils {
         int produce;
         int consume;
 
-        template< typename D, typename C >
-        CounterWorker( D &d, C &c ) :
-            detector( d ),
-            counter( c ),
+        CounterWorker( StartDetector det, ApproximateCounter ctr ) :
+            detector( det ),
+            counter( ctr ),
             produce( 0 ),
             consume( 0 )
         {}
@@ -694,11 +689,12 @@ struct Utils {
         }
     };
 
-    void processCounter() {
+    TEST(approximateCounter)
+    {
         StartDetector det;
-        ApproximateCounter::Shared counterShared;
-        std::vector< CounterWorker > threads{ peers,
-            CounterWorker{ det, counterShared } };
+        ApproximateCounter ctr;
+
+        std::vector< CounterWorker > threads{ peers, CounterWorker{ det, ctr } };
 
 #if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
         alarm( 5 );
@@ -720,15 +716,13 @@ struct Utils {
 
         for ( auto &w : threads )
             w.join();
-        ASSERT_EQ( counterShared.counter.load(), 0 );
+        ASSERT_EQ( ctr._s->counter.load(), 0 );
     }
 
-    TEST(approximateCounter) {
-        processCounter();
-    };
 };
 
 }
+
 }
 
 #ifdef BRICK_BENCHMARK_REG
