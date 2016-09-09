@@ -484,6 +484,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     using typename Base::Hasher;
     using typename Base::value_type;
     using typename Base::iterator;
+    using Base::hasher;
 
     enum class Resolution {
         Success, // the item has been inserted successfully
@@ -566,7 +567,6 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
     struct Shared
     {
-        Hasher hasher;
         std::vector< Row > table;
         std::vector< std::atomic< unsigned short > > tableWorkers;
         std::atomic< unsigned > currentRow;
@@ -575,8 +575,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         std::atomic< size_t > used;
         std::atomic< bool > growing;
 
-        Shared( const Hasher &h, unsigned maxGrows )
-            : hasher( h ), table( maxGrows ), tableWorkers( maxGrows ), currentRow( 0 ),
+        Shared( unsigned maxGrows )
+            : table( maxGrows ), tableWorkers( maxGrows ), currentRow( 0 ),
               availableSegments( 0 ), used( 0 ), growing( false )
         {}
     };
@@ -600,12 +600,12 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
 
     iterator insert( value_type x )
     {
-        return insertHinted( x, _s->hasher.hash( x ).first );
+        return insertHinted( x, hasher.hash( x ).first );
     }
 
     template< typename T >
     iterator find( T x ) {
-        return findHinted( x, _s->hasher.hash( x ).first );
+        return findHinted( x, hasher.hash( x ).first );
     }
 
     int count( value_type x ) { return find( x ).valid() ? 1 : 0; }
@@ -677,7 +677,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
             Cell &cell = row[ Base::index( h, i, mask ) ];
             if ( cell.empty() )
                 return Find( Resolution::NotFound );
-            if ( cell.is( v, h, _s->hasher ) )
+            if ( cell.is( v, h, hasher ) )
                 return Find( Resolution::Found, &cell );
             if ( cell.invalid() )
                 return Find( Resolution::Growing );
@@ -712,7 +712,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 if ( !force && changed( _l.currentRow ) )
                     return Insert( Resolution::Growing );
             }
-            if ( cell.is( x, h, _s->hasher ) )
+            if ( cell.is( x, h, hasher ) )
                 return Insert( Resolution::Found, &cell );
 
             if ( !force && changed( _l.currentRow ) )
@@ -792,7 +792,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                 continue;
 
             value_type value = old.fetch();
-            Resolution r = insertCell< true >( next, value, old.hash( _s->hasher ) ).r;
+            Resolution r = insertCell< true >( next, value, old.hash( hasher ) ).r;
             switch( r ) {
                 case Resolution::Success:
                     break;
@@ -851,7 +851,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     }
 
     explicit _ConcurrentHashSet( Hasher h = Hasher(), unsigned maxGrows = 64 )
-        : Base( h ), _s( new Shared( h, maxGrows ) )
+        : Base( h ), _s( new Shared( maxGrows ) )
     {
         initialSize( 16 ); // by default
     }
@@ -866,7 +866,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     }
 
     hash64_t hash( const value_type &t ) { return hash128( t ).first; }
-    hash128_t hash128( const value_type &t ) { return _s->hasher.hash( t ); }
+    hash128_t hash128( const value_type &t ) { return hasher.hash( t ); }
 
     _ConcurrentHashSet( const _ConcurrentHashSet &o )
         : Base( o ), _s( o._s )
