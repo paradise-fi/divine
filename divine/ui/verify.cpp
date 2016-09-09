@@ -118,7 +118,7 @@ void Verify::run()
         return;
     }
 
-    auto hasher = ex._states->hasher; /* fixme */
+    auto hasher = ex._states.hasher; /* fixme */
 
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( _bc->program() );
     vm::setup::boot( dbg );
