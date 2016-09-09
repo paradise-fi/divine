@@ -309,25 +309,36 @@ struct SimpleHeapShared
     std::atomic< int > seq;
 };
 
+struct SnapPointerRep
+{
+    uint32_t slab;
+    uint16_t chunk, tag;
+    static const int slab_bits = 20, chunk_bits = 16, tag_bits = 16;
+};
+
 template< typename Self, typename Shared >
 struct SimpleHeap : HeapMixin< Self >
 {
     Self &self() { return *static_cast< Self * >( this ); }
 
-    using Pool = mem::Pool<>;
-    using Internal = Pool::Pointer;
+    using ObjPool = mem::Pool<>;
+    using SnapPool = mem::Pool< SnapPointerRep >;
+
+    using Internal = ObjPool::Pointer;
+    using Snapshot = SnapPool::Pointer;
+
     using Shadows = PooledShadow< Internal >;
     using PointerV = value::Pointer;
     using SnapItem = std::pair< int, Internal >;
 
-    Pool _objects;
-    Pool _snapshots;
+    ObjPool _objects;
+    SnapPool _snapshots;
     Shadows _shadows;
 
     struct Local
     {
-        std::map< int, mem::Pool<>::Pointer > exceptions;
-        Internal snapshot;
+        std::map< int, Internal > exceptions;
+        Snapshot snapshot;
     } _l;
 
     std::shared_ptr< Shared > _s;
@@ -336,7 +347,7 @@ struct SimpleHeap : HeapMixin< Self >
     void made( HeapPointer ) {}
 
     SimpleHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
-    void reset() { _s->seq = 1; _l.exceptions.clear(); _l.snapshot = Internal(); }
+    void reset() { _s->seq = 1; _l.exceptions.clear(); _l.snapshot = Snapshot(); }
 
     Shadows::Loc shloc( HeapPointer p, Internal i )
     {
@@ -503,8 +514,6 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
     {
         std::unordered_set< int > writable;
     } _ext;
-
-    using Snapshot = Internal;
 
     void made( HeapPointer p )
     {

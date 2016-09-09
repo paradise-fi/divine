@@ -82,7 +82,7 @@ void Draw::run()
 
     int edgecount = 0, statecount = 0;
 
-    typename vm::CowHeap::Pool ext;
+    typename vm::CowHeap::SnapPool ext;
 
     int seq = 0;
 

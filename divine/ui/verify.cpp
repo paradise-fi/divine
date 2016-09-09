@@ -79,7 +79,7 @@ void Verify::run()
             }
         } );
 
-    typename vm::CowHeap::Pool ext;
+    typename vm::CowHeap::SnapPool ext;
     using Parent = std::atomic< vm::CowHeap::Snapshot >;
 
     ex.start();
