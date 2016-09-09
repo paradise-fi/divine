@@ -531,7 +531,7 @@ struct Chunked
         if ( incoming.empty() )
             incoming = q->pop();
         if ( incoming.empty() )
-            return T();
+            UNREACHABLE( "attempted to pop an empty queue" );
         auto x = incoming.front();
         incoming.pop_front();
         return x;
