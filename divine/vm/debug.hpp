@@ -120,7 +120,8 @@ struct DebugNode
         return llvm::getDISubprogram( llvmfunction() );
     }
 
-    auto sortkey() { return std::make_tuple( _address, _offset, _di_type ); }
+    auto sortkey() { return std::make_tuple( _address, _offset,
+                                             _kind == DNKind::Frame ? nullptr : _di_type ); }
 
     bool valid();
     void value( YieldAttr yield );
