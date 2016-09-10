@@ -550,10 +550,6 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
             auto a_def = shadows().defined( a_shloc, size ), b_def = shadows().defined( b_shloc, size );
             if ( !std::equal( a_def.begin(), a_def.end(), b_def.begin(), b_def.end() ) )
                 return false;
-            auto a_ptr = shadows().pointers( a_shloc, size ),
-                 b_ptr = shadows().pointers( b_shloc, size );
-            if ( !std::equal( a_ptr.begin(), a_ptr.end(), b_ptr.begin(), b_ptr.end() ) )
-                return false;
             auto a_type = shadows().type( a_shloc, size ), b_type = shadows().type( b_shloc, size );
             if ( !std::equal( a_type.begin(), a_type.end(), b_type.begin(), b_type.end() ) )
                 return false;
