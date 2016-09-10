@@ -142,14 +142,19 @@ Thread *Scheduler::choose_live_thread() noexcept {
     __vm_trace( _VM_T_SchedChoice, pi );
     int sel = __vm_choose( count );
     auto thr = get_threads();
-    while ( sel != 0 ) {
+    while ( sel != 0 )
+    {
         if ( thr->active() )
             --sel;
         ++thr;
     }
 
+    while ( !thr->active() )
+        ++thr;
+
     _cf->active_thread = thr - get_threads();
-    __dios_assert_v( thr->_frame, "Frame is invalid" );
+    __dios_assert_v( thr->active(), "thread is inactive" );
+    __dios_assert_v( thr->_frame, "frame is invalid" );
     return thr;
 }
 
