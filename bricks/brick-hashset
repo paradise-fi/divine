@@ -581,7 +581,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         {}
     };
 
-    const std::shared_ptr< Shared > _s;
+    std::shared_ptr< Shared > _s;
 
     static size_t nextSize( size_t s ) {
         if ( s < 512 * 1024 )
