@@ -529,18 +529,35 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
 
     struct ObjHasher
     {
-        ObjPool *_pool;
+        CowHeap *_heap;
+        auto &objects() { return _heap->_objects; }
+        auto &shadows() { return _heap->_shadows; }
 
         auto hash( Internal i )
         {
-            return brick::hash::spooky( _pool->dereference( i ), _pool->size( i ) );
+            /* TODO also hash shadows for better precision? */
+            return brick::hash::spooky( objects().dereference( i ), objects().size( i ) );
         }
 
         bool equal( Internal a, Internal b )
         {
-            if ( _pool->size( a ) != _pool->size( b ) )
+            int size = objects().size( a );
+            if ( objects().size( b ) != size )
                 return false;
-            return ::memcmp( _pool->dereference( a ), _pool->dereference( b ), _pool->size( a ) ) == 0;
+            if( ::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
+                return false;
+            Shadows::Loc a_shloc( a, Shadows::Anchor(), 0 ), b_shloc( b, Shadows::Anchor(), 0 );
+            auto a_def = shadows().defined( a_shloc, size ), b_def = shadows().defined( b_shloc, size );
+            if ( !std::equal( a_def.begin(), a_def.end(), b_def.begin(), b_def.end() ) )
+                return false;
+            auto a_ptr = shadows().pointers( a_shloc, size ),
+                 b_ptr = shadows().pointers( b_shloc, size );
+            if ( !std::equal( a_ptr.begin(), a_ptr.end(), b_ptr.begin(), b_ptr.end() ) )
+                return false;
+            auto a_type = shadows().type( a_shloc, size ), b_type = shadows().type( b_shloc, size );
+            if ( !std::equal( a_type.begin(), a_type.end(), b_type.begin(), b_type.end() ) )
+                return false;
+            return true;
         }
     };
 
@@ -550,7 +567,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         brick::hashset::Concurrent< Internal, ObjHasher > objects;
     } _ext;
 
-    void setupHT() { _ext.objects.hasher._pool = &_objects; }
+    void setupHT() { _ext.objects.hasher._heap = this; }
 
     CowHeap() { setupHT(); }
     CowHeap( const CowHeap &o ) : Super( o ), _ext( o._ext )
