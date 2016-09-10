@@ -289,14 +289,14 @@ struct Eval
         Fault _fault;
         HeapPointer _frame;
         CodePointer _pc;
-        bool _trace;
+        bool _trace, _double;
 
-        FaultStream( Context &c, Fault f, HeapPointer frame, CodePointer pc, bool t )
-            : _ctx( &c ), _fault( f ), _frame( frame ), _pc( pc ), _trace( t )
+        FaultStream( Context &c, Fault f, HeapPointer frame, CodePointer pc, bool t, bool dbl )
+            : _ctx( &c ), _fault( f ), _frame( frame ), _pc( pc ), _trace( t ), _double( dbl )
         {}
 
         FaultStream( FaultStream &&s )
-            : FaultStream( *s._ctx, s._fault, s._frame, s._pc, s._trace )
+            : FaultStream( *s._ctx, s._fault, s._frame, s._pc, s._trace, s._double )
         {
             s._ctx = nullptr;
         }
@@ -314,12 +314,26 @@ struct Eval
                 std::copy( s.begin(), s.end(), _ctx->heap().unsafe_bytes( ptr.cooked() ).begin() );
                 _ctx->trace( TraceText{ ptr } );
             }
-            _ctx->fault( _fault, _frame, _pc );
+            if ( _double )
+                _ctx->doublefault();
+            else
+                _ctx->fault( _fault, _frame, _pc );
         }
     };
 
     FaultStream fault( Fault f )
     {
+        PointerV fr( frame() );
+        PointerV fpc;
+        while ( !fr.cooked().null() )
+        {
+            heap().read_shift( fr, fpc );
+            if ( fpc.cooked().object() == context().get( _VM_CR_FaultHandler ).pointer.object() )
+                return FaultStream( context(), f, nullPointer( PointerType::Heap ),
+                                    nullPointer( PointerType::Code ), true, true );
+            heap().read( fr.cooked(), fr );
+        }
+
         if ( frame().null() )
             return fault( f, nullPointer( PointerType::Heap ),
                              nullPointer( PointerType::Code ) );
@@ -329,7 +343,7 @@ struct Eval
 
     FaultStream fault( Fault f, HeapPointer frame, CodePointer c )
     {
-        FaultStream fs( context(), f, frame, c, true );
+        FaultStream fs( context(), f, frame, c, true, false );
         return fs;
     }
 
