@@ -48,11 +48,20 @@ namespace heap {
 
 template< typename H1, typename H2 >
 int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
-             std::unordered_set< HeapPointer > &visited )
+             std::unordered_map< HeapPointer, int > &v1,
+             std::unordered_map< HeapPointer, int > &v2, int &seq )
 {
-    if ( visited.count( r1 ) )
-        return 0;
-    visited.insert( r1 );
+    if ( v1.count( r1 ) && v2.count( r2 ) )
+        return v1[ r1 ] - v2[ r2 ];
+
+    if ( v1.count( r1 ) )
+        return -1;
+    if ( v2.count( r2 ) )
+        return 1;
+
+    v1[ r1 ] = seq;
+    v2[ r2 ] = seq;
+    ++ seq;
 
     if ( h1.valid( r1 ) != h2.valid( r2 ) )
         return h1.valid( r1 ) - h2.valid( r2 );
@@ -93,6 +102,7 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
 
         /* recurse */
         value::Pointer p1p, p2p;
+        ASSERT_EQ( p1i->offset(), p2i->offset() );
         r1.offset( p1i->offset() );
         r2.offset( p1i->offset() );
         h1.read( r1, p1p );
@@ -102,7 +112,7 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
         if ( p1pp.type() == p2pp.type() )
         {
             if ( p1pp.type() == PointerType::Heap )
-                pdiff = compare( h1, h2, p1pp, p2pp, visited );
+                pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq );
             else if ( p1pp.object() == p2pp.object() )
                 pdiff = p1pp.offset() - p2pp.offset();
             else
@@ -110,6 +120,7 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
         } else pdiff = int( p1pp.type() ) - int( p2pp.type() );
         if ( pdiff )
             return pdiff;
+        ASSERT_EQ( p1i->size(), p2i->size() );
         offset += p1i->size();
         ++ p1i; ++ p2i;
     }
@@ -152,8 +163,9 @@ void hash( Heap &heap, HeapPointer root,
 template< typename H1, typename H2 >
 int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2 )
 {
-    std::unordered_set< HeapPointer > visited;
-    return compare( h1, h2, r1, r2, visited );
+    std::unordered_map< HeapPointer, int > v1, v2;
+    int seq = 0;
+    return compare( h1, h2, r1, r2, v1, v2, seq );
 }
 
 template< typename Heap >
