@@ -816,7 +816,16 @@ struct Eval
             if ( action == _VM_CA_Set && reg == _VM_CR_Flags )
                 context().set( reg, operandCk< PtrIntV >( idx++ ).cooked() );
             else if ( action == _VM_CA_Set && reg == _VM_CR_PC )
-                NOT_IMPLEMENTED(); /* needs to switchBB */
+            {
+                auto ptr = operandPtr( idx++ ).cooked();
+                if ( ptr.type() == PointerType::Code )
+                    switchBB( ptr );
+                else
+                {
+                    fault( _VM_F_Hypercall ) << "invalid pointer type when setting _VM_CR_PC";
+                    return;
+                }
+            }
             else if ( action == _VM_CA_Set )
             {
                 context().sync_pc();
