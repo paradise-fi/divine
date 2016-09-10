@@ -98,6 +98,11 @@ struct Context
 
     void ptr2i( Location l, HeapInternal i ) { _ptr2i[ l ] = i; }
     void ptr2i( _VM_ControlRegister r, HeapInternal i ) { _ptr2i[ r ] = i; }
+    void flush_ptr2i()
+    {
+        for ( int i = 0; i <= _VM_CR_Frame; ++i )
+            _ptr2i[ i ] = _heap.ptr2i( get( Location( i ) ).pointer );
+    }
 
     Context( Program &p ) : _program( &p ) {}
     Context( Program &p, const Heap &h ) : _program( &p ), _heap( h ) {}

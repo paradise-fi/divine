@@ -144,6 +144,7 @@ struct Explore
         if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
         {
             _initial.snap = _ctx.heap().snapshot();
+            _ctx.flush_ptr2i();
             _states.insert( _initial.snap );
         }
     }
@@ -171,6 +172,7 @@ struct Explore
             {
                 explore::State st;
                 auto snap = _ctx.heap().snapshot();
+                _ctx.flush_ptr2i();
                 auto r = _states.insert( snap );
                 st.snap = *r;
                 st.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
