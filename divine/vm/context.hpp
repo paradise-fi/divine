@@ -141,11 +141,16 @@ struct Context
             _cfl_visited.insert( pc );
     }
 
-    void check_interrupt()
+    template< typename Eval >
+    void check_interrupt( Eval &eval )
     {
         if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
             return;
-        ASSERT_EQ( ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode, 0 );
+        if( ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode, 0 )
+        {
+            eval.fault( _VM_F_Control ) << " illegal interrupt in kernel mode";
+            return;
+        }
         sync_pc();
         auto interrupted = get( _VM_CR_Frame ).pointer;
         set( _VM_CR_Frame, get( _VM_CR_IntFrame ).pointer );

@@ -557,7 +557,7 @@ struct Eval
             context().set( _VM_CR_Frame, nullPointer() );
             heap().free( fr.cooked() );
             if ( usermode )
-                context().check_interrupt();
+                context().check_interrupt( *this );
             return;
         }
 
@@ -1007,7 +1007,7 @@ struct Eval
     void advance()
     {
         ASSERT_EQ( CodePointer( context().get( _VM_CR_PC ).pointer ), pc() );
-        context().check_interrupt();
+        context().check_interrupt( *this );
         if ( !context().frame().null() )
             context().set( _VM_CR_PC, pc() + 1 );
         _instruction = &program().instruction( pc() );
