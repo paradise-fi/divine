@@ -20,6 +20,7 @@
 
 #include <brick-types>
 #include <brick-hash>
+#include <brick-hashset>
 #include <unordered_set>
 
 #include <divine/vm/value.hpp>
@@ -522,10 +523,36 @@ struct MutableHeap : SimpleHeap< MutableHeap, SimpleHeapShared >
 
 struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
 {
+    using Super = SimpleHeap< CowHeap, SimpleHeapShared >;
+
+    struct ObjHasher
+    {
+        ObjPool *_pool;
+
+        auto hash( Internal i )
+        {
+            return brick::hash::spooky( _pool->dereference( i ), _pool->size( i ) );
+        }
+
+        bool equal( Internal a, Internal b )
+        {
+            if ( _pool->size( a ) != _pool->size( b ) )
+                return false;
+            return ::memcmp( _pool->dereference( a ), _pool->dereference( b ), _pool->size( a ) ) == 0;
+        }
+    };
+
     struct Ext
     {
         std::unordered_set< int > writable;
+        brick::hashset::Concurrent< Internal, ObjHasher > objects;
     } _ext;
+
+    void setupHT() { _ext.objects.hasher._pool = &_objects; }
+
+    CowHeap() { setupHT(); }
+    CowHeap( const CowHeap &o ) : Super( o ), _ext( o._ext ) { setupHT(); }
+    CowHeap &operator=( const CowHeap &o ) { _ext = o._ext; setupHT(); return *this; }
 
     void made( HeapPointer p )
     {
@@ -534,7 +561,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
 
     void reset()
     {
-        SimpleHeap< CowHeap, SimpleHeapShared >::reset();
+        Super::reset();
         _ext.writable.clear();
     }
 
@@ -557,6 +584,15 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         _shadows.copy( _shadows, oldloc, newloc, sz, []( auto, auto ) {} );
         std::copy( oldbytes.begin(), oldbytes.end(), newbytes.begin() );
         return obj;
+    }
+
+    SnapItem dedup( SnapItem si )
+    {
+        auto r = _ext.objects.insert( si.second );
+        if ( !r.isnew() )
+            _objects.free( si.second );
+        si.second = *r;
+        return si;
     }
 
     Snapshot snapshot()
@@ -593,6 +629,8 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
                 snap++;
             if ( _objects.valid( except.second ) )
             {
+                auto d = dedup( except );
+                except.second = d.second;
                 *si++ = except;
             }
         }
