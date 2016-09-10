@@ -60,8 +60,9 @@ struct Empty
 
 struct DefaultPoolPointerRep
 {
-    static const int slab_bits = 16, chunk_bits = 16, tag_bits = 0;
-    uint16_t slab, chunk; Empty tag;
+    static const int slab_bits = 16, chunk_bits = 15, tag_bits = 1;
+    uint16_t slab, chunk:15;
+    uint16_t tag:1;
 };
 
 /*
