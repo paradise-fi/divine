@@ -88,8 +88,14 @@ struct Context
     Register get( Location l ) const { ASSERT_LT( l, Program::Slot::Invalid ); return _reg[ l ]; }
     Register &ref( _VM_ControlRegister r ) { return _reg[ r ]; }
 
-    HeapInternal ptr2i( _VM_ControlRegister r ) { return _ptr2i[ r ]; }
-    HeapInternal ptr2i( Location l ) { ASSERT_LT( l, Program::Slot::Invalid ); return _ptr2i[ l ]; }
+    HeapInternal ptr2i( Location l )
+    {
+        ASSERT_LT( l, Program::Slot::Invalid );
+        ASSERT_EQ( _heap.ptr2i( _reg[ l ].pointer ), _ptr2i[ l ] );
+        return _ptr2i[ l ];
+    }
+    HeapInternal ptr2i( _VM_ControlRegister r ) { return ptr2i( Location( r ) ); }
+
     void ptr2i( Location l, HeapInternal i ) { _ptr2i[ l ] = i; }
     void ptr2i( _VM_ControlRegister r, HeapInternal i ) { _ptr2i[ r ] = i; }
 
