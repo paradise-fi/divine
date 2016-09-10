@@ -64,11 +64,6 @@ struct Context : vm::Context< Program, CowHeap >
         return 0;
     }
 
-    void doublefault()
-    {
-        set( _VM_CR_Frame, nullPointer() );
-    }
-
     void trace( TraceText tt )
     {
         _trace.push_back( heap().read_string( tt.text ) );
