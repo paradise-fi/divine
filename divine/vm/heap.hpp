@@ -629,7 +629,6 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
 
     Snapshot snapshot() const
     {
-        _ext.writable.clear();
         int count = 0;
 
         if ( _l.exceptions.empty() )
@@ -666,11 +665,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
             if ( snap != snap_end() && snap->first == except.first )
                 snap++;
             if ( _objects.valid( except.second ) )
-            {
-                auto d = dedup( except );
-                except.second = d.second;
-                *si++ = except;
-            }
+                *si++ = dedup( except );
         }
 
         while ( snap != snap_end() )
@@ -678,6 +673,10 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
             *si++ = *snap++;
         }
         ASSERT_EQ( si, _snapshots.machinePointer< SnapItem >( s ) + count );
+
+        _l.exceptions.clear();
+        _ext.writable.clear();
+        _l.snapshot = s;
 
         return s;
     }
