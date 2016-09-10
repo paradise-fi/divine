@@ -152,7 +152,7 @@ struct Context
     {
         if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
             return;
-        if( ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode, 0 )
+        if( ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode )
         {
             eval.fault( _VM_F_Control ) << " illegal interrupt in kernel mode";
             return;
