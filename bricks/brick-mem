@@ -131,7 +131,14 @@ struct Pool
 
         explicit operator bool() const { return raw(); }
         bool operator!() const { return !raw(); }
-        bool operator<= ( Pointer o ) const { return raw() <= o.raw(); }
+        bool operator<= ( Pointer o ) const
+        {
+            if ( slab() < o.slab() )
+                return true;
+            if ( slab() == o.slab() )
+                return chunk() <= o.chunk();
+            return false;
+        }
     };
 
     struct BlockHeader
