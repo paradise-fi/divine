@@ -583,6 +583,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
     {
         if ( _ext.writable.count( p.object() ) )
             return i;
+        ASSERT_EQ( _l.exceptions.count( p.object() ), 0 );
         _ext.writable.insert( p.object() );
         p.offset( 0 );
         int sz = size( p, i );
@@ -614,6 +615,9 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         _ext.writable.clear();
         int count = 0;
 
+        if ( _l.exceptions.empty() )
+            return _l.snapshot;
+
         auto snap = snap_begin();
 
         for ( auto &except : _l.exceptions )
@@ -628,6 +632,9 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
 
         while ( snap != snap_end() )
             ++ snap, ++ count;
+
+        if ( !count )
+            return Snapshot();
 
         auto s = _snapshots.allocate( count * sizeof( SnapItem ) );
         auto si = _snapshots.machinePointer< SnapItem >( s );
