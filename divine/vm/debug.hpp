@@ -101,7 +101,7 @@ struct DebugNode
     GenericPointer address() { return _address; }
     Snapshot snapshot() { return _snapshot; }
 
-    CodePointer pc()
+    GenericPointer pc()
     {
         ASSERT_EQ( kind(), DNKind::Frame );
         PointerV pc;

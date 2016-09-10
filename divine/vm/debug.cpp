@@ -189,7 +189,8 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
 
     if ( _kind == DNKind::Frame )
     {
-        if ( pc().null() )
+        yield( "@pc", brick::string::fmt( pc() ) );
+        if ( pc().null() || pc().type() != PointerType::Code )
             return;
         auto *insn = &program.instruction( pc() );
         if ( insn->op )
@@ -219,7 +220,7 @@ void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
     for ( auto &i : instructions )
     {
         eval._instruction = &i;
-        out << ( iter == pc() ? ">>" : "  " );
+        out << ( iter == CodePointer( pc() ) ? ">>" : "  " );
         if ( i.op )
             out << print::instruction( eval, 2 ) << std::endl;
         else
