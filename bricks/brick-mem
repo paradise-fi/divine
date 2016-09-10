@@ -102,9 +102,9 @@ struct Pool
 
         PointerRep _rep;
 
-        auto slab() { return _rep.slab; }
-        auto chunk() { return _rep.chunk; }
-        auto tag() { return _rep.tag; }
+        auto slab() const { return _rep.slab; }
+        auto chunk() const { return _rep.chunk; }
+        auto tag() const { return _rep.tag; }
 
         void slab( SlabT s ) { _rep.slab = s; }
         void chunk( ChunkT c ) { _rep.chunk = c; }
