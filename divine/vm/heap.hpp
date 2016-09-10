@@ -553,8 +553,20 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
     void setupHT() { _ext.objects.hasher._pool = &_objects; }
 
     CowHeap() { setupHT(); }
-    CowHeap( const CowHeap &o ) : Super( o ), _ext( o._ext ) { setupHT(); }
-    CowHeap &operator=( const CowHeap &o ) { _ext = o._ext; setupHT(); return *this; }
+    CowHeap( const CowHeap &o ) : Super( o ), _ext( o._ext )
+    {
+        setupHT();
+        restore( o.snapshot() );
+    }
+
+    CowHeap &operator=( const CowHeap &o )
+    {
+        Super::operator=( o );
+        _ext = o._ext;
+        setupHT();
+        restore( o.snapshot() );
+        return *this;
+    }
 
     void made( HeapPointer p )
     {
