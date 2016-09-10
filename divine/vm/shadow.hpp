@@ -44,13 +44,13 @@ struct InValue {};
 template< typename Proxy, typename Pool >
 struct BitContainer
 {
-    struct iterator
+    struct iterator : std::iterator< std::forward_iterator_tag, Proxy >
     {
         uint8_t *_base; int _pos;
-        Proxy operator*() { return Proxy( _base, _pos ); }
-        Proxy operator->() { return Proxy( _base, _pos ); }
+        Proxy operator*() const { return Proxy( _base, _pos ); }
+        Proxy operator->() const { return Proxy( _base, _pos ); }
         iterator &operator++() { _pos ++; return *this; }
-        iterator operator+( int off ) { auto r = *this; r._pos += off; return r; }
+        iterator operator+( int off ) const { auto r = *this; r._pos += off; return r; }
         iterator( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
         bool operator!=( iterator o ) const { return _base != o._base || _pos != o._pos; }
         bool operator==( iterator o ) const { return _base == o._base && _pos == o._pos; }
@@ -183,8 +183,8 @@ struct PooledShadow
                 ASSERT( *i == ShadowType::Pointer1 || *i == ShadowType::Exception );
             }
             proxy *operator->() { return this; }
-            int offset() { return _i._pos - _parent->types.begin()._pos; }
-            int size()
+            int offset() const { return _i._pos - _parent->types.begin()._pos; }
+            int size() const
             {
                 if ( *_i == ShadowType::Pointer1 && *(_i + 4) == ShadowType::Pointer2 )
                     return 8;
@@ -194,7 +194,7 @@ struct PooledShadow
             }
         };
 
-        struct iterator
+        struct iterator : std::iterator< std::forward_iterator_tag, proxy >
         {
             PointerC *_parent;
             t_iterator _self;
@@ -207,8 +207,8 @@ struct PooledShadow
                     _self = _parent->types.end();
             }
             iterator &operator++() { _self = _self + 4; seek(); return *this; }
-            proxy operator*() { return proxy( _parent, _self ); }
-            proxy operator->() { return proxy( _parent, _self ); }
+            proxy operator*() const { return proxy( _parent, _self ); }
+            proxy operator->() const { return proxy( _parent, _self ); }
             bool operator!=( iterator o ) const { return _parent != o._parent || _self != o._self; }
             bool operator==( iterator o ) const { return _parent == o._parent && _self == o._self; }
             iterator( PointerC *p, t_iterator s ) : _parent( p ), _self( s ) {}
