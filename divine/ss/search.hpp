@@ -74,16 +74,13 @@ struct BFS : SearchBase< B, L >
 
         _start.waitForAll( peers );
 
-        while ( _work )
+        while ( _work && !_terminate->load() )
         {
             if ( _q.empty() )
             {
                 _q.flush();
                 _work.sync();
-                if ( _terminate->load() )
-                    break;
-                else
-                    continue;
+                continue;
             }
             auto v = _q.pop();
             this->_b.edges(
