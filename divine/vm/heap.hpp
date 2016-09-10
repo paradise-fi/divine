@@ -622,7 +622,10 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
     {
         auto r = _ext.objects.insert( si.second );
         if ( !r.isnew() )
+        {
+            ASSERT_NEQ( *r, si.second );
             _objects.free( si.second );
+        }
         si.second = *r;
         return si;
     }
