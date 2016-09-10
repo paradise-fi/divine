@@ -240,8 +240,10 @@ struct HeapMixin
     using PointerV = value::Pointer;
 
     Self &self() { return *static_cast< Self * >( this ); }
+    const Self &self() const { return *static_cast< const Self * >( this ); }
 
     auto &shadows() { return self()._shadows; }
+    const auto &shadows() const { return self()._shadows; }
 
     template< typename Internal >
     auto shloc( HeapPointer &p, int &from, int &sz, Internal i )
@@ -274,13 +276,13 @@ struct HeapMixin
     }
 
     template< typename T >
-    void read_shift( PointerV &p, T &t )
+    void read_shift( PointerV &p, T &t ) const
     {
         self().read( p.cooked(), t );
         skip( p, sizeof( typename T::Raw ) );
     }
 
-    std::string read_string( PointerV ptr )
+    std::string read_string( PointerV ptr ) const
     {
         std::string str;
         value::Int< 8, false > c;
@@ -295,7 +297,7 @@ struct HeapMixin
         return str;
     }
 
-    void skip( PointerV &p, int bytes )
+    void skip( PointerV &p, int bytes ) const
     {
         HeapPointer pv = p.cooked();
         pv.offset( pv.offset() + bytes );
@@ -303,7 +305,7 @@ struct HeapMixin
     }
 
     template< typename Internal >
-    HeapBytes unsafe_bytes( HeapPointer p, Internal i, int off, int sz )
+    HeapBytes unsafe_bytes( HeapPointer p, Internal i, int off, int sz ) const
     {
         sz = sz ? sz : self().size( p, i ) - off;
         ASSERT_LEQ( off + sz, self().size( p, i ) );
@@ -311,7 +313,7 @@ struct HeapMixin
         return HeapBytes( start + off, start + off + sz );
     }
 
-    HeapBytes unsafe_bytes( HeapPointer p, int off = 0, int sz = 0 )
+    HeapBytes unsafe_bytes( HeapPointer p, int off = 0, int sz = 0 ) const
     {
         return unsafe_bytes( p, self().ptr2i( p ), off, sz );
     }
@@ -344,11 +346,11 @@ struct SimpleHeap : HeapMixin< Self >
     using PointerV = value::Pointer;
     using SnapItem = std::pair< int, Internal >;
 
-    ObjPool _objects;
-    SnapPool _snapshots;
-    Shadows _shadows;
+    mutable ObjPool _objects;
+    mutable SnapPool _snapshots;
+    mutable Shadows _shadows;
 
-    struct Local
+    mutable struct Local
     {
         std::map< int, Internal > exceptions;
         Snapshot snapshot;
@@ -362,35 +364,35 @@ struct SimpleHeap : HeapMixin< Self >
     SimpleHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
     void reset() { _s->seq = 1; _l.exceptions.clear(); _l.snapshot = Snapshot(); }
 
-    Shadows::Loc shloc( HeapPointer p, Internal i )
+    Shadows::Loc shloc( HeapPointer p, Internal i ) const
     {
         return Shadows::Loc( i, Shadows::Anchor(), p.offset() );
     }
 
-    Shadows::Loc shloc( HeapPointer p ) { return shloc( p, ptr2i( p ) ); }
+    Shadows::Loc shloc( HeapPointer p ) const { return shloc( p, ptr2i( p ) ); }
 
-    uint8_t *unsafe_ptr2mem( HeapPointer, Internal i )
+    uint8_t *unsafe_ptr2mem( HeapPointer, Internal i ) const
     {
         return _objects.machinePointer< uint8_t >( i );
     }
 
-    int snap_size()
+    int snap_size() const
     {
         if ( !_snapshots.valid( _l.snapshot ) )
             return 0;
         return _snapshots.size( _l.snapshot ) / sizeof( SnapItem );
     }
 
-    SnapItem *snap_begin()
+    SnapItem *snap_begin() const
     {
         if ( !_snapshots.valid( _l.snapshot ) )
             return nullptr;
         return _snapshots.machinePointer< SnapItem >( _l.snapshot );
     }
 
-    SnapItem *snap_end() { return snap_begin() + snap_size(); }
+    SnapItem *snap_end() const { return snap_begin() + snap_size(); }
 
-    Internal ptr2i( HeapPointer p )
+    Internal ptr2i( HeapPointer p ) const
     {
         auto hp = _l.exceptions.find( p.object() );
         if ( hp != _l.exceptions.end() )
@@ -444,23 +446,23 @@ struct SimpleHeap : HeapMixin< Self >
         return true;
     }
 
-    bool valid( HeapPointer p )
+    bool valid( HeapPointer p ) const
     {
         if ( !p.object() || int( p.object() ) >= _s->seq )
             return false;
         return ptr2i( p ).slab();
     }
 
-    int size( HeapPointer, Internal i ) { return _objects.size( i ); }
-    int size( HeapPointer p ) { return size( p, ptr2i( p ) ); }
+    int size( HeapPointer, Internal i ) const { return _objects.size( i ); }
+    int size( HeapPointer p ) const { return size( p, ptr2i( p ) ); }
 
     void write( HeapPointer, value::Void ) {}
     void write( HeapPointer, value::Void, Internal ) {}
-    void read( HeapPointer, value::Void& ) {}
-    void read( HeapPointer, value::Void&, Internal ) {}
+    void read( HeapPointer, value::Void& ) const {}
+    void read( HeapPointer, value::Void&, Internal ) const {}
 
     template< typename T >
-    void read( HeapPointer p, T &t, Internal i )
+    void read( HeapPointer p, T &t, Internal i ) const
     {
         using Raw = typename T::Raw;
         ASSERT( valid( p ), p );
@@ -471,7 +473,7 @@ struct SimpleHeap : HeapMixin< Self >
     }
 
     template< typename T >
-    void read( HeapPointer p, T &t ) { read( p, t, ptr2i( p ) ); }
+    void read( HeapPointer p, T &t ) const { read( p, t, ptr2i( p ) ); }
 
     template< typename T >
     Internal write( HeapPointer p, T t, Internal i )
@@ -542,7 +544,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         }
     };
 
-    struct Ext
+    mutable struct Ext
     {
         std::unordered_set< int > writable;
         brick::hashset::Concurrent< Internal, ObjHasher > objects;
@@ -586,7 +588,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         return obj;
     }
 
-    SnapItem dedup( SnapItem si )
+    SnapItem dedup( SnapItem si ) const
     {
         auto r = _ext.objects.insert( si.second );
         if ( !r.isnew() )
@@ -595,7 +597,7 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
         return si;
     }
 
-    Snapshot snapshot()
+    Snapshot snapshot() const
     {
         _ext.writable.clear();
         int count = 0;
