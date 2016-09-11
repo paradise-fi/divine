@@ -554,6 +554,11 @@ struct Eval
         PointerV parent, br;
         heap().read( fr.cooked(), parent );
 
+        collect_allocas( [&]( auto ptr )
+                         {
+                             heap().free( ptr.cooked() );
+                         } );
+
         if ( parent.cooked().null() )
         {
             bool usermode = false;
@@ -684,8 +689,8 @@ struct Eval
         context().set( _VM_CR_PC, target );
     }
 
-    template< typename O >
-    void collect_allocas( O o )
+    template< typename Y >
+    void collect_allocas( Y yield )
     {
         auto &f = program().functions[ pc().function() ];
         for ( auto &i : f.instructions )
@@ -694,14 +699,14 @@ struct Eval
                 PointerV ptr;
                 slot_read( i.result(), ptr );
                 if ( heap().valid( ptr.cooked() ) )
-                    *o++ = ptr;
+                    yield( ptr );
             }
     }
 
     void implement_stacksave()
     {
         std::vector< PointerV > ptrs;
-        collect_allocas( std::back_inserter( ptrs ) );
+        collect_allocas( [&]( PointerV p ) { ptrs.push_back ( p ); } );
         auto r = heap().make( sizeof( IntV::Raw ) + ptrs.size() * PointerBytes );
         auto p = r;
         heap().write_shift( p, IntV( ptrs.size() ) );
@@ -712,8 +717,6 @@ struct Eval
 
     void implement_stackrestore()
     {
-        std::vector< PointerV > ptrs;
-        collect_allocas( std::back_inserter( ptrs ) );
         auto r = operandPtr( 0 );
         IntV count;
         heap().read_shift( r, count );
@@ -721,7 +724,7 @@ struct Eval
             fault( _VM_F_Hypercall ) << " stackrestore with undefined count";
         auto s = r;
 
-        for ( auto ptr : ptrs )
+        collect_allocas( [&]( auto ptr )
         {
             bool retain = false;
             r = s;
@@ -744,7 +747,7 @@ struct Eval
             }
             if ( !retain )
                 heap().free( ptr.cooked() );
-        }
+        } );
     }
 
     void implement_intrinsic( int id ) {
