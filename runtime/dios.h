@@ -142,6 +142,7 @@ struct Context {
     Scheduler *scheduler;
     Syscall *syscall;
     Fault *fault;
+    void *globals;
 
     Context();
 };

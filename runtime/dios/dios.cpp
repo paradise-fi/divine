@@ -15,7 +15,9 @@ namespace __dios {
 Context::Context() :
     scheduler( __dios::new_object< Scheduler >() ),
     syscall( __dios::new_object< Syscall >() ),
-    fault( __dios::new_object< Fault >() ) {}
+    fault( __dios::new_object< Fault >() ),
+    globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
+{}
 
 void init( const _VM_Env *env )
 {
