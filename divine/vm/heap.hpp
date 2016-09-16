@@ -140,36 +140,50 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
 }
 
 template< typename Heap >
-void hash( Heap &heap, HeapPointer root,
-           std::unordered_set< HeapPointer > &visited,
-           brick::hash::jenkins::SpookyState &state )
+int hash( Heap &heap, HeapPointer root,
+          std::unordered_map< int, int > &visited,
+          brick::hash::jenkins::SpookyState &state, int depth )
 {
-    if ( visited.count( root ) )
-        return;
-    visited.emplace( root );
+    auto i = heap.ptr2i( root );
+    int size = heap.size( root, i );
+    uint32_t content_hash = i.tag();
 
-    auto bytes =  heap.unsafe_bytes( root );
-    int offset = 0;
+    visited.emplace( root.object(), content_hash );
 
-    for ( auto pos : heap.pointers( root ) )
+    if ( depth > 5 )
+        return content_hash;
+
+    if ( size > 16 * 1024 )
+        return content_hash; /* skip following pointers in objects over 16k, not worth it */
+
+    int ptr_data[2];
+    auto pointers = heap.shadows().pointers(
+            typename Heap::Shadows::Loc( i, typename Heap::Shadows::Anchor(), 0 ), size );
+    for ( auto pos : pointers )
     {
         value::Pointer ptr;
-        ASSERT_LEQ( offset, pos->offset() );
-        ASSERT_LT( offset, heap.size( root ) );
-        state.update( bytes.begin() + offset, pos->offset() - offset );
+        ASSERT_LT( pos.offset, heap.size( root ) );
         root.offset( pos.offset() );
-        heap.read( root, ptr );
+        heap.read( root, ptr, i );
         auto obj = ptr.cooked();
-        int ptr_off = obj.offset();
-        obj.offset( 0 );
-        state.update( &ptr_off, sizeof( int ) );
+        ptr_data[1] = obj.offset();
         if ( obj.type() == PointerType::Heap && heap.valid( obj ) )
-            hash( heap, obj, visited, state );
-        offset = pos.offset() + PointerBytes;
+        {
+            auto vis = visited.find( obj.object() );
+            if ( vis == visited.end() )
+            {
+                obj.offset( 0 );
+                ptr_data[0] = hash( heap, obj, visited, state, depth + 1 );
+            }
+            else
+                ptr_data[0] = vis->second;
+        }
+        else
+            ptr_data[0] = obj.object();
+        state.update( ptr_data, sizeof( ptr_data ) );
     }
 
-    ASSERT_LEQ( offset, heap.size( root ) );
-    state.update( bytes.begin() + offset, heap.size( root ) - offset );
+    return content_hash;
 }
 
 template< typename H1, typename H2 >
@@ -183,9 +197,9 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2 )
 template< typename Heap >
 brick::hash::hash128_t hash( Heap &heap, HeapPointer root )
 {
-    std::unordered_set< HeapPointer > visited;
+    std::unordered_map< int, int > visited;
     brick::hash::jenkins::SpookyState state( 0, 0 );
-    hash( heap, root, visited, state );
+    hash( heap, root, visited, state, 0 );
     return state.finalize();
 }
 
@@ -546,8 +560,21 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
 
         auto hash( Internal i )
         {
-            /* TODO also hash shadows for better precision? */
-            return brick::hash::spooky( objects().dereference( i ), objects().size( i ) );
+            /* TODO also hash some shadow data into low for better precision? */
+            auto size = objects().size( i );
+            auto base = objects().dereference( i );
+            auto low = brick::hash::spooky( base, size );
+            brick::hash::jenkins::SpookyState high( 0, 0 );
+            int offset = 0;
+            auto pointers = shadows().pointers( Shadows::Loc( i, Shadows::Anchor(), 0 ), size );
+            for ( auto pos : pointers )
+            {
+                high.update( base + offset, pos->offset() - offset );
+                offset = pos->offset() + pos->size();
+            }
+            high.update( base + offset, size - offset );
+            return std::make_pair( ( high.finalize().first & 0xFFFFFFF000000000 ) | /* high 28 bits */
+                                   ( low.first & 0x0000000FFFFFFFF ), low.second );
         }
 
         bool equal( Internal a, Internal b )
