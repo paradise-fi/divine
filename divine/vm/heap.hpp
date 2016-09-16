@@ -71,12 +71,13 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
     if ( !h1.valid( r1 ) )
         return 0;
 
-    int s1 = h1.size( r1 ), s2 = h2.size( r2 );
+    auto i1 = h1.ptr2i( r1 ), i2 = h2.ptr2i( r2 );
+    int s1 = h1.size( r1, i1 ), s2 = h2.size( r2, i2 );
     if ( s1 - s2 )
         return s1 - s2;
-    r1.offset( 0 ); r2.offset( 0 );
-    auto b1 = h1.unsafe_bytes( r1 ), b2 = h2.unsafe_bytes( r2 );
-    auto p1 = h1.pointers( r1 ), p2 = h2.pointers( r2 );
+    auto b1 = h1.unsafe_bytes( r1, i1 ), b2 = h2.unsafe_bytes( r2, i2 );
+    auto p1 = h1.pointers( r1, i1 ), p2 = h2.pointers( r2, i2 );
+    auto d1 = h1.defined( r1, i1 ), d2 = h2.defined( r2, i2 );
     int offset = 0;
     auto p1i = p1.begin(), p2i = p2.begin();
     while ( true )
@@ -108,8 +109,8 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
         ASSERT_EQ( p1i->offset(), p2i->offset() );
         r1.offset( p1i->offset() );
         r2.offset( p1i->offset() );
-        h1.read( r1, p1p );
-        h2.read( r2, p2p );
+        h1.read( r1, p1p, i1 );
+        h2.read( r2, p2p, i2 );
         int pdiff = 0;
         auto p1pp = p1p.cooked(), p2pp = p2p.cooked();
         if ( p1pp.type() == p2pp.type() )
