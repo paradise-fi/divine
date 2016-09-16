@@ -144,6 +144,7 @@ struct PooledShadow
         }
         operator ShadowType() const { return get(); }
         bool operator==( const TypeProxy &o ) const { return get() == o.get(); }
+        bool operator!=( const TypeProxy &o ) const { return get() != o.get(); }
         TypeProxy *operator->() { return this; }
         TypeProxy( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
     };
@@ -167,6 +168,7 @@ struct PooledShadow
             return word() & mask() ? 0xff : 0;
         }
         bool operator==( const DefinedProxy &o ) const { return uint8_t( *this ) == uint8_t( o ); }
+        bool operator!=( const DefinedProxy &o ) const { return uint8_t( *this ) != uint8_t( o ); }
         DefinedProxy( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
     };
 
