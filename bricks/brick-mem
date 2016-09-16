@@ -100,7 +100,10 @@ struct Pool
 
         static const int tag_bits = PointerRep::tag_bits;
 
-        PointerRep _rep;
+        union {
+            PointerRep _rep;
+            Raw _raw;
+        };
 
         auto slab() const { return _rep.slab; }
         auto chunk() const { return _rep.chunk; }
@@ -117,17 +120,8 @@ struct Pool
             _rep.tag = 0;
         }
 
-        Raw raw() const { return ( Raw( _rep.tag ) << ( slab_bits + chunk_bits ) ) |
-                                 ( Raw( _rep.slab ) << chunk_bits ) | Raw( _rep.chunk ); }
-        void raw( Raw r )
-        {
-            Raw t = r & ( ( ( Raw( 1 ) << tag_bits ) - Raw( 1 ) ) << ( slab_bits + chunk_bits ) ),
-                s = r & ( ( ( Raw( 1 ) << slab_bits ) - Raw( 1 ) ) << chunk_bits ),
-                c = r & ( ( ( Raw( 1 ) << chunk_bits ) - Raw( 1 ) ) );
-            _rep.tag  = t >> ( slab_bits + chunk_bits );
-            _rep.slab = s >> ( chunk_bits );
-            _rep.chunk = c;
-        }
+        Raw raw() const { return _raw; }
+        void raw( Raw r ) { _raw = r; }
 
         explicit operator bool() const { return slab(); }
         bool operator!() const { return !slab(); }
