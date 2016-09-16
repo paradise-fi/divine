@@ -98,11 +98,20 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
         {
             if ( b1[ offset ] != b2[ offset ] )
                 return b1[ offset ] - b2[ offset ];
+            if ( d1[ offset ] != d2[ offset ] )
+                return int( d1[ offset ] ) - int( d2[ offset ] );
             ++ offset;
         }
 
         if ( p1i == p1.end() )
             return 0;
+
+        while ( offset < end + p1i->size() )
+        {
+            if ( d1[ offset ] != d2[ offset ] )
+                return int( d1[ offset ] ) - int( d2[ offset ] );
+            ++ offset;
+        }
 
         /* recurse */
         value::Pointer p1p, p2p;
@@ -125,7 +134,6 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
         if ( pdiff )
             return pdiff;
         ASSERT_EQ( p1i->size(), p2i->size() );
-        offset += p1i->size();
         ++ p1i; ++ p2i;
     }
     UNREACHABLE( "heap comparison fell through" );
