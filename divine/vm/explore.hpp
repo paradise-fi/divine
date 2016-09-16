@@ -110,6 +110,9 @@ struct Explore
 
         bool equal( Snapshot a, Snapshot b ) const
         {
+            if ( h1._snapshots.size( a ) == h1._snapshots.size( b ) )
+                if ( std::equal( h1.snap_begin( a ), h1.snap_end( a ), h1.snap_begin( b ) ) )
+                    return true;
             h1.restore( a );
             h2.restore( b );
             return heap::compare( h1, h2, root, root ) == 0;
