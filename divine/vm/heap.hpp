@@ -52,6 +52,8 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
              std::unordered_map< HeapPointer, int > &v1,
              std::unordered_map< HeapPointer, int > &v2, int &seq )
 {
+    r1.offset( 0 ); r2.offset( 0 );
+
     if ( v1.count( r1 ) && v2.count( r2 ) )
         return v1[ r1 ] - v2[ r2 ];
 
