@@ -798,6 +798,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
                     break;
                 case Resolution::NoSpace:
                     UNREACHABLE( "ran out of space during growth" );
+                case Resolution::Found:
+                    UNREACHABLE( "value cloned during growth" );
                 default:
                     UNREACHABLE( "internal error" );
             }
