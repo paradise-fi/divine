@@ -596,14 +596,16 @@ struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
             int size = objects().size( a );
             if ( objects().size( b ) != size )
                 return false;
-            if( ::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
+            if ( ::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
                 return false;
             Shadows::Loc a_shloc( a, Shadows::Anchor(), 0 ), b_shloc( b, Shadows::Anchor(), 0 );
-            auto a_def = shadows().defined( a_shloc, size ), b_def = shadows().defined( b_shloc, size );
-            if ( !std::equal( a_def.begin(), a_def.end(), b_def.begin(), b_def.end() ) )
+            auto a_def = shadows().defined( a_shloc, size ),
+                 b_def = shadows().defined( b_shloc, size );
+            if ( !std::equal( a_def.begin(), a_def.end(), b_def.begin() ) )
                 return false;
-            auto a_type = shadows().type( a_shloc, size ), b_type = shadows().type( b_shloc, size );
-            if ( !std::equal( a_type.begin(), a_type.end(), b_type.begin(), b_type.end() ) )
+            auto a_type = shadows().type( a_shloc, size ),
+                 b_type = shadows().type( b_shloc, size );
+            if ( !std::equal( a_type.begin(), a_type.end(), b_type.begin() ) )
                 return false;
             return true;
         }
