@@ -124,10 +124,10 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
         auto p1pp = p1p.cooked(), p2pp = p2p.cooked();
         if ( p1pp.type() == p2pp.type() )
         {
-            if ( p1pp.type() == PointerType::Heap )
+            if ( p1pp.offset() != p2pp.offset() )
+                return p1pp.offset() - p2pp.offset();
+            else if ( p1pp.type() == PointerType::Heap )
                 pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq );
-            else if ( p1pp.object() == p2pp.object() )
-                pdiff = p1pp.offset() - p2pp.offset();
             else
                 pdiff = p1pp.object() - p2pp.object();
         } else pdiff = int( p1pp.type() ) - int( p2pp.type() );
