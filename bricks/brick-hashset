@@ -562,8 +562,8 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         ~Row() { free(); }
     };
 
-    static const unsigned segmentSize = 1 << 16;// 2^16 = 65536
-    static const unsigned syncPoint = 1 << 10;// 2^10 = 1024
+    static const unsigned segmentSize = 1 << 16; // 65536
+    static const unsigned syncPoint = 1024;
 
     struct Shared
     {
@@ -853,7 +853,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     explicit _ConcurrentHashSet( Hasher h = Hasher(), unsigned maxGrows = 64 )
         : Base( h ), _s( new Shared( maxGrows ) )
     {
-        initialSize( 16 ); // by default
+        initialSize( 4 * syncPoint ); // by default
     }
 
     void initialSize( size_t s )
