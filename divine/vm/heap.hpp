@@ -409,21 +409,23 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         return _objects.machinePointer< uint8_t >( i );
     }
 
-    int snap_size() const
+    int snap_size( Snapshot s ) const
     {
-        if ( !_snapshots.valid( _l.snapshot ) )
+        if ( !_snapshots.valid( s ) )
             return 0;
-        return _snapshots.size( _l.snapshot ) / sizeof( SnapItem );
+        return _snapshots.size( s ) / sizeof( SnapItem );
     }
 
-    SnapItem *snap_begin() const
+    SnapItem *snap_begin( Snapshot s ) const
     {
-        if ( !_snapshots.valid( _l.snapshot ) )
+        if ( !_snapshots.valid( s ) )
             return nullptr;
-        return _snapshots.machinePointer< SnapItem >( _l.snapshot );
+        return _snapshots.machinePointer< SnapItem >( s );
     }
 
-    SnapItem *snap_end() const { return snap_begin() + snap_size(); }
+    SnapItem *snap_begin() const { return snap_begin( _l.snapshot ); }
+    SnapItem *snap_end( Snapshot s ) const { return snap_begin( s ) + snap_size( s ); }
+    SnapItem *snap_end() const { return snap_end( _l.snapshot ); }
 
     Internal ptr2i( HeapPointer p ) const
     {
