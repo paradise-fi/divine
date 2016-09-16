@@ -853,6 +853,7 @@ struct Eval
                 PointerV ptr;
                 heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
                 context().set( _VM_CR_PC, ptr.cooked() );
+                heap()._l.hint = frame().object() + ptr.cooked().offset() ?: 1;
             }
         }
     }
@@ -920,6 +921,8 @@ struct Eval
                                              << " passed to __vm_make_object";
                     size = 0;
                 }
+                if ( context().get( _VM_CR_Flags ).integer & _VM_CF_KernelMode )
+                    heap()._l.hint += 65536;
                 result( size ? heap().make( size ) : nullPointerV() );
                 return;
             }
