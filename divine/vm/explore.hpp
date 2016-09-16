@@ -158,8 +158,8 @@ struct Explore
         _ctx.load( ctx ); /* copy over registers */
         _states.hasher = Hasher( _ctx.heap() );
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
-        _initial.snap = snap;
-        return *_states.insert( snap );
+        _initial.snap = *_states.insert( snap );
+        return _initial.snap;
     }
 
     template< typename Y >
