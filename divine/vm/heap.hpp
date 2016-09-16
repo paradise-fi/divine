@@ -118,8 +118,8 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
         ASSERT_EQ( p1i->offset(), p2i->offset() );
         r1.offset( p1i->offset() );
         r2.offset( p1i->offset() );
-        h1.read( r1, p1p, i1 );
-        h2.read( r2, p2p, i2 );
+        h1.unsafe_read( r1, p1p, i1 );
+        h2.unsafe_read( r2, p2p, i2 );
         int pdiff = 0;
         auto p1pp = p1p.cooked(), p2pp = p2p.cooked();
         if ( p1pp.type() == p2pp.type() )
@@ -164,7 +164,7 @@ int hash( Heap &heap, HeapPointer root,
         value::Pointer ptr;
         ASSERT_LT( pos.offset, heap.size( root ) );
         root.offset( pos.offset() );
-        heap.read( root, ptr, i );
+        heap.unsafe_read( root, ptr, i );
         auto obj = ptr.cooked();
         ptr_data[1] = obj.offset();
         if ( obj.type() == PointerType::Heap && heap.valid( obj ) )
@@ -503,6 +503,12 @@ struct SimpleHeap : HeapMixin< Self >
 
         t.raw( *_objects.machinePointer< typename T::Raw >( i, p.offset() ) );
         _shadows.read( shloc( p, i ), t );
+    }
+
+    template< typename T >
+    void unsafe_read( HeapPointer p, T &t, Internal i ) const
+    {
+        t.raw( *_objects.machinePointer< typename T::Raw >( i, p.offset() ) );
     }
 
     template< typename T >
