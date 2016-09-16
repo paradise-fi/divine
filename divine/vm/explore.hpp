@@ -175,8 +175,10 @@ struct Explore
             {
                 explore::State st;
                 auto snap = _ctx.heap().snapshot();
-                _ctx.flush_ptr2i();
                 auto r = _states.insert( snap );
+                if ( *r != snap )
+                    pool().free( snap ), _ctx.heap().restore( *r );
+                _ctx.flush_ptr2i();
                 st.snap = *r;
                 st.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
                 st.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
