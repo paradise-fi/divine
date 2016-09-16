@@ -1,5 +1,0 @@
-#property G(limit_active)
-#property F(limit_active)
-#property FG(limit_active)
-#property F(!limit_active)
-#property GF(!limit_active)

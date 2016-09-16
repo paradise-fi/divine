@@ -1,5 +1,0 @@
-#define inrange1 (x >= 10 && x <= 30 )
-#define inrange2 (x >= 10 && x <= 42 )
-
-#property FG inrange1
-#property FG inrange2
