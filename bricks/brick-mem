@@ -129,8 +129,8 @@ struct Pool
             _rep.chunk = c;
         }
 
-        explicit operator bool() const { return raw(); }
-        bool operator!() const { return !raw(); }
+        explicit operator bool() const { return slab(); }
+        bool operator!() const { return !slab(); }
         bool operator<= ( Pointer o ) const
         {
             if ( slab() < o.slab() )
