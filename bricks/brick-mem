@@ -215,8 +215,7 @@ struct Pool
 
     void valgrindAllocated( Pointer p, bool materialized )
     {
-        VALGRIND_MEMPOOL_ALLOC( _s->block[ p.slab() ], dereference( p ), size( p ) );
-        VALGRIND_MAKE_MEM_UNDEFINED( dereference( p ), size( p ) );
+        VALGRIND_MALLOCLIKE_BLOCK( dereference( p ), size( p ), 0, 1 );
 
         VHandle *h = _s->vhandles[ p.slab() ], *alloc;
         if ( !h ) {
@@ -240,7 +239,7 @@ struct Pool
 
     void valgrindDeallocated( Pointer p )
     {
-        VALGRIND_MEMPOOL_FREE( _s->block[ p.slab() ], dereference( p ) );
+        VALGRIND_FREELIKE_BLOCK( dereference( p ), 0 );
         VALGRIND_MAKE_MEM_NOACCESS( dereference( p ), size( p ) );
 
         ASSERT( _s->vhandles[ p.slab() ].load() );
@@ -491,6 +490,7 @@ struct Pool
     Pointer allocate( int size )
     {
         Pointer p;
+        bool clear = false;
 
         auto &si = sizeinfo( size );
         /* try our private freelist first */
@@ -501,8 +501,12 @@ struct Pool
         }
 
         if ( si.touse.count )
+        {
             p = fromFreelist( si );
-        else { /* nope. try a partially filled block */
+            clear = true;
+        }
+        else
+        { /* nope. try a partially filled block */
             if ( si.active >= 0 && usable( si.active ) ) {
                 p.slab( si.active );
                 p.chunk( header( p ).allocated ++ );
@@ -515,6 +519,7 @@ struct Pool
                     si.touse.next = nullptr;
                     delete fb;
                     p = fromFreelist( si );
+                    clear = true;
                 } else { /* give up and allocate a fresh block */
                     p.slab( newblock( size ) );
                     p.chunk( header( p ).allocated ++ );
@@ -523,6 +528,8 @@ struct Pool
         }
 
         valgrindAllocated( p, false );
+        if ( clear )
+            ::memset( dereference( p ), 0, size );
         return p;
     }
 
