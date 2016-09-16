@@ -352,25 +352,19 @@ struct HeapMixin
     }
 };
 
-struct SimpleHeapShared
+struct PoolRep
 {
-    std::atomic< int > seq;
+    static const int slab_bits = 20, chunk_bits = 16, tag_bits = 28;
+    uint64_t slab:slab_bits, chunk:chunk_bits, tag:tag_bits;
 };
 
-struct SnapPointerRep
-{
-    uint32_t slab;
-    uint16_t chunk, tag;
-    static const int slab_bits = 20, chunk_bits = 16, tag_bits = 16;
-};
-
-template< typename Self, typename Shared >
+template< typename Self >
 struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
 {
     Self &self() { return *static_cast< Self * >( this ); }
 
-    using ObjPool = mem::Pool<>;
-    using SnapPool = mem::Pool< SnapPointerRep >;
+    using ObjPool = mem::Pool< PoolRep >;
+    using SnapPool = mem::Pool< PoolRep >;
 
     using Internal = ObjPool::Pointer;
     using Snapshot = SnapPool::Pointer;
@@ -387,15 +381,14 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     {
         std::map< int, Internal > exceptions;
         Snapshot snapshot;
+        int hint;
     } _l;
-
-    std::shared_ptr< Shared > _s;
 
     Internal detach( HeapPointer, Internal i ) { return i; }
     void made( HeapPointer ) {}
 
-    SimpleHeap() { _s = std::make_shared< Shared >(); _s->seq = 1; }
-    void reset() { _s->seq = 1; _l.exceptions.clear(); _l.snapshot = Snapshot(); }
+    SimpleHeap() { _l.hint = 1; }
+    void reset() { _l.hint = 1; _l.exceptions.clear(); _l.snapshot = Snapshot(); }
 
     Shadows::Loc shloc( HeapPointer p, Internal i ) const
     {
@@ -427,35 +420,55 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     SnapItem *snap_end( Snapshot s ) const { return snap_begin( s ) + snap_size( s ); }
     SnapItem *snap_end() const { return snap_end( _l.snapshot ); }
 
+    SnapItem *snap_find( int obj ) const
+    {
+        auto begin = snap_begin(), end = snap_end();
+        if ( !begin )
+            return nullptr;
+
+        while ( begin < end )
+        {
+            auto pivot = begin + (end - begin) / 2;
+            if ( pivot->first > obj )
+                end = pivot;
+            else if ( pivot->first < obj )
+                begin = pivot + 1;
+            else
+                return pivot;
+        }
+
+        return begin;
+    }
+
     Internal ptr2i( HeapPointer p ) const
     {
         auto hp = _l.exceptions.find( p.object() );
         if ( hp != _l.exceptions.end() )
             return hp->second;
 
-        auto begin = snap_begin(), end = snap_end();
-        if ( !begin )
-            return Internal();
-
-        while ( begin < end )
-        {
-            auto pivot = begin + (end - begin) / 2;
-            if ( pivot->first > int( p.object() ) )
-                end = pivot;
-            else if ( pivot->first < int( p.object() ) )
-                begin = pivot + 1;
-            else
-                return pivot->second;
-        }
-
-        return Internal();
+        auto si = snap_find( p.object() );
+        return si && si != snap_end() && si->first == p.object() ? si->second : Internal();
     }
 
     PointerV make( int size )
     {
         HeapPointer p;
-        p.object( _s->seq++ );
+        SnapItem *search = snap_find( _l.hint );
+        if ( search && search != snap_end() && search->first <= _l.hint )
+            ++ search; /* points at first snapitem >= than hint */
+        bool found = false;
+        while ( !found )
+        {
+            ++ _l.hint;
+            found = true;
+            if ( _l.exceptions.count( _l.hint ) )
+                found = false;
+            if ( search && search != snap_end() && search->first == _l.hint )
+                ++ search, found = false;
+        }
+        p.object( _l.hint );
         p.offset( 0 );
+        ASSERT( !ptr2i( p ).slab() );
         auto obj = _l.exceptions[ p.object() ] = _objects.allocate( size );
         _shadows.make( _objects, obj, size );
         self().made( p );
@@ -483,7 +496,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
 
     bool valid( HeapPointer p ) const
     {
-        if ( !p.object() || int( p.object() ) >= _s->seq )
+        if ( !p.object() )
             return false;
         return ptr2i( p ).slab();
     }
@@ -560,13 +573,13 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     bool copy( HeapPointer f, HeapPointer t, int b ) { return copy( *this, f, t, b ); }
 };
 
-struct MutableHeap : SimpleHeap< MutableHeap, SimpleHeapShared >
+struct MutableHeap : SimpleHeap< MutableHeap >
 {
 };
 
-struct CowHeap : SimpleHeap< CowHeap, SimpleHeapShared >
+struct CowHeap : SimpleHeap< CowHeap >
 {
-    using Super = SimpleHeap< CowHeap, SimpleHeapShared >;
+    using Super = SimpleHeap< CowHeap >;
 
     struct ObjHasher
     {
