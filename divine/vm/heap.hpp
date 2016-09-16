@@ -259,7 +259,7 @@ struct HeapBytes
     uint8_t &operator[]( int i ) { return *( _start + i ); }
 };
 
-template< typename Self >
+template< typename Self, typename Internal >
 struct HeapMixin
 {
     using PointerV = value::Pointer;
@@ -270,7 +270,6 @@ struct HeapMixin
     auto &shadows() { return self()._shadows; }
     const auto &shadows() const { return self()._shadows; }
 
-    template< typename Internal >
     auto shloc( HeapPointer &p, int &from, int &sz, Internal i )
     {
         sz = sz ? sz : self().size( p, i ) - from;
@@ -278,14 +277,24 @@ struct HeapMixin
         return self().shloc( p, i );
     }
 
+    auto pointers( HeapPointer p, Internal i, int from = 0, int sz = 0 )
+    {
+        return shadows().pointers( shloc( p, from, sz, i ), sz );
+    }
+
     auto pointers( HeapPointer p, int from = 0, int sz = 0 )
     {
-        return shadows().pointers( shloc( p, from, sz, self().ptr2i( p ) ), sz );
+        return pointers( p, self().ptr2i( p ), from, sz );
     }
 
     auto defined( HeapPointer p, int from = 0, int sz = 0 )
     {
-        return shadows().defined( shloc( p, from, sz, self().ptr2i( p ) ), sz );
+        return defined( p, self().ptr2i( p ), from, sz );
+    }
+
+    auto defined( HeapPointer p, Internal i, int from = 0, int sz = 0 )
+    {
+        return shadows().defined( shloc( p, from, sz, i ), sz );
     }
 
     auto type( HeapPointer p, int from = 0, int sz = 0 )
@@ -329,8 +338,7 @@ struct HeapMixin
         p.v( pv );
     }
 
-    template< typename Internal >
-    HeapBytes unsafe_bytes( HeapPointer p, Internal i, int off, int sz ) const
+    HeapBytes unsafe_bytes( HeapPointer p, Internal i, int off = 0, int sz = 0 ) const
     {
         sz = sz ? sz : self().size( p, i ) - off;
         ASSERT_LEQ( off + sz, self().size( p, i ) );
