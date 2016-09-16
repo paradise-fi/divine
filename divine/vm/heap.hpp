@@ -365,7 +365,7 @@ struct SnapPointerRep
 };
 
 template< typename Self, typename Shared >
-struct SimpleHeap : HeapMixin< Self >
+struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
 {
     Self &self() { return *static_cast< Self * >( this ); }
 
