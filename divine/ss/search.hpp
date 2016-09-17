@@ -86,7 +86,7 @@ struct BFS : SearchBase< B, L >
             this->_b.edges(
                 v, [&]( auto x, auto label, bool isnew )
                 {
-                    auto a = this->_l.edge( v, x, label );
+                    auto a = this->_l.edge( v, x, label, isnew );
                     if ( a == L::Terminate )
                         _terminate->store( true );
                     if ( a == L::Process || ( a == L::AsNeeded && isnew ) )

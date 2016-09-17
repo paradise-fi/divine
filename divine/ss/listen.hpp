@@ -12,7 +12,7 @@ struct Listen
 
     /* a new edge has been discovered */
     template< typename State, typename Label >
-    Action edge( State, State, Label ) { return AsNeeded; }
+    Action edge( State, State, Label, bool ) { return AsNeeded; }
 
     /* edge() returned Process on a state */
     template< typename State >
@@ -36,8 +36,15 @@ struct GenericListen : Listen
         : _e( e ), _s( s ), _m( m ), _c( c )
     {}
 
-    template< typename State, typename Label >
-    Action edge( State f, State t, Label l ) { return _e( f, t, l ); }
+    template< typename State, typename Label, typename _E = E >
+    auto edge( State f, State t, Label l, bool n ) ->
+        decltype( std::declval< _E >()( f, t, l, n ) )
+    { return _e( f, t, l, n ); }
+
+    template< typename State, typename Label, typename _E = E >
+    auto edge( State f, State t, Label l, bool n ) ->
+        decltype( std::declval< _E >()( f, t, l ) )
+    { return _e( f, t, l ); }
 
     template< typename State >
     Action state( State s ) { return _s( s ); }
@@ -59,8 +66,17 @@ struct PassiveListen : Listen
         : _e( e ), _s( s ), _m( m ), _c( c )
     {}
 
-    template< typename State, typename Label >
-    Action edge( State f, State t, Label l )
+    template< typename State, typename Label, typename _E = E >
+    auto edge( State f, State t, Label l, bool n ) ->
+        decltype( std::declval< _E >()( f, t, l, n ), Action() )
+    {
+        _e( f, t, l, n );
+        return Listen::AsNeeded;
+    }
+
+    template< typename State, typename Label, typename _E = E >
+    auto edge( State f, State t, Label l, bool n ) ->
+        decltype( std::declval< _E >()( f, t, l ), Action() )
     {
         _e( f, t, l );
         return Listen::AsNeeded;
