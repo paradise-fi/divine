@@ -246,7 +246,9 @@ struct Interpreter
 
     DN dn( vm::GenericPointer p, vm::DNKind k, llvm::Type *t, llvm::DIType *dit )
     {
-        return DN( _ctx, _ctx.heap().snapshot(), p, 0, k, t, dit );
+        auto rv = DN( _ctx, _ctx.heap().snapshot(), p, 0, k, t, dit );
+        _ctx.flush_ptr2i();
+        return rv;
     }
 
     DN nullDN() { return dn( vm::nullPointer(), vm::DNKind::Object, nullptr, nullptr ); }
