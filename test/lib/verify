@@ -1,5 +1,7 @@
 . lib/flavour vanilla
 . lib/testcase
 
-divine verify "$1" | tee verify.out
+opts=
+echo "$1" | grep -q '.cpp$' && opts="-std=c++14"
+divine verify --threads 1 $opts "$1" | tee verify.out
 check verify "$1"
