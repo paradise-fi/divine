@@ -154,7 +154,8 @@ void Verify::run()
                 ss::listen(
                     [&]( auto from, auto to, auto label )
                     {
-                        if ( hasher.equal( from.snap, *last ) &&
+                        if ( next != trace.end() &&
+                             hasher.equal( from.snap, *last ) &&
                              hasher.equal( to.snap, *next ) )
                         {
                             for ( auto l : label.first )
