@@ -457,7 +457,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
             return hp->second;
 
         auto si = snap_find( p.object() );
-        return si && si != snap_end() && si->first == p.object() ? si->second : Internal();
+        return si && si != snap_end() && si->first == int( p.object() ) ? si->second : Internal();
     }
 
     PointerV make( int size )
