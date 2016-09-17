@@ -94,29 +94,31 @@ template < bool THREAD_AWARE_SCHED >
 void sched() noexcept
 {
     auto ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
-    if ( ctx->fault->triggered ) {
+
+    if ( ctx->fault->triggered )
+    {
         ctx->scheduler->terminate();
         ctx->fault->triggered = false;
         return;
     }
 
-    Thread *t;
-    if ( ctx->syscall->handle( ctx ) ) {
-        // Allow thread to obtain syscall result
-        t = ctx->scheduler->get_active_thread();
-    }
-    else {
-        t = THREAD_AWARE_SCHED ?
+    Thread *t = THREAD_AWARE_SCHED ?
                 ctx->scheduler->choose_live_thread() :
                 ctx->scheduler->choose_thread();
-    }
 
-    if ( t && t->_frame ) {
+    while ( t && t->_frame )
+    {
         __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
                       _VM_CA_Bit, _VM_CR_Flags,
                       uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
         t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
-        return;
+
+        if ( !ctx->syscall->handle( ctx ) )
+            return;
+
+        /* reset intframe to ourselves */
+        auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
+        __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
     }
 
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
