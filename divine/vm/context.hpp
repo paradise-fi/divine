@@ -58,6 +58,7 @@ struct Context
     Program *_program;
     Heap _heap;
     std::unordered_set< GenericPointer > _cfl_visited;
+    std::unordered_set< int > _mem_loads;
 
     template< typename Ctx >
     void load( const Ctx &ctx )
@@ -139,6 +140,7 @@ struct Context
         auto &fl = ref( _VM_CR_Flags ).integer;
         bool rv = fl & _VM_CF_Interrupted;
         _cfl_visited.clear();
+        _mem_loads.clear();
         fl &= ~_VM_CF_Interrupted;
         fl |= i ? _VM_CF_Interrupted : 0;
         return rv;
@@ -150,6 +152,21 @@ struct Context
             set_interrupted( true );
         else
             _cfl_visited.insert( pc );
+    }
+
+    void mem_interrupt( GenericPointer ptr, int type )
+    {
+        if ( ptr.type() == PointerType::Const )
+            return;
+        if ( type == _VM_MAT_Load )
+        {
+            if ( _mem_loads.count( ptr.object() ) )
+                set_interrupted( true );
+            else
+                _mem_loads.insert( ptr.object() );
+        }
+        else
+            set_interrupted( true );
     }
 
     template< typename Eval >

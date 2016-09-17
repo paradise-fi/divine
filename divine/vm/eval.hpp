@@ -881,7 +881,9 @@ struct Eval
                 context().cfl_interrupt( pc() );
                 return;
             case HypercallInterruptMem:
-                context().set_interrupted( true ); return; /* TODO */
+                context().mem_interrupt( operandPtr( 0 ).cooked(),
+                                         operandCk< IntV >( 1 ).cooked() );
+                return;
 
             case HypercallTrace:
             {
