@@ -551,6 +551,7 @@ struct Pool
             valgrindNewBlock( b, total );
         }
         valgrindAllocated( p, true );
+        ::memset( dereference( p ), 0, size );
     }
 
     void free( Pointer p )
