@@ -48,7 +48,7 @@
 #include <divine.h>
 #include <new>
 
-void* operator new  ( std::size_t count ) { return __divine_malloc( count ); }
+void* operator new  ( std::size_t count ) { return __vm_obj_make( count ); }
 #endif
 
 const int cacheLine = 64;
