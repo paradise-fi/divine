@@ -192,7 +192,6 @@ ThreadId Scheduler::start_thread( FunPtr routine, void *arg, FunPtr cleanup ) no
 }
 
 void Scheduler::kill_thread( ThreadId t_id, int reason ) noexcept {
-    __dios_assert( t_id );
     __dios_assert( int( t_id ) < _cf->thread_count );
     get_threads()[ t_id ].stop( reason );
 }
