@@ -521,13 +521,40 @@ void Program::computeStatic()
     auto md_func = dyn_cast< llvm::ConstantArray >( md_func_var->getInitializer() );
     ASSERT( valuemap.count( md_func ) );
     auto slotref = valuemap[ md_func ];
+
+    auto md2name = [&]( auto op )
+    {
+        return std::string( dyn_cast< llvm::ConstantStruct >( op )->
+                                getOperand( 0 )->getOperand( 0 )->getName(),
+                            strlen( "lart.divine.index.name." ), std::string::npos );
+    };
+
+    auto md2pc = [&]( auto op ) { return functionByName( md2name( op ) ); };
+
+    auto instTableT = llvm::cast< llvm::PointerType >(
+                          md_func->getOperand( 0 )->getOperand( 7 )->getType() )->getElementType();
+    int instTotal = 0, lsdaTotal = 0;
+
     for ( int i = 0; i < int( md_func->getNumOperands() ); ++i )
     {
-        auto f = dyn_cast< llvm::ConstantStruct >( md_func->getOperand( i ) );
-        const llvm::StructLayout *SL_item = TD.getStructLayout( f->getType() );
-        auto name = std::string( f->getOperand( 0 )->getOperand( 0 )->getName(),
-                                strlen( "lart.divine.index.name." ), std::string::npos );
-        auto pc = functionByName( name );
+        auto pc = md2pc( md_func->getOperand( i ) );
+        if ( !pc.function() )
+            continue;
+
+        instTotal += function( pc ).instructions.size();
+        lart::divine::CppEhTab tab( *llvmfunction( pc ) );
+        lsdaTotal += tab.tableSizeBound();
+    }
+
+    auto instTableObj = _ccontext.heap().make( instTotal * TD.getTypeAllocSize( instTableT ) );
+    auto lsdaObj = _ccontext.heap().make( lsdaTotal );
+    int instOffset = 0, lsdaOffset = 0;
+
+    for ( int i = 0; i < int( md_func->getNumOperands() ); ++i )
+    {
+        auto op = dyn_cast< llvm::ConstantStruct >( md_func->getOperand( i ) );
+        const llvm::StructLayout *SL_item = TD.getStructLayout( op->getType() );
+        auto pc = md2pc( op );
         if ( !pc.function() )
             continue;
         auto &func = function( pc );
@@ -541,9 +568,8 @@ void Program::computeStatic()
         writeMetaElem( 6, value::Int< 32 >( func.instructions.size() ) ); // inst count
 
         // create and write write instruction table
-        auto instTableT = llvm::cast< llvm::PointerType >( f->getOperand( 7 )->getType() )->getElementType();
-        auto instTableSize = TD.getTypeAllocSize( instTableT ) * func.instructions.size();
-        auto instTable = _ccontext.heap().make( instTableSize );
+        auto instTable = instTableObj + instOffset;
+        int instTableSize = TD.getTypeAllocSize( instTableT ) * func.instructions.size();
         writeMetaElem( 7, instTable );
 
         auto writeInst = [&]( int val ) {
@@ -557,7 +583,7 @@ void Program::computeStatic()
             if ( inst.op )
             {
                 ASSERT_EQ( llvm::cast< llvm::Instruction >( inst.op )->getParent()->getParent(),
-                           module->getFunction( name ) );
+                           module->getFunction( md2name( op ) ) );
                 opcode = getOpcode( inst.op );
                 subop = getSubOp( inst.op, *this );
                 offset = inst.values.empty() ? 0 : inst.result().offset;
@@ -568,16 +594,18 @@ void Program::computeStatic()
             writeInst( offset );
             writeInst( size );
         }
-        ASSERT_EQ( instTable.cooked().offset(), instTableSize );
+        ASSERT_EQ( instTable.cooked().offset() - instOffset, instTableSize );
+        instOffset += instTableSize;
 
         // write language specific data for C++ exceptions
-        llvm::Function *llvmfn = module->getFunction( name );
+        llvm::Function *llvmfn = module->getFunction( md2name( op ) );
         ASSERT( llvmfn );
         lart::divine::CppEhTab tab( *llvmfn );
 
-        auto lsda = _ccontext.heap().make( tab.tableSizeBound() );
+        auto lsda = lsdaObj + lsdaOffset;
         writeMetaElem( 9, lsda );
         tab.insertEhTable( *this, lsda.cooked(), func.typeIDs );
+        lsdaOffset += tab.tableSizeBound();
     }
 }
 
