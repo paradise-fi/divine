@@ -515,6 +515,7 @@ struct Interpreter
                 std::cerr << "T: " << t << std::endl;
             _ctx._trace.clear();
         }
+        _ctx.sync_pc();
     }
 
     void go( command::Exit ) { _exit = true; }
