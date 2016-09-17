@@ -286,15 +286,15 @@ extern "C" void _pthread_entry( void *_args ) {
     // all thread specific data destructors are run
     key = keys;
     while ( key ) {
-        void *data = pthread_getspecific( key );
+        void *data = key->data[ ltid ];
         if ( data ) {
-            pthread_setspecific( key, NULL );
+            key->data[ ltid ] = NULL;
             if ( key->destructor ) {
                 int iter = 0;
                 while ( data && iter < PTHREAD_DESTRUCTOR_ITERATIONS ) {
                     ( key->destructor )( data );
-                    data = pthread_getspecific( key );
-                    pthread_setspecific( key, NULL );
+                    data = key->data[ ltid ];
+                    key->data[ ltid ] = NULL;
                     ++iter;
                 }
             }
