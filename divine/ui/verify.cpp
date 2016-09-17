@@ -96,12 +96,14 @@ void Verify::run()
     ss::search(
         ss::Order::PseudoBFS, ex, _threads,
         ss::listen(
-            [&]( auto from, auto to, auto label )
+            [&]( auto from, auto to, auto label, bool isnew )
             {
-                ext.materialise( to.snap, sizeof( from ), ex.pool() );
-                Parent &parent = *ext.machinePointer< Parent >( to.snap );
-                if ( !parent.load().slab() )
+                if ( isnew )
+                {
+                    ext.materialise( to.snap, sizeof( from ), ex.pool() );
+                    Parent &parent = *ext.machinePointer< Parent >( to.snap );
                     parent = from.snap;
+                }
                 ++edgecount;
                 if ( to.error )
                 {
@@ -113,7 +115,6 @@ void Verify::run()
             },
             [&]( auto st )
             {
-                ext.materialise( st.snap, sizeof( st ), ex.pool() );
                 ++statecount; return ss::Listen::AsNeeded;
             } ) );
 
@@ -140,11 +141,13 @@ void Verify::run()
     std::cout << "found an error" << std::endl;
 
     auto i = error.snap;
-    while ( i.slab() )
+    while ( i != ex._initial.snap )
     {
         trace.push_front( i );
         i = *ext.machinePointer< vm::CowHeap::Snapshot >( i );
     }
+    trace.push_front( ex._initial.snap );
+
     auto last = trace.begin(), next = last;
     next ++;
     ss::search( ss::Order::PseudoBFS, ex, 1,
