@@ -374,7 +374,14 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
 
     using Shadows = PooledShadow< Internal >;
     using PointerV = value::Pointer;
-    using SnapItem = std::pair< int, Internal >;
+    struct SnapItem
+    {
+        int first;
+        Internal second;
+        operator std::pair< int, Internal >() { return std::make_pair( first, second ); }
+        SnapItem( std::pair< const int, Internal > p ) : first( p.first ), second( p.second ) {}
+        bool operator==( SnapItem si ) const { return si.first == first && si.second == second; }
+    } __attribute__((packed));
 
     mutable ObjPool _objects;
     mutable SnapPool _snapshots;
