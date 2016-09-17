@@ -27,7 +27,7 @@ struct Command
 
 struct WithBC : Command
 {
-    std::string _file;
+    std::string _file, _std;
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
     _VM_RunMode _run_mode;
@@ -203,6 +203,7 @@ struct CLI : Interface
         auto bcopts = cmd::make_option_set< WithBC >( v )
             .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
             .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
+            .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 

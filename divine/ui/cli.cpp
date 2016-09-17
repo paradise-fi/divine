@@ -62,6 +62,8 @@ void WithBC::setup()
     {
         cc::Options ccopt;
         cc::Compile driver( ccopt );
+        if ( !_std.empty() )
+            driver.addFlags( { "-std=" + _std } );
         driver.setupFS( rt::each );
         driver.compileAndLink( _file, {} );
         pruneBC( driver );
