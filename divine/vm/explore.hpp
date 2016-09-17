@@ -150,6 +150,8 @@ struct Explore
             _ctx.flush_ptr2i();
             _states.insert( _initial.snap );
         }
+        if ( !_ctx.finished() )
+            UNREACHABLE( "choices encountered during start()" );
     }
 
     template< typename Ctx >
@@ -159,6 +161,8 @@ struct Explore
         _states.hasher = Hasher( _ctx.heap() );
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
         _initial.snap = *_states.insert( snap );
+        if ( !_ctx.finished() )
+            UNREACHABLE( "choices encountered during start()" );
         return _initial.snap;
     }
 
@@ -166,6 +170,9 @@ struct Explore
     void edges( explore::State from, Y yield )
     {
         Eval eval( program(), _ctx );
+        ASSERT_EQ( _ctx._level, 0 );
+        ASSERT( _ctx._stack.empty() );
+        ASSERT( _ctx._trace.empty() );
 
         do {
             _ctx.heap().restore( from.snap );
