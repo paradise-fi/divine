@@ -698,6 +698,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
     while ( !_mutex_can_lock( mutex, gtid ) ) {
         _check_deadlock( mutex, gtid );
         mask.release();
+        mask.acquire();
     }
     thr->waiting_mutex = NULL;
 
