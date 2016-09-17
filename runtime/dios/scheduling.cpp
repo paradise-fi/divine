@@ -85,10 +85,12 @@ void Thread::stop( int reason ) noexcept {
     }
 
     clear();
+/*
     auto* frame = reinterpret_cast< CleanupFrame * >( _frame );
     frame->pc = _cleanup_handler->entry_point;
     frame->parent = nullptr;
     frame->reason = reason;
+*/
     _state = State::CLEANING_UP;
 }
 
