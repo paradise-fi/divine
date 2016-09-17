@@ -162,7 +162,7 @@ int hash( Heap &heap, HeapPointer root,
     for ( auto pos : pointers )
     {
         value::Pointer ptr;
-        ASSERT_LT( pos.offset, heap.size( root ) );
+        ASSERT_LT( pos.offset(), heap.size( root ) );
         root.offset( pos.offset() );
         heap.unsafe_read( root, ptr, i );
         auto obj = ptr.cooked();
