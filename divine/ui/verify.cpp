@@ -28,16 +28,19 @@ namespace ui {
 using DNSet = std::set< std::tuple< vm::GenericPointer, int, llvm::DIType * > >;
 
 template< typename DN >
-void dump( DN dn, DNSet &visited, int &stacks )
+void dump( DN dn, DNSet &visited, int &stacks, int maxdepth )
 {
     if ( visited.count( dn.sortkey() ) || dn.address().type() != vm::PointerType::Heap )
         return;
     visited.insert( dn.sortkey() );
 
+    if ( !maxdepth )
+        return;
+
     if ( dn.kind() == vm::DNKind::Frame )
     {
         dn.attributes( []( std::string k, std::string v )
-                       { if ( k == "@address" || k == "@location" || k == "@symbol" )
+                       { if ( k == "@pc" || k == "@address" || k == "@location" || k == "@symbol" )
                              std::cout << k << ": " << v << std::endl;
                        } );
         std::cout << std::endl;
@@ -46,14 +49,25 @@ void dump( DN dn, DNSet &visited, int &stacks )
     dn.related( [&]( std::string k, auto rel )
                 {
                     if ( rel.kind() == vm::DNKind::Frame && k != "@parent" &&
-                         !visited.count( rel.sortkey() ) )
+                         !visited.count( rel.sortkey() ) && maxdepth > 1 )
                     {
                         if ( stacks )
                             std::cerr << "--------------------" << std::endl << std::endl;
                         ++ stacks;
                     }
-                    dump( rel, visited, stacks );
+                    dump( rel, visited, stacks, k == "@parent" ? maxdepth - 1 : maxdepth );
                 } );
+}
+
+template< typename Ex, typename Dbg >
+void dump( Ex &ex, Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
+{
+    vm::DebugNode< vm::Program, vm::CowHeap > dn(
+            ex._ctx, snap, ex._ctx.get( _VM_CR_State ).pointer, 0,
+            vm::DNKind::Object, dbg._state_type, dbg._state_di_type );
+    DNSet visited;
+    int stacks = 0;
+    dump( dn, visited, stacks, maxdepth );
 }
 
 void Verify::run()
@@ -175,13 +189,9 @@ void Verify::run()
     for ( int c : choices )
         std::cout << " " << c;
     std::cout << std::endl;
+    ASSERT( next == trace.end() );
 
-    vm::DebugNode< vm::Program, vm::CowHeap > dn(
-            ex._ctx, trace.back(), ex._ctx.get( _VM_CR_State ).pointer, 0,
-            vm::DNKind::Object, dbg._state_type, dbg._state_di_type );
-    DNSet visited;
-    int stacks = 0;
-    dump( dn, visited, stacks );
+    dump( ex, dbg, trace.back() );
 }
 
 }
