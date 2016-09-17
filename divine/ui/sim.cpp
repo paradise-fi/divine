@@ -387,7 +387,7 @@ struct Interpreter
 
     using Eval = vm::Eval< vm::Program, Context, PointerV >;
 
-    bool schedule( Eval &eval, bool update_choices = true, bool terse = false )
+    bool schedule( bool update_choices = true, bool terse = false )
     {
         if ( !_ctx.frame().null() )
             return false; /* nothing to be done */
@@ -488,7 +488,7 @@ struct Interpreter
             else
                 eval.dispatch();
 
-            if ( schedule( eval ) )
+            if ( schedule() )
                 step.state();
 
             in_kernel = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
@@ -657,7 +657,7 @@ struct Interpreter
         {
             eval.advance();
             eval.dispatch();
-            if ( schedule( eval, false, true ) )
+            if ( schedule( false, true ) )
             {
                 int count = choices.size() - _ctx._choices.size();
                 auto b = choices.begin(), e = b + count;
