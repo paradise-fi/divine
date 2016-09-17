@@ -167,13 +167,16 @@ int hash( Heap &heap, HeapPointer root,
         heap.unsafe_read( root, ptr, i );
         auto obj = ptr.cooked();
         ptr_data[1] = obj.offset();
-        if ( obj.type() == PointerType::Heap && heap.valid( obj ) )
+        if ( obj.type() == PointerType::Heap )
         {
             auto vis = visited.find( obj.object() );
             if ( vis == visited.end() )
             {
                 obj.offset( 0 );
-                ptr_data[0] = hash( heap, obj, visited, state, depth + 1 );
+                if ( heap.valid( obj ) )
+                    ptr_data[0] = hash( heap, obj, visited, state, depth + 1 );
+                else
+                    ptr_data[0] = 0; /* freed object, ignore */
             }
             else
                 ptr_data[0] = vis->second;
