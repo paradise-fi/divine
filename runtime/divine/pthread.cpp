@@ -328,6 +328,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     args->initialized = false;
     int ltid = __dios_start_thread( __dios_get_fun_ptr("_pthread_entry"),
         static_cast< void * >( args ), nullptr );
+
     assert( ltid >= 0 );
 
     // generate a unique ID
@@ -350,6 +351,9 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     // thread initialization
     _init_thread( gtid, ltid, ( attr == NULL ? PTHREAD_CREATE_JOINABLE : *attr ) );
     __dios_assert_v( ltid < alloc_pslots, "ltid < alloc_pslots" );
+
+    wait( mask, [&] { return !args->initialized; } );
+    __vm_obj_free( args );
 
     return 0;
 }
