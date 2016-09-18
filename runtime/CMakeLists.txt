@@ -26,6 +26,7 @@ file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 macro( mklib lib flags )
   foreach( f ${SRC_${lib}} )
     string( REGEX REPLACE "\\.[a-z]+" ".bc" out ${f} )
+    file( RELATIVE_PATH out "${CMAKE_CURRENT_SOURCE_DIR}" "${out}" )
     list( APPEND BC_${lib} ${out} )
     add_custom_command(
         DEPENDS runtime-cc ${f} ${H_RUNTIME}
