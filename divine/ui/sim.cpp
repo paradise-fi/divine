@@ -21,6 +21,7 @@
 #include <divine/vm/debug.hpp>
 #include <divine/vm/print.hpp>
 #include <divine/ui/cli.hpp>
+#include <divine/ui/logo.hpp>
 #include <brick-string>
 #include <cstring>
 
@@ -789,6 +790,10 @@ void Sim::run()
     el_set( el, EL_CLIENTDATA, &interp );
     el_set( el, EL_EDITOR, "emacs" );
     el_source( el, nullptr );
+
+    std::cerr << logo << std::endl;
+    std::cerr << "Welcome to 'divine sim', an interactive debugger. Type 'help' to get started."
+              << std::endl;
 
     while ( !interp._exit )
     {
