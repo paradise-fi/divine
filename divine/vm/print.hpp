@@ -60,7 +60,7 @@ void ascbyte( std::ostream &o, int &col, B byte )
 enum class DisplayVal { Name, Value, PreferName };
 
 template< typename Eval >
-static std::string value( Eval &eval, llvm::Value *val, DisplayVal disp )
+static std::string value( Eval &eval, llvm::Value *val, DisplayVal disp = DisplayVal::PreferName )
 {
     std::stringstream num2str;
     num2str << std::setw( 2 ) << std::setfill( '0' ) << std::hex;
@@ -77,7 +77,8 @@ static std::string value( Eval &eval, llvm::Value *val, DisplayVal disp )
         else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
         {
             num2str << eval.program().blockmap[ B ].instruction();
-            name = "label %" + ( name.empty() ? num2str.str() : name );
+            name = B->getName().str();
+            name = "label %" + ( name.empty() || name.size() > 20 ? num2str.str() : name );
         }
     }
 

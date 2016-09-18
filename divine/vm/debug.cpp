@@ -226,10 +226,7 @@ void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
         else
         {
             auto iop = llvm::cast< llvm::Instruction >( instructions[ iter.instruction() + 1 ].op );
-            auto name = iop->getParent()->getName().str();
-            out << "label %"
-                << ( name.empty() ? brick::string::fmt( iter.instruction() ) : name )
-                << ":" << std::endl;
+            out << print::value( eval, iop->getParent() ) << ":" << std::endl;
         }
         iter = iter + 1;
     }
