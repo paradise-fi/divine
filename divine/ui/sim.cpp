@@ -230,7 +230,7 @@ struct Interpreter
                     {
                         if ( col + n.size() >= 68 )
                             col = 0, std::cerr << std::endl << "        ";
-                        auto val = attr( sub, "@value" );
+                        auto val = sub.attribute( "@value" );
                         if ( val == "-" )
                         {
                             std::cerr << " " << n;
@@ -245,7 +245,7 @@ struct Interpreter
     void info()
     {
         auto top = get( "$top" ), frame = get( "$frame" );
-        auto sym = attr( top, "@symbol" ), loc = attr( top, "@location" );
+        auto sym = top.attribute( "@symbol" ), loc = top.attribute( "@location" );
         std::cerr << "# executing " << sym;
         if ( sym.size() + loc.size() > 60 )
             std::cerr << std::endl << "#        at ";
@@ -253,7 +253,7 @@ struct Interpreter
             std::cerr << " at ";
         std::cerr << loc << std::endl;
         if ( frame._address != top._address )
-            std::cerr << "# NOTE: $frame in " << attr( frame, "@symbol" ) << std::endl;
+            std::cerr << "# NOTE: $frame in " << frame.attribute( "@symbol" ) << std::endl;
     }
 
     Interpreter( BC bc )
@@ -264,17 +264,6 @@ struct Interpreter
         _prompt = strdup( "> " );
         set( "$_", nullDN() );
         update();
-    }
-
-    std::string attr( DN dn, std::string key )
-    {
-        std::string res = "-";
-        dn.attributes( [&]( auto k, auto v )
-            {
-                if ( k == key )
-                    res = v;
-            } );
-        return res;
     }
 
     using Eval = vm::Eval< vm::Program, Context, PointerV >;
@@ -506,7 +495,7 @@ struct Interpreter
     {
         auto dn = get( s.var );
         if ( s.raw )
-            std::cerr << attr( dn, "@raw" ) << std::endl;
+            std::cerr << dn.attribute( "@raw" ) << std::endl;
         else
             show( dn );
     }
