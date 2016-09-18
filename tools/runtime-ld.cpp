@@ -1,4 +1,6 @@
+DIVINE_RELAX_WARNINGS
 #include <brick-llvm>
+DIVINE_UNRELAX_WARNINGS
 
 /* usage: runtime-cc source.c output.bc [flags] */
 int main( int argc, const char **argv )

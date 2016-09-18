@@ -1,6 +1,10 @@
 #include <divine/cc/clang.hpp>
 #include <divine/rt/runtime.hpp>
+
+DIVINE_RELAX_WARNINGS
 #include <llvm/Bitcode/ReaderWriter.h>
+DIVINE_UNRELAX_WARNINGS
+
 #include <lart/divine/debugpaths.hpp>
 #include <brick-string>
 #include <brick-fs>
