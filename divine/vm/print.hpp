@@ -57,66 +57,99 @@ void ascbyte( std::ostream &o, int &col, B byte )
     ++ col;
 }
 
+enum class DisplayVal { Name, Value, PreferName };
+
+template< typename Eval >
+static std::string value( Eval &eval, llvm::Value *val, DisplayVal disp )
+{
+    std::stringstream num2str;
+    num2str << std::setw( 2 ) << std::setfill( '0' ) << std::hex;
+
+    std::string name;
+
+    if ( disp != DisplayVal::Value )
+    {
+        if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
+        {
+            num2str << eval.program().pcmap[ I ].instruction();
+            name = "%" + num2str.str();
+        }
+        else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
+        {
+            num2str << eval.program().blockmap[ B ].instruction();
+            name = "label %" + ( name.empty() ? num2str.str() : name );
+        }
+    }
+
+    if ( name.empty() && disp != DisplayVal::Name )
+    {
+        auto slot = eval.program().valuemap[ val ].slot;
+        if ( slot.type == Eval::Slot::Aggregate )
+            name = "<aggregate>";
+        else
+            eval.template type_dispatch<>(
+                slot.width(), slot.type,
+                [&]( auto v ) { name = brick::string::fmt( v.get( slot ) ); } );
+    }
+
+    return name;
+}
+
+template< typename Eval >
+static void result( std::ostream &out, int col, Eval &eval )
+{
+    while ( col < 60 )
+        col ++, out << " ";
+    out << "# " << value( eval, eval.instruction().op, DisplayVal::Value );
+}
+
 template< typename Eval >
 static std::string instruction( Eval &eval, int padding = 0 )
 {
     std::stringstream out;
     auto &insn = eval.instruction();
     ASSERT( insn.op );
-    llvm::Instruction *I = llvm::cast< llvm::Instruction >( insn.op );
-    std::string iname = I->getName();
-    int anonid = eval.program().pcmap[ I ].instruction();
 
-    if ( iname.empty() )
-        iname = brick::string::fmt( anonid );
+    bool printres = true;
+
     if ( insn.result().type != Program::Slot::Void )
-        out << "  %" << iname << " = ";
+        out << "  " << value( eval, insn.op, DisplayVal::Name ) << " = ";
     else
-        out << "  ";
+        out << "  ", printres = false;
+
     out << opcode( insn.opcode ) << " ";
     int skip = 0;
+    int argalign = out.str().size() + padding, argcols = 0;
 
     if ( insn.opcode == llvm::Instruction::Call )
     {
         skip = 1;
-        out << "@" << insn.op->getOperand( insn.op->getNumOperands() - 1 )->getName().str() << " ";
+        auto tgt = insn.op->getOperand( insn.op->getNumOperands() - 1 )->getName().str();
+        argcols = tgt.size() + 2;
+        out << "@" << tgt << " ";
     }
 
     for ( int i = 1; i < int( insn.op->getNumOperands() + 1 ) - skip; ++i )
     {
         auto val = insn.op->getOperand( i - 1 );
-        auto oname = val->getName().str();
-        if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
-            oname = "%" + ( oname.empty() ?
-                            brick::string::fmt( eval.program().pcmap[ I ].instruction() ) : oname );
-        else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
-            oname = "label %" + ( oname.empty() ?
-                                  brick::string::fmt( eval.program().blockmap[ B ].instruction() ) : oname );
-        else if ( !oname.empty() )
-            oname = "%" + oname;
+        auto oname = value( eval, val, DisplayVal::PreferName );
 
-        if ( oname.empty() )
+        int cols = argalign + argcols + oname.size() + 1;
+        if ( ( printres && cols >= 60 ) || cols >= 80 )
         {
-            if ( insn.value( i ).type == Eval::Slot::Aggregate )
-                oname = "<aggregate>";
-            else eval.template op<>( i, [&]( auto v )
-            {
-                oname = brick::string::fmt( v.get( i ) );
-            } );
+            if ( printres )
+                printres = false, result( out, argalign + argcols, eval );
+            out << std::endl;
+            for ( int i = 0; i < argalign; ++i ) out << " ";
+            argcols = 0;
         }
+        argcols += oname.size() + 1;
 
         out << ( oname.empty() ? "?" : oname ) << " ";
     }
 
-    if ( insn.result().type != Eval::Slot::Aggregate )
-        eval.template op<>( 0, [&]( auto v )
-        {
-            int col = out.str().size();
-            if ( col >= 45 )
-                col = -padding, out << std::endl;
-            pad( out, col, 45 );
-            out << " # " << brick::string::fmt( v.get( 0 ) );
-        } );
+    if ( printres )
+        result( out, argalign + argcols, eval );
 
     return out.str();
 }
