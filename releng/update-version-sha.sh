@@ -36,7 +36,7 @@ else
     new=$empty
 fi
 
-if test "$old" != "$new"; then
+if test "$old" != "$new" || ! test -f $where; then
     src=`echo $new | cut -d' ' -f1`
     runtime=`echo $new | cut -d' ' -f2`
     echo "const char *DIVINE_VERSION = \"$version\";" > $where
