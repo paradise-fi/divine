@@ -17,6 +17,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <divine/vm/stepper.hpp>
 #include <divine/vm/explore.hpp>
 #include <divine/vm/debug.hpp>
 #include <divine/vm/print.hpp>
@@ -126,94 +127,6 @@ struct Context : DebugContext
         auto rv = _choices.front();
         _choices.pop_front();
         return rv;
-    }
-};
-
-struct Stepper
-{
-    vm::GenericPointer _frame, _frame_cur, _parent_cur;
-    std::pair< int, int > _lines, _instructions, _states, _jumps;
-    std::pair< std::string, int > _line;
-    std::set< vm::CodePointer > _bps;
-
-    Stepper()
-        : _frame( vm::nullPointer() ),
-          _frame_cur( vm::nullPointer() ),
-          _parent_cur( vm::nullPointer() ),
-          _lines( 0, 0 ), _instructions( 0, 0 ),
-          _states( 0, 0 ), _jumps( 0, 0 ),
-          _line( "", 0 )
-    {}
-
-    void lines( int l ) { _lines.second = l; }
-    void instructions( int i ) { _instructions.second = i; }
-    void states( int s ) { _states.second = s; }
-    void jumps( int j ) { _jumps.second = j; }
-    void frame( vm::GenericPointer f ) { _frame = f; }
-    auto frame() { return _frame; }
-
-    void add( std::pair< int, int > &p )
-    {
-        if ( _frame.null() || _frame == _frame_cur )
-            p.first ++;
-    }
-
-    bool _check( std::pair< int, int > &p )
-    {
-        return p.second && p.first >= p.second;
-    }
-
-    template< typename Eval >
-    bool check( Context &ctx, Eval &eval )
-    {
-        for ( auto bp : _bps )
-            if ( eval.pc() == bp )
-                return true;
-
-        if ( !_frame.null() && !ctx.heap().valid( _frame ) )
-            return true;
-        if ( _check( _jumps ) )
-            return true;
-        if ( !_frame.null() && _frame_cur != _frame )
-            return false;
-        return _check( _lines ) || _check( _instructions ) || _check( _states );
-    }
-
-    void instruction( vm::Program::Instruction &i )
-    {
-        add( _instructions );
-        if ( i.op )
-        {
-            auto l = vm::fileline( *llvm::cast< llvm::Instruction >( i.op ) );
-            if ( _line.second && l != _line )
-                add( _lines );
-            if ( _frame.null() || _frame == _frame_cur )
-                _line = l;
-        }
-    }
-
-    void state() { add( _states ); }
-    void in_frame( vm::GenericPointer next, vm::CowHeap &heap )
-    {
-        vm::GenericPointer last = _frame_cur, last_parent = _parent_cur;
-        vm::value::Pointer next_parent;
-
-        heap.read( next + vm::PointerBytes, next_parent );
-
-        _frame_cur = next;
-        _parent_cur = next_parent.cooked();
-
-        if ( last == next )
-            return; /* no change */
-        if ( last.null() || next.null() )
-            return; /* entry or exit */
-
-        if ( next == last_parent )
-            return; /* return from last into next */
-        if ( next_parent.cooked() == last )
-            return; /* call from last into next */
-
-        ++ _jumps.first;
     }
 };
 
@@ -448,7 +361,7 @@ struct Interpreter
             throw brick::except::Error( "the program has already terminated" );
     }
 
-    void run( Stepper step, bool verbose )
+    void run( vm::Stepper step, bool verbose )
     {
         check_running();
         Eval eval( _bc->program(), _ctx );
@@ -521,9 +434,9 @@ struct Interpreter
 
     void go( command::Exit ) { _exit = true; }
 
-    Stepper stepper( command::WithSteps s, bool jmp )
+    vm::Stepper stepper( command::WithSteps s, bool jmp )
     {
-        Stepper step;
+        vm::Stepper step;
         step._bps = _bps;
         check_running();
         if ( jmp )
@@ -536,7 +449,7 @@ struct Interpreter
     void go( command::Start st )
     {
         vm::setup::boot( _ctx );
-        Stepper step;
+        vm::Stepper step;
         step._bps.insert( _bc->program().functionByName( "main" ) );
         run( step, false );
         set( "$_", frameDN() );
@@ -590,7 +503,7 @@ struct Interpreter
 
     void go( command::Rewind re )
     {
-        Stepper step;
+        vm::Stepper step;
         step._instructions = std::make_pair( 1, 1 );
         auto tgt = get( re.var );
         _ctx.heap().restore( tgt.snapshot() );
@@ -671,7 +584,7 @@ struct Interpreter
 
         std::cerr << std::endl;
         _ctx._trace.clear();
-        Stepper step;
+        vm::Stepper step;
         step._instructions = std::make_pair( 1, 1 );
         run( step, false ); /* make 0 (user mode) steps */
     }
