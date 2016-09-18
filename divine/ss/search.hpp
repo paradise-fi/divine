@@ -59,8 +59,6 @@ struct BFS : SearchBase< B, L >
 
     virtual void run( int peers, bool initials ) override
     {
-        int count = 0;
-
         if ( initials )
         {
             this->_b.initials( [&]( auto i )

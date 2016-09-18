@@ -42,7 +42,7 @@ struct GenericListen : Listen
     { return _e( f, t, l, n ); }
 
     template< typename State, typename Label, typename _E = E >
-    auto edge( State f, State t, Label l, bool n ) ->
+    auto edge( State f, State t, Label l, bool ) ->
         decltype( std::declval< _E >()( f, t, l ) )
     { return _e( f, t, l ); }
 
@@ -75,7 +75,7 @@ struct PassiveListen : Listen
     }
 
     template< typename State, typename Label, typename _E = E >
-    auto edge( State f, State t, Label l, bool n ) ->
+    auto edge( State f, State t, Label l, bool ) ->
         decltype( std::declval< _E >()( f, t, l ), Action() )
     {
         _e( f, t, l );
