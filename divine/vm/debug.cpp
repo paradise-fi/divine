@@ -239,7 +239,6 @@ template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::source( std::ostream &out )
 {
     ASSERT_EQ( _kind, DNKind::Frame );
-    auto di = subprogram();
     out << print::source( subprogram(), _ctx.program(), pc() );
 }
 

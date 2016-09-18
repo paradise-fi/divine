@@ -197,7 +197,7 @@ struct Context
         ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
     }
 
-    virtual void trace( TraceText tt ) {} // fixme?
+    virtual void trace( TraceText ) {} // fixme?
     virtual void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceStateType ) { NOT_IMPLEMENTED(); }

@@ -130,7 +130,7 @@ struct Stepper
         if ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Cancel )
             return true;
 
-        auto snap = yield( ctx.snapshot() );
+        yield( ctx.snapshot() );
         vm::setup::scheduler( ctx );
         return true;
     }
