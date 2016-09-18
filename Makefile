@@ -33,53 +33,54 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 
 all: debug
 
-$(OBJ)%/configure-stamp: CMakeLists.txt
-	echo configuring $*
+FLAVORS = debug asan release
+TARGETS = divine unit functional website
+
+${TARGETS}:
+	$(MAKE) debug-$@
+
+${FLAVORS}:
+	$(MAKE) $@-divine
+
+${FLAVORS:%=.stamp-%-configure}: CMakeLists.txt .stamp-toolchain
+	@echo configuring $@
 	mkdir -p $(OBJ)$*
-	cd $(OBJ)$* && cmake $(PWD) $($*_FLAGS) -G $(GENERATOR)
+	cd $(OBJ)${@:.stamp-%-configure=%} && \
+	    cmake $(PWD) $($(*:$(OBJ)=:/configure-stamp=)_FLAGS) -G $(GENERATOR)
 	touch $@
 
-$(OBJ)toolchain/build-stamp: $(OBJ)toolchain/configure-stamp
+${FLAVORS:%=.stamp-%-build}:
+	$(MAKE) ${@:%-build=%-configure}
+	cmake --build $(OBJ)${@:.stamp-%-build=%} --target ${@:.stamp-%-build=%} $(VERB)
+
+${TARGETS:%=debug-%}: .stamp-debug-configure
+	cmake --build $(OBJ)debug --target ${@:debug-%=%} $(VERB)
+
+${TARGETS:%=release-%}: .stamp-release-configure
+	cmake --build $(OBJ)release --target ${@:release-%=%} $(VERB)
+
+${TARGETS:%=asan-%}: .stamp-asan-configure
+	cmake --build $(OBJ)asan --target ${@:asan-%=%} $(VERB)
+
+.stamp-toolchain:
+	cd $(OBJ)toolchain && cmake $(PWD) $(toolchain_FLAGS) -G $(GENERATOR)
 	cmake --build $(OBJ)toolchain --target cxx $(VERB)
 	cmake --build $(OBJ)toolchain --target clang $(VERB)
 	cmake --build $(OBJ)toolchain --target compiler-rt $(VERB)
 	touch $@
 
-toolchain: $(OBJ)toolchain/build-stamp
-
-debug-%: toolchain $(OBJ)debug/configure-stamp
-	cmake --build $(OBJ)debug --target $* $(VERB)
-asan-%: toolchain $(OBJ)asan/configure-stamp
-	cmake --build $(OBJ)asan --target $* $(VERB)
-release-%: toolchain $(OBJ)release/configure-stamp
-	cmake --build $(OBJ)release --target $* $(VERB)
-
-debug-env : debug
-	env PATH=$(OBJ)debug/clang/bin:$(OBJ)debug/llvm/bin:$(OBJ)debug/tools:$$PATH \
-		CXXFLAGS="$(CXXFLAGS_)" LDFLAGS="$(LDFLAGS_)" $$SHELL
-
-asan-env : asan
-	env PATH=$(OBJ)asan/clang/bin:$(OBJ)asan/llvm/bin:$(OBJ)asan/tools:$$PATH \
-		CXXFLAGS="$(CXXFLAGS_)" LDFLAGS="$(LDFLAGS_)" $$SHELL
-
-release-env : release
-	env PATH=$(OBJ)release/clang/bin:$(OBJ)release/llvm/bin:$(OBJ)release/tools:$$PATH \
+${FLAVORS:%=%-env}:
+	$(MAKE) ${@:%-env=%}
+	env PATH=$(OBJ)${@:%-env=%}/clang/bin:$(OBJ)${@:%-env=%}/llvm/bin:$(OBJ)${@:%-env=%}/tools:$$PATH \
 		CXXFLAGS="$(CXXFLAGS_)" LDFLAGS="$(LDFLAGS_)" $$SHELL
 
 env : debug-env
 
-website: debug-website
-debug: debug-divine debug-lart
-asan: asan-divine asan-lart
-release: release-divine release-lart
-check: debug-check
-unit: debug-unit
-functional: debug-functional
-unit-%: debug-unit-%
+show: # make show var=VAR
+	@echo $($(var))
 
 # make being too smart here?
-.PRECIOUS: $(OBJ)toolchain/configure-stamp $(OBJ)toolchain/build-stamp $(OBJ)debug/configure-stamp $(OBJ)release/configure-stamp $(OBJ)asan/configure-stamp
-.PHONY: toolchain website debug debug-% release release-% check unit unit-% debug-env release-env env
+.PHONY: ${TARGETS} ${FLAVORS} ${TARGETS:%=release-%} ${FLAVORS:%=%-env}
 
 dist:
 	cmake --build $(OBJ)debug --target package_source $(VERB)
