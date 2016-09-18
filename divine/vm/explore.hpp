@@ -146,8 +146,7 @@ struct Explore
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
         if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
         {
-            _initial.snap = _ctx.heap().snapshot();
-            _ctx.flush_ptr2i();
+            _initial.snap = _ctx.snapshot();
             _states.insert( _initial.snap );
         }
         if ( !_ctx.finished() )

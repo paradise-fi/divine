@@ -138,9 +138,7 @@ struct Interpreter
 
     DN dn( vm::GenericPointer p, vm::DNKind k, llvm::Type *t, llvm::DIType *dit )
     {
-        auto rv = DN( _ctx, _ctx.heap().snapshot(), p, 0, k, t, dit );
-        _ctx.flush_ptr2i();
-        return rv;
+        return DN( _ctx, _ctx.snapshot(), p, 0, k, t, dit );
     }
 
     DN nullDN() { return dn( vm::nullPointer(), vm::DNKind::Object, nullptr, nullptr ); }
@@ -168,7 +166,7 @@ struct Interpreter
         auto dn = i->second;
         switch ( var[0] )
         {
-            case '$': dn.relocate( _ctx.heap().snapshot() ); break;
+            case '$': dn.relocate( _ctx.snapshot() ); break;
             case '#': break;
             default: UNREACHABLE( "impossible case" );
         }

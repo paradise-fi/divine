@@ -115,6 +115,13 @@ struct Context
     HeapPointer globals() { return get( _VM_CR_Globals ).pointer; }
     HeapPointer constants() { return get( _VM_CR_Constants ).pointer; }
 
+    typename Heap::Snapshot snapshot()
+    {
+        auto rv = _heap.snapshot();
+        flush_ptr2i();
+        return rv;
+    }
+
     void push( PointerV ) {}
 
     template< typename X, typename... Args >
