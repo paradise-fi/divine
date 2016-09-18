@@ -155,6 +155,7 @@ template< typename Program, typename Heap >
 struct DebugContext : Context< Program, Heap >
 {
     std::vector< std::string > _trace;
+    std::deque< int > _choices;
     ProcInfo _proc;
 
     llvm::DIType *_state_di_type;
@@ -169,6 +170,21 @@ struct DebugContext : Context< Program, Heap >
     {
         _trace.push_back( "fatal double fault" );
         this->set( _VM_CR_Frame, vm::nullPointer() );
+    }
+
+    template< typename I >
+    int choose( int count, I, I )
+    {
+        if ( _choices.empty() )
+            _choices.emplace_back( 0 );
+
+        ASSERT_LT( _choices.front(), count );
+        ASSERT_LEQ( 0, _choices.front() );
+        if ( !_proc.empty() )
+            _proc.clear();
+        auto rv = _choices.front();
+        _choices.pop_front();
+        return rv;
     }
 
     void trace( vm::TraceText tt )

@@ -106,29 +106,7 @@ struct Help { std::string _cmd; };
 
 }
 
-using DebugContext = vm::DebugContext< vm::Program, vm::CowHeap >;
-
-struct Context : DebugContext
-{
-    std::deque< int > _choices;
-
-    Context( vm::Program &p ) : DebugContext( p ) {}
-
-    template< typename I >
-    int choose( int count, I, I )
-    {
-        if ( _choices.empty() )
-            _choices.emplace_back( 0 );
-
-        ASSERT_LT( _choices.front(), count );
-        ASSERT_LEQ( 0, _choices.front() );
-        if ( !_proc.empty() )
-            _proc.clear();
-        auto rv = _choices.front();
-        _choices.pop_front();
-        return rv;
-    }
-};
+using Context = vm::DebugContext< vm::Program, vm::CowHeap >;
 
 struct Interpreter
 {
