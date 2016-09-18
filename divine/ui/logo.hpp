@@ -2,7 +2,7 @@
 namespace divine {
 namespace ui {
 
-const char const *logo = R"(
+const char *logo = R"(
            ^       —————.   —.—  .     .  —.—  .     .  .—————    .    .
           ———      |     |   |   |     |   |   |\    |  |         |    |
          —(o)—     |     |   |   |     |   |   |  \  |  |————     '————|

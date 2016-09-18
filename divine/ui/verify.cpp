@@ -110,7 +110,7 @@ void Verify::run()
     ss::search(
         ss::Order::PseudoBFS, ex, _threads,
         ss::listen(
-            [&]( auto from, auto to, auto label, bool isnew )
+            [&]( auto from, auto to, auto, bool isnew )
             {
                 if ( isnew )
                 {
@@ -127,7 +127,7 @@ void Verify::run()
                 }
                 return ss::Listen::AsNeeded;
             },
-            [&]( auto st )
+            [&]( auto )
             {
                 ++statecount; return ss::Listen::AsNeeded;
             } ) );

@@ -255,8 +255,8 @@ struct Interpreter
     }
 
     Interpreter( BC bc )
-        : _exit( false ), _bc( bc ), _explore( bc ), _ctx( _bc->program() ), _state_count( 0 ),
-          _sticky_tid( -1, 0 ), _sched_random( false ), _debug_kernel( false )
+        : _exit( false ), _bc( bc ), _explore( bc ), _ctx( _bc->program() ),
+          _sticky_tid( -1, 0 ), _state_count( 0 ), _sched_random( false ), _debug_kernel( false )
     {
         vm::setup::boot( _ctx );
         _prompt = strdup( "> " );
@@ -341,7 +341,7 @@ struct Interpreter
         return step;
     }
 
-    void go( command::Start st )
+    void go( command::Start )
     {
         vm::setup::boot( _ctx );
         vm::Stepper step;
@@ -539,7 +539,8 @@ void Interpreter::command( cmd::Tokens tok )
     auto setupopts = cmd::make_option_set< command::Setup >( v )
         .option( "[--debug-kernel]", &command::Setup::debug_kernel, "enable kernel debugging"s );
     auto o_trace = cmd::make_option_set< command::Trace >( v )
-        .option( "[--from {string}]", &command::Trace::from, "start in a given state, instead of initial"s );
+        .option( "[--from {string}]", &command::Trace::from,
+                 "start in a given state, instead of initial"s );
 
     auto parser = cmd::make_parser( v )
         .command< command::Exit >( "exit from divine"s )
