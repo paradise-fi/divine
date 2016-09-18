@@ -737,9 +737,7 @@ struct CowHeap : SimpleHeap< CowHeap >
         for ( auto &except : _l.exceptions )
         {
             while ( snap != snap_end() && snap->first < except.first )
-            {
                 *si++ = *snap++;
-            }
             if ( snap != snap_end() && snap->first == except.first )
                 snap++;
             if ( _objects.valid( except.second ) )
@@ -747,9 +745,7 @@ struct CowHeap : SimpleHeap< CowHeap >
         }
 
         while ( snap != snap_end() )
-        {
             *si++ = *snap++;
-        }
         ASSERT_EQ( si, _snapshots.machinePointer< SnapItem >( s ) + count );
 
         _l.exceptions.clear();
