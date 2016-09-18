@@ -463,7 +463,7 @@ struct Eval
         return type_dispatch< Guard >( v.width(), v.type, _op );
     }
 
-    template< template< typename > class Guard, typename Op >
+    template< template< typename > class Guard = Any, typename Op >
     void type_dispatch( int width, typename Slot::Type type, Op _op )
     {
         switch ( type ) {
