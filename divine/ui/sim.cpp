@@ -264,17 +264,10 @@ struct Interpreter
         update();
     }
 
-    using Eval = vm::Eval< vm::Program, Context, PointerV >;
-
-    bool schedule( bool update_choices = true, bool terse = false )
+    auto newstate( vm::CowHeap::Snapshot snap, bool update_choices = true, bool terse = false )
     {
-        if ( !_ctx.frame().null() )
-            return false; /* nothing to be done */
+        snap = _explore.start( _ctx, snap );
 
-        if ( _ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Cancel )
-            return true;
-
-        auto snap = _explore.start( _ctx, _ctx.heap().snapshot() );
         bool isnew = false;
         std::string name;
 
@@ -301,9 +294,7 @@ struct Interpreter
         else
             std::cerr << "# program entered state " << name << " (already seen)" << std::endl;
 
-        vm::setup::scheduler( _ctx );
-
-        return true;
+        return snap;
     }
 
     int sched_policy( const vm::ProcInfo &proc )
@@ -329,72 +320,10 @@ struct Interpreter
     void run( vm::Stepper step, bool verbose )
     {
         check_running();
-        Eval eval( _bc->program(), _ctx );
-        bool in_fault = eval.pc().function() == _ctx.get( _VM_CR_FaultHandler ).pointer.object();
-        bool in_kernel = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
-
-        while ( !_ctx.frame().null() &&
-                ( ( !_debug_kernel && in_kernel ) || !step.check( _ctx, eval ) ) &&
-                ( in_fault || eval.pc().function()
-                  != _ctx.get( _VM_CR_FaultHandler ).pointer.object() ) )
-        {
-            in_kernel = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
-
-            if ( in_kernel && !_debug_kernel )
-                eval.advance();
-            else
-            {
-                step.in_frame( _ctx.frame(), _ctx.heap() );
-                eval.advance();
-                step.instruction( eval.instruction() );
-            }
-
-            if ( verbose && ( !in_kernel || _debug_kernel ) )
-            {
-                auto frame = _ctx.frame();
-                std::string before = vm::print::instruction( eval );
-                eval.dispatch();
-                if ( _ctx.heap().valid( frame ) )
-                {
-                    auto newframe = _ctx.frame();
-                    _ctx.set( _VM_CR_Frame, frame ); /* :-( */
-                    std::cerr << vm::print::instruction( eval ) << std::endl;
-                    _ctx.set( _VM_CR_Frame, newframe );
-                }
-                else
-                    std::cerr << before << std::endl;
-            }
-            else
-                eval.dispatch();
-
-            if ( schedule() )
-                step.state();
-
-            in_kernel = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
-            if ( !in_kernel || _debug_kernel )
-                step.in_frame( _ctx.frame(), _ctx.heap() );
-
-            if ( !_ctx._proc.empty() )
-            {
-                if ( _ctx._choices.empty() )
-                    _ctx._choices.push_back( sched_policy( _ctx._proc ) );
-                std::cerr << "# active threads:";
-                for ( auto pi : _ctx._proc )
-                {
-                    bool active = pi.second == _ctx._choices.front();
-                    std::cerr << ( active ? " [" : " " )
-                              << pi.first.first << ":" << pi.first.second
-                              << ( active ? "]" : "" );
-                }
-                _ctx._proc.clear();
-                std::cerr << std::endl;
-            }
-
-            for ( auto t : _ctx._trace )
-                std::cerr << "T: " << t << std::endl;
-            _ctx._trace.clear();
-        }
-        _ctx.sync_pc();
+        step.run( _ctx,
+                  [&]( auto snap ) { return newstate( snap ); },
+                  [&]() { return sched_policy( _ctx._proc ); },
+                  verbose );
     }
 
     void go( command::Exit ) { _exit = true; }
@@ -402,6 +331,7 @@ struct Interpreter
     vm::Stepper stepper( command::WithSteps s, bool jmp )
     {
         vm::Stepper step;
+        step._ff_kernel = !_debug_kernel;
         step._bps = _bps;
         check_running();
         if ( jmp )
@@ -530,15 +460,16 @@ struct Interpreter
             choices.push_back( std::stoi( c ) );
         _ctx._choices = choices;
 
-        Eval eval( _bc->program(), _ctx );
+        vm::Eval< vm::Program, Context, vm::value::Void > eval( _bc->program(), _ctx );
         auto last = get( "#last", true ).snapshot();
         std::cerr << "traced states:";
         while ( !_ctx._choices.empty() )
         {
             eval.advance();
             eval.dispatch();
-            if ( schedule( false, true ) )
+            if ( _ctx.frame().null() )
             {
+                newstate( _ctx.snapshot(), false, true );
                 int count = choices.size() - _ctx._choices.size();
                 auto b = choices.begin(), e = b + count;
                 _trace[ last ] = std::deque< int >( b, e );

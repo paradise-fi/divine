@@ -22,6 +22,9 @@
 #include <divine/vm/debug.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/value.hpp>
+#include <divine/vm/eval.hpp>
+#include <divine/vm/setup.hpp>
+#include <divine/vm/print.hpp>
 #include <set>
 
 namespace divine {
@@ -30,6 +33,7 @@ namespace vm {
 struct Stepper
 {
     GenericPointer _frame, _frame_cur, _parent_cur;
+    bool _ff_kernel;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
     std::pair< std::string, int > _line;
     std::set< CodePointer > _bps;
@@ -38,6 +42,7 @@ struct Stepper
         : _frame( nullPointer() ),
           _frame_cur( nullPointer() ),
           _parent_cur( nullPointer() ),
+          _ff_kernel( false ),
           _lines( 0, 0 ), _instructions( 0, 0 ),
           _states( 0, 0 ), _jumps( 0, 0 ),
           _line( "", 0 )
@@ -115,6 +120,92 @@ struct Stepper
 
         ++ _jumps.first;
     }
+
+    template< typename Context, typename YieldState >
+    bool schedule( Context &ctx, YieldState yield )
+    {
+        if ( !ctx.frame().null() )
+            return false; /* nothing to be done */
+
+        if ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Cancel )
+            return true;
+
+        auto snap = yield( ctx.snapshot() );
+        vm::setup::scheduler( ctx );
+        return true;
+    }
+
+    template< typename Context, typename YieldState, typename SchedPolicy >
+    void run( Context &ctx, YieldState yield, SchedPolicy policy, bool verbose )
+    {
+        Eval< typename Context::Program, Context, value::Void > eval( ctx.program(), ctx );
+        bool in_fault = eval.pc().function() == ctx.get( _VM_CR_FaultHandler ).pointer.object();
+        bool in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
+
+        while ( !ctx.frame().null() &&
+                ( ( _ff_kernel && in_kernel ) || !check( ctx, eval ) ) &&
+                ( in_fault || eval.pc().function()
+                  != ctx.get( _VM_CR_FaultHandler ).pointer.object() ) )
+        {
+            in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
+
+            if ( in_kernel && _ff_kernel )
+                eval.advance();
+            else
+            {
+                in_frame( ctx.frame(), ctx.heap() );
+                eval.advance();
+                instruction( eval.instruction() );
+            }
+
+            if ( verbose && ( !in_kernel || !_ff_kernel ) )
+            {
+                auto frame = ctx.frame();
+                std::string before = vm::print::instruction( eval );
+                eval.dispatch();
+                if ( ctx.heap().valid( frame ) )
+                {
+                    auto newframe = ctx.frame();
+                    ctx.set( _VM_CR_Frame, frame ); /* :-( */
+                    std::cerr << vm::print::instruction( eval ) << std::endl;
+                    ctx.set( _VM_CR_Frame, newframe );
+                }
+                else
+                    std::cerr << before << std::endl;
+            }
+            else
+                eval.dispatch();
+
+            if ( schedule( ctx, yield ) )
+                state();
+
+            in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
+            if ( !in_kernel || !_ff_kernel )
+                in_frame( ctx.frame(), ctx.heap() );
+
+            if ( !ctx._proc.empty() )
+            {
+                if ( ctx._choices.empty() )
+                    ctx._choices.push_back( policy() );
+                std::cerr << "# active threads:";
+                for ( auto pi : ctx._proc )
+                {
+                    bool active = pi.second == ctx._choices.front();
+                    std::cerr << ( active ? " [" : " " )
+                              << pi.first.first << ":" << pi.first.second
+                              << ( active ? "]" : "" );
+                }
+                ctx._proc.clear();
+                std::cerr << std::endl;
+            }
+
+            for ( auto t : ctx._trace )
+                std::cerr << "T: " << t << std::endl;
+            ctx._trace.clear();
+        }
+        ctx.sync_pc();
+    }
+
 };
 
 }
