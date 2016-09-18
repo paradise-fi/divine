@@ -126,6 +126,7 @@ struct DebugNode
     bool valid();
     void value( YieldAttr yield );
     void attributes( YieldAttr yield );
+    std::string attribute( std::string key );
     int size();
     llvm::DIDerivedType *di_derived( uint64_t tag, llvm::DIType *t = nullptr );
     llvm::DIDerivedType *di_member( llvm::DIType *t = nullptr );

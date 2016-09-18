@@ -373,6 +373,18 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield, std::set< GenericPointer
                 localvar( yield, DDI, ptrs );
 }
 
+template< typename Prog, typename Heap >
+std::string DebugNode< Prog, Heap >::attribute( std::string key )
+{
+    std::string res = "-";
+    attributes( [&]( auto k, auto v )
+                {
+                    if ( k == key )
+                        res = v;
+                } );
+    return res;
+}
+
 template struct DebugNode< Program, CowHeap >;
 
 }
