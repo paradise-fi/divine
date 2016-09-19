@@ -369,6 +369,63 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield, std::set< GenericPointer
                 localvar( yield, DDI, ptrs );
 }
 
+static std::string rightpad( std::string s, int i )
+{
+    while ( int( s.size() ) < i )
+        s += ' ';
+    return s;
+}
+
+template< typename Prog, typename Heap >
+void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, bool compact, int indent )
+{
+    std::string ind;
+    if ( indent >= 2 )
+    {
+        ind = std::string( indent - 2, ' ' );
+        ind += "| ";
+    }
+
+    std::set< std::string > ck{ "@value", "@type", "@location", "@symbol" };
+
+    attributes(
+        [&]( std::string k, auto v )
+        {
+            if ( k == "@raw" || ( compact && ck.count( k ) == 0 ) )
+                return;
+            out << ind << rightpad( k + ": ", 14 - indent ) << v << std::endl;
+        } );
+
+    int col = 0, relrow = 0;
+
+    std::stringstream rels;
+
+    if ( depth > 0 )
+        related(
+            [&]( std::string n, auto sub )
+            {
+                std::stringstream str;
+                sub.format( str, depth - 1, true, indent + 2 );
+                if ( !str.str().empty() && n != "@parent" && depth > 0 )
+                    out << ind << n << ":" << std::endl << str.str();
+                else
+                {
+                    if ( indent + col + n.size() >= 68 )
+                    {
+                        if ( relrow == 3 )
+                            rels << "[...]";
+                        else if ( relrow < 3 )
+                            col = 0, rels << std::endl << ind << rightpad( "", 13 - indent );
+                        ++ relrow;
+                    }
+                    rels << " " << n;
+                    col += n.size();
+                }
+            } );
+    if ( !rels.str().empty() )
+        out << rightpad( "related:", 13 - indent ) << rels.str() << std::endl;
+}
+
 template< typename Prog, typename Heap >
 std::string DebugNode< Prog, Heap >::attribute( std::string key )
 {

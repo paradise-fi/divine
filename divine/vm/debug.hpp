@@ -139,6 +139,7 @@ struct DebugNode
 
     void bitcode( std::ostream &out );
     void source( std::ostream &out );
+    void format( std::ostream &out, int depth = 1, bool compact = false, int indent = 0 );
 
     void related( YieldDN yield );
     void struct_fields( HeapPointer hloc, YieldDN yield, std::set< GenericPointer > &ptrs );
