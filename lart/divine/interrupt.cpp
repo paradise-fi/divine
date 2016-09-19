@@ -117,7 +117,7 @@ struct MemInterrupt : lart::Pass {
                 || op == llvm::Instruction::AtomicCmpXchg )
             {
                 auto *type = _memInterrupt->getFunctionType();
-                llvm::IRBuilder<> irb( std::next( llvm::BasicBlock::iterator( inst ) ) );
+                llvm::IRBuilder<> irb{ llvm::BasicBlock::iterator( inst ) };
                 irb.CreateCall( _memInterrupt, {
                                 irb.CreateBitCast( getPointerOperand( inst ), type->getParamType( 0 ) ),
                                 irb.getInt32( opType( op ) )
