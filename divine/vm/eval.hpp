@@ -213,32 +213,33 @@ struct Eval
         return s2ptr( ptr2s( pp ), pp.offset() );
     }
 
-    bool boundcheck( PointerV p, int sz, bool write, std::string dsc = "" )
+    template< typename MkF >
+    bool boundcheck( MkF mkf, PointerV p, int sz, bool write, std::string dsc = "" )
     {
         auto pp = p.cooked();
         int width = 0;
 
         if ( !p.defined() )
         {
-            fault( _VM_F_Memory ) << "undefined pointer dereference: " << p << dsc;
+            mkf( _VM_F_Memory ) << "undefined pointer dereference: " << p << dsc;
             return false;
         }
 
         if ( pp.null() )
         {
-            fault( _VM_F_Memory ) << "null pointer dereference: " << p << dsc;
+            mkf( _VM_F_Memory ) << "null pointer dereference: " << p << dsc;
             return false;
         }
 
         if ( pp.type() == PointerType::Code )
         {
-            fault( _VM_F_Memory ) << "attempted to dereference a code pointer" << p << dsc;
+            mkf( _VM_F_Memory ) << "attempted to dereference a code pointer" << p << dsc;
             return false;
         }
 
         if ( write && pp.type() == PointerType::Const )
         {
-            fault( _VM_F_Memory ) << "attempted write to a constant location " << p << dsc;
+            mkf( _VM_F_Memory ) << "attempted write to a constant location " << p << dsc;
             return false;
         }
 
@@ -247,7 +248,7 @@ struct Eval
             HeapPointer hp = pp;
             if ( hp.null() || !heap().valid( hp ) )
             {
-                fault( _VM_F_Memory ) << "invalid heap pointer dereference " << p << dsc;
+                mkf( _VM_F_Memory ) << "invalid heap pointer dereference " << p << dsc;
                 return false;
             }
             width = heap().size( hp );
@@ -256,19 +257,24 @@ struct Eval
                     ( pp.type() == PointerType::Global &&
                       pp.object() >= program()._globals.size() ) )
         {
-            fault( _VM_F_Memory ) << "pointer object out of bounds in " << p << dsc;
+            mkf( _VM_F_Memory ) << "pointer object out of bounds in " << p << dsc;
             return false;
         } else
             width = ptr2s( pp ).size();
 
         if ( int( pp.offset() ) + sz > width )
         {
-            fault( _VM_F_Memory ) << "access of size " << sz << " at " << p
-                                  << " is " << pp.offset() + sz - width
-                                  << " bytes out of bounds";
+            mkf( _VM_F_Memory ) << "access of size " << sz << " at " << p
+                                << " is " << pp.offset() + sz - width
+                                << " bytes out of bounds";
             return false;
         }
         return true;
+    }
+
+    bool boundcheck( PointerV p, int sz, bool write, std::string dsc = "" )
+    {
+        return boundcheck( [this]( auto t ) { return fault( t ); }, p, sz, write, dsc );
     }
 
     int ptr2sz( PointerV p )
