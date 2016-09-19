@@ -213,33 +213,6 @@ struct Interpreter
             throw brick::except::Error( "unknown direction '" + bad + "'" );
     }
 
-    void show( DN dn, bool detailed = false )
-    {
-        dn.attributes(
-            [&]( std::string k, auto v )
-            {
-                if ( k != "@raw" || detailed )
-                    std::cerr << k << ": " << v << std::endl;
-            } );
-        std::cerr << "related:" << std::flush;
-        std::stringstream valued;
-        int col = 0;
-        dn.related( [&]( std::string n, auto sub )
-                    {
-                        if ( col + n.size() >= 68 )
-                            col = 0, std::cerr << std::endl << "        ";
-                        auto val = sub.attribute( "@value" );
-                        if ( val == "-" )
-                        {
-                            std::cerr << " " << n;
-                            col += n.size();
-                        }
-                        else
-                            valued << "  " << n << ": " << val << std::endl;
-                    } );
-        std::cerr << std::endl << valued.str();
-    }
-
     void info()
     {
         auto top = get( "$top" ), frame = get( "$frame" );
@@ -413,7 +386,7 @@ struct Interpreter
     {
         set( "$$", bt.var );
         do {
-            show( get( "$$" ) );
+            get( "$$" ).format( std::cerr, 1, true );
             set( "$$", "$$.@parent", true );
             std::cerr << std::endl;
         } while ( get( "$$" ).valid() );
@@ -425,7 +398,7 @@ struct Interpreter
         if ( s.raw )
             std::cerr << dn.attribute( "@raw" ) << std::endl;
         else
-            show( dn );
+            dn.format( std::cerr );
     }
 
     void go( command::Inspect i )
