@@ -69,7 +69,7 @@
     return r;
 }
 
-void free( void * p) _PDCLIB_nothrow { return __vm_obj_free( p ); }
+void free( void * p) _PDCLIB_nothrow { if ( p ) __vm_obj_free( p ); }
 
 /* IOStream */
 
