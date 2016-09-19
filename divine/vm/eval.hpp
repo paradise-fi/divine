@@ -343,6 +343,7 @@ struct Eval
 
     FaultStream fault( Fault f, HeapPointer frame, CodePointer c )
     {
+        context().sync_pc();
         FaultStream fs( context(), f, frame, c, true, false );
         return fs;
     }
