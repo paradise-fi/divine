@@ -128,9 +128,9 @@ bool DebugNode< Prog, Heap >::valid()
 
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     PointerV addr( _address );
-    if ( !eval.boundcheck( addr, 1, false ) )
+    if ( !eval.boundcheck( []( auto ) { return std::stringstream(); }, addr, 1, false ) )
         return false;
-    if ( !eval.boundcheck( addr, size(), false ) )
+    if ( !eval.boundcheck( []( auto ) { return std::stringstream(); }, addr, size(), false ) )
         return false;
     return true;
 }
