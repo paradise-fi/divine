@@ -44,12 +44,12 @@ size_t _PDCLIB_regptr = 0;
 
 void exit( int status )
 {
-
     if ( _PDCLIB_regstack )
-        for ( int i = 1; i <= _PDCLIB_regptr; ++i )
-            _PDCLIB_regstack[ _PDCLIB_regptr - i ]();
-
-    __vm_obj_free( _PDCLIB_regstack );
+    {
+        for ( int i = _PDCLIB_regptr - 1; i >= 0; --i )
+            _PDCLIB_regstack[ i ]();
+        __vm_obj_free( _PDCLIB_regstack );
+    }
     _Exit( status );
 }
 

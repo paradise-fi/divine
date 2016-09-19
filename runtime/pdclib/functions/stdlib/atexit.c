@@ -39,14 +39,12 @@ int atexit( void (*func)( void ) )
 {
     const size_t ptrsize = sizeof( void (*)( void ) );
 
-    if ( _PDCLIB_regptr >= 32 ) {
-        void *n = realloc( _PDCLIB_regstack, ptrsize * ( _PDCLIB_regptr + 1 ) );
-        if ( n )
-            _PDCLIB_regstack = n;
-        else
-            return 1; /* ? */
-    } else if ( !_PDCLIB_regstack )
-        _PDCLIB_regstack = __vm_obj_make( 32 * ptrsize );
+    if ( !_PDCLIB_regstack )
+        _PDCLIB_regstack = __vm_obj_make( 4 * ptrsize );
+    else if ( _PDCLIB_regptr * ptrsize >= __vm_obj_size( _PDCLIB_regstack ) )
+    {
+        __vm_obj_resize( _PDCLIB_regstack, ( _PDCLIB_regptr + 1 ) * ptrsize );
+    }
 
     _PDCLIB_regstack[ _PDCLIB_regptr ++ ] = func;
     return 0;

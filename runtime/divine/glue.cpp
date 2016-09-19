@@ -7,6 +7,7 @@
 #include <_PDCLIB_aux.h>
 #include <divine.h>
 #include <string.h>
+#include <dios.h>
 
 /*
  * Glue code that ties various bits of C and C++ runtime to the divine runtime
@@ -90,7 +91,7 @@ extern "C" void _PDCLIB_Exit( int rv )
 {
     if ( rv )
         __vm_fault( _VM_F_Control, "exit called with non-zero value" );
-    __vm_fault( _VM_F_NotImplemented ); // TODO unwind
+    __dios_kill_thread( 0, 1 ); /* FIXME hardcoded reason = 1 */
 }
 
 extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
