@@ -114,9 +114,9 @@ static std::string instruction( Eval &eval, int padding = 0 )
     bool printres = true;
 
     if ( insn.result().type != Program::Slot::Void )
-        out << "  " << value( eval, insn.op, DisplayVal::Name ) << " = ";
+        out << value( eval, insn.op, DisplayVal::Name ) << " = ";
     else
-        out << "  ", printres = false;
+        printres = false;
 
     out << opcode( insn.opcode ) << " ";
     int skip = 0;

@@ -161,17 +161,17 @@ struct Stepper
             if ( verbose && ( !in_kernel || !_ff_kernel ) )
             {
                 auto frame = ctx.frame();
-                std::string before = vm::print::instruction( eval );
+                std::string before = vm::print::instruction( eval, 2 );
                 eval.dispatch();
                 if ( ctx.heap().valid( frame ) )
                 {
                     auto newframe = ctx.frame();
                     ctx.set( _VM_CR_Frame, frame ); /* :-( */
-                    std::cerr << vm::print::instruction( eval ) << std::endl;
+                    std::cerr << "  " << vm::print::instruction( eval, 2 ) << std::endl;
                     ctx.set( _VM_CR_Frame, newframe );
                 }
                 else
-                    std::cerr << before << std::endl;
+                    std::cerr << "  " << before << std::endl;
             }
             else
                 eval.dispatch();

@@ -222,7 +222,7 @@ void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
         eval._instruction = &i;
         out << ( iter == CodePointer( pc() ) ? ">>" : "  " );
         if ( i.op )
-            out << print::instruction( eval, 2 ) << std::endl;
+            out << "  " << print::instruction( eval, 4 ) << std::endl;
         else
         {
             auto iop = llvm::cast< llvm::Instruction >( instructions[ iter.instruction() + 1 ].op );
