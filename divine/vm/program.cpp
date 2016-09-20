@@ -68,6 +68,9 @@ bool Program::isCodePointerConst( llvm::Value *val )
 
 bool Program::isCodePointer( llvm::Value *val )
 {
+    if ( isa< llvm::BlockAddress >( val ) )
+        return true;
+
     if ( auto ty = dyn_cast< llvm::PointerType >( val->getType() ) )
         return ty->getElementType()->isFunctionTy();
 
