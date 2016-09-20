@@ -166,10 +166,10 @@ struct Eval
         return context().get( v.location ).pointer + v.offset + off;
     }
 
-    GenericPointer s2ptr( Slot v, int off, PointerV f )
+    GenericPointer s2ptr( Slot v, int off, HeapPointer f )
     {
         if ( v.location == Program::Slot::Local )
-            return f.cooked() + v.offset + off;
+            return f + v.offset + off;
         return s2ptr( v, off );
     }
 
@@ -191,6 +191,12 @@ struct Eval
     void slot_read( Slot s, V &v )
     {
         heap().read( s2ptr( s ), v, context().ptr2i( s.location ) );
+    }
+
+    template< typename V >
+    void slot_read( Slot s, HeapPointer fr, V &v )
+    {
+        heap().read( s2ptr( s, 0, fr ), v );
     }
 
     typename Program::Slot ptr2s( GenericPointer p )
@@ -384,6 +390,15 @@ struct Eval
         if ( !op.defined() )
             fault( _VM_F_Hypercall ) << "operand " << i << " has undefined value";
         return op;
+    }
+
+    template< typename T > auto operandCk( int idx, Instruction &insn, HeapPointer fr )
+    {
+        T val;
+        slot_read( insn.operand( idx ), fr, val );
+        if ( !val.defined() )
+            fault( _VM_F_Hypercall ) << "operand " << idx << " has undefined value: "  << val;
+        return val;
     }
 
     PointerV operandPtr( int i )
@@ -597,7 +612,7 @@ struct Eval
             else if ( caller.result().size() < operand( 0 ).size() )
                 fault( _VM_F_Control ) << "Returned value is bigger then expected by caller";
             else if ( !heap().copy( s2ptr( operand( 0 ) ),
-                                    s2ptr( caller.result(), 0, parent ),
+                                    s2ptr( caller.result(), 0, parent.cooked() ),
                                     caller.result().size() ) )
                 fault( _VM_F_Memory ) << "Cound not return value";
         }
@@ -607,7 +622,7 @@ struct Eval
 
         if ( isa< ::llvm::InvokeInst >( caller.op ) )
         {
-            auto rv = s2ptr( caller.operand( -2 ), 0, parent );
+            auto rv = s2ptr( caller.operand( -2 ), 0, parent.cooked() );
             heap().read( rv, br );
             jumpTo( br );
         }
@@ -819,15 +834,19 @@ struct Eval
     void implement_hypercall_control()
     {
         int idx = 0;
+
+        auto o_frame = frame();
+        auto &o_inst = instruction();
+
         while ( idx < instruction().values.size() - 2 )
         {
-            int action = operandCk< IntV >( idx++ ).cooked();
-            _VM_ControlRegister reg = _VM_ControlRegister( operandCk< IntV >( idx++ ).cooked() );
+            int action = operandCk< IntV >( idx++, o_inst, o_frame ).cooked();
+            auto reg = _VM_ControlRegister( operandCk< IntV >( idx++, o_inst, o_frame ).cooked() );
             if ( action == _VM_CA_Set && reg == _VM_CR_Flags )
-                context().set( reg, operandCk< PtrIntV >( idx++ ).cooked() );
+                context().set( reg, operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked() );
             else if ( action == _VM_CA_Set && reg == _VM_CR_PC )
             {
-                auto ptr = operandPtr( idx++ ).cooked();
+                auto ptr = operandCk< PointerV >( idx++, o_inst, o_frame ).cooked();
                 if ( ptr.type() == PointerType::Code )
                     switchBB( ptr );
                 else
@@ -839,16 +858,27 @@ struct Eval
             else if ( action == _VM_CA_Set )
             {
                 context().sync_pc();
-                context().set( reg, operandPtr( idx++ ).cooked() );
+                context().set( reg, operandCk< PointerV >( idx++, o_inst, o_frame ).cooked() );
             }
             else if ( action == _VM_CA_Get && reg == _VM_CR_Flags )
-                result( PtrIntV( context().get( reg ).integer ) );
+            {
+                if ( o_frame == frame() )
+                    result( PtrIntV( context().get( reg ).integer ) );
+                else
+                    fault( _VM_F_Hypercall ) << "invalid _VM_CA_Get after frame change";
+            }
             else if ( action == _VM_CA_Get )
-                result( PointerV( context().get( reg ).pointer ) );
+            {
+                if ( o_frame == frame() )
+                    result( PointerV( context().get( reg ).pointer ) );
+                else
+                    fault( _VM_F_Hypercall ) << "invalid _VM_CA_Get after frame change";
+            }
             else if ( action == _VM_CA_Bit && reg == _VM_CR_Flags )
             {
-                context().ref( reg ).integer &= ~operandCk< PtrIntV >( idx++ ).cooked();
-                context().ref( reg ).integer |= operandCk< PtrIntV >( idx++ ).cooked();
+                auto &reg_r = context().ref( reg ).integer;
+                reg_r &= ~operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
+                reg_r |= operandCk< PtrIntV >( idx++, o_inst, o_frame ).cooked();
             }
             else
             {
@@ -858,8 +888,13 @@ struct Eval
             if ( action == _VM_CA_Set && reg == _VM_CR_Frame )
             {
                 PointerV ptr;
-                heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
-                context().set( _VM_CR_PC, ptr.cooked() );
+                if ( !frame().null() )
+                {
+                    heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
+                    context().set( _VM_CR_PC, ptr.cooked() );
+                    if ( !heap().valid( frame() ) )
+                        fault( _VM_F_Hypercall ) << "invalid target frame in __vm_control";
+                }
                 heap()._l.hint = frame().object() + ptr.cooked().offset() ?: 1;
             }
         }
@@ -1008,7 +1043,7 @@ struct Eval
         /* Copy arguments to the new frame. */
         for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.argcount ); ++i )
             heap().copy( s2ptr( operand( i ) ),
-                         s2ptr( function.values[ i ], 0, frameptr ),
+                         s2ptr( function.values[ i ], 0, frameptr.cooked() ),
                          function.values[ i ].size() );
 
         if ( function.vararg )
@@ -1017,7 +1052,7 @@ struct Eval
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
                 size += operand( i ).size();
             auto vaptr = size ? heap().make( size ) : nullPointerV();
-            auto vaptr_loc = s2ptr( function.values[ function.argcount ], 0, frameptr );
+            auto vaptr_loc = s2ptr( function.values[ function.argcount ], 0, frameptr.cooked() );
             heap().write( vaptr_loc, vaptr );
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
             {
