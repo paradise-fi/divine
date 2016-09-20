@@ -41,6 +41,10 @@ CodePointer Program::functionByName( std::string s )
     llvm::Function *f = module->getFunction( s );
     if ( !f )
         return CodePointer();
+    if ( hypercall( f ) )
+        return CodePointer();
+    if ( !functionmap.count( f ) )
+        UNREACHABLE_F( "function %s does not have a functionmap entry", s.c_str() );
     return functionmap[ f ];
 }
 
