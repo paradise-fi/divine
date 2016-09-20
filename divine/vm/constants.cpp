@@ -54,9 +54,11 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     if ( _doneinit.count( V ) )
         return;
 
-    // functions have only personality, it need not be initialized before the
-    // function besides, some transformations might add personality even to the
-    // personality function, making this go into infinite loop
+    // skip functions since they only have a 'personality' as their operand and
+    // it does not need to be initialized before the function pointer itself;
+    // additionally, some transformations might add a 'personality' attribute
+    // pointing to the function itself, turning this into an infinite loop
+
     if ( C && !isa< llvm::Function >( C ) )
         for ( int i = 0; i < int( C->getNumOperands() ); ++i )
         {
