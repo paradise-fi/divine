@@ -50,7 +50,7 @@ _MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, const _MD_Fu
     if ( offset < 0 || offset > funMeta->inst_table_size )
         return { nullptr, 0 };
 
-    char *base = reinterpret_cast< char * >( frame + 1 ); // skip frame header
+    char *base = reinterpret_cast< char * >( frame );
     auto &imeta = funMeta->inst_table[ offset ];
     return { base + imeta.val_offset, imeta.val_width };
 }
