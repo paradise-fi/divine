@@ -245,7 +245,7 @@ struct Pointer : Base
         std::string def = "dd";
         if ( !v._obj_defined ) def[0] = 'u';
         if ( !v._off_defined ) def[1] = 'u';
-        v.withType( [&]( auto p ) { o << "[pointer " << p << " " << def << "]"; return p; } );
+        v.withType( [&]( auto p ) { o << "[" << p << " " << def << "]"; return p; } );
         return o;
     }
 

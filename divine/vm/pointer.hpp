@@ -182,7 +182,7 @@ template< typename P,
               std::is_same< decltype( P().type() ), PointerType >::value >::type >
 static inline std::ostream &operator<<( std::ostream &o, P p )
 {
-    return o << p.type() << " " << p.object() << " " << p.offset();
+    return o << p.type() << "* " << std::hex << p.object() << " " << p.offset();
 }
 
 }
