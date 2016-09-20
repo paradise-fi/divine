@@ -15,6 +15,11 @@
 
 #include "config.h"
 
+#ifdef __divine__
+#include <divine.h>
+#include <cstring> // memset
+#endif
+
 #if LIBCXXABI_HAS_NO_THREADS
 
 namespace __cxxabiv1 {
@@ -77,7 +82,12 @@ extern "C" {
     //  If this is the first time we've been asked for these globals, create them
         if ( NULL == retVal ) {
             retVal = static_cast<__cxa_eh_globals*>
+#ifdef __divine__
+                        (__vm_obj_make(sizeof (__cxa_eh_globals)));
+            std::memset(retVal, 0, sizeof (__cxa_eh_globals));
+#else
                         (std::calloc (1, sizeof (__cxa_eh_globals)));
+#endif
             if ( NULL == retVal )
                 abort_message("cannot allocate __cxa_eh_globals");
             if ( 0 != pthread_setspecific ( key_, retVal ) )
