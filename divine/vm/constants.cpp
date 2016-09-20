@@ -143,6 +143,10 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
         for ( int i = 0; i < v.size(); ++i )
             heap.write_shift( ptr, value::Int< 8 >( 0 ) );
     }
+    else if ( C && isCodePointer( C ) )
+    {
+        heap.write_shift( ptr, value::Pointer( getCodePointer( C ) ) );
+    }
     else if ( isCodePointer( V ) )
     {
         heap.write_shift( ptr, value::Pointer( getCodePointer( V ) ) );
