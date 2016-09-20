@@ -174,10 +174,10 @@ struct Eval
     }
 
     template< typename V >
-    void slot_write( Slot s, V v )
+    void slot_write( Slot s, V v, int off = 0 )
     {
         context().ptr2i( s.location,
-                         heap().write( s2ptr( s ), v, context().ptr2i( s.location ) ) );
+                         heap().write( s2ptr( s, off ), v, context().ptr2i( s.location ) ) );
     }
 
     void slot_copy( HeapPointer from, Slot to, int size, int offset = 0 )
@@ -1350,7 +1350,6 @@ struct Eval
                         T oldval;
                         heap().read( ptr.cooked(), oldval );
                         auto change = oldval == expected;
-                        auto resptr = s2ptr( result() );
 
                         if ( change.cooked() ) {
                             // undefined if one of the inputs was not defined
@@ -1358,9 +1357,8 @@ struct Eval
                                 newval.defined( false );
                             heap().write( ptr.cooked(), newval );
                         }
-                        heap().write( resptr, oldval );
-                        resptr.offset( resptr.offset() + sizeof( typename T::Raw ) );
-                        heap().write( resptr, change );
+                        slot_write( result(), oldval, 0 );
+                        slot_write( result(), oldval, sizeof( typename T::Raw )  );
                     } );
 
             case OpCode::AtomicRMW:
