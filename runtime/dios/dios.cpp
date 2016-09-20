@@ -122,6 +122,6 @@ _Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept
     else
         __vm_control( _VM_CA_Set, _VM_CR_Frame, to,
                       _VM_CA_Set, _VM_CR_PC, pc,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, 0 );
+                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, 0ull );
     __builtin_unreachable();
 }
