@@ -1011,8 +1011,9 @@ struct Eval
         {
             ::llvm::Function *F = CS.getCalledFunction();
 
-            if ( F && F->isDeclaration() )
+            if ( F )
             {
+                ASSERT( F->isDeclaration() );
                 auto id = F->getIntrinsicID();
                 if ( id != Intrinsic::not_intrinsic )
                     return implement_intrinsic( id );
