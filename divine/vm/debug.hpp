@@ -168,12 +168,6 @@ struct DebugContext : Context< Program, Heap >
           _state_di_type( nullptr ), _state_type( nullptr )
     {}
 
-    void doublefault()
-    {
-        _trace.push_back( "fatal double fault" );
-        this->set( _VM_CR_Frame, vm::nullPointer() );
-    }
-
     template< typename I >
     int choose( int count, I, I )
     {

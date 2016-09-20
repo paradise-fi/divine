@@ -399,6 +399,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
 
     SimpleHeap() { _l.hint = 1; }
     void reset() { _l.hint = 1; _l.exceptions.clear(); _l.snapshot = Snapshot(); }
+    void rollback() { _l.exceptions.clear(); } /* fixme leak */
 
     Shadows::Loc shloc( HeapPointer p, Internal i ) const
     {
@@ -668,6 +669,12 @@ struct CowHeap : SimpleHeap< CowHeap >
     void reset()
     {
         Super::reset();
+        _ext.writable.clear();
+    }
+
+    void rollback()
+    {
+        Super::rollback();
         _ext.writable.clear();
     }
 

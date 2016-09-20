@@ -42,6 +42,7 @@ struct RunContext : Context< Program, MutableHeap >
     {
         std::cerr << "E: Double fault, program terminated." << std::endl;
         this->set( _VM_CR_Frame, nullPointer() );
+        this->ref( _VM_CR_Flags ).integer |= _VM_CF_Cancel;
     }
 
     void trace( vm::TraceText tt ) { std::cerr << "T: " << heap().read_string( tt.text ) << std::endl; }
