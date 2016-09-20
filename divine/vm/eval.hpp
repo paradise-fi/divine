@@ -337,7 +337,7 @@ struct Eval
     {
         PointerV fr( frame() );
         PointerV fpc;
-        while ( !fr.cooked().null() )
+        while ( !fr.cooked().null() && heap().valid( fr.cooked() ) )
         {
             heap().read_shift( fr, fpc );
             if ( fpc.cooked().object() == context().get( _VM_CR_FaultHandler ).pointer.object() )
@@ -346,7 +346,7 @@ struct Eval
             heap().read( fr.cooked(), fr );
         }
 
-        if ( frame().null() )
+        if ( frame().null() || !heap().valid( frame() ) )
             return fault( f, nullPointer( PointerType::Heap ),
                              nullPointer( PointerType::Code ) );
         else
