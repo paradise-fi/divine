@@ -443,6 +443,7 @@ struct Interpreter
             if ( _ctx.frame().null() )
             {
                 newstate( _ctx.snapshot(), false, true );
+                vm::setup::scheduler( _ctx );
                 int count = choices.size() - _ctx._choices.size();
                 auto b = choices.begin(), e = b + count;
                 _trace[ last ] = std::deque< int >( b, e );
