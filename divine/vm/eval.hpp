@@ -388,7 +388,7 @@ struct Eval
     {
         auto op = operand< T >( i );
         if ( !op.defined() )
-            fault( _VM_F_Hypercall ) << "operand " << i << " has undefined value";
+            fault( _VM_F_Hypercall ) << "operand " << i << " has undefined value: " << op;
         return op;
     }
 
@@ -405,7 +405,7 @@ struct Eval
     {
         auto op = operand< PointerV >( i );
         if ( !op.defined() )
-            fault( _VM_F_Hypercall ) << "pointer operand " << i << " has undefined value";
+            fault( _VM_F_Hypercall ) << "pointer operand " << i << " has undefined value: " << op;
         return op;
     }
 
@@ -851,7 +851,7 @@ struct Eval
                     switchBB( ptr );
                 else
                 {
-                    fault( _VM_F_Hypercall ) << "invalid pointer type when setting _VM_CR_PC";
+                    fault( _VM_F_Hypercall ) << "invalid pointer type when setting _VM_CR_PC: " << ptr;
                     return;
                 }
             }
