@@ -101,10 +101,15 @@ _Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept
     for ( auto *f = top->parent; f != to; top->parent = f ) {
         auto *meta = __md_get_pc_meta( uintptr_t( f->pc ) );
         auto *inst = meta->inst_table;
-        for ( int i = 0; i < meta->inst_table_size; ++i, ++inst ) {
+        for ( int i = 0; i < meta->inst_table_size; ++i, ++inst )
+        {
             if ( inst->opcode == OpCode::Alloca )
-                __vm_obj_free( *static_cast< void ** >( __md_get_register_info( f,
-                                        uintptr_t( meta->entry_point ) + i, meta ).start ) );
+            {
+                uintptr_t pc = uintptr_t( meta->entry_point ) + i;
+                void *regaddr = __md_get_register_info( f, pc, meta ).start;
+                void *regval = *static_cast< void ** >( regaddr );
+                __vm_obj_free( regval );
+            }
         }
         auto *old = f;
         f = f->parent;
