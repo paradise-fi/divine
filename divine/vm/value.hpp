@@ -183,7 +183,8 @@ struct Float : Base
 
     Float() : Float( 0, false ) {}
     explicit Float( T t, bool def = true ) : _cooked( t ), _defined( def ) {}
-    template< int w, bool sig > Float( Int< w, sig > ) { NOT_IMPLEMENTED(); }
+    template< int w, bool sig > Float( Int< w, sig > i )
+        : _cooked( i.cooked() ), _defined( i.defined() ) {}
     template< typename S > Float( Float< S > ) { NOT_IMPLEMENTED(); }
 
     Raw defbits() { return _defined ? full< Raw >() : 0; }
@@ -196,7 +197,7 @@ struct Float : Base
     bool pointer() { return false; }
     void pointer( bool ) {} /* ignore */
 
-    bool isnan() { NOT_IMPLEMENTED(); }
+    bool isnan() { return std::isnan( _cooked ); }
     T cooked() { return _cooked; }
     Int< 1, false > compare( Float o, bool v )
     {
