@@ -83,6 +83,7 @@ struct Verify : WithBC
     int _max_mem = 256; // MB
     int _max_time = 100;  // seconds
     int _threads = 0;
+    int _backtraceMaxDepth = 10;
     bool _no_counterexample = false;
     std::string _report;
     std::string _statistics;
@@ -247,6 +248,8 @@ struct CLI : Interface
             .option( "[--no-counterexample]", &Verify::_no_counterexample,
                      "do not print counterexamples"s )
             .option( "[--report {string}]", &Verify::_report, "print a report with given options"s )
+            .option( "[--max-backtrace-depth {int}]"s, &Verify::_backtraceMaxDepth,
+                     "Maximum depth of error backtrace printed in the report [default = 10]" )
             .option( "[--statistics {string}]", &Verify::_statistics,
                      "print statistics with given options"s );
 

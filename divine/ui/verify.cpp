@@ -191,7 +191,7 @@ void Verify::run()
     std::cout << std::endl;
     ASSERT( next == trace.end() );
 
-    dump( ex, dbg, trace.back() );
+    dump( ex, dbg, trace.back(), _backtraceMaxDepth );
 }
 
 }
