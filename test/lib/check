@@ -156,7 +156,13 @@ debris() {
 }
 
 verify() {
-    if fgrep -q '/* ERROR' "$1"; then
+    if fgrep -q '/* ERRSPEC:' "$1"; then
+        spec=$(fgrep '/* ERRSPEC:' | cut -d: -f2-)
+        if ! grep -q "^@location: $spec" verify.out; then
+            echo "# expected error to be found in $location, but it was not"
+            exit 1
+        fi
+    elif fgrep -q '/* ERROR' "$1"; then
         location=`fgrep -Hn '/* ERROR' "$1" | cut -d: -f1-2`
         if ! grep -q "^@location: $location" verify.out; then
             nl -ba "$1"
