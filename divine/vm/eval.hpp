@@ -1306,17 +1306,32 @@ struct Eval
                 implement_indirectBr(); break;
             case OpCode::Switch:
                 return op< Any >( 1, [this]( auto v ) {
+                        PointerV target;
+                        for ( int o = 2; o < int( this->instruction().values.size() ) - 1; o += 2 )
+                        {
+                            auto eq = v.get( 1 ) == v.get( o + 1 );
+                            if ( eq.cooked() )
+                                target = operandPtr( o + 1 );
+                        }
+                        if ( !target.cooked().object() )
+                            target = operandPtr( 1 );
                         if ( !v.get( 1 ).defined() )
-                            fault( _VM_F_Control ) << "switch on an undefined value";
-                        for ( int o = 2; o < int( this->instruction().values.size() ) - 1; o += 2 ) {
+                        {
+                            fault( _VM_F_Control, frame(), target.cooked() )
+                                << "switch on an undefined value";
+                            return;
+                        }
+                        for ( int o = 2; o < int( this->instruction().values.size() ) - 1; o += 2 )
+                        {
                             auto eq = v.get( 1 ) == v.get( o + 1 );
                             if ( !eq.defined() )
-                                fault( _VM_F_Control )
+                            {
+                                fault( _VM_F_Control, frame(), target.cooked() )
                                     << "comparison result undefined for a switch branch";
-                            if ( eq.cooked() )
-                                return this->jumpTo( operandCk< PointerV >( o + 1 ) );
+                                return;
+                            }
                         }
-                        return this->jumpTo( operandCk< PointerV >( 1 ) );
+                        return this->jumpTo( target );
                     } );
 
             case OpCode::Call:
