@@ -502,6 +502,8 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         if ( !valid( p ) )
             return false;
         _l.exceptions[ p.object() ] = Internal();
+        if ( p.offset() )
+            return false;
         return true;
     }
 
