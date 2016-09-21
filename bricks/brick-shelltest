@@ -1139,12 +1139,12 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
 
     if ( args.has( "--only" ) )
         split( args.opt( "--only" ), opt.filter );
-    else if ( hasenv( "T" ) )
+    if ( hasenv( "T" ) )
         split( getenv( "T" ), opt.filter );
 
     if ( args.has( "--skip" ) )
         split( args.opt( "--skip" ), opt.exclude );
-    else if ( hasenv( "S" ) )
+    if ( hasenv( "S" ) )
         split( getenv( "S" ), opt.exclude );
 
     if ( args.has( "--fatal-timeouts" ) )
