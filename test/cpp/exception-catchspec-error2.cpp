@@ -1,6 +1,7 @@
 #include <cassert>
+#include <stdexcept>
 
-/* ERRSPEC: cxa_handlers.cpp:37 */
+/* ERRSPEC: __unexpected */
 
 int x = 0, y = 0, z = 0;
 
@@ -18,7 +19,7 @@ void foo() {
     throw 4;
 }
 
-void bar() throw () {
+void bar() throw ( std::exception, std::runtime_error ) {
     try {
         X _( y );
         foo();
@@ -32,7 +33,6 @@ int main() {
         X _( z );
         bar();
     } catch ( long ) {
-        assert( 0 );
         return 2;
     } catch ( int ) {
         assert( 0 );
