@@ -1,7 +1,3 @@
-. lib
-. flavour vanilla
-
-llvm_verify valid <<EOF
 #include <pthread.h>
 #include <unistd.h>
 #include <assert.h>
@@ -66,4 +62,3 @@ int main() {
 
     return 0;
 }
-EOF
