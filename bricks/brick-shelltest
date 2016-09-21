@@ -1143,7 +1143,7 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         split( getenv( "T" ), opt.filter );
 
     if ( args.has( "--skip" ) )
-        split( args.opt( "--split" ), opt.exclude );
+        split( args.opt( "--skip" ), opt.exclude );
     else if ( hasenv( "S" ) )
         split( getenv( "S" ), opt.exclude );
 
