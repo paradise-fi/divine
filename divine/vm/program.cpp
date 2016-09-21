@@ -87,7 +87,7 @@ CodePointer Program::getCodePointer( llvm::Value *val )
         return blockmap[ B->getBasicBlock() ];
     } else if ( auto F = dyn_cast< llvm::Function >( val ) ) {
         if ( !functionmap.count( F ) && hypercall( F ) == NotHypercall )
-            throw std::logic_error(
+            throw brick::except::Error(
                 "Program::insert: " +
                 std::string( "Unresolved symbol (function): " ) + F->getName().str() );
 
