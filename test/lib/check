@@ -157,9 +157,10 @@ debris() {
 
 verify() {
     if fgrep -q '/* ERRSPEC:' "$1"; then
-        spec=$(fgrep '/* ERRSPEC:' | cut -d: -f2-)
-        if ! grep -q "^@location: $spec" verify.out; then
-            echo "# expected error to be found in $location, but it was not"
+        spec=$(fgrep '/* ERRSPEC:' $1 | cut -d: -f2- | sed -e "s,^ *,," -e "s, *\*/,,")
+        echo spec: $spec
+        if ! grep -q "^@[a-z]*:.*$spec" verify.out; then
+            echo "# expected error to be found in $spec, but it was not"
             exit 1
         fi
     elif fgrep -q '/* ERROR' "$1"; then
