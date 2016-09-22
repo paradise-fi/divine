@@ -865,12 +865,23 @@ struct MutableHeap
         vm::MutableHeap heap, cloned;
         auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
         heap.write( p, PointerV( q ) );
-        heap.write( p + vm::PointerBytes, IntV( 5 ) );
+        heap.write( p + vm::PointerBytes, PointerV( p ) );
         heap.write( q, PointerV( p ) );
         auto c_p = vm::heap::clone( heap, cloned, p );
         ASSERT_EQ( vm::heap::hash( heap, p ).first,
                    vm::heap::hash( cloned, c_p ).first );
-        ASSERT( vm::heap::hash( heap, p ).first != vm::heap::hash( heap, q ).first );
+    }
+
+    TEST(cow_hash)
+    {
+        vm::CowHeap heap;
+        auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
+        heap.write( p, PointerV( q ) );
+        heap.write( p + vm::PointerBytes, IntV( 5 ) );
+        heap.write( q, PointerV( p ) );
+        heap.snapshot();
+        ASSERT( vm::heap::hash( heap, p ).first !=
+                vm::heap::hash( heap, q ).first );
     }
 
 };
