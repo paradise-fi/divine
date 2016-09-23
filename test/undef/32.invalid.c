@@ -1,3 +1,3 @@
-/* ERRSPEC: _PDCLIB_Exit */
+/* ERRSPEC: dios/main.cpp:127 */
 void main() {
 }
