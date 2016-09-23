@@ -1,7 +1,7 @@
 include( stringify )
 #include( template-separe )
 
-foreach( D vm ss alg ui cc )
+foreach( D vm ss mc ui cc )
     file( GLOB CPP_${D} ${D}/*.cpp )
     file( GLOB HPP_${D} ${D}/*.hpp )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
@@ -33,7 +33,7 @@ add_definitions( ${DIVINE_DEFINES} )
 
 add_library( divine-cc ${CPP_cc} ${STRINGIFIED} )
 # add_library( divine-ss ${CPP_ss} )
-# add_library( divine-alg ${CPP_alg} )
+# add_library( divine-mc ${CPP_mc} )
 add_library( divine-ui ${CPP_ui} )
 add_library( divine-vm ${CPP_vm} )
 
@@ -41,12 +41,12 @@ target_link_libraries( divine-ui edit )
 
 add_library( libdivine "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp" )
 
-target_link_libraries( libdivine divine-cc # divine-ss divine-alg
+target_link_libraries( libdivine divine-cc # divine-ss divine-mc
                                  divine-ui divine-vm pthread liblart )
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
-bricks_unittest( test-divine ${HPP_ui} ${HPP_ss} ${HPP_vm} )
+bricks_unittest( test-divine ${HPP_ui} ${HPP_ss} ${HPP_vm} ${HPP_mc} )
 
 foreach( D vm ui cc )
   set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
