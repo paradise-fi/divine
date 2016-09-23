@@ -493,7 +493,7 @@ static int getSubOp( llvm::User *u, Program &p ) {
         // save location of landing block as suboperation
         auto *unwbb = inv->getUnwindDest();
         ASSERT( p.blockmap.count( unwbb ) );
-        ASSERT( llvm::isa< llvm::LandingPadInst >( unwbb->begin() ) );
+        ASSERT( llvm::isa< llvm::LandingPadInst >( unwbb->getFirstNonPHIOrDbgOrLifetime() ) );
         auto unwoffset = p.blockmap[ unwbb ].instruction();
         return unwoffset;
     }
