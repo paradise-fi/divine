@@ -13,10 +13,11 @@ namespace lart {
         PassMeta allocaPass();
         PassMeta registerPass();
         PassMeta globalsPass();
-        PassMeta silentPass();
+        PassMeta staticTauMemPass();
 
         inline std::vector< PassMeta > passes() {
-            return { paroptPass(), maskPass(), allocaPass(), registerPass(), globalsPass(), silentPass() };
+            return { paroptPass(), maskPass(), allocaPass(), registerPass(),
+                     globalsPass(), staticTauMemPass() };
         }
     }
 }
