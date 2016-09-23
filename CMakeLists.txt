@@ -130,7 +130,7 @@ opt( ALG_EXPLICIT "" OFF )
 opt( ALG_CSDR "" ON )
 opt( ALG_NDFS "" OFF )
 opt( ALG_METRICS "" ON )
-opt( OPT_SQL "enable ODBC-based database reports" ${ODBC_FOUND} )
+opt( OPT_SQL "enable ODBC-based database reports" OFF ) # ${ODBC_FOUND}
 
 option( DEV_WARNINGS "enable extra compiler warnings" ${IS_DEBUG} )
 option( BUILD_SHARED_LIBS "build shared libraries" OFF )
