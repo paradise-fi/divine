@@ -98,12 +98,7 @@ struct Thread {
         return *this;
     }
 
-#ifdef __divine__
-    void start() __attribute__((noinline)) {
-        __divine_interrupt_mask();
-#else
     void start() {
-#endif
         _interrupted.store( false, std::memory_order_relaxed );
         _thread.reset( new std::thread( [this]() { this->main(); } ) );
     }
