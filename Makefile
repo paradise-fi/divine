@@ -44,7 +44,7 @@ ${FLAVORS}:
 
 ${FLAVORS:%=.stamp-%-configure}: CMakeLists.txt .stamp-toolchain
 	@echo configuring $@
-	mkdir -p $(OBJ)$*
+	mkdir -p $(OBJ)${@:.stamp-%-configure=%}
 	cd $(OBJ)${@:.stamp-%-configure=%} && \
 	    cmake $(PWD) $($(*:$(OBJ)=:/configure-stamp=)_FLAGS) -G $(GENERATOR)
 	touch $@
@@ -63,6 +63,7 @@ ${TARGETS:%=asan-%}: .stamp-asan-configure
 	cmake --build $(OBJ)asan --target ${@:asan-%=%} $(VERB)
 
 .stamp-toolchain:
+	mkdir -p $(OBJ)toolchain
 	cd $(OBJ)toolchain && cmake $(PWD) $(toolchain_FLAGS) -G $(GENERATOR)
 	cmake --build $(OBJ)toolchain --target cxx $(VERB)
 	cmake --build $(OBJ)toolchain --target clang $(VERB)
