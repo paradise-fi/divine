@@ -34,7 +34,7 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 all: debug
 
 FLAVORS = debug asan release
-TARGETS = divine unit functional website
+TARGETS = divine unit functional website check llvm-dis clang
 
 ${TARGETS}:
 	$(MAKE) debug-$@
