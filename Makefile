@@ -46,7 +46,7 @@ ${FLAVORS:%=.stamp-%-configure}: CMakeLists.txt .stamp-toolchain
 	@echo configuring $@
 	mkdir -p $(OBJ)${@:.stamp-%-configure=%}
 	cd $(OBJ)${@:.stamp-%-configure=%} && \
-	    cmake $(PWD) $($(*:$(OBJ)=:/configure-stamp=)_FLAGS) -G $(GENERATOR)
+	    cmake $(PWD) $($(@:.stamp-%-configure=%)_FLAGS) -G $(GENERATOR)
 	touch $@
 
 ${FLAVORS:%=.stamp-%-build}:
