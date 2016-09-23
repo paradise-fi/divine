@@ -4,12 +4,12 @@ including **C** and **C++**.  The verification core is built on a foundation of
 high­-per­for­mance algorithms and data structures, scaling all the way from a
 laptop to a high-end cluster.  Learn more in the [manual](manual.html).
 
-DIVINE 4 Coming This Summer
+DIVINE 4 Coming This Autumn
 ===========================
 
-[2016-05-31] A major update of our class-leading model checker is scheduled for
-release in summer 2016. The new release will bring a new, flexible execution
-environment, based on the traditional hypervisor -- operating system -- user
+[2016-09-23] A major update of our software model checker is scheduled for
+release in autumn 2016. The new release will bring a new, flexible execution
+environment, based on the traditional virtual machine -- operating system -- user
 pro­gram division, along with a more efficient multi-threaded verification core.
 The user interface has also seen major improvements. Finally, the upcoming
 version of DIVINE will make working with counterexamples a much smoother and
