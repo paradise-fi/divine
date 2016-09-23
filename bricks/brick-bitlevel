@@ -724,9 +724,9 @@ struct BitTupleTest {
         ASSERT_EQ( bitlevel::ones< uint32_t >( 0 ), 0 );
         ASSERT_EQ( bitlevel::ones< uint32_t >( 1 ), 1 );
         ASSERT_EQ( bitlevel::ones< uint32_t >( 2 ), 3 );
-        ASSERT_EQ( bitlevel::ones< uint32_t >( 31 ), UINT32_MAX >> 1 );
-        ASSERT_EQ( bitlevel::ones< uint32_t >( 32 ), UINT32_MAX );
-        ASSERT_EQ( bitlevel::ones< uint32_t >( 33 ), UINT32_MAX );
+        ASSERT_EQ( bitlevel::ones< uint32_t >( 31 ), std::numeric_limits< uint32_t >::max() >> 1 );
+        ASSERT_EQ( bitlevel::ones< uint32_t >( 32 ), std::numeric_limits< uint32_t >::max() );
+        ASSERT_EQ( bitlevel::ones< uint32_t >( 33 ), std::numeric_limits< uint32_t >::max() );
     }
 };
 
