@@ -89,7 +89,7 @@ struct ConstConditionalJumpElimination : lart::Pass {
                 unreachable.insert( unr.begin(), unr.end() );
             }
         }
-        std::cerr << "INFO: changed " << changed << " branches, removed " << removed << " basic blocks" << std::endl;
+        // std::cerr << "INFO: changed " << changed << " branches, removed " << removed << " basic blocks" << std::endl;
         return llvm::PreservedAnalyses::none();
     }
 
@@ -132,7 +132,7 @@ struct MergeBasicBlocks : lart::Pass {
         for ( auto &f : m )
             if ( !f.empty() )
                 mergeBB( &f.getEntryBlock() );
-        std::cerr << "INFO: merged " << merged << " basic blocks" << std::endl;
+        // std::cerr << "INFO: merged " << merged << " basic blocks" << std::endl;
         return llvm::PreservedAnalyses::none();
     }
 
@@ -187,18 +187,19 @@ struct ConstAllocaElimination : lart::Pass {
 
         for ( auto var : vars ) {
             auto val = var.second->getValueOperand();
+            std::vector< llvm::Instruction * > toDelete;
             for ( auto user : var.first->users() )
                 llvmcase( user,
-                    [val]( llvm::LoadInst *load ) {
+                    [val,&toDelete]( llvm::LoadInst *load ) {
                         load->replaceAllUsesWith( val );
-                        load->eraseFromParent();
+                        toDelete.push_back( load );
                     },
-                    []( llvm::DbgDeclareInst *dbg ) {
-                        dbg->eraseFromParent(); // TODO: fixme: copy debuginfo somehow
+                    [&toDelete]( llvm::DbgDeclareInst *dbg ) {
+                        toDelete.push_back( dbg ); // TODO: fixme: copy debuginfo somehow
                     },
-                    [var]( llvm::StoreInst *store ) {
+                    [var,&toDelete]( llvm::StoreInst *store ) {
                         ASSERT_EQ( store, var.second );
-                        store->eraseFromParent();
+                        toDelete.push_back( store );
                     },
                     [&]( llvm::Value *val ) {
                         std::cerr << "in " << fn.getName().str() << std::endl;
@@ -208,6 +209,8 @@ struct ConstAllocaElimination : lart::Pass {
                         val->dump();
                         UNREACHABLE( "unhandled case" );
                     } );
+            for ( auto i : toDelete )
+                i->eraseFromParent();
             var.first->eraseFromParent();
             ++deletedAllocas;
         }
@@ -219,9 +222,9 @@ struct ConstAllocaElimination : lart::Pass {
         for ( auto &fn : m )
             processFunction( fn );
 
-        std::cout << "INFO: removed " << deletedAllocas << " out of " << allAllocas
-                  << " (" << double( 100 * deletedAllocas ) / allAllocas
-                  << "%) allocas" << std::endl;
+        // std::cerr << "INFO: removed " << deletedAllocas << " out of " << allAllocas
+        //          << " (" << double( 100 * deletedAllocas ) / allAllocas
+        //          << "%) allocas" << std::endl;
         return llvm::PreservedAnalyses::none();
     }
 
