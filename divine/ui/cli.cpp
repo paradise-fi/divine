@@ -57,7 +57,7 @@ void WithBC::setup()
     env.emplace_back( "divine.runmode", bstr( 1, static_cast< uint8_t >( _run_mode) ) );
 
     try {
-        _bc = std::make_shared< vm::BitCode >( _file, env, _autotrace, true );
+        _bc = std::make_shared< vm::BitCode >( _file, env, _autotrace, true, !_disableStaticReduction );
     } catch ( vm::BCParseError &err ) /* probably not a bitcode file */
     {
         cc::Options ccopt;
@@ -69,7 +69,7 @@ void WithBC::setup()
         pruneBC( driver );
         _bc = std::make_shared< vm::BitCode >(
             std::unique_ptr< llvm::Module >( driver.getLinked() ),
-            driver.context(), env, _autotrace, true );
+            driver.context(), env, _autotrace, true, !_disableStaticReduction );
     }
 }
 

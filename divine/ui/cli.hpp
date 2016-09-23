@@ -52,6 +52,7 @@ struct WithBC : Command
     std::vector< std::string > _useropts;
     _VM_RunMode _run_mode;
     vm::AutoTraceFlags _autotrace;
+    bool _disableStaticReduction = false;
 
     std::shared_ptr< vm::BitCode > _bc;
     void setup();
@@ -157,7 +158,7 @@ struct DivineCc : Command
     void run() override;
 
     std::string _output;
-    bool _dontLink = false;
+    bool _dontLink = false, _splitCompilation = false;
     std::vector< std::string > _flags;
     std::vector< std::string > _libPaths;
 };
@@ -167,7 +168,7 @@ struct DivineLd : Command
     void run() override;
 
     std::string _output;
-    bool _incremental = false;
+    bool _incremental = false, _merge = false;
     std::vector< std::string > _flags;
 };
 
@@ -252,6 +253,8 @@ struct CLI : Interface
             .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
             .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
+            .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
+                     "disable static (transformation based) state space reductions"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
