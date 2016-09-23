@@ -218,8 +218,8 @@ struct Map {
             return !( a == b );
         }
 
-        ValueType &operator*() { evaluate(); return *_current; }
-        ValueType *operator->() { evaluate(); return _current.get(); }
+        ValueType &operator*() { ASSERT( !end() ); evaluate(); return *_current; }
+        ValueType *operator->() { ASSERT( !end() ); evaluate(); return _current.get(); }
 
         Iterator &operator++() {
             ++_it;
@@ -436,7 +436,10 @@ struct Append {
 
         Iterator( It1 it1, It2 it2, Append *append ) :
             _it1( new It1( it1 ) ), _it2( new It2( it2 ) ), _append( append )
-        { }
+        {
+            if ( it1 == _append->_range1.end() )
+                _it1.reset();
+        }
         Iterator( It2 it2, Append *append ) :
             _it1( nullptr ), _it2( new It2( it2 ) ), _append( append )
         { }
@@ -549,7 +552,10 @@ struct Query {
     }
 
     auto freeze() -> std::vector< ValueType > {
-        return freezeAs< std::vector< ValueType > >();
+        // slower vector creation, but guarantees range is iterated only once
+        std::vector< ValueType > vec;
+        std::copy( begin(), end(), std::back_inserter( vec ) );
+        return vec;
     }
 
     template< typename Target >
