@@ -30,7 +30,7 @@ DIVINE_UNRELAX_WARNINGS
 
 using namespace divine::vm;
 
-BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr, bool verbose )
+BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr, bool verbose, bool reduce )
 {
     _ctx.reset( new llvm::LLVMContext() );
     std::unique_ptr< llvm::MemoryBuffer > input;
@@ -46,27 +46,36 @@ BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr, bool ve
     if ( !parsed )
         throw BCParseError( "Error parsing input model; probably not a valid bitcode file." );
     _module = std::move( parsed.get() );
-    init( env, tr, verbose );
+    init( env, tr, verbose, reduce );
 }
 
 
 BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVMContext > ctx,
-                  BitCode::Env env, AutoTraceFlags tr, bool verbose )
+                  BitCode::Env env, AutoTraceFlags tr, bool verbose, bool reduce )
     : _module( std::move( m ) ), _ctx( ctx )
 {
     ASSERT( _module.get() );
     _program.reset( new Program( _module.get() ) );
-    init( env, tr, verbose );
+    init( env, tr, verbose, reduce );
 }
 
 
-void BitCode::init( BitCode::Env env, AutoTraceFlags tr, bool verbose )
+void BitCode::init( BitCode::Env env, AutoTraceFlags tr, bool verbose, bool reduce )
 {
     lart::Driver lart;
+    // first reduce before any tranformation to avoid unnecessary transformations
+    if ( reduce )
+        lart.setup( "paropt", false );
     lart.setup( "interrupt", false );
     if ( tr )
         lart.setup( "autotrace", false );
     lart.setup( "lowereh", false );
+    // reduce again before metadata are added to possibly tweak some generated
+    // code + perform static tau
+    if ( reduce ) {
+        lart.setup( "paropt", false );
+        lart.setup( "statictaumem", false );
+    }
 
     auto mod = _module.get();
     if ( mod->getGlobalVariable( "__md_functions" ) && mod->getGlobalVariable( "__md_globals" ) )
