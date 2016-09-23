@@ -1512,7 +1512,7 @@ using vm::CodePointer;
 
 struct TProgram
 {
-    struct Slot { using Location = int; using Type = int; };
+    struct Slot { enum Location { Invalid }; using Type = int; };
     struct Instruction {};
 };
 
