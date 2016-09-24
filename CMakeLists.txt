@@ -218,3 +218,11 @@ message( "## -----------------------------------------------------------------" 
 
 test_bricks( bricks )
 benchmark_bricks( bricks )
+
+add_custom_target( unit_bricks
+    COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ${CMAKE_CURRENT_BINARY_DIR}/test-bricks
+    VERBATIM
+    USES_TERMINAL
+    DEPENDS test-bricks )
+
+add_dependencies( unit unit_bricks )
