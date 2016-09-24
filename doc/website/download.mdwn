@@ -7,32 +7,23 @@ distribution for co­pyright and licensing details.
 Download
 ========
 
-The source code of the version 4 of DIVINE will be made available for download
-during summer 2016.  Please also note that DiVinE Cluster, DiVinE Multi-Core
-and ProbDiVinE have been discontinued. The 3.x branch of DIVINE is no longer
-activaly maintained.
+For the time being, you can fetch a development snapshot of the upcoming DIVINE
+  4 from our version control repository (you may need to install [darcs] [3]):
 
-For the time being, you can download [older versions] [2] or contact us if you
-would like to contribute to the development of DIVINE 4 (the mainline
-repository listed below still points at version 3.x but we will share the
-version 4 repository upon request).
+    $ darcs get http://divine.fi.muni.cz/current divine
 
-Please consult [release notes] [1] for a summary of changes between releases.
-Check the [installation instructions] [7] in the manual.
+Source code tarballs will be made available at a later time. To build the
+sources, you only need to run `make`. For a summary of changes between
+releases, please consult our [release notes] [1] and for help with
+installation, [detailed installation instructions] [4] are available in our
+[manual] [5].
+
+Alternatively, you can also download [older versions] [2]. Please note,
+however, that DiVinE Cluster, DiVinE Multi-Core and ProbDiVinE have been
+discontinued and the 3.x branch of DIVINE is no longer activaly maintained.
 
 [1]: whatsnew.html
 [2]: download
-
-Alternatively, you can obtain the latest source code for DIVINE by fetching it
-directly from our version control system, using [darcs] [6]:
-
-    $ darcs get http://divine.fi.muni.cz/darcs/mainline divine
-
-If you experience any problem downloading our source repository please try
-
-    $ darcs get --no-http-pipelining http://divine.fi.muni.cz/darcs/mainline divine
-
-or update to the newest available version of darcs.
-
-[6]: http://darcs.net
-[7]: manual.html#installation
+[3]: http://darcs.net
+[4]: manual.html#installation
+[5]: manual.html
