@@ -770,10 +770,8 @@ inline bool exists(const std::string& file)
 }
 
 }
-}
 
-namespace test_bricks {
-namespace fs {
+namespace t_fs {
 using namespace brick::fs;
 using vs = std::vector< std::string >;
 
