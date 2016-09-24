@@ -58,6 +58,10 @@ struct Driver {
         return addPass( name, opt );
     }
 
+    void setup( PassMeta pass, std::string opt = "" ) {
+        pass.create( manager, opt );
+    }
+
     bool addPass( std::string n, std::string opt )
     {
         for ( auto pass : passes() ) {
