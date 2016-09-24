@@ -1374,7 +1374,7 @@ struct Eval
                             heap().write( ptr.cooked(), newval );
                         }
                         slot_write( result(), oldval, 0 );
-                        slot_write( result(), oldval, sizeof( typename T::Raw )  );
+                        slot_write( result(), change, sizeof( typename T::Raw ) );
                     } );
 
             case OpCode::AtomicRMW:
