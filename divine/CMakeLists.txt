@@ -46,7 +46,7 @@ target_link_libraries( libdivine divine-cc # divine-ss divine-mc
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
-bricks_unittest( test-divine ${HPP_ui} ${HPP_ss} ${HPP_vm} ${HPP_mc} )
+bricks_unittest( test-divine ${HPP_ui} ${HPP_ss} ${HPP_vm} ${HPP_mc} ${HPP_cc} )
 
 foreach( D vm ui cc )
   set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
