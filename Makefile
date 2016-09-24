@@ -48,20 +48,25 @@ ${TARGETS}:
 ${FLAVORS}:
 	$(MAKE) $@-divine
 
-${FLAVORS:%=.stamp-%-configure}: CMakeLists.txt .stamp-toolchain
-	@echo configuring $@
+${FLAVORS:%=.stamp-%-configure}: CMakeLists.txt .stamp-toolchain $(CONFDEP1) $(CONFDEP2)
 	mkdir -p $(OBJ)${@:.stamp-%-configure=%}
 	cd $(OBJ)${@:.stamp-%-configure=%} && \
 	    cmake $(PWD) $($(@:.stamp-%-configure=%)_FLAGS) -G "$(GENERATOR)"
 	touch $@
 
-${TARGETS:%=debug-%}: .stamp-debug-configure
+GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
+              CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
+
+${TARGETS:%=debug-%}:
+	$(MAKE) .stamp-debug-configure $(GETCONFDEPS)
 	cmake --build $(OBJ)debug --target ${@:debug-%=%} $(VERB)
 
-${TARGETS:%=release-%}: .stamp-release-configure
+${TARGETS:%=release-%}:
+	$(MAKE) .stamp-release-configure $(GETCONFDEPS)
 	cmake --build $(OBJ)release --target ${@:release-%=%} $(VERB)
 
-${TARGETS:%=asan-%}: .stamp-asan-configure
+${TARGETS:%=asan-%}:
+	$(MAKE) .stamp-asan-configure $(GETCONFDEPS)
 	cmake --build $(OBJ)asan --target ${@:asan-%=%} $(VERB)
 
 .stamp-toolchain:
