@@ -145,7 +145,7 @@ struct Axis {
             case None: return 1;
             case Mult: return p;
             case Div: return 1.0 / p;
-            default: ASSERT_UNREACHABLE( "bogus value of normalize" );
+            default: UNREACHABLE( "bogus value of normalize" );
         }
     }
 
@@ -630,3 +630,5 @@ struct SelfTest : BenchmarkGroup {
 }
 
 #endif
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp

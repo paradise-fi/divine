@@ -271,7 +271,7 @@ struct DeMarshall {
     template< typename F, typename Args, int... indices >
     void invoke_with_list( hlist::not_preferred, F, Args, Indices< indices... > )
     {
-        ASSERT_UNREACHABLE( "demarshallWith failed to match" );
+        UNREACHABLE( "demarshallWith failed to match" );
     }
 
     template< typename F, typename Args, int... indices >
@@ -318,7 +318,7 @@ struct DeMarshall {
     }
 
     void handle( int, hlist::Nil ) {
-        ASSERT_UNREACHABLE( "could not demarshall method" ); // todo print id?
+        UNREACHABLE( "could not demarshall method" ); // todo print id?
     }
 
     template< typename L >
