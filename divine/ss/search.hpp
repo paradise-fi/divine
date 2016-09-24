@@ -17,158 +17,132 @@ namespace ss {
 
 namespace shmem = ::brick::shmem;
 
-template< typename L >
-struct SearchInterface
-{
-    virtual void run( int, bool ) = 0;
-    virtual ~SearchInterface() {}
-};
-
-template< typename B, typename L >
-struct SearchBase : SearchInterface< L >
-{
-    B _b;
-    L _l;
-    SearchBase( const B &b, const L &l ) : _b( b ), _l( l ) {}
-    auto result() { return _l.result; }
-};
-
-template< typename B, typename L >
-struct DFS : SearchBase< B, L >
-{
-    virtual void run( int, bool ) override
-    {
-        NOT_IMPLEMENTED();
-    }
-
-    DFS( const B &b, const L &l ) : SearchBase< B, L >( b, l ) {}
-};
-
-template< typename B, typename L >
-struct BFS : SearchBase< B, L >
-{
-    shmem::SharedQueue< typename B::State > _q;
-    shmem::StartDetector _start;
-    shmem::ApproximateCounter _work;
-    std::shared_ptr< std::atomic< bool > > _terminate;
-
-    BFS( const B &b, const L &l )
-        : SearchBase< B, L >( b, l ),
-          _terminate( new std::atomic< bool >( false ) )
-    {}
-
-    virtual void run( int peers, bool initials ) override
-    {
-        if ( initials )
-        {
-            this->_b.initials( [&]( auto i )
-                               {
-                                   auto b = this->_l.state( i );
-                                   if ( b == L::Process || b == L::AsNeeded )
-                                       _q.push( i ), ++ _work;
-                               } );
-            _q.flush();
-        }
-
-        _start.waitForAll( peers );
-
-        while ( _work && !_terminate->load() )
-        {
-            if ( _q.empty() )
-            {
-                _q.flush();
-                _work.sync();
-                continue;
-            }
-            auto v = _q.pop();
-            this->_b.edges(
-                v, [&]( auto x, auto label, bool isnew )
-                {
-                    auto a = this->_l.edge( v, x, label, isnew );
-                    if ( a == L::Terminate )
-                        _terminate->store( true );
-                    if ( a == L::Process || ( a == L::AsNeeded && isnew ) )
-                    {
-                        auto b = this->_l.state( x );
-                        if ( b == L::Terminate )
-                            _terminate->store( true );
-                        if ( b == L::Process || ( b == L::AsNeeded && isnew ) )
-                            _q.push( x ), ++ _work;
-                    }
-                } );
-            -- _work;
-        }
-        ASSERT( _terminate->load() || _q.empty() );
-    }
-};
-
-template< typename B, typename L >
-struct DistributedBFS : BFS< B, L >
-{
-    virtual void run( int, bool ) override
-    {
-        NOT_IMPLEMENTED();
-        /* also pull stuff out from networked queues with some probability */
-        /* decide whether to push edges onto the local queue or send it into
-         * the network */
-    }
-
-    DistributedBFS( const B &b, const L &l ) : BFS< B, L >( b, l ) {}
-};
-
 enum class Order { PseudoBFS, DFS };
 
-template< template< typename, typename > class S, typename B, typename L >
-auto do_search( const B &b, const L &l, int threads )
+template< typename B, typename L >
+struct Search
 {
-    /* for ( auto p : g.peers() )
+    using Builder = B;
+    using Listener = L;
+
+    enum Result { Done, Abort };
+
+    std::vector< std::future< Result > > _threads;
+    std::vector< Listener * > _listeners;
+
+    Builder _builder;
+    Listener _listener;
+
+    int _thread_count;
+    Order _order;
+
+    using Worker = std::function< Result() >;
+
+    void threads( int thr ) { _thread_count = thr; }
+    void order( Order o ) { _order = o; }
+
+    Search( const B &b, const L &l )
+        : _builder( b ), _listener( l )
+    {}
+
+    void _started( Builder &b, Listener &l )
     {
-        // TODO spawn remote threads attached to the respective peer stores
-    } */
+        // _listeners.push_back( &l );
+    }
 
-    std::vector< std::future< decltype( l.result ) > > ls;
+    Worker pseudoBFS()
+    {
+        shmem::SharedQueue< typename B::State > queue;
+        shmem::StartDetector start;
+        shmem::ApproximateCounter work;
+        auto terminate = std::make_shared< std::atomic< bool > >( false );
 
-    S< B, L > search( b, l );
-    for ( int i = 0; i < threads; ++i )
-        ls.emplace_back(
-            std::async( [&search, i, threads]()
+        auto builder = _builder;
+        auto listener = _listener;
+
+        builder.initials(
+            [&]( auto i )
+            {
+                auto b = listener.state( i );
+                if ( b == L::Process || b == L::AsNeeded )
+                    queue.push( i ), ++ work;
+            } );
+        queue.flush();
+
+        return [=]() mutable
+        {
+            _started( builder, listener );
+            start.waitForAll( _thread_count );
+
+            while ( work && !terminate->load() )
+            {
+                if ( queue.empty() )
+                {
+                    queue.flush();
+                    work.sync();
+                    continue;
+                }
+                auto v = queue.pop();
+                builder.edges(
+                    v, [&]( auto x, auto label, bool isnew )
+                    {
+                        auto a = listener.edge( v, x, label, isnew );
+                        if ( a == L::Terminate )
+                            terminate->store( true );
+                        if ( a == L::Process || ( a == L::AsNeeded && isnew ) )
                         {
-                            S< B, L > s( search );
-                            s.run( threads, i == 0 );
-                            return s.result();
-                        } ) );
+                            auto b = listener.state( x );
+                            if ( b == L::Terminate )
+                                terminate->store( true );
+                            if ( b == L::Process || ( b == L::AsNeeded && isnew ) )
+                                queue.push( x ), ++ work;
+                        }
+                    } );
+                -- work;
+            }
+            ASSERT( terminate->load() || queue.empty() );
+            return Done;
+        };
+    }
 
-    decltype( l.result ) result = l.result;
-    for ( auto &l : ls )
-        result = result + l.get();
-    // TODO: remote results
+    Worker DFS() { NOT_IMPLEMENTED(); }
+    Worker distributedBFS() { NOT_IMPLEMENTED(); }
 
-    return result;
+    void start()
+    {
+        Worker blueprint;
+
+        switch ( _order )
+        {
+            case Order::PseudoBFS: blueprint = pseudoBFS(); break;
+            case Order::DFS: blueprint = DFS(); break;
+        }
+
+        for ( int i = 0; i < _thread_count; ++i )
+            _threads.emplace_back( std::async( blueprint ) );
+    }
+
+    void wait()
+    {
+        for ( auto &res : _threads )
+            res.wait();
+    }
+};
+
+template< typename B, typename L >
+auto make_search( B b, L l )
+{
+    return Search< B, L >( b, l );
 }
 
-/*
- * Parallel (and possibly distributed) graph search. The search is directed by
- * a Listener.
- */
 template< typename B, typename L >
-auto search( Order o, B b, int threads, L l )
+auto search( Order o, B b, int thr, L l )
 {
-    if ( threads == 1 && o == Order::PseudoBFS )
-    {
-        BFS< B, L > search( b, l );
-        search.run( 1, true );
-        return search.result();
-    }
-    else if ( /* g.peers().empty() && */ o == Order::PseudoBFS )
-        return do_search< BFS >( b, l, threads );
-    else if ( o == Order::PseudoBFS )
-        return do_search< DistributedBFS >( b, l, threads );
-    else if ( o == Order::DFS )
-    {
-        // ASSERT( g.peers().empty() );
-        return do_search< DFS >( b, l, threads );
-    }
-    UNREACHABLE( "don't know how to run a search" );
+    auto s = make_search( b, l );
+    s.threads( thr );
+    s.order( o );
+    s.start();
+    return s.wait();
 }
 
 }
