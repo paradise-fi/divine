@@ -23,12 +23,6 @@ target_link_libraries( lart
                        LLVMTransformUtils
                        LLVMAnalysis )
 
-add_custom_target( divinecc
-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/divine ${CMAKE_CURRENT_BINARY_DIR}/divine-cc
-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_BINARY_DIR}/divine ${CMAKE_CURRENT_BINARY_DIR}/divine-ld
-    VERBATIM )
-add_dependencies( divine divinecc )
-
 target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine divine-rt )
 
 if( NOT WIN32 )
