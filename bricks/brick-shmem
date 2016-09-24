@@ -182,6 +182,8 @@ struct ApproximateCounter {
     intptr_t _l;
 
     ApproximateCounter() : _s( new Shared ), _l( 0 ) {}
+    ApproximateCounter( const ApproximateCounter &other ) : _s( other._s ), _l( 0 ) {}
+    ApproximateCounter operator=( const ApproximateCounter & ) = delete;
     ~ApproximateCounter() { sync(); }
 
     void sync() {
@@ -219,8 +221,6 @@ struct ApproximateCounter {
     bool operator!() { return _s->counter == 0; }
 
     void reset() { _s->counter = 0; } /* fixme misleading? */
-
-    ApproximateCounter operator=( const ApproximateCounter & ) = delete;
 };
 
 struct StartDetector {
