@@ -65,21 +65,21 @@ void BitCode::init( BitCode::Env env, AutoTraceFlags tr, bool verbose, bool redu
     lart::Driver lart;
     // first reduce before any tranformation to avoid unnecessary transformations
     if ( reduce )
-        lart.setup( "paropt", false );
-    lart.setup( "interrupt", false );
+        lart.setup( lart::reduction::paroptPass() );
+    lart.setup( lart::divine::interruptPass() );
     if ( tr )
-        lart.setup( "autotrace", false );
-    lart.setup( "lowereh", false );
+        lart.setup( lart::divine::autotracePass() );
+    lart.setup( lart::divine::lowerExceptionHandling() );
     // reduce again before metadata are added to possibly tweak some generated
     // code + perform static tau
     if ( reduce ) {
-        lart.setup( "paropt", false );
-        lart.setup( "statictaumem", false );
+        lart.setup( lart::reduction::paroptPass() );
+        lart.setup( lart::reduction::staticTauMemPass() );
     }
 
     auto mod = _module.get();
     if ( mod->getGlobalVariable( "__md_functions" ) && mod->getGlobalVariable( "__md_globals" ) )
-        lart.setup( "functionmeta", false );
+        lart.setup( lart::divine::functionMetaPass() );
     if ( mod->getGlobalVariable( "__sys_env" ) )
         lart::util::replaceGlobalArray( *mod, "__sys_env", env );
     if ( verbose )
