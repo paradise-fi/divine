@@ -25,7 +25,7 @@ pre#logo {
     transform: scaleX(1.2); font-size: 16px; font-weight: bold;
 }
 
-ul { list-style-type: none; }
+#toc ul { list-style-type: none; }
 strong { color: #200020; }
 p > .divine { color: #3A103A; font-weight: normal; }
 
@@ -74,7 +74,6 @@ h1 {
 h2, h3 { font-size: 100%;
          font-style: regular;
          font-weight: bold;
-         color: #C0C0C0;
          padding-left: 0; }
 
 .invisible { display: none; }
