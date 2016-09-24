@@ -52,12 +52,36 @@ struct ProcError : brick::except::Error
     using brick::except::Error::Error;
 };
 
-enum SpawnOpts {
+enum SpawnOptsEnum : unsigned {
     None = 0,
     CaptureStdout = 0x1,
     CaptureStderr = 0x2,
     ShowCmd = 0x100
 };
+
+struct SpawnOpts {
+    SpawnOpts( SpawnOptsEnum f ) : flags( f ) { }
+    SpawnOpts( unsigned f ) : flags( SpawnOptsEnum( f ) ) { }
+    explicit SpawnOpts( std::string in ) : hasStdin( true ), in( in ) { }
+
+    bool hasFlag( SpawnOptsEnum f ) const { return (flags & f) == f; }
+
+    bool hasStdin = false;
+    std::string in;
+    SpawnOptsEnum flags = None;
+};
+
+inline SpawnOpts StdinString( std::string in ) { return SpawnOpts( in ); }
+
+inline SpawnOpts operator|( SpawnOpts a, SpawnOpts b ) {
+    a.flags = SpawnOptsEnum( a.flags | b.flags );
+    ASSERT( !(a.hasStdin && b.hasStdin) );
+    if ( b.hasStdin ) {
+        a.hasStdin = true;
+        a.in = std::move( b.in );
+    }
+    return a;
+}
 
 struct SystemOutput {
 
@@ -100,7 +124,7 @@ std::string to_string( const SystemOutput &o ) {
 struct Pipe {
     Pipe() {
         if ( ::pipe( _fds ) == -1 )
-            throw ProcError( "could not creare pipe" );
+            throw ProcError( "could not create pipe" );
     }
 
     ~Pipe() { close(); }
@@ -120,7 +144,7 @@ struct Pipe {
             ::close( _fds[1] );
     }
 
-    std::string drain() const {
+    std::string drain() {
         std::string str;
         char data[ 1024 ];
         long n;
@@ -132,16 +156,34 @@ struct Pipe {
         return str;
     }
 
+    void push( std::string s ) {
+        const char *ptr = s.data();
+        const char *const end = ptr + s.size();
+        int r = 0;
+        while ( ptr < end && r >= 0 ) {
+            r = ::write( write(), ptr, end - ptr );
+            ptr += r;
+        }
+    }
+
     int read() const { return _fds[0]; }
     int write() const { return _fds[1]; }
+
+#ifdef __unix__
+    void attachStdout() { ::dup2( write(), STDOUT_FILENO ); }
+    void attachStderr() { ::dup2( write(), STDERR_FILENO ); }
+    void attachStdin() { ::dup2( read(), STDIN_FILENO ); }
+#else
+#error attach* fuctions are not supporrted on this platfrom
+#endif
 
   private:
     int _fds[2];
 };
 
-SystemOutput spawnAndWait( SpawnOpts opts, std::vector< std::string > args )
+inline SystemOutput spawnAndWait( SpawnOpts opts, std::vector< std::string > args )
 {
-    if ( (opts & SpawnOpts::ShowCmd) == SpawnOpts::ShowCmd ) {
+    if ( opts.hasFlag( ShowCmd ) ) {
         std::cerr << "+ ";
         std::copy( args.begin(), args.end(), std::ostream_iterator< std::string >( std::cerr, " " ) );
         std::cerr << std::endl;
@@ -151,29 +193,40 @@ SystemOutput spawnAndWait( SpawnOpts opts, std::vector< std::string > args )
                     []( const std::string &s ) { return s.c_str(); } );
     cargs.push_back( nullptr );
     std::string out, err;
-#ifdef __unix__
 
+#ifdef __unix__
+    std::future< void > inf;
     std::future< std::string > outf, errf;
-    std::unique_ptr< Pipe > outp, errp;
-    if ( (opts & SpawnOpts::CaptureStdout) == SpawnOpts::CaptureStdout )
+    std::unique_ptr< Pipe > inp, outp, errp;
+    if ( opts.hasStdin )
+        inp = std::make_unique< Pipe >();
+    if ( opts.hasFlag( CaptureStdout ) )
         outp = std::make_unique< Pipe >();
-    if ( (opts & SpawnOpts::CaptureStderr) == SpawnOpts::CaptureStderr )
+    if ( opts.hasFlag( CaptureStderr ) )
         errp = std::make_unique< Pipe >();
 
     pid_t pid;
     if ( (pid = ::fork()) == 0 ) {
+        if ( inp ) {
+            inp->attachStdin();
+            inp->close();
+        }
         if ( outp ) {
-            ::dup2( outp->write(), STDOUT_FILENO );
+            outp->attachStdout();
             outp->close();
         }
         if ( errp ) {
-            ::dup2( errp->write(), STDERR_FILENO );
+            errp->attachStderr();
             errp->close();
         }
 
         ::execvp( cargs[ 0 ], const_cast< char *const * >( cargs.data() ) );
         std::terminate();
     } else if ( pid > 0 ) {
+        if ( inp ) {
+            inp->closeRead();
+            inf = std::async( std::launch::async, [&] { inp->push( opts.in ); inp->close(); } );
+        }
         if ( outp ) {
             outp->closeWrite();
             outf = std::async( std::launch::async, [&] { return outp->drain(); } );
@@ -185,6 +238,8 @@ SystemOutput spawnAndWait( SpawnOpts opts, std::vector< std::string > args )
         int status;
         int r = ::waitpid( pid, &status, 0 );
 
+        if ( inf.valid() )
+            inf.get();
         out = outf.valid() ? outf.get() : "";
         err = errf.valid() ? errf.get() : "";
 
@@ -200,8 +255,8 @@ SystemOutput spawnAndWait( SpawnOpts opts, std::vector< std::string > args )
 #endif
 }
 
-SystemOutput spawnAndWait( std::vector< std::string > args ) {
-    return spawnAndWait( SpawnOpts::None, args );
+inline SystemOutput spawnAndWait( std::vector< std::string > args ) {
+    return spawnAndWait( None, args );
 }
 
 template< typename... Args >
@@ -210,12 +265,104 @@ SystemOutput spawnAndWait( SpawnOpts opts, Args &&...args ) {
 }
 
 template< typename... Args >
+SystemOutput spawnAndWait( SpawnOptsEnum opts, Args &&...args ) {
+    return spawnAndWait( SpawnOpts( opts ), std::forward< Args >( args )... );
+}
+
+template< typename... Args >
+SystemOutput spawnAndWait( unsigned opts, Args &&...args ) { // note: result of | on SpawnOptsEnum in unsigned
+    return spawnAndWait( SpawnOpts( SpawnOptsEnum( opts ) ), std::forward< Args >( args )... );
+}
+
+template< typename... Args >
 SystemOutput spawnAndWait( Args &&...args ) {
-    return spawnAndWait( SpawnOpts::None, std::forward< Args >( args )... );
+    return spawnAndWait( None, std::forward< Args >( args )... );
 }
 
+inline SystemOutput shellSpawnAndWait( SpawnOpts opts, std::string shellcmd ) {
+#ifdef __unix__
+    return spawnAndWait( opts, "/bin/sh", "-c", shellcmd );
+#else
+#error shell spawn is not supported on this platform
+#endif
+}
+
+inline SystemOutput shellSpawnAndWait( std::string shellcmd ) {
+    return shellSpawnAndWait( None, shellcmd );
+}
 
 }
+
+namespace t_proc {
+
+struct TestSpawn {
+    TEST( basic_true ) {
+        auto r = proc::spawnAndWait( "true" );
+        ASSERT_EQ( r.exitcode(), 0 );
+        ASSERT_EQ( r.signal(), 0 );
+        ASSERT( r );
+    }
+
+    TEST( basic_false ) {
+        auto r = proc::spawnAndWait( "false" );
+        ASSERT_LT( 0, r.exitcode() );
+        ASSERT_EQ( r.signal(), 0 );
+        ASSERT( !r );
+    }
+
+    TEST( echo1 ) {
+        auto r = proc::spawnAndWait( proc::CaptureStdout, "echo", "-n", "a" );
+        ASSERT( r );
+        ASSERT_EQ( r.out(), "a" );
+        ASSERT_EQ( r.err(), "" );
+    }
+
+    TEST( echo2 ) {
+        auto r = proc::spawnAndWait( proc::CaptureStdout | proc::CaptureStderr, "echo", "-n", "a" );
+        ASSERT( r );
+        ASSERT_EQ( r.out(), "a" );
+        ASSERT_EQ( r.err(), "" );
+    }
+
+    TEST( echoSpec ) {
+        auto r = proc::spawnAndWait( proc::CaptureStdout, "echo", "-n", "-e", "a\nb" );
+        ASSERT( r );
+        ASSERT_EQ( r.out(), "a\nb" );
+        ASSERT_EQ( r.err(), "" );
+    }
+
+    TEST( shellEchoStdout ) {
+        auto r = proc::shellSpawnAndWait( proc::CaptureStdout, "echo -n a" );
+        ASSERT( r );
+        ASSERT_EQ( r.out(), "a" );
+        ASSERT_EQ( r.err(), "" );
+    }
+
+    TEST( shellEchoStderr ) {
+        auto r = proc::shellSpawnAndWait( proc::CaptureStdout | proc::CaptureStderr, "echo -n a >&2" );
+        ASSERT( r );
+        ASSERT_EQ( r.out(), "" );
+        ASSERT_EQ( r.err(), "a" );
+    }
+
+    TEST( in_basic ) {
+        auto r = proc::spawnAndWait( proc::StdinString( "abcbd" ) | proc::CaptureStdout | proc::CaptureStderr,
+                                     "sed", "s/b/x/g" );
+        ASSERT( r );
+        ASSERT_EQ( r.out(), "axcxd" );
+        ASSERT_EQ( r.err(), "" );
+    }
+    TEST( in_lined ) {
+        auto r = proc::spawnAndWait( proc::StdinString( "abcbd\nebfg\n" ) | proc::CaptureStdout | proc::CaptureStderr,
+                                     "sed", "s/b/x/g" );
+        ASSERT( r );
+        ASSERT_EQ( r.out(), "axcxd\nexfg\n" );
+        ASSERT_EQ( r.err(), "" );
+    }
+};
+
+};
+
 }
 
 #endif // BRICK_PROC
