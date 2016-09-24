@@ -1,7 +1,11 @@
+GENERATOR != if ninja --version > /dev/null 2>&1 || \
+                ninja-build --version > /dev/null 2>&1; then echo Ninja; else echo Unix Makefiles; fi
+
 -include local.make
 CC ?= cc
 CXX ?= c++
-GENERATOR ?= $(if $(shell ninja --version 2> /dev/null || ninja-build --version 2> /dev/null),Ninja,"Unix Makefiles")
+
+MAKEFLAGS ?= --no-print-directory
 CONFIG ?= -DBUILD_SHARED_LIBS=ON
 OBJ ?= $(PWD)/_build.
 VERB = $(if $(filter $(GENERATOR),Ninja),-- $(if $(VERBOSE),-v))
@@ -46,7 +50,7 @@ ${FLAVORS:%=.stamp-%-configure}: CMakeLists.txt .stamp-toolchain
 	@echo configuring $@
 	mkdir -p $(OBJ)${@:.stamp-%-configure=%}
 	cd $(OBJ)${@:.stamp-%-configure=%} && \
-	    cmake $(PWD) $($(@:.stamp-%-configure=%)_FLAGS) -G $(GENERATOR)
+	    cmake $(PWD) $($(@:.stamp-%-configure=%)_FLAGS) -G "$(GENERATOR)"
 	touch $@
 
 ${FLAVORS:%=.stamp-%-build}:
@@ -64,7 +68,7 @@ ${TARGETS:%=asan-%}: .stamp-asan-configure
 
 .stamp-toolchain:
 	mkdir -p $(OBJ)toolchain
-	cd $(OBJ)toolchain && cmake $(PWD) $(toolchain_FLAGS) -G $(GENERATOR)
+	cd $(OBJ)toolchain && cmake $(PWD) $(toolchain_FLAGS) -G "$(GENERATOR)"
 	cmake --build $(OBJ)toolchain --target cxx $(VERB)
 	cmake --build $(OBJ)toolchain --target clang $(VERB)
 	cmake --build $(OBJ)toolchain --target compiler-rt $(VERB)
