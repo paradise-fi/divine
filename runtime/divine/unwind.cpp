@@ -132,6 +132,7 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
     else if ( index == 1 )
         return *reinterpret_cast< int * >( exprt + 1 );
     __vm_fault( _VM_F_NotImplemented, "invalid register" );
+    __builtin_unreachable();
 }
 
 //  This function returns the 64-bit value of the instruction pointer (IP).
