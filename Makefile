@@ -1,5 +1,7 @@
 GENERATOR != if ninja --version > /dev/null 2>&1 || \
                 ninja-build --version > /dev/null 2>&1; then echo Ninja; else echo Unix Makefiles; fi
+# fallback
+GENERATOR ?= Unix Makefiles
 
 -include local.make
 CC ?= cc
