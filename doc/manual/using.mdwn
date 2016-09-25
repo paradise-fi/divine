@@ -20,6 +20,7 @@ variable:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ {.C .numberLines}
 #include <pthread.h>
+#include <assert.h>
 
 int i = 33;
 
@@ -47,70 +48,30 @@ The program as it is can be compiled using your system's C compiler just fine
 (assuming access to `pthread.h`) and you can try running it. To use DIVINE, we
 will need to compile it a little differently:
 
-    $ divine compile --llvm program.c
+    $ divine cc program.c
 
-This command will take a while, as it builds an entire runtime environment for
-our small program. Nevertheless, after a while, it will produce a file,
-`program.bc`. This file contains LLVM bitcode of our program, and of the
-runtime environment. We can learn a little more about the program using `divine
-info`:
+After a short while, it will produce a file, `program.bc`. This file contains
+LLVM bitcode of our program, and of the runtime environment. We can learn a
+little more about the program using `divine info`:
 
     $ divine info program.bc
-    Available properties:
-     * deadlock: deadlock freedom
-     * assert: assertion safety
+    (TODO: divine info is not yet implemented in DIVINE 4)
 
 We can analyse the bitcode file a little more, actually exploring its entire
 state space, measuring it (we won't be asking about any properties of the
 program yet):
 
     $ divine metrics program.bc
-     input: program.bc
-     property deadlock: deadlock freedom
-     ------------------ Metrics ------------------
-      exploring... 			 done
-     =============================================
-              25 states
-              42 transitions
-               0 accepting
-               2 deadlocks
-     =============================================
+    (TODO: divine metrics is not yet implemented in DIVINE 4)
 
-One thing you might notice off-hand is that DIVINE said that there are
-deadlocks in the program. This sounds strange at first, but the notion of a
-"deadlock" in DIVINE is not the same as you would expect in a C program. In
-many other formalisms out of the spectrum supported by DIVINE, any system state
-for which there are no legal successor states is considered a deadlock. For our
-C program, this is what happens when the program exits. Hence, terminating C
-programs will always have some "deadlocks" in them -- this is no reason for
-concern. Moreover, a real deadlock in a C program will appear as a loop in the
-state space, and we will need a different approach for detection of such
-deadlocks.
-
-Anyhow, we have learned that our program has 25 unique states and there are 42
+We have learned that our program has NN unique states and there are NN
 transitions between these states. By default, DIVINE tries to use the most
 efficient reduction available which is still exact (i.e. it will not use
 hash-compaction or other approximation techniques unless explicitly enabled).
 We can try turning off those reductions to see what happens:
 
     $ divine metrics program.bc --no-reduce
-     input: program.bc
-     property deadlock: deadlock freedom
-     ------------------ Metrics ------------------
-      exploring... 			 done
-     =============================================
-             531 states
-            1019 transitions
-               0 accepting
-               2 deadlocks
-     =============================================
-
-With the LLVM backend, this basically means that a new state is generated after
-each instruction in any of the threads. The difference may be far less dramatic
-with different input languages though. One thing to keep in mind is that
-state-space reductions can be expensive to compute, even if they save
-memory. Especially for DVE models, if verification seems slow, you can try
-disabling reductions.
+    (TODO: divine metrics is not yet implemented in DIVINE 4)
 
 Property Verification & Counter-Example Analysis
 ------------------------------------------------
@@ -119,89 +80,47 @@ Now let's turn to some more interesting properties. With the above program, the
 first thing that comes to mind is asking DIVINE whether the assertion in the
 program can ever be violated:
 
-    $ divine verify program.bc -p assert
-     input: program.bc
-     property assert: assertion safety
-     ---------------- Reachability ----------------
-      searching... 	20 states, 32 edges, GOAL
-     =============================================
-               The property DOES NOT hold
-     =============================================
+    $ divine verify program.bc
+    loading /lib/libc.bc... linking... done
+    loading /lib/libcxxabi.bc... linking... done
+    loading /lib/libcxx.bc... linking... done
+    loading /lib/libdios.bc... linking... done
+    compiling manual.c
+    annotating bitcode... done
+    computing RR... constants... done
+    found 181 states and 314 edges in 0:00, averaging inf states/s
+    
+    found an error:
+    Dios started!
+    Pthread_join
+    FAULT: __vm_fault called
+    VM Fault
+    Backtrace:
+    1: main
+    2: __dios_main
+    
+    choices made: 0 0 0 1 1 0 0 1 0 0 1 1 0 0 0 0 0 0 1 1 0 0
+    backtraces in the error state:
+    @address: heap* 902b4 0+0
+    @pc: code* 1d4 4f
+    @location: /divine/src/dios/fault.cpp:34
+    @symbol: __dios::Fault::handler(_VM_Fault, _VM_Frame*, void (*)())
+    
+    @address: heap* 901e1 0+0
+    @pc: code* 234 11
+    @location: manual.c:18
+    @symbol: main
+    
+    @address: heap* 901bb 0+0
+    @pc: code* 1de 26
+    @location: /divine/src/dios/main.cpp:111
+    @symbol: __dios_main
 
 Here, as we have anticipated, DIVINE tells us that in fact, the assertion *can*
-be violated. However, in itself, this is not extremely helpful: we would also
-like to know why this is so. Let's try to get a counterexample:
+be violated and gave us an indication of what exactly went wrong. In
+particular, the backtrace reveals that `manual.c:18` was active during the
+fault, which is exactly our assertion.
 
-    $ divine verify program.bc -p assert -d
-     input: program.bc
-     property assert: assertion safety
-     ---------------- Reachability ----------------
-      searching...  20 states, 32 edges, GOAL
-     =============================================
-               The property DOES NOT hold
-     =============================================
-
-    ===== Trace from initial =====
-
-    global: [ i = 33 ]
-    0: <main> << %tid = alloca i32, align 4 >> [ tid = 0 ]
-
-    global: [ i = 33 ]
-    0: <pthread_create> [ pthread.cpp:328 ] (internal)
-
-    global: [ i = 33 ]
-    0: <pthread_create> [ pthread.cpp:354 ] (internal)
-    1: <_Z14_pthread_entryPv> << %1 = alloca i8*, align 8 >> (internal)
-
-    global: [ i = 33 ]
-    0: <pthread_create> [ pthread.cpp:354 ] (internal)
-    1: <thread> [ ../program.c:6 ] [ x = 0 ]
-
-    global: [ i = 33 ]
-    0: <main> [ ../program.c:14 ] [ tid = @(3:0| 65537) ]
-    1: <thread> [ ../program.c:6 ] [ x = 0 ]
-
-    global: [ i = 34 ]
-    0: <pthread_join> [ pthread.cpp:392 ] (internal)
-    1: <thread> [ ../program.c:6 ] [ x = 0 ]
-
-    global: [ i = 34 ]
-    0: <pthread_join> [ pthread.cpp:392 ] (internal)
-    1: <_Z14_pthread_entryPv> [ pthread.cpp:289 ] (internal)
-
-    global: [ i = 34 ]
-    0: <pthread_join> [ pthread.cpp:392 ] (internal)
-    1: <_Z14_pthread_entryPv> [ pthread.cpp:319 ] (internal)
-
-    ===== The goal =====
-
-    global: [ i = 34 ]
-    0: <null> []
-    1: <_Z14_pthread_entryPv> [ pthread.cpp:319 ] (internal)
-    ASSERTION FAILED (thread 0): <main> [ ../program.c:17 ]
-
-First, we notice the "goal" state (the one that violates the property, in this
-case assertion safety) near the end of the output. It shows that thread 0 has
-terminated, thread 1 is in an internal pthread routine and that it passed
-through a failing assertion at line 17 of our program.c.
-
-Indeed, line 17 is our `assert( i == 35 )`. Now let's walk through the trace
-from the beginning to understand what is going on. Each block (delimited by
-blank lines) in the counterexample represents a single state of the system. We
-see a single global variable, `i` and its value (which is 33 in the first
-state). Each further line in a block describes a single thread. At the
-beginning there is only one thread, executing our `main` function (shown in
-angle brackets), and the value of our local variable `tid` is 0 (shown in
-square brackets).
-
-The program proceeds to call `pthread_create`, and in the following state, we
-notice that a new thread has appeared (for now, executing an internal
-routine). It immediately jumps into `thread`, the function we provided to
-pthread_create as an entry point. We quickly reach a point where both threads
-are executing their respective `i ++` statements at once (`program.c:6` and
-`program.c:14` respectively). This is where the problem happens, and we see
-that both threads eventually pass the statement, but value of `i` remains at
-34.
-
-Please note that the exact format of a state description depends on the input
-language. However, the gist is always the same.
+To understand what led to the assertion failure, however, we will need to
+analyse the counterexample in more detail. For this purpose, DIVINE provides an
+interactive debugger, available as `divine sim`.
