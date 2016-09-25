@@ -16,18 +16,19 @@ alternative, even though the approach is fraught with difficulties and
 presents many pitfalls that can catch even expert programmers unaware -- not to
 say novices. Sadly, resource locking is inherently non-compositional, hence
 there is virtually no way to provide a reliable yet powerful abstraction, all
-that while retaining any semblance of speed and scalability.
+that while retaining speed and scalability.
 
-Despite all its shortcomings, lock-based (or alternatively atomics-based, which
-is yet more difficult) programming is on a rise. Model checking provides a
-powerful tool to ascertain correctness of programs written with locks around
-concurrent access to shared memory. Most programmers will agree that bugs that
-show up rarely and are nearly impossible to reproduce are the worst kind to
-deal with. Sadly, most concurrency bugs are of this nature, since they arise
-from subtle interactions of nondeterministically scheduled threads of
-execution. A test-case may work 99 times out of 100, yet the 100th time die
-due to an unfathomable invalid memory access. Even sophisticated modern
-debugging tools like valgrind are often powerless in this situation.
+Despite all its shortcomings, lock-based programming (or alternatively,
+lock-free shared memory programming, which is yet more difficult) is becoming
+more prevalent. Model checking provides a powerful tool to ascertain
+correctness of programs written with locks around concurrent access to shared
+memory. Most programmers will agree that bugs that show up rarely and are
+nearly impossible to reproduce are the worst kind to deal with. Sadly, most
+concurrency bugs are of this nature, since they arise from subtle interactions
+of nondeterministically scheduled threads of execution. A test-case may work 99
+times out of 100, yet the 100th time die due to an unfathomable invalid memory
+access. Even sophisticated modern debugging tools like `valgrind` are often
+powerless in this situation.
 
 This is where DIVINE can help, since it systematically and efficiently explores
 all relevant execution orderings, discovering even the subtlest race
@@ -37,20 +38,21 @@ hundreds of iterations, wondering if the bug is really fixed, or it just
 stubbornly refuses to crash the program... well, DIVINE is the tool you have
 been waiting for.
 
-Of course there are some catches. Model checking is computationally intensive
-and memory-hungry. While this is usually not a problem with comparably small
-unit tests, applying model checking to large programs may not be feasible --
+Of course, there is a catch. Model checking is computationally intensive and
+memory-hungry. While this is usually not a problem with comparably small unit
+tests, applying model checking to large programs may not be feasible --
 depending on your use-case, and on the amount of memory and time that you have.
 
 With the universal LLVM backend, DIVINE can support a wide range of compiled
-programming languages. However, language-specific support is only provided for
-C and C++. A fairly complete ISO C runtime library is provided as part of
-DIVINE, with appropriate hooks into DIVINE, as well as an implementation of the
-`pthread` specification, i.e. the POSIX threading interface. Additionally, an
-implementation of the standard C++ library is bundled with DIVINE. Besides the
-standard library, DIVINE also provides an adapted version of the *runtime*
-library required by C++ programs to implement runtime type identification and
-exception handling; both are fully supported by DIVINE.
+programming languages. However, out of the box, language-specific support is
+only provided for C and C++. A fairly complete ISO C runtime library is
+provided as part of DIVINE, with appropriate hooks into DIVINE, as well as an
+implementation of the `pthread` specification, i.e. the POSIX threading
+interface. Additionally, an implementation of the standard C++ library is
+bundled with DIVINE. Besides the standard library, DIVINE also provides an
+adapted version of the *runtime* library required by C++ programs to implement
+runtime type identification and exception handling; both are fully supported by
+DIVINE.
 
 If your language interfaces with the C library, the `libc` part of language
 support can be re-used transparently. However, currently no other platform glue
@@ -63,85 +65,30 @@ Compiling Programs
 
 The first step to take when you want to use DIVINE for C/C++ verification is to
 compile your program into LLVM bitcode and link it against the DIVINE-provided
-runtime libraries. When you issue `divine compile --llvm program.c`, `divine`
-will compile the runtime support and your program and link them together
-automatically, using clang. You can use `--libraries-only` (without a program)
-to pre-build the bitcode library which includes the C and C++ libraries and
-platform glue: `libdivinert.bc`. When you have this files in the correct data
-layout (basically, on common x86 platforms, this boils down to whether your
-clang is configured to use 32b or 64b pointers), you can re-use them with later
-`divine compile --llvm` invocations by adding the
-`--precompiled=/path/to/the/libraries` switch. Please be sure that you always
-use libraries built by a matching version of DIVINE. To change the switches
-passed to clang when you compile your program, use `--cflags`.
+runtime libraries. When you issue `divine cc program.c`, `divine` will compile
+the runtime support and your program and link them together automatically,
+using a builtin clang-based compiler.  The `cc` subcommand accepts a wide array
+of traditional C compiler flags like `-I`, `-std`, `-W` and so on.
 
-Alternatively, you can compile your program manually (possibly to use
-gcc/dragonegg instead of clang) and link the resulting bitcode with DIVINE's
-runtime libraries mentioned above. You can pass the bitcode file corresponding
-to the library to `divine compile --llvm` as an additional input. Assuming that
-you now have a `program.bc` file, you should proceed to check that DIVINE can
-load it, by issuing `divine info program.bc`. Your program might be missing
-some symbols, as the LLVM linkers currently fail to report when this happens,
-in which case DIVINE will report the problem upon loading the file.
+Alternatively, you can pass a single-file C or C++ program directly to other
+`divine` commands, like `verify` or `sim`, in which case the program will be
+compiled and linked transparently.
 
 Limitations
 -----------
 
 When DIVINE interprets your program, it does so in a very strictly controlled
 environment, so that every step is fully reproducible. Hence, no real IO is
-allowed; the program can only see its own memory. DIVINE can simulate IO by
-using virtual file system, which is done by implementation of subset of POSIX
-interface; see [Virtual File System](#virtual-file-system).
+allowed; the program can only see its own memory.
 
 While the `pthread` interface is fully supported, the `fork` system call is
 not: DIVINE cannot verify multi-process systems at this time. Likewise, C++
 exceptions are well-supported but the C functions `setjmp` and `longjmp` are
 not yet implemented.
 
-The interpreter simulates an "in order" architecture, hence any possible
+The interpreter simulates an "in order" CPU architecture, hence any possible
 detrimental effects of instruction and memory access reordering won't be
 detected. Again, an improvement in this area is planned for a future release.
-
-Virtual File System
--------------------
-
-The virtual file system can create a snapshot of a directory tree by
-`--shapshot=path/to/the/directory` and/or a snapshot of a file by
-`--stdin=path/to/the/file` which will be used as a keyboard (file descriptor 0,
-therefore as stdin and std::cin). Both options are recognized during
-compilation of the bitcode library so snapshots can be pre-compiled, however
-any change in snapshots requires recompilation of the bitcode library.
-
-Functions handle errors during their execution by returning an error value and
-setting errno to a value specified by the documentation. Variadic functions
-(open, openat) are also checked whether correct number of arguments is passed,
-if not, the verification is stopped and the problem is reported to the user.
-Wrong usage of pipes (i.e. closed reader when writing, opening pipe both for
-reading and writing) also causes stopping the verification and making the report.
-
-The virtual file system currently implements following header files and functions:
-
-`sys/stat.h`:
-:    fstat, stat, lstat, fstatat, chmod, fchmod, fchmodat, umask, mkdir, mkdirat,
-     mkfifo, mkfifoat
-
-`sys/types.h`
-
-`dirent.h`:
-:    closedir, dirfd, fdopendir, opendir, readdir, readdir_r, rewinddir, scandir,
-     seekdir, telldir
-
-`fcntl.h`:
-:    creat, open, openat
-
-`unistd.h`:
-:    close, read, write, pread, pwrite, pipe, lseek, dup, dup2, ftruncate, truncate,
-     unlink, rmdir, unlinkat, link, linkat, symlink, symlinkat, readlink, readlinkat,
-     access, faccessat, chdir, fchdir, fsync, fdatasync, isatty, ttyname, ttyname_r,
-     swab, sync, syncfs
-
-See `examples/llvm/ipc_emulation.c` and `examples/llvm/simple_io.cpp` for details how
-to use the virtual file system.
 
 State Space of a Program
 ------------------------
@@ -149,7 +96,7 @@ State Space of a Program
 Internally, DIVINE constructs the state space of your program -- an oriented
 graph, whose vertices represent various states your program can reach, i.e. the
 values of all its mapped memory locations, the values in all machine registers,
-etc. DIVINE normally doesn't store, or even construct, all the possible states
+and so on. DIVINE normally doesn't store (or construct) all the possible states
 -- only a relevant subset. In a multi-threaded program, it often happens that
 more than one thread can run at once, i.e. if your program is in a given state,
 the next state it will get into is determined by chance -- it all hinges on
