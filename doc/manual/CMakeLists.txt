@@ -1,4 +1,4 @@
-set( SOURCES title.mdwn ${MANUAL_SRC} )
+set( SOURCES title.md ${MANUAL_SRC} )
 
 if( PDFLATEX AND BIBTEX )
   add_custom_command(
@@ -31,9 +31,9 @@ add_custom_command(
 
 add_custom_command(
   OUTPUT divine.1
-  DEPENDS commands.mdwn
+  DEPENDS commands.md
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND pandoc --smart -s --to man -o ${CMAKE_CURRENT_BINARY_DIR}/divine.1 commands.mdwn
+  COMMAND pandoc --smart -s --to man -o ${CMAKE_CURRENT_BINARY_DIR}/divine.1 commands.md
 )
 
 add_custom_target( manual ALL DEPENDS ${PDFMAN} ${QTHELP} manual.html divine.1 )

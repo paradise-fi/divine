@@ -30,7 +30,7 @@ endmacro()
 
 macro( pages sourcedir )
   foreach( source ${ARGN} )
-    string( REPLACE ".mdwn" ".html" target "${source}" )
+    string( REPLACE ".md" ".html" target "${source}" )
     page( ${target} ${sourcedir} "" ${source} )
   endforeach()
 endmacro()
@@ -55,6 +55,6 @@ add_custom_command(
 
 page( whatsnew.html .. "--toc" NEWS )
 page( manual.html ../manual "--toc;-N" ${MANUAL_SRC} )
-pages( . download.mdwn index.mdwn status.mdwn )
+pages( . download.md index.md status.md )
 resources( style.css um-400.ttf um-700.ttf lato-400.ttf lato-700.ttf ../papers.bib )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} papers.html )
