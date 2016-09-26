@@ -25,9 +25,7 @@ struct Search
     using Builder = B;
     using Listener = L;
 
-    enum Result { Done, Abort };
-
-    std::vector< std::future< Result > > _threads;
+    std::vector< std::future< void > > _threads;
     std::vector< Listener * > _listeners;
 
     Builder _builder;
@@ -36,7 +34,7 @@ struct Search
     int _thread_count;
     Order _order;
 
-    using Worker = std::function< Result() >;
+    using Worker = std::function< void() >;
 
     void threads( int thr ) { _thread_count = thr; }
     void order( Order o ) { _order = o; }
@@ -101,7 +99,6 @@ struct Search
                 -- work;
             }
             ASSERT( terminate->load() || queue.empty() );
-            return Done;
         };
     }
 
