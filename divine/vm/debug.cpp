@@ -289,14 +289,14 @@ template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield,
                                              std::set< GenericPointer > &ptrs )
 {
-    auto CT = llvm::dyn_cast< llvm::DICompositeType >( _di_type );
-    if ( !CT )
-    {
-        auto DIT = llvm::cast< llvm::DIDerivedType >( _di_type );
-        auto base = DIT->getBaseType().resolve( _ctx.program().ditypemap );
-        CT = llvm::dyn_cast< llvm::DICompositeType >( base );
-        ASSERT( CT );
-    }
+    llvm::DIType *base = _di_type;
+    llvm::DIDerivedType *DT = nullptr;
+
+    do if ( DT = llvm::dyn_cast< llvm::DIDerivedType >( base ) )
+           base = DT->getBaseType().resolve( _ctx.program().ditypemap );
+    while ( DT );
+
+    auto CT = llvm::dyn_cast< llvm::DICompositeType >( base );
     auto ST = llvm::cast< llvm::StructType >( _type );
     auto STE = ST->element_begin();
     auto SLO = _ctx.program().TD.getStructLayout( ST );
