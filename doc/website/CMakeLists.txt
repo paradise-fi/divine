@@ -19,6 +19,7 @@ macro( page to srcdir opts )
     OUTPUT ${to}
     DEPENDS ${sources} template.html
     COMMAND pandoc --to=html -s --smart
+            --email-obfuscation=javascript
             -o ${to}
             --template ${SRCDIR}/template.html
             -V version:${DIVINE_VERSION}
