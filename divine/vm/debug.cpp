@@ -175,8 +175,9 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
 
     std::string typesuf;
     auto dit = _di_type, base = di_base();
-    while (( dit = di_base( dit ) ))
+    do
         typesuf += di_pointer( dit ) ? "*" : "", base = dit;
+    while (( dit = di_base( dit ) ));
 
     if ( base )
         yield( "@type", base->getName().str() + typesuf );
