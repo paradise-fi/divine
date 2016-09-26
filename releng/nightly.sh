@@ -24,11 +24,7 @@ changes()
 {
     echo "# Latest Changes"
     echo
-    grep -v ^patch changes.txt | \
-        perl -ne 'if ( /^Author: (.*)/ ) { $author = $1; }
-              elsif ( /^Date:   (.*)/ ) { print " * $author, $1  \n"; }
-              elsif ( /^    ([RMA]) \.\/(.*)/ ) { print "       `$1 $2`  \n"; }
-              else { s/^  \* /  /; print "  $_"; }'
+    perl releng/darcs2md.pl < changes.txt
 }
 
 cantbuild()
