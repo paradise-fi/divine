@@ -98,7 +98,7 @@ _Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept
     // accidental use of their variables, therefore it is also OK to not clean
     // current frame (heap will garbage-colect it)
     _VM_Frame *top = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) );
-    for ( auto *f = top->parent; f != to; top->parent = f ) {
+    for ( auto *f = top->parent; f != to; ) {
         auto *meta = __md_get_pc_meta( uintptr_t( f->pc ) );
         auto *inst = meta->inst_table;
         for ( int i = 0; i < meta->inst_table_size; ++i, ++inst )
@@ -113,8 +113,9 @@ _Noreturn void __dios_unwind( _VM_Frame *to, void (*pc)( void ) ) noexcept
         }
         auto *old = f;
         f = f->parent;
+        top->parent = f;
+        __dios_assert_v( f, "__dios_unwind reached end of the stack and did not find the target frame" );
         __vm_obj_free( old );
-        __dios_assert_v( f, "__dios_unwind reached end of the stack and did not found target frame" );
     }
     if ( m )
         __vm_control( _VM_CA_Set, _VM_CR_Frame, to,
