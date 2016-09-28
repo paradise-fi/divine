@@ -161,10 +161,23 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
                 else
                     yield( "@value", brick::string::fmt( raw ) );
             } );
+
+    if ( _type && _di_type && ( di_name() == "char*" ||  di_name() == "const char*" ) )
+    {
+        ASSERT( di_pointer() );
+        ASSERT( di_base() );
+        PointerV str;
+        auto hloc = eval.ptr2h( PointerV( _address ) ) + _offset;
+        _ctx.heap().read( hloc, str );
+        if ( _ctx.heap().valid( str.cooked() ) )
+                yield( "@string", "\"" + _ctx.heap().read_string( str ) + "\"" ); /* TODO escape */
+    }
+
     if ( _type && _type->isPointerTy() )
         eval.template type_dispatch< Any >(
             PointerBytes, Prog::Slot::Pointer,
             [&]( auto v ) { yield( "@value", brick::string::fmt( v.get( loc ) ) ); } );
+
 }
 
 template< typename Prog, typename Heap >
