@@ -25,14 +25,15 @@ struct Search
     using Builder = B;
     using Listener = L;
 
-    std::vector< std::future< void > > _threads;
-    std::vector< Listener * > _listeners;
-
     Builder _builder;
     Listener _listener;
 
     int _thread_count;
     Order _order;
+
+    std::vector< std::future< void > > _threads;
+    std::vector< Listener * > _listeners;
+    std::shared_ptr< std::mutex > _listeners_lock;
 
     using Worker = std::function< void() >;
 
@@ -40,12 +41,13 @@ struct Search
     void order( Order o ) { _order = o; }
 
     Search( const B &b, const L &l )
-        : _builder( b ), _listener( l )
+        : _builder( b ), _listener( l ), _listeners_lock( std::make_shared< std::mutex >() )
     {}
 
     void _started( Builder &b, Listener &l )
     {
-        // _listeners.push_back( &l );
+        std::lock_guard< std::mutex > lg( *_listeners_lock.get() );
+        _listeners.push_back( &l );
     }
 
     Worker pseudoBFS()
