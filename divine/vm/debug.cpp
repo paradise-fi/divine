@@ -168,6 +168,22 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
 }
 
 template< typename Prog, typename Heap >
+std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t )
+{
+    if ( !t )
+        t = _di_type;
+    if ( !di_base( t ) )
+        return t->getName().str();
+    if ( di_member( t ) )
+        return di_name( di_base( t ) );
+    if ( di_pointer( t ) )
+        return di_name( di_base( t ) ) + "*";
+    if ( di_derived( llvm::dwarf::DW_TAG_const_type, t ) )
+        return "const " + di_name( di_base( t ) );
+    UNREACHABLE( "unexpected debuginfo metadata" );
+}
+
+template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
@@ -176,14 +192,8 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
     yield( "@address", brick::string::fmt( _address ) + "+" +
            brick::string::fmt( _offset ) );
 
-    std::string typesuf;
-    auto dit = _di_type, base = di_base();
-    do
-        typesuf += di_pointer( dit ) ? "*" : "", base = dit;
-    while (( dit = di_base( dit ) ));
-
-    if ( base )
-        yield( "@type", base->getName().str() + typesuf );
+    if ( _di_type )
+        yield( "@type", di_name() );
 
     if ( !valid() )
         return;

@@ -158,6 +158,7 @@ struct DebugNode
     llvm::DIDerivedType *di_member( llvm::DIType *t = nullptr );
     llvm::DIDerivedType *di_pointer( llvm::DIType *t = nullptr );
     llvm::DIType *di_base( llvm::DIType *t = nullptr );
+    std::string di_name( llvm::DIType * = nullptr );
     llvm::DICompositeType *di_composite();
 
     int width();
