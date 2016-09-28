@@ -108,8 +108,6 @@ struct SimpleEscape : lart::Pass {
 
     using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
-        util::Timer _( "SimpleEscape" );
-
         long all = 0, silenced = 0;
         auto allocations = query::query( m ).flatten().flatten().map( query::refToPtr )
                                             .filter( isAllocation );
@@ -121,8 +119,6 @@ struct SimpleEscape : lart::Pass {
                 silence( a );
             }
         }
-        std::cerr << "INFO: silenced " << silenced << " memory instructions out of "
-                  << all << std::endl;
 
         return llvm::PreservedAnalyses::all();
     }
