@@ -92,5 +92,6 @@ show: # make show var=VAR
 .PHONY: ${TARGETS} ${FLAVORS} ${TARGETS:%=release-%} ${FLAVORS:%=%-env}
 
 dist:
+	$(MAKE) .stamp-debug-configure $(GETCONFDEPS)
 	cmake --build $(OBJ)debug --target package_source $(VERB)
 	cp $(OBJ)debug/divine-*.tar.gz .
