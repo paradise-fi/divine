@@ -139,12 +139,13 @@ template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::value( YieldAttr yield )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    PointerV loc( _address + _offset );
     if ( _type && _type->isIntegerTy() )
         eval.template type_dispatch< IsIntegral >(
             _type->getPrimitiveSizeInBits(), Prog::Slot::Integer,
             [&]( auto v )
             {
-                auto raw = v.get( PointerV( _address + _offset ) );
+                auto raw = v.get( loc );
                 using V = decltype( raw );
                 if ( bitoffset() || width() != size() * 8 )
                 {
@@ -157,6 +158,10 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
                 else
                     yield( "@value", brick::string::fmt( raw ) );
             } );
+    if ( _type && _type->isPointerTy() )
+        eval.template type_dispatch< Any >(
+            PointerBytes, Prog::Slot::Pointer,
+            [&]( auto v ) { yield( "@value", brick::string::fmt( v.get( loc ) ) ); } );
 }
 
 template< typename Prog, typename Heap >
