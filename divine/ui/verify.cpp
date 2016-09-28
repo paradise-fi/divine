@@ -62,9 +62,10 @@ void dump( DN dn, DNSet &visited, int &stacks, int maxdepth )
 template< typename Ex, typename Dbg >
 void dump( Ex &ex, Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
 {
-    vm::DebugNode< vm::Program, vm::CowHeap > dn(
-            ex._ctx, snap, ex._ctx.get( _VM_CR_State ).pointer, 0,
-            vm::DNKind::Object, dbg._state_type, dbg._state_di_type );
+    vm::DebugNode< vm::Program, vm::CowHeap > dn( ex._ctx, snap );
+    dn.address( vm::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
+    dn.type( dbg._state_type );
+    dn.di_type( dbg._state_di_type );
     DNSet visited;
     int stacks = 0;
     dump( dn, visited, stacks, maxdepth );

@@ -55,26 +55,54 @@ struct DebugNode
     Snapshot _snapshot;
     DNKind _kind;
 
+    std::map< std::string, int > _related_count;
+    std::set< GenericPointer > _related_ptrs;
+
     using YieldAttr = std::function< void( std::string, std::string ) >;
     using YieldDN   = std::function< void( std::string, DebugNode< Program, Heap > ) >;
 
     /* applies only to Objects */
     llvm::Type *_type;
     llvm::DIType *_di_type;
+    llvm::DIVariable *_di_var;
 
     using PointerV = value::Pointer;
 
     void init()
     {
+        _type = nullptr;
+        _di_type = nullptr;
+        _di_var = nullptr;
+        _kind = DNKind::Object;
+        _offset = 0;
+    }
+
+    void di_var( llvm::DIVariable *var )
+    {
+        _di_var = var;
+        _di_type = var->getType().resolve( _ctx.program().ditypemap );
+    }
+
+    void di_type( llvm::DIType *type )
+    {
+        _di_var = nullptr;
+        _di_type = type;
+    }
+
+    void type( llvm::Type *type ) { _type = type; }
+
+    void offset( int off ) { _offset = off; }
+    void address( DNKind k, GenericPointer l )
+    {
+        _address = l;
+        _kind = k;
         if ( _kind == DNKind::Frame )
             _ctx.set( _VM_CR_Frame, _address );
     }
 
     template< typename Context >
-    DebugNode( Context ctx, Snapshot s, GenericPointer l, int off,
-               DNKind k, llvm::Type *t, llvm::DIType *dit )
-        : _ctx( ctx.program(), ctx.heap() ), _address( l ), _offset( off ),
-          _snapshot( s ), _kind( k ), _type( t ), _di_type( dit )
+    DebugNode( Context ctx, Snapshot s )
+        : _ctx( ctx.program(), ctx.heap() ), _snapshot( s )
     {
         _ctx.heap().restore( s );
         _ctx.set( _VM_CR_Globals, ctx.globals() );
@@ -82,10 +110,8 @@ struct DebugNode
         init();
     }
 
-    DebugNode( ConstContext< Program, Heap > ctx, Snapshot s,
-               GenericPointer l, int off, DNKind k, llvm::Type *t, llvm::DIType *dit )
-        : _ctx( ctx ), _address( l ), _offset( off ),
-          _snapshot( s ), _kind( k ), _type( t ), _di_type( dit )
+    DebugNode( ConstContext< Program, Heap > ctx, Snapshot s )
+        : _ctx( ctx ), _snapshot( s )
     {
         init();
     }
@@ -142,10 +168,9 @@ struct DebugNode
     void format( std::ostream &out, int depth = 1, bool compact = false, int indent = 0 );
 
     void related( YieldDN yield );
-    void struct_fields( HeapPointer hloc, YieldDN yield, std::set< GenericPointer > &ptrs );
-    void localvar( YieldDN yield, llvm::DbgDeclareInst *DDI,
-                   std::set< GenericPointer > &ptrs );
-    void framevars( YieldDN yield, std::set< GenericPointer > &ptrs );
+    void struct_fields( HeapPointer hloc, YieldDN yield );
+    void localvar( YieldDN yield, llvm::DbgDeclareInst *DDI );
+    void framevars( YieldDN yield );
 
     void dump( std::ostream &o );
     void dot( std::ostream &o );

@@ -138,7 +138,11 @@ struct Interpreter
 
     DN dn( vm::GenericPointer p, vm::DNKind k, llvm::Type *t, llvm::DIType *dit )
     {
-        return DN( _ctx, _ctx.snapshot(), p, 0, k, t, dit );
+        DN r( _ctx, _ctx.snapshot() );
+        r.address( k, p );
+        r.type( t );
+        r.di_type( dit );
+        return r;
     }
 
     DN nullDN() { return dn( vm::nullPointer(), vm::DNKind::Object, nullptr, nullptr ); }
@@ -254,8 +258,11 @@ struct Interpreter
         {
             isnew = true;
             name = _state_names[ snap ] = "#"s + brick::string::fmt( ++_state_count );
-            set( name, DN( _ctx, snap, _ctx.get( _VM_CR_State ).pointer, 0, vm::DNKind::Object,
-                           _ctx._state_type, _ctx._state_di_type ) );
+            DN state( _ctx, snap );
+            state.address( vm::DNKind::Object, _ctx.get( _VM_CR_State ).pointer );
+            state.type( _ctx._state_type );
+            state.di_type( _ctx._state_di_type );
+            set( name, state );
         }
 
         set( "#last", name );

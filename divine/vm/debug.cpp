@@ -257,43 +257,47 @@ void DebugNode< Prog, Heap >::related( YieldDN yield )
     auto hloc = eval.ptr2h( PointerV( _address ) );
     int hoff = hloc.offset();
 
-    std::set< GenericPointer > ptrs;
+    _related_ptrs.clear();
+    _related_count.clear();
 
     if ( _kind == DNKind::Frame )
-        framevars( yield, ptrs );
+        framevars( yield );
 
     if ( _type && _di_type && _type->isPointerTy() )
     {
         PointerV addr;
         _ctx.heap().read( hloc + _offset, addr );
-        ptrs.insert( addr.cooked() );
+        _related_ptrs.insert( addr.cooked() );
         auto kind = DNKind::Object;
         auto base = di_base( di_base() );
         if ( base && base->getName() == "_VM_Frame" )
             kind = DNKind::Frame;
-        yield( "@deref", DebugNode( _ctx, _snapshot, addr.cooked(), 0, kind,
-                                    _type->getPointerElementType(), di_base() ) );
+        DebugNode rel( _ctx, _snapshot );
+        rel.address( kind, addr.cooked() );
+        rel.type( _type->getPointerElementType() );
+        rel.di_type( di_base() );
+        yield( "@deref", rel );
     }
 
     if ( _type && _di_type && _type->isStructTy() )
-        struct_fields( hloc, yield, ptrs );
+        struct_fields( hloc, yield );
 
     for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
     {
         hloc.offset( hoff + _offset + ptroff->offset() );
         _ctx.heap().read( hloc, ptr );
         auto pp = ptr.cooked();
-        if ( pp.type() == PointerType::Code || ptrs.find( pp ) != ptrs.end() )
+        if ( pp.type() == PointerType::Code || _related_ptrs.find( pp ) != _related_ptrs.end() )
             continue;
         pp.offset( 0 );
-        yield( "@" + brick::string::fmt( ptroff->offset() ),
-               DebugNode( _ctx, _snapshot, pp, 0, DNKind::Object, nullptr, nullptr ) );
+        DebugNode deref( _ctx, _snapshot );
+        deref.address( DNKind::Object, pp );
+        yield( "@" + brick::string::fmt( ptroff->offset() ), deref );
     }
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield,
-                                             std::set< GenericPointer > &ptrs )
+void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
 {
     llvm::DIType *base = _di_type;
     llvm::DIDerivedType *DT = nullptr;
@@ -319,18 +323,20 @@ void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield,
             {
                 PointerV ptr;
                 _ctx.heap().read( hloc + offset, ptr );
-                ptrs.insert( ptr.cooked() );
+                _related_ptrs.insert( ptr.cooked() );
             }
 
-            yield( CTE->getName().str(),
-                   DebugNode( _ctx, _snapshot, _address, _offset + offset,
-                              DNKind::Object, *STE, CTE ) );
+            DebugNode field( _ctx, _snapshot );
+            field.address( DNKind::Object, _address );
+            field.offset( _offset + offset );
+            field.type( *STE );
+            field.di_type( CTE );
+            yield( CTE->getName().str(), field );
         }
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI,
-                                        std::set< GenericPointer > &ptrs )
+void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
 
@@ -343,24 +349,33 @@ void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI
 
     PointerV ptr;
     _ctx.heap().read( eval.s2ptr( _ctx.program().valuemap[ var ].slot ), ptr );
-    ptrs.insert( ptr.cooked() );
+    _related_ptrs.insert( ptr.cooked() );
 
     auto type = var->getType()->getPointerElementType();
-    yield( divar->getName().str(),
-           DebugNode( _ctx, _snapshot, ptr.cooked(), 0, DNKind::Object, type, ditype ) );
+    auto name = divar->getName().str();
+
+    if ( divar->getScope() != subprogram() )
+        name += "$" + brick::string::fmt( ++ _related_count[ name ] );
+
+    DebugNode lvar( _ctx, _snapshot );
+    lvar.address( DNKind::Object, ptr.cooked() );
+    lvar.type( type );
+    lvar.di_type( ditype );
+    yield( name, lvar );
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::framevars( YieldDN yield, std::set< GenericPointer > &ptrs )
+void DebugNode< Prog, Heap >::framevars( YieldDN yield )
 {
     PointerV fr( _address );
     _ctx.heap().skip( fr, PointerBytes );
     _ctx.heap().read( fr.cooked(), fr );
     if ( !fr.cooked().null() )
     {
-        ptrs.insert( fr.cooked() );
-        yield( "@parent", DebugNode( _ctx, _snapshot, fr.cooked(), 0,
-                                     DNKind::Frame, nullptr, nullptr ) );
+        _related_ptrs.insert( fr.cooked() );
+        DebugNode parent( _ctx, _snapshot );
+        parent.address( DNKind::Frame, fr.cooked() );
+        yield( "@parent", parent );
     }
 
     auto *insn = &_ctx.program().instruction( pc() );
@@ -372,7 +387,7 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield, std::set< GenericPointer
     for ( auto &BB : *F )
         for ( auto &I : BB )
             if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
-                localvar( yield, DDI, ptrs );
+                localvar( yield, DDI );
 }
 
 static std::string rightpad( std::string s, int i )
