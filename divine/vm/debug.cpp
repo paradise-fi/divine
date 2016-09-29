@@ -344,7 +344,9 @@ void DebugNode< Prog, Heap >::related( YieldDN yield )
         hloc.offset( hoff + _offset + ptroff->offset() );
         _ctx.heap().read( hloc, ptr );
         auto pp = ptr.cooked();
-        if ( pp.type() == PointerType::Code || _related_ptrs.find( pp ) != _related_ptrs.end() )
+        if ( pp.type() == PointerType::Code || pp.null() )
+            continue;
+        if ( _related_ptrs.find( pp ) != _related_ptrs.end() )
             continue;
         pp.offset( 0 );
         DebugNode deref( _ctx, _snapshot );
