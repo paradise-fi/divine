@@ -324,7 +324,7 @@ struct Eval
                 std::string s = "FAULT: " + str();
                 auto ptr = _ctx->heap().make( s.size() + 1 );
                 std::copy( s.begin(), s.end(), _ctx->heap().unsafe_bytes( ptr.cooked() ).begin() );
-                _ctx->trace( TraceText{ ptr } );
+                _ctx->trace( TraceText{ ptr.cooked() } );
             }
             if ( _double )
                 _ctx->doublefault();
@@ -933,7 +933,7 @@ struct Eval
                 switch ( t )
                 {
                     case _VM_T_Text:
-                        context().trace( TraceText{ PointerV( ptr2h( operandCk< PointerV >( 1 ) ) ) } );
+                        context().trace( TraceText{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                         return;
                     case _VM_T_StateType:
                         context().trace( TraceStateType{ instruction().op->getOperand( 1 ) } );

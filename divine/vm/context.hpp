@@ -31,7 +31,7 @@ namespace vm {
 
 using Fault = ::_VM_Fault;
 
-struct TraceText { value::Pointer text; };
+struct TraceText { GenericPointer text; };
 struct TraceSchedChoice { value::Pointer list; };
 struct TraceSchedInfo { int pid; int tid; };
 struct TraceStateType { llvm::Value *stateptr; };

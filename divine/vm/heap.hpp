@@ -319,13 +319,20 @@ struct HeapMixin
         skip( p, sizeof( typename T::Raw ) );
     }
 
-    std::string read_string( PointerV ptr ) const
+    template< typename T >
+    void read_shift( HeapPointer &p, T &t ) const
+    {
+        self().read( p, t );
+        p = p + sizeof( typename T::Raw );
+    }
+
+    std::string read_string( HeapPointer ptr ) const
     {
         std::string str;
         value::Int< 8, false > c;
-        unsigned sz = self().size( ptr.cooked() );
+        unsigned sz = self().size( ptr );
         do {
-            if ( ptr.cooked().offset() >= sz )
+            if ( ptr.offset() >= sz )
                 return "<out of bounds>";
             read_shift( ptr, c );
             if ( c.cooked() )
