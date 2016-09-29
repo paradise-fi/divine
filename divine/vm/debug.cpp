@@ -419,6 +419,36 @@ void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI
 }
 
 template< typename Prog, typename Heap >
+void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
+{
+    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+
+    auto divar = DDV->getVariable();
+    auto var = DDV->getValue();
+    auto &vmap = _ctx.program().valuemap;
+    if ( vmap.find( var ) == vmap.end() )
+        return;
+
+    auto ptr = _ctx.program().s2ptr( _ctx.program().valuemap[ var ] );
+    PointerV deref;
+    _ctx.heap().read( ptr, deref );
+    if ( deref.pointer() )
+        _related_ptrs.insert( deref.cooked() );
+
+    auto type = var->getType();
+    auto name = divar->getName().str();
+
+    if ( divar->getScope() != subprogram() )
+        name += "$" + brick::string::fmt( ++ _related_count[ name ] );
+
+    DebugNode lvar( _ctx, _snapshot );
+    lvar.address( DNKind::Object, ptr );
+    lvar.type( type );
+    lvar.di_var( divar );
+    yield( name, lvar );
+}
+
+template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::framevars( YieldDN yield )
 {
     PointerV fr( _address );
@@ -442,6 +472,8 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield )
         for ( auto &I : BB )
             if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
                 localvar( yield, DDI );
+            else if ( auto DDV = llvm::dyn_cast< llvm::DbgValueInst >( &I ) )
+                localvar( yield, DDV );
 }
 
 static std::string rightpad( std::string s, int i )

@@ -172,6 +172,7 @@ struct DebugNode
     void related( YieldDN yield );
     void struct_fields( HeapPointer hloc, YieldDN yield );
     void localvar( YieldDN yield, llvm::DbgDeclareInst *DDI );
+    void localvar( YieldDN yield, llvm::DbgValueInst *DDV );
     void framevars( YieldDN yield );
 
     void dump( std::ostream &o );
