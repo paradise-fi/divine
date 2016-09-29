@@ -164,12 +164,11 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
 
     if ( _type && _di_type && ( di_name() == "char*" ||  di_name() == "const char*" ) )
     {
-        ASSERT( di_pointer() );
-        ASSERT( di_base() );
-        PointerV str;
+        PointerV str_v;
         auto hloc = eval.ptr2h( PointerV( _address ) ) + _offset;
-        _ctx.heap().read( hloc, str );
-        if ( _ctx.heap().valid( str.cooked() ) )
+        _ctx.heap().read( hloc, str_v );
+        auto str = eval.ptr2h( str_v );
+        if ( _ctx.heap().valid( str ) )
                 yield( "@string", "\"" + _ctx.heap().read_string( str ) + "\"" ); /* TODO escape */
     }
 
