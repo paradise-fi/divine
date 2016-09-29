@@ -202,6 +202,15 @@ struct Interpreter
     void update()
     {
         set( "$top", frameDN() );
+
+        auto globals = _ctx.get( _VM_CR_Globals ).pointer;
+        if ( !get( "$globals", true ).valid() || get( "$globals" ).address() != globals )
+        {
+            DN gdn( _ctx, _ctx.snapshot() );
+            gdn.address( vm::DNKind::Globals, globals );
+            set( "$globals", gdn );
+        }
+
         if ( get( "$_" ).kind() == vm::DNKind::Frame )
             set( "$frame", "$_" );
         else
