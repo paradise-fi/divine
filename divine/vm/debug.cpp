@@ -523,13 +523,7 @@ static std::string rightpad( std::string s, int i )
 template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, bool compact, int indent )
 {
-    std::string ind;
-    if ( indent >= 2 )
-    {
-        ind = std::string( indent - 2, ' ' );
-        ind += "| ";
-    }
-
+    std::string ind( indent, ' ' );
     std::set< std::string > ck{ "@value", "@type", "@location", "@symbol" };
 
     attributes(
@@ -549,21 +543,25 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, bool compact
             [&]( std::string n, auto sub )
             {
                 std::stringstream str;
-                sub.format( str, depth - 1, true, indent + 2 );
+                if ( depth > 0 )
+                    sub.format( str, depth - 1, true, indent + 4 );
                 if ( !str.str().empty() && n != "@parent" && depth > 0 )
                     out << ind << n << ":" << std::endl << str.str();
                 else
                 {
                     if ( indent + col + n.size() >= 68 )
                     {
-                        if ( relrow == 3 )
-                            rels << "[...]";
-                        else if ( relrow < 3 )
-                            col = 0, rels << std::endl << ind << rightpad( "", 13 - indent );
+                        if ( relrow <= 3 )
+                            col = 0, rels << std::endl << ind
+                                          << rightpad( "", 13 - indent )
+                                          << ( relrow == 3 ? " [...]" : "" );
                         ++ relrow;
                     }
-                    rels << " " << n;
-                    col += n.size();
+                    if ( relrow <= 3 )
+                    {
+                        rels << " " << n;
+                        col += n.size();
+                    }
                 }
             } );
     if ( !rels.str().empty() )
