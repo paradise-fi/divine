@@ -153,6 +153,8 @@ struct DebugNode
                                              _kind == DNKind::Frame ? nullptr : _di_type ); }
 
     bool valid();
+    bool boundcheck( PointerV ptr, int size );
+
     void value( YieldAttr yield );
     void attributes( YieldAttr yield );
     std::string attribute( std::string key );

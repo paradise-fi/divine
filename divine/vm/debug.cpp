@@ -122,6 +122,13 @@ int DebugNode< Prog, Heap >::bitoffset()
 }
 
 template< typename Prog, typename Heap >
+bool DebugNode< Prog, Heap >::boundcheck( PointerV ptr, int size )
+{
+    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    return eval.boundcheck( []( auto ) { return std::stringstream(); }, ptr, size, false );
+}
+
+template< typename Prog, typename Heap >
 bool DebugNode< Prog, Heap >::valid()
 {
     if ( _address.null() )
@@ -131,9 +138,9 @@ bool DebugNode< Prog, Heap >::valid()
 
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     PointerV addr( _address );
-    if ( !eval.boundcheck( []( auto ) { return std::stringstream(); }, addr, 1, false ) )
+    if ( !boundcheck( addr, 1 ) )
         return false;
-    if ( !eval.boundcheck( []( auto ) { return std::stringstream(); }, addr, size(), false ) )
+    if ( !boundcheck( addr, size() ) )
         return false;
     return true;
 }
@@ -439,7 +446,8 @@ void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
                eval.s2ptr( sref.slot ) :
                _ctx.program().s2ptr( sref );
     PointerV deref;
-    _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
+    if ( boundcheck( PointerV( ptr ), PointerBytes ) )
+        _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
     if ( deref.pointer() )
         _related_ptrs.insert( deref.cooked() );
 
@@ -499,8 +507,7 @@ void DebugNode< Prog, Heap >::globalvars( YieldDN yield )
         auto ptr = _ctx.program().s2ptr( map[ var ] );
 
         PointerV deref;
-        if ( eval.boundcheck( []( auto ) { return std::stringstream(); }, PointerV( ptr ),
-                              PointerBytes, false ) )
+        if ( boundcheck( PointerV( ptr ), PointerBytes ) )
             _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
         if ( deref.pointer() )
             _related_ptrs.insert( deref.cooked() );
