@@ -317,6 +317,9 @@ void DebugNode< Prog, Heap >::related( YieldDN yield )
     if ( _kind == DNKind::Frame )
         framevars( yield );
 
+    if ( _kind == DNKind::Globals )
+        globalvars( yield );
+
     if ( _type && _di_type && _type->isPointerTy() )
     {
         PointerV addr;
@@ -474,6 +477,38 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield )
                 localvar( yield, DDI );
             else if ( auto DDV = llvm::dyn_cast< llvm::DbgValueInst >( &I ) )
                 localvar( yield, DDV );
+}
+
+template< typename Prog, typename Heap >
+void DebugNode< Prog, Heap >::globalvars( YieldDN yield )
+{
+    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    llvm::DebugInfoFinder finder;
+    finder.processModule( *_ctx.program().module );
+    auto &map = _ctx.program().globalmap;
+    for ( auto GV : finder.global_variables() )
+    {
+        auto var = GV->getVariable();
+        if ( !map.count( var ) )
+            continue;
+        auto ptr = _ctx.program().s2ptr( map[ var ] );
+
+        PointerV deref;
+        if ( eval.boundcheck( []( auto ) { return std::stringstream(); }, PointerV( ptr ),
+                              PointerBytes, false ) )
+            _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
+        if ( deref.pointer() )
+            _related_ptrs.insert( deref.cooked() );
+
+        DebugNode dn( _ctx, _snapshot );
+        dn.address( DNKind::Object, ptr );
+        dn.di_var( GV );
+        dn.type( var->getType()->getPointerElementType() );
+        std::string name = GV->getName();
+        if ( llvm::isa< llvm::DINamespace >( GV->getScope() ) )
+            name = dn.di_scopename() + "::" + name;
+        yield( name, dn );
+    }
 }
 
 static std::string rightpad( std::string s, int i )

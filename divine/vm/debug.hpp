@@ -29,13 +29,14 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine {
 namespace vm {
 
-enum class DNKind { Frame, Object };
+enum class DNKind { Globals, Frame, Object };
 
 static std::ostream &operator<<( std::ostream &o, DNKind dnk )
 {
     switch ( dnk )
     {
         case DNKind::Frame: return o << "frame";
+        case DNKind::Globals: return o << "frame";
         case DNKind::Object: return o << "object";
     }
 }
@@ -98,6 +99,8 @@ struct DebugNode
         _kind = k;
         if ( _kind == DNKind::Frame )
             _ctx.set( _VM_CR_Frame, _address );
+        if ( _kind == DNKind::Globals )
+            _ctx.set( _VM_CR_Globals, _address );
     }
 
     template< typename Context >
@@ -174,6 +177,7 @@ struct DebugNode
     void localvar( YieldDN yield, llvm::DbgDeclareInst *DDI );
     void localvar( YieldDN yield, llvm::DbgValueInst *DDV );
     void framevars( YieldDN yield );
+    void globalvars( YieldDN yield );
 
     void dump( std::ostream &o );
     void dot( std::ostream &o );
