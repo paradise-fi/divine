@@ -180,6 +180,28 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
 }
 
 template< typename Prog, typename Heap >
+std::string DebugNode< Prog, Heap >::di_scopename( llvm::DIScope *scope )
+{
+    std::string n;
+    if ( !scope )
+        scope = _di_var->getScope();
+
+    auto parent = scope->getScope().resolve( _ctx.program().ditypemap );
+
+    if ( parent && llvm::isa< llvm::DINamespace >( parent ) )
+        n = di_scopename( parent ) + "::";
+
+    if ( auto ns = llvm::dyn_cast< llvm::DINamespace >( scope ) )
+        n += ns->getName() == "" ? "<anon>" : ns->getName();
+    else if ( auto file = llvm::dyn_cast< llvm::DICompileUnit >( scope ) )
+        n += "<static in " + file->getFilename().str() + ">";
+    else
+        n += scope->getName();
+
+    return n;
+}
+
+template< typename Prog, typename Heap >
 std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t )
 {
     if ( !t )
@@ -217,6 +239,13 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
 
     if ( _address.type() == PointerType::Const || _address.type() == PointerType::Global )
         yield( "@slot", brick::string::fmt( eval.ptr2s( _address ) ) );
+
+    if ( _di_var )
+    {
+        yield( "@scope", di_scopename() );
+        yield( "@definition", _di_var->getFilename().str() + ":" +
+                              std::to_string( _di_var->getLine() ) );
+    }
 
     if ( _kind == DNKind::Frame )
     {
