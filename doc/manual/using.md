@@ -2,15 +2,9 @@ An Introduction to Using DIVINE
 ===============================
 
 In this section, we will give a short example on how to invoke DIVINE and its
-various functions. First of all, we need a "model" or "system" to work on. This
-is the main input file to DIVINE, and can come in a few different formats. It
-could be a LLVM bitcode file, a CESMI shared object, a DVE model or a UPPAAL
-model. The workflow is very similar for all input languages, although the
-details vary. We will use a C program as an example "system" in this section,
-along with a few simple properties. You may have noticed that "C program" was
-not listed as an input option above -- this is because DIVINE does not directly
-understand C programs. They first need to be translated into LLVM bitcode, and
-DIVINE can work with that.
+various functions. We will use a small C program (consisting of a single
+compile unit) as an example in this section, along with a few simple
+properties.
 
 System Modelling Basics
 -----------------------
