@@ -351,7 +351,7 @@ struct Program
 static inline std::ostream &operator<<( std::ostream &o, Program::Slot p )
 {
     static std::vector< std::string > t = { "void", "ptr", "int", "float", "agg", "code", "alloca" };
-    static std::vector< std::string > l = { "global", "local", "const", "invalid" };
+    static std::vector< std::string > l = { "const", "global", "local", "invalid" };
     return o << "[" << l[ p.location ] << " " << t[ p.type ] << " @" << p.offset << " ↔"
              << p.width() << "]";
 }
