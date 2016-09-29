@@ -40,8 +40,9 @@ void dump( DN dn, DNSet &visited, int &stacks, int maxdepth )
     if ( dn.kind() == vm::DNKind::Frame )
     {
         dn.attributes( []( std::string k, std::string v )
-                       { if ( k == "@pc" || k == "@address" || k == "@location" || k == "@symbol" )
-                             std::cout << k << ": " << v << std::endl;
+                       {
+                           if ( k == "@pc" || k == "@address" || k == "@location" || k == "@symbol" )
+                               std::cout << "  " << k << ": " << v << std::endl;
                        } );
         std::cout << std::endl;
     }
@@ -50,11 +51,7 @@ void dump( DN dn, DNSet &visited, int &stacks, int maxdepth )
                 {
                     if ( rel.kind() == vm::DNKind::Frame && k != "@parent" &&
                          !visited.count( rel.sortkey() ) && maxdepth > 1 )
-                    {
-                        if ( stacks )
-                            std::cerr << "--------------------" << std::endl << std::endl;
-                        ++ stacks;
-                    }
+                        std::cerr << "backtrace #" << ++stacks << ":" << std::endl;
                     dump( rel, visited, stacks, k == "@parent" ? maxdepth - 1 : maxdepth );
                 } );
 }
@@ -86,21 +83,35 @@ void Verify::run()
     using clock = std::chrono::steady_clock;
     using msecs = std::chrono::milliseconds;
     clock::time_point start = clock::now();
+    msecs interval;
+
+    auto time =
+        [&]()
+        {
+            std::stringstream t;
+            t << int( interval.count() / 60000 ) << ":"
+              << std::setw( 2 ) << std::setfill( '0' ) << int(interval.count() / 1000) % 60;
+            return t.str();
+        };
+    auto avg =
+        [&]()
+        {
+            std::stringstream s;
+            auto v = 1000 * float( statecount ) / interval.count();
+            s << std::fixed << std::setprecision( 1 ) << v << " states/s";
+            return s.str();
+        };
 
     auto progress = std::thread(
         [&]()
         {
             while ( !done )
             {
+                interval = std::chrono::duration_cast< msecs >( clock::now() - start );
                 std::this_thread::sleep_for( msecs( 500 ) );
-                std::stringstream time;
-                auto interval = std::chrono::duration_cast< msecs >( clock::now() - start );
-                float avg = 1000 * float( statecount ) / interval.count();
-                time << int( interval.count() / 60000 ) << ":"
-                     << std::setw( 2 ) << std::setfill( '0' ) << int(interval.count() / 1000) % 60;
-                std::cerr << "\rsearching: " << edgecount << " edges and "
-                          << statecount << " states found in " << time.str() << ", averaging "
-                          << std::fixed << std::setprecision( 1 ) << avg << " states/s    ";
+                std::cerr << "\rsearching: " << statecount << " states and "
+                          << edgecount << " edges found in " << time()
+                          << ", averaging " << avg() << "    ";
             }
         } );
 
@@ -135,8 +146,9 @@ void Verify::run()
 
     done = true;
     progress.join();
-    std::cout << std::endl << "found " << statecount << " states and "
-              << edgecount << " edges" << std::endl;
+    std::cerr << "\rfound " << statecount << " states and "
+              << edgecount << " edges" << " in " << time() << ", averaging " << avg()
+              << "             " << std::endl;
 
     if ( !error_found )
     {
@@ -153,6 +165,8 @@ void Verify::run()
 
     std::deque< vm::CowHeap::Snapshot > trace;
     std::vector< int > choices;
+    std::vector< std::string > labels;
+
     std::cout << "found an error" << std::endl;
 
     auto i = error.snap;
@@ -174,7 +188,7 @@ void Verify::run()
                              hasher.equal( to.snap, *next ) )
                         {
                             for ( auto l : label.first )
-                                std::cerr << l << std::endl;
+                                labels.push_back( l );
                             std::transform( label.second.begin(), label.second.end(),
                                             std::back_inserter( choices ),
                                             []( auto x ) { return x.first; } );
@@ -186,11 +200,16 @@ void Verify::run()
                         return ss::Listen::Ignore;
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
-    std::cout << "choices made:";
+    std::cout << std::endl << "choices made:";
     for ( int c : choices )
         std::cout << " " << c;
     std::cout << std::endl;
     ASSERT( next == trace.end() );
+
+    std::cout << std::endl << "the error trace:" << std::endl;
+    for ( std::string l : labels )
+        std::cout << "  " << l << std::endl;
+    std::cout << std::endl;
 
     dump( ex, dbg, trace.back(), _backtraceMaxDepth );
 }
