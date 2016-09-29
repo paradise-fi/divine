@@ -962,7 +962,7 @@ struct Eval
                 if ( size >= ( 2ll << PointerOffBits ) || size < 1 )
                 {
                     fault( _VM_F_Hypercall ) << "invalid size " << size
-                                             << " passed to __vm_make_object";
+                                             << " passed to __vm_obj_make";
                     size = 0;
                 }
                 if ( context().get( _VM_CR_Flags ).integer & _VM_CF_KernelMode )
@@ -972,7 +972,7 @@ struct Eval
             }
             case HypercallObjFree:
                 if ( !heap().free( operand< PointerV >( 0 ).cooked() ) )
-                    fault( _VM_F_Memory ) << "invalid pointer passed to __vm_free_object";
+                    fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_free";
                 return;
             case HypercallObjResize:
                 heap().resize( operandCk< PointerV >( 0 ).cooked(),
@@ -982,8 +982,7 @@ struct Eval
             {
                 auto ptr = operandCk< PointerV >( 0 ).cooked();
                 if ( !heap().valid( ptr ) )
-                    fault( _VM_F_Hypercall ) << "invalid pointer " << ptr
-                                             << " passed to __vm_query_object_size";
+                    fault( _VM_F_Hypercall ) << "invalid pointer " << ptr << " passed to __vm_obj_size";
                 else
                     result( IntV( heap().size( ptr ) ) );
                 return;
