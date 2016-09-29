@@ -434,9 +434,12 @@ void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
     if ( vmap.find( var ) == vmap.end() )
         return;
 
-    auto ptr = _ctx.program().s2ptr( _ctx.program().valuemap[ var ] );
+    auto sref = _ctx.program().valuemap[ var ];
+    auto ptr = sref.slot.location == Prog::Slot::Local ?
+               eval.s2ptr( sref.slot ) :
+               _ctx.program().s2ptr( sref );
     PointerV deref;
-    _ctx.heap().read( ptr, deref );
+    _ctx.heap().read( eval.ptr2h( PointerV( ptr ) ), deref );
     if ( deref.pointer() )
         _related_ptrs.insert( deref.cooked() );
 
