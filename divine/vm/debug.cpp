@@ -375,6 +375,23 @@ void DebugNode< Prog, Heap >::related( YieldDN yield )
 }
 
 template< typename Prog, typename Heap >
+llvm::DIType *DebugNode< Prog, Heap >::di_resolve( llvm::DIType *t )
+{
+    llvm::DIType *base = t ?: _di_type;
+    llvm::DIDerivedType *DT = nullptr;
+
+    while ( true )
+        if ( ( DT = llvm::dyn_cast< llvm::DIDerivedType >( base ) ) &&
+             ( DT->getTag() == llvm::dwarf::DW_TAG_typedef ||
+               DT->getTag() == llvm::dwarf::DW_TAG_member ||
+               DT->getTag() == llvm::dwarf::DW_TAG_restrict_type ||
+               DT->getTag() == llvm::dwarf::DW_TAG_volatile_type ||
+               DT->getTag() == llvm::dwarf::DW_TAG_const_type ) )
+            base = DT->getBaseType().resolve( _ctx.program().ditypemap );
+        else return base;
+}
+
+template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
 {
     llvm::DIType *base = _di_type;
