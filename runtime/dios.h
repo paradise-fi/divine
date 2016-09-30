@@ -31,6 +31,12 @@ enum _DiOS_Fault
     _DiOS_F_Last
 };
 
+enum _DiOS_SimFail
+{
+    _DiOS_SF_Malloc = _DiOS_F_Last,
+    _DiOS_SF_Last
+};
+
 enum _DiOS_FaultFlag
 {
     _DiOS_FF_Enabled       = 0x01,
@@ -124,6 +130,7 @@ CPP_END
 
 
 #ifdef __cplusplus
+#if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
 
 namespace __dios {
 
@@ -210,6 +217,8 @@ using InterruptMask = _InterruptMask< false >;
 using FencedInterruptMask = _InterruptMask< true >;
 
 } // namespace __dios
+
+#endif // __divine__ || DIVINE_NATIVE_RUNTIME
 
 #endif // __cplusplus
 

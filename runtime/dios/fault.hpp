@@ -4,25 +4,43 @@
 #ifndef __DIOS_FAULT_H__
 #define __DIOS_FAULT_H__
 
+#ifdef __cplusplus
+#define EXTERN_C extern "C" {
+#define CPP_END }
+#endif
+
+EXTERN_C
+extern int const *_DiOS_fault_cfg;
+CPP_END
+
+#ifdef __cplusplus
+
 #include <array>
 #include <cstdarg>
 #include <dios.h>
+#include <dios/stdlibwrap.hpp>
 
 namespace __dios {
 
 struct Fault {
-    std::array< int, _DiOS_Fault::_DiOS_F_Last > config;
-    bool triggered;
-    bool ready;
-
     Fault() : triggered( false ), ready( false ) {
         config.fill( _DiOS_FaultFlag::_DiOS_FF_Enabled |
                      _DiOS_FaultFlag::_DiOS_FF_AllowOverride );
         ready = true;
+
+        // Initialize pointer to C-compatible _DiOS_fault_cfg
+        __dios_assert( !_DiOS_fault_cfg );
+        _DiOS_fault_cfg = &config[ 0 ];
     }
 
-    void load_user_pref( const _VM_Env *env );
+    static constexpr int fault_count = _DiOS_SF_Last;
+    static _VM_Fault str_to_fault( dstring fault );
+    bool load_user_pref( const _VM_Env *env );
     static void __attribute__((__noreturn__)) handler( _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept;
+
+    std::array< int, fault_count > config;
+    bool triggered;
+    bool ready;
 };
 
 } // namespace __dios
@@ -34,5 +52,6 @@ void get_fault_config( __dios::Context& ctx, void* retval, va_list vl );
 
 } // namespace __sc
 
+#endif // __cplusplus
 
 #endif // __DIOS_FAULT_H__
