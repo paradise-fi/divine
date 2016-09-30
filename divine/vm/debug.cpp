@@ -86,13 +86,11 @@ llvm::DIDerivedType *DebugNode< Prog, Heap >::di_pointer( llvm::DIType *t )
 template< typename Prog, typename Heap >
 llvm::DIType *DebugNode< Prog, Heap >::di_base( llvm::DIType *t )
 {
-    if ( !t )
-        t = _di_type;
-    for ( auto tag : { llvm::dwarf::DW_TAG_member,
-                       llvm::dwarf::DW_TAG_pointer_type,
-                       llvm::dwarf::DW_TAG_const_type } )
-        if ( auto deriv = di_derived( tag, t ) )
-            return deriv->getBaseType().resolve( _ctx.program().ditypemap );
+    t = t ?: di_resolve();
+    if ( auto deriv = llvm::dyn_cast< llvm::DIDerivedType >( t ) )
+        return deriv->getBaseType().resolve( _ctx.program().ditypemap );
+    if ( auto comp = llvm::dyn_cast< llvm::DICompositeType >( t ) )
+        return comp->getBaseType().resolve(  _ctx.program().ditypemap );
     return nullptr;
 }
 
