@@ -18,12 +18,14 @@ variable:
 
 int i = 33;
 
-void* thread( void *x ) {
+void* thread( void *x )
+{
     i ++;
     return NULL;
 }
 
-int main() {
+int main()
+{
     pthread_t tid;
     pthread_create( &tid, NULL, thread, NULL );
 
@@ -79,7 +81,7 @@ program can ever be violated:
     loading /lib/libcxxabi.bc... linking... done
     loading /lib/libcxx.bc... linking... done
     loading /lib/libdios.bc... linking... done
-    compiling manual.c
+    compiling program.c
     annotating bitcode... done
     computing RR... constants... done
     found 181 states and 314 edges in 0:00, averaging inf states/s
@@ -102,7 +104,7 @@ program can ever be violated:
     
     @address: heap* 901e1 0+0
     @pc: code* 234 11
-    @location: manual.c:18
+    @location: program.c:20
     @symbol: main
     
     @address: heap* 901bb 0+0
@@ -112,7 +114,7 @@ program can ever be violated:
 
 Here, as we have anticipated, DIVINE tells us that in fact, the assertion *can*
 be violated and gave us an indication of what exactly went wrong. In
-particular, the backtrace reveals that `manual.c:18` was active during the
+particular, the backtrace reveals that `program.c:20` was active during the
 fault, which is exactly our assertion.
 
 To understand what led to the assertion failure, however, we will need to
