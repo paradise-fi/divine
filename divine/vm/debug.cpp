@@ -360,6 +360,9 @@ void DebugNode< Prog, Heap >::related( YieldDN yield )
          _type->isStructTy() )
         struct_fields( hloc, yield );
 
+    if ( _type && _di_type && di_composite( llvm::dwarf::DW_TAG_array_type ) )
+        array_elements( yield );
+
     for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
     {
         hloc.offset( hoff + _offset + ptroff->offset() );
@@ -423,6 +426,24 @@ void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
             field.di_type( CTE );
             yield( CTE->getName().str(), field );
         }
+}
+
+template< typename Prog, typename Heap >
+void DebugNode< Prog, Heap >::array_elements( YieldDN yield )
+{
+    auto subtype = _type->getSequentialElementType();
+    int size = _ctx.program().TD.getTypeAllocSize( subtype );
+    PointerV addr( _address + _offset );
+
+    for ( int idx = 0; boundcheck( addr + idx * size, size ); ++ idx )
+    {
+        DebugNode elem( _ctx, _snapshot );
+        elem.address( DNKind::Object, _address );
+        elem.offset( _offset + idx * size );
+        elem.type( subtype );
+        elem.di_type( di_base() );
+        yield( "[" + std::to_string( idx ) + "]", elem );
+    }
 }
 
 template< typename Prog, typename Heap >
