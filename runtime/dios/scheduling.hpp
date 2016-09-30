@@ -66,17 +66,19 @@ private:
 struct ControlFlow {
     ThreadId active_thread;
     int      thread_count;
-    Thread   main_thread;
+    Thread   main_thread[ 0 ];
 };
 
 struct Scheduler {
-    Scheduler() : _cf( static_cast< ControlFlow * >( __vm_obj_make( sizeof( ControlFlow ) ) ) )
+    Scheduler() :
+        _cf( static_cast< ControlFlow * >(
+            __vm_obj_make( sizeof( ControlFlow ) + sizeof( Thread ) ) ) )
     {
         _cf->active_thread = -1;
         _cf->thread_count = 0;
     }
 
-    Thread *get_threads() const noexcept { return &( _cf->main_thread ); }
+    Thread *get_threads() const noexcept { return &( _cf->main_thread[ 0 ] ); }
     Thread *get_active_thread() noexcept { return &get_threads()[ _cf->active_thread ]; }
     Thread *choose_thread() noexcept;
     Thread *choose_live_thread() noexcept;

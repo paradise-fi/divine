@@ -174,7 +174,8 @@ void Scheduler::start_main_thread( FunPtr main, int argc, char** argv, char** en
     _cf->active_thread = 0;
     _cf->thread_count = 1;
 
-    DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( _cf->main_thread._frame );
+    DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >(
+        _cf->main_thread[ 0 ]._frame );
     frame->l = main->arg_count;
 
     frame->argc = argc;
