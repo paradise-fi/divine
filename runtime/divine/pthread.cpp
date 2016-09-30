@@ -55,8 +55,6 @@ struct CleanupHandler {
     CleanupHandler *next;
 };
 
-enum KillReason { Cancel = 0, Exit };
-
 enum SleepingOn { NotSleeping = 0, Condition, Barrier };
 
 typedef void ( *sighandler_t )( int );
@@ -221,7 +219,7 @@ void _cancel() {
 
     // call all cleanup handlers
     _cleanup();
-    __dios_kill_thread( ltid, KillReason::Cancel );
+    __dios_kill_thread( ltid );
 }
 
 bool _canceled() {
@@ -327,7 +325,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     args->arg = arg;
     args->initialized = false;
     int ltid = __dios_start_thread( __dios_get_fun_ptr("_pthread_entry"),
-        static_cast< void * >( args ), nullptr );
+        static_cast< void * >( args ) );
 
     assert( ltid >= 0 );
 
@@ -373,10 +371,10 @@ void pthread_exit( void *result ) {
         }
 
         _cleanup();
-        __dios_kill_thread( 0, KillReason::Exit );
+        __dios_kill_thread( 0 );
     } else {
         _cleanup();
-        __dios_kill_thread( ltid, KillReason::Exit );
+        __dios_kill_thread( ltid );
     }
 }
 
