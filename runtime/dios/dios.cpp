@@ -41,7 +41,14 @@ void init( const _VM_Env *env )
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
 
     auto context = new_object< Context >();
-    context->fault->load_user_pref( env );
+    __vm_trace( _VM_T_StateType, context );
+    __vm_control( _VM_CA_Set, _VM_CR_State, context );
+
+    if ( !context->fault->load_user_pref( env ) ) {
+        context->fault->triggered = true;
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+        return;
+    }
 
     // Find & run main function
     _DiOS_FunPtr main = __dios_get_fun_ptr( "main" );
@@ -57,9 +64,6 @@ void init( const _VM_Env *env )
     auto envp = construct_main_arg( "env.", env );
     context->scheduler->start_main_thread( main, argv.first, argv.second, envp.second );
     __dios_trace_t( "Main thread started" );
-
-    __vm_trace( _VM_T_StateType, context );
-    __vm_control( _VM_CA_Set, _VM_CR_State, context );
 }
 
 } // namespace __dios
