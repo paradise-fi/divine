@@ -1,3 +1,3 @@
-/* ERRSPEC: dios/main.cpp:127 */
+/* ERRSPEC: dios/main.cpp:125 */
 void main() {
 }
