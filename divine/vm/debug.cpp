@@ -95,9 +95,12 @@ llvm::DIType *DebugNode< Prog, Heap >::di_base( llvm::DIType *t )
 }
 
 template< typename Prog, typename Heap >
-llvm::DICompositeType *DebugNode< Prog, Heap >::di_composite()
+llvm::DICompositeType *DebugNode< Prog, Heap >::di_composite( uint64_t tag, llvm::DIType *t )
 {
-    return llvm::dyn_cast< llvm::DICompositeType >( di_base() ?: _di_type );
+    t = t ?: di_resolve();
+    if ( t->getTag() == tag )
+        return llvm::dyn_cast< llvm::DICompositeType >( t );
+    return nullptr;
 }
 
 template< typename Prog, typename Heap >

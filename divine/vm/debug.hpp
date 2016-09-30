@@ -165,7 +165,7 @@ struct DebugNode
     llvm::DIType *di_base( llvm::DIType *t = nullptr );
     std::string di_name( llvm::DIType * = nullptr );
     std::string di_scopename( llvm::DIScope * = nullptr );
-    llvm::DICompositeType *di_composite();
+    llvm::DICompositeType *di_composite( uint64_t tag, llvm::DIType *t = nullptr );
 
     int width();
     int bitoffset();
