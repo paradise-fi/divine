@@ -108,6 +108,8 @@ void Thread::clear() noexcept {
 }
 
 Thread *Scheduler::choose_thread() noexcept {
+    if ( _cf->thread_count < 1 )
+        return nullptr;
     get_active_thread()->update_state();
     int idx = __vm_choose( _cf->thread_count );
     _cf->active_thread = idx;
@@ -118,6 +120,8 @@ Thread *Scheduler::choose_thread() noexcept {
 }
 
 Thread *Scheduler::choose_live_thread() noexcept {
+    if ( _cf->thread_count < 1 )
+        return nullptr;
     get_active_thread()->update_state();
     int count = 0;
     for ( int i = 0; i != _cf->thread_count; i++ ) {
