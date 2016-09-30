@@ -53,6 +53,10 @@ void WithBC::setup()
     i = 0;
     for ( auto o : _useropts )
         env.emplace_back( "arg." + brick::string::fmt( i++ ), bstr( o.begin(), o.end() ) );
+    i = 0;
+    for ( auto o : _systemopts )
+        env.emplace_back( "sys." + brick::string::fmt( i++ ), bstr( o.begin(), o.end() ) );
+
     env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
     env.emplace_back( "divine.runmode", bstr( 1, static_cast< uint8_t >( _run_mode) ) );
 

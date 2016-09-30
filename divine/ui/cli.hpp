@@ -50,13 +50,15 @@ struct WithBC : Command
     std::string _file, _std;
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
+    std::vector< std::string > _systemopts;
+
     _VM_RunMode _run_mode;
     vm::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
 
     std::shared_ptr< vm::BitCode > _bc;
-    void setup();
 
+    void setup();
     WithBC( _VM_RunMode run_mode = _VM_R_Unspecified )
         : _run_mode(run_mode) {}
 };
@@ -255,6 +257,7 @@ struct CLI : Interface
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
             .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
                      "disable static (transformation based) state space reductions"s )
+            .option( "[-o {string}|-o{string}]", &WithBC::_systemopts, "system options"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
