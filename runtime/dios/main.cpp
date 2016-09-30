@@ -6,8 +6,6 @@
 #include <dios/main.hpp>
 
 
-int main(...);
-
 namespace __dios {
 
 struct CtorDtorEntry {

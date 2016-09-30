@@ -6,6 +6,8 @@
 #include <utility>
 #include <dios.h>
 
+int main(...);
+
 namespace __dios {
 
 /*

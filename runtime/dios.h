@@ -26,7 +26,6 @@ enum _DiOS_Fault
 {
     _DiOS_F_Threading = _VM_F_Last,
     _DiOS_F_Assert,
-    _DiOS_F_MissingFunction,
     _DiOS_F_MainReturnValue,
     _DiOS_F_Last
 };
@@ -63,13 +62,12 @@ enum _DiOS_FaultFlag
     } while (0)
 
 typedef unsigned _DiOS_ThreadId;
-typedef const _MD_Function * _DiOS_FunPtr;
 
 /*
  * Start a new thread and obtain its identifier. Thread starts executing routine
- * [void (*routine) (void *)] with arg.
+ * with arg.
  */
-_DiOS_ThreadId __dios_start_thread( _DiOS_FunPtr routine, void *arg ) NOTHROW;
+_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg ) NOTHROW;
 
 /*
  * Get caller thread id
@@ -81,11 +79,6 @@ _DiOS_ThreadId __dios_get_thread_id() NOTHROW;
  * value.
  */
 void __dios_kill_thread( _DiOS_ThreadId id ) NOTHROW;
-
-/*
- * Get function pointer based on function name
- */
-_DiOS_FunPtr __dios_get_fun_ptr( const char* name ) NOTHROW;
 
 /*
  * Jump into DiOS kernel and then return back. Has no effect

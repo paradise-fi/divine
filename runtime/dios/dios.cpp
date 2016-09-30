@@ -50,16 +50,6 @@ void init( const _VM_Env *env )
         return;
     }
 
-    // Find & run main function
-    _DiOS_FunPtr main = __dios_get_fun_ptr( "main" );
-    if ( !main )
-    {
-        __dios_trace_t( "No main function" );
-        __vm_fault( static_cast< _VM_Fault >( _DiOS_F_MissingFunction ), "main" );
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
-        return;
-    }
-
     auto argv = construct_main_arg( "arg.", env, true );
     auto envp = construct_main_arg( "env.", env );
     context->scheduler->start_main_thread( main, argv.first, argv.second, envp.second );
@@ -81,10 +71,6 @@ void  dummy( __dios::Context&, void *ret, va_list vl ) {
  */
 extern "C" void  __attribute__((weak)) __boot( const _VM_Env *env ) {
     __dios::init( env );
-}
-
-_DiOS_FunPtr __dios_get_fun_ptr( const char *name ) noexcept {
-    return __md_get_function_meta( name );
 }
 
 void __dios_dummy() noexcept {

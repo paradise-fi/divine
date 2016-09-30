@@ -21,7 +21,6 @@ void get_thread_id( __dios::Context& ctx, void *retval, va_list vl );
 namespace __dios {
 
 using ThreadId = _DiOS_ThreadId;
-using FunPtr   = _DiOS_FunPtr;
 
 struct DiosMainFrame : _VM_Frame {
     int l;
@@ -43,7 +42,8 @@ struct Thread {
     _VM_Frame *_frame;
     State _state;
 
-    Thread( FunPtr fun ) noexcept;
+    Thread( void ( *fun )( void * ) ) noexcept;
+    Thread( void ( *main )( int, int, char **, char ** ) ) noexcept;
     Thread( const Thread& o ) noexcept = delete;
     Thread& operator=( const Thread& o ) noexcept = delete;
     Thread( Thread&& o ) noexcept;
@@ -81,8 +81,8 @@ struct Scheduler {
     Thread *choose_thread() noexcept;
     Thread *choose_live_thread() noexcept;
 
-    void start_main_thread( FunPtr main, int argc, char** argv, char** envp ) noexcept;
-    ThreadId start_thread( FunPtr routine, void *arg ) noexcept;
+    void start_main_thread( int ( *main )( ... ), int argc, char** argv, char** envp ) noexcept;
+    ThreadId start_thread( void ( *routine )( void * ), void *arg ) noexcept;
 
     void kill_thread( ThreadId t_id ) noexcept;
     void terminate() noexcept;
