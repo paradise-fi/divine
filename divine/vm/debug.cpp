@@ -523,6 +523,9 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield )
         yield( "@parent", parent );
     }
 
+    if ( pc().type() != PointerType::Code )
+        return;
+
     auto *insn = &_ctx.program().instruction( pc() );
     if ( !insn->op )
         insn = &_ctx.program().instruction( pc() + 1 );
