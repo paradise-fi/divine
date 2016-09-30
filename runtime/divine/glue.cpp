@@ -91,7 +91,7 @@ extern "C" void _PDCLIB_Exit( int rv )
 {
     if ( rv )
         __vm_fault( _VM_F_Control, "exit called with non-zero value" );
-    __dios_kill_thread( 0, 1 ); /* FIXME hardcoded reason = 1 */
+    __dios_kill_thread( 0 );
 }
 
 extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
