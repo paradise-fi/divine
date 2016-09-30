@@ -402,7 +402,7 @@ struct Interpreter
     {
         set( "$$", bt.var );
         do {
-            get( "$$" ).format( std::cerr, 1, true );
+            get( "$$" ).format( std::cerr, 0, false );
             set( "$$", "$$.@parent", true );
             std::cerr << std::endl;
         } while ( get( "$$" ).valid() );
