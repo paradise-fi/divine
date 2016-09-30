@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <_PDCLIB_aux.h>
 #include <divine.h>
+#include <dios/fault.hpp>
 #include <string.h>
 #include <dios.h>
 
@@ -25,7 +26,8 @@
 {
     int masked = __vm_mask( 1 );
     void *r;
-    if ( __vm_choose( 2 ) )
+    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & _DiOS_FF_Enabled ? 2 : 1;
+    if ( !__vm_choose( opt ) )
         r = __vm_obj_make( size ); // success
     else
         r = NULL; // failure
@@ -38,12 +40,13 @@
 [[noinline]] void *realloc( void *orig, size_t size ) noexcept
 {
     int masked = __vm_mask( 1 );
+    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & _DiOS_FF_Enabled ? 2 : 1;
     void *r;
     if ( !size ) {
         __vm_obj_free( orig );
         r = NULL;
     }
-    else if ( __vm_choose( 2 ) ) {
+    else if ( !__vm_choose( opt ) ) {
         void *n = __vm_obj_make( size );
         if ( orig ) {
             ::memcpy( n, orig, MIN( size, __vm_obj_size( orig ) ) );
@@ -60,7 +63,8 @@
 {
     int masked = __vm_mask( 1 );
     void *r;
-    if ( __vm_choose( 2 ) ) {
+    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & _DiOS_FF_Enabled ? 2 : 1;
+    if ( !__vm_choose( opt ) ) {
         void *mem = __vm_obj_make( n * size ); // success
         memset( mem, 0, n * size );
         r = mem;
