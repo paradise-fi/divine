@@ -11,8 +11,8 @@ macro( page to srcdir opts )
         DEPENDS ${srcdir}/${source}
         WORKING_DIRECTORY ${SRCDIR}
         COMMAND sed -e s,@version@,${DIVINE_VERSION},g
-                    -e "s,DIVINE,<span class='divine'>DIVINE</span>," ${srcdir}/${source} >
-                ${CMAKE_CURRENT_BINARY_DIR}/subst.${mangled}
+                    -e s,DIVINE,:DIVINE:,g
+                    ${srcdir}/${source} > ${CMAKE_CURRENT_BINARY_DIR}/subst.${mangled}
       )
   endforeach()
   add_custom_command(
@@ -20,11 +20,11 @@ macro( page to srcdir opts )
     DEPENDS ${sources} template.html
     COMMAND pandoc --to=html -s --smart
             --email-obfuscation=javascript
-            -o ${to}
+            -o -
             --template ${SRCDIR}/template.html
             -V version:${DIVINE_VERSION}
             ${opts}
-            ${sources}
+            ${sources} | sed -e 's,:DIVINE:,<span class="divine">DIVINE</span>,' > ${to}
   )
   list( APPEND pages ${to} )
 endmacro()
