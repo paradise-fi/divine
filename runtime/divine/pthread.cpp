@@ -324,8 +324,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     args->entry = entry;
     args->arg = arg;
     args->initialized = false;
-    int ltid = __dios_start_thread( __dios_get_fun_ptr("_pthread_entry"),
-        static_cast< void * >( args ) );
+    int ltid = __dios_start_thread( _pthread_entry, static_cast< void * >( args ) );
 
     assert( ltid >= 0 );
 
