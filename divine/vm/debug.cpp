@@ -214,14 +214,25 @@ std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t )
 {
     if ( !t )
         t = _di_type;
-    if ( !di_base( t ) )
-        return t->getName().str();
     if ( di_member( t ) )
         return di_name( di_base( t ) );
+    if ( !di_base( t ) ||
+         di_derived( llvm::dwarf::DW_TAG_typedef, t ) ||
+         di_composite( llvm::dwarf::DW_TAG_enumeration_type ) )
+        return t->getName().str();
     if ( di_pointer( t ) )
         return di_name( di_base( t ) ) + "*";
+    if ( di_derived( llvm::dwarf::DW_TAG_reference_type, t ) )
+        return di_name( di_base( t ) ) + "&";
     if ( di_derived( llvm::dwarf::DW_TAG_const_type, t ) )
         return "const " + di_name( di_base( t ) );
+    if ( di_derived( llvm::dwarf::DW_TAG_restrict_type, t ) )
+        return di_name( di_base( t ) ) + " restrict";
+    if ( di_derived( llvm::dwarf::DW_TAG_volatile_type, t ) )
+        return "volatile " + di_name( di_base( t ) );
+    if ( di_composite( llvm::dwarf::DW_TAG_array_type, t ) )
+        return di_name( di_base( t ) ) + "[]";
+    t->dump();
     UNREACHABLE( "unexpected debuginfo metadata" );
 }
 
