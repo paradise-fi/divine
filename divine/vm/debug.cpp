@@ -365,6 +365,8 @@ void DebugNode< Prog, Heap >::related( YieldDN yield )
     for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
     {
         hloc.offset( hoff + _offset + ptroff->offset() );
+        if ( ptroff->offset() + ptroff->size() > size() )
+            continue;
         _ctx.heap().read( hloc, ptr );
         auto pp = ptr.cooked();
         if ( pp.type() == PointerType::Code || pp.null() )
