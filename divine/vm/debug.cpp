@@ -355,7 +355,9 @@ void DebugNode< Prog, Heap >::related( YieldDN yield )
         yield( "@deref", rel );
     }
 
-    if ( _type && _di_type && _type->isStructTy() )
+    if ( _type && _di_type &&
+         di_composite( llvm::dwarf::DW_TAG_structure_type ) &&
+         _type->isStructTy() )
         struct_fields( hloc, yield );
 
     for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
@@ -394,14 +396,7 @@ llvm::DIType *DebugNode< Prog, Heap >::di_resolve( llvm::DIType *t )
 template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
 {
-    llvm::DIType *base = _di_type;
-    llvm::DIDerivedType *DT = nullptr;
-
-    do if ( DT = llvm::dyn_cast< llvm::DIDerivedType >( base ) )
-           base = DT->getBaseType().resolve( _ctx.program().ditypemap );
-    while ( DT );
-
-    auto CT = llvm::dyn_cast< llvm::DICompositeType >( base );
+    auto CT = llvm::cast< llvm::DICompositeType >( di_resolve() );
     auto ST = llvm::cast< llvm::StructType >( _type );
     auto STE = ST->element_begin();
     auto SLO = _ctx.program().TD.getStructLayout( ST );
