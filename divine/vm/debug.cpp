@@ -345,8 +345,7 @@ void DebugNode< Prog, Heap >::related( YieldDN yield )
         _ctx.heap().read( hloc + _offset, addr );
         _related_ptrs.insert( addr.cooked() );
         auto kind = DNKind::Object;
-        auto base = di_base( di_base() );
-        if ( base && base->getName() == "_VM_Frame" )
+        if ( di_name() == "_VM_Frame*" )
             kind = DNKind::Frame;
         DebugNode rel( _ctx, _snapshot );
         rel.address( kind, addr.cooked() );
