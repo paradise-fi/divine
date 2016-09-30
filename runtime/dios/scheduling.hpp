@@ -39,12 +39,11 @@ struct CleanupFrame : _VM_Frame {
 };
 
 struct Thread {
-    enum class State { RUNNING, CLEANING_UP, ZOMBIE };
+    enum class State { RUNNING, ZOMBIE };
     _VM_Frame *_frame;
-    FunPtr _cleanup_handler;
     State _state;
 
-    Thread( FunPtr fun, FunPtr cleanup = nullptr ) noexcept;
+    Thread( FunPtr fun ) noexcept;
     Thread( const Thread& o ) noexcept = delete;
     Thread& operator=( const Thread& o ) noexcept = delete;
     Thread( Thread&& o ) noexcept;
@@ -52,11 +51,10 @@ struct Thread {
     ~Thread() noexcept { clear(); }
 
     bool active() const noexcept { return _state == State::RUNNING; }
-    bool cleaning_up() const noexcept { return _state == State::CLEANING_UP; }
     bool zombie() const noexcept { return _state == State::ZOMBIE; }
 
     void update_state() noexcept;
-    void stop( int reason ) noexcept;
+    void stop() noexcept;
     void hard_stop() noexcept;
 
 private:
@@ -84,9 +82,9 @@ struct Scheduler {
     Thread *choose_live_thread() noexcept;
 
     void start_main_thread( FunPtr main, int argc, char** argv, char** envp ) noexcept;
-    ThreadId start_thread( FunPtr routine, void *arg, FunPtr cleanup ) noexcept;
+    ThreadId start_thread( FunPtr routine, void *arg ) noexcept;
 
-    void kill_thread( ThreadId t_id, int reason ) noexcept;
+    void kill_thread( ThreadId t_id ) noexcept;
     void terminate() noexcept;
 
     ThreadId get_thread_id() {

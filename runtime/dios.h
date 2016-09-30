@@ -67,12 +67,9 @@ typedef const _MD_Function * _DiOS_FunPtr;
 
 /*
  * Start a new thread and obtain its identifier. Thread starts executing routine
- * [void (*routine) (void *)] with arg. Cleanup [void (*cleanup)(int)] handler
- * is called when __dios_kill_thread is executed. User-specified kill reason
- * can be specified.
+ * [void (*routine) (void *)] with arg.
  */
-_DiOS_ThreadId __dios_start_thread( _DiOS_FunPtr routine, void *arg,
-    _DiOS_FunPtr cleanup ) NOTHROW;
+_DiOS_ThreadId __dios_start_thread( _DiOS_FunPtr routine, void *arg ) NOTHROW;
 
 /*
  * Get caller thread id
@@ -83,7 +80,7 @@ _DiOS_ThreadId __dios_get_thread_id() NOTHROW;
  * Kill thread with given id and reason. Reason is an arbitratry user-defined
  * value.
  */
-void __dios_kill_thread( _DiOS_ThreadId id, int reason ) NOTHROW;
+void __dios_kill_thread( _DiOS_ThreadId id ) NOTHROW;
 
 /*
  * Get function pointer based on function name
