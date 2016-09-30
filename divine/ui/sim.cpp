@@ -211,6 +211,16 @@ struct Interpreter
             set( "$globals", gdn );
         }
 
+        auto state = _ctx.get( _VM_CR_State ).pointer;
+        if ( !get( "$state", true ).valid() || get( "$state" ).address() != state )
+        {
+            DN sdn( _ctx, _ctx.snapshot() );
+            sdn.address( vm::DNKind::Object, state );
+            sdn.type( _ctx._state_type );
+            sdn.di_type( _ctx._state_di_type );
+            set( "$state", sdn );
+        }
+
         if ( get( "$_" ).kind() == vm::DNKind::Frame )
             set( "$frame", "$_" );
         else
