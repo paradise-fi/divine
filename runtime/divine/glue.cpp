@@ -24,9 +24,10 @@
 /* Memory allocation */
 [[noinline]] void * malloc( size_t size ) noexcept
 {
+    using FaultFlag = __dios::Fault::FaultFlag;
     int masked = __vm_mask( 1 );
     void *r;
-    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & _DiOS_FF_Enabled ? 2 : 1;
+    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled ? 2 : 1;
     if ( !__vm_choose( opt ) )
         r = __vm_obj_make( size ); // success
     else
@@ -39,8 +40,9 @@
 
 [[noinline]] void *realloc( void *orig, size_t size ) noexcept
 {
+    using FaultFlag = __dios::Fault::FaultFlag;
     int masked = __vm_mask( 1 );
-    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & _DiOS_FF_Enabled ? 2 : 1;
+    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled ? 2 : 1;
     void *r;
     if ( !size ) {
         __vm_obj_free( orig );
@@ -61,9 +63,10 @@
 
 [[noinline]] void *calloc( size_t n, size_t size ) noexcept
 {
+    using FaultFlag = __dios::Fault::FaultFlag;
     int masked = __vm_mask( 1 );
     void *r;
-    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & _DiOS_FF_Enabled ? 2 : 1;
+    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled ? 2 : 1;
     if ( !__vm_choose( opt ) ) {
         void *mem = __vm_obj_make( n * size ); // success
         memset( mem, 0, n * size );
