@@ -14,7 +14,6 @@ namespace __sc {
 
 void start_thread( __dios::Context& ctx, void *retval, va_list vl );
 void kill_thread( __dios::Context& ctx, void *retval, va_list vl );
-void get_thread_id( __dios::Context& ctx, void *retval, va_list vl );
 
 } // namespace __sc
 
@@ -112,6 +111,8 @@ void sched() noexcept
 
     while ( t && t->_frame )
     {
+        __vm_control( _VM_CA_Set, _VM_CR_User1,
+            static_cast< int64_t >( ctx->scheduler->get_thread_id() ) );
         __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
                       _VM_CA_Bit, _VM_CR_Flags,
                       uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );

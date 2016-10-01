@@ -13,7 +13,6 @@ namespace __dios {
 enum _DiOS_SC {
     _SC_INACTIVE = 0,
     _SC_START_THREAD,
-    _SC_GET_THREAD_ID,
     _SC_KILL_THREAD,
     _SC_DUMMY,
 

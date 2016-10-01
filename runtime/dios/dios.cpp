@@ -21,6 +21,8 @@ Context::Context() :
 
 void init( const _VM_Env *env )
 {
+    // No active thread
+    __vm_control( _VM_CA_Set, _VM_CR_User1, -1 );
     __dios_trace_t( "__dios::init called" );
     __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, __dios::Fault::handler );
 

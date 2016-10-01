@@ -14,9 +14,7 @@ _DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg ) noe
 }
 
 _DiOS_ThreadId __dios_get_thread_id() noexcept {
-    _DiOS_ThreadId ret;
-    __dios_syscall( __dios::_SC_GET_THREAD_ID, &ret );
-    return ret;
+    return reinterpret_cast< int64_t >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
 }
 
 void __dios_kill_thread( _DiOS_ThreadId id ) noexcept {
@@ -37,11 +35,6 @@ void start_thread( __dios::Context& ctx, void *retval, va_list vl ) {
 void kill_thread( __dios::Context& ctx, void *, va_list vl ) {
     auto id = va_arg( vl, __dios::ThreadId );
     ctx.scheduler->kill_thread( id );
-}
-
-void get_thread_id( __dios::Context& ctx, void *retval, va_list vl ) {
-    auto ret = static_cast< __dios::ThreadId * >( retval );
-    *ret = ctx.scheduler->get_thread_id();
 }
 
 } // namespace __sc

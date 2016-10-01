@@ -61,7 +61,7 @@ enum _DiOS_FaultFlag
         } \
     } while (0)
 
-typedef unsigned _DiOS_ThreadId;
+typedef int _DiOS_ThreadId;
 
 /*
  * Start a new thread and obtain its identifier. Thread starts executing routine
