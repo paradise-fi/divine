@@ -3,6 +3,7 @@
 
 #include <cstdio>
 #include <dios/trace.hpp>
+#include <dios.h>
 
 namespace __dios {
 
@@ -17,7 +18,14 @@ void __attribute__((always_inline)) traceInternalV( int indent, const char *fmt,
     for ( int i = 0; i < fmtIndent; ++i )
         buffer[ i ] = ' ';
 
-    vsnprintf( buffer + fmtIndent, 1024, fmt, ap );
+    int n = 0;
+    auto tid = __dios_get_thread_id();
+    if ( tid >= 0 )
+        n = snprintf( buffer + fmtIndent, 1024 - fmtIndent, "t%d: ",
+            tid );
+    __dios_assert( n >= 0 );
+
+    vsnprintf( buffer + fmtIndent + n, 1024 - fmtIndent - n, fmt, ap );
     __vm_trace( _VM_T_Text, buffer );
 
     fmtIndent += indent * 4;
@@ -35,7 +43,8 @@ void traceInternal( int indent, const char *fmt, ... ) noexcept
 
 void __dios_trace_t( const char *txt ) noexcept
 {
-    __vm_trace( _VM_T_Text, txt );
+    /* __vm_trace( _VM_T_Text, txt ); */
+    __dios_trace( 0, txt );
 }
 
 void __dios_trace_f( const char *fmt, ... ) noexcept
