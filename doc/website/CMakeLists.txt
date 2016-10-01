@@ -24,7 +24,7 @@ macro( page to srcdir opts )
             --template ${SRCDIR}/template.html
             -V version:${DIVINE_VERSION}
             ${opts}
-            ${sources} | sed -e 's,:DIVINE:,<span class="divine">DIVINE</span>,' > ${to}
+            ${sources} | sed -e 's,:DIVINE:,<span class="divine">DIVINE</span>,g' > ${to}
   )
   list( APPEND pages ${to} )
 endmacro()
