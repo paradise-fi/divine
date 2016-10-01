@@ -10,7 +10,7 @@
 #endif
 
 EXTERN_C
-extern int const *_DiOS_fault_cfg;
+extern uint8_t const *_DiOS_fault_cfg;
 CPP_END
 
 #ifdef __cplusplus
@@ -24,8 +24,7 @@ namespace __dios {
 
 struct Fault {
     Fault() : triggered( false ), ready( false ) {
-        config.fill( _DiOS_FaultFlag::_DiOS_FF_Enabled |
-                     _DiOS_FaultFlag::_DiOS_FF_AllowOverride );
+        config.fill( FaultFlag::Enabled | FaultFlag::AllowOverride );
         ready = true;
 
         // Initialize pointer to C-compatible _DiOS_fault_cfg
@@ -33,12 +32,20 @@ struct Fault {
         _DiOS_fault_cfg = &config[ 0 ];
     }
 
+    enum FaultFlag
+    {
+        Enabled       = 0x01,
+        Continue      = 0x02,
+        UserSpec      = 0x04,
+        AllowOverride = 0x08,
+    };
+
     static constexpr int fault_count = _DiOS_SF_Last;
     static _VM_Fault str_to_fault( dstring fault );
     bool load_user_pref( const _VM_Env *env );
     static void __attribute__((__noreturn__)) handler( _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)() ) noexcept;
 
-    std::array< int, fault_count > config;
+    std::array< uint8_t, fault_count > config;
     bool triggered;
     bool ready;
 };

@@ -36,13 +36,16 @@ enum _DiOS_SimFail
     _DiOS_SF_Last
 };
 
-enum _DiOS_FaultFlag
+enum _DiOS_FaultConfig
 {
-    _DiOS_FF_Enabled       = 0x01,
-    _DiOS_FF_Continue      = 0x02,
-    _DiOS_FF_UserSpec      = 0x04,
-    _DiOS_FF_AllowOverride = 0x08,
-    _DiOS_FF_InvalidFault  = 0x10
+    _DiOS_FC_EInvalidCfg = -3,
+    _DiOS_FC_EInvalidFault = -2,
+    _DiOS_FC_ELocked = -1,
+    _DiOS_FC_Ignore = 0,
+    _DiOS_FC_Report,
+    _DiOS_FC_Abort,
+    _DiOS_FC_NoFail,
+    _DiOS_FC_SimFail,
 };
 
 #define __dios_assert_v( x, msg ) do { \
@@ -88,24 +91,29 @@ void __dios_dummy() NOTHROW;
 /*
  * Issue DiOS syscall with given args. Return value is stored in ret.
  */
-void __dios_syscall(int syscode, void* ret, ...);
+void __dios_syscall(int syscode, void* ret, ...) NOTHROW;
 
 /*
- * If _DiOS_FF_AllowOverride is not specified for given fault, configure, if
- * fault should be active and if execution should continue after triggering or not.
- * Negative value keeps original value, zero disables and a positive enables.
- * Returns original configuration.
- * If invalid fault number is passed, result will have _DiOS_FF_InvalidFault bit
- * set.
+ * Configures given fault or symfail and returns original value. Possible
+ * configurations are _DiOS_FC_{Ignore, Report, Abort, NoFail, SimFail}.
+ *
+ * Return original configuration or error.
+ * Possible errors:
+ *   - _DiOS_FC_ELocked if user forced cofiguration,
+ *   - _DiOS_FC_EInvalidFault if invalid fault number was specified
+ *   - _DiOS_FC_EInvalidCfg if simfail configuration was passed for fault or
+ *     fault confiugation was passed for simfail.
  */
-int __dios_configure_fault( int fault, int enable, int cont );
+int __dios_configure_fault( int fault, int cfg ) NOTHROW;
 
 /*
- * Return fault configuration as a bitmask of _DiOS_FaultState flags.
- * If invalid fault number is passed, result will have _DiOS_FF_InvalidFault bit
- * set.
+ * Return fault configuration. Possible configurations are
+ * _DiOS_FC_{Ignore, Report, Abort, NoFail, SimFail}.
+ *
+ * Can return _DiOS_FC_EInvalidFault if invalid fault was specified.
  */
-int __dios_get_fault_config( int fault );
+int __dios_get_fault_config( int fault ) NOTHROW;
+
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
 void __dios_trace_t( const char *str ) NOTHROW;

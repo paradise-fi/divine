@@ -8,7 +8,7 @@
 #include <dios/trace.hpp>
 #include <dios/syscall.hpp>
 
-int const *_DiOS_fault_cfg;
+uint8_t const *_DiOS_fault_cfg;
 
 namespace __dios {
 
@@ -24,7 +24,7 @@ void __attribute__((__noreturn__)) Fault::handler( _VM_Fault _what, _VM_Frame *c
 
     __dios_assert_v( what < fault_count, "Unknown fault" );
     int fault = ctx->fault->config[ what ];
-    if ( !ctx->fault->ready || fault & _DiOS_FF_Enabled ) {
+    if ( !ctx->fault->ready || fault & FaultFlag::Enabled ) {
         __dios_trace_t( "VM Fault" );
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         __dios_trace_t( "Backtrace:" );
@@ -33,7 +33,7 @@ void __attribute__((__noreturn__)) Fault::handler( _VM_Fault _what, _VM_Frame *c
               f != nullptr; f = f->parent )
             traceInternal( 0, "%d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );
 
-        if ( !ctx->fault->ready || !( fault & _DiOS_FF_Continue ) ) {
+        if ( !ctx->fault->ready || !( fault & FaultFlag::Continue ) ) {
             ctx->fault->triggered = true;
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
         }
@@ -92,19 +92,19 @@ bool Fault::load_user_pref( const _VM_Env *e ) {
         dstring f( p, s.end() );
         dstring cmd( s.begin(), --p );
 
-        int cfg = _DiOS_FF_AllowOverride | _DiOS_FF_UserSpec;
+        uint8_t cfg = FaultFlag::AllowOverride | FaultFlag::UserSpec;
         const dstring force("force-");
         if ( cmd.size() > force.size() && std::equal( force.begin(), force.end(), cmd.begin() ) ) {
-            cfg &= ~_DiOS_FF_AllowOverride;
+            cfg &= ~FaultFlag::AllowOverride;
             cmd = cmd.substr( force.size() );
         }
 
         bool simfail = false;
         if      ( cmd == "ignore" )  { }
-        else if ( cmd == "report" )  { cfg |= _DiOS_FF_Enabled | _DiOS_FF_Continue; }
-        else if ( cmd == "abort" )   { cfg |= _DiOS_FF_Enabled; }
+        else if ( cmd == "report" )  { cfg |= FaultFlag::Enabled | FaultFlag::Continue; }
+        else if ( cmd == "abort" )   { cfg |= FaultFlag::Enabled; }
         else if ( cmd == "nofail" )  { simfail = true; }
-        else if ( cmd == "simfail" ) { cfg |= _DiOS_FF_Enabled; simfail = true; }
+        else if ( cmd == "simfail" ) { cfg |= FaultFlag::Enabled; simfail = true; }
         else {
             __dios_trace( 0, "Unknow command '%s' in in parameter '%.*s'",
                 cmd.c_str(), e->size, e->value );
@@ -134,48 +134,82 @@ bool Fault::load_user_pref( const _VM_Env *e ) {
 namespace __sc {
 
 void configure_fault( __dios::Context& ctx, void* retval, va_list vl ) {
+    using FaultFlag = __dios::Fault::FaultFlag;
     auto fault = va_arg( vl, int );
     auto res = static_cast< int * >( retval );
     if ( fault >= __dios::Fault::fault_count ) {
-        *res = _DiOS_FaultFlag::_DiOS_FF_InvalidFault;
+        *res = _DiOS_FC_EInvalidFault;
         return;
     }
 
-    int& fc = ctx.fault->config[ fault ];
-    *res = fc;
-    if ( !( fc & _DiOS_FaultFlag::_DiOS_FF_AllowOverride ) )
+    uint8_t& fc = ctx.fault->config[ fault ];
+    if ( !( fc & FaultFlag::AllowOverride ) ) {
+        *res = _DiOS_FC_ELocked;
         return;
+    }
 
-
-    int en = va_arg( vl, int );
-    if ( en == 0 )
-        fc &= ~_DiOS_FaultFlag::_DiOS_FF_Enabled;
-    else if ( en > 0)
-        fc |= _DiOS_FaultFlag::_DiOS_FF_Enabled;
-
-    int cont = va_arg( vl, int );
-    if ( cont == 0 )
-        fc &= ~_DiOS_FaultFlag::_DiOS_FF_Continue;
-    else if ( cont > 0 )
-        fc |= _DiOS_FaultFlag::_DiOS_FF_Continue;
-
-    return;
+    *res = fc;
+    int cfg = va_arg( vl, int );
+    if ( fault < _DiOS_F_Last) { // Fault
+        switch( cfg ) {
+        case _DiOS_FC_Ignore:
+            fc = 0;
+            break;
+        case _DiOS_FC_Report:
+            fc = FaultFlag::Enabled | FaultFlag::Continue;
+            break;
+        case _DiOS_FC_Abort:
+            fc = FaultFlag::Enabled;
+            break;
+        default:
+            *res = _DiOS_FC_EInvalidCfg;
+        }
+    }
+    else { // Simfail
+        switch( cfg ) {
+        case _DiOS_FC_SimFail:
+            fc = FaultFlag::Enabled;
+            break;
+        case _DiOS_FC_NoFail:
+            fc = 0;
+            break;
+        default:
+            *res = _DiOS_FC_EInvalidCfg;
+        }
+    }
 }
 
 void get_fault_config( __dios::Context& ctx, void* retval, va_list vl ) {
+    using FaultFlag = __dios::Fault::FaultFlag;
     auto fault = va_arg( vl, int );
     auto res = static_cast< int * >( retval );
-    if ( fault >= __dios::Fault::fault_count )
-        *res = _DiOS_FaultFlag::_DiOS_FF_InvalidFault;
-    else
-        *res = ctx.fault->config[ fault ];
+    if ( fault >= __dios::Fault::fault_count ) {
+        *res = _DiOS_FC_EInvalidFault;
+        return;
+    }
+
+    uint8_t cfg = ctx.fault->config[ fault ];
+    if ( fault < _DiOS_F_Last) { // Fault
+        if ( !( cfg | FaultFlag::Enabled ) )
+            *res = _DiOS_FC_Ignore;
+        else if (  cfg | FaultFlag::Continue )
+            *res = _DiOS_FC_Report;
+        else
+            *res = _DiOS_FC_Abort;
+    }
+    else { // Simfail
+        if ( cfg | FaultFlag::Enabled )
+            *res = _DiOS_FC_SimFail;
+        else
+            *res = _DiOS_FC_NoFail;
+    }
 }
 
 } // namespace __sc
 
-int __dios_configure_fault( int fault, int enable, int cont ) {
+int __dios_configure_fault( int fault, int cfg ) {
     int ret;
-    __dios_syscall( __dios::_SC_CONFIGURE_FAULT, &ret, fault, enable, cont );
+    __dios_syscall( __dios::_SC_CONFIGURE_FAULT, &ret, fault, cfg );
     return ret;
 }
 
