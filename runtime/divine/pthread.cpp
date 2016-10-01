@@ -1049,7 +1049,7 @@ int pthread_cond_init( pthread_cond_t *cond, const pthread_condattr_t * /* TODO:
     if ( cond->initialized )
         return EBUSY; // already initialized
 
-    *cond = ( pthread_cond_t ){.mutex = NULL, .initialized = 1, .counter = 0, ._pad = 0};
+    *cond = ( pthread_cond_t ){.mutex = NULL, .initialized = 1, .counter = 0 };
     return 0;
 }
 
