@@ -2,7 +2,7 @@ find_program( PANDOC pandoc )
 find_program( PDFLATEX pdflatex )
 find_program( BIBTEX bibtex )
 
-set( MANUAL_SRC overview.md building.md using.md llvm.md sim.md )
+set( MANUAL_SRC overview.md building.md using.md llvm.md sim.md divine-vm.md dios.md )
 
 if ( PANDOC )
   if ( NOT PDFLATEX OR NOT BIBTEX )
