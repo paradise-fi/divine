@@ -10,10 +10,11 @@
 #include <atomic>
 
 #ifdef __divine__
-#include <divine.h>
-#include <new>
+#include <dios.h>
 
-void* operator new  ( std::size_t count ) { return __vm_obj_make( count ); }
+__attribute__((constructor)) static void disbaleMallocFail() {
+    __dios_configure_fault( _DiOS_SF_Malloc, _DiOS_FC_NoFail );
+}
 #endif
 
 const int cacheLine = 64;
@@ -169,19 +170,17 @@ void *push( void * ) {
 };
 
 int main() {
-    try {
-        q = new Q;
-        pthread_t p;
-        pthread_create( &p, nullptr, &push, nullptr );
-        while (true)
-            for ( int i = 0; i < N - 1; ++i ) {
-                assert( 42 + i == q->front( true ) ); /* ERROR */
-                assert( 1 <= length );
-                q->pop();
-                -- length;
-            }
-        pthread_join( p, nullptr );
-    } catch (...) {} // ignore exceptions
+    q = new Q;
+    pthread_t p;
+    pthread_create( &p, nullptr, &push, nullptr );
+    while (true)
+        for ( int i = 0; i < N - 1; ++i ) {
+            assert( 42 + i == q->front( true ) ); /* ERROR */
+            assert( 1 <= length );
+            q->pop();
+            -- length;
+        }
+    pthread_join( p, nullptr );
     delete q;
     return 0;
 }
