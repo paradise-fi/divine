@@ -130,3 +130,6 @@ execution. Resource exhaustion can be simulated in a test environment to some
 degree. In a model checker, the environment is controlled much more strictly:
 when a test case is run through a model checker, it will come out the same
 every time.
+
+ω-Regular Properties and LTL
+----------------------------
