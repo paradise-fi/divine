@@ -64,8 +64,6 @@ _VM_Fault Fault::str_to_fault( dstring fault ) {
         return _VM_F_NotImplemented;
     if ( fault == "diosassert" )
         return static_cast< _VM_Fault >( _DiOS_F_Assert );
-    if ( fault == "mainreturnvalue" )
-        return static_cast< _VM_Fault >( _DiOS_F_MainReturnValue );
     if ( fault == "malloc" )
         return static_cast< _VM_Fault >( _DiOS_SF_Malloc );
     return static_cast< _VM_Fault >( -1 );

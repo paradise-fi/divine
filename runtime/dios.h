@@ -26,7 +26,6 @@ enum _DiOS_Fault
 {
     _DiOS_F_Threading = _VM_F_Last,
     _DiOS_F_Assert,
-    _DiOS_F_MainReturnValue,
     _DiOS_F_Last
 };
 

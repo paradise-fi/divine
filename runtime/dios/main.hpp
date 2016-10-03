@@ -33,6 +33,9 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
  */
 void free_main_arg( char** argv ) noexcept;
 
+void runCtors();
+void runDtors();
+
 } // namespace __dios
 
 /*

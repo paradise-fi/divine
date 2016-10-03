@@ -4,7 +4,7 @@
 
 #include <algorithm>
 #include <dios/main.hpp>
-
+#include <cstdlib>
 
 namespace __dios {
 
@@ -26,12 +26,12 @@ static void runCtorsDtors( const char *name, Sort sort ) {
         begin->fn();
 }
 
-static void runCtors() {
+void runCtors() {
     runCtorsDtors( "llvm.global_ctors",
             []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio < b.prio; } );
 }
 
-static void runDtors() {
+void runDtors() {
     runCtorsDtors( "llvm.global_dtors",
             []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio > b.prio; } );
 }
@@ -122,13 +122,8 @@ void __dios_main( int l, int argc, char **argv, char **envp ) noexcept {
     }
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
 
-    if ( res != 0 )
-        __vm_fault( ( _VM_Fault ) _DiOS_F_MainReturnValue );
-
-    __dios::runDtors();
-
     __dios::free_main_arg( argv );
     __dios::free_main_arg( envp );
 
-    __dios_trace_t( "DiOS out!" );
+    exit( res );
 }
