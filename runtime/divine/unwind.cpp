@@ -77,6 +77,7 @@ _MD_RegInfo getLPInfo( _Unwind_Context *ctx ) {
 //  scratch registers are reserved for passing arguments between the
 //  personality routine and the landing pads.
 void _Unwind_SetGR( _Unwind_Context *ctx, int index, uintptr_t value ) {
+    __dios::InterruptMask _;
     __dios_assert_v( index >= 0, "Register index cannot be negative" );
     __dios_assert_v( index <= 1, "Unsupported register" );
     // reg 0 - exception object
@@ -102,6 +103,7 @@ void _Unwind_SetGR( _Unwind_Context *ctx, int index, uintptr_t value ) {
 //  will return _URC_INSTALL_CONTEXT. In this case, control will be transferred
 //  to the given address, which should be the address of a landing pad.
 void _Unwind_SetIP( _Unwind_Context *ctx, uintptr_t value ) {
+    __dios::InterruptMask _;
     // TODO: validate it is a landingpad of the original function
     intptr_t offset = value - uintptr_t( ctx->meta().entry_point );
     __dios_assert( offset > 0 );
@@ -119,6 +121,7 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
     // from doc: only GR1 has a guaranteed value, which the Global Pointer (GP)
     // of the frame referenced by the unwind context
 
+    __dios::InterruptMask _;
     __dios_assert_v( index >= 0, "Register index cannot be negative" );
     __dios_assert_v( index <= 1, "Unsupported register" );
     // reg 0 - exception object
@@ -142,6 +145,7 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
 //  unwind context. This value may be outside of the procedure fragment for a
 //  function call that is known to not return (such as _Unwind_Resume).
 uintptr_t _Unwind_GetIP( _Unwind_Context *ctx ) {
+    __dios::InterruptMask _;
     // should point immediatelly AFTER the call site
     return ctx->pc() + 1;
 }
@@ -176,6 +180,8 @@ bool shouldCallPersonality( _Unwind_Context &ctx ) {
 //  return _URC_FATAL_PHASE2_ERROR to its caller. In C++, this will usually be
 //  __cxa_throw, which will call terminate().
 _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
+    __dios::InterruptMask mask;
+
     // TODO: report fault in nounwind function is encountered
     // frame of _Unwind_RaiseException's caller
     auto *topFrame = static_cast< struct _VM_Frame * >(
@@ -189,7 +195,11 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
             continue;
 
         pers = reinterpret_cast< __personality_routine >( ctx.meta().ehPersonality );
+        // personality in not part of the unwinder and therefore should be
+        // allowed to interleave with other threads
+        mask.release();
         auto r = pers( unwindVersion, _UA_SEARCH_PHASE, exception->exception_class, exception, &ctx );
+        mask.acquire();
         if ( r == _URC_HANDLER_FOUND ) {
             foundCtx = ctx;
             break;
@@ -204,7 +214,9 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
         int flags = _UA_CLEANUP_PHASE;
         if ( &ctx.frame() == &foundCtx.frame() )
             flags |= _UA_HANDLER_FRAME;
+        mask.release();
         auto r = pers( unwindVersion, _Unwind_Action( flags ), exception->exception_class, exception, &ctx );
+        mask.acquire();
         if ( (flags & _UA_HANDLER_FRAME) && r != _URC_INSTALL_CONTEXT ) {
             __dios_trace( 0, "Unwinder Fatal Error: Frame which indicated handler in phase 1 refused in phase 2" );
             return _URC_FATAL_PHASE2_ERROR;
@@ -219,6 +231,8 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
         return _URC_FATAL_PHASE2_ERROR;
     }
     __dios_trace( 0, "Unwinding" );
+    // unwinder has to have the mask in the same state as it was before throw
+    mask.release();
     __dios_unwind( &foundCtx.frame(), reinterpret_cast< void (*)() >( foundCtx.jumpPC ) );
 }
 
@@ -246,6 +260,7 @@ void _Unwind_DeleteException( _Unwind_Exception *exception ) {
 // This routine returns the address of the language-specific data area for the
 // current stack frame.
 uintptr_t _Unwind_GetLanguageSpecificData( _Unwind_Context *ctx ) {
+    __dios::InterruptMask _;
     return uintptr_t( ctx->meta().ehLSDA );
 }
 
@@ -258,5 +273,6 @@ uintptr_t _Unwind_GetLanguageSpecificData( _Unwind_Context *ctx ) {
 //  the calls. During unwinding, the function returns the start of the
 //  procedure fragment containing the call site in the current stack frame.
 uintptr_t _Unwind_GetRegionStart( _Unwind_Context *ctx ) {
+    __dios::InterruptMask _;
     return uintptr_t( ctx->meta().entry_point );
 }
