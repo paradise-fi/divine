@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <dios/main.hpp>
 #include <cstdlib>
+#include <pthread.h>
 
 namespace __dios {
 
@@ -102,6 +103,7 @@ void _start( int l, int argc, char **argv, char **envp ) noexcept {
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
     __dios_trace_t( "Dios started!" );
     __dios::runCtors();
+    __pthread_initialize();
     int res;
     switch (l) {
     case 0:
