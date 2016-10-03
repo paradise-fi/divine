@@ -42,7 +42,7 @@ void runDtors();
  * DiOS main function, global constructors and destructor are called, return
  * value is checked. Variant defines number of arguments passes to main
  */
-extern "C" void __dios_main( int variant, int argc, char **argv, char **envp ) noexcept;
+extern "C" void _start( int variant, int argc, char **argv, char **envp ) noexcept;
 
 
 #endif // __DIOS_MAIN_H__

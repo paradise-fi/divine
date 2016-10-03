@@ -160,7 +160,7 @@ Thread *Scheduler::choose_live_thread() noexcept {
 void Scheduler::start_main_thread( int ( *main )( ... ), int argc, char** argv, char** envp ) noexcept {
     __dios_assert_v( main, "Invalid main function!" );
 
-    new ( &( _cf->main_thread ) ) Thread( __dios_main );
+    new ( &( _cf->main_thread ) ) Thread( _start );
     _cf->active_thread = 0;
     _cf->thread_count = 1;
 

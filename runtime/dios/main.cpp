@@ -98,7 +98,7 @@ void free_main_arg( char** argv ) noexcept {
 
 } // namespace __dios
 
-void __dios_main( int l, int argc, char **argv, char **envp ) noexcept {
+void _start( int l, int argc, char **argv, char **envp ) noexcept {
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
     __dios_trace_t( "Dios started!" );
     __dios::runCtors();
