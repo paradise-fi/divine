@@ -155,6 +155,9 @@ struct sched_param {
 #endif
 };
 
+/* Implementation prototypes */
+void __pthread_initialize();
+
 /* Function prototypes */
 
 #ifdef __cplusplus

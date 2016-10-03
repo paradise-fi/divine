@@ -182,7 +182,7 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
     }
 }
 
-void _initialize( void ) {
+void __pthread_initialize( void ) {
     if ( !initialized ) {
         // initialize implicitly created main thread
         assert( alloc_pslots == 0 );
@@ -248,14 +248,8 @@ static void wait( __dios::FencedInterruptMask &mask, Cond &&cond )
     return _wait< false >( mask, std::forward< Cond >( cond ) );
 }
 
-__dios::FencedInterruptMask pthreadBegin() __attribute__( ( __always_inline__ ) ) {
-    __dios::FencedInterruptMask mask;
-    _initialize();
-    return mask; // ownership transfer
-}
-
 extern "C" void _pthread_entry( void *_args ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     Entry *args = static_cast< Entry * >( _args );
     int ltid = __dios_get_thread_id();
@@ -311,7 +305,7 @@ extern "C" void _pthread_entry( void *_args ) {
 }
 
 int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     assert( alloc_pslots > 0 );
 
     // test input arguments
@@ -356,7 +350,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
 }
 
 void pthread_exit( void *result ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     int ltid = __dios_get_thread_id();
     int gtid = _get_gtid( ltid );
@@ -378,8 +372,7 @@ void pthread_exit( void *result ) {
 }
 
 int pthread_join( pthread_t _ptid, void **result ) {
-    __dios_trace_t( "Pthread_join" );
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     real_pthread_t ptid = _real_pt( _ptid );
 
     if ( !ptid.initialized )
@@ -424,8 +417,8 @@ int pthread_join( pthread_t _ptid, void **result ) {
 }
 
 int pthread_detach( pthread_t _ptid ) {
+    __dios::FencedInterruptMask mask;
     real_pthread_t ptid = _real_pt( _ptid );
-    auto mask = pthreadBegin();
 
     if ( !ptid.initialized )
         return ESRCH;
@@ -460,18 +453,18 @@ int pthread_detach( pthread_t _ptid ) {
   */
 
 int pthread_attr_destroy( pthread_attr_t * ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     return 0;
 }
 
 int pthread_attr_init( pthread_attr_t *attr ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     *attr = 0;
     return 0;
 }
 
 int pthread_attr_getdetachstate( const pthread_attr_t *attr, int *state ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || state == NULL )
         return EINVAL;
@@ -521,7 +514,7 @@ int pthread_attr_getstacksize( const pthread_attr_t *, size_t * ) {
 }
 
 int pthread_attr_setdetachstate( pthread_attr_t *attr, int state ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || ( state & ~_THREAD_ATTR_DETACH_MASK ) )
         return EINVAL;
@@ -573,7 +566,7 @@ int pthread_attr_setstacksize( pthread_attr_t *, size_t ) {
 
 /* Thread ID */
 pthread_t pthread_self( void ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     unsigned short ltid = __dios_get_thread_id();
     return ( ( real_pthread_t ){.gtid = ushort( _get_gtid( ltid ) ), .ltid = ltid, .initialized = 1} ).asint;
 }
@@ -715,7 +708,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
 }
 
 int pthread_mutex_destroy( pthread_mutex_t *mutex ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( mutex == NULL )
         return EINVAL;
@@ -732,7 +725,7 @@ int pthread_mutex_destroy( pthread_mutex_t *mutex ) {
 }
 
 int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( mutex == NULL )
         return EINVAL;
@@ -751,17 +744,17 @@ int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr 
 }
 
 int pthread_mutex_lock( pthread_mutex_t *mutex ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     return _mutex_lock( mask, mutex, 1 );
 }
 
 int pthread_mutex_trylock( pthread_mutex_t *mutex ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     return _mutex_lock( mask, mutex, 0 );
 }
 
 int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     int gtid = _get_gtid( __dios_get_thread_id() );
 
     if ( mutex == NULL || !mutex->initialized ) {
@@ -798,7 +791,7 @@ int pthread_mutex_setprioceiling( pthread_mutex_t *, int, int * ) {
 }
 
 int pthread_mutex_timedlock( pthread_mutex_t *mutex, const struct timespec *abstime ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( abstime == NULL || abstime->tv_nsec < 0 || abstime->tv_nsec >= MILLIARD ) {
         return EINVAL;
@@ -824,7 +817,7 @@ int pthread_mutex_timedlock( pthread_mutex_t *mutex, const struct timespec *abst
 */
 
 int pthread_mutexattr_destroy( pthread_mutexattr_t *attr ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL )
         return EINVAL;
@@ -834,7 +827,7 @@ int pthread_mutexattr_destroy( pthread_mutexattr_t *attr ) {
 }
 
 int pthread_mutexattr_init( pthread_mutexattr_t *attr ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL )
         return EINVAL;
@@ -844,7 +837,7 @@ int pthread_mutexattr_init( pthread_mutexattr_t *attr ) {
 }
 
 int pthread_mutexattr_gettype( const pthread_mutexattr_t *attr, int *value ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || value == NULL )
         return EINVAL;
@@ -869,7 +862,7 @@ int pthread_mutexattr_getpshared( const pthread_mutexattr_t *, int * ) {
 }
 
 int pthread_mutexattr_settype( pthread_mutexattr_t *attr, int value ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || ( value & ~_MUTEX_ATTR_TYPE_MASK ) )
         return EINVAL;
@@ -922,7 +915,7 @@ int pthread_spin_unlock( pthread_spinlock_t * ) {
 
 /* Thread specific data */
 int pthread_key_create( pthread_key_t *p_key, void ( *destructor )( void * ) ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     // malloc
     void *_key = __vm_obj_make( sizeof( _PerThreadData ) );
@@ -951,7 +944,7 @@ int pthread_key_create( pthread_key_t *p_key, void ( *destructor )( void * ) ) {
 }
 
 int pthread_key_delete( pthread_key_t key ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( key == NULL )
         return EINVAL;
@@ -973,7 +966,7 @@ int pthread_key_delete( pthread_key_t key ) {
 }
 
 int pthread_setspecific( pthread_key_t key, const void *data ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( key == NULL )
         return EINVAL;
@@ -986,7 +979,7 @@ int pthread_setspecific( pthread_key_t key, const void *data ) {
 }
 
 void *pthread_getspecific( pthread_key_t key ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     assert( key != NULL );
 
     int ltid = __dios_get_thread_id();
@@ -1032,7 +1025,7 @@ template < typename CondOrBarrier > int _destroy_cond_or_barrier( CondOrBarrier 
 }
 
 int pthread_cond_destroy( pthread_cond_t *cond ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     int r = _destroy_cond_or_barrier( cond );
     if ( r == 0 )
@@ -1041,7 +1034,7 @@ int pthread_cond_destroy( pthread_cond_t *cond ) {
 }
 
 int pthread_cond_init( pthread_cond_t *cond, const pthread_condattr_t * /* TODO: cond. attributes */ ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( cond == NULL )
         return EINVAL;
@@ -1105,7 +1098,7 @@ template < bool broadcast, typename CondOrBarrier > int _cond_signal( CondOrBarr
 }
 
 int pthread_cond_signal( pthread_cond_t *cond ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     int r = _cond_signal< false >( cond );
     if ( r == 0 && cond->counter == 0 )
         cond->mutex = NULL; // break binding between cond. variable and mutex
@@ -1113,7 +1106,7 @@ int pthread_cond_signal( pthread_cond_t *cond ) {
 }
 
 int pthread_cond_broadcast( pthread_cond_t *cond ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     int r = _cond_signal< true >( cond );
     if ( r == 0 && cond->counter == 0 )
         cond->mutex = NULL; // break binding between cond. variable and mutex
@@ -1121,7 +1114,7 @@ int pthread_cond_broadcast( pthread_cond_t *cond ) {
 }
 
 int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     int ltid = __dios_get_thread_id();
     int gtid = _get_gtid( __dios_get_thread_id() );
@@ -1167,7 +1160,7 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
 }
 
 int pthread_cond_timedwait( pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( abstime == NULL || abstime->tv_sec < 0 || abstime->tv_nsec < 0 || abstime->tv_nsec >= MILLIARD )
         return EINVAL;
@@ -1239,7 +1232,7 @@ int pthread_once( pthread_once_t *once_control, void ( *init_routine )( void ) )
 
 /* Thread cancellation */
 int pthread_setcancelstate( int state, int *oldstate ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( state & ~0x1 )
         return EINVAL;
@@ -1251,7 +1244,7 @@ int pthread_setcancelstate( int state, int *oldstate ) {
 }
 
 int pthread_setcanceltype( int type, int *oldtype ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( type & ~0x1 )
         return EINVAL;
@@ -1264,7 +1257,7 @@ int pthread_setcanceltype( int type, int *oldtype ) {
 
 int pthread_cancel( pthread_t _ptid ) {
     real_pthread_t ptid = _real_pt( _ptid );
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( !ptid.initialized || ptid.ltid >= alloc_pslots || ptid.gtid >= thread_counter )
         return ESRCH;
@@ -1279,14 +1272,14 @@ int pthread_cancel( pthread_t _ptid ) {
 }
 
 void pthread_testcancel( void ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( _canceled() )
         _cancel();
 }
 
 void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     assert( routine != NULL );
 
@@ -1300,7 +1293,7 @@ void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) {
 }
 
 void pthread_cleanup_pop( int execute ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     int ltid = __dios_get_thread_id();
     CleanupHandler *handler = threads[ltid]->cleanup_handlers;
@@ -1417,7 +1410,7 @@ int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, b
 }
 
 int pthread_rwlock_destroy( pthread_rwlock_t *rwlock ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( rwlock == NULL )
         return EINVAL;
@@ -1432,7 +1425,7 @@ int pthread_rwlock_destroy( pthread_rwlock_t *rwlock ) {
 }
 
 int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( rwlock == NULL )
         return EINVAL;
@@ -1452,27 +1445,27 @@ int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *a
 }
 
 int pthread_rwlock_rdlock( pthread_rwlock_t *rwlock ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     return _rwlock_lock( mask, rwlock, true, false );
 }
 
 int pthread_rwlock_wrlock( pthread_rwlock_t *rwlock ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     return _rwlock_lock( mask, rwlock, true, true );
 }
 
 int pthread_rwlock_tryrdlock( pthread_rwlock_t *rwlock ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     return _rwlock_lock( mask, rwlock, false, false );
 }
 
 int pthread_rwlock_trywrlock( pthread_rwlock_t *rwlock ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
     return _rwlock_lock( mask, rwlock, false, true );
 }
 
 int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     int gtid = _get_gtid( __dios_get_thread_id() );
 
@@ -1519,7 +1512,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) {
 */
 
 int pthread_rwlockattr_destroy( pthread_rwlockattr_t *attr ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL )
         return EINVAL;
@@ -1529,7 +1522,7 @@ int pthread_rwlockattr_destroy( pthread_rwlockattr_t *attr ) {
 }
 
 int pthread_rwlockattr_getpshared( const pthread_rwlockattr_t *attr, int *pshared ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || pshared == NULL )
         return EINVAL;
@@ -1539,7 +1532,7 @@ int pthread_rwlockattr_getpshared( const pthread_rwlockattr_t *attr, int *pshare
 }
 
 int pthread_rwlockattr_init( pthread_rwlockattr_t *attr ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL )
         return EINVAL;
@@ -1549,7 +1542,7 @@ int pthread_rwlockattr_init( pthread_rwlockattr_t *attr ) {
 }
 
 int pthread_rwlockattr_setpshared( pthread_rwlockattr_t *attr, int pshared ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || ( pshared & ~_RWLOCK_ATTR_SHARING_MASK ) )
         return EINVAL;
@@ -1571,7 +1564,7 @@ int pthread_rwlockattr_setpshared( pthread_rwlockattr_t *attr, int pshared ) {
 */
 
 int pthread_barrier_destroy( pthread_barrier_t *barrier ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( barrier == NULL )
         return EINVAL;
@@ -1586,7 +1579,7 @@ int pthread_barrier_init(
         pthread_barrier_t *barrier,
         const pthread_barrierattr_t *attr /* TODO: barrier attributes */,
         unsigned count ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( count == 0 || barrier == NULL )
         return EINVAL;
@@ -1602,7 +1595,7 @@ int pthread_barrier_init(
 }
 
 int pthread_barrier_wait( pthread_barrier_t *barrier ) {
-    auto mask = pthreadBegin();
+    __dios::FencedInterruptMask mask;
 
     if ( barrier == NULL || !barrier->initialized )
         return EINVAL;
@@ -1769,7 +1762,7 @@ int raise( int sig ) {
 }
 
 sighandler_t signal( int sig, sighandler_t handler ) {
-    auto mask = pthreadBegin(); // init thread structures and mask
+    __dios::FencedInterruptMask mask; // init thread structures and mask
 
     Thread *thread = threads[__dios_get_thread_id()];
     if ( sig > thread->sigmaxused ) {
