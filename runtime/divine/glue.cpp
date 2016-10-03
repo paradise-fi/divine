@@ -9,6 +9,7 @@
 #include <dios/fault.hpp>
 #include <string.h>
 #include <dios.h>
+#include <dios/main.hpp>
 
 /*
  * Glue code that ties various bits of C and C++ runtime to the divine runtime
@@ -98,7 +99,9 @@ extern "C" void _PDCLIB_Exit( int rv )
 {
     if ( rv )
         __vm_fault( _VM_F_Control, "exit called with non-zero value" );
+    __dios::runDtors();
     __dios_kill_thread( 0 );
+    __dios_trace_t( "DiOS out!" );
 }
 
 extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
