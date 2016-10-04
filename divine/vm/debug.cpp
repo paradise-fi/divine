@@ -224,6 +224,8 @@ std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t )
         return di_name( di_base( t ) ) + "*";
     if ( di_derived( llvm::dwarf::DW_TAG_reference_type, t ) )
         return di_name( di_base( t ) ) + "&";
+    if ( di_derived( llvm::dwarf::DW_TAG_rvalue_reference_type, t ) )
+        return di_name( di_base( t ) ) + "&&";
     if ( di_derived( llvm::dwarf::DW_TAG_const_type, t ) )
         return "const " + di_name( di_base( t ) );
     if ( di_derived( llvm::dwarf::DW_TAG_restrict_type, t ) )
