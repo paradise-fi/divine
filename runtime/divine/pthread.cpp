@@ -97,7 +97,6 @@ struct Thread { // (user-space) information maintained for every (running)
 namespace {
 
 /* Internal globals*/
-bool initialized = false;
 unsigned alloc_pslots = 0; // num. of pointers (not actuall slots) allocated
 unsigned thread_counter = 1;
 Thread **threads = NULL;
@@ -183,19 +182,15 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
 }
 
 void __pthread_initialize( void ) {
-    if ( !initialized ) {
-        // initialize implicitly created main thread
-        assert( alloc_pslots == 0 );
-        _init_thread( 0, 0, PTHREAD_CREATE_DETACHED );
-        threads[0]->running = true;
+    // initialize implicitly created main thread
+    assert( alloc_pslots == 0 );
+    _init_thread( 0, 0, PTHREAD_CREATE_DETACHED );
+    threads[0]->running = true;
 
-        // etc... more initialization steps might come here
+    // etc... more initialization steps might come here
 
-        // check of some assumptions
-        assert( sizeof( int ) >= 4 );
-
-        initialized = true;
-    }
+    // check of some assumptions
+    assert( sizeof( int ) >= 4 );
 }
 
 void _cleanup() {
@@ -1747,9 +1742,6 @@ int raise( int sig ) {
     __dios::InterruptMask mask;
     assert( sig < 32 );
 
-    if ( threads == nullptr ) // initialization not done yet
-        ( *_sig::def( sig ) )( sig );
-
     Thread *thread = threads[__dios_get_thread_id()];
     if ( sig > thread->sigmaxused || _sig::get( thread, sig ) == SIG_DFL )
         ( *_sig::def( sig ) )( sig );
@@ -1762,7 +1754,7 @@ int raise( int sig ) {
 }
 
 sighandler_t signal( int sig, sighandler_t handler ) {
-    __dios::FencedInterruptMask mask; // init thread structures and mask
+    __dios::FencedInterruptMask mask;
 
     Thread *thread = threads[__dios_get_thread_id()];
     if ( sig > thread->sigmaxused ) {
