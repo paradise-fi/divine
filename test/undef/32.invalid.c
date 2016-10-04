@@ -1,3 +1,3 @@
-/* ERRSPEC: divine/src/divine/glue.cpp:100 */
+/* ERRSPEC: _PDCLIB_Exit */
 void main() {
 }
