@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include <atomic>
 #include <cstdint>
+#include <cassert>
 
 template< typename T >
 struct _TestData {
