@@ -178,7 +178,7 @@ struct Abstraction : lart::Pass {
 			[&]( llvm::CallInst * i ) {
                 if ( isAbstractValue( i ) ) {
         			auto rty = type_store[ t ]->getPointerTo();
-                    annotate( i, rty, "lart.abstract.construct" );
+                    annotate( i, rty, "lart.abstract.create" );
                 } else if ( isLift( i ) ) {
                     i->replaceAllUsesWith( value_store[ i->getArgOperand( 0 ) ] );
                 } else if ( isExplicate( i ) ) {
