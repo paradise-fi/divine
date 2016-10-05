@@ -191,19 +191,21 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
     __personality_routine pers;
 
     for ( auto ctx = topCtx; ctx; ctx.next() ) {
-        if ( !shouldCallPersonality( ctx ) )
-            continue;
-
-        pers = reinterpret_cast< __personality_routine >( ctx.meta().ehPersonality );
-        // personality in not part of the unwinder and therefore should be
-        // allowed to interleave with other threads
-        mask.release();
-        auto r = pers( unwindVersion, _UA_SEARCH_PHASE, exception->exception_class, exception, &ctx );
-        mask.acquire();
-        if ( r == _URC_HANDLER_FOUND ) {
-            foundCtx = ctx;
-            break;
+        if ( shouldCallPersonality( ctx ) )
+        {
+            pers = reinterpret_cast< __personality_routine >( ctx.meta().ehPersonality );
+            // personality in not part of the unwinder and therefore should be
+            // allowed to interleave with other threads
+            mask.release();
+            auto r = pers( unwindVersion, _UA_SEARCH_PHASE, exception->exception_class, exception, &ctx );
+            mask.acquire();
+            if ( r == _URC_HANDLER_FOUND ) {
+                foundCtx = ctx;
+                break;
+            }
         }
+        if ( ctx.meta().is_nounwind )
+            __vm_fault( _VM_F_Control, "Exception thrown out of nounwind function" );
     }
     if ( !foundCtx )
         return _URC_END_OF_STACK;

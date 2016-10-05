@@ -51,6 +51,7 @@ typedef struct {
     _MD_InstInfo *inst_table;
     void (*ehPersonality)( void );
     void *ehLSDA; /* language-specific exception handling tables */
+    int is_nounwind;
 } _MD_Function;
 
 typedef struct {
