@@ -101,7 +101,6 @@ void free_main_arg( char** argv ) noexcept {
 
 void _start( int l, int argc, char **argv, char **envp ) noexcept {
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
-    __dios_trace_t( "Dios started!" );
     __pthread_initialize(); // must run before constructors, constructors can
                             // use pthreads (such as pthread_once or thread
                             // local storage)
