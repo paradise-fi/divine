@@ -39,7 +39,7 @@ struct Abstraction : lart::Pass {
 
 	static PassMeta meta() {
     	return passMeta< Abstraction >(
-        	"Abstraction", "Substitutes annotated values and by abstract values" );
+        	"Abstraction", "Substitutes annotated values and by abstract values." );
     }
 
 	llvm::PreservedAnalyses run( llvm::Module &m ) override {
@@ -54,13 +54,18 @@ struct Abstraction : lart::Pass {
         auto funs = query::query( m )
                     .filter( [&]( F &f ) {
                         auto calls = query::query( f ).flatten()
-                                     .map( query::llvmdyncast< llvm::CallInst > )
-                                     .filter( query::notnull ).freeze();
+                             .map( query::llvmdyncast< llvm::CallInst > )
+                             .filter( query::notnull ).freeze();
                         return query::any( calls, [&]( llvm::CallInst * call ) {
-                            return isAbstractValue( call );
-                        } );
+                              return isAbstractValue( call );
+                            } );
                     } )
                     .map( query::refToPtr ).freeze();
+
+        std::vector< F * > abstractDeclarations;
+        for ( auto &f : m )
+            if ( f.getName().startswith( _abstractName ) )
+                abstractDeclarations.push_back( &f );
 
         for ( auto &f : funs ) {
             // compute all abstract values in function f
@@ -111,6 +116,8 @@ struct Abstraction : lart::Pass {
             a.first->eraseFromParent();
         }
 
+        for ( auto &f : abstractDeclarations )
+            f->eraseFromParent();
         return llvm::PreservedAnalyses::none();
 	}
 
@@ -458,7 +465,7 @@ struct Abstraction : lart::Pass {
         auto m = fn->getParent();
         fn->removeFromParent();
         auto newFn = changeSignature( fn, fty, m, vmap );
-        fn->deleteBody();
+        delete fn;
         return newFn;
 	}
 
