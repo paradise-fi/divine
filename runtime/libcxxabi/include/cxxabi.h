@@ -144,10 +144,6 @@ extern void __cxa_vec_cctor(void*  dest_array,
                             void  (*constructor)(void*, void*),
                             void  (*destructor)(void*));
 
-// 3.3.5.3 Runtime API
-extern int __cxa_atexit(void (*f)(void*), void* p, void* d);
-extern int __cxa_finalize(void*);
-
 // 3.4 Demangler API
 extern char* __cxa_demangle(const char* mangled_name,
                             char*       output_buffer,

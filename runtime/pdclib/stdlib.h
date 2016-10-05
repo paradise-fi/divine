@@ -150,7 +150,7 @@ _PDCLIB_noreturn void abort( void ) _PDCLIB_nothrow;
    reverse order of registration (last-in, first-out).
    Returns zero if registration is successfull, nonzero if it failed.
 */
-int atexit( void (*func)( void ) ) _PDCLIB_nothrow; 
+int atexit( void (*func)( void ) ) _PDCLIB_nothrow;
 
 /* Normal process termination. Functions registered by atexit() (see above) are
    called, streams flushed, files closed and temporary files removed before the
@@ -251,6 +251,13 @@ size_t wcstombs( char * _PDCLIB_restrict s, const wchar_t * _PDCLIB_restrict pwc
 
 int mkstemp( char *templ );
 int mkostemp( char *templ, int flags );
+
+#ifdef __divine__
+
+extern int __cxa_atexit(void (*f)(void*), void* p, void* d);
+extern int __cxa_finalize(void*);
+
+#endif
 
 _PDCLIB_END_EXTERN_C
 #endif

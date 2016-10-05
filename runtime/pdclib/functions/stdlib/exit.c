@@ -27,10 +27,12 @@ size_t _PDCLIB_regptr = NUMBER_OF_SLOTS;
 
 void exit( int status )
 {
+    #ifndef __divine__
     while ( _PDCLIB_regptr < NUMBER_OF_SLOTS )
     {
         _PDCLIB_regstack[ _PDCLIB_regptr++ ]();
     }
+    #endif
     _Exit( status );
 }
 

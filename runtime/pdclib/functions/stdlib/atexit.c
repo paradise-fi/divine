@@ -7,6 +7,7 @@
 */
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #ifndef REGTEST
 
@@ -32,22 +33,47 @@ int atexit( void (*func)( void ) )
 
 #include <divine.h>
 
-extern void (**_PDCLIB_regstack)( void );
-extern size_t _PDCLIB_regptr;
+struct AtexitEntry {
+    void ( *func )( void * );
+    void *arg;
+    void *dso_handle;
+};
 
-int atexit( void (*func)( void ) )
-{
-    const size_t ptrsize = sizeof( void (*)( void ) );
+static struct AtexitEntry *atexit_entries;
 
-    if ( !_PDCLIB_regstack )
-        _PDCLIB_regstack = __vm_obj_make( 4 * ptrsize );
-    else if ( _PDCLIB_regptr * ptrsize >= __vm_obj_size( _PDCLIB_regstack ) )
-    {
-        __vm_obj_resize( _PDCLIB_regstack, ( _PDCLIB_regptr + 1 ) * ptrsize );
-    }
+static void call(void *p) {
+    ((void (*)(void))(uintptr_t)p)();
+}
 
-    _PDCLIB_regstack[ _PDCLIB_regptr ++ ] = func;
+int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
+    typedef struct AtexitEntry Ent;
+    if ( !atexit_entries )
+        atexit_entries = ( Ent* ) __vm_obj_make( sizeof( Ent ) );
+    else
+        __vm_obj_resize( atexit_entries, __vm_obj_size( atexit_entries ) + sizeof( Ent ) );
+
+    size_t idx = __vm_obj_size( atexit_entries ) / sizeof( Ent ) - 1;
+    Ent tmp = { func, arg, dso_handle };
+    atexit_entries[ idx ] = tmp;
     return 0;
+}
+
+int __cxa_finalize( void *dso_handle ) {
+    typedef struct AtexitEntry Ent;
+    size_t i = atexit_entries ? __vm_obj_size( atexit_entries ) / sizeof( Ent ) : 0;
+    for ( ; i != 0; i-- ) {
+        Ent *entry = &atexit_entries[ i - 1 ];
+        if ( entry->func && ( !dso_handle || entry->dso_handle == dso_handle ) ) {
+            ( *entry->func )( entry->arg );
+            entry->func = NULL;
+        }
+    }
+    // ToDo: Remove invalid entries?
+    return 0;
+}
+
+int atexit( void ( *func )( void ) ) {
+    return __cxa_atexit( call, ( void * )( uintptr_t )func, 0);
 }
 
 #endif

@@ -84,14 +84,6 @@ void free( void * p) _PDCLIB_nothrow { if ( p ) __vm_obj_free( p ); }
 
 void *__dso_handle; /* this is emitted by clang for calls to __cxa_exit for whatever reason */
 
-extern "C" int __cxa_atexit( void ( *func ) ( void * ), void *arg, void *dso_handle ) {
-    // TODO
-    ( void ) func;
-    ( void ) arg;
-    ( void ) dso_handle;
-    return 0;
-}
-
 extern "C" void *dlsym( void *, void * ) { __vm_fault( _VM_F_NotImplemented ); return 0; }
 extern "C" void *__errno_location() { __vm_fault( _VM_F_NotImplemented ); return 0; }
 
@@ -99,6 +91,7 @@ extern "C" void _PDCLIB_Exit( int rv )
 {
     if ( rv )
         __vm_fault( _VM_F_Control, "exit called with non-zero value" );
+    __cxa_finalize( 0 );
     __dios::runDtors();
     __dios_kill_thread( 0 );
 }
