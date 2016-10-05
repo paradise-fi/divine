@@ -109,7 +109,7 @@ struct IndexFunctions : lart::Pass {
         auto *funcMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::ArrayType >(
                             mdRoot->getType()->getElementType() )->getElementType() );
         ASSERT( funcMetaT && "The bitcode must define _MD_Function" );
-        ASSERT( funcMetaT->getNumElements() == 10 && "Incompatible _MD_Function" );
+        ASSERT( funcMetaT->getNumElements() == 11 && "Incompatible _MD_Function" );
 
         auto *instMetaT = llvm::cast< llvm::StructType >( llvm::cast< llvm::PointerType >(
                             funcMetaT->getElementType( 7 ) )->getElementType() );
@@ -170,7 +170,8 @@ struct IndexFunctions : lart::Pass {
                     mkint( funcMetaT, 6, m.second.instTableSize ),
                     llvm::ConstantPointerNull::get( llvm::PointerType::getUnqual( instMetaT ) ),
                     pers,
-                    llvm::ConstantPointerNull::get( lsdaT )
+                    llvm::ConstantPointerNull::get( lsdaT ),
+                    mkint( funcMetaT, 10, m.second.entryPoint->hasFnAttribute( llvm::Attribute::NoUnwind ) )
                 } ) );
         }
 
