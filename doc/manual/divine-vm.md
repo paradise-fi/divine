@@ -84,7 +84,7 @@ Scheduling
 ----------
 
 The DIVINE VM has no intrinsic concept of threads or processes. Instead, it
-relies on an "operating system" to implement abstractions like those and the VM
+relies on an "operating system" to implement such abstractions and the VM
 itself only provides the minimum support neccessary. Unlike with "real"
 computers, a system required to operate DiVM can be extremely simple,
 consisting of just 2 C functions (one of them is `__boot`, see [Boot Sequence]
@@ -109,7 +109,7 @@ sets the `_VM_CF_Interrupted` bit in `_VM_CR_Flags` and unless `_VM_CF_Mask` is
 in effect, an interrupt is raised immediately.
 
 Upon an interrupt, the values of `_VM_CR_IntFrame` and `_VM_CR_Frame` are
-swapped, usually entailing that the control is transferred back to the
+swapped, which usually means that the control is transferred back to the
 scheduler, which can then read the address of the interrupted frame from
 `_VM_CR_IntFrame` (this may be a descendant or a parent of the frame that the
 scheduler originally transferred control to, or may be a null pointer if the
