@@ -60,15 +60,63 @@ edge-specific flags are:
     reported (a good place to set this is the *fault handler*, see [Faults]),
   * `_VM_CF_Accepting` indicates that the edge is accepting, under a Büchi
     acceptance condition (see also [ω-Regular Properties and LTL]).
+  * `_VM_CF_Cancel` indicates that this edge should be abandoned (it will not
+    become a part of the state space and neither will its target state, unless
+    also reachable some other way)
+
+Heap
+----
+
+The entire *persistent* state of the VM is stored in the heap. The heap is
+represented as a directed graph of objects, where pointers stored in those
+objects act as the edges of the graph. For each object, in addition to the
+memory corresponding to that object, a supplemental information area is
+allocated transparently the VM for tracking metadata, like which bytes in the
+object are initialised (defined) and the addresses in the object where pointers
+are stored.
+
+Activation frames, global variables and even constants are all stored in the
+heap. The heap is also stored in a way that makes it quite efficient (both
+time- and memory-wise) for the VM to take snapshots and store them. This is how
+model checking and reversible debugging is realized in DIVINE.
 
 Scheduling
 ----------
 
+The DIVINE VM has no intrinsic concept of threads or processes. Instead, it
+relies on an "operating system" to implement abstractions like those and the VM
+itself only provides the minimum support neccessary. Unlike with "real"
+computers, a system required to operate DiVM can be extremely simple,
+consisting of 2 functions (one of them is `__boot`, see [Boot Sequence]
+below). The latter of those is the scheduler, the responsibility of which is to
+organize interleaving of threads in the program to be verified. However, the
+program may not use threads but some other form of concurrency -- it is up to
+the scheduler, which may be provided by the user, to implement the correct
+abstractions.
+
+From the point of view of the state space (cf. [State Space of a Program]), the
+scheduler decides what the successors of a given state are. When DIVINE needs
+to construct successors to a particular state, it executes the scheduler in
+that state; the scheduler decides which thread to run (usually with the help of
+the non-deterministic choice operator) and transfers control to that thread (by
+changing the value of the `_VM_CR_Frame` control register, i.e. by instructing
+DIVINE to execute based on a particular activation frame). The VM then
+continues execution in the activation frame that the scheduler has chosen,
+until it encounters an *interrupt*. When DIVINE loads a program, it annotates
+the bitcode with *interrupt points*, that is, locations in the program where
+threads may need to be re-scheduled. When such a point is encountered, the VM
+sets the `_VM_CF_Interrupted` bit in `_VM_CR_Flags` and unless `_VM_CF_Mask` is
+in effect, an interrupt is raised immediately.
+
+Upon an interrupt, the values of `_VM_CR_IntFrame` and `_VM_CR_Frame` are
+swapped, usually entailing that the control is transferred back to the
+scheduler, which can then read the address of the interrupted frame from
+`_VM_CR_IntFrame` (this may be a descendant or a parent of the frame that the
+scheduler originally transferred control to, or may be a null pointer if the
+activation stack became empty).
+
 Faults
 ------
-
-Heap
-----
 
 Boot Sequence
 -------------
