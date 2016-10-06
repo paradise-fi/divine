@@ -115,8 +115,54 @@ scheduler, which can then read the address of the interrupted frame from
 scheduler originally transferred control to, or may be a null pointer if the
 activation stack became empty).
 
+Of course, the scheduler needs to store its state -- for this purpose, it must
+use the `_VM_CR_State` register, which is set by `__boot` to point to a
+particular heap object. This heap object can be resized by calling
+`__vm_obj_resize` if needed, but the register itself is read-only after
+`__boot` returns. The object can be used to, for example, store pointers to
+activation frames corresponding to individual threads (but of course, those may
+also be stored indirectly, behind a pointer to another heap object). In other
+words, the object pointed to by `_VM_CR_State` serves as the *root* of the
+heap.
+
 Faults
 ------
+
+An important role of DIVINE is to detect errors -- various types of safety
+violations -- in the program. For this reason, it needs to interpret the
+bitcode as strictly as possible and report any problems back to the
+user. Specifically, any dangerous operations that would normally lead to a
+crash (or worse, a security vulnerability) are caught and reported as *faults*
+by the VM. The fault types that can arise are the following (enumerated in
+`enum _VM_Fault` in `divine.h`):
+
+  * `_VM_F_Arithmetic` is raised when the program attempts to divide by zero
+  * `_VM_F_Memory` is raised on attempts at illegal memory access and related
+    errors (out-of-bounds loads or writes, double free, attempts to dereference
+    undefined pointers)
+  * `_VM_F_Control` is raised on control flow errors -- undefined conditional
+    jumps, indirect calls a null function, wrong number of arguments in a
+    `call` instruction, `select` or `switch` on an undefined value or attempt
+    to execute the `unreachable` LLVM instruction
+  * `_VM_F_Hypercall` is raised when an invalid hypercall is attempted (wrong
+    number or type of parameters, undefined parameter values)
+
+When a fault is raised, control is transferred to a user-defined *fault
+handler* (a function the address of which is held in the `_VM_CR_FaultHandler`
+control register). Out of the box, DiOS (see [DiOS, DIVINE's Operating System])
+provides a configurable fault handler. If a fault handler is set, faults are
+not fatal (the only exception is a double fault, that is, a fault that occurs
+while the fault handler itself is active). The fault handler, possibly with
+cooperation from the scheduler (see [Scheduling] above), can terminate the
+program, or raise the `_VM_CF_Error` flag, or take other appropriate actions.
+
+The handler can also choose to continue with execution despite the fault, by
+transferring control to the activation frame and program counter value that are
+provided by the VM for this purpose. (Note: this is neccessarry, because the
+fault might occur in the middle of evaluating a control flow instruction, in
+which case, the VM could not finish its evaluation. The continuation passed to
+the fault handler is the best estimate by the VM on where the execution should
+resume. The fault handler is free to choose a different location.)
 
 Boot Sequence
 -------------
