@@ -36,9 +36,31 @@ _VM_ControlRegister` defined in `divine.h` and can be manipulated through the
 `__vm_control` hypercall (see also [The Hypercall Interface] below). The
 registers are of two types, holding either an integer or a pointer. There are 2
 integer registers, `_VM_CR_Flags`, which is used as a bitfield, and
-`_VM_CR_User1` (the latter is not used or examined by the VM itself). The flags
-register is further broken down into individual bits, described by `enum
-_VM_ControlFlags`, again defined in `divine.h`. These are:
+`_VM_CR_User1` (the latter is not used or examined by the VM itself).
+
+Four control registers govern address translation and normal execution:
+
+  * `_VM_CR_Constants` contains the base address of the heap object (see [Heap]
+    below) used by the VM to hold constants
+  * `_VM_CR_Globals` is the base address of the heap object where global
+    variables are stored
+  * `_VM_CR_Frame` points to the currently executing activation frame
+  * `_VM_CR_PC` is the program counter
+
+Additional 4 registers are concerned with scheduling and interrupt control (for
+details, see [Scheduling] below):
+
+  * `_VM_CR_Scheduler` is the entry address of the scheduler
+  * `_VM_CR_State` is the object holding persistent state of the scheduler
+  * `_VM_CR_IntFrame`
+  * `_VM_CR_Flags` is described in more detail below
+
+Finally, there's `_VM_CR_FaultHandler` (the address of the fault handler, see
+[Faults]) and a pair of user registers (`_VM_CR_User1` and `_VM_CR_User2`).
+
+The flags register (`_VM_CR_Flags`) is further broken down into individual
+bits, described by `enum _VM_ControlFlags`, again defined in `divine.h`. These
+are:
 
   * `_VM_CF_Mask`, if set, blocks *all* interrupts
   * `_VM_CF_Interrupted`, if set, causes an immediate interrupt (unless
