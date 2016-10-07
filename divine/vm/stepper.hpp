@@ -67,11 +67,12 @@ struct Stepper
     }
 
     template< typename Context, typename Eval >
-    bool check( Context &ctx, Eval &eval )
+    bool check( Context &ctx, Eval &eval, bool breakpoints )
     {
-        for ( auto bp : _bps )
-            if ( eval.pc() == bp )
-                return true;
+        if ( breakpoints )
+            for ( auto bp : _bps )
+                if ( eval.pc() == bp )
+                    return true;
 
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
             return true;
@@ -141,13 +142,15 @@ struct Stepper
         Eval< typename Context::Program, Context, value::Void > eval( ctx.program(), ctx );
         bool in_fault = eval.pc().function() == ctx.get( _VM_CR_FaultHandler ).pointer.object();
         bool in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
+        bool moved = false;
 
         while ( !ctx.frame().null() &&
-                ( ( _ff_kernel && in_kernel ) || !check( ctx, eval ) ) &&
+                ( ( _ff_kernel && in_kernel ) || !check( ctx, eval, moved ) ) &&
                 ( in_fault || eval.pc().function()
                   != ctx.get( _VM_CR_FaultHandler ).pointer.object() ) )
         {
             in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
+            moved = true;
 
             if ( in_kernel && _ff_kernel )
                 eval.advance();
