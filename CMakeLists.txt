@@ -144,7 +144,7 @@ foreach( opt ${OPTIONS} )
   endif()
 endforeach()
 
-add_compile_options( -Wall -Wold-style-cast -Wno-unused-function )
+add_compile_options( -Wall -Wold-style-cast -Wno-unused-function -Wno-gnu-zero-variadic-macro-arguments )
 if( DEV_WARNINGS )
   add_compile_options( -Wextra )
 endif()
