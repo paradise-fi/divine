@@ -23,7 +23,7 @@
                                          (x) ? _VM_CF_Mask : 0 ) ) & _VM_CF_Mask )
 
 /* Memory allocation */
-[[noinline]] void * malloc( size_t size ) noexcept
+void * malloc( size_t size ) noexcept
 {
     using FaultFlag = __dios::Fault::FaultFlag;
     int masked = __vm_mask( 1 );
@@ -39,7 +39,7 @@
 
 #define MIN( a, b )   ((a) < (b) ? (a) : (b))
 
-[[noinline]] void *realloc( void *orig, size_t size ) noexcept
+void *realloc( void *orig, size_t size ) noexcept
 {
     using FaultFlag = __dios::Fault::FaultFlag;
     int masked = __vm_mask( 1 );
@@ -62,7 +62,7 @@
     return r;
 }
 
-[[noinline]] void *calloc( size_t n, size_t size ) noexcept
+void *calloc( size_t n, size_t size ) noexcept
 {
     using FaultFlag = __dios::Fault::FaultFlag;
     int masked = __vm_mask( 1 );
