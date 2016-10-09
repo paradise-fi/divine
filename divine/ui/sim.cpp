@@ -251,8 +251,8 @@ struct Interpreter
     }
 
     Interpreter( BC bc )
-        : _exit( false ), _bc( bc ), _explore( bc ), _ctx( _bc->program() ),
-          _sticky_tid( -1, 0 ), _state_count( 0 ), _sched_random( false ), _debug_kernel( false )
+        : _exit( false ), _bc( bc ), _explore( bc ), _sticky_tid( -1, 0 ),
+          _sched_random( false ), _debug_kernel( false ), _ctx( _bc->program() ), _state_count( 0 )
     {
         vm::setup::boot( _ctx );
         _prompt = strdup( "> " );

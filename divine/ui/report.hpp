@@ -21,7 +21,7 @@ namespace divine {
 
 struct Report
 {
-    Report() : _signal( 0 ), _finished( false ), _dumped( false )
+    Report() : _signal( 0 ), _finished( false )
     { }
 
     virtual void signal( int s ) {
@@ -65,7 +65,7 @@ struct Report
     std::string _execCommand;
 
     int _signal;
-    bool _finished, _dumped;
+    bool _finished;
 
     template< typename Rep >
     static std::shared_ptr< Rep > declcheck( std::shared_ptr< Rep > ) {

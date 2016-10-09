@@ -107,6 +107,7 @@ struct Context
 
     Context( Program &p ) : _program( &p ) {}
     Context( Program &p, const Heap &h ) : _program( &p ), _heap( h ) {}
+    virtual ~Context() { }
 
     Program &program() { return *_program; }
     Heap &heap() { return _heap; }

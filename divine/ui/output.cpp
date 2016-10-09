@@ -12,6 +12,7 @@
 #include <divine/ui/output.hpp>
 
 struct proxycall {
+    virtual ~proxycall() { }
     virtual void flush( std::string ) = 0;
     virtual void partial( std::string ) = 0;
 };

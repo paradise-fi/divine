@@ -44,7 +44,7 @@ struct Search
         : _builder( b ), _listener( l ), _listeners_lock( std::make_shared< std::mutex >() )
     {}
 
-    void _started( Builder &b, Listener &l )
+    void _started( Builder &, Listener &l )
     {
         std::lock_guard< std::mutex > lg( *_listeners_lock.get() );
         _listeners.push_back( &l );

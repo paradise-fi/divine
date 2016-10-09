@@ -6,8 +6,8 @@
 #include <brick-proc>
 DIVINE_RELAX_WARNINGS
 #include <brick-llvm>
-DIVINE_UNRELAX_WARNINGS
 #include <brick-elf>
+DIVINE_UNRELAX_WARNINGS
 #include <brick-query>
 #include <brick-string>
 
