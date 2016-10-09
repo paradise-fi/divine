@@ -67,12 +67,12 @@ struct SimpleEscape : lart::Pass {
                || name.startswith( "_Znwm" ) || name.startswith( "_Znam" );
     }
 
-    static bool isSafe( llvm::Instruction *i, llvm::Instruction * ) {
+    static bool isSafe( llvm::Instruction *, llvm::Instruction * ) {
         return false;
     }
     static bool isSafe( llvm::DbgInfoIntrinsic *, llvm::Instruction * ) { return true; }
     // ret is OK, if there are not other escapes the value cannot escape in this function
-    static bool isSafe( llvm::ReturnInst *i, llvm::Instruction * ) { return true; }
+    static bool isSafe( llvm::ReturnInst *, llvm::Instruction * ) { return true; }
     static bool isSafe( llvm::LoadInst *, llvm::Instruction * ) { return true; }
     static bool isSafe( llvm::StoreInst *i, llvm::Instruction *alloc ) {
         return i->getPointerOperand()->stripPointerCasts() == alloc;

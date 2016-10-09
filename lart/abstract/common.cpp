@@ -17,7 +17,7 @@ void Common::process( llvm::Module &m, std::set< llvm::Value * > ) {
                 process( &i );
 }
 
-void Common::process( llvm::Instruction *i ) {
+void Common::process( llvm::Instruction * ) {
 }
 
 }

@@ -63,7 +63,7 @@ void Andersen::solve( Constraint c ) {
             break;
         case Constraint::Store:
             for ( auto x : c.left->_pointsto ) {
-                int s = x->_pointsto.size();
+                auto s = x->_pointsto.size();
                 copyout( c.right->_pointsto, x->_pointsto );
                 if ( s < x->_pointsto.size() ) {
                     std::cerr << "updated " << x << ":";
@@ -154,7 +154,7 @@ void Andersen::build( llvm::Instruction &i ) {
             } else {
                 int idx = 0;
                 for ( auto arg = F->arg_begin(); arg != F->arg_end(); ++ arg ) {
-                    assert( idx <= i.getNumOperands() );
+                    assert( idx <= int( i.getNumOperands() ) );
                     constraint( Constraint::Copy, arg, i.getOperand( idx ) );
                     ++ idx;
                 }
@@ -179,7 +179,7 @@ void Andersen::build( llvm::Instruction &i ) {
      */
 
     if ( llvm::isa< llvm::PHINode >( i ) )
-        for ( int j = 0; j < i.getNumOperands(); ++j )
+        for ( int j = 0; j < int( i.getNumOperands() ); ++j )
             constraint( Constraint::Copy, &i, i.getOperand( j ) );
 }
 
@@ -225,7 +225,6 @@ llvm::MDNode *Andersen::annotate( Node *n, std::set< Node * > &seen )
         std::set< Node * > &pto = n->_pointsto;
         llvm::Metadata **v = new llvm::Metadata *[ pto.size() ], **vi = v;
 
-        int i = 0;
         for ( Node *p : pto )
             *vi++ = annotate( p, seen );
 
@@ -253,7 +252,7 @@ llvm::MDNode *Andersen::annotate( Node *n, std::set< Node * > &seen )
     return mdn;
 }
 
-void Andersen::annotate( llvm::GlobalValue *v, std::set< Node * > &seen )
+void Andersen::annotate( llvm::GlobalValue *, std::set< Node * > & /* seen */ )
 {
 }
 
@@ -264,7 +263,7 @@ void Andersen::annotate( llvm::Instruction *insn, std::set< Node * > &seen )
 
     int size = 0;
     std::vector< Node * > ops;
-    for ( int i = 0; i < insn->getNumOperands(); ++i ) {
+    for ( int i = 0; i < int( insn->getNumOperands() ); ++i ) {
         llvm::Value *op = insn->getOperand( i );
         if ( !_nodes.count( op ) )
             continue;

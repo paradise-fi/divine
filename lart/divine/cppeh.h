@@ -215,7 +215,7 @@ struct CppEhTab {
                                 auto *t = array->getType();
                             auto cnt = t->getNumElements();
                             ExceptSpec spec;
-                            for ( int j = 0; j < cnt; ++j ) {
+                            for ( unsigned j = 0; j < cnt; ++j ) {
                                 auto *ti = &*typeInfos.emplace( array->getOperand( j ) ).first;
                                 spec.typeInfos.emplace_back( ti );
                             }
@@ -317,7 +317,6 @@ struct CppEhTab {
         for ( auto &a : actions ) {
             actionIndex[ &a ] = table.size() + 1;
             for ( auto &h : a.handlers ) {
-                auto base = table.size();
                 pushLeb_n( table, typeIndex[ h ] );
 
                 // push next action offset for this call site
@@ -362,7 +361,6 @@ struct CppEhTab {
                 pushLeb_n( buf, val, n );
                 writeStr( buf );
             };
-        auto padLeb = [&]() { return brick::mem::align( table.offset() + 4, 4 ) - table.offset(); };
 
         // calculate subtables
         // reversed oreder is important to make sure indices are properly computed
