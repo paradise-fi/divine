@@ -50,6 +50,7 @@
   typedef  uint8_t   uint8;
 #endif
 #include <cstring>
+#include <cinttypes>
 
 #define ALLOW_UNALIGNED_READS 1
 
@@ -799,7 +800,7 @@ struct Jenkins {
             saw[i] = SpookyHash::Hash32(buf, i, 0);
             if (saw[i] != expected[i])
             {
-                printf("%3d: saw 0x%.8x, expected 0x%.8llx\n", i, saw[i], expected[i]);
+                printf("%3d: saw 0x%.8x, expected 0x%.8" PRIx64 "\n", i, saw[i], expected[i]);
                 ASSERT( false );
             }
         }
