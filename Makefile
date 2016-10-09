@@ -23,7 +23,7 @@ LDFLAGS_ = -L$(RTBIN)/libunwind/src -Wl,-rpath,$(RTBIN)/libunwind/src \
 
 CXXFLAGS_ = -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include \
             -isystem $(RTSRC)/libunwind/include \
-            -stdlib=libc++ -nostdinc++
+            -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument
 
 TOOLCHAIN = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
 	    -DCMAKE_CXX_COMPILER=$(CLANG)/bin/clang++ \
