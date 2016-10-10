@@ -41,8 +41,13 @@ void runDtors();
 /*
  * DiOS main function, global constructors and destructor are called, return
  * value is checked. Variant defines number of arguments passes to main
+ *
+ * note: _start must not be noexcept, otherwise clang generater invokes for
+ * every function called from it and calls terminate in case of exception. This
+ * then messes with standard behavour of uncaught exceptions which shoud not
+ * unwind stack.
  */
-extern "C" void _start( int variant, int argc, char **argv, char **envp ) noexcept;
+extern "C" void _start( int variant, int argc, char **argv, char **envp );
 
 
 #endif // __DIOS_MAIN_H__
