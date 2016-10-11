@@ -318,8 +318,10 @@ struct Abstraction : lart::Pass {
             auto stored = storedFn( fn, params );
 
             if ( !stored ) {
-                llvm::ValueToValueMapTy vmap;
-                stored = cloneFn( fn, arg_types, vmap );
+		        auto fty = llvm::FunctionType::get( fn->getFunctionType()->getReturnType(),
+                                                    arg_types,
+                                                    fn->getFunctionType()->isVarArg() );
+                stored = cloneFunction( fn, fty );
                 for ( auto &arg : stored->args() )
                     if ( arg.getType() == at )
                         value_store.insert( { &arg, &arg } );
@@ -416,7 +418,7 @@ struct Abstraction : lart::Pass {
     }
 
     F * storeFunction( F * f, bool change_ret = false, T * rty = nullptr ) {
-        auto newf = change_ret ? changeRetValue( f, rty ) : f;
+        auto newf = change_ret ? lart::changeReturnValue( f, rty ) : f;
 		if ( function_store.contains( f ) )
 		    function_store[ f ].push_back( newf );
 		else
@@ -461,44 +463,13 @@ struct Abstraction : lart::Pass {
     }
 
     //Function manipulations
-	F * cloneFn( F *fn, std::vector< T * > &arg_types, llvm::ValueToValueMapTy &vmap ) {
-		auto fty = llvm::FunctionType::get( fn->getFunctionType()->getReturnType(),
-                                            arg_types,
-                                            fn->getFunctionType()->isVarArg() );
-		return changeSignature( fn, fty, fn->getParent(), vmap );
-	}
+	F * changeReturnValue( F *fn, T *rty ) {
+        auto newfn = lart::changeReturnValue( fn, rty );
 
-	F * changeRetValue( F *fn, T *rty ) {
-		llvm::ValueToValueMapTy vmap;
-        auto fty = llvm::FunctionType::get( rty,
-                                            fn->getFunctionType()->params(),
-                                            fn->getFunctionType()->isVarArg() );
-        auto m = fn->getParent();
-        fn->removeFromParent();
-        auto newFn = changeSignature( fn, fty, m, vmap );
         auto find = function_store.find( fn );
         if ( find != function_store.end() )
             function_store.erase( find );
-        delete fn;
-        return newFn;
-	}
-
-	F * changeSignature( F * fn, llvm::FunctionType * fty, llvm::Module * m,
-                         llvm::ValueToValueMapTy &vmap )
- 	{
-    	auto newfn = llvm::Function::Create( fty, fn->getLinkage(),fn->getName() );
-        m->getFunctionList().push_back( newfn );
-
-        auto destIt = newfn->arg_begin();
-        for ( const auto &arg : fn->args() )
-        	if ( vmap.count( &arg ) == 0 ) {
-            	destIt->setName( arg.getName() );
-               	vmap[&arg] = &*destIt++;
-           	}
-
-        // FIXME CloneDebugInfoMeatadata
-        llvm::SmallVector< llvm::ReturnInst *, 8 > returns;
-        llvm::CloneFunctionInto( newfn, fn, vmap, false, returns, "", nullptr );
+        fn->eraseFromParent();
 
         return newfn;
 	}
