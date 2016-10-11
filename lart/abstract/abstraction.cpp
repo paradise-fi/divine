@@ -122,7 +122,7 @@ struct Abstraction : lart::Pass {
 	}
 
     F * propagateArgument( F * f, V * v, T * t ) {
-		auto atp = type_store[ t ]->getPointerTo();
+        auto atp = type_store[ t ]->getPointerTo();
 
 		auto deps = analysis::postorder< V * >( v );
         bool change_ret = dependentReturn( deps );
@@ -149,8 +149,12 @@ struct Abstraction : lart::Pass {
             if ( auto inst = llvm::dyn_cast< I >( dep ) )
                 inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
         for ( auto dep : deps )
-        	if ( auto inst = llvm::dyn_cast< I >( dep ) )
+        	if ( auto inst = llvm::dyn_cast< I >( dep ) ) {
+                auto val = value_store.find( inst );
+                if ( val != value_store.end() )
+                    value_store.erase( val );
                 delete inst;
+            }
     }
 
     void process( I * inst, T * t ) {
@@ -167,7 +171,7 @@ struct Abstraction : lart::Pass {
             },
             [&]( llvm::BranchInst * i ) {
                 doBranch( i );
-   	       },
+   	        },
 			[&]( llvm::BinaryOperator * i ) {
 				doBinary( i, t );
 			},
@@ -195,6 +199,7 @@ struct Abstraction : lart::Pass {
 			[&]( I *inst ) {
 				std::cerr << "ERR: unknown instruction: ";
                 inst->dump();
+                std::exit( EXIT_FAILURE );
 			} );
     }
 
@@ -465,6 +470,9 @@ struct Abstraction : lart::Pass {
         auto m = fn->getParent();
         fn->removeFromParent();
         auto newFn = changeSignature( fn, fty, m, vmap );
+        auto find = function_store.find( fn );
+        if ( find != function_store.end() )
+            function_store.erase( find );
         delete fn;
         return newFn;
 	}
