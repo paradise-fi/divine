@@ -588,8 +588,244 @@ private:
 
 llvm::StringRef Abstraction::_abstractName = "__VERIFIER_nondet_";
 
+struct Substitution : lart::Pass {
+    Substitution( std::string type ) {
+        if ( type == "zero" )
+            abstractionName = "__abstract_zero_";
+    }
+
+    virtual ~Substitution() {}
+
+    static PassMeta meta() {
+    	return passMetaC( "Substitution",
+                "Substitutes abstract values by concrete abstraction.",
+                []( llvm::ModulePassManager &mgr, std::string opt ) {
+                    return mgr.addPass( Substitution( opt ) );
+                } );
+    }
+
+	llvm::PreservedAnalyses run( llvm::Module &m ) override {
+        abstractionType = m.getFunction( abstractionName + "create" )->getReturnType();
+
+        std::vector< llvm::Function * > toChangeReturnValue;
+
+        for ( auto &fn : m ) {
+            //find creation of abstract values
+            auto abstract = query::query( fn ).flatten()
+                 .map( query::refToPtr )
+                 .map( query::llvmdyncast< llvm::CallInst > )
+                 .filter( query::notnull )
+                 .filter( [&]( llvm::CallInst *i ) {
+                    auto call = i->getCalledFunction();
+                    if ( call && call->hasName() )
+                        return call->getName().startswith( "lart.abstract.create" )
+                            || call->getName().startswith( "lart.abstract.lift" );
+                    return false;
+                 } )
+                 .freeze();
+
+            //substitute all dependencies of abstract values
+            for ( auto a : abstract ) {
+                auto deps = analysis::postorder< llvm::Value * >( a );
+                for ( auto dep : lart::util::reverse( deps ) )
+                    if ( auto inst = llvm::dyn_cast< llvm::Instruction >( dep ) )
+                        process( m, inst );
+            }
+
+            removeAbstractedValues();
+
+            if ( !abstract.empty() ) {
+                auto typeName = lart::abstract::getTypeName( fn.getReturnType() );
+                std::string prefix = "%lart.abstract";
+                if ( !typeName.compare( 0, prefix.size(), prefix ) )
+                    toChangeReturnValue.push_back( &fn );
+            }
+        }
+
+        for ( auto &fn : toChangeReturnValue )
+            lart::changeReturnValue( fn, abstractionType );
+
+        cleanup( m );
+        return llvm::PreservedAnalyses::none();
+    }
+
+    void process( llvm::Module &m, llvm::Instruction * inst ) {
+        llvmcase( inst,
+     		//[&]( llvm::AllocaInst * ) { /*TODO*/ },
+            //[&]( llvm::LoadInst * ) { /*TODO*/ },
+            //[&]( llvm::StoreInst * ) { /*TODO*/ },
+            //[&]( llvm::ICmpInst * ) { /*TODO*/ },
+            //[&]( llvm::SelectInst * ) { /*TODO*/ },
+            [&]( llvm::BranchInst * i ) {
+                doBranch( i );
+            },
+			//[&]( llvm::CastInst * ) { /* TODO*/ },
+			[&]( llvm::PHINode * i ) {
+                doPhi( i );
+            },
+			[&]( llvm::CallInst * call ) {
+                if ( call->getCalledFunction()->getName().startswith( "lart.abstract.lift" ) )
+                    doLift( m, call );
+                else
+                    doCall( m, call );
+            },
+ 			[&]( llvm::ReturnInst * i ) {
+                doReturn( i );
+            },
+			[&]( llvm::Instruction *i ) {
+				std::cerr << "ERR: unknown instruction: ";
+                i->dump();
+                std::exit( EXIT_FAILURE );
+			} );
+    }
+
+    void doLift( llvm::Module & m, llvm::CallInst * call ) {
+        auto name = getFunctionName( call->getCalledFunction()->getName() );
+        auto fn = m.getFunction( name );
+
+        llvm::IRBuilder<> irb( call );
+        auto ncall = irb.CreateCall( fn, { call->getArgOperand( 0 ) } );
+        abstraction_store[ call ] = ncall;
+        abstractedValues.insert( call );
+    }
+
+    void doCall( llvm::Module & m, llvm::CallInst * call ) {
+        auto name = getFunctionName( call->getCalledFunction()->getName() );
+        auto fn = m.getFunction( name );
+
+        std::vector < llvm::Value * > args;
+
+        for ( auto &arg : call->arg_operands() ) {
+            if ( abstraction_store.find( arg ) == abstraction_store.end() ) {
+                //not all incoming values substituted
+                //wait till have all args
+                break;
+            }
+            args.push_back( abstraction_store[ arg ] );
+        }
+
+        //skip if do not have enough substituted arguments
+        if ( call->getNumArgOperands() == args.size() ) {
+            llvm::IRBuilder<> irb( call );
+            auto ncall = irb.CreateCall( fn, args );
+            abstraction_store[ call ] = ncall;
+            abstractedValues.insert( call );
+        }
+    }
+
+    std::string getFunctionName( llvm::StringRef callName ) {
+        llvm::SmallVector< llvm::StringRef, 4 > nameParts;
+        callName.split( nameParts, "." );
+        if ( nameParts[ 1 ].startswith( "tristate" ) )
+            return "__abstract_tristate_" + nameParts[ 2 ].str();
+        if ( nameParts[ 2 ].startswith( "icmp" ) )
+            return abstractionName + "icmp_" + nameParts[ 3 ].str();
+        else
+            return abstractionName + nameParts[ 2 ].str();
+    }
+
+    void doBranch( llvm::BranchInst * i ) {
+        llvm::IRBuilder<> irb( i );
+        if ( i->isConditional() ) {
+            //conditional branching
+            auto cond = i->getCondition();
+            if ( abstraction_store.contains( cond ) ) {
+                cond = abstraction_store[ cond ];
+                auto tbb = i->getSuccessor( 0 );
+                auto fbb = i->getSuccessor( 1 );
+                irb.CreateCondBr( cond, tbb, fbb );
+                abstractedValues.insert( i );
+            }
+        }
+    }
+
+    void doPhi( llvm::PHINode * phi ) {
+        unsigned int niv = phi->getNumIncomingValues();
+
+        if ( abstraction_store.contains( phi ) ) {
+            abstractedValues.insert( llvm::cast< llvm::Instruction >( abstraction_store[ phi ] ) );
+            /*for ( unsigned int i = 0; i < niv; ++i ) {
+                auto val = llvm::cast< llvm::Instruction >( phi->getIncomingValue( i ) );
+                if ( !abstraction_store.contains( val ) && val->getType() != abstractionType ) {
+                    abstractedValues.insert( phi );
+                    break;
+                }
+            }*/
+        }
+
+        llvm::IRBuilder<> irb( phi );
+        auto nphi = irb.CreatePHI( abstractionType, niv );
+        abstraction_store.insert( { phi , nphi } );
+
+        if ( phi->getType() == abstractionType )
+            phi->replaceAllUsesWith( nphi );
+
+        for ( unsigned int i = 0; i < niv; ++i ) {
+            auto val = llvm::cast< llvm::Instruction >( phi->getIncomingValue( i ) );
+            auto parent = phi->getIncomingBlock( i );
+            if ( abstraction_store.contains( val ) )
+                nphi->addIncoming( abstraction_store[ val ], parent );
+            else {
+                if ( val->getType() == abstractionType )
+                    nphi->addIncoming( val, parent );
+            }
+        }
+
+        abstractedValues.insert( phi );
+    }
+
+    void doReturn( llvm::ReturnInst * i ) {
+        if ( abstraction_store.contains( i->getReturnValue() ) ) {
+            llvm::IRBuilder<> irb( i );
+            auto ret = abstraction_store[ i->getReturnValue() ];
+            irb.CreateRet( ret );
+            abstraction_store[ i ] = ret;
+            abstractedValues.insert( i );
+        }
+    }
+
+    void removeAbstractedValues() {
+        for ( auto &inst : abstractedValues )
+            inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
+        for ( auto &inst : abstractedValues ) {
+            auto stored = abstraction_store.find( inst );
+            if ( stored != abstraction_store.end() )
+                abstraction_store.erase( stored );
+            inst->eraseFromParent();
+        }
+        abstractedValues.clear();
+    }
+
+    void cleanup( llvm::Module & m ) {
+        auto toErase = query::query( m )
+                        .map( query::refToPtr )
+                        .filter( []( auto &fn ) {
+                            return fn->getName().startswith( "lart.abstract" )
+                                || fn->getName().startswith( "lart.tristate" );
+                        } ).freeze();
+
+        for ( auto &fn : toErase )
+            fn->eraseFromParent();
+    }
+
+private:
+    template < typename V >
+    using AbstractStore = lart::util::Store< std::map< V, V > >;
+
+    AbstractStore< llvm::Value * > abstraction_store;
+
+    std::set< llvm::Instruction * > abstractedValues;
+
+    std::string abstractionName;
+    llvm::Type * abstractionType;
+};
+
 PassMeta abstractionPass() {
-    return passMeta< Abstraction >( "abstraction", "" );
+    return passMetaC< Substitution >( "abstraction", "",
+        []( llvm::ModulePassManager &mgr, std::string opt ) {
+            Abstraction::meta().create( mgr, "" );
+            Substitution::meta().create( mgr, opt );
+        } );
 };
 
 } /* lart */

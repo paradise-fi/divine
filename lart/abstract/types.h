@@ -49,6 +49,12 @@ struct Tristate : Base {
 
 };
 
+std::string getTypeName( llvm::Type * type ) {
+    std::string buffer;
+    llvm::raw_string_ostream rso( buffer );
+    type->print( rso );
+    return rso.str();
+}
 
 } /* lart */
 } /* abstract */
