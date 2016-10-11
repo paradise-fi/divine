@@ -12,6 +12,9 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Analysis/CaptureTracking.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/IR/CallSite.h>
+#include <llvm/IR/ValueMap.h>
+
+#include <llvm/Transforms/Utils/Cloning.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/query.h>
@@ -652,6 +655,65 @@ inline UserSet pointerTransitiveUsers( llvm::Instruction &v, TrackPointers track
     return UserSet{ v.user_begin(), v.user_end() };
 }
 
+// function manipulations
+inline llvm::Function * createFunctionSignature( llvm::Function *fn,
+                                                 llvm::FunctionType *fty,
+                                                 llvm::ValueToValueMapTy &vmap )
+{
+    auto newfn = llvm::Function::Create( fty, fn->getLinkage(),fn->getName() );
+
+    auto destIt = newfn->arg_begin();
+    for ( const auto &arg : fn->args() )
+        if ( vmap.count( &arg ) == 0 ) {
+            destIt->setName( arg.getName() );
+            vmap[&arg] = &*destIt++;
+        }
+
+    return newfn;
 }
 
+inline llvm::Function * cloneFunction( llvm::Function *fn, llvm::FunctionType *fty )
+{
+    llvm::ValueToValueMapTy vmap;
+    auto m = fn->getParent();
+    auto newfn = createFunctionSignature( fn, fty, vmap );
+    m->getFunctionList().push_back( newfn );
+    // FIXME CloneDebugInfoMeatadata
+    llvm::SmallVector< llvm::ReturnInst *, 8 > returns;
+    llvm::CloneFunctionInto( newfn, fn, vmap, false, returns, "", nullptr );
+
+    return newfn;
+}
+
+inline llvm::Function * cloneFunction( llvm::Function * fn )
+{
+    auto fty = fn->getFunctionType();
+    return cloneFunction( fn, fty );
+}
+
+inline llvm::Function * changeFunctionSignature( llvm::Function * fn, llvm::FunctionType * fty )
+{
+    llvm::Function * newfn;
+    if ( !fn->empty() )
+        newfn= cloneFunction( fn, fty );
+    else {
+        llvm::ValueToValueMapTy vmap;
+        auto m = fn->getParent();
+        newfn = createFunctionSignature( fn, fty, vmap );
+        m->getFunctionList().push_back( newfn );
+    }
+
+    fn->eraseFromParent();
+    return newfn;
+}
+
+inline llvm::Function * changeReturnValue( llvm::Function *fn, llvm::Type *rty )
+{
+    auto fty = llvm::FunctionType::get( rty,
+                                        fn->getFunctionType()->params(),
+                                        fn->getFunctionType()->isVarArg() );
+    return changeFunctionSignature( fn, fty );
+}
+
+}
 #endif // LART_SUPPORT_UTIL_H
