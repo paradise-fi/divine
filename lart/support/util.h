@@ -57,6 +57,15 @@ using Set = std::set< T >;
 template< typename K, typename V >
 using Map = std::map< K, V >;
 
+template < typename Container >
+struct Store : public Container {
+    using K = typename Container::key_type;
+
+    bool contains( K key ) const {
+        return this->find( key ) != this->end();
+    }
+};
+
 template< typename >
 struct ReturnType { };
 

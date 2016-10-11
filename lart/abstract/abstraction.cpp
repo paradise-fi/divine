@@ -541,11 +541,8 @@ struct Abstraction : lart::Pass {
     }
 
 private:
-    template < typename K, typename V >
-    using Map = std::map< K, V >;
-
 	using Predicate = llvm::CmpInst::Predicate;
-    const Map< Predicate, std::string > predicate = {
+    const std::map< Predicate, std::string > predicate = {
     	{ Predicate::ICMP_EQ, "eq" },
     	{ Predicate::ICMP_NE, "ne" },
     	{ Predicate::ICMP_UGT, "ugt" },
@@ -558,22 +555,11 @@ private:
 		{ Predicate::ICMP_SLE, "sle" }
     };
 
-    template < typename Container >
-    struct Store : public Container {
-   		using K = typename Container::key_type;
-
-        bool contains( K key ) const {
-        	return this->find( key ) != this->end();
-        }
-  	};
-
     template < typename V >
-    using AbstractStore = Store< Map < V, V > >;
+    using AbstractStore = lart::util::Store< std::map < V, V > >;
 
     template < typename K, typename V >
-    using FunctionStore = Store< Map < K, std::vector< V > > >;
-
-	using FunctionRecord = std::pair< F *, std::bitset< 256 > >;
+    using FunctionStore = lart::util::Store< std::map < K, std::vector< V > > >;
 
 	F * storedFn( F * fn, llvm::ArrayRef< T * > &params ) {
     	if ( function_store.contains( fn ) )
@@ -594,7 +580,7 @@ private:
     FunctionStore < F *, F * > function_store;
 
     // functions to annotate
-    Store< Map < F *, std::string > > to_annotate;
+    lart::util::Store< std::map < F *, std::string > > to_annotate;
 
     static llvm::StringRef _abstractName;
 
