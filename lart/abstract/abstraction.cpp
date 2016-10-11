@@ -266,6 +266,8 @@ struct Abstraction : lart::Pass {
         llvm::IRBuilder<> irb( n );
         auto sub = irb.CreatePHI( at, niv );
         value_store.insert( { n , sub } );
+        if ( n->getType() == at )
+            n->replaceAllUsesWith( sub );
 
         for ( unsigned int i = 0; i < niv; ++i ) {
             auto val = llvm::cast< I >( n->getIncomingValue( i ) );
@@ -273,9 +275,13 @@ struct Abstraction : lart::Pass {
             if ( value_store.contains( val ) ) {
                 sub->addIncoming( value_store[ val ], parent );
             } else {
-                auto nbb =  parent->splitBasicBlock( parent->getTerminator() );
-                auto nval = lift( val, t, nbb->getTerminator() );
-                sub->addIncoming( nval, nbb );
+                if ( isAbstractType( val->getType() ) )
+                    sub->addIncoming( val, parent );
+                else {
+                    auto nbb =  parent->splitBasicBlock( parent->getTerminator() );
+                    auto nval = lift( val, t, nbb->getTerminator() );
+                    sub->addIncoming( nval, nbb );
+                }
             }
         }
 
