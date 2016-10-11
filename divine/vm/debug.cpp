@@ -521,9 +521,9 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield )
     if ( !fr.cooked().null() )
     {
         _related_ptrs.insert( fr.cooked() );
-        DebugNode parent( _ctx, _snapshot );
-        parent.address( DNKind::Frame, fr.cooked() );
-        yield( "@parent", parent );
+        DebugNode caller( _ctx, _snapshot );
+        caller.address( DNKind::Frame, fr.cooked() );
+        yield( "@caller", caller );
     }
 
     if ( pc().type() != PointerType::Code )
@@ -606,7 +606,7 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, bool compact
                 std::stringstream str;
                 if ( depth > 0 )
                     sub.format( str, depth - 1, true, indent + 4 );
-                if ( !str.str().empty() && n != "@parent" && depth > 0 )
+                if ( !str.str().empty() && n != "@caller" && depth > 0 )
                     out << ind << n << ":" << std::endl << str.str();
                 else
                 {

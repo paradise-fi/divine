@@ -413,7 +413,7 @@ struct Interpreter
         set( "$$", bt.var );
         do {
             get( "$$" ).format( std::cerr, 0, false );
-            set( "$$", "$$.@parent", true );
+            set( "$$", "$$.@caller", true );
             std::cerr << std::endl;
         } while ( get( "$$" ).valid() );
     }
