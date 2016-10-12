@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cctype>
 
+#include <divine/metadata.h>
 #include <dios/fault.hpp>
 #include <dios/trace.hpp>
 #include <dios/syscall.hpp>
@@ -13,7 +14,7 @@ uint8_t const *_DiOS_fault_cfg;
 namespace __dios {
 
 void __attribute__((__noreturn__)) Fault::handler( _VM_Fault _what, _VM_Frame *cont_frame,
-                                                   void (*cont_pc)() ) noexcept
+                                                   void (*cont_pc)(), ... ) noexcept
 {
     auto ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
     auto what = static_cast< int >( _what );
@@ -215,4 +216,15 @@ int __dios_get_fault_config( int fault ) {
     int ret;
     __dios_syscall( __dios::_SC_GET_FAULT_CONFIG, &ret, fault );
     return ret;
+}
+
+void __dios_fault( enum _VM_Fault f, const char *msg, ... ) {
+    __dios_trace_t( msg );
+    auto fh = reinterpret_cast< __vm_fault_t >( __vm_control( _VM_CA_Get, _VM_CR_FaultHandler ) );
+    auto *retFrame = static_cast< struct _VM_Frame * >(
+        __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
+    auto pc = reinterpret_cast< unsigned long long >( retFrame->pc );
+
+    typedef void (*PC)(void);
+    ( *fh )( f, retFrame, reinterpret_cast< PC >( pc + 1 ) );
 }

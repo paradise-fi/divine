@@ -4,7 +4,6 @@
 #define __DIOS_H__
 
 #include <divine.h>
-#include <divine/metadata.h>
 
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
@@ -113,6 +112,14 @@ int __dios_configure_fault( int fault, int cfg ) NOTHROW;
  */
 int __dios_get_fault_config( int fault ) NOTHROW;
 
+/*
+ * Cause program fault by calling fault handler. Remaining arguments are
+ * ignored, but can be examined by the fault handler, since it is able to obtain
+ * a pointer to the call instruction which invoked __vm_fault by reading the
+ * program counter of its parent frame.
+ */
+void __dios_fault( enum _VM_Fault f, const char *msg, ... ) NOTHROW __attribute__(( __noinline__ ));
+
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
 void __dios_trace_t( const char *str ) NOTHROW;
@@ -128,6 +135,8 @@ CPP_END
 
 #ifdef __cplusplus
 #if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
+
+#include <cstdint>
 
 namespace __dios {
 
