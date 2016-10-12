@@ -168,7 +168,7 @@ void Verify::run()
     dbg_eval.run();
 
     std::deque< vm::CowHeap::Snapshot > trace;
-    std::vector< int > choices;
+    std::vector< std::vector< int > > choices;
     std::vector< std::string > labels;
 
     std::cout << "found an error" << std::endl;
@@ -193,8 +193,9 @@ void Verify::run()
                         {
                             for ( auto l : label.first )
                                 labels.push_back( l );
+                            choices.emplace_back();
                             std::transform( label.second.begin(), label.second.end(),
-                                            std::back_inserter( choices ),
+                                            std::back_inserter( choices.back() ),
                                             []( auto x ) { return x.first; } );
                             ++last, ++next;
                             if ( next == trace.end() )
@@ -205,8 +206,9 @@ void Verify::run()
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
     std::cout << std::endl << "choices made:";
-    for ( int c : choices )
-        std::cout << " " << c;
+    for ( auto &v : choices )
+        for ( int c : v )
+            std::cout << " " << c;
     std::cout << std::endl;
     ASSERT( next == trace.end() );
 
@@ -218,10 +220,12 @@ void Verify::run()
     auto &ctx = ex._ctx;
     ASSERT_LEQ( 2, trace.size() );
     ctx.heap().restore( *( trace.end() - 2 ) );
-    vm::setup::scheduler( ctx );
+    dbg.load( ctx );
+    std::copy( choices.back().begin(), choices.back().end(), std::back_inserter( dbg._choices ) );
+    vm::setup::scheduler( dbg );
     vm::Stepper step;
     step._stop_on_error = true;
-    step.run( ctx, []( auto ) {}, []() {}, vm::Stepper::Quiet );
+    step.run( dbg, []( auto ) {}, []() {}, vm::Stepper::Quiet );
     dump( ex, dbg, ctx.snapshot(), _backtraceMaxDepth );
 }
 
