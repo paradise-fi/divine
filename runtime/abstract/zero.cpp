@@ -127,6 +127,22 @@ extern "C" {
         return __abstract_zero_shift( a, b );
     }
 
+    // cast operators
+    pointer __abstract_zero_trunc( pointer a ) _ROOT {
+        if ( a->value == Zero::Domain::NonzeroValue )
+            return __abstract_zero_construct( Zero::Domain::Unknown );
+        return __abstract_zero_construct( a->value );
+    }
+
+    pointer __abstract_zero_zext( pointer a ) _ROOT {
+        return __abstract_zero_construct( a->value );
+    }
+
+    pointer __abstract_zero_sext( pointer a ) _ROOT {
+        return __abstract_zero_construct( a->value );
+    }
+
+    // icmp operators
     Tristate * __abstract_zero_icmp_eq( pointer a, pointer b ) _ROOT {
         if ( a->value == Zero::Domain::ZeroValue && b->value == Zero::Domain::ZeroValue )
             return __abstract_tristate_construct( true );
