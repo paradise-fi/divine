@@ -93,7 +93,7 @@ extern "C" void _PDCLIB_Exit( int rv )
         __dios_fault( _VM_F_Control, "exit called with non-zero value" );
     __cxa_finalize( 0 );
     __dios::runDtors();
-    __dios_kill_thread( 0 );
+    __dios_kill_process( 0 );
 }
 
 extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {

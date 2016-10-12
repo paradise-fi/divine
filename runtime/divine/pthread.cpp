@@ -123,19 +123,32 @@ int pthread_atfork( void ( * )( void ), void ( * )( void ), void ( * )( void ) )
     return 0;
 }
 
-/* Thread */
-int _get_gtid( const int ltid ) {
-    assert( ( ltid >= 0 ) && ( ltid < alloc_pslots ) );
-    if ( threads[ltid] != NULL ) {
-        int gtid = threads[ltid]->gtid;
-        assert( gtid >= 0 && gtid < thread_counter );
-        return gtid;
-    } else
-        return -1; // invalid gtid
+int _get_ltid(_DiOS_ThreadId gtid) {
+    for ( int i = 0; i != thread_counter; i++ ) {
+        if ( threads[i] && threads[i]->gtid == gtid )
+            return i;
+    }
+    __dios_assert_v( false, "Uknown thread" );
+    return -1;
 }
 
-void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
-    assert( ltid >= 0 && gtid >= 0 );
+int _get_ltid() {
+    return _get_ltid(__dios_get_thread_id());
+}
+
+/* Thread */
+_DiOS_ThreadId _get_gtid( const int ltid ) {
+    assert( ( ltid >= 0 ) && ( ltid < alloc_pslots ) );
+    if ( threads[ltid] != NULL ) {
+        _DiOS_ThreadId gtid = threads[ltid]->gtid;
+        // assert( gtid >= 0 && gtid < thread_counter );
+        return gtid;
+    } else
+        return nullptr; // invalid gtid
+}
+
+void _init_thread( const _DiOS_ThreadId gtid, const int ltid, const pthread_attr_t attr ) {
+    __dios_assert( ltid >= 0 && gtid );
     pthread_key_t key;
 
     // reallocate thread local storage if neccessary
@@ -156,13 +169,13 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
     }
 
     // allocate slot for thread metadata
-    assert( threads[ltid] == NULL );
+    __dios_assert( threads[ltid] == NULL );
     threads[ltid] = static_cast< Thread * >( __vm_obj_make( sizeof( Thread ) ) );
-    assert( threads[ltid] != NULL );
+    __dios_assert( threads[ltid] != NULL );
 
     // initialize thread metadata
     Thread *thread = threads[ltid];
-    assert( thread != NULL );
+    __dios_assert( thread != NULL );
     memset( thread, 0, sizeof( Thread ) );
 
     thread->gtid = gtid;
@@ -184,7 +197,7 @@ void _init_thread( const int gtid, const int ltid, const pthread_attr_t attr ) {
 void __pthread_initialize( void ) {
     // initialize implicitly created main thread
     assert( alloc_pslots == 0 );
-    _init_thread( 0, 0, PTHREAD_CREATE_DETACHED );
+    _init_thread( __dios_get_thread_id(), 0, PTHREAD_CREATE_DETACHED );
     threads[0]->running = true;
 
     // etc... more initialization steps might come here
@@ -194,7 +207,7 @@ void __pthread_initialize( void ) {
 }
 
 void _cleanup() {
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
 
     CleanupHandler *handler = threads[ltid]->cleanup_handlers;
     threads[ltid]->cleanup_handlers = NULL;
@@ -209,16 +222,17 @@ void _cleanup() {
 }
 
 void _cancel() {
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     threads[ltid]->sleeping = NotSleeping;
 
     // call all cleanup handlers
     _cleanup();
-    __dios_kill_thread( ltid );
+    __dios_assert( threads[ltid]->gtid );
+    __dios_kill_thread( threads[ltid]->gtid );
 }
 
 bool _canceled() {
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     return threads[ltid]->cancelled;
 }
 
@@ -247,7 +261,7 @@ extern "C" void _pthread_entry( void *_args ) {
     __dios::FencedInterruptMask mask;
 
     Entry *args = static_cast< Entry * >( _args );
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     __dios_assert_v( ltid < alloc_pslots, "ltid < alloc_pslots" );
     Thread *thread = threads[ltid];
     __dios_assert_v( thread != NULL, "thread != NULL" );
@@ -313,19 +327,17 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     args->entry = entry;
     args->arg = arg;
     args->initialized = false;
-    int ltid = __dios_start_thread( _pthread_entry, static_cast< void * >( args ) );
-
-    assert( ltid >= 0 );
+    auto gtid = __dios_start_thread( _pthread_entry, static_cast< void * >( args ), 0 );
 
     // generate a unique ID
-    int gtid = thread_counter++;
+    int ltid = thread_counter++;
     // 2^16 - 1 is in fact the maximum number of threads (created during the
     // entire execution)
     // we can handle (capacity of pthread_t, mutex & rwlock types are limiting
     // factors).
     // at most 2^15 - 1 threads may exist at any moment
-    if ( gtid >= ( 1 << 16 ) || ltid >= ( 1 << 15 ) )
-        return EAGAIN;
+    // if ( gtid >= ( 1 << 16 ) || ltid >= ( 1 << 15 ) )
+    //     return EAGAIN;
 
     real_pthread_t rptid; /* bitfields must be explicitly zeroed */
     memset( &rptid, 0, sizeof( rptid ) );
@@ -347,8 +359,8 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
 void pthread_exit( void *result ) {
     __dios::FencedInterruptMask mask;
 
-    int ltid = __dios_get_thread_id();
-    int gtid = _get_gtid( ltid );
+    int ltid = _get_ltid();
+    _DiOS_ThreadId gtid = _get_gtid( ltid );
 
     threads[ltid]->result = result;
 
@@ -362,7 +374,8 @@ void pthread_exit( void *result ) {
         __dios_kill_thread( 0 );
     } else {
         _cleanup();
-        __dios_kill_thread( ltid );
+        __dios_assert( threads[ltid]->gtid );
+        __dios_kill_thread( threads[ltid]->gtid );
     }
 }
 
@@ -373,13 +386,13 @@ int pthread_join( pthread_t _ptid, void **result ) {
     if ( !ptid.initialized )
         return ESRCH;
 
-    if ( ptid.ltid >= alloc_pslots || ptid.gtid >= thread_counter )
+    if ( ptid.ltid >= alloc_pslots )
         return EINVAL;
 
     if ( ptid.gtid != _get_gtid( ptid.ltid ) )
         return ESRCH;
 
-    if ( ptid.gtid == _get_gtid( __dios_get_thread_id() ) )
+    if ( ptid.gtid == __dios_get_thread_id() )
         return EDEADLK;
 
     if ( threads[ptid.ltid]->detached )
@@ -418,7 +431,7 @@ int pthread_detach( pthread_t _ptid ) {
     if ( !ptid.initialized )
         return ESRCH;
 
-    if ( ptid.ltid >= alloc_pslots || ptid.gtid >= thread_counter )
+    if ( ptid.ltid >= alloc_pslots /*|| ptid.gtid >= thread_counter */)
         return EINVAL;
 
     if ( ptid.gtid != _get_gtid( ptid.ltid ) )
@@ -562,8 +575,8 @@ int pthread_attr_setstacksize( pthread_attr_t *, size_t ) {
 /* Thread ID */
 pthread_t pthread_self( void ) {
     __dios::FencedInterruptMask mask;
-    unsigned short ltid = __dios_get_thread_id();
-    return ( ( real_pthread_t ){.gtid = ushort( _get_gtid( ltid ) ), .ltid = ltid, .initialized = 1} ).asint;
+    unsigned short ltid = _get_ltid(__dios_get_thread_id());
+    return ( ( real_pthread_t ){.gtid = __dios_get_thread_id(), .ltid = ltid, .initialized = 1} ).asint;
 }
 
 int pthread_equal( pthread_t t1, pthread_t t2 ) {
@@ -621,25 +634,25 @@ int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) {
     return 0;
 }
 
-inline Thread *_get_thread_by_gtid( int gtid ) {
+inline Thread *_get_thread_by_gtid( _DiOS_ThreadId gtid ) {
     for ( int i = 0; i < alloc_pslots; ++i )
         if ( threads[i] != NULL && threads[i]->gtid == gtid )
             return threads[i];
     return NULL;
 }
 
-void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
+void _check_deadlock( pthread_mutex_t *mutex, _DiOS_ThreadId gtid ) {
     int holdertid = 0;
     int lastthread = 0;
     for ( int i = 0; mutex != NULL && i < alloc_pslots /* num of threads */; ++i ) {
         holdertid = mutex->owner - 1;
         if ( holdertid < 0 || holdertid == lastthread )
             return;
-        if ( holdertid == gtid ) {
+        if ( holdertid == _get_ltid(gtid) ) {
             __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex cycle closed" );
             return;
         }
-        Thread *holder = _get_thread_by_gtid( holdertid );
+        Thread *holder = threads[ holdertid ];
         if ( holder == NULL || !holder->running ) {
             __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex locked by dead thread" );
             return;
@@ -649,20 +662,20 @@ void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
     }
 }
 
-bool _mutex_can_lock( pthread_mutex_t *mutex, int gtid ) {
-    return !mutex->owner || ( mutex->owner == ( gtid + 1 ) );
+bool _mutex_can_lock( pthread_mutex_t *mutex, _DiOS_ThreadId gtid ) {
+    return !mutex->owner || ( mutex->owner == ( _get_ltid(gtid) + 1 ) );
 }
 
 int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) {
 
-    Thread *thr = threads[__dios_get_thread_id()];
-    int gtid = thr->gtid;
+    Thread *thr = threads[_get_ltid(__dios_get_thread_id())];
+    _DiOS_ThreadId gtid = thr->gtid;
 
     if ( mutex == NULL || !mutex->initialized ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
-    if ( mutex->owner == gtid + 1 ) {
+    if ( mutex->owner == _get_ltid(gtid) + 1 ) {
         // already locked by this thread
         assert( mutex->lockCounter ); // count should be > 0
         if ( mutex->type != PTHREAD_MUTEX_RECURSIVE ) {
@@ -697,7 +710,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
         return err;
 
     // lock the mutex
-    mutex->owner = gtid + 1;
+    mutex->owner = _get_ltid(gtid) + 1;
 
     return 0;
 }
@@ -750,13 +763,13 @@ int pthread_mutex_trylock( pthread_mutex_t *mutex ) {
 
 int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
     __dios::FencedInterruptMask mask;
-    int gtid = _get_gtid( __dios_get_thread_id() );
+    _DiOS_ThreadId gtid = __dios_get_thread_id();
 
     if ( mutex == NULL || !mutex->initialized ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
-    if ( mutex->owner != gtid + 1 ) {
+    if ( mutex->owner != _get_ltid(gtid) + 1) {
         // mutex is not locked or it is already locked by another thread
         assert( mutex->lockCounter ); // count should be > 0
         if ( mutex->type == PTHREAD_MUTEX_NORMAL )
@@ -966,7 +979,7 @@ int pthread_setspecific( pthread_key_t key, const void *data ) {
     if ( key == NULL )
         return EINVAL;
 
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     assert( ltid < alloc_pslots );
 
     key->data[ltid] = const_cast< void * >( data );
@@ -977,7 +990,7 @@ void *pthread_getspecific( pthread_key_t key ) {
     __dios::FencedInterruptMask mask;
     assert( key != NULL );
 
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     assert( ltid < alloc_pslots );
 
     return key->data[ltid];
@@ -1111,8 +1124,8 @@ int pthread_cond_broadcast( pthread_cond_t *cond ) {
 int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
     __dios::FencedInterruptMask mask;
 
-    int ltid = __dios_get_thread_id();
-    int gtid = _get_gtid( __dios_get_thread_id() );
+    int ltid = _get_ltid();
+    _DiOS_ThreadId gtid = __dios_get_thread_id();
 
     if ( cond == NULL || !cond->initialized )
         return EINVAL;
@@ -1121,7 +1134,7 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
         return EINVAL;
     }
 
-    if ( mutex->owner != gtid + 1 ) {
+    if ( mutex->owner != _get_ltid(gtid) + 1 ) {
         // mutex is not locked or it is already locked by another thread
         return EPERM;
     }
@@ -1232,7 +1245,7 @@ int pthread_setcancelstate( int state, int *oldstate ) {
     if ( state & ~0x1 )
         return EINVAL;
 
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     *oldstate = threads[ltid]->cancel_state;
     threads[ltid]->cancel_state = state & 1;
     return 0;
@@ -1244,7 +1257,7 @@ int pthread_setcanceltype( int type, int *oldtype ) {
     if ( type & ~0x1 )
         return EINVAL;
 
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     *oldtype = threads[ltid]->cancel_type;
     threads[ltid]->cancel_type = type & 1;
     return 0;
@@ -1254,7 +1267,7 @@ int pthread_cancel( pthread_t _ptid ) {
     real_pthread_t ptid = _real_pt( _ptid );
     __dios::FencedInterruptMask mask;
 
-    if ( !ptid.initialized || ptid.ltid >= alloc_pslots || ptid.gtid >= thread_counter )
+    if ( !ptid.initialized || ptid.ltid >= alloc_pslots /*|| ptid.gtid >= thread_counter*/ )
         return ESRCH;
 
     if ( ptid.gtid != _get_gtid( ptid.ltid ) )
@@ -1278,7 +1291,7 @@ void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) {
 
     assert( routine != NULL );
 
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     CleanupHandler *handler = reinterpret_cast< CleanupHandler * >(
             __vm_obj_make( sizeof( CleanupHandler ) ) );
     handler->routine = routine;
@@ -1290,7 +1303,7 @@ void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) {
 void pthread_cleanup_pop( int execute ) {
     __dios::FencedInterruptMask mask;
 
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     CleanupHandler *handler = threads[ltid]->cleanup_handlers;
     if ( handler != NULL ) {
         threads[ltid]->cleanup_handlers = handler->next;
@@ -1336,11 +1349,11 @@ int _rlock_adjust_count( _ReadLock *rlock, int adj ) {
     return 0;
 }
 
-_ReadLock *_get_rlock( pthread_rwlock_t *rwlock, int gtid, _ReadLock **prev = NULL ) {
+_ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _DiOS_ThreadId gtid, _ReadLock **prev = NULL ) {
     _ReadLock *rlock = rwlock->rlocks;
     _ReadLock *_prev = NULL;
 
-    while ( rlock && ( ( rlock->rlock & _RLOCK_READER_MASK ) != gtid + 1 ) ) {
+    while ( rlock && ( ( rlock->rlock & _RLOCK_READER_MASK ) != _get_ltid(gtid) + 1 ) ) {
         _prev = rlock;
         rlock = rlock->next;
     }
@@ -1351,9 +1364,9 @@ _ReadLock *_get_rlock( pthread_rwlock_t *rwlock, int gtid, _ReadLock **prev = NU
     return rlock;
 }
 
-_ReadLock *_create_rlock( pthread_rwlock_t *rwlock, int gtid ) {
+_ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _DiOS_ThreadId gtid ) {
     _ReadLock *rlock = reinterpret_cast< _ReadLock * >( __vm_obj_make( sizeof( _ReadLock ) ) );
-    rlock->rlock = gtid + 1;
+    rlock->rlock = _get_ltid(gtid) + 1;
     rlock->rlock |= 1 << 16;
     rlock->next = rwlock->rlocks;
     rwlock->rlocks = rlock;
@@ -1365,13 +1378,13 @@ bool _rwlock_can_lock( pthread_rwlock_t *rwlock, bool writer ) {
 }
 
 int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) {
-    int gtid = _get_gtid( __dios_get_thread_id() );
+    _DiOS_ThreadId gtid = __dios_get_thread_id();
 
     if ( rwlock == NULL || !( rwlock->wlock & _INITIALIZED_RWLOCK ) ) {
         return EINVAL; // rwlock does not refer to an initialized rwlock object
     }
 
-    if ( ( rwlock->wlock & _WLOCK_WRITER_MASK ) == gtid + 1 )
+    if ( ( rwlock->wlock & _WLOCK_WRITER_MASK ) == _get_ltid(gtid) + 1 )
         // thread already owns write lock
         return EDEADLK;
 
@@ -1391,7 +1404,7 @@ int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, b
 
     if ( writer ) {
         rwlock->wlock &= ~_WLOCK_WRITER_MASK;
-        rwlock->wlock |= gtid + 1;
+        rwlock->wlock |= _get_ltid(gtid) + 1;
     } else {
         if ( !rlock )
             rlock = _create_rlock( rwlock, gtid );
@@ -1462,7 +1475,7 @@ int pthread_rwlock_trywrlock( pthread_rwlock_t *rwlock ) {
 int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) {
     __dios::FencedInterruptMask mask;
 
-    int gtid = _get_gtid( __dios_get_thread_id() );
+    _DiOS_ThreadId gtid = __dios_get_thread_id();
 
     if ( rwlock == NULL || !( rwlock->wlock & _INITIALIZED_RWLOCK ) ) {
         return EINVAL; // rwlock does not refer to an initialized rwlock object
@@ -1473,12 +1486,12 @@ int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) {
     // existing read lock implies read lock counter having value more than zero
     assert( !rlock || ( rlock->rlock & _RLOCK_COUNTER_MASK ) );
 
-    if ( ( ( rwlock->wlock & _WLOCK_WRITER_MASK ) != gtid + 1 ) && !rlock ) {
+    if ( ( ( rwlock->wlock & _WLOCK_WRITER_MASK ) != _get_ltid(gtid) + 1 ) && !rlock ) {
         // the current thread does not own the read-write lock
         return EPERM;
     }
 
-    if ( ( rwlock->wlock & _WLOCK_WRITER_MASK ) == gtid + 1 ) {
+    if ( ( rwlock->wlock & _WLOCK_WRITER_MASK ) == _get_ltid(gtid) + 1 ) {
         assert( !rlock );
         // release write lock
         rwlock->wlock &= ~_WLOCK_WRITER_MASK;
@@ -1595,7 +1608,7 @@ int pthread_barrier_wait( pthread_barrier_t *barrier ) {
     if ( barrier == NULL || !barrier->initialized )
         return EINVAL;
 
-    int ltid = __dios_get_thread_id();
+    int ltid = _get_ltid();
     int ret = 0;
     int counter = barrier->counter;
     int release_count = barrier->nthreads;
@@ -1742,7 +1755,7 @@ int raise( int sig ) {
     __dios::InterruptMask mask;
     assert( sig < 32 );
 
-    Thread *thread = threads[__dios_get_thread_id()];
+    Thread *thread = threads[_get_ltid(__dios_get_thread_id())];
     if ( sig > thread->sigmaxused || _sig::get( thread, sig ) == SIG_DFL )
         ( *_sig::def( sig ) )( sig );
     else {
@@ -1756,7 +1769,7 @@ int raise( int sig ) {
 sighandler_t signal( int sig, sighandler_t handler ) {
     __dios::FencedInterruptMask mask;
 
-    Thread *thread = threads[__dios_get_thread_id()];
+    Thread *thread = threads[_get_ltid(__dios_get_thread_id())];
     if ( sig > thread->sigmaxused ) {
         int old = thread->sigmaxused;
         sighandler_t *oldptr = thread->sighandlers;

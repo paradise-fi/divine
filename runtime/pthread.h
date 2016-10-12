@@ -78,7 +78,7 @@ typedef int pthread_attr_t;
 typedef int pthread_t;
 typedef union {
     struct {
-        unsigned short gtid;
+        void *gtid;
         unsigned short ltid:15;
         unsigned short initialized:1;
     };
