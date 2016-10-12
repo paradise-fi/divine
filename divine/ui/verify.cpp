@@ -19,6 +19,7 @@
 #include <divine/vm/explore.hpp>
 #include <divine/vm/bitcode.hpp>
 #include <divine/vm/debug.hpp>
+#include <divine/vm/stepper.hpp>
 #include <divine/ss/search.hpp>
 #include <divine/ui/cli.hpp>
 
@@ -59,12 +60,15 @@ void dump( DN dn, DNSet &visited, int &stacks, int maxdepth )
 template< typename Ex, typename Dbg >
 void dump( Ex &ex, Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
 {
-    vm::DebugNode< vm::Program, vm::CowHeap > dn( ex._ctx, snap );
+    vm::DebugNode< vm::Program, vm::CowHeap > dn( ex._ctx, snap ), dn_top( ex._ctx, snap );
     dn.address( vm::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
     dn.type( dbg._state_type );
     dn.di_type( dbg._state_di_type );
+    dn_top.address( vm::DNKind::Frame, ex._ctx.get( _VM_CR_Frame ).pointer );
     DNSet visited;
-    int stacks = 0;
+    int stacks = 1;
+    std::cerr << "backtrace #1 [active thread]:" << std::endl;
+    dump( dn_top, visited, stacks, maxdepth );
     dump( dn, visited, stacks, maxdepth );
 }
 
@@ -211,7 +215,14 @@ void Verify::run()
         std::cout << "  " << l << std::endl;
     std::cout << std::endl;
 
-    dump( ex, dbg, trace.back(), _backtraceMaxDepth );
+    auto &ctx = ex._ctx;
+    ASSERT_LEQ( 2, trace.size() );
+    ctx.heap().restore( *( trace.end() - 2 ) );
+    vm::setup::scheduler( ctx );
+    vm::Stepper step;
+    step._stop_on_error = true;
+    step.run( ctx, []( auto ) {}, []() {}, vm::Stepper::Quiet );
+    dump( ex, dbg, ctx.snapshot(), _backtraceMaxDepth );
 }
 
 }
