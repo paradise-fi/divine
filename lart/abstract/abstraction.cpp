@@ -109,9 +109,9 @@ struct Abstraction : lart::Pass {
             storeFunction( f, change_ret, rty );
         }
 
-        //annotate anonym lart functions
+        //annotate anonymous lart functions
         for ( auto &a : to_annotate ) {
-            annotateAnonym( a.first, a.second );
+            annotateAnonymous( a.first, a.second );
             a.first->eraseFromParent();
         }
 
@@ -216,7 +216,7 @@ struct Abstraction : lart::Pass {
 	    auto args = getBinaryArgs( i );
         auto tag = "lart.abstract.icmp." + predicate.at( i->getPredicate() );
         auto bt = bool_t( *_ctx );
-		createAnonymCall( i, type_store[ bt ]->getPointerTo(), tag, args );
+		createAnonymousCall( i, type_store[ bt ]->getPointerTo(), tag, args );
     }
 
     void doSelect( llvm::SelectInst * i, T * t ) {
@@ -257,7 +257,7 @@ struct Abstraction : lart::Pass {
         auto args = getBinaryArgs( i );
         auto tag = "lart.abstract." + std::string( i->getOpcodeName() );
         auto rty = type_store[ t ]->getPointerTo();
-        createAnonymCall( i, rty, tag, args );
+        createAnonymousCall( i, rty, tag, args );
     }
 
     void doCast( llvm::CastInst * i ) {
@@ -266,7 +266,7 @@ struct Abstraction : lart::Pass {
                    + getTypeName( i->getSrcTy() ) + "." + getTypeName( i->getDestTy() );
         storeType( i->getDestTy() );
         auto rty = type_store[ i->getDestTy() ]->getPointerTo();
-        createAnonymCall( i, rty, tag, args );
+        createAnonymousCall( i, rty, tag, args );
     }
 
     void doPhi( llvm::PHINode * n, T * t ) {
@@ -316,7 +316,7 @@ struct Abstraction : lart::Pass {
         auto fn = i->getCalledFunction();
 
         if ( to_annotate.contains( fn ) ) {
-            //lart anonym call
+            //lart anonymous call
             auto rty = fn->getReturnType();
             auto tag = fn->getName();
             auto call = annotate( i, rty, tag, args );
@@ -434,7 +434,8 @@ struct Abstraction : lart::Pass {
 
     F * storeFunction( F * f, bool change_ret = false, T * rty = nullptr ) {
         auto newf = change_ret ? lart::changeReturnValue( f, rty ) : f;
-		if ( function_store.contains( f ) )
+
+        if ( function_store.contains( f ) )
 		    function_store[ f ].push_back( newf );
 		else
 		    function_store[ f ] = { newf };
@@ -492,8 +493,8 @@ struct Abstraction : lart::Pass {
         return newfn;
 	}
 
-    // Anonym calls
-    void createAnonymCall( I * i, T * rty, const std::string &tag,
+    // Anonymous calls
+    void createAnonymousCall( I * i, T * rty, const std::string &tag,
                            std::vector< V * > args = {} )
     {
         std::vector< T * > arg_types = {};
@@ -515,9 +516,10 @@ struct Abstraction : lart::Pass {
         removeRedundantLifts( i, acall );
     }
 
-    void annotateAnonym( F * f, std::string name ) {
+    void annotateAnonymous( F * f, std::string name ) {
         auto rty = f->getReturnType();
 
+        std::vector< std::pair< llvm::CallInst *, llvm::CallInst *> > toReplace;
         for ( auto user : f->users() ) {
             auto call = llvm::cast< llvm::CallInst >( user );
 
@@ -530,7 +532,7 @@ struct Abstraction : lart::Pass {
                     args.push_back( lifted );
                 }
 
-            std::vector< T * > arg_types = {};
+            std::vector< T * > arg_types;
 		    for ( auto &arg : args )
 			    arg_types.push_back( arg->getType() );
 
@@ -539,8 +541,11 @@ struct Abstraction : lart::Pass {
 		    auto fty = llvm::FunctionType::get( rty, params, false );
             auto nf = call->getModule()->getOrInsertFunction( name, fty );
             auto ncall = llvm::CallInst::Create( nf, args );
-            llvm::ReplaceInstWithInst( call, ncall );
+            toReplace.push_back( { call, ncall } );
         }
+
+        for ( auto &replace : toReplace )
+            llvm::ReplaceInstWithInst( replace.first, replace.second );
     }
 
 private:
