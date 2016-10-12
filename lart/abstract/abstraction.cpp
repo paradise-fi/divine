@@ -757,19 +757,22 @@ struct Substitution : lart::Pass {
     void doPhi( llvm::PHINode * phi ) {
         unsigned int niv = phi->getNumIncomingValues();
 
-        if ( abstraction_store.contains( phi ) ) {
-            abstractedValues.insert( llvm::cast< llvm::Instruction >( abstraction_store[ phi ] ) );
-            /*for ( unsigned int i = 0; i < niv; ++i ) {
-                auto val = llvm::cast< llvm::Instruction >( phi->getIncomingValue( i ) );
-                if ( !abstraction_store.contains( val ) && val->getType() != abstractionType ) {
-                    abstractedValues.insert( phi );
-                    break;
-                }
-            }*/
-        }
 
         llvm::IRBuilder<> irb( phi );
         auto nphi = irb.CreatePHI( abstractionType, niv );
+
+        //removing duplicities
+        auto find = abstraction_store.find( phi );
+        if ( find != abstraction_store.end() ){
+            auto abstracted = llvm::cast< llvm::Instruction >( abstraction_store[ phi ] );
+            abstracted->replaceAllUsesWith( nphi );
+            auto val = abstractedValues.find( abstracted );
+            if ( val != abstractedValues.end() )
+                abstractedValues.erase( val );
+            abstraction_store.erase( find );
+            abstracted->eraseFromParent();
+        }
+
         abstraction_store.insert( { phi , nphi } );
 
         if ( phi->getType() == abstractionType )
