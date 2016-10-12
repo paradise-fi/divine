@@ -296,18 +296,45 @@ struct Interpreter
         return snap;
     }
 
-    int sched_policy( const vm::ProcInfo &proc )
+    void sched_policy()
     {
+        auto &proc = _ctx._proc;
+        auto &choices = _ctx._choices;
+
+        if ( proc.empty() )
+            return;
+
         std::uniform_int_distribution< int > dist( 0, proc.size() - 1 );
+        int choice = -1;
+
         if ( _sched_random )
-            return dist( _rand );
+            choice = dist( _rand );
+        else
+            for ( auto pi : proc )
+                if ( pi.first == _sticky_tid )
+                    choice = pi.second;
+
+        if ( choice < 0 )
+        {
+            /* thread is gone, pick a replacement at random */
+            int seq = dist( _rand );
+            _sticky_tid = proc[ seq ].first;
+            choice = proc[ seq ].second;
+        }
+
+        if ( choices.empty() )
+            choices.push_back( choice );
+
+        std::cerr << "# active threads:";
         for ( auto pi : proc )
-            if ( pi.first == _sticky_tid )
-                return pi.second;
-        /* thread is gone, pick a replacement at random */
-        int seq = dist( _rand );
-        _sticky_tid = proc[ seq ].first;
-        return proc[ seq ].second;
+        {
+            bool active = pi.second == choices.front();
+            std::cerr << ( active ? " [" : " " )
+                      << pi.first.first << ":" << pi.first.second
+                      << ( active ? "]" : "" );
+        }
+        proc.clear();
+        std::cerr << std::endl;
     }
 
     void check_running()
@@ -321,7 +348,7 @@ struct Interpreter
         check_running();
         step.run( _ctx,
                   [&]( auto snap ) { return newstate( snap ); },
-                  [&]() { return sched_policy( _ctx._proc ); },
+                  [&]() { sched_policy(); },
                   verbose );
     }
 

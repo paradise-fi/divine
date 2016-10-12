@@ -137,7 +137,7 @@ struct Stepper
     }
 
     template< typename Context, typename YieldState, typename SchedPolicy >
-    void run( Context &ctx, YieldState yield, SchedPolicy policy, bool verbose )
+    void run( Context &ctx, YieldState yield, SchedPolicy sched_policy, bool verbose )
     {
         Eval< typename Context::Program, Context, value::Void > eval( ctx.program(), ctx );
         bool in_fault = eval.pc().function() == ctx.get( _VM_CR_FaultHandler ).pointer.object();
@@ -186,21 +186,7 @@ struct Stepper
             if ( !in_kernel || !_ff_kernel )
                 in_frame( ctx.frame(), ctx.heap() );
 
-            if ( !ctx._proc.empty() )
-            {
-                if ( ctx._choices.empty() )
-                    ctx._choices.push_back( policy() );
-                std::cerr << "# active threads:";
-                for ( auto pi : ctx._proc )
-                {
-                    bool active = pi.second == ctx._choices.front();
-                    std::cerr << ( active ? " [" : " " )
-                              << pi.first.first << ":" << pi.first.second
-                              << ( active ? "]" : "" );
-                }
-                ctx._proc.clear();
-                std::cerr << std::endl;
-            }
+            sched_policy();
 
             for ( auto t : ctx._trace )
                 std::cerr << "T: " << t << std::endl;
