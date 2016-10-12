@@ -1,4 +1,3 @@
-#include <iostream>
 #include <cassert>
 #include "common.h"
 #include "tristate.h"
@@ -9,24 +8,23 @@ namespace abstract {
 
 struct Zero {
     enum Domain { ZeroValue, NonzeroValue, Unknown };
-    Domain value = Zero::Domain::Unknown;
+    Domain value;
 };
 
 using pointer = Zero *;
 
-inline pointer __abstract_zero_construct() {
-    std::cout << "Creating unknown value\n";
-    return allocate< Zero >();
-}
-
 inline pointer __abstract_zero_construct( Zero::Domain value ) {
-    auto obj = __abstract_zero_construct();
+    auto obj = allocate< Zero >();
     obj->value = value;
     return obj;
 }
 
+inline pointer __abstract_zero_construct() {
+    return __abstract_zero_construct( Zero::Domain::Unknown );
+}
+
 inline pointer __abstract_zero_construct( int i ) {
-    Zero::Domain value = i == 0 ? Zero::Domain::ZeroValue : Zero::Domain::NonzeroValue;
+    auto value = i == 0 ? Zero::Domain::ZeroValue : Zero::Domain::NonzeroValue;
     return __abstract_zero_construct( value );
 }
 

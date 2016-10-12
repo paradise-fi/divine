@@ -1,6 +1,12 @@
 #ifndef __ABSTRACT_TRISTATE_H_
 #define __ABSTRACT_TRISTATE_H_
 
+#ifdef __divine__
+#include <divine.h>
+#else
+#include <cstdlib>
+#endif
+
 #include "common.h"
 
 #define _ROOT __attribute__((__annotate__("brick.llvm.prune.root")))
@@ -9,17 +15,22 @@ namespace abstract {
 
 struct Tristate {
     enum Domain { False = 0, True = 1, Unknown = 2 };
-    Domain value = Domain::Unknown;
+    Domain value;
 };
 
+inline Tristate * __abstract_tristate_construct( Tristate::Domain value ) {
+    auto obj = allocate< Tristate >();
+    obj->value = value;
+    return obj;
+}
+
 inline Tristate * __abstract_tristate_construct() {
-    return allocate< Tristate >();
+    return __abstract_tristate_construct( Tristate::Domain::Unknown );
 }
 
 inline Tristate * __abstract_tristate_construct( bool b ) {
-    Tristate * obj = allocate< Tristate >();
-    obj->value = b ? Tristate::Domain::True : Tristate::Domain::False;
-    return obj;
+    auto value =  b ? Tristate::Domain::True : Tristate::Domain::False;
+    return __abstract_tristate_construct( value );
 }
 
 inline Tristate * __abstract_tristate_negate( Tristate * t ) {
@@ -65,6 +76,13 @@ extern "C" {
     }
 
     bool __abstract_tristate_explicate( Tristate * tristate ) _ROOT {
+        if ( tristate->value == Tristate::Domain::Unknown ) {
+#ifdef __divine__
+            return __vm_choose( 2 );
+#else
+            return std::srand() % 2;
+#endif
+        }
         return tristate->value;
     }
 }
