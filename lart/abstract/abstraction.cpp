@@ -216,7 +216,7 @@ struct Abstraction : lart::Pass {
 	    auto args = getBinaryArgs( i );
         auto tag = "lart.abstract.icmp." + predicate.at( i->getPredicate() );
         auto bt = bool_t( *_ctx );
-		createAnonymCall( i, type_store[ bt ], tag, args );
+		createAnonymCall( i, type_store[ bt ]->getPointerTo(), tag, args );
     }
 
     void doSelect( llvm::SelectInst * i, T * t ) {
@@ -443,10 +443,13 @@ struct Abstraction : lart::Pass {
 
     void storeType( llvm::CallInst * call ) {
         auto type = call->getCalledFunction()->getFunctionType()->getReturnType();
+        storeType( type );
+    }
 
-        if ( !type_store.contains( type ) ) {
-            auto at = lart::abstract::Type::get( type );
-            type_store.insert( { type, at } );
+    void storeType( T * t ) {
+        if ( !type_store.contains( t ) ) {
+            auto at = lart::abstract::Type::get( t );
+            type_store.insert( { t, at } );
             abstract_types.insert( at );
         }
     }
