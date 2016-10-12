@@ -46,22 +46,6 @@ enum _DiOS_FaultConfig
     _DiOS_FC_SimFail,
 };
 
-#define __dios_assert_v( x, msg ) do { \
-        if ( !(x) ) { \
-            __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \
-                __FILE__, __LINE__, msg ); \
-            __vm_fault( (_VM_Fault) _DiOS_F_Assert ); \
-        } \
-    } while (0)
-
-#define __dios_assert( x ) do { \
-        if ( !(x) ) { \
-            __dios_trace( 0, "DiOS assert failed at %s:%d", \
-                __FILE__, __LINE__ ); \
-            __vm_fault( (_VM_Fault) _DiOS_F_Assert ); \
-        } \
-    } while (0)
-
 typedef int _DiOS_ThreadId;
 
 /*
@@ -126,6 +110,22 @@ void __dios_trace_t( const char *str ) NOTHROW;
 void __dios_trace_f( const char *fmt, ... ) NOTHROW;
 
 _Noreturn void __dios_unwind( struct _VM_Frame *to, void (*pc)( void ) ) NOTHROW;
+
+#define __dios_assert_v( x, msg ) do { \
+        if ( !(x) ) { \
+            __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \
+                __FILE__, __LINE__, msg ); \
+            __dios_fault( (_VM_Fault) _DiOS_F_Assert, "DiOS assert failed" ); \
+        } \
+    } while (0)
+
+#define __dios_assert( x ) do { \
+        if ( !(x) ) { \
+            __dios_trace( 0, "DiOS assert failed at %s:%d", \
+                __FILE__, __LINE__ ); \
+            __dios_fault( (_VM_Fault) _DiOS_F_Assert, "DiOS assert failed" ); \
+        } \
+    } while (0)
 
 CPP_END
 #undef EXTERN_C

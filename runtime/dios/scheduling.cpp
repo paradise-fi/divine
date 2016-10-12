@@ -79,7 +79,8 @@ void Thread::update_state() noexcept {
 
 void Thread::stop() noexcept {
     if ( !active() ) {
-        __vm_fault( static_cast< _VM_Fault >( _DiOS_F_Threading ) );
+        __dios_fault( static_cast< _VM_Fault >( _DiOS_F_Threading ),
+            "Cannot stop inactive thread" );
         return;
     }
 

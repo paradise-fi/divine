@@ -4,6 +4,7 @@
 
 #include <dios.h>
 #include <divine/opcodes.h>
+#include <divine/metadata.h>
 #include <dios/main.hpp>
 #include <dios/scheduling.hpp>
 #include <dios/syscall.hpp>
