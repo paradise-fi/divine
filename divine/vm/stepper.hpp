@@ -138,8 +138,10 @@ struct Stepper
         return true;
     }
 
+    enum Verbosity { Quiet, TraceOnly, PrintSource, PrintInstructions };
+
     template< typename Context, typename YieldState, typename SchedPolicy >
-    void run( Context &ctx, YieldState yield, SchedPolicy sched_policy, bool verbose )
+    void run( Context &ctx, YieldState yield, SchedPolicy sched_policy, Verbosity verb )
     {
         Eval< typename Context::Program, Context, value::Void > eval( ctx.program(), ctx );
         bool in_fault = !_stop_on_fault ||
@@ -166,7 +168,7 @@ struct Stepper
                 instruction( eval.instruction() );
             }
 
-            if ( verbose && ( !in_kernel || !_ff_kernel ) )
+            if ( verb == PrintInstructions && ( !in_kernel || !_ff_kernel ) )
             {
                 auto frame = ctx.frame();
                 std::string before = vm::print::instruction( eval, 2 );
@@ -193,8 +195,9 @@ struct Stepper
 
             sched_policy();
 
-            for ( auto t : ctx._trace )
-                std::cerr << "T: " << t << std::endl;
+            if ( verb != Quiet )
+                for ( auto t : ctx._trace )
+                    std::cerr << "T: " << t << std::endl;
             ctx._trace.clear();
         }
         ctx.sync_pc();

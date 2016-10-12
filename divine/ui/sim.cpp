@@ -349,7 +349,7 @@ struct Interpreter
         step.run( _ctx,
                   [&]( auto snap ) { return newstate( snap ); },
                   [&]() { sched_policy(); },
-                  verbose );
+                  verbose ? vm::Stepper::PrintInstructions : vm::Stepper::TraceOnly );
     }
 
     void go( command::Exit ) { _exit = true; }
