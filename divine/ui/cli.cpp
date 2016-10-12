@@ -58,7 +58,6 @@ void WithBC::setup()
         env.emplace_back( "sys." + brick::string::fmt( i++ ), bstr( o.begin(), o.end() ) );
 
     env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
-    env.emplace_back( "divine.runmode", bstr( 1, static_cast< uint8_t >( _run_mode) ) );
 
     try {
         _bc = std::make_shared< vm::BitCode >( _file, env, _autotrace, true, !_disableStaticReduction );

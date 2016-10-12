@@ -122,14 +122,6 @@ enum _VM_ControlRegister
    __vm_control( _VM_CA_Bit, _VM_CR_Int, _VM_IF_Mask, oldint );
 */
 
-enum _VM_RunMode
-{
-    _VM_R_Unspecified = 0,
-    _VM_R_Run,
-    _VM_R_Verify,
-    _VM_R_Sim
-};
-
 struct _VM_Env
 {
     const char *key;

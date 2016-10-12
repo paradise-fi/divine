@@ -51,16 +51,12 @@ struct WithBC : Command
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
     std::vector< std::string > _systemopts;
-
-    _VM_RunMode _run_mode;
     vm::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
 
     std::shared_ptr< vm::BitCode > _bc;
 
     void setup();
-    WithBC( _VM_RunMode run_mode = _VM_R_Unspecified )
-        : _run_mode(run_mode) {}
 };
 
 struct Help
@@ -106,17 +102,14 @@ struct Verify : WithBC
     }
 
     void run();
-    Verify() : WithBC( _VM_R_Verify ) {}
 };
 
 struct Run : WithBC {
     void run();
-    Run() : WithBC( _VM_R_Run ) {}
 };
 
 struct Sim : WithBC {
     void run();
-    Sim() : WithBC( _VM_R_Sim ) {}
 };
 
 struct Draw : WithBC
