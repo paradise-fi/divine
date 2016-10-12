@@ -218,7 +218,7 @@ struct Context
             doublefault();
         else
             enter( fh, PointerV( get( _VM_CR_Frame ).pointer ),
-                   value::Int< 32 >( f ), PointerV( frame ), PointerV( pc ) );
+                   value::Int< 32 >( f ), PointerV( frame ), PointerV( pc ), nullPointerV() );
     }
 
     bool mask( bool n )
