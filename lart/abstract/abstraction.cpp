@@ -106,7 +106,6 @@ struct Abstraction : lart::Pass {
                 auto t = v->getCalledFunction()->getFunctionType()->getReturnType();
                 propagateValue( v, t );
             }
-
             storeFunction( f, change_ret, rty );
         }
 
@@ -175,7 +174,9 @@ struct Abstraction : lart::Pass {
 			[&]( llvm::BinaryOperator * i ) {
 				doBinary( i, t );
 			},
-			//[&]( llvm::CastInst * ) { /* TODO*/ },
+			[&]( llvm::CastInst * i ) {
+                doCast( i );
+            },
 			[&]( llvm::PHINode * i ) {
                 doPhi( i, t );
             },
@@ -256,6 +257,15 @@ struct Abstraction : lart::Pass {
         auto args = getBinaryArgs( i );
         auto tag = "lart.abstract." + std::string( i->getOpcodeName() );
         auto rty = type_store[ t ]->getPointerTo();
+        createAnonymCall( i, rty, tag, args );
+    }
+
+    void doCast( llvm::CastInst * i ) {
+        auto args = getUnaryArgs( i );
+        auto tag = "lart.abstract." + std::string( i->getOpcodeName() ) + "."
+                   + getTypeName( i->getSrcTy() ) + "." + getTypeName( i->getDestTy() );
+        storeType( i->getDestTy() );
+        auto rty = type_store[ i->getDestTy() ]->getPointerTo();
         createAnonymCall( i, rty, tag, args );
     }
 
@@ -363,6 +373,11 @@ struct Abstraction : lart::Pass {
         return args;
     }
 
+    std::vector< V * > getUnaryArgs( I * i ) {
+        auto a = i->getOperand( 0 );
+		auto val = value_store.contains( a ) ? value_store[ a ] : a ;
+        return { val };
+    }
 
     llvm::CallInst * explicate( I * i, V * v ) {
         auto cond = value_store[ v ];
