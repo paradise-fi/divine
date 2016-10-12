@@ -5,6 +5,7 @@
 
 #include <divine.h>
 #include <string>
+#include <vector>
 
 namespace __dios {
 
@@ -31,7 +32,10 @@ struct Allocator {
     }
 };
 
-using dstring = std::basic_string< char, std::char_traits< char >, Allocator< char>  >;
+using dstring = std::basic_string< char, std::char_traits< char >, Allocator< char >  >;
+
+template < class T >
+using dvector = std::vector< T, Allocator< T > >;
 
 } // namespace __dios
 

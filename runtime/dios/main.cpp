@@ -45,6 +45,33 @@ char *env_to_string( const _VM_Env *env ) noexcept {
     return arg;
 }
 
+bool get_sys_opt( const _VM_Env *e, SysOpts& res ) {
+    const char *prefix = "sys.";
+    int pref_len = strlen( prefix );
+    res.clear();
+    for( ; e->key != nullptr; e++ ) {
+        if ( memcmp( prefix, e->key, pref_len ) != 0 )
+            continue;
+
+        dstring s( e->value, e->size );
+        auto p = std::find( s.begin(), s.end(), ':' );
+        if ( p == s.end() ) {
+            __dios_trace_f( "Missing ':' in parameter '%.*s'", e->size, e->value );
+            return false;
+        }
+
+        if ( std::find( ++p, s.end(), ':') != s.end() ) {
+            __dios_trace_f(  "Multiple ':' in parameter '%.*s'", e->size, e->value );
+            return false;
+        }
+
+        dstring val( p, s.end() );
+        dstring key( s.begin(), --p );
+        res.emplace_back( key, val );
+    }
+    return true;
+}
+
 const _VM_Env *get_env_key( const char* key, const _VM_Env *e ) noexcept {
     for ( ; e->key; e++ ) {
         if ( strcmp( e->key, key ) == 0)

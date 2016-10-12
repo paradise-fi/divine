@@ -24,6 +24,22 @@ Context::Context() :
     globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
 {}
 
+bool trace_threads( const SysOpts& o ) {
+    for( const auto& opt : o ) {
+        if ( opt.first == "notrace" || opt.first == "trace" ) {
+            bool trace = opt.first == "trace";
+
+            if ( opt.second == "threads" || opt.second == "thread" )
+                return trace;
+            else {
+                __dios_trace_f( "Warning: uknown tracing param \"%s\"", opt.second.c_str() );
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
 void init( const _VM_Env *env )
 {
     // No active thread
@@ -36,12 +52,17 @@ void init( const _VM_Env *env )
         ++e;
     }
 
+    // Activate temporary scheduler to handle errors
+    __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
+
+    SysOpts sys_opts;
+    if ( !get_sys_opt( env, sys_opts ) ) {
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+        return;
+    }
+
     // Select scheduling mode
-    auto sched_arg = get_env_key( "divine.runmode", env );
-    __dios_assert_v( sched_arg, "divine.runmode not provided" );
-    __dios_assert_v( sched_arg->size == 1, "divine.runmode has unxpected size (uint8_t expected)" );
-    auto mode = reinterpret_cast< const uint8_t * >( sched_arg->value )[0];
-    if ( mode == _VM_R_Run || mode == _VM_R_Sim )
+    if ( trace_threads( sys_opts ) )
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<true> );
     else
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
@@ -50,7 +71,7 @@ void init( const _VM_Env *env )
     __vm_trace( _VM_T_StateType, context );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
 
-    if ( !context->fault->load_user_pref( env ) ) {
+    if ( !context->fault->load_user_pref( sys_opts ) ) {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         return;
     }

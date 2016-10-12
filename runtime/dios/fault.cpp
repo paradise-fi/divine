@@ -108,26 +108,10 @@ _VM_Fault Fault::str_to_fault( dstring fault ) {
     return static_cast< _VM_Fault >( -1 );
 }
 
-bool Fault::load_user_pref( const _VM_Env *e ) {
-    const char *prefix = "sys";
-    int pref_len = strlen( prefix );
-    for( ; e->key != nullptr; e++ ) {
-        if ( memcmp( prefix, e->key, pref_len ) != 0 )
-            continue;
-        dstring s( e->value, e->size );
-        auto p = std::find( s.begin(), s.end(), ':' );
-        if ( p == s.end() ) {
-            __dios_trace( 0, "Missing ':' in parameter '%.*s'", e->size, e->value );
-            return false;
-        }
-
-        if ( std::find( ++p, s.end(), ':') != s.end() ) {
-            __dios_trace( 0, "Multiple ':' in parameter '%.*s'", e->size, e->value );
-            return false;
-        }
-
-        dstring f( p, s.end() );
-        dstring cmd( s.begin(), --p );
+bool Fault::load_user_pref( const SysOpts& opts ) {
+    for( const auto& i : opts ) {
+        dstring cmd = i.first;
+        dstring f = i.second;
 
         uint8_t cfg = FaultFlag::AllowOverride | FaultFlag::UserSpec;
         const dstring force("force-");
@@ -142,22 +126,18 @@ bool Fault::load_user_pref( const _VM_Env *e ) {
         else if ( cmd == "abort" )   { cfg |= FaultFlag::Enabled; }
         else if ( cmd == "nofail" )  { simfail = true; }
         else if ( cmd == "simfail" ) { cfg |= FaultFlag::Enabled; simfail = true; }
-        else {
-            __dios_trace( 0, "Unknow command '%s' in in parameter '%.*s'",
-                cmd.c_str(), e->size, e->value );
-            return false;
-        }
+        else continue;
 
         int f_num = str_to_fault( f );
         if ( f_num == - 1 ) {
-            __dios_trace( 0, "Invalid argument '%s' in in parameter '%.*s'",
-                f.c_str(), e->size, e->value );
+            __dios_trace( 0, "Invalid argument '%s' in option '%s:%s'",
+                f.c_str(), cmd.c_str(), f.c_str() );
             return false;
         }
 
         if ( simfail && f_num < _DiOS_F_Last ) {
-            __dios_trace( 0, "Invalid argument '%s' for command '%s' in parameter '%.*s'",
-                f.c_str(), cmd.c_str(), e->size, e->value );
+            __dios_trace( 0, "Invalid argument '%s' for command '%s'",
+                f.c_str(), cmd.c_str() );
             return false;
         }
 
