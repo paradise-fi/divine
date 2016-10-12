@@ -14,6 +14,7 @@ enum _DiOS_SC {
     _SC_INACTIVE = 0,
     _SC_START_THREAD,
     _SC_KILL_THREAD,
+    _SC_KILL_PROCESS,
     _SC_UNAME,
 
     _SC_CONFIGURE_FAULT,

@@ -21,6 +21,8 @@
 
 EXTERN_C
 
+#include <stddef.h>
+
 enum _DiOS_Fault
 {
     _DiOS_F_Threading = _VM_F_Last,
@@ -46,13 +48,14 @@ enum _DiOS_FaultConfig
     _DiOS_FC_SimFail,
 };
 
-typedef int _DiOS_ThreadId;
+typedef void * _DiOS_ThreadId;
+typedef void * _DiOS_ProcId;
 
 /*
  * Start a new thread and obtain its identifier. Thread starts executing routine
  * with arg.
  */
-_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg ) NOTHROW;
+_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg, size_t tls_size ) NOTHROW;
 
 /*
  * Get caller thread id
@@ -60,14 +63,14 @@ _DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg ) NOT
 _DiOS_ThreadId __dios_get_thread_id() NOTHROW;
 
 /*
- * Kill thread with given id and reason. Reason is an arbitratry user-defined
- * value.
+ * Kill thread with given id.
  */
 void __dios_kill_thread( _DiOS_ThreadId id ) NOTHROW;
 
 /*
- * Jump into DiOS kernel and then return back. Has no effect
+ * Kill process with given id. If NULL is passed, all processes are killed.
  */
+void __dios_kill_process( _DiOS_ProcId id ) NOTHROW;
 
 /*
  * Issue DiOS syscall with given args. Return value is stored in ret.
@@ -144,6 +147,12 @@ T *new_object( Args... args ) {
     T* obj = static_cast< T * >( __vm_obj_make( sizeof( T ) ) );
     new (obj) T( args... );
     return obj;
+}
+
+template < class T >
+void delete_object( T *obj ) {
+    obj->~T();
+    __vm_obj_free( obj );
 }
 
 struct Scheduler;

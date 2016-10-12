@@ -57,7 +57,7 @@ void init( const _VM_Env *env )
 
     auto argv = construct_main_arg( "arg.", env, true );
     auto envp = construct_main_arg( "env.", env );
-    context->scheduler->start_main_thread( main, argv.first, argv.second, envp.second );
+    context->scheduler->startMainThread( argv.first, argv.second, envp.second );
 }
 
 } // namespace __dios
@@ -71,7 +71,6 @@ void uname( __dios::Context&, void *ret, va_list vl ) {
     strncpy( name->release, "0.1", _UTSNAME_RELEASE_LENGTH );
     strncpy( name->version, "0", _UTSNAME_VERSION_LENGTH );
     strncpy( name->machine, "DIVINE 4 VM", _UTSNAME_MACHINE_LENGTH );
-
     *static_cast< int * >( ret ) = 0;
 }
 

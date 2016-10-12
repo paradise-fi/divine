@@ -6,19 +6,23 @@
 #include <dios/main.hpp>
 #include <divine/metadata.h>
 
-_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg ) noexcept
+_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg, size_t tls_size ) noexcept
 {
     _DiOS_ThreadId ret;
-    __dios_syscall( __dios::_SC_START_THREAD, &ret, routine, arg );
+    __dios_syscall( __dios::_SC_START_THREAD, &ret, routine, arg, tls_size );
     return ret;
 }
 
 _DiOS_ThreadId __dios_get_thread_id() noexcept {
-    return reinterpret_cast< int64_t >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
+    return __vm_control( _VM_CA_Get, _VM_CR_User2 );
 }
 
 void __dios_kill_thread( _DiOS_ThreadId id ) noexcept {
     __dios_syscall( __dios::_SC_KILL_THREAD, nullptr, id );
+}
+
+void __dios_kill_process( _DiOS_ProcId id ) noexcept {
+    __dios_syscall( __dios::_SC_KILL_PROCESS, nullptr, id );
 }
 
 namespace __sc {
@@ -27,73 +31,47 @@ void start_thread( __dios::Context& ctx, void *retval, va_list vl ) {
     typedef void ( *r_type )( void * );
     auto routine = va_arg( vl, r_type );
     auto arg = va_arg( vl, void * );
+    auto tls = va_arg( vl, size_t );
     auto ret = static_cast< __dios::ThreadId * >( retval );
 
-    *ret = ctx.scheduler->start_thread( routine, arg );
+    *ret = ctx.scheduler->startThread( routine, arg, tls );
 }
 
 void kill_thread( __dios::Context& ctx, void *, va_list vl ) {
     auto id = va_arg( vl, __dios::ThreadId );
-    ctx.scheduler->kill_thread( id );
+    ctx.scheduler->killThread( id );
+}
+
+void kill_process( __dios::Context& ctx, void *, va_list vl ) {
+    auto id = va_arg( vl, __dios::ProcId );
+    ctx.scheduler->killProcess( id );
 }
 
 } // namespace __sc
 
 namespace __dios {
 
-Thread::Thread( void ( *routine )( void * ) ) noexcept
-    : _state( State::RUNNING )
-{
-    auto fun = __md_get_pc_meta( reinterpret_cast< uintptr_t >( routine ) );
-    _frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
-    _frame->pc = fun->entry_point;
-    _frame->parent = nullptr;
-}
-
-Thread::Thread( void ( *main )( int, int, char **, char ** ) ) noexcept
-    : _state( State::RUNNING )
-{
-    auto fun = __md_get_pc_meta( reinterpret_cast< uintptr_t >( main ) );
-    _frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
-    _frame->pc = fun->entry_point;
-    _frame->parent = nullptr;
-}
-
 Thread::Thread( Thread&& o ) noexcept
-    : _frame( o._frame ), _state( o._state )
+    : _frame( o._frame ), _tls( o._tls ), _pid( o._pid )
 {
-    o._frame = 0;
-    o._state = State::ZOMBIE;
+    o._frame = nullptr;
+    o._tls = nullptr;
+    o._pid = nullptr;
 }
 
 Thread& Thread::operator=( Thread&& o ) noexcept {
     std::swap( _frame, o._frame );
-    std::swap( _state, o._state );
+    std::swap( _tls, o._tls );
+    std::swap( _pid, o._pid);
     return *this;
 }
 
-void Thread::update_state() noexcept {
-    if ( !_frame )
-        _state = State::ZOMBIE;
+Thread::~Thread() noexcept {
+    clearFrame();
+    __vm_obj_free( _tls );
 }
 
-void Thread::stop() noexcept {
-    if ( !active() ) {
-        __dios_fault( static_cast< _VM_Fault >( _DiOS_F_Threading ),
-            "Cannot stop inactive thread" );
-        return;
-    }
-
-    clear();
-    _state = State::ZOMBIE;
-}
-
-void Thread::hard_stop() noexcept {
-    _state = State::ZOMBIE;
-    clear();
-}
-
-void Thread::clear() noexcept {
+void Thread::clearFrame() noexcept {
     while ( _frame ) {
         _VM_Frame *f = _frame->parent;
         __vm_obj_free( _frame );
@@ -101,72 +79,39 @@ void Thread::clear() noexcept {
     }
 }
 
-Thread *Scheduler::choose_thread() noexcept {
-    if ( _cf->thread_count < 1 )
-        return nullptr;
-    get_active_thread()->update_state();
-    int idx = __vm_choose( _cf->thread_count );
-    _cf->active_thread = idx;
-    Thread &thread = get_threads()[ idx ];
-    if ( !thread.zombie() )
-        return &thread;
-    return nullptr;
+void Scheduler::updateLastThread() noexcept {
+    if ( lastThread && !lastThread->active() ) {
+        threads.remove( lastThread->getId() );
+    }
 }
 
-Thread *Scheduler::choose_live_thread() noexcept {
-    if ( _cf->thread_count < 1 )
+Thread *Scheduler::chooseThread() noexcept {
+    if ( threads.empty() )
         return nullptr;
-    get_active_thread()->update_state();
-    int count = 0;
-    for ( int i = 0; i != _cf->thread_count; i++ ) {
-        if ( get_threads()[ i ].active() )
-            count++;
-    }
+    lastThread = threads[ __vm_choose( threads.size() ) ];
+    return lastThread;
+}
 
-    if ( count == 0 )
-        return nullptr;
-
+void Scheduler::traceThreads() const noexcept {
+    size_t c = threads.size();
+    if ( c == 0 )
+        return;
     struct PI { int pid, tid, choice; };
-    PI *pi = reinterpret_cast< PI * >( __vm_obj_make( count * sizeof( PI ) ) );
+    PI *pi = reinterpret_cast< PI * >( __vm_obj_make( c * sizeof( PI ) ) );
     PI *pi_it = pi;
-    count = 0;
-    for ( int i = 0; i != _cf->thread_count; i++ ) {
-        if ( get_threads()[ i ].active() ) {
-            pi_it->pid = 1;
-            pi_it->tid = i;
-            pi_it->choice = count++;
-            ++pi_it;
-        }
+    for ( int i = 0; i != c; i++ ) {
+        pi_it->pid = 0;
+        pi_it->tid = threads[ i ]->getUserId();
+        pi_it->choice = i;
+        ++pi_it;
     }
 
     __vm_trace( _VM_T_SchedChoice, pi );
-    int sel = __vm_choose( count );
-    auto thr = get_threads();
-    while ( sel != 0 )
-    {
-        if ( thr->active() )
-            --sel;
-        ++thr;
-    }
-
-    while ( !thr->active() )
-        ++thr;
-
-    _cf->active_thread = thr - get_threads();
-    __dios_assert_v( thr->active(), "thread is inactive" );
-    __dios_assert_v( thr->_frame, "frame is invalid" );
-    return thr;
 }
 
-void Scheduler::start_main_thread( int ( *main )( ... ), int argc, char** argv, char** envp ) noexcept {
-    __dios_assert_v( main, "Invalid main function!" );
-
-    new ( &( _cf->main_thread ) ) Thread( _start );
-    _cf->active_thread = 0;
-    _cf->thread_count = 1;
-
-    DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >(
-        _cf->main_thread[ 0 ]._frame );
+void Scheduler::startMainThread( int argc, char** argv, char** envp ) noexcept {
+    Thread *t = threads.emplace( _start, 0 );
+    DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( t->_frame );
     frame->l = __md_get_pc_meta( reinterpret_cast< uintptr_t >( main ) )->arg_count;
 
     frame->argc = argc;
@@ -174,29 +119,36 @@ void Scheduler::start_main_thread( int ( *main )( ... ), int argc, char** argv, 
     frame->envp = envp;
 }
 
-ThreadId Scheduler::start_thread( void ( *routine )( void * ), void *arg ) noexcept {
-    __dios_assert( routine );
-
-    __vm_obj_resize( _cf, __vm_obj_size( _cf ) + sizeof( Thread ) );
-
-    Thread &t = get_threads()[ _cf->thread_count++ ];
-    new ( &t ) Thread( routine );
-    ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >( t._frame );
+ThreadId Scheduler::startThread( void ( *routine )( void * ), void *arg, size_t tls_size ) noexcept {
+    __dios_assert_v( routine, "Invalid thread routine" );
+    Thread *t = threads.emplace( routine, tls_size );
+    ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >( t->_frame );
     frame->arg = arg;
 
-    return _cf->thread_count - 1;
+    return t->getId();
 }
 
-void Scheduler::kill_thread( ThreadId t_id ) noexcept {
-    __dios_assert( int( t_id ) < _cf->thread_count );
-    get_threads()[ t_id ].stop();
+void Scheduler::killThread( ThreadId tid ) noexcept {
+    bool res = threads.remove( tid );
+    __dios_assert_v( res, "Killing non-existing thread" );
 }
 
-void Scheduler::terminate() noexcept {
-    for ( int i = 0; i != _cf->thread_count; i++ ) {
-        if ( get_threads()[ i ].active() )
-            get_threads()[ i ].hard_stop();
+void Scheduler::killProcess( ProcId id ) noexcept {
+    if ( !id ) {
+        threads.erase( threads.begin(), threads.end() );
+        lastThread = nullptr;
+        // ToDo: Erase processes
+        return;
     }
+
+    if ( lastThread && lastThread->_pid == id )
+        lastThread = nullptr;
+    auto r = std::remove_if( threads.begin(), threads.end(), [&]( Thread *t ) {
+        return t->_pid == id;
+    });
+    threads.erase( r, threads.end() );
+    // ToDo: Erase processes
+
 }
 
 } // namespace __dios

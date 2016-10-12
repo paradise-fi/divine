@@ -20,9 +20,13 @@ void __attribute__((always_inline)) traceInternalV( int indent, const char *fmt,
 
     int n = 0;
     auto tid = __dios_get_thread_id();
-    if ( tid >= 0 )
-        n = snprintf( buffer + fmtIndent, 1024 - fmtIndent, "t%d: ",
-            tid );
+    bool kernel = reinterpret_cast< uintptr_t >(
+        __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
+    if ( !kernel ) {
+        auto utid = reinterpret_cast< uint64_t >( tid ) >> 32;
+        n = snprintf( buffer + fmtIndent, 1024 - fmtIndent, "t%u: ",
+            static_cast< uint32_t >( utid ) );
+    }
     __dios_assert( n >= 0 );
 
     vsnprintf( buffer + fmtIndent + n, 1024 - fmtIndent - n, fmt, ap );

@@ -26,7 +26,8 @@ void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, void* retval, va_list vl ) 
     [ _SC_UNAME ] = __sc::uname,
 
     [ _SC_CONFIGURE_FAULT ] = __sc::configure_fault,
-    [ _SC_GET_FAULT_CONFIG ] = __sc::get_fault_config
+    [ _SC_GET_FAULT_CONFIG ] = __sc::get_fault_config,
+    [ _SC_FAULT_HANDLER ] = __dios::Fault::sc_handler
 };
 
 } // namespace _dios
