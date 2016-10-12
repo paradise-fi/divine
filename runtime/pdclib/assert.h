@@ -19,7 +19,20 @@ void _PDCLIB_assert89( char const * const );
 /* If NDEBUG is set, assert() is a null operation. */
 #undef assert
 
-#ifdef NDEBUG
+#ifdef __divine__
+
+void _PDCLIB_assert_dios( const char *msg );
+
+#define assert(expression) \
+    do { if(!(expression)) { \
+        _PDCLIB_assert_dios( "Assertion failed: " _PDCLIB_symbol2string(expression)\
+                         ", file " __FILE__ \
+                         ", line " _PDCLIB_symbol2string( __LINE__ ) \
+                         "." ); \
+      } \
+    } while(0)
+
+#elif defined NDEBUG
 #define assert( ignore ) do { \
         if(!(expression)) { _PDCLIB_UNREACHABLE; } \
     } while(0)
@@ -35,7 +48,7 @@ void _PDCLIB_assert89( char const * const );
         _PDCLIB_UNREACHABLE; \
       } \
     } while(0)
-    
+
 #else
 #define assert(expression) \
     do { if(!(expression)) { \

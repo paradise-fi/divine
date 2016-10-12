@@ -6,12 +6,13 @@
 #include <string.h>
 
 #include <divine.h>
+#include <dios.h>
 #include <_PDCLIB_locale.h>
 #include <_PDCLIB_aux.h>
 
 extern "C" {
 
-#define NOT_IMPLEMENTED { __vm_fault( _VM_F_NotImplemented, "libc stubs" ); return 0; }
+#define NOT_IMPLEMENTED { __dios_fault( _VM_F_NotImplemented, "libc stubs" ); return 0; }
 FILE *tmpfile() noexcept NOT_IMPLEMENTED;
 double atof( const char *r ) noexcept NOT_IMPLEMENTED;
 double strtod( const char *, char ** ) noexcept NOT_IMPLEMENTED;

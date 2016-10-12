@@ -14,6 +14,17 @@
 
 #include <_PDCLIB_aux.h>
 
+#ifdef __divine__
+
+#include <dios.h>
+
+void _PDCLIB_assert_dios( char const * const message )
+{
+   __dios_fault( _VM_F_Assert, message );
+}
+
+#endif // __divine__
+
 void _PDCLIB_assert99( char const * const message1, char const * const function, char const * const message2 )
 {
     fputs( message1, stderr );
