@@ -49,10 +49,10 @@ void dump( DN dn, DNSet &visited, int &stacks, int maxdepth )
 
     dn.related( [&]( std::string k, auto rel )
                 {
-                    if ( rel.kind() == vm::DNKind::Frame && k != "@parent" &&
+                    if ( rel.kind() == vm::DNKind::Frame && k != "@caller" &&
                          !visited.count( rel.sortkey() ) && maxdepth > 1 )
                         std::cerr << "backtrace #" << ++stacks << ":" << std::endl;
-                    dump( rel, visited, stacks, k == "@parent" ? maxdepth - 1 : maxdepth );
+                    dump( rel, visited, stacks, k == "@caller" ? maxdepth - 1 : maxdepth );
                 } );
 }
 
