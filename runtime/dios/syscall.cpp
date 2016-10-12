@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 #include <dios/syscall.hpp>
+#include <dios/fault.hpp>
 #include <dios/scheduling.hpp>
 
 void __dios_syscall( int syscode, void* ret, ... ) {
@@ -21,7 +22,8 @@ Syscall *Syscall::_inst;
 void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, void* retval, va_list vl ) = {
     [ _SC_START_THREAD ] = __sc::start_thread,
     [ _SC_KILL_THREAD ] = __sc::kill_thread,
-    [ _SC_DUMMY ] = __sc::dummy,
+    [ _SC_KILL_PROCESS ] = __sc::kill_process,
+    [ _SC_UNAME ] = __sc::uname,
 
     [ _SC_CONFIGURE_FAULT ] = __sc::configure_fault,
     [ _SC_GET_FAULT_CONFIG ] = __sc::get_fault_config

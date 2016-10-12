@@ -68,7 +68,6 @@ void __dios_kill_thread( _DiOS_ThreadId id ) NOTHROW;
 /*
  * Jump into DiOS kernel and then return back. Has no effect
  */
-void __dios_dummy() NOTHROW;
 
 /*
  * Issue DiOS syscall with given args. Return value is stored in ret.

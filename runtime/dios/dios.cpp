@@ -2,6 +2,10 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 //                 2016 Petr Rockai <me@mornfall.net>
 
+extern "C" {
+#include <sys/utsname.h>
+}
+
 #include <dios.h>
 #include <divine/opcodes.h>
 #include <divine/metadata.h>
@@ -61,8 +65,16 @@ void init( const _VM_Env *env )
 
 namespace __sc {
 
-void  dummy( __dios::Context&, void *ret, va_list vl ) {
-    __dios_trace_t( "Dummy syscall issued!" );
+void uname( __dios::Context&, void *ret, va_list vl ) {
+    utsname *name = va_arg( vl, utsname * );
+    strncpy( name->sysname, "DiOS", _UTSNAME_SYSNAME_LENGTH );
+    strncpy( name->nodename, "", _UTSNAME_NODENAME_LENGTH );
+    strncpy( name->release, "0.1", _UTSNAME_RELEASE_LENGTH );
+    strncpy( name->version, "0", _UTSNAME_VERSION_LENGTH );
+    strncpy( name->machine, "DIVINE 4 VM", _UTSNAME_MACHINE_LENGTH );
+
+    *static_cast< int * >( ret ) = 0;
+    va_end( vl );
 }
 
 } // namespace __sc
@@ -74,8 +86,10 @@ extern "C" void  __attribute__((weak)) __boot( const _VM_Env *env ) {
     __dios::init( env );
 }
 
-void __dios_dummy() noexcept {
-    __dios_syscall( __dios::_SC_DUMMY, nullptr );
+int uname( struct utsname *__name ) {
+    int ret;
+    __dios_syscall( __dios::_SC_UNAME, &ret, __name );
+    return ret;
 }
 
 

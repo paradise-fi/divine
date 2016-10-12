@@ -14,7 +14,7 @@ enum _DiOS_SC {
     _SC_INACTIVE = 0,
     _SC_START_THREAD,
     _SC_KILL_THREAD,
-    _SC_DUMMY,
+    _SC_UNAME,
 
     _SC_CONFIGURE_FAULT,
     _SC_GET_FAULT_CONFIG,
@@ -61,7 +61,7 @@ private:
 
 namespace __sc {
 
-    void dummy( __dios::Context& c, void* retval, va_list vl );
+    void uname( __dios::Context& c, void* retval, va_list vl );
 
 } // namespace __sc
 
