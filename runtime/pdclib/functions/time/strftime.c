@@ -49,10 +49,12 @@
 #include <divine.h>
 #include <string.h>
 
+#include <dios.h>
+
 struct tm;
 size_t strftime(char *s, size_t maxsize, const char *format, const struct tm *timeptr)
 {
-    __vm_fault( _VM_F_NotImplemented );
+    __dios_fault( _VM_F_NotImplemented, "strftime" );
     return 0;
 }
 

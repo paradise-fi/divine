@@ -11,7 +11,7 @@
 
 extern "C" {
 
-#define NOT_IMPLEMENTED { __vm_fault( _VM_F_NotImplemented ); return 0; }
+#define NOT_IMPLEMENTED { __vm_fault( _VM_F_NotImplemented, "libc stubs" ); return 0; }
 FILE *tmpfile() noexcept NOT_IMPLEMENTED;
 double atof( const char *r ) noexcept NOT_IMPLEMENTED;
 double strtod( const char *, char ** ) noexcept NOT_IMPLEMENTED;
@@ -46,14 +46,14 @@ int vswprintf( wchar_t *, size_t, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 
 char *getenv( const char * ) noexcept NOT_IMPLEMENTED;
 
-void tzset() { __vm_fault( _VM_F_NotImplemented ); }
+void tzset() { __dios_fault( _VM_F_NotImplemented, "tzset" ); };
 int gettimeofday(struct timeval *, struct timezone *) NOT_IMPLEMENTED;
 int settimeofday(const struct timeval *, const struct timezone *) NOT_IMPLEMENTED;
 
 int mbtowc( wchar_t *, const char *s, size_t )
 {
     if ( s )/* not stateless */
-        __vm_fault( _VM_F_NotImplemented, 0 );
+        __dios_fault( _VM_F_NotImplemented, "mbtowc" );
     return 0;
 }
 
@@ -73,7 +73,7 @@ locale_t newlocale( int, const char *lc, locale_t ) {
     if ( strcmp( lc, "C" ) == 0 )
         return const_cast< locale_t >( &_PDCLIB_global_locale );
 
-    __vm_fault( _VM_F_NotImplemented, 0 );
+    __dios_fault( _VM_F_NotImplemented, "newlocale" );
     return 0;
 }
 

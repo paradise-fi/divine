@@ -636,12 +636,12 @@ void _check_deadlock( pthread_mutex_t *mutex, int gtid ) {
         if ( holdertid < 0 || holdertid == lastthread )
             return;
         if ( holdertid == gtid ) {
-            __vm_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex cycle closed" );
+            __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex cycle closed" );
             return;
         }
         Thread *holder = _get_thread_by_gtid( holdertid );
         if ( holder == NULL || !holder->running ) {
-            __vm_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex locked by dead thread" );
+            __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex locked by dead thread" );
             return;
         }
         mutex = holder->waiting_mutex;
@@ -669,7 +669,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
             if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
                 return EDEADLK;
             else
-                __vm_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Nonrecursive mutex locked again" );
+                __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Nonrecursive mutex locked again" );
         }
     }
 
@@ -713,7 +713,7 @@ int pthread_mutex_destroy( pthread_mutex_t *mutex ) {
         if ( mutex->type == PTHREAD_MUTEX_ERRORCHECK )
             return EBUSY;
         else
-            __vm_fault( _VM_Fault::_VM_F_Locking, "Locked mutex destroyed" );
+            __dios_fault( _VM_Fault::_VM_F_Locking, "Locked mutex destroyed" );
     }
     mutex->initialized = 0;
     return 0;
@@ -760,7 +760,7 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
         // mutex is not locked or it is already locked by another thread
         assert( mutex->lockCounter ); // count should be > 0
         if ( mutex->type == PTHREAD_MUTEX_NORMAL )
-            __vm_fault( _VM_Fault::_VM_F_Locking, "Mutex has to be released by the "
+            __dios_fault( _VM_Fault::_VM_F_Locking, "Mutex has to be released by the "
                                             "same thread which acquired the "
                                             "mutex." );
         else
@@ -1133,7 +1133,7 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
     // variable. On the other hand, using more than one mutex for one
     // conditional variable results in undefined behaviour.
     if ( cond->mutex != NULL && cond->mutex != mutex )
-        __vm_fault( _VM_Fault::_VM_F_Locking, "Attempted to wait on condition variable using other mutex "
+        __dios_fault( _VM_Fault::_VM_F_Locking, "Attempted to wait on condition variable using other mutex "
                                         "that already in use by this condition variable" );
     cond->mutex = mutex;
 
@@ -1690,7 +1690,7 @@ namespace _sig {
 
 void sig_ign( int ) {}
 
-#define __sig_terminate( SIGNAME ) []( int ) { __vm_fault( _VM_Fault::_VM_F_Control, "Uncaught signal: " #SIGNAME ); }
+#define __sig_terminate( SIGNAME ) []( int ) { __dios_fault( _VM_Fault::_VM_F_Control, "Uncaught signal: " #SIGNAME ); }
 
 // this is based on x86 signal numbers
 static const sighandler_t defact[] = {

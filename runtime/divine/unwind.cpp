@@ -134,7 +134,7 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
         return uintptr_t( *exprt );
     else if ( index == 1 )
         return *reinterpret_cast< int * >( exprt + 1 );
-    __vm_fault( _VM_F_NotImplemented, "invalid register" );
+    __dios_fault( _VM_F_NotImplemented, "invalid register" );
     __builtin_unreachable();
 }
 
@@ -205,7 +205,7 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
             }
         }
         if ( ctx.meta().is_nounwind )
-            __vm_fault( _VM_F_Control, "Exception thrown out of nounwind function" );
+            __dios_fault( _VM_F_Control, "Exception thrown out of nounwind function" );
     }
     if ( !foundCtx )
         return _URC_END_OF_STACK;
@@ -245,7 +245,7 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
 void _Unwind_Resume( _Unwind_Exception *exception ) {
     _Unwind_RaiseException( exception );
     __dios_trace( 0, "Resume failed" );
-    __vm_fault( _VM_Fault( _DiOS_F_Assert ), "Resume failed" );
+    __dios_fault( _VM_Fault( _DiOS_F_Assert ), "Resume failed" );
 }
 
 // Deletes the given exception object. If a given runtime resumes normal

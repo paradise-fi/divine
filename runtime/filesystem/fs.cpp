@@ -14,11 +14,13 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <dios.h>
+
 #include "fs-manager.h"
 
 #ifdef __divine__
 # define FS_MALLOC( x ) __vm_make_object( x )
-# define FS_PROBLEM( msg ) __vm_fault( vm::Fault::Assert, msg )
+# define FS_PROBLEM( msg ) __dios_fault( vm::Fault::Assert, msg )
 #else
 # define FS_MALLOC( x ) std::malloc( x )
 # define FS_PROBLEM( msg )

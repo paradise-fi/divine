@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <signal.h>
+#include <dios.h>
 
 #include "fs-utils.h"
 #include "fs-inode.h"
@@ -267,12 +268,12 @@ struct Pipe : File {
 
     void assignReader() {
         if ( _reader )
-            __vm_fault( vm::Fault::Assert, "Pipe is opened for reading again." );
+            __dios_fault( vm::Fault::Assert, "Pipe is opened for reading again." );
         _reader = true;
     }
     void assignWriter() {
         if ( _writer )
-            __vm_fault( vm::Fault::Assert, "Pipe is opened for writing again." );
+            __dios_fault( vm::Fault::Assert, "Pipe is opened for writing again." );
         _writer = true;
     }
 

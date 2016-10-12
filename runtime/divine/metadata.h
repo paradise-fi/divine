@@ -1,5 +1,6 @@
 #ifdef __divine__
 #include <divine.h>
+#include <dios.h>
 #endif
 #include <stdint.h>
 
@@ -209,7 +210,7 @@ struct TypeSig {
     template< typename Yield >
     constexpr static void decode( char, Yield &&, TList<> ) {
 #ifdef __divine__
-        __vm_fault( _VM_F_NotImplemented, "could not decode type signature" );
+        __dios_fault( _VM_F_NotImplemented, "Could not decode type signature" );
 #else
         UNREACHABLE( "could not decode type signature" );
 #endif
