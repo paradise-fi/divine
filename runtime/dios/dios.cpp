@@ -51,7 +51,6 @@ void init( const _VM_Env *env )
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
 
     if ( !context->fault->load_user_pref( env ) ) {
-        context->fault->triggered = true;
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         return;
     }
@@ -74,7 +73,6 @@ void uname( __dios::Context&, void *ret, va_list vl ) {
     strncpy( name->machine, "DIVINE 4 VM", _UTSNAME_MACHINE_LENGTH );
 
     *static_cast< int * >( ret ) = 0;
-    va_end( vl );
 }
 
 } // namespace __sc

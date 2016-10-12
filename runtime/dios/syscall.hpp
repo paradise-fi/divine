@@ -18,6 +18,7 @@ enum _DiOS_SC {
 
     _SC_CONFIGURE_FAULT,
     _SC_GET_FAULT_CONFIG,
+    _SC_FAULT_HANDLER,
 
     _SC_LAST
 };
@@ -44,7 +45,9 @@ struct Syscall {
         if ( _syscode != _SC_INACTIVE ) {
             ( *( _DiOS_SysCalls[ _syscode ] ) )( *ctx, _ret, _args );
             _syscode = _SC_INACTIVE;
-            return true;
+            // If syscall returns, scheduler has to continue current thread
+            // It it does not return, scheduler can continue with an arbitrary thread
+            return _ret;
         }
         return false;
     }

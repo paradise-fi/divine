@@ -5,6 +5,7 @@
 #include <cctype>
 
 #include <divine/metadata.h>
+#include <dios/scheduling.hpp>
 #include <dios/fault.hpp>
 #include <dios/trace.hpp>
 #include <dios/syscall.hpp>
@@ -13,34 +14,71 @@ uint8_t const *_DiOS_fault_cfg;
 
 namespace __dios {
 
-void __attribute__((__noreturn__)) Fault::handler( _VM_Fault _what, _VM_Frame *cont_frame,
+void Fault::die( __dios::Context& ctx ) noexcept {
+    ctx.scheduler->killProcess( nullptr );
+    static_cast< _VM_Frame * >
+        ( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent = nullptr;
+}
+
+void Fault::sc_handler_wrap( __dios::Context& ctx, void *ret, ... ) noexcept {
+    va_list vl;
+    va_start( vl, ret );
+    sc_handler( ctx, ret, vl );
+    va_end( vl );
+}
+
+void Fault::sc_handler( __dios::Context& ctx, void *retval, va_list vl ) noexcept {
+    typedef void (*PC)();
+    bool kernel = va_arg( vl, int );
+    auto *frame = va_arg( vl, _VM_Frame * );
+    auto what = va_arg( vl, int );
+    auto *cont_frame = va_arg( vl, _VM_Frame * );
+    auto cont_pc = va_arg( vl, PC );
+
+    InTrace _; // avoid dumping what we do
+
+    if ( what >= fault_count ) {
+        traceInternal( 0, "Unknown fault in handler" );
+        die( ctx );
+    }
+
+    uint8_t fault_cfg = ctx.fault->config[ what ];
+    if ( !ctx.fault->ready || fault_cfg & FaultFlag::Enabled ) {
+        if ( kernel )
+            traceInternal( 0, "Kernel VM Fault" );
+        else
+            traceInternal( 0, "Userspace VM Fault" );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+        traceInternal( 0, "Backtrace:" );
+        int i = 0;
+        for ( auto *f = frame; f != nullptr; f = f->parent ) {
+            traceInternal( 0, "  %d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );
+        }
+
+        if ( !ctx.fault->ready || !( fault_cfg & FaultFlag::Continue ) )
+            die( ctx );
+    }
+}
+
+void Fault::handler( _VM_Fault _what, _VM_Frame *cont_frame,
                                                    void (*cont_pc)(), ... ) noexcept
 {
-    auto ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
-    auto what = static_cast< int >( _what );
     auto mask = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) ) & _VM_CF_Mask;
-    InTrace _; // avoid dumping what we do
+    int kernel = reinterpret_cast< uintptr_t >(
+        __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
+    auto *frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
 
-    __dios_assert_v( what < fault_count, "Unknown fault" );
-    int fault = ctx->fault->config[ what ];
-    if ( !ctx->fault->ready || fault & FaultFlag::Enabled ) {
-        __dios_trace_t( "VM Fault" );
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
-        __dios_trace_t( "Backtrace:" );
-        int i = 0;
-        for ( auto *f = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
-              f != nullptr; f = f->parent )
-            traceInternal( 0, "%d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );
-
-        if ( !ctx->fault->ready || !( fault & FaultFlag::Continue ) ) {
-            ctx->fault->triggered = true;
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
-        }
+    if ( kernel ) {
+        auto *ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
+        sc_handler_wrap( *ctx, nullptr, kernel, frame, _what, cont_frame, cont_pc );
+    }
+    else {
+        __dios_syscall( _SC_FAULT_HANDLER, nullptr, kernel, frame, _what, cont_frame, cont_pc  );
     }
 
-    // Continue
+    // Continue if we get the control back
     __vm_control( _VM_CA_Set, _VM_CR_Frame, cont_frame,
                   _VM_CA_Set, _VM_CR_PC, cont_pc,
                   _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, mask ? _VM_CF_Mask : 0 );
@@ -223,7 +261,7 @@ void __dios_fault( enum _VM_Fault f, const char *msg, ... ) {
     auto fh = reinterpret_cast< __vm_fault_t >( __vm_control( _VM_CA_Get, _VM_CR_FaultHandler ) );
     auto *retFrame = static_cast< struct _VM_Frame * >(
         __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
-    auto pc = reinterpret_cast< unsigned long long >( retFrame->pc );
+    auto pc = reinterpret_cast< uintptr_t >( retFrame->pc );
 
     typedef void (*PC)(void);
     ( *fh )( f, retFrame, reinterpret_cast< PC >( pc + 1 ) );

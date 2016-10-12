@@ -43,7 +43,10 @@ struct Fault {
     static constexpr int fault_count = _DiOS_SF_Last;
     static _VM_Fault str_to_fault( dstring fault );
     bool load_user_pref( const _VM_Env *env );
-    static void __attribute__((__noreturn__)) handler( _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)(), ... ) noexcept;
+    static void handler( _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)(), ... ) noexcept;
+    static void sc_handler( __dios::Context& ctx, void *retval, va_list vl ) noexcept;
+    static void sc_handler_wrap( __dios::Context& ctx, void *retval, ... ) noexcept;
+    static void die( __dios::Context& ctx ) noexcept;
 
     std::array< uint8_t, fault_count > config;
     bool triggered;
