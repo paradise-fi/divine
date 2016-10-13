@@ -226,8 +226,8 @@ void Verify::run()
     vm::setup::scheduler( dbg );
     vm::Stepper step;
     step._stop_on_error = true;
-    step.run( dbg, []( auto ) {}, []() {}, vm::Stepper::Quiet );
-    dump( dbg, ctx.snapshot(), _backtraceMaxDepth );
+    step.run( dbg, []( auto x ) { return x; }, []() {}, vm::Stepper::Quiet );
+    dump( dbg, dbg.snapshot(), _backtraceMaxDepth );
 }
 
 }
