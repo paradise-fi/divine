@@ -30,6 +30,7 @@ namespace divine {
 namespace vm {
 
 enum class DNKind { Globals, Frame, Object };
+using DNKey = std::tuple< GenericPointer, int, DNKind, llvm::DIType * >;
 
 static std::ostream &operator<<( std::ostream &o, DNKind dnk )
 {
@@ -149,8 +150,11 @@ struct DebugNode
         return llvm::getDISubprogram( llvmfunction() );
     }
 
-    auto sortkey() { return std::make_tuple( _address, _offset,
-                                             _kind == DNKind::Frame ? nullptr : _di_type ); }
+    DNKey sortkey() const
+    {
+        return std::make_tuple( _address, _offset, _kind,
+                                _kind == DNKind::Frame ? nullptr : _di_type );
+    }
 
     bool valid();
     bool boundcheck( PointerV ptr, int size );

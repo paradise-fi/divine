@@ -26,7 +26,7 @@
 namespace divine {
 namespace ui {
 
-using DNSet = std::set< std::tuple< vm::GenericPointer, int, llvm::DIType * > >;
+using DNSet = std::set< vm::DNKey >;
 
 template< typename DN >
 void dump( DN dn, DNSet &visited, int &stacks, int maxdepth )
@@ -69,7 +69,6 @@ void dump( Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
     int stacks = 1;
     std::cerr << "backtrace #1 [active thread]:" << std::endl;
     dump( dn_top, visited, stacks, maxdepth );
-    visited.clear(); /* FIXME */
     dump( dn, visited, stacks, maxdepth );
 }
 
