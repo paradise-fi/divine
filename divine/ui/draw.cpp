@@ -42,7 +42,7 @@ std::string escape( std::string s )
     return std::string( buf, 0, j );
 }
 
-using DNMap = std::map< std::tuple< vm::GenericPointer, int, llvm::DIType * >, int >;
+using DNMap = std::map< vm::DNKey, int >;
 
 template< typename DN >
 int dump( bool raw, DN dn, DNMap &dumped, int &seq, std::string prefix )
