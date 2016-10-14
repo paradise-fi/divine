@@ -1163,7 +1163,7 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
     // try to lock mutex which was associated to the cond. variable by this
     // thread
     // (not the one from current binding, which may have changed)
-    pthread_mutex_lock( mutex );
+    _mutex_lock( mask, mutex, 1 );
     return 0;
 }
 
