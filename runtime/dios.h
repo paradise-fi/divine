@@ -185,7 +185,6 @@ template< bool fenced >
 struct _InterruptMask {
 
     _InterruptMask()
-        : _owns( true )
     {
         _orig_state = uintptr_t( __vm_control( _VM_CA_Get, _VM_CR_Flags,
                                                _VM_CA_Bit, _VM_CR_Flags,
@@ -197,46 +196,60 @@ struct _InterruptMask {
     }
 
     ~_InterruptMask() {
-        if ( _owns )
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ),
-                          _orig_state ? uintptr_t( _VM_CF_Mask ) : 0ull );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ),
+                      _orig_state ? uintptr_t( _VM_CF_Mask ) : 0ull );
     }
+
+  private:
+    struct Without {
+        Without( _InterruptMask &self ) : self( self ) {
+            if ( !self._orig_state ) {
+                if ( fenced )
+                    __sync_synchronize();
+                __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ), 0ull );
+            }
+        }
+
+        // acquire mask if not masked already
+        ~Without() {
+            if ( !self._orig_state ) {
+                if ( fenced )
+                    __sync_synchronize();
+                __vm_control( _VM_CA_Bit, _VM_CR_Flags,
+                              uintptr_t( _VM_CF_Mask ), uintptr_t( _VM_CF_Mask ) );
+            }
+        }
+
+        _InterruptMask &self;
+    };
+  public:
 
 #if __cplusplus >= 201103L
     _InterruptMask( const _InterruptMask & ) = delete;
-    // ownership transfer
-    _InterruptMask( _InterruptMask &&o ) : _owns(o._owns), _orig_state( o._orig_state ) {
-        o._owns = false;
-    }
+    _InterruptMask( _InterruptMask && ) = delete;
 #else
   private:
-      _InterruptMask( const _InterruptMask & ) { };
-      _InterruptMask &operator=( const _InterruptMask & ) { return *this; }
+    _InterruptMask( const _InterruptMask & );
+    _InterruptMask &operator=( const _InterruptMask & );
   public:
 #endif
 
-    void release()
-    {
-        if ( !_orig_state ) {
-            if ( fenced )
-                __sync_synchronize();
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ), 0ull );
-        }
+    // break mask (if it is held by this guard), call given function and then
+    // return mask to original state
+    template< typename Fun >
+    auto without( Fun &&f, bool mustBreakMask = false ) {
+        __dios_assert_v( !mustBreakMask || !_orig_state,
+                         "Interrupt does not own interrupt mask, but it is required to by caller of InterruptMask::without" );
+        Without _( *this );
+        return f();
     }
 
-    // acquire mask if not masked already
-    void acquire()
-    {
-        if ( !_orig_state ) {
-            if ( fenced )
-                __sync_synchronize();
-            __vm_control( _VM_CA_Bit, _VM_CR_Flags,
-                          uintptr_t( _VM_CF_Mask ), uintptr_t( _VM_CF_Mask ) );
-        }
-    }
+    // beware, this is dangerous
+    void _setOrigState( bool state ) { _orig_state = state; }
+    bool _origState() const { return _orig_state; }
 
   private:
-    bool _owns;
+
     bool _orig_state;
 };
 

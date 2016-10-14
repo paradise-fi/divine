@@ -238,7 +238,7 @@ template < bool cancelPoint, typename Cond >
 static void _wait( __dios::FencedInterruptMask &mask, Cond &&cond )
         __attribute__( ( __always_inline__, __flatten__ ) ) {
     while ( cond() && ( !cancelPoint || !_canceled() ) )
-        mask.release();
+        mask.without( [] { }, true ); // break mask to allow control flow interrupt
     if ( cancelPoint && _canceled() )
         _cancel();
 }
@@ -275,10 +275,10 @@ extern "C" void _pthread_entry( void *_args ) {
 
     // call entry function
     thread->running = true;
-    mask.release();
-    // from now on, args and _args should not be accessed
-    thread->result = entry( arg );
-    mask.acquire();
+    mask.without( [&] {
+        // from now on, args and _args should not be accessed
+        thread->result = entry( arg );
+    } );
 
     __dios_assert_v( thread->sleeping == false, "thread->sleeping == false" );
 
@@ -684,8 +684,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
     thr->waiting_mutex = mutex;
     while ( !_mutex_can_lock( mutex, gtid ) ) {
         _check_deadlock( mutex, gtid );
-        mask.release();
-        mask.acquire();
+        mask.without( [] { }, true ); // break mask to allow control flow interrupt
     }
     thr->waiting_mutex = NULL;
 
