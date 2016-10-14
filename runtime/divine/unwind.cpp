@@ -234,8 +234,9 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
     }
     __dios_trace( 0, "Unwinding" );
     // unwinder has to have the mask in the same state as it was before throw
+    __dios_unwind( nullptr, topFrame, &foundCtx.frame() );
     mask.release();
-    __dios_unwind( &foundCtx.frame(), reinterpret_cast< void (*)() >( foundCtx.jumpPC ) );
+    __dios_jump( &foundCtx.frame(), reinterpret_cast< void (*)() >( foundCtx.jumpPC ), -1 );
 }
 
 //  Resume propagation of an existing exception e.g. after executing cleanup
@@ -244,8 +245,11 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
 //  execution. It causes unwinding to proceed further.
 void _Unwind_Resume( _Unwind_Exception *exception ) {
     _Unwind_RaiseException( exception );
-    __dios_trace( 0, "Resume failed" );
-    __dios_fault( _VM_Fault( _DiOS_F_Assert ), "Resume failed" );
+    // raise failed, this should not happen as there always should be an
+    // handler to resume to (otherwise the original _Unwind_RaiseException
+    // should have returned _URC_END_OF_STACK)
+    __dios_trace_t( "Resume failed" );
+    __vm_fault( _VM_Fault( _DiOS_F_Assert ), "Resume failed" );
 }
 
 // Deletes the given exception object. If a given runtime resumes normal

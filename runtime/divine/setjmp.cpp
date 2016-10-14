@@ -23,5 +23,6 @@ void longjmp( jmp_buf env, int val ) {
     if ( val == 0 )
         val = 1;
     *reinterpret_cast< int * >( retreg.start ) = val;
-    __dios_unwind( env->__jumpFrame, reinterpret_cast< void (*)() >( env->__jumpPC + 1 ) );
+    __dios_unwind( nullptr, nullptr, env->__jumpFrame );
+    __dios_jump( env->__jumpFrame, reinterpret_cast< void (*)() >( env->__jumpPC + 1 ), -1 );
 }
