@@ -5,6 +5,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/IRBuilder.h>
@@ -21,6 +22,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/analysis/postorder.h>
 
 #include <lart/abstract/types.h>
+#include <lart/abstract/annotation.h>
 
 #include <string>
 
@@ -50,73 +52,54 @@ struct Abstraction : lart::Pass {
         type_store.insert( { bt, tristate } );
         abstract_types.insert( tristate );
 
-        //functions containing abstract values
-        auto funs = query::query( m )
-                    .filter( [&]( F &f ) {
-                        auto calls = query::query( f ).flatten()
-                             .map( query::llvmdyncast< llvm::CallInst > )
-                             .filter( query::notnull ).freeze();
-                        return query::any( calls, [&]( llvm::CallInst * call ) {
-                              return isAbstractValue( call );
-                            } );
-                    } )
-                    .map( query::refToPtr ).freeze();
+        auto annotations = getAbstractAnnotations( m );
 
-        std::vector< F * > abstractDeclarations;
-        for ( auto &f : m )
-            if ( f.getName().startswith( _abstractName ) )
-                abstractDeclarations.push_back( &f );
+        lart::util::Store< std::map< llvm::Function *, std::vector< Annotation > > > functions;
+        for ( const auto &a : annotations ) {
+            auto parent = a.allocaInst->getParent()->getParent();
+            if ( functions.contains( parent ) )
+                functions[ parent ].push_back( a );
+            else
+                functions.insert( { parent, { a } } );
+        }
 
-        for ( auto &f : funs ) {
-            // compute all abstract values in function f
-            auto vals = query::query( *f ).flatten()
-						.map( query::refToPtr )
-						.map( query::llvmdyncast< llvm::CallInst > )
-						.filter( query::notnull )
-						.filter( [&]( llvm::CallInst *call ) {
-							return isAbstractValue( call );
-						} ).freeze();
-
+        for ( auto &f : functions ) {
             // create new abstract types
-            for ( auto v : vals )
-                storeType( v );
+            auto& annotatedValues = f.second;
+            for ( auto &a : annotatedValues )
+                storeType( a.allocaInst->getAllocatedType() );
+
+            bool changeReturn = false;
+            llvm::Type * rty;
 
             // compute return dependency
-            bool change_ret = false;
-            T * rty;
-            auto it = vals.begin();
-            while ( !change_ret && it != vals.end() ) {
-                auto deps = analysis::postorder< V * >( *it );
-                change_ret = dependentReturn( deps );
-                if ( change_ret ) {
-                    auto t = (*it)->getCalledFunction()->getFunctionType()->getReturnType();
-                    rty = type_store[ t ]->getPointerTo();
+            for ( auto &val : annotatedValues ) {
+                auto deps = analysis::postorder< llvm::Value * >( val.allocaInst );
+                changeReturn = changeReturn || dependentReturn( deps );
+                if ( changeReturn ) {
+                    rty = type_store[ val.allocaInst->getAllocatedType() ]->getPointerTo();
+                    break;
                 }
-                ++it;
             }
 
             //unify return value
-            if ( change_ret ) {
+            if ( changeReturn ) {
                 llvm::UnifyFunctionExitNodes ufen;
-                ufen.runOnFunction( *f );
+                ufen.runOnFunction( *f.first );
             }
 
             //substitute abstract values
-            for ( auto v : vals ) {
-                auto t = v->getCalledFunction()->getFunctionType()->getReturnType();
-                propagateValue( v, t );
+            for ( auto &v : annotatedValues ) {
+                propagateValue( v.allocaInst, v.allocaInst->getAllocatedType() );
             }
-            storeFunction( f, change_ret, rty );
+            storeFunction( f.first, changeReturn, rty );
         }
 
         //annotate anonymous lart functions
-        for ( auto &a : to_annotate ) {
+        for ( auto &a : toAnnotate ) {
             annotateAnonymous( a.first, a.second );
             a.first->eraseFromParent();
         }
-
-        for ( auto &f : abstractDeclarations )
-            f->eraseFromParent();
         return llvm::PreservedAnalyses::none();
 	}
 
@@ -124,15 +107,15 @@ struct Abstraction : lart::Pass {
         auto atp = type_store[ t ]->getPointerTo();
 
 		auto deps = analysis::postorder< V * >( v );
-        bool change_ret = dependentReturn( deps );
+        bool changeReturn = dependentReturn( deps );
 
-        if ( change_ret ) {
+        if ( changeReturn ) {
             llvm::UnifyFunctionExitNodes ufen;
             ufen.runOnFunction( *f );
         }
 
         propagateValue( v, t );
-        return storeFunction( f, change_ret, atp );
+        return storeFunction( f, changeReturn, atp );
 	}
 
     void propagateValue( V * v, T * t ) {
@@ -157,7 +140,6 @@ struct Abstraction : lart::Pass {
     }
 
     void process( I * inst, T * t ) {
-
         llvmcase( inst,
      		//[&]( llvm::AllocaInst * ) { /*TODO*/ },
             //[&]( llvm::LoadInst * ) { /*TODO*/ },
@@ -204,7 +186,7 @@ struct Abstraction : lart::Pass {
 			} );
     }
 
-    llvm::CallInst * annotate( I * inst, T * rty, const std::string &tag,
+    llvm::CallInst * createNamedCall( I * inst, T * rty, const std::string &tag,
                                std::vector< V * > args = {} )
     {
         auto acall = createCall( inst, rty, tag, args );
@@ -315,14 +297,14 @@ struct Abstraction : lart::Pass {
 
         auto fn = i->getCalledFunction();
 
-        if ( to_annotate.contains( fn ) ) {
+        if ( toAnnotate.contains( fn ) ) {
             //lart anonymous call
             auto rty = fn->getReturnType();
             auto tag = fn->getName();
-            auto call = annotate( i, rty, tag, args );
-            auto find = to_annotate.find( fn );
+            auto call = createNamedCall( i, rty, tag, args );
+            auto find = toAnnotate.find( fn );
             i->replaceAllUsesWith( call );
-            to_annotate.insert( { call->getCalledFunction(), find->second } );
+            toAnnotate.insert( { call->getCalledFunction(), find->second } );
         } else {
             llvm::ArrayRef< T * > params = arg_types;
             auto stored = storedFn( fn, params );
@@ -399,12 +381,6 @@ struct Abstraction : lart::Pass {
     }
 
     //Helper functions
-    bool isAbstractValue( llvm::CallInst *call ) {
-		if ( auto callee = getCalledFunction( call ) )
-        	return callee->getName().startswith( _abstractName );
-		return false;
-    }
-
     bool isAbstractType( T * t ) {
         if ( t->isPointerTy() )
             t = t->getPointerElementType();
@@ -448,6 +424,8 @@ struct Abstraction : lart::Pass {
     }
 
     void storeType( T * t ) {
+        if ( t->isPointerTy() )
+            t = t->getPointerElementType();
         if ( !type_store.contains( t ) ) {
             auto at = lart::abstract::Type::get( t );
             type_store.insert( { t, at } );
@@ -510,7 +488,7 @@ struct Abstraction : lart::Pass {
         llvm::IRBuilder<> irb( i );
         auto acall = irb.CreateCall( call, args );
 
-        to_annotate.insert( { acall->getCalledFunction(), tag } );
+        toAnnotate.insert( { acall->getCalledFunction(), tag } );
         value_store.insert( { i, acall } );
 
         removeRedundantLifts( i, acall );
@@ -588,7 +566,7 @@ private:
     FunctionStore < F *, F * > function_store;
 
     // functions to annotate
-    lart::util::Store< std::map < F *, std::string > > to_annotate;
+    lart::util::Store< std::map < F *, std::string > > toAnnotate;
 
     static llvm::StringRef _abstractName;
 
@@ -614,10 +592,9 @@ struct Substitution : lart::Pass {
     }
 
 	llvm::PreservedAnalyses run( llvm::Module &m ) override {
-        abstractionType = m.getFunction( abstractionName + "create" )->getReturnType();
+        std::vector< std::pair< llvm::Function *, llvm::Type * > > toChangeReturnValue;
 
-        std::vector< llvm::Function * > toChangeReturnValue;
-
+        abstractionType = m.getFunction( abstractionName + "alloca" )->getReturnType();
         for ( auto &fn : m ) {
             //find creation of abstract values
             auto abstract = query::query( fn ).flatten()
@@ -627,7 +604,7 @@ struct Substitution : lart::Pass {
                  .filter( [&]( llvm::CallInst *i ) {
                     auto call = i->getCalledFunction();
                     if ( call && call->hasName() )
-                        return call->getName().startswith( "lart.abstract.create" )
+                        return call->getName().startswith( "lart.abstract.alloca" )
                             || call->getName().startswith( "lart.abstract.lift" );
                     return false;
                  } )
@@ -647,12 +624,12 @@ struct Substitution : lart::Pass {
                 auto typeName = lart::abstract::getTypeName( fn.getReturnType() );
                 std::string prefix = "%lart.abstract";
                 if ( !typeName.compare( 0, prefix.size(), prefix ) )
-                    toChangeReturnValue.push_back( &fn );
+                    toChangeReturnValue.push_back( { &fn, abstractionType } );
             }
         }
 
         for ( auto &fn : toChangeReturnValue )
-            lart::changeReturnValue( fn, abstractionType );
+            lart::changeReturnValue( fn.first, fn.second );
 
         cleanup( m );
         return llvm::PreservedAnalyses::none();
