@@ -169,18 +169,7 @@ struct Abstraction : lart::Pass {
                 doPhi( i, t );
             },
 			[&]( llvm::CallInst * i ) {
-                if ( isAbstractValue( i ) ) {
-        			auto rty = type_store[ t ]->getPointerTo();
-                    annotate( i, rty, "lart.abstract.create." + getTypeName( t ) );
-                } else if ( isLift( i ) ) {
-                    i->replaceAllUsesWith( value_store[ i->getArgOperand( 0 ) ] );
-                } else if ( isExplicate( i ) ) {
-                    auto clone = i->clone();
-                    clone->insertBefore( i );
-                    i->replaceAllUsesWith( clone );
-                } else {
-					doCall( i, t );
-                }
+				doCall( i, t );
             },
  			[&]( llvm::ReturnInst * i ) {
                 doReturn( i );
@@ -303,6 +292,38 @@ struct Abstraction : lart::Pass {
     }
 
     void doCall( llvm::CallInst * i, T * t ) {
+        if ( isLift( i ) )
+            handleLiftCall( i );
+        else if ( isExplicate( i ) )
+            handleExplicationCall( i );
+        else if ( i->getCalledFunction()->isIntrinsic() )
+            handleIntrinsicCall( llvm::cast< llvm::IntrinsicInst >( i ) );
+        else
+            handleGenericCall( i, t );
+    }
+
+    void handleIntrinsicCall( llvm::IntrinsicInst * i ) {
+        auto name = llvm::Intrinsic::getName( i->getIntrinsicID() );
+        if ( ( name == "llvm.lifetime.start" ) || ( name == "llvm.lifetime.end" ) ) { /*skip */ }
+        else if ( name == "llvm.var.annotation" ) { /* skip */ }
+        else {
+	        std::cerr << "ERR: unknown intrinsic: ";
+            i->dump();
+            std::exit( EXIT_FAILURE );
+        }
+    }
+
+    void handleLiftCall( llvm::CallInst * i ) {
+        i->replaceAllUsesWith( value_store[ i->getArgOperand( 0 ) ] );
+    }
+
+    void handleExplicationCall( llvm::CallInst * i ) {
+        auto clone = i->clone();
+        clone->insertBefore( i );
+        i->replaceAllUsesWith( clone );
+    }
+
+    void handleGenericCall( llvm::CallInst * i, llvm::Type * t ) {
         std::vector < V * > args;
 		std::vector < T * > arg_types;
 
