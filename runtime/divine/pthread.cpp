@@ -25,8 +25,6 @@
 // thresholds
 #define MILLIARD 1000000000
 
-#define _real_pt( ptid ) ( ( real_pthread_t ){.asint = ( ptid )} )
-
 // bit masks
 #define _THREAD_ATTR_DETACH_MASK 0x1
 
@@ -339,12 +337,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     // if ( gtid >= ( 1 << 16 ) || ltid >= ( 1 << 15 ) )
     //     return EAGAIN;
 
-    real_pthread_t rptid; /* bitfields must be explicitly zeroed */
-    memset( &rptid, 0, sizeof( rptid ) );
-    rptid.gtid = gtid;
-    rptid.ltid = ltid;
-    rptid.initialized = 1;
-    *ptid = rptid.asint;
+    *ptid = gtid;
 
     // thread initialization
     _init_thread( gtid, ltid, ( attr == NULL ? PTHREAD_CREATE_JOINABLE : *attr ) );
@@ -359,19 +352,19 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
 void pthread_exit( void *result ) {
     __dios::FencedInterruptMask mask;
 
-    int ltid = _get_ltid();
-    _DiOS_ThreadId gtid = _get_gtid( ltid );
+    auto gtid = __dios_get_thread_id();
+    int ltid = _get_ltid( gtid );
 
     threads[ltid]->result = result;
 
-    if ( gtid == 0 ) {
+    if ( ltid == 0 ) {
         // join every other thread and exit
         for ( int i = 1; i < alloc_pslots; i++ ) {
             waitOrCancel( mask, [&] { return threads[i] && threads[i]->running; } );
         }
 
         _cleanup();
-        __dios_kill_thread( 0 );
+        __dios_kill_thread( gtid );
     } else {
         _cleanup();
         __dios_assert( threads[ltid]->gtid );
@@ -379,74 +372,67 @@ void pthread_exit( void *result ) {
     }
 }
 
-int pthread_join( pthread_t _ptid, void **result ) {
+int pthread_join( pthread_t gtid, void **result ) {
     __dios::FencedInterruptMask mask;
-    real_pthread_t ptid = _real_pt( _ptid );
+    int ltid = _get_ltid( gtid );
 
-    if ( !ptid.initialized )
-        return ESRCH;
-
-    if ( ptid.ltid >= alloc_pslots )
+    if ( ltid >= alloc_pslots )
         return EINVAL;
 
-    if ( ptid.gtid != _get_gtid( ptid.ltid ) )
+    if ( gtid != _get_gtid( ltid ) ) /* redundant? */
         return ESRCH;
 
-    if ( ptid.gtid == __dios_get_thread_id() )
+    if ( gtid == __dios_get_thread_id() )
         return EDEADLK;
 
-    if ( threads[ptid.ltid]->detached )
+    if ( threads[ltid]->detached )
         return EINVAL;
 
     // wait for the thread to finnish
-    waitOrCancel( mask, [&] { return threads[ptid.ltid]->running; } );
+    waitOrCancel( mask, [&] { return threads[ltid]->running; } );
 
-
-    if ( ( ptid.gtid != _get_gtid( ptid.ltid ) ) || ( threads[ptid.ltid]->detached ) ) {
+    if ( ( gtid != _get_gtid( ltid ) ) || ( threads[ltid]->detached ) ) {
         // meanwhile detached
         return EINVAL;
     }
 
     // copy result
     if ( result ) {
-        if ( threads[ptid.ltid]->cancelled )
+        if ( threads[ltid]->cancelled )
             *result = PTHREAD_CANCELED;
         else
-            *result = threads[ptid.ltid]->result;
+            *result = threads[ltid]->result;
     }
 
     // let the thread to terminate now
-    threads[ptid.ltid]->detached = true;
+    threads[ltid]->detached = true;
 
     // force us to synchrozie with the thread on its end, to avoid it from
     // ending nondeterministically in all subsequent states
-    wait( mask, [&] { return threads[ptid.ltid] != NULL; } );
+    wait( mask, [&] { return threads[ltid] != NULL; } );
     return 0;
 }
 
-int pthread_detach( pthread_t _ptid ) {
+int pthread_detach( pthread_t gtid ) {
     __dios::FencedInterruptMask mask;
-    real_pthread_t ptid = _real_pt( _ptid );
+    int ltid = _get_ltid( gtid );
 
-    if ( !ptid.initialized )
-        return ESRCH;
-
-    if ( ptid.ltid >= alloc_pslots /*|| ptid.gtid >= thread_counter */)
+    if ( ltid >= alloc_pslots )
         return EINVAL;
 
-    if ( ptid.gtid != _get_gtid( ptid.ltid ) )
+    if ( gtid != _get_gtid( ltid ) )
         return ESRCH;
 
-    if ( threads[ptid.ltid]->detached )
+    if ( threads[ltid]->detached )
         return EINVAL;
 
-    bool ended = !threads[ptid.ltid]->running;
-    threads[ptid.ltid]->detached = true;
+    bool ended = !threads[ltid]->running;
+    threads[ltid]->detached = true;
 
     if ( ended ) {
         // force us to synchrozie with the thread on its end, to avoid it from
         // ending nondeterministically in all subsequent states
-        wait( mask, [&] { return threads[ptid.ltid] != NULL; } );
+        wait( mask, [&] { return threads[ltid] != NULL; } );
     }
     return 0;
 }
@@ -575,12 +561,11 @@ int pthread_attr_setstacksize( pthread_attr_t *, size_t ) {
 /* Thread ID */
 pthread_t pthread_self( void ) {
     __dios::FencedInterruptMask mask;
-    unsigned short ltid = _get_ltid(__dios_get_thread_id());
-    return ( ( real_pthread_t ){.gtid = __dios_get_thread_id(), .ltid = ltid, .initialized = 1} ).asint;
+    return __dios_get_thread_id();
 }
 
 int pthread_equal( pthread_t t1, pthread_t t2 ) {
-    return _real_pt( t1 ).gtid == _real_pt( t2 ).gtid;
+    return t1 == t2;
 }
 
 /* Scheduler */
@@ -1263,18 +1248,19 @@ int pthread_setcanceltype( int type, int *oldtype ) {
     return 0;
 }
 
-int pthread_cancel( pthread_t _ptid ) {
-    real_pthread_t ptid = _real_pt( _ptid );
+int pthread_cancel( pthread_t gtid ) {
     __dios::FencedInterruptMask mask;
 
-    if ( !ptid.initialized || ptid.ltid >= alloc_pslots /*|| ptid.gtid >= thread_counter*/ )
+    int ltid = _get_ltid( gtid );
+
+    if ( ltid >= alloc_pslots )
         return ESRCH;
 
-    if ( ptid.gtid != _get_gtid( ptid.ltid ) )
+    if ( gtid != _get_gtid( ltid ) )
         return ESRCH;
 
-    if ( threads[ptid.ltid]->cancel_state == PTHREAD_CANCEL_ENABLE )
-        threads[ptid.ltid]->cancelled = true;
+    if ( threads[ltid]->cancel_state == PTHREAD_CANCEL_ENABLE )
+        threads[ltid]->cancelled = true;
 
     return 0;
 }

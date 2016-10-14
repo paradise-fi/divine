@@ -74,16 +74,7 @@
 /* Data types */
 
 typedef int pthread_attr_t;
-
-typedef int pthread_t;
-typedef union {
-    struct {
-        void *gtid;
-        unsigned short ltid:15;
-        unsigned short initialized:1;
-    };
-    int asint;
-} real_pthread_t;
+typedef void *pthread_t;
 
 typedef struct {
     unsigned short owner; // global thread id + 1
