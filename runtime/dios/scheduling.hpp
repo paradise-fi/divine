@@ -173,9 +173,8 @@ private:
 };
 
 struct Scheduler {
-    Scheduler() : lastThread( nullptr ) {}
+    Scheduler() {}
     size_t threadCount() const noexcept { return threads.size(); }
-    void updateLastThread() noexcept;
     Thread *chooseThread() noexcept;
     void traceThreads() const noexcept;
     void startMainThread( int argc, char** argv, char** envp ) noexcept;
@@ -184,14 +183,12 @@ struct Scheduler {
     void killProcess( ProcId id ) noexcept;
 private:
     SortedStorage< Thread > threads;
-    Thread *lastThread;
 };
 
 template < bool THREAD_AWARE_SCHED >
 void sched() noexcept
 {
     auto ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
-    ctx->scheduler->updateLastThread();
     if ( THREAD_AWARE_SCHED )
         ctx->scheduler->traceThreads();
     Thread *t = ctx->scheduler->chooseThread();

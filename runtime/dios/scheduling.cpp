@@ -79,17 +79,11 @@ void Thread::clearFrame() noexcept {
     }
 }
 
-void Scheduler::updateLastThread() noexcept {
-    if ( lastThread && !lastThread->active() ) {
-        threads.remove( lastThread->getId() );
-    }
-}
-
-Thread *Scheduler::chooseThread() noexcept {
+Thread *Scheduler::chooseThread() noexcept
+{
     if ( threads.empty() )
         return nullptr;
-    lastThread = threads[ __vm_choose( threads.size() ) ];
-    return lastThread;
+    return threads[ __vm_choose( threads.size() ) ];
 }
 
 void Scheduler::traceThreads() const noexcept {
@@ -136,13 +130,10 @@ void Scheduler::killThread( ThreadId tid ) noexcept {
 void Scheduler::killProcess( ProcId id ) noexcept {
     if ( !id ) {
         threads.erase( threads.begin(), threads.end() );
-        lastThread = nullptr;
         // ToDo: Erase processes
         return;
     }
 
-    if ( lastThread && lastThread->_pid == id )
-        lastThread = nullptr;
     auto r = std::remove_if( threads.begin(), threads.end(), [&]( Thread *t ) {
         return t->_pid == id;
     });
