@@ -11,7 +11,8 @@ int main()
      pthread_t tid;
      pthread_create( &tid, NULL, thread, NULL );
      void *i = 0;
-     pthread_join( tid, &i );
+     int rv = pthread_join( tid, &i );
+     assert( rv == 0 );
      assert( i == 1 );
      return 0;
 }
