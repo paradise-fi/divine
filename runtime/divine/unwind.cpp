@@ -184,8 +184,10 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
 
     // TODO: report fault in nounwind function is encountered
     // frame of _Unwind_RaiseException's caller
-    auto *topFrame = static_cast< struct _VM_Frame * >(
-        __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
+    auto *selfFrame = static_cast< struct _VM_Frame * >(
+        __vm_control( _VM_CA_Get, _VM_CR_Frame ) );
+    exception->private_2 = uintptr_t( selfFrame );
+    auto *topFrame = selfFrame->parent->parent; // caller of __cxa_throw (or ther caller of _Unwind_RaiseException)
     _Unwind_Context topCtx( topFrame );
     _Unwind_Context foundCtx;
     __personality_routine pers;
@@ -196,9 +198,9 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
             pers = reinterpret_cast< __personality_routine >( ctx.meta().ehPersonality );
             // personality in not part of the unwinder and therefore should be
             // allowed to interleave with other threads
-            mask.release();
-            auto r = pers( unwindVersion, _UA_SEARCH_PHASE, exception->exception_class, exception, &ctx );
-            mask.acquire();
+            auto r = mask.without( [&] {
+                return pers( unwindVersion, _UA_SEARCH_PHASE, exception->exception_class, exception, &ctx );
+            } );
             if ( r == _URC_HANDLER_FOUND ) {
                 foundCtx = ctx;
                 break;
@@ -216,27 +218,25 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
         int flags = _UA_CLEANUP_PHASE;
         if ( &ctx.frame() == &foundCtx.frame() )
             flags |= _UA_HANDLER_FRAME;
-        mask.release();
-        auto r = pers( unwindVersion, _Unwind_Action( flags ), exception->exception_class, exception, &ctx );
-        mask.acquire();
+        auto r = mask.without( [&] {
+            return pers( unwindVersion, _Unwind_Action( flags ), exception->exception_class, exception, &ctx );
+        } );
         if ( (flags & _UA_HANDLER_FRAME) && r != _URC_INSTALL_CONTEXT ) {
             __dios_trace( 0, "Unwinder Fatal Error: Frame which indicated handler in phase 1 refused in phase 2" );
             return _URC_FATAL_PHASE2_ERROR;
         }
         if ( r == _URC_INSTALL_CONTEXT ) {
-            foundCtx = ctx;
-            break;
+            // unwinder has to have the mask in the same state as it was before throw
+            __dios_unwind( nullptr, topFrame, &ctx.frame() );
+            topFrame = &ctx.frame();
+            __dios_assert( ctx.jumpPC != 0 );
+            __dios_jump( &ctx.frame(), reinterpret_cast< void (*)() >( ctx.jumpPC ), mask._origState() );
+            mask._setOrigState( exception->private_2 );
+            exception->private_2 = uintptr_t( selfFrame );
         }
     }
-    if ( foundCtx.jumpPC == 0 ) {
-        __dios_trace( 0, "Unwinder Fatal Error: PC not set up by personality in phase 2" );
-        return _URC_FATAL_PHASE2_ERROR;
-    }
-    __dios_trace( 0, "Unwinding" );
-    // unwinder has to have the mask in the same state as it was before throw
-    __dios_unwind( nullptr, topFrame, &foundCtx.frame() );
-    mask.release();
-    __dios_jump( &foundCtx.frame(), reinterpret_cast< void (*)() >( foundCtx.jumpPC ), -1 );
+    __dios_trace( 0, "Unwinder Fatal Error: handler not found in phase 2" );
+    return _URC_FATAL_PHASE2_ERROR;
 }
 
 //  Resume propagation of an existing exception e.g. after executing cleanup
