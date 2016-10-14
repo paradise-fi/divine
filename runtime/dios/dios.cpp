@@ -64,13 +64,14 @@ void init( const _VM_Env *env )
 
 namespace __sc {
 
-void uname( __dios::Context&, void *ret, va_list vl ) {
+void uname( __dios::Context&, void *ret, va_list vl )
+{
     utsname *name = va_arg( vl, utsname * );
-    strncpy( name->sysname, "DiOS", _UTSNAME_SYSNAME_LENGTH );
-    strncpy( name->nodename, "", _UTSNAME_NODENAME_LENGTH );
-    strncpy( name->release, "0.1", _UTSNAME_RELEASE_LENGTH );
-    strncpy( name->version, "0", _UTSNAME_VERSION_LENGTH );
-    strncpy( name->machine, "DIVINE 4 VM", _UTSNAME_MACHINE_LENGTH );
+    strcpy( name->sysname, "DiOS" );
+    strcpy( name->nodename, "" );
+    strcpy( name->release, "0.1" );
+    strcpy( name->version, "0" );
+    strcpy( name->machine, "DIVINE 4 VM" );
     *static_cast< int * >( ret ) = 0;
 }
 
