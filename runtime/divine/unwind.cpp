@@ -244,12 +244,13 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
 //  the end of a landing pad that performed cleanup, but did not resume normal
 //  execution. It causes unwinding to proceed further.
 void _Unwind_Resume( _Unwind_Exception *exception ) {
-    _Unwind_RaiseException( exception );
-    // raise failed, this should not happen as there always should be an
-    // handler to resume to (otherwise the original _Unwind_RaiseException
-    // should have returned _URC_END_OF_STACK)
-    __dios_trace_t( "Resume failed" );
-    __vm_fault( _VM_Fault( _DiOS_F_Assert ), "Resume failed" );
+    __dios::InterruptMask mask;
+    using PC_t = void (*)();
+    auto *unwinder = reinterpret_cast< _VM_Frame * >( exception->private_2 );
+    // transfer information about current mask state to _Unwind_RaiseException
+    exception->private_2 = mask._origState();
+    __dios_jump( unwinder, unwinder->pc, -1 );
+    __builtin_unreachable();
 }
 
 // Deletes the given exception object. If a given runtime resumes normal
