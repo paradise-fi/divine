@@ -141,9 +141,15 @@ struct Abstraction : lart::Pass {
 
     void process( I * inst, T * t ) {
         llvmcase( inst,
-     		//[&]( llvm::AllocaInst * ) { /*TODO*/ },
-            //[&]( llvm::LoadInst * ) { /*TODO*/ },
-            //[&]( llvm::StoreInst * ) { /*TODO*/ },
+     		[&]( llvm::AllocaInst * i ) {
+                doAlloca( i );
+            },
+            [&]( llvm::LoadInst * i ) {
+                doLoad( i );
+            },
+            [&]( llvm::StoreInst * ) {
+                /* TODO */
+            },
             [&]( llvm::ICmpInst * i ) {
                  doICmp( i );
             },
@@ -192,6 +198,19 @@ struct Abstraction : lart::Pass {
         auto acall = createCall( inst, rty, tag, args );
         value_store[ inst ] = acall;
         return acall;
+    }
+
+    void doAlloca( llvm::AllocaInst * i ) {
+        assert( !i->isArrayAllocation() );
+        auto rty = type_store[ i->getAllocatedType() ]->getPointerTo();
+        createNamedCall( i, rty, "lart.abstract.alloca." + getTypeName( i->getAllocatedType() ) );
+    }
+
+    void doLoad( llvm::LoadInst * i ) {
+        auto args = { value_store[ i->getOperand( 0 ) ] };
+        auto rty = type_store[ i->getType() ]->getPointerTo();
+        auto tag = "lart.abstract.load." + getTypeName( i->getType() );
+        createAnonymousCall( i, rty, tag, args);
     }
 
     void doICmp( llvm::ICmpInst * i ) {
@@ -246,8 +265,11 @@ struct Abstraction : lart::Pass {
         auto args = getUnaryArgs( i );
         auto tag = "lart.abstract." + std::string( i->getOpcodeName() ) + "."
                    + getTypeName( i->getSrcTy() ) + "." + getTypeName( i->getDestTy() );
-        storeType( i->getDestTy() );
-        auto rty = type_store[ i->getDestTy() ]->getPointerTo();
+        auto type = i->getDestTy()->isPointerTy()
+                  ? i->getDestTy()->getPointerElementType()
+                  : i->getDestTy();
+        storeType( type );
+        auto rty = type_store[ type ]->getPointerTo();
         createAnonymousCall( i, rty, tag, args );
     }
 
