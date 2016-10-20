@@ -72,6 +72,9 @@ void __dios_kill_thread( _DiOS_ThreadId id ) NOTHROW;
  */
 void __dios_kill_process( _DiOS_ProcId id ) NOTHROW;
 
+
+_DiOS_ThreadId *__dios_get_process_threads() NOTHROW;
+
 /*
  * Issue DiOS syscall with given args. Return value is stored in ret.
  */

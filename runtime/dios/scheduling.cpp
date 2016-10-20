@@ -25,6 +25,13 @@ void __dios_kill_process( _DiOS_ProcId id ) noexcept {
     __dios_syscall( __dios::_SC_KILL_PROCESS, nullptr, id );
 }
 
+_DiOS_ThreadId *__dios_get_process_threads() noexcept {
+    _DiOS_ThreadId *ret;
+    auto tid = __dios_get_thread_id();
+    __dios_syscall( __dios::_SC_GET_PROCESS_THREADS, &ret, tid );
+    return ret;
+}
+
 namespace __sc {
 
 void start_thread( __dios::Context& ctx, void *retval, va_list vl ) {
@@ -46,6 +53,32 @@ void kill_process( __dios::Context& ctx, void *, va_list vl ) {
     auto id = va_arg( vl, __dios::ProcId );
     ctx.scheduler->killProcess( id );
 }
+
+void get_process_threads( __dios::Context &ctx, void *_ret, va_list vl ) {
+    auto *&ret = *reinterpret_cast< _DiOS_ThreadId ** >( _ret );
+    auto tid = va_arg( vl, _DiOS_ThreadId );
+    __dios::ProcId pid;
+    for ( auto &t : ctx.scheduler->threads ) {
+        if ( t->_tls == tid ) {
+            pid = t->_pid;
+            break;
+        }
+    }
+    int count = 0;
+    for ( auto &t : ctx.scheduler->threads ) {
+        if ( t->_pid == pid )
+            ++count;
+    }
+    ret = static_cast< _DiOS_ThreadId * >( __vm_obj_make( sizeof( _DiOS_ThreadId ) * count ) );
+    int i = 0;
+    for ( auto &t : ctx.scheduler->threads ) {
+        if ( t->_pid == pid ) {
+            ret[ i ] = t->_tls;
+            ++i;
+        }
+    }
+}
+
 
 } // namespace __sc
 

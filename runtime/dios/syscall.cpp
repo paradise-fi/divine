@@ -23,6 +23,7 @@ void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, void* retval, va_list vl ) 
     [ _SC_START_THREAD ] = __sc::start_thread,
     [ _SC_KILL_THREAD ] = __sc::kill_thread,
     [ _SC_KILL_PROCESS ] = __sc::kill_process,
+    [ _SC_GET_PROCESS_THREADS ] = __sc::get_process_threads,
     [ _SC_UNAME ] = __sc::uname,
 
     [ _SC_CONFIGURE_FAULT ] = __sc::configure_fault,
