@@ -53,7 +53,7 @@ Compile::Compile( Options opts ) :
     ASSERT_LEQ( 1ul, workers.size() );
     ASSERT_EQ( workers.size(), compilers.size() );
 
-    commonFlags = { "-D__divine__"
+    commonFlags = { "-D__divine__=4"
                   , "-isystem", rt::includeDir
                   , "-isystem", joinPath( rt::includeDir, "pdclib" )
                   , "-isystem", joinPath( rt::includeDir, "libm" )
