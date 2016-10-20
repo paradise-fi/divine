@@ -809,12 +809,25 @@ struct Eval
                 result( IntV( program().function( pc() ).typeID(
                                   operandCk< PointerV >( 0 ).cooked() ) ) );
                 return;
+            case Intrinsic::umul_with_overflow:
+            {
+                return op< IsIntegral >( 1, [&]( auto v ) {
+                    auto r = v.get( 1 ) * v.get( 2 );
+                    __uint128_t x = v.get( 1 ).cooked(), y = v.get( 2 ).cooked();
+                    BoolV over( false );
+                    if ( x * y != r.cooked() )
+                        over = BoolV( true );
+                    slot_write( result(), over, 0 );
+                    slot_write( result(), r, sizeof( typename BoolV::Raw ) );
+                } );
+                return;
+            }
             case Intrinsic::smul_with_overflow:
             case Intrinsic::sadd_with_overflow:
             case Intrinsic::ssub_with_overflow:
-            case Intrinsic::umul_with_overflow:
             case Intrinsic::uadd_with_overflow:
             case Intrinsic::usub_with_overflow:
+                instruction().op->dump();
                 NOT_IMPLEMENTED();
                 return;
             case Intrinsic::stacksave:
