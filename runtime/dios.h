@@ -234,6 +234,7 @@ struct _InterruptMask {
   public:
 #endif
 
+#if __cplusplus >= 201402L
     // break mask (if it is held by this guard), call given function and then
     // return mask to original state
     template< typename Fun >
@@ -243,6 +244,7 @@ struct _InterruptMask {
         Without _( *this );
         return f();
     }
+#endif
 
     // beware, this is dangerous
     void _setOrigState( bool state ) { _orig_state = state; }
