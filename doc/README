@@ -1,49 +1,34 @@
-DIVINE 3.1
+DIVINE 4.0
 ==========
 
-Please refer to `manual/building.mdwn` for build instructions.
+Please refer to `doc/manual/building.md` for build instructions.
 
 Reference of commandline options is available with `divine help`, or in the
 manual [1]. For an introduction on how to use the tool, please refer to
-`manual/using.mdwn`. You can find various example models to try in the
-`examples` directory.
-
-A graphical user interface is available as part of this distribution, and will
-be built by default if your system has Qt (4.5 or later) headers and libraries
-installed.
+`doc/manual/using.md`. You can find various example models to try in the
+`doc/examples` directory.
 
 Reporting Problems
 ------------------
 
-The DIVINE project uses Trac for managing problem reports. If you encounter a
-behaviour you believe is a bug in DIVINE, please [file a new ticket] [1] in
-[DIVINE Trac] [2]. However, before reporting issues, please consider checking
-if there is a more recent version available and if the issue has been reported
-already (in the latter case, please add a comment to the existing ticket, that
-you have encountered the issue, and if possible, any further details you may
-know about the problem). Thanks in advance.
-
-[1]: http://divine.fi.muni.cz/trac/newticket?version=3.1
-[2]: http://divine.fi.muni.cz/trac/
+Please email us at divine (at) fi.muni.cz if you encounter a problem that you
+believe is an error in DIVINE.
 
 Obtaining New Versions
 ----------------------
 
-The latest release is always available through our homepage [3]. Instructions
-on how to obtain development snapshots can be found in the file `HACKING` or
-online [4].
+The latest release is always available through our homepage [2].
 
-[3]: http://divine.fi.muni.cz/
-[4]: http://divine.fi.muni.cz/development.html
+[2]: http://divine.fi.muni.cz/
 
 Licence
 -------
 
 The source code comes with NO WARRANTY, as detailed in the licence texts, which
-may be found in the file "COPYING" in the distribution tarball. The tool is a
-product of The ParaDiSe Laboratory, Faculty of Informatics of Masaryk
+may be found in the file `doc/COPYING` in the distribution tarball. The tool is
+a product of The ParaDiSe Laboratory, Faculty of Informatics of Masaryk
 University.
 
-This distribution includes freely redistributable third-party
-code. Please refer to AUTHORS and COPYING included in the distribution
-for copyright and licensing details.
+This distribution includes freely redistributable third-party code. Please
+refer to `doc/AUTHORS` and `doc/COPYING` included in the distribution for
+copyright and licensing details.
