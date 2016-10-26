@@ -25,6 +25,11 @@
 #ifndef __STDC_CONSTANT_MACROS
 #define __STDC_CONSTANT_MACROS
 #endif
+
+#ifdef DIVINE_RELAX_WARNINGS
+DIVINE_RELAX_WARNINGS
+#endif
+
 #include <llvm/Linker/Linker.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/GlobalValue.h>
@@ -37,6 +42,10 @@
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
+
+#ifdef DIVINE_RELAX_WARNINGS
+DIVINE_UNRELAX_WARNINGS
+#endif
 
 #include <brick-assert>
 #include <brick-types>
