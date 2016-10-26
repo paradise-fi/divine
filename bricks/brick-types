@@ -533,8 +533,12 @@ struct Union : Comparable {
         return _discriminator == 0;
     }
 
-    explicit operator bool() const {
-        return !empty();
+    explicit operator bool() const
+    {
+        auto rv = const_cast< Union* >( this )->apply( []( const auto & x ) -> bool { return !!x; } );
+        if ( rv.isNothing() )
+            return false;
+        return true;
     }
 
     template< typename T >
@@ -1208,25 +1212,24 @@ struct UnionInstances {
 struct UnionTest {
     TEST(basic) {
         Union< int > u( 1 );
-        ASSERT( !!u );
         ASSERT( !u.empty() );
         ASSERT( u.is< int >() );
         ASSERT_EQ( u.get< int >(), 1 );
         u = 2; // move
-        ASSERT( !!u );
+        ASSERT( !u.empty() );
         ASSERT_EQ( u.get< int >(), 2 );
         int i = 3;
         u = i; // copy
-        ASSERT( !!u );
+        ASSERT( !u.empty() );
         ASSERT_EQ( u.get< int >(), 3 );
         u = types::Union< int >( 4 );
         ASSERT( u.is< int >() );
         ASSERT_EQ( u.get< int >(), 4 );
         u = types::Union< int >();
-        ASSERT( !u );
+        ASSERT( u.empty() );
         ASSERT( !u.is< int >() );
         u = 5;
-        ASSERT( u );
+        ASSERT( !u.empty() );
         ASSERT( u.is< int >() );
         ASSERT_EQ( u.get< int >(), 5 );
     }
@@ -1245,12 +1248,12 @@ struct UnionTest {
         ASSERT( wierd.empty() );
 
         wierd = 2L;
-        ASSERT( !!wierd );
+        ASSERT( !wierd.empty() );
         ASSERT( wierd.is< long >() );
         ASSERT_EQ( wierd.get< long >(), 2L );
 
         wierd = Move();
-        ASSERT( !!wierd );
+        ASSERT( !wierd.empty() );
         ASSERT( wierd.is< Move >() );
     }
 
