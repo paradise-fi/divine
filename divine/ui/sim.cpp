@@ -62,8 +62,9 @@ struct Start {};
 struct Break
 {
     std::vector< std::string > where;
-    bool remove, list;
-    Break() : remove( false ), list( false ) {}
+    bool list;
+    brick::types::Union< std::string, int > del;
+    Break() : list( false ) {}
 };
 
 struct StepI : WithSteps {};
@@ -379,10 +380,31 @@ struct Interpreter
 
     void go( command::Break b )
     {
-        if ( b.list )
+        auto &prog = _bc->program();
+        if ( b.list || !b.del.empty() )
         {
+            std::set< vm::CodePointer > remove;
+            int id = 1;
+            if ( _bps.empty() )
+                std::cerr << "no breakpoints defined" << std::endl;
             for ( auto pc : _bps )
-                std::cerr << _bc->program().llvmfunction( pc )->getName().str() << std::endl;
+            {
+                auto fun = prog.llvmfunction( pc )->getName().str();
+                auto insn = prog.instruction( pc ).op;
+                insn = insn ?: prog.instruction( pc + 1 ).op;
+                std::cerr << std::setw( 2 ) << id << ": " << fun << " +" << pc.instruction() << " (at "
+                          << vm::location( *llvm::cast< llvm::Instruction >( insn ) ) << ")";
+                if ( !b.del.empty() && ( id == b.del ||
+                                         ( !pc.instruction() && b.del == fun ) ) )
+                {
+                    remove.insert( pc );
+                    std::cerr << " [deleted]";
+                }
+                std::cerr << std::endl;
+                ++ id;
+            }
+            for ( auto r : remove )
+                _bps.erase( r );
             return;
         }
 
@@ -391,10 +413,7 @@ struct Interpreter
             auto pc = _bc->program().functionByName( w );
             if ( pc.null() )
                 throw brick::except::Error( "Could not find " + w );
-            if ( b.remove )
-                _bps.erase( pc );
-            else
-                _bps.insert( pc );
+            _bps.insert( pc );
         }
     }
 
@@ -545,12 +564,19 @@ char *prompt( EditLine *el )
 
 void Interpreter::command( cmd::Tokens tok )
 {
-    auto v = cmd::make_validator();
+    auto v = cmd::make_validator()->
+             add( "function", []( std::string s, auto good, auto bad )
+                  {
+                      if ( isdigit( s[0] ) ) /* FIXME! zisit, kde sa to rozbije */
+                          return bad( cmd::BadFormat, "function names cannot start with a digit" );
+                      return good( s );
+                  } );
 
     auto varopts = cmd::make_option_set< command::WithVar >( v )
         .option( "[{string}]", &command::WithVar::var, "a variable reference"s );
     auto breakopts = cmd::make_option_set< command::Break >( v )
-        .option( "[--delete]", &command::Break::remove, "delete the designated breakpoint(s)"s )
+        .option( "[--delete {int}|--delete {function}]",
+                 &command::Break::del, "delete the designated breakpoint(s)"s )
         .option( "[--list]", &command::Break::list, "list breakpoints"s );
     auto showopts = cmd::make_option_set< command::Show >( v )
         .option( "[--raw]", &command::Show::raw, "dump raw data"s );
