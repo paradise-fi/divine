@@ -16,39 +16,23 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#pragma once
-
-#include <divine/vm/value.hpp>
-#include <runtime/divine.h>
+#include <divine/vm/setup.hpp>
+#include <divine/vm/debug.hpp>
+#include <divine/vm/eval.hpp>
 
 namespace divine {
 namespace vm {
 namespace setup {
 
 template< typename Context >
-void boot( Context &ctx )
+void dbg_boot( Context &ctx )
 {
-    ctx.heap().reset();
-    auto data = ctx.program().exportHeap( ctx.heap() );
-    ctx.set( _VM_CR_Constants, data.first );
-    ctx.set( _VM_CR_Globals, data.second );
-    auto ipc = ctx.program().functionByName( "__boot" );
-    auto envptr = ctx.program().globalByName( "__sys_env" );
-    ctx.enter( ipc, nullPointerV(), value::Pointer( envptr ) );
-    ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Mask;
+    boot( ctx );
+    vm::Eval< typename Context::Program, Context, vm::value::Void > eval( ctx.program(), ctx );
+    eval.run();
 }
 
-template< typename Context >
-void scheduler( Context &ctx )
-{
-    ctx.enter( ctx.get( _VM_CR_Scheduler ).pointer, nullPointerV() );
-    ctx.set( _VM_CR_IntFrame, ctx.frame() );
-    ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Mask;
-    ctx.flush_ptr2i();
-}
-
-template< typename Context >
-void dbg_boot( Context &ctx );
+template void dbg_boot< DebugContext< Program, CowHeap > >( DebugContext< Program, CowHeap > & );
 
 }
 }

@@ -163,9 +163,7 @@ void Verify::run()
     auto hasher = ex._states.hasher; /* fixme */
 
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( _bc->program() );
-    vm::setup::boot( dbg );
-    vm::Eval< vm::Program, decltype( dbg ), vm::value::Void > dbg_eval( dbg.program(), dbg );
-    dbg_eval.run();
+    vm::setup::dbg_boot( dbg );
 
     std::deque< vm::CowHeap::Snapshot > trace;
     std::vector< std::vector< int > > choices;
@@ -223,9 +221,10 @@ void Verify::run()
     dbg.load( ctx );
     std::copy( choices.back().begin(), choices.back().end(), std::back_inserter( dbg._choices ) );
     vm::setup::scheduler( dbg );
-    vm::Stepper step;
+    using Stepper = vm::Stepper< decltype( dbg ) >;
+    Stepper step;
     step._stop_on_error = true;
-    step.run( dbg, []( auto x ) { return x; }, []() {}, vm::Stepper::Quiet );
+    step.run( dbg, []( auto x ) { return x; }, []() {}, Stepper::Quiet );
     dump( dbg, dbg.snapshot(), _backtraceMaxDepth );
 }
 

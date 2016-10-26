@@ -22,7 +22,6 @@
 #include <divine/vm/debug.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/value.hpp>
-#include <divine/vm/eval.hpp>
 #include <divine/vm/setup.hpp>
 #include <divine/vm/print.hpp>
 #include <set>
@@ -30,6 +29,7 @@
 namespace divine {
 namespace vm {
 
+template< typename Context >
 struct Stepper
 {
     GenericPointer _frame, _frame_cur, _parent_cur;
@@ -68,7 +68,7 @@ struct Stepper
         return p.second && p.first >= p.second;
     }
 
-    template< typename Context, typename Eval >
+    template< typename Eval >
     bool check( Context &ctx, Eval &eval, bool breakpoints )
     {
         if ( breakpoints )
@@ -124,7 +124,7 @@ struct Stepper
         ++ _jumps.first;
     }
 
-    template< typename Context, typename YieldState >
+    template< typename YieldState >
     bool schedule( Context &ctx, YieldState yield )
     {
         if ( !ctx.frame().null() )
@@ -138,71 +138,12 @@ struct Stepper
         return true;
     }
 
+    using Snapshot = typename Context::Heap::Snapshot;
     enum Verbosity { Quiet, TraceOnly, PrintSource, PrintInstructions };
+    using YieldState = std::function< Snapshot( Snapshot ) >;
+    using SchedPolicy = std::function< void() >;
 
-    template< typename Context, typename YieldState, typename SchedPolicy >
-    void run( Context &ctx, YieldState yield, SchedPolicy sched_policy, Verbosity verb )
-    {
-        Eval< typename Context::Program, Context, value::Void > eval( ctx.program(), ctx );
-        bool in_fault = !_stop_on_fault ||
-                        eval.pc().function() == ctx.get( _VM_CR_FaultHandler ).pointer.object();
-        bool in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
-        bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-        bool moved = false;
-
-        while ( !ctx.frame().null() &&
-                ( ( _ff_kernel && in_kernel ) || !check( ctx, eval, moved ) ) &&
-                ( error_set || ( ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error ) == 0 ) &&
-                ( in_fault || eval.pc().function()
-                  != ctx.get( _VM_CR_FaultHandler ).pointer.object() ) )
-        {
-            in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
-            moved = true;
-
-            if ( in_kernel && _ff_kernel )
-                eval.advance();
-            else
-            {
-                in_frame( ctx.frame(), ctx.heap() );
-                eval.advance();
-                instruction( eval.instruction() );
-            }
-
-            if ( verb == PrintInstructions && ( !in_kernel || !_ff_kernel ) )
-            {
-                auto frame = ctx.frame();
-                std::string before = vm::print::instruction( eval, 2 );
-                eval.dispatch();
-                if ( ctx.heap().valid( frame ) )
-                {
-                    auto newframe = ctx.frame();
-                    ctx.set( _VM_CR_Frame, frame ); /* :-( */
-                    std::cerr << "  " << vm::print::instruction( eval, 2 ) << std::endl;
-                    ctx.set( _VM_CR_Frame, newframe );
-                }
-                else
-                    std::cerr << "  " << before << std::endl;
-            }
-            else
-                eval.dispatch();
-
-            if ( schedule( ctx, yield ) )
-                state();
-
-            in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
-            if ( !in_kernel || !_ff_kernel )
-                in_frame( ctx.frame(), ctx.heap() );
-
-            sched_policy();
-
-            if ( verb != Quiet )
-                for ( auto t : ctx._trace )
-                    std::cerr << "T: " << t << std::endl;
-            ctx._trace.clear();
-        }
-        ctx.sync_pc();
-    }
-
+    void run( Context &ctx, YieldState yield, SchedPolicy sched_policy, Verbosity verb );
 };
 
 }

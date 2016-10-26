@@ -113,6 +113,7 @@ struct Interpreter
     using BC = std::shared_ptr< vm::BitCode >;
     using DN = vm::DebugNode< vm::Program, vm::CowHeap >;
     using PointerV = Context::PointerV;
+    using Stepper = vm::Stepper< Context >;
 
     bool _exit;
     BC _bc;
@@ -343,20 +344,20 @@ struct Interpreter
             throw brick::except::Error( "the program has already terminated" );
     }
 
-    void run( vm::Stepper step, bool verbose )
+    void run( Stepper step, bool verbose )
     {
         check_running();
         step.run( _ctx,
                   [&]( auto snap ) { return newstate( snap ); },
                   [&]() { sched_policy(); },
-                  verbose ? vm::Stepper::PrintInstructions : vm::Stepper::TraceOnly );
+                  verbose ? Stepper::PrintInstructions : Stepper::TraceOnly );
     }
 
     void go( command::Exit ) { _exit = true; }
 
-    vm::Stepper stepper( command::WithSteps s, bool jmp )
+    Stepper stepper( command::WithSteps s, bool jmp )
     {
-        vm::Stepper step;
+        Stepper step;
         step._ff_kernel = !_debug_kernel;
         step._bps = _bps;
         check_running();
@@ -370,7 +371,7 @@ struct Interpreter
     void go( command::Start )
     {
         vm::setup::boot( _ctx );
-        vm::Stepper step;
+        Stepper step;
         step._bps.insert( _bc->program().functionByName( "main" ) );
         run( step, false );
         set( "$_", frameDN() );
@@ -424,7 +425,7 @@ struct Interpreter
 
     void go( command::Rewind re )
     {
-        vm::Stepper step;
+        Stepper step;
         step._instructions = std::make_pair( 1, 1 );
         auto tgt = get( re.var );
         _ctx.heap().restore( tgt.snapshot() );
@@ -507,7 +508,7 @@ struct Interpreter
 
         std::cerr << std::endl;
         _ctx._trace.clear();
-        vm::Stepper step;
+        Stepper step;
         step._instructions = std::make_pair( 1, 1 );
         run( step, false ); /* make 0 (user mode) steps */
     }
