@@ -10,6 +10,12 @@ body {
     padding: 0;
     background: white;
 }
+@media ( max-width: 80ch ), ( max-device-width: 80ch ) {
+    body {
+        margin: 0.5em;
+        max-width: none;
+    }
+}
 
 
 pre, tt, code {
@@ -33,11 +39,17 @@ a:link, a:visited, a:active { text-decoration: none; color: darkred; }
 a:link:hover, a:visited:hover, a:active:hover { text-decoration: none; color: darkblue; }
 
 pre#linkbar {
-    white-space: pre; background: #202020;
+    white-space: pre-wrap; background: #202020;
     margin-left: -1ch;
     margin-right: -1ch;
     text-align: center;
     font-family: inherit; padding: 4px; margin-top: 2ex; font-size: 80%;
+}
+
+@media ( max-width: 60ch ), ( max-device-width: 60ch ) {
+    pre#linkbar {
+        white-space: normal;
+    }
 }
 
 div#footer {
