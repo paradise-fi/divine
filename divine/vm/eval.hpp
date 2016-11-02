@@ -1548,6 +1548,7 @@ struct TContext : vm::Context< Prog, vm::MutableHeap >
         std::cerr << "T: " << this->_heap.read_string( tt.text ) << std::endl;
     }
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
+    void trace( vm::TraceInfo ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceSchedChoice ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceStateType ) { NOT_IMPLEMENTED(); }
 
