@@ -188,8 +188,8 @@ struct Abstraction : lart::Pass {
             [&]( llvm::LoadInst * i ) {
                 doLoad( i );
             },
-            [&]( llvm::StoreInst * ) {
-                /* TODO */
+            [&]( llvm::StoreInst * i ) {
+                doStore( i );
             },
             [&]( llvm::ICmpInst * i ) {
                  doICmp( i );
@@ -241,6 +241,29 @@ struct Abstraction : lart::Pass {
         auto rty = type_store[ i->getType() ]->getPointerTo();
         auto tag = "lart.abstract.load." + getTypeName( i->getType() );
         createAnonymousCall( i, rty, tag, args);
+    }
+
+    void doStore( llvm::StoreInst * i ) {
+        auto val = value_store.contains( i->getOperand( 0 ) )
+                 ? value_store[ i->getOperand( 0 ) ]
+                 : i->getOperand( 0 );
+        auto type = val->getType();
+
+        if ( llvm::isa< llvm::Argument >( val ) || llvm::isa< llvm::Constant >( val ) )
+            val = lift( val, i );
+        auto ptr = i->getOperand( 1 );
+        if ( !isAbstractType( ptr->getType() ) )
+            ptr = value_store.contains( ptr ) ? value_store[ ptr ] : lift( ptr, i );
+        auto args = { val, ptr };
+        auto rty = llvm::Type::getVoidTy( i->getContext() );
+
+        std::string name = getTypeName( type );
+        if ( isAbstractType( type ) )
+            for ( auto it = type_store.begin(); it != type_store.end(); ++it )
+                if ( it->second == type )
+                    name = getTypeName( it->first->getPointerElementType() );
+        auto tag = "lart.abstract.store." + name;
+        createAnonymousCall( i, rty, tag, args );
     }
 
     void doICmp( llvm::ICmpInst * i ) {
