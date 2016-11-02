@@ -822,24 +822,29 @@ struct Substitution : lart::Pass {
                 funToArgMap.insert( { fn, { arg } } );
         }
 
-        for ( auto & fn : funToArgMap ) {
+        std::vector< llvm::Function * > unordered;
+        for ( auto it : funToArgMap )
+            unordered.push_back( it.first );
+        auto order = analysis::callPostorder< llvm::Function * >( m, unordered );
+
+        for ( auto & fn : order ) {
             std::vector < T * > arg_types;
-            for ( auto &a : fn.first->args() ) {
+            for ( auto &a : fn->args() ) {
                 auto t = isAbstractType( a.getType() ) ? abstractionType : a.getType();
                 arg_types.push_back( t );
             }
-            auto rty = isAbstractType( fn.first->getFunctionType()->getReturnType() )
+            auto rty = isAbstractType( fn->getFunctionType()->getReturnType() )
                      ? abstractionType
-                     : fn.first->getFunctionType()->getReturnType();
+                     : fn->getFunctionType()->getReturnType();
             auto fty = llvm::FunctionType::get( rty,
                                                 arg_types,
-                                                fn.first->getFunctionType()->isVarArg() );
-            auto newfn = cloneFunction( fn.first, fty );
+                                                fn->getFunctionType()->isVarArg() );
+            auto newfn = cloneFunction( fn, fty );
 
-            assert( !function_store.contains( fn.first ) );
-            function_store.insert( { fn.first, newfn } );
+            assert( !function_store.contains( fn ) );
+            function_store.insert( { fn, newfn } );
 
-            for ( auto & arg : fn.second ) {
+            for ( auto & arg : funToArgMap[ fn ] ) {
                 auto newarg = getArgument( newfn, arg->getArgNo() );
                 abstraction_store.insert( { newarg, newarg } );
                 propagateAndProcess( m, newarg );
