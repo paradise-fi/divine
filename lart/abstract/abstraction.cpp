@@ -414,20 +414,51 @@ struct Abstraction : lart::Pass {
             toAnnotate.insert( { call->getCalledFunction(), find->second } );
         } else {
             llvm::ArrayRef< T * > params = arg_types;
-            auto stored = storedFn( fn, params );
 
-            if ( !stored ) {
-		        auto fty = llvm::FunctionType::get( fn->getFunctionType()->getReturnType(),
+            llvm::Function * stored = nullptr;
+            if ( fn->getFunctionType()->params() == params && fn->getReturnType() == at )
+                stored = fn;
+            else
+                stored = storedFunction( fn, params );
+
+            if ( !stored && function_store.contains( fn ) ) {
+                params = fn->getFunctionType()->params();
+                fn = storedFunction( fn, params );
+            }
+
+            if ( fn->empty() ) {
+                assert( fn->getName().startswith( "lart" ) );
+                stored = fn;
+            } else if ( !stored ) {
+                auto fty = llvm::FunctionType::get( fn->getFunctionType()->getReturnType(),
                                                     arg_types,
                                                     fn->getFunctionType()->isVarArg() );
                 stored = cloneFunction( fn, fty );
+                preprocessFunction( stored );
+
                 for ( auto &arg : stored->args() )
                     if ( arg.getType() == at )
                         value_store.insert( { &arg, &arg } );
+
                 for ( auto &arg : stored->args() )
                     if ( arg.getType() == at )
-                        stored = propagateArgument( stored, &arg, t );
-                storeFunction( fn );
+                        propagateValue( &arg, at );
+
+                //FIXME refactor with processFunction
+                bool changeReturn = query::query( *stored ).flatten()
+                            .map( query::refToPtr )
+                            .map( query::llvmdyncast< llvm::ReturnInst > )
+                            .filter( query::notnull )
+                            .any( [&]( llvm::ReturnInst * ret ) {
+                                return isAbstractType( ret->getReturnValue()->getType() );
+                            } );
+
+                if ( changeReturn && stored->getReturnType() != at ) {
+                    functionsToRemove.push_back( stored );
+                    stored = changeReturnValue( stored, at );
+                }
+
+                storeFunction( fn, stored );
             }
 
             llvm::IRBuilder<> irb( i );
@@ -515,14 +546,19 @@ struct Abstraction : lart::Pass {
         return irb.CreateCall( call, args );
     }
 
-    F * storeFunction( F * f, bool change_ret = false, T * rty = nullptr ) {
-        auto newf = change_ret ? lart::changeReturnValue( f, rty ) : f;
+    F * storeFunction( F * fn, bool changeReturn = false, T * rty = nullptr ) {
+        F * newfn = changeReturn
+                  ? changeReturnValue( fn, rty )
+                  : fn;
+        storeFunction( fn, newfn );
+        return newfn;
+    }
 
-        if ( function_store.contains( f ) )
-		    function_store[ f ].push_back( newf );
-		else
-		    function_store[ f ] = { newf };
-        return newf;
+    void storeFunction( F * fn, F * tostore ) {
+        if ( function_store.contains( fn ) )
+            function_store[ fn ].push_back( tostore );
+        else
+            function_store[ fn ] = { tostore };
     }
 
     void storeType( llvm::CallInst * call ) {
@@ -565,19 +601,6 @@ struct Abstraction : lart::Pass {
         for ( auto call : toRemove )
             call->eraseFromParent();
     }
-
-    //Function manipulations
-	F * changeReturnValue( F *fn, T *rty ) {
-        auto newfn = lart::changeReturnValue( fn, rty );
-
-        auto find = function_store.find( fn );
-        if ( find != function_store.end() )
-            function_store.erase( find );
-        fn->eraseFromParent();
-
-        return newfn;
-	}
-
     // Anonymous calls
     void createAnonymousCall( I * i, T * rty, const std::string &tag,
                            std::vector< V * > args = {} )
@@ -597,8 +620,6 @@ struct Abstraction : lart::Pass {
 
         toAnnotate.insert( { acall->getCalledFunction(), tag } );
         value_store.insert( { i, acall } );
-
-        removeRedundantLifts( i, acall );
     }
 
     void annotateAnonymous( F * f, std::string name ) {
@@ -654,8 +675,8 @@ private:
     template < typename K, typename V >
     using FunctionStore = lart::util::Store< std::map < K, std::vector< V > > >;
 
-	F * storedFn( F * fn, llvm::ArrayRef< T * > &params ) {
-    	if ( function_store.contains( fn ) )
+	F * storedFunction( F * fn, llvm::ArrayRef< T * > &params ) {
+        if ( function_store.contains( fn ) )
         	for ( auto store_fn : function_store[ fn ] )
             	if ( store_fn->getFunctionType()->params() == params )
                 	return store_fn;
@@ -674,6 +695,9 @@ private:
 
     // functions to annotate
     lart::util::Store< std::map < F *, std::string > > toAnnotate;
+
+    // changed functions
+    std::vector< F * > functionsToRemove;
 
     static llvm::StringRef _abstractName;
 
