@@ -39,8 +39,8 @@ Annotation getAnnotation( llvm::CallInst * call ) {
 	assert( isAbstractAnnotation( call ) );
 	auto type = getAnnotationType( call );
 	auto value = call->getOperand( 0 );
-	assert( value->getNumUses() == 3 );
-	auto alloca = llvm::cast< llvm::AllocaInst >( value->stripPointerCasts() );
+	//TODO check uses only in function
+    auto alloca = llvm::cast< llvm::AllocaInst >( value->stripPointerCasts() );
 	return Annotation( type, alloca, value );
 }
 
@@ -48,12 +48,12 @@ std::vector< Annotation > getAbstractAnnotations( llvm::Module & m ) {
 	auto f =  m.getFunction( "llvm.var.annotation" );
 	std::vector< Annotation > annotations;
 
-	for ( auto user : f->users() ) {
+	if ( f != nullptr )
+    for ( auto user : f->users() ) {
 		auto call = llvm::cast< llvm::CallInst >( user );
 		if ( isAbstractAnnotation( call ) )
 			annotations.push_back( getAnnotation( call ) );
 	}
-
 	return annotations;
 }
 
