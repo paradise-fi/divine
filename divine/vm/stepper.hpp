@@ -35,6 +35,7 @@ struct Stepper
     GenericPointer _frame, _frame_cur, _parent_cur;
     bool _ff_kernel;
     bool _stop_on_fault, _stop_on_error;
+    bool _sigint;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
     std::pair< std::string, int > _line;
     std::set< CodePointer > _bps;
@@ -44,9 +45,10 @@ struct Stepper
           _frame_cur( nullPointer() ),
           _parent_cur( nullPointer() ),
           _ff_kernel( false ),
+          _stop_on_fault( false ), _stop_on_error( true ),
+          _sigint( false ),
           _lines( 0, 0 ), _instructions( 0, 0 ),
           _states( 0, 0 ), _jumps( 0, 0 ),
-          _stop_on_fault( false ), _stop_on_error( true ),
           _line( "", 0 )
     {}
 

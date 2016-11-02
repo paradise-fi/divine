@@ -34,7 +34,7 @@ void Stepper< Context >::run( Context &ctx, YieldState yield, SchedPolicy sched_
     bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
     bool moved = false;
 
-    while ( !ctx.frame().null() &&
+    while ( !_sigint && !ctx.frame().null() &&
             ( ( _ff_kernel && in_kernel ) || !check( ctx, eval, moved ) ) &&
             ( error_set || ( ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error ) == 0 ) &&
             ( in_fault || eval.pc().function()

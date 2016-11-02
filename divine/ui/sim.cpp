@@ -135,6 +135,8 @@ struct Interpreter
     char *_prompt;
     int _state_count;
 
+    static bool *_sigint;
+
     void command( cmd::Tokens cmd );
     char *prompt() { return _prompt; }
 
@@ -348,6 +350,8 @@ struct Interpreter
     void run( Stepper step, bool verbose )
     {
         check_running();
+        _sigint = &step._sigint;
+        brick::types::Defer _( [](){ _sigint = nullptr; } );
         step.run( _ctx,
                   [&]( auto snap ) { return newstate( snap ); },
                   [&]() { sched_policy(); },
@@ -557,11 +561,21 @@ struct Interpreter
     void go( command::Help ) { UNREACHABLE( "impossible case" ); }
 };
 
+bool *Interpreter::_sigint = nullptr;
+
 char *prompt( EditLine *el )
 {
     Interpreter *interp;
     el_get( el, EL_CLIENTDATA, &interp );
     return interp->prompt();
+}
+
+void sigint_handler( int raised )
+{
+    if ( raised != SIGINT )
+        abort();
+    if ( Interpreter::_sigint )
+        *Interpreter::_sigint = true;
 }
 
 void Interpreter::command( cmd::Tokens tok )
@@ -656,6 +670,7 @@ void Sim::run()
     el_set( el, EL_CLIENTDATA, &interp );
     el_set( el, EL_EDITOR, "emacs" );
     el_source( el, nullptr );
+    signal( SIGINT, sim::sigint_handler );
 
     std::cerr << logo << std::endl;
     std::cerr << "Welcome to 'divine sim', an interactive debugger. Type 'help' to get started."
