@@ -41,9 +41,6 @@ struct Abstraction : lart::Pass {
     using F = llvm::Function;
 	using Dependencies = std::vector< V * >;
 
-    template < typename T >
-    using PostOrder = llvm::ReversePostOrderTraversal< const T * >;
-
 	virtual ~Abstraction() {}
 
 	static PassMeta meta() {
@@ -70,38 +67,15 @@ struct Abstraction : lart::Pass {
                 functions.insert( { parent, { a } } );
         }
 
-        auto void_t = llvm::Type::getVoidTy( *_ctx );
-        auto fty = llvm::FunctionType::get( void_t, false );
-        F * root = llvm::cast< F >( m.getOrInsertFunction( "__callgraph_root", fty ) );
-
-        auto bb = llvm::BasicBlock::Create( *_ctx, "entry", root );
-        llvm::IRBuilder<> irb( bb );
-        for ( auto &f : functions ) {
-            std::vector< V * > args;
-            for ( auto &arg : f.first->args() )
-                args.push_back( llvm::UndefValue::get( arg.getType() ) );
-
-            irb.CreateCall( f.first, args );
-        }
-
-        std::vector< F * > order;
-        {
-            llvm::CallGraph cg( m );
-            auto node = cg[ root ];
-            for ( auto it = po_begin( node ); it != po_end( node ); ++it)
-                if( (*it)->getFunction() != root )
-                    order.push_back( (*it)->getFunction() );
-        }
-
-        root->eraseFromParent();
+        std::vector< llvm::Function * > unordered;
+        for ( auto it : functions )
+            unordered.push_back( it.first );
+        auto order = analysis::callPostorder< F * >( m, unordered );
 
         for ( auto &current : order ) {
-            auto it = functions.find( current );
-            if ( it != functions.end() ) {
-                preprocessFunction( it->first );
-                for ( auto annot : it->second )
-                    processFunction( it->first, annot.allocaInst );
-            }
+            preprocessFunction( current );
+            for ( auto annot : functions[ current ] )
+                processFunction( current, annot.allocaInst );
         }
         //TODO solve main
 
@@ -780,38 +754,7 @@ struct Substitution : lart::Pass {
                                  || funToValMap.contains( fn );
                         } ).freeze();
 
-        //TODO refactor out postorder
-        auto & ctx = m.getContext();
-        auto void_t = llvm::Type::getVoidTy( ctx );
-        auto fty = llvm::FunctionType::get( void_t, false );
-        llvm::Function * root =
-            llvm::cast< llvm::Function >( m.getOrInsertFunction( "__callgraph_root", fty ) );
-
-        auto bb = llvm::BasicBlock::Create( ctx, "entry", root );
-        llvm::IRBuilder<> irb( bb );
-        for ( auto &f : retAbsVal ) {
-            std::vector< llvm::Value * > args;
-            for ( auto &arg : f->args() )
-                args.push_back( llvm::UndefValue::get( arg.getType() ) );
-
-            irb.CreateCall( f, args );
-        }
-
-        std::vector< llvm::Function * > order;
-        {
-            llvm::CallGraph cg( m );
-            auto node = cg[ root ];
-            for ( auto it = po_begin( node ); it != po_end( node ); ++it) {
-                auto fn = (*it)->getFunction();
-                if ( fn != nullptr
-                  && fn != root
-                  && std::find( retAbsVal.begin(), retAbsVal.end(), fn ) != retAbsVal.end() ) {
-                     order.push_back( fn );
-                }
-            }
-        }
-
-        root->eraseFromParent();
+        auto order = analysis::callPostorder< llvm::Function * >( m, retAbsVal );
 
         for ( auto fn : order ) {
             processAbstractReturn( fn );
@@ -880,7 +823,6 @@ struct Substitution : lart::Pass {
         }
 
         for ( auto & fn : funToArgMap ) {
-
             std::vector < T * > arg_types;
             for ( auto &a : fn.first->args() ) {
                 auto t = isAbstractType( a.getType() ) ? abstractionType : a.getType();
@@ -893,14 +835,16 @@ struct Substitution : lart::Pass {
                                                 arg_types,
                                                 fn.first->getFunctionType()->isVarArg() );
             auto newfn = cloneFunction( fn.first, fty );
+
+            assert( !function_store.contains( fn.first ) );
+            function_store.insert( { fn.first, newfn } );
+
             for ( auto & arg : fn.second ) {
                 auto newarg = getArgument( newfn, arg->getArgNo() );
                 abstraction_store.insert( { newarg, newarg } );
                 propagateAndProcess( m, newarg );
             }
 
-            assert( !function_store.contains( fn.first ) );
-            function_store.insert( { fn.first, newfn } );
         }
     }
 
@@ -971,7 +915,6 @@ struct Substitution : lart::Pass {
     }
 
     void processFunctionCall( llvm::Function * fn, llvm::CallInst * call ) {
-
         std::vector < llvm::Value * > args;
 
         for ( auto &arg : call->arg_operands() ) {
@@ -1012,7 +955,6 @@ struct Substitution : lart::Pass {
 
     void doPhi( llvm::PHINode * phi ) {
         unsigned int niv = phi->getNumIncomingValues();
-
 
         llvm::IRBuilder<> irb( phi );
         auto nphi = irb.CreatePHI( abstractionType, niv );
