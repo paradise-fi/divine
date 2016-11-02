@@ -192,25 +192,25 @@ struct Abstraction : lart::Pass {
                 doStore( i );
             },
             [&]( llvm::ICmpInst * i ) {
-                 doICmp( i );
+                doICmp( i );
             },
             [&]( llvm::SelectInst * i ) {
-                doSelect( i, t );
+                doSelect( i );
             },
             [&]( llvm::BranchInst * i ) {
                 doBranch( i );
    	        },
 			[&]( llvm::BinaryOperator * i ) {
-				doBinary( i, t );
+				doBinary( i );
 			},
 			[&]( llvm::CastInst * i ) {
                 doCast( i );
             },
 			[&]( llvm::PHINode * i ) {
-                doPhi( i, t );
+                doPhi( i );
             },
 			[&]( llvm::CallInst * i ) {
-				doCall( i, t );
+				doCall( i );
             },
  			[&]( llvm::ReturnInst * i ) {
                 doReturn( i );
@@ -232,13 +232,13 @@ struct Abstraction : lart::Pass {
 
     void doAlloca( llvm::AllocaInst * i ) {
         assert( !i->isArrayAllocation() );
-        auto rty = type_store[ i->getAllocatedType() ]->getPointerTo();
+        auto rty = type_store[ i->getType() ];
         createNamedCall( i, rty, "lart.abstract.alloca." + getTypeName( i->getAllocatedType() ) );
     }
 
     void doLoad( llvm::LoadInst * i ) {
         auto args = { value_store[ i->getOperand( 0 ) ] };
-        auto rty = type_store[ i->getType() ]->getPointerTo();
+        auto rty = type_store[ i->getType() ];
         auto tag = "lart.abstract.load." + getTypeName( i->getType() );
         createAnonymousCall( i, rty, tag, args);
     }
@@ -270,10 +270,10 @@ struct Abstraction : lart::Pass {
 	    auto args = getBinaryArgs( i );
         auto tag = "lart.abstract.icmp." + predicate.at( i->getPredicate() );
         auto bt = bool_t( *_ctx );
-		createAnonymousCall( i, type_store[ bt ]->getPointerTo(), tag, args );
+		createAnonymousCall( i, type_store[ bt ], tag, args );
     }
 
-    void doSelect( llvm::SelectInst * i, T * t ) {
+    void doSelect( llvm::SelectInst * i ) {
         auto cond = value_store.contains( i->getCondition() )
                     ? explicate( i, i->getCondition() )
                     : i->getCondition();
@@ -282,9 +282,9 @@ struct Abstraction : lart::Pass {
 		auto fv = i->getFalseValue();
 
         if ( !isAbstractType( tv->getType() ) )
-            tv = value_store.contains( tv ) ? value_store[ tv ] : lift( tv, t, i );
+            tv = value_store.contains( tv ) ? value_store[ tv ] : lift( tv, i );
         if ( !isAbstractType( fv->getType() ) )
-            fv = value_store.contains( fv ) ? value_store[ fv ] : lift( fv, t, i );
+            fv = value_store.contains( fv ) ? value_store[ fv ] : lift( fv, i );
         llvm::IRBuilder<> irb( i );
         auto sub = irb.CreateSelect( cond, tv, fv );
         value_store.insert( { i, sub } );
@@ -307,10 +307,10 @@ struct Abstraction : lart::Pass {
         }
     }
 
-	void doBinary( llvm::BinaryOperator * i, T * t ) {
+	void doBinary( llvm::BinaryOperator * i ) {
         auto args = getBinaryArgs( i );
         auto tag = "lart.abstract." + std::string( i->getOpcodeName() );
-        auto rty = type_store[ t ]->getPointerTo();
+        auto rty = type_store[ i->getType() ];
         createAnonymousCall( i, rty, tag, args );
     }
 
@@ -318,16 +318,14 @@ struct Abstraction : lart::Pass {
         auto args = getUnaryArgs( i );
         auto tag = "lart.abstract." + std::string( i->getOpcodeName() ) + "."
                    + getTypeName( i->getSrcTy() ) + "." + getTypeName( i->getDestTy() );
-        auto type = i->getDestTy()->isPointerTy()
-                  ? i->getDestTy()->getPointerElementType()
-                  : i->getDestTy();
+        auto type = i->getDestTy();
         storeType( type );
-        auto rty = type_store[ type ]->getPointerTo();
+        auto rty = type_store[ type ];
         createAnonymousCall( i, rty, tag, args );
     }
 
-    void doPhi( llvm::PHINode * n, T * t ) {
-        auto at = type_store[ t ]->getPointerTo();
+    void doPhi( llvm::PHINode * n ) {
+        auto at = type_store[ n->getType() ];
 
         unsigned int niv = n->getNumIncomingValues();
         llvm::IRBuilder<> irb( n );
@@ -337,7 +335,7 @@ struct Abstraction : lart::Pass {
             n->replaceAllUsesWith( sub );
 
         for ( unsigned int i = 0; i < niv; ++i ) {
-            auto val = llvm::cast< I >( n->getIncomingValue( i ) );
+            auto val = llvm::cast< V >( n->getIncomingValue( i ) );
             auto parent = n->getIncomingBlock( i );
             if ( value_store.contains( val ) ) {
                 sub->addIncoming( value_store[ val ], parent );
@@ -346,16 +344,14 @@ struct Abstraction : lart::Pass {
                     sub->addIncoming( val, parent );
                 else {
                     auto nbb =  parent->splitBasicBlock( parent->getTerminator() );
-                    auto nval = lift( val, t, nbb->getTerminator() );
+                    auto nval = lift( val, nbb->getTerminator() );
                     sub->addIncoming( nval, nbb );
                 }
             }
         }
-
-        removeRedundantLifts( n, sub );
     }
 
-    void doCall( llvm::CallInst * i, T * t ) {
+    void doCall( llvm::CallInst * i ) {
         if ( isLift( i ) )
             handleLiftCall( i );
         else if ( isExplicate( i ) )
@@ -363,7 +359,7 @@ struct Abstraction : lart::Pass {
         else if ( i->getCalledFunction()->isIntrinsic() )
             handleIntrinsicCall( llvm::cast< llvm::IntrinsicInst >( i ) );
         else
-            handleGenericCall( i, t );
+            handleGenericCall( i );
     }
 
     void handleIntrinsicCall( llvm::IntrinsicInst * i ) {
@@ -387,15 +383,20 @@ struct Abstraction : lart::Pass {
         i->replaceAllUsesWith( clone );
     }
 
-    void handleGenericCall( llvm::CallInst * i, llvm::Type * t ) {
+    void handleGenericCall( llvm::CallInst * i ) {
         std::vector < V * > args;
 		std::vector < T * > arg_types;
 
-		auto at = type_store[ t ]->getPointerTo();
+		auto at = isAbstractType( i->getType() )
+                ? i->getType()
+                : type_store[ i->getType() ];
 
         for ( auto &arg : i->arg_operands() )
 			if ( value_store.contains( arg ) ) {
-            	arg_types.push_back( at );
+            	auto type = isAbstractType( arg->getType() )
+                     ? arg->getType()
+                     : type_store[ arg->getType() ];
+                arg_types.push_back( type );
                 args.push_back( value_store[ arg ] );
             } else {
             	arg_types.push_back( arg->getType() );
@@ -505,12 +506,12 @@ struct Abstraction : lart::Pass {
         return createCall( i, bool_t( *_ctx ), tag, { cond } );
     }
 
-    I * lift( V * v, T * t, I * to ) {
-        auto at = type_store[ t ]->getPointerTo();
+    I * lift( V * v, I * to ) {
+        auto at = type_store[ v->getType() ];
 
         llvm::IRBuilder<> irb( to );
         auto fty = llvm::FunctionType::get( at, { v->getType() }, false );
-        auto tag = "lart.abstract.lift";
+        auto tag = "lart.abstract.lift." + getTypeName( v->getType() );
         auto ncall = to->getModule()->getOrInsertFunction( tag, fty );
         auto sub = irb.CreateCall( ncall, v );
         //value_store.insert( { v, sub } ); //FIXME minimeze number of lifts
@@ -567,12 +568,15 @@ struct Abstraction : lart::Pass {
     }
 
     void storeType( T * t ) {
-        if ( t->isPointerTy() )
-            t = t->getPointerElementType();
-        if ( !type_store.contains( t ) ) {
-            auto at = lart::abstract::Type::get( t );
-            type_store.insert( { t, at } );
+        T * ptr = t->isPointerTy() ? t : t->getPointerTo();
+        T * type = t->isPointerTy() ? t->getPointerElementType() : t;
+
+        if ( !type_store.contains( type ) ) {
+            auto at = lart::abstract::Type::get( type );
+            type_store.insert( { type, at } );
+            type_store.insert( { ptr, at->getPointerTo() } );
             abstract_types.insert( at );
+            abstract_types.insert( at->getPointerTo() );
         }
     }
 
@@ -581,25 +585,15 @@ struct Abstraction : lart::Pass {
     }
 
     bool isLift( llvm::CallInst * call ) {
-        return call->getCalledFunction()->getName() == "lart.abstract.lift";
+        return call->getCalledFunction()->getName().startswith( "lart.abstract.lift" );
     }
 
     bool isExplicate( llvm::CallInst * call ) {
-        return call->getCalledFunction()->getName() == "lart.tristate.explicate";
+        return call->getCalledFunction()->getName().startswith( "lart.tristate.explicate" );
     }
 
-    void removeRedundantLifts( I * i, I * ni ) {
-        std::vector< llvm::CallInst * > toRemove;
-
-        for ( auto user : i->users() )
-            if ( auto call = llvm::dyn_cast< llvm::CallInst >( user ) )
-                if ( isLift( call ) ) {
-                    call->replaceAllUsesWith( ni );
-                    toRemove.push_back( call );
-                }
-
-        for ( auto call : toRemove )
-            call->eraseFromParent();
+    bool isArgument( llvm::Value * v ) {
+        return llvm::dyn_cast< llvm::Argument>( v ) != nullptr;
     }
     // Anonymous calls
     void createAnonymousCall( I * i, T * rty, const std::string &tag,
@@ -634,7 +628,7 @@ struct Abstraction : lart::Pass {
                 if ( isAbstractType( arg->getType() ) )
                     args.push_back( arg );
                 else {
-                    auto lifted = lift( arg, arg->getType(), call );
+                    auto lifted = lift( arg, call );
                     args.push_back( lifted );
                 }
 
