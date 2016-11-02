@@ -28,6 +28,12 @@ inline pointer __abstract_zero_construct( int i ) {
     return __abstract_zero_construct( value );
 }
 
+inline pointer * __abstract_zero_alloca_create() {
+    pointer *ptr = allocate< pointer >();
+    *ptr = __abstract_zero_construct();
+    return ptr;
+}
+
 inline pointer __abstract_zero_meet( pointer a, pointer b ) {
     if ( a->value == Zero::Domain::ZeroValue )
         return __abstract_zero_construct( b->value );
@@ -69,8 +75,16 @@ inline pointer __abstract_zero_shift( pointer a, pointer b ) {
 }
 
 extern "C" {
-    pointer __abstract_zero_create() _ROOT {
-        return __abstract_zero_construct();
+    pointer * __abstract_zero_alloca() _ROOT {
+        return __abstract_zero_alloca_create();
+    }
+
+    pointer __abstract_zero_load( pointer * a ) _ROOT {
+        return *a;
+    }
+
+    void __abstract_zero_store( pointer val, pointer * ptr ) _ROOT {
+        (*ptr)->value = val->value;
     }
 
     pointer __abstract_zero_lift( int i ) _ROOT {
@@ -138,6 +152,16 @@ extern "C" {
 
     pointer __abstract_zero_sext( pointer a ) _ROOT {
         return __abstract_zero_construct( a->value );
+    }
+
+    pointer __abstract_zero_bitcast( pointer a ) _ROOT {
+        return __abstract_zero_construct( a->value );
+    }
+
+    pointer * __abstract_zero_bitcast_p( pointer * a ) _ROOT {
+        auto ptr = __abstract_zero_alloca();
+        (*ptr)->value = (*a)->value;
+        return ptr;
     }
 
     // icmp operators
