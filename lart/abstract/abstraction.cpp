@@ -112,8 +112,14 @@ struct Abstraction : lart::Pass {
         return llvm::PreservedAnalyses::none();
 	}
 
-    F * propagateArgument( F * f, V * v, T * t ) {
-        auto atp = type_store[ t ]->getPointerTo();
+    void preprocessFunction( F * f ) {
+        // change switches to branching
+        auto lspass = llvm::createLowerSwitchPass();
+        lspass->runOnFunction( *f );
+        // unify exit nodes
+        llvm::UnifyFunctionExitNodes ufen;
+        ufen.runOnFunction( *f );
+    }
 
     void processFunction( F * f, I * entry ) {
         toAnnotate.clear();
