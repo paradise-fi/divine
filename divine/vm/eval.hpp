@@ -804,7 +804,8 @@ struct Eval
                 return;
             }
             case Intrinsic::trap:
-                NOT_IMPLEMENTED(); /* TODO */
+                fault( _VM_F_Control ) << "llvm.trap executed";
+                return;
             case Intrinsic::eh_typeid_for:
                 result( IntV( program().function( pc() ).typeID(
                                   operandCk< PointerV >( 0 ).cooked() ) ) );
