@@ -38,11 +38,11 @@
 #define PTHREAD_MUTEX_FAST_NP          PTHREAD_MUTEX_NORMAL
 #define PTHREAD_MUTEX_ADAPTIVE_NP      PTHREAD_MUTEX_FAST_NP
 
-#define PTHREAD_MUTEX_INITIALIZER      { .owner = 0, ._bitflags = 0x1 }
+#define PTHREAD_MUTEX_INITIALIZER      { .__owner = NULL, .__bitflags = 0x1 }
 
-#define PTHREAD_COND_INITIALIZER       { .mutex = NULL, .counter = 0, .initialized = 1 }
+#define PTHREAD_COND_INITIALIZER       { .__mutex = NULL, .__counter = 0, .__initialized = 1 }
 
-#define PTHREAD_ONCE_INIT              { .mtx = { ._bitflags = 0x3 } }
+#define PTHREAD_ONCE_INIT              { .__mtx = { .__bitflags = 0x3 } }
 
 #define PTHREAD_DESTRUCTOR_ITERATIONS  8
 
@@ -55,8 +55,7 @@
 #define PTHREAD_PROCESS_PRIVATE        0
 #define PTHREAD_PROCESS_SHARED         1
 
-#define PTHREAD_RWLOCK_INITIALIZER     { .wlock = ( PTHREAD_PROCESS_PRIVATE << 16  ) | _INITIALIZED_RWLOCK, \
-                                         .rlocks = NULL }
+#define PTHREAD_RWLOCK_INITIALIZER     { .__wrowner = 0, .__initialized = 1, .__processShared = 0, .__rlocks = NULL }
 #define PTHREAD_RWLOCK_WRITER_NONRECURSIVE_INITIALIZER_NP   PTHREAD_RWLOCK_INITIALIZER
 
 #define PTHREAD_BARRIER_SERIAL_THREAD  1
@@ -77,60 +76,58 @@ typedef int pthread_attr_t;
 typedef void *pthread_t;
 
 typedef struct {
-    unsigned short owner; // global thread id + 1
+    pthread_t __owner;
     union {
         struct {
-            unsigned short initialized:1;
-            unsigned short once:1;
-            unsigned short type:2;
-            unsigned short lockCounter:12; // change _mutex_adjust_count if bitfield size changes
+            unsigned short __initialized:1;
+            unsigned short __once:1;
+            unsigned short __type:2;
+            unsigned int __lockCounter:28; // change _mutex_adjust_count if bitfield size changes
         };
-        short _bitflags;
+        int __bitflags;
     };
 } pthread_mutex_t;
 
 typedef struct {
-    unsigned type; // just 2 bits needed
+    unsigned __type; // just 2 bits needed
 } pthread_mutexattr_t;
 
 typedef pthread_mutex_t pthread_spinlock_t;
 
 typedef struct {
-    pthread_mutex_t * mutex;
-    unsigned short counter;
-    unsigned short initialized;
+    pthread_mutex_t *__mutex;
+    unsigned short __counter;
+    unsigned short __initialized;
 } pthread_cond_t;
 
 typedef int pthread_condattr_t;
-typedef struct { pthread_mutex_t mtx; } pthread_once_t;
+typedef struct { pthread_mutex_t __mtx; } pthread_once_t;
 
-typedef struct _PerThreadData {
-    void ** data;
-    void ( *destructor )( void* );
-    struct _PerThreadData *next, *prev;
-} _PerThreadData;
-
-typedef _PerThreadData* pthread_key_t;
+typedef unsigned int pthread_key_t;
 
 typedef struct _ReadLock {
-   int rlock;
-   struct _ReadLock *next;
+    pthread_t __owner;
+    int __count;
+    struct _ReadLock *__next;
 } _ReadLock;
 
 typedef struct {
-    int wlock;
-    _ReadLock* rlocks;
+    pthread_t __wrowner;
+    _ReadLock* __rlocks;
+    // not bitfield, struct is padded anyway
+    char __processShared;
+    char __initialized;
 } pthread_rwlock_t;
 typedef int pthread_rwlockattr_t;
 
 typedef struct {
-    unsigned short counter;
+    unsigned short __counter;
     union {
         struct {
-            unsigned short initialized:1;
-            unsigned short nthreads:15;
+            unsigned short __initialized:1;
+            unsigned short __nthreads:15;
         };
-        short _bitflags;
+        short __bitflags;
     };
 } pthread_barrier_t;
 
