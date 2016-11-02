@@ -39,11 +39,15 @@ enum SleepingOn { NotSleeping = 0, Condition, Barrier };
 typedef void ( *sighandler_t )( int );
 typedef unsigned short ushort;
 
-struct Thread { // (user-space) information maintained for every (running)
+struct _PThread { // (user-space) information maintained for every (running)
                 // thread
-    Thread() {
-        std::memset( this, 0, sizeof( Thread ) );
+    _PThread() {
+        std::memset( this, 0, sizeof( _PThread ) );
     }
+
+    // avoid accidental copies
+    _PThread( const _PThread & ) = delete;
+    _PThread( _PThread && ) = delete;
 
     void *result;
     pthread_mutex_t *waiting_mutex;
@@ -127,16 +131,16 @@ static _PthreadTLSDestructors tlsDestructors;
 
 
 struct _PthreadTLS {
-    Thread *thread;
+    _PThread *thread;
     void *keys[0];
 
     size_t keyCount() {
-        return (__vm_obj_size( static_cast< void * >( this ) ) - sizeof( Thread * )) / sizeof( void * );
+        return (__vm_obj_size( static_cast< void * >( this ) ) - sizeof( _PThread * )) / sizeof( void * );
     }
     void makeFit( int count ) {
         int now = keyCount();
         if ( count > now ) {
-            __vm_obj_resize( static_cast< void * >( this ), sizeof( Thread * ) + count * sizeof( void * ) );
+            __vm_obj_resize( static_cast< void * >( this ), sizeof( _PThread * ) + count * sizeof( void * ) );
             for ( int i = now; i < count; ++i )
                 keys[ i ] = nullptr;
         }
@@ -150,7 +154,7 @@ struct _PthreadTLS {
             else
                 break;
         if ( toDrop )
-            __vm_obj_resize( static_cast< void * >( this ), sizeof( Thread * ) + (count - toDrop) * sizeof( void * ) );
+            __vm_obj_resize( static_cast< void * >( this ), sizeof( _PThread * ) + (count - toDrop) * sizeof( void * ) );
     }
     void *getKey( unsigned key ) {
         assert( key < tlsDestructors.count() );
@@ -210,11 +214,11 @@ static inline _PthreadTLS &tls( _DiOS_ThreadId tid ) {
     return *reinterpret_cast< _PthreadTLS * >( tid );
 }
 
-static inline Thread &getThread( pthread_t tid ) {
+static inline _PThread &getThread( pthread_t tid ) {
     return *tls( tid ).thread;
 }
 
-static inline Thread &getThread() {
+static inline _PThread &getThread() {
     return getThread( __dios_get_thread_id() );
 }
 
@@ -235,10 +239,10 @@ int pthread_atfork( void ( * )( void ), void ( * )( void ), void ( * )( void ) )
 static void __init_thread( const _DiOS_ThreadId gtid, const pthread_attr_t attr ) {
     __dios_assert( gtid );
 
-    if ( __vm_obj_size( gtid ) < sizeof( Thread * ) )
-        __vm_obj_resize( gtid, sizeof( Thread * ) );
-    auto *thread = static_cast< Thread * >( __vm_obj_make( sizeof( Thread ) ) );
-    new ( thread ) Thread();
+    if ( __vm_obj_size( gtid ) < sizeof( _PThread * ) )
+        __vm_obj_resize( gtid, sizeof( _PThread * ) );
+    auto *thread = static_cast< _PThread * >( __vm_obj_make( sizeof( _PThread ) ) );
+    new ( thread ) _PThread();
     tls( gtid ).thread = thread;
 
     // initialize thread metadata
@@ -260,7 +264,7 @@ void __pthread_initialize( void ) {
 
 // this is not run when thread's main returns!
 void _run_cleanup_handlers() {
-    Thread &thread = getThread();
+    _PThread &thread = getThread();
 
     CleanupHandler *handler = thread.cleanup_handlers;
     thread.cleanup_handlers = NULL;
@@ -278,7 +282,7 @@ static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_T
 
 void _cancel( __dios::FencedInterruptMask &mask ) {
     _DiOS_ThreadId tid = __dios_get_thread_id();
-    Thread &thread = getThread( tid );
+    _PThread &thread = getThread( tid );
     thread.sleeping = NotSleeping;
 
     // call all cleanup handlers
@@ -315,7 +319,7 @@ static void wait( __dios::FencedInterruptMask &mask, Cond &&cond )
 }
 
 static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadId tid ) {
-    Thread &thread = getThread( tid );
+    _PThread &thread = getThread( tid );
     // An  optional  destructor  function may be associated with each key
     // value.  At thread exit, if a key value has a non-NULL destructor
     // pointer, and the thread has a non-NULL value associated with that key,
@@ -350,7 +354,9 @@ static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_T
     thread.running = false;
 
     if ( thread.detached ) {
-        __vm_obj_free( &thread );
+        // leak &thread so that metadata can be read for use by deadlock
+        // tracking; &thread will be released by DIVINE when all pointers to it
+        // are lost
         __dios_kill_thread( tid );
     } else // wait until detach / join kills us
         wait( mask, [&] { return true; } );
@@ -367,7 +373,7 @@ extern "C" void __pthread_entry( void *_args ) {
 
     Entry *args = static_cast< Entry * >( _args );
     auto tid = __dios_get_thread_id();
-    Thread &thread = getThread( tid );
+    _PThread &thread = getThread( tid );
 
     // copy arguments
     void *arg = args->arg;
@@ -396,7 +402,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ) ) );
     args->entry = entry;
     args->arg = arg;
-    auto tid = __dios_start_thread( __pthread_entry, static_cast< void * >( args ), sizeof( Thread * ) );
+    auto tid = __dios_start_thread( __pthread_entry, static_cast< void * >( args ), sizeof( _PThread * ) );
     // init thread here, before it has first chance to run
     __init_thread( tid, attr == nullptr ? PTHREAD_CREATE_JOINABLE : *attr );
     *ptid = tid;
@@ -405,7 +411,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
 }
 
 int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **result ) {
-    Thread &thread = getThread( gtid );
+    _PThread &thread = getThread( gtid );
 
     if ( gtid == __dios_get_thread_id() )
         return EDEADLK;
@@ -429,8 +435,7 @@ int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **res
     }
 
     // kill the thread so that it does not pollute state space by ending
-    // nondeterministically
-    __vm_obj_free( &thread );
+    // nondeterministically, but leak it (see _clean_and_become_zombie)
     __dios_kill_thread( gtid );
     return 0;
 }
@@ -439,7 +444,7 @@ void pthread_exit( void *result ) {
     __dios::FencedInterruptMask mask;
 
     auto gtid = __dios_get_thread_id();
-    Thread &thread = getThread( gtid );
+    _PThread &thread = getThread( gtid );
     thread.result = result;
 
     if ( thread.is_main )
@@ -458,7 +463,7 @@ int pthread_join( pthread_t gtid, void **result ) {
 
 int pthread_detach( pthread_t gtid ) {
     __dios::FencedInterruptMask mask;
-    Thread &thread = getThread( gtid );
+    _PThread &thread = getThread( gtid );
 
     if ( thread.detached )
         return EINVAL;
@@ -468,8 +473,8 @@ int pthread_detach( pthread_t gtid ) {
 
     if ( ended ) {
         // kill the thread so that it does not pollute state space by ending
-        // nondeterministically
-        __vm_obj_free( &thread );
+        // nondeterministically, but leak the thread descritor (see
+        // _clean_and_become_zombie)
         __dios_kill_thread( gtid );
     }
     return 0;
@@ -657,7 +662,7 @@ int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) {
     return 0;
 }
 
-void _check_deadlock( pthread_mutex_t *mutex, _DiOS_ThreadId gtid ) {
+void _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) {
     // note: the cycle is detected first time it occurs, therefore it must go
     // through this mutex, for this reason, we don't need to keep closed set of
     // visited threads and mutexes.
@@ -665,38 +670,37 @@ void _check_deadlock( pthread_mutex_t *mutex, _DiOS_ThreadId gtid ) {
     // 'deadlocked' attribute of Thread struct.
 
     while ( mutex && mutex->__owner ) {
-        _DiOS_ThreadId ownertid = mutex->__owner;
-        Thread &owner = getThread( ownertid );
-        if ( ownertid == gtid ) {
-            getThread( gtid ).deadlocked = owner.deadlocked = true;
-            return __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex cycle closed" );
+        _PThread *owner = mutex->__owner;
+        if ( owner == &tid ) {
+            tid.deadlocked = owner->deadlocked = true;
+            return __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: mutex cycle closed, circular waiting" );
         }
-        if ( owner.deadlocked ) {
-            getThread( gtid ).deadlocked = true;
-            return __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: waiting for deadlocked thread" );
+        if ( owner->deadlocked ) {
+            tid.deadlocked = true;
+            return __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: waiting for a deadlocked thread" );
         }
-        if ( !owner.running ) {
-            getThread( gtid ).deadlocked = true;
-            return __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: Mutex locked by dead thread" );
+        if ( !owner->running ) {
+            tid.deadlocked = true;
+            return __dios_fault( _VM_Fault::_VM_F_Locking, "Deadlock: mutex locked by a dead thread" );
         }
-        mutex = owner.waiting_mutex;
+        mutex = owner->waiting_mutex;
     }
 }
 
-bool _mutex_can_lock( pthread_mutex_t *mutex, _DiOS_ThreadId gtid ) {
-    return !mutex->__owner || ( mutex->__owner == gtid );
+bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) {
+    return !mutex->__owner || ( mutex->__owner == &thr );
 }
 
 int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) {
 
     _DiOS_ThreadId gtid = __dios_get_thread_id();
-    Thread &thr = getThread( gtid );
+    _PThread &thr = getThread( gtid );
 
     if ( mutex == NULL || !mutex->__initialized ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
-    if ( mutex->__owner == gtid ) {
+    if ( mutex->__owner == &thr ) {
         // already locked by this thread
         assert( mutex->__lockCounter ); // count should be > 0
         if ( mutex->__type != PTHREAD_MUTEX_RECURSIVE ) {
@@ -707,7 +711,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
         }
     }
 
-    if ( !_mutex_can_lock( mutex, gtid ) ) {
+    if ( !_mutex_can_lock( mutex, thr ) ) {
         assert( mutex->__lockCounter ); // count should be > 0
         if ( !wait )
             return EBUSY;
@@ -718,8 +722,8 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
     // (cycle in try-lock is not deadlock, although it might be livelock)
     // so it must be here after return EBUSY
     thr.waiting_mutex = mutex;
-    while ( !_mutex_can_lock( mutex, gtid ) ) {
-        _check_deadlock( mutex, gtid );
+    while ( !_mutex_can_lock( mutex, thr ) ) {
+        _check_deadlock( mutex, thr );
         mask.without( [] { }, true ); // break mask to allow control flow interrupt
     }
     thr.waiting_mutex = NULL;
@@ -730,7 +734,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
         return err;
 
     // lock the mutex
-    mutex->__owner = gtid;
+    mutex->__owner = &thr;
 
     return 0;
 }
@@ -783,13 +787,13 @@ int pthread_mutex_trylock( pthread_mutex_t *mutex ) {
 
 int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
     __dios::FencedInterruptMask mask;
-    _DiOS_ThreadId gtid = __dios_get_thread_id();
+    _PThread &thr = getThread();
 
     if ( mutex == NULL || !mutex->__initialized ) {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
-    if ( mutex->__owner != gtid ) {
+    if ( mutex->__owner != &thr ) {
         // mutex is not locked or it is already locked by another thread
         assert( mutex->__lockCounter ); // count should be > 0
         if ( mutex->__type == PTHREAD_MUTEX_NORMAL )
@@ -1045,11 +1049,11 @@ template <> inline SleepingOn _sleepCond< pthread_cond_t >() {
     return Condition;
 }
 
-static inline bool _eqSleepTrait( Thread &t, pthread_cond_t *cond ) {
+static inline bool _eqSleepTrait( _PThread &t, pthread_cond_t *cond ) {
     return t.condition == cond;
 }
 
-static inline bool _eqSleepTrait( Thread &t, pthread_barrier_t *bar ) {
+static inline bool _eqSleepTrait( _PThread &t, pthread_barrier_t *bar ) {
     return t.barrier == bar;
 }
 
@@ -1069,7 +1073,7 @@ int _cond_signal( CondOrBarrier *cond ) {
 
         iterateThreads( [&]( pthread_t tid ) {
 
-            Thread &thread = getThread( tid );
+            _PThread &thread = getThread( tid );
 
             if ( thread.sleeping == _sleepCond< CondOrBarrier >() && _eqSleepTrait( thread, cond ) ) {
                 ++waiting;
@@ -1108,7 +1112,7 @@ int pthread_cond_broadcast( pthread_cond_t *cond ) {
 int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
     __dios::FencedInterruptMask mask;
 
-    _DiOS_ThreadId gtid = __dios_get_thread_id();
+    _PThread &thread = getThread();
 
     if ( cond == NULL || !cond->__initialized )
         return EINVAL;
@@ -1117,7 +1121,7 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
         return EINVAL;
     }
 
-    if ( mutex->__owner != gtid ) {
+    if ( mutex->__owner != &thread ) {
         // mutex is not locked or it is already locked by another thread
         return EPERM;
     }
@@ -1134,7 +1138,6 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
     cond->__mutex = mutex;
 
     // fall asleep
-    Thread &thread = getThread( gtid );
     thread.setSleeping( cond );
 
     _cond_adjust_count( cond, 1 ); // one more thread is waiting for this condition
@@ -1228,7 +1231,7 @@ int pthread_setcancelstate( int state, int *oldstate ) {
     if ( state & ~0x1 )
         return EINVAL;
 
-    Thread &thread = getThread();
+    _PThread &thread = getThread();
     *oldstate = thread.cancel_state;
     thread.cancel_state = state & 1;
     return 0;
@@ -1240,7 +1243,7 @@ int pthread_setcanceltype( int type, int *oldtype ) {
     if ( type & ~0x1 )
         return EINVAL;
 
-    Thread &thread = getThread();
+    _PThread &thread = getThread();
     *oldtype = thread.cancel_type;
     thread.cancel_type = type & 1;
     return 0;
@@ -1249,7 +1252,7 @@ int pthread_setcanceltype( int type, int *oldtype ) {
 int pthread_cancel( pthread_t gtid ) {
     __dios::FencedInterruptMask mask;
 
-    Thread &thread = getThread();
+    _PThread &thread = getThread();
 
     if ( thread.cancel_state == PTHREAD_CANCEL_ENABLE )
         thread.cancelled = true;
@@ -1269,7 +1272,7 @@ void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) {
 
     assert( routine != NULL );
 
-    Thread &thread = getThread();
+    _PThread &thread = getThread();
     CleanupHandler *handler = reinterpret_cast< CleanupHandler * >(
             __vm_obj_make( sizeof( CleanupHandler ) ) );
     handler->routine = routine;
@@ -1281,7 +1284,7 @@ void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) {
 void pthread_cleanup_pop( int execute ) {
     __dios::FencedInterruptMask mask;
 
-    Thread &thread = getThread();
+    _PThread &thread = getThread();
     CleanupHandler *handler = thread.cleanup_handlers;
     if ( handler != NULL ) {
         thread.cleanup_handlers = handler->next;
@@ -1303,11 +1306,11 @@ int _rlock_adjust_count( _ReadLock *rlock, int adj ) {
     return 0;
 }
 
-_ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _DiOS_ThreadId gtid, _ReadLock **prev = nullptr ) {
+_ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _PThread &tid, _ReadLock **prev = nullptr ) {
     _ReadLock *rlock = rwlock->__rlocks;
     _ReadLock *_prev = nullptr;
 
-    while ( rlock && ( rlock->__owner != gtid ) ) {
+    while ( rlock && ( rlock->__owner != &tid ) ) {
         _prev = rlock;
         rlock = rlock->__next;
     }
@@ -1318,9 +1321,9 @@ _ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _DiOS_ThreadId gtid, _ReadLock 
     return rlock;
 }
 
-_ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _DiOS_ThreadId gtid ) {
+_ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _PThread &tid ) {
     _ReadLock *rlock = reinterpret_cast< _ReadLock * >( __vm_obj_make( sizeof( _ReadLock ) ) );
-    rlock->__owner = gtid;
+    rlock->__owner = &tid;
     rlock->__count = 1;
     rlock->__next = rwlock->__rlocks;
     rwlock->__rlocks = rlock;
@@ -1332,17 +1335,17 @@ bool _rwlock_can_lock( pthread_rwlock_t *rwlock, bool writer ) {
 }
 
 int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) {
-    _DiOS_ThreadId gtid = __dios_get_thread_id();
+    _PThread &thr = getThread();
 
     if ( rwlock == nullptr || !rwlock->__initialized ) {
         return EINVAL; // rwlock does not refer to an initialized rwlock object
     }
 
-    if ( rwlock->__wrowner == gtid )
+    if ( rwlock->__wrowner == &thr )
         // thread already owns write lock
         return EDEADLK;
 
-    _ReadLock *rlock = _get_rlock( rwlock, gtid );
+    _ReadLock *rlock = _get_rlock( rwlock, thr );
     // existing read lock implies read lock counter having value more than zero
     assert( !rlock || rlock->__count );
 
@@ -1357,10 +1360,10 @@ int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, b
     wait( mask, [&] { return !_rwlock_can_lock( rwlock, writer ); } );
 
     if ( writer )
-        rwlock->__wrowner = gtid;
+        rwlock->__wrowner = &thr;
     else {
         if ( !rlock )
-            rlock = _create_rlock( rwlock, gtid );
+            rlock = _create_rlock( rwlock, thr );
         else {
             int err = _rlock_adjust_count( rlock, 1 );
             if ( err )
@@ -1425,23 +1428,23 @@ int pthread_rwlock_trywrlock( pthread_rwlock_t *rwlock ) {
 int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) {
     __dios::FencedInterruptMask mask;
 
-    _DiOS_ThreadId gtid = __dios_get_thread_id();
+    _PThread &thr = getThread();
 
     if ( rwlock == NULL || !rwlock->__initialized ) {
         return EINVAL; // rwlock does not refer to an initialized rwlock object
     }
 
     _ReadLock *rlock, *prev;
-    rlock = _get_rlock( rwlock, gtid, &prev );
+    rlock = _get_rlock( rwlock, thr, &prev );
     // existing read lock implies read lock counter having value more than zero
     assert( !rlock || rlock->__count );
 
-    if ( rwlock->__wrowner != gtid && !rlock ) {
+    if ( rwlock->__wrowner != &thr && !rlock ) {
         // the current thread does not own the read-write lock
         return EPERM;
     }
 
-    if ( rwlock->__wrowner == gtid ) {
+    if ( rwlock->__wrowner == &thr ) {
         assert( !rlock );
         // release write lock
         rwlock->__wrowner = nullptr;
@@ -1571,7 +1574,7 @@ int pthread_barrier_wait( pthread_barrier_t *barrier ) {
         // never will).
 
         // fall asleep
-        Thread &thread = getThread();
+        _PThread &thread = getThread();
         thread.setSleeping( barrier );
 
         _cond_adjust_count( barrier, 1 ); // one more thread is blocked on this barrier
@@ -1689,7 +1692,7 @@ static const sighandler_t defact[] = {
 
 };
 
-sighandler_t &get( Thread &thr, int sig ) {
+sighandler_t &get( _PThread &thr, int sig ) {
     return thr.sighandlers[sig - 1];
 }
 sighandler_t def( int sig ) {
@@ -1703,7 +1706,7 @@ int raise( int sig ) {
     __dios::InterruptMask mask;
     assert( sig < 32 );
 
-    Thread &thread = getThread();
+    _PThread &thread = getThread();
     if ( sig > thread.sigmaxused || _sig::get( thread, sig ) == SIG_DFL )
         ( *_sig::def( sig ) )( sig );
     else {
@@ -1717,7 +1720,7 @@ int raise( int sig ) {
 sighandler_t signal( int sig, sighandler_t handler ) {
     __dios::FencedInterruptMask mask;
 
-    Thread &thread = getThread();
+    _PThread &thread = getThread();
     if ( sig > thread.sigmaxused ) {
         int old = thread.sigmaxused;
         sighandler_t *oldptr = thread.sighandlers;

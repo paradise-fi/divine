@@ -75,8 +75,10 @@
 typedef int pthread_attr_t;
 typedef void *pthread_t;
 
+struct _PThread;
+
 typedef struct {
-    pthread_t __owner;
+    struct _PThread *__owner;
     union {
         struct {
             unsigned short __initialized:1;
@@ -106,13 +108,13 @@ typedef struct { pthread_mutex_t __mtx; } pthread_once_t;
 typedef unsigned int pthread_key_t;
 
 typedef struct _ReadLock {
-    pthread_t __owner;
+    struct _PThread *__owner;
     int __count;
     struct _ReadLock *__next;
 } _ReadLock;
 
 typedef struct {
-    pthread_t __wrowner;
+    struct _PThread *__wrowner;
     _ReadLock* __rlocks;
     // not bitfield, struct is padded anyway
     char __processShared;
