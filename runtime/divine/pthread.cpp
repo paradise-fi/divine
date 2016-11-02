@@ -28,13 +28,6 @@
 
 #define _RWLOCK_ATTR_SHARING_MASK 0x1
 
-/* Internal data types */
-struct Entry {
-    void *( *entry )( void * );
-    void *arg;
-    bool initialized;
-};
-
 struct CleanupHandler {
     void ( *routine )( void * );
     void *arg;
@@ -249,6 +242,7 @@ static void __init_thread( const _DiOS_ThreadId gtid, const pthread_attr_t attr 
     tls( gtid ).thread = thread;
 
     // initialize thread metadata
+    thread->running = true;
     thread->detached = ( ( attr & _THREAD_ATTR_DETACH_MASK ) == PTHREAD_CREATE_DETACHED );
     thread->condition = nullptr;
     thread->cancel_state = PTHREAD_CANCEL_ENABLE;
@@ -261,7 +255,6 @@ void __pthread_initialize( void ) {
     // initialize implicitly created main thread
     tlsDestructors.init();
     __init_thread( __dios_get_thread_id(), PTHREAD_CREATE_DETACHED );
-    getThread().running = true;
     getThread().is_main = true;
 }
 
@@ -363,6 +356,12 @@ static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_T
         wait( mask, [&] { return true; } );
 }
 
+/* Internal data types */
+struct Entry {
+    void *( *entry )( void * );
+    void *arg;
+};
+
 extern "C" void __pthread_entry( void *_args ) {
     __dios::FencedInterruptMask mask;
 
@@ -372,20 +371,15 @@ extern "C" void __pthread_entry( void *_args ) {
 
     // copy arguments
     void *arg = args->arg;
-    void *( *entry )( void * ) = args->entry;
-    // __vm_free_object( _args );
-
-    // parent may delete args and leave pthread_create now
-    args->initialized = true;
+    auto entry = args->entry;
+    __vm_obj_free( _args );
 
     // call entry function
-    thread.running = true;
     mask.without( [&] {
-        // from now on, args and _args should not be accessed
         thread.result = entry( arg );
     } );
 
-    __dios_assert_v( thread.sleeping == false, "thread->sleeping == false" );
+    assert( thread.sleeping == false );
 
     _clean_and_become_zombie( mask, tid );
 }
@@ -402,16 +396,10 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ) ) );
     args->entry = entry;
     args->arg = arg;
-    args->initialized = false;
-    auto gtid = __dios_start_thread( __pthread_entry, static_cast< void * >( args ), sizeof( Thread * ) );
-
-    *ptid = gtid;
-
-    // thread initialization
-    __init_thread( gtid, ( attr == NULL ? PTHREAD_CREATE_JOINABLE : *attr ) );
-
-    wait( mask, [&] { return !args->initialized; } );
-    __vm_obj_free( args );
+    auto tid = __dios_start_thread( __pthread_entry, static_cast< void * >( args ), sizeof( Thread * ) );
+    // init thread here, before it has first chance to run
+    __init_thread( tid, attr == nullptr ? PTHREAD_CREATE_JOINABLE : *attr );
+    *ptid = tid;
 
     return 0;
 }
