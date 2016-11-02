@@ -712,7 +712,6 @@ inline llvm::Function * changeFunctionSignature( llvm::Function * fn, llvm::Func
         m->getFunctionList().push_back( newfn );
     }
 
-    fn->eraseFromParent();
     return newfn;
 }
 
