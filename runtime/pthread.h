@@ -145,14 +145,14 @@ struct sched_param {
 #endif
 };
 
-/* Implementation prototypes */
-void __pthread_initialize();
-
 /* Function prototypes */
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Implementation prototypes */
+void __pthread_initialize();
 
 int pthread_atfork( void (*)(void), void (*)(void), void(*)(void) ) _PTHREAD_NOINLINE _PTHREAD_UNSUPPORTED;
 
