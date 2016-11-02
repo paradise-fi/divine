@@ -21,6 +21,7 @@
 #include "clang/Serialization/ASTReader.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include <utility>
 using namespace clang;
 using namespace arcmt;
 
@@ -153,6 +154,9 @@ static bool HasARCRuntime(CompilerInvocation &origCI) {
   if (triple.isiOS())
     return triple.getOSMajorVersion() >= 5;
 
+  if (triple.isWatchOS())
+    return true;
+
   if (triple.getOS() == llvm::Triple::Darwin)
     return triple.getOSMajorVersion() >= 11;
 
@@ -206,7 +210,8 @@ createInvocationForMigration(CompilerInvocation &origCI,
   WarnOpts.push_back("error=arc-unsafe-retained-assign");
   CInvok->getDiagnosticOpts().Warnings = std::move(WarnOpts);
 
-  CInvok->getLangOpts()->ObjCARCWeak = HasARCRuntime(origCI);
+  CInvok->getLangOpts()->ObjCWeakRuntime = HasARCRuntime(origCI);
+  CInvok->getLangOpts()->ObjCWeak = CInvok->getLangOpts()->ObjCWeakRuntime;
 
   return CInvok.release();
 }
@@ -504,8 +509,8 @@ MigrationProcess::MigrationProcess(
     const CompilerInvocation &CI,
     std::shared_ptr<PCHContainerOperations> PCHContainerOps,
     DiagnosticConsumer *diagClient, StringRef outputDir)
-    : OrigCI(CI), PCHContainerOps(PCHContainerOps), DiagClient(diagClient),
-      HadARCErrors(false) {
+    : OrigCI(CI), PCHContainerOps(std::move(PCHContainerOps)),
+      DiagClient(diagClient), HadARCErrors(false) {
   if (!outputDir.empty()) {
     IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
     IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
@@ -600,7 +605,6 @@ bool MigrationProcess::applyTransform(TransformFn trans,
     SmallString<512> newText;
     llvm::raw_svector_ostream vecOS(newText);
     buf.write(vecOS);
-    vecOS.flush();
     std::unique_ptr<llvm::MemoryBuffer> memBuf(
         llvm::MemoryBuffer::getMemBufferCopy(
             StringRef(newText.data(), newText.size()), newFname));

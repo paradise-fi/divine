@@ -1,4 +1,4 @@
-  //===--- CFG.cpp - Classes for representing and building CFGs----*- C++ -*-===//
+//===--- CFG.cpp - Classes for representing and building CFGs----*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -37,6 +37,78 @@ static SourceLocation GetEndLoc(Decl *D) {
     if (Expr *Ex = VD->getInit())
       return Ex->getSourceRange().getEnd();
   return D->getLocation();
+}
+
+/// Helper for tryNormalizeBinaryOperator. Attempts to extract an IntegerLiteral
+/// or EnumConstantDecl from the given Expr. If it fails, returns nullptr.
+const Expr *tryTransformToIntOrEnumConstant(const Expr *E) {
+  E = E->IgnoreParens();
+  if (isa<IntegerLiteral>(E))
+    return E;
+  if (auto *DR = dyn_cast<DeclRefExpr>(E->IgnoreParenImpCasts()))
+    return isa<EnumConstantDecl>(DR->getDecl()) ? DR : nullptr;
+  return nullptr;
+}
+
+/// Tries to interpret a binary operator into `Decl Op Expr` form, if Expr is
+/// an integer literal or an enum constant.
+///
+/// If this fails, at least one of the returned DeclRefExpr or Expr will be
+/// null.
+static std::tuple<const DeclRefExpr *, BinaryOperatorKind, const Expr *>
+tryNormalizeBinaryOperator(const BinaryOperator *B) {
+  BinaryOperatorKind Op = B->getOpcode();
+
+  const Expr *MaybeDecl = B->getLHS();
+  const Expr *Constant = tryTransformToIntOrEnumConstant(B->getRHS());
+  // Expr looked like `0 == Foo` instead of `Foo == 0`
+  if (Constant == nullptr) {
+    // Flip the operator
+    if (Op == BO_GT)
+      Op = BO_LT;
+    else if (Op == BO_GE)
+      Op = BO_LE;
+    else if (Op == BO_LT)
+      Op = BO_GT;
+    else if (Op == BO_LE)
+      Op = BO_GE;
+
+    MaybeDecl = B->getRHS();
+    Constant = tryTransformToIntOrEnumConstant(B->getLHS());
+  }
+
+  auto *D = dyn_cast<DeclRefExpr>(MaybeDecl->IgnoreParenImpCasts());
+  return std::make_tuple(D, Op, Constant);
+}
+
+/// For an expression `x == Foo && x == Bar`, this determines whether the
+/// `Foo` and `Bar` are either of the same enumeration type, or both integer
+/// literals.
+///
+/// It's an error to pass this arguments that are not either IntegerLiterals
+/// or DeclRefExprs (that have decls of type EnumConstantDecl)
+static bool areExprTypesCompatible(const Expr *E1, const Expr *E2) {
+  // User intent isn't clear if they're mixing int literals with enum
+  // constants.
+  if (isa<IntegerLiteral>(E1) != isa<IntegerLiteral>(E2))
+    return false;
+
+  // Integer literal comparisons, regardless of literal type, are acceptable.
+  if (isa<IntegerLiteral>(E1))
+    return true;
+
+  // IntegerLiterals are handled above and only EnumConstantDecls are expected
+  // beyond this point
+  assert(isa<DeclRefExpr>(E1) && isa<DeclRefExpr>(E2));
+  auto *Decl1 = cast<DeclRefExpr>(E1)->getDecl();
+  auto *Decl2 = cast<DeclRefExpr>(E2)->getDecl();
+
+  assert(isa<EnumConstantDecl>(Decl1) && isa<EnumConstantDecl>(Decl2));
+  const DeclContext *DC1 = Decl1->getDeclContext();
+  const DeclContext *DC2 = Decl2->getDeclContext();
+
+  assert(isa<EnumDecl>(DC1) && isa<EnumDecl>(DC2));
+  return DC1 == DC2;
 }
 
 class CFGBuilder;
@@ -176,8 +248,8 @@ private:
 
 public:
   /// Constructs empty scope linked to previous scope in specified place.
-  LocalScope(BumpVectorContext &ctx, const_iterator P)
-      : ctx(ctx), Vars(ctx, 4), Prev(P) {}
+  LocalScope(BumpVectorContext ctx, const_iterator P)
+      : ctx(std::move(ctx)), Vars(this->ctx, 4), Prev(P) {}
 
   /// Begin of scope in direction of CFG building (backwards).
   const_iterator begin() const { return const_iterator(*this, Vars.size()); }
@@ -284,7 +356,7 @@ reverse_children::reverse_children(Stmt *S) {
 ///   Example usage:
 ///
 ///     CFGBuilder builder;
-///     CFG* cfg = builder.BuildAST(stmt1);
+///     std::unique_ptr<CFG> cfg = builder.buildCFG(decl, stmt1);
 ///
 ///  CFG construction is done via a recursive walk of an AST.  We actually parse
 ///  the AST in reverse order so that the successor of a basic block is
@@ -388,6 +460,7 @@ private:
   CFGBlock *VisitImplicitCastExpr(ImplicitCastExpr *E, AddStmtChoice asc);
   CFGBlock *VisitIndirectGotoStmt(IndirectGotoStmt *I);
   CFGBlock *VisitLabelStmt(LabelStmt *L);
+  CFGBlock *VisitBlockExpr(BlockExpr *E, AddStmtChoice asc);
   CFGBlock *VisitLambdaExpr(LambdaExpr *E, AddStmtChoice asc);
   CFGBlock *VisitLogicalOperator(BinaryOperator *B);
   std::pair<CFGBlock *, CFGBlock *> VisitLogicalOperator(BinaryOperator *B,
@@ -694,56 +767,35 @@ private:
     if (!LHS->isComparisonOp() || !RHS->isComparisonOp())
       return TryResult();
 
-    BinaryOperatorKind BO1 = LHS->getOpcode();
-    const DeclRefExpr *Decl1 =
-        dyn_cast<DeclRefExpr>(LHS->getLHS()->IgnoreParenImpCasts());
-    const IntegerLiteral *Literal1 =
-        dyn_cast<IntegerLiteral>(LHS->getRHS()->IgnoreParens());
-    if (!Decl1 && !Literal1) {
-      if (BO1 == BO_GT)
-        BO1 = BO_LT;
-      else if (BO1 == BO_GE)
-        BO1 = BO_LE;
-      else if (BO1 == BO_LT)
-        BO1 = BO_GT;
-      else if (BO1 == BO_LE)
-        BO1 = BO_GE;
-      Decl1 = dyn_cast<DeclRefExpr>(LHS->getRHS()->IgnoreParenImpCasts());
-      Literal1 = dyn_cast<IntegerLiteral>(LHS->getLHS()->IgnoreParens());
-    }
+    const DeclRefExpr *Decl1;
+    const Expr *Expr1;
+    BinaryOperatorKind BO1;
+    std::tie(Decl1, BO1, Expr1) = tryNormalizeBinaryOperator(LHS);
 
-    if (!Decl1 || !Literal1)
+    if (!Decl1 || !Expr1)
       return TryResult();
 
-    BinaryOperatorKind BO2 = RHS->getOpcode();
-    const DeclRefExpr *Decl2 =
-        dyn_cast<DeclRefExpr>(RHS->getLHS()->IgnoreParenImpCasts());
-    const IntegerLiteral *Literal2 =
-        dyn_cast<IntegerLiteral>(RHS->getRHS()->IgnoreParens());
-    if (!Decl2 && !Literal2) {
-      if (BO2 == BO_GT)
-        BO2 = BO_LT;
-      else if (BO2 == BO_GE)
-        BO2 = BO_LE;
-      else if (BO2 == BO_LT)
-        BO2 = BO_GT;
-      else if (BO2 == BO_LE)
-        BO2 = BO_GE;
-      Decl2 = dyn_cast<DeclRefExpr>(RHS->getRHS()->IgnoreParenImpCasts());
-      Literal2 = dyn_cast<IntegerLiteral>(RHS->getLHS()->IgnoreParens());
-    }
+    const DeclRefExpr *Decl2;
+    const Expr *Expr2;
+    BinaryOperatorKind BO2;
+    std::tie(Decl2, BO2, Expr2) = tryNormalizeBinaryOperator(RHS);
 
-    if (!Decl2 || !Literal2)
+    if (!Decl2 || !Expr2)
       return TryResult();
 
     // Check that it is the same variable on both sides.
     if (Decl1->getDecl() != Decl2->getDecl())
       return TryResult();
 
+    // Make sure the user's intent is clear (e.g. they're comparing against two
+    // int literals, or two things from the same enum)
+    if (!areExprTypesCompatible(Expr1, Expr2))
+      return TryResult();
+
     llvm::APSInt L1, L2;
 
-    if (!Literal1->EvaluateAsInt(L1, *Context) ||
-        !Literal2->EvaluateAsInt(L2, *Context))
+    if (!Expr1->EvaluateAsInt(L1, *Context) ||
+        !Expr2->EvaluateAsInt(L2, *Context))
       return TryResult();
 
     // Can't compare signed with unsigned or with different bit width.
@@ -773,10 +825,7 @@ private:
     // * Variable x is equal to the largest literal.
     // * Variable x is greater than largest literal.
     bool AlwaysTrue = true, AlwaysFalse = true;
-    for (unsigned int ValueIndex = 0;
-         ValueIndex < sizeof(Values) / sizeof(Values[0]);
-         ++ValueIndex) {
-      llvm::APSInt Value = Values[ValueIndex];
+    for (const llvm::APSInt &Value : Values) {
       TryResult Res1, Res2;
       Res1 = analyzeLogicOperatorCondition(BO1, Value, L1);
       Res2 = analyzeLogicOperatorCondition(BO2, Value, L2);
@@ -994,9 +1043,8 @@ std::unique_ptr<CFG> CFGBuilder::buildCFG(const Decl *D, Stmt *Statement) {
 
   // For C++ constructor add initializers to CFG.
   if (const CXXConstructorDecl *CD = dyn_cast_or_null<CXXConstructorDecl>(D)) {
-    for (CXXConstructorDecl::init_const_reverse_iterator I = CD->init_rbegin(),
-        E = CD->init_rend(); I != E; ++I) {
-      B = addInitializer(*I);
+    for (auto *I : llvm::reverse(CD->inits())) {
+      B = addInitializer(I);
       if (badCFG)
         return nullptr;
     }
@@ -1248,13 +1296,11 @@ void CFGBuilder::addImplicitDtorsForDestructor(const CXXDestructorDecl *DD) {
 /// createOrReuseLocalScope - If Scope is NULL create new LocalScope. Either
 /// way return valid LocalScope object.
 LocalScope* CFGBuilder::createOrReuseLocalScope(LocalScope* Scope) {
-  if (!Scope) {
-    llvm::BumpPtrAllocator &alloc = cfg->getAllocator();
-    Scope = alloc.Allocate<LocalScope>();
-    BumpVectorContext ctx(alloc);
-    new (Scope) LocalScope(ctx, ScopePos);
-  }
-  return Scope;
+  if (Scope)
+    return Scope;
+  llvm::BumpPtrAllocator &alloc = cfg->getAllocator();
+  return new (alloc.Allocate<LocalScope>())
+      LocalScope(BumpVectorContext(alloc), ScopePos);
 }
 
 /// addLocalScopeForStmt - Add LocalScope to local scopes tree for statement
@@ -1405,7 +1451,7 @@ CFGBlock *CFGBuilder::Visit(Stmt * S, AddStmtChoice asc) {
       return VisitBinaryOperator(cast<BinaryOperator>(S), asc);
 
     case Stmt::BlockExprClass:
-      return VisitNoRecurse(cast<Expr>(S), asc);
+      return VisitBlockExpr(cast<BlockExpr>(S), asc);
 
     case Stmt::BreakStmtClass:
       return VisitBreakStmt(cast<BreakStmt>(S));
@@ -1894,7 +1940,16 @@ CFGBlock *CFGBuilder::VisitChooseExpr(ChooseExpr *C,
 
 
 CFGBlock *CFGBuilder::VisitCompoundStmt(CompoundStmt *C) {
-  addLocalScopeAndDtors(C);
+  LocalScope::const_iterator scopeBeginPos = ScopePos;
+  if (BuildOpts.AddImplicitDtors) {
+    addLocalScopeForStmt(C);
+  }
+  if (!C->body_empty() && !isa<ReturnStmt>(*C->body_rbegin())) {
+    // If the body ends with a ReturnStmt, the dtors will be added in
+    // VisitReturnStmt.
+    addAutomaticObjDtors(ScopePos, scopeBeginPos, C);
+  }
+
   CFGBlock *LastBlock = Block;
 
   for (CompoundStmt::reverse_body_iterator I=C->body_rbegin(), E=C->body_rend();
@@ -2114,6 +2169,13 @@ CFGBlock *CFGBuilder::VisitIfStmt(IfStmt *I) {
   // won't be restored when traversing AST.
   SaveAndRestore<LocalScope::const_iterator> save_scope_pos(ScopePos);
 
+  // Create local scope for C++17 if init-stmt if one exists.
+  if (Stmt *Init = I->getInit()) {
+    LocalScope::const_iterator BeginScopePos = ScopePos;
+    addLocalScopeForStmt(Init);
+    addAutomaticObjDtors(ScopePos, BeginScopePos, I);
+  }
+
   // Create local scope for possible condition variable.
   // Store scope position. Add implicit destructor.
   if (VarDecl *VD = I->getConditionVariable()) {
@@ -2214,11 +2276,17 @@ CFGBlock *CFGBuilder::VisitIfStmt(IfStmt *I) {
   // blocks will be pointed to be "Block".
   CFGBlock *LastBlock = addStmt(I->getCond());
 
-  // Finally, if the IfStmt contains a condition variable, add it and its
+  // If the IfStmt contains a condition variable, add it and its
   // initializer to the CFG.
   if (const DeclStmt* DS = I->getConditionVariableDeclStmt()) {
     autoCreateBlock();
     LastBlock = addStmt(const_cast<DeclStmt *>(DS));
+  }
+
+  // Finally, if the IfStmt contains a C++17 init-stmt, add it to the CFG.
+  if (Stmt *Init = I->getInit()) {
+    autoCreateBlock();
+    LastBlock = addStmt(Init);
   }
 
   return LastBlock;
@@ -2275,6 +2343,18 @@ CFGBlock *CFGBuilder::VisitLabelStmt(LabelStmt *L) {
   Succ = LabelBlock;
 
   return LabelBlock;
+}
+
+CFGBlock *CFGBuilder::VisitBlockExpr(BlockExpr *E, AddStmtChoice asc) {
+  CFGBlock *LastBlock = VisitNoRecurse(E, asc);
+  for (const BlockDecl::Capture &CI : E->getBlockDecl()->captures()) {
+    if (Expr *CopyExpr = CI.getCopyExpr()) {
+      CFGBlock *Tmp = Visit(CopyExpr);
+      if (Tmp)
+        LastBlock = Tmp;
+    }
+  }
+  return LastBlock;
 }
 
 CFGBlock *CFGBuilder::VisitLambdaExpr(LambdaExpr *E, AddStmtChoice asc) {
@@ -2993,6 +3073,13 @@ CFGBlock *CFGBuilder::VisitSwitchStmt(SwitchStmt *Terminator) {
   // won't be restored when traversing AST.
   SaveAndRestore<LocalScope::const_iterator> save_scope_pos(ScopePos);
 
+  // Create local scope for C++17 switch init-stmt if one exists.
+  if (Stmt *Init = Terminator->getInit()) {
+    LocalScope::const_iterator BeginScopePos = ScopePos;
+    addLocalScopeForStmt(Init);
+    addAutomaticObjDtors(ScopePos, BeginScopePos, Terminator);
+  }
+
   // Create local scope for possible condition variable.
   // Store scope position. Add implicit destructor.
   if (VarDecl *VD = Terminator->getConditionVariable()) {
@@ -3072,7 +3159,7 @@ CFGBlock *CFGBuilder::VisitSwitchStmt(SwitchStmt *Terminator) {
   Block = SwitchTerminatedBlock;
   CFGBlock *LastBlock = addStmt(Terminator->getCond());
 
-  // Finally, if the SwitchStmt contains a condition variable, add both the
+  // If the SwitchStmt contains a condition variable, add both the
   // SwitchStmt and the condition variable initialization to the CFG.
   if (VarDecl *VD = Terminator->getConditionVariable()) {
     if (Expr *Init = VD->getInit()) {
@@ -3080,6 +3167,12 @@ CFGBlock *CFGBuilder::VisitSwitchStmt(SwitchStmt *Terminator) {
       appendStmt(Block, Terminator->getConditionVariableDeclStmt());
       LastBlock = addStmt(Init);
     }
+  }
+
+  // Finally, if the SwitchStmt contains a C++17 init-stmt, add it to the CFG.
+  if (Stmt *Init = Terminator->getInit()) {
+    autoCreateBlock();
+    LastBlock = addStmt(Init);
   }
 
   return LastBlock;
@@ -3104,11 +3197,11 @@ static bool shouldAddCase(bool &switchExclusivelyCovered,
         addCase = true;
         switchExclusivelyCovered = true;
       }
-      else if (condInt < lhsInt) {
+      else if (condInt > lhsInt) {
         if (const Expr *RHS = CS->getRHS()) {
           // Evaluate the RHS of the case value.
           const llvm::APSInt &V2 = RHS->EvaluateKnownConstInt(Ctx);
-          if (V2 <= condInt) {
+          if (V2 >= condInt) {
             addCase = true;
             switchExclusivelyCovered = true;
           }
@@ -3331,8 +3424,10 @@ CFGBlock *CFGBuilder::VisitCXXForRangeStmt(CXXForRangeStmt *S) {
   // Create local scopes and destructors for range, begin and end variables.
   if (Stmt *Range = S->getRangeStmt())
     addLocalScopeForStmt(Range);
-  if (Stmt *BeginEnd = S->getBeginEndStmt())
-    addLocalScopeForStmt(BeginEnd);
+  if (Stmt *Begin = S->getBeginStmt())
+    addLocalScopeForStmt(Begin);
+  if (Stmt *End = S->getEndStmt())
+    addLocalScopeForStmt(End);
   addAutomaticObjDtors(ScopePos, save_scope_pos.get(), S);
 
   LocalScope::const_iterator ContinueScopePos = ScopePos;
@@ -3389,6 +3484,8 @@ CFGBlock *CFGBuilder::VisitCXXForRangeStmt(CXXForRangeStmt *S) {
     // continue statements.
     Block = nullptr;
     Succ = addStmt(S->getInc());
+    if (badCFG)
+      return nullptr;
     ContinueJumpTarget = JumpTarget(Succ, ContinueScopePos);
 
     // The starting block for the loop increment is the block that should
@@ -3423,7 +3520,8 @@ CFGBlock *CFGBuilder::VisitCXXForRangeStmt(CXXForRangeStmt *S) {
 
   // Add the initialization statements.
   Block = createBlock();
-  addStmt(S->getBeginEndStmt());
+  addStmt(S->getBeginStmt());
+  addStmt(S->getEndStmt());
   return addStmt(S->getRangeStmt());
 }
 
@@ -3804,7 +3902,17 @@ CFGImplicitDtor::getDestructorDecl(ASTContext &astContext) const {
     case CFGElement::AutomaticObjectDtor: {
       const VarDecl *var = castAs<CFGAutomaticObjDtor>().getVarDecl();
       QualType ty = var->getType();
-      ty = ty.getNonReferenceType();
+
+      // FIXME: See CFGBuilder::addLocalScopeForVarDecl.
+      //
+      // Lifetime-extending constructs are handled here. This works for a single
+      // temporary in an initializer expression.
+      if (ty->isReferenceType()) {
+        if (const Expr *Init = var->getInit()) {
+          ty = getReferenceInitTemporaryType(astContext, Init);
+        }
+      }
+
       while (const ArrayType *arrayType = astContext.getAsArrayType(ty)) {
         ty = arrayType->getElementType();
       }
@@ -4128,7 +4236,8 @@ static void print_elem(raw_ostream &OS, StmtPrinterHelper &Helper,
     if (const StmtExpr *SE = dyn_cast<StmtExpr>(S)) {
       const CompoundStmt *Sub = SE->getSubStmt();
 
-      if (Sub->children()) {
+      auto Children = Sub->children();
+      if (Children.begin() != Children.end()) {
         OS << "({ ... ; ";
         Helper.handledStmt(*SE->getSubStmt()->body_rbegin(),OS);
         OS << " })\n";
@@ -4447,7 +4556,7 @@ void CFGBlock::dump(const CFG* cfg, const LangOptions &LO,
   print(llvm::errs(), cfg, LO, ShowColors);
 }
 
-void CFGBlock::dump() const {
+LLVM_DUMP_METHOD void CFGBlock::dump() const {
   dump(getParent(), LangOptions(), false);
 }
 

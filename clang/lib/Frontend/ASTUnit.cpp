@@ -1,4 +1,4 @@
-//===--- ASTUnit.cpp - ASTUnit utility ------------------------------------===//
+//===--- ASTUnit.cpp - ASTUnit utility --------------------------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -47,6 +47,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+
 using namespace clang;
 
 using llvm::TimeRecord;
@@ -185,7 +186,7 @@ struct ASTUnit::ASTWriterData {
   llvm::BitstreamWriter Stream;
   ASTWriter Writer;
 
-  ASTWriterData() : Stream(Buffer), Writer(Stream) { }
+  ASTWriterData() : Stream(Buffer), Writer(Stream, { }) { }
 };
 
 void ASTUnit::clearFileLevelDecls() {
@@ -649,12 +650,12 @@ void ASTUnit::ConfigureDiags(IntrusiveRefCntPtr<DiagnosticsEngine> Diags,
 }
 
 std::unique_ptr<ASTUnit> ASTUnit::LoadFromASTFile(
-    const std::string &Filename,
-    const PCHContainerReader &PCHContainerRdr,
+    const std::string &Filename, const PCHContainerReader &PCHContainerRdr,
     IntrusiveRefCntPtr<DiagnosticsEngine> Diags,
-    const FileSystemOptions &FileSystemOpts, bool OnlyLocalDecls,
-    ArrayRef<RemappedFile> RemappedFiles, bool CaptureDiagnostics,
-    bool AllowPCHWithCompilerErrors, bool UserFilesAreVolatile) {
+    const FileSystemOptions &FileSystemOpts, bool UseDebugInfo,
+    bool OnlyLocalDecls, ArrayRef<RemappedFile> RemappedFiles,
+    bool CaptureDiagnostics, bool AllowPCHWithCompilerErrors,
+    bool UserFilesAreVolatile) {
   std::unique_ptr<ASTUnit> AST(new ASTUnit(true));
 
   // Recover resources if we crash before exiting this method.
@@ -708,7 +709,7 @@ std::unique_ptr<ASTUnit> ASTUnit::LoadFromASTFile(
   bool disableValid = false;
   if (::getenv("LIBCLANG_DISABLE_PCH_VALIDATION"))
     disableValid = true;
-  AST->Reader = new ASTReader(PP, Context, PCHContainerRdr,
+  AST->Reader = new ASTReader(PP, Context, PCHContainerRdr, { },
                               /*isysroot=*/"",
                               /*DisableValidation=*/disableValid,
                               AllowPCHWithCompilerErrors);
@@ -919,16 +920,17 @@ class PrecompilePreambleConsumer : public PCHGenerator {
   unsigned &Hash;
   std::vector<Decl *> TopLevelDecls;
   PrecompilePreambleAction *Action;
-  raw_ostream *Out;
+  std::unique_ptr<raw_ostream> Out;
 
 public:
   PrecompilePreambleConsumer(ASTUnit &Unit, PrecompilePreambleAction *Action,
                              const Preprocessor &PP, StringRef isysroot,
-                             raw_ostream *Out)
+                             std::unique_ptr<raw_ostream> Out)
       : PCHGenerator(PP, "", nullptr, isysroot, std::make_shared<PCHBuffer>(),
+                     ArrayRef<llvm::IntrusiveRefCntPtr<ModuleFileExtension>>(),
                      /*AllowASTWithErrors=*/true),
         Unit(Unit), Hash(Unit.getCurrentTopLevelHashValue()), Action(Action),
-        Out(Out) {
+        Out(std::move(Out)) {
     Hash = 0;
   }
 
@@ -973,15 +975,16 @@ public:
   }
 };
 
-}
+} // anonymous namespace
 
 std::unique_ptr<ASTConsumer>
 PrecompilePreambleAction::CreateASTConsumer(CompilerInstance &CI,
                                             StringRef InFile) {
   std::string Sysroot;
   std::string OutputFile;
-  raw_ostream *OS = GeneratePCHAction::ComputeASTConsumerArguments(
-      CI, InFile, Sysroot, OutputFile);
+  std::unique_ptr<raw_ostream> OS =
+      GeneratePCHAction::ComputeASTConsumerArguments(CI, InFile, Sysroot,
+                                                     OutputFile);
   if (!OS)
     return nullptr;
 
@@ -992,7 +995,7 @@ PrecompilePreambleAction::CreateASTConsumer(CompilerInstance &CI,
       llvm::make_unique<MacroDefinitionTrackerPPCallbacks>(
                                            Unit.getCurrentTopLevelHashValue()));
   return llvm::make_unique<PrecompilePreambleConsumer>(
-      Unit, this, CI.getPreprocessor(), Sysroot, OS);
+      Unit, this, CI.getPreprocessor(), Sysroot, std::move(OS));
 }
 
 static bool isNonDriverDiag(const StoredDiagnostic &StoredDiag) {
@@ -1038,7 +1041,7 @@ bool ASTUnit::Parse(std::shared_ptr<PCHContainerOperations> PCHContainerOps,
 
   // Create the compiler instance to use for building the AST.
   std::unique_ptr<CompilerInstance> Clang(
-      new CompilerInstance(PCHContainerOps));
+      new CompilerInstance(std::move(PCHContainerOps)));
 
   // Recover resources if we crash before exiting this method.
   llvm::CrashRecoveryContextCleanupRegistrar<CompilerInstance>
@@ -1076,11 +1079,10 @@ bool ASTUnit::Parse(std::shared_ptr<PCHContainerOperations> PCHContainerOps,
   // Configure the various subsystems.
   LangOpts = Clang->getInvocation().LangOpts;
   FileSystemOpts = Clang->getFileSystemOpts();
-  IntrusiveRefCntPtr<vfs::FileSystem> VFS =
-      createVFSFromCompilerInvocation(Clang->getInvocation(), getDiagnostics());
-  if (!VFS)
-    return true;
-  FileMgr = new FileManager(FileSystemOpts, VFS);
+  if (!FileMgr) {
+    Clang->createFileManager();
+    FileMgr = &Clang->getFileManager();
+  }
   SourceMgr = new SourceManager(getDiagnostics(), *FileMgr,
                                 UserFilesAreVolatile);
   TheSema.reset();
@@ -1137,11 +1139,9 @@ bool ASTUnit::Parse(std::shared_ptr<PCHContainerOperations> PCHContainerOps,
   if (!Act->BeginSourceFile(*Clang.get(), Clang->getFrontendOpts().Inputs[0]))
     goto error;
 
-  if (SavedMainFileBuffer) {
-    std::string ModName = getPreambleFile(this);
+  if (SavedMainFileBuffer)
     TranslateStoredDiagnostics(getFileManager(), getSourceManager(),
                                PreambleDiagnostics, StoredDiagnostics);
-  }
 
   if (!Act->Execute())
     goto error;
@@ -1379,7 +1379,7 @@ ASTUnit::getMainBufferWithPrecompiledPreamble(
           
       // First, make a record of those files that have been overridden via
       // remapping or unsaved_files.
-      llvm::StringMap<PreambleFileHash> OverriddenFiles;
+      std::map<llvm::sys::fs::UniqueID, PreambleFileHash> OverriddenFiles;
       for (const auto &R : PreprocessorOpts.RemappedFiles) {
         if (AnyFileChanged)
           break;
@@ -1392,24 +1392,38 @@ ASTUnit::getMainBufferWithPrecompiledPreamble(
           break;
         }
 
-        OverriddenFiles[R.first] = PreambleFileHash::createForFile(
+        OverriddenFiles[Status.getUniqueID()] = PreambleFileHash::createForFile(
             Status.getSize(), Status.getLastModificationTime().toEpochTime());
       }
 
       for (const auto &RB : PreprocessorOpts.RemappedFileBuffers) {
         if (AnyFileChanged)
           break;
-        OverriddenFiles[RB.first] =
+
+        vfs::Status Status;
+        if (FileMgr->getNoncachedStatValue(RB.first, Status)) {
+          AnyFileChanged = true;
+          break;
+        }
+
+        OverriddenFiles[Status.getUniqueID()] =
             PreambleFileHash::createForMemoryBuffer(RB.second);
       }
        
       // Check whether anything has changed.
-      for (llvm::StringMap<PreambleFileHash>::iterator 
+      for (llvm::StringMap<PreambleFileHash>::iterator
              F = FilesInPreamble.begin(), FEnd = FilesInPreamble.end();
            !AnyFileChanged && F != FEnd; 
            ++F) {
-        llvm::StringMap<PreambleFileHash>::iterator Overridden
-          = OverriddenFiles.find(F->first());
+        vfs::Status Status;
+        if (FileMgr->getNoncachedStatValue(F->first(), Status)) {
+          // If we can't stat the file, assume that something horrible happened.
+          AnyFileChanged = true;
+          break;
+        }
+
+        std::map<llvm::sys::fs::UniqueID, PreambleFileHash>::iterator Overridden
+          = OverriddenFiles.find(Status.getUniqueID());
         if (Overridden != OverriddenFiles.end()) {
           // This file was remapped; check whether the newly-mapped file 
           // matches up with the previous mapping.
@@ -1419,13 +1433,9 @@ ASTUnit::getMainBufferWithPrecompiledPreamble(
         }
         
         // The file was not remapped; check whether it has changed on disk.
-        vfs::Status Status;
-        if (FileMgr->getNoncachedStatValue(F->first(), Status)) {
-          // If we can't stat the file, assume that something horrible happened.
-          AnyFileChanged = true;
-        } else if (Status.getSize() != uint64_t(F->second.Size) ||
-                   Status.getLastModificationTime().toEpochTime() !=
-                       uint64_t(F->second.ModTime))
+        if (Status.getSize() != uint64_t(F->second.Size) ||
+            Status.getLastModificationTime().toEpochTime() !=
+                uint64_t(F->second.ModTime))
           AnyFileChanged = true;
       }
           
@@ -1505,7 +1515,7 @@ ASTUnit::getMainBufferWithPrecompiledPreamble(
   
   // Create the compiler instance to use for building the precompiled preamble.
   std::unique_ptr<CompilerInstance> Clang(
-      new CompilerInstance(PCHContainerOps));
+      new CompilerInstance(std::move(PCHContainerOps)));
 
   // Recover resources if we crash before exiting this method.
   llvm::CrashRecoveryContextCleanupRegistrar<CompilerInstance>
@@ -1722,11 +1732,12 @@ ASTUnit *ASTUnit::create(CompilerInvocation *CI,
 ASTUnit *ASTUnit::LoadFromCompilerInvocationAction(
     CompilerInvocation *CI,
     std::shared_ptr<PCHContainerOperations> PCHContainerOps,
-    IntrusiveRefCntPtr<DiagnosticsEngine> Diags, ASTFrontendAction *Action,
+    IntrusiveRefCntPtr<DiagnosticsEngine> Diags, FrontendAction *Action,
     ASTUnit *Unit, bool Persistent, StringRef ResourceFilesPath,
-    bool OnlyLocalDecls, bool CaptureDiagnostics, bool PrecompilePreamble,
-    bool CacheCodeCompletionResults, bool IncludeBriefCommentsInCodeCompletion,
-    bool UserFilesAreVolatile, std::unique_ptr<ASTUnit> *ErrAST) {
+    bool OnlyLocalDecls, bool CaptureDiagnostics,
+    unsigned PrecompilePreambleAfterNParses, bool CacheCodeCompletionResults,
+    bool IncludeBriefCommentsInCodeCompletion, bool UserFilesAreVolatile,
+    std::unique_ptr<ASTUnit> *ErrAST) {
   assert(CI && "A CompilerInvocation is required");
 
   std::unique_ptr<ASTUnit> OwnAST;
@@ -1745,8 +1756,8 @@ ASTUnit *ASTUnit::LoadFromCompilerInvocationAction(
   }
   AST->OnlyLocalDecls = OnlyLocalDecls;
   AST->CaptureDiagnostics = CaptureDiagnostics;
-  if (PrecompilePreamble)
-    AST->PreambleRebuildCounter = 2;
+  if (PrecompilePreambleAfterNParses > 0)
+    AST->PreambleRebuildCounter = PrecompilePreambleAfterNParses;
   AST->TUKind = Action ? Action->getTranslationUnitKind() : TU_Complete;
   AST->ShouldCacheCodeCompletionResults = CacheCodeCompletionResults;
   AST->IncludeBriefCommentsInCodeCompletion
@@ -1766,7 +1777,7 @@ ASTUnit *ASTUnit::LoadFromCompilerInvocationAction(
 
   // Create the compiler instance to use for building the AST.
   std::unique_ptr<CompilerInstance> Clang(
-      new CompilerInstance(PCHContainerOps));
+      new CompilerInstance(std::move(PCHContainerOps)));
 
   // Recover resources if we crash before exiting this method.
   llvm::CrashRecoveryContextCleanupRegistrar<CompilerInstance>
@@ -1810,7 +1821,7 @@ ASTUnit *ASTUnit::LoadFromCompilerInvocationAction(
   // Create the source manager.
   Clang->setSourceManager(&AST->getSourceManager());
 
-  ASTFrontendAction *Act = Action;
+  FrontendAction *Act = Action;
 
   std::unique_ptr<TopLevelDeclTrackerAction> TrackerAct;
   if (!Act) {
@@ -1863,7 +1874,7 @@ ASTUnit *ASTUnit::LoadFromCompilerInvocationAction(
 
 bool ASTUnit::LoadFromCompilerInvocation(
     std::shared_ptr<PCHContainerOperations> PCHContainerOps,
-    bool PrecompilePreamble) {
+    unsigned PrecompilePreambleAfterNParses) {
   if (!Invocation)
     return true;
   
@@ -1873,8 +1884,8 @@ bool ASTUnit::LoadFromCompilerInvocation(
   ProcessWarningOptions(getDiagnostics(), Invocation->getDiagnosticOpts());
 
   std::unique_ptr<llvm::MemoryBuffer> OverrideMainBuffer;
-  if (PrecompilePreamble) {
-    PreambleRebuildCounter = 2;
+  if (PrecompilePreambleAfterNParses > 0) {
+    PreambleRebuildCounter = PrecompilePreambleAfterNParses;
     OverrideMainBuffer =
         getMainBufferWithPrecompiledPreamble(PCHContainerOps, *Invocation);
   }
@@ -1886,16 +1897,17 @@ bool ASTUnit::LoadFromCompilerInvocation(
   llvm::CrashRecoveryContextCleanupRegistrar<llvm::MemoryBuffer>
     MemBufferCleanup(OverrideMainBuffer.get());
 
-  return Parse(PCHContainerOps, std::move(OverrideMainBuffer));
+  return Parse(std::move(PCHContainerOps), std::move(OverrideMainBuffer));
 }
 
 std::unique_ptr<ASTUnit> ASTUnit::LoadFromCompilerInvocation(
     CompilerInvocation *CI,
     std::shared_ptr<PCHContainerOperations> PCHContainerOps,
-    IntrusiveRefCntPtr<DiagnosticsEngine> Diags, bool OnlyLocalDecls,
-    bool CaptureDiagnostics, bool PrecompilePreamble,
-    TranslationUnitKind TUKind, bool CacheCodeCompletionResults,
-    bool IncludeBriefCommentsInCodeCompletion, bool UserFilesAreVolatile) {
+    IntrusiveRefCntPtr<DiagnosticsEngine> Diags, FileManager *FileMgr,
+    bool OnlyLocalDecls, bool CaptureDiagnostics,
+    unsigned PrecompilePreambleAfterNParses, TranslationUnitKind TUKind,
+    bool CacheCodeCompletionResults, bool IncludeBriefCommentsInCodeCompletion,
+    bool UserFilesAreVolatile) {
   // Create the AST unit.
   std::unique_ptr<ASTUnit> AST(new ASTUnit(false));
   ConfigureDiags(Diags, *AST, CaptureDiagnostics);
@@ -1907,12 +1919,8 @@ std::unique_ptr<ASTUnit> ASTUnit::LoadFromCompilerInvocation(
   AST->IncludeBriefCommentsInCodeCompletion
     = IncludeBriefCommentsInCodeCompletion;
   AST->Invocation = CI;
-  AST->FileSystemOpts = CI->getFileSystemOpts();
-  IntrusiveRefCntPtr<vfs::FileSystem> VFS =
-      createVFSFromCompilerInvocation(*CI, *Diags);
-  if (!VFS)
-    return nullptr;
-  AST->FileMgr = new FileManager(AST->FileSystemOpts, VFS);
+  AST->FileSystemOpts = FileMgr->getFileSystemOpts();
+  AST->FileMgr = FileMgr;
   AST->UserFilesAreVolatile = UserFilesAreVolatile;
   
   // Recover resources if we crash before exiting this method.
@@ -1922,7 +1930,8 @@ std::unique_ptr<ASTUnit> ASTUnit::LoadFromCompilerInvocation(
     llvm::CrashRecoveryContextReleaseRefCleanup<DiagnosticsEngine> >
     DiagCleanup(Diags.get());
 
-  if (AST->LoadFromCompilerInvocation(PCHContainerOps, PrecompilePreamble))
+  if (AST->LoadFromCompilerInvocation(std::move(PCHContainerOps),
+                                      PrecompilePreambleAfterNParses))
     return nullptr;
   return AST;
 }
@@ -1933,11 +1942,11 @@ ASTUnit *ASTUnit::LoadFromCommandLine(
     IntrusiveRefCntPtr<DiagnosticsEngine> Diags, StringRef ResourceFilesPath,
     bool OnlyLocalDecls, bool CaptureDiagnostics,
     ArrayRef<RemappedFile> RemappedFiles, bool RemappedFilesKeepOriginalName,
-    bool PrecompilePreamble, TranslationUnitKind TUKind,
+    unsigned PrecompilePreambleAfterNParses, TranslationUnitKind TUKind,
     bool CacheCodeCompletionResults, bool IncludeBriefCommentsInCodeCompletion,
     bool AllowPCHWithCompilerErrors, bool SkipFunctionBodies,
     bool UserFilesAreVolatile, bool ForSerialization,
-    std::unique_ptr<ASTUnit> *ErrAST) {
+    llvm::Optional<StringRef> ModuleFormat, std::unique_ptr<ASTUnit> *ErrAST) {
   assert(Diags.get() && "no DiagnosticsEngine was provided");
 
   SmallVector<StoredDiagnostic, 4> StoredDiagnostics;
@@ -1970,6 +1979,9 @@ ASTUnit *ASTUnit::LoadFromCommandLine(
 
   CI->getFrontendOpts().SkipFunctionBodies = SkipFunctionBodies;
 
+  if (ModuleFormat)
+    CI->getHeaderSearchOpts().ModuleFormat = ModuleFormat.getValue();
+
   // Create the AST unit.
   std::unique_ptr<ASTUnit> AST;
   AST.reset(new ASTUnit(false));
@@ -2001,7 +2013,8 @@ ASTUnit *ASTUnit::LoadFromCommandLine(
   llvm::CrashRecoveryContextCleanupRegistrar<ASTUnit>
     ASTUnitCleanup(AST.get());
 
-  if (AST->LoadFromCompilerInvocation(PCHContainerOps, PrecompilePreamble)) {
+  if (AST->LoadFromCompilerInvocation(std::move(PCHContainerOps),
+                                      PrecompilePreambleAfterNParses)) {
     // Some error occurred, if caller wants to examine diagnostics, pass it the
     // ASTUnit.
     if (ErrAST) {
@@ -2043,13 +2056,15 @@ bool ASTUnit::Reparse(std::shared_ptr<PCHContainerOperations> PCHContainerOps,
         getMainBufferWithPrecompiledPreamble(PCHContainerOps, *Invocation);
 
   // Clear out the diagnostics state.
+  FileMgr.reset();
   getDiagnostics().Reset();
   ProcessWarningOptions(getDiagnostics(), Invocation->getDiagnosticOpts());
   if (OverrideMainBuffer)
     getDiagnostics().setNumWarnings(NumWarningsInPreamble);
 
   // Parse the sources
-  bool Result = Parse(PCHContainerOps, std::move(OverrideMainBuffer));
+  bool Result =
+      Parse(std::move(PCHContainerOps), std::move(OverrideMainBuffer));
 
   // If we're caching global code-completion results, and the top-level 
   // declarations have changed, clear out the code-completion cache.
@@ -2124,7 +2139,7 @@ namespace {
       return Next.getCodeCompletionTUInfo();
     }
   };
-}
+} // anonymous namespace
 
 /// \brief Helper function that computes which global names are hidden by the
 /// local code-completion results.
@@ -2209,7 +2224,6 @@ static void CalculateHiddenNames(const CodeCompletionContext &Context,
       HiddenNames.insert(Name.getAsString());
   }
 }
-
 
 void AugmentedCodeCompleteConsumer::ProcessCodeCompleteResults(Sema &S,
                                             CodeCompletionContext Context,
@@ -2496,7 +2510,8 @@ static bool serializeUnit(ASTWriter &Writer,
 }
 
 bool ASTUnit::serialize(raw_ostream &OS) {
-  bool hasErrors = getDiagnostics().hasErrorOccurred();
+  // For serialization we are lenient if the errors were only warn-as-error kind.
+  bool hasErrors = getDiagnostics().hasUncompilableErrorOccurred();
 
   if (WriterData)
     return serializeUnit(WriterData->Writer, WriterData->Buffer,
@@ -2504,7 +2519,7 @@ bool ASTUnit::serialize(raw_ostream &OS) {
 
   SmallString<128> Buffer;
   llvm::BitstreamWriter Stream(Buffer);
-  ASTWriter Writer(Stream);
+  ASTWriter Writer(Stream, { });
   return serializeUnit(Writer, Buffer, getSema(), hasErrors, OS);
 }
 
@@ -2782,45 +2797,35 @@ bool ASTUnit::visitLocalTopLevelDecls(void *context, DeclVisitorFn Fn) {
   return true;
 }
 
-namespace {
-struct PCHLocatorInfo {
-  serialization::ModuleFile *Mod;
-  PCHLocatorInfo() : Mod(nullptr) {}
-};
-}
-
-static bool PCHLocator(serialization::ModuleFile &M, void *UserData) {
-  PCHLocatorInfo &Info = *static_cast<PCHLocatorInfo*>(UserData);
-  switch (M.Kind) {
-  case serialization::MK_ImplicitModule:
-  case serialization::MK_ExplicitModule:
-    return true; // skip dependencies.
-  case serialization::MK_PCH:
-    Info.Mod = &M;
-    return true; // found it.
-  case serialization::MK_Preamble:
-    return false; // look in dependencies.
-  case serialization::MK_MainFile:
-    return false; // look in dependencies.
-  }
-
-  return true;
-}
-
 const FileEntry *ASTUnit::getPCHFile() {
   if (!Reader)
     return nullptr;
 
-  PCHLocatorInfo Info;
-  Reader->getModuleManager().visit(PCHLocator, &Info);
-  if (Info.Mod)
-    return Info.Mod->File;
+  serialization::ModuleFile *Mod = nullptr;
+  Reader->getModuleManager().visit([&Mod](serialization::ModuleFile &M) {
+    switch (M.Kind) {
+    case serialization::MK_ImplicitModule:
+    case serialization::MK_ExplicitModule:
+      return true; // skip dependencies.
+    case serialization::MK_PCH:
+      Mod = &M;
+      return true; // found it.
+    case serialization::MK_Preamble:
+      return false; // look in dependencies.
+    case serialization::MK_MainFile:
+      return false; // look in dependencies.
+    }
+
+    return true;
+  });
+  if (Mod)
+    return Mod->File;
 
   return nullptr;
 }
 
 bool ASTUnit::isModuleFile() {
-  return isMainFileAST() && !ASTFileLangOpts.CurrentModule.empty();
+  return isMainFileAST() && ASTFileLangOpts.CompilingModule;
 }
 
 void ASTUnit::PreambleData::countLines() const {
@@ -2854,9 +2859,9 @@ void ASTUnit::ConcurrencyState::finish() {
 
 #else // NDEBUG
 
-ASTUnit::ConcurrencyState::ConcurrencyState() { Mutex = 0; }
+ASTUnit::ConcurrencyState::ConcurrencyState() { Mutex = nullptr; }
 ASTUnit::ConcurrencyState::~ConcurrencyState() {}
 void ASTUnit::ConcurrencyState::start() {}
 void ASTUnit::ConcurrencyState::finish() {}
 
-#endif
+#endif // NDEBUG

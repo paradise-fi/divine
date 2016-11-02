@@ -128,6 +128,19 @@ bool types::isCXX(ID Id) {
   }
 }
 
+bool types::isLLVMIR(ID Id) {
+  switch (Id) {
+  default:
+    return false;
+
+  case TY_LLVM_IR:
+  case TY_LLVM_BC:
+  case TY_LTO_IR:
+  case TY_LTO_BC:
+    return true;
+  }
+}
+
 bool types::isCuda(ID Id) {
   switch (Id) {
   default:
@@ -191,6 +204,7 @@ types::ID types::lookupTypeForExtension(const char *Ext) {
            .Case("pcm", TY_ModuleFile)
            .Case("pch", TY_PCH)
            .Case("gch", TY_PCH)
+           .Case("rs", TY_RenderScript)
            .Default(TY_INVALID);
 }
 
@@ -219,8 +233,7 @@ void types::getCompilationPhases(ID Id, llvm::SmallVectorImpl<phases::ID> &P) {
         P.push_back(phases::Compile);
         P.push_back(phases::Backend);
       }
-      if (Id != TY_CUDA_DEVICE)
-        P.push_back(phases::Assemble);
+      P.push_back(phases::Assemble);
     }
   }
 
@@ -229,7 +242,6 @@ void types::getCompilationPhases(ID Id, llvm::SmallVectorImpl<phases::ID> &P) {
   }
   assert(0 < P.size() && "Not enough phases in list");
   assert(P.size() <= phases::MaxNumberOfPhases && "Too many phases in list");
-  return;
 }
 
 ID types::lookupCXXTypeForCType(ID Id) {

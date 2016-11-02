@@ -136,6 +136,8 @@ static Cl::Kinds ClassifyInternal(ASTContext &Ctx, const Expr *E) {
   case Expr::ObjCIvarRefExprClass:
   case Expr::FunctionParmPackExprClass:
   case Expr::MSPropertyRefExprClass:
+  case Expr::MSPropertySubscriptExprClass:
+  case Expr::OMPArraySectionExprClass:
     return Cl::CL_LValue;
 
     // C99 6.5.2.5p5 says that compound literals are lvalues.
@@ -176,6 +178,7 @@ static Cl::Kinds ClassifyInternal(ASTContext &Ctx, const Expr *E) {
   case Expr::ObjCArrayLiteralClass:
   case Expr::ObjCDictionaryLiteralClass:
   case Expr::ObjCBoolLiteralExprClass:
+  case Expr::ObjCAvailabilityCheckExprClass:
   case Expr::ParenListExprClass:
   case Expr::SizeOfPackExprClass:
   case Expr::SubstNonTypeTemplateParmPackExprClass:
@@ -185,6 +188,7 @@ static Cl::Kinds ClassifyInternal(ASTContext &Ctx, const Expr *E) {
   case Expr::CXXFoldExprClass:
   case Expr::NoInitExprClass:
   case Expr::DesignatedInitUpdateExprClass:
+  case Expr::CoyieldExprClass:
     return Cl::CL_PRValue;
 
     // Next come the complicated cases.
@@ -357,6 +361,7 @@ static Cl::Kinds ClassifyInternal(ASTContext &Ctx, const Expr *E) {
       
     // Some C++ expressions are always class temporaries.
   case Expr::CXXConstructExprClass:
+  case Expr::CXXInheritedCtorInitExprClass:
   case Expr::CXXTemporaryObjectExprClass:
   case Expr::LambdaExprClass:
   case Expr::CXXStdInitializerListExprClass:
@@ -396,6 +401,9 @@ static Cl::Kinds ClassifyInternal(ASTContext &Ctx, const Expr *E) {
     assert(cast<InitListExpr>(E)->getNumInits() == 1 &&
            "Only 1-element init lists can be glvalues.");
     return ClassifyInternal(Ctx, cast<InitListExpr>(E)->getInit(0));
+
+  case Expr::CoawaitExprClass:
+    return ClassifyInternal(Ctx, cast<CoawaitExpr>(E)->getResumeExpr());
   }
 
   llvm_unreachable("unhandled expression kind in classification");

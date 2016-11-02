@@ -34,7 +34,6 @@
 #include "clang/Analysis/CFGStmtMap.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
-#include "clang/Lex/Lexer.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Sema/ScopeInfo.h"
 #include "clang/Sema/SemaInternal.h"
@@ -99,7 +98,7 @@ namespace {
       }
     }
   };
-}
+} // anonymous namespace
 
 /// CheckUnreachable - Check for unreachable code.
 static void CheckUnreachable(Sema &S, AnalysisDeclContext &AC) {
@@ -157,11 +156,44 @@ public:
         << DiagRange << isAlwaysTrue;
   }
 };
-} // namespace
+} // anonymous namespace
 
 //===----------------------------------------------------------------------===//
 // Check for infinite self-recursion in functions
 //===----------------------------------------------------------------------===//
+
+// Returns true if the function is called anywhere within the CFGBlock.
+// For member functions, the additional condition of being call from the
+// this pointer is required.
+static bool hasRecursiveCallInPath(const FunctionDecl *FD, CFGBlock &Block) {
+  // Process all the Stmt's in this block to find any calls to FD.
+  for (const auto &B : Block) {
+    if (B.getKind() != CFGElement::Statement)
+      continue;
+
+    const CallExpr *CE = dyn_cast<CallExpr>(B.getAs<CFGStmt>()->getStmt());
+    if (!CE || !CE->getCalleeDecl() ||
+        CE->getCalleeDecl()->getCanonicalDecl() != FD)
+      continue;
+
+    // Skip function calls which are qualified with a templated class.
+    if (const DeclRefExpr *DRE =
+            dyn_cast<DeclRefExpr>(CE->getCallee()->IgnoreParenImpCasts())) {
+      if (NestedNameSpecifier *NNS = DRE->getQualifier()) {
+        if (NNS->getKind() == NestedNameSpecifier::TypeSpec &&
+            isa<TemplateSpecializationType>(NNS->getAsType())) {
+          continue;
+        }
+      }
+    }
+
+    const CXXMemberCallExpr *MCE = dyn_cast<CXXMemberCallExpr>(CE);
+    if (!MCE || isa<CXXThisExpr>(MCE->getImplicitObjectArgument()) ||
+        !MCE->getMethodDecl()->isVirtual())
+      return true;
+  }
+  return false;
+}
 
 // All blocks are in one of three states.  States are ordered so that blocks
 // can only move to higher states.
@@ -171,68 +203,56 @@ enum RecursiveState {
   FoundPathWithNoRecursiveCall
 };
 
-static void checkForFunctionCall(Sema &S, const FunctionDecl *FD,
-                                 CFGBlock &Block, unsigned ExitID,
-                                 llvm::SmallVectorImpl<RecursiveState> &States,
-                                 RecursiveState State) {
-  unsigned ID = Block.getBlockID();
+// Returns true if there exists a path to the exit block and every path
+// to the exit block passes through a call to FD.
+static bool checkForRecursiveFunctionCall(const FunctionDecl *FD, CFG *cfg) {
 
-  // A block's state can only move to a higher state.
-  if (States[ID] >= State)
-    return;
+  const unsigned ExitID = cfg->getExit().getBlockID();
 
-  States[ID] = State;
+  // Mark all nodes as FoundNoPath, then set the status of the entry block.
+  SmallVector<RecursiveState, 16> States(cfg->getNumBlockIDs(), FoundNoPath);
+  States[cfg->getEntry().getBlockID()] = FoundPathWithNoRecursiveCall;
 
-  // Found a path to the exit node without a recursive call.
-  if (ID == ExitID && State == FoundPathWithNoRecursiveCall)
-    return;
+  // Make the processing stack and seed it with the entry block.
+  SmallVector<CFGBlock *, 16> Stack;
+  Stack.push_back(&cfg->getEntry());
 
-  if (State == FoundPathWithNoRecursiveCall) {
-    // If the current state is FoundPathWithNoRecursiveCall, the successors
-    // will be either FoundPathWithNoRecursiveCall or FoundPath.  To determine
-    // which, process all the Stmt's in this block to find any recursive calls.
-    for (const auto &B : Block) {
-      if (B.getKind() != CFGElement::Statement)
-        continue;
+  while (!Stack.empty()) {
+    CFGBlock *CurBlock = Stack.back();
+    Stack.pop_back();
 
-      const CallExpr *CE = dyn_cast<CallExpr>(B.getAs<CFGStmt>()->getStmt());
-      if (CE && CE->getCalleeDecl() &&
-          CE->getCalleeDecl()->getCanonicalDecl() == FD) {
+    unsigned ID = CurBlock->getBlockID();
+    RecursiveState CurState = States[ID];
 
-        // Skip function calls which are qualified with a templated class.
-        if (const DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(
-                CE->getCallee()->IgnoreParenImpCasts())) {
-          if (NestedNameSpecifier *NNS = DRE->getQualifier()) {
-            if (NNS->getKind() == NestedNameSpecifier::TypeSpec &&
-                isa<TemplateSpecializationType>(NNS->getAsType())) {
-               continue;
-            }
-          }
-        }
+    if (CurState == FoundPathWithNoRecursiveCall) {
+      // Found a path to the exit node without a recursive call.
+      if (ExitID == ID)
+        return false;
 
-        if (const CXXMemberCallExpr *MCE = dyn_cast<CXXMemberCallExpr>(CE)) {
-          if (isa<CXXThisExpr>(MCE->getImplicitObjectArgument()) ||
-              !MCE->getMethodDecl()->isVirtual()) {
-            State = FoundPath;
-            break;
-          }
-        } else {
-          State = FoundPath;
-          break;
+      // Only change state if the block has a recursive call.
+      if (hasRecursiveCallInPath(FD, *CurBlock))
+        CurState = FoundPath;
+    }
+
+    // Loop over successor blocks and add them to the Stack if their state
+    // changes.
+    for (auto I = CurBlock->succ_begin(), E = CurBlock->succ_end(); I != E; ++I)
+      if (*I) {
+        unsigned next_ID = (*I)->getBlockID();
+        if (States[next_ID] < CurState) {
+          States[next_ID] = CurState;
+          Stack.push_back(*I);
         }
       }
-    }
   }
 
-  for (CFGBlock::succ_iterator I = Block.succ_begin(), E = Block.succ_end();
-       I != E; ++I)
-    if (*I)
-      checkForFunctionCall(S, FD, **I, ExitID, States, State);
+  // Return true if the exit node is reachable, and only reachable through
+  // a recursive call.
+  return States[ExitID] == FoundPath;
 }
 
 static void checkRecursiveFunction(Sema &S, const FunctionDecl *FD,
-                                   const Stmt *Body,
-                                   AnalysisDeclContext &AC) {
+                                   const Stmt *Body, AnalysisDeclContext &AC) {
   FD = FD->getCanonicalDecl();
 
   // Only run on non-templated functions and non-templated members of
@@ -248,15 +268,8 @@ static void checkRecursiveFunction(Sema &S, const FunctionDecl *FD,
   if (cfg->getExit().pred_empty())
     return;
 
-  // Mark all nodes as FoundNoPath, then begin processing the entry block.
-  llvm::SmallVector<RecursiveState, 16> states(cfg->getNumBlockIDs(),
-                                               FoundNoPath);
-  checkForFunctionCall(S, FD, cfg->getEntry(), cfg->getExit().getBlockID(),
-                       states, FoundPathWithNoRecursiveCall);
-
-  // Check that the exit block is reachable.  This prevents triggering the
-  // warning on functions that do not terminate.
-  if (states[cfg->getExit().getBlockID()] == FoundPath)
+  // Emit diagnostic if a recursive function call is detected for all paths.
+  if (checkForRecursiveFunctionCall(FD, cfg))
     S.Diag(Body->getLocStart(), diag::warn_infinite_recursive_function);
 }
 
@@ -492,7 +505,7 @@ struct CheckFallThroughDiagnostics {
   }
 };
 
-}
+} // anonymous namespace
 
 /// CheckFallThroughForFunctionDef - Check that we don't fall off the end of a
 /// function that should return a value.  Check that we don't fall off the end
@@ -600,7 +613,7 @@ public:
 
   bool doesContainReference() const { return FoundReference; }
 };
-}
+} // anonymous namespace
 
 static bool SuggestInitializationFixit(Sema &S, const VarDecl *VD) {
   QualType VariableTy = VD->getType().getCanonicalType();
@@ -643,8 +656,7 @@ static void CreateIfFixit(Sema &S, const Stmt *If, const Stmt *Then,
         CharSourceRange::getCharRange(If->getLocStart(),
                                       Then->getLocStart()));
     if (Else) {
-      SourceLocation ElseKwLoc = Lexer::getLocForEndOfToken(
-          Then->getLocEnd(), 0, S.getSourceManager(), S.getLangOpts());
+      SourceLocation ElseKwLoc = S.getLocForEndOfToken(Then->getLocEnd());
       Fixit2 = FixItHint::CreateRemoval(
           SourceRange(ElseKwLoc, Else->getLocEnd()));
     }
@@ -836,7 +848,6 @@ static void DiagUninitUse(Sema &S, const VarDecl *VD, const UninitUse &Use,
 static bool DiagnoseUninitializedUse(Sema &S, const VarDecl *VD,
                                      const UninitUse &Use,
                                      bool alwaysReportSelfInit = false) {
-
   if (const DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(Use.getUser())) {
     // Inspect the initializer of the variable declaration which is
     // being referenced prior to its initialization. We emit
@@ -878,7 +889,7 @@ static bool DiagnoseUninitializedUse(Sema &S, const VarDecl *VD,
   // the initializer of that declaration & we didn't already suggest
   // an initialization fixit.
   if (!SuggestInitializationFixit(S, VD))
-    S.Diag(VD->getLocStart(), diag::note_uninit_var_def)
+    S.Diag(VD->getLocStart(), diag::note_var_declared_here)
       << VD->getDeclName();
 
   return true;
@@ -1058,6 +1069,34 @@ namespace {
     Sema &S;
     llvm::SmallPtrSet<const CFGBlock *, 16> ReachableBlocks;
   };
+} // anonymous namespace
+
+static StringRef getFallthroughAttrSpelling(Preprocessor &PP,
+                                            SourceLocation Loc) {
+  TokenValue FallthroughTokens[] = {
+    tok::l_square, tok::l_square,
+    PP.getIdentifierInfo("fallthrough"),
+    tok::r_square, tok::r_square
+  };
+
+  TokenValue ClangFallthroughTokens[] = {
+    tok::l_square, tok::l_square, PP.getIdentifierInfo("clang"),
+    tok::coloncolon, PP.getIdentifierInfo("fallthrough"),
+    tok::r_square, tok::r_square
+  };
+
+  bool PreferClangAttr = !PP.getLangOpts().CPlusPlus1z;
+
+  StringRef MacroName;
+  if (PreferClangAttr)
+    MacroName = PP.getLastMacroWithSpelling(Loc, ClangFallthroughTokens);
+  if (MacroName.empty())
+    MacroName = PP.getLastMacroWithSpelling(Loc, FallthroughTokens);
+  if (MacroName.empty() && !PreferClangAttr)
+    MacroName = PP.getLastMacroWithSpelling(Loc, ClangFallthroughTokens);
+  if (MacroName.empty())
+    MacroName = PreferClangAttr ? "[[clang::fallthrough]]" : "[[fallthrough]]";
+  return MacroName;
 }
 
 static void DiagnoseSwitchLabelsFallthrough(Sema &S, AnalysisDeclContext &AC,
@@ -1090,8 +1129,7 @@ static void DiagnoseSwitchLabelsFallthrough(Sema &S, AnalysisDeclContext &AC,
 
   FM.fillReachableBlocks(Cfg);
 
-  for (CFG::reverse_iterator I = Cfg->rbegin(), E = Cfg->rend(); I != E; ++I) {
-    const CFGBlock *B = *I;
+  for (const CFGBlock *B : llvm::reverse(*Cfg)) {
     const Stmt *Label = B->getLabel();
 
     if (!Label || !isa<SwitchCase>(Label))
@@ -1119,15 +1157,7 @@ static void DiagnoseSwitchLabelsFallthrough(Sema &S, AnalysisDeclContext &AC,
         }
         if (!(B->empty() && Term && isa<BreakStmt>(Term))) {
           Preprocessor &PP = S.getPreprocessor();
-          TokenValue Tokens[] = {
-            tok::l_square, tok::l_square, PP.getIdentifierInfo("clang"),
-            tok::coloncolon, PP.getIdentifierInfo("fallthrough"),
-            tok::r_square, tok::r_square
-          };
-          StringRef AnnotationSpelling = "[[clang::fallthrough]]";
-          StringRef MacroName = PP.getLastMacroWithSpelling(L, Tokens);
-          if (!MacroName.empty())
-            AnnotationSpelling = MacroName;
+          StringRef AnnotationSpelling = getFallthroughAttrSpelling(PP, L);
           SmallString<64> TextToInsert(AnnotationSpelling);
           TextToInsert += "; ";
           S.Diag(L, diag::note_insert_fallthrough_fixit) <<
@@ -1141,7 +1171,7 @@ static void DiagnoseSwitchLabelsFallthrough(Sema &S, AnalysisDeclContext &AC,
   }
 
   for (const auto *F : FM.getFallthroughStmts())
-    S.Diag(F->getLocStart(), diag::warn_fallthrough_attr_invalid_placement);
+    S.Diag(F->getLocStart(), diag::err_fallthrough_attr_invalid_placement);
 }
 
 static bool isInLoop(const ASTContext &Ctx, const ParentMap &PM,
@@ -1169,7 +1199,6 @@ static bool isInLoop(const ASTContext &Ctx, const ParentMap &PM,
 
   return false;
 }
-
 
 static void diagnoseRepeatedUseOfWeak(Sema &S,
                                       const sema::FunctionScopeInfo *CurFn,
@@ -1293,21 +1322,27 @@ static void diagnoseRepeatedUseOfWeak(Sema &S,
       Ivar
     } ObjectKind;
 
-    const NamedDecl *D = Key.getProperty();
-    if (isa<VarDecl>(D))
+    const NamedDecl *KeyProp = Key.getProperty();
+    if (isa<VarDecl>(KeyProp))
       ObjectKind = Variable;
-    else if (isa<ObjCPropertyDecl>(D))
+    else if (isa<ObjCPropertyDecl>(KeyProp))
       ObjectKind = Property;
-    else if (isa<ObjCMethodDecl>(D))
+    else if (isa<ObjCMethodDecl>(KeyProp))
       ObjectKind = ImplicitProperty;
-    else if (isa<ObjCIvarDecl>(D))
+    else if (isa<ObjCIvarDecl>(KeyProp))
       ObjectKind = Ivar;
     else
       llvm_unreachable("Unexpected weak object kind!");
 
+    // Do not warn about IBOutlet weak property receivers being set to null
+    // since they are typically only used from the main thread.
+    if (const ObjCPropertyDecl *Prop = dyn_cast<ObjCPropertyDecl>(KeyProp))
+      if (Prop->hasAttr<IBOutletAttr>())
+        continue;
+
     // Show the first time the object was read.
     S.Diag(FirstRead->getLocStart(), DiagKind)
-      << int(ObjectKind) << D << int(FunctionKind)
+      << int(ObjectKind) << KeyProp << int(FunctionKind)
       << FirstRead->getSourceRange();
 
     // Print all the other accesses as notes.
@@ -1330,20 +1365,16 @@ class UninitValsDiagReporter : public UninitVariablesHandler {
   // the same as insertion order. This is needed to obtain a deterministic
   // order of diagnostics when calling flushDiagnostics().
   typedef llvm::MapVector<const VarDecl *, MappedType> UsesMap;
-  UsesMap *uses;
+  UsesMap uses;
   
 public:
-  UninitValsDiagReporter(Sema &S) : S(S), uses(nullptr) {}
+  UninitValsDiagReporter(Sema &S) : S(S) {}
   ~UninitValsDiagReporter() override { flushDiagnostics(); }
 
   MappedType &getUses(const VarDecl *vd) {
-    if (!uses)
-      uses = new UsesMap();
-
-    MappedType &V = (*uses)[vd];
+    MappedType &V = uses[vd];
     if (!V.getPointer())
       V.setPointer(new UsesVec());
-    
     return V;
   }
 
@@ -1357,10 +1388,7 @@ public:
   }
   
   void flushDiagnostics() {
-    if (!uses)
-      return;
-
-    for (const auto &P : *uses) {
+    for (const auto &P : uses) {
       const VarDecl *vd = P.first;
       const MappedType &V = P.second;
 
@@ -1401,7 +1429,8 @@ public:
       // Release the uses vector.
       delete vec;
     }
-    delete uses;
+
+    uses.clear();
   }
 
 private:
@@ -1413,7 +1442,7 @@ private:
     });
   }
 };
-}
+} // anonymous namespace
 
 namespace clang {
 namespace {
@@ -1431,7 +1460,8 @@ struct SortDiagBySourceLocation {
     return SM.isBeforeInTranslationUnit(left.first.first, right.first.first);
   }
 };
-}}
+} // anonymous namespace
+} // namespace clang
 
 //===----------------------------------------------------------------------===//
 // -Wthread-safety
@@ -1670,7 +1700,6 @@ class ThreadSafetyReporter : public clang::threadSafety::ThreadSafetyHandler {
     Warnings.emplace_back(std::move(Warning), getNotes());
   }
 
-
   void handleFunExcludesLock(StringRef Kind, Name FunName, Name LockName,
                              SourceLocation Loc) override {
     PartialDiagnosticAt Warning(Loc, S.PDiag(diag::warn_fun_excludes_mutex)
@@ -1696,10 +1725,10 @@ class ThreadSafetyReporter : public clang::threadSafety::ThreadSafetyHandler {
   }
 
   void leaveFunction(const FunctionDecl* FD) override {
-    CurrentFunction = 0;
+    CurrentFunction = nullptr;
   }
 };
-} // namespace
+} // anonymous namespace
 } // namespace threadSafety
 } // namespace clang
 
@@ -1792,7 +1821,9 @@ public:
     Warnings.emplace_back(std::move(Warning), OptionalNotes());
   }
 };
-}}}
+} // anonymous namespace
+} // namespace consumed
+} // namespace clang
 
 //===----------------------------------------------------------------------===//
 // AnalysisBasedWarnings - Worker object used by Sema to execute analysis-based
@@ -1866,7 +1897,7 @@ AnalysisBasedWarnings::IssueWarnings(sema::AnalysisBasedWarnings::Policy P,
   if (cast<DeclContext>(D)->isDependentContext())
     return;
 
-  if (Diags.hasUncompilableErrorOccurred() || Diags.hasFatalErrorOccurred()) {
+  if (Diags.hasUncompilableErrorOccurred()) {
     // Flush out any possibly unreachable diagnostics.
     flushDiagnostics(S, fscope);
     return;
@@ -1958,7 +1989,6 @@ AnalysisBasedWarnings::IssueWarnings(sema::AnalysisBasedWarnings::Policy P,
       flushDiagnostics(S, fscope);
   }
   
-  
   // Warning: check missing 'return'
   if (P.enableCheckFallThrough) {
     const CheckFallThroughDiagnostics &CD =
@@ -2034,11 +2064,12 @@ AnalysisBasedWarnings::IssueWarnings(sema::AnalysisBasedWarnings::Policy P,
       !Diags.isIgnored(diag::warn_unannotated_fallthrough, D->getLocStart());
   bool FallThroughDiagPerFunction = !Diags.isIgnored(
       diag::warn_unannotated_fallthrough_per_function, D->getLocStart());
-  if (FallThroughDiagFull || FallThroughDiagPerFunction) {
+  if (FallThroughDiagFull || FallThroughDiagPerFunction ||
+      fscope->HasFallthroughStmt) {
     DiagnoseSwitchLabelsFallthrough(S, AC, !FallThroughDiagFull);
   }
 
-  if (S.getLangOpts().ObjCARCWeak &&
+  if (S.getLangOpts().ObjCWeak &&
       !Diags.isIgnored(diag::warn_arc_repeated_use_of_weak, D->getLocStart()))
     diagnoseRepeatedUseOfWeak(S, fscope, D, AC.getParentMap());
 
