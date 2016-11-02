@@ -157,6 +157,9 @@ bool shouldCallPersonality( _Unwind_Context &ctx ) {
             && ctx.meta().inst_table[ ctx.relPC() ].opcode == OpCode::Invoke;
 }
 
+static const uint64_t cppExceptionClass          = 0x434C4E47432B2B00; // CLNGC++\0
+static const uint64_t cppDependentExceptionClass = 0x434C4E47432B2B01; // CLNGC++\1
+
 //  Raise an exception, passing along the given exception object, which should
 //  have its exception_class and exception_cleanup fields set. The exception
 //  object has been allocated by the language-specific runtime, and has a
@@ -209,8 +212,15 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
         if ( ctx.meta().is_nounwind )
             __dios_fault( _VM_F_Control, "Exception thrown out of nounwind function" );
     }
-    if ( !foundCtx )
-        return _URC_END_OF_STACK;
+
+    bool unwindAlsoIfNoHandlerFound = false;
+    if ( !foundCtx ) {
+        unwindAlsoIfNoHandlerFound = exception->exception_class == cppExceptionClass
+                                      || exception->exception_class == cppDependentExceptionClass
+                                    ? __vm_choose( 2 ) : false;
+        if ( !unwindAlsoIfNoHandlerFound )
+            return _URC_END_OF_STACK;
+    }
     for ( auto ctx = topCtx; ctx; ctx.next() ) {
         if ( !shouldCallPersonality( ctx ) )
             continue;
@@ -226,14 +236,19 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
             return _URC_FATAL_PHASE2_ERROR;
         }
         if ( r == _URC_INSTALL_CONTEXT ) {
-            // unwinder has to have the mask in the same state as it was before throw
+            // kill the part of stack which fill be jumped over (free allocas)
             __dios_unwind( nullptr, topFrame, &ctx.frame() );
             topFrame = &ctx.frame();
             __dios_assert( ctx.jumpPC != 0 );
+            // unwinder has to have the mask in the same state as it was before throw/resume
             __dios_jump( &ctx.frame(), reinterpret_cast< void (*)() >( ctx.jumpPC ), mask._origState() );
             mask._setOrigState( exception->private_2 );
             exception->private_2 = uintptr_t( selfFrame );
         }
+    }
+    if ( unwindAlsoIfNoHandlerFound ) {
+        __dios_unwind( nullptr, topFrame, nullptr ); // kill rest of the stack below __cxa_throw
+        return _URC_END_OF_STACK;
     }
     __dios_trace( 0, "Unwinder Fatal Error: handler not found in phase 2" );
     return _URC_FATAL_PHASE2_ERROR;
