@@ -35,6 +35,7 @@ struct TraceText { GenericPointer text; };
 struct TraceSchedChoice { value::Pointer list; };
 struct TraceSchedInfo { int pid; int tid; };
 struct TraceStateType { llvm::Value *stateptr; };
+struct TraceInfo { GenericPointer text; };
 
 template< typename _Program, typename _Heap >
 struct Context
@@ -202,6 +203,7 @@ struct Context
     virtual void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceStateType ) { NOT_IMPLEMENTED(); }
+    virtual void trace( TraceInfo ) { NOT_IMPLEMENTED(); }
 
     virtual void doublefault()
     {

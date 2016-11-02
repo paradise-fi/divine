@@ -197,6 +197,7 @@ template< typename Program, typename Heap >
 struct DebugContext : Context< Program, Heap >
 {
     std::vector< std::string > _trace;
+    std::string _info;
     std::deque< int > _choices;
     ProcInfo _proc;
 
@@ -244,6 +245,11 @@ struct DebugContext : Context< Program, Heap >
             this->heap().read_shift( ptr, choice );
             _proc.emplace_back( std::make_pair( pid.cooked(), tid.cooked() ), choice.cooked() );
         }
+    }
+
+    void trace( vm::TraceInfo ti )
+    {
+        _info += this->heap().read_string( ti.text ) + "\n";
     }
 
     void state_type( llvm::DIVariable *di )

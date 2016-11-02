@@ -49,6 +49,10 @@ struct RunContext : Context< Program, MutableHeap >
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceSchedChoice ) {}
     void trace( vm::TraceStateType ) {}
+    void trace( vm::TraceInfo ti )
+    {
+        std::cerr << "I: " << heap().read_string( ti.text ) << std::endl;
+    }
 };
 
 void Run::run()

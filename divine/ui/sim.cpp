@@ -375,6 +375,8 @@ struct Interpreter
         Stepper step;
         step._bps.insert( _bc->program().functionByName( "main" ) );
         run( step, false );
+        if ( !_ctx._info.empty() )
+            std::cerr << "# boot info:\n" << _ctx._info;
         set( "$_", frameDN() );
     }
 

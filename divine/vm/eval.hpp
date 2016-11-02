@@ -960,6 +960,9 @@ struct Eval
                         context().trace( TraceSchedInfo{ operandCk< IntV >( 1 ).cooked(),
                                                          operandCk< IntV >( 2 ).cooked() } );
                         return;
+                    case _VM_T_Info:
+                        context().trace( TraceInfo{ ptr2h( operandCk< PointerV >( 1 ) ) } );
+                        return;
                     default:
                         fault( _VM_F_Hypercall ) << "invalid __vm_trace type " << t;
                 }

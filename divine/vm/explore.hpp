@@ -46,6 +46,7 @@ struct Context : vm::Context< Program, CowHeap >
 {
     using Program = Program;
     std::vector< std::string > _trace;
+    std::string _info;
     std::vector< std::pair< int, int > > _stack;
     int _level;
 
@@ -72,6 +73,10 @@ struct Context : vm::Context< Program, CowHeap >
     void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
     void trace( TraceStateType ) {}
+    void trace( TraceInfo ti )
+    {
+        _info += heap().read_string( ti.text ) + "\n";
+    }
 
     bool finished()
     {
