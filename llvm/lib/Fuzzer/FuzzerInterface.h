@@ -6,93 +6,62 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-// Define the interface between the Fuzzer and the library being tested.
+// Define the interface between libFuzzer and the library being tested.
 //===----------------------------------------------------------------------===//
 
-// WARNING: keep the interface free of STL or any other header-based C++ lib,
-// to avoid bad interactions between the code used in the fuzzer and
-// the code used in the target function.
+// NOTE: the libFuzzer interface is thin and in the majority of cases
+// you should not include this file into your target. In 95% of cases
+// all you need is to define the following function in your file:
+// extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
+
+// WARNING: keep the interface in C.
 
 #ifndef LLVM_FUZZER_INTERFACE_H
 #define LLVM_FUZZER_INTERFACE_H
 
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
-namespace fuzzer {
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
 
-typedef void (*UserCallback)(const uint8_t *Data, size_t Size);
-/** Simple C-like interface with a single user-supplied callback.
+// Mandatory user-provided target function.
+// Executes the code under test with [Data, Data+Size) as the input.
+// libFuzzer will invoke this function *many* times with different inputs.
+// Must return 0.
+int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size);
 
-Usage:
+// Optional user-provided initialization function.
+// If provided, this function will be called by libFuzzer once at startup.
+// It may read and modify argc/argv.
+// Must return 0.
+int LLVMFuzzerInitialize(int *argc, char ***argv);
 
-#\code
-#include "FuzzerInterface.h"
+// Optional user-provided custom mutator.
+// Mutates raw data in [Data, Data+Size) inplace.
+// Returns the new size, which is not greater than MaxSize.
+// Given the same Seed produces the same mutation.
+size_t LLVMFuzzerCustomMutator(uint8_t *Data, size_t Size, size_t MaxSize,
+                               unsigned int Seed);
 
-void LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
-  DoStuffWithData(Data, Size);
-}
+// Optional user-provided custom cross-over function.
+// Combines pieces of Data1 & Data2 together into Out.
+// Returns the new size, which is not greater than MaxOutSize.
+// Should produce the same mutation given the same Seed.
+size_t LLVMFuzzerCustomCrossOver(const uint8_t *Data1, size_t Size1,
+                                 const uint8_t *Data2, size_t Size2,
+                                 uint8_t *Out, size_t MaxOutSize,
+                                 unsigned int Seed);
 
-// Implement your own main() or use the one from FuzzerMain.cpp.
-int main(int argc, char **argv) {
-  InitializeMeIfNeeded();
-  return fuzzer::FuzzerDriver(argc, argv, LLVMFuzzerTestOneInput);
-}
-#\endcode
-*/
-int FuzzerDriver(int argc, char **argv, UserCallback Callback);
+// Experimental, may go away in future.
+// libFuzzer-provided function to be used inside LLVMFuzzerTestOneInput.
+// Mutates raw data in [Data, Data+Size) inplace.
+// Returns the new size, which is not greater than MaxSize.
+size_t LLVMFuzzerMutate(uint8_t *Data, size_t Size, size_t MaxSize);
 
-/** An abstract class that allows to use user-supplied mutators with libFuzzer.
-
-Usage:
-
-#\code
-#include "FuzzerInterface.h"
-class MyFuzzer : public fuzzer::UserSuppliedFuzzer {
- public:
-  // Must define the target function.
-  void TargetFunction(...) { ... }
-  // Optionally define the mutator.
-  size_t Mutate(...) { ... }
-  // Optionally define the CrossOver method.
-  size_t CrossOver(...) { ... }
-};
-
-int main(int argc, char **argv) {
-  MyFuzzer F;
-  fuzzer::FuzzerDriver(argc, argv, F);
-}
-#\endcode
-*/
-class UserSuppliedFuzzer {
- public:
-  /// Executes the target function on 'Size' bytes of 'Data'.
-  virtual void TargetFunction(const uint8_t *Data, size_t Size) = 0;
-  /// Mutates 'Size' bytes of data in 'Data' inplace into up to 'MaxSize' bytes,
-  /// returns the new size of the data, which should be positive.
-  virtual size_t Mutate(uint8_t *Data, size_t Size, size_t MaxSize) {
-    return BasicMutate(Data, Size, MaxSize);
-  }
-  /// Crosses 'Data1' and 'Data2', writes up to 'MaxOutSize' bytes into Out,
-  /// returns the number of bytes written, which should be positive.
-  virtual size_t CrossOver(const uint8_t *Data1, size_t Size1,
-                           const uint8_t *Data2, size_t Size2,
-                           uint8_t *Out, size_t MaxOutSize) {
-    return BasicCrossOver(Data1, Size1, Data2, Size2, Out, MaxOutSize);
-  }
-  virtual ~UserSuppliedFuzzer() {}
-
- protected:
-  /// These can be called internally by Mutate and CrossOver.
-  size_t BasicMutate(uint8_t *Data, size_t Size, size_t MaxSize);
-  size_t BasicCrossOver(const uint8_t *Data1, size_t Size1,
-                        const uint8_t *Data2, size_t Size2,
-                        uint8_t *Out, size_t MaxOutSize);
-};
-
-/// Runs the fuzzing with the UserSuppliedFuzzer.
-int FuzzerDriver(int argc, char **argv, UserSuppliedFuzzer &USF);
-
-}  // namespace fuzzer
+#ifdef __cplusplus
+}  // extern "C"
+#endif  // __cplusplus
 
 #endif  // LLVM_FUZZER_INTERFACE_H

@@ -21,7 +21,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Transforms/IPO.h"
-#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfo.h"
@@ -211,16 +210,16 @@ static bool StripSymbolNames(Module &M, bool PreserveDbgInfo) {
 
   for (Module::global_iterator I = M.global_begin(), E = M.global_end();
        I != E; ++I) {
-    if (I->hasLocalLinkage() && llvmUsedValues.count(I) == 0)
+    if (I->hasLocalLinkage() && llvmUsedValues.count(&*I) == 0)
       if (!PreserveDbgInfo || !I->getName().startswith("llvm.dbg"))
         I->setName("");     // Internal symbols can't participate in linkage
   }
 
-  for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
-    if (I->hasLocalLinkage() && llvmUsedValues.count(I) == 0)
-      if (!PreserveDbgInfo || !I->getName().startswith("llvm.dbg"))
-        I->setName("");     // Internal symbols can't participate in linkage
-    StripSymtab(I->getValueSymbolTable(), PreserveDbgInfo);
+  for (Function &I : M) {
+    if (I.hasLocalLinkage() && llvmUsedValues.count(&I) == 0)
+      if (!PreserveDbgInfo || !I.getName().startswith("llvm.dbg"))
+        I.setName(""); // Internal symbols can't participate in linkage
+    StripSymtab(I.getValueSymbolTable(), PreserveDbgInfo);
   }
 
   // Remove all names from types.
@@ -230,6 +229,9 @@ static bool StripSymbolNames(Module &M, bool PreserveDbgInfo) {
 }
 
 bool StripSymbols::runOnModule(Module &M) {
+  if (skipModule(M))
+    return false;
+
   bool Changed = false;
   Changed |= StripDebugInfo(M);
   if (!OnlyDebugInfo)
@@ -238,10 +240,15 @@ bool StripSymbols::runOnModule(Module &M) {
 }
 
 bool StripNonDebugSymbols::runOnModule(Module &M) {
+  if (skipModule(M))
+    return false;
+
   return StripSymbolNames(M, true);
 }
 
 bool StripDebugDeclare::runOnModule(Module &M) {
+  if (skipModule(M))
+    return false;
 
   Function *Declare = M.getFunction("llvm.dbg.declare");
   std::vector<Constant*> DeadConstants;
@@ -287,6 +294,9 @@ bool StripDebugDeclare::runOnModule(Module &M) {
 /// optimized away by the optimizer. This special pass removes debug info for
 /// such symbols.
 bool StripDeadDebugInfo::runOnModule(Module &M) {
+  if (skipModule(M))
+    return false;
+
   bool Changed = false;
 
   LLVMContext &C = M.getContext();
@@ -305,21 +315,13 @@ bool StripDeadDebugInfo::runOnModule(Module &M) {
   SmallVector<Metadata *, 64> LiveSubprograms;
   DenseSet<const MDNode *> VisitedSet;
 
+  std::set<DISubprogram *> LiveSPs;
+  for (Function &F : M) {
+    if (DISubprogram *SP = F.getSubprogram())
+      LiveSPs.insert(SP);
+  }
+
   for (DICompileUnit *DIC : F.compile_units()) {
-    // Create our live subprogram list.
-    bool SubprogramChange = false;
-    for (DISubprogram *DISP : DIC->getSubprograms()) {
-      // Make sure we visit each subprogram only once.
-      if (!VisitedSet.insert(DISP).second)
-        continue;
-
-      // If the function referenced by DISP is not null, the function is live.
-      if (DISP->getFunction())
-        LiveSubprograms.push_back(DISP);
-      else
-        SubprogramChange = true;
-    }
-
     // Create our live global variable list.
     bool GlobalVariableChange = false;
     for (DIGlobalVariable *DIG : DIC->getGlobalVariables()) {
@@ -335,14 +337,8 @@ bool StripDeadDebugInfo::runOnModule(Module &M) {
         GlobalVariableChange = true;
     }
 
-    // If we found dead subprograms or global variables, replace the current
-    // subprogram list/global variable list with our new live subprogram/global
-    // variable list.
-    if (SubprogramChange) {
-      DIC->replaceSubprograms(MDTuple::get(C, LiveSubprograms));
-      Changed = true;
-    }
-
+    // If we found dead global variables, replace the current global
+    // variable list with our new live global variable list.
     if (GlobalVariableChange) {
       DIC->replaceGlobalVariables(MDTuple::get(C, LiveGlobalVariables));
       Changed = true;

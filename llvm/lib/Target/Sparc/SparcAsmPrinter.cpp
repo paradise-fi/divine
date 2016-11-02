@@ -18,7 +18,6 @@
 #include "SparcInstrInfo.h"
 #include "SparcTargetMachine.h"
 #include "SparcTargetStreamer.h"
-#include "llvm/ADT/SmallString.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineModuleInfoImpls.h"
@@ -54,7 +53,6 @@ namespace {
     void printOperand(const MachineInstr *MI, int opNum, raw_ostream &OS);
     void printMemOperand(const MachineInstr *MI, int opNum, raw_ostream &OS,
                          const char *Modifier = nullptr);
-    void printCCOperand(const MachineInstr *MI, int opNum, raw_ostream &OS);
 
     void EmitFunctionBodyStart() override;
     void EmitInstruction(const MachineInstr *MI) override;
@@ -185,7 +183,7 @@ void SparcAsmPrinter::LowerGETPCXAndEmitMCInsts(const MachineInstr *MI,
   MCOperand MCRegOP = MCOperand::createReg(MO.getReg());
 
 
-  if (TM.getRelocationModel() != Reloc::PIC_) {
+  if (!isPositionIndependent()) {
     // Just load the address of GOT to MCRegOP.
     switch(TM.getCodeModel()) {
     default:
@@ -267,11 +265,11 @@ void SparcAsmPrinter::EmitInstruction(const MachineInstr *MI)
     LowerGETPCXAndEmitMCInsts(MI, getSubtargetInfo());
     return;
   }
-  MachineBasicBlock::const_instr_iterator I = MI;
+  MachineBasicBlock::const_instr_iterator I = MI->getIterator();
   MachineBasicBlock::const_instr_iterator E = MI->getParent()->instr_end();
   do {
     MCInst TmpInst;
-    LowerSparcMachineInstrToMCInst(I, TmpInst, *this);
+    LowerSparcMachineInstrToMCInst(&*I, TmpInst, *this);
     EmitToStreamer(*OutStreamer, TmpInst);
   } while ((++I != E) && I->isInsideBundle()); // Delay slot check.
 }
@@ -296,7 +294,7 @@ void SparcAsmPrinter::EmitFunctionBodyStart() {
 
 void SparcAsmPrinter::printOperand(const MachineInstr *MI, int opNum,
                                    raw_ostream &O) {
-  const DataLayout *DL = TM.getDataLayout();
+  const DataLayout &DL = getDataLayout();
   const MachineOperand &MO = MI->getOperand (opNum);
   SparcMCExpr::VariantKind TF = (SparcMCExpr::VariantKind) MO.getTargetFlags();
 
@@ -373,8 +371,11 @@ void SparcAsmPrinter::printOperand(const MachineInstr *MI, int opNum,
     O << MO.getSymbolName();
     break;
   case MachineOperand::MO_ConstantPoolIndex:
-    O << DL->getPrivateGlobalPrefix() << "CPI" << getFunctionNumber() << "_"
+    O << DL.getPrivateGlobalPrefix() << "CPI" << getFunctionNumber() << "_"
       << MO.getIndex();
+    break;
+  case MachineOperand::MO_Metadata:
+    MO.getMetadata()->printAsOperand(O, MMI->getModule());
     break;
   default:
     llvm_unreachable("<unknown operand type>");
@@ -417,6 +418,7 @@ bool SparcAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
     default:
       // See if this is a generic print operand
       return AsmPrinter::PrintAsmOperand(MI, OpNo, AsmVariant, ExtraCode, O);
+    case 'f':
     case 'r':
      break;
     }

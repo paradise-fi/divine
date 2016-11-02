@@ -38,7 +38,7 @@ class WebAssemblyTTIImpl final : public BasicTTIImplBase<WebAssemblyTTIImpl> {
   const WebAssemblyTargetLowering *getTLI() const { return TLI; }
 
 public:
-  WebAssemblyTTIImpl(const WebAssemblyTargetMachine *TM, Function &F)
+  WebAssemblyTTIImpl(const WebAssemblyTargetMachine *TM, const Function &F)
       : BaseT(TM, F.getParent()->getDataLayout()), ST(TM->getSubtargetImpl(F)),
         TLI(ST->getTargetLowering()) {}
 
@@ -54,14 +54,22 @@ public:
 
   // TODO: Implement more Scalar TTI for WebAssembly
 
-  TTI::PopcntSupportKind getPopcntSupport(unsigned TyWidth);
+  TTI::PopcntSupportKind getPopcntSupport(unsigned TyWidth) const;
 
   /// @}
 
   /// \name Vector TTI Implementations
   /// @{
 
-  // TODO: Implement Vector TTI for WebAssembly
+  unsigned getNumberOfRegisters(bool Vector);
+  unsigned getRegisterBitWidth(bool Vector);
+  unsigned getArithmeticInstrCost(
+      unsigned Opcode, Type *Ty,
+      TTI::OperandValueKind Opd1Info = TTI::OK_AnyValue,
+      TTI::OperandValueKind Opd2Info = TTI::OK_AnyValue,
+      TTI::OperandValueProperties Opd1PropInfo = TTI::OP_None,
+      TTI::OperandValueProperties Opd2PropInfo = TTI::OP_None);
+  unsigned getVectorInstrCost(unsigned Opcode, Type *Val, unsigned Index);
 
   /// @}
 };

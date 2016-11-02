@@ -346,6 +346,8 @@ FunctionPass *llvm::createHexagonHardwareLoops() {
 
 bool HexagonHardwareLoops::runOnMachineFunction(MachineFunction &MF) {
   DEBUG(dbgs() << "********* Hexagon Hardware Loops *********\n");
+  if (skipFunction(*MF.getFunction()))
+    return false;
 
   bool Changed = false;
 
@@ -434,7 +436,7 @@ bool HexagonHardwareLoops::findInductionRegister(MachineLoop *L,
 
   SmallVector<MachineOperand,2> Cond;
   MachineBasicBlock *TB = nullptr, *FB = nullptr;
-  bool NotAnalyzed = TII->AnalyzeBranch(*ExitingBlock, TB, FB, Cond, false);
+  bool NotAnalyzed = TII->analyzeBranch(*ExitingBlock, TB, FB, Cond, false);
   if (NotAnalyzed)
     return false;
 
@@ -448,8 +450,8 @@ bool HexagonHardwareLoops::findInductionRegister(MachineLoop *L,
 
   unsigned CmpReg1 = 0, CmpReg2 = 0;
   int CmpImm = 0, CmpMask = 0;
-  bool CmpAnalyzed = TII->analyzeCompare(PredI, CmpReg1, CmpReg2,
-                                         CmpMask, CmpImm);
+  bool CmpAnalyzed =
+      TII->analyzeCompare(*PredI, CmpReg1, CmpReg2, CmpMask, CmpImm);
   // Fail if the compare was not analyzed, or it's not comparing a register
   // with an immediate value.  Not checking the mask here, since we handle
   // the individual compare opcodes (including A4_cmpb*) later on.
@@ -581,7 +583,7 @@ CountValue *HexagonHardwareLoops::getLoopTripCount(MachineLoop *L,
 
   SmallVector<MachineOperand,2> Cond;
   MachineBasicBlock *TB = nullptr, *FB = nullptr;
-  bool NotAnalyzed = TII->AnalyzeBranch(*ExitingBlock, TB, FB, Cond, false);
+  bool NotAnalyzed = TII->analyzeBranch(*ExitingBlock, TB, FB, Cond, false);
   if (NotAnalyzed)
     return nullptr;
 
@@ -593,7 +595,7 @@ CountValue *HexagonHardwareLoops::getLoopTripCount(MachineLoop *L,
   if (ExitingBlock != Latch && (TB == Latch || FB == Latch)) {
     MachineBasicBlock *LTB = 0, *LFB = 0;
     SmallVector<MachineOperand,2> LCond;
-    bool NotAnalyzed = TII->AnalyzeBranch(*Latch, LTB, LFB, LCond, false);
+    bool NotAnalyzed = TII->analyzeBranch(*Latch, LTB, LFB, LCond, false);
     if (NotAnalyzed)
       return nullptr;
     if (TB == Latch)
@@ -618,8 +620,8 @@ CountValue *HexagonHardwareLoops::getLoopTripCount(MachineLoop *L,
 
   unsigned CmpReg1 = 0, CmpReg2 = 0;
   int Mask = 0, ImmValue = 0;
-  bool AnalyzedCmp = TII->analyzeCompare(CondI, CmpReg1, CmpReg2,
-                                         Mask, ImmValue);
+  bool AnalyzedCmp =
+      TII->analyzeCompare(*CondI, CmpReg1, CmpReg2, Mask, ImmValue);
   if (!AnalyzedCmp)
     return nullptr;
 
@@ -727,9 +729,9 @@ CountValue *HexagonHardwareLoops::computeCount(MachineLoop *Loop,
   // Phis that may feed into the loop.
   LoopFeederMap LoopFeederPhi;
 
-  // Check if the inital value may be zero and can be decremented in the first
+  // Check if the initial value may be zero and can be decremented in the first
   // iteration. If the value is zero, the endloop instruction will not decrement
-  // the loop counter, so we shoudn't generate a hardware loop in this case.
+  // the loop counter, so we shouldn't generate a hardware loop in this case.
   if (loopCountMayWrapOrUnderFlow(Start, End, Loop->getLoopPreheader(), Loop,
                                   LoopFeederPhi))
       return nullptr;
@@ -1184,7 +1186,7 @@ bool HexagonHardwareLoops::convertToHardwareLoop(MachineLoop *L,
     MachineBasicBlock *TB = 0, *FB = 0;
     SmallVector<MachineOperand, 2> Cond;
 
-    if (TII->AnalyzeBranch(*ExitingBlock, TB, FB, Cond, false))
+    if (TII->analyzeBranch(*ExitingBlock, TB, FB, Cond, false))
       return false;
 
     if (L->contains(TB))
@@ -1288,14 +1290,14 @@ bool HexagonHardwareLoops::orderBumpCompare(MachineInstr *BumpI,
 
   typedef MachineBasicBlock::instr_iterator instr_iterator;
   // Check if things are in order to begin with.
-  for (instr_iterator I = BumpI, E = BB->instr_end(); I != E; ++I)
+  for (instr_iterator I(BumpI), E = BB->instr_end(); I != E; ++I)
     if (&*I == CmpI)
       return true;
 
   // Out of order.
   unsigned PredR = CmpI->getOperand(0).getReg();
   bool FoundBump = false;
-  instr_iterator CmpIt = CmpI, NextIt = std::next(CmpIt);
+  instr_iterator CmpIt = CmpI->getIterator(), NextIt = std::next(CmpIt);
   for (instr_iterator I = NextIt, E = BB->instr_end(); I != E; ++I) {
     MachineInstr *In = &*I;
     for (unsigned i = 0, n = In->getNumOperands(); i < n; ++i) {
@@ -1307,9 +1309,7 @@ bool HexagonHardwareLoops::orderBumpCompare(MachineInstr *BumpI,
     }
 
     if (In == BumpI) {
-      instr_iterator After = BumpI;
-      instr_iterator From = CmpI;
-      BB->splice(std::next(After), BB, From);
+      BB->splice(++BumpI->getIterator(), BB, CmpI->getIterator());
       FoundBump = true;
       break;
     }
@@ -1420,12 +1420,12 @@ bool HexagonHardwareLoops::loopCountMayWrapOrUnderFlow(
     unsigned CmpReg1 = 0, CmpReg2 = 0;
     int CmpMask = 0, CmpValue = 0;
 
-    if (!TII->analyzeCompare(MI, CmpReg1, CmpReg2, CmpMask, CmpValue))
+    if (!TII->analyzeCompare(*MI, CmpReg1, CmpReg2, CmpMask, CmpValue))
       continue;
 
     MachineBasicBlock *TBB = 0, *FBB = 0;
     SmallVector<MachineOperand, 2> Cond;
-    if (TII->AnalyzeBranch(*MI->getParent(), TBB, FBB, Cond, false))
+    if (TII->analyzeBranch(*MI->getParent(), TBB, FBB, Cond, false))
       continue;
 
     Comparison::Kind Cmp = getComparisonKind(MI->getOpcode(), 0, 0, 0);
@@ -1440,7 +1440,7 @@ bool HexagonHardwareLoops::loopCountMayWrapOrUnderFlow(
     if (Comparison::isSigned(Cmp))
       return false;
 
-    // Check if there is a comparison of the inital value. If the initial value
+    // Check if there is a comparison of the initial value. If the initial value
     // is greater than or not equal to another value, then assume this is a
     // range check.
     if ((Cmp & Comparison::G) || Cmp == Comparison::NE)
@@ -1621,14 +1621,14 @@ bool HexagonHardwareLoops::fixupInductionVariable(MachineLoop *L) {
   MachineBasicBlock *TB = nullptr, *FB = nullptr;
   SmallVector<MachineOperand,2> Cond;
   // AnalyzeBranch returns true if it fails to analyze branch.
-  bool NotAnalyzed = TII->AnalyzeBranch(*ExitingBlock, TB, FB, Cond, false);
+  bool NotAnalyzed = TII->analyzeBranch(*ExitingBlock, TB, FB, Cond, false);
   if (NotAnalyzed || Cond.empty())
     return false;
 
   if (ExitingBlock != Latch && (TB == Latch || FB == Latch)) {
     MachineBasicBlock *LTB = 0, *LFB = 0;
     SmallVector<MachineOperand,2> LCond;
-    bool NotAnalyzed = TII->AnalyzeBranch(*Latch, LTB, LFB, LCond, false);
+    bool NotAnalyzed = TII->analyzeBranch(*Latch, LTB, LFB, LCond, false);
     if (NotAnalyzed)
       return false;
 
@@ -1839,18 +1839,18 @@ MachineBasicBlock *HexagonHardwareLoops::createPreheaderForLoop(
   SmallVector<MachineOperand,2> Tmp1;
   MachineBasicBlock *TB = nullptr, *FB = nullptr;
 
-  if (TII->AnalyzeBranch(*ExitingBlock, TB, FB, Tmp1, false))
+  if (TII->analyzeBranch(*ExitingBlock, TB, FB, Tmp1, false))
     return nullptr;
 
   for (MBBVector::iterator I = Preds.begin(), E = Preds.end(); I != E; ++I) {
     MachineBasicBlock *PB = *I;
-    bool NotAnalyzed = TII->AnalyzeBranch(*PB, TB, FB, Tmp1, false);
+    bool NotAnalyzed = TII->analyzeBranch(*PB, TB, FB, Tmp1, false);
     if (NotAnalyzed)
       return nullptr;
   }
 
   MachineBasicBlock *NewPH = MF->CreateMachineBasicBlock();
-  MF->insert(Header, NewPH);
+  MF->insert(Header->getIterator(), NewPH);
 
   if (Header->pred_size() > 2) {
     // Ensure that the header has only two predecessors: the preheader and
@@ -1930,7 +1930,7 @@ MachineBasicBlock *HexagonHardwareLoops::createPreheaderForLoop(
     MachineBasicBlock *PB = *I;
     if (PB != Latch) {
       Tmp2.clear();
-      bool NotAnalyzed = TII->AnalyzeBranch(*PB, TB, FB, Tmp2, false);
+      bool NotAnalyzed = TII->analyzeBranch(*PB, TB, FB, Tmp2, false);
       (void)NotAnalyzed; // suppress compiler warning
       assert (!NotAnalyzed && "Should be analyzable!");
       if (TB != Header && (Tmp2.empty() || FB != Header))
@@ -1942,7 +1942,7 @@ MachineBasicBlock *HexagonHardwareLoops::createPreheaderForLoop(
   // It can happen that the latch block will fall through into the header.
   // Insert an unconditional branch to the header.
   TB = FB = nullptr;
-  bool LatchNotAnalyzed = TII->AnalyzeBranch(*Latch, TB, FB, Tmp2, false);
+  bool LatchNotAnalyzed = TII->analyzeBranch(*Latch, TB, FB, Tmp2, false);
   (void)LatchNotAnalyzed; // suppress compiler warning
   assert (!LatchNotAnalyzed && "Should be analyzable!");
   if (!TB && !FB)

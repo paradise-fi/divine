@@ -37,7 +37,7 @@ static cl::opt<bool> DisableDFASched("disable-dfa-sched", cl::Hidden,
   cl::ZeroOrMore, cl::init(false),
   cl::desc("Disable use of DFA during scheduling"));
 
-static cl::opt<signed> RegPressureThreshold(
+static cl::opt<int> RegPressureThreshold(
   "dfa-sched-reg-pressure-threshold", cl::Hidden, cl::ZeroOrMore, cl::init(5),
   cl::desc("Track reg pressure and switch priority to in-depth"));
 
@@ -49,7 +49,7 @@ ResourcePriorityQueue::ResourcePriorityQueue(SelectionDAGISel *IS)
   TII = STI.getInstrInfo();
   ResourcesModel.reset(TII->CreateTargetScheduleState(STI));
   // This hard requirement could be relaxed, but for now
-  // do not let it procede.
+  // do not let it proceed.
   assert(ResourcesModel && "Unimplemented CreateTargetScheduleState.");
 
   unsigned NumRC = TRI->getNumRegClasses();
@@ -269,12 +269,12 @@ bool ResourcePriorityQueue::isResourceAvailable(SUnit *SU) {
     }
 
   // Now see if there are no other dependencies
-  // to instructions alredy in the packet.
+  // to instructions already in the packet.
   for (unsigned i = 0, e = Packet.size(); i != e; ++i)
     for (SUnit::const_succ_iterator I = Packet[i]->Succs.begin(),
          E = Packet[i]->Succs.end(); I != E; ++I) {
       // Since we do not add pseudos to packets, might as well
-      // ignor order deps.
+      // ignore order deps.
       if (I->isCtrl())
         continue;
 
@@ -323,8 +323,8 @@ void ResourcePriorityQueue::reserveResources(SUnit *SU) {
   }
 }
 
-signed ResourcePriorityQueue::rawRegPressureDelta(SUnit *SU, unsigned RCId) {
-  signed RegBalance    = 0;
+int ResourcePriorityQueue::rawRegPressureDelta(SUnit *SU, unsigned RCId) {
+  int RegBalance = 0;
 
   if (!SU || !SU->getNode() || !SU->getNode()->isMachineOpcode())
     return RegBalance;
@@ -357,8 +357,8 @@ signed ResourcePriorityQueue::rawRegPressureDelta(SUnit *SU, unsigned RCId) {
 /// The RawPressure flag makes this function to ignore
 /// existing reg file sizes, and report raw def/use
 /// balance.
-signed ResourcePriorityQueue::regPressureDelta(SUnit *SU, bool RawPressure) {
-  signed RegBalance    = 0;
+int ResourcePriorityQueue::regPressureDelta(SUnit *SU, bool RawPressure) {
+  int RegBalance = 0;
 
   if (!SU || !SU->getNode() || !SU->getNode()->isMachineOpcode())
     return RegBalance;
@@ -398,9 +398,9 @@ static const unsigned FactorOne = 2;
 
 /// Returns single number reflecting benefit of scheduling SU
 /// in the current cycle.
-signed ResourcePriorityQueue::SUSchedulingCost(SUnit *SU) {
+int ResourcePriorityQueue::SUSchedulingCost(SUnit *SU) {
   // Initial trivial priority.
-  signed ResCount = 1;
+  int ResCount = 1;
 
   // Do not waste time on a node that is already scheduled.
   if (SU->isScheduled)
@@ -601,7 +601,7 @@ SUnit *ResourcePriorityQueue::pop() {
 
   std::vector<SUnit *>::iterator Best = Queue.begin();
   if (!DisableDFASched) {
-    signed BestCost = SUSchedulingCost(*Best);
+    int BestCost = SUSchedulingCost(*Best);
     for (std::vector<SUnit *>::iterator I = std::next(Queue.begin()),
            E = Queue.end(); I != E; ++I) {
 

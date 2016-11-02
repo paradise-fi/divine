@@ -34,50 +34,66 @@
 
 using namespace llvm;
 
-NewArchiveIterator::NewArchiveIterator(object::Archive::child_iterator I,
-                                       StringRef Name)
-    : IsNewMember(false), Name(Name), OldI(I) {}
+NewArchiveMember::NewArchiveMember(MemoryBufferRef BufRef)
+    : Buf(MemoryBuffer::getMemBuffer(BufRef, false)) {}
 
-NewArchiveIterator::NewArchiveIterator(StringRef NewFilename, StringRef Name)
-    : IsNewMember(true), Name(Name), NewFilename(NewFilename) {}
+Expected<NewArchiveMember>
+NewArchiveMember::getOldMember(const object::Archive::Child &OldMember,
+                               bool Deterministic) {
+  ErrorOr<llvm::MemoryBufferRef> BufOrErr = OldMember.getMemoryBufferRef();
+  if (!BufOrErr)
+    return errorCodeToError(BufOrErr.getError());
 
-StringRef NewArchiveIterator::getName() const { return Name; }
-
-bool NewArchiveIterator::isNewMember() const { return IsNewMember; }
-
-object::Archive::child_iterator NewArchiveIterator::getOld() const {
-  assert(!IsNewMember);
-  return OldI;
+  NewArchiveMember M;
+  M.Buf = MemoryBuffer::getMemBuffer(*BufOrErr, false);
+  if (!Deterministic) {
+    M.ModTime = OldMember.getLastModified();
+    M.UID = OldMember.getUID();
+    M.GID = OldMember.getGID();
+    M.Perms = OldMember.getAccessMode();
+  }
+  return std::move(M);
 }
 
-StringRef NewArchiveIterator::getNew() const {
-  assert(IsNewMember);
-  return NewFilename;
-}
+Expected<NewArchiveMember> NewArchiveMember::getFile(StringRef FileName,
+                                                     bool Deterministic) {
+  sys::fs::file_status Status;
+  int FD;
+  if (auto EC = sys::fs::openFileForRead(FileName, FD))
+    return errorCodeToError(EC);
+  assert(FD != -1);
 
-llvm::ErrorOr<int>
-NewArchiveIterator::getFD(sys::fs::file_status &NewStatus) const {
-  assert(IsNewMember);
-  int NewFD;
-  if (auto EC = sys::fs::openFileForRead(NewFilename, NewFD))
-    return EC;
-  assert(NewFD != -1);
-
-  if (auto EC = sys::fs::status(NewFD, NewStatus))
-    return EC;
+  if (auto EC = sys::fs::status(FD, Status))
+    return errorCodeToError(EC);
 
   // Opening a directory doesn't make sense. Let it fail.
   // Linux cannot open directories with open(2), although
   // cygwin and *bsd can.
-  if (NewStatus.type() == sys::fs::file_type::directory_file)
-    return make_error_code(errc::is_a_directory);
+  if (Status.type() == sys::fs::file_type::directory_file)
+    return errorCodeToError(make_error_code(errc::is_a_directory));
 
-  return NewFD;
+  ErrorOr<std::unique_ptr<MemoryBuffer>> MemberBufferOrErr =
+      MemoryBuffer::getOpenFile(FD, FileName, Status.getSize(), false);
+  if (!MemberBufferOrErr)
+    return errorCodeToError(MemberBufferOrErr.getError());
+
+  if (close(FD) != 0)
+    return errorCodeToError(std::error_code(errno, std::generic_category()));
+
+  NewArchiveMember M;
+  M.Buf = std::move(*MemberBufferOrErr);
+  if (!Deterministic) {
+    M.ModTime = Status.getLastModificationTime();
+    M.UID = Status.getUser();
+    M.GID = Status.getGroup();
+    M.Perms = Status.permissions();
+  }
+  return std::move(M);
 }
 
 template <typename T>
 static void printWithSpacePadding(raw_fd_ostream &OS, T Data, unsigned Size,
-				  bool MayTruncate = false) {
+                                  bool MayTruncate = false) {
   uint64_t OldPos = OS.tell();
   OS << Data;
   unsigned SizeSoFar = OS.tell() - OldPos;
@@ -135,30 +151,57 @@ static void printBSDMemberHeader(raw_fd_ostream &Out, StringRef Name,
     Out.write(uint8_t(0));
 }
 
+static bool useStringTable(bool Thin, StringRef Name) {
+  return Thin || Name.size() >= 16;
+}
+
 static void
-printMemberHeader(raw_fd_ostream &Out, object::Archive::Kind Kind,
+printMemberHeader(raw_fd_ostream &Out, object::Archive::Kind Kind, bool Thin,
                   StringRef Name,
                   std::vector<unsigned>::iterator &StringMapIndexIter,
                   const sys::TimeValue &ModTime, unsigned UID, unsigned GID,
                   unsigned Perms, unsigned Size) {
   if (Kind == object::Archive::K_BSD)
     return printBSDMemberHeader(Out, Name, ModTime, UID, GID, Perms, Size);
-  if (Name.size() < 16)
+  if (!useStringTable(Thin, Name))
     return printGNUSmallMemberHeader(Out, Name, ModTime, UID, GID, Perms, Size);
   Out << '/';
   printWithSpacePadding(Out, *StringMapIndexIter++, 15);
   printRestOfMemberHeader(Out, ModTime, UID, GID, Perms, Size);
 }
 
-static void writeStringTable(raw_fd_ostream &Out,
-                             ArrayRef<NewArchiveIterator> Members,
-                             std::vector<unsigned> &StringMapIndexes) {
+// Compute the relative path from From to To.
+static std::string computeRelativePath(StringRef From, StringRef To) {
+  if (sys::path::is_absolute(From) || sys::path::is_absolute(To))
+    return To;
+
+  StringRef DirFrom = sys::path::parent_path(From);
+  auto FromI = sys::path::begin(DirFrom);
+  auto ToI = sys::path::begin(To);
+  while (*FromI == *ToI) {
+    ++FromI;
+    ++ToI;
+  }
+
+  SmallString<128> Relative;
+  for (auto FromE = sys::path::end(DirFrom); FromI != FromE; ++FromI)
+    sys::path::append(Relative, "..");
+
+  for (auto ToE = sys::path::end(To); ToI != ToE; ++ToI)
+    sys::path::append(Relative, *ToI);
+
+  return Relative.str();
+}
+
+static void writeStringTable(raw_fd_ostream &Out, StringRef ArcName,
+                             ArrayRef<NewArchiveMember> Members,
+                             std::vector<unsigned> &StringMapIndexes,
+                             bool Thin) {
   unsigned StartOffset = 0;
-  for (ArrayRef<NewArchiveIterator>::iterator I = Members.begin(),
-                                              E = Members.end();
-       I != E; ++I) {
-    StringRef Name = I->getName();
-    if (Name.size() < 16)
+  for (const NewArchiveMember &M : Members) {
+    StringRef Path = M.Buf->getBufferIdentifier();
+    StringRef Name = sys::path::filename(Path);
+    if (!useStringTable(Thin, Name))
       continue;
     if (StartOffset == 0) {
       printWithSpacePadding(Out, "//", 58);
@@ -166,7 +209,13 @@ static void writeStringTable(raw_fd_ostream &Out,
       StartOffset = Out.tell();
     }
     StringMapIndexes.push_back(Out.tell() - StartOffset);
-    Out << Name << "/\n";
+
+    if (Thin)
+      Out << computeRelativePath(ArcName, Path);
+    else
+      Out << Name;
+
+    Out << "/\n";
   }
   if (StartOffset == 0)
     return;
@@ -189,8 +238,7 @@ static sys::TimeValue now(bool Deterministic) {
 // Returns the offset of the first reference to a member offset.
 static ErrorOr<unsigned>
 writeSymbolTable(raw_fd_ostream &Out, object::Archive::Kind Kind,
-                 ArrayRef<NewArchiveIterator> Members,
-                 ArrayRef<MemoryBufferRef> Buffers,
+                 ArrayRef<NewArchiveMember> Members,
                  std::vector<unsigned> &MemberOffsetRefs, bool Deterministic) {
   unsigned HeaderStartOffset = 0;
   unsigned BodyStartOffset = 0;
@@ -198,12 +246,15 @@ writeSymbolTable(raw_fd_ostream &Out, object::Archive::Kind Kind,
   raw_svector_ostream NameOS(NameBuf);
   LLVMContext Context;
   for (unsigned MemberNum = 0, N = Members.size(); MemberNum < N; ++MemberNum) {
-    MemoryBufferRef MemberBuffer = Buffers[MemberNum];
-    ErrorOr<std::unique_ptr<object::SymbolicFile>> ObjOrErr =
+    MemoryBufferRef MemberBuffer = Members[MemberNum].Buf->getMemBufferRef();
+    Expected<std::unique_ptr<object::SymbolicFile>> ObjOrErr =
         object::SymbolicFile::createSymbolicFile(
             MemberBuffer, sys::fs::file_magic::unknown, &Context);
-    if (!ObjOrErr)
-      continue;  // FIXME: check only for "not an object file" errors.
+    if (!ObjOrErr) {
+      // FIXME: check only for "not an object file" errors.
+      consumeError(ObjOrErr.takeError());
+      continue;
+    }
     object::SymbolicFile &Obj = *ObjOrErr.get();
 
     if (!HeaderStartOffset) {
@@ -268,9 +319,14 @@ writeSymbolTable(raw_fd_ostream &Out, object::Archive::Kind Kind,
   return BodyStartOffset + 4;
 }
 
-std::pair<StringRef, std::error_code> llvm::writeArchive(
-    StringRef ArcName, std::vector<NewArchiveIterator> &NewMembers,
-    bool WriteSymtab, object::Archive::Kind Kind, bool Deterministic) {
+std::pair<StringRef, std::error_code>
+llvm::writeArchive(StringRef ArcName,
+                   std::vector<NewArchiveMember> &NewMembers,
+                   bool WriteSymtab, object::Archive::Kind Kind,
+                   bool Deterministic, bool Thin,
+                   std::unique_ptr<MemoryBuffer> OldArchiveBuf) {
+  assert((!Thin || Kind == object::Archive::K_GNU) &&
+         "Only the gnu format has a thin mode");
   SmallString<128> TmpArchive;
   int TmpArchiveFD;
   if (auto EC = sys::fs::createUniqueFile(ArcName + ".temp-archive-%%%%%%%.a",
@@ -279,7 +335,10 @@ std::pair<StringRef, std::error_code> llvm::writeArchive(
 
   tool_output_file Output(TmpArchive, TmpArchiveFD);
   raw_fd_ostream &Out = Output.os();
-  Out << "!<arch>\n";
+  if (Thin)
+    Out << "!<thin>\n";
+  else
+    Out << "!<arch>\n";
 
   std::vector<unsigned> MemberOffsetRefs;
 
@@ -287,42 +346,10 @@ std::pair<StringRef, std::error_code> llvm::writeArchive(
   std::vector<MemoryBufferRef> Members;
   std::vector<sys::fs::file_status> NewMemberStatus;
 
-  for (unsigned I = 0, N = NewMembers.size(); I < N; ++I) {
-    NewArchiveIterator &Member = NewMembers[I];
-    MemoryBufferRef MemberRef;
-
-    if (Member.isNewMember()) {
-      StringRef Filename = Member.getNew();
-      NewMemberStatus.resize(NewMemberStatus.size() + 1);
-      sys::fs::file_status &Status = NewMemberStatus.back();
-      ErrorOr<int> FD = Member.getFD(Status);
-      if (auto EC = FD.getError())
-        return std::make_pair(Filename, EC);
-      ErrorOr<std::unique_ptr<MemoryBuffer>> MemberBufferOrErr =
-          MemoryBuffer::getOpenFile(FD.get(), Filename, Status.getSize(),
-                                    false);
-      if (auto EC = MemberBufferOrErr.getError())
-        return std::make_pair(Filename, EC);
-      if (close(FD.get()) != 0)
-        return std::make_pair(Filename,
-                              std::error_code(errno, std::generic_category()));
-      Buffers.push_back(std::move(MemberBufferOrErr.get()));
-      MemberRef = Buffers.back()->getMemBufferRef();
-    } else {
-      object::Archive::child_iterator OldMember = Member.getOld();
-      ErrorOr<MemoryBufferRef> MemberBufferOrErr =
-          OldMember->getMemoryBufferRef();
-      if (auto EC = MemberBufferOrErr.getError())
-        return std::make_pair("", EC);
-      MemberRef = MemberBufferOrErr.get();
-    }
-    Members.push_back(MemberRef);
-  }
-
   unsigned MemberReferenceOffset = 0;
   if (WriteSymtab) {
     ErrorOr<unsigned> MemberReferenceOffsetOrErr = writeSymbolTable(
-        Out, Kind, NewMembers, Members, MemberOffsetRefs, Deterministic);
+        Out, Kind, NewMembers, MemberOffsetRefs, Deterministic);
     if (auto EC = MemberReferenceOffsetOrErr.getError())
       return std::make_pair(ArcName, EC);
     MemberReferenceOffset = MemberReferenceOffsetOrErr.get();
@@ -330,54 +357,23 @@ std::pair<StringRef, std::error_code> llvm::writeArchive(
 
   std::vector<unsigned> StringMapIndexes;
   if (Kind != object::Archive::K_BSD)
-    writeStringTable(Out, NewMembers, StringMapIndexes);
+    writeStringTable(Out, ArcName, NewMembers, StringMapIndexes, Thin);
 
-  unsigned MemberNum = 0;
-  unsigned NewMemberNum = 0;
   std::vector<unsigned>::iterator StringMapIndexIter = StringMapIndexes.begin();
   std::vector<unsigned> MemberOffset;
-  for (const NewArchiveIterator &I : NewMembers) {
-    MemoryBufferRef File = Members[MemberNum++];
+  for (const NewArchiveMember &M : NewMembers) {
+    MemoryBufferRef File = M.Buf->getMemBufferRef();
 
     unsigned Pos = Out.tell();
     MemberOffset.push_back(Pos);
 
-    sys::TimeValue ModTime;
-    unsigned UID;
-    unsigned GID;
-    unsigned Perms;
-    if (Deterministic) {
-      ModTime.fromEpochTime(0);
-      UID = 0;
-      GID = 0;
-      Perms = 0644;
-    } else if (I.isNewMember()) {
-      const sys::fs::file_status &Status = NewMemberStatus[NewMemberNum];
-      ModTime = Status.getLastModificationTime();
-      UID = Status.getUser();
-      GID = Status.getGroup();
-      Perms = Status.permissions();
-    } else {
-      object::Archive::child_iterator OldMember = I.getOld();
-      ModTime = OldMember->getLastModified();
-      UID = OldMember->getUID();
-      GID = OldMember->getGID();
-      Perms = OldMember->getAccessMode();
-    }
+    printMemberHeader(Out, Kind, Thin,
+                      sys::path::filename(M.Buf->getBufferIdentifier()),
+                      StringMapIndexIter, M.ModTime, M.UID, M.GID, M.Perms,
+                      M.Buf->getBufferSize());
 
-    if (I.isNewMember()) {
-      StringRef FileName = I.getNew();
-      const sys::fs::file_status &Status = NewMemberStatus[NewMemberNum++];
-      printMemberHeader(Out, Kind, sys::path::filename(FileName),
-                        StringMapIndexIter, ModTime, UID, GID, Perms,
-                        Status.getSize());
-    } else {
-      object::Archive::child_iterator OldMember = I.getOld();
-      printMemberHeader(Out, Kind, I.getName(), StringMapIndexIter, ModTime,
-                        UID, GID, Perms, OldMember->getSize());
-    }
-
-    Out << File.getBuffer();
+    if (!Thin)
+      Out << File.getBuffer();
 
     if (Out.tell() % 2)
       Out << '\n';
@@ -394,6 +390,19 @@ std::pair<StringRef, std::error_code> llvm::writeArchive(
 
   Output.keep();
   Out.close();
+
+  // At this point, we no longer need whatever backing memory
+  // was used to generate the NewMembers. On Windows, this buffer
+  // could be a mapped view of the file we want to replace (if
+  // we're updating an existing archive, say). In that case, the
+  // rename would still succeed, but it would leave behind a
+  // temporary file (actually the original file renamed) because
+  // a file cannot be deleted while there's a handle open on it,
+  // only renamed. So by freeing this buffer, this ensures that
+  // the last open handle on the destination file, if any, is
+  // closed before we attempt to rename.
+  OldArchiveBuf.reset();
+
   sys::fs::rename(TmpArchive, ArcName);
   return std::make_pair("", std::error_code());
 }

@@ -10,12 +10,14 @@
 #include "SystemZTargetMachine.h"
 #include "SystemZTargetTransformInfo.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 
 using namespace llvm;
 
+extern cl::opt<bool> MISchedPostRA;
 extern "C" void LLVMInitializeSystemZTarget() {
   // Register the target.
   RegisterTargetMachine<SystemZTargetMachine> X(TheSystemZTarget);
@@ -32,7 +34,7 @@ static bool UsesVectorABI(StringRef CPU, StringRef FS) {
     VectorABI = false;
 
   SmallVector<StringRef, 3> Features;
-  FS.split(Features, ",", -1, false /* KeepEmpty */);
+  FS.split(Features, ',', -1, false /* KeepEmpty */);
   for (auto &Feature : Features) {
     if (Feature == "vector" || Feature == "+vector")
       VectorABI = true;
@@ -78,13 +80,22 @@ static std::string computeDataLayout(const Triple &TT, StringRef CPU,
   return Ret;
 }
 
+static Reloc::Model getEffectiveRelocModel(Optional<Reloc::Model> RM) {
+  // Static code is suitable for use in a dynamic executable; there is no
+  // separate DynamicNoPIC model.
+  if (!RM.hasValue() || *RM == Reloc::DynamicNoPIC)
+    return Reloc::Static;
+  return *RM;
+}
+
 SystemZTargetMachine::SystemZTargetMachine(const Target &T, const Triple &TT,
                                            StringRef CPU, StringRef FS,
                                            const TargetOptions &Options,
-                                           Reloc::Model RM, CodeModel::Model CM,
+                                           Optional<Reloc::Model> RM,
+                                           CodeModel::Model CM,
                                            CodeGenOpt::Level OL)
     : LLVMTargetMachine(T, computeDataLayout(TT, CPU, FS), TT, CPU, FS, Options,
-                        RM, CM, OL),
+                        getEffectiveRelocModel(RM), CM, OL),
       TLOF(make_unique<TargetLoweringObjectFileELF>()),
       Subtarget(TT, CPU, FS, *this) {
   initAsmInfo();
@@ -111,6 +122,9 @@ public:
 } // end anonymous namespace
 
 void SystemZPassConfig::addIRPasses() {
+  if (getOptLevel() != CodeGenOpt::None)
+    addPass(createSystemZTDCPass());
+
   TargetPassConfig::addIRPasses();
 }
 
@@ -124,12 +138,18 @@ bool SystemZPassConfig::addInstSelector() {
 }
 
 void SystemZPassConfig::addPreSched2() {
-  if (getOptLevel() != CodeGenOpt::None &&
-      getSystemZTargetMachine().getSubtargetImpl()->hasLoadStoreOnCond())
+  if (getOptLevel() != CodeGenOpt::None)
     addPass(&IfConverterID);
 }
 
 void SystemZPassConfig::addPreEmitPass() {
+
+  // Do instruction shortening before compare elimination because some
+  // vector instructions will be shortened into opcodes that compare
+  // elimination recognizes.
+  if (getOptLevel() != CodeGenOpt::None)
+    addPass(createSystemZShortenInstPass(getSystemZTargetMachine()), false);
+
   // We eliminate comparisons here rather than earlier because some
   // transformations can change the set of available CC values and we
   // generally want those transformations to have priority.  This is
@@ -155,9 +175,17 @@ void SystemZPassConfig::addPreEmitPass() {
   // preventing that would be a win or not.
   if (getOptLevel() != CodeGenOpt::None)
     addPass(createSystemZElimComparePass(getSystemZTargetMachine()), false);
-  if (getOptLevel() != CodeGenOpt::None)
-    addPass(createSystemZShortenInstPass(getSystemZTargetMachine()), false);
   addPass(createSystemZLongBranchPass(getSystemZTargetMachine()));
+
+  // Do final scheduling after all other optimizations, to get an
+  // optimal input for the decoder (branch relaxation must happen
+  // after block placement).
+  if (getOptLevel() != CodeGenOpt::None) {
+    if (MISchedPostRA)
+      addPass(&PostMachineSchedulerID);
+    else
+      addPass(&PostRASchedulerID);
+  }
 }
 
 TargetPassConfig *SystemZTargetMachine::createPassConfig(PassManagerBase &PM) {
@@ -165,7 +193,7 @@ TargetPassConfig *SystemZTargetMachine::createPassConfig(PassManagerBase &PM) {
 }
 
 TargetIRAnalysis SystemZTargetMachine::getTargetIRAnalysis() {
-  return TargetIRAnalysis([this](Function &F) {
+  return TargetIRAnalysis([this](const Function &F) {
     return TargetTransformInfo(SystemZTTIImpl(this, F));
   });
 }

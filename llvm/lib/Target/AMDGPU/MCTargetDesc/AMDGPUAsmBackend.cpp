@@ -53,7 +53,8 @@ public:
                             const MCAsmLayout &Layout) const override {
     return false;
   }
-  void relaxInstruction(const MCInst &Inst, MCInst &Res) const override {
+  void relaxInstruction(const MCInst &Inst, const MCSubtargetInfo &STI,
+                        MCInst &Res) const override {
     assert(!"Not implemented");
   }
   bool mayNeedRelaxation(const MCInst &Inst) const override { return false; }
@@ -71,30 +72,58 @@ void AMDGPUMCObjectWriter::writeObject(MCAssembler &Asm,
   }
 }
 
+static unsigned getFixupKindNumBytes(unsigned Kind) {
+  switch (Kind) {
+  case FK_SecRel_1:
+  case FK_Data_1:
+    return 1;
+  case FK_SecRel_2:
+  case FK_Data_2:
+    return 2;
+  case FK_SecRel_4:
+  case FK_Data_4:
+  case FK_PCRel_4:
+    return 4;
+  case FK_SecRel_8:
+  case FK_Data_8:
+    return 8;
+  default:
+    llvm_unreachable("Unknown fixup kind!");
+  }
+}
+
 void AMDGPUAsmBackend::applyFixup(const MCFixup &Fixup, char *Data,
                                   unsigned DataSize, uint64_t Value,
                                   bool IsPCRel) const {
 
   switch ((unsigned)Fixup.getKind()) {
-    default: llvm_unreachable("Unknown fixup kind");
     case AMDGPU::fixup_si_sopp_br: {
+      int64_t BrImm = ((int64_t)Value - 4) / 4;
+      if (!isInt<16>(BrImm))
+        report_fatal_error("branch size exceeds simm16");
+
       uint16_t *Dst = (uint16_t*)(Data + Fixup.getOffset());
-      *Dst = (Value - 4) / 4;
+      *Dst = BrImm;
       break;
     }
 
-    case AMDGPU::fixup_si_rodata: {
-      uint32_t *Dst = (uint32_t*)(Data + Fixup.getOffset());
-      *Dst = Value;
-      break;
-    }
+    default: {
+      // FIXME: Copied from AArch64
+      unsigned NumBytes = getFixupKindNumBytes(Fixup.getKind());
+      if (!Value)
+        return; // Doesn't change encoding.
+      MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
 
-    case AMDGPU::fixup_si_end_of_text: {
-      uint32_t *Dst = (uint32_t*)(Data + Fixup.getOffset());
-      // The value points to the last instruction in the text section, so we
-      // need to add 4 bytes to get to the start of the constants.
-      *Dst = Value + 4;
-      break;
+      // Shift the value into position.
+      Value <<= Info.TargetOffset;
+
+      unsigned Offset = Fixup.getOffset();
+      assert(Offset + NumBytes <= DataSize && "Invalid fixup offset!");
+
+      // For each byte of the fragment that the fixup touches, mask in the
+      // bits from the fixup value.
+      for (unsigned i = 0; i != NumBytes; ++i)
+        Data[Offset + i] |= uint8_t((Value >> (i * 8)) & 0xff);
     }
   }
 }
@@ -104,8 +133,6 @@ const MCFixupKindInfo &AMDGPUAsmBackend::getFixupKindInfo(
   const static MCFixupKindInfo Infos[AMDGPU::NumTargetFixupKinds] = {
     // name                   offset bits  flags
     { "fixup_si_sopp_br",     0,     16,   MCFixupKindInfo::FKF_IsPCRel },
-    { "fixup_si_rodata",      0,     32,   0 },
-    { "fixup_si_end_of_text", 0,     32,   MCFixupKindInfo::FKF_IsPCRel }
   };
 
   if (Kind < FirstTargetFixupKind)
@@ -128,13 +155,15 @@ namespace {
 
 class ELFAMDGPUAsmBackend : public AMDGPUAsmBackend {
   bool Is64Bit;
+  bool HasRelocationAddend;
 
 public:
-  ELFAMDGPUAsmBackend(const Target &T, bool Is64Bit) :
-      AMDGPUAsmBackend(T), Is64Bit(Is64Bit) { }
+  ELFAMDGPUAsmBackend(const Target &T, const Triple &TT) :
+      AMDGPUAsmBackend(T), Is64Bit(TT.getArch() == Triple::amdgcn),
+      HasRelocationAddend(TT.getOS() == Triple::AMDHSA) { }
 
   MCObjectWriter *createObjectWriter(raw_pwrite_stream &OS) const override {
-    return createAMDGPUELFObjectWriter(Is64Bit, OS);
+    return createAMDGPUELFObjectWriter(Is64Bit, HasRelocationAddend, OS);
   }
 };
 
@@ -143,8 +172,6 @@ public:
 MCAsmBackend *llvm::createAMDGPUAsmBackend(const Target &T,
                                            const MCRegisterInfo &MRI,
                                            const Triple &TT, StringRef CPU) {
-  Triple TargetTriple(TT);
-
   // Use 64-bit ELF for amdgcn
-  return new ELFAMDGPUAsmBackend(T, TargetTriple.getArch() == Triple::amdgcn);
+  return new ELFAMDGPUAsmBackend(T, TT);
 }

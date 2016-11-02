@@ -36,9 +36,7 @@ struct BitTracker {
 
   typedef SetVector<const MachineBasicBlock *> BranchTargetList;
 
-  struct CellMapType : public std::map<unsigned,RegisterCell> {
-    bool has(unsigned Reg) const;
-  };
+  typedef std::map<unsigned, RegisterCell> CellMapType;
 
   BitTracker(const MachineEvaluator &E, MachineFunction &F);
   ~BitTracker();
@@ -53,9 +51,9 @@ struct BitTracker {
   bool reached(const MachineBasicBlock *B) const;
 
 private:
-  void visitPHI(const MachineInstr *PI);
-  void visitNonBranch(const MachineInstr *MI);
-  void visitBranchesFrom(const MachineInstr *BI);
+  void visitPHI(const MachineInstr &PI);
+  void visitNonBranch(const MachineInstr &MI);
+  void visitBranchesFrom(const MachineInstr &BI);
   void visitUsesOf(unsigned Reg);
   void reset();
 
@@ -79,7 +77,6 @@ private:
 // Abstraction of a reference to bit at position Pos from a register Reg.
 struct BitTracker::BitRef {
   BitRef(unsigned R = 0, uint16_t P = 0) : Reg(R), Pos(P) {}
-  BitRef(const BitRef &BR) : Reg(BR.Reg), Pos(BR.Pos) {}
   bool operator== (const BitRef &BR) const {
     // If Reg is 0, disregard Pos.
     return Reg == BR.Reg && (Reg == 0 || Pos == BR.Pos);
@@ -146,7 +143,6 @@ struct BitTracker::BitValue {
 
   BitValue(ValueType T = Top) : Type(T) {}
   BitValue(bool B) : Type(B ? One : Zero) {}
-  BitValue(const BitValue &V) : Type(V.Type), RefI(V.RefI) {}
   BitValue(unsigned Reg, uint16_t Pos) : Type(Ref), RefI(Reg, Pos) {}
 
   bool operator== (const BitValue &V) const {
@@ -279,11 +275,6 @@ struct BitTracker::RegisterCell {
     return !operator==(RC);
   }
 
-  const RegisterCell &operator=(const RegisterCell &RC) {
-    Bits = RC.Bits;
-    return *this;
-  }
-
   // Generate a "ref" cell for the corresponding register. In the resulting
   // cell each bit will be described as being the same as the corresponding
   // bit in register Reg (i.e. the cell is "defined" by register Reg).
@@ -342,11 +333,6 @@ BitTracker::RegisterCell::ref(const RegisterCell &C) {
   for (unsigned i = 0; i < W; ++i)
     RC[i] = BitValue::ref(C[i]);
   return RC;
-}
-
-
-inline bool BitTracker::CellMapType::has(unsigned Reg) const {
-  return find(Reg) != end();
 }
 
 // A class to evaluate target's instructions and update the cell maps.
@@ -431,13 +417,13 @@ struct BitTracker::MachineEvaluator {
   // Evaluate a non-branching machine instruction, given the cell map with
   // the input values. Place the results in the Outputs map. Return "true"
   // if evaluation succeeded, "false" otherwise.
-  virtual bool evaluate(const MachineInstr *MI, const CellMapType &Inputs,
+  virtual bool evaluate(const MachineInstr &MI, const CellMapType &Inputs,
                         CellMapType &Outputs) const;
   // Evaluate a branch, given the cell map with the input values. Fill out
   // a list of all possible branch targets and indicate (through a flag)
   // whether the branch could fall-through. Return "true" if this information
   // has been successfully computed, "false" otherwise.
-  virtual bool evaluate(const MachineInstr *BI, const CellMapType &Inputs,
+  virtual bool evaluate(const MachineInstr &BI, const CellMapType &Inputs,
                         BranchTargetList &Targets, bool &FallsThru) const = 0;
 
   const TargetRegisterInfo &TRI;

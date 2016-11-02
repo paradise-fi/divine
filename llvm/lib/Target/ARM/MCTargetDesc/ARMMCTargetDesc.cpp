@@ -16,7 +16,6 @@
 #include "ARMMCTargetDesc.h"
 #include "InstPrinter/ARMInstPrinter.h"
 #include "llvm/ADT/Triple.h"
-#include "llvm/MC/MCCodeGenInfo.h"
 #include "llvm/MC/MCELFStreamer.h"
 #include "llvm/MC/MCInstrAnalysis.h"
 #include "llvm/MC/MCInstrInfo.h"
@@ -24,6 +23,7 @@
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/TargetParser.h"
 #include "llvm/Support/TargetRegistry.h"
 
 using namespace llvm;
@@ -134,101 +134,11 @@ std::string ARM_MC::ParseARMTriple(const Triple &TT, StringRef CPU) {
   bool isThumb =
       TT.getArch() == Triple::thumb || TT.getArch() == Triple::thumbeb;
 
-  bool NoCPU = CPU == "generic" || CPU.empty();
   std::string ARMArchFeature;
-  switch (TT.getSubArch()) {
-  default:
-    llvm_unreachable("invalid sub-architecture for ARM");
-  case Triple::ARMSubArch_v8:
-    if (NoCPU)
-      // v8a: FeatureDB, FeatureFPARMv8, FeatureNEON, FeatureDSPThumb2,
-      //      FeatureMP, FeatureHWDiv, FeatureHWDivARM, FeatureTrustZone,
-      //      FeatureT2XtPk, FeatureCrypto, FeatureCRC
-      ARMArchFeature = "+v8,+db,+fp-armv8,+neon,+t2dsp,+mp,+hwdiv,+hwdiv-arm,"
-                       "+trustzone,+t2xtpk,+crypto,+crc";
-    else
-      // Use CPU to figure out the exact features
-      ARMArchFeature = "+v8";
-    break;
-  case Triple::ARMSubArch_v8_1a:
-    if (NoCPU)
-      // v8.1a: FeatureDB, FeatureFPARMv8, FeatureNEON, FeatureDSPThumb2,
-      //      FeatureMP, FeatureHWDiv, FeatureHWDivARM, FeatureTrustZone,
-      //      FeatureT2XtPk, FeatureCrypto, FeatureCRC, FeatureV8_1a
-      ARMArchFeature = "+v8.1a,+db,+fp-armv8,+neon,+t2dsp,+mp,+hwdiv,+hwdiv-arm,"
-                       "+trustzone,+t2xtpk,+crypto,+crc";
-    else
-      // Use CPU to figure out the exact features
-      ARMArchFeature = "+v8.1a";
-    break;
-  case Triple::ARMSubArch_v7m:
-    isThumb = true;
-    if (NoCPU)
-      // v7m: FeatureNoARM, FeatureDB, FeatureHWDiv, FeatureMClass
-      ARMArchFeature = "+v7,+noarm,+db,+hwdiv,+mclass";
-    else
-      // Use CPU to figure out the exact features.
-      ARMArchFeature = "+v7";
-    break;
-  case Triple::ARMSubArch_v7em:
-    if (NoCPU)
-      // v7em: FeatureNoARM, FeatureDB, FeatureHWDiv, FeatureDSPThumb2,
-      //       FeatureT2XtPk, FeatureMClass
-      ARMArchFeature = "+v7,+noarm,+db,+hwdiv,+t2dsp,+t2xtpk,+mclass";
-    else
-      // Use CPU to figure out the exact features.
-      ARMArchFeature = "+v7";
-    break;
-  case Triple::ARMSubArch_v7s:
-    if (NoCPU)
-      // v7s: FeatureNEON, FeatureDB, FeatureDSPThumb2, FeatureHasRAS
-      //      Swift
-      ARMArchFeature = "+v7,+swift,+neon,+db,+t2dsp,+ras";
-    else
-      // Use CPU to figure out the exact features.
-      ARMArchFeature = "+v7";
-    break;
-  case Triple::ARMSubArch_v7:
-    // v7 CPUs have lots of different feature sets. If no CPU is specified,
-    // then assume v7a (e.g. cortex-a8) feature set. Otherwise, return
-    // the "minimum" feature set and use CPU string to figure out the exact
-    // features.
-    if (NoCPU)
-      // v7a: FeatureNEON, FeatureDB, FeatureDSPThumb2, FeatureT2XtPk
-      ARMArchFeature = "+v7,+neon,+db,+t2dsp,+t2xtpk";
-    else
-      // Use CPU to figure out the exact features.
-      ARMArchFeature = "+v7";
-    break;
-  case Triple::ARMSubArch_v6t2:
-    ARMArchFeature = "+v6t2";
-    break;
-  case Triple::ARMSubArch_v6k:
-    ARMArchFeature = "+v6k";
-    break;
-  case Triple::ARMSubArch_v6m:
-    isThumb = true;
-    if (NoCPU)
-      // v6m: FeatureNoARM, FeatureMClass
-      ARMArchFeature = "+v6m,+noarm,+mclass";
-    else
-      ARMArchFeature = "+v6";
-    break;
-  case Triple::ARMSubArch_v6:
-    ARMArchFeature = "+v6";
-    break;
-  case Triple::ARMSubArch_v5te:
-    ARMArchFeature = "+v5te";
-    break;
-  case Triple::ARMSubArch_v5:
-    ARMArchFeature = "+v5t";
-    break;
-  case Triple::ARMSubArch_v4t:
-    ARMArchFeature = "+v4t";
-    break;
-  case Triple::NoSubArch:
-    break;
-  }
+
+  unsigned ArchID = ARM::parseArch(TT.getArchName());
+  if (ArchID != ARM::AK_INVALID &&  (CPU.empty() || CPU == "generic"))
+    ARMArchFeature = (ARMArchFeature + "+" + ARM::getArchName(ArchID)).str();
 
   if (isThumb) {
     if (ARMArchFeature.empty())
@@ -288,18 +198,6 @@ static MCAsmInfo *createARMMCAsmInfo(const MCRegisterInfo &MRI,
   MAI->addInitialFrameState(MCCFIInstruction::createDefCfa(nullptr, Reg, 0));
 
   return MAI;
-}
-
-static MCCodeGenInfo *createARMMCCodeGenInfo(const Triple &TT, Reloc::Model RM,
-                                             CodeModel::Model CM,
-                                             CodeGenOpt::Level OL) {
-  MCCodeGenInfo *X = new MCCodeGenInfo();
-  if (RM == Reloc::Default) {
-    // Default relocation model on Darwin is PIC, not DynamicNoPIC.
-    RM = TT.isOSDarwin() ? Reloc::PIC_ : Reloc::DynamicNoPIC;
-  }
-  X->initMCCodeGenInfo(RM, CM, OL);
-  return X;
 }
 
 static MCStreamer *createELFStreamer(const Triple &T, MCContext &Ctx,
@@ -379,9 +277,6 @@ extern "C" void LLVMInitializeARMTargetMC() {
                     &TheThumbBETarget}) {
     // Register the MC asm info.
     RegisterMCAsmInfoFn X(*T, createARMMCAsmInfo);
-
-    // Register the MC codegen info.
-    TargetRegistry::RegisterMCCodeGenInfo(*T, createARMMCCodeGenInfo);
 
     // Register the MC instruction info.
     TargetRegistry::RegisterMCInstrInfo(*T, createARMMCInstrInfo);

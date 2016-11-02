@@ -64,7 +64,7 @@ class GCMachineCodeAnalysis : public MachineFunctionPass {
   void FindSafePoints(MachineFunction &MF);
   void VisitCallPoint(MachineBasicBlock::iterator MI);
   MCSymbol *InsertLabel(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
-                        DebugLoc DL) const;
+                        const DebugLoc &DL) const;
 
   void FindStackOffsets(MachineFunction &MF);
 
@@ -158,7 +158,7 @@ static bool InsertRootInitializers(Function &F, AllocaInst **Roots,
 
   // Search for initializers in the initial BB.
   SmallPtrSet<AllocaInst *, 16> InitedRoots;
-  for (; !CouldBecomeSafePoint(IP); ++IP)
+  for (; !CouldBecomeSafePoint(&*IP); ++IP)
     if (StoreInst *SI = dyn_cast<StoreInst>(IP))
       if (AllocaInst *AI =
               dyn_cast<AllocaInst>(SI->getOperand(1)->stripPointerCasts()))
@@ -170,8 +170,7 @@ static bool InsertRootInitializers(Function &F, AllocaInst **Roots,
   for (AllocaInst **I = Roots, **E = Roots + Count; I != E; ++I)
     if (!InitedRoots.count(*I)) {
       StoreInst *SI = new StoreInst(
-          ConstantPointerNull::get(cast<PointerType>(
-              cast<PointerType>((*I)->getType())->getElementType())),
+          ConstantPointerNull::get(cast<PointerType>((*I)->getAllocatedType())),
           *I);
       SI->insertAfter(*I);
       MadeChange = true;
@@ -271,7 +270,7 @@ void GCMachineCodeAnalysis::getAnalysisUsage(AnalysisUsage &AU) const {
 
 MCSymbol *GCMachineCodeAnalysis::InsertLabel(MachineBasicBlock &MBB,
                                              MachineBasicBlock::iterator MI,
-                                             DebugLoc DL) const {
+                                             const DebugLoc &DL) const {
   MCSymbol *Label = MBB.getParent()->getContext().createTempSymbol();
   BuildMI(MBB, MI, DL, TII->get(TargetOpcode::GC_LABEL)).addSym(Label);
   return Label;
@@ -320,7 +319,9 @@ void GCMachineCodeAnalysis::FindStackOffsets(MachineFunction &MF) {
     if (MF.getFrameInfo()->isDeadObjectIndex(RI->Num)) {
       RI = FI->removeStackRoot(RI);
     } else {
-      RI->StackOffset = TFI->getFrameIndexOffset(MF, RI->Num);
+      unsigned FrameReg; // FIXME: surely GCRoot ought to store the
+                         // register that the offset is from?
+      RI->StackOffset = TFI->getFrameIndexReference(MF, RI->Num, FrameReg);
       ++RI;
     }
   }

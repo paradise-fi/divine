@@ -7,6 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
+// FIXME: This pass is deprecated in favor of NVPTXInferAddressSpaces, which
+// uses a new algorithm that handles pointer induction variables.
+//
 // When a load/store accesses the generic address space, checks whether the
 // address is casted from a non-generic address space. If so, remove this
 // addrspacecast because accessing non-generic address spaces is typically
@@ -98,7 +101,7 @@ private:
   /// This reordering exposes to optimizeMemoryInstruction more
   /// optimization opportunities on loads and stores.
   ///
-  /// If this function succesfully hoists an eliminable addrspacecast or V is
+  /// If this function successfully hoists an eliminable addrspacecast or V is
   /// already such an addrspacecast, it returns the transformed value (which is
   /// guaranteed to be an addrspacecast); otherwise, it returns nullptr.
   Value *hoistAddrSpaceCastFrom(Value *V, int Depth = 0);
@@ -164,8 +167,8 @@ Value *NVPTXFavorNonGenericAddrSpaces::hoistAddrSpaceCastFromGEP(
         GEP->getSourceElementType(), Cast->getOperand(0), Indices,
         "", GEPI);
     NewGEP->setIsInBounds(GEP->isInBounds());
+    NewGEP->takeName(GEP);
     NewASC = new AddrSpaceCastInst(NewGEP, GEP->getType(), "", GEPI);
-    NewASC->takeName(GEP);
     // Without RAUWing GEP, the compiler would visit GEP again and emit
     // redundant instructions. This is exercised in test @rauw in
     // access-non-generic.ll.
@@ -263,18 +266,18 @@ bool NVPTXFavorNonGenericAddrSpaces::optimizeMemoryInstruction(Instruction *MI,
 }
 
 bool NVPTXFavorNonGenericAddrSpaces::runOnFunction(Function &F) {
-  if (DisableFavorNonGeneric)
+  if (DisableFavorNonGeneric || skipFunction(F))
     return false;
 
   bool Changed = false;
-  for (Function::iterator B = F.begin(), BE = F.end(); B != BE; ++B) {
-    for (BasicBlock::iterator I = B->begin(), IE = B->end(); I != IE; ++I) {
+  for (BasicBlock &B : F) {
+    for (Instruction &I : B) {
       if (isa<LoadInst>(I)) {
         // V = load P
-        Changed |= optimizeMemoryInstruction(I, 0);
+        Changed |= optimizeMemoryInstruction(&I, 0);
       } else if (isa<StoreInst>(I)) {
         // store V, P
-        Changed |= optimizeMemoryInstruction(I, 1);
+        Changed |= optimizeMemoryInstruction(&I, 1);
       }
     }
   }

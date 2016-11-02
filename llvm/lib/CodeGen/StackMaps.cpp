@@ -94,7 +94,9 @@ StackMaps::parseOperand(MachineInstr::const_mop_iterator MOI,
     default:
       llvm_unreachable("Unrecognized operand type.");
     case StackMaps::DirectMemRefOp: {
-      unsigned Size = AP.TM.getDataLayout()->getPointerSizeInBits();
+      auto &DL = AP.MF->getDataLayout();
+
+      unsigned Size = DL.getPointerSizeInBits();
       assert((Size % 8) == 0 && "Need pointer size in bytes.");
       Size /= 8;
       unsigned Reg = (++MOI)->getReg();
@@ -518,9 +520,9 @@ void StackMaps::emitCallsiteEntries(MCStreamer &OS) {
 void StackMaps::serializeToStackMapSection() {
   (void)WSMP;
   // Bail out if there's no stack map data.
-  assert((!CSInfos.empty() || (CSInfos.empty() && ConstPool.empty())) &&
+  assert((!CSInfos.empty() || ConstPool.empty()) &&
          "Expected empty constant pool too!");
-  assert((!CSInfos.empty() || (CSInfos.empty() && FnStackSize.empty())) &&
+  assert((!CSInfos.empty() || FnStackSize.empty()) &&
          "Expected empty function record too!");
   if (CSInfos.empty())
     return;

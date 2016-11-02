@@ -14,6 +14,7 @@
 
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APSInt.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/ADT/StringExtras.h"
@@ -501,7 +502,9 @@ powerOf5(integerPart *dst, unsigned int power)
 
       /* Now result is in p1 with partsCount parts and p2 is scratch
          space.  */
-      tmp = p1, p1 = p2, p2 = tmp;
+      tmp = p1;
+      p1 = p2;
+      p2 = tmp;
     }
 
     pow5 += pc;
@@ -768,6 +771,15 @@ APFloat::isLargest() const {
 }
 
 bool
+APFloat::isInteger() const {
+  // This could be made more efficient; I'm going for obviously correct.
+  if (!isFinite()) return false;
+  APFloat truncated = *this;
+  truncated.roundToIntegral(rmTowardZero);
+  return compare(truncated) == cmpEqual;
+}
+
+bool
 APFloat::bitwiseIsEqual(const APFloat &rhs) const {
   if (this == &rhs)
     return true;
@@ -777,18 +789,12 @@ APFloat::bitwiseIsEqual(const APFloat &rhs) const {
     return false;
   if (category==fcZero || category==fcInfinity)
     return true;
-  else if (isFiniteNonZero() && exponent!=rhs.exponent)
+
+  if (isFiniteNonZero() && exponent != rhs.exponent)
     return false;
-  else {
-    int i= partCount();
-    const integerPart* p=significandParts();
-    const integerPart* q=rhs.significandParts();
-    for (; i>0; i--, p++, q++) {
-      if (*p != *q)
-        return false;
-    }
-    return true;
-  }
+
+  return std::equal(significandParts(), significandParts() + partCount(),
+                    rhs.significandParts());
 }
 
 APFloat::APFloat(const fltSemantics &ourSemantics, integerPart value) {
@@ -846,6 +852,21 @@ unsigned int
 APFloat::semanticsPrecision(const fltSemantics &semantics)
 {
   return semantics.precision;
+}
+APFloat::ExponentType
+APFloat::semanticsMaxExponent(const fltSemantics &semantics)
+{
+  return semantics.maxExponent;
+}
+APFloat::ExponentType
+APFloat::semanticsMinExponent(const fltSemantics &semantics)
+{
+  return semantics.minExponent;
+}
+unsigned int
+APFloat::semanticsSizeInBits(const fltSemantics &semantics)
+{
+  return semantics.sizeInBits;
 }
 
 const integerPart *
@@ -1762,7 +1783,7 @@ APFloat::remainder(const APFloat &rhs)
 /* Normalized llvm frem (C fmod).
    This is not currently correct in all cases.  */
 APFloat::opStatus
-APFloat::mod(const APFloat &rhs, roundingMode rounding_mode)
+APFloat::mod(const APFloat &rhs)
 {
   opStatus fs;
   fs = modSpecials(rhs);
@@ -1787,10 +1808,10 @@ APFloat::mod(const APFloat &rhs, roundingMode rounding_mode)
                                           rmNearestTiesToEven);
     assert(fs==opOK);   // should always work
 
-    fs = V.multiply(rhs, rounding_mode);
+    fs = V.multiply(rhs, rmNearestTiesToEven);
     assert(fs==opOK || fs==opInexact);   // should not overflow or underflow
 
-    fs = subtract(V, rounding_mode);
+    fs = subtract(V, rmNearestTiesToEven);
     assert(fs==opOK || fs==opInexact);   // likewise
 
     if (isZero())
@@ -3922,22 +3943,68 @@ APFloat::makeZero(bool Negative) {
   category = fcZero;
   sign = Negative;
   exponent = semantics->minExponent-1;
-  APInt::tcSet(significandParts(), 0, partCount());  
+  APInt::tcSet(significandParts(), 0, partCount());
 }
 
-APFloat llvm::scalbn(APFloat X, int Exp) {
-  if (X.isInfinity() || X.isZero() || X.isNaN())
-    return X;
+void APFloat::makeQuiet() {
+  assert(isNaN());
+  APInt::tcSetBit(significandParts(), semantics->precision - 2);
+}
 
+int llvm::ilogb(const APFloat &Arg) {
+  if (Arg.isNaN())
+    return APFloat::IEK_NaN;
+  if (Arg.isZero())
+    return APFloat::IEK_Zero;
+  if (Arg.isInfinity())
+    return APFloat::IEK_Inf;
+  if (!Arg.isDenormal())
+    return Arg.exponent;
+
+  APFloat Normalized(Arg);
+  int SignificandBits = Arg.getSemantics().precision - 1;
+
+  Normalized.exponent += SignificandBits;
+  Normalized.normalize(APFloat::rmNearestTiesToEven, lfExactlyZero);
+  return Normalized.exponent - SignificandBits;
+}
+
+APFloat llvm::scalbn(APFloat X, int Exp, APFloat::roundingMode RoundingMode) {
   auto MaxExp = X.getSemantics().maxExponent;
   auto MinExp = X.getSemantics().minExponent;
-  if (Exp > (MaxExp - X.exponent))
-    // Overflow saturates to infinity.
-    return APFloat::getInf(X.getSemantics(), X.isNegative());
-  if (Exp < (MinExp - X.exponent))
-    // Underflow saturates to zero.
-    return APFloat::getZero(X.getSemantics(), X.isNegative());
 
-  X.exponent += Exp;
+  // If Exp is wildly out-of-scale, simply adding it to X.exponent will
+  // overflow; clamp it to a safe range before adding, but ensure that the range
+  // is large enough that the clamp does not change the result. The range we
+  // need to support is the difference between the largest possible exponent and
+  // the normalized exponent of half the smallest denormal.
+
+  int SignificandBits = X.getSemantics().precision - 1;
+  int MaxIncrement = MaxExp - (MinExp - SignificandBits) + 1;
+
+  // Clamp to one past the range ends to let normalize handle overlflow.
+  X.exponent += std::min(std::max(Exp, -MaxIncrement - 1), MaxIncrement);
+  X.normalize(RoundingMode, lfExactlyZero);
+  if (X.isNaN())
+    X.makeQuiet();
   return X;
+}
+
+APFloat llvm::frexp(const APFloat &Val, int &Exp, APFloat::roundingMode RM) {
+  Exp = ilogb(Val);
+
+  // Quiet signalling nans.
+  if (Exp == APFloat::IEK_NaN) {
+    APFloat Quiet(Val);
+    Quiet.makeQuiet();
+    return Quiet;
+  }
+
+  if (Exp == APFloat::IEK_Inf)
+    return Val;
+
+  // 1 is added because frexp is defined to return a normalized fraction in
+  // +/-[0.5, 1.0), rather than the usual +/-[1.0, 2.0).
+  Exp = Exp == APFloat::IEK_Zero ? 0 : Exp + 1;
+  return scalbn(Val, -Exp, RM);
 }

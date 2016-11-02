@@ -93,8 +93,7 @@ void XCoreAsmPrinter::emitArrayBound(MCSymbol *Sym, const GlobalVariable *GV) {
   assert( ( GV->hasExternalLinkage() || GV->hasWeakLinkage() ||
             GV->hasLinkOnceLinkage() || GV->hasCommonLinkage() ) &&
           "Unexpected linkage");
-  if (ArrayType *ATy = dyn_cast<ArrayType>(
-                        cast<PointerType>(GV->getType())->getElementType())) {
+  if (ArrayType *ATy = dyn_cast<ArrayType>(GV->getValueType())) {
 
     MCSymbol *SymGlob = OutContext.getOrCreateSymbol(
                           Twine(Sym->getName() + StringRef(".globound")));
@@ -115,14 +114,14 @@ void XCoreAsmPrinter::EmitGlobalVariable(const GlobalVariable *GV) {
       EmitSpecialLLVMGlobal(GV))
     return;
 
-  const DataLayout *TD = TM.getDataLayout();
+  const DataLayout &DL = getDataLayout();
   OutStreamer->SwitchSection(
       getObjFileLowering().SectionForGlobal(GV, *Mang, TM));
 
   MCSymbol *GVSym = getSymbol(GV);
   const Constant *C = GV->getInitializer();
-  unsigned Align = (unsigned)TD->getPreferredTypeAlignmentShift(C->getType());
-  
+  unsigned Align = (unsigned)DL.getPreferredTypeAlignmentShift(C->getType());
+
   // Mark the start of the global
   getTargetStreamer().emitCCTopData(GVSym->getName());
 
@@ -154,15 +153,15 @@ void XCoreAsmPrinter::EmitGlobalVariable(const GlobalVariable *GV) {
   if (GV->isThreadLocal()) {
     report_fatal_error("TLS is not supported by this target!");
   }
-  unsigned Size = TD->getTypeAllocSize(C->getType());
+  unsigned Size = DL.getTypeAllocSize(C->getType());
   if (MAI->hasDotTypeDotSizeDirective()) {
     OutStreamer->EmitSymbolAttribute(GVSym, MCSA_ELF_TypeObject);
     OutStreamer->emitELFSize(cast<MCSymbolELF>(GVSym),
                              MCConstantExpr::create(Size, OutContext));
   }
   OutStreamer->EmitLabel(GVSym);
-  
-  EmitGlobalConstant(C);
+
+  EmitGlobalConstant(DL, C);
   // The ABI requires that unsigned scalar types smaller than 32 bits
   // are padded to 32 bits.
   if (Size < 4)
@@ -208,7 +207,7 @@ printInlineJT(const MachineInstr *MI, int opNum, raw_ostream &O,
 
 void XCoreAsmPrinter::printOperand(const MachineInstr *MI, int opNum,
                                    raw_ostream &O) {
-  const DataLayout *DL = TM.getDataLayout();
+  const DataLayout &DL = getDataLayout();
   const MachineOperand &MO = MI->getOperand(opNum);
   switch (MO.getType()) {
   case MachineOperand::MO_Register:
@@ -224,8 +223,8 @@ void XCoreAsmPrinter::printOperand(const MachineInstr *MI, int opNum,
     getSymbol(MO.getGlobal())->print(O, MAI);
     break;
   case MachineOperand::MO_ConstantPoolIndex:
-    O << DL->getPrivateGlobalPrefix() << "CPI" << getFunctionNumber()
-      << '_' << MO.getIndex();
+    O << DL.getPrivateGlobalPrefix() << "CPI" << getFunctionNumber() << '_'
+      << MO.getIndex();
     break;
   case MachineOperand::MO_BlockAddress:
     GetBlockAddressSymbol(MO.getBlockAddress())->print(O, MAI);

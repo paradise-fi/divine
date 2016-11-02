@@ -39,7 +39,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/CodeGen/Analysis.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/BranchProbabilityInfo.h"
@@ -56,6 +55,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -88,6 +88,8 @@ void FastISel::ArgListEntry::setAttributes(ImmutableCallSite *CS,
   IsByVal = CS->paramHasAttr(AttrIdx, Attribute::ByVal);
   IsInAlloca = CS->paramHasAttr(AttrIdx, Attribute::InAlloca);
   IsReturned = CS->paramHasAttr(AttrIdx, Attribute::Returned);
+  IsSwiftSelf = CS->paramHasAttr(AttrIdx, Attribute::SwiftSelf);
+  IsSwiftError = CS->paramHasAttr(AttrIdx, Attribute::SwiftError);
   Alignment = CS->getParamAlignment(AttrIdx);
 }
 
@@ -118,9 +120,9 @@ bool FastISel::lowerArguments() {
   for (Function::const_arg_iterator I = FuncInfo.Fn->arg_begin(),
                                     E = FuncInfo.Fn->arg_end();
        I != E; ++I) {
-    DenseMap<const Value *, unsigned>::iterator VI = LocalValueMap.find(I);
+    DenseMap<const Value *, unsigned>::iterator VI = LocalValueMap.find(&*I);
     assert(VI != LocalValueMap.end() && "Missed an argument?");
-    FuncInfo.ValueMap[I] = VI->second;
+    FuncInfo.ValueMap[&*I] = VI->second;
   }
   return true;
 }
@@ -351,7 +353,8 @@ void FastISel::recomputeInsertPt() {
 
 void FastISel::removeDeadCode(MachineBasicBlock::iterator I,
                               MachineBasicBlock::iterator E) {
-  assert(I && E && std::distance(I, E) > 0 && "Invalid iterator!");
+  assert(static_cast<MachineInstr *>(I) && static_cast<MachineInstr *>(E) &&
+         std::distance(I, E) > 0 && "Invalid iterator!");
   while (I != E) {
     MachineInstr *Dead = &*I;
     ++I;
@@ -372,7 +375,7 @@ FastISel::SavePoint FastISel::enterLocalValueArea() {
 
 void FastISel::leaveLocalValueArea(SavePoint OldInsertPt) {
   if (FuncInfo.InsertPt != FuncInfo.MBB->begin())
-    LastLocalValue = std::prev(FuncInfo.InsertPt);
+    LastLocalValue = &*std::prev(FuncInfo.InsertPt);
 
   // Restore the previous insert position.
   FuncInfo.InsertPt = OldInsertPt.InsertPt;
@@ -492,13 +495,11 @@ bool FastISel::selectGetElementPtr(const User *I) {
   uint64_t TotalOffs = 0;
   // FIXME: What's a good SWAG number for MaxOffs?
   uint64_t MaxOffs = 2048;
-  Type *Ty = I->getOperand(0)->getType();
   MVT VT = TLI.getPointerTy(DL);
-  for (GetElementPtrInst::const_op_iterator OI = I->op_begin() + 1,
-                                            E = I->op_end();
-       OI != E; ++OI) {
-    const Value *Idx = *OI;
-    if (auto *StTy = dyn_cast<StructType>(Ty)) {
+  for (gep_type_iterator GTI = gep_type_begin(I), E = gep_type_end(I);
+       GTI != E; ++GTI) {
+    const Value *Idx = GTI.getOperand();
+    if (auto *StTy = dyn_cast<StructType>(*GTI)) {
       uint64_t Field = cast<ConstantInt>(Idx)->getZExtValue();
       if (Field) {
         // N = N + Offset
@@ -511,9 +512,8 @@ bool FastISel::selectGetElementPtr(const User *I) {
           TotalOffs = 0;
         }
       }
-      Ty = StTy->getElementType(Field);
     } else {
-      Ty = cast<SequentialType>(Ty)->getElementType();
+      Type *Ty = GTI.getIndexedType();
 
       // If this is a constant subscript, handle it quickly.
       if (const auto *CI = dyn_cast<ConstantInt>(Idx)) {
@@ -611,7 +611,7 @@ bool FastISel::selectStackmap(const CallInst *I) {
   // have to worry about calling conventions and target-specific lowering code.
   // Instead we perform the call lowering right here.
   //
-  // CALLSEQ_START(0)
+  // CALLSEQ_START(0...)
   // STACKMAP(id, nbytes, ...)
   // CALLSEQ_END(0, 0)
   //
@@ -647,8 +647,11 @@ bool FastISel::selectStackmap(const CallInst *I) {
 
   // Issue CALLSEQ_START
   unsigned AdjStackDown = TII.getCallFrameSetupOpcode();
-  BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, TII.get(AdjStackDown))
-      .addImm(0);
+  auto Builder =
+      BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, TII.get(AdjStackDown));
+  const MCInstrDesc &MCID = Builder.getInstr()->getDesc();
+  for (unsigned I = 0, E = MCID.getNumOperands(); I < E; ++I)
+    Builder.addImm(0);
 
   // Issue STACKMAP.
   MachineInstrBuilder MIB = BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc,
@@ -877,9 +880,8 @@ bool FastISel::lowerCallTo(const CallInst *CI, MCSymbol *Symbol,
                            unsigned NumArgs) {
   ImmutableCallSite CS(CI);
 
-  PointerType *PT = cast<PointerType>(CS.getCalledValue()->getType());
-  FunctionType *FTy = cast<FunctionType>(PT->getElementType());
-  Type *RetTy = FTy->getReturnType();
+  FunctionType *FTy = CS.getFunctionType();
+  Type *RetTy = CS.getType();
 
   ArgListTy Args;
   Args.reserve(NumArgs);
@@ -957,6 +959,10 @@ bool FastISel::lowerCallTo(CallLoweringInfo &CLI) {
       Flags.setInReg();
     if (Arg.IsSRet)
       Flags.setSRet();
+    if (Arg.IsSwiftSelf)
+      Flags.setSwiftSelf();
+    if (Arg.IsSwiftError)
+      Flags.setSwiftError();
     if (Arg.IsByVal)
       Flags.setByVal();
     if (Arg.IsInAlloca) {
@@ -1007,9 +1013,8 @@ bool FastISel::lowerCallTo(CallLoweringInfo &CLI) {
 bool FastISel::lowerCall(const CallInst *CI) {
   ImmutableCallSite CS(CI);
 
-  PointerType *PT = cast<PointerType>(CS.getCalledValue()->getType());
-  FunctionType *FuncTy = cast<FunctionType>(PT->getElementType());
-  Type *RetTy = FuncTy->getReturnType();
+  FunctionType *FuncTy = CS.getFunctionType();
+  Type *RetTy = CS.getType();
 
   ArgListTy Args;
   ArgListEntry Entry;
@@ -1100,13 +1105,6 @@ bool FastISel::selectIntrinsicCall(const IntrinsicInst *II) {
   // The donothing intrinsic does, well, nothing.
   case Intrinsic::donothing:
     return true;
-  case Intrinsic::eh_actions: {
-    unsigned ResultReg = getRegForValue(UndefValue::get(II->getType()));
-    if (!ResultReg)
-      return false;
-    updateValueMap(II, ResultReg);
-    return true;
-  }
   case Intrinsic::dbg_declare: {
     const DbgDeclareInst *DI = cast<DbgDeclareInst>(II);
     assert(DI->getVariable() && "Missing variable");
@@ -1326,12 +1324,58 @@ bool FastISel::selectBitCast(const User *I) {
   return true;
 }
 
+// Return true if we should copy from swift error to the final vreg as specified
+// by SwiftErrorWorklist.
+static bool shouldCopySwiftErrorsToFinalVRegs(const TargetLowering &TLI,
+                                              FunctionLoweringInfo &FuncInfo) {
+  if (!TLI.supportSwiftError())
+    return false;
+  return FuncInfo.SwiftErrorWorklist.count(FuncInfo.MBB);
+}
+
+// Remove local value instructions starting from the instruction after
+// SavedLastLocalValue to the current function insert point.
+void FastISel::removeDeadLocalValueCode(MachineInstr *SavedLastLocalValue)
+{
+  MachineInstr *CurLastLocalValue = getLastLocalValue();
+  if (CurLastLocalValue != SavedLastLocalValue) {
+    // Find the first local value instruction to be deleted. 
+    // This is the instruction after SavedLastLocalValue if it is non-NULL.
+    // Otherwise it's the first instruction in the block.
+    MachineBasicBlock::iterator FirstDeadInst(SavedLastLocalValue);
+    if (SavedLastLocalValue)
+      ++FirstDeadInst;
+    else
+      FirstDeadInst = FuncInfo.MBB->getFirstNonPHI();
+    setLastLocalValue(SavedLastLocalValue);
+    removeDeadCode(FirstDeadInst, FuncInfo.InsertPt);
+  }
+}
+
 bool FastISel::selectInstruction(const Instruction *I) {
+  MachineInstr *SavedLastLocalValue = getLastLocalValue();
   // Just before the terminator instruction, insert instructions to
   // feed PHI nodes in successor blocks.
-  if (isa<TerminatorInst>(I))
-    if (!handlePHINodesInSuccessorBlocks(I->getParent()))
+  if (isa<TerminatorInst>(I)) {
+    // If we need to materialize any vreg from worklist, we bail out of
+    // FastISel.
+    if (shouldCopySwiftErrorsToFinalVRegs(TLI, FuncInfo))
       return false;
+    if (!handlePHINodesInSuccessorBlocks(I->getParent())) {
+      // PHI node handling may have generated local value instructions,
+      // even though it failed to handle all PHI nodes.
+      // We remove these instructions because SelectionDAGISel will generate 
+      // them again.
+      removeDeadLocalValueCode(SavedLastLocalValue);
+      return false;
+    }
+  }
+
+  // FastISel does not handle any operand bundles except OB_funclet.
+  if (ImmutableCallSite CS = ImmutableCallSite(I))
+    for (unsigned i = 0, e = CS.getNumOperandBundles(); i != e; ++i)
+      if (CS.getOperandBundleAt(i).getTagID() != LLVMContext::OB_funclet)
+        return false;
 
   DbgLoc = I->getDebugLoc();
 
@@ -1348,7 +1392,7 @@ bool FastISel::selectInstruction(const Instruction *I) {
         LibInfo->hasOptimizedCodeGen(Func))
       return false;
 
-    // Don't handle Intrinsic::trap if a trap funciton is specified.
+    // Don't handle Intrinsic::trap if a trap function is specified.
     if (F && F->getIntrinsicID() == Intrinsic::trap &&
         Call->hasFnAttr("trap-func-name"))
       return false;
@@ -1380,14 +1424,19 @@ bool FastISel::selectInstruction(const Instruction *I) {
 
   DbgLoc = DebugLoc();
   // Undo phi node updates, because they will be added again by SelectionDAG.
-  if (isa<TerminatorInst>(I))
+  if (isa<TerminatorInst>(I)) {
+    // PHI node handling may have generated local value instructions. 
+    // We remove them because SelectionDAGISel will generate them again.
+    removeDeadLocalValueCode(SavedLastLocalValue);
     FuncInfo.PHINodesToUpdate.resize(FuncInfo.OrigNumPHINodesToUpdate);
+  }
   return false;
 }
 
 /// Emit an unconditional branch to the given block, unless it is the immediate
 /// (fall-through) successor, and update the CFG.
-void FastISel::fastEmitBranch(MachineBasicBlock *MSucc, DebugLoc DbgLoc) {
+void FastISel::fastEmitBranch(MachineBasicBlock *MSucc,
+                              const DebugLoc &DbgLoc) {
   if (FuncInfo.MBB->getBasicBlock()->size() > 1 &&
       FuncInfo.MBB->isLayoutSuccessor(MSucc)) {
     // For more accurate line information if this is the only instruction
@@ -1398,11 +1447,30 @@ void FastISel::fastEmitBranch(MachineBasicBlock *MSucc, DebugLoc DbgLoc) {
     TII.InsertBranch(*FuncInfo.MBB, MSucc, nullptr,
                      SmallVector<MachineOperand, 0>(), DbgLoc);
   }
-  uint32_t BranchWeight = 0;
-  if (FuncInfo.BPI)
-    BranchWeight = FuncInfo.BPI->getEdgeWeight(FuncInfo.MBB->getBasicBlock(),
-                                               MSucc->getBasicBlock());
-  FuncInfo.MBB->addSuccessor(MSucc, BranchWeight);
+  if (FuncInfo.BPI) {
+    auto BranchProbability = FuncInfo.BPI->getEdgeProbability(
+        FuncInfo.MBB->getBasicBlock(), MSucc->getBasicBlock());
+    FuncInfo.MBB->addSuccessor(MSucc, BranchProbability);
+  } else
+    FuncInfo.MBB->addSuccessorWithoutProb(MSucc);
+}
+
+void FastISel::finishCondBranch(const BasicBlock *BranchBB,
+                                MachineBasicBlock *TrueMBB,
+                                MachineBasicBlock *FalseMBB) {
+  // Add TrueMBB as successor unless it is equal to the FalseMBB: This can
+  // happen in degenerate IR and MachineIR forbids to have a block twice in the
+  // successor/predecessor lists.
+  if (TrueMBB != FalseMBB) {
+    if (FuncInfo.BPI) {
+      auto BranchProbability =
+          FuncInfo.BPI->getEdgeProbability(BranchBB, TrueMBB->getBasicBlock());
+      FuncInfo.MBB->addSuccessor(TrueMBB, BranchProbability);
+    } else
+      FuncInfo.MBB->addSuccessorWithoutProb(TrueMBB);
+  }
+
+  fastEmitBranch(FalseMBB, DbgLoc);
 }
 
 /// Emit an FNeg operation.
@@ -1864,21 +1932,18 @@ unsigned FastISel::fastEmitInst_rii(unsigned MachineInstOpcode,
   return ResultReg;
 }
 
-unsigned FastISel::fastEmitInst_rf(unsigned MachineInstOpcode,
-                                   const TargetRegisterClass *RC, unsigned Op0,
-                                   bool Op0IsKill, const ConstantFP *FPImm) {
+unsigned FastISel::fastEmitInst_f(unsigned MachineInstOpcode,
+                                  const TargetRegisterClass *RC,
+                                  const ConstantFP *FPImm) {
   const MCInstrDesc &II = TII.get(MachineInstOpcode);
 
   unsigned ResultReg = createResultReg(RC);
-  Op0 = constrainOperandRegClass(II, Op0, II.getNumDefs());
 
   if (II.getNumDefs() >= 1)
     BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II, ResultReg)
-        .addReg(Op0, getKillRegState(Op0IsKill))
         .addFPImm(FPImm);
   else {
     BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II)
-        .addReg(Op0, getKillRegState(Op0IsKill))
         .addFPImm(FPImm);
     BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc,
             TII.get(TargetOpcode::COPY), ResultReg).addReg(II.ImplicitDefs[0]);
@@ -1912,35 +1977,6 @@ unsigned FastISel::fastEmitInst_rri(unsigned MachineInstOpcode,
   return ResultReg;
 }
 
-unsigned FastISel::fastEmitInst_rrii(unsigned MachineInstOpcode,
-                                     const TargetRegisterClass *RC,
-                                     unsigned Op0, bool Op0IsKill, unsigned Op1,
-                                     bool Op1IsKill, uint64_t Imm1,
-                                     uint64_t Imm2) {
-  const MCInstrDesc &II = TII.get(MachineInstOpcode);
-
-  unsigned ResultReg = createResultReg(RC);
-  Op0 = constrainOperandRegClass(II, Op0, II.getNumDefs());
-  Op1 = constrainOperandRegClass(II, Op1, II.getNumDefs() + 1);
-
-  if (II.getNumDefs() >= 1)
-    BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II, ResultReg)
-        .addReg(Op0, getKillRegState(Op0IsKill))
-        .addReg(Op1, getKillRegState(Op1IsKill))
-        .addImm(Imm1)
-        .addImm(Imm2);
-  else {
-    BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II)
-        .addReg(Op0, getKillRegState(Op0IsKill))
-        .addReg(Op1, getKillRegState(Op1IsKill))
-        .addImm(Imm1)
-        .addImm(Imm2);
-    BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc,
-            TII.get(TargetOpcode::COPY), ResultReg).addReg(II.ImplicitDefs[0]);
-  }
-  return ResultReg;
-}
-
 unsigned FastISel::fastEmitInst_i(unsigned MachineInstOpcode,
                                   const TargetRegisterClass *RC, uint64_t Imm) {
   unsigned ResultReg = createResultReg(RC);
@@ -1951,25 +1987,6 @@ unsigned FastISel::fastEmitInst_i(unsigned MachineInstOpcode,
         .addImm(Imm);
   else {
     BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II).addImm(Imm);
-    BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc,
-            TII.get(TargetOpcode::COPY), ResultReg).addReg(II.ImplicitDefs[0]);
-  }
-  return ResultReg;
-}
-
-unsigned FastISel::fastEmitInst_ii(unsigned MachineInstOpcode,
-                                   const TargetRegisterClass *RC, uint64_t Imm1,
-                                   uint64_t Imm2) {
-  unsigned ResultReg = createResultReg(RC);
-  const MCInstrDesc &II = TII.get(MachineInstOpcode);
-
-  if (II.getNumDefs() >= 1)
-    BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II, ResultReg)
-        .addImm(Imm1)
-        .addImm(Imm2);
-  else {
-    BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc, II).addImm(Imm1)
-        .addImm(Imm2);
     BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc,
             TII.get(TargetOpcode::COPY), ResultReg).addReg(II.ImplicitDefs[0]);
   }
@@ -2059,7 +2076,7 @@ bool FastISel::handlePHINodesInSuccessorBlocks(const BasicBlock *LLVMBB) {
         FuncInfo.PHINodesToUpdate.resize(FuncInfo.OrigNumPHINodesToUpdate);
         return false;
       }
-      FuncInfo.PHINodesToUpdate.push_back(std::make_pair(MBBI++, Reg));
+      FuncInfo.PHINodesToUpdate.push_back(std::make_pair(&*MBBI++, Reg));
       DbgLoc = DebugLoc();
     }
   }
@@ -2144,7 +2161,7 @@ FastISel::createMachineMemOperandFor(const Instruction *I) const {
   const Value *Ptr;
   Type *ValTy;
   unsigned Alignment;
-  unsigned Flags;
+  MachineMemOperand::Flags Flags;
   bool IsVolatile;
 
   if (const auto *LI = dyn_cast<LoadInst>(I)) {

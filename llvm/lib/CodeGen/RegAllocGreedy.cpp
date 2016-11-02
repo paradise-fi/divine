@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/CodeGen/Passes.h"
 #include "AllocationOrder.h"
 #include "InterferenceCache.h"
 #include "LiveDebugVariables.h"
@@ -33,6 +32,7 @@
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/RegAllocRegistry.h"
 #include "llvm/CodeGen/RegisterClassInfo.h"
 #include "llvm/CodeGen/VirtRegMap.h"
@@ -44,6 +44,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetInstrInfo.h"
 #include "llvm/Target/TargetSubtargetInfo.h"
 #include <queue>
 
@@ -55,14 +56,14 @@ STATISTIC(NumGlobalSplits, "Number of split global live ranges");
 STATISTIC(NumLocalSplits,  "Number of split local live ranges");
 STATISTIC(NumEvicted,      "Number of interferences evicted");
 
-static cl::opt<SplitEditor::ComplementSpillMode>
-SplitSpillMode("split-spill-mode", cl::Hidden,
-  cl::desc("Spill mode for splitting live ranges"),
-  cl::values(clEnumValN(SplitEditor::SM_Partition, "default", "Default"),
-             clEnumValN(SplitEditor::SM_Size,  "size",  "Optimize for size"),
-             clEnumValN(SplitEditor::SM_Speed, "speed", "Optimize for speed"),
-             clEnumValEnd),
-  cl::init(SplitEditor::SM_Partition));
+static cl::opt<SplitEditor::ComplementSpillMode> SplitSpillMode(
+    "split-spill-mode", cl::Hidden,
+    cl::desc("Spill mode for splitting live ranges"),
+    cl::values(clEnumValN(SplitEditor::SM_Partition, "default", "Default"),
+               clEnumValN(SplitEditor::SM_Size, "size", "Optimize for size"),
+               clEnumValN(SplitEditor::SM_Speed, "speed", "Optimize for speed"),
+               clEnumValEnd),
+    cl::init(SplitEditor::SM_Speed));
 
 static cl::opt<unsigned>
 LastChanceRecoloringMaxDepth("lcr-max-depth", cl::Hidden,
@@ -84,6 +85,14 @@ static cl::opt<bool> EnableLocalReassignment(
     "enable-local-reassign", cl::Hidden,
     cl::desc("Local reassignment can yield better allocation decisions, but "
              "may be compile time intensive"),
+    cl::init(false));
+
+static cl::opt<bool> EnableDeferredSpilling(
+    "enable-deferred-spilling", cl::Hidden,
+    cl::desc("Instead of spilling a variable right away, defer the actual "
+             "code insertion to the end of the allocation. That way the "
+             "allocator might still find a suitable coloring for this "
+             "variable because of other evicted variables."),
     cl::init(false));
 
 // FIXME: Find a good default for this flag and remove the flag.
@@ -120,6 +129,7 @@ class RAGreedy : public MachineFunctionPass,
   EdgeBundles *Bundles;
   SpillPlacement *SpillPlacer;
   LiveDebugVariables *DebugVars;
+  AliasAnalysis *AA;
 
   // state
   std::unique_ptr<Spiller> SpillerInstance;
@@ -156,6 +166,11 @@ class RAGreedy : public MachineFunctionPass,
 
     /// Live range will be spilled.  No more splitting will be attempted.
     RS_Spill,
+
+
+    /// Live range is in memory. Because of other evictions, it might get moved
+    /// in a register in the end.
+    RS_Memory,
 
     /// There is nothing more we can do to this live range.  Abort compilation
     /// if it can't be assigned.
@@ -414,6 +429,7 @@ const char *const RAGreedy::StageName[] = {
     "RS_Split",
     "RS_Split2",
     "RS_Spill",
+    "RS_Memory",
     "RS_Done"
 };
 #endif
@@ -447,8 +463,8 @@ void RAGreedy::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
   AU.addRequired<MachineBlockFrequencyInfo>();
   AU.addPreserved<MachineBlockFrequencyInfo>();
-  AU.addRequired<AliasAnalysis>();
-  AU.addPreserved<AliasAnalysis>();
+  AU.addRequired<AAResultsWrapperPass>();
+  AU.addPreserved<AAResultsWrapperPass>();
   AU.addRequired<LiveIntervals>();
   AU.addPreserved<LiveIntervals>();
   AU.addRequired<SlotIndexes>();
@@ -536,6 +552,13 @@ void RAGreedy::enqueue(PQueue &CurQueue, LiveInterval *LI) {
     // Unsplit ranges that couldn't be allocated immediately are deferred until
     // everything else has been allocated.
     Prio = Size;
+  } else if (ExtraRegInfo[Reg].Stage == RS_Memory) {
+    // Memory operand should be considered last.
+    // Change the priority such that Memory operand are assigned in
+    // the reverse order that they came in.
+    // TODO: Make this a member variable and probably do something about hints.
+    static unsigned MemOp = 0;
+    Prio = MemOp++;
   } else {
     // Giant live ranges fall back to the global assignment heuristic, which
     // prevents excessive spilling in pathological cases.
@@ -637,7 +660,7 @@ unsigned RAGreedy::tryAssign(LiveInterval &VirtReg,
 //===----------------------------------------------------------------------===//
 
 unsigned RAGreedy::canReassign(LiveInterval &VirtReg, unsigned PrevReg) {
-  AllocationOrder Order(VirtReg.reg, *VRM, RegClassInfo);
+  AllocationOrder Order(VirtReg.reg, *VRM, RegClassInfo, Matrix);
   unsigned PhysReg;
   while ((PhysReg = Order.next())) {
     if (PhysReg == PrevReg)
@@ -933,22 +956,28 @@ bool RAGreedy::addSplitConstraints(InterferenceCache::Cursor Intf,
 
     // Interference for the live-in value.
     if (BI.LiveIn) {
-      if (Intf.first() <= Indexes->getMBBStartIdx(BC.Number))
-        BC.Entry = SpillPlacement::MustSpill, ++Ins;
-      else if (Intf.first() < BI.FirstInstr)
-        BC.Entry = SpillPlacement::PrefSpill, ++Ins;
-      else if (Intf.first() < BI.LastInstr)
+      if (Intf.first() <= Indexes->getMBBStartIdx(BC.Number)) {
+        BC.Entry = SpillPlacement::MustSpill;
         ++Ins;
+      } else if (Intf.first() < BI.FirstInstr) {
+        BC.Entry = SpillPlacement::PrefSpill;
+        ++Ins;
+      } else if (Intf.first() < BI.LastInstr) {
+        ++Ins;
+      }
     }
 
     // Interference for the live-out value.
     if (BI.LiveOut) {
-      if (Intf.last() >= SA->getLastSplitPoint(BC.Number))
-        BC.Exit = SpillPlacement::MustSpill, ++Ins;
-      else if (Intf.last() > BI.LastInstr)
-        BC.Exit = SpillPlacement::PrefSpill, ++Ins;
-      else if (Intf.last() > BI.FirstInstr)
+      if (Intf.last() >= SA->getLastSplitPoint(BC.Number)) {
+        BC.Exit = SpillPlacement::MustSpill;
         ++Ins;
+      } else if (Intf.last() > BI.LastInstr) {
+        BC.Exit = SpillPlacement::PrefSpill;
+        ++Ins;
+      } else if (Intf.last() > BI.FirstInstr) {
+        ++Ins;
+      }
     }
 
     // Accumulate the total frequency of inserted spill code.
@@ -1371,8 +1400,10 @@ unsigned RAGreedy::calculateRegionSplitCost(LiveInterval &VirtReg,
         if (i == BestCand || !GlobalCand[i].PhysReg)
           continue;
         unsigned Count = GlobalCand[i].LiveBundles.count();
-        if (Count < WorstCount)
-          Worst = i, WorstCount = Count;
+        if (Count < WorstCount) {
+          Worst = i;
+          WorstCount = Count;
+        }
       }
       --NumCands;
       GlobalCand[Worst] = GlobalCand[NumCands];
@@ -1436,7 +1467,7 @@ unsigned RAGreedy::doRegionSplit(LiveInterval &VirtReg, unsigned BestCand,
                                  SmallVectorImpl<unsigned> &NewVRegs) {
   SmallVector<unsigned, 8> UsedCands;
   // Prepare split editor.
-  LiveRangeEdit LREdit(&VirtReg, NewVRegs, *MF, *LIS, VRM, this);
+  LiveRangeEdit LREdit(&VirtReg, NewVRegs, *MF, *LIS, VRM, this, &DeadRemats);
   SE->reset(LREdit, SplitSpillMode);
 
   // Assign all edge bundles to the preferred candidate, or NoCand.
@@ -1484,7 +1515,7 @@ unsigned RAGreedy::tryBlockSplit(LiveInterval &VirtReg, AllocationOrder &Order,
   assert(&SA->getParent() == &VirtReg && "Live range wasn't analyzed");
   unsigned Reg = VirtReg.reg;
   bool SingleInstrs = RegClassInfo.isProperSubClass(MRI->getRegClass(Reg));
-  LiveRangeEdit LREdit(&VirtReg, NewVRegs, *MF, *LIS, VRM, this);
+  LiveRangeEdit LREdit(&VirtReg, NewVRegs, *MF, *LIS, VRM, this, &DeadRemats);
   SE->reset(LREdit, SplitSpillMode);
   ArrayRef<SplitAnalysis::BlockInfo> UseBlocks = SA->getUseBlocks();
   for (unsigned i = 0; i != UseBlocks.size(); ++i) {
@@ -1556,7 +1587,7 @@ RAGreedy::tryInstructionSplit(LiveInterval &VirtReg, AllocationOrder &Order,
 
   // Always enable split spill mode, since we're effectively spilling to a
   // register.
-  LiveRangeEdit LREdit(&VirtReg, NewVRegs, *MF, *LIS, VRM, this);
+  LiveRangeEdit LREdit(&VirtReg, NewVRegs, *MF, *LIS, VRM, this, &DeadRemats);
   SE->reset(LREdit, SplitEditor::SM_Size);
 
   ArrayRef<SlotIndex> Uses = SA->getUseSlots();
@@ -1879,7 +1910,7 @@ unsigned RAGreedy::tryLocalSplit(LiveInterval &VirtReg, AllocationOrder &Order,
                << '-' << Uses[BestAfter] << ", " << BestDiff
                << ", " << (BestAfter - BestBefore + 1) << " instrs\n");
 
-  LiveRangeEdit LREdit(&VirtReg, NewVRegs, *MF, *LIS, VRM, this);
+  LiveRangeEdit LREdit(&VirtReg, NewVRegs, *MF, *LIS, VRM, this, &DeadRemats);
   SE->reset(LREdit);
 
   SE->openIntv();
@@ -2450,7 +2481,7 @@ unsigned RAGreedy::selectOrSplitImpl(LiveInterval &VirtReg,
                                      unsigned Depth) {
   unsigned CostPerUseLimit = ~0u;
   // First try assigning a free register.
-  AllocationOrder Order(VirtReg.reg, *VRM, RegClassInfo);
+  AllocationOrder Order(VirtReg.reg, *VRM, RegClassInfo, Matrix);
   if (unsigned PhysReg = tryAssign(VirtReg, Order, NewVRegs)) {
     // When NewVRegs is not empty, we may have made decisions such as evicting
     // a virtual register, go with the earlier decisions and use the physical
@@ -2512,13 +2543,23 @@ unsigned RAGreedy::selectOrSplitImpl(LiveInterval &VirtReg,
     return PhysReg;
 
   // Finally spill VirtReg itself.
-  NamedRegionTimer T("Spiller", TimerGroupName, TimePassesIsEnabled);
-  LiveRangeEdit LRE(&VirtReg, NewVRegs, *MF, *LIS, VRM, this);
-  spiller().spill(LRE);
-  setStage(NewVRegs.begin(), NewVRegs.end(), RS_Done);
+  if (EnableDeferredSpilling && getStage(VirtReg) < RS_Memory) {
+    // TODO: This is experimental and in particular, we do not model
+    // the live range splitting done by spilling correctly.
+    // We would need a deep integration with the spiller to do the
+    // right thing here. Anyway, that is still good for early testing.
+    setStage(VirtReg, RS_Memory);
+    DEBUG(dbgs() << "Do as if this register is in memory\n");
+    NewVRegs.push_back(VirtReg.reg);
+  } else {
+    NamedRegionTimer T("Spiller", TimerGroupName, TimePassesIsEnabled);
+    LiveRangeEdit LRE(&VirtReg, NewVRegs, *MF, *LIS, VRM, this, &DeadRemats);
+    spiller().spill(LRE);
+    setStage(NewVRegs.begin(), NewVRegs.end(), RS_Done);
 
-  if (VerifyEnabled)
-    MF->verify(this, "After spilling");
+    if (VerifyEnabled)
+      MF->verify(this, "After spilling");
+  }
 
   // The live virtual register requesting allocation was spilled, so tell
   // the caller not to allocate anything during this round.
@@ -2552,15 +2593,16 @@ bool RAGreedy::runOnMachineFunction(MachineFunction &mf) {
   Bundles = &getAnalysis<EdgeBundles>();
   SpillPlacer = &getAnalysis<SpillPlacement>();
   DebugVars = &getAnalysis<LiveDebugVariables>();
+  AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
 
   initializeCSRCost();
 
-  calculateSpillWeightsAndHints(*LIS, mf, *Loops, *MBFI);
+  calculateSpillWeightsAndHints(*LIS, mf, VRM, *Loops, *MBFI);
 
   DEBUG(LIS->dump());
 
   SA.reset(new SplitAnalysis(*VRM, *LIS, *Loops));
-  SE.reset(new SplitEditor(*SA, *LIS, *VRM, *DomTree, *MBFI));
+  SE.reset(new SplitEditor(*SA, *AA, *LIS, *VRM, *DomTree, *MBFI));
   ExtraRegInfo.clear();
   ExtraRegInfo.resize(MRI->getNumVirtRegs());
   NextCascade = 1;
@@ -2570,6 +2612,8 @@ bool RAGreedy::runOnMachineFunction(MachineFunction &mf) {
 
   allocatePhysRegs();
   tryHintsRecoloring();
+  postOptimization();
+
   releaseMemory();
   return true;
 }

@@ -7,13 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifndef LLVM_LIB_TARGET_AMDGPU_MCTARGETDESC_AMDGPUTARGETSTREAMER_H
+#define LLVM_LIB_TARGET_AMDGPU_MCTARGETDESC_AMDGPUTARGETSTREAMER_H
+
 #include "AMDKernelCodeT.h"
 #include "llvm/MC/MCStreamer.h"
-#include "llvm/MC/MCSymbol.h"
-#include "llvm/Support/Debug.h"
+
 namespace llvm {
 
 class MCELFStreamer;
+class MCSymbol;
 
 class AMDGPUTargetStreamer : public MCTargetStreamer {
 public:
@@ -27,6 +30,12 @@ public:
                                              StringRef ArchName) = 0;
 
   virtual void EmitAMDKernelCodeT(const amd_kernel_code_t &Header) = 0;
+
+  virtual void EmitAMDGPUSymbolType(StringRef SymbolName, unsigned Type) = 0;
+
+  virtual void EmitAMDGPUHsaModuleScopeGlobal(StringRef GlobalName) = 0;
+
+  virtual void EmitAMDGPUHsaProgramScopeGlobal(StringRef GlobalName) = 0;
 };
 
 class AMDGPUTargetAsmStreamer : public AMDGPUTargetStreamer {
@@ -41,6 +50,12 @@ public:
                                      StringRef ArchName) override;
 
   void EmitAMDKernelCodeT(const amd_kernel_code_t &Header) override;
+
+  void EmitAMDGPUSymbolType(StringRef SymbolName, unsigned Type) override;
+
+  void EmitAMDGPUHsaModuleScopeGlobal(StringRef GlobalName) override;
+
+  void EmitAMDGPUHsaProgramScopeGlobal(StringRef GlobalName) override;
 };
 
 class AMDGPUTargetELFStreamer : public AMDGPUTargetStreamer {
@@ -72,6 +87,12 @@ public:
 
   void EmitAMDKernelCodeT(const amd_kernel_code_t &Header) override;
 
+  void EmitAMDGPUSymbolType(StringRef SymbolName, unsigned Type) override;
+
+  void EmitAMDGPUHsaModuleScopeGlobal(StringRef GlobalName) override;
+
+  void EmitAMDGPUHsaProgramScopeGlobal(StringRef GlobalName) override;
 };
 
 }
+#endif

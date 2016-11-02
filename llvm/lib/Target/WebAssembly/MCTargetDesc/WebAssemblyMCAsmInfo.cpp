@@ -15,7 +15,6 @@
 
 #include "WebAssemblyMCAsmInfo.h"
 #include "llvm/ADT/Triple.h"
-#include "llvm/Support/CommandLine.h"
 using namespace llvm;
 
 #define DEBUG_TYPE "wasm-mc-asm-info"
@@ -23,14 +22,15 @@ using namespace llvm;
 WebAssemblyMCAsmInfo::~WebAssemblyMCAsmInfo() {}
 
 WebAssemblyMCAsmInfo::WebAssemblyMCAsmInfo(const Triple &T) {
-  PointerSize = CalleeSaveStackSlotSize = T.isArch64Bit();
+  PointerSize = CalleeSaveStackSlotSize = T.isArch64Bit() ? 8 : 4;
 
   // TODO: What should MaxInstLength be?
 
-  PrivateGlobalPrefix = "";
-  PrivateLabelPrefix = "";
-
   UseDataRegionDirectives = true;
+
+  // Use .skip instead of .zero because .zero is confusing when used with two
+  // arguments (it doesn't actually zero things out).
+  ZeroDirective = "\t.skip\t";
 
   Data8bitsDirective = "\t.int8\t";
   Data16bitsDirective = "\t.int16\t";
@@ -41,13 +41,13 @@ WebAssemblyMCAsmInfo::WebAssemblyMCAsmInfo(const Triple &T) {
   COMMDirectiveAlignmentIsInBytes = false;
   LCOMMDirectiveAlignmentType = LCOMM::Log2Alignment;
 
-  HasDotTypeDotSizeDirective = false;
-  HasSingleParameterDotFile = false;
-
   SupportsDebugInformation = true;
 
   // For now, WebAssembly does not support exceptions.
   ExceptionsType = ExceptionHandling::None;
 
   // TODO: UseIntegratedAssembler?
+
+  // WebAssembly's stack is never executable.
+  UsesNonexecutableStackSection = false;
 }

@@ -17,6 +17,7 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/Module.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Pass.h"
@@ -167,8 +168,7 @@ bool AliasSet::aliasesPointer(const Value *Ptr, uint64_t Size,
   if (!UnknownInsts.empty()) {
     for (unsigned i = 0, e = UnknownInsts.size(); i != e; ++i)
       if (AA.getModRefInfo(UnknownInsts[i],
-                           MemoryLocation(Ptr, Size, AAInfo)) !=
-          AliasAnalysis::NoModRef)
+                           MemoryLocation(Ptr, Size, AAInfo)) != MRI_NoModRef)
         return true;
   }
 
@@ -182,16 +182,14 @@ bool AliasSet::aliasesUnknownInst(const Instruction *Inst,
 
   for (unsigned i = 0, e = UnknownInsts.size(); i != e; ++i) {
     ImmutableCallSite C1(getUnknownInst(i)), C2(Inst);
-    if (!C1 || !C2 ||
-        AA.getModRefInfo(C1, C2) != AliasAnalysis::NoModRef ||
-        AA.getModRefInfo(C2, C1) != AliasAnalysis::NoModRef)
+    if (!C1 || !C2 || AA.getModRefInfo(C1, C2) != MRI_NoModRef ||
+        AA.getModRefInfo(C2, C1) != MRI_NoModRef)
       return true;
   }
 
   for (iterator I = begin(), E = end(); I != E; ++I)
-    if (AA.getModRefInfo(
-            Inst, MemoryLocation(I.getPointer(), I.getSize(), I.getAAInfo())) !=
-        AliasAnalysis::NoModRef)
+    if (AA.getModRefInfo(Inst, MemoryLocation(I.getPointer(), I.getSize(),
+                                              I.getAAInfo())) != MRI_NoModRef)
       return true;
 
   return false;
@@ -210,20 +208,19 @@ void AliasSetTracker::clear() {
 }
 
 
-/// findAliasSetForPointer - Given a pointer, find the one alias set to put the
-/// instruction referring to the pointer into.  If there are multiple alias sets
-/// that may alias the pointer, merge them together and return the unified set.
-///
-AliasSet *AliasSetTracker::findAliasSetForPointer(const Value *Ptr,
-                                                  uint64_t Size,
-                                                  const AAMDNodes &AAInfo) {
+/// mergeAliasSetsForPointer - Given a pointer, merge all alias sets that may
+/// alias the pointer. Return the unified set, or nullptr if no set that aliases
+/// the pointer was found.
+AliasSet *AliasSetTracker::mergeAliasSetsForPointer(const Value *Ptr,
+                                                    uint64_t Size,
+                                                    const AAMDNodes &AAInfo) {
   AliasSet *FoundSet = nullptr;
   for (iterator I = begin(), E = end(); I != E;) {
     iterator Cur = I++;
     if (Cur->Forward || !Cur->aliasesPointer(Ptr, Size, AAInfo, AA)) continue;
     
     if (!FoundSet) {      // If this is the first alias set ptr can go into.
-      FoundSet = Cur;     // Remember it.
+      FoundSet = &*Cur;   // Remember it.
     } else {              // Otherwise, we must merge the sets.
       FoundSet->mergeSetIn(*Cur, *this);     // Merge in contents.
     }
@@ -237,15 +234,15 @@ AliasSet *AliasSetTracker::findAliasSetForPointer(const Value *Ptr,
 /// alias sets.
 bool AliasSetTracker::containsPointer(const Value *Ptr, uint64_t Size,
                                       const AAMDNodes &AAInfo) const {
-  for (const_iterator I = begin(), E = end(); I != E; ++I)
-    if (!I->Forward && I->aliasesPointer(Ptr, Size, AAInfo, AA))
+  for (const AliasSet &AS : *this)
+    if (!AS.Forward && AS.aliasesPointer(Ptr, Size, AAInfo, AA))
       return true;
   return false;
 }
 
 bool AliasSetTracker::containsUnknown(const Instruction *Inst) const {
-  for (const_iterator I = begin(), E = end(); I != E; ++I)
-    if (!I->Forward && I->aliasesUnknownInst(Inst, AA))
+  for (const AliasSet &AS : *this)
+    if (!AS.Forward && AS.aliasesUnknownInst(Inst, AA))
       return true;
   return false;
 }
@@ -257,7 +254,7 @@ AliasSet *AliasSetTracker::findAliasSetForUnknownInst(Instruction *Inst) {
     if (Cur->Forward || !Cur->aliasesUnknownInst(Inst, AA))
       continue;
     if (!FoundSet)            // If this is the first alias set ptr can go into.
-      FoundSet = Cur;         // Remember it.
+      FoundSet = &*Cur;       // Remember it.
     else if (!Cur->Forward)   // Otherwise, we must merge the sets.
       FoundSet->mergeSetIn(*Cur, *this);     // Merge in contents.
   }
@@ -276,12 +273,18 @@ AliasSet &AliasSetTracker::getAliasSetForPointer(Value *Pointer, uint64_t Size,
 
   // Check to see if the pointer is already known.
   if (Entry.hasAliasSet()) {
-    Entry.updateSizeAndAAInfo(Size, AAInfo);
+    // If the size changed, we may need to merge several alias sets.
+    // Note that we can *not* return the result of mergeAliasSetsForPointer
+    // due to a quirk of alias analysis behavior. Since alias(undef, undef)
+    // is NoAlias, mergeAliasSetsForPointer(undef, ...) will not find the
+    // the right set for undef, even if it exists.
+    if (Entry.updateSizeAndAAInfo(Size, AAInfo))
+      mergeAliasSetsForPointer(Pointer, Size, AAInfo);
     // Return the set!
     return *Entry.getAliasSet(*this)->getForwardedTarget(*this);
   }
   
-  if (AliasSet *AS = findAliasSetForPointer(Pointer, Size, AAInfo)) {
+  if (AliasSet *AS = mergeAliasSetsForPointer(Pointer, Size, AAInfo)) {
     // Add it to the alias set it aliases.
     AS->addPointer(*this, Entry, Size, AAInfo);
     return *AS;
@@ -302,31 +305,33 @@ bool AliasSetTracker::add(Value *Ptr, uint64_t Size, const AAMDNodes &AAInfo) {
 
 
 bool AliasSetTracker::add(LoadInst *LI) {
-  if (LI->getOrdering() > Monotonic) return addUnknown(LI);
+  if (isStrongerThanMonotonic(LI->getOrdering())) return addUnknown(LI);
 
   AAMDNodes AAInfo;
   LI->getAAMetadata(AAInfo);
 
   AliasSet::AccessLattice Access = AliasSet::RefAccess;
   bool NewPtr;
+  const DataLayout &DL = LI->getModule()->getDataLayout();
   AliasSet &AS = addPointer(LI->getOperand(0),
-                            AA.getTypeStoreSize(LI->getType()),
+                            DL.getTypeStoreSize(LI->getType()),
                             AAInfo, Access, NewPtr);
   if (LI->isVolatile()) AS.setVolatile();
   return NewPtr;
 }
 
 bool AliasSetTracker::add(StoreInst *SI) {
-  if (SI->getOrdering() > Monotonic) return addUnknown(SI);
+  if (isStrongerThanMonotonic(SI->getOrdering())) return addUnknown(SI);
 
   AAMDNodes AAInfo;
   SI->getAAMetadata(AAInfo);
 
   AliasSet::AccessLattice Access = AliasSet::ModAccess;
   bool NewPtr;
+  const DataLayout &DL = SI->getModule()->getDataLayout();
   Value *Val = SI->getOperand(0);
   AliasSet &AS = addPointer(SI->getOperand(1),
-                            AA.getTypeStoreSize(Val->getType()),
+                            DL.getTypeStoreSize(Val->getType()),
                             AAInfo, Access, NewPtr);
   if (SI->isVolatile()) AS.setVolatile();
   return NewPtr;
@@ -342,6 +347,24 @@ bool AliasSetTracker::add(VAArgInst *VAAI) {
   return NewPtr;
 }
 
+bool AliasSetTracker::add(MemSetInst *MSI) {
+  AAMDNodes AAInfo;
+  MSI->getAAMetadata(AAInfo);
+
+  bool NewPtr;
+  uint64_t Len;
+
+  if (ConstantInt *C = dyn_cast<ConstantInt>(MSI->getLength()))
+    Len = C->getZExtValue();
+  else
+    Len = MemoryLocation::UnknownSize;
+
+  AliasSet &AS =
+      addPointer(MSI->getRawDest(), Len, AAInfo, AliasSet::ModAccess, NewPtr);
+  if (MSI->isVolatile())
+    AS.setVolatile();
+  return NewPtr;
+}
 
 bool AliasSetTracker::addUnknown(Instruction *Inst) {
   if (isa<DbgInfoIntrinsic>(Inst)) 
@@ -368,12 +391,15 @@ bool AliasSetTracker::add(Instruction *I) {
     return add(SI);
   if (VAArgInst *VAAI = dyn_cast<VAArgInst>(I))
     return add(VAAI);
+  if (MemSetInst *MSI = dyn_cast<MemSetInst>(I))
+    return add(MSI);
   return addUnknown(I);
+  // FIXME: add support of memcpy and memmove. 
 }
 
 void AliasSetTracker::add(BasicBlock &BB) {
-  for (BasicBlock::iterator I = BB.begin(), E = BB.end(); I != E; ++I)
-    add(I);
+  for (auto &I : BB)
+    add(&I);
 }
 
 void AliasSetTracker::add(const AliasSetTracker &AST) {
@@ -383,10 +409,9 @@ void AliasSetTracker::add(const AliasSetTracker &AST) {
   // Loop over all of the alias sets in AST, adding the pointers contained
   // therein into the current alias sets.  This can cause alias sets to be
   // merged together in the current AST.
-  for (const_iterator I = AST.begin(), E = AST.end(); I != E; ++I) {
-    if (I->Forward) continue;   // Ignore forwarding alias sets
-    
-    AliasSet &AS = const_cast<AliasSet&>(*I);
+  for (const AliasSet &AS : AST) {
+    if (AS.Forward)
+      continue; // Ignore forwarding alias sets
 
     // If there are any call sites in the alias set, add them to this AST.
     for (unsigned i = 0, e = AS.UnknownInsts.size(); i != e; ++i)
@@ -436,31 +461,33 @@ void AliasSetTracker::remove(AliasSet &AS) {
 
 bool
 AliasSetTracker::remove(Value *Ptr, uint64_t Size, const AAMDNodes &AAInfo) {
-  AliasSet *AS = findAliasSetForPointer(Ptr, Size, AAInfo);
+  AliasSet *AS = mergeAliasSetsForPointer(Ptr, Size, AAInfo);
   if (!AS) return false;
   remove(*AS);
   return true;
 }
 
 bool AliasSetTracker::remove(LoadInst *LI) {
-  uint64_t Size = AA.getTypeStoreSize(LI->getType());
+  const DataLayout &DL = LI->getModule()->getDataLayout();
+  uint64_t Size = DL.getTypeStoreSize(LI->getType());
 
   AAMDNodes AAInfo;
   LI->getAAMetadata(AAInfo);
 
-  AliasSet *AS = findAliasSetForPointer(LI->getOperand(0), Size, AAInfo);
+  AliasSet *AS = mergeAliasSetsForPointer(LI->getOperand(0), Size, AAInfo);
   if (!AS) return false;
   remove(*AS);
   return true;
 }
 
 bool AliasSetTracker::remove(StoreInst *SI) {
-  uint64_t Size = AA.getTypeStoreSize(SI->getOperand(0)->getType());
+  const DataLayout &DL = SI->getModule()->getDataLayout();
+  uint64_t Size = DL.getTypeStoreSize(SI->getOperand(0)->getType());
 
   AAMDNodes AAInfo;
   SI->getAAMetadata(AAInfo);
 
-  AliasSet *AS = findAliasSetForPointer(SI->getOperand(1), Size, AAInfo);
+  AliasSet *AS = mergeAliasSetsForPointer(SI->getOperand(1), Size, AAInfo);
   if (!AS) return false;
   remove(*AS);
   return true;
@@ -470,9 +497,26 @@ bool AliasSetTracker::remove(VAArgInst *VAAI) {
   AAMDNodes AAInfo;
   VAAI->getAAMetadata(AAInfo);
 
-  AliasSet *AS = findAliasSetForPointer(VAAI->getOperand(0),
-                                        MemoryLocation::UnknownSize, AAInfo);
+  AliasSet *AS = mergeAliasSetsForPointer(VAAI->getOperand(0),
+                                          MemoryLocation::UnknownSize, AAInfo);
   if (!AS) return false;
+  remove(*AS);
+  return true;
+}
+
+bool AliasSetTracker::remove(MemSetInst *MSI) {
+  AAMDNodes AAInfo;
+  MSI->getAAMetadata(AAInfo);
+  uint64_t Len;
+
+  if (ConstantInt *C = dyn_cast<ConstantInt>(MSI->getLength()))
+    Len = C->getZExtValue();
+  else
+    Len = MemoryLocation::UnknownSize;
+
+  AliasSet *AS = mergeAliasSetsForPointer(MSI->getRawDest(), Len, AAInfo);
+  if (!AS)
+    return false;
   remove(*AS);
   return true;
 }
@@ -495,7 +539,10 @@ bool AliasSetTracker::remove(Instruction *I) {
     return remove(SI);
   if (VAArgInst *VAAI = dyn_cast<VAArgInst>(I))
     return remove(VAAI);
+  if (MemSetInst *MSI = dyn_cast<MemSetInst>(I))
+    return remove(MSI);
   return removeUnknown(I);
+  // FIXME: add support of memcpy and memmove. 
 }
 
 
@@ -505,9 +552,6 @@ bool AliasSetTracker::remove(Instruction *I) {
 // dangling pointers to deleted instructions.
 //
 void AliasSetTracker::deleteValue(Value *PtrVal) {
-  // Notify the alias analysis implementation that this value is gone.
-  AA.deleteValue(PtrVal);
-
   // If this is a call instruction, remove the callsite from the appropriate
   // AliasSet (if present).
   if (Instruction *Inst = dyn_cast<Instruction>(PtrVal)) {
@@ -603,14 +647,14 @@ void AliasSet::print(raw_ostream &OS) const {
 void AliasSetTracker::print(raw_ostream &OS) const {
   OS << "Alias Set Tracker: " << AliasSets.size() << " alias sets for "
      << PointerMap.size() << " pointer values.\n";
-  for (const_iterator I = begin(), E = end(); I != E; ++I)
-    I->print(OS);
+  for (const AliasSet &AS : *this)
+    AS.print(OS);
   OS << "\n";
 }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-void AliasSet::dump() const { print(dbgs()); }
-void AliasSetTracker::dump() const { print(dbgs()); }
+LLVM_DUMP_METHOD void AliasSet::dump() const { print(dbgs()); }
+LLVM_DUMP_METHOD void AliasSetTracker::dump() const { print(dbgs()); }
 #endif
 
 //===----------------------------------------------------------------------===//
@@ -650,11 +694,12 @@ namespace {
 
     void getAnalysisUsage(AnalysisUsage &AU) const override {
       AU.setPreservesAll();
-      AU.addRequired<AliasAnalysis>();
+      AU.addRequired<AAResultsWrapperPass>();
     }
 
     bool runOnFunction(Function &F) override {
-      Tracker = new AliasSetTracker(getAnalysis<AliasAnalysis>());
+      auto &AAWP = getAnalysis<AAResultsWrapperPass>();
+      Tracker = new AliasSetTracker(AAWP.getAAResults());
 
       for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
         Tracker->add(&*I);
@@ -668,6 +713,6 @@ namespace {
 char AliasSetPrinter::ID = 0;
 INITIALIZE_PASS_BEGIN(AliasSetPrinter, "print-alias-sets",
                 "Alias Set Printer", false, true)
-INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
+INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_END(AliasSetPrinter, "print-alias-sets",
                 "Alias Set Printer", false, true)

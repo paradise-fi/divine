@@ -177,6 +177,23 @@ const char *llvm::dwarf::AttributeString(unsigned Attribute) {
   case DW_AT_MIPS_assumed_size:          return "DW_AT_MIPS_assumed_size";
   case DW_AT_lo_user:                    return "DW_AT_lo_user";
   case DW_AT_hi_user:                    return "DW_AT_hi_user";
+  case DW_AT_BORLAND_property_read:      return "DW_AT_BORLAND_property_read";
+  case DW_AT_BORLAND_property_write:     return "DW_AT_BORLAND_property_write";
+  case DW_AT_BORLAND_property_implements: return "DW_AT_BORLAND_property_implements";
+  case DW_AT_BORLAND_property_index:     return "DW_AT_BORLAND_property_index";
+  case DW_AT_BORLAND_property_default:   return "DW_AT_BORLAND_property_default";
+  case DW_AT_BORLAND_Delphi_unit:        return "DW_AT_BORLAND_Delphi_unit";
+  case DW_AT_BORLAND_Delphi_class:       return "DW_AT_BORLAND_Delphi_class";
+  case DW_AT_BORLAND_Delphi_record:      return "DW_AT_BORLAND_Delphi_record";
+  case DW_AT_BORLAND_Delphi_metaclass:   return "DW_AT_BORLAND_Delphi_metaclass";
+  case DW_AT_BORLAND_Delphi_constructor: return "DW_AT_BORLAND_Delphi_constructor";
+  case DW_AT_BORLAND_Delphi_destructor:  return "DW_AT_BORLAND_Delphi_destructor";
+  case DW_AT_BORLAND_Delphi_anonymous_method: return "DW_AT_BORLAND_Delphi_anonymous_method";
+  case DW_AT_BORLAND_Delphi_interface:   return "DW_AT_BORLAND_Delphi_interface";
+  case DW_AT_BORLAND_Delphi_ABI:         return "DW_AT_BORLAND_Delphi_ABI";
+  case DW_AT_BORLAND_Delphi_return:      return "DW_AT_BORLAND_Delphi_return";
+  case DW_AT_BORLAND_Delphi_frameptr:    return "DW_AT_BORLAND_Delphi_frameptr";
+  case DW_AT_BORLAND_closure:            return "DW_AT_BORLAND_closure";
   case DW_AT_APPLE_optimized:            return "DW_AT_APPLE_optimized";
   case DW_AT_APPLE_flags:                return "DW_AT_APPLE_flags";
   case DW_AT_APPLE_isa:                  return "DW_AT_APPLE_isa";
@@ -201,6 +218,7 @@ const char *llvm::dwarf::AttributeString(unsigned Attribute) {
   case DW_AT_GNU_addr_base:              return "DW_AT_GNU_addr_base";
   case DW_AT_GNU_pubnames:               return "DW_AT_GNU_pubnames";
   case DW_AT_GNU_pubtypes:               return "DW_AT_GNU_pubtypes";
+  case DW_AT_GNU_discriminator:          return "DW_AT_GNU_discriminator";
   }
   return nullptr;
 }
@@ -366,15 +384,22 @@ const char *llvm::dwarf::CaseString(unsigned Case) {
   return nullptr;
 }
 
-const char *llvm::dwarf::ConventionString(unsigned Convention) {
-   switch (Convention) {
-   case DW_CC_normal:                     return "DW_CC_normal";
-   case DW_CC_program:                    return "DW_CC_program";
-   case DW_CC_nocall:                     return "DW_CC_nocall";
-   case DW_CC_lo_user:                    return "DW_CC_lo_user";
-   case DW_CC_hi_user:                    return "DW_CC_hi_user";
+const char *llvm::dwarf::ConventionString(unsigned CC) {
+  switch (CC) {
+  default:
+    return nullptr;
+#define HANDLE_DW_CC(ID, NAME)                                               \
+  case DW_CC_##NAME:                                                         \
+    return "DW_CC_" #NAME;
+#include "llvm/Support/Dwarf.def"
   }
-  return nullptr;
+}
+
+unsigned llvm::dwarf::getCallingConvention(StringRef CCString) {
+  return StringSwitch<unsigned>(CCString)
+#define HANDLE_DW_CC(ID, NAME) .Case("DW_CC_" #NAME, DW_CC_##NAME)
+#include "llvm/Support/Dwarf.def"
+      .Default(0);
 }
 
 const char *llvm::dwarf::InlineCodeString(unsigned Code) {
@@ -442,8 +467,19 @@ const char *llvm::dwarf::MacinfoString(unsigned Encoding) {
   case DW_MACINFO_start_file:            return "DW_MACINFO_start_file";
   case DW_MACINFO_end_file:              return "DW_MACINFO_end_file";
   case DW_MACINFO_vendor_ext:            return "DW_MACINFO_vendor_ext";
+  case DW_MACINFO_invalid:               return "DW_MACINFO_invalid";
   }
   return nullptr;
+}
+
+unsigned llvm::dwarf::getMacinfo(StringRef MacinfoString) {
+  return StringSwitch<unsigned>(MacinfoString)
+      .Case("DW_MACINFO_define", DW_MACINFO_define)
+      .Case("DW_MACINFO_undef", DW_MACINFO_undef)
+      .Case("DW_MACINFO_start_file", DW_MACINFO_start_file)
+      .Case("DW_MACINFO_end_file", DW_MACINFO_end_file)
+      .Case("DW_MACINFO_vendor_ext", DW_MACINFO_vendor_ext)
+      .Default(DW_MACINFO_invalid);
 }
 
 const char *llvm::dwarf::CallFrameString(unsigned Encoding) {
@@ -509,6 +545,12 @@ const char *llvm::dwarf::ApplePropertyString(unsigned Prop) {
     return "DW_APPLE_PROPERTY_strong";
   case DW_APPLE_PROPERTY_unsafe_unretained:
     return "DW_APPLE_PROPERTY_unsafe_unretained";
+  case DW_APPLE_PROPERTY_nullability:
+    return "DW_APPLE_PROPERTY_nullability";
+  case DW_APPLE_PROPERTY_null_resettable:
+    return "DW_APPLE_PROPERTY_null_resettable";
+  case DW_APPLE_PROPERTY_class:
+    return "DW_APPLE_PROPERTY_class";
   }
   return nullptr;
 }

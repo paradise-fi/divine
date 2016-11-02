@@ -16,7 +16,6 @@
 #include "HexagonMCAsmInfo.h"
 #include "HexagonMCELFStreamer.h"
 #include "MCTargetDesc/HexagonInstPrinter.h"
-#include "llvm/MC/MCCodeGenInfo.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCELFStreamer.h"
 #include "llvm/MC/MCInstrInfo.h"
@@ -40,6 +39,56 @@ using namespace llvm;
 #define GET_REGINFO_MC_DESC
 #include "HexagonGenRegisterInfo.inc"
 
+cl::opt<bool> llvm::HexagonDisableCompound
+  ("mno-compound",
+   cl::desc("Disable looking for compound instructions for Hexagon"));
+
+cl::opt<bool> llvm::HexagonDisableDuplex
+  ("mno-pairing",
+   cl::desc("Disable looking for duplex instructions for Hexagon"));
+
+static cl::opt<bool> HexagonV4ArchVariant("mv4", cl::Hidden, cl::init(false),
+  cl::desc("Build for Hexagon V4"));
+
+static cl::opt<bool> HexagonV5ArchVariant("mv5", cl::Hidden, cl::init(false),
+  cl::desc("Build for Hexagon V5"));
+
+static cl::opt<bool> HexagonV55ArchVariant("mv55", cl::Hidden, cl::init(false),
+  cl::desc("Build for Hexagon V55"));
+
+static cl::opt<bool> HexagonV60ArchVariant("mv60", cl::Hidden, cl::init(false),
+  cl::desc("Build for Hexagon V60"));
+
+
+static StringRef DefaultArch = "hexagonv60";
+
+static StringRef HexagonGetArchVariant() {
+  if (HexagonV4ArchVariant)
+    return "hexagonv4";
+  if (HexagonV5ArchVariant)
+    return "hexagonv5";
+  if (HexagonV55ArchVariant)
+    return "hexagonv55";
+  if (HexagonV60ArchVariant)
+    return "hexagonv60";
+  return "";
+}
+
+StringRef HEXAGON_MC::selectHexagonCPU(const Triple &TT, StringRef CPU) {
+  StringRef ArchV = HexagonGetArchVariant();
+  if (!ArchV.empty() && !CPU.empty()) {
+    if (ArchV != CPU)
+      report_fatal_error("conflicting architectures specified.");
+    return CPU;
+  }
+  if (ArchV.empty()) {
+    if (CPU.empty())
+      CPU = DefaultArch;
+    return CPU;
+  }
+  return ArchV;
+}
+
 MCInstrInfo *llvm::createHexagonMCInstrInfo() {
   MCInstrInfo *X = new MCInstrInfo();
   InitHexagonMCInstrInfo(X);
@@ -48,12 +97,13 @@ MCInstrInfo *llvm::createHexagonMCInstrInfo() {
 
 static MCRegisterInfo *createHexagonMCRegisterInfo(const Triple &TT) {
   MCRegisterInfo *X = new MCRegisterInfo();
-  InitHexagonMCRegisterInfo(X, Hexagon::R0);
+  InitHexagonMCRegisterInfo(X, Hexagon::R31);
   return X;
 }
 
 static MCSubtargetInfo *
 createHexagonMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
+  CPU = HEXAGON_MC::selectHexagonCPU(TT, CPU);
   return createHexagonMCSubtargetInfoImpl(TT, CPU, FS);
 }
 
@@ -76,28 +126,23 @@ public:
     StringRef Contents(Buffer);
     auto PacketBundle = Contents.rsplit('\n');
     auto HeadTail = PacketBundle.first.split('\n');
-    auto Preamble = "\t{\n\t\t";
-    auto Separator = "";
-    while(!HeadTail.first.empty()) {
-      OS << Separator;
-      StringRef Inst;
+    StringRef Separator = "\n";
+    StringRef Indent = "\t\t";
+    OS << "\t{\n";
+    while (!HeadTail.first.empty()) {
+      StringRef InstTxt;
       auto Duplex = HeadTail.first.split('\v');
-      if(!Duplex.second.empty()){
-        OS << Duplex.first << "\n";
-        Inst = Duplex.second;
+      if (!Duplex.second.empty()) {
+        OS << Indent << Duplex.first << Separator;
+        InstTxt = Duplex.second;
+      } else if (!HeadTail.first.trim().startswith("immext")) {
+        InstTxt = Duplex.first;
       }
-      else {
-        if(!HeadTail.first.startswith("immext"))
-          Inst = Duplex.first;
-      }
-      OS << Preamble;
-      OS << Inst;
+      if (!InstTxt.empty())
+        OS << Indent << InstTxt << Separator;
       HeadTail = HeadTail.second.split('\n');
-      Preamble = "";
-      Separator = "\n\t\t";
     }
-    if(HexagonMCInstrInfo::bundleSize(Inst) != 0)
-      OS << "\n\t}" << PacketBundle.second;
+    OS << "\t}" << PacketBundle.second;
   }
 };
 }
@@ -111,10 +156,14 @@ public:
   HexagonTargetELFStreamer(MCStreamer &S, MCSubtargetInfo const &STI)
       : HexagonTargetStreamer(S) {
     auto Bits = STI.getFeatureBits();
-    unsigned Flags;
-    if (Bits.to_ullong() & llvm::Hexagon::ArchV5)
+    unsigned Flags = 0;
+    if (Bits[Hexagon::ArchV60])
+      Flags = ELF::EF_HEXAGON_MACH_V60;
+    else if (Bits[Hexagon::ArchV55])
+      Flags = ELF::EF_HEXAGON_MACH_V55;
+    else if (Bits[Hexagon::ArchV5])
       Flags = ELF::EF_HEXAGON_MACH_V5;
-    else
+    else if (Bits[Hexagon::ArchV4])
       Flags = ELF::EF_HEXAGON_MACH_V4;
     getStreamer().getAssembler().setELFHeaderEFlags(Flags);
   }
@@ -147,17 +196,6 @@ static MCAsmInfo *createHexagonMCAsmInfo(const MCRegisterInfo &MRI,
   MAI->addInitialFrameState(Inst);
 
   return MAI;
-}
-
-static MCCodeGenInfo *createHexagonMCCodeGenInfo(const Triple &TT,
-                                                 Reloc::Model RM,
-                                                 CodeModel::Model CM,
-                                                 CodeGenOpt::Level OL) {
-  MCCodeGenInfo *X = new MCCodeGenInfo();
-  // For the time being, use static relocations, since there's really no
-  // support for PIC yet.
-  X->initMCCodeGenInfo(Reloc::Static, CM, OL);
-  return X;
 }
 
 static MCInstPrinter *createHexagonMCInstPrinter(const Triple &T,
@@ -193,10 +231,6 @@ createHexagonObjectTargetStreamer(MCStreamer &S, MCSubtargetInfo const &STI) {
 extern "C" void LLVMInitializeHexagonTargetMC() {
   // Register the MC asm info.
   RegisterMCAsmInfoFn X(TheHexagonTarget, createHexagonMCAsmInfo);
-
-  // Register the MC codegen info.
-  TargetRegistry::RegisterMCCodeGenInfo(TheHexagonTarget,
-                                        createHexagonMCCodeGenInfo);
 
   // Register the MC instruction info.
   TargetRegistry::RegisterMCInstrInfo(TheHexagonTarget,

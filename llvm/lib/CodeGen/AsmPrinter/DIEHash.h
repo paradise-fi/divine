@@ -84,9 +84,6 @@ class DIEHash {
 public:
   DIEHash(AsmPrinter *A = nullptr) : AP(A) {}
 
-  /// \brief Computes the ODR signature.
-  uint64_t computeDIEODRSignature(const DIE &Die);
-
   /// \brief Computes the CU signature.
   uint64_t computeCUSignature(const DIE &Die);
 
@@ -134,7 +131,7 @@ private:
   void hashLocList(const DIELocList &LocList);
 
   /// \brief Hashes an individual attribute.
-  void hashAttribute(DIEValue Value, dwarf::Tag Tag);
+  void hashAttribute(const DIEValue &Value, dwarf::Tag Tag);
 
   /// \brief Hashes an attribute that refers to another DIE.
   void hashDIEEntry(dwarf::Attribute Attribute, dwarf::Tag Tag,

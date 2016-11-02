@@ -47,7 +47,8 @@ public:
 
   bool mayNeedRelaxation(const MCInst &Inst) const override { return false; }
 
-  void relaxInstruction(const MCInst &Inst, MCInst &Res) const override {}
+  void relaxInstruction(const MCInst &Inst, const MCSubtargetInfo &STI,
+                        MCInst &Res) const override {}
 
   bool writeNopData(uint64_t Count, MCObjectWriter *OW) const override;
 };
@@ -68,16 +69,23 @@ void BPFAsmBackend::applyFixup(const MCFixup &Fixup, char *Data,
 
   if (Fixup.getKind() == FK_SecRel_4 || Fixup.getKind() == FK_SecRel_8) {
     assert(Value == 0);
-    return;
-  }
-  assert(Fixup.getKind() == FK_PCRel_2);
-  Value = (uint16_t)((Value - 8) / 8);
-  if (IsLittleEndian) {
-    Data[Fixup.getOffset() + 2] = Value & 0xFF;
-    Data[Fixup.getOffset() + 3] = Value >> 8;
+  } else if (Fixup.getKind() == FK_Data_4 || Fixup.getKind() == FK_Data_8) {
+    unsigned Size = Fixup.getKind() == FK_Data_4 ? 4 : 8;
+
+    for (unsigned i = 0; i != Size; ++i) {
+      unsigned Idx = IsLittleEndian ? i : Size - i;
+      Data[Fixup.getOffset() + Idx] = uint8_t(Value >> (i * 8));
+    }
   } else {
-    Data[Fixup.getOffset() + 2] = Value >> 8;
-    Data[Fixup.getOffset() + 3] = Value & 0xFF;
+    assert(Fixup.getKind() == FK_PCRel_2);
+    Value = (uint16_t)((Value - 8) / 8);
+    if (IsLittleEndian) {
+      Data[Fixup.getOffset() + 2] = Value & 0xFF;
+      Data[Fixup.getOffset() + 3] = Value >> 8;
+    } else {
+      Data[Fixup.getOffset() + 2] = Value >> 8;
+      Data[Fixup.getOffset() + 3] = Value & 0xFF;
+    }
   }
 }
 

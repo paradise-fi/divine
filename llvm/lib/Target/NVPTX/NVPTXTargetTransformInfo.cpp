@@ -32,7 +32,7 @@ static bool readsThreadIndex(const IntrinsicInst *II) {
 }
 
 static bool readsLaneId(const IntrinsicInst *II) {
-  return II->getIntrinsicID() == Intrinsic::ptx_read_laneid;
+  return II->getIntrinsicID() == Intrinsic::nvvm_read_ptx_sreg_laneid;
 }
 
 // Whether the given intrinsic is an atomic instruction in PTX.
@@ -89,12 +89,12 @@ bool NVPTXTTIImpl::isSourceOfDivergence(const Value *V) {
   return false;
 }
 
-unsigned NVPTXTTIImpl::getArithmeticInstrCost(
+int NVPTXTTIImpl::getArithmeticInstrCost(
     unsigned Opcode, Type *Ty, TTI::OperandValueKind Opd1Info,
     TTI::OperandValueKind Opd2Info, TTI::OperandValueProperties Opd1PropInfo,
     TTI::OperandValueProperties Opd2PropInfo) {
   // Legalize the type.
-  std::pair<unsigned, MVT> LT = TLI->getTypeLegalizationCost(DL, Ty);
+  std::pair<int, MVT> LT = TLI->getTypeLegalizationCost(DL, Ty);
 
   int ISD = TLI->InstructionOpcodeToISD(Opcode);
 

@@ -23,8 +23,27 @@ namespace llvm {
 class WebAssemblyTargetMachine;
 class FunctionPass;
 
+// LLVM IR passes.
+FunctionPass *createWebAssemblyOptimizeReturned();
+
+// ISel and immediate followup passes.
 FunctionPass *createWebAssemblyISelDag(WebAssemblyTargetMachine &TM,
                                        CodeGenOpt::Level OptLevel);
+FunctionPass *createWebAssemblyArgumentMove();
+FunctionPass *createWebAssemblySetP2AlignOperands();
+
+// Late passes.
+FunctionPass *createWebAssemblyReplacePhysRegs();
+FunctionPass *createWebAssemblyPrepareForLiveIntervals();
+FunctionPass *createWebAssemblyOptimizeLiveIntervals();
+FunctionPass *createWebAssemblyStoreResults();
+FunctionPass *createWebAssemblyRegStackify();
+FunctionPass *createWebAssemblyRegColoring();
+FunctionPass *createWebAssemblyFixIrreducibleControlFlow();
+FunctionPass *createWebAssemblyCFGStackify();
+FunctionPass *createWebAssemblyLowerBrUnless();
+FunctionPass *createWebAssemblyRegNumbering();
+FunctionPass *createWebAssemblyPeephole();
 
 } // end namespace llvm
 

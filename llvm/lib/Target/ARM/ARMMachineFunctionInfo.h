@@ -1,4 +1,4 @@
-//===-- ARMMachineFuctionInfo.h - ARM machine function info -----*- C++ -*-===//
+//===-- ARMMachineFunctionInfo.h - ARM machine function info ----*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -15,7 +15,6 @@
 #define LLVM_LIB_TARGET_ARM_ARMMACHINEFUNCTIONINFO_H
 
 #include "ARMSubtarget.h"
-#include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/Target/TargetMachine.h"
@@ -52,7 +51,7 @@ class ARMFunctionInfo : public MachineFunctionInfo {
   unsigned ReturnRegsCount;
 
   /// HasStackFrame - True if this function has a stack frame. Set by
-  /// processFunctionBeforeCalleeSavedScan().
+  /// determineCalleeSaves().
   bool HasStackFrame;
 
   /// RestoreSPFromFP - True if epilogue should restore SP from FP. Set by
@@ -110,11 +109,6 @@ class ARMFunctionInfo : public MachineFunctionInfo {
   /// pass.
   DenseMap<unsigned, unsigned> CPEClones;
 
-  /// GlobalBaseReg - keeps track of the virtual register initialized for
-  /// use as the global base register. This is used for PIC in some PIC
-  /// relocation models.
-  unsigned GlobalBaseReg;
-
   /// ArgumentStackSize - amount of bytes on stack consumed by the arguments
   /// being passed on the stack
   unsigned ArgumentStackSize;
@@ -122,6 +116,10 @@ class ARMFunctionInfo : public MachineFunctionInfo {
   /// CoalescedWeights - mapping of basic blocks to the rolling counter of
   /// coalesced weights.
   DenseMap<const MachineBasicBlock*, unsigned> CoalescedWeights;
+
+  /// True if this function has a subset of CSRs that is handled explicitly via
+  /// copies.
+  bool IsSplitCSR;
 
 public:
   ARMFunctionInfo() :
@@ -133,7 +131,7 @@ public:
     FramePtrSpillOffset(0), GPRCS1Offset(0), GPRCS2Offset(0), DPRCSOffset(0),
     GPRCS1Size(0), GPRCS2Size(0), DPRCSAlignGapSize(0), DPRCSSize(0),
     NumAlignedDPRCS2Regs(0), PICLabelUId(0),
-    VarArgsFrameIndex(0), HasITBlocks(false), GlobalBaseReg(0) {}
+    VarArgsFrameIndex(0), HasITBlocks(false), IsSplitCSR(false) {}
 
   explicit ARMFunctionInfo(MachineFunction &MF);
 
@@ -204,8 +202,8 @@ public:
   bool hasITBlocks() const { return HasITBlocks; }
   void setHasITBlocks(bool h) { HasITBlocks = h; }
 
-  unsigned getGlobalBaseReg() const { return GlobalBaseReg; }
-  void setGlobalBaseReg(unsigned Reg) { GlobalBaseReg = Reg; }
+  bool isSplitCSR() const { return IsSplitCSR; }
+  void setIsSplitCSR(bool s) { IsSplitCSR = s; }
 
   void recordCPEClone(unsigned CPIdx, unsigned CPCloneIdx) {
     if (!CPEClones.insert(std::make_pair(CPCloneIdx, CPIdx)).second)

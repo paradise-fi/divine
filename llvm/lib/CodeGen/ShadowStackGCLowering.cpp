@@ -8,7 +8,11 @@
 //===----------------------------------------------------------------------===//
 //
 // This file contains the custom lowering code required by the shadow-stack GC
-// strategy.  
+// strategy.
+//
+// This pass implements the code transformation described in this paper:
+//   "Accurate Garbage Collection in an Uncooperative Environment"
+//   Fergus Henderson, ISMM, 2002
 //
 //===----------------------------------------------------------------------===//
 
@@ -112,7 +116,7 @@ public:
     case 1:
       // Find all 'return', 'resume', and 'unwind' instructions.
       while (StateBB != StateE) {
-        BasicBlock *CurBB = StateBB++;
+        BasicBlock *CurBB = &*StateBB++;
 
         // Branches and invokes do not escape, only unwind, resume, and return
         // do.
@@ -120,7 +124,7 @@ public:
         if (!isa<ReturnInst>(TI) && !isa<ResumeInst>(TI))
           continue;
 
-        Builder.SetInsertPoint(TI->getParent(), TI);
+        Builder.SetInsertPoint(TI);
         return &Builder;
       }
 
@@ -163,8 +167,8 @@ public:
 
         // Split the basic block containing the function call.
         BasicBlock *CallBB = CI->getParent();
-        BasicBlock *NewBB =
-            CallBB->splitBasicBlock(CI, CallBB->getName() + ".cont");
+        BasicBlock *NewBB = CallBB->splitBasicBlock(
+            CI->getIterator(), CallBB->getName() + ".cont");
 
         // Remove the unconditional branch inserted at the end of CallBB.
         CallBB->getInstList().pop_back();
@@ -184,7 +188,7 @@ public:
         delete CI;
       }
 
-      Builder.SetInsertPoint(RI->getParent(), RI);
+      Builder.SetInsertPoint(RI);
       return &Builder;
     }
   }

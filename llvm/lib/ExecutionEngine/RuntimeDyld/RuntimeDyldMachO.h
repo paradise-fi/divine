@@ -79,6 +79,12 @@ protected:
     return RelocationEntry(SectionID, Offset, RelType, 0, IsPCRel, Size);
   }
 
+  /// Process a scattered vanilla relocation.
+  Expected<relocation_iterator>
+  processScatteredVANILLA(unsigned SectionID, relocation_iterator RelI,
+                          const ObjectFile &BaseObjT,
+                          RuntimeDyldMachO::ObjSectionToIDMap &ObjSectionToID);
+
   /// Construct a RelocationValueRef representing the relocation target.
   /// For Symbols in known sections, this will return a RelocationValueRef
   /// representing a (SectionID, Offset) pair.
@@ -88,10 +94,11 @@ protected:
   /// In both cases the Addend field is *NOT* fixed up to be PC-relative. That
   /// should be done by the caller where appropriate by calling makePCRel on
   /// the RelocationValueRef.
-  RelocationValueRef getRelocationValueRef(const ObjectFile &BaseTObj,
-                                           const relocation_iterator &RI,
-                                           const RelocationEntry &RE,
-                                           ObjSectionToIDMap &ObjSectionToID);
+  Expected<RelocationValueRef>
+  getRelocationValueRef(const ObjectFile &BaseTObj,
+                        const relocation_iterator &RI,
+                        const RelocationEntry &RE,
+                        ObjSectionToIDMap &ObjSectionToID);
 
   /// Make the RelocationValueRef addend PC-relative.
   void makeValueAddendPCRel(RelocationValueRef &Value,
@@ -107,9 +114,9 @@ protected:
 
 
   // Populate __pointers section.
-  void populateIndirectSymbolPointersSection(const MachOObjectFile &Obj,
-                                             const SectionRef &PTSection,
-                                             unsigned PTSectionID);
+  Error populateIndirectSymbolPointersSection(const MachOObjectFile &Obj,
+                                              const SectionRef &PTSection,
+                                              unsigned PTSectionID);
 
 public:
 
@@ -140,7 +147,7 @@ private:
   Impl &impl() { return static_cast<Impl &>(*this); }
   const Impl &impl() const { return static_cast<const Impl &>(*this); }
 
-  unsigned char *processFDE(unsigned char *P, int64_t DeltaForText,
+  unsigned char *processFDE(uint8_t *P, int64_t DeltaForText,
                             int64_t DeltaForEH);
 
 public:
@@ -148,8 +155,8 @@ public:
                            RuntimeDyld::SymbolResolver &Resolver)
     : RuntimeDyldMachO(MemMgr, Resolver) {}
 
-  void finalizeLoad(const ObjectFile &Obj,
-                    ObjSectionToIDMap &SectionMap) override;
+  Error finalizeLoad(const ObjectFile &Obj,
+                     ObjSectionToIDMap &SectionMap) override;
   void registerEHFrames() override;
 };
 

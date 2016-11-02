@@ -21,21 +21,6 @@
 #define GET_REGINFO_HEADER
 #include "HexagonGenRegisterInfo.inc"
 
-//
-//  We try not to hard code the reserved registers in our code,
-//  so the following two macros were defined. However, there
-//  are still a few places that R11 and R10 are hard wired.
-//  See below. If, in the future, we decided to change the reserved
-//  register. Don't forget changing the following places.
-//
-//  1. the "Defs" set of STriw_pred in HexagonInstrInfo.td
-//  2. the "Defs" set of LDri_pred in HexagonInstrInfo.td
-//  3. the definition of "IntRegs" in HexagonRegisterInfo.td
-//  4. the definition of "DoubleRegs" in HexagonRegisterInfo.td
-//
-#define HEXAGON_RESERVED_REG_1 Hexagon::R10
-#define HEXAGON_RESERVED_REG_2 Hexagon::R11
-
 namespace llvm {
 class HexagonRegisterInfo : public HexagonGenRegisterInfo {
 public:
@@ -63,8 +48,6 @@ public:
     return true;
   }
 
-  bool needsStackRealignment(const MachineFunction &MF) const override;
-
   /// Returns true if the frame pointer is valid.
   bool useFPForScavengingIndex(const MachineFunction &MF) const override;
 
@@ -78,7 +61,8 @@ public:
   unsigned getFrameRegister() const;
   unsigned getStackRegister() const;
 
-  const MCPhysReg *getCallerSavedRegs(const MachineFunction *MF) const;
+  const MCPhysReg *getCallerSavedRegs(const MachineFunction *MF,
+        const TargetRegisterClass *RC) const;
 
   unsigned getFirstCallerSavedNonParamReg() const;
 

@@ -279,7 +279,7 @@ void DIEHash::hashLocList(const DIELocList &LocList) {
 
 // Hash an individual attribute \param Attr based on the type of attribute and
 // the form.
-void DIEHash::hashAttribute(DIEValue Value, dwarf::Tag Tag) {
+void DIEHash::hashAttribute(const DIEValue &Value, dwarf::Tag Tag) {
   dwarf::Attribute Attribute = Value.getAttribute();
 
   // Other attribute values use the letter 'A' as the marker, and the value
@@ -353,7 +353,6 @@ void DIEHash::hashAttribute(DIEValue Value, dwarf::Tag Tag) {
   case DIEValue::isExpr:
   case DIEValue::isLabel:
   case DIEValue::isDelta:
-  case DIEValue::isTypeSignature:
     llvm_unreachable("Add support for additional value types.");
   }
 }
@@ -467,38 +466,6 @@ void DIEHash::computeHash(const DIE &Die) {
 
   // Following the last (or if there are no children), append a zero byte.
   Hash.update(makeArrayRef((uint8_t)'\0'));
-}
-
-/// This is based on the type signature computation given in section 7.27 of the
-/// DWARF4 standard. It is the md5 hash of a flattened description of the DIE
-/// with the exception that we are hashing only the context and the name of the
-/// type.
-uint64_t DIEHash::computeDIEODRSignature(const DIE &Die) {
-
-  // Add the contexts to the hash. We won't be computing the ODR hash for
-  // function local types so it's safe to use the generic context hashing
-  // algorithm here.
-  // FIXME: If we figure out how to account for linkage in some way we could
-  // actually do this with a slight modification to the parent hash algorithm.
-  if (const DIE *Parent = Die.getParent())
-    addParentContext(*Parent);
-
-  // Add the current DIE information.
-
-  // Add the DWARF tag of the DIE.
-  addULEB128(Die.getTag());
-
-  // Add the name of the type to the hash.
-  addString(getDIEStringAttr(Die, dwarf::DW_AT_name));
-
-  // Now get the result.
-  MD5::MD5Result Result;
-  Hash.final(Result);
-
-  // ... take the least significant 8 bytes and return those. Our MD5
-  // implementation always returns its results in little endian, swap bytes
-  // appropriately.
-  return support::endian::read64le(Result + 8);
 }
 
 /// This is based on the type signature computation given in section 7.27 of the

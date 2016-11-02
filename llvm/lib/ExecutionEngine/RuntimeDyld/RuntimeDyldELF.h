@@ -20,6 +20,9 @@
 using namespace llvm;
 
 namespace llvm {
+namespace object {
+class ELFObjectFileBase;
+}
 
 class RuntimeDyldELF : public RuntimeDyldImpl {
 
@@ -42,6 +45,9 @@ class RuntimeDyldELF : public RuntimeDyldImpl {
 
   void resolveMIPSRelocation(const SectionEntry &Section, uint64_t Offset,
                              uint32_t Value, uint32_t Type, int32_t Addend);
+
+  void resolvePPC32Relocation(const SectionEntry &Section, uint64_t Offset,
+                              uint64_t Value, uint32_t Type, int64_t Addend);
 
   void resolvePPC64Relocation(const SectionEntry &Section, uint64_t Offset,
                               uint64_t Value, uint32_t Type, int64_t Addend);
@@ -87,12 +93,12 @@ class RuntimeDyldELF : public RuntimeDyldImpl {
 
   void setMipsABI(const ObjectFile &Obj) override;
 
-  void findPPC64TOCSection(const ELFObjectFileBase &Obj,
-                           ObjSectionToIDMap &LocalSections,
-                           RelocationValueRef &Rel);
-  void findOPDEntrySection(const ELFObjectFileBase &Obj,
-                           ObjSectionToIDMap &LocalSections,
-                           RelocationValueRef &Rel);
+  Error findPPC64TOCSection(const ELFObjectFileBase &Obj,
+                            ObjSectionToIDMap &LocalSections,
+                            RelocationValueRef &Rel);
+  Error findOPDEntrySection(const ELFObjectFileBase &Obj,
+                            ObjSectionToIDMap &LocalSections,
+                            RelocationValueRef &Rel);
 
   size_t getGOTEntrySize();
 
@@ -120,6 +126,10 @@ class RuntimeDyldELF : public RuntimeDyldImpl {
   // no particular advanced processing.
   void processSimpleRelocation(unsigned SectionID, uint64_t Offset, unsigned RelType, RelocationValueRef Value);
 
+  // Return matching *LO16 relocation (Mips specific)
+  uint32_t getMatchingLoRelocation(uint32_t RelType,
+                                   bool IsLocal = false) const;
+
   // The tentative ID for the GOT section
   unsigned GOTSectionID;
 
@@ -135,11 +145,17 @@ class RuntimeDyldELF : public RuntimeDyldImpl {
   // A map to avoid duplicate got entries (Mips64 specific)
   StringMap<uint64_t> GOTSymbolOffsets;
 
+  // *HI16 relocations will be added for resolving when we find matching
+  // *LO16 part. (Mips specific)
+  SmallVector<std::pair<RelocationValueRef, RelocationEntry>, 8> PendingRelocs;
+
   // When a module is loaded we save the SectionID of the EH frame section
   // in a table until we receive a request to register all unregistered
   // EH frame sections with the memory manager.
   SmallVector<SID, 2> UnregisteredEHFrameSections;
   SmallVector<SID, 2> RegisteredEHFrameSections;
+
+  bool relocationNeedsStub(const RelocationRef &R) const override;
 
 public:
   RuntimeDyldELF(RuntimeDyld::MemoryManager &MemMgr,
@@ -150,7 +166,7 @@ public:
   loadObject(const object::ObjectFile &O) override;
 
   void resolveRelocation(const RelocationEntry &RE, uint64_t Value) override;
-  relocation_iterator
+  Expected<relocation_iterator>
   processRelocationRef(unsigned SectionID, relocation_iterator RelI,
                        const ObjectFile &Obj,
                        ObjSectionToIDMap &ObjSectionToID,
@@ -158,8 +174,8 @@ public:
   bool isCompatibleFile(const object::ObjectFile &Obj) const override;
   void registerEHFrames() override;
   void deregisterEHFrames() override;
-  void finalizeLoad(const ObjectFile &Obj,
-                    ObjSectionToIDMap &SectionMap) override;
+  Error finalizeLoad(const ObjectFile &Obj,
+                     ObjSectionToIDMap &SectionMap) override;
 };
 
 } // end namespace llvm

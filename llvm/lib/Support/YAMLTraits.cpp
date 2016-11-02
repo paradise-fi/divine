@@ -332,17 +332,12 @@ std::unique_ptr<Input::HNode> Input::createHNodes(Node *N) {
     StringRef KeyStr = SN->getValue(StringStorage);
     if (!StringStorage.empty()) {
       // Copy string to permanent storage
-      unsigned Len = StringStorage.size();
-      char *Buf = StringAllocator.Allocate<char>(Len);
-      memcpy(Buf, &StringStorage[0], Len);
-      KeyStr = StringRef(Buf, Len);
+      KeyStr = StringStorage.str().copy(StringAllocator);
     }
     return llvm::make_unique<ScalarHNode>(N, KeyStr);
   } else if (BlockScalarNode *BSN = dyn_cast<BlockScalarNode>(N)) {
-    StringRef Value = BSN->getValue();
-    char *Buf = StringAllocator.Allocate<char>(Value.size());
-    memcpy(Buf, Value.data(), Value.size());
-    return llvm::make_unique<ScalarHNode>(N, StringRef(Buf, Value.size()));
+    StringRef ValueCopy = BSN->getValue().copy(StringAllocator);
+    return llvm::make_unique<ScalarHNode>(N, ValueCopy);
   } else if (SequenceNode *SQ = dyn_cast<SequenceNode>(N)) {
     auto SQHNode = llvm::make_unique<SequenceHNode>(N);
     for (Node &SN : *SQ) {
@@ -365,10 +360,7 @@ std::unique_ptr<Input::HNode> Input::createHNodes(Node *N) {
       StringRef KeyStr = KeyScalar->getValue(StringStorage);
       if (!StringStorage.empty()) {
         // Copy string to permanent storage
-        unsigned Len = StringStorage.size();
-        char *Buf = StringAllocator.Allocate<char>(Len);
-        memcpy(Buf, &StringStorage[0], Len);
-        KeyStr = StringRef(Buf, Len);
+        KeyStr = StringStorage.str().copy(StringAllocator);
       }
       auto ValueHNode = this->createHNodes(KVN.getValue());
       if (EC)
@@ -431,8 +423,29 @@ void Output::beginMapping() {
 
 bool Output::mapTag(StringRef Tag, bool Use) {
   if (Use) {
-    this->output(" ");
+    // If this tag is being written inside a sequence we should write the start
+    // of the sequence before writing the tag, otherwise the tag won't be
+    // attached to the element in the sequence, but rather the sequence itself.
+    bool SequenceElement =
+        StateStack.size() > 1 && (StateStack[StateStack.size() - 2] == inSeq ||
+          StateStack[StateStack.size() - 2] == inFlowSeq);
+    if (SequenceElement && StateStack.back() == inMapFirstKey) {
+      this->newLineCheck();
+    } else {
+      this->output(" ");
+    }
     this->output(Tag);
+    if (SequenceElement) {
+      // If we're writing the tag during the first element of a map, the tag
+      // takes the place of the first element in the sequence.
+      if (StateStack.back() == inMapFirstKey) {
+        StateStack.pop_back();
+        StateStack.push_back(inMapOtherKey);
+      }
+      // Tags inside maps in sequences should act as keys in the map from a
+      // formatting perspective, so we always want a newline in a sequence.
+      NeedsNewLine = true;
+    }
   }
   return Use;
 }

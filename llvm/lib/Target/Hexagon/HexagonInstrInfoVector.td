@@ -35,18 +35,12 @@ multiclass bitconvert_64<ValueType a, ValueType b> {
              (a DoubleRegs:$src)>;
 }
 
-// Bit convert vector types.
-defm : bitconvert_32<v4i8, i32>;
+// Bit convert vector types to integers.
+defm : bitconvert_32<v4i8,  i32>;
 defm : bitconvert_32<v2i16, i32>;
-defm : bitconvert_32<v2i16, v4i8>;
-
-defm : bitconvert_64<v8i8, i64>;
+defm : bitconvert_64<v8i8,  i64>;
 defm : bitconvert_64<v4i16, i64>;
 defm : bitconvert_64<v2i32, i64>;
-defm : bitconvert_64<v8i8, v4i16>;
-defm : bitconvert_64<v8i8, v2i32>;
-defm : bitconvert_64<v4i16, v2i32>;
-
 
 // Vector shift support. Vector shifting in Hexagon is rather different
 // from internal representation of LLVM.

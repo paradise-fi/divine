@@ -21,7 +21,7 @@ using namespace llvm;
 
 MCSection::MCSection(SectionVariant V, SectionKind K, MCSymbol *Begin)
     : Begin(Begin), BundleGroupBeforeFirstInst(false), HasInstructions(false),
-      IsRegistered(false), Variant(V), Kind(K) {}
+      IsRegistered(false), DummyFragment(this), Variant(V), Kind(K) {}
 
 MCSymbol *MCSection::getEndSymbol(MCContext &Ctx) {
   if (!End)
@@ -72,7 +72,7 @@ MCSection::getSubsectionInsertionPoint(unsigned Subsection) {
   if (MI == SubsectionFragmentMap.end())
     IP = end();
   else
-    IP = MI->second;
+    IP = MI->second->getIterator();
   if (!ExactMatch && Subsection != 0) {
     // The GNU as documentation claims that subsections have an alignment of 4,
     // although this appears not to be the case.
@@ -86,7 +86,7 @@ MCSection::getSubsectionInsertionPoint(unsigned Subsection) {
 }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
-void MCSection::dump() {
+LLVM_DUMP_METHOD void MCSection::dump() {
   raw_ostream &OS = llvm::errs();
 
   OS << "<MCSection";

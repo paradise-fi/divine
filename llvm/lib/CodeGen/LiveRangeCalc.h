@@ -129,7 +129,7 @@ class LiveRangeCalc {
   ///
   /// All uses must be jointly dominated by existing liveness.  PHI-defs are
   /// inserted as needed to preserve SSA form.
-  void extendToUses(LiveRange &LR, unsigned Reg, unsigned LaneMask);
+  void extendToUses(LiveRange &LR, unsigned Reg, LaneBitmask LaneMask);
 
   /// Reset Map and Seen fields.
   void resetLiveOutMap();
@@ -188,6 +188,11 @@ public:
   /// Creates subregister live ranges as needed if subreg liveness tracking is
   /// enabled.
   void calculate(LiveInterval &LI, bool TrackSubRegs);
+
+  /// For live interval \p LI with correct SubRanges construct matching
+  /// information for the main live range. Expects the main live range to not
+  /// have any segments or value numbers.
+  void constructMainRangeFromSubranges(LiveInterval &LI);
 
   //===--------------------------------------------------------------------===//
   // Low-level interface.
