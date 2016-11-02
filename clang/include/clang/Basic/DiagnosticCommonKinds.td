@@ -84,8 +84,12 @@ def err_module_not_built : Error<"could not build module '%0'">, DefaultFatal;
 def err_module_build_disabled: Error<
   "module '%0' is needed but has not been provided, and implicit use of module "
   "files is disabled">, DefaultFatal;
+def err_module_unavailable : Error<
+  "module '%0' %select{is incompatible with|requires}1 feature '%2'">;
+def err_module_header_missing : Error<
+  "%select{|umbrella }0header '%1' not found">;
 def err_module_lock_failure : Error<
-  "could not acquire lock file for module '%0'">, DefaultFatal;
+  "could not acquire lock file for module '%0': %1">, DefaultFatal;
 def err_module_lock_timeout : Error<
   "timed out waiting to acquire lock file for module '%0'">, DefaultFatal;
 def err_module_cycle : Error<"cyclic dependency in module '%0': %1">, 
@@ -153,6 +157,8 @@ def ext_old_implicitly_unsigned_long_cxx : ExtWarn<
   "this literal will %select{have type 'long long'|be ill-formed}0 "
   "in C++11 onwards">,
   InGroup<CXX11Compat>;
+def ext_clang_enable_if : Extension<"'enable_if' is a clang extension">,
+                          InGroup<GccCompat>;
 
 // SEH
 def err_seh_expected_handler : Error<
@@ -174,6 +180,9 @@ def err_target_unknown_triple : Error<
   "unknown target triple '%0', please use -triple or -arch">;
 def err_target_unknown_cpu : Error<"unknown target CPU '%0'">;
 def err_target_unknown_abi : Error<"unknown target ABI '%0'">;
+def err_target_unsupported_abi : Error<"ABI '%0' is not supported on CPU '%1'">;
+def err_target_unsupported_abi_for_triple : Error<
+  "ABI '%0' is not supported for '%1'">;
 def err_target_unknown_fpmath : Error<"unknown FP unit '%0'">;
 def err_target_unsupported_fpmath : Error<
     "the '%0' unit is not supported with this instruction set">;
@@ -194,9 +203,8 @@ def err_unable_to_make_temp : Error<
   "unable to make temporary file: %0">;
   
 // Modules
-def err_module_file_conflict : Error<"module '%0' found in both '%1' and '%2'">;
 def err_module_format_unhandled : Error<
-  "no handler registered for module format '%0'">;
+  "no handler registered for module format '%0'">, DefaultFatal;
 
 // TransformActions
 // TODO: Use a custom category name to distinguish rewriter errors.
@@ -208,4 +216,7 @@ def note_mt_message : Note<"[rewriter] %0">;
 def warn_arcmt_nsalloc_realloc : Warning<"[rewriter] call returns pointer to GC managed memory; it will become unmanaged in ARC">;
 def err_arcmt_nsinvocation_ownership : Error<"NSInvocation's %0 is not safe to be used with an object with ownership other than __unsafe_unretained">;
 
+// OpenMP
+def err_omp_more_one_clause : Error<
+  "directive '#pragma omp %0' cannot contain more than one '%1' clause%select{| with '%3' name modifier| with 'source' dependence}2">;
 }

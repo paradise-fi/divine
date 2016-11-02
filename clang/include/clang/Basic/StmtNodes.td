@@ -48,6 +48,10 @@ def CXXCatchStmt : Stmt;
 def CXXTryStmt : Stmt;
 def CXXForRangeStmt : Stmt;
 
+// C++ Coroutines TS statements
+def CoroutineBodyStmt : Stmt;
+def CoreturnStmt : Stmt;
+
 // Expressions
 def Expr : Stmt<1>;
 def PredefinedExpr : DStmt<Expr>;
@@ -62,6 +66,7 @@ def UnaryOperator : DStmt<Expr>;
 def OffsetOfExpr : DStmt<Expr>;
 def UnaryExprOrTypeTraitExpr : DStmt<Expr>;
 def ArraySubscriptExpr : DStmt<Expr>;
+def OMPArraySectionExpr : DStmt<Expr>;
 def CallExpr : DStmt<Expr>;
 def MemberExpr : DStmt<Expr>;
 def CastExpr : DStmt<Expr, 1>;
@@ -121,6 +126,7 @@ def ArrayTypeTraitExpr : DStmt<Expr>;
 def ExpressionTraitExpr : DStmt<Expr>;
 def DependentScopeDeclRefExpr : DStmt<Expr>;
 def CXXConstructExpr : DStmt<Expr>;
+def CXXInheritedCtorInitExpr : DStmt<Expr>;
 def CXXBindTemporaryExpr : DStmt<Expr>;
 def ExprWithCleanups : DStmt<Expr>;
 def CXXTemporaryObjectExpr : DStmt<CXXConstructExpr>;
@@ -139,6 +145,11 @@ def MaterializeTemporaryExpr : DStmt<Expr>;
 def LambdaExpr : DStmt<Expr>;
 def CXXFoldExpr : DStmt<Expr>;
 
+// C++ Coroutines TS expressions
+def CoroutineSuspendExpr : DStmt<Expr, 1>;
+def CoawaitExpr : DStmt<CoroutineSuspendExpr>;
+def CoyieldExpr : DStmt<CoroutineSuspendExpr>;
+
 // Obj-C Expressions.
 def ObjCStringLiteral : DStmt<Expr>;
 def ObjCBoxedExpr : DStmt<Expr>;
@@ -154,6 +165,7 @@ def ObjCIsaExpr : DStmt<Expr>;
 def ObjCIndirectCopyRestoreExpr : DStmt<Expr>;
 def ObjCBoolLiteralExpr : DStmt<Expr>;
 def ObjCSubscriptRefExpr : DStmt<Expr>;
+def ObjCAvailabilityCheckExpr : DStmt<Expr>;
 
 // Obj-C ARC Expressions.
 def ObjCBridgedCastExpr : DStmt<ExplicitCastExpr>;
@@ -170,6 +182,7 @@ def TypoExpr : DStmt<Expr>;
 
 // Microsoft Extensions.
 def MSPropertyRefExpr : DStmt<Expr>;
+def MSPropertySubscriptExpr : DStmt<Expr>;
 def CXXUuidofExpr : DStmt<Expr>; 
 def SEHTryStmt : Stmt;
 def SEHExceptStmt : Stmt;
@@ -204,6 +217,19 @@ def OMPFlushDirective : DStmt<OMPExecutableDirective>;
 def OMPOrderedDirective : DStmt<OMPExecutableDirective>;
 def OMPAtomicDirective : DStmt<OMPExecutableDirective>;
 def OMPTargetDirective : DStmt<OMPExecutableDirective>;
+def OMPTargetDataDirective : DStmt<OMPExecutableDirective>;
+def OMPTargetEnterDataDirective : DStmt<OMPExecutableDirective>;
+def OMPTargetExitDataDirective : DStmt<OMPExecutableDirective>;
+def OMPTargetParallelDirective : DStmt<OMPExecutableDirective>;
+def OMPTargetParallelForDirective : DStmt<OMPExecutableDirective>;
+def OMPTargetUpdateDirective : DStmt<OMPExecutableDirective>;
 def OMPTeamsDirective : DStmt<OMPExecutableDirective>;
 def OMPCancellationPointDirective : DStmt<OMPExecutableDirective>;
 def OMPCancelDirective : DStmt<OMPExecutableDirective>;
+def OMPTaskLoopDirective : DStmt<OMPLoopDirective>;
+def OMPTaskLoopSimdDirective : DStmt<OMPLoopDirective>;
+def OMPDistributeDirective : DStmt<OMPLoopDirective>;
+def OMPDistributeParallelForDirective : DStmt<OMPLoopDirective>;
+def OMPDistributeParallelForSimdDirective : DStmt<OMPLoopDirective>;
+def OMPDistributeSimdDirective : DStmt<OMPLoopDirective>;
+def OMPTargetParallelForSimdDirective : DStmt<OMPLoopDirective>;
