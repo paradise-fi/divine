@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language:   llvm
 " Maintainer: The LLVM team, http://llvm.org/
-" Version:      $Revision: 235369 $
+" Version:      $Revision: 275248 $
 
 if version < 600
   syntax clear
@@ -16,7 +16,7 @@ syn case match
 " benefit as much from having dedicated highlighting rules.
 syn keyword llvmType void half float double x86_fp80 fp128 ppc_fp128
 syn keyword llvmType label metadata x86_mmx
-syn keyword llvmType type label opaque
+syn keyword llvmType type label opaque token
 syn match   llvmType /\<i\d\+\>/
 
 " Instructions.
@@ -36,27 +36,122 @@ syn keyword llvmStatement umax umin une uno unreachable unwind urem va_arg
 syn keyword llvmStatement xchg xor zext
 
 " Keywords.
-syn keyword llvmKeyword acq_rel acquire sanitize_address addrspace alias align
-syn keyword llvmKeyword alignstack alwaysinline appending arm_aapcs_vfpcc
-syn keyword llvmKeyword arm_aapcscc arm_apcscc asm atomic available_externally
-syn keyword llvmKeyword blockaddress byval c catch cc ccc cleanup coldcc common
-syn keyword llvmKeyword constant datalayout declare default define deplibs
-syn keyword llvmKeyword distinct dllexport dllimport except extern_weak external
-syn keyword llvmKeyword externally_initialized fastcc filter gc global hidden
-syn keyword llvmKeyword initialexec inlinehint inreg intel_ocl_bicc inteldialect
-syn keyword llvmKeyword internal linkonce linkonce_odr localdynamic localexec
-syn keyword llvmKeyword minsize module monotonic msp430_intrcc naked nest
-syn keyword llvmKeyword noalias nocapture noimplicitfloat noinline nonlazybind
-syn keyword llvmKeyword noredzone noreturn nounwind optnone optsize personality
-syn keyword llvmKeyword private protected ptx_device ptx_kernel readnone
-syn keyword llvmKeyword readonly release returns_twice sanitize_thread
-syn keyword llvmKeyword sanitize_memory section seq_cst sideeffect signext
-syn keyword llvmKeyword singlethread spir_func spir_kernel sret ssp sspreq
-syn keyword llvmKeyword sspstrong tail target thread_local to triple
-syn keyword llvmKeyword unnamed_addr unordered uwtable volatile weak weak_odr
-syn keyword llvmKeyword x86_fastcallcc x86_stdcallcc x86_thiscallcc
-syn keyword llvmKeyword x86_64_sysvcc x86_64_win64cc zeroext uselistorder
-syn keyword llvmKeyword uselistorder_bb
+syn keyword llvmKeyword
+      \ acq_rel
+      \ acquire
+      \ addrspace
+      \ alias
+      \ align
+      \ alignstack
+      \ alwaysinline
+      \ appending
+      \ arm_aapcscc
+      \ arm_aapcs_vfpcc
+      \ arm_apcscc
+      \ asm
+      \ atomic
+      \ available_externally
+      \ blockaddress
+      \ byval
+      \ c
+      \ catch
+      \ cc
+      \ ccc
+      \ cleanup
+      \ coldcc
+      \ common
+      \ constant
+      \ datalayout
+      \ declare
+      \ default
+      \ define
+      \ deplibs
+      \ distinct
+      \ dllexport
+      \ dllimport
+      \ except
+      \ external
+      \ externally_initialized
+      \ extern_weak
+      \ fastcc
+      \ filter
+      \ gc
+      \ global
+      \ hhvmcc
+      \ hhvm_ccc
+      \ hidden
+      \ initialexec
+      \ inlinehint
+      \ inreg
+      \ inteldialect
+      \ intel_ocl_bicc
+      \ internal
+      \ linkonce
+      \ linkonce_odr
+      \ localdynamic
+      \ localexec
+      \ local_unnamed_addr
+      \ minsize
+      \ module
+      \ monotonic
+      \ msp430_intrcc
+      \ musttail
+      \ naked
+      \ nest
+      \ noalias
+      \ nocapture
+      \ noimplicitfloat
+      \ noinline
+      \ nonlazybind
+      \ noredzone
+      \ noreturn
+      \ nounwind
+      \ optnone
+      \ optsize
+      \ personality
+      \ private
+      \ protected
+      \ ptx_device
+      \ ptx_kernel
+      \ readnone
+      \ readonly
+      \ release
+      \ returns_twice
+      \ sanitize_address
+      \ sanitize_memory
+      \ sanitize_thread
+      \ section
+      \ seq_cst
+      \ sideeffect
+      \ signext
+      \ singlethread
+      \ source_filename
+      \ spir_func
+      \ spir_kernel
+      \ sret
+      \ ssp
+      \ sspreq
+      \ sspstrong
+      \ swiftcc
+      \ tail
+      \ target
+      \ thread_local
+      \ to
+      \ triple
+      \ unnamed_addr
+      \ unordered
+      \ uselistorder
+      \ uselistorder_bb
+      \ uwtable
+      \ volatile
+      \ weak
+      \ weak_odr
+      \ x86_64_sysvcc
+      \ x86_64_win64cc
+      \ x86_fastcallcc
+      \ x86_stdcallcc
+      \ x86_thiscallcc
+      \ zeroext
 
 " Obsolete keywords.
 syn keyword llvmError  getresult begin end
@@ -84,10 +179,10 @@ syn match   llvmConstant /\<DW_LANG_[a-zA-Z0-9_]\+\>/
 syn match   llvmConstant /\<DW_VIRTUALITY_[a-z_]\+\>/
 syn match   llvmConstant /\<DIFlag[A-Za-z]\+\>/
 
-" Syntax-highlight dejagnu test commands.
-syn match  llvmSpecialComment /;\s*RUN:.*$/
+" Syntax-highlight lit test commands and bug numbers.
 syn match  llvmSpecialComment /;\s*PR\d*\s*$/
-syn match  llvmSpecialComment /;\s*END\.\s*$/
+syn match  llvmSpecialComment /;\s*REQUIRES:.*$/
+syn match  llvmSpecialComment /;\s*RUN:.*$/
 syn match  llvmSpecialComment /;\s*XFAIL:.*$/
 
 if version >= 508 || !exists("did_c_syn_inits")

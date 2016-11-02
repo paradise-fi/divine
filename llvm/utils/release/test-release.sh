@@ -12,7 +12,8 @@
 #
 #===------------------------------------------------------------------------===#
 
-if [ `uname -s` = "FreeBSD" ]; then
+System=`uname -s`
+if [ "$System" = "FreeBSD" ]; then
     MAKE=gmake
 else
     MAKE=make
@@ -34,10 +35,11 @@ do_rt="yes"
 do_libs="yes"
 do_libunwind="yes"
 do_test_suite="yes"
-do_openmp="no"
+do_openmp="yes"
+do_lldb="no"
 BuildDir="`pwd`"
-use_autoconf="no"
 ExtraConfigureFlags=""
+ExportBranch=""
 
 function usage() {
     echo "usage: `basename $0` -release X.Y.Z -rc NUM [OPTIONS]"
@@ -54,18 +56,16 @@ function usage() {
     echo " -no-compare-files    Don't test that phase 2 and 3 files are identical."
     echo " -use-gzip            Use gzip instead of xz."
     echo " -configure-flags FLAGS  Extra flags to pass to the configure step."
-    echo " -use-autoconf        Use autoconf instead of cmake"
+    echo " -svn-path DIR        Use the specified DIR instead of a release."
+    echo "                      For example -svn-path trunk or -svn-path branches/release_37"
     echo " -no-rt               Disable check-out & build Compiler-RT"
     echo " -no-libs             Disable check-out & build libcxx/libcxxabi/libunwind"
     echo " -no-libunwind        Disable check-out & build libunwind"
     echo " -no-test-suite       Disable check-out & build test-suite"
-    echo " -openmp              Check out and build the OpenMP run-time (experimental)"
+    echo " -no-openmp           Disable check-out & build libomp"
+    echo " -lldb                Enable check-out & build lldb"
+    echo " -no-lldb             Disable check-out & build lldb (default)"
 }
-
-if [ `uname -s` = "Darwin" ]; then
-  # compiler-rt doesn't yet build with CMake on Darwin.
-  use_autoconf="yes"
-fi
 
 while [ $# -gt 0 ]; do
     case $1 in
@@ -80,6 +80,16 @@ while [ $# -gt 0 ]; do
             ;;
         -final | --final )
             RC=final
+            ;;
+        -svn-path | --svn-path )
+            shift
+            Release="test"
+            Release_no_dot="test"
+            ExportBranch="$1"
+            RC="`echo $ExportBranch | sed -e 's,/,_,g'`"
+            echo "WARNING: Using the branch $ExportBranch instead of a release tag"
+            echo "         This is intended to aid new packagers in trialing "
+            echo "         builds without requiring a tag to be created first"
             ;;
         -triple | --triple )
             shift
@@ -115,9 +125,6 @@ while [ $# -gt 0 ]; do
         -use-gzip | --use-gzip )
             use_gzip="yes"
             ;;
-        -use-autoconf | --use-autoconf )
-            use_autoconf="yes"
-            ;;
         -no-rt )
             do_rt="no"
             ;;
@@ -130,8 +137,14 @@ while [ $# -gt 0 ]; do
         -no-test-suite )
             do_test_suite="no"
             ;;
-        -openmp )
-            do_openmp="yes"
+        -no-openmp )
+            do_openmp="no"
+            ;;
+        -lldb )
+            do_lldb="yes"
+            ;;
+        -no-lldb )
+            do_lldb="no"
             ;;
         -help | --help | -h | --h | -\? )
             usage
@@ -146,6 +159,13 @@ while [ $# -gt 0 ]; do
     shift
 done
 
+if [ "$do_test_suite" = "yes" ]; then
+  # See llvm.org/PR26146.
+  echo Skipping test-suite build when using CMake.
+  echo It will still be exported.
+  do_test_suite="export-only"
+fi
+
 # Check required arguments.
 if [ -z "$Release" ]; then
     echo "error: no release number specified"
@@ -154,6 +174,9 @@ fi
 if [ -z "$RC" ]; then
     echo "error: no release candidate number specified"
     exit 1
+fi
+if [ -z "$ExportBranch" ]; then
+    ExportBranch="tags/RELEASE_$Release_no_dot/$RC"
 fi
 if [ -z "$Triple" ]; then
     echo "error: no target triple specified"
@@ -185,11 +208,16 @@ if [ $do_libs = "yes" ]; then
     projects="$projects libunwind"
   fi
 fi
-if [ $do_test_suite = "yes" ]; then
-  projects="$projects test-suite"
-fi
+case $do_test_suite in
+  yes|export-only)
+    projects="$projects test-suite"
+    ;;
+esac
 if [ $do_openmp = "yes" ]; then
   projects="$projects openmp"
+fi
+if [ $do_lldb = "yes" ]; then
+  projects="$projects lldb"
 fi
 
 # Go to the build directory (may be different from CWD)
@@ -227,7 +255,7 @@ function check_program_exists() {
   fi
 }
 
-if [ `uname -s` != "Darwin" ]; then
+if [ "$System" != "Darwin" ]; then
   check_program_exists 'chrpath'
   check_program_exists 'file'
   check_program_exists 'objdump'
@@ -238,8 +266,8 @@ function check_valid_urls() {
     for proj in $projects ; do
         echo "# Validating $proj SVN URL"
 
-        if ! svn ls $Base_url/$proj/tags/RELEASE_$Release_no_dot/$RC > /dev/null 2>&1 ; then
-            echo "$proj $Release release candidate $RC doesn't exist!"
+        if ! svn ls $Base_url/$proj/$ExportBranch > /dev/null 2>&1 ; then
+            echo "$proj does not have a $ExportBranch branch/tag!"
             exit 1
         fi
     done
@@ -250,42 +278,45 @@ function export_sources() {
     check_valid_urls
 
     for proj in $projects ; do
-        if [ -d $proj.src ]; then
-          echo "# Reusing $proj $Release-$RC sources"
+        case $proj in
+        llvm)
+            projsrc=$proj.src
+            ;;
+        cfe)
+            projsrc=llvm.src/tools/clang
+            ;;
+        lldb)
+            projsrc=llvm.src/tools/$proj
+            ;;
+        clang-tools-extra)
+            projsrc=llvm.src/tools/clang/tools/extra
+            ;;
+        compiler-rt|libcxx|libcxxabi|libunwind|openmp)
+            projsrc=llvm.src/projects/$proj
+            ;;
+        test-suite)
+            if [ $do_test_suite = 'yes' ]; then
+              projsrc=llvm.src/projects/$proj
+            else
+              projsrc=$proj.src
+            fi
+            ;;
+        *)
+            echo "error: unknown project $proj"
+            exit 1
+            ;;
+        esac
+
+        if [ -d $projsrc ]; then
+          echo "# Reusing $proj $Release-$RC sources in $projsrc"
           continue
         fi
-        echo "# Exporting $proj $Release-$RC sources"
-        if ! svn export -q $Base_url/$proj/tags/RELEASE_$Release_no_dot/$RC $proj.src ; then
+        echo "# Exporting $proj $Release-$RC sources to $projsrc"
+        if ! svn export -q $Base_url/$proj/$ExportBranch $projsrc ; then
             echo "error: failed to export $proj project"
             exit 1
         fi
     done
-
-    echo "# Creating symlinks"
-    cd $BuildDir/llvm.src/tools
-    if [ ! -h clang ]; then
-        ln -s ../../cfe.src clang
-    fi
-    cd $BuildDir/llvm.src/tools/clang/tools
-    if [ ! -h extra ]; then
-        ln -s ../../../../clang-tools-extra.src extra
-    fi
-    cd $BuildDir/llvm.src/projects
-    if [ -d $BuildDir/test-suite.src ] && [ ! -h test-suite ]; then
-        ln -s ../../test-suite.src test-suite
-    fi
-    if [ -d $BuildDir/compiler-rt.src ] && [ ! -h compiler-rt ]; then
-        ln -s ../../compiler-rt.src compiler-rt
-    fi
-    if [ -d $BuildDir/libcxx.src ] && [ ! -h libcxx ]; then
-        ln -s ../../libcxx.src libcxx
-    fi
-    if [ -d $BuildDir/libcxxabi.src ] && [ ! -h libcxxabi ]; then
-        ln -s ../../libcxxabi.src libcxxabi
-    fi
-    if [ -d $BuildDir/libunwind.src ] && [ ! -h libunwind ]; then
-        ln -s ../../libunwind.src libunwind
-    fi
 
     cd $BuildDir
 }
@@ -299,17 +330,14 @@ function configure_llvmCore() {
         Release )
             BuildType="Release"
             Assertions="OFF"
-            ConfigureFlags="--enable-optimized --disable-assertions"
             ;;
         Release+Asserts )
             BuildType="Release"
             Assertions="ON"
-            ConfigureFlags="--enable-optimized --enable-assertions"
             ;;
         Debug )
             BuildType="Debug"
             Assertions="ON"
-            ConfigureFlags="--disable-optimized --enable-assertions"
             ;;
         * )
             echo "# Invalid flavor '$Flavor'"
@@ -324,29 +352,18 @@ function configure_llvmCore() {
     cd $ObjDir
     echo "# Configuring llvm $Release-$RC $Flavor"
 
-    if [ "$use_autoconf" = "yes" ]; then
-        echo "#" env CC="$c_compiler" CXX="$cxx_compiler" \
-            $BuildDir/llvm.src/configure \
-            $ConfigureFlags --disable-timestamps $ExtraConfigureFlags \
-            2>&1 | tee $LogDir/llvm.configure-Phase$Phase-$Flavor.log
-        env CC="$c_compiler" CXX="$cxx_compiler" \
-            $BuildDir/llvm.src/configure \
-            $ConfigureFlags --disable-timestamps $ExtraConfigureFlags \
-            2>&1 | tee $LogDir/llvm.configure-Phase$Phase-$Flavor.log
-    else
-        echo "#" env CC="$c_compiler" CXX="$cxx_compiler" \
-            cmake -G "Unix Makefiles" \
-            -DCMAKE_BUILD_TYPE=$BuildType -DLLVM_ENABLE_ASSERTIONS=$Assertions \
-            -DLLVM_ENABLE_TIMESTAMPS=OFF -DLLVM_CONFIGTIME="(timestamp not enabled)" \
-            $ExtraConfigureFlags $BuildDir/llvm.src \
-            2>&1 | tee $LogDir/llvm.configure-Phase$Phase-$Flavor.log
-        env CC="$c_compiler" CXX="$cxx_compiler" \
-            cmake -G "Unix Makefiles" \
-            -DCMAKE_BUILD_TYPE=$BuildType -DLLVM_ENABLE_ASSERTIONS=$Assertions \
-            -DLLVM_ENABLE_TIMESTAMPS=OFF -DLLVM_CONFIGTIME="(timestamp not enabled)" \
-            $ExtraConfigureFlags $BuildDir/llvm.src \
-            2>&1 | tee $LogDir/llvm.configure-Phase$Phase-$Flavor.log
-    fi
+    echo "#" env CC="$c_compiler" CXX="$cxx_compiler" \
+        cmake -G "Unix Makefiles" \
+        -DCMAKE_BUILD_TYPE=$BuildType -DLLVM_ENABLE_ASSERTIONS=$Assertions \
+        -DLLVM_CONFIGTIME="(timestamp not enabled)" \
+        $ExtraConfigureFlags $BuildDir/llvm.src \
+        2>&1 | tee $LogDir/llvm.configure-Phase$Phase-$Flavor.log
+    env CC="$c_compiler" CXX="$cxx_compiler" \
+        cmake -G "Unix Makefiles" \
+        -DCMAKE_BUILD_TYPE=$BuildType -DLLVM_ENABLE_ASSERTIONS=$Assertions \
+        -DLLVM_CONFIGTIME="(timestamp not enabled)" \
+        $ExtraConfigureFlags $BuildDir/llvm.src \
+        2>&1 | tee $LogDir/llvm.configure-Phase$Phase-$Flavor.log
 
     cd $BuildDir
 }
@@ -382,21 +399,13 @@ function test_llvmCore() {
       deferred_error $Phase $Flavor "check-all failed"
     fi
 
-    if [ "$use_autoconf" = "yes" ]; then
-        # In the cmake build, unit tests are run as part of check-all.
-        if ! ( ${MAKE} -k unittests 2>&1 | \
-            tee $LogDir/llvm.unittests-Phase$Phase-$Flavor.log ) ; then
-          deferred_error $Phase $Flavor "unittests failed"
-        fi
-    fi
-
     cd $BuildDir
 }
 
 # Clean RPATH. Libtool adds the build directory to the search path, which is
 # not necessary --- and even harmful --- for the binary packages we release.
 function clean_RPATH() {
-  if [ `uname -s` = "Darwin" ]; then
+  if [ "$System" = "Darwin" ]; then
     return
   fi
   local InstallPath="$1"
@@ -424,46 +433,6 @@ function package_release() {
       tar cfJ $BuildDir/$Package.tar.xz $Package
     fi
     mv $Package llvmCore-$Release-$RC.install/usr/local
-    cd $cwd
-}
-
-# Build and package the OpenMP run-time. This is still experimental and not
-# meant for official testing in the release, but as a way for providing
-# binaries as a convenience to those who want to try it out.
-function build_OpenMP() {
-    cwd=`pwd`
-
-    rm -rf $BuildDir/Phase3/openmp
-    rm -rf $BuildDir/Phase3/openmp.install
-    mkdir -p $BuildDir/Phase3/openmp
-    cd $BuildDir/Phase3/openmp
-    clang=$BuildDir/Phase3/Release/llvmCore-$Release-$RC.install/usr/local/bin/clang
-
-    echo "#" cmake -DCMAKE_C_COMPILER=${clang} -DCMAKE_CXX_COMPILER=${clang}++ \
-            -DCMAKE_BUILD_TYPE=Release -DLIBOMP_MICRO_TESTS=on \
-            $BuildDir/openmp.src/runtime
-    cmake -DCMAKE_C_COMPILER=${clang} -DCMAKE_CXX_COMPILER=${clang}++ \
-            -DCMAKE_BUILD_TYPE=Release -DLIBOMP_MICRO_TESTS=on \
-            $BuildDir/openmp.src/runtime
-
-    echo "# Building OpenMP run-time"
-    echo "# ${MAKE} -j $NumJobs VERBOSE=1"
-    ${MAKE} -j $NumJobs VERBOSE=1
-    echo "# ${MAKE} libomp-micro-tests VERBOSE=1"
-    ${MAKE} libomp-micro-tests VERBOSE=1
-    echo "# ${MAKE} install DESTDIR=$BuildDir/Phase3/openmp.install"
-    ${MAKE} install DESTDIR=$BuildDir/Phase3/openmp.install
-
-    OpenMPPackage=OpenMP-$Release
-    if [ $RC != "final" ]; then
-        OpenMPPackage=$OpenMPPackage-$RC
-    fi
-    OpenMPPackage=$OpenMPPackage-$Triple
-
-    mv $BuildDir/Phase3/openmp.install/usr/local $BuildDir/$OpenMPPackage
-    cd $BuildDir
-    tar cvfJ $BuildDir/$OpenMPPackage.tar.xz $OpenMPPackage
-    mv $OpenMPPackage $BuildDir/Phase3/openmp.install/usr/local
     cd $cwd
 }
 
@@ -570,17 +539,14 @@ for Flavor in $Flavors ; do
             # Substitute 'Phase2' for 'Phase3' in the Phase 2 object file in
             # case there are build paths in the debug info. On some systems,
             # sed adds a newline to the output, so pass $p3 through sed too.
-            if ! cmp -s <(sed -e 's,Phase2,Phase3,g' $p2) <(sed -e '' $p3) \
-                    16 16 ; then
+            if ! cmp -s \
+                <(env LC_CTYPE=C sed -e 's,Phase2,Phase3,g' $p2) \
+                <(env LC_CTYPE=C sed -e '' $p3) 16 16; then
                 echo "file `basename $p2` differs between phase 2 and phase 3"
             fi
         done
     fi
 done
-
-if [ $do_openmp = "yes" ]; then
-  build_OpenMP
-fi
 
 ) 2>&1 | tee $LogDir/testing.$Release-$RC.log
 
