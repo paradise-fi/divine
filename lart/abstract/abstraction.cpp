@@ -11,7 +11,11 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/ValueMap.h>
 
+#include <llvm/ADT/PostOrderIterator.h>
+#include <llvm/Analysis/CallGraph.h>
+
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/UnifyFunctionExitNodes.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -36,6 +40,9 @@ struct Abstraction : lart::Pass {
     using I = llvm::Instruction;
     using F = llvm::Function;
 	using Dependencies = std::vector< V * >;
+
+    template < typename T >
+    using PostOrder = llvm::ReversePostOrderTraversal< const T * >;
 
 	virtual ~Abstraction() {}
 
@@ -63,60 +70,88 @@ struct Abstraction : lart::Pass {
                 functions.insert( { parent, { a } } );
         }
 
+        auto void_t = llvm::Type::getVoidTy( *_ctx );
+        auto fty = llvm::FunctionType::get( void_t, false );
+        F * root = llvm::cast< F >( m.getOrInsertFunction( "__callgraph_root", fty ) );
+
+        auto bb = llvm::BasicBlock::Create( *_ctx, "entry", root );
+        llvm::IRBuilder<> irb( bb );
         for ( auto &f : functions ) {
-            // create new abstract types
-            auto& annotatedValues = f.second;
-            for ( auto &a : annotatedValues )
-                storeType( a.allocaInst->getAllocatedType() );
+            std::vector< V * > args;
+            for ( auto &arg : f.first->args() )
+                args.push_back( llvm::UndefValue::get( arg.getType() ) );
 
-            bool changeReturn = false;
-            llvm::Type * rty;
-
-            // compute return dependency
-            for ( auto &val : annotatedValues ) {
-                auto deps = analysis::postorder< llvm::Value * >( val.allocaInst );
-                changeReturn = changeReturn || dependentReturn( deps );
-                if ( changeReturn ) {
-                    rty = type_store[ val.allocaInst->getAllocatedType() ]->getPointerTo();
-                    break;
-                }
-            }
-
-            //unify return value
-            if ( changeReturn ) {
-                llvm::UnifyFunctionExitNodes ufen;
-                ufen.runOnFunction( *f.first );
-            }
-
-            //substitute abstract values
-            for ( auto &v : annotatedValues ) {
-                propagateValue( v.allocaInst, v.allocaInst->getAllocatedType() );
-            }
-            storeFunction( f.first, changeReturn, rty );
+            irb.CreateCall( f.first, args );
         }
 
-        //annotate anonymous lart functions
-        for ( auto &a : toAnnotate ) {
-            annotateAnonymous( a.first, a.second );
-            a.first->eraseFromParent();
+        std::vector< F * > order;
+        {
+            llvm::CallGraph cg( m );
+            auto node = cg[ root ];
+            for ( auto it = po_begin( node ); it != po_end( node ); ++it)
+                if( (*it)->getFunction() != root )
+                    order.push_back( (*it)->getFunction() );
         }
+
+        root->eraseFromParent();
+
+        for ( auto &current : order ) {
+            auto it = functions.find( current );
+            if ( it != functions.end() ) {
+                preprocessFunction( it->first );
+                for ( auto annot : it->second )
+                    processFunction( it->first, annot.allocaInst );
+            }
+        }
+        //TODO solve main
+
+        for (auto & f : functionsToRemove ) {
+            f->eraseFromParent();
+        }
+
         return llvm::PreservedAnalyses::none();
 	}
 
     F * propagateArgument( F * f, V * v, T * t ) {
         auto atp = type_store[ t ]->getPointerTo();
 
-		auto deps = analysis::postorder< V * >( v );
-        bool changeReturn = dependentReturn( deps );
+    void processFunction( F * f, I * entry ) {
+        toAnnotate.clear();
 
-        if ( changeReturn ) {
-            llvm::UnifyFunctionExitNodes ufen;
-            ufen.runOnFunction( *f );
+        storeType( entry->getType() );
+
+        propagateValue( entry, entry->getType() );
+
+        bool changeReturn = query::query( *f ).flatten()
+                            .map( query::refToPtr )
+                            .map( query::llvmdyncast< llvm::ReturnInst > )
+                            .filter( query::notnull )
+                            .any( [&]( llvm::ReturnInst * ret ) {
+                                return isAbstractType( ret->getReturnValue()->getType() );
+                            } );
+
+        T * rty = ( changeReturn )
+                ? type_store[ f->getReturnType() ]
+                : f->getReturnType();
+
+        storeFunction( f, changeReturn, rty );
+
+        for ( auto &a : toAnnotate ) {
+            annotateAnonymous( a.first, a.second );
+            a.first->eraseFromParent();
         }
 
-        propagateValue( v, t );
-        return storeFunction( f, changeReturn, atp );
-	}
+        if ( changeReturn ) {
+            std::vector< llvm::User * > users = { f->user_begin(), f->user_end() } ;
+            for ( auto user : users ) {
+                auto inst = llvm::cast< I >( user );
+                auto userFunction = inst->getParent()->getParent();
+                preprocessFunction( userFunction );
+                processFunction( userFunction, inst );
+            }
+            functionsToRemove.push_back( f );
+        }
+    }
 
     void propagateValue( V * v, T * t ) {
         auto deps = analysis::postorder< V * >( v );
