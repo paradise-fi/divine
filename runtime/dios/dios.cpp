@@ -40,17 +40,41 @@ bool trace_threads( const SysOpts& o ) {
     return false;
 }
 
+void trace_help() {
+    __dios_trace_i( 0, "help:" );
+    __dios_trace_i( 1,   "Supported commands:" );
+    __dios_trace_i( 1,   "- {trace, notrace}: report/not report item back to VM" );
+    __dios_trace_i( 2,     "- threads" );
+    __dios_trace_i( 1,   "- [force-]{ignore, report, abort}: configure fault, "
+                            "force disables program override" );
+    __dios_trace_i( 2,     "- assert" );
+    __dios_trace_i( 2,     "- arithtmetic" );
+    __dios_trace_i( 2,     "- memory" );
+    __dios_trace_i( 2,     "- control" );
+    __dios_trace_i( 2,     "- locking" );
+    __dios_trace_i( 2,     "- hypercall" );
+    __dios_trace_i( 2,     "- notimplemented" );
+    __dios_trace_i( 2,     "- diosassert" );
+    __dios_trace_i( 1,   "- {nofail, simfail}: enable/disable simulation of failure" );
+    __dios_trace_i( 2,     "- malloc" );
+}
+
+void trace_env( const _VM_Env *env ) {
+    __dios_trace_i (0, "raw env options:" );
+     for ( ; env->key; env++ )
+        __dios_trace_i( 1, "- %s: %.*s", env->key, env->size, env->value );
+}
+
 void init( const _VM_Env *env )
 {
     // No active thread
     __vm_control( _VM_CA_Set, _VM_CR_User1, -1 );
     __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, __dios::Fault::handler );
 
-    const _VM_Env *e = env;
-    while ( e->key ) {
-        __dios_trace_f( "env: %s = %.*s", e->key, e->size, e->value );
-        ++e;
-    }
+    __dios_trace_i( 0, "# DiOS boot info" );
+    __dios_trace_i( 0, "---" );
+    trace_help();
+    trace_env( env );
 
     // Activate temporary scheduler to handle errors
     __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
@@ -75,10 +99,15 @@ void init( const _VM_Env *env )
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         return;
     }
+    context->fault->trace_config( 0 );
 
     auto argv = construct_main_arg( "arg.", env, true );
     auto envp = construct_main_arg( "env.", env );
+    trace_main_arg(0, "main argv", argv );
+    trace_main_arg(0, "main envp", envp );
     context->scheduler->startMainThread( argv.first, argv.second, envp.second );
+
+    __dios_trace_i( 0, "---" );
 }
 
 } // namespace __dios

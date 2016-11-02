@@ -113,6 +113,7 @@ void __dios_fault( enum _VM_Fault f, const char *msg, ... ) NOTHROW __attribute_
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
 void __dios_trace_t( const char *str ) NOTHROW;
 void __dios_trace_f( const char *fmt, ... ) NOTHROW;
+void __dios_trace_i( int indent_level, const char *fmt, ... ) NOTHROW;
 
 // unwind and free frames on stack 'stack' from 'from' to 'to' so that 'to'
 // the frame which originally returned to 'from' now returns to 'to'

@@ -125,6 +125,12 @@ void free_main_arg( char** argv ) noexcept {
     __vm_obj_free( orig );
 }
 
+void trace_main_arg( int indent, dstring name, std::pair<int, char**> args ) {
+    __dios_trace_i( indent, "%s:", name.c_str() );
+    for (int i = 0; i != args.first; i++ )
+        __dios_trace_i( indent + 1, "%d: %s", i, args.second[i] );
+}
+
 } // namespace __dios
 
 void _start( int l, int argc, char **argv, char **envp ) {

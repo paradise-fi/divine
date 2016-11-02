@@ -36,6 +36,11 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
     bool prepend_name = false ) noexcept;
 
 /*
+ * Trace arguments constructed by construct_main_arg
+ */
+void trace_main_arg( int indent, dstring name, std::pair< int, char** > arg );
+
+/*
  * Free argv/envp-like arguments created by construct_main_arg
  */
 void free_main_arg( char** argv ) noexcept;

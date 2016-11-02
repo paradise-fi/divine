@@ -68,6 +68,19 @@ unmask:
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
+void __dios_trace_i( int indent_level, const char* fmt, ... ) noexcept {
+    va_list ap;
+    va_start( ap, fmt );
+
+    char buffer[1024];
+    int indent = indent_level * 2;
+    for ( int i = 0; i < indent; ++i )
+        buffer[ i ] = ' ';
+    vsnprintf( buffer + indent, 1024 - indent, fmt, ap );
+    __vm_trace( _VM_T_Info, buffer );
+    va_end( ap );
+}
+
 void __dios_trace( int indent, const char *fmt, ... ) noexcept
 {
     uintptr_t flags = reinterpret_cast< uintptr_t >(

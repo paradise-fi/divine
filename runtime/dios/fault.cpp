@@ -85,7 +85,7 @@ void Fault::handler( _VM_Fault _what, _VM_Frame *cont_frame,
     __builtin_unreachable();
 }
 
-_VM_Fault Fault::str_to_fault( dstring fault ) {
+int Fault::str_to_fault( dstring fault ) {
     std::transform( fault.begin(), fault.end(), fault.begin(), ::tolower );
     if ( fault == "assert" )
         return _VM_F_Assert;
@@ -106,6 +106,45 @@ _VM_Fault Fault::str_to_fault( dstring fault ) {
     if ( fault == "malloc" )
         return static_cast< _VM_Fault >( _DiOS_SF_Malloc );
     return static_cast< _VM_Fault >( -1 );
+}
+
+dstring Fault::fault_to_str( int f ) {
+    switch( f ) {
+    case _VM_F_Assert: return "assert";
+    case _VM_F_Arithmetic: return "arithmetic";
+    case _VM_F_Memory: return "memory";
+    case _VM_F_Control: return "control";
+    case _VM_F_Locking: return "locking";
+    case _VM_F_Hypercall: return "hypercall";
+    case _VM_F_NotImplemented: return "notimplemented";
+    case _DiOS_F_Assert: return "diosassert";
+    case _DiOS_SF_Malloc: return "malloc";
+    }
+    return "unknown";
+}
+
+void Fault::trace_config( int indent ) {
+    __dios_trace_i( indent, "fault and simfail configuration:" );
+    for (int f = _VM_F_NoFault + 1; f != _DiOS_SF_Last; f++ ) {
+        uint8_t cfg = config[f];
+        dstring name = fault_to_str( f );
+        dstring force = cfg & FaultFlag::AllowOverride ? "" : "force-";
+        dstring state;
+        if ( f >= _DiOS_F_Last )
+            state = cfg & FaultFlag::Enabled ? "simfail" : "nofail";
+        else {
+            if ( cfg & FaultFlag::Enabled && cfg & FaultFlag::Continue )
+                state = "report";
+            else if ( cfg & FaultFlag::Enabled )
+                state = "abort";
+            else
+                state = "ignore";
+        }
+        dstring def = cfg & FaultFlag::UserSpec ? "user" : "default";
+
+        __dios_trace_i( indent + 1, "- %s: %s%s, %s", name.c_str(), force.c_str(),
+            state.c_str(), def.c_str() );;
+    }
 }
 
 bool Fault::load_user_pref( const SysOpts& opts ) {
