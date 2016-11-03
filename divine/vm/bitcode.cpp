@@ -101,9 +101,4 @@ void BitCode::init( BitCode::Env env, AutoTraceFlags tr, bool verbose, bool redu
         std::cerr << " done" << std::endl;
 }
 
-BitCode::~BitCode()
-{
-    /* ordering is important */
-    _program.reset();
-    _module.reset();
-}
+BitCode::~BitCode() { }

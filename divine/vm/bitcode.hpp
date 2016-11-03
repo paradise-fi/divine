@@ -45,10 +45,10 @@ using AutoTraceFlags = brick::types::StrongEnumFlags< AutoTrace >;
 struct BCParseError : brick::except::Error { using brick::except::Error::Error; };
 
 struct BitCode {
-    std::unique_ptr< llvm::Module > _module;
-    std::shared_ptr< llvm::LLVMContext > _ctx;
-    std::unique_ptr< Program > _program;
-    AutoTraceFlags _autotrace;
+    std::shared_ptr< llvm::LLVMContext > _ctx; // the order of these members is important as
+    std::unique_ptr< llvm::Module > _module;   // _program depends on _module which depends on _ctx
+    std::unique_ptr< Program > _program;       // and they have to be destroyed in the right order
+    AutoTraceFlags _autotrace;                 // otherwise DIVINE will SEGV if exception is thrown
 
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
