@@ -7,14 +7,20 @@
 */
 
 #ifndef REGTEST
+
+#ifdef __divine__
+#include <dios.h>
+
+int * _PDCLIB_errno_func() { return __dios_get_errno(); }
+
+#else
 #include <pthread.h>
-#include <divine.h>
 
 static pthread_key_t key;
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 
 void  _PDCLIB_delete_errno( void *errno ) {
-    __vm_obj_free( errno );
+    free( errno );
 }
 
 void  _PDCLIB_init_errno ( void ) {
@@ -25,13 +31,14 @@ int * _PDCLIB_errno_func() {
     pthread_once( &once, _PDCLIB_init_errno );
 
     if ( !pthread_getspecific( key )) {
-        int *errno = __vm_obj_make( sizeof( int ) );
+        int *errno = malloc( sizeof( int ) );
         *errno = 0;
         pthread_setspecific( key, errno );
     }
 
     return (int *)pthread_getspecific( key );
 }
+#endif
 
 #endif
 
