@@ -17,6 +17,12 @@ _DiOS_ThreadId __dios_get_thread_id() noexcept {
     return __vm_control( _VM_CA_Get, _VM_CR_User2 );
 }
 
+int *__dios_get_errno() noexcept {
+    return reinterpret_cast< int * >(
+                    reinterpret_cast< char * >( __dios_get_thread_id() )
+                    + _DiOS_TLS_ErrnoOffset );
+}
+
 void __dios_kill_thread( _DiOS_ThreadId id ) noexcept {
     __dios_syscall( __dios::_SC_kill_thread, nullptr, id );
 }
@@ -137,7 +143,7 @@ void Scheduler::traceThreads() const noexcept {
 }
 
 void Scheduler::startMainThread( int argc, char** argv, char** envp ) noexcept {
-    Thread *t = threads.emplace( _start, 0 );
+    Thread *t = threads.emplace( _start, _DiOS_TLS_Reserved );
     DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( t->_frame );
     frame->l = __md_get_pc_meta( reinterpret_cast< uintptr_t >( main ) )->arg_count;
 

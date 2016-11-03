@@ -151,7 +151,8 @@ struct Thread {
         _frame->pc = fun->entry_point;
         _frame->parent = nullptr;
 
-        _tls = __vm_obj_make( std::max( tls_size, 1ul ) );
+        _tls = __vm_obj_make( std::max( tls_size,  size_t( _DiOS_TLS_Reserved ) ) );
+        std::memset( _tls, 0, _DiOS_TLS_Reserved );
         _pid = nullptr; // ToDo: Add process support
     }
 

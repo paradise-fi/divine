@@ -51,16 +51,36 @@ enum _DiOS_FaultConfig
 typedef void * _DiOS_ThreadId;
 typedef void * _DiOS_ProcId;
 
+enum _DiOS_TLS_Offsets {
+    /* offset of errno from beginning of TLS */
+    _DiOS_TLS_ErrnoOffset = 0,
+    /* amount of TLS which is reserved for DiOS */
+    _DiOS_TLS_Reserved = sizeof( int ),
+};
+
 /*
  * Start a new thread and obtain its identifier. Thread starts executing routine
  * with arg.
+ * - tls_size is the total size of TLS, _DiOS_TLS_Reserved must be included in this,
+ *   if tls_size is less then _DiOS_TLS_Reserved at least _DiOS_TLS_Reserved is allocated
+ * - the resulting _DiOS_ThreadId points to the beginning of TLS. Userspace is
+ *   allowed to use it from offset _DiOS_TLS_Reserved
  */
 _DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg, size_t tls_size ) NOTHROW;
 
 /*
  * Get caller thread id
+ *
+ * - the resulting _DiOS_ThreadId points to the beginning of TLS. Userspace is
+ *   allowed to use it from offset _DiOS_TLS_Reserved
  */
 _DiOS_ThreadId __dios_get_thread_id() NOTHROW;
+
+/*
+ * get pointer to errno, which is in dios-managed thread-local data (accessible
+ * to userspace, but independent of pthreading library)
+ */
+int *__dios_get_errno() NOTHROW;
 
 /*
  * Kill thread with given id.
