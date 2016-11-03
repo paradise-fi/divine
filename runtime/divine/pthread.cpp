@@ -84,6 +84,10 @@ using Destructor = void (*)( void * );
 
 struct _PthreadTLSDestructors {
 
+    _PthreadTLSDestructors() = default;
+    _PthreadTLSDestructors( const _PthreadTLSDestructors & ) = delete;
+    _PthreadTLSDestructors( _PthreadTLSDestructors && ) = delete;
+
     int count() {
         return __vm_obj_size( _dtors ) / sizeof( Destructor );
     }
@@ -131,16 +135,28 @@ static _PthreadTLSDestructors tlsDestructors;
 
 
 struct _PthreadTLS {
+
+    _PthreadTLS( const _PthreadTLS & ) = delete;
+    _PthreadTLS( _PthreadTLS && ) = delete;
+
     _PThread *thread;
     void *keys[0];
 
+    void *raw() {
+        return reinterpret_cast< char * >( this ) - _DiOS_TLS_Reserved;
+    }
+
+    static int size( int cnt ) {
+        return _DiOS_TLS_Reserved + sizeof( _PThread * ) + cnt * sizeof( void * );
+    }
+
     size_t keyCount() {
-        return (__vm_obj_size( static_cast< void * >( this ) ) - sizeof( _PThread * )) / sizeof( void * );
+        return (__vm_obj_size( raw() ) - size( 0 )) / sizeof( void * );
     }
     void makeFit( int count ) {
         int now = keyCount();
         if ( count > now ) {
-            __vm_obj_resize( static_cast< void * >( this ), sizeof( _PThread * ) + count * sizeof( void * ) );
+            __vm_obj_resize( raw(), size( count ) );
             for ( int i = now; i < count; ++i )
                 keys[ i ] = nullptr;
         }
@@ -154,7 +170,7 @@ struct _PthreadTLS {
             else
                 break;
         if ( toDrop )
-            __vm_obj_resize( static_cast< void * >( this ), sizeof( _PThread * ) + (count - toDrop) * sizeof( void * ) );
+            __vm_obj_resize( raw(), size( count - toDrop ) );
     }
     void *getKey( unsigned key ) {
         assert( key < tlsDestructors.count() );
@@ -211,7 +227,7 @@ struct _PthreadTLS {
 };
 
 static inline _PthreadTLS &tls( _DiOS_ThreadId tid ) {
-    return *reinterpret_cast< _PthreadTLS * >( tid );
+    return *reinterpret_cast< _PthreadTLS * >( static_cast< char * >( tid ) + _DiOS_TLS_Reserved );
 }
 
 static inline _PThread &getThread( pthread_t tid ) {
@@ -239,8 +255,8 @@ int pthread_atfork( void ( * )( void ), void ( * )( void ), void ( * )( void ) )
 static void __init_thread( const _DiOS_ThreadId gtid, const pthread_attr_t attr ) {
     __dios_assert( gtid );
 
-    if ( __vm_obj_size( gtid ) < sizeof( _PThread * ) )
-        __vm_obj_resize( gtid, sizeof( _PThread * ) );
+    if ( __vm_obj_size( gtid ) < _PthreadTLS::size( 0 ) )
+        __vm_obj_resize( gtid, _PthreadTLS::size( 0 ) );
     auto *thread = static_cast< _PThread * >( __vm_obj_make( sizeof( _PThread ) ) );
     new ( thread ) _PThread();
     tls( gtid ).thread = thread;
@@ -255,7 +271,7 @@ static void __init_thread( const _DiOS_ThreadId gtid, const pthread_attr_t attr 
     thread->sigmaxused = 0;
 }
 
-void __pthread_initialize( void ) {
+void __pthread_initialize() {
     // initialize implicitly created main thread
     tlsDestructors.init();
     __init_thread( __dios_get_thread_id(), PTHREAD_CREATE_DETACHED );
@@ -338,7 +354,7 @@ static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_T
     // non-NULL values with associated destructors exist, even though this
     // might result in an infinite loop.
     int iter = 0;
-    auto tls = ::tls( tid );
+    auto &tls = ::tls( tid );
     do {
         for ( auto tld : tls ) {
             if ( tld.getData() ) {
@@ -402,7 +418,8 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     Entry *args = static_cast< Entry * >( __vm_obj_make( sizeof( Entry ) ) );
     args->entry = entry;
     args->arg = arg;
-    auto tid = __dios_start_thread( __pthread_entry, static_cast< void * >( args ), sizeof( _PThread * ) );
+    auto tid = __dios_start_thread( __pthread_entry, static_cast< void * >( args ),
+                                    _PthreadTLS::size( 0 ) );
     // init thread here, before it has first chance to run
     __init_thread( tid, attr == nullptr ? PTHREAD_CREATE_JOINABLE : *attr );
     *ptid = tid;
