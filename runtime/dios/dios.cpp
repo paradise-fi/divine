@@ -114,7 +114,7 @@ void init( const _VM_Env *env )
 
 namespace __sc {
 
-void uname( __dios::Context&, void *ret, va_list vl )
+void uname( __dios::Context&,int* err, void *ret, va_list vl )
 {
     utsname *name = va_arg( vl, utsname * );
     strcpy( name->sysname, "DiOS" );
@@ -136,7 +136,7 @@ extern "C" void  __attribute__((weak)) __boot( const _VM_Env *env ) {
 
 int uname( struct utsname *__name ) {
     int ret;
-    __dios_syscall( __dios::_SC_UNAME, &ret, __name );
+    __dios_syscall( __dios::_SC_uname, &ret, __name );
     return ret;
 }
 

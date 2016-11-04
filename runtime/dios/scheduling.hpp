@@ -13,10 +13,11 @@
 
 namespace __sc {
 
-void start_thread( __dios::Context& ctx, void *retval, va_list vl );
-void kill_thread( __dios::Context& ctx, void *retval, va_list vl );
-void kill_process( __dios::Context& ctx, void *retval, va_list vl );
-void get_process_threads( __dios::Context &ctx, void *_ret, va_list vl );
+void start_thread( __dios::Context& ctx, int *err, void *retval, va_list vl );
+void kill_thread( __dios::Context& ctx, int *err, void *retval, va_list vl );
+void kill_process( __dios::Context& ctx, int *err, void *retval, va_list vl );
+void get_process_threads( __dios::Context &ctx, int *err, void *_ret, va_list vl );
+
 
 } // namespace __sc
 

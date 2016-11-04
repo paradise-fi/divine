@@ -9,7 +9,7 @@
 _DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg, size_t tls_size ) noexcept
 {
     _DiOS_ThreadId ret;
-    __dios_syscall( __dios::_SC_START_THREAD, &ret, routine, arg, tls_size );
+    __dios_syscall( __dios::_SC_start_thread, &ret, routine, arg, tls_size );
     return ret;
 }
 
@@ -18,23 +18,23 @@ _DiOS_ThreadId __dios_get_thread_id() noexcept {
 }
 
 void __dios_kill_thread( _DiOS_ThreadId id ) noexcept {
-    __dios_syscall( __dios::_SC_KILL_THREAD, nullptr, id );
+    __dios_syscall( __dios::_SC_kill_thread, nullptr, id );
 }
 
 void __dios_kill_process( _DiOS_ProcId id ) noexcept {
-    __dios_syscall( __dios::_SC_KILL_PROCESS, nullptr, id );
+    __dios_syscall( __dios::_SC_kill_process, nullptr, id );
 }
 
 _DiOS_ThreadId *__dios_get_process_threads() noexcept {
     _DiOS_ThreadId *ret;
     auto tid = __dios_get_thread_id();
-    __dios_syscall( __dios::_SC_GET_PROCESS_THREADS, &ret, tid );
+    __dios_syscall( __dios::_SC_get_process_threads, &ret, tid );
     return ret;
 }
 
 namespace __sc {
 
-void start_thread( __dios::Context& ctx, void *retval, va_list vl ) {
+void start_thread( __dios::Context& ctx, int * err, void *retval, va_list vl ) {
     typedef void ( *r_type )( void * );
     auto routine = va_arg( vl, r_type );
     auto arg = va_arg( vl, void * );
@@ -44,17 +44,17 @@ void start_thread( __dios::Context& ctx, void *retval, va_list vl ) {
     *ret = ctx.scheduler->startThread( routine, arg, tls );
 }
 
-void kill_thread( __dios::Context& ctx, void *, va_list vl ) {
+void kill_thread( __dios::Context& ctx, int * err, void *, va_list vl ) {
     auto id = va_arg( vl, __dios::ThreadId );
     ctx.scheduler->killThread( id );
 }
 
-void kill_process( __dios::Context& ctx, void *, va_list vl ) {
+void kill_process( __dios::Context& ctx, int *err, void *, va_list vl ) {
     auto id = va_arg( vl, __dios::ProcId );
     ctx.scheduler->killProcess( id );
 }
 
-void get_process_threads( __dios::Context &ctx, void *_ret, va_list vl ) {
+void get_process_threads( __dios::Context &ctx, int* err, void *_ret, va_list vl ) {
     auto *&ret = *reinterpret_cast< _DiOS_ThreadId ** >( _ret );
     auto tid = va_arg( vl, _DiOS_ThreadId );
     __dios::ProcId pid;

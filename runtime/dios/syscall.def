@@ -1,0 +1,29 @@
+#ifdef SYSCALL
+
+#define SYSCALLSEP SYSCALL
+#define SYSCALL0 SYSCALL
+#define SYSCALL1 SYSCALL
+#define SYSCALL2 SYSCALL
+#define SYSCALL3 SYSCALL
+#define SYSCALL4 SYSCALL
+#define SYSCALL5 SYSCALL
+
+#endif // SYSCALL
+
+SYSCALLSEP(start_thread)
+SYSCALLSEP(kill_thread)
+SYSCALLSEP(get_process_threads)
+SYSCALLSEP(uname)
+SYSCALLSEP(fault_handler)
+SYSCALLSEP(kill_process)
+SYSCALLSEP(configure_fault)
+SYSCALLSEP(get_fault_config)
+
+#undef SYSCALL
+#undef SYSCALLSEP
+#undef SYSCALL0
+#undef SYSCALL1
+#undef SYSCALL2
+#undef SYSCALL3
+#undef SYSCALL4
+#undef SYSCALL5

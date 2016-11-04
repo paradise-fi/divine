@@ -23,11 +23,12 @@ void Fault::die( __dios::Context& ctx ) noexcept {
 void Fault::sc_handler_wrap( __dios::Context& ctx, void *ret, ... ) noexcept {
     va_list vl;
     va_start( vl, ret );
-    sc_handler( ctx, ret, vl );
+    int err;
+    sc_handler( ctx, &err, ret, vl );
     va_end( vl );
 }
 
-void Fault::sc_handler( __dios::Context& ctx, void *retval, va_list vl ) noexcept {
+void Fault::sc_handler( __dios::Context& ctx, int* err, void *retval, va_list vl ) noexcept {
     typedef void (*PC)();
     bool kernel = va_arg( vl, int );
     auto *frame = va_arg( vl, _VM_Frame * );
@@ -75,7 +76,7 @@ void Fault::handler( _VM_Fault _what, _VM_Frame *cont_frame,
         sc_handler_wrap( *ctx, nullptr, kernel, frame, _what, cont_frame, cont_pc );
     }
     else {
-        __dios_syscall( _SC_FAULT_HANDLER, nullptr, kernel, frame, _what, cont_frame, cont_pc  );
+        __dios_syscall( _SC_fault_handler, nullptr, kernel, frame, _what, cont_frame, cont_pc  );
     }
 
     // Continue if we get the control back
@@ -189,7 +190,8 @@ bool Fault::load_user_pref( const SysOpts& opts ) {
 
 namespace __sc {
 
-void configure_fault( __dios::Context& ctx, void* retval, va_list vl ) {
+void configure_fault( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
+
     using FaultFlag = __dios::Fault::FaultFlag;
     auto fault = va_arg( vl, int );
     auto res = static_cast< int * >( retval );
@@ -235,7 +237,7 @@ void configure_fault( __dios::Context& ctx, void* retval, va_list vl ) {
     }
 }
 
-void get_fault_config( __dios::Context& ctx, void* retval, va_list vl ) {
+void get_fault_config( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
     using FaultFlag = __dios::Fault::FaultFlag;
     auto fault = va_arg( vl, int );
     auto res = static_cast< int * >( retval );
@@ -261,17 +263,20 @@ void get_fault_config( __dios::Context& ctx, void* retval, va_list vl ) {
     }
 }
 
+void fault_handler ( __dios::Context& ctx, int *err, void* retval, va_list vl ) {
+         __dios::Fault::sc_handler(ctx, err, retval, vl); 
+    }
 } // namespace __sc
 
 int __dios_configure_fault( int fault, int cfg ) {
     int ret;
-    __dios_syscall( __dios::_SC_CONFIGURE_FAULT, &ret, fault, cfg );
+    __dios_syscall( __dios::_SC_configure_fault, &ret, fault, cfg );
     return ret;
 }
 
 int __dios_get_fault_config( int fault ) {
     int ret;
-    __dios_syscall( __dios::_SC_GET_FAULT_CONFIG, &ret, fault );
+    __dios_syscall( __dios::_SC_get_fault_config, &ret, fault );
     return ret;
 }
 

@@ -46,7 +46,7 @@ struct Fault {
     bool load_user_pref( const SysOpts& opts );
     void trace_config( int indent );
     static void handler( _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)(), ... ) noexcept;
-    static void sc_handler( __dios::Context& ctx, void *retval, va_list vl ) noexcept;
+    static void sc_handler( __dios::Context& ctx, int *err, void *retval, va_list vl ) noexcept;
     static void sc_handler_wrap( __dios::Context& ctx, void *retval, ... ) noexcept;
     static void die( __dios::Context& ctx ) noexcept;
 
@@ -59,8 +59,8 @@ struct Fault {
 
 namespace __sc {
 
-void configure_fault( __dios::Context& ctx, void* retval, va_list vl );
-void get_fault_config( __dios::Context& ctx, void* retval, va_list vl );
+void configure_fault( __dios::Context& ctx, int * err, void* retval, va_list vl );
+void get_fault_config( __dios::Context& ctx, int * err, void* retval, va_list vl );
 
 } // namespace __sc
 
