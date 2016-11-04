@@ -20,6 +20,7 @@
 #include "clang/Lex/ModuleLoader.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Path.h"
+#include <utility>
 #include <vector>
 
 namespace llvm {
@@ -46,7 +47,8 @@ public:
   CIndexer(std::shared_ptr<PCHContainerOperations> PCHContainerOps =
                std::make_shared<PCHContainerOperations>())
       : OnlyLocalDecls(false), DisplayDiagnostics(false),
-        Options(CXGlobalOpt_None), PCHContainerOps(PCHContainerOps) {}
+        Options(CXGlobalOpt_None), PCHContainerOps(std::move(PCHContainerOps)) {
+  }
 
   /// \brief Whether we only want to see "local" declarations (that did not
   /// come from a previous precompiled header). If false, we want to see all
@@ -85,8 +87,8 @@ public:
   /// threads when possible.
   ///
   /// \return False if a crash was detected.
-  bool RunSafely(llvm::CrashRecoveryContext &CRC,
-                 void (*Fn)(void*), void *UserData, unsigned Size = 0);
+  bool RunSafely(llvm::CrashRecoveryContext &CRC, llvm::function_ref<void()> Fn,
+                 unsigned Size = 0);
 
   /// \brief Set the thread priority to background.
   /// FIXME: Move to llvm/Support.

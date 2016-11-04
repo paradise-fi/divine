@@ -30,10 +30,10 @@
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/MC/MCParser/MCAsmParser.h"
+#include "llvm/MC/MCParser/MCTargetAsmParser.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSubtargetInfo.h"
-#include "llvm/MC/MCTargetAsmParser.h"
 #include "llvm/MC/MCTargetOptions.h"
 #include "llvm/Option/Arg.h"
 #include "llvm/Option/ArgList.h"
@@ -43,10 +43,8 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/Host.h"
-#include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Path.h"
-#include "llvm/Support/PrettyStackTrace.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetRegistry.h"
@@ -88,6 +86,7 @@ struct AssemblerInvocation {
   unsigned SaveTemporaryLabels : 1;
   unsigned GenDwarfForAssembly : 1;
   unsigned CompressDebugSections : 1;
+  unsigned RelaxELFRelocations : 1;
   unsigned DwarfVersion;
   std::string DwarfDebugFlags;
   std::string DwarfDebugProducer;
@@ -125,6 +124,10 @@ struct AssemblerInvocation {
   unsigned RelaxAll : 1;
   unsigned NoExecStack : 1;
   unsigned FatalWarnings : 1;
+  unsigned IncrementalLinkerCompatible : 1;
+
+  /// The name of the relocation model to use.
+  std::string RelocationModel;
 
   /// @}
 
@@ -141,7 +144,8 @@ public:
     RelaxAll = 0;
     NoExecStack = 0;
     FatalWarnings = 0;
-    DwarfVersion = 3;
+    IncrementalLinkerCompatible = 0;
+    DwarfVersion = 0;
   }
 
   static bool CreateFromArgs(AssemblerInvocation &Res,
@@ -192,14 +196,11 @@ bool AssemblerInvocation::CreateFromArgs(AssemblerInvocation &Opts,
   Opts.IncludePaths = Args.getAllArgValues(OPT_I);
   Opts.NoInitialTextSection = Args.hasArg(OPT_n);
   Opts.SaveTemporaryLabels = Args.hasArg(OPT_msave_temp_labels);
-  Opts.GenDwarfForAssembly = Args.hasArg(OPT_g_Flag);
+  // Any DebugInfoKind implies GenDwarfForAssembly.
+  Opts.GenDwarfForAssembly = Args.hasArg(OPT_debug_info_kind_EQ);
   Opts.CompressDebugSections = Args.hasArg(OPT_compress_debug_sections);
-  if (Args.hasArg(OPT_gdwarf_2))
-    Opts.DwarfVersion = 2;
-  if (Args.hasArg(OPT_gdwarf_3))
-    Opts.DwarfVersion = 3;
-  if (Args.hasArg(OPT_gdwarf_4))
-    Opts.DwarfVersion = 4;
+  Opts.RelaxELFRelocations = Args.hasArg(OPT_mrelax_relocations);
+  Opts.DwarfVersion = getLastArgIntValue(Args, OPT_dwarf_version_EQ, 2, Diags);
   Opts.DwarfDebugFlags = Args.getLastArgValue(OPT_dwarf_debug_flags);
   Opts.DwarfDebugProducer = Args.getLastArgValue(OPT_dwarf_debug_producer);
   Opts.DebugCompilationDir = Args.getLastArgValue(OPT_fdebug_compilation_dir);
@@ -248,6 +249,9 @@ bool AssemblerInvocation::CreateFromArgs(AssemblerInvocation &Opts,
   Opts.RelaxAll = Args.hasArg(OPT_mrelax_all);
   Opts.NoExecStack = Args.hasArg(OPT_mno_exec_stack);
   Opts.FatalWarnings = Args.hasArg(OPT_massembler_fatal_warnings);
+  Opts.RelocationModel = Args.getLastArgValue(OPT_mrelocation_model, "pic");
+  Opts.IncrementalLinkerCompatible =
+      Args.hasArg(OPT_mincremental_linker_compatible);
 
   return Success;
 }
@@ -309,7 +313,9 @@ static bool ExecuteAssembler(AssemblerInvocation &Opts,
   // Ensure MCAsmInfo initialization occurs before any use, otherwise sections
   // may be created with a combination of default and explicit settings.
   if (Opts.CompressDebugSections)
-    MAI->setCompressDebugSections(true);
+    MAI->setCompressDebugSections(DebugCompressionType::DCT_ZlibGnu);
+
+  MAI->setRelaxELFRelocations(Opts.RelaxELFRelocations);
 
   bool IsBinary = Opts.OutputType == AssemblerInvocation::FT_Obj;
   std::unique_ptr<raw_fd_ostream> FDOS = getOutputStream(Opts, Diags, IsBinary);
@@ -321,9 +327,19 @@ static bool ExecuteAssembler(AssemblerInvocation &Opts,
   std::unique_ptr<MCObjectFileInfo> MOFI(new MCObjectFileInfo());
 
   MCContext Ctx(MAI.get(), MRI.get(), MOFI.get(), &SrcMgr);
-  // FIXME: Assembler behavior can change with -static.
-  MOFI->InitMCObjectFileInfo(Triple(Opts.Triple), Reloc::Default,
-                             CodeModel::Default, Ctx);
+
+  bool PIC = false;
+  if (Opts.RelocationModel == "static") {
+    PIC = false;
+  } else if (Opts.RelocationModel == "pic") {
+    PIC = true;
+  } else {
+    assert(Opts.RelocationModel == "dynamic-no-pic" &&
+           "Invalid PIC model!");
+    PIC = false;
+  }
+
+  MOFI->InitMCObjectFileInfo(Triple(Opts.Triple), PIC, CodeModel::Default, Ctx);
   if (Opts.SaveTemporaryLabels)
     Ctx.setAllowTemporaryLabels(false);
   if (Opts.GenDwarfForAssembly)
@@ -383,9 +399,10 @@ static bool ExecuteAssembler(AssemblerInvocation &Opts,
     MCAsmBackend *MAB = TheTarget->createMCAsmBackend(*MRI, Opts.Triple,
                                                       Opts.CPU);
     Triple T(Opts.Triple);
-    Str.reset(TheTarget->createMCObjectStreamer(T, Ctx, *MAB, *Out, CE, *STI,
-                                                Opts.RelaxAll,
-                                                /*DWARFMustBeAtTheEnd*/ true));
+    Str.reset(TheTarget->createMCObjectStreamer(
+        T, Ctx, *MAB, *Out, CE, *STI, Opts.RelaxAll,
+        Opts.IncrementalLinkerCompatible,
+        /*DWARFMustBeAtTheEnd*/ true));
     Str.get()->InitSections(Opts.NoExecStack);
   }
 
@@ -431,11 +448,6 @@ static void LLVMErrorHandler(void *UserData, const std::string &Message,
 }
 
 int cc1as_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
-  // Print a stack trace if we signal out.
-  sys::PrintStackTraceOnErrorSignal();
-  PrettyStackTraceProgram X(Argv.size(), Argv.data());
-  llvm_shutdown_obj Y;  // Call llvm_shutdown() on exit.
-
   // Initialize targets and assembly printers/parsers.
   InitializeAllTargetInfos();
   InitializeAllTargetMCs();
@@ -496,4 +508,3 @@ int cc1as_main(ArrayRef<const char *> Argv, const char *Argv0, void *MainAddr) {
 
   return !!Failed;
 }
-
