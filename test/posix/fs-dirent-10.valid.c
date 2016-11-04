@@ -36,10 +36,11 @@ void check( DIR *dd ) {
 int main() {
     assert( mkdir( "dir", 0755 ) == 0 );
 
-    DIR *dd = opendir( "" );
+    DIR *dd = opendir( "." );
     assert( dd );
 
     long position = telldir( dd );
+    assert (position > -1);
     check( dd );
     rewinddir( dd );
     check( dd );

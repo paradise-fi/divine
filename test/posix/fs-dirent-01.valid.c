@@ -10,7 +10,7 @@ int main() {
     int f2Dots = 0;
     int fDir = 0;
 
-    DIR *d = opendir( "" );
+    DIR *d = opendir( "." );
     assert( d );
 
     struct dirent *item;
