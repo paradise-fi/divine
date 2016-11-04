@@ -347,6 +347,10 @@ N: Richard Osborne
 E: richard@xmos.com
 D: XCore backend
 
+N: Piotr Padlewski
+E: piotr.padlewski@gmail.com
+D: !invariant.group metadata and other intrinsics for devirtualization in clang
+
 N: Devang Patel
 E: dpatel@apple.com
 D: LTO tool, PassManager rewrite, Loop Pass Manager, Loop Rotate
@@ -392,7 +396,7 @@ D: Fixes and improvements to the ARM fast-isel pass
 D: Fixes and improvements to the AArch64 backend
 
 N: Nadav Rotem
-E: nrotem@apple.com
+E: nadav.rotem@me.com
 D: X86 code generation improvements, Loop Vectorizer.
 
 N: Roman Samoilov
@@ -464,48 +468,4 @@ D: Bunches of stuff
 N: Bob Wilson
 E: bob.wilson@acm.org
 D: Advanced SIMD (NEON) support in the ARM backend.
-
-N: Alexey Bataev
-E: a.bataev@hotmail.com
-D: Clang OpenMP implementation
-
-N: Andrey Bokhanko
-E: andreybokhanko@gmail.com 
-D: Clang OpenMP implementation
-
-N: Carlo Bertolli
-E: cbertol@us.ibm.com 
-D: Clang OpenMP implementation
-
-N: Eric Stotzer
-E: estotzer@ti.com 
-D: Clang OpenMP implementation
-
-N: Kelvin Li
-E: kkwli0@gmail.com 
-D: Clang OpenMP implementation
-
-N: Samuel Antao
-E: sfantao@us.ibm.com 
-D: Clang OpenMP implementation
-
-N: Sergey Ostanevich
-E: sergos.gnu@gmail.com 
-D: Clang OpenMP implementation
-
-N: Alexandre Eichenberger
-E: alexe@us.ibm.com 
-D: Clang OpenMP implementation
-
-N: Guansong Zhang
-E: guansong.zhang@amd.com 
-D: Clang OpenMP implementation
-
-N: Sunita Chandrasekaran
-E: sunisg123@gmail.com  
-D: Clang OpenMP implementation
-
-N: Michael Wong
-E: fraggamuffin@gmail.com 
-D: Clang OpenMP implementation
 
