@@ -11,7 +11,7 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
       libcxx/src/*.h
       libcxx/include/support/xlocale/xlocale.h libcxx/src/support/atomic_support.h
-      libunwind/include/* libunwind/include/mach-o/* filesystem/*.h dios/syscall.def )
+      libunwind/include/* libunwind/include/mach-o/* filesystem/*.h )
 
 file( GLOB SRC_libdios
       divine/*.cpp dios/*.cpp filesystem/*.cpp )
