@@ -14,13 +14,16 @@ extern "C" {
 #include <dios/syscall.hpp>
 #include <dios/trace.hpp>
 #include <dios/fault.hpp>
+#include <filesystem/fs-manager.h>
 
 namespace __dios {
+using VFS = divine::fs::VFS;
 
 Context::Context() :
     scheduler( __dios::new_object< Scheduler >() ),
     syscall( __dios::new_object< Syscall >() ),
     fault( __dios::new_object< Fault >() ),
+    vfs( __dios::new_object< VFS >() ),
     globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
 {}
 

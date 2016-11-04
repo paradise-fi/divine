@@ -157,6 +157,12 @@ CPP_END
 
 #include <cstdint>
 
+namespace divine {
+    namespace fs {
+        struct VFS;
+    }
+}
+
 namespace __dios {
 
 template < class T, class... Args >
@@ -175,11 +181,13 @@ void delete_object( T *obj ) {
 struct Scheduler;
 struct Syscall;
 struct Fault;
+using VFS = divine::fs::VFS;
 
 struct Context {
     Scheduler *scheduler;
     Syscall *syscall;
     Fault *fault;
+    VFS *vfs;
     void *globals;
 
     Context();

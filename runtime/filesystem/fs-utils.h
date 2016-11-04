@@ -21,11 +21,22 @@
 
 #ifdef __divine__
 # include <divine.h>
-# include <divine/problem.h>
 
-# define FS_INTERRUPT()             /*__divine_interrupt()*/
-# define FS_ATOMIC_SECTION_BEGIN()  /*__divine_interrupt_mask()*/
-# define FS_ATOMIC_SECTION_END()    /*__divine_interrupt_unmask()*/
+#ifndef RECALL
+#define RECALL 221
+#endif
+
+#define __FS_assert( x ) do { \
+        if ( !(x) ) { \
+            __vm_trace(  _VM_T_Text, "FS assert");\
+            __dios_fault( _VM_Fault::_VM_F_Assert, "FS assert" );\
+        } \
+    } while (0)
+
+# define FS_ATOMIC_SECTION_BEGIN()                         
+# define FS_ATOMIC_SECTION_END()                               
+# define FS_CHOICE( n )             __vm_choose( n )
+
 
 #else
 # include "divine.h"
@@ -36,17 +47,8 @@ enum Problems {
 # define FS_INTERRUPT()
 # define FS_ATOMIC_SECTION_BEGIN()
 # define FS_ATOMIC_SECTION_END()
+# define FS_CHOICE( n )             FS_CHOICE_GOAL
 #endif
-
-#define FS_BREAK_MASK( command )            \
-    do {                                    \
-        FS_ATOMIC_SECTION_END();            \
-        command;                            \
-        FS_ATOMIC_SECTION_BEGIN();          \
-    } while( false )
-
-#define FS_MAKE_INTERRUPT()                 \
-    FS_BREAK_MASK( FS_INTERRUPT() )
 
 
 namespace divine {
@@ -158,7 +160,6 @@ using List = std::list< T, memory::Allocator< T > >;
 
 struct Error {
     Error( int code ) : _code( code ) {
-        errno = code;
     }
 
     int code() const noexcept {

@@ -11,10 +11,10 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
       libcxx/src/*.h
       libcxx/include/support/xlocale/xlocale.h libcxx/src/support/atomic_support.h
-      libunwind/include/* libunwind/include/mach-o/* filesystem/*.h )
+      libunwind/include/* libunwind/include/mach-o/* filesystem/*.h dios/syscall.def )
 
 file( GLOB SRC_libdios
-      divine/*.cpp dios/*.cpp ) # filesystem/*.cpp
+      divine/*.cpp dios/*.cpp filesystem/*.cpp )
 
 file( GLOB SRC_libc
       pdclib/functions/*/*.c pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c )
@@ -65,6 +65,7 @@ list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
 
 mklib( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
 mklib( libcxx "${flags}" )
+list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem )
 mklib( libdios "${flags};-I${CMAKE_CURRENT_BINARY_DIR}" )
 
 foreach( f ${H_RUNTIME} )

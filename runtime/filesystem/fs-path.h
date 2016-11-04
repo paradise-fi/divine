@@ -13,10 +13,12 @@ namespace divine {
 namespace fs {
 namespace path {
 
-#if defined( __unix )
-const char pathSeparators[] = { '/' };
-#elif defined( _WIN32 )
-const char pathSeparators[] = { '\\', '/' };
+#if defined( _WIN32 )
+        const char pathSeparators[] = { '\\', '/' };
+#elif defined( __MAC_OS_X_VERSION_MAX_ALLOWED )
+        const char pathSeparators[] = { '/' };
+#else
+        const char pathSeparators[] = { '/' };
 #endif
 
 inline bool isPathSeparator( char c ) {

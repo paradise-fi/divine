@@ -127,9 +127,21 @@ struct Manager {
     void connect( int sockfd, const Socket::Address &address );
     int accept( int sockfd, Socket::Address &address );
     Node resolveAddress( const Socket::Address &address );
+    bool wasError() const {
+        return _error == 0;
+    }
+
+    int getError() const {
+        return _error;
+    }
+
+    void setError(int code) {
+        _error = code;
+    }
 
 private:
     Node _root;
+    int _error;
     WeakNode _currentDirectory;
     std::array< Node, 2 > _standardIO;
     utils::Vector< std::shared_ptr< FileDescriptor > > _openFD;
@@ -176,7 +188,7 @@ struct VFS {
     }
 
     Manager &instance() {
-        assert( _manager );
+        __FS_assert( _manager );
         return *_manager;
     }
 

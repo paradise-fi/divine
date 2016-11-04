@@ -12,7 +12,7 @@ namespace memory {
 
 void *operator new( std::size_t count, const divine::fs::memory::nofail_t & ) noexcept {
 #ifdef __divine__
-    return __vm_make_object( count );
+    return __vm_obj_make( count );
 #else
     return ::operator new( count );
 #endif

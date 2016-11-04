@@ -3,7 +3,7 @@
 #include "fs-manager.h"
 
 #define REMEMBER_DIRECTORY( dirfd, name )                               \
-    WeakNode savedDir = _currentDirectory;                              \
+    WeakNode savedDir = _currentDirectory;                               \
     auto d = utils::make_defer( [&]{ _currentDirectory = savedDir; } ); \
     if ( path::isRelative( name ) && dirfd != CURRENT_DIRECTORY )       \
         changeDirectory( dirfd );                                       \
@@ -17,6 +17,7 @@ Manager::Manager( bool ) :
     _root{ std::allocate_shared< INode >(
         memory::AllocatorPure(), Mode::DIR | Mode::GRANTS
     ) },
+    _error(0),
     _currentDirectory{ _root },
     _standardIO{ {
         std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER ),
@@ -101,7 +102,7 @@ void Manager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, 
 
     Node targetNode;
     {
-        REMEMBER_DIRECTORY( olddirfd, target );
+        REMEMBER_DIRECTORY( olddirfd, target );    
         targetNode = findDirectoryItem( target, fl.has( flags::At::SymFollow ) );
     }
     if ( !targetNode )
@@ -175,10 +176,10 @@ int Manager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl,
         else {
             file = createNodeAt( CURRENT_DIRECTORY, std::move( name ), mode | Mode::FILE );
         }
-    }
-    else if ( !file )
+    } else if ( !file ) {
         throw Error( ENOENT );
-
+    }
+        
     if ( fl.has( flags::Open::Read ) )
         _checkGrants( file, Mode::RUSER );
     if ( fl.has( flags::Open::Write ) ) {
@@ -238,10 +239,9 @@ std::pair< int, int > Manager::pipe() {
 
     Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
     node->assign( new( memory::nofail ) Pipe() );
-    return {
-        _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Read ) ),
-        _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Write ) )
-    };
+    auto fd1 = _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Read ) );
+    auto fd2 =  _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Write ));
+    return { fd1, fd2 };
 }
 
 void Manager::removeFile( utils::String name ) {
@@ -644,7 +644,7 @@ std::pair< Node, utils::String > Manager::_findDirectoryOfFile( utils::String na
     return { item, name };
 }
 
-int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdge ) {
+int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdge /* = 0*/ ) {
     int i = 0;
 
     if ( lowEdge < 0 || lowEdge >= FILE_DESCRIPTOR_LIMIT )

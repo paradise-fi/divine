@@ -8,6 +8,8 @@
 #include "fs-inode.h"
 #include "fs-storage.h"
 
+#define FS_CHOICE_GOAL          0
+
 #ifndef _FS_FILE_H_
 #define _FS_FILE_H_
 
@@ -230,10 +232,7 @@ struct Pipe : File {
 
         // progress or deadlock
         while ( ( length = _stream.pop( buffer, length ) ) == 0 )
-            FS_MAKE_INTERRUPT();
-
-        if ( length == 0 )
-            return true;
+            throw Error( RECALL );
 
         return true;
     }
@@ -246,7 +245,7 @@ struct Pipe : File {
 
         // progress or deadlock
         while ( ( length = _stream.push( buffer, length ) ) == 0 )
-            FS_MAKE_INTERRUPT();
+            throw Error( RECALL );
 
         return true;
     }
@@ -268,12 +267,13 @@ struct Pipe : File {
 
     void assignReader() {
         if ( _reader )
-            __dios_fault( vm::Fault::Assert, "Pipe is opened for reading again." );
+            __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened for reading again." );
         _reader = true;
     }
+    
     void assignWriter() {
         if ( _writer )
-            __dios_fault( vm::Fault::Assert, "Pipe is opened for writing again." );
+            __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened for writing again." );
         _writer = true;
     }
 
@@ -462,13 +462,14 @@ struct SocketStream : Socket {
         _passive = true;
         _limit = limit;
     }
-    Node accept() {
+    Node accept() override {
         if ( !_passive )
             throw Error( EINVAL );
 
         // progress or deadlock
-        while ( _backlog.empty() )
-            FS_MAKE_INTERRUPT();
+        if ( _backlog.empty() ) {
+		throw Error( RECALL );
+	}
 
         Node result( std::move( _backlog.front() ) );
         _backlog.pop();
@@ -545,13 +546,15 @@ struct SocketStream : Socket {
         if ( !_peer && !closed() )
             throw Error( ENOTCONN );
 
-        while ( _stream.empty()  )
-            FS_MAKE_INTERRUPT();
+        if ( _stream.empty()  ) {
+		throw Error( RECALL );
+	}
 
-        if ( fls.has( flags::Message::WaitAll ) ) {
-            while ( _stream.size() < length )
-                FS_MAKE_INTERRUPT();
-        }
+         if ( fls.has( flags::Message::WaitAll ) ) {
+             if ( _stream.size() < length ) {
+	     	throw Error( RECALL );
+	     }
+         }
 
         if ( fls.has( flags::Message::Peek ) )
             length = _stream.peek( buffer, length );
@@ -655,8 +658,9 @@ struct SocketDatagram : Socket {
         if ( fls.has( flags::Message::DontWait ) && _packets.empty() )
             throw Error( EAGAIN );
 
-        while ( _packets.empty() )
-            FS_MAKE_INTERRUPT();
+        if  ( _packets.empty() ) {
+		throw Error( RECALL );
+	}
 
         length = _packets.front().read( buffer, length );
         address = _packets.front().from();

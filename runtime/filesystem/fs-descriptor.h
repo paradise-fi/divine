@@ -146,28 +146,30 @@ protected:
 struct PipeDescriptor : FileDescriptor {
 
     PipeDescriptor() :
-        FileDescriptor()
+        FileDescriptor(), readyReader(false), readyWriter(false)
     {}
 
     PipeDescriptor( Node inode, Flags< flags::Open > fl, bool wait = false ) :
-        FileDescriptor( inode, fl )
+        FileDescriptor( inode, fl ), readyReader(!wait), readyWriter(!wait)
     {
         Pipe *pipe = inode->data()->as< Pipe >();
 
         /// TODO: enable detection of deadlock
         if ( fl.has( flags::Open::Read ) && fl.has( flags::Open::Write ) )
-            __dios_fault( vm::Fault::Assert, "Pipe is opened both for reading and writing" );
+            __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened both for reading and writing" );
         else if ( fl.has( flags::Open::Read ) ) {
-            pipe->assignReader();
-            while ( wait && !pipe->writer() ) {
-                FS_MAKE_INTERRUPT();
+            if ( wait && !pipe->writer() && !readyWriter ) {
+                readyReader = true;
+               throw Error( RECALL );
             }
+            pipe->assignReader();
         }
         else if ( fl.has( flags::Open::Write ) ) {
-            pipe->assignWriter();
-            while ( wait && !pipe->reader() ) {
-                FS_MAKE_INTERRUPT();
+            if ( wait && !pipe->reader() && !readyReader  ) {
+                readyWriter = true;
+               throw Error( RECALL );
             }
+            pipe->assignWriter();
         }
     }
 
@@ -179,12 +181,12 @@ struct PipeDescriptor : FileDescriptor {
     ~PipeDescriptor() {
         if ( _inode && _flags.has( flags::Open::Read ) ) {
             Pipe *pipe = _inode->data()->as< Pipe >();
-
             pipe->releaseReader();
         }
     }
 
     long long read( void *buf, size_t length ) override {
+        __vm_trace( _VM_T_Text,"PipeDescriptor read issued!" );
         if ( !_inode )
             throw Error( EBADF );
         if ( !_flags.has( flags::Open::Read ) )
@@ -201,6 +203,7 @@ struct PipeDescriptor : FileDescriptor {
         if ( !file->read( dst, _offset, length ) )
             throw Error( EBADF );
 
+        __vm_trace( _VM_T_Text,"Readed length!" );
         _offset += length;
         return length;
     }
@@ -211,6 +214,8 @@ struct PipeDescriptor : FileDescriptor {
 protected:
     void _setOffset( size_t ) override {
     }
+    bool readyReader;
+    bool readyWriter;
 };
 
 struct DirectoryDescriptor {
