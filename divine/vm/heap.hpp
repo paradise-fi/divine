@@ -493,8 +493,10 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         return PointerV( p );
     }
 
-    void resize( HeapPointer p, int sz_new )
+    bool resize( HeapPointer p, int sz_new )
     {
+        if ( p.offset() )
+            return false;
         int sz_old = size( p );
         auto obj_old = ptr2i( p );
         auto obj_new = _objects.allocate( sz_new );
@@ -502,6 +504,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         copy( *this, p, obj_old, p, obj_new, std::min( sz_new, sz_old ) );
         _l.exceptions[ p.object() ] = obj_new;
         self().made( p ); /* fixme? */
+        return true;
     }
 
     bool free( HeapPointer p )

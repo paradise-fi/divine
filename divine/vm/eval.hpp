@@ -992,8 +992,9 @@ struct Eval
                     fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_free";
                 return;
             case HypercallObjResize:
-                heap().resize( operandCk< PointerV >( 0 ).cooked(),
-                               operandCk< IntV >( 1 ).cooked() );
+                if ( !heap().resize( operandCk< PointerV >( 0 ).cooked(),
+                                     operandCk< IntV >( 1 ).cooked() ) )
+                    fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_resize";
                 return;
             case HypercallObjSize:
             {
