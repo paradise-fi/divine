@@ -618,7 +618,7 @@ struct IO : Sink {
 namespace {
 pid_t kill_pid = 0;
 bool fatal_signal = false;
-bool interrupt = false;
+int interrupt = 0;
 }
 
 struct Options {
@@ -858,6 +858,11 @@ struct TestCase {
         else
             r = Journal::FAILED;
 
+        if ( interrupt )
+        {
+            interrupt = 1;
+            alarm( 1 ); /* clear the interrupt flag after a second */
+        }
         io.close();
 
         if ( iobuf && ( r == Journal::FAILED || r == Journal::TIMEOUT ) )
@@ -1046,13 +1051,24 @@ struct Main {
 
 namespace {
 
-void handler( int sig ) {
-    signal( sig, SIG_DFL ); /* die right away next time */
+void handler( int sig )
+{
+    if ( sig == SIGALRM )
+    {
+        if ( interrupt == 1 )
+            interrupt = 0;
+        return;
+    }
+
     if ( kill_pid > 0 )
         kill( -kill_pid, sig );
-    fatal_signal = true;
-    if ( sig == SIGINT )
-        interrupt = true;
+    if ( sig == SIGINT && !interrupt )
+        interrupt = 2;
+    else
+    {
+        signal( sig, SIG_DFL ); /* die right away next time */
+        fatal_signal = true;
+    }
 }
 
 void setup_handlers() {
