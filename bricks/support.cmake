@@ -71,6 +71,7 @@ endfunction()
 
 function( test_bricks dir )
   include_directories( ${dir} )
+  add_definitions( ${ARGN} )
   file( GLOB SRC "${dir}/brick-*[a-z]" )
   bricks_unittest( test-bricks ${SRC} )
   target_link_libraries( test-bricks pthread )
