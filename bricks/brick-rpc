@@ -144,7 +144,8 @@ typename integer< B, E, T >::stream &operator<<( base< B, E > &bs, T i ) {
 
 template< typename B, typename E, typename T >
 typename int64< B, E, T >::stream &operator<<( base< B, E > &bs, T i ) {
-    union { uint64_t x64; struct { uint32_t a; uint32_t b; } x32; };
+    struct X32 { uint32_t a; uint32_t b; };
+    union { uint64_t x64; X32 x32; };
     x64 = i;
     bs << x32.a << x32.b;
     return bs;
@@ -199,7 +200,8 @@ typename integer< B, E, T >::stream &operator>>( base< B, E > &bs, T &x ) {
 
 template< typename B, typename E, typename T >
 typename int64< B, E, T >::stream &operator>>( base< B, E > &bs, T &i ) {
-    union { uint64_t x64; struct { uint32_t a; uint32_t b; } x32; };
+    struct X32 { uint32_t a; uint32_t b; };
+    union { uint64_t x64; X32 x32; };
     bs >> x32.a >> x32.b;
     i = x64;
     return bs;
