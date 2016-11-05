@@ -8,6 +8,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/aa/andersen.h>
 #include <iostream>
+#include <brick-assert>
 
 namespace lart {
 namespace aa {
@@ -76,6 +77,7 @@ void Andersen::solve( Constraint c ) {
             updated = c.left->_pointsto; // XXX
             std::cerr << "store" << std::endl;
             break;
+        default: UNREACHABLE( "switch fell through" );
     }
 
     for ( auto n: updated )
@@ -283,7 +285,7 @@ void Andersen::annotate( llvm::Instruction *insn, std::set< Node * > &seen )
 void Andersen::annotate( llvm::Module &m ) {
     _module = &m;
 
-    llvm::NamedMDNode *global = m.getOrInsertNamedMetadata( "lart.aa_global" );
+    // llvm::NamedMDNode *global = m.getOrInsertNamedMetadata( "lart.aa_global" );
 
     MDsRef ctxv(
         llvm::MDString::get( m.getContext(), "lart.aa-root-context" ) );
