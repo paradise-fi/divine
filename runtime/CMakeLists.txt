@@ -79,6 +79,7 @@ stringifyInDir( "runtime" "${CMAKE_CURRENT_BINARY_DIR}" ${OPS_dest} )
 stringlist( "runtime" runtime )
 
 include_directories( ${divine_SOURCE_DIR} )
+add_definitions( -Wno-overlength-strings )
 add_library( divine-rt ${divine_SOURCE_DIR}/divine/rt/runtime.cpp
                        ${STRINGIFIED} runtime_list.cpp
                        ${CMAKE_CURRENT_BINARY_DIR}/libc_bc_str.cpp )

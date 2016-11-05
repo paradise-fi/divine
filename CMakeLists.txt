@@ -133,6 +133,7 @@ opt( ALG_METRICS "" ON )
 opt( OPT_SQL "enable ODBC-based database reports" OFF ) # ${ODBC_FOUND}
 
 option( DEV_WARNINGS "enable extra compiler warnings" ${IS_DEBUG} )
+option( DEV_WERROR "enable -Werror" ${IS_DEBUG} )
 option( BUILD_SHARED_LIBS "build shared libraries" OFF )
 
 foreach( opt ${OPTIONS} )
@@ -147,6 +148,10 @@ endforeach()
 add_compile_options( -Wall -Wold-style-cast -Wno-unused-function -Wno-gnu-zero-variadic-macro-arguments )
 if( DEV_WARNINGS )
   add_compile_options( -Wextra )
+endif()
+
+if( DEV_WERROR )
+  add_compile_options( -Werror )
 endif()
 
 if ( UNIX AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
@@ -216,7 +221,7 @@ message( "## Build type: ${CMAKE_BUILD_TYPE}" )
 message( "## Build options: ${BUILDOPTS}" )
 message( "## -----------------------------------------------------------------" )
 
-test_bricks( bricks )
+test_bricks( bricks ${DIVINE_DEFINES} )
 benchmark_bricks( bricks )
 
 add_custom_target( unit_bricks
