@@ -26,7 +26,16 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE. */
 
+#ifdef DIVINE_RELAX_WARNINGS
+DIVINE_RELAX_WARNINGS
+#endif
+
 #include <llvm/Support/ELF.h>
+
+#ifdef DIVINE_RELAX_WARNINGS
+DIVINE_UNRELAX_WARNINGS
+#endif
+
 #include <brick-assert>
 #include <brick-mmap>
 #include <memory>
