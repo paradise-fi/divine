@@ -6,6 +6,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <string>
+#include <sstream>
 
 #ifndef LART_ABSTRACTION_TYPES_H
 #define LART_ABSTRACTION_TYPES_H
@@ -54,6 +55,23 @@ std::string getTypeName( llvm::Type * type ) {
     llvm::raw_string_ostream rso( buffer );
     type->print( rso );
     return rso.str();
+}
+
+std::vector< std::string > parseTypeName( llvm::Type * type ) {
+    std::stringstream ss;
+    auto structT = llvm::cast< llvm::StructType >( type );
+    ss.str( structT->getName().str() );
+    std::vector< std::string > parts;
+    std::string part;
+    while( std::getline( ss, part, '.' ) )
+        parts.push_back( part );
+    return parts;
+}
+
+std::string lowerTypeName( llvm::Type * type ) {
+    auto parts = parseTypeName( type );
+    assert( parts.size() >= 3 );
+    return parts[ 2 ];
 }
 
 } /* lart */

@@ -100,7 +100,7 @@ struct Abstraction : lart::Pass {
 
         storeType( entry->getType() );
 
-        propagateValue( entry, entry->getType() );
+        propagateValue( entry );
 
         bool changeReturn = query::query( *f ).flatten()
                             .map( query::refToPtr )
@@ -133,11 +133,11 @@ struct Abstraction : lart::Pass {
         }
     }
 
-    void propagateValue( V * v, T * t ) {
+    void propagateValue( V * v ) {
         auto deps = analysis::postorder< V * >( v );
         for ( auto dep : lart::util::reverse( deps ) )
             if ( auto inst = llvm::dyn_cast< I >( dep ) )
-                process( inst, t );
+                process( inst );
         // obscure removing because of cyclic dependencies in phinodes
         for ( auto dep : deps )
         	if ( auto inst = llvm::dyn_cast< I >( dep ) )
@@ -154,7 +154,7 @@ struct Abstraction : lart::Pass {
             }
     }
 
-    void process( I * inst, T * t ) {
+    void process( I * inst ) {
         llvmcase( inst,
      		[&]( llvm::AllocaInst * i ) {
                 doAlloca( i );
@@ -260,7 +260,13 @@ struct Abstraction : lart::Pass {
 
     void doICmp( llvm::ICmpInst * i ) {
 	    auto args = getBinaryArgs( i );
-        auto tag = "lart.abstract.icmp." + predicate.at( i->getPredicate() );
+        auto argT = i->getOperand( 0 )->getType();
+        std::string lowerType = isAbstractType( argT )
+                              ? lowerTypeName( argT )
+                              : getTypeName( argT );
+        auto tag = "lart.abstract.icmp."
+                 + predicate.at( i->getPredicate() )
+                 + "." + lowerType;
         auto bt = bool_t( *_ctx );
 		createAnonymousCall( i, type_store[ bt ], tag, args );
     }
@@ -277,6 +283,7 @@ struct Abstraction : lart::Pass {
             tv = value_store.contains( tv ) ? value_store[ tv ] : lift( tv, i );
         if ( !isAbstractType( fv->getType() ) )
             fv = value_store.contains( fv ) ? value_store[ fv ] : lift( fv, i );
+
         llvm::IRBuilder<> irb( i );
         auto sub = irb.CreateSelect( cond, tv, fv );
         value_store.insert( { i, sub } );
@@ -301,7 +308,9 @@ struct Abstraction : lart::Pass {
 
 	void doBinary( llvm::BinaryOperator * i ) {
         auto args = getBinaryArgs( i );
-        auto tag = "lart.abstract." + std::string( i->getOpcodeName() );
+        auto tag = "lart.abstract."
+                 + std::string( i->getOpcodeName() )
+                 + "." + getTypeName( i->getType() );
         auto rty = type_store[ i->getType() ];
         createAnonymousCall( i, rty, tag, args );
     }
@@ -435,7 +444,7 @@ struct Abstraction : lart::Pass {
 
                 for ( auto &arg : stored->args() )
                     if ( arg.getType() == at )
-                        propagateValue( &arg, at );
+                        propagateValue( &arg );
 
                 //FIXME refactor with processFunction
                 bool changeReturn = query::query( *stored ).flatten()
