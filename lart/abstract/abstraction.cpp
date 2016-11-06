@@ -194,6 +194,24 @@ struct Abstraction : lart::Pass {
                 inst->dump();
                 std::exit( EXIT_FAILURE );
 			} );
+
+        if ( value_store.contains( inst ) ) {
+            replaceLifts( inst );
+        }
+    }
+
+    void replaceLifts( llvm::Instruction * inst ) {
+        auto lifts = query::query( inst->users() )
+                    .map( query::llvmdyncast< llvm::CallInst > )
+                    .filter( query::notnull )
+                    .filter( [&]( llvm::CallInst * call ) {
+                        return isLift( call );
+                    } ).freeze();
+        for ( auto & lift : lifts ) {
+            lift->replaceAllUsesWith( value_store[ inst ] );
+            lift->eraseFromParent();
+        }
+
     }
 
     llvm::CallInst * createNamedCall( I * inst, T * rty, const std::string &tag,
