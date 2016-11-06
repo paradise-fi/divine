@@ -822,7 +822,6 @@ struct Substitution : lart::Pass {
             abstractedValues.insert( call );
             for ( auto uuser : user->users() )
                 propagateAndProcess( *fn->getParent(), uuser );
-
         }
     }
 
@@ -839,11 +838,10 @@ struct Substitution : lart::Pass {
 
         TToVStoreMap< llvm::Function *, llvm::Argument * > funToArgMap;
 
-        // TODO postorder call order
         for ( const auto &arg : args ) {
             llvm::Function * fn = arg->getParent();
             assert( fn != nullptr );
-            if ( fn->hasName() && fn->getName().startswith( "lart.abstract" ) )
+            if ( fn->hasName() && fn->getName().startswith( "lart." ) )
                 continue;
             if ( funToArgMap.contains( fn ) )
                 funToArgMap[ fn ].push_back( arg );
@@ -878,7 +876,6 @@ struct Substitution : lart::Pass {
                 abstraction_store.insert( { newarg, newarg } );
                 propagateAndProcess( m, newarg );
             }
-
         }
     }
 
@@ -974,6 +971,9 @@ struct Substitution : lart::Pass {
     }
 
     void doBranch( llvm::BranchInst * i ) {
+        assert( i->isConditional() );
+        if ( abstraction_store.contains( i ) )
+            return;
         llvm::IRBuilder<> irb( i );
         if ( i->isConditional() ) {
             auto cond = i->getCondition();
@@ -1094,7 +1094,7 @@ struct Substitution : lart::Pass {
 
     static bool isAbstractType( llvm::Type * t ) {
         auto typeName = lart::abstract::getTypeName( t );
-        std::string prefix = "%lart.abstract";
+        std::string prefix = "%lart";
         return !typeName.compare( 0, prefix.size(), prefix );
     }
 
