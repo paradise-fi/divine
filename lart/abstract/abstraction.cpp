@@ -747,6 +747,8 @@ struct Substitution : lart::Pass {
             auto inst = llvm::dyn_cast< llvm::Instruction >( a );
             assert( inst != nullptr );
             llvm::Function * fn = inst->getParent()->getParent();
+            if ( function_store.contains( fn ) )
+                continue;
             if ( funToValMap.contains( fn ) )
                 funToValMap[ fn ].push_back( a );
             else
