@@ -975,53 +975,48 @@ struct Substitution : lart::Pass {
         if ( abstraction_store.contains( i ) )
             return;
         llvm::IRBuilder<> irb( i );
-        if ( i->isConditional() ) {
-            auto cond = i->getCondition();
-            if ( abstraction_store.contains( cond ) ) {
-                cond = abstraction_store[ cond ];
-                auto tbb = i->getSuccessor( 0 );
-                auto fbb = i->getSuccessor( 1 );
-                irb.CreateCondBr( cond, tbb, fbb );
-                abstractedValues.insert( i );
-            }
+        auto cond = i->getCondition();
+        if ( abstraction_store.contains( cond ) ) {
+            cond = abstraction_store[ cond ];
+            auto tbb = i->getSuccessor( 0 );
+            auto fbb = i->getSuccessor( 1 );
+            auto newbr = irb.CreateCondBr( cond, tbb, fbb );
+            abstraction_store.insert( { i, newbr } );
+            abstractedValues.insert( i );
         }
     }
 
     void doPhi( llvm::PHINode * phi ) {
         unsigned int niv = phi->getNumIncomingValues();
 
-        llvm::IRBuilder<> irb( phi );
-        auto nphi = irb.CreatePHI( abstractionType, niv );
-
-        //removing duplicities
-        auto find = abstraction_store.find( phi );
-        if ( find != abstraction_store.end() ){
-            auto abstracted = llvm::cast< llvm::Instruction >( abstraction_store[ phi ] );
-            abstracted->replaceAllUsesWith( nphi );
-            auto val = abstractedValues.find( abstracted );
-            if ( val != abstractedValues.end() )
-                abstractedValues.erase( val );
-            abstraction_store.erase( find );
-            abstracted->eraseFromParent();
-        }
-
-        abstraction_store.insert( { phi , nphi } );
-
-        if ( phi->getType() == abstractionType )
-            phi->replaceAllUsesWith( nphi );
-
+        std::vector< std::pair< llvm::Value *, llvm::BasicBlock * > > incoming;
         for ( unsigned int i = 0; i < niv; ++i ) {
-            auto val = llvm::cast< llvm::Instruction >( phi->getIncomingValue( i ) );
+            auto val = llvm::cast< llvm::Value >( phi->getIncomingValue( i ) );
             auto parent = phi->getIncomingBlock( i );
             if ( abstraction_store.contains( val ) )
-                nphi->addIncoming( abstraction_store[ val ], parent );
+                incoming.push_back( { abstraction_store[ val ], parent } );
             else {
                 if ( val->getType() == abstractionType )
-                    nphi->addIncoming( val, parent );
+                    incoming.push_back( { val, parent } );
             }
         }
 
-        abstractedValues.insert( phi );
+        if ( incoming.size() > 0 ) {
+            llvm::PHINode * node = nullptr;
+            if ( abstraction_store.contains( phi ) )
+                node = llvm::cast< llvm::PHINode >( abstraction_store[ phi ] );
+            else {
+                llvm::IRBuilder<> irb( phi );
+                node = irb.CreatePHI( abstractionType, niv );
+                abstraction_store.insert( { phi, node } );
+                abstractedValues.insert( phi );
+            }
+
+            for ( size_t i = 0; i < node->getNumIncomingValues(); ++i )
+                node->removeIncomingValue( i,  false );
+            for ( auto & in : incoming )
+                node->addIncoming( in.first, in.second );
+        }
     }
 
     void doReturn( llvm::ReturnInst * i ) {
