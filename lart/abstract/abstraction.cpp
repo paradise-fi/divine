@@ -824,8 +824,7 @@ struct Substitution : lart::Pass {
             for ( auto & arg : call->arg_operands() )
                 args.push_back( arg );
             auto ncall = irb.CreateCall( newfn, args );
-            abstraction_store[ call ] = ncall;
-            abstractedValues.insert( call );
+            store( call, ncall );
             for ( auto uuser : user->users() )
                 propagateAndProcess( *fn->getParent(), uuser );
         }
@@ -929,8 +928,7 @@ struct Substitution : lart::Pass {
 
         llvm::IRBuilder<> irb( call );
         auto ncall = irb.CreateCall( fn, { call->getArgOperand( 0 ) } );
-        abstraction_store[ call ] = ncall;
-        abstractedValues.insert( call );
+        store( call, ncall );
     }
 
     void handleAbstractCall( llvm::Module & m, llvm::CallInst * call ) {
@@ -973,8 +971,7 @@ struct Substitution : lart::Pass {
         if ( call->getNumArgOperands() == args.size() ) {
             llvm::IRBuilder<> irb( call );
             auto ncall = irb.CreateCall( fn, args );
-            abstraction_store[ call ] = ncall;
-            abstractedValues.insert( call );
+            store( call, ncall );
         }
     }
 
@@ -992,8 +989,7 @@ struct Substitution : lart::Pass {
                 return;
             llvm::IRBuilder<> irb( i );
             auto newsel = irb.CreateSelect( cond, tv, fv );
-            abstraction_store.insert( { i, newsel } );
-            abstractedValues.insert( i );
+            store( i, newsel );
         }
     }
 
@@ -1008,8 +1004,7 @@ struct Substitution : lart::Pass {
             auto tbb = i->getSuccessor( 0 );
             auto fbb = i->getSuccessor( 1 );
             auto newbr = irb.CreateCondBr( cond, tbb, fbb );
-            abstraction_store.insert( { i, newbr } );
-            abstractedValues.insert( i );
+            store( i, newbr );
         }
     }
 
@@ -1035,8 +1030,7 @@ struct Substitution : lart::Pass {
             else {
                 llvm::IRBuilder<> irb( phi );
                 node = irb.CreatePHI( abstractionType, niv );
-                abstraction_store.insert( { phi, node } );
-                abstractedValues.insert( phi );
+                store( phi, node );
             }
 
             for ( size_t i = 0; i < node->getNumIncomingValues(); ++i )
@@ -1051,8 +1045,7 @@ struct Substitution : lart::Pass {
             llvm::IRBuilder<> irb( i );
             auto arg = abstraction_store[ i->getReturnValue() ];
             auto ret = irb.CreateRet( arg );
-            abstraction_store[ i ] = ret;
-            abstractedValues.insert( i );
+            store( i, ret );
         }
     }
 
@@ -1076,6 +1069,11 @@ struct Substitution : lart::Pass {
                         } ).freeze();
         for ( auto &fn : toErase )
             fn->eraseFromParent();
+    }
+
+    void store( llvm::Value * val, llvm::Value * newval ) {
+        abstraction_store[ val ] = newval;
+        abstractedValues.insert( llvm::cast< llvm::Instruction >( val ) );
     }
 
     static bool isAbstractDeclaration( llvm::Function * fn ) {
