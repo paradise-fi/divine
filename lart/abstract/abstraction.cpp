@@ -889,7 +889,9 @@ struct Substitution : lart::Pass {
 
     void process( llvm::Module &m, llvm::Instruction * inst ) {
         llvmcase( inst,
-            //[&]( llvm::SelectInst * ) { /*TODO*/ },
+            [&]( llvm::SelectInst * i ) {
+                doSelect( i );
+            },
             [&]( llvm::BranchInst * i ) {
                 doBranch( i );
             },
@@ -967,6 +969,25 @@ struct Substitution : lart::Pass {
             auto ncall = irb.CreateCall( fn, args );
             abstraction_store[ call ] = ncall;
             abstractedValues.insert( call );
+        }
+    }
+
+    void doSelect( llvm::SelectInst * i ) {
+        auto cond = i->getCondition();
+        if ( abstraction_store.contains( cond ) ) {
+            cond = abstraction_store[ cond ];
+            auto tv = abstraction_store.contains( i->getTrueValue() )
+                    ? abstraction_store[ i->getTrueValue() ]
+                    : nullptr;
+            auto fv = abstraction_store.contains( i->getFalseValue() )
+                    ? abstraction_store[ i->getFalseValue() ]
+                    : nullptr;
+            if ( tv == nullptr || fv == nullptr )
+                return;
+            llvm::IRBuilder<> irb( i );
+            auto newsel = irb.CreateSelect( cond, tv, fv );
+            abstraction_store.insert( { i, newsel } );
+            abstractedValues.insert( i );
         }
     }
 
