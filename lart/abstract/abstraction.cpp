@@ -761,13 +761,6 @@ struct Substitution : lart::Pass {
             //substitute all dependencies of abstract values
             for ( auto & value : fn.second )
                 propagateAndProcess( m, value );
-
-            removeAbstractedValues();
-
-            if ( isAbstractType( fn.first->getReturnType() ) ) {
-                auto newfn = changeReturnValue( fn.first, abstractionType );
-                function_store.insert( { fn.first, newfn } );
-            }
         }
 
         // FIXME can be done from start in postorder of all functions
@@ -787,8 +780,10 @@ struct Substitution : lart::Pass {
 
         for ( auto fn : order ) {
             processAbstractReturn( fn );
-            removeAbstractedValues();
         }
+
+        removeInstructions< decltype( abstractedValues ) >( abstractedValues );
+        abstractedValues.clear();
 
         //remove abstracted functions
         std::vector< llvm::Function * > functionsToRemove;
@@ -804,6 +799,17 @@ struct Substitution : lart::Pass {
     }
 
     void processAbstractReturn( llvm::Function * fn ){
+        auto insts = query::query( abstractedValues )
+                     .map( query::llvmdyncast< llvm::Instruction > )
+                     .filter( query::notnull )
+                     .filter( [&]( llvm::Instruction * i ) {
+                         return i->getParent()->getParent() == fn;
+                     } )
+                     .freeze();
+        for ( auto inst : insts )
+            abstractedValues.erase( inst );
+        removeInstructions< decltype( insts ) >( insts );
+
         if ( ! function_store.contains( fn ) ) {
             auto newfn = changeReturnValue( fn, abstractionType );
             function_store.insert( { fn, newfn } );
@@ -1050,16 +1056,16 @@ struct Substitution : lart::Pass {
         }
     }
 
-    void removeAbstractedValues() {
-        for ( auto &inst : abstractedValues )
+    template< typename Container >
+    void removeInstructions( Container & insts ) {
+        for ( auto &inst : insts )
             inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
-        for ( auto &inst : abstractedValues ) {
+        for ( auto &inst : insts ) {
             auto stored = abstraction_store.find( inst );
             if ( stored != abstraction_store.end() )
                 abstraction_store.erase( stored );
             inst->eraseFromParent();
         }
-        abstractedValues.clear();
     }
 
     void removeAbstractDeclarations( llvm::Module & m ) {
@@ -1068,7 +1074,6 @@ struct Substitution : lart::Pass {
                         .filter( []( llvm::Function * fn ) {
                             return isAbstractDeclaration( fn );
                         } ).freeze();
-
         for ( auto &fn : toErase )
             fn->eraseFromParent();
     }
