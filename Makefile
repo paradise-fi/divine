@@ -3,9 +3,12 @@ GENERATOR != if ninja --version > /dev/null 2>&1 || \
 # fallback
 GENERATOR ?= Unix Makefiles
 
+-include /etc/divine.make # for system-wide config
 -include local.make
+
 CC ?= cc
 CXX ?= c++
+DEFAULT_FLAVOR ?= release
 
 MAKEFLAGS ?= --no-print-directory
 CONFIG ?= -DBUILD_SHARED_LIBS=ON
@@ -39,13 +42,13 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 		  -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_C_COMPILER=$(CC) \
 		  -DBUILD_SHARED_LIBS=ON
 
-all: debug
+all: $(DEFAULT_FLAVOR)
 
 FLAVORS = debug asan release
 TARGETS = divine unit functional website check llvm-dis clang
 
 ${TARGETS}:
-	$(MAKE) debug-$@
+	$(MAKE) $(DEFAULT_FLAVOR)-$@
 
 ${FLAVORS}:
 	$(MAKE) $@-divine
