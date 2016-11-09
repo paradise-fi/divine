@@ -50,28 +50,27 @@ ${TARGETS}:
 ${FLAVORS}:
 	$(MAKE) $@-divine
 
-${FLAVORS:%=.stamp-%-configure}: CMakeLists.txt .stamp-toolchain $(CONFDEP1) $(CONFDEP2)
-	mkdir -p $(OBJ)${@:.stamp-%-configure=%}
-	cd $(OBJ)${@:.stamp-%-configure=%} && \
-	    cmake $(PWD) $($(@:.stamp-%-configure=%)_FLAGS) -G "$(GENERATOR)"
-	touch $@
-
 GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
 
+${FLAVORS:%=$(OBJ)%/CMakeCache.txt}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(OBJ)toolchain/stamp
+	mkdir -p $$(dirname $@)
+	@if test -z "$(FLAVOR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
+	cd $$(dirname $@) && cmake $(PWD) $($(FLAVOR)_FLAGS) -G "$(GENERATOR)"
+
 ${TARGETS:%=debug-%}:
-	$(MAKE) .stamp-debug-configure $(GETCONFDEPS)
+	$(MAKE) $(OBJ)debug/CMakeCache.txt $(GETCONFDEPS) FLAVOR=debug
 	cmake --build $(OBJ)debug --target ${@:debug-%=%} $(VERB)
 
 ${TARGETS:%=release-%}:
-	$(MAKE) .stamp-release-configure $(GETCONFDEPS)
+	$(MAKE) $(OBJ)release/CMakeCache.txt $(GETCONFDEPS) FLAVOR=release
 	cmake --build $(OBJ)release --target ${@:release-%=%} $(VERB)
 
 ${TARGETS:%=asan-%}:
-	$(MAKE) .stamp-asan-configure $(GETCONFDEPS)
+	$(MAKE) $(OBJ)asan/CMakeCache.txt $(GETCONFDEPS) FLAVOR=asan
 	cmake --build $(OBJ)asan --target ${@:asan-%=%} $(VERB)
 
-.stamp-toolchain:
+$(OBJ)toolchain/stamp:
 	mkdir -p $(OBJ)toolchain
 	cd $(OBJ)toolchain && cmake $(PWD) $(toolchain_FLAGS) -G "$(GENERATOR)"
 	cmake --build $(OBJ)toolchain --target cxx $(VERB)
@@ -92,6 +91,6 @@ show: # make show var=VAR
 .PHONY: ${TARGETS} ${FLAVORS} ${TARGETS:%=release-%} ${FLAVORS:%=%-env}
 
 dist:
-	$(MAKE) .stamp-debug-configure $(GETCONFDEPS)
+	$(MAKE) $(OBJ)debug/CMakeCache.txt $(GETCONFDEPS)
 	cmake --build $(OBJ)debug --target package_source $(VERB)
 	cp $(OBJ)debug/divine-*.tar.gz .
