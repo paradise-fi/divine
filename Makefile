@@ -8,7 +8,7 @@ GENERATOR ?= Unix Makefiles
 
 CC ?= cc
 CXX ?= c++
-DEFAULT_FLAVOR ?= release
+DEFAULT_FLAVOUR ?= release
 
 MAKEFLAGS ?= --no-print-directory
 CONFIG ?= -DBUILD_SHARED_LIBS=ON
@@ -42,35 +42,35 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 		  -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_C_COMPILER=$(CC) \
 		  -DBUILD_SHARED_LIBS=ON
 
-all: $(DEFAULT_FLAVOR)
+all: $(DEFAULT_FLAVOUR)
 
-FLAVORS = debug asan release
+FLAVOURS = debug asan release
 TARGETS = divine unit functional website check llvm-dis clang
 
 ${TARGETS}:
-	$(MAKE) $(DEFAULT_FLAVOR)-$@
+	$(MAKE) $(DEFAULT_FLAVOUR)-$@
 
-${FLAVORS}:
+${FLAVOURS}:
 	$(MAKE) $@-divine
 
 GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
 
-${FLAVORS:%=$(OBJ)%/CMakeCache.txt}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(OBJ)toolchain/stamp
+${FLAVOURS:%=$(OBJ)%/CMakeCache.txt}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(OBJ)toolchain/stamp
 	mkdir -p $$(dirname $@)
-	@if test -z "$(FLAVOR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
-	cd $$(dirname $@) && cmake $(PWD) $($(FLAVOR)_FLAGS) -G "$(GENERATOR)"
+	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
+	cd $$(dirname $@) && cmake $(PWD) $($(FLAVOUR)_FLAGS) -G "$(GENERATOR)"
 
 ${TARGETS:%=debug-%}:
-	$(MAKE) $(OBJ)debug/CMakeCache.txt $(GETCONFDEPS) FLAVOR=debug
+	$(MAKE) $(OBJ)debug/CMakeCache.txt $(GETCONFDEPS) FLAVOUR=debug
 	cmake --build $(OBJ)debug --target ${@:debug-%=%} $(VERB)
 
 ${TARGETS:%=release-%}:
-	$(MAKE) $(OBJ)release/CMakeCache.txt $(GETCONFDEPS) FLAVOR=release
+	$(MAKE) $(OBJ)release/CMakeCache.txt $(GETCONFDEPS) FLAVOUR=release
 	cmake --build $(OBJ)release --target ${@:release-%=%} $(VERB)
 
 ${TARGETS:%=asan-%}:
-	$(MAKE) $(OBJ)asan/CMakeCache.txt $(GETCONFDEPS) FLAVOR=asan
+	$(MAKE) $(OBJ)asan/CMakeCache.txt $(GETCONFDEPS) FLAVOUR=asan
 	cmake --build $(OBJ)asan --target ${@:asan-%=%} $(VERB)
 
 $(OBJ)toolchain/stamp:
@@ -81,7 +81,7 @@ $(OBJ)toolchain/stamp:
 	cmake --build $(OBJ)toolchain --target compiler-rt $(VERB)
 	touch $@
 
-${FLAVORS:%=%-env}:
+${FLAVOURS:%=%-env}:
 	$(MAKE) ${@:%-env=%}
 	env PATH=$(OBJ)${@:%-env=%}/clang/bin:$(OBJ)${@:%-env=%}/llvm/bin:$(OBJ)${@:%-env=%}/tools:$$PATH \
 		CXXFLAGS="$(CXXFLAGS_)" LDFLAGS="$(LDFLAGS_)" $$SHELL
@@ -91,7 +91,7 @@ env : debug-env
 show: # make show var=VAR
 	@echo $($(var))
 
-.PHONY: ${TARGETS} ${FLAVORS} ${TARGETS:%=release-%} ${FLAVORS:%=%-env}
+.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env}
 
 dist:
 	$(MAKE) $(OBJ)debug/CMakeCache.txt $(GETCONFDEPS)
