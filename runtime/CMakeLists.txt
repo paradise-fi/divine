@@ -4,6 +4,7 @@ include( stringify )
 
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
       *.h divine/*.h dios/*.hpp dios/*.def atomic sys/*.h bits/*.h
+      abstract/*.hpp abstract/*.h
       pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h
       libm/*.h libm/bits/*.h
       libcxxabi/include/*
@@ -15,6 +16,8 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
 
 file( GLOB SRC_libdios
       divine/*.cpp dios/*.cpp filesystem/*.cpp )
+
+file( GLOB SRC_libabstract abstract/*.cpp abstract/*.c )
 
 file( GLOB SRC_libc
       pdclib/functions/*/*.c pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c )
@@ -67,6 +70,7 @@ mklib( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
 mklib( libcxx "${flags}" )
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem )
 mklib( libdios "${flags};-I${CMAKE_CURRENT_BINARY_DIR}" )
+mklib( libabstract "${flags};-I${CMAKE_CURRENT_BINARY_DIR}" )
 
 foreach( f ${H_RUNTIME} )
   stringify( "runtime" ${f} )
