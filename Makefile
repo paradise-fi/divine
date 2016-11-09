@@ -73,6 +73,8 @@ ${TARGETS:%=asan-%}:
 	$(MAKE) $(OBJ)asan/CMakeCache.txt $(GETCONFDEPS) FLAVOUR=asan
 	cmake --build $(OBJ)asan --target ${@:asan-%=%} $(VERB)
 
+toolchain: $(OBJ)toolchain/stamp
+
 $(OBJ)toolchain/stamp:
 	mkdir -p $(OBJ)toolchain
 	cd $(OBJ)toolchain && cmake $(PWD) $(toolchain_FLAGS) -G "$(GENERATOR)"
@@ -91,7 +93,7 @@ env : debug-env
 show: # make show var=VAR
 	@echo $($(var))
 
-.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env}
+.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env} toolchain
 
 dist:
 	$(MAKE) $(OBJ)debug/CMakeCache.txt $(GETCONFDEPS)
