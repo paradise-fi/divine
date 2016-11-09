@@ -80,7 +80,7 @@ extern "C" {
 #ifdef __divine__
             return __vm_choose( 2 );
 #else
-            return std::srand() % 2;
+            return std::rand() % 2;
 #endif
         }
         return tristate->value;

@@ -1,6 +1,12 @@
 #include <cassert>
+#include <cstdint>
+#include <limits>
 #include "common.h"
 #include "tristate.h"
+
+#ifndef __divine__
+#include <cstdlib>
+#endif
 
 #define _ROOT __attribute__((__annotate__("brick.llvm.prune.root")))
 
@@ -74,6 +80,34 @@ inline pointer __abstract_zero_shift( pointer a, pointer b ) {
     return __abstract_zero_construct();
 }
 
+#ifdef __divine__
+
+#define __abstract_zero_explicate_type( name, type ) \
+type __abstract_zero_explicate_##name( pointer val ) _ROOT { \
+    size_t range = std::numeric_limits<type>::max(); \
+    if ( val->value == Zero::Domain::ZeroValue ) \
+        return 0; \
+    else if ( val->value == Zero::Domain::NonzeroValue ) \
+            return __vm_choose( range ) + 1; \
+    else \
+            return __vm_choose( range + 1 ); \
+}
+
+#else
+
+#define __abstract_zero_explicate_type( name, type ) \
+type __abstract_zero_explicate_##name( pointer val ) _ROOT { \
+    size_t range = std::numeric_limits<type>::max(); \
+    if ( val->value == Zero::Domain::ZeroValue ) \
+        return 0; \
+    else if ( val->value == Zero::Domain::NonzeroValue ) \
+        return std::rand() % range + 1; \
+    else \
+        return std::rand() % ( range + 1 ); \
+}
+
+#endif
+
 extern "C" {
     pointer * __abstract_zero_alloca() _ROOT {
         return __abstract_zero_alloca_create();
@@ -90,6 +124,12 @@ extern "C" {
     pointer __abstract_zero_lift( int i ) _ROOT {
         return __abstract_zero_construct( i );
     }
+
+    __abstract_zero_explicate_type( i1,  bool )
+    __abstract_zero_explicate_type( i8,  uint8_t )
+    __abstract_zero_explicate_type( i16, uint16_t )
+    __abstract_zero_explicate_type( i32, uint32_t )
+    __abstract_zero_explicate_type( i64, uint64_t )
 
     pointer __abstract_zero_add( pointer a, pointer b ) _ROOT {
         return __abstract_zero_meet( a, b );
