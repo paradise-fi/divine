@@ -13,7 +13,7 @@ finished()
 {
     perl -i.orig -e '$rep = `cat report.txt`; while (<>) { s/\@report\@/$rep/; print $_; }' \
          doc/website/status.md
-    make website
+    make debug-website
     mv doc/website/status.md.orig doc/website/status.md
 
     email | sendmail $address
@@ -29,7 +29,7 @@ changes()
 
 cantbuild()
 {
-    make 2>&1 || true # dump the failing stuff into the report
+    make debug 2>&1 || true # dump the failing stuff into the report
     echo
     echo "Build failed. Stopping here."
 }
@@ -45,7 +45,7 @@ failed()
     else
         echo "Make check failed:"
         echo
-        make check 2>&1 || true
+        make debug-check 2>&1 || true
     fi
 }
 
@@ -77,7 +77,7 @@ list="$objdir/test/results/list"
 
 changes > report.txt
 
-if ! make; then # does it build at all?
+if ! make debug; then # does it build at all?
     cantbuild >> report.txt
     finished 1
 fi
@@ -85,7 +85,7 @@ fi
 (echo "# Test results"; echo) >> report.txt
 
 rm -f $list
-if ! make check || grep -q -v passed $list; then
+if ! make debug-check || grep -q -v passed $list; then
     failed >> report.txt
     finished 1
 fi
