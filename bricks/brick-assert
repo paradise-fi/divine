@@ -63,13 +63,13 @@
 
 #else
 
-#define ASSERT(...) ((void)0)
-#define ASSERT_PRED(p, x) ((void)0)
-#define ASSERT_EQ(x, y) ((void)0)
-#define ASSERT_LEQ(x, y) ((void)0)
-#define ASSERT_LT(x, y) ((void)0)
-#define ASSERT_NEQ(x, y) ((void)0)
-#define ASSERT_EQ_IDX(i, x, y) ((void)0)
+#define ASSERT(...) static_cast< decltype(__VA_ARGS__, void(0)) >(0)
+#define ASSERT_PRED(p, x) static_cast< decltype(p, x, void(0)) >(0)
+#define ASSERT_EQ(x, y) static_cast< decltype(x, y, void(0)) >(0)
+#define ASSERT_LEQ(x, y) static_cast< decltype(x, y, void(0)) >(0)
+#define ASSERT_LT(x, y) static_cast< decltype(x, y, void(0)) >(0)
+#define ASSERT_NEQ(x, y) static_cast< decltype(x, y, void(0)) >(0)
+#define ASSERT_EQ_IDX(i, x, y) static_cast< decltype(i, x, y, void(0)) >(0)
 #endif
 
 /* you must #include <brick-string.h> to use ASSERT_UNREACHABLE_F */
