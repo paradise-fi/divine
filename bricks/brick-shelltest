@@ -985,7 +985,7 @@ struct Main {
                 if ( !skip( *i, options.exclude, true ) )
                     runnable = false;
 
-                    if ( !runnable )
+                if ( !runnable )
                     continue;
 
                 cases.push_back( TestCase( journal, options, options.testdir + *i,
@@ -1247,4 +1247,4 @@ int main( int argc, const char **argv ) {
 
 #endif
 
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
