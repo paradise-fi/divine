@@ -51,6 +51,7 @@ struct WithBC : Command
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
     std::vector< std::string > _systemopts;
+    std::vector< std::string > _lartPasses;
     vm::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
 
@@ -251,6 +252,8 @@ struct CLI : Interface
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
             .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
                      "disable static (transformation based) state space reductions"s )
+            .option( "[--lart {string}]", &WithBC::_lartPasses,
+                     "run additional LART pass in the loader, can be specified multiple times" )
             .option( "[-o {string}|-o{string}]", &WithBC::_systemopts, "system options"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
