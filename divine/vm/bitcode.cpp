@@ -30,7 +30,8 @@ DIVINE_UNRELAX_WARNINGS
 
 using namespace divine::vm;
 
-BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr, bool verbose, bool reduce )
+BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr, bool verbose, bool reduce,
+                  std::vector< std::string > lartPasses )
 {
     _ctx.reset( new llvm::LLVMContext() );
     std::unique_ptr< llvm::MemoryBuffer > input;
@@ -46,24 +47,31 @@ BitCode::BitCode( std::string file, BitCode::Env env, AutoTraceFlags tr, bool ve
     if ( !parsed )
         throw BCParseError( "Error parsing input model; probably not a valid bitcode file." );
     _module = std::move( parsed.get() );
-    init( env, tr, verbose, reduce );
+    init( env, tr, verbose, reduce, lartPasses );
 }
 
 
 BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVMContext > ctx,
-                  BitCode::Env env, AutoTraceFlags tr, bool verbose, bool reduce )
+                  BitCode::Env env, AutoTraceFlags tr, bool verbose, bool reduce,
+                  std::vector< std::string > lartPasses )
     : _ctx( ctx ), _module( std::move( m ) )
 {
     ASSERT( _module.get() );
     _program.reset( new Program( _module.get() ) );
-    init( env, tr, verbose, reduce );
+    init( env, tr, verbose, reduce, lartPasses );
 }
 
 
-void BitCode::init( BitCode::Env env, AutoTraceFlags tr, bool verbose, bool reduce )
+void BitCode::init( BitCode::Env env, AutoTraceFlags tr, bool verbose, bool reduce,
+                    std::vector< std::string > lartPasses )
 {
     lart::Driver lart;
-    // first reduce before any tranformation to avoid unnecessary transformations
+
+    // User defined passes are run first so they don't break instrumentation
+    for ( auto p : lartPasses )
+        lart.setup( p );
+
+    // reduce before any instrumentation to avoid unnecessary instrumentation
     if ( reduce )
         lart.setup( lart::reduction::paroptPass() );
     lart.setup( lart::divine::interruptPass() );
