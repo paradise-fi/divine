@@ -13,7 +13,7 @@ DEFAULT_FLAVOUR ?= release
 MAKEFLAGS ?= --no-print-directory
 CONFIG ?= -DBUILD_SHARED_LIBS=ON
 OBJ ?= $(PWD)/_build.
-VERB = $(if $(filter $(GENERATOR),Ninja),-- $(if $(VERBOSE),-v))
+VERB = $(if $(filter $(GENERATOR),Ninja),-- $(if $(VERBOSE),-v -d explain))
 
 TOOLDIR = $(OBJ)toolchain/
 CLANG = $(TOOLDIR)/clang/
@@ -64,7 +64,7 @@ ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP
 
 ${TARGETS:%=debug-%}:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug
-	cmake --build $(OBJ)debug --target ${@:debug-%=%} $(VERB) -d explain
+	cmake --build $(OBJ)debug --target ${@:debug-%=%} $(VERB)
 
 ${TARGETS:%=release-%}:
 	$(MAKE) $(OBJ)release/cmake.stamp $(GETCONFDEPS) FLAVOUR=release
