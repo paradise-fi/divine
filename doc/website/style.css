@@ -10,25 +10,58 @@ body {
     padding: 0;
     background: white;
 }
+
 @media ( max-width: 80ch ), ( max-device-width: 80ch ) {
     body {
-        margin: 0.5em;
+        margin: 1ch;
         max-width: none;
     }
 }
 
+@media ( max-width: 750px ), ( max-device-width: 750px ) {
+    pre#logo { transform: scaleX( 1 ) scaleY( 0.8 ) !important; }
+}
+
+@media ( max-width: 550px ), ( max-device-width: 550px ) {
+    pre#logo {
+        transform: scaleX( 0.6 ) scaleY( 0.6 ) !important;
+        left: calc( 50% - 33ch );
+        position: relative;
+    }
+    #logo-wrapper { height: 6ex; max-width: 50ch !important; margin: auto !important; }
+}
 
 pre, tt, code {
     font-family: 'Ubuntu Mono';
     font-size: 100%;
     margin: 0;
     padding: 0;
+    overflow: auto;
 }
+
+td.sourceCode { max-width: 200px; }
+table.sourceCode { max-width: 100%; }
+
 code { color: #1A001A; }
 
 pre#logo {
-    white-space: pre; text-align: center;
-    transform: scaleX(1.2); font-size: 16px; font-weight: bold;
+    white-space: pre;
+    font-size: 16px;
+    font-weight: bold;
+    overflow: hidden;
+    transform-origin: 50% 0;
+    transform: scaleX(1.2);
+    margin: auto;
+    display: block;
+    width: 65ch;
+}
+
+#logo-wrapper {
+    font-size: 16px;
+    font-family: 'Ubuntu Mono';
+    margin: 0;
+    text-align: center;
+    width: 100%;
 }
 
 #toc ul { list-style-type: none; }
@@ -39,17 +72,18 @@ a:link, a:visited, a:active { text-decoration: none; color: darkred; }
 a:link:hover, a:visited:hover, a:active:hover { text-decoration: none; color: darkblue; }
 
 pre#linkbar {
-    white-space: pre-wrap; background: #202020;
+    white-space: pre;
+    background: #202020;
     margin-left: -1ch;
     margin-right: -1ch;
     text-align: center;
     font-family: inherit; padding: 4px; margin-top: 2ex; font-size: 80%;
+    overflow: hidden;
 }
 
-@media ( max-width: 60ch ), ( max-device-width: 60ch ) {
-    pre#linkbar {
-        white-space: normal;
-    }
+@media ( max-width: 70ch ), ( max-device-width: 70ch ) {
+    pre#linkbar { white-space: normal; }
+    #linkbar a { margin-left: .7em !important; margin-right: .6em !important; }
 }
 
 div#footer {
@@ -65,7 +99,7 @@ div#footer {
 
 #footer .divider { margin-left: .5em; margin-right: .5em; }
 
-#linkbar a { margin-left: 2em; }
+#linkbar a { margin-left: 1em; margin-right: 1em; }
 #linkbar a:link, #linkbar a:visited { color: white; }
 #linkbar a:link:hover, #linkbar a:visited:hover { color: pink; }
 #footer a:link, #footer a:visited { color: white; }
@@ -75,8 +109,8 @@ h1 {
     font-weight: bold;
     font-size: 120%;
     text-align: left;
-    margin-left: -1ch;
-    margin-right: -1ch;
+    margin-left: -.8ch;
+    margin-right: -.8ch;
     margin-top: 16px;
     margin-bottom: 16px;
     padding-left: 1ch;
