@@ -360,6 +360,7 @@ struct Intrinsic : lart::Pass {
             if ( auto fn = m.getFunction( name ) ) {
                 for ( auto u : fn->users() ) {
                     LART_DEBUG( std::cerr << "U " << std::flush; u->dump() );
+                    static_cast< void >( u );
                 }
                 fn->replaceAllUsesWith( llvm::UndefValue::get( fn->getType() ) );
                 fn->eraseFromParent();

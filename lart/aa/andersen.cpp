@@ -50,7 +50,7 @@ void Andersen::solve( Constraint c ) {
     switch ( c.t ) {
         case Constraint::Ref:
             std::cerr << "ref" << std::endl;
-            assert( c.right->aml );
+            ASSERT( c.right->aml );
             updated.insert( c.right );
             break;
         case Constraint::Deref:
@@ -81,7 +81,7 @@ void Andersen::solve( Constraint c ) {
     }
 
     for ( auto n: updated )
-        assert( n->aml );
+        ASSERT( n->aml );
 
     if ( updated != c.left->_pointsto ) {
         std::cerr << "updated:";
@@ -156,7 +156,7 @@ void Andersen::build( llvm::Instruction &i ) {
             } else {
                 int idx = 0;
                 for ( auto arg = F->arg_begin(); arg != F->arg_end(); ++ arg ) {
-                    assert( idx <= int( i.getNumOperands() ) );
+                    ASSERT( idx <= int( i.getNumOperands() ) );
                     constraint( Constraint::Copy, arg, i.getOperand( idx ) );
                     ++ idx;
                 }
@@ -300,7 +300,7 @@ void Andersen::annotate( llvm::Module &m ) {
         for ( auto &b: f )
             for ( auto &i : b )
                 annotate( &i, seen );
-    assert( _mdtemp.empty() );
+    ASSERT( _mdtemp.empty() );
 }
 
 }
