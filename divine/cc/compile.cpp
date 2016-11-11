@@ -58,6 +58,7 @@ Compile::Compile( Options opts ) :
                   , "-isystem", joinPath( rt::includeDir, "pdclib" )
                   , "-isystem", joinPath( rt::includeDir, "libm" )
                   , "-isystem", joinPath( rt::includeDir, "libcxx/include" )
+                  , "-isystem", joinPath( rt::includeDir, "libcxxabi/include" )
                   , "-isystem", joinPath( rt::includeDir, "libunwind/include" )
                   , "-D_POSIX_C_SOURCE=2008098L"
                   , "-D_LITTLE_ENDIAN=1234"
