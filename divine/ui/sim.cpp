@@ -377,6 +377,7 @@ struct Interpreter
     {
         vm::setup::boot( _ctx );
         Stepper step;
+        step._booting = true;
         step._bps.insert( _bc->program().functionByName( "main" ) );
         run( step, false );
         if ( !_ctx._info.empty() )

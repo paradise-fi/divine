@@ -34,7 +34,7 @@ struct Stepper
 {
     GenericPointer _frame, _frame_cur, _parent_cur;
     bool _ff_kernel;
-    bool _stop_on_fault, _stop_on_error;
+    bool _stop_on_fault, _stop_on_error, _booting;
     bool _sigint;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
     std::pair< std::string, int > _line;
@@ -45,7 +45,7 @@ struct Stepper
           _frame_cur( nullPointer() ),
           _parent_cur( nullPointer() ),
           _ff_kernel( false ),
-          _stop_on_fault( false ), _stop_on_error( true ),
+          _stop_on_fault( false ), _stop_on_error( true ), _booting( false ),
           _sigint( false ),
           _lines( 0, 0 ), _instructions( 0, 0 ),
           _states( 0, 0 ), _jumps( 0, 0 ),
@@ -132,9 +132,14 @@ struct Stepper
         if ( !ctx.frame().null() )
             return false; /* nothing to be done */
 
+        if ( _booting && ctx.frame().null() &&
+             ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Error ) )
+            return false; /* can't schedule if boot failed */
+
         if ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Cancel )
             return true;
 
+        _booting = false;
         yield( ctx.snapshot() );
         vm::setup::scheduler( ctx );
         return true;
