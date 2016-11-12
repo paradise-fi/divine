@@ -28,6 +28,7 @@
 
 #include <brick-cmd>
 #include <brick-fs>
+#include <cctype>
 #include <regex>
 
 #include <runtime/divine.h>
@@ -47,11 +48,17 @@ struct Command
 
 struct WithBC : Command
 {
+    struct VfsDir {
+        std::string capture;
+        std::string mount;
+        bool followSymlink;
+        size_t sizeLimit;
+    };
+
     std::string _file, _std;
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
     std::vector< std::string > _systemopts;
-    std::vector< std::string > _lartPasses;
     vm::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
     bool _init_done = false;
@@ -192,6 +199,27 @@ std::vector< std::string > fromArgv( int argc, const char **argv )
     return args;
 }
 
+size_t sizeFromString( std::string s ) {
+    size_t pos;
+    size_t base = stoull( s, &pos );
+    std::string r = s.substr( pos );
+    if ( r.empty() )
+        return base;
+    std::string rem;
+    std::transform( r.begin(), r.end(), std::back_inserter( rem ), ::tolower );
+    if ( rem == "k" || rem == "kb" )
+        base *= 1000;
+    else if ( rem == "ki" || rem == "kib" )
+        base *= 1024;
+    else if ( rem == "m" || rem == "mb" )
+        base *= 1000'000;
+    else if ( rem == "mi" || rem == "mib" )
+        base *= 1024 * 1024;
+    else
+        throw std::invalid_argument( "unknown suffix " + r );
+    return base;
+}
+
 }
 
 struct CLI : Interface
@@ -220,6 +248,54 @@ struct CLI : Interface
                          return bad( cmd::BadContent, "file " + s + " is not readable");
                      return good( s );
                  } ) ->
+            add( "vfsdir", []( std::string s, auto good, auto bad )
+                {
+                    WithBC::VfsDir dir { .followSymlink = true, .sizeLimit = 16 * 1024 * 1024 };
+                    std::regex sep(":");
+                    std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
+                    int i;
+                    for ( i = 0; it != std::sregex_token_iterator(); it++, i++ )
+                        switch ( i ) {
+                        case 0:
+                            dir.capture = *it;
+                            dir.mount = *it;
+                            break;
+                        case 1:
+                            dir.mount = *it;
+                            break;
+                        case 2:
+                            if ( *it == "followLinks" )
+                                dir.followSymlink = true;
+                            else if ( *it == "nofollowLinks" )
+                                dir.followSymlink = false;
+                            else
+                                return bad( cmd::BadContent, "invalid option for follow links" );
+                            break;
+                        case 3:
+                            try {
+                                dir.sizeLimit = sizeFromString( *it );
+                            }
+                            catch ( const std::invalid_argument& e ) {
+                                return bad( cmd::BadContent, std::string("cannot set size limit: ")
+                                    + e.what() );
+                            }
+                            catch ( const std::out_of_range& e ) {
+                                return bad( cmd::BadContent, "size limit overflow" );
+                            }
+                            break;
+                        default:
+                            return bad( cmd::BadContent, " unexpected attribute "
+                                + std::string( *it ) + " in vfsdir" );
+                    }
+
+                    if ( i < 1 )
+                        return bad( cmd::BadContent, "missing a directory to capture" );
+                    if ( !brick::fs::access( dir.capture, F_OK ) )
+                        return bad( cmd::BadContent, "file or directory " + dir.capture + " does not exist" );
+                    if ( !brick::fs::access( dir.capture, R_OK ) )
+                        return bad( cmd::BadContent, "file or directory " + dir.capture + " is not readable" );
+                    return good( dir );
+                } ) ->
             add( "label", []( std::string s, auto good, auto bad )
                 {
                     if ( s.compare("none") == 0 )
@@ -264,6 +340,8 @@ struct CLI : Interface
             .option( "[--lart {string}]", &WithBC::_lartPasses,
                      "run additional LART pass in the loader, can be specified multiple times" )
             .option( "[-o {string}|-o{string}]", &WithBC::_systemopts, "system options"s )
+            .option( "[--capture {vfsdir}]",
+                  &WithBC::_vfs, "capture directory in form {dir}[:{mount point}[:{followLinks|nofollowLinks}[:{sizeLimit}]]]"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
