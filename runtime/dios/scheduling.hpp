@@ -44,20 +44,16 @@ struct CleanupFrame : _VM_Frame {
 template < class T >
 struct SortedStorage {
     using Tid = decltype( std::declval< T >().getId() );
-    SortedStorage(): _storage( nullptr ) { }
+    SortedStorage() {}
+    SortedStorage( const SortedStorage & ) = delete;
 
     T *find( Tid id ) const noexcept {
-        if ( !_storage )
-            return nullptr;
-        for ( auto t : *this ) {
+        for ( auto t : *this )
             if ( t->getId() == id )
                 return t;
-        }
     }
 
     bool remove( Tid id ) noexcept {
-        if ( !_storage )
-            return;
         size_t s = size();
         for ( size_t i = 0; i != s; i++ ) {
 
@@ -65,13 +61,7 @@ struct SortedStorage {
                 continue;
             delete_object( _storage[ i ] );
             _storage[ i ] = _storage[ s - 1 ];
-            if ( s == 1 ) {
-                __vm_obj_free( _storage );
-                _storage = nullptr;
-            }
-            else {
-                __vm_obj_resize( _storage, __vm_obj_size( _storage ) - sizeof( T * ) );
-            }
+            resize ( size() - 1 );
             sort();
             return true;
         }
@@ -80,27 +70,11 @@ struct SortedStorage {
 
     template < class... Args >
     T *emplace( Args... args ) noexcept {
-        if ( !_storage )
-            _storage = static_cast< T** >( __vm_obj_make( sizeof( T * ) ) );
-        else
-            __vm_obj_resize( _storage, __vm_obj_size( _storage ) + sizeof( T * ) );
+        resize( size() + 1 );
         size_t idx = size() - 1;
         T *ret = _storage[ idx ] = new_object< T >( args... );
         sort();
         return ret;
-    }
-
-    void erase( T** item ) noexcept {
-        delete_object( *item );
-        size_t s = size();
-        if ( s == 1) {
-            __vm_obj_free( _storage );
-            _storage = nullptr;
-        } else {
-            *item = _storage[ s - 1 ];
-            __vm_obj_resize( _storage, ( s - 1) * sizeof( T *) );
-        }
-        sort();
     }
 
     void erase( T** first, T** last ) noexcept {
@@ -111,21 +85,18 @@ struct SortedStorage {
             delete_object( *f );
         }
         size_t s = last - first;
-        if ( s == orig_size ) {
-            __vm_obj_free( _storage );
-            _storage = nullptr;
-        }
-        else {
+        if ( s != orig_size )
             memmove( first, last, ( end() - last ) * sizeof( T * ) );
-            __vm_obj_resize( _storage, ( orig_size - s) * sizeof( T * ) );
-        }
+        resize( orig_size - s );
         sort();
     }
 
-    T **begin() const noexcept { return _storage; }
-    T **end() const noexcept { return _storage + size(); }
-    size_t size() const noexcept { return _storage ? __vm_obj_size( _storage ) / sizeof( T * ) : 0; }
-    bool empty() const noexcept { return !_storage; };
+    void resize( int n ) { __vm_obj_resize( this, std::max( size_t( 1 ),
+                                                            sizeof( *this ) + n * sizeof( T * ) ) ); }
+    T **begin() noexcept { return _storage; }
+    T **end() noexcept { return _storage + size(); }
+    size_t size() const noexcept { return ( __vm_obj_size( this ) - sizeof( *this ) ) / sizeof( T * ); }
+    bool empty() const noexcept { return size() == 0; };
     T *operator[]( size_t i ) const noexcept { return _storage[ i ]; };
 private:
     void sort() {
@@ -136,7 +107,7 @@ private:
         });
     }
 
-    T **_storage;
+    T *_storage[];
 };
 
 struct Thread {
