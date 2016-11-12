@@ -33,17 +33,19 @@ template< typename Context >
 struct Stepper
 {
     GenericPointer _frame, _frame_cur, _parent_cur;
+    llvm::Instruction *_insn_last;
     bool _ff_kernel;
     bool _stop_on_fault, _stop_on_error, _booting;
     bool _sigint;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
-    std::pair< std::string, int > _line;
+    std::pair< llvm::StringRef, int > _line;
     std::set< CodePointer > _bps;
 
     Stepper()
         : _frame( nullPointer() ),
           _frame_cur( nullPointer() ),
           _parent_cur( nullPointer() ),
+          _insn_last( nullptr ),
           _ff_kernel( false ),
           _stop_on_fault( false ), _stop_on_error( true ), _booting( false ),
           _sigint( false ),
@@ -74,9 +76,8 @@ struct Stepper
     bool check( Context &ctx, Eval &eval, bool breakpoints )
     {
         if ( breakpoints )
-            for ( auto bp : _bps )
-                if ( eval.pc() == bp )
-                    return true;
+            if ( _bps.count( eval.pc() ) )
+                return true;
 
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
             return true;
@@ -90,9 +91,13 @@ struct Stepper
     void instruction( Program::Instruction &i )
     {
         add( _instructions );
-        if ( i.op )
+        if ( !i.op )
+            return;
+        auto op = llvm::cast< llvm::Instruction >( i.op );
+
+        if ( !_insn_last || _insn_last->getDebugLoc() != op->getDebugLoc() )
         {
-            auto l = fileline( *llvm::cast< llvm::Instruction >( i.op ) );
+            auto l = fileline( *op );
             if ( _line.second && l != _line )
                 add( _lines );
             if ( _frame.null() || _frame == _frame_cur )

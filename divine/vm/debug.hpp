@@ -42,7 +42,7 @@ static std::ostream &operator<<( std::ostream &o, DNKind dnk )
     }
 }
 
-std::pair< std::string, int > fileline( const llvm::Instruction &insn );
+std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn );
 std::string location( const llvm::Instruction &insn );
 
 template< typename Program, typename Heap >

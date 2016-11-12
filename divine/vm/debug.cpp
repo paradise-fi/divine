@@ -23,15 +23,15 @@
 namespace divine {
 namespace vm {
 
-std::pair< std::string, int > fileline( const llvm::Instruction &insn )
+std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn )
 {
     auto loc = insn.getDebugLoc().get();
     if ( loc && loc->getNumOperands() )
-        return std::make_pair( loc->getFilename().str(),
+        return std::make_pair( loc->getFilename(),
                                loc->getLine() );
     auto prog = llvm::getDISubprogram( insn.getParent()->getParent() );
     if ( prog )
-        return std::make_pair( prog->getFilename().str(),
+        return std::make_pair( prog->getFilename(),
                                prog->getScopeLine() );
     return std::make_pair( "", 0 );
 }
@@ -40,7 +40,7 @@ std::string location( const llvm::Instruction &insn )
 {
     auto fl = fileline( insn );
     if ( fl.second )
-        return fl.first + ":" + brick::string::fmt( fl.second );
+        return fl.first.str() + ":" + brick::string::fmt( fl.second );
     return "(unknown location)";
 }
 
