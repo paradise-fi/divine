@@ -464,12 +464,9 @@ struct Interpreter
 
     void go( command::BackTrace bt )
     {
-        set( "$$", bt.var );
-        do {
-            get( "$$" ).format( std::cerr, 0, false );
-            set( "$$", "$$.@caller", true );
-            std::cerr << std::endl;
-        } while ( get( "$$" ).valid() );
+        vm::DNSet visited;
+        int stacks = 0;
+        vm::backtrace( get( bt.var ), visited, stacks, 100 );
     }
 
     void go( command::Show s )
