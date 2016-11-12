@@ -222,7 +222,7 @@ void __vm_trace( enum _VM_Trace type, ... ) NOTHROW NATIVE_VISIBLE;
 void *__vm_obj_make( int size ) NOTHROW NATIVE_VISIBLE;
 void  __vm_obj_resize( void *ptr, int size ) NOTHROW NATIVE_VISIBLE;
 void  __vm_obj_free( void *ptr ) NOTHROW NATIVE_VISIBLE;
-int   __vm_obj_size( void * ) NOTHROW NATIVE_VISIBLE;
+int   __vm_obj_size( const void * ) NOTHROW NATIVE_VISIBLE;
 
 CPP_END
 
