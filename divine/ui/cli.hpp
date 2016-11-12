@@ -298,7 +298,7 @@ struct CLI : Interface
             .option( "[{string}]", &DivineLd::_flags, "any ld options including input file(s) to link"s );
 
         auto parser = cmd::make_parser( v )
-            .command< Verify >( vrfyopts, bcopts )
+            .command< Verify >( &WithBC::_useropts, vrfyopts, bcopts )
             .command< Run >( &WithBC::_useropts, bcopts )
             .command< Sim >( &WithBC::_useropts, bcopts )
             .command< Draw >( drawopts, bcopts )
