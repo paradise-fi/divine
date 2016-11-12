@@ -590,7 +590,7 @@ void Program::computeStatic()
             if ( inst.op )
             {
                 ASSERT_EQ( llvm::cast< llvm::Instruction >( inst.op )->getParent()->getParent(),
-                           module->getFunction( md2name( op ) ) );
+                           llvmfunction( pc ) );
                 opcode = getOpcode( inst.op );
                 subop = getSubOp( inst.op, *this );
                 offset = inst.values.empty() ? 0 : inst.result().offset;
@@ -602,16 +602,16 @@ void Program::computeStatic()
             writeInst( size );
         }
         ASSERT_EQ( instTable.cooked().offset() - instOffset, instTableSize );
-        instOffset += instTableSize;
 
         // write language specific data for C++ exceptions
-        llvm::Function *llvmfn = module->getFunction( md2name( op ) );
+        llvm::Function *llvmfn = llvmfunction( pc );
         ASSERT( llvmfn );
         lart::divine::CppEhTab tab( *llvmfn );
 
         auto lsda = lsdaObj + lsdaOffset;
         writeMetaElem( 9, lsda );
         tab.insertEhTable( *this, lsda.cooked(), func.typeIDs );
+        instOffset += instTableSize;
         lsdaOffset += tab.tableSizeBound();
     }
 }
