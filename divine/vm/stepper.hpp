@@ -108,7 +108,8 @@ struct Stepper
         GenericPointer last = _frame_cur, last_parent = _parent_cur;
         value::Pointer next_parent;
 
-        heap.read( next + PointerBytes, next_parent );
+        if ( !next.null() )
+            heap.read( next + PointerBytes, next_parent );
 
         _frame_cur = next;
         _parent_cur = next_parent.cooked();
