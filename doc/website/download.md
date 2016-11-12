@@ -22,6 +22,13 @@ Alternatively, you can also download [older versions] [2]. Please note,
 however, that DiVinE Cluster, DiVinE Multi-Core and ProbDiVinE have been
 discontinued and the 3.x branch of DIVINE is no longer activaly maintained.
 
+Virtual Machine Images
+----------------------
+
+Since building DIVINE can be a time-consuming process, once a stable release of
+DIVINE 4 is available, we will provide pre-built VM images for quick
+evaluation.
+
 [1]: whatsnew.html
 [2]: download
 [3]: http://darcs.net
