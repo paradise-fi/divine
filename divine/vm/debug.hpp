@@ -275,5 +275,38 @@ struct DebugContext : Context< Program, Heap >
     }
 };
 
+using DNSet = std::set< vm::DNKey >;
+
+template< typename DN >
+void backtrace( DN dn, DNSet &visited, int &stacks, int maxdepth )
+{
+    if ( visited.count( dn.sortkey() ) || dn.address().type() != vm::PointerType::Heap )
+        return;
+    visited.insert( dn.sortkey() );
+
+    if ( !maxdepth )
+        return;
+
+    if ( dn.kind() == vm::DNKind::Frame )
+    {
+        dn.attributes( []( std::string k, std::string v )
+                       {
+                           if ( k == "@pc" || k == "@address" || k == "@location" || k == "@symbol" )
+                               std::cout << "  " << k << ": " << v << std::endl;
+                       } );
+        std::cout << std::endl;
+    }
+
+    dn.related( [&]( std::string k, auto rel )
+                {
+                    if ( rel.kind() == vm::DNKind::Frame && k != "@caller" &&
+                         rel.address().type() == vm::PointerType::Heap &&
+                         !visited.count( rel.sortkey() ) && maxdepth > 1 )
+                        std::cerr << "backtrace #" << ++stacks << ":" << std::endl;
+                    backtrace( rel, visited, stacks, k == "@caller" ? maxdepth - 1 : maxdepth );
+                } );
+}
+
+
 }
 }

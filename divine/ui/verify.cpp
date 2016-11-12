@@ -26,50 +26,19 @@
 namespace divine {
 namespace ui {
 
-using DNSet = std::set< vm::DNKey >;
-
-template< typename DN >
-void dump( DN dn, DNSet &visited, int &stacks, int maxdepth )
-{
-    if ( visited.count( dn.sortkey() ) || dn.address().type() != vm::PointerType::Heap )
-        return;
-    visited.insert( dn.sortkey() );
-
-    if ( !maxdepth )
-        return;
-
-    if ( dn.kind() == vm::DNKind::Frame )
-    {
-        dn.attributes( []( std::string k, std::string v )
-                       {
-                           if ( k == "@pc" || k == "@address" || k == "@location" || k == "@symbol" )
-                               std::cout << "  " << k << ": " << v << std::endl;
-                       } );
-        std::cout << std::endl;
-    }
-
-    dn.related( [&]( std::string k, auto rel )
-                {
-                    if ( rel.kind() == vm::DNKind::Frame && k != "@caller" &&
-                         !visited.count( rel.sortkey() ) && maxdepth > 1 )
-                        std::cerr << "backtrace #" << ++stacks << ":" << std::endl;
-                    dump( rel, visited, stacks, k == "@caller" ? maxdepth - 1 : maxdepth );
-                } );
-}
-
 template< typename Dbg >
-void dump( Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
+void backtrace( Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
 {
     vm::DebugNode< vm::Program, vm::CowHeap > dn( dbg, snap ), dn_top( dbg, snap );
     dn.address( vm::DNKind::Object, dbg.get( _VM_CR_State ).pointer );
     dn.type( dbg._state_type );
     dn.di_type( dbg._state_di_type );
     dn_top.address( vm::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
-    DNSet visited;
+    vm::DNSet visited;
     int stacks = 1;
-    std::cerr << "backtrace #1 [active thread]:" << std::endl;
-    dump( dn_top, visited, stacks, maxdepth );
-    dump( dn, visited, stacks, maxdepth );
+    std::cerr << "backtrace #1 [active stack]:" << std::endl;
+    vm::backtrace( dn_top, visited, stacks, maxdepth );
+    vm::backtrace( dn, visited, stacks, maxdepth );
 }
 
 void Verify::run()
@@ -225,7 +194,7 @@ void Verify::run()
     Stepper step;
     step._stop_on_error = true;
     step.run( dbg, []( auto x ) { return x; }, []() {}, Stepper::Quiet );
-    dump( dbg, dbg.snapshot(), _backtraceMaxDepth );
+    backtrace( dbg, dbg.snapshot(), _backtraceMaxDepth );
 }
 
 }
