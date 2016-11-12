@@ -109,6 +109,7 @@ struct Run : WithBC {
 };
 
 struct Sim : WithBC {
+    Sim() { _systemopts.emplace_back( "trace:thread" ); }
     void run();
 };
 
