@@ -410,7 +410,6 @@ struct Interpreter
         Stepper step;
         step._booting = true;
         auto mainpc = _bc->program().functionByName( "main" );
-        mainpc.instruction( 1 );
         step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
         run( step, false );
         if ( !_ctx._info.empty() )
@@ -466,7 +465,6 @@ struct Interpreter
                     auto pc = _bc->program().functionByName( w );
                     if ( pc.null() )
                         throw brick::except::Error( "Could not find " + w );
-                    pc.instruction( 1 );
                     _bps.emplace_back( pc );
                 }
                 else

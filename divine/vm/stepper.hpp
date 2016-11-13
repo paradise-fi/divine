@@ -56,7 +56,7 @@ struct Stepper
           _parent_cur( nullPointer() ),
           _insn_last( nullptr ),
           _ff_kernel( false ),
-          _stop_on_fault( false ), _stop_on_error( true ), _booting( false ), _break( false ),
+          _stop_on_fault( false ), _stop_on_error( true ), _booting( false ),
           _sigint( false ),
           _lines( 0, 0 ), _instructions( 0, 0 ),
           _states( 0, 0 ), _jumps( 0, 0 ),
@@ -81,25 +81,8 @@ struct Stepper
         return p.second && p.first >= p.second;
     }
 
-    bool check( Context &ctx )
+    bool check_location( CodePointer pc, const Program::Instruction &i )
     {
-        if ( _break )
-            return true;
-        if ( !_frame.null() && !ctx.heap().valid( _frame ) )
-            return true;
-        if ( _check( _jumps ) )
-            return true;
-        if ( !_frame.null() && _frame_cur != _frame )
-            return false;
-        return _check( _lines ) || _check( _instructions ) || _check( _states );
-    }
-
-    void instruction( CodePointer pc, Program::Instruction &i )
-    {
-        add( _instructions );
-        if ( !i.op )
-            return;
-
         auto op = llvm::cast< llvm::Instruction >( i.op );
         bool dbg_changed = !_insn_last || _insn_last->getDebugLoc() != op->getDebugLoc();
 
@@ -112,7 +95,27 @@ struct Stepper
                 _line = l;
         }
         if ( _breakpoint )
-            _break = _breakpoint( pc, dbg_changed );
+            return _breakpoint( pc, dbg_changed );
+        return false;
+    }
+
+    template< typename Eval >
+    bool check( Context &ctx, Eval &eval, bool moved )
+    {
+        if ( moved && check_location( eval.pc(), eval.instruction() ) )
+            return true;
+        if ( !_frame.null() && !ctx.heap().valid( _frame ) )
+            return true;
+        if ( _check( _jumps ) )
+            return true;
+        if ( !_frame.null() && _frame_cur != _frame )
+            return false;
+        return _check( _lines ) || _check( _instructions ) || _check( _states );
+    }
+
+    void instruction()
+    {
+        add( _instructions );
     }
 
     void state() { add( _states ); }
