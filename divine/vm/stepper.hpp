@@ -32,14 +32,23 @@ namespace vm {
 template< typename Context >
 struct Stepper
 {
+    enum Verbosity { Quiet, TraceOnly, PrintSource, PrintInstructions };
+    using Snapshot = typename Context::Heap::Snapshot;
+    using YieldState = std::function< Snapshot( Snapshot ) >;
+    using SchedPolicy = std::function< void() >;
+    using Breakpoint = std::function< bool( CodePointer, bool ) >;
+
     GenericPointer _frame, _frame_cur, _parent_cur;
     llvm::Instruction *_insn_last;
     bool _ff_kernel;
-    bool _stop_on_fault, _stop_on_error, _booting;
+    bool _stop_on_fault, _stop_on_error, _booting, _break;
     bool _sigint;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
     std::pair< llvm::StringRef, int > _line;
-    std::set< CodePointer > _bps;
+
+    Breakpoint _breakpoint;
+    YieldState _yield_state;
+    SchedPolicy _sched_policy;
 
     Stepper()
         : _frame( nullPointer() ),
@@ -47,7 +56,7 @@ struct Stepper
           _parent_cur( nullPointer() ),
           _insn_last( nullptr ),
           _ff_kernel( false ),
-          _stop_on_fault( false ), _stop_on_error( true ), _booting( false ),
+          _stop_on_fault( false ), _stop_on_error( true ), _booting( false ), _break( false ),
           _sigint( false ),
           _lines( 0, 0 ), _instructions( 0, 0 ),
           _states( 0, 0 ), _jumps( 0, 0 ),
@@ -72,13 +81,10 @@ struct Stepper
         return p.second && p.first >= p.second;
     }
 
-    template< typename Eval >
-    bool check( Context &ctx, Eval &eval, bool breakpoints )
+    bool check( Context &ctx )
     {
-        if ( breakpoints )
-            if ( _bps.count( eval.pc() ) )
-                return true;
-
+        if ( _break )
+            return true;
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
             return true;
         if ( _check( _jumps ) )
@@ -88,14 +94,16 @@ struct Stepper
         return _check( _lines ) || _check( _instructions ) || _check( _states );
     }
 
-    void instruction( Program::Instruction &i )
+    void instruction( CodePointer pc, Program::Instruction &i )
     {
         add( _instructions );
         if ( !i.op )
             return;
-        auto op = llvm::cast< llvm::Instruction >( i.op );
 
-        if ( !_insn_last || _insn_last->getDebugLoc() != op->getDebugLoc() )
+        auto op = llvm::cast< llvm::Instruction >( i.op );
+        bool dbg_changed = !_insn_last || _insn_last->getDebugLoc() != op->getDebugLoc();
+
+        if ( dbg_changed )
         {
             auto l = fileline( *op );
             if ( _line.second && l != _line )
@@ -103,6 +111,8 @@ struct Stepper
             if ( _frame.null() || _frame == _frame_cur )
                 _line = l;
         }
+        if ( _breakpoint )
+            _break = _breakpoint( pc, dbg_changed );
     }
 
     void state() { add( _states ); }
@@ -132,8 +142,7 @@ struct Stepper
         ++ _jumps.first;
     }
 
-    template< typename YieldState >
-    bool schedule( Context &ctx, YieldState yield )
+    bool schedule( Context &ctx )
     {
         if ( !ctx.frame().null() )
             return false; /* nothing to be done */
@@ -146,17 +155,13 @@ struct Stepper
             return true;
 
         _booting = false;
-        yield( ctx.snapshot() );
+        if ( _yield_state )
+            _yield_state( ctx.snapshot() );
         vm::setup::scheduler( ctx );
         return true;
     }
 
-    using Snapshot = typename Context::Heap::Snapshot;
-    enum Verbosity { Quiet, TraceOnly, PrintSource, PrintInstructions };
-    using YieldState = std::function< Snapshot( Snapshot ) >;
-    using SchedPolicy = std::function< void() >;
-
-    void run( Context &ctx, YieldState yield, SchedPolicy sched_policy, Verbosity verb );
+    void run( Context &ctx, Verbosity verb );
 };
 
 }

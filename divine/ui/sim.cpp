@@ -352,10 +352,7 @@ struct Interpreter
         check_running();
         _sigint = &step._sigint;
         brick::types::Defer _( [](){ _sigint = nullptr; } );
-        step.run( _ctx,
-                  [&]( auto snap ) { return newstate( snap ); },
-                  [&]() { sched_policy(); },
-                  verbose ? Stepper::PrintInstructions : Stepper::TraceOnly );
+        step.run( _ctx, verbose ? Stepper::PrintInstructions : Stepper::TraceOnly );
     }
 
     void go( command::Exit ) { _exit = true; }
@@ -364,7 +361,9 @@ struct Interpreter
     {
         Stepper step;
         step._ff_kernel = !_debug_kernel;
-        step._bps = _bps;
+        step._breakpoint = [&]( vm::CodePointer pc, bool ) { return _bps.count( pc ); };
+        step._sched_policy = [&]() { sched_policy(); };
+        step._yield_state = [&]( auto snap ) { return newstate( snap ); };
         check_running();
         if ( jmp )
             step.jumps( 1 );
@@ -378,7 +377,8 @@ struct Interpreter
         vm::setup::boot( _ctx );
         Stepper step;
         step._booting = true;
-        step._bps.insert( _bc->program().functionByName( "main" ) );
+        auto mainpc = _bc->program().functionByName( "main" );
+        step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
         run( step, false );
         if ( !_ctx._info.empty() )
             std::cerr << "# boot info:\n" << _ctx._info;

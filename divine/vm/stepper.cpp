@@ -25,23 +25,22 @@ namespace divine {
 namespace vm {
 
 template< typename Context >
-void Stepper< Context >::run( Context &ctx, YieldState yield, SchedPolicy sched_policy, Verbosity verb )
+void Stepper< Context >::run( Context &ctx, Verbosity verb )
 {
     Eval< typename Context::Program, Context, value::Void > eval( ctx.program(), ctx );
     bool in_fault = !_stop_on_fault ||
                     eval.pc().function() == ctx.get( _VM_CR_FaultHandler ).pointer.object();
     bool in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
     bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-    bool moved = false;
 
     while ( !_sigint && !ctx.frame().null() &&
-            ( ( _ff_kernel && in_kernel ) || !check( ctx, eval, moved ) ) &&
+            ( ( _ff_kernel && in_kernel ) || !check( ctx ) ) &&
             ( error_set || ( ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error ) == 0 ) &&
             ( in_fault || eval.pc().function()
               != ctx.get( _VM_CR_FaultHandler ).pointer.object() ) )
     {
         in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
-        moved = true;
+        _break = false;
 
         if ( in_kernel && _ff_kernel )
             eval.advance();
@@ -49,7 +48,7 @@ void Stepper< Context >::run( Context &ctx, YieldState yield, SchedPolicy sched_
         {
             in_frame( ctx.frame(), ctx.heap() );
             eval.advance();
-            instruction( eval.instruction() );
+            instruction( eval.pc(), eval.instruction() );
         }
 
         if ( verb == PrintInstructions && ( !in_kernel || !_ff_kernel ) )
@@ -70,14 +69,15 @@ void Stepper< Context >::run( Context &ctx, YieldState yield, SchedPolicy sched_
         else
             eval.dispatch();
 
-        if ( schedule( ctx, yield ) )
+        if ( schedule( ctx ) )
             state();
 
         in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
         if ( !in_kernel || !_ff_kernel )
             in_frame( ctx.frame(), ctx.heap() );
 
-        sched_policy();
+        if ( _sched_policy )
+            _sched_policy();
 
         if ( verb != Quiet )
             for ( auto t : ctx._trace )

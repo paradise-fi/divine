@@ -193,7 +193,7 @@ void Verify::run()
     using Stepper = vm::Stepper< decltype( dbg ) >;
     Stepper step;
     step._stop_on_error = true;
-    step.run( dbg, []( auto x ) { return x; }, []() {}, Stepper::Quiet );
+    step.run( dbg, Stepper::Quiet );
     backtrace( dbg, dbg.snapshot(), _backtraceMaxDepth );
 }
 
