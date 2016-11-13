@@ -24,6 +24,8 @@
 #include <divine/rt/runtime.hpp>
 #include <brick-string>
 
+#include <runtime/divine/stat.h>
+
 DIVINE_RELAX_WARNINGS
 #include <brick-llvm>
 DIVINE_UNRELAX_WARNINGS
@@ -65,29 +67,29 @@ bstr readContent( const std::string& path, const struct stat& s ) {
 }
 
 bstr packStat( const struct stat& s ) {
-    bstr content( 11 * sizeof( uint64_t ) /*members*/ +
-                  3 * ( sizeof( uint64_t ) + sizeof( uint32_t ) ) /*time*/ );
-    uint8_t *d = content.data();
-    memcpy( d += 0, &s.st_dev, sizeof( s.st_dev ) );
-    memcpy( d += 8, &s.st_ino, sizeof( s.st_ino ) );
-    memcpy( d += 8, &s.st_mode, sizeof( s.st_mode ) );
-    memcpy( d += 8, &s.st_nlink, sizeof( s.st_nlink ) );
-    memcpy( d += 8, &s.st_uid, sizeof( s.st_uid ) );
-    memcpy( d += 8, &s.st_gid, sizeof( s.st_gid ) );
-    memcpy( d += 8, &s.st_rdev, sizeof( s.st_rdev ) );
-    memcpy( d += 8, &s.st_size, sizeof( s.st_size ) );
-    memcpy( d += 8, &s.st_blksize, sizeof( s.st_blksize ) );
-    memcpy( d += 8, &s.st_blocks, sizeof( s.st_blocks ) );
-    memcpy( d += 8, &s.st_ino, sizeof( s.st_ino ) );
+    bstr ret( sizeof( _DivineStat ) );
+    auto *ss = reinterpret_cast< _DivineStat * >( ret.data() );
+    ss->st_dev = s.st_dev;
+    ss->st_ino = s.st_ino;
+    ss->st_mode = s.st_mode;
+    ss->st_nlink = s.st_nlink;
+    ss->st_uid = s.st_uid;
+    ss->st_gid = s.st_gid;
+    ss->st_rdev = s.st_rdev;
+    ss->st_size = s.st_size;
+    ss->st_blksize = s.st_blksize;
+    ss->st_blocks = s.st_blocks;
 
-    memcpy( d += 8, &s.st_atim.tv_sec, sizeof( s.st_atim.tv_sec ) );
-    memcpy( d += 4, &s.st_atim.tv_nsec, sizeof( s.st_atim.tv_nsec ) );
-    memcpy( d += 8, &s.st_mtim.tv_sec, sizeof( s.st_mtim.tv_sec ) );
-    memcpy( d += 4, &s.st_mtim.tv_nsec, sizeof( s.st_mtim.tv_nsec ) );
-    memcpy( d += 8, &s.st_ctim.tv_sec, sizeof( s.st_ctim.tv_sec ) );
-    memcpy( d += 4, &s.st_ctim.tv_nsec, sizeof( s.st_ctim.tv_nsec ) );
+    ss->st_atim_tv_sec = s.st_atim.tv_sec;
+    ss->st_atim_tv_nsec = s.st_atim.tv_nsec;
 
-    return content;
+    ss->st_mtim_tv_sec = s.st_mtim.tv_sec;
+    ss->st_mtim_tv_nsec = s.st_mtim.tv_nsec;
+
+    ss->st_ctim_tv_sec = s.st_ctim.tv_sec;
+    ss->st_ctim_tv_nsec = s.st_ctim.tv_nsec;
+
+    return ret;
 }
 
 bool visited( const seenType& s, const std::string& path ) {
