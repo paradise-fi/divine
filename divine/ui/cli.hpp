@@ -59,6 +59,8 @@ struct WithBC : Command
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
     std::vector< std::string > _systemopts;
+    std::vector< std::string > _lartPasses;
+    std::vector< VfsDir > _vfs;
     vm::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
     bool _init_done = false;
