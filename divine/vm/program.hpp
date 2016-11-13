@@ -157,6 +157,7 @@ struct Program
          * - callsite handling needs to be reworked
          */
         llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
+        llvm::Instruction *insn() { return op ? llvm::cast< llvm::Instruction >( op ) : nullptr; }
         Instruction() : opcode( 0 ), hypercall( NotHypercall ), op( nullptr ) {}
     };
 

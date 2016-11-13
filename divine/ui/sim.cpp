@@ -131,7 +131,12 @@ struct Interpreter
     bool _sched_random, _debug_kernel;
 
     Context _ctx;
-    std::set< vm::CodePointer > _bps;
+
+    using RefLocation = std::pair< llvm::StringRef, int >;
+    using Location = std::pair< std::string, int >;
+    using Breakpoint = brick::types::Union< vm::CodePointer, Location >;
+    std::vector< Breakpoint > _bps;
+
     char *_prompt;
     int _state_count;
 
@@ -139,6 +144,13 @@ struct Interpreter
 
     void command( cmd::Tokens cmd );
     char *prompt() { return _prompt; }
+
+    RefLocation location( vm::CodePointer pc )
+    {
+        auto insn = _bc->program().instruction( pc ).insn();
+        insn = insn ?: _bc->program().instruction( pc + 1 ).insn();
+        return vm::fileline( *insn );
+    };
 
     DN dn( vm::GenericPointer p, vm::DNKind k, llvm::Type *t, llvm::DIType *dit )
     {
@@ -352,6 +364,27 @@ struct Interpreter
         check_running();
         _sigint = &step._sigint;
         brick::types::Defer _( [](){ _sigint = nullptr; } );
+
+        RefLocation initial = location( _ctx.get( _VM_CR_PC ).pointer );
+        auto bp = [&]( vm::CodePointer pc, bool ch )
+                  {
+                      if ( ch && initial.second )
+                          if ( location( pc ) != initial )
+                              initial = std::make_pair( "", 0 );
+                      for ( auto bp : _bps )
+                          if ( bp.match( [&]( vm::CodePointer bp_pc ) { return pc == bp_pc; },
+                                         [&]( Location l )
+                                         {
+                                             RefLocation rl = l;
+                                             if ( rl == initial )
+                                                 return false;
+                                             return rl == location( pc );
+                                         } ) )
+                              return true;
+                      return false;
+                  };
+        if ( !step._breakpoint )
+            step._breakpoint = bp;
         step.run( _ctx, verbose ? Stepper::PrintInstructions : Stepper::TraceOnly );
     }
 
@@ -361,9 +394,8 @@ struct Interpreter
     {
         Stepper step;
         step._ff_kernel = !_debug_kernel;
-        step._breakpoint = [&]( vm::CodePointer pc, bool ) { return _bps.count( pc ); };
-        step._sched_policy = [&]() { sched_policy(); };
-        step._yield_state = [&]( auto snap ) { return newstate( snap ); };
+        step._sched_policy = [this]() { sched_policy(); };
+        step._yield_state = [this]( auto snap ) { return newstate( snap ); };
         check_running();
         if ( jmp )
             step.jumps( 1 );
@@ -378,6 +410,7 @@ struct Interpreter
         Stepper step;
         step._booting = true;
         auto mainpc = _bc->program().functionByName( "main" );
+        mainpc.instruction( 1 );
         step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
         run( step, false );
         if ( !_ctx._info.empty() )
@@ -385,43 +418,63 @@ struct Interpreter
         set( "$_", frameDN() );
     }
 
-    void go( command::Break b )
+    void bplist( command::Break b )
     {
-        auto &prog = _bc->program();
-        if ( b.list || !b.del.empty() )
+        std::deque< decltype( _bps )::iterator > remove;
+        int id = 1;
+        if ( _bps.empty() )
+            std::cerr << "no breakpoints defined" << std::endl;
+        for ( auto bp : _bps )
         {
-            std::set< vm::CodePointer > remove;
-            int id = 1;
-            if ( _bps.empty() )
-                std::cerr << "no breakpoints defined" << std::endl;
-            for ( auto pc : _bps )
-            {
-                auto fun = prog.llvmfunction( pc )->getName().str();
-                auto insn = prog.instruction( pc ).op;
-                insn = insn ?: prog.instruction( pc + 1 ).op;
-                std::cerr << std::setw( 2 ) << id << ": " << fun << " +" << pc.instruction() << " (at "
-                          << vm::location( *llvm::cast< llvm::Instruction >( insn ) ) << ")";
-                if ( !b.del.empty() && ( id == b.del ||
-                                         ( !pc.instruction() && b.del == fun ) ) )
+            std::cerr << std::setw( 2 ) << id << ": ";
+            bool del_this = !b.del.empty() && id == b.del;
+            bp.match(
+                [&]( vm::CodePointer pc )
                 {
-                    remove.insert( pc );
-                    std::cerr << " [deleted]";
-                }
-                std::cerr << std::endl;
-                ++ id;
+                    auto fun = _bc->program().llvmfunction( pc )->getName().str();
+                    std::cerr << fun << " +" << pc.instruction()
+                              << " (at " << vm::location( location( pc ) ) << ")";
+                    if ( !b.del.empty() && !pc.instruction() && b.del == fun )
+                        del_this = true;
+                },
+                [&]( Location loc )
+                {
+                    std::cerr << loc.first << ":" << loc.second;
+                } );
+
+            if ( del_this )
+            {
+                remove.push_front( _bps.begin() + id - 1 );
+                std::cerr << " [deleted]";
             }
-            for ( auto r : remove )
-                _bps.erase( r );
-            return;
+            std::cerr << std::endl;
+            ++ id;
         }
 
-        for ( auto w : b.where )
-        {
-            auto pc = _bc->program().functionByName( w );
-            if ( pc.null() )
-                throw brick::except::Error( "Could not find " + w );
-            _bps.insert( pc );
-        }
+        for ( auto r : remove ) /* ordered from right to left */
+            _bps.erase( r );
+    }
+
+    void go( command::Break b )
+    {
+        if ( b.list || !b.del.empty() )
+            bplist( b );
+        else
+            for ( auto w : b.where )
+                if ( w.find( ':' ) == std::string::npos )
+                {
+                    auto pc = _bc->program().functionByName( w );
+                    if ( pc.null() )
+                        throw brick::except::Error( "Could not find " + w );
+                    pc.instruction( 1 );
+                    _bps.emplace_back( pc );
+                }
+                else
+                {
+                    std::string file( w, 0, w.find( ':' ) );
+                    int line = std::stoi( std::string( w, w.find( ':' ) + 1, std::string::npos ) );
+                    _bps.emplace_back( std::make_pair( file, line ) );
+                }
     }
 
     void go( command::Step s )

@@ -44,6 +44,7 @@ static std::ostream &operator<<( std::ostream &o, DNKind dnk )
 
 std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn );
 std::string location( const llvm::Instruction &insn );
+std::string location( std::pair< llvm::StringRef, int > );
 
 template< typename Program, typename Heap >
 struct DebugNode

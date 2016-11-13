@@ -38,7 +38,11 @@ std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn )
 
 std::string location( const llvm::Instruction &insn )
 {
-    auto fl = fileline( insn );
+    return location( fileline( insn ) );
+}
+
+std::string location( std::pair< llvm::StringRef, int > fl )
+{
     if ( fl.second )
         return fl.first.str() + ":" + brick::string::fmt( fl.second );
     return "(unknown location)";
