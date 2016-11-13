@@ -651,7 +651,7 @@ void Sim::run()
     auto el = el_init( "divine", stdin, stdout, stderr );
     auto hist = history_init();
     HistEvent hist_ev;
-    sim::Interpreter interp( _bc );;
+    sim::Interpreter interp( bitcode() );
 
     std::string hist_path;
 

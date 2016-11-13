@@ -48,24 +48,26 @@ struct BitCode {
     std::shared_ptr< llvm::LLVMContext > _ctx; // the order of these members is important as
     std::unique_ptr< llvm::Module > _module;   // _program depends on _module which depends on _ctx
     std::unique_ptr< Program > _program;       // and they have to be destroyed in the right order
-    AutoTraceFlags _autotrace;                 // otherwise DIVINE will SEGV if exception is thrown
-
+                                               // otherwise DIVINE will SEGV if exception is thrown
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
+
+    AutoTraceFlags _autotrace;
+    bool _reduce = false;
+    Env _env;
+    std::vector< std::string > _lart;
 
     Program &program() { ASSERT( _program.get() ); return *_program.get(); }
 
-    BitCode( std::string file, Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing,
-             bool verbose = false, bool reduce = true,
-             std::vector< std::string > lartPasses = { } );
-
+    BitCode( std::string file );
     BitCode( std::unique_ptr< llvm::Module > m,
-             std::shared_ptr< llvm::LLVMContext > ctx = nullptr,
-             Env env = Env(), AutoTraceFlags tr = AutoTrace::Nothing,
-             bool verbose = false, bool reduce = true,
-             std::vector< std::string > lartPasses = { } );
+             std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
 
-    void init( Env env, AutoTraceFlags tr, bool verbose, bool reduce,
-               std::vector< std::string > lartPasses = { } );
+    void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
+    void reduce( bool r ) { _reduce = r; }
+    void environment( Env env ) { _env = env; }
+    void lart( std::vector< std::string > passes = {} ) { _lart = passes; }
+
+    void init( bool verbose );
     ~BitCode();
 };
 

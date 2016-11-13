@@ -54,10 +54,19 @@ struct WithBC : Command
     std::vector< std::string > _lartPasses;
     vm::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
-
-    std::shared_ptr< vm::BitCode > _bc;
+    bool _init_done = false;
 
     void setup();
+    std::shared_ptr< vm::BitCode > bitcode()
+    {
+        if ( !_init_done )
+            _bc->init( true );
+        _init_done = true;
+        return _bc;
+    }
+
+private:
+    std::shared_ptr< vm::BitCode > _bc;
 };
 
 struct Help

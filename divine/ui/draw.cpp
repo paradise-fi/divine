@@ -72,10 +72,10 @@ int dump( bool raw, DN dn, DNMap &dumped, int &seq, std::string prefix )
 
 void Draw::run()
 {
-    vm::Explore ex( _bc );
+    vm::Explore ex( bitcode() );
     ex.start();
 
-    vm::DebugContext< vm::Program, vm::CowHeap > dbg( _bc->program() );
+    vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
     vm::setup::boot( dbg );
     vm::Eval< vm::Program, decltype( dbg ), vm::value::Void > dbg_eval( dbg.program(), dbg );
     dbg_eval.run();

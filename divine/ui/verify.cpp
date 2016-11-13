@@ -43,7 +43,7 @@ void backtrace( Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
 
 void Verify::run()
 {
-    vm::Explore ex( _bc );
+    vm::Explore ex( bitcode() );
     vm::explore::State error;
     bool error_found = false;
 
@@ -131,7 +131,7 @@ void Verify::run()
 
     auto hasher = ex._states.hasher; /* fixme */
 
-    vm::DebugContext< vm::Program, vm::CowHeap > dbg( _bc->program() );
+    vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
     vm::setup::dbg_boot( dbg );
 
     std::deque< vm::CowHeap::Snapshot > trace;

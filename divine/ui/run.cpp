@@ -22,7 +22,7 @@
 namespace divine {
 namespace ui {
 
-void Run::run() { vm::Run( _bc ).run(); }
+void Run::run() { vm::Run( bitcode() ).run(); }
 
 }
 }
