@@ -180,4 +180,10 @@ verify() {
     fi
 }
 
+sim()
+{
+    cat > expected
+    if ! ordgrep expected < sim.out; then exit 1; fi
+}
+
 "$@"

@@ -1,0 +1,7 @@
+#!/bin/sh
+cat > sim.script
+grep '^>' sim.script | cut -c3- | divine sim --batch "$@" 2>&1 | tee sim.out
+echo; echo = expected ==========
+cat sim.script
+echo; echo = matched ===========
+sed -e "s,^>,+ ^>," sim.script | check sim
