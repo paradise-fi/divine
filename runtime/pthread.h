@@ -105,7 +105,7 @@ typedef struct {
 typedef int pthread_condattr_t;
 typedef struct { pthread_mutex_t __mtx; } pthread_once_t;
 
-typedef unsigned int pthread_key_t;
+typedef int pthread_key_t;
 
 typedef struct _ReadLock {
     struct _PThread *__owner;

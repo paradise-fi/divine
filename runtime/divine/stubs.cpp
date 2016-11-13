@@ -14,7 +14,7 @@ extern "C" {
 
 #define NOT_IMPLEMENTED { __dios_fault( _VM_F_NotImplemented, "libc stubs" ); return 0; }
 FILE *tmpfile() noexcept NOT_IMPLEMENTED;
-double atof( const char *r ) noexcept NOT_IMPLEMENTED;
+double atof( const char * ) noexcept NOT_IMPLEMENTED;
 double strtod( const char *, char ** ) noexcept NOT_IMPLEMENTED;
 float strtof( const char *, char ** ) noexcept NOT_IMPLEMENTED;
 long double strtold( const char *, char ** ) noexcept NOT_IMPLEMENTED;
@@ -58,7 +58,7 @@ int mbtowc( wchar_t *, const char *s, size_t )
     return 0;
 }
 
-int chown(const char* path, uid_t owner, gid_t group) NOT_IMPLEMENTED;
+int chown(const char* /*path*/, uid_t /*owner*/, gid_t /*group*/) NOT_IMPLEMENTED;
 
 
 locale_t newlocale( int, const char *lc, locale_t ) {

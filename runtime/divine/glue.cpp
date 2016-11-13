@@ -96,18 +96,18 @@ extern "C" void _PDCLIB_Exit( int rv )
     __dios_kill_process( 0 );
 }
 
-extern "C" int nanosleep(const struct timespec *req, struct timespec *rem) {
+extern "C" int nanosleep(const struct timespec */*req*/, struct timespec */*rem*/) {
     // I believe we will do nothing wrong if we verify nanosleep as NOOP,
     // it does not guearantee anything anyway
     return 0;
 }
 
-extern "C" unsigned int sleep( unsigned int seconds ) {
+extern "C" unsigned int sleep( unsigned int /*seconds*/ ) {
     // same as nanosleep
     return 0;
 }
 
-extern "C" int usleep( useconds_t usec ) { return 0; }
+extern "C" int usleep( useconds_t /*usec*/ ) { return 0; }
 
 extern "C" void _exit( int rv )
 {

@@ -63,7 +63,8 @@ _MD_RegInfo getLPInfo( _Unwind_Context *ctx ) {
     auto info = __md_get_register_info( &ctx->frame(),
                                         uintptr_t( ctx->meta().entry_point ) + lp,
                                         &ctx->meta() );
-    __dios_assert_v( info.width >= sizeof( void * ) + sizeof( int ), "invalid info.width of landingpad" );
+    __dios_assert_v( static_cast< size_t >( info.width ) >=
+        sizeof( void * ) + sizeof( int ), "invalid info.width of landingpad" );
     return info;
 }
 
@@ -260,7 +261,6 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
 //  execution. It causes unwinding to proceed further.
 void _Unwind_Resume( _Unwind_Exception *exception ) {
     __dios::InterruptMask mask;
-    using PC_t = void (*)();
     auto *unwinder = reinterpret_cast< _VM_Frame * >( exception->private_2 );
     // transfer information about current mask state to _Unwind_RaiseException
     exception->private_2 = mask._origState();

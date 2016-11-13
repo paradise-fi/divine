@@ -150,7 +150,7 @@ struct _PthreadTLS {
         return _DiOS_TLS_Reserved + sizeof( _PThread * ) + cnt * sizeof( void * );
     }
 
-    size_t keyCount() {
+    int keyCount() {
         return (__vm_obj_size( raw() ) - size( 0 )) / sizeof( void * );
     }
     void makeFit( int count ) {
@@ -172,15 +172,15 @@ struct _PthreadTLS {
         if ( toDrop )
             __vm_obj_resize( raw(), size( count - toDrop ) );
     }
-    void *getKey( unsigned key ) {
-        assert( key < tlsDestructors.count() );
+    void *getKey( int key ) {
+        assert( key >= 0 && key < tlsDestructors.count() );
         if ( key >= keyCount() )
             return nullptr;
         return keys[ key ];
     }
 
-    void setKey( unsigned key, const void *value ) {
-        assert( key < tlsDestructors.count() );
+    void setKey( int key, const void *value ) {
+        assert( key >= 0 && key < tlsDestructors.count() );
         const int c = keyCount();
         if ( value == nullptr && key >= c )
             return;
