@@ -124,7 +124,7 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     env.emplace_back( "vfs." + fmt( iCount ) + ".name", bstr( path.begin(), path.end() ) );
     env.emplace_back( "vfs." + fmt( iCount ) + ".stat", pStat );
     env.emplace_back( "vfs." + fmt( iCount ) + ".content", cont );
-    limit(cont.size());
+    limit( cont.size() );
 
     if ( S_ISLNK( stat->st_mode ) ) {
         std::string symPath ( cont.begin(), cont.end() );
@@ -171,15 +171,15 @@ void WithBC::setup()
         env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
     i = 0;
     std::set< std::string > vfsCaptured;
+    size_t limit = _vfsSizeLimit;
     for ( auto vfs : _vfs ) {
-        int limit = vfs.sizeLimit;
         auto ex = [&](const std::string& item) {
             return explore( vfs.followSymlink,
                 [&]( const std::string& s) { return changePathPrefix( s, vfs.capture, vfs.mount ); },
                 [&]( const std::string& s ) { vfsCaptured.insert( s ); },
                 [&]( const std::string& s ) { return visited( vfsCaptured, s); },
                 [&]( ) { return i++; },
-                [&]( int s ) { limit -= s; if ( limit < 0 ) die( "VFS capture limit reached"); },
+                [&]( size_t s ) { if ( limit < s ) die( "VFS capture limit reached"); limit -= s;  },
                 env,
                 item );
         };

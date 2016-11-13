@@ -52,7 +52,6 @@ struct WithBC : Command
         std::string capture;
         std::string mount;
         bool followSymlink;
-        size_t sizeLimit;
     };
 
     std::string _file, _std;
@@ -61,6 +60,7 @@ struct WithBC : Command
     std::vector< std::string > _systemopts;
     std::vector< std::string > _lartPasses;
     std::vector< VfsDir > _vfs;
+    size_t _vfsSizeLimit;
     vm::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
     bool _init_done = false;
@@ -73,6 +73,8 @@ struct WithBC : Command
         _init_done = true;
         return _bc;
     }
+
+    WithBC() : _vfsSizeLimit( 16 * 1024 * 1024 ) {}
 
 private:
     std::shared_ptr< vm::BitCode > _bc;
@@ -201,7 +203,7 @@ std::vector< std::string > fromArgv( int argc, const char **argv )
     return args;
 }
 
-size_t sizeFromString( std::string s ) {
+size_t memFromString( std::string s ) {
     size_t pos;
     size_t base = stoull( s, &pos );
     std::string r = s.substr( pos );
@@ -217,6 +219,10 @@ size_t sizeFromString( std::string s ) {
         base *= 1000'000;
     else if ( rem == "mi" || rem == "mib" )
         base *= 1024 * 1024;
+    else if ( rem == "g" || rem == "gb" )
+        base *= 1'000'000'000;
+    else if ( rem == "gi" || rem == "gib" )
+        base *= 1024 * 1024 * 1024;
     else
         throw std::invalid_argument( "unknown suffix " + r );
     return base;
@@ -252,7 +258,7 @@ struct CLI : Interface
                  } ) ->
             add( "vfsdir", []( std::string s, auto good, auto bad )
                 {
-                    WithBC::VfsDir dir { .followSymlink = true, .sizeLimit = 16 * 1024 * 1024 };
+                    WithBC::VfsDir dir { .followSymlink = true };
                     std::regex sep(":");
                     std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
                     int i;
@@ -263,27 +269,15 @@ struct CLI : Interface
                             dir.mount = *it;
                             break;
                         case 1:
-                            dir.mount = *it;
-                            break;
-                        case 2:
-                            if ( *it == "followLinks" )
+                            if ( *it == "follow" )
                                 dir.followSymlink = true;
-                            else if ( *it == "nofollowLinks" )
+                            else if ( *it == "nofollow" )
                                 dir.followSymlink = false;
                             else
                                 return bad( cmd::BadContent, "invalid option for follow links" );
                             break;
-                        case 3:
-                            try {
-                                dir.sizeLimit = sizeFromString( *it );
-                            }
-                            catch ( const std::invalid_argument& e ) {
-                                return bad( cmd::BadContent, std::string("cannot set size limit: ")
-                                    + e.what() );
-                            }
-                            catch ( const std::out_of_range& e ) {
-                                return bad( cmd::BadContent, "size limit overflow" );
-                            }
+                        case 2:
+                            dir.mount = *it;
                             break;
                         default:
                             return bad( cmd::BadContent, " unexpected attribute "
@@ -297,6 +291,20 @@ struct CLI : Interface
                     if ( !brick::fs::access( dir.capture, R_OK ) )
                         return bad( cmd::BadContent, "file or directory " + dir.capture + " is not readable" );
                     return good( dir );
+                } ) ->
+            add( "mem", []( std::string s, auto good, auto bad )
+                {
+                    try {
+                        size_t size = memFromString( s );
+                        return good( size );
+                    }
+                    catch ( const std::invalid_argument& e ) {
+                        return bad( cmd::BadContent, std::string("cannot read size: ")
+                            + e.what() );
+                    }
+                    catch ( const std::out_of_range& e ) {
+                        return bad( cmd::BadContent, "size overflow" );
+                    }
                 } ) ->
             add( "label", []( std::string s, auto good, auto bad )
                 {
@@ -342,8 +350,9 @@ struct CLI : Interface
             .option( "[--lart {string}]", &WithBC::_lartPasses,
                      "run additional LART pass in the loader, can be specified multiple times" )
             .option( "[-o {string}|-o{string}]", &WithBC::_systemopts, "system options"s )
-            .option( "[--capture {vfsdir}]",
-                  &WithBC::_vfs, "capture directory in form {dir}[:{mount point}[:{followLinks|nofollowLinks}[:{sizeLimit}]]]"s )
+            .option( "[--vfslimit {mem}]", &WithBC::_vfsSizeLimit, "filesystem snapshot size limit (default 16 MiB)"s )
+            .option( "[--capture {vfsdir}]", &WithBC::_vfs,
+                "capture directory in form {dir}[:{follow|nofollow}[:{mount point}]]"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
