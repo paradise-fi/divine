@@ -1,11 +1,14 @@
 # -*- sh -*-
 # vim: syntax=sh
 
-test "x$_DIVINE_TEST_LIB_SOURCED" = "x1" && return 0
-_DIVINE_TEST_LIB_SOURCED=1
-
-. environment
+. environment 2> /dev/null || echo "WARNING: environment not found, will try to guess" >&2
 . lib/util
+
+# support manual execution of the test
+test -z "$TOOLS" && {
+    TOOLS=$(readlink -f $(cd ..; make show var=OBJ)/debug/tools)
+    echo "set TOOLS=$TOOLS"
+}
 
 test -d "$TOOLS" -a -f "$TOOLS/divine" || {
     echo "TOOLS has to be directory with your divine binary."
@@ -15,18 +18,6 @@ test -d "$TOOLS" -a -f "$TOOLS/divine" || {
 if echo $TOOLS | grep -q "^C:"; then # MSYS hack
     TOOLS=`echo -n "$TOOLS" | sed -e 's,C:,/c,;s,\\\\,/,;'`
 fi
-PATH="$TOOLS:$PATH"
-
-test -d "$TOOLS/../binutils/bin" && PATH="$TOOLS/../binutils/bin:$PATH"
-
-# fake ssh for mpiexec
-cat > $TOOLS/ssh <<EOF
-#!/bin/sh
-test "\$1" = "-x" && shift
-shift # hostname
-eval "\$@"
-EOF
-chmod +x $TOOLS/ssh
 
 if test -z "$MPIEXEC"; then
     MPIEXEC=false
@@ -34,292 +25,16 @@ else
     MPIEXEC=$(readlink -f `which $MPIEXEC`)
 fi
 
-for_dve_small() {
-    wrapper=$1; shift
-    test "$GEN_DVE" = "ON" || return 0
-
-    check clear
-    run $wrapper data/empty.dve "$@" --property=deadlock
-    check reachability_deadlock
-    $extracheck data/empty.dve
-
-    check clear
-    run $wrapper data/test1.dve "$@" --property=LTL
-    check ltl_invalid
-    check statespace 7 14 3 0
-    $extracheck data/test1.dve
-
-    check clear
-    run $wrapper data/test1-prop.dve "$@" --property=LTL
-    check ltl_invalid
-    check statespace 7 14 3 0
-
-    check clear
-    run $wrapper data/test2.dve "$@" --property=LTL
-    check ltl_valid
-    check owcty_sizes 2 2 0
-    check statespace 3 2 2 2
-    $extracheck data/test2.dve
-
-    check clear
-    run $wrapper data/test3.dve "$@" --property=LTL
-    check ltl_valid
-    check owcty_sizes 2 5 0
-    check statespace 6 12 2 0
-    $extracheck data/test3.dve
-
-    check clear
-    run $wrapper data/test4.dve "$@" --property=LTL
-    check ltl_invalid
-    check owcty_sizes 1 4 1
-    check statespace 5 5 1 0
-    $extracheck data/test4.dve
-
-    check clear
-    run $wrapper data/test5.dve "$@" --property=LTL
-    check ltl_invalid
-    check owcty_sizes 1 4 1
-    check statespace 5 5 1 0
-    $extracheck data/test5.dve
-
-    check clear
-    run $wrapper data/test6.dve "$@" --property=LTL
-    check ltl_invalid
-    check owcty_sizes 2 6 1 5 1
-    check statespace 6 6 2 0
-    $extracheck data/test6.dve
-
-    check clear
-    run $wrapper data/haoEEDM.dve "$@" --property=deadlock
-    check statespace 502 922 0 0
-    $extracheck data/haoEEDM.dve
-
-    check clear
-    run $wrapper data/assert.dve "$@" --property=assert
-    check reachability_goal
-    check statespace 6 6 0 0
-
-    check clear
-    run $wrapper data/assert2.dve "$@" --property=assert
-    check reachability_valid
-    check statespace 6 6 0 0
-
-    check clear
-    run $wrapper data/B.prop1.dve "$@" --property=deadlock
-    check statespace 24 32 0 8
-
-    check clear
-    run $wrapper data/B.prop1.dve "$@" --property=LTL
-    check statespace 14 18 14 4
-
-    check clear
-    run $wrapper data/input.dve "$@" --property=deadlock
-    check statespace 6 5 0 1
-
-    check clear
-    run $wrapper data/input.dve "$@" --property=deadlock -D i=7
-    check statespace 4 3 0 1
-
-    check clear
-    run $wrapper data/ltltest1.dve "$@" --property=LTL
-    check ltl_valid
-    check statespace 1 0 1 1
-
-    check clear
-    run $wrapper data/ltltest2.dve "$@" --property=LTL
-    check ltl_invalid
-    check statespace 3 4 1 0
-
-    check clear
-    run $wrapper data/vararray.dve "$@" --property=deadlock
-    check statespace 11 10 0 1
-
-    check clear
-    run $wrapper data/proc_instance.dve "$@" --property=deadlock
-    check statespace 16 64 0 0
-
-    check clear
-    run $wrapper data/proc_instance2.dve "$@" --property=deadlock
-    check statespace 32 96 0 0
-
-    check clear
-    run $wrapper data/proc_instance3.dve "$@" --property=deadlock
-    check statespace 48 144 0 0
-
-    check clear
-    run $wrapper data/proc_instance4.dve "$@" --property=deadlock
-    check statespace 48 144 0 0
-}
-
-dve_small() {
-    for_dve_small identity "$@"
-}
-
-dve_compiled_small() {
-    test "$GEN_CESMI" = "ON" || return 0
-    for_dve_small dve_compile "$@"
-}
-
-llvm_small() {
-    test "$GEN_LLVM" = "ON" || return 0
-
-    check clear
-    run llvm_assemble data/global-ok.ll "$@" --property=assert --reduce=tau+,taustores,heap
-    check reachability_valid
-    check statespace 67 129 0 0
-
-    check clear
-    run llvm_assemble data/global-bug.ll "$@" --property=assert --reduce=tau+,taustores,heap
-    check reachability_goal
-    check statespace 59 109 0 0
-}
-
-timed_small() {
-    wrapper=$1; shift
-    test "$GEN_TIMED" = "ON" || return 0
-
-    check clear
-    run $wrapper data/timed_arithm.xml "$@" --property=deadlock
-    check reachability_valid
-    check statespace 46 52 0 0
-
-    check clear
-    run $wrapper data/timed_clock.xml "$@" --property=deadlock
-    check reachability_valid
-    check statespace 220 228 0 0
-
-    check clear
-    run $wrapper data/bridge.xml "$@" --property=0
-    check ltl_valid
-    if test "$OPT_LTL3BA" = "ON"; then
-       check statespace 2412 4848 0 0; else
-       check statespace 2813 6361 0 0; fi
-    
-    check clear
-    run $wrapper data/bridge.xml "$@" --property=1
-    check ltl_invalid
-    if test "$OPT_LTL3BA" = "ON"; then
-        check statespace 2867 5795 303 0; else
-        check statespace 2896 6640 303 0; fi
-
-    check clear
-    run $wrapper data/zeno.xml "$@" --property=0
-    check ltl_invalid
-    check statespace 2 2 2 0
-
-    check clear
-    run $wrapper data/zeno.xml "$@" --property=0 --fair
-    check ltl_valid
-    check statespace 6 7 2 2
-}
-
-murphi_small() {
-    test "$OPT_MURPHI" = "ON" || return 0
-
-    check clear
-    run dve_compile data/abp.m "$@" --property=deadlock
-    check reachability_valid
-    check statespace 80 144 0 0
-}
-
-coin_small() {
-    test "$GEN_COIN" = "ON" || return 0
-
-    check clear
-    run identity data/coffee.coin "$@" --property=deadlock
-    check reachability_valid
-    check statespace 7 8 0 0
-}
-
-all_small() {
-    dve_small "$@"
-    dve_compiled_small "$@"
-    llvm_small "$@"
-    coin_small "$@"
-    timed_small "$@"
-    murphi_small "$@"
-}
-
-llvm_precompile() {
-    test libdivinert.bc -nt `which divine` || divine compile --llvm --libraries-only
-}
-
-llvm_prepare() {
-    f="$1"
-    shift
-    cat > $f
-    llvm_precompile
-    divine compile --llvm $f --precompiled=. "$@" >& progress
-}
-
-llvm_verify_file() {
-    test "$GEN_LLVM" = "ON" || skip
-    f=$1; shift
-    t=$1; shift
-    test "$t" == invalid && { where="$1"; what="$2"; shift; shift; }
-    prop=${1-safety}
-
-    divine verify $f -p $prop -d -r 2>> progress | capture
-    test "$t" == ltl_valid && check ltl_valid
-    test "$t" == ltl_invalid && check ltl_invalid
-    test "$t" == valid && check reachability_valid
-    test "$t" == invalid && {
-        check reachability_goal
-        test -n "$what" && \
-            grep -a -A 50 '== The goal ==' progress | grep -a -i "^$where" | grep -a "$what" \
-            || ( echo -e "\nERROR: expected error '$where' at '$what'" >> progress; exit 1; )
-    }
-    check clear
-}
-
-llvm_verify_cpp() {
-    test "$GEN_LLVM" = "ON" || skip
-    llvm_prepare testcase.cpp --cflags=-std=c++11
-    llvm_verify_file testcase.bc "$@"
-}
-
-llvm_verify() {
-    test "$GEN_LLVM" = "ON" || skip
-    llvm_prepare testcase.c
-    llvm_verify_file testcase.bc "$@"
-}
-
-dve_statespace() {
-    test "$GEN_DVE" = "ON" || skip
-    test "$ALG_METRICS" = "ON" || skip
-    cat > testcase.dve
-    divine metrics testcase.dve --no-reduce -p $1 -r 2>> progress | capture
-    shift
-    check statespace "$@"
-    check clear
-}
-
-dve_shape() {
-    test "$GEN_DVE" = "ON" || skip
-    cat > testcase.dve
-    echo "$2" > expected
-    divine draw testcase.dve --no-reduce -p $1 -r cat -o out.dot 2>> progress | capture
-    grep -- '->' out.dot | sed -e 's,[ \t],,g' > actual
-
-    for actual in $(cat actual); do
-        grep -- $actual expected
-    done
-
-    for expected in $(cat expected); do
-        grep -- $expected actual
-    done
-
-    check clear
-}
-
 chmod +x lib/check lib/run
 
-PATH="lib:$PATH"
+PATH="$PWD/lib:$TOOLS:$PATH"
 extracheck=:
 export cesmiext=.so
 test "$WIN32" = 1 && cesmiext=.dll
 
-trap "check debris" EXIT
-check cleanup
-set -ex -o pipefail
+rm -rf __test_work_dir
+mkdir -p __test_work_dir
+cd __test_work_dir
 
+trap "check debris" EXIT
+set -ex -o pipefail

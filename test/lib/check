@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*- sh -*-
 set -e
-. lib/util
+. util
 
 complain() {
     echo "### $@" > complaint
