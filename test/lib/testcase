@@ -32,6 +32,10 @@ extracheck=:
 export cesmiext=.so
 test "$WIN32" = 1 && cesmiext=.dll
 
+if test -n "$TESTS" && test -z "$TODO" && echo $0 | grep -q todo; then
+    exit 200
+fi
+
 rm -rf __test_work_dir
 mkdir -p __test_work_dir
 cd __test_work_dir
