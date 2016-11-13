@@ -28,13 +28,10 @@ void Fault::sc_handler_wrap( __dios::Context& ctx, void *ret, ... ) noexcept {
     va_end( vl );
 }
 
-void Fault::sc_handler( __dios::Context& ctx, int* err, void *retval, va_list vl ) noexcept {
-    typedef void (*PC)();
+void Fault::sc_handler( __dios::Context& ctx, int *, void *, va_list vl ) noexcept {
     bool kernel = va_arg( vl, int );
     auto *frame = va_arg( vl, _VM_Frame * );
     auto what = va_arg( vl, int );
-    auto *cont_frame = va_arg( vl, _VM_Frame * );
-    auto cont_pc = va_arg( vl, PC );
 
     InTrace _; // avoid dumping what we do
 
@@ -73,10 +70,10 @@ void Fault::handler( _VM_Fault _what, _VM_Frame *cont_frame,
 
     if ( kernel ) {
         auto *ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
-        sc_handler_wrap( *ctx, nullptr, kernel, frame, _what, cont_frame, cont_pc );
+        sc_handler_wrap( *ctx, nullptr, kernel, frame, _what );
     }
     else {
-        __dios_syscall( _SC_fault_handler, nullptr, kernel, frame, _what, cont_frame, cont_pc  );
+        __dios_syscall( _SC_fault_handler, nullptr, kernel, frame, _what  );
     }
 
     // Continue if we get the control back
@@ -190,7 +187,7 @@ bool Fault::load_user_pref( const SysOpts& opts ) {
 
 namespace __sc {
 
-void configure_fault( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
+void configure_fault( __dios::Context& ctx, int *, void *retval, va_list vl ) {
 
     using FaultFlag = __dios::Fault::FaultFlag;
     auto fault = va_arg( vl, int );
@@ -237,7 +234,7 @@ void configure_fault( __dios::Context& ctx, int * err, void* retval, va_list vl 
     }
 }
 
-void get_fault_config( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
+void get_fault_config( __dios::Context& ctx, int *, void* retval, va_list vl ) {
     using FaultFlag = __dios::Fault::FaultFlag;
     auto fault = va_arg( vl, int );
     auto res = static_cast< int * >( retval );
@@ -263,9 +260,10 @@ void get_fault_config( __dios::Context& ctx, int * err, void* retval, va_list vl
     }
 }
 
-void fault_handler ( __dios::Context& ctx, int *err, void* retval, va_list vl ) {
-         __dios::Fault::sc_handler(ctx, err, retval, vl); 
-    }
+void fault_handler( __dios::Context& ctx, int *err, void* retval, va_list vl ) {
+     __dios::Fault::sc_handler(ctx, err, retval, vl);
+}
+
 } // namespace __sc
 
 int __dios_configure_fault( int fault, int cfg ) {

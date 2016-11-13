@@ -40,7 +40,7 @@ _DiOS_ThreadId *__dios_get_process_threads() noexcept {
 
 namespace __sc {
 
-void start_thread( __dios::Context& ctx, int * err, void *retval, va_list vl ) {
+void start_thread( __dios::Context& ctx, int *, void *retval, va_list vl ) {
     typedef void ( *r_type )( void * );
     auto routine = va_arg( vl, r_type );
     auto arg = va_arg( vl, void * );
@@ -50,17 +50,17 @@ void start_thread( __dios::Context& ctx, int * err, void *retval, va_list vl ) {
     *ret = ctx.scheduler->startThread( routine, arg, tls );
 }
 
-void kill_thread( __dios::Context& ctx, int * err, void *, va_list vl ) {
+void kill_thread( __dios::Context& ctx, int *, void *, va_list vl ) {
     auto id = va_arg( vl, __dios::ThreadId );
     ctx.scheduler->killThread( id );
 }
 
-void kill_process( __dios::Context& ctx, int *err, void *, va_list vl ) {
+void kill_process( __dios::Context& ctx, int *, void *, va_list vl ) {
     auto id = va_arg( vl, __dios::ProcId );
     ctx.scheduler->killProcess( id );
 }
 
-void get_process_threads( __dios::Context &ctx, int* err, void *_ret, va_list vl ) {
+void get_process_threads( __dios::Context &ctx, int *, void *_ret, va_list vl ) {
     auto *&ret = *reinterpret_cast< _DiOS_ThreadId ** >( _ret );
     auto tid = va_arg( vl, _DiOS_ThreadId );
     __dios::ProcId pid;
@@ -132,7 +132,7 @@ void Scheduler::traceThreads() const noexcept {
     struct PI { int pid, tid, choice; };
     PI *pi = reinterpret_cast< PI * >( __vm_obj_make( c * sizeof( PI ) ) );
     PI *pi_it = pi;
-    for ( int i = 0; i != c; i++ ) {
+    for ( size_t i = 0; i != c; i++ ) {
         pi_it->pid = 0;
         pi_it->tid = threads[ i ]->getUserId();
         pi_it->choice = i;
