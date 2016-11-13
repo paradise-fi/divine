@@ -89,8 +89,10 @@ extern "C" void *__errno_location() { __dios_fault( _VM_F_NotImplemented, "__err
 
 extern "C" void _PDCLIB_Exit( int rv )
 {
-    if ( rv )
+    if ( rv ) {
+        __dios_trace_f( "Non-zero exit code: %d", rv );
         __dios_fault( _VM_F_Control, "exit called with non-zero value" );
+    }
     __cxa_finalize( 0 );
     __dios::runDtors();
     __dios_kill_process( 0 );
