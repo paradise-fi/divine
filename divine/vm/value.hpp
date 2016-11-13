@@ -185,7 +185,7 @@ struct Float : Base
     explicit Float( T t, bool def = true ) : _cooked( t ), _defined( def ) {}
     template< int w, bool sig > Float( Int< w, sig > i )
         : _cooked( i.cooked() ), _defined( i.defined() ) {}
-    template< typename S > Float( Float< S > ) { NOT_IMPLEMENTED(); }
+    template< typename S > explicit Float( Float< S > ) { NOT_IMPLEMENTED(); }
 
     Raw defbits() { return _defined ? full< Raw >() : 0; }
     void defbits( Raw r ) { _defined = ( r == full< Raw >() ); }
