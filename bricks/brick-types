@@ -220,7 +220,7 @@ struct Maybe : Comparable
 
     T fromMaybe( T x ) const { return isJust() ? value() : x; }
 
-    explicit operator bool() const { return isJust(); }
+    explicit operator bool() const { return isJust() && bool( value() ); }
 
     static Maybe Just( const T &t ) { return Maybe( t ); }
     static Maybe Nothing() { return Maybe(); }
