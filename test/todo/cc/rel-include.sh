@@ -1,3 +1,4 @@
+. lib/testcase
 
 mkdir -p 1/2/3
 
@@ -17,4 +18,4 @@ touch 1/2/2.h
 touch 1/1.h
 
 cd 1/2/3
-$TOOLS/divine cc test.c -I.. -I../..
+divine cc test.c -I.. -I../..

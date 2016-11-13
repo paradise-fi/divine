@@ -1,3 +1,4 @@
-touch empty
+. lib/testcase
 
-$TOOLS/divine cc -x c empty
+touch empty
+divine cc -x c empty
