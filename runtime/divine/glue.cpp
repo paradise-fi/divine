@@ -52,7 +52,7 @@ void *realloc( void *orig, size_t size ) noexcept
     else if ( !__vm_choose( opt ) ) {
         void *n = __vm_obj_make( size );
         if ( orig ) {
-            ::memcpy( n, orig, MIN( size, __vm_obj_size( orig ) ) );
+            ::memcpy( n, orig, MIN( size , static_cast< size_t >( __vm_obj_size( orig ) ) ) );
             __vm_obj_free( orig );
         }
         r = n;

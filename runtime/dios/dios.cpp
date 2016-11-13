@@ -117,7 +117,7 @@ void init( const _VM_Env *env )
 
 namespace __sc {
 
-void uname( __dios::Context&,int *, void *ret, va_list vl )
+void uname( __dios::Context&, int *, void *ret, va_list vl )
 {
     utsname *name = va_arg( vl, utsname * );
     strcpy( name->sysname, "DiOS" );

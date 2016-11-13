@@ -66,7 +66,7 @@ enum _DiOS_TLS_Offsets {
  * - the resulting _DiOS_ThreadId points to the beginning of TLS. Userspace is
  *   allowed to use it from offset _DiOS_TLS_Reserved
  */
-_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg, size_t tls_size ) NOTHROW;
+_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg, int tls_size ) NOTHROW;
 
 /*
  * Get caller thread id
@@ -127,7 +127,7 @@ int __dios_get_fault_config( int fault ) NOTHROW;
  * a pointer to the call instruction which invoked __vm_fault by reading the
  * program counter of its parent frame.
  */
-void __dios_fault( enum _VM_Fault f, const char *msg, ... ) NOTHROW __attribute__(( __noinline__ ));
+void __dios_fault( int f, const char *msg, ... ) NOTHROW __attribute__(( __noinline__ ));
 
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;

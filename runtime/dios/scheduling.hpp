@@ -54,8 +54,8 @@ struct SortedStorage {
     }
 
     bool remove( Tid id ) noexcept {
-        size_t s = size();
-        for ( size_t i = 0; i != s; i++ ) {
+        int s = size();
+        for ( int i = 0; i != s; i++ ) {
 
             if ( _storage[ i ]->getId() != id )
                 continue;
@@ -71,7 +71,7 @@ struct SortedStorage {
     template < class... Args >
     T *emplace( Args... args ) noexcept {
         resize( size() + 1 );
-        size_t idx = size() - 1;
+        int idx = size() - 1;
         T *ret = _storage[ idx ] = new_object< T >( args... );
         sort();
         return ret;
@@ -80,24 +80,24 @@ struct SortedStorage {
     void erase( T** first, T** last ) noexcept {
         if ( empty() )
             return;
-        size_t orig_size = size();
+        int orig_size = size();
         for ( T** f = first; f != last; f++ ) {
             delete_object( *f );
         }
-        size_t s = last - first;
+        int s = last - first;
         if ( s != orig_size )
             memmove( first, last, ( end() - last ) * sizeof( T * ) );
         resize( orig_size - s );
         sort();
     }
 
-    void resize( int n ) { __vm_obj_resize( this, std::max( size_t( 1 ),
-                                                            sizeof( *this ) + n * sizeof( T * ) ) ); }
+    void resize( int n ) { __vm_obj_resize( this, std::max( 1,
+                                    static_cast< int > (sizeof( *this ) + n * sizeof( T * ) ) ) ); }
     T **begin() noexcept { return _storage; }
     T **end() noexcept { return _storage + size(); }
-    size_t size() const noexcept { return ( __vm_obj_size( this ) - sizeof( *this ) ) / sizeof( T * ); }
+    int size() const noexcept { return ( __vm_obj_size( this ) - sizeof( *this ) ) / sizeof( T * ); }
     bool empty() const noexcept { return size() == 0; };
-    T *operator[]( size_t i ) const noexcept { return _storage[ i ]; };
+    T *operator[]( int i ) const noexcept { return _storage[ i ]; };
 private:
     void sort() {
         if ( empty() )
@@ -116,13 +116,13 @@ struct Thread {
     ProcId     _pid;
 
     template <class F>
-    Thread( F routine, size_t tls_size ) noexcept {
+    Thread( F routine, int tls_size ) noexcept {
         auto fun = __md_get_pc_meta( reinterpret_cast< uintptr_t >( routine ) );
         _frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
         _frame->pc = fun->entry_point;
         _frame->parent = nullptr;
 
-        _tls = __vm_obj_make( std::max( tls_size,  size_t( _DiOS_TLS_Reserved ) ) );
+        _tls = __vm_obj_make( std::max( tls_size,  int( _DiOS_TLS_Reserved ) ) );
         std::memset( _tls, 0, _DiOS_TLS_Reserved );
         _pid = nullptr; // ToDo: Add process support
     }
@@ -148,11 +148,11 @@ private:
 
 struct Scheduler {
     Scheduler() {}
-    size_t threadCount() const noexcept { return threads.size(); }
+    int threadCount() const noexcept { return threads.size(); }
     Thread *chooseThread() noexcept;
     void traceThreads() const noexcept;
     void startMainThread( int argc, char** argv, char** envp ) noexcept;
-    ThreadId startThread( void ( *routine )( void * ), void *arg, size_t tls_size ) noexcept;
+    ThreadId startThread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept;
     void killThread( ThreadId t_id ) noexcept;
     void killProcess( ProcId id ) noexcept;
 

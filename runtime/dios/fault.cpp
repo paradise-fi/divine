@@ -278,7 +278,7 @@ int __dios_get_fault_config( int fault ) {
     return ret;
 }
 
-void __dios_fault( enum _VM_Fault f, const char *msg, ... ) {
+void __dios_fault( int f, const char *msg, ... ) {
     __dios_trace_t( msg );
     auto fh = reinterpret_cast< __vm_fault_t >( __vm_control( _VM_CA_Get, _VM_CR_FaultHandler ) );
     auto *retFrame = static_cast< struct _VM_Frame * >(
@@ -286,5 +286,5 @@ void __dios_fault( enum _VM_Fault f, const char *msg, ... ) {
     auto pc = reinterpret_cast< uintptr_t >( retFrame->pc );
 
     typedef void (*PC)(void);
-    ( *fh )( f, retFrame, reinterpret_cast< PC >( pc + 1 ) );
+    ( *fh )( static_cast< _VM_Fault >( f ), retFrame, reinterpret_cast< PC >( pc + 1 ) );
 }

@@ -6,7 +6,7 @@
 #include <dios/main.hpp>
 #include <divine/metadata.h>
 
-_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg, size_t tls_size ) noexcept
+_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept
 {
     _DiOS_ThreadId ret;
     __dios_syscall( __dios::_SC_start_thread, &ret, routine, arg, tls_size );
@@ -44,7 +44,7 @@ void start_thread( __dios::Context& ctx, int *, void *retval, va_list vl ) {
     typedef void ( *r_type )( void * );
     auto routine = va_arg( vl, r_type );
     auto arg = va_arg( vl, void * );
-    auto tls = va_arg( vl, size_t );
+    auto tls = va_arg( vl, int );
     auto ret = static_cast< __dios::ThreadId * >( retval );
 
     *ret = ctx.scheduler->startThread( routine, arg, tls );
@@ -126,13 +126,13 @@ Thread *Scheduler::chooseThread() noexcept
 }
 
 void Scheduler::traceThreads() const noexcept {
-    size_t c = threads.size();
+    int c = threads.size();
     if ( c == 0 )
         return;
     struct PI { int pid, tid, choice; };
     PI *pi = reinterpret_cast< PI * >( __vm_obj_make( c * sizeof( PI ) ) );
     PI *pi_it = pi;
-    for ( size_t i = 0; i != c; i++ ) {
+    for ( int i = 0; i != c; i++ ) {
         pi_it->pid = 0;
         pi_it->tid = threads[ i ]->getUserId();
         pi_it->choice = i;
@@ -152,7 +152,7 @@ void Scheduler::startMainThread( int argc, char** argv, char** envp ) noexcept {
     frame->envp = envp;
 }
 
-ThreadId Scheduler::startThread( void ( *routine )( void * ), void *arg, size_t tls_size ) noexcept {
+ThreadId Scheduler::startThread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept {
     __dios_assert_v( routine, "Invalid thread routine" );
     Thread *t = threads.emplace( routine, tls_size );
     ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >( t->_frame );
