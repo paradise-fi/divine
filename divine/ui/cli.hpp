@@ -129,7 +129,10 @@ struct Run : WithBC {
     void run();
 };
 
-struct Sim : WithBC {
+struct Sim : WithBC
+{
+    bool _batch = false;
+
     Sim() { _systemopts.emplace_back( "trace:thread" ); }
     void run();
 };
@@ -399,10 +402,13 @@ struct CLI : Interface
             .option( "[-r|-i|--relocable]", &DivineLd::_incremental, "Generate incremental/relocable object file"s )
             .option( "[{string}]", &DivineLd::_flags, "any ld options including input file(s) to link"s );
 
+        auto simopts = cmd::make_option_set< Sim >( v )
+            .option( "[--batch]", &Sim::_batch, "execute in batch mode"s );
+
         auto parser = cmd::make_parser( v )
             .command< Verify >( &WithBC::_useropts, vrfyopts, bcopts )
             .command< Run >( &WithBC::_useropts, bcopts )
-            .command< Sim >( &WithBC::_useropts, bcopts )
+            .command< Sim >( &WithBC::_useropts, bcopts, simopts )
             .command< Draw >( drawopts, bcopts )
             .command< Info >( bcopts )
             .command< Cc >( ccopts )

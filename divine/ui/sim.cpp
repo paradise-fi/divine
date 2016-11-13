@@ -743,6 +743,9 @@ void Sim::run()
         else
             history( hist, &hist_ev, H_ENTER, cmd_ );
 
+        if ( _batch )
+            std::cerr << "> " << cmd << std::flush;
+
         /* TODO use tok_* for quoting support */
         brick::string::Splitter split( "[ \t\n]+", REG_EXTENDED );
         cmd::Tokens tok;
