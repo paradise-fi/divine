@@ -81,7 +81,9 @@ auto c2bc( std::string s )
     static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
     divine::cc::Compiler c( ctx );
     c.mapVirtualFile( "main.c", s );
-    return std::make_shared< vm::BitCode >( c.compileModule( "main.c" ), ctx );
+    auto rv = std::make_shared< vm::BitCode >( c.compileModule( "main.c" ), ctx );
+    rv->init( false );
+    return rv;
 }
 }
 
