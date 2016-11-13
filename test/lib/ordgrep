@@ -1,0 +1,46 @@
+#!/usr/bin/perl
+use strict;
+my @res;
+
+my $re_file = open RE, "<" . $ARGV[0];
+
+while ( <RE> )
+{
+    chomp;
+    push @res, $_;
+}
+
+close( RE );
+
+while (<STDIN>)
+{
+    chomp;
+    my $line = $_;
+    my $fail = 0;
+    for my $match ( @res )
+    {
+        my $positive = ( $match =~ /^[+] / ) ? 1 : 0;
+        my $re = $match;
+        $re =~ s,^[+-] ,,;
+        $fail = 1 if ( !$positive && $line =~ m,$re, );
+        next if ( !$positive && $fail );
+
+        if ( $positive && $line =~ m,$re, )
+        {
+            print "$line\n";
+            shift @res while ( $res[0] =~ /^-/ );
+            shift @res;
+            $fail = 0;
+            last;
+        }
+
+        if ( $fail )
+        {
+            print STDERR "negative match failed at $line\n";
+            exit( 1 );
+        }
+    }
+    last if ( scalar @res == 0 );
+}
+
+exit( scalar @res );
