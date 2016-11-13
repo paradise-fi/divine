@@ -18,12 +18,7 @@ add_custom_target( functional
   COMMAND rm -rf data examples lib
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/data .
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/doc/examples .
-  COMMAND mkdir -p lib
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/testcase lib
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/flavour lib
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/util lib
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/check lib
-  COMMAND cp ${CMAKE_SOURCE_DIR}/test/lib/run lib
+  COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND mkdir -p results
   COMMAND ${WITH_LCOV} ./runner --total-timeout 28800 --timeout 60 --interpreter cpp:lib/verify --interpreter c:lib/verify --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
   USES_TERMINAL
