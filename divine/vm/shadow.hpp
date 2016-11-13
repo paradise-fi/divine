@@ -322,6 +322,8 @@ struct PooledShadow
         {
             if ( ptrloc.size() != 8 )
                 NOT_IMPLEMENTED(); /* exception */
+            if ( ptrloc.offset() + 8 > sz )
+                break;
             t[ ptrloc.offset() ] = ShadowType::Pointer1;
             t[ ptrloc.offset() + 4 ] = ShadowType::Pointer2;
         }

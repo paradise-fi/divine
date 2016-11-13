@@ -621,9 +621,11 @@ struct CowHeap : SimpleHeap< CowHeap >
             auto pointers = shadows().pointers( Shadows::Loc( i, Shadows::Anchor(), 0 ), size );
             for ( auto pos : pointers )
             {
+                ASSERT_LEQ( offset, pos->offset() );
                 high.update( base + offset, pos->offset() - offset );
                 offset = pos->offset() + pos->size();
             }
+            ASSERT_LEQ( offset, size );
             high.update( base + offset, size - offset );
             return std::make_pair( ( high.finalize().first & 0xFFFFFFF000000000 ) | /* high 28 bits */
                                    ( low.first & 0x0000000FFFFFFFF ), low.second );
