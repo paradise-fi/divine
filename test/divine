@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+gdb()
+{
+    test -e /usr/local/bin/egdb && exec /usr/local/bin/egdb --args "$@"
+    test -e /usr/bin/gdb && exec /usr/bin/gdb --args "$@"
+    echo "Could not find gdb."
+    exit 1
+}
+
+memcheck() { exec valgrind --tool=memcheck "$@"; }
+callgrind() { exec valgrind --tool=callgrind "$@"; }
+
+test -z "$B" && B=debug
+test -z "$DBG" && DBG=exec
+make $B-divine 1>&2
+$DBG $(make show var=OBJ)$B/tools/divine "$@"
