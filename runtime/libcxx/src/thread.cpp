@@ -30,6 +30,10 @@
 #include <windows.h>
 #endif
 
+#if defined(__divine__)
+#include <dios.h>
+#endif
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 thread::~thread()
@@ -70,7 +74,9 @@ thread::detach()
 unsigned
 thread::hardware_concurrency() _NOEXCEPT
 {
-#if defined(CTL_HW) && defined(HW_NCPU)
+#if defined(__divine__)
+    return __dios_hardware_concurrency();
+#elif defined(CTL_HW) && defined(HW_NCPU)
     unsigned n;
     int mib[2] = {CTL_HW, HW_NCPU};
     std::size_t s = sizeof(n);
@@ -146,7 +152,7 @@ class _LIBCPP_HIDDEN __hidden_allocator
 {
 public:
     typedef T  value_type;
-    
+
     T* allocate(size_t __n)
         {return static_cast<T*>(::operator new(__n * sizeof(T)));}
     void deallocate(T* __p, size_t) {::operator delete(static_cast<void*>(__p));}
