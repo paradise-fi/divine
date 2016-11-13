@@ -1249,7 +1249,8 @@ int pthread_setcancelstate( int state, int *oldstate ) {
         return EINVAL;
 
     _PThread &thread = getThread();
-    *oldstate = thread.cancel_state;
+    if ( oldstate )
+        *oldstate = thread.cancel_state;
     thread.cancel_state = state & 1;
     return 0;
 }
@@ -1261,7 +1262,8 @@ int pthread_setcanceltype( int type, int *oldtype ) {
         return EINVAL;
 
     _PThread &thread = getThread();
-    *oldtype = thread.cancel_type;
+    if ( oldtype )
+        *oldtype = thread.cancel_type;
     thread.cancel_type = type & 1;
     return 0;
 }
@@ -1269,7 +1271,7 @@ int pthread_setcanceltype( int type, int *oldtype ) {
 int pthread_cancel( pthread_t gtid ) {
     __dios::FencedInterruptMask mask;
 
-    _PThread &thread = getThread();
+    _PThread &thread = getThread( gtid );
 
     if ( thread.cancel_state == PTHREAD_CANCEL_ENABLE )
         thread.cancelled = true;
