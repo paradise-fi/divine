@@ -30,6 +30,9 @@
 #include <pwd.h>
 
 namespace divine {
+
+namespace src_doc { extern const std::string sim_md_str; }
+
 namespace ui {
 
 using namespace std::literals;
@@ -608,6 +611,15 @@ struct Interpreter
     }
 
     void go( command::Help ) { UNREACHABLE( "impossible case" ); }
+
+    template< typename Parser >
+    void help( Parser &p, std::string arg )
+    {
+        if ( arg.empty() )
+            std::cerr << src_doc::sim_md_str << std::endl
+                      << "# Command overview" << std::endl << std::endl;
+        std::cerr << p.describe( arg ) << std::endl;
+    }
 };
 
 bool *Interpreter::_sigint = nullptr;
@@ -684,7 +696,7 @@ void Interpreter::command( cmd::Tokens tok )
 
     try {
         auto cmd = parser.parse( tok.begin(), tok.end() );
-        cmd.match( [&] ( command::Help h ) { std::cerr << parser.describe( h._cmd ) << std::endl; },
+        cmd.match( [&] ( command::Help h ) { help( parser, h._cmd ); },
                    [&] ( auto opt ) { go( opt ); } );
         update();
     }

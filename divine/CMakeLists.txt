@@ -31,10 +31,12 @@ include_directories( SYSTEM ${DIVINE_SYS_INCLUDES} )
 add_definitions( ${MPI_COMPILE_FLAGS} ${LLVM_COMPILE_FLAGS} )
 add_definitions( ${DIVINE_DEFINES} )
 
-add_library( divine-cc ${CPP_cc} ${STRINGIFIED} )
+stringifyInDir( doc ${divine_SOURCE_DIR}/doc/manual ${divine_SOURCE_DIR}/doc/manual/sim.md )
+
+add_library( divine-cc ${CPP_cc} )
 # add_library( divine-ss ${CPP_ss} )
 # add_library( divine-mc ${CPP_mc} )
-add_library( divine-ui ${CPP_ui} )
+add_library( divine-ui ${CPP_ui} ${STRINGIFIED} )
 add_library( divine-vm ${CPP_vm} )
 
 target_link_libraries( divine-ui edit )
