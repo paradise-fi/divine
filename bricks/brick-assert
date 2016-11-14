@@ -24,26 +24,12 @@
 #include <string>
 #include <sstream>
 
-#ifdef __divine__
-#include <divine.h>
-#endif
-
 #ifndef TEST
 #define TEST(n)         void n()
 #define TEST_FAILING(n) void n()
 #endif
 
-#ifdef __divine__
-
-#define ASSERT(x) assert( x )
-#define ASSERT_PRED(p, x) assert( p( x ) )
-#define ASSERT_EQ(x, y) assert( (x) == (y) )
-#define ASSERT_LEQ(x, y) assert( (x) <= (y) )
-#define ASSERT_LT(x, y) assert( (x) < (y) )
-#define ASSERT_NEQ(x, y) assert ( (x) != (y) )
-#define ASSERT_EQ_IDX(i, x, y) assert( (x) == (y) )
-
-#elif !defined NDEBUG
+#ifndef NDEBUG
 
 #define BRICK_SHARP_FIRST(x, ...) #x
 #define ASSERT(...) ::brick::_assert::assert_fn(         \
