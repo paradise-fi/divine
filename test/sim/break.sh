@@ -1,6 +1,8 @@
 . lib/testcase
 
-sim $TESTS/c/assert.c <<EOF
+SRC=$TESTS/c/assert.c
+
+sim $SRC <<EOF
 + ^# executing __boot
 > start
 + ^# executing main
@@ -11,11 +13,11 @@ sim $TESTS/c/assert.c <<EOF
 + ^# executing _PDCLIB_assert_dios
 EOF
 
-sim $TESTS/c/assert.c <<EOF
+sim $SRC <<EOF
 + ^# executing __boot
-> break $TESTS/c/assert.c:5
+> break $SRC:5
 > break --list
-+ ^ 1: $TESTS/c/assert.c:5
++ ^ 1: $SRC:5
 > stepa --count 10
-+ ^# executing main at $TESTS/c/assert.c:5
++ ^# executing main at $SRC:5
 EOF
