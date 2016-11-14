@@ -37,19 +37,19 @@ Context::Context() :
 void MachineParams::initialize( const SysOpts& opts ) {
     hardwareConcurrency = 0;
     for( const auto& i : opts ) {
-        if ( i.first == "machine-concurrency" ) {
+        if ( i.first == "ncpus" ) {
             char *end;
             hardwareConcurrency = strtol( i.second.c_str(), &end, 10 );
             if ( i.second.data() == end || end - 1 != &i.second.back() )
                 __dios_fault( _DiOS_F_Config,
-                    "DiOS boot configuration: invalid machine-concurrency specified" );
+                    "DiOS boot configuration: invalid ncpus specified" );
         }
     }
 }
 
 void MachineParams::traceParams( int indent ) {
     __dios_trace_i( indent, "machine parameters:" );
-    __dios_trace_i( indent + 1, "- hardware_concurrency: %d", hardwareConcurrency );
+    __dios_trace_i( indent + 1, "- ncpus: %d", hardwareConcurrency );
 }
 
 FileTrace getFileTraceConfig( const SysOpts& o, dstring stream ) {
@@ -102,7 +102,7 @@ void trace_help() {
     __dios_trace_i( 2,     "- diosassert" );
     __dios_trace_i( 1,   "- {nofail, simfail}: enable/disable simulation of failure" );
     __dios_trace_i( 2,     "- malloc" );
-    __dios_trace_i( 1,   "- hardware_concurrency:{num} specify number of harware concurrency units (default 0)" );
+    __dios_trace_i( 1,   "- ncpus:{num} specify number of cpu units (default 0)" );
     __dios_trace_i( 1,   "- {stdin, stderr}: specify how to treat program output" );
     __dios_trace_i( 2,     "- notrace: ignore the stream" );
     __dios_trace_i( 2,     "- unbuffered: trace each write" );
