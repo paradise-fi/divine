@@ -560,6 +560,7 @@ struct Interpreter
 
         _trace.clear();
         std::deque< int > choices;
+        std::set< vm::CowHeap::Snapshot > visited;
         for ( auto c : tr.choices )
             choices.push_back( std::stoi( c ) );
         _ctx._choices = choices;
@@ -573,7 +574,18 @@ struct Interpreter
             eval.dispatch();
             if ( _ctx.frame().null() )
             {
-                newstate( _ctx.snapshot(), false, true );
+                auto next = newstate( _ctx.snapshot(), false, true );
+                if ( visited.count( next ) )
+                {
+                    std::cerr << " [loop closed" << std::flush;
+                    if ( !_ctx._choices.empty() )
+                        std::cerr << ", unused choices:";
+                    for ( auto c : _ctx._choices )
+                        std::cerr << " " << c;
+                    std::cerr << "]" << std::flush;
+                    break;
+                }
+                visited.insert( next );
                 vm::setup::scheduler( _ctx );
                 int count = choices.size() - _ctx._choices.size();
                 auto b = choices.begin(), e = b + count;
