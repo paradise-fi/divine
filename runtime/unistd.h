@@ -51,6 +51,8 @@ extern "C" {
 
 #define FS_NOINLINE __attribute__((noinline))
 
+extern char **environ;
+
 typedef __uint32_t useconds_t;
 
 FS_NOINLINE int close( int fd );

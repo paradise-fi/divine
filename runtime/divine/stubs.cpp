@@ -45,8 +45,6 @@ int vwprintf( const wchar_t *, va_list ) NOT_IMPLEMENTED;
 int vfwprintf( FILE *, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 int vswprintf( wchar_t *, size_t, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 
-char *getenv( const char * ) noexcept NOT_IMPLEMENTED;
-
 void tzset() { __dios_fault( _VM_F_NotImplemented, "tzset" ); };
 int gettimeofday(struct timeval *, struct timezone *) NOT_IMPLEMENTED;
 int settimeofday(const struct timeval *, const struct timezone *) NOT_IMPLEMENTED;

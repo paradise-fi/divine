@@ -16,6 +16,11 @@ extern "C" {
 #include <dios/fault.hpp>
 #include <filesystem/fs-manager.h>
 
+extern "C" {
+#include <unistd.h>
+char **environ;
+}
+
 namespace __dios {
 using VFS = divine::fs::VFS;
 
@@ -130,6 +135,9 @@ void init( const _VM_Env *env )
     auto envp = construct_main_arg( "env.", env );
     trace_main_arg(0, "main argv", argv );
     trace_main_arg(0, "main envp", envp );
+
+    environ = envp.second;
+
     context->scheduler->startMainThread( argv.first, argv.second, envp.second );
 
     __dios_trace_i( 0, "---" );
