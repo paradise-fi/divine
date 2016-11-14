@@ -31,7 +31,7 @@ Manager::Manager( bool ) :
     _umask{ Mode::WGROUP | Mode::WOTHER }
 {
     _root->assign( new( memory::nofail ) Directory( _root ) );
-    _standardIO[ 1 ]->assign( new( memory::nofail ) WriteOnlyFile() );
+    _standardIO[ 1 ]->assign( new( memory::nofail ) VmTraceFile() );
 }
 
 

@@ -155,6 +155,35 @@ struct WriteOnlyFile : File {
     }
 };
 
+struct VmTraceFile : File {
+
+    size_t size() const override {
+        return 0;
+    }
+    bool canRead() const override {
+        return false;
+    }
+    bool canWrite() const override {
+        return true;
+    }
+    bool read( char *, size_t, size_t & ) override {
+        return false;
+    }
+    bool write( const char *buffer, size_t, size_t &length ) override {
+        if ( buffer[ length - 1 ] == 0 )
+            __dios_trace_t( buffer );
+        else {
+            char buf[ length + 1 ];
+            std::copy( buffer, buffer + length, buf );
+            buf[ length ] = 0;
+            __dios_trace_t( buf );
+        }
+        return true;
+    }
+    void clear() override {
+    }
+};
+
 struct StandardInput : File {
     StandardInput() :
         _content( nullptr ),
