@@ -413,11 +413,15 @@ struct SelfTest
 
 #endif
 
-#ifdef BRICK_DEMO
+#ifdef BRICK_UNITTEST_MAIN
+
+namespace brick { namespace unittest {
+std::vector< TestCaseBase * > *testcases;
+std::set< std::string > *registered;
+} }
 
 int main( int argc, const char **argv ) {
-    return brick::unittest::run( argc > 1 ? argv[1] : "",
-                                 argc > 2 ? argv[2] : "" );
+    return brick::unittest::run( argc, argv );
 }
 
 #endif
