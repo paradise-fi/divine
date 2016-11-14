@@ -64,6 +64,7 @@
 #include <iterator>
 #include <algorithm>
 #include <stdexcept>
+#include <regex>
 
 #if defined( __unix__ ) || defined( __APPLE__ )
 #include <dirent.h>
@@ -624,7 +625,8 @@ int interrupt = 0;
 struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts, kmsg;
     std::string testdir, outdir, workdir, heartbeat;
-    std::vector< std::string > flavours, filter, watch, flavourFilter, exclude;
+    std::vector< std::string > flavours, watch;
+    std::vector< std::regex > filter, flavourFilter, exclude;
     std::vector< std::pair< std::string, std::string > > interpreters;
     std::string flavour_envvar;
     int timeout, total_timeout;
@@ -936,15 +938,13 @@ struct Main {
     Options options;
     Cases cases;
 
-    bool skip( const std::string &what, const std::vector< std::string > &filter, bool empty ) {
+    bool skip( const std::string &what, const std::vector< std::regex > &filter, bool empty ) {
         if ( filter.empty() )
             return empty;
 
-        for ( std::vector< std::string >::const_iterator filt = filter.begin();
-              filt !=filter.end(); ++filt ) {
-            if ( what.find( *filt ) != std::string::npos )
+        for ( auto &filt : filter )
+            if ( std::regex_search( what, filt ) )
                 return false;
-        }
         return true;
     }
 
@@ -1131,12 +1131,23 @@ bool hasenv( const char *name ) {
     return true;
 }
 
-template< typename C >
-void split( std::string s, C &c, char sep = ',' ) {
+struct Id {
+    template< typename T >
+    const T &operator()( const T &x ) { return x; }
+};
+
+constexpr Id id{};
+
+std::regex mkRegex( const std::string &str ) {
+    return std::regex( str, std::regex::extended );
+}
+
+template< typename C, typename Transform = Id >
+void split( std::string s, C &c, Transform transform = id, char sep = ',' ) {
     std::stringstream ss( s );
     std::string item;
     while ( std::getline( ss, item, sep ) )
-        c.push_back( item );
+        c.push_back( transform( item ) );
 }
 
 }
@@ -1152,14 +1163,14 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         opt.cont = true;
 
     if ( args.has( "--only" ) )
-        split( args.opt( "--only" ), opt.filter );
+        split( args.opt( "--only" ), opt.filter, mkRegex );
     if ( hasenv( "T" ) )
-        split( getenv( "T" ), opt.filter );
+        split( getenv( "T" ), opt.filter, mkRegex );
 
     if ( args.has( "--skip" ) )
-        split( args.opt( "--skip" ), opt.exclude );
+        split( args.opt( "--skip" ), opt.exclude, mkRegex );
     if ( hasenv( "S" ) )
-        split( getenv( "S" ), opt.exclude );
+        split( getenv( "S" ), opt.exclude, mkRegex );
 
     if ( args.has( "--fatal-timeouts" ) )
         opt.fatal_timeouts = true;
@@ -1188,7 +1199,7 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     else
         opt.flavours.push_back( "vanilla" );
     if ( hasenv( "F" ) )
-        split( getenv( "F" ), opt.flavourFilter );
+        split( getenv( "F" ), opt.flavourFilter, mkRegex );
 
     if ( args.has( "--watch" ) )
         split( args.opt( "--watch" ), opt.watch );
@@ -1208,7 +1219,7 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
     for ( auto i : args.opts( "--interpreter" ) )
     {
         std::vector< std::string > s;
-        split( i, s, ':' );
+        split( i, s, id, ':' );
         if ( s.size() != 2 )
         {
             std::cerr << "FATAL: the --interpreter option must contain exactly one ':'" << std::endl;
