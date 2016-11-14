@@ -27,6 +27,24 @@ Context::Context() :
     globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
 {}
 
+void MachineParams::initialize( const SysOpts& opts ) {
+    hardwareConcurrency = 0;
+    for( const auto& i : opts ) {
+        if ( i.first == "machine-concurrency" ) {
+            char *end;
+            hardwareConcurrency = strtol( i.second.c_str(), &end, 10 );
+            if ( i.second.data() == end || end - 1 != &i.second.back() )
+                __dios_fault( _DiOS_F_Config,
+                    "DiOS boot configuration: invalid machine-concurrency specified" );
+        }
+    }
+}
+
+void MachineParams::traceParams( int indent ) {
+    __dios_trace_i( indent, "machine parameters:" );
+    __dios_trace_i( indent + 1, "- hardware_concurrency: %d", hardwareConcurrency );
+}
+
 bool trace_threads( const SysOpts& o ) {
     for( const auto& opt : o ) {
         if ( opt.first == "notrace" || opt.first == "trace" ) {
@@ -60,6 +78,7 @@ void trace_help() {
     __dios_trace_i( 2,     "- diosassert" );
     __dios_trace_i( 1,   "- {nofail, simfail}: enable/disable simulation of failure" );
     __dios_trace_i( 2,     "- malloc" );
+    __dios_trace_i( 1,   "- hardware_concurrency:{num} specify number of harware concurrency units (defulat 0)");
 }
 
 void trace_env( const _VM_Env *env ) {
@@ -104,6 +123,9 @@ void init( const _VM_Env *env )
     }
     context->fault->trace_config( 0 );
 
+    context->machineParams.initialize( sys_opts );
+    context->machineParams.traceParams( 0 );
+
     auto argv = construct_main_arg( "arg.", env, true );
     auto envp = construct_main_arg( "env.", env );
     trace_main_arg(0, "main argv", argv );
@@ -128,6 +150,10 @@ void uname( __dios::Context&, int *, void *ret, va_list vl )
     *static_cast< int * >( ret ) = 0;
 }
 
+void hardware_concurrency (__dios::Context& c, int *, void *ret, va_list ) {
+    *static_cast< int * >( ret ) = c.machineParams.hardwareConcurrency;
+}
+
 } // namespace __sc
 
 /*
@@ -140,6 +166,12 @@ extern "C" void  __attribute__((weak)) __boot( const _VM_Env *env ) {
 int uname( struct utsname *__name ) {
     int ret;
     __dios_syscall( __dios::_SC_uname, &ret, __name );
+    return ret;
+}
+
+int __dios_hardware_concurrency() noexcept {
+    int ret;
+    __dios_syscall( __dios::_SC_hardware_concurrency, &ret );
     return ret;
 }
 

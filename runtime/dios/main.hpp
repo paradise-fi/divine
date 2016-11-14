@@ -11,7 +11,6 @@ int main(...);
 
 namespace __dios {
 
-using SysOpts = dvector< std::pair< dstring, dstring > >;
 /*
  * Find all sys opt string (in form sys.#) and return key-value pairs
  */

@@ -27,6 +27,7 @@ enum _DiOS_Fault
 {
     _DiOS_F_Threading = _VM_F_Last,
     _DiOS_F_Assert,
+    _DiOS_F_Config,
     _DiOS_F_Last
 };
 
@@ -94,6 +95,12 @@ void __dios_kill_process( _DiOS_ProcId id ) NOTHROW;
 
 
 _DiOS_ThreadId *__dios_get_process_threads() NOTHROW;
+
+/*
+ * Return number of claimed hardware concurrency units, specified in DiOS boot
+ * parameters.
+ */
+int __dios_hardware_concurrency() NOTHROW;
 
 /*
  * Issue DiOS syscall with given args. Return value is stored in ret.
@@ -176,6 +183,7 @@ CPP_END
 #if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
 
 #include <cstdint>
+#include <dios/stdlibwrap.hpp>
 
 namespace divine {
     namespace fs {
@@ -198,10 +206,19 @@ void delete_object( T *obj ) {
     __vm_obj_free( obj );
 }
 
+using SysOpts = dvector< std::pair< dstring, dstring > >;
+
 struct Scheduler;
 struct Syscall;
 struct Fault;
 using VFS = divine::fs::VFS;
+
+struct MachineParams {
+    int hardwareConcurrency;
+
+    void initialize( const SysOpts& opts );
+    void traceParams( int indent );
+};
 
 struct Context {
     Scheduler *scheduler;
@@ -209,6 +226,7 @@ struct Context {
     Fault *fault;
     VFS *vfs;
     void *globals;
+    MachineParams machineParams;
 
     Context();
 };

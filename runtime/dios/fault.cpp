@@ -101,6 +101,8 @@ int Fault::str_to_fault( dstring fault ) {
         return _VM_F_NotImplemented;
     if ( fault == "diosassert" )
         return static_cast< _VM_Fault >( _DiOS_F_Assert );
+    if ( fault == "diosconfig" )
+        return static_cast< _VM_Fault >( _DiOS_F_Config );
     if ( fault == "malloc" )
         return static_cast< _VM_Fault >( _DiOS_SF_Malloc );
     return static_cast< _VM_Fault >( -1 );
@@ -116,6 +118,7 @@ dstring Fault::fault_to_str( int f ) {
     case _VM_F_Hypercall: return "hypercall";
     case _VM_F_NotImplemented: return "notimplemented";
     case _DiOS_F_Assert: return "diosassert";
+    case _DiOS_F_Config: return "diosconfig";
     case _DiOS_SF_Malloc: return "malloc";
     }
     return "unknown";
