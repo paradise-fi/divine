@@ -119,7 +119,7 @@ struct Interpreter
     using PointerV = Context::PointerV;
     using Stepper = vm::Stepper< Context >;
 
-    bool _exit;
+    bool _exit, _batch;
     BC _bc;
 
     std::vector< std::string > _env;
@@ -260,7 +260,7 @@ struct Interpreter
         auto top = get( "$top" ), frame = get( "$frame" );
         auto sym = top.attribute( "@symbol" ), loc = top.attribute( "@location" );
         std::cerr << "# executing " << sym;
-        if ( sym.size() + loc.size() > 60 )
+        if ( sym.size() + loc.size() > 60 && !_batch )
             std::cerr << std::endl << "#        at ";
         else
             std::cerr << " at ";
@@ -270,7 +270,7 @@ struct Interpreter
     }
 
     Interpreter( BC bc )
-        : _exit( false ), _bc( bc ), _explore( bc ), _sticky_tid( -1, 0 ),
+        : _exit( false ), _batch( false ), _bc( bc ), _explore( bc ), _sticky_tid( -1, 0 ),
           _sched_random( false ), _debug_kernel( false ), _ctx( _bc->program() ), _state_count( 0 )
     {
         vm::setup::boot( _ctx );
@@ -715,6 +715,7 @@ void Sim::run()
     auto hist = history_init();
     HistEvent hist_ev;
     sim::Interpreter interp( bitcode() );
+    interp._batch = _batch;
 
     std::string hist_path;
 
