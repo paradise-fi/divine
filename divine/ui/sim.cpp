@@ -176,10 +176,10 @@ struct Interpreter
 
     DN get( std::string n, bool silent = false )
     {
-        brick::string::Splitter split( "\\.", REG_EXTENDED );
+        brick::string::Splitter split( "\\.", std::regex::extended );
         auto comp = split.begin( n );
 
-        auto var = ( n[0] == '$' || n[0] == '#' ) ? *comp++ : "$_";
+        auto var = ( n[0] == '$' || n[0] == '#' ) ? *comp++ : "$_"s;
         auto i = _dbg.find( var );
         if ( i == _dbg.end() && silent )
             return nullDN();
@@ -208,7 +208,7 @@ struct Interpreter
                 return nullDN();
             _dn = std::move( _dn_next );
             if ( !found )
-                throw brick::except::Error( "lookup failed at " + *comp );
+                throw brick::except::Error( "lookup failed at " + comp->str() );
         }
         return *_dn;
     }
@@ -772,7 +772,7 @@ void Sim::run()
             std::cerr << "> " << cmd << std::flush;
 
         /* TODO use tok_* for quoting support */
-        brick::string::Splitter split( "[ \t\n]+", REG_EXTENDED );
+        brick::string::Splitter split( "[ \t\n]+", std::regex::extended );
         cmd::Tokens tok;
         std::copy( split.begin( cmd ), split.end(), std::back_inserter( tok ) );
         interp.command( tok );

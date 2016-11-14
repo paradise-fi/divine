@@ -200,7 +200,7 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
 {
     std::stringstream out;
 
-    brick::string::Splitter split( "\n", REG_EXTENDED );
+    brick::string::Splitter split( "\n", std::regex::extended );
     auto src = rt::source( di->getFilename() );
     if ( src.empty() )
         src = brick::fs::readFile( di->getFilename() );
@@ -237,8 +237,8 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
         out << (lineno == active ? ">>" : "  ");
             out << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
     }
-    brick::string::ERegexp endbrace( "^[ \t]*}" );
-    if ( endbrace.match( *line ) )
+    std::regex endbrace( "^[ \t]*}", std::regex::extended );
+    if ( std::regex_match( line->str(), endbrace ) )
         out << "  " << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
 
     return out.str();

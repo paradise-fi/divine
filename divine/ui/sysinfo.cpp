@@ -6,7 +6,9 @@
 #include <mutex>
 #include <thread>
 #include <chrono>
+#include <regex>
 
+#include <brick-types>
 #include <brick-string>
 
 #ifdef __unix
@@ -46,24 +48,28 @@ struct Data {
     std::mutex lock;
 };
 
-static bool matchLine( std::string file, brick::string::ERegexp &r ) {
+using MaybeMatch = brick::types::Maybe< std::smatch >;
+
+static MaybeMatch matchLine( std::string file, std::regex &r ) {
     std::string line;
+    std::smatch match;
     std::ifstream f( file.c_str() );
     while ( !f.eof() ) {
         std::getline( f, line );
-        if ( r.match( line ) )
-            return true;
+        if ( std::regex_match( line, match, r ) )
+            return MaybeMatch::Just( match );
     }
-    return false;
+    return MaybeMatch::Nothing();
 }
 
 #ifdef __linux
 long long procStatusLine( std::string key ) {
     std::stringstream file;
     file << "/proc/" << uint64_t( getpid() ) << "/status";
-    brick::string::ERegexp r( key + ":[\t ]*([0-9]+)", 2 );
-    if ( matchLine( file.str(), r ) ) {
-        return std::atoll( r[1].c_str() );
+    std::regex r( key + ":[\t ]*([0-9]+)", std::regex::extended );
+    auto m = matchLine( file.str(), r );
+    if ( m.isJust() ) {
+        return std::stoll( m.value()[1] );
     }
     return 0;
 }
@@ -187,9 +193,10 @@ MEMINFO( residentMemSize, "VmRSS", QuotaPagedPoolUsage ); // are right for these
 std::string Info::architecture() const {
     guard _l( data->lock );
 #ifdef __linux
-    brick::string::ERegexp r( "model name[\t ]*: (.+)", 2 );
-    if ( matchLine( "/proc/cpuinfo", r ) )
-        return r[1];
+    std::regex r( "model name[\t ]*: (.+)", std::regex::extended );
+    auto m = matchLine( "/proc/cpuinfo", r );
+    if ( m.isJust() )
+        return m.value()[1];
     return "Unknown";
 #endif
 

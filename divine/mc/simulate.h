@@ -309,7 +309,7 @@ struct ProcessLoop {
 
     ProcessLoop() :
         _engine( "DIVINE simulate -- model simulator and interactive model checker" ),
-        _splitter( "[ \t]*,[ \t]*", REG_EXTENDED ),
+        _splitter( "[ \t]*,[ \t]*", std::regex::extended ),
         part( _splitter.end() ),
         _in( std::cin ),
         _out( std::cout ),
