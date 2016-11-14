@@ -129,7 +129,6 @@ namespace __sc {
 
     void creat( __dios::Context& ctx, int* err, void* retval, va_list vl  ) 
     {
-        __vm_trace( _VM_T_Text, "Creat syscall issued!" );
         auto path = va_arg( vl, const char * );
         auto mode = va_arg( vl, mode_t );
         auto ret = static_cast< int * >( retval );
@@ -146,7 +145,6 @@ namespace __sc {
 
     void open( __dios::Context& ctx, int* err, void* retval, va_list vl  ) 
     {
-        __vm_trace( _VM_T_Text, "Open syscall issued!" );
         auto path = va_arg( vl, const char * );
         auto flags = va_arg(  vl, int );
         auto ret = static_cast< int* >( retval );
@@ -195,7 +193,6 @@ namespace __sc {
 
     void openat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Openat syscall issued!" );
         using namespace divine::fs::flags;
         divine::fs::Flags <Open> f = Open::NoFlags;
         mode_t mode = 0;
@@ -245,7 +242,6 @@ namespace __sc {
 
     void fcntl( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Fcntl syscall issued!" );
         auto fd = va_arg( vl, int );
         auto cmd = va_arg( vl, int );
         auto ret = static_cast< int* >( retval );
@@ -311,7 +307,6 @@ namespace __sc {
 
     void close( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Close syscall issued!" );
         auto fd = va_arg( vl, int );
         auto ret = static_cast< int* >( retval );
         auto vfs = ctx.vfs;
@@ -327,7 +322,6 @@ namespace __sc {
 
     void write( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Write syscall issued!" );
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, const void * );
         auto count = va_arg( vl, size_t );
@@ -345,7 +339,6 @@ namespace __sc {
 
     void pwrite( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Pwrite syscall issued!" );
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, const void * );
         auto count = va_arg( vl, size_t );
@@ -367,7 +360,6 @@ namespace __sc {
 
     void read( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Read syscall issued!" );
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, void * );
         auto count = va_arg( vl, size_t );
@@ -385,7 +377,6 @@ namespace __sc {
 
     void pread( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Pread syscall issued!" );
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, void * );
         auto count = va_arg( vl, size_t );
@@ -407,7 +398,6 @@ namespace __sc {
 
     void pipe( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
-        __vm_trace( _VM_T_Text, "Pipe syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto pipefd = va_arg( vl, int* );
         auto vfs = ctx.vfs;
@@ -423,7 +413,6 @@ namespace __sc {
 
     void lseek( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Lseek syscall issued!" );
         auto ret = static_cast< off_t* >( retval );
         auto fd = va_arg( vl, int );
         auto offset = va_arg( vl, off_t );
@@ -452,7 +441,6 @@ namespace __sc {
 
     void dup( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Dup syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto vfs = ctx.vfs;
@@ -467,7 +455,6 @@ namespace __sc {
 
     void dup2( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Dup2 syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto oldfd = va_arg( vl, int );
         auto newfd = va_arg( vl, int );
@@ -483,7 +470,6 @@ namespace __sc {
 
     void ftruncate( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Ftruncate syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto length = va_arg( vl, off_t );
@@ -503,7 +489,6 @@ namespace __sc {
 
     void truncate( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Truncate syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto length = va_arg( vl, off_t );
@@ -521,7 +506,6 @@ namespace __sc {
 
     void unlink( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Unlink syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto vfs = ctx.vfs;
@@ -537,7 +521,6 @@ namespace __sc {
 
     void rmdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Rmdir syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto vfs = ctx.vfs;
@@ -553,7 +536,6 @@ namespace __sc {
 
     void unlinkat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Unlinkat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
         auto path = va_arg( vl, const char* );
@@ -594,7 +576,6 @@ namespace __sc {
 
     void linkat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Linkat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto olddirfd = va_arg( vl, int );
         auto target = va_arg( vl, const char* );
@@ -615,7 +596,6 @@ namespace __sc {
 
     void link( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Link syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto target = va_arg( vl, const char* );
         auto linkpath = va_arg( vl, const char* );
@@ -630,7 +610,6 @@ namespace __sc {
 
     void symlinkat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Simlinkat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto target = va_arg( vl, const char* );
         auto dirfd = va_arg( vl, int );
@@ -648,7 +627,6 @@ namespace __sc {
 
     void symlink( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Simlink syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto target = va_arg( vl, const char* );
         auto linkpath = va_arg( vl, const char* );
@@ -665,7 +643,6 @@ namespace __sc {
 
     void readlinkat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Readlinkat syscall issued!" );
         auto ret = static_cast< ssize_t* >( retval );
         auto dirfd = va_arg( vl, int );
         auto path = va_arg( vl, const char* );
@@ -683,7 +660,6 @@ namespace __sc {
 
     void readlink( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Readlink syscall issued!" );
         auto ret = static_cast< ssize_t* >( retval );
         auto path = va_arg( vl, const char* );
         auto buf = va_arg( vl, char* );
@@ -700,7 +676,6 @@ namespace __sc {
 
     void faccessat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Faccessat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
         auto path = va_arg( vl, const char* );
@@ -732,7 +707,6 @@ namespace __sc {
 
     void access( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Access syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto mode = va_arg( vl, int );
@@ -758,7 +732,6 @@ namespace __sc {
 
     void chdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Chdir syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto vfs = ctx.vfs;
@@ -774,7 +747,6 @@ namespace __sc {
 
     void fchdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Fchdir syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
         auto vfs = ctx.vfs;
@@ -790,7 +762,6 @@ namespace __sc {
 
     void fdatasync( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Fdatasync syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto vfs = ctx.vfs;
@@ -805,7 +776,6 @@ namespace __sc {
     }
 
     void fsync( __dios::Context& ctx, int* err, void* retval, va_list vl ) {
-        __vm_trace( _VM_T_Text, "Fsync syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto vfs = ctx.vfs;
@@ -820,8 +790,7 @@ namespace __sc {
     }
 
     void syncfs( __dios::Context& ctx, int* err, void* retval, va_list vl ) {
-         __vm_trace( _VM_T_Text, "Syncfs syscall issued!" );
-         auto ret = static_cast< int* >( retval );
+        auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto vfs = ctx.vfs;
         va_end( vl );
@@ -836,13 +805,10 @@ namespace __sc {
     }
 
     void sync( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
-    {
-         __vm_trace( _VM_T_Text, "Sync syscall issued!" );
-    }
+    {}
 
     void stat(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Stat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto buf = va_arg( vl, struct stat* );
@@ -861,7 +827,6 @@ namespace __sc {
 
     void lstat(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Lstat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto buf = va_arg( vl, struct stat* );
@@ -880,7 +845,6 @@ namespace __sc {
 
     void fstat(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Fstat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, struct stat* );
@@ -897,7 +861,6 @@ namespace __sc {
 
     void fstatfs(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Ustat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, struct statfs* );
@@ -908,7 +871,6 @@ namespace __sc {
 
     void statfs(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "statfs syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto buf = va_arg( vl, struct statfs* );
@@ -919,7 +881,6 @@ namespace __sc {
 
     void fchmodat(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Fchmodat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
         auto path = va_arg( vl, const char* );
@@ -943,7 +904,6 @@ namespace __sc {
 
     void chmod(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "C hmodsyscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto mode = va_arg( vl, mode_t );
@@ -962,7 +922,6 @@ namespace __sc {
 
     void fchmod(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Fchmod syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto mode = va_arg( vl, mode_t );
@@ -979,7 +938,6 @@ namespace __sc {
 
     void mkdirat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Mkdirat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
         auto path = va_arg( vl, const char* );
@@ -997,7 +955,6 @@ namespace __sc {
 
     void mkdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Mkdir syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto mode = va_arg( vl, mode_t );
@@ -1014,7 +971,6 @@ namespace __sc {
 
     void mknodat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Mknodat syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
         auto path = va_arg( vl, const char* );
@@ -1032,7 +988,6 @@ namespace __sc {
  
     void mknod( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Mknod syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto mode = va_arg( vl, mode_t );
@@ -1054,7 +1009,6 @@ namespace __sc {
 
     void umask( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Umask syscall issued!" );
         auto ret = static_cast< mode_t* >( retval );
         auto mask = va_arg( vl, mode_t );
         auto vfs = ctx.vfs;
@@ -1068,7 +1022,6 @@ namespace __sc {
 
     void closedir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Closedir syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto dirp = va_arg( vl, DIR* );
         auto vfs = ctx.vfs;
@@ -1085,7 +1038,6 @@ namespace __sc {
 
     void dirfd( __dios::Context& ctx, int* err, void* retval, va_list vl  ) 
     {
-        __vm_trace( _VM_T_Text, "Dirfd syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto dirp = va_arg( vl, DIR* );
         auto vfs = ctx.vfs;
@@ -1100,7 +1052,6 @@ namespace __sc {
 
     void fdopendir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Fdopendir syscall issued!" );
         auto ret = static_cast< DIR** >( retval );
         auto fd = va_arg( vl, int );
         auto vfs = ctx.vfs;
@@ -1116,7 +1067,6 @@ namespace __sc {
 
     void opendir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Opendir syscall issued!" );
         auto ret = static_cast< DIR** >( retval );
         auto path = va_arg( vl, const char* );
         auto vfs = ctx.vfs;
@@ -1134,7 +1084,6 @@ namespace __sc {
 
     void readdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Readdir syscall issued!" );
         auto ret = static_cast<struct dirent **>( retval );
         auto dirp = va_arg( vl, DIR* );
         static struct dirent entry;
@@ -1162,7 +1111,6 @@ namespace __sc {
 
     void readdir_r( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Readdir_r syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto dirp = va_arg( vl, DIR* );
         auto entry = va_arg( vl, struct dirent* );
@@ -1190,7 +1138,6 @@ namespace __sc {
 
     void rewinddir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Rewinddir syscall issued!" );
         auto dirp = va_arg( vl, DIR* );
         int e = *err;
         auto vfs = ctx.vfs;
@@ -1207,7 +1154,6 @@ namespace __sc {
         typedef int (*filterFc)( const struct dirent * );
         typedef int (*compareFc)( const struct dirent **, const struct dirent ** );
 
-        __vm_trace( _VM_T_Text, "Scandir syscall issued!" );
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
         auto namelist = va_arg( vl, struct dirent *** );
@@ -1267,7 +1213,6 @@ namespace __sc {
 
     void telldir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Telldir syscall issued!" );
         auto ret = static_cast< long* >( retval );
         auto dirp = va_arg( vl, DIR* );
         int e = *err;
@@ -1283,7 +1228,6 @@ namespace __sc {
 
     void seekdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Seekdir syscall issued!" );
         auto dirp = va_arg( vl, DIR* );
         auto offset = va_arg( vl, long );
         int e = *err;
@@ -1301,7 +1245,6 @@ namespace __sc {
     {
         using SocketType = divine::fs::SocketType;
         using namespace divine::fs::flags;
-        __vm_trace( _VM_T_Text, "Socket syscall issued!" );
         auto domain = va_arg( vl, int );
         auto t = va_arg( vl, int );
         auto protocol = va_arg( vl, int );
@@ -1338,7 +1281,6 @@ namespace __sc {
     {
         using SocketType = divine::fs::SocketType;
         using Open = divine::fs::flags::Open;
-        __vm_trace( _VM_T_Text, "Socketpair syscall issued!" );
         auto domain = va_arg( vl, int );
         auto t = va_arg( vl, int );
         auto protocol = va_arg( vl, int );
@@ -1376,7 +1318,6 @@ namespace __sc {
 
     void getsockname( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Getsockname syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  struct sockaddr* );
         auto len = va_arg( vl, socklen_t* );
@@ -1410,7 +1351,6 @@ namespace __sc {
 
     void bind( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Bind syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  const struct sockaddr* );
         auto len = va_arg( vl, socklen_t );
@@ -1438,7 +1378,6 @@ namespace __sc {
 
     void connect( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Connect syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  const struct sockaddr* );
         auto len = va_arg( vl, socklen_t );
@@ -1466,7 +1405,6 @@ namespace __sc {
 
     void getpeername( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Getpeername syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl, struct sockaddr* );
         auto len = va_arg( vl, socklen_t* );
@@ -1500,7 +1438,6 @@ namespace __sc {
 
     void  send( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Send syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto buf = va_arg( vl,  const void* );
         auto n = va_arg( vl, size_t );
@@ -1519,7 +1456,6 @@ namespace __sc {
 
     void sendto( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Sendto syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto buf = va_arg( vl,  const void* );
         auto n = va_arg( vl, size_t );
@@ -1579,7 +1515,6 @@ namespace __sc {
 
     void recv( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Recv syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto buf = va_arg( vl,  void* );
         auto n = va_arg( vl, size_t );
@@ -1597,7 +1532,6 @@ namespace __sc {
 
     void recvfrom( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-         __vm_trace( _VM_T_Text, "Recvfrom syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto buf = va_arg( vl,  void* );
         auto n = va_arg( vl, size_t );
@@ -1617,7 +1551,6 @@ namespace __sc {
 
     void listen( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-         __vm_trace( _VM_T_Text, "Listen syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto n = va_arg( vl, int );
         auto ret = static_cast< int* >( retval );
@@ -1661,7 +1594,6 @@ namespace __sc {
 
     void accept( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Accept syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  struct sockaddr* );
         auto len = va_arg( vl, socklen_t* );
@@ -1678,7 +1610,6 @@ namespace __sc {
 
     void accept4( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Accept syscall issued!" );
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  struct sockaddr* );
         auto len = va_arg( vl, socklen_t* );
@@ -1695,7 +1626,6 @@ namespace __sc {
 
     void mkfifoat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-         __vm_trace( _VM_T_Text, "Mkfifoat syscall issued!" );
         auto dirfd = va_arg( vl, int );
         auto path = va_arg( vl,  const char* );
         auto mode = va_arg( vl, mode_t );
@@ -1712,7 +1642,6 @@ namespace __sc {
 
     void mkfifo( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Mkfifo syscall issued!" );
         auto path = va_arg( vl,  const char* );
         auto mode = va_arg( vl, mode_t );
         auto ret = static_cast< int* >( retval );
@@ -1728,7 +1657,6 @@ namespace __sc {
 
     void isatty(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Isatty syscall issued!" );
         auto fd = va_arg( vl, int );
         auto ret = static_cast< int* >( retval );
         auto vfs = ctx.vfs;
@@ -1745,7 +1673,6 @@ namespace __sc {
 
     void ttyname(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Ttyname syscall issued!" );
         auto fd = va_arg( vl, int );
         auto ret = static_cast< char** >( retval );
         auto vfs = ctx.vfs;
@@ -1760,7 +1687,6 @@ namespace __sc {
 
     void ttyname_r(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "Ttyname syscall issued!" );
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, char * );
         auto count = va_arg( vl, size_t );
@@ -1783,7 +1709,6 @@ namespace __sc {
 
     void _FS_renameitemat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "_FS_renameitemat syscall issued!" );
         auto olddirfd = va_arg( vl, int );
         auto oldpath = va_arg( vl, const char* );
         auto newdirfd = va_arg( vl, int );
@@ -1802,7 +1727,6 @@ namespace __sc {
 
     void _FS_renameitem( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
     {
-        __vm_trace( _VM_T_Text, "_FS_renameitem syscall issued!" );
         auto oldpath = va_arg( vl, const char* );
         auto newpath = va_arg( vl, const char* );
         auto ret = static_cast< int* >( retval );
