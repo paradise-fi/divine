@@ -7,7 +7,7 @@
 #
 # It exports variable $FLAVOUR which should be added to verification command.
 
-. util
+. lib/util
 
 test -z "$TEST_FLAVOUR" && return 0
 
@@ -21,7 +21,7 @@ fi
 
 test $TEST_FLAVOUR = vanilla && return 0
 
-FLAVOUR=""
+export FLAVOUR=""
 for f in `echo $TEST_FLAVOUR | sed 's/+/ /'`; do
     if [ $f = shared ]; then
         FLAVOUR="$FLAVOUR --shared"
