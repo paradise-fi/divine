@@ -190,6 +190,13 @@ void WithBC::setup()
         brick::fs::traverseDirectoryTree( vfs.capture, ex, []( std::string ){ }, ex );
     }
 
+    if ( !_stdin.empty() ) {
+        std::ifstream f( _stdin, std::ios::binary );
+        bstr content( (std::istreambuf_iterator< char >( f )),
+                      std::istreambuf_iterator< char >() );
+        env.emplace_back( "vfs.stdin", content );
+    }
+
     env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
 
 

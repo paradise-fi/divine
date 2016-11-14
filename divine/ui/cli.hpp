@@ -54,7 +54,7 @@ struct WithBC : Command
         bool followSymlink;
     };
 
-    std::string _file, _std;
+    std::string _file, _std, _stdin;
     std::vector< std::string > _env;
     std::vector< std::string > _useropts;
     std::vector< std::string > _systemopts;
@@ -356,6 +356,7 @@ struct CLI : Interface
             .option( "[--vfslimit {mem}]", &WithBC::_vfsSizeLimit, "filesystem snapshot size limit (default 16 MiB)"s )
             .option( "[--capture {vfsdir}]", &WithBC::_vfs,
                 "capture directory in form {dir}[:{follow|nofollow}[:{mount point}]]"s )
+            .option( "[--stdin {file}]", &WithBC::_stdin, "capture file and pass it to OS as stdin for verified program" )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
