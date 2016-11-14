@@ -33,8 +33,8 @@
         } \
     } while (0)
 
-# define FS_ATOMIC_SECTION_BEGIN()                         
-# define FS_ATOMIC_SECTION_END()                               
+# define FS_ATOMIC_SECTION_BEGIN()
+# define FS_ATOMIC_SECTION_END()
 # define FS_CHOICE( n )             __vm_choose( n )
 
 
@@ -132,7 +132,7 @@ auto constructIfPossible( Args &&... args )
 }
 
 template< typename Type, typename... Args >
-auto constructIfPossible( Args &&... args )
+auto constructIfPossible( Args &&... )
     -> typename std::enable_if< !std::is_constructible< Type, Args... >::value, Type * >::type
 {
     return nullptr;

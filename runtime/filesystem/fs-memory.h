@@ -26,7 +26,7 @@ struct AllocatorBase {
     template< typename U >
     AllocatorBase( const std::allocator< U > & ) {}
 
-    pointer allocate( size_type n, const_pointer hint = nullptr ) {
+    pointer allocate( size_type n, __attribute__((unused)) const_pointer hint = nullptr ) {
 #ifdef __divine__
         return static_cast< pointer >( __vm_obj_make( n ) );
 #else
@@ -34,7 +34,7 @@ struct AllocatorBase {
 #endif
     }
 
-    void deallocate( pointer p, size_type n ) {
+    void deallocate( pointer p, __attribute__((unused)) size_type n ) {
 #ifdef __divine__
         __vm_obj_free( p );
 #else
