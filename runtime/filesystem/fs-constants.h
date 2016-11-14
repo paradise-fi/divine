@@ -9,6 +9,12 @@
 namespace divine {
 namespace fs {
 
+enum class FileTrace {
+    NOTRACE,     /* ignore write in file */
+    UNBUFFERED,  /* trace whenever possible */
+    TRACE        /* trace on newline */
+};
+
 enum class Seek {
     Undefined,
     Set,

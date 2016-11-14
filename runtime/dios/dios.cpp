@@ -15,6 +15,7 @@ extern "C" {
 #include <dios/trace.hpp>
 #include <dios/fault.hpp>
 #include <filesystem/fs-manager.h>
+#include <filesystem/fs-constants.h>
 
 extern "C" {
 #include <unistd.h>
@@ -23,6 +24,7 @@ char **environ;
 
 namespace __dios {
 using VFS = divine::fs::VFS;
+using FileTrace = divine::fs::FileTrace;
 
 Context::Context() :
     scheduler( __dios::new_object< Scheduler >() ),
@@ -48,6 +50,23 @@ void MachineParams::initialize( const SysOpts& opts ) {
 void MachineParams::traceParams( int indent ) {
     __dios_trace_i( indent, "machine parameters:" );
     __dios_trace_i( indent + 1, "- hardware_concurrency: %d", hardwareConcurrency );
+}
+
+FileTrace getFileTraceConfig( const SysOpts& o, dstring stream ) {
+    for ( const auto& opt : o ) {
+        if ( stream == opt.first ) {
+            dstring s;
+            std::transform( opt.second.begin(), opt.second.end(),
+                std::back_inserter( s ), ::tolower );
+            if ( s == "notrace" )
+                return FileTrace::NOTRACE;
+            if ( s == "unbuffered" )
+                return FileTrace::UNBUFFERED;
+            if ( s == "trace" )
+                return FileTrace::TRACE;
+        }
+    }
+    return FileTrace::TRACE;
 }
 
 bool trace_threads( const SysOpts& o ) {
@@ -83,7 +102,11 @@ void trace_help() {
     __dios_trace_i( 2,     "- diosassert" );
     __dios_trace_i( 1,   "- {nofail, simfail}: enable/disable simulation of failure" );
     __dios_trace_i( 2,     "- malloc" );
-    __dios_trace_i( 1,   "- hardware_concurrency:{num} specify number of harware concurrency units (defulat 0)");
+    __dios_trace_i( 1,   "- hardware_concurrency:{num} specify number of harware concurrency units (default 0)" );
+    __dios_trace_i( 1,   "- {stdin, stderr}: specify how to treat program output" );
+    __dios_trace_i( 2,     "- notrace: ignore the stream" );
+    __dios_trace_i( 2,     "- unbuffered: trace each write" );
+    __dios_trace_i( 2,     "- trace: trance after each newline (default) " );
 }
 
 void trace_env( const _VM_Env *env ) {
