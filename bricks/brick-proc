@@ -36,7 +36,7 @@
 #include <iostream>
 #include <future>
 
-#ifdef __unix__
+#if defined( __unix__ ) || defined( __divine__ )
 #include <unistd.h>
 #include <sys/wait.h>
 #endif

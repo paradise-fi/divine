@@ -76,10 +76,12 @@ struct Exception : std::runtime_error {
     explicit Exception( const char *what ) : std::runtime_error( what ) { }
 };
 
-#if defined( __unix__ ) || defined( __APPLE__ )
+#if defined( __unix__ ) || defined( __APPLE__ ) || defined( __divine__ )
 const char pathSeparators[] = { '/' };
 #elif defined( _WIN32 )
 const char pathSeparators[] = { '\\', '/' };
+#else
+#error please define pathSeparators for this platform
 #endif
 
 inline bool isPathSeparator( char c ) {
@@ -678,16 +680,17 @@ struct ChangeCwd {
     const std::string oldcwd;
 };
 
+#if defined( __unix__ ) || defined( __divine__ )
 inline std::string tempDir() {
-#ifdef __unix__
     auto *tmpdir = std::getenv( "TMPDIR" );
     if ( tmpdir )
         return tmpdir;
     return "/tmp";
-#else
-#error unimplemented brick::fs::tempDir
-#endif
 }
+#else
+std::string tempDir();
+#warning unimplemented brick::fs::tempDir
+#endif
 
 enum class AutoDelete : bool { No = false, Yes = true };
 enum class UseSystemTemp : bool { No = false, Yes = true };
