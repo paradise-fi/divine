@@ -28,8 +28,9 @@ void * malloc( size_t size ) noexcept
     using FaultFlag = __dios::Fault::FaultFlag;
     int masked = __vm_mask( 1 );
     void *r;
-    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled ? 2 : 1;
-    if ( !__vm_choose( opt ) )
+    bool ok = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled
+              ? __vm_choose( 2 ) : 1;
+    if ( ok )
         r = __vm_obj_make( size ); // success
     else
         r = NULL; // failure
@@ -43,13 +44,14 @@ void *realloc( void *orig, size_t size ) noexcept
 {
     using FaultFlag = __dios::Fault::FaultFlag;
     int masked = __vm_mask( 1 );
-    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled ? 2 : 1;
+    bool ok = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled
+              ? __vm_choose( 2 ) : 1;
     void *r;
     if ( !size ) {
         __vm_obj_free( orig );
         r = NULL;
     }
-    else if ( !__vm_choose( opt ) ) {
+    else if ( ok ) {
         void *n = __vm_obj_make( size );
         if ( orig ) {
             ::memcpy( n, orig, MIN( size , static_cast< size_t >( __vm_obj_size( orig ) ) ) );
@@ -67,8 +69,9 @@ void *calloc( size_t n, size_t size ) noexcept
     using FaultFlag = __dios::Fault::FaultFlag;
     int masked = __vm_mask( 1 );
     void *r;
-    int opt = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled ? 2 : 1;
-    if ( !__vm_choose( opt ) ) {
+    bool ok = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled
+              ? __vm_choose( 2 ) : 1;
+    if ( ok ) {
         void *mem = __vm_obj_make( n * size ); // success
         memset( mem, 0, n * size );
         r = mem;
