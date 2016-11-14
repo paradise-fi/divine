@@ -564,6 +564,12 @@ namespace t_shmem {
 
 using namespace ::brick::shmem;
 
+#ifdef __divine__
+static constexpr int size = 16;
+#else
+static constexpr int size = 128 * 1024;
+#endif
+
 struct FifoTest {
     template< typename T >
     struct Checker : Thread
@@ -593,7 +599,7 @@ struct FifoTest {
             }
             terminate = 0;
             for ( int i = 0; i < n; ++i )
-                ASSERT_EQ( x[ i ], 128*1024 );
+                ASSERT_EQ( x[ i ], size );
         }
 
         Checker( int _n = 1 ) : terminate( 0 ), n( _n ) {}
@@ -603,7 +609,7 @@ struct FifoTest {
         Checker< int > c;
         for ( int j = 0; j < 5; ++j ) {
             c.start();
-            for( int i = 0; i < 128 * 1024; ++i )
+            for( int i = 0; i < size; ++i )
                 c.fifo.push( i );
             c.terminate = true;
             c.join();

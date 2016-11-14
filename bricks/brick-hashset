@@ -899,6 +899,14 @@ namespace t_hashset {
 
 using namespace hashset;
 
+#ifdef __divine__
+static constexpr int size = 4;
+static constexpr int isize = 2;
+#else
+static constexpr int size = 32 * 1024;
+static constexpr int isize = 4 * 1024;
+#endif
+
 template< template< typename > class HS >
 struct Sequential
 {
@@ -919,11 +927,12 @@ struct Sequential
 
     TEST(stress) {
         HS< int > set;
-        for ( int i = 1; i < 32*1024; ++i ) {
+
+        for ( int i = 1; i < size; ++i ) {
             set.insert( i );
             ASSERT( set.count( i ) );
         }
-        for ( int i = 1; i < 32*1024; ++i ) {
+        for ( int i = 1; i < size; ++i ) {
             ASSERT( set.count( i ) );
         }
     }
@@ -931,21 +940,21 @@ struct Sequential
     TEST(set) {
         HS< int > set;
 
-        for ( int i = 1; i < 32*1024; ++i ) {
+        for ( int i = 1; i < size; ++i ) {
             ASSERT( !set.count( i ) );
         }
 
-        for ( int i = 1; i < 32*1024; ++i ) {
+        for ( int i = 1; i < size; ++i ) {
             set.insert( i );
             ASSERT( set.count( i ) );
             ASSERT( !set.count( i + 1 ) );
         }
 
-        for ( int i = 1; i < 32*1024; ++i ) {
+        for ( int i = 1; i < size; ++i ) {
             ASSERT( set.count( i ) );
         }
 
-        for ( int i = 32*1024; i < 64 * 1024; ++i ) {
+        for ( int i = size; i < 2 * size; ++i ) {
             ASSERT( !set.count( i ) );
         }
     }
@@ -972,12 +981,12 @@ struct Parallel
 
     TEST(insert) {
         Insert a;
-        a.set.initialSize( 4 * 1024 );
+        a.set.initialSize( isize );
         a.from = 1;
-        a.to = 32 * 1024;
+        a.to = size;
         a.overlap = false;
         a.main();
-        for ( int i = 1; i < 32*1024; ++i )
+        for ( int i = 1; i < size; ++i )
             ASSERT( a.set.count( i ) );
     }
 
@@ -1002,7 +1011,7 @@ struct Parallel
     {
         std::vector< Insert > arr;
         arr.resize( count, Insert() );
-        arr[ 0 ].set.initialSize( 4 * 1024 );
+        arr[ 0 ].set.initialSize( isize );
 
         for ( std::size_t i = 0; i < count; ++i )
         {
@@ -1022,9 +1031,9 @@ struct Parallel
 
     TEST(multi)
     {
-        auto set = _multi( 10, 1, 32 * 1024 );
+        auto set = _multi( 10, 1, size );
 
-        for  ( int i = 1; i < 32 * 1024; ++i )
+        for  ( int i = 1; i < isize; ++i )
             ASSERT( set.count( i ) );
 
         int count = 0;
@@ -1036,34 +1045,34 @@ struct Parallel
                 ++count;
             }
         }
-        ASSERT_EQ( count, 32 * 1024 - 1 );
+        ASSERT_EQ( count, size - 1 );
     }
 
     TEST(stress)
     {
-        auto s = _par( 1, 16*1024, 8*1024, 32*1024 );
+        auto s = _par( 1, size / 2, size / 4, size );
 
-        for ( int i = 1; i < 32*1024; ++i )
+        for ( int i = 1; i < size; ++i )
             ASSERT( s.count( i ) );
     }
 
     TEST(empty)
     {
         HS< int > set;
-        set.initialSize( 4 * 1024 );
+        set.initialSize( isize );
 
-        for ( int i = 1; i < 32*1024; ++i )
+        for ( int i = 1; i < size; ++i )
             ASSERT( !set.count( i ) );
     }
 
     TEST(set)
     {
-        auto set = _par( 1, 16*1024, 16*1024, 32*1024 );
+        auto set = _par( 1, size / 2, size / 2, size );
 
-        for ( int i = 1; i < 32*1024; ++i )
+        for ( int i = 1; i < size; ++i )
             ASSERT_EQ( i, i * set.count( i ) );
 
-        for ( int i = 32*1024; i < 64 * 1024; ++i )
+        for ( int i = size; i < size * 2; ++i )
             ASSERT( !set.count( i ) );
     }
 };
@@ -1555,4 +1564,4 @@ FOR_PAR(IvR_PAR)
 
 #endif // benchmarks
 
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
