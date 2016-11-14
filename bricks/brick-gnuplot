@@ -469,12 +469,13 @@ struct Terminal {
     }
 
     void fromString( std::string s ) {
-        string::ERegexp rx( "([0-9.]+)([a-z]+),([0-9.]+)([a-z]+)", 5 );
-        if ( rx.match( s ) ) {
-            width = std::atof( rx[1].c_str() );
-            height = std::atof( rx[3].c_str() );
-            width *= unit( rx[2] );
-            height *= unit( rx[4] );
+        std::regex rx( "([0-9.]+)([a-z]+),([0-9.]+)([a-z]+)", std::regex::extended );
+        std::smatch match;
+        if ( std::regex_match( s, match, rx ) ) {
+            width = std::stof( match[1] );
+            height = std::stof( match[3] );
+            width *= unit( match[2] );
+            height *= unit( match[4] );
         }
     }
 

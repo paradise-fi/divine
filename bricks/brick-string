@@ -42,8 +42,7 @@
 #include <vector>
 #include <set>
 #include <stdexcept>
-
-#include <regex.h>
+#include <regex>
 
 #include <brick-assert>
 
@@ -300,117 +299,34 @@ inline std::string basename(const std::string& pathname)
         return pathname.substr(pos+1);
 }
 
-namespace {
+struct SplitRange {
 
-void throw_regerror( regex_t *re, int code ) __attribute__((noreturn));
+    using const_iterator = std::sregex_token_iterator;
 
-void throw_regerror( regex_t *re, int code ) {
-    int size = regerror( code, re, nullptr, 0 );
-    std::string err;
-    err.resize( size );
-    regerror( code, re, &err[0], size );
-    throw std::runtime_error( fmtf( "regexp error: %s", err.c_str() ) );
-}
+    SplitRange( std::string str, std::regex re ) :
+        re( std::move( re ) ), str( std::move( str ) )
+    { }
 
-}
-
-class Regexp
-{
-protected:
-    regex_t re;
-    regmatch_t* pmatch;
-    int nmatch;
-    std::string lastMatch;
-
-    void checkIndex( int idx ) {
-        if (idx > nmatch)
-            throw std::out_of_range(
-                fmtf( "submatch index %d exceeds number of matches %d",
-                      idx, nmatch ) );
+    std::sregex_token_iterator begin() const {
+        return std::sregex_token_iterator( str.begin(), str.end(), re, -1 );
     }
 
-public:
-    /* Note that match_count is required to be >1 to enable
-       sub-regexp capture. The maximum *INCLUDES* the whole-regexp
-       match (indexed 0). [TODO we may want to fix this to be more
-       friendly?] */
-    Regexp(const std::string& expr, int match_count = 0, int flags = 0 /* FIXME: REG_BASIC */ )
-	: pmatch(0), nmatch(match_count)
-    {
-        if (match_count == 0)
-            flags |= REG_NOSUB;
+    std::sregex_token_iterator end() { return { }; }
 
-        int res = regcomp(&re, expr.c_str(), flags);
-        if (res)
-            throw_regerror( &re, res );
-
-        if (match_count > 0)
-            pmatch = new regmatch_t[match_count];
-    }
-
-    ~Regexp() throw ()
-    {
-	regfree(&re);
-	if (pmatch)
-            delete[] pmatch;
-    }
-
-    bool match(const std::string& str, int flags = 0)
-    {
-        int res;
-
-        if (nmatch)
-        {
-            res = regexec(&re, str.c_str(), nmatch, pmatch, flags);
-            lastMatch = str;
-        }
-        else
-            res = regexec(&re, str.c_str(), 0, 0, flags);
-
-        switch (res)
-        {
-            case 0:	return true;
-            case REG_NOMATCH: return false;
-            default: throw_regerror( &re, res );
-        }
-    }
-
-
-    /* Indexing is from 1 for capture matches, like perl's $0,
-       $1... 0 is whole-regexp match, not a capture. TODO
-       the range is miscalculated (an off-by-one, wrt. the
-       counterintuitive match counting). */
-    std::string operator[](int idx) {
-        checkIndex( idx );
-
-        if (pmatch[idx].rm_so == -1)
-            return std::string();
-
-        return std::string(lastMatch, pmatch[idx].rm_so, pmatch[idx].rm_eo - pmatch[idx].rm_so);
-    }
-
-    size_t matchStart(int idx) {
-        checkIndex( idx );
-        return pmatch[idx].rm_so;
-    }
-
-    size_t matchEnd(int idx) {
-        checkIndex( idx );
-        return pmatch[idx].rm_eo;
-    }
-
-    size_t matchLength(int idx) {
-        checkIndex( idx );
-	return pmatch[idx].rm_eo - pmatch[idx].rm_so;
-    }
+  private:
+    std::regex re;
+    std::string str;
 };
 
-class ERegexp : public Regexp
+inline SplitRange splitStringBy( const std::string &str, const std::regex &re ) {
+    return SplitRange( str, re );
+}
+
+inline SplitRange splitStringBy( const std::string &str, const std::string &re,
+                          std::regex::flag_type flags = std::regex::basic )
 {
-public:
-	ERegexp(const std::string& expr, int match_count = 0, int flags = 0)
-		: Regexp(expr, match_count, flags | REG_EXTENDED) {}
-};
+    return SplitRange( str, std::regex( re, flags ) );
+}
 
 /**
  * Split a string using a regular expression to match the token separators.
@@ -419,97 +335,40 @@ public:
  *
  * Example code:
  * \code
- *   utils::Splitter splitter("[ \t]*,[ \t]*", REG_EXTENDED);
+ *   utils::Splitter splitter( "[ \t]*,[ \t]*", std::regex::extended );
  *   vector<string> split;
  *   std::copy(splitter.begin(myString), splitter.end(), back_inserter(split));
  * \endcode
  *
  */
-class Splitter
-{
-    Regexp re;
+struct Splitter {
 
-public:
-    /**
-     * Warning: the various iterators reuse the Regexps and therefore only one
-     * iteration of a Splitter can be done at a given time.
-     */
-    // TODO: add iterator_traits
-    class const_iterator
-    {
-        Regexp *re;
-        std::string cur;
-        std::string next;
-
-    public:
-        typedef std::string value_type;
-        typedef std::ptrdiff_t difference_type;
-        typedef value_type *pointer;
-        typedef value_type &reference;
-        typedef std::forward_iterator_tag iterator_category;
-
-        const_iterator(Regexp& re, const std::string& str) : re(&re), next(str) { ++*this; }
-        const_iterator(Regexp& re) : re(&re) {}
-
-        const_iterator& operator++()
-        {
-            ASSERT( re );
-            if (re->match(next)) {
-                if (re->matchLength(0)) {
-                    cur = next.substr(0, re->matchStart(0));
-                    next = next.substr(re->matchStart(0) + re->matchLength(0));
-                } else {
-                    if (!next.empty())
-                    {
-                        cur = next.substr(0, 1);
-                        next = next.substr(1);
-                    } else {
-                        cur = next;
-                    }
-                }
-            } else {
-                cur = next;
-                next = std::string();
-            }
-            return *this;
-        }
-
-        const_iterator operator++( int )
-        {
-            const_iterator rv = *this;
-            ++*this;
-            return rv;
-        }
-
-        const std::string& operator*() const
-        {
-            return cur;
-        }
-        const std::string* operator->() const
-        {
-            return &cur;
-        }
-        bool operator==(const const_iterator& ti) const
-        {
-            return cur == ti.cur && next == ti.next;
-        }
-        bool operator!=(const const_iterator& ti) const
-        {
-            return cur != ti.cur || next != ti.next;
-        }
+    struct const_iterator : private std::string, public std::sregex_token_iterator {
+        const_iterator() = default;
+        const_iterator( std::string str, const std::regex &re ) :
+            std::string( str ),
+            std::sregex_token_iterator( std::string::begin(), std::string::end(),
+                    re, -1 )
+        { }
     };
 
     /**
      * Create a splitter that uses the given regular expression to find tokens.
      */
-    Splitter(const std::string& re, int flags)
-        : re(re, 1, flags) {}
+    Splitter( const std::string &re, std::regex::flag_type flags )
+        : re( re, flags )
+    { }
 
-    /**
-     * Split the string and iterate the resulting tokens
-     */
-    const_iterator begin(const std::string& str) { return const_iterator(re, str); }
-    const_iterator end() { return const_iterator(re); }
+    explicit Splitter( std::regex &re ) : re( re ) { }
+
+    const_iterator begin( const std::string &str ) const {
+        return const_iterator( str, re );
+    }
+
+    const_iterator end() { return { }; }
+
+  private:
+    std::regex re;
 };
 
 }
@@ -521,99 +380,44 @@ using std::string;
 
 struct TestRegexp {
 
-    TEST_FAILING(parse) {
-        ERegexp re("^foo(");
-    }
-
-    TEST(parse_catch) {
-        try {
-            ERegexp re("^foo(");
-            UNREACHABLE("bad regex");
-        } catch ( std::runtime_error &e ) {
-        }
-    }
-
-    TEST(basicMatch) {
-        Regexp re("^foo*bar()$");
-        ASSERT(re.match("fobar()"));
-        ASSERT(re.match("foobar()"));
-        ASSERT(re.match("fooobar()"));
-        ASSERT(!re.match("fbar()"));
-        ASSERT(!re.match(" foobar()"));
-        ASSERT(!re.match("foobar() "));
-    }
-
-    TEST(extendedMatch) {
-        ERegexp re("^fo+bar()$");
-        ASSERT(re.match("fobar"));
-        ASSERT(re.match("foobar"));
-        ASSERT(re.match("fooobar"));
-        ASSERT(!re.match("fbar"));
-        ASSERT(!re.match(" foobar"));
-        ASSERT(!re.match("foobar "));
-    }
-
-    TEST(capture) {
-        ERegexp re("^f(o+)bar([0-9]*)$", 3);
-        ASSERT(re.match("fobar"));
-        ASSERT_EQ(re[0], string("fobar"));
-        ASSERT_EQ(re[1], string("o"));
-        ASSERT_EQ(re[2], string(""));
-        ASSERT_EQ(re.matchStart(0), 0u);
-        ASSERT_EQ(re.matchEnd(0), 5u);
-        ASSERT_EQ(re.matchLength(0), 5u);
-        ASSERT_EQ(re.matchStart(1), 1u);
-        ASSERT_EQ(re.matchEnd(1), 2u);
-        ASSERT_EQ(re.matchLength(1), 1u);
-
-        ASSERT(re.match("foobar42"));
-        ASSERT_EQ(re[0], string("foobar42"));
-        ASSERT_EQ(re[1], string("oo"));
-        ASSERT_EQ(re[2], string("42"));
-    }
-
     TEST(splitter)
     {
-        Splitter splitter("[ \t]+or[ \t]+", REG_EXTENDED | REG_ICASE);
+        Splitter splitter("[ \t]+or[ \t]+", std::regex::extended | std::regex::icase );
         Splitter::const_iterator i = splitter.begin("a or b OR c   or     dadada");
         ASSERT_EQ(*i, "a");
-        ASSERT_EQ(i->size(), 1u);
+        ASSERT_EQ(i->length(), 1u);
         ++i;
         ASSERT_EQ(*i, "b");
-        ASSERT_EQ(i->size(), 1u);
+        ASSERT_EQ(i->length(), 1u);
         ++i;
         ASSERT_EQ(*i, "c");
-        ASSERT_EQ(i->size(), 1u);
+        ASSERT_EQ(i->length(), 1u);
         ++i;
         ASSERT_EQ(*i, "dadada");
-        ASSERT_EQ(i->size(), 6u);
+        ASSERT_EQ(i->length(), 6u);
         ++i;
         ASSERT(i == splitter.end());
     }
 
-    TEST(emptySplitter)
+    TEST(splitString)
     {
-        Splitter splitter("Z*", REG_EXTENDED | REG_ICASE);
-        Splitter::const_iterator i = splitter.begin("ciao");
-        ASSERT_EQ(*i, "c");
-        ASSERT_EQ(i->size(), 1u);
-        ++i;
-        ASSERT_EQ(*i, "i");
-        ASSERT_EQ(i->size(), 1u);
-        ++i;
-        ASSERT_EQ(*i, "a");
-        ASSERT_EQ(i->size(), 1u);
-        ++i;
-        ASSERT_EQ(*i, "o");
-        ASSERT_EQ(i->size(), 1u);
-        ++i;
-        ASSERT(i == splitter.end());
-    }
+        std::vector< std::string > matches = { "a", "b", "c", "dadada" };
+        auto i = matches.begin();
 
+        for ( const auto &m : splitStringBy( "a or b OR c   or     dadada", "[ \t]+or[ \t]+",
+                                std::regex::extended | std::regex::icase ) )
+        {
+            ASSERT( i != matches.end() );
+            ASSERT_EQ( m.length(), i->size() );
+            ASSERT_EQ( m, *i );
+            ++i;
+        }
+        ASSERT( i == matches.end() );
+    }
 };
 
 }
 }
 
 #endif
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
