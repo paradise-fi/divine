@@ -1,6 +1,6 @@
 . lib/testcase
 
-sim $TESTS/c/assert.c <<EOF
+sim $TESTS/c/assert.1.c <<EOF
 + ^# executing __boot at
 > start
 - ^# executing

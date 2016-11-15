@@ -1,6 +1,6 @@
 . lib/testcase
 
-sim $TESTS/c/pointer-arith.c <<EOF
+sim $TESTS/c/pointer-arith.2.c <<EOF
 + ^# executing __boot
 > start
 + ^# executing main

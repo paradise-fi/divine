@@ -1,6 +1,6 @@
 . lib/testcase
 
-sim $TESTS/c/malloc.c <<EOF
+sim $TESTS/c/malloc.1.c <<EOF
 + ^# executing __boot at
 > trace 0 0 1
 - FAULT

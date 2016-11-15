@@ -1,6 +1,6 @@
 . lib/testcase
 
-SRC=$TESTS/c/assert.c
+SRC=$TESTS/c/assert.1.c
 
 sim $SRC <<EOF
 + ^# executing __boot
