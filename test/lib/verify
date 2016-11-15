@@ -1,7 +1,9 @@
 . lib/flavour vanilla
 . lib/testcase
 
-opts=`grep '//[ \t]*VERIFY_OPTS' $1 | sed 's/^.*: //'` || true
+opts1=`grep '//[ \t]*VERIFY_OPTS:' $1 | sed 's/^[^:]*: //'` || true
+opts2=`grep '/\*[ \t]*VERIFY_OPTS:.*\*/' $1 | sed 's/^[^:]*:[ \t]*\(.*\)*\*\//\1/'` || true
+opts="$opts1 $opts2"
 echo "$1" | grep -q '.cpp$' && opts="-std=c++14"
 divine verify --threads 1 --max-backtrace-depth 65536 $opts "$1" | tee verify.out
 check verify "$1"
