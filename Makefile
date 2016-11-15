@@ -45,7 +45,7 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 all: $(DEFAULT_FLAVOUR)
 
 FLAVOURS = debug asan release
-TARGETS = divine unit functional website check llvm-dis clang
+TARGETS = divine unit functional website check llvm-dis clang test-divine
 
 ${TARGETS}:
 	$(MAKE) $(DEFAULT_FLAVOUR)-$@
@@ -94,9 +94,17 @@ env : debug-env
 show: # make show var=VAR
 	@echo $($(var))
 
-.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env} toolchain
+.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env} toolchain validate dist
 
 dist:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS)
 	cmake --build $(OBJ)debug --target package_source $(VERB)
 	cp $(OBJ)debug/divine-*.tar.gz .
+
+validate:
+	$(MAKE) debug-divine
+	$(MAKE) release-divine
+	$(MAKE) debug-test-divine
+	$(OBJ)/debug/divine/test-divine
+	$(MAKE) debug-functional T=[.]1[.][^.]+$
+	$(MAKE) release-functional T=[.][12][.][^.]+$
