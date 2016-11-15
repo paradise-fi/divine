@@ -49,9 +49,17 @@ failed()
     fi
 }
 
+warnings()
+{
+    echo "Some tests skipped or passed with warnings:"
+    echo
+    egrep 'warnings|skipped' $list | perl -pe 's,([a-z]+):(.*) (.*),    $3: [$1] $2,'
+    echo
+}
+
 passed()
 {
-    echo "All $(grep -c passed $list) tests passed. The above patches are now part of"
+    echo "$(grep -c passed $list) tests passed. The above patches are now part of"
     echo "<http://divine.fi.muni.cz/current>."
 }
 
@@ -85,10 +93,12 @@ fi
 (echo "# Test results"; echo) >> report.txt
 
 rm -f $list
-if ! make debug-check || grep -q -v passed $list; then
+if ! make debug-check || egrep -q 'failed|timeout|unknown' $list; then
     failed >> report.txt
     finished 1
 fi
+
+if egrep -q 'warnings|skipped' $list; then warnings >> report.txt; fi
 
 # everything looks good, push to current
 passed >> report.txt
