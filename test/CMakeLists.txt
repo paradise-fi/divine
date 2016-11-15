@@ -27,7 +27,7 @@ add_custom_target( functional
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/doc/examples .
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND mkdir -p results
-  COMMAND ${WITH_LCOV} ./runner --total-timeout 28800 --timeout 60 --interpreter cpp:lib/verify --interpreter c:lib/verify --interpreter bt:lib/brick-test ${ONLY} --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
+  COMMAND ${WITH_LCOV} ./runner --total-timeout 28800 --timeout 60 --interpreter cpp:lib/verify --interpreter c:lib/verify --interpreter bt:lib/brick-test ${ONLY} --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results --sort-hint "[.]([^.]*)[.][^.]+$"
   USES_TERMINAL
   DEPENDS runner
   VERBATIM
