@@ -14,15 +14,22 @@ file( WRITE "${CMAKE_CURRENT_BINARY_DIR}/environment" "
  export TESTS='${root}'
  ${EXPORT_OPTIONS}" )
 
+set( ONLY --only "[.][1-4][.][^.]+$" )
+
+if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
+    set( ONLY --only "[.][1-3][.][^.]+$" )
+endif()
+
 add_custom_target( functional
   COMMAND rm -rf data examples lib
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/data .
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/doc/examples .
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND mkdir -p results
-  COMMAND ${WITH_LCOV} ./runner --total-timeout 28800 --timeout 60 --interpreter cpp:lib/verify --interpreter c:lib/verify --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
+  COMMAND ${WITH_LCOV} ./runner --total-timeout 28800 --timeout 60 --interpreter cpp:lib/verify --interpreter c:lib/verify ${ONLY} --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
   USES_TERMINAL
   DEPENDS runner
+  VERBATIM
 )
 
 add_executable( runner lib/runner.cpp )
