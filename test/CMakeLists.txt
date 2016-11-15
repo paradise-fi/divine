@@ -12,6 +12,7 @@ file( WRITE "${CMAKE_CURRENT_BINARY_DIR}/environment" "
  export WIN32='${WIN32}'
  export LLVMCONFIG='${LLVM_CONFIG_EXECUTABLE}'
  export TESTS='${root}'
+ export SRC_ROOT='${CMAKE_SOURCE_DIR}'
  ${EXPORT_OPTIONS}" )
 
 set( ONLY --only "[.][1-4][.][^.]+$" )
@@ -26,7 +27,7 @@ add_custom_target( functional
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/doc/examples .
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND mkdir -p results
-  COMMAND ${WITH_LCOV} ./runner --total-timeout 28800 --timeout 60 --interpreter cpp:lib/verify --interpreter c:lib/verify ${ONLY} --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
+  COMMAND ${WITH_LCOV} ./runner --total-timeout 28800 --timeout 60 --interpreter cpp:lib/verify --interpreter c:lib/verify --interpreter bt:lib/brick-test ${ONLY} --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results
   USES_TERMINAL
   DEPENDS runner
   VERBATIM

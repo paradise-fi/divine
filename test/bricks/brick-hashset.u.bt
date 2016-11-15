@@ -1,0 +1,2 @@
+# Despite smaller testing parameters set in brick-hashset, this test is too
+# large, at least for automatic testing.
