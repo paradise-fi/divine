@@ -208,7 +208,7 @@ struct PipeDescriptor : FileDescriptor {
         return length;
     }
 
-    void offset( size_t off ) override {
+    void offset( size_t /*off*/ ) override {
         throw Error( EPIPE );
     }
 protected:

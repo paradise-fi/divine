@@ -7,7 +7,7 @@
 #include <dios/syscall.hpp>
 #include <cerrno>
 
-int open( const char *path, int flags, ... ) 
+int open( const char *path, int flags, ... )
 {
 	int mode = 0;
 	if ( flags & O_CREAT ) {
@@ -16,14 +16,14 @@ int open( const char *path, int flags, ... )
 		mode = va_arg(vl, int);
 		va_end(vl);
 	}
-	
+
 	int ret;
     __dios_syscall( __dios::_SC_open, &ret, path, flags, mode );
-   
+
     return ret;
 }
 
-int openat( int dirfd, const char *path, int flags, ... ) 
+int openat( int dirfd, const char *path, int flags, ... )
 {
 	int mode = 0;
 	if ( flags & O_CREAT ) {
@@ -34,15 +34,15 @@ int openat( int dirfd, const char *path, int flags, ... )
 	}
 
 	int ret;
-    __dios_syscall( __dios::_SC_openat, &ret, path, flags, mode );
- 
+    __dios_syscall( __dios::_SC_openat, &ret, dirfd, path, flags, mode );
+
     return ret;
 }
 
-int fcntl( int fd, int cmd, ... ) 
+int fcntl( int fd, int cmd, ... )
 {
 	int ret;
-	if ((cmd & F_DUPFD) | (cmd & F_DUPFD) | (cmd & F_SETFD) | (cmd & F_SETFL) | 
+	if ((cmd & F_DUPFD) | (cmd & F_DUPFD) | (cmd & F_SETFD) | (cmd & F_SETFL) |
 		(cmd & F_DUPFD_CLOEXEC) | (cmd & F_SETOWN))
 	{
 		va_list vl;
@@ -50,20 +50,20 @@ int fcntl( int fd, int cmd, ... )
 		auto arq = va_arg(vl, int);
 		va_end(vl);
 		__dios_syscall( __dios::_SC_openat, &ret, fd, cmd, arq );
-	}else if ( (cmd & F_SETLK) | (cmd & F_SETLKW) | (cmd & F_GETLK)  ) {
+	} else if ( (cmd & F_SETLK) | (cmd & F_SETLKW) | (cmd & F_GETLK)  ) {
 		va_list vl;
 		va_start(vl, cmd);
 		auto arq = va_arg(vl, struct flock *);
 		va_end(vl);
 		__dios_syscall( __dios::_SC_openat, &ret, fd, cmd, arq );
-	}else {
+	} else {
 		__dios_syscall( __dios::_SC_openat, &ret, fd, cmd );
 	}
 
 	return ret;
 }
 
-int pipe( int pipefd[ 2 ] ) 
+int pipe( int pipefd[ 2 ] )
 {
 	int ret;
 	__dios_syscall( __dios::_SC_pipe, &ret, pipefd );
@@ -71,7 +71,7 @@ int pipe( int pipefd[ 2 ] )
 	return ret;
 }
 
-void sync( void ) 
+void sync( void )
 {
 	__dios_syscall( __dios::_SC_pipe, nullptr );
 
@@ -79,20 +79,20 @@ void sync( void )
 
 int scandir( const char *path, struct dirent ***namelist,
              int (*filter)( const struct dirent * ),
-             int (*compare)( const struct dirent **, const struct dirent ** )) 
+             int (*compare)( const struct dirent **, const struct dirent ** ))
 {
 	int ret;
 	__dios_syscall( __dios::_SC_scandir, &ret, path, namelist, filter, compare );
 	return ret;
 }
 
-void seekdir( DIR * dirfd, long offt ) 
+void seekdir( DIR * dirfd, long offt )
 {
 	__dios_syscall( __dios::_SC_seekdir,nullptr, dirfd, offt );
 }
 
 
-void rewinddir( DIR * dirfd ) 
+void rewinddir( DIR * dirfd )
 {
 	__dios_syscall( __dios::_SC_rewinddir,nullptr, dirfd );
 }
@@ -117,8 +117,8 @@ ssize_t sendto( int fd, const void *buf, size_t n, int flags,
 	const struct sockaddr *addr, socklen_t addrlen )
 {
 	ssize_t retval;
-	__dios_syscall( __dios::_SC_sendto,  &retval, fd, buf, n, flags);
-	return retval;	
+	__dios_syscall( __dios::_SC_sendto,  &retval, fd, buf, n, flags, addr, addrlen );
+	return retval;
 }
 
 
@@ -137,7 +137,7 @@ ssize_t sendto( int fd, const void *buf, size_t n, int flags,
 #define SYSCALL3(name, ret, arg1, name1, arg2, name2, arg3, name3) ret name( arg1 name1, arg2 name2,  arg3 name3) { \
 	ret retval;\
 	 __dios_syscall( __dios::_SC_ ## name, &retval, name1, name2, name3 );\
-    return retval; } 
+    return retval; }
 #define SYSCALL4(name, ret, arg1, name1, arg2, name2,  arg3, name3,  arg4, name4) \
  ret name( arg1 name1, arg2 name2, arg3 name3,  arg4 name4) { \
 	ret retval;\

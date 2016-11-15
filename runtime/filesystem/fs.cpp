@@ -5,7 +5,7 @@
 #include <cstdarg>
 #include <cstdlib>
 #include <cstring>
-#include <string>  
+#include <string>
 
 #include <bits/types.h>
 #include <sys/stat.h>
@@ -94,7 +94,8 @@ namespace conversion {
 namespace __sc {
 
     //With _ begins function that are many-times user and recalled.
-    static void _initStat( struct stat *buf ) {
+    static void _initStat( struct stat *buf )
+    {
         buf->st_dev = 0;
         buf->st_rdev = 0;
         buf->st_atime = 0;
@@ -102,7 +103,8 @@ namespace __sc {
         buf->st_ctime = 0;
     }
 
-    static int _fillStat( const divine::fs::Node item, struct stat *buf ) {
+    static int _fillStat( const divine::fs::Node item, struct stat *buf )
+    {
         if ( !item )
             return -1;
         _initStat( buf );
@@ -117,7 +119,7 @@ namespace __sc {
         return 0;
     }
 
-    int _mknodat( int dirfd, const char *path, mode_t mode, dev_t dev, divine::fs::VFS *vfs ) 
+    int _mknodat( int dirfd, const char *path, mode_t mode, dev_t dev, divine::fs::VFS *vfs )
     {
             if ( dev != 0 )
                 throw Error( EINVAL );
@@ -127,14 +129,14 @@ namespace __sc {
             return  0;
     }
 
-    void creat( __dios::Context& ctx, int* err, void* retval, va_list vl  ) 
+    void creat( __dios::Context& ctx, int* err, void* retval, va_list vl  )
     {
         auto path = va_arg( vl, const char * );
         auto mode = va_arg( vl, mode_t );
         auto ret = static_cast< int * >( retval );
         auto vfs = ctx.vfs;
         va_end( vl );
-        
+
         try {
             *ret =  _mknodat( AT_FDCWD, path, mode | S_IFREG, 0, vfs );
         }catch( Error &e ) {
@@ -143,7 +145,7 @@ namespace __sc {
         }
     }
 
-    void open( __dios::Context& ctx, int* err, void* retval, va_list vl  ) 
+    void open( __dios::Context& ctx, int* err, void* retval, va_list vl  )
     {
         auto path = va_arg( vl, const char * );
         auto flags = va_arg(  vl, int );
@@ -188,10 +190,10 @@ namespace __sc {
             *err = e.code();
             *ret = -1;
         }
-    
+
     }
 
-    void openat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void openat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         using namespace divine::fs::flags;
         divine::fs::Flags <Open> f = Open::NoFlags;
@@ -240,7 +242,7 @@ namespace __sc {
         }
     }
 
-    void fcntl( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void fcntl( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
         auto cmd = va_arg( vl, int );
@@ -254,7 +256,7 @@ namespace __sc {
                 case F_SETFD: {
                     if ( !vl )
                             FS_PROBLEM( "command F_SETFD requires additional argument" );
-                    int lowEdge = va_arg(  vl, int );
+                    va_end( vl );
                 }
                 case F_GETFD:
                     *ret = 0;
@@ -305,7 +307,7 @@ namespace __sc {
         }
     }
 
-    void close( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void close( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
         auto ret = static_cast< int* >( retval );
@@ -320,7 +322,7 @@ namespace __sc {
         }
     }
 
-    void write( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void write( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, const void * );
@@ -337,7 +339,7 @@ namespace __sc {
         }
     }
 
-    void pwrite( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void pwrite( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, const void * );
@@ -358,7 +360,7 @@ namespace __sc {
         }
     }
 
-    void read( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void read( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, void * );
@@ -375,7 +377,7 @@ namespace __sc {
         }
     }
 
-    void pread( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void pread( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
         auto buf = va_arg( vl, void * );
@@ -411,7 +413,7 @@ namespace __sc {
         }
     }
 
-    void lseek( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void lseek( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< off_t* >( retval );
         auto fd = va_arg( vl, int );
@@ -439,7 +441,7 @@ namespace __sc {
         }
     }
 
-    void dup( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void dup( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
@@ -453,7 +455,7 @@ namespace __sc {
         }
     }
 
-    void dup2( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void dup2( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto oldfd = va_arg( vl, int );
@@ -468,7 +470,7 @@ namespace __sc {
         }
     }
 
-    void ftruncate( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void ftruncate( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
@@ -487,7 +489,7 @@ namespace __sc {
         }
     }
 
-    void truncate( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void truncate( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -504,7 +506,7 @@ namespace __sc {
         }
     }
 
-    void unlink( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void unlink( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -519,7 +521,7 @@ namespace __sc {
         }
     }
 
-    void rmdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void rmdir( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -534,7 +536,7 @@ namespace __sc {
         }
     }
 
-    void unlinkat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void unlinkat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
@@ -574,7 +576,7 @@ namespace __sc {
             return 0;
     }
 
-    void linkat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void linkat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto olddirfd = va_arg( vl, int );
@@ -590,11 +592,11 @@ namespace __sc {
             *err = e.code();
             *ret = -1;
         }
-        
-        
+
+
     }
 
-    void link( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void link( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto target = va_arg( vl, const char* );
@@ -608,7 +610,7 @@ namespace __sc {
         }
     }
 
-    void symlinkat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void symlinkat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto target = va_arg( vl, const char* );
@@ -625,7 +627,7 @@ namespace __sc {
         }
     }
 
-    void symlink( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void symlink( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto target = va_arg( vl, const char* );
@@ -641,7 +643,7 @@ namespace __sc {
         }
     }
 
-    void readlinkat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void readlinkat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< ssize_t* >( retval );
         auto dirfd = va_arg( vl, int );
@@ -658,7 +660,7 @@ namespace __sc {
         }
     }
 
-    void readlink( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void readlink( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< ssize_t* >( retval );
         auto path = va_arg( vl, const char* );
@@ -674,7 +676,7 @@ namespace __sc {
         }
     }
 
-    void faccessat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void faccessat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
@@ -705,7 +707,7 @@ namespace __sc {
         }
     }
 
-    void access( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void access( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -720,7 +722,7 @@ namespace __sc {
             m |= divine::fs::flags::Access::Invalid;
 
         divine::fs::Flags <divine::fs::flags::At> fl = divine::fs::flags::At::NoFlags;
-       
+
         try {
             vfs->instance( ).accessAt( AT_FDCWD, path, m, fl );
             *ret = 0;
@@ -730,7 +732,7 @@ namespace __sc {
         }
     }
 
-    void chdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void chdir( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -745,7 +747,7 @@ namespace __sc {
         }
     }
 
-    void fchdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void fchdir( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
@@ -760,7 +762,7 @@ namespace __sc {
         }
     }
 
-    void fdatasync( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void fdatasync( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
@@ -775,7 +777,8 @@ namespace __sc {
         }
     }
 
-    void fsync( __dios::Context& ctx, int* err, void* retval, va_list vl ) {
+    void fsync( __dios::Context& ctx, int* err, void* retval, va_list vl )
+    {
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto vfs = ctx.vfs;
@@ -789,7 +792,8 @@ namespace __sc {
         }
     }
 
-    void syncfs( __dios::Context& ctx, int* err, void* retval, va_list vl ) {
+    void syncfs( __dios::Context& ctx, int* err, void* retval, va_list vl )
+    {
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
         auto vfs = ctx.vfs;
@@ -804,10 +808,15 @@ namespace __sc {
         }
     }
 
-    void sync( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
-    {}
+    void sync( __dios::Context&, int* /*err*/, void* retval, va_list vl )
+    {
+        auto ret = static_cast< int * >( retval );
+        va_end( vl );
 
-    void stat(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+        *ret = 0;
+    }
+
+    void stat(  __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -825,7 +834,7 @@ namespace __sc {
         }
     }
 
-    void lstat(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void lstat(  __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -843,7 +852,7 @@ namespace __sc {
         }
     }
 
-    void fstat(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void fstat(  __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
@@ -859,27 +868,27 @@ namespace __sc {
         }
     }
 
-    void fstatfs(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void fstatfs(  __dios::Context &, int* /*err*/, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
-        auto fd = va_arg( vl, int );
-        auto buf = va_arg( vl, struct statfs* );
-        auto vfs = ctx.vfs;
+        /*auto fd = */va_arg( vl, int );
+        /*auto buf = */va_arg( vl, struct statfs* );
+
         *ret = -1;
         FS_PROBLEM("Fstatfs not implemented");
     }
 
-    void statfs(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void statfs(  __dios::Context &, int* /*err*/, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
-        auto path = va_arg( vl, const char* );
-        auto buf = va_arg( vl, struct statfs* );
-        auto vfs = ctx.vfs;
+        /*auto path = */va_arg( vl, const char* );
+        /*auto buf = */va_arg( vl, struct statfs* );
+
         *ret = -1;
         FS_PROBLEM("statfs not implemented");
     }
 
-    void fchmodat(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void fchmodat(  __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
@@ -887,7 +896,7 @@ namespace __sc {
         auto mode = va_arg( vl, mode_t );
         auto flags = va_arg( vl, int );
         auto vfs = ctx.vfs;
-        
+
         divine::fs::Flags <divine::fs::flags::At> fl = divine::fs::flags::At::NoFlags;
         if ( flags & AT_SYMLINK_NOFOLLOW ) fl |= divine::fs::flags::At::SymNofollow;
         if (( flags | AT_SYMLINK_NOFOLLOW ) != AT_SYMLINK_NOFOLLOW )
@@ -902,7 +911,7 @@ namespace __sc {
         }
     }
 
-    void chmod(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void chmod(  __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -920,7 +929,7 @@ namespace __sc {
         }
     }
 
-    void fchmod(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void fchmod(  __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto fd = va_arg( vl, int );
@@ -936,7 +945,7 @@ namespace __sc {
         }
     }
 
-    void mkdirat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void mkdirat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
@@ -953,7 +962,7 @@ namespace __sc {
         }
     }
 
-    void mkdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void mkdir( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -969,7 +978,7 @@ namespace __sc {
         }
     }
 
-    void mknodat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void mknodat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto dirfd = va_arg( vl, int );
@@ -985,8 +994,8 @@ namespace __sc {
             *ret =  -1;
         }
     }
- 
-    void mknod( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+
+    void mknod( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto path = va_arg( vl, const char* );
@@ -1007,7 +1016,7 @@ namespace __sc {
         }
     }
 
-    void umask( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void umask( __dios::Context& ctx, int* /*err*/, void* retval, va_list vl )
     {
         auto ret = static_cast< mode_t* >( retval );
         auto mask = va_arg( vl, mode_t );
@@ -1020,13 +1029,13 @@ namespace __sc {
     }
 
 
-    void closedir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void closedir( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto dirp = va_arg( vl, DIR* );
         auto vfs = ctx.vfs;
 
-    
+
         try {
             vfs->instance().closeDirectory( dirp );
             *ret = 0;
@@ -1036,7 +1045,7 @@ namespace __sc {
         }
     }
 
-    void dirfd( __dios::Context& ctx, int* err, void* retval, va_list vl  ) 
+    void dirfd( __dios::Context& ctx, int* err, void* retval, va_list vl  )
     {
         auto ret = static_cast< int* >( retval );
         auto dirp = va_arg( vl, DIR* );
@@ -1050,7 +1059,7 @@ namespace __sc {
         }
     }
 
-    void fdopendir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void fdopendir( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< DIR** >( retval );
         auto fd = va_arg( vl, int );
@@ -1065,7 +1074,7 @@ namespace __sc {
     }
 
 
-    void opendir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void opendir( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< DIR** >( retval );
         auto path = va_arg( vl, const char* );
@@ -1082,7 +1091,7 @@ namespace __sc {
         }
     }
 
-    void readdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void readdir( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast<struct dirent **>( retval );
         auto dirp = va_arg( vl, DIR* );
@@ -1092,12 +1101,12 @@ namespace __sc {
         try {
             auto dir = vfs->instance().getDirectory( dirp );
             auto ent = dir->get();
-            
+
             if ( !ent ){
                 *ret = nullptr;
                 return;
             }
-                
+
             entry.d_ino = ent->ino();
             char *x = std::copy( ent->name().begin(), ent->name().end(), entry.d_name );
             *x = '\0';
@@ -1109,7 +1118,7 @@ namespace __sc {
         }
     }
 
-    void readdir_r( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void readdir_r( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< int* >( retval );
         auto dirp = va_arg( vl, DIR* );
@@ -1136,11 +1145,11 @@ namespace __sc {
         }
     }
 
-    void rewinddir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void rewinddir( __dios::Context& ctx, int* err, void* /*retval*/, va_list vl )
     {
         auto dirp = va_arg( vl, DIR* );
-        int e = *err;
         auto vfs = ctx.vfs;
+        va_end( vl );
 
         try {
             vfs->instance().getDirectory( dirp )->rewind();
@@ -1211,37 +1220,35 @@ namespace __sc {
         }
     }
 
-    void telldir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void telldir( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto ret = static_cast< long* >( retval );
         auto dirp = va_arg( vl, DIR* );
-        int e = *err;
         auto vfs = ctx.vfs;
 
         try {
             *ret = vfs->instance().getDirectory( dirp )->tell();
-        } catch ( Error & er ) {
-            *err = e;
+        } catch ( Error & e ) {
+            *err = e.code();
             *ret = -1;
         }
     }
 
-    void seekdir( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void seekdir( __dios::Context& ctx, int* err, void* /*retval*/, va_list vl )
     {
         auto dirp = va_arg( vl, DIR* );
         auto offset = va_arg( vl, long );
-        int e = *err;
         auto vfs = ctx.vfs;
 
         try {
             vfs->instance().getDirectory( dirp )->seek( offset );
-        } catch ( Error & er ) {
-            *err = e;
+        } catch ( Error & e ) {
+            *err = e.code();
         }
     }
 
 
-    void socket( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void socket( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         using SocketType = divine::fs::SocketType;
         using namespace divine::fs::flags;
@@ -1277,7 +1284,7 @@ namespace __sc {
         }
     }
 
-    void socketpair( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void socketpair( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         using SocketType = divine::fs::SocketType;
         using Open = divine::fs::flags::Open;
@@ -1316,7 +1323,7 @@ namespace __sc {
         }
     }
 
-    void getsockname( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void getsockname( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  struct sockaddr* );
@@ -1349,11 +1356,11 @@ namespace __sc {
         }
     }
 
-    void bind( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void bind( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  const struct sockaddr* );
-        auto len = va_arg( vl, socklen_t );
+        /*auto len = */va_arg( vl, socklen_t );
         auto ret = static_cast< int* >( retval );
         auto vfs = ctx.vfs;
         using Address = divine::fs::Socket::Address;
@@ -1376,11 +1383,11 @@ namespace __sc {
         }
     }
 
-    void connect( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void connect( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  const struct sockaddr* );
-        auto len = va_arg( vl, socklen_t );
+        /*auto len = */va_arg( vl, socklen_t );
         auto ret = static_cast< int* >( retval );
         auto vfs = ctx.vfs;
         using Address = divine::fs::Socket::Address;
@@ -1403,7 +1410,7 @@ namespace __sc {
         }
     }
 
-    void getpeername( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void getpeername( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl, struct sockaddr* );
@@ -1436,7 +1443,7 @@ namespace __sc {
         }
     }
 
-    void  send( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void  send( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto buf = va_arg( vl,  const void* );
@@ -1444,7 +1451,7 @@ namespace __sc {
         auto flags = va_arg( vl, int );
         auto ret = static_cast< ssize_t* >( retval );
         auto vfs = ctx.vfs;
-        
+
         try {
             auto s = vfs->instance( ).getSocket( sockfd );
             *ret = s->send( static_cast< const char * >( buf ), n, conversion::message( flags ));
@@ -1454,14 +1461,14 @@ namespace __sc {
         }
     }
 
-    void sendto( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void sendto( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto buf = va_arg( vl,  const void* );
         auto n = va_arg( vl, size_t );
         auto flags = va_arg( vl, int );
         auto addr = va_arg( vl,  const struct sockaddr* );
-        auto len = va_arg( vl, socklen_t );
+        /*auto len = */va_arg( vl, socklen_t );
         auto ret = static_cast< ssize_t* >( retval );
         auto vfs = ctx.vfs;
         using Address = divine::fs::Socket::Address;
@@ -1493,7 +1500,7 @@ namespace __sc {
         }
     }
 
-    ssize_t _recvfrom(int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len, divine::fs::VFS* vfs ) 
+    ssize_t _recvfrom(int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len, divine::fs::VFS* vfs )
     {
         using Address = divine::fs::Socket::Address;
         Address address;
@@ -1513,7 +1520,7 @@ namespace __sc {
         return n;
     }
 
-    void recv( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void recv( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto buf = va_arg( vl,  void* );
@@ -1530,7 +1537,7 @@ namespace __sc {
         }
     }
 
-    void recvfrom( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void recvfrom( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto buf = va_arg( vl,  void* );
@@ -1549,7 +1556,7 @@ namespace __sc {
         }
     }
 
-    void listen( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void listen( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto n = va_arg( vl, int );
@@ -1566,7 +1573,7 @@ namespace __sc {
         }
     }
 
-    int _accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags, divine::fs::VFS* vfs ) 
+    int _accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags, divine::fs::VFS* vfs )
     {
         using Address = divine::fs::Socket::Address;
 
@@ -1592,7 +1599,7 @@ namespace __sc {
         return newSocket;
     }
 
-    void accept( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void accept( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  struct sockaddr* );
@@ -1608,7 +1615,7 @@ namespace __sc {
         }
     }
 
-    void accept4( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void accept4( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
         auto addr = va_arg( vl,  struct sockaddr* );
@@ -1624,14 +1631,14 @@ namespace __sc {
         }
     }
 
-    void mkfifoat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void mkfifoat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto dirfd = va_arg( vl, int );
         auto path = va_arg( vl,  const char* );
         auto mode = va_arg( vl, mode_t );
         auto ret = static_cast< int* >( retval );
         auto vfs = ctx.vfs;
-        
+
         try {
            *ret = _mknodat( dirfd, path, ( ACCESSPERMS & mode ) | S_IFIFO, 0, vfs );
        }catch( Error &e ) {
@@ -1640,7 +1647,7 @@ namespace __sc {
        }
     }
 
-    void mkfifo( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void mkfifo( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto path = va_arg( vl,  const char* );
         auto mode = va_arg( vl, mode_t );
@@ -1655,7 +1662,7 @@ namespace __sc {
        }
     }
 
-    void isatty(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void isatty(  __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
         auto ret = static_cast< int* >( retval );
@@ -1668,10 +1675,10 @@ namespace __sc {
         } catch ( Error & e ) {
             *ret = 0;
         }
-        
+
     }
 
-    void ttyname(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void ttyname(  __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
         auto ret = static_cast< char** >( retval );
@@ -1685,11 +1692,11 @@ namespace __sc {
         *ret = nullptr;
     }
 
-    void ttyname_r(  __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void ttyname_r(  __dios::Context& ctx, int* /*err*/, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
-        auto buf = va_arg( vl, char * );
-        auto count = va_arg( vl, size_t );
+        /*auto buf = */va_arg( vl, char * );
+        /*auto count = */va_arg( vl, size_t );
         auto ret = static_cast< int* >( retval );
         auto vfs = ctx.vfs;
 
@@ -1701,13 +1708,13 @@ namespace __sc {
         }
     }
 
-    int _renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath,divine::fs::VFS* vfs ) 
+    int _renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath,divine::fs::VFS* vfs )
     {
         vfs->instance( ).renameAt( newdirfd, newpath, olddirfd, oldpath );
         return 0;
     }
 
-    void _FS_renameitemat( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void _FS_renameitemat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto olddirfd = va_arg( vl, int );
         auto oldpath = va_arg( vl, const char* );
@@ -1725,7 +1732,7 @@ namespace __sc {
 
     }
 
-    void _FS_renameitem( __dios::Context& ctx, int* err, void* retval, va_list vl ) 
+    void _FS_renameitem( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto oldpath = va_arg( vl, const char* );
         auto newpath = va_arg( vl, const char* );
@@ -1743,30 +1750,6 @@ namespace __sc {
 
 extern "C" {
 
-    static void _initStat( struct stat *buf ) {
-        buf->st_dev = 0;
-        buf->st_rdev = 0;
-        buf->st_atime = 0;
-        buf->st_mtime = 0;
-        buf->st_ctime = 0;
-    }
-
-    static int _fillStat( const divine::fs::Node item, struct stat *buf ) {
-        if ( !item )
-            return -1;
-        _initStat( buf );
-        buf->st_ino = item->ino( );
-        buf->st_mode = item->mode( );
-        buf->st_nlink = item.use_count( );
-        buf->st_size = item->size( );
-        buf->st_uid = item->uid( );
-        buf->st_gid = item->gid( );
-        buf->st_blksize = 512;
-        buf->st_blocks = ( buf->st_size + 1 ) / buf->st_blksize;
-        return 0;
-    }
-
-
     void swab( const void *_from, void *_to, ssize_t n ) {
         const char *from = reinterpret_cast< const char * >( _from );
         char *to = reinterpret_cast< char * >( _to );
@@ -1778,7 +1761,7 @@ extern "C" {
         }
     }
 
-   
+
 #if defined(__divine__)
 int alphasort( const struct dirent **a, const struct dirent **b ) {
     return std::strcoll( (*a)->d_name, (*b)->d_name );

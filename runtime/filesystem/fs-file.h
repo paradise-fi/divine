@@ -463,7 +463,6 @@ struct SocketStream : Socket {
         _peer( nullptr ),
         _stream( 1024 ),
         _passive( false ),
-        _ready( false ),
         _limit( 0 )
     {}
 
@@ -472,7 +471,6 @@ struct SocketStream : Socket {
         _peer( _peerHandle->data()->as< SocketStream >() ),
         _stream( 1024 ),
         _passive( true ),
-        _ready( true ),
         _limit( 0 )
     {}
 
@@ -536,7 +534,7 @@ struct SocketStream : Socket {
     }
 
     void addBacklog( Node incomming ) override {
-        if ( _backlog.size() == _limit )
+        if ( int( _backlog.size() ) == _limit )
             throw Error( ECONNREFUSED );
         _backlog.push( std::move( incomming ) );
     }
@@ -612,7 +610,6 @@ private:
     SocketStream *_peer;
     storage::Stream _stream;
     bool _passive;
-    bool _ready;
     utils::Queue< Node > _backlog;
     int _limit;
 };
@@ -671,7 +668,7 @@ struct SocketDatagram : Socket {
         SocketDatagram::sendTo( buffer, length, fls, _defaultRecipient.lock() );
     }
 
-    void sendTo( const char *buffer, size_t &length, Flags< flags::Message > fls, Node target ) override {
+    void sendTo( const char *buffer, size_t &length, Flags< flags::Message >, Node target ) override {
         if ( !target )
             throw Error( EDESTADDRREQ );
 
@@ -698,7 +695,7 @@ struct SocketDatagram : Socket {
 
     }
 
-    void fillBuffer( const char *buffer, size_t &length ) override {
+    void fillBuffer( const char */*buffer*/, size_t &/*length*/ ) override {
         throw Error( EPROTOTYPE );
     }
     void fillBuffer( const Address &sender, const char *buffer, size_t &length ) override {

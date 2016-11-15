@@ -62,7 +62,7 @@ inline std::pair< utils::String, utils::String > splitFileName( utils::String pa
     return std::make_pair( path.substr( 0, count ), path.substr( count + 1, length ) );
 }
 
-inline utils::String joinPath( utils::Vector< utils::String > paths, bool normalize = false ) {
+inline utils::String joinPath( utils::Vector< utils::String > paths, bool /*normalize*/ = false ) {
     if ( paths.empty() )
         return "";
     auto it = ++paths.begin();

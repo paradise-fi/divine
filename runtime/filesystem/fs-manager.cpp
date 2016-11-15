@@ -215,14 +215,14 @@ int Manager::duplicate2( int oldfd, int newfd ) {
     auto f = getFile( oldfd );
     if ( newfd < 0 || newfd > FILE_DESCRIPTOR_LIMIT )
         throw Error( EBADF );
-    if ( newfd >= _openFD.size() )
+    if ( newfd >= int( _openFD.size() ) )
         _openFD.resize( newfd + 1 );
     _openFD[ newfd ] = f;
     return newfd;
 }
 
 std::shared_ptr< FileDescriptor > &Manager::getFile( int fd ) {
-    if ( fd >= 0 && fd < _openFD.size() && _openFD[ fd ] )
+    if ( fd >= 0 && fd < int( _openFD.size() ) && _openFD[ fd ] )
         return _openFD[ fd ];
     throw Error( EBADF );
 }
@@ -332,6 +332,7 @@ void Manager::renameAt( int newdirfd, utils::String newpath, int olddirfd, utils
         else if ( newNode->mode().isDirectory() )
             throw Error( EISDIR );
 
+        newNodeDirectory = newNode->data()->as< Directory >();
         newNodeDirectory->replaceEntry( newName, oldNode );
     }
     oldNodeDirectory->forceRemove( oldName );
@@ -349,16 +350,16 @@ off_t Manager::lseek( int fd, off_t offset, Seek whence ) {
         f->offset( offset );
         break;
     case Seek::Current:
-        if ( offset > 0 && std::numeric_limits< size_t >::max() - f->offset() < offset )
+        if ( offset > 0 && std::numeric_limits< size_t >::max() - f->offset() < size_t( offset ) )
             throw Error( EOVERFLOW );
-        if ( f->offset() < -offset )
+        if ( int( f->offset() ) < -offset )
             throw Error( EINVAL );
         f->offset( offset + f->offset() );
         break;
     case Seek::End:
-        if ( offset > 0 && std::numeric_limits< size_t >::max() - f->size() < offset )
+        if ( offset > 0 && std::numeric_limits< size_t >::max() - f->size() < size_t( offset ) )
             throw Error( EOVERFLOW );
-        if ( offset < 0 && f->size() < -offset )
+        if ( offset < 0 && int( f->size() ) < -offset )
             throw Error( EINVAL );
         f->offset( f->size() + offset );
         break;
@@ -650,7 +651,7 @@ int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdg
     if ( lowEdge < 0 || lowEdge >= FILE_DESCRIPTOR_LIMIT )
         throw Error( EINVAL );
 
-    if ( lowEdge >= _openFD.size() )
+    if ( lowEdge >= int( _openFD.size() ) )
         _openFD.resize( lowEdge + 1 );
 
     for ( auto &fd : utils::withOffset( _openFD, lowEdge ) ) {
