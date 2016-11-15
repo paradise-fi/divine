@@ -626,7 +626,7 @@ struct Options {
     bool verbose, batch, interactive, cont, fatal_timeouts, kmsg;
     std::string testdir, outdir, workdir, heartbeat;
     std::vector< std::string > flavours, watch;
-    std::vector< std::regex > filter, flavourFilter, exclude;
+    std::vector< std::regex > filter1, filter2, flavourFilter, exclude;
     std::vector< std::pair< std::string, std::string > > interpreters;
     std::string flavour_envvar;
     int timeout, total_timeout;
@@ -979,7 +979,7 @@ struct Main {
                 if ( i->substr( 0, 4 ) == "lib/" || i->substr( 0, 5 ) == "data/" )
                     runnable = false;
 
-                if ( skip( *i, options.filter, false ) )
+                if ( skip( *i, options.filter1, false ) || skip( *i, options.filter2, false ) )
                     runnable = false;
 
                 if ( !skip( *i, options.exclude, true ) )
@@ -1163,9 +1163,9 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
         opt.cont = true;
 
     if ( args.has( "--only" ) )
-        split( args.opt( "--only" ), opt.filter, mkRegex );
+        split( args.opt( "--only" ), opt.filter1, mkRegex );
     if ( hasenv( "T" ) )
-        split( getenv( "T" ), opt.filter, mkRegex );
+        split( getenv( "T" ), opt.filter2, mkRegex );
 
     if ( args.has( "--skip" ) )
         split( args.opt( "--skip" ), opt.exclude, mkRegex );
