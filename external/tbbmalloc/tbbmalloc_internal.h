@@ -361,7 +361,7 @@ public:
 // Block header is used during block coalescing
 // and must be preserved in used blocks.
 class BlockI {
-    intptr_t     blockState[2];
+    intptr_t     blockState[2] __attribute__((unused));
 };
 
 struct LargeMemoryBlock : public BlockI {

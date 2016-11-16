@@ -114,7 +114,7 @@ void* MapMemory (size_t bytes, bool)
     return ErrnoPreservingMalloc( bytes );
 }
 
-int UnmapMemory(void *area, size_t bytes)
+int UnmapMemory(void *area, size_t)
 {
     free( area );
     return 0;

@@ -730,10 +730,12 @@ void Backend::putBackRefSpace(void *b, size_t size, bool rawMemUsed)
 void Backend::removeBlockFromBin(FreeBlock *fBlock)
 {
     if (fBlock->myBin != Backend::NO_BIN)
+    {
         if (fBlock->aligned)
             freeAlignedBins.lockRemoveBlock(fBlock->myBin, fBlock);
         else
             freeLargeBins.lockRemoveBlock(fBlock->myBin, fBlock);
+    }
 }
 
 void Backend::genericPutBlock(FreeBlock *fBlock, size_t blockSz)
@@ -886,7 +888,7 @@ FreeBlock *Backend::doCoalesc(FreeBlock *fBlock, MemRegion **mRegion)
     return resBlock;
 }
 
-void Backend::coalescAndPutList(FreeBlock *list, bool forceCoalescQDrop, bool doStat)
+void Backend::coalescAndPutList(FreeBlock *list, bool, bool)
 {
     FreeBlock *helper;
     MemRegion *memRegion;

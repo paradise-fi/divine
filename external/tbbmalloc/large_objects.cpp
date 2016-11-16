@@ -206,10 +206,12 @@ void LargeObjectCache::CacheBin::forgetOutdatedState(uintptr_t currTime)
     bool doCleanup = false;
 
     if (!last) // clean only empty bins
+    {
         if (ageThreshold)
-            doCleanup = sinceLastGet > tooLongWait*ageThreshold;
+            doCleanup = sinceLastGet > uintptr_t( tooLongWait*ageThreshold );
         else if (lastCleanedAge)
             doCleanup = sinceLastGet > tooLongWait*(lastCleanedAge - lastGet);
+    }
     if (doCleanup) {
         lastCleanedAge = 0;
         ageThreshold = 0;
@@ -292,7 +294,8 @@ bool LargeObjectCache::CacheBin::cleanAll(ExtMemoryPool *extMemPool, BinBitMask 
     return released;
 }
 
-size_t LargeObjectCache::CacheBin::reportStat(int num, FILE *f)
+size_t LargeObjectCache::CacheBin::reportStat(int num __attribute__((unused)),
+                                              FILE *f __attribute__((unused)))
 {
 #if __TBB_MALLOC_LOCACHE_STAT
     if (first)
@@ -486,7 +489,7 @@ LargeMemoryBlock *LargeObjectCache::sort(ExtMemoryPool *extMemPool,
         LargeMemoryBlock *helper = inserting->next;
         int myIdx = sizeToIdx(inserting->unalignedSize);
 
-        if (myIdx < numLargeBlockBins) {
+        if (uint32_t( myIdx ) < numLargeBlockBins) {
             if (!sorted) {
                 sorted = inserting;
                 sorted->next = sorted->prev = NULL;

@@ -334,7 +334,7 @@ protected:
 
 class Block : public LocalBlockFields {
     size_t       __pad_public_fields[(2*blockHeaderAlignment -
-                                      sizeof(LocalBlockFields))/sizeof(size_t)];
+                                      sizeof(LocalBlockFields))/sizeof(size_t)] __attribute__((unused));
 public:
     bool empty() const { return allocatedCount==0 && publicFreeList==NULL; }
     inline FreeObject* allocate();
@@ -359,11 +359,13 @@ public:
     inline FreeObject *findObjectToFree(void *object) const;
     bool checkFreePrecond(void *object) const {
         if (allocatedCount>0)
+        {
             if (startupAllocObjSizeMark == objectSize) // startup block
                 return object<=bumpPtr;
             else
                 return allocatedCount <= (slabSize-sizeof(Block))/objectSize
                        && (!bumpPtr || object>bumpPtr);
+        }
         return false;
     }
     const BackRefIdx *getBackRef() const { return &backRefIdx; }
@@ -1942,7 +1944,7 @@ void LocalLOC<LOW_MARK, HIGH_MARK>::allocatorCalledHook(ExtMemoryPool *extMemPoo
 void *MemoryPool::getFromTLCache(TLSData* tls, size_t size, size_t alignment)
 {
     LargeMemoryBlock *lmb = NULL;
-    void *alignedArea = NULL;
+    void *alignedArea __attribute__((unused)) = NULL;
 
     size_t headersSize = sizeof(LargeMemoryBlock)+sizeof(LargeObjectHdr);
     // TODO: take into account that they are already largeObjectAlignment-aligned
@@ -2750,7 +2752,7 @@ extern "C" void * safer_scalable_aligned_realloc(void *ptr, size_t size, size_t 
         } else {
             tmp = reallocAligned(defaultMemPool, ptr, size, alignment);
         }
-    }
+    } else abort();
 #if USE_WINTHREAD
     else {
         orig_ptrs *original_ptrs = static_cast<orig_ptrs*>(orig_function);
