@@ -211,13 +211,13 @@ void configure_fault( __dios::Context& ctx, int *, void *retval, va_list vl ) {
     if ( fault < _DiOS_F_Last) { // Fault
         switch( cfg ) {
         case _DiOS_FC_Ignore:
-            fc = 0;
+            fc = FaultFlag::AllowOverride;
             break;
         case _DiOS_FC_Report:
-            fc = FaultFlag::Enabled | FaultFlag::Continue;
+            fc = FaultFlag::AllowOverride | FaultFlag::Enabled | FaultFlag::Continue;
             break;
         case _DiOS_FC_Abort:
-            fc = FaultFlag::Enabled;
+            fc = FaultFlag::AllowOverride | FaultFlag::Enabled;
             break;
         default:
             *res = _DiOS_FC_EInvalidCfg;
@@ -226,10 +226,10 @@ void configure_fault( __dios::Context& ctx, int *, void *retval, va_list vl ) {
     else { // Simfail
         switch( cfg ) {
         case _DiOS_FC_SimFail:
-            fc = FaultFlag::Enabled;
+            fc = FaultFlag::AllowOverride | FaultFlag::Enabled;
             break;
         case _DiOS_FC_NoFail:
-            fc = 0;
+            fc = FaultFlag::AllowOverride;
             break;
         default:
             *res = _DiOS_FC_EInvalidCfg;
