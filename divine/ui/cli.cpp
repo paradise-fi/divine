@@ -208,6 +208,8 @@ void WithBC::setup()
         cc::Compile driver( ccopt );
         if ( !_std.empty() )
             driver.addFlags( { "-std=" + _std } );
+        for ( auto &f : _ccOpts )
+            driver.addFlags( f );
         driver.setupFS( rt::each );
         driver.compileAndLink( _file, {} );
         pruneBC( driver );

@@ -3,6 +3,7 @@
 /*
  * (c) 2016 Petr Ročkai <code@fixp.eu>
  * (c) 2016 Viktória Vozárová <>
+ * (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -28,6 +29,7 @@
 
 #include <brick-cmd>
 #include <brick-fs>
+#include <brick-string>
 #include <cctype>
 #include <regex>
 
@@ -59,6 +61,7 @@ struct WithBC : Command
     std::vector< std::string > _useropts;
     std::vector< std::string > _systemopts;
     std::vector< std::string > _lartPasses;
+    std::vector< std::vector< std::string > > _ccOpts;
     std::vector< VfsDir > _vfs;
     size_t _vfsSizeLimit;
     vm::AutoTraceFlags _autotrace;
@@ -334,6 +337,13 @@ struct CLI : Interface
                     std::sregex_token_iterator it( s.begin(), s.end(), sep, -1 );
                     std::copy( it, std::sregex_token_iterator(), std::back_inserter( out ) );
                     return good( out );
+                } ) ->
+            add( "commasep", []( std::string s, auto good, auto )
+                {
+                    std::vector< std::string > out;
+                    for ( auto x : brick::string::splitStringBy( s, "[\t ]*,[\t ]*" ) )
+                        out.emplace_back( x );
+                    return good( out );
                 } );
     }
 
@@ -346,6 +356,7 @@ struct CLI : Interface
 
         auto bcopts = cmd::make_option_set< WithBC >( v )
             .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
+            .option( "[-C {commasep}|-C{commasep}]", &WithBC::_ccOpts, "options passed to compiler compiler"s )
             .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
             .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
