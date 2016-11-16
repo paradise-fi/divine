@@ -14,7 +14,7 @@ namespace __dios {
 /*
  * Find all sys opt string (in form sys.#) and return key-value pairs
  */
-bool get_sys_opt( const _VM_Env *e, SysOpts& res );
+bool getSysOpts( const _VM_Env *e, SysOpts& res );
 
 /*
  * Construct null-terminated string from env->value

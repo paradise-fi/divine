@@ -45,7 +45,7 @@ char *env_to_string( const _VM_Env *env ) noexcept {
     return arg;
 }
 
-bool get_sys_opt( const _VM_Env *e, SysOpts& res ) {
+bool getSysOpts( const _VM_Env *e, SysOpts& res ) {
     const char *prefix = "sys.";
     int pref_len = strlen( prefix );
     res.clear();
@@ -53,7 +53,13 @@ bool get_sys_opt( const _VM_Env *e, SysOpts& res ) {
         if ( memcmp( prefix, e->key, pref_len ) != 0 )
             continue;
 
+        // Add sugar for help command
         dstring s( e->value, e->size );
+        if ( s == "help") {
+            res.emplace_back( "debug", "help" );
+            continue;
+        }
+
         auto p = std::find( s.begin(), s.end(), ':' );
         if ( p == s.end() ) {
             __dios_trace_f( "Missing ':' in parameter '%.*s'", e->size, e->value );

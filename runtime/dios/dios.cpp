@@ -69,28 +69,81 @@ FileTrace getFileTraceConfig( const SysOpts& o, dstring stream ) {
     return FileTrace::TRACE;
 }
 
-bool trace_threads( const SysOpts& o ) {
-    for( const auto& opt : o ) {
-        if ( opt.first == "notrace" || opt.first == "trace" ) {
-            bool trace = opt.first == "trace";
+struct TraceDebugConfig {
+    bool threads:1;
+    bool help:1;
+    bool raw:1;
+    bool machineParams:1;
+    bool mainArgs:1;
+    bool faultCfg:1;
 
-            if ( opt.second == "threads" || opt.second == "thread" )
-                return trace;
-            else {
+    TraceDebugConfig() :
+        threads( false ), help( false ), raw( false ), machineParams( false ),
+        mainArgs( false ), faultCfg( false ) {}
+};
+
+TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
+    TraceDebugConfig config;
+    for( const auto& opt : o ) {
+        dstring key;
+        std::transform( opt.first.begin(), opt.first.end(),
+            std::back_inserter( key ), ::tolower );
+
+        if ( key == "notrace" || key == "trace" ) {
+            bool trace = opt.first == "trace";
+            dstring what;
+            std::transform( opt.second.begin(), opt.second.end(),
+                std::back_inserter( what ), ::tolower );
+
+            if ( what == "threads" || what == "thread" )
+                config.threads = trace;
+            else if ( what == "help" )
+                config.help = trace;
+            else if ( what == "rawenv" )
+                config.raw = trace;
+            else if ( what == "machineparams" )
+                config.machineParams = trace;
+            else if ( what == "mainargs" || what == "mainarg" )
+                config.mainArgs = trace;
+            else if ( what == "faultcfg" )
+                config.faultCfg = trace;
+            else
                 __dios_trace_f( "Warning: uknown tracing param \"%s\"", opt.second.c_str() );
-                return false;
-            }
+        }
+        else if ( key == "debug" ) {
+            dstring what;
+            std::transform( opt.second.begin(), opt.second.end(),
+                std::back_inserter( what ), ::tolower );
+
+            if ( what == "help" )
+                config.help = true;
+            else if ( what == "rawenv" )
+                config.raw = true;
+            else if ( what == "machineparams" )
+                config.machineParams = true;
+            else if ( what == "mainargs" || what == "mainarg" )
+                config.mainArgs = true;
+            else if ( what == "faultcfg" )
+                config.faultCfg = true;
+            else
+                __dios_trace_f( "Warning: uknown debug param \"%s\"", opt.second.c_str() );
         }
     }
-    return false;
+    return config;
 }
 
-void trace_help() {
+void traceHelp() {
     __dios_trace_i( 0, "help:" );
     __dios_trace_i( 1,   "Supported commands:" );
-    __dios_trace_i( 1,   "- {trace, notrace}: report/not report item back to VM" );
-    __dios_trace_i( 2,     "- threads" );
-    __dios_trace_i( 1,   "- [force-]{ignore, report, abort}: configure fault, "
+    __dios_trace_i( 1,   "- debug: print debug information during boot" );
+    __dios_trace_i( 2,     "- help: show help and exit" );
+    __dios_trace_i( 2,     "- rawEnv: user DiOS boot parameters" );
+    __dios_trace_i( 2,     "- machineParams: specified by user, e.g. number of cpus" );
+    __dios_trace_i( 2,     "- mainArgs" );
+    __dios_trace_i( 2,     "- faultCfg: fault and simfail configuration" );
+    __dios_trace_i( 1,   "- {trace|notrace}: report/not report item back to VM" );
+    __dios_trace_i( 2,     "- threads: trace thread info during execution" );
+    __dios_trace_i( 1,   "- [force-]{ignore|report|abort}: configure fault, "
                             "force disables program override" );
     __dios_trace_i( 2,     "- assert" );
     __dios_trace_i( 2,     "- arithtmetic" );
@@ -100,16 +153,17 @@ void trace_help() {
     __dios_trace_i( 2,     "- hypercall" );
     __dios_trace_i( 2,     "- notimplemented" );
     __dios_trace_i( 2,     "- diosassert" );
-    __dios_trace_i( 1,   "- {nofail, simfail}: enable/disable simulation of failure" );
+    __dios_trace_i( 1,   "- {nofail|simfail}: enable/disable simulation of failure" );
     __dios_trace_i( 2,     "- malloc" );
-    __dios_trace_i( 1,   "- ncpus:{num} specify number of cpu units (default 0)" );
-    __dios_trace_i( 1,   "- {stdin, stderr}: specify how to treat program output" );
+    __dios_trace_i( 1,   "- ncpus:" );
+    __dios_trace_i( 2,     "- <num> specify number of cpu units (default 0)" );
+    __dios_trace_i( 1,   "- {stdin|stderr}: specify how to treat program output" );
     __dios_trace_i( 2,     "- notrace: ignore the stream" );
     __dios_trace_i( 2,     "- unbuffered: trace each write" );
     __dios_trace_i( 2,     "- trace: trance after each newline (default) " );
 }
 
-void trace_env( const _VM_Env *env ) {
+void traceEnv( const _VM_Env *env ) {
     __dios_trace_i (0, "raw env options:" );
      for ( ; env->key; env++ )
         __dios_trace_i( 1, "- %s: %.*s", env->key, env->size, env->value );
@@ -123,41 +177,55 @@ void init( const _VM_Env *env )
 
     __dios_trace_i( 0, "# DiOS boot info" );
     __dios_trace_i( 0, "---" );
-    trace_help();
-    trace_env( env );
 
     // Activate temporary scheduler to handle errors
     __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
-
-    SysOpts sys_opts;
-    if ( !get_sys_opt( env, sys_opts ) ) {
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
-        return;
-    }
-
-    // Select scheduling mode
-    if ( trace_threads( sys_opts ) )
-        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<true> );
-    else
-        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
-
+    // Initialize context
     auto context = new_object< Context >();
     __vm_trace( _VM_T_StateType, context );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
 
-    if ( !context->fault->load_user_pref( sys_opts ) ) {
+    SysOpts sysOpts;
+    if ( !getSysOpts( env, sysOpts ) ) {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         return;
     }
-    context->fault->trace_config( 0 );
+    TraceDebugConfig traceCfg = getTraceDebugConfig( sysOpts );
 
-    context->machineParams.initialize( sys_opts );
-    context->machineParams.traceParams( 0 );
+    if ( traceCfg.help ) {
+        traceHelp();
+        __dios_trace_i( 0, "---" );
+        return;
+    }
+
+    if ( traceCfg.raw )
+        traceEnv( env );
+
+    // Select scheduling mode
+    if ( traceCfg.threads )
+        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<true> );
+    else
+        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
+
+    if ( !context->fault->load_user_pref( sysOpts ) ) {
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+        return;
+    }
+
+    if ( traceCfg.faultCfg )
+        context->fault->trace_config( 0 );
+
+    context->machineParams.initialize( sysOpts );
+    if ( traceCfg.machineParams )
+        context->machineParams.traceParams( 0 );
 
     auto argv = construct_main_arg( "arg.", env, true );
     auto envp = construct_main_arg( "env.", env );
-    trace_main_arg(0, "main argv", argv );
-    trace_main_arg(0, "main envp", envp );
+
+    if ( traceCfg.mainArgs ) {
+        trace_main_arg(0, "main argv", argv );
+        trace_main_arg(0, "main envp", envp );
+    }
 
     environ = envp.second;
 
