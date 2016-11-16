@@ -27,7 +27,7 @@ while (<STDIN>)
 
         if ( $positive && $line =~ m,$re, )
         {
-            print "$line\n";
+            print "$line" . (" " x (60 - length $line)) . " | $re\n";
             shift @res while ( $res[0] =~ /^-/ );
             shift @res;
             $fail = 0;
@@ -38,11 +38,13 @@ while (<STDIN>)
 
         if ( $fail )
         {
-            print STDERR "negative match failed at $line\n";
+            print "negative match failed at $line\n";
             exit( 1 );
         }
     }
     last if ( scalar @res == 0 );
 }
 
+
+print "failed to find $res[0]\n" if ( scalar @res );
 exit( scalar @res );
