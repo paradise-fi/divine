@@ -35,6 +35,9 @@ test "$WIN32" = 1 && cesmiext=.dll
 if test -n "$TESTS" && test -z "$TODO" && echo "$0 $1" | grep -q todo; then
     exit 200
 fi
+if test -n "$TESTS" && test "$TODO" = "only" && echo "$0 $1" | grep -qv todo; then
+    exit 200
+fi
 
 rm -rf __test_work_dir
 mkdir -p __test_work_dir
