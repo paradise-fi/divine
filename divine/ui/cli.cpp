@@ -256,8 +256,7 @@ void Cc::run()
         for ( auto &x : _files )
             driver.compileAndLink( x, _flags );
 
-        if ( !_drv.dont_link )
-            pruneBC( driver );
+        pruneBC( driver );
 
         driver.writeToFile( _output.empty() ? outputName( _files.front() ) : _output );
     }
