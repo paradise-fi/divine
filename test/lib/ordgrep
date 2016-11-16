@@ -34,6 +34,8 @@ while (<STDIN>)
             last;
         }
 
+        last if $positive;
+
         if ( $fail )
         {
             print STDERR "negative match failed at $line\n";
