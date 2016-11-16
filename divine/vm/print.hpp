@@ -211,24 +211,33 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
         ++ line, ++ lineno;
     unsigned endline = lineno;
 
-    auto act_op = program.instruction( pc ).op;
+    auto act_op = program.instruction( pc ).insn();
     if ( !act_op )
-        act_op = program.instruction( pc + 1 ).op;
+        act_op = program.instruction( pc + 1 ).insn();
 
     /* figure out the source code span the function covers; painfully */
     for ( auto &i : program.function( pc ).instructions )
     {
-        if ( !i.op )
+        if ( !i.insn() )
             continue;
-        auto op = llvm::cast< llvm::Instruction >( i.op );
-        auto dl = op->getDebugLoc().get();
+        auto dl = i.insn()->getDebugLoc().get();
         if ( !dl )
             continue;
         while ( dl->getInlinedAt() )
             dl = dl->getInlinedAt();
-        if ( i.op == act_op )
+        if ( i.insn() == act_op )
             active = dl->getLine();
         endline = std::max( endline, dl->getLine() );
+    }
+
+    while ( act_op && !active )
+    {
+        auto dl = act_op->getDebugLoc();
+        while ( dl && dl->getInlinedAt() )
+            dl = dl->getInlinedAt();
+        active = dl ? dl->getLine() : active;
+        pc = pc + 1;
+        act_op = program.instruction( pc ).insn();
     }
 
     /* print it */
