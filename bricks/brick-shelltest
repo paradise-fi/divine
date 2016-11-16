@@ -526,8 +526,8 @@ struct KMsg : Source {
 #endif
     }
 
-    void sync( Sink *s ) {
 #ifdef __linux
+    void sync( Sink *s ) {
         int sz;
         char buf[ 128 * 1024 ];
 
@@ -545,8 +545,10 @@ struct KMsg : Source {
             if ( sz < 0 && errno == EPERM )
                 can_clear = false;
         }
-#endif
     }
+#else
+    void sync( Sink * ) {}
+#endif
 };
 
 struct Observer : Sink {
