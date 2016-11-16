@@ -6,7 +6,7 @@ sim $TESTS/c/malloc.1.c <<EOF
 - FAULT
 + ^traced states: #1 #2
 + ^# executing malloc at
-> step --count 3
+> stepa
 + ^# executing - at -
 > trace 0 0 0
 + ^traced states: #1 #2
