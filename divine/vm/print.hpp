@@ -237,9 +237,11 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
         out << (lineno == active ? ">>" : "  ");
             out << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
     }
-    std::regex endbrace( "^[ \t]*}", std::regex::extended );
-    if ( std::regex_match( line->str(), endbrace ) )
-        out << "  " << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
+    if ( line != split.end() ) {
+        std::regex endbrace( "^[ \t]*}", std::regex::extended );
+        if ( std::regex_search( line->str(), endbrace ) )
+            out << "  " << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
+    }
 
     return out.str();
 }
