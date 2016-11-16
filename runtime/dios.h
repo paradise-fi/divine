@@ -308,6 +308,22 @@ struct _InterruptMask {
 using InterruptMask = _InterruptMask< false >;
 using FencedInterruptMask = _InterruptMask< true >;
 
+
+struct SetFaultTemporarily {
+
+    SetFaultTemporarily( int fault, int cfg ) noexcept :
+        _fault( fault ), _orig( __dios_configure_fault( fault, cfg ) )
+    { }
+
+    ~SetFaultTemporarily() noexcept {
+        __dios_configure_fault( _fault, _orig );
+    }
+
+  private:
+    int _fault;
+    int _orig;
+};
+
 } // namespace __dios
 
 #endif // __divine__ || DIVINE_NATIVE_RUNTIME
