@@ -379,9 +379,12 @@ struct Interpreter
                                          [&]( Location l )
                                          {
                                              RefLocation rl = l;
-                                             if ( rl == initial )
+                                             if ( initial.second == rl.second && rl.first == initial.first )
                                                  return false;
-                                             return rl == location( pc );
+                                             auto current = location( pc );
+                                             if ( rl.second != current.second )
+                                                 return false;
+                                             return brick::string::endsWith( current.first, l.first );
                                          } ) )
                               return true;
                       return false;

@@ -21,3 +21,12 @@ sim $SRC <<EOF
 > stepa --count 10
 + ^# executing main at $SRC:5
 EOF
+
+sim $SRC <<EOF
++ ^# executing __boot
+> break assert.1.c:5
+> break --list
++ ^ 1: assert.1.c:5
+> stepa --count 10
++ ^# executing main at $SRC:5
+EOF
