@@ -375,7 +375,15 @@ struct Interpreter
                           if ( location( pc ) != initial )
                               initial = std::make_pair( "", 0 );
                       for ( auto bp : _bps )
-                          if ( bp.match( [&]( vm::CodePointer bp_pc ) { return pc == bp_pc; },
+                          if ( bp.match( [&]( vm::CodePointer bp_pc )
+                                         {
+                                             if ( pc != bp_pc )
+                                                 return false;
+                                             auto name = _bc->program().llvmfunction( pc )->getName();
+                                             std::cerr << "# stopped at breakpoint " << name.str()
+                                                       << std::endl;
+                                             return true;
+                                         },
                                          [&]( Location l )
                                          {
                                              RefLocation rl = l;
@@ -384,7 +392,11 @@ struct Interpreter
                                              auto current = location( pc );
                                              if ( rl.second != current.second )
                                                  return false;
-                                             return brick::string::endsWith( current.first, l.first );
+                                             if ( !brick::string::endsWith( current.first, l.first ) )
+                                                 return false;
+                                             std::cerr << "# stopped at breakpoint "
+                                                       << l.first << ":" << l.second << std::endl;
+                                             return true;
                                          } ) )
                               return true;
                       return false;
