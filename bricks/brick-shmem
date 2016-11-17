@@ -42,12 +42,10 @@
 #include <iostream>
 #include <typeinfo>
 
-#if __cplusplus >= 201103L
 #include <mutex>
 #include <atomic>
 #include <thread>
 #include <mutex>
-#endif
 
 #include <unistd.h> // alarm
 #include <vector>
@@ -61,8 +59,6 @@
 
 namespace brick {
 namespace shmem {
-
-#if __cplusplus >= 201103L
 
 struct Thread {
     std::unique_ptr< std::thread > _thread;
@@ -307,8 +303,6 @@ struct WeakAtomic : std::conditional< std::is_integral< T >::value && !std::is_s
     std::atomic< T > _data;
     friend struct _impl::WeakAtomicIntegral< WeakAtomic< T >, T >;
 };
-
-#endif
 
 #ifndef __divine__
 template< typename T >
@@ -557,8 +551,6 @@ template< typename T >
 using SharedQueue = Chunked< LockedQueue, T >;
 
 }
-
-#if __cplusplus >= 201103L
 
 namespace t_shmem {
 
@@ -1107,7 +1099,6 @@ struct FIFO : BenchmarkGroup
 }
 }
 
-#endif
 #endif
 #endif
 
