@@ -74,6 +74,8 @@ void Verify::run()
             s << std::fixed << std::setprecision( 1 ) << v << " states/s";
             return s.str();
         };
+    auto update_interval =
+        [&]() { interval = std::chrono::duration_cast< msecs >( clock::now() - start ); };
 
     std::cerr << "booting... " << std::flush;
     ex.start();
@@ -84,7 +86,7 @@ void Verify::run()
         {
             while ( !done )
             {
-                interval = std::chrono::duration_cast< msecs >( clock::now() - start );
+                update_interval();
                 std::this_thread::sleep_for( msecs( 500 ) );
                 std::cerr << "\rsearching: " << statecount << " states and "
                           << edgecount << " edges found in " << time()
@@ -122,6 +124,7 @@ void Verify::run()
 
     done = true;
     progress.join();
+    update_interval();
     std::cerr << "\rfound " << statecount << " states and "
               << edgecount << " edges" << " in " << time() << ", averaging " << avg()
               << "             " << std::endl;
