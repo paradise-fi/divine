@@ -311,35 +311,35 @@ struct TestSpawn {
     }
 
     TEST( echo1 ) {
-        auto r = proc::spawnAndWait( proc::CaptureStdout, "echo", "-n", "a" );
+        auto r = proc::spawnAndWait( proc::CaptureStdout, "printf", "a" );
         ASSERT( r );
         ASSERT_EQ( r.out(), "a" );
         ASSERT_EQ( r.err(), "" );
     }
 
     TEST( echo2 ) {
-        auto r = proc::spawnAndWait( proc::CaptureStdout | proc::CaptureStderr, "echo", "-n", "a" );
+        auto r = proc::spawnAndWait( proc::CaptureStdout | proc::CaptureStderr, "printf", "a" );
         ASSERT( r );
         ASSERT_EQ( r.out(), "a" );
         ASSERT_EQ( r.err(), "" );
     }
 
     TEST( echoSpec ) {
-        auto r = proc::spawnAndWait( proc::CaptureStdout, "echo", "-n", "-e", "a\nb" );
+        auto r = proc::spawnAndWait( proc::CaptureStdout, "printf", "a\nb" );
         ASSERT( r );
         ASSERT_EQ( r.out(), "a\nb" );
         ASSERT_EQ( r.err(), "" );
     }
 
     TEST( shellEchoStdout ) {
-        auto r = proc::shellSpawnAndWait( proc::CaptureStdout, "echo -n a" );
+        auto r = proc::shellSpawnAndWait( proc::CaptureStdout, "printf a" );
         ASSERT( r );
         ASSERT_EQ( r.out(), "a" );
         ASSERT_EQ( r.err(), "" );
     }
 
     TEST( shellEchoStderr ) {
-        auto r = proc::shellSpawnAndWait( proc::CaptureStdout | proc::CaptureStderr, "echo -n a >&2" );
+        auto r = proc::shellSpawnAndWait( proc::CaptureStdout | proc::CaptureStderr, "printf a >&2" );
         ASSERT( r );
         ASSERT_EQ( r.out(), "" );
         ASSERT_EQ( r.err(), "a" );
