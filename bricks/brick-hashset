@@ -963,7 +963,7 @@ struct Sequential
 template< template< typename > class HS >
 struct Parallel
 {
-    struct Insert : shmem::Thread
+    struct Insert
     {
         HS< int > set;
         int from, to;
@@ -992,7 +992,7 @@ struct Parallel
 
     static HS< int > _par( int f1, int t1, int f2, int t2 )
     {
-        Insert a, b( a );
+        shmem::Thread< Insert > a, b( a );
 
         a.from = f1;
         a.to = t1;
@@ -1009,7 +1009,7 @@ struct Parallel
 
     static HS< int > _multi( std::size_t count, int from, int to )
     {
-        std::vector< Insert > arr;
+        shmem::ThreadSet< Insert > arr;
         arr.resize( count, Insert() );
         arr[ 0 ].set.initialSize( isize );
 
@@ -1020,11 +1020,8 @@ struct Parallel
             arr[ i ].overlap = true;
         }
 
-        for ( std::size_t i = 0; i < count; ++i )
-            arr[ i ].start();
-
-        for ( std::size_t i = 0; i < count; ++i )
-            arr[ i ].join();
+        arr.start();
+        arr.join();
 
         return arr[ 0 ].set;
     }

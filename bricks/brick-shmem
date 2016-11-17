@@ -60,73 +60,150 @@
 namespace brick {
 namespace shmem {
 
-struct Thread {
+template< typename T >
+struct Thread : T
+{
     std::unique_ptr< std::thread > _thread;
-    std::atomic< bool > _interrupted;
-    virtual void main() = 0;
+    bool _start_on_move; // :-(
 
-    Thread() : _interrupted( false ) {}
-    Thread( const Thread &other ) : _interrupted( false ) {
-        if( other._thread )
-            throw std::logic_error( "cannot copy running thread" );
-    }
-    Thread( Thread &&other ) :
-        _thread( std::move( other._thread ) ),
-        _interrupted( other.interrupted() )
-    {}
-
+    template< typename... Args >
+    Thread( Args&&... args ) : T( std::forward< Args >( args )... ), _start_on_move( false ) {}
     virtual ~Thread() { stop(); }
 
-    Thread &operator=( const Thread &other ) {
-        if ( _thread )
-            throw std::logic_error( "cannot overwrite running thread" );
+    Thread( const Thread &other ) : T( other )
+    {
         if ( other._thread )
             throw std::logic_error( "cannot copy running thread" );
-        _interrupted.store( other.interrupted(), std::memory_order_relaxed );
-        return *this;
     }
 
-    Thread &operator=( Thread &&other ) {
-        if ( _thread )
-            throw std::logic_error( "cannot overwrite running thread" );
-        _thread.swap( other._thread );
-        _interrupted.store( other.interrupted(), std::memory_order_relaxed );
-        return *this;
+    Thread( Thread &&other )
+        : T( other._thread ? throw std::logic_error( "cannot move a running thread" ) : other ),
+          _thread( std::move( other._thread ) ),
+          _start_on_move( false )
+    {
+        if ( other._start_on_move )
+            start();
     }
 
-    void start() {
-        _interrupted.store( false, std::memory_order_relaxed );
+    virtual void start()
+    {
         _thread.reset( new std::thread( [this]() { this->main(); } ) );
     }
 
-    // stop must be idempotent
-    void stop() {
-        interrupt();
+    virtual void stop()
+    {
         if ( _thread && _thread->joinable() )
             join();
     }
 
-    void join() {
-        if ( _thread ) {
+    void join()
+    {
+        if ( _thread )
+        {
             _thread->join();
             _thread.reset();
         }
     }
 
-    void detach() {
-        if ( _thread ) {
+    void detach()
+    {
+        if ( _thread )
+        {
             _thread->detach();
             _thread.reset();
         }
     }
+};
 
-    bool interrupted() const {
+template< typename T >
+struct LoopWrapper : T
+{
+    std::atomic< bool > _interrupted;
+
+    template< typename... Args >
+    LoopWrapper( Args&&... args ) : T( std::forward< Args >( args )... ), _interrupted( false ) {}
+
+    LoopWrapper( const LoopWrapper & ) = default;
+    LoopWrapper( LoopWrapper && ) = default;
+
+    void main()
+    {
+        while ( !_interrupted ) this->loop();
+    }
+
+    bool interrupted() const
+    {
         return _interrupted.load( std::memory_order_relaxed );
     }
 
-    void interrupt() {
+    void interrupt()
+    {
         _interrupted.store( true, std::memory_order_relaxed );
     }
+};
+
+template< typename L >
+struct LambdaWrapper
+{
+    L lambda;
+    LambdaWrapper( L l ) : lambda( l ) {}
+    void loop() { lambda(); }
+    void main() { lambda(); }
+};
+
+template< typename T >
+struct AsyncLoop : Thread< LoopWrapper< T > >
+{
+    using Super = Thread< LoopWrapper< T > >;
+
+    template< typename... Args >
+    AsyncLoop( Args&&... args ) : Super( std::forward< Args >( args )... ) {}
+
+    AsyncLoop( const AsyncLoop & ) = default;
+    AsyncLoop( AsyncLoop && ) = default;
+
+    virtual ~AsyncLoop()
+    {
+        stop(); /* call the correct stop(), with interrupt() */
+    }
+
+    void start()
+    {
+        this->_interrupted.store( false, std::memory_order_relaxed );
+        Super::start();
+    }
+
+    void stop()
+    {
+        this->interrupt();
+        Super::stop();
+    }
+};
+
+template< typename L >
+auto async_loop( L &&l )
+{
+    AsyncLoop< LambdaWrapper< L > > al( std::forward< L >( l ) );
+    al._start_on_move = true;
+    return std::move( al );
+}
+
+template< typename L >
+auto thread( L &&l )
+{
+    Thread< LambdaWrapper< L > > thr( std::forward< L >( l ) );
+    thr._start_on_move = true;
+    return thr;
+}
+
+template< typename T >
+struct ThreadSet : std::vector< Thread< T > >
+{
+    template< typename... Args >
+    ThreadSet( Args&&... args ) : std::vector< Thread< T > >( std::forward< Args >( args )... ) {}
+
+    void start() { for ( auto &t : *this ) t.start(); }
+    void join() { for ( auto &t : *this ) t.join(); }
 };
 
 /**
@@ -562,9 +639,30 @@ static constexpr int size = 16;
 static constexpr int size = 128 * 1024;
 #endif
 
+struct ThreadTest
+{
+    TEST(async_loop)
+    {
+        alarm( 5 );
+        std::atomic< int > x( 0 );
+        auto t = shmem::async_loop( [&]() { x = 1; } );
+        while ( !x );
+        t.stop();
+    }
+
+    TEST(thread)
+    {
+        alarm( 5 );
+        std::atomic< int > x( 0 );
+        auto t = shmem::thread( [&]() { x = 1; } );
+        while ( !x );
+        t.join();
+    }
+};
+
 struct FifoTest {
     template< typename T >
-    struct Checker : Thread
+    struct Checker
     {
         Fifo< T > fifo;
         int terminate;
@@ -598,7 +696,7 @@ struct FifoTest {
     };
 
     TEST(stress) {
-        Checker< int > c;
+        Thread< Checker< int > > c;
         for ( int j = 0; j < 5; ++j ) {
             c.start();
             for( int i = 0; i < size; ++i )
@@ -609,11 +707,12 @@ struct FifoTest {
     }
 };
 
+namespace { const int peers = 12; }
+
 struct Utils {
-    static const int peers = 12;
 
-    struct DetectorWorker : Thread {
-
+    struct DetectorWorker
+    {
         StartDetector detector;
         int rep;
 
@@ -628,19 +727,19 @@ struct Utils {
         }
     };
 
-    void processDetector( int repeat ) {
+    void processDetector( int repeat )
+    {
         StartDetector sh;
-        std::vector< DetectorWorker > threads{ peers, DetectorWorker{ sh, repeat } };
+        ThreadSet< DetectorWorker > threads( peers, DetectorWorker{ sh, repeat } );
 
 #if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
         alarm( 5 );
 #endif
 
-        for ( int i = 0; i != 4; ++i ) {
-            for ( auto &w : threads )
-                w.start();
-            for ( auto &w : threads )
-                w.join();
+        for ( int i = 0; i != 4; ++i )
+        {
+            threads.start();
+            threads.join();
             ASSERT_EQ( sh._s->counter.load(), 0 );
         }
     }
@@ -653,7 +752,8 @@ struct Utils {
         processDetector( 4 );
     }
 
-    struct CounterWorker : Thread {
+    struct CounterWorker
+    {
         StartDetector detector;
         ApproximateCounter counter;
         int produce;
@@ -687,7 +787,7 @@ struct Utils {
         StartDetector det;
         ApproximateCounter ctr;
 
-        std::vector< CounterWorker > threads{ peers, CounterWorker{ det, ctr } };
+        ThreadSet< CounterWorker > threads( peers, CounterWorker{ det, ctr } );
 
 #if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
         alarm( 5 );
@@ -704,11 +804,8 @@ struct Utils {
             ++i;
         }
 
-        for ( auto &w : threads )
-            w.start();
-
-        for ( auto &w : threads )
-            w.join();
+        threads.start();
+        threads.join();
         ASSERT_EQ( ctr._s->counter.load(), 0 );
     }
 
@@ -916,7 +1013,7 @@ struct InsertThread : Thread {
 };
 
 template< typename Q >
-struct WorkThread : Thread {
+struct WorkThread {
     Q q;
     std::atomic< bool > *stop;
     int items;
@@ -991,7 +1088,7 @@ struct ShQueue : BenchmarkGroup
     template< typename Q >
     void scale() {
         Q fifo;
-        auto *t = new WorkThread< Q >[ p ];
+        auto *t = new Thread< WorkThread< Q > >[ p ];
         std::atomic< bool > stop( false );
 
         for ( int i = 0; i < p; ++i ) {
