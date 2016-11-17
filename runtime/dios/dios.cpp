@@ -87,6 +87,10 @@ struct TraceDebugConfig {
     TraceDebugConfig() :
         threads( false ), help( false ), raw( false ), machineParams( false ),
         mainArgs( false ), faultCfg( false ) {}
+
+    bool anyDebugInfo() {
+        return help || raw || machineParams || mainArgs || faultCfg;
+    }
 };
 
 TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
@@ -182,9 +186,6 @@ void init( const _VM_Env *env )
     __vm_control( _VM_CA_Set, _VM_CR_User1, -1 );
     __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, __dios::Fault::handler );
 
-    __dios_trace_i( 0, "# DiOS boot info" );
-    __dios_trace_i( 0, "---" );
-
     // Activate temporary scheduler to handle errors
     __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
     // Initialize context
@@ -198,6 +199,11 @@ void init( const _VM_Env *env )
         return;
     }
     TraceDebugConfig traceCfg = getTraceDebugConfig( sysOpts );
+
+    if ( traceCfg.anyDebugInfo() ) {
+        __dios_trace_i( 0, "DiOS boot info" );
+        __dios_trace_i( 0, "---" );
+    }
 
     if ( traceCfg.help ) {
         traceHelp();
@@ -241,7 +247,8 @@ void init( const _VM_Env *env )
 
     context->scheduler->startMainThread( argv.first, argv.second, envp.second );
 
-    __dios_trace_i( 0, "---" );
+    if ( traceCfg.anyDebugInfo() )
+        __dios_trace_i( 0, "---" );
 }
 
 } // namespace __dios
