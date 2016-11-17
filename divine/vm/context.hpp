@@ -75,6 +75,8 @@ struct Context
         _heap = ctx.heap();
     }
 
+    void reset() { _heap.reset(); }
+
     template< typename I >
     int choose( int, I, I ) { return 0; }
 

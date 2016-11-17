@@ -210,6 +210,13 @@ struct DebugContext : Context< Program, Heap >
           _state_di_type( nullptr ), _state_type( nullptr )
     {}
 
+    void reset()
+    {
+        Context< Program, Heap >::reset();
+        _info.clear();
+        _trace.clear();
+    }
+
     template< typename I >
     int choose( int count, I, I )
     {
