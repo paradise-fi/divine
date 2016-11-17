@@ -75,6 +75,10 @@ void Verify::run()
             return s.str();
         };
 
+    std::cerr << "booting... " << std::flush;
+    ex.start();
+    std::cerr << "done" << std::endl;
+
     auto progress = std::thread(
         [&]()
         {
@@ -91,7 +95,6 @@ void Verify::run()
     typename vm::CowHeap::SnapPool ext;
     using Parent = std::atomic< vm::CowHeap::Snapshot >;
 
-    ex.start();
     ss::search(
         ss::Order::PseudoBFS, ex, _threads,
         ss::listen(
