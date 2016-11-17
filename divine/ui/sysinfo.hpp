@@ -41,12 +41,16 @@ struct ResourceLimit : std::runtime_error {
     ResourceLimit( std::string x ) : std::runtime_error( "Resource exhausted: " + x ) {}
 };
 
-struct ResourceGuard : brick::shmem::Thread {
+struct ResourceGuard
+{
+    Info info;
     uint64_t memory; /* in kB */
     uint64_t time; /* in seconds */
-    void main();
+    void loop();
     ResourceGuard();
 };
+
+using ResourceGuardThread = brick::shmem::AsyncLoop< ResourceGuard >;
 
 }
 

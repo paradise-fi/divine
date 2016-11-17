@@ -236,23 +236,20 @@ ResourceGuard::ResourceGuard()
     : memory( 0 ), time( 0 )
 {}
 
-void ResourceGuard::main() {
-    Info info;
-    while ( !interrupted() ) {
-        info.update();
+void ResourceGuard::loop()
+{
+    info.update();
 
-        if ( memory && info.peakVmSize() > memory )
-            throw ResourceLimit( "Memory limit exceeded: used "
-                                 + brick::string::fmt( info.peakVmSize() ) + "K / "
-                                 + brick::string::fmt( memory ) + "K." );
-        if ( time && info.wallTime() > time )
-            throw ResourceLimit( "Time limit exceeded: used "
-                                 + brick::string::fmt( info.wallTime() ) + "s / "
-                                 + brick::string::fmt( time ) + "s." );
-        std::this_thread::sleep_for(
-            std::chrono::seconds( 1 )
-        );
-    }
+    if ( memory && info.peakVmSize() > memory )
+        throw ResourceLimit( "Memory limit exceeded: used "
+                             + brick::string::fmt( info.peakVmSize() ) + "K / "
+                             + brick::string::fmt( memory ) + "K." );
+    if ( time && info.wallTime() > time )
+        throw ResourceLimit( "Time limit exceeded: used "
+                             + brick::string::fmt( info.wallTime() ) + "s / "
+                             + brick::string::fmt( time ) + "s." );
+
+    std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
 }
 
 std::vector< ReportLine > Info::report() const {
