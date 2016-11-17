@@ -208,8 +208,21 @@ void WithBC::setup()
         cc::Compile driver( ccopt );
         if ( !_std.empty() )
             driver.addFlags( { "-std=" + _std } );
-        for ( auto &f : _ccOpts )
-            driver.addFlags( f );
+        bool isdir = false;
+        for ( auto &fvec : _ccOpts )
+            for ( auto &f : fvec )
+            {
+                if ( isdir )
+                    driver.addDirectory( f ), isdir = false;
+                else if ( startsWith( f, "-I" ) )
+                {
+                    if ( f.length() > 2 )
+                        driver.addDirectory( std::string( f, 2, std::string::npos ) );
+                    else
+                        isdir = true;
+                }
+                driver.addFlags( { f } );
+            }
         driver.setupFS( rt::each );
         driver.compileAndLink( _file, {} );
         pruneBC( driver );
