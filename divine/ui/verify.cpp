@@ -129,6 +129,18 @@ void Verify::run()
               << edgecount << " edges" << " in " << time() << ", averaging " << avg()
               << "             " << std::endl;
 
+    vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
+    vm::setup::dbg_boot( dbg );
+
+    if ( !statecount )
+    {
+        std::cout << "no states produced, boot trace:" << std::endl;
+        std::cout << dbg._info << std::endl;
+        for ( auto s : dbg._trace )
+            std::cerr << s << std::endl;
+        return;
+    }
+
     if ( !error_found )
     {
         std::cout << "no errors found" << std::endl;
@@ -136,9 +148,6 @@ void Verify::run()
     }
 
     auto hasher = ex._states.hasher; /* fixme */
-
-    vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
-    vm::setup::dbg_boot( dbg );
 
     std::deque< vm::CowHeap::Snapshot > trace;
     std::vector< std::vector< int > > choices;
