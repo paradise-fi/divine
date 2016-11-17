@@ -150,7 +150,7 @@ struct Explore
         eval.run();
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
         if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) &&
-             !_states.hasher.root.null() )
+             _ctx.heap().valid( _states.hasher.root ) )
         {
             _initial.snap = _ctx.snapshot();
             _states.insert( _initial.snap );
@@ -165,7 +165,7 @@ struct Explore
         _ctx.load( ctx ); /* copy over registers */
         _states.hasher = Hasher( _ctx.heap() );
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
-        if ( !_states.hasher.root.null() )
+        if ( _ctx.heap().valid( _states.hasher.root ) )
             _initial.snap = *_states.insert( snap );
         if ( !_ctx.finished() )
             UNREACHABLE( "choices encountered during start()" );
