@@ -92,8 +92,6 @@ namespace conversion {
 }
 
 namespace __sc {
-
-    //With _ begins function that are many-times user and recalled.
     static void _initStat( struct stat *buf )
     {
         buf->st_dev = 0;

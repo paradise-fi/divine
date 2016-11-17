@@ -14,7 +14,7 @@ void __dios_syscall( int syscode, void* ret ... ) {
     va_start( vl, ret );
     int err = 0;
     __dios::Syscall::trap( syscode, &err, ret,  vl );
-    while ( err == RECALL) {
+    while ( err == _DiOS_SYS_RETRY ) {
             err = 0;
          __dios::Syscall::trap( syscode, &err, ret,  vl );
     } 

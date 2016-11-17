@@ -160,14 +160,14 @@ struct PipeDescriptor : FileDescriptor {
         else if ( fl.has( flags::Open::Read ) ) {
             if ( wait && !pipe->writer() && !readyWriter ) {
                 readyReader = true;
-               throw Error( RECALL );
+               throw Error( _DiOS_SYS_RETRY );
             }
             pipe->assignReader();
         }
         else if ( fl.has( flags::Open::Write ) ) {
             if ( wait && !pipe->reader() && !readyReader  ) {
                 readyWriter = true;
-               throw Error( RECALL );
+               throw Error( _DiOS_SYS_RETRY );
             }
             pipe->assignWriter();
         }

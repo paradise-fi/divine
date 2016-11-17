@@ -261,7 +261,7 @@ struct Pipe : File {
 
         // progress or deadlock
         while ( ( length = _stream.pop( buffer, length ) ) == 0 )
-            throw Error( RECALL );
+            throw Error( _DiOS_SYS_RETRY );
 
         return true;
     }
@@ -274,7 +274,7 @@ struct Pipe : File {
 
         // progress or deadlock
         while ( ( length = _stream.push( buffer, length ) ) == 0 )
-            throw Error( RECALL );
+            throw Error( _DiOS_SYS_RETRY );
 
         return true;
     }
@@ -299,7 +299,7 @@ struct Pipe : File {
             __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened for reading again." );
         _reader = true;
     }
-    
+
     void assignWriter() {
         if ( _writer )
             __dios_fault( _VM_Fault::_VM_F_Assert, "Pipe is opened for writing again." );
@@ -495,7 +495,7 @@ struct SocketStream : Socket {
 
         // progress or deadlock
         if ( _backlog.empty() ) {
-		throw Error( RECALL );
+		throw Error( _DiOS_SYS_RETRY );
 	}
 
         Node result( std::move( _backlog.front() ) );
@@ -574,12 +574,12 @@ struct SocketStream : Socket {
             throw Error( ENOTCONN );
 
         if ( _stream.empty()  ) {
-		throw Error( RECALL );
+		throw Error( _DiOS_SYS_RETRY );
 	}
 
          if ( fls.has( flags::Message::WaitAll ) ) {
              if ( _stream.size() < length ) {
-	     	throw Error( RECALL );
+	     	throw Error( _DiOS_SYS_RETRY );
 	     }
          }
 
@@ -685,7 +685,7 @@ struct SocketDatagram : Socket {
             throw Error( EAGAIN );
 
         if  ( _packets.empty() ) {
-		throw Error( RECALL );
+		throw Error( _DiOS_SYS_RETRY );
 	}
 
         length = _packets.front().read( buffer, length );

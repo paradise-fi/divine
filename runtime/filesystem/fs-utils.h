@@ -20,11 +20,8 @@
 #define _FS_PATH_UTILS_H_
 
 #ifdef __divine__
-# include <divine.h>
-
-#ifndef RECALL
-#define RECALL 221
-#endif
+#include <divine.h>
+#include <dios/syscall.hpp>
 
 #define __FS_assert( x ) do { \
         if ( !(x) ) { \
