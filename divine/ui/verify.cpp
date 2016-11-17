@@ -51,7 +51,6 @@ void Verify::run()
         _threads = std::min( 4u, std::thread::hardware_concurrency() );
 
     std::atomic< int > edgecount( 0 ), statecount( 0 );
-    std::atomic< bool > done( false );
 
     using clock = std::chrono::steady_clock;
     using msecs = std::chrono::milliseconds;
@@ -81,17 +80,14 @@ void Verify::run()
     ex.start();
     std::cerr << "done" << std::endl;
 
-    auto progress = std::thread(
+    auto progress = brick::shmem::async_loop(
         [&]()
         {
-            while ( !done )
-            {
-                update_interval();
-                std::this_thread::sleep_for( msecs( 500 ) );
-                std::cerr << "\rsearching: " << statecount << " states and "
-                          << edgecount << " edges found in " << time()
-                          << ", averaging " << avg() << "    ";
-            }
+            update_interval();
+            std::this_thread::sleep_for( msecs( 500 ) );
+            std::cerr << "\rsearching: " << statecount << " states and "
+                      << edgecount << " edges found in " << time()
+                      << ", averaging " << avg() << "    ";
         } );
 
     typename vm::CowHeap::SnapPool ext;
@@ -122,8 +118,7 @@ void Verify::run()
                 ++statecount; return ss::Listen::AsNeeded;
             } ) );
 
-    done = true;
-    progress.join();
+    progress.stop();
     update_interval();
     std::cerr << "\rfound " << statecount << " states and "
               << edgecount << " edges" << " in " << time() << ", averaging " << avg()
