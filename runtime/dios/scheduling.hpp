@@ -184,6 +184,8 @@ void sched() noexcept
 
     }
 
+    // Program ends
+    ctx->finalize();
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
 }
 

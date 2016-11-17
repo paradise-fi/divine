@@ -34,6 +34,13 @@ Context::Context() :
     globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
 {}
 
+void Context::finalize() {
+    __dios::delete_object( vfs );
+    __dios::delete_object( fault );
+    __dios::delete_object( syscall );
+    __dios::delete_object( scheduler );
+}
+
 void MachineParams::initialize( const SysOpts& opts ) {
     hardwareConcurrency = 0;
     for( const auto& i : opts ) {

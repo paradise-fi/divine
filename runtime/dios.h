@@ -229,6 +229,7 @@ struct Context {
     MachineParams machineParams;
 
     Context();
+    void finalize();
 };
 
 template< bool fenced >
