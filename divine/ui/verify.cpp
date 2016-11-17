@@ -178,6 +178,7 @@ void Verify::run()
                         return ss::Listen::Ignore;
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
+    ASSERT( next == trace.end() );
     std::cout << std::endl << "choices made:";
     for ( auto &v : choices )
         for ( int c : v )
