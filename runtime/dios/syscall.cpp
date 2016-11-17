@@ -17,7 +17,7 @@ void __dios_syscall( int syscode, void* ret ... ) {
     while ( err == _DiOS_SYS_RETRY ) {
             err = 0;
          __dios::Syscall::trap( syscode, &err, ret,  vl );
-    } 
+    }
     if( err != 0) {
         errno = err;
     }
@@ -38,5 +38,13 @@ Syscall *Syscall::_inst;
 void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl ) = {
     #define SYSCALL(n,...)  [ _SC_ ## n ] = __sc::n,
         #include <dios/syscall.def>
+    #undef SYSCALL
 };
+
+const SchedCommand _DiOS_SysCallsSched[ _SC_LAST ] = {
+    #define SYSCALL(n, sched,...) [ _SC_ ## n ] = sched,
+        #include <dios/syscall.def>
+    #undef SYSCALL
+};
+
 } // namespace _dios

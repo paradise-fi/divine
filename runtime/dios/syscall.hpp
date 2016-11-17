@@ -6,8 +6,8 @@
 #include <cstdarg>
 #include <new>
 #include <dios.h>
-#ifndef RECALL
-#define RECALL 221
+#ifndef _DiOS_SYS_RETRY
+#define _DiOS_SYS_RETRY 221
 #endif
 
 namespace __dios {
@@ -20,9 +20,14 @@ enum _DiOS_SC {
 
     _SC_LAST
 };
+#undef SYSCALL
+
+enum class SchedCommand : uint8_t { RESCHEDULE, CONTINUE };
 
 // Mapping of syscodes to implementations
 extern void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl );
+// True if corresponding syscall requires thread rescheduling
+extern const SchedCommand _DiOS_SysCallsSched[ _SC_LAST ];
 
 struct Syscall {
     Syscall() noexcept : _syscode( _SC_INACTIVE ) {
@@ -40,18 +45,19 @@ struct Syscall {
         va_end( _inst->_args );
     }
 
-    bool handle( Context *ctx ) noexcept {
+    SchedCommand handle( Context *ctx ) noexcept {
         if ( _syscode != _SC_INACTIVE ) {
             ( *( _DiOS_SysCalls[ _syscode ] ) )( *ctx, _err ,_ret , _args );
-            _syscode = _SC_INACTIVE;
-            if (*_err == RECALL ) {
-                return false;
+            if ( *_err == _DiOS_SYS_RETRY ) {
+                _syscode = _SC_INACTIVE;
+                return SchedCommand::RESCHEDULE;;
             }
-            // If syscall returns, scheduler has to continue current thread
-            // It it does not return, scheduler can continue with an arbitrary thread
-            return _ret;
+            auto cmd = _DiOS_SysCallsSched[ _syscode ];
+            _syscode = _SC_INACTIVE;
+            // Either CONTINUE or RESCHEDULE
+            return cmd;
         }
-        return false;
+        return SchedCommand::RESCHEDULE;
     }
 
 private:

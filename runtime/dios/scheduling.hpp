@@ -175,7 +175,7 @@ void sched() noexcept
                       uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
         t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
 
-        if ( !ctx->syscall->handle( ctx ) )
+        if ( ctx->syscall->handle( ctx ) == SchedCommand::RESCHEDULE )
             return;
 
         /* reset intframe to ourselves */
