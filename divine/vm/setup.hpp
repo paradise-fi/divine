@@ -20,6 +20,7 @@
 
 #include <divine/vm/value.hpp>
 #include <runtime/divine.h>
+#include <brick-except>
 
 namespace divine {
 namespace vm {
@@ -33,6 +34,9 @@ void boot( Context &ctx )
     ctx.set( _VM_CR_Constants, data.first );
     ctx.set( _VM_CR_Globals, data.second );
     auto ipc = ctx.program().functionByName( "__boot" );
+    auto &fun = ctx.program().function( ipc );
+    if ( fun.argcount != 1 )
+        throw brick::except::Error( "__boot must take exactly 1 argument" );
     auto envptr = ctx.program().globalByName( "__sys_env" );
     ctx.enter( ipc, nullPointerV(), value::Pointer( envptr ) );
     ctx.ref( _VM_CR_Flags ).integer = _VM_CF_KernelMode | _VM_CF_Mask;
