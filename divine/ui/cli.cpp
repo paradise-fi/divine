@@ -206,25 +206,15 @@ void WithBC::setup()
     {
         cc::Options ccopt;
         cc::Compile driver( ccopt );
+        std::vector< std::string > ccopts;
         if ( !_std.empty() )
-            driver.addFlags( { "-std=" + _std } );
-        bool isdir = false;
-        for ( auto &fvec : _ccOpts )
-            for ( auto &f : fvec )
-            {
-                if ( isdir )
-                    driver.addDirectory( f ), isdir = false;
-                else if ( startsWith( f, "-I" ) )
-                {
-                    if ( f.length() > 2 )
-                        driver.addDirectory( std::string( f, 2, std::string::npos ) );
-                    else
-                        isdir = true;
-                }
-                driver.addFlags( { f } );
-            }
+            ccopts.push_back( { "-std=" + _std } );
+        for ( auto &o : _ccOpts )
+            std::copy( o.begin(), o.end(), std::back_inserter( ccopts ) );
+        ccopts.push_back( _file );
+
         driver.setupFS( rt::each );
-        driver.compileAndLink( _file, {} );
+        driver.runCC( ccopts );
         pruneBC( driver );
         _bc = std::make_shared< vm::BitCode >(
             std::unique_ptr< llvm::Module >( driver.getLinked() ),
@@ -238,41 +228,33 @@ void WithBC::setup()
 
 void Cc::run()
 {
-    if ( _files.empty() )
-        die( "You must specify at least one source file." );
-    if ( !_output.empty() && _drv.dont_link && _files.size() > 1 )
-        die( "Cannot specify --dont-link -o with multiple input files." );
-
     cc::Compile driver( _drv );
     driver.setupFS( rt::each );
+    for ( auto &x : _passThroughFlags )
+        std::copy( x.begin(), x.end(), std::back_inserter( _flags ) );
 
-    for ( auto &i : _inc ) {
-        driver.addDirectory( i );
-        driver.addFlags( { "-I", i } );
-    }
-    for ( auto &i : _sysinc ) {
-        driver.addDirectory( i );
-        driver.addFlags( { "-isystem", i } );
-    }
+    std::string firstFile;
+    driver.runCC( _flags, [&]( std::unique_ptr< llvm::Module > &&m, std::string name, bool shouldLink )
+            -> std::unique_ptr< llvm::Module >
+        {
+            bool first;
+            if ( (first = firstFile.empty()) )
+                firstFile = name;
 
-    for ( auto &x : _flags )
-        x = "-"s + x; /* put back the leading - */
+            if ( !shouldLink ) {
+                if ( _output.empty() && !first )
+                    die( "CC: Cannot specify --dont-link/-c with -o with multiple input files." );
+                driver.writeToFile( _output.empty() ? outputName( name ) : _output, m.get() );
+                return nullptr;
+            }
+            return std::move( m );
+        } );
 
-    if ( _drv.dont_link ) {
-        for ( auto &x : _files ) {
-            auto m = driver.compile( x, _flags );
-            driver.writeToFile(
-                _output.empty() ? outputName( x ) : _output,
-                m.get() );
-        }
-    } else {
-        for ( auto &x : _files )
-            driver.compileAndLink( x, _flags );
+    if ( firstFile.empty() )
+        die( "CC: You must specify at least one source file." );
 
-        pruneBC( driver );
-
-        driver.writeToFile( _output.empty() ? outputName( _files.front() ) : _output );
-    }
+    pruneBC( driver );
+    driver.writeToFile( _output.empty() ? outputName( firstFile ) : _output );
 }
 
 }

@@ -169,8 +169,8 @@ struct Draw : WithBC
 struct Cc : Command
 {
     cc::Options _drv;
-    std::vector< std::string > _files, _flags, _inc, _sysinc;
-    std::string _precompiled;
+    std::vector< std::string > _flags;
+    std::vector< std::vector< std::string > > _passThroughFlags;
     std::string _output;
 
     void run();
