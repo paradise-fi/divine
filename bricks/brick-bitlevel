@@ -25,6 +25,7 @@
 #include <brick-assert>
 
 #include <type_traits>
+#include <limits>
 
 #ifdef __linux
 #include <asm/byteorder.h>
