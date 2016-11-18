@@ -165,6 +165,15 @@ struct Context
             _cfl_visited.insert( pc );
     }
 
+    void leave( CodePointer pc )
+    {
+        std::unordered_set< GenericPointer > pruned;
+        for ( auto check : _cfl_visited )
+            if ( check.object() != pc.function() )
+                pruned.insert( check );
+        std::swap( pruned, _cfl_visited );
+    }
+
     void mem_interrupt( GenericPointer ptr, int type )
     {
         if ( ptr.type() == PointerType::Const )

@@ -617,6 +617,7 @@ struct Eval
                 fault( _VM_F_Memory ) << "Cound not return value";
         }
 
+        context().leave( pc() );
         context().set( _VM_CR_Frame, parent.cooked() );
         context().set( _VM_CR_PC, caller_pc.cooked() );
 
