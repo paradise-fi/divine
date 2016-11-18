@@ -356,7 +356,7 @@ struct CLI : Interface
 
         auto bcopts = cmd::make_option_set< WithBC >( v )
             .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
-            .option( "[-C {commasep}|-C{commasep}]", &WithBC::_ccOpts, "options passed to compiler compiler"s )
+            .option( "[-C,{commasep}]", &WithBC::_ccOpts, "options passed to compiler compiler"s )
             .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
             .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
@@ -378,12 +378,10 @@ struct CLI : Interface
         auto ccopts = cmd::make_option_set< Cc >( v )
             .options( ccdrvopts, &Cc::_drv )
             .option( "[-o {string}]", &Cc::_output, "the name of the output file"s )
-            .option( "[-{string}]", &Cc::_flags, "any cc1 options"s )
-            .option( "[-I{string}|-I {string}]", &Cc::_inc,
-                    "add the specified directory to the search path for include files"s )
-            .option( "[-isystem{string}|-isystem {string}]", &Cc::_sysinc,
-                    "like -I but searched later (along with system include dirs)"s )
-            .option( "[{file}]", &Cc::_files, "input file(s) to compile (C or C++)"s );
+            .option( "[-C,{commasep}]", &Cc::_passThroughFlags,
+                     "options passed to compiler compiler (for compatibility with verify)"s )
+            .option( "[{string}]", &Cc::_flags,
+                     "any clang options including input file(s) to compile (C, C++, object, bitcode)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
             .option( "[--threads {int}|-T {int}]", &Verify::_threads, "number of threads to use"s )
