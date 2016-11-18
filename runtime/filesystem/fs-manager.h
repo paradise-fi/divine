@@ -49,6 +49,10 @@ struct Manager {
             _insertSnapshotItem( item );
     }
 
+    void setOutputFile(FileTrace trace);
+
+    void setErrFile(FileTrace trace);
+
     Node findDirectoryItem( utils::String name, bool followSymLinks = true );
 
     void createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl );
@@ -143,7 +147,7 @@ private:
     Node _root;
     int _error;
     WeakNode _currentDirectory;
-    std::array< Node, 2 > _standardIO;
+    std::array< Node, 3 > _standardIO;
     utils::Vector< std::shared_ptr< FileDescriptor > > _openFD;
     utils::List< DirectoryDescriptor > _openDD;
 

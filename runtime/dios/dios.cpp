@@ -164,10 +164,10 @@ void traceHelp() {
     __dios_trace_i( 2,     "- malloc" );
     __dios_trace_i( 1,   "- ncpus:" );
     __dios_trace_i( 2,     "- <num> specify number of cpu units (default 0)" );
-    __dios_trace_i( 1,   "- {stdin|stderr}: specify how to treat program output" );
+    __dios_trace_i( 1,   "- {stdout|stderr}: specify how to treat program output" );
     __dios_trace_i( 2,     "- notrace: ignore the stream" );
     __dios_trace_i( 2,     "- unbuffered: trace each write" );
-    __dios_trace_i( 2,     "- trace: trance after each newline (default) " );
+    __dios_trace_i( 2,     "- trace: trace after each newline (default) " );
 }
 
 void traceEnv( const _VM_Env *env ) {
@@ -213,6 +213,9 @@ void init( const _VM_Env *env )
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<true> );
     else
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
+    
+     context->vfs->instance( ).setOutputFile(getFileTraceConfig(sysOpts, "stdout" ));
+     context->vfs->instance( ).setErrFile(getFileTraceConfig(sysOpts, "stderr" ));
 
     if ( !context->fault->load_user_pref( sysOpts ) ) {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );

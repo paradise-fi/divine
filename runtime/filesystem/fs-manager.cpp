@@ -20,18 +20,44 @@ Manager::Manager( bool ) :
     _error(0),
     _currentDirectory{ _root },
     _standardIO{ {
-        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER ),
-        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER )
+        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER ),// stdin
+        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER ),// stdout
+        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER )// stderr
     } },
     _openFD{
         std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 0 ], flags::Open::Read ),// stdin
         std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 1 ], flags::Open::Write ),// stdout
-        std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 1 ], flags::Open::Write )// stderr
+        std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 2 ], flags::Open::Write )// stderr
     },
     _umask{ Mode::WGROUP | Mode::WOTHER }
 {
     _root->assign( new( memory::nofail ) Directory( _root ) );
-    _standardIO[ 1 ]->assign( new( memory::nofail ) VmTraceFile() );
+}
+
+void Manager::setOutputFile(FileTrace trace) {
+    switch (trace) {
+        case FileTrace::UNBUFFERED:
+            _standardIO[ 1 ]->assign( new( memory::nofail ) VmTraceFile() );
+            break;
+        case FileTrace::TRACE:
+             _standardIO[ 1 ]->assign( new( memory::nofail ) VmBuffTraceFile() );
+             break;
+        default : 
+            break;
+    }
+}
+
+void Manager::setErrFile(FileTrace trace) {
+    switch (trace) {
+        case FileTrace::UNBUFFERED:
+            _standardIO[ 2 ]->assign( new( memory::nofail ) VmTraceFile() );
+            break;
+        case FileTrace::TRACE:
+             _standardIO[ 2 ]->assign( new( memory::nofail ) VmBuffTraceFile() );
+             break;
+        default : 
+            break;
+    }
 }
 
 

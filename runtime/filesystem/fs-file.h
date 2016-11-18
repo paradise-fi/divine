@@ -184,6 +184,43 @@ struct VmTraceFile : File {
     }
 };
 
+
+struct VmBuffTraceFile : File {
+
+    size_t size() const override {
+        return 0;
+    }
+    bool canRead() const override {
+        return false;
+    }
+    bool canWrite() const override {
+        return true;
+    }
+    bool read( char *, size_t, size_t & ) override {
+        return false;
+    }
+    bool write( const char *buffer, size_t, size_t & length ) override {
+        _buffer.insert(_buffer.length(), buffer, length );
+        auto newLinePos = _buffer.find_last_of("\n");
+        if(newLinePos != std::string::npos ) {
+            __dios_trace_t( _buffer.substr(0, newLinePos).c_str());
+            _buffer.erase(0, newLinePos+1);
+        }
+        return true;
+    }
+    void clear() override {
+        _buffer.clear();
+    }
+    ~VmBuffTraceFile() {
+        if(_buffer.length() > 0){
+             __dios_trace_t(_buffer.c_str());
+        }
+        _buffer.clear();
+    }
+private:
+    __dios::dstring _buffer;
+};
+
 struct StandardInput : File {
     StandardInput() :
         _content( nullptr ),
