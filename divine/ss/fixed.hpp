@@ -21,6 +21,12 @@ struct Fixed
             _edges.insert( e );
     }
 
+    Fixed( std::vector< std::pair< int, int > > il )
+    {
+        for ( auto e : il )
+            _edges.insert( e );
+    }
+
     template< typename Y >
     void edges( int from, Y yield )
     {

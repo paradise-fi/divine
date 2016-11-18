@@ -148,6 +148,12 @@ auto search( Order o, B b, int thr, L l )
 
 namespace t_ss {
 
+#ifdef __divine__
+static const int N = 4;
+#else
+static const int N = 1000;
+#endif
+
 struct Search
 {
     void _bfs_fixed( int threads )
@@ -205,6 +211,46 @@ struct Search
     {
         _bfs_random( 2 );
         _bfs_random( 3 );
+    }
+
+    TEST( sequence )
+    {
+        std::vector< std::pair< int, int > > vec;
+        for ( int i = 1; i <= N; ++i )
+            vec.emplace_back( i, i + 1 );
+        ss::Fixed builder( vec );
+        int found = 0;
+        ss::search(
+            ss::Order::PseudoBFS, builder, 1, ss::passive_listen(
+                [&] ( auto, auto, auto ) {}, [&]( auto ) { ++found; } ) );
+        ASSERT_EQ( found, N + 1 );
+    }
+
+    TEST( navigate )
+    {
+        std::vector< std::pair< int, int > > vec;
+        for ( int i = 1; i <= N; ++i )
+        {
+            vec.emplace_back( i, i + 1 );
+            vec.emplace_back( i, i + N + 2 );
+            vec.emplace_back( i + N + 2, i + 1 );
+        }
+
+        ss::Fixed builder( vec );
+        int found = 0;
+        ss::search(
+            ss::Order::PseudoBFS, builder, 1, ss::listen(
+                [&] ( auto f, auto t, auto )
+                {
+                    if ( f > 1000 )
+                        return ss::Listen::Process;
+                    if ( f % 2 == 1 )
+                        return t > 1000 ? ss::Listen::Process : ss::Listen::Ignore;
+                    else
+                        return t < 1000 ? ss::Listen::Process : ss::Listen::Ignore;
+                },
+                [&]( auto ) { ++found; return ss::Listen::Process; } ) );
+        ASSERT_EQ( found, int( 1.5 * N ) );
     }
 };
 
