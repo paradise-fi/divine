@@ -247,6 +247,20 @@ Compiler::FileType Compiler::typeFromFile( std::string name ) {
     return FileType::Unknown;
 }
 
+Compiler::FileType Compiler::typeFromXOpt( std::string selector ) {
+    if ( selector == "c++" )
+        return FileType::Cpp;
+    if ( selector == "c" )
+        return FileType::C;
+    if ( selector == "c++cpp-output" )
+        return FileType::CppPreprocessed;
+    if ( selector == "cpp-output" )
+        return FileType::CPrepocessed;
+    if ( selector == "ir" )
+        return FileType::IR;
+    return FileType::Unknown;
+}
+
 std::vector< std::string > Compiler::argsOfType( FileType t ) {
     std::vector< std::string > out { "-x" };
     switch ( t ) {

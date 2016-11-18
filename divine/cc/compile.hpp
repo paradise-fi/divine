@@ -7,6 +7,7 @@
 #include <brick-assert>
 #include <brick-string>
 #include <thread>
+#include <stdexcept>
 
 namespace brick { namespace llvm { struct Linker; } } // avoid header dependency
 
@@ -19,12 +20,32 @@ std::string stringifyToCode( std::vector< std::string > ns, std::string name, st
 
 struct Compile
 {
+    using ModulePtr = std::unique_ptr< llvm::Module >;
+
     explicit Compile( Options opts = Options() );
     ~Compile();
 
     void compileAndLink( std::string path, std::vector< std::string > flags = {} );
-    std::unique_ptr< llvm::Module > compile( std::string path,
-                        std::vector< std::string > flags = { } );
+    void compileAndLink( std::string path, Compiler::FileType type, std::vector< std::string > flags = {} );
+
+    ModulePtr compile( std::string path, std::vector< std::string > flags = { } );
+    ModulePtr compile( std::string path, Compiler::FileType type, std::vector< std::string > flags = {} );
+
+    // Run the compiler based on invocation arguments (including files). The
+    // arguments should not contain -o or linker arguments.
+    //
+    // The callback (if present) is invoked for every compiled module, with
+    // pointer to the module, the name of the file from which the module was
+    // created and a boolean flag set to true if an option which prevents
+    // linking (such as -c or -S) was specified among rawCCOpts.
+    //
+    // If the callback returns a module, this module is linked to the
+    // composite, which can be later obtained using getLinked(). Otherwise, the
+    // module is skipped and the callback can transfer its ownership, or delete
+    // it. Normally, the implementation would handle non-liking modules and
+    // return without modification modules which should be linked.
+    void runCC( std::vector< std::string > rawCCOpts,
+                std::function< ModulePtr( ModulePtr &&, std::string, bool ) > moduleCallback = nullptr );
 
     llvm::Module *getLinked();
     void writeToFile( std::string filename );

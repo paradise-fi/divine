@@ -37,6 +37,7 @@ struct Compiler {
     };
 
     static FileType typeFromFile( std::string name );
+    static FileType typeFromXOpt( std::string selector );
     static std::vector< std::string > argsOfType( FileType t );
 
     explicit Compiler( std::shared_ptr< llvm::LLVMContext > ctx = nullptr );

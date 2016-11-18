@@ -15,6 +15,7 @@ namespace divine {
 namespace cc {
 
 using brick::fs::joinPath;
+using namespace std::literals;
 
 static std::string getWrappedMDS( llvm::NamedMDNode *meta, int i = 0, int j = 0 ) {
     auto *op = llvm::cast< llvm::MDTuple >( meta->getOperand( i ) );
@@ -74,7 +75,19 @@ void Compile::compileAndLink( std::string path, std::vector< std::string > flags
     linker->link( compile( path, flags ) );
 }
 
+void Compile::compileAndLink( std::string path, Compiler::FileType type, std::vector< std::string > flags )
+{
+    linker->link( compile( path, type, flags ) );
+}
+
 std::unique_ptr< llvm::Module > Compile::compile( std::string path,
+                                    std::vector< std::string > flags )
+{
+    return compile( path, Compiler::typeFromFile( path ), flags );
+}
+
+std::unique_ptr< llvm::Module > Compile::compile( std::string path,
+                                    Compiler::FileType type,
                                     std::vector< std::string > flags )
 {
     std::vector< std::string > allFlags;
@@ -84,9 +97,79 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
     std::cerr << "compiling " << path << std::endl;
     if ( path[0] == '/' )
         mastercc().allowIncludePath( std::string( path, 0, path.rfind( '/' ) ) );
-    auto mod = mastercc().compileModule( path, allFlags );
+    auto mod = mastercc().compileModule( path, type, allFlags );
 
     return mod;
+}
+
+void Compile::runCC( std::vector< std::string > rawCCOpts,
+                     std::function< ModulePtr( ModulePtr &&, std::string, bool ) > moduleCallback )
+{
+    bool dontLink = false;
+    for ( auto &x : { "-c", "-S" } )
+        if ( std::find( rawCCOpts.begin(), rawCCOpts.end(), x ) != rawCCOpts.end() )
+            dontLink = true;
+
+    using FT = Compiler::FileType;
+    FT xType = FT::Unknown;
+
+    std::vector< std::string > opts;
+    std::vector< std::pair< std::string, FT > > files;
+
+    for ( auto it = rawCCOpts.begin(), end = rawCCOpts.end(); it != end; ++it )
+    {
+        std::string isystem = "-isystem";
+        if ( brick::string::startsWith( *it, "-I" ) ) {
+            std::string val;
+            if ( it->size() > 2 )
+                val = it->substr( 2 );
+            else
+                val = *++it;
+            mastercc().allowIncludePath( val );
+            opts.emplace_back( "-I" + val );
+        }
+        else if ( brick::string::startsWith( *it, isystem ) ) {
+            std::string val;
+            if ( it->size() > isystem.size() )
+                val = it->substr( isystem.size() );
+            else
+                val = *++it;
+            mastercc().allowIncludePath( val );
+            opts.emplace_back( isystem + val );
+        }
+        else if ( brick::string::startsWith( *it, "-x" ) ) {
+            std::string val;
+            if ( it->size() > 2 )
+                val = it->substr( 2 );
+            else
+                val = *++it;
+            if ( val == "none" )
+                xType = FT::Unknown;
+            else {
+                xType = Compiler::typeFromXOpt( val );
+                if ( xType == FT::Unknown )
+                    throw std::runtime_error( "-x value not recognized: " + val );
+            }
+            // this option is propagated to CC by xType, not directly
+        }
+        else if ( !brick::string::startsWith( *it, "-" ) && brick::fs::access( *it, F_OK ) )
+            files.emplace_back( *it, xType == FT::Unknown ? Compiler::typeFromFile( *it ) : xType );
+        else
+            opts.emplace_back( *it );
+    }
+
+    if ( !moduleCallback )
+        moduleCallback = []( ModulePtr &&m, std::string, bool shouldLink ) -> ModulePtr {
+            if ( shouldLink )
+                return std::move( m );
+            return nullptr;
+        };
+
+    for ( auto &f : files ) {
+        auto m = moduleCallback( compile( f.first, f.second, opts ), f.first, !dontLink );
+        if ( m )
+            linker->link( std::move( m ) );
+    }
 }
 
 llvm::Module *Compile::getLinked() {
