@@ -220,6 +220,9 @@ public:
         // Is this message fragment too short?  If it is, stuff it away.
         if (newLength < sc_bufSize)
         {
+#ifndef NDEBUG
+            if ( length > sc_bufSize ) abort();
+#endif
             memcpy(&reinterpret_cast< uint8 * >( m_data )[m_remainder], message, length);
             m_length = length + m_length;
             m_remainder = uint8( newLength );
