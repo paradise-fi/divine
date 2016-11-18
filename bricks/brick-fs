@@ -207,7 +207,7 @@ inline std::string normalize( std::string path ) {
     for ( auto it = split.begin(); it != split.end(); ) {
         if ( it->empty() || *it == "." )
             it = split.erase( it );
-        else if ( *it == ".." && it != split.begin() )
+        else if ( *it == ".." && it != split.begin() && *std::prev( it ) != ".." )
             it = split.erase( split.erase( std::prev( it ) ) );
         else
             ++it;
@@ -824,6 +824,13 @@ struct TestNormalize {
         ASSERT_EQ( ".", normalize( "a/.." ) );
         ASSERT_EQ( "/", normalize( "/." ) );
         ASSERT_EQ( "/", normalize( "/a/.." ) );
+    }
+
+    TEST( negative ) {
+        ASSERT_EQ( "..", normalize( ".." ) );
+        ASSERT_EQ( "../..", normalize( "../.." ) );
+        ASSERT_EQ( "../../..", normalize( "../../.." ) );
+        ASSERT_EQ( "../../..", normalize( "../../a/../.." ) );
     }
 };
 
