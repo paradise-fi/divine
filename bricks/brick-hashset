@@ -584,12 +584,14 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     std::shared_ptr< Shared > _s;
 
     static size_t nextSize( size_t s ) {
+#ifndef __divine__
         if ( s < 512 * 1024 )
             return s * 16;
         if ( s < 16 * 1024 * 1024 )
             return s * 8;
         if ( s < 32 * 1024 * 1024 )
             return s * 4;
+#endif
         return s * 2;
     }
 
@@ -855,7 +857,11 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     explicit _ConcurrentHashSet( Hasher h = Hasher(), unsigned maxGrows = 64 )
         : Base( h ), _s( new Shared( maxGrows ) )
     {
+#ifdef __divine__
+        initialSize( 8 );
+#else
         initialSize( 4 * syncPoint ); // by default
+#endif
     }
 
     void initialSize( size_t s )
