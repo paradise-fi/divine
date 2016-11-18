@@ -173,6 +173,7 @@ struct Float : Base
 {
     using Raw = brick::bitlevel::bitvec< sizeof( T ) * 8 >;
     using Cooked = T;
+    static_assert( sizeof( T ) == sizeof( Cooked ) );
 
     union {
         Raw _raw;
@@ -182,9 +183,10 @@ struct Float : Base
     bool _defined;
 
     Float() : Float( 0, false ) {}
-    explicit Float( T t, bool def = true ) : _cooked( t ), _defined( def ) {}
+    explicit Float( T t, bool def = true ) : _raw( 0 ), _defined( def ) { _cooked = t; }
     template< int w, bool sig > Float( Int< w, sig > i )
         : _cooked( i.cooked() ), _defined( i.defined() ) {}
+    Float &operator=( const Float &o ) { _cooked = o._cooked; _defined = o._defined; }
     template< typename S > explicit Float( Float< S > ) { NOT_IMPLEMENTED(); }
 
     Raw defbits() { return _defined ? full< Raw >() : 0; }
