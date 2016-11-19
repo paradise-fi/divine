@@ -82,11 +82,14 @@ $(OBJ)toolchain/stamp:
 	cmake --build $(OBJ)toolchain --target cxx $(VERB)
 	cmake --build $(OBJ)toolchain --target clang $(VERB)
 	cmake --build $(OBJ)toolchain --target compiler-rt $(VERB)
+	cmake --build $(OBJ)toolchain --target llvm-dis $(VERB)
+	cmake --build $(OBJ)toolchain --target llvm-as $(VERB)
+	cmake --build $(OBJ)toolchain --target llc $(VERB)
 	touch $@
 
 ${FLAVOURS:%=%-env}:
 	$(MAKE) ${@:%-env=%}
-	env PATH=$(OBJ)${@:%-env=%}/clang/bin:$(OBJ)${@:%-env=%}/llvm/bin:$(OBJ)${@:%-env=%}/tools:$$PATH \
+	env PATH=$(OBJ)toolchain/clang/bin:$(OBJ)toolchain/llvm/bin:$(OBJ)${@:%-env=%}/tools:$$PATH \
 		CXXFLAGS="$(CXXFLAGS_)" LDFLAGS="$(LDFLAGS_)" $$SHELL
 
 env : debug-env
