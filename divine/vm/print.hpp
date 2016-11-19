@@ -22,6 +22,10 @@
 #include <divine/vm/program.hpp>
 #include <divine/rt/runtime.hpp>
 
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/Instructions.h>
+DIVINE_UNRELAX_WARNINGS
+
 #include <cxxabi.h>
 #include <brick-fs>
 
@@ -104,6 +108,51 @@ static void result( std::ostream &out, int col, Eval &eval )
     out << "# " << value( eval, eval.instruction().op, DisplayVal::Value );
 }
 
+template< typename I >
+decltype( I::opcode, std::string() ) opcode( I &insn )
+{
+    std::string op = opcode( insn.opcode );
+    if ( insn.opcode == llvm::Instruction::ICmp )
+        switch ( llvm::cast< llvm::ICmpInst >( insn.op )->getPredicate() )
+        {
+            case llvm::ICmpInst::ICMP_EQ: op += ".eq"; break;
+            case llvm::ICmpInst::ICMP_NE: op += ".ne"; break;
+            case llvm::ICmpInst::ICMP_ULT: op += ".ult"; break;
+            case llvm::ICmpInst::ICMP_UGE: op += ".uge"; break;
+            case llvm::ICmpInst::ICMP_UGT: op += ".ugt"; break;
+            case llvm::ICmpInst::ICMP_ULE: op += ".ule"; break;
+            case llvm::ICmpInst::ICMP_SLT: op += ".slt"; break;
+            case llvm::ICmpInst::ICMP_SGT: op += ".sgt"; break;
+            case llvm::ICmpInst::ICMP_SLE: op += ".sle"; break;
+            case llvm::ICmpInst::ICMP_SGE: op += ".sge"; break;
+            default: UNREACHABLE( "unexpected icmp predicate" ); break;
+        }
+    if ( insn.opcode == llvm::Instruction::FCmp )
+        switch ( llvm::cast< llvm::FCmpInst >( insn.op )->getPredicate() )
+        {
+            case llvm::FCmpInst::FCMP_OEQ: op += ".oeq"; break;
+            case llvm::FCmpInst::FCMP_ONE: op += ".one"; break;
+            case llvm::FCmpInst::FCMP_OLE: op += ".ole"; break;
+            case llvm::FCmpInst::FCMP_OLT: op += ".olt"; break;
+            case llvm::FCmpInst::FCMP_OGE: op += ".oge"; break;
+            case llvm::FCmpInst::FCMP_OGT: op += ".ogt"; break;
+
+            case llvm::FCmpInst::FCMP_UEQ: op += ".ueq"; break;
+            case llvm::FCmpInst::FCMP_UNE: op += ".une"; break;
+            case llvm::FCmpInst::FCMP_ULE: op += ".ule"; break;
+            case llvm::FCmpInst::FCMP_ULT: op += ".ult"; break;
+            case llvm::FCmpInst::FCMP_UGE: op += ".uge"; break;
+            case llvm::FCmpInst::FCMP_UGT: op += ".ugt"; break;
+
+            case llvm::FCmpInst::FCMP_FALSE: op += ".false"; break;
+            case llvm::FCmpInst::FCMP_TRUE: op += ".true"; break;
+            case llvm::FCmpInst::FCMP_ORD: op += ".ord"; break;
+            case llvm::FCmpInst::FCMP_UNO: op += ".uno"; break;
+            default: UNREACHABLE( "unexpected fcmp predicate" ); break;
+        }
+    return op;
+}
+
 template< typename Eval >
 static std::string instruction( Eval &eval, int padding = 0 )
 {
@@ -118,7 +167,7 @@ static std::string instruction( Eval &eval, int padding = 0 )
     else
         printres = false;
 
-    out << opcode( insn.opcode ) << " ";
+    out << opcode( insn ) << " ";
     int skip = 0;
     int argalign = out.str().size() + padding, argcols = 0;
 
