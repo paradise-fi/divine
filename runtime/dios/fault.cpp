@@ -190,8 +190,26 @@ bool Fault::load_user_pref( const SysOpts& opts ) {
 
 namespace __sc {
 
-void configure_fault( __dios::Context& ctx, int *, void *retval, va_list vl ) {
+int internalFaultToStatus( __dios::Context& ctx, int fault ) {
+    using FaultFlag = __dios::Fault::FaultFlag;
+    uint8_t cfg = ctx.fault->config[ fault ];
+    if ( fault < _DiOS_F_Last) { // Fault
+        if ( !( cfg | FaultFlag::Enabled ) )
+            return _DiOS_FC_Ignore;
+        else if (  cfg | FaultFlag::Continue )
+            return _DiOS_FC_Report;
+        else
+            return _DiOS_FC_Abort;
+    }
+    else { // Simfail
+        if ( cfg | FaultFlag::Enabled )
+            return _DiOS_FC_SimFail;
+        else
+            return _DiOS_FC_NoFail;
+    }
+}
 
+void configure_fault( __dios::Context& ctx, int *, void *retval, va_list vl ) {
     using FaultFlag = __dios::Fault::FaultFlag;
     auto fault = va_arg( vl, int );
     auto res = static_cast< int * >( retval );
@@ -206,7 +224,7 @@ void configure_fault( __dios::Context& ctx, int *, void *retval, va_list vl ) {
         return;
     }
 
-    *res = fc;
+    *res = internalFaultToStatus( ctx, fault );
     int cfg = va_arg( vl, int );
     if ( fault < _DiOS_F_Last) { // Fault
         switch( cfg ) {
@@ -238,7 +256,6 @@ void configure_fault( __dios::Context& ctx, int *, void *retval, va_list vl ) {
 }
 
 void get_fault_config( __dios::Context& ctx, int *, void* retval, va_list vl ) {
-    using FaultFlag = __dios::Fault::FaultFlag;
     auto fault = va_arg( vl, int );
     auto res = static_cast< int * >( retval );
     if ( fault >= __dios::Fault::fault_count ) {
@@ -246,21 +263,7 @@ void get_fault_config( __dios::Context& ctx, int *, void* retval, va_list vl ) {
         return;
     }
 
-    uint8_t cfg = ctx.fault->config[ fault ];
-    if ( fault < _DiOS_F_Last) { // Fault
-        if ( !( cfg | FaultFlag::Enabled ) )
-            *res = _DiOS_FC_Ignore;
-        else if (  cfg | FaultFlag::Continue )
-            *res = _DiOS_FC_Report;
-        else
-            *res = _DiOS_FC_Abort;
-    }
-    else { // Simfail
-        if ( cfg | FaultFlag::Enabled )
-            *res = _DiOS_FC_SimFail;
-        else
-            *res = _DiOS_FC_NoFail;
-    }
+    *res = internalFaultToStatus( ctx, fault );
 }
 
 void fault_handler( __dios::Context& ctx, int *err, void* retval, va_list vl ) {
