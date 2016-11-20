@@ -253,7 +253,7 @@ struct Eval
 
         if ( pp.type() == PointerType::Code )
         {
-            mkf( _VM_F_Memory ) << "attempted to dereference a code pointer" << p << dsc;
+            mkf( _VM_F_Memory ) << "attempted to dereference a code pointer " << p << dsc;
             return false;
         }
 
@@ -263,17 +263,18 @@ struct Eval
             return false;
         }
 
+        if ( !p.pointer() )
+        {
+            mkf( _VM_F_Memory ) << "attempted to dereference a broken pointer " << p << dsc;
+            return false;
+        }
+
         if ( pp.type() == PointerType::Heap )
         {
             HeapPointer hp = pp;
             if ( hp.null() || !heap().valid( hp ) )
             {
                 mkf( _VM_F_Memory ) << "invalid heap pointer dereference " << p << dsc;
-                return false;
-            }
-            if ( !p.pointer() )
-            {
-                mkf( _VM_F_Memory ) << "unmarked heap pointer dereference " << p << dsc;
                 return false;
             }
             width = heap().size( hp );
