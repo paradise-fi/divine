@@ -123,10 +123,7 @@ struct DebugNode
 
     DebugNode( const DebugNode &o ) = default;
 
-    void relocate( typename Heap::Snapshot s )
-    {
-        _ctx.heap().restore( s );
-    }
+    void relocate( typename Heap::Snapshot s ) { _ctx.load( s ); }
 
     DNKind kind() { return _kind; }
     GenericPointer address() { return _address; }
