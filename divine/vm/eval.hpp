@@ -165,7 +165,7 @@ struct Eval
         using brick::bitlevel::mixdown;
         ++ context()._alloc_ops;
         uint32_t loc = mixdown( pc().function(), pc().instruction() ),
-                 cnt = mixdown( context().ptr2i( _VM_CR_Frame ).tag(), context()._alloc_ops ),
+                 cnt = context()._alloc_ops,
                  frm = mixdown( context().get( _VM_CR_Frame ).pointer.object(),
                                 context().get( _VM_CR_User2 ).pointer.object() );
         return heap().make( size, mixdown( mixdown( loc, cnt ), frm ) + off );
