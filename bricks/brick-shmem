@@ -635,15 +635,20 @@ using namespace ::brick::shmem;
 
 #ifdef __divine__
 static constexpr int size = 16;
+static void timeout() {}
 #else
 static constexpr int size = 128 * 1024;
+#endif
+
+#if defined( __unix ) || defined( POSIX )
+static void timeout() { alarm( 5 ); }
 #endif
 
 struct ThreadTest
 {
     TEST(async_loop)
     {
-        alarm( 5 );
+        timeout();
         std::atomic< int > x( 0 );
         auto t = shmem::async_loop( [&]() { x = 1; } );
         while ( !x );
@@ -652,7 +657,7 @@ struct ThreadTest
 
     TEST(thread)
     {
-        alarm( 5 );
+        timeout();
         std::atomic< int > x( 0 );
         auto t = shmem::thread( [&]() { x = 1; } );
         while ( !x );
@@ -732,9 +737,7 @@ struct Utils {
         StartDetector sh;
         ThreadSet< DetectorWorker > threads( peers, DetectorWorker{ sh, repeat } );
 
-#if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
-        alarm( 5 );
-#endif
+        timeout();
 
         for ( int i = 0; i != 4; ++i )
         {
@@ -789,9 +792,7 @@ struct Utils {
 
         ThreadSet< CounterWorker > threads( peers, CounterWorker{ det, ctr } );
 
-#if (defined( __unix ) || defined( POSIX )) && !defined( __divine__ ) // hm
-        alarm( 5 );
-#endif
+        timeout();
 
         // set consume and produce limits to each worker
         int i = 1;
