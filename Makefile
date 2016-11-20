@@ -13,7 +13,8 @@ DEFAULT_FLAVOUR ?= release
 MAKEFLAGS ?= --no-print-directory
 CONFIG ?= -DBUILD_SHARED_LIBS=ON
 OBJ ?= $(PWD)/_build.
-VERB = $(if $(filter $(GENERATOR),Ninja),-- $(if $(VERBOSE),-v -d explain))
+EXTRA != if test "$(GENERATOR)" = Ninja && test -n "$(VERBOSE)"; then echo -v -d explain; fi; \
+         if test -n "$(JOBS)"; then echo -j $(JOBS); fi
 
 TOOLDIR = $(OBJ)toolchain/
 CLANG = $(TOOLDIR)/clang/
@@ -64,27 +65,27 @@ ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP
 
 ${TARGETS:%=debug-%}:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug
-	cmake --build $(OBJ)debug --target ${@:debug-%=%} $(VERB)
+	cmake --build $(OBJ)debug --target ${@:debug-%=%} -- $(EXTRA)
 
 ${TARGETS:%=release-%}:
 	$(MAKE) $(OBJ)release/cmake.stamp $(GETCONFDEPS) FLAVOUR=release
-	cmake --build $(OBJ)release --target ${@:release-%=%} $(VERB)
+	cmake --build $(OBJ)release --target ${@:release-%=%} -- $(EXTRA)
 
 ${TARGETS:%=asan-%}:
 	$(MAKE) $(OBJ)asan/cmake.stamp $(GETCONFDEPS) FLAVOUR=asan
-	cmake --build $(OBJ)asan --target ${@:asan-%=%} $(VERB)
+	cmake --build $(OBJ)asan --target ${@:asan-%=%} -- $(EXTRA)
 
 toolchain: $(OBJ)toolchain/stamp
 
 $(OBJ)toolchain/stamp:
 	mkdir -p $(OBJ)toolchain
 	cd $(OBJ)toolchain && cmake $(PWD) $(toolchain_FLAGS) -G "$(GENERATOR)"
-	cmake --build $(OBJ)toolchain --target cxx $(VERB)
-	cmake --build $(OBJ)toolchain --target clang $(VERB)
-	cmake --build $(OBJ)toolchain --target compiler-rt $(VERB)
-	cmake --build $(OBJ)toolchain --target llvm-dis $(VERB)
-	cmake --build $(OBJ)toolchain --target llvm-as $(VERB)
-	cmake --build $(OBJ)toolchain --target llc $(VERB)
+	cmake --build $(OBJ)toolchain --target cxx -- $(EXTRA)
+	cmake --build $(OBJ)toolchain --target clang -- $(EXTRA)
+	cmake --build $(OBJ)toolchain --target compiler-rt -- $(EXTRA)
+	cmake --build $(OBJ)toolchain --target llvm-dis -- $(EXTRA)
+	cmake --build $(OBJ)toolchain --target llvm-as -- $(EXTRA)
+	cmake --build $(OBJ)toolchain --target llc  -- $(EXTRA)
 	touch $@
 
 ${FLAVOURS:%=%-env}:
@@ -101,7 +102,7 @@ show: # make show var=VAR
 
 dist:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS)
-	cmake --build $(OBJ)debug --target package_source $(VERB)
+	cmake --build $(OBJ)debug --target package_source $(EXTRA)
 	cp $(OBJ)debug/divine-*.tar.gz .
 
 validate:
