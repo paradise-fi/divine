@@ -80,6 +80,7 @@ struct Context
         _cfl_visited.clear();
         _mem_loads.clear();
         _heap.restore( snap );
+        flush_ptr2i();
     }
 
     void reset() { _heap.reset(); }
