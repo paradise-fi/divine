@@ -1038,7 +1038,13 @@ struct Eval
             return;
         }
 
-        CodePointer target = operandCk< PointerV >( invoke ? -3 : -1 ).cooked();
+        auto targetP = operandCk< PointerV >( invoke ? -3 : -1 ).cooked();
+        if ( targetP.type() != PointerType::Code ) {
+            fault( _VM_F_Control ) << "invalid call on a pointer which does not point to code: "
+                                   << targetP;
+            return;
+        }
+        CodePointer target = targetP;
         CallSite CS( cast< ::llvm::Instruction >( instruction().op ) );
 
         if ( !target.function() )
@@ -1052,21 +1058,33 @@ struct Eval
                 if ( id != Intrinsic::not_intrinsic )
                     return implement_intrinsic( id );
             }
-            else
-            {
-                fault( _VM_F_Control ) << "invalid call on a null pointer";
-                return;
-            }
+            fault( _VM_F_Control ) << "invalid call on an invalid code pointer: "
+                                   << target;
+            return;
+        }
+
+        if ( target.instruction() )
+        {
+            fault( _VM_F_Control ) << "invalid call on a code pointer which does not point to a function entry: "
+                                   << target;
+            return;
         }
 
         const auto &function = _program.function( target );
 
         /* report problems with the call before pushing the new stackframe */
-        if ( !function.vararg && int( CS.arg_size() ) > function.argcount )
+        const int csArgSize = CS.arg_size();
+        if ( !function.vararg && csArgSize > function.argcount )
         {
             fault( _VM_F_Control ) << "too many arguments given to a call: "
                                    << function.argcount << " expected but "
-                                   << CS.arg_size() << " given";
+                                   << csArgSize << " given";
+            return;
+        }
+        if ( csArgSize < function.argcount ) {
+            fault( _VM_F_Control ) << "too few arguments given to a call: "
+                                   << function.argcount << " expected but "
+                                   << csArgSize << " given";
             return;
         }
 
@@ -1076,7 +1094,7 @@ struct Eval
         heap().write_shift( p, PointerV( frame() ) );
 
         /* Copy arguments to the new frame. */
-        for ( int i = 0; i < int( CS.arg_size() ) && i < int( function.argcount ); ++i )
+        for ( int i = 0; i < csArgSize && i < int( function.argcount ); ++i )
             heap().copy( s2ptr( operand( i ) ),
                          s2ptr( function.values[ i ], 0, frameptr.cooked() ),
                          function.values[ i ].size() );
@@ -1084,12 +1102,12 @@ struct Eval
         if ( function.vararg )
         {
             int size = 0;
-            for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
+            for ( int i = function.argcount; i < csArgSize; ++i )
                 size += operand( i ).size();
             auto vaptr = size ? makeobj( size, 1 ) : nullPointerV();
             auto vaptr_loc = s2ptr( function.values[ function.argcount ], 0, frameptr.cooked() );
             heap().write( vaptr_loc, vaptr );
-            for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
+            for ( int i = function.argcount; i < csArgSize; ++i )
             {
                 auto op = operand( i );
                 heap().copy( s2ptr( op ), vaptr.cooked(), op.size() );
