@@ -43,9 +43,9 @@ void Fault::sc_handler( __dios::Context& ctx, int *, void *, va_list vl ) noexce
     uint8_t fault_cfg = ctx.fault->config[ what ];
     if ( !ctx.fault->ready || fault_cfg & FaultFlag::Enabled ) {
         if ( kernel )
-            traceInternal( 0, "Kernel VM Fault" );
+            traceInternal( 0, "Fault in kernel: %s", fault_to_str( what ).c_str() );
         else
-            traceInternal( 0, "Userspace VM Fault" );
+            traceInternal( 0, "Fault in userspace: %s", fault_to_str( what ).c_str() );
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         traceInternal( 0, "Backtrace:" );
         int i = 0;
