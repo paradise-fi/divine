@@ -94,7 +94,14 @@ struct Int : Base
         checkptr( o, result );
         return result;
     }
-    Int bitwise( Raw r, Raw m, Int o ) { return Int( r, (_m & o._m) | m, false ); }
+
+    Int bitwise( Raw r, Raw m, Int o )
+    {
+        Int result( r, (_m & o._m) | m, false );
+        checkptr( o, result );
+        return result;
+    }
+
     Int< 1, false > compare( Int o, bool v )
     {
         Int< 1, false > res( v );
