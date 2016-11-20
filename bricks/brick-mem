@@ -405,6 +405,7 @@ struct Pool
         for ( int i = 0; i < 4096; ++i )
             _l.size_big[ i ] = nullptr;
         _l.size[ 0 ].blocksize = blocksize;
+		_l.emptyblocks.clear();
     }
 
     std::atomic< FreeList * > &freelist( int size )
