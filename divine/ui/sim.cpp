@@ -413,12 +413,18 @@ struct Interpreter
 
     void go( command::Exit ) { _exit = true; }
 
-    Stepper stepper( command::WithSteps s, bool jmp )
+    Stepper stepper()
     {
         Stepper step;
         step._ff_kernel = !_debug_kernel;
         step._sched_policy = [this]() { sched_policy(); };
         step._yield_state = [this]( auto snap ) { return newstate( snap ); };
+        return step;
+    }
+
+    Stepper stepper( command::WithSteps s, bool jmp )
+    {
+        auto step = stepper();
         check_running();
         if ( jmp )
             step.jumps( 1 );
@@ -430,7 +436,7 @@ struct Interpreter
     void go( command::Start s )
     {
         vm::setup::boot( _ctx );
-        Stepper step;
+        auto step = stepper();
         step._booting = true;
         auto mainpc = _bc->program().functionByName( "main" );
         step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
@@ -570,7 +576,7 @@ struct Interpreter
 
     void go( command::Trace tr )
     {
-        Stepper step;
+        auto step = stepper();
 
         if ( tr.from.empty() )
         {
@@ -593,6 +599,7 @@ struct Interpreter
         auto last = get( "#last", true ).snapshot();
         std::cerr << "traced states:";
         bool stop = false;
+        step._sched_policy = nullptr;
         step._breakpoint = [&]( vm::CodePointer, bool ) { return stop; };
         step._yield_state =
             [&]( auto snap )
