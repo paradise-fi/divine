@@ -75,15 +75,15 @@ struct Context
         _heap = ctx.heap();
     }
 
-    void load( typename Heap::Snapshot snap )
+    void clear()
     {
         _cfl_visited.clear();
         _mem_loads.clear();
-        _heap.restore( snap );
         flush_ptr2i();
     }
 
-    void reset() { _heap.reset(); }
+    void load( typename Heap::Snapshot snap ) { _heap.restore( snap ); clear(); }
+    void reset() { _heap.reset(); clear(); }
 
     template< typename I >
     int choose( int, I, I ) { return 0; }
