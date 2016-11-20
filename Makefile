@@ -58,6 +58,7 @@ GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
 
 ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(OBJ)toolchain/stamp
+	chmod +x test/divine # darcs does not remember +x on files
 	mkdir -p $$(dirname $@)
 	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
 	cd $$(dirname $@) && cmake $(PWD) $($(FLAVOUR)_FLAGS) -G "$(GENERATOR)"
