@@ -124,6 +124,26 @@ template<> struct _bitvec< 128 > { using T = bvpair< uint64_t, uint64_t >; };
 
 template< int i > using bitvec = typename _bitvec< i >::T;
 
+namespace {
+
+uint32_t mixdown( uint64_t i ) /* due to Thomas Wang */
+{
+    i = (~i) + (i << 18);
+    i =   i  ^ (i >> 31);
+    i =   i  * 21;
+    i =   i  ^ (i >> 11);
+    i =   i  + (i << 6);
+    i =   i  ^ (i >> 22);
+    return i;
+}
+
+uint32_t mixdown( uint32_t a, uint32_t b )
+{
+    return mixdown( ( uint64_t( a ) << 32 ) | uint64_t( b ) );
+}
+
+}
+
 /*
  *  Fills `x` by bits up to the most si significant bit.
  *  Comlexity is O(log n), n is sizeof(x)*8
