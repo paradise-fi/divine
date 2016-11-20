@@ -345,9 +345,15 @@ struct Eval
                 std::copy( s.begin(), s.end(), _ctx->heap().unsafe_bytes( ptr.cooked() ).begin() );
                 _ctx->trace( TraceText{ ptr.cooked() } );
             }
-            if ( _double )
+            if ( _double ) {
+                if ( _trace ) {
+                    std::string s = "Double fault, terminating...";
+                    auto ptr = _ctx->heap().make( s.size() + 1 );
+                    std::copy( s.begin(), s.end(), _ctx->heap().unsafe_bytes( ptr.cooked() ).begin() );
+                    _ctx->trace( TraceText{ ptr.cooked() } );
+                }
                 _ctx->doublefault();
-            else
+            } else
                 _ctx->fault( _fault, _frame, _pc );
         }
     };
