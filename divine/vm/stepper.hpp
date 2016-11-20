@@ -159,7 +159,7 @@ struct Stepper
 
         _booting = false;
         if ( _yield_state )
-            _yield_state( ctx.snapshot() );
+            ctx.load( _yield_state( ctx.snapshot() ) );
         vm::setup::scheduler( ctx );
         return true;
     }
