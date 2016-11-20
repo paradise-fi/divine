@@ -79,11 +79,19 @@ struct Int : Base
     Raw _m;
     bool _ispointer:1;
 
-    Int arithmetic( Int o, Raw r )
+
+    void checkptr( Int o, Int &result )
     {
-        auto result = Int( r, (_m & o._m) == full< Raw >() ? full< Raw >() : 0, false );
         if ( _ispointer && !o._ispointer && result._pointer.object() == _pointer.object() )
             result._ispointer = true;
+        if ( !_ispointer && o._ispointer && result._pointer.object() == o._pointer.object() )
+            result._ispointer = true;
+    }
+
+    Int arithmetic( Int o, Raw r )
+    {
+        Int result( r, (_m & o._m) == full< Raw >() ? full< Raw >() : 0, false );
+        checkptr( o, result );
         return result;
     }
     Int bitwise( Raw r, Raw m, Int o ) { return Int( r, (_m & o._m) | m, false ); }
