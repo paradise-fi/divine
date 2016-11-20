@@ -257,6 +257,11 @@ struct Eval
                 mkf( _VM_F_Memory ) << "invalid heap pointer dereference " << p << dsc;
                 return false;
             }
+            if ( !p.pointer() )
+            {
+                mkf( _VM_F_Memory ) << "unmarked heap pointer dereference " << p << dsc;
+                return false;
+            }
             width = heap().size( hp );
         } else if ( ( pp.type() == PointerType::Const &&
                       pp.object() >= program()._constants.size() ) ||
