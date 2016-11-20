@@ -186,7 +186,7 @@ struct Explore
         ASSERT( _ctx._trace.empty() );
 
         do {
-            _ctx.heap().restore( from.snap );
+            _ctx.load( from.snap );
             setup::scheduler( _ctx );
             eval.run();
             if ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )

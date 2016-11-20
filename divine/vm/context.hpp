@@ -75,6 +75,13 @@ struct Context
         _heap = ctx.heap();
     }
 
+    void load( typename Heap::Snapshot snap )
+    {
+        _cfl_visited.clear();
+        _mem_loads.clear();
+        _heap.restore( snap );
+    }
+
     void reset() { _heap.reset(); }
 
     template< typename I >
