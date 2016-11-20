@@ -528,7 +528,7 @@ struct Interpreter
         Stepper step;
         step._instructions = std::make_pair( 1, 1 );
         auto tgt = get( re.var );
-        _ctx.heap().restore( tgt.snapshot() );
+        _ctx.load( tgt.snapshot() );
         vm::setup::scheduler( _ctx );
         if ( _trace.count( tgt.snapshot() ) )
             _ctx._choices = _trace[ tgt.snapshot() ];
@@ -574,7 +574,7 @@ struct Interpreter
             vm::setup::boot( _ctx );
         else
         {
-            _ctx.heap().restore( get( tr.from ).snapshot() );
+            _ctx.load( get( tr.from ).snapshot() );
             vm::setup::scheduler( _ctx );
         }
 
