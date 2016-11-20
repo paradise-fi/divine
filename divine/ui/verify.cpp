@@ -188,7 +188,6 @@ void Verify::run()
                         return ss::Listen::Ignore;
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
-    ASSERT( next == trace.end() );
     if ( checkSelfloop ) {
         // the last state is repeated, this is important for stepper setup
         trace.push_back( trace.back() );
@@ -215,6 +214,8 @@ void Verify::run()
     for ( std::string l : labels )
         std::cout << "  " << l << std::endl;
     std::cout << std::endl;
+
+    ASSERT( next == trace.end() );
 
     auto &ctx = ex._ctx;
     ASSERT_LEQ( 2, trace.size() );
