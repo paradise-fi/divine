@@ -383,10 +383,10 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     using PointerV = value::Pointer;
     struct SnapItem
     {
-        int first;
+        uint32_t first;
         Internal second;
-        operator std::pair< int, Internal >() { return std::make_pair( first, second ); }
-        SnapItem( std::pair< const int, Internal > p ) : first( p.first ), second( p.second ) {}
+        operator std::pair< uint32_t, Internal >() { return std::make_pair( first, second ); }
+        SnapItem( std::pair< const uint32_t, Internal > p ) : first( p.first ), second( p.second ) {}
         bool operator==( SnapItem si ) const { return si.first == first && si.second == second; }
     } __attribute__((packed));
 
@@ -396,9 +396,9 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
 
     mutable struct Local
     {
-        std::map< int, Internal > exceptions;
+        std::map< uint32_t, Internal > exceptions;
         Snapshot snapshot;
-        int hint;
+        uint32_t hint;
     } _l;
 
     Internal detach( HeapPointer, Internal i ) { return i; }
@@ -438,7 +438,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     SnapItem *snap_end( Snapshot s ) const { return snap_begin( s ) + snap_size( s ); }
     SnapItem *snap_end() const { return snap_end( _l.snapshot ); }
 
-    SnapItem *snap_find( int obj ) const
+    SnapItem *snap_find( uint32_t obj ) const
     {
         auto begin = snap_begin(), end = snap_end();
         if ( !begin )
@@ -465,7 +465,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
             return hp->second;
 
         auto si = snap_find( p.object() );
-        return si && si != snap_end() && si->first == int( p.object() ) ? si->second : Internal();
+        return si && si != snap_end() && si->first == p.object() ? si->second : Internal();
     }
 
     PointerV make( int size )
