@@ -60,8 +60,12 @@ struct Empty
 
 struct DefaultPoolPointerRep
 {
+#ifdef __divine__
+    static const int slab_bits = 6, chunk_bits = 4, tag_bits = 1;
+#else
     static const int slab_bits = 16, chunk_bits = 15, tag_bits = 1;
-    uint16_t slab, chunk:15;
+#endif
+    uint16_t slab:slab_bits, chunk:chunk_bits;
     uint16_t tag:1;
 };
 
