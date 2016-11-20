@@ -60,7 +60,11 @@ struct WithSteps : WithFrame
     WithSteps() : over( false ), out( false ), quiet( false ), verbose( false ), count( 1 ) {}
 };
 
-struct Start {};
+struct Start
+{
+    bool verbose;
+    Start() : verbose( false ) {}
+};
 
 struct Break
 {
@@ -423,14 +427,14 @@ struct Interpreter
         return step;
     }
 
-    void go( command::Start )
+    void go( command::Start s )
     {
         vm::setup::boot( _ctx );
         Stepper step;
         step._booting = true;
         auto mainpc = _bc->program().functionByName( "main" );
         step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
-        run( step, false );
+        run( step, s.verbose );
         if ( !_ctx._info.empty() )
             std::cerr << "# boot info:\n" << _ctx._info;
         set( "$_", frameDN() );
@@ -690,6 +694,8 @@ void Interpreter::command( cmd::Tokens tok )
         .option( "[--quiet]", &command::WithSteps::quiet, "suppress output"s )
         .option( "[--verbose]", &command::WithSteps::verbose, "increase verbosity"s )
         .option( "[--count {int}]", &command::WithSteps::count, "execute {int} steps (default = 1)"s );
+    auto startopts = cmd::make_option_set< command::Start >( v )
+        .option( "[--verbose]", &command::Start::verbose, "increase verbosity"s );
     auto stepoutopts = cmd::make_option_set< command::WithSteps >( v )
         .option( "[--out]", &command::WithSteps::out, "execute until the current function returns"s );
     auto threadopts = cmd::make_option_set< command::Thread >( v )
@@ -705,7 +711,7 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::Exit >( "exit from divine"s )
         .command< command::Help >( "show this help, or describe a particular command in more detail"s,
                                    cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
-        .command< command::Start >( "boot the system and stop at main()"s )
+        .command< command::Start >( "boot the system and stop at main()"s, startopts )
         .command< command::Break >( "insert a breakpoint"s, &command::Break::where, breakopts )
         .command< command::StepA >( "execute one atomic action"s, stepopts )
         .command< command::Step >( "execute source line"s, varopts, stepopts, stepoutopts )
