@@ -282,6 +282,7 @@ struct Interpreter
     auto newstate( vm::CowHeap::Snapshot snap, bool update_choices = true, bool terse = false )
     {
         snap = _explore.start( _ctx, snap );
+        _ctx.heap().restore( snap );
 
         bool isnew = false;
         std::string name;

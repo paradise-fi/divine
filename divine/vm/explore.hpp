@@ -143,6 +143,14 @@ struct Explore
         _initial.error = _initial.accepting = 0;
     }
 
+    auto store( Snapshot snap )
+    {
+        auto r = _states.insert( snap );
+        if ( *r != snap )
+            pool().free( snap ), _ctx.heap().restore( *r );
+        return r;
+    }
+
     void start()
     {
         Eval eval( program(), _ctx );
@@ -151,10 +159,7 @@ struct Explore
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
         if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) &&
              _ctx.heap().valid( _states.hasher.root ) )
-        {
-            _initial.snap = _ctx.snapshot();
-            _states.insert( _initial.snap );
-        }
+            _initial.snap = *store( _ctx.snapshot() );
         if ( !_ctx.finished() )
             UNREACHABLE( "choices encountered during start()" );
     }
@@ -166,7 +171,7 @@ struct Explore
         _states.hasher = Hasher( _ctx.heap() );
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
         if ( _ctx.heap().valid( _states.hasher.root ) )
-            _initial.snap = *_states.insert( snap );
+            _initial.snap = *store( snap );
         if ( !_ctx.finished() )
             UNREACHABLE( "choices encountered during start()" );
         return _initial.snap;
@@ -188,9 +193,7 @@ struct Explore
             {
                 explore::State st;
                 auto snap = _ctx.heap().snapshot();
-                auto r = _states.insert( snap );
-                if ( *r != snap )
-                    pool().free( snap ), _ctx.heap().restore( *r );
+                auto r = store( snap );
                 _ctx.flush_ptr2i();
                 st.snap = *r;
                 st.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
