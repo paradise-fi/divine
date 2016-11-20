@@ -24,6 +24,7 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/CallSite.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <cxxabi.h>
@@ -168,20 +169,33 @@ static std::string instruction( Eval &eval, int padding = 0 )
         printres = false;
 
     out << opcode( insn ) << " ";
-    int skip = 0;
+    const int numOperands = insn.op->getNumOperands();
+    uint64_t skipMask = 0;
     int argalign = out.str().size() + padding, argcols = 0;
 
-    if ( insn.opcode == llvm::Instruction::Call )
+    if ( insn.opcode == llvm::Instruction::Call || insn.opcode == llvm::Instruction::Invoke )
     {
-        skip = 1;
-        auto tgt = insn.op->getOperand( insn.op->getNumOperands() - 1 )->getName().str();
-        argcols = tgt.size() + 2;
-        out << "@" << tgt << " ";
+        llvm::CallSite cs( insn.op );
+
+        skipMask |= uint64_t( 1 ) << (numOperands - (cs.isCall() ? 1 : 3));
+        if ( auto *target = cs.getCalledFunction() ) {
+            auto tgt = target->getName().str();
+            argcols = tgt.size() + 2;
+            out << "@" << tgt << " ";
+        } else {
+            auto *val = cs.getCalledValue();
+            auto oname = value( eval, val, DisplayVal::PreferName );
+            argcols = oname.size() + 1;
+            out << ( oname.empty() ? "?" : oname ) << " ";
+        }
     }
 
-    for ( int i = 1; i < int( insn.op->getNumOperands() + 1 ) - skip; ++i )
+    for ( int i = 0; i < numOperands; ++i )
     {
-        auto val = insn.op->getOperand( i - 1 );
+        if ( ( (uint64_t( 1 ) << i) & skipMask ) != 0 )
+            continue;
+
+        auto val = insn.op->getOperand( i );
         auto oname = value( eval, val, DisplayVal::PreferName );
 
         int cols = argalign + argcols + oname.size() + 1;
