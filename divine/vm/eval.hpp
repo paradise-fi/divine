@@ -139,7 +139,6 @@ struct Eval
 
     Instruction *_instruction;
     Result _result;
-    int _alloc_ops;
 
     Instruction &instruction() { return *_instruction; }
 
@@ -164,15 +163,15 @@ struct Eval
     PointerV makeobj( int size, int off = 0 )
     {
         using brick::bitlevel::mixdown;
-        ++ _alloc_ops;
+        ++ context()._alloc_ops;
         uint32_t loc = mixdown( pc().function(), pc().instruction() ),
-                 cnt = mixdown( context().ptr2i( _VM_CR_Frame ).tag(), _alloc_ops ),
+                 cnt = mixdown( context().ptr2i( _VM_CR_Frame ).tag(), context()._alloc_ops ),
                  frm = mixdown( context().get( _VM_CR_Frame ).pointer.object(),
                                 context().get( _VM_CR_User2 ).pointer.object() );
         return heap().make( size, mixdown( mixdown( loc, cnt ), frm ) + off );
     }
 
-    bool freeobj( HeapPointer p ) { ++ _alloc_ops; return heap().free( p ); }
+    bool freeobj( HeapPointer p ) { ++ context()._alloc_ops; return heap().free( p ); }
 
     GenericPointer s2ptr( Slot v, int off = 0 )
     {
@@ -1106,7 +1105,6 @@ struct Eval
 
     void run()
     {
-        _alloc_ops = 0;
         context().set_interrupted( false );
         do {
             advance();
