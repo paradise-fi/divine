@@ -200,8 +200,8 @@ int __vm_choose( int n, ... ) NOTHROW NATIVE_VISIBLE;
  */
 void __vm_fault( enum _VM_Fault t, ... ) NOTHROW NATIVE_VISIBLE;
 
-void __vm_interrupt_mem( void ) NOTHROW NATIVE_VISIBLE;
-void __vm_interrupt_cfl( void *, _VM_MemAccessType ) NOTHROW NATIVE_VISIBLE;
+void __vm_interrupt_cfl( void ) NOTHROW NATIVE_VISIBLE;
+void __vm_interrupt_mem( void *, _VM_MemAccessType ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Provides meta-information about the executing code. The 'type' parameter
