@@ -247,7 +247,7 @@ struct DebugContext : Context< Program, Heap >
             return; /* invalid */
         for ( int i = 0; i < size / 12; ++i )
         {
-            vm::value::Int< 32, true > pid, tid, choice;
+            vm::value::Int< 32, false > pid, tid, choice;
             this->heap().read_shift( ptr, pid );
             this->heap().read_shift( ptr, tid );
             this->heap().read_shift( ptr, choice );

@@ -129,7 +129,7 @@ void Scheduler::traceThreads() const noexcept {
     int c = threads.size();
     if ( c == 0 )
         return;
-    struct PI { int pid, tid, choice; };
+    struct PI { unsigned pid, tid, choice; };
     PI *pi = reinterpret_cast< PI * >( __vm_obj_make( c * sizeof( PI ) ) );
     PI *pi_it = pi;
     for ( int i = 0; i != c; i++ ) {
