@@ -158,8 +158,17 @@ void Verify::run()
     }
     trace.push_front( ex._initial.snap );
 
+    bool checkSelfloop = false;
     auto last = trace.begin(), next = last;
     next ++;
+    auto pushLabel = [&]( auto &label ) {
+        for ( auto l : label.first )
+            labels.push_back( l );
+        choices.emplace_back();
+        std::transform( label.second.begin(), label.second.end(),
+                        std::back_inserter( choices.back() ),
+                                    []( auto x ) { return x.first; } );
+    };
     ss::search( ss::Order::PseudoBFS, ex, 1,
                 ss::listen(
                     [&]( auto from, auto to, auto label )
@@ -168,27 +177,39 @@ void Verify::run()
                              hasher.equal( from.snap, *last ) &&
                              hasher.equal( to.snap, *next ) )
                         {
-                            for ( auto l : label.first )
-                                labels.push_back( l );
-                            choices.emplace_back();
-                            std::transform( label.second.begin(), label.second.end(),
-                                            std::back_inserter( choices.back() ),
-                                            []( auto x ) { return x.first; } );
+                            pushLabel( label );
                             ++last, ++next;
-                            if ( next == trace.end() )
+                            if ( next == trace.end() ) {
+                                checkSelfloop = !to.error;
                                 return ss::Listen::Terminate;
+                            }
                             return ss::Listen::Process;
                         }
                         return ss::Listen::Ignore;
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
     ASSERT( next == trace.end() );
+    if ( checkSelfloop ) {
+        // the last state is repeated, this is important for stepper setup
+        trace.push_back( trace.back() );
+
+        vm::explore::State from;
+        from.snap = trace.back();
+        ex.edges( from, [&]( auto to, auto label, auto ) {
+                if ( checkSelfloop && to.error && hasher.equal( to.snap, from.snap ) ) {
+                    pushLabel( label );
+                    checkSelfloop = false;
+                }
+            } );
+    }
+    if ( checkSelfloop )
+        std::cerr << "ERROR: There was an error replaying the error trace, the trace might be incomplete" << std::endl;
+
     std::cout << std::endl << "choices made:";
     for ( auto &v : choices )
         for ( int c : v )
             std::cout << " " << c;
     std::cout << std::endl;
-    ASSERT( next == trace.end() );
 
     std::cout << std::endl << "the error trace:" << std::endl;
     for ( std::string l : labels )
@@ -199,7 +220,7 @@ void Verify::run()
     ASSERT_LEQ( 2, trace.size() );
     ctx.heap().restore( *( trace.end() - 2 ) );
     dbg.load( ctx );
-    std::copy( choices.back().begin(), choices.back().end(), std::back_inserter( dbg._choices ) );
+    dbg._choices = { choices.back().begin(), choices.back().end() };
     vm::setup::scheduler( dbg );
     using Stepper = vm::Stepper< decltype( dbg ) >;
     Stepper step;
