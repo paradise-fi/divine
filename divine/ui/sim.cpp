@@ -570,8 +570,13 @@ struct Interpreter
 
     void go( command::Trace tr )
     {
+        Stepper step;
+
         if ( tr.from.empty() )
+        {
             vm::setup::boot( _ctx );
+            step._booting = true;
+        }
         else
         {
             _ctx.load( get( tr.from ).snapshot() );
@@ -585,16 +590,14 @@ struct Interpreter
             choices.push_back( std::stoi( c ) );
         _ctx._choices = choices;
 
-        vm::Eval< vm::Program, Context, vm::value::Void > eval( _bc->program(), _ctx );
         auto last = get( "#last", true ).snapshot();
         std::cerr << "traced states:";
-        while ( !_ctx._choices.empty() )
-        {
-            eval.advance();
-            eval.dispatch();
-            if ( _ctx.frame().null() )
+        bool stop = false;
+        step._breakpoint = [&]( vm::CodePointer, bool ) { return stop; };
+        step._yield_state =
+            [&]( auto snap )
             {
-                auto next = newstate( _ctx.snapshot(), false, true );
+                auto next = newstate( snap, false, true );
                 if ( visited.count( next ) )
                 {
                     std::cerr << " [loop closed" << std::flush;
@@ -603,23 +606,21 @@ struct Interpreter
                     for ( auto c : _ctx._choices )
                         std::cerr << " " << c;
                     std::cerr << "]" << std::flush;
-                    break;
+                    stop = true;
+                    return next;
                 }
                 visited.insert( next );
-                vm::setup::scheduler( _ctx );
                 int count = choices.size() - _ctx._choices.size();
                 auto b = choices.begin(), e = b + count;
                 _trace[ last ] = std::deque< int >( b, e );
                 choices.erase( b, e );
                 last = get( "#last", true ).snapshot();
-            }
-        }
+                return next;
+            };
+        run( step, false );
 
         std::cerr << std::endl;
         _ctx._trace.clear();
-        Stepper step;
-        step._instructions = std::make_pair( 1, 1 );
-        run( step, false ); /* make 0 (user mode) steps */
     }
 
     void go( command::Thread thr )
