@@ -139,6 +139,7 @@ struct Eval
 
     Instruction *_instruction;
     Result _result;
+    int _alloc_ops;
 
     Instruction &instruction() { return *_instruction; }
 
@@ -159,6 +160,19 @@ struct Eval
     HeapPointer frame() { return context().frame(); }
     HeapPointer globals() { return context().globals(); }
     HeapPointer constants() { return context().constants(); }
+
+    PointerV makeobj( int size, int off = 0 )
+    {
+        using brick::bitlevel::mixdown;
+        ++ _alloc_ops;
+        uint32_t loc = mixdown( pc().function(), pc().instruction() ),
+                 cnt = mixdown( context().ptr2i( _VM_CR_Frame ).tag(), _alloc_ops ),
+                 frm = mixdown( context().get( _VM_CR_Frame ).pointer.object(),
+                                context().get( _VM_CR_User2 ).pointer.object() );
+        return heap().make( size, mixdown( mixdown( loc, cnt ), frm ) + off );
+    }
+
+    bool freeobj( HeapPointer p ) { ++ _alloc_ops; return heap().free( p ); }
 
     GenericPointer s2ptr( Slot v, int off = 0 )
     {
@@ -542,7 +556,7 @@ struct Eval
         int size = layout().getTypeAllocSize(ty); /* possibly aggregate */
 
         unsigned alloc = std::max( 1, count * size );
-        auto res = PointerV( heap().make( alloc ) );
+        auto res = makeobj( alloc );
         result( res );
         // std::cerr << "alloca'd " << res << std::endl;
     }
@@ -583,7 +597,7 @@ struct Eval
 
         collect_allocas( [&]( auto ptr )
                          {
-                             heap().free( ptr.cooked() );
+                             freeobj( ptr.cooked() );
                          } );
 
         if ( parent.cooked().null() )
@@ -601,7 +615,7 @@ struct Eval
                 usermode = true;
             }
             context().set( _VM_CR_Frame, nullPointer() );
-            heap().free( fr.cooked() );
+            freeobj( fr.cooked() );
             if ( usermode )
                 context().check_interrupt( *this );
             return;
@@ -632,7 +646,7 @@ struct Eval
             heap().read( rv, br );
             jumpTo( br );
         }
-        heap().free( fr.cooked() );
+        freeobj( fr.cooked() );
     }
 
     void implement_br()
@@ -699,7 +713,7 @@ struct Eval
                       size += i.result().size();
                       ++ count;
                   } );
-        auto tmp = heap().make( size ), tgt = tmp;
+        auto tmp = makeobj( size ), tgt = tmp;
         each_phi( target, [&]( auto &i )
                   {
                       heap().copy( s2ptr( i.operand( idx ) ), tgt.cooked(), i.result().size() );
@@ -712,7 +726,7 @@ struct Eval
                       heap().skip( tgt, i.result().size() );
                   } );
 
-        heap().free( tmp.cooked() );
+        freeobj( tmp.cooked() );
         target.instruction( target.instruction() + count - 1 );
         context().set( _VM_CR_PC, target );
     }
@@ -735,7 +749,7 @@ struct Eval
     {
         std::vector< PointerV > ptrs;
         collect_allocas( [&]( PointerV p ) { ptrs.push_back ( p ); } );
-        auto r = heap().make( sizeof( IntV::Raw ) + ptrs.size() * PointerBytes );
+        auto r = makeobj( sizeof( IntV::Raw ) + ptrs.size() * PointerBytes );
         auto p = r;
         heap().write_shift( p, IntV( ptrs.size() ) );
         for ( auto ptr : ptrs )
@@ -774,7 +788,7 @@ struct Eval
                 }
             }
             if ( !retain )
-                heap().free( ptr.cooked() );
+                freeobj( ptr.cooked() );
         } );
     }
 
@@ -915,7 +929,6 @@ struct Eval
                     if ( !heap().valid( frame() ) )
                         fault( _VM_F_Hypercall ) << "invalid target frame in __vm_control";
                 }
-                heap()._l.hint = frame().object() + ptr.cooked().offset() ?: 1;
             }
         }
     }
@@ -988,13 +1001,11 @@ struct Eval
                                              << " passed to __vm_obj_make";
                     size = 0;
                 }
-                if ( context().get( _VM_CR_Flags ).integer & _VM_CF_KernelMode )
-                    heap()._l.hint += 65536;
-                result( size ? heap().make( size ) : nullPointerV() );
+                result( size ? makeobj( size ) : nullPointerV() );
                 return;
             }
             case HypercallObjFree:
-                if ( !heap().free( operand< PointerV >( 0 ).cooked() ) )
+                if ( !freeobj( operand< PointerV >( 0 ).cooked() ) )
                     fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_free";
                 return;
             case HypercallObjResize:
@@ -1059,7 +1070,7 @@ struct Eval
             return;
         }
 
-        auto frameptr = heap().make( program().function( target ).framesize );
+        auto frameptr = makeobj( program().function( target ).framesize );
         auto p = frameptr;
         heap().write_shift( p, PointerV( target ) );
         heap().write_shift( p, PointerV( frame() ) );
@@ -1075,7 +1086,7 @@ struct Eval
             int size = 0;
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
                 size += operand( i ).size();
-            auto vaptr = size ? heap().make( size ) : nullPointerV();
+            auto vaptr = size ? makeobj( size, 1 ) : nullPointerV();
             auto vaptr_loc = s2ptr( function.values[ function.argcount ], 0, frameptr.cooked() );
             heap().write( vaptr_loc, vaptr );
             for ( int i = function.argcount; i < int( CS.arg_size() ); ++i )
@@ -1094,6 +1105,7 @@ struct Eval
 
     void run()
     {
+        _alloc_ops = 0;
         context().set_interrupted( false );
         do {
             advance();

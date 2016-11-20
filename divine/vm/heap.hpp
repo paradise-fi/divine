@@ -398,14 +398,12 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     {
         std::map< uint32_t, Internal > exceptions;
         Snapshot snapshot;
-        uint32_t hint;
     } _l;
 
     Internal detach( HeapPointer, Internal i ) { return i; }
     void made( HeapPointer ) {}
 
-    SimpleHeap() { _l.hint = 1; }
-    void reset() { _l.hint = 1; _l.exceptions.clear(); _l.snapshot = Snapshot(); }
+    void reset() { _l.exceptions.clear(); _l.snapshot = Snapshot(); }
     void rollback() { _l.exceptions.clear(); } /* fixme leak */
 
     Shadows::Loc shloc( HeapPointer p, Internal i ) const
@@ -468,23 +466,23 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         return si && si != snap_end() && si->first == p.object() ? si->second : Internal();
     }
 
-    PointerV make( int size )
+    PointerV make( int size, uint32_t hint = 1 )
     {
         HeapPointer p;
-        SnapItem *search = snap_find( _l.hint );
-        if ( search && search != snap_end() && search->first <= _l.hint )
+        SnapItem *search = snap_find( hint );
+        if ( search && search != snap_end() && search->first <= hint )
             ++ search; /* points at first snapitem >= than hint */
         bool found = false;
         while ( !found )
         {
-            ++ _l.hint;
+            ++ hint;
             found = true;
-            if ( _l.exceptions.count( _l.hint ) )
+            if ( _l.exceptions.count( hint ) )
                 found = false;
-            if ( search && search != snap_end() && search->first == _l.hint )
+            if ( search && search != snap_end() && search->first == hint )
                 ++ search, found = false;
         }
-        p.object( _l.hint );
+        p.object( hint );
         p.offset( 0 );
         ASSERT( !ptr2i( p ).slab() );
         auto obj = _l.exceptions[ p.object() ] = _objects.allocate( size );

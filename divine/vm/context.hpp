@@ -138,7 +138,7 @@ struct Context
     template< typename... Args >
     void enter( CodePointer pc, PointerV parent, Args... args )
     {
-        auto frameptr = heap().make( program().function( pc ).framesize );
+        auto frameptr = heap().make( program().function( pc ).framesize, 16 );
         set( _VM_CR_Frame, frameptr.cooked() );
         set( _VM_CR_PC, pc );
         heap().write_shift( frameptr, PointerV( pc ) );
