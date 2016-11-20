@@ -140,6 +140,7 @@ void Scheduler::traceThreads() const noexcept {
     }
 
     __vm_trace( _VM_T_SchedChoice, pi );
+    __vm_obj_free( pi );
 }
 
 void Scheduler::startMainThread( int argc, char** argv, char** envp ) noexcept {
