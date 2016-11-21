@@ -159,8 +159,7 @@ struct Explore
         setup::boot( _ctx );
         eval.run();
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
-        if ( !(_ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) &&
-             _ctx.heap().valid( _states.hasher.root ) )
+        if ( setup::postboot_check( _ctx ) )
             _initial.snap = *store( _ctx.snapshot() );
         if ( !_ctx.finished() )
             UNREACHABLE( "choices encountered during start()" );

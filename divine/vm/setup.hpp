@@ -43,6 +43,21 @@ void boot( Context &ctx )
 }
 
 template< typename Context >
+bool postboot_check( Context &ctx )
+{
+    if ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Error )
+        return false; /* can't schedule if boot failed */
+    if ( ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel )
+        return false;
+    if ( ctx.ref( _VM_CR_Scheduler ).pointer.type() != PointerType::Code )
+        return false;
+    if ( !ctx.heap().valid( ctx.get( _VM_CR_State ).pointer ) )
+        return false;
+
+    return true;
+}
+
+template< typename Context >
 void scheduler( Context &ctx )
 {
     ctx.enter( ctx.get( _VM_CR_Scheduler ).pointer, nullPointerV() );
