@@ -751,14 +751,6 @@ foreach( binding ${LLVM_BINDINGS_LIST} )
   endif()
 endforeach()
 
-add_subdirectory(projects)
-
-if(WITH_POLLY)
-  if(NOT EXISTS ${LLVM_MAIN_SRC_DIR}/tools/polly/CMakeLists.txt)
-    set(WITH_POLLY OFF)
-  endif()
-endif(WITH_POLLY)
-
 if( LLVM_INCLUDE_TOOLS )
   add_subdirectory(tools)
 endif()
