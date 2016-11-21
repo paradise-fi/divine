@@ -143,7 +143,7 @@ void Fault::trace_config( int indent ) {
         }
         dstring def = cfg & FaultFlag::UserSpec ? "user" : "default";
 
-        __dios_trace_i( indent + 1, "- %s: %s%s, %s", name.c_str(), force.c_str(),
+        __dios_trace_i( indent + 1, "%s: %s%s, %s", name.c_str(), force.c_str(),
             state.c_str(), def.c_str() );;
     }
 }

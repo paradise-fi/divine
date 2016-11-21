@@ -56,7 +56,7 @@ void MachineParams::initialize( const SysOpts& opts ) {
 
 void MachineParams::traceParams( int indent ) {
     __dios_trace_i( indent, "machine parameters:" );
-    __dios_trace_i( indent + 1, "- ncpus: %d", hardwareConcurrency );
+    __dios_trace_i( indent + 1, "ncpus: %d", hardwareConcurrency );
 }
 
 FileTrace getFileTraceConfig( const SysOpts& o, dstring stream ) {
@@ -108,16 +108,6 @@ TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
 
             if ( what == "threads" || what == "thread" )
                 config.threads = trace;
-            else if ( what == "help" )
-                config.help = trace;
-            else if ( what == "rawenv" )
-                config.raw = trace;
-            else if ( what == "machineparams" )
-                config.machineParams = trace;
-            else if ( what == "mainargs" || what == "mainarg" )
-                config.mainArgs = trace;
-            else if ( what == "faultcfg" )
-                config.faultCfg = trace;
             else
                 __dios_trace_f( "Warning: uknown tracing param \"%s\"", opt.second.c_str() );
         }
@@ -128,7 +118,7 @@ TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
 
             if ( what == "help" )
                 config.help = true;
-            else if ( what == "rawenv" )
+            else if ( what == "rawenvironment" )
                 config.raw = true;
             else if ( what == "machineparams" )
                 config.machineParams = true;
@@ -143,41 +133,53 @@ TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
     return config;
 }
 
-void traceHelp() {
-    __dios_trace_i( 0, "help:" );
-    __dios_trace_i( 1,   "Supported commands:" );
-    __dios_trace_i( 1,   "- debug: print debug information during boot" );
-    __dios_trace_i( 2,     "- help: show help and exit" );
-    __dios_trace_i( 2,     "- rawEnv: user DiOS boot parameters" );
-    __dios_trace_i( 2,     "- machineParams: specified by user, e.g. number of cpus" );
-    __dios_trace_i( 2,     "- mainArgs" );
-    __dios_trace_i( 2,     "- faultCfg: fault and simfail configuration" );
-    __dios_trace_i( 1,   "- {trace|notrace}: report/not report item back to VM" );
-    __dios_trace_i( 2,     "- threads: trace thread info during execution" );
-    __dios_trace_i( 1,   "- [force-]{ignore|report|abort}: configure fault, "
-                            "force disables program override" );
-    __dios_trace_i( 2,     "- assert" );
-    __dios_trace_i( 2,     "- arithtmetic" );
-    __dios_trace_i( 2,     "- memory" );
-    __dios_trace_i( 2,     "- control" );
-    __dios_trace_i( 2,     "- locking" );
-    __dios_trace_i( 2,     "- hypercall" );
-    __dios_trace_i( 2,     "- notimplemented" );
-    __dios_trace_i( 2,     "- diosassert" );
-    __dios_trace_i( 1,   "- {nofail|simfail}: enable/disable simulation of failure" );
-    __dios_trace_i( 2,     "- malloc" );
-    __dios_trace_i( 1,   "- ncpus:" );
-    __dios_trace_i( 2,     "- <num> specify number of cpu units (default 0)" );
-    __dios_trace_i( 1,   "- {stdout|stderr}: specify how to treat program output" );
-    __dios_trace_i( 2,     "- notrace: ignore the stream" );
-    __dios_trace_i( 2,     "- unbuffered: trace each write" );
-    __dios_trace_i( 2,     "- trace: trace after each newline (default) " );
+
+
+void traceHelpOption( int i, dstring opt, dstring desc, const dvector<dstring>& args ) {
+    __dios_trace_i( i, "- \"%s\":", opt.c_str() );
+    __dios_trace_i( i + 2, "description: %s", desc.c_str() );
+    __dios_trace_i( i + 2, "arguments:" );
+    for ( const auto& arg : args )
+        __dios_trace_i( i + 3, "- %s", arg.c_str() );
 }
 
-void traceEnv( const _VM_Env *env ) {
-    __dios_trace_i (0, "raw env options:" );
-     for ( ; env->key; env++ )
-        __dios_trace_i( 1, "- %s: %.*s", env->key, env->size, env->value );
+void traceHelp( int i ) {
+    __dios_trace_i( i, "help:" );
+    __dios_trace_i( i + 1, "supported commands:" );
+    traceHelpOption( i + 2, "debug", "print debug information during boot",
+        { "help - help and exit",
+          "rawenvironment - user DiOS boot parameters",
+          "machineparams - specified by user, e.g. number of cpus",
+          "mainargs - argv and envp",
+          "faultcfg - fault and simfail configuration" } );
+    traceHelpOption( i + 2, "{trace|notrace}",
+        "report/not report item back to VM",
+        { "threads - thread info during execution"} );
+    traceHelpOption( i + 2, "[force-]{ignore|report|abort}",
+        "configure fault, force disables program override",
+        { "assert",
+          "arithmetic",
+          "memory",
+          "control",
+          "locking",
+          "hypercall",
+          "notimplemented",
+          "diosassert" } );
+    traceHelpOption( i + 2, "{nofail|simfail}",
+        "enable/disable simulation of failure",
+        { "malloc" } );
+    traceHelpOption( i + 2, "ncpus", "specify number of cpu units (default 0)", { "<num>" } );
+    traceHelpOption( i + 2, "{stdout|stderr}", "specify how to treat program output",
+        { "notrace - ignore the stream",
+          "unbuffered - trace each write",
+          "trace - trace after each newline (default)"} );
+}
+
+void traceEnv( int ind, const _VM_Env *env ) {
+    __dios_trace_i( ind, "raw env options:" );
+    for ( ; env->key; env++ ) {
+        __dios_trace_i( ind + 1, "%s: \"%.*s\"", env->key, env->size, env->value );
+    }
 }
 
 void init( const _VM_Env *env )
@@ -201,25 +203,23 @@ void init( const _VM_Env *env )
     TraceDebugConfig traceCfg = getTraceDebugConfig( sysOpts );
 
     if ( traceCfg.anyDebugInfo() ) {
-        __dios_trace_i( 0, "DiOS boot info" );
-        __dios_trace_i( 0, "---" );
+        __dios_trace_i( 0, "DiOS boot info:" );
     }
 
     if ( traceCfg.help ) {
-        traceHelp();
-        __dios_trace_i( 0, "---" );
+        traceHelp( 1 );
         return;
     }
 
     if ( traceCfg.raw )
-        traceEnv( env );
+        traceEnv( 1, env );
 
     // Select scheduling mode
     if ( traceCfg.threads )
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<true> );
     else
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
-    
+
      context->vfs->instance( ).setOutputFile(getFileTraceConfig(sysOpts, "stdout" ));
      context->vfs->instance( ).setErrFile(getFileTraceConfig(sysOpts, "stderr" ));
 
@@ -229,26 +229,23 @@ void init( const _VM_Env *env )
     }
 
     if ( traceCfg.faultCfg )
-        context->fault->trace_config( 0 );
+        context->fault->trace_config( 1 );
 
     context->machineParams.initialize( sysOpts );
     if ( traceCfg.machineParams )
-        context->machineParams.traceParams( 0 );
+        context->machineParams.traceParams( 1 );
 
     auto argv = construct_main_arg( "arg.", env, true );
     auto envp = construct_main_arg( "env.", env );
 
     if ( traceCfg.mainArgs ) {
-        trace_main_arg(0, "main argv", argv );
-        trace_main_arg(0, "main envp", envp );
+        trace_main_arg( 1, "main argv", argv );
+        trace_main_arg( 1, "main envp", envp );
     }
 
     environ = envp.second;
 
     context->scheduler->startMainThread( argv.first, argv.second, envp.second );
-
-    if ( traceCfg.anyDebugInfo() )
-        __dios_trace_i( 0, "---" );
 }
 
 } // namespace __dios
