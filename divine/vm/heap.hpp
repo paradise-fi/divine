@@ -608,24 +608,36 @@ struct CowHeap : SimpleHeap< CowHeap >
         auto &objects() { return _heap->_objects; }
         auto &shadows() { return _heap->_shadows; }
 
+        auto content_only( Internal i )
+        {
+            auto size = objects().size( i );
+            auto base = objects().dereference( i );
+
+            brick::hash::jenkins::SpookyState high( 0, 0 );
+
+            auto types = shadows().type( Shadows::Loc( i, Shadows::Anchor(), 0 ), size );
+            auto t = types.begin();
+            int offset = 0;
+
+            while ( offset + 4 <= size )
+            {
+                if ( *t != ShadowType::Pointer1 )
+                    high.update( base + offset, 4 );
+                offset += 4;
+                ++ t;
+            }
+
+            high.update( base + offset, size - offset );
+            ASSERT_LEQ( offset, size );
+
+            return high.finalize().first;
+        }
+
         auto hash( Internal i )
         {
             /* TODO also hash some shadow data into low for better precision? */
-            auto size = objects().size( i );
-            auto base = objects().dereference( i );
-            auto low = brick::hash::spooky( base, size );
-            brick::hash::jenkins::SpookyState high( 0, 0 );
-            int offset = 0;
-            auto pointers = shadows().pointers( Shadows::Loc( i, Shadows::Anchor(), 0 ), size );
-            for ( auto pos : pointers )
-            {
-                ASSERT_LEQ( offset, pos->offset() );
-                high.update( base + offset, pos->offset() - offset );
-                offset = pos->offset() + pos->size();
-            }
-            ASSERT_LEQ( offset, size );
-            high.update( base + offset, size - offset );
-            return std::make_pair( ( high.finalize().first & 0xFFFFFFF000000000 ) | /* high 28 bits */
+            auto low = brick::hash::spooky( objects().dereference( i ), objects().size( i ) );
+            return std::make_pair( ( content_only( i ) & 0xFFFFFFF000000000 ) | /* high 28 bits */
                                    ( low.first & 0x0000000FFFFFFFF ), low.second );
         }
 
