@@ -598,7 +598,15 @@ struct Interpreter
         std::deque< int > choices;
         std::set< vm::CowHeap::Snapshot > visited;
         for ( auto c : tr.choices )
-            choices.push_back( std::stoi( c ) );
+        {
+            if ( c.find( '^' ) != std::string::npos )
+                for ( int i = 0;
+                      i < std::stoi( std::string( c, c.find( '^' ) + 1, std::string::npos ) );
+                      ++ i )
+                    choices.push_back( std::stoi( c ) );
+            else
+                choices.push_back( std::stoi( c ) );
+        }
         _ctx._choices = choices;
 
         auto last = get( "#last", true ).snapshot();

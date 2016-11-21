@@ -41,6 +41,29 @@ void backtrace( Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
     vm::backtrace( dn, visited, stacks, maxdepth );
 }
 
+struct Choices { std::vector< std::vector< int > > c; };
+
+std::ostream &operator<<( std::ostream &o, const Choices &choices )
+{
+    int last = -1, multiply = 1;
+    for ( auto &v : choices.c )
+        for ( int c : v )
+        {
+            if ( c == last )
+                multiply ++;
+            else
+            {
+                if ( multiply > 1 )
+                    o << "^" << multiply;
+                multiply = 1, last = c;
+                o << " " << c;
+            }
+        }
+    if ( multiply > 1 )
+        o << "^" << multiply;
+    return o;
+}
+
 void Verify::run()
 {
     vm::Explore ex( bitcode() );
@@ -145,7 +168,7 @@ void Verify::run()
     auto hasher = ex._states.hasher; /* fixme */
 
     std::deque< vm::CowHeap::Snapshot > trace;
-    std::vector< std::vector< int > > choices;
+    Choices choices;
     std::vector< std::string > labels;
 
     std::cout << "found an error" << std::endl;
@@ -165,9 +188,9 @@ void Verify::run()
     auto pushLabel = [&]( auto &label ) {
         for ( auto l : label.first )
             labels.push_back( l );
-        choices.emplace_back();
+        choices.c.emplace_back();
         std::transform( label.second.begin(), label.second.end(),
-                        std::back_inserter( choices.back() ),
+                        std::back_inserter( choices.c.back() ),
                                     []( auto x ) { return x.first; } );
     };
     ss::search( ss::Order::PseudoBFS, ex, 1,
@@ -209,12 +232,7 @@ void Verify::run()
             } );
     }
 
-    std::cout << std::endl << "choices made:";
-    for ( auto &v : choices )
-        for ( int c : v )
-            std::cout << " " << c;
-    std::cout << std::endl;
-
+    std::cout << std::endl << "choices made:" << choices << std::endl;
     std::cout << std::endl << "the error trace:" << std::endl;
     for ( std::string l : labels )
         std::cout << "  " << l << std::endl;
@@ -226,7 +244,7 @@ void Verify::run()
     ASSERT_LT( lastBeforeErrorOffset, trace.size() );
     ctx.heap().restore( *(trace.rbegin() + lastBeforeErrorOffset) );
     dbg.load( ctx );
-    dbg._choices = { choices.back().begin(), choices.back().end() };
+    dbg._choices = { choices.c.back().begin(), choices.c.back().end() };
     dbg._choices.push_back( -1 ); // prevent running after choices are depletet
     vm::setup::scheduler( dbg );
     using Stepper = vm::Stepper< decltype( dbg ) >;
