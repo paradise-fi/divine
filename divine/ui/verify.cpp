@@ -159,6 +159,7 @@ void Verify::run()
     trace.push_front( ex._initial.snap );
 
     bool checkSelfloop = false;
+    int lastBeforeErrorOffset = 1;
     auto last = trace.begin(), next = last;
     next ++;
     auto pushLabel = [&]( auto &label ) {
@@ -189,20 +190,16 @@ void Verify::run()
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
     if ( checkSelfloop ) {
-        // the last state is repeated, this is important for stepper setup
-        trace.push_back( trace.back() );
-
         vm::explore::State from;
         from.snap = trace.back();
         ex.edges( from, [&]( auto to, auto label, auto ) {
                 if ( checkSelfloop && to.error && hasher.equal( to.snap, from.snap ) ) {
                     pushLabel( label );
                     checkSelfloop = false;
+                    lastBeforeErrorOffset = 0;
                 }
             } );
     }
-    if ( checkSelfloop )
-        std::cerr << "ERROR: There was an error replaying the error trace, the trace might be incomplete" << std::endl;
 
     std::cout << std::endl << "choices made:";
     for ( auto &v : choices )
@@ -215,13 +212,14 @@ void Verify::run()
         std::cout << "  " << l << std::endl;
     std::cout << std::endl;
 
-    ASSERT( next == trace.end() );
+    ASSERT( !checkSelfloop && next == trace.end() );
 
     auto &ctx = ex._ctx;
-    ASSERT_LEQ( 2, trace.size() );
-    ctx.heap().restore( *( trace.end() - 2 ) );
+    ASSERT_LT( lastBeforeErrorOffset, trace.size() );
+    ctx.heap().restore( *(trace.rbegin() + lastBeforeErrorOffset) );
     dbg.load( ctx );
     dbg._choices = { choices.back().begin(), choices.back().end() };
+    dbg._choices.push_back( -1 ); // prevent running after choices are depletet
     vm::setup::scheduler( dbg );
     using Stepper = vm::Stepper< decltype( dbg ) >;
     Stepper step;
