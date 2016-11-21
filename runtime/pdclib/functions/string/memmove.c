@@ -17,7 +17,7 @@ void * memmove( void * s1, const void * s2, size_t n )
     char *dest = ( char * ) s1;
     const char *src = ( const char * ) s2;
     if ( dest <= src ) {
-        while ( ( uint64_t ) dest % 4 && ( uint64_t ) src % 4 && n ) {
+        while ( ( uint64_t ) dest % 8 && ( uint64_t ) src % 8 && n ) {
             *dest++ = *src++;
             n--;
         }
@@ -39,7 +39,7 @@ void * memmove( void * s1, const void * s2, size_t n )
         src += n;
         dest += n;
 
-        while ( ( uint64_t ) dest % 4 && ( uint64_t ) src % 4 && n ) {
+        while ( ( uint64_t ) dest % 8 && ( uint64_t ) src % 8 && n ) {
             *--dest = *--src;
             n--;
         }
