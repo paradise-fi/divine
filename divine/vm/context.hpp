@@ -60,7 +60,7 @@ struct Context
     Heap _heap;
     std::unordered_set< GenericPointer > _cfl_visited;
     std::unordered_set< int > _mem_loads;
-    int _alloc_ops;
+    int _objid_shuffle;
 
     template< typename Ctx >
     void load( const Ctx &ctx )
@@ -80,7 +80,7 @@ struct Context
     {
         _cfl_visited.clear();
         _mem_loads.clear();
-        _alloc_ops = 0;
+        _objid_shuffle = 0;
         flush_ptr2i();
         set( _VM_CR_User1, 0 );
         set( _VM_CR_User2, 0 );
@@ -120,8 +120,8 @@ struct Context
             _ptr2i[ i ] = _heap.ptr2i( get( Location( i ) ).pointer );
     }
 
-    Context( Program &p ) : _program( &p ), _alloc_ops( 0 ) {}
-    Context( Program &p, const Heap &h ) : _program( &p ), _heap( h ), _alloc_ops( 0 ) {}
+    Context( Program &p ) : _program( &p ), _objid_shuffle( 0 ) {}
+    Context( Program &p, const Heap &h ) : _program( &p ), _heap( h ), _objid_shuffle( 0 ) {}
     virtual ~Context() { }
 
     Program &program() { return *_program; }

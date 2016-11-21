@@ -163,15 +163,15 @@ struct Eval
     PointerV makeobj( int size, int off = 0 )
     {
         using brick::bitlevel::mixdown;
-        ++ context()._alloc_ops;
+        ++ context()._objid_shuffle;
         uint32_t loc = mixdown( pc().function(), pc().instruction() ),
-                 cnt = context()._alloc_ops,
+                 cnt = context()._objid_shuffle,
                  frm = mixdown( context().get( _VM_CR_Frame ).pointer.object(),
                                 context().get( _VM_CR_User2 ).pointer.object() );
         return heap().make( size, mixdown( mixdown( loc, cnt ), frm ) + off );
     }
 
-    bool freeobj( HeapPointer p ) { ++ context()._alloc_ops; return heap().free( p ); }
+    bool freeobj( HeapPointer p ) { ++ context()._objid_shuffle; return heap().free( p ); }
 
     GenericPointer s2ptr( Slot v, int off = 0 )
     {
@@ -932,7 +932,9 @@ struct Eval
                 {
                     heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
                     context().set( _VM_CR_PC, ptr.cooked() );
-                    if ( !heap().valid( frame() ) )
+                    if ( heap().valid( frame() ) )
+                        context()._objid_shuffle = heap().objhash( context().ptr2i( _VM_CR_Frame ) );
+                    else
                         fault( _VM_F_Hypercall ) << "invalid target frame in __vm_control";
                 }
             }

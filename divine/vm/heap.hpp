@@ -400,6 +400,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         Snapshot snapshot;
     } _l;
 
+    uint64_t objhash( Internal ) { return 0; }
     Internal detach( HeapPointer, Internal i ) { return i; }
     void made( HeapPointer ) {}
 
@@ -660,6 +661,8 @@ struct CowHeap : SimpleHeap< CowHeap >
             return true;
         }
     };
+
+    auto objhash( Internal i ) { return _ext.objects.hasher.content_only( i ); }
 
     mutable struct Ext
     {
