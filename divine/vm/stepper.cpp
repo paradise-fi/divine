@@ -81,9 +81,11 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             _sched_policy();
 
         if ( verb != Quiet )
+        {
             for ( auto t : ctx._trace )
                 std::cerr << "T: " << t << std::endl;
-        ctx._trace.clear();
+            ctx._trace.clear();
+        }
     }
     ctx.sync_pc();
 }
