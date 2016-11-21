@@ -932,8 +932,12 @@ struct Eval
                 {
                     heap().read( frame(), ptr, context().ptr2i( _VM_CR_Frame ) );
                     context().set( _VM_CR_PC, ptr.cooked() );
+                    using brick::bitlevel::mixdown;
                     if ( heap().valid( frame() ) )
-                        context()._objid_shuffle = heap().objhash( context().ptr2i( _VM_CR_Frame ) );
+                        context()._objid_shuffle = mixdown(
+                                heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
+                                mixdown( context().get( _VM_CR_Frame ).pointer.object(),
+                                         context()._objid_shuffle ) );
                     else
                         fault( _VM_F_Hypercall ) << "invalid target frame in __vm_control";
                 }
