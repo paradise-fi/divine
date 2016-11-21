@@ -622,10 +622,10 @@ struct CowHeap : SimpleHeap< CowHeap >
 
             while ( offset + 4 <= size )
             {
-                if ( *t != ShadowType::Pointer1 )
+                if ( *t != ShadowType::Pointer2 ) /* NB. assumes little endian */
                     high.update( base + offset, 4 );
                 offset += 4;
-                ++ t;
+                t += 4;
             }
 
             high.update( base + offset, size - offset );

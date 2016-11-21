@@ -50,6 +50,7 @@ struct BitContainer
         Proxy operator*() const { return Proxy( _base, _pos ); }
         Proxy operator->() const { return Proxy( _base, _pos ); }
         iterator &operator++() { _pos ++; return *this; }
+        iterator &operator+=( int off ) { _pos += off; return *this; }
         iterator operator+( int off ) const { auto r = *this; r._pos += off; return r; }
         iterator( uint8_t *b, int p ) : _base( b ), _pos( p ) {}
         bool operator!=( iterator o ) const { return _base != o._base || _pos != o._pos; }
