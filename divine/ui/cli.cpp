@@ -128,6 +128,11 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
 
     if ( S_ISLNK( stat->st_mode ) ) {
         std::string symPath ( cont.begin(), cont.end() );
+        if ( !brick::fs::isAbsolute( symPath) ) {
+            auto split = brick::fs::splitPath( oPath );
+            split.pop_back();
+            symPath = brick::fs::joinPath( brick::fs::joinPath( split ), symPath );
+        }
         if ( follow && !seen( symPath ) ) {
             see( symPath );
             auto ex = [&]( const std::string& item ) {
