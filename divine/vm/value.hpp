@@ -260,9 +260,10 @@ struct Pointer : Base
 
     friend std::ostream &operator<<( std::ostream &o, Pointer v )
     {
-        std::string def = "dd";
+        std::string def = "ddp";
         if ( !v._obj_defined ) def[0] = 'u';
         if ( !v._off_defined ) def[1] = 'u';
+        if ( !v._ispointer ) def[2] = 'n';
         v.withType( [&]( auto p ) { o << "[" << p << " " << def << "]"; return p; } );
         return o;
     }
