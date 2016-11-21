@@ -604,20 +604,17 @@ struct Interpreter
         auto last = get( "#last", true ).snapshot();
         std::cerr << "traced states:";
         bool stop = false;
-        step._sched_policy = nullptr;
+        step._sched_policy = [&]() { if ( _ctx._choices.empty() ) stop = true; };
         step._breakpoint = [&]( vm::CodePointer, bool ) { return stop; };
+        step._stop_on_error = false;
         step._yield_state =
             [&]( auto snap )
             {
                 auto next = newstate( snap, false, true );
                 if ( visited.count( next ) )
                 {
-                    std::cerr << " [loop closed" << std::flush;
-                    if ( !_ctx._choices.empty() )
-                        std::cerr << ", unused choices:";
-                    for ( auto c : _ctx._choices )
-                        std::cerr << " " << c;
-                    std::cerr << "]" << std::flush;
+                    std::cerr << " [loop closed]" << std::flush;
+                    step._ff_kernel = false;
                     stop = true;
                     return next;
                 }
@@ -629,9 +626,22 @@ struct Interpreter
                 last = get( "#last", true ).snapshot();
                 return next;
             };
-        run( step, false );
+        run( step, Stepper::Quiet );
 
         std::cerr << std::endl;
+
+        if ( !_ctx._choices.empty() )
+        {
+            std::cerr << "unused choices:";
+            for ( auto c : _ctx._choices )
+                std::cerr << " " << c;
+            std::cerr << std::endl;
+        }
+
+        if ( !_ctx._trace.empty() )
+            std::cerr << "trace:" << std::endl;;
+        for ( auto t : _ctx._trace )
+            std::cerr << "T: " << t << std::endl;
         _ctx._trace.clear();
     }
 
