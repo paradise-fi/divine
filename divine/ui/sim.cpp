@@ -367,9 +367,14 @@ struct Interpreter
             throw brick::except::Error( "the program has already terminated" );
     }
 
-    void run( Stepper step, bool verbose )
+    void run( Stepper &step, bool verbose )
     {
         check_running();
+        return run( step, verbose ? Stepper::PrintInstructions : Stepper::TraceOnly );
+    }
+
+    void run( Stepper &step, Stepper::Verbosity verbose )
+    {
         _sigint = &step._sigint;
         brick::types::Defer _( [](){ _sigint = nullptr; } );
 
@@ -408,7 +413,7 @@ struct Interpreter
                   };
         if ( !step._breakpoint )
             step._breakpoint = bp;
-        step.run( _ctx, verbose ? Stepper::PrintInstructions : Stepper::TraceOnly );
+        step.run( _ctx, verbose );
     }
 
     void go( command::Exit ) { _exit = true; }
