@@ -102,7 +102,7 @@ show: # make show var=VAR
 .PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env} toolchain validate dist
 
 dist:
-	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS)
+	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug
 	cmake --build $(OBJ)debug --target package_source $(EXTRA)
 	cp $(OBJ)debug/divine-*.tar.gz .
 
