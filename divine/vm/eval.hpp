@@ -936,8 +936,7 @@ struct Eval
                     if ( heap().valid( frame() ) )
                         context()._objid_shuffle = mixdown(
                                 heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
-                                mixdown( context().get( _VM_CR_Frame ).pointer.object(),
-                                         context()._objid_shuffle ) );
+                                context().get( _VM_CR_Frame ).pointer.object() );
                     else
                         fault( _VM_F_Hypercall ) << "invalid target frame in __vm_control";
                 }
