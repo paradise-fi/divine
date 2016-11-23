@@ -713,6 +713,8 @@ struct Substitution : lart::Pass {
     Substitution( std::string type ) {
         if ( type == "zero" )
             abstractionName = "__abstract_zero_";
+        if ( type == "test" )
+            abstractionName = "__abstract_test_";
     }
 
     virtual ~Substitution() {}
@@ -1143,6 +1145,14 @@ private:
     std::string abstractionName;
     llvm::Type * abstractionType;
 };
+
+PassMeta abstraction_pass() {
+    return Abstraction::meta();
+}
+
+PassMeta substitution_pass() {
+    return Substitution::meta();
+}
 
 PassMeta abstractionPass() {
     return passMetaC< Substitution >( "abstraction", "",

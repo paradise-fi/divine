@@ -8,6 +8,8 @@ namespace lart {
     namespace abstract {
 
         PassMeta abstractionPass();
+        PassMeta abstraction_pass();
+        PassMeta substitution_pass();
 
         inline std::vector< PassMeta > passes() {
             return { abstractionPass() };
