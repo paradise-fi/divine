@@ -118,8 +118,9 @@ TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
 
             if ( what == "help" )
                 config.help = true;
-            else if ( what == "rawenvironment" )
-                config.raw = true;
+            // ToDo: Trace binary blobs
+            /*else if ( what == "rawenvironment" )
+                config.raw = true;*/
             else if ( what == "machineparams" )
                 config.machineParams = true;
             else if ( what == "mainargs" || what == "mainarg" )
@@ -148,7 +149,8 @@ void traceHelp( int i ) {
     __dios_trace_i( i + 1, "supported commands:" );
     traceHelpOption( i + 2, "debug", "print debug information during boot",
         { "help - help and exit",
-          "rawenvironment - user DiOS boot parameters",
+          // ToDo: trace binary blobs
+          /*"rawenvironment - user DiOS boot parameters",*/
           "machineparams - specified by user, e.g. number of cpus",
           "mainargs - argv and envp",
           "faultcfg - fault and simfail configuration" } );
