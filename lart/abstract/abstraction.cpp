@@ -243,7 +243,8 @@ struct Abstraction : lart::Pass {
         auto type = val->getType();
 
         if ( llvm::isa< llvm::Argument >( val ) || llvm::isa< llvm::Constant >( val ) )
-            val = lift( val, i );
+            if ( !isAbstractType( val->getType() ) )
+                val = lift( val, i );
         auto ptr = i->getOperand( 1 );
         if ( !isAbstractType( ptr->getType() ) )
             ptr = value_store.contains( ptr ) ? value_store[ ptr ] : lift( ptr, i );
@@ -254,7 +255,7 @@ struct Abstraction : lart::Pass {
         if ( isAbstractType( type ) )
             for ( auto it = type_store.begin(); it != type_store.end(); ++it )
                 if ( it->second == type )
-                    name = getTypeName( it->first->getPointerElementType() );
+                    name = getTypeName( it->first );
         auto tag = "lart.abstract.store." + name;
         return createAnonymousCall( i, rty, tag, args );
     }
