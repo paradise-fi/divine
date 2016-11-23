@@ -193,6 +193,7 @@ struct BenchmarkGroup {
     }
 
     BenchmarkGroup() : p( 0 ), q( 0 ) {}
+    virtual ~BenchmarkGroup();
     virtual int64_t parameter( Axis a, int seq ) {
         if ( !a.log )
             return a.min + seq * a.step;
@@ -616,6 +617,8 @@ struct SelfTest : BenchmarkGroup {
         y.step = 2;
         y.unit = "k";
     }
+
+    virtual ~SelfTest();
 
     std::string describe() { return "category:selftest"; }
 
