@@ -82,8 +82,8 @@ inline pointer __abstract_zero_shift( pointer a, pointer b ) {
 
 #ifdef __divine__
 
-#define __abstract_zero_explicate_type( name, type ) \
-type __abstract_zero_explicate_##name( pointer val ) _ROOT { \
+#define __abstract_zero_lower_type( name, type ) \
+type __abstract_zero_lower_##name( pointer val ) _ROOT { \
     size_t range = std::numeric_limits<type>::max(); \
     if ( val->value == Zero::Domain::ZeroValue ) \
         return 0; \
@@ -95,8 +95,8 @@ type __abstract_zero_explicate_##name( pointer val ) _ROOT { \
 
 #else
 
-#define __abstract_zero_explicate_type( name, type ) \
-type __abstract_zero_explicate_##name( pointer val ) _ROOT { \
+#define __abstract_zero_lower_type( name, type ) \
+type __abstract_zero_lower_##name( pointer val ) _ROOT { \
     size_t range = std::numeric_limits<type>::max(); \
     if ( val->value == Zero::Domain::ZeroValue ) \
         return 0; \
@@ -125,11 +125,11 @@ extern "C" {
         return __abstract_zero_construct( i );
     }
 
-    __abstract_zero_explicate_type( i1,  bool )
-    __abstract_zero_explicate_type( i8,  uint8_t )
-    __abstract_zero_explicate_type( i16, uint16_t )
-    __abstract_zero_explicate_type( i32, uint32_t )
-    __abstract_zero_explicate_type( i64, uint64_t )
+    __abstract_zero_lower_type( i1,  bool )
+    __abstract_zero_lower_type( i8,  uint8_t )
+    __abstract_zero_lower_type( i16, uint16_t )
+    __abstract_zero_lower_type( i32, uint32_t )
+    __abstract_zero_lower_type( i64, uint64_t )
 
     pointer __abstract_zero_add( pointer a, pointer b ) _ROOT {
         return __abstract_zero_meet( a, b );

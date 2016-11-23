@@ -15,12 +15,12 @@ Tristate * __abstract_tristate_create() _ROOT {}
 
 Tristate * __abstract_tristate_lift( bool b ) _ROOT {}
 
-bool __abstract_tristate_explicate( Tristate * b ) _ROOT {}
+bool __abstract_tristate_lower( Tristate * b ) _ROOT {}
 
 typedef struct Abstract { } Abstract;
 
-#define __abstract_test_explicate_type( name, type ) \
-type __abstract_test_explicate_##name( Abstract * b ) _ROOT {}
+#define __abstract_test_lower_type( name, type ) \
+type __abstract_test_lower_##name( Abstract * b ) _ROOT {}
 
 #define __abstract_test_lift_type( name, type ) \
 Abstract * __abstract_test_lift_##name( type t ) _ROOT {}
@@ -37,11 +37,11 @@ __abstract_test_lift_type( i16,  uint16_t )
 __abstract_test_lift_type( i32,  uint32_t )
 __abstract_test_lift_type( i64,  uint64_t )
 
-__abstract_test_explicate_type( i1,  bool )
-__abstract_test_explicate_type( i8,  uint8_t )
-__abstract_test_explicate_type( i16, uint16_t )
-__abstract_test_explicate_type( i32, uint32_t )
-__abstract_test_explicate_type( i64, uint64_t )
+__abstract_test_lower_type( i1,  bool )
+__abstract_test_lower_type( i8,  uint8_t )
+__abstract_test_lower_type( i16, uint16_t )
+__abstract_test_lower_type( i32, uint32_t )
+__abstract_test_lower_type( i64, uint64_t )
 
 Abstract * __abstract_test_add( Abstract * a, Abstract * b) _ROOT {}
 

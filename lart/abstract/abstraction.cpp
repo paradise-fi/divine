@@ -275,7 +275,7 @@ struct Abstraction : lart::Pass {
 
     llvm::Instruction * doSelect( llvm::SelectInst * i ) {
         auto cond = value_store.contains( i->getCondition() )
-                    ? explicate( i, i->getCondition() )
+                    ? lower( i, i->getCondition() )
                     : i->getCondition();
 
         auto tv = i->getTrueValue();
@@ -301,7 +301,7 @@ struct Abstraction : lart::Pass {
             auto cond = i->getCondition();
             if ( isAbstractType( i->getCondition()->getType() )
                  || value_store.contains( i->getCondition() ) )
-                cond = explicate( i, i->getCondition() );
+                cond = lower( i, i->getCondition() );
             auto tbb = i->getSuccessor( 0 );
             auto fbb = i->getSuccessor( 1 );
             return irb.CreateCondBr( cond, tbb, fbb );
@@ -358,8 +358,8 @@ struct Abstraction : lart::Pass {
     llvm::Instruction * doCall( llvm::CallInst * i ) {
         if ( isLift( i ) )
             return handleLiftCall( i );
-        else if ( isExplicate( i ) )
-            return handleExplicationCall( i );
+        else if ( isLower( i ) )
+            return handleLowerCall( i );
         else if ( i->getCalledFunction()->isIntrinsic() )
             return handleIntrinsicCall( llvm::cast< llvm::IntrinsicInst >( i ) );
         else
@@ -384,7 +384,7 @@ struct Abstraction : lart::Pass {
         return i;
     }
 
-    llvm::Instruction * handleExplicationCall( llvm::CallInst * i ) {
+    llvm::Instruction * handleLowerCall( llvm::CallInst * i ) {
         auto clone = i->clone();
         clone->insertBefore( i );
         i->replaceAllUsesWith( clone );
@@ -510,9 +510,9 @@ struct Abstraction : lart::Pass {
         return { val };
     }
 
-    llvm::CallInst * explicate( I * i, V * v ) {
+    llvm::CallInst * lower( I * i, V * v ) {
         auto cond = value_store[ v ];
-        auto tag = "lart.tristate.explicate";
+        auto tag = "lart.tristate.lower";
         return createCall( i, bool_t( i->getContext() ), tag, { cond } );
     }
 
@@ -598,8 +598,8 @@ struct Abstraction : lart::Pass {
         return call->getCalledFunction()->getName().startswith( "lart.abstract.lift" );
     }
 
-    bool isExplicate( llvm::CallInst * call ) {
-        return call->getCalledFunction()->getName().startswith( "lart.tristate.explicate" );
+    bool isLower( llvm::CallInst * call ) {
+        return call->getCalledFunction()->getName().startswith( "lart.tristate.lower" );
     }
 
     bool isArgument( llvm::Value * v ) {

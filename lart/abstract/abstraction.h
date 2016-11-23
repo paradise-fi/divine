@@ -158,8 +158,8 @@ struct Abstraction {
         auto sgt = m->getFunction( "lart.abstract.icmp.sgt.i32" );
         ASSERT_EQ( sgt->getReturnType(), m->getTypeByName( "lart.tristate" ) );
 
-        auto explicate = m->getFunction( "lart.tristate.explicate" );
-        ASSERT_EQ( explicate->user_begin()->getOperand( 0 ), *sgt->user_begin() );
+        auto lower = m->getFunction( "lart.tristate.lower" );
+        ASSERT_EQ( lower->user_begin()->getOperand( 0 ), *sgt->user_begin() );
     }
 
     //condition test

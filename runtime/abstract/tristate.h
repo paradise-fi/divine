@@ -29,7 +29,7 @@ Tristate * __abstract_tristate_or( Tristate * a, Tristate * b );
 extern "C" {
     Tristate * __abstract_tristate_create() _ROOT;
     Tristate * __abstract_tristate_lift( bool b ) _ROOT;
-    bool __abstract_tristate_explicate( Tristate * tristate ) _ROOT;
+    bool __abstract_tristate_lower( Tristate * tristate ) _ROOT;
 }
 
 } // namespace abstract
