@@ -17,6 +17,7 @@ finished()
     mv doc/website/status.md.orig doc/website/status.md
 
     email | sendmail $address
+    rm -f report.txt changes.txt
     exit $1
 }
 
