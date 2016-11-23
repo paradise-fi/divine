@@ -112,19 +112,6 @@ struct Verify : WithBC
     std::string _report;
     std::string _statistics;
 
-    void print_args()
-    {
-        std::cerr << "Verify model " << _file << " with given options:" << std::endl;
-        std::cerr << "Max. memory allowed [MB]: " << _max_mem << std::endl;
-        std::cerr << "Max. time allowed [sec]: " << _max_time << std::endl;
-        if ( _no_counterexample )
-            std::cerr << "Do not print counter example." << std::endl;
-        else
-            std::cerr << "If program fails, print counter example." << std::endl;
-        std::cerr << "Give report in format: " << _report << std::endl;
-        std::cerr << "Give statistics in format: " << _statistics << std::endl;
-    }
-
     void run();
 };
 
@@ -147,21 +134,6 @@ struct Draw : WithBC
     enum { All, None, Trace } _labels = None;
     bool _bfs = false, _raw = false;
     std::string _render = std::string( "dot -Tx11" );
-
-    void print_args()
-    {
-        std::cerr << "(" << _number << ") Draw model " << _file << " with given options:" << std::endl;
-        if ( _labels == All )
-            std::cerr << "Draw all node labels." << std::endl;
-        if ( _labels == None )
-            std::cerr << "Do not draw any labels." << std::endl;
-        if ( _labels == Trace )
-            std::cerr << "Draw only trace labels." << std::endl;
-        std::cerr << "Node distance [cm]: " <<  _distance << std::endl;
-        if ( _bfs )
-            std::cerr << "Draw as BFS." << std::endl;
-        std::cerr << "Render with " << _render << std::endl;
-    }
 
     void run();
 };
