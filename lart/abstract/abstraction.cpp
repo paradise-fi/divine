@@ -50,9 +50,9 @@ struct Abstraction : lart::Pass {
 
 	llvm::PreservedAnalyses run( llvm::Module &m ) override {
         //init tristate
-        _ctx = &m.getContext();
-        auto bt = bool_t( *_ctx );
+        auto bt = bool_t( m.getContext() );
         auto tristate = lart::abstract::Tristate::get( bt );
+
         type_store.insert( { bt, tristate } );
         abstract_types.insert( tristate );
 
@@ -222,20 +222,21 @@ struct Abstraction : lart::Pass {
         return acall;
     }
 
-    void doAlloca( llvm::AllocaInst * i ) {
+    llvm::Instruction * doAlloca( llvm::AllocaInst * i ) {
         assert( !i->isArrayAllocation() );
         auto rty = type_store[ i->getType() ];
-        createNamedCall( i, rty, "lart.abstract.alloca." + getTypeName( i->getAllocatedType() ) );
+        auto tag = "lart.abstract.alloca." + getTypeName( i->getAllocatedType() );
+        return createNamedCall( i, rty, tag );
     }
 
-    void doLoad( llvm::LoadInst * i ) {
+    llvm::Instruction * doLoad( llvm::LoadInst * i ) {
         auto args = { value_store[ i->getOperand( 0 ) ] };
         auto rty = type_store[ i->getType() ];
         auto tag = "lart.abstract.load." + getTypeName( i->getType() );
-        createAnonymousCall( i, rty, tag, args);
+        return createAnonymousCall( i, rty, tag, args);
     }
 
-    void doStore( llvm::StoreInst * i ) {
+    llvm::Instruction * doStore( llvm::StoreInst * i ) {
         auto val = value_store.contains( i->getOperand( 0 ) )
                  ? value_store[ i->getOperand( 0 ) ]
                  : i->getOperand( 0 );
@@ -255,10 +256,10 @@ struct Abstraction : lart::Pass {
                 if ( it->second == type )
                     name = getTypeName( it->first->getPointerElementType() );
         auto tag = "lart.abstract.store." + name;
-        createAnonymousCall( i, rty, tag, args );
+        return createAnonymousCall( i, rty, tag, args );
     }
 
-    void doICmp( llvm::ICmpInst * i ) {
+    llvm::Instruction * doICmp( llvm::ICmpInst * i ) {
 	    auto args = getBinaryArgs( i );
         auto argT = i->getOperand( 0 )->getType();
         std::string lowerType = isAbstractType( argT )
@@ -267,11 +268,11 @@ struct Abstraction : lart::Pass {
         auto tag = "lart.abstract.icmp."
                  + predicate.at( i->getPredicate() )
                  + "." + lowerType;
-        auto bt = bool_t( *_ctx );
-		createAnonymousCall( i, type_store[ bt ], tag, args );
+        auto bt = bool_t( i->getContext() );
+		return createAnonymousCall( i, type_store[ bt ], tag, args );
     }
 
-    void doSelect( llvm::SelectInst * i ) {
+    llvm::Instruction * doSelect( llvm::SelectInst * i ) {
         auto cond = value_store.contains( i->getCondition() )
                     ? explicate( i, i->getCondition() )
                     : i->getCondition();
@@ -287,45 +288,45 @@ struct Abstraction : lart::Pass {
         llvm::IRBuilder<> irb( i );
         auto sub = irb.CreateSelect( cond, tv, fv );
         value_store.insert( { i, sub } );
+        return llvm::cast< llvm::Instruction >( sub );
     }
 
-    void doBranch( llvm::BranchInst * i ) {
+    llvm::Instruction * doBranch( llvm::BranchInst * i ) {
         llvm::IRBuilder<> irb( i );
         if ( i->isUnconditional() ) {
             auto dest = i->getSuccessor( 0 );
-            irb.CreateBr( dest );
+            return irb.CreateBr( dest );
         } else {
-            //conditional branching
             auto cond = i->getCondition();
             if ( isAbstractType( i->getCondition()->getType() )
                  || value_store.contains( i->getCondition() ) )
                 cond = explicate( i, i->getCondition() );
             auto tbb = i->getSuccessor( 0 );
             auto fbb = i->getSuccessor( 1 );
-            irb.CreateCondBr( cond, tbb, fbb );
+            return irb.CreateCondBr( cond, tbb, fbb );
         }
     }
 
-	void doBinary( llvm::BinaryOperator * i ) {
+    llvm::Instruction * doBinary( llvm::BinaryOperator * i ) {
         auto args = getBinaryArgs( i );
         auto tag = "lart.abstract."
                  + std::string( i->getOpcodeName() )
                  + "." + getTypeName( i->getType() );
         auto rty = type_store[ i->getType() ];
-        createAnonymousCall( i, rty, tag, args );
+        return createAnonymousCall( i, rty, tag, args );
     }
 
-    void doCast( llvm::CastInst * i ) {
+    llvm::Instruction * doCast( llvm::CastInst * i ) {
         auto args = getUnaryArgs( i );
         auto tag = "lart.abstract." + std::string( i->getOpcodeName() ) + "."
                    + getTypeName( i->getSrcTy() ) + "." + getTypeName( i->getDestTy() );
         auto type = i->getDestTy();
         storeType( type );
         auto rty = type_store[ type ];
-        createAnonymousCall( i, rty, tag, args );
+        return createAnonymousCall( i, rty, tag, args );
     }
 
-    void doPhi( llvm::PHINode * n ) {
+    llvm::Instruction * doPhi( llvm::PHINode * n ) {
         auto at = type_store[ n->getType() ];
 
         unsigned int niv = n->getNumIncomingValues();
@@ -350,20 +351,21 @@ struct Abstraction : lart::Pass {
                 }
             }
         }
+        return sub;
     }
 
-    void doCall( llvm::CallInst * i ) {
+    llvm::Instruction * doCall( llvm::CallInst * i ) {
         if ( isLift( i ) )
-            handleLiftCall( i );
+            return handleLiftCall( i );
         else if ( isExplicate( i ) )
-            handleExplicationCall( i );
+            return handleExplicationCall( i );
         else if ( i->getCalledFunction()->isIntrinsic() )
-            handleIntrinsicCall( llvm::cast< llvm::IntrinsicInst >( i ) );
+            return handleIntrinsicCall( llvm::cast< llvm::IntrinsicInst >( i ) );
         else
-            handleGenericCall( i );
+            return handleGenericCall( i );
     }
 
-    void handleIntrinsicCall( llvm::IntrinsicInst * i ) {
+    llvm::Instruction * handleIntrinsicCall( llvm::IntrinsicInst * i ) {
         auto name = llvm::Intrinsic::getName( i->getIntrinsicID() );
         if ( ( name == "llvm.lifetime.start" ) || ( name == "llvm.lifetime.end" ) ) { /*skip */ }
         else if ( name == "llvm.var.annotation" ) { /* skip */ }
@@ -372,19 +374,23 @@ struct Abstraction : lart::Pass {
             i->dump();
             std::exit( EXIT_FAILURE );
         }
+
+        return i;
     }
 
-    void handleLiftCall( llvm::CallInst * i ) {
+    llvm::Instruction * handleLiftCall( llvm::CallInst * i ) {
         i->replaceAllUsesWith( value_store[ i->getArgOperand( 0 ) ] );
+        return i;
     }
 
-    void handleExplicationCall( llvm::CallInst * i ) {
+    llvm::Instruction * handleExplicationCall( llvm::CallInst * i ) {
         auto clone = i->clone();
         clone->insertBefore( i );
         i->replaceAllUsesWith( clone );
+        return clone;
     }
 
-    void handleGenericCall( llvm::CallInst * i ) {
+    llvm::Instruction * handleGenericCall( llvm::CallInst * i ) {
         std::vector < V * > args;
 		std::vector < T * > arg_types;
 
@@ -414,6 +420,7 @@ struct Abstraction : lart::Pass {
             auto find = toAnnotate.find( fn );
             i->replaceAllUsesWith( call );
             toAnnotate.insert( { call->getCalledFunction(), find->second } );
+            return call;
         } else {
             llvm::ArrayRef< T * > params = arg_types;
 
@@ -466,15 +473,16 @@ struct Abstraction : lart::Pass {
             llvm::IRBuilder<> irb( i );
             auto abs = irb.CreateCall( stored, args );
             value_store.insert( { i, abs } );
+            return abs;
         }
     }
 
-    void doReturn( llvm::ReturnInst *i ) {
+    llvm::Instruction * doReturn( llvm::ReturnInst *i ) {
         llvm::IRBuilder<> irb( i );
         auto ret = value_store.contains( i->getReturnValue() )
                    ? value_store[ i->getReturnValue() ]
                    : i->getReturnValue();
-        irb.CreateRet( ret );
+        return irb.CreateRet( ret );
     }
 
     std::vector< V * > getBinaryArgs( I * i ) {
@@ -504,7 +512,7 @@ struct Abstraction : lart::Pass {
     llvm::CallInst * explicate( I * i, V * v ) {
         auto cond = value_store[ v ];
         auto tag = "lart.tristate.explicate";
-        return createCall( i, bool_t( *_ctx ), tag, { cond } );
+        return createCall( i, bool_t( i->getContext() ), tag, { cond } );
     }
 
     I * lift( V * v, I * to ) {
@@ -597,7 +605,7 @@ struct Abstraction : lart::Pass {
         return llvm::dyn_cast< llvm::Argument>( v ) != nullptr;
     }
     // Anonymous calls
-    void createAnonymousCall( I * i, T * rty, const std::string &tag,
+    llvm::Instruction * createAnonymousCall( I * i, T * rty, const std::string &tag,
                            std::vector< V * > args = {} )
     {
         std::vector< T * > arg_types = {};
@@ -615,6 +623,7 @@ struct Abstraction : lart::Pass {
 
         toAnnotate.insert( { acall->getCalledFunction(), tag } );
         value_store.insert( { i, acall } );
+        return acall;
     }
 
     void annotateAnonymous( F * f, std::string name ) {
@@ -695,8 +704,6 @@ private:
     std::vector< F * > functionsToRemove;
 
     static llvm::StringRef _abstractName;
-
-    llvm::LLVMContext *_ctx;
 };
 
 llvm::StringRef Abstraction::_abstractName = "__VERIFIER_nondet_";
