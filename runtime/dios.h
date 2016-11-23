@@ -174,9 +174,6 @@ void __dios_jump( struct _VM_Frame *to, void (*pc)( void ), int restoreMaskTo ) 
     } while (0)
 
 CPP_END
-#undef EXTERN_C
-#undef CPP_END
-#undef NOTHROW
 
 
 #ifdef __cplusplus
@@ -312,11 +309,11 @@ using FencedInterruptMask = _InterruptMask< true >;
 
 struct SetFaultTemporarily {
 
-    SetFaultTemporarily( int fault, int cfg ) noexcept :
+    SetFaultTemporarily( int fault, int cfg ) NOTHROW :
         _fault( fault ), _orig( __dios_configure_fault( fault, cfg ) )
     { }
 
-    ~SetFaultTemporarily() noexcept {
+    ~SetFaultTemporarily() NOTHROW {
         __dios_configure_fault( _fault, _orig );
     }
 
@@ -332,3 +329,7 @@ struct SetFaultTemporarily {
 #endif // __cplusplus
 
 #endif // __DIOS_H__
+
+#undef EXTERN_C
+#undef CPP_END
+#undef NOTHROW
