@@ -22,6 +22,13 @@ DIVINE_UNRELAX_WARNINGS
 #include <string>
 
 namespace lart {
+namespace abstract {
+
+PassMeta abstraction_pass();
+PassMeta substitution_pass();
+PassMeta full_abstraction_pass();
+
+} /* namespace abstract */
 
 #ifdef BRICK_UNITTEST_REG
 namespace t_abstract {

@@ -2,6 +2,7 @@
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 DIVINE_RELAX_WARNINGS
 

@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@fi.muni.cz>
+// -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/PassManager.h>
 
@@ -1154,7 +1154,7 @@ PassMeta substitution_pass() {
     return Substitution::meta();
 }
 
-PassMeta abstractionPass() {
+PassMeta full_abstraction_pass() {
     return passMetaC< Substitution >( "abstraction", "",
         []( llvm::ModulePassManager &mgr, std::string opt ) {
             Abstraction::meta().create( mgr, "" );

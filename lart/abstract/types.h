@@ -3,6 +3,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Type.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/TypeBuilder.h>
+
+#include <llvm/Support/raw_ostream.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <string>

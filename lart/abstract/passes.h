@@ -1,18 +1,16 @@
-// -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@fi.muni.cz>
-
+// -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
 
 #include <lart/support/meta.h>
+#include <lart/abstract/abstraction.h>
 
 namespace lart {
     namespace abstract {
 
-        PassMeta abstractionPass();
-        PassMeta abstraction_pass();
-        PassMeta substitution_pass();
+        PassMeta full_abstraction_pass();
 
         inline std::vector< PassMeta > passes() {
-            return { abstractionPass() };
+            return { full_abstraction_pass() };
         }
     }
 }
