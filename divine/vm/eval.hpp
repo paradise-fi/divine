@@ -1050,13 +1050,21 @@ struct Eval
             return;
         }
 
-        auto targetP = operandCk< PointerV >( invoke ? -3 : -1 ).cooked();
-        if ( targetP.type() != PointerType::Code ) {
-            fault( _VM_F_Control ) << "invalid call on a pointer which does not point to code: "
-                                   << targetP;
+        auto targetV = operand< PointerV >( invoke ? -3 : -1 );
+
+        if ( !targetV.defined() )
+        {
+            fault( _VM_F_Control ) << "invalid call on an uninitialised pointer " << targetV;
             return;
         }
-        CodePointer target = targetP;
+
+        if ( targetV.cooked().type() != PointerType::Code )
+        {
+            fault( _VM_F_Control ) << "invalid call on a pointer which does not point to code: "
+                                   << targetV;
+            return;
+        }
+        CodePointer target = targetV.cooked();
         CallSite CS( cast< ::llvm::Instruction >( instruction().op ) );
 
         if ( !target.function() )
