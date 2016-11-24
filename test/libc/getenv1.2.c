@@ -1,4 +1,4 @@
-// VERIFY_OPTS: -D TEST=passed
+// VERIFY_OPTS: -Dnotpass -D TEST=passed
 #include <stdlib.h>
 #include <assert.h>
 
