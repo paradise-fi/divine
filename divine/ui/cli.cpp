@@ -121,6 +121,10 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
     auto path = mountPath( oPath );
     auto iCount = count();
 
+    if ( seen( path ) )
+        return false;
+    see( path );
+
     env.emplace_back( "vfs." + fmt( iCount ) + ".name", bstr( path.begin(), path.end() ) );
     env.emplace_back( "vfs." + fmt( iCount ) + ".stat", pStat );
     env.emplace_back( "vfs." + fmt( iCount ) + ".content", cont );
@@ -128,16 +132,20 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
 
     if ( S_ISLNK( stat->st_mode ) ) {
         std::string symPath ( cont.begin(), cont.end() );
-        if ( !brick::fs::isAbsolute( symPath) ) {
+        bool absolute = brick::fs::isAbsolute( symPath);
+        if ( !absolute ) {
             auto split = brick::fs::splitPath( oPath );
             split.pop_back();
             symPath = brick::fs::joinPath( brick::fs::joinPath( split ), symPath );
         }
         if ( follow && !seen( symPath ) ) {
-            see( symPath );
             auto ex = [&]( const std::string& item ) {
-                return explore( follow, noPrefixChange, see, seen, count,
-                    limit, env, item );
+                if ( absolute )
+                    return explore( follow, noPrefixChange, see, seen, count,
+                        limit, env, item );
+                else
+                    return explore( follow, mountPath, see, seen, count,
+                            limit, env, item );
             };
             brick::fs::traverseDirectoryTree( symPath, ex, []( std::string ){}, ex );
         }
