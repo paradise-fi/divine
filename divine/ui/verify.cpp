@@ -186,6 +186,14 @@ void Verify::run()
                             }
                             return ss::Listen::Process;
                         }
+                        else if ( next == trace.end() &&
+                                  hasher.equal( from.snap, *last) &&
+                                  hasher.equal( to.snap, *last ) )
+                        {
+                            pushLabel( label );
+                            lastBeforeErrorOffset = 0;
+                            return ss::Listen::Terminate;
+                        }
                         return ss::Listen::Ignore;
                     }, []( auto ) { return ss::Listen::Process; } ) );
 
