@@ -1,14 +1,14 @@
 . lib/flavour vanilla
 . lib/testcase
 
-opts1=`grep '//[ \t]*VERIFY_OPTS:' $1 | perl -pe 's/^[^:]*: //'` || true
-opts2=`grep '/\*[ \t]*VERIFY_OPTS:.*\*/' $1 | perl -pe 's/^[^:]*:[ \t]*(.*)*\*\//$1/'` || true
-mainArgs1=`grep '//[ \t]*PROGRAM_OPTS:' $1 | perl -pe 's/^[^:]*: //'` || true
-mainArgs2=`grep '/\*[ \t]*PROGRAM_OPTS:.*\*/' $1 | perl -pe 's/^[^:]*:[ \t]*(.*)*\*\//$1/'` || true
+getopt() {
+  perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2
+}
+
 optStd=
 echo "$1" | grep -q '.cpp$' && optStd="-std=c++14"
-opts=`eval echo "$optStd $opts1 $opts2"`
-args=`eval echo "$mainArgs1 $mainArgs2"`
+opts=$(eval echo $optStd $(getopt VERIFY_OPTS $1))
+args=$(eval echo $(getopt PROGRAM_OPTS $1))
 divine verify --threads 1 --max-backtrace-depth 65536 $opts "$1" $args | tee verify.out
 check verify "$1"
 
