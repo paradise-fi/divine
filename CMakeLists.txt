@@ -165,7 +165,7 @@ if ( UNIX AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
 endif()
 
 include( bricks/support.cmake )
-bricks_check_features()
+bricks_check_dirent()
 include_directories( bricks )
 
 pkg_check_modules( VALGRIND valgrind )
