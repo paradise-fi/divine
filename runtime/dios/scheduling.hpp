@@ -47,10 +47,11 @@ struct SortedStorage {
     SortedStorage() {}
     SortedStorage( const SortedStorage & ) = delete;
 
-    T *find( Tid id ) const noexcept {
+    T *find( Tid id ) noexcept {
         for ( auto t : *this )
             if ( t->getId() == id )
                 return t;
+        return nullptr;
     }
 
     bool remove( Tid id ) noexcept {
