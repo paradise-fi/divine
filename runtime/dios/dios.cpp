@@ -186,6 +186,9 @@ void traceEnv( int ind, const _VM_Env *env ) {
 
 void init( const _VM_Env *env )
 {
+    // Make objid deterministic by allocating mainThreadFrame first
+    void *mainThreadFrame = __vm_obj_make( 1 );
+
     // No active thread
     __vm_control( _VM_CA_Set, _VM_CR_User1, -1 );
     __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, __dios::Fault::handler );
@@ -247,7 +250,8 @@ void init( const _VM_Env *env )
 
     environ = envp.second;
 
-    context->scheduler->startMainThread( argv.first, argv.second, envp.second );
+    context->scheduler->startMainThread( argv.first, argv.second, envp.second,
+        mainThreadFrame );
 }
 
 } // namespace __dios

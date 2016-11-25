@@ -117,9 +117,13 @@ struct Thread {
     ProcId     _pid;
 
     template <class F>
-    Thread( F routine, int tls_size ) noexcept {
+    Thread( F routine, int tls_size, void *fMem = nullptr ) noexcept {
         auto fun = __md_get_pc_meta( reinterpret_cast< uintptr_t >( routine ) );
-        _frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
+        if ( fMem )
+            __vm_obj_resize( fMem, fun->frame_size );
+        else
+            fMem = __vm_obj_make( fun->frame_size );
+        _frame = static_cast< _VM_Frame * >( fMem );
         _frame->pc = fun->entry_point;
         _frame->parent = nullptr;
 
@@ -152,8 +156,9 @@ struct Scheduler {
     int threadCount() const noexcept { return threads.size(); }
     Thread *chooseThread() noexcept;
     void traceThreads() const noexcept;
-    void startMainThread( int argc, char** argv, char** envp ) noexcept;
-    ThreadId startThread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept;
+
+    void startMainThread( int argc, char** argv, char** envp, void* fMem = nullptr ) noexcept;
+    ThreadId startThread( void ( *routine )( void * ), void *arg, int tls_size, void* fMem = nullptr ) noexcept;
     void killThread( ThreadId t_id ) noexcept;
     void killProcess( ProcId id ) noexcept;
 

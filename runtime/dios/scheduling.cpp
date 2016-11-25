@@ -143,8 +143,10 @@ void Scheduler::traceThreads() const noexcept {
     __vm_obj_free( pi );
 }
 
-void Scheduler::startMainThread( int argc, char** argv, char** envp ) noexcept {
-    Thread *t = threads.emplace( _start, _DiOS_TLS_Reserved );
+void Scheduler::startMainThread( int argc, char** argv, char** envp,
+    void* fMem ) noexcept
+{
+    Thread *t = threads.emplace( _start, _DiOS_TLS_Reserved, fMem );
     DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( t->_frame );
     frame->l = __md_get_pc_meta( reinterpret_cast< uintptr_t >( main ) )->arg_count;
 
@@ -153,9 +155,11 @@ void Scheduler::startMainThread( int argc, char** argv, char** envp ) noexcept {
     frame->envp = envp;
 }
 
-ThreadId Scheduler::startThread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept {
+ThreadId Scheduler::startThread( void ( *routine )( void * ), void *arg, int tls_size,
+    void* fMem ) noexcept
+{
     __dios_assert_v( routine, "Invalid thread routine" );
-    Thread *t = threads.emplace( routine, tls_size );
+    Thread *t = threads.emplace( routine, tls_size, fMem );
     ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >( t->_frame );
     frame->arg = arg;
 
