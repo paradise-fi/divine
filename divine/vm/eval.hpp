@@ -164,10 +164,9 @@ struct Eval
     {
         using brick::bitlevel::mixdown;
         ++ context()._objid_shuffle;
-        uint32_t loc = mixdown( pc().function(), pc().instruction() ),
-                 shf = context()._objid_shuffle,
-                 frm = context().get( _VM_CR_Frame ).pointer.object();
-        return heap().make( size, mixdown( loc, mixdown( frm, shf ) ) + off );
+        uint32_t hint = mixdown( context()._objid_shuffle,
+                                 context().get( _VM_CR_Frame ).pointer.object() );
+        return heap().make( size, hint + off );
     }
 
     bool freeobj( HeapPointer p ) { ++ context()._objid_shuffle; return heap().free( p ); }
