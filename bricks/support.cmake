@@ -89,7 +89,7 @@ endfunction()
 # way. Calling this macro from your toplevel CMakeLists.txt is therefore a good
 # idea.
 
-macro( bricks_check_features )
+macro( bricks_check_dirent )
   include( CheckCXXSourceCompiles )
 
   check_cxx_source_compiles(
@@ -103,21 +103,18 @@ macro( bricks_check_features )
   if ( BRICKS_HAVE_DIRENT_D_TYPE )
     add_definitions( -DBRICKS_HAVE_DIRENT_D_TYPE )
   endif()
+endmacro()
 
-  # on some mingw32, regex.h is not on the default include path
-  find_path( RX_PATH regex.h )
-  if( RX_PATH )
-    include_directories( ${RX_PATH} )
-    add_definitions( -DBRICKS_HAVE_REGEX_H )
-    if ( WIN32 )
-      link_libraries( regex )
-    endif()
-  endif()
-
+macro( bricks_check_llvm )
   find_package( LLVM )
   if( LLVM_FOUND )
     add_definitions( -DBRICKS_HAVE_LLVM -isystem ${LLVM_INCLUDE_DIRS} )
   endif()
+endmacro()
+
+macro( bricks_check_features )
+    bricks_check_dirent()
+    bricks_check_llvm()
 endmacro()
 
 function( bricks_fetch_tbb )
