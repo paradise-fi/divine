@@ -125,7 +125,7 @@ struct Search
     void wait()
     {
         for ( auto &res : _threads )
-            res.wait();
+            res.get();
     }
 };
 
