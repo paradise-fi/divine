@@ -73,6 +73,7 @@ struct Search
         {
             _started( builder, listener );
             start.waitForAll( _thread_count );
+            brick::types::Defer _( [&]() { terminate->store( true ); } );
 
             while ( work && !terminate->load() )
             {
