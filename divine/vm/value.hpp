@@ -202,7 +202,13 @@ struct Float : Base
     template< int w, bool sig > Float( Int< w, sig > i )
         : _cooked( i.cooked() ), _defined( i.defined() ) {}
     Float &operator=( const Float &o ) { _cooked = o._cooked; _defined = o._defined; }
-    template< typename S > explicit Float( Float< S > ) { NOT_IMPLEMENTED(); }
+    template< typename S > explicit Float( Float< S > o )
+        : _cooked( o._cooked ), _defined( o._defined )
+    {
+        if ( sizeof( _cooked ) < sizeof( o._cooked ) &&
+             std::isinf( _cooked ) && !std::isinf( o._cooked ) )
+            _defined = false;
+    }
 
     Raw defbits() { return _defined ? full< Raw >() : 0; }
     void defbits( Raw r ) { _defined = ( r == full< Raw >() ); }
