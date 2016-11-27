@@ -28,7 +28,7 @@ inline bool isPathSeparator( char c ) {
     return false;
 }
 
-inline std::pair< utils::String, utils::String > absolutePrefix( utils::String path ) {
+inline std::pair< __dios::String, __dios::String > absolutePrefix( __dios::String path ) {
 #ifdef _WIN32 /* this must go before general case, because \ is prefix of \\ */
     if ( path.size() >= 3 && path[ 1 ] == ':' && isPathSeparator( path[ 2 ] ) )
         return std::make_pair( path.substr( 0, 3 ), path.substr( 3 ) );
@@ -38,35 +38,35 @@ inline std::pair< utils::String, utils::String > absolutePrefix( utils::String p
     // this is absolute path in both windows and unix
     if ( path.size() >= 1 && isPathSeparator( path[ 0 ] ) )
         return std::make_pair( path.substr( 0, 1 ), path.substr( 1 ) );
-    return std::make_pair( utils::String(), path );
+    return std::make_pair( __dios::String(), path );
 }
 
-inline bool isAbsolute( utils::String path ) {
+inline bool isAbsolute( __dios::String path ) {
     return absolutePrefix( std::move( path ) ).first.size() != 0;
 }
 
-inline bool isRelative( utils::String path ) {
+inline bool isRelative( __dios::String path ) {
     return !isAbsolute( std::move( path ) );
 }
 
-inline std::pair< utils::String, utils::String > splitFileName( utils::String path ) {
+inline std::pair< __dios::String, __dios::String > splitFileName( __dios::String path ) {
     auto begin = path.rbegin();
     while ( isPathSeparator( *begin ) )
         ++begin;
     auto length = &*begin - &path.front() + 1;
     auto pos = std::find_if( begin, path.rend(), &isPathSeparator );
     if ( pos == path.rend() )
-        return std::make_pair( utils::String(), path.substr( 0, length ) );
+        return std::make_pair( __dios::String(), path.substr( 0, length ) );
     auto count = &*pos - &path.front();
     length -= count + 1;
     return std::make_pair( path.substr( 0, count ), path.substr( count + 1, length ) );
 }
 
-inline utils::String joinPath( utils::Vector< utils::String > paths, bool /*normalize*/ = false ) {
+inline __dios::String joinPath( __dios::Vector< __dios::String > paths, bool /*normalize*/ = false ) {
     if ( paths.empty() )
         return "";
     auto it = ++paths.begin();
-    utils::String out = paths[0];
+    __dios::String out = paths[0];
 
     for ( ; it != paths.end(); ++it ) {
         if ( isAbsolute( *it ) || out.empty() )
@@ -80,18 +80,18 @@ inline utils::String joinPath( utils::Vector< utils::String > paths, bool /*norm
 }
 
 template< typename... FilePaths >
-inline utils::String joinPath( FilePaths &&...paths ) {
-    return joinPath( utils::Vector< utils::String >{ std::forward< FilePaths >( paths )... } );
+inline __dios::String joinPath( FilePaths &&...paths ) {
+    return joinPath( __dios::Vector< __dios::String >{ std::forward< FilePaths >( paths )... } );
 }
 
-template< typename Result = utils::Vector< utils::String > >
-inline Result splitPath( const utils::String &path, bool normalize = false ) {
+template< typename Result = __dios::Vector< __dios::String > >
+inline Result splitPath( const __dios::String &path, bool normalize = false ) {
     Result out;
     auto last = path.begin();
     while ( true ) {
         auto next = std::find_if( last, path.end(), &isPathSeparator );
         if ( next == path.end() ) {
-            utils::String s( last, next );
+            __dios::String s( last, next );
             if ( normalize && s == "." );
             else if ( normalize && s == ".." ) {
                 if ( !out.empty() && out.back() != ".." )
@@ -104,7 +104,7 @@ inline Result splitPath( const utils::String &path, bool normalize = false ) {
             return out;
         }
         if ( last != next ) {
-            utils::String s( last, next );
+            __dios::String s( last, next );
             if ( normalize && s == "." );
             else if ( normalize && s == ".." ) {
                 if ( !out.empty() && out.back() != ".." )
@@ -119,7 +119,7 @@ inline Result splitPath( const utils::String &path, bool normalize = false ) {
     }
 }
 
-inline utils::String normalize( utils::String path ) {
+inline __dios::String normalize( __dios::String path ) {
     auto abs = absolutePrefix( path );
     return joinPath( abs.first, joinPath( splitPath( abs.second, true ) ) );
 }

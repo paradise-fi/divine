@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
 #include "fs-manager.h"
+#include <dios/memory.hpp>
 
 #define REMEMBER_DIRECTORY( dirfd, name )                               \
     WeakNode savedDir = _currentDirectory;                               \
@@ -15,34 +16,34 @@ namespace fs {
 
 Manager::Manager( bool ) :
     _root{ std::allocate_shared< INode >(
-        memory::AllocatorPure(), Mode::DIR | Mode::GRANTS
+        __dios::AllocatorPure(), Mode::DIR | Mode::GRANTS
     ) },
     _error(0),
     _currentDirectory{ _root },
     _standardIO{ {
-        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER ),// stdin
-        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER ),// stdout
-        std::allocate_shared< INode >( memory::AllocatorPure(), Mode::FILE | Mode::RUSER )// stderr
+        std::allocate_shared< INode >( __dios::AllocatorPure(), Mode::FILE | Mode::RUSER ),// stdin
+        std::allocate_shared< INode >( __dios::AllocatorPure(), Mode::FILE | Mode::RUSER ),// stdout
+        std::allocate_shared< INode >( __dios::AllocatorPure(), Mode::FILE | Mode::RUSER )// stderr
     } },
     _openFD{
-        std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 0 ], flags::Open::Read ),// stdin
-        std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 1 ], flags::Open::Write ),// stdout
-        std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), _standardIO[ 2 ], flags::Open::Write )// stderr
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), _standardIO[ 0 ], flags::Open::Read ),// stdin
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), _standardIO[ 1 ], flags::Open::Write ),// stdout
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), _standardIO[ 2 ], flags::Open::Write )// stderr
     },
     _umask{ Mode::WGROUP | Mode::WOTHER }
 {
-    _root->assign( new( memory::nofail ) Directory( _root ) );
+    _root->assign( new( __dios::nofail ) Directory( _root ) );
 }
 
 void Manager::setOutputFile(FileTrace trace) {
     switch (trace) {
         case FileTrace::UNBUFFERED:
-            _standardIO[ 1 ]->assign( new( memory::nofail ) VmTraceFile() );
+            _standardIO[ 1 ]->assign( new( __dios::nofail ) VmTraceFile() );
             break;
         case FileTrace::TRACE:
-             _standardIO[ 1 ]->assign( new( memory::nofail ) VmBuffTraceFile() );
+             _standardIO[ 1 ]->assign( new( __dios::nofail ) VmBuffTraceFile() );
              break;
-        default : 
+        default :
             break;
     }
 }
@@ -50,19 +51,19 @@ void Manager::setOutputFile(FileTrace trace) {
 void Manager::setErrFile(FileTrace trace) {
     switch (trace) {
         case FileTrace::UNBUFFERED:
-            _standardIO[ 2 ]->assign( new( memory::nofail ) VmTraceFile() );
+            _standardIO[ 2 ]->assign( new( __dios::nofail ) VmTraceFile() );
             break;
         case FileTrace::TRACE:
-             _standardIO[ 2 ]->assign( new( memory::nofail ) VmBuffTraceFile() );
+             _standardIO[ 2 ]->assign( new( __dios::nofail ) VmBuffTraceFile() );
              break;
-        default : 
+        default :
             break;
     }
 }
 
 
 template< typename... Args >
-Node Manager::createNodeAt( int dirfd, utils::String name, mode_t mode, Args &&... args ) {
+Node Manager::createNodeAt( int dirfd, __dios::String name, mode_t mode, Args &&... args ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -78,7 +79,7 @@ Node Manager::createNodeAt( int dirfd, utils::String name, mode_t mode, Args &&.
     if ( Mode( mode ).isDirectory() )
         mode |= Mode::GUID;
 
-    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
+    Node node = std::allocate_shared< INode >( __dios::AllocatorPure(), mode );
 
     switch( mode & Mode::TMASK ) {
     case Mode::SOCKET:
@@ -110,7 +111,7 @@ Node Manager::createNodeAt( int dirfd, utils::String name, mode_t mode, Args &&.
     return node;
 }
 
-void Manager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl ) {
+void Manager::createHardLinkAt( int newdirfd, __dios::String name, int olddirfd, const __dios::String &target, Flags< flags::At > fl ) {
     if ( name.empty() || target.empty() )
         throw Error( ENOENT );
 
@@ -128,7 +129,7 @@ void Manager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, 
 
     Node targetNode;
     {
-        REMEMBER_DIRECTORY( olddirfd, target );    
+        REMEMBER_DIRECTORY( olddirfd, target );
         targetNode = findDirectoryItem( target, fl.has( flags::At::SymFollow ) );
     }
     if ( !targetNode )
@@ -140,7 +141,7 @@ void Manager::createHardLinkAt( int newdirfd, utils::String name, int olddirfd, 
     dir->create( std::move( name ), targetNode );
 }
 
-void Manager::createSymLinkAt( int dirfd, utils::String name, utils::String target ) {
+void Manager::createSymLinkAt( int dirfd, __dios::String name, __dios::String target ) {
     if ( name.empty() )
         throw Error( ENOENT );
     if ( target.size() > PATH_LIMIT )
@@ -153,7 +154,7 @@ void Manager::createSymLinkAt( int dirfd, utils::String name, utils::String targ
     createNodeAt( dirfd, std::move( name ), mode, std::move( target ) );
 }
 
-ssize_t Manager::readLinkAt( int dirfd, utils::String name, char *buf, size_t count ) {
+ssize_t Manager::readLinkAt( int dirfd, __dios::String name, char *buf, size_t count ) {
     REMEMBER_DIRECTORY( dirfd, name );
 
     Node inode = findDirectoryItem( std::move( name ), false );
@@ -163,13 +164,13 @@ ssize_t Manager::readLinkAt( int dirfd, utils::String name, char *buf, size_t co
         throw Error( EINVAL );
 
     Link *sl = inode->data()->as< Link >();
-    const utils::String &target = sl->target();
+    const __dios::String &target = sl->target();
     auto realLength = std::min( target.size(), count );
     std::copy( target.c_str(), target.c_str() + realLength, buf );
     return realLength;
 }
 
-void Manager::accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl ) {
+void Manager::accessAt( int dirfd, __dios::String name, Flags< flags::Access > mode, Flags< flags::At > fl ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -189,7 +190,7 @@ void Manager::accessAt( int dirfd, utils::String name, Flags< flags::Access > mo
         throw Error( EACCES );
 }
 
-int Manager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, mode_t mode ) {
+int Manager::openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl, mode_t mode ) {
     REMEMBER_DIRECTORY( dirfd, name );
 
     Node file = findDirectoryItem( name, !fl.has( flags::Open::SymNofollow ) );
@@ -205,7 +206,7 @@ int Manager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl,
     } else if ( !file ) {
         throw Error( ENOENT );
     }
-        
+
     if ( fl.has( flags::Open::Read ) )
         _checkGrants( file, Mode::RUSER );
     if ( fl.has( flags::Open::Write ) ) {
@@ -223,8 +224,8 @@ int Manager::openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl,
     }
 
     if ( file->mode().isFifo() )
-        return _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), file, fl, true ) );
-    return _getFileDescriptor( std::allocate_shared< FileDescriptor >( memory::AllocatorPure(), file, fl ) );
+        return _getFileDescriptor( std::allocate_shared< PipeDescriptor >( __dios::AllocatorPure(), file, fl, true ) );
+    return _getFileDescriptor( std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), file, fl ) );
 }
 
 void Manager::closeFile( int fd ) {
@@ -263,14 +264,14 @@ std::shared_ptr< SocketDescriptor > Manager::getSocket( int sockfd ) {
 std::pair< int, int > Manager::pipe() {
     mode_t mode = Mode::RWXUSER | Mode::FIFO;
 
-    Node node = std::allocate_shared< INode >( memory::AllocatorPure(), mode );
-    node->assign( new( memory::nofail ) Pipe() );
-    auto fd1 = _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Read ) );
-    auto fd2 =  _getFileDescriptor( std::allocate_shared< PipeDescriptor >( memory::AllocatorPure(), node, flags::Open::Write ));
+    Node node = std::allocate_shared< INode >( __dios::AllocatorPure(), mode );
+    node->assign( new( __dios::nofail ) Pipe() );
+    auto fd1 = _getFileDescriptor( std::allocate_shared< PipeDescriptor >( __dios::AllocatorPure(), node, flags::Open::Read ) );
+    auto fd2 =  _getFileDescriptor( std::allocate_shared< PipeDescriptor >( __dios::AllocatorPure(), node, flags::Open::Write ));
     return { fd1, fd2 };
 }
 
-void Manager::removeFile( utils::String name ) {
+void Manager::removeFile( __dios::String name ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -283,7 +284,7 @@ void Manager::removeFile( utils::String name ) {
     dir->remove( name );
 }
 
-void Manager::removeDirectory( utils::String name ) {
+void Manager::removeDirectory( __dios::String name ) {
     if ( name.empty() )
         throw Error( ENOENT );
 
@@ -297,7 +298,7 @@ void Manager::removeDirectory( utils::String name ) {
     dir->removeDirectory( name );
 }
 
-void Manager::removeAt( int dirfd, utils::String name, flags::At fl ) {
+void Manager::removeAt( int dirfd, __dios::String name, flags::At fl ) {
     REMEMBER_DIRECTORY( dirfd, name );
 
     switch( fl ) {
@@ -312,14 +313,14 @@ void Manager::removeAt( int dirfd, utils::String name, flags::At fl ) {
     }
 }
 
-void Manager::renameAt( int newdirfd, utils::String newpath, int olddirfd, utils::String oldpath ) {
+void Manager::renameAt( int newdirfd, __dios::String newpath, int olddirfd, __dios::String oldpath ) {
     Node oldNode;
     Directory *oldNodeDirectory;
     Node newNode;
     Directory *newNodeDirectory;
 
-    utils::String oldName;
-    utils::String newName;
+    __dios::String oldName;
+    __dios::String newName;
 
     {
         REMEMBER_DIRECTORY( olddirfd, oldpath );
@@ -411,7 +412,7 @@ void Manager::truncate( Node inode, off_t length ) {
     f->resize( length );
 }
 
-void Manager::changeDirectory( utils::String pathname ) {
+void Manager::changeDirectory( __dios::String pathname ) {
     Node item = findDirectoryItem( pathname );
     if ( !item )
         throw Error( ENOENT );
@@ -433,7 +434,7 @@ void Manager::changeDirectory( int dirfd ) {
     _currentDirectory = item;
 }
 
-void Manager::chmodAt( int dirfd, utils::String name, mode_t mode, Flags< flags::At > fl ) {
+void Manager::chmodAt( int dirfd, __dios::String name, mode_t mode, Flags< flags::At > fl ) {
     if ( fl.has( flags::At::Invalid ) )
         throw Error( EINVAL );
 
@@ -479,18 +480,18 @@ int Manager::socket( SocketType type, Flags< flags::Open > fl ) {
     Socket *s = nullptr;
     switch ( type ) {
     case SocketType::Stream:
-        s = new( memory::nofail ) SocketStream;
+        s = new( __dios::nofail ) SocketStream;
         break;
     case SocketType::Datagram:
-        s = new( memory::nofail ) SocketDatagram;
+        s = new( __dios::nofail ) SocketDatagram;
         break;
     default:
         throw Error( EPROTONOSUPPORT );
     }
     std::shared_ptr< SocketDescriptor > sd =
         std::allocate_shared< SocketDescriptor >(
-            memory::AllocatorPure(),
-            std::allocate_shared< INode >( memory::AllocatorPure(), Mode::GRANTS | Mode::SOCKET, s ),
+            __dios::AllocatorPure(),
+            std::allocate_shared< INode >( __dios::AllocatorPure(), Mode::GRANTS | Mode::SOCKET, s ),
             fl
         );
 
@@ -501,30 +502,30 @@ std::pair< int, int > Manager::socketpair( SocketType type, Flags< flags::Open >
     if ( type != SocketType::Stream )
         throw Error( EOPNOTSUPP );
 
-    SocketStream *cl = new( memory::nofail ) SocketStream;
+    SocketStream *cl = new( __dios::nofail ) SocketStream;
 
     Node client = std::allocate_shared< INode >(
-        memory::AllocatorPure(),
+        __dios::AllocatorPure(),
         Mode::GRANTS | Mode::SOCKET,
         cl );
     Node server = std::allocate_shared< INode >(
-        memory::AllocatorPure(),
+        __dios::AllocatorPure(),
         Mode::GRANTS | Mode::SOCKET,
-        new( memory::nofail ) SocketStream );
+        new( __dios::nofail ) SocketStream );
 
     cl->connected( client, server );
 
     return {
         _getFileDescriptor(
             std::allocate_shared< SocketDescriptor >(
-                memory::AllocatorPure(),
+                __dios::AllocatorPure(),
                 server,
                 fl
             )
         ),
         _getFileDescriptor(
             std::allocate_shared< SocketDescriptor >(
-                memory::AllocatorPure(),
+                __dios::AllocatorPure(),
                 client,
                 fl
             )
@@ -536,7 +537,7 @@ void Manager::bind( int sockfd, Socket::Address address ) {
     auto sd = getSocket( sockfd );
 
     Node current;
-    utils::String name = address.value();
+    __dios::String name = address.value();
     std::tie( current, name ) = _findDirectoryOfFile( name );
 
     Directory *dir = current->data()->as< Directory >();
@@ -564,7 +565,7 @@ int Manager::accept( int sockfd, Socket::Address &address ) {
 
     return _getFileDescriptor(
         std::allocate_shared< SocketDescriptor >(
-            memory::AllocatorPure(),
+            __dios::AllocatorPure(),
             std::move( partner ),
             flags::Open::NoFlags
         )
@@ -582,11 +583,11 @@ Node Manager::resolveAddress( const Socket::Address &address ) {
     return item;
 }
 
-Node Manager::findDirectoryItem( utils::String name, bool followSymLinks ) {
+Node Manager::findDirectoryItem( __dios::String name, bool followSymLinks ) {
     return _findDirectoryItem( std::move( name ), followSymLinks, []( Node ){} );
 }
 template< typename I >
-Node Manager::_findDirectoryItem( utils::String name, bool followSymLinks, I itemChecker ) {
+Node Manager::_findDirectoryItem( __dios::String name, bool followSymLinks, I itemChecker ) {
     if ( name.size() > PATH_LIMIT )
         throw Error( ENAMETOOLONG );
     name = path::normalize( name );
@@ -595,8 +596,8 @@ Node Manager::_findDirectoryItem( utils::String name, bool followSymLinks, I ite
         current = currentDirectory();
 
     Node item = current;
-    utils::Queue< utils::String > q( path::splitPath< utils::Deque< utils::String > >( name ) );
-    utils::Set< Link * > loopDetector;
+    __dios::Queue< __dios::String > q( path::splitPath< __dios::Deque< __dios::String > >( name ) );
+    __dios::Set< Link * > loopDetector;
     while ( !q.empty() ) {
         if ( !current->mode().isDirectory() )
             throw Error( ENOTDIR );
@@ -631,7 +632,7 @@ Node Manager::_findDirectoryItem( utils::String name, bool followSymLinks, I ite
             if ( !loopDetector.insert( sl ).second )
                 throw Error( ELOOP );
 
-            utils::Queue< utils::String > _q( path::splitPath< utils::Deque< utils::String > >( sl->target() ) );
+            __dios::Queue< __dios::String > _q( path::splitPath< __dios::Deque< __dios::String > >( sl->target() ) );
             while ( !q.empty() ) {
                 _q.emplace( std::move( q.front() ) );
                 q.pop();
@@ -652,13 +653,13 @@ Node Manager::_findDirectoryItem( utils::String name, bool followSymLinks, I ite
     return item;
 }
 
-std::pair< Node, utils::String > Manager::_findDirectoryOfFile( utils::String name ) {
+std::pair< Node, __dios::String > Manager::_findDirectoryOfFile( __dios::String name ) {
     name = path::normalize( name );
 
     if ( name.size() > PATH_LIMIT )
         throw Error( ENAMETOOLONG );
 
-    utils::String pathname;
+    __dios::String pathname;
     std::tie( pathname, name ) = path::splitFileName( name );
     Node item = findDirectoryItem( pathname );
 

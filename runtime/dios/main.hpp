@@ -37,7 +37,7 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
 /*
  * Trace arguments constructed by construct_main_arg
  */
-void trace_main_arg( int indent, dstring name, std::pair< int, char** > arg );
+void trace_main_arg( int indent, String name, std::pair< int, char** > arg );
 
 /*
  * Free argv/envp-like arguments created by construct_main_arg

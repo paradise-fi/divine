@@ -41,8 +41,8 @@ struct Fault {
     };
 
     static constexpr int fault_count = _DiOS_SF_Last;
-    static int str_to_fault( dstring fault );
-    static dstring fault_to_str( int fault );
+    static int str_to_fault( String fault );
+    static String fault_to_str( int fault );
     bool load_user_pref( const SysOpts& opts );
     void trace_config( int indent );
     static void handler( _VM_Fault what, _VM_Frame *cont_frame, void (*cont_pc)(), ... ) noexcept;

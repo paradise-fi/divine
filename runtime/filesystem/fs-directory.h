@@ -15,13 +15,13 @@ namespace fs {
 
 struct DirectoryEntry {
 
-    DirectoryEntry( utils::String name, Node inode ) :
+    DirectoryEntry( __dios::String name, Node inode ) :
         _name( std::move( name ) ),
         _inode( std::move( inode ) ),
         _weak( false )
     {}
 
-    DirectoryEntry( utils::String name, WeakNode inode ) :
+    DirectoryEntry( __dios::String name, WeakNode inode ) :
         _name( std::move( name ) ),
         _inode( std::move( inode ) ),
         _weak( true )
@@ -59,10 +59,10 @@ struct DirectoryEntry {
         return *this;
     }
 
-    utils::String &name() {
+    __dios::String &name() {
         return _name;
     }
-    const utils::String &name() const {
+    const __dios::String &name() const {
         return _name;
     }
 
@@ -95,7 +95,7 @@ struct DirectoryEntry {
     }
 
 private:
-    utils::String _name;
+    __dios::String _name;
     union _U {
         Node strong;
         WeakNode weak;
@@ -128,7 +128,7 @@ struct DirectoryItemLabel {
         return *this;
     }
 
-    const utils::String &name() const {
+    const __dios::String &name() const {
         return _name;
     }
     unsigned ino() const {
@@ -136,12 +136,12 @@ struct DirectoryItemLabel {
     }
 
 private:
-    utils::String _name;
+    __dios::String _name;
     unsigned _ino;
 };
 
 struct Directory : DataItem {
-    using Items = utils::Vector< DirectoryEntry >;
+    using Items = __dios::Vector< DirectoryEntry >;
 
     Directory( WeakNode self, WeakNode parent = WeakNode{} ) :
         _items{
@@ -154,20 +154,20 @@ struct Directory : DataItem {
         return _items.size();
     }
 
-    void create( utils::String name, Node inode ) {
+    void create( __dios::String name, Node inode ) {
         if ( name.size() > FILE_NAME_LIMIT )
             throw Error( ENAMETOOLONG );
         _insertItem( DirectoryEntry( std::move( name ), std::move( inode ) ) );
     }
 
-    Node find( const utils::String &name ) {
+    Node find( const __dios::String &name ) {
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
             return Node();
         return position->inode();
     }
 
-    void replaceEntry( const utils::String &name, Node node ) {
+    void replaceEntry( const __dios::String &name, Node node ) {
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
             throw Error( ENOENT );
@@ -175,14 +175,14 @@ struct Directory : DataItem {
     }
 
     template< typename T >
-    T *find( const utils::String &name ) {
+    T *find( const __dios::String &name ) {
         Node node = find( name );
         if ( !node )
             return nullptr;
         return node->data()->as< T >();
     }
 
-    void remove( const utils::String &name ) {
+    void remove( const __dios::String &name ) {
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
             throw Error( ENOENT );
@@ -191,7 +191,7 @@ struct Directory : DataItem {
         _items.erase( position );
     }
 
-    void removeDirectory( const utils::String &name ) {
+    void removeDirectory( const __dios::String &name ) {
         auto position = _findItem( name );
         if ( position == _items.end() || name != position->name() )
             throw Error( ENOENT );
@@ -204,7 +204,7 @@ struct Directory : DataItem {
         _items.erase( position );
     }
 
-    void forceRemove( const utils::String &name ) {
+    void forceRemove( const __dios::String &name ) {
         auto position = _findItem( name );
         if ( position != _items.end() && name == position->name() )
             _items.erase( position );
@@ -237,12 +237,12 @@ private:
         throw Error( EEXIST );
     }
 
-    Items::iterator _findItem( const utils::String &name ) {
+    Items::iterator _findItem( const __dios::String &name ) {
         return std::lower_bound(
             _items.begin(),
             _items.end(),
             name,
-            []( const DirectoryEntry &entry, const utils::String &name ) {
+            []( const DirectoryEntry &entry, const __dios::String &name ) {
                 return entry.name() < name;
             } );
     }

@@ -263,8 +263,8 @@ struct DirectoryDescriptor {
 
 private:
 
-    utils::Vector< DirectoryItemLabel > _items;
-    utils::Vector< DirectoryItemLabel >::const_iterator _position;
+    __dios::Vector< DirectoryItemLabel > _items;
+    __dios::Vector< DirectoryItemLabel >::const_iterator _position;
     int _fd;
 };
 

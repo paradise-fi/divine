@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <signal.h>
 #include <dios.h>
+#include <dios/memory.hpp>
 
 #include "fs-utils.h"
 #include "fs-inode.h"
@@ -18,7 +19,7 @@ namespace fs {
 
 struct Link : DataItem {
 
-    Link( utils::String target ) :
+    Link( __dios::String target ) :
         _target( std::move( target ) )
     {
         if ( _target.size() > PATH_LIMIT )
@@ -29,12 +30,12 @@ struct Link : DataItem {
         return _target.size();
     }
 
-    const utils::String &target() const {
+    const __dios::String &target() const {
         return _target;
     }
 
 private:
-    utils::String _target;
+    __dios::String _target;
 };
 
 struct File : DataItem {
@@ -131,7 +132,7 @@ private:
     bool _snapshot;
     size_t _size;
     const char *_roContent;
-    utils::Vector< char > _content;
+    __dios::Vector< char > _content;
 };
 
 struct WriteOnlyFile : File {
@@ -218,7 +219,7 @@ struct VmBuffTraceFile : File {
         _buffer.clear();
     }
 private:
-    __dios::dstring _buffer;
+    __dios::String _buffer;
 };
 
 struct StandardInput : File {
@@ -358,7 +359,7 @@ struct Socket : File {
             _valid( false )
         {}
 
-        explicit Address( utils::String value, bool anonymous = false ) :
+        explicit Address( __dios::String value, bool anonymous = false ) :
             _value( std::move( value ) ),
             _anonymous( anonymous ),
             _valid( true )
@@ -371,7 +372,7 @@ struct Socket : File {
             return *this;
         }
 
-        const utils::String &value() const {
+        const __dios::String &value() const {
             return _value;
         }
 
@@ -411,7 +412,7 @@ struct Socket : File {
         }
 
     private:
-        utils::String _value;
+        __dios::String _value;
         bool _anonymous;
         bool _valid;
     };
@@ -480,7 +481,7 @@ namespace std {
 template<>
 struct hash< ::divine::fs::Socket::Address > {
     size_t operator()( const ::divine::fs::Socket::Address &a ) const {
-        return hash< ::divine::fs::utils::String >()( a.value() );
+        return hash< __dios::String >()( a.value() );
     }
 };
 
@@ -551,9 +552,9 @@ struct SocketStream : Socket {
                 throw Error( ECONNREFUSED );
 
             _peerHandle = std::allocate_shared< INode >(
-                memory::AllocatorPure(),
+                __dios::AllocatorPure(),
                 Mode::GRANTS,
-                _peer = new( memory::nofail ) SocketStream( self )
+                _peer = new( __dios::nofail ) SocketStream( self )
             );
 
             m->addBacklog( _peerHandle );
@@ -647,7 +648,7 @@ private:
     SocketStream *_peer;
     storage::Stream _stream;
     bool _passive;
-    utils::Queue< Node > _backlog;
+    __dios::Queue< Node > _backlog;
     int _limit;
 };
 
@@ -779,10 +780,10 @@ private:
 
     private:
         Address _from;
-        utils::Vector< char > _data;
+        __dios::Vector< char > _data;
     };
 
-    utils::Queue< Packet > _packets;
+    __dios::Queue< Packet > _packets;
     WeakNode _defaultRecipient;
 
 };

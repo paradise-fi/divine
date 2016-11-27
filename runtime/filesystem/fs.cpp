@@ -1488,7 +1488,7 @@ namespace __sc {
 
             auto s = vfs->instance( ).getSocket( sockfd );
             const struct sockaddr_un *target = reinterpret_cast< const struct sockaddr_un * >( addr );
-            Address address( target ? target->sun_path : divine::fs::utils::String( ));
+            Address address( target ? target->sun_path : __dios::String( ));
 
             *ret = s->sendTo( static_cast< const char * >( buf ), n, conversion::message( flags ),
                               vfs->instance( ).resolveAddress( address ));

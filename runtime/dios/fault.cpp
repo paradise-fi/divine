@@ -83,7 +83,7 @@ void Fault::handler( _VM_Fault _what, _VM_Frame *cont_frame,
     __builtin_unreachable();
 }
 
-int Fault::str_to_fault( dstring fault ) {
+int Fault::str_to_fault( String fault ) {
     std::transform( fault.begin(), fault.end(), fault.begin(), ::tolower );
     if ( fault == "assert" )
         return _VM_F_Assert;
@@ -108,7 +108,7 @@ int Fault::str_to_fault( dstring fault ) {
     return static_cast< _VM_Fault >( -1 );
 }
 
-dstring Fault::fault_to_str( int f ) {
+String Fault::fault_to_str( int f ) {
     switch( f ) {
     case _VM_F_Assert: return "assert";
     case _VM_F_Arithmetic: return "arithmetic";
@@ -128,9 +128,9 @@ void Fault::trace_config( int indent ) {
     __dios_trace_i( indent, "fault and simfail configuration:" );
     for (int f = _VM_F_NoFault + 1; f != _DiOS_SF_Last; f++ ) {
         uint8_t cfg = config[f];
-        dstring name = fault_to_str( f );
-        dstring force = cfg & FaultFlag::AllowOverride ? "" : "force-";
-        dstring state;
+        String name = fault_to_str( f );
+        String force = cfg & FaultFlag::AllowOverride ? "" : "force-";
+        String state;
         if ( f >= _DiOS_F_Last )
             state = cfg & FaultFlag::Enabled ? "simfail" : "nofail";
         else {
@@ -141,7 +141,7 @@ void Fault::trace_config( int indent ) {
             else
                 state = "ignore";
         }
-        dstring def = cfg & FaultFlag::UserSpec ? "user" : "default";
+        String def = cfg & FaultFlag::UserSpec ? "user" : "default";
 
         __dios_trace_i( indent + 1, "%s: %s%s, %s", name.c_str(), force.c_str(),
             state.c_str(), def.c_str() );;
@@ -150,11 +150,11 @@ void Fault::trace_config( int indent ) {
 
 bool Fault::load_user_pref( const SysOpts& opts ) {
     for( const auto& i : opts ) {
-        dstring cmd = i.first;
-        dstring f = i.second;
+        String cmd = i.first;
+        String f = i.second;
 
         uint8_t cfg = FaultFlag::AllowOverride | FaultFlag::UserSpec;
-        const dstring force("force-");
+        const String force("force-");
         if ( cmd.size() > force.size() && std::equal( force.begin(), force.end(), cmd.begin() ) ) {
             cfg &= ~FaultFlag::AllowOverride;
             cmd = cmd.substr( force.size() );

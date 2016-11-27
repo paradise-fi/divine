@@ -4,53 +4,35 @@
 #define __DIOS_STDLIBWRAP_HPP__
 
 #include <divine.h>
-#include <limits>
-#include <string>
 #include <vector>
+#include <string>
+#include <queue>
 #include <set>
+#include <list>
 #include <map>
+#include <dios/memory.hpp>
 
 namespace __dios {
 
-template < class T >
-struct Allocator {
-    typedef T value_type;
-    typedef size_t size_type;
-    typedef int difference_type;
+using String = std::basic_string< char, std::char_traits< char >, Allocator< char > >;
 
-    T *allocate( std::size_t n ) {
-        return static_cast< T * >( __vm_obj_make( n * sizeof( T ) ) );
-    }
+template< typename T >
+using Vector = std::vector< T, Allocator< T > >;
 
-    void deallocate( T *p, std::size_t ) {
-        __vm_obj_free( p );
-    }
+template< typename T >
+using Deque = std::deque< T, Allocator< T > >;
 
-    template < class U >
-    bool operator==( const Allocator<U>& ) {
-        return true;
-    }
+template< typename T >
+using Queue = std::queue< T, Deque< T > >;
 
-    template <class U>
-    bool operator!=( const Allocator<U>& ) {
-        return false;
-    }
+template< typename T >
+using Set = std::set< T, std::less< T >, Allocator< T > >;
 
-    size_t max_size() const {
-        return std::numeric_limits< int >::max();
-    }
-};
-
-using dstring = std::basic_string< char, std::char_traits< char >, Allocator< char >  >;
-
-template < class T >
-using dvector = std::vector< T, Allocator< T > >;
-
-template < class T >
-using dset = std::set< T, std::less< T >, Allocator< T > >;
+template< typename T >
+using List = std::list< T, Allocator< T > >;
 
 template < class K, class V >
-using dmap = std::map< K, V, std::less< K >, Allocator< std::pair< const K, V > > >;
+using Map = std::map< K, V, std::less< K >, Allocator< std::pair< const K, V > > >;
 
 } // namespace __dios
 

@@ -54,7 +54,7 @@ bool getSysOpts( const _VM_Env *e, SysOpts& res ) {
             continue;
 
         // Add sugar for help command
-        dstring s( e->value, e->size );
+        String s( e->value, e->size );
         if ( s == "help") {
             res.emplace_back( "debug", "help" );
             continue;
@@ -71,8 +71,8 @@ bool getSysOpts( const _VM_Env *e, SysOpts& res ) {
             return false;
         }
 
-        dstring val( p, s.end() );
-        dstring key( s.begin(), --p );
+        String val( p, s.end() );
+        String key( s.begin(), --p );
         res.emplace_back( key, val );
     }
     return true;
@@ -131,7 +131,7 @@ void free_main_arg( char** argv ) noexcept {
     __vm_obj_free( orig );
 }
 
-void trace_main_arg( int indent, dstring name, std::pair<int, char**> args ) {
+void trace_main_arg( int indent, String name, std::pair<int, char**> args ) {
     __dios_trace_i( indent, "%s:", name.c_str() );
     for (int i = 0; i != args.first; i++ )
         __dios_trace_i( indent + 1, "%d: %s", i, args.second[i] );

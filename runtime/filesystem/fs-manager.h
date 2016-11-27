@@ -26,13 +26,13 @@ struct Manager {
     Manager() :
         Manager( true )
     {
-        _standardIO[ 0 ]->assign( new( memory::nofail ) StandardInput() );
+        _standardIO[ 0 ]->assign( new( __dios::nofail ) StandardInput() );
     }
 
     Manager( const char *in, size_t length ) :
         Manager( true )
     {
-        _standardIO[ 0 ]->assign( new( memory::nofail ) StandardInput( in, length ) );
+        _standardIO[ 0 ]->assign( new( __dios::nofail ) StandardInput( in, length ) );
     }
 
     explicit Manager( std::initializer_list< SnapshotFS > items ) :
@@ -53,17 +53,17 @@ struct Manager {
 
     void setErrFile(FileTrace trace);
 
-    Node findDirectoryItem( utils::String name, bool followSymLinks = true );
+    Node findDirectoryItem( __dios::String name, bool followSymLinks = true );
 
-    void createHardLinkAt( int newdirfd, utils::String name, int olddirfd, const utils::String &target, Flags< flags::At > fl );
-    void createSymLinkAt( int dirfd, utils::String name, utils::String target );
+    void createHardLinkAt( int newdirfd, __dios::String name, int olddirfd, const __dios::String &target, Flags< flags::At > fl );
+    void createSymLinkAt( int dirfd, __dios::String name, __dios::String target );
     template< typename... Args >
-    Node createNodeAt( int dirfd, utils::String name, mode_t mode, Args &&... args );
+    Node createNodeAt( int dirfd, __dios::String name, mode_t mode, Args &&... args );
 
-    ssize_t readLinkAt( int dirfd, utils::String name, char *buf, size_t count );
+    ssize_t readLinkAt( int dirfd, __dios::String name, char *buf, size_t count );
 
-    void accessAt( int dirfd, utils::String name, Flags< flags::Access > mode, Flags< flags::At > fl );
-    int openFileAt( int dirfd, utils::String name, Flags< flags::Open > fl, mode_t mode );
+    void accessAt( int dirfd, __dios::String name, Flags< flags::Access > mode, Flags< flags::At > fl );
+    int openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl, mode_t mode );
     void closeFile( int fd );
     int duplicate( int oldfd, int lowEdge = 0 );
     int duplicate2( int oldfd, int newfd );
@@ -72,18 +72,18 @@ struct Manager {
 
     std::pair< int, int > pipe();
 
-    void removeFile( utils::String name );
-    void removeDirectory( utils::String name );
-    void removeAt( int dirfd, utils::String name, flags::At fl );
+    void removeFile( __dios::String name );
+    void removeDirectory( __dios::String name );
+    void removeAt( int dirfd, __dios::String name, flags::At fl );
 
-    void renameAt( int newdirfd, utils::String newpath, int olddirfd, utils::String oldpath );
+    void renameAt( int newdirfd, __dios::String newpath, int olddirfd, __dios::String oldpath );
 
     void truncate( Node inode, off_t length );
 
     off_t lseek( int fd, off_t offset, Seek whence );
 
     template< typename DirPre, typename DirPost, typename File >
-    void traverseDirectoryTree( const utils::String &root, DirPre pre, DirPost post, File file ) {
+    void traverseDirectoryTree( const __dios::String &root, DirPre pre, DirPost post, File file ) {
         Node current = findDirectoryItem( root );
         if ( !current || !current->mode().isDirectory() )
             return;
@@ -93,7 +93,7 @@ struct Manager {
                 if ( i.name() == "." || i.name() == ".." )
                     continue;
 
-                utils::String pathname = path::joinPath( root, i.name() );
+                __dios::String pathname = path::joinPath( root, i.name() );
                 if ( i.inode()->mode().isDirectory() )
                     traverseDirectoryTree( pathname, pre, post, file );
                 else
@@ -108,10 +108,10 @@ struct Manager {
         return _currentDirectory.lock();
     }
 
-    void changeDirectory( utils::String pathname );
+    void changeDirectory( __dios::String pathname );
     void changeDirectory( int dirfd );
 
-    void chmodAt( int dirfd, utils::String name, mode_t mode, Flags< flags::At > fl );
+    void chmodAt( int dirfd, __dios::String name, mode_t mode, Flags< flags::At > fl );
     void chmod( int fd, mode_t mode );
 
     mode_t umask() const {
@@ -148,17 +148,17 @@ private:
     int _error;
     WeakNode _currentDirectory;
     std::array< Node, 3 > _standardIO;
-    utils::Vector< std::shared_ptr< FileDescriptor > > _openFD;
-    utils::List< DirectoryDescriptor > _openDD;
+    __dios::Vector< std::shared_ptr< FileDescriptor > > _openFD;
+    __dios::List< DirectoryDescriptor > _openDD;
 
     unsigned short _umask;
 
     Manager( bool );// private default ctor
 
-    std::pair< Node, utils::String > _findDirectoryOfFile( utils::String name );
+    std::pair< Node, __dios::String > _findDirectoryOfFile( __dios::String name );
 
     template< typename I >
-    Node _findDirectoryItem( utils::String name, bool followSymLinks, I itemChecker );
+    Node _findDirectoryItem( __dios::String name, bool followSymLinks, I itemChecker );
 
     int _getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdge = 0 );
     void _insertSnapshotItem( const SnapshotFS &item );
@@ -173,19 +173,19 @@ struct VFS {
 
     VFS() {
         // __divine_interrupt_mask();
-        _manager = new( memory::nofail ) Manager{};
+        _manager = new( __dios::nofail ) Manager{};
     }
     VFS( const char *in, size_t length ) {
         // __divine_interrupt_mask();
-        _manager = new( memory::nofail ) Manager{ in, length };
+        _manager = new( __dios::nofail ) Manager{ in, length };
     }
     explicit VFS( std::initializer_list< SnapshotFS > items ) {
         // __divine_interrupt_mask();
-        _manager = new( memory::nofail ) Manager{ items };
+        _manager = new( __dios::nofail ) Manager{ items };
     }
     VFS( const char *in, size_t length, std::initializer_list< SnapshotFS > items ) {
         // __divine_interrupt_mask();
-        _manager = new( memory::nofail ) Manager{ in, length, items };
+        _manager = new( __dios::nofail ) Manager{ in, length, items };
     }
     ~VFS() {
         delete _manager;

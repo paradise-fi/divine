@@ -203,7 +203,7 @@ void delete_object( T *obj ) {
     __vm_obj_free( obj );
 }
 
-using SysOpts = dvector< std::pair< dstring, dstring > >;
+using SysOpts = Vector< std::pair< String, String > >;
 
 struct Scheduler;
 struct Syscall;

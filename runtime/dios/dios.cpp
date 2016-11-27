@@ -59,10 +59,10 @@ void MachineParams::traceParams( int indent ) {
     __dios_trace_i( indent + 1, "ncpus: %d", hardwareConcurrency );
 }
 
-FileTrace getFileTraceConfig( const SysOpts& o, dstring stream ) {
+FileTrace getFileTraceConfig( const SysOpts& o, String stream ) {
     for ( const auto& opt : o ) {
         if ( stream == opt.first ) {
-            dstring s;
+            String s;
             std::transform( opt.second.begin(), opt.second.end(),
                 std::back_inserter( s ), ::tolower );
             if ( s == "notrace" )
@@ -96,13 +96,13 @@ struct TraceDebugConfig {
 TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
     TraceDebugConfig config;
     for( const auto& opt : o ) {
-        dstring key;
+        String key;
         std::transform( opt.first.begin(), opt.first.end(),
             std::back_inserter( key ), ::tolower );
 
         if ( key == "notrace" || key == "trace" ) {
             bool trace = opt.first == "trace";
-            dstring what;
+            String what;
             std::transform( opt.second.begin(), opt.second.end(),
                 std::back_inserter( what ), ::tolower );
 
@@ -112,7 +112,7 @@ TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
                 __dios_trace_f( "Warning: uknown tracing param \"%s\"", opt.second.c_str() );
         }
         else if ( key == "debug" ) {
-            dstring what;
+            String what;
             std::transform( opt.second.begin(), opt.second.end(),
                 std::back_inserter( what ), ::tolower );
 
@@ -136,7 +136,7 @@ TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
 
 
 
-void traceHelpOption( int i, dstring opt, dstring desc, const dvector<dstring>& args ) {
+void traceHelpOption( int i, String opt, String desc, const Vector<String>& args ) {
     __dios_trace_i( i, "- \"%s\":", opt.c_str() );
     __dios_trace_i( i + 2, "description: %s", desc.c_str() );
     __dios_trace_i( i + 2, "arguments:" );

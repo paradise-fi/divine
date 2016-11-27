@@ -4,23 +4,17 @@
 /*
  * Few things ported from brick-fs and brick-types.
  */
-#include <vector>
-#include <string>
-#include <queue>
-#include <set>
-#include <list>
 #include <utility>
 #include <algorithm>
 #include <type_traits>
 #include <cerrno>
-
-#include "fs-memory.h"
 
 #ifndef _FS_PATH_UTILS_H_
 #define _FS_PATH_UTILS_H_
 
 #ifdef __divine__
 #include <divine.h>
+#include <dios/stdlibwrap.hpp>
 #include <dios/syscall.hpp>
 
 #define __FS_assert( x ) do { \
@@ -125,7 +119,7 @@ template< typename Type, typename... Args >
 auto constructIfPossible( Args &&... args )
     -> typename std::enable_if< std::is_constructible< Type, Args... >::value, Type * >::type
 {
-    return new( memory::nofail ) Type( std::forward< Args >( args )... );
+    return new( __dios::nofail ) Type( std::forward< Args >( args )... );
 }
 
 template< typename Type, typename... Args >
@@ -134,24 +128,6 @@ auto constructIfPossible( Args &&... )
 {
     return nullptr;
 }
-
-
-using String = std::basic_string< char, std::char_traits< char >, memory::Allocator< char > >;
-
-template< typename T >
-using Vector = std::vector< T, memory::Allocator< T > >;
-
-template< typename T >
-using Deque = std::deque< T, memory::Allocator< T > >;
-
-template< typename T >
-using Queue = std::queue< T, Deque< T > >;
-
-template< typename T >
-using Set = std::set< T, std::less< T >, memory::Allocator< T > >;
-
-template< typename T >
-using List = std::list< T, memory::Allocator< T > >;
 
 } // namespace utils
 

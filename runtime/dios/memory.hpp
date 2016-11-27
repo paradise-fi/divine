@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
+//             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
 #include <memory>
 #include <cstdlib>
@@ -6,13 +7,10 @@
 
 #include "divine.h"
 
-#ifndef _FS_MEMORY_H_
-#define _FS_MEMORY_H_
+#ifndef _DIOS_MEMORY_H_
+#define _DIOS_MEMORY_H_
 
-namespace divine {
-namespace fs {
-
-namespace memory {
+namespace __dios {
 
 struct AllocatorBase {
 
@@ -45,7 +43,7 @@ struct AllocatorBase {
 
     size_type max_size() const {
 #ifdef __divine__
-        return std::numeric_limits< std::uint32_t >::max();
+        return std::numeric_limits< std::int32_t >::max();
 #else
         return std::numeric_limits< size_type >::max();
 #endif
@@ -118,12 +116,9 @@ bool operator!=( const Allocator< T1 > &, const Allocator< T2 > & ) {
 struct nofail_t {};
 extern nofail_t nofail;
 
-} // namespace memory
+} // namespace __dios
 
-} // namespace fs
-} // namespace divine
+void *operator new( std::size_t count, const __dios::nofail_t & ) noexcept;
+void *operator new[]( std::size_t count, const __dios::nofail_t & ) noexcept;
 
-void *operator new( std::size_t count, const divine::fs::memory::nofail_t & ) noexcept;
-void *operator new[]( std::size_t count, const divine::fs::memory::nofail_t & ) noexcept;
-
-#endif
+#endif // _DIOS_MEMORY_H_
