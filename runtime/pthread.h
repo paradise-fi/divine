@@ -20,12 +20,19 @@
 #define PTHREAD_PRIO_NONE              0 /* TODO */
 #define PTHREAD_PRIO_PROTECT           0 /* TODO */
 
-#define PTHREAD_SCOPE_PROCESS          0 /* TODO */
-#define PTHREAD_SCOPE_SYSTEM           0 /* TODO */
+enum {
+    PTHREAD_SCOPE_SYSTEM,
+#define PTHREAD_SCOPE_SYSTEM           PTHREAD_SCOPE_SYSTEM
+    PTHREAD_SCOPE_PROCESS
+#define PTHREAD_SCOPE_PROCESS          PTHREAD_SCOPE_PROCESS
+};
 
-#define PTHREAD_EXPLICIT_SCHED         0 /* TODO */
-#define PTHREAD_INHERIT_SCHED          0 /* TODO */
-
+enum {
+    PTHREAD_INHERIT_SCHED,
+#define PTHREAD_INHERIT_SCHED          PTHREAD_INHERIT_SCHED
+    PTHREAD_EXPLICIT_SCHED
+#define PTHREAD_EXPLICIT_SCHED         PTHREAD_EXPLICIT_SCHED
+};
   /* Single UNIX Specification v. 2  and later */
 #define PTHREAD_MUTEX_NORMAL           0
 #define PTHREAD_MUTEX_RECURSIVE        1
