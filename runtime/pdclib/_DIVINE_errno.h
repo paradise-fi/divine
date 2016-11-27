@@ -143,4 +143,7 @@
 
 #define EHWPOISON	133	/* Memory page has hardware error */
 
+#define ENOTSUP     134 /* Operation not supported (POSIX.1) */
+#define EOPNOTSUPP  135 /* Operation not supported on socket (POSIX.1) */
+
 #endif
