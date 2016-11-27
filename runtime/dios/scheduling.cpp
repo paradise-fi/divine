@@ -6,24 +6,23 @@
 #include <dios/main.hpp>
 #include <divine/metadata.h>
 
-_DiOS_ThreadId __dios_start_thread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept
+_DiOS_ThreadHandle __dios_start_thread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept
 {
-    _DiOS_ThreadId ret;
+    _DiOS_ThreadHandle ret;
     __dios_syscall( __dios::_SC_start_thread, &ret, routine, arg, tls_size );
     return ret;
 }
 
-_DiOS_ThreadId __dios_get_thread_id() noexcept {
-    return __vm_control( _VM_CA_Get, _VM_CR_User2 );
+_DiOS_ThreadHandle __dios_get_thread_handle() noexcept {
+    return reinterpret_cast< _DiOS_ThreadHandle >
+        ( __vm_control( _VM_CA_Get, _VM_CR_User2 ) );
 }
 
 int *__dios_get_errno() noexcept {
-    return reinterpret_cast< int * >(
-                    reinterpret_cast< char * >( __dios_get_thread_id() )
-                    + _DiOS_TLS_ErrnoOffset );
+    return &( __dios_get_thread_handle()->_errno );
 }
 
-void __dios_kill_thread( _DiOS_ThreadId id ) noexcept {
+void __dios_kill_thread( _DiOS_ThreadHandle id ) noexcept {
     __dios_syscall( __dios::_SC_kill_thread, nullptr, id );
 }
 
@@ -31,9 +30,9 @@ void __dios_kill_process( _DiOS_ProcId id ) noexcept {
     __dios_syscall( __dios::_SC_kill_process, nullptr, id );
 }
 
-_DiOS_ThreadId *__dios_get_process_threads() noexcept {
-    _DiOS_ThreadId *ret;
-    auto tid = __dios_get_thread_id();
+_DiOS_ThreadHandle *__dios_get_process_threads() noexcept {
+    _DiOS_ThreadHandle *ret;
+    auto tid = __dios_get_thread_handle();
     __dios_syscall( __dios::_SC_get_process_threads, &ret, tid );
     return ret;
 }
@@ -45,13 +44,13 @@ void start_thread( __dios::Context& ctx, int *, void *retval, va_list vl ) {
     auto routine = va_arg( vl, r_type );
     auto arg = va_arg( vl, void * );
     auto tls = va_arg( vl, int );
-    auto ret = static_cast< __dios::ThreadId * >( retval );
+    auto ret = static_cast< __dios::ThreadHandle * >( retval );
 
     *ret = ctx.scheduler->startThread( routine, arg, tls );
 }
 
 void kill_thread( __dios::Context& ctx, int *, void *, va_list vl ) {
-    auto id = va_arg( vl, __dios::ThreadId );
+    auto id = va_arg( vl, __dios::ThreadHandle );
     ctx.scheduler->killThread( id );
 }
 
@@ -61,8 +60,8 @@ void kill_process( __dios::Context& ctx, int *, void *, va_list vl ) {
 }
 
 void get_process_threads( __dios::Context &ctx, int *, void *_ret, va_list vl ) {
-    auto *&ret = *reinterpret_cast< _DiOS_ThreadId ** >( _ret );
-    auto tid = va_arg( vl, _DiOS_ThreadId );
+    auto *&ret = *reinterpret_cast< _DiOS_ThreadHandle ** >( _ret );
+    auto tid = va_arg( vl, _DiOS_ThreadHandle );
     __dios::ProcId pid;
     for ( auto &t : ctx.scheduler->threads ) {
         if ( t->_tls == tid ) {
@@ -75,7 +74,7 @@ void get_process_threads( __dios::Context &ctx, int *, void *_ret, va_list vl ) 
         if ( t->_pid == pid )
             ++count;
     }
-    ret = static_cast< _DiOS_ThreadId * >( __vm_obj_make( sizeof( _DiOS_ThreadId ) * count ) );
+    ret = static_cast< _DiOS_ThreadHandle * >( __vm_obj_make( sizeof( _DiOS_ThreadHandle ) * count ) );
     int i = 0;
     for ( auto &t : ctx.scheduler->threads ) {
         if ( t->_pid == pid ) {
@@ -146,7 +145,7 @@ void Scheduler::traceThreads() const noexcept {
 void Scheduler::startMainThread( int argc, char** argv, char** envp,
     void* fMem ) noexcept
 {
-    Thread *t = threads.emplace( _start, _DiOS_TLS_Reserved, fMem );
+    Thread *t = threads.emplace( _start, 0, fMem );
     DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( t->_frame );
     frame->l = __md_get_pc_meta( reinterpret_cast< uintptr_t >( main ) )->arg_count;
 
@@ -155,7 +154,7 @@ void Scheduler::startMainThread( int argc, char** argv, char** envp,
     frame->envp = envp;
 }
 
-ThreadId Scheduler::startThread( void ( *routine )( void * ), void *arg, int tls_size,
+ThreadHandle Scheduler::startThread( void ( *routine )( void * ), void *arg, int tls_size,
     void* fMem ) noexcept
 {
     __dios_assert_v( routine, "Invalid thread routine" );
@@ -166,7 +165,7 @@ ThreadId Scheduler::startThread( void ( *routine )( void * ), void *arg, int tls
     return t->getId();
 }
 
-void Scheduler::killThread( ThreadId tid ) noexcept {
+void Scheduler::killThread( ThreadHandle tid ) noexcept {
     bool res = threads.remove( tid );
     __dios_assert_v( res, "Killing non-existing thread" );
 }

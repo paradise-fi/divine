@@ -23,7 +23,7 @@ void get_process_threads( __dios::Context &ctx, int *err, void *_ret, va_list vl
 
 namespace __dios {
 
-using ThreadId = _DiOS_ThreadId;
+using ThreadHandle = _DiOS_ThreadHandle;
 using ProcId = _DiOS_ProcId;
 
 struct DiosMainFrame : _VM_Frame {
@@ -113,8 +113,8 @@ private:
 
 struct Thread {
     _VM_Frame *_frame;
-    void *     _tls;
-    ProcId     _pid;
+    struct _DiOS_TLS *_tls;
+    ProcId _pid;
 
     template <class F>
     Thread( F routine, int tls_size, void *fMem = nullptr ) noexcept {
@@ -127,8 +127,9 @@ struct Thread {
         _frame->pc = fun->entry_point;
         _frame->parent = nullptr;
 
-        _tls = __vm_obj_make( std::max( tls_size,  int( _DiOS_TLS_Reserved ) ) );
-        std::memset( _tls, 0, _DiOS_TLS_Reserved );
+        _tls = reinterpret_cast< struct _DiOS_TLS * >
+            ( __vm_obj_make( sizeof( struct _DiOS_TLS ) + tls_size ) );
+        _tls->_errno = 0;
         _pid = nullptr; // ToDo: Add process support
     }
 
@@ -141,7 +142,7 @@ struct Thread {
     ~Thread() noexcept;
 
     bool active() const noexcept { return _frame; }
-    ThreadId getId() const noexcept { return _tls; }
+    ThreadHandle getId() const noexcept { return _tls; }
     uint32_t getUserId() const noexcept {
         auto tid = reinterpret_cast< uint64_t >( _tls ) >> 32;
         return static_cast< uint32_t >( tid );
@@ -158,8 +159,8 @@ struct Scheduler {
     void traceThreads() const noexcept;
 
     void startMainThread( int argc, char** argv, char** envp, void* fMem = nullptr ) noexcept;
-    ThreadId startThread( void ( *routine )( void * ), void *arg, int tls_size, void* fMem = nullptr ) noexcept;
-    void killThread( ThreadId t_id ) noexcept;
+    ThreadHandle startThread( void ( *routine )( void * ), void *arg, int tls_size, void* fMem = nullptr ) noexcept;
+    void killThread( ThreadHandle t_id ) noexcept;
     void killProcess( ProcId id ) noexcept;
 
     SortedStorage< Thread > threads;

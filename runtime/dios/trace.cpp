@@ -19,7 +19,7 @@ void __attribute__((always_inline)) traceInternalV( int indent, const char *fmt,
         buffer[ i ] = ' ';
 
     int n = 0;
-    auto tid = __dios_get_thread_id();
+    auto tid = __dios_get_thread_handle();
     bool kernel = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
     if ( !kernel ) {
