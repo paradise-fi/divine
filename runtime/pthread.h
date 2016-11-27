@@ -5,6 +5,7 @@
 
 #include <time.h>
 #include <sys/types.h>
+#include <dios.h>
 
 /* Macros */
 
@@ -73,7 +74,7 @@
 /* Data types */
 
 typedef int pthread_attr_t;
-typedef void *pthread_t;
+typedef struct _DiOS_TLS *pthread_t;
 
 struct _PThread;
 

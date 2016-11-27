@@ -143,11 +143,11 @@ struct _PthreadTLS {
     void *keys[0];
 
     void *raw() {
-        return reinterpret_cast< char * >( this ) - _DiOS_TLS_Reserved;
+        return reinterpret_cast< char * >( this ) - sizeof( _DiOS_TLS );
     }
 
     static int size( int cnt ) {
-        return _DiOS_TLS_Reserved + sizeof( _PThread * ) + cnt * sizeof( void * );
+        return sizeof( struct _DiOS_TLS ) + sizeof( _PThread * ) + cnt * sizeof( void * );
     }
 
     int keyCount() {
@@ -226,8 +226,8 @@ struct _PthreadTLS {
     TLSIter end() { return TLSIter( keyCount(), this ); }
 };
 
-static inline _PthreadTLS &tls( _DiOS_ThreadId tid ) {
-    return *reinterpret_cast< _PthreadTLS * >( static_cast< char * >( tid ) + _DiOS_TLS_Reserved );
+static inline _PthreadTLS &tls( _DiOS_ThreadHandle tid ) {
+    return *reinterpret_cast< _PthreadTLS * >( &( tid->data ) );
 }
 
 static inline _PThread &getThread( pthread_t tid ) {
@@ -235,13 +235,13 @@ static inline _PThread &getThread( pthread_t tid ) {
 }
 
 static inline _PThread &getThread() {
-    return getThread( __dios_get_thread_id() );
+    return getThread( __dios_get_thread_handle() );
 }
 
 template< typename Yield >
 static void iterateThreads( Yield yield ) {
     auto *threads = __dios_get_process_threads();
-    int cnt = __vm_obj_size( threads ) / sizeof( _DiOS_ThreadId );
+    int cnt = __vm_obj_size( threads ) / sizeof( _DiOS_ThreadHandle );
     for ( int i = 0; i < cnt; ++i )
         yield( threads[ i ] );
 }
@@ -252,7 +252,7 @@ int pthread_atfork( void ( * )( void ), void ( * )( void ), void ( * )( void ) )
     return 0;
 }
 
-static void __init_thread( const _DiOS_ThreadId gtid, const pthread_attr_t attr ) {
+static void __init_thread( const _DiOS_ThreadHandle gtid, const pthread_attr_t attr ) {
     __dios_assert( gtid );
 
     if ( __vm_obj_size( gtid ) < _PthreadTLS::size( 0 ) )
@@ -274,7 +274,7 @@ static void __init_thread( const _DiOS_ThreadId gtid, const pthread_attr_t attr 
 void __pthread_initialize() {
     // initialize implicitly created main thread
     tlsDestructors.init();
-    __init_thread( __dios_get_thread_id(), PTHREAD_CREATE_DETACHED );
+    __init_thread( __dios_get_thread_handle(), PTHREAD_CREATE_DETACHED );
     getThread().is_main = true;
 }
 
@@ -294,10 +294,10 @@ void _run_cleanup_handlers() {
     }
 }
 
-static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadId tid );
+static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadHandle tid );
 
 void _cancel( __dios::FencedInterruptMask &mask ) {
-    _DiOS_ThreadId tid = __dios_get_thread_id();
+    _DiOS_ThreadHandle tid = __dios_get_thread_handle();
     _PThread &thread = getThread( tid );
     thread.sleeping = NotSleeping;
 
@@ -334,7 +334,7 @@ static void wait( __dios::FencedInterruptMask &mask, Cond &&cond )
     return _wait< false >( mask, std::forward< Cond >( cond ) );
 }
 
-static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadId tid ) {
+static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadHandle tid ) {
     _PThread &thread = getThread( tid );
     // An  optional  destructor  function may be associated with each key
     // value.  At thread exit, if a key value has a non-NULL destructor
@@ -388,7 +388,7 @@ extern "C" void __pthread_entry( void *_args ) {
     __dios::FencedInterruptMask mask;
 
     Entry *args = static_cast< Entry * >( _args );
-    auto tid = __dios_get_thread_id();
+    auto tid = __dios_get_thread_handle();
     _PThread &thread = getThread( tid );
 
     // copy arguments
@@ -430,7 +430,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
 int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **result ) {
     _PThread &thread = getThread( gtid );
 
-    if ( gtid == __dios_get_thread_id() )
+    if ( gtid == __dios_get_thread_handle() )
         return EDEADLK;
 
     if ( thread.detached )
@@ -460,12 +460,12 @@ int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **res
 void pthread_exit( void *result ) {
     __dios::FencedInterruptMask mask;
 
-    auto gtid = __dios_get_thread_id();
+    auto gtid = __dios_get_thread_handle();
     _PThread &thread = getThread( gtid );
     thread.result = result;
 
     if ( thread.is_main )
-        iterateThreads( [&]( _DiOS_ThreadId tid ) {
+        iterateThreads( [&]( _DiOS_ThreadHandle tid ) {
                 _pthread_join( mask, tid, nullptr ); // joining self is detected and ignored
             } );
 
@@ -621,7 +621,7 @@ int pthread_attr_setstacksize( pthread_attr_t *, size_t ) {
 /* Thread ID */
 pthread_t pthread_self( void ) {
     __dios::FencedInterruptMask mask;
-    return __dios_get_thread_id();
+    return __dios_get_thread_handle();
 }
 
 int pthread_equal( pthread_t t1, pthread_t t2 ) {
@@ -710,7 +710,7 @@ bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) {
 
 int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) {
 
-    _DiOS_ThreadId gtid = __dios_get_thread_id();
+    _DiOS_ThreadHandle gtid = __dios_get_thread_handle();
     _PThread &thr = getThread( gtid );
 
     if ( mutex == NULL || !mutex->__initialized ) {
@@ -979,7 +979,7 @@ int pthread_key_delete( pthread_key_t key ) {
     if ( key >= tlsDestructors.count() )
         return EINVAL;
 
-    iterateThreads( [&]( _DiOS_ThreadId tid ) {
+    iterateThreads( [&]( _DiOS_ThreadHandle tid ) {
             tls( tid ).setKey( key, nullptr );
             tls( tid ).shrink();
         } );
@@ -991,13 +991,13 @@ int pthread_key_delete( pthread_key_t key ) {
 int pthread_setspecific( pthread_key_t key, const void *data ) {
     __dios::FencedInterruptMask mask;
 
-    tls( __dios_get_thread_id() ).setKey( key, data );
+    tls( __dios_get_thread_handle() ).setKey( key, data );
     return 0;
 }
 
 void *pthread_getspecific( pthread_key_t key ) {
     __dios::FencedInterruptMask mask;
-    return tls( __dios_get_thread_id() ).getKey( key );
+    return tls( __dios_get_thread_handle() ).getKey( key );
 }
 
 /* Conditional variables */
