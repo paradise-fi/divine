@@ -8,6 +8,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/divine/debugpaths.hpp>
 #include <brick-string>
 #include <brick-fs>
+#include <brick-llvm>
 #include <iostream>
 
 using namespace divine;
@@ -39,9 +40,7 @@ int main( int argc, const char **argv )
                 return p;
             } );
 
-        std::error_code err;
-        llvm::raw_fd_ostream outs( argv[4], err, llvm::sys::fs::F_None );
-        llvm::WriteBitcodeToFile( mod.get(), outs );
+        brick::llvm::writeModule( mod.get(), argv[4] );
         return 0;
     } catch ( cc::CompileError &err ) {
         std::cerr << err.what() << std::endl;
