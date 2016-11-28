@@ -49,6 +49,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <brick-assert>
 #include <brick-types>
+#include <brick-fs>
 
 #include <vector>
 #include <string>
@@ -577,6 +578,7 @@ struct CompileUnitInfo {
 
 inline void writeModule( ::llvm::Module *m, std::string out ) {
     std::error_code serr;
+    brick::fs::mkFilePath( out );
     ::llvm::raw_fd_ostream fs( out.c_str(), serr, ::llvm::sys::fs::F_None );
     ::llvm::verifyModule( *m );
     WriteBitcodeToFile( m, fs );
