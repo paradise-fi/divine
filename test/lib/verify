@@ -10,6 +10,11 @@ echo "$1" | grep -q '.cpp$' && optStd="-std=c++14"
 opts=$(eval echo $optStd $(getopt VERIFY_OPTS $1))
 args=$(eval echo $(getopt PROGRAM_OPTS $1))
 divine verify --threads 1 --max-backtrace-depth 65536 $opts "$1" $args | tee verify.out
+choices=$(grep "choices made:" verify.out | cut -d' ' -f3- || true)
+if [ -n "$choices" ]; then
+    printf "trace $choices\nstepa --count 1000\nbacktrace" | \
+        divine sim $opts "$1" $args | tee sim.out
+fi
 check verify "$1"
 
 # vim: syntax=sh
