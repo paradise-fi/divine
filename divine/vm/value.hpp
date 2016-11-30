@@ -140,7 +140,14 @@ struct Int : Base
             _cooked = i._cooked ? -1 : 0;
     }
 
-    template< typename T > Int( Float< T > ) { NOT_IMPLEMENTED(); }
+    template< typename T > Int( Float< T > f ) :
+        _cooked( f.cooked() ), _m( f.defined() ? full< Raw >() : 0 ), _ispointer( false )
+    {
+        using FC = typename Float< T >::Cooked;
+        if ( f.cooked() > FC( std::numeric_limits< Cooked >::max() )
+            || f.cooked() < FC( std::numeric_limits< Cooked >::min() ) )
+            _m = 0;
+    }
 
     Int operator|( Int o ) { return bitwise( _raw | o._raw, (_m &  _raw) | (o._m &  o._raw), o ); }
     Int operator&( Int o ) { return bitwise( _raw & o._raw, (_m & ~_raw) | (o._m & ~o._raw), o ); }
