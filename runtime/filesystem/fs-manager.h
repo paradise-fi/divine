@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <utility>
 #include <array>
+#include <divine/stat.h>
 
 #include "fs-utils.h"
 #include "fs-inode.h"
@@ -54,6 +55,7 @@ struct Manager {
     void setErrFile(FileTrace trace);
 
     Node findDirectoryItem( __dios::String name, bool followSymLinks = true );
+    void initializeFromSnapshot(const _VM_Env *env);
 
     void createHardLinkAt( int newdirfd, __dios::String name, int olddirfd, const __dios::String &target, Flags< flags::At > fl );
     void createSymLinkAt( int dirfd, __dios::String name, __dios::String target );

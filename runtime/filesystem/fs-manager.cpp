@@ -714,6 +714,45 @@ void Manager::_insertSnapshotItem( const SnapshotFS &item ) {
     }
 }
 
+void Manager::initializeFromSnapshot( const _VM_Env *env ) {
+    __dios::Map<uint64_t,__dios::String> inodeMap;
+
+    for ( ; env->key; env++ ) {
+        __dios::String key( env->key );
+
+        if ( key.find( ".name" ) != std::string::npos )
+        {
+            char name[env->size + 1];
+            std::copy( env->value, env->value + env->size, name );
+            name[env->size] = 0;
+
+            ++env; //stat
+            const _DivineStat* statInfo( reinterpret_cast<const _DivineStat*>( env->value ) );
+
+            auto inMap = inodeMap.find( statInfo->st_ino );
+            if ( inMap != inodeMap.end( ) ) {
+                // detect hard links
+                createHardLinkAt( CURRENT_DIRECTORY, name, CURRENT_DIRECTORY, inMap->second.c_str( ), flags::At::NoFlags );
+                continue;
+            }
+            inodeMap.insert( std::pair<uint64_t, __dios::String>( statInfo->st_ino, __dios::String( name ) ) );
+
+            ++env; //value
+            Mode mode( statInfo->st_mode );
+            if( mode.isFile( ) ) {
+                createNodeAt( CURRENT_DIRECTORY, name, statInfo->st_mode, env->value, env->size );
+            } else if( mode.isDirectory( ) ) {
+                createNodeAt( CURRENT_DIRECTORY, name, statInfo->st_mode );
+            } else if( mode.isLink( ) ) {
+                char value[env->size + 1];
+                std::copy( env->value, env->value + env->size, value );
+                value[env->size] = 0;
+                createSymLinkAt( CURRENT_DIRECTORY, name, value );
+            }
+        }
+     }      
+}
+
 void Manager::_checkGrants( Node inode, mode_t grant ) const {
     if ( ( inode->mode() & grant ) != grant )
         throw Error( EACCES );

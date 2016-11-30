@@ -227,6 +227,7 @@ void init( const _VM_Env *env )
 
      context->vfs->instance( ).setOutputFile(getFileTraceConfig(sysOpts, "stdout" ));
      context->vfs->instance( ).setErrFile(getFileTraceConfig(sysOpts, "stderr" ));
+     context->vfs->instance( ).initializeFromSnapshot( env );
 
     if ( !context->fault->load_user_pref( sysOpts ) ) {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
