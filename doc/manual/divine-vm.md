@@ -107,7 +107,7 @@ Scheduling
 
 The DIVINE VM has no intrinsic concept of threads or processes. Instead, it
 relies on an "operating system" to implement such abstractions and the VM
-itself only provides the minimum support neccessary. Unlike with "real"
+itself only provides the minimum support necessary. Unlike with "real"
 computers, a system required to operate DiVM can be extremely simple,
 consisting of just 2 C functions (one of them is `__boot`, see [Boot Sequence]
 below). The latter of those is the scheduler, the responsibility of which is to
@@ -163,9 +163,9 @@ by the VM. The fault types that can arise are the following (enumerated in
     errors (out-of-bounds loads or writes, double free, attempts to dereference
     undefined pointers)
   * `_VM_F_Control` is raised on control flow errors -- undefined conditional
-    jumps, indirect calls a null function, wrong number of arguments in a
-    `call` instruction, `select` or `switch` on an undefined value or attempt
-    to execute the `unreachable` LLVM instruction
+    jumps, invalid call of a null or invalid function pointer, wrong number of
+    arguments in a `call` instruction, `select` or `switch` on an undefined
+    value or attempt to execute the `unreachable` LLVM instruction
   * `_VM_F_Hypercall` is raised when an invalid hypercall is attempted (wrong
     number or type of parameters, undefined parameter values)
 
@@ -180,7 +180,7 @@ program, or raise the `_VM_CF_Error` flag, or take other appropriate actions.
 
 The handler can also choose to continue with execution despite the fault, by
 transferring control to the activation frame and program counter value that are
-provided by the VM for this purpose. (Note: this is neccessarry, because the
+provided by the VM for this purpose. (Note: this is necessary, because the
 fault might occur in the middle of evaluating a control flow instruction, in
 which case, the VM could not finish its evaluation. The continuation passed to
 the fault handler is the best estimate by the VM on where the execution should

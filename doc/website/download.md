@@ -20,7 +20,7 @@ installation, [detailed installation instructions] [4] are available in our
 
 Alternatively, you can also download [older versions] [2]. Please note,
 however, that DiVinE Cluster, DiVinE Multi-Core and ProbDiVinE have been
-discontinued and the 3.x branch of DIVINE is no longer activaly maintained.
+discontinued and the 3.x branch of DIVINE is no longer actively maintained.
 
 Virtual Machine Images
 ----------------------
