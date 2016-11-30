@@ -130,7 +130,7 @@ struct Abstraction : lart::Pass {
                 preprocessFunction( userFunction );
                 processFunction( userFunction, inst );
             }
-            functionsToRemove.push_back( f );
+            functionsToRemove.insert( f );
         }
     }
 
@@ -464,7 +464,7 @@ struct Abstraction : lart::Pass {
                             } );
 
                 if ( changeReturn && stored->getReturnType() != at ) {
-                    functionsToRemove.push_back( stored );
+                    functionsToRemove.insert( stored );
                     stored = changeReturnValue( stored, at );
                 }
 
@@ -703,12 +703,8 @@ private:
     lart::util::Store< std::map < F *, std::string > > toAnnotate;
 
     // changed functions
-    std::vector< F * > functionsToRemove;
-
-    static llvm::StringRef _abstractName;
+    std::set< F * > functionsToRemove;
 };
-
-llvm::StringRef Abstraction::_abstractName = "__VERIFIER_nondet_";
 
 struct Substitution : lart::Pass {
     Substitution( std::string type ) {
