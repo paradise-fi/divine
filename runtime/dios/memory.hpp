@@ -10,6 +10,12 @@
 #ifndef _DIOS_MEMORY_H_
 #define _DIOS_MEMORY_H_
 
+#if __cplusplus >= 201103L
+#define NOTHROW noexcept
+#else
+#define NOTHROW throw()
+#endif
+
 namespace __dios {
 
 struct AllocatorBase {
@@ -118,7 +124,7 @@ extern nofail_t nofail;
 
 } // namespace __dios
 
-void *operator new( std::size_t count, const __dios::nofail_t & ) noexcept;
-void *operator new[]( std::size_t count, const __dios::nofail_t & ) noexcept;
+void *operator new( std::size_t count, const __dios::nofail_t & ) NOTHROW;
+void *operator new[]( std::size_t count, const __dios::nofail_t & ) NOTHROW;
 
 #endif // _DIOS_MEMORY_H_
