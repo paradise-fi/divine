@@ -460,6 +460,17 @@ struct Abstraction : lart::Pass {
                     if ( arg.getType() == at )
                         propagateValue( &arg );
 
+                //compute whether some alloca is used by some lift
+                auto allocas = query::query( *stored ).flatten()
+                    .map( query::refToPtr )
+                    .map( query::llvmdyncast< llvm::AllocaInst > )
+                    .filter( query::notnull )
+                    .freeze();
+
+                for ( auto & a : allocas )
+                    if ( isLifted( a ) )
+                        propagateValue( a );
+
                 //FIXME refactor with processFunction
                 bool changeReturn = query::query( *stored ).flatten()
                             .map( query::refToPtr )
