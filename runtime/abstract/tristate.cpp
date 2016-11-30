@@ -12,22 +12,22 @@
 
 namespace abstract {
 
-inline Tristate * __abstract_tristate_construct( Tristate::Domain value ) {
+Tristate * __abstract_tristate_construct( Tristate::Domain value ) {
     auto obj = allocate< Tristate >();
     obj->value = value;
     return obj;
 }
 
-inline Tristate * __abstract_tristate_construct() {
+Tristate * __abstract_tristate_construct() {
     return __abstract_tristate_construct( Tristate::Domain::Unknown );
 }
 
-inline Tristate * __abstract_tristate_construct( bool b ) {
+Tristate * __abstract_tristate_construct( bool b ) {
     auto value =  b ? Tristate::Domain::True : Tristate::Domain::False;
     return __abstract_tristate_construct( value );
 }
 
-inline Tristate * __abstract_tristate_negate( Tristate * t ) {
+Tristate * __abstract_tristate_negate( Tristate * t ) {
     if ( t->value == Tristate::Domain::True )
         t->value = Tristate::Domain::False;
     else if ( t->value == Tristate::Domain::False )
@@ -36,7 +36,7 @@ inline Tristate * __abstract_tristate_negate( Tristate * t ) {
     return t;
 }
 
-inline Tristate * __abstract_tristate_and( Tristate * a, Tristate * b ) {
+Tristate * __abstract_tristate_and( Tristate * a, Tristate * b ) {
     if ( a->value == Tristate::Domain::Unknown )
         return a;
     if ( b->value == Tristate::Domain::Unknown )
@@ -48,7 +48,7 @@ inline Tristate * __abstract_tristate_and( Tristate * a, Tristate * b ) {
     return a;
 }
 
-inline Tristate * __abstract_tristate_or( Tristate * a, Tristate * b ) {
+Tristate * __abstract_tristate_or( Tristate * a, Tristate * b ) {
     if ( a->value == Tristate::Domain::True )
         return a;
     if ( b->value == Tristate::Domain::True )
