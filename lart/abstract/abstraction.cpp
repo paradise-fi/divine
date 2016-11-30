@@ -125,24 +125,38 @@ struct Abstraction : lart::Pass {
         if ( changeReturn ) {
             std::vector< llvm::User * > users = { f->user_begin(), f->user_end() } ;
             for ( auto user : users ) {
-                auto inst = llvm::cast< I >( user );
-                auto userFunction = inst->getParent()->getParent();
-                preprocessFunction( userFunction );
-                processFunction( userFunction, inst );
+                if( auto inst = llvm::dyn_cast< I >( user ) ) {
+                    auto userFunction = inst->getParent()->getParent();
+                    preprocessFunction( userFunction );
+                    processFunction( userFunction, inst );
+                }
             }
             functionsToRemove.insert( f );
         }
     }
 
     void propagateValue( V * v ) {
+        std::set< I * > unusedLifts;
         auto deps = analysis::postorder< V * >( v );
         for ( auto dep : lart::util::reverse( deps ) )
-            if ( auto inst = llvm::dyn_cast< I >( dep ) )
+            if ( auto inst = llvm::dyn_cast< I >( dep ) ) {
                 process( inst );
+                if ( value_store.contains( inst ) ) {
+                    auto lifts = liftsOf( inst );
+                    for ( auto & lift : lifts ) {
+                        lift->replaceAllUsesWith( value_store[ inst ] );
+                        unusedLifts.insert( lift );
+                    }
+                }
+            }
         // obscure removing because of cyclic dependencies in phinodes
         for ( auto dep : deps )
-        	if ( auto inst = llvm::dyn_cast< I >( dep ) )
+        	if ( auto inst = llvm::dyn_cast< I >( dep ) ) {
                 inst->removeFromParent();
+                auto find = unusedLifts.find( inst );
+                if ( find != unusedLifts.end() )
+                    unusedLifts.erase( find );
+            }
         for ( auto dep : deps )
             if ( auto inst = llvm::dyn_cast< I >( dep ) )
                 inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
@@ -153,9 +167,13 @@ struct Abstraction : lart::Pass {
                     value_store.erase( val );
                 delete inst;
             }
+        for ( auto & lift : unusedLifts )
+            lift->eraseFromParent();
     }
 
     void process( I * inst ) {
+        if ( ignore( inst ) ) return;
+
         llvmcase( inst,
      		[&]( llvm::AllocaInst * i ) {
                 doAlloca( i );
@@ -195,24 +213,12 @@ struct Abstraction : lart::Pass {
                 inst->dump();
                 std::exit( EXIT_FAILURE );
 			} );
-
-        if ( value_store.contains( inst ) ) {
-            replaceLifts( inst );
-        }
     }
 
-    void replaceLifts( llvm::Instruction * inst ) {
-        auto lifts = query::query( inst->users() )
-                    .map( query::llvmdyncast< llvm::CallInst > )
-                    .filter( query::notnull )
-                    .filter( [&]( llvm::CallInst * call ) {
-                        return isLift( call );
-                    } ).freeze();
-        for ( auto & lift : lifts ) {
-            lift->replaceAllUsesWith( value_store[ inst ] );
-            lift->eraseFromParent();
-        }
-
+    bool ignore( llvm::Instruction * inst ) {
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) )
+            return isLift( call );
+        return false;
     }
 
     llvm::CallInst * createNamedCall( I * inst, T * rty, const std::string &tag,
@@ -522,7 +528,9 @@ struct Abstraction : lart::Pass {
 
         llvm::IRBuilder<> irb( to );
         auto fty = llvm::FunctionType::get( at, { v->getType() }, false );
-        auto tag = "lart.abstract.lift." + getTypeName( v->getType() );
+        auto tag = v->getType()->isIntegerTy( 1 )
+                 ? "lart.tristate.lift"
+                 : "lart.abstract.lift." + getTypeName( v->getType() );
         auto ncall = to->getModule()->getOrInsertFunction( tag, fty );
         auto sub = irb.CreateCall( ncall, v );
         //value_store.insert( { v, sub } ); //FIXME minimeze number of lifts
@@ -591,12 +599,25 @@ struct Abstraction : lart::Pass {
         }
     }
 
-    T * bool_t( llvm::LLVMContext &ctx ) {
-        return llvm::IntegerType::getInt1Ty( ctx );
+    auto liftsOf( llvm::Instruction * inst ) ->  std::vector< llvm::CallInst * > {
+        return query::query( inst->users() )
+                     .map( query::llvmdyncast< llvm::CallInst > )
+                     .filter( query::notnull )
+                     .filter( [&]( llvm::CallInst * call ) {
+                         return isLift( call );
+                     } ).freeze();
     }
 
     bool isLift( llvm::CallInst * call ) {
         return call->getCalledFunction()->getName().startswith( "lart.abstract.lift" );
+    }
+
+    bool isLifted( llvm::Value * val ) {
+        auto deps = analysis::postorder< llvm::Value * >( val );
+        for ( auto & dep : deps )
+            if ( auto call = llvm::dyn_cast< llvm::CallInst >( dep ) )
+                if ( isLift( call ) ) return true;
+        return false;
     }
 
     bool isLower( llvm::CallInst * call ) {
@@ -915,7 +936,8 @@ struct Substitution : lart::Pass {
             },
 			[&]( llvm::CallInst * call ) {
                 auto name =  call->getCalledFunction()->getName();
-                if ( name.startswith( "lart.abstract.lift" ) )
+                if ( name.startswith( "lart.abstract.lift" ) ||
+                     name.startswith( "lart.tristate.lift" ) )
                     handleLiftCall( m, call );
                 else if ( name.startswith( "lart" ) )
                     handleAbstractCall( m, call );
@@ -1109,6 +1131,10 @@ struct Substitution : lart::Pass {
             return "__abstract_tristate_" + nameParts[ 2 ].str() + suffix;
         if ( nameParts[ 2 ].startswith( "icmp" ) )
             return abstractionName + "icmp_" + nameParts[ 3 ].str() + suffix;
+        if ( nameParts[ 2 ].startswith( "lift" ) )
+            return abstractionName + nameParts[ 2 ].str() + suffix + "_" + nameParts[ 3 ].str();
+        if ( nameParts[ 2 ].startswith( "lower" ) )
+            return abstractionName + nameParts[ 2 ].str() + suffix + "_" + nameParts[ 3 ].str();
         else
             return abstractionName + nameParts[ 2 ].str() + suffix;
     }
