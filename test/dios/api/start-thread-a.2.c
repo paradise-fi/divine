@@ -4,13 +4,13 @@
 
 volatile int start;
 
-void *getTls( _DiOS_ThreadId id ) {
-    return ( char * ) id + _DiOS_TLS_Reserved;
+void *getTls( _DiOS_ThreadHandle id ) {
+    return &id->data;
 }
 
 void routine( void * x ){
     while( !start );
-    int *tls = getTls( __dios_get_thread_id() );
+    int *tls = getTls( __dios_get_thread_handle() );
     *tls = 42;
 }
 

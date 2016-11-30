@@ -1,5 +1,5 @@
-using __dios::dset;
-using __dios::dstring;
+using __dios::Set;
+using __dios::String;
 
 struct Context { const char *msg; };
 
@@ -28,14 +28,14 @@ bool isVfs( const char* name ) {
            memcmp( ".name", name + l - 5, 5 ) == 0;
 }
 
-std::pair< dset< dstring >, bool > collectVfsNames( const _VM_Env *env ) {
-    dset< dstring > ret;
+std::pair< Set< String >, bool > collectVfsNames( const _VM_Env *env ) {
+    Set< String > ret;
     bool unique = true;
     for (; env->key; env++ ) {
         if ( !isVfs( env->key ) )
             continue;
 
-        dstring f( env->value, env->value + env->size );
+        String f( env->value, env->value + env->size );
         __dios_trace_f( "C: %s", f.c_str() );
         auto r = ret.insert( f );
         if ( !r.second )

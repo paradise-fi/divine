@@ -9,7 +9,7 @@
 #include "vfs-capture-assert.h"
 
 extern "C" void __boot( const _VM_Env *env ) {
-    dset< dstring > expected({ "/t", "/t/symlinkB", "/t/a", "/t/b", "/t/c",
+    __dios::Set< __dios::String > expected({ "/t", "/t/symlinkB", "/t/a", "/t/b", "/t/c",
         "/t/printing.cpp" });
 
     auto context = __dios::new_object< Context >();
