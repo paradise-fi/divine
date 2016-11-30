@@ -1,7 +1,6 @@
-DiOS, DIVINE's Operating System
-===============================
+# DiOS, DIVINE's Operating System
 
-Programs traditionaly rely on a wide array of services provided by their
+Programs traditionally rely on a wide array of services provided by their
 runtime environment (that is, a combination of libraries, the operating system
 kernel, the hardware architecture and its peripherals and so on). When DIVINE
 executes a program, it needs to provide these services to the program. Some of
