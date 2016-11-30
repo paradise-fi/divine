@@ -50,10 +50,11 @@ struct Abstraction : lart::Pass {
 
 	llvm::PreservedAnalyses run( llvm::Module &m ) override {
         //init tristate
-        auto bt = bool_t( m.getContext() );
-        auto tristate = lart::abstract::Tristate::get( bt );
+        auto & ctx = m.getContext();
 
-        type_store.insert( { bt, tristate } );
+        auto tristate = Tristate::get( ctx );
+
+        type_store.insert( { llvm::IntegerType::getInt1Ty( ctx ), tristate } );
         abstract_types.insert( tristate );
 
         auto annotations = getAbstractAnnotations( m );
@@ -264,13 +265,12 @@ struct Abstraction : lart::Pass {
 	    auto args = getBinaryArgs( i );
         auto argT = i->getOperand( 0 )->getType();
         std::string lowerType = isAbstractType( argT )
-                              ? lowerTypeName( argT )
+                              ? typeQualifier( argT )
                               : getTypeName( argT );
         auto tag = "lart.abstract.icmp."
                  + predicate.at( i->getPredicate() )
                  + "." + lowerType;
-        auto bt = bool_t( i->getContext() );
-		return createAnonymousCall( i, type_store[ bt ], tag, args );
+		return createAnonymousCall( i, Tristate::get( i->getContext() ), tag, args );
     }
 
     llvm::Instruction * doSelect( llvm::SelectInst * i ) {
@@ -513,7 +513,8 @@ struct Abstraction : lart::Pass {
     llvm::CallInst * lower( I * i, V * v ) {
         auto cond = value_store[ v ];
         auto tag = "lart.tristate.lower";
-        return createCall( i, bool_t( i->getContext() ), tag, { cond } );
+        auto ret = llvm::IntegerType::getInt1Ty( i->getContext() );
+        return createCall( i, ret, tag, { cond } );
     }
 
     I * lift( V * v, I * to ) {
@@ -582,7 +583,7 @@ struct Abstraction : lart::Pass {
         T * type = t->isPointerTy() ? t->getPointerElementType() : t;
 
         if ( !type_store.contains( type ) ) {
-            auto at = lart::abstract::Type::get( type );
+            auto at = IntegerType::get( type );
             type_store.insert( { type, at } );
             type_store.insert( { ptr, at->getPointerTo() } );
             abstract_types.insert( at );
@@ -756,6 +757,9 @@ struct Substitution : lart::Pass {
         for ( const auto &a : abstract ) {
             auto inst = llvm::dyn_cast< llvm::Instruction >( a );
             assert( inst != nullptr );
+
+            abstractedTypes.insert( inst->getType() );
+
             llvm::Function * fn = inst->getParent()->getParent();
             if ( function_store.contains( fn ) )
                 continue;
@@ -870,7 +874,7 @@ struct Substitution : lart::Pass {
         auto order = analysis::callPostorder< llvm::Function * >( m, unordered );
 
         for ( auto & fn : order ) {
-            std::vector < T * > arg_types;
+            std::vector < llvm::Type * > arg_types;
             for ( auto &a : fn->args() ) {
                 auto t = isAbstractType( a.getType() ) ? abstractionType : a.getType();
                 arg_types.push_back( t );
@@ -939,6 +943,8 @@ struct Substitution : lart::Pass {
         llvm::IRBuilder<> irb( call );
         auto ncall = irb.CreateCall( fn, { call->getArgOperand( 0 ) } );
         store( call, ncall );
+
+        abstractedTypes.insert( ncall->getType() );
     }
 
     void handleAbstractCall( llvm::Module & m, llvm::CallInst * call ) {
@@ -1028,7 +1034,7 @@ struct Substitution : lart::Pass {
             if ( abstraction_store.contains( val ) )
                 incoming.push_back( { abstraction_store[ val ], parent } );
             else {
-                if ( val->getType() == abstractionType )
+                if ( isAbstractedType( val->getType() ) )
                     incoming.push_back( { val, parent } );
             }
         }
@@ -1121,7 +1127,11 @@ struct Substitution : lart::Pass {
                       .freeze();
     }
 
-    static bool isAbstractType( llvm::Type * t ) {
+    bool isAbstractedType( llvm::Type * type ) {
+        return abstractedTypes.find( type ) != abstractedTypes.end();
+    }
+
+    bool isAbstractType( llvm::Type * t ) {
         auto typeName = lart::abstract::getTypeName( t );
         std::string prefix = "%lart";
         return !typeName.compare( 0, prefix.size(), prefix );
@@ -1141,6 +1151,8 @@ private:
     AbstractStore < llvm::Function * > function_store;
 
     std::set< llvm::Instruction * > abstractedValues;
+
+    std::set < llvm::Type * > abstractedTypes;
 
     std::string abstractionName;
     llvm::Type * abstractionType;

@@ -2,6 +2,7 @@
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Type.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/lib/IR/LLVMContextImpl.h>
 #include <llvm/IR/TypeBuilder.h>
 
 #include <llvm/Support/raw_ostream.h>
@@ -16,27 +17,55 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-using T = llvm::Type;
+namespace {
 
-auto str( T *type ) -> std::string {
+std::string str( llvm::Type * type ) {
     std::string type_str;
     llvm::raw_string_ostream rso( type_str );
     type->print( rso );
     return rso.str();
 }
 
+}
+
 struct Base {
     static const std::string name() { return "lart"; }
 };
 
-struct Type : Base {
-    static std::string name( T *type ) {
-        return Base::name() + ".abstract." + str( type );
+struct IntegerType : Base {
+    static std::string name( llvm::Type * type ) {
+        assert( type->isIntegerTy() );
+        return IntegerType::name( llvm::cast< llvm::IntegerType >( type )->getBitWidth() );
     }
 
-    static llvm::StructType * get( T *type ) {
-        return llvm::StructType::create( llvm::IntegerType::get( type->getContext(), 8 ),
-                                         Type::name( type ) );
+    static std::string name( unsigned bw ) {
+        return Base::name() + ".abstract." + std::to_string( bw );
+    }
+
+    static llvm::StructType * get( llvm::Type * type ) {
+        assert( type->isIntegerTy() );
+        auto ity = llvm::cast< llvm::IntegerType >( type );
+        return IntegerType::get(  ity->getContext(), ity->getBitWidth() );
+    }
+
+    static llvm::StructType * get( llvm::LLVMContext & ctx, unsigned bw ) {
+        if( auto lookup = ctx.pImpl->NamedStructTypes.lookup( name( bw ) ) )
+            return lookup;
+        return llvm::StructType::create( ctx, IntegerType::name( bw ) );
+    }
+
+    static unsigned bw( llvm::StructType * type ) {
+        assert( type->getElementType( 0 )->isIntegerTy() );
+        return llvm::cast< llvm::IntegerType >( type->getElementType( 0 ) )->getBitWidth();
+    }
+
+    static bool isa( llvm::Type * type ) {
+        if ( ! type->isStructTy() )
+            return false;
+        auto sty = llvm::cast< llvm::StructType >( type );
+        if ( ! sty->getElementType( 0 )->isIntegerTy() )
+            return false;
+        return IntegerType::get( type->getContext(), IntegerType::bw( sty ) ) == type;
     }
 };
 
@@ -45,21 +74,41 @@ struct Tristate : Base {
         return Base::name() + ".tristate";
     }
 
-    static llvm::StructType * get( T *type ) {
-        return llvm::StructType::create( llvm::IntegerType::get( type->getContext(), 8 ),
-                                         Tristate::name() );
+    static llvm::StructType * get( llvm::LLVMContext & ctx ) {
+        if( auto lookup = ctx.pImpl->NamedStructTypes.lookup( name() ) )
+            return lookup;
+        return llvm::StructType::create( { body( ctx ) }, Tristate::name() );
+    }
+
+    static bool isa( llvm::Type * type ) {
+        return Tristate::get( type->getContext() ) == type;
+    }
+
+    static llvm::Constant * True() {
+        auto & ctx = llvm::getGlobalContext();
+        return llvm::ConstantStruct::get( get( ctx ), { llvm::ConstantInt::getTrue( ctx ) } );
+    }
+
+    static llvm::Constant * False() {
+        auto & ctx = llvm::getGlobalContext();
+        return llvm::ConstantStruct::get( get( ctx ), { llvm::ConstantInt::getFalse( ctx ) } );
+    }
+
+private:
+    static llvm::IntegerType * body( llvm::LLVMContext & ctx ) {
+        return llvm::IntegerType::get( ctx, 1 );
     }
 
 };
 
-std::string getTypeName( llvm::Type * type ) {
+static std::string getTypeName( llvm::Type * type ) {
     std::string buffer;
     llvm::raw_string_ostream rso( buffer );
     type->print( rso );
     return rso.str();
 }
 
-std::vector< std::string > parseTypeName( llvm::Type * type ) {
+static std::vector< std::string > parseTypeName( llvm::Type * type ) {
     std::stringstream ss;
     auto structT = llvm::cast< llvm::StructType >( type );
     ss.str( structT->getName().str() );
@@ -70,7 +119,7 @@ std::vector< std::string > parseTypeName( llvm::Type * type ) {
     return parts;
 }
 
-std::string lowerTypeName( llvm::Type * type ) {
+static std::string typeQualifier( llvm::Type * type ) {
     auto parts = parseTypeName( type );
     assert( parts.size() >= 3 );
     return parts[ 2 ];
