@@ -1,4 +1,4 @@
-DiVinE (2003-2013), by members of the ParaDiSe Laboratory:
+DIVINE (2003-2016), by members of the ParaDiSe Laboratory:
 
 Jiří Barnat
 Nikola Beneš
@@ -6,30 +6,21 @@ Vojtěch Havel
 Jan Havlíček
 Jan Kriho
 Milan Lenčo
-Martin Moráček
 Petr Ročkai
 Vladimír Štill
 Jiří Weiser
 
 Former contributors whose code is no longer present:
+
 Jiří Appl
 Jakub Chaloupka
 Tomáš Janoušek
-Pavel Moravec
 Jitka Kudrnáčová
+Pavel Moravec
+Martin Moráček
 Roman Plášil
 Pavel Šimeček
 Michael Weber
 
-Third party code included in divine source distribution:
-
-HOARD (1998-2007) by Emery Berger <emery@cs.umass.edu>.
-LPSOLVE by Michel Berkelaar, Kjell Eikland, Peter Notebaert.
-dlfcn-win32 by Ramiro Polla
-Murphi (1990-1999) by David Dill, Andreas Drexler, Alan Hu, Han Yang,
-       Norris Ip, Ralph Melton, Seungjoon Park, Ulrich Stern
-ltl2dstar (2005-2007) by Joachim Klein <j.klein@ltl2dstar.de>
-ltl2ba (2001-2007) by Denis Oddoux, Paul Gastin
-ltl3ba (2012) Tomáš Babiak
-
-See COPYING for authoritative copyright and licence information.
+Third party code is included in the source distribution. Please consult COPYING
+for details.
