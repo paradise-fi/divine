@@ -1176,8 +1176,8 @@ struct Eval
                 {
                     if ( !v.get( 2 ).defined() || !v.get( 2 ).cooked() )
                     {
-                        this->fault( _VM_F_Arithmetic ) << "division by zero or an undefined number";
                         result( decltype( v.get() )( 0 ) );
+                        this->fault( _VM_F_Arithmetic ) << "division by zero or an undefined number";
                     } else
                         this->result( impl( v.get( 1 ), v.get( 2 ) ) );
                 } );
