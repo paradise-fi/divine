@@ -50,7 +50,7 @@ fault handler, is called. This function can react to error - e.g. collect
 additional information, or decide, how the error should be handled. DiOS
 provides its own fault handler, so that verified programs do not have to.
 
-The DiOS fault handler traces a simple human readable stack trace together with
+The DiOS fault handler prints a simple human readable stack trace together with
 a short summary of the error. When a fault is triggered, it can either abort the
 verification or continue execution -- depending on its configuration for a given
 fault. Please see the next section for configuration details.
@@ -78,10 +78,10 @@ T:   2: _start
 ```
 
 By inspecting the trace, we can see that a fault was triggered. When VM triggers
-a fault, it traces the reason -- here a null pointer dereference caused it. Then
-a DiOS fault handler was called. First, it traced whether the fault occurred in
+a fault, it prints the reason -- here a null pointer dereference caused it. Then
+a DiOS fault handler was called. First, it printed whether the fault occurred in
 DiOS kernel or in the user space -- in the actual verified program. Then a
-simple back trace was traced. Note that `_start` is a DiOS function, which is
+simple backtrace was printed. Note that `_start` is a DiOS function, which is
 always at the bottom of a backtrace. It calls all global constructors,
 initializes the standard libraries and calls `main` with the right arguments.
 
@@ -148,7 +148,7 @@ backtrace #2:
 The first part of the output is the same as in the previous case. The rest are
 full DIVINE backtraces for all the active threads. In this concrete example, we
 see two backtraces even for a single threaded program. To see the reason for
-this, let us first examine backtrace #2. If we go through the back trace from
+this, let us first examine backtrace #2. If we go through the backtrace from
 its end, we can see an invocation of `_start`, which called `main`. `main` was
 then interrupted on line 3 because of the fault. Next, we can see a call to the
 DiOS fault handler `__dios::Fault::handler`. As the handler is called from user
@@ -174,16 +174,16 @@ during the boot. If an invalid command or argument is passed, DiOS fails to
 boot. DIVINE handles this state as unsuccessful verification and the output
 contains a description of the error. DiOS supports the following commands:
 
-- `debug`: trace debug information during the boot. By default no information is
-  traced during the boot. Supported arguments:
-    - `help`: trace help and abort the boot.
-    - `machineparams`: trace user specified machine parameters, e.g. number of
+- `debug`: print debug information during the boot. By default no information is
+  printed during the boot. Supported arguments:
+    - `help`: printed help and abort the boot.
+    - `machineparams`: printed user specified machine parameters, e.g. number of
       cpus.
-    - `mainargs`: trace `argv` and `envp`, which will be passed to the `main`
+    - `mainargs`: printed `argv` and `envp`, which will be passed to the `main`
       function.
-    - `faultcfg`: trace fault and simfail configuration, which will be used for
-      verification. Note that if the configuration is not forced, program under
-      inspection can change it during its run.
+    - `faultcfg`: printed fault and simfail configuration, which will be used
+      for verification. Note that if the configuration is not forced, program
+      under inspection can change it during its run.
 - `trace` and `notrace`: report/do not report state of its argument back to VM.
   Supported arguments:
     - `threads`: reports all active threads back to VM, so it can e.g. allow
@@ -192,17 +192,18 @@ contains a description of the error. DiOS supports the following commands:
   handling of a given fault. When `abort` is specified, DiOS passes the fault as
   an error back to the VM and the verification is terminated. Faults marked as
   `report` are reported back to the VM (i.e. the fault is recorded to
-  back-trace), but are not treated as errors -- the verification process
-  continues. When fault is ignored it is not reported back to the VM at all.
-  `TODO: WHat happens when I ignore numeric fault?`. This allows user to ignore
-  specific types of errors. There are following fault categories in DIVINE and
-  these faults can be passed to this command:
+  backtrace), but are not treated as errors -- the verification process
+  continues. When fault is ignored it is not reported back to the VM at all. If
+  the execution after fault continues, instruction producing the fault is
+  ignored or produces undefined value. There are following fault categories in
+  DIVINE and these faults can be passed to this command:
     - `assert`: C-assert is violated. Default abort.
     - `arithmetic`: arithmetic error occurs -- e.g. division by 0. Default
       abort.
     - `memory`: access to uninitialized memory or invalid pointer dereference
       Default abort.
-    - `control`: `TODO` Default abort.
+    - `control`: check return value of function and jumps on undefined values.
+      Default abort.
     - `hypercall`: invalid parameter to VM hypercall was passed. Default abort.
     - `notimplemented`: unimplemented operation should be performed. Default
       abort.
@@ -217,9 +218,9 @@ contains a description of the error. DiOS supports the following commands:
 - `stdout`: specify how to treat program output on standard output. Following
   options are supported:
     - `notrace`: the output is ignored.
-    - `unbuffered`: each write is traced (i.e. can be seen on a backtrace). Can
-      lead to an unexpected formatting of the trace.
-    - `buffered`: each line of output is traced (i.e. formatting of backtrace
+    - `unbuffered`: each write is printed. Can lead to an unexpected formatting
+      of the backtrace.
+    - `buffered`: each line of output is printed (i.e. formatting of backtrace
       should be reasonable). Default option.
 - `stderr`: specify how to treat program output on standard error output. For
   options, see `stdout`.
