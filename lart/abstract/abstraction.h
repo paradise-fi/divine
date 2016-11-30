@@ -29,7 +29,7 @@ namespace abstract {
 
 PassMeta abstraction_pass();
 PassMeta substitution_pass();
-PassMeta full_abstraction_pass();
+PassMeta assume_pass();
 
 } /* namespace abstract */
 
@@ -57,6 +57,19 @@ llvm::Module * test_abstraction( std::string s ) {
 
     std::string opt = "abstract";
     abstract::abstraction_pass().create( manager, opt );
+
+    manager.run( *m );
+    return m;
+}
+
+llvm::Module * test_assume( std::string s ) {
+    auto m = compile( s );
+
+    llvm::ModulePassManager manager;
+
+    std::string opt = "abstract";
+    abstract::abstraction_pass().create( manager, opt );
+    abstract::assume_pass().create( manager, opt );
 
     manager.run( *m );
     return m;
@@ -243,6 +256,80 @@ struct Abstraction {
                     })";
         test_abstraction( annotation + s );
         /* TODO asserts */
+    }
+};
+
+struct Assume {
+
+    bool isTristateAssume( llvm::Instruction * inst ) {
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( inst ) ) {
+            auto fn = call->getCalledFunction();
+            return fn->hasName() && fn->getName().startswith( "lart.tristate.assume" );
+        }
+        return false;
+    }
+
+    bool isTrueAssume( llvm::Instruction * inst ) {
+        return isTristateAssume( inst )
+            && ( inst->getOperand( 1 ) == abstract::Tristate::True() );
+    }
+
+    bool isFalseAssume( llvm::Instruction * inst ) {
+        return isTristateAssume( inst )
+            && ( inst->getOperand( 1 ) == abstract::Tristate::False() );
+    }
+
+    void testBranching( llvm::Instruction * lower ) {
+        auto br = llvm::cast< llvm::BranchInst >( *lower->user_begin() );
+
+        auto trueBB = br->getSuccessor( 0 );
+        ASSERT( isTrueAssume( trueBB->begin() ) );
+        auto falseBB = br->getSuccessor( 1 );
+        ASSERT( isFalseAssume( falseBB->begin() ) );
+    }
+
+    TEST( simple ) {
+        auto s = "int main() { return 0; }";
+        test_assume( annotation + s );
+    }
+
+    TEST( tristate ) {
+        auto s = R"(int main() {
+                        __test int x;
+                        if ( x > 0 )
+                            return 42;
+                        else
+                            return 0;
+                    })";
+        auto m = test_assume( annotation + s );
+        auto icmp = m->getFunction( "lart.abstract.icmp.sgt.i32" );
+        ASSERT( lart::abstract::Tristate::isa( icmp->getReturnType() ) );
+
+        auto lower = llvm::cast< llvm::Instruction >(
+                     *m->getFunction( "lart.tristate.lower" )->user_begin() );
+        ASSERT_EQ( lower->getOperand( 0 ), *icmp->user_begin() );
+
+        testBranching( lower );
+    }
+
+    TEST( loop ) {
+        auto s = R"(int main() {
+                        __test int abs;
+                        while( abs ) {
+                            ++abs;
+                        }
+                        return 0;
+                    })";
+        auto m = test_assume( annotation + s );
+
+        auto icmp = m->getFunction( "lart.abstract.icmp.ne.i32" );
+        ASSERT( lart::abstract::Tristate::isa( icmp->getReturnType() ) );
+
+        auto lower = llvm::cast< llvm::Instruction >(
+                     *m->getFunction( "lart.tristate.lower" )->user_begin() );
+        ASSERT_EQ( lower->getOperand( 0 ), *icmp->user_begin() );
+
+        testBranching( lower );
     }
 };
 
