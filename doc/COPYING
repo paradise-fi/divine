@@ -1,4 +1,4 @@
-Files under divine/, runtime/dios and runtime/divine are copyright (c)
+Files under `divine/`, `runtime/dios` and `runtime/divine` are copyright (c)
 2007-2016, ParaDiSe Laboratory. More detailed authorship info can be found
 inside the files.
 
@@ -16,8 +16,8 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 
-Files under llvm/ and clang/ are copyrighted by their respective authors, and
-subject to the following licence:
+Files under `llvm/`, `clang/`, `runtime/libcxxabi/` and `runtime/libcxx/` are
+copyrighted by their respective authors, and subject to the following licence:
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal with
@@ -71,9 +71,10 @@ THE SOFTWARE.
 
 
 
-The files under external/tbbmalloc are subject to copyright 2005-2012 by Intel
-Corporation and covered by the GNU General Public License version 2, as
-reproduced below.
+The files under `external/tbbmalloc` are copyright 2005-2012 by Intel
+Corporation, and files under `runtime/libm` by the Free Software Foundation,
+1991-2012. Both directories are covered by the GNU General Public License
+version 2, as reproduced below.
 
 		    GNU GENERAL PUBLIC LICENSE
 		       Version 2, June 1991
