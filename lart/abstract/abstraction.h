@@ -3,6 +3,7 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/PassManager.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Casting.h>
 DIVINE_UNRELAX_WARNINGS
@@ -12,9 +13,11 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
+#include <lart/support/util.h>
 #include <lart/support/query.h>
 
 #include <lart/abstract/passes.h>
+#include <lart/abstract/types.h>
 
 #include <brick-string>
 
@@ -33,7 +36,7 @@ PassMeta full_abstraction_pass();
 #ifdef BRICK_UNITTEST_REG
 namespace t_abstract {
 
-auto compile ( std::string s ) {
+auto compile( std::string s ) {
     static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
     divine::cc::Compiler c( ctx );
     c.mapVirtualFile( "main.c", s );
@@ -69,7 +72,6 @@ llvm::Module * test_substitution( std::string s ) {
     } );
 
     auto m = compile( abstraction + s );
-
     llvm::ModulePassManager manager;
 
     std::string opt = "test";
@@ -84,6 +86,29 @@ llvm::Module * test_substitution( std::string s ) {
 const std::string annotation =
                   "#define __test __attribute__((__annotate__(\"lart.abstract.test\")))\n";
 
+bool containsUndefValue( llvm::Function &f ) {
+    for ( auto & bb : f ) {
+        for ( auto & i : bb ) {
+            if ( llvm::isa< llvm::UndefValue >( i ) )
+                return true;
+            for ( auto & op : i.operands() )
+                if ( llvm::isa< llvm::UndefValue >( op ) )
+                    return true;
+        }
+    }
+
+    return false;
+}
+
+bool containsUndefValue( llvm::Module &m ) {
+    for ( auto & f : m ) {
+        if ( containsUndefValue( f ) )
+            return true;
+    }
+
+    return false;
+}
+
 struct Abstraction {
     TEST( simple ) {
         auto s = "int main() { return 0; }";
@@ -97,8 +122,7 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto f = m->getFunction( "lart.abstract.alloca.i32" );
-        size_t users = std::distance(f->user_begin(), f->user_end());
-        ASSERT_EQ( users,  1 );
+        ASSERT( f->hasOneUse() );
     }
 
     //phi node tests
@@ -131,18 +155,38 @@ struct Abstraction {
 
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
-        auto call = m->getFunction( "call.2" );
+        auto abstract_call = m->getFunction( "call.2.3" );
 
         auto i32_t = llvm::Type::getInt32Ty( m->getContext() );
 
-        ASSERT_EQ( call->getReturnType(), i32_t );
-        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+        ASSERT_EQ( abstract_call->getReturnType()
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( abstract_call->getFunctionType()->getParamType( 0 )
                  , alloca->getReturnType()->getPointerElementType() );
 
         ASSERT_EQ( main->getReturnType(), i32_t );
+        ASSERT( ! containsUndefValue( *m ) );
     }
 
     //return test + back propagation
+    TEST( back_propagation ) {
+        auto s = R"(int call() {
+                        __test int x;
+                        return x;
+                    }
+                    int main() {
+                        int ret = call();
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto abstract_call = m->getFunction( "call.2" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+
+        ASSERT_EQ( abstract_call->getReturnType()
+                 , alloca->getReturnType()->getPointerElementType() );
+
+
+    }
 
     //tristate test
     TEST( tristate ) {
@@ -162,9 +206,29 @@ struct Abstraction {
         ASSERT_EQ( lower->user_begin()->getOperand( 0 ), *sgt->user_begin() );
     }
 
-    //condition test
-
     //lift test
+    TEST( lift ) {
+        auto s = R"(int main() {
+                        __test int x;
+                        return x + 42;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto lift = m->getFunction( "lart.abstract.lift.i32" )->user_begin();
+        auto val = llvm::cast< llvm::ConstantInt >( lift->getOperand( 0 ) );
+        ASSERT( val->equalsInt( 42 ) );
+    }
+
+    //replace lift test
+    TEST( lift_replace ) {
+        auto s = R"(int main() {
+                        __test int x;
+                        __test int y;
+                        return x + y;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto lift = m->getFunction( "lart.abstract.lift.i32" );
+        ASSERT( lift->hasOneUse() );
+    }
 
     //switch - select test
     TEST( switch_test ) {
@@ -195,11 +259,9 @@ struct Substitution {
                     })";
         auto m = test_substitution( annotation + s );
         auto f = m->getFunction( "__abstract_test_alloca" );
-        size_t users = std::distance(f->user_begin(), f->user_end());
-        ASSERT_EQ( users, 2 );
+        ASSERT( f->hasNUses( 2 )  );
     }
 };
-
 
 } /* namespace t_abstract */
 #endif
