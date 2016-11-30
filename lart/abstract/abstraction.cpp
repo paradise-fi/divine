@@ -809,7 +809,7 @@ struct Substitution : lart::Pass {
         // in cleaner way
         auto retAbsVal = query::query( m )
                         .map( query::refToPtr )
-                        .filter( []( llvm::Function * fn ) {
+                        .filter( [&]( llvm::Function * fn ) {
                             return isAbstractType( fn->getReturnType() )
                                 && ! isAbstractDeclaration( fn );
                         } )
@@ -878,7 +878,7 @@ struct Substitution : lart::Pass {
                         return f.args();
                     } ).flatten()
                     .map( query::refToPtr )
-                    .filter( [] ( llvm::Value * v ) {
+                    .filter( [&] ( llvm::Value * v ) {
                         return isAbstractType( v->getType() );
                     } )
                     .freeze();
@@ -1074,7 +1074,8 @@ struct Substitution : lart::Pass {
                 node = llvm::cast< llvm::PHINode >( abstraction_store[ phi ] );
             else {
                 llvm::IRBuilder<> irb( phi );
-                node = irb.CreatePHI( abstractionType, niv );
+                auto type = incoming.begin()->first->getType();
+                node = irb.CreatePHI( type, niv );
                 store( phi, node );
             }
 
