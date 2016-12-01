@@ -226,3 +226,44 @@ contains a description of the error. DiOS supports the following commands:
   options, see `stdout`.
 
 ## DiOS Virtual File System
+
+DiOS provides a POSIX-compatible filesystem implementation. As there are no real
+I/O operations allowed, DiOS *Virtual File System* (VFS) operates on top of a
+filesystem snapshot. Effect of all operations performed by the VFS is not
+propagated back to host. Snapshots are created by DIVINE just before DiOS boots.
+To create a snapshot of a directory, the command line option `--capture
+{vfsdir}` can be used. `{vfsdir}` is a `:`-separated list of up to three
+options:
+
+    - Path to a directory. Mandatory.
+    - `follow` or `nofollow` specifies whether symlink targets should or should
+      not be captured. Default is symlink following. Optional.
+    - Mount point in the VFS. If not specified, directory is mounted to the
+      capture path.
+
+DIVINE can handle capture files, directories, sym- and hardlinks. DiOS can also
+create pipes or UNIX sockets. These howeverer cannot be captured from the host
+system by DIVINE.
+
+Size of the snapshot is by default limited to 16 MiB, to prevent accidental
+capture of much larger portions of filesystem than intended (due to presence of
+symlinks).
+
+Example: `divine verify --capture testdir:follow:/home/test/ --vfslimit 1kB
+test.cpp`
+
+The VFS implements the basic POSIX syscalls -- e.g. `write`, `read`, etc. This
+allows DiOS to directly use implementation of C-library functions like `printf`,
+`scanf` or C++ streams. If the functions should operate with filesystem, they
+modify DiOS internal filesystem snapshot. User can specify a file with content
+using DIVINE switch `--stdin {file}`, which will be supplied as stdin of the
+verified program. The standard output can be handled in several ways:
+
+- It can be either ignored, or
+- can be part of a backtrace in two modes:
+    - in a buffered way, where each line is printed, or
+    - in an unbuffered way, where each write is printed -- this can lead to
+      unexpected backtrace formatting.
+
+All these options, can be specified via DiOS boot parameters. See DiOS
+configuration for more details.
