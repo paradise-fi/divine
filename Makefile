@@ -61,7 +61,7 @@ ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP
 	chmod +x test/divine # darcs does not remember +x on files
 	mkdir -p $$(dirname $@)
 	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
-	cd $$(dirname $@) && cmake $(PWD) $($(FLAVOUR)_FLAGS) -G "$(GENERATOR)"
+	cd $$(dirname $@) && cmake $(PWD) $($(FLAVOUR)_FLAGS) $(CMAKE_EXTRA) -G "$(GENERATOR)"
 	touch $@
 
 ${TARGETS:%=debug-%}:
@@ -102,7 +102,8 @@ show: # make show var=VAR
 .PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env} toolchain validate dist
 
 dist:
-	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug
+	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug \
+	    CMAKE_EXTRA=-DVERSION_APPEND=$(VERSION_APPEND)
 	cmake --build $(OBJ)debug --target package_source $(EXTRA)
 	cp $(OBJ)debug/divine-*.tar.gz .
 
