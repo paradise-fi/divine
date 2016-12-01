@@ -2,7 +2,6 @@
 
 #include <lart/interference/pass.h>
 #include <lart/aa/pass.h>
-#include <lart/abstract/pass.h>
 #include <lart/abstract/passes.h>
 #include <lart/weakmem/pass.h>
 #include <lart/reduction/passes.h>
@@ -78,20 +77,6 @@ struct Driver {
                 throw std::runtime_error( "unknown alias-analysis type: " + opt );
 
             manager.addPass( aa::Pass( t ) );
-            return true;
-        }
-
-        if ( n == "abstract" ) {
-            abstract::Pass::Type t;
-
-            if ( opt == "interval" )
-                t = abstract::Pass::Interval;
-            else if ( opt == "trivial" )
-                t = abstract::Pass::Trivial;
-            else
-                throw std::runtime_error( "unknown abstraction type: " + opt );
-
-            manager.addPass( abstract::Pass( t ) );
             return true;
         }
 
