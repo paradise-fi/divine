@@ -1,27 +1,27 @@
 #include "demo.h"
 
 void *thread( void *state ) {
-    print( "thread is running" );
+    puts( "thread is running" );
     int *x = state;
     if ( *x == 0 ) /* ERROR */
-        print( "x is zero" );
+        puts( "x is zero" );
     else if ( *x == 1 )
-        print( "x is one" );
+        puts( "x is one" );
     else
-        print( "x is neither zero nor one" );
-    print( "thread is done" );
+        puts( "x is neither zero nor one" );
+    puts( "thread is done" );
     return NULL;
 }
 
 int main() {
-    print( "entering main" );
+    puts( "entering main" );
     pthread_t tid;
     int x;
-    print( "going to create thread" );
+    puts( "going to create thread" );
     pthread_create( &tid, NULL, thread, &x );
-    print( "thread created" );
+    puts( "thread created" );
     x = 1;
-    print( "initialized x, going to wait for the thread" );
+    puts( "initialized x, going to wait for the thread" );
     pthread_join( tid, NULL );
-    print( "thread finished, exiting" );
+    puts( "thread finished, exiting" );
 }

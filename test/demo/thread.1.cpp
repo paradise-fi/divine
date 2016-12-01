@@ -3,16 +3,16 @@
 
 int main() {
     int x = 0;
-    print( "starting thread" );
+    puts( "starting thread" );
     std::thread t1( [&] {
-        print( "thread started" );
+        puts( "thread started" );
         ++x;
-        print( "thread done" );
+        puts( "thread done" );
     } );
-    print( "incrementing" );
+    puts( "incrementing" );
     ++x;
-    print( "waiting for the thread" );
+    puts( "waiting for the thread" );
     t1.join();
-    print( "thread joined" );
+    puts( "thread joined" );
     assert( x == 2 ); /* ERROR */
 }
