@@ -186,19 +186,24 @@ void traceEnv( int ind, const _VM_Env *env ) {
 
 void init( const _VM_Env *env )
 {
-    // Make objid deterministic by allocating mainThreadFrame first
-    void *mainThreadFrame = __vm_obj_make( 1 );
-
     // No active thread
     __vm_control( _VM_CA_Set, _VM_CR_User1, -1 );
     __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, __dios::Fault::handler );
 
     // Activate temporary scheduler to handle errors
     __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
+
     // Initialize context
     auto context = new_object< Context >();
     __vm_trace( _VM_T_StateType, context );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
+
+    auto mainthr = context->scheduler->newThread( _start, 0 );
+
+    auto argv = construct_main_arg( "arg.", env, true );
+    auto envp = construct_main_arg( "env.", env );
+
+    context->scheduler->setupMainThread( mainthr, argv.first, argv.second, envp.second );
 
     SysOpts sysOpts;
     if ( !getSysOpts( env, sysOpts ) ) {
@@ -241,9 +246,6 @@ void init( const _VM_Env *env )
     if ( traceCfg.machineParams )
         context->machineParams.traceParams( 1 );
 
-    auto argv = construct_main_arg( "arg.", env, true );
-    auto envp = construct_main_arg( "env.", env );
-
     if ( traceCfg.mainArgs ) {
         trace_main_arg( 1, "main argv", argv );
         trace_main_arg( 1, "main envp", envp );
@@ -251,8 +253,6 @@ void init( const _VM_Env *env )
 
     environ = envp.second;
 
-    context->scheduler->startMainThread( argv.first, argv.second, envp.second,
-        mainThreadFrame );
 }
 
 } // namespace __dios

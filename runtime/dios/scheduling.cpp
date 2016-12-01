@@ -46,7 +46,9 @@ void start_thread( __dios::Context& ctx, int *, void *retval, va_list vl ) {
     auto tls = va_arg( vl, int );
     auto ret = static_cast< __dios::ThreadHandle * >( retval );
 
-    *ret = ctx.scheduler->startThread( routine, arg, tls );
+    auto t = ctx.scheduler->newThread( routine, tls );
+    ctx.scheduler->setupThread( t, arg );
+    *ret = t->getId();
 }
 
 void kill_thread( __dios::Context& ctx, int *, void *, va_list vl ) {
@@ -142,10 +144,8 @@ void Scheduler::traceThreads() const noexcept {
     __vm_obj_free( pi );
 }
 
-void Scheduler::startMainThread( int argc, char** argv, char** envp,
-    void* fMem ) noexcept
+void Scheduler::setupMainThread( Thread *t, int argc, char** argv, char** envp ) noexcept
 {
-    Thread *t = threads.emplace( _start, 0, fMem );
     DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( t->_frame );
     frame->l = __md_get_pc_meta( reinterpret_cast< uintptr_t >( main ) )->arg_count;
 
@@ -154,15 +154,10 @@ void Scheduler::startMainThread( int argc, char** argv, char** envp,
     frame->envp = envp;
 }
 
-ThreadHandle Scheduler::startThread( void ( *routine )( void * ), void *arg, int tls_size,
-    void* fMem ) noexcept
+void Scheduler::setupThread( Thread *t, void *arg ) noexcept
 {
-    __dios_assert_v( routine, "Invalid thread routine" );
-    Thread *t = threads.emplace( routine, tls_size, fMem );
     ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >( t->_frame );
     frame->arg = arg;
-
-    return t->getId();
 }
 
 void Scheduler::killThread( ThreadHandle tid ) noexcept {

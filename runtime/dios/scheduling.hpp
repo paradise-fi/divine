@@ -117,13 +117,9 @@ struct Thread {
     ProcId _pid;
 
     template <class F>
-    Thread( F routine, int tls_size, void *fMem = nullptr ) noexcept {
+    Thread( F routine, int tls_size ) noexcept {
         auto fun = __md_get_pc_meta( reinterpret_cast< uintptr_t >( routine ) );
-        if ( fMem )
-            __vm_obj_resize( fMem, fun->frame_size );
-        else
-            fMem = __vm_obj_make( fun->frame_size );
-        _frame = static_cast< _VM_Frame * >( fMem );
+        _frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
         _frame->pc = fun->entry_point;
         _frame->parent = nullptr;
 
@@ -156,10 +152,17 @@ struct Scheduler {
     Scheduler() {}
     int threadCount() const noexcept { return threads.size(); }
     Thread *chooseThread() noexcept;
-    void traceThreads() const noexcept;
+    void traceThreads() const noexcept __attribute__((noinline));
 
-    void startMainThread( int argc, char** argv, char** envp, void* fMem = nullptr ) noexcept;
-    ThreadHandle startThread( void ( *routine )( void * ), void *arg, int tls_size, void* fMem = nullptr ) noexcept;
+    template< typename... Args >
+    Thread *newThread( void ( *routine )( Args... ), int tls_size ) noexcept
+    {
+        __dios_assert_v( routine, "Invalid thread routine" );
+        return threads.emplace( routine, tls_size );
+    }
+
+    void setupMainThread( Thread *, int argc, char** argv, char** envp ) noexcept;
+    void setupThread( Thread *, void *arg ) noexcept;
     void killThread( ThreadHandle t_id ) noexcept;
     void killProcess( ProcId id ) noexcept;
 
