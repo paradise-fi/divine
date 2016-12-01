@@ -1,20 +1,15 @@
 #!/bin/sh
 
 set -xe
+test -f divine/ui/version.cpp
 
-
-test -f divine/utility/version.cpp
-
-patchlevel=$(cat release/patchlevel)
+patchlevel=$(cat releng/patchlevel)
 patchlevel=$(($patchlevel + 1))
-echo $patchlevel > release/patchlevel
-version=$(cat release/version).$patchlevel
-bash ./divine/update-version.sh sha1sum . /dev/null 0 > release/checksum
+echo $patchlevel > releng/patchlevel
+version=$(cat releng/version).$patchlevel
+bash ./releng/update-version-sha.sh sha1sum . /dev/null 0 > releng/checksum
 
-result=`bash ./nix/build.sh tarball` 
-tb=$(cd $result/tarballs && ls)
-version=$(echo $tb | sed -e s,^divine-,, -e s,\.tar\.gz$,,)
-cp $result/tarballs/$tb .
-
-echo a | darcs rec --ask-deps release -a -m "(temporary)"
-unset VISUAL; (echo y; echo d) | EDITOR="echo TAG ${version} >" darcs amend --edit
+darcs rec -a --author "Release Bot <divine@fi.muni.cz>" \
+          -m "releng: Update for $version" releng
+darcs tag -m $version
+darcs dist -d divine-${version}
