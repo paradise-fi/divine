@@ -7,20 +7,22 @@ distribution for co­pyright and licensing details.
 Download
 ========
 
-For the time being, you can fetch a development snapshot of the upcoming DIVINE
-  4 from our version control repository (you may need to install [darcs] [3]):
+The latest release of DIVINE is **4.0 beta 1**, available as a source tarball:
+[divine-3.90.1.tar.gz](download/divine-3.90.1.tar.gz). You can also download
+[nightly snapshots] [6] or fetch the source code from our version control
+repository (you may need to install [darcs] [3]):
 
     $ darcs get http://divine.fi.muni.cz/current divine
 
-Source code tarballs will be made available at a later time. To build the
-sources, you only need to run `make`. For a summary of changes between
-releases, please consult our [release notes] [1] and for help with
+To build the sources, you only need to run `make`. For a summary of changes
+between releases, please consult our [release notes] [1] and for help with
 installation, [detailed installation instructions] [4] are available in our
 [manual] [5].
 
 Alternatively, you can also download [older versions] [2]. Please note,
 however, that DiVinE Cluster, DiVinE Multi-Core and ProbDiVinE have been
-discontinued and the 3.x branch of DIVINE is no longer actively maintained.
+discontinued and the 3.x branch of DIVINE is no longer actively maintained
+either.
 
 Virtual Machine Images
 ----------------------
@@ -34,3 +36,4 @@ evaluation.
 [3]: http://darcs.net
 [4]: manual.html#installation
 [5]: manual.html
+[6]: download/snapshots/
