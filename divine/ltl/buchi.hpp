@@ -19,6 +19,8 @@
 #include <string>
 #include <algorithm>
 #include <set>
+
+#ifndef LTL2C_BUCHI_H
 #define LTL2C_BUCHI_H
 
 int getId()
@@ -102,7 +104,7 @@ int process( Atom phi, NodePtr node, std::set< NodePtr > result )
     }
 }
 
-int process( Unary phi, NodePtr node, std::set< NodePtr > result )
+int process( Unary, NodePtr, std::set< NodePtr > )
 {
     /*
     switch ( phi.op )
@@ -115,7 +117,7 @@ int process( Unary phi, NodePtr node, std::set< NodePtr > result )
     return 0;
 }
 
-int process( Binary phi, NodePtr node, std::set< NodePtr > result )
+int process( Binary, NodePtr, std::set< NodePtr > )
 {
     return 0;
 }
@@ -164,7 +166,7 @@ void expand( NodePtr nodeQ, std::set< NodePtr > list )
             LTLPtr negPhi = phi->normalForm( true );
 
             std::set< NodePtr > result;
-            int newNodes = process( phi, nodeQ, result );
+            process( phi, nodeQ, result );
 
             if ( ( phi->string() == "false" ) || ( nodeQ->oldList.find( negPhi ) != nodeQ->oldList.end() ) )
             {
@@ -198,6 +200,5 @@ std::shared_ptr< Buchi > ltlToBuchi( LTLPtr _formula )
     return nullptr;
 }
 
-#endif //LTL2C_BUCHI_H
 
 #endif //LTL2C_BUCHI_H

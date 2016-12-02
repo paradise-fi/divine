@@ -15,7 +15,7 @@
  */
 
 #include <iostream>
-#include "brick-types"
+#include <brick-types>
 
 #ifndef LTL2C_LTL_H
 #define LTL2C_LTL_H
