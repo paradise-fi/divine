@@ -23,6 +23,9 @@
 #ifndef LTL2C_BUCHI_H
 #define LTL2C_BUCHI_H
 
+namespace divine {
+namespace ltl {
+
 int getId()
 {
     static int idCount = 0;
@@ -200,5 +203,7 @@ std::shared_ptr< Buchi > ltlToBuchi( LTLPtr _formula )
     return nullptr;
 }
 
+}
+}
 
 #endif //LTL2C_BUCHI_H

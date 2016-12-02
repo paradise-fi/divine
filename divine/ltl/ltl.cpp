@@ -16,6 +16,9 @@
 
 #include "ltl.hpp"
 
+namespace divine {
+namespace ltl {
+
 std::string Unary::string() const
 {
     switch (op)
@@ -226,3 +229,5 @@ LTLPtr Binary::normalForm( bool neg )
     }
 }
 
+}
+}
