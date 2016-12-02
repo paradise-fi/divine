@@ -1,4 +1,4 @@
-DIVINE 3.91
+DIVINE 3.90
 ===========
 
 - Substantial rewrite with focus on software verification.
@@ -7,11 +7,11 @@ DIVINE 3.91
 - More comprehensive runtime environment (provided by DiOS).
 - An interactive debugger/simulator and a counterexample viewer (`divine sim`).
 
-LIMITATIONS: This is a beta version. Additionally, verification of LTL
-(liveness) and distributed verification are not currently available and are
-planned for a later version in the 4.x series. Only C and C++ models are
-supported at this time: DVE, DESS, CESMI, UPPAAL and other input formalisms are
-not supported, but may become available in later versions.
+**LIMITATIONS:** This is a beta version. Additionally, verification of LTL
+(liveness) properties and distributed verification are not currently available
+and are planned for a later version in the 4.x series. Only C and C++ models
+are supported at this time: DVE, DESS, CESMI, UPPAAL and other input formalisms
+are not supported, but may become available in later versions.
 
 DIVINE 3.3.x
 ============
