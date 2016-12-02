@@ -215,6 +215,10 @@ add_subdirectory( divine )
 add_subdirectory( tools )
 add_subdirectory( test )
 
+foreach( p ui vm cc )
+    add_dependencies( divine-${p} intrinsics_gen )
+endforeach()
+
 add_dependencies( check unit )
 add_dependencies( check functional )
 
