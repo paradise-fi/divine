@@ -80,12 +80,6 @@ struct PoolMixin
         return reinterpret_cast< T * >( self().dereference( p ) + off );
     }
 
-    char *dereference( Pointer p )
-    {
-        auto &h = self().header( p );
-        return h.data + p.chunk() * align( h.itemsize, sizeof( Pointer ) );
-    }
-
     auto &header( Pointer p ) { return self().header( p.slab() ); }
     auto &header( int b )
     {
@@ -172,7 +166,6 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
     using Pointer = PoolPointer< PointerRep >;
 
     using PoolMixin< Self, Pointer >::header;
-    using PoolMixin< Self, Pointer >::dereference;
 
     struct BlockHeader
     {
@@ -596,6 +589,12 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         }
     }
 
+    char *dereference( Pointer p )
+    {
+        auto &h = header( p );
+        return h.data + p.chunk() * align( h.itemsize, sizeof( Pointer ) );
+    }
+
     bool usable( int b )
     {
         return _s->block[ b ] && header( b ).allocated < header( b ).total;
@@ -680,6 +679,13 @@ struct SlavePool : PoolMixin< SlavePool< Master >, typename Master::Pointer >
         }
         ::memset( this->dereference( p ), 0, size );
     }
+
+    char *dereference( Pointer p )
+    {
+        auto &h = this->header( p );
+        return h.data + p.chunk() * ( h.itemsize > 1 ? align( h.itemsize, 4 ) : h.itemsize );
+    }
+
 };
 
 template< typename P >
