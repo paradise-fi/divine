@@ -113,7 +113,7 @@ void Verify::run()
                       << ", averaging " << avg() << "    ";
         } );
 
-    typename vm::CowHeap::SnapPool ext;
+    brick::mem::SlavePool< typename vm::CowHeap::SnapPool > ext( ex.pool() );
     using Parent = std::atomic< vm::CowHeap::Snapshot >;
 
     ss::search(
@@ -123,7 +123,7 @@ void Verify::run()
             {
                 if ( isnew )
                 {
-                    ext.materialise( to.snap, sizeof( from ), ex.pool() );
+                    ext.materialise( to.snap, sizeof( from ) );
                     Parent &parent = *ext.machinePointer< Parent >( to.snap );
                     parent = from.snap;
                 }

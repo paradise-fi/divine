@@ -82,7 +82,7 @@ void Draw::run()
 
     int edgecount = 0, statecount = 0;
 
-    typename vm::CowHeap::SnapPool ext;
+    brick::mem::SlavePool< typename vm::CowHeap::SnapPool > ext( ex.pool() );
 
     int seq = 0;
 
@@ -92,8 +92,8 @@ void Draw::run()
         ss::Order::PseudoBFS, ex, 1, ss::passive_listen(
             [&]( auto f, auto t, auto trace )
             {
-                ext.materialise( f.snap, sizeof( int ), ex.pool() );
-                ext.materialise( t.snap, sizeof( int ), ex.pool() );
+                ext.materialise( f.snap, sizeof( int ) );
+                ext.materialise( t.snap, sizeof( int ) );
                 int *f_id = ext.machinePointer< int >( f.snap ),
                     *t_id = ext.machinePointer< int >( t.snap );
 
@@ -106,7 +106,7 @@ void Draw::run()
             },
             [&]( auto st )
             {
-                ext.materialise( st.snap, sizeof( int ), ex.pool() );
+                ext.materialise( st.snap, sizeof( int ) );
                 int *id = ext.machinePointer< int >( st.snap );
                 vm::DebugNode< vm::Program, vm::CowHeap > dn( ex._ctx, st.snap );
                 dn.address( vm::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
