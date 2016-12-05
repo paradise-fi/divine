@@ -69,6 +69,80 @@ struct DefaultPoolPointerRep
     uint16_t tag:1;
 };
 
+template< typename Self, typename Pointer >
+struct PoolMixin
+{
+    Self &self() { return *static_cast< Self * >( this ); }
+
+    template< typename T >
+    T *machinePointer( Pointer p, int off = 0 )
+    {
+        return reinterpret_cast< T * >( self().dereference( p ) + off );
+    }
+
+    char *dereference( Pointer p )
+    {
+        auto &h = self().header( p );
+        return h.data + p.chunk() * align( h.itemsize, sizeof( Pointer ) );
+    }
+
+    auto &header( Pointer p ) { return self().header( p.slab() ); }
+    auto &header( int b )
+    {
+        ASSERT( self()._s );
+        ASSERT_LEQ( b, Self::blockcount );
+        ASSERT_LEQ( 0, b );
+        ASSERT( self()._s->block[ b ] );
+        return *(self()._s->block[ b ]);
+    }
+};
+
+template< typename _Rep >
+struct PoolPointer : brick::types::Comparable
+{
+    using Rep = _Rep;
+    using Raw = bitlevel::bitvec< 8 * sizeof( Rep ) >;
+    using SlabT  = decltype( Rep::slab );
+    using ChunkT = decltype( Rep::chunk );
+    using TagT   = decltype( Rep::tag );
+
+    static const int tag_bits = Rep::tag_bits;
+
+    union {
+        Rep _rep;
+        Raw _raw;
+    };
+
+    auto slab() const { return _rep.slab; }
+    auto chunk() const { return _rep.chunk; }
+    auto tag() const { return _rep.tag; }
+
+    void slab( SlabT s ) { _rep.slab = s; }
+    void chunk( ChunkT c ) { _rep.chunk = c; }
+    void tag( TagT t ) { _rep.tag = t; }
+
+    explicit PoolPointer( SlabT s = 0, ChunkT c = 0 ) noexcept
+    {
+        _rep.slab = s;
+        _rep.chunk = c;
+        _rep.tag = 0;
+    }
+
+    Raw raw() const { return _raw; }
+    void raw( Raw r ) { _raw = r; }
+
+    explicit operator bool() const { return slab(); }
+    bool operator!() const { return !slab(); }
+    bool operator<= ( PoolPointer o ) const
+    {
+        if ( slab() < o.slab() )
+            return true;
+        if ( slab() == o.slab() )
+            return chunk() <= o.chunk();
+        return false;
+    }
+};
+
 /*
  * A pool keeps track of memory in a compact, fast, thread-optimised fashion.
  * It is organised into slabs of chunks of a single size. The Pointer type
@@ -89,55 +163,16 @@ struct DefaultPoolPointerRep
  * Pool's clients, can be positioned as needed within the pointer).
  */
 template< typename PointerRep = DefaultPoolPointerRep >
-struct Pool
+struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 {
     static const int slab_bits = PointerRep::slab_bits,
                     chunk_bits = PointerRep::chunk_bits;
 
-    struct Pointer : brick::types::Comparable
-    {
-        using Raw = bitlevel::bitvec< 8 * sizeof( PointerRep ) >;
-        using Rep = PointerRep;
-        using SlabT  = decltype( PointerRep::slab );
-        using ChunkT = decltype( PointerRep::chunk );
-        using TagT   = decltype( PointerRep::tag );
+    using Self = Pool< PointerRep >;
+    using Pointer = PoolPointer< PointerRep >;
 
-        static const int tag_bits = PointerRep::tag_bits;
-
-        union {
-            PointerRep _rep;
-            Raw _raw;
-        };
-
-        auto slab() const { return _rep.slab; }
-        auto chunk() const { return _rep.chunk; }
-        auto tag() const { return _rep.tag; }
-
-        void slab( SlabT s ) { _rep.slab = s; }
-        void chunk( ChunkT c ) { _rep.chunk = c; }
-        void tag( TagT t ) { _rep.tag = t; }
-
-        explicit Pointer( SlabT s = 0, ChunkT c = 0 ) noexcept
-        {
-            _rep.slab = s;
-            _rep.chunk = c;
-            _rep.tag = 0;
-        }
-
-        Raw raw() const { return _raw; }
-        void raw( Raw r ) { _raw = r; }
-
-        explicit operator bool() const { return slab(); }
-        bool operator!() const { return !slab(); }
-        bool operator<= ( Pointer o ) const
-        {
-            if ( slab() < o.slab() )
-                return true;
-            if ( slab() == o.slab() )
-                return chunk() <= o.chunk();
-            return false;
-        }
-    };
+    using PoolMixin< Self, Pointer >::header;
+    using PoolMixin< Self, Pointer >::dereference;
 
     struct BlockHeader
     {
@@ -451,12 +486,6 @@ struct Pool
 
     bool valid( Pointer p ) { return p.slab(); }
 
-    template< typename T >
-    T *machinePointer( Pointer p, int off = 0 )
-    {
-        return reinterpret_cast< T * >( dereference( p ) + off );
-    }
-
     int size( Pointer p )
     {
 #if 0
@@ -538,27 +567,6 @@ struct Pool
         return p;
     }
 
-    template< typename Origin >
-    void materialise( Pointer p, int size, Origin &origin )
-    {
-        int b = p.slab();
-        if ( !_s->block[ b ] )
-        {
-            const int overhead = sizeof( BlockHeader );
-            const int allocsize = align( size, sizeof( Pointer ) );
-            const int total = origin.header( p ).total;
-            const int allocate = overhead + total * allocsize;
-            auto mem = brick::mmap::MMap::alloc( allocate );
-            _s->block[ b ] = static_cast< BlockHeader * >( mem );
-            header( b ).itemsize = size;
-            header( b ).total = total;
-            header( b ).allocated = 0;
-            valgrindNewBlock( b, total );
-        }
-        valgrindAllocated( p, true );
-        ::memset( dereference( p ), 0, size );
-    }
-
     void free( Pointer p )
     {
         if ( !valid( p ) )
@@ -632,23 +640,46 @@ struct Pool
         si.blocksize = std::min( 4 * si.blocksize, int( blocksize ) );
         return si.active = b;
     }
+};
 
-    BlockHeader &header( Pointer p ) { return header( p.slab() ); }
-    BlockHeader &header( int b )
+template< typename Master >
+struct SlavePool : PoolMixin< SlavePool< Master >, typename Master::Pointer >
+{
+    static const int blockcount = Master::blockcount;
+
+    struct BlockHeader
     {
-        ASSERT( _s );
-        ASSERT_LEQ( b, blockcount );
-        ASSERT_LEQ( 0, b );
-        ASSERT( _s->block[ b ] );
-        return *(_s->block[ b ]);
-    }
+        uint32_t itemsize;
+        char data[0];
+    };
 
-    char *dereference( Pointer p )
+    struct Shared
     {
-        auto &h = header( p );
-        return h.data + p.chunk() * align( h.itemsize, sizeof( Pointer ) );
-    }
+        BlockHeader *block[ blockcount ];
+    };
 
+    std::shared_ptr< Shared > _s;
+    std::shared_ptr< typename Master::Shared > _m;
+
+    using Pointer = typename Master::Pointer;
+
+    SlavePool( const Master &m ) : _s( new Shared() ), _m( m._s ) {}
+
+    void materialise( Pointer p, int size )
+    {
+        int b = p.slab();
+        if ( !_s->block[ b ] )
+        {
+            auto mb = _m->block[ p.slab() ];
+            const int overhead = sizeof( BlockHeader );
+            const int allocsize = size > 1 ? align( size, 4 ) : 1;
+            const int allocate = overhead + mb->total * allocsize;
+            auto mem = brick::mmap::MMap::alloc( allocate );
+            _s->block[ b ] = static_cast< BlockHeader * >( mem );
+            this->header( b ).itemsize = size;
+        }
+        ::memset( this->dereference( p ), 0, size );
+    }
 };
 
 template< typename P >
@@ -727,13 +758,14 @@ struct Pool
 
     TEST(materialise)
     {
-        _Pool a, b;
+        _Pool a;
+        mem::SlavePool< _Pool > b( a );
         typename _Pool::Pointer p[100];
         for ( int i = 0; i < 100; ++i )
         {
             p[i] = a.allocate( 8 );
             *a.template machinePointer< int >( p[i] ) = i;
-            b.materialise( p[i], 4, a );
+            b.materialise( p[i], 4 );
             *b.template machinePointer< int >( p[i] ) = i;
         }
         for ( int i = 0; i < 100; ++i )
