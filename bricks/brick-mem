@@ -662,7 +662,11 @@ struct SlavePool : PoolMixin< SlavePool< Master >, typename Master::Pointer >
 
     using Pointer = typename Master::Pointer;
 
-    SlavePool( const Master &m ) : _s( new Shared() ), _m( m._s ) {}
+    SlavePool( const Master &m ) : _s( new Shared() ), _m( m._s )
+    {
+        for ( int i = 0; i < blockcount; ++i )
+            _s->block[ i ] = nullptr;
+    }
 
     void materialise( Pointer p, int size )
     {
