@@ -379,7 +379,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     using Internal = ObjPool::Pointer;
     using Snapshot = SnapPool::Pointer;
 
-    using Shadows = PooledShadow< Internal >;
+    using Shadows = PooledShadow< ObjPool >;
     using PointerV = value::Pointer;
     struct SnapItem
     {
@@ -393,6 +393,8 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     mutable ObjPool _objects;
     mutable SnapPool _snapshots;
     mutable Shadows _shadows;
+
+    SimpleHeap() : _shadows( _objects ) {}
 
     mutable struct Local
     {
@@ -487,7 +489,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         p.offset( 0 );
         ASSERT( !ptr2i( p ).slab() );
         auto obj = _l.exceptions[ p.object() ] = _objects.allocate( size );
-        _shadows.make( _objects, obj, size );
+        _shadows.make( obj, size );
         self().made( p );
         return PointerV( p );
     }
@@ -499,7 +501,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         int sz_old = size( p );
         auto obj_old = ptr2i( p );
         auto obj_new = _objects.allocate( sz_new );
-        _shadows.make( _objects, obj_new, sz_new );
+        _shadows.make( obj_new, sz_new );
         copy( *this, p, obj_old, p, obj_new, std::min( sz_new, sz_old ) );
         _l.exceptions[ p.object() ] = obj_new;
         self().made( p ); /* fixme? */
@@ -717,7 +719,7 @@ struct CowHeap : SimpleHeap< CowHeap >
         auto oldbytes = unsafe_bytes( p, i, 0, sz );
 
         auto obj = _objects.allocate( sz );
-        _shadows.make( _objects, obj, sz );
+        _shadows.make( obj, sz );
 
         _l.exceptions[ p.object() ] = obj;
         auto newloc = shloc( p, obj );

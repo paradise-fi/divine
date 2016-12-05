@@ -106,15 +106,17 @@ union ShadowException
     };
 };
 
-template< typename _Internal >
+template< typename MasterPool >
 struct PooledShadow
 {
     struct Anchor {};
-    using Internal = _Internal;
-    using InObj = InObject< Internal >;
-    using Pool = mem::Pool< typename Internal::Rep >;
+    using InObj = InObject< typename MasterPool::Pointer >;
+    using Pool = mem::SlavePool< MasterPool >;
+    using Internal = typename Pool::Pointer;
 
     Pool _type, _defined;
+
+    PooledShadow( const MasterPool &mp ) : _type( mp ), _defined( mp ) {}
 
     struct Loc
     {
@@ -230,12 +232,11 @@ struct PooledShadow
         PointerC( Pool &p, Internal i, int f, int t ) : types( p, i, f, t ) {}
     };
 
-    template< typename OP >
-    Anchor make( OP &origin, Internal p, int size )
+    Anchor make( Internal p, int size )
     {
         /* types: 2 bits per word (= 1/2 bit per byte), defined: 1 bit per byte */
-        _type.materialise( p, ( size / 16 ) + ( size % 16 ? 1 : 0 ), origin );
-        _defined.materialise( p, ( size / 8 )  + ( size % 8  ? 1 : 0 ), origin );
+        _type.materialise( p, ( size / 16 ) + ( size % 16 ? 1 : 0 ) );
+        _defined.materialise( p, ( size / 8 )  + ( size % 8  ? 1 : 0 ));
         return Anchor();
     }
 
@@ -356,9 +357,11 @@ struct NonHeap
 {
     using Ptr = Pool::Pointer;
     Pool pool;
-    Shadow< Ptr > shadows;
-    using Loc = typename Shadow< Ptr >::Loc;
-    using Anchor = typename Shadow< Ptr >::Anchor;
+    Shadow< Pool > shadows;
+    using Loc = typename Shadow< Pool >::Loc;
+    using Anchor = typename Shadow< Pool >::Anchor;
+
+    NonHeap() : shadows( pool ) {}
 
     Anchor &anchor( Ptr p ) { return *pool.template machinePointer< Anchor >( p ); }
     Loc shloc( Ptr p, int off ) { return Loc( p, anchor( p ), off ); }
@@ -366,7 +369,7 @@ struct NonHeap
     Ptr make( int sz )
     {
         auto r = pool.allocate( sizeof( Ptr ) );
-        anchor( r ) = shadows.make( pool, r, sz );
+        anchor( r ) = shadows.make( r, sz );
         return r;
     }
 
