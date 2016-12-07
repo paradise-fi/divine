@@ -10,6 +10,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-string>
+#include <brick-llvm>
 #include <string>
 #include <iostream>
 
@@ -78,8 +79,12 @@ struct CflInterrupt : lart::Pass {
         ASSERT( _cflInterrupt );
         _cflInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
 
+        std::set< llvm::Function * > skip;
+        brick::llvm::enumerateFunctionsForAnno( "lart.interrupt.skipcfl", m,
+                                                [&]( llvm::Function *f ) { skip.insert( f ); } );
+
         for ( auto &fn : m ) {
-            if ( fn.empty() )
+            if ( fn.empty() || skip.count( &fn ) )
                 continue;
             annotateFn( fn );
         }
