@@ -292,5 +292,5 @@ void __dios_fault( int f, const char *msg, ... ) {
     auto pc = reinterpret_cast< uintptr_t >( retFrame->pc );
 
     typedef void (*PC)(void);
-    ( *fh )( static_cast< _VM_Fault >( f ), retFrame, reinterpret_cast< PC >( pc + 1 ) );
+    ( *fh )( static_cast< _VM_Fault >( f ), retFrame, reinterpret_cast< PC >( pc ) );
 }
