@@ -781,7 +781,7 @@ int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr 
 
     {
         __dios::DetectFault f( _VM_F_Control );
-        if ( mutex->__initialized && !f.faulted() ) {
+        if ( mutex->__initialized && !f.triggered() ) {
             __dios_trace_t( "WARN: re-initializing mutex" );
             return EBUSY;
         }
@@ -1061,7 +1061,7 @@ int pthread_cond_init( pthread_cond_t *cond, const pthread_condattr_t * /* TODO:
 
     {
         __dios::DetectFault f( _VM_F_Control );
-        if ( cond->__initialized && !f.faulted() ) {
+        if ( cond->__initialized && !f.triggered() ) {
             __dios_trace_t( "WARN: re-initializing conditional variable" );
             return EBUSY;
         }
@@ -1288,7 +1288,7 @@ int pthread_cancel( pthread_t gtid ) {
     {
         __dios::DetectFault f( _VM_F_Memory );
         thread = &getThread( gtid );
-        if ( f.faulted() )
+        if ( f.triggered() )
             return ESRCH;
     }
 
@@ -1434,7 +1434,7 @@ int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *a
 
     {
         __dios::DetectFault f( _VM_F_Control );
-        if ( rwlock->__initialized && !f.faulted() ) {
+        if ( rwlock->__initialized && !f.triggered() ) {
             __dios_trace_t( "WARN: re-initializing rwlock" );
             return EBUSY;
         }
@@ -1589,7 +1589,7 @@ int pthread_barrier_init(
 
     {
         __dios::DetectFault f( _VM_F_Control );
-        if ( barrier->__initialized && !f.faulted() ) {
+        if ( barrier->__initialized && !f.triggered() ) {
             __dios_trace_t( "WARN: re-initializing barrier" );
             return EBUSY;
         }

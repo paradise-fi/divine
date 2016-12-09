@@ -321,7 +321,7 @@ struct DetectFault {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, uintptr_t( 0 ) );
     }
 
-    static bool faulted() {
+    static bool triggered() {
         return uintptr_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_Error;
     }
 
