@@ -1273,11 +1273,9 @@ int pthread_cancel( pthread_t gtid ) {
 
     _PThread *thread = nullptr;
     {
-        __dios::SetFaultTemporarily f( _VM_F_Memory, _DiOS_FC_Report );
+        __dios::DetectFault f( _VM_F_Memory );
         thread = &getThread( gtid );
-        bool faulted = uintptr_t( __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                                  _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, uintptr_t( 0 ) ) ) & _VM_CF_Error;
-        if ( faulted )
+        if ( f.faulted() )
             return ESRCH;
     }
 
