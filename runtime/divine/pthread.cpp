@@ -1700,7 +1700,7 @@ namespace _sig {
 
 void sig_ign( int ) {}
 
-#define __sig_terminate( SIGNAME ) []( int ) { __dios_fault( _VM_Fault::_VM_F_Control, "Uncaught signal: " #SIGNAME ); }
+#define __sig_terminate( SIGNAME ) []( int ) { __dios_fault( _VM_Fault::_VM_F_Control, "Uncaught signal: " #SIGNAME ); __dios_kill_process( 0 ); }
 
 // this is based on x86 signal numbers
 static const sighandler_t defact[] = {
