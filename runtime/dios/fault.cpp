@@ -194,12 +194,16 @@ int internalFaultToStatus( __dios::Context& ctx, int fault ) {
     using FaultFlag = __dios::Fault::FaultFlag;
     uint8_t cfg = ctx.fault->config[ fault ];
     if ( fault < _DiOS_F_Last) { // Fault
-        if ( !( cfg | FaultFlag::Enabled ) )
-            return _DiOS_FC_Ignore;
-        else if (  cfg | FaultFlag::Continue )
-            return _DiOS_FC_Report;
-        else
-            return _DiOS_FC_Abort;
+        switch ( cfg & (FaultFlag::Enabled | FaultFlag::Continue) ) {
+            case 0:
+                return _DiOS_FC_Ignore;
+            case FaultFlag::Enabled:
+                return _DiOS_FC_Abort;
+            case FaultFlag::Enabled | FaultFlag::Continue:
+                return _DiOS_FC_Report;
+            default:
+                __builtin_unreachable();
+        }
     }
     else { // Simfail
         if ( cfg | FaultFlag::Enabled )
