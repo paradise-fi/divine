@@ -779,6 +779,14 @@ int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr 
     if ( mutex == NULL )
         return EINVAL;
 
+    {
+        __dios::DetectFault f( _VM_F_Control );
+        if ( mutex->__initialized && !f.faulted() ) {
+            __dios_trace_t( "WARN: re-initializing mutex" );
+            return EBUSY;
+        }
+    }
+
     /* bitfield initializers can be only used as such, that is, initializers,
      * *not* as a right-hand side of an assignment to uninitialised memory */
     memset( mutex, 0, sizeof( pthread_mutex_t ) );
@@ -1051,8 +1059,13 @@ int pthread_cond_init( pthread_cond_t *cond, const pthread_condattr_t * /* TODO:
     if ( cond == NULL )
         return EINVAL;
 
-    if ( cond->__initialized )
-        return EBUSY; // already initialized
+    {
+        __dios::DetectFault f( _VM_F_Control );
+        if ( cond->__initialized && !f.faulted() ) {
+            __dios_trace_t( "WARN: re-initializing conditional variable" );
+            return EBUSY;
+        }
+    }
 
     *cond = ( pthread_cond_t ){.__mutex = NULL, .__initialized = 1, .__counter = 0 };
     return 0;
@@ -1418,9 +1431,13 @@ int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *a
     if ( rwlock == NULL )
         return EINVAL;
 
-    if ( rwlock->__initialized ) {
-        // already initialized
-        return EBUSY;
+
+    {
+        __dios::DetectFault f( _VM_F_Control );
+        if ( rwlock->__initialized && !f.faulted() ) {
+            __dios_trace_t( "WARN: re-initializing rwlock" );
+            return EBUSY;
+        }
     }
 
     rwlock->__processShared = attr && bool( *attr & _RWLOCK_ATTR_SHARING_MASK );
@@ -1570,9 +1587,13 @@ int pthread_barrier_init(
     if ( count == 0 || barrier == NULL )
         return EINVAL;
 
-    // make sure that no thread is blocked on the barrier
-    // (probably better alternative when compared to: return EBUSY)
-    assert( barrier->__counter == 0 );
+    {
+        __dios::DetectFault f( _VM_F_Control );
+        if ( barrier->__initialized && !f.faulted() ) {
+            __dios_trace_t( "WARN: re-initializing barrier" );
+            return EBUSY;
+        }
+    }
 
     // Set the number of threads that must call pthread_barrier_wait() before
     // any of them successfully return from the call.
