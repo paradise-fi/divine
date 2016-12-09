@@ -306,14 +306,23 @@ using InterruptMask = _InterruptMask< false >;
 using FencedInterruptMask = _InterruptMask< true >;
 
 
-struct SetFaultTemporarily {
+struct DetectFault {
 
-    SetFaultTemporarily( int fault, int cfg ) NOTHROW :
-        _fault( fault ), _orig( __dios_configure_fault( fault, cfg ) )
+    DetectFault( int fault ) NOTHROW :
+        _fault( fault ), _orig( __dios_configure_fault( fault, _DiOS_FC_Report ) )
     { }
 
-    ~SetFaultTemporarily() NOTHROW {
+#if __cplusplus >= 201103L
+    DetectFault( const DetectFault & ) = delete;
+#endif
+
+    ~DetectFault() NOTHROW {
         __dios_configure_fault( _fault, _orig );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, uintptr_t( 0 ) );
+    }
+
+    static bool faulted() {
+        return uintptr_t( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_Error;
     }
 
   private:
