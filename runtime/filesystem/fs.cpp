@@ -1177,7 +1177,7 @@ namespace __sc {
             dirp = vfs->instance().openDirectory( fd );
 
             struct dirent **entries = nullptr;
-            struct dirent *workingEntry = (struct dirent *)FS_MALLOC( sizeof( struct dirent ) );
+            struct dirent *workingEntry = static_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent ) ) );
 
             while ( true ) {
                 auto dir = vfs->instance().getDirectory( dirp );
@@ -1193,13 +1193,13 @@ namespace __sc {
                 if ( filter && !filter( workingEntry ) )
                     continue;
 
-                struct dirent **newEntries = (struct dirent **)FS_MALLOC( ( length + 1 ) * sizeof( struct dirent * ) );
+                struct dirent **newEntries = static_cast< struct dirent ** >( FS_MALLOC( ( length + 1 ) * sizeof( struct dirent * ) ) );
                 if ( length )
                     std::memcpy( newEntries, entries, length * sizeof( struct dirent * ) );
                 std::swap( entries, newEntries );
                 std::free( newEntries );
                 entries[ length ] = workingEntry;
-                workingEntry = (struct dirent *)FS_MALLOC( sizeof( struct dirent ) );
+                workingEntry = static_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent ) ) );
                 ++length;
             }
             std::free( workingEntry );
