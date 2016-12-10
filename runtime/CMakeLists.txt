@@ -68,9 +68,10 @@ list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
 
 mklib( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
 mklib( libcxx "${flags};-D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE" )
-list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem )
-mklib( libdios "${flags};-I${CMAKE_CURRENT_BINARY_DIR};-Wall;-Wextra" )
-mklib( libabstract "${flags};-I${CMAKE_CURRENT_BINARY_DIR};-Werror;-Wall;-Wextra" )
+list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem -I${CMAKE_CURRENT_BINARY_DIR}
+                   -Wall -Wextra -Wold-style-cast -Werror )
+mklib( libdios "${flags}" )
+mklib( libabstract "${flags}" )
 
 foreach( f ${H_RUNTIME} )
   stringify( "runtime" ${f} )
