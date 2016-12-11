@@ -73,6 +73,25 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
             } );
         }
 
+    if ( auto GV = dyn_cast< llvm::GlobalVariable >( V ) )
+    {
+        ASSERT( valuemap.count( GV->getInitializer() ) );
+        SlotRef location;
+        if ( GV->isConstant() )
+            location = valuemap[ GV->getInitializer() ];
+        else {
+            location = globalmap[ GV ];
+        }
+        heap.write_shift( ptr, value::Pointer( s2ptr( location ) ) );
+        _doneinit.insert( GV );
+    }
+
+    if ( !done )
+    {
+        _toinit.emplace_back( [=]{ initConstant( v, V ); } );
+        return;
+    }
+
     if ( auto CE = dyn_cast< llvm::ConstantExpr >( V ) )
     {
         Instruction comp;
@@ -128,18 +147,6 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     {
         heap.write_shift( ptr, value::Pointer( nullPointer() ) );
     }
-    else if ( auto GV = dyn_cast< llvm::GlobalVariable >( V ) )
-    {
-        ASSERT( valuemap.count( GV->getInitializer() ) );
-        SlotRef location;
-        if ( GV->isConstant() )
-            location = valuemap[ GV->getInitializer() ];
-        else {
-            location = globalmap[ GV ];
-        }
-        heap.write_shift( ptr, value::Pointer( s2ptr( location ) ) );
-        _doneinit.insert( GV );
-    }
     else if ( isa< llvm::ConstantAggregateZero >( V ) )
     {
         for ( int i = 0; i < v.size(); ++i )
@@ -152,11 +159,6 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     else if ( isCodePointer( V ) )
     {
         heap.write_shift( ptr, value::Pointer( getCodePointer( V ) ) );
-    }
-    else if ( V->getType()->isPointerTy() )
-    {
-        V->dump();
-        UNREACHABLE( "an unexpected non-zero constant pointer" );
     }
     else if ( isa< llvm::ConstantArray >( V ) || isa< llvm::ConstantStruct >( V ) )
     {
@@ -190,14 +192,16 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     {
         NOT_IMPLEMENTED();
     }
+    else if ( isa< llvm::GlobalVariable >( V ) );
     else
     {
         V->dump();
-        UNREACHABLE( "unknown constant type" );
+        if ( V->getType()->isPointerTy() )
+            UNREACHABLE( "an unexpected non-zero constant pointer" );
+        else
+            UNREACHABLE( "unknown constant type" );
     }
 
-    if ( done )
-        _doneinit.insert( V );
-    else
-        _toinit.emplace_back( [=]{ initConstant( v, V ); } );
+    ASSERT( done );
+    _doneinit.insert( V );
 }
