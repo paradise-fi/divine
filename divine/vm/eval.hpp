@@ -474,7 +474,12 @@ struct Eval
         int sz = operand( 0 ).size();
         if ( !boundcheck( to, sz, true ) )
             return;
-        heap().copy( s2ptr( operand( 0 ) ), ptr2h( to ), sz );
+        auto slot = operand( 0 );
+        auto mem = ptr2h( to );
+        auto mem_i = heap().ptr2i( mem ), new_i = mem_i;
+        heap().copy( heap(), s2ptr( slot ), context().ptr2i( slot.location ), mem, mem_i, sz );
+        if ( mem_i != new_i )
+            context().flush_ptr2i(); /* might have affected register-held objects */
     }
 
     void implement_load()
