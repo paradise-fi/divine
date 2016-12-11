@@ -221,7 +221,6 @@ struct Eval
 
     HeapPointer ptr2h( PointerV p )
     {
-        ASSERT( p.defined() );
         auto pp = p.cooked();
 
         if ( pp.type() == PointerType::Heap || pp.null() )
