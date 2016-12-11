@@ -327,7 +327,7 @@ void DebugNode< Prog, Heap >::source( std::ostream &out )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::related( YieldDN yield )
+void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
 {
     if ( !valid() )
         return;
@@ -369,6 +369,9 @@ void DebugNode< Prog, Heap >::related( YieldDN yield )
 
     if ( _type && _di_type && di_composite( llvm::dwarf::DW_TAG_array_type ) )
         array_elements( yield );
+
+    if ( !anon )
+        return;
 
     for ( auto ptroff : _ctx.heap().pointers( hloc, hoff + _offset, size() ) )
     {

@@ -177,7 +177,7 @@ struct DebugNode
     void source( std::ostream &out );
     void format( std::ostream &out, int depth = 1, bool compact = false, int indent = 0 );
 
-    void related( YieldDN yield );
+    void related( YieldDN yield, bool anon = true );
     void struct_fields( HeapPointer hloc, YieldDN yield );
     void array_elements( YieldDN yield );
     void localvar( YieldDN yield, llvm::DbgDeclareInst *DDI );
@@ -309,7 +309,7 @@ void backtrace( DN dn, DNSet &visited, int &stacks, int maxdepth )
                          !visited.count( rel.sortkey() ) && maxdepth > 1 )
                         std::cerr << "backtrace #" << ++stacks << ":" << std::endl;
                     backtrace( rel, visited, stacks, k == "@caller" ? maxdepth - 1 : maxdepth );
-                } );
+                }, false );
 }
 
 
