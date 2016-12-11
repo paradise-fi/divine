@@ -26,6 +26,7 @@
 #include <brick-string>
 #include <cstring>
 
+#if OPT_SIM
 #include <histedit.h>
 #include <pwd.h>
 
@@ -838,3 +839,18 @@ void Sim::run()
 
 }
 }
+
+#else
+
+namespace divine {
+namespace ui {
+
+void Sim::run()
+{
+    throw std::runtime_error( "This build of DIVINE does not support the 'sim' command." );
+}
+
+}
+}
+
+#endif

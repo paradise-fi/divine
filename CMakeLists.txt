@@ -126,6 +126,8 @@ if( CMAKE_BUILD_TYPE STREQUAL "Debug" )
 endif()
 
 opt( OPT_TBBMALLOC "use Intel TBB memory allocator" ${IS_NDEBUG} )
+opt( OPT_SIM "build the interactive debugger/simulator" ON )
+
 opt( OPT_ASSERT "enable assertions" ${IS_DEBUG} )
 opt( ALG_MAP "" OFF )
 opt( ALG_OWCTY "" ON )
@@ -136,6 +138,16 @@ opt( ALG_CSDR "" ON )
 opt( ALG_NDFS "" OFF )
 opt( ALG_METRICS "" ON )
 opt( OPT_SQL "enable ODBC-based database reports" OFF ) # ${ODBC_FOUND}
+
+if ( OPT_SIM )
+  find_package( Curses REQUIRED )
+  find_library( LIBEDIT edit )
+  include_directories( ${CURSES_INCLUDE_PATH} )
+
+  if ( NOT LIBEDIT )
+    message( SEND_ERROR "libedit is required for 'divine sim' (-DOPT_SIM=ON)" )
+  endif()
+endif()
 
 option( DEV_WARNINGS "enable extra compiler warnings" ${IS_DEBUG} )
 option( DEV_WERROR "enable -Werror" ${IS_DEBUG} )
@@ -176,9 +188,6 @@ else()
   message( WARNING "Valgrind (headers) not found! Pool debugging will not work." )
   add_definitions( -DNVALGRIND )
 endif()
-
-find_package( Curses REQUIRED )
-include_directories( ${CURSES_INCLUDE_PATH} )
 
 add_definitions( -DBRICKS_HAVE_LLVM )
 
