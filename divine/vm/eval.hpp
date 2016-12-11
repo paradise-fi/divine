@@ -969,10 +969,14 @@ struct Eval
                 context().cfl_interrupt( pc() );
                 return;
             case HypercallInterruptMem:
-                context().mem_interrupt( operandPtr( 0 ).cooked(),
-                                         operandCk< IntV >( 1 ).cooked() );
+            {
+                auto ptr = operandPtr( 0 );
+                /* TODO fault on failing pointers? */
+                if ( boundcheck( ptr, 1, false ) )
+                    context().mem_interrupt( ptr.cooked(),
+                                             operandCk< IntV >( 1 ).cooked() );
                 return;
-
+            }
             case HypercallTrace:
             {
                 _VM_Trace t = _VM_Trace( operandCk< IntV >( 0 ).cooked() );
