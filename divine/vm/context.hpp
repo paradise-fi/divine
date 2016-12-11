@@ -112,8 +112,8 @@ struct Context
     }
     HeapInternal ptr2i( _VM_ControlRegister r ) { return ptr2i( Location( r ) ); }
 
-    void ptr2i( Location l, HeapInternal i ) { _ptr2i[ l ] = i; }
-    void ptr2i( _VM_ControlRegister r, HeapInternal i ) { _ptr2i[ r ] = i; }
+    void ptr2i( Location l, HeapInternal i ) { if ( i ) _ptr2i[ l ] = i; else flush_ptr2i(); }
+    void ptr2i( _VM_ControlRegister r, HeapInternal i ) { ptr2i( Location( r ), i ); }
     void flush_ptr2i()
     {
         for ( int i = 0; i <= _VM_CR_Frame; ++i )

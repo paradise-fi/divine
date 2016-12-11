@@ -536,30 +536,33 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         return _shadows.shared( ptr2i( p ) );
     }
 
-    void shared( GenericPointer gp, bool sh )
+    bool shared( GenericPointer gp, bool sh )
     {
         if ( gp.type() != PointerType::Heap || !valid( gp ) )
-            return;
+            return false;
 
         HeapPointer p = gp;
         auto i = ptr2i( p );
 
         if ( _shadows.shared( i ) == sh )
-            return; /* nothing to be done */
+            return false; /* nothing to be done */
 
-        i = self().detach( p, i );
-        _shadows.shared( i ) = sh;
+        auto detached = self().detach( p, i );
+        _shadows.shared( detached ) = sh;
+        bool rv = i != detached;
 
         if ( !sh )
-            return;
+            return rv;
 
-        for ( auto pos : this->pointers( p, i ) ) /* flood */
+        for ( auto pos : this->pointers( p, detached ) ) /* flood */
         {
             value::Pointer ptr;
             p.offset( pos.offset() );
-            read( p, ptr, i );
-            shared( ptr.cooked(), true );
+            read( p, ptr, detached );
+            rv = shared( ptr.cooked(), true ) || rv;
         }
+
+        return rv;
     }
 
     int size( HeapPointer, Internal i ) const { return _objects.size( i ); }
@@ -600,7 +603,8 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         _shadows.write( shloc( p, i ), t, []( auto, auto ) {} );
         *_objects.machinePointer< typename T::Raw >( i, p.offset() ) = t.raw();
         if ( t.pointer() && shared( p ) )
-            shared( value::Pointer( t ).cooked(), true );
+            if ( shared( value::Pointer( t ).cooked(), true ) )
+                return Internal();
         return i;
     }
 
