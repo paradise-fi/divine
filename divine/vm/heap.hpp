@@ -216,9 +216,11 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
     if ( seen != visited.end() )
         return seen->second;
 
+    auto root_i = f.ptr2i( root );
     auto result = t.make( f.size( root ) ).cooked();
+    auto result_i = t.ptr2i( result );
     visited.emplace( root, result );
-    auto fb = f.unsafe_bytes( root ), tb = t.unsafe_bytes( result );
+    auto fb = f.unsafe_bytes( root, root_i ), tb = t.unsafe_bytes( result, result_i );
     auto fd = f.defined( root ), td = t.defined( result );
 
     for ( int i  = 0; i < f.size( root ); ++i ) /* TODO speed */
@@ -232,12 +234,12 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
         value::Pointer ptr, ptr_c;
         root.offset( pos.offset() );
         result.offset( pos.offset() );
-        f.read( root, ptr );
+        f.read( root, ptr, root_i );
         auto obj = ptr.cooked();
         obj.offset( 0 );
         auto cloned = obj.type() == PointerType::Heap ? clone( f, t, obj, visited ) : obj;
         cloned.offset( ptr.cooked().offset() );
-        t.write( result, value::Pointer( cloned ) );
+        t.write( result, value::Pointer( cloned ), result_i );
     }
     result.offset( 0 );
     return result;
