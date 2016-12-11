@@ -264,6 +264,8 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
 
     if ( _address.type() == PointerType::Const || _address.type() == PointerType::Global )
         yield( "@slot", brick::string::fmt( eval.ptr2s( _address ) ) );
+    else if ( _address.type() == PointerType::Heap )
+        yield( "@shared", brick::string::fmt( _ctx.heap().shared( _address ) ) );
 
     if ( _di_var )
     {

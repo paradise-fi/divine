@@ -330,6 +330,8 @@ Hypercall Program::hypercall( llvm::Function *f )
         return HypercallObjMake;
     if ( name == "__vm_obj_free" )
         return HypercallObjFree;
+    if ( name == "__vm_obj_shared" )
+        return HypercallObjShared;
     if ( name == "__vm_obj_resize" )
         return HypercallObjResize;
     if ( name == "__vm_obj_size" )

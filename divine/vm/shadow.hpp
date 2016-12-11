@@ -114,9 +114,9 @@ struct PooledShadow
     using Pool = mem::SlavePool< MasterPool >;
     using Internal = typename Pool::Pointer;
 
-    Pool _type, _defined;
+    Pool _type, _defined, _shared;
 
-    PooledShadow( const MasterPool &mp ) : _type( mp ), _defined( mp ) {}
+    PooledShadow( const MasterPool &mp ) : _type( mp ), _defined( mp ), _shared( mp ) {}
 
     struct Loc
     {
@@ -237,6 +237,7 @@ struct PooledShadow
         /* types: 2 bits per word (= 1/2 bit per byte), defined: 1 bit per byte */
         _type.materialise( p, ( size / 16 ) + ( size % 16 ? 1 : 0 ) );
         _defined.materialise( p, ( size / 8 )  + ( size % 8  ? 1 : 0 ));
+        _shared.materialise( p, 1 );
         return Anchor();
     }
 
@@ -245,6 +246,11 @@ struct PooledShadow
     auto type( Loc l, int sz ) { return TypeC( _type, l.object, l.offset, l.offset + sz ); }
     auto defined( Loc l, int sz ) { return DefinedC( _defined, l.object, l.offset, l.offset + sz ); }
     auto pointers( Loc l, int sz ) { return PointerC( _type, l.object, l.offset, l.offset + sz ); }
+
+    bool &shared( Internal p )
+    {
+        return *_shared.template machinePointer< bool >( p );
+    }
 
     template< typename CB >
     void fix_boundary( Loc l, int size, CB cb )

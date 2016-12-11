@@ -68,6 +68,7 @@ enum Hypercall /* see divine.h for prototypes & documentation */
     /* memory management */
     HypercallObjMake,
     HypercallObjFree,
+    HypercallObjShared,
     HypercallObjResize,
     HypercallObjSize
 };
@@ -220,6 +221,7 @@ struct Program
         auto gp = target.make( _globals_size );
         target.copy( _ccontext._heap, _ccontext.globals(),
                      gp.cooked(), _globals_size );
+        target.shared( gp.cooked(), true );
         return std::make_pair( cp.cooked(), gp.cooked() );
     }
 

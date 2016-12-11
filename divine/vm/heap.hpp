@@ -68,8 +68,12 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
 
     if ( h1.valid( r1 ) != h2.valid( r2 ) )
         return h1.valid( r1 ) - h2.valid( r2 );
+
     if ( !h1.valid( r1 ) )
         return 0;
+
+    if ( h1.shared( r1 ) != h2.shared( r2 ) )
+        return h1.shared( r1 ) - h2.shared( r2 );
 
     auto i1 = h1.ptr2i( r1 ), i2 = h2.ptr2i( r2 );
     int s1 = h1.size( r1, i1 ), s2 = h2.size( r2, i2 );
@@ -527,6 +531,37 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         return ptr2i( p ).slab();
     }
 
+    bool shared( HeapPointer p ) const
+    {
+        return _shadows.shared( ptr2i( p ) );
+    }
+
+    void shared( GenericPointer gp, bool sh )
+    {
+        if ( gp.type() != PointerType::Heap || !valid( gp ) )
+            return;
+
+        HeapPointer p = gp;
+        auto i = ptr2i( p );
+
+        if ( _shadows.shared( i ) == sh )
+            return; /* nothing to be done */
+
+        i = self().detach( p, i );
+        _shadows.shared( i ) = sh;
+
+        if ( !sh )
+            return;
+
+        for ( auto pos : this->pointers( p, i ) ) /* flood */
+        {
+            value::Pointer ptr;
+            p.offset( pos.offset() );
+            read( p, ptr, i );
+            shared( ptr.cooked(), true );
+        }
+    }
+
     int size( HeapPointer, Internal i ) const { return _objects.size( i ); }
     int size( HeapPointer p ) const { return size( p, ptr2i( p ) ); }
 
@@ -564,6 +599,8 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
         _shadows.write( shloc( p, i ), t, []( auto, auto ) {} );
         *_objects.machinePointer< typename T::Raw >( i, p.offset() ) = t.raw();
+        if ( t.pointer() && shared( p ) )
+            shared( value::Pointer( t ).cooked(), true );
         return i;
     }
 
@@ -586,6 +623,16 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         std::copy( from.begin() + from_off, from.begin() + from_off + bytes, to.begin() + to_off );
         _shadows.copy( from_h.shadows(), from_h.shloc( _from, _from_i ),
                        shloc( _to, _to_i ), bytes,  []( auto, auto ) {} );
+
+        if ( _shadows.shared( _to_i ) )
+            for ( auto pos : _shadows.pointers( shloc( _to, _to_i ), bytes ) )
+            {
+                value::Pointer ptr;
+                _to.offset( to_off + pos.offset() );
+                read( _to, ptr, _to_i );
+                shared( ptr.cooked(), true );
+            }
+
         return true;
     }
 
@@ -652,6 +699,8 @@ struct CowHeap : SimpleHeap< CowHeap >
             if ( objects().size( b ) != size )
                 return false;
             if ( ::memcmp( objects().dereference( a ), objects().dereference( b ), size ) )
+                return false;
+            if ( shadows().shared( a ) != shadows().shared( b ) )
                 return false;
             Shadows::Loc a_shloc( a, Shadows::Anchor(), 0 ), b_shloc( b, Shadows::Anchor(), 0 );
             auto a_def = shadows().defined( a_shloc, size ),
@@ -728,6 +777,7 @@ struct CowHeap : SimpleHeap< CowHeap >
         auto newbytes = unsafe_bytes( p, obj, 0, sz );
         _shadows.copy( _shadows, oldloc, newloc, sz, []( auto, auto ) {} );
         std::copy( oldbytes.begin(), oldbytes.end(), newbytes.begin() );
+        _shadows.shared( obj ) = _shadows.shared( i );
         return obj;
     }
 

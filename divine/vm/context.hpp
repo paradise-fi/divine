@@ -190,6 +190,10 @@ struct Context
     {
         if ( ptr.type() == PointerType::Const )
             return;
+
+        if ( ptr.type() == PointerType::Heap && !heap().shared( ptr ) )
+            return;
+
         if ( type == _VM_MAT_Load )
         {
             if ( _mem_loads.count( ptr.object() ) )

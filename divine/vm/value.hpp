@@ -343,6 +343,11 @@ struct Pointer : Base
             _ispointer = false;
         }
     }
+
+    template< typename T > explicit Pointer( Float< T > )
+    {
+        UNREACHABLE( "invalid conversion from a float to a pointer" );
+    }
 };
 
 template< typename T >

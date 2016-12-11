@@ -1022,6 +1022,9 @@ struct Eval
                 if ( !freeobj( operand< PointerV >( 0 ).cooked() ) )
                     fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_free";
                 return;
+            case HypercallObjShared:
+                heap().shared( operandCk< PointerV >( 0 ).cooked(), true );
+                return;
             case HypercallObjResize:
                 if ( !heap().resize( operandCk< PointerV >( 0 ).cooked(),
                                      operandCk< IntV >( 1 ).cooked() ) )
