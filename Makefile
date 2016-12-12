@@ -6,6 +6,7 @@ GENERATOR ?= Unix Makefiles
 -include /etc/divine.make # for system-wide config
 -include local.make
 
+CMAKE ?= cmake
 CC ?= cc
 CXX ?= c++
 DEFAULT_FLAVOUR ?= release
@@ -61,32 +62,32 @@ ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP
 	chmod +x test/divine # darcs does not remember +x on files
 	mkdir -p $$(dirname $@)
 	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
-	cd $$(dirname $@) && cmake $(PWD) $($(FLAVOUR)_FLAGS) $(CMAKE_EXTRA) -G "$(GENERATOR)"
+	cd $$(dirname $@) && $(CMAKE) $(PWD) $($(FLAVOUR)_FLAGS) $(CMAKE_EXTRA) -G "$(GENERATOR)"
 	touch $@
 
 ${TARGETS:%=debug-%}:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug
-	cmake --build $(OBJ)debug --target ${@:debug-%=%} -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)debug --target ${@:debug-%=%} -- $(EXTRA)
 
 ${TARGETS:%=release-%}:
 	$(MAKE) $(OBJ)release/cmake.stamp $(GETCONFDEPS) FLAVOUR=release
-	cmake --build $(OBJ)release --target ${@:release-%=%} -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)release --target ${@:release-%=%} -- $(EXTRA)
 
 ${TARGETS:%=asan-%}:
 	$(MAKE) $(OBJ)asan/cmake.stamp $(GETCONFDEPS) FLAVOUR=asan
-	cmake --build $(OBJ)asan --target ${@:asan-%=%} -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)asan --target ${@:asan-%=%} -- $(EXTRA)
 
 toolchain: $(OBJ)toolchain/stamp
 
 $(OBJ)toolchain/stamp:
 	mkdir -p $(OBJ)toolchain
-	cd $(OBJ)toolchain && cmake $(PWD) $(toolchain_FLAGS) -G "$(GENERATOR)"
-	cmake --build $(OBJ)toolchain --target cxx -- $(EXTRA)
-	cmake --build $(OBJ)toolchain --target clang -- $(EXTRA)
-	cmake --build $(OBJ)toolchain --target compiler-rt -- $(EXTRA)
-	cmake --build $(OBJ)toolchain --target llvm-dis -- $(EXTRA)
-	cmake --build $(OBJ)toolchain --target llvm-as -- $(EXTRA)
-	cmake --build $(OBJ)toolchain --target llc  -- $(EXTRA)
+	cd $(OBJ)toolchain && $(CMAKE) $(PWD) $(toolchain_FLAGS) -G "$(GENERATOR)"
+	$(CMAKE) --build $(OBJ)toolchain --target cxx -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)toolchain --target clang -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)toolchain --target compiler-rt -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)toolchain --target llvm-dis -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)toolchain --target llvm-as -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)toolchain --target llc  -- $(EXTRA)
 	touch $@
 
 ${FLAVOURS:%=%-env}:
@@ -104,7 +105,7 @@ show: # make show var=VAR
 dist:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug \
 	    CMAKE_EXTRA=-DVERSION_APPEND=$(VERSION_APPEND)
-	cmake --build $(OBJ)debug --target package_source $(EXTRA)
+	$(CMAKE) --build $(OBJ)debug --target package_source $(EXTRA)
 	cp $(OBJ)debug/divine-*.tar.gz .
 
 validate:
