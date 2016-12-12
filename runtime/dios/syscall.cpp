@@ -33,8 +33,6 @@ namespace __sc {
 
 namespace __dios {
 
-Syscall *Syscall::_inst;
-
 void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl ) = {
     #define SYSCALL(n,...)  [ _SC_ ## n ] = __sc::n,
         #include <dios/syscall.def>

@@ -30,19 +30,19 @@ extern void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, int *err, void* retv
 extern const SchedCommand _DiOS_SysCallsSched[ _SC_LAST ];
 
 struct Syscall {
-    Syscall() noexcept : _syscode( _SC_INACTIVE ) {
-        _inst = this;
-    }
+    Syscall() noexcept : _syscode( _SC_INACTIVE ) {}
 
     static void trap(int syscode, int* err, void* ret, va_list& args) noexcept
     {
-        _inst->_syscode = static_cast< _DiOS_SC >( syscode );
-        _inst->_ret = ret;
-        _inst->_err = err;
-        va_copy( _inst->_args, args );
+        Syscall inst;
+        inst._syscode = static_cast< _DiOS_SC >( syscode );
+        inst._ret = ret;
+        inst._err = err;
+        va_copy( inst._args, args );
+        __vm_control( _VM_CA_Set, _VM_CR_User1, &inst );
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
-        va_end( _inst->_args );
+        va_end( inst._args );
     }
 
     SchedCommand handle( Context *ctx ) noexcept {
@@ -65,8 +65,6 @@ private:
     int *_err;
     void *_ret;
     va_list _args;
-
-    static Syscall *_inst;
 };
 
 } // namespace __dios

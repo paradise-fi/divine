@@ -185,7 +185,9 @@ void sched() noexcept
                       uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
         t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
 
-        if ( ctx->syscall->handle( ctx ) == SchedCommand::RESCHEDULE )
+        Syscall *syscall = static_cast< Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
+        __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
+        if ( !syscall || syscall->handle( ctx ) == SchedCommand::RESCHEDULE )
             return;
 
         /* reset intframe to ourselves */

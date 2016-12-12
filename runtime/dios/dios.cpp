@@ -28,7 +28,6 @@ using FileTrace = divine::fs::FileTrace;
 
 Context::Context() :
     scheduler( __dios::new_object< Scheduler >() ),
-    syscall( __dios::new_object< Syscall >() ),
     fault( __dios::new_object< Fault >() ),
     vfs( __dios::new_object< VFS >() ),
     globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
@@ -37,7 +36,6 @@ Context::Context() :
 void Context::finalize() {
     __dios::delete_object( vfs );
     __dios::delete_object( fault );
-    __dios::delete_object( syscall );
     __dios::delete_object( scheduler );
 }
 
@@ -187,7 +185,7 @@ void traceEnv( int ind, const _VM_Env *env ) {
 void init( const _VM_Env *env )
 {
     // No active thread
-    __vm_control( _VM_CA_Set, _VM_CR_User1, -1 );
+    __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
     __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, __dios::Fault::handler );
 
     // Activate temporary scheduler to handle errors

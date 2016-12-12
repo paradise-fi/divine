@@ -218,7 +218,6 @@ struct MachineParams {
 
 struct Context {
     Scheduler *scheduler;
-    Syscall *syscall;
     Fault *fault;
     VFS *vfs;
     void *globals;
