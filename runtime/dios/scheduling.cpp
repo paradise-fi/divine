@@ -48,6 +48,8 @@ void start_thread( __dios::Context& ctx, int *, void *retval, va_list vl ) {
 
     auto t = ctx.scheduler->newThread( routine, tls );
     ctx.scheduler->setupThread( t, arg );
+    __vm_obj_shared( t->getId() );
+    __vm_obj_shared( arg );
     *ret = t->getId();
 }
 
