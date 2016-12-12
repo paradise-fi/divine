@@ -40,7 +40,9 @@ add_library( divine-ltl ${CPP_ltl} )
 add_library( divine-ui ${CPP_ui} ${STRINGIFIED} )
 add_library( divine-vm ${CPP_vm} )
 
-target_link_libraries( divine-ui edit )
+if ( OPT_SIM )
+  target_link_libraries( divine-ui edit )
+endif()
 
 add_library( libdivine "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp" )
 

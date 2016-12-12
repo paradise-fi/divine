@@ -139,7 +139,7 @@ opt( ALG_NDFS "" OFF )
 opt( ALG_METRICS "" ON )
 opt( OPT_SQL "enable ODBC-based database reports" OFF ) # ${ODBC_FOUND}
 
-if ( OPT_SIM )
+if ( OPT_SIM AND NOT TOOLCHAIN )
   find_package( Curses REQUIRED )
   find_library( LIBEDIT edit )
   include_directories( ${CURSES_INCLUDE_PATH} )
