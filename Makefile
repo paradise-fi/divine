@@ -36,6 +36,7 @@ TOOLCHAIN = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
 	    -DCMAKE_EXE_LINKER_FLAGS="$(LDFLAGS_)" -DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS_)"
 
 release_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
+semidbg_FLAGS = -DCMAKE_BUILD_TYPE=SemiDbg $(TOOLCHAIN) $(CONFIG)
 debug_FLAGS = -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
 asan_CXXFLAGS = -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O1
 asan_FLAGS = $(debug_FLAGS) -DCMAKE_CXX_FLAGS_DEBUG="$(asan_CXXFLAGS)"
@@ -46,7 +47,7 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 
 all: $(DEFAULT_FLAVOUR)
 
-FLAVOURS = debug asan release
+FLAVOURS = debug asan release semidbg
 TARGETS = divine unit functional website check llvm-dis clang test-divine
 
 ${TARGETS}:
@@ -68,6 +69,10 @@ ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP
 ${TARGETS:%=debug-%}:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug
 	$(CMAKE) --build $(OBJ)debug --target ${@:debug-%=%} -- $(EXTRA)
+
+${TARGETS:%=semidbg-%}:
+	$(MAKE) $(OBJ)semidbg/cmake.stamp $(GETCONFDEPS) FLAVOUR=semidbg
+	cmake --build $(OBJ)semidbg --target ${@:semidbg-%=%} -- $(EXTRA)
 
 ${TARGETS:%=release-%}:
 	$(MAKE) $(OBJ)release/cmake.stamp $(GETCONFDEPS) FLAVOUR=release
