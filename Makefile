@@ -106,7 +106,7 @@ dist:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug \
 	    CMAKE_EXTRA=-DVERSION_APPEND=$(VERSION_APPEND)
 	$(CMAKE) --build $(OBJ)debug --target package_source $(EXTRA)
-	cp $(OBJ)debug/divine-*.tar.gz .
+	mv $(OBJ)debug/divine-*.tar.* .
 
 validate:
 	$(MAKE) debug-divine
