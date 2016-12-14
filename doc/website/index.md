@@ -4,10 +4,10 @@ including **C** and **C++**.  The verification core is built on a foundation of
 high­-per­for­mance algorithms and data structures, scaling all the way from a
 laptop to a high-end cluster.  Learn more in the [manual](manual.html).
 
-First Beta of DIVINE 4 is Available
-===================================
+Second Beta of DIVINE 4 is Available
+====================================
 
-[2016-12-01] We are pleased to announce that the first beta version of the
+[2016-12-14] We are pleased to announce that the second beta version of the
 upcoming DIVINE 4.0 is now [available for download] [1] as a source tarball.
 
 [1]: download.html
