@@ -2,7 +2,7 @@
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Module.h>
-
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/Analysis/CallGraph.h>
 DIVINE_UNRELAX_WARNINGS

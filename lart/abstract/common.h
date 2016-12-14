@@ -62,16 +62,6 @@ struct Common
     virtual llvm::Type *abstract( llvm::Value *v ) {
         return abstract( v->getType() );
     }
-
-    // Returns true if a type is abstract. Abstract types are always named
-    // aggregate types with "%lart.abstract." as their name prefix.
-    bool isAbstract( llvm::Type *t ) {
-        auto n = t->getStructName();
-        if ( n.empty() )
-            return false;
-        return std::string( n.str(), 0, 15 ) == "%lart.";
-    }
-
 };
 
 }

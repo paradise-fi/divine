@@ -715,7 +715,7 @@ inline llvm::Function * changeFunctionSignature( llvm::Function * fn, llvm::Func
     return newfn;
 }
 
-inline llvm::Function * changeReturnValue( llvm::Function *fn, llvm::Type *rty )
+inline llvm::Function * changeReturnType( llvm::Function *fn, llvm::Type *rty )
 {
     auto fty = llvm::FunctionType::get( rty,
                                         fn->getFunctionType()->params(),

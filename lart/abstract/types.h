@@ -33,13 +33,13 @@ struct Base {
 };
 
 struct IntegerType : Base {
-    static std::string name( llvm::Type * type ) {
+    static std::string name( const llvm::Type * type ) {
         assert( type->isIntegerTy() );
         return IntegerType::name( llvm::cast< llvm::IntegerType >( type )->getBitWidth() );
     }
 
     static std::string name( unsigned bw ) {
-        return Base::name() + ".abstract." + std::to_string( bw );
+        return Base::name() + ".abstract.i" + std::to_string( bw );
     }
 
     static llvm::StructType * get( llvm::Type * type ) {
@@ -51,21 +51,28 @@ struct IntegerType : Base {
     static llvm::StructType * get( llvm::LLVMContext & ctx, unsigned bw ) {
         if( auto lookup = ctx.pImpl->NamedStructTypes.lookup( name( bw ) ) )
             return lookup;
-        return llvm::StructType::create( ctx, IntegerType::name( bw ) );
+        return llvm::StructType::create( ctx,
+              { llvm::IntegerType::get( ctx, bw ) }, IntegerType::name( bw ) );
     }
 
-    static unsigned bw( llvm::StructType * type ) {
+    static unsigned bw( const llvm::StructType * type ) {
         assert( type->getElementType( 0 )->isIntegerTy() );
         return llvm::cast< llvm::IntegerType >( type->getElementType( 0 ) )->getBitWidth();
     }
 
-    static bool isa( llvm::Type * type ) {
+    static bool isa( const llvm::Type * type ) {
         if ( ! type->isStructTy() )
             return false;
         auto sty = llvm::cast< llvm::StructType >( type );
         if ( ! sty->getElementType( 0 )->isIntegerTy() )
             return false;
         return IntegerType::get( type->getContext(), IntegerType::bw( sty ) ) == type;
+    }
+
+    static llvm::Type * lower( const llvm::Type * type ) {
+        assert( IntegerType::isa( type ) );
+        auto st = llvm::cast< llvm::StructType >( type );
+        return llvm::Type::getIntNTy( type->getContext(), bw( st ) );
     }
 };
 
@@ -80,7 +87,7 @@ struct Tristate : Base {
         return llvm::StructType::create( { body( ctx ) }, Tristate::name() );
     }
 
-    static bool isa( llvm::Type * type ) {
+    static bool isa( const llvm::Type * type ) {
         return Tristate::get( type->getContext() ) == type;
     }
 
@@ -94,19 +101,19 @@ struct Tristate : Base {
         return llvm::ConstantStruct::get( get( ctx ), { llvm::ConstantInt::getFalse( ctx ) } );
     }
 
+    static llvm::Type * lower( const llvm::Type * type ) {
+        assert( Tristate::isa( type ) );
+        return llvm::Type::getInt1Ty( type->getContext() );
+    }
+
 private:
     static llvm::IntegerType * body( llvm::LLVMContext & ctx ) {
         return llvm::IntegerType::get( ctx, 1 );
     }
-
 };
 
-static std::string getTypeName( llvm::Type * type ) {
-    std::string buffer;
-    llvm::raw_string_ostream rso( buffer );
-    type->print( rso );
-    return rso.str();
-}
+namespace types {
+namespace {
 
 static std::vector< std::string > parseTypeName( llvm::Type * type ) {
     std::stringstream ss;
@@ -119,13 +126,74 @@ static std::vector< std::string > parseTypeName( llvm::Type * type ) {
     return parts;
 }
 
-static std::string typeQualifier( llvm::Type * type ) {
-    auto parts = parseTypeName( type );
-    assert( parts.size() >= 3 );
-    return parts[ 2 ];
 }
 
-} /* lart */
-} /* abstract */
+static std::string name( const llvm::Type * type ) {
+    std::string buffer;
+    llvm::raw_string_ostream rso( buffer );
+    type->print( rso );
+    return rso.str();
+}
+
+static llvm::Type * lift( llvm::Type * type ) {
+    bool ptr = type->isPointerTy();
+    type = ptr ? type->getPointerElementType() : type;
+
+    llvm::Type * ret;
+    auto & ctx = type->getContext();
+    if ( type == llvm::Type::getInt1Ty( ctx ) )
+        ret = Tristate::get( ctx );
+    else if ( type->isIntegerTy() ) {
+        ret =  IntegerType::get( type );
+    } else {
+        std::cerr << "Lifting unsupported type.";
+        std::exit( EXIT_FAILURE );
+    }
+
+    return ptr ? ret->getPointerTo() : ret;
+}
+
+static llvm::Type * lower( const llvm::Type * type ) {
+    bool ptr = type->isPointerTy();
+    type = ptr ? type->getPointerElementType() : type;
+
+    llvm::Type * ret;
+    if ( Tristate::isa( type ) )
+        ret = Tristate::lower( type );
+    else if ( IntegerType::isa( type ) )
+        ret = IntegerType::lower( type );
+    else
+        assert( false && "Lowering unsupported type." );
+
+    return ptr ? ret->getPointerTo() : ret;
+}
+
+static bool isAbstract( llvm::Type * type ) {
+    bool ptr = type->isPointerTy();
+    type = ptr ? type->getPointerElementType() : type;
+    if ( !type->isStructTy() )
+        return false;
+    auto name = type->getStructName();
+    if ( name.empty() )
+        return false;
+    return std::string( name.str(), 0, 5 ) == "lart.";
+}
+
+// type format: lart.<domain>.<lower type>
+static std::string domain( llvm::Type * type ) {
+    bool ptr = type->isPointerTy();
+    type = ptr ? type->getPointerElementType() : type;
+    auto parts = parseTypeName( type );
+    assert( parts.size() >= 2 );
+    return parts[ 1 ];
+}
+
+static std::string lowerTypeName( llvm::Type * type ) {
+    return name( lower( type ) );
+}
+
+} // namespace types
+} // namespace abstract
+} // namespace lart
 
 #endif // LART_ABSTRACTION_TYPES_H

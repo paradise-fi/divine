@@ -7,10 +7,12 @@ namespace abstract {
 
 struct Trivial : Common {
     virtual void lower( llvm::Instruction * ) {}
+
     virtual Constrain constrain( llvm::Value *, llvm::Value * /* constraint */ ) {
         return Constrain();
     }
-    virtual llvm::Type *abstract( llvm::Type *t ) { return t; }
+
+    virtual llvm::Type * abstract( llvm::Type *t ) { return t; }
     std::string typeQualifier() { return "trivial"; }
 
 };
