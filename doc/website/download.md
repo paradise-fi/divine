@@ -1,7 +1,7 @@
 DIVINE is **free software**, distributed under the **ISC licence** (2-clause
 **BSD**). De­tailed licence texts may be found in the doc/COPYING file in the
 distribution tarball. The distribution tarball includes freely redistributable
-**third-party code**. Please refer to AUTHORS and COPYING included in the
+**third-party code**. Please refer to `doc/AUTHORS` and `doc/COPYING` included in the
 distribution for co­pyright and licensing details.
 
 Download
