@@ -48,7 +48,8 @@ struct Search : Job
     void order( Order o ) { _order = o; }
 
     Search( const B &b, const L &l )
-        : _builder( b ), _listener( l ), _workset( std::make_shared< Vector >() )
+        : _builder( b ), _listener( l ), _order( Order::PseudoBFS ),
+          _workset( std::make_shared< Vector >() )
     {}
 
     auto _register( Builder &b, Listener &l )
