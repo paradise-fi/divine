@@ -17,10 +17,16 @@ namespace ss {
 
 namespace shmem = ::brick::shmem;
 
+struct Job
+{
+    virtual void start( int threads ) = 0;
+    virtual void wait() = 0;
+};
+
 enum class Order { PseudoBFS, DFS };
 
 template< typename B, typename L >
-struct Search
+struct Search : Job
 {
     using Builder = B;
     using Listener = L;
@@ -28,7 +34,6 @@ struct Search
     Builder _builder;
     Listener _listener;
 
-    int _thread_count;
     Order _order;
     int _thread_count;
 
@@ -40,7 +45,6 @@ struct Search
 
     using Worker = std::function< void() >;
 
-    void threads( int thr ) { _thread_count = thr; }
     void order( Order o ) { _order = o; }
 
     Search( const B &b, const L &l )
@@ -123,8 +127,9 @@ struct Search
     Worker DFS() { NOT_IMPLEMENTED(); }
     Worker distributedBFS() { NOT_IMPLEMENTED(); }
 
-    void start()
+    void start( int thread_count ) override
     {
+        _thread_count = thread_count;
         Worker blueprint;
 
         switch ( _order )
@@ -137,7 +142,7 @@ struct Search
             _threads.emplace_back( std::async( blueprint ) );
     }
 
-    void wait()
+    void wait() override
     {
         for ( auto &res : _threads )
             res.get();
@@ -156,9 +161,8 @@ template< typename B, typename L >
 auto search( Order o, B b, int thr, L l )
 {
     auto s = make_search( b, l );
-    s.threads( thr );
     s.order( o );
-    s.start();
+    s.start( thr );
     return s.wait();
 }
 
