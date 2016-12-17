@@ -30,10 +30,13 @@ struct Search
 
     int _thread_count;
     Order _order;
+    int _thread_count;
 
+    using WorkSet = std::pair< Builder *, Listener * >;
+    using Vector = std::pair< std::mutex, std::vector< std::weak_ptr< WorkSet > > >;
+
+    std::shared_ptr< Vector > _workset;
     std::vector< std::future< void > > _threads;
-    std::vector< Listener * > _listeners;
-    std::shared_ptr< std::mutex > _listeners_lock;
 
     using Worker = std::function< void() >;
 
@@ -41,13 +44,25 @@ struct Search
     void order( Order o ) { _order = o; }
 
     Search( const B &b, const L &l )
-        : _builder( b ), _listener( l ), _listeners_lock( std::make_shared< std::mutex >() )
+        : _builder( b ), _listener( l ), _workset( std::make_shared< Vector >() )
     {}
 
-    void _started( Builder &, Listener &l )
+    auto _register( Builder &b, Listener &l )
     {
-        std::lock_guard< std::mutex > lg( *_listeners_lock.get() );
-        _listeners.push_back( &l );
+        auto sp = std::make_shared< WorkSet >( &b, &l );
+        std::lock_guard< std::mutex > _lock( _workset->first );
+        _workset->second.push_back( sp );
+        return sp;
+    }
+
+    template< typename Each >
+    void ws_each( Each each )
+    {
+        ASSERT( _workset );
+        std::lock_guard< std::mutex > _lock( _workset->first );
+        for ( auto wptr : _workset->second )
+            if ( auto ptr = wptr.lock() )
+                each( ptr->first, ptr->second );
     }
 
     Worker pseudoBFS()
@@ -71,7 +86,7 @@ struct Search
 
         return [=]() mutable
         {
-            _started( builder, listener );
+            auto _reg = _register( builder, listener );
             start.waitForAll( _thread_count );
             brick::types::Defer _( [&]() { terminate->store( true ); } );
 
@@ -126,6 +141,8 @@ struct Search
     {
         for ( auto &res : _threads )
             res.get();
+        ws_each( []( auto &, auto & ) { UNREACHABLE( "workset not empty!" ); } );
+        _workset->second.clear();
     }
 };
 
