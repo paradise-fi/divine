@@ -266,8 +266,10 @@ void Cc::run()
     if ( firstFile.empty() )
         die( "CC: You must specify at least one source file." );
 
-    pruneBC( driver );
-    driver.writeToFile( _output.empty() ? outputName( firstFile ) : _output );
+    if ( !_drv.dont_link ) {
+        pruneBC( driver );
+        driver.writeToFile( _output.empty() ? outputName( firstFile ) : _output );
+    }
 }
 
 }
