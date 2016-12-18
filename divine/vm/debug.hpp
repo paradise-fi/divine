@@ -177,6 +177,7 @@ struct DebugNode
     void source( std::ostream &out );
     void format( std::ostream &out, int depth = 1, bool compact = false, int indent = 0 );
 
+    void components( YieldDN yield );
     void related( YieldDN yield, bool anon = true );
     void struct_fields( HeapPointer hloc, YieldDN yield );
     void array_elements( YieldDN yield );
@@ -302,14 +303,18 @@ void backtrace( DN dn, DNSet &visited, int &stacks, int maxdepth )
         std::cout << std::endl;
     }
 
-    dn.related( [&]( std::string k, auto rel )
-                {
-                    if ( rel.kind() == vm::DNKind::Frame && k != "@caller" &&
-                         rel.address().type() == vm::PointerType::Heap &&
-                         !visited.count( rel.sortkey() ) && maxdepth > 1 )
-                        std::cerr << "backtrace #" << ++stacks << ":" << std::endl;
-                    backtrace( rel, visited, stacks, k == "@caller" ? maxdepth - 1 : maxdepth );
-                }, false );
+    auto follow =
+        [&]( std::string k, auto rel )
+        {
+            if ( rel.kind() == vm::DNKind::Frame && k != "@caller" &&
+                 rel.address().type() == vm::PointerType::Heap &&
+                 !visited.count( rel.sortkey() ) && maxdepth > 1 )
+                std::cerr << "backtrace #" << ++stacks << ":" << std::endl;
+            backtrace( rel, visited, stacks, k == "@caller" ? maxdepth - 1 : maxdepth );
+        };
+
+    dn.components( follow );
+    dn.related( follow, false );
 }
 
 

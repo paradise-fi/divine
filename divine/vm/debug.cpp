@@ -327,6 +327,27 @@ void DebugNode< Prog, Heap >::source( std::ostream &out )
 }
 
 template< typename Prog, typename Heap >
+void DebugNode< Prog, Heap >::components( YieldDN yield )
+{
+    if ( _kind == DNKind::Frame )
+        framevars( yield );
+
+    if ( _kind == DNKind::Globals )
+        globalvars( yield );
+
+    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    auto hloc = eval.ptr2h( PointerV( _address ) );
+
+    if ( _type && _di_type &&
+         di_composite( llvm::dwarf::DW_TAG_structure_type ) &&
+         _type->isStructTy() )
+        struct_fields( hloc, yield );
+
+    if ( _type && _di_type && di_composite( llvm::dwarf::DW_TAG_array_type ) )
+        array_elements( yield );
+}
+
+template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
 {
     if ( !valid() )
@@ -337,15 +358,6 @@ void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
     PointerV ptr;
     auto hloc = eval.ptr2h( PointerV( _address ) );
     int hoff = hloc.offset();
-
-    _related_ptrs.clear();
-    _related_count.clear();
-
-    if ( _kind == DNKind::Frame )
-        framevars( yield );
-
-    if ( _kind == DNKind::Globals )
-        globalvars( yield );
 
     if ( _type && _di_type && _type->isPointerTy() )
     {
@@ -362,13 +374,19 @@ void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
         yield( "@deref", rel );
     }
 
-    if ( _type && _di_type &&
-         di_composite( llvm::dwarf::DW_TAG_structure_type ) &&
-         _type->isStructTy() )
-        struct_fields( hloc, yield );
-
-    if ( _type && _di_type && di_composite( llvm::dwarf::DW_TAG_array_type ) )
-        array_elements( yield );
+    if ( _kind == DNKind::Frame )
+    {
+        PointerV fr( _address );
+        _ctx.heap().skip( fr, PointerBytes );
+        _ctx.heap().read( fr.cooked(), fr );
+        if ( !fr.cooked().null() )
+        {
+            _related_ptrs.insert( fr.cooked() );
+            DebugNode caller( _ctx, _snapshot );
+            caller.address( DNKind::Frame, fr.cooked() );
+            yield( "@caller", caller );
+        }
+    }
 
     if ( !anon )
         return;
@@ -524,17 +542,6 @@ void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
 template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::framevars( YieldDN yield )
 {
-    PointerV fr( _address );
-    _ctx.heap().skip( fr, PointerBytes );
-    _ctx.heap().read( fr.cooked(), fr );
-    if ( !fr.cooked().null() )
-    {
-        _related_ptrs.insert( fr.cooked() );
-        DebugNode caller( _ctx, _snapshot );
-        caller.address( DNKind::Frame, fr.cooked() );
-        yield( "@caller", caller );
-    }
-
     if ( pc().type() != PointerType::Code )
         return;
 
@@ -608,34 +615,42 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, bool compact
 
     std::stringstream rels;
 
-    if ( depth > 0 )
-        related(
-            [&]( std::string n, auto sub )
+    components(
+        [&]( std::string n, auto sub )
+        {
+            std::stringstream str;
+            sub.format( str, depth - 1, true, indent + 4 );
+            out << ind << n << ":" << std::endl << str.str();
+        } );
+
+    related(
+        [&]( std::string n, auto rel )
+        {
+            if ( depth > 0 && n == "@deref" )
             {
                 std::stringstream str;
-                if ( depth > 0 )
-                    sub.format( str, depth - 1, true, indent + 4 );
-                if ( !str.str().empty() && n != "@caller" && depth > 0 )
-                    out << ind << n << ":" << std::endl << str.str();
-                else
-                {
-                    if ( indent + col + n.size() >= 68 )
-                    {
-                        if ( relrow <= 3 )
-                            col = 0, rels << std::endl << ind
-                                          << rightpad( "", 13 - indent )
-                                          << ( relrow == 3 ? " [...]" : "" );
-                        ++ relrow;
-                    }
-                    if ( relrow <= 3 )
-                    {
-                        rels << " " << n;
-                        col += n.size();
-                    }
-                }
-            } );
+                rel.format( str, depth - 1, true, indent + 4 );
+                out << ind << n << ":" << std::endl << str.str();
+                return;
+            }
+
+            if ( indent + col + n.size() >= 68 )
+            {
+                if ( relrow <= 3 )
+                    col = 0, rels << std::endl << ind
+                                  << rightpad( "", 13 - indent )
+                                  << ( relrow == 3 ? " [...]" : "" );
+                ++ relrow;
+            }
+            if ( relrow <= 3 )
+            {
+                rels << " " << n;
+                col += n.size();
+            }
+        } );
+
     if ( !rels.str().empty() )
-        out << rightpad( "related:", 13 - indent ) << rels.str() << std::endl;
+        out << ind << rightpad( "related:", 13 - indent ) << rels.str() << std::endl;
 }
 
 template< typename Prog, typename Heap >
