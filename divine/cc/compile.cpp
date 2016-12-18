@@ -103,13 +103,8 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
 }
 
 void Compile::runCC( std::vector< std::string > rawCCOpts,
-                     std::function< ModulePtr( ModulePtr &&, std::string, bool ) > moduleCallback )
+                     std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
 {
-    bool dontLink = false;
-    for ( auto &x : { "-c", "-S" } )
-        if ( std::find( rawCCOpts.begin(), rawCCOpts.end(), x ) != rawCCOpts.end() )
-            dontLink = true;
-
     using FT = Compiler::FileType;
     FT xType = FT::Unknown;
 
@@ -159,14 +154,12 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
     }
 
     if ( !moduleCallback )
-        moduleCallback = []( ModulePtr &&m, std::string, bool shouldLink ) -> ModulePtr {
-            if ( shouldLink )
-                return std::move( m );
-            return nullptr;
+        moduleCallback = []( ModulePtr &&m, std::string ) -> ModulePtr {
+            return std::move( m );
         };
 
     for ( auto &f : files ) {
-        auto m = moduleCallback( compile( f.first, f.second, opts ), f.first, !dontLink );
+        auto m = moduleCallback( compile( f.first, f.second, opts ), f.first );
         if ( m )
             linker->link( std::move( m ) );
     }
