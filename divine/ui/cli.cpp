@@ -247,15 +247,15 @@ void Cc::run()
         std::copy( x.begin(), x.end(), std::back_inserter( _flags ) );
 
     std::string firstFile;
-    driver.runCC( _flags, [&]( std::unique_ptr< llvm::Module > &&m, std::string name, bool shouldLink )
+    driver.runCC( _flags, [&]( std::unique_ptr< llvm::Module > &&m, std::string name )
             -> std::unique_ptr< llvm::Module >
         {
             bool first;
             if ( (first = firstFile.empty()) )
                 firstFile = name;
 
-            if ( !shouldLink ) {
-                if ( _output.empty() && !first )
+            if ( _drv.dont_link ) {
+                if ( !_output.empty() && !first )
                     die( "CC: Cannot specify --dont-link/-c with -o with multiple input files." );
                 driver.writeToFile( _output.empty() ? outputName( name ) : _output, m.get() );
                 return nullptr;
