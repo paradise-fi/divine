@@ -210,6 +210,9 @@ set( TEST_WRAPPER "-c" )
 add_custom_target( check )
 add_custom_target( unit )
 
+add_custom_target( llvm-utils )
+add_dependencies( llvm-utils llvm-dis llvm-as llvm-nm llvm-diff llvm-objdump llc )
+
 if( OPT_TBBMALLOC )
   add_subdirectory( external/tbbmalloc )
 endif()
