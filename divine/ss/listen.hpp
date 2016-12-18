@@ -110,7 +110,7 @@ auto _state_as_needed = []( auto ) { return Listen::AsNeeded; };
 auto _state_process = []( auto ) { return Listen::Process; };
 
 auto _edge_noop = []( auto, auto, auto ) {};
-auto _state_noop = []( auto, auto, auto ) {};
+auto _state_noop = []( auto ) {};
 }
 
 template< typename E = decltype( _edge_as_needed ),
