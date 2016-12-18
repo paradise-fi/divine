@@ -35,7 +35,7 @@ std::string escape( std::string s )
         if ( c == '\\' || c == '\n' || c == '"' )
             buf[ j++ ] = '\\';
         if ( c == '\n' )
-            buf[ j++ ] = 'n';
+            buf[ j++ ] = 'l';
         else
             buf[ j++ ] = c;
     }
@@ -53,20 +53,32 @@ int dump( bool raw, DN dn, DNMap &dumped, int &seq, std::string prefix )
         return dumped[ dn.sortkey() ];
     int hid = ++seq;
     dumped.emplace( dn.sortkey(), hid );
-    std::cout << prefix << hid << " [ shape=rectangle label=\"";
-    if ( raw )
-        dn.attributes( []( std::string k, std::string v )
-                       { if ( k == "@raw" ) std::cout << escape( v ) << std::endl; } );
-    else
-        dn.attributes( []( std::string k, std::string v )
-                       { if ( k != "@raw" ) std::cout << escape( k ) << ": " << escape( v ) << std::endl; } );
-    std::cout << "\" ]" << std::endl;
-    dn.related( [&]( std::string k, auto rel )
-                {
-                    if ( int t = dump( raw, rel, dumped, seq, prefix ) )
-                        std::cout << prefix << hid << " -> "  << prefix << t
-                                  << " [ label=\"" << k << "\" ]" << std::endl;
-                } );
+
+    auto related =
+        [&]( std::string k, auto rel )
+        {
+            if ( int t = dump( raw, rel, dumped, seq, prefix ) )
+                std::cout << prefix << hid << " -> "  << prefix << t
+                          << " [ label=\"" << k << "\" ]" << std::endl;
+        };
+
+    std::function< void( std::string, DN ) > component =
+        [&]( std::string ck, auto comp )
+        {
+            comp.related( [&]( std::string rk, auto rel )
+                          { related( ck + "." + rk, rel ); }, false );
+            comp.components( [&]( std::string sk, auto scomp )
+                             { component( ck + "." + sk, scomp ); } );
+        };
+
+    std::stringstream str;
+    dn.format( str, 0, false, 0 );
+    std::cout << prefix << hid << " [ shape=rectangle label=\"" << escape( str.str() )
+              << "\" ]" << std::endl;
+
+    dn.related( related, false );
+    dn.components( component );
+
     return hid;
 }
 
