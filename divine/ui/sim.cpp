@@ -204,11 +204,13 @@ struct Interpreter
         for ( ; comp != split.end(); ++comp )
         {
             bool found = false;
-            _dn->related( [&]( auto n, auto rel )
+            auto lookup = [&]( auto n, auto rel )
                           {
                               if ( *comp == n )
                                   found = true, _dn_next = std::make_unique< DN >( rel );
-                          } );
+                          };
+            _dn->components( lookup );
+            _dn->related( lookup );
             if ( silent && !found )
                 return nullDN();
             _dn = std::move( _dn_next );
