@@ -847,12 +847,19 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         } while( true );
     }
 
-    void increaseUsage() {
-        if ( ++_l.inserts == syncPoint ) {
-            _s->used.fetch_add( syncPoint, std::memory_order_relaxed );
-            _l.inserts = 0;
-        }
+    void increaseUsage()
+    {
+        if ( ++_l.inserts == syncPoint )
+            updateUsage();
     }
+
+    void updateUsage()
+    {
+        _s->used.fetch_add( _l.inserts, std::memory_order_relaxed );
+        _l.inserts = 0;
+    }
+
+    ~_ConcurrentHashSet() { updateUsage(); }
 
     explicit _ConcurrentHashSet( Hasher h = Hasher(), unsigned maxGrows = 64 )
         : Base( h ), _s( new Shared( maxGrows ) )
