@@ -60,8 +60,15 @@
 namespace brick {
 namespace shmem {
 
+struct ThreadBase
+{
+    virtual void start() = 0;
+    virtual void stop() = 0;
+    virtual ~ThreadBase() {}
+};
+
 template< typename T >
-struct Thread : T
+struct Thread : T, ThreadBase
 {
     std::unique_ptr< std::thread > _thread;
     bool _start_on_move; // :-(
@@ -181,9 +188,12 @@ struct AsyncLoop : Thread< LoopWrapper< T > >
 };
 
 template< typename L >
+using AsyncLambdaLoop = AsyncLoop< LambdaWrapper< L > >;
+
+template< typename L >
 auto async_loop( L &&l )
 {
-    AsyncLoop< LambdaWrapper< L > > al( std::forward< L >( l ) );
+    AsyncLambdaLoop< L > al( std::forward< L >( l ) );
     al._start_on_move = true;
     return std::move( al );
 }
