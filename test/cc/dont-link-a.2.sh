@@ -2,5 +2,5 @@
 
 touch a.c b.c
 divine cc -c a.c b.c
-test -f a.c
-test -f b.c
+test -f a.bc
+test -f b.bc
