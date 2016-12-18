@@ -48,7 +48,7 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 all: $(DEFAULT_FLAVOUR)
 
 FLAVOURS = debug asan release semidbg
-TARGETS = divine unit functional website check llvm-dis clang test-divine
+TARGETS = divine unit functional website check llvm-utils clang test-divine
 
 ${TARGETS}:
 	$(MAKE) $(DEFAULT_FLAVOUR)-$@
@@ -90,22 +90,19 @@ $(OBJ)toolchain/stamp:
 	$(CMAKE) --build $(OBJ)toolchain --target cxx -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target clang -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target compiler-rt -- $(EXTRA)
-	$(CMAKE) --build $(OBJ)toolchain --target llvm-dis -- $(EXTRA)
-	$(CMAKE) --build $(OBJ)toolchain --target llvm-as -- $(EXTRA)
-	$(CMAKE) --build $(OBJ)toolchain --target llc  -- $(EXTRA)
 	touch $@
 
 ${FLAVOURS:%=%-env}:
-	$(MAKE) ${@:%-env=%}
-	env PATH=$(OBJ)toolchain/clang/bin:$(OBJ)toolchain/llvm/bin:$(OBJ)${@:%-env=%}/tools:$$PATH \
+	$(MAKE) ${@:%-env=%} ${@:%-env=%}-llvm-utils
+	env PATH=$(OBJ)toolchain/clang/bin:$(OBJ)${@:%-env=%}/llvm/bin:$(OBJ)${@:%-env=%}/tools:$$PATH \
 		CXXFLAGS="$(CXXFLAGS_)" LDFLAGS="$(LDFLAGS_)" $$SHELL
 
-env : debug-env
+env : ${DEFAULT_FLAVOUR}-env
 
 show: # make show var=VAR
 	@echo $($(var))
 
-.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env} toolchain validate dist
+.PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env} toolchain validate dist env
 
 dist:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug \
