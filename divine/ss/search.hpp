@@ -67,7 +67,7 @@ struct Search : Job
         std::lock_guard< std::mutex > _lock( _workset->first );
         for ( auto wptr : _workset->second )
             if ( auto ptr = wptr.lock() )
-                each( ptr->first, ptr->second );
+                each( *ptr->first, *ptr->second );
     }
 
     Worker pseudoBFS()
