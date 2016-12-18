@@ -27,7 +27,7 @@ fi
 
 chmod +x lib/check lib/run lib/sim lib/ordgrep
 
-PATH="$PWD/lib:$TOOLS:$PATH"
+PATH="$PWD/lib:$TOOLS:$TOOLS/../llvm/bin:$PATH"
 extracheck=:
 export cesmiext=.so
 test "$WIN32" = 1 && cesmiext=.dll
