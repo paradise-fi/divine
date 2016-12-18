@@ -100,25 +100,33 @@ void Draw::run()
 
     std::cout << "digraph { node [ fontname = Courier ]\n";
 
+    ex.initials( [&]( auto st )
+                 {
+                     ext.materialise( st.snap, sizeof( int ));
+                     int *id = ext.machinePointer< int >( st.snap );
+                     *id = ++seq;
+                 } );
+
     ss::search(
         ss::Order::PseudoBFS, ex, 1, ss::passive_listen(
-            [&]( auto f, auto t, auto trace )
+            [&]( auto f, auto t, auto trace, bool isnew )
             {
-                ext.materialise( f.snap, sizeof( int ) );
-                ext.materialise( t.snap, sizeof( int ) );
+                if ( isnew )
+                    ext.materialise( t.snap, sizeof( int ) );
                 int *f_id = ext.machinePointer< int >( f.snap ),
                     *t_id = ext.machinePointer< int >( t.snap );
-
-                if ( !*t_id )
+                if ( isnew )
                     *t_id = ++seq;
+                std::string lbl;
+                for ( auto l : trace.first )
+                    lbl += l + "\n";
                 std::cout << *f_id << " -> " << *t_id
-                          << " [ label = \"" << escape( brick::string::fmt( trace.first ) ) << "\"]"
+                          << " [ label = \"" << escape( lbl ) << "\"]"
                           << std::endl;
-                ++statecount;
+                ++edgecount;
             },
             [&]( auto st )
             {
-                ext.materialise( st.snap, sizeof( int ) );
                 int *id = ext.machinePointer< int >( st.snap );
                 vm::DebugNode< vm::Program, vm::CowHeap > dn( ex._ctx, st.snap );
                 dn.address( vm::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
@@ -127,10 +135,11 @@ void Draw::run()
                 DNMap _dumped;
                 int hseq = 0;
                 std::cerr << "# new state" << std::endl;
-                std::cout << *id << " [ style=filled fillcolor=" << ( st.error ? "red" : "yellow" ) << " ]" << std::endl;
+                std::cout << *id << " [ style=filled fillcolor="
+                          << ( st.error ? "red" : "gray" ) << " ]" << std::endl;
                 std::cout << *id << " -> " << *id << ".1 [ label=root ]" << std::endl;
                 dump( _raw, dn, _dumped, hseq, brick::string::fmt( *id ) + "." );
-                ++edgecount;
+                ++statecount;
             } ) );
     std::cout << "}";
     std::cerr << "found " << statecount << " states and " << edgecount << " edges" << std::endl;
