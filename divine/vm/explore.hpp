@@ -217,36 +217,40 @@ namespace t_vm {
 
 using namespace std::literals;
 
+namespace {
+
+auto prog( std::string p )
+{
+    return c2bc(
+        "void *__vm_obj_make( int );"s +
+        "void *__vm_control( int, ... );"s +
+        "int __vm_choose( int, ... );"s +
+        "void __boot( void * );"s + p );
+}
+
+auto prog_int( std::string first, std::string next )
+{
+    return prog(
+        R"(void __sched() {
+            int *r = __vm_control( 1, 5 );
+            *r = )" + next + R"(;
+            if ( *r < 0 ) __vm_control( 2, 7, 0b10000ull, 0b10000ull );
+        }
+        void __boot( void *environ ) {
+            __vm_control( 0, 4, __sched );
+            void *e = __vm_obj_make( sizeof( int ) );
+            __vm_control( 0, 5, e );
+            int *r = e; *r = )" + first + "; }"s );
+}
+
+}
+
 struct TestExplore
 {
-    auto prog( std::string p )
-    {
-        return c2bc(
-            "void *__vm_obj_make( int );"s +
-            "void *__vm_control( int, ... );"s +
-            "int __vm_choose( int, ... );"s +
-            "void __boot( void * );"s + p );
-    }
-
     TEST(instance)
     {
         auto bc = prog( "void __boot( void *e ) { __vm_control( 2, 7, 0b10000ull, 0b10000ull ); }" );
         vm::Explore ex( bc );
-    }
-
-    auto prog_int( std::string first, std::string next )
-    {
-        return prog(
-            R"(void __sched() {
-                int *r = __vm_control( 1, 5 );
-                *r = )" + next + R"(;
-                if ( *r < 0 ) __vm_control( 2, 7, 0b10000ull, 0b10000ull );
-            }
-            void __boot( void *environ ) {
-                __vm_control( 0, 4, __sched );
-                void *e = __vm_obj_make( sizeof( int ) );
-                __vm_control( 0, 5, e );
-                int *r = e; *r = )" + first + "; }"s );
     }
 
     TEST(simple)
