@@ -136,7 +136,7 @@ Program::Slot Program::initSlot( llvm::Value *val, Slot::Location loc )
             result._width = val->getType()->getIntegerBitWidth();
             result.type = Slot::Integer;
         }
-        else if ( val->getType()->isFloatTy() || val->getType()->isDoubleTy() )
+        else if ( val->getType()->isFloatingPointTy() )
             result.type = Slot::Float;
         else
             result.type = Slot::Aggregate;

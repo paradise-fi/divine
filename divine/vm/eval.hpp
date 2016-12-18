@@ -542,6 +542,7 @@ struct Eval
             case Slot::Void:
                 return;
             default:
+                instruction().op->dump();
                 UNREACHABLE_F( "an unexpected dispatch type %d", type );
         }
     }
