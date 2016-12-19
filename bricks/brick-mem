@@ -668,7 +668,7 @@ struct SlavePool : PoolMixin< SlavePool< Master >, typename Master::Pointer >
             _s->block[ i ] = nullptr;
     }
 
-    void materialise( Pointer p, int size )
+    void materialise( Pointer p, int size, bool clear = true )
     {
         int b = p.slab();
         if ( !_s->block[ b ] )
@@ -681,7 +681,8 @@ struct SlavePool : PoolMixin< SlavePool< Master >, typename Master::Pointer >
             _s->block[ b ] = static_cast< BlockHeader * >( mem );
             this->header( b ).itemsize = size;
         }
-        ::memset( this->dereference( p ), 0, size );
+        if ( clear )
+            ::memset( this->dereference( p ), 0, size );
     }
 
     char *dereference( Pointer p )
