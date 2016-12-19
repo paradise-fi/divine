@@ -21,6 +21,8 @@
 #include <divine/vm/explore.hpp>
 #include <divine/vm/debug.hpp>
 #include <divine/vm/print.hpp>
+#include <divine/vm/draw.hpp>
+
 #include <divine/ui/cli.hpp>
 #include <divine/ui/logo.hpp>
 #include <brick-string>
@@ -88,6 +90,8 @@ struct Show : WithVar
     bool raw;
     Show() : raw( false ) {}
 };
+
+struct Draw : WithVar {};
 
 struct Inspect : Show {};
 struct BitCode : WithFrame {};
@@ -566,6 +570,12 @@ struct Interpreter
             dn.format( std::cerr );
     }
 
+    void go( command::Draw cmd )
+    {
+        std::string dot = dotDN( get( cmd.var ), true );
+        brick::proc::spawnAndWait( brick::proc::StdinString( dot ), "dot", "-Tx11" );
+    }
+
     void go( command::Inspect i )
     {
         command::Show s;
@@ -758,6 +768,7 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::Trace >( "load a counterexample trace"s,
                                     &command::Trace::choices, o_trace )
         .command< command::Show >( "show an object"s, varopts, showopts )
+        .command< command::Draw >( "draw a portion of the heap"s, varopts )
         .command< command::Setup >( "set configuration options"s, setupopts )
         .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
         .command< command::BackTrace >( "show a stack trace"s, varopts );
