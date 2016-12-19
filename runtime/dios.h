@@ -137,6 +137,7 @@ void __dios_fault( int f, const char *msg, ... ) NOTHROW __attribute__(( __noinl
 
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
+void __dios_trace_auto( int indent, const char *fmt, ... ) NOTHROW;
 void __dios_trace_t( const char *str ) NOTHROW;
 void __dios_trace_f( const char *fmt, ... ) NOTHROW;
 void __dios_trace_i( int indent_level, const char *fmt, ... ) NOTHROW;
