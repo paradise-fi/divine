@@ -65,6 +65,7 @@ struct Context
     template< typename Ctx >
     void load( const Ctx &ctx )
     {
+        clear();
         for ( int i = 0; i < _VM_CR_Last; ++i )
         {
             auto cr = _VM_ControlRegister( i );
