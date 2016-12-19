@@ -23,6 +23,8 @@
 namespace divine {
 namespace vm {
 
+using namespace std::literals;
+
 std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn )
 {
     auto loc = insn.getDebugLoc().get();
@@ -466,7 +468,7 @@ void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
     auto ST = llvm::cast< llvm::StructType >( _type );
     auto STE = ST->element_begin();
     auto SLO = _ctx.program().TD.getStructLayout( ST );
-    int idx = 0;
+    int idx = 0, anon = 0, base = 0;
     for ( auto subtype : CT->getElements() )
         if ( auto CTE = llvm::dyn_cast< llvm::DIDerivedType >( subtype ) )
         {
@@ -487,7 +489,12 @@ void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
             field.offset( _offset + offset );
             field.type( *STE );
             field.di_type( CTE );
-            yield( CTE->getName().str(), field );
+            std::string name = CTE->getName().str();
+            if ( name.empty() && CTE->getTag() == llvm::dwarf::DW_TAG_inheritance )
+                name = "<base"s + (base++ ? "$" + std::to_string( base ) : "") + ">";
+            if ( name.empty() )
+                name = "<anon"s + (anon++ ? "$" + std::to_string( base ) : "") + ">";
+            yield( name, field );
         }
 }
 
