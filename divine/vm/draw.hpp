@@ -77,7 +77,7 @@ int dotDN( std::ostream &o, DN dn, DNMap &visited, int &seq, std::string prefix 
         };
 
     std::stringstream str;
-    dn.format( str, 0, false, 0 );
+    dn.format( str, 10 );
     o << prefix << hid << " [ shape=rectangle label=\"" << text2dot( str.str() )
       << "\" ]" << std::endl;
 

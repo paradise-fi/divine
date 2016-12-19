@@ -637,7 +637,7 @@ static std::string rightpad( std::string s, int i )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, bool compact, int indent )
+void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int indent )
 {
     std::string ind( indent, ' ' );
     std::set< std::string > ck{ "@value", "@type", "@location", "@symbol" };
@@ -645,7 +645,7 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, bool compact
     attributes(
         [&]( std::string k, auto v )
         {
-            if ( k == "@raw" || ( compact && ck.count( k ) == 0 ) )
+            if ( k == "@raw" || ( indent && ck.count( k ) == 0 ) )
                 return;
             out << ind << rightpad( k + ": ", 14 - indent ) << v << std::endl;
         } );
@@ -653,26 +653,9 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, bool compact
     int col = 0, relrow = 0;
 
     std::stringstream rels;
-
-    components(
-        [&]( std::string n, auto sub )
+    auto addrel =
+        [&]( std::string n )
         {
-            std::stringstream str;
-            sub.format( str, depth - 1, true, indent + 4 );
-            out << ind << n << ":" << std::endl << str.str();
-        } );
-
-    related(
-        [&]( std::string n, auto rel )
-        {
-            if ( depth > 0 && n == "@deref" )
-            {
-                std::stringstream str;
-                rel.format( str, depth - 1, true, indent + 4 );
-                out << ind << n << ":" << std::endl << str.str();
-                return;
-            }
-
             if ( indent + col + n.size() >= 68 )
             {
                 if ( relrow <= 3 )
@@ -686,6 +669,31 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, bool compact
                 rels << " " << n;
                 col += n.size();
             }
+        };
+
+    components(
+        [&]( std::string n, auto sub )
+        {
+            std::stringstream str;
+            if ( depth )
+            {
+                sub.format( str, depth - 1, derefs, indent + 4 );
+                out << ind << n << ":" << std::endl << str.str();
+            }
+            else addrel( n );
+        } );
+
+    related(
+        [&]( std::string n, auto rel )
+        {
+            if ( derefs > 0 && n == "@deref" )
+            {
+                std::stringstream str;
+                rel.format( str, depth, derefs - 1, indent + 4 );
+                out << ind << n << ":" << std::endl << str.str();
+                return;
+            }
+            else addrel( n );
         } );
 
     if ( !rels.str().empty() )

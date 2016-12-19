@@ -175,7 +175,7 @@ struct DebugNode
 
     void bitcode( std::ostream &out );
     void source( std::ostream &out );
-    void format( std::ostream &out, int depth = 1, bool compact = false, int indent = 0 );
+    void format( std::ostream &out, int depth = 1, int derefs = 0, int indent = 0 );
 
     void components( YieldDN yield );
     void related( YieldDN yield, bool anon = true );
