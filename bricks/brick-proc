@@ -105,6 +105,8 @@ struct SystemOutput {
     std::string _err;
 };
 
+inline namespace {
+
 std::string to_string( const SystemOutput &o ) {
     std::stringstream ss;
     ss << "exitcode = " << o.exitcode() << ", signal = " << o.signal() << std::endl;
@@ -119,6 +121,8 @@ std::string to_string( const SystemOutput &o ) {
         }
     }
     return ss.str();
+}
+
 }
 
 struct Pipe {
