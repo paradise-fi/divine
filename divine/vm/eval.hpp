@@ -1152,7 +1152,7 @@ struct Eval
 
     void run()
     {
-        context().set_interrupted( false );
+        context().reset_interrupted();
         do {
             advance();
             dispatch();

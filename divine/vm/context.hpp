@@ -76,11 +76,17 @@ struct Context
         _heap = ctx.heap();
     }
 
-    void clear()
+    void reset_interrupted()
     {
         _cfl_visited.clear();
         _mem_loads.clear();
+        set_interrupted( false );
+    }
+
+    void clear()
+    {
         _objid_shuffle = 0;
+        reset_interrupted();
         flush_ptr2i();
         set( _VM_CR_User1, 0 );
         set( _VM_CR_User2, 0 );
@@ -220,9 +226,7 @@ struct Context
         PointerV pc;
         heap().read( frame(), pc );
         set( _VM_CR_PC, pc.cooked() );
-        set_interrupted( false );
-        _cfl_visited.clear();
-        _mem_loads.clear();
+        reset_interrupted();
         ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
     }
 
