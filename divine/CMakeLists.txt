@@ -47,11 +47,11 @@ endif()
 add_library( libdivine "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp" )
 
 target_link_libraries( libdivine divine-cc divine-ltl # divine-ss divine-mc
-                                 divine-ui divine-vm pthread liblart )
+                                 divine-ui divine-vm pthread )
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
-bricks_unittest( test-divine ${HPP_ui} ${HPP_ss} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} )
+bricks_unittest( test-divine ${HPP_ss} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} )
 
 foreach( D vm ui cc )
   set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
@@ -61,13 +61,14 @@ target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
                                  clang clangBasic clangCodeGen )
 target_link_libraries( divine-ui divine-rt )
+target_link_libraries( divine-vm liblart divine-rt )
 target_link_libraries( libdivine LLVMBitReader LLVMBitWriter LLVMLinker )
 
 if ( OPT_SQL )
     target_link_libraries( libdivine nanodbc )
 endif()
 
-target_link_libraries( test-divine libdivine )
+target_link_libraries( test-divine divine-cc divine-vm divine-ltl )
 
 if( WIN32 )
   target_link_libraries( libdivine psapi )
