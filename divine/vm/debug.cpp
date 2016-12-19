@@ -640,7 +640,7 @@ template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int indent )
 {
     std::string ind( indent, ' ' );
-    std::set< std::string > ck{ "@value", "@type", "@location", "@symbol" };
+    std::set< std::string > ck{ "@value", "@type", "@location", "@symbol", "@scope" };
 
     attributes(
         [&]( std::string k, auto v )
