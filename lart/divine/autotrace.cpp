@@ -115,13 +115,13 @@ struct Autotrace : lart::Pass {
 
     Vals callArgs( llvm::Function &fn, llvm::IRBuilder<> &irb ) {
         auto name = demangle( fn.getName().str() );
-        std::string fmt = "Call to " + name;
+        std::string fmt = "call " + name;
         Vals vals;
         vals.push_back( traceUp );
         vals.push_back( 0 );
 
         if ( fn.arg_begin() != fn.arg_end() )
-            fmt += " with ";
+            fmt += ": ";
 
         for ( auto &arg : fn.args() ) {
             auto f = fmtVal( arg, irb );
