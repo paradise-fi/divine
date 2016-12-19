@@ -162,8 +162,6 @@ struct Context
     {
         auto &fl = ref( _VM_CR_Flags ).integer;
         bool rv = fl & _VM_CF_Interrupted;
-        _cfl_visited.clear();
-        _mem_loads.clear();
         fl &= ~_VM_CF_Interrupted;
         fl |= i ? _VM_CF_Interrupted : 0;
         return rv;
@@ -223,6 +221,8 @@ struct Context
         heap().read( frame(), pc );
         set( _VM_CR_PC, pc.cooked() );
         set_interrupted( false );
+        _cfl_visited.clear();
+        _mem_loads.clear();
         ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
     }
 
