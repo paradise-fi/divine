@@ -130,10 +130,11 @@ struct Sim : WithBC
 struct Draw : WithBC
 {
     int _number = 0;
-    int _distance = 0;
+    int _distance = 32;
     enum { All, None, Trace } _labels = None;
     bool _bfs = false, _raw = false;
-    std::string _render = std::string( "dot -Tx11" );
+    std::string _render = "dot -Tx11"s;
+    std::string _output = "-"s;
 
     void run();
 };
@@ -370,6 +371,7 @@ struct CLI : Interface
         auto drawopts = cmd::make_option_set< Draw >( v )
             .option( "[--distance {int}|-d {int}]", &Draw::_distance, "node distance"s )
             .option( "[--raw]", &Draw::_raw, "show hex dumps of heap objects"s )
+            .option( "[--render {string}]", &Draw::_render, "command to execute on the dot output"s )
             .option( "[--labels {label}]", &Draw::_labels, "label all, none or only trace"s )
             .option( "[--bfs-layout]", &Draw::_bfs, "draw in bfs layout (levels)"s );
 
