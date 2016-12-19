@@ -314,8 +314,8 @@ void backtrace( DN dn, DNSet &visited, int &stacks, int maxdepth )
             backtrace( rel, visited, stacks, k == "@caller" ? maxdepth - 1 : maxdepth );
         };
 
-    dn.components( follow );
     dn.related( follow, false );
+    dn.components( follow );
 }
 
 
