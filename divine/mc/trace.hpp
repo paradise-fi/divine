@@ -97,6 +97,8 @@ Trace trace( vm::Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
                 ss::listen(
                     [&]( auto from, auto to, auto label )
                     {
+                        ASSERT( t.final || last != states.end() );
+
                         if ( t.final || !hasher.equal( from.snap, *last ) )
                             return ss::Listen::Ignore;
 
