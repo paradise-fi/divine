@@ -133,7 +133,8 @@ struct DebugNode
     {
         ASSERT_EQ( kind(), DNKind::Frame );
         PointerV pc;
-        _ctx.heap().read( _address, pc );
+        if ( boundcheck( PointerV( _address ), PointerBytes ) )
+            _ctx.heap().read( _address, pc );
         return pc.cooked();
     }
 

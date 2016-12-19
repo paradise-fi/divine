@@ -480,7 +480,7 @@ void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
                 idx ++, STE ++;
 
             int offset = SLO->getElementOffset( idx );
-            if ( (*STE)->isPointerTy() )
+            if ( (*STE)->isPointerTy() && boundcheck( PointerV( hloc + offset ), PointerBytes ) )
             {
                 PointerV ptr;
                 _ctx.heap().read( hloc + offset, ptr );
