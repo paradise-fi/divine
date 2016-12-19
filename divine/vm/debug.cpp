@@ -504,8 +504,12 @@ void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
 template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::array_elements( YieldDN yield )
 {
-    auto subtype = _type->getSequentialElementType();
-    int size = _ctx.program().TD.getTypeAllocSize( subtype );
+    // variable-length arrays are allocated as pointers to the element type,
+    // not as sequential types
+    auto type = _type;
+    if ( llvm::isa< llvm::SequentialType >( type ) )
+        type = _type->getSequentialElementType();
+    int size = _ctx.program().TD.getTypeAllocSize( type );
     PointerV addr( _address + _offset );
 
     for ( int idx = 0; boundcheck( addr + idx * size, size ); ++ idx )
@@ -513,7 +517,7 @@ void DebugNode< Prog, Heap >::array_elements( YieldDN yield )
         DebugNode elem( _ctx, _snapshot );
         elem.address( DNKind::Object, _address );
         elem.offset( _offset + idx * size );
-        elem.type( subtype );
+        elem.type( type );
         elem.di_type( di_base() );
         yield( "[" + std::to_string( idx ) + "]", elem );
     }
