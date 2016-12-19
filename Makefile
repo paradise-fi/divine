@@ -111,9 +111,7 @@ dist:
 	mv $(OBJ)debug/divine-*.tar.* .
 
 validate:
-	$(MAKE) debug-divine
-	$(MAKE) release-divine
-	$(MAKE) debug-test-divine
-	$(OBJ)/debug/divine/test-divine
-	$(MAKE) debug-functional T=[.]1[.][^.]+$
-	$(MAKE) release-functional T=[.][12][.][^.]+$
+	$(MAKE) semidbg-divine
+	$(MAKE) semidbg-test-divine
+	$(OBJ)semidbg/divine/test-divine
+	$(MAKE) semidbg-functional T=[.][12][.][^.]+$
