@@ -42,7 +42,12 @@ void backtrace( Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
     vm::backtrace( dn, visited, stacks, maxdepth );
 }
 
-struct Choices { std::vector< std::vector< int > > c; };
+struct Choices {
+    std::vector< std::vector< int > > c;
+    auto &back() { return c.back(); };
+    void push() { c.emplace_back(); };
+};
+
 struct Trace
 {
     Choices choices;
@@ -82,9 +87,9 @@ Trace trace( vm::Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
         {
             for ( auto l : label.first )
                 t.labels.push_back( l );
-            t.choices.c.emplace_back();
+            t.choices.push();
             std::transform( label.second.begin(), label.second.end(),
-                            std::back_inserter( t.choices.c.back() ),
+                            std::back_inserter( t.choices.back() ),
                             []( auto x ) { return x.first; } );
         };
 

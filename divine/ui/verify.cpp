@@ -109,7 +109,7 @@ void Verify::run()
     auto &ctx = safety._ex._ctx;
     ctx.heap().restore( trace.final );
     dbg.load( ctx );
-    dbg._choices = { trace.choices.c.back().begin(), trace.choices.c.back().end() };
+    dbg._choices = { trace.choices.back().begin(), trace.choices.back().end() };
     dbg._choices.push_back( -1 ); // prevent execution after choices are depleted
     vm::setup::scheduler( dbg );
     using Stepper = vm::Stepper< decltype( dbg ) >;
