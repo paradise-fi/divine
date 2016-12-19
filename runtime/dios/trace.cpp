@@ -12,27 +12,33 @@ bool InTrace::inTrace = false;
 void __attribute__((always_inline)) traceInternalV( int indent, const char *fmt, va_list ap ) noexcept
 {
     static int fmtIndent = 0;
-    InTrace _;
 
-    char buffer[1024];
-    for ( int i = 0; i < fmtIndent; ++i )
-        buffer[ i ] = ' ';
+    if ( *fmt )
+    {
+        InTrace _;
+        char buffer[1024];
 
-    int n = 0;
-    auto tid = __dios_get_thread_handle();
-    bool kernel = reinterpret_cast< uintptr_t >(
-        __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
-    if ( !kernel ) {
+        int n = 0;
+        auto tid = __dios_get_thread_handle();
+
+        bool kernel = reinterpret_cast< uintptr_t >(
+            __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
         auto utid = reinterpret_cast< uint64_t >( tid ) >> 32;
-        n = snprintf( buffer + fmtIndent, 1024 - fmtIndent, "t%u: ",
-            static_cast< uint32_t >( utid ) );
+
+        if ( !kernel )
+            n = snprintf( buffer, 1024, "t%u: ",
+                          static_cast< uint32_t >( utid ) );
+
+        for ( int i = 0; i < fmtIndent; ++i )
+            buffer[ n++ ] = ' ';
+
+        __dios_assert( n >= 0 );
+
+        vsnprintf( buffer + n, 1024 - fmtIndent - n, fmt, ap );
+        __vm_trace( _VM_T_Text, buffer );
     }
-    __dios_assert( n >= 0 );
 
-    vsnprintf( buffer + fmtIndent + n, 1024 - fmtIndent - n, fmt, ap );
-    __vm_trace( _VM_T_Text, buffer );
-
-    fmtIndent += indent * 4;
+    fmtIndent += indent * 2;
 }
 
 void traceInternal( int indent, const char *fmt, ... ) noexcept
