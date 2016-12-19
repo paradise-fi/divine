@@ -1,0 +1,108 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2016 Petr Ročkai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+
+#include <divine/vm/explore.hpp>
+#include <divine/vm/heap.hpp>
+#include <divine/vm/draw.hpp>
+#include <brick-proc>
+
+namespace divine {
+namespace mc {
+
+std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
+                  vm::explore::Context *ctx = nullptr, vm::Explore::Snapshot *initial = nullptr )
+{
+    vm::Explore ex( bc );
+
+    if ( ctx )
+    {
+        ASSERT( initial );
+        ex.start( *ctx, *initial );
+    }
+    else
+        ex.start();
+
+    vm::DebugContext< vm::Program, vm::CowHeap > dbg( bc->program() );
+    vm::setup::boot( dbg );
+    vm::Eval< vm::Program, decltype( dbg ), vm::value::Void > dbg_eval( dbg.program(), dbg );
+    dbg_eval.run();
+
+    struct ext_data { int seq; int distance; };
+    brick::mem::SlavePool< typename vm::CowHeap::SnapPool > ext_pool( ex.pool() );
+    int seq = 0;
+
+    auto ext = [&]( auto st ) -> auto& { return *ext_pool.machinePointer< ext_data >( st.snap ); };
+
+    auto init =
+        [&]( auto st )
+        {
+            ext_pool.materialise( st.snap, sizeof( ext_data ), false );
+            if ( ext( st ).seq )
+                return false;
+            ext( st ).seq = ++ seq;
+            ext( st ).distance = distance + 1;
+            return true;
+        };
+
+    std::stringstream str;
+    str << "digraph { node [ fontname = Courier ] edge [ fontname = Courier ]\n";
+
+    ex.initials( [&]( auto st ) { init( st ); ext( st ).distance = 0; } );
+
+    ss::search(
+        ss::Order::PseudoBFS, ex, 1, ss::listen(
+            [&]( auto f, auto t, auto trace )
+            {
+                init( f );
+                bool isnew = init( t );
+
+                ext( t ).distance = std::min( ext( t ).distance, ext( f ).distance + 1 );
+                std::string lbl;
+                for ( auto l : trace.first )
+                    lbl += l + "\n";
+                str << ext( f ).seq << " -> " << ext( t ).seq
+                    << " [ label = \"" << text2dot( lbl ) << "\"]"
+                    << std::endl;
+                if ( isnew && ext( t ).distance < distance )
+                    return ss::Listen::Process;
+                return ss::Listen::Ignore;
+            },
+            [&]( auto st )
+            {
+                init( st );
+                vm::DebugNode< vm::Program, vm::CowHeap > dn( ex._ctx, st.snap );
+                dn.address( vm::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
+                dn.type( dbg._state_type );
+                dn.di_type( dbg._state_di_type );
+                str << ext( st ).seq << " [ style=filled fillcolor="
+                    << ( st.error ? "red" : "gray" ) << " ]" << std::endl;
+                if ( heap )
+                {
+                    str << ext( st ).seq << " -> " << ext( st ).seq << ".1 [ label=root ]" << std::endl;
+                    str << dotDN( dn, false, brick::string::fmt( ext( st ).seq ) + "." );
+                }
+                return ss::Listen::Process;
+            } ) );
+    str << "}";
+    return str.str();
+}
+
+}
+}
