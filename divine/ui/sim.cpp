@@ -88,7 +88,8 @@ struct Rewind : WithVar
 struct Show : WithVar
 {
     bool raw;
-    Show() : raw( false ) {}
+    int depth, deref;
+    Show() : raw( false ), depth( 10 ), deref( 0 ) {}
 };
 
 struct Draw : WithVar {};
@@ -561,13 +562,13 @@ struct Interpreter
         vm::backtrace( get( bt.var ), visited, stacks, 100 );
     }
 
-    void go( command::Show s )
+    void go( command::Show cmd )
     {
-        auto dn = get( s.var );
-        if ( s.raw )
+        auto dn = get( cmd.var );
+        if ( cmd.raw )
             std::cerr << dn.attribute( "@raw" ) << std::endl;
         else
-            dn.format( std::cerr );
+            dn.format( std::cerr, cmd.depth, cmd.deref );
     }
 
     void go( command::Draw cmd )
@@ -732,7 +733,9 @@ void Interpreter::command( cmd::Tokens tok )
                  &command::Break::del, "delete the designated breakpoint(s)"s )
         .option( "[--list]", &command::Break::list, "list breakpoints"s );
     auto showopts = cmd::make_option_set< command::Show >( v )
-        .option( "[--raw]", &command::Show::raw, "dump raw data"s );
+        .option( "[--raw]", &command::Show::raw, "dump raw data"s )
+        .option( "[--depth {int}]", &command::Show::depth, "maximal component unfolding"s )
+        .option( "[--deref {int}]", &command::Show::deref, "maximal pointer dereference unfolding"s );
     auto stepopts = cmd::make_option_set< command::WithSteps >( v )
         .option( "[--over]", &command::WithSteps::over, "execute calls as one step"s )
         .option( "[--quiet]", &command::WithSteps::quiet, "suppress output"s )
