@@ -32,7 +32,7 @@ struct Autotrace : lart::Pass {
     using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         // void __dios_trace( int upDown, const char *p, ... )
-        auto *trace = m.getFunction( "__dios_trace" );
+        auto *trace = m.getFunction( "__dios_trace_auto" );
         if ( !trace )
             return llvm::PreservedAnalyses::all();
 
