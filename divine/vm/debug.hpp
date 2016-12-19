@@ -166,7 +166,7 @@ struct DebugNode
     llvm::DIDerivedType *di_pointer( llvm::DIType *t = nullptr );
     llvm::DIType *di_base( llvm::DIType *t = nullptr );
     llvm::DIType *di_resolve( llvm::DIType *t = nullptr );
-    std::string di_name( llvm::DIType * = nullptr );
+    std::string di_name( llvm::DIType * = nullptr, bool in_alias = false );
     std::string di_scopename( llvm::DIScope * = nullptr );
     llvm::DICompositeType *di_composite( uint64_t tag, llvm::DIType *t = nullptr );
 

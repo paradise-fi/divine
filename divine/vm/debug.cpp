@@ -214,16 +214,49 @@ std::string DebugNode< Prog, Heap >::di_scopename( llvm::DIScope *scope )
 }
 
 template< typename Prog, typename Heap >
-std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t )
+std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias )
 {
     if ( !t )
         t = _di_type;
     if ( di_member( t ) )
         return di_name( di_base( t ) );
-    if ( !di_base( t ) ||
-         di_derived( llvm::dwarf::DW_TAG_typedef, t ) ||
-         di_composite( llvm::dwarf::DW_TAG_enumeration_type ) )
-        return t->getName().str();
+
+    auto &ditmap = _ctx.program().ditypemap;
+    if ( auto subr = llvm::dyn_cast< llvm::DISubroutineType >( t ) )
+    {
+        auto types = subr->getTypeArray();
+        std::stringstream fmt;
+        if ( auto rvt = types[0].resolve( ditmap ) )
+            fmt << di_name( rvt ) << "(";
+        else
+            fmt << "void" << "(";
+        for ( unsigned i = 1; i < types.size(); ++i )
+            fmt << di_name( types[i].resolve( ditmap ) ) << ( i + 1 < types.size() ? ", " : "" );
+        fmt << ")";
+        return fmt.str();
+    }
+
+    std::string name = t->getName().str();
+
+    if ( di_pointer( t ) && !di_base( t ) ) /* special case */
+        return "void *";
+
+    if ( !di_base( t ) || di_composite( llvm::dwarf::DW_TAG_enumeration_type ) )
+        return name.empty() ? "<anon>" : name;
+
+    if ( di_derived( llvm::dwarf::DW_TAG_typedef, t ) )
+    {
+        std::string def = di_name( di_base( t ), true );
+        if ( !def.empty() )
+            name += " = " + def;
+        if ( in_alias )
+            return name;
+        else
+            return "(" + name + ")";
+    }
+
+    if ( di_derived( llvm::dwarf::DW_TAG_inheritance, t ) )
+        return "<" + di_name( di_base( t ) ) + ">";
     if ( di_pointer( t ) )
         return di_name( di_base( t ) ) + "*";
     if ( di_derived( llvm::dwarf::DW_TAG_reference_type, t ) )
