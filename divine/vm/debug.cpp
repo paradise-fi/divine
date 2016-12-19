@@ -233,7 +233,10 @@ std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias )
         else
             fmt << "void" << "(";
         for ( unsigned i = 1; i < types.size(); ++i )
-            fmt << di_name( types[i].resolve( ditmap ) ) << ( i + 1 < types.size() ? ", " : "" );
+        {
+            auto subt = types[i].resolve( ditmap ); // null means ellipsis here
+            fmt << ( subt ? di_name( subt ) : "..." ) << ( i + 1 < types.size() ? ", " : "" );
+        }
         fmt << ")";
         return fmt.str();
     }
