@@ -599,6 +599,8 @@ void DebugNode< Prog, Heap >::globalvars( YieldDN yield )
     llvm::DebugInfoFinder finder;
     finder.processModule( *_ctx.program().module );
     auto &map = _ctx.program().globalmap;
+    std::map< std::string, int > disamb;
+
     for ( auto GV : finder.global_variables() )
     {
         auto var = GV->getVariable();
@@ -619,6 +621,10 @@ void DebugNode< Prog, Heap >::globalvars( YieldDN yield )
         std::string name = GV->getName();
         if ( llvm::isa< llvm::DINamespace >( GV->getScope() ) )
             name = dn.di_scopename() + "::" + name;
+        if ( disamb[ name ] )
+            name += ( "$" + std::to_string( disamb[ name ] ++ ) );
+        else
+            disamb[ name ] = 1;
         yield( name, dn );
     }
 }
