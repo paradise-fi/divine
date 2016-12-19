@@ -74,11 +74,13 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
                 bool isnew = init( t );
 
                 ext( t ).distance = std::min( ext( t ).distance, ext( f ).distance + 1 );
-                std::string lbl;
+                std::string lbl, color;
                 for ( auto l : trace.first )
                     lbl += l + "\n";
+                if ( t.error )
+                    color = "color=red";
                 str << ext( f ).seq << " -> " << ext( t ).seq
-                    << " [ label = \"" << text2dot( lbl ) << "\"]"
+                    << " [ label = \"" << text2dot( lbl ) << "\" " << color << "]"
                     << std::endl;
                 if ( isnew && ext( t ).distance < distance )
                     return ss::Listen::Process;
@@ -91,8 +93,7 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
                 dn.address( vm::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
                 dn.type( dbg._state_type );
                 dn.di_type( dbg._state_di_type );
-                str << ext( st ).seq << " [ style=filled fillcolor="
-                    << ( st.error ? "red" : "gray" ) << " ]" << std::endl;
+                str << ext( st ).seq << " [ style=filled fillcolor=gray ]" << std::endl;
                 if ( heap )
                 {
                     str << ext( st ).seq << " -> " << ext( st ).seq << ".1 [ label=root ]" << std::endl;
