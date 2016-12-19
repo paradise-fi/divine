@@ -61,7 +61,6 @@ struct Autotrace : lart::Pass {
                     ++exit;
                 } );
         }
-        std::cout << "Annotated " << entry << " calls and " << exit << " exit points" << std::endl;
         return llvm::PreservedAnalyses::none();
     }
 
