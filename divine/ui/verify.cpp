@@ -31,19 +31,18 @@ void Verify::run()
     if ( !_threads )
         _threads = std::min( 4u, std::thread::hardware_concurrency() );
 
-    std::atomic< int > edgecount( 0 ), statecount( 0 );
-
     using clock = std::chrono::steady_clock;
     using msecs = std::chrono::milliseconds;
-    clock::time_point start = clock::now();
+    clock::time_point start;
     msecs interval;
+    std::atomic< int > statecount( 0 );
 
     auto time =
         [&]()
         {
             std::stringstream t;
             t << int( interval.count() / 60000 ) << ":"
-              << std::setw( 2 ) << std::setfill( '0' ) << int(interval.count() / 1000) % 60;
+              << std::setw( 2 ) << std::setfill( '0' ) << int( interval.count() / 1000 ) % 60;
             return t.str();
         };
 
@@ -59,22 +58,22 @@ void Verify::run()
     auto update_interval =
         [&]() { interval = std::chrono::duration_cast< msecs >( clock::now() - start ); };
 
-    auto safety = mc::make_safety( bitcode(), ss::passive_listen() );
+    auto safety = mc::make_safety( bitcode(), ss::passive_listen(), true );
+    start = clock::now();
     safety.start( _threads, [&]( auto &search )
                   {
                       statecount = safety._ex._states._s->used;
                       search.ws_each( [&]( auto &bld, auto & )
                                       { statecount += bld._states._l.inserts; } );
                       update_interval();
-                      std::cerr << "\rsearching: " << statecount << " states and "
-                                << edgecount << " edges found in " << time()
-                                << ", averaging " << avg() << "    ";
+                      std::cerr << "\rsearching: " << statecount << " states found in " << time()
+                                << ", averaging " << avg() << "      ";
                   } );
     safety.wait();
 
+    statecount = safety._ex._states._s->used;
     update_interval();
-    std::cerr << "\rfound " << statecount << " states and "
-              << edgecount << " edges" << " in " << time() << ", averaging " << avg()
+    std::cerr << "\rfound " << statecount << " states in " << time() << ", averaging " << avg()
               << "             " << std::endl;
 
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
