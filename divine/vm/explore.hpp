@@ -161,6 +161,7 @@ struct Explore
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
         if ( setup::postboot_check( _ctx ) )
             _initial.snap = *store( _ctx.snapshot() );
+        _states.updateUsage();
         if ( !_ctx.finished() )
             UNREACHABLE( "choices encountered during start()" );
     }
@@ -173,6 +174,7 @@ struct Explore
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
         if ( _ctx.heap().valid( _states.hasher.root ) )
             _initial.snap = *store( snap );
+        _states.updateUsage();
         if ( !_ctx.finished() )
             UNREACHABLE( "choices encountered during start()" );
         return _initial.snap;
