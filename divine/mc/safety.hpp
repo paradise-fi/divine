@@ -140,8 +140,8 @@ struct TestSafety
                 [&]( auto ) { ++statecount; } ) );
         safe.start( 1 );
         safe.wait();
-        ASSERT_EQ( edgecount, 5 );
-        ASSERT_EQ( statecount, 4 );
+        ASSERT_EQ( edgecount, 4 );
+        ASSERT_EQ( statecount, 5 );
     }
 };
 
