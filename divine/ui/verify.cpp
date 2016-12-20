@@ -106,9 +106,8 @@ void Verify::run()
         std::cout << "  " << l << std::endl;
     std::cout << std::endl;
 
-    auto &ctx = safety._ex._ctx;
-    ctx.heap().restore( trace.final );
-    dbg.load( ctx );
+    dbg.load( safety._ex._ctx );
+    dbg.load( trace.final );
     dbg._choices = { trace.choices.back().begin(), trace.choices.back().end() };
     dbg._choices.push_back( -1 ); // prevent execution after choices are depleted
     vm::setup::scheduler( dbg );
