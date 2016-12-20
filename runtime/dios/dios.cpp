@@ -216,6 +216,7 @@ void init( const _VM_Env *env )
 
     if ( traceCfg.help ) {
         traceHelp( 1 );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
         return;
     }
 
