@@ -22,7 +22,9 @@ struct Compile
 {
     using ModulePtr = std::unique_ptr< llvm::Module >;
 
-    explicit Compile( Options opts = Options() );
+    explicit Compile( std::shared_ptr< llvm::LLVMContext > ctx ) : Compile( Options(), ctx ) {}
+    explicit Compile( Options opts = Options(),
+                      std::shared_ptr< llvm::LLVMContext > ctx = nullptr );
     ~Compile();
 
     void compileAndLink( std::string path, std::vector< std::string > flags = {} );
@@ -66,19 +68,16 @@ struct Compile
                   if ( brick::string::endsWith( path, ".bc" ) )
                       setupLib( path, c );
                   else
-                      mastercc().mapVirtualFile( path, c );
+                      compiler.mapVirtualFile( path, c );
               } );
     }
 
   private:
-    Compiler &mastercc();
-
     void setupLib( std::string name, const std::string &content );
     void compileLibrary( std::string path, std::vector< std::string > flags = { } );
 
     Options opts;
-    std::vector< Compiler > compilers;
-    std::vector< std::thread > workers;
+    Compiler compiler;
     std::unique_ptr< brick::llvm::Linker > linker;
     std::vector< std::string > commonFlags; // set in CPP
     std::string runtimeVersMeta = "divine.compile.runtime.version";

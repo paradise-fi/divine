@@ -48,12 +48,9 @@ static std::vector< std::string > mergeFlags( Xs &&... xs ) {
     return out;
 }
 
-Compile::Compile( Options opts ) :
-    opts( opts ), compilers( 1 ), workers( 1 ), linker( new brick::llvm::Linker() )
+Compile::Compile( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
+    opts( opts ), compiler( ctx ), linker( new brick::llvm::Linker() )
 {
-    ASSERT_LEQ( 1ul, workers.size() );
-    ASSERT_EQ( workers.size(), compilers.size() );
-
     commonFlags = { "-D__divine__=4"
                   , "-isystem", rt::includeDir
                   , "-isystem", joinPath( rt::includeDir, "pdclib" )
@@ -96,8 +93,8 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
 
     std::cerr << "compiling " << path << std::endl;
     if ( path[0] == '/' )
-        mastercc().allowIncludePath( std::string( path, 0, path.rfind( '/' ) ) );
-    auto mod = mastercc().compileModule( path, type, allFlags );
+        compiler.allowIncludePath( std::string( path, 0, path.rfind( '/' ) ) );
+    auto mod = compiler.compileModule( path, type, allFlags );
 
     return mod;
 }
@@ -120,7 +117,7 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
                 val = it->substr( 2 );
             else
                 val = *++it;
-            mastercc().allowIncludePath( val );
+            compiler.allowIncludePath( val );
             opts.emplace_back( "-I" + val );
         }
         else if ( brick::string::startsWith( *it, isystem ) ) {
@@ -129,7 +126,7 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
                 val = it->substr( isystem.size() );
             else
                 val = *++it;
-            mastercc().allowIncludePath( val );
+            compiler.allowIncludePath( val );
             opts.emplace_back( isystem + val );
         }
         else if ( brick::string::startsWith( *it, "-x" ) ) {
@@ -186,11 +183,11 @@ void Compile::writeToFile( std::string filename, llvm::Module *mod )
 }
 
 std::string Compile::serialize() {
-    return mastercc().serializeModule( *getLinked() );
+    return compiler.serializeModule( *getLinked() );
 }
 
 void Compile::addDirectory( std::string path ) {
-    mastercc().allowIncludePath( path );
+    compiler.allowIncludePath( path );
 }
 
 void Compile::addFlags( std::vector< std::string > flags ) {
@@ -201,9 +198,7 @@ void Compile::prune( std::vector< std::string > r ) {
     linker->prune( r, brick::llvm::Prune::UnusedModules );
 }
 
-std::shared_ptr< llvm::LLVMContext > Compile::context() { return mastercc().context(); }
-
-Compiler &Compile::mastercc() { return compilers[0]; }
+std::shared_ptr< llvm::LLVMContext > Compile::context() { return compiler.context(); }
 
 void Compile::setupLib( std::string name, const std::string &content )
 {
@@ -219,7 +214,7 @@ void Compile::setupLib( std::string name, const std::string &content )
 
 void Compile::compileLibrary( std::string path, std::vector< std::string > flags )
 {
-    for ( const auto &f : mastercc().filesMappedUnder( path ) )
+    for ( const auto &f : compiler.filesMappedUnder( path ) )
         compileAndLink( f, flags );
 }
 }
