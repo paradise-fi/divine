@@ -90,8 +90,8 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
     std::vector< std::string > allFlags;
     std::copy( commonFlags.begin(), commonFlags.end(), std::back_inserter( allFlags ) );
     std::copy( flags.begin(), flags.end(), std::back_inserter( allFlags ) );
-
-    std::cerr << "compiling " << path << std::endl;
+    if ( opts.verbose )
+        std::cerr << "compiling " << path << std::endl;
     if ( path[0] == '/' )
         compiler.allowIncludePath( std::string( path, 0, path.rfind( '/' ) ) );
     auto mod = compiler.compileModule( path, type, allFlags );
@@ -202,14 +202,17 @@ std::shared_ptr< llvm::LLVMContext > Compile::context() { return compiler.contex
 
 void Compile::setupLib( std::string name, const std::string &content )
 {
-    std::cerr << "loading " << name << "..." << std::flush;
+    if ( opts.verbose )
+        std::cerr << "loading " << name << "..." << std::flush;
     auto input = llvm::MemoryBuffer::getMemBuffer( content );
     auto parsed = parseBitcodeFile( input->getMemBufferRef(), *context() );
     if ( !parsed )
         throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
-    std::cerr << " linking..." << std::flush;
+    if ( opts.verbose )
+        std::cerr << " linking..." << std::flush;
     linker->link( std::move( parsed.get() ), false );
-    std::cerr << " done" << std::endl;
+    if ( opts.verbose )
+        std::cerr << " done" << std::endl;
 }
 
 void Compile::compileLibrary( std::string path, std::vector< std::string > flags )

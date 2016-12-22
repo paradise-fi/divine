@@ -6,7 +6,9 @@ namespace cc {
 struct Options
 {
     bool dont_link;
-    Options() : dont_link( false ) {}
+    bool verbose;
+    Options() : Options( false, true ) {}
+    Options( bool dont_link, bool verbose ) : dont_link( dont_link ), verbose( verbose ) {}
 };
 
 }
