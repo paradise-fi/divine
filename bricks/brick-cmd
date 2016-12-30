@@ -859,8 +859,12 @@ struct Parser
     template< typename Rec >
     std::string describe_rec( Rec &rec, std::string name )
     {
-        if ( name.empty() )
-            return rec.car.describe_header( 10 ) + "\n" + describe_rec( rec.cdr, name );
+        if ( name.empty() ) {
+            auto d = describe_rec( rec.cdr, name );
+            if ( !d.empty() )
+                d += "\n";
+            return d + rec.car.describe_header( 10 );
+        }
         if ( rec.car.name() == name )
             return rec.car.describe();
         return describe_rec( rec.cdr, name );
@@ -1131,4 +1135,4 @@ struct TestCmd
 }
 }
 
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
