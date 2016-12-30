@@ -416,6 +416,9 @@ struct CLI : Interface
     template< typename P >
     auto parse( P p )
     {
+        if ( _args.size() >= 1 )
+            if ( _args[0] == "--help" || _args[0] == "--version" )
+                _args[0] = _args[0].substr( 2 );
         return p.parse( _args.begin(), _args.end() );
     }
 
