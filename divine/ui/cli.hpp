@@ -26,6 +26,7 @@
 #include <divine/ui/common.hpp>
 #include <divine/ui/curses.hpp>
 #include <divine/ui/die.hpp>
+#include <divine/ui/version.hpp>
 
 #include <brick-cmd>
 #include <brick-fs>
@@ -168,9 +169,13 @@ struct DivineLd : Command
     std::vector< std::string > _flags;
 };
 
-struct Info   : WithBC
+struct Info   : Run
 {
-    void run() { NOT_IMPLEMENTED(); }
+    Info() {
+        _systemopts.push_back( "help" );
+    }
+
+    void run() override;
 };
 
 namespace {

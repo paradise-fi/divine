@@ -272,5 +272,15 @@ void Cc::run()
     }
 }
 
+void Info::run()
+{
+    WithBC::bitcode(); // dump all WithBC messages before our output
+    std::cerr << std::endl
+              << "DIVINE " << version() << std::endl << std::endl
+              << "Available options for " << _file << " are:" << std::endl;
+    Run::run();
+    std::cerr << "use -o {option}:{value} to pass these options to the program" << std::endl;
+}
+
 }
 }
