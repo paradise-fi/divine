@@ -13,7 +13,7 @@ set( VERSION_FILE ${divine_BINARY_DIR}/divine/version-generated.cpp )
 set( UPDATE_VERSION ${divine_SOURCE_DIR}/releng/update-version-sha.sh )
 
 add_custom_command(
-  COMMAND sh ${UPDATE_VERSION} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${VERSION_FILE}" "${DIVINE_VERSION}"
+    COMMAND sh ${UPDATE_VERSION} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${VERSION_FILE}" "${DIVINE_VERSION}" "${CMAKE_BUILD_TYPE}"
   VERBATIM
   OUTPUT "${VERSION_FILE}.check"
 )

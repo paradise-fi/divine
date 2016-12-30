@@ -3,6 +3,7 @@ sha1sum="$1"
 from="$2"
 where="$3"
 version="$4"
+buildtype="$5"
 empty="0000000000000000000000000000000000000000";
 
 cd $from
@@ -43,6 +44,7 @@ if test "$old" != "$new" || ! test -f $where; then
     echo "const char *DIVINE_SOURCE_SHA = \"$src\";" >> $where
     echo "const char *DIVINE_RUNTIME_SHA = \"$runtime\";" >> $where
     echo "const char *DIVINE_BUILD_DATE = \"$(date -u "+%Y-%m-%d, %H:%M UTC")\";" >> $where
+    echo "const char *DIVINE_BUILD_TYPE = \"$buildtype\";" >> $where
     echo "const char *DIVINE_RELEASE_SHA = \"$relsha\";" >> $where
     echo $new > $where.cached
 fi
