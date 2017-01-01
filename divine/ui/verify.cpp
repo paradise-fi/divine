@@ -74,10 +74,20 @@ void Verify::run()
     statecount = safety._ex._states._s->used;
     update_interval();
     std::cerr << "\rfound " << statecount << " states in " << time() << ", averaging " << avg()
-              << "             " << std::endl;
+              << "             " << std::endl << std::endl;
 
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
     vm::setup::dbg_boot( dbg );
+
+    brick::types::Defer stats( [&] {
+            if ( _report ) {
+                std::cout << std::endl << "verify time: " << std::setprecision( 3 ) << double( interval.count() ) / 1000
+                          << std::endl << "states: " << statecount
+                          << std::endl << "average speed: " << avg()
+                          << std::endl << "DIVINE version: " << version()
+                          << std::endl;
+            }
+    } );
 
     if ( !statecount )
     {
@@ -90,14 +100,14 @@ void Verify::run()
 
     if ( !safety._error_found )
     {
-        std::cout << "no errors found" << std::endl;
+        std::cout << "error found: no" << std::endl;
         return;
     }
 
     auto ce_states = safety.ce_states();
     auto trace = mc::trace( safety._ex, ce_states );
 
-    std::cout << "found an error" << std::endl;
+    std::cout << "error found: yes" << std::endl;
 
     std::cout << std::endl << "choices made:" << trace.choices << std::endl;
     std::cout << std::endl << "the error trace:" << std::endl;

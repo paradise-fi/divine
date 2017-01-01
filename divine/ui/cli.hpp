@@ -115,8 +115,7 @@ struct Verify : WithBC
     int _threads = 0;
     int _backtraceMaxDepth = 10;
     bool _no_counterexample = false;
-    std::string _report;
-    std::string _statistics;
+    bool _report = false;
 
     void run();
 };
@@ -372,11 +371,9 @@ struct CLI : Interface
             .option( "[--max-time {int}]", &Verify::_max_time, "max time allowed to take [in sec]"s )
             .option( "[--no-counterexample]", &Verify::_no_counterexample,
                      "do not print counterexamples"s )
-            .option( "[--report {string}]", &Verify::_report, "print a report with given options"s )
+            .option( "[--report|-r]", &Verify::_report, "print a report to stdout, not just the result"s )
             .option( "[--max-backtrace-depth {int}]"s, &Verify::_backtraceMaxDepth,
-                     "Maximum depth of error backtrace printed in the report [default = 10]" )
-            .option( "[--statistics {string}]", &Verify::_statistics,
-                     "print statistics with given options"s );
+                     "Maximum depth of error backtrace printed in the report [default = 10]" );
 
         auto drawopts = cmd::make_option_set< Draw >( v )
             .option( "[--distance {int}|-d {int}]", &Draw::_distance, "node distance"s )
