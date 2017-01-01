@@ -110,8 +110,8 @@ struct Version : Command {
 
 struct Verify : WithBC
 {
-    int _max_mem = 256; // MB
-    int _max_time = 100;  // seconds
+    int _max_mem = 0; // MB
+    int _max_time = 0;  // seconds
     int _threads = 0;
     int _backtraceMaxDepth = 10;
     bool _no_counterexample = false;

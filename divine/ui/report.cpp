@@ -1,5 +1,7 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 
+#if 0
+
 #include <stdexcept>
 #include <map>
 #include <algorithm>
@@ -112,3 +114,5 @@ void SqlReport::doFinal( const Meta &meta ) {
 
 
 }
+
+#endif

@@ -20,6 +20,7 @@
 #include <divine/mc/trace.hpp>
 #include <divine/vm/stepper.hpp>
 #include <divine/ui/cli.hpp>
+#include <divine/ui/sysinfo.hpp>
 
 namespace divine {
 namespace ui {
@@ -60,6 +61,8 @@ void Verify::run()
 
     auto safety = mc::make_safety( bitcode(), ss::passive_listen(), true );
     start = clock::now();
+    SysInfo sysinfo;
+    sysinfo.setMemoryLimitInBytes( _max_mem * 1024 * 1024 );
     safety.start( _threads, [&]( auto &search )
                   {
                       statecount = safety._ex._states._s->used;
@@ -68,6 +71,7 @@ void Verify::run()
                       update_interval();
                       std::cerr << "\rsearching: " << statecount << " states found in " << time()
                                 << ", averaging " << avg() << "      ";
+                      sysinfo.updateAndCheckTimeLimit( _max_time );
                   } );
     safety.wait();
 
@@ -81,7 +85,11 @@ void Verify::run()
 
     brick::types::Defer stats( [&] {
             if ( _report ) {
-                std::cout << std::endl << "verify time: " << std::setprecision( 3 ) << double( interval.count() ) / 1000
+                std::cout << std::endl;
+                sysinfo.report( []( auto k, auto v ) {
+                        std::cout << k << ": " << v << std::endl;
+                    } );
+                std::cout << "verify time: " << std::setprecision( 3 ) << double( interval.count() ) / 1000
                           << std::endl << "states: " << statecount
                           << std::endl << "average speed: " << avg()
                           << std::endl << "DIVINE version: " << version()

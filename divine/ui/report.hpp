@@ -14,7 +14,7 @@
 // #include <divine/ui/meta.h>
 #include <divine/ui/sysinfo.hpp>
 
-#ifndef DIVINE_REPORT_H
+#if 0 // ndef DIVINE_REPORT_H
 #define DIVINE_REPORT_H
 
 namespace divine {

@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2013 Vladimír Štill <xstill@fi.muni.cz>
 #pragma once
 
+#if 0
+
 #include <string>
 #include <vector>
 #include <iostream>
@@ -67,3 +69,4 @@ static inline std::ostream &operator<<( std::ostream &o, const WithReport &wr )
 
 }
 
+#endif

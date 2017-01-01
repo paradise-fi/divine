@@ -1,3 +1,22 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2012-2016 Petr Ročkai <code@fixp.eu>
+ * (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 #include <divine/ui/sysinfo.hpp>
 
 #include <time.h>
@@ -29,11 +48,9 @@
 #endif
 
 namespace divine {
-namespace sysinfo {
+namespace ui {
 
-Data *Info::data = 0;
-
-struct Data {
+struct SysInfo::Data {
 #ifdef __unix
     struct timeval tv, now;
     struct rusage usage;
@@ -66,7 +83,7 @@ static MaybeMatch matchLine( std::string file, std::regex &r ) {
 long long procStatusLine( std::string key ) {
     std::stringstream file;
     file << "/proc/" << uint64_t( getpid() ) << "/status";
-    std::regex r( key + ":[\t ]*([0-9]+)", std::regex::extended );
+    std::regex r( key + ":[\t ]*([0-9]+) .*", std::regex::extended );
     auto m = matchLine( file.str(), r );
     if ( m.isJust() ) {
         return std::stoll( m.value()[1] );
@@ -95,103 +112,96 @@ double SystemTimeToDouble(SYSTEMTIME &time)
 }
 #endif
 
-using guard = std::lock_guard< std::mutex >;
-
-double Info::userTime() const {
-    guard _l( data->lock );
+double SysInfo::userTime() const {
 #ifdef __unix
-    return interval( zeroTime(), data->usage.ru_utime );
+    return interval( zeroTime(), _data->usage.ru_utime );
 #elif defined(_WIN32)
-    return SystemTimeToDouble(data->stUser);
+    return SystemTimeToDouble( _data->stUser );
 #endif
 }
 
-double Info::systemTime() const {
-    guard _l( data->lock );
+double SysInfo::systemTime() const {
 #ifdef __unix
-    return interval( zeroTime(), data->usage.ru_stime );
+    return interval( zeroTime(), _data->usage.ru_stime );
 #elif defined(_WIN32)
-    return SystemTimeToDouble(data->stKernel);
+    return SystemTimeToDouble( _data->stKernel );
 #endif
 }
 
-double Info::wallTime() const {
-    guard _l( data->lock );
+double SysInfo::wallTime() const {
 #ifdef __unix
-    return interval( data->tv, data->now );
+    return interval( _data->tv, _data->now );
 #elif defined(_WIN32)
-    return SystemTimeToDouble(data->stFinish) - SystemTimeToDouble(data->stStart);
+    return SystemTimeToDouble( _data->stFinish ) - SystemTimeToDouble( _data->stStart );
 #endif
 }
 
-void Info::init() {
-    if ( data )
-        return;
-
-    data = new Data;
-    start();
-}
-
-Info::Info() {
-    ASSERT( data );
-}
-
-void Info::start() {
-    guard _l( data->lock );
+SysInfo::SysInfo() : _data( new SysInfo::Data() )
+{
 #ifdef __unix
-    gettimeofday(&data->tv, NULL);
+    gettimeofday( &_data->tv, NULL );
 #endif
 
 #ifdef _WIN32
-    data->hProcess = GetCurrentProcess();
-    GetLocalTime(&data->stStart);
+    _data->hProcess = GetCurrentProcess();
+    GetLocalTime( &_data->stStart );
 #endif
 }
 
-void Info::update() const {
-    guard _l( data->lock );
-#ifdef __unix
-    gettimeofday(&data->now, NULL);
-    getrusage( RUSAGE_SELF, &data->usage );
-#elif defined(_WIN32)
-    GetLocalTime(&data->stFinish);
-    GetProcessTimes(data->hProcess, &data->ftCreation, &data->ftExit,
-                    &data->ftKernel, &data->ftUser);
-#endif
-}
-
-void Info::stop() const {
-    guard _l( data->lock );
+SysInfo::~SysInfo() {
 #if defined(_WIN32)
-    CloseHandle(data->hProcess);
+    CloseHandle( _data->hProcess );
 #endif
+}
+
+void SysInfo::update() {
+#ifdef __unix
+    gettimeofday( &_data->now, NULL );
+    getrusage( RUSAGE_SELF, &_data->usage );
+#elif defined(_WIN32)
+    GetLocalTime( &_data->stFinish );
+    GetProcessTimes( _data->hProcess, &_data->ftCreation, &_data->ftExit,
+                     &_data->ftKernel, &_data->ftUser );
+#endif
+}
+
+void SysInfo::updateAndCheckTimeLimit( uint64_t time )
+{
+    update();
+
+    if ( time && wallTime() > time )
+        throw ResourceLimit( "Time limit exceeded: used "
+                             + brick::string::fmt( wallTime() ) + "s / "
+                             + brick::string::fmt( time ) + "s." );
 }
 
 #if defined( __linux )
-#define MEMINFO( fn, liKey, winKey ) uint64_t Info::fn() const { \
+#define MEMINFO( fn, liKey, winKey ) uint64_t SysInfo::fn() const { \
     return procStatusLine( liKey ); \
 }
 #elif defined( _WIN32 )
-#define MEMINFO( fn, liKey, winKye ) uint64_t Info::fn() const { \
-    guard _l( data->lock ); /* functions might not be theread safe */ \
+#define MEMINFO( fn, liKey, winKey ) uint64_t SysInfo::fn() const { \
     PROCESS_MEMORY_COUNTERS pmc; \
-    if (data->hProcess != NULL && GetProcessMemoryInfo(data->hProcess, &pmc, sizeof(pmc))) \
-        return pmc.PeakWorkingSetSize/(1024); \
+    if ( _data->hProcess != NULL && GetProcessMemorySysInfo( _data->hProcess, &pmc, sizeof(pmc) ) ) \
+        return pmc.winKey/(1024); \
     return 0; \
 }
 #else
-#define MEMINFO( fn, liKey, winKey ) uint64_t Info::fn() const { return 0; }
+#define MEMINFO( fn, liKey, winKey ) uint64_t SysInfo::fn() const { return 0; }
 #endif
 
 MEMINFO( peakVmSize, "VmPeak", PeakWorkingSetSize );
 MEMINFO( vmSize, "VmSize", WorkingSetSize );
-MEMINFO( peakResidentMemSize, "VmHWM", QuotaPeakPagedPoolUsage ); // not sure if win versions
+// MEMINFO( peakResidentMemSize, "VmHWM", QuotaPeakPagedPoolUsage ); // not sure if win versions
 MEMINFO( residentMemSize, "VmRSS", QuotaPagedPoolUsage ); // are right for these two
+
+uint64_t SysInfo::peakResidentMemSize() const {
+    return _data->usage.ru_maxrss;
+}
 
 #undef MEMINFO
 
-std::string Info::architecture() const {
-    guard _l( data->lock );
+std::string SysInfo::architecture() const {
 #ifdef __linux
     std::regex r( "model name[\t ]*: (.+)", std::regex::extended );
     auto m = matchLine( "/proc/cpuinfo", r );
@@ -232,35 +242,30 @@ std::string Info::architecture() const {
     return "Unknown";
 }
 
-ResourceGuard::ResourceGuard()
-    : memory( 0 ), time( 0 )
-{}
-
-void ResourceGuard::loop()
-{
-    info.update();
-
-    if ( memory && info.peakVmSize() > memory )
-        throw ResourceLimit( "Memory limit exceeded: used "
-                             + brick::string::fmt( info.peakVmSize() ) + "K / "
-                             + brick::string::fmt( memory ) + "K." );
-    if ( time && info.wallTime() > time )
-        throw ResourceLimit( "Time limit exceeded: used "
-                             + brick::string::fmt( info.wallTime() ) + "s / "
-                             + brick::string::fmt( time ) + "s." );
-
-    std::this_thread::sleep_for( std::chrono::seconds( 1 ) );
+void SysInfo::report( std::function< void ( std::string, std::string ) > yield ) {
+    update();
+    yield( "architecture", architecture() );
+    if ( auto pvs = peakVmSize() )
+        yield( "memory used", std::to_string( pvs ) );
+    if ( auto prms = peakResidentMemSize() )
+        yield( "physical memory used", std::to_string( prms ) );
+    yield( "user time", std::to_string( userTime() ) );
+    yield( "system time", std::to_string( systemTime() ) );
+    yield( "wall time", std::to_string( wallTime() ) );
 }
 
-std::vector< ReportLine > Info::report() const {
-    update();
-    return { { "Architecture", architecture() },
-             { "Memory-Used", std::to_string( peakVmSize() ) },
-             { "Physical-Memory-Used", std::to_string( peakResidentMemSize() ) },
-             { "User-Time", std::to_string( userTime() ) },
-             { "System-Time", std::to_string( systemTime() ) },
-             { "Wall-Time", std::to_string( wallTime() ) }
-           };
+void SysInfo::setMemoryLimitInBytes( uint64_t memory ) {
+    if ( !memory )
+        return;
+    if ( double pvs = peakVmSize() )
+        if ( memory < pvs * 1024 * 1.1 )
+            throw std::runtime_error( "memory limit lower then memory required to start" );
+#ifdef __unix
+    struct rlimit r = { memory, memory };
+    setrlimit( RLIMIT_AS, &r );
+#else
+    throw std::runtime_error( "setMemoryLimitInBytes called on plafrom which does not support it" );
+#endif
 }
 
 }
