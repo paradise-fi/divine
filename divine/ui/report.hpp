@@ -10,7 +10,7 @@
 
 #include <brick-types>
 
-#include <divine/ui/version.hpp>
+// #include <divine/ui/version.hpp>
 // #include <divine/ui/meta.h>
 #include <divine/ui/sysinfo.hpp>
 

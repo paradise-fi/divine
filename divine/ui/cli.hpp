@@ -103,6 +103,11 @@ struct Help
     }
 };
 
+struct Version : Command {
+
+    void run() override;
+};
+
 struct Verify : WithBC
 {
     int _max_mem = 256; // MB
@@ -403,6 +408,7 @@ struct CLI : Interface
             .command< Cc >( ccopts )
             .command< DivineCc >( dccopts )
             .command< DivineLd >( dldopts )
+            .command< Version >()
             .command< Help >( helpopts );
         return parser;
     }

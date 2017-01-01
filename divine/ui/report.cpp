@@ -22,7 +22,7 @@ std::vector< ReportLine > Report::Merged::report() const {
             { "Finished", r._finished ? "Yes" : "No" }
         };
 
-    return WithReport::merge( ec, empty, BuildInfo(), empty, r._sysinfo,
+    return WithReport::merge( ec, empty, /* BuildInfo(), */ empty, r._sysinfo,
                               empty, empty, term );
 }
 

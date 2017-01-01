@@ -1,20 +1,29 @@
-// -*- C++ -*- (c) 2012 Petr Rockai <me@mornfall.net>
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
-#include <divine/ui/withreport.hpp>
+/*
+ * (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
 
-// Set version information in version.cpp.
+#pragma once
 
-#ifndef DIVINE_VERSION_H
-#define DIVINE_VERSION_H
-
-extern const char* divineCompileFlags;
+#include <string>
 
 namespace divine {
-const char *versionString();
-const char *buildDateString();
-struct BuildInfo : WithReport {
-    std::vector< ReportLine > report() const override;
-};
-}
+namespace ui {
 
-#endif
+std::string version();
+
+}
+}

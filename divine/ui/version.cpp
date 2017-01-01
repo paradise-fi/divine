@@ -1,59 +1,65 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#include <divine/ui/cli.hpp>
+#include <divine/ui/logo.hpp>
+#include <utility>
 #include <string>
 #include <sstream>
 
-#include <divine/ui/version.hpp>
+extern const char *DIVINE_VERSION;
+extern const char *DIVINE_SOURCE_SHA;
+extern const char *DIVINE_RUNTIME_SHA;
+extern const char *DIVINE_BUILD_DATE;
+extern const char *DIVINE_BUILD_TYPE;
+extern const char *DIVINE_RELEASE_SHA;
 
-#if OPT_MPI
-#include <mpi.h>
-#ifdef HAVE_OMPI_VERSION
-#include <ompi/version.h>
-#endif
-#endif
-
-extern const char *DIVINE_SOURCE_SHA, *DIVINE_BUILD_DATE,
-                  *DIVINE_RELEASE_SHA, *DIVINE_VERSION;
+using namespace std::literals;
 
 namespace divine {
+namespace ui {
 
-static std::string version;
-
-const char *buildDateString() {
-    return DIVINE_BUILD_DATE;
+std::string version() {
+    std::string composite = DIVINE_RELEASE_SHA + " "s + DIVINE_RUNTIME_SHA;
+    if ( DIVINE_RELEASE_SHA == composite )
+        return DIVINE_VERSION;
+    else {
+        std::stringstream v;
+        v << DIVINE_VERSION << "+";
+        std::string a = std::string( DIVINE_SOURCE_SHA ).substr( 0, 12 ),
+                    b = std::string( DIVINE_RUNTIME_SHA ).substr( 0, 12 );
+        v << std::hex << (std::stoll( a, 0, 16 ) ^ std::stoll( b, 0, 16 ));
+        return v.str();
+    }
 }
 
-const char *versionString() {
-    if ( std::string(DIVINE_RELEASE_SHA) == DIVINE_SOURCE_SHA )
-        version = std::string( DIVINE_VERSION );
-    else
-        version = std::string( DIVINE_VERSION ) + "+" + DIVINE_SOURCE_SHA;
-    return version.c_str();
+void Version::run() {
+    std::cerr << logo << std::endl
+              << "DIVINE 4, version " << version() << std::endl << std::endl;
+
+    using P = std::pair< std::string, std::string >;
+    for ( auto p : { P{ "version", version() },
+                     P{ "source_sha", DIVINE_SOURCE_SHA },
+                     P{ "runtime_sha", DIVINE_RUNTIME_SHA },
+                     P{ "build_date", DIVINE_BUILD_DATE },
+                     P{ "build_type", DIVINE_BUILD_TYPE } } )
+        std::cout << p.first << ": " << p.second << std::endl;
 }
 
-std::vector< ReportLine > BuildInfo::report() const {
-    std::stringstream ss;
-#if OPT_MPI
-        int vers, subvers;
-        std::string impl = "unknown implementation";
-        MPI::Get_version( vers, subvers );
-#ifdef HAVE_OMPI_VERSION
-        impl = std::string( "OpenMPI " ) + OMPI_VERSION;
-#endif
-        ss << vers << "." << subvers << " (" << impl << ")";
-#else
-        ss << "n/a";
-#endif
-
-    return { { "Version", versionString() },
-             { "Build-Date", buildDateString() },
-             { "Pointer-Width", std::to_string( 8 * sizeof( void* ) ) },
-#ifdef NDEBUG
-             { "Debug", "disabled" },
-#else
-             { "Debug", "enabled" },
-#endif
-             { "Compile-Flags", divineCompileFlags },
-             { "MPI-Version", ss.str() }
-           };
 }
-
 }
