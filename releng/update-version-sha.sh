@@ -8,7 +8,7 @@ empty="0000000000000000000000000000000000000000";
 
 cd $from
 
-interesting='.*(\.c$|\.cpp$|\.h$|\.cc$|\.hh$)';
+interesting='.*(\.c$|\.cpp$|\.hpp$|\.h$|\.cc$|\.hh$)';
 boring='\.orig$|~$';
 if test -e releng/manifest; then
     manifest=`cat releng/manifest`;
@@ -24,7 +24,7 @@ relsha=`cat releng/checksum`
 
 sha() {
     echo "$manifest" | egrep "^./$1/$interesting" | egrep -v "$boring" \
-        | xargs $sha1sum | cut -d' ' -f1 | $sha1sum | cut -d' ' -f1
+        | xargs $sha1sum | $sha1sum | cut -d' ' -f1
 }
 
 test -z "$old" && old=`cat $where.cached 2> /dev/null`
