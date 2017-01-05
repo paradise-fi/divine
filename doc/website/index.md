@@ -3,7 +3,8 @@ toolchain, it can **verify programs** written in multiple real-world
 programming languages, including **C** and **C++**.  The verification core is
 built on a foundation of **high­-per­for­mance algorithms** and data
 structures, scaling all the way from a laptop to a high-end cluster.  Learn
-more in the **[manual](manual.html)**.
+more in the **[manual](manual.html)**. Our plans for upcoming releases are
+outlined in the [roadmap](roadmap.html).
 
 Second Beta of DIVINE 4 is Available
 ====================================

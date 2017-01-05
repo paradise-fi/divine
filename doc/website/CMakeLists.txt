@@ -55,6 +55,7 @@ add_custom_command(
          pandoc -s --smart --template ${SRCDIR}/template.html > papers.html )
 
 page( whatsnew.html .. "--toc" NEWS )
+page( roadmap.html .. "" ROADMAP )
 page( manual.html ../manual "--toc;-N" ${MANUAL_SRC} )
 pages( . download.md index.md status.md )
 resources( style.css um-400.ttf um-700.ttf lato-400.ttf lato-700.ttf ../papers.bib )
