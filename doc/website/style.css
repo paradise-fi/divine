@@ -1,6 +1,5 @@
 body {
     font-family: 'Lato', sans;
-    /* font-size: 18px; */
     text-align: justify;
     hyphens: auto;
     color: black;
@@ -56,6 +55,8 @@ pre#logo {
     width: 65ch;
 }
 
+h1, h2, h3 { font-family: 'Aleo', 'Lato', sans; }
+
 #logo-wrapper {
     font-size: 16px;
     font-family: 'Ubuntu Mono';
@@ -106,21 +107,20 @@ div#footer {
 #footer a:link:hover, #footer a:visited:hover { color: pink; }
 
 h1 {
-    font-weight: bold;
-    font-size: 120%;
+    font-weight: normal;
+    font-size: 121%;
     text-align: left;
-    margin-left: -.8ch;
-    margin-right: -.8ch;
     margin-top: 16px;
     margin-bottom: 16px;
-    padding-left: 1ch;
     color: black;
 }
 
-h2, h3 { font-size: 100%;
-         font-style: regular;
-         font-weight: bold;
-         padding-left: 0; }
+h2, h3
+{
+    font-size: 110%;
+    font-style: regular;
+    font-weight: normal;
+}
 
 .invisible { display: none; }
 
