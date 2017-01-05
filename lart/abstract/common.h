@@ -30,17 +30,11 @@ struct Common
     virtual llvm::Type *abstract( llvm::Type *t ) = 0;
 
     /*
-     * Translate an instruction to a code block computing the effect of the
-     * abstract equivalent.
-     */
-    virtual void lower( llvm::Instruction *i ) = 0;
-
-    /*
-     * This particular abstraction deals with types "%lart.qualifier.*" --
-     * i.e. if typeQualifier is "interval" then values of type
+     * This particular abstraction deals with types "%lart.domain.*" --
+     * i.e. if domain is "interval" then values of type
      * "%lart.interval.*" are the responsibility of this abstraction.
      */
-    virtual std::string typeQualifier() = 0;
+    virtual std::string domain() const = 0;
 
     /*
      * Construct a basic block that compute refined abstract values given the
@@ -55,9 +49,18 @@ struct Common
      */
     virtual Constrain constrain( llvm::Value *v, llvm::Value *constraint ) = 0;
 
-    /* The outside interface of abstraction passes. */
-    virtual void process( llvm::Module &m, std::set< llvm::Value * > );
-    virtual void process( llvm::Instruction *i );
+    /* The outside interface of abstraction passes.
+     * Translate an abstract intrinsic call to a code block computing the effect of the
+     * abstract equivalent.
+     */
+    virtual void process( llvm::CallInst *, std::map< llvm::Value *, llvm::Value * > & ) = 0;
+
+    /* Decides whether a type is corresponding to this abstraction. */
+    virtual bool is( llvm::Type * ) = 0;
+
+    virtual bool is( llvm::Value *v ) {
+        return is( v->getType() );
+    }
 
     virtual llvm::Type *abstract( llvm::Value *v ) {
         return abstract( v->getType() );

@@ -22,7 +22,7 @@ struct AbstractWalker {
 
     std::vector< llvm::Value * > entries( llvm::Function * );
 
-    std::vector< llvm::Value * > dependencies( llvm::Value * );
+    static std::vector< llvm::Value * > dependencies( llvm::Value * );
 
 private:
     std::vector< Annotation > annotations;

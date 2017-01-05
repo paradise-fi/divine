@@ -1,6 +1,6 @@
 #define _ROOT __attribute__((__annotate__("brick.llvm.prune.root")))
 
-typedef unsigned char bool; //TODO
+typedef unsigned char bool;
 typedef unsigned char uint8_t;
 typedef unsigned short int uint16_t;
 typedef unsigned int uint32_t;
