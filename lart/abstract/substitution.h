@@ -2,6 +2,8 @@
 #pragma once
 
 #include <lart/abstract/trivial.h>
+#include <lart/abstract/zero.h>
+#include <lart/abstract/sbuilder.h>
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 
@@ -14,17 +16,12 @@ namespace abstract {
 
 struct Substitution : lart::Pass
 {
-    enum Type { Trivial };
+    enum Type { Trivial, Zero };
 
-    Substitution( Type t ) : _type( t ) {
-        /*switch ( _type ) {
-            case Trivial: {
-                builder = SubstitutionBuilder(
-                          std::unique_ptr< Common >( new abstract::Trivial() ) );
-                break;
-            }
-        }*/
-    }
+    Substitution( Type t ) : type( t ) {}
+
+    Substitution( Substitution && s )
+        : type( s.type ), builder( std::move( s.builder ) ) {}
 
     virtual ~Substitution() {}
 
@@ -36,18 +33,25 @@ struct Substitution : lart::Pass
                 } );
     }
 
-    static Type getType( std::string ) {
-        return Type::Trivial;
+    static Type getType( std::string opt ) {
+        if ( opt == "trivial" )
+            return Type::Trivial;
+        if ( opt == "zero" )
+            return Type::Zero;
+        std::cerr << "Unsupported abstraction " << opt <<std::endl;
+        std::exit( EXIT_FAILURE );
     }
 
     llvm::PreservedAnalyses run( llvm::Module & ) override;
 
 private:
-    llvm::Value * process( llvm::Argument * );
-    llvm::Value * process( llvm::Instruction * );
+    void init( llvm::Module & );
+    void process( llvm::Value * );
 
-    Type _type;
-    //SubstitutionBuilder builder;
+    void changeReturn( llvm::Function * );
+
+    Type type;
+    SubstitutionBuilder builder;
 };
 
 PassMeta substitution_pass() {
