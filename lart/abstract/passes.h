@@ -9,6 +9,8 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/cc/clang.hpp>
+#include <divine/cc/compile.hpp>
+#include <divine/cc/options.hpp>
 #include <divine/rt/runtime.hpp>
 
 #include <lart/support/pass.h>
@@ -53,65 +55,102 @@ namespace abstract {
 #ifdef BRICK_UNITTEST_REG
 namespace t_abstract {
 
-auto compile( std::string s ) {
-    static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
-    divine::cc::Compiler c( ctx );
-    c.mapVirtualFile( "main.c", s );
-    return c.compileModule( "main.c" ).release();
+using Compile = divine::cc::Compile;
+using ModulePtr = Compile::ModulePtr;
+void mapVirtualFile( Compile & c, const std::string & path, const std::string & src ) {
+    c.setupFS( [&]( std::function< void( std::string, const std::string & ) > yield ) {
+        yield( path, src );
+    } );
 }
 
-std::string load( std::string path ) {
+std::string source( std::string fileName ) {
+    std::string res;
+    divine::rt::each( [&]( auto path, auto src ) {
+        if ( brick::string::endsWith( path, fileName ) )
+            res = src;
+    } );
+    return res;
+}
+
+void setupFS( Compile & c ) {
+	auto each = [&]( auto filter ) {
+        return [&filter]( std::function< void( std::string, const std::string & ) > yield ) {
+            divine::rt::each( filter( yield ) );
+        };
+    };
+
+    c.setupFS( each( [&]( std::function< void( std::string, const std::string & ) > yield ) {
+        return [&]( auto path, auto src ) {
+			if ( !brick::string::endsWith( path, ".bc" ) )
+				yield( path, src );
+		};
+	} ) );
+}
+
+ModulePtr compile( const std::string & src ) {
+    static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
+    const bool dont_link = false;
+    const bool verbose = false;
+    Compile c( { dont_link, verbose }, ctx );
+
+    mapVirtualFile( c, "main.cpp", src );
+    std::vector< std::string > files = { "common.h", "tristate.h" };
+    for ( const auto & f : files )
+        mapVirtualFile( c, f, source( f ) );
+
+    setupFS( c );
+    return c.compile( "main.cpp", { "-std=c++11" } );
+}
+
+std::string load( const std::string & path ) {
     std::ifstream file( path );
     std::stringstream buffer;
     buffer << file.rdbuf();
     return buffer.str();
 }
 
-llvm::Module * test_abstraction( std::string s ) {
-    auto m = compile( s );
+ModulePtr test_abstraction( const std::string & src ) {
+    auto m = compile( src );
 
     llvm::ModulePassManager manager;
 
-    std::string opt = "trivial";
-    abstract::abstraction_pass().create( manager, opt );
+    abstract::abstraction_pass().create( manager, "" );
 
     manager.run( *m );
     return m;
 }
 
-llvm::Module * test_assume( std::string s ) {
-    auto m = compile( s );
+ModulePtr test_assume( const std::string & src ) {
+    auto m = compile( src );
 
     llvm::ModulePassManager manager;
 
-    std::string opt = "trivial";
-    abstract::abstraction_pass().create( manager, opt );
-    abstract::assume_pass().create( manager, opt );
+    abstract::abstraction_pass().create( manager, "" );
+    abstract::assume_pass().create( manager, "" );
 
     manager.run( *m );
     return m;
 }
 
-/*llvm::Module * test_substitution( std::string s ) {
-    std::string test_path;
-    std::string abstraction;
+ModulePtr test_substitution( const std::string & src,
+                             const std::string & opt,
+                             const std::string & abs_path ) {
+    std::string abstraction = source( abs_path );
 
-    divine::rt::each( [&]( auto path, auto src ) {
-        if ( brick::string::endsWith( path, "empty-abstraction.h" ) )
-            abstraction = src;
-    } );
-
-    auto m = compile( abstraction + s );
+    auto m = compile( abstraction + src );
     llvm::ModulePassManager manager;
 
-    std::string opt = "test";
-    abstract::abstraction_pass().create( manager, opt );
+    abstract::abstraction_pass().create( manager, "" );
     abstract::substitution_pass().create( manager, opt );
 
     manager.run( *m );
 
     return m;
-}*/
+}
+
+ModulePtr test_zero_substitution( const std::string & src ) {
+    return test_substitution( src, "zero", "zero.h" );
+}
 
 namespace {
 const std::string annotation =
@@ -225,13 +264,11 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
-        auto abstract_call = m->getFunction( "call.2.3" );
+        auto abstract_call = m->getFunction( "_Z4calli.2.3" );
 
         auto i32_t = llvm::Type::getInt32Ty( m->getContext() );
-
         ASSERT_EQ( abstract_call->getReturnType()
                  , alloca->getReturnType()->getPointerElementType() );
         ASSERT_EQ( abstract_call->getFunctionType()->getParamType( 0 )
@@ -252,7 +289,7 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto abstract_call = m->getFunction( "call.2" );
+        auto abstract_call = m->getFunction( "_Z4callv.2" );
         auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
 
         ASSERT_EQ( abstract_call->getReturnType()
@@ -310,7 +347,7 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
 
-        auto sgt = m->getFunction( "lart.abstract.icmp.sgt.i32" );
+        auto sgt = m->getFunction( "lart.abstract.icmp_sgt.i32" );
         ASSERT_EQ( sgt->getReturnType(), m->getTypeByName( "lart.tristate" ) );
 
         auto lower = m->getFunction( "lart.tristate.lower" );
@@ -448,22 +485,184 @@ struct Assume {
     }
 };
 
-/*struct Substitution {
+struct Substitution {
     TEST( simple ) {
         auto s = "int main() { return 0; }";
-        test_substitution( annotation + s );
+        test_zero_substitution( annotation + s );
     }
 
-   TEST( create ) {
+    TEST( create ) {
         auto s = R"(int main() {
                         __test int abs;
                         return 0;
                     })";
-        auto m = test_substitution( annotation + s );
-        auto f = m->getFunction( "__abstract_test_alloca" );
-        ASSERT( f->hasNUses( 2 )  );
+        auto m = test_zero_substitution( annotation + s );
+        auto f = m->getFunction( "__abstract_zero_alloca" );
+        ASSERT( f->hasNUses( 3 ) );
+        ASSERT( ! containsUndefValue( *m ) );
     }
-};*/
+
+    TEST( types ) {
+        auto s = R"(int main() {
+                        __test short abs_s;
+                        __test int abs;
+                        __test long abs_l;
+                        return 0;
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+        auto alloca = m->getFunction( "__abstract_zero_alloca" );
+        ASSERT( alloca->hasNUses( 5 ) );
+    }
+
+    TEST( binary_ops ) {
+        auto s = R"(int main() {
+                        __test int abs;
+                        int a = abs + 42;
+                        int b = abs + a;
+                        return 0;
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+        auto add = m->getFunction( "__abstract_zero_add" );
+        ASSERT( add->hasNUses( 3 ) );
+
+        auto lift = m->getFunction( "__abstract_zero_lift" )->user_begin();
+        ASSERT( llvm::isa< llvm::ConstantInt >( lift->getOperand( 0 ) ) );
+        ASSERT_EQ( add->user_begin()->getOperand( 1 ), *lift );
+
+    }
+
+    TEST( tristate ) {
+        auto s = R"(int main() {
+                        __test int x;
+                        if ( x > 0 )
+                            return 42;
+                        else
+                            return 0;
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+
+        auto sgt = m->getFunction( "__abstract_zero_icmp_sgt" );
+        ASSERT_EQ( sgt->getReturnType(),
+                   m->getTypeByName( "struct.abstract::Tristate" )->getPointerTo() );
+
+        auto lower = m->getFunction( "__abstract_tristate_lower" );
+        ASSERT_EQ( lower->user_begin()->getOperand( 0 ), *sgt->user_begin() );
+        ASSERT( ! containsUndefValue( *m ) );
+    }
+
+    TEST( phi ) {
+        auto s = R"(int main() {
+                        __test int x = 0;
+                        __test int y = 42;
+                        int z = x || y;
+                        return 0;
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+        auto nodes = query::query( *m ).flatten().flatten()
+                           .map( query::refToPtr )
+                           .map( query::llvmdyncast< llvm::PHINode > )
+                           .filter( query::notnull )
+                           .freeze();
+
+        ASSERT_EQ( nodes.size(), 1 );
+        ASSERT_EQ( nodes[0]->getNumIncomingValues(), 2 );
+    }
+
+    TEST( switch_test ) {
+        auto s = R"(int main() {
+                        __test int x;
+                        int i = 0;
+                        switch( x ) {
+                            case 0: i = x; break;
+                            case 1: i = (-x); break;
+                            case 2: i = 42; break;
+                        }
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+        ASSERT( ! containsUndefValue( *m ) );
+    }
+
+    TEST( lift ) {
+        auto s = R"(int main() {
+                        __test int x;
+                        return x + 42;
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+        auto lift = m->getFunction( "__abstract_zero_lift" )->user_begin();
+        auto val = llvm::cast< llvm::ConstantInt >( lift->getOperand( 0 ) );
+        ASSERT( val->equalsInt( 42 ) );
+        ASSERT( ! containsUndefValue( *m ) );
+    }
+
+    TEST( loop_test ) {
+        auto s = R"(int main() {
+                        __test int x;
+                        for ( int i = 0; i < x; ++i )
+                            for ( int j = 0; j < x; ++j )
+                                for ( int k = 0; k < x; ++k ) {
+                                    __test int y = i * j *k;
+                                }
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+        ASSERT( ! containsUndefValue( *m ) );
+    }
+
+    TEST( call_propagate ) {
+        auto s = R"(int call() {
+                        __test int x;
+                        return x;
+                    }
+                    int main() {
+                        int ret = call();
+                        return 0;
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+        auto abstract_call = m->getFunction( "_Z4callv.6.7" );
+        auto alloca = m->getFunction( "__abstract_zero_alloca" );
+        ASSERT_EQ( abstract_call->getReturnType()
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT( ! containsUndefValue( *m ) );
+    }
+
+    TEST( call_propagate_deeper_1 ) {
+        auto s = R"(int call2( int x ) {
+                        return x * x;
+                    }
+                    int call() {
+                        __test int x;
+                        return x;
+                    }
+                    int main() {
+                        int ret = call();
+                        call2( ret );
+                        return 0;
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+        //TODO asserts
+        ASSERT( ! containsUndefValue( *m ) );
+    }
+
+    TEST( call_propagate_deeper_2 ) {
+        auto s = R"(
+                    int call4( int x ) { return x; }
+                    int call3( int x ) { return x; }
+                    int call2( int x ) {
+                        return call3( x ) * call4( x );
+                    }
+                    int call() {
+                        __test int x;
+                        return x;
+                    }
+                    int main() {
+                        int ret = call();
+                        call2( ret );
+                        return 0;
+                    })";
+        auto m = test_zero_substitution( annotation + s );
+        //TODO asserts
+        ASSERT( ! containsUndefValue( *m ) );
+    }
+};
 
 } // namespace t_abstract
 #endif
