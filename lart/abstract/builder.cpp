@@ -297,7 +297,7 @@ llvm::Value * AbstractBuilder::createICmp( llvm::ICmpInst * i ) {
     auto type = types::isAbstract( args[ 0 ]->getType() )
               ? types::lower( args[ 0 ]->getType() )
               : args[ 0 ]->getType();
-	auto tag = intrinsic::tag( i ) + "."
+	auto tag = intrinsic::tag( i ) + "_"
              + _detail::predicate.at( i->getPredicate() ) + "."
              + types::name( type );
     llvm::IRBuilder<> irb( i );
@@ -351,7 +351,7 @@ llvm::Value * AbstractBuilder::createBranch( llvm::BranchInst * i ) {
 llvm::Value * AbstractBuilder::createBinaryOperator( llvm::BinaryOperator * i ) {
     std::vector< llvm::Value * > args;
     for ( auto & arg : i->operands() ) {
-        auto v =  _values.count( arg ) ? _values[ arg ] : arg;
+        auto v = _values.count( arg ) ? _values[ arg ] : arg;
         args.push_back( v );
     }
     auto tag = intrinsic::tag( i ) + "."

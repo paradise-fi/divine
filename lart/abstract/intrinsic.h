@@ -19,9 +19,13 @@ static std::string domainName( Domain d ) {
 }
 
 const std::string domain( const llvm::CallInst * );
+const std::string domain( const llvm::Function * );
 const std::string name( const llvm::CallInst * );
+const std::string name( const llvm::Function * );
 const std::string ty1( const llvm::CallInst * );
+const std::string ty1( const llvm::Function * );
 const std::string ty2( const llvm::CallInst * );
+const std::string ty2( const llvm::Function * );
 
 const std::string tag( const llvm::Instruction * );
 const std::string tag( const llvm::Instruction * , Domain );
@@ -45,6 +49,8 @@ llvm::CallInst * anonymous( llvm::Module *,
                             std::vector< llvm::Value * > args = {} );
 
 //helpers
+bool is( const llvm::Function * );
+bool is( const llvm::CallInst * );
 bool isLift( const llvm::CallInst * );
 bool isLower( const llvm::CallInst * );
 

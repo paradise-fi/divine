@@ -9,10 +9,10 @@ namespace abstract {
 namespace intrinsic {
 
 namespace {
-    std::vector< std::string > parse( const llvm::CallInst * call ) {
-        if ( !call->getCalledFunction()->hasName() )
+    std::vector< std::string > parse( const llvm::Function * fn ) {
+        if ( !fn->hasName() )
             return {};
-        auto name = call->getCalledFunction()->getName();
+        auto name = fn->getName();
         std::istringstream ss(name);
 
         std::string part;
@@ -25,31 +25,45 @@ namespace {
     }
 }
 
-// intrinsic format: lart.<domain>.<name>.<spec>.<type1>.<type2>
-
-const std::string domain( const llvm::CallInst * call ) {
-    auto parts = parse( call );
+// intrinsic format: lart.<domain>.<name>.<type1>.<type2>
+const std::string domain( const llvm::Function * fn ) {
+    auto parts = parse( fn );
     return parts.size() > 2 ? parts[1] : "";
 }
 
-const std::string name( const llvm::CallInst * call ) {
-    auto parts = parse( call );
+const std::string name( const llvm::Function * fn ) {
+    auto parts = parse( fn );
     return parts.size() > 2 ? parts[2] : "";
 }
 
-const std::string ty1( const llvm::CallInst * call ) {
-    auto parts = parse( call );
+const std::string ty1( const llvm::Function * fn ) {
+    auto parts = parse( fn );
     return parts.size() >= 3 ? parts[3] : "";
 }
 
-const std::string ty2( const llvm::CallInst * call ) {
-    auto parts = parse( call );
+const std::string ty2( const llvm::Function * fn ) {
+    auto parts = parse( fn );
     return parts.size() >= 4 ? parts[4] : "";
+}
+
+const std::string domain( const llvm::CallInst * call ) {
+    return domain( call->getCalledFunction() );
+}
+
+const std::string name( const llvm::CallInst * call ) {
+    return name( call->getCalledFunction() );
+}
+
+const std::string ty1( const llvm::CallInst * call ) {
+    return ty1( call->getCalledFunction() );
+}
+
+const std::string ty2( const llvm::CallInst * call ) {
+    return ty2( call->getCalledFunction() );
 }
 
 const std::string tag( const llvm::Instruction * i ) {
     //todo args
-
     return tag( i, Domain::Abstract );
 }
 
@@ -94,6 +108,15 @@ llvm::CallInst * anonymous( llvm::Module * m,
 }
 
 //helpers
+bool is( const llvm::Function * fn ) {
+    auto parts = parse( fn );
+    return parts.size() > 2 && parts[0] == "lart";
+}
+
+bool is( const llvm::CallInst * call ) {
+    return intrinsic::is( call->getCalledFunction() );
+}
+
 bool isLift( const llvm::CallInst * call ) {
     return intrinsic::name( call ) == "lift";
 }
