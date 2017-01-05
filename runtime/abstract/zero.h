@@ -1,12 +1,11 @@
+#ifndef __ABSTRACT_ZERO_H__
+#define __ABSTRACT_ZERO_H__
+
 #include <cassert>
 #include <cstdint>
 #include <limits>
 #include "common.h"
 #include "tristate.h"
-
-#ifndef __divine__
-#include <cstdlib>
-#endif
 
 #define _ROOT __attribute__((__annotate__("brick.llvm.prune.root")))
 
@@ -17,30 +16,28 @@ struct Zero {
     Domain value;
 };
 
-using pointer = Zero *;
-
-inline pointer __abstract_zero_construct( Zero::Domain value ) {
+inline Zero * __abstract_zero_construct( Zero::Domain value ) {
     auto obj = allocate< Zero >();
     obj->value = value;
     return obj;
 }
 
-inline pointer __abstract_zero_construct() {
+inline Zero * __abstract_zero_construct() {
     return __abstract_zero_construct( Zero::Domain::Unknown );
 }
 
-inline pointer __abstract_zero_construct( int i ) {
+inline Zero * __abstract_zero_construct( int i ) {
     auto value = i == 0 ? Zero::Domain::ZeroValue : Zero::Domain::NonzeroValue;
     return __abstract_zero_construct( value );
 }
 
-inline pointer * __abstract_zero_alloca_create() {
-    pointer *ptr = allocate< pointer >();
+inline Zero ** __abstract_zero_alloca_create() {
+    Zero ** ptr = allocate< Zero * >();
     *ptr = __abstract_zero_construct();
     return ptr;
 }
 
-inline pointer __abstract_zero_meet( pointer a, pointer b ) {
+inline Zero * __abstract_zero_meet( Zero * a, Zero * b ) {
     if ( a->value == Zero::Domain::ZeroValue )
         return __abstract_zero_construct( b->value );
     if ( b->value == Zero::Domain::ZeroValue )
@@ -48,13 +45,13 @@ inline pointer __abstract_zero_meet( pointer a, pointer b ) {
     return __abstract_zero_construct();
 }
 
-inline pointer __abstract_zero_join( pointer a, pointer b ) {
+inline Zero * __abstract_zero_join( Zero * a, Zero * b ) {
     if (( a->value == Zero::Domain::ZeroValue ) || ( b->value == Zero::Domain::ZeroValue ))
         return __abstract_zero_construct( Zero::Domain::ZeroValue );
     return __abstract_zero_construct();
 }
 
-inline pointer __abstract_zero_div( pointer a, pointer b ) {
+inline Zero * __abstract_zero_div( Zero * a, Zero * b ) {
     assert( b->value != Zero::Domain::ZeroValue || b->value != Zero::Domain::Unknown );
     //TODO DIVINE assert
     if ( a->value == Zero::Domain::ZeroValue )
@@ -64,7 +61,7 @@ inline pointer __abstract_zero_div( pointer a, pointer b ) {
     return __abstract_zero_construct( Zero::Domain::Unknown );
 }
 
-inline pointer __abstract_zero_rem( pointer a, pointer b ) {
+inline Zero * __abstract_zero_rem( Zero * a, Zero * b ) {
     assert( b->value != Zero::Domain::ZeroValue || b->value != Zero::Domain::Unknown );
     //TODO DIVINE assert
     if ( a->value == Zero::Domain::ZeroValue )
@@ -72,7 +69,7 @@ inline pointer __abstract_zero_rem( pointer a, pointer b ) {
     return __abstract_zero_construct( Zero::Domain::Unknown );
 }
 
-inline pointer __abstract_zero_shift( pointer a, pointer b ) {
+inline Zero * __abstract_zero_shift( Zero * a, Zero * b ) {
     if ( a->value == Zero::Domain::ZeroValue )
         return __abstract_zero_construct( Zero::Domain::ZeroValue );
     if ( b->value == Zero::Domain::ZeroValue )
@@ -83,7 +80,7 @@ inline pointer __abstract_zero_shift( pointer a, pointer b ) {
 #ifdef __divine__
 
 #define __abstract_zero_lower_type( name, type ) \
-type __abstract_zero_lower_##name( pointer val ) _ROOT { \
+type __abstract_zero_lower_##name( Zero * val ) _ROOT { \
     size_t range = std::numeric_limits<type>::max(); \
     if ( val->value == Zero::Domain::ZeroValue ) \
         return 0; \
@@ -96,7 +93,7 @@ type __abstract_zero_lower_##name( pointer val ) _ROOT { \
 #else
 
 #define __abstract_zero_lower_type( name, type ) \
-type __abstract_zero_lower_##name( pointer val ) _ROOT { \
+type __abstract_zero_lower_##name( Zero * val ) _ROOT { \
     size_t range = std::numeric_limits<type>::max(); \
     if ( val->value == Zero::Domain::ZeroValue ) \
         return 0; \
@@ -109,19 +106,19 @@ type __abstract_zero_lower_##name( pointer val ) _ROOT { \
 #endif
 
 extern "C" {
-    pointer * __abstract_zero_alloca() _ROOT {
+    Zero ** __abstract_zero_alloca() _ROOT {
         return __abstract_zero_alloca_create();
     }
 
-    pointer __abstract_zero_load( pointer * a ) _ROOT {
+    Zero * __abstract_zero_load( Zero ** a ) _ROOT {
         return *a;
     }
 
-    void __abstract_zero_store( pointer val, pointer * ptr ) _ROOT {
+    void __abstract_zero_store( Zero * val, Zero ** ptr ) _ROOT {
         (*ptr)->value = val->value;
     }
 
-    pointer __abstract_zero_lift( int i ) _ROOT {
+    Zero * __abstract_zero_lift( int i ) _ROOT {
         return __abstract_zero_construct( i );
     }
 
@@ -131,91 +128,99 @@ extern "C" {
     __abstract_zero_lower_type( i32, uint32_t )
     __abstract_zero_lower_type( i64, uint64_t )
 
-    pointer __abstract_zero_add( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_from_tristate( Tristate * t ) _ROOT {
+        if ( t->value == Tristate::Domain::True )
+            return __abstract_zero_construct( 1 );
+        if ( t->value == Tristate::Domain::False )
+            return __abstract_zero_construct( 0 );
+        return __abstract_zero_construct();
+    }
+
+    Zero * __abstract_zero_add( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_meet( a, b );
     }
 
-    pointer __abstract_zero_sub( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_sub( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_meet( a, b );
     }
 
-    pointer __abstract_zero_mul( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_mul( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_join( a, b );
     }
 
-    pointer __abstract_zero_sdiv( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_sdiv( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_div( a, b );
     }
 
-    pointer __abstract_zero_udiv( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_udiv( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_div( a, b );
     }
 
-    pointer __abstract_zero_urem( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_urem( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_rem( a, b );
     }
 
-    pointer __abstract_zero_srem( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_srem( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_rem( a, b );
     }
 
-    pointer __abstract_zero_and( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_and( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_join( a, b );
     }
 
-    pointer __abstract_zero_or( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_or( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_meet( a, b );
     }
 
-    pointer __abstract_zero_xor( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_xor( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_meet( a, b );
     }
 
-    pointer __abstract_zero_shl( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_shl( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_shift( a, b );
     }
 
-    pointer __abstract_zero_lshr( pointer a, pointer b ) _ROOT {
+    Zero * __abstract_zero_lshr( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_shift( a, b );
     }
 
     // cast operators
-    pointer __abstract_zero_trunc( pointer a ) _ROOT {
+    Zero * __abstract_zero_trunc( Zero * a ) _ROOT {
         if ( a->value == Zero::Domain::NonzeroValue )
             return __abstract_zero_construct( Zero::Domain::Unknown );
         return __abstract_zero_construct( a->value );
     }
 
-    pointer __abstract_zero_zext( pointer a ) _ROOT {
+    Zero * __abstract_zero_zext( Zero * a ) _ROOT {
         return __abstract_zero_construct( a->value );
     }
 
-    pointer __abstract_zero_sext( pointer a ) _ROOT {
+    Zero * __abstract_zero_sext( Zero * a ) _ROOT {
         return __abstract_zero_construct( a->value );
     }
 
-    pointer __abstract_zero_bitcast( pointer a ) _ROOT {
+    Zero * __abstract_zero_bitcast( Zero * a ) _ROOT {
         return __abstract_zero_construct( a->value );
     }
 
-    pointer * __abstract_zero_bitcast_p( pointer * a ) _ROOT {
+    Zero ** __abstract_zero_bitcast_p( Zero ** a ) _ROOT {
         auto ptr = __abstract_zero_alloca();
         (*ptr)->value = (*a)->value;
         return ptr;
     }
 
     // icmp operators
-    Tristate * __abstract_zero_icmp_eq( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_eq( Zero * a, Zero * b ) _ROOT {
         if ( a->value == Zero::Domain::ZeroValue && b->value == Zero::Domain::ZeroValue )
             return __abstract_tristate_construct( true );
         return __abstract_tristate_create();
     }
 
-    Tristate * __abstract_zero_icmp_ne( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_ne( Zero * a, Zero * b ) _ROOT {
         return __abstract_tristate_negate( __abstract_zero_icmp_eq( a, b ) );
     }
 
-    Tristate * __abstract_zero_icmp_ugt( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_ugt( Zero * a, Zero * b ) _ROOT {
         if ( a->value == Zero::Domain::Unknown || b->value == Zero::Domain::Unknown )
             return __abstract_tristate_create();
         else if ( a->value == Zero::Domain::NonzeroValue && b->value == Zero::Domain::ZeroValue )
@@ -226,40 +231,40 @@ extern "C" {
             return __abstract_tristate_create();
     }
 
-    Tristate * __abstract_zero_icmp_uge( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_uge( Zero * a, Zero * b ) _ROOT {
         return __abstract_tristate_or( __abstract_zero_icmp_eq( a, b ),
                                        __abstract_zero_icmp_ugt( a, b ) );
     }
 
-    Tristate * __abstract_zero_icmp_ult( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_ult( Zero * a, Zero * b ) _ROOT {
        return __abstract_zero_icmp_uge( b, a );
     }
 
-    Tristate * __abstract_zero_icmp_ule( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_ule( Zero * a, Zero * b ) _ROOT {
         return __abstract_tristate_or( __abstract_zero_icmp_eq( a, b ),
                                         __abstract_zero_icmp_ult( a, b ) );
     }
 
-    Tristate * __abstract_zero_icmp_sgt( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_sgt( Zero * a, Zero * b ) _ROOT {
         if ( a->value == Zero::Domain::ZeroValue && b->value == Zero::Domain::ZeroValue )
             return __abstract_tristate_construct( false );
         return __abstract_tristate_create();
     }
 
-    Tristate * __abstract_zero_icmp_sge( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_sge( Zero * a, Zero * b ) _ROOT {
         return __abstract_tristate_or( __abstract_zero_icmp_eq( a, b ),
                                        __abstract_zero_icmp_sgt( a, b ) );
     }
 
-    Tristate * __abstract_zero_icmp_slt( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_slt( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_icmp_sge( b, a );
     }
 
-    Tristate * __abstract_zero_icmp_sle( pointer a, pointer b ) _ROOT {
+    Tristate * __abstract_zero_icmp_sle( Zero * a, Zero * b ) _ROOT {
         return __abstract_tristate_or( __abstract_zero_icmp_eq( a, b ),
                                        __abstract_zero_icmp_slt( a, b ) );
     }
-}
+} // extern C
+} // namespace abstract
 
-} //namespace abstract
-
+#endif
