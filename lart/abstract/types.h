@@ -10,12 +10,14 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <string>
 #include <sstream>
+#include <iostream>
 
 #ifndef LART_ABSTRACTION_TYPES_H
 #define LART_ABSTRACTION_TYPES_H
 
 namespace lart {
 namespace abstract {
+namespace types {
 
 namespace {
 
@@ -26,7 +28,7 @@ std::string str( llvm::Type * type ) {
     return rso.str();
 }
 
-}
+} // empty namespace
 
 struct Base {
     static const std::string name() { return "lart"; }
@@ -112,7 +114,6 @@ private:
     }
 };
 
-namespace types {
 namespace {
 
 static std::vector< std::string > parseTypeName( llvm::Type * type ) {
@@ -126,7 +127,7 @@ static std::vector< std::string > parseTypeName( llvm::Type * type ) {
     return parts;
 }
 
-}
+} // empty namespace
 
 static std::string name( const llvm::Type * type ) {
     std::string buffer;

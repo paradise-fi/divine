@@ -33,7 +33,7 @@ namespace {
 
 void Abstraction::init( llvm::Module & m ) {
     auto & ctx = m.getContext();
-    auto tristate = Tristate::get( ctx );
+    auto tristate = types::Tristate::get( ctx );
     builder.store( llvm::IntegerType::getInt1Ty( ctx ), tristate );
 
     walker = AbstractWalker( m );

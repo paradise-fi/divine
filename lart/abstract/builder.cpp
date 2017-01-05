@@ -91,7 +91,7 @@ llvm::Value * AbstractBuilder::process( llvm::Instruction * i ) {
     if ( !_types.count( type ) && !type->isVoidTy() && !types::isAbstract( type ) )
         llvmcase( type,
             [&]( llvm::IntegerType * t ) {
-                store( t, IntegerType::get( t ) );
+                store( t, types::IntegerType::get( t ) );
             },
             [&]( llvm::Type * type ) {
                 std::cerr << "ERR: abstracting unsupported type: ";
@@ -302,7 +302,7 @@ llvm::Value * AbstractBuilder::createICmp( llvm::ICmpInst * i ) {
              + types::name( type );
     llvm::IRBuilder<> irb( i );
     auto call = intrinsic::anonymous( i->getModule(), irb,
-                Tristate::get( i->getContext() ), args );
+                types::Tristate::get( i->getContext() ), args );
     _anonymous[ call->getCalledFunction() ] = tag;
     return call;
 }

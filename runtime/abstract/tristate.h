@@ -14,8 +14,8 @@
 namespace abstract {
 
 struct Tristate {
-    enum Domain { False = 0, True = 1, Unknown = 2 };
-    Domain value;
+	enum Domain { False = 0, True = 1, Unknown = 2 };
+	Domain value;
 };
 
 Tristate * __abstract_tristate_construct( Tristate::Domain value );

@@ -82,9 +82,9 @@ namespace {
         auto tristate = getTristate( lower );
 
         BBEdge trueBr = { br->getParent(), br->getSuccessor( 0 ) };
-        trueBr.assume( { tristate, Tristate::True() } );
+        trueBr.assume( { tristate, types::Tristate::True() } );
         BBEdge falseBr = { br->getParent(), br->getSuccessor( 1 ) };
-        falseBr.assume( { tristate, Tristate::False() } );
+        falseBr.assume( { tristate, types::Tristate::False() } );
     }
 
 

@@ -386,12 +386,12 @@ struct Assume {
 
     bool isTrueAssume( llvm::Instruction * inst ) {
         return isTristateAssume( inst )
-            && ( inst->getOperand( 1 ) == abstract::Tristate::True() );
+            && ( inst->getOperand( 1 ) == abstract::types::Tristate::True() );
     }
 
     bool isFalseAssume( llvm::Instruction * inst ) {
         return isTristateAssume( inst )
-            && ( inst->getOperand( 1 ) == abstract::Tristate::False() );
+            && ( inst->getOperand( 1 ) == abstract::types::Tristate::False() );
     }
 
     void testBranching( llvm::Instruction * lower ) {
@@ -417,8 +417,8 @@ struct Assume {
                             return 0;
                     })";
         auto m = test_assume( annotation + s );
-        auto icmp = m->getFunction( "lart.abstract.icmp.sgt.i32" );
-        ASSERT( lart::abstract::Tristate::isa( icmp->getReturnType() ) );
+        auto icmp = m->getFunction( "lart.abstract.icmp_sgt.i32" );
+        ASSERT( abstract::types::Tristate::isa( icmp->getReturnType() ) );
 
         auto lower = llvm::cast< llvm::Instruction >(
                      *m->getFunction( "lart.tristate.lower" )->user_begin() );
@@ -437,8 +437,8 @@ struct Assume {
                     })";
         auto m = test_assume( annotation + s );
 
-        auto icmp = m->getFunction( "lart.abstract.icmp.ne.i32" );
-        ASSERT( lart::abstract::Tristate::isa( icmp->getReturnType() ) );
+        auto icmp = m->getFunction( "lart.abstract.icmp_ne.i32" );
+        ASSERT( abstract::types::Tristate::isa( icmp->getReturnType() ) );
 
         auto lower = llvm::cast< llvm::Instruction >(
                      *m->getFunction( "lart.tristate.lower" )->user_begin() );
