@@ -2,7 +2,7 @@ Installation
 ============
 
 This section is only relevant when you are installing from source.  We will
-assume that you have obtained a source tarball from http://divine.fi.muni.cz,
+assume that you have obtained a source tarball from <http://divine.fi.muni.cz>,
 eg. `divine-4.0.tar.gz`.
 
 Prerequisites
