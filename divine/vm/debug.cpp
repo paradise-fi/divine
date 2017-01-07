@@ -653,35 +653,46 @@ static std::string rightpad( std::string s, int i )
 template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int indent )
 {
-    std::string ind( indent, ' ' );
+    std::string ind_attr( indent + 4, ' ' ), ind( indent, ' ' );
     std::set< std::string > ck{ "value", "type", "location", "symbol", "scope" };
+
+    if ( !indent )
+        out << ind << "attributes:" << std::endl;
 
     attributes(
         [&]( std::string k, auto v )
         {
             if ( k == "raw" || ( indent && ck.count( k ) == 0 ) )
                 return;
-            out << ind << rightpad( k + ": ", 14 - indent ) << v << std::endl;
+            auto i = indent ? ind : ind_attr;
+            out << i << rightpad( k + ": ", 13 - i.size() ) << v << std::endl;
         } );
 
-    int col = 0, relrow = 0;
+    int col = 0, relrow = 0, relcnt = 0;
 
     std::stringstream rels;
     auto addrel =
         [&]( std::string n )
         {
+            if ( relrow > 3 )
+                return;
+
+            if ( !relcnt++ )
+                rels << "[ ";
+            else
+                rels << ", ";
             if ( indent + col + n.size() >= 68 )
             {
                 if ( relrow <= 3 )
                     col = 0, rels << std::endl << ind
                                   << rightpad( "", 13 - indent )
-                                  << ( relrow == 3 ? " [...]" : "" );
+                                  << ( relrow == 3 ? "..." : "" );
                 ++ relrow;
             }
             if ( relrow <= 3 )
             {
-                rels << " " << n;
-                col += n.size();
+                rels << n;
+                col += n.size() + 2;
             }
         };
 
@@ -692,7 +703,7 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, 
             if ( depth )
             {
                 sub.format( str, depth - 1, derefs, indent + 4 );
-                out << ind << n << ":" << std::endl << str.str();
+                out << ind << "." << n << ":" << std::endl << str.str();
             }
             else addrel( n );
         } );
@@ -710,8 +721,8 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, 
             else addrel( n );
         } );
 
-    if ( !rels.str().empty() )
-        out << ind << rightpad( "related:", 13 - indent ) << rels.str() << std::endl;
+    if ( relcnt )
+        out << ind << rightpad( "related:", 13 - indent ) << rels.str() << " ]" << std::endl;
 }
 
 template< typename Prog, typename Heap >
