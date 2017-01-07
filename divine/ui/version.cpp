@@ -54,10 +54,10 @@ void Version::run() {
 
     using P = std::pair< std::string, std::string >;
     for ( auto p : { P{ "version", version() },
-                     P{ "source_sha", DIVINE_SOURCE_SHA },
-                     P{ "runtime_sha", DIVINE_RUNTIME_SHA },
-                     P{ "build_date", DIVINE_BUILD_DATE },
-                     P{ "build_type", DIVINE_BUILD_TYPE } } )
+                     P{ "source sha", DIVINE_SOURCE_SHA },
+                     P{ "runtime sha", DIVINE_RUNTIME_SHA },
+                     P{ "build date", DIVINE_BUILD_DATE },
+                     P{ "build type", DIVINE_BUILD_TYPE } } )
         std::cout << p.first << ": " << p.second << std::endl;
 }
 
