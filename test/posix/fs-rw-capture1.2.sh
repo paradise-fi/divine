@@ -42,4 +42,4 @@ mkdir capture/link/dir
 touch capture/link/file
 ln capture/link/file capture/link/hardlinkFile
 
-divine verify --threads 1 --max-backtrace-depth 65536 --capture capture/link:follow:/ capture/fs-rw-capture.c
+divine verify --threads 1 --num-callers 65536 --capture capture/link:follow:/ capture/fs-rw-capture.c

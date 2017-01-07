@@ -53,6 +53,6 @@ EOF
 mkdir capture/dir
 mkdir capture/dir/emptyDir
 
-divine verify --threads 1 --max-backtrace-depth 65536 --capture capture/dir:follow:/ capture/fs-dirent-capture.c
+divine verify --threads 1 --num-callers 65536 --capture capture/dir:follow:/ capture/fs-dirent-capture.c
 
 

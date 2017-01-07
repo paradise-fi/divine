@@ -53,5 +53,5 @@ chmod -rwx capture/grants/noAccess
 chmod -rx capture/grants/writeOnly
 chmod -wx capture/grants/readOnly
 
-divine verify --threads 1 --max-backtrace-depth 65536 --capture capture/grants:follow:/ capture/fs-grants-capture.c
+divine verify --threads 1 --num-callers 65536 --capture capture/grants:follow:/ capture/fs-grants-capture.c
 
