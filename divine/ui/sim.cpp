@@ -184,45 +184,66 @@ struct Interpreter
 
     void set( std::string n, DN dn ) { _dbg.erase( n ); _dbg.emplace( n, dn ); }
 
-    DN get( std::string n, bool silent = false )
+    DN get( std::string n, bool silent = false,
+            std::unique_ptr< DN > start = nullptr, bool comp = false )
     {
-        brick::string::Splitter split( "\\.", std::regex::extended );
-        auto comp = split.begin( n );
-
-        auto var = ( n[0] == '$' || n[0] == '#' ) ? *comp++ : "$_"s;
-        auto i = _dbg.find( var );
-        if ( i == _dbg.end() && silent )
-            return nullDN();
-        if ( i == _dbg.end() )
-            throw brick::except::Error( "variable " + var + " is not defined" );
-
-        auto dn = i->second;
-        switch ( var[0] )
+        if ( !start && n[0] != '$' && n[0] != '#' ) /* normalize */
         {
-            case '$': dn.relocate( _ctx.snapshot() ); break;
-            case '#': break;
-            default: UNREACHABLE( "impossible case" );
+            if ( n[0] == '.' )
+                comp = true;
+            if ( n[0] == '.' || n[0] == ':' )
+                n = "$_" + n;
+            else
+                n = "$_." + n;
         }
 
-        std::unique_ptr< DN > _dn = std::make_unique< DN >( dn ), _dn_next;
+        auto split = std::min( n.find( '.' ), n.find( ':' ) );
+        std::string head( n, 0, split );
+        std::string tail( n, split < n.size() ? split + 1 : head.size(), std::string::npos );
 
-        for ( ; comp != split.end(); ++comp )
+        if ( !start )
         {
-            bool found = false;
-            auto lookup = [&]( auto n, auto rel )
-                          {
-                              if ( *comp == n )
-                                  found = true, _dn_next = std::make_unique< DN >( rel );
-                          };
-            _dn->components( lookup );
-            _dn->related( lookup );
-            if ( silent && !found )
+            auto i = _dbg.find( head );
+            if ( i == _dbg.end() && silent )
                 return nullDN();
-            _dn = std::move( _dn_next );
-            if ( !found )
-                throw brick::except::Error( "lookup failed at " + comp->str() );
+            if ( i == _dbg.end() )
+                throw brick::except::Error( "variable " + head + " is not defined" );
+
+            auto dn = i->second;
+            switch ( head[0] )
+            {
+                case '$': dn.relocate( _ctx.snapshot() ); break;
+                case '#': break;
+                default: UNREACHABLE( "impossible case" );
+            }
+            if ( split >= n.size() )
+                return dn;
+            else
+                return get( tail, silent, std::make_unique< DN >( dn ), comp );
         }
-        return *_dn;
+
+        std::unique_ptr< DN > dn_next;
+
+        auto lookup = [&]( auto key, auto rel )
+                          {
+                              if ( head == key )
+                                  dn_next = std::make_unique< DN >( rel );
+                          };
+
+        if ( comp )
+            start->components( lookup );
+        else
+            start->related( lookup );
+
+        if ( silent && !dn_next )
+            return nullDN();
+        if ( !dn_next )
+            throw brick::except::Error( "lookup failed at " + head );
+
+        if ( split >= n.size() )
+            return *dn_next;
+        else
+            return get( tail, silent, std::move( dn_next ), n[split] == '.' );
     }
 
     void set( std::string n, std::string value, bool silent = false )
