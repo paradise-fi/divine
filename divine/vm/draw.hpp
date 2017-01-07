@@ -71,7 +71,7 @@ int dotDN( std::ostream &o, DN dn, DNMap &visited, int &seq, std::string prefix 
         [&]( std::string ck, auto comp )
         {
             comp.related( [&]( std::string rk, auto rel )
-                          { related( ck + "." + rk, rel ); }, false );
+                          { related( ck + ":" + rk, rel ); }, false );
             comp.components( [&]( std::string sk, auto scomp )
                              { component( ck + "." + sk, scomp ); } );
         };
