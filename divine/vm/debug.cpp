@@ -166,14 +166,14 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
                 using V = decltype( raw );
                 if ( bitoffset() || width() != size() * 8 )
                 {
-                    yield( "@raw_value", brick::string::fmt( raw ) );
+                    yield( "raw_value", brick::string::fmt( raw ) );
                     auto val = raw >> value::Int< 32 >( bitoffset() );
                     val = val & V( bitlevel::ones< typename V::Raw >( width() ) );
                     ASSERT_LEQ( bitoffset() + width(), size() * 8 );
-                    yield( "@value", brick::string::fmt( val ) );
+                    yield( "value", brick::string::fmt( val ) );
                 }
                 else
-                    yield( "@value", brick::string::fmt( raw ) );
+                    yield( "value", brick::string::fmt( raw ) );
             } );
 
     if ( _type && _di_type && ( di_name() == "char*" ||  di_name() == "const char*" ) )
@@ -183,13 +183,13 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
         _ctx.heap().read( hloc, str_v );
         auto str = eval.ptr2h( str_v );
         if ( _ctx.heap().valid( str ) )
-                yield( "@string", "\"" + _ctx.heap().read_string( str ) + "\"" ); /* TODO escape */
+                yield( "string", "\"" + _ctx.heap().read_string( str ) + "\"" ); /* TODO escape */
     }
 
     if ( _type && _type->isPointerTy() )
         eval.template type_dispatch< Any >(
             PointerBytes, Prog::Slot::Pointer,
-            [&]( auto v ) { yield( "@value", brick::string::fmt( v.get( loc ) ) ); } );
+            [&]( auto v ) { yield( "value", brick::string::fmt( v.get( loc ) ) ); } );
 
 }
 
@@ -286,11 +286,11 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     Prog &program = _ctx.program();
 
-    yield( "@address", brick::string::fmt( _address ) + "+" +
+    yield( "address", brick::string::fmt( _address ) + "+" +
            brick::string::fmt( _offset ) );
 
     if ( _di_type )
-        yield( "@type", di_name() );
+        yield( "type", di_name() );
 
     if ( !valid() )
         return;
@@ -298,39 +298,39 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
     auto hloc = eval.ptr2h( PointerV( _address ) );
     value( yield );
 
-    yield( "@raw", print::raw( _ctx.heap(), hloc + _offset, size() ) );
+    yield( "raw", print::raw( _ctx.heap(), hloc + _offset, size() ) );
 
     if ( _address.type() == PointerType::Const || _address.type() == PointerType::Global )
-        yield( "@slot", brick::string::fmt( eval.ptr2s( _address ) ) );
+        yield( "slot", brick::string::fmt( eval.ptr2s( _address ) ) );
     else if ( _address.type() == PointerType::Heap )
-        yield( "@shared", brick::string::fmt( _ctx.heap().shared( _address ) ) );
+        yield( "shared", brick::string::fmt( _ctx.heap().shared( _address ) ) );
 
     if ( _di_var )
     {
-        yield( "@scope", di_scopename() );
-        yield( "@definition", _di_var->getFilename().str() + ":" +
+        yield( "scope", di_scopename() );
+        yield( "definition", _di_var->getFilename().str() + ":" +
                               std::to_string( _di_var->getLine() ) );
     }
 
     if ( _kind == DNKind::Frame )
     {
-        yield( "@pc", brick::string::fmt( pc() ) );
+        yield( "pc", brick::string::fmt( pc() ) );
         if ( pc().null() || pc().type() != PointerType::Code )
             return;
         auto *insn = &program.instruction( pc() );
         if ( insn->op )
         {
             eval._instruction = insn;
-            yield( "@instruction", print::instruction( eval ) );
+            yield( "insn", print::instruction( eval, 0, 1000 ) );
         }
         if ( !insn->op )
             insn = &program.instruction( pc() + 1 );
         ASSERT( insn->op );
         auto op = llvm::cast< llvm::Instruction >( insn->op );
-        yield( "@location", location( *op ) );
+        yield( "location", location( *op ) );
 
         auto sym = op->getParent()->getParent()->getName().str();
-        yield( "@symbol", print::demangle( sym ) );
+        yield( "symbol", print::demangle( sym ) );
     }
 }
 
@@ -409,7 +409,7 @@ void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
         rel.address( kind, addr.cooked() );
         rel.type( _type->getPointerElementType() );
         rel.di_type( di_base() );
-        yield( "@deref", rel );
+        yield( "deref", rel );
     }
 
     if ( _kind == DNKind::Frame )
@@ -422,7 +422,7 @@ void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
             _related_ptrs.insert( fr.cooked() );
             DebugNode caller( _ctx, _snapshot );
             caller.address( DNKind::Frame, fr.cooked() );
-            yield( "@caller", caller );
+            yield( "caller", caller );
         }
     }
 
@@ -443,7 +443,7 @@ void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
         pp.offset( 0 );
         DebugNode deref( _ctx, _snapshot );
         deref.address( DNKind::Object, pp );
-        yield( "@" + brick::string::fmt( ptroff->offset() ), deref );
+        yield( brick::string::fmt( ptroff->offset() ), deref );
     }
 }
 
@@ -654,12 +654,12 @@ template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int indent )
 {
     std::string ind( indent, ' ' );
-    std::set< std::string > ck{ "@value", "@type", "@location", "@symbol", "@scope" };
+    std::set< std::string > ck{ "value", "type", "location", "symbol", "scope" };
 
     attributes(
         [&]( std::string k, auto v )
         {
-            if ( k == "@raw" || ( indent && ck.count( k ) == 0 ) )
+            if ( k == "raw" || ( indent && ck.count( k ) == 0 ) )
                 return;
             out << ind << rightpad( k + ": ", 14 - indent ) << v << std::endl;
         } );
@@ -700,7 +700,7 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, 
     related(
         [&]( std::string n, auto rel )
         {
-            if ( derefs > 0 && n == "@deref" )
+            if ( derefs > 0 && n == "deref" )
             {
                 std::stringstream str;
                 rel.format( str, depth, derefs - 1, indent + 4 );

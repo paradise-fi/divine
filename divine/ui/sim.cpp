@@ -270,7 +270,7 @@ struct Interpreter
     void info()
     {
         auto top = get( "$top" ), frame = get( "$frame" );
-        auto sym = top.attribute( "@symbol" ), loc = top.attribute( "@location" );
+        auto sym = top.attribute( "symbol" ), loc = top.attribute( "location" );
         std::cerr << "# executing " << sym;
         if ( sym.size() + loc.size() > 60 && !_batch )
             std::cerr << std::endl << "#        at ";
@@ -278,7 +278,7 @@ struct Interpreter
             std::cerr << " at ";
         std::cerr << loc << std::endl;
         if ( frame._address != top._address )
-            std::cerr << "# NOTE: $frame in " << frame.attribute( "@symbol" ) << std::endl;
+            std::cerr << "# NOTE: $frame in " << frame.attribute( "symbol" ) << std::endl;
     }
 
     Interpreter( BC bc )
@@ -566,7 +566,7 @@ struct Interpreter
     {
         auto dn = get( cmd.var );
         if ( cmd.raw )
-            std::cerr << dn.attribute( "@raw" ) << std::endl;
+            std::cerr << dn.attribute( "raw" ) << std::endl;
         else
             dn.format( std::cerr, cmd.depth, cmd.deref );
     }
