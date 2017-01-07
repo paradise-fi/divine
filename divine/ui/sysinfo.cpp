@@ -257,12 +257,16 @@ void SysInfo::report( std::function< void ( std::string, std::string ) > yield )
 void SysInfo::setMemoryLimitInBytes( uint64_t memory ) {
     if ( !memory )
         return;
+#ifdef __unix
+    struct rlimit r = { memory, memory };
+#ifdef __OpenBSD__
+    setrlimit( RLIMIT_DATA, &r );
+#else
     if ( double pvs = peakVmSize() )
         if ( memory < pvs * 1024 * 1.1 )
             throw std::runtime_error( "memory limit lower then memory required to start" );
-#ifdef __unix
-    struct rlimit r = { memory, memory };
     setrlimit( RLIMIT_AS, &r );
+#endif
 #else
     throw std::runtime_error( "setMemoryLimitInBytes called on plafrom which does not support it" );
 #endif
