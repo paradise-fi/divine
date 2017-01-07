@@ -155,7 +155,7 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
 }
 
 template< typename Eval >
-static std::string instruction( Eval &eval, int padding = 0 )
+static std::string instruction( Eval &eval, int padding = 0, int colmax = 80 )
 {
     std::stringstream out;
     auto &insn = eval.instruction();
@@ -199,7 +199,7 @@ static std::string instruction( Eval &eval, int padding = 0 )
         auto oname = value( eval, val, DisplayVal::PreferName );
 
         int cols = argalign + argcols + oname.size() + 1;
-        if ( ( printres && cols >= 60 ) || cols >= 80 )
+        if ( ( printres && cols >= colmax - 20 ) || cols >= colmax )
         {
             if ( printres )
                 printres = false, result( out, argalign + argcols, eval );
