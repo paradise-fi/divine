@@ -62,7 +62,7 @@ void Verify::run()
     auto safety = mc::make_safety( bitcode(), ss::passive_listen(), true );
     start = clock::now();
     SysInfo sysinfo;
-    sysinfo.setMemoryLimitInBytes( _max_mem * 1024 * 1024 );
+    sysinfo.setMemoryLimitInBytes( _max_mem );
     safety.start( _threads, [&]( auto &search )
                   {
                       statecount = safety._ex._states._s->used;
@@ -132,7 +132,7 @@ void Verify::run()
     Stepper step;
     step._stop_on_error = true;
     step.run( dbg, Stepper::Quiet );
-    mc::backtrace( dbg, dbg.snapshot(), _backtraceMaxDepth );
+    mc::backtrace( dbg, dbg.snapshot(), _num_callers );
 }
 
 }

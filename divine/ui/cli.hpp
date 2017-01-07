@@ -110,10 +110,10 @@ struct Version : Command {
 
 struct Verify : WithBC
 {
-    int _max_mem = 0; // MB
+    int _max_mem = 0; // bytes
     int _max_time = 0;  // seconds
     int _threads = 0;
-    int _backtraceMaxDepth = 10;
+    int _num_callers = 10;
     bool _no_counterexample = false;
     bool _report = false;
 
@@ -344,12 +344,14 @@ struct CLI : Interface
             .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
                      "disable static (transformation based) state space reductions"s )
             .option( "[--lart {string}]", &WithBC::_lartPasses,
-                     "run additional LART pass in the loader, can be specified multiple times" )
+                     "run an additional LART pass in the loader" )
             .option( "[-o {string}|-o{string}]", &WithBC::_systemopts, "system options"s )
-            .option( "[--vfslimit {mem}]", &WithBC::_vfsSizeLimit, "filesystem snapshot size limit (default 16 MiB)"s )
+            .option( "[--vfslimit {mem}]", &WithBC::_vfsSizeLimit,
+                     "filesystem snapshot size limit (default 16 MiB)"s )
             .option( "[--capture {vfsdir}]", &WithBC::_vfs,
                 "capture directory in form {dir}[:{follow|nofollow}[:{mount point}]]"s )
-            .option( "[--stdin {file}]", &WithBC::_stdin, "capture file and pass it to OS as stdin for verified program" )
+            .option( "[--stdin {file}]", &WithBC::_stdin,
+                     "capture file and pass it to OS as stdin for verified program" )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
@@ -361,37 +363,35 @@ struct CLI : Interface
             .options( ccdrvopts, &Cc::_drv )
             .option( "[-o {string}]", &Cc::_output, "the name of the output file"s )
             .option( "[-C,{commasep}]", &Cc::_passThroughFlags,
-                     "options passed to compiler compiler (for compatibility with verify)"s )
+                     "pass additional options to the compiler"s )
             .option( "[{string}]", &Cc::_flags,
-                     "any clang options including input file(s) to compile (C, C++, object, bitcode)"s );
+                     "any clang options or input files (C, C++, object, bitcode)"s );
 
         auto vrfyopts = cmd::make_option_set< Verify >( v )
             .option( "[--threads {int}|-T {int}]", &Verify::_threads, "number of threads to use"s )
-            .option( "[--max-memory {int}]", &Verify::_max_mem, "max memory allowed to use [in MB]"s )
-            .option( "[--max-time {int}]", &Verify::_max_time, "max time allowed to take [in sec]"s )
-            .option( "[--no-counterexample]", &Verify::_no_counterexample,
-                     "do not print counterexamples"s )
-            .option( "[--report|-r]", &Verify::_report, "print a report to stdout, not just the result"s )
-            .option( "[--max-backtrace-depth {int}]"s, &Verify::_backtraceMaxDepth,
-                     "Maximum depth of error backtrace printed in the report [default = 10]" );
+            .option( "[--max-memory {mem}]", &Verify::_max_mem, "limit memory use"s )
+            .option( "[--max-time {int}]", &Verify::_max_time, "maximum allowed run time in seconds"s )
+            .option( "[--report|-r]", &Verify::_report, "print additional information to stdout"s )
+            .option( "[--num-callers {int}]"s, &Verify::_num_callers,
+                     "the number of frames to print in a backtrace [default = 10]" );
 
         auto drawopts = cmd::make_option_set< Draw >( v )
-            .option( "[--distance {int}|-d {int}]", &Draw::_distance, "node distance"s )
-            .option( "[--raw]", &Draw::_raw, "show hex dumps of heap objects"s )
-            .option( "[--render {string}]", &Draw::_render, "command to execute on the dot output"s )
-            .option( "[--labels {label}]", &Draw::_labels, "label all, none or only trace"s )
-            .option( "[--bfs-layout]", &Draw::_bfs, "draw in bfs layout (levels)"s );
+            .option( "[--distance {int}|-d {int}]", &Draw::_distance, "maximum node distance"s )
+            .option( "[--render {string}]", &Draw::_render, "the command to process the dot source"s );
 
         auto dccopts = cmd::make_option_set< DivineCc >( v )
             .option( "[-o {string}]", &DivineCc::_output, "output file"s )
-            .option( "[-c]", &DivineCc::_dontLink, "Compile or assemble the source files, but do not link."s )
-            .option( "[--divinert-path {paths}]", &DivineCc::_libPaths, "paths to DIVINE runtime libraries (':' separated)"s )
+            .option( "[-c]", &DivineCc::_dontLink,
+                     "compile or assemble the source files, but do not link."s )
+            .option( "[--divinert-path {paths}]", &DivineCc::_libPaths,
+                     "paths to DIVINE runtime libraries (':' separated)"s )
             .option( "[{string}]", &DivineCc::_flags,
-                     "any clang options including input file(s) to compile (C, C++, object, bitcode)"s );
+                     "any clang options or input files (C, C++, object, bitcode)"s );
         auto dldopts = cmd::make_option_set< DivineLd >( v )
             .option( "[-o {string}]", &DivineLd::_output, "output file"s )
-            .option( "[-r|-i|--relocable]", &DivineLd::_incremental, "Generate incremental/relocable object file"s )
-            .option( "[{string}]", &DivineLd::_flags, "any ld options including input file(s) to link"s );
+            .option( "[-r|-i|--relocable]", &DivineLd::_incremental,
+                     "generate incremental/relocable object file"s )
+            .option( "[{string}]", &DivineLd::_flags, "any ld options or input files"s );
 
         auto simopts = cmd::make_option_set< Sim >( v )
             .option( "[--batch]", &Sim::_batch, "execute in batch mode"s );
