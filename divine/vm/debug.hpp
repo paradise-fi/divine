@@ -296,10 +296,16 @@ void backtrace( DN dn, DNSet &visited, int &stacks, int maxdepth )
 
     if ( dn.kind() == vm::DNKind::Frame )
     {
-        dn.attributes( []( std::string k, std::string v )
+        bool itemized = false;
+        dn.attributes( [&]( std::string k, std::string v )
                        {
                            if ( k != "pc" && k != "address" && k != "location" && k != "symbol" )
-                               std::cout << "    " << k << ": " << v << std::endl;
+                               return;
+                           if ( itemized )
+                               std::cout << "      ";
+                           else
+                               std::cout << "    - ", itemized = true;
+                           std::cout << k << ": " << v << std::endl;
                        } );
         std::cout << std::endl;
     }
@@ -310,8 +316,8 @@ void backtrace( DN dn, DNSet &visited, int &stacks, int maxdepth )
             if ( rel.kind() == vm::DNKind::Frame && k != "caller" &&
                  rel.address().type() == vm::PointerType::Heap &&
                  !visited.count( rel.sortkey() ) && maxdepth > 1 )
-                std::cout << "  backtrace #" << ++stacks << ":" << std::endl;
-            backtrace( rel, visited, stacks, k == "@caller" ? maxdepth - 1 : maxdepth );
+                std::cout << "  backtrace " << ++stacks << ":" << std::endl;
+            backtrace( rel, visited, stacks, k == "caller" ? maxdepth - 1 : maxdepth );
         };
 
     dn.related( follow, false );

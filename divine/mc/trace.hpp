@@ -37,7 +37,7 @@ void backtrace( Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
     dn_top.address( vm::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
     vm::DNSet visited;
     int stacks = 1;
-    std::cout << "  backtrace #1 [active stack]:" << std::endl;
+    std::cout << "  backtrace 1: # active stack" << std::endl;
     vm::backtrace( dn_top, visited, stacks, maxdepth );
     vm::backtrace( dn, visited, stacks, maxdepth );
 }
