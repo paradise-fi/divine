@@ -54,8 +54,9 @@ set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
 bricks_unittest( test-divine ${HPP_ss} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} )
 
-foreach( D vm ui cc )
+foreach( D vm ui cc ltl )
   set_target_properties( divine-${D} PROPERTIES POSITION_INDEPENDENT_CODE ON )
+  install( TARGETS divine-${D} DESTINATION lib )
 endforeach()
 
 target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
@@ -82,5 +83,5 @@ add_custom_target( unit_divine
     DEPENDS test-divine )
 add_dependencies( unit unit_divine )
 
-install( TARGETS libdivine ${LIBDIVINE_INSTANCES} DESTINATION lib )
+install( TARGETS libdivine DESTINATION lib )
 install( FILES ${HPP} DESTINATION include/divine )

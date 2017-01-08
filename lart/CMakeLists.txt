@@ -11,6 +11,7 @@ add_definitions( ${DIVINE_DEFINES} )
 add_library( liblart ${SRC} )
 set_target_properties( liblart PROPERTIES OUTPUT_NAME "lart"
                                           POSITION_INDEPENDENT_CODE ON )
+install( TARGETS liblart DESTINATION lib )
 
 bricks_unittest( test-lart ${H_ABSTRACT} )
 
