@@ -213,48 +213,52 @@ add_custom_target( unit )
 add_custom_target( llvm-utils )
 add_dependencies( llvm-utils llvm-dis llvm-as llvm-nm llvm-diff llvm-objdump llc )
 
-if( OPT_TBBMALLOC )
-  add_subdirectory( external/tbbmalloc )
-endif()
+if ( NOT TOOLCHAIN )
 
-if( OPT_SQL )
-  add_definitions( "-DNANODBC_USE_CPP11" )
-  link_directories( ${ODBC_LIBRARY_DIRS} )
-  add_subdirectory( external/nanodbc )
-endif()
+  if( OPT_TBBMALLOC )
+    add_subdirectory( external/tbbmalloc )
+  endif()
 
-include( releng/version.cmake )
+  if( OPT_SQL )
+    add_definitions( "-DNANODBC_USE_CPP11" )
+    link_directories( ${ODBC_LIBRARY_DIRS} )
+    add_subdirectory( external/nanodbc )
+  endif()
 
-add_subdirectory( doc )
-add_subdirectory( runtime )
-add_subdirectory( lart )
-add_subdirectory( divine )
-add_subdirectory( tools )
-add_subdirectory( test )
+  include( releng/version.cmake )
 
-foreach( p ui vm cc )
+  add_subdirectory( doc )
+  add_subdirectory( runtime )
+  add_subdirectory( lart )
+  add_subdirectory( divine )
+  add_subdirectory( tools )
+  add_subdirectory( test )
+
+  foreach( p ui vm cc )
     add_dependencies( divine-${p} intrinsics_gen )
-endforeach()
-add_dependencies( liblart intrinsics_gen )
+  endforeach()
+  add_dependencies( liblart intrinsics_gen )
 
-add_dependencies( check unit )
-add_dependencies( check functional )
+  add_dependencies( check unit )
+  add_dependencies( check functional )
 
-include( releng/install.cmake )
+  include( releng/install.cmake )
 
-message( "## -----------------------------------------------------------------" )
-message( "## Version: ${DIVINE_VERSION}" )
-message( "## Build type: ${CMAKE_BUILD_TYPE}" )
-message( "## Build options: ${BUILDOPTS}" )
-message( "## -----------------------------------------------------------------" )
+  message( "## -----------------------------------------------------------------" )
+  message( "## Version: ${DIVINE_VERSION}" )
+  message( "## Build type: ${CMAKE_BUILD_TYPE}" )
+  message( "## Build options: ${BUILDOPTS}" )
+  message( "## -----------------------------------------------------------------" )
 
-test_bricks( bricks ${DIVINE_DEFINES} )
-benchmark_bricks( bricks )
+  test_bricks( bricks ${DIVINE_DEFINES} )
+  benchmark_bricks( bricks )
 
-add_custom_target( unit_bricks
+  add_custom_target( unit_bricks
     COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ${CMAKE_CURRENT_BINARY_DIR}/test-bricks
     VERBATIM
     USES_TERMINAL
     DEPENDS test-bricks )
 
-add_dependencies( unit unit_bricks )
+  add_dependencies( unit unit_bricks )
+
+endif()
