@@ -4,15 +4,25 @@ programming languages, including **C** and **C++**.  The verification core is
 built on a foundation of **high­-per­for­mance algorithms** and data
 structures, scaling all the way from a laptop to a high-end cluster.  Learn
 more in the **[manual](manual.html)**. Our plans for upcoming releases are
-outlined in the [roadmap](roadmap.html).
+outlined in the [roadmap] [rmap].
 
-Second Beta of DIVINE 4 is Available
-====================================
+DIVINE 4 Now Available
+======================
 
-[2016-12-14] We are pleased to announce that the second beta version of the
-upcoming DIVINE 4.0 is now [available for download] [1] as a source tarball.
+[2017-01-08] We are pleased to announce that, after a few last-minute holdups,
+we are ready to label DIVINE 4 as stable. Please bear in mind, however, that
+DIVINE is still an academic tool and unfortunately only saw limited testing in
+the beta period. That said, our experience says that it's already pretty useful
+in practice and we have some nice improvements planned for [future releases]
+[rmap].
 
-[1]: download.html
+The latest source tarball for DIVINE 4 is, as always, [available for download]
+[dl]. Starting on January 15th, there will be semi-automated, fortnightly point
+releases in the 4.0 series (which will include new features as they stabilise),
+and a 4.1 milestone in July this year.
+
+[rmap]: roadmap.html
+[dl]: download.html
 
 DIVINE 4 Coming This Autumn
 ===========================
