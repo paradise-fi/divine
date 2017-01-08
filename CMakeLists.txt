@@ -73,16 +73,16 @@ function(build_llvm)
   add_subdirectory( clang )
   include_directories( clang/include ${CMAKE_CURRENT_BINARY_DIR}/clang/include )
 
-  #defines for the sake of compiler-rt, normaly from llvm-config
-  set( LLVM_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm )
-  set( LLVM_TOOLS_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm/bin )
-  set( LLVM_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm/lib )
-  set( LLVM_MAIN_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/llvm )
-  set( TARGET_TRIPLE ${LLVM_DEFAULT_TARGET_TRIPLE} )
-  add_subdirectory( compiler-rt )
-  include_directories( compiler-rt/include ${CMAKE_CURRENT_BINARY_DIR}/compiler-rt/include )
-
   if ( TOOLCHAIN )
+    # defines for the sake of compiler-rt, normaly from llvm-config
+    set( LLVM_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm )
+    set( LLVM_TOOLS_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm/bin )
+    set( LLVM_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm/lib )
+    set( LLVM_MAIN_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/llvm )
+    set( TARGET_TRIPLE ${LLVM_DEFAULT_TARGET_TRIPLE} )
+    add_subdirectory( compiler-rt )
+    include_directories( compiler-rt/include ${CMAKE_CURRENT_BINARY_DIR}/compiler-rt/include )
+
     add_subdirectory( runtime/libunwind )
     add_subdirectory( runtime/libcxxabi )
     add_subdirectory( runtime/libcxx )
