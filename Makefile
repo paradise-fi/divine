@@ -105,10 +105,7 @@ show: # make show var=VAR
 .PHONY: ${TARGETS} ${FLAVOURS} ${TARGETS:%=release-%} ${FLAVOURS:%=%-env} toolchain validate dist env
 
 dist:
-	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug \
-	    CMAKE_EXTRA=-DVERSION_APPEND=$(VERSION_APPEND)
-	$(CMAKE) --build $(OBJ)debug --target package_source $(EXTRA)
-	mv $(OBJ)debug/divine-*.tar.* .
+	darcs dist -d divine-$$(cat releng/version).$$(cat releng/patchlevel)$(VERSION_APPEND)
 
 validate:
 	$(MAKE) semidbg-divine
