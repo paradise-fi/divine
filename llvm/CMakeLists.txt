@@ -518,15 +518,13 @@ if (APPLE)
   set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
   # skip using $ORIGIN as it doesn't work very well
-else(UNIX)
+elseif(NOT DEFINED CMAKE_INSTALL_RPATH)
   set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
-  if(NOT DEFINED CMAKE_INSTALL_RPATH)
     set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib${LLVM_LIBDIR_SUFFIX}")
     if(${CMAKE_SYSTEM_NAME} MATCHES "(FreeBSD|DragonFly|OpenBSD)")
       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,origin")
       set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,origin")
     endif()
-  endif(NOT DEFINED CMAKE_INSTALL_RPATH)
 endif()
 
 # Work around a broken bfd ld behavior. When linking a binary with a
