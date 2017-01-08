@@ -24,8 +24,8 @@ relsha=`cat releng/checksum`
 
 sha() {
     echo "$manifest" | egrep "^./$1/$interesting" | egrep -v "$boring" \
-        | sort | while read f; do cat $f | $sha1sum | cut -d' ' -f1; done \
-        | $sha1sum | cut -d' ' -f1
+        | while read f; do cat $f | $sha1sum | cut -d' ' -f1; done \
+        | sort | $sha1sum | cut -d' ' -f1
 }
 
 test -z "$old" && old=`cat $where.cached 2> /dev/null`
