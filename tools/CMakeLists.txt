@@ -56,3 +56,7 @@ endif( WIN32 )
 
 install( TARGETS divine
          DESTINATION ${INSTALL_BIN_DEST} COMPONENT console_tools )
+
+# NB. Must be here (and not in the toplevel cmakelists) to ensure correct
+# action ordering during install.
+install( SCRIPT ../releng/install-rpath.cmake )

@@ -60,6 +60,7 @@ ${FLAVOURS}:
 
 GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
+SETENV = env TOOLCHAIN_RPATH=$(RTBIN)
 
 ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(OBJ)toolchain/stamp
 	chmod +x test/divine # darcs does not remember +x on files
@@ -70,19 +71,19 @@ ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP
 
 ${TARGETS:%=debug-%}:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug
-	$(CMAKE) --build $(OBJ)debug --target ${@:debug-%=%} -- $(EXTRA)
+	$(SETENV) $(CMAKE) --build $(OBJ)debug --target ${@:debug-%=%} -- $(EXTRA)
 
 ${TARGETS:%=semidbg-%}:
 	$(MAKE) $(OBJ)semidbg/cmake.stamp $(GETCONFDEPS) FLAVOUR=semidbg
-	cmake --build $(OBJ)semidbg --target ${@:semidbg-%=%} -- $(EXTRA)
+	$(SETENV) $(CMAKE) --build $(OBJ)semidbg --target ${@:semidbg-%=%} -- $(EXTRA)
 
 ${TARGETS:%=release-%}:
 	$(MAKE) $(OBJ)release/cmake.stamp $(GETCONFDEPS) FLAVOUR=release
-	$(CMAKE) --build $(OBJ)release --target ${@:release-%=%} -- $(EXTRA)
+	$(SETENV) $(CMAKE) --build $(OBJ)release --target ${@:release-%=%} -- $(EXTRA)
 
 ${TARGETS:%=asan-%}:
 	$(MAKE) $(OBJ)asan/cmake.stamp $(GETCONFDEPS) FLAVOUR=asan
-	$(CMAKE) --build $(OBJ)asan --target ${@:asan-%=%} -- $(EXTRA)
+	$(SETENV) $(CMAKE) --build $(OBJ)asan --target ${@:asan-%=%} -- $(EXTRA)
 
 toolchain: $(OBJ)toolchain/stamp
 
@@ -114,6 +115,11 @@ validate:
 	$(MAKE) semidbg-test-divine
 	$(OBJ)semidbg/divine/test-divine
 	$(MAKE) semidbg-functional T=[.][12][.][^.]+$
+
+toolchain-install: toolchain
+	$(CMAKE) --build $(OBJ)toolchain --target install -- $(EXTRA)
+
+install: toolchain-install
 
 prerequisites:
 	sh ./releng/install-prereq.sh
