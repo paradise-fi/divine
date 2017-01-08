@@ -8,7 +8,7 @@ if( PDFLATEX AND BIBTEX )
     COMMAND pandoc --latex-engine=${PDFLATEX} --smart -N --toc -o ${CMAKE_CURRENT_BINARY_DIR}/manual.pdf ${SOURCES}
     VERBATIM
   )
-  set( PDFMAN "manual.pdf" )
+  #set( PDFMAN "manual.pdf" )
 endif()
 
 if( GUI AND QCOLLECTIONGENERATOR_EXECUTABLE )
