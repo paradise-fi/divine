@@ -112,3 +112,6 @@ validate:
 	$(MAKE) semidbg-test-divine
 	$(OBJ)semidbg/divine/test-divine
 	$(MAKE) semidbg-functional T=[.][12][.][^.]+$
+
+prerequisites:
+	sh ./releng/install-prereq.sh
