@@ -35,7 +35,7 @@ namespace divine {
 namespace ui {
 
 std::string version() {
-    std::string composite = DIVINE_RELEASE_SHA + " "s + DIVINE_RUNTIME_SHA;
+    std::string composite = DIVINE_SOURCE_SHA + " "s + DIVINE_RUNTIME_SHA;
     if ( DIVINE_RELEASE_SHA == composite )
         return DIVINE_VERSION;
     else {
