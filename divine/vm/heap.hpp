@@ -540,7 +540,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
 
     bool shared( GenericPointer gp, bool sh )
     {
-        if ( gp.type() != PointerType::Heap || !valid( gp ) )
+        if ( !gp.heap() || !valid( gp ) )
             return false;
 
         HeapPointer p = gp;
