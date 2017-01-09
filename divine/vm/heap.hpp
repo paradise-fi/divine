@@ -132,6 +132,7 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
                 return p1pp.offset() - p2pp.offset();
             else if ( p1pp.type() == PointerType::Heap )
                 pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq );
+            else if ( p1pp.heap() ); // Weak or Marked
             else
                 pdiff = p1pp.object() - p2pp.object();
         } else pdiff = int( p1pp.type() ) - int( p2pp.type() );
@@ -185,6 +186,7 @@ int hash( Heap &heap, HeapPointer root,
             else
                 ptr_data[0] = vis->second;
         }
+        else if ( obj.heap() ); // Weak or Marked
         else
             ptr_data[0] = obj.object();
         state.update( ptr_data, sizeof( ptr_data ) );
