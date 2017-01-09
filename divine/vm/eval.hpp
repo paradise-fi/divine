@@ -147,7 +147,7 @@ struct Eval
     /* TODO should be sizeof( int ) of the *bitcode*, not ours! */
     using IntV = value::Int< 8 * sizeof( int ), true >;
     using CharV = value::Int< 1, false >;
-    using PtrIntV = vm::value::Int< PointerBits >;
+    using PtrIntV = vm::value::Int< _VM_PB_Full >;
 
     static_assert( Convertible< PointerV >::template Guard< IntV >::value, "" );
     static_assert( Convertible< IntV >::template Guard< PointerV >::value, "" );
@@ -1013,7 +1013,7 @@ struct Eval
             case HypercallObjMake:
             {
                 int64_t size = operandCk< IntV >( 0 ).cooked();
-                if ( size >= ( 2ll << PointerOffBits ) || size < 1 )
+                if ( size >= ( 2ll << _VM_PB_Off ) || size < 1 )
                 {
                     fault( _VM_F_Hypercall ) << "invalid size " << size
                                              << " passed to __vm_obj_make";

@@ -134,7 +134,7 @@ struct Int : Base
     {
         if ( width > w && ( !is_signed || ( _m & signbit< w >() ) ) )
             _m |= ( bitlevel::ones< Raw >( width ) & ~bitlevel::ones< Raw >( w ) );
-        if ( width < PointerBits )
+        if ( width < _VM_PB_Full )
             _ispointer = false;
         if ( is_signed && w == 1 ) /* TODO cover other bitwidths? */
             _cooked = i._cooked ? -1 : 0;
@@ -323,7 +323,7 @@ struct Pointer : Base
 
     template< int w, bool s > operator Int< w, s >()
     {
-        using IntPtr = Int< PointerBits, false >;
+        using IntPtr = Int< _VM_PB_Full, false >;
         return IntPtr( _cooked.raw(), defbits(), true );
     }
 

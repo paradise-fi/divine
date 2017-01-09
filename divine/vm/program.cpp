@@ -661,7 +661,7 @@ void Program::pass()
 
             if ( ( pi_function.vararg = function->isVarArg() ) ) {
                 Slot vaptr( Slot::Local );
-                vaptr._width = PointerBits;
+                vaptr._width = _VM_PB_Full;
                 vaptr.type = Slot::Pointer;
                 allocateSlot( vaptr, pc.function() );
             }

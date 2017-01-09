@@ -21,19 +21,17 @@
 #include <brick-bitlevel>
 #include <brick-mem>
 
+#include <runtime/divine.h>
+
 namespace divine {
 namespace vm {
 
 namespace bitlevel = brick::bitlevel;
 
-enum class PointerType : unsigned { Const, Global, Heap, Code };
+enum class PointerType : unsigned { Const, Global, Heap, Code, Weak, Marked };
 
-static const int PointerBits = 64;
-static const int PointerBytes = PointerBits / 8;
-static const int PointerObjBits = 32;
-static const int PointerTypeBits = 2;
-static const int PointerOffBits = PointerBits - (PointerTypeBits + PointerObjBits);
-using PointerRaw = bitlevel::bitvec< PointerBits >;
+static const int PointerBytes = _VM_PB_Full / 8;
+using PointerRaw = bitlevel::bitvec< _VM_PB_Full >;
 
 /*
  * There are multiple pointer types, distinguished by a two-bit type tag. The
@@ -45,18 +43,18 @@ using PointerRaw = bitlevel::bitvec< PointerBits >;
 
 struct GenericPointer : brick::types::Comparable
 {
-    static const int ObjBits = 32;
-    static const int TypeBits = 2;
-    static const int OffBits = PointerBits - ObjBits - TypeBits;
+    static const int ObjBits  = _VM_PB_Obj;
+    static const int TypeBits = _VM_PB_Type;
+    static const int OffBits  = _VM_PB_Off;
 
-    using ObjT = bitlevel::bitvec< PointerObjBits >;
-    using OffT = bitlevel::bitvec< PointerOffBits >;
+    using ObjT = bitlevel::bitvec< ObjBits >;
+    using OffT = bitlevel::bitvec< OffBits >;
 
     union Rep { /* note: type punning is OK in clang */
         PointerRaw raw;
         struct { // beware: bitfields seem to be little-endian in clang but it is impmentation defined
-            OffT off:PointerOffBits; // offset must be last (for the sake of arithmetic)
-            PointerType type:PointerTypeBits;
+            OffT off:OffBits; // offset must be last (for the sake of arithmetic)
+            PointerType type:TypeBits;
             ObjT obj;
         };
     } _rep;
