@@ -192,7 +192,7 @@ struct Interpreter
             if ( n[0] == '.' || n[0] == ':' )
                 n = "$_" + n;
             else
-                n = "$_." + n;
+                n = "$_:" + n;
         }
 
         auto split = std::min( n.find( '.' ), n.find( ':' ) );
