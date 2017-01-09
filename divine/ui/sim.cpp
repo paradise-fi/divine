@@ -189,8 +189,6 @@ struct Interpreter
     {
         if ( !start && n[0] != '$' && n[0] != '#' ) /* normalize */
         {
-            if ( n[0] == '.' )
-                comp = true;
             if ( n[0] == '.' || n[0] == ':' )
                 n = "$_" + n;
             else
@@ -219,7 +217,7 @@ struct Interpreter
             if ( split >= n.size() )
                 return dn;
             else
-                return get( tail, silent, std::make_unique< DN >( dn ), comp );
+                return get( tail, silent, std::make_unique< DN >( dn ), n[split] == '.' );
         }
 
         std::unique_ptr< DN > dn_next;
