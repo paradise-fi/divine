@@ -264,7 +264,9 @@ struct Pointer : Base
             return GenericPointer( l( ConstPointer( _cooked ) ) );
         if ( _cooked.type() == PointerType::Global )
             return GenericPointer( l( GlobalPointer( _cooked ) ) );
-        if ( _cooked.type() == PointerType::Heap )
+        if ( _cooked.type() == PointerType::Heap ||
+             _cooked.type() == PointerType::Weak ||
+             _cooked.type() == PointerType::Marked )
             return GenericPointer( l( HeapPointer( _cooked ) ) );
         if ( _cooked.type() == PointerType::Code )
             return GenericPointer( l( CodePointer( _cooked ) ) );

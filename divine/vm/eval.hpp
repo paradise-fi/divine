@@ -223,7 +223,7 @@ struct Eval
     {
         auto pp = p.cooked();
 
-        if ( pp.type() == PointerType::Heap || pp.null() )
+        if ( pp.heap() || pp.null() )
             return pp;
 
         return s2ptr( ptr2s( pp ), pp.offset() );
@@ -265,7 +265,7 @@ struct Eval
             return false;
         }
 
-        if ( pp.type() == PointerType::Heap )
+        if ( pp.heap() )
         {
             HeapPointer hp = pp;
             if ( hp.null() || !heap().valid( hp ) )
@@ -302,7 +302,7 @@ struct Eval
     int ptr2sz( PointerV p )
     {
         auto pp = p.cooked();
-        if ( pp.type() == PointerType::Heap )
+        if ( pp.heap() )
             return heap().size( pp );
         if ( pp.type() == PointerType::Const )
             return program()._constants[ pp.object() ].size();

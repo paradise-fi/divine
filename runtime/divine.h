@@ -132,14 +132,14 @@ struct _VM_Env
 
 enum _VM_MemAccessType { _VM_MAT_Load = 0x1, _VM_MAT_Store = 0x2, _VM_MAT_Both = 0x3 };
 
-enum { _VM_PM_Off  = 0x000000003FFFFFFFull,
-       _VM_PM_Type = 0x00000000C0000000ull,
+enum { _VM_PM_Off  = 0x000000001FFFFFFFull,
+       _VM_PM_Type = 0x00000000E0000000ull,
        _VM_PM_Obj  = 0xFFFFFFFF00000000ull };
 enum { _VM_PB_Full = 64,
        _VM_PB_Obj = 32,
-       _VM_PB_Type = 2,
+       _VM_PB_Type = 3,
        _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj - _VM_PB_Type };
-enum _VM_PointerType { _VM_PT_Const, _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code };
+enum _VM_PointerType { _VM_PT_Const, _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM_PT_Marked };
 
 #if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
 

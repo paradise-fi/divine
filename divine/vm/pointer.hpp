@@ -85,6 +85,9 @@ struct GenericPointer : brick::types::Comparable
 
     auto type() { return _rep.type; }
     void type( PointerType t ) { _rep.type = t; }
+    bool heap() { return type() == PointerType::Heap ||
+                         type() == PointerType::Weak ||
+                         type() == PointerType::Marked; }
 
     GenericPointer operator+( int o ) { return GenericPointer( type(), object(), offset() + o ); }
 };
@@ -159,7 +162,7 @@ struct HeapPointer : GenericPointer
     {
         if ( null() )
             type( PointerType::Heap );
-        ASSERT_EQ( type(), PointerType::Heap );
+        ASSERT( heap() );
     }
 };
 
@@ -172,6 +175,8 @@ static inline std::ostream &operator<<( std::ostream &o, PointerType p )
         case PointerType::Global: return o << "global";
         case PointerType::Code: return o << "code";
         case PointerType::Heap: return o << "heap";
+        case PointerType::Weak: return o << "weak";
+        case PointerType::Marked: return o << "marked";
     }
 }
 
