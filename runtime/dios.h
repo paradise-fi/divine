@@ -57,6 +57,19 @@ struct _DiOS_TLS {
 typedef struct _DiOS_TLS * _DiOS_ThreadHandle;
 typedef void * _DiOS_ProcId;
 
+static inline int __dios_pointer_get_type( void *ptr )
+{
+    unsigned long p = (unsigned long) ptr;
+    return ( p & _VM_PM_Type ) >> _VM_PB_Off;
+}
+
+static inline void *__dios_pointer_set_type( void *ptr, int type )
+{
+    unsigned long p = (unsigned long) ptr;
+    p &= ~_VM_PM_Type;
+    unsigned long newt = ( type << _VM_PB_Off ) & _VM_PM_Type;
+    return (void *)( p | newt );
+}
 
 /*
  * Start a new thread and obtain its identifier. Thread starts executing routine
