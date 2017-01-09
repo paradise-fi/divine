@@ -10,7 +10,7 @@ namespace intrinsic {
 
 namespace {
     std::vector< std::string > parse( const llvm::Function * fn ) {
-        if ( !fn->hasName() )
+        if ( !fn || !fn->hasName() )
             return {};
         auto name = fn->getName();
         std::istringstream ss(name);
@@ -115,6 +115,10 @@ bool is( const llvm::Function * fn ) {
 
 bool is( const llvm::CallInst * call ) {
     return intrinsic::is( call->getCalledFunction() );
+}
+
+bool isAssume( const llvm::CallInst * call ) {
+    return intrinsic::name( call ) == "assume";
 }
 
 bool isLift( const llvm::CallInst * call ) {

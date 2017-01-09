@@ -51,6 +51,7 @@ llvm::CallInst * anonymous( llvm::Module *,
 //helpers
 bool is( const llvm::Function * );
 bool is( const llvm::CallInst * );
+bool isAssume( const llvm::CallInst * );
 bool isLift( const llvm::CallInst * );
 bool isLower( const llvm::CallInst * );
 

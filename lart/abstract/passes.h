@@ -42,7 +42,7 @@ namespace abstract {
     return passMetaC< Abstraction, Substitution >( "abstraction", "",
         []( llvm::ModulePassManager &mgr, std::string opt ) {
             Abstraction::meta().create( mgr, "" );
-            //AddAssumes::meta().create( mgr, "" );
+            AddAssumes::meta().create( mgr, "" );
             Substitution::meta().create( mgr, opt );
         } );
     };

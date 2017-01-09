@@ -13,6 +13,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/assume.h>
+#include <lart/abstract/intrinsic.h>
 #include <lart/abstract/types.h>
 #include <lart/support/query.h>
 
@@ -78,13 +79,14 @@ namespace {
         ASSERT( br && "Cannot assume about non-branch instruction.");
 
         auto lower = llvm::dyn_cast< llvm::CallInst >( br->getCondition() );
-        ASSERT( lower && "Cannot assume about non-abstract value.");
-        auto tristate = getTristate( lower );
+        if ( lower && intrinsic::isLower( lower ) ) {
+            auto tristate = getTristate( lower );
 
-        BBEdge trueBr = { br->getParent(), br->getSuccessor( 0 ) };
-        trueBr.assume( { tristate, types::Tristate::True() } );
-        BBEdge falseBr = { br->getParent(), br->getSuccessor( 1 ) };
-        falseBr.assume( { tristate, types::Tristate::False() } );
+            BBEdge trueBr = { br->getParent(), br->getSuccessor( 0 ) };
+            trueBr.assume( { tristate, types::Tristate::True() } );
+            BBEdge falseBr = { br->getParent(), br->getSuccessor( 1 ) };
+            falseBr.assume( { tristate, types::Tristate::False() } );
+        }
     }
 
 

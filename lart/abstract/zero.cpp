@@ -34,6 +34,11 @@ Zero::Zero( llvm::Module & m ) : tristate( m ) {
 }
 
 void Zero::process( llvm::CallInst * i, std::map< llvm::Value *, llvm::Value * > &vmap ) {
+    if ( intrinsic::isAssume( i ) ) {
+        vmap[ i ] = i;
+        return; //skip
+    }
+
     auto domain = intrinsic::domain( i ) == "tristate" ? tristate.domain() : this->domain();
     auto name = constructFunctionName( domain, i );
     llvm::Module * m = i->getParent()->getParent()->getParent();

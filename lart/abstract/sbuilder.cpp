@@ -134,10 +134,12 @@ void SubstitutionBuilder::substituteBranch( llvm::BranchInst * br ) {
     }
 }
 void SubstitutionBuilder::substituteCall( llvm::CallInst * call ) {
-    if ( intrinsic::is( call ) )
+    if ( intrinsic::is( call ) ) {
+        //TODO assume
         abstraction->process( call, _values );
-    else
+    } else {
         processCall( call );
+    }
 }
 
 void SubstitutionBuilder::substituteReturn( llvm::ReturnInst * ret ) {
