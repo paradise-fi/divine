@@ -27,6 +27,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <fstream>
 #include <string>
 
+#include <lart/abstract/abstraction.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/substitution.h>
 
@@ -37,19 +38,18 @@ namespace abstract {
     PassMeta assume_pass();
     PassMeta substitution_pass();
 
-    inline std::vector< PassMeta > passes() {
-        return { abstraction_pass(), assume_pass(), substitution_pass() };
-    }
-
-    /*PassMeta full_abstraction_pass() {
-    return abstraction_pass();
-        passMetaC< Substitution >( "abstraction", "",
+    PassMeta full_abstraction_pass() {
+    return passMetaC< Abstraction, Substitution >( "abstraction", "",
         []( llvm::ModulePassManager &mgr, std::string opt ) {
             Abstraction::meta().create( mgr, "" );
-            //Substitution::meta().create( mgr, opt );
+            //AddAssumes::meta().create( mgr, "" );
+            Substitution::meta().create( mgr, opt );
         } );
-    };*/
+    };
 
+    inline std::vector< PassMeta > passes() {
+        return { full_abstraction_pass() };
+    }
 }
 
 #ifdef BRICK_UNITTEST_REG
