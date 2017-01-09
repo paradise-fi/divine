@@ -172,12 +172,15 @@ static llvm::Type * lower( const llvm::Type * type ) {
 static bool isAbstract( llvm::Type * type ) {
     bool ptr = type->isPointerTy();
     type = ptr ? type->getPointerElementType() : type;
-    if ( !type->isStructTy() )
-        return false;
-    auto name = type->getStructName();
-    if ( name.empty() )
-        return false;
-    return std::string( name.str(), 0, 5 ) == "lart.";
+    if ( auto structTy = llvm::dyn_cast< llvm::StructType >( type ) ) {
+        if ( structTy->hasName() ) {
+            auto name = structTy->getStructName();
+            if ( name.empty() )
+                return false;
+            return std::string( name.str(), 0, 5 ) == "lart.";
+        }
+    }
+    return false;
 }
 
 // type format: lart.<domain>.<lower type>

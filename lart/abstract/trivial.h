@@ -18,7 +18,6 @@ struct Trivial : Common {
 
     virtual llvm::Type * abstract( llvm::Type * );
     std::string domain() const { return "trivial"; }
-
 };
 
 } // namespace abstract

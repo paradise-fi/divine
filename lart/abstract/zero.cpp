@@ -27,8 +27,10 @@ namespace {
 }
 
 Zero::Zero( llvm::Module & m ) : tristate( m ) {
-    zero_type = m.getContext().pImpl->NamedStructTypes.lookup( LLVMTypeName() )
-                 ->getPointerTo();
+    zero_type = m.getFunction( "__abstract_zero_lift" )->getReturnType();
+    // TODO solve merging of type names
+    //zero_type = m.getContext().pImpl->NamedStructTypes.lookup( LLVMTypeName() )
+    //             ->getPointerTo();
 }
 
 void Zero::process( llvm::CallInst * i, std::map< llvm::Value *, llvm::Value * > &vmap ) {
@@ -78,8 +80,10 @@ llvm::Type * Zero::abstract( llvm::Type * type ) {
 }
 
 Zero::Tristate::Tristate( llvm::Module & m ) {
-    tristate_type = m.getContext().pImpl->NamedStructTypes.lookup( LLVMTypeName() )
-                     ->getPointerTo();
+    tristate_type = m.getFunction( "__abstract_tristate_create" )->getReturnType();
+    // TODO solve merging of type names
+    //tristate_type = m.getContext().pImpl->NamedStructTypes.lookup( LLVMTypeName() )
+    //                 ->getPointerTo();
 }
 
 bool Zero::Tristate::is( llvm::Type * type ) {
