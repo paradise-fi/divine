@@ -126,8 +126,12 @@ struct Context
             _ptr2i[ i ] = _heap.ptr2i( get( Location( i ) ).pointer );
     }
 
-    Context( Program &p ) : _program( &p ), _objid_shuffle( 0 ) {}
-    Context( Program &p, const Heap &h ) : _program( &p ), _heap( h ) {}
+    Context( Program &p ) : Context( p, Heap() ) {}
+    Context( Program &p, const Heap &h ) : _program( &p ), _heap( h )
+    {
+        for ( int i = 0; i < _VM_CR_Last; ++i )
+            _reg[ i ].integer = 0;
+    }
     virtual ~Context() { }
 
     Program &program() { return *_program; }
