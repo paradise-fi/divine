@@ -633,10 +633,10 @@ struct Options {
     std::vector< std::regex > filter1, filter2, flavourFilter, exclude, sortHints;
     std::vector< std::pair< std::string, std::string > > interpreters;
     std::string flavour_envvar;
-    int timeout, total_timeout;
+    int timeout, total_timeout, jobs;
     Options() : verbose( false ), batch( false ), interactive( false ),
                 cont( false ), fatal_timeouts( false ), kmsg( false ),
-                timeout( 60 ), total_timeout( 3 * 3600 ) {}
+                timeout( 60 ), total_timeout( 3 * 3600 ), jobs( 1 ) {}
 };
 
 struct TestProcess
@@ -681,7 +681,7 @@ struct TestCase {
     BufSink *iobuf;
 
     struct rusage usage;
-    int status;
+    int status, slot;
     bool timeout;
     pid_t pid;
 
@@ -718,7 +718,7 @@ struct TestCase {
         child.interactive = options.interactive;
     }
 
-    bool monitor() {
+    bool monitor( int wait_msec ) {
         end = time( 0 );
 
         /* heartbeat */
@@ -756,7 +756,7 @@ struct TestCase {
         FD_ZERO( &set );
         int nfds = io.fd_set( &set );
         wait.tv_sec = 0;
-        wait.tv_usec = 500000; /* timeout 0.5s */
+        wait.tv_usec = wait_msec * 1000;
 
         if ( !options.verbose && !options.interactive && !options.batch ) {
             if ( end - last_update >= 1 ) {
@@ -845,8 +845,12 @@ struct TestCase {
         progress( First ) << tag( "running" ) << pretty() << std::flush;
         if ( options.verbose || options.interactive )
             progress() << std::endl;
+    }
 
-        while ( monitor() );
+    bool finished( int wait_msec )
+    {
+        if ( monitor( wait_msec ) )
+            return false;
 
         Journal::R r = Journal::UNKNOWN;
 
@@ -885,9 +889,12 @@ struct TestCase {
             progress( Last ) << tag( r ) << pretty() << std::endl;
 
         io.clear();
+        return true;
     }
 
-    void run() {
+    void run( int s )
+    {
+        slot = s;
         pipe();
         pid = kill_pid = fork();
         if (pid < 0) {
@@ -898,10 +905,12 @@ struct TestCase {
             chdir( options.workdir.c_str() );
             if ( !options.flavour_envvar.empty() )
                 setenv( options.flavour_envvar.c_str(), flavour.c_str(), 1 );
+            std::stringstream envbuf;
+            envbuf << slot;
+            setenv( "TEST_SLOT", envbuf.str().c_str(), 1 );
             child.exec();
-        } else {
+        } else
             parent();
-        }
     }
 
     void setupIO() {
@@ -942,7 +951,11 @@ struct Main {
     Options options;
     Cases cases;
 
-    bool skip( const std::string &what, const std::vector< std::regex > &filter, bool empty ) {
+    std::vector< TestCase * > running;
+    int running_count;
+
+    bool skip( const std::string &what, const std::vector< std::regex > &filter, bool empty )
+    {
         if ( filter.empty() )
             return empty;
 
@@ -1025,13 +1038,27 @@ struct Main {
                 cases.push_back( p.second );
         }
 
+        running.resize( options.jobs );
+
         if ( options.cont )
             journal.read();
         else
             ::unlink( journal.location.c_str() );
     }
 
-    int run() {
+    void wait()
+    {
+        int msec = 500;
+        for ( auto &tc : running )
+        {
+            if ( tc && tc->finished( msec ) )
+                tc = nullptr, --running_count;
+            msec = 0;
+        }
+    }
+
+    int run()
+    {
         setup();
         start = time( 0 );
         std::cerr << "running " << cases.size() << " tests" << std::endl;
@@ -1041,7 +1068,18 @@ struct Main {
             if ( options.cont && journal.done( i->id() ) )
                 continue;
 
-            i->run();
+            while ( running_count == int( running.size() ) )
+                wait();
+
+            for ( int slot = 0; slot < int( running.size() ); ++ slot )
+            {
+                if ( running[ slot ] )
+                    continue;
+                running[ slot ] = &*i;
+                i->run( slot );
+                ++ running_count;
+                break;
+            }
 
             if ( options.fatal_timeouts && journal.timeouts >= 2 ) {
                 journal.started( i->id() ); // retry the test on --continue
@@ -1242,6 +1280,15 @@ int run( int argc, const char **argv, std::string fl_envvar = "TEST_FLAVOUR" )
 
     if ( args.has( "--kmsg" ) )
         opt.kmsg = true;
+
+    if ( args.has( "--jobs" ) )
+        opt.jobs = atoi( args.opt( "--jobs" ).c_str () );
+
+    if ( hasenv( "JOBS" ) )
+        opt.jobs = atoi( getenv( "JOBS" ) );
+
+    if ( opt.jobs > 1 )
+        opt.batch = true;
 
     opt.outdir = args.opt( "--outdir" );
     opt.testdir = args.opt( "--testdir" );
