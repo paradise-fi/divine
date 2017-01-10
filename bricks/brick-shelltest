@@ -620,6 +620,59 @@ struct IO : Sink {
 
 };
 
+enum ProgressType { First, Update, Last };
+
+struct Progress
+{
+    struct : std::streambuf {} buf;
+    std::ostream null;
+    std::vector< std::stringstream > backlog;
+    bool batch;
+
+    Progress() : null( &buf ), batch( false ) {}
+
+    void flush()
+    {
+        for ( auto &bls : backlog )
+        {
+            auto split = bls.str().rfind( '\n' );
+            if ( split >= bls.str().size() )
+                continue;
+            std::string print( bls.str(), 0, split + 1 ), /* take the newline */
+                        keep( bls.str(), split + 1, std::string::npos );
+            std::cout << print;
+            bls = std::stringstream();
+            bls << keep;
+        }
+    }
+
+    std::ostream &stream( int slot, ProgressType p )
+    {
+        backlog.resize( std::max( size_t( slot + 1 ), backlog.size() ) );
+
+        if ( batch && p == First )
+        {
+            if ( slot )
+                return backlog[ slot ];
+            flush();
+            return std::cout;
+        }
+
+        if ( isatty( STDOUT_FILENO ) && !batch ) {
+            if ( p != First )
+                return std::cout << "\r";
+            return std::cout;
+        }
+
+        if ( p == Last )
+            return slot ? backlog[slot] : std::cout;
+
+        return null;
+    }
+
+    ~Progress() { flush(); }
+};
+
 namespace {
 pid_t kill_pid = 0;
 bool fatal_signal = false;
@@ -689,6 +742,7 @@ struct TestCase {
     Options options;
 
     Journal *journal;
+    Progress *_progress;
 
     std::string pretty() {
         if ( options.batch )
@@ -698,6 +752,11 @@ struct TestCase {
 
     std::string id() {
         return flavour + ":" + name;
+    }
+
+    std::ostream &progress( ProgressType p = Last )
+    {
+        return _progress->stream( slot, p );
     }
 
     void pipe() {
@@ -812,28 +871,6 @@ struct TestCase {
         return tag( s.str() );
     }
 
-    enum P { First, Update, Last };
-
-    std::ostream &progress( P p = Last )
-    {
-        static struct : std::streambuf {} buf;
-        static std::ostream null(&buf);
-
-        if ( options.batch && p == First )
-            return std::cout;
-
-        if ( isatty( STDOUT_FILENO ) && !options.batch ) {
-            if ( p != First )
-                return std::cout << "\r";
-            return std::cout;
-        }
-
-        if ( p == Last )
-            return std::cout;
-
-        return null;
-    }
-
     void parent()
     {
         ::close( child.fd );
@@ -884,7 +921,7 @@ struct TestCase {
             int spaces = std::max( 64 - int(pretty().length()), 0 );
             progress( Last ) << " " << std::string( spaces, '.' ) << " " << r << std::endl;
             if ( r == Journal::PASSED )
-                progress( First ) << "   " << rusage() << std::endl;
+                progress( Last ) << "   " << rusage() << std::endl;
         } else
             progress( Last ) << tag( r ) << pretty() << std::endl;
 
@@ -932,10 +969,10 @@ struct TestCase {
             io.sources.push_back( new KMsg );
     }
 
-    TestCase( Journal &j, Options opt, std::string path, std::string interp,
+    TestCase( Journal &j, Progress &p, Options opt, std::string path, std::string interp,
               std::string name, std::string flavour )
         : child( path, interp ), name( name ), flavour( flavour ), timeout( false ),
-          last_update( 0 ), last_heartbeat( 0 ), options( opt ), journal( &j )
+          last_update( 0 ), last_heartbeat( 0 ), options( opt ), journal( &j ), _progress( &p )
     {
     }
 };
@@ -950,6 +987,7 @@ struct Main {
     Journal journal;
     Options options;
     Cases cases;
+    Progress progress;
 
     std::vector< TestCase * > running;
     int running_count;
@@ -1007,7 +1045,7 @@ struct Main {
                     continue;
 
 
-                TestCase tc( journal, options, options.testdir + *i,
+                TestCase tc( journal, progress, options, options.testdir + *i,
                              interpreter.empty() ? "" : options.testdir + interpreter,
                              *i, *flav );
 
@@ -1039,6 +1077,7 @@ struct Main {
         }
 
         running.resize( options.jobs );
+        progress.batch = options.batch;
 
         if ( options.cont )
             journal.read();
