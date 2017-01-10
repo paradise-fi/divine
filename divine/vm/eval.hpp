@@ -163,13 +163,17 @@ struct Eval
     PointerV makeobj( int size, int off = 0 )
     {
         using brick::bitlevel::mixdown;
-        ++ context()._objid_shuffle;
-        uint32_t hint = mixdown( context()._objid_shuffle,
+        ++ context().ref( _VM_CR_ObjIdShuffle ).integer;
+        uint32_t hint = mixdown( context().get( _VM_CR_ObjIdShuffle ).integer,
                                  context().get( _VM_CR_Frame ).pointer.object() );
         return heap().make( size, hint + off );
     }
 
-    bool freeobj( HeapPointer p ) { ++ context()._objid_shuffle; return heap().free( p ); }
+    bool freeobj( HeapPointer p )
+    {
+        ++ context().ref( _VM_CR_ObjIdShuffle ).integer;
+        return heap().free( p );
+    }
 
     GenericPointer s2ptr( Slot v, int off = 0 )
     {
@@ -941,7 +945,7 @@ struct Eval
                     context().set( _VM_CR_PC, ptr.cooked() );
                     using brick::bitlevel::mixdown;
                     if ( heap().valid( frame() ) )
-                        context()._objid_shuffle = mixdown(
+                        context().ref( _VM_CR_ObjIdShuffle ).integer = mixdown(
                                 heap().objhash( context().ptr2i( _VM_CR_Frame ) ),
                                 context().get( _VM_CR_Frame ).pointer.object() );
                     else

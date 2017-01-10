@@ -104,6 +104,7 @@ enum _VM_ControlRegister
     _VM_CR_Flags,            /* read-write, _VM_Flags */
 
     _VM_CR_FaultHandler,     /* write-once, function pointer */
+    _VM_CR_ObjIdShuffle,
     _VM_CR_User1,
     _VM_CR_User2,
 
