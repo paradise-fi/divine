@@ -909,7 +909,10 @@ struct TestCase {
         {
             interrupt = 1;
             alarm( 1 ); /* clear the interrupt flag after a second */
+            if ( options.batch )
+                fatal_signal = true;
         }
+
         io.close();
 
         if ( iobuf && ( r == Journal::FAILED || r == Journal::TIMEOUT ) )
