@@ -1,10 +1,12 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 #ifdef __cplusplus
 #include <utility>
 #include <string>
 #include <array>
+#include <iostream>
 #endif
 
 #ifdef __divine__
@@ -25,20 +27,18 @@
 extern "C" {
 #endif // __cplusplus
 
+#if 0
 /*
  * Create a new formula node given the opration and its arguments
  * in can be called in the following ways:
- * - __bvec_mk_op( Op::Variable, type, bitwidth, int varId )
- * - __bvec_mk_op( Op::Constant, type, bitwidth, int64_t value )
- * - __bvec_mk_op( any_unary_op, type, bitwidth, Formula *child )
- * - __bvec_mk_op( any_binary_op, type, bitwidth, Formula *left_child, Formula *right_child )
+ * - __sym_mk_op( Op::Variable, type, bitwidth, int varId )
+ * - __sym_mk_op( Op::Constant, type, bitwidth, int64_t value )
+ * - __sym_mk_op( any_unary_op, type, bitwidth, Formula *child )
+ * - __sym_mk_op( any_binary_op, type, bitwidth, Formula *left_child, Formula *right_child )
  */
-void *__bvec_mk_op( int op, int type, int bitwidth ... );
-
-char *__bvec_formula_to_string( void *root );
-
-int __bvec_ptr_to_fresh_var_id( void *ptr );
-int __bvec_ptr_to_current_var_id( void *ptr );
+void *__sym_mk_op( int op, int type, int bitwidth ... );
+#endif
+char *__sym_formula_to_string( void *root );
 
 #ifdef __cplusplus
 } // extern "C"
@@ -46,7 +46,7 @@ int __bvec_ptr_to_current_var_id( void *ptr );
 
 #ifdef __cplusplus
 
-namespace bvec {
+namespace sym {
 
 using VarID = int32_t;
 
@@ -126,7 +126,9 @@ enum class Op : uint16_t {
     FcUNO, // unordered (either nans)
     FcTrue, // no comparison, always returns true
 
-    LastBinary = FcTrue
+    LastBinary = FcTrue,
+
+    Assume
 };
 
 
@@ -146,11 +148,17 @@ struct Type {
         Float
     };
 
+    static const int bwmask = 0x7fff;
+
     Type() = default;
     Type( T g, int bitwidth ) : _data( (g << 15) | bitwidth ) { }
 
     T type() { return T( _data >> 15 ); }
-    int bitwidth() { return _data & 0x7fff; }
+    int bitwidth() { return _data & bwmask; }
+    void bitwidth( int x ) {
+        _data &= ~bwmask;
+        _data |= bwmask & x;
+    }
 
     uint16_t _data;
 };
@@ -170,26 +178,26 @@ struct Variable {
 
 static_assert( sizeof( Variable ) == 8, "" );
 
-using ValueT = std::array< uint32_t, 3 >;
 union ValueU {
-    ValueT raw;
+//    ValueT raw;
     uint8_t i8;
     uint16_t i16;
     uint32_t i32;
     uint64_t i64;
     float fp32;
     double fp64;
-    long double fp80;
+//    long double fp80;
 };
 
 struct Constant {
-    Constant( Type type, std::array< uint32_t, 3 > value ) :
+    Constant( Type type, uint64_t value ) :
         op( Op::Constant ), type( type ), value( value )
     { }
 
     Op op;     // 16B
     Type type; // 16B
-    std::array< uint32_t, 3 > value; // 96B - enough to hold long double
+    uint64_t value;
+//    std::array< uint32_t, 3 > value; // 96B - enough to hold long double
 };
 
 static_assert( sizeof( Constant ) == 16, "" );
@@ -219,24 +227,43 @@ struct Binary_ {
 
 static_assert( sizeof( Binary_< void * > ) == 24, "" );
 
+template< typename Formula >
+struct Assume_ {
+
+    Assume_( Formula value, Formula constraint ) :
+        op( Op::Assume ), type( value->type ), value( value ), constraint( constraint )
+    { }
+
+    Op op;
+    Type type;
+    Formula value;
+    Formula constraint;
+};
+
 union Formula;
 
 #ifdef __divine__
 using Binary = Binary_< Formula * >;
 using Unary = Unary_< Formula * >;
+using Assume = Assume_< Formula * >;
 #else
 using Unary = Unary_< std::unique_ptr< Formula > >;
 using Binary = Binary_< std::unique_ptr< Formula > >;
+using Assume = Assume_< std::unique_ptr< Formula > >;
 #endif
 
 union Formula {
     Formula() : op( Op::Invalid ) { }
 
-    Op op;
+    struct {
+        Op op;
+        Type type;
+    };
     Variable var;
     Constant con;
     Unary unary;
     Binary binary;
+    Assume assume;
 };
 
 std::string toString( const Formula *f );
@@ -245,62 +272,54 @@ inline std::string toString( const Formula &f ) {
 }
 
 template< typename Read,
-          typename Variable, typename Constant, typename Unary, typename Binary >
+          typename Variable, typename Constant, typename Unary, typename Binary, typename Assume >
 struct Walker {
 
-    Walker( Read read, Variable var, Constant con, Unary unary, Binary binary ) :
-        read( read ), var( var ), con( con ), unary( unary ), binary( binary )
+    Walker( Read read, Variable var, Constant con, Unary unary, Binary binary, Assume assume ) :
+        read( read ), var( var ), con( con ), unary( unary ), binary( binary ), assume( assume )
     { }
 
     template< typename T >
     auto walk( T formula ) {
         auto r = read( formula );
         Op op = r.template read< Op >();
+        auto t = r.template read< Type >();
 
         if ( op == Op::Variable ) {
-            auto t = r.template read< Type >();
             auto v = r.template read< VarID >();
             return var( t, v );
         }
         if ( op == Op::Constant ) {
-            auto t = r.template read< Type >();
+            r.shift( 4 );
             ValueU val;
-            val.raw = r.template read< ValueT >();
-            if ( t.type() == Type::Int ) {
-                if ( t.bitwidth() <= 8 )
-                    return con( t, val.i8 );
-                if ( t.bitwidth() <= 16 )
-                    return con( t, val.i16 );
-                if ( t.bitwidth() <= 32 )
-                    return con( t, val.i32 );
-                if ( t.bitwidth() <= 64 )
-                    return con( t, val.i64 );
-                UNREACHABLE_F( "Integer too long: %d bits", t.bitwidth() );
-            } else {
-                switch ( t.bitwidth() ) {
-                    case 32:
-                        return con( t, val.fp32 );
-                    case 64:
-                        return con( t, val.fp64 );
-                    case 80:
-                        return con( t, val.fp80 );
-                    default:
-                        UNREACHABLE_F( "Unknow float of size: %d bits", t.bitwidth() );
-                }
-            }
+            val.i64 = r.template read< uint64_t >();
+            assert( t.type() == Type::Int );
+            if ( t.bitwidth() <= 8 )
+                return con( t, val.i8 );
+            if ( t.bitwidth() <= 16 )
+                return con( t, val.i16 );
+            if ( t.bitwidth() <= 32 )
+                return con( t, val.i32 );
+            if ( t.bitwidth() <= 64 )
+                return con( t, val.i64 );
+            UNREACHABLE_F( "Integer too long: %d bits", t.bitwidth() );
         }
         if ( isUnary( op ) ) {
-            auto t = r.template read< Type >();
             r.shift( 4 );
             auto child = walk( r.template read< T >() );
             return unary( op, t, child );
         }
         if ( isBinary( op ) ) {
-            auto t = r.template read< Type >();
             r.shift( 4 );
             auto left = walk( r.template read< T >() );
             auto right = walk( r.template read< T >() );
             return binary( op, t, left, right );
+        }
+        if ( op == Op::Assume ) {
+            r.shift( 4 );
+            auto val = walk( r.template read< T >() );
+            auto constraint = walk( r.template read< T >() );
+            return assume( val, constraint );
         }
         UNREACHABLE_F( "Unknow operation %d", op );
     }
@@ -310,6 +329,7 @@ struct Walker {
     Constant con;
     Unary unary;
     Binary binary;
+    Assume assume;
 };
 
 template< typename RawRead >
@@ -353,21 +373,22 @@ Reader< RawRead > reader( RawRead &&r ) {
 }
 
 template< typename T, typename Read,
-          typename Variable, typename Constant, typename Unary, typename Binary >
-auto traverseFormula( T formula, Read read, Variable var, Constant con, Unary un, Binary bin )
+          typename Variable, typename Constant, typename Unary, typename Binary, typename Assume >
+auto traverseFormula( T formula, Read read, Variable var, Constant con, Unary un, Binary bin, Assume assume )
 {
-    Walker< Read, Variable, Constant, Unary, Binary > walker( read, var, con, un, bin );
+    Walker< Read, Variable, Constant, Unary, Binary, Assume > walker( read, var, con, un, bin, assume );
     return walker.walk( formula );
 }
 
 inline const char *vptrToCptr( const void *v ) { return static_cast< const char * >( v ); }
 
-template< typename T, typename Variable, typename Constant, typename Unary, typename Binary >
-auto traverseNativeFormula( T formula, Variable var, Constant con, Unary un, Binary bin ) {
-    return traverseFormula( formula, reader( vptrToCptr ), var, con, un, bin );
+template< typename T,
+          typename Variable, typename Constant, typename Unary, typename Binary, typename Assume >
+auto traverseNativeFormula( T formula, Variable var, Constant con, Unary un, Binary bin, Assume assume ) {
+    return traverseFormula( formula, reader( vptrToCptr ), var, con, un, bin, assume );
 }
 
-} // namespace bvec
+} // namespace sym
 
 #endif
 

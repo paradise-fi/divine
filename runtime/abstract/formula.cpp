@@ -6,9 +6,16 @@
 #include <new>
 
 using namespace std::literals;
-using namespace bvec;
+using namespace sym;
 
-namespace bvec {
+template< typename T, typename ... Args >
+static T *__new( Args &&...args ) {
+    void *ptr = __vm_obj_make( sizeof( T ) );
+    new ( ptr ) T( std::forward< Args >( args )... );
+    return static_cast< T * >( ptr );
+}
+
+namespace sym {
 
 std::string toString( Type t ) {
     std::string str;
@@ -33,6 +40,9 @@ std::string toString( const Formula *root ) {
             },
             []( Op op, Type t, std::string l, std::string r ) {
                 return toString( op ) + "("s + l + ", "s + r + ") : "s + toString( t );
+            },
+            []( std::string val, std::string constraint ) {
+                return "assume("s + val + ", "s + constraint + ")"s;
             } );
 }
 
@@ -116,14 +126,8 @@ std::string toString( Op x ) {
 
 }
 
-template< typename T, typename ... Args >
-static T *__new( Args &&...args ) {
-    void *ptr = __vm_obj_make( sizeof( T ) );
-    new ( ptr ) T( std::forward< Args >( args )... );
-    return static_cast< T * >( ptr );
-}
-
-void *__bvec_mk_op( int _op, int type, int bitwidth ... ) {
+#if 0
+void *__sym_mk_op( int _op, int type, int bitwidth ... ) {
 
     Op op = Op( _op );
     Type t( Type::T( type ), bitwidth );
@@ -153,9 +157,11 @@ void *__bvec_mk_op( int _op, int type, int bitwidth ... ) {
                 case 64:
                     val.fp64 = va_arg( vl, double );
                     break;
+                    /*
                 case 80:
                     val.fp80 = va_arg( vl, long double );
                     break;
+                    */
                 default:
                     UNREACHABLE_F( "Unknow float of size: %d bits", bitwidth );
             }
@@ -177,14 +183,16 @@ void *__bvec_mk_op( int _op, int type, int bitwidth ... ) {
         return __new< Binary >( op, t, left, right );
     }
 
-    UNREACHABLE_F( "Unknown op in __bvec_mk_op: %d", _op );
+    UNREACHABLE_F( "Unknown op in __sym_mk_op: %d", _op );
 }
+#endif
 
-char *__bvec_formula_to_string( void *root ) {
-    auto form = toString( static_cast< bvec::Formula * >( root ) );
+char *__sym_formula_to_string( void *root ) {
+    auto form = toString( static_cast< sym::Formula * >( root ) );
     char *out = static_cast< char * >( __vm_obj_make( form.size() + 1 ) );
     *std::copy( form.begin(), form.end(), out ) = 0;
     return out;
 }
+
 
 #endif
