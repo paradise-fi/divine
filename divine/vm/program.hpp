@@ -84,7 +84,7 @@ struct Choice {
  */
 struct Program
 {
-    llvm::IntrinsicLowering *IL;
+    std::unique_ptr< llvm::IntrinsicLowering > IL;
     llvm::Module *module;
     llvm::DataLayout TD;
 
@@ -347,7 +347,7 @@ struct Program
     {
         _constants_size = 0;
         _globals_size = 0;
-        IL = new llvm::IntrinsicLowering( TD );
+        IL = std::make_unique< llvm::IntrinsicLowering >( TD );
     }
 };
 
