@@ -39,9 +39,9 @@ if test -n "$TESTS" && test "$TODO" = "only" && echo "$0 $1" | grep -qv todo; th
     exit 200
 fi
 
-rm -rf __test_work_dir
-mkdir -p __test_work_dir
-cd __test_work_dir
+rm -rf __test_work_dir.$TEST_SLOT
+mkdir -p __test_work_dir.$TEST_SLOT
+cd __test_work_dir.$TEST_SLOT
 
 trap "check debris" EXIT
 set -ex -o pipefail
