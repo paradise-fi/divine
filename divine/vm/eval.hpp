@@ -469,7 +469,7 @@ struct Eval
 
     void implement_store()
     {
-        auto to = operandPtr( 1 );
+        auto to = operand< PointerV >( 1 );
         int sz = operand( 0 ).size();
         if ( !boundcheck( to, sz, true ) )
             return;
@@ -483,7 +483,7 @@ struct Eval
 
     void implement_load()
     {
-        auto from = operandPtr( 0 );
+        auto from = operand< PointerV >( 0 );
         int sz = result().size();
         if ( !boundcheck( from, sz, false ) )
             return;
@@ -768,7 +768,11 @@ struct Eval
 
     void implement_stackrestore()
     {
-        auto r = operandPtr( 0 );
+        auto r = operand< PointerV >( 0 );
+
+        if ( !boundcheck( r, sizeof( int ), false ) )
+            return;
+
         IntV count;
         heap().read_shift( r, count );
         if ( !count.defined() )
@@ -815,7 +819,7 @@ struct Eval
                     return;
                 }
                 auto vaptr_loc = s2ptr( f.values[ f.argcount ] );
-                auto vaList = operandPtr( 0 );
+                auto vaList = operand< PointerV >( 0 );
                 if ( !boundcheck( vaList, operand( 0 ).size(), true ) )
                     return;
                 heap().copy( vaptr_loc, ptr2h( vaList ), operand( 0 ).size() );
@@ -824,8 +828,8 @@ struct Eval
             case Intrinsic::vaend: return;
             case Intrinsic::vacopy:
             {
-                auto from = operandPtr( 1 );
-                auto to = operandPtr( 0 );
+                auto from = operand< PointerV >( 1 );
+                auto to = operand< PointerV >( 0 );
                 if ( !boundcheck( from, operand( 0 ).size(), false ) ||
                      !boundcheck( to, operand( 0 ).size(), true ) )
                     return;
@@ -971,7 +975,7 @@ struct Eval
                 return;
             case HypercallInterruptMem:
             {
-                auto ptr = operandPtr( 0 );
+                auto ptr = operand< PointerV >( 0 );
                 /* TODO fault on failing pointers? */
                 if ( boundcheck( ptr, 1, false ) )
                     context().mem_interrupt( ptr.cooked(),
@@ -1208,9 +1212,7 @@ struct Eval
         auto _atomicrmw = [this] ( auto impl ) -> void {
             this->op< IsIntegral >( 0, [&]( auto v ) {
                     decltype( v.get() ) edit;
-                    auto loc = operandPtr( 0 );
-                    if ( !loc.defined() )
-                        return;
+                    auto loc = operand< PointerV >( 0 );
                     if ( !boundcheck( loc, sizeof( typename decltype( v.get() )::Raw ), true ) )
                         return; // TODO: destory pre-existing register value
                     heap().read( ptr2h( loc ), edit );
@@ -1436,14 +1438,13 @@ struct Eval
             case OpCode::AtomicCmpXchg: // { old, changed } = cmpxchg ptr, expected, new
                 return op< Any >( 2, [&]( auto v ) {
                         using T = decltype( v.get() );
-                        auto ptr = operandPtr( 0 );
+                        auto ptr = operand< PointerV >( 0 );
                         auto expected = v.get( 2 );
                         auto newval = v.get( 3 );
 
-                        if ( !heap().valid( ptr.cooked() ) ) {
-                            this->fault( _VM_F_Memory ) << "invalid pointer in cmpxchg" << ptr;
+                        if ( !boundcheck( ptr, operand( 2 ).size(), true ) )
                             return;
-                        }
+
                         T oldval;
                         heap().read( ptr.cooked(), oldval );
                         auto change = oldval == expected;
@@ -1552,7 +1553,7 @@ struct Eval
 
             case OpCode::VAArg:
                 {
-                    PointerV vaList = operandPtr( 0 ), vaArgs;
+                    PointerV vaList = operand< PointerV >( 0 ), vaArgs;
                     // note: although the va_list type might not be a pointer (as on x86)
                     // we will use it so, assuming that it will be at least as big as a
                     // pointer (for example, on x86_64 va_list is { i32, i32, i64*, i64* }*)
