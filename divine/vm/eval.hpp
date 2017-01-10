@@ -964,7 +964,7 @@ struct Eval
                 return;
             }
             case HypercallControl:
-                implement_hypercall_control();
+                return implement_hypercall_control();
 
             case HypercallInterruptCfl:
                 context().cfl_interrupt( pc() );
