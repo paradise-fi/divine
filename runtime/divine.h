@@ -142,6 +142,12 @@ enum { _VM_PB_Full = 64,
        _VM_PB_Off  = _VM_PB_Full - _VM_PB_Obj - _VM_PB_Type };
 enum _VM_PointerType { _VM_PT_Const, _VM_PT_Global, _VM_PT_Heap, _VM_PT_Code, _VM_PT_Weak, _VM_PT_Marked };
 
+enum _VM_SC_ValueType
+{
+    _VM_SC_Int32 = 0, _VM_SC_Int64 = 1, _VM_SC_Mem = 2,
+    _VM_SC_In = 0x100, _VM_SC_Out = 0x200
+};
+
 #if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
 
 EXTERN_C
@@ -234,6 +240,35 @@ void  __vm_obj_resize( void *ptr, int size ) NOTHROW NATIVE_VISIBLE;
 void  __vm_obj_shared( void *ptr ) NOTHROW NATIVE_VISIBLE;
 void  __vm_obj_free( void *ptr ) NOTHROW NATIVE_VISIBLE;
 int   __vm_obj_size( const void * ) NOTHROW NATIVE_VISIBLE;
+
+/*
+ * Pass a syscall through the VM to the host system. The parameters must
+ * describe the parameters of the actual operating system on the outside,
+ * corresponding to the syscall with a given id.
+ *
+ * For example:
+ *
+ *   const char file[] = "filename.c";
+ *   int fileno;
+ *   int errno = __vm_syscall( SYS_open, _VM_SC_Int32, &fileno,
+ *                                       _VM_SC_Mem | _VM_SC_In,
+ *                                       sizeof( filename ), filename );
+ *
+ *   long rl_ret;
+ *   char buffer[100];
+ *   errno = __vm_syscall( SYS_readlink, _VM_SC_Int64, &rl_ret,
+ *                                       _VM_SC_Mem | _VM_SC_In,
+ *                                       sizeof( filename ), filename,
+ *                                       _VM_SC_Mem | _VM_SC_Out,
+ *                                       100, buffer,
+ *                                       _VM_SC_Int64 | _VM_SC_In,
+ *                                       100 );
+ *   int close_err;
+ *   errno = __vm_syscall( SYS_close, _VM_SC_Int32, &close_err,
+ *                                    _VM_SC_Int32 | _VM_SC_In, fileno );
+ */
+
+int __vm_syscall( int id, int retval_type, ... );
 
 CPP_END
 

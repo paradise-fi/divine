@@ -64,6 +64,7 @@ enum Hypercall /* see divine.h for prototypes & documentation */
 
     /* feedback */
     HypercallTrace,
+    HypercallSyscall,
 
     /* memory management */
     HypercallObjMake,

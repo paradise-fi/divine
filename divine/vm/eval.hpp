@@ -41,6 +41,32 @@ DIVINE_UNRELAX_WARNINGS
 #include <type_traits>
 #include <unordered_set>
 
+namespace {
+
+long syscall_helper( int id, std::vector< long > args, std::vector< bool > argtypes )
+{
+    using A = std::vector< bool >;
+
+    if ( argtypes == A{} )
+        return syscall( id );
+    else if ( argtypes == A{0} )
+        return syscall( id, int( args[0] ) );
+    else if ( argtypes == A{1} )
+        return syscall( id, args[0] );
+    else if ( argtypes == A{0, 0} ) /* dup */
+        return syscall( id, int( args[0] ), int( args[1] ) );
+    else if ( argtypes == A{0, 1} )
+        return syscall( id, int( args[0] ), args[1] );
+    else if ( argtypes == A{1, 1} )
+        return syscall( id, args[0], args[1] );
+    else if ( argtypes == A{0, 1, 1} ) /* write */
+        return syscall( id, int( args[0] ), args[1], args[2] );
+    else
+        NOT_IMPLEMENTED();
+}
+
+}
+
 namespace llvm {
 template<typename T> class generic_gep_type_iterator;
 typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
@@ -955,6 +981,101 @@ struct Eval
         }
     }
 
+    void implement_hypercall_syscall()
+    {
+        int idx = 0, action;
+
+        std::vector< long > args;
+        std::vector< bool > argt;
+        std::vector< char * > bufs;
+
+        std::vector< int >  actions;
+
+        auto type = [&]( int action ) { return action & ~( _VM_SC_In | _VM_SC_Out ); };
+        auto in   = [&]( int action ) { return action & _VM_SC_In; };
+        auto out  = [&]( int action ) { return action & _VM_SC_Out; };
+        auto next = [&]() { idx += type( action ) == _VM_SC_Mem ? 2 : 1; };
+
+        auto prepare = [&]( int action )
+        {
+            if ( type( action ) == _VM_SC_Int32 && in( action ) )
+            {
+                args.push_back( operandCk< IntV >( idx ).cooked() );
+                argt.push_back( false );
+            }
+            else if ( type( action ) == _VM_SC_Int64 && in( action ) )
+            {
+                args.push_back( operandCk< PtrIntV >( idx ).cooked() );
+                argt.push_back( true );
+            }
+            else if ( type( action ) == _VM_SC_Mem )
+            {
+                int size = operandCk< IntV >( idx ).cooked();
+                bufs.push_back( new char[ size ] );
+                args.push_back( long( bufs.back() ) );
+                argt.push_back( true );
+                auto ptr = operand< PointerV >( idx + 1 );
+                CharV ch;
+                if ( !boundcheck( ptr, size, out( action ) ) )
+                    return;
+                ptr = PointerV( ptr2h( ptr ) );
+                if ( in( action ) )
+                    for ( int i = 0; i < size; ++i )
+                    {
+                        heap().read_shift( ptr, ch );
+                        if ( !ch.defined() )
+                        {
+                            fault( _VM_F_Hypercall ) << "uninitialised byte in __vm_syscall";
+                            return;
+                        }
+                        bufs.back()[ i ] = ch.cooked();
+                    }
+                else
+                    NOT_IMPLEMENTED();
+            }
+            else if ( in( action ) )
+            {
+                fault( _VM_F_Hypercall ) << "illegal syscall parameter no " << idx << ": " << action;
+                return;
+            }
+        };
+
+        auto process = [&]( int )
+        {
+        };
+
+        if ( instruction().values.size() < 3 )
+        {
+            fault( _VM_F_Hypercall ) << "at least 2 arguments are required for __vm_syscall";
+            return;
+        }
+
+        IntV id = operandCk< IntV >( idx++ );
+
+        while ( idx < instruction().values.size() - 2 )
+        {
+            actions.push_back( action = operandCk< IntV >( idx++ ).cooked() );
+            prepare( action );
+            next();
+        }
+
+        /* auto rv = */ syscall_helper( id.cooked(), args, argt );
+        result( IntV( errno ) );
+
+        idx = 1;
+        // process( rv_action );
+
+        for ( auto act : actions )
+        {
+            ++ idx;
+            process( act );
+            next();
+        }
+
+        for ( auto buf : bufs )
+            delete[] buf;
+    }
+
     void implement_hypercall()
     {
         switch( instruction().hypercall )
@@ -971,8 +1092,11 @@ struct Eval
                     result( IntV( context().choose( options, p.begin(), p.end() ) ) );
                 return;
             }
+
             case HypercallControl:
                 return implement_hypercall_control();
+            case HypercallSyscall:
+                return implement_hypercall_syscall();
 
             case HypercallInterruptCfl:
                 context().cfl_interrupt( pc() );

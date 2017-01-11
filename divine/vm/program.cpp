@@ -325,6 +325,8 @@ Hypercall Program::hypercall( llvm::Function *f )
 
     if ( name == "__vm_trace" )
         return HypercallTrace;
+    if ( name == "__vm_syscall" )
+        return HypercallSyscall;
 
     if ( name == "__vm_obj_make" )
         return HypercallObjMake;
