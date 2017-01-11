@@ -13,6 +13,10 @@ namespace {
         if ( intrinsic::name( inst ) == "load" ) {
             //do nothing
         }
+        else if ( intrinsic::isLift( inst ) || intrinsic::isLower( inst ) ) {
+            if ( domain != "tristate" )
+                name +=  "_" + intrinsic::ty1( inst );
+        }
         else if ( inst->getNumArgOperands() > 0 && intrinsic::ty1( inst ).back() == '*' ) {
             name += "_p";
         }
@@ -27,7 +31,7 @@ namespace {
 }
 
 Zero::Zero( llvm::Module & m ) : tristate( m ) {
-    zero_type = m.getFunction( "__abstract_zero_lift" )->getReturnType();
+    zero_type = m.getFunction( "__abstract_zero_load" )->getReturnType();
     // TODO solve merging of type names
     //zero_type = m.getContext().pImpl->NamedStructTypes.lookup( LLVMTypeName() )
     //             ->getPointerTo();

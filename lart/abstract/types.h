@@ -71,6 +71,10 @@ struct IntegerType : Base {
         return IntegerType::get( type->getContext(), IntegerType::bw( sty ) ) == type;
     }
 
+    static bool isa( const llvm::Type * type, unsigned bw ) {
+        return isa( type ) && IntegerType::get( type->getContext(), bw ) == type;
+    }
+
     static llvm::Type * lower( const llvm::Type * type ) {
         assert( IntegerType::isa( type ) );
         auto st = llvm::cast< llvm::StructType >( type );

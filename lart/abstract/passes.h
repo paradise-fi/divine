@@ -527,7 +527,7 @@ struct Substitution {
         auto add = m->getFunction( "__abstract_zero_add" );
         ASSERT( add->hasNUses( 3 ) );
 
-        auto lift = m->getFunction( "__abstract_zero_lift" )->user_begin();
+        auto lift = m->getFunction( "__abstract_zero_lift_i32" )->user_begin();
         ASSERT( llvm::isa< llvm::ConstantInt >( lift->getOperand( 0 ) ) );
         ASSERT_EQ( add->user_begin()->getOperand( 1 ), *lift );
 
@@ -593,7 +593,7 @@ struct Substitution {
                         return x + 42;
                     })";
         auto m = test_zero_substitution( annotation + s );
-        auto lift = m->getFunction( "__abstract_zero_lift" )->user_begin();
+        auto lift = m->getFunction( "__abstract_zero_lift_i32" )->user_begin();
         auto val = llvm::cast< llvm::ConstantInt >( lift->getOperand( 0 ) );
         ASSERT( val->equalsInt( 42 ) );
         ASSERT( ! containsUndefValue( *m ) );
