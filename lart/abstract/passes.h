@@ -23,6 +23,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/intrinsic.h>
 
 #include <brick-string>
+#include <brick-llvm>
 
 #include <fstream>
 #include <string>
@@ -87,19 +88,29 @@ void setupFS( Compile & c ) {
 	} ) );
 }
 
-ModulePtr compile( const std::string & src ) {
+ModulePtr compile( const std::string & src,
+                   const std::vector< std::string > & link = {},
+                   const std::vector< std::string > & headers = {} )
+{
     static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
     const bool dont_link = false;
     const bool verbose = false;
     Compile c( { dont_link, verbose }, ctx );
 
     mapVirtualFile( c, "main.cpp", src );
-    std::vector< std::string > files = { "common.h", "tristate.h" };
-    for ( const auto & f : files )
+    for ( const auto & f : link )
+        mapVirtualFile( c, f, source( f ) );
+    for ( const auto & f : headers )
         mapVirtualFile( c, f, source( f ) );
 
     setupFS( c );
-    return c.compile( "main.cpp", { "-std=c++11" } );
+    std::vector< std::string > flags = { "-std=c++11" };
+
+    brick::llvm::Linker linker;
+    linker.load( c.compile( "main.cpp", flags ) );
+    for ( const auto & f : link )
+        linker.link( c.compile( f, flags ) );
+    return linker.take();
 }
 
 std::string load( const std::string & path ) {
@@ -133,11 +144,11 @@ ModulePtr test_assume( const std::string & src ) {
 }
 
 ModulePtr test_substitution( const std::string & src,
-                             const std::string & opt,
-                             const std::string & abs_path ) {
-    std::string abstraction = source( abs_path );
-
-    auto m = compile( abstraction + src );
+                             const std::string & opt )
+{
+    std::vector< std::string > link = { opt + ".cpp", "tristate.cpp" };
+    std::vector< std::string > headers = { "tristate.h", "common.h", opt + ".h" };
+    auto m = compile( src, link, headers );
     llvm::ModulePassManager manager;
 
     abstract::abstraction_pass().create( manager, "" );
@@ -149,7 +160,7 @@ ModulePtr test_substitution( const std::string & src,
 }
 
 ModulePtr test_zero_substitution( const std::string & src ) {
-    return test_substitution( src, "zero", "zero.h" );
+    return test_substitution( src, "zero" );
 }
 
 namespace {
@@ -500,7 +511,7 @@ struct Substitution {
                     })";
         auto m = test_zero_substitution( annotation + s );
         auto f = m->getFunction( "__abstract_zero_alloca" );
-        ASSERT( f->hasNUses( 3 ) );
+        ASSERT( f->hasNUses( 2 ) );
         ASSERT( ! containsUndefValue( *m ) );
     }
 
@@ -513,7 +524,8 @@ struct Substitution {
                     })";
         auto m = test_zero_substitution( annotation + s );
         auto alloca = m->getFunction( "__abstract_zero_alloca" );
-        ASSERT( alloca->hasNUses( 5 ) );
+        ASSERT( alloca->hasNUses( 4 ) );
+        ASSERT( ! containsUndefValue( *m ) );
     }
 
     TEST( binary_ops ) {
@@ -530,7 +542,7 @@ struct Substitution {
         auto lift = m->getFunction( "__abstract_zero_lift_i32" )->user_begin();
         ASSERT( llvm::isa< llvm::ConstantInt >( lift->getOperand( 0 ) ) );
         ASSERT_EQ( add->user_begin()->getOperand( 1 ), *lift );
-
+        ASSERT( ! containsUndefValue( *m ) );
     }
 
     TEST( tristate ) {
@@ -571,6 +583,7 @@ struct Substitution {
 
         ASSERT_EQ( nodes.size(), 1 );
         ASSERT_EQ( nodes[0]->getNumIncomingValues(), 2 );
+        ASSERT( ! containsUndefValue( *m ) );
     }
 
     TEST( switch_test ) {
@@ -612,7 +625,7 @@ struct Substitution {
         ASSERT( ! containsUndefValue( *m ) );
     }
 
-    TEST( call_propagate ) {
+    TEST( call_propagate_ones ) {
         auto s = R"(int call() {
                         __test int x;
                         return x;
@@ -622,7 +635,8 @@ struct Substitution {
                         return 0;
                     })";
         auto m = test_zero_substitution( annotation + s );
-        auto abstract_call = m->getFunction( "_Z4callv.6.7" );
+        auto abstract_call = m->getFunction( "_Z4callv.9.10" );
+        ASSERT( abstract_call );
         auto alloca = m->getFunction( "__abstract_zero_alloca" );
         ASSERT_EQ( abstract_call->getReturnType()
                  , alloca->getReturnType()->getPointerElementType() );
