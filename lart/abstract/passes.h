@@ -30,6 +30,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/abstraction.h>
 #include <lart/abstract/assume.h>
+#include <lart/abstract/bcp.h>
 #include <lart/abstract/substitution.h>
 
 namespace lart {
@@ -37,6 +38,7 @@ namespace abstract {
 
     PassMeta abstraction_pass();
     PassMeta assume_pass();
+    PassMeta bcp_pass();
     PassMeta substitution_pass();
 
     PassMeta full_abstraction_pass() {
@@ -44,6 +46,7 @@ namespace abstract {
         []( llvm::ModulePassManager &mgr, std::string opt ) {
             Abstraction::meta().create( mgr, "" );
             AddAssumes::meta().create( mgr, "" );
+            BCP::meta().create( mgr, "" );
             Substitution::meta().create( mgr, opt );
         } );
     };
