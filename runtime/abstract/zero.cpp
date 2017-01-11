@@ -277,5 +277,10 @@ extern "C" {
             return __new< Tristate >( Tristate::Domain::True );
         return __new< Tristate >( Tristate::Domain::Unknown );
     }
+
+    Zero *__abstract_zero_assume( Zero * value, Zero *) {
+        // TODO implement
+        return value;
+    }
 } // extern C
 
