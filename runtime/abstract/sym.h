@@ -1,7 +1,6 @@
 #include <abstract/tristate.h>
+#include <abstract/common.h>
 #include <abstract/formula.h>
-
-#define _NOTHROW __attribute__((__nothrow__))
 
 extern "C" {
 

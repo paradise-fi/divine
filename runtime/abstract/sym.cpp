@@ -1,31 +1,18 @@
 #include <abstract/sym.h>
+#include <abstract/common.h>
 #include <dios.h>
 
 using namespace sym;
 using abstract::Tristate;
-
-template< typename T, typename ... Args >
-static T *__new( Args &&...args ) {
-    void *ptr = __vm_obj_make( sizeof( T ) );
-    new ( ptr ) T( std::forward< Args >( args )... );
-    return static_cast< T * >( ptr );
-}
+using abstract::__new;
+using abstract::mark;
+using abstract::weaken;
 
 template< typename T, typename ... Args >
 static Formula *__newf( Args &&...args ) {
     void *ptr = __vm_obj_make( sizeof( T ) );
     new ( ptr ) T( std::forward< Args >( args )... );
     return static_cast< Formula * >( ptr );
-}
-
-template< typename T >
-T *mark( T *ptr ) {
-    return static_cast< T * >( __dios_pointer_set_type( ptr, _VM_PT_Marked ) );
-}
-
-template< typename T >
-T *weaken( T *ptr ) {
-    return static_cast< T * >( __dios_pointer_set_type( ptr, _VM_PT_Weak ) );
 }
 
 struct State {

@@ -1,21 +1,33 @@
 #ifndef __ABSTRACT_COMMON_H_
 #define __ABSTRACT_COMMON_H_
+#include <dios.h>
 
 #ifdef __divine__
 #include <divine.h>
 #endif
 
+#define _NOTHROW __attribute__((__nothrow__))
+#define _ROOT __attribute__((__annotate__("brick.llvm.prune.root")))
+
 namespace abstract {
 
-template< typename T >
-T * allocate() {
-#ifdef __divine__
-        return static_cast< T * >( __vm_obj_make( sizeof( T ) ) );
-#else
-        return static_cast< T * >( std::malloc( sizeof( T ) ) );
-#endif
+template< typename T, typename ... Args >
+static T *__new( Args &&...args ) {
+    void *ptr = __vm_obj_make( sizeof( T ) );
+    new ( ptr ) T( std::forward< Args >( args )... );
+    return static_cast< T * >( ptr );
 }
 
-} //namespace abstract
+template< typename T >
+static T *mark( T *ptr ) {
+    return static_cast< T * >( __dios_pointer_set_type( ptr, _VM_PT_Marked ) );
+}
+
+template< typename T >
+static T *weaken( T *ptr ) {
+    return static_cast< T * >( __dios_pointer_set_type( ptr, _VM_PT_Weak ) );
+}
+
+} // namespace abstract
 
 #endif //__ABSTRACT_COMMON_H_
