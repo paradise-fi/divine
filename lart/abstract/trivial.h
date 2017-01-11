@@ -12,7 +12,7 @@ struct Trivial : Common {
         return Constrain();
     }
 
-    virtual void process( llvm::CallInst *, std::map< llvm::Value *, llvm::Value * > & );
+    virtual llvm::Value * process( llvm::CallInst *, std::vector< llvm::Value * > & );
 
     virtual bool is( llvm::Type * );
 

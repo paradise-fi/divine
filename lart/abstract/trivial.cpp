@@ -4,7 +4,9 @@
 namespace lart {
 namespace abstract {
 
-void Trivial::process( llvm::CallInst *, std::map< llvm::Value *, llvm::Value * > & ) {}
+llvm::Value * Trivial::process( llvm::CallInst *, std::vector< llvm::Value * > & ) {
+    return nullptr;
+}
 
 bool Trivial::is( llvm::Type * ) {
     //TODO

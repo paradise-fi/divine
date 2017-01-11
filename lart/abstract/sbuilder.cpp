@@ -135,8 +135,17 @@ void SubstitutionBuilder::substituteBranch( llvm::BranchInst * br ) {
 }
 void SubstitutionBuilder::substituteCall( llvm::CallInst * call ) {
     if ( intrinsic::is( call ) ) {
-        //TODO assume
-        abstraction->process( call, _values );
+   		std::vector < llvm::Value * > args;
+		for ( auto &arg : call->arg_operands() ) {
+			if ( types::isAbstract( arg->getType() ) && !_values.count( arg ) )
+				break;
+			auto lowered = types::isAbstract( arg->getType() ) ? _values[ arg ] : arg;
+			args.push_back( lowered );
+		}
+
+		//skip if do not have enough substituted arguments
+		if ( call->getNumArgOperands() == args.size() )
+        	_values[ call ] = abstraction->process( call, args );
     } else {
         processCall( call );
     }

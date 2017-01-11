@@ -37,34 +37,17 @@ Zero::Zero( llvm::Module & m ) : tristate( m ) {
     //             ->getPointerTo();
 }
 
-void Zero::process( llvm::CallInst * i, std::map< llvm::Value *, llvm::Value * > &vmap ) {
-    if ( intrinsic::isAssume( i ) ) {
-        vmap[ i ] = i;
-        return; //skip
-    }
-
-    auto domain = intrinsic::domain( i ) == "tristate" ? tristate.domain() : this->domain();
+llvm::Value * Zero::process( llvm::CallInst * i, std::vector< llvm::Value * > &args ) {
+    auto domain = intrinsic::domain( i ) == "tristate" ? "tristate" : this->domain();
     auto name = constructFunctionName( domain, i );
     llvm::Module * m = i->getParent()->getParent()->getParent();
 
     llvm::Function * fn = m->getFunction( name );
     assert( fn && "Function for intrinsic substitution was not found." );
+    assert( fn->arg_size() == args.size() );
 
-    std::vector < llvm::Value * > args;
-    for ( auto &arg : i->arg_operands() ) {
-        if ( types::isAbstract( arg->getType() ) && !vmap.count( arg ) )
-            break;
-        auto lowered = types::isAbstract( arg->getType() ) ? vmap[ arg ] : arg;
-        args.push_back( lowered );
-    }
-
-    //skip if do not have enough substituted arguments
-    if ( i->getNumArgOperands() == args.size() ) {
-        assert( fn->arg_size() == args.size() );
-        llvm::IRBuilder<> irb( i );
-        auto ncall = irb.CreateCall( fn, args );
-        vmap[ i ] = ncall;
-    }
+    llvm::IRBuilder<> irb( i );
+    return irb.CreateCall( fn, args );
 }
 
 bool Zero::is( llvm::Type * type ) {

@@ -51,9 +51,10 @@ struct Common
 
     /* The outside interface of abstraction passes.
      * Translate an abstract intrinsic call to a code block computing the effect of the
-     * abstract equivalent.
+     * abstract equivalent. Where 'args' are already abstracted arguments for instruction.
+     * Returns resulting value of abstracted instruction.
      */
-    virtual void process( llvm::CallInst *, std::map< llvm::Value *, llvm::Value * > & ) = 0;
+    virtual llvm::Value *process( llvm::CallInst *, std::vector< llvm::Value * > & args ) = 0;
 
     /* Decides whether a type is corresponding to this abstraction. */
     virtual bool is( llvm::Type * ) = 0;
