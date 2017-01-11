@@ -21,6 +21,7 @@ struct Job
 {
     virtual void start( int threads ) = 0;
     virtual void wait() = 0;
+    std::function< int64_t() > qsize;
 };
 
 enum class Order { PseudoBFS, DFS };
@@ -76,6 +77,8 @@ struct Search : Job
         shmem::StartDetector start;
         shmem::ApproximateCounter work;
         auto terminate = std::make_shared< std::atomic< bool > >( false );
+
+        qsize = [=]() { return queue.chunkSize * queue.q->q.size(); };
 
         auto builder = _builder;
         auto listener = _listener;

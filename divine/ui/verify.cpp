@@ -70,7 +70,7 @@ void Verify::run()
                                       { statecount += bld._states._l.inserts; } );
                       update_interval();
                       std::cerr << "\rsearching: " << statecount << " states found in " << time()
-                                << ", averaging " << fmt_avg() << "      ";
+                                << ", averaging " << fmt_avg() << ", queued: " << safety._search->qsize() << "      ";
                       sysinfo.updateAndCheckTimeLimit( _max_time );
                   } );
     safety.wait();
@@ -78,7 +78,7 @@ void Verify::run()
     statecount = safety._ex._states._s->used;
     update_interval();
     std::cerr << "\rfound " << statecount << " states in " << time() << ", averaging " << fmt_avg()
-              << "             " << std::endl << std::endl;
+              << "                             " << std::endl << std::endl;
 
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
     vm::setup::dbg_boot( dbg );
