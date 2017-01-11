@@ -84,13 +84,14 @@ struct Safety : ss::Job
         using Search = decltype( make_search() );
         _search.reset( new Search( std::move( make_search() ) ) );
         Search *search = dynamic_cast< Search * >( _search.get() );
+        search->start( threads );
+
         _monitor = [=]() { monit( *search ); };
         using msecs = std::chrono::milliseconds;
         auto do_monit = [=]() { monit( *search ); std::this_thread::sleep_for( msecs( 500 ) ); };
         using MonitLoop = brick::shmem::AsyncLambdaLoop< decltype( do_monit ) >;
         _monitor_loop = std::make_shared< MonitLoop >( do_monit );
         _monitor_loop->start();
-        search->start( threads );
     }
 
     void start( int threads ) override { start( threads, []( auto & ) {} ); }
