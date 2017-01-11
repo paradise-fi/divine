@@ -77,6 +77,44 @@ inline Zero * __abstract_zero_shift( Zero * a, Zero * b ) {
     return __abstract_zero_construct();
 }
 
+Zero * __abstract_zero_value_negate( Zero * a ) {
+    if ( a->value == Zero::Domain::ZeroValue )
+        a->value = Zero::Domain::NonzeroValue;
+    else if ( a->value == Zero::Domain::NonzeroValue )
+        a->value = Zero::Domain::ZeroValue;
+    //if unknonwn do nothing
+    return a;
+}
+
+Zero * __abstract_zero_value_and( Zero * a, Zero * b ) {
+    if ( a->value == Zero::Domain::Unknown )
+        return a;
+    if ( b->value == Zero::Domain::Unknown )
+        return b;
+    if ( a->value == Zero::Domain::ZeroValue )
+        return a;
+    if ( b->value == Zero::Domain::ZeroValue )
+        return b;
+    return a;
+}
+
+Zero * __abstract_zero_value_or( Zero * a, Zero * b ) {
+    if ( a->value == Zero::Domain::NonzeroValue )
+        return a;
+    if ( b->value == Zero::Domain::NonzeroValue )
+        return b;
+    if ( a->value == Zero::Domain::Unknown )
+        return a;
+    if ( b->value == Zero::Domain::Unknown )
+        return b;
+    return a;
+}
+
+#define __abstract_zero_lift_type( name, type ) \
+Zero *  __abstract_zero_lift_##name( type val ) _ROOT { \
+    return __abstract_zero_construct( val ); \
+}
+
 #ifdef __divine__
 
 #define __abstract_zero_lower_type( name, type ) \
@@ -118,23 +156,17 @@ extern "C" {
         (*ptr)->value = val->value;
     }
 
-    Zero * __abstract_zero_lift( int i ) _ROOT {
-        return __abstract_zero_construct( i );
-    }
+    __abstract_zero_lift_type( i1, bool )
+    __abstract_zero_lift_type( i8, uint8_t )
+    __abstract_zero_lift_type( i16, uint16_t )
+    __abstract_zero_lift_type( i32, uint32_t )
+    __abstract_zero_lift_type( i64, uint64_t )
 
     __abstract_zero_lower_type( i1,  bool )
     __abstract_zero_lower_type( i8,  uint8_t )
     __abstract_zero_lower_type( i16, uint16_t )
     __abstract_zero_lower_type( i32, uint32_t )
     __abstract_zero_lower_type( i64, uint64_t )
-
-    Zero * __abstract_zero_from_tristate( Tristate * t ) _ROOT {
-        if ( t->value == Tristate::Domain::True )
-            return __abstract_zero_construct( 1 );
-        if ( t->value == Tristate::Domain::False )
-            return __abstract_zero_construct( 0 );
-        return __abstract_zero_construct();
-    }
 
     Zero * __abstract_zero_add( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_meet( a, b );
@@ -210,59 +242,67 @@ extern "C" {
     }
 
     // icmp operators
-    Tristate * __abstract_zero_icmp_eq( Zero * a, Zero * b ) _ROOT {
+    Zero * __abstract_zero_icmp_eq( Zero * a, Zero * b ) _ROOT {
         if ( a->value == Zero::Domain::ZeroValue && b->value == Zero::Domain::ZeroValue )
-            return __abstract_tristate_construct( true );
-        return __abstract_tristate_create();
+            return __abstract_zero_construct( true );
+        return __abstract_zero_construct();
     }
 
-    Tristate * __abstract_zero_icmp_ne( Zero * a, Zero * b ) _ROOT {
-        return __abstract_tristate_negate( __abstract_zero_icmp_eq( a, b ) );
+    Zero * __abstract_zero_icmp_ne( Zero * a, Zero * b ) _ROOT {
+        return __abstract_zero_value_negate( __abstract_zero_icmp_eq( a, b ) );
     }
 
-    Tristate * __abstract_zero_icmp_ugt( Zero * a, Zero * b ) _ROOT {
+    Zero * __abstract_zero_icmp_ugt( Zero * a, Zero * b ) _ROOT {
         if ( a->value == Zero::Domain::Unknown || b->value == Zero::Domain::Unknown )
-            return __abstract_tristate_create();
+            return __abstract_zero_construct();
         else if ( a->value == Zero::Domain::NonzeroValue && b->value == Zero::Domain::ZeroValue )
-            return __abstract_tristate_construct( true );
+            return __abstract_zero_construct( true );
         else if ( b->value == Zero::Domain::NonzeroValue && a->value == Zero::Domain::ZeroValue )
-            return __abstract_tristate_construct( false );
+            return __abstract_zero_construct( false );
         else
-            return __abstract_tristate_create();
+            return __abstract_zero_construct();
     }
 
-    Tristate * __abstract_zero_icmp_uge( Zero * a, Zero * b ) _ROOT {
-        return __abstract_tristate_or( __abstract_zero_icmp_eq( a, b ),
-                                       __abstract_zero_icmp_ugt( a, b ) );
+    Zero * __abstract_zero_icmp_uge( Zero * a, Zero * b ) _ROOT {
+        return __abstract_zero_value_or( __abstract_zero_icmp_eq( a, b ),
+                                         __abstract_zero_icmp_ugt( a, b ) );
     }
 
-    Tristate * __abstract_zero_icmp_ult( Zero * a, Zero * b ) _ROOT {
+    Zero * __abstract_zero_icmp_ult( Zero * a, Zero * b ) _ROOT {
        return __abstract_zero_icmp_uge( b, a );
     }
 
-    Tristate * __abstract_zero_icmp_ule( Zero * a, Zero * b ) _ROOT {
-        return __abstract_tristate_or( __abstract_zero_icmp_eq( a, b ),
-                                        __abstract_zero_icmp_ult( a, b ) );
+    Zero * __abstract_zero_icmp_ule( Zero * a, Zero * b ) _ROOT {
+        return __abstract_zero_value_or( __abstract_zero_icmp_eq( a, b ),
+                                         __abstract_zero_icmp_ult( a, b ) );
     }
 
-    Tristate * __abstract_zero_icmp_sgt( Zero * a, Zero * b ) _ROOT {
+    Zero * __abstract_zero_icmp_sgt( Zero * a, Zero * b ) _ROOT {
         if ( a->value == Zero::Domain::ZeroValue && b->value == Zero::Domain::ZeroValue )
-            return __abstract_tristate_construct( false );
-        return __abstract_tristate_create();
+            return __abstract_zero_construct( false );
+        return __abstract_zero_construct();
     }
 
-    Tristate * __abstract_zero_icmp_sge( Zero * a, Zero * b ) _ROOT {
-        return __abstract_tristate_or( __abstract_zero_icmp_eq( a, b ),
-                                       __abstract_zero_icmp_sgt( a, b ) );
+    Zero * __abstract_zero_icmp_sge( Zero * a, Zero * b ) _ROOT {
+        return __abstract_zero_value_or( __abstract_zero_icmp_eq( a, b ),
+                                         __abstract_zero_icmp_sgt( a, b ) );
     }
 
-    Tristate * __abstract_zero_icmp_slt( Zero * a, Zero * b ) _ROOT {
+    Zero * __abstract_zero_icmp_slt( Zero * a, Zero * b ) _ROOT {
         return __abstract_zero_icmp_sge( b, a );
     }
 
-    Tristate * __abstract_zero_icmp_sle( Zero * a, Zero * b ) _ROOT {
-        return __abstract_tristate_or( __abstract_zero_icmp_eq( a, b ),
-                                       __abstract_zero_icmp_slt( a, b ) );
+    Zero * __abstract_zero_icmp_sle( Zero * a, Zero * b ) _ROOT {
+        return __abstract_zero_value_or( __abstract_zero_icmp_eq( a, b ),
+                                         __abstract_zero_icmp_slt( a, b ) );
+    }
+
+    Tristate * __abstract_zero_bool_to_tristate( Zero * a ) _ROOT {
+        if ( a->value == Zero::Domain::ZeroValue )
+            return __abstract_tristate_construct( Tristate::Domain::False );
+        if ( a->value == Zero::Domain::NonzeroValue )
+            return __abstract_tristate_construct( Tristate::Domain::True );
+        return __abstract_tristate_construct( Tristate::Domain::Unknown );
     }
 } // extern C
 } // namespace abstract

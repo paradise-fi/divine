@@ -36,7 +36,7 @@ static Tristate * __abstract_tristate_construct( bool b ) {
     return __abstract_tristate_construct( value );
 }
 
-static Tristate * __abstract_tristate_negate( Tristate * t ) {
+Tristate * __abstract_tristate_negate( Tristate * t ) {
     if ( t->value == Tristate::Domain::True )
         t->value = Tristate::Domain::False;
     else if ( t->value == Tristate::Domain::False )
@@ -45,7 +45,7 @@ static Tristate * __abstract_tristate_negate( Tristate * t ) {
     return t;
 }
 
-static Tristate * __abstract_tristate_and( Tristate * a, Tristate * b ) {
+Tristate * __abstract_tristate_and( Tristate * a, Tristate * b ) {
     if ( a->value == Tristate::Domain::Unknown )
         return a;
     if ( b->value == Tristate::Domain::Unknown )
@@ -57,7 +57,7 @@ static Tristate * __abstract_tristate_and( Tristate * a, Tristate * b ) {
     return a;
 }
 
-static Tristate * __abstract_tristate_or( Tristate * a, Tristate * b ) {
+Tristate * __abstract_tristate_or( Tristate * a, Tristate * b ) {
     if ( a->value == Tristate::Domain::True )
         return a;
     if ( b->value == Tristate::Domain::True )
