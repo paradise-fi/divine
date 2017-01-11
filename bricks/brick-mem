@@ -335,15 +335,15 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 
         std::cerr << "~Pool(): " << count << " objects not freed:" << std::endl;
         for ( size_t i = 0; i < sizecount.size(); ++ i )
-            if ( sizecount[i] || sizebytes[ i ] ) {
+            if ( sizecount[i] || sizebytes[i] ) {
                 int64_t c = sizecount[i];
                 int64_t b = c * i;
                 int64_t t = sizebytes[i];
                 wasted += (t - b);
-                std::cerr << "   " << std::setw(8) << c << " object(s) of size " << i
-                          << " for " << b / 1024 << "/" << t / 1024 << "kB" << std::endl;
+                std::cerr << "   " << std::setw(8) << c << " object(s) of size " << std::setw(7) << i
+                          << " for " << std::setw(5) << b / 1024 << "/" << std::setw(5) << t / 1024 << " kbytes" << std::endl;
             }
-        std::cerr << " " << (bytes / 1024) << " kbytes held; " << wasted / 1024 << "kB wasted" << std::endl;
+        std::cerr << " " << ( bytes - wasted ) / 1024 << " kbytes used + " << wasted / 1024 << " kbytes wasted" << std::endl;
     }
 
 #pragma GCC diagnostic pop
