@@ -272,8 +272,6 @@ llvm::Value * AbstractBuilder::createStore( llvm::StoreInst * i ) {
              : i->getOperand( 1 );
 
     llvm::IRBuilder<> irb( i );
-    //TODO check why
-    //if ( llvm::isa< llvm::Argument >( val ) || llvm::isa< llvm::Constant >( val ) )
     if ( !types::isAbstract( val->getType() ) )
         val = lift( val, irb );
     if ( !types::isAbstract( ptr->getType() ) )
@@ -302,7 +300,7 @@ llvm::Value * AbstractBuilder::createICmp( llvm::ICmpInst * i ) {
              + types::name( type );
     llvm::IRBuilder<> irb( i );
     auto call = intrinsic::anonymous( i->getModule(), irb,
-                types::Tristate::get( i->getContext() ), args );
+                types::IntegerType::get( i->getContext(), 1 ), args );
     _anonymous[ call->getCalledFunction() ] = tag;
     return call;
 }
@@ -331,20 +329,11 @@ llvm::Value * AbstractBuilder::createBranch( llvm::BranchInst * i ) {
         return irb.CreateBr( dest );
     } else {
         auto cond = _values.count( i->getCondition() )
-                  ? lower( _values[ i->getCondition() ], irb )
+                  ? lower( toTristate( _values[ i->getCondition() ], irb ), irb )
                   : i->getCondition();
         auto tbb = i->getSuccessor( 0 );
         auto fbb = i->getSuccessor( 1 );
         return irb.CreateCondBr( cond, tbb, fbb );
-
-        /*  TODO check why if:
-            if ( types::isAbstractType( cond->getType() )
-                 || value_store.contains( i->getCondition() ) )
-                cond = lower( i, i->getCondition() );
-            auto tbb = i->getSuccessor( 0 );
-            auto fbb = i->getSuccessor( 1 );
-            return irb.CreateCondBr( cond, tbb, fbb );
-        }*/
     }
 }
 
@@ -414,7 +403,9 @@ llvm::Value * AbstractBuilder::createCall( llvm::CallInst * i ) {
     if ( intrinsic::isLift( i ) )
         return processLiftCall( i );
     if ( intrinsic::isLower( i ) )
-        return processLowerCall( i );
+        return clone( i );
+    if ( intrinsic::name( i ) == "bool_to_tristate" )
+        return clone( i );
     if ( i->getCalledFunction()->isIntrinsic() )
         return processIntrinsic( llvm::cast< llvm::IntrinsicInst >( i ) );
     if ( _anonymous.count( i->getCalledFunction() ) )
@@ -463,13 +454,23 @@ llvm::Value * AbstractBuilder::lift( llvm::Value * v, llvm::IRBuilder<> & irb ) 
     return call;
 }
 
+llvm::Value * AbstractBuilder::toTristate( llvm::Value * v, llvm::IRBuilder<> & irb ) {
+    assert( types::IntegerType::isa( v->getType(), 1 ) );
+    auto tristate = types::Tristate::get( v->getContext() );
+    auto fty = llvm::FunctionType::get( tristate, { v->getType() }, false );
+    auto tag = "lart." + types::domain( v->getType() ) + ".bool_to_tristate";
+    auto m = irb.GetInsertBlock()->getModule();
+    auto fn = m->getOrInsertFunction( tag, fty );
+    return irb.CreateCall( fn , v );
+}
+
 llvm::Value * AbstractBuilder::processLiftCall( llvm::CallInst * i ) {
     assert( _values[ i->getArgOperand( 0 ) ] );
     i->replaceAllUsesWith( _values[ i->getArgOperand( 0 ) ] );
     return i;
 }
 
-llvm::Value * AbstractBuilder::processLowerCall( llvm::CallInst * i ) {
+llvm::Value * AbstractBuilder::clone( llvm::CallInst * i ) {
     auto clone = i->clone();
     clone->insertBefore( i );
     i->replaceAllUsesWith( clone );
@@ -545,7 +546,6 @@ bool AbstractBuilder::needToPropagate( llvm::CallInst * i ) {
        || ( i->getCalledFunction()->isIntrinsic() )
        || ( _anonymous.count( i->getCalledFunction() ) ) )
        return false;
-    //TODO refactor
     auto args = _detail::remapArgs( i, _values );
     std::vector< llvm::Type * > types = arg_types( i );
 

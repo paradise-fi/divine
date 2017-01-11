@@ -346,12 +346,12 @@ struct Abstraction {
                             return 0;
                     })";
         auto m = test_abstraction( annotation + s );
-
         auto sgt = m->getFunction( "lart.abstract.icmp_sgt.i32" );
-        ASSERT_EQ( sgt->getReturnType(), m->getTypeByName( "lart.tristate" ) );
-
+        ASSERT( abstract::types::IntegerType::isa( sgt->getReturnType(), 1 ) );
+        auto to_tristate = m->getFunction( "lart.abstract.bool_to_tristate" );
+        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *sgt->user_begin() );
         auto lower = m->getFunction( "lart.tristate.lower" );
-        ASSERT_EQ( lower->user_begin()->getOperand( 0 ), *sgt->user_begin() );
+        ASSERT_EQ( lower->user_begin()->getOperand( 0 ), *to_tristate->user_begin() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
@@ -455,11 +455,12 @@ struct Assume {
                     })";
         auto m = test_assume( annotation + s );
         auto icmp = m->getFunction( "lart.abstract.icmp_sgt.i32" );
-        ASSERT( abstract::types::Tristate::isa( icmp->getReturnType() ) );
-
+        ASSERT( abstract::types::IntegerType::isa( icmp->getReturnType(), 1 ) );
+        auto to_tristate = m->getFunction( "lart.abstract.bool_to_tristate" );
+        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
         auto lower = llvm::cast< llvm::Instruction >(
                      *m->getFunction( "lart.tristate.lower" )->user_begin() );
-        ASSERT_EQ( lower->getOperand( 0 ), *icmp->user_begin() );
+        ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
 
         testBranching( lower );
     }
@@ -475,11 +476,12 @@ struct Assume {
         auto m = test_assume( annotation + s );
 
         auto icmp = m->getFunction( "lart.abstract.icmp_ne.i32" );
-        ASSERT( abstract::types::Tristate::isa( icmp->getReturnType() ) );
-
+        ASSERT( abstract::types::IntegerType::isa( icmp->getReturnType(), 1 ) );
+        auto to_tristate = m->getFunction( "lart.abstract.bool_to_tristate" );
+        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
         auto lower = llvm::cast< llvm::Instruction >(
                      *m->getFunction( "lart.tristate.lower" )->user_begin() );
-        ASSERT_EQ( lower->getOperand( 0 ), *icmp->user_begin() );
+        ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
 
         testBranching( lower );
     }
@@ -541,12 +543,15 @@ struct Substitution {
                     })";
         auto m = test_zero_substitution( annotation + s );
 
-        auto sgt = m->getFunction( "__abstract_zero_icmp_sgt" );
-        ASSERT_EQ( sgt->getReturnType(),
-                   m->getTypeByName( "struct.abstract::Tristate" )->getPointerTo() );
+        auto icmp = m->getFunction( "__abstract_zero_icmp_sgt" );
+        ASSERT_EQ( icmp->getReturnType(),
+                   m->getTypeByName( "struct.abstract::Zero" )->getPointerTo() );
+        auto to_tristate = m->getFunction( "__abstract_zero_bool_to_tristate" );
+        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
+        auto lower = llvm::cast< llvm::Instruction >(
+                     *m->getFunction( "__abstract_tristate_lower" )->user_begin() );
+        ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
 
-        auto lower = m->getFunction( "__abstract_tristate_lower" );
-        ASSERT_EQ( lower->user_begin()->getOperand( 0 ), *sgt->user_begin() );
         ASSERT( ! containsUndefValue( *m ) );
     }
 

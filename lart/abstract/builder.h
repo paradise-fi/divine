@@ -48,9 +48,11 @@ struct AbstractBuilder {
 
     llvm::Value * lower( llvm::Value *, llvm::IRBuilder<> & );
     llvm::Value * lift( llvm::Value *, llvm::IRBuilder<> & );
+    llvm::Value * toTristate( llvm::Value * v, llvm::IRBuilder<> & );
+
+    llvm::Value * clone( llvm::CallInst * );
 
     llvm::Value * processLiftCall( llvm::CallInst * );
-    llvm::Value * processLowerCall( llvm::CallInst * );
     llvm::Value * processIntrinsic( llvm::CallInst * );
 	llvm::Value * processAnonymous( llvm::CallInst * );
     llvm::Value * processCall( llvm::CallInst * );

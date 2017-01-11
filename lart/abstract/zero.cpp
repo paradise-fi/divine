@@ -51,20 +51,7 @@ void Zero::process( llvm::CallInst * i, std::map< llvm::Value *, llvm::Value * >
         if ( types::isAbstract( arg->getType() ) && !vmap.count( arg ) )
             break;
         auto lowered = types::isAbstract( arg->getType() ) ? vmap[ arg ] : arg;
-
-        if ( from_tristate_map.count( lowered ) )
-            lowered = from_tristate_map[ lowered ];
-
-        //change domain of an argument from tristate to zero
-        if ( intrinsic::domain( i ) != "tristate" && tristate.is( lowered->getType() ) ) {
-            auto ft = m->getFunction( "__abstract_zero_from_tristate" );
-            llvm::IRBuilder<> irb( i );
-            auto zero = irb.CreateCall( ft, lowered );
-            from_tristate_map[ lowered ] = zero;
-            args.push_back( zero );
-        } else {
-            args.push_back( lowered );
-        }
+        args.push_back( lowered );
     }
 
     //skip if do not have enough substituted arguments
