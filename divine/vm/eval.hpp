@@ -983,7 +983,7 @@ struct Eval
 
     void implement_hypercall_syscall()
     {
-        int idx = 0, action;
+        int idx = 0;
 
         std::vector< long > args;
         std::vector< bool > argt;
@@ -994,30 +994,32 @@ struct Eval
         auto type = [&]( int action ) { return action & ~( _VM_SC_In | _VM_SC_Out ); };
         auto in   = [&]( int action ) { return action & _VM_SC_In; };
         auto out  = [&]( int action ) { return action & _VM_SC_Out; };
-        auto next = [&]() { idx += type( action ) == _VM_SC_Mem ? 2 : 1; };
+        auto next = [&]( int action ) { idx += type( action ) == _VM_SC_Mem ? 2 : 1; };
 
         auto prepare = [&]( int action )
         {
+            if ( type( action ) < 0 || type( action ) > 2 || ( !in( action ) && !out( action ) ) )
+            {
+                fault( _VM_F_Hypercall ) << "illegal syscall parameter no " << idx << ": " << action;
+                return false;
+            }
+
+            if ( in( action ) || type( action ) == _VM_SC_Mem )
+                argt.push_back( type( action ) != _VM_SC_Int32 );
+
             if ( type( action ) == _VM_SC_Int32 && in( action ) )
-            {
                 args.push_back( operandCk< IntV >( idx ).cooked() );
-                argt.push_back( false );
-            }
             else if ( type( action ) == _VM_SC_Int64 && in( action ) )
-            {
                 args.push_back( operandCk< PtrIntV >( idx ).cooked() );
-                argt.push_back( true );
-            }
             else if ( type( action ) == _VM_SC_Mem )
             {
                 int size = operandCk< IntV >( idx ).cooked();
                 bufs.push_back( new char[ size ] );
                 args.push_back( long( bufs.back() ) );
-                argt.push_back( true );
                 auto ptr = operand< PointerV >( idx + 1 );
                 CharV ch;
                 if ( !boundcheck( ptr, size, out( action ) ) )
-                    return;
+                    return false;
                 ptr = PointerV( ptr2h( ptr ) );
                 if ( in( action ) )
                     for ( int i = 0; i < size; ++i )
@@ -1026,22 +1028,43 @@ struct Eval
                         if ( !ch.defined() )
                         {
                             fault( _VM_F_Hypercall ) << "uninitialised byte in __vm_syscall";
-                            return;
+                            return false;
                         }
                         bufs.back()[ i ] = ch.cooked();
                     }
-                else
-                    NOT_IMPLEMENTED();
             }
-            else if ( in( action ) )
+            else if ( out( action ) )
             {
-                fault( _VM_F_Hypercall ) << "illegal syscall parameter no " << idx << ": " << action;
-                return;
+                auto ptr = operand< PointerV >( idx );
+                if ( !boundcheck( ptr, type( action ) == _VM_SC_Int32 ? 4 : 8, true ) )
+                    return false;
             }
+            return true;
         };
 
-        auto process = [&]( int )
+        int buf_idx = 0;
+
+        auto process = [&]( int action, long val )
         {
+            if ( type( action ) == _VM_SC_Mem )
+            {
+                if ( out( action ) )
+                {
+                    int size = operand< IntV >( idx ).cooked();
+                    auto ptr = PointerV( ptr2h( operand< PointerV >( idx + 1 ) ) );
+                    for ( int i = 0; i < size; ++i )
+                        heap().write_shift( ptr, CharV( bufs[ buf_idx ][ i ] ) );
+                }
+                ++ buf_idx;
+            }
+            else if ( out( action ) )
+            {
+                auto ptr = ptr2h( operand< PointerV >( idx ) );
+                if ( type( action ) == _VM_SC_Int32 )
+                    heap().write( ptr, IntV( val ) );
+                else
+                    heap().write( ptr, PtrIntV( val ) );
+            }
         };
 
         if ( instruction().values.size() < 3 )
@@ -1054,22 +1077,24 @@ struct Eval
 
         while ( idx < instruction().values.size() - 2 )
         {
-            actions.push_back( action = operandCk< IntV >( idx++ ).cooked() );
-            prepare( action );
-            next();
+            actions.push_back( operandCk< IntV >( idx++ ).cooked() );
+            if ( !prepare( actions.back() ) )
+                return;
+            next( actions.back() );
         }
 
-        /* auto rv = */ syscall_helper( id.cooked(), args, argt );
+        auto rv = syscall_helper( id.cooked(), args, argt );
         result( IntV( errno ) );
 
-        idx = 1;
-        // process( rv_action );
+        idx = 2;
+        process( actions[ 0 ], rv );
+        next( actions[ 0 ] );
 
-        for ( auto act : actions )
+        for ( int i = 1; i < int( actions.size() ); ++i )
         {
-            ++ idx;
-            process( act );
-            next();
+            idx ++; // skip action
+            process( actions[ i ], args[ i - 1 ] );
+            next( actions[ i ] );
         }
 
         for ( auto buf : bufs )
