@@ -123,10 +123,6 @@ struct Manager {
         _umask = Mode::GRANTS & mask;
     }
 
-    DirectoryDescriptor *openDirectory( int fd );
-    DirectoryDescriptor *getDirectory( void *descriptor );
-    void closeDirectory( void *descriptor );
-
     int socket( SocketType type, Flags< flags::Open > fl );
     std::pair< int, int > socketpair( SocketType type, Flags< flags::Open > fl );
     void bind( int sockfd, Socket::Address address );
@@ -151,7 +147,6 @@ private:
     WeakNode _currentDirectory;
     std::array< Node, 3 > _standardIO;
     __dios::Vector< std::shared_ptr< FileDescriptor > > _openFD;
-    __dios::List< DirectoryDescriptor > _openDD;
 
     unsigned short _umask;
 

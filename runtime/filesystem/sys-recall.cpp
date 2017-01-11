@@ -77,26 +77,6 @@ void sync( void )
 
 }
 
-int scandir( const char *path, struct dirent ***namelist,
-             int (*filter)( const struct dirent * ),
-             int (*compare)( const struct dirent **, const struct dirent ** ))
-{
-	int ret;
-	__dios_syscall( __dios::_SC_scandir, &ret, path, namelist, filter, compare );
-	return ret;
-}
-
-void seekdir( DIR * dirfd, long offt )
-{
-	__dios_syscall( __dios::_SC_seekdir,nullptr, dirfd, offt );
-}
-
-
-void rewinddir( DIR * dirfd )
-{
-	__dios_syscall( __dios::_SC_rewinddir,nullptr, dirfd );
-}
-
 
 ssize_t recvfrom( int fd, void *buf, size_t n, int flags,
                          struct sockaddr *addr, socklen_t *addrlen )

@@ -47,6 +47,7 @@ enum class Open {
     Append      =  128,
     SymNofollow =  256,
     NonBlock    =  512,
+    Directory   = 1024,
     Invalid     = 4096,
 };
 

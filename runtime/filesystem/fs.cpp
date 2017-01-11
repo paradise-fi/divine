@@ -10,7 +10,6 @@
 #include <bits/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -22,11 +21,18 @@
 
 # define FS_MALLOC( x ) __vm_obj_make( x )
 # define FS_PROBLEM( msg ) __dios_fault( _VM_Fault::_VM_F_Assert, msg )
+# define FS_FREE( x ) __dios::delete_object( x )
 
 #else
 # define FS_MALLOC( x ) std::malloc( x )
 # define FS_PROBLEM( msg )
+# define FS_FREE( x ) std::free( x )
+
 #endif
+
+struct DirWrapper {
+    int fd;
+};
 
 using divine::fs::Error;
 // divine::fs::VFS vfs{};
@@ -181,6 +187,9 @@ namespace __sc {
             f |= divine::fs::flags::Open::SymNofollow;
         if ( flags & O_NONBLOCK )
             f |= divine::fs::flags::Open::NonBlock;
+        if ( flags & O_DIRECTORY )
+            f |= divine::fs::flags::Open::Directory;
+        
 
         try {
             *ret = vfs->instance( ).openFileAt( AT_FDCWD, path, f, mode );
@@ -1027,225 +1036,6 @@ namespace __sc {
     }
 
 
-    void closedir( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto ret = static_cast< int* >( retval );
-        auto dirp = va_arg( vl, DIR* );
-        auto vfs = ctx.vfs;
-
-
-        try {
-            vfs->instance().closeDirectory( dirp );
-            *ret = 0;
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = -1;
-        }
-    }
-
-    void dirfd( __dios::Context& ctx, int* err, void* retval, va_list vl  )
-    {
-        auto ret = static_cast< int* >( retval );
-        auto dirp = va_arg( vl, DIR* );
-        auto vfs = ctx.vfs;
-
-        try {
-            *ret = vfs->instance().getDirectory( dirp )->fd();
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = -1;
-        }
-    }
-
-    void fdopendir( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto ret = static_cast< DIR** >( retval );
-        auto fd = va_arg( vl, int );
-        auto vfs = ctx.vfs;
-
-        try {
-            *ret = vfs->instance().openDirectory( fd );
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = nullptr;
-        }
-    }
-
-
-    void opendir( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto ret = static_cast< DIR** >( retval );
-        auto path = va_arg( vl, const char* );
-        auto vfs = ctx.vfs;
-
-        using namespace divine::fs::flags;
-        divine::fs::Flags< Open > f = Open::Read;
-        try {
-            int fd = vfs->instance().openFileAt( divine::fs::CURRENT_DIRECTORY, path, f, 0 );
-            *ret = vfs->instance().openDirectory( fd );
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = nullptr;
-        }
-    }
-
-    void readdir( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto ret = static_cast<struct dirent **>( retval );
-        auto dirp = va_arg( vl, DIR* );
-        static struct dirent entry;
-        auto vfs = ctx.vfs;
-
-        try {
-            auto dir = vfs->instance().getDirectory( dirp );
-            auto ent = dir->get();
-
-            if ( !ent ){
-                *ret = nullptr;
-                return;
-            }
-
-            entry.d_ino = ent->ino();
-            char *x = std::copy( ent->name().begin(), ent->name().end(), entry.d_name );
-            *x = '\0';
-            dir->next();
-            *ret = &entry;
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = nullptr;
-        }
-    }
-
-    void readdir_r( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto ret = static_cast< int* >( retval );
-        auto dirp = va_arg( vl, DIR* );
-        auto entry = va_arg( vl, struct dirent* );
-        auto result = va_arg( vl, struct dirent** );
-        auto vfs = ctx.vfs;
-
-        try {
-            auto dir = vfs->instance().getDirectory( dirp );
-            auto ent = dir->get();
-            if ( ent ) {
-                entry->d_ino = ent->ino();
-                char *x = std::copy( ent->name().begin(), ent->name().end(), entry->d_name );
-                *x = '\0';
-                *result = entry;
-                dir->next();
-            }
-            else
-                *result = nullptr;
-            *ret = 0;
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = e.code();
-        }
-    }
-
-    void rewinddir( __dios::Context& ctx, int* err, void* /*retval*/, va_list vl )
-    {
-        auto dirp = va_arg( vl, DIR* );
-        auto vfs = ctx.vfs;
-        va_end( vl );
-
-        try {
-            vfs->instance().getDirectory( dirp )->rewind();
-        } catch ( Error & er ) {
-            *err = er.code();
-        }
-    }
-
-    void scandir( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        typedef int (*filterFc)( const struct dirent * );
-        typedef int (*compareFc)( const struct dirent **, const struct dirent ** );
-
-        auto ret = static_cast< int* >( retval );
-        auto path = va_arg( vl, const char* );
-        auto namelist = va_arg( vl, struct dirent *** );
-        auto filter = va_arg( vl,  filterFc );
-        auto compare = va_arg( vl,  compareFc );
-        auto vfs = ctx.vfs;
-
-        using namespace divine::fs::flags;
-        divine::fs::Flags< Open > f = Open::Read;
-        DIR *dirp = nullptr;
-        try {
-            int length = 0;
-            int fd = vfs->instance().openFileAt( divine::fs::CURRENT_DIRECTORY, path, f, 0 );
-            dirp = vfs->instance().openDirectory( fd );
-
-            struct dirent **entries = nullptr;
-            struct dirent *workingEntry = static_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent ) ) );
-
-            while ( true ) {
-                auto dir = vfs->instance().getDirectory( dirp );
-                auto ent = dir->get();
-                if ( !ent )
-                    break;
-
-                workingEntry->d_ino = ent->ino();
-                char *x = std::copy( ent->name().begin(), ent->name().end(), workingEntry->d_name );
-                *x = '\0';
-                dir->next();
-
-                if ( filter && !filter( workingEntry ) )
-                    continue;
-
-                struct dirent **newEntries = static_cast< struct dirent ** >( FS_MALLOC( ( length + 1 ) * sizeof( struct dirent * ) ) );
-                if ( length )
-                    std::memcpy( newEntries, entries, length * sizeof( struct dirent * ) );
-                std::swap( entries, newEntries );
-                std::free( newEntries );
-                entries[ length ] = workingEntry;
-                workingEntry = static_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent ) ) );
-                ++length;
-            }
-            std::free( workingEntry );
-            vfs->instance().closeDirectory( dirp );
-
-            typedef int( *cmp )( const void *, const void * );
-            std::qsort( entries, length, sizeof( struct dirent * ), reinterpret_cast< cmp >( compare ) );
-
-            *namelist = entries;
-            *ret = length;
-        } catch ( Error & e ) {
-            *err = e.code();
-            if ( dirp )
-                vfs->instance().closeDirectory( dirp );
-            *ret = -1;
-        }
-    }
-
-    void telldir( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto ret = static_cast< long* >( retval );
-        auto dirp = va_arg( vl, DIR* );
-        auto vfs = ctx.vfs;
-
-        try {
-            *ret = vfs->instance().getDirectory( dirp )->tell();
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = -1;
-        }
-    }
-
-    void seekdir( __dios::Context& ctx, int* err, void* /*retval*/, va_list vl )
-    {
-        auto dirp = va_arg( vl, DIR* );
-        auto offset = va_arg( vl, long );
-        auto vfs = ctx.vfs;
-
-        try {
-            vfs->instance().getDirectory( dirp )->seek( offset );
-        } catch ( Error & e ) {
-            *err = e.code();
-        }
-    }
-
-
     void socket( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         using SocketType = divine::fs::SocketType;
@@ -1757,6 +1547,155 @@ extern "C" {
             to += 2;
             from += 2;
         }
+    }
+
+    DIR *fdopendir( int fd )
+    {
+        using divine::fs::Mode;
+        struct stat fdStat;
+
+        int result = fstat( fd, &fdStat );
+        if ( result == -1 )
+            return nullptr;
+
+        Mode fdMode( fdStat.st_mode );
+        if( !fdMode.isDirectory( ) ) {
+            errno = ENOTDIR;
+            return nullptr;
+        }
+
+        int newFD = dup( fd );
+        if ( newFD > 0 ) {
+            DirWrapper *wrapper = reinterpret_cast< DirWrapper* >( FS_MALLOC( sizeof( struct DirWrapper ) ) );
+            wrapper->fd = newFD;
+            return wrapper;
+        }else {
+            errno = EBADF;
+            return nullptr;
+        }
+        
+    }
+
+    DIR *opendir( const char *name )
+    {
+        int fd = open( name, O_DIRECTORY );
+        if ( fd > 0 ) {
+            DirWrapper *wrapper = reinterpret_cast< DirWrapper* >( FS_MALLOC( sizeof( struct DirWrapper ) ) );
+            wrapper->fd = fd;
+            return wrapper;
+        }else {
+            return nullptr;
+        }
+    }
+
+    int closedir(DIR *dirp)
+    {
+        if ( dirp == nullptr )
+        {
+            errno = EBADF;
+            return -1;
+        }
+
+        DirWrapper *wrapper = reinterpret_cast< DirWrapper* >( dirp );
+        int fd = wrapper->fd;
+        FS_FREE( wrapper );
+        return close( fd );
+    }
+
+    int dirfd( DIR *dirp )
+    {
+        DirWrapper *wrapper = reinterpret_cast< DirWrapper* >( dirp );
+        return wrapper->fd;
+    }
+
+    struct dirent *readdir( DIR *dirp )
+    {
+        if ( !dirp ) {
+            errno = EBADF;
+            return nullptr;
+        }
+
+        struct dirent* retval = reinterpret_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent )));
+        DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
+        char *dirInfo = reinterpret_cast< char * >( retval );
+
+        int res = read( wrapper->fd, dirInfo, sizeof( struct dirent ) );
+        return ( res > 0 ) ? retval : nullptr;
+    }
+
+    int readdir_r( DIR *dirp, struct dirent *entry, struct dirent **result )
+    {
+        DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
+        char *dirInfo = reinterpret_cast< char * >(entry);
+
+        int res = read(wrapper->fd, dirInfo, sizeof( struct dirent ));
+        *result = ( res == sizeof( struct dirent ) ) ? entry : nullptr;
+        return (res >= 0) ? 0 : -1;
+    }
+
+    void rewinddir( DIR *dirp )
+    {
+        DirWrapper *wrapper = reinterpret_cast< DirWrapper * >(dirp);
+        lseek( wrapper->fd, 0, SEEK_SET );
+    }
+
+    int scandir( const char *path, struct dirent ***namelist,
+              int ( *filter )( const struct dirent * ),
+              int ( *compare )( const struct dirent **, const struct dirent ** ) )
+    {
+
+        using namespace divine::fs::flags;
+        int length = 0;
+        DIR *dirp = opendir( path );
+
+        if( !dirp ){
+            return -1;
+        }
+
+        struct dirent **entries = nullptr;
+        struct dirent *workingEntry = static_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent ) ) );
+
+        while ( true ) {
+            struct dirent* ent = readdir( dirp );
+            if ( !ent )
+                break;
+
+            workingEntry->d_ino = ent->d_ino;
+            char *x = std::copy( ent->d_name, ent->d_name + strlen(ent->d_name), workingEntry->d_name );
+            *x = '\0';
+            if ( filter && !filter( workingEntry ) )
+                continue;
+
+            struct dirent **newEntries = static_cast< struct dirent ** >( FS_MALLOC( ( length + 1 ) * sizeof( struct dirent * ) ) );
+            if ( length )
+                std::memcpy( newEntries, entries, length * sizeof( struct dirent * ) );
+            std::swap( entries, newEntries );
+            if ( newEntries )
+                FS_FREE( newEntries );
+            entries[ length ] = workingEntry;
+            workingEntry = static_cast< struct dirent * >( FS_MALLOC( sizeof( struct dirent ) ) );
+            ++length;
+        }
+        FS_FREE( workingEntry );
+        closedir( dirp );
+
+        typedef int( *cmp )( const void *, const void * );
+        std::qsort( entries, length, sizeof( struct dirent * ), reinterpret_cast< cmp >( compare ) );
+
+        *namelist = entries;
+        return length;
+    }
+
+    long telldir( DIR *dirp )
+    {
+        DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
+        return lseek( wrapper->fd, 0, SEEK_CUR );
+    }
+
+    void seekdir( DIR *dirp, long loc )
+    {
+        DirWrapper *wrapper = reinterpret_cast< DirWrapper * >( dirp );
+        lseek( wrapper->fd, loc, SEEK_SET );
     }
 
 

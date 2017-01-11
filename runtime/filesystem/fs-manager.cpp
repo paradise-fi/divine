@@ -223,8 +223,17 @@ int Manager::openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl
         fl.clear( flags::Open::Write );
     }
 
+    if ( fl.has(flags::Open::Directory)) {
+        if (!file->mode().isDirectory())
+            throw Error( ENOTDIR );
+        _checkGrants( file, Mode::RUSER | Mode::XUSER );
+
+    }   
+
     if ( file->mode().isFifo() )
         return _getFileDescriptor( std::allocate_shared< PipeDescriptor >( __dios::AllocatorPure(), file, fl, true ) );
+    else if ( file->mode().isDirectory() )
+        return _getFileDescriptor( std::allocate_shared< DirectoryDescriptor >( __dios::AllocatorPure(), file, fl ) );
     return _getFileDescriptor( std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), file, fl ) );
 }
 
@@ -446,34 +455,6 @@ void Manager::chmodAt( int dirfd, __dios::String name, mode_t mode, Flags< flags
 
 void Manager::chmod( int fd, mode_t mode ) {
     _chmod( getFile( fd )->inode(), mode );
-}
-
-DirectoryDescriptor *Manager::openDirectory( int fd ) {
-    Node inode = getFile( fd )->inode();
-    if ( !inode->mode().isDirectory() )
-        throw Error( ENOTDIR );
-
-    _checkGrants( inode, Mode::RUSER | Mode::XUSER );
-    _openDD.emplace_back( inode, fd );
-    return &_openDD.back();
-}
-DirectoryDescriptor *Manager::getDirectory( void *descriptor ) {
-    for ( auto i = _openDD.begin(); i != _openDD.end(); ++i ) {
-        if ( &*i == descriptor ) {
-            return &*i;
-        }
-    }
-    throw Error( EBADF );
-}
-void Manager::closeDirectory( void *descriptor ) {
-    for ( auto i = _openDD.begin(); i != _openDD.end(); ++i ) {
-        if ( &*i == descriptor ) {
-            closeFile( i->fd() );
-            _openDD.erase( i );
-            return;
-        }
-    }
-    throw Error( EBADF );
 }
 
 int Manager::socket( SocketType type, Flags< flags::Open > fl ) {
