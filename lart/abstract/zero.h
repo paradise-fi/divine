@@ -20,21 +20,7 @@ struct Zero : Common {
 
     virtual llvm::Type * abstract( llvm::Type * );
     std::string domain() const { return "zero"; }
-    std::string LLVMTypeName() const { return "struct.abstract::Zero"; }
 
-    struct Tristate {
-        Tristate( llvm::Module & );
-        virtual bool is( llvm::Type * );
-        virtual llvm::Type * abstract( llvm::Type * );
-        std::string domain() const { return "tristate"; }
-        std::string LLVMTypeName() const { return "struct.abstract::Tristate"; }
-
-        llvm::Type * tristate_type;
-    };
-
-    Tristate tristate;
-
-    std::map< llvm::Value *, llvm::Value * > from_tristate_map;
     llvm::Type * zero_type;
 };
 

@@ -30,11 +30,8 @@ namespace {
     }
 }
 
-Zero::Zero( llvm::Module & m ) : tristate( m ) {
+Zero::Zero( llvm::Module & m ) {
     zero_type = m.getFunction( "__abstract_zero_load" )->getReturnType();
-    // TODO solve merging of type names
-    //zero_type = m.getContext().pImpl->NamedStructTypes.lookup( LLVMTypeName() )
-    //             ->getPointerTo();
 }
 
 llvm::Value * Zero::process( llvm::CallInst * i, std::vector< llvm::Value * > &args ) {
@@ -51,27 +48,11 @@ llvm::Value * Zero::process( llvm::CallInst * i, std::vector< llvm::Value * > &a
 }
 
 bool Zero::is( llvm::Type * type ) {
-    return hasSpecifiedName( type, LLVMTypeName() );
+    return zero_type == type;
 }
 
 llvm::Type * Zero::abstract( llvm::Type * type ) {
     return type->isPointerTy() ? zero_type->getPointerTo() : zero_type;
-}
-
-Zero::Tristate::Tristate( llvm::Module & m ) {
-    tristate_type = m.getFunction( "__abstract_tristate_create" )->getReturnType();
-    // TODO solve merging of type names
-    //tristate_type = m.getContext().pImpl->NamedStructTypes.lookup( LLVMTypeName() )
-    //                 ->getPointerTo();
-}
-
-bool Zero::Tristate::is( llvm::Type * type ) {
-    return hasSpecifiedName( type, LLVMTypeName() );
-}
-
-llvm::Type * Zero::Tristate::abstract( llvm::Type * type ) {
-    assert( type->isIntegerTy( 1 ) );
-    return type->isPointerTy() ? tristate_type->getPointerTo() : tristate_type;
 }
 
 } // namespace abstract
