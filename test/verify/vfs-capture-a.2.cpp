@@ -4,7 +4,7 @@
 #include <cstring>
 #include <cassert>
 #include <regex>
-#include <dios/stdlibwrap.hpp>
+#include <dios/core/stdlibwrap.hpp>
 
 #include "vfs-capture-assert.h"
 

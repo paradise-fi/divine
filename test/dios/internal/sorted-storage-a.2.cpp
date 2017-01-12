@@ -1,5 +1,5 @@
 #include <dios.h>
-#include <dios/scheduling.hpp>
+#include <dios/core/scheduling.hpp>
 #include <cassert>
 
 struct Item {
