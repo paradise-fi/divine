@@ -85,7 +85,7 @@ struct FastCell : CellBase< T, Hasher >
     hash64_t _hash;
 
     template< typename Value >
-    bool is( Value v, hash64_t hash, Hasher &h ) {
+    bool is( const Value &v, hash64_t hash, Hasher &h ) {
         return _hash == hash && h.equal( _value, v );
     }
 
@@ -106,7 +106,7 @@ struct CompactCell : CellBase< T, Hasher >
     T _value;
 
     template< typename Value >
-    bool is( Value v, hash64_t, Hasher &h ) {
+    bool is( const Value &v, hash64_t, Hasher &h ) {
         return h.equal( _value, v );
     }
 
@@ -165,7 +165,7 @@ struct FastAtomicCell : CellBase< T, Hasher >
     }
 
     template< typename Value >
-    bool is( Value v, hash64_t hash, Hasher &h ) {
+    bool is( const Value &v, hash64_t hash, Hasher &h ) {
         hash |= 0x1;
         if ( ( (hash << 2) | 1) != (_hashlock | 1) )
             return false;
@@ -248,7 +248,7 @@ struct AtomicCell : CellBase< T, Hasher >
     }
 
     template< typename Value >
-    bool is( Value v, hash64_t hash, Hasher &h ) {
+    bool is( const Value &v, hash64_t hash, Hasher &h ) {
         return value.load().tag() == ( highbits( hash, Tagged< T >::tag_bits ) | 1 ) &&
             h.equal( value.load().t, v );
     }
@@ -606,7 +606,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     }
 
     template< typename T >
-    iterator find( T x ) {
+    iterator find( const T &x ) {
         return findHinted( x, hasher.hash( x ).first );
     }
 
@@ -640,7 +640,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     }
 
     template< typename T >
-    iterator findHinted( T x, hash64_t h ) {
+    iterator findHinted( const T &x, hash64_t h ) {
         while ( true ) {
             Find fr = findCell( x, h, _l.currentRow );
             switch ( fr.r ) {
@@ -660,7 +660,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
     }
 
     template< typename T >
-    Find findCell( T v, hash64_t h, unsigned rowIndex )
+    Find findCell( const T &v, hash64_t h, unsigned rowIndex )
     {
         if ( changed( rowIndex ) )
             return Find( Resolution::Growing );
