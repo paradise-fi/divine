@@ -47,10 +47,11 @@ namespace mem = brick::mem;
 
 namespace heap {
 
-template< typename H1, typename H2 >
+template< typename H1, typename H2, typename MarkedComparer >
 int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
              std::unordered_map< HeapPointer, int > &v1,
-             std::unordered_map< HeapPointer, int > &v2, int &seq )
+             std::unordered_map< HeapPointer, int > &v2, int &seq,
+             MarkedComparer &markedComparer )
 {
     r1.offset( 0 ); r2.offset( 0 );
 
@@ -131,8 +132,10 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
             if ( p1pp.offset() != p2pp.offset() )
                 return p1pp.offset() - p2pp.offset();
             else if ( p1pp.type() == PointerType::Heap )
-                pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq );
-            else if ( p1pp.heap() ); // Weak or Marked
+                pdiff = compare( h1, h2, p1pp, p2pp, v1, v2, seq, markedComparer );
+            else if ( p1pp.type() == PointerType::Marked )
+                markedComparer( p1pp, p2pp );
+            else if ( p1pp.heap() ); // Weak
             else
                 pdiff = p1pp.object() - p2pp.object();
         } else pdiff = int( p1pp.type() ) - int( p2pp.type() );
@@ -195,12 +198,18 @@ int hash( Heap &heap, HeapPointer root,
     return content_hash;
 }
 
-template< typename H1, typename H2 >
-int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2 )
+template< typename H1, typename H2, typename MarkedComparer >
+int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2, MarkedComparer mc )
 {
     std::unordered_map< HeapPointer, int > v1, v2;
     int seq = 0;
-    return compare( h1, h2, r1, r2, v1, v2, seq );
+    return compare( h1, h2, r1, r2, v1, v2, seq, mc );
+}
+
+template< typename H1, typename H2 >
+int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2 )
+{
+    return compare( h1, h2, r1, r2, []( HeapPointer, HeapPointer ) { } );
 }
 
 template< typename Heap >
