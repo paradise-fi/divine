@@ -12,6 +12,7 @@ namespace hashset = brick::hashset;
 struct Random
 {
     using State = int;
+    using Label = int;
 
     std::vector< std::vector< int > > _succs;
     hashset::Concurrent< int > _states;

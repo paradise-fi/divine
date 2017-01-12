@@ -32,6 +32,9 @@ struct Search : Job
     using Builder = B;
     using Listener = L;
 
+    using State = typename Builder::State;
+    using Label = typename Builder::Label;
+
     Builder _builder;
     Listener _listener;
 
@@ -43,6 +46,7 @@ struct Search : Job
 
     std::shared_ptr< Vector > _workset;
     std::vector< std::future< void > > _threads;
+    std::shared_ptr< std::atomic< bool > > _terminate;
 
     using Worker = std::function< void() >;
 
@@ -50,7 +54,8 @@ struct Search : Job
 
     Search( const B &b, const L &l )
         : _builder( b ), _listener( l ), _order( Order::PseudoBFS ),
-          _workset( std::make_shared< Vector >() )
+          _workset( std::make_shared< Vector >() ),
+          _terminate( new std::atomic< bool >( false ) )
     {}
 
     auto _register( Builder &b, Listener &l )
@@ -71,34 +76,64 @@ struct Search : Job
                 each( *ptr->first, *ptr->second );
     }
 
+    template< typename Push >
+    void _initials( Listener &l, Builder &b, Push push )
+    {
+        b.initials(
+            [&]( auto i )
+            {
+                auto b = l.state( i );
+                if ( b == L::Process || b == L::AsNeeded )
+                    push( i );
+            } );
+    }
+
+    template< typename Act >
+    void _state( Listener &l, State x, bool isnew, Act act )
+    {
+        auto b = l.state( x );
+        if ( b == L::Terminate )
+            _terminate->store( true );
+        if ( b == L::Process || ( b == L::AsNeeded && isnew ) )
+            act( isnew );
+    }
+
+    template< typename Succ >
+    void _succs( Listener &l, Builder &b, State v, Succ succ )
+    {
+         b.edges(
+             v, [&]( auto x, auto label, bool isnew )
+             {
+                 auto a = l.edge( v, x, label, isnew );
+                 if ( a == L::Terminate )
+                     _terminate->store( true );
+                 if ( a == L::Process || ( a == L::AsNeeded && isnew ) )
+                     succ( x, label, isnew );
+            } );
+    }
+
     Worker pseudoBFS()
     {
-        shmem::SharedQueue< typename B::State > queue;
+        shmem::SharedQueue< State > queue;
         shmem::StartDetector start;
         shmem::ApproximateCounter work;
-        auto terminate = std::make_shared< std::atomic< bool > >( false );
 
         qsize = [=]() { return queue.chunkSize * queue.q->q.size(); };
 
         auto builder = _builder;
         auto listener = _listener;
 
-        builder.initials(
-            [&]( auto i )
-            {
-                auto b = listener.state( i );
-                if ( b == L::Process || b == L::AsNeeded )
-                    queue.push( i ), ++ work;
-            } );
+        _initials( listener, builder,
+                   [&]( auto st ) { queue.push( st ), ++ work; } );
         queue.flush();
 
         return [=]() mutable
         {
             auto _reg = _register( builder, listener );
             start.waitForAll( _thread_count );
-            brick::types::Defer _( [&]() { terminate->store( true ); } );
+            brick::types::Defer _( [&]() { _terminate->store( true ); } );
 
-            while ( work && !terminate->load() )
+            while ( work && !_terminate->load() )
             {
                 if ( queue.empty() )
                 {
@@ -107,24 +142,15 @@ struct Search : Job
                     continue;
                 }
                 auto v = queue.pop();
-                builder.edges(
-                    v, [&]( auto x, auto label, bool isnew )
-                    {
-                        auto a = listener.edge( v, x, label, isnew );
-                        if ( a == L::Terminate )
-                            terminate->store( true );
-                        if ( a == L::Process || ( a == L::AsNeeded && isnew ) )
+                _succs( listener, builder, v,
+                        [&]( auto s, auto, bool isnew )
                         {
-                            auto b = listener.state( x );
-                            if ( b == L::Terminate )
-                                terminate->store( true );
-                            if ( b == L::Process || ( b == L::AsNeeded && isnew ) )
-                                queue.push( x ), ++ work;
-                        }
-                    } );
+                            _state( listener, s, isnew,
+                                    [&]( bool ) { queue.push( s ), ++ work; } );
+                        } );
                 -- work;
             }
-            ASSERT( terminate->load() || queue.empty() );
+            ASSERT( _terminate->load() || queue.empty() );
         };
     }
 

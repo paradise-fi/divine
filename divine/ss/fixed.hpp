@@ -11,6 +11,7 @@ using namespace brick;
 struct Fixed
 {
     using State = int;
+    using Label = int;
 
     std::set< std::pair< int, int > > _edges;
     hashset::Concurrent< int > _states;
