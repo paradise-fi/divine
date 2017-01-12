@@ -25,6 +25,25 @@
 namespace divine {
 namespace ui {
 
+template< typename S >
+std::string printitem( S s )
+{
+    std::stringstream str;
+    str << "{ items: " << s.count.used << ", used: " << s.bytes.used << ", held: " << s.bytes.held << " }";
+    return str.str();
+}
+
+template< typename P >
+void printpool( std::string name, P &pool )
+{
+    auto s = pool.stats();
+    std::cout << name << ":" << std::endl;
+    std::cout << "  total: " << printitem( s.total ) << std::endl;
+    for ( auto i : s )
+        if ( i.count.held )
+            std::cout << "  " << i.size << ": " << printitem( i ) << std::endl;
+}
+
 void Verify::run()
 {
     vm::explore::State error;
@@ -96,6 +115,9 @@ void Verify::run()
                           << std::endl << "version: " << version()
                           << std::endl;
             }
+            if ( _report == Report::YamlLong )
+                printpool( "snapshot memory", safety._ex._ctx.heap()._snapshots ),
+                printpool( "fragment memory", safety._ex._ctx.heap()._objects );
     } );
 
     if ( !statecount )
