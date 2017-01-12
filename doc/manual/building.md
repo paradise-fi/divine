@@ -13,6 +13,7 @@ To build DIVINE from source, you will need the following:
 * A POSIX-compatible operating system,
 * GNU C++ (4.9 or newer) or clang (3.2 or newer),
 * CMake \[[www.cmake.org](http://www.cmake.org)\] 3.2 or newer,
+* libedit \[[thrysoee.dk/editline](http://thrysoee.dk/editline/]\],
 * about 12GB of disk space and 4GB of RAM (18GB for both release and debug
   builds),
 
@@ -22,6 +23,10 @@ Additionally, DIVINE can make use of the following optional components:
   builds,
 * pandoc \[[pandoc.org](http://pandoc.org)\] for formatting the manual (HTML
   and PDF with pdflatex).
+
+It should be possible to install most of the prerequisites automatically using
+`make prerequisites` on any Linux which uses `apt-get`, `yum` or `pacman`
+package manager.
 
 Building & Installing
 ---------------------
