@@ -46,7 +46,8 @@ enum _VM_Trace
     _VM_T_SchedChoice, /* takes one void * parameter */
     _VM_T_SchedInfo,   /* takes two integer parameters */
     _VM_T_StateType,   /* takes one pointer parameter */
-    _VM_T_Info         /* takes one const char * parameter - a line of YAML */
+    _VM_T_Info,        /* takes one const char * parameter - a line of YAML */
+    _VM_T_Alg          /* takes any number of pointer arguments which will be forwarded to the exploration algorithm */
 };
 
 enum _VM_ControlAction
