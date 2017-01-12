@@ -107,7 +107,7 @@ ModulePtr compile( const std::string & src,
         mapVirtualFile( c, f, source( f ) );
 
     setupFS( c );
-    std::vector< std::string > flags = { "-std=c++11" };
+    std::vector< std::string > flags = { "-std=c++14" };
 
     brick::llvm::Linker linker;
     linker.load( c.compile( "main.cpp", flags ) );
@@ -147,10 +147,10 @@ ModulePtr test_assume( const std::string & src ) {
 }
 
 ModulePtr test_substitution( const std::string & src,
-                             const std::string & opt )
+                             const std::string & opt,
+                             std::vector< std::string > & link,
+                             std::vector< std::string > & headers )
 {
-    std::vector< std::string > link = { opt + ".cpp", "tristate.cpp" };
-    std::vector< std::string > headers = { "tristate.h", "common.h", opt + ".h" };
     auto m = compile( src, link, headers );
     llvm::ModulePassManager manager;
 
@@ -163,12 +163,24 @@ ModulePtr test_substitution( const std::string & src,
 }
 
 ModulePtr test_zero_substitution( const std::string & src ) {
-    return test_substitution( src, "zero" );
+    const std::string opt = "zero";
+    std::vector< std::string > link = { opt + ".cpp", "tristate.cpp" };
+    std::vector< std::string > headers = { opt + ".h", "tristate.h", "common.h" };
+    return test_substitution( src, opt, link, headers );
+}
+
+ModulePtr test_symbolic( const std::string & src ) {
+    const std::string opt = "sym";
+    std::vector< std::string > link = { opt + ".cpp", "tristate.cpp", "formula.cpp" };
+    std::vector< std::string > headers = { opt + ".h", "tristate.h", "common.h", "formula.h" };
+    return test_substitution( src, opt, link, headers );
 }
 
 namespace {
 const std::string annotation =
                   "#define __test __attribute__((__annotate__(\"lart.abstract.test\")))\n";
+const std::string symbolic =
+                  "#define __sym __attribute__((__annotate__(\"lart.abstract.symbolic\")))\n";
 
 bool containsUndefValue( llvm::Function &f ) {
     for ( auto & bb : f ) {
@@ -638,7 +650,7 @@ struct Substitution {
                         return 0;
                     })";
         auto m = test_zero_substitution( annotation + s );
-        auto abstract_call = m->getFunction( "_Z4callv.9.10" );
+        auto abstract_call = m->getFunction( "_Z4callv.8.9" );
         ASSERT( abstract_call );
         auto alloca = m->getFunction( "__abstract_zero_alloca" );
         ASSERT_EQ( abstract_call->getReturnType()
@@ -684,6 +696,88 @@ struct Substitution {
         //TODO asserts
         ASSERT( ! containsUndefValue( *m ) );
     }
+};
+
+struct Symbolic {
+    TEST( create ) {
+        auto s = R"(int main() {
+                        __sym int x;
+                        return 0;
+                    })";
+        auto m = test_symbolic( symbolic + s );
+        auto f = m->getFunction( "__abstract_sym_alloca" );
+        ASSERT( f->hasNUses( 2 ) );
+    }
+
+    TEST( types ) {
+        auto s = R"(int main() {
+                        __sym short x;
+                        __sym int y;
+                        __sym long z;
+                        return 0;
+                    })";
+        auto m = test_symbolic( symbolic + s );
+        auto alloca = m->getFunction( "__abstract_sym_alloca" );
+        std::set< int > bws;
+        for ( auto a : alloca->users() ) {
+            if( auto call = llvm::dyn_cast< llvm::CallInst >( a ) )
+                bws.insert(
+                llvm::cast< llvm::ConstantInt >( call->getArgOperand( 0 ) )->getSExtValue() );
+        }
+        std::set< int > expected{16, 32, 64};
+        ASSERT( bws == expected );
+        ASSERT( alloca->hasNUses( 4 ) );
+    }
+
+    TEST( tristate ) {
+        auto s = R"(int main() {
+                        __sym int x;
+                        if ( x > 0 )
+                            return 42;
+                        else
+                            return 0;
+                    })";
+        auto m = test_symbolic( symbolic + s );
+        auto icmp = m->getFunction( "__abstract_sym_icmp_sgt" );
+        ASSERT_EQ( icmp->getReturnType(),
+                   m->getTypeByName( "union.sym::Formula" )->getPointerTo() );
+        auto to_tristate = m->getFunction( "__abstract_sym_bool_to_tristate" );
+        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
+        auto lower = llvm::cast< llvm::Instruction >(
+                     *m->getFunction( "__abstract_tristate_lower" )->user_begin() );
+        ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
+    }
+
+    TEST( call_propagate ) {
+        auto s = R"(
+                    int call4( int x ) { return x; }
+                    int call3( int x ) { return x; }
+                    int call2( int x ) {
+                        return call3( x ) * call4( x );
+                    }
+                    int call() {
+                        __sym int x;
+                        return x;
+                    }
+                    int main() {
+                        int ret = call();
+                        call2( ret );
+                        return 0;
+                    })";
+        test_symbolic( symbolic + s );
+    }
+
+    TEST( loop ) {
+        auto s = R"(
+                    int main() {
+                   		__sym int val;
+						do {
+						   val++;
+						} while(val % 6 != 0);
+                    })";
+        test_symbolic( symbolic + s );
+	}
+
 };
 
 } // namespace t_abstract

@@ -143,6 +143,10 @@ void Substitution::init( llvm::Module & m ) {
             abstraction = std::make_unique< abstract::Zero >( m );
             break;
         }
+        case Symbolic: {
+            abstraction = std::make_unique< abstract::Symbolic >( m );
+            break;
+        }
     }
 
     builder = SubstitutionBuilder( std::move( abstraction ) );

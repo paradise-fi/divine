@@ -3,6 +3,7 @@
 
 #include <lart/abstract/trivial.h>
 #include <lart/abstract/zero.h>
+#include <lart/abstract/sym.h>
 #include <lart/abstract/sbuilder.h>
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
@@ -16,7 +17,7 @@ namespace abstract {
 
 struct Substitution : lart::Pass
 {
-    enum Type { Trivial, Zero };
+    enum Type { Trivial, Zero, Symbolic };
 
     Substitution( Type t ) : type( t ) {}
 
@@ -38,6 +39,8 @@ struct Substitution : lart::Pass
             return Type::Trivial;
         if ( opt == "zero" )
             return Type::Zero;
+        if ( opt == "sym" )
+            return Type::Symbolic;
         std::cerr << "Unsupported abstraction " << opt <<std::endl;
         std::exit( EXIT_FAILURE );
     }
