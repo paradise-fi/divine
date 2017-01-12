@@ -24,10 +24,8 @@
 #include <atomic>
 #include <tuple>
 
-#ifndef NVALGRIND
 #include <iostream>
 #include <iomanip>
-#endif
 
 #ifndef NVALGRIND
 #pragma GCC diagnostic push
@@ -56,6 +54,30 @@ struct Empty
     operator int() const { return 0; }
     bool operator==( Empty ) const { return true; }
     Empty( int = 0 ) {}
+};
+
+struct StatCounter
+{
+    int64_t used = 0, held = 0;
+    StatCounter &operator += ( const StatCounter &add )
+    {
+        used += add.used;
+        held += add.held;
+        return *this;
+    }
+};
+
+struct StatItem
+{
+    mutable StatCounter bytes, count; int64_t size;
+    StatItem( int64_t s ) : size( s ) {}
+    bool operator<( StatItem o ) const { return size < o.size; }
+};
+
+struct Stats : std::set< StatItem >
+{
+    StatItem total = StatItem( -1 );
+    const StatItem &operator[]( int64_t s ) { return *insert( s ).first; }
 };
 
 struct DefaultPoolPointerRep
@@ -316,6 +338,11 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 
 #endif
 
+    int freelist_count( FreeList *fl )
+    {
+        return fl ? fl->count + freelist_count( fl->next ) : 0;
+    }
+
     void freelist_return( int size, FreeList &fl )
     {
         if ( !fl.count )
@@ -326,6 +353,45 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         while ( !fhead.compare_exchange_weak( newfl->next, newfl ) );
     }
 
+    Stats stats()
+    {
+        Stats s;
+
+        for ( int i = 0; i < _s->usedblocks; ++i )
+            if ( _s->block[ i ] )
+            {
+                int64_t is = header( i ).itemsize;
+                s[ is ].count.used += header( i ).allocated;
+                s[ is ].count.held += header( i ).total;
+            }
+
+        for ( auto &i : s )
+            i.count.used -= freelist_count( freelist( i.size ).load() );
+
+        for ( auto &i : s )
+            i.bytes.used = i.count.used * i.size,
+            i.bytes.held = i.count.held * align( i.size, sizeof( Pointer ) );
+
+        for ( auto &i : s )
+            s.total.bytes += i.bytes, s.total.count += i.count;
+
+        return s;
+    }
+
+    void printstats()
+    {
+        auto s = stats();
+        std::cerr << "pool " << this << ": " << s.total.count.used << " objects in use:" << std::endl;
+
+        for ( auto i : s )
+            if ( i.count.used )
+                std::cerr << "   " << std::setw(8) << i.count.used << " object(s) of size " << std::setw(7) << i.size
+                          << " for " << std::setw(6) << i.bytes.used / 1024 << "/"
+                                     << std::setw(6) << i.bytes.held / 1024 << " kbytes" << std::endl;
+
+        std::cerr << " " << s.total.bytes.used / 1024 << " kbytes used + "
+                         << ( s.total.bytes.held - s.total.bytes.used ) / 1024 << " kbytes wasted" << std::endl;
+    }
 #pragma GCC diagnostic pop
 
     static void finalize( Shared *s )
@@ -395,6 +461,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 
         /* shared state is destroyed in finalize() */
     }
+
 
     Pool( const Pool &o ) : _s( o._s ) { initL(); }
     Pool &operator=( const Pool &o )
