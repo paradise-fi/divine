@@ -176,6 +176,7 @@ struct Explore_
     using BC = std::shared_ptr< BitCode >;
     using Env = std::vector< std::string >;
     using State = explore::State;
+    using Label = std::pair< std::vector< std::string >, std::vector< std::pair< int, int > > >;
     using Snapshot = CowHeap::Snapshot;
 
     BC _bc;
