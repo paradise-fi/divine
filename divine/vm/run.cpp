@@ -53,6 +53,7 @@ struct RunContext : Context< Program, MutableHeap >
     {
         std::cerr << "I: " << heap().read_string( ti.text ) << std::endl;
     }
+    void trace( vm::TraceAlg ) { }
 };
 
 void Run::run()

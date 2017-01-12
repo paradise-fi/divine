@@ -280,6 +280,8 @@ struct DebugContext : Context< Program, Heap >
                         state_type( DDI->getVariable() );
             }
     }
+
+    void trace( vm::TraceAlg ) { }
 };
 
 using DNSet = std::set< vm::DNKey >;

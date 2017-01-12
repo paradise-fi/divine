@@ -77,6 +77,11 @@ struct Context : vm::Context< Program, CowHeap >
     {
         _info += heap().read_string( ti.text ) + "\n";
     }
+    void trace( TraceAlg ta ) {
+        for ( auto a : ta.args )
+            std::cerr << a << " ";
+        std::cerr << std::endl;
+    }
 
     bool finished()
     {

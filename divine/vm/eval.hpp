@@ -1157,6 +1157,14 @@ struct Eval
                     case _VM_T_Info:
                         context().trace( TraceInfo{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                         return;
+                    case _VM_T_Alg: {
+                        brick::data::SmallVector< GenericPointer > args;
+                        int argc = llvm::cast< llvm::CallInst >( instruction().op )->getNumArgOperands();
+                        for ( int i = 1; i < argc; ++i )
+                            args.emplace_back( ptr2h( operandCk< PointerV >( i ) ) );
+                        context().trace( TraceAlg{ args } );
+                        break;
+                    }
                     default:
                         fault( _VM_F_Hypercall ) << "invalid __vm_trace type " << t;
                 }

@@ -22,6 +22,8 @@
 
 #include <runtime/divine.h>
 
+#include <brick-data>
+
 #include <unordered_set>
 
 namespace llvm { class Value; }
@@ -36,6 +38,7 @@ struct TraceSchedChoice { value::Pointer list; };
 struct TraceSchedInfo { int pid; int tid; };
 struct TraceStateType { llvm::Value *stateptr; };
 struct TraceInfo { GenericPointer text; };
+struct TraceAlg { brick::data::SmallVector< divine::vm::GenericPointer > args; };
 
 template< typename _Program, typename _Heap >
 struct Context
@@ -239,6 +242,7 @@ struct Context
     virtual void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceStateType ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceInfo ) { NOT_IMPLEMENTED(); }
+    virtual void trace( TraceAlg ) { NOT_IMPLEMENTED(); }
 
     virtual void doublefault()
     {
