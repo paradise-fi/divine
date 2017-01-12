@@ -235,10 +235,10 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 
     std::shared_ptr< Shared > _s;
 
-#ifndef NVALGRIND
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 
+#ifndef NVALGRIND
     void valgrindInit()
     {
         for ( int i = 0; i < blockcount; ++i )
@@ -292,61 +292,16 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         VALGRIND_CREATE_MEMPOOL( _s->block[ b ], 0, 0 );
     }
 
-    void bump( std::vector< int64_t > &v, size_t cnt )
+    static void valgrindFini( Shared *s )
     {
-        v.resize( std::max( v.size(), cnt + 1 ), 0 );
+        for ( int i = 0; i < s->usedblocks; ++i )
+        {
+            if ( s->vhandles[ i ] )
+                delete[] s->vhandles[ i ].load();
+            if ( s->block[ i ] )
+                VALGRIND_DESTROY_MEMPOOL( s->block[ i ] );
+        }
     }
-
-    void valgrindFini()
-    {
-        int64_t count = 0;
-        int64_t bytes = 0;
-        int64_t wasted = 0;
-        std::vector< int64_t > sizecount;
-        std::vector< int64_t > sizebytes;
-
-        if ( !RUNNING_ON_VALGRIND && !getenv( "DIVINE_POOL_STATS" ) )
-            return ;
-
-        for ( int i = 0; i < blockcount; ++i )
-            if ( _s->vhandles[ i ] ) {
-                for ( int j = 0; j < header( i ).total; ++j ) {
-                    bool allocd = _s->vhandles[ i ][ j ].allocated;
-                    count += allocd;
-                    bump( sizecount, header( i ).itemsize );
-                    sizecount[ header( i ).itemsize ] += allocd;
-                }
-                delete[] _s->vhandles[ i ].load();
-            }
-
-        for ( int i = 0; i < blockcount; ++i )
-            if ( _s->block[ i ] )
-            {
-                int64_t is = header( i ).itemsize;
-                int64_t b = header( i ).total * align( is, sizeof( Pointer ) );
-                bytes += b;
-                bump( sizebytes, is + 1 );
-                sizebytes[ is ] += b;
-                VALGRIND_DESTROY_MEMPOOL( _s->block[ i ] );
-            }
-
-        bump( sizecount, sizebytes.size() - 1 );
-        bump( sizebytes, sizecount.size() - 1 );
-
-        std::cerr << "~Pool(): " << count << " objects not freed:" << std::endl;
-        for ( size_t i = 0; i < sizecount.size(); ++ i )
-            if ( sizecount[i] || sizebytes[i] ) {
-                int64_t c = sizecount[i];
-                int64_t b = c * i;
-                int64_t t = sizebytes[i];
-                wasted += (t - b);
-                std::cerr << "   " << std::setw(8) << c << " object(s) of size " << std::setw(7) << i
-                          << " for " << std::setw(5) << b / 1024 << "/" << std::setw(5) << t / 1024 << " kbytes" << std::endl;
-            }
-        std::cerr << " " << ( bytes - wasted ) / 1024 << " kbytes used + " << wasted / 1024 << " kbytes wasted" << std::endl;
-    }
-
-#pragma GCC diagnostic pop
 #else
 
 #define VALGRIND_MAKE_MEM_DEFINED(x, y)
@@ -356,10 +311,49 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
     void valgrindAllocated( Pointer, bool ) {}
     void valgrindDeallocated( Pointer ) {}
     void valgrindNewBlock( int, int ) {}
-    void valgrindFini() {}
+    static void valgrindFini( Shared * ) {}
     void valgrindInit() {}
 
 #endif
+
+    void freelist_return( int size, FreeList &fl )
+    {
+        if ( !fl.count )
+            return;
+        std::atomic< FreeList * > &fhead = freelist( size );
+        auto newfl = new FreeList( fl );
+        newfl->next = fhead;
+        while ( !fhead.compare_exchange_weak( newfl->next, newfl ) );
+    }
+
+#pragma GCC diagnostic pop
+
+    static void finalize( Shared *s )
+    {
+        valgrindFini( s );
+
+        for ( int i = 0; i < 4096; ++i )
+        {
+            nukeList( s->freelist[ i ] );
+            if ( s->freelist_big[ i ] ) {
+                for ( int j = 0; j < 4096; ++j )
+                    nukeList( s->freelist_big[ i ][ j ] );
+                delete[] s->freelist_big[ i ].load();
+            }
+        }
+
+        for ( int i = 0; i < blockcount; ++i )
+        {
+            if ( !s->block[ i ] )
+                continue;
+            auto size =
+                s->block[ i ]->total ?
+                s->block[ i ]->total * align( s->block[ i ]->itemsize,
+                                              sizeof( Pointer ) ) +
+                sizeof( BlockHeader ) : blocksize;
+            brick::mmap::MMap::drop( s->block[ i ], size );
+        }
+    }
 
     /*
      * NB. We set usedblocks to 8, so that we both keep reasonable alignment
@@ -367,7 +361,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
      * Extensions, which tend to contain Pointers, are no longer zeroed, but
      * constructed instead (as they should)
      */
-    Pool() : _s( new Shared() )
+    Pool() : _s( new Shared(), finalize )
     {
         _s->usedblocks = 8;
         for ( int i = 0; i < 4096; ++i )
@@ -383,36 +377,23 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
     ~Pool()
     {
         for ( int i = 0; i < 4096; ++i )
+        {
+            freelist_return( i, _l.size[ i ].tofree );
+            freelist_return( i, _l.size[ i ].touse );
+            if ( _l.size_big[ i ] )
+                for ( int j = 0; j < 4096; ++j )
+                {
+                    freelist_return( i * 4096 + j, _l.size_big[ i ][ j ].tofree );
+                    freelist_return( i * 4096 + j, _l.size_big[ i ][ j ].touse );
+                }
+        }
+
+        for ( int i = 0; i < 4096; ++i )
             delete[] _l.size_big[ i ];
         delete[] _l.size_big;
         delete[] _l.size;
 
-        /* TODO: return all locally held memory to shared freelists */
-
-        if ( _s.use_count() > 1 )
-            return;
-
-        /* concurrent copying and destruction of the same object is not
-           allowed */
-        valgrindFini();
-        for ( int i = 0; i < 4096; ++i ) {
-            nukeList( _s->freelist[ i ] );
-            if ( _s->freelist_big[ i ] ) {
-                for ( int j = 0; j < 4096; ++j )
-                    nukeList( _s->freelist_big[ i ][ j ] );
-                delete[] _s->freelist_big[ i ].load();
-            }
-        }
-        for ( int i = 0; i < blockcount; ++i ) {
-            if ( !_s->block[ i ] )
-                continue;
-            auto size =
-                header( i ).total ?
-                header( i ).total * align( header( i ).itemsize,
-                                           sizeof( Pointer ) ) +
-                sizeof( BlockHeader ) : blocksize;
-            brick::mmap::MMap::drop( _s->block[ i ], size );
-        }
+        /* shared state is destroyed in finalize() */
     }
 
     Pool( const Pool &o ) : _s( o._s ) { initL(); }
@@ -581,10 +562,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 
         /* if there's a lot on our freelists, give some to the pool */
         if ( fl == &si.tofree && fl->count >= 4096 ) {
-            std::atomic< FreeList * > &fhead = freelist( size( p ) );
-            fl = new FreeList( *fl );
-            fl->next = fhead;
-            while ( !fhead.compare_exchange_weak( fl->next, fl ) );
+            freelist_return( size( p ), si.tofree );
             si.tofree = FreeList();
         }
     }
