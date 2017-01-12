@@ -239,12 +239,14 @@ namespace uninitialized {
 template< typename T, int stackCapacity = (4 > (2 * sizeof( void * )) / sizeof( T ))
                                             ? 4 : (2 * sizeof( void * )) / sizeof( T ) >
 struct SmallVector {
-    SmallVector() : _size( 0 ), _onstack( true ) { }
+    SmallVector() : _sos( 0 ) {
+        _onstack = true;
+    }
 
     template< typename InputIt >
     SmallVector( InputIt begin, InputIt end ) : SmallVector() {
         _resize( std::distance( begin, end ) );
-        std::uninitialized_copy( begin, end, begin() );
+        std::uninitialized_copy( begin, end, this->begin() );
     }
 
     SmallVector( std::initializer_list< T > init ) : SmallVector() {
@@ -351,8 +353,13 @@ struct SmallVector {
     };
 
     Data _data;
-    unsigned long _size : sizeof( unsigned long ) * 8 - 1;
-    bool _onstack : 1;
+    union {
+        struct {
+            unsigned long _size : sizeof( unsigned long ) * 8 - 1;
+            bool _onstack : 1;
+        };
+        unsigned long _sos;
+    };
 
     template< typename X >
     auto _drop( X *, X * ) ->
