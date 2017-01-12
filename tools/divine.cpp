@@ -56,6 +56,6 @@ int main( int argc, const char **argv )
     else if ( progName == "divine-ld" )
         args.insert( args.begin(), "divineld" );
 
-    _ui = std::make_shared< divine::ui::CLI >( args )->resolve();
+    _ui = divine::ui::make_cli( args )->resolve();
     return _ui->main();
 }
