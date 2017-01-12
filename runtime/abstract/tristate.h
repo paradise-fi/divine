@@ -14,8 +14,6 @@ struct Tristate {
 };
 
 extern "C" {
-    Tristate * __abstract_tristate_create() _ROOT _NOTHROW;
-    Tristate * __abstract_tristate_lift( bool b ) _ROOT _NOTHROW;
     bool __abstract_tristate_lower( Tristate * tristate ) _ROOT _NOTHROW;
 }
 
