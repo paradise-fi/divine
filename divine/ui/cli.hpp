@@ -108,6 +108,8 @@ struct Version : Command {
     void run() override;
 };
 
+enum class Report { None, Yaml, YamlLong };
+
 struct Verify : WithBC
 {
     int _max_mem = 0; // bytes
@@ -115,7 +117,7 @@ struct Verify : WithBC
     int _threads = 0;
     int _num_callers = 10;
     bool _no_counterexample = false;
-    bool _report = false;
+    Report _report = Report::Yaml;
 
     void run();
 };
@@ -294,6 +296,16 @@ struct CLI : Interface
                         return bad( cmd::BadContent, "size overflow" );
                     }
                 } ) ->
+            add( "repfmt", []( std::string s, auto good, auto bad )
+                {
+                    if ( s.compare("none") == 0 )
+                        return good( Report::None );
+                    if ( s.compare("yaml-long") == 0 )
+                        return good( Report::YamlLong );
+                    if ( s.compare("yaml") == 0 )
+                        return good( Report::Yaml );
+                    return bad( cmd::BadContent, s + " is not a valid report format" );
+                } ) ->
             add( "label", []( std::string s, auto good, auto bad )
                 {
                     if ( s.compare("none") == 0 )
@@ -371,7 +383,7 @@ struct CLI : Interface
             .option( "[--threads {int}|-T {int}]", &Verify::_threads, "number of threads to use"s )
             .option( "[--max-memory {mem}]", &Verify::_max_mem, "limit memory use"s )
             .option( "[--max-time {int}]", &Verify::_max_time, "maximum allowed run time in seconds"s )
-            .option( "[--report|-r]", &Verify::_report, "print additional information to stdout"s )
+            .option( "[--report {repfmt}|-r {repfmt}]", &Verify::_report, "print a report (yaml, yaml-long or none)"s )
             .option( "[--num-callers {int}]"s, &Verify::_num_callers,
                      "the number of frames to print in a backtrace [default = 10]" );
 

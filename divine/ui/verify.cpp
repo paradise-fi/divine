@@ -83,9 +83,9 @@ void Verify::run()
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
     vm::setup::dbg_boot( dbg );
 
-
     brick::types::Defer stats( [&] {
-            if ( _report ) {
+            if ( _report != Report::None )
+            {
                 sysinfo.report( []( auto k, auto v ) {
                         std::cout << k << ": " << v << std::endl;
                     } );
