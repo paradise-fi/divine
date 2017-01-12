@@ -4,6 +4,7 @@
 #include <functional>
 #include <future>
 #include <vector>
+#include <stack>
 
 #include <brick-shmem>
 
@@ -154,7 +155,46 @@ struct Search : Job
         };
     }
 
-    Worker DFS() { NOT_IMPLEMENTED(); }
+    struct DFSItem
+    {
+        enum Type { Pre, Post } type;
+        State state;
+        Label label;
+
+        DFSItem( Type t, State s, Label l = Label() )
+            : type( t ), state( s ), label( l ) {}
+    };
+
+    Worker DFS()
+    {
+        auto builder = _builder;
+        auto listener = _listener;
+
+        return [=]() mutable
+        {
+            auto _reg = _register( builder, listener );
+            std::stack< DFSItem > stack;
+            builder.initials( [&]( auto st ) { stack.emplace( DFSItem::Pre, st ); } );
+
+            while ( !stack.empty() && !_terminate->load() )
+            {
+                auto top = stack.top(); stack.pop();
+                if ( top.type == DFSItem::Post )
+                    listener.closed( top.state );
+                else _state( listener, top.state, true,
+                             [&]( bool )
+                             {
+                                 stack.emplace( DFSItem::Post, top.state );
+                                 _succs( listener, builder, top.state,
+                                         [&]( auto s, auto l, bool )
+                                         {
+                                             stack.emplace( DFSItem::Pre, s, l );
+                                         } );
+                             } );
+            }
+        };
+    }
+
     Worker distributedBFS() { NOT_IMPLEMENTED(); }
 
     void start( int thread_count ) override
@@ -208,12 +248,12 @@ static const int N = 1000;
 
 struct Search
 {
-    void _bfs_fixed( int threads )
+    void _fixed( ss::Order ord, int threads )
     {
         ss::Fixed builder{ { 1, 2 }, { 2, 3 }, { 1, 3 }, { 3, 4 } };
         int edgecount = 0, statecount = 0;
         ss::search(
-            ss::Order::PseudoBFS, builder, threads, ss::passive_listen(
+            ord, builder, threads, ss::passive_listen(
                 [&] ( auto f, auto t, auto )
                 {
                     if ( f == 1 )
@@ -229,13 +269,13 @@ struct Search
         ASSERT_EQ( statecount, 4 );
     }
 
-    void _bfs_random( int threads )
+    void _random( ss::Order ord, int threads )
     {
         for ( unsigned seed = 0; seed < 10; ++ seed )
         {
             ss::Random builder{ 50, 120, seed };
             std::atomic< int > edgecount( 0 ), statecount( 0 );
-            ss::search( ss::Order::PseudoBFS, builder, threads, ss::passive_listen(
+            ss::search( ord, builder, threads, ss::passive_listen(
                             [&] ( auto, auto, auto ) { ++ edgecount; },
                             [&] ( auto ) { ++ statecount; } ) );
             ASSERT_EQ( statecount.load(), 50 );
@@ -243,26 +283,21 @@ struct Search
         }
     }
 
-    TEST( bfs_fixed )
-    {
-        _bfs_fixed( 1 );
-    }
+    TEST( bfs_fixed ) { _fixed( ss::Order::PseudoBFS, 1 ); }
+    TEST( bfs_random ) { _random( ss::Order::PseudoBFS, 1 ); }
+    TEST( dfs_fixed ) { _fixed( ss::Order::DFS, 1 ); }
+    TEST( dfs_random ) { _random( ss::Order::DFS, 1 ); }
 
     TEST( bfs_fixed_parallel )
     {
-        _bfs_fixed( 2 );
-        _bfs_fixed( 3 );
-    }
-
-    TEST( bfs_random )
-    {
-        _bfs_random( 1 );
+        _fixed( ss::Order::PseudoBFS, 2 );
+        _fixed( ss::Order::PseudoBFS, 3 );
     }
 
     TEST( bfs_random_parallel )
     {
-        _bfs_random( 2 );
-        _bfs_random( 3 );
+        _random( ss::Order::PseudoBFS, 2 );
+        _random( ss::Order::PseudoBFS, 3 );
     }
 
     TEST( sequence )
