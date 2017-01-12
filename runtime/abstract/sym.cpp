@@ -15,9 +15,16 @@ static Formula *__newf( Args &&...args ) {
     return static_cast< Formula * >( ptr );
 }
 
+struct PCFragment {
+    PCFragment( Formula *assume, PCFragment *next ) : assume( assume ), next( next ) { }
+
+    Formula *assume = nullptr;
+    PCFragment *next = nullptr;
+};
+
 struct State {
     int counter = 0;
-    Formula *pcFragments = nullptr;
+    PCFragment *pcFragments = nullptr;
 };
 
 State state;
@@ -94,5 +101,8 @@ Tristate *__abstract_sym_bool_to_tristate( Formula * ) {
 }
 
 Formula *__abstract_sym_assume( Formula *value, Formula *constraint ) {
-    return mark( __newf< Assume >( value, weaken( constraint ) ) );
+    Formula *wconstraint = weaken( constraint );
+    state.pcFragments = weaken( __new< PCFragment >( wconstraint, state.pcFragments ) );
+    __vm_trace( _VM_T_Alg, state.pcFragments );
+    return mark( __newf< Assume >( weaken( value ), wconstraint ) );
 }

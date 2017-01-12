@@ -17,7 +17,7 @@
         __builtin_unreachable(); \
     } while ( false )
 #else
-#include <bricks-assert>
+#include <brick-assert>
 #endif
 
 #ifndef __BVEC_H__
@@ -247,9 +247,9 @@ using Binary = Binary_< Formula * >;
 using Unary = Unary_< Formula * >;
 using Assume = Assume_< Formula * >;
 #else
-using Unary = Unary_< std::unique_ptr< Formula > >;
-using Binary = Binary_< std::unique_ptr< Formula > >;
-using Assume = Assume_< std::unique_ptr< Formula > >;
+using Unary = Unary_< divine::vm::HeapPointer >;
+using Binary = Binary_< divine::vm::HeapPointer >;
+using Assume = Assume_< divine::vm::HeapPointer >;
 #endif
 
 union Formula {
@@ -269,123 +269,6 @@ union Formula {
 std::string toString( const Formula *f );
 inline std::string toString( const Formula &f ) {
     return toString( &f );
-}
-
-template< typename Read,
-          typename Variable, typename Constant, typename Unary, typename Binary, typename Assume >
-struct Walker {
-
-    Walker( Read read, Variable var, Constant con, Unary unary, Binary binary, Assume assume ) :
-        read( read ), var( var ), con( con ), unary( unary ), binary( binary ), assume( assume )
-    { }
-
-    template< typename T >
-    auto walk( T formula ) {
-        auto r = read( formula );
-        Op op = r.template read< Op >();
-        auto t = r.template read< Type >();
-
-        if ( op == Op::Variable ) {
-            auto v = r.template read< VarID >();
-            return var( t, v );
-        }
-        if ( op == Op::Constant ) {
-            r.shift( 4 );
-            ValueU val;
-            val.i64 = r.template read< uint64_t >();
-            assert( t.type() == Type::Int );
-            if ( t.bitwidth() <= 8 )
-                return con( t, val.i8 );
-            if ( t.bitwidth() <= 16 )
-                return con( t, val.i16 );
-            if ( t.bitwidth() <= 32 )
-                return con( t, val.i32 );
-            if ( t.bitwidth() <= 64 )
-                return con( t, val.i64 );
-            UNREACHABLE_F( "Integer too long: %d bits", t.bitwidth() );
-        }
-        if ( isUnary( op ) ) {
-            r.shift( 4 );
-            auto child = walk( r.template read< T >() );
-            return unary( op, t, child );
-        }
-        if ( isBinary( op ) ) {
-            r.shift( 4 );
-            auto left = walk( r.template read< T >() );
-            auto right = walk( r.template read< T >() );
-            return binary( op, t, left, right );
-        }
-        if ( op == Op::Assume ) {
-            r.shift( 4 );
-            auto val = walk( r.template read< T >() );
-            auto constraint = walk( r.template read< T >() );
-            return assume( val, constraint );
-        }
-        UNREACHABLE_F( "Unknow operation %d", op );
-    }
-
-    Read read;
-    Variable var;
-    Constant con;
-    Unary unary;
-    Binary binary;
-    Assume assume;
-};
-
-template< typename RawRead >
-struct Reader {
-
-    explicit Reader( RawRead rr ) : raw( rr ) { }
-
-    struct R {
-
-        R( const char *ptr ) : ptr( ptr ) { }
-
-        template< typename T >
-        T read() {
-            union {
-                T val;
-                char arr[ sizeof( T ) ];
-            };
-            std::copy( ptr, ptr + sizeof( T ), arr );
-            ptr += sizeof( T );
-            return val;
-        }
-
-        void shift( size_t s ) {
-            ptr += s;
-        }
-
-        const char *ptr;
-    };
-
-    template< typename F >
-    R operator()( F formula ) {
-        return R( raw( formula ) );
-    }
-
-    RawRead raw;
-};
-
-template< typename RawRead >
-Reader< RawRead > reader( RawRead &&r ) {
-    return Reader< RawRead >{ r };
-}
-
-template< typename T, typename Read,
-          typename Variable, typename Constant, typename Unary, typename Binary, typename Assume >
-auto traverseFormula( T formula, Read read, Variable var, Constant con, Unary un, Binary bin, Assume assume )
-{
-    Walker< Read, Variable, Constant, Unary, Binary, Assume > walker( read, var, con, un, bin, assume );
-    return walker.walk( formula );
-}
-
-inline const char *vptrToCptr( const void *v ) { return static_cast< const char * >( v ); }
-
-template< typename T,
-          typename Variable, typename Constant, typename Unary, typename Binary, typename Assume >
-auto traverseNativeFormula( T formula, Variable var, Constant con, Unary un, Binary bin, Assume assume ) {
-    return traverseFormula( formula, reader( vptrToCptr ), var, con, un, bin, assume );
 }
 
 } // namespace sym

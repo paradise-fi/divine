@@ -28,22 +28,21 @@ std::string toString( Type t ) {
 }
 
 std::string toString( const Formula *root ) {
-    return traverseNativeFormula( root,
-            []( Type t, VarID id ) {
-                return "[v "s + std::to_string( id ) + ":"s + toString( t ) + "]"s;
-            },
-            []( Type t, auto v ) {
-                return "[c "s + std::to_string( v ) + ":"s + toString( t ) + "]"s;
-            },
-            []( Op op, Type t, std::string c ) {
-                return toString( op ) + "("s + c + ") :"s + toString( t );
-            },
-            []( Op op, Type t, std::string l, std::string r ) {
-                return toString( op ) + "("s + l + ", "s + r + ") : "s + toString( t );
-            },
-            []( std::string val, std::string constraint ) {
-                return "assume("s + val + ", "s + constraint + ")"s;
-            } );
+    if ( root->op == Op::Variable )
+        return "[v "s + std::to_string( root->var.id ) + ":"s + toString( root->type ) + "]"s;
+    else if ( root->op == Op::Constant )
+        return "[c "s + std::to_string( root->con.value ) + ":"s + toString( root->type ) + "]"s;
+    else if ( isUnary( root->op ) )
+        return toString( root->op ) + "("s + toString( root->unary.child ) + ") :"s
+                + toString( root->type );
+    else if ( isBinary( root->op ) )
+        return toString( root->op ) + "("s + toString( root->binary.left ) + ", "s
+                + toString( root->binary.right ) + ") : "s + toString( root->type );
+    else if ( root->op == Op::Assume )
+        return "assume("s + toString( root->assume.value ) + ", "s
+                + toString( root->assume.constraint ) + ")"s;
+
+    UNREACHABLE_F( "unknown operation in to_string: %d", root->op );
 }
 
 std::string toString( Op x ) {
