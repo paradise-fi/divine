@@ -18,7 +18,7 @@ CPP_END
 #include <array>
 #include <cstdarg>
 #include <dios.h>
-#include <dios/main.hpp>
+#include <dios/core/main.hpp>
 
 namespace __dios {
 

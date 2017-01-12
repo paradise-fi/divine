@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 //             (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
-#include <dios/memory.hpp>
+#include <dios/core/memory.hpp>
 
 namespace __dios {
     nofail_t nofail;

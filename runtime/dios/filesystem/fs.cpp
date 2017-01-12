@@ -34,15 +34,15 @@ struct DirWrapper {
     int fd;
 };
 
-using divine::fs::Error;
-// divine::fs::VFS vfs{};
+using __dios::fs::Error;
+// __dios::fs::VFS vfs{};
 
 namespace conversion {
 
-    using namespace divine::fs::flags;
+    using namespace __dios::fs::flags;
 
-    divine::fs::Flags <Open> open( int fls ) {
-        divine::fs::Flags <Open> f = Open::NoFlags;
+    __dios::fs::Flags <Open> open( int fls ) {
+        __dios::fs::Flags <Open> f = Open::NoFlags;
         // special behaviour - check for access rights but do not grant them
         if (( fls & 3 ) == 3 )
             f |= Open::NoAccess;
@@ -64,7 +64,7 @@ namespace conversion {
         return f;
     }
 
-    int open( divine::fs::Flags <Open> fls ) {
+    int open( __dios::fs::Flags <Open> fls ) {
         int f;
         if ( fls.has( Open::NoAccess ))
             f = 3;
@@ -84,8 +84,8 @@ namespace conversion {
         return f;
     }
 
-    divine::fs::Flags <Message> message( int fls ) {
-        divine::fs::Flags <Message> f = Message::NoFlags;
+    __dios::fs::Flags <Message> message( int fls ) {
+        __dios::fs::Flags <Message> f = Message::NoFlags;
 
         if ( fls & MSG_DONTWAIT ) f |= Message::DontWait;
         if ( fls & MSG_PEEK ) f |= Message::Peek;
@@ -93,8 +93,8 @@ namespace conversion {
         return f;
     }
 
-    static_assert( AT_FDCWD == divine::fs::CURRENT_DIRECTORY,
-                   "mismatch value of AT_FDCWD and divine::fs::CURRENT_DIRECTORY" );
+    static_assert( AT_FDCWD == __dios::fs::CURRENT_DIRECTORY,
+                   "mismatch value of AT_FDCWD and __dios::fs::CURRENT_DIRECTORY" );
 }
 
 namespace __sc {
@@ -107,7 +107,7 @@ namespace __sc {
         buf->st_ctime = 0;
     }
 
-    static int _fillStat( const divine::fs::Node item, struct stat *buf )
+    static int _fillStat( const __dios::fs::Node item, struct stat *buf )
     {
         if ( !item )
             return -1;
@@ -123,7 +123,7 @@ namespace __sc {
         return 0;
     }
 
-    int _mknodat( int dirfd, const char *path, mode_t mode, dev_t dev, divine::fs::VFS *vfs )
+    int _mknodat( int dirfd, const char *path, mode_t mode, dev_t dev, __dios::fs::VFS *vfs )
     {
             if ( dev != 0 )
                 throw Error( EINVAL );
@@ -156,8 +156,8 @@ namespace __sc {
         auto ret = static_cast< int* >( retval );
         auto vfs = ctx.vfs;
         int mode = 0;
-        using namespace divine::fs::flags;
-        divine::fs::Flags <Open> f = Open::NoFlags;
+        using namespace __dios::fs::flags;
+        __dios::fs::Flags <Open> f = Open::NoFlags;
         if (( flags & 3 ) == 3 )
             f |= Open::NoAccess;
         if ( flags & O_RDWR ) {
@@ -170,7 +170,7 @@ namespace __sc {
             f |= Open::Read;
 
         if ( flags & O_CREAT ) {
-            f |= divine::fs::flags::Open::Create;
+            f |= __dios::fs::flags::Open::Create;
             if ( !vl )
                     FS_PROBLEM( "flag O_CREAT has been specified but mode was not set" );
             mode = va_arg(  vl, int );
@@ -178,18 +178,18 @@ namespace __sc {
         va_end( vl );
 
         if ( flags & O_EXCL )
-            f |= divine::fs::flags::Open::Excl;
+            f |= __dios::fs::flags::Open::Excl;
         if ( flags & O_TRUNC )
-            f |= divine::fs::flags::Open::Truncate;
+            f |= __dios::fs::flags::Open::Truncate;
         if ( flags & O_APPEND )
-            f |= divine::fs::flags::Open::Append;
+            f |= __dios::fs::flags::Open::Append;
         if ( flags & O_NOFOLLOW )
-            f |= divine::fs::flags::Open::SymNofollow;
+            f |= __dios::fs::flags::Open::SymNofollow;
         if ( flags & O_NONBLOCK )
-            f |= divine::fs::flags::Open::NonBlock;
+            f |= __dios::fs::flags::Open::NonBlock;
         if ( flags & O_DIRECTORY )
-            f |= divine::fs::flags::Open::Directory;
-        
+            f |= __dios::fs::flags::Open::Directory;
+
 
         try {
             *ret = vfs->instance( ).openFileAt( AT_FDCWD, path, f, mode );
@@ -202,8 +202,8 @@ namespace __sc {
 
     void openat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
-        using namespace divine::fs::flags;
-        divine::fs::Flags <Open> f = Open::NoFlags;
+        using namespace __dios::fs::flags;
+        __dios::fs::Flags <Open> f = Open::NoFlags;
         mode_t mode = 0;
         auto dirfd = va_arg(  vl, int );
         auto path = va_arg( vl, const char * );
@@ -223,7 +223,7 @@ namespace __sc {
             f |= Open::Read;
 
         if ( flags & O_CREAT ) {
-            f |= divine::fs::flags::Open::Create;
+            f |= __dios::fs::flags::Open::Create;
             if ( !vl )
                     FS_PROBLEM( "flag O_CREAT has been specified but mode was not set" );
             mode = va_arg(  vl, mode_t );
@@ -231,15 +231,15 @@ namespace __sc {
         }
 
         if ( flags & O_EXCL )
-            f |= divine::fs::flags::Open::Excl;
+            f |= __dios::fs::flags::Open::Excl;
         if ( flags & O_TRUNC )
-            f |= divine::fs::flags::Open::Truncate;
+            f |= __dios::fs::flags::Open::Truncate;
         if ( flags & O_APPEND )
-            f |= divine::fs::flags::Open::Append;
+            f |= __dios::fs::flags::Open::Append;
         if ( flags & O_NOFOLLOW )
-            f |= divine::fs::flags::Open::SymNofollow;
+            f |= __dios::fs::flags::Open::SymNofollow;
         if ( flags & O_NONBLOCK )
-            f |= divine::fs::flags::Open::NonBlock;
+            f |= __dios::fs::flags::Open::NonBlock;
 
         try {
             *ret = vfs->instance( ).openFileAt( dirfd, path, f, mode );
@@ -287,14 +287,14 @@ namespace __sc {
                     int mode = va_arg(  vl, int );
 
                     if ( mode & O_APPEND )
-                        f->flags( ) |= divine::fs::flags::Open::Append;
-                    else if ( f->flags( ).has( divine::fs::flags::Open::Append ))
+                        f->flags( ) |= __dios::fs::flags::Open::Append;
+                    else if ( f->flags( ).has( __dios::fs::flags::Open::Append ))
                         throw Error( EPERM );
 
                     if ( mode & O_NONBLOCK )
-                        f->flags( ) |= divine::fs::flags::Open::NonBlock;
+                        f->flags( ) |= __dios::fs::flags::Open::NonBlock;
                     else
-                        f->flags( ).clear( divine::fs::flags::Open::NonBlock );
+                        f->flags( ).clear( __dios::fs::flags::Open::NonBlock );
 
                     va_end( vl );
                     *ret = 0;
@@ -359,7 +359,7 @@ namespace __sc {
             auto f = vfs->instance( ).getFile( fd );
             size_t savedOffset = f->offset( );
             f->offset( offset );
-            auto d = divine::fs::utils::make_defer( [ & ] { f->offset( savedOffset ); } );
+            auto d = __dios::fs::utils::make_defer( [ & ] { f->offset( savedOffset ); } );
             *ret = f->write( buf, count );
         } catch ( Error & e ) {
             *err = e.code();
@@ -397,7 +397,7 @@ namespace __sc {
             auto f = vfs->instance( ).getFile( fd );
             size_t savedOffset = f->offset( );
             f->offset( offset );
-            auto d = divine::fs::utils::make_defer( [ & ] { f->offset( savedOffset ); } );
+            auto d = __dios::fs::utils::make_defer( [ & ] { f->offset( savedOffset ); } );
             *ret = f->read( buf, count );
         } catch ( Error & e ) {
             *err = e.code();
@@ -429,16 +429,16 @@ namespace __sc {
         auto vfs = ctx.vfs;
 
         try {
-            divine::fs::Seek w = divine::fs::Seek::Undefined;
+            __dios::fs::Seek w = __dios::fs::Seek::Undefined;
             switch ( whence ) {
                 case SEEK_SET:
-                    w = divine::fs::Seek::Set;
+                    w = __dios::fs::Seek::Set;
                     break;
                 case SEEK_CUR:
-                    w = divine::fs::Seek::Current;
+                    w = __dios::fs::Seek::Current;
                     break;
                 case SEEK_END:
-                    w = divine::fs::Seek::End;
+                    w = __dios::fs::Seek::End;
                     break;
             }
             *ret = vfs->instance( ).lseek( fd, offset, w );
@@ -486,7 +486,7 @@ namespace __sc {
 
         try {
             auto item = vfs->instance( ).getFile( fd );
-            if ( !item->flags( ).has( divine::fs::flags::Open::Write ))
+            if ( !item->flags( ).has( __dios::fs::flags::Open::Write ))
                 throw Error( EINVAL );
             vfs->instance( ).truncate( item->inode( ), length );
             *ret = 0;
@@ -551,16 +551,16 @@ namespace __sc {
         auto flags = va_arg( vl, int );
         auto vfs = ctx.vfs;
 
-        divine::fs::flags::At f;
+        __dios::fs::flags::At f;
         switch ( flags ) {
             case 0:
-                f = divine::fs::flags::At::NoFlags;
+                f = __dios::fs::flags::At::NoFlags;
                 break;
             case AT_REMOVEDIR:
-                f = divine::fs::flags::At::RemoveDir;
+                f = __dios::fs::flags::At::RemoveDir;
                 break;
             default:
-                f = divine::fs::flags::At::Invalid;
+                f = __dios::fs::flags::At::Invalid;
                 break;
         }
         try {
@@ -572,13 +572,13 @@ namespace __sc {
         }
     }
 
-    int _linkat(int olddirfd, const char *target, int newdirfd, const char *linkpath, int flags,divine::fs::VFS* vfs)
+    int _linkat(int olddirfd, const char *target, int newdirfd, const char *linkpath, int flags,__dios::fs::VFS* vfs)
     {
 
-        divine::fs::Flags <divine::fs::flags::At> fl = divine::fs::flags::At::NoFlags;
-        if ( flags & AT_SYMLINK_FOLLOW ) fl |= divine::fs::flags::At::SymFollow;
+        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
+        if ( flags & AT_SYMLINK_FOLLOW ) fl |= __dios::fs::flags::At::SymFollow;
         if (( flags | AT_SYMLINK_FOLLOW ) != AT_SYMLINK_FOLLOW )
-            fl |= divine::fs::flags::At::Invalid;
+            fl |= __dios::fs::flags::At::Invalid;
             vfs->instance( ).createHardLinkAt( newdirfd, linkpath, olddirfd, target, fl );
             return 0;
     }
@@ -692,18 +692,18 @@ namespace __sc {
         auto flags = va_arg( vl, int );
         auto vfs = ctx.vfs;
 
-        divine::fs::Flags <divine::fs::flags::Access> m = divine::fs::flags::Access::OK;
-        if ( mode & R_OK ) m |= divine::fs::flags::Access::Read;
-        if ( mode & W_OK ) m |= divine::fs::flags::Access::Write;
-        if ( mode & X_OK ) m |= divine::fs::flags::Access::Execute;
+        __dios::fs::Flags <__dios::fs::flags::Access> m = __dios::fs::flags::Access::OK;
+        if ( mode & R_OK ) m |= __dios::fs::flags::Access::Read;
+        if ( mode & W_OK ) m |= __dios::fs::flags::Access::Write;
+        if ( mode & X_OK ) m |= __dios::fs::flags::Access::Execute;
         if (( mode | R_OK | W_OK | X_OK ) != ( R_OK | W_OK | X_OK ))
-            m |= divine::fs::flags::Access::Invalid;
+            m |= __dios::fs::flags::Access::Invalid;
 
-        divine::fs::Flags <divine::fs::flags::At> fl = divine::fs::flags::At::NoFlags;
-        if ( flags & AT_EACCESS ) fl |= divine::fs::flags::At::EffectiveID;
-        if ( flags & AT_SYMLINK_NOFOLLOW ) fl |= divine::fs::flags::At::SymNofollow;
+        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
+        if ( flags & AT_EACCESS ) fl |= __dios::fs::flags::At::EffectiveID;
+        if ( flags & AT_SYMLINK_NOFOLLOW ) fl |= __dios::fs::flags::At::SymNofollow;
         if (( flags | AT_EACCESS | AT_SYMLINK_NOFOLLOW ) != ( AT_EACCESS | AT_SYMLINK_NOFOLLOW ))
-            fl |= divine::fs::flags::At::Invalid;
+            fl |= __dios::fs::flags::At::Invalid;
 
         try {
             vfs->instance( ).accessAt( dirfd, path, m, fl );
@@ -721,14 +721,14 @@ namespace __sc {
         auto mode = va_arg( vl, int );
         auto vfs = ctx.vfs;
 
-        divine::fs::Flags <divine::fs::flags::Access> m = divine::fs::flags::Access::OK;
-        if ( mode & R_OK ) m |= divine::fs::flags::Access::Read;
-        if ( mode & W_OK ) m |= divine::fs::flags::Access::Write;
-        if ( mode & X_OK ) m |= divine::fs::flags::Access::Execute;
+        __dios::fs::Flags <__dios::fs::flags::Access> m = __dios::fs::flags::Access::OK;
+        if ( mode & R_OK ) m |= __dios::fs::flags::Access::Read;
+        if ( mode & W_OK ) m |= __dios::fs::flags::Access::Write;
+        if ( mode & X_OK ) m |= __dios::fs::flags::Access::Execute;
         if (( mode | R_OK | W_OK | X_OK ) != ( R_OK | W_OK | X_OK ))
-            m |= divine::fs::flags::Access::Invalid;
+            m |= __dios::fs::flags::Access::Invalid;
 
-        divine::fs::Flags <divine::fs::flags::At> fl = divine::fs::flags::At::NoFlags;
+        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
 
         try {
             vfs->instance( ).accessAt( AT_FDCWD, path, m, fl );
@@ -904,10 +904,10 @@ namespace __sc {
         auto flags = va_arg( vl, int );
         auto vfs = ctx.vfs;
 
-        divine::fs::Flags <divine::fs::flags::At> fl = divine::fs::flags::At::NoFlags;
-        if ( flags & AT_SYMLINK_NOFOLLOW ) fl |= divine::fs::flags::At::SymNofollow;
+        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
+        if ( flags & AT_SYMLINK_NOFOLLOW ) fl |= __dios::fs::flags::At::SymNofollow;
         if (( flags | AT_SYMLINK_NOFOLLOW ) != AT_SYMLINK_NOFOLLOW )
-            fl |= divine::fs::flags::At::Invalid;
+            fl |= __dios::fs::flags::At::Invalid;
 
         try {
             vfs->instance( ).chmodAt( dirfd, path, mode, fl );
@@ -925,7 +925,7 @@ namespace __sc {
         auto mode = va_arg( vl, mode_t );
         auto vfs = ctx.vfs;
 
-        divine::fs::Flags <divine::fs::flags::At> fl = divine::fs::flags::At::NoFlags;
+        __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
 
         try {
             vfs->instance( ).chmodAt( AT_FDCWD, path, mode, fl );
@@ -1038,8 +1038,8 @@ namespace __sc {
 
     void socket( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
-        using SocketType = divine::fs::SocketType;
-        using namespace divine::fs::flags;
+        using SocketType = __dios::fs::SocketType;
+        using namespace __dios::fs::flags;
         auto domain = va_arg( vl, int );
         auto t = va_arg( vl, int );
         auto protocol = va_arg( vl, int );
@@ -1074,8 +1074,8 @@ namespace __sc {
 
     void socketpair( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
-        using SocketType = divine::fs::SocketType;
-        using Open = divine::fs::flags::Open;
+        using SocketType = __dios::fs::SocketType;
+        using Open = __dios::fs::flags::Open;
         auto domain = va_arg( vl, int );
         auto t = va_arg( vl, int );
         auto protocol = va_arg( vl, int );
@@ -1151,7 +1151,7 @@ namespace __sc {
         /*auto len = */va_arg( vl, socklen_t );
         auto ret = static_cast< int* >( retval );
         auto vfs = ctx.vfs;
-        using Address = divine::fs::Socket::Address;
+        using Address = __dios::fs::Socket::Address;
 
         try {
 
@@ -1178,7 +1178,7 @@ namespace __sc {
         /*auto len = */va_arg( vl, socklen_t );
         auto ret = static_cast< int* >( retval );
         auto vfs = ctx.vfs;
-        using Address = divine::fs::Socket::Address;
+        using Address = __dios::fs::Socket::Address;
 
         try {
 
@@ -1259,7 +1259,7 @@ namespace __sc {
         /*auto len = */va_arg( vl, socklen_t );
         auto ret = static_cast< ssize_t* >( retval );
         auto vfs = ctx.vfs;
-        using Address = divine::fs::Socket::Address;
+        using Address = __dios::fs::Socket::Address;
 
         if ( !addr ) {
             try {
@@ -1288,9 +1288,9 @@ namespace __sc {
         }
     }
 
-    ssize_t _recvfrom(int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len, divine::fs::VFS* vfs )
+    ssize_t _recvfrom(int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len, __dios::fs::VFS* vfs )
     {
-        using Address = divine::fs::Socket::Address;
+        using Address = __dios::fs::Socket::Address;
         Address address;
         struct sockaddr_un *target = reinterpret_cast< struct sockaddr_un * >( addr );
         if ( target && !len )
@@ -1361,9 +1361,9 @@ namespace __sc {
         }
     }
 
-    int _accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags, divine::fs::VFS* vfs )
+    int _accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags, __dios::fs::VFS* vfs )
     {
-        using Address = divine::fs::Socket::Address;
+        using Address = __dios::fs::Socket::Address;
 
         if ( addr && !len )
             throw Error( EFAULT );
@@ -1382,7 +1382,7 @@ namespace __sc {
             *len = address.size( ) + 1 + sizeof( target->sun_family );
         }
         if ( flags & SOCK_NONBLOCK )
-            vfs->instance( ).getSocket( newSocket )->flags( ) |= divine::fs::flags::Open::NonBlock;
+            vfs->instance( ).getSocket( newSocket )->flags( ) |= __dios::fs::flags::Open::NonBlock;
 
         return newSocket;
     }
@@ -1496,7 +1496,7 @@ namespace __sc {
         }
     }
 
-    int _renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath,divine::fs::VFS* vfs )
+    int _renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath,__dios::fs::VFS* vfs )
     {
         vfs->instance( ).renameAt( newdirfd, newpath, olddirfd, oldpath );
         return 0;
@@ -1551,7 +1551,7 @@ extern "C" {
 
     DIR *fdopendir( int fd )
     {
-        using divine::fs::Mode;
+        using __dios::fs::Mode;
         struct stat fdStat;
 
         int result = fstat( fd, &fdStat );
@@ -1573,7 +1573,7 @@ extern "C" {
             errno = EBADF;
             return nullptr;
         }
-        
+
     }
 
     DIR *opendir( const char *name )
@@ -1644,7 +1644,7 @@ extern "C" {
               int ( *compare )( const struct dirent **, const struct dirent ** ) )
     {
 
-        using namespace divine::fs::flags;
+        using namespace __dios::fs::flags;
         int length = 0;
         DIR *dirp = opendir( path );
 

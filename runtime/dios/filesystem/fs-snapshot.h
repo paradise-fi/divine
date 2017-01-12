@@ -5,7 +5,7 @@
 #ifndef _FS_SNAPSHOT_H_
 #define _FS_SNAPSHOT_H_
 
-namespace divine {
+namespace __dios {
 namespace fs {
 
 enum class Type {
@@ -26,6 +26,6 @@ struct SnapshotFS {
 };
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

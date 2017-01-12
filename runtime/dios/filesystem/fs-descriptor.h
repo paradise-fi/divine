@@ -11,7 +11,7 @@
 #ifndef _FS_DESCRIPTOR_H_
 #define _FS_DESCRIPTOR_H_
 
-namespace divine {
+namespace __dios {
 namespace fs {
 
 struct FileDescriptor {
@@ -348,6 +348,6 @@ private:
 };
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

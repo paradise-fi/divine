@@ -3,7 +3,7 @@
 include( stringify )
 
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
-      *.h divine/*.h dios/*.hpp dios/*.def atomic sys/*.h bits/*.h
+      *.h divine/*.h dios/*.hpp dios/core/*.hpp dios/core/*.def atomic sys/*.h bits/*.h
       abstract/*.hpp abstract/*.h
       pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h
       libm/*.h libm/bits/*.h
@@ -12,10 +12,10 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
       libcxx/src/*.h
       libcxx/include/support/xlocale/xlocale.h libcxx/src/support/atomic_support.h
-      libunwind/include/* libunwind/include/mach-o/* filesystem/*.h )
+      libunwind/include/* libunwind/include/mach-o/* dios/filesystem/*.h )
 
 file( GLOB SRC_libdios
-      divine/*.cpp dios/*.cpp filesystem/*.cpp )
+      divine/*.cpp dios/*.cpp dios/core/*.cpp dios/filesystem/*.cpp )
 
 file( GLOB SRC_libabstract abstract/*.cpp abstract/*.c )
 

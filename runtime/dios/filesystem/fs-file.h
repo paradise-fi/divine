@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <signal.h>
 #include <dios.h>
-#include <dios/memory.hpp>
+#include <dios/core/memory.hpp>
 
 #include "fs-utils.h"
 #include "fs-inode.h"
@@ -14,7 +14,7 @@
 #ifndef _FS_FILE_H_
 #define _FS_FILE_H_
 
-namespace divine {
+namespace __dios {
 namespace fs {
 
 struct Link : DataItem {
@@ -475,24 +475,24 @@ private:
 };
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 namespace std {
 template<>
-struct hash< ::divine::fs::Socket::Address > {
-    size_t operator()( const ::divine::fs::Socket::Address &a ) const {
+struct hash< ::__dios::fs::Socket::Address > {
+    size_t operator()( const ::__dios::fs::Socket::Address &a ) const {
         return hash< __dios::String >()( a.value() );
     }
 };
 
 template<>
-inline void swap( ::divine::fs::Socket::Address &lhs, ::divine::fs::Socket::Address &rhs ) {
+inline void swap( ::__dios::fs::Socket::Address &lhs, ::__dios::fs::Socket::Address &rhs ) {
     lhs.swap( rhs );
 }
 
 } // namespace std
 
-namespace divine {
+namespace __dios {
 namespace fs {
 
 struct SocketStream : Socket {
@@ -789,6 +789,6 @@ private:
 };
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

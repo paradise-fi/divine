@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
 #include "fs-manager.h"
-#include <dios/memory.hpp>
+#include <dios/core/memory.hpp>
 
 #define REMEMBER_DIRECTORY( dirfd, name )                               \
     WeakNode savedDir = _currentDirectory;                               \
@@ -11,7 +11,7 @@
     else                                                                \
         d.pass();
 
-namespace divine {
+namespace __dios {
 namespace fs {
 
 Manager::Manager( bool ) :
@@ -228,7 +228,7 @@ int Manager::openFileAt( int dirfd, __dios::String name, Flags< flags::Open > fl
             throw Error( ENOTDIR );
         _checkGrants( file, Mode::RUSER | Mode::XUSER );
 
-    }   
+    }
 
     if ( file->mode().isFifo() )
         return _getFileDescriptor( std::allocate_shared< PipeDescriptor >( __dios::AllocatorPure(), file, fl, true ) );
@@ -731,7 +731,7 @@ void Manager::initializeFromSnapshot( const _VM_Env *env ) {
                 createSymLinkAt( CURRENT_DIRECTORY, name, value );
             }
         }
-     }      
+     }
 }
 
 void Manager::_checkGrants( Node inode, mode_t grant ) const {
@@ -746,4 +746,4 @@ void Manager::_chmod( Node inode, mode_t mode ) {
 }
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios

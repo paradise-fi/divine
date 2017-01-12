@@ -5,10 +5,10 @@
 #include <cctype>
 
 #include <divine/metadata.h>
-#include <dios/scheduling.hpp>
-#include <dios/fault.hpp>
-#include <dios/trace.hpp>
-#include <dios/syscall.hpp>
+#include <dios/core/scheduling.hpp>
+#include <dios/core/fault.hpp>
+#include <dios/core/trace.hpp>
+#include <dios/core/syscall.hpp>
 
 uint8_t const *_DiOS_fault_cfg;
 

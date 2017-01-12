@@ -1,8 +1,8 @@
 // -*- C++ -*- (c) 2016 Jan Mrázek <email@honzamrazek.cz>
 
-#include <dios/syscall.hpp>
-#include <dios/fault.hpp>
-#include <dios/scheduling.hpp>
+#include <dios/core/syscall.hpp>
+#include <dios/core/fault.hpp>
+#include <dios/core/scheduling.hpp>
 #include "fault.hpp"
 #include <cerrno>
 
@@ -28,20 +28,20 @@ void __dios_syscall( int syscode, void* ret ... ) {
 namespace __sc {
 // Mapping of syscodes to implementations
 #define SYSCALL(n,...) extern void n ( __dios::Context& ctx, int *err, void *retval, va_list vl );
-    #include <dios/syscall.def>
+    #include <dios/core/syscall.def>
 } // namespace __sc
 
 namespace __dios {
 
 void ( *_DiOS_SysCalls[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl ) = {
     #define SYSCALL(n,...)  [ _SC_ ## n ] = __sc::n,
-        #include <dios/syscall.def>
+        #include <dios/core/syscall.def>
     #undef SYSCALL
 };
 
 const SchedCommand _DiOS_SysCallsSched[ _SC_LAST ] = {
     #define SYSCALL(n, sched,...) [ _SC_ ## n ] = sched,
-        #include <dios/syscall.def>
+        #include <dios/core/syscall.def>
     #undef SYSCALL
 };
 

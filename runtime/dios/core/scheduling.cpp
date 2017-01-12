@@ -2,8 +2,8 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 //                 2016 Petr Rockai <me@mornfall.net>
 
-#include <dios/scheduling.hpp>
-#include <dios/main.hpp>
+#include <dios/core/scheduling.hpp>
+#include <dios/core/main.hpp>
 #include <divine/metadata.h>
 
 _DiOS_ThreadHandle __dios_start_thread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept

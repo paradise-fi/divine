@@ -16,7 +16,7 @@ namespace __dios {
 enum _DiOS_SC {
     _SC_INACTIVE = 0,
 
-    #include <dios/syscall.def>
+    #include <dios/core/syscall.def>
 
     _SC_LAST
 };

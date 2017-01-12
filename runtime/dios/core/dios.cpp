@@ -9,13 +9,13 @@ extern "C" {
 #include <dios.h>
 #include <divine/opcodes.h>
 #include <divine/metadata.h>
-#include <dios/main.hpp>
-#include <dios/scheduling.hpp>
-#include <dios/syscall.hpp>
-#include <dios/trace.hpp>
-#include <dios/fault.hpp>
-#include <filesystem/fs-manager.h>
-#include <filesystem/fs-constants.h>
+#include <dios/core/main.hpp>
+#include <dios/core/scheduling.hpp>
+#include <dios/core/syscall.hpp>
+#include <dios/core/trace.hpp>
+#include <dios/core/fault.hpp>
+#include <dios/filesystem/fs-manager.h>
+#include <dios/filesystem/fs-constants.h>
 
 extern "C" {
 #include <unistd.h>
@@ -23,8 +23,7 @@ char **environ;
 }
 
 namespace __dios {
-using VFS = divine::fs::VFS;
-using FileTrace = divine::fs::FileTrace;
+using FileTrace = fs::FileTrace;
 
 Context::Context() :
     scheduler( __dios::new_object< Scheduler >() ),
@@ -202,7 +201,6 @@ void init( const _VM_Env *env )
     auto envp = construct_main_arg( "env.", env );
 
     context->scheduler->setupMainThread( mainthr, argv.first, argv.second, envp.second );
-
     SysOpts sysOpts;
     if ( !getSysOpts( env, sysOpts ) ) {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );

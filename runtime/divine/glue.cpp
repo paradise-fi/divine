@@ -6,10 +6,10 @@
 #include <cstdlib>
 #include <_PDCLIB_aux.h>
 #include <divine.h>
-#include <dios/fault.hpp>
+#include <dios/core/fault.hpp>
 #include <string.h>
 #include <dios.h>
-#include <dios/main.hpp>
+#include <dios/core/main.hpp>
 
 /*
  * Glue code that ties various bits of C and C++ runtime to the divine runtime

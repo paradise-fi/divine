@@ -14,8 +14,8 @@
 
 #ifdef __divine__
 #include <divine.h>
-#include <dios/stdlibwrap.hpp>
-#include <dios/syscall.hpp>
+#include <dios/core/stdlibwrap.hpp>
+#include <dios/core/syscall.hpp>
 
 #define __FS_assert( x ) do { \
         if ( !(x) ) { \
@@ -42,7 +42,7 @@ enum Problems {
 #endif
 
 
-namespace divine {
+namespace __dios {
 namespace fs {
 namespace utils {
 
@@ -143,6 +143,6 @@ private:
 };
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

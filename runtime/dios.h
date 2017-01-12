@@ -193,15 +193,14 @@ CPP_END
 #if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
 
 #include <cstdint>
-#include <dios/stdlibwrap.hpp>
+#include <dios/core/stdlibwrap.hpp>
 
-namespace divine {
-    namespace fs {
-        struct VFS;
-    }
-}
 
 namespace __dios {
+
+namespace fs {
+    struct VFS;
+}
 
 template < class T, class... Args >
 T *new_object( Args... args ) {
@@ -221,7 +220,7 @@ using SysOpts = Vector< std::pair< String, String > >;
 struct Scheduler;
 struct Syscall;
 struct Fault;
-using VFS = divine::fs::VFS;
+using VFS = fs::VFS;
 
 struct MachineParams {
     int hardwareConcurrency;

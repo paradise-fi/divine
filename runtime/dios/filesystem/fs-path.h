@@ -9,7 +9,7 @@
 #ifndef _FS_PATH_H_
 #define _FS_PATH_H_
 
-namespace divine {
+namespace __dios {
 namespace fs {
 namespace path {
 
@@ -126,6 +126,6 @@ inline __dios::String normalize( __dios::String path ) {
 
 } // namespace path
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

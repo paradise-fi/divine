@@ -10,7 +10,7 @@
 #include <set>
 #include <list>
 #include <map>
-#include <dios/memory.hpp>
+#include <dios/core/memory.hpp>
 
 namespace __dios {
 

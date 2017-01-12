@@ -6,7 +6,7 @@
 #ifndef _FS_CONSTANTS_H_
 #define _FS_CONSTANTS_H_
 
-namespace divine {
+namespace __dios {
 namespace fs {
 
 enum class FileTrace {
@@ -83,6 +83,6 @@ template< typename T >
 using Flags = storage::StrongEnumFlags< T >;
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

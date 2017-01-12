@@ -10,7 +10,7 @@
 #ifndef _FS_DIRECTORY_H_
 #define _FS_DIRECTORY_H_
 
-namespace divine {
+namespace __dios {
 namespace fs {
 
 struct DirectoryEntry {
@@ -251,6 +251,6 @@ private:
 };
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

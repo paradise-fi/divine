@@ -19,7 +19,7 @@
 #ifndef _FS_MANAGER_H_
 #define _FS_MANAGER_H_
 
-namespace divine {
+namespace __dios {
 namespace fs {
 
 struct Manager {
@@ -200,6 +200,6 @@ private:
 extern VFS vfs;
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

@@ -1,12 +1,12 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 //             (c) 2014 Vladimír Štill
 //  StrongEnumFlags is ported from bricks/brick-types.h
-#include "filesystem/fs-utils.h"
+#include <dios/filesystem/fs-utils.h>
 
 #ifndef _FS_STORAGE_H_
 #define _FS_STORAGE_H_
 
-namespace divine {
+namespace __dios {
 namespace fs {
 namespace storage {
 
@@ -186,6 +186,6 @@ private:
 
 } // namespace storage
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

@@ -2,7 +2,7 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 
 #include <cstdio>
-#include <dios/trace.hpp>
+#include <dios/core/trace.hpp>
 #include <dios.h>
 
 namespace __dios {

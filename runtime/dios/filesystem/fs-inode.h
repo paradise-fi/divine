@@ -7,7 +7,7 @@
 #ifndef _FS_INODE_H_
 #define _FS_INODE_H_
 
-namespace divine {
+namespace __dios {
 namespace fs {
 
 struct Mode {
@@ -217,6 +217,6 @@ using Node = std::shared_ptr< INode >;
 using WeakNode = std::weak_ptr< INode >;
 
 } // namespace fs
-} // namespace divine
+} // namespace __dios
 
 #endif

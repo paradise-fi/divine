@@ -4,7 +4,7 @@
 
 #include <algorithm>
 #include <divine/metadata.h>
-#include <dios/main.hpp>
+#include <dios/core/main.hpp>
 #include <cstdlib>
 #include <pthread.h>
 

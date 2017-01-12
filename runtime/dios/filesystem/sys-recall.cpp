@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <divine.h>
-#include <dios/syscall.hpp>
+#include <dios/core/syscall.hpp>
 #include <cerrno>
 
 int open( const char *path, int flags, ... )
@@ -129,4 +129,4 @@ ssize_t sendto( int fd, const void *buf, size_t n, int flags,
 	 __dios_syscall( __dios::_SC_ ## name, &retval, name1, name2, name3, name4, name5 );\
     return retval; }
 #define SYSCALLSEP(...)
-    #include <dios/syscall.def>
+    #include <dios/core/syscall.def>
