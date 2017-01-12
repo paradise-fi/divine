@@ -1,0 +1,427 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * Utilities for printing SMT-LIBv2 formulas
+ */
+
+/*
+ * (c) 2017 Vladimír Štill <xstill@fi.muni.cz>
+ */
+
+/* Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE. */
+
+#include <brick-assert>
+#include <brick-string>
+#include <brick-data>
+
+#include <memory>
+#include <iostream>
+#include <sstream>
+#include <functional>
+
+#include <experimental/string_view>
+
+namespace std {
+    using string_view = experimental::string_view;
+}
+
+namespace brick {
+namespace smt {
+
+struct Printer : std::function< void ( std::ostream & ) > {
+    Printer() = default;
+    Printer( const Printer & ) = default;
+    Printer( Printer && ) = default;
+    Printer &operator=( const Printer & ) = default;
+    Printer &operator=( Printer && ) = default;
+
+    explicit Printer( std::function< void ( std::ostream & ) > &&f ) :
+        std::function< void ( std::ostream & ) >( std::move( f ) )
+    { }
+};
+
+inline std::ostream &operator<<( std::ostream &os, const Printer &p ) {
+    p( os );
+    return os;
+}
+
+inline Printer string( std::string_view value ) {
+    return Printer( [=]( std::ostream &o ) {
+        o << '"';
+        for ( char c : value ) {
+            if ( c == '"' )
+                o << "\\\"";
+            else if ( c == '\\' )
+                o << "\\\\";
+            else
+                o << c;
+        }
+        o << '"';
+    } );
+}
+
+inline Printer symbol( std::string_view name ) {
+    return Printer( [=]( std::ostream &o ) { o << name; } );
+}
+
+inline Printer type( std::string_view t ) { return symbol( t ); }
+
+inline Printer bitvecT( int bitwidth ) {
+    ASSERT_LEQ( 0, bitwidth );
+    return Printer( [=]( std::ostream &o ) {
+        o << "(_ BitVec " << std::dec << bitwidth << ")";
+    } );
+}
+
+inline static uint64_t u64mask( int bitwidth ) {
+    if ( bitwidth >= 64 )
+        return ~uint64_t( 0 );
+    return (uint64_t( 1 ) << bitwidth) - 1;
+}
+
+inline Printer bitvec( brick::data::SmallVector< uint64_t > data, int bitwidth ) {
+    int bw = bitwidth;
+    int i = 0;
+    while ( bw > 0 && i < data.size() ) {
+        data[ i ] &= u64mask( bw );
+        bw -= 64;
+        ++i;
+    }
+    while ( i < data.size() )
+        data.pop_back();
+    while ( data.size() < (bitwidth + 63) / 64 )
+        data.push_back( 0 );
+
+    return Printer( [=]( std::ostream &o ) {
+        if ( bitwidth % 4 == 0 ) {
+            o << "#x" << std::hex;
+            // data are little endian
+            for ( int i = data.size() - 1; i >= 0; --i )
+                o << std::setfill( '0' ) << std::setw( std::min( bitwidth - i * 64, 64 ) / 4 ) << data[i];
+        }
+        else {
+            o << "#b";
+            for ( int i = data.size() - 1; i >= 0; --i ) {
+                for ( int j = std::min( bitwidth - 1 - i * 64, 63 ); j >= 0; --j )
+                    if ( data[i] & (uint64_t( 1 ) << j) )
+                        o << '1';
+                    else
+                        o << '0';
+            }
+        }
+    } );
+}
+
+inline Printer bitvec( uint64_t val, int bitwidth ) {
+    return bitvec( brick::data::SmallVector< uint64_t >{ val }, bitwidth );
+}
+
+
+template< typename Int, typename =
+          std::enable_if_t< std::is_integral< Int >::value && (sizeof( Int ) <= sizeof( uint64_t )) > >
+Printer bitvec( Int i ) {
+    return bitvec( brick::data::SmallVector< uint64_t >{ uint64_t( i ) }, sizeof( Int ) * 8 );
+}
+
+enum class Op {
+    FirstUnary,
+    Not = FirstUnary,
+    BvNot,
+    BvNegate,
+    LastUnary = BvNegate,
+
+    FirstBinary,
+    Eq = FirstBinary,
+    And,
+    Or,
+    Xor,
+    Implies,
+
+    Concat,
+
+    BvAnd,
+    BvOr,
+    BvXor,
+    BvAdd,
+    BvSub,
+    BvMul,
+    BvUDiv,
+    BvSDiv,
+    BvURem,
+    BvSRem,
+    BvShl,
+    BvLShr,
+    BvAShr,
+
+    BvULE,
+    BvULT,
+    BvUGE,
+    BvUGT,
+    BvSLE,
+    BvSLT,
+    BvSGE,
+    BvSGT,
+    LastBinary = BvSGT,
+
+    Extract,
+};
+
+inline std::string_view name( Op op ) {
+    switch ( op ) {
+        case Op::Not: return "not";
+        case Op::BvNot: return "bvnot";
+        case Op::BvNegate: return "bvneg";
+
+        case Op::Eq: return "=";
+        case Op::And: return "and";
+        case Op::Or: return "or";
+        case Op::Xor: return "xor";
+        case Op::Implies: return "=>";
+
+        case Op::Concat: return "concat";
+
+        case Op::BvAnd: return "bvand";
+        case Op::BvOr: return "bvor";
+        case Op::BvXor: return "bvxor";
+        case Op::BvAdd: return "bvadd";
+        case Op::BvSub: return "bvsub";
+        case Op::BvMul: return "bvmul";
+        case Op::BvUDiv: return "bvudiv";
+        case Op::BvSDiv: return "bvsdiv";
+        case Op::BvURem: return "bvurem";
+        case Op::BvSRem: return "bvsrem";
+        case Op::BvShl: return "bvshl";
+        case Op::BvAShr: return "bvashr";
+        case Op::BvLShr: return "bvlshr";
+
+        case Op::BvULE: return "bvule";
+        case Op::BvULT: return "bvult";
+        case Op::BvUGE: return "bvuge";
+        case Op::BvUGT: return "bvugt";
+        case Op::BvSLE: return "bvsle";
+        case Op::BvSLT: return "bvslt";
+        case Op::BvSGE: return "bvsge";
+        case Op::BvSGT: return "bvsgt";
+
+        case Op::Extract: return "extract";
+//        default: UNREACHABLE_F( "unknown operation %d", int( op ) );
+    }
+}
+
+using Vector = brick::data::SmallVector< Printer, 2 >;
+
+inline Printer _expr( Op op, Vector args ) {
+    return Printer( [=]( std::ostream &o ) {
+        o << "(" << name( op );
+        for ( auto &a : args ) {
+            o << " ";
+            a( o );
+        }
+        o << ")";
+    } );
+}
+
+template< Op op >
+inline Printer unop( Printer param ) {
+    static_assert( op >= Op::FirstUnary && op <= Op::LastUnary, "op is not an unary operation" );
+    return _expr( op, { param } );
+}
+
+template< Op op >
+inline Printer binop( Printer a, Printer b ) {
+    static_assert( op >= Op::FirstBinary && op <= Op::LastBinary, "op is not a binary operation" );
+    return _expr( op, { a, b } );
+}
+
+inline Printer bigand( Vector args ) {
+    return args.empty() ? symbol( "true" ) : _expr( Op::And, args );
+}
+
+template< typename It >
+inline Printer bigand( It begin, It end ) {
+    return bigand( Vector( begin, end ) );
+}
+
+inline Printer bigor( Vector args ) {
+    return args.empty() ? symbol( "false" ) : _expr( Op::Or, args );
+}
+
+template< typename It >
+inline Printer bigor( It begin, It end ) {
+    return bigor( Vector( begin, end ) );
+}
+
+inline Printer extract( int highest, int lowest, Printer arg ) {
+    ASSERT_LEQ( lowest, highest );
+    return Printer( [=]( std::ostream &o ) {
+        o << "((_ extract " << std::dec << highest << " " << lowest << ") ";
+        arg( o );
+        o << ")";
+    } );
+};
+
+inline Printer declareConst( std::string_view symbol, Printer type ) {
+    return Printer( [=]( std::ostream &o ) {
+        o << "(declare-const " << symbol << " " << type << ")";
+    } );
+}
+
+inline Printer defineConst( std::string_view symbol, Printer typ, Printer value ) {
+    return Printer( [=]( std::ostream &o ) {
+        o << "(define-fun " << symbol << " () " << typ << " " << value << ")";
+    } );
+}
+
+inline Printer declareFun( std::string_view symbol, brick::data::SmallVector< Printer > argTypes, Printer retType )
+{
+    return Printer( [=]( std::ostream &o ) {
+        o << "(declare-fun " << symbol << " (";
+        for ( auto &a : argTypes )
+            o << " " << a;
+        o << " ) " << retType << ")";
+    } );
+}
+
+inline Printer defineFun( std::string_view symbol, brick::data::SmallVector< std::pair< Printer, Printer > > args,
+                   Printer retType, Printer value )
+{
+    return Printer( [=]( std::ostream &o ) {
+        o << "(declare-fun " << symbol << " (";
+        for ( auto &a : args )
+            o << " (" << a.first << " " << a.second << ")";
+        o << " ) " << retType << " " << value << ")";
+    } );
+}
+
+inline Printer ite( Printer cond, Printer t, Printer f ) {
+    return Printer( [=]( std::ostream &o ) {
+        o << "(ite " << cond << " " << t << " " << f << ")";
+    } );
+}
+
+inline Printer assume( Printer val ) {
+    return Printer( [=]( std::ostream &o ) {
+            o << "(assert " << val << ")";
+        } );
+}
+
+inline std::string to_string( const Printer &p ) {
+    std::stringstream ss;
+    p( ss );
+    return ss.str();
+}
+
+} // namespace smt
+
+namespace t_smt {
+using namespace brick::smt;
+
+struct StringTest {
+    TEST(basic) {
+        ASSERT_EQ( R"("a")", to_string( smt::string( "a" ) ) );
+        std::string b( "b" );
+        ASSERT_EQ( R"("b")", to_string( smt::string( b ) ) );
+    }
+
+    TEST(escape) {
+        ASSERT_EQ( R"("a\\b\"c")", to_string( smt::string( R"(a\b"c)" ) ) );
+        ASSERT_EQ( R"("a\\\"c")", to_string( smt::string( R"(a\"c)" ) ) );
+    }
+};
+
+struct BVecTest {
+
+    TEST(string) {
+        auto a = bitvec( 42 );
+        ASSERT_EQ( "#x0000002a", to_string( a ) );
+
+        auto b = bitvec( uint64_t( 42 ) );
+        ASSERT_EQ( "#x000000000000002a", to_string( b ) );
+
+        auto c = bitvec( 0xff, 4 );
+        ASSERT_EQ( "#xf", to_string( c ) );
+
+        brick::data::SmallVector< uint64_t > data = { ~uint64_t( 0 ), ~uint64_t( 0 ) };
+        auto d = bitvec( data, 96 );
+        ASSERT_EQ( "#x" + std::string( 24, 'f' ), to_string( d ) );
+
+        auto e = bitvec( data, 256 );
+        ASSERT_EQ( "#x" + std::string( 32, '0' ) + std::string( 32, 'f' ), to_string( e ) );
+
+        auto f = bitvec( 42, 96 );
+        ASSERT_EQ( "#x" + std::string( 22, '0' ) + "2a", to_string( f ) );
+
+        auto g = bitvec( data, 16 );
+        ASSERT_EQ( "#xffff", to_string( g ) );
+
+        auto h = bitvec( data, 7 );
+        ASSERT_EQ( "#b1111111", to_string( h ) );
+
+        auto i = bitvec( 0x29, 7 );
+        ASSERT_EQ( "#b0101001", to_string( i ) );
+
+        auto j = bitvec( { (uint64_t( 1 ) << 63) | 1, 0x5 }, 67 );
+        ASSERT_EQ( "#b1011" + std::string( 62, '0' ) + "1", to_string( j ) );
+
+        auto k = bitvec( { (uint64_t( 1 ) << 33) | 1, 0x5 }, 67 );
+        ASSERT_EQ( "#b101" + std::string( 30, '0' ) + "1" + std::string( 32, '0' ) + "1", to_string( k ) );
+    }
+};
+
+struct ExtractTest {
+    TEST(print) {
+        ASSERT_EQ( "((_ extract 32 0) #x000000000000002a)",
+                   to_string( extract( 32, 0, bitvec( 42ull ) ) ) );
+        ASSERT_EQ( "((_ extract 15 15) (concat #xff #xff))",
+                   to_string( extract( 15, 15, binop< Op::Concat >(
+                                                bitvec( 0xff, 8 ),
+                                                bitvec( 0xff, 8 ) ) ) ) );
+    }
+};
+
+struct CombinationTest {
+    TEST(simple) {
+        ASSERT_EQ( to_string( binop< Op::BvAdd >( bitvec( 42 ), bitvec( 32 ) ) ),
+                   "(bvadd #x0000002a #x00000020)" );
+        ASSERT_EQ( to_string( binop< Op::BvAnd >( symbol( "a" ), bitvec( 5, 3 ) ) ),
+                   "(bvand a #b101)" );
+        ASSERT_EQ( to_string( binop< Op::BvSLE >( extract( 32, 16, symbol( "a" ) ),
+                                  unop< Op::BvNegate >( bitvec( short( 42 ) ) ) ) ),
+                              "(bvsle ((_ extract 32 16) a) (bvneg #x002a))" );
+    }
+
+    TEST(constants) {
+        ASSERT_EQ( to_string( defineConst( "a", bitvecT( 32 ), bitvec( 42 ) ) ),
+                   "(define-fun a () (_ BitVec 32) #x0000002a)" );
+        ASSERT_EQ( to_string( declareConst( "a", bitvecT( 32 ) ) ),
+                   "(declare-const a (_ BitVec 32))" );
+        ASSERT_EQ( to_string( defineConst( "b", bitvecT( 32 ),
+                                  binop< Op::BvAnd >( bitvec( short( 1 ) ), bitvec( short( 2 ) ) ) ) ),
+                   "(define-fun b () (_ BitVec 32) (bvand #x0001 #x0002))" );
+    }
+};
+
+} // namespace t_smt
+} // namespace brick
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
