@@ -30,7 +30,9 @@ namespace {
         }
         else if ( n == "lift" )
         {
-            return { args[ 0 ], bitwidth( i->getContext(), intrinsic::ty1( i ) ) };
+			auto val = llvm::cast< llvm::ConstantInt >( args[ 0 ] )->getSExtValue();
+			auto cint = llvm::ConstantInt::get( llvm::IntegerType::get(i->getContext(), 64), val );
+            return { cint, bitwidth( i->getContext(), intrinsic::ty1( i ) ) };
         }
         else if ( ( n == "load" ) ||
                   ( n == "store" ) ||

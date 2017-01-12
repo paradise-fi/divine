@@ -778,6 +778,17 @@ struct Symbolic {
         test_symbolic( symbolic + s );
 	}
 
+	TEST( lift ) {
+		auto s = R"(
+					int main() {
+						__sym int x;
+						x %= 5;
+						while( true )
+							x = (x + 1) % 5;
+					})";
+		test_symbolic( symbolic + s );
+	}
+
 };
 
 } // namespace t_abstract
