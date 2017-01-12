@@ -449,12 +449,12 @@ struct Assume {
 
     bool isTrueAssume( llvm::Instruction * inst ) {
         return isTristateAssume( inst )
-            && ( inst->getOperand( 1 ) == abstract::types::Tristate::True() );
+            && ( llvm::cast< llvm::Constant >( inst->getOperand( 1 ) )->isOneValue() );
     }
 
     bool isFalseAssume( llvm::Instruction * inst ) {
         return isTristateAssume( inst )
-            && ( inst->getOperand( 1 ) == abstract::types::Tristate::False() );
+            && ( llvm::cast< llvm::Constant >( inst->getOperand( 1 ) )->isZeroValue() );
     }
 
     void testBranching( llvm::Instruction * lower ) {
