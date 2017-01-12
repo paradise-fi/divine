@@ -25,6 +25,8 @@
 #include <divine/vm/bitcode.hpp>
 #include <divine/ss/search.hpp> /* unit tests */
 
+#include <runtime/abstract/formula.h>
+
 #include <set>
 #include <memory>
 
@@ -32,6 +34,7 @@ namespace divine {
 namespace vm {
 
 using namespace brick;
+using namespace std::literals;
 
 namespace explore {
 
@@ -77,11 +80,7 @@ struct Context : vm::Context< Program, CowHeap >
     {
         _info += heap().read_string( ti.text ) + "\n";
     }
-    void trace( TraceAlg ta ) {
-        for ( auto a : ta.args )
-            std::cerr << a << " ";
-        std::cerr << std::endl;
-    }
+    void trace( TraceAlg ) { NOT_IMPLEMENTED(); }
 
     bool finished()
     {
@@ -93,12 +92,86 @@ struct Context : vm::Context< Program, CowHeap >
     }
 };
 
+struct SymbolicContext : Context {
+    using Context::Context;
+
+    // note: for some reason complier does not accept out-of-line definition of
+    // trace here, so defer it to extra, non-overloaded version
+    using Context::trace;
+    void trace( TraceAlg ta ) {
+        return traceAlg( ta );
+    }
+
+    void traceAlg( TraceAlg ta );
+};
+
+struct Hasher
+{
+    using Snapshot = CowHeap::Snapshot;
+
+    mutable CowHeap h1, h2;
+    HeapPointer root;
+
+    Hasher( const CowHeap &heap )
+        : h1( heap ), h2( heap )
+    {}
+
+    bool equalFastpath( Snapshot a, Snapshot b ) const {
+        if ( h1._snapshots.size( a ) == h1._snapshots.size( b ) )
+            return std::equal( h1.snap_begin( a ), h1.snap_end( a ), h1.snap_begin( b ) );
+        return false;
+    }
+
+    bool equal( Snapshot a, Snapshot b ) const
+    {
+        if ( equalFastpath( a, b ) )
+            return true;
+        h1.restore( a );
+        h2.restore( b );
+        return heap::compare( h1, h2, root, root ) == 0;
+    }
+
+    brick::hash::hash128_t hash( Snapshot s ) const
+    {
+        h1.restore( s );
+        return heap::hash( h1, root );
+    }
+};
+
+struct SymbolicHasher : Hasher {
+    SymbolicHasher( const CowHeap &heap ) : Hasher( heap ) { }
+
+    using SymPairs = std::vector< std::pair< HeapPointer, HeapPointer > >;
+
+    bool equal( Snapshot a, Snapshot b ) const {
+        if ( equalFastpath( a, b ) )
+            return true;
+
+        h1.restore( a );
+        h2.restore( b );
+
+        SymPairs symPairs;
+        auto symPairsExtract = [&]( HeapPointer a, HeapPointer b ) {
+            a.type( PointerType::Weak ); // unmark pointers so they are equal to their
+            b.type( PointerType::Weak ); // weak equivalents inside the formula
+            symPairs.emplace_back( a, b );
+        };
+        if ( heap::compare( h1, h2, root, root, symPairsExtract ) != 0 )
+            return false;
+
+        return smtEqual( symPairs );
+    }
+
+    bool smtEqual( SymPairs &simPair ) const;
+};
+
 }
 
-struct Explore
+template< typename Hasher, typename Context >
+struct Explore_
 {
     using PointerV = value::Pointer;
-    using Eval = vm::Eval< Program, explore::Context, value::Void >;
+    using Eval = vm::Eval< Program, Context, value::Void >;
 
     using BC = std::shared_ptr< BitCode >;
     using Env = std::vector< std::string >;
@@ -107,33 +180,7 @@ struct Explore
 
     BC _bc;
 
-    explore::Context _ctx;
-
-    struct Hasher
-    {
-        mutable CowHeap h1, h2;
-        HeapPointer root;
-
-        Hasher( const CowHeap &heap )
-            : h1( heap ), h2( heap )
-        {}
-
-        bool equal( Snapshot a, Snapshot b ) const
-        {
-            if ( h1._snapshots.size( a ) == h1._snapshots.size( b ) )
-                if ( std::equal( h1.snap_begin( a ), h1.snap_end( a ), h1.snap_begin( b ) ) )
-                    return true;
-            h1.restore( a );
-            h2.restore( b );
-            return heap::compare( h1, h2, root, root ) == 0;
-        }
-
-        brick::hash::hash128_t hash( Snapshot s ) const
-        {
-            h1.restore( s );
-            return heap::hash( h1, root );
-        }
-    };
+    Context _ctx;
 
     using HT = hashset::Concurrent< Snapshot, Hasher >;
     HT _states;
@@ -142,7 +189,7 @@ struct Explore
     auto &program() { return _bc->program(); }
     auto &pool() { return _ctx.heap()._snapshots; }
 
-    Explore( BC bc )
+    Explore_( BC bc )
         : _bc( bc ), _ctx( _bc->program() ), _states( _ctx.heap(), 1024 )
     {
         _initial.error = _initial.accepting = 0;
@@ -217,6 +264,10 @@ struct Explore
             yield( _initial );
     }
 };
+
+using Explore = Explore_< explore::Hasher, explore::Context >;
+// using Explore = Explore_< explore::SymbolicHasher, explore::SymbolicContext >;
+// using SymbolicExplore = Explore_< explore::SymbolicHasher >;
 
 }
 
