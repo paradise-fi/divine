@@ -74,6 +74,20 @@ FileTrace getFileTraceConfig( const SysOpts& o, String stream ) {
     return FileTrace::TRACE;
 }
 
+bool useSyscallPassthrough( const SysOpts& o ) {
+    for ( const auto& opt : o ) {
+        if ( opt.first == "syscall" ) {
+            if ( opt.second == "simulate" )
+                return false;
+            if ( opt.second == "passthrough" )
+                return true;
+            __dios_fault( _DiOS_F_Config,
+                "DiOS boot configuration: invalid syscall option" );
+        }
+    }
+    return false;
+}
+
 struct TraceDebugConfig {
     bool threads:1;
     bool help:1;
@@ -173,6 +187,9 @@ void traceHelp( int i ) {
         { "notrace - ignore the stream",
           "unbuffered - trace each write",
           "trace - trace after each newline (default)"} );
+    traceHelpOption( i + 2, "syscall", "specify how to treat standard syscalls",
+        { "simulate - simulate syscalls, use virtual file system (can be used with verify and run)",
+          "passthrough - use syscalls from the underlying host OS (cannot be used with verify) "} );
 }
 
 void traceEnv( int ind, const _VM_Env *env ) {
