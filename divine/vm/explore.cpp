@@ -81,6 +81,11 @@ struct FormulaMap {
                               arg )
                           : smt::ite( arg, smt::bitvec( 0, bw ), smt::unop< smt::Op::Not >( smt::bitvec( 0, bw ) ) );
                     break;
+                case sym::Op::BoolNot:
+                    ASSERT_EQ( childbw, bw );
+                    ASSERT_EQ( bw, 1 );
+                    op = smt::unop< smt::Op::Not >( arg );
+                    break;
                 default:
                     UNREACHABLE_F( "unknown unary operation %d", unary.op );
             }
