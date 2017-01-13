@@ -108,8 +108,8 @@ unsigned int sleep( unsigned int seconds );
 int usleep( useconds_t usec );
 
 // entrypoints for rename & renameat functions
-FS_NOINLINE int _FS_renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );
-FS_NOINLINE int _FS_renameitem( const char *oldpath, const char *newpath );
+FS_NOINLINE int renameat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );
+FS_NOINLINE int rename( const char * old, const char * newn );
 
 #undef FS_NOINLINE
 

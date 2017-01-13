@@ -183,7 +183,7 @@ using ::perror;
 using ::fopen;
 using ::freopen;
 using ::remove;
-using ::rename;
+// using ::rename;
 using ::tmpfile;
 using ::tmpnam;
 #endif

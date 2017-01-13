@@ -123,7 +123,7 @@ namespace __sc {
         return 0;
     }
 
-    int _mknodat( int dirfd, const char *path, mode_t mode, dev_t dev, __dios::fs::VFS *vfs )
+     int _mknodat( int dirfd, const char *path, mode_t mode, dev_t dev, __dios::fs::VFS *vfs )
     {
             if ( dev != 0 )
                 throw Error( EINVAL );
@@ -346,27 +346,6 @@ namespace __sc {
         }
     }
 
-    void pwrite( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto fd = va_arg( vl, int );
-        auto buf = va_arg( vl, const void * );
-        auto count = va_arg( vl, size_t );
-        auto offset = va_arg( vl, off_t );
-        auto ret = static_cast< ssize_t* >( retval );
-        auto vfs = ctx.vfs;
-
-        try {
-            auto f = vfs->instance( ).getFile( fd );
-            size_t savedOffset = f->offset( );
-            f->offset( offset );
-            auto d = __dios::fs::utils::make_defer( [ & ] { f->offset( savedOffset ); } );
-            *ret = f->write( buf, count );
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = -1;
-        }
-    }
-
     void read( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto fd = va_arg( vl, int );
@@ -377,27 +356,6 @@ namespace __sc {
 
         try {
             auto f = vfs->instance( ).getFile( fd );
-            *ret = f->read( buf, count );
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = -1;
-        }
-    }
-
-    void pread( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto fd = va_arg( vl, int );
-        auto buf = va_arg( vl, void * );
-        auto count = va_arg( vl, size_t );
-        auto offset = va_arg( vl, off_t );
-        auto ret = static_cast< ssize_t* >( retval );
-        auto vfs = ctx.vfs;
-
-        try {
-            auto f = vfs->instance( ).getFile( fd );
-            size_t savedOffset = f->offset( );
-            f->offset( offset );
-            auto d = __dios::fs::utils::make_defer( [ & ] { f->offset( savedOffset ); } );
             *ret = f->read( buf, count );
         } catch ( Error & e ) {
             *err = e.code();
@@ -1231,24 +1189,6 @@ namespace __sc {
         }
     }
 
-    void  send( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto sockfd = va_arg( vl, int );
-        auto buf = va_arg( vl,  const void* );
-        auto n = va_arg( vl, size_t );
-        auto flags = va_arg( vl, int );
-        auto ret = static_cast< ssize_t* >( retval );
-        auto vfs = ctx.vfs;
-
-        try {
-            auto s = vfs->instance( ).getSocket( sockfd );
-            *ret = s->send( static_cast< const char * >( buf ), n, conversion::message( flags ));
-        } catch ( Error & e ) {
-            *err = e.code();
-            *ret = -1;
-        }
-    }
-
     void sendto( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto sockfd = va_arg( vl, int );
@@ -1419,90 +1359,13 @@ namespace __sc {
         }
     }
 
-    void mkfifoat( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto dirfd = va_arg( vl, int );
-        auto path = va_arg( vl,  const char* );
-        auto mode = va_arg( vl, mode_t );
-        auto ret = static_cast< int* >( retval );
-        auto vfs = ctx.vfs;
-
-        try {
-           *ret = _mknodat( dirfd, path, ( ACCESSPERMS & mode ) | S_IFIFO, 0, vfs );
-       }catch( Error &e ) {
-            *ret = -1;
-            *err = e.code();
-       }
-    }
-
-    void mkfifo( __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto path = va_arg( vl,  const char* );
-        auto mode = va_arg( vl, mode_t );
-        auto ret = static_cast< int* >( retval );
-        auto vfs = ctx.vfs;
-
-        try {
-            *ret = _mknodat( AT_FDCWD, path, ( ACCESSPERMS & mode ) | S_IFIFO, 0, vfs );
-        }catch( Error &e ) {
-            *ret = -1;
-            *err = e.code();
-       }
-    }
-
-    void isatty(  __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto fd = va_arg( vl, int );
-        auto ret = static_cast< int* >( retval );
-        auto vfs = ctx.vfs;
-
-        try {
-            vfs->instance( ).getFile( fd );
-            *err = EINVAL;
-            *ret = -1;
-        } catch ( Error & e ) {
-            *ret = 0;
-        }
-
-    }
-
-    void ttyname(  __dios::Context& ctx, int* err, void* retval, va_list vl )
-    {
-        auto fd = va_arg( vl, int );
-        auto ret = static_cast< char** >( retval );
-        auto vfs = ctx.vfs;
-
-        try {
-            vfs->instance( ).getFile( fd );
-            *err = ENOTTY;
-        } catch ( Error & e ) {
-        }
-        *ret = nullptr;
-    }
-
-    void ttyname_r(  __dios::Context& ctx, int* /*err*/, void* retval, va_list vl )
-    {
-        auto fd = va_arg( vl, int );
-        /*auto buf = */va_arg( vl, char * );
-        /*auto count = */va_arg( vl, size_t );
-        auto ret = static_cast< int* >( retval );
-        auto vfs = ctx.vfs;
-
-        try {
-            vfs->instance( ).getFile( fd );
-            *ret = ENOTTY;
-        } catch ( Error & e ) {
-            *ret = e.code( );
-        }
-    }
-
     int _renameitemat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath,__dios::fs::VFS* vfs )
     {
         vfs->instance( ).renameAt( newdirfd, newpath, olddirfd, oldpath );
         return 0;
     }
 
-    void _FS_renameitemat( __dios::Context& ctx, int* err, void* retval, va_list vl )
+    void renameat( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto olddirfd = va_arg( vl, int );
         auto oldpath = va_arg( vl, const char* );
@@ -1520,7 +1383,7 @@ namespace __sc {
 
     }
 
-    void _FS_renameitem( __dios::Context& ctx, int* err, void* retval, va_list vl )
+    void rename( __dios::Context& ctx, int* err, void* retval, va_list vl )
     {
         auto oldpath = va_arg( vl, const char* );
         auto newpath = va_arg( vl, const char* );
@@ -1534,6 +1397,7 @@ namespace __sc {
             *ret = -1;
         }
     }
+
 } //end namespace __sc
 
 extern "C" {
@@ -1699,11 +1563,86 @@ extern "C" {
     }
 
 
-#if defined(__divine__)
-int alphasort( const struct dirent **a, const struct dirent **b ) {
-    return std::strcoll( (*a)->d_name, (*b)->d_name );
-}
+    ssize_t send(int sockfd, const void *buf, size_t len, int flags)
+    {
+        return sendto(sockfd, buf, len, flags, NULL, 0);
+    }
 
-#endif
+    ssize_t pwrite(int fd, const void *buf, size_t count, off_t offset)
+    {
+       int currPos = lseek( fd, 0, SEEK_CUR );
+
+        int moved = lseek( fd, offset, SEEK_SET );
+        if ( moved != offset ) 
+            return -1;
+
+        int writed = write( fd, buf, count );
+        lseek( fd, currPos, SEEK_SET );
+
+        return writed;
+    }
+
+    ssize_t pread(int fd, void *buf, size_t count, off_t offset)
+    {
+        int currPos = lseek( fd, 0, SEEK_CUR );
+
+        int moved = lseek( fd, offset, SEEK_SET );
+        if ( moved != offset ) 
+            return -1;
+
+        int readed = read( fd, buf, count );
+        lseek( fd, currPos, SEEK_SET );
+
+        return readed;
+    }
+
+    int mkfifoat(int dirfd, const char *pathname, mode_t mode)
+    {
+        return mknodat( dirfd, pathname, ( ACCESSPERMS & mode ) | S_IFIFO, 0 );
+        
+    }
+
+    int mkfifo(const char *pathname, mode_t mode)
+    {
+        return mknod( pathname, ( ACCESSPERMS & mode ) | S_IFIFO, 0 );
+    }
+
+    char *ttyname(int fd)
+    {
+        using __dios::fs::Mode;
+        struct stat fdStat;
+
+        //just to set errno if fd is not valid file descriptor
+        fstat( fd, &fdStat );
+        return nullptr;
+    }
+
+    int ttyname_r(int fd, char *, size_t )
+    {
+        using __dios::fs::Mode;
+        struct stat fdStat;
+
+        //just to set errno if fd is not valid file descriptor
+        int res = fstat( fd, &fdStat );
+        return res == 0 ? ENOTTY : res;
+    }
+
+    int isatty(int fd)
+    {
+        using __dios::fs::Mode;
+        struct stat fdStat;
+
+        //just to set errno if fd is not valid file descriptor
+        int res = fstat( fd, &fdStat );
+        return res == 0 ? EINVAL : res;
+    }
+
+
+    #if defined(__divine__)
+    int alphasort( const struct dirent **a, const struct dirent **b ) {
+        return std::strcoll( (*a)->d_name, (*b)->d_name );
+    }
+
+    #endif
 
 }

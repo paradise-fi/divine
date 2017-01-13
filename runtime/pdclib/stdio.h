@@ -96,7 +96,7 @@ int remove( const char * filename ) _PDCLIB_nothrow;
    If there already is a file with the new filename, behaviour is defined by
    the glue code (see functions/_PDCLIB/rename.c).
 */
-int rename( const char * old, const char * newn ) _PDCLIB_nothrow;
+// int rename( const char * old, const char * newn ) _PDCLIB_nothrow;
 
 /* Open a temporary file with mode "wb+", i.e. binary-update. Remove the file
    automatically if it is closed or the program exits normally (by returning
