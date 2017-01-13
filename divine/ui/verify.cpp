@@ -33,10 +33,8 @@ std::string printitem( S s )
     return str.str();
 }
 
-template< typename P >
-void printpool( std::string name, P &pool )
+void printpool( std::string name, const brick::mem::Stats &s )
 {
-    auto s = pool.stats();
     std::cout << name << ":" << std::endl;
     std::cout << "  total: " << printitem( s.total ) << std::endl;
     for ( auto i : s )
@@ -55,7 +53,6 @@ void Verify::run()
     using msecs = std::chrono::milliseconds;
     clock::time_point start;
     msecs interval;
-    std::atomic< int > statecount( 0 );
 
     auto time =
         [&]()
@@ -66,7 +63,9 @@ void Verify::run()
             return t.str();
         };
 
-    auto avg = [&]() { return 1000 * float( statecount ) / interval.count(); };
+    auto safety = mc::make_safety( bitcode(), ss::passive_listen(), true );
+
+    auto avg = [&]() { return 1000 * float( safety->statecount() ) / interval.count(); };
     auto fmt_avg =
         [&]()
         {
@@ -78,25 +77,23 @@ void Verify::run()
     auto update_interval =
         [&]() { interval = std::chrono::duration_cast< msecs >( clock::now() - start ); };
 
-    auto safety = mc::make_safety( bitcode(), ss::passive_listen(), true );
     start = clock::now();
     SysInfo sysinfo;
     sysinfo.setMemoryLimitInBytes( _max_mem );
-    safety.start( _threads, [&]( auto &search )
-                  {
-                      statecount = safety._ex._states._s->used;
-                      search.ws_each( [&]( auto &bld, auto & )
-                                      { statecount += bld._states._l.inserts; } );
-                      update_interval();
-                      std::cerr << "\rsearching: " << statecount << " states found in " << time()
-                                << ", averaging " << fmt_avg() << ", queued: " << safety._search->qsize() << "      ";
-                      sysinfo.updateAndCheckTimeLimit( _max_time );
-                  } );
-    safety.wait();
+    safety->start( _threads, [&]()
+                   {
+                       update_interval();
+                       std::cerr << "\rsearching: " << safety->statecount()
+                                 << " states found in " << time()
+                                 << ", averaging " << fmt_avg()
+                                 << ", queued: " << safety->queuesize() << "      ";
+                       sysinfo.updateAndCheckTimeLimit( _max_time );
+                   } );
+    safety->wait();
 
-    statecount = safety._ex._states._s->used;
     update_interval();
-    std::cerr << "\rfound " << statecount << " states in " << time() << ", averaging " << fmt_avg()
+    std::cerr << "\rfound " << safety->statecount()
+              << " states in " << time() << ", averaging " << fmt_avg()
               << "                             " << std::endl << std::endl;
 
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
@@ -110,17 +107,17 @@ void Verify::run()
                     } );
                 std::cout << "search time: " << std::setprecision( 3 )
                           << double( interval.count() ) / 1000
-                          << std::endl << "state count: " << statecount
+                          << std::endl << "state count: " << safety->statecount()
                           << std::endl << "states per second: " << avg()
                           << std::endl << "version: " << version()
                           << std::endl;
             }
             if ( _report == Report::YamlLong )
-                printpool( "snapshot memory", safety._ex._ctx.heap()._snapshots ),
-                printpool( "fragment memory", safety._ex._ctx.heap()._objects );
+                for ( auto ps : safety->poolstats() )
+                    printpool( ps.first, ps.second );
     } );
 
-    if ( !statecount )
+    if ( !safety->statecount() )
     {
         std::cout << "error found: boot" << std::endl;
         std::cout << "boot info:" << std::endl;
@@ -131,14 +128,13 @@ void Verify::run()
         return;
     }
 
-    if ( !safety._error_found )
+    if ( !safety->error_found() )
     {
         std::cout << "error found: no" << std::endl;
         return;
     }
 
-    auto ce_states = safety.ce_states();
-    auto trace = mc::trace( safety._ex, ce_states );
+    auto trace = safety->ce_trace();
 
     std::cout << "error found: yes" << std::endl;
     std::cout << "choices made:" << trace.choices << std::endl;
@@ -148,7 +144,7 @@ void Verify::run()
     std::cout << std::endl;
 
     std::cout << "error state:" << std::endl;
-    dbg.load( safety._ex._ctx );
+    safety->dbg_fill( dbg );
     dbg.load( trace.final );
     dbg._choices = { trace.choices.back().begin(), trace.choices.back().end() };
     dbg._choices.push_back( -1 ); // prevent execution after choices are depleted
