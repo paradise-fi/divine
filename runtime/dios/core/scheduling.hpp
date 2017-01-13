@@ -9,6 +9,7 @@
 #include <dios.h>
 #include <dios/core/syscall.hpp>
 #include <dios/core/fault.hpp>
+#include <dios/core/monitor.hpp>
 #include <divine/metadata.h>
 
 namespace __sc {
@@ -184,6 +185,9 @@ void sched() noexcept
                       _VM_CA_Bit, _VM_CR_Flags,
                       uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
         t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
+
+        if ( ctx->monitors )
+            ctx->monitors->run( *ctx );
 
         Syscall *syscall = static_cast< Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
         __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );

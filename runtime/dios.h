@@ -57,6 +57,13 @@ struct _DiOS_TLS {
 typedef struct _DiOS_TLS * _DiOS_ThreadHandle;
 typedef void * _DiOS_ProcId;
 
+#ifdef __cplusplus
+namespace __dios { struct Monitor; }
+typedef __dios::Monitor _DiOS_Monitor;
+#else
+typedef struct _DiOS_Monitor_ _DiOS_Monitor;
+#endif
+
 static inline int __dios_pointer_get_type( void *ptr )
 {
     unsigned long p = (unsigned long) ptr;
@@ -148,6 +155,12 @@ int __dios_get_fault_config( int fault ) NOTHROW;
  */
 void __dios_fault( int f, const char *msg, ... ) NOTHROW __attribute__(( __noinline__ ));
 
+/*
+ * Register a monitor. Monitor is called after each interrupt. Multiple monitors
+ * can be registered and they are called in the same order as they were added.
+ */
+void __dios_register_monitor( _DiOS_Monitor *monitor ) NOTHROW;
+
 
 void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
 void __dios_trace_auto( int indent, const char *fmt, ... ) NOTHROW;
@@ -194,6 +207,7 @@ CPP_END
 
 #include <cstdint>
 #include <dios/core/stdlibwrap.hpp>
+#include <dios/core/monitor.hpp>
 
 
 namespace __dios {
@@ -234,6 +248,7 @@ struct Context {
     Fault *fault;
     VFS *vfs;
     void *globals;
+    Monitor *monitors;
     MachineParams machineParams;
 
     Context();

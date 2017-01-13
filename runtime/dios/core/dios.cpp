@@ -29,7 +29,8 @@ Context::Context() :
     scheduler( __dios::new_object< Scheduler >() ),
     fault( __dios::new_object< Fault >() ),
     vfs( __dios::new_object< VFS >() ),
-    globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
+    globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) ),
+    monitors( nullptr )
 {}
 
 void Context::finalize() {
