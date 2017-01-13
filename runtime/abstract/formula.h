@@ -72,7 +72,9 @@ enum class Op : uint16_t {
     FPToUInt,
     SIntToFP,
     UIntToFP,
-    LastUnary = UIntToFP,
+
+    BoolNot,
+    LastUnary = BoolNot,
 
     FirstBinary,
     Add = FirstBinary,
