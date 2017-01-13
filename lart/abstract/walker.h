@@ -25,7 +25,6 @@ struct AbstractWalker {
     static std::vector< llvm::Value * > dependencies( llvm::Value * );
 
 private:
-    std::vector< Annotation > annotations;
     llvm::Module * _m = nullptr;
 };
 

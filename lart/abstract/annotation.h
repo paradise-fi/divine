@@ -47,8 +47,8 @@ static Annotation getAnnotation( llvm::CallInst * call ) {
 	return Annotation( type, alloca, value );
 }
 
-static std::vector< Annotation > getAbstractAnnotations( llvm::Module & m ) {
-	auto f =  m.getFunction( "llvm.var.annotation" );
+static std::vector< Annotation > getAbstractAnnotations( llvm::Module * m ) {
+	auto f =  m->getFunction( "llvm.var.annotation" );
 	std::vector< Annotation > annotations;
 
 	if ( f != nullptr )
@@ -58,6 +58,16 @@ static std::vector< Annotation > getAbstractAnnotations( llvm::Module & m ) {
 			annotations.push_back( getAnnotation( call ) );
 	}
 	return annotations;
+}
+
+static std::vector< Annotation > getAbstractAnnotations( llvm::Function * fn ) {
+    std::vector< Annotation > res;
+    auto annots = getAbstractAnnotations( fn->getParent() );
+    std::copy_if( annots.begin(), annots.end(), std::back_inserter( res ),
+                  [&]( Annotation a ) {
+                      return a.alloca_->getParent()->getParent() == fn;
+                  } );
+    return res;
 }
 
 } /* lart */

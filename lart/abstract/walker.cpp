@@ -9,9 +9,7 @@
 namespace lart {
 namespace abstract {
 
-AbstractWalker::AbstractWalker( llvm::Module & m ) : _m(&m) {
-    annotations = getAbstractAnnotations( m );
-}
+AbstractWalker::AbstractWalker( llvm::Module & m ) : _m(&m) {}
 
 using Value = llvm::Value;
 using Function = llvm::Function;
@@ -21,7 +19,7 @@ std::vector< Function * > AbstractWalker::functions() {
     assert( _m );
     std::set< Function * > fns;
 
-    for ( const auto &a : annotations )
+    for ( const auto &a : getAbstractAnnotations( _m ) )
         fns.insert( a.alloca_->getParent()->getParent() );
 
     return analysis::callPostorder< Function * >( *_m, { fns.begin(), fns.end() } );
@@ -29,8 +27,7 @@ std::vector< Function * > AbstractWalker::functions() {
 
 std::vector< Value * > AbstractWalker::entries( Function * fn ) {
     std::vector< Value * > entries;
-    for ( const auto & a : annotations )
-        if ( a.alloca_->getParent()->getParent() == fn )
+    for ( const auto & a : getAbstractAnnotations( fn ) )
             entries.push_back( a.alloca_ );
     return entries;
 }
