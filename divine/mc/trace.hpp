@@ -76,7 +76,8 @@ std::ostream &operator<<( std::ostream &o, const Choices &choices )
     return o;
 }
 
-Trace trace( vm::Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
+template< typename Explore >
+Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
 {
     Trace t;
     auto last = states.begin(), next = last + 1;

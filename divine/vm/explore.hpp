@@ -165,6 +165,8 @@ struct SymbolicHasher : Hasher {
     bool smtEqual( SymPairs &simPair ) const;
 };
 
+using BC = std::shared_ptr< BitCode >;
+
 }
 
 template< typename Hasher, typename Context >
@@ -173,7 +175,7 @@ struct Explore_
     using PointerV = value::Pointer;
     using Eval = vm::Eval< Program, Context, value::Void >;
 
-    using BC = std::shared_ptr< BitCode >;
+    using BC = explore::BC;
     using Env = std::vector< std::string >;
     using State = explore::State;
     using Label = std::pair< std::vector< std::string >, std::vector< std::pair< int, int > > >;
@@ -267,8 +269,7 @@ struct Explore_
 };
 
 using Explore = Explore_< explore::Hasher, explore::Context >;
-// using Explore = Explore_< explore::SymbolicHasher, explore::SymbolicContext >;
-// using SymbolicExplore = Explore_< explore::SymbolicHasher >;
+using SymbolicExplore = Explore_< explore::SymbolicHasher, explore::SymbolicContext >;
 
 }
 

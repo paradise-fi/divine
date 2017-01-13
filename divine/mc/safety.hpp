@@ -66,21 +66,21 @@ struct Job : ss::Job
     virtual void start( int ) override = 0;
 };
 
-template< typename Next >
+template< typename Next, typename Explore = vm::Explore >
 struct Safety : Job
 {
-    using Builder = vm::Explore;
+    using Builder = Explore;
     using Parent = std::atomic< vm::CowHeap::Snapshot >;
     using MasterPool = typename vm::CowHeap::SnapPool;
     using SlavePool = brick::mem::SlavePool< MasterPool >;
     using CEStates = std::deque< vm::CowHeap::Snapshot >;
 
-    vm::Explore _ex;
+    Explore _ex;
     SlavePool _ext;
     Next _next;
 
     bool _error_found;
-    Builder::State _error;
+    typename Builder::State _error;
 
     auto make_search()
     {
@@ -105,7 +105,7 @@ struct Safety : Job
                 [&]( auto st ) { return _next.state( st ); } ) );
     }
 
-    Safety( vm::Explore::BC bc, Next next, bool verbose )
+    Safety( vm::explore::BC bc, Next next, bool verbose )
         : _ex( bc ),
           _ext( _ex.pool() ),
           _next( next ),
@@ -158,9 +158,11 @@ struct Safety : Job
 };
 
 template< typename Next >
-std::shared_ptr< Job > make_safety( vm::Explore::BC bc, Next next, bool verbose = false )
+std::shared_ptr< Job > make_safety( vm::explore::BC bc, Next next, bool symbolic = false, bool verbose = false )
 {
-    return std::make_shared< Safety< Next > >( bc, next, verbose );
+    if ( symbolic )
+        return std::make_shared< Safety< Next, vm::SymbolicExplore > >( bc, next, verbose );
+    return std::make_shared< Safety< Next, vm::Explore > >( bc, next, verbose );
 }
 
 }
