@@ -27,9 +27,9 @@ namespace divine {
 namespace mc {
 
 std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
-                  vm::explore::Context *ctx = nullptr, vm::Explore::Snapshot *initial = nullptr )
+                  vm::explore::SymbolicContext *ctx = nullptr, vm::SymbolicExplore::Snapshot *initial = nullptr )
 {
-    vm::Explore ex( bc );
+    vm::SymbolicExplore ex( bc );
 
     if ( ctx )
     {
