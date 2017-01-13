@@ -1,0 +1,35 @@
+. lib/flavour vanilla
+. lib/testcase
+
+# This will run the .build script, which is supposed to compile everything
+# needed for verification into main.bc and can optionally produce main.? files
+# with test specifications. Each of these files can contain something like:
+# ERRSPEC: <error_specification>
+# VERIFY_OPTS: <options_for_verify>
+# PROGRAM_OPTS: <options_for_the_verified_program>
+#
+# Verify will be run for each of these specifications. If no specification is
+# given, verify will run once without any additional options. Keys not found in
+# the file behave as empty.
+#
+# You should refer files in the .data directory as ${DATA}file.
+
+export DATA=$(echo $1 | sed 's/\.build/.data\//')
+
+sh -x $1
+
+if echo "$opts" | grep "symbolic"; then
+    z3 --version > /dev/null || skip
+fi
+
+SPECS=main.bc.*
+test -z $SPECS && SPEC=none
+
+for i in $SPECS; do
+    VERIFY_OPTS=
+    PROGRAM_OPTS=
+    test $i = "none" || eval `sed "s/:\(.*\)/='\1'"/ $i`
+    divine verify --max-memory 4GiB --threads 1 --num-callers 65536 $VERIFY_OPTS main.bc $PROGRAM_OPTS | tee verify.out
+done
+
+# vim: syntax=sh
