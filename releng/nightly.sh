@@ -13,7 +13,7 @@ finished()
 {
     perl -i.orig -e '$rep = `cat report.txt`; while (<>) { s/\@report\@/$rep/; print $_; }' \
          doc/website/status.md
-    make debug-website
+    make ${buildtype}-website
     mv doc/website/status.md.orig doc/website/status.md
 
     email | sendmail $address
@@ -30,7 +30,7 @@ changes()
 
 cantbuild()
 {
-    make debug 2>&1 || true # dump the failing stuff into the report
+    make $buildtype 2>&1 || true # dump the failing stuff into the report
     echo
     echo "Build failed. Stopping here."
 }
@@ -46,7 +46,7 @@ failed()
     else
         echo "Make check failed:"
         echo
-        make debug-check 2>&1 || true
+        make ${buildtype}-check 2>&1 || true
     fi
 }
 
@@ -81,12 +81,13 @@ darcs pull --quiet -a --match 'not name XXX' --no-deps
 patchcount=$(grep -c ^patch changes.txt)
 if test $patchcount -eq 1; then patches="1 new patch"; else patches="$patchcount new patches"; fi
 
-objdir="$(make show var=OBJ)/debug"
+buildtype=semidbg
+objdir="$(make show var=OBJ)/$buildtype"
 list="$objdir/test/results/list"
 
 changes > report.txt
 
-if ! make debug; then # does it build at all?
+if ! make $buildtype; then # does it build at all?
     cantbuild >> report.txt
     finished 1
 fi
@@ -94,7 +95,7 @@ fi
 (echo "# Test results"; echo) >> report.txt
 
 rm -f $list
-if ! make debug-check || egrep -q 'failed|timeout|unknown' $list; then
+if ! make ${buildtype}-check || egrep -q 'failed|timeout|unknown' $list; then
     failed >> report.txt
     finished 1
 fi
