@@ -4,7 +4,7 @@ email()
 {
     echo "From: xrockai@fi.muni.cz"
     echo "To: $address"
-    echo "Subject: DIVINE daily $(date +%Y-%m-%d): $patches"
+    echo "Subject: DIVINE daily $today: $patches"
     echo
     cat report.txt
 }
@@ -70,6 +70,7 @@ umask 0022
 address=$1
 upstream=$2
 downstream=$3
+today=$(date +%Y-%m-%d)
 
 # anything new?
 darcs pull --dry -a --match 'not name XXX' --no-deps -s --no-set-default $upstream 2>&1 | \
