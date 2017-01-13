@@ -1093,7 +1093,8 @@ struct Main {
         int msec = 500;
         for ( auto &tc : running )
         {
-            if ( tc && tc->finished( msec ) )
+            if ( !tc ) continue;
+            if ( tc->finished( msec ) )
                 tc = nullptr, --running_count;
             msec = 0;
         }
