@@ -800,7 +800,7 @@ struct TestCase {
                 kill( pid, SIGINT );
                 sleep( 5 ); /* wait a bit for a reaction */
                 if ( waitpid( pid, &status, WNOHANG ) == 0 ) {
-                    system( "echo t > /proc/sysrq-trigger 2> /dev/null" );
+                    system( "echo t | tee /proc/sysrq-trigger > /dev/null 2>&1" );
                     kill( -pid, SIGKILL );
                     waitpid( pid, &status, 0 );
                 }
