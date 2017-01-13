@@ -291,6 +291,18 @@ void hardware_concurrency (__dios::Context& c, int *, void *ret, va_list ) {
 
 } // namespace __sc
 
+namespace __sc_passthru {
+
+void uname( __dios::Context& ctx, int * err, void* retval, va_list vl )  {
+    __sc::uname(ctx, err, retval, vl);
+}
+
+void hardware_concurrency( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
+    __sc::hardware_concurrency(ctx, err, retval, vl);
+}
+
+} // namespace __sc_passthru
+
 /*
  * DiOS entry point. Defined weak to allow user to redefine it.
  */

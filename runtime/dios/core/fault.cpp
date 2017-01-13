@@ -298,3 +298,19 @@ void __dios_fault( int f, const char *msg, ... ) {
     typedef void (*PC)(void);
     ( *fh )( static_cast< _VM_Fault >( f ), retFrame, reinterpret_cast< PC >( pc ) );
 }
+
+namespace __sc_passthru {
+
+void configure_fault( __dios::Context& ctx, int * err, void* retval, va_list vl )  {
+    __sc::configure_fault(ctx, err, retval, vl);
+}
+
+void get_fault_config( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
+    __sc::get_fault_config(ctx, err, retval, vl);
+}
+
+void fault_handler( __dios::Context& ctx, int *err, void* retval, va_list vl ) {
+    __sc::fault_handler(ctx, err, retval, vl);
+}
+
+} // namespace __sc_passthru

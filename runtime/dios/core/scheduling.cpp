@@ -91,6 +91,25 @@ void get_process_threads( __dios::Context &ctx, int *, void *_ret, va_list vl ) 
 
 } // namespace __sc
 
+namespace __sc_passthru {
+
+void start_thread( __dios::Context& ctx, int * err, void* retval, va_list vl )  {
+    __sc::start_thread(ctx, err, retval, vl);
+}
+
+void kill_thread( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
+    __sc::kill_thread(ctx, err, retval, vl);
+}
+
+void kill_process( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
+    __sc::kill_process(ctx, err, retval, vl);
+}
+
+void get_process_threads( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
+    __sc::get_process_threads(ctx, err, retval, vl);
+}
+} // namespace __sc_passthru
+
 namespace __dios {
 
 Thread::Thread( Thread&& o ) noexcept

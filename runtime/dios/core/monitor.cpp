@@ -23,6 +23,12 @@ void register_monitor( __dios::Context& ctx, int *, void *, va_list vl ) {
 
 } // namespace __sc
 
+namespace __sc_passthru {
+void register_monitor( __dios::Context& ctx, int *err, void *ret, va_list vl ) {
+    __sc::register_monitor(ctx, err, ret , vl);
+}
+} // namespace __sc_passthru 
+
 void __dios_register_monitor( _DiOS_Monitor *monitor ) noexcept {
     __dios_syscall( __dios::_SC_register_monitor, nullptr, monitor );
 }
