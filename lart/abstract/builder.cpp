@@ -442,10 +442,7 @@ llvm::Value * AbstractBuilder::lower( llvm::Value * v, llvm::IRBuilder<> & irb )
 llvm::Value * AbstractBuilder::lift( llvm::Value * v, llvm::IRBuilder<> & irb ) {
     auto type = _types[ v->getType() ];
     auto fty = llvm::FunctionType::get( type, { v->getType() }, false );
-    auto tag = types::domain( type ) == "tristate"
-             ? "lart.tristate.lift"
-             : "lart." + types::domain( type ) + ".lift." +
-                types::lowerTypeName( type );
+    auto tag = "lart." + types::domain( type ) + ".lift." + types::lowerTypeName( type );
     auto m = irb.GetInsertBlock()->getModule();
     auto fn = m->getOrInsertFunction( tag, fty );
     auto call = irb.CreateCall( fn , v );

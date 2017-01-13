@@ -146,6 +146,19 @@ ModulePtr test_assume( const std::string & src ) {
     return m;
 }
 
+ModulePtr test_bcp( const std::string & src ) {
+    auto m = compile( src );
+
+    llvm::ModulePassManager manager;
+
+    abstract::abstraction_pass().create( manager, "" );
+    abstract::assume_pass().create( manager, "" );
+    abstract::bcp_pass().create( manager, "" );
+
+    manager.run( *m );
+    return m;
+}
+
 ModulePtr test_substitution( const std::string & src,
                              const std::string & opt,
                              std::vector< std::string > & link,
@@ -155,6 +168,8 @@ ModulePtr test_substitution( const std::string & src,
     llvm::ModulePassManager manager;
 
     abstract::abstraction_pass().create( manager, "" );
+    abstract::assume_pass().create( manager, "" );
+    abstract::bcp_pass().create( manager, "" );
     abstract::substitution_pass().create( manager, opt );
 
     manager.run( *m );
@@ -510,6 +525,22 @@ struct Assume {
         ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
 
         testBranching( lower );
+    }
+};
+
+struct BCP {
+    TEST( tristate ) {
+        auto s = R"(int main() {
+                        __test int x;
+                        if ( x == 0 ) {
+                            while ( x != 0 )
+                                ++x;
+                        } else {
+                            x = 0;
+                        }
+                        return 0;
+                    })";
+        test_bcp( annotation + s );
     }
 };
 

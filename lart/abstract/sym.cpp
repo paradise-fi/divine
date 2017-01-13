@@ -62,7 +62,9 @@ namespace {
                   ( n == "icmp_slt" ) ||
                   ( n == "icmp_sle" ) ||
                   // to_tristate
-                  ( n == "bool_to_tristate" ) )
+                  ( n == "bool_to_tristate" ) ||
+                  // assume
+                  ( n == "assume" ) )
         {
             return args;
         }
@@ -74,7 +76,6 @@ namespace {
         {
             return { args[0], bitwidth( i->getContext(), intrinsic::ty2( i ) ) };
         }
-        //TODO assume
         else
         {
             std::cerr << "ERR: unknown instruction: ";
