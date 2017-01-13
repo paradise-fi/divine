@@ -14,7 +14,7 @@ if echo "$opts" | grep "symbolic"; then
     z3 --version > /dev/null || skip
 fi
 
-divine verify --threads 1 --num-callers 65536 $opts "$1" $args | tee verify.out
+divine verify --max-memory 4GiB --threads 1 --num-callers 65536 $opts "$1" $args | tee verify.out
 choices=$(grep "choices made:" verify.out | cut -d' ' -f3- || true)
 if [ -n "$choices" ]; then
     printf "trace $choices\nstepa --count 1000\nbacktrace" | \
