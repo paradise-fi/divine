@@ -100,7 +100,7 @@ Tristate *__abstract_sym_bool_to_tristate( Formula * ) {
     return __new< Tristate >( Tristate::Unknown );
 }
 
-Formula *__abstract_sym_assume( Formula *value, Formula *constraint ) {
+Formula *__abstract_sym_assume( Formula *value, Formula *constraint, bool /*assume*/ ) {
     Formula *wconstraint = weaken( constraint );
     state.pcFragments = weaken( __new< PCFragment >( wconstraint, state.pcFragments ) );
     __vm_trace( _VM_T_Alg, state.pcFragments );

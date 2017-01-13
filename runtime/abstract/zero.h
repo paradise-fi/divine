@@ -74,7 +74,7 @@ extern "C" {
 
     Tristate * __abstract_zero_bool_to_tristate( Zero * a ) _ROOT _NOTHROW;
 
-    Zero *__abstract_zero_assume( Zero * value, Zero * constraint ) _ROOT _NOTHROW;
+    Zero *__abstract_zero_assume( Zero * value, Zero * constraint, bool assume ) _ROOT _NOTHROW;
 } // extern C
 } // namespace abstract
 

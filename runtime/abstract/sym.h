@@ -42,6 +42,8 @@ sym::Formula *__abstract_sym_icmp_sle( sym::Formula *a, sym::Formula *b ) _ROOT 
 
 abstract::Tristate *__abstract_sym_bool_to_tristate( sym::Formula *a ) _ROOT _NOTHROW;
 
-sym::Formula *__abstract_sym_assume( sym::Formula *value, sym::Formula *constraint ) _ROOT _NOTHROW;
+sym::Formula *__abstract_sym_assume( sym::Formula *value,
+                                     sym::Formula *constraint,
+                                     bool assume ) _ROOT _NOTHROW;
 
 }

@@ -278,7 +278,7 @@ extern "C" {
         return __new< Tristate >( Tristate::Domain::Unknown );
     }
 
-    Zero *__abstract_zero_assume( Zero * value, Zero *) {
+    Zero *__abstract_zero_assume( Zero * value, Zero * /*constraint*/, bool /*assume*/ ) {
         // TODO implement
         return value;
     }
