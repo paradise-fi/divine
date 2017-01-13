@@ -10,6 +10,9 @@
 #include <_PDCLIB_locale.h>
 #include <_PDCLIB_aux.h>
 
+#include <sys/time.h>
+#include <time.h>
+
 extern "C" {
 
 #define NOT_IMPLEMENTED { __dios_fault( _VM_F_NotImplemented, "libc stubs" ); return 0; }
@@ -46,7 +49,6 @@ int vfwprintf( FILE *, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 int vswprintf( wchar_t *, size_t, const wchar_t *, va_list ) NOT_IMPLEMENTED;
 
 void tzset() { __dios_fault( _VM_F_NotImplemented, "tzset" ); };
-int gettimeofday(struct timeval *, struct timezone *) NOT_IMPLEMENTED;
 int settimeofday(const struct timeval *, const struct timezone *) NOT_IMPLEMENTED;
 
 int mbtowc( wchar_t *, const char *s, size_t )
@@ -64,6 +66,18 @@ locale_t newlocale( int, const char *lc, locale_t ) {
         return const_cast< locale_t >( &_PDCLIB_global_locale );
 
     __dios_fault( _VM_F_NotImplemented, "newlocale" );
+    return 0;
+}
+
+int gettimeofday( struct timeval *tp, void * /* tzp */ ) {
+    tp->tv_sec = 0;
+    tp->tv_usec = 0;
+    return 0;
+}
+
+time_t time( time_t *t ) _PDCLIB_nothrow {
+    if ( t )
+        *t = 0;
     return 0;
 }
 
