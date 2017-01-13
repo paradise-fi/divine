@@ -96,7 +96,7 @@ fi
 (echo "# Test results"; echo) >> report.txt
 
 rm -f $list
-if ! make ${buildtype}-check || egrep -q 'failed|timeout|unknown' $list; then
+if ! make ${buildtype}-check JOBS=6 || egrep -q 'failed|timeout|unknown' $list; then
     failed >> report.txt
     finished 1
 fi
