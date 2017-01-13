@@ -236,6 +236,8 @@ void WithBC::setup()
     _bc->environment( env );
     _bc->autotrace( _autotrace );
     _bc->reduce( !_disableStaticReduction );
+    if ( _symbolic )
+        _lartPasses.emplace_back( "abstraction:sym" );
     _bc->lart( _lartPasses );
 }
 
@@ -426,6 +428,10 @@ struct CLI : Interface
                 "capture directory in form {dir}[:{follow|nofollow}[:{mount point}]]"s )
             .option( "[--stdin {file}]", &WithBC::_stdin,
                      "capture file and pass it to OS as stdin for verified program" )
+            .option( "[--symbolic|--ceds]", &WithBC::_symbolic,
+                     "use control-explicit data-symbolic (CEDS) model checking algorithm"s )
+            .option( "[--solver {string}]", &WithBC::_solver,
+                     "solver command to be used by CEDS algorithms (the solver must accept SMT-LIBv2 queries on standard input and produce results on standard output)"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 

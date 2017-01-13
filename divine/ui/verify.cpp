@@ -63,7 +63,7 @@ void Verify::run()
             return t.str();
         };
 
-    auto safety = mc::make_safety( bitcode(), ss::passive_listen(), true );
+    auto safety = mc::make_safety( bitcode(), ss::passive_listen(), _symbolic, true );
 
     auto avg = [&]() { return 1000 * float( safety->statecount() ) / interval.count(); };
     auto fmt_avg =

@@ -67,6 +67,8 @@ struct WithBC : Command
     size_t _vfsSizeLimit;
     vm::AutoTraceFlags _autotrace;
     bool _disableStaticReduction = false;
+    bool _symbolic;
+    std::string _solver;
     bool _init_done = false;
 
     void setup();
