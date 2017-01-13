@@ -1140,6 +1140,10 @@ struct Main {
                 break;
         }
 
+        while ( running_count )
+            wait();
+
+        progress.flush();
         journal.banner();
 
         for ( Cases::iterator i = cases.begin(); i != cases.end(); ++i ) {
