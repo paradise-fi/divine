@@ -1,6 +1,6 @@
 . lib/testcase
 
-SRC=$TESTS/c/assert.1.c
+SRC=$TESTS/c/1.assert.c
 
 sim $SRC <<EOF
 + ^# executing __boot
@@ -26,10 +26,10 @@ EOF
 
 sim $SRC <<EOF
 + ^# executing __boot
-> break assert.1.c:5
+> break 1.assert.c:5
 > break --list
-+ ^ 1: assert.1.c:5
++ ^ 1: 1.assert.c:5
 > stepa --count 10
-+ ^# stopped at breakpoint assert.1.c:5
++ ^# stopped at breakpoint 1.assert.c:5
 + ^# executing main at $SRC:5
 EOF

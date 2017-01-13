@@ -15,19 +15,27 @@ file( WRITE "${CMAKE_CURRENT_BINARY_DIR}/environment" "
  export SRC_ROOT='${CMAKE_SOURCE_DIR}'
  ${EXPORT_OPTIONS}" )
 
-set( ONLY --only "[.][1-4][.][^.]+$" )
+set( ONLY --only "/[1-4][.][^/]+$" )
 
 if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug" )
-    set( ONLY --only "[.][1-3][.][^.]+$" )
+    set( ONLY --only "/[1-3][.][^/]+$" )
 endif()
 
 add_custom_target( functional
-  COMMAND rm -rf data examples lib
-  COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/data .
+  COMMAND rm -rf examples lib
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/doc/examples .
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND mkdir -p results
-  COMMAND ${WITH_LCOV} ./runner --total-timeout 28800 --timeout 60 --interpreter cpp:lib/verify --interpreter c:lib/verify --interpreter bt:lib/brick-test --interpreter build:lib/build ${ONLY} --testdir ${CMAKE_CURRENT_SOURCE_DIR} --workdir . --outdir results --sort-hint "[.]([^.]*)[.][^.]+$" --skip "\.data($|/)"
+  COMMAND ${WITH_LCOV}
+            ./runner --total-timeout 28800 --timeout 60
+                     --interpreter cpp:lib/verify
+                     --interpreter c:lib/verify
+                     --interpreter build:lib/verify-pkg
+                     --interpreter bt:lib/brick-test
+                     ${ONLY} --skip "[.]pkg/"
+                     --testdir ${CMAKE_CURRENT_SOURCE_DIR}
+                     --workdir . --outdir results
+                     --sort-hint "/([0-9]*)[.][^/]+$"
   USES_TERMINAL
   DEPENDS runner
   VERBATIM
