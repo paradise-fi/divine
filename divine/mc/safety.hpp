@@ -50,8 +50,10 @@ struct Job : ss::Job
     void wait() override
     {
         _search->wait();
-        _monitor_loop->stop();
-        _monitor();
+        if ( _monitor_loop )
+            _monitor_loop->stop();
+        if ( _monitor )
+            _monitor();
     }
 
     using PoolStats = std::map< std::string, brick::mem::Stats >;
