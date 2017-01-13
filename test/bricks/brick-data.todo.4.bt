@@ -1,2 +1,0 @@
-# this test fails due to initialization tracking which is not bit precise since
-# SmallVector contains a bitfield.
