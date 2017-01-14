@@ -207,6 +207,9 @@ FILE * _PDCLIB_fvopen( _PDCLIB_fd_t fd, const _PDCLIB_fileops_t * ops,
 */
 FILE * freopen( const char * _PDCLIB_restrict filename, const char * _PDCLIB_restrict mode, FILE * _PDCLIB_restrict stream ) _PDCLIB_nothrow;
 
+FILE * fdopen( int fd,
+               const char * _PDCLIB_restrict mode ) _PDCLIB_nothrow;
+
 /* If buf is a NULL pointer, call setvbuf( stream, NULL, _IONBF, BUFSIZ ).
    If buf is not a NULL pointer, call setvbuf( stream, buf, _IOFBF, BUFSIZ ).
 */
@@ -941,6 +944,7 @@ _PDCLIB_uint_fast64_t _PDCLIB_ftell64_unlocked( FILE * stream ) _PDCLIB_nothrow;
 /* FIXME: divine */
 int asprintf(char **strp, const char *fmt, ...);
 int vasprintf(char **strp, const char *fmt, _PDCLIB_va_list ap);
+int fileno( FILE *f ) _PDCLIB_nothrow;
 
 _PDCLIB_END_EXTERN_C
 #endif
