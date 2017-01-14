@@ -29,6 +29,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DebugInfo.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -373,16 +374,38 @@ namespace t_vm {
 
 namespace {
 
-auto c2prog( std::string s )
-{
+auto testContext() {
     static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
-    divine::cc::Compiler c( ctx );
-    c.mapVirtualFile( "main.c", s );
-    auto p = std::make_shared< vm::Program >( c.compileModule( "main.c" ).release() );
+    return ctx;
+}
+
+auto mod2prog( std::unique_ptr< llvm::Module > m )
+{
+    auto p = std::make_shared< vm::Program >( m.release() );
     p->setupRR();
     p->computeRR();
     p->computeStatic();
     return p;
+}
+
+template< typename Build >
+auto ir2prog( Build build, std::string funcname, llvm::FunctionType *ft = nullptr )
+{
+    if ( !ft )
+        ft = llvm::FunctionType::get( llvm::Type::getInt32Ty( *testContext() ), false );
+    auto m = std::make_unique< llvm::Module >( "test.ll", *testContext() );
+    auto f = llvm::cast< llvm::Function >( m->getOrInsertFunction( funcname, ft ) );
+    auto bb = llvm::BasicBlock::Create( *testContext(), "_entry", f );
+    llvm::IRBuilder<> irb( bb );
+    build( irb, f );
+    return mod2prog( std::move( m ) );
+}
+
+auto c2prog( std::string s )
+{
+    divine::cc::Compiler c( testContext() );
+    c.mapVirtualFile( "main.c", s );
+    return mod2prog( c.compileModule( "main.c" ) );
 }
 
 }

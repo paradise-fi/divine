@@ -1795,9 +1795,8 @@ struct Eval
     }
 
     template< typename... Args >
-    int testF( std::string s, Args... args )
+    int testP( std::shared_ptr< vm::Program > p, Args... args )
     {
-        auto p = c2prog( s );
         TContext< vm::Program > c( *p );
         auto data = p->exportHeap( c.heap() );
         c.set( _VM_CR_Constants, data.first );
@@ -1808,6 +1807,18 @@ struct Eval
         c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_Mask );
         e.run();
         return e._result.cooked();
+    }
+
+    template< typename... Args >
+    int testF( std::string s, Args... args )
+    {
+        return testP( c2prog( s ), args... );
+    }
+
+    template< typename Build, typename... Args >
+    int testLLVM( Build build, llvm::FunctionType *ft = nullptr, Args... args )
+    {
+        return testP( ir2prog( build, "f", ft ), args... );
     }
 
     TEST(simple)
