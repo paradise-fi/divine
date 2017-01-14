@@ -65,7 +65,7 @@ namespace __sc_passthru {
         *err = __vm_syscall( __dios::_VM_SC::readlinkat, 
         	_VM_SC_Out | _VM_SC_Int64, retval,
         	_VM_SC_In | _VM_SC_Int32, dirfd,
-        	_VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+        	_VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
         	_VM_SC_Out | _VM_SC_Mem, count, buf,
         	_VM_SC_In | _VM_SC_Int64, count );
      
@@ -94,7 +94,7 @@ namespace __sc_passthru {
 
          *err = __vm_syscall( __dios::_VM_SC::creat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, mode );
     }
 
@@ -121,7 +121,7 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::open, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, flags,
             _VM_SC_In | _VM_SC_Int32, mode );
         
@@ -181,7 +181,7 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::truncate, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int64, length );        
     }
 
@@ -191,7 +191,7 @@ namespace __sc_passthru {
       
         *err = __vm_syscall( __dios::_VM_SC::rmdir, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path );   
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path );   
     }
 
     void link( __dios::Context& , int* err, void* retval, va_list vl )  {
@@ -201,8 +201,8 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::link, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( target ), target,
-            _VM_SC_In | _VM_SC_Mem, strlen( linkpath ), linkpath ); 
+            _VM_SC_In | _VM_SC_Mem, strlen( target ) + 1, target,
+            _VM_SC_In | _VM_SC_Mem, strlen( linkpath ) + 1, linkpath ); 
     }
 
 	void unlink( __dios::Context& , int* err, void* retval, va_list vl )  {
@@ -211,7 +211,7 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::unlink, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path ); 
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path ); 
     }
 
 	void unlinkat( __dios::Context& , int* err, void* retval, va_list vl )  {
@@ -223,7 +223,7 @@ namespace __sc_passthru {
         *err = __vm_syscall( __dios::_VM_SC::unlinkat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
             _VM_SC_In | _VM_SC_Int32, dirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, flags ); 
     }
 
@@ -235,7 +235,7 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::readlink, 
             _VM_SC_Out | _VM_SC_Int64, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_Out | _VM_SC_Mem, count, buf,
             _VM_SC_In | _VM_SC_Int64, count );
     }
@@ -251,9 +251,9 @@ namespace __sc_passthru {
         *err = __vm_syscall( __dios::_VM_SC::linkat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
             _VM_SC_In | _VM_SC_Int32, olddirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( target ), target,
+            _VM_SC_In | _VM_SC_Mem, strlen( target ) + 1, target,
             _VM_SC_In | _VM_SC_Int32, newdirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( linkpath ), linkpath,
+            _VM_SC_In | _VM_SC_Mem, strlen( linkpath ) + 1, linkpath,
             _VM_SC_In | _VM_SC_Int32, flags );
     }
 
@@ -264,8 +264,8 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::symlink, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( target ), target,
-            _VM_SC_In | _VM_SC_Mem, strlen( linkpath ), linkpath );
+            _VM_SC_In | _VM_SC_Mem, strlen( target ) + 1, target,
+            _VM_SC_In | _VM_SC_Mem, strlen( linkpath ) + 1, linkpath );
     }
 
 	void symlinkat( __dios::Context& , int* err, void* retval, va_list vl ) {
@@ -276,9 +276,9 @@ namespace __sc_passthru {
         
         *err = __vm_syscall( __dios::_VM_SC::symlinkat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( target ), target,
+            _VM_SC_In | _VM_SC_Mem, strlen( target ) + 1, target,
             _VM_SC_In | _VM_SC_Int32, dirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( linkpath ), linkpath );
+            _VM_SC_In | _VM_SC_Mem, strlen( linkpath ) + 1, linkpath );
     }
 
 	void access( __dios::Context& , int* err, void* retval, va_list vl ) {
@@ -288,7 +288,7 @@ namespace __sc_passthru {
 
          *err = __vm_syscall( __dios::_VM_SC::access, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, mode );
     }
 
@@ -299,7 +299,7 @@ namespace __sc_passthru {
 
          *err = __vm_syscall( __dios::_VM_SC::chdir, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path );
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path );
     }
 
 	void faccessat( __dios::Context& , int* err, void* retval, va_list vl ) {
@@ -312,7 +312,7 @@ namespace __sc_passthru {
         *err = __vm_syscall( __dios::_VM_SC::faccessat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
             _VM_SC_In | _VM_SC_Int32, dirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, mode,
             _VM_SC_In | _VM_SC_Int32, flags );
     }
@@ -383,7 +383,7 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::lstat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_Out | _VM_SC_Mem, sizeof( struct stat ), buf);
     }
 
@@ -394,7 +394,7 @@ namespace __sc_passthru {
 
          *err = __vm_syscall( __dios::_VM_SC::stat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_Out | _VM_SC_Mem, sizeof( struct stat ), buf);
     }
 
@@ -405,7 +405,7 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::statfs, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_Out | _VM_SC_Mem, sizeof( struct stat ), buf);
 
     }
@@ -417,7 +417,7 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::chmod, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, mode );
     }
 
@@ -442,7 +442,7 @@ namespace __sc_passthru {
         *err = __vm_syscall( __dios::_VM_SC::fchmodat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
             _VM_SC_In | _VM_SC_Int32, dirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, mode,
             _VM_SC_In | _VM_SC_Int32, flags );
     }
@@ -457,15 +457,13 @@ namespace __sc_passthru {
     }
 
 	void mkdir( __dios::Context& , int* err, void* retval, va_list vl ) {
-        auto dirfd = va_arg( vl, int );
         auto path = va_arg( vl, const char* );
         auto mode = va_arg( vl, mode_t );
         va_end( vl );
 
         *err = __vm_syscall( __dios::_VM_SC::mkdir, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Int32, dirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, mode );
     }
 
@@ -478,7 +476,7 @@ namespace __sc_passthru {
         *err = __vm_syscall( __dios::_VM_SC::mkdirat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
             _VM_SC_In | _VM_SC_Int32, dirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, mode );
     }
 
@@ -490,7 +488,7 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::mknod, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, mode,
             _VM_SC_In | _VM_SC_Int32, dev );
     }
@@ -505,7 +503,7 @@ namespace __sc_passthru {
         *err = __vm_syscall( __dios::_VM_SC::mknodat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
             _VM_SC_In | _VM_SC_Int32, dirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, mode,
             _VM_SC_In | _VM_SC_Int32, dev );
     }
@@ -531,7 +529,7 @@ namespace __sc_passthru {
         *err = __vm_syscall( __dios::_VM_SC::openat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
             _VM_SC_In | _VM_SC_Int32, dirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( path ), path,
+            _VM_SC_In | _VM_SC_Mem, strlen( path ) + 1, path,
             _VM_SC_In | _VM_SC_Int32, flags,
             _VM_SC_In | _VM_SC_Int32, mode );
     }
@@ -724,9 +722,9 @@ namespace __sc_passthru {
         *err = __vm_syscall( __dios::_VM_SC::renameat, 
             _VM_SC_Out | _VM_SC_Int32, retval,
             _VM_SC_In | _VM_SC_Int32, olddirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( oldpath ), oldpath,
+            _VM_SC_In | _VM_SC_Mem, strlen( oldpath ) + 1, oldpath,
             _VM_SC_In | _VM_SC_Int32, newdirfd,
-            _VM_SC_In | _VM_SC_Mem, strlen( newpath ), newpath );
+            _VM_SC_In | _VM_SC_Mem, strlen( newpath ) + 1, newpath );
     }
 
     void rename( __dios::Context& , int* err, void* retval, va_list vl ) {
@@ -736,8 +734,8 @@ namespace __sc_passthru {
 
         *err = __vm_syscall( __dios::_VM_SC::rename, 
             _VM_SC_Out | _VM_SC_Int32, retval,
-            _VM_SC_In | _VM_SC_Mem, strlen( oldpath ), oldpath,
-            _VM_SC_In | _VM_SC_Mem, strlen( newpath ), newpath );
+            _VM_SC_In | _VM_SC_Mem, strlen( oldpath ) + 1, oldpath,
+            _VM_SC_In | _VM_SC_Mem, strlen( newpath ) + 1, newpath );
     }
 
     void getcwd( __dios::Context&, int* err, void* retval, va_list vl) {
