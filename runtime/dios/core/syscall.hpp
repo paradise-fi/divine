@@ -33,6 +33,8 @@ enum class SchedCommand : uint8_t { RESCHEDULE, CONTINUE };
 
 // Mapping of syscodes to implementations
 extern void ( **_DiOS_SysCalls ) ( Context& ctx, int *err, void* retval, va_list vl );
+extern void ( *_DiOS_SysCalls_Virt[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl );
+extern void ( *_DiOS_SysCalls_Passthru[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl );
 // True if corresponding syscall requires thread rescheduling
 extern const SchedCommand _DiOS_SysCallsSched[ _SC_LAST ];
 

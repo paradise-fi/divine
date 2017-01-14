@@ -239,6 +239,10 @@ void init( const _VM_Env *env )
     if ( traceCfg.raw )
         traceEnv( 1, env );
 
+    if ( useSyscallPassthrough(sysOpts) ){
+        _DiOS_SysCalls = _DiOS_SysCalls_Passthru;
+    }
+
     // Select scheduling mode
     if ( traceCfg.threads )
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<true> );
