@@ -6,7 +6,7 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       *.h divine/*.h dios/*.hpp dios/core/*.hpp dios/core/*.def atomic sys/*.h bits/*.h
       abstract/*.hpp abstract/*.h
       pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h libtre/*.h
-      libm/*.h libm/bits/*.h
+      libm/*.h libm/machine/*.h
       libcxxabi/include/*
       libcxxabi/src/*.h libcxxabi/src/*.hpp libcxxabi/src/*.ipp
       libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
