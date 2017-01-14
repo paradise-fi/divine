@@ -11,9 +11,14 @@ echo "$1" | grep -q '.cpp$' && std="-std=c++14"
 opts=$(eval echo $(getopt VERIFY_OPTS $1))
 args=$(eval echo $(getopt PROGRAM_OPTS $1))
 ccopt=$(eval echo $(getopt CC_OPTS $1))
+gtest=
 skipcc=$(getopt SKIP_CC $1)
 resources="--max-memory 4GiB --threads 1"
 extra="--num-callers 65536"
+
+if test $(eval echo $(getopt USE_GTEST $1)) = 1; then
+    gtest="$TESTS/lib/gtest/src/gtest-all.cc $TESTS/lib/gtest/src/gtest_main.cc -I$TESTS/lib/gtest"
+fi
 
 if echo "$opts" | grep "symbolic"; then
     z3 --version > /dev/null || skip
@@ -23,7 +28,7 @@ if test "$skipcc" = 1; then
     run=$1
     opts="$std $opts"
 else
-    divine cc -o testcase.bc $std $ccopt "$1"
+    divine cc -o testcase.bc $std $ccopt "$1" $gtest
     run=testcase.bc
 fi
 
