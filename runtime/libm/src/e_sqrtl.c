@@ -30,6 +30,7 @@
 #include <float.h>
 #include <ieeefp.h>
 #include <math.h>
+#include "math_private.h"
 
 #ifdef EXT_IMPLICIT_NBIT
 #define	LDBL_NBIT	0
