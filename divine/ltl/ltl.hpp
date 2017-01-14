@@ -33,6 +33,8 @@ struct Atom
     std::string string() const { return label; }
     LTLPtr normalForm( bool );
     LTLPtr normalForm();
+
+    bool isComplete() const { return true; }
 };
 
 struct Unary
@@ -43,6 +45,8 @@ struct Unary
     std::string string() const;
     LTLPtr normalForm( bool );
     LTLPtr normalForm() { return normalForm( false ); }
+
+    bool isComplete() const { return subExp != nullptr; }
 };
 
 struct Binary
@@ -53,6 +57,8 @@ struct Binary
     std::string string() const;
     LTLPtr normalForm( bool );
     LTLPtr normalForm() { return normalForm( false ); }
+
+    bool isComplete() const { return left != nullptr && right != nullptr; }
 };
 
 using Exp = brick::types::Union< Atom, Unary, Binary >;
@@ -73,6 +79,11 @@ struct LTL : Exp
         return apply( [] ( auto e ) -> std::string { return e.string(); } ).value();
     }
 
+    bool isComplete()
+    {
+        return apply([]( auto e ) -> bool { return e.isComplete(); } ).value();
+    }
+
     LTLPtr normalForm()
     {
         return normalForm( false );
@@ -83,7 +94,7 @@ struct LTL : Exp
         return apply( [=] ( auto e ) -> LTLPtr { return e.normalForm( neg ); } ).value();
     }
 
-    static LTLPtr make( Binary::Operator op, LTLPtr left, LTLPtr right )
+    static LTLPtr make( Binary::Operator op, LTLPtr left = nullptr, LTLPtr right = nullptr )
     {
         Binary binary;
         binary.op = op;
@@ -92,7 +103,7 @@ struct LTL : Exp
         return std::make_shared< LTL >( binary );
     }
 
-    static LTLPtr make( Unary::Operator op, LTLPtr subExp )
+    static LTLPtr make( Unary::Operator op, LTLPtr subExp = nullptr )
     {
         Unary unary;
         unary.op = op;
