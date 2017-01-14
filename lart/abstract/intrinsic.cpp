@@ -95,18 +95,6 @@ llvm::CallInst * build( llvm::Module * m,
     return irb.CreateCall( call, args );
 }
 
-llvm::CallInst * anonymous( llvm::Module * m,
-                            llvm::IRBuilder<> & irb,
-                            llvm::Type * rty,
-                            std::vector< llvm::Value * > args )
-{
-	/*auto fty = llvm::FunctionType::get( rty, types( args ), false );
-    using Linkage = llvm::GlobalValue::LinkageTypes;
-    auto call = llvm::Fun::Create( fty, Linkage::ExternalLinkage, "", i->getModule() );
-	return irb.CreateCall( call, args );*/
-    return build( m, irb, rty, "", args );
-}
-
 //helpers
 bool is( const llvm::Function * fn ) {
     auto parts = parse( fn );

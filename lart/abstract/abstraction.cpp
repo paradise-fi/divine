@@ -86,14 +86,13 @@ void Abstraction::processAllocas( llvm::Function * fn ) {
 
 void Abstraction::process( llvm::Function * fn,
 						   std::vector< llvm::Value * > const& entries) {
-	for ( const auto &  entry : entries )
+	for ( const auto & entry : entries )
         propagate( entry );
 
     processAllocas( fn );
 
     auto changed = changeReturn( fn );
 	builder.store( fn, changed );
-	builder.annotate();
 
 	if ( fn != changed ) {
         std::vector< llvm::User * > users = { fn->user_begin(), fn->user_end() } ;

@@ -25,8 +25,6 @@ struct AbstractBuilder {
 
     void clean( std::vector< llvm::Value * > & );
 
-    void annotate();
-
 	llvm::Function * changeReturn( llvm::Function * );
 
     std::vector< llvm::Type * > arg_types( llvm::CallInst * );
@@ -53,10 +51,7 @@ struct AbstractBuilder {
 
     llvm::Value * processLiftCall( llvm::CallInst * );
     llvm::Value * processIntrinsic( llvm::CallInst * );
-	llvm::Value * processAnonymous( llvm::CallInst * );
     llvm::Value * processCall( llvm::CallInst * );
-
-    void annotate( llvm::Function *, const std::string & );
 
     llvm::Function * getStoredFn( llvm::Function *,
                                   llvm::ArrayRef< llvm::Type * > );
@@ -66,8 +61,6 @@ struct AbstractBuilder {
     std::map< llvm::Type *, llvm::Type * > _types;
     std::map< llvm::Value *, llvm::Value * > _values;
     std::map< llvm::Function *, std::vector< llvm::Function * > > _functions;
-
-    std::map< llvm::Function *, std::string > _anonymous;
 
 	std::set< llvm::Function * > _unusedFunctions;
     std::set< llvm::Instruction * > _unusedLifts;

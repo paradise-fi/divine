@@ -417,8 +417,6 @@ struct Abstraction {
                         return x + y;
                     })";
         auto m = test_abstraction( annotation + s );
-        auto lift = m->getFunction( "lart.abstract.lift.i32" );
-        ASSERT( lift == nullptr );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }

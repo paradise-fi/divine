@@ -43,11 +43,6 @@ llvm::CallInst * build( llvm::Module *,
                         const std::string &,
                         std::vector< llvm::Value * > args = {} );
 
-llvm::CallInst * anonymous( llvm::Module *,
-                            llvm::IRBuilder<> &,
-                            llvm::Type *,
-                            std::vector< llvm::Value * > args = {} );
-
 //helpers
 bool is( const llvm::Function * );
 bool is( const llvm::CallInst * );

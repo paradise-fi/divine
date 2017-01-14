@@ -108,14 +108,6 @@ llvm::Value * AbstractBuilder::process( llvm::Instruction * i ) {
 	return abstract ? abstract : i;
 }
 
-void AbstractBuilder::annotate() {
-    for ( auto & a : _anonymous ) {
-        annotate( a.first, a.second );
-        a.first->eraseFromParent();
-    }
-    _anonymous.clear();
-}
-
 llvm::Value * AbstractBuilder::process( llvm::Argument * arg ) {
     if ( types::isAbstract( arg->getType() ) )
         _values[ arg ] = arg;
@@ -133,37 +125,6 @@ llvm::Value * AbstractBuilder::process( llvm::CallInst * call,
     auto ncall = irb.CreateCall( fn, args );
     _values[ call ] = ncall;
     return ncall;
-}
-
-void AbstractBuilder::annotate( llvm::Function * anonymous,
-                                const std::string & name )
-{
-    auto rty = anonymous->getReturnType();
-
-    std::vector< std::pair< llvm::CallInst *, llvm::CallInst *> > replace;
-    for ( auto user : anonymous->users() ) {
-        auto call = llvm::cast< llvm::CallInst >( user );
-        std::vector < llvm::Value * > args;
-        for ( auto &arg : call->arg_operands() )
-            if ( types::isAbstract( arg->getType() ) )
-                args.push_back( arg );
-            else {
-                llvm::IRBuilder<> irb( call );
-                args.push_back( lift( arg, irb ) );
-            }
-
-        std::vector< llvm::Type * > types;
-        for ( auto & v : args )
-            types.push_back( v->getType() );
-
-        auto fty = llvm::FunctionType::get( rty, types, false );
-        auto fn = call->getModule()->getOrInsertFunction( name, fty );
-        auto ncall = llvm::CallInst::Create( fn, args );
-        replace.push_back( { call, ncall } );
-    }
-
-    for ( auto &r : replace )
-        llvm::ReplaceInstWithInst( r.first, r.second );
 }
 
 llvm::Function * AbstractBuilder::changeReturn( llvm::Function * fn ) {
@@ -258,53 +219,36 @@ llvm::Value * AbstractBuilder::createLoad( llvm::LoadInst * i ) {
     auto rty = _types[ i->getType() ];
     auto tag = intrinsic::tag( i ) + "." + types::name( i->getType() );
     llvm::IRBuilder<> irb( i );
-
-    auto call = intrinsic::anonymous( i->getModule(), irb, rty, args );
-    _anonymous[ call->getCalledFunction() ] = tag;
-
-    return call;
+    return intrinsic::build( i->getModule(), irb, rty, tag, args );
 }
 
 llvm::Value * AbstractBuilder::createStore( llvm::StoreInst * i ) {
+    llvm::IRBuilder<> irb( i );
     auto val = _values.count( i->getOperand( 0 ) )
              ? _values[ i->getOperand( 0 ) ]
-             : i->getOperand( 0 );
+             : lift( i->getOperand( 0 ), irb );
     auto ptr = _values.count( i->getOperand( 1 ) )
              ? _values[ i->getOperand( 1 ) ]
-             : i->getOperand( 1 );
-
-    llvm::IRBuilder<> irb( i );
-    if ( !types::isAbstract( val->getType() ) )
-        val = lift( val, irb );
-    if ( !types::isAbstract( ptr->getType() ) )
-        ptr = lift( ptr, irb );
-
+             : lift( i->getOperand( 1 ), irb );
     auto rty = llvm::Type::getVoidTy( i->getContext() );
     auto tag = intrinsic::tag( i ) + "." + types::lowerTypeName( val->getType() );
 
-    auto call = intrinsic::anonymous( i->getModule(), irb, rty, { val, ptr } );
-    _anonymous[ call->getCalledFunction() ] = tag;
-
-    return call;
+    return intrinsic::build( i->getModule(), irb, rty, tag, { val, ptr } );
 }
 
 llvm::Value * AbstractBuilder::createICmp( llvm::ICmpInst * i ) {
+    llvm::IRBuilder<> irb( i );
     std::vector< llvm::Value * > args;
     for ( const auto & op : i->operands() ) {
-        auto arg = _values.count( op ) ? _values.at( op ) : op;
+        auto arg = _values.count( op ) ? _values.at( op ) : lift( op, irb );
         args.push_back( arg );
     }
-    auto type = types::isAbstract( args[ 0 ]->getType() )
-              ? types::lower( args[ 0 ]->getType() )
-              : args[ 0 ]->getType();
+    auto type = types::lower( args[ 0 ]->getType() );
 	auto tag = intrinsic::tag( i ) + "_"
              + _detail::predicate.at( i->getPredicate() ) + "."
              + types::name( type );
-    llvm::IRBuilder<> irb( i );
-    auto call = intrinsic::anonymous( i->getModule(), irb,
-                types::IntegerType::get( i->getContext(), 1 ), args );
-    _anonymous[ call->getCalledFunction() ] = tag;
-    return call;
+    return intrinsic::build( i->getModule(), irb,
+           types::IntegerType::get( i->getContext(), 1 ), tag, args );
 }
 
 llvm::Value * AbstractBuilder::createBranch( llvm::BranchInst * i ) {
@@ -323,35 +267,34 @@ llvm::Value * AbstractBuilder::createBranch( llvm::BranchInst * i ) {
 }
 
 llvm::Value * AbstractBuilder::createBinaryOperator( llvm::BinaryOperator * i ) {
+    llvm::IRBuilder<> irb( i );
+
     std::vector< llvm::Value * > args;
     for ( auto & arg : i->operands() ) {
-        auto v = _values.count( arg ) ? _values[ arg ] : arg;
+        auto v = _values.count( arg ) ? _values[ arg ] : lift( arg, irb );
         args.push_back( v );
     }
     auto tag = intrinsic::tag( i ) + "."
              + types::name( i->getType() );
     auto rty = _types[ i->getType() ];
 
-    llvm::IRBuilder<> irb( i );
-    auto call = intrinsic::anonymous( i->getModule(), irb, rty, args );
-    _anonymous[ call->getCalledFunction() ] = tag;
-    return call;
+    return intrinsic::build( i->getModule(), irb, rty, tag, args );
 }
 
 llvm::Value * AbstractBuilder::createCast( llvm::CastInst * i ) {
-    auto op0 = i->getOperand( 0 );
-    auto arg = _values.count( op0 ) ? _values[ op0 ] : op0;
+    llvm::IRBuilder<> irb( i );
+    auto op = i->getOperand( 0 );
+    auto arg = _values.count( op ) ? _values[ op ] : lift( op, irb );
+
     auto tag = intrinsic::tag( i ) + "." +
                types::name( i->getSrcTy() ) + "." +
                types::name( i->getDestTy() );
+
     auto dest = i->getDestTy();
     store( dest, types::lift( dest ) );
     auto rty = _types[ dest ];
 
-    llvm::IRBuilder<> irb( i );
-    auto call = intrinsic::anonymous( i->getModule(), irb, rty, { arg } );
-    _anonymous[ call->getCalledFunction() ] = tag;
-    return call;
+    return intrinsic::build( i->getModule(), irb, rty, tag, { arg } );
 }
 
 llvm::Value * AbstractBuilder::createPhi( llvm::PHINode * n ) {
@@ -385,17 +328,15 @@ llvm::Value * AbstractBuilder::createPhi( llvm::PHINode * n ) {
 }
 
 llvm::Value * AbstractBuilder::createCall( llvm::CallInst * i ) {
-    if ( intrinsic::isLift( i ) )
+    if ( intrinsic::isLift( i ) ) {
         return processLiftCall( i );
-    if ( intrinsic::isLower( i ) )
+    } else if ( intrinsic::is( i ) ) {
         return clone( i );
-    if ( intrinsic::name( i ) == "bool_to_tristate" )
-        return clone( i );
-    if ( i->getCalledFunction()->isIntrinsic() )
+    } else if ( i->getCalledFunction()->isIntrinsic() ){
         return processIntrinsic( llvm::cast< llvm::IntrinsicInst >( i ) );
-    if ( _anonymous.count( i->getCalledFunction() ) )
-    	return processAnonymous( i );
-    return processCall( i );
+    } else {
+        return processCall( i );
+    }
 }
 
 llvm::Value * AbstractBuilder::createReturn( llvm::ReturnInst * i ) {
@@ -476,23 +417,6 @@ llvm::Value * AbstractBuilder::processIntrinsic( llvm::CallInst * i ) {
     return nullptr;
 }
 
-llvm::Value * AbstractBuilder::processAnonymous( llvm::CallInst * i ) {
-    auto args = _detail::remapArgs( i, _values );
-    auto fn = i->getCalledFunction();
-	auto m = i->getModule();
-	auto rty = fn->getReturnType();
-
-	llvm::IRBuilder<> irb( i );
-	//auto tag = fn->getName(); //this is weird
-	//auto call = intrinsic::build( m, irb, rty, tag, args );
-	auto call = intrinsic::anonymous( m, irb, rty, args );
-
-	auto find = _anonymous[ fn ];
-	i->replaceAllUsesWith( call );
-	_anonymous[ call->getCalledFunction() ] = find;
-	return call;
-}
-
 llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
     auto args = _detail::remapArgs( i, _values );
     std::vector< llvm::Type * > types = arg_types( i );
@@ -523,10 +447,7 @@ llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
 }
 
 bool AbstractBuilder::needToPropagate( llvm::CallInst * i ) {
-    if (  ( intrinsic::isLift( i ) )
-       || ( intrinsic::isLower( i ) )
-       || ( i->getCalledFunction()->isIntrinsic() )
-       || ( _anonymous.count( i->getCalledFunction() ) ) )
+    if (( intrinsic::is( i ) ) || ( i->getCalledFunction()->isIntrinsic() ))
        return false;
     auto args = _detail::remapArgs( i, _values );
     std::vector< llvm::Type * > types = arg_types( i );
