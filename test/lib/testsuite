@@ -1,0 +1,11 @@
+#!/bin/sh
+
+exec ./runner \
+    --total-timeout 28800 --timeout 120  \
+    --interpreter cpp:lib/verify \
+    --interpreter c:lib/verify \
+    --interpreter pkg:lib/pkg \
+    --interpreter bt:lib/brick-test \
+    --skip "[.]pkg/" \
+    --workdir . --outdir results \
+    --sort-hint "/([0-9]*)[.][^/]+$" "$@"
