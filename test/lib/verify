@@ -5,20 +5,34 @@ getopt() {
   perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2
 }
 
-optStd=
-echo "$1" | grep -q '.cpp$' && optStd="-std=c++14"
-opts=$(eval echo $optStd $(getopt VERIFY_OPTS $1))
+std=
+echo "$1" | grep -q '.cpp$' && std="-std=c++14"
+
+opts=$(eval echo $(getopt VERIFY_OPTS $1))
 args=$(eval echo $(getopt PROGRAM_OPTS $1))
+ccopt=$(eval echo $(getopt CC_OPTS $1))
+skipcc=$(getopt SKIP_CC $1)
+resources="--max-memory 4GiB --threads 1"
+extra="--num-callers 65536"
 
 if echo "$opts" | grep "symbolic"; then
     z3 --version > /dev/null || skip
 fi
 
-divine verify --max-memory 4GiB --threads 1 --num-callers 65536 $opts "$1" $args | tee verify.out
+if test "$skipcc" = 1; then
+    run=$1
+    opts="$std $opts"
+else
+    divine cc -o testcase.bc $std $ccopt "$1"
+    run=testcase.bc
+fi
+
+divine verify $resources $extra $opts $run $args | tee verify.out
+
 choices=$(grep "choices made:" verify.out | cut -d' ' -f3- || true)
 if [ -n "$choices" ]; then
     printf "trace $choices\nstepa --count 1000\nbacktrace" | \
-        divine sim $opts "$1" $args | tee sim.out
+        divine sim $opts $run $args | tee sim.out
 fi
 check verify "$1"
 

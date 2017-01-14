@@ -1,5 +1,6 @@
 // VERIFY_OPTS: -D a=b -Dc=d
 // PROGRAM_OPTS: test
+// SKIP_CC: 1
 
 #include <dios.h>
 #include <assert.h>

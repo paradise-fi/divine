@@ -1,4 +1,5 @@
 // VERIFY_OPTS: -D a=b -Dc=d -Dfootball
+// SKIP_CC: 1
 
 #include <dios.h>
 #include <assert.h>

@@ -1,3 +1,5 @@
+// SKIP_CC: 1
+
 #include <dios.h>
 #include <assert.h>
 #include <string.h>

@@ -1,4 +1,5 @@
 // PROGRAM_OPTS: test veryveryveryveryveryveryveryverylongarg --xyz -z -z=42 --a==42
+// SKIP_CC: 1
 
 #include <dios.h>
 #include <assert.h>

@@ -1,4 +1,4 @@
-/* VERIFY_OPTS: -std=c++14 */
+/* CC_OPTS: -std=c++14 */
 
 #include <dios.h>
 #include <cassert>

@@ -1,4 +1,5 @@
 /* VERIFY_OPTS: -std=c++11 */
+/* SKIP_CC: 1 */
 
 #include <cassert>
 
