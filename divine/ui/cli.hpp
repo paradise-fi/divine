@@ -114,7 +114,7 @@ enum class Report { None, Yaml, YamlLong };
 
 struct Verify : WithBC
 {
-    int _max_mem = 0; // bytes
+    int64_t _max_mem = 0; // bytes
     int _max_time = 0;  // seconds
     int _threads = 0;
     int _num_callers = 10;
