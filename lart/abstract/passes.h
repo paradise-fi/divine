@@ -449,6 +449,28 @@ struct Abstraction {
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
+
+    TEST( loop_test_2 ) {
+        auto s = R"(int main() {
+                      unsigned N = 1000;
+                      unsigned long long Q = 10000000000ULL;
+                      unsigned long long rem = 0;
+                      __test unsigned i;
+                      for (i = 1; i < N; i++) {
+                        unsigned long long r = 1;
+                        unsigned j;
+                        for (j = 0; j < i; j++) {
+                          r = (r * i) % Q;
+                        }
+                        rem = (rem + r) % Q;
+                      }
+
+                      return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
 };
 
 struct Assume {

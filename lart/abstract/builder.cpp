@@ -371,10 +371,7 @@ llvm::Value * AbstractBuilder::lift( llvm::Value * v, llvm::IRBuilder<> & irb ) 
     auto tag = "lart." + types::domain( type ) + ".lift." + types::lowerTypeName( type );
     auto m = irb.GetInsertBlock()->getModule();
     auto fn = m->getOrInsertFunction( tag, fty );
-    auto call = irb.CreateCall( fn , v );
-
-    _values[ v ] = call;
-    return call;
+    return irb.CreateCall( fn , v );
 }
 
 llvm::Value * AbstractBuilder::toTristate( llvm::Value * v, llvm::IRBuilder<> & irb ) {
