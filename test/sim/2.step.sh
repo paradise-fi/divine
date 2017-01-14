@@ -1,6 +1,6 @@
 . lib/testcase
 
-SRC=$TESTS/c/pointer-arith.2.c
+SRC=$TESTS/c/2.pointer-arith.c
 
 sim $SRC <<EOF
 + ^# executing __boot

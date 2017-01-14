@@ -7,7 +7,7 @@
 int main( int argc, char **argv ) {
     assert( argc == 1 );
 
-    const char* test_name = "main-args-b.2.c";
+    const char* test_name = "2.main-args-b.c";
     int tl = strlen( test_name );
     int l = strlen( argv[0] );
     __dios_trace_f( "Binary name: %s", argv[0] + l - tl );
