@@ -39,4 +39,7 @@ typedef __u_long            u_long;
 typedef __uint16_t          u_int16_t;
 typedef __uint32_t          u_int32_t;
 
+typedef	double __double_t;
+typedef	float  __float_t;
+
 #endif // _SYS_TYPES_H_
