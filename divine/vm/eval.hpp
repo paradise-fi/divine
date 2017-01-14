@@ -50,14 +50,30 @@ long syscall_helper( int id, std::vector< long > args, std::vector< bool > argty
         return syscall( id, int( args[0] ) );
     else if ( argtypes == A{1} )
         return syscall( id, args[0] );
-    else if ( argtypes == A{0, 0} ) /* dup */
+    else if ( argtypes == A{0, 0} )
         return syscall( id, int( args[0] ), int( args[1] ) );
     else if ( argtypes == A{0, 1} )
         return syscall( id, int( args[0] ), args[1] );
+    else if ( argtypes == A{1, 0} )
+        return syscall( id, args[0] , int( args[1] ));
     else if ( argtypes == A{1, 1} )
         return syscall( id, args[0], args[1] );
-    else if ( argtypes == A{0, 1, 1} ) /* write */
+    else if ( argtypes == A{0, 0, 0} )
+        return syscall( id, int( args[0] ), int( args[1] ), int( args[2] ) );
+    else if ( argtypes == A{0, 0, 1} )
+        return syscall( id, int( args[0] ), int( args[1] ), args[2] );
+    else if ( argtypes == A{0, 1, 0} )
+        return syscall( id, int( args[0] ), args[1], int( args[2] ) );
+    else if ( argtypes == A{0, 1, 1} )
         return syscall( id, int( args[0] ), args[1], args[2] );
+    else if ( argtypes == A{1, 0, 0} )
+        return syscall( id, args[0], int( args[1] ), int( args[2] ) );
+    else if ( argtypes == A{1, 0, 1} )
+        return syscall( id, args[0], int( args[1] ), args[2] );
+    else if ( argtypes == A{1, 1, 0} )
+        return syscall( id, args[0], args[1], int( args[2] ) );
+    else if ( argtypes == A{1, 1, 1} )
+        return syscall( id, args[0], args[1], args[2] );
     else
         NOT_IMPLEMENTED();
 }
