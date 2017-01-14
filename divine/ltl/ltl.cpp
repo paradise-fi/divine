@@ -15,6 +15,9 @@
  */
 
 #include "ltl.hpp"
+#include <map>
+#include <vector>
+#include <list>
 
 namespace divine {
 namespace ltl {
@@ -231,6 +234,217 @@ LTLPtr Binary::normalForm( bool neg )
                 return left;
         }
     }
+}
+
+/**
+ * ******************************
+ * ******** PARSE TOOLS *********
+ * ******************************
+ */
+
+struct BracketOpen  {};
+struct BracketClose {};
+
+struct Tokens;
+using Token = brick::types::Union< LTLPtr, BracketOpen, BracketClose, std::shared_ptr< Tokens > >;
+struct Tokens : std::list< Token > {};
+using TokensPtr = std::shared_ptr< Tokens >;
+using Operator = brick::types::Union< Unary::Operator, Binary::Operator >;
+
+std::vector< std::pair< Operator, bool > > operatorOrder = {
+    { Unary::Neg,    false },
+    { Unary::Global, false }, {Unary::Future,   false},  {Unary::Next, false},
+    { Binary::And,   false }, {Binary::Or,      false},
+    { Binary::Equiv, false },
+    { Binary::Impl,  false },
+    { Binary::Until, true },  {Binary::Release, false}
+};
+
+std::map< std::string, Operator > stringsToOperators = {
+    { "!", Unary::Neg    },
+    { "G", Unary::Global }, { "F", Unary::Future  }, { "X", Unary::Next },
+    { "&", Binary::And   }, { "|", Binary::Or     },
+    { "=", Binary::Equiv },
+    { "->", Binary::Impl },
+    { "U", Binary::Until }, { "R", Binary::Release }
+};
+
+Tokens tokenizer( const std::string& formula )
+{
+    Tokens tokens;
+
+    for ( auto it = formula.begin(); it < formula.end(); ++it )
+    {
+        std::string proposition;
+        while ( it != formula.end() && *it >= 'a' && *it <= 'z' )
+            proposition.push_back( *it++ );
+        if ( !proposition.empty() )
+            tokens.push_back( LTL::make(proposition) );
+        if ( it != formula.end() )
+        {
+            if( *it == ' ' )
+                continue;
+            else if( *it == '-' )
+            {
+                if( it + 1 != formula.end() && *(it + 1) == '>' )
+                    tokens.push_back( LTL::make( Binary::Impl ) ), ++it;
+                else throw std::invalid_argument( "invalid LTL formula, cannot resolve symbol '-' unless '>' follows" );
+            }
+            else if ( *it == '(' )
+                tokens.push_back( BracketOpen() );
+            else if ( *it == ')' )
+                tokens.push_back( BracketClose() );
+            else
+            {
+                auto search = stringsToOperators.find( std::string(1, *it) );
+                if ( search != stringsToOperators.end() )
+                    search->second.match(
+                        [&]( Unary::Operator op ) { tokens.push_back( LTL::make( op ) ); },
+                        [&]( Binary::Operator op ) { tokens.push_back( LTL::make( op ) ); } );
+                else
+                    throw std::invalid_argument( std::string( "invalid LTL formula, cannot resolve symbol " ) + *it );
+            }
+        }
+    }
+    return tokens;
+}
+
+/*
+* ****************************************
+* *********** SOLVE BRACKETS *************
+*/
+Tokens::iterator brackets( TokensPtr root, Tokens::iterator it, Tokens::iterator end )
+{
+    while ( it != end ) {
+        if ( it->is< BracketOpen >() )
+        {
+            auto newNode = std::make_shared<Tokens>();
+            it = brackets( newNode, std::next(it, 1), end );
+            if( it == end )
+                throw std::invalid_argument( "Formula syntax error - too many brackets '('" );
+            if(newNode->empty())
+                throw std::invalid_argument( "Formula syntax error - empty brackets () are not allowed" );
+            root->push_back( newNode );
+        }
+        else if ( it->is< BracketClose >() )
+            return it;
+        else
+            root->push_back( *it );
+        it++;
+    }
+    return it;
+}
+
+TokensPtr solveBrackets( const std::string& formula )
+{
+    auto formulaNode = std::make_shared< Tokens >( tokenizer( formula ) );
+    auto newTree = std::make_shared< Tokens >();
+    if ( brackets( newTree, formulaNode->begin(), formulaNode->end() ) != formulaNode->end() )
+        throw std::invalid_argument( "Formula syntax error - too many brackets ')'" );
+    return newTree;
+}
+
+/*
+* ****************************************
+* ************** COLLAPSE ****************
+*/
+
+bool reduceUnary( TokensPtr leaf, Unary::Operator op_type )
+{
+    bool changed = false;
+    if ( leaf->size() < 2 )
+        return false;
+    Tokens::iterator it = leaf->begin();
+
+    while ( it != leaf->end() )
+    {
+        ASSERT( it->is< LTLPtr >() && "Leaf should contain LTL only" );
+        auto op = it->get< LTLPtr >();
+        if( op->is<Unary>() && op->get< Unary >().op == op_type && !op->isComplete() )
+        {
+            if( std::next( it ) == leaf->end() )
+                throw std::invalid_argument( "LTL formula must not end with " + op->string() );
+            auto operand = std::next( it )->get< LTLPtr >();
+            if( operand->isComplete() )
+            {
+                *it = LTL::make( op_type, operand );
+                leaf->erase(std::next( it ));
+                changed = true;
+            }
+        }
+        ++it;
+    }
+    return changed;
+}
+
+bool reduceBinary( TokensPtr leaf, Binary::Operator op_type, bool reverse )
+{
+    auto first = reverse ? std::prev( leaf->end() ) : leaf->begin();
+    auto last  = reverse ? leaf->begin() : std::prev( leaf->end() );
+
+    auto it = first;
+    bool changed = false;
+
+    while ( leaf->size() > 2 )
+    {
+        bool done = ( reverse ? std::prev( it ) : std::next( it ) ) == last;
+        ASSERT( it->is< LTLPtr >() && "Leaf should contain LTL only" );
+        auto op = it->get< LTLPtr >();
+        if( op->is< Binary >() && op->get< Binary >().op == op_type && !op->isComplete() )
+        {
+            if( std::next( it ) == leaf->end() )
+                throw std::invalid_argument( "LTL formula must not end with " + op->string() );
+            if( it == leaf->begin() )
+                throw std::invalid_argument( "LTL formula must not begin with " + op->string() );
+
+            auto left = std::prev( it )->get< LTLPtr >();
+            auto right = std::next( it )->get< LTLPtr >();
+
+            if( left->isComplete() && right->isComplete() )
+            {
+                LTLPtr x;
+                *it = x = LTL::make( op_type, left, right );
+                leaf->erase( std::prev( it ) );
+                leaf->erase( std::next( it ) );
+            }
+        }
+        if ( done ) return changed;
+        if ( reverse ) --it; else ++it;
+    }
+    return changed;
+}
+
+LTLPtr reduce( TokensPtr leaf )
+{
+    while ( leaf->size() > 1 )
+    {
+        auto size = leaf->size();
+        for ( auto pair : operatorOrder )
+        {
+            auto unary = [&]( Unary::Operator op ) { return reduceUnary( leaf, op ); };
+            auto binary = [&]( Binary::Operator op ) { return reduceBinary( leaf, op, pair.second ); };
+            if ( pair.first.match( unary, binary ).value() )
+                break;
+        }
+        if( leaf->size() == size )
+            throw std::invalid_argument( "Syntax error in LTL formula");
+    }
+    ASSERT( !leaf->empty() );
+    return leaf->front().get< LTLPtr >();
+}
+
+LTLPtr collapse( TokensPtr root )
+{
+    if ( !root )
+        throw std::runtime_error( "Called collapse on nullptr root" );
+    for ( auto& child : *root )
+        child.apply( [&](TokensPtr n) { child = collapse(n); } );
+    return reduce( root );
+}
+
+LTLPtr LTL::parse(const std::string& str )
+{
+    return collapse( solveBrackets(str) );
 }
 
 }

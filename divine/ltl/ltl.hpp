@@ -79,6 +79,8 @@ struct LTL : Exp
         return apply( [] ( auto e ) -> std::string { return e.string(); } ).value();
     }
 
+    static LTLPtr parse( const std::string& str );
+
     bool isComplete()
     {
         return apply([]( auto e ) -> bool { return e.isComplete(); } ).value();
@@ -133,6 +135,7 @@ using namespace ltl;
 void check(LTLPtr f, std::string exp)
 {
     ASSERT_EQ( f->string(), exp );
+    ASSERT_EQ( LTL::parse( exp )->string(), exp );
 }
 
 struct LTLToString
