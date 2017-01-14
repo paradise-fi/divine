@@ -142,8 +142,8 @@ inline Listing listdir( std::string p, bool recurse = false, std::string prefix 
                 Listing sl = listdir( s, true, prefix + ename + "/" );
                 for ( Listing::iterator i = sl.begin(); i != sl.end(); ++i )
                     r.push_back( *i );
-            } else
-                r.push_back( prefix + ename );
+            }
+            r.push_back( prefix + ename );
         } else
             r.push_back( ename );
     };
@@ -1021,7 +1021,7 @@ struct Main {
                 bool runnable = false;
                 std::string interpreter;
 
-                if ( i->substr( i->length() - 3, i->length() ) == ".sh" )
+                if ( i->length() > 3 && i->substr( i->length() - 3, i->length() ) == ".sh" )
                     runnable = true;
 
                 for ( auto interp : options.interpreters )
@@ -1046,7 +1046,6 @@ struct Main {
 
                 if ( !runnable )
                     continue;
-
 
                 TestCase tc( journal, progress, options, options.testdir + *i,
                              interpreter.empty() ? "" : options.testdir + interpreter,
