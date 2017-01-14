@@ -32,7 +32,7 @@ Manager::Manager( bool ) :
     },
     _umask{ Mode::WGROUP | Mode::WOTHER }
 {
-    _root->assign( new( __dios::nofail ) Directory( _root ) );
+    _root->assign( new( __dios::nofail ) Directory( "/", _root ) );
 }
 
 void Manager::setOutputFile(FileTrace trace) {
@@ -92,7 +92,7 @@ Node Manager::createNodeAt( int dirfd, __dios::String name, mode_t mode, Args &&
         node->assign( utils::constructIfPossible< RegularFile >( std::forward< Args >( args )... ) );
         break;
     case Mode::DIR:
-        node->assign( utils::constructIfPossible< Directory >( node, current ) );
+        node->assign( utils::constructIfPossible< Directory >( name, node, current ) );
         break;
     case Mode::FIFO:
         node->assign( utils::constructIfPossible< Pipe >( std::forward< Args >( args )... ) );
@@ -419,6 +419,33 @@ void Manager::truncate( Node inode, off_t length ) {
 
     RegularFile *f = inode->data()->as< RegularFile >();
     f->resize( length );
+}
+
+void Manager::getCurrentWorkingDir( char *buff, size_t size ) {
+    if ( buff == nullptr )
+        throw Error( EFAULT );
+    if ( size == 0 )
+        throw Error( EINVAL );
+    __dios::String path = "";
+    __dios::String name;
+    Node originalDirectory = currentDirectory( );
+
+    Node current = originalDirectory;
+    while( current != _root ) {
+        Directory *dir = current->data()->as< Directory >( );
+        if ( !dir )
+            break;
+        name = "/" + dir->name( );
+        path = name + path;
+        current = dir->find( ".." );
+    }
+    if ( path.empty( ) )
+        path = "/";
+
+    if ( path.size( ) >= size )
+        throw Error( ERANGE );
+    char *end =std::copy( path.c_str(), path.c_str() + path.length(), buff );
+    *end = '\0';
 }
 
 void Manager::changeDirectory( __dios::String pathname ) {

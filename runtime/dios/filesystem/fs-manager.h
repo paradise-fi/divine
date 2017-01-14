@@ -110,6 +110,8 @@ struct Manager {
         return _currentDirectory.lock();
     }
 
+    void getCurrentWorkingDir( char *buff, size_t size );
+
     void changeDirectory( __dios::String pathname );
     void changeDirectory( int dirfd );
 

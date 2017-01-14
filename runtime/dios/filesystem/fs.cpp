@@ -1398,6 +1398,23 @@ namespace __sc {
         }
     }
 
+    //char *getcwd(char *buf, size_t size);
+    void getcwd( __dios::Context& ctx, int* err, void* retval, va_list vl) {
+        auto buff = va_arg( vl, char* );
+        auto size = va_arg( vl, size_t );
+        va_end( vl );
+        auto ret = static_cast< char ** >( retval );
+        auto vfs = ctx.vfs;
+
+        try {
+            vfs->instance( ).getCurrentWorkingDir( buff, size );
+            *ret = buff;
+        } catch ( Error & e ) {
+            *err = e.code();
+            *ret = nullptr;
+        }
+    }
+
 } //end namespace __sc
 
 extern "C" {

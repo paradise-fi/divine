@@ -143,15 +143,20 @@ private:
 struct Directory : DataItem {
     using Items = __dios::Vector< DirectoryEntry >;
 
-    Directory( WeakNode self, WeakNode parent = WeakNode{} ) :
+    Directory( const __dios::String& name, WeakNode self, WeakNode parent = WeakNode{} ) :
         _items{
             DirectoryEntry{ ".", self },
             DirectoryEntry{ "..", !parent.expired() ? parent : self }
-        }
+        },
+        _name( name )
     {}
 
     size_t size() const override {
         return _items.size();
+    }
+
+    const __dios::String& name( ) {
+        return _name;
     }
 
     void create( __dios::String name, Node inode ) {
@@ -248,6 +253,7 @@ private:
     }
 
     Items _items;
+     __dios::String _name;
 };
 
 } // namespace fs

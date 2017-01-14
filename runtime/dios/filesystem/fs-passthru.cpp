@@ -739,6 +739,17 @@ namespace __sc_passthru {
             _VM_SC_In | _VM_SC_Mem, strlen( oldpath ), oldpath,
             _VM_SC_In | _VM_SC_Mem, strlen( newpath ), newpath );
     }
+
+    void getcwd( __dios::Context&, int* err, void* retval, va_list vl) {
+        auto buf = va_arg( vl, char* );
+        auto size = va_arg( vl, size_t );
+        va_end( vl );
+
+        *err = __vm_syscall( __dios::_VM_SC::getcwd, 
+            _VM_SC_Out | _VM_SC_Int64, retval,
+            _VM_SC_Out | _VM_SC_Mem, size , buf,
+            _VM_SC_In | _VM_SC_Int64, size );
+    }
 	
 } // eo namespace __sc_passthru
 
