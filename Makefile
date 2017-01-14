@@ -50,7 +50,7 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 all: $(DEFAULT_FLAVOUR)
 
 FLAVOURS = debug asan release semidbg
-TARGETS = divine unit functional website check llvm-utils clang test-divine install lart
+TARGETS = divine unit functional website check llvm-utils clang test-divine install lart runner
 
 ${TARGETS}:
 	$(MAKE) $(DEFAULT_FLAVOUR)-$@
@@ -115,6 +115,11 @@ validate:
 	$(MAKE) semidbg-test-divine
 	$(OBJ)semidbg/divine/test-divine
 	$(MAKE) semidbg-functional T=[.][12][.][^.]+$
+
+${FLAVOURS:%=%-ext}:
+	$(MAKE) ${@:%-ext=%} ${@:%-ext=%}-runner
+	WD=$$PWD ; cd $(OBJ)${@:%-ext=%}/test && \
+	   bash $$WD/test/lib/testsuite --testdir $$WD/test --only ext-
 
 toolchain-install: toolchain
 	$(CMAKE) --build $(OBJ)toolchain --target install -- $(EXTRA)
