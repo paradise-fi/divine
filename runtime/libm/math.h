@@ -1,481 +1,486 @@
-/* Declarations for math functions.
-   Copyright (C) 1991-1993, 1995-1999, 2001, 2002, 2004, 2006, 2009, 2011, 2012
-   Free Software Foundation, Inc.
-   This file is part of the GNU C Library.
-
-   The GNU C Library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Lesser General Public
-   License as published by the Free Software Foundation; either
-   version 2.1 of the License, or (at your option) any later version.
-
-   The GNU C Library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Lesser General Public License for more details.
-
-   You should have received a copy of the GNU Lesser General Public
-   License along with the GNU C Library; if not, see
-   <http://www.gnu.org/licenses/>.  */
-
+/*	$OpenBSD: math.h,v 1.35 2016/03/17 20:55:35 jca Exp $	*/
 /*
- *	ISO C99 Standard: 7.12 Mathematics	<math.h>
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice 
+ * is preserved.
+ * ====================================================
  */
 
-#ifndef	_MATH_H
-#define	_MATH_H	1
+/*
+ * from: @(#)fdlibm.h 5.1 93/09/24
+ */
 
-#include <bits/cdefs.h>
+#ifndef _MATH_H_
+#define _MATH_H_
 
-#define __USE_ISOC99
-#define __USE_MISC
+#include <sys/_types.h>
+#include <sys/limits.h>
 
 __BEGIN_DECLS
+/*
+ * ANSI/POSIX
+ */
+extern char __infinity[];
+#if __GNUC_PREREQ__(3, 3)
+#define HUGE_VAL	__builtin_huge_val()
+#else /* __GNUC_PREREQ__(3, 3) */
+#define HUGE_VAL	(*(double *)(void *)__infinity)
+#endif /* __GNUC_PREREQ__(3, 3) */
 
-/* Get machine-dependent HUGE_VAL value (returned on overflow).
-   On all IEEE754 machines, this is +Infinity.  */
-#include <bits/huge_val.h>
-#ifdef __USE_ISOC99
-# include <bits/huge_valf.h>
-# include <bits/huge_vall.h>
+/*
+ * C99
+ */
+#if __ISO_C_VISIBLE >= 1999
+typedef	__double_t	double_t;
+typedef	__float_t	float_t;
 
-/* Get machine-dependent INFINITY value.  */
-# include <bits/inf.h>
+#if __GNUC_PREREQ__(3, 3)
+#define	HUGE_VALF	__builtin_huge_valf()
+#define	HUGE_VALL	__builtin_huge_vall()
+#define	INFINITY	__builtin_inff()
+#define	NAN		__builtin_nanf("")
+#else /* __GNUC_PREREQ__(3, 3) */
+#define	HUGE_VALF	((float)HUGE_VAL)
+#define	HUGE_VALL	((long double)HUGE_VAL)
+#define	INFINITY	HUGE_VALF
+extern char __nan[];
+#define	NAN		(*(float *)(void *)__nan)
+#endif /* __GNUC_PREREQ__(3, 3) */
 
-/* Get machine-dependent NAN value (returned for some domain errors).  */
-# include <bits/nan.h>
-#endif /* __USE_ISOC99 */
+#define	FP_INFINITE	0x01
+#define	FP_NAN		0x02
+#define	FP_NORMAL	0x04
+#define	FP_SUBNORMAL	0x08
+#define	FP_ZERO		0x10
 
-/* Get general and ISO C99 specific information.  */
-#include <bits/mathdef.h>
+#define FP_ILOGB0	(-INT_MAX)
+#define FP_ILOGBNAN	INT_MAX
 
-/* The file <bits/mathcalls.h> contains the prototypes for all the
-   actual math functions.  These macros are used for those prototypes,
-   so we can easily declare each function as both `name' and `__name',
-   and can declare the float versions `namef' and `__namef'.  */
+#ifdef	__FP_FAST_FMA
+#define	FP_FAST_FMA	1
+#endif	/* __FP_FAST_FMA */
 
-#define __MATHCALL(function,suffix, args)	\
-  __MATHDECL (_Mdouble_,function,suffix, args)
-#define __MATHDECL(type, function,suffix, args) \
-  __MATHDECL_1(type, function,suffix, args); \
-  __MATHDECL_1(type, __CONCAT(__,function),suffix, args)
-#define __MATHCALLX(function,suffix, args, attrib)	\
-  __MATHDECLX (_Mdouble_,function,suffix, args, attrib)
-#define __MATHDECLX(type, function,suffix, args, attrib) \
-  __MATHDECL_1(type, function,suffix, args) __attribute__ (attrib); \
-  __MATHDECL_1(type, __CONCAT(__,function),suffix, args) __attribute__ (attrib)
-#define __MATHDECL_1(type, function,suffix, args) \
-  extern type __MATH_PRECNAME(function,suffix) args __THROW
+#ifdef	__FP_FAST_FMAF
+#define	FP_FAST_FMAF	1
+#endif	/* __FP_FAST_FMAF */
 
-#define _Mdouble_		double
-#define __MATH_PRECNAME(name,r)	__CONCAT(name,r)
-#define _Mdouble_BEGIN_NAMESPACE __BEGIN_NAMESPACE_STD
-#define _Mdouble_END_NAMESPACE   __END_NAMESPACE_STD
-#include <bits/mathcalls.h>
-#undef	_Mdouble_
-#undef _Mdouble_BEGIN_NAMESPACE
-#undef _Mdouble_END_NAMESPACE
-#undef	__MATH_PRECNAME
+#ifdef	__FP_FAST_FMAL
+#define	FP_FAST_FMAL	1
+#endif	/* __FP_FAST_FMAL */
 
-#if defined __USE_MISC || defined __USE_ISOC99
+#define	MATH_ERRNO	1
+#define	MATH_ERREXCEPT	2
+#define	math_errhandling	MATH_ERREXCEPT
 
+#define fpclassify(x) \
+	((sizeof (x) == sizeof (float)) ? \
+		__fpclassifyf(x) \
+	: (sizeof (x) == sizeof (double)) ? \
+		__fpclassify(x) \
+	:	__fpclassifyl(x))
+#define isfinite(x) \
+	((sizeof (x) == sizeof (float)) ? \
+		__isfinitef(x) \
+	: (sizeof (x) == sizeof (double)) ? \
+		__isfinite(x) \
+	:	__isfinitel(x))
+#define isnormal(x) \
+	((sizeof (x) == sizeof (float)) ? \
+		__isnormalf(x) \
+	: (sizeof (x) == sizeof (double)) ? \
+		__isnormal(x) \
+	:	__isnormall(x))
+#define signbit(x) \
+	((sizeof (x) == sizeof (float)) ? \
+		__signbitf(x) \
+	: (sizeof (x) == sizeof (double)) ? \
+		__signbit(x) \
+	:	__signbitl(x))
 
-/* Include the file of declarations again, this time using `float'
-   instead of `double' and appending f to each function name.  */
+#define	isgreater(x, y)		(!isunordered((x), (y)) && (x) > (y))
+#define	isgreaterequal(x, y)	(!isunordered((x), (y)) && (x) >= (y))
+#define	isless(x, y)		(!isunordered((x), (y)) && (x) < (y))
+#define	islessequal(x, y)	(!isunordered((x), (y)) && (x) <= (y))
+#define	islessgreater(x, y)	(!isunordered((x), (y)) && \
+					((x) > (y) || (y) > (x)))
+#define	isunordered(x, y)	(isnan(x) || isnan(y))
+#endif /* __ISO_C_VISIBLE >= 1999 */
 
-# ifndef _Mfloat_
-#  define _Mfloat_		float
-# endif
-# define _Mdouble_		_Mfloat_
-# define __MATH_PRECNAME(name,r) name##f##r
-# define _Mdouble_BEGIN_NAMESPACE __BEGIN_NAMESPACE_C99
-# define _Mdouble_END_NAMESPACE   __END_NAMESPACE_C99
-# include <bits/mathcalls.h>
-# undef	_Mdouble_
-# undef _Mdouble_BEGIN_NAMESPACE
-# undef _Mdouble_END_NAMESPACE
-# undef	__MATH_PRECNAME
+#define isinf(x) \
+	((sizeof (x) == sizeof (float)) ? \
+		__isinff(x) \
+	: (sizeof (x) == sizeof (double)) ? \
+		__isinf(x) \
+	:	__isinfl(x))
+#define isnan(x) \
+	((sizeof (x) == sizeof (float)) ? \
+		__isnanf(x) \
+	: (sizeof (x) == sizeof (double)) ? \
+		__isnan(x) \
+	:	__isnanl(x))
 
-# if !(defined __NO_LONG_DOUBLE_MATH && defined _LIBC) \
-     || defined __LDBL_COMPAT
-#  ifdef __LDBL_COMPAT
+/*
+ * XOPEN/SVID
+ */
+#if __BSD_VISIBLE || __XPG_VISIBLE
+#define	M_E		((double)2.7182818284590452354)  /* e */
+#define	M_LOG2E		((double)1.4426950408889634074)  /* log 2e */
+#define	M_LOG10E	((double)0.43429448190325182765) /* log 10e */
+#define	M_LN2		((double)0.69314718055994530942) /* log e2 */
+#define	M_LN10		((double)2.30258509299404568402) /* log e10 */
+#define	M_PI		((double)3.14159265358979323846) /* pi */
+#define	M_PI_2		((double)1.57079632679489661923) /* pi/2 */
+#define	M_PI_4		((double)0.78539816339744830962) /* pi/4 */
+#define	M_1_PI		((double)0.31830988618379067154) /* 1/pi */
+#define	M_2_PI		((double)0.63661977236758134308) /* 2/pi */
+#define	M_2_SQRTPI	((double)1.12837916709551257390) /* 2/sqrt(pi) */
+#define	M_SQRT2		((double)1.41421356237309504880) /* sqrt(2) */
+#define	M_SQRT1_2	((double)0.70710678118654752440) /* 1/sqrt(2) */
 
-#   ifdef __USE_ISOC99
-extern float __nldbl_nexttowardf (float __x, long double __y)
-				  __THROW __attribute__ ((__const__));
-#    ifdef __REDIRECT_NTH
-extern float __REDIRECT_NTH (nexttowardf, (float __x, long double __y),
-			     __nldbl_nexttowardf)
-     __attribute__ ((__const__));
-extern double __REDIRECT_NTH (nexttoward, (double __x, long double __y),
-			      nextafter) __attribute__ ((__const__));
-extern long double __REDIRECT_NTH (nexttowardl,
-				   (long double __x, long double __y),
-				   nextafter) __attribute__ ((__const__));
-#    endif
-#   endif
+#define	MAXFLOAT	((float)3.40282346638528860e+38)
 
-#   undef __MATHDECL_1
-#   define __MATHDECL_2(type, function,suffix, args, alias) \
-  extern type __REDIRECT_NTH(__MATH_PRECNAME(function,suffix), \
-			     args, alias)
-#   define __MATHDECL_1(type, function,suffix, args) \
-  __MATHDECL_2(type, function,suffix, args, __CONCAT(function,suffix))
-#  endif
-
-/* Include the file of declarations again, this time using `long double'
-   instead of `double' and appending l to each function name.  */
-
-#  ifndef _Mlong_double_
-#   define _Mlong_double_	long double
-#  endif
-#  define _Mdouble_		_Mlong_double_
-#  define __MATH_PRECNAME(name,r) name##l##r
-#  define _Mdouble_BEGIN_NAMESPACE __BEGIN_NAMESPACE_C99
-#  define _Mdouble_END_NAMESPACE   __END_NAMESPACE_C99
-#  define __MATH_DECLARE_LDOUBLE   1
-#  include <bits/mathcalls.h>
-#  undef _Mdouble_
-#  undef _Mdouble_BEGIN_NAMESPACE
-#  undef _Mdouble_END_NAMESPACE
-#  undef __MATH_PRECNAME
-
-# endif /* !(__NO_LONG_DOUBLE_MATH && _LIBC) || __LDBL_COMPAT */
-
-#endif	/* Use misc or ISO C99.  */
-#undef	__MATHDECL_1
-#undef	__MATHDECL
-#undef	__MATHCALL
-
-
-#if defined __USE_MISC || defined __USE_XOPEN
-/* This variable is used by `gamma' and `lgamma'.  */
 extern int signgam;
-#endif
+#endif /* __BSD_VISIBLE || __XPG_VISIBLE */
 
+#if __POSIX_VISIBLE >= 201403
+#define	M_El		2.718281828459045235360287471352662498L /* e */
+#define	M_LOG2El	1.442695040888963407359924681001892137L /* log 2e */
+#define	M_LOG10El	0.434294481903251827651128918916605082L /* log 10e */
+#define	M_LN2l		0.693147180559945309417232121458176568L /* log e2 */
+#define	M_LN10l		2.302585092994045684017991454684364208L /* log e10 */
+#define	M_PIl		3.141592653589793238462643383279502884L /* pi */
+#define	M_PI_2l		1.570796326794896619231321691639751442L /* pi/2 */
+#define	M_PI_4l		0.785398163397448309615660845819875721L /* pi/4 */
+#define	M_1_PIl		0.318309886183790671537767526745028724L /* 1/pi */
+#define	M_2_PIl		0.636619772367581343075535053490057448L /* 2/pi */
+#define	M_2_SQRTPIl	1.128379167095512573896158903121545172L /* 2/sqrt(pi) */
+#define	M_SQRT2l	1.414213562373095048801688724209698079L /* sqrt(2) */
+#define	M_SQRT1_2l	0.707106781186547524400844362104849039L /* 1/sqrt(2) */
+#endif /* __POSIX_VISIBLE >= 201403 */
 
-/* ISO C99 defines some generic macros which work on any data type.  */
-#ifdef __USE_ISOC99
+#if __BSD_VISIBLE
+#define	HUGE		MAXFLOAT
+#endif /* __BSD_VISIBLE */
 
-/* Get the architecture specific values describing the floating-point
-   evaluation.  The following symbols will get defined:
+/*
+ * ANSI/POSIX
+ */
+double acos(double);
+double asin(double);
+double atan(double);
+double atan2(double, double);
+double cos(double);
+double sin(double);
+double tan(double);
 
-    float_t	floating-point type at least as wide as `float' used
-		to evaluate `float' expressions
-    double_t	floating-point type at least as wide as `double' used
-		to evaluate `double' expressions
+double cosh(double);
+double sinh(double);
+double tanh(double);
 
-    FLT_EVAL_METHOD
-		Defined to
-		  0	if `float_t' is `float' and `double_t' is `double'
-		  1	if `float_t' and `double_t' are `double'
-		  2	if `float_t' and `double_t' are `long double'
-		  else	`float_t' and `double_t' are unspecified
+double exp(double);
+double frexp(double, int *);
+double ldexp(double, int);
+double log(double);
+double log10(double);
+double modf(double, double *);
 
-    INFINITY	representation of the infinity value of type `float'
+double pow(double, double);
+double sqrt(double);
 
-    FP_FAST_FMA
-    FP_FAST_FMAF
-    FP_FAST_FMAL
-		If defined it indicates that the `fma' function
-		generally executes about as fast as a multiply and an add.
-		This macro is defined only iff the `fma' function is
-		implemented directly with a hardware multiply-add instructions.
+double ceil(double);
+double fabs(double);
+double floor(double);
+double fmod(double, double);
 
-    FP_ILOGB0	Expands to a value returned by `ilogb (0.0)'.
-    FP_ILOGBNAN	Expands to a value returned by `ilogb (NAN)'.
+/*
+ * C99
+ */
+#if __BSD_VISIBLE || __ISO_C_VISIBLE >= 1999 || __XPG_VISIBLE
+double acosh(double);
+double asinh(double);
+double atanh(double);
 
-    DECIMAL_DIG	Number of decimal digits supported by conversion between
-		decimal and all internal floating-point formats.
+double exp2(double);
+double expm1(double);
+int ilogb(double);
+double log1p(double);
+double log2(double);
+double logb(double);
+double scalbn(double, int);
+double scalbln(double, long int);
 
-*/
+double cbrt(double);
+double hypot(double, double);
 
-/* All floating-point numbers can be put in one of these categories.  */
-enum
-  {
-    FP_NAN =
-# define FP_NAN 0
-      FP_NAN,
-    FP_INFINITE =
-# define FP_INFINITE 1
-      FP_INFINITE,
-    FP_ZERO =
-# define FP_ZERO 2
-      FP_ZERO,
-    FP_SUBNORMAL =
-# define FP_SUBNORMAL 3
-      FP_SUBNORMAL,
-    FP_NORMAL =
-# define FP_NORMAL 4
-      FP_NORMAL
-  };
+double erf(double);
+double erfc(double);
+double lgamma(double);
+double tgamma(double);
 
-/* Return number of classification appropriate for X.  */
-# ifdef __NO_LONG_DOUBLE_MATH
-#  define fpclassify(x) \
-     (sizeof (x) == sizeof (float) ? __fpclassifyf (x) : __fpclassify (x))
-# else
-#  define fpclassify(x) \
-     (sizeof (x) == sizeof (float)					      \
-      ? __fpclassifyf (x)						      \
-      : sizeof (x) == sizeof (double)					      \
-      ? __fpclassify (x) : __fpclassifyl (x))
-# endif
+double nearbyint(double);
+double rint(double);
+long int lrint(double);
+long long int llrint(double);
+double round(double);
+long int lround(double);
+long long int llround(double);
+double trunc(double);
 
-/* Return nonzero value if sign of X is negative.  */
-# ifdef __NO_LONG_DOUBLE_MATH
-#  define signbit(x) \
-     (sizeof (x) == sizeof (float) ? __signbitf (x) : __signbit (x))
-# else
-#  define signbit(x) \
-     (sizeof (x) == sizeof (float)					      \
-      ? __signbitf (x)							      \
-      : sizeof (x) == sizeof (double)					      \
-      ? __signbit (x) : __signbitl (x))
-# endif
+double remainder(double, double);
+double remquo(double, double, int *);
 
-/* Return nonzero value if X is not +-Inf or NaN.  */
-# ifdef __NO_LONG_DOUBLE_MATH
-#  define isfinite(x) \
-     (sizeof (x) == sizeof (float) ? __finitef (x) : __finite (x))
-# else
-#  define isfinite(x) \
-     (sizeof (x) == sizeof (float)					      \
-      ? __finitef (x)							      \
-      : sizeof (x) == sizeof (double)					      \
-      ? __finite (x) : __finitel (x))
-# endif
+double copysign(double, double);
+double nan(const char *);
+double nextafter(double, double);
+double nexttoward(double, long double);
 
-/* Return nonzero value if X is neither zero, subnormal, Inf, nor NaN.  */
-# define isnormal(x) (fpclassify (x) == FP_NORMAL)
+double fdim(double, double);
+double fmax(double, double);
+double fmin(double, double);
 
-/* Return nonzero value if X is a NaN.  We could use `fpclassify' but
-   we already have this functions `__isnan' and it is faster.  */
-# ifdef __NO_LONG_DOUBLE_MATH
-#  define isnan(x) \
-     (sizeof (x) == sizeof (float) ? __isnanf (x) : __isnan (x))
-# else
-#  define isnan(x) \
-     (sizeof (x) == sizeof (float)					      \
-      ? __isnanf (x)							      \
-      : sizeof (x) == sizeof (double)					      \
-      ? __isnan (x) : __isnanl (x))
-# endif
+double fma(double, double, double);
+#endif /* __BSD_VISIBLE || __ISO_C_VISIBLE >= 1999 || __XPG_VISIBLE */
 
-/* Return nonzero value if X is positive or negative infinity.  */
-# ifdef __NO_LONG_DOUBLE_MATH
-#  define isinf(x) \
-     (sizeof (x) == sizeof (float) ? __isinff (x) : __isinf (x))
-# else
-#  define isinf(x) \
-     (sizeof (x) == sizeof (float)					      \
-      ? __isinff (x)							      \
-      : sizeof (x) == sizeof (double)					      \
-      ? __isinf (x) : __isinfl (x))
-# endif
+#if __BSD_VISIBLE || __XPG_VISIBLE
+double j0(double);
+double j1(double);
+double jn(int, double);
+double scalb(double, double);
+double y0(double);
+double y1(double);
+double yn(int, double);
+#endif /* __BSD_VISIBLE || __XPG_VISIBLE */
 
-/* Bitmasks for the math_errhandling macro.  */
-# define MATH_ERRNO	1	/* errno set by math functions.  */
-# define MATH_ERREXCEPT	2	/* Exceptions raised by math functions.  */
+#if __BSD_VISIBLE || __XPG_VISIBLE <= 500
+double gamma(double);
+#endif /* __BSD_VISIBLE || __XPG_VISIBLE <= 500 */
 
-/* By default all functions support both errno and exception handling.
-   In gcc's fast math mode and if inline functions are defined this
-   might not be true.  */
-# ifndef __FAST_MATH__
-#  define math_errhandling	(MATH_ERRNO | MATH_ERREXCEPT)
-# endif
+/*
+ * BSD math library entry points
+ */
+#if __BSD_VISIBLE
+double drem(double, double);
+int finite(double);
 
-#endif /* Use ISO C99.  */
+/*
+ * Reentrant version of gamma & lgamma; passes signgam back by reference
+ * as the second argument; user must allocate space for signgam.
+ */
+double gamma_r(double, int *);
+double lgamma_r(double, int *);
 
-#ifdef	__USE_MISC
-/* Support for various different standard error handling behaviors.  */
-typedef enum
-{
-  _IEEE_ = -1,	/* According to IEEE 754/IEEE 854.  */
-  _SVID_,	/* According to System V, release 4.  */
-  _XOPEN_,	/* Nowadays also Unix98.  */
-  _POSIX_,
-  _ISOC_	/* Actually this is ISO C99.  */
-} _LIB_VERSION_TYPE;
+/*
+ * IEEE Test Vector
+ */
+double significand(double);
+#endif /* __BSD_VISIBLE */
 
-/* This variable can be changed at run-time to any of the values above to
-   affect floating point error handling behavior (it may also be necessary
-   to change the hardware FPU exception settings).  */
-extern _LIB_VERSION_TYPE _LIB_VERSION;
-#endif
+/*
+ * Float versions of C99 functions
+ */
+#if __ISO_C_VISIBLE >= 1999
+float acosf(float);
+float asinf(float);
+float atanf(float);
+float atan2f(float, float);
+float cosf(float);
+float sinf(float);
+float tanf(float);
 
+float acoshf(float);
+float asinhf(float);
+float atanhf(float);
+float coshf(float);
+float sinhf(float);
+float tanhf(float);
 
-#ifdef __USE_SVID
-/* In SVID error handling, `matherr' is called with this description
-   of the exceptional condition.
+float expf(float);
+float exp2f(float);
+float expm1f(float);
+float frexpf(float, int *);
+int ilogbf(float);
+float ldexpf(float, int);
+float logf(float);
+float log10f(float);
+float log1pf(float);
+float log2f(float);
+float logbf(float);
+float modff(float, float *);
+float scalbnf(float, int);
+float scalblnf(float, long int);
 
-   We have a problem when using C++ since `exception' is a reserved
-   name in C++.  */
-# ifdef __cplusplus
-struct __exception
-# else
-struct exception
-# endif
-  {
-    int type;
-    char *name;
-    double arg1;
-    double arg2;
-    double retval;
-  };
+float cbrtf(float);
+float fabsf(float);
+float hypotf(float, float);
+float powf(float, float);
+float sqrtf(float);
 
-# ifdef __cplusplus
-extern int matherr (struct __exception *__exc) throw ();
-# else
-extern int matherr (struct exception *__exc);
-# endif
+float erff(float);
+float erfcf(float);
+float lgammaf(float);
+float tgammaf(float);
 
-# define X_TLOSS	1.41484755040568800000e+16
+float ceilf(float);
+float floorf(float);
+float nearbyintf(float);
+float rintf(float);
+long int lrintf(float);
+long long int llrintf(float);
+float roundf(float);
+long int lroundf(float);
+long long int llroundf(float);
+float truncf(float);
 
-/* Types of exceptions in the `type' field.  */
-# define DOMAIN		1
-# define SING		2
-# define OVERFLOW	3
-# define UNDERFLOW	4
-# define TLOSS		5
-# define PLOSS		6
+float fmodf(float, float);
+float remainderf(float, float);
+float remquof(float, float, int *);
 
-/* SVID mode specifies returning this large value instead of infinity.  */
-# define HUGE		3.40282347e+38F
+float copysignf(float, float);
+float nanf(const char *);
+float nextafterf(float, float);
+float nexttowardf(float, long double);
 
-#else	/* !SVID */
+float fdimf(float, float);
+float fmaxf(float, float);
+float fminf(float, float);
 
-# ifdef __USE_XOPEN
-/* X/Open wants another strange constant.  */
-#  define MAXFLOAT	3.40282347e+38F
-# endif
+float fmaf(float, float, float);
+#endif /* __ISO_C_VISIBLE >= 1999 */
 
-#endif	/* SVID */
+#if __BSD_VISIBLE || __XPG_VISIBLE
+float j0f(float);
+float j1f(float);
+float jnf(int, float);
+float scalbf(float, float);
+float y0f(float);
+float y1f(float);
+float ynf(int, float);
+#endif /* __BSD_VISIBLE || __XPG_VISIBLE */
 
+#if __BSD_VISIBLE || __XPG_VISIBLE <= 500
+float gammaf(float);
+#endif /* __BSD_VISIBLE || __XPG_VISIBLE <= 500 */
 
-/* Some useful constants.  */
-#if defined __USE_BSD || defined __USE_XOPEN
-# define M_E		2.7182818284590452354	/* e */
-# define M_LOG2E	1.4426950408889634074	/* log_2 e */
-# define M_LOG10E	0.43429448190325182765	/* log_10 e */
-# define M_LN2		0.69314718055994530942	/* log_e 2 */
-# define M_LN10		2.30258509299404568402	/* log_e 10 */
-# define M_PI		3.14159265358979323846	/* pi */
-# define M_PI_2		1.57079632679489661923	/* pi/2 */
-# define M_PI_4		0.78539816339744830962	/* pi/4 */
-# define M_1_PI		0.31830988618379067154	/* 1/pi */
-# define M_2_PI		0.63661977236758134308	/* 2/pi */
-# define M_2_SQRTPI	1.12837916709551257390	/* 2/sqrt(pi) */
-# define M_SQRT2	1.41421356237309504880	/* sqrt(2) */
-# define M_SQRT1_2	0.70710678118654752440	/* 1/sqrt(2) */
-#endif
+/*
+ * Float versions of BSD math library entry points
+ */
+#if __BSD_VISIBLE
+float dremf(float, float);
+int finitef(float);
+int isinff(float);
+int isnanf(float);
 
-/* The above constants are not adequate for computation using `long double's.
-   Therefore we provide as an extension constants with similar names as a
-   GNU extension.  Provide enough digits for the 128-bit IEEE quad.  */
-#ifdef __USE_GNU
-# define M_El		2.718281828459045235360287471352662498L /* e */
-# define M_LOG2El	1.442695040888963407359924681001892137L /* log_2 e */
-# define M_LOG10El	0.434294481903251827651128918916605082L /* log_10 e */
-# define M_LN2l		0.693147180559945309417232121458176568L /* log_e 2 */
-# define M_LN10l	2.302585092994045684017991454684364208L /* log_e 10 */
-# define M_PIl		3.141592653589793238462643383279502884L /* pi */
-# define M_PI_2l	1.570796326794896619231321691639751442L /* pi/2 */
-# define M_PI_4l	0.785398163397448309615660845819875721L /* pi/4 */
-# define M_1_PIl	0.318309886183790671537767526745028724L /* 1/pi */
-# define M_2_PIl	0.636619772367581343075535053490057448L /* 2/pi */
-# define M_2_SQRTPIl	1.128379167095512573896158903121545172L /* 2/sqrt(pi) */
-# define M_SQRT2l	1.414213562373095048801688724209698079L /* sqrt(2) */
-# define M_SQRT1_2l	0.707106781186547524400844362104849039L /* 1/sqrt(2) */
-#endif
+/*
+ * Float versions of reentrant version of gamma & lgamma; passes
+ * signgam back by reference as the second argument; user must
+ * allocate space for signgam.
+ */
+float gammaf_r(float, int *);
+float lgammaf_r(float, int *);
 
+/*
+ * Float version of IEEE Test Vector
+ */
+float significandf(float);
+#endif /* __BSD_VISIBLE */
 
-/* When compiling in strict ISO C compatible mode we must not use the
-   inline functions since they, among other things, do not set the
-   `errno' variable correctly.  */
-#if defined __STRICT_ANSI__ && !defined __NO_MATH_INLINES
-# define __NO_MATH_INLINES	1
-#endif
+/*
+ * Long double versions of C99 functions
+ */
+#if __ISO_C_VISIBLE >= 1999
+long double acosl(long double);
+long double asinl(long double);
+long double atanl(long double);
+long double atan2l(long double, long double);
+long double cosl(long double);
+long double sinl(long double);
+long double tanl(long double);
 
-#if defined __USE_ISOC99 && __GNUC_PREREQ(2,97)
-/* ISO C99 defines some macros to compare number while taking care for
-   unordered numbers.  Many FPUs provide special instructions to support
-   these operations.  Generic support in GCC for these as builtins went
-   in before 3.0.0, but not all cpus added their patterns.  We define
-   versions that use the builtins here, and <bits/mathinline.h> will
-   undef/redefine as appropriate for the specific GCC version in use.  */
-# define isgreater(x, y)	__builtin_isgreater(x, y)
-# define isgreaterequal(x, y)	__builtin_isgreaterequal(x, y)
-# define isless(x, y)		__builtin_isless(x, y)
-# define islessequal(x, y)	__builtin_islessequal(x, y)
-# define islessgreater(x, y)	__builtin_islessgreater(x, y)
-# define isunordered(u, v)	__builtin_isunordered(u, v)
-#endif
+long double acoshl(long double);
+long double asinhl(long double);
+long double atanhl(long double);
+long double coshl(long double);
+long double sinhl(long double);
+long double tanhl(long double);
 
-/* Get machine-dependent inline versions (if there are any).  */
-#ifdef __USE_EXTERN_INLINES
-# include <bits/mathinline.h>
-#endif
+long double expl(long double);
+long double exp2l(long double);
+long double expm1l(long double);
+long double frexpl(long double, int *);
+int ilogbl(long double);
+long double ldexpl(long double, int);
+long double logl(long double);
+long double log10l(long double);
+long double log1pl(long double);
+long double log2l(long double);
+long double logbl(long double);
+long double modfl(long double, long double *);
+long double scalbnl(long double, int);
+long double scalblnl(long double, long int);
 
-/* Define special entry points to use when the compiler got told to
-   only expect finite results.  */
-#if defined __FINITE_MATH_ONLY__ && __FINITE_MATH_ONLY__ > 0
-# include <bits/math-finite.h>
-#endif
+long double cbrtl(long double);
+long double fabsl(long double);
+long double hypotl(long double, long double);
+long double powl(long double, long double);
+long double sqrtl(long double);
 
-#ifdef __USE_ISOC99
-/* If we've still got undefined comparison macros, provide defaults.  */
+long double erfl(long double);
+long double erfcl(long double);
+long double lgammal(long double);
+long double tgammal(long double);
 
-/* Return nonzero value if X is greater than Y.  */
-# ifndef isgreater
-#  define isgreater(x, y) \
-  (__extension__							      \
-   ({ __typeof__(x) __x = (x); __typeof__(y) __y = (y);			      \
-      !isunordered (__x, __y) && __x > __y; }))
-# endif
+long double ceill(long double);
+long double floorl(long double);
+long double nearbyintl(long double);
+long double rintl(long double);
+long int lrintl(long double);
+long long int llrintl(long double);
+long double roundl(long double);
+long int lroundl(long double);
+long long int llroundl(long double);
+long double truncl(long double);
 
-/* Return nonzero value if X is greater than or equal to Y.  */
-# ifndef isgreaterequal
-#  define isgreaterequal(x, y) \
-  (__extension__							      \
-   ({ __typeof__(x) __x = (x); __typeof__(y) __y = (y);			      \
-      !isunordered (__x, __y) && __x >= __y; }))
-# endif
+long double fmodl(long double, long double);
+long double remainderl(long double, long double);
+long double remquol(long double, long double, int *);
 
-/* Return nonzero value if X is less than Y.  */
-# ifndef isless
-#  define isless(x, y) \
-  (__extension__							      \
-   ({ __typeof__(x) __x = (x); __typeof__(y) __y = (y);			      \
-      !isunordered (__x, __y) && __x < __y; }))
-# endif
+long double copysignl(long double, long double);
+long double nanl(const char *);
+long double nextafterl(long double, long double);
+long double nexttowardl(long double, long double);
 
-/* Return nonzero value if X is less than or equal to Y.  */
-# ifndef islessequal
-#  define islessequal(x, y) \
-  (__extension__							      \
-   ({ __typeof__(x) __x = (x); __typeof__(y) __y = (y);			      \
-      !isunordered (__x, __y) && __x <= __y; }))
-# endif
+long double fdiml(long double, long double);
+long double fmaxl(long double, long double);
+long double fminl(long double, long double);
 
-/* Return nonzero value if either X is less than Y or Y is less than X.  */
-# ifndef islessgreater
-#  define islessgreater(x, y) \
-  (__extension__							      \
-   ({ __typeof__(x) __x = (x); __typeof__(y) __y = (y);			      \
-      !isunordered (__x, __y) && (__x < __y || __y < __x); }))
-# endif
+long double fmal(long double, long double, long double);
+#endif /* __ISO_C_VISIBLE >= 1999 */
 
-/* Return nonzero value if arguments are unordered.  */
-# ifndef isunordered
-#  define isunordered(u, v) \
-  (__extension__							      \
-   ({ __typeof__(u) __u = (u); __typeof__(v) __v = (v);			      \
-      fpclassify (__u) == FP_NAN || fpclassify (__v) == FP_NAN; }))
-# endif
-
-#endif
-
+/*
+ * Library implementation
+ */
+int __fpclassify(double);
+int __fpclassifyf(float);
+int __fpclassifyl(long double);
+int __isfinite(double);
+int __isfinitef(float);
+int __isfinitel(long double);
+int __isinf(double);
+int __isinff(float);
+int __isinfl(long double);
+int __isnan(double);
+int __isnanf(float);
+int __isnanl(long double);
+int __isnormal(double);
+int __isnormalf(float);
+int __isnormall(long double);
+int __signbit(double);
+int __signbitf(float);
+int __signbitl(long double);
 __END_DECLS
 
-
-#endif /* math.h  */
+#endif /* !_MATH_H_ */
