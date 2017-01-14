@@ -15,7 +15,7 @@
 #
 # You should refer files in the .data directory as ${DATA}file.
 
-export DATA=$1
+export DATA=$1/
 export BUILD=$DATA/build.sh
 
 echo 'FILE: main.bc' > check.default
