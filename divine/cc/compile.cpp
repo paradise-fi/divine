@@ -54,6 +54,7 @@ Compile::Compile( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
     commonFlags = { "-D__divine__=4"
                   , "-isystem", rt::includeDir
                   , "-isystem", joinPath( rt::includeDir, "pdclib" )
+                  , "-isystem", joinPath( rt::includeDir, "libtre" )
                   , "-isystem", joinPath( rt::includeDir, "libm" )
                   , "-isystem", joinPath( rt::includeDir, "libcxx/include" )
                   , "-isystem", joinPath( rt::includeDir, "libcxxabi/include" )

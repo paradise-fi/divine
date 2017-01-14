@@ -5,7 +5,7 @@ include( stringify )
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
       *.h divine/*.h dios/*.hpp dios/core/*.hpp dios/core/*.def atomic sys/*.h bits/*.h
       abstract/*.hpp abstract/*.h
-      pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h
+      pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h libtre/*.h
       libm/*.h libm/bits/*.h
       libcxxabi/include/*
       libcxxabi/src/*.h libcxxabi/src/*.hpp libcxxabi/src/*.ipp
@@ -20,7 +20,7 @@ file( GLOB SRC_libdios
 file( GLOB SRC_libabstract abstract/*.cpp abstract/*.c )
 
 file( GLOB SRC_libc
-      pdclib/functions/*/*.c pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c )
+      pdclib/functions/*/*.c pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c libtre/*.c )
 
 file( GLOB SRC_libm libm/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
@@ -51,6 +51,7 @@ endmacro()
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR} )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libtre )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include )
 list( APPEND flags -Oz )
 list( APPEND flags -g )
