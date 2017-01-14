@@ -34,6 +34,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Intrinsics.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <algorithm>
@@ -835,7 +836,30 @@ struct Eval
         } );
     }
 
+    template< typename T >
+    static constexpr auto _maxbound( T ) { return std::numeric_limits< T >::max(); };
+    template< typename T >
+    static constexpr auto _minbound( T ) { return std::numeric_limits< T >::min(); };
+
     void implement_intrinsic( int id ) {
+
+        auto _arith_with_overflow = [this]( auto wrap, auto impl, auto check ) -> void {
+            return op< IsIntegral >( 1, [&]( auto v ) {
+                    auto a = wrap( v.get( 1 ) ),
+                         b = wrap( v.get( 2 ) );
+                    auto r = impl( a, b );
+                    BoolV over( check( a.cooked(), b.cooked() ) );
+                    if ( !r.defined() )
+                        over.defined( false );
+
+                    slot_write( result(), r, 0 );
+                    slot_write( result(), over, sizeof( typename decltype( a )::Raw ) );
+                } );
+        };
+
+        auto _make_signed = []( auto x ) { return x.make_signed(); };
+        auto _id = []( auto x ) { return x; };
+
         switch ( id ) {
             case Intrinsic::vastart:
             {
@@ -873,27 +897,34 @@ struct Eval
                 result( IntV( program().function( pc() ).typeID(
                                   operandCk< PointerV >( 0 ).cooked() ) ) );
                 return;
+
             case Intrinsic::umul_with_overflow:
-            {
-                return op< IsIntegral >( 1, [&]( auto v ) {
-                    auto r = v.get( 1 ) * v.get( 2 );
-                    __uint128_t x = v.get( 1 ).cooked(), y = v.get( 2 ).cooked();
-                    BoolV over( false );
-                    if ( x * y != r.cooked() )
-                        over = BoolV( true );
-                    slot_write( result(), over, 0 );
-                    slot_write( result(), r, sizeof( typename BoolV::Raw ) );
-                } );
-                return;
-            }
-            case Intrinsic::smul_with_overflow:
-            case Intrinsic::sadd_with_overflow:
-            case Intrinsic::ssub_with_overflow:
+                return _arith_with_overflow( _id, []( auto a, auto b ) { return a * b; },
+                                             []( auto a, auto b ) { return a > _maxbound( a ) / b; } );
             case Intrinsic::uadd_with_overflow:
+                return _arith_with_overflow( _id, []( auto a, auto b ) { return a + b; },
+                                             []( auto a, auto b ) { return a > _maxbound( a ) - b; } );
             case Intrinsic::usub_with_overflow:
-                instruction().op->dump();
-                NOT_IMPLEMENTED();
-                return;
+                return _arith_with_overflow( _id, []( auto a, auto b ) { return a - b; },
+                                             []( auto a, auto b ) { return b > a; } );
+
+            case Intrinsic::smul_with_overflow:
+                return _arith_with_overflow( _make_signed, []( auto a, auto b ) { return a * b; },
+                                             []( auto a, auto b ) { return (a > _maxbound( a ) / b)
+                                                                        || (a < _minbound( a ) / b)
+                                                                        || ((a == -1) && (b == _minbound( a )))
+                                                                        || ((b == -1) && (a == _minbound( a ))); } );
+            case Intrinsic::sadd_with_overflow:
+                return _arith_with_overflow( _make_signed, []( auto a, auto b ) { return a + b; },
+                                             []( auto a, auto b ) { return b > 0
+                                                    ? a > _maxbound( a ) - b
+                                                    : a < _minbound( a ) - b; } );
+            case Intrinsic::ssub_with_overflow:
+                return _arith_with_overflow( _make_signed, []( auto a, auto b ) { return a - b; },
+                                             []( auto a, auto b ) { return b < 0
+                                                    ? a > _maxbound( a ) + b
+                                                    : a < _minbound( a ) + b; } );
+
             case Intrinsic::stacksave:
                 return implement_stacksave();
             case Intrinsic::stackrestore:
@@ -1752,6 +1783,7 @@ namespace t_vm
 {
 
 using vm::CodePointer;
+namespace Intrinsic = ::llvm::Intrinsic;
 
 struct TProgram
 {
@@ -2171,6 +2203,91 @@ struct Eval
         int x = testF( "int f( int a, char b ) { return a + b; }",
                        IntV( 1 ), vm::value::Int< 8 >( -2 ) );
         ASSERT_EQ( x, -1 );
+    }
+
+    template< typename T >
+    void testOverflow( int intrinsic, T a, T b, unsigned index, T out )
+    {
+        int x = testLLVM( [=]( auto &irb, auto *function )
+            {
+                auto intr = Intrinsic::getDeclaration( function->getParent(),
+                                                       llvm::Intrinsic::ID( intrinsic ),
+                                                       { irb.getInt32Ty() } );
+                auto rs = irb.CreateCall( intr, { irb.getInt32( a ), irb.getInt32( b ) } );
+                auto r = irb.CreateExtractValue( rs, { index } );
+                if ( r->getType() != irb.getInt32Ty() )
+                    r = irb.CreateZExt( r, irb.getInt32Ty() );
+                irb.CreateRet( r );
+            } );
+        ASSERT_EQ( T( x ), out );
+    }
+
+    TEST(uadd_with_overflow)
+    {
+        uint32_t u32max = std::numeric_limits< uint32_t >::max();
+
+        testOverflow( Intrinsic::uadd_with_overflow, u32max, 1u, 0, u32max + 1 );
+        testOverflow( Intrinsic::uadd_with_overflow, u32max, 1u, 1, 1u );
+        testOverflow( Intrinsic::uadd_with_overflow, u32max - 1, 1u, 1, 0u );
+    }
+
+    TEST(sadd_with_overflow)
+    {
+        int32_t i32max = std::numeric_limits< int32_t >::max(),
+                i32min = std::numeric_limits< int32_t >::min();
+
+        testOverflow( Intrinsic::sadd_with_overflow, i32max, 1, 0, i32max + 1 );
+        testOverflow( Intrinsic::sadd_with_overflow, i32max, 1, 1, 1 );
+        testOverflow( Intrinsic::sadd_with_overflow, i32max - 1, 1, 1, 0 );
+        testOverflow( Intrinsic::sadd_with_overflow, i32min, -1, 0, i32min - 1 );
+        testOverflow( Intrinsic::sadd_with_overflow, i32min, -1, 1, 1 );
+        testOverflow( Intrinsic::sadd_with_overflow, i32min + 1, -1, 1, 0 );
+    }
+
+    TEST(usub_with_overflow)
+    {
+        uint32_t u32max = std::numeric_limits< uint32_t >::max();
+
+        testOverflow( Intrinsic::usub_with_overflow, 0u, 1u, 0, u32max  );
+        testOverflow( Intrinsic::usub_with_overflow, 0u, 1u, 1, 1u );
+        testOverflow( Intrinsic::usub_with_overflow, 0u, 0u, 1, 0u );
+        testOverflow( Intrinsic::usub_with_overflow, u32max, u32max, 1, 0u );
+    }
+
+    TEST(ssub_with_overflow)
+    {
+        int32_t i32max = std::numeric_limits< int32_t >::max(),
+                i32min = std::numeric_limits< int32_t >::min();
+
+        testOverflow( Intrinsic::ssub_with_overflow, i32max, -1, 0, i32min );
+        testOverflow( Intrinsic::ssub_with_overflow, i32max, -1, 1, 1 );
+        testOverflow( Intrinsic::ssub_with_overflow, i32max - 1, -1, 1, 0 );
+        testOverflow( Intrinsic::ssub_with_overflow, i32min, 1, 0, i32max );
+        testOverflow( Intrinsic::ssub_with_overflow, i32min, 1, 1, 1 );
+        testOverflow( Intrinsic::ssub_with_overflow, i32min + 1, 1, 1, 0 );
+        testOverflow( Intrinsic::ssub_with_overflow, 0, i32min, 0, i32min );
+        testOverflow( Intrinsic::ssub_with_overflow, 0, i32min, 1, 1 );
+        testOverflow( Intrinsic::ssub_with_overflow, 0, i32min + 1, 1, 0 );
+    }
+
+    TEST(umul_with_overflow)
+    {
+        uint32_t u32max = std::numeric_limits< uint32_t >::max();
+
+        testOverflow( Intrinsic::umul_with_overflow, u32max, 2u, 0, u32max * 2u );
+        testOverflow( Intrinsic::umul_with_overflow, u32max, 2u, 1, 1u );
+        testOverflow( Intrinsic::umul_with_overflow, u32max, 2u, 1, 1u );
+    }
+
+    TEST(smul_with_overflow)
+    {
+        int32_t i32max = std::numeric_limits< int32_t >::max(),
+                i32min = std::numeric_limits< int32_t >::min();
+
+        testOverflow( Intrinsic::smul_with_overflow, i32max, 2, 0, i32max * 2 );
+        testOverflow( Intrinsic::smul_with_overflow, i32max, 2, 1, 1 );
+        testOverflow( Intrinsic::smul_with_overflow, i32min, 2, 0, i32min * 2 );
+        testOverflow( Intrinsic::smul_with_overflow, i32min, 2, 1, 1 );
     }
 };
 
