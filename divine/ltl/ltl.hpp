@@ -119,6 +119,11 @@ namespace t_ltl {
 
 using namespace ltl;
 
+void check(LTLPtr f, std::string exp)
+{
+    ASSERT_EQ( f->string(), exp );
+}
+
 struct LTLToString
 {
     /*
@@ -130,8 +135,8 @@ struct LTLToString
         auto atomic_a = LTL::make( "a" );
         auto neg_a = LTL::make( Unary::Neg, atomic_a );
 
-        ASSERT_EQ( atomic_a->string(), "a" );
-        ASSERT_EQ( neg_a->string(), "!a" );
+        check( atomic_a, "a" );
+        check( neg_a, "!a" );
     }
 
     TEST(and_bool)
@@ -140,7 +145,7 @@ struct LTLToString
         auto atomic_b = LTL::make( "b" );
         auto and_ab = LTL::make( Binary::And, atomic_a, atomic_b );
 
-        ASSERT_EQ( and_ab->string(), "( a && b )" );
+        check( and_ab, "( a & b )" );
     }
 
     TEST(or_bool)
@@ -149,7 +154,7 @@ struct LTLToString
         auto atomic_b = LTL::make( "b" );
         auto or_ab = LTL::make( Binary::Or, atomic_a, atomic_b );
 
-        ASSERT_EQ( or_ab->string(), "( a || b )" );
+        check(or_ab, "( a | b )");
     }
 
     TEST(impl_bool)
@@ -159,7 +164,7 @@ struct LTLToString
         auto and_ab = LTL::make( Binary::And, atomic_a, atomic_b );
         auto impl_ab = LTL::make( Binary::Impl, and_ab, atomic_b );
 
-        ASSERT_EQ( impl_ab->string(), "( !( a && b ) || b )" );
+        check( impl_ab, "( ( a & b ) -> b )" );
     }
 
     TEST(equiv_bool)
@@ -170,7 +175,7 @@ struct LTLToString
         auto or_ba = LTL::make( Binary::Or, atomic_b, atomic_a );
         auto equiv_ab_ba = LTL::make( Binary::Equiv, and_ab, or_ba );
 
-        ASSERT_EQ( equiv_ab_ba->string(), "( ( a && b ) == ( b || a ) )" );
+        check( equiv_ab_ba, "( ( a & b ) = ( b | a ) )" );
     }
 
     /*
@@ -182,8 +187,8 @@ struct LTLToString
         auto atomic_l = LTL::make( "l" );
         auto neg_l = LTL::make( Unary::Neg, atomic_l );
 
-        ASSERT_EQ( atomic_l->string(), "l" );
-        ASSERT_EQ( neg_l->string(), "!l" );
+        check( atomic_l, "l" );
+        check( neg_l, "!l" );
     }
 
     TEST(until_LTL)
@@ -192,7 +197,7 @@ struct LTLToString
         auto atomic_k = LTL::make( "k" );
         auto until_kl = LTL::make( Binary::Until, atomic_l, atomic_k );
 
-        ASSERT_EQ( until_kl->string(), "( l U k )" );
+        check( until_kl, "( l U k )" );
     }
 
     TEST(global_until_LTL)
@@ -200,9 +205,9 @@ struct LTLToString
         auto atomic_l = LTL::make( "l" );
         auto atomic_k = LTL::make( "k" );
         auto until_kl = LTL::make( Binary::Until, atomic_l, atomic_k );
-        auto global_kul = LTL::make( Unary::Global, until_kl);
+        auto global_kul = LTL::make( Unary::Global, until_kl );
 
-        ASSERT_EQ( global_kul->string(), "G( l U k )" );
+        check( global_kul, "G( l U k )" );
     }
 
     TEST(global_future_LTL)
@@ -214,8 +219,8 @@ struct LTLToString
         auto future_gl = LTL::make( Unary::Future, global_l );
         auto global_fl = LTL::make( Unary::Global, future_l );
 
-        ASSERT_EQ( global_fl->string(), "GFl" );
-        ASSERT_EQ( future_gl->string(), "FGl" );
+        check( global_fl, "GFl" );
+        check( future_gl, "FGl" );
     }
 
     TEST(until_global_future_LTL)
@@ -229,7 +234,7 @@ struct LTLToString
 
         auto until_gfl_fgl = LTL::make( Binary::Until, global_fl, future_gl );
 
-        ASSERT_EQ( until_gfl_fgl->string(), "( GFl U FGl )" );
+        check( until_gfl_fgl, "( GFl U FGl )" );
     }
 
     TEST(until_and_LTL)
@@ -240,7 +245,7 @@ struct LTLToString
 
         auto atomic_l = LTL::make( Binary::Until, atomic_a, and_ab );
 
-        ASSERT_EQ( atomic_l->string(), "( a U ( a && b ) )" );
+        check( atomic_l, "( a U ( a & b ) )" );
     }
 
     TEST(global_or_LTL)
@@ -251,7 +256,31 @@ struct LTLToString
 
         auto atomic_l = LTL::make( Unary::Global, or_ab );
 
-        ASSERT_EQ( atomic_l->string(), "G( a || b )" );
+        check( atomic_l, "G( a | b )" );
+    }
+    /*
+    * Complex string -> ltl tests
+    */
+    TEST(complex_ltl_01)
+    {
+        std::string str( "G!F( aa & bb | cc) U ( a U b ) R c" );
+        LTLPtr ltl = LTL::parse( str );
+        ASSERT_EQ( ltl->string(), "( ( G!F( ( aa & bb ) | cc ) U ( a U b ) ) R c )" );
+    }
+
+    TEST(asociativity_AND)
+    {
+        std::string str( "a & b & c" );
+        LTLPtr ltl = LTL::parse( str );
+        ASSERT_EQ( ltl->string(), "( ( a & b ) & c )" );
+    }
+
+    TEST(asociativity_Until)
+    {
+        std::string str( " a U b U c" );
+        LTLPtr ltl = LTL::parse( str );
+        ASSERT_EQ( ltl->string(), "( a U ( b U c ) )" );
+        check( ltl, ltl->string() );
     }
 };
 
@@ -260,7 +289,7 @@ struct LTLNF /* normal forms */
     TEST(atomic_NF)
     {
         auto atomic_a = LTL::make( "a" );
-        ASSERT_EQ( atomic_a->string(), atomic_a -> normalForm(  false )->string() );
+        check( atomic_a, atomic_a->normalForm( false )->string() );
     }
 
     TEST(neg_and_NF)
@@ -270,9 +299,9 @@ struct LTLNF /* normal forms */
         auto and_ab = LTL::make( Binary::And, atomic_a, atomic_b );
         auto neg_and_ab = LTL::make( Unary::Neg, and_ab );
 
-        ASSERT_EQ( neg_and_ab->string(), "!( a && b )" );
-        ASSERT_EQ( neg_and_ab->normalForm()->string(), "( !a || !b )" );
-        ASSERT_EQ( and_ab->normalForm( true )->string(), "( !a || !b )" );
+        check( neg_and_ab, "!( a & b )" );
+        check( neg_and_ab->normalForm(), "( !a | !b )" );
+        check( and_ab->normalForm(true), "( !a | !b )" );
     }
 
     TEST(next_NF)
@@ -280,7 +309,7 @@ struct LTLNF /* normal forms */
         auto atomic_a = LTL::make( "a" );
         auto next_a = LTL::make( Unary::Next, atomic_a );
 
-        ASSERT_EQ( next_a->normalForm()->string(), "Xa" );
+        check( next_a->normalForm(), "Xa" );
     }
 
     TEST(future_NF)
@@ -288,7 +317,7 @@ struct LTLNF /* normal forms */
         auto atomic_a = LTL::make( "a" );
         auto future_a = LTL::make( Unary::Future, atomic_a );
 
-        ASSERT_EQ( future_a->normalForm()->string(), "( true U a )" );
+        check( future_a->normalForm(), "( true U a )" );
     }
 
     TEST(global_NF)
@@ -296,7 +325,7 @@ struct LTLNF /* normal forms */
         auto atomic_a = LTL::make( "a" );
         auto global_a = LTL::make( Unary::Global, atomic_a );
 
-        ASSERT_EQ( global_a->normalForm()->string(), "( false R a )" );
+        check( global_a->normalForm(), "( false R a )" );
     }
 
     TEST(until_NF)
@@ -305,8 +334,8 @@ struct LTLNF /* normal forms */
         auto atomic_b = LTL::make( "b" );
         auto until_l = LTL::make( Binary::Until, atomic_a, atomic_b );
 
-        ASSERT_EQ( until_l->normalForm()->string(), "( a U b )" );
-        ASSERT_EQ( until_l->normalForm( true )->string(), "( !a R !b )" );
+        check( until_l->normalForm(), "( a U b )" );
+        check( until_l->normalForm(true), "( !a R !b )" );
     }
 
     TEST(neg_until_NF)
@@ -318,8 +347,8 @@ struct LTLNF /* normal forms */
         auto until_l = LTL::make( Binary::Until, atomic_a, and_ab );
         auto neg_l = LTL::make( Unary::Neg, until_l );
 
-        ASSERT_EQ( neg_l->string(), "!( a U ( a && b ) )" );
-        ASSERT_EQ( neg_l->normalForm( false)->string(), "( !a R ( !a || !b ) )" );
+        check( neg_l, "!( a U ( a & b ) )" );
+        check( neg_l->normalForm(false), "( !a R ( !a | !b ) )" );
     }
 
     TEST(future_global_NF)
@@ -328,7 +357,7 @@ struct LTLNF /* normal forms */
         auto global_a = LTL::make( Unary::Global, atomic_a );
         auto future_ga = LTL::make( Unary::Future, global_a );
 
-        ASSERT_EQ( future_ga->normalForm()->string(), "( true U ( false R a ) )" );
+        check( future_ga->normalForm(), "( true U ( false R a ) )" );
     }
 
     TEST(neg_global_future_NF)
@@ -338,7 +367,7 @@ struct LTLNF /* normal forms */
         auto global_fa = LTL::make( Unary::Global, future_a );
         auto neg_gfa = LTL::make( Unary::Neg, global_fa );
 
-        ASSERT_EQ( neg_gfa->normalForm()->string(), "( true U ( false R !a ) )" );
+        check( neg_gfa->normalForm(), "( true U ( false R !a ) )" );
     }
 
     TEST(neg_a_until_gb)
@@ -350,7 +379,7 @@ struct LTLNF /* normal forms */
         auto until_a_gb = LTL::make( Binary::Until, atomic_a, global_b );
         auto neg_augb = LTL::make( Unary::Neg, until_a_gb );
 
-        ASSERT_EQ( neg_augb->normalForm()->string(), "( !a R ( true U !b ) )" );
+        check( neg_augb->normalForm(), "( !a R ( true U !b ) )" );
     }
 };
 

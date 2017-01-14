@@ -21,16 +21,17 @@ namespace ltl {
 
 std::string Unary::string() const
 {
+    std::string sub = subExp ? subExp->string() : "_";
     switch (op)
     {
         case Neg:
-            return "!" + subExp->string();
+            return "!" + sub;
         case Global:
-            return "G" + subExp->string();
+            return "G" + sub;
         case Future:
-            return "F" + subExp->string();
+            return "F" + sub;
         case Next:
-            return "X" + subExp->string();
+            return "X" + sub;
         default:
             return "";
     }
@@ -38,20 +39,23 @@ std::string Unary::string() const
 
 std::string Binary::string() const
 {
+    std::string l = left ? left->string() : "_";
+    std::string r = right ? right->string() : "_";
+
     switch (op)
     {
         case And:
-            return "( " + left->string() + " && " + right->string() + " )";
+            return "( " + l + " & " + r + " )";
         case Or:
-            return "( " + left->string() + " || " + right->string() + " )";
+            return "( " + l + " | " + r + " )";
         case Impl:
-            return "( !" + left->string() + " || " + right->string() + " )";
+            return "( " + l + " -> " + r + " )";
         case Equiv:
-            return "( " + left->string() + " == " + right->string() + " )";
+            return "( " + l + " = " + r + " )";
         case Until:
-            return "( " + left->string() + " U " + right->string() + " )";
+            return "( " + l + " U " + r + " )";
         case Release:
-            return "( " + left->string() + " R " + right->string() + " )";
+            return "( " + l + " R " + r + " )";
         default:
             return "";
     }
