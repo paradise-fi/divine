@@ -30,7 +30,7 @@ add_custom_target( functional
             ./runner --total-timeout 28800 --timeout 60
                      --interpreter cpp:lib/verify
                      --interpreter c:lib/verify
-                     --interpreter build:lib/verify-pkg
+                     --interpreter pkg:lib/pkg
                      --interpreter bt:lib/brick-test
                      ${ONLY} --skip "[.]pkg/"
                      --testdir ${CMAKE_CURRENT_SOURCE_DIR}
