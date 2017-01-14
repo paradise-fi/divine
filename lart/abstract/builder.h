@@ -38,7 +38,6 @@ struct AbstractBuilder {
     llvm::Value * createLoad( llvm::LoadInst * );
     llvm::Value * createStore( llvm::StoreInst * );
     llvm::Value * createICmp( llvm::ICmpInst * );
-    llvm::Value * createSelect( llvm::SelectInst * );
     llvm::Value * createBranch( llvm::BranchInst * );
     llvm::Value * createBinaryOperator( llvm::BinaryOperator * );
     llvm::Value * createCast( llvm::CastInst * );

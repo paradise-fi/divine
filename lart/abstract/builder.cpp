@@ -187,8 +187,10 @@ llvm::Value * AbstractBuilder::create( llvm::Instruction * inst ) {
         [&]( llvm::ICmpInst * i ) {
             ret = createICmp( i );
         },
-        [&]( llvm::SelectInst * i ) {
-            ret = createSelect( i );
+        [&]( llvm::SelectInst * ) {
+            // Every SelectInst should be lowered to branching.
+            std::cerr << "ERR: Abstracting 'select' instruction should never happen.";
+            std::exit( EXIT_FAILURE );
         },
         [&]( llvm::BranchInst * i ) {
             ret = createBranch( i );
@@ -303,23 +305,6 @@ llvm::Value * AbstractBuilder::createICmp( llvm::ICmpInst * i ) {
                 types::IntegerType::get( i->getContext(), 1 ), args );
     _anonymous[ call->getCalledFunction() ] = tag;
     return call;
-}
-
-llvm::Value * AbstractBuilder::createSelect( llvm::SelectInst * i ) {
-    llvm::IRBuilder<> irb( i );
-    auto cond = _values.count( i->getCondition() )
-              ? lower( i, irb )
-              : i->getCondition();
-
-    auto tv = i->getTrueValue();
-    auto fv = i->getFalseValue();
-
-    if ( !types::isAbstract( tv->getType() ) )
-        tv = _values.count( tv ) ? _values[ tv ] : lift( tv, irb );
-    if ( !types::isAbstract( fv->getType() ) )
-        fv = _values.count( fv ) ? _values[ fv ] : lift( fv, irb );
-
-    return irb.CreateSelect( cond, tv, fv );
 }
 
 llvm::Value * AbstractBuilder::createBranch( llvm::BranchInst * i ) {

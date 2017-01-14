@@ -14,6 +14,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/walker.h>
 #include <lart/abstract/intrinsic.h>
+#include <lart/support/lowerselect.h>
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 
@@ -52,8 +53,13 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
 
 void Abstraction::preprocess( llvm::Function * fn ) {
     // change switches to branching
-    auto lspass = llvm::createLowerSwitchPass();
-    lspass->runOnFunction( *fn );
+    auto lowerSwitchInsts = llvm::createLowerSwitchPass();
+    lowerSwitchInsts->runOnFunction( *fn );
+
+    // FIXME lower only abstract selects
+    LowerSelect lowerSelectInsts;
+    lowerSelectInsts.runOnFunction( *fn );
+
     llvm::UnifyFunctionExitNodes ufen;
     ufen.runOnFunction( *fn );
 }

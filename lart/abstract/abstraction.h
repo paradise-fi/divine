@@ -21,7 +21,7 @@ struct Abstraction : lart::Pass
 
     static PassMeta meta() {
         return passMeta< Abstraction >(
-            "Abstraction", "Substitutes annotated values and by abstract values." );
+            "Abstraction", "Substitutes annotated values by abstract values." );
     }
 
     llvm::PreservedAnalyses run( llvm::Module & ) override;
