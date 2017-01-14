@@ -20,7 +20,7 @@ file( GLOB SRC_libdios
 file( GLOB SRC_libabstract abstract/*.cpp abstract/*.c )
 
 file( GLOB SRC_libc
-      pdclib/functions/*/*.c pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c libtre/*.c )
+      pdclib/functions/*/*.c pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c libtre/*.c libm/src/*.c )
 
 file( GLOB SRC_libm libm/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
@@ -51,6 +51,7 @@ endmacro()
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR} )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/src/ld80 )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libtre )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include )
 list( APPEND flags -Oz )
