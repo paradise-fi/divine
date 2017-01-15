@@ -1160,7 +1160,7 @@ struct Main {
         return journal.count( Journal::FAILED ) ? 1 : 0;
     }
 
-    Main( Options o ) : die( false ), journal( o.outdir ), options( o ) {}
+    Main( Options o ) : die( false ), journal( o.outdir ), options( o ), running_count( 0 ) {}
 };
 
 namespace {
