@@ -110,16 +110,9 @@ struct YamlSink : TimedSink
 {
     bool _detailed;
     mc::Job::PoolStats latest;
+    SysInfo _sysinfo;
 
     YamlSink( bool detailed ) : _detailed( detailed ) {}
-
-    void start() override
-    {
-        SysInfo sys;
-        sys.report( []( auto k, auto v )
-                    { std::cout << k << ": " << v << std::endl; } );
-        TimedSink::start();
-    }
 
     void progress( int states, int, bool last ) override
     {
@@ -132,7 +125,9 @@ struct YamlSink : TimedSink
                   << std::endl << "state count: " << states
                   << std::endl << "states per second: " << timeavg( states )
                   << std::endl << "version: " << version()
-                  << std::endl;
+                  << std::endl << std::endl;
+        _sysinfo.report( []( auto k, auto v )
+                         { std::cout << k << ": " << v << std::endl; } );
     }
 
     void memory( const mc::Job::PoolStats &st, bool last ) override

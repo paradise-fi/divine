@@ -66,6 +66,8 @@ void Verify::run()
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
     vm::setup::dbg_boot( dbg );
 
+    std::cout << std::endl;
+
     if ( !safety->statecount() )
     {
         std::cout << "error found: boot" << std::endl;
