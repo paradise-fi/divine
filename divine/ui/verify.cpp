@@ -25,21 +25,19 @@
 namespace divine {
 namespace ui {
 
-template< typename S >
-std::string printitem( S s )
+void Verify::setup()
 {
-    std::stringstream str;
-    str << "{ items: " << s.count.used << ", used: " << s.bytes.used << ", held: " << s.bytes.held << " }";
-    return str.str();
-}
+    WithBC::setup();
 
-void printpool( std::string name, const brick::mem::Stats &s )
-{
-    std::cout << name << ":" << std::endl;
-    std::cout << "  total: " << printitem( s.total ) << std::endl;
-    for ( auto i : s )
-        if ( i.count.held )
-            std::cout << "  " << i.size << ": " << printitem( i ) << std::endl;
+    std::vector< SinkPtr > log;
+
+    if ( true ) // _interactive
+        log.push_back( make_interactive() );
+
+    if ( _report != Report::None )
+        log.push_back( make_yaml( _report == Report::YamlLong ) );
+
+    _log = make_composite( log );
 }
 
 void Verify::run()
@@ -49,73 +47,24 @@ void Verify::run()
     if ( !_threads )
         _threads = std::min( 4u, std::thread::hardware_concurrency() );
 
-    using clock = std::chrono::steady_clock;
-    using msecs = std::chrono::milliseconds;
-    clock::time_point start;
-    msecs interval;
-
-    auto time =
-        [&]()
-        {
-            std::stringstream t;
-            t << int( interval.count() / 60000 ) << ":"
-              << std::setw( 2 ) << std::setfill( '0' ) << int( interval.count() / 1000 ) % 60;
-            return t.str();
-        };
-
     auto safety = mc::make_safety( bitcode(), ss::passive_listen(), _symbolic, true );
 
-    auto avg = [&]() { return 1000 * float( safety->statecount() ) / interval.count(); };
-    auto fmt_avg =
-        [&]()
-        {
-            std::stringstream s;
-            s << std::fixed << std::setprecision( 1 ) << avg() << " states/s";
-            return s.str();
-        };
-
-    auto update_interval =
-        [&]() { interval = std::chrono::duration_cast< msecs >( clock::now() - start ); };
-
-    start = clock::now();
     SysInfo sysinfo;
     sysinfo.setMemoryLimitInBytes( _max_mem );
-    safety->start( _threads, [&]()
+
+    _log->start();
+
+    safety->start( _threads, [&]( bool last )
                    {
-                       update_interval();
-                       std::cerr << "\rsearching: " << safety->statecount()
-                                 << " states found in " << time()
-                                 << ", averaging " << fmt_avg()
-                                 << ", queued: " << safety->queuesize() << "      ";
+                       _log->progress( safety->statecount(),
+                                       safety->queuesize(), last );
+                       _log->memory( safety->poolstats(), last );
                        sysinfo.updateAndCheckTimeLimit( _max_time );
                    } );
     safety->wait();
 
-    update_interval();
-    std::cerr << "\rfound " << safety->statecount()
-              << " states in " << time() << ", averaging " << fmt_avg()
-              << "                             " << std::endl << std::endl;
-
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
     vm::setup::dbg_boot( dbg );
-
-    brick::types::Defer stats( [&] {
-            if ( _report != Report::None )
-            {
-                sysinfo.report( []( auto k, auto v ) {
-                        std::cout << k << ": " << v << std::endl;
-                    } );
-                std::cout << "search time: " << std::setprecision( 3 )
-                          << double( interval.count() ) / 1000
-                          << std::endl << "state count: " << safety->statecount()
-                          << std::endl << "states per second: " << avg()
-                          << std::endl << "version: " << version()
-                          << std::endl;
-            }
-            if ( _report == Report::YamlLong )
-                for ( auto ps : safety->poolstats() )
-                    printpool( ps.first, ps.second );
-    } );
 
     if ( !safety->statecount() )
     {

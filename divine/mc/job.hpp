@@ -31,7 +31,7 @@ namespace mc {
 struct Job : ss::Job
 {
     std::shared_ptr< brick::shmem::ThreadBase > _monitor_loop;
-    std::function< void() > _monitor;
+    std::function< void( bool ) > _monitor;
     std::function< int64_t() > statecount = []() { return 0; };
     std::function< int64_t() > queuesize =  []() { return 0; };
     std::shared_ptr< ss::Job > _search;
@@ -43,7 +43,7 @@ struct Job : ss::Job
 
         _monitor = monit;
         using msecs = std::chrono::milliseconds;
-        auto do_monit = [=]() { monit(); std::this_thread::sleep_for( msecs( 500 ) ); };
+        auto do_monit = [=]() { monit( false ); std::this_thread::sleep_for( msecs( 500 ) ); };
         using MonitLoop = brick::shmem::AsyncLambdaLoop< decltype( do_monit ) >;
         _monitor_loop = std::make_shared< MonitLoop >( do_monit );
         _monitor_loop->start();
@@ -55,7 +55,7 @@ struct Job : ss::Job
         if ( _monitor_loop )
             _monitor_loop->stop();
         if ( _monitor )
-            _monitor();
+            _monitor( true );
     }
 
     using PoolStats = std::map< std::string, brick::mem::Stats >;

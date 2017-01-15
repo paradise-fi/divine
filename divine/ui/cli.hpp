@@ -27,6 +27,7 @@
 #include <divine/ui/curses.hpp>
 #include <divine/ui/die.hpp>
 #include <divine/ui/version.hpp>
+#include <divine/ui/log.hpp>
 
 #include <brick-cmd>
 #include <brick-fs>
@@ -120,8 +121,10 @@ struct Verify : WithBC
     int _num_callers = 10;
     bool _no_counterexample = false;
     Report _report = Report::Yaml;
+    SinkPtr _log;
 
-    void run();
+    void setup() override;
+    void run() override;
 };
 
 struct Run : WithBC {
