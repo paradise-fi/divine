@@ -86,7 +86,8 @@ long long procStatusLine( std::string key ) {
     std::regex r( key + ":[\t ]*([0-9]+) .*", std::regex::extended );
     auto m = matchLine( file.str(), r );
     if ( m.isJust() ) {
-        return std::stoll( m.value()[1] );
+        auto val = m.value()[1].str();
+        return std::atol( val.c_str() );
     }
     return 0;
 }
