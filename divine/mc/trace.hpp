@@ -55,7 +55,7 @@ struct Trace
     vm::CowHeap::Snapshot final;
 };
 
-std::ostream &operator<<( std::ostream &o, const Choices &choices )
+static std::ostream &operator<<( std::ostream &o, const Choices &choices )
 {
     int last = -1, multiply = 1;
     for ( auto &v : choices.c )
