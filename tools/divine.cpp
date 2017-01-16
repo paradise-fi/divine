@@ -36,6 +36,10 @@ void panic()
         std::cerr << "E: " << e.what() << std::endl;
         std::abort();
     }
+    catch ( ... ) {
+        std::cerr << "E: unknown exception" << std::endl;
+        std::abort();
+    }
 }
 
 int main( int argc, const char **argv )
