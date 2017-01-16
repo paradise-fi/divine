@@ -11,7 +11,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/CallSite.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
-#include <brick-llvm>
+// #include <brick-llvm>
 DIVINE_UNRELAX_WARNINGS
 #include <brick-string>
 #include <unordered_set>
@@ -91,15 +91,15 @@ struct Volatilize : lart::Pass {
     using lart::Pass::run;
     llvm::PreservedAnalyses run( llvm::Module &m ) override {
         long changed = 0;
-        auto ci = brick::llvm::CompileUnitInfo( m.getFunction( "main" ) );
-        if ( !ci.valid() )
-            std::cerr << "WARN: not module info, making all variables volatile" << std::endl;
-        auto globals = ci.valid()
+//        auto ci = brick::llvm::CompileUnitInfo( m.getFunction( "main" ) );
+//        if ( !ci.valid() )
+        std::cerr << "WARN: making all variables volatile" << std::endl;
+        auto globals = /* ci.valid()
             ? query::owningQuery( ci.globals() )
                 .map( query::llvmdyncast< llvm::GlobalVariable > )
                 .filter( query::notnull )
                 .freeze()
-            : query::query( m.globals() ).map( query::refToPtr ).freeze();
+            : */ query::query( m.globals() ).map( query::refToPtr ).freeze();
 
         query::owningQuery( globals )
             .concatMap( []( llvm::GlobalVariable *var ) { return std::vector< llvm::Value * >( var->user_begin(), var->user_end() ); } )
