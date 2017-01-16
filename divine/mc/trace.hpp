@@ -52,6 +52,7 @@ struct Trace
 {
     Choices choices;
     std::vector< std::string > labels;
+    std::string bootinfo;
     vm::CowHeap::Snapshot final;
 };
 
