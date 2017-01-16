@@ -145,7 +145,7 @@ opt( ALG_EXPLICIT "" OFF )
 opt( ALG_CSDR "" ON )
 opt( ALG_NDFS "" OFF )
 opt( ALG_METRICS "" ON )
-opt( OPT_SQL "enable ODBC-based database reports" OFF ) # ${ODBC_FOUND}
+opt( OPT_SQL "enable ODBC-based database support" ${ODBC_FOUND} )
 
 if ( OPT_SIM AND NOT TOOLCHAIN )
   find_package( Curses REQUIRED )
@@ -169,15 +169,6 @@ foreach( opt ${OPTIONS} )
     add_definitions( "-D${opt}=0" )
   endif()
 endforeach()
-
-add_compile_options( -Wall -Wold-style-cast -Wno-unused-function -Wno-gnu-zero-variadic-macro-arguments )
-if( DEV_WARNINGS )
-  add_compile_options( -Wextra )
-endif()
-
-if( DEV_WERROR )
-  add_compile_options( -Werror )
-endif()
 
 if ( UNIX AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
      CMAKE_GENERATOR STREQUAL "Ninja")
@@ -227,6 +218,17 @@ if ( NOT TOOLCHAIN )
     add_definitions( "-DNANODBC_USE_CPP11" )
     link_directories( ${ODBC_LIBRARY_DIRS} )
     add_subdirectory( external/nanodbc )
+  endif()
+
+  add_compile_options( -Wall -Wold-style-cast -Wno-unused-function
+                       -Wno-gnu-zero-variadic-macro-arguments )
+
+  if( DEV_WARNINGS )
+    add_compile_options( -Wextra )
+  endif()
+
+  if( DEV_WERROR )
+    add_compile_options( -Werror )
   endif()
 
   include( releng/version.cmake )
