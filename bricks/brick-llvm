@@ -38,10 +38,14 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Object/ArchiveWriter.h>
+#include <llvm/Object/IRObjectFile.h>
+#include <llvm/Transforms/Utils/Cloning.h>
 
 #ifdef DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
@@ -50,6 +54,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-assert>
 #include <brick-types>
 #include <brick-fs>
+#include <brick-mmap>
 
 #include <vector>
 #include <string>
@@ -64,6 +69,10 @@ DIVINE_UNRELAX_WARNINGS
 #define BRICKS_LLVM_LINK_STRIP_H
 
 namespace brick {
+
+// forward declaration of friend
+namespace t_llvm { struct LinkerTest; };
+
 namespace llvm {
 
 struct Annotation : brick::types::Eq {
@@ -150,432 +159,6 @@ void enumerateFunctionsForAnno( std::string anno, ::llvm::Module &m, Yield yield
     enumerateFunctionsForAnno( Annotation( anno ), m, yield );
 }
 
-enum class Prune { UnusedModules, AllUnused };
-
-inline bool isPrefixOf( std::string a, std::string b ) {
-    if ( a.size() > b.size() )
-        return false;
-    auto r = std::mismatch( a.begin(), a.end(), b.begin() );
-    return r.first == a.end();
-}
-
-struct ModuleMap {
-
-    struct ModuleRef {
-        ModuleRef( const ModuleMap *mm, int id ) : _id( id ), _map( mm ) {
-            ASSERT( mm );
-            ASSERT_LEQ( 0, id );
-            ASSERT_LEQ( id, int( _map->_idToM.size() ) - 1 );
-        }
-
-        // we order modules such that modules added later will be first
-        // in std::set< ModuleRef >
-        bool operator<( const ModuleRef &o ) const {
-            ASSERT_EQ( _map, o._map );
-            return _id > o._id;
-        }
-
-        int id() const { return _id; }
-        std::string name() const { return _map->_idToM[ _id ]; }
-
-      private:
-        int _id;
-        const ModuleMap *_map;
-    };
-
-    std::pair< ModuleRef, bool > insert( std::string mod ) {
-        auto it = _mToId.find( mod );
-        if ( it == _mToId.end() ) {
-            int id = _idToM.size();
-            _mToId[ mod ] = id;
-            _idToM.emplace_back( std::move( mod ) );
-            return std::make_pair( ModuleRef( this, id ), true );
-        }
-        return std::make_pair( ModuleRef( this, it->second ), false );
-    }
-
-    ModuleRef operator[]( std::string mod ) const {
-        auto it = _mToId.find( mod );
-        ASSERT( it != _mToId.end() );
-        return ModuleRef( this, it->second );
-    }
-
-    ModuleRef operator[]( int id ) const {
-        return ModuleRef( this, id );
-    }
-
-  private:
-    std::map< std::string, int > _mToId;
-    std::vector< std::string > _idToM;
-};
-
-using ModuleRef = ModuleMap::ModuleRef;
-
-struct Linker {
-    using Module = ::llvm::Module;
-    static constexpr auto modulePrefix = "brick-llvm.module.";
-    static constexpr auto moduleRoot = "brick-llvm.module_root";
-    static constexpr auto ctorPrefix = "brick-llvm.ctor.";
-    static constexpr auto global_ctors = "llvm.global_ctors";
-
-    Linker() { }
-    ~Linker() { _root.release(); } /* FIXME! */
-
-    // load parlially linked module and take ownership of it
-    void load( std::unique_ptr< Module > &&prelinked ) {
-        ASSERT( prelinked != nullptr );
-        _link.reset( new ::llvm::Linker( prelinked.get() ) );
-        _root = std::move( prelinked );
-        updateModules( _root );
-    }
-
-    void updateModules( const std::unique_ptr< Module > &mod )
-    {
-        auto modlist = mod->getNamedMetadata( moduleRoot );
-        if ( !modlist )
-            return;
-        for ( int i = 0, count = modlist->getNumOperands(); i < count; ++i ) {
-            std::string mod = ::llvm::cast< ::llvm::MDString >(
-                    modlist->getOperand( i )->getOperand( 0 ) )->getString().data();
-            _modules.insert( mod );
-        }
-    }
-
-    // link bitcode module fresh from source (not yet linked)
-    void link( std::unique_ptr< Module > &&src, bool ann = true ) {
-        ASSERT( src != nullptr );
-        updateModules( src );
-        if ( !_link ) {
-            ASSERT( !_root );
-            _root = std::move( src );
-            _link.reset( new ::llvm::Linker( ann ? _annotate( _root.get() ) : _root.get() ) );
-        } else {
-            std::string err;
-            auto r = _link->linkInModule( ann ? _annotate( src.get() ) : src.get() );
-            src.release(); // FIXME!? _owned.emplace_back( std::move( src ) );
-            if ( r ) {
-                std::cerr << "ERROR: " << err << " while linking '"
-                          << src->getModuleIdentifier() << "'" << std::endl;
-                UNREACHABLE( "Linker error" );
-            }
-        }
-    }
-
-    void prune( std::vector< std::string > roots,
-                Prune prune = Prune::UnusedModules,
-                bool includeAutoRoots = true )
-    {
-        using ::llvm::ConstantArray;
-        using ::llvm::GlobalVariable;
-        using ::llvm::GlobalValue;
-        using ::llvm::ArrayType;
-        using ::llvm::Constant;
-        using ::llvm::ArrayRef;
-        using ::llvm::cast;
-        using ::llvm::Function;
-
-        if ( includeAutoRoots )
-            enumerateFunctionsForAnno( "brick.llvm.prune.root", *get(),
-                [&roots]( Function *fn ) {
-                    roots.emplace_back( fn->getName().str() );
-                } );
-        _Prune pruner( this, roots );
-        pruner.pruneModules();
-
-        // build llvm.global_ctors from used module ctors
-        std::vector< ConstantArray * > ctors;
-        for ( auto &glo : get()->getGlobalList() )
-            if ( isPrefixOf( ctorPrefix, glo.getName().data() ) && glo.getInitializer() ) {
-                if ( auto carr = ::llvm::dyn_cast< ConstantArray >( glo.getInitializer() ) )
-                    ctors.emplace_back( carr );
-                else
-                    ASSERT( ::llvm::isa< ::llvm::ConstantAggregateZero >( glo.getInitializer() ) );
-            }
-
-        if ( !ctors.empty() ) {
-            auto valType = ctors.front()->getType()->getElementType();
-            int cnt = 0;
-            for ( auto v : ctors )
-                cnt += v->getNumOperands();
-
-            std::vector< ::llvm::Constant * > ops;
-            for ( auto &c : ctors )
-                for ( auto i = c->op_begin(); i != c->op_end(); ++i ) {
-                    ::llvm::Use *use = &*i;
-                    ops.emplace_back( cast< Constant >( use ) );
-                }
-
-            auto ctorType = ArrayType::get( valType, cnt );
-            auto values = ConstantArray::get( ctorType, ArrayRef< Constant * >( ops ) );
-            ASSERT( ctorType );
-            ASSERT( values );
-            new GlobalVariable( *get(), ctorType, false, GlobalValue::AppendingLinkage,
-                                values, global_ctors );
-        }
-
-        if ( prune != Prune::UnusedModules )
-            pruner.pruneUnused();
-
-    }
-
-    Module *get() { return _root.get(); }
-    const Module *get() const { return _root.get(); }
-
-    std::unique_ptr< Module > take() {
-        return std::move( _root );
-    }
-
-  private:
-    std::unique_ptr< ::llvm::Linker > _link;
-    ModuleMap _modules;
-    std::unique_ptr< Module > _root;
-    std::vector< std::unique_ptr< Module > > _owned;
-    using ValsRef = ::llvm::ArrayRef< ::llvm::Value * >;
-
-    Module *_annotate( Module *m ) {
-        auto id = _modules.insert( m->getModuleIdentifier() ).first.name();
-        auto mdroot = m->getOrInsertNamedMetadata( modulePrefix + id );
-
-        for ( auto &fn : *m )
-            if ( !fn.isDeclaration() )
-                mdroot->addOperand( _mdlink( m, fn ) );
-        for ( auto &glo : m->getGlobalList() )
-            if ( !glo.isDeclaration() )
-                mdroot->addOperand( _mdlink( m, glo ) );
-        for ( auto &ali : m->getAliasList() )
-            if ( !ali.isDeclaration() )
-                mdroot->addOperand( _mdlink( m, ali ) );
-
-        if ( auto ctors = m->getGlobalVariable( global_ctors ) )
-            ctors->setName( ctorPrefix + id );
-
-        auto root = _root ? _root.get() : m;
-        auto modlist = root->getOrInsertNamedMetadata( moduleRoot );
-        modlist->addOperand( _modmd( root, id ) );
-        return m;
-    }
-
-    ::llvm::MDNode *_mdlink( Module *m, ::llvm::Value &val ) {
-        return ::llvm::MDNode::get( m->getContext(), { ::llvm::ValueAsMetadata::get( &val ) } );
-    }
-
-    ::llvm::MDNode *_modmd( Module *m, std::string modname ) {
-        return ::llvm::MDNode::get( m->getContext(),
-                    { ::llvm::MDString::get( m->getContext(), modname ) } );
-    }
-
-    struct _Prune {
-        Linker *_link;
-        std::vector< ::llvm::Value * > _stack;
-        std::set< ::llvm::Value * > _seen;
-        std::set< ModuleRef > _seenModules;
-        std::map< std::string, std::set< ::llvm::Value * > > _moduleMap;
-        std::map< ::llvm::Value *, std::set< ModuleRef > > _symbolModule;
-        std::vector< std::string > _roots;
-        long _functions = 0, _globals = 0;
-
-        template< typename Roots >
-        _Prune( Linker *ln, Roots roots ) : _link( ln ), _roots( roots ) { }
-
-        void buildModuleMaps() {
-            _moduleMap.clear();
-            _symbolModule.clear();
-
-            auto m = _link->get();
-            for ( auto &meta : m->getNamedMDList() ) {
-                if ( isPrefixOf( modulePrefix, meta.getName().data() ) ) {
-                    auto mname = std::string( meta.getName().data() ).substr( std::string( modulePrefix ).size() );
-                    auto &mset = _moduleMap[ mname ];
-                    for ( int i = 0, count = meta.getNumOperands(); i < count; ++i ) {
-                        auto sym = ::llvm::dyn_cast< ::llvm::ValueAsMetadata >( meta.getOperand( i )->getOperand( 0 ) );
-                        if ( sym ) {
-                            mset.insert( sym->getValue() );
-                            _symbolModule[ sym->getValue() ].insert( _link->_modules[ mname ] );
-                        }
-                    }
-                }
-            }
-        }
-
-        bool pushSimple( ::llvm::Value *val ) {
-            if ( _seen.insert( val ).second ) {
-                _stack.push_back( val );
-                return true;
-            }
-            return false;
-        }
-
-        void pushWithModule( ::llvm::Value *val ) {
-            if ( pushSimple( val ) ) {
-                // There might be symbols which are not in symbol <-> module table,
-                // such symbols are anything else than functions, globals and alisases
-                // (for example instructions).
-                // Furthrermore, for each symbol we add just one module: the last
-                // linked module which contains it (set of modules inside _symbolModule
-                // is sorted by reverse order of linking).
-                // Also we must include whole module when adding it, so we must
-                // look into all functions of the module
-                auto mods = _symbolModule.find( val );
-                if ( mods != _symbolModule.end() ) {
-                    if ( std::any_of( mods->second.begin(), mods->second.end(),
-                                [&]( ModuleRef r ) -> bool { return _seenModules.count( r ); } ) )
-                        return;
-                    auto &mod = *mods->second.begin();
-                    if ( _seenModules.insert( mod ).second ) {
-                        for ( auto &sym : _moduleMap[ mod.name() ] )
-                            pushSimple( sym );
-                    }
-                }
-            }
-        }
-
-        void pruneModules() {
-            return prune( [&]( ::llvm::Value *v ) { pushWithModule( v ); } );
-        }
-
-        void pruneUnused() {
-            return prune( [&]( ::llvm::Value *v ) { pushSimple( v ); } );
-        }
-
-        template< typename Push >
-        void init( Push push ) {
-            _stack.clear();
-            _seen.clear();
-            _seenModules.clear();
-
-            for ( auto sym : _roots )
-                if ( auto root = _link->get()->getFunction( sym ) )
-                    push( root );
-            for ( auto sym : _roots )
-                if ( auto root = _link->get()->getGlobalVariable( sym, true ) )
-                    push( root );
-            if ( auto ctors = _link->get()->getGlobalVariable( global_ctors ) )
-                push( ctors );
-        }
-
-        template< typename Push >
-        void prune( Push push ) {
-            buildModuleMaps();
-            init( push );
-
-            auto handleVal = [&]( ::llvm::Value *v ) { _handleVal( push, v ); };
-
-            while ( _stack.size() ) {
-                auto val = _stack.back();
-                _stack.pop_back();
-                ASSERT( val != nullptr );
-
-                handleVal( val );
-            }
-
-            auto m = _link->get();
-
-            std::vector< ::llvm::GlobalValue* > toDrop;
-
-            for ( auto &fn : *m )
-                if ( _seen.count( &fn ) == 0 )
-                    toDrop.push_back( &fn );
-
-            for ( auto &glo : m->getGlobalList() )
-                if ( _seen.count( &glo ) == 0 )
-                    toDrop.push_back( &glo );
-
-            for ( auto &ali : m->getAliasList() )
-                if ( _seen.count( &ali ) == 0 )
-                    toDrop.push_back( &ali );
-
-            /* we must first delete bodies of functions (and globals),
-             * then drop referrences to them (replace with undef)
-             * finally we can erase symbols
-             * Those must be separate runs, otherwise we could trip SEGV
-             * by accessing already freed symbol by some use
-             */
-
-            for ( auto glo : toDrop ) {
-                glo->dropAllReferences();
-                glo->replaceAllUsesWith( ::llvm::UndefValue::get( glo->getType() ) );
-            }
-
-            for ( auto glo : toDrop )
-                glo->eraseFromParent();
-
-        }
-
-        template< typename Push >
-        void _handleVal( Push push, ::llvm::Value *val ) {
-            ASSERT( val != nullptr );
-
-            if ( auto fn = ::llvm::dyn_cast< ::llvm::Function >( val ) ) {
-                ++_functions;
-
-                // avoid losing personality function
-                if ( fn->hasPersonalityFn() )
-                    push( fn->getPersonalityFn() );
-
-                for ( const auto &bb : *fn )
-                    for ( const auto &ins : bb )
-                        for ( auto op = ins.op_begin(); op != ins.op_end(); ++op )
-                            push( op->get() );
-            }
-
-            else if ( auto bb = ::llvm::dyn_cast< ::llvm::BasicBlock >( val ) )
-                push( bb->getParent() );
-
-            else if ( auto ba = ::llvm::dyn_cast< ::llvm::BlockAddress >( val ) )
-                push( ba->getFunction() );
-
-            else if ( auto ali = ::llvm::dyn_cast< ::llvm::GlobalAlias >( val ) )
-                push( ali->getAliasee() );
-
-            else if ( auto global = ::llvm::dyn_cast< ::llvm::GlobalValue >( val ) ) {
-                ++_globals;
-
-                if ( auto gvar = ::llvm::dyn_cast< ::llvm::GlobalVariable >( global ) )
-                    if ( gvar->hasInitializer() )
-                        push( gvar->getInitializer() );
-            }
-            // catchall: instructions, constants, ...
-            else if ( auto ins = ::llvm::dyn_cast< ::llvm::User >( val ) )
-                for ( auto op = ins->op_begin(); op != ins->op_end(); ++op )
-                    push( op->get() );
-
-        }
-    };
-};
-
-struct CompileUnitInfo {
-
-    CompileUnitInfo( ::llvm::GlobalValue *val ) : _root( nullptr ) {
-
-        for ( auto &meta : val->getParent()->getNamedMDList() ) {
-            if ( isPrefixOf( Linker::modulePrefix, meta.getName().data() ) ) {
-                for ( auto op : meta.operands() ) {
-                    auto sym = ::llvm::dyn_cast< ::llvm::ValueAsMetadata >( op->getOperand( 0 ) );
-                    if ( sym && sym->getValue() == val ) {
-                        _root = &meta;
-                        break;
-                    }
-                }
-            }
-            if ( _root )
-                break;
-        }
-
-        for ( auto op : _root->operands() ) {
-            auto sym = ::llvm::dyn_cast< ::llvm::ValueAsMetadata >( op->getOperand( 0 ) );
-            if ( sym )
-                _content.insert( sym->getValue() );
-        }
-    }
-
-    const std::unordered_set< ::llvm::Value * > &globals() const { return _content; }
-    bool valid() const { return _root; }
-
-  private:
-    ::llvm::NamedMDNode *_root;
-    std::unordered_set< ::llvm::Value * > _content;
-};
-
 inline void writeModule( ::llvm::Module *m, std::string out ) {
     std::error_code serr;
     brick::fs::mkFilePath( out );
@@ -584,11 +167,442 @@ inline void writeModule( ::llvm::Module *m, std::string out ) {
     WriteBitcodeToFile( m, fs );
 }
 
+template< typename It >
+inline void writeArchive( It begin, It end, std::string out )
+{
+    namespace object = ::llvm::object;
+
+    fs::TempDir dir( ".brick-llvm-archive-XXXXXX", fs::AutoDelete::Yes, fs::UseSystemTemp::Yes );
+    std::vector< std::string > names;
+    std::set< std::string > shortnames;
+    std::vector< ::llvm::NewArchiveIterator > its;
+
+    for ( auto &mod : ::llvm::iterator_range< It >( begin, end ) )
+    {
+        names.emplace_back( fs::joinPath( dir, fs::basename( mod->getModuleIdentifier() ) ) );
+        auto i = shortnames.emplace( fs::basename( names.back() ) );
+        if ( !i.second )
+            throw std::runtime_error( "doubly defined member of archive: " + names.back()
+                                       + " (" + mod->getModuleIdentifier() + ")" );
+        writeModule( &*mod, names.back() );
+        its.emplace_back( names.back(), *i.first );
+    }
+
+    fs::mkFilePath( out );
+    auto res = ::llvm::writeArchive( out, its, true, object::Archive::K_GNU, true ).second;
+    if ( res )
+        throw std::runtime_error( "LLVM Error: " + res.message() );
 }
+
+struct ArchiveReader
+{
+    using Archive = ::llvm::object::Archive;
+    using Ctx = ::llvm::LLVMContext;
+
+    explicit ArchiveReader( std::shared_ptr< Ctx > ctx ) : _ctx( ctx ) {
+        if ( !_ctx )
+            _ctx.reset( new ::llvm::LLVMContext() );
+    }
+
+    ArchiveReader( std::string filename, std::shared_ptr< Ctx > ctx = nullptr ) :
+        ArchiveReader( ctx )
+    {
+        _data = mmap::MMap( filename, mmap::ProtectMode::Read | mmap::ProtectMode::Private );
+
+        std::error_code ec;
+        _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef(
+                        ::llvm::StringRef( _data.left().data(), _data.left().size() ), filename ), ec );
+        if ( ec )
+            _throwLLVMError( ec );
+    }
+
+    ArchiveReader( std::string filename, const std::string &contents, std::shared_ptr< Ctx > ctx = nullptr ) :
+        ArchiveReader( ctx )
+    {
+        std::error_code ec;
+        _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef( contents, filename ), ec );
+        if ( ec )
+            _throwLLVMError( ec );
+    }
+
+    ArchiveReader( std::string filename, std::string &&contents, std::shared_ptr< Ctx > ctx = nullptr ) :
+        ArchiveReader( ctx )
+    {
+        _data = std::move( contents );
+        std::error_code ec;
+        _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef( _data.right(), filename ), ec );
+        if ( ec )
+            _throwLLVMError( ec );
+    }
+
+    struct BitcodeIterator : types::Eq
+    {
+        using Underlying = ::llvm::object::Archive::child_iterator;
+
+        BitcodeIterator( Underlying beg, Underlying end, std::shared_ptr< Ctx > ctx ) :
+            _it( beg ), _end( end ), _ctx( ctx )
+        {
+            _bump();
+        }
+
+        BitcodeIterator( BitcodeIterator && ) = default;
+        BitcodeIterator( const BitcodeIterator &o ) :
+            _it( o._it ), _end( o._end ), _ctx( o._ctx ), _iro( nullptr )
+        { }
+
+        ::llvm::Module &operator*() {
+            _load( true );
+            return _iro->getModule();
+        }
+
+        std::unique_ptr< ::llvm::Module > take() {
+            _load( true );
+            return _iro->takeModule();
+        }
+
+        bool operator==( const BitcodeIterator &o ) const { return _it == o._it;  }
+
+        BitcodeIterator &operator++() {
+            ++_it;
+            _bump();
+            return *this;
+        }
+
+        BitcodeIterator operator++( int ) {
+            BitcodeIterator copy( _it, _end, _ctx, std::move( _iro ) );
+            ++(*this);
+            return copy;
+        }
+
+      private:
+        using IRObjectFile = ::llvm::object::IRObjectFile;
+
+        bool _load( bool errorIsFatal  ) {
+            if ( !_iro ) {
+                auto b = _it->getAsBinary( _ctx.get() );
+                if ( !b && errorIsFatal )
+                    _throwLLVMError( b.getError() );
+                if ( !b )
+                    return false;
+                _iro.reset( ::llvm::cast< IRObjectFile >( b.get().release() ) );
+            }
+            return true;
+        }
+
+        void _bump() {
+            _iro = nullptr;
+            while ( _it != _end ) {
+                if ( _load( false ) )
+                    break;
+                ++_it;
+            }
+        }
+
+        BitcodeIterator( Underlying beg, Underlying end, std::shared_ptr< Ctx > ctx,
+                         std::unique_ptr< IRObjectFile > iro ) :
+            _it( beg ), _end( end ), _ctx( ctx ), _iro( std::move( iro ) )
+        { }
+
+        Underlying _it;
+        Underlying _end;
+        std::shared_ptr< Ctx > _ctx;
+        std::unique_ptr< IRObjectFile > _iro;
+    };
+
+    ::llvm::iterator_range< BitcodeIterator > modules() {
+        return { modules_begin(), modules_end() };
+    }
+
+    BitcodeIterator modules_begin() { return BitcodeIterator( _archive->child_begin(), _archive->child_end(), _ctx ); }
+    BitcodeIterator modules_end() { return BitcodeIterator( _archive->child_end(), _archive->child_end(), _ctx ); }
+
+
+  private:
+    static void _throwLLVMError( std::error_code ec ) {
+        throw std::runtime_error( "LLVM Error: " + ec.message() );
+    }
+
+    types::Either< mmap::MMap, std::string > _data;
+    std::unique_ptr< Archive > _archive;
+    std::shared_ptr< Ctx > _ctx;
+};
+
+struct Linker {
+    using Module = ::llvm::Module;
+    using StringRef = ::llvm::StringRef;
+
+    void link( Module &src ) {
+        return link( std::unique_ptr< Module >( ::llvm::CloneModule( &src ) ) );
+    }
+
+    void link( std::unique_ptr< Module > src ) {
+        ASSERT( src != nullptr );
+        src->materializeAllPermanently();
+        if ( !_link ) {
+            _link.reset( new ::llvm::Linker( src.release() ) );
+        } else {
+            std::string err;
+            auto r = _link->linkInModule( src.get() );
+            if ( r ) {
+                std::cerr << "ERROR: " << err << " while linking '"
+                          << src->getModuleIdentifier() << "'" << std::endl;
+                UNREACHABLE( "Linker error" );
+            }
+        }
+        _updateUndefined();
+    }
+
+    using ModuleVector = std::vector< std::unique_ptr< Module > >;
+
+    template< typename It >
+    void linkArchive( It begin, It end ) {
+        if ( _undefined.empty() )
+            return;
+
+        std::map< std::string, It > modmap;
+
+        for ( auto it = begin; it != end; ++it )
+            _symbols( _getModule( it ), true,
+                      [&]( StringRef name, auto ) { modmap.emplace( name, it ); } );
+
+        while ( true ) {
+            auto mmit = modmap.begin(), mmend = modmap.end();
+            auto uit = _undefined.begin(), uend = _undefined.end();
+
+            std::unique_ptr< Module > toLink = nullptr;
+            while ( mmit != mmend && uit != uend )
+            {
+                if ( mmit->first < *uit )
+                    ++mmit;
+                else
+                {
+                    if ( mmit->first == *uit ) {
+                        toLink = _takeModule( mmit->second );
+                        break;
+                    }
+                    ++uit;
+                }
+            }
+
+            if ( !toLink )
+                return; // no more symbols needed from this archive
+            link( std::move( toLink ) );
+        }
+    }
+
+    void linkArchive( ArchiveReader &r ) {
+        linkArchive( r.modules_begin(), r.modules_end() );
+    }
+
+    void linkArchive( std::initializer_list< ::llvm::Module * > mods ) {
+        linkArchive( mods.begin(), mods.end() );
+    }
+
+    Module *get() { return _link->getModule(); }
+    const Module *get() const { return _link->getModule(); }
+
+    std::unique_ptr< Module > take() {
+        std::unique_ptr< Module > m( get() );
+        _link.release();
+        return m;
+    }
+
+    bool hasModule() { return _link != nullptr; }
+
+  private:
+
+    template< typename It >
+    static std::unique_ptr< Module > _takeModule( It it ) {
+        return std::unique_ptr< Module >( ::llvm::CloneModule( *it ) );
+    }
+
+    static std::unique_ptr< Module > _takeModule( ArchiveReader::BitcodeIterator &bcit ) {
+        return bcit.take();
+    }
+
+    template< typename It >
+    static Module &_getModule( It it ) { return **it; }
+
+    static Module &_getModule( ArchiveReader::BitcodeIterator &bcit ) { return *bcit; }
+
+    template< typename Yield >
+    void _symbols( Module &m, bool defined, Yield yield )
+    {
+        for ( auto &fn : m )
+            if ( fn.isDeclaration() == !defined && fn.hasName() )
+                yield( fn.getName(), &fn );
+        for ( auto &glo : m.getGlobalList() )
+            if ( glo.isDeclaration() == !defined && glo.hasName() )
+                yield( glo.getName(), &glo );
+        for ( auto &ali : m.getAliasList() )
+            if ( ali.isDeclaration() == !defined && ali.hasName() )
+                yield( ali.getName(), &ali );
+    }
+
+    void _updateUndefined() {
+        _undefined.clear();
+        _symbols( *get(), false, [this]( StringRef name, auto ) { _undefined.emplace( name ); } );
+    }
+
+    friend brick::t_llvm::LinkerTest;
+
+    std::unique_ptr< ::llvm::Linker > _link;
+    std::set< StringRef > _undefined;
+};
+}
+
+namespace t_llvm {
+
+using namespace brick::llvm;
+using ::llvm::cast;
+using ::llvm::dyn_cast;
+using ::llvm::isa;
+using ::llvm::Module;
+using ::llvm::StringRef;
+using ::llvm::Type;
+using ::llvm::FunctionType;
+using ::llvm::Function;
+using ::llvm::Module;
+
+struct LinkerTest {
+
+    ::llvm::LLVMContext ctx;
+
+    Function *declareFun( Module &m, StringRef name ) {
+        auto *fun = cast< Function >( m.getOrInsertFunction( name,
+                        FunctionType::get( Type::getInt32Ty( ctx ), false ) ) );
+        ASSERT( fun->isDeclaration() );
+        return fun;
+    }
+
+    Function *defineFun( Module &m, StringRef name ) {
+        auto *fun = declareFun( m, name );
+        auto bb = ::llvm::BasicBlock::Create( ctx, "entry", fun );
+        ::llvm::IRBuilder<> irb( bb );
+        irb.CreateRet( irb.getInt32( 0 ) );
+        ASSERT( !fun->isDeclaration() );
+        return fun;
+    }
+
+    TEST(undefined_single) {
+        auto m = std::make_unique< ::llvm::Module >( "test.ll", ctx );
+        declareFun( *m, "fun" );
+
+        Linker link;
+        link.link( std::move( m ) );
+        ASSERT_EQ( link._undefined.size(), 1 );
+        ASSERT_EQ( link._undefined.count( "fun" ), 1 );
+    }
+
+    TEST(undefined_two) {
+        auto m = std::make_unique< ::llvm::Module >( "test.ll", ctx );
+        declareFun( *m, "fun" );
+
+        auto m2 = std::make_unique< ::llvm::Module >( "test2.ll", ctx );
+        defineFun( *m2, "fun" );
+        declareFun( *m2, "foo" );
+
+        Linker link;
+        link.link( std::move( m ) );
+        ASSERT_EQ( link._undefined.size(), 1 );
+        ASSERT_EQ( link._undefined.count( "fun" ), 1 );
+        link.link( std::move( m2 ) );
+        ASSERT_EQ( link._undefined.size(), 1 );
+        ASSERT_EQ( link._undefined.count( "foo" ), 1 );
+    }
+
+    template< typename Doit, typename Check >
+    void archive_simple( Doit doit, Check check ) {
+        auto ma = std::make_unique< Module >( "a", ctx );
+        auto mb = std::make_unique< Module >( "b", ctx );
+        auto mmain = std::make_unique< Module >( "main", ctx );
+
+        defineFun( *mmain, "main" );
+        declareFun( *mmain, "foo" );
+
+        defineFun( *ma, "bar" );
+        defineFun( *ma, "baz" );
+
+        defineFun( *mb, "foo" );
+        defineFun( *mb, "foobar" );
+
+        {
+            Linker link;
+            link.link( std::move( mmain ) );
+            doit( link, ma.get(), mb.get(), link.get() );
+            ASSERT_EQ( link._undefined.size(), 0 );
+            check( link );
+        }
+    }
+
+    static void checkALinked( Linker &link ) {
+        ASSERT( link.get()->getFunction( "main" ) );
+        ASSERT( !link.get()->getFunction( "main" )->isDeclaration() );
+        ASSERT( link.get()->getFunction( "foo" ) );
+        ASSERT( !link.get()->getFunction( "foo" )->isDeclaration() );
+        ASSERT( link.get()->getFunction( "foobar" ) );
+        ASSERT( !link.get()->getFunction( "foobar" )->isDeclaration() );
+        ASSERT( !link.get()->getFunction( "bar" ) );
+        ASSERT( !link.get()->getFunction( "baz" ) );
+    }
+
+    TEST(archive_simple_a_in_ab) {
+        archive_simple( []( auto &link, auto ma, auto mb, auto ) { link.linkArchive( { ma, mb } ); },
+                        checkALinked );
+    }
+
+    TEST(archive_simple_a_in_ba) {
+        archive_simple( []( auto &link, auto ma, auto mb, auto ) { link.linkArchive( { mb, ma } ); },
+                        checkALinked );
+    }
+
+    TEST(archive_simple_both) {
+        archive_simple( [this]( auto &link, auto ma, auto mb, auto mmain ) {
+                declareFun( *mmain, "baz" );
+                link.linkArchive( { ma, mb } );
+            }, []( auto &link ) {
+                ASSERT( link.get()->getFunction( "main" ) );
+                ASSERT( !link.get()->getFunction( "main" )->isDeclaration() );
+                ASSERT( link.get()->getFunction( "foo" ) );
+                ASSERT( !link.get()->getFunction( "foo" )->isDeclaration() );
+                ASSERT( link.get()->getFunction( "foobar" ) );
+                ASSERT( !link.get()->getFunction( "foobar" )->isDeclaration() );
+                ASSERT( link.get()->getFunction( "bar" ) );
+                ASSERT( !link.get()->getFunction( "bar" )->isDeclaration() );
+                ASSERT( link.get()->getFunction( "baz" ) );
+                ASSERT( !link.get()->getFunction( "baz" )->isDeclaration() );
+            } );
+    }
+
+    TEST(ar_archive) {
+
+        fs::TempDir dir( ".brick-llvm-test-XXXXXX", fs::AutoDelete::Yes, fs::UseSystemTemp::Yes );
+        auto ma = std::make_unique< Module >( "a", ctx );
+        auto mb = std::make_unique< Module >( "b", ctx );
+        declareFun( *ma, "foo" );
+        declareFun( *mb, "bar" );
+
+        auto name = fs::joinPath( dir, "test.a" );
+        auto il = { std::move( ma ), std::move( mb ) };
+        writeArchive( il.begin(), il.end(), name );
+
+        ArchiveReader reader( name );
+        int count = 0;
+        for ( auto &m : reader.modules() ) {
+            ++count;
+            ASSERT( count != 1 || m.getFunction( "foo" ) );
+            ASSERT( count != 2 || m.getFunction( "bar" ) );
+        }
+        ASSERT_EQ( count, 2 );
+    }
+};
+
+}
+
 }
 
 #endif // BRICKS_LLVM_LINK_STRIP_H
 
 #endif
 
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
