@@ -2,19 +2,19 @@ DIVINE_RELAX_WARNINGS
 #include <brick-llvm>
 DIVINE_UNRELAX_WARNINGS
 
-/* usage: runtime-cc source.c output.bc [flags] */
+/* usage: runtime-ld output.a source1.bc [...] */
 int main( int argc, const char **argv )
 {
-    brick::llvm::Linker ld;
     llvm::LLVMContext ctx;
+    std::vector< std::unique_ptr< llvm::Module > > modules;
 
     for ( int i = 2; i < argc; ++i )
     {
         auto input = std::move( llvm::MemoryBuffer::getFile( argv[i] ).get() );
-        auto parsed = llvm::parseBitcodeFile( input->getMemBufferRef(), ctx );
-        ld.link( std::move( parsed.get() ) );
+        modules.emplace_back( std::move(
+                    llvm::parseBitcodeFile( input->getMemBufferRef(), ctx ).get() ) );
     }
 
-    brick::llvm::writeModule( ld.get(), argv[1] );
+    brick::llvm::writeArchive( modules.begin(), modules.end(), argv[1] );
     return 0;
 }
