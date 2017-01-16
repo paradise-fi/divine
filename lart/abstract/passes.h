@@ -110,7 +110,7 @@ ModulePtr compile( const std::string & src,
     std::vector< std::string > flags = { "-std=c++14" };
 
     brick::llvm::Linker linker;
-    linker.load( c.compile( "main.cpp", flags ) );
+    linker.link( c.compile( "main.cpp", flags ) );
     for ( const auto & f : link )
         linker.link( c.compile( f, flags ) );
     return linker.take();
