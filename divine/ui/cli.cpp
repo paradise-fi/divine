@@ -156,13 +156,6 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
 
 } // namespace
 
-void pruneBC( cc::Compile &driver )
-{
-    driver.prune( { "__sys_init", "main", "memmove", "memset",
-                "memcpy", "llvm.global_ctors", "__lart_weakmem_buffer_size",
-                "__md_get_function_meta", "__sys_env" } );
-}
-
 std::string outputName( std::string path )
 {
     return brick::fs::replaceExtension( brick::fs::basename( path ), "bc" );
@@ -228,7 +221,6 @@ void WithBC::setup()
 
         driver.setupFS( rt::each );
         driver.runCC( ccopts );
-        pruneBC( driver );
         _bc = std::make_shared< vm::BitCode >(
             std::unique_ptr< llvm::Module >( driver.getLinked() ),
             driver.context() );
@@ -268,10 +260,8 @@ void Cc::run()
     if ( firstFile.empty() )
         die( "CC: You must specify at least one source file." );
 
-    if ( !_drv.dont_link ) {
-        pruneBC( driver );
+    if ( !_drv.dont_link )
         driver.writeToFile( _output.empty() ? outputName( firstFile ) : _output );
-    }
 }
 
 void Info::run()
