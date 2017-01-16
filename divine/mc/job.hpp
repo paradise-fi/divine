@@ -28,6 +28,19 @@
 namespace divine {
 namespace mc {
 
+enum class Result { None, Valid, Error, BootError };
+
+static std::ostream &operator<<( std::ostream &o, Result r )
+{
+    switch ( r )
+    {
+        case Result::None: return o << "unknown";
+        case Result::Valid: return o << "valid";
+        case Result::Error: return o << "error found";
+        case Result::BootError: return o << "boot error";
+    }
+}
+
 struct Job : ss::Job
 {
     std::shared_ptr< brick::shmem::ThreadBase > _monitor_loop;
@@ -62,7 +75,7 @@ struct Job : ss::Job
     using DbgCtx = vm::DebugContext< vm::Program, vm::CowHeap >;
 
     virtual Trace ce_trace() { return Trace(); }
-    virtual bool error_found() { return false; }
+    virtual Result result() { return Result::None; }
     virtual PoolStats poolstats() { return PoolStats(); }
     virtual void dbg_fill( DbgCtx & ) {}
     virtual void start( int ) override = 0;

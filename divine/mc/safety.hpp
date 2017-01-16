@@ -108,7 +108,13 @@ struct Safety : Job
     }
 
     void dbg_fill( DbgCtx &dbg ) override { dbg.load( _ex._ctx ); }
-    bool error_found() override { return _error_found; }
+
+    Result result() override
+    {
+        if ( !statecount() )
+            return Result::BootError;
+        return _error_found ? Result::Error : Result::Valid;
+    }
 
     virtual PoolStats poolstats() override
     {
