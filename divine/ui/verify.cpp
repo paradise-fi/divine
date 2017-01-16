@@ -68,31 +68,15 @@ void Verify::run()
 
     std::cout << std::endl;
 
-    if ( !safety->statecount() )
-    {
-        std::cout << "error found: boot" << std::endl;
-        std::cout << "boot info:" << std::endl;
-        std::cout << dbg._info << std::endl;
-        std::cout << "boot trace: |" << std::endl;
-        for ( auto s : dbg._trace )
-            std::cout << "  " << s << std::endl;
-        return;
-    }
-
-    if ( !safety->error_found() )
-    {
-        std::cout << "error found: no" << std::endl;
-        return;
-    }
-
     auto trace = safety->ce_trace();
 
-    std::cout << "error found: yes" << std::endl;
-    std::cout << "choices made:" << trace.choices << std::endl;
-    std::cout << "error trace: |" << std::endl;
-    for ( std::string l : trace.labels )
-        std::cout << "  " << l << std::endl;
-    std::cout << std::endl;
+    if ( safety->result() == mc::Result::BootError )
+        trace.bootinfo = dbg._info, trace.labels = dbg._trace;
+
+    _log->result( safety->result(), trace );
+
+    if ( safety->result() != mc::Result::Error )
+        return;
 
     std::cout << "error state:" << std::endl;
     safety->dbg_fill( dbg );

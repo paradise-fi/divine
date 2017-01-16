@@ -29,7 +29,7 @@ struct LogSink
     virtual void progress( int, int, bool ) {}
     virtual void memory( const mc::Job::PoolStats &, bool ) {}
     virtual void info( std::string ) {}
-    virtual void result( bool, const mc::Trace & ) {}
+    virtual void result( mc::Result, const mc::Trace & ) {}
     virtual void start() {}
     virtual ~LogSink() {}
 };

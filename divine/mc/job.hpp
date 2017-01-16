@@ -34,10 +34,10 @@ static std::ostream &operator<<( std::ostream &o, Result r )
 {
     switch ( r )
     {
-        case Result::None: return o << "unknown";
-        case Result::Valid: return o << "valid";
-        case Result::Error: return o << "error found";
-        case Result::BootError: return o << "boot error";
+        case Result::None: return o << "error found: unknown";
+        case Result::Valid: return o << "error found: no";
+        case Result::Error: return o << "error found: yes";
+        case Result::BootError: return o << "error found: boot";
     }
 }
 

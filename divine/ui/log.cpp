@@ -43,7 +43,7 @@ struct CompositeSink : LogSink
     void info( std::string i ) override
     { each( [&]( auto s ) { s->info( i ); } ); }
 
-    void result( bool res, const mc::Trace &tr ) override
+    void result( mc::Result res, const mc::Trace &tr ) override
     { each( [&]( auto s ) { s->result( res, tr ); } ); }
 
     void start() override
@@ -138,7 +138,19 @@ struct YamlSink : TimedSink
             printpool( p.first, p.second );
     }
 
-    void result( bool, const mc::Trace & ) override {}
+    void result( mc::Result result, const mc::Trace &trace ) override
+    {
+        std::cout << result << std::endl;
+        if ( result == mc::Result::None || result == mc::Result::Valid )
+            return;
+        std::cout << "error trace: |" << std::endl;
+        for ( auto l : trace.labels )
+            std::cout << "  " << l << std::endl;
+        if ( !trace.bootinfo.empty() )
+            std::cout << "boot info:" << trace.bootinfo << std::endl;
+        std::cout << std::endl;
+        std::cout << "choices made:" << trace.choices << std::endl;
+    }
 };
 
 /* print progress updates to stderr */
