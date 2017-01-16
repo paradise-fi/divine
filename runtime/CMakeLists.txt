@@ -41,11 +41,11 @@ macro( mklib lib flags )
 
   add_custom_command(
     DEPENDS runtime-ld ${BC_${lib}}
-    OUTPUT "${lib}.bc"
-    COMMAND runtime-ld ${lib}.bc ${BC_${lib}}
+    OUTPUT "${lib}.a"
+    COMMAND runtime-ld ${lib}.a ${BC_${lib}}
   )
 
-  stringifyInDir( "runtime" "${CMAKE_CURRENT_BINARY_DIR}" "${lib}.bc" )
+  stringifyInDir( "runtime" "${CMAKE_CURRENT_BINARY_DIR}" "${lib}.a" )
 endmacro()
 
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR} )
