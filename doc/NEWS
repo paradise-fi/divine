@@ -2,27 +2,16 @@ DIVINE 4.0
 ==========
 
 - [4.0.0] Improved compatibility of text output with YAML.
-- [4.0.0] Added a `make prerequisites` target to auto-install required packages
-  on common distributions.
-- [4.0.1] Weak pointer support: allows marking pointers so that they do not
-  count towards state comparison. That is, if program states only differ in
-  weakly-reachable data, they are considered identical for the purposes of
-  model checking.
-- [4.0.1] A `__vm_syscall` hypercall is now available, allowing access from the
-  system under test to the outside operating system. The SUT (that is, the
-  operating system running in DiVM) is responsible for translating system calls
-  into a form suitable for the outside operating system.
-- [4.0.1] The object id hint as now a VM control register
-  (`_VM_SC_ObjIdShuffle`), allowing truly invisible actions to be implemented.
-- [4.0.1] *Experimental* support for `verify --symbolic` on simple C programs
-  (currently requires z3).
+- [4.0.0] `make prerequisites` installs dependencies on common distributions.
+- [4.0.1] Support weak pointers that do not count towards state comparison.
+- [4.0.1] A new `__vm_syscall` hypercall for accessing the host OS.
+- [4.0.1] Make the objid hint a VM control register, `_VM_SC_ObjIdShuffle`.
+- [4.0.1] **Experimental** support for `verify --symbolic` (needs Z3).
 - [4.0.1] Extended memory use statistics when `--report yaml-long` is specified.
-- [4.0.1] *Experimental* support for `run -o syscall:passthrough` to allow the
-  program under test to talk to the real world (based on `__vm_syscall`).
+- [4.0.1] **Experimental** support for `run -o syscall:passthrough`.
 - [4.0.1] A complete `libm` implementation is now bundled with `divine cc`.
 - [4.0.1] Support for `regex.h` has been added to `divine cc`.
-- [4.0.1] DiOS now includes preliminary support for registering and executing
-  user-provided program monitoring functions.
+- [4.0.1] Preliminary support for user-provided program monitoring functions.
 
 DIVINE 3.90
 ===========
