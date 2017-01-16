@@ -66,6 +66,8 @@ struct VaArgInstr : lart::Pass
             llvm::ReplaceInstWithInst( load, new llvm::VAArgInst( valist, load->getType() ) );
         }
 
+        vaargfn->eraseFromParent();
+
         return llvm::PreservedAnalyses::none();
     }
 };
