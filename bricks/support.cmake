@@ -2,6 +2,10 @@
 ## easier with cmake-based projects. Call include(bricks/support.cmake) in your
 ## toplevel CMakeLists.txt to access those functions.
 
+set( BRICK_USED_LLVM_LIBS )
+set( BRICK_LLVM_LIBS LLVMCore LLVMSupport LLVMIRReader LLVMBitReader
+                     LLVMBitWriter LLVMLinker LLVMObject )
+
 function( update_file name content )
   if( EXISTS ${name} )
     file( READ ${name} old )
@@ -74,7 +78,7 @@ function( test_bricks dir )
   add_definitions( ${ARGN} )
   file( GLOB SRC "${dir}/brick-*[a-z]" )
   bricks_unittest( test-bricks ${SRC} )
-  target_link_libraries( test-bricks pthread )
+  target_link_libraries( test-bricks pthread ${BRICK_USED_LLVM_LIBS} )
 endfunction()
 
 function( benchmark_bricks dir )
@@ -109,6 +113,7 @@ macro( bricks_check_llvm )
   find_package( LLVM )
   if( LLVM_FOUND )
     add_definitions( -DBRICKS_HAVE_LLVM -isystem ${LLVM_INCLUDE_DIRS} )
+    set( BRICK_USED_LLVM_LIBS ${BRICK_LLVM_LIBS} )
   endif()
 endmacro()
 
