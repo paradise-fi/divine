@@ -881,6 +881,17 @@ auto make_parser( std::shared_ptr< V > v )
     return Parser< V >( ParserT< V >( v ) );
 }
 
+namespace {
+
+std::vector< std::string > from_argv( int argc, const char **argv )
+{
+    std::vector< std::string > args;
+    std::copy( argv + 1, argv + argc, std::back_inserter( args ) );
+    return args;
+}
+
+}
+
 }
 
 namespace t_cmd {
