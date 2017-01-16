@@ -9,7 +9,7 @@
 #include <thread>
 #include <stdexcept>
 
-namespace brick { namespace llvm { struct Linker; } } // avoid header dependency
+namespace brick { namespace llvm { struct Linker; struct ArchiveReader; } } // avoid header dependency
 
 namespace divine {
 namespace cc {
@@ -29,6 +29,11 @@ struct Compile
 
     void compileAndLink( std::string path, std::vector< std::string > flags = {} );
     void compileAndLink( std::string path, Compiler::FileType type, std::vector< std::string > flags = {} );
+
+    void linkLibs( const std::vector< std::string > &libs );
+    void linkEssentials();
+
+    static const std::vector< std::string > defaultDIVINELibs;
 
     ModulePtr compile( std::string path, std::vector< std::string > flags = { } );
     ModulePtr compile( std::string path, Compiler::FileType type, std::vector< std::string > flags = {} );
@@ -56,8 +61,6 @@ struct Compile
     void addDirectory( std::string path );
     void addFlags( std::vector< std::string > flags );
 
-    void prune( std::vector< std::string > r );
-
     std::shared_ptr< llvm::LLVMContext > context();
 
     template< typename RT >
@@ -65,7 +68,7 @@ struct Compile
     {
         each( [&]( auto path, auto c )
               {
-                  if ( brick::string::endsWith( path, ".bc" ) )
+                  if ( brick::string::endsWith( path, ".a" ) )
                       setupLib( path, c );
                   else
                       compiler.mapVirtualFile( path, c );
@@ -73,14 +76,14 @@ struct Compile
     }
 
   private:
-    void setupLib( std::string name, const std::string &content );
-    void compileLibrary( std::string path, std::vector< std::string > flags = { } );
+    void setupLib( std::string name, std::string content );
 
     Options opts;
     Compiler compiler;
     std::unique_ptr< brick::llvm::Linker > linker;
     std::vector< std::string > commonFlags; // set in CPP
     std::string runtimeVersMeta = "divine.compile.runtime.version";
+    std::map< std::string, brick::llvm::ArchiveReader > libs;
 };
 
 }

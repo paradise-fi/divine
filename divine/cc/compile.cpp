@@ -161,6 +161,10 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
         if ( m )
             linker->link( std::move( m ) );
     }
+    if ( linker->hasModule() ) {
+        linkEssentials();
+        linkLibs( defaultDIVINELibs );
+    }
 }
 
 llvm::Module *Compile::getLinked() {
@@ -195,31 +199,51 @@ void Compile::addFlags( std::vector< std::string > flags ) {
     std::copy( flags.begin(), flags.end(), std::back_inserter( commonFlags ) );
 }
 
-void Compile::prune( std::vector< std::string > r ) {
-    linker->prune( r, brick::llvm::Prune::UnusedModules );
-}
-
 std::shared_ptr< llvm::LLVMContext > Compile::context() { return compiler.context(); }
 
-void Compile::setupLib( std::string name, const std::string &content )
+void Compile::setupLib( std::string name, std::string content )
 {
-    if ( opts.verbose )
-        std::cerr << "loading " << name << "..." << std::flush;
-    auto input = llvm::MemoryBuffer::getMemBuffer( content );
-    auto parsed = parseBitcodeFile( input->getMemBufferRef(), *context() );
-    if ( !parsed )
-        throw std::runtime_error( "Error parsing input model; probably not a valid bitcode file." );
-    if ( opts.verbose )
-        std::cerr << " linking..." << std::flush;
-    linker->link( std::move( parsed.get() ), false );
-    if ( opts.verbose )
-        std::cerr << " done" << std::endl;
+    auto libname = brick::fs::splitExtension( brick::fs::basename( name ) ).first;
+    if ( libname.substr( 0, 3 ) == "lib" )
+        libname = libname.substr( 3 );
+
+    brick::llvm::ArchiveReader reader( name, std::move( content ), context() );
+    auto ins = libs.emplace( libname, std::move( reader ) );
+    if ( !ins.second )
+        throw std::runtime_error( "Double definition of library " + name );
 }
 
-void Compile::compileLibrary( std::string path, std::vector< std::string > flags )
-{
-    for ( const auto &f : compiler.filesMappedUnder( path ) )
-        compileAndLink( f, flags );
+void Compile::linkLibs( const std::vector< std::string > &ls ) {
+    for ( auto lib : ls ) {
+        auto libit = libs.find( lib );
+        if ( libit == libs.end() )
+            throw std::runtime_error( "Library not found: " + lib );
+        linker->linkArchive( libit->second );
+    }
 }
+
+void Compile::linkEssentials() {
+    for ( auto e : { "dios", "abstract" } ) {
+        auto modules = libs.at( e ).modules();
+        for ( auto it = modules.begin(); it != modules.end(); ++it )
+            linker->link( it.take() );
+    }
+
+    // these functions are implemented as intrinsics in LLVM so they don't have
+    // declarations and aren't linked unless explicitly added
+    llvm::Module mem( "divine-mem.ll", *context() );
+    mem.setDataLayout( linker->get()->getDataLayoutStr() );
+    auto *vptrt = llvm::Type::getInt8PtrTy( *context() );
+    auto *sizet = llvm::Type::getInt64Ty( *context() );
+    auto *intt = llvm::Type::getInt32Ty( *context() );
+    auto *mct = llvm::FunctionType::get( vptrt, { vptrt, vptrt, sizet }, false );
+    mem.getOrInsertFunction( "memcpy", mct );
+    mem.getOrInsertFunction( "memmove", mct );
+    mem.getOrInsertFunction( "memset", llvm::FunctionType::get( vptrt, { vptrt, intt, sizet }, false ) );
+    linker->link( mem );
+}
+
+const std::vector< std::string > Compile::defaultDIVINELibs = { "cxx", "cxxabi", "c" };
+
 }
 }

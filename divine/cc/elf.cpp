@@ -267,4 +267,3 @@ std::tuple< StringVec, StringVec > getExecLinkOptions( StringVec divineSearchPat
 }
 }
 }
-
