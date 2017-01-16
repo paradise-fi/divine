@@ -11,31 +11,17 @@ DIVINE 4.1 (July 2017)
 
 ## Virtual Machine
 
-- Weak pointer support: allow marking pointers so that they do not count
-  towards state comparison. That is, if program states only differ in
-  weakly-reachable data, they are considered identical for the purposes of
-  model checking. [P. Ročkai]
 - Delta-compression of heap snapshots using logarithmically-deep delta chains
   to reduce memory use of snapshots (that is, objid → content maps). [P.
   Ročkai]
 - Delta-compression of heap data. Like above, but for object data (content).
   [P. Ročkai]
-- Implement a `__vm_syscall` hypercall, to allow access from the system under
-  test to the outside operating system. The SUT (that is, the operating system
-  running in DiVM) is responsible for translating system calls into a form
-  suitable for the outside operating system. Clearly, `__vm_syscall` will only
-  be available in execution modes (`divine run`) but not in verification. [P.
-  Ročkai]
-- Expose the object id hint as a VM (control) register, to allow truly
-  invisible actions. [P. Ročkai]
 
 ## Model Checking
 
 - Add a (sequential) implementation of the Nested DFS algorithm for accepting
   cycle detection [P. Ročkai]
 - Re-introduce a context-switch-directed safety checking algorithm [V. Štill]
-- Add a formula-tracing-based symbolic algorithm and SMT solver
-  integration. [V. Štill]
 - Add a parallel SCC decomposition algorithm based on an union-find data
   structure [P. Ročkai]
 - Add a translator from LTL to a DiOS-compatible monitor automaton. [T. Kučera]
@@ -43,21 +29,16 @@ DIVINE 4.1 (July 2017)
 ## DiOS
 
 - Implementat the `fork()` system call [Z. Baranová & H. Mrázek]
-- Add an interface that would allow monitoring the program, in particular
-  enforcing global invariants [H. Mrázek]
 - Implement a fair scheduler that'd allow model checking of simple (safety)
   properties with fairness assumptions (e.g. that a particular program location
   is reached in every possible execution / thread interleaving of the program).
   [H. Mrázek]
-- Add a forwarding mode for DiOS, where system calls are, instead of being
-  simulated, forwarded to the real OS using `__vm_syscall`. [K. Kejstová]
 - Implement unbuffered stdio in `libc`. [V. Štill]
-- Implement program-variable -- formula-variable tracking. [V. Štill]
 
 ## User Interface
 
-- Make the stdout of all relevant commands a valid, machine-parseable YAML. [V. Štill]
-- Re-introduce SQL-based reporting. [V. Štill]
+- Make the stdout of all relevant commands valid, machine-parseable YAML. [V. Štill]
+- Re-introduce SQL-based reporting. [P. Ročkai]
 - Implement a `search` command in `divine sim`, that will automatically look
   for an error in a given maximal distance from a particular program state. [P. Ročkai]
 
@@ -69,8 +50,8 @@ DIVINE 4.1 (July 2017)
 DIVINE 4.2 (January 2018)
 =========================
 
-- Implement bit-precise initialisation tracking.
-- Track partial pointers.
+- Implement bit-precise initialisation tracking. [J. Weiser]
+- Track partial pointers. [J. Weiser]
 - Implement adjustable τ-reduction to allow monitors that react to each change
   in a particular variable (even if that change is invisible to other threads).
 - Implement loading of multiple bitcode files (i.e. multiple executable images)
