@@ -191,13 +191,6 @@ struct Info   : Run
 
 namespace {
 
-std::vector< std::string > fromArgv( int argc, const char **argv )
-{
-    std::vector< std::string > args;
-    std::copy( argv + 1, argv + argc, std::back_inserter( args ) );
-    return args;
-}
-
 size_t memFromString( std::string s ) {
     size_t pos;
     size_t base = stoull( s, &pos );

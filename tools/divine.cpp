@@ -49,7 +49,7 @@ int main( int argc, const char **argv )
 #endif
     std::set_terminate( panic );
 
-    auto args = divine::ui::fromArgv( argc, argv );
+    auto args = brick::cmd::from_argv( argc, argv );
     std::string progName = brick::fs::basename( argv[ 0 ] );
     if ( progName == "divine-cc" )
         args.insert( args.begin(), "divinecc" );

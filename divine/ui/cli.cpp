@@ -290,7 +290,7 @@ struct CLI : Interface
     std::vector< std::string > _args;
 
     CLI( int argc, const char **argv ) :
-        _batch( true ), _args( fromArgv( argc, argv ) )
+        _batch( true ), _args( cmd::from_argv( argc, argv ) )
     { }
 
     CLI( std::vector< std::string > args ) :
