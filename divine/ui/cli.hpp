@@ -120,6 +120,7 @@ struct Verify : WithBC
     int _threads = 0;
     int _num_callers = 10;
     bool _no_counterexample = false;
+    bool _interactive = true;
     Report _report = Report::Yaml;
     SinkPtr _log;
 

@@ -31,7 +31,7 @@ void Verify::setup()
 
     std::vector< SinkPtr > log;
 
-    if ( true ) // _interactive
+    if ( _interactive )
         log.push_back( make_interactive() );
 
     if ( _report != Report::None )
