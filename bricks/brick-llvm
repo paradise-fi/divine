@@ -60,13 +60,26 @@ DIVINE_UNRELAX_WARNINGS
 #include <string>
 #include <initializer_list>
 #include <unordered_set>
+#include <unordered_map>
 #include <iostream>
 #include <set>
 #include <sstream>
 #include <algorithm>
+#include <experimental/string_view>
 
 #ifndef BRICKS_LLVM_LINK_STRIP_H
 #define BRICKS_LLVM_LINK_STRIP_H
+
+namespace std {
+
+template<>
+struct hash< llvm::StringRef > {
+    size_t operator()( llvm::StringRef sr ) const {
+        return hash< std::experimental::string_view >()( std::experimental::string_view( sr.data(), sr.size() ) );
+    }
+};
+
+}
 
 namespace brick {
 
@@ -167,6 +180,11 @@ inline void writeModule( ::llvm::Module *m, std::string out ) {
     WriteBitcodeToFile( m, fs );
 }
 
+static void _throwLLVMError( std::error_code ec ) {
+    throw std::runtime_error( "LLVM Error: " + ec.message() );
+}
+
+
 template< typename It >
 inline void writeArchive( It begin, It end, std::string out )
 {
@@ -191,7 +209,7 @@ inline void writeArchive( It begin, It end, std::string out )
     fs::mkFilePath( out );
     auto res = ::llvm::writeArchive( out, its, true, object::Archive::K_GNU, true ).second;
     if ( res )
-        throw std::runtime_error( "LLVM Error: " + res.message() );
+        _throwLLVMError( res );
 }
 
 struct ArchiveReader
@@ -239,10 +257,11 @@ struct ArchiveReader
     {
         using Underlying = ::llvm::object::Archive::child_iterator;
 
-        BitcodeIterator( Underlying beg, Underlying end, std::shared_ptr< Ctx > ctx ) :
+        BitcodeIterator( Underlying beg, Underlying end, std::shared_ptr< Ctx > ctx, bool bump = true ) :
             _it( beg ), _end( end ), _ctx( ctx )
         {
-            _bump();
+            if ( bump )
+                _bump();
         }
 
         BitcodeIterator( BitcodeIterator && ) = default;
@@ -316,12 +335,13 @@ struct ArchiveReader
     BitcodeIterator modules_begin() { return BitcodeIterator( _archive->child_begin(), _archive->child_end(), _ctx ); }
     BitcodeIterator modules_end() { return BitcodeIterator( _archive->child_end(), _archive->child_end(), _ctx ); }
 
-
-  private:
-    static void _throwLLVMError( std::error_code ec ) {
-        throw std::runtime_error( "LLVM Error: " + ec.message() );
+    BitcodeIterator iterator( ::llvm::object::Archive::child_iterator raw ) {
+        return BitcodeIterator( raw, _archive->child_end(), _ctx, false );
     }
 
+    const Archive &archive() const { return *_archive; }
+
+  private:
     types::Either< mmap::MMap, std::string > _data;
     std::unique_ptr< Archive > _archive;
     std::shared_ptr< Ctx > _ctx;
@@ -354,48 +374,68 @@ struct Linker {
 
     using ModuleVector = std::vector< std::unique_ptr< Module > >;
 
-    template< typename It >
-    void linkArchive( It begin, It end ) {
-        if ( _undefined.empty() )
-            return;
+    template< typename K, typename V >
+    struct ModuleMap : std::unordered_map< K, V > {
 
-        std::map< std::string, It > modmap;
-
-        for ( auto it = begin; it != end; ++it )
-            _symbols( _getModule( it ), true,
-                      [&]( StringRef name, auto ) { modmap.emplace( name, it ); } );
-
-        while ( true ) {
-            auto mmit = modmap.begin(), mmend = modmap.end();
-            auto uit = _undefined.begin(), uend = _undefined.end();
-
-            std::unique_ptr< Module > toLink = nullptr;
-            while ( mmit != mmend && uit != uend )
-            {
-                if ( mmit->first < *uit )
-                    ++mmit;
-                else
-                {
-                    if ( mmit->first == *uit ) {
-                        toLink = _takeModule( mmit->second );
-                        break;
-                    }
-                    ++uit;
-                }
+        std::unique_ptr< Module > findFirst( const std::vector< StringRef > &undef )
+        {
+            for ( auto u : undef ) {
+                auto it = this->find( u );
+                if ( it != this->end() )
+                    return _takeModule( it->second );
             }
+            return nullptr;
+        }
+    };
 
+    template< typename It >
+    struct ModuleFinder : ModuleMap< std::string, It >
+    {
+        ModuleFinder( It begin, It end )
+        {
+            for ( auto it = begin; it != end; ++it )
+                _symbols( _getModule( it ), true,
+                      [&]( StringRef name, auto ) { this->emplace( name, it ); } );
+        }
+
+    };
+
+    struct SymtabFinder : ModuleMap< StringRef, ArchiveReader::BitcodeIterator >
+    {
+        SymtabFinder( ArchiveReader &r ) {
+            for ( auto s : r.archive().symbols() ) {
+                auto m = s.getMember();
+                if ( !m )
+                    _throwLLVMError( m.getError() );
+                this->emplace( s.getName(), r.iterator( m.get() ) );
+            }
+        }
+    };
+
+    template< typename Finder >
+    void linkArchive( Finder finder ) {
+        while ( true ) {
+            auto toLink = finder.findFirst( _undefined );
             if ( !toLink )
                 return; // no more symbols needed from this archive
             link( std::move( toLink ) );
         }
     }
 
-    void linkArchive( ArchiveReader &r ) {
-        linkArchive( r.modules_begin(), r.modules_end() );
+    template< typename It >
+    void linkArchive( It begin, It end ) {
+        linkArchive( ModuleFinder< It >( begin, end ) );
     }
 
     void linkArchive( std::initializer_list< ::llvm::Module * > mods ) {
         linkArchive( mods.begin(), mods.end() );
+    }
+
+    void linkArchive( ArchiveReader &r ) {
+        if ( r.archive().hasSymbolTable() )
+            linkArchive( SymtabFinder( r ) );
+        else
+            linkArchive( r.modules_begin(), r.modules_end() );
     }
 
     Module *get() { return _link->getModule(); }
@@ -426,7 +466,7 @@ struct Linker {
     static Module &_getModule( ArchiveReader::BitcodeIterator &bcit ) { return *bcit; }
 
     template< typename Yield >
-    void _symbols( Module &m, bool defined, Yield yield )
+    static void _symbols( Module &m, bool defined, Yield yield )
     {
         for ( auto &fn : m )
             if ( fn.isDeclaration() == !defined && fn.hasName() )
@@ -441,13 +481,13 @@ struct Linker {
 
     void _updateUndefined() {
         _undefined.clear();
-        _symbols( *get(), false, [this]( StringRef name, auto ) { _undefined.emplace( name ); } );
+        _symbols( *get(), false, [this]( StringRef name, auto ) { _undefined.emplace_back( name ); } );
     }
 
     friend brick::t_llvm::LinkerTest;
 
     std::unique_ptr< ::llvm::Linker > _link;
-    std::set< StringRef > _undefined;
+    std::vector< StringRef > _undefined;
 };
 }
 
@@ -484,6 +524,11 @@ struct LinkerTest {
         return fun;
     }
 
+    template< typename X >
+    static int count( X &x, StringRef ref ) {
+        return std::count( x.begin(), x.end(), ref );
+    }
+
     TEST(undefined_single) {
         auto m = std::make_unique< ::llvm::Module >( "test.ll", ctx );
         declareFun( *m, "fun" );
@@ -491,7 +536,7 @@ struct LinkerTest {
         Linker link;
         link.link( std::move( m ) );
         ASSERT_EQ( link._undefined.size(), 1 );
-        ASSERT_EQ( link._undefined.count( "fun" ), 1 );
+        ASSERT_EQ( count( link._undefined, "fun" ), 1 );
     }
 
     TEST(undefined_two) {
@@ -505,10 +550,10 @@ struct LinkerTest {
         Linker link;
         link.link( std::move( m ) );
         ASSERT_EQ( link._undefined.size(), 1 );
-        ASSERT_EQ( link._undefined.count( "fun" ), 1 );
+        ASSERT_EQ( count( link._undefined, "fun" ), 1 );
         link.link( std::move( m2 ) );
         ASSERT_EQ( link._undefined.size(), 1 );
-        ASSERT_EQ( link._undefined.count( "foo" ), 1 );
+        ASSERT_EQ( count( link._undefined, "foo" ), 1 );
     }
 
     template< typename Doit, typename Check >
