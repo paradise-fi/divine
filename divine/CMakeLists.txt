@@ -61,7 +61,7 @@ endforeach()
 
 target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
-                                 clang clangBasic clangCodeGen )
+                                 LLVMObject clang clangBasic clangCodeGen )
 target_link_libraries( divine-ui divine-rt )
 target_link_libraries( divine-vm liblart divine-rt )
 target_link_libraries( libdivine LLVMBitReader LLVMBitWriter LLVMLinker )

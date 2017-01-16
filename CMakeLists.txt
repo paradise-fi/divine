@@ -186,6 +186,7 @@ endif()
 
 include( bricks/support.cmake )
 bricks_check_dirent()
+set( BRICK_USED_LLVM_LIBS ${BRICK_LLVM_LIBS} )
 include_directories( bricks )
 
 pkg_check_modules( VALGRIND valgrind )
