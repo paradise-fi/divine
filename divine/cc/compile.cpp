@@ -111,7 +111,7 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
 
     for ( auto it = rawCCOpts.begin(), end = rawCCOpts.end(); it != end; ++it )
     {
-        std::string isystem = "-isystem";
+        std::string isystem = "-isystem", inc = "-inc";
         if ( brick::string::startsWith( *it, "-I" ) ) {
             std::string val;
             if ( it->size() > 2 )
@@ -130,6 +130,8 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
             compiler.allowIncludePath( val );
             opts.emplace_back( isystem + val );
         }
+        else if ( *it == "-include" )
+            opts.emplace_back( *it ), opts.emplace_back( *++it );
         else if ( brick::string::startsWith( *it, "-x" ) ) {
             std::string val;
             if ( it->size() > 2 )
