@@ -145,7 +145,7 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
             }
             // this option is propagated to CC by xType, not directly
         }
-        else if ( !brick::string::startsWith( *it, "-" ) && brick::fs::access( *it, F_OK ) )
+        else if ( !brick::string::startsWith( *it, "-" ) )
             files.emplace_back( *it, xType == FT::Unknown ? Compiler::typeFromFile( *it ) : xType );
         else
             opts.emplace_back( *it );
