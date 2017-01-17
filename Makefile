@@ -50,7 +50,8 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 all: $(DEFAULT_FLAVOUR)
 
 FLAVOURS = debug asan release semidbg
-TARGETS = divine unit functional website check llvm-utils clang test-divine install lart runner
+TARGETS = divine unit functional website check llvm-utils clang test-divine \
+          install lart runner divbench
 
 ${TARGETS}:
 	$(MAKE) $(DEFAULT_FLAVOUR)-$@
