@@ -17,31 +17,27 @@
  */
 
 #pragma once
+#if OPT_SQL
 
-#include <divine/mc/job.hpp>
-#include <brick-string>
+#include <divine/ui/log.hpp>
+#include <external/nanodbc/nanodbc.h>
+#include <brick-types>
 
-namespace divine {
-namespace ui {
-
-struct LogSink
+namespace divine::ui::odbc
 {
-    virtual void progress( int, int, bool ) {}
-    virtual void memory( const mc::Job::PoolStats &, bool ) {}
-    virtual void info( std::string ) {}
-    virtual void result( mc::Result, const mc::Trace & ) {}
-    virtual void start() {}
-    virtual int log_id() { return 0; } // only useful for ODBC logs
-    virtual ~LogSink() {}
-};
 
-using SinkPtr = std::shared_ptr< LogSink >;
+using Keys = std::vector< std::string >;
+using Vals = std::vector< brick::types::Union< std::string, int > >;
 
-SinkPtr nullsink(); /* a global null sink */
-SinkPtr make_interactive();
-SinkPtr make_yaml( bool detailed );
-SinkPtr make_odbc( std::string connstr );
-SinkPtr make_composite( std::vector< SinkPtr > );
+void bind_vals( nanodbc::statement &stmt, Vals &vals );
+nanodbc::statement insert( nanodbc::connection conn, std::string table, Keys keys, Vals &vals );
+nanodbc::statement select_id( nanodbc::connection conn, std::string table, Keys keys, Vals &vals );
+int unique_id( nanodbc::connection conn, std::string table, Keys keys, Vals vals );
+int get_build( nanodbc::connection conn );
+int get_machine( nanodbc::connection conn );
+int get_instance( nanodbc::connection conn );
+int add_execution( nanodbc::connection conn );
 
 }
-}
+
+#endif
