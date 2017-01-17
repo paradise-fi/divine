@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+
+test -z "$B" && B=debug
+make $B-divbench 1>&2
+exe=$(make show var=OBJ)$B/tools/divbench
+$exe "$@" -d "Driver=SQLITE;Database=/tmp/divbench.sqlite"
