@@ -238,6 +238,12 @@ void Cc::run()
 {
     cc::Compile driver( _drv );
     driver.setupFS( rt::each );
+    driver.setupFS( [&]( auto yield )
+                    {
+                        for ( auto f : _files )
+                            yield( f.first, f.second );
+                    } );
+
     for ( auto &x : _passThroughFlags )
         std::copy( x.begin(), x.end(), std::back_inserter( _flags ) );
 
