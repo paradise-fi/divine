@@ -1,7 +1,7 @@
 # TODO: So far we probably support just unixODBC
 
 find_program( ODBC_CONFIG_EXECUTABLE
-              NAMES odbc_config
+              NAMES odbc_config iodbc-config
               DOC "path to the odbc_config executable" )
 
 get_filename_component( ODBC_CONFIG_REAL ${ODBC_CONFIG_EXECUTABLE} REALPATH )

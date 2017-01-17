@@ -1,5 +1,5 @@
 set( NANODBC_FILES nanodbc.cpp )
-add_definitions( "-DNANODBC_USE_CPP11" )
+add_definitions( "-DNANODBC_USE_CPP11" ${ODBC_COMPILE_FLAGS} )
 include_directories( ${ODBC_INCLUDE_DIRS} )
 add_library( nanodbc STATIC ${NANODBC_FILES} )
 set_target_properties( nanodbc PROPERTIES OUTPUT_NAME "nanodbc" POSITION_INDEPENDENT_CODE ON )
