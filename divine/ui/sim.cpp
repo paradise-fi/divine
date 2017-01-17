@@ -34,7 +34,7 @@
 
 namespace divine {
 
-namespace src_doc { extern const std::string sim_md_str; }
+namespace str::doc { extern const std::string manual_sim_md; }
 
 namespace ui {
 
@@ -712,7 +712,7 @@ struct Interpreter
     void help( Parser &p, std::string arg )
     {
         if ( arg.empty() )
-            std::cerr << src_doc::sim_md_str << std::endl
+            std::cerr << str::doc::manual_sim_md << std::endl
                       << "# Command overview" << std::endl << std::endl;
         std::cerr << p.describe( arg ) << std::endl;
     }
