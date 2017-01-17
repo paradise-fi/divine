@@ -88,7 +88,6 @@ stringlist( "runtime" runtime )
 include_directories( ${divine_SOURCE_DIR} )
 add_definitions( -Wno-overlength-strings )
 add_library( divine-rt ${divine_SOURCE_DIR}/divine/rt/runtime.cpp
-                       ${STRINGIFIED} runtime_list.cpp
-                       ${CMAKE_CURRENT_BINARY_DIR}/libc_bc_str.cpp )
+                       ${STRINGIFIED} runtime_list.cpp )
 set_target_properties( divine-rt PROPERTIES POSITION_INDEPENDENT_CODE ON )
 install( TARGETS divine-rt DESTINATION lib )
