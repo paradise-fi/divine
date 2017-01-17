@@ -28,8 +28,8 @@ add_custom_target( functional
   COMMAND mkdir -p results
   COMMAND ${WITH_LCOV}
             bash ${CMAKE_CURRENT_SOURCE_DIR}/lib/testsuite
-                 --testdir ${CMAKE_CURRENT_SOURCE_DIR}
-                 ${ONLY}
+                 ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
+                 ${CMAKE_CURRENT_BINARY_DIR} ${ONLY}
   USES_TERMINAL
   DEPENDS runner
   VERBATIM
