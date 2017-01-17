@@ -10,7 +10,6 @@ target_link_libraries( runtime-cc divine-cc )
 target_link_libraries( runtime-ld divine-cc )
 
 add_executable( divine divine.cpp )
-
 set_source_files_properties( lart.cpp PROPERTIES COMPILE_FLAGS -fno-rtti )
 add_executable( lart lart.cpp  )
 target_link_libraries( lart
@@ -24,6 +23,11 @@ target_link_libraries( lart
                        LLVMAnalysis )
 
 target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine divine-rt )
+
+if ( OPT_SQL )
+  add_executable( divbench benchmark.cpp )
+  target_link_libraries( divbench libdivine divine-rt )
+endif()
 
 if( NOT WIN32 )
   target_link_libraries( divine pthread )
