@@ -30,22 +30,23 @@ macro( mklib lib flags )
   foreach( f ${SRC_${lib}} )
     string( REGEX REPLACE "\\.[a-z]+" ".bc" out ${f} )
     file( RELATIVE_PATH out "${CMAKE_CURRENT_SOURCE_DIR}" "${out}" )
-    list( APPEND BC_${lib} ${out} )
+    list( APPEND BC_${lib} bc/${out} )
     add_custom_command(
         DEPENDS runtime-cc ${f} ${H_RUNTIME}
-        OUTPUT ${out}
+        OUTPUT bc/${out}
+        COMMAND mkdir -p bc
         COMMAND runtime-cc ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
-                           ${f} ${out} ${flags} )
+                           ${f} bc/${out} ${flags} )
     stringify( "runtime" "." ${f} )
   endforeach()
 
   add_custom_command(
     DEPENDS runtime-ld ${BC_${lib}}
-    OUTPUT "${lib}.a"
-    COMMAND runtime-ld ${lib}.a ${BC_${lib}}
+    OUTPUT "bc/${lib}.a"
+    COMMAND runtime-ld bc/${lib}.a ${BC_${lib}}
   )
 
-  stringify( "runtime" "${CMAKE_CURRENT_BINARY_DIR}" "${lib}.a" )
+  stringify( "runtime" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${lib}.a" )
 endmacro()
 
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR} )
