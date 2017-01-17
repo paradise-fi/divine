@@ -18,18 +18,21 @@
 
 #include <divine/rt/runtime.hpp>
 
-namespace divine {
+namespace divine::str
+{
 
 struct stringtable { std::string n; const std::string &c; };
 extern stringtable runtime_list[];
 
-namespace rt {
+}
+
+namespace divine::rt
+{
 
 void each( std::function< void( std::string, const std::string & ) > yield )
 {
-    for ( auto src = runtime_list; !src->n.empty(); ++src )
+    for ( auto src = str::runtime_list; !src->n.empty(); ++src )
         yield( joinPath( directory( src->n ), src->n ), src->c );
 }
 
-}
 }
