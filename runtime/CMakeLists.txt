@@ -36,7 +36,7 @@ macro( mklib lib flags )
         OUTPUT ${out}
         COMMAND runtime-cc ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
                            ${f} ${out} ${flags} )
-    stringify( "runtime" ${f} )
+    stringify( "runtime" "." ${f} )
   endforeach()
 
   add_custom_command(
@@ -45,7 +45,7 @@ macro( mklib lib flags )
     COMMAND runtime-ld ${lib}.a ${BC_${lib}}
   )
 
-  stringifyInDir( "runtime" "${CMAKE_CURRENT_BINARY_DIR}" "${lib}.a" )
+  stringify( "runtime" "${CMAKE_CURRENT_BINARY_DIR}" "${lib}.a" )
 endmacro()
 
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR} )
@@ -76,18 +76,18 @@ mklib( libdios "${flags}" )
 mklib( libabstract "${flags}" )
 
 foreach( f ${H_RUNTIME} )
-  stringify( "runtime" ${f} )
+  stringify( "runtime" "." ${f} )
 endforeach()
 
 set( OPS_src "${CMAKE_SOURCE_DIR}/llvm/include/llvm/IR/Instruction.def" )
 set( OPS_dest "divine/Instruction.def" )
 file( COPY ${OPS_src} DESTINATION "divine" )
-stringifyInDir( "runtime" "${CMAKE_CURRENT_BINARY_DIR}" ${OPS_dest} )
+stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
 stringlist( "runtime" runtime )
 
 include_directories( ${divine_SOURCE_DIR} )
-add_definitions( -Wno-overlength-strings )
+add_definitions( -Wno-overlength-strings ${DIVINE_DEFINES} )
 add_library( divine-rt ${divine_SOURCE_DIR}/divine/rt/runtime.cpp
-                       ${STRINGIFIED} runtime_list.cpp )
+                       ${runtime_FILES} runtime_list.cpp )
 set_target_properties( divine-rt PROPERTIES POSITION_INDEPENDENT_CODE ON )
 install( TARGETS divine-rt DESTINATION lib )
