@@ -189,3 +189,52 @@ code.sourceCode span.er { color: red; font-weight: bold; }
 .ef7,.f7 { color: #AAAAAA; } .eb7,.b7 { background-color: #AAAAAA; }
 .f9 { color: white; }
 .bold { font-weight: bold; }
+
+table.test_results {
+    border-collapse: collapse;
+}
+
+span.test_passed {
+    color: green;
+}
+
+span.test_failed {
+    color: red;
+}
+
+span.test_skipped {
+    color: gray;
+}
+
+td.test {
+    padding-right: 1em;
+}
+
+td.test_result {
+    text-align: center;
+}
+
+td.test_result a {
+    color: white;
+    padding: 4px
+}
+
+td.test_passed {
+    background-color: green;
+}
+
+td.test_failed {
+    background-color: red;
+}
+
+td.test_skipped {
+    background-color: gray;
+}
+
+td.test_started {
+    background-color: black;
+}
+
+td.test_interrupted {
+    background-color: #999900;
+}
