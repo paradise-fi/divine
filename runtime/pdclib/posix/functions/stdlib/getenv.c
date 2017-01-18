@@ -16,11 +16,14 @@ extern char * * environ;
 
 char * getenv( const char * name )
 {
+    if ( !name || !environ )
+        return NULL;
+
     size_t len = strlen( name );
     size_t index = 0;
     while ( environ[ index ] != NULL )
     {
-        if ( strncmp( environ[ index ], name, len ) == 0 )
+        if ( strncmp( environ[ index ], name, len ) == 0 && environ[ index ][ len ] == '=' )
         {
             return environ[ index ] + len + 1;
         }
