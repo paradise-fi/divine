@@ -69,9 +69,9 @@ struct Compile
         each( [&]( auto path, auto c )
               {
                   if ( brick::string::endsWith( path, ".a" ) )
-                      setupLib( path, c );
+                      setupLib( path, std::string( c ) );
                   else
-                      compiler.mapVirtualFile( path, c );
+                      compiler.mapVirtualFile( path, std::string( c ) );
               } );
     }
 
