@@ -41,6 +41,8 @@ struct SysInfo {
     void setMemoryLimitInBytes( uint64_t memory );
 
     std::string architecture() const;
+    uint64_t memory() const;
+
     uint64_t peakVmSize() const;
     uint64_t vmSize() const;
     uint64_t peakResidentMemSize() const;

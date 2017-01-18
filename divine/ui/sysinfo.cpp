@@ -202,6 +202,17 @@ uint64_t SysInfo::peakResidentMemSize() const {
 
 #undef MEMINFO
 
+uint64_t SysInfo::memory() const
+{
+#ifdef __linux
+    std::regex r( "MemTotal[\t ]*: (.+)", std::regex::extended );
+    auto m = matchLine( "/proc/meminfo", r );
+    if ( m.isJust() )
+        return std::atoll( m.value()[1].str().c_str() );
+#endif
+    return 0;
+}
+
 std::string SysInfo::architecture() const {
 #ifdef __linux
     std::regex r( "model name[\t ]*: (.+)", std::regex::extended );

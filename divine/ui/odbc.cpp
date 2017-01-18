@@ -100,7 +100,7 @@ int get_machine( connection conn )
     int cpuid = unique_id( conn, "cpu", cpu_keys, cpu_vals );
 
     Keys mach_keys{ "cpu", "cores", "mem" };
-    Vals mach_vals{ cpuid, 0, 0 };
+    Vals mach_vals{ cpuid, std::thread::hardware_concurrency(), sys.memory() };
     return unique_id( conn, "machine", mach_keys, mach_vals );
 }
 
