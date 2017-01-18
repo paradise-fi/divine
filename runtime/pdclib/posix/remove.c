@@ -39,10 +39,13 @@ int remove( const char * pathname )
     mtx_unlock( &_PDCLIB_filelist_lock );
 
     struct stat st;
-    stat( pathname, &st );
-    if ( S_ISDIR( st.st_mode ) )
-        return rmdir( pathname );
-    return unlink( pathname );
+    int r = stat( pathname, &st );
+    if ( r == 0 ) {
+        if ( S_ISDIR( st.st_mode ) )
+            return rmdir( pathname );
+        return unlink( pathname );
+    }
+    return -1;
 }
 
 #endif
