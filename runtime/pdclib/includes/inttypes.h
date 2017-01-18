@@ -252,9 +252,15 @@ imaxdiv_t imaxdiv( intmax_t numer, intmax_t denom ) _PDCLIB_nothrow;
 intmax_t strtoimax( const char * _PDCLIB_restrict nptr, char * * _PDCLIB_restrict endptr, int base ) _PDCLIB_nothrow;
 uintmax_t strtoumax( const char * _PDCLIB_restrict nptr, char * * _PDCLIB_restrict endptr, int base ) _PDCLIB_nothrow;
 
-/* TODO: wcstoimax(), wcstoumax() */
+/* These functions are equivalent to wcstol() / wcstoul() in <wchar.h>, but on
+   the potentially larger type.
+*/
+/* TODO: Not _PDCLIB_nothrow? */
+intmax_t wcstoimax( const _PDCLIB_wchar_t * _PDCLIB_restrict nptr, _PDCLIB_wchar_t * * _PDCLIB_restrict endptr, int base );
+uintmax_t wcstoumax( const _PDCLIB_wchar_t * _PDCLIB_restrict nptr, _PDCLIB_wchar_t * * _PDCLIB_restrict endptr, int base );
 
-_PDCLIB_END_EXTERN_C
+#ifdef __cplusplus
+}
 #endif
 
 #endif

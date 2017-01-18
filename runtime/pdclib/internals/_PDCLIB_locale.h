@@ -25,7 +25,11 @@
     extern tss_t _PDCLIB_locale_tss;
     static inline locale_t _PDCLIB_threadlocale( void )
     {
-        _PDCLIB_locale_t l = tss_get(_PDCLIB_locale_tss);
+        _PDCLIB_locale_t l;
+        if (_PDCLIB_locale_tss == NULL)
+            l = &_PDCLIB_global_locale;
+        else
+            l = tss_get(_PDCLIB_locale_tss);
         if(l == NULL)
             l = &_PDCLIB_global_locale;
         return l;
@@ -33,6 +37,8 @@
 
     static inline void _PDCLIB_setthreadlocale( locale_t l )
     {
+        if (_PDCLIB_locale_tss == NULL)
+            return; /* do nothing ... */
         if(tss_set(_PDCLIB_locale_tss, l) != thrd_success)
             return; /* likewise */
     }
@@ -99,7 +105,8 @@ struct _PDCLIB_locale {
     /* XXX: Maybe re-evaluate constness of these later on? */
     const _PDCLIB_wcinfo_t      *_WCType;
     _PDCLIB_size_t               _WCTypeSize;
-    _PDCLIB_ctype_t             *_CType; 
+    const _PDCLIB_ctype_t       *_CType;
+    _PDCLIB_uint16_t            *_CTypeFlags;
 
     /* perror/strerror */
     const char * const           _ErrnoStr[_PDCLIB_ERRNO_MAX];

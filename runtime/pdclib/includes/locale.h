@@ -134,7 +134,6 @@ locale_t duplocale( locale_t loc );
 void freelocale( locale_t loc );
 #endif
 
-_PDCLIB_END_EXTERN_C
 #endif
 
 #ifdef __cplusplus

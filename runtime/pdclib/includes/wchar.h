@@ -77,9 +77,7 @@ wchar_t * wmemchr( const wchar_t * s, wchar_t c, size_t n );
 size_t wcslen( const wchar_t * s );
 wchar_t * wmemset( wchar_t * s, wchar_t c, size_t n );
 
-#if 0
 size_t wcsftime(wchar_t *_PDCLIB_restrict s, size_t maxsize, const wchar_t *_PDCLIB_restrict format, const struct tm *_PDCLIB_restrict timeptr);
-#endif
 
 /* Wide character I/O */
 int fwprintf( _PDCLIB_file_t * _PDCLIB_restrict stream, const wchar_t * _PDCLIB_restrict format, ... );
@@ -117,25 +115,32 @@ int fputws_unlocked( const wchar_t * ws, _PDCLIB_file_t * stream );
 #endif
 
 /* Wide character <-> Numeric conversions */
-#if 0
 double wcstod(const wchar_t *_PDCLIB_restrict nptr, wchar_t **_PDCLIB_restrict endptr);
 float wcstof(const wchar_t *_PDCLIB_restrict nptr, wchar_t **_PDCLIB_restrict endptr);
 long double wcstold(const wchar_t *_PDCLIB_restrict nptr, wchar_t **_PDCLIB_restrict endptr);
-#endif
 long int wcstol(const wchar_t *_PDCLIB_restrict nptr, wchar_t **_PDCLIB_restrict endptr, int base);
 long long int wcstoll(const wchar_t *_PDCLIB_restrict nptr, wchar_t **_PDCLIB_restrict endptr, int base);
 unsigned long int wcstoul(const wchar_t *_PDCLIB_restrict nptr, wchar_t **_PDCLIB_restrict endptr, int base);
 unsigned long long int wcstoull(const wchar_t *_PDCLIB_restrict nptr, wchar_t **_PDCLIB_restrict endptr, int base);
 
 /* Character set conversion */
-wint_t btowc(int c);
-int wctob(wint_t c);
-int mbsinit(const mbstate_t *ps);
-size_t mbrlen(const char *_PDCLIB_restrict s, size_t n, mbstate_t *_PDCLIB_restrict ps);
-size_t mbrtowc(wchar_t *_PDCLIB_restrict pwc, const char *_PDCLIB_restrict s, size_t n, mbstate_t *_PDCLIB_restrict ps);
-size_t wcrtomb(char *_PDCLIB_restrict s, wchar_t wc, mbstate_t *_PDCLIB_restrict ps);
-size_t mbsrtowcs(wchar_t *_PDCLIB_restrict dst, const char **_PDCLIB_restrict src, size_t len, mbstate_t *_PDCLIB_restrict ps);
-size_t wcsrtombs(char *_PDCLIB_restrict dst, const wchar_t **_PDCLIB_restrict src, size_t len, mbstate_t *_PDCLIB_restrict ps);
+wint_t btowc( int c );
+int wctob( wint_t c );
+int mbsinit( const mbstate_t * ps );
+size_t mbrlen( const char * _PDCLIB_restrict s, size_t n, mbstate_t * _PDCLIB_restrict ps );
+size_t mbrtowc( wchar_t * _PDCLIB_restrict pwc, const char * _PDCLIB_restrict s, size_t n, mbstate_t * _PDCLIB_restrict ps );
+size_t wcrtomb( char * _PDCLIB_restrict s, wchar_t wc, mbstate_t * _PDCLIB_restrict ps );
+size_t mbsrtowcs( wchar_t * _PDCLIB_restrict dst, const char * * _PDCLIB_restrict src, size_t len, mbstate_t * _PDCLIB_restrict ps );
+size_t wcsrtombs( char * _PDCLIB_restrict dst, const wchar_t * * _PDCLIB_restrict src, size_t len, mbstate_t * _PDCLIB_restrict ps );
 
-_PDCLIB_END_EXTERN_C
+/* FIXME: remove this (DIVINE) */
+size_t mbsnrtowcs(wchar_t *dest, const char **src,
+                  size_t nms, size_t len, mbstate_t *ps);
+size_t wcsnrtombs(char *dest, const wchar_t **src, size_t nwc,
+                  size_t len, mbstate_t *ps);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

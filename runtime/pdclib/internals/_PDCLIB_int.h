@@ -101,7 +101,9 @@
 #endif
 #define _PDCLIB_ULLONG_MIN 0
 
-_PDCLIB_BEGIN_EXTERN_C
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* -------------------------------------------------------------------------- */
 /* <stdint.h> exact-width types and their limits                              */
@@ -371,7 +373,7 @@ typedef struct lconv              _PDCLIB_lconv_t;
 _PDCLIB_size_t _PDCLIB_mb_cur_max( void );
 
 /* wide-character EOF */
-#define _PDCLIB_WEOF ((wint_t) -1
+#define _PDCLIB_WEOF ((wint_t) -1)
 
 /* -------------------------------------------------------------------------- */
 /* stdio                                                                      */
@@ -414,6 +416,8 @@ struct _PDCLIB_status_t
     _PDCLIB_va_list  arg;    /* argument stack                               */
 };
 
-_PDCLIB_END_EXTERN_C
+#ifdef __cplusplus
+}
+#endif
 
 #endif

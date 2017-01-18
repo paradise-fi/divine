@@ -16,6 +16,10 @@ extern "C" {
 extern int * _PDCLIB_errno_func( void );
 #define errno (*_PDCLIB_errno_func())
 
+#ifdef __divine__
+#include <_DIVINE_errno.h>
+#else
+
 /* C only requires the following three */
 #define ERANGE          _PDCLIB_ERANGE
 #define EDOM            _PDCLIB_EDOM
@@ -97,6 +101,7 @@ extern int * _PDCLIB_errno_func( void );
 #define ETXTBSY         _PDCLIB_ETXTBSY
 #define EWOULDBLOCK     _PDCLIB_EWOULDBLOCK
 #define EXDEV           _PDCLIB_EXDEV
+#endif
 
 #ifdef __cplusplus
 }

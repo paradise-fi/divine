@@ -9,8 +9,10 @@
 
 #ifndef REGTEST
 
-extern void (*_PDCLIB_regstack[])( void );
-extern size_t _PDCLIB_regptr;
+#ifndef __divine__
+
+extern void (*_PDCLIB_exitstack[])( void );
+extern size_t _PDCLIB_exitptr;
 
 int atexit( void (*func)( void ) )
 {

@@ -25,7 +25,8 @@ size_t _PDCLIB_exitptr = NUMBER_OF_SLOTS;
 
 void exit( int status )
 {
-    while ( _PDCLIB_regptr < NUMBER_OF_SLOTS )
+    #ifndef __divine__
+    while ( _PDCLIB_exitptr < NUMBER_OF_SLOTS )
     {
         _PDCLIB_exitstack[ _PDCLIB_exitptr++ ]();
     }

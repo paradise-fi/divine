@@ -6,9 +6,12 @@
 
 #ifndef _PDCLIB_STDARG_H
 #define _PDCLIB_STDARG_H _PDCLIB_STDARG_H
-#include <_PDCLIB_aux.h>
-#include <_PDCLIB_config.h>
-_PDCLIB_BEGIN_EXTERN_C
+#include "_PDCLIB_aux.h"
+#include "_PDCLIB_config.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef _PDCLIB_va_list va_list;
 

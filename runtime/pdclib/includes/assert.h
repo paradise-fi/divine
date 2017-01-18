@@ -49,7 +49,13 @@ void _PDCLIB_assert89( char const * const );
 
 #ifdef __divine__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void _PDCLIB_assert_dios( const char *msg );
+#ifdef __cplusplus
+}
+#endif
 
 #define assert(expression) \
     do { if(!(expression)) { \

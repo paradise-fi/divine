@@ -167,7 +167,14 @@ _PDCLIB_noreturn void abort( void ) _PDCLIB_nothrow;
    reverse order of registration (last-in, first-out).
    Returns zero if registration is successfull, nonzero if it failed.
 */
-int atexit( void (*func)( void ) ) _PDCLIB_nothrow; 
+int atexit( void (*func)( void ) ) _PDCLIB_nothrow;
+
+/* Register a function that will be called on quick_exit(), or when main() returns.
+   At least 32 functions can be registered this way, and will be called in
+   reverse order of registration (last-in, first-out).
+   Returns zero if registration is successfull, nonzero if it failed.
+*/
+int at_quick_exit( void (*func)( void ) ) _PDCLIB_nothrow;
 
 /* Normal process termination. Functions registered by atexit() (see above) are
    called, streams flushed, files closed and temporary files removed before the
@@ -267,6 +274,23 @@ lldiv_t lldiv( long long int numer, long long int denom ) _PDCLIB_nothrow;
 /* TODO: Macro MB_CUR_MAX */
 
 /*
+=============
+/* Multibyte / wide character conversion functions */
+
+/* Affected by LC_CTYPE of the current locale. For state-dependent encoding,
+   each function is placed into its initial conversion state at program
+   startup, and can be returned to that state by a call with its character
+   pointer argument s being a null pointer.
+   Changing LC_CTYPE causes the conversion state to become indeterminate.
+*/
+
+/* If s is not a null pointer, returns the number of bytes contained in the
+   multibyte character pointed to by s (if the next n or fewer bytes form a
+   valid multibyte character); -1, if they don't; or 0, if s points to the
+   null character.
+   If s is a null pointer, returns nonzero if multibyte encodings in the
+   current locale are stateful, and zero otherwise.
+*/
 int mblen( const char * s, size_t n );
 
 /* If s is not a null pointer, and the next n bytes (maximum) form a valid
@@ -325,7 +349,19 @@ size_t mbstowcs( wchar_t * _PDCLIB_restrict pwcs, const char * _PDCLIB_restrict 
    equals n.)
 */
 size_t wcstombs( char * _PDCLIB_restrict s, const wchar_t * _PDCLIB_restrict pwcs, size_t n );
-*/
 
-_PDCLIB_END_EXTERN_C
+int mkstemp( char *templ );
+int mkostemp( char *templ, int flags );
+
+#ifdef __divine__
+
+extern int __cxa_atexit(void (*f)(void*), void* p, void* d);
+extern int __cxa_finalize(void*);
+
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

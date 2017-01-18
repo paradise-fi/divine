@@ -10,7 +10,9 @@
 #define _PDCLIB_SIGNAL_H _PDCLIB_SIGNAL_H
 #include <_PDCLIB_config.h>
 #include <_PDCLIB_glue.h>
-_PDCLIB_BEGIN_EXTERN_C
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Signals ------------------------------------------------------------------ */
 
@@ -86,6 +88,8 @@ void (*signal( int sig, void (*func)( int ) ) )( int );
    Returns zero if successful, nonzero otherwise. */
 int raise( int sig );
 
-_PDCLIB_END_EXTERN_C
+#ifdef __cplusplus
+}
+#endif
 #endif
 

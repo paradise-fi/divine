@@ -6,8 +6,12 @@
 
 #ifndef _PDCLIB_STDIO_H
 #define _PDCLIB_STDIO_H _PDCLIB_STDIO_H
-#include <_PDCLIB_int.h>
-_PDCLIB_BEGIN_EXTERN_C
+#include "_PDCLIB_int.h"
+#include <sys/types.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef _PDCLIB_SIZE_T_DEFINED
 #define _PDCLIB_SIZE_T_DEFINED _PDCLIB_SIZE_T_DEFINED
@@ -948,5 +952,13 @@ _PDCLIB_uint_fast64_t _PDCLIB_ftell64( FILE * stream ) _PDCLIB_nothrow;
 _PDCLIB_uint_fast64_t _PDCLIB_ftell64_unlocked( FILE * stream ) _PDCLIB_nothrow;
 #endif
 
-_PDCLIB_END_EXTERN_C
+/* FIXME: divine */
+int asprintf(char **strp, const char *fmt, ...);
+int vasprintf(char **strp, const char *fmt, _PDCLIB_va_list ap);
+int fileno( FILE *f ) _PDCLIB_nothrow;
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

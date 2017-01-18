@@ -3,6 +3,10 @@
 #include "_PDCLIB_aux.h"
 #include "_PDCLIB_config.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef __APPLE__
 #include <_types.h>
 #define _PDCLIB_THR_T __darwin_pthread_t

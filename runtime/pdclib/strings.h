@@ -7,7 +7,9 @@
 
 #include <stddef.h>
 
-_PDCLIB_BEGIN_EXTERN_C
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* The strcasecmp() function shall compare, while ignoring differences in case,
    the string pointed to by s1 to the string pointed to by s2.
@@ -27,7 +29,9 @@ int strcasecmp( const char *s1, const char *s2 ) _PDCLIB_nothrow;
  */
 int strncasecmp( const char *s1, const char *s2, size_t n ) _PDCLIB_nothrow;
 
-_PDCLIB_END_EXTERN_C
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* string.h  */
 

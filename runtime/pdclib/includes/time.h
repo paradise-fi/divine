@@ -74,17 +74,18 @@ struct tm * localtime( const time_t * timer ) _PDCLIB_nothrow;
 
 size_t strftime( char * _PDCLIB_restrict s, size_t maxsize, const char * _PDCLIB_restrict format, const struct tm * _PDCLIB_restrict timeptr );
 
+#define CLOCK_REALTIME              1
+#define CLOCK_MONOTONIC             2
+#define CLOCK_PROCESS_CPUTIME_ID    3
+#define CLOCK_THREAD_CPUTIME_ID     4
+
+typedef unsigned int clockid_t;
+
+/* added for DIVINE */
+int nanosleep(const struct timespec *req, struct timespec *rem);
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+
 #ifdef __cplusplus
 }
 #endif
-
-#ifndef _PDCLIB_STRUCT_TM_DEFINED
-#define _PDCLIB_STRUCT_TM_DEFINED
-_PDCLIB_DEFINE_STRUCT_TM()
-#endif
-
-time_t time( time_t* t ) _PDCLIB_nothrow;
-int timespec_get( struct timespec *ts, int base ) _PDCLIB_nothrow;
-
-_PDCLIB_END_EXTERN_C
 #endif
