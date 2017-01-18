@@ -79,23 +79,21 @@ struct YamlSink : TimedSink
     mc::Job::PoolStats latest;
     SysInfo _sysinfo;
 
-    MSecs _lart, _rr, _constants, _search;
-
     YamlSink( bool detailed ) : _detailed( detailed ) {}
 
-    void progress( int states, int, bool last ) override
+    void progress( int states, int q, bool last ) override
     {
+        TimedSink::progress( states, q, last );
+
         if ( !last )
             return;
 
-        _search = update_interval();
         std::cout << std::endl << "state count: " << states
-                  << std::endl << "states per second: " << timeavg( states )
+                  << std::endl << "states per second: " << timeavg( states, _time_search )
                   << std::endl << "version: " << version()
                   << std::endl << std::endl;
         _sysinfo.report( []( auto k, auto v )
                          { std::cout << k << ": " << v << std::endl; } );
-        TimedSink::start();
     }
 
     void memory( const mc::Job::PoolStats &st, bool last ) override
@@ -108,12 +106,15 @@ struct YamlSink : TimedSink
 
     void result( mc::Result result, const mc::Trace &trace ) override
     {
+        TimedSink::result( result, trace );
         std::cout << "timers:";
         std::cout << std::setprecision( 3 );
-        std::cout << std::endl << "  search: " << double( _search.count() ) / 1000
-                  << std::endl << "  lart: " << double( _lart.count() ) / 1000
-                  << std::endl << "  loader: " << double( _rr.count() + _constants.count() ) / 1000
-                  << std::endl << "  ce: " << double( _interval.count() ) / 1000 << std::endl;
+        std::cout << std::endl << "  lart: " << double( _time_lart.count() ) / 1000
+                  << std::endl << "  loader: " << double( _time_rr.count() + _time_const.count() ) / 1000
+                  << std::endl << "  boot: " << double( _time_boot.count() ) / 1000
+                  << std::endl << "  search: " << double( _time_search.count() ) / 1000
+                  << std::endl << "  ce: " << double( _time_ce.count() ) / 1000 << std::endl;
+
         std::cout << result << std::endl;
         if ( result == mc::Result::None || result == mc::Result::Valid )
             return;
@@ -126,17 +127,6 @@ struct YamlSink : TimedSink
         std::cout << "choices made:" << trace.choices << std::endl;
     }
 
-    void loader( Phase p ) override
-    {
-        switch ( p )
-        {
-            case Phase::LART:      TimedSink::start(); break;
-            case Phase::RR:        _lart = update_interval(); TimedSink::start(); break;
-            case Phase::Constants: _rr = update_interval();   TimedSink::start(); break;
-            case Phase::Done:      _constants = update_interval(); break;
-        }
-    }
-
 };
 
 /* print progress updates to stderr */
@@ -144,17 +134,17 @@ struct InteractiveSink : TimedSink
 {
     virtual void progress( int states, int queued, bool last ) override
     {
-        update_interval();
+        TimedSink::progress( states, queued, last );
         if ( last )
             std::cerr << "\rfound " << states
-                      << " states in " << interval_str()
-                      << ", averaging " << timeavg_str( states )
-                      << "                             " << std::endl << std::endl;
+                << " states in " << interval_str( _time_search )
+                << ", averaging " << timeavg_str( states, _time_search )
+                << "                             " << std::endl;
         else
             std::cerr << "\rsearching: " << states
-                      << " states found in " << interval_str()
-                      << ", averaging " << timeavg_str( states )
-                      << ", queued: " << queued << "      ";
+                << " states found in " << interval_str( interval() )
+                << ", averaging " << timeavg_str( states, interval() )
+                << ", queued: " << queued << "      ";
     }
 
     void loader( Phase p ) override
@@ -169,7 +159,6 @@ struct InteractiveSink : TimedSink
     }
 
     virtual void info( std::string ) override {}
-    virtual void start() override { TimedSink::start(); }
 };
 
 struct NullSink : LogSink {};

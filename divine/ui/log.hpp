@@ -53,33 +53,61 @@ struct TimedSink : LogSink
 
     Clock::time_point _start;
     MSecs _interval;
+    MSecs _time_lart, _time_rr, _time_const, _time_boot, _time_search, _time_ce;
 
-    std::string interval_str()
+    std::string interval_str( MSecs i )
     {
         std::stringstream t;
-        t << int( _interval.count() / 60000 ) << ":"
-          << std::setw( 2 ) << std::setfill( '0' ) << int( _interval.count() / 1000 ) % 60;
+        t << int( i.count() / 60000 ) << ":"
+          << std::setw( 2 ) << std::setfill( '0' ) << int( i.count() / 1000 ) % 60;
         return t.str();
     }
 
-    double timeavg( double val )
+    double timeavg( double val, MSecs timer )
     {
-        return 1000 * val / _interval.count();
+        return 1000 * val / timer.count();
     }
 
-    std::string timeavg_str( double val )
+    std::string timeavg_str( double val, MSecs timer )
     {
         std::stringstream s;
-        s << std::fixed << std::setprecision( 1 ) << timeavg( val );
+        s << std::fixed << std::setprecision( 1 ) << timeavg( val, timer );
         return s.str();
     }
 
-    MSecs update_interval()
+    MSecs msecs( Clock::time_point from, Clock::time_point to )
     {
-        return _interval = std::chrono::duration_cast< MSecs >( Clock::now() - _start );
+        return std::chrono::duration_cast< MSecs >( from - to );
     }
 
-    void start() override { _start = Clock::now(); }
+    MSecs reset_interval()
+    {
+        auto start = _start;
+        _start = Clock::now();
+        return _interval = msecs( _start, start );
+    }
+
+    MSecs interval() { return msecs( _start, Clock::now() ); }
+    void start() override { _time_boot = reset_interval(); }
+    void result( mc::Result, const mc::Trace & ) override { _time_ce = reset_interval(); }
+
+    void progress( int, int, bool last ) override
+    {
+        if ( last )
+            _time_search = reset_interval();
+    }
+
+    void loader( Phase p ) override
+    {
+        switch ( p )
+        {
+            case Phase::LART:      reset_interval(); break;
+            case Phase::RR:        _time_lart  = reset_interval(); break;
+            case Phase::Constants: _time_rr    = reset_interval(); break;
+            case Phase::Done:      _time_const = reset_interval(); break;
+        }
+    }
+
 };
 
 }

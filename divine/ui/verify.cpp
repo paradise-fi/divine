@@ -66,6 +66,9 @@ void Verify::run()
                    } );
     safety->wait();
 
+    if ( safety->result() == mc::Result::Valid )
+        return _log->result( safety->result(), mc::Trace() );
+
     vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
     vm::setup::dbg_boot( dbg );
 
