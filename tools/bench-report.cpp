@@ -81,7 +81,6 @@ void Report::results()
     if ( _instance >= 0 )
         q << " and instance.id = " << _instance;
 
-    std::cerr << q.str() << std::endl;
     nanodbc::statement find( _conn, q.str() );
     format( find.execute(), odbc::Keys{ "instance", "model", "states", "result", "search", "ce" } );
 
