@@ -1792,7 +1792,7 @@ struct TProgram
 };
 
 template< typename Prog >
-struct TContext : vm::Context< Prog, vm::MutableHeap >
+struct TContext : vm::Context< Prog, vm::MutableHeap<> >
 {
     vm::Fault _fault;
 
@@ -1812,7 +1812,7 @@ struct TContext : vm::Context< Prog, vm::MutableHeap >
     void trace( vm::TraceStateType ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceAlg ) { NOT_IMPLEMENTED(); }
 
-    TContext( Prog &p ) : vm::Context< Prog, vm::MutableHeap >( p ), _fault( _VM_F_NoFault ) {}
+    TContext( Prog &p ) : vm::Context< Prog, vm::MutableHeap<> >( p ), _fault( _VM_F_NoFault ) {}
 };
 
 struct Eval
