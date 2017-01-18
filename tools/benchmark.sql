@@ -43,7 +43,13 @@ create table instance( id      integer primary key not null,
 create table execution( id       integer primary key not null,
                         instance integer references instance( id ) not null,
                         started  timestamp default current_timestamp not null,
-                        result   char(1) ); -- V = valid, E = error, B = boot error
+                        time_lart   integer, -- milliseconds
+                        time_load   integer, -- milliseconds
+                        time_boot   integer, -- milliseconds
+                        time_search integer, -- milliseconds
+                        time_smt    integer, -- milliseconds
+                        time_ce     integer, -- milliseconds
+                        result   char(1) default 'U' not null ); -- V = valid, E = error, B = boot error, U = unknown
 
 create table pool_log( id integer primary key,
                        seq integer not null,
