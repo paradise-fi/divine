@@ -24,10 +24,13 @@
 namespace divine {
 namespace ui {
 
+enum class Phase { LART, RR, Constants, Done };
+
 struct LogSink
 {
     virtual void progress( int, int, bool ) {}
     virtual void memory( const mc::Job::PoolStats &, bool ) {}
+    virtual void loader( Phase ) {}
     virtual void info( std::string ) {}
     virtual void result( mc::Result, const mc::Trace & ) {}
     virtual void start() {}
@@ -42,6 +45,42 @@ SinkPtr make_interactive();
 SinkPtr make_yaml( bool detailed );
 SinkPtr make_odbc( std::string connstr );
 SinkPtr make_composite( std::vector< SinkPtr > );
+
+struct TimedSink : LogSink
+{
+    using Clock = std::chrono::steady_clock;
+    using MSecs = std::chrono::milliseconds;
+
+    Clock::time_point _start;
+    MSecs _interval;
+
+    std::string interval_str()
+    {
+        std::stringstream t;
+        t << int( _interval.count() / 60000 ) << ":"
+          << std::setw( 2 ) << std::setfill( '0' ) << int( _interval.count() / 1000 ) % 60;
+        return t.str();
+    }
+
+    double timeavg( double val )
+    {
+        return 1000 * val / _interval.count();
+    }
+
+    std::string timeavg_str( double val )
+    {
+        std::stringstream s;
+        s << std::fixed << std::setprecision( 1 ) << timeavg( val );
+        return s.str();
+    }
+
+    MSecs update_interval()
+    {
+        return _interval = std::chrono::duration_cast< MSecs >( Clock::now() - _start );
+    }
+
+    void start() override { _start = Clock::now(); }
+};
 
 }
 }

@@ -27,17 +27,20 @@ namespace ui {
 
 void Verify::setup()
 {
+    if ( _log == nullsink() )
+    {
+        std::vector< SinkPtr > log;
+
+        if ( _interactive )
+            log.push_back( make_interactive() );
+
+        if ( _report != Report::None )
+            log.push_back( make_yaml( _report == Report::YamlLong ) );
+
+        _log = make_composite( log );
+    }
+
     WithBC::setup();
-
-    std::vector< SinkPtr > log;
-
-    if ( _interactive )
-        log.push_back( make_interactive() );
-
-    if ( _report != Report::None )
-        log.push_back( make_yaml( _report == Report::YamlLong ) );
-
-    _log = make_composite( log );
 }
 
 void Verify::run()

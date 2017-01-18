@@ -234,6 +234,19 @@ void WithBC::setup()
     _bc->lart( _lartPasses );
 }
 
+void WithBC::init()
+{
+    ASSERT( !_init_done );
+
+    _log->loader( Phase::LART );
+    _bc->do_lart();
+    _log->loader( Phase::RR );
+    _bc->do_rr();
+    _log->loader( Phase::Constants );
+    _bc->do_constants();
+    _log->loader( Phase::Done );
+}
+
 void Cc::run()
 {
     cc::Compile driver( _drv );

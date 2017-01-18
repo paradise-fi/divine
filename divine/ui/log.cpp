@@ -43,6 +43,9 @@ struct CompositeSink : LogSink
     void info( std::string i ) override
     { each( [&]( auto s ) { s->info( i ); } ); }
 
+    void loader( Phase p ) override
+    { each( [&]( auto s ) { s->loader( p ); } ); }
+
     void result( mc::Result res, const mc::Trace &tr ) override
     { each( [&]( auto s ) { s->result( res, tr ); } ); }
 
@@ -50,42 +53,6 @@ struct CompositeSink : LogSink
     { each( [&]( auto s ) { s->start(); } ); }
 };
 
-
-struct TimedSink : LogSink
-{
-    using Clock = std::chrono::steady_clock;
-    using MSecs = std::chrono::milliseconds;
-
-    Clock::time_point _start;
-    MSecs _interval;
-
-    std::string interval_str()
-    {
-        std::stringstream t;
-        t << int( _interval.count() / 60000 ) << ":"
-          << std::setw( 2 ) << std::setfill( '0' ) << int( _interval.count() / 1000 ) % 60;
-        return t.str();
-    }
-
-    double timeavg( double val )
-    {
-        return 1000 * val / _interval.count();
-    }
-
-    std::string timeavg_str( double val )
-    {
-        std::stringstream s;
-        s << std::fixed << std::setprecision( 1 ) << timeavg( val );
-        return s.str();
-    }
-
-    void update_interval()
-    {
-        _interval = std::chrono::duration_cast< MSecs >( Clock::now() - _start );
-    }
-
-    void start() override { _start = Clock::now(); }
-};
 
 template< typename S >
 std::string printitem( S s )
@@ -112,6 +79,8 @@ struct YamlSink : TimedSink
     mc::Job::PoolStats latest;
     SysInfo _sysinfo;
 
+    MSecs _lart, _rr, _constants, _search;
+
     YamlSink( bool detailed ) : _detailed( detailed ) {}
 
     void progress( int states, int, bool last ) override
@@ -119,15 +88,14 @@ struct YamlSink : TimedSink
         if ( !last )
             return;
 
-        update_interval();
-        std::cout << "search time: " << std::setprecision( 3 )
-                  << double( _interval.count() ) / 1000
-                  << std::endl << "state count: " << states
+        _search = update_interval();
+        std::cout << std::endl << "state count: " << states
                   << std::endl << "states per second: " << timeavg( states )
                   << std::endl << "version: " << version()
                   << std::endl << std::endl;
         _sysinfo.report( []( auto k, auto v )
                          { std::cout << k << ": " << v << std::endl; } );
+        TimedSink::start();
     }
 
     void memory( const mc::Job::PoolStats &st, bool last ) override
@@ -140,6 +108,12 @@ struct YamlSink : TimedSink
 
     void result( mc::Result result, const mc::Trace &trace ) override
     {
+        std::cout << "timers:";
+        std::cout << std::setprecision( 3 );
+        std::cout << std::endl << "  search: " << double( _search.count() ) / 1000
+                  << std::endl << "  lart: " << double( _lart.count() ) / 1000
+                  << std::endl << "  loader: " << double( _rr.count() + _constants.count() ) / 1000
+                  << std::endl << "  ce: " << double( _interval.count() ) / 1000 << std::endl;
         std::cout << result << std::endl;
         if ( result == mc::Result::None || result == mc::Result::Valid )
             return;
@@ -151,6 +125,18 @@ struct YamlSink : TimedSink
         std::cout << std::endl;
         std::cout << "choices made:" << trace.choices << std::endl;
     }
+
+    void loader( Phase p ) override
+    {
+        switch ( p )
+        {
+            case Phase::LART:      TimedSink::start(); break;
+            case Phase::RR:        _lart = update_interval(); TimedSink::start(); break;
+            case Phase::Constants: _rr = update_interval();   TimedSink::start(); break;
+            case Phase::Done:      _constants = update_interval(); break;
+        }
+    }
+
 };
 
 /* print progress updates to stderr */
@@ -169,6 +155,17 @@ struct InteractiveSink : TimedSink
                       << " states found in " << interval_str()
                       << ", averaging " << timeavg_str( states )
                       << ", queued: " << queued << "      ";
+    }
+
+    void loader( Phase p ) override
+    {
+        switch ( p )
+        {
+            case Phase::LART:      std::cerr << "loading bitcode … LART … " << std::flush; break;
+            case Phase::RR:        std::cerr << "RR … " << std::flush; break;
+            case Phase::Constants: std::cerr << "constants … " << std::flush; break;
+            case Phase::Done:      std::cerr << "done" << std::endl; break;
+        }
     }
 
     virtual void info( std::string ) override {}

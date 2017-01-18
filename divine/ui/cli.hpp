@@ -71,12 +71,15 @@ struct WithBC : Command
     bool _symbolic = false;
     std::string _solver;
     bool _init_done = false;
+    SinkPtr _log = nullsink();
 
     void setup();
+    void init();
+
     std::shared_ptr< vm::BitCode > bitcode()
     {
         if ( !_init_done )
-            _bc->init( true );
+            init();
         _init_done = true;
         return _bc;
     }
@@ -122,7 +125,6 @@ struct Verify : WithBC
     bool _no_counterexample = false;
     bool _interactive = true;
     Report _report = Report::Yaml;
-    SinkPtr _log;
 
     void setup() override;
     void run() override;
