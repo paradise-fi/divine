@@ -207,7 +207,8 @@ struct Program
 
     llvm::DITypeIdentifierMap ditypemap;
 
-    ConstContext< Program, MutableHeap > _ccontext;
+    using Context = ConstContext< Program, MutableHeap< 8 > >;
+    Context _ccontext;
 
     auto &heap() { return _ccontext.heap(); }
 

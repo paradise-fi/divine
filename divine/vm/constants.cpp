@@ -23,7 +23,7 @@
 
 using namespace divine::vm;
 
-using PEval = Eval< Program, ConstContext< Program, MutableHeap >, value::Void >;
+using PEval = Eval< Program, typename Program::Context, value::Void >;
 
 HeapPointer Program::s2hptr( Program::Slot v, int offset )
 {

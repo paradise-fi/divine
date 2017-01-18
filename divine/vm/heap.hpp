@@ -380,25 +380,29 @@ struct HeapMixin
     }
 };
 
+template< int _slab_bits = 20 >
 struct PoolRep
 {
-    static const int slab_bits = 20, chunk_bits = 16, tag_bits = 28;
+    static const int slab_bits = _slab_bits, chunk_bits = 16, tag_bits = 28;
     uint64_t slab:slab_bits, chunk:chunk_bits, tag:tag_bits;
 };
 
-template< typename Self >
-struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
+template< typename Self, typename PR = PoolRep<> >
+struct SimpleHeap : HeapMixin< Self, typename mem::Pool< PR >::Pointer >
 {
     Self &self() { return *static_cast< Self * >( this ); }
 
-    using ObjPool = mem::Pool< PoolRep >;
-    using SnapPool = mem::Pool< PoolRep >;
+    using ObjPool = mem::Pool< PR >;
+    using SnapPool = mem::Pool< PR >;
 
-    using Internal = ObjPool::Pointer;
-    using Snapshot = SnapPool::Pointer;
+    using Internal = typename ObjPool::Pointer;
+    using Snapshot = typename SnapPool::Pointer;
 
     using Shadows = PooledShadow< ObjPool >;
     using PointerV = value::Pointer;
+    using ShadowLoc = typename Shadows::Loc;
+    using ShadowAnchor = typename Shadows::Anchor;
+
     struct SnapItem
     {
         uint32_t first;
@@ -427,16 +431,16 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     void reset() { _l.exceptions.clear(); _l.snapshot = Snapshot(); }
     void rollback() { _l.exceptions.clear(); } /* fixme leak */
 
-    Shadows::Loc shloc( HeapPointer p, Internal i ) const
+    ShadowLoc shloc( HeapPointer p, Internal i ) const
     {
-        return Shadows::Loc( i, Shadows::Anchor(), p.offset() );
+        return ShadowLoc( i, ShadowAnchor(), p.offset() );
     }
 
-    Shadows::Loc shloc( HeapPointer p ) const { return shloc( p, ptr2i( p ) ); }
+    ShadowLoc shloc( HeapPointer p ) const { return shloc( p, ptr2i( p ) ); }
 
     uint8_t *unsafe_ptr2mem( HeapPointer, Internal i ) const
     {
-        return _objects.machinePointer< uint8_t >( i );
+        return _objects.template machinePointer< uint8_t >( i );
     }
 
     int snap_size( Snapshot s ) const
@@ -450,7 +454,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     {
         if ( !_snapshots.valid( s ) )
             return nullptr;
-        return _snapshots.machinePointer< SnapItem >( s );
+        return _snapshots.template machinePointer< SnapItem >( s );
     }
 
     SnapItem *snap_begin() const { return snap_begin( _l.snapshot ); }
@@ -592,14 +596,14 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
 
-        t.raw( *_objects.machinePointer< typename T::Raw >( i, p.offset() ) );
+        t.raw( *_objects.template machinePointer< typename T::Raw >( i, p.offset() ) );
         _shadows.read( shloc( p, i ), t );
     }
 
     template< typename T >
     void unsafe_read( HeapPointer p, T &t, Internal i ) const
     {
-        t.raw( *_objects.machinePointer< typename T::Raw >( i, p.offset() ) );
+        t.raw( *_objects.template machinePointer< typename T::Raw >( i, p.offset() ) );
     }
 
     template< typename T >
@@ -613,7 +617,7 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
         ASSERT( valid( p ), p );
         ASSERT_LEQ( sizeof( Raw ), size( p, i ) - p.offset() );
         _shadows.write( shloc( p, i ), t, []( auto, auto ) {} );
-        *_objects.machinePointer< typename T::Raw >( i, p.offset() ) = t.raw();
+        *_objects.template machinePointer< typename T::Raw >( i, p.offset() ) = t.raw();
         if ( t.pointer() && shared( p ) )
             if ( shared( value::Pointer( t ).cooked(), true ) )
                 return Internal();
@@ -662,9 +666,8 @@ struct SimpleHeap : HeapMixin< Self, mem::Pool< PoolRep >::Pointer >
     bool copy( HeapPointer f, HeapPointer t, int b ) { return copy( *this, f, t, b ); }
 };
 
-struct MutableHeap : SimpleHeap< MutableHeap >
-{
-};
+template< int slab = 20 >
+struct MutableHeap : SimpleHeap< MutableHeap< slab >, PoolRep< slab > > {};
 
 struct CowHeap : SimpleHeap< CowHeap >
 {
@@ -683,7 +686,7 @@ struct CowHeap : SimpleHeap< CowHeap >
 
             brick::hash::jenkins::SpookyState high( 0, 0 );
 
-            auto types = shadows().type( Shadows::Loc( i, Shadows::Anchor(), 0 ), size );
+            auto types = shadows().type( ShadowLoc( i, ShadowAnchor(), 0 ), size );
             auto t = types.begin();
             int offset = 0;
 
@@ -718,7 +721,7 @@ struct CowHeap : SimpleHeap< CowHeap >
                 return false;
             if ( shadows().shared( a ) != shadows().shared( b ) )
                 return false;
-            Shadows::Loc a_shloc( a, Shadows::Anchor(), 0 ), b_shloc( b, Shadows::Anchor(), 0 );
+            ShadowLoc a_shloc( a, ShadowAnchor(), 0 ), b_shloc( b, ShadowAnchor(), 0 );
             auto a_def = shadows().defined( a_shloc, size ),
                  b_def = shadows().defined( b_shloc, size );
             if ( !std::equal( a_def.begin(), a_def.end(), b_def.begin() ) )
@@ -835,7 +838,7 @@ struct CowHeap : SimpleHeap< CowHeap >
             return Snapshot();
 
         auto s = _snapshots.allocate( count * sizeof( SnapItem ) );
-        auto si = _snapshots.machinePointer< SnapItem >( s );
+        auto si = _snapshots.template machinePointer< SnapItem >( s );
         snap = snap_begin();
 
         for ( auto &except : _l.exceptions )
@@ -850,7 +853,7 @@ struct CowHeap : SimpleHeap< CowHeap >
 
         while ( snap != snap_end() )
             *si++ = *snap++;
-        ASSERT_EQ( si, _snapshots.machinePointer< SnapItem >( s ) + count );
+        ASSERT_EQ( si, _snapshots.template machinePointer< SnapItem >( s ) + count );
 
         _l.exceptions.clear();
         _ext.writable.clear();
@@ -878,7 +881,7 @@ struct MutableHeap
 
     TEST(alloc)
     {
-        vm::MutableHeap heap;
+        vm::MutableHeap<> heap;
         auto p = heap.make( 16 );
         heap.write( p.cooked(), IntV( 10 ) );
         IntV q;
@@ -888,7 +891,7 @@ struct MutableHeap
 
     TEST(conversion)
     {
-        vm::MutableHeap heap;
+        vm::MutableHeap<> heap;
         auto p = heap.make( 16 );
         ASSERT_EQ( vm::HeapPointer( p.cooked() ),
                    vm::HeapPointer( vm::GenericPointer( p.cooked() ) ) );
@@ -896,7 +899,7 @@ struct MutableHeap
 
     TEST(write_read)
     {
-        vm::MutableHeap heap;
+        vm::MutableHeap<> heap;
         PointerV p, q;
         p = heap.make( 16 );
         heap.write( p.cooked(), p );
@@ -906,7 +909,7 @@ struct MutableHeap
 
     TEST(resize)
     {
-        vm::MutableHeap heap;
+        vm::MutableHeap<> heap;
         PointerV p, q;
         p = heap.make( 16 );
         heap.write( p.cooked(), p );
@@ -918,7 +921,7 @@ struct MutableHeap
 
     TEST(clone_int)
     {
-        vm::MutableHeap heap, cloned;
+        vm::MutableHeap<> heap, cloned;
         auto p = heap.make( 16 );
         heap.write( p.cooked(), IntV( 33 ) );
         auto c = vm::heap::clone( heap, cloned, p.cooked() );
@@ -930,7 +933,7 @@ struct MutableHeap
 
     TEST(clone_ptr)
     {
-        vm::MutableHeap heap, cloned;
+        vm::MutableHeap<> heap, cloned;
         auto p = heap.make( 16 ), q = heap.make( 16 );
         heap.write( p.cooked(), q );
         heap.write( q.cooked(), p );
@@ -944,7 +947,7 @@ struct MutableHeap
 
     TEST(compare)
     {
-        vm::MutableHeap heap, cloned;
+        vm::MutableHeap<> heap, cloned;
         auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
         heap.write( p, PointerV( q ) );
         heap.write( q, PointerV( p ) );
@@ -957,7 +960,7 @@ struct MutableHeap
 
     TEST(hash)
     {
-        vm::MutableHeap heap, cloned;
+        vm::MutableHeap<> heap, cloned;
         auto p = heap.make( 16 ).cooked(), q = heap.make( 16 ).cooked();
         heap.write( p, PointerV( q ) );
         heap.write( p + vm::PointerBytes, PointerV( p ) );

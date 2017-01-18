@@ -26,7 +26,7 @@
 namespace divine {
 namespace vm {
 
-struct RunContext : Context< Program, MutableHeap >
+struct RunContext : Context< Program, MutableHeap<> >
 {
     std::mt19937 _rand;
     using Context::Context;
