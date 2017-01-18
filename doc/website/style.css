@@ -194,6 +194,10 @@ table.test_results {
     border-collapse: collapse;
 }
 
+table.test_results td {
+    padding: 0px;
+}
+
 span.test_passed {
     color: green;
 }
@@ -206,35 +210,77 @@ span.test_skipped {
     color: gray;
 }
 
-td.test {
-    padding-right: 1em;
-}
-
-td.test_result {
+td.long_test {
     text-align: center;
 }
 
 td.test_result a {
     color: white;
-    padding: 4px
+    padding: 4px;
 }
 
-td.test_passed {
+td.test_passed, a.test_passed {
     background-color: green;
 }
 
-td.test_failed {
+td.test_failed, a.test_failed {
     background-color: red;
 }
 
-td.test_skipped {
+td.test_skipped, a.test_skipped {
     background-color: gray;
 }
 
-td.test_started {
+td.test_started, a.test_started {
     background-color: black;
 }
 
-td.test_interrupted {
+td.test_interrupted, a.test_interrupted {
     background-color: #999900;
+}
+
+table.test_compact td.test {
+    heigth: 100%;
+    vertical-align: top;
+    width: 8ch;
+}
+
+table.test_full td.test {
+    padding-right: 2em;
+}
+
+table.test_compact tr {
+    border-bottom: 1px solid black;
+}
+
+td.compact_tests a.test_result {
+    display: inline-block;
+    width: calc(3ch - 7px);
+    height: 1em;
+    text-align: center;
+    padding: 0px 3px 5px 3px;
+    color: white;
+    border-bottom: 1px dotted black;
+    border-right: 1px dotted black;
+}
+
+td.compact_tests a.test_failed {
+    vertical-align: -1px;
+    padding: 1px 3px 4px 3px;
+}
+
+td.compact_tests a.test_result:hover {
+    color: #AAAAAA;
+}
+
+td.compact_tests div {
+    margin-bottom: -1px;
+}
+
+td.compact_tests {
+    background-color: #DDDDDD;
+}
+
+table.test_compact {
+    border-top: 1px solid black;
 }
