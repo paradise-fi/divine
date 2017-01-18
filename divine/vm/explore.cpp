@@ -7,6 +7,9 @@ namespace divine {
 namespace vm {
 namespace explore {
 
+namespace smt = brick::smt;
+namespace proc = brick::proc;
+
 struct FormulaMap {
 
     sym::Formula *hp2form( HeapPointer ptr ) {

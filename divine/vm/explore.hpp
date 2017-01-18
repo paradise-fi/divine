@@ -33,8 +33,8 @@
 namespace divine {
 namespace vm {
 
-using namespace brick;
 using namespace std::literals;
+namespace hashset = brick::hashset;
 
 namespace explore {
 
