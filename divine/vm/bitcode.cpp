@@ -57,7 +57,7 @@ BitCode::BitCode( std::unique_ptr< llvm::Module > m, std::shared_ptr< llvm::LLVM
 }
 
 
-void BitCode::init( bool verbose )
+void BitCode::do_lart()
 {
     lart::Driver lart;
 
@@ -84,23 +84,27 @@ void BitCode::init( bool verbose )
         lart.setup( lart::divine::functionMetaPass() );
     if ( mod->getGlobalVariable( "__sys_env" ) )
         lart::util::replaceGlobalArray( *mod, "__sys_env", _env );
-    if ( verbose )
-        std::cerr << "annotating bitcode..." << std::flush;
     lart.process( mod );
-    if ( verbose )
-        std::cerr << " done" << std::endl;
+}
 
+void BitCode::do_rr()
+{
+    auto mod = _module.get();
     _program.reset( new Program( mod ) );
-
-    if ( verbose )
-        std::cerr << "computing RR..." << std::flush;
     _program->setupRR();
     _program->computeRR();
-    if ( verbose )
-        std::cerr << " constants..." << std::flush;
+}
+
+void BitCode::do_constants()
+{
     _program->computeStatic();
-    if ( verbose )
-        std::cerr << " done" << std::endl;
+}
+
+void BitCode::init()
+{
+    do_lart();
+    do_rr();
+    do_constants();
 }
 
 BitCode::~BitCode() { }

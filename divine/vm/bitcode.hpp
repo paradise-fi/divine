@@ -65,9 +65,14 @@ struct BitCode {
     void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
     void reduce( bool r ) { _reduce = r; }
     void environment( Env env ) { _env = env; }
-    void lart( std::vector< std::string > passes = {} ) { _lart = passes; }
+    void lart( std::vector< std::string > passes ) { _lart = passes; }
 
-    void init( bool verbose );
+    void do_lart();
+    void do_rr();
+    void do_constants();
+
+    void init();
+
     ~BitCode();
 };
 
@@ -82,7 +87,7 @@ auto c2bc( std::string s )
     divine::cc::Compiler c( ctx );
     c.mapVirtualFile( "main.c", s );
     auto rv = std::make_shared< vm::BitCode >( c.compileModule( "main.c" ), ctx );
-    rv->init( false );
+    rv->init();
     return rv;
 }
 }
