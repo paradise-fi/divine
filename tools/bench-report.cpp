@@ -70,7 +70,7 @@ void Report::results()
     std::stringstream q;
     q << "select instance.id, model.name, "
       << "(select max(states) from search_log where execution = execution.id ), "
-      << "execution.result "
+      << "execution.result, time_search, time_ce "
       << "from execution join instance join job join model "
       << "on instance.id = execution.instance "
       << "and job.execution = execution.id and job.model = model.id "
@@ -83,7 +83,7 @@ void Report::results()
 
     std::cerr << q.str() << std::endl;
     nanodbc::statement find( _conn, q.str() );
-    format( find.execute(), odbc::Keys{ "instance", "model", "states", "result" } );
+    format( find.execute(), odbc::Keys{ "instance", "model", "states", "result", "search", "ce" } );
 
     if ( _watch )
     {
