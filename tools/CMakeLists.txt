@@ -25,7 +25,7 @@ target_link_libraries( lart
 target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine divine-rt )
 
 if ( OPT_SQL )
-  add_executable( divbench benchmark.cpp )
+  add_executable( divbench benchmark.cpp bench-report.cpp bench-run.cpp )
   target_link_libraries( divbench libdivine divine-rt )
 endif()
 
