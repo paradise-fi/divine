@@ -57,6 +57,14 @@ void Import::files()
     std::stringstream script;
 
     script << "cc -o testcase.bc ";
+
+    for ( auto s : _srcs )
+        if ( brick::string::endsWith( s, ".cpp" ) )
+        {
+            script << "-std=c++14 ";
+            break;
+        }
+
     for ( auto s : _srcs )
         script << s << " ";
     script << std::endl << "verify testcase.bc";
