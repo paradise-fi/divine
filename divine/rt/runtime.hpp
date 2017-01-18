@@ -20,12 +20,14 @@
 
 #include <brick-fs>
 #include <brick-string>
+#include <experimental/string_view>
 
 namespace divine {
 namespace rt {
 
 using brick::fs::joinPath;
 using brick::string::endsWith;
+using std::experimental::string_view;
 
 const std::string includeDir = "/divine/include";
 const std::string srcDir = "/divine/src";
@@ -40,11 +42,11 @@ static std::string directory( std::string name )
     return includeDir;
 }
 
-void each( std::function< void( std::string, const std::string & ) > yield );
+void each( std::function< void( std::string, string_view ) > yield );
 
-static std::string source( std::string path )
+static string_view source( std::string path )
 {
-    std::string res;
+    string_view res;
     each( [&]( auto n, auto c ) { if ( n == path ) res = c; } );
     return res;
 }

@@ -264,7 +264,7 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
     std::stringstream out;
 
     brick::string::Splitter split( "\n", std::regex::extended );
-    auto src = rt::source( di->getFilename() );
+    std::string src( rt::source( di->getFilename() ) );
     if ( src.empty() )
         src = brick::fs::readFile( di->getFilename() );
 

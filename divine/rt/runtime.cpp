@@ -21,7 +21,7 @@
 namespace divine::str
 {
 
-struct stringtable { std::string n; const std::string &c; };
+struct stringtable { std::string n; rt::string_view c; };
 extern stringtable runtime_list[];
 
 }
@@ -29,7 +29,7 @@ extern stringtable runtime_list[];
 namespace divine::rt
 {
 
-void each( std::function< void( std::string, const std::string & ) > yield )
+void each( std::function< void( std::string, string_view ) > yield )
 {
     for ( auto src = str::runtime_list; !src->n.empty(); ++src )
         yield( joinPath( directory( src->n ), src->n ), src->c );
