@@ -50,7 +50,7 @@ void Verify::run()
     if ( !_threads )
         _threads = std::min( 4u, std::thread::hardware_concurrency() );
 
-    auto safety = mc::make_safety( bitcode(), ss::passive_listen(), _symbolic, true );
+    auto safety = mc::make_safety( bitcode(), ss::passive_listen(), _symbolic );
 
     SysInfo sysinfo;
     sysinfo.setMemoryLimitInBytes( _max_mem );

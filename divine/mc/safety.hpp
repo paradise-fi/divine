@@ -65,15 +65,13 @@ struct Safety : Job
                 [&]( auto st ) { return _next.state( st ); } ) );
     }
 
-    Safety( vm::explore::BC bc, Next next, bool verbose )
+    Safety( vm::explore::BC bc, Next next )
         : _ex( bc ),
           _ext( _ex.pool() ),
           _next( next ),
           _error_found( false )
     {
-        if ( verbose ) std::cerr << "booting... " << std::flush;
         _ex.start();
-        if ( verbose ) std::cerr << "done" << std::endl;
     }
 
     void start( int threads ) override
@@ -124,11 +122,11 @@ struct Safety : Job
 };
 
 template< typename Next >
-std::shared_ptr< Job > make_safety( vm::explore::BC bc, Next next, bool symbolic = false, bool verbose = false )
+std::shared_ptr< Job > make_safety( vm::explore::BC bc, Next next, bool symbolic = false )
 {
     if ( symbolic )
-        return std::make_shared< Safety< Next, vm::SymbolicExplore > >( bc, next, verbose );
-    return std::make_shared< Safety< Next, vm::Explore > >( bc, next, verbose );
+        return std::make_shared< Safety< Next, vm::SymbolicExplore > >( bc, next );
+    return std::make_shared< Safety< Next, vm::Explore > >( bc, next );
 }
 
 }
