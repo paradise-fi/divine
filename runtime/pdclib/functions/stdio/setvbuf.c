@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* setvbuf( FILE *, char *, int, size_t )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -11,7 +9,7 @@
 #include <limits.h>
 
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
+#include "_PDCLIB_io.h"
 
 int setvbuf( FILE * _PDCLIB_restrict stream, char * _PDCLIB_restrict buf, int mode, size_t size )
 {
@@ -76,10 +74,10 @@ int setvbuf( FILE * _PDCLIB_restrict stream, char * _PDCLIB_restrict buf, int mo
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 #include <errno.h>
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
+#include "_PDCLIB_io.h"
 #endif
 #define BUFFERSIZE 500
 

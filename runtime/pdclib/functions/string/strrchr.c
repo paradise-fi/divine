@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* strrchr( const char *, int c )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -27,7 +25,7 @@ char * strrchr( const char * s, int c )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

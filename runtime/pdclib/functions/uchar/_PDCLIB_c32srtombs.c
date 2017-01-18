@@ -1,8 +1,4 @@
-/* _PDCLIB_c32srtombs(
-    char            *_PDCLIB_restrict   dst, 
-    const char32_t **_PDCLIB_restrict   src, 
-    size_t                              len, 
-    mbstate_t       *_PDCLIB_restrict   ps);
+/* _PDCLIB_c32srtombs( char *, const char32_t * *, size_t, mbstate_t * )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -12,10 +8,10 @@
 #include <uchar.h>
 #include <errno.h>
 #include <stdint.h>
-#include <_PDCLIB_encoding.h>
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_encoding.h"
+#include "_PDCLIB_locale.h"
 
-size_t _PDCLIB_c32srtombs_l(
+static size_t _PDCLIB_c32srtombs_l(
     char                *restrict   dst, 
     const char32_t     **restrict   src, 
     size_t                          len, 
@@ -24,7 +20,7 @@ size_t _PDCLIB_c32srtombs_l(
 {
     char *restrict *restrict dstp = dst ? &dst : NULL;
     len = dst ? len : SIZE_MAX;
-    
+
     size_t srclen = _PDCLIB_c32slen(*src);
     size_t dstlen = len;
 
@@ -51,7 +47,7 @@ size_t _PDCLIB_c32srtombs(
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

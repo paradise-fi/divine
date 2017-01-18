@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* imaxabs( intmax_t )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -18,7 +16,7 @@ intmax_t imaxabs( intmax_t j )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 #include <limits.h>
 
 int main( void )

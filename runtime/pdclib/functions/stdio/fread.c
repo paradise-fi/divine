@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* fwrite( void *, size_t, size_t, FILE * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -9,7 +7,7 @@
 #include <stdio.h>
 
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
+#include "_PDCLIB_io.h"
 
 #include <stdbool.h>
 #include <string.h>
@@ -49,7 +47,7 @@ size_t fread( void * _PDCLIB_restrict ptr,
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

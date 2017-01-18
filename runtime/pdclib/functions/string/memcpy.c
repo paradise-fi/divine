@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* memcpy( void *, const void *, size_t )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -21,7 +19,7 @@ void * memcpy( void * _PDCLIB_restrict s1, const void * _PDCLIB_restrict s2, siz
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

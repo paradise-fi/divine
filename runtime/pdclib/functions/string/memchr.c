@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* memchr( const void *, int, size_t )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -27,7 +25,7 @@ void * memchr( const void * s, int c, size_t n )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

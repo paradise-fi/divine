@@ -1,8 +1,4 @@
-/* _PDCLIB_mbsrtoc32s(
-    char32_t        *restrict   dst, 
-    const char     **restrict   src, 
-    size_t                              len, 
-    mbstate_t       *restrict   ps);
+/* _PDCLIB_mbsrtoc32s( char32_t *, const char * *, size_t, mbstate_t * )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -13,10 +9,10 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
-#include <_PDCLIB_encoding.h>
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_encoding.h"
+#include "_PDCLIB_locale.h"
 
-size_t _PDCLIB_mbsrtoc32s_l
+static size_t _PDCLIB_mbsrtoc32s_l
 (
     char32_t        *restrict   dst, 
     const char     **restrict   src, 
@@ -50,7 +46,7 @@ size_t _PDCLIB_mbsrtoc32s(
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

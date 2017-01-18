@@ -1,6 +1,4 @@
-/* $Id$ */
-
-/* 7.20 General utilities <stdlib.h>
+/* General utilities <stdlib.h>
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -8,8 +6,11 @@
 
 #ifndef _PDCLIB_STDLIB_H
 #define _PDCLIB_STDLIB_H _PDCLIB_STDLIB_H
-#include <_PDCLIB_int.h>
-_PDCLIB_BEGIN_EXTERN_C
+#include "_PDCLIB_int.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef _PDCLIB_SIZE_T_DEFINED
 #define _PDCLIB_SIZE_T_DEFINED _PDCLIB_SIZE_T_DEFINED
@@ -19,6 +20,15 @@ typedef _PDCLIB_size_t size_t;
 #ifndef _PDCLIB_NULL_DEFINED
 #define _PDCLIB_NULL_DEFINED _PDCLIB_NULL_DEFINED
 #define NULL _PDCLIB_NULL
+#endif
+
+#ifndef __cplusplus
+
+#ifndef _PDCLIB_WCHAR_T_DEFINED
+#define _PDCLIB_WCHAR_T_DEFINED _PDCLIB_WCHAR_T_DEFINED
+typedef _PDCLIB_wchar_t wchar_t;
+#endif
+
 #endif
 
 #ifndef _PDCLIB_MB_CUR_MAX_DEFINED
@@ -94,18 +104,25 @@ void srand( unsigned int seed ) _PDCLIB_nothrow;
 
 /* Memory management functions */
 
-/* Allocate a chunk of heap memory of given size. If request could not be
+/* Allocate a chunk of memory of given size. If request could not be
    satisfied, return NULL. Otherwise, return a pointer to the allocated
    memory. Memory contents are undefined.
 */
 void * malloc( size_t size ) _PDCLIB_nothrow;
 
-/* Allocate a chunk of heap memory that is large enough to hold nmemb elements
-   of the given size, and zero-initialize that memory. If request could not be
+/* Allocate a chunk of memory that is large enough to hold nmemb elements of
+   the given size, and zero-initialize that memory. If request could not be
    satisfied, return NULL. Otherwise, return a pointer to the allocated
    memory.
 */
 void * calloc( size_t nmemb, size_t size ) _PDCLIB_nothrow;
+
+/* Allocate a chunk of memory of given size, with specified alignment (which
+   must be a power of two; if it is not, the next greater power of two is
+   used). If request could not be satisfied, return NULL. Otherwise, return
+   a pointer to the allocated memory.
+*/
+void * aligned_alloc( size_t alignment, size_t size ) _PDCLIB_nothrow;
 
 /* De-allocate a chunk of heap memory previously allocated using malloc(),
    calloc(), or realloc(), and pointed to by ptr. If ptr does not match a
@@ -150,7 +167,7 @@ _PDCLIB_noreturn void abort( void ) _PDCLIB_nothrow;
    reverse order of registration (last-in, first-out).
    Returns zero if registration is successfull, nonzero if it failed.
 */
-int atexit( void (*func)( void ) ) _PDCLIB_nothrow;
+int atexit( void (*func)( void ) ) _PDCLIB_nothrow; 
 
 /* Normal process termination. Functions registered by atexit() (see above) are
    called, streams flushed, files closed and temporary files removed before the
@@ -167,6 +184,13 @@ _PDCLIB_noreturn void exit( int status ) _PDCLIB_nothrow;
    _Exit() does not return.
 */
 _PDCLIB_noreturn void _Exit( int status ) _PDCLIB_nothrow;
+
+/* Quick process termination. Functions registered by at_quick_exit() (see
+   above) are called, and the process terminated. No functions registered
+   with atexit() (see above) or signal handlers are called.
+   quick_exit() does not return.
+*/
+_PDCLIB_noreturn void quick_exit( int status );
 
 /* Search an environment-provided key-value map for the given key name, and
    return a pointer to the associated value string (or NULL if key name cannot
@@ -239,25 +263,69 @@ ldiv_t ldiv( long int numer, long int denom ) _PDCLIB_nothrow;
 lldiv_t lldiv( long long int numer, long long int denom ) _PDCLIB_nothrow;
 
 /* TODO: Multibyte / wide character conversion functions */
-#include <wchar.h>
 
 /* TODO: Macro MB_CUR_MAX */
 
+/*
 int mblen( const char * s, size_t n );
+
+/* If s is not a null pointer, and the next n bytes (maximum) form a valid
+   multibyte character sequence (possibly including shift sequences), the
+   corresponding wide character is stored in pwc (unless that is a null
+   pointer). If the wide character is the null character, the function is
+   left in the initial conversion state.
+   Returns the number of bytes in the consumed multibyte character sequence;
+   or 0, if the resulting wide character is the null character. If the next
+   n bytes do not form a valid sequence, returns -1.
+   In no case will the returned value be greater than n or MB_CUR_MAX.
+   If s is a null pointer, returns nonzero if multibyte encodings in the
+   current locale are stateful, and zero otherwise.
+*/
 int mbtowc( wchar_t * _PDCLIB_restrict pwc, const char * _PDCLIB_restrict s, size_t n );
+
+/* Converts the wide character wc into the corresponding multibyte character
+   sequence (including shift sequences). If s is not a null pointer, the
+   multibyte sequence (at most MB_CUR_MAX characters) is stored at that
+   location. If wc is a null character, a null byte is stored, preceded by
+   any shift sequence needed to restore the initial shift state, and the
+   function is left in the initial conversion state.
+   Returns the number of bytes in the generated multibyte character sequence.
+   If wc does not correspond to a valid multibyte character, returns -1.
+   In no case will the returned value be greater than MB_CUR_MAX.
+   If s is a null pointer, returns nonzero if multibyte encodings in the
+   current locale are stateful, and zero otherwise.
+*/
 int wctomb( char * s, wchar_t wc );
+
+/* Convert a sequence of multibyte characters beginning in the initial shift
+   state from the array pointed to by s into the corresponding wide character
+   sequence, storing no more than n wide characters into pwcs. A null
+   character is converted into a null wide character, and marks the end of
+   the multibyte character sequence.
+   If copying takes place between objects that overlap, behaviour is
+   undefined.
+   Returns (size_t)-1 if an invalid multibyte sequence is encountered.
+   Otherwise, returns the number of array elements modified, not including
+   a terminating null wide character, if any. (Target string will not be
+   null terminated if the return value equals n.)
+*/
 size_t mbstowcs( wchar_t * _PDCLIB_restrict pwcs, const char * _PDCLIB_restrict s, size_t n );
+
+/* Convert a sequence of wide characters from the array pointed to by pwcs
+   into a sequence of corresponding multibyte characters, beginning in the
+   initial shift state, storing them in the array pointed to by s, stopping
+   if the next multibyte character would exceed the limit of n total bytes
+   or a null character is stored.
+   If copying takes place between objects that overlap, behaviour is
+   undefined.
+   Returns (size_t)-1 if a wide character is encountered that does not
+   correspond to a valid multibyte character. Otherwise, returns the number
+   of array elements modified, not including a terminating null character,
+   if any. (Target string will not be null terminated if the return value
+   equals n.)
+*/
 size_t wcstombs( char * _PDCLIB_restrict s, const wchar_t * _PDCLIB_restrict pwcs, size_t n );
-
-int mkstemp( char *templ );
-int mkostemp( char *templ, int flags );
-
-#ifdef __divine__
-
-extern int __cxa_atexit(void (*f)(void*), void* p, void* d);
-extern int __cxa_finalize(void*);
-
-#endif
+*/
 
 _PDCLIB_END_EXTERN_C
 #endif

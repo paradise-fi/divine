@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* ldiv( long int, long int )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -22,7 +20,7 @@ ldiv_t ldiv( long int numer, long int denom )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

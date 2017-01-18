@@ -1,7 +1,4 @@
-/* wcrtomb(
-    char        *restrict   s, 
-    wchar_t                 wc,
-    mbstate_t   *restrict   ps);
+/* wcrtomb( char * s, wchar_t wc, mbstate_t * ps )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -13,10 +10,15 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <_PDCLIB_encoding.h>
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_encoding.h"
+#include "_PDCLIB_locale.h"
 
-size_t wcrtomb_l(
+#if 0
+/*
+   TODO: Other conversion functions call static ..._l helpers, but this one
+   does not, making this function "defined but not used".
+*/
+static size_t wcrtomb_l(
     char        *restrict   s, 
     wchar_t                 wc,
     mbstate_t   *restrict   ps,
@@ -25,6 +27,7 @@ size_t wcrtomb_l(
 {
     return _PDCLIB_cwcrtomb_l(s, wc, ps, l);
 }
+#endif
 
 size_t wcrtomb(
     char        *restrict   s, 
@@ -39,7 +42,7 @@ size_t wcrtomb(
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

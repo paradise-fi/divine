@@ -1,6 +1,4 @@
-/* $Id$ */
-
-/* vsscanf( const char *, const char *, va_list arg )
+/* vsscanf( const char *, const char *, va_list )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -11,7 +9,7 @@
 
 #ifndef REGTEST
 #include <ctype.h>
-#include <_PDCLIB_io.h>
+#include "_PDCLIB_io.h"
 
 int vsscanf( const char * _PDCLIB_restrict s, 
              const char * _PDCLIB_restrict format, 
@@ -92,7 +90,7 @@ int vsscanf( const char * _PDCLIB_restrict s,
 #define _PDCLIB_FILEID "stdio/vsscanf.c"
 #define _PDCLIB_STRINGIO
 
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 static int testscanf( char const * stream, char const * format, ... )
 {

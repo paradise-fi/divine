@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* freopen( const char *, const char *, FILE * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -9,8 +7,8 @@
 #include <stdio.h>
 
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
-#include <_PDCLIB_glue.h>
+#include "_PDCLIB_io.h"
+#include "_PDCLIB_glue.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -94,7 +92,7 @@ FILE * freopen(
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

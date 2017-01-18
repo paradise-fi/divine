@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* rename( const char *, const char * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -7,8 +5,37 @@
 */
 
 #include <stdio.h>
+
+#ifndef REGTEST
+#include <_PDCLIB_glue.h>
+
+#include <string.h>
+
+extern _PDCLIB_file_t * _PDCLIB_filelist;
+extern mtx_t _PDCLIB_filelist_lock;
+
+int rename( const char * old, const char * new )
+{
+    mtx_lock( &_PDCLIB_filelist_lock );
+    FILE * current = _PDCLIB_filelist;
+    while ( current != NULL )
+    {
+        if ( ( current->filename != NULL ) && ( strcmp( current->filename, old ) == 0 ) )
+        {
+            // File of that name currently open. Do not rename.
+            mtx_unlock( &_PDCLIB_filelist_lock );
+            return EOF;
+        }
+        current = current->next;
+    }
+    mtx_unlock( &_PDCLIB_filelist_lock );
+    return _FS_renameitem( old, new );
+}
+
+#endif
+
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 #include <stdlib.h>
 

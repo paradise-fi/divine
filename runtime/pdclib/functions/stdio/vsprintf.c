@@ -1,6 +1,4 @@
-/* $Id$ */
-
-/* vsprintf( char *, const char *, va_list ap )
+/* vsprintf( char *, const char *, va_list )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -26,7 +24,7 @@ int vsprintf( char * _PDCLIB_restrict s,
 #define _PDCLIB_STRINGIO
 #include <stdint.h>
 #include <stddef.h>
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 static int testprintf( char * s, const char * format, ... )
 {

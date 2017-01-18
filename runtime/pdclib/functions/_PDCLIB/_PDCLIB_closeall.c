@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* _PDCLIB_closeall( void )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -10,7 +8,6 @@
 
 #ifndef REGTEST
 #include <_PDCLIB_io.h>
-#include <threads.h>
 extern _PDCLIB_file_t * _PDCLIB_filelist;
 extern mtx_t _PDCLIB_filelist_lock;
 
@@ -30,7 +27,7 @@ void _PDCLIB_closeall( void )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

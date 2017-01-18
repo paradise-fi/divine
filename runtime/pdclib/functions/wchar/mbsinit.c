@@ -1,4 +1,4 @@
-/* mbsinit(mbstate_t *ps);
+/* mbsinit( mbstate_t * ps )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -6,10 +6,10 @@
 
 #include <wchar.h>
 #ifndef REGTEST
-#include <_PDCLIB_encoding.h>
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_encoding.h"
+#include "_PDCLIB_locale.h"
 
-int _PDCLIB_mbsinit_l( const mbstate_t *ps, locale_t l )
+static int _PDCLIB_mbsinit_l( const mbstate_t *ps, locale_t l )
 {
     if( ps ) {
         return ps->_Surrogate == 0
@@ -26,7 +26,7 @@ int mbsinit( const mbstate_t * ps )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

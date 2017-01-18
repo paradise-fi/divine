@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* _PDCLIB_prepwrite( FILE * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -10,7 +8,7 @@
 #include <errno.h>
 
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
+#include "_PDCLIB_io.h"
    
 int _PDCLIB_prepwrite( FILE * stream )
 {
@@ -32,7 +30,7 @@ int _PDCLIB_prepwrite( FILE * stream )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

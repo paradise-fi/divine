@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* atexit( void (*)( void ) )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -11,20 +9,18 @@
 
 #ifndef REGTEST
 
-#ifndef __divine__
-
 extern void (*_PDCLIB_regstack[])( void );
 extern size_t _PDCLIB_regptr;
 
 int atexit( void (*func)( void ) )
 {
-    if ( _PDCLIB_regptr == 0 )
+    if ( _PDCLIB_exitptr == 0 )
     {
         return -1;
     }
     else
     {
-        _PDCLIB_regstack[ --_PDCLIB_regptr ] = func;
+        _PDCLIB_exitstack[ --_PDCLIB_exitptr ] = func;
         return 0;
     }
 }
@@ -81,7 +77,7 @@ int atexit( void ( *func )( void ) ) {
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 #include <assert.h>
 
 static int flags[ 32 ];

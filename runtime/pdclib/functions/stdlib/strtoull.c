@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* strtoull( const char *, char * *, int )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -27,7 +25,7 @@ unsigned long long int strtoull( const char * s, char ** endptr, int base )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 #include <errno.h>
 
 int main( void )

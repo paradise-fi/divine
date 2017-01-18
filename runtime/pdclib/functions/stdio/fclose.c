@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* fclose( FILE * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -11,7 +9,7 @@
 #include <errno.h>
 
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
+#include "_PDCLIB_io.h"
 #include <threads.h>
 
 extern FILE * _PDCLIB_filelist;
@@ -61,6 +59,11 @@ int fclose( FILE * stream )
             {
                 remove( stream->filename );
             }
+            /* Free user buffer (SetVBuf allocated) */
+            if ( stream->status & _PDCLIB_FREEBUFFER )
+            {
+                free( stream->buffer );
+            }
             /* Free stream */
             if ( ! ( stream->status & _PDCLIB_STATIC ) )
             {
@@ -80,7 +83,7 @@ int fclose( FILE * stream )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

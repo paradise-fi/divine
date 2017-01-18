@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* fflush( FILE * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -10,7 +8,6 @@
 
 #ifndef REGTEST
 #include <_PDCLIB_io.h>
-#include <threads.h>
 
 extern FILE * _PDCLIB_filelist;
 extern mtx_t _PDCLIB_filelist_lock;
@@ -56,7 +53,7 @@ int fflush( FILE * stream )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

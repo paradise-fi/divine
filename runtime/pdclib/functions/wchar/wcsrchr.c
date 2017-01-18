@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* wcsrchr( const wchar_t *, wchar_t );
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -25,7 +23,7 @@ wchar_t *wcsrchr(const wchar_t * haystack, wchar_t needle)
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

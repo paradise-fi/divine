@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* qsort( void *, size_t, size_t, int(*)( const void *, const void * ) )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -130,7 +128,7 @@ void qsort( void * base, size_t nmemb, size_t size, int (*compar)( const void *,
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 #include <string.h>
 #include <limits.h>
 

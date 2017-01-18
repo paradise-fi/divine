@@ -1,8 +1,4 @@
-/* size_t mbrtoc32(
-    char32_t    *restrict   pc32,
-    const char  *restrict   s, 
-    size_t                  n,
-    mbstate_t   *restrict   ps);
+/* size_t mbrtoc32( char32_t *, const char *, size_t, mbstate_t * )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -13,8 +9,8 @@
 #include <errno.h>
 #include <stdint.h>
 #include <assert.h>
-#include <_PDCLIB_encoding.h>
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_encoding.h"
+#include "_PDCLIB_locale.h"
 
 size_t mbrtoc32_l(
     char32_t    *restrict   pc32,
@@ -66,7 +62,7 @@ size_t mbrtoc32(
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* strtoimax( const char *, char * *, int )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -34,7 +32,7 @@ intmax_t strtoimax( const char * _PDCLIB_restrict nptr, char ** _PDCLIB_restrict
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 #include <errno.h>
 

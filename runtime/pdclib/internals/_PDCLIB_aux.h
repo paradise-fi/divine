@@ -1,11 +1,11 @@
-#ifndef __PDCLIB_AUX_H
-#define __PDCLIB_AUX_H __PDCLIB_AUX_H
-
 /* Auxiliary PDCLib code <_PDCLIB_aux.h>
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
 */
+
+#ifndef __PDCLIB_AUX_H
+#define __PDCLIB_AUX_H __PDCLIB_AUX_H
 
 /* -------------------------------------------------------------------------- */
 /* You should not have to edit anything in this file; if you DO have to, it   */
@@ -82,12 +82,8 @@
 #endif
 
 #ifdef __cplusplus
-    #define _PDCLIB_BEGIN_EXTERN_C extern "C" {
-    #define _PDCLIB_END_EXTERN_C }
     typedef bool _PDCLIB_bool;
 #else
-    #define _PDCLIB_BEGIN_EXTERN_C
-    #define _PDCLIB_END_EXTERN_C
     typedef _Bool _PDCLIB_bool;
 #endif
 
@@ -116,7 +112,7 @@
 #endif
 
 #ifdef __has_attribute
-   #define _PDCLIB_HAS_ATTRIBUTE(x) __has_builtin(x)
+   #define _PDCLIB_HAS_ATTRIBUTE(x) __has_attribute(x)
 #else
    #define _PDCLIB_HAS_ATTRIBUTE(x) (0)
 #endif
@@ -269,11 +265,18 @@
 /* Helper macros:                                                             */
 /* _PDCLIB_cc( x, y ) concatenates two preprocessor tokens without extending  */
 /* _PDCLIB_concat( x, y ) concatenates two preprocessor tokens with extending */
+/* _PDCLIB_concat3( x, y, z ) is the same for three tokens                    */
+/* _PDCLIB_static_assert( x ) provides a compile-time check mechanism         */
 /* -------------------------------------------------------------------------- */
 
 #define _PDCLIB_cc( x, y )     x ## y
 #define _PDCLIB_concat( x, y ) _PDCLIB_cc( x, y )
 #define _PDCLIB_concat3( x, y, z ) _PDCLIB_concat( _PDCLIB_concat( x, y ), z )
+#if _PDCLIB_C_VERSION >= 2011
+#define _PDCLIB_static_assert _Static_assert
+#else
+#define _PDCLIB_static_assert( e, m ) ;enum { _PDCLIB_concat( _PDCLIB_assert_, __LINE__ ) = 1 / ( !!( e ) ) }
+#endif
 
 #define _PDCLIB_symbol2value( x ) #x
 #define _PDCLIB_symbol2string( x ) _PDCLIB_symbol2value( x )

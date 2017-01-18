@@ -1,4 +1,5 @@
 #ifndef REGTEST
+#define _POSIX_C_SOURCE 2008098L
 #include <threads.h>
 #include <pthread.h>
 
@@ -34,7 +35,7 @@ int mtx_init(mtx_t *mtx, int type)
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

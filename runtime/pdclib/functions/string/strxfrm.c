@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* strxfrm( char *, const char *, size_t )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -10,11 +8,11 @@
 
 #ifndef REGTEST
 
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_locale.h"
 
 size_t strxfrm( char * _PDCLIB_restrict s1, const char * _PDCLIB_restrict s2, size_t n )
 {
-    _PDCLIB_ctype_t *ctype = _PDCLIB_threadlocale()->_CType;
+    const _PDCLIB_ctype_t *ctype = _PDCLIB_threadlocale()->_CType;
     size_t len = strlen( s2 );
     if ( len < n )
     {
@@ -29,7 +27,7 @@ size_t strxfrm( char * _PDCLIB_restrict s1, const char * _PDCLIB_restrict s2, si
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

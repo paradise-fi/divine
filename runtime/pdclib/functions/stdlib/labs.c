@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* labs( long int )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -18,7 +16,7 @@ long int labs( long int j )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 #include <limits.h>
 
 int main( void )

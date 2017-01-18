@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* abort( void )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -20,7 +18,7 @@ void abort( void )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 #include <stdio.h>
 

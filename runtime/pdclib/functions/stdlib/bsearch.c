@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* bsearch( const void *, const void *, size_t, size_t, int(*)( const void *, const void * ) )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -39,7 +37,7 @@ void * bsearch( const void * key, const void * base, size_t nmemb, size_t size, 
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 static int compare( const void * left, const void * right )
 {

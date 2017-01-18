@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* exit( int )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -9,7 +7,7 @@
 #include <stdlib.h>
 
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
+#include "_PDCLIB_io.h"
 
 /* TODO - "except that a function is called after any previously registered
    functions that had already been called at the time it was registered.
@@ -22,15 +20,14 @@
 */
 #define NUMBER_OF_SLOTS 40
 
-void (*_PDCLIB_regstack[ NUMBER_OF_SLOTS ])( void ) = { _PDCLIB_closeall };
-size_t _PDCLIB_regptr = NUMBER_OF_SLOTS;
+void (*_PDCLIB_exitstack[ NUMBER_OF_SLOTS ])( void ) = { _PDCLIB_closeall };
+size_t _PDCLIB_exitptr = NUMBER_OF_SLOTS;
 
 void exit( int status )
 {
-    #ifndef __divine__
     while ( _PDCLIB_regptr < NUMBER_OF_SLOTS )
     {
-        _PDCLIB_regstack[ _PDCLIB_regptr++ ]();
+        _PDCLIB_exitstack[ _PDCLIB_exitptr++ ]();
     }
     #endif
     _Exit( status );
@@ -60,7 +57,7 @@ void exit( int status )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

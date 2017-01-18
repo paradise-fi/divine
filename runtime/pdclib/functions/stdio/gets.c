@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* gets( char * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -9,7 +7,7 @@
 #include <stdio.h>
 
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
+#include "_PDCLIB_io.h"
 #include <stdint.h>
 
 char * gets( char * s )
@@ -37,11 +35,12 @@ char * gets( char * s )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 #include <string.h>
 
 int main( void )
 {
+#ifndef REGTEST
     FILE * fh;
     char buffer[10];
     char const * gets_test = "foo\nbar\0baz\nweenie";
@@ -64,6 +63,7 @@ int main( void )
     TESTCASE( gets( buffer ) == NULL );
     TESTCASE( fclose( fh ) == 0 );
     TESTCASE( remove( testfile ) == 0 );
+#endif
     return TEST_RESULTS;
 }
 

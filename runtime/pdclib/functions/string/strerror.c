@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* strerror( int )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -10,25 +8,25 @@
 
 #ifndef REGTEST
 
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_locale.h"
 
 /* TODO: Doing this via a static array is not the way to do it. */
 char * strerror( int errnum )
 {
-    if ( errnum == 0 || errnum >= _PDCLIB_ERRNO_MAX )
+    if ( errnum >= _PDCLIB_ERRNO_MAX )
     {
         return (char *)"Unknown error";
     }
     else
     {
-        return _PDCLIB_threadlocale()->_ErrnoStr[errnum];
+        return (char *)_PDCLIB_threadlocale()->_ErrnoStr[errnum];
     }
 }
 
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 #include <stdio.h>
 #include <errno.h>

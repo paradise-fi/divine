@@ -1,8 +1,4 @@
-/* mbrtowc(
-    wchar_t *restrict pwc, 
-    const char *restrict s, 
-    size_t n, 
-    mbstate_t *restrict ps);
+/* mbrtowc( wchar_t * pwc, const char * s, size_t n, mbstate_t * ps )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -13,10 +9,10 @@
 #include <errno.h>
 #include <stdint.h>
 #include <assert.h>
-#include <_PDCLIB_encoding.h>
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_encoding.h"
+#include "_PDCLIB_locale.h"
 
-size_t mbrtowc_l(
+static size_t mbrtowc_l(
     wchar_t    *restrict    pwc, 
     const char *restrict    s, 
     size_t                  n, 
@@ -86,7 +82,7 @@ size_t mbrtowc(
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

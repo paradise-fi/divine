@@ -1,4 +1,4 @@
-/* wchar_t * wcscpy( wchar_t restrict *, const wchar_t restrict * );
+/* wchar_t * wcscpy( wchar_t *, const wchar_t * );
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -23,7 +23,7 @@ wchar_t *wcscpy( wchar_t * _PDCLIB_restrict dest,
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

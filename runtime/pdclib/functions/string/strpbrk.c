@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* strpbrk( const char *, const char * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -32,7 +30,7 @@ char * strpbrk( const char * s1, const char * s2 )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

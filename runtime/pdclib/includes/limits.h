@@ -1,6 +1,4 @@
-/* $Id$ */
-
-/* 7.10 Sizes of integer types <limits.h>
+/* Sizes of integer types <limits.h>
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -8,10 +6,15 @@
 
 #ifndef _PDCLIB_LIMITS_H
 #define _PDCLIB_LIMITS_H _PDCLIB_LIMITS_H
-#include <_PDCLIB_int.h>
+#include "_PDCLIB_int.h"
 
-/* TODO: Defined to 1 as multibyte characters are not supported yet. */
-#define MB_LEN_MAX 1
+/* MSVC 2010 defines this to 5, which is enough for UTF-8 but might rule out
+   stateful encodings (like ISO/IEC 2022). GCC 5.3 defines this to 16, which
+   is meant to ensure future compatibility. For the same reason, we go along
+   with GCC's definition.
+   http://lists.gnu.org/archive/html/bug-gnulib/2015-05/msg00001.html
+*/
+#define MB_LEN_MAX 16
 
 #define LLONG_MIN  _PDCLIB_LLONG_MIN
 #define LLONG_MAX  _PDCLIB_LLONG_MAX
@@ -35,4 +38,3 @@
 #define SSIZE_MAX  _PDCLIB_INT_MAX
 
 #endif
-

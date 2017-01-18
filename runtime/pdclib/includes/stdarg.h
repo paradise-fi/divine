@@ -1,6 +1,4 @@
-/* $Id$ */
-
-/* 7.15 Variable arguments <stdarg.h> 
+/* Variable arguments <stdarg.h>
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -10,7 +8,6 @@
 #define _PDCLIB_STDARG_H _PDCLIB_STDARG_H
 #include <_PDCLIB_aux.h>
 #include <_PDCLIB_config.h>
-#include <divine.h> // for __divine_va_start()...
 _PDCLIB_BEGIN_EXTERN_C
 
 typedef _PDCLIB_va_list va_list;
@@ -20,6 +17,8 @@ typedef _PDCLIB_va_list va_list;
 #define va_end( ap )          _PDCLIB_va_end( ap )
 #define va_start( ap, parmN ) _PDCLIB_va_start( ap, parmN )
 
-_PDCLIB_END_EXTERN_C
+#ifdef __cplusplus
+}
 #endif
 
+#endif

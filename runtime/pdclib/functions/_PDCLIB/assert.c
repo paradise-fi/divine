@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* _PDCLIB_assert( char const * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -12,7 +10,7 @@
 
 #ifndef REGTEST
 
-#include <_PDCLIB_aux.h>
+#include "_PDCLIB_aux.h"
 
 #ifdef __divine__
 
@@ -42,7 +40,7 @@ void _PDCLIB_assert89( char const * const message )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 #include <signal.h>
 
 static int EXPECTED_ABORT = 0;

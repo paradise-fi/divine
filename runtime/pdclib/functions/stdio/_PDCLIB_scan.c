@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* _PDCLIB_scan( const char *, struct _PDCLIB_status_t * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -17,6 +15,8 @@
 #include <limits.h>
 
 #ifndef REGTEST
+
+#include "_PDCLIB_io.h"
 
 /* Using an integer's bits as flags for both the conversion flags and length
    modifiers.
@@ -118,7 +118,7 @@ static bool IN_SCANSET( const char * scanlist, const char * end_scanlist, int rc
 const char * _PDCLIB_scan( const char * spec, struct _PDCLIB_status_t * status )
 {
     /* generic input character */
-    int rc;
+    int rc = EOF;
     const char * orig_spec = spec;
     if ( *(++spec) == '%' )
     {
@@ -257,7 +257,7 @@ const char * _PDCLIB_scan( const char * spec, struct _PDCLIB_status_t * status )
         {
             char * c = va_arg( status->arg, char * );
             /* for %c, default width is one */
-            if ( status->width == INT32_MAX )
+            if ( status->width == SIZE_MAX )
             {
                 status->width = 1;
             }
@@ -287,7 +287,7 @@ const char * _PDCLIB_scan( const char * spec, struct _PDCLIB_status_t * status )
         case 's':
         {
             char * c = va_arg( status->arg, char * );
-            while ( ( status->current < status->width ) && 
+            while ( ( status->current < status->width ) &&
                     ( ( rc = GET( status ) ) != EOF ) )
             {
                 if ( isspace( rc ) )
@@ -347,7 +347,7 @@ const char * _PDCLIB_scan( const char * spec, struct _PDCLIB_status_t * status )
             } while ( *endspec != ']' );
             // read according to scanlist, equiv. to %s above
             char * c = va_arg( status->arg, char * );
-            while ( ( status->current < status->width ) && 
+            while ( ( status->current < status->width ) &&
                     ( ( rc = GET( status ) ) != EOF ) )
             {
                 if ( negative_scanlist )
@@ -597,7 +597,7 @@ const char * _PDCLIB_scan( const char * spec, struct _PDCLIB_status_t * status )
 #define _PDCLIB_FILEID "_PDCLIB/scan.c"
 #define _PDCLIB_STRINGIO
 
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 #ifndef REGTEST
 static int testscanf( char const * s, char const * format, ... )

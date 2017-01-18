@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* _PDCLIB_seed
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -9,7 +7,7 @@
 unsigned long int _PDCLIB_seed = 1;
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

@@ -1,7 +1,4 @@
-/* c32rtomb(
-    char        *restrict   s, 
-    char32_t                c32,
-    mbstate_t   *restrict   ps);
+/* c32rtomb( char *, char32_t, mbstate_t * )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -13,8 +10,8 @@
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <_PDCLIB_encoding.h>
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_encoding.h"
+#include "_PDCLIB_locale.h"
 
 size_t c32rtomb_l(
     char        *restrict   s, 
@@ -52,7 +49,7 @@ size_t c32rtomb(
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

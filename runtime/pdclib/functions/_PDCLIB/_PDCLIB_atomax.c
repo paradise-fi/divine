@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* _PDCLIB_atomax( const char * )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -7,7 +5,7 @@
 */
 
 #ifndef REGTEST
-#include <_PDCLIB_int.h>
+#include "_PDCLIB_int.h"
 #include <string.h>
 #include <ctype.h>
 
@@ -30,7 +28,7 @@ _PDCLIB_intmax_t _PDCLIB_atomax( const char * s )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

@@ -6,17 +6,17 @@
 
 #include <wctype.h>
 #ifndef REGTEST
-#include <_PDCLIB_locale.h>
+#include "_PDCLIB_locale.h"
 
 wint_t _PDCLIB_towupper_l( wint_t wc, locale_t l )
 {
     wint_t uwc = _PDCLIB_unpackwint( wc );
     _PDCLIB_wcinfo_t *info = _PDCLIB_wcgetinfo( l, uwc );
-    if( info && info->upper != uwc ) 
+    if( info ) 
     {
-        wc = info->upper;
+        uwc += info->upper_delta;
     }
-    return wc;
+    return uwc;
 }
 
 wint_t towupper( wint_t wc )
@@ -27,7 +27,7 @@ wint_t towupper( wint_t wc )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* lldiv( long long int, long long int )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -21,7 +19,7 @@ imaxdiv_t imaxdiv( intmax_t numer, intmax_t denom )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

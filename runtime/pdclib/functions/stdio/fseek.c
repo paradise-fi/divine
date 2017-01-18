@@ -1,6 +1,4 @@
-/* $Id$ */
-
-/* fseek( FILE *, long offset, int )
+/* fseek( FILE *, long, int )
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -9,7 +7,7 @@
 #include <stdio.h>
 
 #ifndef REGTEST
-#include <_PDCLIB_io.h>
+#include "_PDCLIB_io.h"
 
 int _PDCLIB_fseek_unlocked( FILE * stream, long loffset, int whence )
 {
@@ -52,7 +50,7 @@ int fseeko( FILE * stream, long loffset, int whence )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 #include <string.h>
 
 int main( void )

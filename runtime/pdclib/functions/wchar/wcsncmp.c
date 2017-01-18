@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* wcsncmp( const wchar_t *, const wchar_t *, size_t )
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -31,7 +29,7 @@ int wcsncmp( const wchar_t * s1, const wchar_t * s2, size_t n )
 #endif
 
 #ifdef TEST
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 int main( void )
 {

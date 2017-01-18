@@ -1,6 +1,4 @@
-/* $Id$ */
-
-/* 7.4 Character handling <ctype.h>
+/* Character handling <ctype.h>
 
    This file is part of the Public Domain C Library (PDCLib).
    Permission is granted to use, modify, and / or redistribute at will.
@@ -8,8 +6,11 @@
 
 #ifndef _PDCLIB_CTYPE_H
 #define _PDCLIB_CTYPE_H _PDCLIB_CTYPE_H
-#include <_PDCLIB_int.h>
-_PDCLIB_BEGIN_EXTERN_C
+#include "_PDCLIB_int.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Character classification functions */
 
@@ -97,5 +98,8 @@ int tolower( int c ) _PDCLIB_nothrow;
 */
 int toupper( int c ) _PDCLIB_nothrow;
 
-_PDCLIB_END_EXTERN_C
+#ifdef __cplusplus
+}
+#endif
+
 #endif

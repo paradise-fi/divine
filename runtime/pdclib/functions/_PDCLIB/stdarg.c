@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* stdarg
 
    This file is part of the Public Domain C Library (PDCLib).
@@ -11,7 +9,7 @@
 #include <float.h>
 #ifdef TEST
 
-#include <_PDCLIB_test.h>
+#include "_PDCLIB_test.h"
 
 typedef int (*intfunc_t)( void );
 
