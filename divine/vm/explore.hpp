@@ -159,6 +159,9 @@ struct SymbolicHasher : Hasher {
         if ( heap::compare( h1, h2, root, root, symPairsExtract ) != 0 )
             return false;
 
+        if ( symPairs.empty() )
+            return true;
+
         return smtEqual( symPairs );
     }
 
