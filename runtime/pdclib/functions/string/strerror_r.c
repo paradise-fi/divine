@@ -40,7 +40,9 @@ char * strerror_r( int errnum, char *buf, size_t buflen )
 
 int main( void )
 {
-    TESTCASE( strerror_r( ERANGE ) != strerror_r( EDOM ) );
+    char buf1[128], buf2[128];
+    TESTCASE( strcmp( strerror_r( ERANGE, buf1, 128 ), strerror_r( EDOM, buf2, 128 ) ) );
+    TESTCASE( strcmp( strerror_r( ERANGE, buf1 + 125, 3 ), strerror_r( EDOM, buf2 + 125, 3 ) ) );
     return TEST_RESULTS;
 }
 #endif
