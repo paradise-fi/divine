@@ -64,6 +64,9 @@ void Report::list_instances()
 
 void Report::results()
 {
+    if ( _watch )
+        std::cout << char( 27 ) << "[2J" << char( 27 ) << "[;H";
+
     std::stringstream q;
     q << "select instance.id, model.name, "
       << "(select max(states) from search_log where execution = execution.id ), "
@@ -81,6 +84,12 @@ void Report::results()
     std::cerr << q.str() << std::endl;
     nanodbc::statement find( _conn, q.str() );
     format( find.execute(), odbc::Keys{ "instance", "model", "states", "result" } );
+
+    if ( _watch )
+    {
+        sleep( 1 );
+        return results();
+    }
 }
 
 }
