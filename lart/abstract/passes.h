@@ -67,23 +67,25 @@ void mapVirtualFile( Compile & c, const std::string & path, const std::string & 
     } );
 }
 
+namespace rt = divine::rt;
+
 std::string source( std::string fileName ) {
     std::string res;
-    divine::rt::each( [&]( auto path, auto src ) {
+    rt::each( [&]( auto path, auto src ) {
         if ( brick::string::endsWith( path, fileName ) )
-            res = src;
+            res = std::string( src );
     } );
     return res;
 }
 
 void setupFS( Compile & c ) {
 	auto each = [&]( auto filter ) {
-        return [&filter]( std::function< void( std::string, const std::string & ) > yield ) {
-            divine::rt::each( filter( yield ) );
+        return [&filter]( std::function< void( std::string, rt::string_view ) > yield ) {
+            rt::each( filter( yield ) );
         };
     };
 
-    c.setupFS( each( [&]( std::function< void( std::string, const std::string & ) > yield ) {
+    c.setupFS( each( [&]( std::function< void( std::string, rt::string_view ) > yield ) {
         return [&]( auto path, auto src ) {
 			if ( !brick::string::endsWith( path, ".bc" ) )
 				yield( path, src );
