@@ -53,24 +53,32 @@ void Report::list_instances()
 {
     nanodbc::statement find( _conn,
             "select instance.id, build.version, substr( build.source_sha, 0, 7 ), "
-            "substr( build.runtime_sha, 0, 7 ), build.build_type, cpu.model, "
+            "substr( build.runtime_sha, 0, 7 ), build.build_type, cpu.model, machine.cores, "
+            "machine.mem / (1024 * 1024), "
             "(select count(*) from job where job.instance = instance.id and job.status = 'D') "
             "from instance join build join machine join cpu "
             "on instance.machine = machine.id "
             "and instance.build = build.id and cpu.id = machine.cpu" );
-    format( find.execute(), odbc::Keys{ "instance", "version", "src", "rt", "build", "cpu", "jobs" } );
+    format( find.execute(), odbc::Keys{ "instance", "version", "src", "rt", "build", "cpu", "cores", "mem", "jobs" } );
 }
 
 void Report::results()
 {
     std::stringstream q;
-    q << "select instance.id, model.name, max(search_log.states), execution.result "
-      << "from execution join instance join job join model join search_log "
-      << "on search_log.execution = execution.id and instance.id = execution.instance "
-      << "and job.execution = execution.id and job.model = model.id group by execution.id";
-    if ( _instance >= 0 )
-        q << " where instance.id = " << _instance;
+    q << "select instance.id, model.name, "
+      << "(select max(states) from search_log where execution = execution.id ), "
+      << "execution.result "
+      << "from execution join instance join job join model "
+      << "on instance.id = execution.instance "
+      << "and job.execution = execution.id and job.model = model.id "
+      << "where (";
 
+    for ( size_t i = 0; i < _result.size(); ++i )
+        q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "') " : "' or " );
+    if ( _instance >= 0 )
+        q << " and instance.id = " << _instance;
+
+    std::cerr << q.str() << std::endl;
     nanodbc::statement find( _conn, q.str() );
     format( find.execute(), odbc::Keys{ "instance", "model", "states", "result" } );
 }

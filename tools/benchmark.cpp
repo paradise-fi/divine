@@ -135,8 +135,9 @@ int main( int argc, const char **argv )
         .option( "[--pkg {string}]",  &Import::_pkg,  "a multi-file bundle" );
 
     auto opts_report = cmd::make_option_set< Report >( validator )
-        .option( "[--list-instances]", &Report::_list_instances, "show available instances" )
-        .option( "[--instance {int}]", &Report::_instance, "show results for a given instance" );
+        .option( "[--list-instances]",  &Report::_list_instances, "show available instances" )
+        .option( "[--result {string}]", &Report::_result, "only include runs with one of given results (default: VE)" )
+        .option( "[--instance {int}]",  &Report::_instance, "show results for a given instance" );
 
     auto cmds = cmd::make_parser( cmd::make_validator() )
         .command< Import >( opts_db, opts_import )

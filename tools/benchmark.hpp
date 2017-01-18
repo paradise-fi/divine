@@ -73,6 +73,7 @@ struct Report : Cmd
 {
     bool _list_instances = false;
     int _instance = -1;
+    std::string _result = "VE";
 
     void format( nanodbc::result res, odbc::Keys );
     void list_instances();
