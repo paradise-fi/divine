@@ -130,7 +130,7 @@ int add_execution( connection conn )
 namespace divine::ui
 {
 
-struct ODBCSink : LogSink
+struct ODBCSink : TimedSink
 {
     nanodbc::connection _conn;
     int _execution = -1;
@@ -141,8 +141,9 @@ struct ODBCSink : LogSink
         _execution = odbc::add_execution( _conn );
     }
 
-    void progress( int states, int queued, bool ) override
+    void progress( int states, int queued, bool last ) override
     {
+        TimedSink::progress( states, queued, last );
         ASSERT_LEQ( 0, _execution );
         Keys keys{ "seq", "execution", "states", "queued" };
         Vals vals{ _prog_seq++, _execution, states, queued };
@@ -173,11 +174,13 @@ struct ODBCSink : LogSink
         }
     }
 
-    void result( mc::Result r, const mc::Trace & ) override
+    void result( mc::Result r, const mc::Trace &trace ) override
     {
+        TimedSink::result( r, trace );
         using mc::Result;
         nanodbc::statement update( _conn,
-                "update execution set result = ? where id = ?" );
+                "update execution set result = ?, time_lart = ?, "
+                "time_load = ?, time_boot = ?, time_search = ?, time_ce = ? where id = ?" );
         switch ( r )
         {
             case Result::None:      update.bind( 0, "U" ); break;
@@ -185,7 +188,17 @@ struct ODBCSink : LogSink
             case Result::BootError: update.bind( 0, "B" ); break;
             case Result::Valid:     update.bind( 0, "V" ); break;
         }
-        update.bind( 1, &_execution );
+        int lart = _time_lart.count(),
+            load = _time_rr.count() + _time_const.count(),
+            boot = _time_boot.count(),
+            search = _time_search.count(),
+            ce = _time_ce.count();
+        update.bind( 1, &lart );
+        update.bind( 2, &load );
+        update.bind( 3, &boot );
+        update.bind( 4, &search );
+        update.bind( 5, &ce );
+        update.bind( 6, &_execution );
         update.execute();
     }
 
