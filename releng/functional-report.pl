@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 use File::Spec::Functions;
+use File::Basename;
 
 die "usage: functional-report.pl <DIRECTORY_WITH_RESULTS> <WEBSITE_SRC_DIR>" if ( @ARGV < 2 );
 
@@ -46,15 +47,6 @@ delete $rescount{ started };
 
 mkdir( $out );
 
-open( my $index, ">", catfile( $out, "index.md" ) );
-
-my $summary = "";
-
-for my $k ( sort keys %rescount ) {
-    $summary .= "<span class=\"test_$k\">$rescount{ $k } $k</span>, ";
-}
-$summary =~ s/, $//;
-
 my $builddate = "unknown";
 my $buildtype = "unknown";
 my $divine = "unknown";
@@ -76,7 +68,20 @@ if ( -x $divineExec ) {
     }
 }
 
-print $index <<EOF
+sub doIndex {
+
+    my ( $name, $printer ) = @_;
+
+    open( my $index, ">", catfile( $out, "$name.md" ) );
+
+    my $summary = "";
+
+    for my $k ( sort keys %rescount ) {
+        $summary .= "<span class=\"test_$k\">$rescount{ $k } $k</span>, ";
+    }
+    $summary =~ s/, $//;
+
+    print $index <<EOF
 ## DIVINE Functional Test Results
 
 **summary**: $summary \\
@@ -84,60 +89,107 @@ print $index <<EOF
 **build type**: $buildtype \\
 **build date**: $builddate
 
-<table class="test_results">
+<table class="test_results test_$name">
 EOF
 ;
 
-if ( @flavours > 1 ) {
-    print $index "<tr><td></td>";
-    for my $f ( @flavours ) {
-        print $index "<td>$f</td>";
+    if ( @flavours > 1 ) {
+        print $index "<tr><td></td>";
+        for my $f ( @flavours ) {
+            print $index "<td>$f</td>";
+        }
+        print $index "</tr>\n";
     }
-    print $index "</tr>\n";
-}
-for my $t ( @tests ) {
-    print $index "<tr><td class=\"test\">$t</td>";
-    for my $f ( @flavours ) {
-        my $id = "$f:$t";
-        my $report = "${f}_${t}.txt";
-        $report =~ s|/|_|g;
-        my $origreport = "$id.txt";
-        $origreport =~ s|/|_|g;
+    $printer->( $index );
 
-        my $res = $results{ $id };
-        $res = "none" unless $res;
-        print $index "<td class=\"test_result test_$res\">[$res](./$report)</td>";
-        system( "cp", catfile( $dir, $origreport ), catfile( $out, $report ) );
+    print $index "</table>\n";
+    close( $index );
+
+    system( "pandoc", "--to=html", "-s", "--smart", "--template", catfile( $webdir, "template.html" ), catfile( $out, "$name.md" ), "-o", catfile( $out, "$name.html" ) );
+
+    $/ = undef;
+    open( my $ii, "<", catfile( $out, "$name.html" ) );
+    my $indexcont = <$ii>;
+    close( $ii );
+
+    sub procLink {
+        my ( $pre, $href, $post ) = @_;
+        if ( ( $href =~ /^http/ ) || ( $href =~ m|^\./| ) || ( $href =~ m|^/| ) ) {
+            $href =~ s|^\./|| if ( $href =~ m|^\./| );
+            return "$pre$href$post";
+        }
+        else {
+            return "$pre//$href$post";
+        }
     }
-    print $index "</tr>\n";
+
+    $indexcont =~ s/([<]a[^>]*href=["'])([^"']*)(['"])/procLink( $1, $2, $3 )/gems;
+    open( my $oi, ">", catfile( $out, "$name.html" ) );
+    print $oi $indexcont;
+    close( $oi );
+
 }
 
-print $index "</table>\n";
-close( $index );
+doIndex( "full", sub {
+        my ( $index ) = @_;
 
-system( "pandoc", "--to=html", "-s", "--smart", "--template", catfile( $webdir, "template.html" ), catfile( $out, "index.md" ), "-o", catfile( $out, "index.html" ) );
+        for my $t ( @tests ) {
+            print $index "<tr><td class=\"test\">$t</td>";
+            for my $f ( @flavours ) {
+                my $id = "$f:$t";
+                my $report = "${f}_${t}.txt";
+                $report =~ s|/|_|g;
+                my $origreport = "$id.txt";
+                $origreport =~ s|/|_|g;
+
+                my $res = $results{ $id };
+                $res = "none" unless $res;
+                print $index "<td class=\"test_result test_$res long_test\">[$res](./$report)</td>";
+                system( "cp", catfile( $dir, $origreport ), catfile( $out, $report ) );
+            }
+            print $index "</tr>\n";
+        }
+    } );
+
+my %codemap = (
+        passed => "✓",
+        failed => "✗",
+        warning => "!",
+        skipped => "–",
+        started => "…",
+        timeout => "T",
+        none => " "
+    );
+doIndex( "compact", sub {
+        my ( $compact ) = @_;
+
+        my %agreg;
+        for my $t ( @tests ) {
+            for my $f ( @flavours ) {
+                my $id = "$f:$t";
+                my $report = "${f}_${t}.txt";
+                $report =~ s|/|_|g;
+                my $aid = dirname( ${t} );
+                $aid = (split( "/", $aid ))[0];
+
+                my $res = $results{ $id };
+                $res = "none" unless $res;
+                my $r = $res;
+                $r = $codemap{ $res } if exists $codemap{ $res };
+                $agreg{ $aid }->{ $f } = "" unless exists $agreg{ $aid }->{ $f };
+                $agreg{ $aid }->{ $f } .= "<a class=\"test_result test_$res\" title=\"$t\" href=\"./$report\">$r</a>&#8203;";
+            }
+        }
+        for my $t ( sort( keys %agreg ) ) {
+            print $compact "<tr><td class=\"test\">$t</td>";
+            for my $f ( @flavours ) {
+                print $compact ( "<td class=\"test_result compact_tests\"><div>" . $agreg{ $t }->{ $f } . "</div></td>" );
+            }
+            print $compact "</tr>\n";
+        }
+    } );
+
 system( "cp", catfile( $webdir, "style.css" ), catfile( $out, "style.css" ) );
-# system( "sed", "-i", 's/href="style.css"/href="..\/..\/style.css"/', catfile( $out, "index.html" ) );
 
-$/ = undef;
-open( my $ii, "<", catfile( $out, "index.html" ) );
-my $indexcont = <$ii>;
-close( $ii );
-
-sub procLink {
-    my ( $pre, $href, $post ) = @_;
-    if ( ( $href =~ /^http/ ) || ( $href =~ m|^\./| ) || ( $href =~ m|^/| ) ) {
-        $href =~ s|^\./|| if ( $href =~ m|^\./| );
-        return "$pre$href$post";
-    }
-    else {
-        return "$pre//$href$post";
-    }
-}
-
-$indexcont =~ s/([<]a[^>]*href=["'])([^"']*)(['"])/procLink( $1, $2, $3 )/gems;
-open( my $oi, ">", catfile( $out, "index.html" ) );
-print $oi $indexcont;
-close( $oi );
-
-print STDERR "file://" . catfile( $out, "index.html" ) . "\n";
+print STDERR "file://" . catfile( $out, "full.html" ) . "\n";
+print STDERR "file://" . catfile( $out, "compact.html" ) . "\n";
