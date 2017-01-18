@@ -318,7 +318,8 @@ struct PooledShadow
     {
         fix_boundary( to, sz, cb );
 
-        auto from_def = from_sh.defined( from, sz ), to_def = defined( to, sz );
+        auto from_def = from_sh.defined( from, sz );
+        auto to_def = defined( to, sz );
         std::copy( from_def.begin(), from_def.end(), to_def.begin() );
 
         auto t = type( to, sz );
