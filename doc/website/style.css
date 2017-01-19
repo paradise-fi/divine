@@ -1,4 +1,5 @@
-body {
+body
+{
     font-family: 'Lato', sans;
     text-align: justify;
     hyphens: auto;
@@ -10,19 +11,24 @@ body {
     background: white;
 }
 
-@media ( max-width: 80ch ), ( max-device-width: 80ch ) {
-    body {
+@media ( max-width: 80ch ), ( max-device-width: 80ch )
+{
+    body
+    {
         margin: 1ch;
         max-width: none;
     }
 }
 
-@media ( max-width: 750px ), ( max-device-width: 750px ) {
+@media ( max-width: 750px ), ( max-device-width: 750px )
+{
     pre#logo { transform: scaleX( 1 ) scaleY( 0.8 ) !important; }
 }
 
-@media ( max-width: 550px ), ( max-device-width: 550px ) {
-    pre#logo {
+@media ( max-width: 550px ), ( max-device-width: 550px )
+{
+    pre#logo
+    {
         transform: scaleX( 0.6 ) scaleY( 0.6 ) !important;
         left: calc( 50% - 33ch );
         position: relative;
@@ -30,7 +36,8 @@ body {
     #logo-wrapper { height: 6ex; max-width: 50ch !important; margin: auto !important; }
 }
 
-pre, tt, code {
+pre, tt, code
+{
     font-family: 'Ubuntu Mono';
     font-size: 100%;
     margin: 0;
@@ -38,12 +45,13 @@ pre, tt, code {
     overflow: auto;
 }
 
-td.sourceCode { max-width: 200px; }
+td.sourceCode    { max-width: 200px; }
 table.sourceCode { max-width: 100%; }
 
 code { color: #1A001A; }
 
-pre#logo {
+pre#logo
+{
     white-space: pre;
     font-size: 16px;
     font-weight: bold;
@@ -57,7 +65,8 @@ pre#logo {
 
 h1, h2, h3 { font-family: 'Aleo', 'Lato', sans; }
 
-#logo-wrapper {
+#logo-wrapper
+{
     font-size: 16px;
     font-family: 'Ubuntu Mono';
     margin: 0;
@@ -65,14 +74,15 @@ h1, h2, h3 { font-family: 'Aleo', 'Lato', sans; }
     width: 100%;
 }
 
-#toc ul { list-style-type: none; }
-strong { color: #200020; }
+#toc ul     { list-style-type: none; }
+strong      { color: #200020; }
 p > .divine { color: #3A103A; font-weight: normal; }
 
-a:link, a:visited, a:active { text-decoration: none; color: darkred; }
+a:link, a:visited, a:active                   { text-decoration: none; color: darkred; }
 a:link:hover, a:visited:hover, a:active:hover { text-decoration: none; color: darkblue; }
 
-pre#linkbar {
+pre#linkbar
+{
     white-space: pre;
     background: #202020;
     margin-left: -1ch;
@@ -82,12 +92,14 @@ pre#linkbar {
     overflow: hidden;
 }
 
-@media ( max-width: 70ch ), ( max-device-width: 70ch ) {
+@media ( max-width: 70ch ), ( max-device-width: 70ch )
+{
     pre#linkbar { white-space: normal; }
     #linkbar a { margin-left: .7em !important; margin-right: .6em !important; }
 }
 
-div#footer {
+div#footer
+{
     font-family: inherit; padding: 4px; margin-top: 2ex; font-size: 80%;
     background: #202020;
     text-align: center;
@@ -106,7 +118,8 @@ div#footer {
 #footer a:link, #footer a:visited { color: white; }
 #footer a:link:hover, #footer a:visited:hover { color: pink; }
 
-h1 {
+h1
+{
     font-weight: normal;
     font-size: 121%;
     text-align: left;
@@ -129,28 +142,34 @@ h2, h3
 .slash { transform: translateX(-1px) rotate(-51deg) scaleY(1.6); display: inline-block; }
 .fslash { transform: translateX(1px) rotate(48deg) scaleY(1.6); display: inline-block; }
 
-@font-face {
+/* font definitions */
+
+@font-face
+{
   font-family: 'Ubuntu Mono';
   font-style: normal;
   font-weight: 400;
   src: local('Ubuntu Mono'), local('UbuntuMono-Regular'), url(um-400.ttf) format('truetype');
 }
 
-@font-face {
+@font-face
+{
   font-family: 'Ubuntu Mono';
   font-style: normal;
   font-weight: 700;
   src: local('Ubuntu Mono Bold'), local('UbuntuMono-Bold'), url(um-700.ttf) format('truetype');
 }
 
-@font-face {
+@font-face
+{
   font-family: 'Lato';
   font-style: normal;
   font-weight: 400;
   src: local('Lato Regular'), local('Lato-Regular'), url(lato-400.ttf) format('truetype');
 }
 
-@font-face {
+@font-face
+{
   font-family: 'Lato';
   font-style: normal;
   font-weight: 700;
@@ -158,6 +177,7 @@ h2, h3
 }
 
 /* pandoc syntax */
+
 td.lineNumbers { solid #AAAAAA; text-align: right; color: #AAAAAA; width: 2em; }
 td.lineNumbers pre { border: none; text-align: right; padding: 0;
                      margin-right: 1ch; padding-top: 0; }
@@ -179,6 +199,7 @@ code.sourceCode span.re { }
 code.sourceCode span.er { color: red; font-weight: bold; }
 
 /* ansi2html */
+
 .ef0,.f0 { color: #000000; } .eb0,.b0 { background-color: #000000; }
 .ef1,.f1 { color: #AA3040; } .eb1,.b1 { background-color: #AA0000; }
 .ef2,.f2 { color: #00AA00; } .eb2,.b2 { background-color: #00AA00; }
@@ -190,97 +211,54 @@ code.sourceCode span.er { color: red; font-weight: bold; }
 .f9 { color: white; }
 .bold { font-weight: bold; }
 
-table.test_results {
-    border-collapse: collapse;
-}
+/* test result tables */
 
-table.test_results td {
-    padding: 0px;
-}
+table.test    { border-collapse: collapse; }
+table.test td { padding: 0px; }
 
-span.test_passed {
-    color: green;
-}
+span.test-passed  { color: green; }
+span.test-failed  { color: red; }
+span.test-skipped { color: gray; }
+td.test-long      { text-align: center; }
+td.test a         { color: white; padding: 4px; }
 
-span.test_failed {
-    color: red;
-}
+td.test-passed, a.test-passed           { background-color: green; }
+td.test-failed, a.test-failed           { background-color: red; }
+td.test-skipped, a.test-skipped         { background-color: gray; }
+td.test-started, a.test-started         { background-color: black; }
+td.test-interrupted, a.test-interrupted { background-color: #999900; }
 
-span.test_skipped {
-    color: gray;
-}
-
-td.long_test {
-    text-align: center;
-}
-
-td.test_result a {
-    color: white;
-    padding: 4px;
-}
-
-td.test_passed, a.test_passed {
-    background-color: green;
-}
-
-td.test_failed, a.test_failed {
-    background-color: red;
-}
-
-td.test_skipped, a.test_skipped {
-    background-color: gray;
-}
-
-td.test_started, a.test_started {
-    background-color: black;
-}
-
-td.test_interrupted, a.test_interrupted {
-    background-color: #999900;
-}
-
-table.test_compact td.test {
-    heigth: 100%;
+table.test-compact td.test-name
+{
     vertical-align: top;
     width: 8ch;
 }
 
-table.test_full td.test {
-    padding-right: 2em;
-}
+table.test-full td.test { padding-right: 2em; }
+table.test-compact div  { border-bottom: 1px dotted black; }
+td.test-name div { border-top: 1px dotted black; border-bottom: none; }
+tr:nth-child(1) td.test-name div { border-top: none; border-bottom: none; }
 
-table.test_compact tr {
-    border-bottom: 1px solid black;
-}
-
-td.compact_tests a.test_result {
+td.test-compact a.test
+{
     display: inline-block;
     width: calc(3ch - 7px);
     height: 1em;
     text-align: center;
     padding: 0px 3px 5px 3px;
     color: white;
-    border-bottom: 1px dotted black;
+    border-top: 1px dotted black;
     border-right: 1px dotted black;
 }
 
-td.compact_tests a.test_failed {
+td.test-compact a.test-failed
+{
     vertical-align: -1px;
     padding: 1px 3px 4px 3px;
 }
 
-td.compact_tests a.test_result:hover {
-    color: #AAAAAA;
-}
+td.test-compact a.test:hover { color: #AAAAAA; }
 
-td.compact_tests div {
-    margin-bottom: -1px;
-}
-
-td.compact_tests {
-    background-color: #DDDDDD;
-}
-
-table.test_compact {
-    border-top: 1px solid black;
-}
+td.test-compact div { margin-bottom: -1px; }
+td.test-compact     { background-color: #DDDDDD; }
+div.test-compact    { border-bottom: 1px solid black; border-top: 1px solid black; }
