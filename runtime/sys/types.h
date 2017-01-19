@@ -19,7 +19,7 @@ typedef __uint32_t          socklen_t;
 typedef __uint32_t          uid_t;
 typedef __uint32_t          gid_t;
 
-typedef __int32_t           off_t;
+typedef long long           off_t;
 typedef __int64_t           off64_t;
 
 typedef __uint32_t          mode_t;
