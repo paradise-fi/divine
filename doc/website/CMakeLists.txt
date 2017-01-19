@@ -2,31 +2,22 @@ set( SRCDIR ${CMAKE_CURRENT_SOURCE_DIR} )
 
 macro( page to srcdir opts )
   set( sources "" )
+  set( out "${CMAKE_CURRENT_BINARY_DIR}/${to}" )
+  list( APPEND pages ${out} )
+
   foreach( source ${ARGN} )
-      string( REPLACE "../" "_" mangled ${source} )
-      list( APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/subst.${mangled}" )
-      add_custom_command(
-        VERBATIM
-        OUTPUT subst.${mangled}
-        DEPENDS ${srcdir}/${source}
-        WORKING_DIRECTORY ${SRCDIR}
-        COMMAND sed -e s,@version@,${DIVINE_VERSION},g
-                    -e s,DIVINE,:DIVINE:,g
-                    ${srcdir}/${source} > ${CMAKE_CURRENT_BINARY_DIR}/subst.${mangled}
-      )
+    list( APPEND sources "${srcdir}/${source}" )
   endforeach()
+
   add_custom_command(
-    OUTPUT ${to}
-    DEPENDS ${sources} template.html
-    COMMAND pandoc --to=html -s --smart
-            --email-obfuscation=javascript
-            -o -
-            --template ${SRCDIR}/template.html
-            -V version:${DIVINE_VERSION}
-            ${opts}
-            ${sources} | sed -e 's,:DIVINE:,<span class="divine">DIVINE</span>,g' > ${to}
+    OUTPUT ${out}
+    DEPENDS ${sources} template.html ${SRCDIR}/../md2html.pl
+    WORKING_DIRECTORY ${SRCDIR}
+    COMMAND perl ${SRCDIR}/../md2html.pl
+            version=${DIVINE_VERSION} opts=${opts} ${sources}
+            | sed -e "s,:DIVINE:,<span class=\"divine\">DIVINE</span>,g" > ${out}
+    VERBATIM
   )
-  list( APPEND pages ${to} )
 endmacro()
 
 macro( pages sourcedir )
@@ -56,7 +47,7 @@ add_custom_command(
 
 page( whatsnew.html .. "--toc" NEWS )
 page( roadmap.html .. "" ROADMAP )
-page( manual.html ../manual "--toc;-N" ${MANUAL_SRC} )
+page( manual.html ../manual "--toc -N" ${MANUAL_SRC} )
 pages( . download.md index.md status.md )
 resources( style.css um-400.ttf um-700.ttf lato-400.ttf lato-700.ttf ../papers.bib )
 add_custom_target( website ALL DEPENDS ${pages} ${resources} papers.html )
