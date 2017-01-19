@@ -56,7 +56,7 @@ FILE * freopen(
     else
     {
         /* Allocate new buffer */
-        if ( ( stream->filename = (char *)malloc( strlen( filename ) ) ) == NULL )
+        if ( ( stream->filename = (char *)malloc( strlen( filename ) + 1 ) ) == NULL )
         {
             _PDCLIB_funlockfile( stream );
             return NULL;
