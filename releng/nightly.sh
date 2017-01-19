@@ -11,13 +11,11 @@ email()
 
 finished()
 {
-    perl -i.orig -e '$rep = `cat report.txt`; while (<>) { s/\@report\@/$rep/; print $_; }' \
-         doc/website/status.md
+    test -e doc/website/report.txt || cp report.txt doc/website/
+    touch doc/website/template.html # force a rebuild
     make ${buildtype}-website
-    mv doc/website/status.md.orig doc/website/status.md
 
     email | sendmail $address
-    rm -f report.txt changes.txt
     exit $1
 }
 
@@ -77,6 +75,7 @@ darcs pull --dry -a --match 'not name XXX' --no-deps -s --no-set-default $upstre
     egrep -v '^Would|^Making|^No remote' | tee changes.txt
 if ! grep -q ^patch changes.txt; then exit 0; fi
 
+rm -f report.txt doc/website/report.txt
 darcs pull --quiet -a --match 'not name XXX' --no-deps
 
 patchcount=$(grep -c ^patch changes.txt)
@@ -93,7 +92,7 @@ if ! make $buildtype; then # does it build at all?
     finished 1
 fi
 
-(echo "# Test results"; echo) >> report.txt
+(echo "# Test Results"; echo) >> report.txt
 
 rm -f $list
 if ! make ${buildtype}-check JOBS=6 || egrep -q 'failed|timeout|unknown' $list; then
