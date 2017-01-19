@@ -12,8 +12,11 @@ email()
 finished()
 {
     test -e doc/website/report.txt || cp report.txt doc/website/
+    perl releng/tests2html.pl < $list >> doc/website/report.txt
     touch doc/website/template.html # force a rebuild
     make ${buildtype}-website
+    rm -rf "$objdir/doc/website/test"
+    cp -R "$objdir/test/results" "$objdir/doc/website/test"
 
     email | sendmail $address
     exit $1
@@ -96,6 +99,7 @@ fi
 
 rm -f $list
 if ! make ${buildtype}-check JOBS=6 || egrep -q 'failed|timeout|unknown' $list; then
+    test -e $list && cp report.txt doc/website/
     failed >> report.txt
     finished 1
 fi
