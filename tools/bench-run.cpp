@@ -65,7 +65,7 @@ void Run::prepare( int model )
 void Run::execute( int job_id )
 {
     _done = false;
-    brick::string::Splitter split( "[ \t\n]", std::regex::extended );
+    brick::string::Splitter split( "[ \t\n]+", std::regex::extended );
 
     for ( auto cmdstr : _script )
     {

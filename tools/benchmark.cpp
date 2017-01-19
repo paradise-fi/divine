@@ -52,31 +52,16 @@ int Import::modrev()
 void Import::files()
 {
     if ( _name.empty() )
-        _name = _srcs[0];
-
-    std::stringstream script;
-
-    script << "cc -o testcase.bc ";
-
-    for ( auto s : _srcs )
-        if ( brick::string::endsWith( s, ".cpp" ) )
-        {
-            script << "-std=c++14 ";
-            break;
-        }
-
-    for ( auto s : _srcs )
-        script << s << " ";
-    script << std::endl << "verify testcase.bc";
+        _name = _files[0];
 
     int script_id = odbc::unique_id( _conn, "source", odbc::Keys{ "text" },
-                                     odbc::Vals{ script.str() } );
+                                     odbc::Vals{ fs::readFile( _script ) } );
 
     odbc::Keys keys_mod{ "name", "revision", "script" };
     odbc::Vals vals_mod{ _name, modrev(), script_id };
     _id = odbc::unique_id( _conn, "model", keys_mod, vals_mod );
 
-    auto addfile = [&]( std::string file )
+    for ( auto file : _files )
     {
         auto src = fs::readFile( file );
         int file_id = odbc::unique_id(
@@ -84,13 +69,10 @@ void Import::files()
                                  odbc::Vals{ src } );
 
         odbc::Keys keys_tie{ "model", "source", "filename" };
-        odbc::Vals vals_tie{ _id, file_id, fs::basename( file ) };
+        odbc::Vals vals_tie{ _id, file_id, file };
         auto ins = odbc::insert( _conn, "model_srcs", keys_tie, vals_tie );
         nanodbc::execute( ins );
     };
-
-    for ( auto src : _srcs ) addfile( src );
-    for ( auto hdr : _hdrs ) addfile( hdr );
 }
 
 void Import::tag()
@@ -150,9 +132,8 @@ int main( int argc, const char **argv )
     auto opts_import = cmd::make_option_set< Import >( validator )
         .option( "[--name {string}]", &Import::_name, "model name (default: filename)" )
         .option( "[--tag {string}]", &Import::_tags, "tag(s) to assign to the model" )
-        .option( "[--src {string}]", &Import::_srcs, "a source file to import" )
-        .option( "[--hdr {string}]", &Import::_hdrs, "a header to go along" )
-        .option( "[--pkg {string}]",  &Import::_pkg,  "a multi-file bundle" );
+        .option( "[--file {string}]", &Import::_files, "a (source) file to import" )
+        .option( "[--script {string}]", &Import::_script, "a build/verify script" );
 
     auto opts_report = cmd::make_option_set< Report >( validator )
         .option( "[--watch]",  &Report::_watch, "refresh the results in a loop" )

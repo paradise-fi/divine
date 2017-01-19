@@ -45,24 +45,17 @@ struct Cmd
 
 struct Import : Cmd
 {
-    std::string _pkg, _name;
-    std::vector< std::string > _srcs, _hdrs, _tags;
+    std::string _name, _script;
+    std::vector< std::string > _files, _tags;
     int _id;
 
     int modrev();
     void files();
-    void pkg() { NOT_IMPLEMENTED(); }
     void tag();
 
     virtual void run()
     {
-        if ( !_srcs.empty() && !_pkg.empty() )
-            throw brick::except::Error( "--src and --pkg can't be both specified" );
-
-        if ( _pkg.empty() )
-            files();
-        else
-            pkg();
+        files();
         tag();
     }
 };
