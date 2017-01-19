@@ -39,9 +39,11 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/DiagnosticPrinter.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Object/ArchiveWriter.h>
 #include <llvm/Object/IRObjectFile.h>
@@ -359,12 +361,12 @@ struct Linker {
         ASSERT( src != nullptr );
         src->materializeAllPermanently();
         if ( !_link ) {
-            _link.reset( new ::llvm::Linker( src.release() ) );
+            _link.reset( new ::llvm::Linker( src.release(),
+                            [this]( const ::llvm::DiagnosticInfo &i ) { this->_error( i ); } ) );
         } else {
-            std::string err;
             auto r = _link->linkInModule( src.get() );
             if ( r ) {
-                std::cerr << "ERROR: " << err << " while linking '"
+                std::cerr << "ERROR: while linking '"
                           << src->getModuleIdentifier() << "'" << std::endl;
                 UNREACHABLE( "Linker error" );
             }
@@ -450,6 +452,14 @@ struct Linker {
     bool hasModule() { return _link != nullptr; }
 
   private:
+    void _error( const ::llvm::DiagnosticInfo &i ) {
+        ::llvm::raw_os_ostream err( std::cerr );
+        err << "LLVM Linker error: ";
+        ::llvm::DiagnosticPrinterRawOStream printer( err );
+        i.print( printer );
+        err << "\n";
+        err.flush();
+    }
 
     template< typename It >
     static std::unique_ptr< Module > _takeModule( It it ) {
