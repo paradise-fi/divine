@@ -120,7 +120,7 @@ validate:
 ${FLAVOURS:%=%-ext}:
 	$(MAKE) ${@:%-ext=%} ${@:%-ext=%}-runner
 	cd $(OBJ)${@:%-ext=%}/test && \
-	   bash $(PWD)/test/lib/testsuite --testdir $(PWD)/test --only ext-
+	   $(SETENV) SRCDIR=$(PWD) bash $(PWD)/test/lib/testsuite --testdir $(PWD)/test --only ext-
 
 toolchain-install: toolchain
 	$(CMAKE) --build $(OBJ)toolchain --target install -- $(EXTRA)
