@@ -9,16 +9,18 @@
 
 #include "_PDCLIB_int.h"
 
+#ifdef __divine__
+#include <_DIVINE_errno.h>
+#include <dios.h>
+#define errno (*__dios_get_errno())
+#else
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 extern int * _PDCLIB_errno_func( void );
 #define errno (*_PDCLIB_errno_func())
-
-#ifdef __divine__
-#include <_DIVINE_errno.h>
-#else
 
 /* C only requires the following three */
 #define ERANGE          _PDCLIB_ERANGE
@@ -101,10 +103,11 @@ extern int * _PDCLIB_errno_func( void );
 #define ETXTBSY         _PDCLIB_ETXTBSY
 #define EWOULDBLOCK     _PDCLIB_EWOULDBLOCK
 #define EXDEV           _PDCLIB_EXDEV
-#endif
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
 
 #endif
