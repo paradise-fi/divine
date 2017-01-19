@@ -57,9 +57,7 @@ void Import::files()
     int script_id = odbc::unique_id( _conn, "source", odbc::Keys{ "text" },
                                      odbc::Vals{ fs::readFile( _script ) } );
 
-    odbc::Keys keys_mod{ "name", "revision", "script" };
-    odbc::Vals vals_mod{ _name, modrev(), script_id };
-    _id = odbc::unique_id( _conn, "model", keys_mod, vals_mod );
+    std::set< std::pair< std::string, int > > file_ids;
 
     for ( auto file : _files )
     {
@@ -67,9 +65,53 @@ void Import::files()
         int file_id = odbc::unique_id(
                 _conn, "source", odbc::Keys{ "text" },
                                  odbc::Vals{ src } );
+        file_ids.emplace( file, file_id );
+    }
 
-        odbc::Keys keys_tie{ "model", "source", "filename" };
-        odbc::Vals vals_tie{ _id, file_id, file };
+    auto next_rev = modrev();
+
+    for ( int rev = 1; rev < next_rev - 1; ++rev )
+    {
+        nanodbc::statement get_script( _conn,
+            "select script from model where model.name = ? and model.revision = ?" );
+        get_script.bind( 0, _name.c_str() );
+        get_script.bind( 1, &rev );
+        auto scr_id = get_script.execute();
+        if ( !scr_id.first() )
+            continue; /* does not exist */
+        if ( scr_id.get< int >( 0 ) != script_id )
+            continue; /* no match */
+
+        nanodbc::statement get_files( _conn,
+            "select model_srcs.filename, model_srcs.source from "
+            "model join model_srcs on model_srcs.model = model.id "
+            "where model.revision = ? and model.name = ?" );
+        get_files.bind( 0, &rev );
+        get_files.bind( 1, _name.c_str() );
+        auto file = get_files.execute();
+        int match = 0, indb = 0;
+        while ( file.next() )
+        {
+            auto k = std::make_pair( file.get< std::string >( 0 ), file.get< int >( 1 ) );
+            if ( file_ids.count( k ) )
+                ++ match;
+            ++ indb;
+        }
+        if ( match == indb && match == int( file_ids.size() ) )
+        {
+            std::cerr << "W: not imported, identical model present as revision " << rev << std::endl;
+            return;
+        }
+    }
+
+    odbc::Keys keys_mod{ "name", "revision", "script" };
+    odbc::Vals vals_mod{ _name, next_rev, script_id };
+    _id = odbc::unique_id( _conn, "model", keys_mod, vals_mod );
+
+    for ( auto p : file_ids )
+    {
+        odbc::Keys keys_tie{ "model", "filename", "source" };
+        odbc::Vals vals_tie{ _id, p.first, p.second };
         auto ins = odbc::insert( _conn, "model_srcs", keys_tie, vals_tie );
         nanodbc::execute( ins );
     };
