@@ -44,4 +44,5 @@ mkdir -p __test_work_dir.$TEST_SLOT
 cd __test_work_dir.$TEST_SLOT
 
 trap "check debris" EXIT
-set -ex -o pipefail
+set -e -o pipefail
+test -n "$SILENT" || set -x

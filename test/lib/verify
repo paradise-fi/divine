@@ -1,9 +1,7 @@
 . lib/flavour vanilla
-. lib/testcase
+SILENT=1 . lib/testcase
 
-getopt() {
-  perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2
-}
+getopt() { perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2; }
 
 std=
 echo "$1" | grep -q '.cpp$' && std="-std=c++14"
