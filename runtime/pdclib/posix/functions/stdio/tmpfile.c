@@ -20,6 +20,7 @@ int open(const char *fname, int flags, ...);
 #else
 #include <fcntl.h>
 #endif
+#include <errno.h>
 
 extern const _PDCLIB_fileops_t _PDCLIB_fileops;
 
@@ -28,23 +29,14 @@ FILE* _PDCLIB_nothrow tmpfile( void )
 
     /* Good quality random source */
     int urandom = open( "/dev/urandom", O_RDONLY | O_CLOEXEC );
-    if(urandom == -1)
-    {
-        // TODO: errno!
-        return NULL;
-    }
 
     int fd;
     char filename[ L_tmpnam ];
     for ( ;; )
     {
         long long randnum;
-        if( read(urandom, &randnum, sizeof randnum ) != sizeof randnum )
-        {
-            // TODO: errno!
-            close( urandom );
-            return NULL;
-        }
+        if( urandom == -1 || read(urandom, &randnum, sizeof randnum ) != sizeof randnum )
+            randnum = rand();
 
         sprintf( filename, "/tmp/%llx.tmp", randnum );
         /* Check if file of this name exists. Note that fopen() is a very weak
@@ -53,12 +45,22 @@ FILE* _PDCLIB_nothrow tmpfile( void )
            appropriate.
         */
         fd = open( filename, O_CREAT | O_EXCL | O_RDWR, 0600 );
+        /* if it fails for other reason then existence of the file (such as
+           nonexistence of /tmp/) fail immediatelly.
+        */
+        if ( fd == -1 && errno != EEXIST )
+        {
+            if ( urandom != -1 )
+                close( urandom );
+            return NULL;
+        }
         if ( fd != -1 )
         {
             break;
         }
     }
-    close( urandom );
+    if ( urandom != -1 )
+        close( urandom );
 
     FILE* rc = _PDCLIB_fvopen(((_PDCLIB_fd_t){ .sval = fd}), &_PDCLIB_fileops,
                                 _PDCLIB_FWRITE | _PDCLIB_FRW |
