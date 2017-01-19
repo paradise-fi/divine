@@ -119,8 +119,8 @@ validate:
 
 ${FLAVOURS:%=%-ext}:
 	$(MAKE) ${@:%-ext=%} ${@:%-ext=%}-runner
-	WD=$$PWD ; cd $(OBJ)${@:%-ext=%}/test && \
-	   bash $$WD/test/lib/testsuite --testdir $$WD/test --only ext-
+	cd $(OBJ)${@:%-ext=%}/test && \
+	   bash $(PWD)/test/lib/testsuite --testdir $(PWD)/test --only ext-
 
 toolchain-install: toolchain
 	$(CMAKE) --build $(OBJ)toolchain --target install -- $(EXTRA)
