@@ -329,7 +329,7 @@ _Static_assert( sizeof( &_PDCLIB_digits[1] - &_PDCLIB_digits[0] ) == sizeof( _PD
 /* locale / wchar / uchar                                                     */
 /* -------------------------------------------------------------------------- */
 
-#ifndef __cplusplus
+#if !defined( __cplusplus  ) || _PDCLIB_CXX_VERSION < 2011
 typedef _PDCLIB_uint16_t        _PDCLIB_char16_t;
 typedef _PDCLIB_uint32_t        _PDCLIB_char32_t;
 #else

@@ -718,7 +718,7 @@ int getchar( void ) _PDCLIB_nothrow;
    This function is dangerous and has been a great source of security
    vulnerabilities. Do not use it. It was removed by C11.
 */
-char * gets( char * s ) _PDCLIB_DEPRECATED _PDCLIB_nothrow;
+char * gets( char * s ) _PDCLIB_nothrow _PDCLIB_DEPRECATED;
 #endif
 
 /* getline() reads an entire line from stream, storing the address of the buffer
