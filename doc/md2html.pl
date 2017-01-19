@@ -27,6 +27,7 @@ for ( @ARGV )
         s,DIVINE,:DIVINE:,g;
         print PD;
     }
+    print PD "\n\n";
 }
 
 close( PD );
