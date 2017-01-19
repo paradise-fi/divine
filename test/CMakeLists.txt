@@ -26,10 +26,10 @@ add_custom_target( functional
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/doc/examples .
   COMMAND cp -R ${CMAKE_SOURCE_DIR}/test/lib .
   COMMAND mkdir -p results
-  COMMAND ${WITH_LCOV}
-            bash ${CMAKE_CURRENT_SOURCE_DIR}/lib/testsuite
-                 ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
-                 ${CMAKE_CURRENT_BINARY_DIR} ${ONLY}
+  COMMAND env SRCDIR=${divine_SOURCE_DIR}
+              bash ${CMAKE_CURRENT_SOURCE_DIR}/lib/testsuite
+                   --testdir ${CMAKE_CURRENT_SOURCE_DIR} ${ONLY}
+                   ${ONLY}
   USES_TERMINAL
   DEPENDS runner
   VERBATIM

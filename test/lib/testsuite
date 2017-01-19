@@ -1,14 +1,6 @@
 #!/bin/sh
 
-SRC_DIR=$1
-CUR_SRC_DIR=$2
-CUR_BIN_DIR=$3
-shift 3
-
-FAILED=
-
 ./runner \
-    --testdir $CUR_SRC_DIR \
     --total-timeout 28800 --timeout 120  \
     --interpreter cpp:lib/verify \
     --interpreter c:lib/verify \
@@ -17,10 +9,8 @@ FAILED=
     --interpreter pdc:lib/pdclib-test \
     --skip "[.]pkg/" \
     --workdir . --outdir results \
-    --sort-hint "/([0-9]*)[.][^/]+$" "$@" || FAILED=y
+    --sort-hint "/([0-9]*)[.][^/]+$" "$@"
 
-pandoc --version > /dev/null 2>/dev/null && \
-    perl ${SRC_DIR}/releng/functional-report.pl \
-         ${CUR_BIN_DIR}/results ${SRC_DIR}/doc/website
-
-test -z $FAILED
+EXIT=$?
+test -n "$TESTHOOK" && $TESTHOOK
+exit $EXIT
