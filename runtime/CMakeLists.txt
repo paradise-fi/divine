@@ -5,7 +5,8 @@ include( stringify )
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
       *.h divine/*.h dios/*.hpp dios/core/*.hpp dios/core/*.def atomic sys/*.h bits/*.h
       abstract/*.hpp abstract/*.h
-      pdclib/*.h pdclib/sys/*.h pdclib/bits/*.h libtre/*.h
+      pdclib/*.h pdclib/includes/*.h pdclib/internals/*.h pdclib/posix/includes/*.h
+      pdclib/opt/pthreads/*.h pdclib/sys/*.h pdclib/bits/*.h libtre/*.h
       libm/*.h libm/machine/*.h
       libcxxabi/include/*
       libcxxabi/src/*.h libcxxabi/src/*.hpp libcxxabi/src/*.ipp
@@ -20,7 +21,10 @@ file( GLOB SRC_libdios
 file( GLOB SRC_libabstract abstract/*.cpp abstract/*.c )
 
 file( GLOB SRC_libc
-      pdclib/functions/*/*.c pdclib/opt/*/*.c pdclib/posix/*.c pdclib/*.c libtre/*.c libm/src/*.c )
+      pdclib/functions/*/*.c
+      pdclib/opt/basecodecs/*.c pdclib/opt/c_locale/*.c pdclib/opt/pthreads/*.c
+      pdclib/posix/*.c pdclib/posix/*/*/*.c
+      pdclib/*.c libtre/*.c libm/src/*.c )
 
 file( GLOB SRC_libm libm/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
@@ -51,6 +55,10 @@ endmacro()
 
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR} )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib/includes )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib/internals )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib/posix/includes )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib/opt/pthreads )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/src/ld80 )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libtre )
