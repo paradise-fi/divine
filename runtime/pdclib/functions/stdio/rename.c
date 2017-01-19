@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #ifndef REGTEST
+#if !defined(__divine__) // rename is syscall in DIVINE (as well as Linux)
 #include "_PDCLIB_glue.h"
 #include <threads.h>
 
@@ -33,6 +34,7 @@ int rename( const char * old, const char * new )
     return _PDCLIB_rename( old, new );
 }
 
+#endif
 #endif
 
 #ifdef TEST
@@ -73,11 +75,18 @@ int main( void )
     /* rename file 1 to file 2 - expected to fail, see comment in
        _PDCLIB_rename() itself.
     */
+#if !defined(__divine__)
     /* NOREG as glibc overwrites existing destination file. */
     TESTCASE_NOREG( rename( testfile1, testfile2 ) != 0 );
     /* remove both files */
     TESTCASE( remove( testfile1 ) == 0 );
     TESTCASE( remove( testfile2 ) == 0 );
+#else
+    TESTCASE_NOREG( rename( testfile1, testfile2 ) == 0 );
+    /* remove both files */
+    TESTCASE( remove( testfile1 ) != 0 );
+    TESTCASE( remove( testfile2 ) == 0 );
+#endif
     /* check that they're gone */
     TESTCASE( fopen( testfile1, "r" ) == NULL );
     TESTCASE( fopen( testfile2, "r" ) == NULL );
