@@ -74,7 +74,7 @@ void Import::files()
 
     odbc::Keys keys_mod{ "name", "revision", "script" };
     odbc::Vals vals_mod{ _name, modrev(), script_id };
-    int mod_id = odbc::unique_id( _conn, "model", keys_mod, vals_mod );
+    _id = odbc::unique_id( _conn, "model", keys_mod, vals_mod );
 
     auto addfile = [&]( std::string file )
     {
@@ -84,13 +84,24 @@ void Import::files()
                                  odbc::Vals{ src } );
 
         odbc::Keys keys_tie{ "model", "source", "filename" };
-        odbc::Vals vals_tie{ mod_id, file_id, fs::basename( file ) };
+        odbc::Vals vals_tie{ _id, file_id, fs::basename( file ) };
         auto ins = odbc::insert( _conn, "model_srcs", keys_tie, vals_tie );
         nanodbc::execute( ins );
     };
 
     for ( auto src : _srcs ) addfile( src );
     for ( auto hdr : _hdrs ) addfile( hdr );
+}
+
+void Import::tag()
+{
+    for ( auto tag : _tags )
+    {
+        int tag_id = odbc::unique_id( _conn, "tag", odbc::Keys{ "name" }, odbc::Vals{ tag } );
+        odbc::Vals vals{ _id, tag_id };
+        auto ins = odbc::insert( _conn, "model_tags", odbc::Keys{ "model", "tag" }, vals );
+        ins.execute();
+    }
 }
 
 void Schedule::run()
@@ -138,12 +149,14 @@ int main( int argc, const char **argv )
 
     auto opts_import = cmd::make_option_set< Import >( validator )
         .option( "[--name {string}]", &Import::_name, "model name (default: filename)" )
+        .option( "[--tag {string}]", &Import::_tags, "tag(s) to assign to the model" )
         .option( "[--src {string}]", &Import::_srcs, "a source file to import" )
         .option( "[--hdr {string}]", &Import::_hdrs, "a header to go along" )
         .option( "[--pkg {string}]",  &Import::_pkg,  "a multi-file bundle" );
 
     auto opts_report = cmd::make_option_set< Report >( validator )
         .option( "[--watch]",  &Report::_watch, "refresh the results in a loop" )
+        .option( "[--by-tag]",  &Report::_by_tag, "group results by tags" )
         .option( "[--list-instances]",  &Report::_list_instances, "show available instances" )
         .option( "[--result {string}]", &Report::_result, "only include runs with one of given results (default: VE)" )
         .option( "[--instance {int}]",  &Report::_instance, "show results for a given instance" );

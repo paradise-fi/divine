@@ -68,21 +68,28 @@ void Report::results()
         std::cout << char( 27 ) << "[2J" << char( 27 ) << "[;H";
 
     std::stringstream q;
-    q << "select instance.id, model.name, "
-      << "(select max(states) from search_log where execution = execution.id ), "
-      << "execution.result, time_search, time_ce "
+    q << "select instance.id, " << ( _by_tag ? "tag.name" : "model.name" ) << ", "
+      << ( _by_tag ? "sum( states ), " : "states, " )
+      << ( _by_tag ? "count( model.id )" : "execution.result" ) << ", "
+      << ( _by_tag ? "sum(time_search), sum(time_ce)" : "time_search, time_ce" ) << " "
       << "from execution join instance join job join model "
+      << ( _by_tag ? "join model_tags join tag " : "" )
       << "on instance.id = execution.instance "
       << "and job.execution = execution.id and job.model = model.id "
+      << ( _by_tag ? "and model_tags.model = model.id and model_tags.tag = tag.id " : "" )
       << "where (";
 
     for ( size_t i = 0; i < _result.size(); ++i )
         q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "') " : "' or " );
     if ( _instance >= 0 )
         q << " and instance.id = " << _instance;
+    if ( _by_tag )
+        q << " group by tag.id";
 
     nanodbc::statement find( _conn, q.str() );
-    format( find.execute(), odbc::Keys{ "instance", "model", "states", "result", "search", "ce" } );
+    odbc::Keys hdr{ "instance", _by_tag ? "tag" : "model", "states",
+                    _by_tag ? "models" : "result", "search", "ce" };
+    format( find.execute(), hdr );
 
     if ( _watch )
     {

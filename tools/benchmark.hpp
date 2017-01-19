@@ -46,11 +46,13 @@ struct Cmd
 struct Import : Cmd
 {
     std::string _pkg, _name;
-    std::vector< std::string > _srcs, _hdrs;
+    std::vector< std::string > _srcs, _hdrs, _tags;
+    int _id;
 
     int modrev();
     void files();
     void pkg() { NOT_IMPLEMENTED(); }
+    void tag();
 
     virtual void run()
     {
@@ -61,6 +63,7 @@ struct Import : Cmd
             files();
         else
             pkg();
+        tag();
     }
 };
 
@@ -74,7 +77,7 @@ struct Report : Cmd
     bool _list_instances = false;
     int _instance = -1;
     std::string _result = "VE";
-    bool _watch = false;
+    bool _watch = false, _by_tag = false;
 
     void format( nanodbc::result res, odbc::Keys );
     void list_instances();

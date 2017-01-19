@@ -26,6 +26,13 @@ create table model_srcs( model    integer references model( id ) not null,
                          filename varchar not null,
                          unique ( model, filename ) );
 
+create table tag( id integer primary key not null,
+                  name varchar unique not null );
+
+create table model_tags( model integer references model( id ) not null,
+                         tag integer references tag( id ) not null,
+                         unique ( model, tag ) );
+
 -- model checker versions
 create table build( id          integer primary key not null,
                     version     varchar  not null,
