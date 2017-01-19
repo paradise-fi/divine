@@ -4,11 +4,10 @@ use warnings;
 use strict;
 use File::Spec::Functions;
 use File::Basename;
+use Cwd;
 
-die "usage: functional-report.pl <DIRECTORY_WITH_RESULTS> <WEBSITE_SRC_DIR>" if ( @ARGV < 2 );
-
-my $dir = $ARGV[0];
-my $webdir = $ARGV[1];
+my $dir = &cwd . "/results";
+my $webdir = $ENV{SRCDIR} . "/doc/website";
 my $journal = catfile( $dir, "journal" );
 my $list = catfile( $dir, "list" );
 my $out = catfile( $dir, "html" );
