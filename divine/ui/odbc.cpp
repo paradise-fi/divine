@@ -134,7 +134,7 @@ struct ODBCSink : TimedSink
 {
     nanodbc::connection _conn;
     int _execution = -1;
-    int _pool_seq = 0, _prog_seq = 0;
+    int _pool_seq = 0, _prog_seq = 0, _states = 0;
 
     ODBCSink( std::string str ) : _conn( str )
     {
@@ -149,6 +149,7 @@ struct ODBCSink : TimedSink
         Vals vals{ _prog_seq++, _execution, states, queued };
         auto ins = odbc::insert( _conn, "search_log", keys, vals );
         nanodbc::execute( ins );
+        _states = states;
     }
 
     void log_pool( const brick::mem::Stats &st, int pid )
@@ -180,7 +181,8 @@ struct ODBCSink : TimedSink
         using mc::Result;
         nanodbc::statement update( _conn,
                 "update execution set result = ?, time_lart = ?, "
-                "time_load = ?, time_boot = ?, time_search = ?, time_ce = ? where id = ?" );
+                "time_load = ?, time_boot = ?, time_search = ?, "
+                "time_ce = ?, states = ? where id = ?" );
         switch ( r )
         {
             case Result::None:      update.bind( 0, "U" ); break;
@@ -198,7 +200,8 @@ struct ODBCSink : TimedSink
         update.bind( 3, &boot );
         update.bind( 4, &search );
         update.bind( 5, &ce );
-        update.bind( 6, &_execution );
+        update.bind( 6, &_states );
+        update.bind( 7, &_execution );
         update.execute();
     }
 

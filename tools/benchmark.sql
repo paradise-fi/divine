@@ -56,6 +56,7 @@ create table execution( id       integer primary key not null,
                         time_search integer, -- milliseconds
                         time_smt    integer, -- milliseconds
                         time_ce     integer, -- milliseconds
+                        states      integer,
                         result   char(1) default 'U' not null ); -- V = valid, E = error, B = boot error, U = unknown
 
 create table pool_log( id integer primary key,
