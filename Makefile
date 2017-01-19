@@ -61,7 +61,7 @@ ${FLAVOURS}:
 
 GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
-SETENV = env TOOLCHAIN_RPATH=$(RTBIN)
+SETENV = env TOOLCHAIN_RPATH=$(RTBIN) TESTHOOK="$(TESTHOOK)"
 
 ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(OBJ)toolchain/stamp
 	chmod +x test/divine # darcs does not remember +x on files
