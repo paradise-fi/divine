@@ -30,7 +30,7 @@ int rename( const char * old, const char * new )
         current = current->next;
     }
     mtx_unlock( &_PDCLIB_filelist_lock );
-    return _FS_renameitem( old, new );
+    return _PDCLIB_rename( old, new );
 }
 
 #endif
