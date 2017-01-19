@@ -77,14 +77,14 @@ struct TimedSink : LogSink
 
     MSecs msecs( Clock::time_point from, Clock::time_point to )
     {
-        return std::chrono::duration_cast< MSecs >( from - to );
+        return std::chrono::duration_cast< MSecs >( to - from );
     }
 
     MSecs reset_interval()
     {
         auto start = _start;
         _start = Clock::now();
-        return _interval = msecs( _start, start );
+        return _interval = msecs( start, _start );
     }
 
     MSecs interval() { return msecs( _start, Clock::now() ); }
