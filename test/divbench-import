@@ -1,0 +1,39 @@
+#!/bin/sh
+set -e
+
+getopt() { perl -ne "print \$1 if (m,/\* $1: (.*?) \*/, or m,// $1: (.*?)\n,)" $2; }
+
+test -z "$B" && B=$(make show var=DEFAULT_FLAVOUR)
+make $B-divbench 1>&2
+exe=$(make show var=OBJ)$B/tools/divbench
+import() { echo "$@"; $exe import "$@" -d "Driver=SQLITE;Database=/tmp/divbench.sqlite"; }
+
+wd=$PWD
+find test -name \*.c -or -name \*.cpp | grep -v todo | while read f; do
+    std=
+    echo "$f" | grep -q '.cpp$' && std="-std=c++14"
+
+    opts=$(eval echo $(getopt VERIFY_OPTS $f))
+    args=$(eval echo $(getopt PROGRAM_OPTS $f))
+    ccopt=$(eval echo $(getopt CC_OPTS $f))
+    skipcc=$(getopt SKIP_CC $f)
+
+    if test "$skipcc" = 1; then
+        continue
+    fi
+
+    cd $(dirname $f)
+    tag=$(echo $f | cut -d/ -f2)
+    name=$(echo $f | cut -d/ -f2-)
+    f=$(basename $f)
+
+    add=""
+    for hdr in *.h*; do
+        test -e $hdr && add="$add --file $hdr";
+    done
+
+    ( echo "cc -o testcase.bc $std $ccopt $f" ; echo "verify $opts testcase.bc $args" ) > script
+    import --name $name --file $f $add --script script --tag $tag
+    rm -f script
+    cd $wd
+done
