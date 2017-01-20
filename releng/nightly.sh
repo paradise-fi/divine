@@ -84,7 +84,7 @@ darcs pull --dry -a --match 'not name XXX' --no-deps -s --no-set-default $upstre
 if ! grep -q ^patch changes.txt; then exit 0; fi
 
 rm -f report.txt doc/website/report.txt
-darcs pull --quiet -a --match 'not name XXX' --no-deps
+darcs pull --quiet -a --match 'not name XXX' --no-deps --no-set-default $upstream
 
 patchcount=$(grep -c ^patch changes.txt)
 if test $patchcount -eq 1; then patches="1 new patch"; else patches="$patchcount new patches"; fi
