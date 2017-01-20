@@ -51,7 +51,7 @@ all: $(DEFAULT_FLAVOUR)
 
 FLAVOURS = debug asan release semidbg
 TARGETS = divine unit functional website check llvm-utils clang test-divine \
-          install lart runner divbench
+          install lart runner divbench divcheck
 
 ${TARGETS}:
 	$(MAKE) $(DEFAULT_FLAVOUR)-$@
