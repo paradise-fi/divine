@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <divine.h>
+#include <stdlib.h>
 
 void *thread( void *zzz )
 {

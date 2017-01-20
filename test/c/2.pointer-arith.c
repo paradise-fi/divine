@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <stdlib.h>
+
 int main()
 {
     char *p = malloc( 4 );
