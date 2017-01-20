@@ -65,6 +65,11 @@ passed()
     echo "<http://divine.fi.muni.cz/current>."
 }
 
+passed_web()
+{
+    echo "Tests passed, the above patches are now part of <http://divine.fi.muni.cz/current>."
+}
+
 set -ve
 umask 0022
 
@@ -104,9 +109,12 @@ if ! make ${buildtype}-check JOBS=6 || egrep -q 'failed|timeout|unknown' $list; 
     finished 1
 fi
 
+cp report.txt doc/website/
 if egrep -q 'warnings|skipped' $list; then warnings >> report.txt; fi
 
 # everything looks good, push to current
 passed >> report.txt
+passed_web >> doc/website/report.txt
+
 darcs push --quiet -a --no-set-default $downstream
 finished 0
