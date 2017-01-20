@@ -29,6 +29,9 @@ if ( OPT_SQL )
   target_link_libraries( divbench libdivine divine-rt )
 endif()
 
+add_executable( divcheck divcheck.cpp )
+target_link_libraries( divcheck libdivine divine-rt )
+
 if( NOT WIN32 )
   target_link_libraries( divine pthread )
 endif( NOT WIN32 )
