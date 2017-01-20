@@ -88,7 +88,7 @@ struct Report : Cmd
 struct Run : Cmd
 {
     std::vector< std::pair< std::string, std::string > > _files;
-    std::vector< std::string > _script;
+    std::string _script;
     bool _done;
 
     void prepare( int model );

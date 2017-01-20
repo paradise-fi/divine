@@ -21,9 +21,7 @@
 #include <divine/ui/sysinfo.hpp>
 #include <divine/ui/log.hpp>
 #include <divine/ui/odbc.hpp>
-#include <divine/ui/cli.hpp>
-#include <divine/ui/parser.hpp>
-#include <divine/cc/compile.hpp>
+#include <tools/divcheck.hpp>
 
 #include <iostream>
 #include <vector>
@@ -37,7 +35,6 @@ namespace benchmark
 void Run::prepare( int model )
 {
     _files.clear();
-    _script.clear();
 
     std::cerr << "loading model " << model << std::endl;
 
@@ -57,36 +54,22 @@ void Run::prepare( int model )
     scr.bind( 0, &model );
     auto script = scr.execute();
     script.first();
-    std::string txt = script.get< std::string >( 0 );
-    brick::string::Splitter split( "\n", std::regex::extended );
-    std::copy( split.begin( txt ), split.end(), std::back_inserter( _script ) );
+    _script = script.get< std::string >( 0 );
 }
 
 void Run::execute( int job_id )
 {
     _done = false;
-    brick::string::Splitter split( "[ \t\n]+", std::regex::extended );
 
-    for ( auto cmdstr : _script )
+    auto exec = [&]( auto &cmd )
     {
         if ( _done )
             throw brick::except::Error( "only one model checker run is allowed per model" );
+        _done = true;
+        execute( job_id, cmd );
+    };
 
-        std::vector< std::string > tok;
-        std::copy( split.begin( cmdstr ), split.end(), std::back_inserter( tok ) );
-        ui::CLI cli( tok );
-
-        auto cmd = cli.parse( cli.commands() );
-        cmd.match( [&]( ui::Cc &cc ) { cc._files = _files; } );
-        cmd.match( [&]( ui::Command &c ) { c.setup(); } );
-        cmd.match( [&]( ui::Verify &v ) { execute( job_id, v ); },
-                   [&]( ui::Run &r ) { execute( job_id, r ); },
-                   [&]( ui::Cc &cc ) { cc.run(); },
-                   [&]( ui::Command & )
-                   {
-                       throw brick::except::Error( "unsupported command " + cmdstr );
-                   } );
-    }
+    divcheck::execute( _script, [&]( auto &cc ) { cc._files = _files; }, exec );
 }
 
 void Run::execute( int job_id, ui::Verify &job )
