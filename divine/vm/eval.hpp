@@ -666,14 +666,26 @@ struct Eval
         auto caller = _program.instruction( caller_pc.cooked() );
         if ( instruction().values.size() > 1 ) /* return value */
         {
-            if ( caller.values.size() == 0 )
-                fault( _VM_F_Control ) << "Function which was called as void returned a value";
-            else if ( caller.result().size() < operand( 0 ).size() )
-                fault( _VM_F_Control ) << "Returned value is bigger then expected by caller";
-            else if ( !heap().copy( s2ptr( operand( 0 ) ),
+            if ( caller.values.size() == 0 ) {
+                fault( _VM_F_Control, parent.cooked(), caller_pc.cooked() )
+                    << "Function which was called as void returned a value";
+                return;
+            } else if ( caller.result().size() != operand( 0 ).size() ) {
+                fault( _VM_F_Control, parent.cooked(), caller_pc.cooked() )
+                    << "Returned value is bigger then expected by caller";
+                return;
+            } else if ( !heap().copy( s2ptr( operand( 0 ) ),
                                     s2ptr( caller.result(), 0, parent.cooked() ),
                                     caller.result().size() ) )
-                fault( _VM_F_Memory ) << "Cound not return value";
+            {
+                fault( _VM_F_Memory, parent.cooked(), caller_pc.cooked() )
+                    << "Cound not return value";
+                return;
+            }
+        } else if ( caller.result().size() > 0 ) {
+            fault( _VM_F_Control, parent.cooked(), caller_pc.cooked() )
+                << "Function called as non-void did not return a value";
+            return;
         }
 
         context().leave( pc() );
