@@ -1,0 +1,1 @@
+TESTCASE=functions/locale/_PDCLIB_mb_cur_max.c

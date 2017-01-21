@@ -1,0 +1,1 @@
+TESTCASE=opt/pthreads/mtx_lock.c
