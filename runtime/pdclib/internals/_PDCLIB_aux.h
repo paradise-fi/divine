@@ -201,7 +201,7 @@
     #define _PDCLIB_UNREACHABLE __builtin_unreachable()
 #endif
 
-#if !defined(_PDCLIB_UNDEFINED) && defined(__GNUC__)
+#if !defined(_PDCLIB_UNDEFINED) && defined(__GNUC__) && !defined(__divine__)
     #define _PDCLIB_UNDEFINED(_var) \
         do { __asm__("" : "=X"(_var)); } while(0)
 #endif
