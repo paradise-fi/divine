@@ -16,14 +16,11 @@
 extern "C" {
 
 #define NOT_IMPLEMENTED { __dios_fault( _VM_F_NotImplemented, "libc stubs" ); return 0; }
-FILE *tmpfile() noexcept NOT_IMPLEMENTED;
 double atof( const char * ) noexcept NOT_IMPLEMENTED;
 double strtod( const char *, char ** ) noexcept NOT_IMPLEMENTED;
 float strtof( const char *, char ** ) noexcept NOT_IMPLEMENTED;
 long double strtold( const char *, char ** ) noexcept NOT_IMPLEMENTED;
 size_t mbsrtowcs( wchar_t *, const char **, size_t, mbstate_t * ) NOT_IMPLEMENTED;
-int wcscoll( const wchar_t *, const wchar_t *) NOT_IMPLEMENTED;
-size_t wcsxfrm( wchar_t *, const wchar_t *, size_t ) NOT_IMPLEMENTED;
 wint_t btowc( int ) NOT_IMPLEMENTED;
 int wctob( wint_t ) NOT_IMPLEMENTED;
 size_t wcsnrtombs( char *, const wchar_t **, size_t, size_t, mbstate_t * ) NOT_IMPLEMENTED;
