@@ -72,10 +72,4 @@ int gettimeofday( struct timeval *tp, void * /* tzp */ ) {
     return 0;
 }
 
-time_t time( time_t *t ) _PDCLIB_nothrow {
-    if ( t )
-        *t = 0;
-    return 0;
-}
-
 }
