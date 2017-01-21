@@ -109,7 +109,6 @@ int usleep( useconds_t usec );
 
 // entrypoints for rename & renameat functions
 FS_NOINLINE int renameat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath );
-FS_NOINLINE int rename( const char * old, const char * newn );
 
 FS_NOINLINE char *getcwd(char *buf, size_t size);
 #undef FS_NOINLINE
