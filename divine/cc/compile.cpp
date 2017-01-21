@@ -67,6 +67,8 @@ Compile::Compile( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
                   , "-D_LITTLE_ENDIAN=1234"
                   , "-D_BYTE_ORDER=1234"
                   , "-g"
+                  , "-U__x86_64"
+                  , "-U__x86_64__"
                   };
 }
 
