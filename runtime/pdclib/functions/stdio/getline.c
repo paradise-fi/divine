@@ -73,7 +73,7 @@ int main( void )
 {
     FILE * fh;
     char *buffer = malloc( 3 );
-    int n = 3;
+    size_t n = 3;
     char const * getline_test = "foo\nbar\0baz\nweenie";
     TESTCASE( ( fh = fopen( testfile, "wb" ) ) != NULL );
     TESTCASE( fwrite( getline_test, 1, 18, fh ) == 18 );
