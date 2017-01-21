@@ -13,7 +13,7 @@
 int _PDCLIB_prepread( FILE * stream )
 {
     if ( ( stream->bufidx > stream->bufend ) ||
-         ( stream->status & ( _PDCLIB_FWRITE | _PDCLIB_FAPPEND | _PDCLIB_ERRORFLAG | _PDCLIB_WIDESTREAM | _PDCLIB_EOFFLAG ) ) ||
+         ( stream->status & ( _PDCLIB_FWRITE | _PDCLIB_FAPPEND | _PDCLIB_ERRORFLAG | _PDCLIB_WIDESTREAM ) ) ||
          ! ( stream->status & ( _PDCLIB_FREAD | _PDCLIB_FRW ) ) )
     {
         /* Function called on illegal (e.g. output) stream.
@@ -22,6 +22,10 @@ int _PDCLIB_prepread( FILE * stream )
         */
         errno = EINVAL;
         stream->status |= _PDCLIB_ERRORFLAG;
+        return EOF;
+    }
+    if ( stream->status & _PDCLIB_EOFFLAG )
+    {
         return EOF;
     }
     stream->status |= _PDCLIB_FREAD | _PDCLIB_BYTESTREAM;
