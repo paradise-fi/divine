@@ -174,16 +174,26 @@ void enumerateFunctionsForAnno( std::string anno, ::llvm::Module &m, Yield yield
     enumerateFunctionsForAnno( Annotation( anno ), m, yield );
 }
 
-inline void writeModule( ::llvm::Module *m, std::string out ) {
-    std::error_code serr;
-    brick::fs::mkFilePath( out );
-    ::llvm::raw_fd_ostream fs( out.c_str(), serr, ::llvm::sys::fs::F_None );
-    ::llvm::verifyModule( *m );
-    WriteBitcodeToFile( m, fs );
+inline void verifyModule( ::llvm::Module *module ) {
+    std::string err;
+    ::llvm::raw_string_ostream serr( err );
+    if ( ::llvm::verifyModule( *module, &serr ) ) {
+        throw std::runtime_error( "Invalid bitcode: " + serr.str() );
+    }
 }
 
 static void _throwLLVMError( std::error_code ec ) {
     throw std::runtime_error( "LLVM Error: " + ec.message() );
+}
+
+inline void writeModule( ::llvm::Module *m, std::string out ) {
+    verifyModule( *m );
+    std::error_code serr;
+    brick::fs::mkFilePath( out );
+    ::llvm::raw_fd_ostream fs( out.c_str(), serr, ::llvm::sys::fs::F_None );
+    if ( serr )
+        _throwLLVMError( serr );
+    WriteBitcodeToFile( m, fs );
 }
 
 
