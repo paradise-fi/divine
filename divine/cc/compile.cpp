@@ -203,13 +203,13 @@ void Compile::addFlags( std::vector< std::string > flags ) {
 
 std::shared_ptr< llvm::LLVMContext > Compile::context() { return compiler.context(); }
 
-void Compile::setupLib( std::string name, std::string content )
+void Compile::setupLib( std::string name, std::string_view content )
 {
     auto libname = brick::fs::splitExtension( brick::fs::basename( name ) ).first;
     if ( libname.substr( 0, 3 ) == "lib" )
         libname = libname.substr( 3 );
 
-    brick::llvm::ArchiveReader reader( name, std::move( content ), context() );
+    brick::llvm::ArchiveReader reader( name, content, context() );
     auto ins = libs.emplace( libname, std::move( reader ) );
     if ( !ins.second )
         throw std::runtime_error( "Double definition of library " + name );

@@ -314,8 +314,11 @@ Compiler::~Compiler() { }
 void Compiler::mapVirtualFile( std::string path, llvm::StringRef contents ) {
     divineVFS->addFile( path, contents );
 }
-void Compiler::mapVirtualFile( std::string path, const std::string &contents ) {
-    divineVFS->addFile( path, contents );
+void Compiler::mapVirtualFile( std::string path, std::string contents ) {
+    divineVFS->addFile( path, std::move( contents ) );
+}
+void Compiler::mapVirtualFile( std::string path, std::string_view contents ) {
+    divineVFS->addFile( path, llvm::StringRef( contents.data(), contents.size() ) );
 }
 
 std::vector< std::string > Compiler::filesMappedUnder( std::string path ) {

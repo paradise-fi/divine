@@ -69,14 +69,14 @@ struct Compile
         each( [&]( auto path, auto c )
               {
                   if ( brick::string::endsWith( path, ".a" ) )
-                      setupLib( path, std::string( c ) );
+                      setupLib( path, c );
                   else
-                      compiler.mapVirtualFile( path, std::string( c ) );
+                      compiler.mapVirtualFile( path, c );
               } );
     }
 
   private:
-    void setupLib( std::string name, std::string content );
+    void setupLib( std::string name, std::string_view content );
 
     Options opts;
     Compiler compiler;

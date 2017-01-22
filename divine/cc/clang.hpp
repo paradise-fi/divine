@@ -11,6 +11,12 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-assert>
 #include <brick-except>
 
+#include <experimental/string_view>
+
+namespace std {
+    using experimental::string_view;
+}
+
 namespace divine {
 namespace cc {
 
@@ -44,7 +50,8 @@ struct Compiler {
     ~Compiler();
 
     void mapVirtualFile( std::string path, llvm::StringRef contents );
-    void mapVirtualFile( std::string path, const std::string &contents );
+    void mapVirtualFile( std::string path, std::string_view contents );
+    void mapVirtualFile( std::string path, std::string contents );
 
     template< typename T >
     void mapVirtualFiles( std::initializer_list< std::pair< std::string, const T & > > files ) {
