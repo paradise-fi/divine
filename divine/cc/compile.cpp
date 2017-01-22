@@ -176,23 +176,17 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
 }
 
 llvm::Module *Compile::getLinked() {
+    brick::llvm::verifyModule( linker->get() );
     return linker->get();
 }
 
 void Compile::writeToFile( std::string filename ) {
-    writeToFile( filename, getLinked() );
+    writeToFile( filename, linker->get() );
 }
 
 void Compile::writeToFile( std::string filename, llvm::Module *mod )
 {
-    llvm::raw_os_ostream cerr( std::cerr );
-    if ( llvm::verifyModule( *mod, &cerr ) ) {
-        cerr.flush(); // otherwise nothing will be displayed
-        UNREACHABLE( "invalid bitcode" );
-    }
-    std::error_code serr;
-    ::llvm::raw_fd_ostream outs( filename, serr, ::llvm::sys::fs::F_None );
-    WriteBitcodeToFile( mod, outs );
+    brick::llvm::writeModule( mod, filename );
 }
 
 std::string Compile::serialize() {
