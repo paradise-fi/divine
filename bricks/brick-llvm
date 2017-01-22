@@ -74,10 +74,12 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace std {
 
+using experimental::string_view;
+
 template<>
 struct hash< llvm::StringRef > {
     size_t operator()( llvm::StringRef sr ) const {
-        return hash< std::experimental::string_view >()( std::experimental::string_view( sr.data(), sr.size() ) );
+        return hash< std::string_view >()( std::string_view( sr.data(), sr.size() ) );
     }
 };
 
@@ -246,11 +248,12 @@ struct ArchiveReader
             _throwLLVMError( ec );
     }
 
-    ArchiveReader( std::string filename, const std::string &contents, std::shared_ptr< Ctx > ctx = nullptr ) :
+    ArchiveReader( std::string filename, std::string_view contents, std::shared_ptr< Ctx > ctx = nullptr ) :
         ArchiveReader( ctx )
     {
         std::error_code ec;
-        _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef( contents, filename ), ec );
+        _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef(
+                        ::llvm::StringRef( contents.data(), contents.size() ), filename ), ec );
         if ( ec )
             _throwLLVMError( ec );
     }
