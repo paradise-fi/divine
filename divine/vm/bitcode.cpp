@@ -28,6 +28,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/DiagnosticPrinter.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <brick-llvm>
+
 using namespace divine::vm;
 
 BitCode::BitCode( std::string file )
@@ -85,6 +87,8 @@ void BitCode::do_lart()
     if ( mod->getGlobalVariable( "__sys_env" ) )
         lart::util::replaceGlobalArray( *mod, "__sys_env", _env );
     lart.process( mod );
+
+    brick::llvm::verifyModule( mod );
 }
 
 void BitCode::do_rr()
