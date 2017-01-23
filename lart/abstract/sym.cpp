@@ -30,9 +30,9 @@ namespace {
         }
         else if ( n == "lift" )
         {
-			auto val = llvm::cast< llvm::ConstantInt >( args[ 0 ] )->getSExtValue();
-			auto cint = llvm::ConstantInt::get( llvm::IntegerType::get(i->getContext(), 64), val );
-            return { cint, bitwidth( i->getContext(), intrinsic::ty1( i ) ) };
+            llvm::IRBuilder<> irb( i );
+            auto sext = irb.CreateSExt( args[ 0 ], llvm::IntegerType::get(i->getContext(), 64) );
+            return { sext, bitwidth( i->getContext(), intrinsic::ty1( i ) ) };
         }
         else if ( ( n == "load" ) ||
                   ( n == "store" ) ||
