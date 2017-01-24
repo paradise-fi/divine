@@ -96,6 +96,8 @@ extern "C" void _PDCLIB_Exit( int rv )
         __dios_trace_f( "Non-zero exit code: %d", rv );
         __dios_fault( _VM_F_Control, "exit called with non-zero value" );
     }
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
     __cxa_finalize( 0 );
     __dios::runDtors();
     __dios_kill_process( 0 );

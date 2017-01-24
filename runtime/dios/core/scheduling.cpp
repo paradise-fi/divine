@@ -27,6 +27,8 @@ void __dios_kill_thread( _DiOS_ThreadHandle id ) noexcept {
 }
 
 void __dios_kill_process( _DiOS_ProcId id ) noexcept {
+    if ( id == 0 ) // TODO: other kinds of suicide
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
     __dios_syscall( __dios::_SC_kill_process, nullptr, id );
 }
 
