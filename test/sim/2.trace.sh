@@ -6,7 +6,7 @@ sim $TESTS/c/1.malloc.c <<EOF
 - FAULT
 + ^traced states: #1 #2
 + ^# executing malloc at
-> stepa
+> stepa --count 3
 + ^# executing - at -
 > trace 0 0 0
 + ^traced states: #1 #2
@@ -15,7 +15,7 @@ sim $TESTS/c/1.malloc.c <<EOF
 + ^T: FAULT: null pointer dereference
 + ^# executing __dios::Fault::handler
 > trace 0 0 0 0
-+ traced states: #1 #2 #4
++ traced states: #1 #2 #6
 + unused choices: 0
 EOF
 
