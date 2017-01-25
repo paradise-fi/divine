@@ -38,12 +38,12 @@ const std::string name( const llvm::Function * fn ) {
 
 const std::string ty1( const llvm::Function * fn ) {
     auto parts = parse( fn );
-    return parts.size() >= 3 ? parts[3] : "";
+    return parts.size() > 3 ? parts[3] : "";
 }
 
 const std::string ty2( const llvm::Function * fn ) {
     auto parts = parse( fn );
-    return parts.size() >= 4 ? parts[4] : "";
+    return parts.size() > 4 ? parts[4] : "";
 }
 
 const std::string domain( const llvm::CallInst * call ) {

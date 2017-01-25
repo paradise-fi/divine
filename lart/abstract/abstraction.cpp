@@ -101,14 +101,22 @@ void Abstraction::process( llvm::Function * fn,
     auto changed = changeReturn( fn );
 	builder.store( fn, changed );
 
+    // backward propagation of return value
 	if ( fn != changed ) {
         std::vector< llvm::User * > users = { fn->user_begin(), fn->user_end() } ;
+        std::map< llvm::Function *, std::vector< llvm::Value * > > fnusers;
         for ( auto user : users ) {
-			if ( auto inst = llvm::dyn_cast< llvm::Instruction >( user ) ) {
+		    if ( auto inst = llvm::dyn_cast< llvm::Instruction >( user ) ) {
 				auto parent = inst->getParent()->getParent();
-				preprocess( parent );
-				process( parent, { inst } );
-			}
+                if ( fnusers.count( parent ) )
+                    fnusers[ parent ].push_back( inst );
+                else
+                    fnusers[ parent ] = { inst };
+            }
+        }
+        for ( auto & u : fnusers ) {
+            preprocess( u.first );
+			process( u.first, u.second );
 		}
 		_unused.insert( fn );
 	}
