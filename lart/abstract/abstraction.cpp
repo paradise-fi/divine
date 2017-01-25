@@ -73,15 +73,22 @@ void Abstraction::process( llvm::Instruction * i ) {
 }
 
 void Abstraction::processAllocas( llvm::Function * fn ) {
-    auto allocas = query::query( *fn ).flatten()
-                  .map( query::refToPtr )
-                  .map( query::llvmdyncast< llvm::AllocaInst > )
-                  .filter( query::notnull )
-                  .freeze();
-
-    for ( auto & a : allocas )
-        if ( isLifted( walker.dependencies( a ) ) )
+    std::vector< llvm::AllocaInst * > allocas;
+    // propagation of alloca instructions may create new lifts
+    // hence we will propagate allocas until there is none to be processed
+    do {
+        auto v = query::query( *fn ).flatten()
+                 .map( query::refToPtr )
+                 .map( query::llvmdyncast< llvm::AllocaInst > )
+                 .filter( query::notnull )
+                 .filter( [&]( llvm::AllocaInst * a ) {
+                     return isLifted( walker.dependencies( a ) );
+                 } )
+                 .freeze();
+        allocas = v;
+        for ( auto & a : allocas )
             propagate( a );
+    } while ( !allocas.empty() );
 }
 
 void Abstraction::process( llvm::Function * fn,
