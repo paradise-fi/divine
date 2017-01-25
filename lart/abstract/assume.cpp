@@ -16,6 +16,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/types.h>
 #include <lart/support/query.h>
+#include <lart/analysis/edge.h>
 
 namespace lart {
 namespace abstract {
@@ -28,15 +29,15 @@ namespace {
         llvm::Constant * val;
     };
 
-    template< typename Node >
-    struct Edge {
-        Edge( Node from, Node to ) : from( from ), to( to ) {}
-
-        Node from;
-        Node to;
+    using BB = llvm::BasicBlock;
+    using BBEdge = analysis::BBEdge;
+    struct AssumeEdge : BBEdge {
+        AssumeEdge( BB * from, BB * to ) : BBEdge( from, to ) {}
 
         void assume( Assumption assume ) {
+            unsigned i = succ_idx( from, to );
             llvm::SplitEdge( from, to );
+            auto edgeBB = from->getTerminator()->getSuccessor( i );
             auto rty = llvm::Type::getVoidTy( from->getContext() );
             auto fty = llvm::FunctionType::get( rty,
                                               { assume.cond->getType(), assume.val->getType()},
@@ -44,12 +45,19 @@ namespace {
             std::string tag = "lart.tristate.assume";
             auto call = from->getModule()->getOrInsertFunction( tag, fty );
 
-            llvm::IRBuilder<> irb( &to->front() );
+            llvm::IRBuilder<> irb( &edgeBB->front() );
             irb.CreateCall( call, { assume.cond, assume.val } );
         }
-    };
 
-    using BBEdge = Edge< llvm::BasicBlock * >;
+        unsigned succ_idx( BB * from, BB * to ) {
+            auto term = from->getTerminator();
+            for ( unsigned i = 0; i < term->getNumSuccessors(); ++i ) {
+                if ( term->getSuccessor( i ) == to )
+                    return i;
+            }
+            assert( false && "BasicBlock 'to' is not successor of BasicBlock 'from'." );
+        }
+    };
 
     llvm::Value * getTristate( llvm::CallInst * lower ) {
         ASSERT( lower->getCalledFunction()->getName().startswith( "lart.tristate.lower" ) );
@@ -66,7 +74,7 @@ namespace {
 					   .filter( []( llvm::BranchInst * br ) {
 							return br->isConditional();
 						} )
-						.freeze();
+					   .freeze();
 
 		for ( auto & br : branches )
 			process( br );
@@ -82,13 +90,12 @@ namespace {
         if ( lower && intrinsic::isLower( lower ) ) {
             auto tristate = getTristate( lower );
 
-            BBEdge trueBr = { br->getParent(), br->getSuccessor( 0 ) };
+            AssumeEdge trueBr = { br->getParent(), br->getSuccessor( 0 ) };
             trueBr.assume( { tristate, llvm::ConstantInt::getTrue( inst->getContext() ) } );
-            BBEdge falseBr = { br->getParent(), br->getSuccessor( 1 ) };
+            AssumeEdge falseBr = { br->getParent(), br->getSuccessor( 1 ) };
             falseBr.assume( { tristate, llvm::ConstantInt::getFalse( inst->getContext() ) } );
         }
     }
-
 
 } /* namespace abstract */
 } /* namespace lart */
