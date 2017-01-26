@@ -89,6 +89,10 @@ struct FormulaMap {
                     ASSERT_EQ( bw, 1 );
                     op = smt::unop< smt::Op::Not >( arg );
                     break;
+                case sym::Op::Extract:
+                    ASSERT_LT( bw, childbw );
+                    op = smt::extract( unary.from, unary.to, arg );
+                    break;
                 default:
                     UNREACHABLE_F( "unknown unary operation %d", unary.op );
             }
@@ -141,6 +145,10 @@ struct FormulaMap {
                     case sym::Op::NE:
                         ASSERT_EQ( bw, 1 );
                         op = smt::unop< smt::Op::Not >( smt::binop< smt::Op::Eq >( a, b ) );
+                        break;
+                    case sym::Op::Concat:
+                        ASSERT_EQ( bw, abw + bbw );
+                        op = smt::binop< smt::Op::Concat >( a, b );
                         break;
                     default:
                         UNREACHABLE_F( "unknown binary operation %d", binary.op );
