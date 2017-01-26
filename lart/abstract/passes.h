@@ -552,14 +552,18 @@ struct Assume {
 
 struct BCP {
     TEST( tristate ) {
-        auto s = R"(int main() {
+        auto s = R"(int call() {
                         __test int x;
+                        __test int y;
                         if ( x == 0 ) {
-                            while ( x != 0 )
-                                ++x;
-                        } else {
-                            x = 0;
+                            y = x;
                         }
+                        while ( y < x )
+                            y++;
+                        return y;
+                    }
+                    int main() {
+                        call();
                         return 0;
                     })";
         test_bcp( annotation + s );

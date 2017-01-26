@@ -13,7 +13,6 @@ struct BBEdge {
     BBEdge( BB * from, BB * to ) : from( from ), to( to ) {}
 
     void hide() {
-        from->dump();
         assert( from->getUniqueSuccessor() );
         from->getTerminator()->setSuccessor( 0, from );
     }
@@ -25,7 +24,6 @@ struct BBEdge {
 
     BB * from;
     BB * to;
-
 };
 
 } // namespace analysis

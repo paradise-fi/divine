@@ -3,16 +3,21 @@
 #include <lart/abstract/bcp.h>
 #include <lart/abstract/types.h>
 #include <lart/abstract/intrinsic.h>
+#include <lart/analysis/bbreach.h>
+#include <lart/analysis/edge.h>
 #include <lart/support/query.h>
 
 namespace lart {
 namespace abstract {
 namespace {
+    using BB = llvm::BasicBlock;
+    using I = llvm::Instruction;
+
     struct Assume {
         enum AssumeValue { Predicate, LHS, RHS };
 
         /* Find corresponding tristate to given assume with assumed 'value'. */
-        Assume( llvm::Instruction * assume ) : assume( assume ) {}
+        Assume( I * assume ) : assume( assume ) {}
 
         /* Abstract icmp condition constrained by given assume. */
         llvm::CallInst * condition() {
@@ -24,7 +29,7 @@ namespace {
         /* Creates appropriate assume in given domain about predicate, left
            or right argument of condition.
          */
-        llvm::Value * constrain( const std::string & domain, AssumeValue v ) {
+        llvm::Instruction * constrain( const std::string & domain, AssumeValue v ) {
             llvm::IRBuilder<> irb( assume );
             llvm::Type * rty;
             std::vector< llvm::Value * > args;
@@ -60,14 +65,58 @@ namespace {
         llvm::Instruction * assume;
     };
 
-    /* Propagates assumed value and optionaly merge with original value */
-    void propagate( llvm::Value * /* assume */, llvm::Value * /* origin */ ) {
-        // for  use : uses( origin ) do
-        //  if ( bb( use ) is reachable from bb( assume )
-        //      if ( bb( origin ) is reachable from bb( use ) tak, ze neprejde, cez bb( assume )
-        //          create phi [origin = origin | assume ]
-        //      else
-        //          substituuj a za assume
+    /* Replace uses of v by newv in bb. */
+    void _replace( llvm::Value * v, llvm::Value * newv, BB * bb ) {
+        assert( v->getType() == newv->getType() &&
+                "replace of value with new value of different type!" );
+        for ( auto & u : v->uses() ) {
+            auto usr = llvm::dyn_cast< llvm::Instruction >( u.getUser() );
+            if ( usr && usr->getParent() == bb )
+                u.set( newv );
+        }
+    }
+
+    /* Propagates assumed value and optionally merge with original value */
+    void propagate( I * assume, I * origin ) {
+        using BBEdge = analysis::BBEdge;
+        using SCC = analysis::BasicBlockSCC;
+        using Reachability = analysis::Reachability;
+
+        llvm::Function * fn = assume->getParent()->getParent();
+        SCC sccs( *fn );
+        Reachability reach( *fn, &sccs );
+
+        BB * abb = assume->getParent();
+        BB * obb = origin->getParent();
+
+        for ( auto user : origin->users() ) {
+            if ( ( user != assume ) && ( user != origin ) ) {
+                BB * ubb = llvm::cast< I >( user )->getParent();
+                if ( reach.reachable( abb, ubb ) ) {
+                    bool merge = false;
+                    if ( !ubb->getUniquePredecessor() ) {
+                        BBEdge e{ abb, abb->getUniqueSuccessor() };
+                        // is obb backward reachable from ubb without going through abb?
+                        e.hide();
+                        SCC scc( *fn );
+                        Reachability r( *fn, &scc );
+                        merge = r.reachable( obb, ubb );
+                        assert( !r.reachable( abb, ubb ) );
+                        e.show();
+                    }
+                    if ( merge ) {
+                        //FIXME create PHI only in the highest BB
+                        llvm::IRBuilder<> irb( ubb );
+                        auto phi = irb.CreatePHI( origin->getType(), 2 );
+                        phi->addIncoming( origin, obb );
+                        phi->addIncoming( assume, abb );
+                        _replace( origin, phi, ubb );
+                    } else {
+                        _replace( origin, assume, ubb );
+                    }
+                }
+            }
+        }
     }
 }
     void BCP::process( llvm::Module & m ) {
@@ -94,8 +143,8 @@ namespace {
 
         // forward propagate constrained values
         propagate( pre, ass.condition() );
-        propagate( lhs, ass.condition()->getArgOperand( 0 ) );
-        propagate( rhs, ass.condition()->getArgOperand( 1 ) );
+        propagate( lhs, llvm::cast< I >( ass.condition()->getArgOperand( 0 ) ) );
+        propagate( rhs, llvm::cast< I >( ass.condition()->getArgOperand( 1 ) ) );
 
         assume->eraseFromParent();
     }

@@ -12,6 +12,8 @@ DIVINE_RELAX_WARNINGS
 
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 DIVINE_UNRELAX_WARNINGS
+#include <brick-assert>
+
 #include <lart/abstract/assume.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/types.h>
@@ -55,7 +57,7 @@ namespace {
                 if ( term->getSuccessor( i ) == to )
                     return i;
             }
-            assert( false && "BasicBlock 'to' is not successor of BasicBlock 'from'." );
+            UNREACHABLE( "BasicBlock 'to' is not successor of BasicBlock 'from'." );
         }
     };
 
