@@ -118,12 +118,14 @@ private:
     }
 };
 
-namespace {
+static inline llvm::Type * stripPtr( llvm::Type * t ) {
+    return t->isPointerTy() ? t->getPointerElementType() : t;
+}
 
-static std::vector< std::string > parseTypeName( llvm::Type * type ) {
+namespace {
+static std::vector< std::string > parseTypeName( llvm::StructType * type ) {
     std::stringstream ss;
-    auto structT = llvm::cast< llvm::StructType >( type );
-    ss.str( structT->getName().str() );
+    ss.str( type->getName().str() );
     std::vector< std::string > parts;
     std::string part;
     while( std::getline( ss, part, '.' ) )
@@ -141,8 +143,8 @@ static std::string name( const llvm::Type * type ) {
 }
 
 static llvm::Type * lift( llvm::Type * type ) {
-    bool ptr = type->isPointerTy();
-    type = ptr ? type->getPointerElementType() : type;
+    bool isptr = type->isPointerTy();
+    type = stripPtr( type );
 
     llvm::Type * ret;
     auto & ctx = type->getContext();
@@ -151,31 +153,33 @@ static llvm::Type * lift( llvm::Type * type ) {
     else if ( type->isIntegerTy() ) {
         ret =  IntegerType::get( type );
     } else {
-        std::cerr << "Lifting unsupported type.";
+        std::cerr << "Lifting unsupported type:";
+        type->dump();
         std::exit( EXIT_FAILURE );
     }
 
-    return ptr ? ret->getPointerTo() : ret;
+    return isptr ? ret->getPointerTo() : ret;
 }
 
-static llvm::Type * lower( const llvm::Type * type ) {
-    bool ptr = type->isPointerTy();
-    type = ptr ? type->getPointerElementType() : type;
-
+static llvm::Type * lower( llvm::Type * type ) {
+    bool isptr = type->isPointerTy();
+    type = stripPtr( type );
     llvm::Type * ret;
-    if ( Tristate::isa( type ) )
+    if ( Tristate::isa( type ) ) {
         ret = Tristate::lower( type );
-    else if ( IntegerType::isa( type ) )
+    } else if ( IntegerType::isa( type ) ) {
         ret = IntegerType::lower( type );
-    else
-        assert( false && "Lowering unsupported type." );
+    } else {
+        std::cerr << "Lowering unsupported type:";
+        type->dump();
+        std::exit( EXIT_FAILURE );
+    }
 
-    return ptr ? ret->getPointerTo() : ret;
+    return isptr ? ret->getPointerTo() : ret;
 }
 
 static bool isAbstract( llvm::Type * type ) {
-    bool ptr = type->isPointerTy();
-    type = ptr ? type->getPointerElementType() : type;
+    type = stripPtr( type );
     if ( auto structTy = llvm::dyn_cast< llvm::StructType >( type ) ) {
         if ( structTy->hasName() ) {
             auto name = structTy->getStructName();
@@ -189,9 +193,8 @@ static bool isAbstract( llvm::Type * type ) {
 
 // type format: lart.<domain>.<lower type>
 static std::string domain( llvm::Type * type ) {
-    bool ptr = type->isPointerTy();
-    type = ptr ? type->getPointerElementType() : type;
-    auto parts = parseTypeName( type );
+    auto structT = llvm::cast< llvm::StructType >( stripPtr( type ) );
+    auto parts = parseTypeName( structT );
     assert( parts.size() >= 2 );
     return parts[ 1 ];
 }

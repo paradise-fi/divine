@@ -85,9 +85,7 @@ void AbstractBuilder::store( llvm::Function * f1, llvm::Function * f2 ) {
 llvm::Value * AbstractBuilder::process( llvm::Instruction * i ) {
     if ( ignore( i ) ) return nullptr;
 
-    auto type = i->getType()->isPointerTy()
-              ? i->getType()->getPointerElementType()
-              : i->getType();
+    auto type = types::stripPtr( i->getType() );
     if ( !_types.count( type ) && !type->isVoidTy() && !types::isAbstract( type ) )
         llvmcase( type,
             [&]( llvm::IntegerType * t ) {
@@ -435,9 +433,6 @@ llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
 		}
 	}
     assert( stored );
-	/*if ( !stored ) {
-		return nullptr; // let abstraction handle unknown call
-	}*/
 
 	llvm::IRBuilder<> irb( i );
 	return irb.CreateCall( stored, args );
