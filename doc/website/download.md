@@ -27,9 +27,21 @@ either.
 Virtual Machine Images
 ----------------------
 
-Since building DIVINE can be a time-consuming process, once a stable release of
-DIVINE 4 is available, we will provide pre-built VM images for quick
-evaluation.
+Since building DIVINE can be a time-consuming process, we provide pre-built VM
+images for quick evaluation. You can download the latest image, either in form
+of an [OVA Appliance] [7] (tested with VirtualBox), or [compressed VDI disk
+image] [8] (tested with QEMU and VirtualBox, has to be extracted first, for
+example using `unxz`). Both should be also usable by other hypervisors. If you
+choose the VDI image, be sure to include serial port in the configuration of the
+VM (it need not be connected) as the VM will not start otherwise.
+
+The easiest way to use the OVA Appliance is to import it to VirtualBox and add a
+VirtualBox shared folder (machine's settings → shared folders) named
+`divine-vbox` and then start the machine. It should then automatically mount
+this folder to `/mnt/divine-vbox` and you can run DIVINE on files in this folder
+(and edit them in your editor of choice outside of VirtualBox).
+
+Some [older VM images](download/images/) are also available.
 
 [1]: whatsnew.html
 [2]: download
@@ -37,3 +49,5 @@ evaluation.
 [4]: manual.html#installation
 [5]: manual.html
 [6]: download/snapshots/
+[7]: download/images/divine-@version@.ova
+[8]: download/images/divine-@version@.vdi.xz
