@@ -33,7 +33,9 @@ Formula **__abstract_sym_alloca( int bitwidth ) {
     return __new< Formula * >( mark( __newf< Variable >( Type{ Type::Int, bitwidth }, state.counter++ ) ) );
 }
 
-Formula *__abstract_sym_load( Formula **a ) {
+Formula *__abstract_sym_load( Formula **a, int bitwidth ) {
+    if ( bitwidth > 64 )
+        UNREACHABLE_F( "Integer too long: %d bits", bitwidth );
     return mark( *a );
 }
 void __abstract_sym_store( Formula *val, Formula **ptr ) {

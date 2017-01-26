@@ -5,7 +5,7 @@
 extern "C" {
 
 sym::Formula **__abstract_sym_alloca( int bitwidth ) _ROOT _NOTHROW;
-sym::Formula *__abstract_sym_load( sym::Formula **a ) _ROOT _NOTHROW;
+sym::Formula *__abstract_sym_load( sym::Formula **a, int bitwidth ) _ROOT _NOTHROW;
 void __abstract_sym_store( sym::Formula *val, sym::Formula **ptr ) _ROOT _NOTHROW;
 sym::Formula *__abstract_sym_lift( int64_t val, int bitwidth ) _ROOT _NOTHROW;
 

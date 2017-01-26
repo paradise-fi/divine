@@ -34,8 +34,11 @@ namespace {
             auto sext = irb.CreateSExt( args[ 0 ], llvm::IntegerType::get(i->getContext(), 64) );
             return { sext, bitwidth( i->getContext(), intrinsic::ty1( i ) ) };
         }
-        else if ( ( n == "load" ) ||
-                  ( n == "store" ) ||
+        else if ( n == "load" )
+        {
+            return { args[0],  bitwidth( i->getContext(), intrinsic::ty1( i ) ) };
+        }
+        else if ( ( n == "store" ) ||
                   // binary operations
                   ( n == "add" ) ||
                   ( n == "sub" ) ||
