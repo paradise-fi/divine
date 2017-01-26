@@ -21,6 +21,6 @@ int main() {
     int x = foo( 0 );
     assert( x < 42 );
     x = foo( 16 );
-    assert( x == 42 || x == 43 );
+    assert( x == 42 || x == 43 || x == 41 );
     assert( x == 42 ); /* ERROR */
 }
