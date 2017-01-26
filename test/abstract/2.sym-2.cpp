@@ -16,9 +16,9 @@ void foo( __dios::InterruptMask &m, sym::Formula *input, sym::Formula *input2  )
 
 int main() {
     auto **inputa = __abstract_sym_alloca( 64 );
-    auto *input = __abstract_sym_load( inputa );
+    auto *input = __abstract_sym_load( inputa, 64 );
     auto **inputa2 = __abstract_sym_alloca( 64 );
-    auto *input2 = __abstract_sym_load( inputa2 );
+    auto *input2 = __abstract_sym_load( inputa2, 64 );
 
     while ( true ) {
         __dios::InterruptMask m;

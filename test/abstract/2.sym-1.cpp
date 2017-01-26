@@ -4,7 +4,7 @@
 
 int main() {
     auto **inputa = __abstract_sym_alloca( 64 );
-    auto *input = __abstract_sym_load( inputa );
+    auto *input = __abstract_sym_load( inputa, 64 );
     std::cout << sym::toString( input ) << std::endl;
 
     auto *c0l = __abstract_sym_lift( 0, 64 );
@@ -26,7 +26,7 @@ int main() {
     std::cout << sym::toString( add ) << std::endl;
 
     auto **inputa2 = __abstract_sym_alloca( 64 );
-    auto *input2 = __abstract_sym_load( inputa2 );
+    auto *input2 = __abstract_sym_load( inputa2, 64 );
     std::cout << sym::toString( input2 ) << std::endl;
 
     auto *icmp_eq = __abstract_sym_icmp_eq( input2, add );
