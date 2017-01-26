@@ -74,7 +74,8 @@ enum class Op : uint16_t {
     UIntToFP,
 
     BoolNot,
-    LastUnary = BoolNot,
+    Extract,
+    LastUnary = Extract,
 
     FirstBinary,
     Add = FirstBinary,
@@ -128,7 +129,8 @@ enum class Op : uint16_t {
     FcUNO, // unordered (either nans)
     FcTrue, // no comparison, always returns true
 
-    LastBinary = FcTrue,
+    Concat,
+    LastBinary = Concat,
 
     Assume
 };
@@ -207,9 +209,13 @@ static_assert( sizeof( Constant ) == 16, "" );
 template< typename Formula >
 struct Unary_ {
     Unary_( Op op, Type t, Formula child ) : op( op ), type( t ), child( child ) { }
+    Unary_( Op op, Type t, unsigned short from, unsigned short to, Formula child ) :
+        op( op ), type( t ), from( from ), to( to ), child( child )
+    { }
 
     Op op;          // 16B
     Type type;      // 16B
+    unsigned short from, to; // 32B, only for Extract
     Formula child;  // 64B
 };
 
