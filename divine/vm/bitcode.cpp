@@ -70,6 +70,8 @@ void BitCode::do_lart()
     // reduce before any instrumentation to avoid unnecessary instrumentation
     if ( _reduce )
         lart.setup( lart::reduction::paroptPass() );
+    if ( _symbolic )
+        lart.setup( "abstraction:sym" );
     lart.setup( lart::divine::interruptPass() );
     if ( _autotrace )
         lart.setup( lart::divine::autotracePass() );

@@ -229,8 +229,7 @@ void WithBC::setup()
     _bc->environment( env );
     _bc->autotrace( _autotrace );
     _bc->reduce( !_disableStaticReduction );
-    if ( _symbolic )
-        _lartPasses.emplace_back( "abstraction:sym" );
+    _bc->symbolic( _symbolic );
     _bc->lart( _lartPasses );
 }
 

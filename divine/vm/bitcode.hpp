@@ -52,7 +52,7 @@ struct BitCode {
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
     AutoTraceFlags _autotrace;
-    bool _reduce = false;
+    bool _reduce = false, _symbolic = false;
     Env _env;
     std::vector< std::string > _lart;
 
@@ -64,6 +64,7 @@ struct BitCode {
 
     void autotrace( AutoTraceFlags fl ) { _autotrace = fl; }
     void reduce( bool r ) { _reduce = r; }
+    void symbolic( bool s ) { _symbolic = s; }
     void environment( Env env ) { _env = env; }
     void lart( std::vector< std::string > passes ) { _lart = passes; }
 
