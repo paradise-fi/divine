@@ -155,6 +155,7 @@ struct CLI : Interface
             .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
             .option( "[-C,{commasep}]", &WithBC::_ccOpts, "options passed to compiler compiler"s )
             .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
+            .option( "[--sequential]", &WithBC::_sequential, "disable support for threading"s )
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
             .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
                      "disable static (transformation based) state space reductions"s )

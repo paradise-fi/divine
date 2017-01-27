@@ -229,6 +229,7 @@ void WithBC::setup()
     _bc->environment( env );
     _bc->autotrace( _autotrace );
     _bc->reduce( !_disableStaticReduction );
+    _bc->sequential( _sequential );
     _bc->symbolic( _symbolic );
     _bc->lart( _lartPasses );
 }
