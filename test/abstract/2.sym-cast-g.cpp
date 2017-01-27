@@ -12,7 +12,7 @@ int nondet() {
 int main() {
     int x;
     x = nondet();
-    if ( x < 0 )
+    if ( short( x ) < 0 )
         return 0;
     short &y = *reinterpret_cast< short * >( &x );
     ++y;
