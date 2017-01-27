@@ -166,6 +166,12 @@ PassMeta interruptPass()
         "__vm_interrupt_cfl calls to appropriate locations." );
 }
 
+PassMeta cflInterruptPass()
+{
+    return passMeta< CflInterrupt >(
+        "interrupt-cfl", "add __vm_interrupt_cfl calls to appropriate locations." );
+}
+
 }
 }
 
