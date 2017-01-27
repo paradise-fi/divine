@@ -65,56 +65,103 @@ namespace {
         llvm::Instruction * assume;
     };
 
-    /* Replace uses of v by newv in bb. */
-    void _replace( llvm::Value * v, llvm::Value * newv, BB * bb ) {
-        assert( v->getType() == newv->getType() &&
-                "replace of value with new value of different type!" );
-        for ( auto & u : v->uses() ) {
-            auto usr = llvm::dyn_cast< llvm::Instruction >( u.getUser() );
-            if ( usr && usr->getParent() == bb )
-                u.set( newv );
-        }
-    }
+    using BBEdge = analysis::BBEdge;
+    using SCC = analysis::BasicBlockSCC;
+    using Reachability = analysis::Reachability;
 
-    /* Propagates assumed value and optionally merge with original value */
-    void propagate( I * assume, I * origin ) {
-        using BBEdge = analysis::BBEdge;
-        using SCC = analysis::BasicBlockSCC;
-        using Reachability = analysis::Reachability;
-
-        llvm::Function * fn = assume->getParent()->getParent();
+    auto reachable( I * origin, I * constrain ) {
+        llvm::Function * fn = constrain->getParent()->getParent();
         SCC sccs( *fn );
         Reachability reach( *fn, &sccs );
 
-        BB * abb = assume->getParent();
-        BB * obb = origin->getParent();
+        BB * abb = constrain->getParent();
 
-        for ( auto user : origin->users() ) {
-            if ( ( user != assume ) && ( user != origin ) ) {
-                BB * ubb = llvm::cast< I >( user )->getParent();
-                if ( reach.reachable( abb, ubb ) ) {
-                    bool merge = false;
-                    if ( !ubb->getUniquePredecessor() ) {
-                        BBEdge e{ abb, abb->getUniqueSuccessor() };
-                        // is obb backward reachable from ubb without going through abb?
-                        e.hide();
-                        SCC scc( *fn );
-                        Reachability r( *fn, &scc );
-                        merge = r.reachable( obb, ubb );
-                        assert( !r.reachable( abb, ubb ) );
-                        e.show();
-                    }
-                    if ( merge ) {
-                        //FIXME create PHI only in the highest BB
-                        llvm::IRBuilder<> irb( ubb );
-                        auto phi = irb.CreatePHI( origin->getType(), 2 );
-                        phi->addIncoming( origin, obb );
-                        phi->addIncoming( assume, abb );
-                        _replace( origin, phi, ubb );
-                    } else {
-                        _replace( origin, assume, ubb );
-                    }
-                }
+        return query::query( origin->users() )
+              .map( query::llvmdyncast< I > )
+              .filter( [&]( I * user ) {
+                    // skip block with constrains
+                  return user->getParent() != constrain->getParent();
+               } )
+              .filter( [&]( I * user ) {
+                  BB * ubb = user->getParent();
+                  return reach.reachable( abb, ubb );
+               } ).freeze();
+    }
+
+    bool needToMerge( I * constrain, I * user ) {
+        llvm::Function * fn = constrain->getParent()->getParent();
+        I * origin = llvm::cast< I >( constrain->getOperand( 0 ) );
+        BB * obb = origin->getParent();
+        BB * ubb = user->getParent();
+        BB * cbb = constrain->getParent();
+
+        if ( ubb->getUniquePredecessor() )
+            return false;
+
+        bool needtomerge;
+        assert( cbb->getUniqueSuccessor() );
+        BBEdge e{ cbb, cbb->getUniqueSuccessor() };
+
+        // is vbb reachable from obb without going through cbb?
+        e.hide();
+        SCC scc( *fn );
+        Reachability reach( *fn, &scc );
+        needtomerge = reach.reachable( obb, ubb );
+        assert( !reach.reachable( cbb, ubb ) );
+        e.show();
+
+        return needtomerge;
+    }
+
+    /* Replace uses of v by newv in bb. */
+    void replace( llvm::Value * v, llvm::Value * newv, BB * bb ) {
+        assert( v->getType() == newv->getType() &&
+                "Trying to replace a value with a value of different type!" );
+        for ( auto u : v->users() ) {
+            auto usr = llvm::dyn_cast< I >( u );
+            if ( usr && usr->getParent() == bb ) {
+                u->replaceUsesOfWith( v, newv );
+            }
+        }
+    }
+
+    I * dominatedByMerged( std::vector< I * > merged, BB * bb ) {
+        llvm::Function * fn = bb->getParent();
+        SCC scc( *fn );
+        Reachability reach( *fn, &scc );
+
+        for ( auto & m : merged )
+            if ( reach.reachable( m->getParent(), bb ) )
+                return m;
+
+        // bb is not dominated by merged values
+        return nullptr;
+    }
+
+    /* Propagates constrained value and optionally merge with original value */
+    void propagate( I * constrain ) {
+        // original value, that is constrained by assume
+        I * origin = llvm::cast< I >( constrain->getOperand( 0 ) );
+        BB * obb = origin->getParent();
+        BB * cbb = constrain->getParent();
+
+        std::vector< I * > merged;
+        // We need to replace users of original value
+        // that are reachable from constrain.
+        for ( I * user : reachable( origin, constrain ) ) {
+            BB * ubb = user->getParent();
+            if ( auto dom = dominatedByMerged( merged, ubb ) ) {
+                //TODO maybe need to merge dom and c
+                replace( origin, dom, ubb );
+            } else if ( needToMerge( constrain, user ) ) {
+                llvm::IRBuilder<> irb( &ubb->front() );
+                auto phi = irb.CreatePHI( origin->getType(), 2 );
+                phi->addIncoming( origin, obb );
+                phi->addIncoming( constrain, cbb );
+                replace( origin, phi, ubb );
+                merged.push_back( phi );
+            } else {
+                replace( origin, constrain, ubb );
             }
         }
     }
@@ -137,14 +184,14 @@ namespace {
         const std::string domain = intrinsic::domain( ass.condition() );
 
         // create constraints on arguments from condition, that created tristate
-        auto pre = ass.constrain( domain, Assume::AssumeValue::Predicate );
         auto lhs = ass.constrain( domain, Assume::AssumeValue::LHS );
         auto rhs = ass.constrain( domain, Assume::AssumeValue::RHS );
+        auto pre = ass.constrain( domain, Assume::AssumeValue::Predicate );
 
         // forward propagate constrained values
-        propagate( pre, ass.condition() );
-        propagate( lhs, llvm::cast< I >( ass.condition()->getArgOperand( 0 ) ) );
-        propagate( rhs, llvm::cast< I >( ass.condition()->getArgOperand( 1 ) ) );
+        propagate( lhs );
+        propagate( rhs );
+        propagate( pre );
 
         assume->eraseFromParent();
     }
