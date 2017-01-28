@@ -80,11 +80,11 @@ namespace {
               .map( query::llvmdyncast< I > )
               .filter( [&]( I * user ) {
                     // skip block with constrains
-                  return user->getParent() != constrain->getParent();
+                  return user->getParent() != abb;
                } )
               .filter( [&]( I * user ) {
                   BB * ubb = user->getParent();
-                  return reach.reachable( abb, ubb );
+                  return reach.strictlyReachable( abb, ubb );
                } ).freeze();
     }
 
@@ -150,6 +150,10 @@ namespace {
         // that are reachable from constrain.
         for ( I * user : reachable( origin, constrain ) ) {
             BB * ubb = user->getParent();
+            if ( ubb == obb ) {
+                //TODO how split original block?
+                ubb = ubb->splitBasicBlock( ubb->getTerminator() );
+            }
             if ( auto dom = dominatedByMerged( merged, ubb ) ) {
                 //TODO maybe need to merge dom and c
                 replace( origin, dom, ubb );
