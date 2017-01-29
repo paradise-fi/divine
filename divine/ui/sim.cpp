@@ -561,16 +561,21 @@ struct Interpreter
         set( "$_", frameDN() );
     }
 
-    void go( command::Rewind re )
+    void reach_user()
     {
         Stepper step;
         step._instructions = std::make_pair( 1, 1 );
+        run( step, false ); /* make 0 (user mode) steps */
+    }
+
+    void go( command::Rewind re )
+    {
         auto tgt = get( re.var );
         _ctx.load( tgt.snapshot() );
         vm::setup::scheduler( _ctx );
         if ( _trace.count( tgt.snapshot() ) )
             _ctx._choices = _trace[ tgt.snapshot() ];
-        run( step, false ); /* make 0 (user mode) steps */
+        reach_user();
         set( "$_", re.var );
     }
 
@@ -684,6 +689,8 @@ struct Interpreter
         for ( auto t : _ctx._trace )
             std::cerr << "T: " << t << std::endl;
         _ctx._trace.clear();
+        reach_user();
+        set( "$_", frameDN() );
     }
 
     void go( command::Thread thr )
