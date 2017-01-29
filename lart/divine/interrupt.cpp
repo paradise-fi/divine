@@ -103,16 +103,6 @@ struct MemInterrupt : lart::Pass {
                                          "__vm_interrupt_mem intrinsic." );
     }
 
-    _VM_MemAccessType opType( unsigned op ) {
-        if ( op == llvm::Instruction::Load )
-            return _VM_MAT_Load;
-        if ( op == llvm::Instruction::Store )
-            return _VM_MAT_Store;
-        if ( op == llvm::Instruction::AtomicCmpXchg || op == llvm::Instruction::AtomicRMW )
-            return _VM_MAT_Both;
-        UNREACHABLE_F( "Not a memory instruction (opcode %d)", op );
-    }
-
     void annotateFn( llvm::Function &fn ) {
         // avoid changing bb while we iterate over it
         for ( auto inst : query::query( fn ).flatten().map( query::refToPtr ).freeze() ) {
@@ -122,11 +112,16 @@ struct MemInterrupt : lart::Pass {
                 || op == llvm::Instruction::AtomicCmpXchg )
             {
                 auto *type = _memInterrupt->getFunctionType();
-                llvm::IRBuilder<> irb{ llvm::BasicBlock::iterator( inst ) };
-                irb.CreateCall( _memInterrupt, {
-                                irb.CreateBitCast( getPointerOperand( inst ), type->getParamType( 0 ) ),
-                                irb.getInt32( opType( op ) )
-                            } );
+                auto point = llvm::BasicBlock::iterator( inst );
+                llvm::IRBuilder<> irb{ point };
+                auto ptr = irb.CreateBitCast( getPointerOperand( inst ), type->getParamType( 0 ) );
+                irb.CreateCall( _memInterrupt, { ptr, irb.getInt32( _VM_MAT_Load ) } );
+                point ++;
+                if ( op != llvm::Instruction::Load )
+                {
+                    irb.SetInsertPoint( point );
+                    irb.CreateCall( _memInterrupt, { ptr, irb.getInt32( _VM_MAT_Store ) } );
+                }
                 ++_mem;
             }
         }
