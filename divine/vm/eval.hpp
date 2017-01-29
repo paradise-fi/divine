@@ -1650,14 +1650,14 @@ struct Eval
                             return;
 
                         T oldval;
-                        heap().read( ptr.cooked(), oldval );
+                        heap().read( ptr2h( ptr ), oldval );
                         auto change = oldval == expected;
 
                         if ( change.cooked() ) {
                             // undefined if one of the inputs was not defined
                             if ( !change.defined() || !ptr.defined() )
                                 newval.defined( false );
-                            heap().write( ptr.cooked(), newval );
+                            heap().write( ptr2h( ptr ), newval );
                         }
                         slot_write( result(), oldval, 0 );
                         slot_write( result(), change, sizeof( typename T::Raw ) );
