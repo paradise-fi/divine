@@ -145,15 +145,11 @@ namespace {
         BB * obb = origin->getParent();
         BB * cbb = constrain->getParent();
 
-        std::vector< I * > merged;
+        std::vector< I * > merged = { origin };
         // We need to replace users of original value
         // that are reachable from constrain.
         for ( I * user : reachable( origin, constrain ) ) {
             BB * ubb = user->getParent();
-            if ( ubb == obb ) {
-                //TODO how split original block?
-                ubb = ubb->splitBasicBlock( ubb->getTerminator() );
-            }
             if ( auto dom = dominatedByMerged( merged, ubb ) ) {
                 //TODO maybe need to merge dom and c
                 replace( origin, dom, ubb );
