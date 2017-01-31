@@ -76,8 +76,6 @@ Abstract * __abstract_test_sext( Abstract * b) _ROOT {}
 
 Abstract * __abstract_test_bitcast( Abstract * b) _ROOT {}
 
-Abstract * * __abstract_test_bitcast_p( Abstract ** b) _ROOT {}
-
 // icmp operators
 Tristate * __abstract_test_icmp_eq( Abstract * a, Abstract * b) _ROOT {}
 

@@ -94,10 +94,6 @@ CAST( zext, ZExt );
 CAST( sext, SExt );
 CAST( bitcast, BitCast );
 
-Formula **__abstract_sym_bitcast_p( Formula **a, int /* bitwidth */ ) {
-    return a;
-}
-
 #define ICMP( suff, op ) Formula *__abstract_sym_icmp_ ## suff( Formula *a, Formula *b ) { \
     Type i1( Type::Int, 1 ); \
     return mark( __newf< Binary >( Op::op, i1, weaken( a ), weaken( b ) ) ); \

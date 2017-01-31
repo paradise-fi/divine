@@ -210,10 +210,6 @@ extern "C" {
         return __new< Zero >( a->value );
     }
 
-    Zero ** __abstract_zero_bitcast_p( Zero ** a ) {
-        return a;
-    }
-
     // icmp operators
     Zero * __abstract_zero_icmp_eq( Zero * a, Zero * b ) {
         if ( a->value == Zero::Domain::ZeroValue && b->value == Zero::Domain::ZeroValue )

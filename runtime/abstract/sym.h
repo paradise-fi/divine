@@ -27,7 +27,6 @@ sym::Formula *__abstract_sym_trunc( sym::Formula *a, int bitwidth ) _ROOT _NOTHR
 sym::Formula *__abstract_sym_zext( sym::Formula *a, int bitwidth ) _ROOT _NOTHROW;
 sym::Formula *__abstract_sym_sext( sym::Formula *a, int bitwidth ) _ROOT _NOTHROW;
 sym::Formula *__abstract_sym_bitcast( sym::Formula *a ) _ROOT _NOTHROW;
-sym::Formula **__abstract_sym_bitcast_p( sym::Formula **a, int bitwidth ) _ROOT _NOTHROW;
 
 sym::Formula *__abstract_sym_icmp_eq( sym::Formula *a, sym::Formula *b ) _ROOT _NOTHROW;
 sym::Formula *__abstract_sym_icmp_ne( sym::Formula *a, sym::Formula *b ) _ROOT _NOTHROW;
