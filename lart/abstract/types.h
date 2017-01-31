@@ -136,6 +136,12 @@ static std::vector< std::string > parseTypeName( llvm::StructType * type ) {
 } // empty namespace
 
 static std::string name( const llvm::Type * type ) {
+    if ( auto s = llvm::dyn_cast< llvm::StructType >( type ) ) {
+        assert( s->getNumElements() == 1 );
+        type = s->getElementType( 0 );
+        assert( llvm::isa< llvm::IntegerType >( type ) );
+    }
+
     std::string buffer;
     llvm::raw_string_ostream rso( buffer );
     type->print( rso );
@@ -148,10 +154,15 @@ static llvm::Type * lift( llvm::Type * type ) {
 
     llvm::Type * ret;
     auto & ctx = type->getContext();
-    if ( type == llvm::Type::getInt1Ty( ctx ) )
+    if ( type == llvm::Type::getInt1Ty( ctx ) ) {
         ret = Tristate::get( ctx );
-    else if ( type->isIntegerTy() ) {
+    } else if ( type->isIntegerTy() ) {
         ret =  IntegerType::get( type );
+    } else if ( type->isStructTy() ) {
+        auto s = llvm::cast< llvm::StructType >( type );
+        // union type
+        assert( s->getNumElements() == 1 );
+        return lift( s->getElementType( 0 ) );
     } else {
         std::cerr << "Lifting unsupported type:";
         type->dump();
