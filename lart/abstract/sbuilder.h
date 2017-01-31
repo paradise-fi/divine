@@ -45,6 +45,7 @@ struct SubstitutionBuilder {
     void substituteSelect( llvm::SelectInst * );
     void substituteBranch( llvm::BranchInst * );
     void substituteCall( llvm::CallInst * );
+    void substituteCast( llvm::CastInst * );
     void substituteReturn( llvm::ReturnInst * );
 
     void processCall( llvm::CallInst * );

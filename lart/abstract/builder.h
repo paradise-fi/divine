@@ -30,6 +30,9 @@ struct AbstractBuilder {
     std::vector< llvm::Type * > arg_types( llvm::CallInst * );
 
     llvm::Value * create( llvm::Instruction * );
+    llvm::Value * createPtrInst( llvm::Instruction * );
+    llvm::Value * createInst( llvm::Instruction * );
+
     bool ignore( llvm::Instruction * );
 
     llvm::Value * createAlloca( llvm::AllocaInst * );
@@ -42,6 +45,8 @@ struct AbstractBuilder {
     llvm::Value * createPhi( llvm::PHINode * );
     llvm::Value * createCall( llvm::CallInst * );
     llvm::Value * createReturn( llvm::ReturnInst * );
+
+    llvm::Value * createPtrCast( llvm::CastInst * );
 
     llvm::Value * lower( llvm::Value *, llvm::IRBuilder<> & );
     llvm::Value * lift( llvm::Value *, llvm::IRBuilder<> & );

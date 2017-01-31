@@ -34,6 +34,9 @@ void SubstitutionBuilder::process( llvm::Instruction * inst ) {
         [&]( llvm::CallInst * c ) {
             substituteCall( c );
         },
+        [&]( llvm::CastInst * i ) {
+            substituteCast( i );
+        },
         [&]( llvm::ReturnInst * i ) {
             substituteReturn( i );
         },
@@ -151,12 +154,23 @@ void SubstitutionBuilder::substituteCall( llvm::CallInst * call ) {
     }
 }
 
+void SubstitutionBuilder::substituteCast( llvm::CastInst * cast ) {
+    assert( llvm::isa< llvm::BitCastInst >( cast ) &&
+           "ERR: Only bitcast is supported for pointer cast instructions." );
+
+    llvm::IRBuilder<> irb( cast );
+    auto destTy = abstraction->abstract( cast->getDestTy() );
+    auto val = _values[ cast->getOperand( 0 ) ];
+    assert( val && "ERR: Trying to bitcast value, that is not abstracted." );
+
+    _values[ cast ] = irb.CreateBitCast( val, destTy );
+}
+
 void SubstitutionBuilder::substituteReturn( llvm::ReturnInst * ret ) {
     auto val = _values.find( ret->getReturnValue() );
     if ( val != _values.end() ) {
         llvm::IRBuilder<> irb( ret );
-        auto newret = irb.CreateRet( val->second );
-        _values[ ret ] = newret;
+        _values[ ret ] = irb.CreateRet( val->second );
     }
 }
 

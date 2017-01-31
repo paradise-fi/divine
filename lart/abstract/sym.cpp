@@ -74,8 +74,7 @@ namespace {
         else if ( ( n == "trunc" ) ||
                   ( n == "zext" ) ||
                   ( n == "sext" ) ||
-                  ( n == "bitcast" ) ||
-                  ( n == "bitacst_p" ) )
+                  ( n == "bitcast" ) )
         {
             return { args[0], bitwidth( i->getContext(), intrinsic::ty2( i ) ) };
         }

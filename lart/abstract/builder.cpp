@@ -132,11 +132,35 @@ llvm::Function * AbstractBuilder::changeReturn( llvm::Function * fn ) {
 }
 
 llvm::Value * AbstractBuilder::create( llvm::Instruction * inst ) {
+    if ( inst->getType()->isPointerTy() )
+        return createPtrInst( inst );
+    else
+        return createInst( inst );
+}
+
+llvm::Value * AbstractBuilder::createPtrInst( llvm::Instruction * inst ) {
     llvm::Value * ret = nullptr;
+
     llvmcase( inst,
         [&]( llvm::AllocaInst * i ) {
             ret = createAlloca( i );
         },
+        [&]( llvm::CastInst * i ) {
+            ret = createPtrCast( i );
+        },
+        [&]( llvm::Instruction * inst ) {
+            std::cerr << "ERR: unknown pointer instruction: ";
+            inst->dump();
+            std::exit( EXIT_FAILURE );
+        } );
+    return ret;
+
+}
+
+llvm::Value * AbstractBuilder::createInst( llvm::Instruction * inst ) {
+    llvm::Value * ret = nullptr;
+
+    llvmcase( inst,
         [&]( llvm::LoadInst * i ) {
             ret = createLoad( i );
         },
@@ -343,6 +367,18 @@ llvm::Value * AbstractBuilder::createReturn( llvm::ReturnInst * i ) {
              ? _values[ i->getReturnValue() ]
              : i->getReturnValue();
     return irb.CreateRet( ret );
+}
+
+llvm::Value * AbstractBuilder::createPtrCast( llvm::CastInst * i ) {
+    assert( llvm::isa< llvm::BitCastInst >( i ) &&
+           "ERR: Only bitcast is supported for pointer cast instractions." );
+
+    llvm::IRBuilder<> irb( i );
+    auto destTy = _types[ i->getDestTy() ];
+    auto val = _values[ i->getOperand( 0 ) ];
+    assert( val && "ERR: Trying to bitcast value, that is not abstracted." );
+
+    return irb.CreateBitCast( val, destTy );
 }
 
 llvm::Value * AbstractBuilder::lower( llvm::Value * v, llvm::IRBuilder<> & irb ) {
