@@ -40,7 +40,7 @@ std::string_view FormulaMap::convert( HeapPointer ptr )
             it = ptr2Sym.emplace( ptr, "var_"s + std::to_string( formula->var.id ) ).first;
             if ( inputs.insert( formula->var.id ).second )
                 out << smt::declareConst( it->second, type( bw ) )
-                    << std::endl;
+                    << " ";
             return it->second;
         }
         case sym::Op::Constant:
@@ -222,7 +222,7 @@ std::string_view FormulaMap::convert( HeapPointer ptr )
 
     ASSERT( op );
     auto name = "val_"s + std::to_string( valcount++ ) + suff;
-    out << smt::defineConst( name, type( bw ), op ) << std::endl;
+    out << smt::defineConst( name, type( bw ), op ) << " ";
     return ptr2Sym.emplace( ptr, name ).first->second;
 }
 

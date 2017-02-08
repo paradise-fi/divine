@@ -19,6 +19,7 @@
 #include <divine/vm/debug.hpp>
 #include <divine/vm/print.hpp>
 #include <divine/vm/eval.hpp>
+#include <divine/vm/formula.hpp>
 
 namespace divine {
 namespace vm {
@@ -304,6 +305,15 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
         yield( "slot", brick::string::fmt( eval.ptr2s( _address ) ) );
     else if ( _address.type() == PointerType::Heap )
         yield( "shared", brick::string::fmt( _ctx.heap().shared( _address ) ) );
+
+    if ( _address.type() == PointerType::Marked )
+    {
+        std::stringstream out, key;
+        std::unordered_set< int > inputs;
+        FormulaMap map( _ctx.heap(), "", inputs, out );
+        map.convert( _address );
+        yield( "formula", out.str() );
+    }
 
     if ( _di_var )
     {
@@ -654,7 +664,7 @@ template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int indent )
 {
     std::string ind_attr( indent + 4, ' ' ), ind( indent, ' ' );
-    std::set< std::string > ck{ "value", "type", "location", "symbol", "scope" };
+    std::set< std::string > ck{ "value", "type", "location", "symbol", "scope", "formula" };
 
     if ( !indent )
         out << ind << "attributes:" << std::endl;
