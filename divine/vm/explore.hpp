@@ -25,8 +25,6 @@
 #include <divine/vm/bitcode.hpp>
 #include <divine/ss/search.hpp> /* unit tests */
 
-#include <runtime/abstract/formula.h>
-
 #include <set>
 #include <memory>
 
