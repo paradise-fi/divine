@@ -19,7 +19,7 @@ struct Annotation {
     std::string type;
 	/* corresponding alloca to annotated variable */
     llvm::AllocaInst * alloca_;
-	/* bitcasted value  from alloca*/
+	/* bitcasted value  from alloca */
 	llvm::Value * value;
 
 	explicit Annotation ( std::string const &type, llvm::AllocaInst * alloca, llvm::Value * value )
@@ -28,13 +28,11 @@ struct Annotation {
 };
 
 static llvm::StringRef getAnnotationType( const llvm::CallInst * call ) {
-	assert( call->getCalledFunction()->getName().str() == "llvm.var.annotation" );
 	return llvm::cast< llvm::ConstantDataArray > ( llvm::cast< llvm::GlobalVariable > (
 		   call->getOperand( 1 )->stripPointerCasts() )->getInitializer() )->getAsCString();
 }
 
 static bool isAbstractAnnotation( const llvm::CallInst * call ) {
-	assert( call->getCalledFunction()->getName().str() == "llvm.var.annotation" );
 	return getAnnotationType( call ).startswith( "lart.abstract" );
 }
 
@@ -48,15 +46,21 @@ static Annotation getAnnotation( llvm::CallInst * call ) {
 }
 
 static std::vector< Annotation > getAbstractAnnotations( llvm::Module * m ) {
-	auto f =  m->getFunction( "llvm.var.annotation" );
-	std::vector< Annotation > annotations;
-
-	if ( f != nullptr )
-    for ( auto user : f->users() ) {
-		auto call = llvm::cast< llvm::CallInst >( user );
-		if ( isAbstractAnnotation( call ) )
-			annotations.push_back( getAnnotation( call ) );
-	}
+    std::vector< std::string > annotationFunctions = {
+        "llvm.var.annotation",
+        "llvm.ptr.annotation"
+    };
+    std::vector< Annotation > annotations;
+    for ( const auto & a : annotationFunctions ) {
+        for ( auto & f : m->functions() ) {
+            if ( f.getName().startswith( a ) )
+            for ( auto user : f.users() ) {
+                auto call = llvm::cast< llvm::CallInst >( user );
+                if ( isAbstractAnnotation( call ) )
+                    annotations.push_back( getAnnotation( call ) );
+            }
+        }
+    }
 	return annotations;
 }
 

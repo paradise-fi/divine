@@ -154,13 +154,20 @@ llvm::Value * AbstractBuilder::createPtrInst( llvm::Instruction * inst ) {
         [&]( llvm::CastInst * i ) {
             ret = createPtrCast( i );
         },
+        [&]( llvm::CallInst * i ) {
+            auto fn = i->getCalledFunction();
+            if ( fn->isIntrinsic() ) {
+                // skip llvm.ptr.annotation function calls
+                assert( fn->getName().startswith( "llvm.ptr.annotation" ) );
+                i->replaceAllUsesWith( i->getArgOperand( 0 ) );
+            }
+        },
         [&]( llvm::Instruction * inst ) {
             std::cerr << "ERR: unknown pointer instruction: ";
             inst->dump();
             std::exit( EXIT_FAILURE );
         } );
     return ret;
-
 }
 
 llvm::Value * AbstractBuilder::createInst( llvm::Instruction * inst ) {
@@ -178,7 +185,7 @@ llvm::Value * AbstractBuilder::createInst( llvm::Instruction * inst ) {
         },
         [&]( llvm::SelectInst * ) {
             // Every SelectInst should be lowered to branching.
-            std::cerr << "ERR: Abstracting 'select' instruction should never happen.";
+            std::cerr << "ERR: Abstraction of 'select' instruction should never happen.";
             std::exit( EXIT_FAILURE );
         },
         [&]( llvm::BranchInst * i ) {
