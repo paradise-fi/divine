@@ -9,7 +9,7 @@ int main() {
         __sym int x;
         short y;
     };
-    if ( x < 0 )
+    if ( short( x ) < 0 )
         return 0;
     ++y;
     assert( y == -32768 || y >= 1 );
