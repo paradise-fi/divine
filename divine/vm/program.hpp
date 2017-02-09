@@ -119,8 +119,8 @@ struct Program
         int size() const { return _width % 8 ? _width / 8 + 1 : _width / 8; }
         int width() const { return _width; }
 
-        explicit Slot( Location l = Invalid )
-            : type( Integer ), location( l ), _width( 0 ), offset( 0 )
+        explicit Slot( Location l = Invalid, int w = 0 )
+            : type( Integer ), location( l ), _width( w ), offset( 0 )
         {
         }
     };

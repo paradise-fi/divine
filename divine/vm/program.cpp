@@ -426,6 +426,14 @@ Program::Position Program::insert( Position p )
         for ( int i = 0; i < int( p.I->getNumOperands() ); ++i )
             insn.values[ i + 1 ] = insert( p.pc.function(), p.I->getOperand( i ) ).slot;
 
+        if ( auto AI = dyn_cast< llvm::AllocaInst >( p.I ) )
+        {
+            auto slot = allocateSlot( Slot( Slot::Constant, 32 ) ).slot;
+            int size = TD.getTypeAllocSize( AI->getAllocatedType() );
+            insn.values.push_back( slot );
+            _toinit.emplace_back( [=]{ initConstant( slot, value::Int< 32 >( size ) ); } );
+        }
+
         if ( isa< llvm::ExtractValueInst >( p.I ) )
             insertIndices< llvm::ExtractValueInst >( p );
 

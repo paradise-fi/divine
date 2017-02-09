@@ -589,16 +589,12 @@ struct Eval
 
     void implement_alloca()
     {
-        ::llvm::AllocaInst *I = cast< ::llvm::AllocaInst >( instruction().op );
-        Type *ty = I->getAllocatedType();
-
         int count = operandCk< IntV >( 0 ).cooked();
-        int size = layout().getTypeAllocSize(ty); /* possibly aggregate */
+        int size = operand< IntV >( 1 ).cooked();
 
         unsigned alloc = std::max( 1, count * size );
         auto res = makeobj( alloc );
         result( res );
-        // std::cerr << "alloca'd " << res << std::endl;
     }
 
     void implement_extractvalue()
