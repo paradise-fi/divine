@@ -442,15 +442,25 @@ Program::Position Program::insert( Position p )
             _toinit.emplace_back( [=]{ initConstant( slot, value::Int< 32 >( size ) ); } );
         }
 
+        if ( auto PHI = dyn_cast< llvm::PHINode >( p.I ) )
+            for ( unsigned idx = 0; idx < PHI->getNumOperands(); ++idx )
+            {
+                auto from = pcmap[ PHI->getIncomingBlock( idx )->getTerminator() ];
+                auto slot = allocateSlot( Slot( Slot::Constant, 64 ) ).slot;
+                slot.type = Slot::CodePointer;
+                _toinit.emplace_back( [=]{ initConstant( slot, value::Pointer( from ) ); } );
+                insn.values.push_back( slot );
+            }
+
         if ( isa< llvm::ExtractValueInst >( p.I ) )
             insertIndices< llvm::ExtractValueInst >( p );
 
         if ( isa< llvm::InsertValueInst >( p.I ) )
             insertIndices< llvm::InsertValueInst >( p );
 
-        pcmap.insert( std::make_pair( p.I, p.pc ) );
         insn.result() = insert( p.pc.function(), &*p.I ).slot;
-    }
+    } else
+        pcmap.insert( std::make_pair( p.I, p.pc ) );
 
     ++ p.I; /* next please */
     p.pc.instruction( p.pc.instruction() + 1 );

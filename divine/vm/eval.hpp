@@ -751,13 +751,21 @@ struct Eval
         if ( i0.opcode != OpCode::PHI )
             return;
 
-        int size = 0, count = 0;
-        auto BB = cast< llvm::Instruction >( _program.instruction( origin ).op )->getParent();
-        int idx = cast< llvm::PHINode >( i0.op )->getBasicBlockIndex( BB );
+        int size = 0, count = 0, incoming = ( i0.values.size() - 1 ) / 2, idx = -1;
+        ASSERT_LEQ( 0, incoming );
+        for ( int i = 0; i < incoming; ++ i )
+        {
+            PointerV ptr;
+            slot_read( i0.operand( incoming + i ), ptr );
+            CodePointer terminator( ptr.cooked() );
+            ASSERT_EQ( terminator.function(), target.function() );
+            if ( terminator == origin )
+                idx = i;
+        }
+        ASSERT_LEQ( 0, idx );
 
         each_phi( target, [&]( auto &i )
                   {
-                      ASSERT_EQ( cast< llvm::PHINode >( i.op )->getBasicBlockIndex( BB ), idx );
                       size += i.result().size();
                       ++ count;
                   } );
