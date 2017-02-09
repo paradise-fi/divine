@@ -384,6 +384,7 @@ Program::Position Program::insert( Position p )
 
     insn.opcode = p.I->getOpcode();
     insn.op = &*p.I;
+    insn.intrinsic = llvm::Intrinsic::not_intrinsic;
 
     if ( dyn_cast< llvm::CallInst >( p.I ) ||
          dyn_cast< llvm::InvokeInst >( p.I ) )
@@ -410,6 +411,7 @@ Program::Position Program::insert( Position p )
                 case llvm::Intrinsic::sadd_with_overflow:
                 case llvm::Intrinsic::usub_with_overflow:
                 case llvm::Intrinsic::ssub_with_overflow:
+                    insn.intrinsic = F->getIntrinsicID();
                     break;
                 case llvm::Intrinsic::dbg_declare:
                 case llvm::Intrinsic::dbg_value: p.I++; return p;

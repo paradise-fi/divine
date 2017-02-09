@@ -134,8 +134,9 @@ struct Program
 
     struct Instruction
     {
-        uint32_t opcode:16;
-        uint32_t hypercall:16; /* non-zero if this is a call to a hypercall */
+        uint32_t opcode:10;
+        uint32_t hypercall:6; /* non-zero if this is a call to a hypercall */
+        uint32_t intrinsic:16; /* LLVM intrinsic id */
         brick::data::SmallVector< Slot, 4 > values;
         Slot &result() { ASSERT( values.size() ); return values[0]; }
         Slot &operand( int i )

@@ -1282,19 +1282,11 @@ struct Eval
             return;
         }
         CodePointer target = targetV.cooked();
-        CallSite CS( cast< ::llvm::Instruction >( instruction().op ) );
 
         if ( !target.function() )
         {
-            ::llvm::Function *F = CS.getCalledFunction();
-
-            if ( F )
-            {
-                ASSERT( F->isDeclaration() );
-                auto id = F->getIntrinsicID();
-                if ( id != Intrinsic::not_intrinsic )
-                    return implement_intrinsic( id );
-            }
+            if ( instruction().intrinsic != Intrinsic::not_intrinsic )
+                return implement_intrinsic( instruction().intrinsic );
             fault( _VM_F_Control ) << "invalid call on an invalid code pointer: "
                                    << target;
             return;
@@ -1310,18 +1302,20 @@ struct Eval
         const auto &function = _program.function( target );
 
         /* report problems with the call before pushing the new stackframe */
-        const int csArgSize = CS.arg_size();
-        if ( !function.vararg && csArgSize > function.argcount )
+        const int argcount = instruction().values.size() - ( invoke ? 4 : 2 );
+
+        if ( !function.vararg && argcount > function.argcount )
         {
             fault( _VM_F_Control ) << "too many arguments given to a call: "
                                    << function.argcount << " expected but "
-                                   << csArgSize << " given";
+                                   << argcount << " given";
             return;
         }
-        if ( csArgSize < function.argcount ) {
+
+        if ( argcount < function.argcount ) {
             fault( _VM_F_Control ) << "too few arguments given to a call: "
                                    << function.argcount << " expected but "
-                                   << csArgSize << " given";
+                                   << argcount << " given";
             return;
         }
 
@@ -1331,7 +1325,7 @@ struct Eval
         heap().write_shift( p, PointerV( frame() ) );
 
         /* Copy arguments to the new frame. */
-        for ( int i = 0; i < csArgSize && i < int( function.argcount ); ++i )
+        for ( int i = 0; i < argcount && i < int( function.argcount ); ++i )
             heap().copy( s2ptr( operand( i ) ),
                          s2ptr( function.values[ i ], 0, frameptr.cooked() ),
                          function.values[ i ].size() );
@@ -1339,12 +1333,12 @@ struct Eval
         if ( function.vararg )
         {
             int size = 0;
-            for ( int i = function.argcount; i < csArgSize; ++i )
+            for ( int i = function.argcount; i < argcount; ++i )
                 size += operand( i ).size();
             auto vaptr = size ? makeobj( size, 1 ) : nullPointerV();
             auto vaptr_loc = s2ptr( function.values[ function.argcount ], 0, frameptr.cooked() );
             heap().write( vaptr_loc, vaptr );
-            for ( int i = function.argcount; i < csArgSize; ++i )
+            for ( int i = function.argcount; i < argcount; ++i )
             {
                 auto op = operand( i );
                 heap().copy( s2ptr( op ), vaptr.cooked(), op.size() );
