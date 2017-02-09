@@ -1452,8 +1452,7 @@ struct Eval
 
             case OpCode::ICmp:
             {
-                auto p = cast< ICmpInst >( instruction().op )->getPredicate();
-                switch ( p )
+                switch ( instruction().subcode )
                 {
                     case ICmpInst::ICMP_EQ:
                         return _icmp( []( auto a, auto b ) { return a == b; } );
@@ -1475,14 +1474,13 @@ struct Eval
                         return _icmp_signed( []( auto a, auto b ) { return a <= b; } );
                     case ICmpInst::ICMP_SGE:
                         return _icmp_signed( []( auto a, auto b ) { return a >= b; } );
-                    default: UNREACHABLE_F( "unexpected icmp op %d", p );
+                    default: UNREACHABLE_F( "unexpected icmp op %d", instruction().subcode );
                 }
             }
 
 
             case OpCode::FCmp:
             {
-                auto p = cast< FCmpInst >( instruction().op )->getPredicate();
                 bool nan, defined;
 
                 this->op< IsFloat >( 1, [&]( auto v )
@@ -1491,7 +1489,7 @@ struct Eval
                            defined = v.get( 1 ).defined() && v.get( 2 ).defined();
                        } );
 
-                switch ( p )
+                switch ( instruction().subcode )
                 {
                     case FCmpInst::FCMP_FALSE:
                         return result( BoolV( false, defined, false ) );
@@ -1505,7 +1503,7 @@ struct Eval
                 }
 
                 if ( nan )
-                    switch ( p )
+                    switch ( instruction().subcode )
                     {
                         case FCmpInst::FCMP_UEQ:
                         case FCmpInst::FCMP_UNE:
@@ -1524,7 +1522,7 @@ struct Eval
                         default: ;
                     }
 
-                switch ( p )
+                switch ( instruction().subcode )
                 {
                     case FCmpInst::FCMP_OEQ:
                     case FCmpInst::FCMP_UEQ:
@@ -1549,7 +1547,7 @@ struct Eval
                     case FCmpInst::FCMP_UGE:
                         return _fcmp( []( auto a, auto b ) { return a >= b; } );
                     default:
-                        UNREACHABLE_F( "unexpected fcmp op %d", p );
+                        UNREACHABLE_F( "unexpected fcmp op %d", instruction().subcode );
                 }
             }
 
@@ -1664,7 +1662,7 @@ struct Eval
                         return out;
                     };
                 };
-                switch ( cast< AtomicRMWInst >( instruction().op )->getOperation() )
+                switch ( instruction().subcode )
                 {
                     case AtomicRMWInst::Xchg:
                         return _atomicrmw( []( auto, auto x ) { return x; } );

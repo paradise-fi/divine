@@ -385,6 +385,14 @@ Program::Position Program::insert( Position p )
     insn.opcode = p.I->getOpcode();
     insn.op = &*p.I;
     insn.intrinsic = llvm::Intrinsic::not_intrinsic;
+    insn.subcode = 0;
+
+    if ( auto IC = dyn_cast< llvm::ICmpInst >( p.I ) )
+        insn.subcode = IC->getPredicate();
+    if ( auto FC = dyn_cast< llvm::FCmpInst >( p.I ) )
+        insn.subcode = FC->getPredicate();
+    if ( auto ARMW = dyn_cast< llvm::AtomicRMWInst >( p.I ) )
+        insn.subcode = ARMW->getOperation();
 
     if ( dyn_cast< llvm::CallInst >( p.I ) ||
          dyn_cast< llvm::InvokeInst >( p.I ) )
