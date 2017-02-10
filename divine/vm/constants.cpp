@@ -97,6 +97,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
         Instruction comp;
         comp.op = CE;
         comp.opcode = CE->getOpcode();
+        comp.subcode = initSubcode( CE );
         comp.values.push_back( v ); /* the result comes first */
         for ( int i = 0; i < int( C->getNumOperands() ); ++i ) // now the operands
         {

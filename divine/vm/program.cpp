@@ -99,21 +99,6 @@ CodePointer Program::getCodePointer( llvm::Value *val )
     return CodePointer();
 }
 
-namespace {
-
-int intrinsic_id( llvm::Value *v ) {
-    auto insn = dyn_cast< llvm::Instruction >( v );
-    if ( !insn || insn->getOpcode() != llvm::Instruction::Call )
-        return llvm::Intrinsic::not_intrinsic;
-    llvm::CallSite CS( insn );
-    auto f = CS.getCalledFunction();
-    if ( !f )
-        return llvm::Intrinsic::not_intrinsic;
-    return f->getIntrinsicID();
-}
-
-}
-
 Program::Slot Program::initSlot( llvm::Value *val, Slot::Location loc )
 {
     Slot result;
@@ -389,13 +374,7 @@ Program::Position Program::insert( Position p )
 
     insn.opcode = p.I->getOpcode();
     insn.op = &*p.I;
-
-    if ( auto IC = dyn_cast< llvm::ICmpInst >( p.I ) )
-        insn.subcode = IC->getPredicate();
-    if ( auto FC = dyn_cast< llvm::FCmpInst >( p.I ) )
-        insn.subcode = FC->getPredicate();
-    if ( auto ARMW = dyn_cast< llvm::AtomicRMWInst >( p.I ) )
-        insn.subcode = ARMW->getOperation();
+    insn.subcode = initSubcode( &*p.I );
 
     if ( dyn_cast< llvm::CallInst >( p.I ) ||
          dyn_cast< llvm::InvokeInst >( p.I ) )
@@ -422,7 +401,6 @@ Program::Position Program::insert( Position p )
                 case llvm::Intrinsic::sadd_with_overflow:
                 case llvm::Intrinsic::usub_with_overflow:
                 case llvm::Intrinsic::ssub_with_overflow:
-                    insn.subcode = F->getIntrinsicID();
                     break;
                 case llvm::Intrinsic::dbg_declare:
                 case llvm::Intrinsic::dbg_value: p.I++; return p;
@@ -436,14 +414,6 @@ Program::Position Program::insert( Position p )
         insn.values.resize( 1 + p.I->getNumOperands() );
         for ( int i = 0; i < int( p.I->getNumOperands() ); ++i )
             insn.values[ i + 1 ] = insert( p.pc.function(), p.I->getOperand( i ) ).slot;
-
-        if ( auto AI = dyn_cast< llvm::AllocaInst >( p.I ) )
-        {
-            auto slot = allocateSlot( Slot( Slot::Constant, 32 ) ).slot;
-            int size = TD.getTypeAllocSize( AI->getAllocatedType() );
-            insn.values.push_back( slot );
-            _toinit.emplace_back( [=]{ initConstant( slot, value::Int< 32 >( size ) ); } );
-        }
 
         if ( auto PHI = dyn_cast< llvm::PHINode >( p.I ) )
             for ( unsigned idx = 0; idx < PHI->getNumOperands(); ++idx )

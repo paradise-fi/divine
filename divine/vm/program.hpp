@@ -30,6 +30,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DebugInfo.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/CallSite.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -82,6 +83,18 @@ struct Choice {
     // might be empty or contain probability for each option
     std::vector< int > p;
 };
+
+static int intrinsic_id( llvm::Value *v )
+{
+    auto insn = llvm::dyn_cast< llvm::Instruction >( v );
+    if ( !insn || insn->getOpcode() != llvm::Instruction::Call )
+        return llvm::Intrinsic::not_intrinsic;
+    llvm::CallSite CS( insn );
+    auto f = CS.getCalledFunction();
+    if ( !f )
+        return llvm::Intrinsic::not_intrinsic;
+    return f->getIntrinsicID();
+}
 
 /*
  * A representation of the LLVM program that is suitable for execution.
@@ -336,6 +349,39 @@ struct Program
     CodePointer getCodePointer( llvm::Value *val );
 
     void initConstant( Slot slot, llvm::Value * );
+
+    int getSubcode( llvm::Instruction *I )
+    {
+        if ( auto IC = llvm::dyn_cast< llvm::ICmpInst >( I ) )
+            return IC->getPredicate();
+        if ( auto FC = llvm::dyn_cast< llvm::FCmpInst >( I ) )
+            return FC->getPredicate();
+        if ( auto ARMW = llvm::dyn_cast< llvm::AtomicRMWInst >( I ) )
+            return ARMW->getOperation();
+        UNREACHABLE( "bad instruction type in Program::getPredicate" );
+    }
+
+    int getSubcode( llvm::ConstantExpr *E ) { return E->getPredicate(); }
+
+    template< typename IorCE >
+    int initSubcode( IorCE *I )
+    {
+        if ( I->getOpcode() == llvm::Instruction::GetElementPtr )
+            return insert( I->getOperand( 0 )->getType() );
+        if ( I->getOpcode() == llvm::Instruction::ExtractValue )
+            return insert( I->getOperand( 0 )->getType() );
+        if ( I->getOpcode() == llvm::Instruction::InsertValue )
+            return insert( I->getType() );
+        if ( I->getOpcode() == llvm::Instruction::Alloca )
+            return insert( I->getType()->getPointerElementType() );
+        if ( I->getOpcode() == llvm::Instruction::Call )
+            return intrinsic_id( I );
+        if ( I->getOpcode() == llvm::Instruction::ICmp ||
+             I->getOpcode() == llvm::Instruction::FCmp ||
+             I->getOpcode() == llvm::Instruction::AtomicRMW )
+            return getSubcode( I );
+        return 0;
+    }
 
     template< typename T >
     auto initConstant( Slot s, T t ) -> decltype( std::declval< typename T::Raw >(), void() )

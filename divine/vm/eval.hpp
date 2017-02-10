@@ -590,7 +590,7 @@ struct Eval
     void implement_alloca()
     {
         int count = operandCk< IntV >( 0 ).cooked();
-        int size = operand< IntV >( 1 ).cooked();
+        int size = program().allocsize( instruction().subcode );
 
         unsigned alloc = std::max( 1, count * size );
         auto res = makeobj( alloc );
