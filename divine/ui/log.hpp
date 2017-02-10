@@ -19,10 +19,11 @@
 #pragma once
 
 #include <divine/mc/job.hpp>
+#include <divine/ui/util.hpp>
 #include <brick-string>
 
-namespace divine {
-namespace ui {
+namespace divine::ui
+{
 
 enum class Phase { LART, RR, Constants, Done };
 
@@ -48,20 +49,9 @@ SinkPtr make_composite( std::vector< SinkPtr > );
 
 struct TimedSink : LogSink
 {
-    using Clock = std::chrono::steady_clock;
-    using MSecs = std::chrono::milliseconds;
-
     Clock::time_point _start;
     MSecs _interval;
     MSecs _time_lart, _time_rr, _time_const, _time_boot, _time_search, _time_ce;
-
-    std::string interval_str( MSecs i )
-    {
-        std::stringstream t;
-        t << int( i.count() / 60000 ) << ":"
-          << std::setw( 2 ) << std::setfill( '0' ) << int( i.count() / 1000 ) % 60;
-        return t.str();
-    }
 
     double timeavg( double val, MSecs timer )
     {
@@ -110,5 +100,4 @@ struct TimedSink : LogSink
 
 };
 
-}
 }

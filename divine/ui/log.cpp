@@ -19,6 +19,7 @@
 #include <divine/ui/log.hpp>
 #include <divine/ui/version.hpp>
 #include <divine/ui/sysinfo.hpp>
+#include <divine/ui/util.hpp>
 
 namespace divine::ui
 {
