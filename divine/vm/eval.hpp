@@ -462,32 +462,24 @@ struct Eval
         return op;
     }
 
-    using AtOffset = std::pair< IntV, Type * >;
+    using AtOffset = std::pair< IntV, int >;
 
-    AtOffset compositeOffset( Type *t ) {
+    AtOffset compositeOffset( int t )
+    {
         return std::make_pair( IntV( 0 ), t );
     }
 
     template< typename... Args >
-    AtOffset compositeOffset( Type *t, IntV index, Args... indices )
+    AtOffset compositeOffset( int t, IntV index, Args... indices )
     {
-        IntV offset( 0 );
-
-        if (::llvm::StructType *STy = dyn_cast< ::llvm::StructType >( t )) {
-            const ::llvm::StructLayout *SLO = layout().getStructLayout(STy);
-            offset = IntV( SLO->getElementOffset( index.cooked() ) );
-        } else {
-            const ::llvm::SequentialType *ST = cast< ::llvm::SequentialType >( t );
-            offset = IntV( index.cooked() * layout().getTypeAllocSize( ST->getElementType() ) );
-        }
-
+        auto st = program().subtype( t, index.cooked() );
+        IntV offset( st.first );
         offset.defined( index.defined() );
-        auto r = compositeOffset(
-            cast< ::llvm::CompositeType >( t )->getTypeAtIndex( index.cooked() ), indices... );
+        auto r = compositeOffset( st.second, indices... );
         return std::make_pair( r.first + offset, r.second );
     }
 
-    IntV compositeOffsetFromInsn( Type *t, int current, int end )
+    IntV compositeOffsetFromInsn( int t, int current, int end )
     {
         if ( current == end )
             return IntV( 0 );
@@ -599,7 +591,7 @@ struct Eval
 
     void implement_extractvalue()
     {
-        auto off = compositeOffsetFromInsn( instruction().op->getOperand(0)->getType(), 1,
+        auto off = compositeOffsetFromInsn( instruction().subcode, 1,
                                             instruction().values.size() - 1 );
         ASSERT( off.defined() );
         slot_copy( s2ptr( operand( 0 ), off.cooked() ), result(), result().size() );
@@ -609,7 +601,7 @@ struct Eval
     {
         /* first copy the original */
         slot_copy( s2ptr( operand( 0 ) ), result(), result().size() );
-        auto off = compositeOffsetFromInsn( instruction().op->getOperand(0)->getType(), 2,
+        auto off = compositeOffsetFromInsn( instruction().subcode, 2,
                                             instruction().values.size() - 1 );
         ASSERT( off.defined() );
         /* write the new value over the selected field */
@@ -1432,7 +1424,7 @@ struct Eval
         {
             case OpCode::GetElementPtr:
                 result( operand< PointerV >( 0 ) + compositeOffsetFromInsn(
-                            instruction().op->getOperand(0)->getType(), 1,
+                            instruction().subcode, 1,
                             instruction().values.size() - 1 ) );
                 return;
 
