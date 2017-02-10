@@ -261,6 +261,28 @@ struct Program
             getParent()->getParent();
     }
 
+    int64_t allocsize( int id ) { return _types[ id ].type.size; }
+
+    std::pair< int64_t, int > subtype( int id, int sub )
+    {
+        switch ( _types[ id ].type.type )
+        {
+            case _VM_Type::Array:
+            {
+                auto tid = _types[ id + 1 ].item.type_id;
+                return std::make_pair( sub * allocsize( tid ), tid );
+            }
+            case _VM_Type::Struct:
+            {
+                ASSERT_LT( sub, _types[ id ].type.items );
+                auto it = _types[ id + 1 + sub ].item;
+                return std::make_pair( int64_t( it.offset ), it.type_id );
+            }
+            default:
+                UNREACHABLE_F( "attempted to obtain an offset into a scalar, type = %d", id );
+        }
+    }
+
     SlotRef allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr )
     {
         switch ( slot.location )
