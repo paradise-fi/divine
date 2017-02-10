@@ -28,6 +28,10 @@ std::string str( llvm::Type * type ) {
     return rso.str();
 }
 
+static llvm::Type * voidType( llvm::LLVMContext & ctx ) {
+   return llvm::Type::getVoidTy( ctx );
+}
+
 } // empty namespace
 
 struct Base {
@@ -149,6 +153,9 @@ static std::string name( const llvm::Type * type ) {
 }
 
 static llvm::Type * lift( llvm::Type * type ) {
+    if ( type == voidType( type->getContext() ) )
+        return voidType( type->getContext() );
+
     bool isptr = type->isPointerTy();
     type = stripPtr( type );
 
@@ -173,6 +180,8 @@ static llvm::Type * lift( llvm::Type * type ) {
 }
 
 static llvm::Type * lower( llvm::Type * type ) {
+    if ( type == voidType( type->getContext() ) )
+        return voidType( type->getContext() );
     bool isptr = type->isPointerTy();
     type = stripPtr( type );
     llvm::Type * ret;
