@@ -1150,7 +1150,7 @@ struct Eval
 
     void implement_hypercall()
     {
-        switch( instruction().hypercall )
+        switch( instruction().subcode )
         {
             case HypercallChoose:
             {
@@ -1256,21 +1256,12 @@ struct Eval
                 return;
             }
             default:
-                UNREACHABLE_F( "unknown hypercall %d", instruction().hypercall );
+                UNREACHABLE_F( "unknown hypercall %d", instruction().subcode );
         }
     }
 
     void implement_call( bool invoke )
     {
-        if ( instruction().hypercall )
-        {
-            if ( invoke )
-                fault( _VM_F_Control ) << "illegal 'invoke' of a hypercall";
-            else
-                return implement_hypercall();
-            return;
-        }
-
         auto targetV = operand< PointerV >( invoke ? -3 : -1 );
 
         if ( !targetV.defined() )
@@ -1289,8 +1280,8 @@ struct Eval
 
         if ( !target.function() )
         {
-            if ( instruction().intrinsic != Intrinsic::not_intrinsic )
-                return implement_intrinsic( instruction().intrinsic );
+            if ( instruction().subcode != Intrinsic::not_intrinsic )
+                return implement_intrinsic( instruction().subcode );
             fault( _VM_F_Control ) << "invalid call on an invalid code pointer: "
                                    << target;
             return;
@@ -1617,6 +1608,8 @@ struct Eval
                         return this->jumpTo( target );
                     } );
 
+            case OpHypercall:
+                return implement_hypercall();
             case OpCode::Call:
                 implement_call( false ); break;
             case OpCode::Invoke:

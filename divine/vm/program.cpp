@@ -350,8 +350,13 @@ void Program::hypercall( Position p )
     Program::Instruction &insn = instruction( p.pc );
     llvm::CallSite CS( p.I );
     llvm::Function *F = CS.getCalledFunction();
-    insn.hypercall = hypercall( F );
-    if ( insn.hypercall == NotHypercall )
+    if ( insn.opcode != llvm::Instruction::Call )
+        throw std::logic_error(
+            std::string( "Program::hypercall: " ) +
+            "Cannot 'invoke' a hypercall, use 'call' instead: " + F->getName().str() );
+    insn.opcode = OpHypercall;
+    insn.subcode = hypercall( F );
+    if ( insn.subcode == NotHypercall )
         throw std::logic_error(
             std::string( "Program::hypercall: " ) +
             "Can't call an undefined function: " + F->getName().str() );
@@ -384,8 +389,6 @@ Program::Position Program::insert( Position p )
 
     insn.opcode = p.I->getOpcode();
     insn.op = &*p.I;
-    insn.intrinsic = llvm::Intrinsic::not_intrinsic;
-    insn.subcode = 0;
 
     if ( auto IC = dyn_cast< llvm::ICmpInst >( p.I ) )
         insn.subcode = IC->getPredicate();
@@ -419,7 +422,7 @@ Program::Position Program::insert( Position p )
                 case llvm::Intrinsic::sadd_with_overflow:
                 case llvm::Intrinsic::usub_with_overflow:
                 case llvm::Intrinsic::ssub_with_overflow:
-                    insn.intrinsic = F->getIntrinsicID();
+                    insn.subcode = F->getIntrinsicID();
                     break;
                 case llvm::Intrinsic::dbg_declare:
                 case llvm::Intrinsic::dbg_value: p.I++; return p;

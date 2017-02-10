@@ -75,6 +75,8 @@ enum Hypercall /* see divine.h for prototypes & documentation */
     HypercallObjSize
 };
 
+enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1 };
+
 struct Choice {
     int options;
     // might be empty or contain probability for each option
@@ -134,10 +136,8 @@ struct Program
 
     struct Instruction
     {
-        uint32_t opcode:10;
-        uint32_t hypercall:6; /* non-zero if this is a call to a hypercall */
-        uint32_t intrinsic:16; /* LLVM intrinsic id */
-        uint32_t subcode:8; /* icmp/fcmp/atomicrmw */
+        uint32_t opcode:16;
+        uint32_t subcode:16;
         brick::data::SmallVector< Slot, 4 > values;
         Slot &result() { ASSERT( values.size() ); return values[0]; }
         Slot &operand( int i )
@@ -163,7 +163,7 @@ struct Program
          */
         llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
         llvm::Instruction *insn() { return op ? llvm::cast< llvm::Instruction >( op ) : nullptr; }
-        Instruction() : opcode( 0 ), hypercall( NotHypercall ), op( nullptr ) {}
+        Instruction() : opcode( 0 ), subcode( 0 ), op( nullptr ) {}
     };
 
     struct Function
