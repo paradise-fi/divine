@@ -191,6 +191,7 @@ struct Program
         Function() : framesize( PointerBytes * 2 ) {}
     };
 
+    std::vector< _VM_TypeTable > _types;
     std::vector< Function > functions;
     std::vector< Slot > _globals, _constants;
     int _globals_size, _constants_size;
@@ -200,6 +201,7 @@ struct Program
 
     std::map< const llvm::Value *, SlotRef > valuemap;
     std::map< const llvm::Value *, SlotRef > globalmap;
+    std::map< const llvm::Type *, int > typemap;
 
     std::map< const llvm::Instruction *, CodePointer > pcmap;
     std::map< const llvm::Value *, std::string > anonmap;
@@ -335,6 +337,7 @@ struct Program
     void hypercall( Position );
     Slot initSlot( llvm::Value *val, Slot::Location loc );
     SlotRef insert( int function, llvm::Value *val );
+    int insert( llvm::Type *t );
 
     void pass(); /* internal */
 
