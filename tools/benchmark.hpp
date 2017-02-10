@@ -50,13 +50,13 @@ struct Import : Cmd
     int _id;
 
     int modrev();
-    void files();
+    bool files();
     void tag();
 
     virtual void run()
     {
-        files();
-        tag();
+        if ( files() )
+            tag();
     }
 };
 

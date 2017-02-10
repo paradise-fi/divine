@@ -49,7 +49,7 @@ int Import::modrev()
     return next;
 }
 
-void Import::files()
+bool Import::files()
 {
     if ( _name.empty() )
         _name = _files[0];
@@ -103,7 +103,7 @@ void Import::files()
         if ( match == indb && match == int( file_ids.size() ) )
         {
             std::cerr << "W: not imported, identical model present as revision " << rev << std::endl;
-            return;
+            return false;
         }
     }
 
@@ -118,6 +118,8 @@ void Import::files()
         auto ins = odbc::insert( _conn, "model_srcs", keys_tie, vals_tie );
         nanodbc::execute( ins );
     };
+
+    return true;
 }
 
 void Import::tag()
