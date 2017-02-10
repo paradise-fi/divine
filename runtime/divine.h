@@ -27,6 +27,25 @@ struct _VM_Frame
     struct _VM_Frame *parent;
 };
 
+struct _VM_Type
+{
+    enum { Array, Struct, Scalar } type:2;
+    unsigned items:30;
+    unsigned size;
+};
+
+struct _VM_TypeItem
+{
+    unsigned offset;
+    int type_id;
+};
+
+union _VM_TypeTable
+{
+    struct _VM_Type type;
+    struct _VM_TypeItem item;
+};
+
 enum _VM_Fault
 {
     _VM_F_NoFault,
