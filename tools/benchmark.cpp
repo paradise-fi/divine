@@ -54,17 +54,20 @@ void Import::files()
     if ( _name.empty() )
         _name = _files[0];
 
+    auto str = fs::readFile( _script );
+    std::vector< uint8_t > data( str.begin(), str.end() );
     int script_id = odbc::unique_id( _conn, "source", odbc::Keys{ "text" },
-                                     odbc::Vals{ fs::readFile( _script ) } );
+                                     odbc::Vals{ data } );
 
     std::set< std::pair< std::string, int > > file_ids;
 
     for ( auto file : _files )
     {
         auto src = fs::readFile( file );
+        std::vector< uint8_t > data( src.begin(), src.end() );
         int file_id = odbc::unique_id(
                 _conn, "source", odbc::Keys{ "text" },
-                                 odbc::Vals{ src } );
+                                 odbc::Vals{ data } );
         file_ids.emplace( file, file_id );
     }
 

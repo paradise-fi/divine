@@ -3,7 +3,7 @@
 dir=$(dirname $0)
 
 if test "$1" = "--postgres"; then
-    cat $dir/bench-postgres.sql $dir/bench-common.sql
+    cat $dir/bench-postgres.sql $dir/bench-common.sql | sed -e s,blob,bytea,
 elif test "$1" = "--sqlite"; then
     cat $dir/bench-common.sql | sed -e s,serial,integer,
 else
