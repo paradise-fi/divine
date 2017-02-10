@@ -34,9 +34,15 @@ namespace benchmark
 
 int Import::modrev()
 {
-    nanodbc::statement rev(
-            _conn, "select max(revision) from model group by name having name = ?" );
+    std::stringstream rev_q;
+    rev_q << "select max(revision) from model group by name, variant having name = ? and variant = ?";
+    nanodbc::statement rev( _conn, rev_q.str() );
+
     rev.bind( 0, _name.c_str() );
+    if ( _variant.empty() )
+        rev.bind_null( 1 );
+    else
+        rev.bind( 1, _variant.c_str() );
 
     int next = 1;
     try
@@ -76,9 +82,13 @@ bool Import::files()
     for ( int rev = 1; rev < next_rev; ++rev )
     {
         nanodbc::statement get_script( _conn,
-            "select script from model where model.name = ? and model.revision = ?" );
+            "select script from model where name = ? and revision = ? and variant = ?" );
         get_script.bind( 0, _name.c_str() );
         get_script.bind( 1, &rev );
+        if ( _variant.empty() )
+            get_script.bind_null( 2 );
+        else
+            get_script.bind( 2, _variant.c_str() );
         auto scr_id = get_script.execute();
         if ( !scr_id.first() )
             continue; /* does not exist */
@@ -88,9 +98,14 @@ bool Import::files()
         nanodbc::statement get_files( _conn,
             "select model_srcs.filename, model_srcs.source from "
             "model join model_srcs on model_srcs.model = model.id "
-            "where model.revision = ? and model.name = ?" );
+            "where model.revision = ? and model.name = ? and model.variant = ?" );
         get_files.bind( 0, &rev );
         get_files.bind( 1, _name.c_str() );
+        if ( _variant.empty() )
+            get_files.bind_null( 2 );
+        else
+            get_files.bind( 2, _variant.c_str() );
+
         auto file = get_files.execute();
         int match = 0, indb = 0;
         while ( file.next() )
@@ -109,6 +124,8 @@ bool Import::files()
 
     odbc::Keys keys_mod{ "name", "revision", "script" };
     odbc::Vals vals_mod{ _name, next_rev, script_id };
+    if ( !_variant.empty() )
+        keys_mod.push_back( "variant" ), vals_mod.push_back( _variant );
     _id = odbc::unique_id( _conn, "model", keys_mod, vals_mod );
 
     for ( auto p : file_ids )
@@ -191,6 +208,7 @@ int main( int argc, const char **argv )
 
     auto opts_import = cmd::make_option_set< Import >( validator )
         .option( "[--name {string}]", &Import::_name, "model name (default: filename)" )
+        .option( "[--variant {string}]", &Import::_variant, "model variant (default: null)" )
         .option( "[--tag {string}]", &Import::_tags, "tag(s) to assign to the model" )
         .option( "[--file {string}]", &Import::_files, "a (source) file to import" )
         .option( "[--script {string}]", &Import::_script, "a build/verify script" );

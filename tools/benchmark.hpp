@@ -45,7 +45,7 @@ struct Cmd
 
 struct Import : Cmd
 {
-    std::string _name, _script;
+    std::string _name, _script, _variant;
     std::vector< std::string > _files, _tags;
     int _id;
 
