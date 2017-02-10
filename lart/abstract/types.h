@@ -152,10 +152,25 @@ static std::string name( const llvm::Type * type ) {
     return rso.str();
 }
 
+static bool isAbstract( llvm::Type * type ) {
+    type = stripPtr( type );
+    if ( auto structTy = llvm::dyn_cast< llvm::StructType >( type ) ) {
+        if ( structTy->hasName() ) {
+            auto name = structTy->getStructName();
+            if ( name.empty() )
+                return false;
+            return std::string( name.str(), 0, 5 ) == "lart.";
+        }
+    }
+    return false;
+}
+
+
 static llvm::Type * lift( llvm::Type * type ) {
     if ( type == voidType( type->getContext() ) )
         return voidType( type->getContext() );
-
+    if ( isAbstract( type ) )
+        return type;
     bool isptr = type->isPointerTy();
     type = stripPtr( type );
 
@@ -182,6 +197,8 @@ static llvm::Type * lift( llvm::Type * type ) {
 static llvm::Type * lower( llvm::Type * type ) {
     if ( type == voidType( type->getContext() ) )
         return voidType( type->getContext() );
+    if ( !isAbstract( type ) )
+        return type;
     bool isptr = type->isPointerTy();
     type = stripPtr( type );
     llvm::Type * ret;
@@ -196,19 +213,6 @@ static llvm::Type * lower( llvm::Type * type ) {
     }
 
     return isptr ? ret->getPointerTo() : ret;
-}
-
-static bool isAbstract( llvm::Type * type ) {
-    type = stripPtr( type );
-    if ( auto structTy = llvm::dyn_cast< llvm::StructType >( type ) ) {
-        if ( structTy->hasName() ) {
-            auto name = structTy->getStructName();
-            if ( name.empty() )
-                return false;
-            return std::string( name.str(), 0, 5 ) == "lart.";
-        }
-    }
-    return false;
 }
 
 // type format: lart.<domain>.<lower type>
