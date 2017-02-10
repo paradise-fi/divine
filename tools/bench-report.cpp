@@ -17,11 +17,14 @@
  */
 
 #include <tools/benchmark.hpp>
+#include <divine/ui/util.hpp>
 
 namespace benchmark
 {
 
-void Report::format( nanodbc::result res, odbc::Keys cols )
+using namespace divine::ui;
+
+void Report::format( nanodbc::result res, odbc::Keys cols, std::set< std::string > tcols )
 {
     std::cerr << "format: " << res.columns() << " columns, " << res.rows() << " rows" << std::endl;
     std::vector< size_t > _width( res.columns() );
@@ -33,18 +36,25 @@ void Report::format( nanodbc::result res, odbc::Keys cols )
         for ( int i = 0; i < res.columns(); ++ i )
             _width[ i ] = std::max( _width[ i ], res.get< std::string >( i ).size() );
 
+    std::cout << "| ";
     for ( size_t i = 0; i < cols.size(); ++i )
         std::cout << std::setw( _width[ i ] ) << cols[ i ] << " | ";
     std::cout << std::endl;
 
+    std::cout << "|-";
     for ( int i = 0; i < res.columns(); ++i )
         std::cout << std::string( _width[ i ], '-' ) << ( i == res.columns() - 1 ? "-|" : "-|-" );
     std::cout << std::endl;
 
     res.first(); do
     {
+        std::cout << "| ";
         for ( int i = 0; i < res.columns(); ++ i )
-            std::cout << std::setw( _width[ i ] ) << res.get< std::string >( i ) << " | ";
+            if ( tcols.count( cols[ i ] ) )
+                std::cout << std::setw( _width[ i ] )
+                          << interval_str( MSecs( res.get< int >( i ) ) ) << " | ";
+            else
+                std::cout << std::setw( _width[ i ] ) << res.get< std::string >( i ) << " | ";
         std::cout << std::endl;
     } while ( res.next() );
 }
@@ -89,7 +99,7 @@ void Report::results()
     nanodbc::statement find( _conn, q.str() );
     odbc::Keys hdr{ "instance", _by_tag ? "tag" : "model", "states",
                     _by_tag ? "models" : "result", "search", "ce" };
-    format( find.execute(), hdr );
+    format( find.execute(), hdr, { "search"s, "ce"s } );
 
     if ( _watch )
     {
