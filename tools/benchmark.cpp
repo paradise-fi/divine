@@ -35,7 +35,7 @@ namespace benchmark
 int Import::modrev()
 {
     nanodbc::statement rev(
-            _conn, "select max(revision) from model where name = ? group by name" );
+            _conn, "select max(revision) from model group by name having name = ?" );
     rev.bind( 0, _name.c_str() );
 
     int next = 1;
