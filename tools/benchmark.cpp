@@ -70,7 +70,7 @@ void Import::files()
 
     auto next_rev = modrev();
 
-    for ( int rev = 1; rev < next_rev - 1; ++rev )
+    for ( int rev = 1; rev < next_rev; ++rev )
     {
         nanodbc::statement get_script( _conn,
             "select script from model where model.name = ? and model.revision = ?" );
