@@ -65,7 +65,7 @@ statement select_id( connection conn, std::string table, Keys keys, Vals &vals )
     for ( auto &key : keys )
         key += " = ?";
 
-    q << "select id from " << table << " where "
+    q << "select min( id ) from " << table << " where "
       << fmt_container( keys, "", "", " AND " );
 
     statement s( conn, q.str() );
@@ -77,13 +77,29 @@ int unique_id( connection conn, std::string table, Keys keys, Vals vals )
 {
     ASSERT_EQ( keys.size(), vals.size() );
 
-    statement ins = insert( conn, table, keys, vals ),
-              sel = select_id( conn, table, keys, vals );
+    std::stringstream del_q;
+    del_q << "delete from " << table << " where "
+          << fmt_container( keys, "", "", " = ? AND " )
+          << " = ? AND id != ?";
 
-    try { execute( ins ); } catch ( ... ) {};
+    statement ins = insert( conn, table, keys, vals ),
+              sel = select_id( conn, table, keys, vals ),
+              del = nanodbc::statement( conn, del_q.str() );
+    int id;
+
+    try { execute( ins ); } catch ( nanodbc::database_error &err ) {};
+
     auto rv = execute( sel );
     rv.first();
-    return rv.get< int >( 0 );
+    id = rv.get< int >( 0 );
+
+    /* normally, there is a 'unique' constraint on the keyset, but if there
+     * isn't, we need to clean up the mess */
+    bind_vals( del, vals );
+    del.bind( vals.size(), &id );
+    del.execute();
+
+    return id;
 }
 
 int get_build( connection conn )
