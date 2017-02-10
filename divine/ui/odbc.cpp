@@ -39,8 +39,10 @@ using namespace nanodbc;
 
 void bind_vals( statement &stmt, Vals &vals )
 {
+    using BV = std::vector< uint8_t >;
     for ( int i = 0; i < int( vals.size() ); ++i )
         vals[ i ].match( [&]( const std::string &v ) { stmt.bind( i, v.c_str() ); },
+                         [&]( const BV &v ) { stmt.bind( i, std::vector< BV >{ v } ); },
                          [&]( const int &v ) { stmt.bind( i, &v ); } );
 }
 

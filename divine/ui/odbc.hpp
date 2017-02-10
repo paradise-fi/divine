@@ -27,7 +27,7 @@ namespace divine::ui::odbc
 {
 
 using Keys = std::vector< std::string >;
-using Vals = std::vector< brick::types::Union< std::string, int > >;
+using Vals = std::vector< brick::types::Union< std::string, std::vector< uint8_t >, int > >;
 
 void bind_vals( nanodbc::statement &stmt, Vals &vals );
 nanodbc::statement insert( nanodbc::connection conn, std::string table, Keys keys, Vals &vals );
