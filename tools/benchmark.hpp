@@ -62,6 +62,7 @@ struct Import : Cmd
 
 struct Schedule : Cmd
 {
+    std::string _tag;
     void run() override;
 };
 

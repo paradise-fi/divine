@@ -131,8 +131,21 @@ void Import::tag()
 void Schedule::run()
 {
     int inst = odbc::get_instance( _conn );
+    std::stringstream q;
     /* XXX check that highest id is always the latest revision? */
-    auto mod = nanodbc::execute( _conn, "select max( id ), name from model group by name" );
+    q << "select max( model.id ), model.name from model "
+      << "join model_tags on model.id = model_tags.model "
+      << "join tag on tag.id = model_tags.tag ";
+    q << "group by model.name";
+    if ( !_tag.empty() )
+        q << " having tag.name = ? ";
+
+    std::cerr << q.str() << std::endl;
+    nanodbc::statement find( _conn, q.str() );
+    if ( !_tag.empty() )
+        find.bind( 0, _tag.c_str() );
+
+    auto mod = find.execute();
     while ( mod.next() )
     {
         nanodbc::statement ins( _conn, "insert into job ( model, instance, status ) "
@@ -181,12 +194,16 @@ int main( int argc, const char **argv )
         .option( "[--watch]",  &Report::_watch, "refresh the results in a loop" )
         .option( "[--by-tag]",  &Report::_by_tag, "group results by tags" )
         .option( "[--list-instances]",  &Report::_list_instances, "show available instances" )
-        .option( "[--result {string}]", &Report::_result, "only include runs with one of given results (default: VE)" )
+        .option( "[--result {string}]", &Report::_result,
+                 "only include runs with one of given results (default: VE)" )
         .option( "[--instance {int}]",  &Report::_instance, "show results for a given instance" );
+
+    auto opts_schedule = cmd::make_option_set< Schedule >( validator )
+        .option( "[--tag {string}]", &Schedule::_tag, "only schedule models with a given tag" );
 
     auto cmds = cmd::make_parser( cmd::make_validator() )
         .command< Import >( opts_db, opts_import )
-        .command< Schedule >( opts_db )
+        .command< Schedule >( opts_db, opts_schedule )
         .command< Report >( opts_db, opts_report )
         .command< Run >( opts_db );
     auto cmd = cmds.parse( args.begin(), args.end() );
