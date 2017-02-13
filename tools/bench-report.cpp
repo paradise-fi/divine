@@ -65,15 +65,20 @@ void format( nanodbc::result res, odbc::Keys cols, std::set< std::string > tcols
 
 void Report::list_instances()
 {
-    nanodbc::statement find( _conn,
-            "select instance.id, build.version, substr( build.source_sha, 0, 7 ), "
-            "substr( build.runtime_sha, 0, 7 ), build.build_type, cpu.model, machine.cores, "
-            "machine.mem / (1024 * 1024), "
-            "(select count(*) from job where job.instance = instance.id and job.status = 'D') "
-            "from instance join build join machine join cpu "
-            "on instance.machine = machine.id "
-            "and instance.build = build.id and cpu.id = machine.cpu" );
-    format( find.execute(), odbc::Keys{ "instance", "version", "src", "rt", "build", "cpu", "cores", "mem", "jobs" } );
+    std::stringstream q;
+    q << "select "
+      << "  instance.id, build.version, substr( build.source_sha, 0, 7 ), "
+      << "  substr( build.runtime_sha, 0, 7 ), build.build_type, "
+      << "  cpu.model, machine.cores, "
+      << "  machine.mem / (1024 * 1024), "
+      << "  (select count(*) from job where job.instance = instance.id and job.status = 'D') "
+      << "from instance "
+      << "join build   on instance.build = build.id "
+      << "join machine on instance.machine = machine.id "
+      << "join cpu     on machine.cpu = cpu.id ";
+    odbc::Keys keys{ "instance", "version", "src", "rt", "build", "cpu", "cores", "mem", "jobs" };
+    nanodbc::statement find( _conn, q.str() );
+    format( find.execute(), keys );
 }
 
 void Report::results()
