@@ -73,7 +73,6 @@ struct Report : Cmd
     std::string _result = "VE";
     bool _watch = false, _by_tag = false;
 
-    void format( nanodbc::result res, odbc::Keys, std::set< std::string > = {} );
     void list_instances();
     void results();
 

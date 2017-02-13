@@ -24,7 +24,7 @@ namespace benchmark
 
 using namespace divine::ui;
 
-void Report::format( nanodbc::result res, odbc::Keys cols, std::set< std::string > tcols )
+void format( nanodbc::result res, odbc::Keys cols, std::set< std::string > tcols = {} )
 {
     std::cerr << "format: " << res.columns() << " columns, " << res.rows() << " rows" << std::endl;
     std::vector< size_t > _width( res.columns() );
@@ -34,7 +34,11 @@ void Report::format( nanodbc::result res, odbc::Keys cols, std::set< std::string
 
     while ( res.next() )
         for ( int i = 0; i < res.columns(); ++ i )
-            _width[ i ] = std::max( _width[ i ], res.get< std::string >( i ).size() );
+            if ( !tcols.count( cols[ i ] ) )
+                 _width[ i ] = std::max( _width[ i ], res.get< std::string >( i ).size() );
+            else
+                 _width[ i ] = std::max( _width[ i ],
+                                         interval_str( MSecs( res.get< int >( i ) ) ).size() );
 
     std::cout << "| ";
     for ( size_t i = 0; i < cols.size(); ++i )
