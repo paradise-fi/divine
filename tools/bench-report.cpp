@@ -86,20 +86,21 @@ void Report::results()
       << ( _by_tag ? "sum( states ), " : "states, " )
       << ( _by_tag ? "count( model.id )" : "execution.result" ) << ", "
       << ( _by_tag ? "sum(time_search), sum(time_ce)" : "time_search, time_ce" ) << " "
-      << "from execution join instance join job join model "
-      << ( _by_tag ? "join model_tags join tag " : "" )
-      << "on instance.id = execution.instance "
-      << "and job.execution = execution.id and job.model = model.id "
-      << ( _by_tag ? "and model_tags.model = model.id and model_tags.tag = tag.id " : "" )
-      << "where (";
-
+      << "from execution "
+      << "join instance on execution.instance = instance.id "
+      << "join job on job.execution = execution.id "
+      << "join model on job.model = model.id "
+      << ( _by_tag ? "join model_tags on model_tags.model = model.id " : "" )
+      << ( _by_tag ? "join tag on model_tags.tag = tag.id " : "" )
+      << " where ( ";
     for ( size_t i = 0; i < _result.size(); ++i )
-        q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "') " : "' or " );
+        q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "' ) " : "' or " );
+    q << ( _by_tag ? " group by tag.id, instance.id " : "" );
     if ( _instance >= 0 )
-        q << " and instance.id = " << _instance;
-    if ( _by_tag )
-        q << " group by tag.id";
+        q << ( _by_tag ? " having " : " and " ) << " instance.id = " << _instance;
+    q << " order by " << ( _by_tag ? "tag.name" : "model.name" );
 
+    std::cerr << q.str() << std::endl;
     nanodbc::statement find( _conn, q.str() );
     odbc::Keys hdr{ "instance", _by_tag ? "tag" : "model", "states",
                     _by_tag ? "models" : "result", "search", "ce" };
