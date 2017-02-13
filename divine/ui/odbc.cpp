@@ -31,6 +31,7 @@ extern const char *DIVINE_VERSION;
 extern const char *DIVINE_SOURCE_SHA;
 extern const char *DIVINE_RUNTIME_SHA;
 extern const char *DIVINE_BUILD_TYPE;
+extern const char *DIVINE_RELEASE_SHA;
 
 namespace divine::ui::odbc
 {
@@ -104,8 +105,11 @@ int unique_id( connection conn, std::string table, Keys keys, Vals vals )
 
 int get_build( connection conn )
 {
-    Keys keys{ "version", "source_sha", "runtime_sha", "build_type" };
-    Vals vals{ DIVINE_VERSION, DIVINE_SOURCE_SHA, DIVINE_RUNTIME_SHA, DIVINE_BUILD_TYPE };
+    std::string composite = std::string( DIVINE_SOURCE_SHA ) + " " + DIVINE_RUNTIME_SHA;
+
+    Keys keys{ "version", "source_sha", "runtime_sha", "build_type", "is_release" };
+    Vals vals{ DIVINE_VERSION, DIVINE_SOURCE_SHA, DIVINE_RUNTIME_SHA, DIVINE_BUILD_TYPE,
+               composite == DIVINE_RELEASE_SHA };
     return unique_id( conn, "build", keys, vals );
 }
 
