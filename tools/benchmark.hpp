@@ -66,12 +66,16 @@ struct Schedule : Cmd
     void run() override;
 };
 
-struct Report : Cmd
+struct ReportBase : Cmd
+{
+    bool _by_tag = false, _watch = false;
+    std::string _result = "VE";
+};
+
+struct Report : ReportBase
 {
     bool _list_instances = false;
     int _instance = -1;
-    std::string _result = "VE";
-    bool _watch = false, _by_tag = false;
 
     void list_instances();
     void results();
@@ -83,6 +87,12 @@ struct Report : Cmd
         else
             results();
     }
+};
+
+struct Compare : ReportBase
+{
+    std::vector< int > _instances;
+    void run() override;
 };
 
 struct Run : Cmd

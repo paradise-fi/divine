@@ -113,4 +113,30 @@ void Report::results()
     }
 }
 
+void Compare::run()
+{
+    std::stringstream q;
+    q << "select " << ( _by_tag ? "tag.name" : "model.name" ) << ", "
+      << ( _by_tag ? "sum(ex1.time_search), sum(ex2.time_search) " :
+                     "ex1.time_search, ex2.time_search " )
+      << "from model "
+      << ( _by_tag ? " join model_tags on model.id = model_tags.model " : "" )
+      << ( _by_tag ? " join tag on tag.id = model_tags.tag " : "" )
+      << "join job as job1 on job1.model = model.id "
+      << "join job as job2 on job2.model = job1.model "
+      << "join execution as ex1 on job1.execution = ex1.id "
+      << "join execution as ex2 on job2.execution = ex2.id "
+      << "where job1.instance = ? and job2.instance = ? "
+      << "and job1.status = 'D' and job2.status = 'D' ";
+    if ( _by_tag )
+        q << "group by tag.name";
+    nanodbc::statement find( _conn, q.str() );
+    find.bind( 0, &_instances[ 0 ] );
+    find.bind( 1, &_instances[ 1 ] );
+    std::cerr << brick::string::fmt_container( _instances, "{", "}" ) << std::endl;
+    std::cerr << q.str() << std::endl;
+    format( find.execute(), odbc::Keys{ "model", "1/search", "2/search" },
+            { "1/search"s, "2/search"s } );
+}
+
 }

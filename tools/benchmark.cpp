@@ -213,13 +213,18 @@ int main( int argc, const char **argv )
         .option( "[--file {string}]", &Import::_files, "a (source) file to import" )
         .option( "[--script {string}]", &Import::_script, "a build/verify script" );
 
+    auto opts_report_base = cmd::make_option_set< ReportBase >( validator )
+        .option( "[--by-tag]",  &ReportBase::_by_tag, "group results by tags" )
+        .option( "[--watch]",  &ReportBase::_watch, "refresh the results in a loop" )
+        .option( "[--result {string}]", &ReportBase::_result,
+                 "only include runs with one of given results (default: VE)" );
+
     auto opts_report = cmd::make_option_set< Report >( validator )
-        .option( "[--watch]",  &Report::_watch, "refresh the results in a loop" )
-        .option( "[--by-tag]",  &Report::_by_tag, "group results by tags" )
         .option( "[--list-instances]",  &Report::_list_instances, "show available instances" )
-        .option( "[--result {string}]", &Report::_result,
-                 "only include runs with one of given results (default: VE)" )
         .option( "[--instance {int}]",  &Report::_instance, "show results for a given instance" );
+
+    auto opts_compare = cmd::make_option_set< Compare >( validator )
+        .option( "[--instance {int}]",  &Compare::_instances, "compare given instances" );
 
     auto opts_schedule = cmd::make_option_set< Schedule >( validator )
         .option( "[--tag {string}]", &Schedule::_tag, "only schedule models with a given tag" );
@@ -227,7 +232,8 @@ int main( int argc, const char **argv )
     auto cmds = cmd::make_parser( cmd::make_validator() )
         .command< Import >( opts_db, opts_import )
         .command< Schedule >( opts_db, opts_schedule )
-        .command< Report >( opts_db, opts_report )
+        .command< Report >( opts_db, opts_report_base, opts_report )
+        .command< Compare >( opts_db, opts_report_base, opts_compare )
         .command< Run >( opts_db );
     auto cmd = cmds.parse( args.begin(), args.end() );
 
