@@ -148,8 +148,10 @@ void Compare::run()
             q << ", " << _agg << "(" << f << ") as " << f << " ";
         q << " from model join job on model.id = job.model"
           << " join execution on job.execution = execution.id "
-          << " where job.instance = ? and job.status = 'D' "
-          << " group by model.id) as x" << *it << " ";
+          << " where job.instance = ? and job.status = 'D' and ( ";
+        for ( size_t i = 0; i < _result.size(); ++i )
+            q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "' ) " : "' or " );
+        q << " group by model.id) as x" << *it << " ";
         if ( it != _instances.begin() )
             q << " on x" << *std::prev( it ) << ".modid = x" << *it << ".modid ";
         if ( std::next( it ) != _instances.end() )
