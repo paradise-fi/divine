@@ -135,7 +135,11 @@ void Compare::run()
         _fields = { "time_search", "states" };
 
     std::stringstream q;
-    q << "select " << ( _by_tag ? "tag.name" : "model.name" );
+    if ( _by_tag )
+        q << "select tag.name ";
+    else
+        q << "select x" << _instances[ 0 ] << ".modname ";
+
     for ( auto f : _fields )
         for ( auto i : _instances )
             q << ", " << ( _by_tag ? "sum" : "" ) << "(x" << i << "." << f << ") ";
@@ -143,7 +147,7 @@ void Compare::run()
 
     for ( auto it = _instances.begin(); it != _instances.end(); ++it )
     {
-        q << "(select model.id as modid";
+        q << "(select model.id as modid, model.name as modname";
         for ( auto f : _fields )
             q << ", " << _agg << "(" << f << ") as " << f << " ";
         q << " from model join job on model.id = job.model"
