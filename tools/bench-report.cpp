@@ -131,16 +131,22 @@ void Report::results()
 
 void Compare::run()
 {
+    if ( _fields.empty() )
+        _fields = { "time_search", "states" };
+
     std::stringstream q;
     q << "select " << ( _by_tag ? "tag.name" : "model.name" );
-    for ( auto i : _instances )
-        q << ", " << ( _by_tag ? "sum" : "" ) << "(x" << i << ".time_search) ";
+    for ( auto f : _fields )
+        for ( auto i : _instances )
+            q << ", " << ( _by_tag ? "sum" : "" ) << "(x" << i << "." << f << ") ";
     q << " from ";
 
     for ( auto it = _instances.begin(); it != _instances.end(); ++it )
     {
-        q << "(select model.id as modid, " << _agg << "(time_search) as time_search "
-          << " from model join job on model.id = job.model"
+        q << "(select model.id as modid";
+        for ( auto f : _fields )
+            q << ", " << _agg << "(" << f << ") as " << f << " ";
+        q << " from model join job on model.id = job.model"
           << " join execution on job.execution = execution.id "
           << " where job.instance = ? and job.status = 'D' "
           << " group by model.id) as x" << *it << " ";
@@ -156,12 +162,14 @@ void Compare::run()
     odbc::Keys hdr{ "model" };
     std::set< std::string > tf;
 
-    for ( auto i : _instances )
-    {
-        auto k = std::to_string( i ) + "/search_time";
-        hdr.push_back( k );
-        tf.insert( k );
-    }
+    for ( auto f : _fields )
+        for ( auto i : _instances )
+        {
+            auto k = std::to_string( i ) + "/" + f;
+            hdr.push_back( k );
+            if ( brick::string::startsWith( f, "time" ) )
+                 tf.insert( k );
+        }
 
     nanodbc::statement find( _conn, q.str() );
     for ( int i = 0; i < _instances.size(); ++i )

@@ -224,6 +224,7 @@ int main( int argc, const char **argv )
         .option( "[--instance {int}]",  &Report::_instance, "show results for a given instance" );
 
     auto opts_compare = cmd::make_option_set< Compare >( validator )
+        .option( "[--field {string}]",  &Compare::_fields, "include a field in the comparison" )
         .option( "[--instance {int}]",  &Compare::_instances, "compare given instances" );
 
     auto opts_schedule = cmd::make_option_set< Schedule >( validator )

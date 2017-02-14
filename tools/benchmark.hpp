@@ -93,6 +93,7 @@ struct Report : ReportBase
 struct Compare : ReportBase
 {
     std::vector< int > _instances;
+    std::vector< std::string > _fields;
     void run() override;
 };
 
