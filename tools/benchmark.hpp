@@ -70,6 +70,7 @@ struct ReportBase : Cmd
 {
     bool _by_tag = false, _watch = false;
     std::string _result = "VE";
+    std::string _agg = "avg";
 };
 
 struct Report : ReportBase

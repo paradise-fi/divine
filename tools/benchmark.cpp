@@ -214,6 +214,7 @@ int main( int argc, const char **argv )
 
     auto opts_report_base = cmd::make_option_set< ReportBase >( validator )
         .option( "[--by-tag]",  &ReportBase::_by_tag, "group results by tags" )
+        .option( "[--aggregate {string}]",  &ReportBase::_agg, "run aggregation (default: avg)" )
         .option( "[--watch]",  &ReportBase::_watch, "refresh the results in a loop" )
         .option( "[--result {string}]", &ReportBase::_result,
                  "only include runs with one of given results (default: VE)" );

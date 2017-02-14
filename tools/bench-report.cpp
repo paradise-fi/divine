@@ -87,28 +87,39 @@ void Report::results()
         std::cout << char( 27 ) << "[2J" << char( 27 ) << "[;H";
 
     std::stringstream q;
-    q << "select instance.id, " << ( _by_tag ? "tag.name" : "model.name" ) << ", "
-      << ( _by_tag ? "sum( states ), " : "states, " )
-      << ( _by_tag ? "count( model.id )" : "execution.result" ) << ", "
+    q << "select instid, name, "
+      << ( _by_tag ? "count( modid ), " : "coalesce(variant, ''), result, " )
+      << ( _by_tag ? "sum( states )" : "states" ) << ", "
       << ( _by_tag ? "sum(time_search), sum(time_ce)" : "time_search, time_ce" ) << " "
-      << "from execution "
-      << "join instance on execution.instance = instance.id "
+      << "from (select instance.id as instid, "
+      << ( _by_tag ? "tag.name" : "model.name" ) << " as name, "
+      << _agg << "(states) as states, model.id as modid, variant, "
+      << _agg << "(time_search) as time_search, "
+      << _agg << "(time_ce) as time_ce, min(result) as result "
+      << "from execution join instance on execution.instance = instance.id "
       << "join job on job.execution = execution.id "
-      << "join model on job.model = model.id "
-      << ( _by_tag ? "join model_tags on model_tags.model = model.id " : "" )
-      << ( _by_tag ? "join tag on model_tags.tag = tag.id " : "" )
-      << " where ( ";
+      << "join model on job.model = model.id ";
+    if ( _by_tag )
+      q << "join model_tags on model_tags.model = model.id "
+        << "join tag on model_tags.tag = tag.id ";
+    q << " where ( ";
+
     for ( size_t i = 0; i < _result.size(); ++i )
         q << "result = '" << _result[ i ] << ( i + 1 == _result.size() ? "' ) " : "' or " );
-    q << ( _by_tag ? " group by tag.id, instance.id " : "" );
     if ( _instance >= 0 )
-        q << ( _by_tag ? " having " : " and " ) << " instance.id = " << _instance;
-    q << " order by " << ( _by_tag ? "tag.name" : "model.name" );
+        q << " and instance.id = " << _instance;
+    q << " group by instance.id, model.id" << (_by_tag ? ", tag.id" : "") << ") as l ";
+    if ( _by_tag )
+        q << " group by name, instid";
+    q << " order by name";
 
-    std::cerr << q.str() << std::endl;
     nanodbc::statement find( _conn, q.str() );
-    odbc::Keys hdr{ "instance", _by_tag ? "tag" : "model", "states",
-                    _by_tag ? "models" : "result", "search", "ce" };
+
+    odbc::Keys hdr;
+    if ( _by_tag )
+        hdr = odbc::Keys{ "instance", "tag", "models", "states", "search", "ce" };
+    else
+        hdr = odbc::Keys{ "instance", "model", "variant", "result", "states", "search", "ce" };
     format( find.execute(), hdr, { "search"s, "ce"s } );
 
     if ( _watch )
