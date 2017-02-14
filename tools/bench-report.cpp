@@ -132,27 +132,44 @@ void Report::results()
 void Compare::run()
 {
     std::stringstream q;
-    q << "select " << ( _by_tag ? "tag.name" : "model.name" ) << ", "
-      << ( _by_tag ? "sum(ex1.time_search), sum(ex2.time_search) " :
-                     "ex1.time_search, ex2.time_search " )
-      << "from model "
-      << ( _by_tag ? " join model_tags on model.id = model_tags.model " : "" )
-      << ( _by_tag ? " join tag on tag.id = model_tags.tag " : "" )
-      << "join job as job1 on job1.model = model.id "
-      << "join job as job2 on job2.model = job1.model "
-      << "join execution as ex1 on job1.execution = ex1.id "
-      << "join execution as ex2 on job2.execution = ex2.id "
-      << "where job1.instance = ? and job2.instance = ? "
-      << "and job1.status = 'D' and job2.status = 'D' ";
+    q << "select " << ( _by_tag ? "tag.name" : "model.name" );
+    for ( auto i : _instances )
+        q << ", " << ( _by_tag ? "sum" : "" ) << "(x" << i << ".time_search) ";
+    q << " from ";
+
+    for ( auto it = _instances.begin(); it != _instances.end(); ++it )
+    {
+        q << "(select model.id as modid, " << _agg << "(time_search) as time_search "
+          << " from model join job on model.id = job.model"
+          << " join execution on job.execution = execution.id "
+          << " where job.instance = ? and job.status = 'D' "
+          << " group by model.id) as x" << *it << " ";
+        if ( it != _instances.begin() )
+            q << " on x" << *std::prev( it ) << ".modid = x" << *it << ".modid ";
+        if ( std::next( it ) != _instances.end() )
+            q << " join ";
+    }
     if ( _by_tag )
-        q << "group by tag.name";
+        q << " join model_tags on model_tags.model = x" << _instances[ 0 ] << ".modid"
+          << " join tag on model_tags.tag = tag.id group by tag.id";
+
+    odbc::Keys hdr{ "model" };
+    std::set< std::string > tf;
+
+    for ( auto i : _instances )
+    {
+        auto k = std::to_string( i ) + "/search_time";
+        hdr.push_back( k );
+        tf.insert( k );
+    }
+
     nanodbc::statement find( _conn, q.str() );
-    find.bind( 0, &_instances[ 0 ] );
-    find.bind( 1, &_instances[ 1 ] );
+    for ( int i = 0; i < _instances.size(); ++i )
+        find.bind( i, &_instances[ i ] );
+
     std::cerr << brick::string::fmt_container( _instances, "{", "}" ) << std::endl;
-    std::cerr << q.str() << std::endl;
-    format( find.execute(), odbc::Keys{ "model", "1/search", "2/search" },
-            { "1/search"s, "2/search"s } );
+
+    format( find.execute(), hdr, tf );
 }
 
 }
