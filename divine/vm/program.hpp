@@ -347,6 +347,9 @@ struct Program
             return FC->getPredicate();
         if ( auto ARMW = llvm::dyn_cast< llvm::AtomicRMWInst >( I ) )
             return ARMW->getOperation();
+        if ( auto INV = llvm::dyn_cast< llvm::InvokeInst >( I ) ) /* FIXME remove */
+            return blockmap[ INV->getUnwindDest() ].instruction();
+
         UNREACHABLE( "bad instruction type in Program::getPredicate" );
     }
 
@@ -367,6 +370,7 @@ struct Program
             return intrinsic_id( I );
         if ( I->getOpcode() == llvm::Instruction::ICmp ||
              I->getOpcode() == llvm::Instruction::FCmp ||
+             I->getOpcode() == llvm::Instruction::Invoke ||
              I->getOpcode() == llvm::Instruction::AtomicRMW )
             return getSubcode( I );
         return 0;

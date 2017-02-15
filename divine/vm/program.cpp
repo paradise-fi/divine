@@ -508,30 +508,6 @@ void Program::computeRR()
     coverage.clear();
 }
 
-static int getOpcode( llvm::User *u ) {
-    if ( auto *i = dyn_cast< llvm::Instruction >( u ) )
-        return i->getOpcode();
-    if ( auto *c = dyn_cast< llvm::ConstantExpr >( u ) )
-        return c->getOpcode();
-    return 0;
-}
-
-static int getSubOp( llvm::User *u, Program &p ) {
-    if ( auto *armw = dyn_cast< llvm::AtomicRMWInst >( u ) )
-        return armw->getOperation();
-    if ( auto *cmp = dyn_cast< llvm::CmpInst >( u ) )
-        return cmp->getPredicate();
-    if ( auto *inv = dyn_cast< llvm::InvokeInst >( u ) ) {
-        // save location of landing block as suboperation
-        auto *unwbb = inv->getUnwindDest();
-        ASSERT( p.blockmap.count( unwbb ) );
-        ASSERT( llvm::isa< llvm::LandingPadInst >( unwbb->getFirstNonPHIOrDbgOrLifetime() ) );
-        auto unwoffset = p.blockmap[ unwbb ].instruction();
-        return unwoffset;
-    }
-    return 0;
-}
-
 void Program::computeStatic()
 {
     _ccontext.setup( _globals_size, _constants_size );
@@ -619,12 +595,10 @@ void Program::computeStatic()
             auto &inst = func.instructions[ j ];
             int opcode = 0, subop = 0, offset = 0, size = 0;
 
-            if ( inst.op )
+            if ( inst.opcode )
             {
-                ASSERT_EQ( llvm::cast< llvm::Instruction >( inst.op )->getParent()->getParent(),
-                           llvmfunction( pc ) );
-                opcode = getOpcode( inst.op );
-                subop = getSubOp( inst.op, *this );
+                opcode = inst.opcode;
+                subop = inst.subcode;
                 offset = inst.values.empty() ? 0 : inst.result().offset;
                 size = inst.values.empty() ? 0 : inst.result().size(); /* fixme? in bytes? */
             }
