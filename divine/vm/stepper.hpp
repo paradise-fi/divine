@@ -81,9 +81,8 @@ struct Stepper
         return p.second && p.first >= p.second;
     }
 
-    bool check_location( CodePointer pc, const Program::Instruction &i )
+    bool check_location( CodePointer pc, const llvm::Instruction *op )
     {
-        auto op = llvm::cast< llvm::Instruction >( i.op );
         bool dbg_changed = !_insn_last || _insn_last->getDebugLoc() != op->getDebugLoc();
 
         if ( dbg_changed )
@@ -100,9 +99,9 @@ struct Stepper
     }
 
     template< typename Eval >
-    bool check( Context &ctx, Eval &eval, bool moved )
+    bool check( Context &ctx, Eval &eval, CodePointer oldpc, bool moved )
     {
-        if ( moved && check_location( eval.pc(), eval.instruction() ) )
+        if ( moved && check_location( eval.pc(), eval.program().insnmap[ oldpc ] ) )
             return true;
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
             return true;

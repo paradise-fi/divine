@@ -33,9 +33,10 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
     bool in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;
     bool error_set = !_stop_on_error || ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
     bool moved = false;
+    CodePointer oldpc = eval.pc();
 
     while ( !_sigint && !ctx.frame().null() &&
-            ( ( _ff_kernel && in_kernel ) || !check( ctx, eval, moved ) ) &&
+            ( ( _ff_kernel && in_kernel ) || !check( ctx, eval, oldpc, moved ) ) &&
             ( error_set || ( ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error ) == 0 ) &&
             ( in_fault || eval.pc().function()
               != ctx.get( _VM_CR_FaultHandler ).pointer.object() ) )
@@ -52,6 +53,8 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             instruction();
         }
 
+        oldpc = eval.pc();
+
         if ( verb == PrintInstructions && ( !in_kernel || !_ff_kernel ) )
         {
             auto frame = ctx.frame();
@@ -60,9 +63,12 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
             if ( ctx.heap().valid( frame ) )
             {
                 auto newframe = ctx.frame();
+                auto newpc = ctx.get( _VM_CR_PC ).pointer;
                 ctx.set( _VM_CR_Frame, frame ); /* :-( */
+                ctx.set( _VM_CR_PC, oldpc );
                 std::cerr << "  " << vm::print::instruction( eval, 2 ) << std::endl;
                 ctx.set( _VM_CR_Frame, newframe );
+                ctx.set( _VM_CR_PC, newpc );
             }
             else
                 std::cerr << "  " << before << std::endl;
