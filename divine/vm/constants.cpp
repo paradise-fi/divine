@@ -22,6 +22,8 @@
 #include <llvm/IR/Module.h>
 
 using namespace divine::vm;
+using llvm::dyn_cast;
+using llvm::isa;
 
 using PEval = Eval< Program, typename Program::Context, value::Void >;
 
