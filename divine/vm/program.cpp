@@ -416,7 +416,8 @@ Program::Position Program::insert( Position p )
 
         insn.result() = insert( p.pc.function(), &*p.I ).slot;
     } else
-        pcmap.insert( std::make_pair( p.I, p.pc ) );
+        pcmap.insert( std::make_pair( p.I, p.pc ) ),
+        insnmap.insert( std::make_pair( p.pc, p.I ) );
 
     ++ p.I; /* next please */
     p.pc.instruction( p.pc.instruction() + 1 );

@@ -205,6 +205,7 @@ struct Program
     std::map< const llvm::Type *, int > typemap;
 
     std::map< const llvm::Instruction *, CodePointer > pcmap;
+    std::map< CodePointer, llvm::Instruction * > insnmap;
     std::map< const llvm::Value *, std::string > anonmap;
 
     std::map< const llvm::BasicBlock *, CodePointer > blockmap;
@@ -258,8 +259,8 @@ struct Program
 
     llvm::Function *llvmfunction( CodePointer pc ) /* eww. */
     {
-        return llvm::cast< llvm::Instruction >( function( pc ).instructions[ 1 ].op )->
-            getParent()->getParent();
+        pc.instruction( 1 );
+        return insnmap[ pc ]->getParent()->getParent();
     }
 
     int64_t allocsize( int id ) { return _types[ id ].type.size; }
