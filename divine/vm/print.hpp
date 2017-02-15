@@ -65,7 +65,7 @@ void ascbyte( std::ostream &o, int &col, B byte )
 enum class DisplayVal { Name, Value, PreferName };
 
 template< typename Eval >
-static std::string value( Eval &eval, llvm::Value *val, DisplayVal disp = DisplayVal::PreferName )
+static std::string value( Eval &eval, const llvm::Value *val, DisplayVal disp = DisplayVal::PreferName )
 {
     std::stringstream num2str;
     num2str << std::setw( 2 ) << std::setfill( '0' ) << std::hex;
@@ -106,7 +106,7 @@ static void result( std::ostream &out, int col, Eval &eval )
 {
     while ( col < 60 )
         col ++, out << " ";
-    out << "# " << value( eval, eval.instruction().op, DisplayVal::Value );
+    out << "# " << value( eval, eval.program().insnmap[ eval.pc() ], DisplayVal::Value );
 }
 
 template< typename I >
@@ -114,7 +114,7 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
 {
     std::string op = opcode( insn.opcode );
     if ( insn.opcode == llvm::Instruction::ICmp )
-        switch ( llvm::cast< llvm::ICmpInst >( insn.op )->getPredicate() )
+        switch ( insn.subcode )
         {
             case llvm::ICmpInst::ICMP_EQ: op += ".eq"; break;
             case llvm::ICmpInst::ICMP_NE: op += ".ne"; break;
@@ -129,7 +129,7 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
             default: UNREACHABLE( "unexpected icmp predicate" ); break;
         }
     if ( insn.opcode == llvm::Instruction::FCmp )
-        switch ( llvm::cast< llvm::FCmpInst >( insn.op )->getPredicate() )
+        switch ( insn.subcode )
         {
             case llvm::FCmpInst::FCMP_OEQ: op += ".oeq"; break;
             case llvm::FCmpInst::FCMP_ONE: op += ".one"; break;
@@ -159,25 +159,26 @@ static std::string instruction( Eval &eval, int padding = 0, int colmax = 80 )
 {
     std::stringstream out;
     auto &insn = eval.instruction();
-    ASSERT( insn.op );
+    auto I = eval.program().insnmap[ eval.pc() ];
+    ASSERT( I );
 
     bool printres = true;
 
     if ( insn.result().type != Program::Slot::Void )
-        out << value( eval, insn.op, DisplayVal::Name ) << " = ";
+        out << value( eval, I, DisplayVal::Name ) << " = ";
     else
         printres = false;
 
     out << opcode( insn ) << " ";
-    const int numOperands = insn.op->getNumOperands();
     uint64_t skipMask = 0;
+    const int argc = I->getNumOperands();
     int argalign = out.str().size() + padding, argcols = 0;
 
     if ( insn.opcode == llvm::Instruction::Call || insn.opcode == llvm::Instruction::Invoke )
     {
-        llvm::CallSite cs( insn.op );
+        llvm::CallSite cs( I );
 
-        skipMask |= uint64_t( 1 ) << (numOperands - (cs.isCall() ? 1 : 3));
+        skipMask |= uint64_t( 1 ) << (argc - (cs.isCall() ? 1 : 3));
         if ( auto *target = cs.getCalledFunction() ) {
             auto tgt = target->getName().str();
             argcols = tgt.size() + 2;
@@ -190,12 +191,12 @@ static std::string instruction( Eval &eval, int padding = 0, int colmax = 80 )
         }
     }
 
-    for ( int i = 0; i < numOperands; ++i )
+    for ( int i = 0; i < argc; ++i )
     {
         if ( ( (uint64_t( 1 ) << i) & skipMask ) != 0 )
             continue;
 
-        auto val = insn.op->getOperand( i );
+        auto val = I->getOperand( i );
         auto oname = value( eval, val, DisplayVal::PreferName );
 
         int cols = argalign + argcols + oname.size() + 1;
@@ -274,21 +275,27 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
         ++ line, ++ lineno;
     unsigned endline = lineno;
 
-    auto act_op = program.instruction( pc ).insn();
+    auto act_pc = pc;
+    auto act_op = program.insnmap[ pc ];
     if ( !act_op )
-        act_op = program.instruction( pc + 1 ).insn();
+        act_pc = pc + 1,
+        act_op = program.insnmap[ pc + 1 ];
+
+    auto iter = pc;
+    iter.instruction( 0 );
+    auto funsize = program.function( pc ).instructions.size();
 
     /* figure out the source code span the function covers; painfully */
-    for ( auto &i : program.function( pc ).instructions )
+    for ( iter.instruction( 0 ); iter.instruction() < funsize; iter = iter + 1 )
     {
-        if ( !i.insn() )
+        if ( !program.instruction( iter ).opcode )
             continue;
-        auto dl = i.insn()->getDebugLoc().get();
+        auto dl = program.insnmap[ iter ]->getDebugLoc().get();
         if ( !dl )
             continue;
         while ( dl->getInlinedAt() )
             dl = dl->getInlinedAt();
-        if ( i.insn() == act_op )
+        if ( program.insnmap[ iter ] == act_op )
             active = dl->getLine();
         endline = std::max( endline, dl->getLine() );
     }
@@ -300,7 +307,7 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
             dl = dl->getInlinedAt();
         active = dl ? dl->getLine() : active;
         pc = pc + 1;
-        act_op = program.instruction( pc ).insn();
+        act_op = program.insnmap[ pc ];
     }
 
     /* print it */
