@@ -29,8 +29,8 @@ extern "C" {
 #endif
 
 /* Functions _NOT_ tagged noreturn as this hampers debugging */
-void _PDCLIB_assert99( char const * const, char const * const, char const * const );
-void _PDCLIB_assert89( char const * const );
+void _PDCLIB_assert99( char const * const, char const * const, char const * const ) _PDCLIB_nothrow;
+void _PDCLIB_assert89( char const * const ) _PDCLIB_nothrow;
 
 #ifdef __cplusplus
 }
@@ -52,7 +52,7 @@ void _PDCLIB_assert89( char const * const );
 #ifdef __cplusplus
 extern "C" {
 #endif
-void _PDCLIB_assert_dios( const char *msg );
+void _PDCLIB_assert_dios( const char *msg ) _PDCLIB_nothrow;
 #ifdef __cplusplus
 }
 #endif
