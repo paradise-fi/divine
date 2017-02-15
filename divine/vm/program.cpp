@@ -658,7 +658,7 @@ void Program::computeStatic()
 
         auto lsda = lsdaObj + lsdaOffset;
         writeMetaElem( 9, lsda );
-        tab.insertEhTable( *this, lsda.cooked(), func.typeIDs );
+        tab.insertEhTable( *this, lsda.cooked() );
         instOffset += instTableSize;
         lsdaOffset += tab.tableSizeBound();
     }

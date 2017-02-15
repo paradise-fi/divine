@@ -187,13 +187,6 @@ struct Program
         Slot personality;
         std::vector< Slot > values; /* TODO only store arguments; rename, use SmallVector */
         std::vector< Instruction > instructions;
-        std::vector< ConstPointer > typeIDs; /* for landing pads */
-
-        int typeID( ConstPointer p )
-        {
-            auto found = std::find( typeIDs.begin(), typeIDs.end(), p );
-            return found == typeIDs.end() ? 0 : 1 + (found - typeIDs.begin());
-        }
 
         Instruction &instruction( CodePointer pc )
         {

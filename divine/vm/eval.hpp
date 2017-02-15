@@ -901,11 +901,6 @@ struct Eval
             case Intrinsic::trap:
                 fault( _VM_F_Control ) << "llvm.trap executed";
                 return;
-            case Intrinsic::eh_typeid_for:
-                result( IntV( program().function( pc() ).typeID(
-                                  operandCk< PointerV >( 0 ).cooked() ) ) );
-                return;
-
             case Intrinsic::umul_with_overflow:
                 return _arith_with_overflow( _id, []( auto a, auto b ) { return a * b; },
                                              []( auto a, auto b ) { return a > _maxbound( a ) / b; } );
