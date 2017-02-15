@@ -30,10 +30,6 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
-#include <llvm/IR/Constants.h>
-#include <llvm/IR/GetElementPtrTypeIterator.h>
-#include <llvm/IR/CallSite.h>
-#include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Intrinsics.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -76,16 +72,10 @@ typedef generic_gep_type_iterator<User::const_op_iterator> gep_type_iterator;
 namespace divine {
 namespace vm {
 
-using ::llvm::dyn_cast;
-using ::llvm::cast;
-using ::llvm::isa;
 using ::llvm::ICmpInst;
 using ::llvm::FCmpInst;
 using ::llvm::AtomicRMWInst;
 namespace Intrinsic = ::llvm::Intrinsic;
-using ::llvm::CallSite;
-using ::llvm::Type;
-using brick::types::Unit;
 
 struct NoOp { template< typename T > NoOp( T ) {} };
 
@@ -156,7 +146,6 @@ struct Eval
     auto &heap() { return _context.heap(); }
     auto &context() { return _context; }
     auto &program() { return _program; }
-    auto &layout() { return program().TD; }
 
     Eval( Program &p, Context &c )
         : _program( p ), _context( c )
@@ -524,7 +513,7 @@ struct Eval
     template< template< typename > class Guard = Any, typename T >
     void op( NoOp )
     {
-        instruction().op->dump();
+        // instruction().op->dump();
         UNREACHABLE_F( "invalid operation on %s", typeid( T ).name() );
     }
 
@@ -565,7 +554,7 @@ struct Eval
             case Slot::Void:
                 return;
             default:
-                instruction().op->dump();
+                // instruction().op->dump();
                 UNREACHABLE_F( "an unexpected dispatch type %d", type );
         }
     }
@@ -680,7 +669,7 @@ struct Eval
         context().set( _VM_CR_Frame, parent.cooked() );
         context().set( _VM_CR_PC, caller_pc.cooked() );
 
-        if ( isa< ::llvm::InvokeInst >( caller.op ) )
+        if ( caller.opcode == OpCode::Invoke )
         {
             auto rv = s2ptr( caller.operand( -2 ), 0, parent.cooked() );
             heap().read( rv, br );
@@ -934,7 +923,7 @@ struct Eval
                 return implement_stackrestore();
             default:
                 /* We lowered everything else in buildInfo. */
-                instruction().op->dump();
+                // instruction().op->dump();
                 UNREACHABLE_F( "unexpected intrinsic %d", id );
         }
     }
@@ -1193,7 +1182,7 @@ struct Eval
                         return;
                     case _VM_T_Alg: {
                         brick::data::SmallVector< GenericPointer > args;
-                        int argc = llvm::cast< llvm::CallInst >( instruction().op )->getNumArgOperands();
+                        int argc = instruction().values.size() - 2;
                         for ( int i = 1; i < argc; ++i )
                             args.emplace_back( ptr2h( operandCk< PointerV >( i ) ) );
                         context().trace( TraceAlg{ args } );
@@ -1328,7 +1317,7 @@ struct Eval
             }
         }
 
-        ASSERT( !isa< ::llvm::PHINode >( instruction().op ) );
+        ASSERT_NEQ( instruction().opcode, OpCode::PHI );
         context().sync_pc();
         context().set( _VM_CR_Frame, frameptr.cooked() );
         context().set( _VM_CR_PC, target );
@@ -1755,11 +1744,7 @@ struct Eval
                 break;
 
             default:
-                if ( instruction().op ) {
-                    instruction().op->dump();
-                    UNREACHABLE_F( "unknown opcode %d", instruction().opcode );
-                } else
-                    UNREACHABLE( "attempted to execute null instruction" );
+                UNREACHABLE( "attempted to execute null instruction" );
         }
     }
 };
