@@ -100,7 +100,10 @@ struct DebugNode
         _address = l;
         _kind = k;
         if ( _kind == DNKind::Frame )
+        {
             _ctx.set( _VM_CR_Frame, _address );
+            _ctx.set( _VM_CR_PC, pc() );
+        }
         if ( _kind == DNKind::Globals )
             _ctx.set( _VM_CR_Globals, _address );
     }

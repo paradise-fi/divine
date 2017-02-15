@@ -328,15 +328,16 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
         if ( pc().null() || pc().type() != PointerType::Code )
             return;
         auto *insn = &program.instruction( pc() );
-        if ( insn->op )
+        int offset = 0;
+        if ( insn->opcode )
         {
             eval._instruction = insn;
             yield( "insn", print::instruction( eval, 0, 1000 ) );
         }
-        if ( !insn->op )
-            insn = &program.instruction( pc() + 1 );
-        ASSERT( insn->op );
-        auto op = llvm::cast< llvm::Instruction >( insn->op );
+        if ( !insn->opcode )
+            insn = &program.instruction( pc() + 1 ), offset = 1;
+        ASSERT( insn->opcode );
+        auto op = program.insnmap[ pc() + offset ];
         yield( "location", location( *op ) );
 
         auto sym = op->getParent()->getParent()->getName().str();
@@ -349,22 +350,24 @@ void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
 {
     ASSERT_EQ( _kind, DNKind::Frame );
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
-    CodePointer iter = pc();
+    CodePointer iter = pc(), origpc = pc();
     iter.instruction( 0 );
     auto &instructions = _ctx.program().function( iter ).instructions;
     for ( auto &i : instructions )
     {
         eval._instruction = &i;
+        _ctx.set( _VM_CR_PC, iter );
         out << ( iter == CodePointer( pc() ) ? ">>" : "  " );
-        if ( i.op )
+        iter = iter + 1;
+        if ( i.opcode )
             out << "  " << print::instruction( eval, 4 ) << std::endl;
         else
         {
-            auto iop = llvm::cast< llvm::Instruction >( instructions[ iter.instruction() + 1 ].op );
+            auto iop = _ctx.program().insnmap[ iter ];
             out << print::value( eval, iop->getParent() ) << ":" << std::endl;
         }
-        iter = iter + 1;
     }
+    _ctx.set( _VM_CR_PC, origpc );
 }
 
 template< typename Prog, typename Heap >
@@ -602,10 +605,11 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield )
     if ( pc().type() != PointerType::Code )
         return;
 
+    int offset = 0;
     auto *insn = &_ctx.program().instruction( pc() );
-    if ( !insn->op )
-        insn = &_ctx.program().instruction( pc() + 1 );
-    auto op = llvm::cast< llvm::Instruction >( insn->op );
+    if ( !insn->opcode )
+        insn = &_ctx.program().instruction( pc() + 1 ), offset = 1;
+    auto op = _ctx.program().insnmap[ pc() + offset ];
     auto F = op->getParent()->getParent();
 
     for ( auto &BB : *F )
