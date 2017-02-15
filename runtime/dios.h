@@ -64,13 +64,13 @@ typedef __dios::Monitor _DiOS_Monitor;
 typedef struct _DiOS_Monitor_ _DiOS_Monitor;
 #endif
 
-static inline int __dios_pointer_get_type( void *ptr )
+static inline int __dios_pointer_get_type( void *ptr ) NOTHROW
 {
     unsigned long p = (unsigned long) ptr;
     return ( p & _VM_PM_Type ) >> _VM_PB_Off;
 }
 
-static inline void *__dios_pointer_set_type( void *ptr, int type )
+static inline void *__dios_pointer_set_type( void *ptr, int type ) NOTHROW
 {
     unsigned long p = (unsigned long) ptr;
     p &= ~_VM_PM_Type;
@@ -258,7 +258,7 @@ struct Context {
 template< bool fenced >
 struct _InterruptMask {
 
-    _InterruptMask()
+    _InterruptMask() NOTHROW
     {
         _orig_state = uintptr_t( __vm_control( _VM_CA_Get, _VM_CR_Flags,
                                                _VM_CA_Bit, _VM_CR_Flags,
@@ -269,14 +269,14 @@ struct _InterruptMask {
             __sync_synchronize();
     }
 
-    ~_InterruptMask() {
+    ~_InterruptMask() NOTHROW {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ),
                       _orig_state ? uintptr_t( _VM_CF_Mask ) : 0ull );
     }
 
   private:
     struct Without {
-        Without( _InterruptMask &self ) : self( self ) {
+        Without( _InterruptMask &self ) NOTHROW : self( self ) {
             if ( !self._orig_state ) {
                 if ( fenced )
                     __sync_synchronize();
@@ -285,7 +285,7 @@ struct _InterruptMask {
         }
 
         // acquire mask if not masked already
-        ~Without() {
+        ~Without() NOTHROW {
             if ( !self._orig_state ) {
                 if ( fenced )
                     __sync_synchronize();
@@ -312,7 +312,7 @@ struct _InterruptMask {
     // break mask (if it is held by this guard), call given function and then
     // return mask to original state
     template< typename Fun >
-    auto without( Fun &&f, bool mustBreakMask = false ) {
+    auto without( Fun &&f, bool mustBreakMask = false ) NOTHROW {
         __dios_assert_v( !mustBreakMask || !_orig_state,
                          "Interrupt does not own interrupt mask, but it is required to by caller of InterruptMask::without" );
         Without _( *this );
@@ -321,8 +321,8 @@ struct _InterruptMask {
 #endif
 
     // beware, this is dangerous
-    void _setOrigState( bool state ) { _orig_state = state; }
-    bool _origState() const { return _orig_state; }
+    void _setOrigState( bool state ) NOTHROW { _orig_state = state; }
+    bool _origState() const NOTHROW { return _orig_state; }
 
   private:
 
