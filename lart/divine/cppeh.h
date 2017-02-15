@@ -119,6 +119,7 @@ Notes:
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/Support/Dwarf.h>
 DIVINE_UNRELAX_WARNINGS
 #include <divine/vm/value.hpp>
 #include <divine/vm/pointer.hpp>
@@ -132,28 +133,10 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
+namespace dwarf = llvm::dwarf;
+
 struct CppEhTab {
 
-    // DWARF Constants
-    enum
-    {
-        DW_EH_PE_absptr   = 0x00,
-        DW_EH_PE_uleb128  = 0x01,
-        DW_EH_PE_udata2   = 0x02,
-        DW_EH_PE_udata4   = 0x03,
-        DW_EH_PE_udata8   = 0x04,
-        DW_EH_PE_sleb128  = 0x09,
-        DW_EH_PE_sdata2   = 0x0A,
-        DW_EH_PE_sdata4   = 0x0B,
-        DW_EH_PE_sdata8   = 0x0C,
-        DW_EH_PE_pcrel    = 0x10,
-        DW_EH_PE_textrel  = 0x20,
-        DW_EH_PE_datarel  = 0x30,
-        DW_EH_PE_funcrel  = 0x40,
-        DW_EH_PE_aligned  = 0x50,
-        DW_EH_PE_indirect = 0x80,
-        DW_EH_PE_omit     = 0xFF
-    };
 
     struct TypeInfo : brick::types::Ord {
         TypeInfo( llvm::Constant *ti ) : self( ti ) { }
@@ -387,16 +370,16 @@ struct CppEhTab {
         // **** HEADER
         // lpStartEncoding, implies lpStart = 0 and therefore lpStart =
         // funcStart
-        write( value::Int< 8 >( DW_EH_PE_omit ) );
+        write( value::Int< 8 >( dwarf::DW_EH_PE_omit ) );
         // ttypeEncoding
-        write( value::Int< 8 >( DW_EH_PE_absptr ) );
+        write( value::Int< 8 >( dwarf::DW_EH_PE_absptr ) );
         writeLeb_n( classInfoOffset, 6 );
 
         auto tiStart = table.offset() + tiOffset;
         ASSERT_EQ( tiStart % 4, 0 );
 
         // callSiteEncoding
-        write( value::Int< 8 >( DW_EH_PE_udata4 ) );
+        write( value::Int< 8 >( dwarf::DW_EH_PE_udata4 ) );
         // pad header for 4 byte alignment
         writeLeb_n( csTable.size(), 7 ); // callSiteTableLength
         ASSERT_EQ( table.offset() - startOffset, tableHeaderSize() );
