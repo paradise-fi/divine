@@ -199,7 +199,7 @@ struct CppEhTab {
                             auto cnt = t->getNumElements();
                             ExceptSpec spec;
                             for ( unsigned j = 0; j < cnt; ++j ) {
-                                auto *ti = &*typeInfos.emplace( array->getOperand( j ) ).first;
+                                auto *ti = &*typeInfos.emplace( array->getOperand( j )->stripPointerCasts() ).first;
                                 spec.typeInfos.emplace_back( ti );
                             }
                             es = &*exceptSpecs.emplace( std::move( spec ) ).first;
@@ -324,8 +324,8 @@ struct CppEhTab {
     }
 
     template< typename Program, typename Ptr >
-    void insertEhTable( Program &p, Ptr table, std::vector< ::divine::vm::ConstPointer > &tiPtrs ) {
-        ASSERT( tiPtrs.empty() );
+    void insertEhTable( Program &p, Ptr table ) {
+        std::vector< ::divine::vm::ConstPointer > tiPtrs;
         auto startOffset = table.offset();
         ASSERT_EQ( startOffset % 4, 0 );
         namespace vm = ::divine::vm;
