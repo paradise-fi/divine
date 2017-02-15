@@ -363,32 +363,17 @@ Program::Position Program::insert( Position p )
     {
         llvm::CallSite CS( p.I );
         llvm::Function *F = CS.getCalledFunction();
-        if ( F ) { // you can actually invoke a label
-            switch ( F->getIntrinsicID() ) {
+        if ( F ) // you can actually invoke a label
+            switch ( F->getIntrinsicID() )
+            {
                 case llvm::Intrinsic::not_intrinsic:
-                    if ( hypercall( F ) ) {
+                    if ( hypercall( F ) )
                         hypercall( p );
-                        break;
-                    }
-                case llvm::Intrinsic::eh_typeid_for:
-                case llvm::Intrinsic::trap:
-                case llvm::Intrinsic::vastart:
-                case llvm::Intrinsic::vacopy:
-                case llvm::Intrinsic::vaend:
-                case llvm::Intrinsic::stacksave:
-                case llvm::Intrinsic::stackrestore:
-                case llvm::Intrinsic::umul_with_overflow:
-                case llvm::Intrinsic::smul_with_overflow:
-                case llvm::Intrinsic::uadd_with_overflow:
-                case llvm::Intrinsic::sadd_with_overflow:
-                case llvm::Intrinsic::usub_with_overflow:
-                case llvm::Intrinsic::ssub_with_overflow:
                     break;
                 case llvm::Intrinsic::dbg_declare:
                 case llvm::Intrinsic::dbg_value: p.I++; return p;
-                default: UNREACHABLE( "lowering should be handled by LART" );
+                default: ;
             }
-        }
     }
 
     if ( !codepointers )
@@ -415,8 +400,7 @@ Program::Position Program::insert( Position p )
 
         insn.result() = insert( p.pc.function(), &*p.I ).slot;
     } else
-        pcmap.insert( std::make_pair( p.I, p.pc ) ),
-        insnmap.insert( std::make_pair( p.pc, p.I ) );
+        pcmap.insert( std::make_pair( p.I, p.pc ) ), insnmap.insert( std::make_pair( p.pc, p.I ) );
 
     ++ p.I; /* next please */
     p.pc.instruction( p.pc.instruction() + 1 );
