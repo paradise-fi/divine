@@ -161,17 +161,7 @@ struct Program
             return values[ idx ];
         }
 
-        /*
-         * TODO, remove the 'op' pointer (to improve compactness)...
-         * - alloca needs to get a virtual size parameter
-         * - LLVM type needs to be passed for {extract,insert}value, getelementptr
-         * - PHI incoming block addresses need to be represented
-         * - icmp/fcmp predicates, atomicrmw operation
-         * - callsite handling needs to be reworked
-         */
-        llvm::User *op; /* the actual operation; Instruction or ConstantExpr */
-        llvm::Instruction *insn() { return op ? llvm::cast< llvm::Instruction >( op ) : nullptr; }
-        Instruction() : opcode( 0 ), subcode( 0 ), op( nullptr ) {}
+        Instruction() : opcode( 0 ), subcode( 0 ) {}
     };
 
     struct Function

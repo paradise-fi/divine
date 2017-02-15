@@ -97,7 +97,6 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     if ( auto CE = dyn_cast< llvm::ConstantExpr >( V ) )
     {
         Instruction comp;
-        comp.op = CE;
         comp.opcode = CE->getOpcode();
         comp.subcode = initSubcode( CE );
         comp.values.push_back( v ); /* the result comes first */

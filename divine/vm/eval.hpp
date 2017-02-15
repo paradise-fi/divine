@@ -1167,7 +1167,7 @@ struct Eval
                         context().trace( TraceText{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                         return;
                     case _VM_T_StateType:
-                        context().trace( TraceStateType{ instruction().op->getOperand( 1 ) } );
+                        context().trace( TraceStateType{ program().insnmap[ pc() ]->getOperand( 1 ) } );
                         return;
                     case _VM_T_SchedChoice:
                         context().trace( TraceSchedChoice{

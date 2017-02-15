@@ -356,7 +356,6 @@ Program::Position Program::insert( Position p )
     Program::Instruction &insn = instruction( p.pc );
 
     insn.opcode = p.I->getOpcode();
-    insn.op = &*p.I;
     insn.subcode = initSubcode( &*p.I );
 
     if ( dyn_cast< llvm::CallInst >( p.I ) ||
