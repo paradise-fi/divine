@@ -41,7 +41,7 @@ typedef unsigned short ushort;
 
 struct _PThread { // (user-space) information maintained for every (running)
                 // thread
-    _PThread() {
+    _PThread() noexcept {
         std::memset( this, 0, sizeof( _PThread ) );
     }
 
@@ -69,12 +69,12 @@ struct _PThread { // (user-space) information maintained for every (running)
     bool deadlocked : 1;
     unsigned sigmaxused : 5; // at most 32 signals
 
-    void setSleeping( pthread_cond_t *cond ) {
+    void setSleeping( pthread_cond_t *cond ) noexcept {
         sleeping = Condition;
         condition = cond;
     }
 
-    void setSleeping( pthread_barrier_t *bar ) {
+    void setSleeping( pthread_barrier_t *bar ) noexcept {
         sleeping = Barrier;
         barrier = bar;
     }
@@ -84,15 +84,15 @@ using Destructor = void (*)( void * );
 
 struct _PthreadTLSDestructors {
 
-    _PthreadTLSDestructors() = default;
-    _PthreadTLSDestructors( const _PthreadTLSDestructors & ) = delete;
-    _PthreadTLSDestructors( _PthreadTLSDestructors && ) = delete;
+    _PthreadTLSDestructors() noexcept = default;
+    _PthreadTLSDestructors( const _PthreadTLSDestructors & ) noexcept = delete;
+    _PthreadTLSDestructors( _PthreadTLSDestructors && ) noexcept = delete;
 
-    int count() {
+    int count() noexcept {
         return __vm_obj_size( _dtors ) / sizeof( Destructor );
     }
 
-    int getFirstAvailable() {
+    int getFirstAvailable() noexcept {
         int k = -1;
         int c = count();
         for ( int i = 0; i < c; ++i )
@@ -108,7 +108,7 @@ struct _PthreadTLSDestructors {
         return k;
     }
 
-    void shrink() {
+    void shrink() noexcept {
         int toDrop = 0;
         int c = count();
         for ( int i = c - 1; i >= 0; --i ) {
@@ -121,12 +121,12 @@ struct _PthreadTLSDestructors {
             __vm_obj_resize( _dtors, std::max( size_t( 1 ), (c - toDrop) * sizeof( Destructor ) ) );
     }
 
-    void init() {
+    void init() noexcept {
         assert( !_dtors );
         _dtors = static_cast< Destructor * >( __vm_obj_make( 1 ) ); // placeholder so that resize works
     }
 
-    Destructor &operator[]( size_t x ) { return _dtors[ x ]; }
+    Destructor &operator[]( size_t x ) noexcept { return _dtors[ x ]; }
 
     Destructor *_dtors;
 };
@@ -136,24 +136,24 @@ static _PthreadTLSDestructors tlsDestructors;
 
 struct _PthreadTLS {
 
-    _PthreadTLS( const _PthreadTLS & ) = delete;
-    _PthreadTLS( _PthreadTLS && ) = delete;
+    _PthreadTLS( const _PthreadTLS & ) noexcept = delete;
+    _PthreadTLS( _PthreadTLS && ) noexcept = delete;
 
     _PThread *thread;
     void *keys[0];
 
-    void *raw() {
+    void *raw() noexcept {
         return reinterpret_cast< char * >( this ) - sizeof( _DiOS_TLS );
     }
 
-    static int size( int cnt ) {
+    static int size( int cnt ) noexcept {
         return sizeof( struct _DiOS_TLS ) + sizeof( _PThread * ) + cnt * sizeof( void * );
     }
 
-    int keyCount() {
+    int keyCount() noexcept {
         return (__vm_obj_size( raw() ) - size( 0 )) / sizeof( void * );
     }
-    void makeFit( int count ) {
+    void makeFit( int count ) noexcept {
         int now = keyCount();
         if ( count > now ) {
             __vm_obj_resize( raw(), size( count ) );
@@ -161,7 +161,7 @@ struct _PthreadTLS {
                 keys[ i ] = nullptr;
         }
     }
-    void shrink() {
+    void shrink() noexcept {
         int count = keyCount();
         int toDrop = 0;
         for ( int i = count - 1; i >= 0; --i )
@@ -172,14 +172,14 @@ struct _PthreadTLS {
         if ( toDrop )
             __vm_obj_resize( raw(), size( count - toDrop ) );
     }
-    void *getKey( int key ) {
+    void *getKey( int key ) noexcept {
         assert( key >= 0 && key < tlsDestructors.count() );
         if ( key >= keyCount() )
             return nullptr;
         return keys[ key ];
     }
 
-    void setKey( int key, const void *value ) {
+    void setKey( int key, const void *value ) noexcept {
         assert( key >= 0 && key < tlsDestructors.count() );
         const int c = keyCount();
         if ( value == nullptr && key >= c )
@@ -192,29 +192,29 @@ struct _PthreadTLS {
     }
 
     struct TLSInfo {
-        TLSInfo( unsigned index, _PthreadTLS *tls ) : index( index ), tls( tls ) { }
+        TLSInfo( unsigned index, _PthreadTLS *tls ) noexcept : index( index ), tls( tls ) { }
 
-        void *getData() { return tls->getKey( index ); }
-        void setData( const void *v ) { return tls->setKey( index, v ); }
-        Destructor destructor() { return tlsDestructors[ index ]; }
+        void *getData() noexcept { return tls->getKey( index ); }
+        void setData( const void *v ) noexcept { return tls->setKey( index, v ); }
+        Destructor destructor() noexcept { return tlsDestructors[ index ]; }
 
         unsigned index;
         _PthreadTLS *tls;
     };
 
     struct TLSIter {
-        TLSIter( unsigned index, _PthreadTLS *tls ) : index( index ), tls( tls ) { }
+        TLSIter( unsigned index, _PthreadTLS *tls ) noexcept : index( index ), tls( tls ) { }
 
-        TLSInfo operator*() {
+        TLSInfo operator*() noexcept {
             return TLSInfo( index, tls );
         }
 
-        TLSIter &operator++() {
+        TLSIter &operator++() noexcept {
             ++index;
             return *this;
         }
 
-        bool operator!=( const TLSIter &o ) const {
+        bool operator!=( const TLSIter &o ) const noexcept {
             return o.index != index || o.tls != tls;
         }
 
@@ -222,24 +222,24 @@ struct _PthreadTLS {
         _PthreadTLS *tls;
     };
 
-    TLSIter begin() { return TLSIter( 0, this ); }
-    TLSIter end() { return TLSIter( keyCount(), this ); }
+    TLSIter begin() noexcept { return TLSIter( 0, this ); }
+    TLSIter end() noexcept { return TLSIter( keyCount(), this ); }
 };
 
-static inline _PthreadTLS &tls( _DiOS_ThreadHandle tid ) {
+static inline _PthreadTLS &tls( _DiOS_ThreadHandle tid ) noexcept {
     return *reinterpret_cast< _PthreadTLS * >( &( tid->data ) );
 }
 
-static inline _PThread &getThread( pthread_t tid ) {
+static inline _PThread &getThread( pthread_t tid ) noexcept {
     return *tls( tid ).thread;
 }
 
-static inline _PThread &getThread() {
+static inline _PThread &getThread() noexcept {
     return getThread( __dios_get_thread_handle() );
 }
 
 template< typename Yield >
-static void iterateThreads( Yield yield ) {
+static void iterateThreads( Yield yield ) noexcept {
     auto *threads = __dios_get_process_threads();
     int cnt = __vm_obj_size( threads ) / sizeof( _DiOS_ThreadHandle );
     for ( int i = 0; i < cnt; ++i )
@@ -247,12 +247,12 @@ static void iterateThreads( Yield yield ) {
 }
 
 /* Process */
-int pthread_atfork( void ( * )( void ), void ( * )( void ), void ( * )( void ) ) {
+int pthread_atfork( void ( * )( void ), void ( * )( void ), void ( * )( void ) ) noexcept {
     /* TODO */
     return 0;
 }
 
-static void __init_thread( const _DiOS_ThreadHandle gtid, const pthread_attr_t attr ) {
+static void __init_thread( const _DiOS_ThreadHandle gtid, const pthread_attr_t attr ) noexcept {
     __dios_assert( gtid );
 
     if ( __vm_obj_size( gtid ) < _PthreadTLS::size( 0 ) )
@@ -271,7 +271,7 @@ static void __init_thread( const _DiOS_ThreadHandle gtid, const pthread_attr_t a
     thread->sigmaxused = 0;
 }
 
-void __pthread_initialize() {
+void __pthread_initialize() noexcept {
     // initialize implicitly created main thread
     tlsDestructors.init();
     __init_thread( __dios_get_thread_handle(), PTHREAD_CREATE_DETACHED );
@@ -279,7 +279,7 @@ void __pthread_initialize() {
 }
 
 // this is not run when thread's main returns!
-void _run_cleanup_handlers() {
+void _run_cleanup_handlers() noexcept {
     _PThread &thread = getThread();
 
     CleanupHandler *handler = thread.cleanup_handlers;
@@ -294,9 +294,9 @@ void _run_cleanup_handlers() {
     }
 }
 
-static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadHandle tid );
+static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadHandle tid ) noexcept;
 
-void _cancel( __dios::FencedInterruptMask &mask ) {
+void _cancel( __dios::FencedInterruptMask &mask ) noexcept {
     _DiOS_ThreadHandle tid = __dios_get_thread_handle();
     _PThread &thread = getThread( tid );
     thread.sleeping = NotSleeping;
@@ -306,12 +306,12 @@ void _cancel( __dios::FencedInterruptMask &mask ) {
     _clean_and_become_zombie( mask, tid );
 }
 
-bool _canceled() {
+bool _canceled() noexcept {
     return getThread().cancelled;
 }
 
 template < bool cancelPoint, typename Cond >
-static void _wait( __dios::FencedInterruptMask &mask, Cond &&cond )
+static void _wait( __dios::FencedInterruptMask &mask, Cond &&cond ) noexcept
         __attribute__( ( __always_inline__, __flatten__ ) )
 {
     while ( cond() && ( !cancelPoint || !_canceled() ) )
@@ -321,20 +321,21 @@ static void _wait( __dios::FencedInterruptMask &mask, Cond &&cond )
 }
 
 template < typename Cond >
-static void waitOrCancel( __dios::FencedInterruptMask &mask, Cond &&cond )
+static void waitOrCancel( __dios::FencedInterruptMask &mask, Cond &&cond ) noexcept
         __attribute__( ( __always_inline__, __flatten__ ) )
 {
     return _wait< true >( mask, std::forward< Cond >( cond ) );
 }
 
 template < typename Cond >
-static void wait( __dios::FencedInterruptMask &mask, Cond &&cond )
+static void wait( __dios::FencedInterruptMask &mask, Cond &&cond ) noexcept
         __attribute__( ( __always_inline__, __flatten__ ) )
 {
     return _wait< false >( mask, std::forward< Cond >( cond ) );
 }
 
-static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadHandle tid ) {
+static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadHandle tid ) noexcept
+{
     _PThread &thread = getThread( tid );
     // An  optional  destructor  function may be associated with each key
     // value.  At thread exit, if a key value has a non-NULL destructor
@@ -384,6 +385,7 @@ struct Entry {
     void *arg;
 };
 
+// no nexcept here, avoid adding landingpads and filters
 extern "C" void __pthread_entry( void *_args ) {
     __dios::FencedInterruptMask mask;
 
@@ -407,7 +409,7 @@ extern "C" void __pthread_entry( void *_args ) {
     _clean_and_become_zombie( mask, tid );
 }
 
-int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) {
+int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry )( void * ), void *arg ) noexcept {
     __dios::FencedInterruptMask mask;
 
     // test input arguments
@@ -428,7 +430,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     return 0;
 }
 
-int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **result ) {
+int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **result ) noexcept {
     _PThread &thread = getThread( gtid );
 
     if ( gtid == __dios_get_thread_handle() )
@@ -458,7 +460,7 @@ int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **res
     return 0;
 }
 
-void pthread_exit( void *result ) {
+void pthread_exit( void *result ) noexcept {
     __dios::FencedInterruptMask mask;
 
     auto gtid = __dios_get_thread_handle();
@@ -474,12 +476,12 @@ void pthread_exit( void *result ) {
     _clean_and_become_zombie( mask, gtid );
 }
 
-int pthread_join( pthread_t gtid, void **result ) {
+int pthread_join( pthread_t gtid, void **result ) noexcept {
     __dios::FencedInterruptMask mask;
     return _pthread_join( mask, gtid, result );
 }
 
-int pthread_detach( pthread_t gtid ) {
+int pthread_detach( pthread_t gtid ) noexcept {
     __dios::FencedInterruptMask mask;
     _PThread &thread = getThread( gtid );
 
@@ -507,18 +509,18 @@ int pthread_detach( pthread_t gtid ) {
      ------------------------------
   */
 
-int pthread_attr_destroy( pthread_attr_t * ) {
+int pthread_attr_destroy( pthread_attr_t * ) noexcept {
     __dios::FencedInterruptMask mask;
     return 0;
 }
 
-int pthread_attr_init( pthread_attr_t *attr ) {
+int pthread_attr_init( pthread_attr_t *attr ) noexcept {
     __dios::FencedInterruptMask mask;
     *attr = 0;
     return 0;
 }
 
-int pthread_attr_getdetachstate( const pthread_attr_t *attr, int *state ) {
+int pthread_attr_getdetachstate( const pthread_attr_t *attr, int *state ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || state == NULL )
@@ -528,47 +530,47 @@ int pthread_attr_getdetachstate( const pthread_attr_t *attr, int *state ) {
     return 0;
 }
 
-int pthread_attr_getguardsize( const pthread_attr_t *, size_t * ) {
+int pthread_attr_getguardsize( const pthread_attr_t *, size_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_getinheritsched( const pthread_attr_t *, int * ) {
+int pthread_attr_getinheritsched( const pthread_attr_t *, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_getschedparam( const pthread_attr_t *, struct sched_param * ) {
+int pthread_attr_getschedparam( const pthread_attr_t *, struct sched_param * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_getschedpolicy( const pthread_attr_t *, int * ) {
+int pthread_attr_getschedpolicy( const pthread_attr_t *, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_getscope( const pthread_attr_t *, int * ) {
+int pthread_attr_getscope( const pthread_attr_t *, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_getstack( const pthread_attr_t *, void **, size_t * ) {
+int pthread_attr_getstack( const pthread_attr_t *, void **, size_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_getstackaddr( const pthread_attr_t *, void ** ) {
+int pthread_attr_getstackaddr( const pthread_attr_t *, void ** ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_getstacksize( const pthread_attr_t *, size_t * ) {
+int pthread_attr_getstacksize( const pthread_attr_t *, size_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_setdetachstate( pthread_attr_t *attr, int state ) {
+int pthread_attr_setdetachstate( pthread_attr_t *attr, int state ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || ( state & ~_THREAD_ATTR_DETACH_MASK ) )
@@ -579,83 +581,83 @@ int pthread_attr_setdetachstate( pthread_attr_t *attr, int state ) {
     return 0;
 }
 
-int pthread_attr_setguardsize( pthread_attr_t *, size_t ) {
+int pthread_attr_setguardsize( pthread_attr_t *, size_t ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_setinheritsched( pthread_attr_t *, int ) {
+int pthread_attr_setinheritsched( pthread_attr_t *, int ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_setschedparam( pthread_attr_t *, const struct sched_param * ) {
+int pthread_attr_setschedparam( pthread_attr_t *, const struct sched_param * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_setschedpolicy( pthread_attr_t *, int ) {
+int pthread_attr_setschedpolicy( pthread_attr_t *, int ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_setscope( pthread_attr_t *, int ) {
+int pthread_attr_setscope( pthread_attr_t *, int ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_setstack( pthread_attr_t *, void *, size_t ) {
+int pthread_attr_setstack( pthread_attr_t *, void *, size_t ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_setstackaddr( pthread_attr_t *, void * ) {
+int pthread_attr_setstackaddr( pthread_attr_t *, void * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_attr_setstacksize( pthread_attr_t *, size_t ) {
+int pthread_attr_setstacksize( pthread_attr_t *, size_t ) noexcept {
     /* TODO */
     return 0;
 }
 
 /* Thread ID */
-pthread_t pthread_self( void ) {
+pthread_t pthread_self( void ) noexcept {
     __dios::FencedInterruptMask mask;
     return __dios_get_thread_handle();
 }
 
-int pthread_equal( pthread_t t1, pthread_t t2 ) {
+int pthread_equal( pthread_t t1, pthread_t t2 ) noexcept {
     return t1 == t2;
 }
 
 /* Scheduler */
-int pthread_getconcurrency( void ) {
+int pthread_getconcurrency( void ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_getcpuclockid( pthread_t, clockid_t * ) {
+int pthread_getcpuclockid( pthread_t, clockid_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_getschedparam( pthread_t, int *, struct sched_param * ) {
+int pthread_getschedparam( pthread_t, int *, struct sched_param * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_setconcurrency( int ) {
+int pthread_setconcurrency( int ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_setschedparam( pthread_t, int, const struct sched_param * ) {
+int pthread_setschedparam( pthread_t, int, const struct sched_param * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_setschedprio( pthread_t, int ) {
+int pthread_setschedprio( pthread_t, int ) noexcept {
     /* TODO */
     return 0;
 }
@@ -670,7 +672,7 @@ int pthread_setschedprio( pthread_t, int ) {
   -----------------------------------------------------------------------------------------------
   */
 
-int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) {
+int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) noexcept {
     int count = mutex->__lockCounter;
     count += adj;
     if ( count >= ( 1 << 28 ) || count < 0 )
@@ -680,7 +682,7 @@ int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) {
     return 0;
 }
 
-void _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) {
+void _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept {
     // note: the cycle is detected first time it occurs, therefore it must go
     // through this mutex, for this reason, we don't need to keep closed set of
     // visited threads and mutexes.
@@ -705,11 +707,11 @@ void _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) {
     }
 }
 
-bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) {
+bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) noexcept {
     return !mutex->__owner || ( mutex->__owner == &thr );
 }
 
-int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) {
+int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) noexcept {
 
     _DiOS_ThreadHandle gtid = __dios_get_thread_handle();
     _PThread &thr = getThread( gtid );
@@ -757,7 +759,7 @@ int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool
     return 0;
 }
 
-int pthread_mutex_destroy( pthread_mutex_t *mutex ) {
+int pthread_mutex_destroy( pthread_mutex_t *mutex ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( mutex == NULL )
@@ -774,7 +776,7 @@ int pthread_mutex_destroy( pthread_mutex_t *mutex ) {
     return 0;
 }
 
-int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr ) {
+int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( mutex == NULL )
@@ -801,17 +803,17 @@ int pthread_mutex_init( pthread_mutex_t *mutex, const pthread_mutexattr_t *attr 
     return 0;
 }
 
-int pthread_mutex_lock( pthread_mutex_t *mutex ) {
+int pthread_mutex_lock( pthread_mutex_t *mutex ) noexcept {
     __dios::FencedInterruptMask mask;
     return _mutex_lock( mask, mutex, 1 );
 }
 
-int pthread_mutex_trylock( pthread_mutex_t *mutex ) {
+int pthread_mutex_trylock( pthread_mutex_t *mutex ) noexcept {
     __dios::FencedInterruptMask mask;
     return _mutex_lock( mask, mutex, 0 );
 }
 
-int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
+int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
     __dios::FencedInterruptMask mask;
     _PThread &thr = getThread();
 
@@ -838,17 +840,17 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) {
     return 0;
 }
 
-int pthread_mutex_getprioceiling( const pthread_mutex_t *, int * ) {
+int pthread_mutex_getprioceiling( const pthread_mutex_t *, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_mutex_setprioceiling( pthread_mutex_t *, int, int * ) {
+int pthread_mutex_setprioceiling( pthread_mutex_t *, int, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_mutex_timedlock( pthread_mutex_t *mutex, const struct timespec *abstime ) {
+int pthread_mutex_timedlock( pthread_mutex_t *mutex, const struct timespec *abstime ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( abstime == NULL || abstime->tv_nsec < 0 || abstime->tv_nsec >= MILLIARD ) {
@@ -874,7 +876,7 @@ int pthread_mutex_timedlock( pthread_mutex_t *mutex, const struct timespec *abst
   -----------------------------
 */
 
-int pthread_mutexattr_destroy( pthread_mutexattr_t *attr ) {
+int pthread_mutexattr_destroy( pthread_mutexattr_t *attr ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL )
@@ -884,7 +886,7 @@ int pthread_mutexattr_destroy( pthread_mutexattr_t *attr ) {
     return 0;
 }
 
-int pthread_mutexattr_init( pthread_mutexattr_t *attr ) {
+int pthread_mutexattr_init( pthread_mutexattr_t *attr ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL )
@@ -894,7 +896,7 @@ int pthread_mutexattr_init( pthread_mutexattr_t *attr ) {
     return 0;
 }
 
-int pthread_mutexattr_gettype( const pthread_mutexattr_t *attr, int *value ) {
+int pthread_mutexattr_gettype( const pthread_mutexattr_t *attr, int *value ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || value == NULL )
@@ -904,22 +906,22 @@ int pthread_mutexattr_gettype( const pthread_mutexattr_t *attr, int *value ) {
     return 0;
 }
 
-int pthread_mutexattr_getprioceiling( const pthread_mutexattr_t *, int * ) {
+int pthread_mutexattr_getprioceiling( const pthread_mutexattr_t *, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_mutexattr_getprotocol( const pthread_mutexattr_t *, int * ) {
+int pthread_mutexattr_getprotocol( const pthread_mutexattr_t *, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_mutexattr_getpshared( const pthread_mutexattr_t *, int * ) {
+int pthread_mutexattr_getpshared( const pthread_mutexattr_t *, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_mutexattr_settype( pthread_mutexattr_t *attr, int value ) {
+int pthread_mutexattr_settype( pthread_mutexattr_t *attr, int value ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || ( value & ~_MUTEX_ATTR_TYPE_MASK ) )
@@ -929,50 +931,50 @@ int pthread_mutexattr_settype( pthread_mutexattr_t *attr, int value ) {
     return 0;
 }
 
-int pthread_mutexattr_setprioceiling( pthread_mutexattr_t *, int ) {
+int pthread_mutexattr_setprioceiling( pthread_mutexattr_t *, int ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_mutexattr_setprotocol( pthread_mutexattr_t *, int ) {
+int pthread_mutexattr_setprotocol( pthread_mutexattr_t *, int ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_mutexattr_setpshared( pthread_mutexattr_t *, int ) {
+int pthread_mutexattr_setpshared( pthread_mutexattr_t *, int ) noexcept {
     /* TODO */
     return 0;
 }
 
 /* Spin lock */
 
-int pthread_spin_destroy( pthread_spinlock_t * ) {
+int pthread_spin_destroy( pthread_spinlock_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_spin_init( pthread_spinlock_t *, int ) {
+int pthread_spin_init( pthread_spinlock_t *, int ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_spin_lock( pthread_spinlock_t * ) {
+int pthread_spin_lock( pthread_spinlock_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_spin_trylock( pthread_spinlock_t * ) {
+int pthread_spin_trylock( pthread_spinlock_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_spin_unlock( pthread_spinlock_t * ) {
+int pthread_spin_unlock( pthread_spinlock_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
 /* Thread specific data */
-int pthread_key_create( pthread_key_t *p_key, void ( *destructor )( void * ) ) {
+int pthread_key_create( pthread_key_t *p_key, void ( *destructor )( void * ) ) noexcept {
     __dios::FencedInterruptMask mask;
 
     *p_key = tlsDestructors.getFirstAvailable();;
@@ -982,7 +984,7 @@ int pthread_key_create( pthread_key_t *p_key, void ( *destructor )( void * ) ) {
     return 0;
 }
 
-int pthread_key_delete( pthread_key_t key ) {
+int pthread_key_delete( pthread_key_t key ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( key >= tlsDestructors.count() )
@@ -997,14 +999,14 @@ int pthread_key_delete( pthread_key_t key ) {
     return 0;
 }
 
-int pthread_setspecific( pthread_key_t key, const void *data ) {
+int pthread_setspecific( pthread_key_t key, const void *data ) noexcept {
     __dios::FencedInterruptMask mask;
 
     tls( __dios_get_thread_handle() ).setKey( key, data );
     return 0;
 }
 
-void *pthread_getspecific( pthread_key_t key ) {
+void *pthread_getspecific( pthread_key_t key ) noexcept {
     __dios::FencedInterruptMask mask;
     return tls( __dios_get_thread_handle() ).getKey( key );
 }
@@ -1021,7 +1023,7 @@ void *pthread_getspecific( pthread_key_t key ) {
     }
 */
 
-template < typename CondOrBarrier > int _cond_adjust_count( CondOrBarrier *cond, int adj ) {
+template < typename CondOrBarrier > int _cond_adjust_count( CondOrBarrier *cond, int adj ) noexcept {
     int count = cond->__counter;
     count += adj;
     assert( count < ( 1 << 16 ) );
@@ -1031,7 +1033,7 @@ template < typename CondOrBarrier > int _cond_adjust_count( CondOrBarrier *cond,
     return count;
 }
 
-template < typename CondOrBarrier > int _destroy_cond_or_barrier( CondOrBarrier *cond ) {
+template < typename CondOrBarrier > int _destroy_cond_or_barrier( CondOrBarrier *cond ) noexcept {
 
     if ( cond == NULL || !cond->__initialized )
         return EINVAL;
@@ -1045,7 +1047,7 @@ template < typename CondOrBarrier > int _destroy_cond_or_barrier( CondOrBarrier 
     return 0;
 }
 
-int pthread_cond_destroy( pthread_cond_t *cond ) {
+int pthread_cond_destroy( pthread_cond_t *cond ) noexcept {
     __dios::FencedInterruptMask mask;
 
     int r = _destroy_cond_or_barrier( cond );
@@ -1054,7 +1056,7 @@ int pthread_cond_destroy( pthread_cond_t *cond ) {
     return r;
 }
 
-int pthread_cond_init( pthread_cond_t *cond, const pthread_condattr_t * /* TODO: cond. attributes */ ) {
+int pthread_cond_init( pthread_cond_t *cond, const pthread_condattr_t * /* TODO: cond. attributes */ ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( cond == NULL )
@@ -1072,24 +1074,24 @@ int pthread_cond_init( pthread_cond_t *cond, const pthread_condattr_t * /* TODO:
     return 0;
 }
 
-template < typename > static inline SleepingOn _sleepCond();
-template <> inline SleepingOn _sleepCond< pthread_barrier_t >() {
+template < typename > static inline SleepingOn _sleepCond() noexcept;
+template <> inline SleepingOn _sleepCond< pthread_barrier_t >() noexcept {
     return Barrier;
 }
-template <> inline SleepingOn _sleepCond< pthread_cond_t >() {
+template <> inline SleepingOn _sleepCond< pthread_cond_t >() noexcept {
     return Condition;
 }
 
-static inline bool _eqSleepTrait( _PThread &t, pthread_cond_t *cond ) {
+static inline bool _eqSleepTrait( _PThread &t, pthread_cond_t *cond ) noexcept {
     return t.condition == cond;
 }
 
-static inline bool _eqSleepTrait( _PThread &t, pthread_barrier_t *bar ) {
+static inline bool _eqSleepTrait( _PThread &t, pthread_barrier_t *bar ) noexcept {
     return t.barrier == bar;
 }
 
 template< bool broadcast, typename CondOrBarrier >
-int _cond_signal( CondOrBarrier *cond ) {
+int _cond_signal( CondOrBarrier *cond ) noexcept {
     if ( cond == NULL || !cond->__initialized )
         return EINVAL;
 
@@ -1124,7 +1126,7 @@ int _cond_signal( CondOrBarrier *cond ) {
     return 0;
 }
 
-int pthread_cond_signal( pthread_cond_t *cond ) {
+int pthread_cond_signal( pthread_cond_t *cond ) noexcept {
     __dios::FencedInterruptMask mask;
     int r = _cond_signal< false >( cond );
     if ( r == 0 && cond->__counter == 0 )
@@ -1132,7 +1134,7 @@ int pthread_cond_signal( pthread_cond_t *cond ) {
     return r;
 }
 
-int pthread_cond_broadcast( pthread_cond_t *cond ) {
+int pthread_cond_broadcast( pthread_cond_t *cond ) noexcept {
     __dios::FencedInterruptMask mask;
     int r = _cond_signal< true >( cond );
     if ( r == 0 && cond->__counter == 0 )
@@ -1140,7 +1142,7 @@ int pthread_cond_broadcast( pthread_cond_t *cond ) {
     return r;
 }
 
-int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
+int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) noexcept {
     __dios::FencedInterruptMask mask;
 
     _PThread &thread = getThread();
@@ -1184,7 +1186,7 @@ int pthread_cond_wait( pthread_cond_t *cond, pthread_mutex_t *mutex ) {
     return 0;
 }
 
-int pthread_cond_timedwait( pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime ) {
+int pthread_cond_timedwait( pthread_cond_t *cond, pthread_mutex_t *mutex, const struct timespec *abstime ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( abstime == NULL || abstime->tv_sec < 0 || abstime->tv_nsec < 0 || abstime->tv_nsec >= MILLIARD )
@@ -1202,32 +1204,32 @@ int pthread_cond_timedwait( pthread_cond_t *cond, pthread_mutex_t *mutex, const 
 }
 
 /* Attributes of conditional variables */
-int pthread_condattr_destroy( pthread_condattr_t * ) {
+int pthread_condattr_destroy( pthread_condattr_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_condattr_getclock( const pthread_condattr_t *, clockid_t * ) {
+int pthread_condattr_getclock( const pthread_condattr_t *, clockid_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_condattr_getpshared( const pthread_condattr_t *, int * ) {
+int pthread_condattr_getpshared( const pthread_condattr_t *, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_condattr_init( pthread_condattr_t * ) {
+int pthread_condattr_init( pthread_condattr_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_condattr_setclock( pthread_condattr_t *, clockid_t ) {
+int pthread_condattr_setclock( pthread_condattr_t *, clockid_t ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_condattr_setpshared( pthread_condattr_t *, int ) {
+int pthread_condattr_setpshared( pthread_condattr_t *, int ) noexcept {
     /* TODO */
     return 0;
 }
@@ -1240,7 +1242,7 @@ int pthread_condattr_setpshared( pthread_condattr_t *, int ) {
   --------------------------------------------------------------------------------
   */
 
-int pthread_once( pthread_once_t *once_control, void ( *init_routine )( void ) ) {
+int pthread_once( pthread_once_t *once_control, void ( *init_routine )( void ) ) noexcept {
     if ( once_control->__mtx.__once == 0 )
         return 0;
 
@@ -1256,7 +1258,7 @@ int pthread_once( pthread_once_t *once_control, void ( *init_routine )( void ) )
 }
 
 /* Thread cancellation */
-int pthread_setcancelstate( int state, int *oldstate ) {
+int pthread_setcancelstate( int state, int *oldstate ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( state & ~0x1 )
@@ -1269,7 +1271,7 @@ int pthread_setcancelstate( int state, int *oldstate ) {
     return 0;
 }
 
-int pthread_setcanceltype( int type, int *oldtype ) {
+int pthread_setcanceltype( int type, int *oldtype ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( type & ~0x1 )
@@ -1282,7 +1284,7 @@ int pthread_setcanceltype( int type, int *oldtype ) {
     return 0;
 }
 
-int pthread_cancel( pthread_t gtid ) {
+int pthread_cancel( pthread_t gtid ) noexcept {
     __dios::FencedInterruptMask mask;
 
     _PThread *thread = nullptr;
@@ -1299,14 +1301,14 @@ int pthread_cancel( pthread_t gtid ) {
     return 0;
 }
 
-void pthread_testcancel( void ) {
+void pthread_testcancel( void ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( _canceled() )
         _cancel( mask );
 }
 
-void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) {
+void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) noexcept {
     __dios::FencedInterruptMask mask;
 
     assert( routine != NULL );
@@ -1320,7 +1322,7 @@ void pthread_cleanup_push( void ( *routine )( void * ), void *arg ) {
     thread.cleanup_handlers = handler;
 }
 
-void pthread_cleanup_pop( int execute ) {
+void pthread_cleanup_pop( int execute ) noexcept {
     __dios::FencedInterruptMask mask;
 
     _PThread &thread = getThread();
@@ -1336,7 +1338,7 @@ void pthread_cleanup_pop( int execute ) {
 
 /* Readers-Writer lock */
 
-int _rlock_adjust_count( _ReadLock *rlock, int adj ) {
+int _rlock_adjust_count( _ReadLock *rlock, int adj ) noexcept {
     int count = rlock->__count;
     count += adj;
     if ( count < 0 )
@@ -1345,7 +1347,7 @@ int _rlock_adjust_count( _ReadLock *rlock, int adj ) {
     return 0;
 }
 
-_ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _PThread &tid, _ReadLock **prev = nullptr ) {
+_ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _PThread &tid, _ReadLock **prev = nullptr ) noexcept {
     _ReadLock *rlock = rwlock->__rlocks;
     _ReadLock *_prev = nullptr;
 
@@ -1360,7 +1362,7 @@ _ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _PThread &tid, _ReadLock **prev
     return rlock;
 }
 
-_ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _PThread &tid ) {
+_ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _PThread &tid ) noexcept {
     _ReadLock *rlock = reinterpret_cast< _ReadLock * >( __vm_obj_make( sizeof( _ReadLock ) ) );
     rlock->__owner = &tid;
     rlock->__count = 1;
@@ -1369,11 +1371,11 @@ _ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _PThread &tid ) {
     return rlock;
 }
 
-bool _rwlock_can_lock( pthread_rwlock_t *rwlock, bool writer ) {
+bool _rwlock_can_lock( pthread_rwlock_t *rwlock, bool writer ) noexcept {
     return !rwlock->__wrowner && !( writer && rwlock->__rlocks );
 }
 
-int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) {
+int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) noexcept {
     _PThread &thr = getThread();
 
     if ( rwlock == nullptr || !rwlock->__initialized ) {
@@ -1412,7 +1414,7 @@ int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, b
     return 0;
 }
 
-int pthread_rwlock_destroy( pthread_rwlock_t *rwlock ) {
+int pthread_rwlock_destroy( pthread_rwlock_t *rwlock ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( rwlock == NULL )
@@ -1426,7 +1428,7 @@ int pthread_rwlock_destroy( pthread_rwlock_t *rwlock ) {
     return 0;
 }
 
-int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr ) {
+int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *attr ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( rwlock == NULL )
@@ -1448,27 +1450,27 @@ int pthread_rwlock_init( pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *a
     return 0;
 }
 
-int pthread_rwlock_rdlock( pthread_rwlock_t *rwlock ) {
+int pthread_rwlock_rdlock( pthread_rwlock_t *rwlock ) noexcept {
     __dios::FencedInterruptMask mask;
     return _rwlock_lock( mask, rwlock, true, false );
 }
 
-int pthread_rwlock_wrlock( pthread_rwlock_t *rwlock ) {
+int pthread_rwlock_wrlock( pthread_rwlock_t *rwlock ) noexcept {
     __dios::FencedInterruptMask mask;
     return _rwlock_lock( mask, rwlock, true, true );
 }
 
-int pthread_rwlock_tryrdlock( pthread_rwlock_t *rwlock ) {
+int pthread_rwlock_tryrdlock( pthread_rwlock_t *rwlock ) noexcept {
     __dios::FencedInterruptMask mask;
     return _rwlock_lock( mask, rwlock, false, false );
 }
 
-int pthread_rwlock_trywrlock( pthread_rwlock_t *rwlock ) {
+int pthread_rwlock_trywrlock( pthread_rwlock_t *rwlock ) noexcept {
     __dios::FencedInterruptMask mask;
     return _rwlock_lock( mask, rwlock, false, true );
 }
 
-int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) {
+int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) noexcept {
     __dios::FencedInterruptMask mask;
 
     _PThread &thr = getThread();
@@ -1515,7 +1517,7 @@ int pthread_rwlock_unlock( pthread_rwlock_t *rwlock ) {
      -------------------------
 */
 
-int pthread_rwlockattr_destroy( pthread_rwlockattr_t *attr ) {
+int pthread_rwlockattr_destroy( pthread_rwlockattr_t *attr ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL )
@@ -1525,7 +1527,7 @@ int pthread_rwlockattr_destroy( pthread_rwlockattr_t *attr ) {
     return 0;
 }
 
-int pthread_rwlockattr_getpshared( const pthread_rwlockattr_t *attr, int *pshared ) {
+int pthread_rwlockattr_getpshared( const pthread_rwlockattr_t *attr, int *pshared ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || pshared == NULL )
@@ -1535,7 +1537,7 @@ int pthread_rwlockattr_getpshared( const pthread_rwlockattr_t *attr, int *pshare
     return 0;
 }
 
-int pthread_rwlockattr_init( pthread_rwlockattr_t *attr ) {
+int pthread_rwlockattr_init( pthread_rwlockattr_t *attr ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL )
@@ -1545,7 +1547,7 @@ int pthread_rwlockattr_init( pthread_rwlockattr_t *attr ) {
     return 0;
 }
 
-int pthread_rwlockattr_setpshared( pthread_rwlockattr_t *attr, int pshared ) {
+int pthread_rwlockattr_setpshared( pthread_rwlockattr_t *attr, int pshared ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( attr == NULL || ( pshared & ~_RWLOCK_ATTR_SHARING_MASK ) )
@@ -1567,7 +1569,7 @@ int pthread_rwlockattr_setpshared( pthread_rwlockattr_t *attr, int pshared ) {
    }
 */
 
-int pthread_barrier_destroy( pthread_barrier_t *barrier ) {
+int pthread_barrier_destroy( pthread_barrier_t *barrier ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( barrier == NULL )
@@ -1582,7 +1584,7 @@ int pthread_barrier_destroy( pthread_barrier_t *barrier ) {
 int pthread_barrier_init(
         pthread_barrier_t *barrier,
         const pthread_barrierattr_t * /* TODO: barrier attributes */,
-        unsigned count ) {
+        unsigned count ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( count == 0 || barrier == NULL )
@@ -1602,7 +1604,7 @@ int pthread_barrier_init(
     return 0;
 }
 
-int pthread_barrier_wait( pthread_barrier_t *barrier ) {
+int pthread_barrier_wait( pthread_barrier_t *barrier ) noexcept {
     __dios::FencedInterruptMask mask;
 
     if ( barrier == NULL || !barrier->__initialized )
@@ -1634,63 +1636,63 @@ int pthread_barrier_wait( pthread_barrier_t *barrier ) {
 }
 
 /* Barrier attributes */
-int pthread_barrierattr_destroy( pthread_barrierattr_t * ) {
+int pthread_barrierattr_destroy( pthread_barrierattr_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_barrierattr_getpshared( const pthread_barrierattr_t *, int * ) {
+int pthread_barrierattr_getpshared( const pthread_barrierattr_t *, int * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_barrierattr_init( pthread_barrierattr_t * ) {
+int pthread_barrierattr_init( pthread_barrierattr_t * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int pthread_barrierattr_setpshared( pthread_barrierattr_t *, int ) {
+int pthread_barrierattr_setpshared( pthread_barrierattr_t *, int ) noexcept {
     /* TODO */
     return 0;
 }
 
 /* POSIX Realtime Extension - sched.h */
-int sched_get_priority_max( int ) {
+int sched_get_priority_max( int ) noexcept {
     /* TODO */
     return 0;
 }
 
-int sched_get_priority_min( int ) {
+int sched_get_priority_min( int ) noexcept {
     /* TODO */
     return 0;
 }
 
-int sched_getparam( pid_t, struct sched_param * ) {
+int sched_getparam( pid_t, struct sched_param * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int sched_getscheduler( pid_t ) {
+int sched_getscheduler( pid_t ) noexcept {
     /* TODO */
     return 0;
 }
 
-int sched_rr_get_interval( pid_t, struct timespec * ) {
+int sched_rr_get_interval( pid_t, struct timespec * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int sched_setparam( pid_t, const struct sched_param * ) {
+int sched_setparam( pid_t, const struct sched_param * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int sched_setscheduler( pid_t, int, const struct sched_param * ) {
+int sched_setscheduler( pid_t, int, const struct sched_param * ) noexcept {
     /* TODO */
     return 0;
 }
 
-int sched_yield( void ) {
+int sched_yield( void ) noexcept {
     /* TODO */
     return 0;
 }
@@ -1699,9 +1701,9 @@ int sched_yield( void ) {
 
 namespace _sig {
 
-void sig_ign( int ) {}
+void sig_ign( int ) noexcept {}
 
-#define __sig_terminate( SIGNAME ) []( int ) { __dios_fault( _VM_Fault::_VM_F_Control, "Uncaught signal: " #SIGNAME ); __dios_kill_process( 0 ); }
+#define __sig_terminate( SIGNAME ) []( int ) noexcept { __dios_fault( _VM_Fault::_VM_F_Control, "Uncaught signal: " #SIGNAME ); __dios_kill_process( 0 ); }
 
 // this is based on x86 signal numbers
 static const sighandler_t defact[] = {
@@ -1739,10 +1741,10 @@ static const sighandler_t defact[] = {
 
 };
 
-sighandler_t &get( _PThread &thr, int sig ) {
+sighandler_t &get( _PThread &thr, int sig ) noexcept {
     return thr.sighandlers[sig - 1];
 }
-sighandler_t def( int sig ) {
+sighandler_t def( int sig ) noexcept {
     return defact[sig - 1];
 }
 
