@@ -80,7 +80,7 @@ void BitCode::do_lart()
 
     if ( _autotrace )
         lart.setup( lart::divine::autotracePass() );
-    lart.setup( lart::divine::lowerExceptionHandling() );
+    lart.setup( lart::divine::lowering() );
     // reduce again before metadata are added to possibly tweak some generated
     // code + perform static tau
     if ( _reduce ) {

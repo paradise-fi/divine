@@ -46,10 +46,6 @@ DIVINE_UNRELAX_WARNINGS
 
 #undef alloca
 
-namespace llvm {
-class IntrinsicLowering;
-}
-
 namespace divine {
 namespace vm {
 
@@ -101,7 +97,6 @@ static int intrinsic_id( llvm::Value *v )
  */
 struct Program
 {
-    std::unique_ptr< llvm::IntrinsicLowering > IL;
     llvm::Module *module;
     llvm::DataLayout TD;
 
@@ -416,7 +411,6 @@ struct Program
     {
         _constants_size = 0;
         _globals_size = 0;
-        IL = std::make_unique< llvm::IntrinsicLowering >( TD );
     }
 };
 

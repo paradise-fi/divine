@@ -275,23 +275,6 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
     return sref;
 }
 
-/* This is silly. */
-Program::Position Program::lower( Position p )
-{
-    auto BB = p.I->getParent();
-    bool first = p.I == BB->begin();
-    auto insert = p.I;
-
-    if ( !first ) --insert;
-    IL->LowerIntrinsicCall( cast< llvm::CallInst >( p.I ) );
-    if ( first )
-        insert = BB->begin();
-    else
-        insert ++;
-
-    return Position( p.pc, insert );
-}
-
 Hypercall Program::hypercall( llvm::Function *f )
 {
     std::string name = f->getName().str();
@@ -404,7 +387,7 @@ Program::Position Program::insert( Position p )
                     break;
                 case llvm::Intrinsic::dbg_declare:
                 case llvm::Intrinsic::dbg_value: p.I++; return p;
-                default: return lower( p );
+                default: UNREACHABLE( "lowering should be handled by LART" );
             }
         }
     }
