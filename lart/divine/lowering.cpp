@@ -5,6 +5,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/CodeGen/IntrinsicLowering.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/pass.h>
@@ -15,10 +16,59 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct LowerResume : lart::Pass {
+struct LowerLLVM : lart::Pass {
 
     static PassMeta meta() {
-        return passMeta< LowerResume >( "LowerResume", "Lower resume instruction to _Unwind_Resume." );
+        return passMeta< LowerLLVM >( "LowerLLVM", "Lower LLVM intrinsics." );
+    }
+
+    using lart::Pass::run;
+    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+
+        llvm::IntrinsicLowering il( m.getDataLayout() );
+
+        for ( auto &fn : m ) {
+            auto toLower = query::query( fn ).flatten()
+                            .map( query::refToPtr )
+                            .map( query::llvmdyncast< llvm::IntrinsicInst > )
+                            .filter( []( auto *x ) { return x && !keepForDIVINE( x->getIntrinsicID() ); } )
+                            .freeze();
+            for ( auto *call : toLower )
+                il.LowerIntrinsicCall( call );
+        }
+
+        return llvm::PreservedAnalyses::none();
+    }
+
+    static bool keepForDIVINE( llvm::Intrinsic::ID id ) {
+        switch ( id ) {
+            case llvm::Intrinsic::eh_typeid_for:
+            case llvm::Intrinsic::trap:
+            case llvm::Intrinsic::vastart:
+            case llvm::Intrinsic::vacopy:
+            case llvm::Intrinsic::vaend:
+            case llvm::Intrinsic::stacksave:
+            case llvm::Intrinsic::stackrestore:
+            case llvm::Intrinsic::umul_with_overflow:
+            case llvm::Intrinsic::smul_with_overflow:
+            case llvm::Intrinsic::uadd_with_overflow:
+            case llvm::Intrinsic::sadd_with_overflow:
+            case llvm::Intrinsic::usub_with_overflow:
+            case llvm::Intrinsic::ssub_with_overflow:
+            case llvm::Intrinsic::dbg_declare:
+            case llvm::Intrinsic::dbg_value:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+};
+
+struct LowerEH : lart::Pass {
+
+    static PassMeta meta() {
+        return passMeta< LowerEH >( "LowerEH", "Lower resume instruction to _Unwind_Resume." );
     }
 
     using lart::Pass::run;
@@ -74,9 +124,9 @@ struct LowerResume : lart::Pass {
 
 };
 
-PassMeta lowerExceptionHandling() {
-    return compositePassMeta< LowerResume >( "lowereh",
-            "Lower exception handling intrinsics for the use in DIVINE." );
+PassMeta lowering() {
+    return compositePassMeta< LowerLLVM, LowerEH >( "lowering",
+            "Lower exception handling and LLVM intrinsics for the use in DIVINE." );
 }
 
 }

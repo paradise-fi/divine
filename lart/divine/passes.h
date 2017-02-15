@@ -15,13 +15,12 @@ namespace lart {
         PassMeta autotracePass();
         PassMeta makeNativePass();
         PassMeta vaArgPass();
-        PassMeta lowerExceptionHandling();
+        PassMeta lowering();
         PassMeta stubsPass();
 
         inline std::vector< PassMeta > passes() {
             return { cflInterruptPass(), interruptPass(), functionMetaPass(), autotracePass(),
-                     makeNativePass(), vaArgPass(), lowerExceptionHandling(),
-                     stubsPass() };
+                     makeNativePass(), vaArgPass(), lowering(), stubsPass() };
         }
     }
 }

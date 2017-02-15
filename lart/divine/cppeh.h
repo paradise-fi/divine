@@ -195,7 +195,7 @@ struct CppEhTab {
                         const ExceptSpec *es = nullptr;
                         if( auto *array = llvm::dyn_cast< llvm::ConstantArray >( lp->getClause( i ) ) )
                         {
-                                auto *t = array->getType();
+                            auto *t = array->getType();
                             auto cnt = t->getNumElements();
                             ExceptSpec spec;
                             for ( unsigned j = 0; j < cnt; ++j ) {
