@@ -160,8 +160,8 @@ struct Interpreter
 
     RefLocation location( vm::CodePointer pc )
     {
-        auto insn = _bc->program().instruction( pc ).insn();
-        insn = insn ?: _bc->program().instruction( pc + 1 ).insn();
+        auto insn = _bc->program().insnmap[ pc ];
+        insn = insn ?: _bc->program().insnmap[ pc + 1 ];
         return vm::fileline( *insn );
     };
 
