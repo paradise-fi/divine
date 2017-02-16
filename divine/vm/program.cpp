@@ -576,19 +576,10 @@ void Program::computeStatic()
         for ( int j = 0; j < int( func.instructions.size() ); ++j )
         {
             auto &inst = func.instructions[ j ];
-            int opcode = 0, subop = 0, offset = 0, size = 0;
-
-            if ( inst.opcode )
-            {
-                opcode = inst.opcode;
-                subop = inst.subcode;
-                offset = inst.values.empty() ? 0 : inst.result().offset;
-                size = inst.values.empty() ? 0 : inst.result().size(); /* fixme? in bytes? */
-            }
-            writeInst( opcode );
-            writeInst( subop );
-            writeInst( offset );
-            writeInst( size );
+            writeInst( inst.opcode );
+            writeInst( inst.subcode );
+            writeInst( inst.values.empty() ? 0 : inst.result().offset );
+            writeInst( inst.values.empty() ? 0 : inst.result().size() ); /* bytes? */
         }
         ASSERT_EQ( instTable.cooked().offset() - instOffset, instTableSize );
 
