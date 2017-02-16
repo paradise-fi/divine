@@ -610,12 +610,12 @@ void Program::pass()
     CodePointer pc( 1, 0 );
     int _framealign = framealign;
 
-    for ( auto function = module->begin(); function != module->end(); ++ function )
+    for ( auto &function : *module )
     {
-        if ( function->isDeclaration() )
+        if ( function.isDeclaration() )
             continue; /* skip */
 
-        auto name = function->getName();
+        auto name = function.getName();
 
         pc.function( pc.function() + 1 );
         if ( !pc.function() )
@@ -623,13 +623,13 @@ void Program::pass()
                 "Program::build in " + name.str() +
                 "\nToo many functions, capacity exceeded" );
 
-        if ( function->begin() == function->end() )
+        if ( function.begin() == function.end() )
             throw std::logic_error(
                 "Program::build in " + name.str() +
                 "\nCan't deal with empty functions" );
 
         makeFit( functions, pc.function() );
-        functionmap[ function ] = pc.function();
+        functionmap[ &function ] = pc.function();
         pc.instruction( 0 );
 
         if ( !codepointers )
@@ -638,15 +638,17 @@ void Program::pass()
 
             auto &pi_function = this->functions[ pc.function() ];
             pi_function.argcount = 0;
-            if ( function->hasPersonalityFn() )
-                pi_function.personality = insert( 0, function->getPersonalityFn() ).slot;
+            if ( function.hasPersonalityFn() )
+                pi_function.personality = insert( 0, function.getPersonalityFn() ).slot;
 
-            for ( auto arg = function->arg_begin(); arg != function->arg_end(); ++ arg ) {
-                insert( pc.function(), &*arg );
+            for ( auto &arg : function.args() )
+            {
+                insert( pc.function(), &arg );
                 ++ pi_function.argcount;
             }
 
-            if ( ( pi_function.vararg = function->isVarArg() ) ) {
+            if ( ( pi_function.vararg = function.isVarArg() ) )
+            {
                 Slot vaptr( Slot::Local );
                 vaptr._width = _VM_PB_Full;
                 vaptr.type = Slot::Pointer;
@@ -659,20 +661,20 @@ void Program::pass()
                 mem::align( this->function( pc ).framesize, framealign );
         }
 
-        for ( auto block = function->begin(); block != function->end(); ++ block )
+        for ( auto &block : function )
         {
-            blockmap[ &*block ] = pc;
+            blockmap[ &block ] = pc;
             makeFit( this->function( pc ).instructions, pc.instruction() );
             this->instruction( pc ).opcode = OpBB;
             pc.instruction( pc.instruction() + 1 ); /* leave one out for use as a bb label */
 
-            if ( block->begin() == block->end() )
+            if ( block.begin() == block.end() )
                 throw std::logic_error(
                     std::string( "Program::build: " ) +
                     "Can't deal with an empty BasicBlock in function " + name.str() );
 
-            Program::Position p( pc, block->begin() );
-            while ( p.I != block->end() )
+            Program::Position p( pc, block.begin() );
+            while ( p.I != block.end() )
                 p = insert( p );
 
             pc = p.pc;
