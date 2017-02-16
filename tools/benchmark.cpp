@@ -158,9 +158,9 @@ void Schedule::run()
     q << "select max( model.id ), model.name from model "
       << "join model_tags on model.id = model_tags.model "
       << "join tag on tag.id = model_tags.tag ";
-    q << "group by model.name, model.variant ";
     if ( !_tag.empty() )
-        q << " having tag.name = ? ";
+        q << " where tag.name = ? ";
+    q << "group by model.name, model.variant ";
 
     std::cerr << q.str() << std::endl;
     nanodbc::statement find( _conn, q.str() );
