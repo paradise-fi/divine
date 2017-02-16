@@ -662,6 +662,8 @@ void Program::pass()
         for ( auto block = function->begin(); block != function->end(); ++ block )
         {
             blockmap[ &*block ] = pc;
+            makeFit( this->function( pc ).instructions, pc.instruction() );
+            this->instruction( pc ).opcode = OpBB;
             pc.instruction( pc.instruction() + 1 ); /* leave one out for use as a bb label */
 
             if ( block->begin() == block->end() )

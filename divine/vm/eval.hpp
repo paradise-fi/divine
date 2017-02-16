@@ -1337,7 +1337,7 @@ struct Eval
         ASSERT_EQ( CodePointer( context().get( _VM_CR_PC ).pointer ), pc() );
         context().check_interrupt( *this );
         if ( !context().frame().null() )
-            context().set( _VM_CR_PC, pc() + 1 );
+            context().set( _VM_CR_PC, program().nextpc( pc() + 1 ) );
         _instruction = &program().instruction( pc() );
     }
 

@@ -275,20 +275,16 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
         ++ line, ++ lineno;
     unsigned endline = lineno;
 
-    auto act_pc = pc;
-    auto act_op = program.insnmap[ pc ];
-    if ( !act_op )
-        act_pc = pc + 1,
-        act_op = program.insnmap[ pc + 1 ];
+    auto act_pc = program.nextpc( pc );
+    auto act_op = program.insnmap[ act_pc ];
 
     auto iter = pc;
-    iter.instruction( 0 );
-    auto funsize = program.function( pc ).instructions.size();
 
     /* figure out the source code span the function covers; painfully */
-    for ( iter.instruction( 0 ); iter.instruction() < funsize; iter = iter + 1 )
+    for ( iter.instruction( 0 ); program.valid( iter ); iter = program.advance( iter ) )
     {
-        if ( !program.instruction( iter ).opcode )
+        auto opcode = program.instruction( iter ).opcode;
+        if ( opcode == OpBB || opcode == OpArgs )
             continue;
         auto dl = program.insnmap[ iter ]->getDebugLoc().get();
         if ( !dl )
@@ -306,7 +302,7 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
         while ( dl && dl->getInlinedAt() )
             dl = dl->getInlinedAt();
         active = dl ? dl->getLine() : active;
-        pc = pc + 1;
+        pc = program.advance( pc );
         act_op = program.insnmap[ pc ];
     }
 

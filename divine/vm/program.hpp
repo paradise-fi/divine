@@ -72,7 +72,7 @@ enum Hypercall /* see divine.h for prototypes & documentation */
     HypercallObjSize
 };
 
-enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1 };
+enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1, OpBB, OpArgs };
 
 struct Choice {
     int options;
@@ -253,6 +253,18 @@ struct Program
         return insnmap[ pc ]->getParent()->getParent();
     }
 
+    CodePointer nextpc( CodePointer pc )
+    {
+        if ( !valid( pc ) )
+            return pc;
+        auto op = instruction( pc ).opcode;
+        if ( valid( pc + 1 ) && ( op == OpBB || op == OpArgs ) )
+            return nextpc( pc + 1 );
+        return pc;
+    }
+
+    CodePointer advance( CodePointer pc ) { return nextpc( pc + 1 ); }
+    bool valid( CodePointer pc ) { return pc.instruction() < function( pc ).instructions.size(); }
     int64_t allocsize( int id ) { return _types[ id ].type.size; }
 
     std::pair< int64_t, int > subtype( int id, int sub )

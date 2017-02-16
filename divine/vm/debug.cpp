@@ -328,16 +328,14 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
         if ( pc().null() || pc().type() != PointerType::Code )
             return;
         auto *insn = &program.instruction( pc() );
-        int offset = 0;
-        if ( insn->opcode )
+        ASSERT_EQ( eval.pc(), CodePointer( pc() ) );
+        if ( insn->opcode != OpArgs && insn->opcode != OpBB )
         {
             eval._instruction = insn;
             yield( "insn", print::instruction( eval, 0, 1000 ) );
         }
-        if ( !insn->opcode )
-            insn = &program.instruction( pc() + 1 ), offset = 1;
-        ASSERT( insn->opcode );
-        auto op = program.insnmap[ pc() + offset ];
+        auto npc = program.nextpc( pc() );
+        auto op = program.insnmap[ npc ];
         yield( "location", location( *op ) );
 
         auto sym = op->getParent()->getParent()->getName().str();
@@ -351,21 +349,22 @@ void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
     ASSERT_EQ( _kind, DNKind::Frame );
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     CodePointer iter = pc(), origpc = pc();
-    iter.instruction( 0 );
-    auto &instructions = _ctx.program().function( iter ).instructions;
-    for ( auto &i : instructions )
+    auto &prog = _ctx.program();
+    for ( iter.instruction( 0 ); prog.valid( iter ); iter = iter + 1 )
     {
+        auto &i = prog.instruction( iter );
+        if ( i.opcode == OpArgs )
+            continue;
         eval._instruction = &i;
         _ctx.set( _VM_CR_PC, iter );
         out << ( iter == CodePointer( pc() ) ? ">>" : "  " );
-        iter = iter + 1;
-        if ( i.opcode )
-            out << "  " << print::instruction( eval, 4 ) << std::endl;
-        else
+        if ( i.opcode == OpBB )
         {
-            auto iop = _ctx.program().insnmap[ iter ];
+            auto iop = _ctx.program().insnmap[ iter + 1 ];
             out << print::value( eval, iop->getParent() ) << ":" << std::endl;
         }
+        else
+            out << "  " << print::instruction( eval, 4 ) << std::endl;
     }
     _ctx.set( _VM_CR_PC, origpc );
 }
@@ -605,11 +604,8 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield )
     if ( pc().type() != PointerType::Code )
         return;
 
-    int offset = 0;
-    auto *insn = &_ctx.program().instruction( pc() );
-    if ( !insn->opcode )
-        insn = &_ctx.program().instruction( pc() + 1 ), offset = 1;
-    auto op = _ctx.program().insnmap[ pc() + offset ];
+    auto npc = _ctx.program().nextpc( pc() );
+    auto op = _ctx.program().insnmap[ npc ];
     auto F = op->getParent()->getParent();
 
     for ( auto &BB : *F )
