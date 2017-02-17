@@ -76,11 +76,24 @@ struct Table
 
     std::string format( Value v )
     {
-        std::string rv;
-        v.match( [&]( MSecs m ) { rv = interval_str( m ); },
-                 [&]( int i ) { rv = std::to_string( i ); },
-                 [&]( std::string s ) { rv = s; } );
-        return rv;
+        std::stringstream str;
+        v.match( [&]( MSecs m ) { str << interval_str( m ); },
+                 [&]( int i )
+                 {
+                     if ( i >= 10000 )
+                     {
+                         int prec = 1;
+                         std::string s = "k";
+                         auto f = double( i ) / 1000;
+                         if ( f >= 10000 ) f /= 1000, s = "M";
+                         else if ( f >= 1000 ) prec = 0;
+                         str << std::fixed << std::setprecision( prec ) << f << " " << s;
+                     }
+                     else
+                         str << i;
+                 },
+                 [&]( std::string s ) { str << s; } );
+        return str.str();
     }
 
     int width( int c )
