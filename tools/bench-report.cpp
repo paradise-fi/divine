@@ -199,7 +199,8 @@ void Compare::run()
     if ( _by_tag )
         q << "select tag.name, count(x" << _instances[ 0 ] << ".modid) ";
     else
-        q << "select x" << _instances[ 0 ] << ".modname ";
+        q << "select x" << _instances[ 0 ] << ".modname, "
+          << "x" << _instances[ 0 ]<< ".modvar ";
 
     for ( auto f : _fields )
         for ( auto i : _instances )
@@ -208,7 +209,7 @@ void Compare::run()
 
     for ( auto it = _instances.begin(); it != _instances.end(); ++it )
     {
-        q << "(select model.id as modid, model.name as modname";
+        q << "(select model.id as modid, coalesce(model.variant, '') as modvar, model.name as modname";
         for ( auto f : _fields )
             q << ", " << _agg << "(" << f << ") as " << f << " ";
         q << " from model join job on model.id = job.model"
@@ -230,7 +231,7 @@ void Compare::run()
     if ( _by_tag )
         res.cols( "tag", "models" ), res.intcols( "models" );
     else
-        res.cols( "model" );
+        res.cols( "model", "variant" );
 
     for ( auto f : _fields )
         for ( auto i : _instances )
