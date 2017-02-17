@@ -258,7 +258,7 @@ void Compare::run()
         }
 
     nanodbc::statement find( _conn, q.str() );
-    for ( int i = 0; i < _instances.size(); ++i )
+    for ( int i = 0; i < int( _instances.size() ); ++i )
         find.bind( i, &_instances[ i ] );
 
     res.fromSQL( find.execute() );
