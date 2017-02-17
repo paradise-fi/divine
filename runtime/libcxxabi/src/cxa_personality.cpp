@@ -191,6 +191,7 @@ enum
 static
 uintptr_t
 readULEB128(const uint8_t** data)
+    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     uintptr_t result = 0;
     uintptr_t shift = 0;
@@ -214,6 +215,7 @@ readULEB128(const uint8_t** data)
 static
 intptr_t
 readSLEB128(const uint8_t** data)
+    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     uintptr_t result = 0;
     uintptr_t shift = 0;
@@ -411,6 +413,7 @@ bool
 exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
                          uint8_t ttypeEncoding, const __shim_type_info* excpType,
                          void* adjustedPtr, _Unwind_Exception* unwind_exception)
+    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     if (classInfo == 0)
     {
@@ -453,6 +456,7 @@ bool
 exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
                          uint8_t ttypeEncoding, const __shim_type_info* excpType,
                          void* adjustedPtr, _Unwind_Exception* unwind_exception)
+    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     if (classInfo == 0)
     {
@@ -549,7 +553,9 @@ set_registers(_Unwind_Exception* unwind_exception, _Unwind_Context* context,
 static void scan_eh_tab(scan_results &results, _Unwind_Action actions,
                         bool native_exception,
                         _Unwind_Exception *unwind_exception,
-                        _Unwind_Context *context) {
+                        _Unwind_Context *context)
+    __attribute__((__annotate__("lart.interrupt.skipcfl")))
+{
     // Initialize results to found nothing but an error
     results.ttypeIndex = 0;
     results.actionRecord = 0;
@@ -937,6 +943,7 @@ __gxx_personality_v0
 #endif
                     (int version, _Unwind_Action actions, uint64_t exceptionClass,
                      _Unwind_Exception* unwind_exception, _Unwind_Context* context)
+                    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     if (version != 1 || unwind_exception == 0 || context == 0)
         return _URC_FATAL_PHASE1_ERROR;
