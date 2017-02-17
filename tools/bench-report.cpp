@@ -24,44 +24,97 @@ namespace benchmark
 
 using namespace divine::ui;
 
-void format( nanodbc::result res, odbc::Keys cols, std::set< std::string > tcols = {} )
+struct Table
 {
-    std::cerr << "format: " << res.columns() << " columns, " << res.rows() << " rows" << std::endl;
-    std::vector< size_t > _width( res.columns() );
+    using Value = brick::types::Union< int, MSecs, std::string >;
+    using Row = std::vector< Value >;
+    std::vector< Row > _rows;
+    std::vector< std::string > _cols;
+    std::set< std::string > _intcols, _timecols;
 
-    for ( size_t i = 0; i < cols.size(); ++i )
-        _width[ i ] = cols[ i ].size();
-
-    while ( res.next() )
-        for ( int i = 0; i < res.columns(); ++ i )
-            if ( !tcols.count( cols[ i ] ) )
-                 _width[ i ] = std::max( _width[ i ], res.get< std::string >( i ).size() );
-            else
-                 _width[ i ] = std::max( _width[ i ],
-                                         interval_str( MSecs( res.get< int >( i ) ) ).size() );
-
-    std::cout << "| ";
-    for ( size_t i = 0; i < cols.size(); ++i )
-        std::cout << std::setw( _width[ i ] ) << cols[ i ] << " | ";
-    std::cout << std::endl;
-
-    std::cout << "|-";
-    for ( int i = 0; i < res.columns(); ++i )
-        std::cout << std::string( _width[ i ], '-' ) << ( i == res.columns() - 1 ? "-|" : "-|-" );
-    std::cout << std::endl;
-
-    res.first(); do
+    template< typename... Args >
+    void cols( Args... args )
     {
-        std::cout << "| ";
-        for ( int i = 0; i < res.columns(); ++ i )
-            if ( tcols.count( cols[ i ] ) )
-                std::cout << std::setw( _width[ i ] )
-                          << interval_str( MSecs( res.get< int >( i ) ) ) << " | ";
-            else
-                std::cout << std::setw( _width[ i ] ) << res.get< std::string >( i ) << " | ";
-        std::cout << std::endl;
-    } while ( res.next() );
-}
+        for ( std::string c : { args... } )
+            _cols.push_back( c );
+    }
+
+    template< typename... Args >
+    void intcols( Args... ic ) { for ( std::string i : { ic... } ) _intcols.insert( i ); }
+
+    template< typename... Args >
+    void timecols( Args... tc ) { for ( std::string t : { tc... } ) _timecols.insert( t ); }
+
+    void sum()
+    {
+        ASSERT_LT( 0, _rows.size() );
+        Row total = _rows[ 0 ];
+        for ( auto row : _rows )
+            for ( unsigned c = 0; c < row.size(); ++c )
+                row[ c ].match( [&]( std::string ) { total[ c ] = std::string(); },
+                                [&]( auto v ) { total[ c ].get< decltype( v ) >() += v; } );
+        total[ 0 ] = std::string( "**total**" );
+        _rows.push_back( total );
+    }
+
+    void fromSQL( nanodbc::result res )
+    {
+        ASSERT_EQ( _cols.size(), res.columns() );
+        while ( res.next() )
+        {
+            Row r;
+            for ( unsigned c = 0; c < _cols.size(); ++c )
+                if ( _intcols.count( _cols[ c ] ) )
+                    r.emplace_back( res.get< int >( c ) );
+                else if (  _timecols.count( _cols[ c ] ) )
+                    r.emplace_back( MSecs( res.get< int >( c ) ) );
+                else
+                    r.emplace_back( res.get< std::string >( c ) );
+            _rows.push_back( r );
+        }
+    }
+
+    std::string format( Value v )
+    {
+        std::string rv;
+        v.match( [&]( MSecs m ) { rv = interval_str( m ); },
+                 [&]( int i ) { rv = std::to_string( i ); },
+                 [&]( std::string s ) { rv = s; } );
+        return rv;
+    }
+
+    int width( int c )
+    {
+        int w = _cols[ c ].size();
+        for ( auto r : _rows )
+            w = std::max( w, int( format( r[ c ] ).size() ) );
+        return w;
+    }
+
+    template< typename T >
+    void format_row( std::ostream &o, T r )
+    {
+        o << "| ";
+        for ( unsigned c = 0; c < _cols.size(); ++c )
+        {
+            o << std::setw( width( c ) ) << format( r[ c ] );
+            if ( c + 1 != _cols.size() )
+                o << " | ";
+        }
+        o << " |" << std::endl;
+    }
+
+    void format( std::ostream &o )
+    {
+        format_row( o, _cols );
+        o << "|-";
+        for ( unsigned c = 0; c < _cols.size(); ++c )
+            o << std::string( width( c ), '-' ) << ( c + 1 == _cols.size() ? "-|" : "-|-" );
+        o << std::endl;
+        for ( auto r : _rows )
+            format_row( o, r );
+    }
+};
 
 void Report::list_instances()
 {
@@ -76,9 +129,11 @@ void Report::list_instances()
       << "join build   on instance.build = build.id "
       << "join machine on instance.machine = machine.id "
       << "join cpu     on machine.cpu = cpu.id ";
-    odbc::Keys keys{ "instance", "version", "src", "rt", "build", "cpu", "cores", "mem", "jobs" };
     nanodbc::statement find( _conn, q.str() );
-    format( find.execute(), keys );
+    Table res;
+    res.cols( "instance", "version", "src", "rt", "build", "cpu", "cores", "mem", "jobs" );
+    res.fromSQL( find.execute() );
+    res.format( std::cout );
 }
 
 void Report::results()
@@ -115,12 +170,17 @@ void Report::results()
 
     nanodbc::statement find( _conn, q.str() );
 
-    odbc::Keys hdr;
+    Table res;
+
     if ( _by_tag )
-        hdr = odbc::Keys{ "instance", "tag", "models", "states", "search", "ce" };
+        res.cols( "instance", "tag", "models", "states", "search", "ce" );
     else
-        hdr = odbc::Keys{ "instance", "model", "variant", "result", "states", "search", "ce" };
-    format( find.execute(), hdr, { "search"s, "ce"s } );
+        res.cols( "instance", "model", "variant", "result", "states", "search", "ce" );
+
+    res.timecols( "search", "ce" );
+    res.intcols( "models", "states" );
+    res.fromSQL( find.execute() );
+    res.format( std::cout );
 
     if ( _watch )
     {
@@ -165,25 +225,26 @@ void Compare::run()
         q << " join model_tags on model_tags.model = x" << _instances[ 0 ] << ".modid"
           << " join tag on model_tags.tag = tag.id group by tag.id";
 
-    odbc::Keys hdr{ "model" };
-    std::set< std::string > tf;
+    Table res;
+    res.cols( "model" );
 
     for ( auto f : _fields )
         for ( auto i : _instances )
         {
             auto k = std::to_string( i ) + "/" + f;
-            hdr.push_back( k );
+            res.cols( k );
             if ( brick::string::startsWith( f, "time" ) )
-                 tf.insert( k );
+                res.timecols( k );
+            if ( f == "states" )
+                res.intcols( k );
         }
 
     nanodbc::statement find( _conn, q.str() );
     for ( int i = 0; i < _instances.size(); ++i )
         find.bind( i, &_instances[ i ] );
 
-    std::cerr << brick::string::fmt_container( _instances, "{", "}" ) << std::endl;
-
-    format( find.execute(), hdr, tf );
+    res.fromSQL( find.execute() );
+    res.format( std::cout );
 }
 
 }
