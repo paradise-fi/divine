@@ -197,7 +197,7 @@ void Compare::run()
 
     std::stringstream q;
     if ( _by_tag )
-        q << "select tag.name ";
+        q << "select tag.name, count(x" << _instances[ 0 ] << ".modid) ";
     else
         q << "select x" << _instances[ 0 ] << ".modname ";
 
@@ -227,7 +227,10 @@ void Compare::run()
           << " join tag on model_tags.tag = tag.id group by tag.id";
 
     Table res;
-    res.cols( "model" );
+    if ( _by_tag )
+        res.cols( "tag", "models" ), res.intcols( "models" );
+    else
+        res.cols( "model" );
 
     for ( auto f : _fields )
         for ( auto i : _instances )
