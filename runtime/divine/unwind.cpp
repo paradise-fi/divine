@@ -45,7 +45,9 @@ struct _Unwind_Context {
 
 static const int unwindVersion = 1;
 
-_MD_RegInfo getLPInfo( _Unwind_Context *ctx ) {
+_MD_RegInfo getLPInfo( _Unwind_Context *ctx )
+    __attribute__((__annotate__("lart.interrupt.skipcfl")))
+{
     // get landingpad correspoding to current invoke
     intptr_t invoke = ctx->relPC();
     auto *insts = ctx->meta().inst_table;
@@ -183,7 +185,9 @@ static const uint64_t cppDependentExceptionClass = 0x434C4E47432B2B01; // CLNGC+
 //  If the unwinder encounters an unexpected error during phase 2, it should
 //  return _URC_FATAL_PHASE2_ERROR to its caller. In C++, this will usually be
 //  __cxa_throw, which will call terminate().
-_Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception ) {
+_Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
+    __attribute__((__annotate__("lart.interrupt.skipcfl")))
+{
     __dios::InterruptMask mask;
 
     // TODO: report fault in nounwind function is encountered
