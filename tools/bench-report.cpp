@@ -180,6 +180,7 @@ void Report::results()
     res.timecols( "search", "ce" );
     res.intcols( "models", "states" );
     res.fromSQL( find.execute() );
+    res.sum();
     res.format( std::cout );
 
     if ( _watch )
@@ -244,6 +245,7 @@ void Compare::run()
         find.bind( i, &_instances[ i ] );
 
     res.fromSQL( find.execute() );
+    res.sum();
     res.format( std::cout );
 }
 
