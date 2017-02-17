@@ -207,6 +207,8 @@ void Compare::run()
 {
     if ( _fields.empty() )
         _fields = { "time_search", "states" };
+    if ( _instances.empty() )
+        throw brick::except::Error( "At least one --instance must be specified." );
 
     std::stringstream q;
     if ( _by_tag )
