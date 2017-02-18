@@ -40,21 +40,24 @@ namespace __sc_passthru {
 
 namespace __dios {
 
-void ( *_DiOS_SysCalls_Virt[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl ) = {
+const SC_Handler _DiOS_SysCalls_Virt[ _SC_LAST ] =
+{
     #define SYSCALL(n,...)  [ _SC_ ## n ] = __sc::n,
         #include <dios/core/syscall.def>
     #undef SYSCALL
 };
 
-void ( *_DiOS_SysCalls_Passthru[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl ) = {
+const SC_Handler _DiOS_SysCalls_Passthru[ _SC_LAST ] =
+{
     #define SYSCALL(n,...)  [ _SC_ ## n ] = __sc_passthru::n,
         #include <dios/core/syscall.def>
     #undef SYSCALL
 };
 
-void ( **_DiOS_SysCalls )( Context& ctx, int *err, void* retval, va_list vl ) = _DiOS_SysCalls_Virt;
+const SC_Handler *_DiOS_SysCalls = _DiOS_SysCalls_Virt;
 
-const SchedCommand _DiOS_SysCallsSched[ _SC_LAST ] = {
+const SchedCommand _DiOS_SysCallsSched[ _SC_LAST ] =
+{
     #define SYSCALL(n, sched,...) [ _SC_ ## n ] = sched,
         #include <dios/core/syscall.def>
     #undef SYSCALL

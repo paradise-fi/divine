@@ -31,10 +31,13 @@ enum _VM_SC {
 
 enum class SchedCommand : uint8_t { RESCHEDULE, CONTINUE };
 
+using SC_Handler = void (*)( Context& ctx, int *err, void* retval, va_list vl );
+
 // Mapping of syscodes to implementations
-extern void ( **_DiOS_SysCalls ) ( Context& ctx, int *err, void* retval, va_list vl );
-extern void ( *_DiOS_SysCalls_Virt[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl );
-extern void ( *_DiOS_SysCalls_Passthru[ _SC_LAST ] ) ( Context& ctx, int *err, void* retval, va_list vl );
+extern const SC_Handler * _DiOS_SysCalls;
+extern const SC_Handler _DiOS_SysCalls_Virt[ _SC_LAST ];
+extern const SC_Handler _DiOS_SysCalls_Passthru[ _SC_LAST ];
+
 // True if corresponding syscall requires thread rescheduling
 extern const SchedCommand _DiOS_SysCallsSched[ _SC_LAST ];
 
