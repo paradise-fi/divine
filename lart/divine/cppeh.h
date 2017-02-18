@@ -1,7 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
+ * (c) 2016-2017 Vladimír Štill <xstill@fi.muni.cz>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -50,12 +50,13 @@
 | callSiteTableLength | (ULEB128) | Call Site Table length, used to find Action table |
 +---------------------+-----------+---------------------------------------------------+
 +---------------------+-----------+------------------------------------------------+
-| Beginning of Call Site Table            The current ip is a 1-based index into   |
-| ...                                     this table.  Or it is -1 meaning no      |
-|                                         action is needed.  Or it is 0 meaning    |
-|                                         terminate.                               |
+| Beginning of Call Site Table            The current ip lies within the           |
+| ...                                     (start, length) range of one of these    |
+|                                         call sites. There may be action needed.  |
 | +-------------+---------------------------------+------------------------------+ |
-| | landingPad  | (ULEB128)                       | offset relative to lpStart   | |
+| | start       | (encoded with callSiteEncoding) | offset relative to funcStart | |
+| | length      | (encoded with callSiteEncoding) | length of code fragment      | |
+| | landingPad  | (encoded with callSiteEncoding) | offset relative to lpStart   | |
 | | actionEntry | (ULEB128)                       | Action Table Index 1-based   | |
 | |             |                                 | actionEntry == 0 -> cleanup  | |
 | +-------------+---------------------------------+------------------------------+ |
@@ -119,10 +120,9 @@ Notes:
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/Support/Dwarf.h>
 DIVINE_UNRELAX_WARNINGS
-#include <divine/vm/value.hpp>
-#include <divine/vm/pointer.hpp>
 #include <brick-types>
 #include <brick-query>
 #include <brick-data>
@@ -137,44 +137,24 @@ namespace dwarf = llvm::dwarf;
 
 struct CppEhTab {
 
-
-    struct TypeInfo : brick::types::Ord {
-        TypeInfo( llvm::Constant *ti ) : self( ti ) { }
-
-        llvm::Constant *self;
-
-        bool operator<( const TypeInfo &o ) const { return self < o.self; }
-    };
-
-    struct ExceptSpec : brick::types::Ord {
-        std::vector< const TypeInfo * > typeInfos;
-
-        size_t size() const { return typeInfos.size(); }
-
-        bool operator<( const ExceptSpec &o ) const { return typeInfos < o.typeInfos; }
-    };
-
-    using Handler = brick::types::Union< const TypeInfo *, const ExceptSpec * >;
-
-    struct Action : brick::types::Ord {
-        std::vector< Handler > handlers;
-
-        bool operator<( const Action &o ) const {
-            return handlers < o.handlers;
-        }
-    };
+    using Actions = std::vector< llvm::Constant * >;
 
     struct CallSite {
-        CallSite( llvm::Instruction *pc, llvm::BasicBlock *lb, const Action *act ) :
-            pc( pc ), landingBlock( lb ), actions( act )
+        CallSite( llvm::Instruction *pc, llvm::BasicBlock *lb, Actions act, bool cleanup ) :
+            pc( pc ), landingBlock( lb ), actions( act ), cleanup( cleanup )
         { }
 
         llvm::Instruction *pc;
         llvm::BasicBlock *landingBlock;
-        const Action *actions;
+        Actions actions;
+        bool cleanup;
     };
 
-    explicit CppEhTab( llvm::Function &fn ) {
+    explicit CppEhTab( llvm::Function &fn ) :
+        _ctx( &fn.getParent()->getContext() ),
+        _dl( fn.getParent() ),
+        _fn( &fn )
+    {
         build( fn );
     }
 
@@ -185,86 +165,171 @@ struct CppEhTab {
                 llvm::BasicBlock *unw = invoke->getUnwindDest();
                 auto *lp = invoke->getLandingPadInst();
 
-                Action action;
+                Actions actions;
                 for ( int i = 0, end = lp->getNumClauses(); i < end; ++i ) {
                     if ( lp->isCatch( i ) ) {
-                        auto *ti = &*typeInfos.emplace( lp->getClause( i )->stripPointerCasts() ).first;
-                        action.handlers.emplace_back( ti );
+                        auto *ti = lp->getClause( i )->stripPointerCasts();
+                        addID( ti );
+                        actions.emplace_back( ti );
                     }
                     else if ( lp->isFilter( i ) ) {
-                        const ExceptSpec *es = nullptr;
-                        if( auto *array = llvm::dyn_cast< llvm::ConstantArray >( lp->getClause( i ) ) )
-                        {
-                            auto *t = array->getType();
-                            auto cnt = t->getNumElements();
-                            ExceptSpec spec;
-                            for ( unsigned j = 0; j < cnt; ++j ) {
-                                auto *ti = &*typeInfos.emplace( array->getOperand( j )->stripPointerCasts() ).first;
-                                spec.typeInfos.emplace_back( ti );
-                            }
-                            es = &*exceptSpecs.emplace( std::move( spec ) ).first;
-                        }
-                        else if ( llvm::isa< llvm::ConstantAggregateZero >( lp->getClause( i ) ) )
-                        {   // throw()
-                            es = &*exceptSpecs.emplace().first;
-                        }
-                        else {
-                            lp->getClause( i )->dump();
-                            UNREACHABLE( "Unexpected landingpad clause type" );
-                        }
-                        action.handlers.emplace_back( es );
+                        std::vector< llvm::Constant * > filter;
+                        auto *clause = lp->getClause( i )->stripPointerCasts();
+                        iterateFilter( clause, [&]( auto *ti ) {
+                                addID( ti );
+                                filter.emplace_back( ti );
+                            } );
+                        addSpec( clause );
+                        actions.emplace_back( clause );
                     }
                 }
-                if ( lp->isCleanup() )
-                    action.handlers.emplace_back();
-                auto *act = &*actions.emplace( action ).first;
-                callSites.emplace_back( invoke, unw, act );
+                _callSites.emplace_back( invoke, unw, actions, lp->isCleanup() );
             }
         }
     }
 
-    const size_t ptrSize = 8;
-    const size_t lebOffsetSize = 4; // we encode all LEB128 data to 4 bytes
-
-    size_t tableHeaderSize() const {
-
-        auto size = 1 // lpStartEncoding
-            // lpStart is omitted
-            + 1 // ttypeEncoding
-            + 6 // classInfoOffset + padding
-            + 1 // callSiteEncoding
-            + 7; // callSiteTableLength + padding
-        ASSERT_EQ( size % 4, 0 );
-        return size;
+    int lebEncSize( int maxVal ) {
+        return std::max( (brick::bitlevel::MSB( maxVal ) + 6) / 7, 1u );
     }
 
-    size_t tableSizeBound() const {
+    llvm::Constant *getLSDAConst() {
+        if ( _callSites.empty() )
+            return nullptr;
 
-        auto size = tableHeaderSize()
-            + (3 * 4 + lebOffsetSize) * callSites.size()
-            + (2 * lebOffsetSize) * brick::query::query( actions )
-                                      .map( []( auto &a ) { return a.handlers.size(); } )
-                                      .sum() // action table
-            + ptrSize * typeInfos.size() // type info table (first part)
-            + lebOffsetSize * brick::query::query( exceptSpecs )
-                                  .map( []( auto &es ) { return es.size() + 1; } )
-                                  .sum(); // exception spec records
-        return brick::mem::align( size, 4 );
-    }
+        const int typeIDEncBytes = lebEncSize( _typeInfos.size() + 1 );
+        auto *intptrt = _dl.getIntPtrType( *_ctx );
+        auto *i32t = llvm::Type::getInt32Ty( *_ctx );
+        brick::data::RMap< llvm::Constant *, int > typeIndex;
+        brick::data::RMap< const Actions *, int > actionIndex;
 
-    template< typename T >
-    static void pushRaw( std::string &str, T v ) {
-        union {
-            T v;
-            char data[ sizeof( T ) ];
-        } u;
-        u.v = v;
-        for ( auto x : u.data )
-            str.push_back( x );
-    }
 
-    static void pushStr( std::string &str, const std::string &data ) {
-        str.insert( str.end(), data.begin(), data.end() );
+        for ( auto *ti : _typeInfos )
+            typeIndex[ ti ] = typeID( ti );
+        // type infos are reversed as they are indexed by negated index
+        auto typeConstants = _typeInfos;
+        std::reverse( typeConstants.begin(), typeConstants.end() );
+        auto *typeInfosArray = _typeInfos.empty() ? nullptr : llvm::ConstantStruct::getAnon( typeConstants );
+
+
+        std::string exSpecTable;
+        for ( auto *es : _exceptSpecs ) {
+            typeIndex[ es ] = -( exSpecTable.size() + 1 ); // indices start with 1 and are negativea
+            iterateFilter( es, [&]( auto *ti ) {
+                    pushLeb_n( exSpecTable, typeIndex[ ti ], typeIDEncBytes );
+                } );
+            pushLeb_n( exSpecTable, 0, 1 ); // end of record
+        }
+        auto *exSpecArray = llvm::ConstantDataArray::getString( *_ctx, exSpecTable, false );
+
+
+        std::string actTable;
+        for ( auto &cs : _callSites ) {
+            actionIndex[ &cs.actions ] = actTable.size() + 1;
+            for ( auto *h : cs.actions ) {
+                ASSERT_NEQ( typeIndex[ h ], 0 );
+                pushLeb_n( actTable, typeIndex[ h ], typeIDEncBytes );
+
+                // push next action offset for this call site
+                if ( h == cs.actions.back() && !cs.cleanup )
+                    pushLeb_n( actTable, 0, 1 ); // end
+                else
+                    pushLeb_n( actTable, 1, 1 ); // offset is relative to the offset entry
+            }
+            if ( cs.cleanup ) {
+                pushLeb_n( actTable, 0, 1 ); // cleanup is id 0
+                pushLeb_n( actTable, 0, 1 ); // end it terminates actions entry
+            }
+
+        }
+        auto *actTableArray = llvm::ConstantDataArray::getString( *_ctx, actTable, false );
+
+        auto intbbpc = [intptrt]( llvm::BasicBlock *bb ) {
+            if ( bb == bb->getParent()->begin() )
+                return llvm::ConstantExpr::getPtrToInt( bb->getParent(), intptrt );
+            return llvm::ConstantExpr::getPtrToInt( llvm::BlockAddress::get( bb ), intptrt );
+        };
+        auto sub32 = [=]( llvm::Constant *a, llvm::Constant *b ) {
+            return llvm::ConstantExpr::getTrunc( llvm::ConstantExpr::getNUWSub( a, b ), i32t );
+        };
+        auto lebConstant = [this]( int val, int size = -1 ) {
+            std::string str;
+            pushLeb_n( str, val, size < 0 ? lebEncSize( val ) : size );
+            return llvm::ConstantDataArray::getString( *_ctx, str, false );
+        };
+
+        auto *startaddr = intbbpc( _fn->begin() );
+        std::vector< llvm::Constant * > callSiteEntries;
+        for ( auto &ci : _callSites ) {
+            auto *bb = ci.pc->getParent();
+            auto *callPC = sub32( intbbpc( bb ), startaddr ),
+                 *landingBlock = sub32( intbbpc( ci.landingBlock ), startaddr );
+
+            // entry must be aligned, so index is 32 bits
+            auto *actionEntry = lebConstant( actionIndex[ &ci.actions ], 4 );
+            callSiteEntries.emplace_back( llvm::ConstantStruct::getAnon(
+                                              { callPC,
+                                                llvm::ConstantInt::get( i32t, 1 ),
+                                                landingBlock,
+                                                actionEntry }, true ) );
+        }
+        auto *callSiteArray = llvm::ConstantStruct::getAnon( callSiteEntries, true );
+
+        std::vector< llvm::Constant * > tablesElems = { callSiteArray, actTableArray };
+        if ( typeInfosArray ) {
+            tablesElems.emplace_back( typeInfosArray );
+            tablesElems.emplace_back( exSpecArray );
+        }
+        // not packed, padding might be added at the end of action table to alight type infor pointers
+        auto *tables = llvm::ConstantStruct::getAnon( tablesElems );
+
+        auto *chart = llvm::Type::getInt8Ty( *_ctx );
+        std::vector< llvm::Constant ** > headerEntries;
+        std::vector< llvm::Type * >headerElemTypes;
+
+        llvm::Constant *lpStartEncoding = llvm::ConstantInt::get( chart, dwarf::DW_EH_PE_omit );
+        llvm::Constant *ttypeEncoding = llvm::ConstantInt::get( chart, dwarf::DW_EH_PE_absptr );
+        llvm::Constant *classInfoOffset = lebConstant( 0, 4 ); // filled later
+        llvm::Constant *callSiteEncoding = llvm::ConstantInt::get( chart, dwarf::DW_EH_PE_udata4 );
+        headerEntries = { &lpStartEncoding, /* &lpStart, */ &ttypeEncoding,
+                          &classInfoOffset, &callSiteEncoding };
+        std::transform( headerEntries.begin(), headerEntries.end(),
+                        std::back_inserter( headerElemTypes ),
+                        []( auto **v ) { return (*v)->getType(); } );
+        // we must make sure tables are aligned, but header needs to be packed, so align it explicitly
+        auto tmpHSize = _dl.getTypeAllocSize( llvm::StructType::get( *_ctx, headerElemTypes, true ) );
+        auto hSize = ((tmpHSize + 4 /* for callSiteTableLength */ + 7) / 8) * 8;
+        ASSERT_LEQ( 4, hSize - tmpHSize );
+        ASSERT_LT( hSize - tmpHSize, 12 );
+        ASSERT_EQ( hSize % 8, 0 );
+        int callSiteTableLengthLength = hSize - tmpHSize;
+        auto *callSiteTableLength = lebConstant( 0, callSiteTableLengthLength );
+        headerEntries.emplace_back( &callSiteTableLength );
+        headerElemTypes.emplace_back( callSiteTableLength->getType() );
+
+        auto *headert = llvm::StructType::get( *_ctx, headerElemTypes, true );
+        auto *lsdat = llvm::StructType::get( *_ctx, { headert, tables->getType() } );
+
+        auto getOffset = [=]( llvm::Type *t, std::initializer_list< int > indices ) -> int {
+            std::vector< llvm::Value * > idx { llvm::ConstantInt::get( llvm::Type::getInt64Ty( *_ctx ), 0 ) };
+            for ( auto i : indices )
+                idx.emplace_back( llvm::ConstantInt::get( llvm::Type::getInt32Ty( *_ctx ), i ) );
+            int o = _dl.getIndexedOffset( llvm::PointerType::get( t, 0 ), idx );
+            return o;
+        };
+
+        auto classInfoOffsetStart = getOffset( lsdat, { 0, 3 } );
+        if ( typeInfosArray )
+            classInfoOffset = lebConstant( getOffset( lsdat, { 1, 3 } ) - classInfoOffsetStart, 4 );
+        callSiteTableLength = lebConstant( getOffset( lsdat, { 1, 1 } ) - hSize,
+                                           callSiteTableLengthLength );
+
+        std::vector< llvm::Constant * > headerConsts;
+        std::transform( headerEntries.begin(), headerEntries.end(),
+                        std::back_inserter( headerConsts ),
+                        []( auto **v ) { return *v; } );
+        auto *header = llvm::ConstantStruct::get( headert, headerConsts );
+        auto *lsda = llvm::ConstantStruct::get( lsdat, { header, tables } );
+        return lsda;
     }
 
     static void pushLeb_n( std::string &str, int32_t data, int n = 4 ) {
@@ -281,130 +346,50 @@ struct CppEhTab {
         } while ( todo > 0 );
     }
 
-    template< typename Program >
-    std::string callSiteTable( const Program &p ) const {
-        std::string table;
-        for ( auto &ci : callSites ) {
-            auto callPC = p.pcmap.at( ci.pc );
-            auto landingBlock = p.blockmap.at( ci.landingBlock );
-            pushRaw< uint32_t >( table, callPC.instruction() ); // PC range start
-            pushRaw< uint32_t >( table, 1 );                    // PC range length
-            pushRaw< uint32_t >( table, landingBlock.instruction() );
-            pushLeb_n( table, actionIndex[ ci.actions ] );
-        }
-        return table;
+    int typeID( llvm::Constant *c ) {
+        auto it = std::find( _typeInfos.begin(), _typeInfos.end(), c );
+        return it == _typeInfos.end() ? 0 : it - _typeInfos.begin() + 1;
     }
 
-    std::string actionTable() {
-        std::string table;
-        for ( auto &a : actions ) {
-            actionIndex[ &a ] = table.size() + 1;
-            for ( auto &h : a.handlers ) {
-                pushLeb_n( table, typeIndex[ h ] );
+    void addID( llvm::Constant *ti ) {
+        if ( !typeID( ti ) )
+            _typeInfos.emplace_back( ti );
+    }
 
-                // push next action offset for this call site
-                if ( &h == &a.handlers.back() ) {
-                    pushLeb_n( table, 0 ); // end
-                } else
-                    pushLeb_n( table, 4, 4 ); // offset 4 written in 4 bytes
+    void addSpec( llvm::Constant *spec ) {
+        auto it = std::find( _exceptSpecs.begin(), _exceptSpecs.end(), spec );
+        if ( it == _exceptSpecs.end() )
+            _exceptSpecs.emplace_back( spec );
+    }
+
+    template< typename Yield >
+    void iterateFilter( llvm::Constant *clause, Yield yield )
+    {
+        if( auto *array = llvm::dyn_cast< llvm::ConstantArray >( clause ) )
+        {
+            auto cnt = array->getType()->getNumElements();
+            for ( unsigned j = 0; j < cnt; ++j ) {
+                auto *ti = array->getOperand( j )->stripPointerCasts();
+                yield( ti );
             }
         }
-        return table;
-    }
-
-    std::string exceptionSpecTable() {
-        std::string table;
-        for ( auto &es : exceptSpecs ) {
-            typeIndex[ &es ] = -( table.size() + 1 ); // indices start with 1 and are negative
-            for ( auto *ti : es.typeInfos )
-                pushLeb_n( table, typeIndex[ ti ] );
-            pushLeb_n( table, 0 ); // end of record
+        else if ( llvm::isa< llvm::ConstantAggregateZero >( clause ) )
+        {
+            /* throw () */
         }
-        return table;
-    }
-
-    template< typename Program, typename Ptr >
-    void insertEhTable( Program &p, Ptr table ) {
-        std::vector< ::divine::vm::ConstPointer > tiPtrs;
-        auto startOffset = table.offset();
-        ASSERT_EQ( startOffset % 4, 0 );
-        namespace vm = ::divine::vm;
-        namespace value = vm::value;
-
-        auto write = [&]( auto v ) {
-                p.heap().write( table, v );
-                table.offset( table.offset() + sizeof( typename decltype( v )::Raw ) ); // TODO
-            };
-        auto writeStr = [&]( const std::string &s ) {
-                for ( auto c : s )
-                    write( value::Int< 8 >( c ) );
-            };
-        auto writeLeb_n = [&]( auto val, int n = 4 ) {
-                std::string buf;
-                pushLeb_n( buf, val, n );
-                writeStr( buf );
-            };
-
-        // calculate subtables
-        // reversed oreder is important to make sure indices are properly computed
-        for ( auto &ti : typeInfos ) {
-            typeIndex[ &ti ] = tiPtrs.size() + 1; // indices start with 1
-            auto tiPtrPtr = p.s2hptr( p.valuemap.at( ti.self ).slot );
-            value::Pointer tiPtr;
-            p.heap().read( tiPtrPtr, tiPtr );
-            tiPtrs.push_back( tiPtr.cooked() );
+        else {
+            clause->dump();
+            UNREACHABLE( "Unexpected landingpad clause type" );
         }
-        typeIndex[ Handler() ] = 0; // cleanup
-        auto esTable = exceptionSpecTable();
-        auto actTable = actionTable();
-        auto csTable = callSiteTable( p );
-
-        // must be aligned as classInfoTable contains pointers, tables don't
-        // care as they have variable length entries anyway
-        // Also, the offset points *after* type infos, at the beginnig of
-        // execption specifications
-        // offset is from the point after classInfoOffset byte
-        auto tiOffset = csTable.size() + actTable.size() + 1 /* callSiteEncoding */ + 7; /* callSiteTableLength + padding */
-        auto classInfoOffset = tiOffset + tiPtrs.size() * sizeof( vm::PointerRaw );
-
-        // **** HEADER
-        // lpStartEncoding, implies lpStart = 0 and therefore lpStart =
-        // funcStart
-        write( value::Int< 8 >( dwarf::DW_EH_PE_omit ) );
-        // ttypeEncoding
-        write( value::Int< 8 >( dwarf::DW_EH_PE_absptr ) );
-        writeLeb_n( classInfoOffset, 6 );
-
-        auto tiStart = table.offset() + tiOffset;
-        ASSERT_EQ( tiStart % 4, 0 );
-
-        // callSiteEncoding
-        write( value::Int< 8 >( dwarf::DW_EH_PE_udata4 ) );
-        // pad header for 4 byte alignment
-        writeLeb_n( csTable.size(), 7 ); // callSiteTableLength
-        ASSERT_EQ( table.offset() - startOffset, tableHeaderSize() );
-        // **** END OF HEADER
-
-        writeStr( csTable );
-        writeStr( actTable );
-
-        // add padding of class table
-        ASSERT_EQ( table.offset(), tiStart );
-
-        for ( auto ti : brick::query::reversed( tiPtrs ) )
-            write( value::Pointer( ti ) );
-        writeStr( esTable );
-
-        ASSERT_EQ( table.offset() - startOffset, tableSizeBound() );
     }
 
-    std::vector< CallSite > callSites;
-    std::set< Action > actions;
-    std::set< TypeInfo > typeInfos;
-    std::set< ExceptSpec > exceptSpecs;
+    llvm::LLVMContext *_ctx;
+    llvm::DataLayout _dl;
+    llvm::Function *_fn;
 
-    brick::data::RMap< Handler, int > typeIndex;
-    brick::data::RMap< const Action *, int > actionIndex;
+    std::vector< CallSite > _callSites;
+    std::vector< llvm::Constant * > _typeInfos;
+    std::vector< llvm::Constant * > _exceptSpecs;
 };
 
 }

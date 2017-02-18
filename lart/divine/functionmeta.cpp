@@ -19,7 +19,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 #include <lart/support/metadata.h>
-#include <lart/divine/cppeh.h>
 
 // used to calculate frame size & encode function types
 #include <runtime/divine.h>
@@ -157,6 +156,10 @@ struct IndexFunctions : lart::Pass {
                             : llvm::ConstantPointerNull::get( persT );
 
             auto *lsdaT = llvm::cast< llvm::PointerType >( funcMetaT->getElementType( 9 ) );
+            auto *lsdam = m.second.entryPoint->getMetadata( "lart.lsda" );
+            auto *lsda = lsdam
+                            ? llvm::cast< llvm::ConstantAsMetadata >( lsdam->getOperand( 0 ) )->getValue()
+                            : llvm::ConstantPointerNull::get( lsdaT );
 
             metatable.push_back( llvm::ConstantStruct::get( funcMetaT, {
                     llvm::ConstantExpr::getPointerCast( funName, funcMetaT->getElementType( 0 ) ),
@@ -170,7 +173,7 @@ struct IndexFunctions : lart::Pass {
                     mkint( funcMetaT, 6, m.second.instTableSize ),
                     llvm::ConstantPointerNull::get( llvm::PointerType::getUnqual( instMetaT ) ),
                     pers,
-                    llvm::ConstantPointerNull::get( lsdaT ),
+                    lsda,
                     mkint( funcMetaT, 10, m.second.entryPoint->hasFnAttribute( llvm::Attribute::NoUnwind ) )
                 } ) );
         }

@@ -103,18 +103,9 @@ struct LowerEH : lart::Pass {
                               .filter( []( auto *x ) { return x && x->getIntrinsicID() == llvm::Intrinsic::eh_typeid_for; } )
                               .freeze() )
             {
-                auto *arg = id->getArgOperand( 0 )->stripPointerCasts();
-                int i = 1;
-                bool found = false;
-                for ( auto &it : tab.typeInfos ) {
-                    if ( it.self == arg ) {
-                        found = true;
-                        break;
-                    }
-                    i++;
-                }
-                ASSERT( found );
-                auto *val = llvm::ConstantInt::get( id->getType(), i );
+                auto *arg = llvm::cast< llvm::Constant >( id->getArgOperand( 0 )->stripPointerCasts() );
+                ASSERT_LT( 0, tab.typeID( arg ) );
+                auto *val = llvm::ConstantInt::get( id->getType(), tab.typeID( arg ) );
                 id->replaceAllUsesWith( val );
                 id->eraseFromParent();
             }
