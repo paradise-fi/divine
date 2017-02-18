@@ -64,9 +64,10 @@ inline
 T&
 make(A0 a0)
 {
-    static typename aligned_storage<sizeof(T)>::type buf;
-    ::new (&buf) T(a0);
-    return *reinterpret_cast<T*>(&buf);
+    static T * buf = nullptr;
+    if ( !buf )
+        buf = new T(a0);
+    return *buf;
 }
 
 template <class T, class A0, class A1>
@@ -74,9 +75,10 @@ inline
 T&
 make(A0 a0, A1 a1)
 {
-    static typename aligned_storage<sizeof(T)>::type buf;
-    ::new (&buf) T(a0, a1);
-    return *reinterpret_cast<T*>(&buf);
+    static T * buf = nullptr;
+    if ( !buf )
+        buf = new T(a0, a1);
+    return *buf;
 }
 
 template <class T, class A0, class A1, class A2>
@@ -84,9 +86,10 @@ inline
 T&
 make(A0 a0, A1 a1, A2 a2)
 {
-    static typename aligned_storage<sizeof(T)>::type buf;
-    ::new (&buf) T(a0, a1, a2);
-    return *reinterpret_cast<T*>(&buf);
+    static T * buf = nullptr;
+    if ( !buf )
+        buf = new T(a0, a1, a2);
+    return *buf;
 }
 
 template <typename T, size_t N>
@@ -4537,7 +4540,7 @@ static
 string*
 init_weeks()
 {
-    static string weeks[14];
+    string *weeks = new string[14];
     weeks[0]  = "Sunday";
     weeks[1]  = "Monday";
     weeks[2]  = "Tuesday";
@@ -4559,7 +4562,7 @@ static
 wstring*
 init_wweeks()
 {
-    static wstring weeks[14];
+    wstring *weeks = new wstring[14];
     weeks[0]  = L"Sunday";
     weeks[1]  = L"Monday";
     weeks[2]  = L"Tuesday";
@@ -4597,7 +4600,7 @@ static
 string*
 init_months()
 {
-    static string months[24];
+    string *months = new string[24];
     months[0]  = "January";
     months[1]  = "February";
     months[2]  = "March";
@@ -4629,7 +4632,7 @@ static
 wstring*
 init_wmonths()
 {
-    static wstring months[24];
+    static wstring *months = new wstring[24];
     months[0]  = L"January";
     months[1]  = L"February";
     months[2]  = L"March";
@@ -4677,7 +4680,7 @@ static
 string*
 init_am_pm()
 {
-    static string am_pm[24];
+    string *am_pm = new string[24];
     am_pm[0]  = "AM";
     am_pm[1]  = "PM";
     return am_pm;
@@ -4687,7 +4690,7 @@ static
 wstring*
 init_wam_pm()
 {
-    static wstring am_pm[24];
+    wstring *am_pm = new wstring[24];
     am_pm[0]  = L"AM";
     am_pm[1]  = L"PM";
     return am_pm;
