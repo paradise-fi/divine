@@ -13,6 +13,10 @@
 
 #include "config.h"
 
+#ifdef __divine__
+#include <divine.h>
+#endif
+
 //  A small, simple heap manager based (loosely) on 
 //  the startup heap manager from FreeBSD, optimized for space.
 //
@@ -51,7 +55,11 @@ private:
 
         
 #define HEAP_SIZE   512
+#ifdef __divine__
+char *heap = nullptr;
+#else
 char heap [ HEAP_SIZE ];
+#endif
 
 typedef unsigned short heap_offset;
 typedef unsigned short heap_size;
@@ -71,6 +79,9 @@ heap_offset offset_from_node ( const heap_node *ptr )
     { return static_cast<heap_offset>(static_cast<size_t>(reinterpret_cast<const char *>(ptr) - heap)  / sizeof (heap_node)); }
  
 void init_heap () {
+#ifdef __divine__
+    if ( !heap ) heap = reinterpret_cast< char * >( __vm_obj_make( HEAP_SIZE ) );
+#endif
     freelist = (heap_node *) heap;
     freelist->next_node = offset_from_node ( list_end );
     freelist->len = HEAP_SIZE / sizeof (heap_node);
