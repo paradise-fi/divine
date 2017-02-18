@@ -57,7 +57,7 @@ _MD_RegInfo getLPInfo( _Unwind_Context *ctx )
     intptr_t lp = lblock + 1;
     // search the landing block, we should find the landingpad here (as first
     // non-phi instruction)
-    while ( insts[ lp ].opcode != OpCode::LandingPad && insts[ lp ].opcode != 0 )
+    while ( insts[ lp ].opcode != OpCode::LandingPad && insts[ lp ].opcode != OpCode::OpBB )
         ++lp;
     __dios_assert_v( insts[ lp ].opcode == OpCode::LandingPad,
                      "Could not find landingpad instruction in the landing block" );
@@ -154,7 +154,7 @@ uintptr_t _Unwind_GetIP( _Unwind_Context *ctx ) {
     auto *insts = ctx->meta().inst_table;
     __dios_assert_v( insts[ relpc ].opcode == OpCode::Invoke,
                      "invalid context, PC not pointing to invoke" );
-    while ( insts[ relpc ].opcode != 0 )
+    while ( insts[ relpc ].opcode != OpCode::OpBB )
         --relpc;
     return ctx->pc() - (ctx->relPC() - relpc) + 1;
 }

@@ -5,6 +5,8 @@ namespace OpCode {
 enum OpCode {
 #define HANDLE_INST(op,n,i)   n = op,
 #include <divine/Instruction.def>
+    OpLLVMEnd,
+    OpHypercall, OpBB, OpArgs
 };
 }
 #endif // __DIVINE_OPCODES_H__
