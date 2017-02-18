@@ -150,7 +150,13 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
 uintptr_t _Unwind_GetIP( _Unwind_Context *ctx ) {
     __dios::InterruptMask _;
     // should point immediatelly AFTER the call site
-    return ctx->pc() + 1;
+    auto relpc = ctx->relPC();
+    auto *insts = ctx->meta().inst_table;
+    __dios_assert_v( insts[ relpc ].opcode == OpCode::Invoke,
+                     "invalid context, PC not pointing to invoke" );
+    while ( insts[ relpc ].opcode != 0 )
+        --relpc;
+    return ctx->pc() - (ctx->relPC() - relpc) + 1;
 }
 
 bool shouldCallPersonality( _Unwind_Context &ctx ) {
