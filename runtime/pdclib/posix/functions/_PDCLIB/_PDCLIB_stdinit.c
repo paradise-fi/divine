@@ -17,6 +17,7 @@
 #include "_PDCLIB_io.h"
 #include "_PDCLIB_locale.h"
 #include "_PDCLIB_clocale.h"
+#include "functions/locale/_PDCLIB_unicodedata.c" /* for wcinfo_size */
 #include <threads.h>
 
 /* In a POSIX system, stdin / stdout / stderr are equivalent to the (int) file
@@ -348,7 +349,7 @@ static const _PDCLIB_ctype_t global_ctype[] = {
 };
 
 extern const struct _PDCLIB_charcodec_t _PDCLIB_ascii_codec;
-struct _PDCLIB_locale _PDCLIB_global_locale = {
+const struct _PDCLIB_locale _PDCLIB_global_locale = {
     ._Codec = &_PDCLIB_ascii_codec,
     ._Conv  = { 
         /* decimal_point      */ (char *)".",
@@ -377,6 +378,8 @@ struct _PDCLIB_locale _PDCLIB_global_locale = {
         /* int_n_sign_posn    */ CHAR_MAX,
     },
     ._CType = &global_ctype[1],
+    ._WCType     = _PDCLIB_wcinfo,
+    ._WCTypeSize = _PDCLIB_wcinfo_size,
     ._ErrnoStr = {
         "Success",
         "EPERM (operation not permitted)",
@@ -516,7 +519,7 @@ struct _PDCLIB_locale _PDCLIB_global_locale = {
 /* Todo: Better solution than this! */
 __attribute__((constructor)) static void init_stdio(void)
 {
-    _PDCLIB_initclocale( &_PDCLIB_global_locale );
+    // _PDCLIB_initclocale( &_PDCLIB_global_locale );
     tss_create(&_PDCLIB_locale_tss, (tss_dtor_t) freelocale);
     if ( stdin )
         mtx_init(&stdin->lock,  mtx_recursive);

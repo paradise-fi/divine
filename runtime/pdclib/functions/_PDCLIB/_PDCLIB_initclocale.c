@@ -11,9 +11,6 @@
 void _PDCLIB_initclocale( locale_t l )
 {
     // TODO: There will be more added here...
-
-    l->_WCType     = _PDCLIB_wcinfo;
-    l->_WCTypeSize = _PDCLIB_wcinfo_size;
 }
 
 #endif
