@@ -531,7 +531,7 @@ void Program::computeStatic()
 
     auto instTableT = llvm::cast< llvm::PointerType >(
                           md_func->getOperand( 0 )->getOperand( 7 )->getType() )->getElementType();
-    int instTotal = 0, lsdaTotal = 0;
+    int instTotal = 0;
 
     for ( int i = 0; i < int( md_func->getNumOperands() ); ++i )
     {
@@ -540,13 +540,10 @@ void Program::computeStatic()
             continue;
 
         instTotal += function( pc ).instructions.size();
-        lart::divine::CppEhTab tab( *llvmfunction( pc ) );
-        lsdaTotal += tab.tableSizeBound();
     }
 
     auto instTableObj = _ccontext.heap().make( instTotal * TD.getTypeAllocSize( instTableT ) );
-    auto lsdaObj = _ccontext.heap().make( lsdaTotal );
-    int instOffset = 0, lsdaOffset = 0;
+    int instOffset = 0;
 
     for ( int i = 0; i < int( md_func->getNumOperands() ); ++i )
     {
@@ -583,16 +580,7 @@ void Program::computeStatic()
         }
         ASSERT_EQ( instTable.cooked().offset() - instOffset, instTableSize );
 
-        // write language specific data for C++ exceptions
-        llvm::Function *llvmfn = llvmfunction( pc );
-        ASSERT( llvmfn );
-        lart::divine::CppEhTab tab( *llvmfn );
-
-        auto lsda = lsdaObj + lsdaOffset;
-        writeMetaElem( 9, lsda );
-        tab.insertEhTable( *this, lsda.cooked() );
         instOffset += instTableSize;
-        lsdaOffset += tab.tableSizeBound();
     }
 }
 

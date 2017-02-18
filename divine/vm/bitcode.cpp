@@ -88,6 +88,7 @@ void BitCode::do_lart()
         lart.setup( lart::reduction::staticTauMemPass() );
     }
 
+    lart.setup( lart::divine::lsda() );
     auto mod = _module.get();
     if ( mod->getGlobalVariable( "__md_functions" ) && mod->getGlobalVariable( "__md_globals" ) )
         lart.setup( lart::divine::functionMetaPass() );
