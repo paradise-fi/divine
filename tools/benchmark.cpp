@@ -184,6 +184,8 @@ void Cmd::setup()
 {
     try
     {
+        if ( _odbc.empty() )
+            _odbc = std::getenv( "DIVBENCH_DB" );
         _conn.connect( _odbc );
     }
     catch ( nanodbc::database_error &err )
@@ -203,7 +205,7 @@ int main( int argc, const char **argv )
     auto args = cmd::from_argv( argc, argv );
 
     auto opts_db = cmd::make_option_set< Cmd >( validator )
-        .option( "-d {string}", &Cmd::_odbc, "ODBC connection string" );
+        .option( "[-d {string}]", &Cmd::_odbc, "ODBC connection string (default: $DIVBENCH_DB)" );
 
     auto opts_import = cmd::make_option_set< Import >( validator )
         .option( "[--name {string}]", &Import::_name, "model name (default: filename)" )
