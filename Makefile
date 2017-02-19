@@ -37,6 +37,7 @@ TOOLCHAIN = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
 	    -DCMAKE_EXE_LINKER_FLAGS="$(LDFLAGS_)" -DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS_)"
 
 CONFIG += -DCMAKE_INSTALL_PREFIX=${PREFIX}
+static_FLAGS = -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) $(CONFIG) -DBUILD_SHARED_LIBS=OFF
 release_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
 semidbg_FLAGS = -DCMAKE_BUILD_TYPE=SemiDbg $(TOOLCHAIN) $(CONFIG)
 debug_FLAGS = -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
@@ -49,15 +50,20 @@ toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 
 all: $(DEFAULT_FLAVOUR)
 
-FLAVOURS = debug asan release semidbg
+FLAVOURS = debug asan release semidbg static
 TARGETS = divine unit functional website check llvm-utils clang test-divine \
           install lart runner divbench divcheck
+DEFTARGETS = divine unit functional website check install lart divcheck
 
-${TARGETS}:
+${DEFTARGETS}:
 	$(MAKE) $(DEFAULT_FLAVOUR)-$@
 
 ${FLAVOURS}:
 	$(MAKE) $@-divine
+
+divbench:
+	$(MAKE) static-divbench
+	@echo your binary is at $(OBJ)static/tools/divbench
 
 GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
@@ -69,6 +75,10 @@ ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP
 	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
 	cd $$(dirname $@) && $(CMAKE) $(PWD) $($(FLAVOUR)_FLAGS) $(CMAKE_EXTRA) -G "$(GENERATOR)"
 	touch $@
+
+${TARGETS:%=static-%}:
+	$(MAKE) $(OBJ)static/cmake.stamp $(GETCONFDEPS) FLAVOUR=static
+	$(SETENV) $(CMAKE) --build $(OBJ)static --target ${@:static-%=%} -- $(EXTRA)
 
 ${TARGETS:%=debug-%}:
 	$(MAKE) $(OBJ)debug/cmake.stamp $(GETCONFDEPS) FLAVOUR=debug
