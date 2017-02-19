@@ -81,6 +81,14 @@ template< typename T >
 typename T::IsOrd operator==( const T &a, const T &b ) {
     return a <= b && b <= a;
 }
+
+template< typename T >
+auto operator<=( const T &a, const T& b )
+    -> decltype( a.as_tuple() <= b.as_tuple(), typename T::IsOrd() )
+{
+    return a.as_tuple() <= b.as_tuple();
+}
+
 using Comparable = Ord;
 
 struct Defer {
