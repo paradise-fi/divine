@@ -20,7 +20,7 @@ struct AddAssumes : lart::Pass {
     void process( llvm::Instruction * inst );
 };
 
-PassMeta assume_pass() {
+static inline PassMeta assume_pass() {
     return AddAssumes::meta();
 }
 

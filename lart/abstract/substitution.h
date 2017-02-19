@@ -57,7 +57,7 @@ private:
     SubstitutionBuilder builder;
 };
 
-PassMeta substitution_pass() {
+static inline PassMeta substitution_pass() {
     return Substitution::meta();
 }
 

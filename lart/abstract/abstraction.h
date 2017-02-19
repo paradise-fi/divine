@@ -48,7 +48,7 @@ private:
     std::set< llvm::Function * > _unused;
 };
 
-PassMeta abstraction_pass() {
+static inline PassMeta abstraction_pass() {
     return Abstraction::meta();
 }
 

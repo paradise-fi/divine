@@ -65,7 +65,7 @@ struct BCP : lart::Pass {
     void process( llvm::Instruction * inst );
 };
 
-PassMeta bcp_pass() {
+static inline PassMeta bcp_pass() {
     return BCP::meta();
 }
 
