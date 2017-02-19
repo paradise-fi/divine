@@ -171,8 +171,16 @@ void Report::list_instances()
       << "join machine on instance.machine = machine.id "
       << "join cpu     on machine.cpu = cpu.id ";
     nanodbc::statement find( _conn, q.str() );
+    int instance = odbc::get_instance( _conn );
     Table res;
     res.cols( "instance", "version", "src", "rt", "build", "cpu", "cores", "mem", "jobs" );
+    res.intcols( "instance" );
+    res.set_format( "instance", [=]( Table::Value v )
+                    {
+                        auto i = v.get< int >();
+                        if ( i == instance ) return "*" + std::to_string( i );
+                        return std::to_string( i );
+                    } );
     res.set_format( "cpu", [=]( Table::Value v )
                     {
                         auto s = v.get< std::string >();
