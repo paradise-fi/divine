@@ -173,6 +173,19 @@ void Report::list_instances()
     nanodbc::statement find( _conn, q.str() );
     Table res;
     res.cols( "instance", "version", "src", "rt", "build", "cpu", "cores", "mem", "jobs" );
+    res.set_format( "cpu", [=]( Table::Value v )
+                    {
+                        auto s = v.get< std::string >();
+                        std::regex tidy( "Intel\\(R\\) (Xeon)\\(R\\) CPU *"
+                                         "|Intel\\(R\\) (Core)\\(TM\\) " );
+                        return std::regex_replace( s, tidy, "$1 " );
+                    } );
+    res.set_format( "build", []( Table::Value v )
+                    {
+                        auto s = v.get< std::string >();
+                        if ( s == "RelWithDebInfo" ) return std::string( "RWDI" );
+                        return s;
+                    } );
     res.fromSQL( find.execute() );
     res.format( std::cout );
 }
