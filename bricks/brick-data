@@ -271,6 +271,12 @@ struct SmallVector {
             operator delete( _data.range.begin );
     }
 
+    SmallVector &operator=( const SmallVector &other )
+    {
+        _resize( other._size );
+        std::uninitialized_copy( other.begin(), other.end(), begin() );
+        return *this;
+    }
 
     T *begin() { return _onstack ? _data.data : _data.range.begin; }
     const T *begin() const { return _onstack ? _data.data : _data.range.begin; }
