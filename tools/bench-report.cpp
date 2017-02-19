@@ -31,12 +31,15 @@ struct Table
     std::vector< Row > _rows;
     std::vector< std::string > _cols;
     std::set< std::string > _intcols, _timecols;
+    std::vector< int > _width;
+    std::vector< std::function< std::string( Value ) > > _format;
 
     template< typename... Args >
     void cols( Args... args )
     {
         for ( std::string c : { args... } )
             _cols.push_back( c );
+        _format.resize( _cols.size() );
     }
 
     template< typename... Args >
@@ -44,6 +47,14 @@ struct Table
 
     template< typename... Args >
     void timecols( Args... tc ) { for ( std::string t : { tc... } ) _timecols.insert( t ); }
+
+    template< typename F >
+    void set_format( std::string col, F f )
+    {
+        for ( int c = 0; c < _cols.size(); ++ c )
+            if ( _cols[ c ] == col )
+                _format[ c ] = f;
+    }
 
     void sum()
     {
@@ -74,6 +85,14 @@ struct Table
         }
     }
 
+    std::string format( int c, Value v )
+    {
+        ASSERT_LT( c, _format.size() );
+        if ( _format[ c ] )
+            return _format[ c ]( v );
+        return format( v );
+    }
+
     std::string format( Value v )
     {
         std::stringstream str;
@@ -99,30 +118,39 @@ struct Table
     int width( int c )
     {
         int w = _cols[ c ].size();
-        for ( auto r : _rows )
-            w = std::max( w, int( format( r[ c ] ).size() ) );
         return w;
     }
 
     template< typename T >
-    void format_row( std::ostream &o, T r )
+    void format_row( std::ostream &o, T r, bool use_fmt = true )
     {
         o << "| ";
         for ( unsigned c = 0; c < _cols.size(); ++c )
         {
-            o << std::setw( width( c ) ) << format( r[ c ] );
+            o << std::setw( _width[ c ] ) << ( use_fmt ? format( c, r[ c ] ) : format( r[c] ) );
             if ( c + 1 != _cols.size() )
                 o << " | ";
         }
         o << " |" << std::endl;
     }
 
+    void compute_widths()
+    {
+        _width.clear();
+        std::transform( _cols.begin(), _cols.end(), std::back_inserter( _width ),
+                        []( std::string c ) { return c.size(); } );
+        for ( unsigned c = 0; c < _cols.size(); ++c )
+            for ( auto r : _rows )
+                _width[ c ] = std::max( _width[ c ], int( format( c, r[ c ] ).size() ) );
+    }
+
     void format( std::ostream &o )
     {
-        format_row( o, _cols );
+        compute_widths();
+        format_row( o, _cols, false );
         o << "|-";
         for ( unsigned c = 0; c < _cols.size(); ++c )
-            o << std::string( width( c ), '-' ) << ( c + 1 == _cols.size() ? "-|" : "-|-" );
+            o << std::string( _width[ c ], '-' ) << ( c + 1 == _cols.size() ? "-|" : "-|-" );
         o << std::endl;
         for ( auto r : _rows )
             format_row( o, r );
