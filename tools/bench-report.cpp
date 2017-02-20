@@ -51,7 +51,7 @@ struct Table
     template< typename F >
     void set_format( std::string col, F f )
     {
-        for ( int c = 0; c < _cols.size(); ++ c )
+        for ( int c = 0; c < int( _cols.size() ); ++ c )
             if ( _cols[ c ] == col )
                 _format[ c ] = f;
     }
