@@ -60,9 +60,13 @@ struct Import : Cmd
     }
 };
 
-struct Schedule : Cmd
+struct JobBase : Cmd
 {
     std::string _tag;
+};
+
+struct Schedule : JobBase
+{
     void run() override;
 };
 
@@ -97,7 +101,7 @@ struct Compare : ReportBase
     void run() override;
 };
 
-struct Run : Cmd
+struct Run : JobBase
 {
     std::vector< std::pair< std::string, std::string > > _files;
     std::string _script;

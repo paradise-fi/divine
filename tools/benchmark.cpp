@@ -229,15 +229,15 @@ int main( int argc, const char **argv )
         .option( "[--field {string}]",  &Compare::_fields, "include a field in the comparison" )
         .option( "[--instance {int}]",  &Compare::_instances, "compare given instances" );
 
-    auto opts_schedule = cmd::make_option_set< Schedule >( validator )
-        .option( "[--tag {string}]", &Schedule::_tag, "only schedule models with a given tag" );
+    auto opts_job = cmd::make_option_set< JobBase >( validator )
+        .option( "[--tag {string}]", &JobBase::_tag, "only take models with a given tag" );
 
     auto cmds = cmd::make_parser( cmd::make_validator() )
         .command< Import >( opts_db, opts_import )
-        .command< Schedule >( opts_db, opts_schedule )
+        .command< Schedule >( opts_db, opts_job )
         .command< Report >( opts_db, opts_report_base, opts_report )
         .command< Compare >( opts_db, opts_report_base, opts_compare )
-        .command< Run >( opts_db );
+        .command< Run >( opts_db, opts_job );
     auto cmd = cmds.parse( args.begin(), args.end() );
 
     cmd.match( [&]( Cmd &cmd ) { cmd.setup(); cmd.run(); } );

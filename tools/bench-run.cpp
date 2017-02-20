@@ -100,10 +100,21 @@ void Run::execute( int job_id, ui::Verify &job )
 
 void Run::run()
 {
+    std::stringstream q;
     int inst = odbc::get_instance( _conn );
     std::cerr << "instance = " << inst << std::endl;
-    auto sel = nanodbc::statement( _conn, "select id, model from job where instance = ?" );
+    q << "select job.id, job.model from job";
+    if ( !_tag.empty() )
+        q << " join model on job.model = model.id"
+          << " join model_tags on model_tags.model = model.id"
+          << " join tag on model_tags.tag = tag.id";
+    q << " where job.instance = ?";
+    if ( !_tag.empty() )
+        q << " and tag.name = ?";
+    auto sel = nanodbc::statement( _conn, q.str() );
     sel.bind( 0, &inst );
+    if ( !_tag.empty() )
+        sel.bind( 1, _tag.c_str() );
     auto job = nanodbc::execute( sel );
 
     while ( job.next() )
