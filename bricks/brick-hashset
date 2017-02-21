@@ -454,7 +454,7 @@ struct _HashSet : HashSetBase< Cell >
 
     void clear() {
         _used = 0;
-        std::fill( _table.begin(), _table.end(), value_type() );
+        std::fill( _table.begin(), _table.end(), Cell() );
     }
 
     Cell &cellAt( size_t idx ) { return _table[ idx ]; }
