@@ -81,6 +81,7 @@ heap_offset offset_from_node ( const heap_node *ptr )
 void init_heap () {
 #ifdef __divine__
     if ( !heap ) heap = reinterpret_cast< char * >( __vm_obj_make( HEAP_SIZE ) );
+    list_end = (heap_node *) ( heap + HEAP_SIZE );
 #endif
     freelist = (heap_node *) heap;
     freelist->next_node = offset_from_node ( list_end );
