@@ -444,7 +444,7 @@ struct _HashSet : HashSetBase< Cell >
         _growing = false;
     }
 
-    void setSize( size_t s )
+    void reserve( size_t s )
     {
         _bits = 0;
         while ((s = s >> 1))
@@ -467,7 +467,7 @@ struct _HashSet : HashSetBase< Cell >
     _HashSet( Hasher h, int initial )
         : Base( h ), _used( 0 ), _maxsize( -1 ), _growing( false )
     {
-        setSize( initial );
+        reserve( initial );
     }
 };
 
@@ -1394,7 +1394,7 @@ struct RandomInsert {
         : insert( true ), max( max )
     {
         if ( bg->reserve() > 0 )
-            t.setSize( bg->items() * bg->reserve() );
+            t.reserve( bg->items() * bg->reserve() );
     }
 
     template< typename BG >
@@ -1477,7 +1477,7 @@ struct wrap_set {
         C< T > *t;
         struct ThreadData {};
         HashTable< T > withTD( ThreadData & ) { return *this; }
-        void setSize( int s ) { t->rehash( s ); }
+        void reserve( int s ) { t->rehash( s ); }
         void insert( T i ) { t->insert( i ); }
         int count( T i ) { return t->count( i ); }
         HashTable() : t( new C< T > ) {}
