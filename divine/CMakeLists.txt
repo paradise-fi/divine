@@ -38,19 +38,16 @@ add_library( divine-cc ${CPP_cc} )
 add_library( divine-ltl ${CPP_ltl} )
 # add_library( divine-ss ${CPP_ss} )
 # add_library( divine-mc ${CPP_mc} )
-add_library( divine-ui ${CPP_ui} ${doc_FILES} )
+add_library( divine-ui ${CPP_ui} ${doc_FILES}
+                       ${VERSION_FILE} ${VERSION_FILE}.check
+                       "flags-generated.cpp" )
 add_library( divine-vm ${CPP_vm} )
 
 if ( OPT_SIM )
   target_link_libraries( divine-ui edit )
 endif()
 
-add_library( libdivine "${VERSION_FILE}" "${VERSION_FILE}.check" "flags-generated.cpp" )
-
-target_link_libraries( libdivine divine-cc divine-ltl # divine-ss divine-mc
-                                 divine-ui divine-vm pthread )
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
-set_target_properties( libdivine PROPERTIES OUTPUT_NAME "divine" )
 
 bricks_unittest( test-divine ${HPP_ss} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} )
 
@@ -62,12 +59,12 @@ endforeach()
 target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
                                  LLVMBitReader LLVMBitWriter LLVMLinker
                                  LLVMObject clang clangBasic clangCodeGen )
-target_link_libraries( divine-ui divine-rt )
 target_link_libraries( divine-vm liblart divine-rt )
-target_link_libraries( libdivine LLVMBitReader LLVMBitWriter LLVMLinker )
+target_link_libraries( divine-vm LLVMBitReader LLVMBitWriter LLVMLinker )
+target_link_libraries( divine-ui divine-rt divine-cc divine-vm )
 
 if ( OPT_SQL )
-    target_link_libraries( libdivine nanodbc )
+    target_link_libraries( divine-ui nanodbc )
 endif()
 
 target_link_libraries( test-divine divine-cc divine-vm divine-ltl )
@@ -83,5 +80,5 @@ add_custom_target( unit_divine
     DEPENDS test-divine )
 add_dependencies( unit unit_divine )
 
-install( TARGETS libdivine DESTINATION lib )
+install( TARGETS divine-ui divine-vm divine-cc divine-ltl DESTINATION lib )
 install( FILES ${HPP} DESTINATION include/divine )

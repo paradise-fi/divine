@@ -22,15 +22,15 @@ target_link_libraries( lart
                        LLVMTransformUtils
                        LLVMAnalysis )
 
-target_link_libraries( divine ${LIBDIVINE_INSTANCES} libdivine divine-rt )
+target_link_libraries( divine divine-ui divine-rt )
 
 if ( OPT_SQL )
   add_executable( divbench benchmark.cpp bench-report.cpp bench-run.cpp )
-  target_link_libraries( divbench libdivine divine-rt )
+  target_link_libraries( divbench divine-ui divine-rt )
 endif()
 
 add_executable( divcheck divcheck.cpp )
-target_link_libraries( divcheck libdivine divine-rt )
+target_link_libraries( divcheck divine-ui divine-rt )
 
 if( NOT WIN32 )
   target_link_libraries( divine pthread )
