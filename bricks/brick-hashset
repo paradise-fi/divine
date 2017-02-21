@@ -355,7 +355,7 @@ struct _HashSet : HashSetBase< Cell >
     size_t _maxsize;
     bool _growing;
 
-    size_t size() const { return _table.size(); }
+    size_t capacity() const { return _table.size(); }
     bool empty() const { return !_used; }
 
     int count( const value_type &i ) { return find( i ).valid(); }
@@ -393,7 +393,7 @@ struct _HashSet : HashSetBase< Cell >
 
     iterator insertHinted( const value_type &item, hash64_t h, Table &table, int &used )
     {
-        if ( !_growing && size_t( _used ) > (size() / 100) * 75 )
+        if ( !_growing && size_t( _used ) > ( capacity() / 100 ) * 75 )
             grow();
 
         size_t idx;
@@ -416,7 +416,7 @@ struct _HashSet : HashSetBase< Cell >
     }
 
     void grow() {
-        if ( 2 * size() >= _maxsize )
+        if ( 2 * capacity() >= _maxsize )
             UNREACHABLE( "ran out of space in the hash table" );
 
         if( _growing )
@@ -428,7 +428,7 @@ struct _HashSet : HashSetBase< Cell >
 
         Table table;
 
-        table.resize( 2 * size(), Cell() );
+        table.resize( 2 * capacity(), Cell() );
         _bits |= (_bits << 1); // unmask more
 
         for ( auto cell : _table ) {
@@ -595,7 +595,7 @@ struct _ConcurrentHashSet : HashSetBase< Cell >
         return s * 2;
     }
 
-    size_t size() { return current().size(); }
+    size_t capacity() { return current().size(); }
     Row &current() { return _s->table[ _s->currentRow ]; }
     Row &current( unsigned index ) { return _s->table[ index ]; }
     bool changed( unsigned row ) { return row < _s->currentRow || _s->growing; }
@@ -931,7 +931,7 @@ struct Sequential
         ASSERT( set.count( 1 ) );
 
         unsigned count = 0;
-        for ( unsigned i = 0; i != set.size(); ++i )
+        for ( unsigned i = 0; i != set.capacity(); ++i )
             if ( set.valueAt( i ) )
                 ++count;
 
@@ -1048,7 +1048,7 @@ struct Parallel
 
         int count = 0;
         std::set< int > s;
-        for ( size_t i = 0; i != set.size(); ++i ) {
+        for ( size_t i = 0; i != set.capacity(); ++i ) {
             if ( set.valueAt( i ) ) {
                 if ( s.find( set.valueAt( i ) ) == s.end() )
                     s.insert( set.valueAt( i ) );
