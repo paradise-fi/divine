@@ -17,7 +17,7 @@
 #include "_PDCLIB_io.h"
 #include "_PDCLIB_locale.h"
 #include "_PDCLIB_clocale.h"
-#include "functions/locale/_PDCLIB_unicodedata.c" /* for wcinfo_size */
+#include "_PDCLIB_unicodedata.h"
 #include <threads.h>
 
 /* In a POSIX system, stdin / stdout / stderr are equivalent to the (int) file

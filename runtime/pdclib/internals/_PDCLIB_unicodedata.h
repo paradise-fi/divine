@@ -29879,12 +29879,3 @@ const _PDCLIB_wcinfo_t _PDCLIB_wcinfo[] = {
 
 const size_t _PDCLIB_wcinfo_size = sizeof(_PDCLIB_wcinfo) / sizeof(_PDCLIB_wcinfo[0]);
 #endif
-
-#ifdef TEST
-#include "_PDCLIB_test.h"
-int main( void )
-{
-    return TEST_RESULTS;
-}
-#endif
-
