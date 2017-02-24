@@ -15,7 +15,9 @@ install( TARGETS liblart DESTINATION lib )
 
 bricks_unittest( test-lart ${H_ABSTRACT} )
 
-target_link_libraries( test-lart libdivine )
+target_link_libraries( liblart LLVMCore LLVMSupport LLVMMC LLVMIRReader
+                               LLVMBitWriter LLVMCodeGen LLVMLinker )
+target_link_libraries( test-lart divine-rt divine-cc liblart )
 
 add_custom_target( unit_lart
     COMMAND sh ${TEST_WRAPPER} ${WITH_LCOV} ${CMAKE_CURRENT_BINARY_DIR}/test-lart
