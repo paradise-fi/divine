@@ -128,53 +128,52 @@ struct IndexFunctions : lart::Pass {
         llvm::GlobalVariable *mdGlobalsCount = mod.getGlobalVariable( "__md_globals_count" );
         ASSERT( mdGlobalsCount && "The bitcode must define __md_globals_count" );
 
-        std::map< llvm::StringRef, FunctionMeta > funMetaMap;
+        std::vector< FunctionMeta > funMeta;
         for ( auto &fn : mod ) {
-            if ( fn.isIntrinsic() )
+            if ( fn.isDeclaration() )
                 continue;
-            auto r = funMetaMap.emplace( fn.getName(), FunctionMeta( fn, *this ) );
-            ASSERT( r.second );
+            funMeta.emplace_back( fn, *this );
         }
 
         // build metadata table
         std::vector< llvm::Constant * > metatable;
-        metatable.reserve( funMetaMap.size() );
-        for ( auto &m : funMetaMap ) {
-            std::string funNameStr = m.second.entryPoint->getName().str();
+        metatable.reserve( funMeta.size() );
+        for ( auto &m : funMeta ) {
+            std::string funNameStr = m.entryPoint->getName().str();
             std::string funNameCStr = funNameStr;
             funNameCStr.push_back( 0 );
 
             auto *funName = util::getStringGlobal( funNameCStr, mod );
             funName->setName( "lart.divine.index.name." + funNameStr );
-            auto type = m.second.type;
+            auto type = m.type;
             type.push_back( 0 );
             auto *funType = util::getStringGlobal( type, mod );
             auto *persT = llvm::cast< llvm::PointerType >( funcMetaT->getElementType( 8 ) );
-            auto *pers = m.second.entryPoint->hasPersonalityFn()
+            auto *pers = m.entryPoint->hasPersonalityFn()
                             ? llvm::ConstantExpr::getPointerCast(
-                                    m.second.entryPoint->getPersonalityFn(), persT )
+                                    m.entryPoint->getPersonalityFn(), persT )
                             : llvm::ConstantPointerNull::get( persT );
 
             auto *lsdaT = llvm::cast< llvm::PointerType >( funcMetaT->getElementType( 9 ) );
-            auto *lsdam = m.second.entryPoint->getMetadata( "lart.lsda" );
+            auto *lsdam = m.entryPoint->getMetadata( "lart.lsda" );
             auto *lsda = lsdam
                             ? llvm::cast< llvm::ConstantAsMetadata >( lsdam->getOperand( 0 ) )->getValue()
                             : llvm::ConstantPointerNull::get( lsdaT );
 
             metatable.push_back( llvm::ConstantStruct::get( funcMetaT, {
                     llvm::ConstantExpr::getPointerCast( funName, funcMetaT->getElementType( 0 ) ),
-                    llvm::ConstantExpr::getPointerCast( m.second.entryPoint,
+                    llvm::ConstantExpr::getPointerCast( m.entryPoint,
                             funcMetaT->getElementType( 1 ) ),
-                    mkint( funcMetaT, 2, m.second.frameSize ),
-                    mkint( funcMetaT, 3, m.second.argCount ),
-                    mkint( funcMetaT, 4, m.second.isVariadic ),
+                    mkint( funcMetaT, 2, m.frameSize ),
+                    mkint( funcMetaT, 3, m.argCount ),
+                    mkint( funcMetaT, 4, m.isVariadic ),
                     llvm::ConstantExpr::getPointerCast( funType,
                                             funcMetaT->getElementType( 5 ) ),
-                    mkint( funcMetaT, 6, m.second.instTableSize ),
+                    mkint( funcMetaT, 6, m.instTableSize ),
                     llvm::ConstantPointerNull::get( llvm::PointerType::getUnqual( instMetaT ) ),
                     pers,
                     lsda,
-                    mkint( funcMetaT, 10, m.second.entryPoint->hasFnAttribute( llvm::Attribute::NoUnwind ) )
+                    mkint( funcMetaT, 10, m.entryPoint->hasFnAttribute( llvm::Attribute::NoUnwind ) )
                 } ) );
         }
 
