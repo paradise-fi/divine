@@ -8,6 +8,7 @@ extern const int __md_functions_count;
 extern const _MD_Global __md_globals[];
 extern const int __md_globals_count;
 
+/*
 const _MD_Function *__md_get_function_meta( const char *name ) {
     long from = 0;
     long to = __md_functions_count;
@@ -23,22 +24,12 @@ const _MD_Function *__md_get_function_meta( const char *name ) {
     }
     return nullptr;
 }
+*/
 
-const _MD_Function *__md_get_pc_meta( uintptr_t _pc ) {
-    uintptr_t pc = uintptr_t(_pc );
-    uintptr_t dist = std::numeric_limits< intptr_t >::max();
-    const _MD_Function *it = __md_functions,
-                       *ptr = nullptr;
-    for ( int i = 0; i < __md_functions_count; ++i, ++it ) {
-        if ( uintptr_t( it->entry_point ) <= pc ) {
-            uintptr_t d = pc - uintptr_t( it->entry_point );
-            if ( dist > d ) {
-                dist = d;
-                ptr = it;
-            }
-        }
-    }
-    return ptr;
+const _MD_Function *__md_get_pc_meta( uintptr_t pc ) {
+    uintptr_t fun = (pc & _VM_PM_Obj) >> (_VM_PB_Type + _VM_PB_Off);
+    __dios_assert_v( int( fun ) < __md_functions_count, "invalid function index" );
+    return __md_functions + fun - 1; // there is no function 0
 }
 
 _MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, const _MD_Function *funMeta )

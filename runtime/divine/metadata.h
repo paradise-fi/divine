@@ -69,7 +69,7 @@ typedef struct {
 
 /* Query function metadata by function name, this is the mangled name in case
  * of C++ or other languages which employ name mangling */
-const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW _ROOT;
+// const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW _ROOT;
 
 /* Query function metadata program counter value */
 const _MD_Function *__md_get_pc_meta( uintptr_t pc ) NOTHROW _ROOT;
