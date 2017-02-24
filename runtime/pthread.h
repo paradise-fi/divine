@@ -250,7 +250,7 @@ int pthread_condattr_init( pthread_condattr_t * ) _PTHREAD_NOEXCEPT _PTHREAD_NOI
 int pthread_condattr_setclock( pthread_condattr_t *, clockid_t ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE _PTHREAD_UNSUPPORTED;
 int pthread_condattr_setpshared( pthread_condattr_t *, int ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE _PTHREAD_UNSUPPORTED;
 
-int pthread_once( pthread_once_t *, void (*)(void) ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
+int pthread_once( pthread_once_t *, void (*)(void) ) _PTHREAD_NOINLINE;
 
 int pthread_setcancelstate( int, int * ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 int pthread_setcanceltype( int, int * ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE _PTHREAD_NO_EFFECT;

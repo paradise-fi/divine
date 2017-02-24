@@ -1242,7 +1242,7 @@ int pthread_condattr_setpshared( pthread_condattr_t *, int ) noexcept {
   --------------------------------------------------------------------------------
   */
 
-int pthread_once( pthread_once_t *once_control, void ( *init_routine )( void ) ) noexcept {
+int pthread_once( pthread_once_t *once_control, void ( *init_routine )( void ) ) {
     if ( once_control->__mtx.__once == 0 )
         return 0;
 
