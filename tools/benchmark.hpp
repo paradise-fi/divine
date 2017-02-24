@@ -105,7 +105,7 @@ struct Run : JobBase
 {
     std::vector< std::pair< std::string, std::string > > _files;
     std::string _script;
-    bool _done;
+    bool _done = false, _single = false;
 
     void prepare( int model );
 

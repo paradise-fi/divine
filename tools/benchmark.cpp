@@ -232,12 +232,15 @@ int main( int argc, const char **argv )
     auto opts_job = cmd::make_option_set< JobBase >( validator )
         .option( "[--tag {string}]", &JobBase::_tag, "only take models with a given tag" );
 
+    auto opts_run = cmd::make_option_set< Run >( validator )
+        .option( "[--single]", &Run::_single, "run only single benchmark" );
+
     auto cmds = cmd::make_parser( cmd::make_validator() )
         .command< Import >( opts_db, opts_import )
         .command< Schedule >( opts_db, opts_job )
         .command< Report >( opts_db, opts_report_base, opts_report )
         .command< Compare >( opts_db, opts_report_base, opts_compare )
-        .command< Run >( opts_db, opts_job );
+        .command< Run >( opts_db, opts_run, opts_job );
     auto cmd = cmds.parse( args.begin(), args.end() );
 
     cmd.match( [&]( Cmd &cmd ) { cmd.setup(); cmd.run(); } );

@@ -138,6 +138,8 @@ void Run::run()
             fail.bind( 0, &job_id );
             fail.execute();
         }
+        if ( _single )
+            break;
     }
 }
 
