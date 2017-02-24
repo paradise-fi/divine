@@ -188,10 +188,10 @@ enum
 /// @link http://dwarfstd.org/Dwarf4.pdf @unlink
 /// @param data reference variable holding memory pointer to decode from
 /// @returns decoded value
+__attribute__((__annotate__("lart.interrupt.skipcfl")))
 static
 uintptr_t
 readULEB128(const uint8_t** data)
-    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     uintptr_t result = 0;
     uintptr_t shift = 0;
@@ -212,10 +212,10 @@ readULEB128(const uint8_t** data)
 /// @link http://dwarfstd.org/Dwarf4.pdf @unlink
 /// @param data reference variable holding memory pointer to decode from
 /// @returns decoded value
+__attribute__((__annotate__("lart.interrupt.skipcfl")))
 static
 intptr_t
 readSLEB128(const uint8_t** data)
-    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     uintptr_t result = 0;
     uintptr_t shift = 0;
@@ -408,12 +408,12 @@ get_shim_type_info(uint64_t ttypeIndex, const uint8_t* classInfo,
     excpType, then this exception spec does not catch the excpType.
 */
 #if LIBCXXABI_ARM_EHABI
+__attribute__((__annotate__("lart.interrupt.skipcfl")))
 static
 bool
 exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
                          uint8_t ttypeEncoding, const __shim_type_info* excpType,
                          void* adjustedPtr, _Unwind_Exception* unwind_exception)
-    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     if (classInfo == 0)
     {
@@ -451,12 +451,12 @@ exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
     return true;
 }
 #else
+__attribute__((__annotate__("lart.interrupt.skipcfl")))
 static
 bool
 exception_spec_can_catch(int64_t specIndex, const uint8_t* classInfo,
                          uint8_t ttypeEncoding, const __shim_type_info* excpType,
                          void* adjustedPtr, _Unwind_Exception* unwind_exception)
-    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     if (classInfo == 0)
     {
@@ -550,11 +550,11 @@ set_registers(_Unwind_Exception* unwind_exception, _Unwind_Context* context,
         _UA_CLEANUP_PHASE && !_UA_HANDLER_FRAME
 */
 
+__attribute__((__annotate__("lart.interrupt.skipcfl")))
 static void scan_eh_tab(scan_results &results, _Unwind_Action actions,
                         bool native_exception,
                         _Unwind_Exception *unwind_exception,
                         _Unwind_Context *context)
-    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     // Initialize results to found nothing but an error
     results.ttypeIndex = 0;
@@ -934,6 +934,7 @@ _UA_CLEANUP_PHASE
         Else a cleanup is not found: return _URC_CONTINUE_UNWIND
 */
 
+__attribute__((__annotate__("lart.interrupt.skipcfl")))
 #if !LIBCXXABI_ARM_EHABI
 _Unwind_Reason_Code
 #ifdef __USING_SJLJ_EXCEPTIONS__
@@ -943,7 +944,6 @@ __gxx_personality_v0
 #endif
                     (int version, _Unwind_Action actions, uint64_t exceptionClass,
                      _Unwind_Exception* unwind_exception, _Unwind_Context* context)
-                    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     if (version != 1 || unwind_exception == 0 || context == 0)
         return _URC_FATAL_PHASE1_ERROR;
