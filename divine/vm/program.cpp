@@ -598,7 +598,7 @@ void Program::computeStatic()
 
 void Program::pass()
 {
-    CodePointer pc( 1, 0 );
+    CodePointer pc( 0, 0 );
     int _framealign = framealign;
 
     for ( auto &function : *module )
