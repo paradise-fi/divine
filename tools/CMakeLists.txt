@@ -34,6 +34,8 @@ target_link_libraries( divcheck divine-ui divine-rt )
 
 if( NOT WIN32 )
   target_link_libraries( divine pthread )
+  target_link_libraries( divcheck pthread )
+  target_link_libraries( divbench pthread )
 endif( NOT WIN32 )
 
 if( OPT_HOARD )
