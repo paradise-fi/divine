@@ -26,7 +26,7 @@ target_link_libraries( divine divine-ui divine-rt )
 
 if ( OPT_SQL )
   add_executable( divbench benchmark.cpp bench-report.cpp bench-run.cpp )
-  target_link_libraries( divbench divine-ui divine-rt )
+  target_link_libraries( divbench divine-ui divine-rt pthread )
 endif()
 
 add_executable( divcheck divcheck.cpp )
@@ -35,7 +35,6 @@ target_link_libraries( divcheck divine-ui divine-rt )
 if( NOT WIN32 )
   target_link_libraries( divine pthread )
   target_link_libraries( divcheck pthread )
-  target_link_libraries( divbench pthread )
 endif( NOT WIN32 )
 
 if( OPT_HOARD )
