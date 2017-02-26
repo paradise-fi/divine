@@ -60,10 +60,10 @@ struct Table
     {
         ASSERT_LT( 0, _rows.size() );
         Row total = _rows[ 0 ];
-        for ( auto row : _rows )
-            for ( unsigned c = 0; c < row.size(); ++c )
-                row[ c ].match( [&]( std::string ) { total[ c ] = std::string(); },
-                                [&]( auto v ) { total[ c ].get< decltype( v ) >() += v; } );
+        for ( int r = 1; r < _rows.size(); ++ r )
+            for ( unsigned c = 0; c < _rows[ r ].size(); ++c )
+                _rows[ r ][ c ].match( [&]( std::string ) { total[ c ] = std::string(); },
+                                       [&]( auto v ) { total[ c ].get< decltype( v ) >() += v; } );
         total[ 0 ] = std::string( "**total**" );
         _rows.push_back( total );
     }
