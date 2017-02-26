@@ -376,11 +376,12 @@ inline bool operator<( Style a, Style b ) {
 
 
 /* a single line of a plot */
-struct DataSet {
-    Matrix _raw;
+struct DataSet
+{
+    Matrix _raw, _fit;
     std::vector< Spline > _interpolated;
-    bool _interpolate;
 
+    enum Type { Discrete, Interpolated, Fitted } _type;
     enum Style { Points, LinePoints, Line, Ribbon,
                  RibbonLine, RibbonLP, Box } _style;
     std::string _name;
@@ -403,51 +404,68 @@ struct DataSet {
     bool box() const { return _style == Box; }
 
     template< typename... Ts >
-    void append( Ts... ts ) {
+    void append( Ts... ts )
+    {
         _raw.pushRow( ts... );
     }
 
-    Matrix::Proxy operator[]( int i ) {
+    template< typename... Ts >
+    void appendFit( Ts... ts )
+    {
+        ASSERT_EQ( _type, Fitted );
+        _fit.pushRow( ts... );
+    }
+
+    Matrix::Proxy operator[]( int i )
+    {
         return _raw[ i ];
     }
 
     std::string data( double xscale, double yscale )
     {
-        if ( _interpolate )
-            return dataInterpolated( xscale, yscale );
-        else
-            return rawdata( xscale, yscale );
+        switch ( _type )
+        {
+            case Interpolated:
+                return dataInterpolated( _raw, xscale, yscale );
+            case Fitted:
+                return dataInterpolated( _fit, xscale, yscale );
+            case Discrete:
+                return rawdata( xscale, yscale );
+        }
     }
 
-    std::string dataInterpolated( double xscale, double yscale ) {
-        if ( _interpolated.empty() ) {
-            _interpolated.resize( _raw.width );
-            for ( int c = 1; c < _raw.width; ++c )
-                for ( int r = 0; r < _raw.height(); ++r )
-                    _interpolated[c].push( _raw[r][0], _raw[r][c] );
-            for ( int c = 1; c < _raw.width; ++c )
+    std::string dataInterpolated( Matrix &src, double xscale, double yscale )
+    {
+        if ( _interpolated.empty() )
+        {
+            _interpolated.resize( src.width );
+            for ( int c = 1; c < src.width; ++c )
+                for ( int r = 0; r < src.height(); ++r )
+                    _interpolated[c].push( src[r][0], src[r][c] );
+            for ( int c = 1; c < src.width; ++c )
                 _interpolated[c].interpolateNaturalKs();
         }
 
         std::stringstream str;
         str << std::setprecision( std::numeric_limits< double >::digits10 );
-        for ( int r = 0; r < _raw.height() - 1; ++r )
+        for ( int r = 0; r < src.height() - 1; ++r )
             for ( int k = 0; k < 20; ++k ) {
-                double x = _raw[r][0], x_next = _raw[r + 1][0];
+                double x = src[r][0], x_next = src[r + 1][0];
                 x = x + k * (x_next - x) / 20.0;
                 str << x * xscale;
-                for ( int c = 1; c < _raw.width; ++c )
+                for ( int c = 1; c < src.width; ++c )
                     str << " " << _interpolated[c].eval( x ) * yscale;
                 str << std::endl;
             }
-        str << " " << _raw[_raw.height() - 1][0] * xscale;
-        for ( int c = 1; c < _raw.width; ++c )
-            str << " " << _raw[_raw.height() - 1][c] * yscale;
+        str << " " << src[src.height() - 1][0] * xscale;
+        for ( int c = 1; c < src.width; ++c )
+            str << " " << src[src.height() - 1][c] * yscale;
         str << std::endl << "end" << std::endl;
         return str.str();
     }
 
-    std::string rawdata( double xscale, double yscale ) {
+    std::string rawdata( double xscale, double yscale )
+    {
         std::stringstream str;
         str << std::setprecision( std::numeric_limits< double >::digits10 );
         for ( int r = 0; r < _raw.height(); ++r ) {
@@ -460,7 +478,7 @@ struct DataSet {
         return str.str();
     }
 
-    DataSet( int w ) : _raw( 0, w ) {}
+    DataSet( int w ) : _raw( 0, w ), _fit( 0, w ), _type( Discrete ) {}
 };
 
 namespace {
@@ -576,13 +594,15 @@ struct Plot {
         _style.set( t, from, to );
     }
 
-    DataSet &append( std::string name, int sort, int cols, DataSet::Style s, bool interpolate = true ) {
+    DataSet &append( std::string name, int sort, int cols, DataSet::Style s,
+                     DataSet::Type t = DataSet::Interpolated )
+    {
         _datasets.emplace_back( cols );
         auto &n = _datasets.back();
         n._style = s;
         n._name = name;
         n._sort = sort;
-        n._interpolate = interpolate;
+        n._type = t;
         return n;
     }
 
@@ -658,7 +678,8 @@ struct Plot {
             << "unset grid" << std::endl
             << "set tmargin 4" << std::endl
             << "set format x '%.0f'" << std::endl;
-        int boxes = std::count_if( _datasets.begin(), _datasets.end(), []( const DataSet &ds ) { return ds.box(); } );
+        int boxes = std::count_if( _datasets.begin(), _datasets.end(),
+                                   []( const DataSet &ds ) { return ds.box(); } );
         if ( boxes ) {
             if ( _names.count( X ) == 0 )
                 str << "set xtics scale 0" << std::endl << "set format x ''" << std::endl
@@ -686,14 +707,17 @@ struct Plot {
         return " fs pattern " + std::to_string( p[ i ] );
     }
 
-    std::string datasets( Terminal t )
+    std::string datasets( ColourMap cm, Terminal t )
     {
         std::stringstream str;
         int seq = 1;
-        auto colours = _style.render( _datasets.size() );
 
         str << "plot \\" << std::endl;
         for ( auto d : _datasets ) {
+
+            auto key = ColourKey( _names[ Z ], d._name, _style );
+            ASSERT( cm.count( key ) );
+
             if ( d.ribbon() )
                 str << " '-' using 1:3:4 title '" << d._name << "' with filledcurves ls " << seq
                     << ",\\\n '-' using 1:3 notitle with lines ls " << seq << " lw 0.5"
@@ -706,7 +730,7 @@ struct Plot {
                 str << ",\\\n";
             if ( d.points() )
                 str << " '-' using 1:2 notitle with points ls " << seq
-                    << " pt " << seq << " ps " << _style.pointsize( t ) << " lc " << colours[ seq ];
+                    << " pt " << seq << " ps " << _style.pointsize( t ) << " lc " << cm[ key ];
             if ( d.box() )
                 str << " '-' using ($1 - offset + " << seq - 1 << " * step):4 with boxes notitle ls " << seq << pattern( 0 )
                     << ",\\\n '-' using ($1 - offset + " << seq - 1 << " * step):2 with boxes notitle ls " << seq << pattern( 1 )
@@ -737,7 +761,7 @@ struct Plot {
     }
 
     std::string plot( ColourMap cm = ColourMap(), Terminal t = Terminal()) {
-        return preamble( cm ) + setup() + datasets( t );
+        return preamble( cm ) + setup() + datasets( cm, t );
     }
 };
 
