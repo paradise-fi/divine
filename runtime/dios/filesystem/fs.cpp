@@ -1,6 +1,5 @@
 // -*- C++ -*- (c) 2015 Jiří Weiser
 
-#include <iostream>
 #include <cerrno>
 #include <cstdarg>
 #include <cstdlib>

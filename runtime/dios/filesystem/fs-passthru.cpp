@@ -1,6 +1,5 @@
 // // -*- C++ -*- (c) 2016 Katarina Kejstova
 
-#include <iostream>
 #include <cerrno>
 #include <cstdarg>
 #include <cstdlib>
