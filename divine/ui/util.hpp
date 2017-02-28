@@ -35,7 +35,7 @@ static std::string interval_str( MSecs i, bool subsec = false )
     std::stringstream t;
     t << std::setfill( '0' );
     if ( h.count() )
-        t << h.count() << ":" << std::setw( 2 ) << m.count() << ":" << s.count();
+        t << h.count() << ":" << std::setw( 2 ) << m.count() << ":" << std::setw( 2 ) << s.count();
     else
         t << m.count() << ":" << std::setw( 2 ) << s.count();
     if ( subsec )
