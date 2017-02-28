@@ -108,7 +108,7 @@ static inline GenericPointer nullPointer( PointerType t = PointerType::Const )
  */
 struct CodePointer : GenericPointer
 {
-    CodePointer( ObjT f = 0, OffT i = 0 ) : GenericPointer( PointerType::Code, f, i ) {}
+    explicit CodePointer( ObjT f = 0, OffT i = 0 ) : GenericPointer( PointerType::Code, f, i ) {}
     CodePointer( GenericPointer r ) : GenericPointer( r ) { ASSERT_EQ( type(), PointerType::Code ); }
 
     auto function() const { return _rep.obj; }

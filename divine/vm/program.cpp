@@ -45,7 +45,7 @@ CodePointer Program::functionByName( std::string s )
         return CodePointer();
     if ( !functionmap.count( f ) )
         UNREACHABLE_F( "function %s does not have a functionmap entry", s.c_str() );
-    return functionmap[ f ];
+    return CodePointer( functionmap[ f ], 0 );
 }
 
 GenericPointer Program::globalByName( std::string s )
