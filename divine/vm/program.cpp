@@ -400,7 +400,7 @@ Program::Position Program::insert( Position p )
 
         insn.result() = insert( p.pc.function(), &*p.I ).slot;
     } else
-        pcmap.insert( std::make_pair( p.I, p.pc ) ), insnmap.insert( std::make_pair( p.pc, p.I ) );
+        pcmap.insert( std::make_pair( p.I, p.pc ) );
 
     ++ p.I; /* next please */
     p.pc.instruction( p.pc.instruction() + 1 );
@@ -621,6 +621,7 @@ void Program::pass()
 
         makeFit( functions, pc.function() );
         functionmap[ &function ] = pc.function();
+        llvmfunctionmap[ pc.function() ] = &function;
         pc.instruction( 0 );
 
         if ( !codepointers )

@@ -335,7 +335,7 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
             yield( "insn", print::instruction( eval, 0, 1000 ) );
         }
         auto npc = program.nextpc( pc() );
-        auto op = program.insnmap[ npc ];
+        auto op = program.find( nullptr, npc ).first;
         yield( "location", location( *op ) );
 
         auto sym = op->getParent()->getParent()->getName().str();
@@ -360,7 +360,7 @@ void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
         out << ( iter == CodePointer( pc() ) ? ">>" : "  " );
         if ( i.opcode == OpBB )
         {
-            auto iop = _ctx.program().insnmap[ iter + 1 ];
+            auto iop = _ctx.program().find( nullptr, iter + 1 ).first;
             out << print::value( eval, iop->getParent() ) << ":" << std::endl;
         }
         else
@@ -605,7 +605,7 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield )
         return;
 
     auto npc = _ctx.program().nextpc( pc() );
-    auto op = _ctx.program().insnmap[ npc ];
+    auto op = _ctx.program().find( nullptr, npc ).first;
     auto F = op->getParent()->getParent();
 
     for ( auto &BB : *F )

@@ -101,7 +101,7 @@ struct Stepper
     template< typename Eval >
     bool check( Context &ctx, Eval &eval, CodePointer oldpc, bool moved )
     {
-        if ( moved && check_location( eval.pc(), eval.program().insnmap[ oldpc ] ) )
+        if ( moved && check_location( eval.pc(), eval.program().find( nullptr, oldpc ).first ) )
             return true;
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
             return true;

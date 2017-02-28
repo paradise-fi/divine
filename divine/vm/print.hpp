@@ -65,7 +65,7 @@ void ascbyte( std::ostream &o, int &col, B byte )
 enum class DisplayVal { Name, Value, PreferName };
 
 template< typename Eval >
-static std::string value( Eval &eval, const llvm::Value *val, DisplayVal disp = DisplayVal::PreferName )
+static std::string value( Eval &eval, llvm::Value *val, DisplayVal disp = DisplayVal::PreferName )
 {
     std::stringstream num2str;
     num2str << std::setw( 2 ) << std::setfill( '0' ) << std::hex;
@@ -76,12 +76,14 @@ static std::string value( Eval &eval, const llvm::Value *val, DisplayVal disp = 
     {
         if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
         {
-            num2str << eval.program().pcmap[ I ].instruction();
+            num2str << eval.program().find( I, CodePointer() ).second.instruction();
             name = "%" + num2str.str();
         }
         else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
         {
-            num2str << eval.program().blockmap[ B ].instruction();
+            auto insn = eval.program().first_indexed( B->begin(), B->end() );
+            ASSERT( insn != B->end() );
+            num2str << eval.program().find( &*insn, CodePointer() ).second.instruction() - 1;
             name = B->getName().str();
             name = "label %" + ( name.empty() || name.size() > 20 ? num2str.str() : name );
         }
@@ -106,7 +108,7 @@ static void result( std::ostream &out, int col, Eval &eval )
 {
     while ( col < 60 )
         col ++, out << " ";
-    out << "# " << value( eval, eval.program().insnmap[ eval.pc() ], DisplayVal::Value );
+    out << "# " << value( eval, eval.program().find( nullptr, eval.pc() ).first, DisplayVal::Value );
 }
 
 template< typename I >
@@ -173,7 +175,7 @@ static std::string instruction( Eval &eval, int padding = 0, int colmax = 80 )
 {
     std::stringstream out;
     auto &insn = eval.instruction();
-    auto I = eval.program().insnmap[ eval.pc() ];
+    auto I = eval.program().find( nullptr, eval.pc() ).first;
     ASSERT( I );
 
     bool printres = true;
@@ -289,35 +291,19 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
         ++ line, ++ lineno;
     unsigned endline = lineno;
 
-    auto act_pc = program.nextpc( pc );
-    auto act_op = program.insnmap[ act_pc ];
-
-    auto iter = pc;
+    CodePointer iter( pc.function(), 0 );
 
     /* figure out the source code span the function covers; painfully */
-    for ( iter.instruction( 0 ); program.valid( iter ); iter = program.advance( iter ) )
+    for ( iter = program.nextpc( iter ); program.valid( iter ); iter = program.advance( iter ) )
     {
-        auto opcode = program.instruction( iter ).opcode;
-        if ( opcode == OpBB || opcode == OpArgs )
-            continue;
-        auto dl = program.insnmap[ iter ]->getDebugLoc().get();
+        auto dl = program.find( nullptr, iter ).first->getDebugLoc().get();
         if ( !dl )
             continue;
         while ( dl->getInlinedAt() )
             dl = dl->getInlinedAt();
-        if ( program.insnmap[ iter ] == act_op )
+        if ( iter >= pc && dl && !active )
             active = dl->getLine();
         endline = std::max( endline, dl->getLine() );
-    }
-
-    while ( act_op && !active )
-    {
-        auto dl = act_op->getDebugLoc();
-        while ( dl && dl->getInlinedAt() )
-            dl = dl->getInlinedAt();
-        active = dl ? dl->getLine() : active;
-        pc = program.advance( pc );
-        act_op = program.insnmap[ pc ];
     }
 
     /* print it */

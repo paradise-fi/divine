@@ -32,6 +32,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/CodeGen/IntrinsicLowering.h>
+#include <llvm/IR/IntrinsicInst.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/pointer.hpp>
@@ -195,11 +196,11 @@ struct Program
     std::map< const llvm::Type *, int > typemap;
 
     std::map< const llvm::Instruction *, CodePointer > pcmap;
-    std::map< CodePointer, llvm::Instruction * > insnmap;
     std::map< const llvm::Value *, std::string > anonmap;
 
     std::map< const llvm::BasicBlock *, CodePointer > blockmap;
     std::map< const llvm::Function *, int > functionmap;
+    std::map< int, llvm::Function * > llvmfunctionmap;
 
     llvm::DITypeIdentifierMap ditypemap;
 
@@ -247,10 +248,46 @@ struct Program
         return functions[ functionmap[ F ] ];
     }
 
+    auto first_indexed( llvm::BasicBlock::iterator it, llvm::BasicBlock::iterator end )
+    {
+        for ( ; it != end; ++it )
+        {
+            if ( llvm::isa< llvm::DbgDeclareInst >( &*it ) )
+                continue;
+            if ( llvm::isa< llvm::DbgValueInst >( &*it ) )
+                continue;
+            return it;
+        }
+        return end;
+    }
+
+    auto find( llvm::Instruction *I, CodePointer pc )
+        -> std::pair< llvm::Instruction *, CodePointer >
+    {
+        llvm::Function *F = I ? I->getParent()->getParent() : llvmfunction( pc );
+        CodePointer pcf( pc.function() ? pc.function() : functionmap[ F ], 0 );
+        ASSERT( F );
+        ASSERT( pcf.function() );
+
+        for ( auto &BB : *F )
+        {
+            ASSERT_EQ( instruction( pcf ).opcode, OpBB );
+            pcf = pcf + 1;
+            for ( auto it = first_indexed( BB.begin(), BB.end() );
+                  it != BB.end();
+                  it = first_indexed( std::next( it ), BB.end() ) )
+            {
+                if ( ( I && I == &*it ) || ( pc.function() && pc == pcf ) )
+                    return std::make_pair( &*it, pcf );
+                do pcf = pcf + 1; while ( valid( pcf ) && instruction( pcf ).opcode == OpArgs );
+            }
+        }
+        UNREACHABLE( "Program::find() failed" );
+    }
+
     llvm::Function *llvmfunction( CodePointer pc ) /* eww. */
     {
-        pc.instruction( 1 );
-        return insnmap[ pc ]->getParent()->getParent();
+        return llvmfunctionmap[ pc.function() ];
     }
 
     CodePointer nextpc( CodePointer pc )
