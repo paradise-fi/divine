@@ -272,7 +272,8 @@ struct Tuple {
     }
 
     TEST(retval) {
-        ASSERT_EQ( pass( []( int x ) { return x + 2; }, std::tuple< int >( 40 ) ), 42 );
+        auto l = []( int x ) { return x + 2; };
+        ASSERT_EQ( pass( l, std::tuple< int >( 40 ) ), 42 );
         int z = pass( []( int x, int y ) { return x + y; }, std::tuple< int, int >( 40, 2 ) );
         ASSERT_EQ( z, 42 );
     }
