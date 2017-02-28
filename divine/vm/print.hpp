@@ -151,6 +151,20 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
             case llvm::FCmpInst::FCMP_UNO: op += ".uno"; break;
             default: UNREACHABLE( "unexpected fcmp predicate" ); break;
         }
+    if ( insn.opcode == OpDbg )
+        switch ( insn.subcode )
+        {
+            case llvm::Intrinsic::dbg_value: op += ".value"; break;
+            case llvm::Intrinsic::dbg_declare: op += ".declare"; break;
+            default: UNREACHABLE( "unexpected debug opcode" ); break;
+        }
+    if ( insn.opcode == OpDbg )
+        switch ( insn.subcode )
+        {
+            case llvm::Intrinsic::dbg_value: op += ".value"; break;
+            case llvm::Intrinsic::dbg_declare: op += ".declare"; break;
+            default: UNREACHABLE( "unexpected debug opcode" ); break;
+        }
     return op;
 }
 
@@ -171,7 +185,7 @@ static std::string instruction( Eval &eval, int padding = 0, int colmax = 80 )
 
     out << opcode( insn ) << " ";
     uint64_t skipMask = 0;
-    const int argc = I->getNumOperands();
+    const int argc = insn.opcode == OpDbg ? 0 : I->getNumOperands();
     int argalign = out.str().size() + padding, argcols = 0;
 
     if ( insn.opcode == llvm::Instruction::Call || insn.opcode == llvm::Instruction::Invoke )

@@ -43,6 +43,8 @@ void opcode_tolower()
 
 std::string opcode( int op )
 {
+    if ( op == OpDbg )
+        return "dbg";
     opcode_tolower();
     return _opcode[ op ];
 }
