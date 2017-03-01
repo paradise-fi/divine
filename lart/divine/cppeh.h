@@ -39,11 +39,12 @@ namespace divine {
 
 namespace dwarf = llvm::dwarf;
 
-struct CppEhTab {
-
+struct CppEhTab
+{
     using Actions = std::vector< llvm::Constant * >;
 
-    struct CallSite {
+    struct CallSite
+    {
         CallSite( llvm::Instruction *pc, llvm::BasicBlock *lb, Actions act, bool cleanup ) :
             invoke( pc->getParent() ), landing( lb ), actions( act ), cleanup( cleanup )
         { }
@@ -140,15 +141,19 @@ struct CppEhTab {
         typeTable = _typeInfos;
         std::reverse( typeTable.begin(), typeTable.end() );
 
-        for ( auto *es : _exceptSpecs ) {
-            typeIndex[ es ] = -( specifierTable.size() + 1 ); // indices start with 1 and are negativea
+        for ( auto *es : _exceptSpecs )
+        {
+            typeIndex[ es ] = -( specifierTable.size() + 1 ); // indices start with 1 and are negative
             iterateFilter( es, [&]( auto *ti ) { pushLeb_n( specifierTable, typeIndex[ ti ] ); } );
             pushLeb_n( specifierTable, 0, 1 ); // end of record
         }
 
-        for ( auto &cs : _callSites ) {
+        for ( auto &cs : _callSites )
+        {
             actionIndex[ &cs.actions ] = actionTable.size() + 1;
-            for ( auto *h : cs.actions ) {
+
+            for ( auto *h : cs.actions )
+            {
                 ASSERT_NEQ( typeIndex[ h ], 0 );
                 pushLeb_n( actionTable, typeIndex[ h ] );
 
@@ -158,7 +163,9 @@ struct CppEhTab {
                 else
                     pushLeb_n( actionTable, 1, 1 ); // offset is relative to the offset entry
             }
-            if ( cs.cleanup ) {
+
+            if ( cs.cleanup )
+            {
                 pushLeb_n( actionTable, 0, 1 ); // cleanup is id 0
                 pushLeb_n( actionTable, 0, 1 ); // terminate the actions entry
             }
@@ -224,17 +231,20 @@ struct CppEhTab {
         } while ( todo > 0 );
     }
 
-    int typeID( llvm::Constant *c ) {
+    int typeID( llvm::Constant *c )
+    {
         auto it = std::find( _typeInfos.begin(), _typeInfos.end(), c );
         return it == _typeInfos.end() ? 0 : it - _typeInfos.begin() + 1;
     }
 
-    void addID( llvm::Constant *ti ) {
+    void addID( llvm::Constant *ti )
+    {
         if ( !typeID( ti ) )
             _typeInfos.emplace_back( ti );
     }
 
-    void addSpec( llvm::Constant *spec ) {
+    void addSpec( llvm::Constant *spec )
+    {
         auto it = std::find( _exceptSpecs.begin(), _exceptSpecs.end(), spec );
         if ( it == _exceptSpecs.end() )
             _exceptSpecs.emplace_back( spec );
