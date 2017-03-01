@@ -3,6 +3,10 @@
 #include "_PDCLIB_aux.h"
 #include "_PDCLIB_config.h"
 
+#ifndef __APPLE__
+#include <pthread.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,7 +25,6 @@ typedef __darwin_pthread_once_t _PDCLIB_once_flag;
 
 #else
 /* Just include pthread.h */
-#include <pthread.h>
 #define _PDCLIB_THR_T pthread_t
 #define _PDCLIB_CND_T pthread_cond_t
 #define _PDCLIB_MTX_T pthread_mutex_t
