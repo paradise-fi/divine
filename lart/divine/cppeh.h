@@ -71,32 +71,37 @@ struct CppEhTab {
 
     void build( llvm::Function &fn )
     {
-        for ( auto &i : brick::query::flatten( fn ) ) {
-            if ( auto *invoke = llvm::dyn_cast< llvm::InvokeInst >( &i ) ) {
-                llvm::BasicBlock *unw = invoke->getUnwindDest();
-                auto *lp = invoke->getLandingPadInst();
+        for ( auto &i : brick::query::flatten( fn ) )
+            if ( auto *invoke = llvm::dyn_cast< llvm::InvokeInst >( &i ) )
+                build( invoke );
+    }
 
-                Actions actions;
-                for ( int i = 0, end = lp->getNumClauses(); i < end; ++i ) {
-                    if ( lp->isCatch( i ) ) {
-                        auto *ti = lp->getClause( i )->stripPointerCasts();
-                        addID( ti );
-                        actions.emplace_back( ti );
-                    }
-                    else if ( lp->isFilter( i ) ) {
-                        std::vector< llvm::Constant * > filter;
-                        auto *clause = lp->getClause( i )->stripPointerCasts();
-                        iterateFilter( clause, [&]( auto *ti ) {
-                                addID( ti );
-                                filter.emplace_back( ti );
-                            } );
-                        addSpec( clause );
-                        actions.emplace_back( clause );
-                    }
-                }
-                _callSites.emplace_back( invoke, unw, actions, lp->isCleanup() );
+    void build( llvm::InvokeInst *invoke )
+    {
+        llvm::BasicBlock *unw = invoke->getUnwindDest();
+        auto *lp = invoke->getLandingPadInst();
+
+        Actions actions;
+        for ( int i = 0, end = lp->getNumClauses(); i < end; ++i )
+            if ( lp->isCatch( i ) )
+            {
+                auto *ti = lp->getClause( i )->stripPointerCasts();
+                addID( ti );
+                actions.emplace_back( ti );
             }
-        }
+            else if ( lp->isFilter( i ) )
+            {
+                std::vector< llvm::Constant * > filter;
+                auto *clause = lp->getClause( i )->stripPointerCasts();
+                iterateFilter( clause, [&]( auto *ti )
+                               {
+                                   addID( ti );
+                                   filter.emplace_back( ti );
+                               } );
+                addSpec( clause );
+                actions.emplace_back( clause );
+            }
+        _callSites.emplace_back( invoke, unw, actions, lp->isCleanup() );
     }
 
     using ConstVec = std::vector< llvm::Constant * >;
