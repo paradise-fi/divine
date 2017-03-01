@@ -89,6 +89,7 @@ int chdir( const char *path );
 int fchdir( int dirfd );
 
 void _exit( int status );
+pid_t getpid( void );
 
 int fsync( int fd );
 int fdatasync( int fd );
