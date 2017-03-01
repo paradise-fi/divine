@@ -158,7 +158,7 @@ int hash( Heap &heap, HeapPointer root,
 
     visited.emplace( root.object(), content_hash );
 
-    if ( depth > 5 )
+    if ( depth > 8 )
         return content_hash;
 
     if ( size > 16 * 1024 )
