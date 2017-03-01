@@ -51,6 +51,25 @@ extern "C" {
 /* Termination request */
 #define SIGTERM 15
 
+/* Quit from keyboard */
+#define SIGQUIT 3
+/* Bus error (bad memory access) */
+#define SIGBUS 7
+/* Bad argument to routine */
+#define SIGSYS 31
+/* Trace/breakpoint trap */
+#define SIGTRAP 5
+/* CPU time limit exceeded */
+#define SIGXCPU 24
+/* File size limit exceeded */
+#define SIGXFSZ 25
+/* IOT trap. A synonym for SIGABRT */
+#define SIGIOT SIGABRT
+/* Synonymous with SIGSYS */
+#define SIGUNUSED SIGSYS
+/* Kill signal */
+#define SIGKILL 9
+
 /* The following should be defined to pointer values that could NEVER point to
    a valid signal handler function. (They are used as special arguments to
    signal().) Again, these are the values used by Linux.
