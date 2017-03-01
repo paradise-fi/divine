@@ -73,7 +73,7 @@ enum Hypercall /* see divine.h for prototypes & documentation */
     HypercallObjSize
 };
 
-enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1, OpBB, OpArgs };
+enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1, OpBB, OpDbg, OpArgs };
 
 struct Choice {
     int options;
