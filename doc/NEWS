@@ -12,6 +12,17 @@ DIVINE 4.0
 - [4.0.1] A complete `libm` implementation is now bundled with `divine cc`.
 - [4.0.1] Support for `regex.h` has been added to `divine cc`.
 - [4.0.1] Preliminary support for user-provided program monitoring functions.
+- [4.0.2] Improved bitcode linker, libraries as .a archives.
+- [4.0.2] Detailed, SQL-based reporting and logging.
+- [4.0.2] Inclusion of a (semi-)automated benchmarking tool, 'divbench'.
+- [4.0.2] Update pdclib to the current upstream (2017-01-18).
+- [4.0.2] Numerous improvements in symbolic verification support.
+- [4.0.2] Faster verification of thread-less programs with `--sequential`.
+- [4.0.2] An important bugfix in treatment of memory access in tau reduction.
+- [4.0.2] A more efficient runtime representation of the bitcode.
+- [4.0.2] Intrinsic lowering is now handled in LART.
+- [4.0.3] An improved and much faster implementation of C++ exceptions.
+- [4.0.3] Improved verification speed and smaller memory footprint.
 
 DIVINE 3.90
 ===========
