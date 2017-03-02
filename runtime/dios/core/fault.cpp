@@ -15,7 +15,7 @@ uint8_t const *_DiOS_fault_cfg;
 namespace __dios {
 
 void Fault::die( __dios::Context& ctx ) noexcept {
-    ctx.scheduler->killProcess( nullptr );
+    ctx.scheduler->killProcess( 1 );
     static_cast< _VM_Frame * >
         ( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent = nullptr;
 }

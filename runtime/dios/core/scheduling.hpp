@@ -25,7 +25,6 @@ void get_process_threads( __dios::Context &ctx, int *err, void *_ret, va_list vl
 namespace __dios {
 
 using ThreadHandle = _DiOS_ThreadHandle;
-using ProcId = _DiOS_ProcId;
 
 struct DiosMainFrame : _VM_Frame {
     int l;
@@ -115,7 +114,7 @@ private:
 struct Thread {
     _VM_Frame *_frame;
     struct _DiOS_TLS *_tls;
-    ProcId _pid;
+    pid_t _pid;
 
     template <class F>
     Thread( F routine, int tls_size ) noexcept {
@@ -127,7 +126,7 @@ struct Thread {
         _tls = reinterpret_cast< struct _DiOS_TLS * >
             ( __vm_obj_make( sizeof( struct _DiOS_TLS ) + tls_size ) );
         _tls->_errno = 0;
-        _pid = nullptr; // ToDo: Add process support
+        _pid = 1; // ToDo: Add process support
     }
 
     Thread( const Thread& o ) noexcept = delete;
@@ -165,7 +164,7 @@ struct Scheduler {
     void setupMainThread( Thread *, int argc, char** argv, char** envp ) noexcept;
     void setupThread( Thread *, void *arg ) noexcept;
     void killThread( ThreadHandle t_id ) noexcept;
-    void killProcess( ProcId id ) noexcept;
+    void killProcess( pid_t id ) noexcept;
 
     SortedStorage< Thread > threads;
 };

@@ -4,6 +4,7 @@
 #define __DIOS_H__
 
 #include <divine.h>
+#include <sys/types.h>
 
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
@@ -55,7 +56,6 @@ struct _DiOS_TLS {
 };
 
 typedef struct _DiOS_TLS * _DiOS_ThreadHandle;
-typedef void * _DiOS_ProcId;
 
 #ifdef __cplusplus
 namespace __dios { struct Monitor; }
@@ -110,7 +110,7 @@ void __dios_kill_thread( _DiOS_ThreadHandle id ) NOTHROW;
 /*
  * Kill process with given id. If NULL is passed, all processes are killed.
  */
-void __dios_kill_process( _DiOS_ProcId id ) NOTHROW;
+void __dios_kill_process( pid_t id ) NOTHROW;
 
 
 _DiOS_ThreadHandle *__dios_get_process_threads() NOTHROW;

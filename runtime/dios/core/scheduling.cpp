@@ -61,14 +61,14 @@ void kill_thread( __dios::Context& ctx, int *, void *, va_list vl ) {
 }
 
 void kill_process( __dios::Context& ctx, int *, void *, va_list vl ) {
-    auto id = va_arg( vl, __dios::ProcId );
+    auto id = va_arg( vl, pid_t );
     ctx.scheduler->killProcess( id );
 }
 
 void get_process_threads( __dios::Context &ctx, int *, void *_ret, va_list vl ) {
     auto *&ret = *reinterpret_cast< _DiOS_ThreadHandle ** >( _ret );
     auto tid = va_arg( vl, _DiOS_ThreadHandle );
-    __dios::ProcId pid;
+    pid_t pid;
     for ( auto &t : ctx.scheduler->threads ) {
         if ( t->_tls == tid ) {
             pid = t->_pid;
@@ -119,7 +119,7 @@ Thread::Thread( Thread&& o ) noexcept
 {
     o._frame = nullptr;
     o._tls = nullptr;
-    o._pid = nullptr;
+    o._pid = -1;
 }
 
 Thread& Thread::operator=( Thread&& o ) noexcept {
@@ -188,7 +188,7 @@ void Scheduler::killThread( ThreadHandle tid ) noexcept {
     __dios_assert_v( res, "Killing non-existing thread" );
 }
 
-void Scheduler::killProcess( ProcId id ) noexcept {
+void Scheduler::killProcess( pid_t id ) noexcept {
     if ( !id ) {
         threads.erase( threads.begin(), threads.end() );
         // ToDo: Erase processes
