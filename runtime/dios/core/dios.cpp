@@ -30,7 +30,8 @@ Context::Context() :
     fault( __dios::new_object< Fault >() ),
     vfs( __dios::new_object< VFS >() ),
     globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) ),
-    monitors( nullptr )
+    monitors( nullptr ),
+    sighandlers( nullptr )
 {}
 
 void Context::finalize() {

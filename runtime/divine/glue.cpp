@@ -3,10 +3,12 @@
 #include <limits.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <signal.h>
 #include <cstdlib>
 #include <_PDCLIB_aux.h>
 #include <divine.h>
 #include <dios/core/fault.hpp>
+#include <dios/core/syscall.hpp>
 #include <string.h>
 #include <dios.h>
 #include <dios/core/main.hpp>
@@ -100,7 +102,8 @@ extern "C" void _PDCLIB_Exit( int rv )
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
     __cxa_finalize( 0 );
     __dios::runDtors();
-    __dios_kill_process( 0 );
+    raise( SIGKILL );
+    __builtin_unreachable();
 }
 
 extern "C" int nanosleep(const struct timespec */*req*/, struct timespec */*rem*/) {
@@ -119,4 +122,56 @@ extern "C" int usleep( useconds_t /*usec*/ ) { return 0; }
 extern "C" void _exit( int rv )
 {
     _PDCLIB_Exit( rv );
+}
+
+extern "C" pid_t getpid( void )
+{
+    pid_t ret;
+    __dios_syscall( __dios::_SC_getpid, &ret );
+    return ret;
+}
+
+/* signals */
+
+extern "C" int kill( pid_t pid, int sig )
+{
+    int ret;
+    __dios_syscall( __dios::_SC_kill, &ret, pid, sig );
+    return ret;
+}
+
+void __dios_interrupt()
+{
+    uintptr_t fl = reinterpret_cast< uintptr_t >(
+        __vm_control( _VM_CA_Get, _VM_CR_Flags,
+                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, fl | _VM_CF_Interrupted ); /*  restore */
+}
+
+int raise( int sig )
+{
+    switch ( sig )
+    {
+        case SIGQUIT:
+        case SIGILL:
+        case SIGABRT:
+        case SIGFPE:
+        case SIGSEGV:
+        case SIGBUS:
+        case SIGSYS:
+        case SIGTRAP:
+        case SIGXCPU:
+        case SIGXFSZ:
+            __dios_fault( _VM_F_Control, "Uncaught signal." );
+        case SIGKILL:
+            __dios_interrupt();
+        default:
+            return kill( getpid(), sig );
+    }
+}
+
+__dios::sighandler_t signal( int, __dios::sighandler_t ) {
+    __dios_fault( _VM_F_NotImplemented, "Signal not implemented." );
+    return nullptr;
 }

@@ -36,7 +36,6 @@ struct CleanupHandler {
 
 enum SleepingOn { NotSleeping = 0, Condition, Barrier };
 
-typedef void ( *sighandler_t )( int );
 typedef unsigned short ushort;
 
 struct _PThread { // (user-space) information maintained for every (running)
@@ -56,7 +55,6 @@ struct _PThread { // (user-space) information maintained for every (running)
         pthread_cond_t *condition;
         pthread_barrier_t *barrier;
     };
-    sighandler_t *sighandlers;
 
     bool running : 1;
     bool detached : 1;
@@ -267,7 +265,6 @@ static void __init_thread( const _DiOS_ThreadHandle gtid, const pthread_attr_t a
     thread->condition = nullptr;
     thread->cancel_state = PTHREAD_CANCEL_ENABLE;
     thread->cancel_type = PTHREAD_CANCEL_DEFERRED;
-    thread->sighandlers = nullptr;
     thread->sigmaxused = 0;
 }
 
@@ -1695,97 +1692,6 @@ int sched_setscheduler( pid_t, int, const struct sched_param * ) noexcept {
 int sched_yield( void ) noexcept {
     /* TODO */
     return 0;
-}
-
-/* signals */
-
-namespace _sig {
-
-void sig_ign( int ) noexcept {}
-
-#define __sig_terminate( SIGNAME ) []( int ) noexcept { __dios_fault( _VM_Fault::_VM_F_Control, "Uncaught signal: " #SIGNAME ); __dios_kill_process( 0 ); }
-
-// this is based on x86 signal numbers
-static const sighandler_t defact[] = {
-        __sig_terminate( SIGHUP ),    //  1
-        __sig_terminate( SIGINT ),    //  2
-        __sig_terminate( SIGQUIT ),   //  3
-        __sig_terminate( SIGILL ),    //  4
-        __sig_terminate( SIGTRAP ),   /// 5
-        __sig_terminate( SIGABRT ),   //  6
-        __sig_terminate( SIGBUS ),    // 7
-        __sig_terminate( SIGFPE ),    //  8
-        __sig_terminate( SIGKILL ),   //  9
-        __sig_terminate( SIGUSR1 ),   // 10
-        __sig_terminate( SIGSEGV ),   // 11
-        __sig_terminate( SIGUSR2 ),   // 12
-        __sig_terminate( SIGPIPE ),   // 13
-        __sig_terminate( SIGALRM ),   // 14
-        __sig_terminate( SIGTERM ),   // 15
-        __sig_terminate( SIGSTKFLT ), // 16
-        sig_ign,                      // SIGCHLD = 17
-        sig_ign,                      // SIGCONT = 18 ?? this should be OK since it should
-        sig_ign,                      // SIGSTOP = 19 ?? stop/resume whole process, we can
-        sig_ign,                      // SIGTSTP = 20 ?? simulate it as doing nothing
-        sig_ign,                      // SIGTTIN = 21 ?? at least untill we will have processes
-        sig_ign,                      // SIGTTOU = 22 ?? and process-aware kill
-        sig_ign,                      // SIGURG  = 23
-        __sig_terminate( SIGXCPU ),   // 24
-        __sig_terminate( SIGXFSZ ),   // 25
-        __sig_terminate( SIGVTALRM ), // 26
-        __sig_terminate( SIGPROF ),   // 27
-        sig_ign,                      // SIGWINCH = 28
-        __sig_terminate( SIGIO ),     // 29
-        __sig_terminate( SIGPWR ),    // 30
-        __sig_terminate( SIGUNUSED ), // 31
-
-};
-
-sighandler_t &get( _PThread &thr, int sig ) noexcept {
-    return thr.sighandlers[sig - 1];
-}
-sighandler_t def( int sig ) noexcept {
-    return defact[sig - 1];
-}
-
-#undef __sig_terminate
-}
-
-int raise( int sig ) {
-    __dios::InterruptMask mask;
-    assert( sig < 32 );
-
-    _PThread &thread = getThread();
-    if ( sig > thread.sigmaxused || _sig::get( thread, sig ) == SIG_DFL )
-        ( *_sig::def( sig ) )( sig );
-    else {
-        sighandler_t h = _sig::get( thread, sig );
-        if ( h != SIG_IGN )
-            ( *h )( sig );
-    }
-    return 0;
-}
-
-sighandler_t signal( int sig, sighandler_t handler ) {
-    __dios::FencedInterruptMask mask;
-
-    _PThread &thread = getThread();
-    if ( sig > thread.sigmaxused ) {
-        int old = thread.sigmaxused;
-        sighandler_t *oldptr = thread.sighandlers;
-        thread.sigmaxused = sig;
-        thread.sighandlers = reinterpret_cast< sighandler_t * >(
-                __vm_obj_make( sizeof( sighandler_t ) * sig ) );
-        if ( oldptr ) {
-            std::copy( oldptr, oldptr + old, thread.sighandlers );
-            __vm_obj_free( oldptr );
-        }
-        for ( int i = old + 1; i <= sig; ++i )
-            _sig::get( thread, i ) = SIG_DFL;
-    }
-    sighandler_t old = _sig::get( thread, sig );
-    _sig::get( thread, sig ) = handler;
-    return old;
 }
 
 #pragma GCC diagnostic pop

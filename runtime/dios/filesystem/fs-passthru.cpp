@@ -742,11 +742,28 @@ namespace __sc_passthru {
         auto size = va_arg( vl, size_t );
         va_end( vl );
 
-        *err = __vm_syscall( __dios::_VM_SC::getcwd, 
+        *err = __vm_syscall( __dios::_VM_SC::getcwd,
             _VM_SC_Out | _VM_SC_Int64, retval,
             _VM_SC_Out | _VM_SC_Mem, size , buf,
             _VM_SC_In | _VM_SC_Int64, size );
     }
-	
+
+    void kill( __dios::Context& , int* err, void* retval, va_list vl ) {
+        auto pid = va_arg( vl, pid_t );
+        auto sig = va_arg( vl, int );
+        va_end( vl );
+
+         *err = __vm_syscall( __dios::_VM_SC::kill,
+            _VM_SC_Out | _VM_SC_Int32, retval,
+            _VM_SC_In | _VM_SC_Int32, pid,
+            _VM_SC_In | _VM_SC_Int32, sig );
+    }
+
+    void getpid( __dios::Context& , int* err, void* retval, va_list ) {
+
+         *err = __vm_syscall( __dios::_VM_SC::getpid,
+            _VM_SC_Out | _VM_SC_Int32, retval );
+    }
+
 } // eo namespace __sc_passthru
 

@@ -243,6 +243,8 @@ struct MachineParams {
     void traceParams( int indent );
 };
 
+typedef void ( *sighandler_t )( int );
+
 struct Context {
     Scheduler *scheduler;
     Fault *fault;
@@ -250,6 +252,7 @@ struct Context {
     void *globals;
     Monitor *monitors;
     MachineParams machineParams;
+    sighandler_t *sighandlers;
 
     Context();
     void finalize();

@@ -5,6 +5,8 @@
 #include <dios/core/scheduling.hpp>
 #include <dios/core/main.hpp>
 #include <divine/metadata.h>
+#include <signal.h>
+#include <errno.h>
 
 _DiOS_ThreadHandle __dios_start_thread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept
 {
@@ -26,10 +28,11 @@ void __dios_kill_thread( _DiOS_ThreadHandle id ) noexcept {
     __dios_syscall( __dios::_SC_kill_thread, nullptr, id );
 }
 
-void __dios_kill_process( _DiOS_ProcId id ) noexcept {
-    if ( id == 0 ) // TODO: other kinds of suicide
+void __dios_kill_process( pid_t id ) noexcept {
+    if ( id == 1 ) // TODO: all kinds of suicide
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
-    __dios_syscall( __dios::_SC_kill_process, nullptr, id );
+    int ret;
+    __dios_syscall( __dios::_SC_kill, &ret, id, SIGKILL );
 }
 
 _DiOS_ThreadHandle *__dios_get_process_threads() noexcept {
@@ -40,6 +43,8 @@ _DiOS_ThreadHandle *__dios_get_process_threads() noexcept {
 }
 
 namespace __sc {
+
+using __dios::sighandler_t;
 
 void start_thread( __dios::Context& ctx, int *, void *retval, va_list vl ) {
     typedef void ( *r_type )( void * );
@@ -54,6 +59,83 @@ void start_thread( __dios::Context& ctx, int *, void *retval, va_list vl ) {
     __vm_obj_shared( arg );
     *ret = t->getId();
 }
+
+static void sig_ign( int ) {}
+static void sig_die( int ) {}
+
+static const sighandler_t defhandlers[] = {
+        sig_die,    // SIGHUP    = 1
+        sig_die,    // SIGINT    = 2
+        sig_die,    // SIGQUIT   = 3
+        sig_die,    // SIGILL    = 4
+        sig_die,    // SIGTRAP   = 5
+        sig_die,    // SIGABRT   = 6
+        sig_die,    // SIGBUS    = 7
+        sig_die,    // SIGFPE    = 8
+        sig_die,    // SIGKILL   = 9
+        sig_die,    // SIGUSR1   = 10
+        sig_die,    // SIGSEGV   = 11
+        sig_die,    // SIGUSR2   = 12
+        sig_die,    // SIGPIPE   = 13
+        sig_die,    // SIGALRM   = 14
+        sig_die,    // SIGTERM   = 15
+        sig_die,    // SIGSTKFLT = 16
+        sig_ign,    // SIGCHLD   = 17
+        sig_ign,    // SIGCONT   = 18 ?? this should be OK since it should
+        sig_ign,    // SIGSTOP   = 19 ?? stop/resume the whole process, we can
+        sig_ign,    // SIGTSTP   = 20 ?? simulate it as doing nothing
+        sig_ign,    // SIGTTIN   = 21 ?? at least until we will have processes
+        sig_ign,    // SIGTTOU   = 22 ?? and process-aware kill
+        sig_ign,    // SIGURG    = 23
+        sig_die,    // SIGXCPU   = 24
+        sig_die,    // SIGXFSZ   = 25
+        sig_die,    // SIGVTALRM = 26
+        sig_die,    // SIGPROF   = 27
+        sig_ign,    // SIGWINCH  = 28
+        sig_die,    // SIGIO     = 29
+        sig_die,    // SIGPWR    = 30
+        sig_die     // SIGUNUSED = 31
+
+};
+
+void kill( __dios::Context& ctx, int *err, void *ret, va_list vl ) {
+    int pid = va_arg( vl, pid_t );
+    auto sig = va_arg( vl, int );
+    sighandler_t handler;
+
+    bool found = false;
+    for ( auto thread : ctx.scheduler->threads )
+        if ( thread->_pid == pid )
+            found = true;
+
+    if ( !found )
+    {
+        *err = ESRCH;
+        *static_cast< int* >( ret ) = -1;
+        return;
+    }
+
+    if ( ctx.sighandlers )
+        handler = ctx.sighandlers[sig];
+    else
+        handler = defhandlers[sig];
+
+    if ( handler == sig_ign )
+        return;
+    if ( handler == sig_die )
+        ctx.scheduler->killProcess( pid );
+    else
+        __dios_fault( _VM_F_NotImplemented, "Custom signal handlers not implemented." );
+}
+
+void getpid( __dios::Context& ctx, int *, void *retval, va_list )
+{
+    auto tid = __dios_get_thread_handle();
+    auto thread = ctx.scheduler->threads.find( tid );
+    __dios_assert( thread );
+    *static_cast< int * >( retval ) = thread->_pid;
+}
+
 
 void kill_thread( __dios::Context& ctx, int *, void *, va_list vl ) {
     auto id = va_arg( vl, __dios::ThreadHandle );
