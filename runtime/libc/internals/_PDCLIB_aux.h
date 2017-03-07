@@ -65,6 +65,7 @@
 #else
     #if __cplusplus > 201402L
         #warning Unsupported _ _cplusplus (__cplusplus) (too new) (supported: ISO/IEC 14882:1997, ISO/IEC 14882:2011).
+        #define _PDCLIB_CXX_VERSION 2015
     #else
         #error Unsupported _ _cplusplus (__cplusplus) (supported: ISO/IEC 14882:1997, ISO/IEC 14882:2011).
     #endif
