@@ -36,10 +36,12 @@ void _PDCLIB_assert89( char const * const ) _PDCLIB_nothrow;
 }
 #endif
 
+#if !defined( _PDCLIB_CXX_VERSION ) || _PDCLIB_CXX_VERSION < 2011
 #if _PDCLIB_C_VERSION >= 2011
 #define static_assert _Static_assert
 #else
 #define static_assert( e, m )
+#endif
 #endif
 
 #endif
