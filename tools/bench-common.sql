@@ -42,6 +42,7 @@ create table build( id          serial primary key not null,
                     source_sha  char(40) not null,
                     runtime_sha char(40) not null,
                     build_type  varchar  not null,
+                    is_release  boolean  not null,
                     unique( version, source_sha, runtime_sha, build_type ) );
 
 -- ties the machine and the model checker version together
