@@ -5,9 +5,9 @@ include( stringify )
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
       *.h divine/*.h dios/*.hpp dios/core/*.hpp dios/core/*.def atomic sys/*.h bits/*.h
       abstract/*.hpp abstract/*.h
-      pdclib/*.h pdclib/includes/*.h pdclib/internals/*.h pdclib/posix/includes/*.h
-      pdclib/opt/pthreads/*.h pdclib/sys/*.h pdclib/bits/*.h libtre/*.h
-      libm/*.h libm/machine/*.h
+      libc/include/*.h libc/internals/*.h 
+      libc/include/sys/*.h libc/include/bits/*.h
+      libm/include/*.h libm/include/machine/*.h
       libcxxabi/include/*
       libcxxabi/src/*.h libcxxabi/src/*.hpp libcxxabi/src/*.ipp
       libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
@@ -19,14 +19,8 @@ file( GLOB SRC_libdios
       divine/*.cpp dios/*.cpp dios/core/*.cpp dios/filesystem/*.cpp )
 
 file( GLOB SRC_libabstract abstract/*.cpp abstract/*.c )
-
-file( GLOB SRC_libc
-      pdclib/functions/*/*.c
-      pdclib/opt/basecodecs/*.c pdclib/opt/c_locale/*.c pdclib/opt/pthreads/*.c
-      pdclib/posix/*.c pdclib/posix/*/*/*.c
-      pdclib/*.c libtre/*.c libm/src/*.c )
-
-file( GLOB SRC_libm libm/*.c )
+file( GLOB SRC_libc libc/functions/*/*.c )
+file( GLOB SRC_libm libm/src/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
 file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 
@@ -53,22 +47,19 @@ macro( mklib lib flags )
   stringify( "runtime" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${lib}.a" )
 endmacro()
 
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR} )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib/includes )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib/internals )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib/posix/includes )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/pdclib/opt/pthreads )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/src/ld80 )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libtre )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libunwind/include )
 list( APPEND flags -Oz )
 list( APPEND flags -g )
 list( APPEND flags -D__divine__ )
 list( APPEND flags -D_POSIX_C_SOURCE=2008098L )
 list( APPEND flags -D_LITTLE_ENDIAN=1234 )
 list( APPEND flags -D_BYTE_ORDER=1234 )
+
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/ ) # dios
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/include )
+list( APPEND flags -isystem${CMAKE_CURRENT_BINARY_DIR}/libc/include )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/internals )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/include )
+list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/src/ld80 )
 
 mklib( libc "${flags};-D_PDCLIB_BUILD" )
 
