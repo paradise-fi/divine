@@ -3,7 +3,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
-#include <divine.h>
+#include <sys/divm.h>
 #include <dios/core/syscall.hpp>
 #include <cerrno>
 

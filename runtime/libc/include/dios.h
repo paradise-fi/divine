@@ -3,7 +3,7 @@
 #ifndef __DIOS_H__
 #define __DIOS_H__
 
-#include <divine.h>
+#include <sys/divm.h>
 #include <sys/types.h>
 
 #ifdef __cplusplus

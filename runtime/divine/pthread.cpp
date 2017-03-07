@@ -5,7 +5,7 @@
 
 /* Includes */
 #include <pthread.h>
-#include <divine.h>
+#include <sys/divm.h>
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>

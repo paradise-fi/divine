@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <divine/metadata.h>
-#include <divine.h>
+#include <sys/divm.h>
 
 #ifndef _SETJMP_H_
 #define _SETJMP_H_

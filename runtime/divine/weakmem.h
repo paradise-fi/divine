@@ -1,6 +1,6 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <divine.h>
+#include <sys/divm.h>
 #include <string.h>
 
 #ifndef __LART_WEAKMEM_H_

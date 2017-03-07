@@ -14,7 +14,7 @@
 #include "config.h"
 
 #ifdef __divine__
-#include <divine.h>
+#include <sys/divm.h>
 #endif
 
 //  A small, simple heap manager based (loosely) on 

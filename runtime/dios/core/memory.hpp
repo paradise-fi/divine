@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <limits>
 
-#include "divine.h"
+#include "sys/divm.h"
 
 #ifndef _DIOS_MEMORY_H_
 #define _DIOS_MEMORY_H_

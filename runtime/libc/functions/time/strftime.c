@@ -46,7 +46,7 @@
  */
 
 #ifdef __divine__
-#include <divine.h>
+#include <sys/divm.h>
 #include <string.h>
 
 #include <dios.h>

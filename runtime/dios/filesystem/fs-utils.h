@@ -13,7 +13,7 @@
 #define _FS_PATH_UTILS_H_
 
 #ifdef __divine__
-#include <divine.h>
+#include <sys/divm.h>
 #include <dios/core/stdlibwrap.hpp>
 #include <dios/core/syscall.hpp>
 
@@ -30,7 +30,7 @@
 
 
 #else
-# include "divine.h"
+# include "sys/divm.h"
 enum Problems {
     Other = 2
 };

@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <divine.h>
+#include <sys/divm.h>
 #include <dios.h>
 #include <dios/core/syscall.hpp>
 

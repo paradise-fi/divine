@@ -2,7 +2,7 @@
 #include <abstract/common.h>
 
 #ifdef __divine__
-#include <divine.h>
+#include <sys/divm.h>
 #else
 #include <cstdlib>
 #endif

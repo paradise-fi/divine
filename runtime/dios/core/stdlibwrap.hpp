@@ -3,7 +3,7 @@
 #ifndef __DIOS_STDLIBWRAP_HPP__
 #define __DIOS_STDLIBWRAP_HPP__
 
-#include <divine.h>
+#include <sys/divm.h>
 #include <vector>
 #include <string>
 #include <queue>

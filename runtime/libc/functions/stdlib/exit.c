@@ -36,7 +36,7 @@ void exit( int status )
 
 #else
 
-#include <divine.h>
+#include <sys/divm.h>
 
 /* with __divine__, closeall is atexit'd by fopen (fvopen) */
 void (**_PDCLIB_regstack)( void ) = NULL;

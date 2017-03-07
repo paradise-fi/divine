@@ -5,7 +5,7 @@
 */
 
 #include <string.h>
-#include <divine.h>
+#include <sys/divm.h>
 
 #ifndef REGTEST
 

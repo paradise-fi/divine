@@ -16,7 +16,7 @@
 #include "config.h"
 
 #ifdef __divine__
-#include <divine.h>
+#include <sys/divm.h>
 #include <cstring> // memset
 #endif
 

@@ -24,13 +24,15 @@ file( GLOB SRC_libm libm/src/*.c )
 file( GLOB SRC_libcxxabi libcxxabi/src/*.cpp )
 file( GLOB SRC_libcxx libcxx/src/*.cpp  )
 
+set( H_DIVM ${CMAKE_CURRENT_BINARY_DIR}/libc/include/sys/divm.h )
+
 macro( mklib lib flags )
   foreach( f ${SRC_${lib}} )
     string( REGEX REPLACE "\\.[a-z]+" ".bc" out ${f} )
     file( RELATIVE_PATH out "${CMAKE_CURRENT_SOURCE_DIR}" "${out}" )
     list( APPEND BC_${lib} bc/${out} )
     add_custom_command(
-        DEPENDS runtime-cc ${f} ${H_RUNTIME}
+        DEPENDS runtime-cc ${f} ${H_RUNTIME} ${H_DIVM}
         OUTPUT bc/${out}
         COMMAND mkdir -p bc
         COMMAND runtime-cc ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
@@ -46,6 +48,11 @@ macro( mklib lib flags )
 
   stringify( "runtime" "${CMAKE_CURRENT_BINARY_DIR}/bc" "${lib}.a" )
 endmacro()
+
+add_custom_command(
+    OUTPUT ${H_DIVM}
+    VERBATIM
+    COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/divine/vm/divm.h ${H_DIVM} )
 
 list( APPEND flags -Oz )
 list( APPEND flags -g )
@@ -83,6 +90,7 @@ set( OPS_src "${CMAKE_SOURCE_DIR}/llvm/include/llvm/IR/Instruction.def" )
 set( OPS_dest "divine/Instruction.def" )
 file( COPY ${OPS_src} DESTINATION "divine" )
 stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
+stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} libc/include/sys/divm.h )
 stringlist( "runtime" runtime )
 
 include_directories( ${divine_SOURCE_DIR} )

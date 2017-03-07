@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include <stdint.h>
-#include <divine.h>
+#include <sys/divm.h>
 
 #ifndef REGTEST
 

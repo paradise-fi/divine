@@ -2,7 +2,7 @@
 #include "formula.h"
 #include <cstdint>
 #include <cstdarg>
-#include <divine.h>
+#include <sys/divm.h>
 #include <new>
 
 using namespace std::literals;

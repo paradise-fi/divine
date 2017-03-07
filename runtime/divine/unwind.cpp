@@ -3,7 +3,7 @@
 // based on documentation at https://mentorembedded.github.io/cxx-abi/abi-eh.html
 
 #include <unwind.h>
-#include <divine.h>
+#include <sys/divm.h>
 #include <divine/metadata.h>
 #include <divine/opcodes.h>
 #include <dios.h>

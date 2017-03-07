@@ -1,4 +1,4 @@
-#include "../divine.h"
+#include "../sys/divm.h"
 #include "../divine/__env.h"
 #include "../divine/metadata.h"
 #include <vm.h>

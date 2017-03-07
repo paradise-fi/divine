@@ -6,7 +6,7 @@
 #include <signal.h>
 #include <cstdlib>
 #include <_PDCLIB_aux.h>
-#include <divine.h>
+#include <sys/divm.h>
 #include <dios/core/fault.hpp>
 #include <dios/core/syscall.hpp>
 #include <string.h>

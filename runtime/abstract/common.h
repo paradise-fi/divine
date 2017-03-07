@@ -3,7 +3,7 @@
 #include <dios.h>
 
 #ifdef __divine__
-#include <divine.h>
+#include <sys/divm.h>
 #endif
 
 #define _NOTHROW __attribute__((__nothrow__))

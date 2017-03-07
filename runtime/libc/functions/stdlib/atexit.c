@@ -29,7 +29,7 @@ int atexit( void (*func)( void ) )
 
 #else
 
-#include <divine.h>
+#include <sys/divm.h>
 
 struct AtexitEntry {
     void ( *func )( void * );

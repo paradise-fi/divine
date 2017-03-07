@@ -1,5 +1,5 @@
 #ifdef __divine__
-#include <divine.h>
+#include <sys/divm.h>
 #include <dios.h>
 #endif
 #include <stdint.h>

@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include <divine.h>
+#include <sys/divm.h>
 #include <dios.h>
 #include <_PDCLIB_locale.h>
 #include <_PDCLIB_aux.h>
