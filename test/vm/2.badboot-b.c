@@ -1,4 +1,4 @@
-#include <divine.h>
+#include <sys/divm.h>
 
 void __boot() {}
 int main() {}

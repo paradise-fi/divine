@@ -1,4 +1,4 @@
-#include <divine.h>
+#include <sys/divm.h>
 #include <pthread.h>
 #include <atomic>
 #include <cstdint>

@@ -1,5 +1,5 @@
 #include <pthread.h>
-#include <divine.h>
+#include <sys/divm.h>
 #include <stdlib.h>
 
 void *thread( void *zzz )

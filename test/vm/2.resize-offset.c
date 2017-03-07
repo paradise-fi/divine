@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <divine.h>
+#include <sys/divm.h>
 
 int main() {
     char *array = __vm_obj_make( 12 );

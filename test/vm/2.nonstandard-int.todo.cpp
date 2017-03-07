@@ -1,5 +1,5 @@
 // CC_OPTS: -Oz
-#include <divine.h>
+#include <sys/divm.h>
 
 // Constructor of this struct produces in Clang 3.7 with Oz 48bit integer
 struct Evil {

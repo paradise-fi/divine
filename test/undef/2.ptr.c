@@ -1,4 +1,4 @@
-#include <divine.h>
+#include <sys/divm.h>
 
 int main() {
     int *ptrundef;

@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <divine.h>
+#include <sys/divm.h>
 #include <dios.h>
 #include <stddef.h>
 

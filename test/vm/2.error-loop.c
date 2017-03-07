@@ -1,4 +1,4 @@
-#include <divine.h>
+#include <sys/divm.h>
 
 void fire() {
     if ( __vm_choose( 2 ) )

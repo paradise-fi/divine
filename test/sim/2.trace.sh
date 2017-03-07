@@ -21,7 +21,7 @@ sim $TESTS/c/1.malloc.c <<EOF
 EOF
 
 tee loop.c <<EOF
-#include <divine.h>
+#include <sys/divm.h>
 
 void __sched() {}
 int main() {}
