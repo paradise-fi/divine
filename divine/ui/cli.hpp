@@ -35,7 +35,7 @@
 #include <cctype>
 #include <regex>
 
-#include <runtime/divine.h>
+#include <divine/vm/divm.h>
 
 namespace divine {
 namespace ui {

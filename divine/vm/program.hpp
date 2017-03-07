@@ -40,7 +40,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/vm/context.hpp>
 #include <divine/cc/clang.hpp>
 
-#include <runtime/divine.h>
+#include <divine/vm/divm.h>
 
 #include <map>
 #include <unordered_map>

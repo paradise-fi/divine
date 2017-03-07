@@ -19,7 +19,7 @@
 #pragma once
 
 #include <divine/vm/value.hpp>
-#include <runtime/divine.h>
+#include <divine/vm/divm.h>
 #include <brick-except>
 
 namespace divine {

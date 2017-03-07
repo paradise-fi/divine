@@ -21,7 +21,7 @@
 #include <brick-bitlevel>
 #include <brick-mem>
 
-#include <runtime/divine.h>
+#include <divine/vm/divm.h>
 
 namespace divine {
 namespace vm {

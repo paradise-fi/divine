@@ -24,7 +24,7 @@
 #include <divine/vm/context.hpp>
 #include <divine/vm/heap.hpp> /* for tests */
 
-#include <runtime/divine.h>
+#include <divine/vm/divm.h>
 
 #include <brick-data>
 
