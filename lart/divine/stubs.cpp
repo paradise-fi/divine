@@ -15,7 +15,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 
-#include <runtime/divine.h>
+#include <divine/vm/divm.h>
 
 namespace lart {
 namespace divine {

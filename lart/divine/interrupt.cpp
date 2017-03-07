@@ -20,7 +20,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/util.h>
 #include <lart/support/metadata.h>
 
-#include <runtime/divine.h>
+#include <divine/vm/divm.h>
 
 namespace lart {
 namespace divine {

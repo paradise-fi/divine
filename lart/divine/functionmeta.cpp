@@ -21,7 +21,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/metadata.h>
 
 // used to calculate frame size & encode function types
-#include <runtime/divine.h>
+#include <divine/vm/divm.h>
 #include <runtime/native/vm.h>
 #include <runtime/divine/metadata.h>
 
