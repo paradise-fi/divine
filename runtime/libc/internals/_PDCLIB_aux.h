@@ -148,6 +148,14 @@
     #define _PDCLIB_inline   inline
 #endif
 
+#ifdef __cplusplus
+#define _PDCLIB_EXTERN_C extern "C" {
+#define _PDCLIB_EXTERN_END }
+#else
+#define _PDCLIB_EXTERN_C
+#define _PDCLIB_EXTERN_END
+#endif
+
 #if _PDCLIB_CXX_VERSION >= 2011
   #define _PDCLIB_nothrow     noexcept
   #define _PDCLIB_noexcept(x) noexcept(x)
