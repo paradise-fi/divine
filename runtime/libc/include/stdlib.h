@@ -142,6 +142,12 @@ void free( void * ptr ) _PDCLIB_nothrow;
 */
 void * realloc( void * ptr, size_t size ) _PDCLIB_nothrow;
 
+/*
+ * CLang generates a builtin (intrinsic) for alloca calls, but we still need a
+ * prototype.
+ */
+void *alloca( size_t ) _PDCLIB_nothrow;
+
 /* Communication with the environment */
 
 /* These two can be passed to exit() or _Exit() as status values, to signal
