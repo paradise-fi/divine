@@ -107,12 +107,6 @@ void __dios_syscall(int syscode, void* ret, ...) NOTHROW;
 void __dios_register_monitor( _DiOS_Monitor *monitor ) NOTHROW;
 
 
-void __dios_trace( int indent, const char *fmt, ... ) NOTHROW;
-void __dios_trace_auto( int indent, const char *fmt, ... ) NOTHROW;
-void __dios_trace_t( const char *str ) NOTHROW;
-void __dios_trace_f( const char *fmt, ... ) NOTHROW;
-void __dios_trace_i( int indent_level, const char *fmt, ... ) NOTHROW;
-
 // unwind and free frames on stack 'stack' from 'from' to 'to' so that 'to'
 // the frame which originally returned to 'from' now returns to 'to'
 // * 'stack' can be nullptr if unwinding on local stack
