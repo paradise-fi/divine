@@ -1,6 +1,8 @@
 #ifndef __DIVINE_H__
 #define __DIVINE_H__
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
 #define CPP_END }
@@ -92,17 +94,14 @@ enum _VM_ControlAction
  * other hand, that it is impossible to proceed (eg. there are no runnable
  * processes).
  */
-enum _VM_ControlFlags
-{
-    _VM_CF_None        = 0,
-    _VM_CF_Mask        = 0b000001,
-    _VM_CF_Interrupted = 0b000010,
-    _VM_CF_Accepting   = 0b000100,
-    _VM_CF_Error       = 0b001000,
-    _VM_CF_Cancel      = 0b010000,
-    _VM_CF_KernelMode  = 0b100000,
-    _VM_CF__64bit__    = 1ull << 33
-};
+
+static const uint64_t _VM_CF_None        = 0;
+static const uint64_t _VM_CF_Mask        = 0b000001;
+static const uint64_t _VM_CF_Interrupted = 0b000010;
+static const uint64_t _VM_CF_Accepting   = 0b000100;
+static const uint64_t _VM_CF_Error       = 0b001000;
+static const uint64_t _VM_CF_Cancel      = 0b010000;
+static const uint64_t _VM_CF_KernelMode  = 0b100000;
 
 /*
  * The VM maintains 8 control registers and 2 registers available for OS use
