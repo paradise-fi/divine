@@ -4,6 +4,8 @@
 #include <signal.h>
 #include <dios.h>
 #include <dios/core/memory.hpp>
+#include <sys/fault.h>
+#include <sys/trace.h>
 
 #include "fs-utils.h"
 #include "fs-inode.h"

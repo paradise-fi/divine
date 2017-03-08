@@ -14,11 +14,11 @@
 
 #ifdef __divine__
 
-#include <dios.h>
+#include <sys/fault.h>
 
 void _PDCLIB_assert_dios( char const * const message )
 {
-   __dios_fault( _VM_F_Assert, message );
+   __dios_fault( _DiOS_F_Assert, message );
 }
 
 #endif // __divine__

@@ -5,6 +5,9 @@
 
 #include <sys/divm.h>
 #include <sys/types.h>
+#include <sys/trace.h>
+#include <sys/fault.h>
+#include <sys/interrupt.h>
 
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {

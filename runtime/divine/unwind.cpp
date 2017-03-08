@@ -4,6 +4,8 @@
 
 #include <unwind.h>
 #include <sys/divm.h>
+#include <sys/interrupt.h>
+#include <sys/fault.h>
 #include <divine/metadata.h>
 #include <divine/opcodes.h>
 #include <dios.h>

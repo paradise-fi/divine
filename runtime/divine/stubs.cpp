@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <sys/divm.h>
+#include <sys/fault.h>
 #include <dios.h>
 #include <_PDCLIB_locale.h>
 #include <_PDCLIB_aux.h>

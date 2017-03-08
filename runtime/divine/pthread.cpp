@@ -6,6 +6,8 @@
 /* Includes */
 #include <pthread.h>
 #include <sys/divm.h>
+#include <sys/interrupt.h>
+#include <sys/fault.h>
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
