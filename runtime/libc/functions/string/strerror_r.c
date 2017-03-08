@@ -22,7 +22,7 @@ char * strerror_r( int errnum, char *buf, size_t buflen )
     }
     else
     {
-        char *src = _PDCLIB_threadlocale()->_ErrnoStr[errnum];
+        const char *src = _PDCLIB_threadlocale()->_ErrnoStr[errnum];
         int len = MIN( buflen - 1, strlen( src ) );
         memcpy( buf, src, len );
         buf[ len ] = '\0';
