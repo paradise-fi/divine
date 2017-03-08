@@ -1,12 +1,14 @@
 #!/bin/sh
 set -e
 
-test -n "$PSQL" && ODBC="Driver={PostgreSQL};Database=divbench;Server=anna;ByteaAsLongVarBinary=1";
-test -z "$ODBC" && ODBC="Driver=SQLITE;Database=/tmp/divbench.sqlite";
+test -n "$PSQL" && \
+    DIVBENCH_DB="Driver={PostgreSQL};Database=divbench;Server=anna;ByteaAsLongVarBinary=1";
+test -z "$DIVBENCH_DB" && DIVBENCH_DB="Driver=SQLITE;Database=/tmp/divbench.sqlite";
+export DIVBENCH_DB
 
 cd $(dirname $0)/..
 test -z "$B" && B=$(make show var=DEFAULT_FLAVOUR)
 make $B-divbench 1>&2
 exe=$(make show var=OBJ)$B/tools/divbench
 cd -
-$DBG $exe "$@" -d "$ODBC"
+$DBG $exe "$@"
