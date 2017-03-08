@@ -19,6 +19,7 @@
 
 /* Define to 1 if you have the <wchar.h> header file. */
 #define HAVE_WCHAR_H 1
+#define HAVE_WCTYPE_H 1
 
 /* Define if you want to enable approximate matching functionality. */
 #define TRE_APPROX 1

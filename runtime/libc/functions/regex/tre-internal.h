@@ -9,6 +9,8 @@
 #ifndef TRE_INTERNAL_H
 #define TRE_INTERNAL_H 1
 
+#include "tre-config.h"
+
 #ifdef HAVE_WCHAR_H
 #include <wchar.h>
 #endif /* HAVE_WCHAR_H */
