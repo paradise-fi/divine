@@ -317,13 +317,13 @@ extern "C" void  __attribute__((weak)) __boot( const _VM_Env *env ) {
 
 int uname( struct utsname *__name ) {
     int ret;
-    __dios_syscall( __dios::_SC_uname, &ret, __name );
+    __dios_syscall( SYS_uname, &ret, __name );
     return ret;
 }
 
 int __dios_hardware_concurrency() noexcept {
     int ret;
-    __dios_syscall( __dios::_SC_hardware_concurrency, &ret );
+    __dios_syscall( SYS_hardware_concurrency, &ret );
     return ret;
 }
 

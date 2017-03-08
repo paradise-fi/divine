@@ -127,7 +127,7 @@ extern "C" void _exit( int rv )
 extern "C" pid_t getpid( void )
 {
     pid_t ret;
-    __dios_syscall( __dios::_SC_getpid, &ret );
+    __dios_syscall( SYS_getpid, &ret );
     return ret;
 }
 
@@ -136,7 +136,7 @@ extern "C" pid_t getpid( void )
 extern "C" int kill( pid_t pid, int sig )
 {
     int ret;
-    __dios_syscall( __dios::_SC_kill, &ret, pid, sig );
+    __dios_syscall( SYS_kill, &ret, pid, sig );
     return ret;
 }
 

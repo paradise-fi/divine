@@ -11,7 +11,7 @@
 _DiOS_ThreadHandle __dios_start_thread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept
 {
     _DiOS_ThreadHandle ret;
-    __dios_syscall( __dios::_SC_start_thread, &ret, routine, arg, tls_size );
+    __dios_syscall( SYS_start_thread, &ret, routine, arg, tls_size );
     return ret;
 }
 
@@ -25,20 +25,20 @@ int *__dios_get_errno() noexcept {
 }
 
 void __dios_kill_thread( _DiOS_ThreadHandle id ) noexcept {
-    __dios_syscall( __dios::_SC_kill_thread, nullptr, id );
+    __dios_syscall( SYS_kill_thread, nullptr, id );
 }
 
 void __dios_kill_process( pid_t id ) noexcept {
     if ( id == 1 ) // TODO: all kinds of suicide
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
     int ret;
-    __dios_syscall( __dios::_SC_kill, &ret, id, SIGKILL );
+    __dios_syscall( SYS_kill, &ret, id, SIGKILL );
 }
 
 _DiOS_ThreadHandle *__dios_get_process_threads() noexcept {
     _DiOS_ThreadHandle *ret;
     auto tid = __dios_get_thread_handle();
-    __dios_syscall( __dios::_SC_get_process_threads, &ret, tid );
+    __dios_syscall( SYS_get_process_threads, &ret, tid );
     return ret;
 }
 

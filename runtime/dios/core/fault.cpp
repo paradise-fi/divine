@@ -73,7 +73,7 @@ void Fault::handler( _VM_Fault _what, _VM_Frame *cont_frame,
         sc_handler_wrap( *ctx, nullptr, kernel, frame, _what );
     }
     else {
-        __dios_syscall( _SC_fault_handler, nullptr, kernel, frame, _what  );
+        __dios_syscall( SYS_fault_handler, nullptr, kernel, frame, _what  );
     }
 
     // Continue if we get the control back
@@ -278,13 +278,13 @@ void fault_handler( __dios::Context& ctx, int *err, void* retval, va_list vl ) {
 
 int __dios_configure_fault( int fault, int cfg ) {
     int ret;
-    __dios_syscall( __dios::_SC_configure_fault, &ret, fault, cfg );
+    __dios_syscall( SYS_configure_fault, &ret, fault, cfg );
     return ret;
 }
 
 int __dios_get_fault_config( int fault ) {
     int ret;
-    __dios_syscall( __dios::_SC_get_fault_config, &ret, fault );
+    __dios_syscall( SYS_get_fault_config, &ret, fault );
     return ret;
 }
 
