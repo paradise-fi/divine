@@ -51,6 +51,7 @@ endmacro()
 
 add_custom_command(
     OUTPUT ${H_DIVM}
+    DEPENDS ${divine_SOURCE_DIR}/divine/vm/divm.h
     VERBATIM
     COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/divine/vm/divm.h ${H_DIVM} )
 
