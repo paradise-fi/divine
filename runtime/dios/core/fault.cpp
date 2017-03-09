@@ -276,29 +276,6 @@ void fault_handler( __dios::Context& ctx, int *err, void* retval, va_list vl ) {
 
 } // namespace __sc
 
-int __dios_configure_fault( int fault, int cfg ) {
-    int ret;
-    __dios_syscall( SYS_configure_fault, &ret, fault, cfg );
-    return ret;
-}
-
-int __dios_get_fault_config( int fault ) {
-    int ret;
-    __dios_syscall( SYS_get_fault_config, &ret, fault );
-    return ret;
-}
-
-void __dios_fault( int f, const char *msg, ... ) {
-    __dios_trace_t( msg );
-    auto fh = reinterpret_cast< __vm_fault_t >( __vm_control( _VM_CA_Get, _VM_CR_FaultHandler ) );
-    auto *retFrame = static_cast< struct _VM_Frame * >(
-        __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
-    auto pc = reinterpret_cast< uintptr_t >( retFrame->pc );
-
-    typedef void (*PC)(void);
-    ( *fh )( static_cast< _VM_Fault >( f ), retFrame, reinterpret_cast< PC >( pc ) );
-}
-
 namespace __sc_passthru {
 
 void configure_fault( __dios::Context& ctx, int * err, void* retval, va_list vl )  {
