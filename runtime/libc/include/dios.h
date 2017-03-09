@@ -8,6 +8,7 @@
 #include <sys/trace.h>
 #include <sys/fault.h>
 #include <sys/interrupt.h>
+#include <sys/monitor.h>
 
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
@@ -149,8 +150,6 @@ CPP_END
 
 #include <cstdint>
 #include <dios/core/stdlibwrap.hpp>
-#include <dios/core/monitor.hpp>
-
 
 namespace __dios {
 
