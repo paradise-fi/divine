@@ -35,13 +35,6 @@ struct _DiOS_TLS {
 
 typedef struct _DiOS_TLS * _DiOS_ThreadHandle;
 
-#ifdef __cplusplus
-namespace __dios { struct Monitor; }
-typedef __dios::Monitor _DiOS_Monitor;
-#else
-typedef struct _DiOS_Monitor_ _DiOS_Monitor;
-#endif
-
 static inline int __dios_pointer_get_type( void *ptr ) NOTHROW
 {
     unsigned long p = (unsigned long) ptr;
@@ -103,12 +96,6 @@ int __dios_hardware_concurrency() NOTHROW;
  * Issue DiOS syscall with given args. Return value is stored in ret.
  */
 void __dios_syscall(int syscode, void* ret, ...) NOTHROW;
-
-/*
- * Register a monitor. Monitor is called after each interrupt. Multiple monitors
- * can be registered and they are called in the same order as they were added.
- */
-void __dios_register_monitor( _DiOS_Monitor *monitor ) NOTHROW;
 
 
 // unwind and free frames on stack 'stack' from 'from' to 'to' so that 'to'
