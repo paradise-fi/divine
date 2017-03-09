@@ -160,11 +160,25 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
             case llvm::Intrinsic::dbg_declare: op += ".declare"; break;
             default: UNREACHABLE( "unexpected debug opcode" ); break;
         }
-    if ( insn.opcode == OpDbg )
+    if ( insn.opcode == OpHypercall )
         switch ( insn.subcode )
         {
-            case llvm::Intrinsic::dbg_value: op += ".value"; break;
-            case llvm::Intrinsic::dbg_declare: op += ".declare"; break;
+            case HypercallControl: op += ".control"; break;
+            case HypercallChoose: op += ".choose"; break;
+            case HypercallFault: op += ".fault"; break;
+
+            case HypercallInterruptCfl: op += ".interrupt.cfl"; break;
+            case HypercallInterruptMem: op += ".interrupt.mem"; break;
+
+            case HypercallTrace : op += ".trace"; break;
+            case HypercallSyscall: op += ".syscall"; break;
+
+            case HypercallObjMake: op += ".obj.make"; break;
+            case HypercallObjFree: op += ".obj.free"; break;
+            case HypercallObjShared: op += ".obj.shared"; break;
+            case HypercallObjResize: op += ".obj.resize"; break;
+            case HypercallObjSize: op += ".obj.size"; break;
+
             default: UNREACHABLE( "unexpected debug opcode" ); break;
         }
     return op;

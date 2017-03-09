@@ -45,6 +45,8 @@ std::string opcode( int op )
 {
     if ( op == OpDbg )
         return "dbg";
+    if ( op == OpHypercall )
+        return "vm";
     opcode_tolower();
     return _opcode[ op ];
 }
