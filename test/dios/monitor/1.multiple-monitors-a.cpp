@@ -19,8 +19,8 @@ int main() {
     for ( int i = 0; i != 2; i++ )
         glob = glob ? 0 : 1;
 
-    __dios_register_monitor( __dios::new_object< DummyMon >() );
-    __dios_register_monitor( __dios::new_object< GlobMon >() );
+    __dios::register_monitor( __dios::new_object< DummyMon >() );
+    __dios::register_monitor( __dios::new_object< GlobMon >() );
 
     for ( int i = 0; i != 2; i++ )
         glob = glob ? 0 : 1;
