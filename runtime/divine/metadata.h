@@ -95,10 +95,9 @@ const _MD_Global *__md_get_global_meta( const char *name ) NOTHROW _ROOT;
 
 CPP_END
 
-#if __cplusplus >= 201402L
+#if __cplusplus >= 201402L && !defined( _PDCLIB_BUILD )
 
 #include <type_traits>
-#include <cstdint>
 #ifndef __divine__
 #include <brick-assert>
 #endif
