@@ -5,6 +5,7 @@
 #include <dios/core/scheduling.hpp>
 #include <dios/core/main.hpp>
 #include <divine/metadata.h>
+#include <sys/signal.h>
 #include <signal.h>
 #include <errno.h>
 
@@ -62,40 +63,40 @@ void start_thread( __dios::Context& ctx, int *, void *retval, va_list vl ) {
 
 static void sig_ign( int ) {}
 static void sig_die( int ) {}
+static void sig_fault( int ) {}
 
 static const sighandler_t defhandlers[] = {
-        sig_die,    // SIGHUP    = 1
-        sig_die,    // SIGINT    = 2
-        sig_die,    // SIGQUIT   = 3
-        sig_die,    // SIGILL    = 4
-        sig_die,    // SIGTRAP   = 5
-        sig_die,    // SIGABRT   = 6
-        sig_die,    // SIGBUS    = 7
-        sig_die,    // SIGFPE    = 8
-        sig_die,    // SIGKILL   = 9
-        sig_die,    // SIGUSR1   = 10
-        sig_die,    // SIGSEGV   = 11
-        sig_die,    // SIGUSR2   = 12
-        sig_die,    // SIGPIPE   = 13
-        sig_die,    // SIGALRM   = 14
-        sig_die,    // SIGTERM   = 15
-        sig_die,    // SIGSTKFLT = 16
-        sig_ign,    // SIGCHLD   = 17
-        sig_ign,    // SIGCONT   = 18 ?? this should be OK since it should
-        sig_ign,    // SIGSTOP   = 19 ?? stop/resume the whole process, we can
-        sig_ign,    // SIGTSTP   = 20 ?? simulate it as doing nothing
-        sig_ign,    // SIGTTIN   = 21 ?? at least until we will have processes
-        sig_ign,    // SIGTTOU   = 22 ?? and process-aware kill
-        sig_ign,    // SIGURG    = 23
-        sig_die,    // SIGXCPU   = 24
-        sig_die,    // SIGXFSZ   = 25
-        sig_die,    // SIGVTALRM = 26
-        sig_die,    // SIGPROF   = 27
-        sig_ign,    // SIGWINCH  = 28
-        sig_die,    // SIGIO     = 29
-        sig_die,    // SIGPWR    = 30
-        sig_die     // SIGUNUSED = 31
-
+    { sig_die, 0 },    // SIGHUP    = 1
+    { sig_die, 0 },    // SIGINT    = 2
+    { sig_fault, 0 },  // SIGQUIT   = 3
+    { sig_fault, 0 },  // SIGILL    = 4
+    { sig_fault, 0 },  // SIGTRAP   = 5
+    { sig_fault, 0 },  // SIGABRT/SIGIOT   = 6
+    { sig_fault, 0 },  // SIGBUS    = 7
+    { sig_fault, 0 },  // SIGFPE    = 8
+    { sig_die, 0 },    // SIGKILL   = 9
+    { sig_die, 0 },    // SIGUSR1   = 10
+    { sig_fault, 0 },  // SIGSEGV   = 11
+    { sig_die, 0 },    // SIGUSR2   = 12
+    { sig_die, 0 },    // SIGPIPE   = 13
+    { sig_die, 0 },    // SIGALRM   = 14
+    { sig_die, 0 },    // SIGTERM   = 15
+    { sig_die, 0 },    // SIGSTKFLT = 16
+    { sig_ign, 0 },    // SIGCHLD   = 17
+    { sig_ign, 0 },    // SIGCONT   = 18 ?? this should be OK since it should
+    { sig_ign, 0 },    // SIGSTOP   = 19 ?? stop/resume the whole process, we can
+    { sig_ign, 0 },    // SIGTSTP   = 20 ?? simulate it as doing nothing
+    { sig_ign, 0 },    // SIGTTIN   = 21 ?? at least until we will have processes
+    { sig_ign, 0 },    // SIGTTOU   = 22 ?? and process-aware kill
+    { sig_ign, 0 },    // SIGURG    = 23
+    { sig_fault, 0 },  // SIGXCPU   = 24
+    { sig_fault, 0 },  // SIGXFSZ   = 25
+    { sig_die, 0 },    // SIGVTALRM = 26
+    { sig_die, 0 },    // SIGPROF   = 27
+    { sig_ign, 0 },    // SIGWINCH  = 28
+    { sig_die, 0 },    // SIGIO     = 29
+    { sig_die, 0 },    // SIGPWR    = 30
+    { sig_fault, 0 }   // SIGUNUSED/SIGSYS = 31
 };
 
 void kill( __dios::Context& ctx, int *err, void *ret, va_list vl ) {
@@ -104,9 +105,14 @@ void kill( __dios::Context& ctx, int *err, void *ret, va_list vl ) {
     sighandler_t handler;
 
     bool found = false;
-    for ( auto thread : ctx.scheduler->threads )
-        if ( thread->_pid == pid )
+    __dios::Thread *thread;
+    for ( auto t : ctx.scheduler->threads )
+        if ( t->_pid == pid )
+        {
             found = true;
+            thread = t;
+            break;
+        }
 
     if ( !found )
     {
@@ -120,12 +126,24 @@ void kill( __dios::Context& ctx, int *err, void *ret, va_list vl ) {
     else
         handler = defhandlers[sig];
 
-    if ( handler == sig_ign )
+    *static_cast< int* >( ret ) = 0;
+
+    if ( handler.f == sig_ign )
         return;
-    if ( handler == sig_die )
+    if ( handler.f == sig_die )
         ctx.scheduler->killProcess( pid );
+    else if ( handler.f == sig_fault )
+        __dios_fault( _VM_F_Control, "Uncaught signal." );
     else
-        __dios_fault( _VM_F_NotImplemented, "Custom signal handlers not implemented." );
+    {
+        auto fun = __md_get_pc_meta( reinterpret_cast< uintptr_t >( __dios_signal_trampoline ) );
+        auto _frame = static_cast< __dios::TrampolineFrame * >( __vm_obj_make( fun->frame_size ) );
+        _frame->pc = reinterpret_cast< void (*)() >( __dios_signal_trampoline );
+        _frame->interrupted = thread->_frame;
+        thread->_frame = _frame;
+        _frame->parent = nullptr;
+        _frame->handler = handler.f;
+    }
 }
 
 void getpid( __dios::Context& ctx, int *, void *retval, va_list )

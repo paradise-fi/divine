@@ -41,6 +41,11 @@ struct CleanupFrame : _VM_Frame {
     int reason;
 };
 
+struct TrampolineFrame : _VM_Frame {
+    _VM_Frame * interrupted;
+    void ( *handler )( int );
+};
+
 template < class T >
 struct SortedStorage {
     using Tid = decltype( std::declval< T >().getId() );

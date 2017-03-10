@@ -39,7 +39,11 @@ struct MachineParams {
     void traceParams( int indent );
 };
 
-typedef void ( *sighandler_t )( int );
+struct sighandler_t
+{
+    void ( *f )( int );
+    int sa_flags;
+};
 
 struct Context {
     Scheduler *scheduler;
