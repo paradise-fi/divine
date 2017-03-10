@@ -160,7 +160,27 @@ int raise( int sig )
     }
 }
 
-__dios::sighandler_t signal( int, __dios::sighandler_t ) {
-    __dios_fault( _VM_F_NotImplemented, "Signal not implemented." );
-    return nullptr;
+void sigemptyset( sigset_t * sig )
+{
+    *sig = 0;
+}
+
+void (* signal( int sig, void ( *handler )( int ) ) ) (int)
+{
+    struct sigaction sa, res;
+    sa.sa_handler = handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART; /* Restart functions if
+                                interrupted by handler */
+    if ( sigaction( sig, &sa, &res ) == -1 )
+        return SIG_ERR;
+    else
+        return res.sa_handler;
+}
+
+int sigaction( int signum, const struct sigaction *act, struct sigaction *oldact )
+{
+    int ret;
+    __dios_syscall( SYS_sigaction, &ret, signum, act, oldact );
+    return ret;
 }
