@@ -165,7 +165,9 @@ void sigemptyset( sigset_t * sig )
     *sig = 0;
 }
 
-void (* signal( int sig, void ( *handler )( int ) ) ) (int)
+typedef void ( *SignalHandler )( int );
+
+SignalHandler signal( int sig, SignalHandler handler )
 {
     struct sigaction sa, res;
     sa.sa_handler = handler;
