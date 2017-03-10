@@ -7,9 +7,9 @@
 
 #include <cstring>
 #include <dios.h>
+#include <sys/monitor.h>
 #include <dios/core/syscall.hpp>
 #include <dios/core/fault.hpp>
-#include <dios/core/monitor.hpp>
 #include <divine/metadata.h>
 
 namespace __sc {

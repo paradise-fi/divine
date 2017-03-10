@@ -2,7 +2,7 @@
 
 #include <cstdarg>
 #include <dios.h>
-#include <dios/core/monitor.hpp>
+#include <sys/monitor.h>
 #include <dios/core/syscall.hpp>
 
 namespace __sc {
