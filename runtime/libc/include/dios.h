@@ -8,6 +8,7 @@
 #include <sys/trace.h>
 #include <sys/fault.h>
 #include <sys/interrupt.h>
+#include <sys/stack.h>
 #include <sys/monitor.h>
 
 #ifdef __cplusplus
@@ -96,23 +97,6 @@ int __dios_hardware_concurrency() NOTHROW;
  * Issue DiOS syscall with given args. Return value is stored in ret.
  */
 void __dios_syscall(int syscode, void* ret, ...) NOTHROW;
-
-
-// unwind and free frames on stack 'stack' from 'from' to 'to' so that 'to'
-// the frame which originally returned to 'from' now returns to 'to'
-// * 'stack' can be nullptr if unwinding on local stack
-// * 'from' can be nullptr if everything from the caller of __dios_unwind should be unwound
-// * 'to' can be nullptr if all frames from 'from' below should be destroyed
-//
-// i.e. __dios_unwind( nullptr, nullptr, nullptr ) destroys complete stack
-// except for the caller of __dios_unwind, which will have 'parent' set to
-// nullptr
-void __dios_unwind( struct _VM_Frame *stack, struct _VM_Frame *from, struct _VM_Frame *to ) NOTHROW __attribute__((__noinline__));
-
-// transfer control to given frame and program counter, if restoreMaskTo is -1
-// it does not change mask
-void __dios_jump( struct _VM_Frame *to, void (*pc)( void ), int restoreMaskTo ) NOTHROW __attribute__((__noinline__));
-
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
             __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \
