@@ -153,17 +153,6 @@ int raise( int sig )
 {
     switch ( sig )
     {
-        case SIGQUIT:
-        case SIGILL:
-        case SIGABRT:
-        case SIGFPE:
-        case SIGSEGV:
-        case SIGBUS:
-        case SIGSYS:
-        case SIGTRAP:
-        case SIGXCPU:
-        case SIGXFSZ:
-            __dios_fault( _VM_F_Control, "Uncaught signal." );
         case SIGKILL:
             __dios_interrupt();
         default:
