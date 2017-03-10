@@ -23,7 +23,13 @@ typedef struct
     va_list _args;
 } _DiOS_Syscall;
 
+#ifndef __dios_kernel__
+_PDCLIB_EXTERN_C
+
 void __dios_trap( int syscode, int* err, void* ret, va_list *args ) _PDCLIB_nothrow;
 void __dios_syscall( int syscode, void* ret, ... ) _PDCLIB_nothrow;
+
+_PDCLIB_EXTERN_END
+#endif
 
 #endif

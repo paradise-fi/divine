@@ -93,10 +93,6 @@ _DiOS_ThreadHandle *__dios_get_process_threads() NOTHROW;
  */
 int __dios_hardware_concurrency() NOTHROW;
 
-/*
- * Issue DiOS syscall with given args. Return value is stored in ret.
- */
-void __dios_syscall(int syscode, void* ret, ...) NOTHROW;
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
             __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \
