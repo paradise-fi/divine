@@ -29,7 +29,8 @@ struct Monitor
             next->run( c );
     }
 
-    Monitor *next = nullptr;
+    Monitor *next;
+    Monitor() : next( 0 ) {}
 };
 
 /*
