@@ -1,4 +1,4 @@
-#include <dios.h>
+#include <dios/kernel.hpp>
 #include <cassert>
 
 volatile int done;

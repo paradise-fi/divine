@@ -1,4 +1,5 @@
-#include <dios.h>
+#include <sys/monitor.h>
+#include <dios/kernel.hpp>
 
 volatile int glob;
 
