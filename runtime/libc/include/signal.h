@@ -78,6 +78,8 @@ extern "C" {
 #define SIG_ERR (void (*)( int ))-1
 #define SIG_IGN (void (*)( int ))1
 
+#define SA_RESTART 0x10000000  // Linux definition
+
 typedef _PDCLIB_sig_atomic sig_atomic_t;
 
 /* Installs a signal handler "func" for the given signal.
@@ -106,6 +108,30 @@ void (*signal( int sig, void (*func)( int ) ) )( int );
    or SIG_IGN will end the program).
    Returns zero if successful, nonzero otherwise. */
 int raise( int sig );
+
+typedef _PDCLIB_uint64_t sigset_t;
+
+typedef union sigval
+{
+    int sigval_int;
+    void *sigval_ptr;
+} sigval_t;
+
+typedef struct siginfo
+{
+    sigval_t si_action;
+} siginfo_t;
+
+struct sigaction
+{
+    void ( *sa_handler )( int );
+    void ( *sa_sigaction )( int, siginfo_t *, void * );
+    sigset_t sa_mask;
+    int sa_flags;
+    void ( *sa_restorer )( void );
+};
+
+int sigaction( int signum, const struct sigaction *act, struct sigaction *oldact );
 
 #ifdef __cplusplus
 }

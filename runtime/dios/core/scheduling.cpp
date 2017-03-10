@@ -146,6 +146,25 @@ void kill( __dios::Context& ctx, int *err, void *ret, va_list vl ) {
     }
 }
 
+
+void sigaction( __dios::Context& ctx, int *, void *ret, va_list vl )
+{
+    int sig = va_arg( vl, int );
+    auto act = va_arg( vl, const struct sigaction * );
+    auto oldact = va_arg( vl, struct sigaction * );
+
+    if ( !ctx.sighandlers )
+    {
+        ctx.sighandlers = reinterpret_cast< sighandler_t * >(
+                __vm_obj_make( sizeof( defhandlers ) ) );
+        std::memcpy( ctx.sighandlers, defhandlers, sizeof(defhandlers) );
+    }
+
+    oldact->sa_handler = ctx.sighandlers[sig].f;
+    ctx.sighandlers[sig].f = act->sa_handler;
+    *static_cast< int * >( ret ) = 0;
+}
+
 void getpid( __dios::Context& ctx, int *, void *retval, va_list )
 {
     auto tid = __dios_get_thread_handle();

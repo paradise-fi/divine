@@ -765,5 +765,9 @@ namespace __sc_passthru {
             _VM_SC_Out | _VM_SC_Int32, retval );
     }
 
+    void sigaction(__dios::Context&, int*, void*, va_list) {
+        __dios_fault( _VM_F_NotImplemented, "fs_passthrough sigaction not implemented" );
+    }
+
 } // eo namespace __sc_passthru
 
