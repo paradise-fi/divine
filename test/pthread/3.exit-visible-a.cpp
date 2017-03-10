@@ -1,5 +1,7 @@
+#include <stdlib.h>
 #include <pthread.h>
 #include <cassert>
+#include <cstddef>
 
 int x, y;
 
