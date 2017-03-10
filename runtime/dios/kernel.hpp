@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <dios/core/stdlibwrap.hpp>
+#include <sys/monitor.h>
 
 namespace __dios {
 
