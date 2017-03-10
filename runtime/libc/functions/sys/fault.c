@@ -1,5 +1,6 @@
 #include <sys/syscall.h>
 #include <sys/fault.h>
+#include <sys/trace.h>
 #include <sys/divm.h>
 
 int __dios_configure_fault( int fault, int cfg )
