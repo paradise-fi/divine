@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <string.h>
+#include <wchar.h>
 
 #include <sys/divm.h>
 #include <sys/fault.h>

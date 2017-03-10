@@ -16,6 +16,7 @@
 #include <sys/divm.h>
 #include <dios/core/stdlibwrap.hpp>
 #include <dios/core/syscall.hpp>
+#include <dios/kernel.hpp>
 
 #define __FS_assert( x ) do { \
         if ( !(x) ) { \

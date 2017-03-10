@@ -4,6 +4,7 @@
 #include <dios.h>
 #include <sys/monitor.h>
 #include <dios/core/syscall.hpp>
+#include <dios/kernel.hpp>
 
 namespace __sc {
 

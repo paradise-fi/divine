@@ -112,67 +112,6 @@ int __dios_hardware_concurrency() NOTHROW;
 CPP_END
 
 
-#ifdef __cplusplus
-#if defined( __divine__ ) || defined( DIVINE_NATIVE_RUNTIME )
-
-#include <cstdint>
-#include <dios/core/stdlibwrap.hpp>
-
-namespace __dios {
-
-namespace fs {
-    struct VFS;
-}
-
-template < class T, class... Args >
-T *new_object( Args... args ) {
-    T* obj = static_cast< T * >( __vm_obj_make( sizeof( T ) ?: 1 ) );
-    new (obj) T( args... );
-    return obj;
-}
-
-template < class T >
-void delete_object( T *obj ) {
-    obj->~T();
-    __vm_obj_free( obj );
-}
-
-using SysOpts = Vector< std::pair< String, String > >;
-
-struct Scheduler;
-struct Syscall;
-struct Fault;
-using VFS = fs::VFS;
-
-struct MachineParams {
-    int hardwareConcurrency;
-
-    void initialize( const SysOpts& opts );
-    void traceParams( int indent );
-};
-
-typedef void ( *sighandler_t )( int );
-
-struct Context {
-    Scheduler *scheduler;
-    Fault *fault;
-    VFS *vfs;
-    void *globals;
-    Monitor *monitors;
-    MachineParams machineParams;
-    sighandler_t *sighandlers;
-
-    Context();
-    void finalize();
-};
-
-
-} // namespace __dios
-
-#endif // __divine__ || DIVINE_NATIVE_RUNTIME
-
-#endif // __cplusplus
-
 #endif // __DIOS_H__
 
 #undef EXTERN_C

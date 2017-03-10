@@ -1,6 +1,8 @@
 #ifndef __ABSTRACT_COMMON_H_
 #define __ABSTRACT_COMMON_H_
 #include <dios.h>
+#include <utility>
+#include <new>
 
 #ifdef __divine__
 #include <sys/divm.h>

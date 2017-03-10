@@ -5,6 +5,7 @@
 
 #include <utility>
 #include <dios.h>
+#include <dios/kernel.hpp>
 #include <dios/core/stdlibwrap.hpp>
 
 int main(...);
