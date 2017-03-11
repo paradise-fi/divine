@@ -158,9 +158,14 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     PointerV loc( _address + _offset );
+
+    int bitw = 0;
+    if ( _type )
+        bitw = _type->getPrimitiveSizeInBits();
+
     if ( _type && _type->isIntegerTy() )
         eval.template type_dispatch< IsIntegral >(
-            _type->getPrimitiveSizeInBits(), Prog::Slot::Integer,
+            bitw, Prog::Slot::Integer,
             [&]( auto v )
             {
                 auto raw = v.get( loc );
@@ -175,6 +180,14 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
                 }
                 else
                     yield( "value", brick::string::fmt( raw ) );
+            } );
+
+    if ( _type && _type->isFloatingPointTy() )
+        eval.template type_dispatch< IsFloat >(
+            bitw, Prog::Slot::Float,
+            [&]( auto v )
+            {
+                yield( "value", brick::string::fmt( v.get( loc ) ) );
             } );
 
     if ( _type && _di_type && ( di_name() == "char*" ||  di_name() == "const char*" ) )
