@@ -55,8 +55,7 @@ Compile::Compile( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
                   , "-isystem", rt::includeDir
                   , "-isystem", joinPath( rt::includeDir, "libc/include" )
                   , "-isystem", joinPath( rt::includeDir, "libc/internals" )
-                  , "-isystem", joinPath( rt::includeDir, "libtre" )
-                  , "-isystem", joinPath( rt::includeDir, "libm" )
+                  , "-isystem", joinPath( rt::includeDir, "libm/include" )
                   , "-isystem", joinPath( rt::includeDir, "libcxx/include" )
                   , "-isystem", joinPath( rt::includeDir, "libcxxabi/include" )
                   , "-isystem", joinPath( rt::includeDir, "libunwind/include" )
