@@ -5,7 +5,7 @@ EXTRA_FILES=
 FLAGS=
 . $1
 if test -z $TESTCASE; then
-    TESTCASE=$(basename $1 | sed 's/\..*$//')
+    TESTCASE=$(basename $1 | sed 's/^[0-9u].\([^.]*\)\..*$/\1/')
 fi
 
 cat > unittest.cpp <<EOF
