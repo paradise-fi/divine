@@ -781,10 +781,6 @@ struct Query {
     struct ConstTrue { template< typename T > bool operator()( T ) const { return true; } };
     struct ConstFalse { template< typename T > bool operator()( T ) const { return false; } };
 
-    static const Id id;
-    static const ConstTrue constTrue;
-    static const ConstFalse constFalse;
-
     TEST(query) {
         std::vector< int > vec = { 1, 2, 3, 4 };
         auto query = query::query( vec );
@@ -815,12 +811,12 @@ struct Query {
     // freeze . map( id ) . query == id
     TEST(map_id) {
         std::vector< int > vec = { 1, 2, 3, 4 };
-        ASSERT( query::query( vec ).map( id ).freeze() == vec );
+        ASSERT( query::query( vec ).map( Id() ).freeze() == vec );
     }
 
     TEST(map_it) {
         std::vector< int > vec = { 1, 2 };
-        auto q = query::query( vec ).map( id );
+        auto q = query::query( vec ).map( Id() );
         ASSERT( !q.begin().end() );
         ASSERT( q.end().end() );
         ASSERT( !(++q.begin()).end() );
@@ -837,12 +833,12 @@ struct Query {
     // freeze . filter( const_true ) . query == id
     TEST(filter_id) {
         std::vector< int > vec = { 1, 2, 3, 4 };
-        ASSERT( query::query( vec ).filter( constTrue ).freeze() == vec );
+        ASSERT( query::query( vec ).filter( ConstTrue() ).freeze() == vec );
     }
 
     TEST(filter_it) {
         std::vector< int > vec = { 1, 2 };
-        auto q = query::query( vec ).filter( constTrue );
+        auto q = query::query( vec ).filter( ConstTrue() );
         ASSERT( !q.begin().end() );
         ASSERT( q.end().end() );
         ASSERT( !(++q.begin()).end() );
@@ -855,7 +851,7 @@ struct Query {
         auto isodd = []( int x ) { return x % 2 == 1; };
         ASSERT( query::query( vec ).filter( isodd ).freeze() == odd );
         std::vector< int > empty = { };
-        ASSERT( query::query( vec ).filter( constFalse ).freeze() == empty );
+        ASSERT( query::query( vec ).filter( ConstFalse() ).freeze() == empty );
     }
 
     TEST(flatten_it) {
@@ -869,10 +865,10 @@ struct Query {
 
     TEST(flatten_map_it) {
         std::vector< std::vector< int > > vec = { };
-        ASSERT( query::query( vec ).map( id ).flatten().begin().end() );
+        ASSERT( query::query( vec ).map( Id() ).flatten().begin().end() );
 
         vec = { { }, { 1 }, { }, { }, { 2 }, { }, { } };
-        auto q = query::query( vec ).map( id ).flatten();
+        auto q = query::query( vec ).map( Id() ).flatten();
 
         ASSERT( !q.begin().end() );
         ASSERT( q.end().end() );
@@ -892,26 +888,26 @@ struct Query {
         std::vector< int > vec = { 1, 2, 3, 4 };
         auto iseven = []( int x ) { return x % 2 == 0; };
         ASSERT_EQ( query::query( vec ).size(), 4 );
-        ASSERT_EQ( query::query( vec ).map( id ).size(), 4 );
-        ASSERT_EQ( query::query( vec ).filter( constTrue ).size(), 4 );
-        ASSERT_EQ( query::query( vec ).filter( constFalse ).size(), 0 );
+        ASSERT_EQ( query::query( vec ).map( Id() ).size(), 4 );
+        ASSERT_EQ( query::query( vec ).filter( ConstTrue() ).size(), 4 );
+        ASSERT_EQ( query::query( vec ).filter( ConstFalse() ).size(), 0 );
         ASSERT_EQ( query::query( vec ).filter( iseven ).size(), 2 );
 
         std::vector< std::vector< int > > dvec = { { 1 } };
-        ASSERT_EQ( query::query( dvec ).map( id ).flatten().size(), 1 );
-        ASSERT_EQ( query::query( dvec ).flatten().map( id ).size(), 1 );
+        ASSERT_EQ( query::query( dvec ).map( Id() ).flatten().size(), 1 );
+        ASSERT_EQ( query::query( dvec ).flatten().map( Id() ).size(), 1 );
 
         dvec = { { 1 }, { 2, 3 }, { }, { 4 } };
-        ASSERT_EQ( query::query( dvec ).map( id ).flatten().size(), 4 );
-        ASSERT_EQ( query::query( dvec ).flatten().map( id ).size(), 4 );
+        ASSERT_EQ( query::query( dvec ).map( Id() ).flatten().size(), 4 );
+        ASSERT_EQ( query::query( dvec ).flatten().map( Id() ).size(), 4 );
     }
 
     TEST(map_flatten) {
         std::vector< std::deque< int > > vec = { { }, { }, { 1, 2 }, { 3 }, { }, { }, { }, { 4 }, { }, { }, { }, { } };
         std::vector< int > target = { 1, 2, 3, 4 };
 
-        ASSERT_EQ( query::query( vec ).map( id ).flatten().size(), 4 );
-        ASSERT( query::query( vec ).map( id ).flatten().freeze() == target );
+        ASSERT_EQ( query::query( vec ).map( Id() ).flatten().size(), 4 );
+        ASSERT( query::query( vec ).map( Id() ).flatten().freeze() == target );
     }
 
     TEST(filter_flatten) {
@@ -954,7 +950,7 @@ struct Query {
     TEST(groupBy) {
         std::vector< int > vec = { 1, 2, 2, 3, 3, 3, 4, 4, 4, 4 };
         query::query( vec )
-            .groupBy( id )
+            .groupBy( Id() )
             .forall( []( std::pair< int, std::vector< int > > p ) {
                     ASSERT_EQ( int( p.second.size() ), p.first );
                     for ( auto x : p.second )
