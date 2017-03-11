@@ -260,9 +260,17 @@ struct SmallVector {
     }
 
     SmallVector( SmallVector &&other ) noexcept : SmallVector() {
-        _resize( other._size );
-        uninitialized::move( other.begin(), other.end(), begin() );
-        other.resize( 0 );
+        if ( other._onstack ) {
+            _resize( other._size );
+            uninitialized::move( other.begin(), other.end(), begin() );
+            other.resize( 0 );
+        } else {
+            _data.range = other._data.range;
+            _size = other._size;
+            _onstack = false;
+            other._size = 0;
+            other._onstack = true;
+        }
     }
 
     ~SmallVector() {
@@ -275,6 +283,12 @@ struct SmallVector {
     {
         _resize( other._size );
         std::uninitialized_copy( other.begin(), other.end(), begin() );
+        return *this;
+    }
+
+    SmallVector &operator=( SmallVector &&other ) noexcept {
+        std::swap( _data, other._data );
+        std::swap( _sos, other._sos );
         return *this;
     }
 
@@ -684,6 +698,28 @@ struct TestSmallVector {
             ASSERT_LEQ( 0, vec.size() );
         }
         ASSERT_EQ( 0, vec.size() );
+    }
+
+    TEST(move) {
+        // when on stack, vector has to move elements around
+        SmallVector< int, 2 > x{ 1, 2 };
+        int *px = &x[ 0 ], *py, *pz;
+        SmallVector< int, 2 > y = std::move( x );
+        ASSERT_NEQ( px, (py = &y[ 0 ]) ); // on stack
+        x = std::move( y );
+        ASSERT_EQ( px, &x[ 0 ] );
+        ASSERT_NEQ( px, py );
+
+        x.push_back( 3 ); // move it out of stack, now move should preserve references
+        ASSERT_NEQ( px, &x[ 0 ] );
+        px = &x[ 0 ];
+        SmallVector< int, 2 > z( std::move( x ) );
+        pz = &z[ 0 ];
+        ASSERT_EQ( px, pz );
+        y = std::move( z );
+        ASSERT_NEQ( py, &y[ 0 ] );
+        py = &y[ 0 ];
+        ASSERT_EQ( pz, py );
     }
 };
 
