@@ -259,7 +259,7 @@ struct SmallVector {
         std::uninitialized_copy( other.begin(), other.end(), begin() );
     }
 
-    SmallVector( SmallVector &&other ) : SmallVector() {
+    SmallVector( SmallVector &&other ) noexcept : SmallVector() {
         _resize( other._size );
         uninitialized::move( other.begin(), other.end(), begin() );
         other.resize( 0 );
