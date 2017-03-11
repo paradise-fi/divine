@@ -381,6 +381,7 @@ Program::Position Program::insert( Position p )
         insn.values.resize( 1 + p.I->getNumOperands() );
         for ( int i = 0; i < int( p.I->getNumOperands() ); ++i )
             insn.values[ i + 1 ] = insert( p.pc.function(), p.I->getOperand( i ) ).slot;
+        insn.values[0] = insert( p.pc.function(), &*p.I ).slot;
 
         if ( auto PHI = dyn_cast< llvm::PHINode >( p.I ) )
             for ( unsigned idx = 0; idx < PHI->getNumOperands(); ++idx )
@@ -397,8 +398,6 @@ Program::Position Program::insert( Position p )
 
         if ( isa< llvm::InsertValueInst >( p.I ) )
             insertIndices< llvm::InsertValueInst >( p );
-
-        insn.result() = insert( p.pc.function(), &*p.I ).slot;
     } else
         pcmap.insert( std::make_pair( p.I, p.pc ) );
 

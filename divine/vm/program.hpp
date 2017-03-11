@@ -134,6 +134,18 @@ struct Program
             : type( Integer ), location( l ), _width( w ), offset( 0 )
         {
         }
+
+        Slot &operator=( const Slot & ) & = default;
+
+        friend std::ostream &operator<<( std::ostream &o, Program::Slot p )
+        {
+            static std::vector< std::string > t =
+                { "void", "ptr", "int", "float", "agg", "code", "alloca" };
+            static std::vector< std::string > l = { "const", "global", "local", "invalid" };
+            return o << "[" << l[ p.location ] << " " << t[ p.type ] << " @" << p.offset << " ↔"
+                     << p.width() << "]";
+        }
+
     };
 
     struct SlotRef
@@ -147,22 +159,37 @@ struct Program
     {
         uint32_t opcode:16;
         uint32_t subcode:16;
-        brick::data::SmallVector< Slot, 4 > values;
-        Slot &result() { ASSERT( values.size() ); return values[0]; }
-        Slot &operand( int i )
+        Slot result() const { ASSERT( values.size() ); return values[0]; }
+        Slot operand( int i ) const
         {
             int idx = (i >= 0) ? (i + 1) : (i + values.size());
             ASSERT_LT( idx, values.size() );
             return values[ idx ];
         }
-        Slot &value( int i )
+        Slot value( int i ) const
         {
             int idx = (i >= 0) ? i : (i + values.size());
             ASSERT_LT( idx, values.size() );
             return values[ idx ];
         }
 
+        int argcount() const { return values.size() - 1; }
+        bool has_result() const { return values.size() > 0; }
+
         Instruction() : opcode( 0 ), subcode( 0 ) {}
+        Instruction( const Instruction & ) = delete;
+        Instruction( Instruction && ) noexcept = default;
+
+        friend std::ostream &operator<<( std::ostream &o, const Program::Instruction &i )
+        {
+            for ( auto v : i.values )
+                o << v << " ";
+            return o;
+        }
+
+    private:
+        brick::data::SmallVector< Slot, 4 > values;
+        friend struct Program;
     };
 
     struct Function
@@ -181,6 +208,8 @@ struct Program
         }
 
         Function() : framesize( PointerBytes * 2 ) {}
+        Function( const Function & ) = delete;
+        Function( Function && ) noexcept = default;
     };
 
     std::vector< _VM_TypeTable > _types;
@@ -457,21 +486,6 @@ struct Program
         _globals_size = 0;
     }
 };
-
-static inline std::ostream &operator<<( std::ostream &o, Program::Slot p )
-{
-    static std::vector< std::string > t = { "void", "ptr", "int", "float", "agg", "code", "alloca" };
-    static std::vector< std::string > l = { "const", "global", "local", "invalid" };
-    return o << "[" << l[ p.location ] << " " << t[ p.type ] << " @" << p.offset << " ↔"
-             << p.width() << "]";
-}
-
-static inline std::ostream &operator<<( std::ostream &o, const Program::Instruction &i )
-{
-    for ( auto v : i.values )
-        o << v << " ";
-    return o;
-}
 
 }
 

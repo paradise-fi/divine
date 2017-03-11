@@ -520,7 +520,7 @@ struct Eval
     template< template< typename > class Guard = Any, typename Op >
     void op( int off, Op _op )
     {
-        auto &v = instruction().value( off );
+        auto v = instruction().value( off );
         return type_dispatch< Guard >( v.width(), v.type, _op );
     }
 
@@ -580,8 +580,7 @@ struct Eval
 
     void implement_extractvalue()
     {
-        auto off = compositeOffsetFromInsn( instruction().subcode, 1,
-                                            instruction().values.size() - 1 );
+        auto off = compositeOffsetFromInsn( instruction().subcode, 1, instruction().argcount() );
         ASSERT( off.defined() );
         slot_copy( s2ptr( operand( 0 ), off.cooked() ), result(), result().size() );
     }
@@ -590,8 +589,7 @@ struct Eval
     {
         /* first copy the original */
         slot_copy( s2ptr( operand( 0 ) ), result(), result().size() );
-        auto off = compositeOffsetFromInsn( instruction().subcode, 2,
-                                            instruction().values.size() - 1 );
+        auto off = compositeOffsetFromInsn( instruction().subcode, 2, instruction().argcount() );
         ASSERT( off.defined() );
         /* write the new value over the selected field */
         slot_copy( s2ptr( operand( 1 ) ), result(), operand( 1 ).size(), off.cooked() );
@@ -622,7 +620,7 @@ struct Eval
             bool usermode = false;
             if ( context().ref( _VM_CR_Flags ).integer & _VM_CF_KernelMode )
             {
-                if ( instruction().values.size() > 1 )
+                if ( instruction().argcount() )
                     _result = operand< Result >( 0 );
             }
             else
@@ -640,10 +638,10 @@ struct Eval
 
         PointerV caller_pc;
         heap().read( parent.cooked(), caller_pc );
-        auto caller = _program.instruction( caller_pc.cooked() );
-        if ( instruction().values.size() > 1 ) /* return value */
+        const auto &caller = _program.instruction( caller_pc.cooked() );
+        if ( instruction().argcount() ) /* return value */
         {
-            if ( caller.values.size() == 0 ) {
+            if ( !caller.has_result() ) {
                 fault( _VM_F_Control, parent.cooked(), caller_pc.cooked() )
                     << "Function which was called as void returned a value";
                 return;
@@ -680,7 +678,7 @@ struct Eval
 
     void implement_br()
     {
-        if ( instruction().values.size() == 2 )
+        if ( instruction().argcount() == 1 )
             jumpTo( operandCk< PointerV >( 0 ) );
         else
         {
@@ -732,7 +730,7 @@ struct Eval
         if ( i0.opcode != OpCode::PHI )
             return;
 
-        int size = 0, count = 0, incoming = ( i0.values.size() - 1 ) / 2, idx = -1;
+        int size = 0, count = 0, incoming = i0.argcount() / 2, idx = -1;
         ASSERT_LEQ( 0, incoming );
         for ( int i = 0; i < incoming; ++ i )
         {
@@ -864,7 +862,7 @@ struct Eval
                 // contains all the varargs, successively assigned higher
                 // addresses (going from left to right in the argument list) to
                 // the argument of the intrinsic
-                auto f = _program.functions[ pc().function() ];
+                const auto &f = _program.functions[ pc().function() ];
                 if ( !f.vararg ) {
                     fault( _VM_F_Hypercall ) << "va_start called in non-variadic function";
                     return;
@@ -938,7 +936,7 @@ struct Eval
         auto o_frame = frame();
         auto &o_inst = instruction();
 
-        while ( idx < instruction().values.size() - 2 )
+        while ( idx < instruction().argcount() - 1 )
         {
             int action = operandCk< IntV >( idx++, o_inst, o_frame ).cooked();
             auto reg = _VM_ControlRegister( operandCk< IntV >( idx++, o_inst, o_frame ).cooked() );
@@ -1090,7 +1088,7 @@ struct Eval
             }
         };
 
-        if ( instruction().values.size() < 3 )
+        if ( instruction().argcount() < 2 )
         {
             fault( _VM_F_Hypercall ) << "at least 2 arguments are required for __vm_syscall";
             return;
@@ -1098,7 +1096,7 @@ struct Eval
 
         IntV id = operandCk< IntV >( idx++ );
 
-        while ( idx < instruction().values.size() - 2 )
+        while ( idx < instruction().argcount() - 1 )
         {
             actions.push_back( operandCk< IntV >( idx++ ).cooked() );
             if ( !prepare( actions.back() ) )
@@ -1132,7 +1130,7 @@ struct Eval
             {
                 int options = operandCk< IntV >( 0 ).cooked();
                 std::vector< int > p;
-                for ( int i = 1; i < int( instruction().values.size() ) - 2; ++i )
+                for ( int i = 1; i < int( instruction().argcount() ) - 1; ++i )
                     p.push_back( operandCk< IntV >( i ).cooked() );
                 if ( !p.empty() && int( p.size() ) != options )
                     fault( _VM_F_Hypercall );
@@ -1183,7 +1181,7 @@ struct Eval
                         return;
                     case _VM_T_Alg: {
                         brick::data::SmallVector< GenericPointer > args;
-                        int argc = instruction().values.size() - 2;
+                        int argc = instruction().argcount() - 1;
                         for ( int i = 1; i < argc; ++i )
                             args.emplace_back( ptr2h( operandCk< PointerV >( i ) ) );
                         context().trace( TraceAlg{ args } );
@@ -1274,7 +1272,7 @@ struct Eval
         const auto &function = _program.function( target );
 
         /* report problems with the call before pushing the new stackframe */
-        const int argcount = instruction().values.size() - ( invoke ? 4 : 2 );
+        const int argcount = instruction().argcount() - ( invoke ? 3 : 1 );
 
         if ( !function.vararg && argcount > function.argcount )
         {
@@ -1409,8 +1407,7 @@ struct Eval
         {
             case OpCode::GetElementPtr:
                 result( operand< PointerV >( 0 ) + compositeOffsetFromInsn(
-                            instruction().subcode, 1,
-                            instruction().values.size() - 1 ) );
+                            instruction().subcode, 1, instruction().argcount() ) );
                 return;
 
             case OpCode::Select:
@@ -1558,7 +1555,7 @@ struct Eval
             case OpCode::Switch:
                 return op< Any >( 1, [this]( auto v ) {
                         PointerV target;
-                        for ( int o = 2; o < int( this->instruction().values.size() ) - 1; o += 2 )
+                        for ( int o = 2; o < this->instruction().argcount(); o += 2 )
                         {
                             auto eq = v.get( 1 ) == v.get( o + 1 );
                             if ( eq.cooked() )
@@ -1572,7 +1569,7 @@ struct Eval
                                 << "switch on an undefined value";
                             return;
                         }
-                        for ( int o = 2; o < int( this->instruction().values.size() ) - 1; o += 2 )
+                        for ( int o = 2; o < this->instruction().argcount(); o += 2 )
                         {
                             auto eq = v.get( 1 ) == v.get( o + 1 );
                             if ( !eq.defined() )
