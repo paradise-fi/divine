@@ -16,8 +16,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <tools/benchmark.hpp>
-
 #include <divine/ui/cli.hpp>
 #include <divine/ui/parser.hpp>
 #include <divine/cc/compile.hpp>
