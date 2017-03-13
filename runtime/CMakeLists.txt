@@ -78,6 +78,7 @@ list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/src/ld80 )
 
 mkobjs( libc "${flags};-D_PDCLIB_BUILD" )
 mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;-std=c++14;-I${CMAKE_CURRENT_BINARY_DIR}" )
+mkobjs( libm "${flags}" )
 
 list( APPEND flags -std=c++14 )
 list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include )
@@ -93,6 +94,7 @@ mkobjs( libdios "${flags}" )
 mkobjs( libabstract "${flags}" )
 
 mklib( libc libc_cpp )
+mklib( libm )
 mklib( libcxxabi )
 mklib( libcxx)
 mklib( libdios )
