@@ -147,11 +147,19 @@ void kill( __dios::Context& ctx, int *err, void *ret, va_list vl ) {
 }
 
 
-void sigaction( __dios::Context& ctx, int *, void *ret, va_list vl )
+void sigaction( __dios::Context& ctx, int *err, void *ret, va_list vl )
 {
     int sig = va_arg( vl, int );
     auto act = va_arg( vl, const struct sigaction * );
     auto oldact = va_arg( vl, struct sigaction * );
+
+    if ( sig < 0 || sig > static_cast<int>( sizeof(__sc::defhandlers) / sizeof(__dios::sighandler_t) )
+        || sig == SIGKILL || sig == SIGSTOP )
+    {
+        *static_cast< int * >( ret ) = -1;
+        *err = EINVAL;
+        return;
+    }
 
     if ( !ctx.sighandlers )
     {
