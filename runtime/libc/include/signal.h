@@ -69,6 +69,8 @@ extern "C" {
 #define SIGUNUSED SIGSYS
 /* Kill signal */
 #define SIGKILL 9
+/* Stop process */
+#define SIGSTOP 19
 
 /* The following should be defined to pointer values that could NEVER point to
    a valid signal handler function. (They are used as special arguments to
