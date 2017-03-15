@@ -7,7 +7,7 @@ extern "C" {
 }
 
 #include <dios.h>
-#include <divine/opcodes.h>
+#include <sys/bitcode.h>
 #include <divine/metadata.h>
 #include <dios/core/main.hpp>
 #include <dios/core/scheduling.hpp>

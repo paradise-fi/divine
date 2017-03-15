@@ -1,8 +1,9 @@
 #include <sys/divm.h>
 #include <divine/metadata.h>
-#include <divine/opcodes.h>
+#include <sys/bitcode.h>
+#include <string.h>
 
-_Noreturn void __dios_jump( _VM_Frame *to, void (*pc)( void ), int restoreMaskTo ) noexcept
+_Noreturn void __dios_jump( _VM_Frame *to, _VM_CodePointer pc, int restoreMaskTo ) noexcept
 {
     bool m = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
@@ -68,4 +69,26 @@ void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
 
     if ( !m )
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, 0ull );
+}
+
+int __dios_set_register( _VM_Frame *frame, _VM_CodePointer pc, unsigned offset, char *data, unsigned lenght )
+{
+    auto *meta = __md_get_pc_meta( pc );
+    auto info = __md_get_register_info( frame, pc, meta );
+    if ( unsigned( info.width ) < offset + lenght )
+        return 0;
+
+    memcpy( reinterpret_cast< char * >( info.start ) + offset, data, lenght );
+    return 1;
+}
+
+int __dios_get_register( _VM_Frame *frame, _VM_CodePointer pc, unsigned offset, char *data, unsigned lenght )
+{
+    auto *meta = __md_get_pc_meta( pc );
+    auto info = __md_get_register_info( frame, pc, meta );
+    if ( unsigned( info.width ) < offset + lenght )
+        return 0;
+
+    memcpy( data, reinterpret_cast< char * >( info.start ) + offset, lenght );
+    return 1;
 }

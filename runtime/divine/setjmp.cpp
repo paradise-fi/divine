@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <setjmp.h>
-#include <divine/opcodes.h>
+#include <sys/bitcode.h>
 #include <dios.h>
 #include <cassert>
 

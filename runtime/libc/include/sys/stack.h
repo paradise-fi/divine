@@ -22,6 +22,17 @@ void __dios_unwind( struct _VM_Frame *stack, struct _VM_Frame *from, struct _VM_
 void __dios_jump( struct _VM_Frame *to, void (*pc)( void ), int restoreMaskTo )
     _PDCLIB_nothrow __attribute__((__noinline__));
 
+// set value of register of instruction identified by 'pc' in frame identified
+// by 'frame' 'lenght' bytes from 'data' will be written to offset 'offset' of
+// the register
+// function returns 1 if register was successfuly written and 0 otherwise
+int __dios_set_register( struct _VM_Frame *frame, _VM_CodePointer pc,
+                         unsigned offset, char *data, unsigned lenght );
+
+// similar to __dios_set_register except it reads from given (part) of register
+int __dios_get_register( struct _VM_Frame *frame, _VM_CodePointer pc,
+                         unsigned offset, char *data, unsigned lenght );
+
 _PDCLIB_EXTERN_END
 
 #endif
