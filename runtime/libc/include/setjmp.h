@@ -15,7 +15,7 @@ extern "C" {
 struct __jmp_buf_tag
 {
     struct _VM_Frame *__jumpFrame;
-    uintptr_t __jumpPC;
+    _VM_CodePointer __jumpPC;
     const _MD_Function *__jumpFunctionMeta;
 };
 

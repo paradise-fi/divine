@@ -50,7 +50,7 @@ void Fault::sc_handler( __dios::Context& ctx, int *, void *, va_list vl ) noexce
         traceInternal( 0, "Backtrace:" );
         int i = 0;
         for ( auto *f = frame; f != nullptr; f = f->parent ) {
-            traceInternal( 0, "  %d: %s", ++i, __md_get_pc_meta( uintptr_t( f->pc ) )->name );
+            traceInternal( 0, "  %d: %s", ++i, __md_get_pc_meta( f->pc )->name );
         }
 
         if ( !ctx.fault->ready || !( fault_cfg & FaultFlag::Continue ) )

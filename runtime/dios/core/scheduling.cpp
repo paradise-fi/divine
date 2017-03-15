@@ -136,9 +136,9 @@ void kill( __dios::Context& ctx, int *err, void *ret, va_list vl ) {
         __dios_fault( _VM_F_Control, "Uncaught signal." );
     else
     {
-        auto fun = __md_get_pc_meta( reinterpret_cast< uintptr_t >( __dios_signal_trampoline ) );
+        auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( __dios_signal_trampoline ) );
         auto _frame = static_cast< __dios::TrampolineFrame * >( __vm_obj_make( fun->frame_size ) );
-        _frame->pc = reinterpret_cast< void (*)() >( __dios_signal_trampoline );
+        _frame->pc = reinterpret_cast< _VM_CodePointer >( __dios_signal_trampoline );
         _frame->interrupted = thread->_frame;
         thread->_frame = _frame;
         _frame->parent = nullptr;
@@ -297,7 +297,7 @@ void Scheduler::traceThreads() const noexcept {
 void Scheduler::setupMainThread( Thread *t, int argc, char** argv, char** envp ) noexcept
 {
     DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( t->_frame );
-    frame->l = __md_get_pc_meta( reinterpret_cast< uintptr_t >( main ) )->arg_count;
+    frame->l = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( main ) )->arg_count;
 
     frame->argc = argc;
     frame->argv = argv;

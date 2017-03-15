@@ -123,7 +123,7 @@ struct Thread {
 
     template <class F>
     Thread( F routine, int tls_size ) noexcept {
-        auto fun = __md_get_pc_meta( reinterpret_cast< uintptr_t >( routine ) );
+        auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) );
         _frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
         _frame->pc = fun->entry_point;
         _frame->parent = nullptr;

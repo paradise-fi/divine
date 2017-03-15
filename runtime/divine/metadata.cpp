@@ -26,18 +26,18 @@ const _MD_Function *__md_get_function_meta( const char *name ) {
 }
 */
 
-const _MD_Function *__md_get_pc_meta( uintptr_t pc ) {
-    uintptr_t fun = (pc & _VM_PM_Obj) >> (_VM_PB_Type + _VM_PB_Off);
+const _MD_Function *__md_get_pc_meta( _VM_CodePointer pc ) {
+    uintptr_t fun = (uintptr_t( pc ) & _VM_PM_Obj) >> (_VM_PB_Type + _VM_PB_Off);
     __dios_assert_v( int( fun ) < __md_functions_count, "invalid function index" );
     return __md_functions + fun - 1; // there is no function 0
 }
 
-_MD_RegInfo __md_get_register_info( _VM_Frame *frame, uintptr_t pc, const _MD_Function *funMeta )
+_MD_RegInfo __md_get_register_info( _VM_Frame *frame, _VM_CodePointer pc, const _MD_Function *funMeta )
 {
     if ( !frame || !funMeta || !pc )
         return { nullptr, 0 };
-    uintptr_t entry = uintptr_t( funMeta->entry_point );
-    intptr_t offset = pc - entry;
+    uintptr_t entry = uintptr_t( pc ) & ~uintptr_t( _VM_PM_Off );
+    intptr_t offset = uintptr_t( pc ) - entry;
     if ( offset < 0 || offset > funMeta->inst_table_size )
         return { nullptr, 0 };
 

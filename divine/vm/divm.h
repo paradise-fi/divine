@@ -23,9 +23,11 @@
 #define NATIVE_VISIBLE
 #endif
 
+typedef void (*_VM_CodePointer)( void );
+
 struct _VM_Frame
 {
-    void (*pc)(void);
+    _VM_CodePointer pc;
     struct _VM_Frame *parent;
 };
 

@@ -47,13 +47,13 @@ void __dios_unwind( _VM_Frame *stack, _VM_Frame *from, _VM_Frame *to ) noexcept
     // accidental use of their variables, therefore it is also OK to not clean
     // current frame (heap will garbage-colect it)
     for ( auto *f = from; f != to; ) {
-        auto *meta = __md_get_pc_meta( uintptr_t( f->pc ) );
+        auto *meta = __md_get_pc_meta( f->pc );
         auto *inst = meta->inst_table;
         for ( int i = 0; i < meta->inst_table_size; ++i, ++inst )
         {
             if ( inst->opcode == OpCode::Alloca )
             {
-                uintptr_t pc = uintptr_t( meta->entry_point ) + i;
+                _VM_CodePointer pc = _VM_CodePointer( uintptr_t( meta->entry_point ) + i );
                 void *regaddr = __md_get_register_info( f, pc, meta ).start;
                 void *regval = *static_cast< void ** >( regaddr );
                 __vm_obj_free( regval );

@@ -72,7 +72,7 @@ typedef struct {
 // const _MD_Function *__md_get_function_meta( const char *name ) NOTHROW _ROOT;
 
 /* Query function metadata program counter value */
-const _MD_Function *__md_get_pc_meta( uintptr_t pc ) NOTHROW _ROOT;
+const _MD_Function *__md_get_pc_meta( _VM_CodePointer pc ) NOTHROW _ROOT;
 
 /* Given function frame, program counter and metadata extracts pointer to
  * register corresponding to instruction with given PC from the frame.
@@ -89,7 +89,7 @@ const _MD_Function *__md_get_pc_meta( uintptr_t pc ) NOTHROW _ROOT;
  *   landingpad
  * * reading register of value of call/invoke
  * */
-_MD_RegInfo __md_get_register_info( struct _VM_Frame *frame, uintptr_t pc, const _MD_Function *funMeta ) NOTHROW _ROOT;
+_MD_RegInfo __md_get_register_info( struct _VM_Frame *frame, _VM_CodePointer pc, const _MD_Function *funMeta ) NOTHROW _ROOT;
 
 const _MD_Global *__md_get_global_meta( const char *name ) NOTHROW _ROOT;
 

@@ -8,9 +8,9 @@
 int setjmp( jmp_buf env ) {
     _VM_Frame *frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
     env->__jumpFrame = frame;
-    uintptr_t pc = uintptr_t( frame->pc );
-    auto *meta = __md_get_pc_meta( pc );
-    auto op = meta->inst_table[ pc - uintptr_t( meta->entry_point ) ].opcode;
+    const _VM_CodePointer pc = frame->pc;
+    auto *meta = __md_get_pc_meta( frame->pc );
+    auto op = meta->inst_table[ uintptr_t( pc ) - uintptr_t( meta->entry_point ) ].opcode;
     assert( op == OpCode::Call );
     env->__jumpPC = pc;
     env->__jumpFunctionMeta = meta;
@@ -24,5 +24,5 @@ void longjmp( jmp_buf env, int val ) {
         val = 1;
     *reinterpret_cast< int * >( retreg.start ) = val;
     __dios_unwind( nullptr, nullptr, env->__jumpFrame );
-    __dios_jump( env->__jumpFrame, reinterpret_cast< void (*)() >( env->__jumpPC + 1 ), -1 );
+    __dios_jump( env->__jumpFrame, _VM_CodePointer( uintptr_t( env->__jumpPC ) + 1 ), -1 );
 }
