@@ -1,0 +1,158 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2017 Vladimír Štill
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#ifdef DIVINE_RELAX_WARNINGS
+DIVINE_RELAX_WARNINGS
+#endif
+
+#include <llvm/Support/YAMLParser.h>
+#include <llvm/Support/YAMLTraits.h>
+
+#ifdef DIVINE_RELAX_WARNINGS
+DIVINE_UNRELAX_WARNINGS
+#endif
+
+#include <deque>
+#include <type_traits>
+
+namespace brick {
+namespace yaml {
+
+namespace lyaml = ::llvm::yaml;
+using ::llvm::dyn_cast;
+using ::llvm::cast;
+using ::llvm::isa;
+
+class Parser
+{
+    template< typename T > struct Wintess { };
+  public:
+
+    using KeyList = std::deque< std::string >;
+
+    Parser( std::string data ) :
+        _data( std::move( data ) )
+    { }
+
+    template< typename T, typename Fail >
+    T getF( KeyList keys, Fail fail )
+    {
+        ::llvm::SourceMgr smgr;
+        lyaml::Stream input( _data, smgr );
+
+        if ( input.failed() )
+            return fail( "YAML input failed", keys, KeyList{} );
+        // begin can be called only once
+        auto beg = input.begin(),
+             end = input.end();
+        if ( beg == end )
+            return fail( "YAML input empty", keys, KeyList{} );
+
+        lyaml::Node *node = beg->getRoot(), *next;
+
+        KeyList seenKeys;
+        while ( !keys.empty() ) {
+            ASSERT( node );
+            next = nullptr;
+            auto *map = dyn_cast< lyaml::MappingNode >( node );
+            if ( !map )
+                fail( "YAML error: not an object node", seenKeys, keys );
+
+            auto key = keys.front();
+            keys.pop_front();
+            for ( auto &pair : *map ) {
+                if ( auto *skey = dyn_cast< lyaml::ScalarNode >( pair.getKey() ) ) {
+                    ::llvm::SmallVector< char, 128 > storage;
+                    auto ref = skey->getValue( storage );
+                    if ( ref == key ) {
+                        next = pair.getValue();
+                        break;
+                    }
+                }
+            }
+            if ( !next )
+                return fail( "YAML error: key not found: " + key, keys, seenKeys );
+            node = next;
+
+            seenKeys.emplace_back( std::move( key ) );
+        }
+
+        ASSERT( node );
+
+        return extractValue( Wintess< T >(), node, fail );
+    }
+
+    template< typename T >
+    T getOr( KeyList keys, T def ) {
+        return getF< T >( std::move( keys ), [&]( auto &&... ) { return def; });
+    }
+
+    template< typename T >
+    T get( KeyList keys ) {
+        return getF< T >( std::move( keys ), [&]( std::string &&msg, KeyList next, KeyList seen ) -> T {
+                std::stringstream ss;
+                ss << msg << std::endl << "found key trace: ";
+                for ( auto &k : seen )
+                    ss << k << ", ";
+                ss << std::endl << "remaining keys: ";
+                for ( auto &k : next )
+                    ss << k << ", ";
+                throw std::runtime_error( ss.str() );
+            } );
+    }
+
+  private:
+
+    template< typename Fail >
+    std::string extractValue( Wintess< std::string >, lyaml::Node *node, Fail fail )
+    {
+        auto *scalar = dyn_cast< lyaml::ScalarNode >( node );
+        if ( !scalar )
+            return fail( "YAML error: expected scalar", KeyList{}, KeyList{} );
+
+        ::llvm::SmallVector< char, 128 > storage;
+        auto ref = scalar->getValue( storage );
+        return ref.str();
+    }
+
+    template< typename T, typename Fail >
+    auto extractValue( Wintess< T >, lyaml::Node *node, Fail fail )
+        -> std::enable_if_t< std::is_arithmetic< T >::value, T >
+    {
+        auto *scalar = dyn_cast< lyaml::ScalarNode >( node );
+        if ( !scalar )
+            return fail( "YAML error: expected scalar", KeyList{}, KeyList{} );
+
+        ::llvm::SmallVector< char, 128 > storage;
+        auto ref = scalar->getValue( storage );
+
+        std::stringstream ss( ref.str() );
+        T val;
+        ss >> val;
+        if ( ss.fail() )
+            return fail( "YAML conversion error from " + ref.str(), KeyList{}, KeyList{} );
+        return val;
+    }
+
+    std::string _data;
+};
+
+} // namespace yaml
+} // namespace brick
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
