@@ -50,8 +50,8 @@ SinkPtr make_composite( std::vector< SinkPtr > );
 struct TimedSink : LogSink
 {
     Clock::time_point _start;
-    MSecs _interval;
-    MSecs _time_lart, _time_rr, _time_const, _time_boot, _time_search, _time_ce;
+    MSecs _interval{ 0 };
+    MSecs _time_lart{ 0 }, _time_rr{ 0 }, _time_const{ 0 }, _time_boot{ 0 }, _time_search{ 0 }, _time_ce{ 0 };
 
     double timeavg( double val, MSecs timer )
     {
@@ -98,6 +98,25 @@ struct TimedSink : LogSink
         }
     }
 
+    virtual void set_time( std::string key, long val ) {
+        MSecs value( val );
+        if ( key == "lart" )
+            _time_lart = value;
+        else if ( key == "load" )
+            _time_rr = value;
+        else if ( key == "rr" )
+            _time_rr = value;
+        else if ( key == "const" )
+            _time_const = value;
+        else if ( key == "boot" )
+            _time_boot = value;
+        else if ( key == "search" )
+            _time_search = value;
+        else if ( key == "ce" )
+            _time_ce = value;
+    }
+
+    virtual void set_result( mc::Result, long ) { }
 };
 
 }

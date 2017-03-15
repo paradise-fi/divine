@@ -88,7 +88,8 @@ int unique_id( connection conn, std::string table, Keys keys, Vals vals )
               del = nanodbc::statement( conn, del_q.str() );
     int id;
 
-    try { execute( ins ); } catch ( nanodbc::database_error &err ) {};
+    try { execute( ins ); }
+    catch ( nanodbc::database_error &err ) {};
 
     auto rv = execute( sel );
     rv.first();
@@ -200,6 +201,11 @@ struct ODBCSink : TimedSink
     void result( mc::Result r, const mc::Trace &trace ) override
     {
         TimedSink::result( r, trace );
+        save_result( r );
+    }
+
+    void save_result( mc::Result r )
+    {
         using mc::Result;
         nanodbc::statement update( _conn,
                 "update execution set result = ?, time_lart = ?, "
@@ -225,6 +231,13 @@ struct ODBCSink : TimedSink
         update.bind( 6, &_states );
         update.bind( 7, &_execution );
         update.execute();
+    }
+
+    void set_result( mc::Result r, long states ) override
+    {
+        TimedSink::set_result( r, states );
+        _states = states;
+        save_result( r );
     }
 
     int log_id() override { return _execution; }
