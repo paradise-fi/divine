@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2016 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2016-2017 Vladimír Štill <xstill@fi.muni.cz>
 
 // based on documentation at https://mentorembedded.github.io/cxx-abi/abi-eh.html
 
@@ -7,69 +7,34 @@
 #include <sys/interrupt.h>
 #include <sys/fault.h>
 #include <divine/metadata.h>
-#include <divine/opcodes.h>
+#include <sys/bitcode.h>
 #include <dios.h>
 #include <climits>
+#include <cstring>
 
 struct _Unwind_Context {
-    _Unwind_Context( _VM_Frame *f ) : _frame( f ) { }
-    _Unwind_Context() : _frame( nullptr ) { }
+    _Unwind_Context( _VM_Frame *f ) : frame( f ) { }
+    _Unwind_Context() : frame( nullptr ) { }
 
-    uintptr_t pc() const { return uintptr_t( _frame->pc ); }
-    intptr_t relPC() {
-        uintptr_t base = uintptr_t( meta().entry_point );
-        intptr_t relPC = intptr_t( _frame->pc ) - base;
-        __dios_assert_v( relPC > 0, "invalid PC in frame" );
-        return relPC;
-    }
-    void pc( uintptr_t v ) { _frame->pc = reinterpret_cast< void (*)() >( v ); }
-    const _MD_Function &meta() {
-        if ( !_meta )
-            _meta = __md_get_pc_meta( uintptr_t( _frame->pc ) );
-        return *_meta;
-    }
-    // frame().pc should point to invoke/call in the frame
-    _VM_Frame &frame() { return* _frame; }
+    _VM_CodePointer pc() const { return frame->pc; }
 
     void next() {
-        _frame = _frame->parent;
-        _meta = nullptr;
+        frame = frame->parent;
         jumpPC = 0;
     }
 
-    bool valid() const { return _frame; }
+    bool valid() const { return frame; }
     explicit operator bool() const { return valid(); }
 
-    _VM_Frame *_frame;
-    const _MD_Function *_meta = nullptr;
+    _VM_Frame *frame;
     uintptr_t jumpPC = 0; // PC to jump to when unwinding (landing block)
 };
 
 static const int unwindVersion = 1;
 
-_MD_RegInfo getLPInfo( _Unwind_Context *ctx )
-    __attribute__((__annotate__("lart.interrupt.skipcfl")))
-{
-    // get landingpad correspoding to current invoke
-    intptr_t invoke = ctx->relPC();
-    auto *insts = ctx->meta().inst_table;
-    __dios_assert_v( insts[ invoke ].opcode == OpCode::Invoke,
-                     "invalid context, PC not pointing to invoke" );
-    intptr_t lblock = insts[ invoke ].subop;
-    intptr_t lp = lblock + 1;
-    // search the landing block, we should find the landingpad here (as first
-    // non-phi instruction)
-    while ( insts[ lp ].opcode != OpCode::LandingPad && insts[ lp ].opcode != OpCode::OpBB )
-        ++lp;
-    __dios_assert_v( insts[ lp ].opcode == OpCode::LandingPad,
-                     "Could not find landingpad instruction in the landing block" );
-    // get register of landingpad
-    auto info = __md_get_register_info( &ctx->frame(),
-                                        uintptr_t( ctx->meta().entry_point ) + lp,
-                                        &ctx->meta() );
-    __dios_assert_v( static_cast< size_t >( info.width ) >=
-        sizeof( void * ) + sizeof( int ), "invalid info.width of landingpad" );
-    return info;
+static _VM_CodePointer getLandingPad( _VM_CodePointer pc ) {
+    auto lb = __dios_get_landing_block( pc );
+    return __dios_find_instruction_in_block( lb, 1, OpCode::LandingPad );
 }
 
 //  This function sets the 64-bit value of the given register, identified by
@@ -89,14 +54,17 @@ void _Unwind_SetGR( _Unwind_Context *ctx, int index, uintptr_t value ) {
     // reg 1 - type ID
     // landingpad { i8*, i32 }
 
-    auto info = getLPInfo( ctx );
-    auto *exprt = reinterpret_cast< void ** >( info.start );
+    auto lp = getLandingPad( ctx->pc() );
+
     if ( index == 0 )
-        *exprt = reinterpret_cast< void * >( value );
+        __dios_set_register( ctx->frame, lp, 0,
+                             reinterpret_cast< char * >( &value ), sizeof( uintptr_t ) );
     else if ( index == 1 ) {
         __dios_assert_v( intptr_t( value ) >= intptr_t( INT_MIN ), "Overflow in exception type index" );
         __dios_assert_v( intptr_t( value ) <= intptr_t( INT_MAX ), "Underflow in exception type index" );
-        *reinterpret_cast< int * >( exprt + 1 ) = value;
+        int val = value;
+        __dios_set_register( ctx->frame, lp, sizeof( uintptr_t ),
+                             reinterpret_cast< char * >( &val ), sizeof( int ) );
     }
 }
 
@@ -108,10 +76,6 @@ void _Unwind_SetGR( _Unwind_Context *ctx, int index, uintptr_t value ) {
 //  will return _URC_INSTALL_CONTEXT. In this case, control will be transferred
 //  to the given address, which should be the address of a landing pad.
 void _Unwind_SetIP( _Unwind_Context *ctx, uintptr_t value ) {
-    __dios::InterruptMask _;
-    // TODO: validate it is a landingpad of the original function
-    intptr_t offset = value - uintptr_t( ctx->meta().entry_point );
-    __dios_assert( offset > 0 );
     ctx->jumpPC = value;
 }
 
@@ -133,12 +97,20 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
     // reg 1 - type ID
     // landingpad { i8*, i32 }
 
-    auto info = getLPInfo( ctx );
-    auto *exprt = reinterpret_cast< void ** >( info.start );
-    if ( index == 0 )
-        return uintptr_t( *exprt );
-    else if ( index == 1 )
-        return *reinterpret_cast< int * >( exprt + 1 );
+    auto lp = getLandingPad( ctx->pc() );
+    uintptr_t ptrval;
+    int ival;
+
+    if ( index == 0 ) {
+        __dios_get_register( ctx->frame, lp, 0,
+                             reinterpret_cast< char * >( &ptrval ), sizeof( uintptr_t ) );
+        return ptrval;
+    }
+    else if ( index == 1 ) {
+        __dios_get_register( ctx->frame, lp, sizeof( uintptr_t ),
+                             reinterpret_cast< char * >( &ival ), sizeof( int ) );
+        return ival;
+    }
     __dios_fault( _VM_F_NotImplemented, "invalid register" );
     __builtin_unreachable();
 }
@@ -152,20 +124,14 @@ uintptr_t _Unwind_GetGR( _Unwind_Context *ctx, int index ) {
 uintptr_t _Unwind_GetIP( _Unwind_Context *ctx ) {
     __dios::InterruptMask _;
     // should point immediatelly AFTER the call site
-    auto relpc = ctx->relPC();
-    auto *insts = ctx->meta().inst_table;
-    __dios_assert_v( insts[ relpc ].opcode == OpCode::Invoke,
-                     "invalid context, PC not pointing to invoke" );
-    while ( insts[ relpc ].opcode != OpCode::OpBB )
-        --relpc;
-    return ctx->pc() - (ctx->relPC() - relpc) + 1;
+    return 1 + uintptr_t( __dios_find_instruction_in_block( ctx->pc(), -1, OpCode::OpBB ) );
 }
 
-bool shouldCallPersonality( _Unwind_Context &ctx ) {
-    return ctx.meta().ehPersonality
+static inline bool shouldCallPersonality( _DiOS_FunAttrs &attrs, _Unwind_Context &ctx ) {
+    return attrs.personality
             // we must not call personality if there is not active invoke in
             // the targert, it could overflow the EH table
-            && ctx.meta().inst_table[ ctx.relPC() ].opcode == OpCode::Invoke;
+            && __dios_get_opcode( ctx.pc() ) == OpCode::Invoke;
 }
 
 static const uint64_t cppExceptionClass          = 0x434C4E47432B2B00; // CLNGC++\0
@@ -209,9 +175,10 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
     __personality_routine pers;
 
     for ( auto ctx = topCtx; ctx; ctx.next() ) {
-        if ( shouldCallPersonality( ctx ) )
+        auto attrs = __dios_get_func_exception_attrs( ctx.pc() );
+        if ( shouldCallPersonality( attrs, ctx ) )
         {
-            pers = reinterpret_cast< __personality_routine >( ctx.meta().ehPersonality );
+            pers = reinterpret_cast< __personality_routine >( attrs.personality );
             // personality in not part of the unwinder and therefore should be
             // allowed to interleave with other threads
             auto r = mask.without( [&] {
@@ -222,7 +189,7 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
                 break;
             }
         }
-        if ( ctx.meta().is_nounwind )
+        if ( attrs.is_nounwind )
             __dios_fault( _VM_F_Control, "Exception thrown out of nounwind function" );
     }
 
@@ -235,11 +202,12 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
             return _URC_END_OF_STACK;
     }
     for ( auto ctx = topCtx; ctx; ctx.next() ) {
-        if ( !shouldCallPersonality( ctx ) )
+        auto attrs = __dios_get_func_exception_attrs( ctx.pc() );
+        if ( !shouldCallPersonality( attrs, ctx ) )
             continue;
-        pers = reinterpret_cast< __personality_routine >( ctx.meta().ehPersonality );
+        pers = reinterpret_cast< __personality_routine >( attrs.personality );
         int flags = _UA_CLEANUP_PHASE;
-        if ( &ctx.frame() == &foundCtx.frame() )
+        if ( ctx.frame == foundCtx.frame )
             flags |= _UA_HANDLER_FRAME;
         auto r = mask.without( [&] {
             return pers( unwindVersion, _Unwind_Action( flags ), exception->exception_class, exception, &ctx );
@@ -250,11 +218,11 @@ _Unwind_Reason_Code _Unwind_RaiseException( _Unwind_Exception *exception )
         }
         if ( r == _URC_INSTALL_CONTEXT ) {
             // kill the part of stack which fill be jumped over (free allocas)
-            __dios_unwind( nullptr, topFrame, &ctx.frame() );
-            topFrame = &ctx.frame();
+            __dios_unwind( nullptr, topFrame, ctx.frame );
+            topFrame = ctx.frame;
             __dios_assert( ctx.jumpPC != 0 );
             // unwinder has to have the mask in the same state as it was before throw/resume
-            __dios_jump( &ctx.frame(), reinterpret_cast< void (*)() >( ctx.jumpPC ), mask._origState() );
+            __dios_jump( ctx.frame, reinterpret_cast< void (*)() >( ctx.jumpPC ), mask._origState() );
             mask._setOrigState( exception->private_2 );
             exception->private_2 = uintptr_t( selfFrame );
         }
@@ -295,7 +263,7 @@ void _Unwind_DeleteException( _Unwind_Exception *exception ) {
 // current stack frame.
 uintptr_t _Unwind_GetLanguageSpecificData( _Unwind_Context *ctx ) {
     __dios::InterruptMask _;
-    return uintptr_t( ctx->meta().ehLSDA );
+    return uintptr_t( __dios_get_func_exception_attrs( ctx->pc() ).lsda );
 }
 
 //  This routine returns the address of the beginning of the procedure or code
@@ -307,6 +275,5 @@ uintptr_t _Unwind_GetLanguageSpecificData( _Unwind_Context *ctx ) {
 //  the calls. During unwinding, the function returns the start of the
 //  procedure fragment containing the call site in the current stack frame.
 uintptr_t _Unwind_GetRegionStart( _Unwind_Context *ctx ) {
-    __dios::InterruptMask _;
-    return uintptr_t( ctx->meta().entry_point );
+    return uintptr_t( __dios_get_function_entry( ctx->pc() ) );
 }
