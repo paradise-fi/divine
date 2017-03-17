@@ -104,6 +104,12 @@ int unique_id( connection conn, std::string table, Keys keys, Vals vals )
     return id;
 }
 
+int get_external_build( connection conn, ExternalBuildInfo &bi ) {
+    Keys keys{ "version", "source_sha", "runtime_sha", "build_type", "is_release" };
+    Vals vals{ bi.version, bi.checksum, bi.driver_checksum, bi.build_type, false };
+    return unique_id( conn, "build", keys, vals );
+}
+
 int get_build( connection conn )
 {
     std::string composite = std::string( DIVINE_SOURCE_SHA ) + " " + DIVINE_RUNTIME_SHA;
@@ -127,18 +133,22 @@ int get_machine( connection conn )
     return unique_id( conn, "machine", mach_keys, mach_vals );
 }
 
-int get_instance( connection conn )
+int BuildID::get_build( connection conn ) {
+    return odbc::get_build( conn );
+}
+
+int get_instance( BuildID &bp, connection conn )
 {
     int mach = get_machine( conn );
-    int build = get_build( conn );
+    int build = bp.get_build( conn );
     Keys keys{ "build", "machine" };
     Vals vals{ build, mach };
     return unique_id( conn, "instance", keys, vals );
 }
 
-int add_execution( connection conn )
+int add_execution( BuildID &bp, connection conn )
 {
-    int inst = get_instance( conn );
+    int inst = get_instance( bp, conn );
     Keys keys{ "instance" };
     Vals vals{ inst };
     auto ins = insert( conn, "execution", keys, vals );
@@ -159,9 +169,9 @@ struct ODBCSink : TimedSink
     int _execution = -1;
     int _pool_seq = 0, _prog_seq = 0, _states = 0;
 
-    ODBCSink( std::string str ) : _conn( str )
+    ODBCSink( BuildID &bp, std::string str ) : _conn( str )
     {
-        _execution = odbc::add_execution( _conn );
+        _execution = odbc::add_execution( bp, _conn );
     }
 
     void progress( int states, int queued, bool last ) override
@@ -243,9 +253,9 @@ struct ODBCSink : TimedSink
     int log_id() override { return _execution; }
 };
 
-SinkPtr make_odbc( std::string connstr )
+SinkPtr make_odbc( BuildID &bp, std::string connstr )
 {
-    return std::make_shared< ODBCSink >( connstr );
+    return std::make_shared< ODBCSink >( bp, connstr );
 }
 
 }
