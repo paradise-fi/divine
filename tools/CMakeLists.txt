@@ -25,7 +25,7 @@ target_link_libraries( lart
 target_link_libraries( divine divine-ui divine-rt )
 
 if ( OPT_SQL )
-  add_executable( divbench benchmark.cpp bench-report.cpp bench-run.cpp )
+  add_executable( divbench benchmark.cpp bench-report.cpp bench-run.cpp bench-external.cpp )
   target_link_libraries( divbench divine-ui divine-rt pthread )
 endif()
 

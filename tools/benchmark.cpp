@@ -152,7 +152,9 @@ void Import::tag()
 
 void Schedule::run()
 {
-    int inst = odbc::get_instance( _conn );
+    int inst = odbc::get_instance( *this, _conn );
+    std::cerr << "instance = " << inst << std::endl;
+
     std::stringstream q;
     /* XXX check that highest id is always the latest revision? */
     q << "select max( model.id ), model.name from model "
@@ -235,12 +237,17 @@ int main( int argc, const char **argv )
     auto opts_run = cmd::make_option_set< Run >( validator )
         .option( "[--single]", &Run::_single, "run only single benchmark" );
 
+    auto opts_external = cmd::make_option_set< External >( validator )
+        .option( "--driver {string}", &External::_driver, "external divcheck driver" );
+
     auto cmds = cmd::make_parser( cmd::make_validator() )
         .command< Import >( opts_db, opts_import )
         .command< Schedule >( opts_db, opts_job )
+        .command< ScheduleExternal >( opts_db, opts_external, opts_job )
         .command< Report >( opts_db, opts_report_base, opts_report )
         .command< Compare >( opts_db, opts_report_base, opts_compare )
-        .command< Run >( opts_db, opts_run, opts_job );
+        .command< Run >( opts_db, opts_run, opts_job )
+        .command< RunExternal >( opts_db, opts_external, opts_run, opts_job );
     auto cmd = cmds.parse( args.begin(), args.end() );
 
     cmd.match( [&]( Cmd &cmd ) { cmd.setup(); cmd.run(); } );

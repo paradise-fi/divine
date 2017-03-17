@@ -22,6 +22,7 @@
 #include <divine/cc/compile.hpp>
 #include <divine/ui/odbc.hpp>
 #include <divine/ui/cli.hpp>
+#include <divine/ui/log.hpp>
 #include <brick-except>
 #include <brick-fs>
 
@@ -65,10 +66,20 @@ struct JobBase : Cmd
     std::string _tag;
 };
 
-struct Schedule : JobBase
+struct External : virtual odbc::BuildID
+{
+    std::string _driver;
+
+    int get_build( nanodbc::connection ) override;
+};
+
+struct Schedule : JobBase, virtual odbc::BuildID
 {
     void run() override;
 };
+
+struct ScheduleExternal : Schedule, External
+{ };
 
 struct ReportBase : Cmd
 {
@@ -77,7 +88,7 @@ struct ReportBase : Cmd
     std::string _agg = "avg";
 };
 
-struct Report : ReportBase
+struct Report : ReportBase, odbc::BuildID
 {
     bool _list_instances = false;
     int _instance = -1;
@@ -101,7 +112,7 @@ struct Compare : ReportBase
     void run() override;
 };
 
-struct Run : JobBase
+struct Run : JobBase, virtual odbc::BuildID
 {
     std::vector< std::pair< std::string, std::string > > _files;
     std::string _script;
@@ -109,11 +120,20 @@ struct Run : JobBase
 
     void prepare( int model );
 
-    void execute( int job );
-    void execute( int, ui::Verify & );
-    void execute( int, ui::Run & ) { NOT_IMPLEMENTED(); }
+    virtual void execute( int job );
+    virtual void executeWithLog( int job, std::function< void ( ui::SinkPtr ) > exec );
+
+    void execute( ui::Verify &, ui::SinkPtr );
+    void execute( ui::Run &, ui::SinkPtr ) { NOT_IMPLEMENTED(); }
+
+    int get_instance();
 
     virtual void run();
+};
+
+struct RunExternal : Run, External
+{
+    void execute( int job ) override;
 };
 
 }

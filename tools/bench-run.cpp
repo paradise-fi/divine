@@ -69,21 +69,25 @@ void Run::execute( int job_id )
         if ( _done )
             throw brick::except::Error( "only one model checker run is allowed per model" );
         _done = true;
-        execute( job_id, cmd );
+        executeWithLog( job_id, [&]( ui::SinkPtr log ) { execute( cmd, log ); } );
     };
 
     divcheck::execute( _script, [&]( auto &cc ) { cc._files = _files; }, exec );
 }
 
-void Run::execute( int job_id, ui::Verify &job )
-{
-    _done = true;
+void Run::execute( ui::Verify &job, ui::SinkPtr log ) {
     job._interactive = false;
     job._report = ui::Report::None;
     job.setup();
-
-    auto log = ui::make_odbc( _odbc );
     job._log = log;
+    job.run();
+}
+
+void Run::executeWithLog( int job_id, std::function< void ( ui::SinkPtr ) > runjob )
+{
+    _done = true;
+
+    auto log = ui::make_odbc( *this, _odbc );
     int exec_id = log->log_id();
 
     nanodbc::statement exec( _conn, "update job set execution = ? where id = ?" );
@@ -91,17 +95,21 @@ void Run::execute( int job_id, ui::Verify &job )
     exec.bind( 1, &job_id );
     exec.execute();
 
-    job.run();
+    runjob( log );
 
     nanodbc::statement done( _conn, "update job set status = 'D' where id = ?" );
     done.bind( 0, &job_id );
     done.execute();
 }
 
+int Run::get_instance() {
+    return odbc::get_instance( *this, _conn );
+}
+
 void Run::run()
 {
     std::stringstream q;
-    int inst = odbc::get_instance( _conn );
+    int inst = get_instance();
     std::cerr << "instance = " << inst << std::endl;
     q << "select job.id, job.model from job";
     if ( !_tag.empty() )

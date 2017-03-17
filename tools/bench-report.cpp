@@ -60,7 +60,7 @@ struct Table
     {
         ASSERT_LT( 0, _rows.size() );
         Row total = _rows[ 0 ];
-        for ( int r = 1; r < _rows.size(); ++ r )
+        for ( int r = 1; r < int( _rows.size() ); ++ r )
             for ( unsigned c = 0; c < _rows[ r ].size(); ++c )
                 _rows[ r ][ c ].match( [&]( std::string ) { total[ c ] = std::string(); },
                                        [&]( auto v ) { total[ c ].get< decltype( v ) >() += v; } );
@@ -171,7 +171,7 @@ void Report::list_instances()
       << "join machine on instance.machine = machine.id "
       << "join cpu     on machine.cpu = cpu.id ";
     nanodbc::statement find( _conn, q.str() );
-    int instance = odbc::get_instance( _conn );
+    int instance = odbc::get_instance( *this, _conn );
     Table res;
     res.cols( "instance", "version", "src", "rt", "build", "cpu", "cores", "mem", "jobs" );
     res.intcols( "instance" );
