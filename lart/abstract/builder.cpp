@@ -19,16 +19,16 @@ namespace abstract {
 namespace _detail{
 	using Predicate = llvm::CmpInst::Predicate;
     const std::map< Predicate, std::string > predicate = {
-    	{ Predicate::ICMP_EQ, "eq" },
-    	{ Predicate::ICMP_NE, "ne" },
-    	{ Predicate::ICMP_UGT, "ugt" },
-    	{ Predicate::ICMP_UGE, "uge" },
-    	{ Predicate::ICMP_ULT, "ult" },
-    	{ Predicate::ICMP_ULE, "ule" },
-    	{ Predicate::ICMP_SGT, "sgt" },
-    	{ Predicate::ICMP_SGE, "sge" },
-    	{ Predicate::ICMP_SLT, "slt" },
-		{ Predicate::ICMP_SLE, "sle" }
+	    { Predicate::ICMP_EQ, "eq" },
+	    { Predicate::ICMP_NE, "ne" },
+	    { Predicate::ICMP_UGT, "ugt" },
+	    { Predicate::ICMP_UGE, "uge" },
+	    { Predicate::ICMP_ULT, "ult" },
+	    { Predicate::ICMP_ULE, "ule" },
+	    { Predicate::ICMP_SGT, "sgt" },
+	    { Predicate::ICMP_SGE, "sge" },
+	    { Predicate::ICMP_SLT, "slt" },
+        { Predicate::ICMP_SLE, "sle" }
     };
 
     std::vector< llvm::Type * > types( std::vector< llvm::Value * > values ) {
@@ -82,7 +82,14 @@ void AbstractBuilder::store( llvm::Function * f1, llvm::Function * f2 ) {
 		_functions[ f1 ] = { f2 };
 }
 
-llvm::Value * AbstractBuilder::process( llvm::Instruction * i ) {
+llvm::Value * AbstractBuilder::process( llvm::Value * v ) {
+    if ( llvm::isa< llvm::Instruction >( v ) )
+        return _process( llvm::dyn_cast< llvm::Instruction >( v ) );
+    else
+        return _process( llvm::dyn_cast< llvm::Argument >( v ) );
+}
+
+llvm::Value * AbstractBuilder::_process( llvm::Instruction * i ) {
     if ( ignore( i ) ) return nullptr;
 
     auto type = types::stripPtr( i->getType() );
@@ -112,29 +119,51 @@ llvm::Value * AbstractBuilder::process( llvm::Instruction * i ) {
 	return abstract ? abstract : i;
 }
 
-llvm::Value * AbstractBuilder::process( llvm::Argument * arg ) {
+llvm::Value * AbstractBuilder::_process( llvm::Argument * arg ) {
     if ( types::isAbstract( arg->getType() ) )
         _values[ arg ] = arg;
     return arg;
 }
 
-llvm::Value * AbstractBuilder::process( llvm::CallInst * call,
-                                        llvm::Function * fn )
-{
-    assert( fn );
+llvm::Value * AbstractBuilder::process( const FunctionNodePtr & node ) {
+    auto fn = node->function;
+    auto rets = query::query( node->postorder() )
+               .filter( []( const ValueNode & n ) {
+                    return llvm::isa< llvm::ReturnInst >( n.value );
+                } ).freeze();
 
-    auto args = _detail::remapArgs( call, _values );
+    auto args = query::query( node->postorder() )
+               .filter( []( const ValueNode & n ) {
+                    return llvm::isa< llvm::Argument >( n.value );
+                } ).freeze();
 
-    llvm::IRBuilder<> irb( call );
-    auto ncall = irb.CreateCall( fn, args );
-    _values[ call ] = ncall;
-    return ncall;
-}
+    if ( rets.empty() && args.empty() )
+        // Signature does not need to be changed
+        return fn;
 
-llvm::Function * AbstractBuilder::changeReturn( llvm::Function * fn ) {
-	llvm::Type * rty = _types[ fn->getReturnType() ];
-	auto changed = lart::changeReturnType( fn, rty );
-    return changed;
+    auto fty = node->function->getFunctionType();
+    auto ret_type = rets.empty()
+                  ? fty->getReturnType()
+                  : types::lift( fty->getReturnType() );
+    std::vector< llvm::Type * > arg_types;
+    if ( !args.empty() ) {
+        for ( auto & arg : fn->args() ) {
+            bool changed = query::query( args ).any( [&]( ValueNode & n ) {
+                               return llvm::cast< llvm::Argument >( n.value ) == &arg;
+                           } );
+            if ( changed )
+                arg_types.push_back( types::lift( arg.getType() ) );
+            else
+                arg_types.push_back( arg.getType() );
+        }
+    } else {
+        arg_types = fty->params();
+    }
+
+    auto newfty = llvm::FunctionType::get( ret_type, arg_types, fty->isVarArg() );
+    auto newfn = llvm::Function::Create( newfty, fn->getLinkage(), fn->getName(), fn->getParent() );
+    store( fn, newfn );
+    return newfn;
 }
 
 llvm::Value * AbstractBuilder::create( llvm::Instruction * inst ) {
@@ -146,7 +175,6 @@ llvm::Value * AbstractBuilder::create( llvm::Instruction * inst ) {
 
 llvm::Value * AbstractBuilder::createPtrInst( llvm::Instruction * inst ) {
     llvm::Value * ret = nullptr;
-
     llvmcase( inst,
         [&]( llvm::AllocaInst * i ) {
             ret = createAlloca( i );
@@ -353,8 +381,11 @@ llvm::Value * AbstractBuilder::createPhi( llvm::PHINode * n ) {
             if ( types::isAbstract( val->getType() ) )
                 phi->addIncoming( val, parent );
             else {
-                auto nbb =  parent->splitBasicBlock( parent->getTerminator() );
-                llvm::IRBuilder<> b( nbb->getTerminator() );
+                auto term = _values.count( parent->getTerminator() )
+                            ? _values[ parent->getTerminator() ]
+                            : parent->getTerminator();
+                auto nbb =  parent->splitBasicBlock( llvm::cast< llvm::Instruction >( term ) );
+                llvm::IRBuilder<> b( nbb->begin() );
                 phi->addIncoming( lift( val, b ), nbb );
             }
         }
@@ -485,24 +516,6 @@ llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
 
 	llvm::IRBuilder<> irb( i );
 	return irb.CreateCall( stored, args );
-}
-
-bool AbstractBuilder::needToPropagate( llvm::CallInst * i ) {
-    if (( intrinsic::is( i ) ) || ( i->getCalledFunction()->isIntrinsic() ))
-       return false;
-    auto args = _detail::remapArgs( i, _values );
-    std::vector< llvm::Type * > types = arg_types( i );
-
-    auto fn = i->getCalledFunction();
-    auto at = types::isAbstract( i->getType() )
-            ? i->getType()
-            : _types[ i->getType() ];
-
-    bool same = _detail::sameTypes( fn->getFunctionType()->params(), types )
-			 && fn->getReturnType() == at;
-
-	auto stored = same ? fn : getStoredFn( fn, types );
-    return stored == nullptr;
 }
 
 llvm::Function * AbstractBuilder::getStoredFn( llvm::Function * fn,

@@ -27,25 +27,7 @@ struct Abstraction : lart::Pass
     llvm::PreservedAnalyses run( llvm::Module & ) override;
 
 private:
-
-    void init( llvm::Module & );
-
-    void preprocess( llvm::Function * );
-
-    void process( llvm::Instruction * );
-    void process( llvm::Argument * );
-    void process( llvm::Function *, std::vector< llvm::Value * > const& );
-
-    void processAllocas( llvm::Function * );
-
-    void propagate( llvm::Value * );
-    void propagateFromCall( llvm::CallInst * );
-    llvm::Function * changeReturn( llvm::Function * );
-
     AbstractBuilder builder;
-    AbstractWalker walker;
-
-    std::set< llvm::Function * > _unused;
 };
 
 static inline PassMeta abstraction_pass() {

@@ -10,13 +10,61 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/util.h>
 #include <lart/support/query.h>
 
+#include <stack>
+#include <unordered_set>
 #include <algorithm>
+#include <functional>
 
 #ifndef LART_ANALYSIS_POSTORDERDEPS_H
 #define LART_ANALYSIS_POSTORDERDEPS_H
 
 namespace lart {
 namespace analysis {
+
+template< typename N >
+using Succs = std::function< std::vector< N > ( const N & ) >;
+
+template< typename Node >
+std::vector< Node > roots( const std::vector< Node > & nodes, const Succs< Node > & succs ) {
+    auto has_no_predecessor = [&] ( const auto & node ) {
+        return query::query( nodes )
+            .all( [&] ( const auto & n ) {
+                return query::query( succs( n ) )
+                    .none( [&] ( const auto & succ ) { return succ == node; } );
+            } );
+    };
+
+    return query::query( nodes ).filter( has_no_predecessor ).freeze();
+}
+
+template< typename Node >
+std::vector< Node > postorder( const std::vector< Node > & nodes, const Succs< Node > & succs ) {
+    std::unordered_set< Node > visited;
+    std::stack< std::pair< bool, Node > > stack;
+    std::vector< Node > order;
+
+    for ( const auto & r : roots< Node >( nodes, succs ) )
+        stack.emplace( false, r );
+
+    while ( !stack.empty() ) {
+        auto node = stack.top();
+        stack.pop();
+
+        if ( node.first ) {
+            if ( std::find( order.begin(), order.end(), node.second ) == order.end() )
+                order.push_back( node.second );
+            continue;
+        }
+
+        visited.insert( node.second );
+
+        stack.emplace( true, node.second );
+        for ( const auto & s : succs( node.second ) )
+            if ( visited.find( s ) == visited.end() )
+                stack.emplace( false, s );
+    }
+    return order;
+}
 
     //FIXME generalize
     template < typename V >

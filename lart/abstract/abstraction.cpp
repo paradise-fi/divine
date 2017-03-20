@@ -24,166 +24,87 @@ namespace lart {
 namespace abstract {
 
 namespace {
-    bool isLifted( const std::vector< llvm::Value * > & deps ) {
-        for ( auto & dep : deps )
-            if ( auto call = llvm::dyn_cast< llvm::CallInst >( dep ) )
-                if ( intrinsic::isLift( call ) ) return true;
-        return false;
-    }
+
+bool isLifted( const std::vector< llvm::Value * > & deps ) {
+    for ( auto & dep : deps )
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( dep ) )
+            if ( intrinsic::isLift( call ) ) return true;
+    return false;
 }
 
-void Abstraction::init( llvm::Module & m ) {
-    walker = AbstractWalker( m );
-}
+} // anonymous namespace
 
 llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
-    init( m );
+    auto preprocess = [] ( llvm::Function * fn ) {
+        auto lowerSwitchInsts = llvm::createLowerSwitchPass();
+        lowerSwitchInsts->runOnFunction( *fn );
 
-    for ( auto fn : walker.functions() ) {
-        preprocess( fn );
-		process( fn, walker.entries( fn ) );
+        // FIXME lower only abstract selects
+        LowerSelect lowerSelectInsts;
+        lowerSelectInsts.runOnFunction( *fn );
+
+        llvm::UnifyFunctionExitNodes ufen;
+        ufen.runOnFunction( *fn );
+    };
+
+    using Preprocess = decltype( preprocess );
+    AbstractWalker< Preprocess > walker{ preprocess, m };
+
+    llvm::ValueToValueMapTy vmap;
+
+    for ( const auto & node : walker.postorder() ) {
+        // 1. if signature changes create a new function declaration
+        auto changed = llvm::cast< llvm::Function >( builder.process( node ) );
+
+        // 2. prcess function abstract entries
+        auto postorder = node->postorder();
+        for ( auto & a : lart::util::reverse( postorder ) ) {
+            // FIXME let builder take Annotation structure
+            builder.process( a.value );
+        }
+
+        // 3. clean function
+        // FIXME let builder take annotation structure
+        std::vector< llvm::Value * > deps;
+        for ( auto & a : postorder )
+            deps.emplace_back( a.value );
+        builder.clean( deps );
+
+        // 4. copy function to declaration and handle function uses
+        auto fn = node->function;
+        if ( changed != fn ) {
+            auto destIt = changed->arg_begin();
+            for ( const auto &arg : fn->args() )
+                if ( vmap.count( &arg ) == 0 ) {
+                    destIt->setName( arg.getName() );
+                    vmap[&arg] = &*destIt++;
+                }
+            // FIXME CloneDebugInfoMeatadata
+            llvm::SmallVector< llvm::ReturnInst *, 8 > returns;
+            llvm::CloneFunctionInto( changed, fn, vmap, false, returns, "", nullptr );
+            // Remove lifts of arguments
+            for ( auto & arg : changed->args() ) {
+                auto lifts = query::query( arg.users() )
+                            .map( query::llvmdyncast< llvm::CallInst > )
+                            .filter( query::notnull )
+                            .filter( [&]( llvm::CallInst * call ) {
+                                 return intrinsic::isLift( call );
+                             } ).freeze();
+                for ( auto & lift : lifts ) {
+                    lift->replaceAllUsesWith( &arg );
+                    lift->eraseFromParent();
+                }
+            }
+        }
+
+        // 5. add function to unused functions ?
+        // TODO
     }
 
-    // clean functions
-	for ( auto & f : _unused )
-		f->eraseFromParent();
+    // TODO clean unused functions
 
     return llvm::PreservedAnalyses::none();
 }
-
-void Abstraction::preprocess( llvm::Function * fn ) {
-    // change switches to branching
-    auto lowerSwitchInsts = llvm::createLowerSwitchPass();
-    lowerSwitchInsts->runOnFunction( *fn );
-
-    // FIXME lower only abstract selects
-    LowerSelect lowerSelectInsts;
-    lowerSelectInsts.runOnFunction( *fn );
-
-    llvm::UnifyFunctionExitNodes ufen;
-    ufen.runOnFunction( *fn );
-}
-
-void Abstraction::process( llvm::Argument * a ) {
-    builder.process( a );
-}
-
-void Abstraction::process( llvm::Instruction * i ) {
-    builder.process( i );
-}
-
-void Abstraction::processAllocas( llvm::Function * fn ) {
-    std::vector< llvm::AllocaInst * > allocas;
-    // propagation of alloca instructions may create new lifts
-    // hence we will propagate allocas until there is none to be processed
-    do {
-        auto v = query::query( *fn ).flatten()
-                 .map( query::refToPtr )
-                 .map( query::llvmdyncast< llvm::AllocaInst > )
-                 .filter( query::notnull )
-                 .filter( [&]( llvm::AllocaInst * a ) {
-                     return isLifted( walker.dependencies( a ) );
-                 } )
-                 .freeze();
-        allocas = v;
-        for ( auto & a : allocas )
-            propagate( a );
-    } while ( !allocas.empty() );
-}
-
-void Abstraction::process( llvm::Function * fn,
-						   std::vector< llvm::Value * > const& entries) {
-	for ( const auto & entry : entries )
-        propagate( entry );
-
-    processAllocas( fn );
-
-    auto changed = changeReturn( fn );
-	builder.store( fn, changed );
-
-    // backward propagation of return value
-	if ( fn != changed ) {
-        std::vector< llvm::User * > users = { fn->user_begin(), fn->user_end() } ;
-        std::map< llvm::Function *, std::vector< llvm::Value * > > fnusers;
-        for ( auto user : users ) {
-		    if ( auto inst = llvm::dyn_cast< llvm::Instruction >( user ) ) {
-				auto parent = inst->getParent()->getParent();
-                if ( fnusers.count( parent ) )
-                    fnusers[ parent ].push_back( inst );
-                else
-                    fnusers[ parent ] = { inst };
-            }
-        }
-        for ( auto & u : fnusers ) {
-            preprocess( u.first );
-			process( u.first, u.second );
-		}
-		_unused.insert( fn );
-	}
-}
-
-void Abstraction::propagateFromCall( llvm::CallInst * call ) {
-    auto types = builder.arg_types( call );
-    auto fn = call->getCalledFunction();
-    auto fty = llvm::FunctionType::get( fn->getFunctionType()->getReturnType(),
-                                        types,
-                                        fn->getFunctionType()->isVarArg() );
-    llvm::Function* clone = lart::cloneFunction( fn, fty );
-
-    preprocess( clone );
-
-    auto entries = query::query( clone->args() )
-				  .map( query::refToPtr )
-                  .filter( [&]( llvm::Argument * arg ) {
-                      return types::isAbstract( arg->getType() );
-                  } ).freeze();
-
-    for ( const auto & entry : entries )
-        propagate( entry );
-
-    processAllocas( clone );
-
-    auto changed = changeReturn( clone );
-	builder.store( fn, changed );
-    if ( changed != clone )
-        clone->eraseFromParent();
-}
-
-void Abstraction::propagate( llvm::Value * entry ) {
-    if ( !types::isAbstract( entry->getType() ) )
-        builder.store( entry->getType(), types::lift( entry->getType() ) );
-    auto deps = walker.dependencies( entry );
-
-    for ( const auto & dep : lart::util::reverse( deps ) ) {
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( dep ) )
-            if ( builder.needToPropagate( call ) )
-                propagateFromCall( call );
-        if ( auto i = llvm::dyn_cast< llvm::Instruction >( dep ) )
-            process( i );
-        else if ( auto a = llvm::dyn_cast< llvm::Argument >( dep ) )
-            process( a );
-    }
-
-    // builder cleans unused dependencies and lifts
-    builder.clean( deps );
-}
-
-llvm::Function * Abstraction::changeReturn( llvm::Function * fn ) {
-    bool changeReturn = false;
-    if ( !types::isAbstract( fn->getReturnType() ) ) {
-        changeReturn = query::query( *fn ).flatten()
-					  .map( query::refToPtr )
-					  .map( query::llvmdyncast< llvm::ReturnInst > )
-					  .filter( query::notnull )
-					  .any( [&]( llvm::ReturnInst * ret ) {
-					        return types::isAbstract( ret->getReturnValue()
-														 ->getType() );
-					  } );
-    }
-
-	return changeReturn ? builder.changeReturn( fn ) : fn;
-}
-
 
 } // abstract
 } // lart

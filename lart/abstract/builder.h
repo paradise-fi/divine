@@ -7,6 +7,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
+//FIXME refactor annotation definitions out
+#include <lart/abstract/walkergraph.h>
 #include <lart/support/util.h>
 
 namespace lart {
@@ -14,18 +16,17 @@ namespace abstract {
 
 struct AbstractBuilder {
 
+    llvm::Value * process( llvm::Value * );
+    llvm::Value * process( const FunctionNodePtr & );
+
+    void clean( std::vector< llvm::Value * > & );
+
+private:
     /* maps real types to abstract types */
     void store( llvm::Type *, llvm::Type * );
     void store( llvm::Value *, llvm::Value * );
     void store( llvm::Function *, llvm::Function * );
 
-    llvm::Value * process( llvm::Instruction * );
-    llvm::Value * process( llvm::Argument * );
-    llvm::Value * process( llvm::CallInst *, llvm::Function * );
-
-    void clean( std::vector< llvm::Value * > & );
-
-	llvm::Function * changeReturn( llvm::Function * );
 
     std::vector< llvm::Type * > arg_types( llvm::CallInst * );
 
@@ -61,14 +62,13 @@ struct AbstractBuilder {
     llvm::Function * getStoredFn( llvm::Function *,
                                   llvm::ArrayRef< llvm::Type * > );
 
-    bool needToPropagate( llvm::CallInst * );
+    llvm::Value * _process( llvm::Instruction * );
+    llvm::Value * _process( llvm::Argument * );
 
     std::map< llvm::Type *, llvm::Type * > _types;
     std::map< llvm::Value *, llvm::Value * > _values;
     std::map< llvm::Function *, std::vector< llvm::Function * > > _functions;
 
-	std::set< llvm::Function * > _unusedFunctions;
-    std::set< llvm::Instruction * > _unusedLifts;
 };
 
 } // namespace abstract
