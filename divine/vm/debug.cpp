@@ -94,6 +94,8 @@ template< typename Prog, typename Heap >
 llvm::DIType *DebugNode< Prog, Heap >::di_base( llvm::DIType *t )
 {
     t = t ?: di_resolve();
+    if ( !t )
+        return nullptr;
     if ( auto deriv = llvm::dyn_cast< llvm::DIDerivedType >( t ) )
         return deriv->getBaseType().resolve( _ctx.program().ditypemap );
     if ( auto comp = llvm::dyn_cast< llvm::DICompositeType >( t ) )
@@ -105,7 +107,7 @@ template< typename Prog, typename Heap >
 llvm::DICompositeType *DebugNode< Prog, Heap >::di_composite( uint64_t tag, llvm::DIType *t )
 {
     t = t ?: di_resolve();
-    if ( t->getTag() == tag )
+    if ( t && t->getTag() == tag )
         return llvm::dyn_cast< llvm::DICompositeType >( t );
     return nullptr;
 }
@@ -478,7 +480,7 @@ llvm::DIType *DebugNode< Prog, Heap >::di_resolve( llvm::DIType *t )
     llvm::DIType *base = t ?: _di_type;
     llvm::DIDerivedType *DT = nullptr;
 
-    while ( true )
+    while ( base )
         if ( ( DT = llvm::dyn_cast< llvm::DIDerivedType >( base ) ) &&
              ( DT->getTag() == llvm::dwarf::DW_TAG_typedef ||
                DT->getTag() == llvm::dwarf::DW_TAG_member ||
@@ -487,6 +489,7 @@ llvm::DIType *DebugNode< Prog, Heap >::di_resolve( llvm::DIType *t )
                DT->getTag() == llvm::dwarf::DW_TAG_const_type ) )
             base = DT->getBaseType().resolve( _ctx.program().ditypemap );
         else return base;
+    return t;
 }
 
 template< typename Prog, typename Heap >
@@ -494,6 +497,8 @@ void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
 {
     auto CT = llvm::cast< llvm::DICompositeType >( di_resolve() );
     auto ST = llvm::cast< llvm::StructType >( _type );
+    if ( ST->isOpaque() )
+        return;
     auto STE = ST->element_begin();
     auto SLO = _ctx.program().TD.getStructLayout( ST );
     int idx = 0, anon = 0, base = 0;
