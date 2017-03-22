@@ -35,13 +35,12 @@ namespace benchmark
 int Import::modrev()
 {
     std::stringstream rev_q;
-    rev_q << "select max(revision) from model group by name, variant having name = ? and variant = ?";
+    rev_q << "select max(revision) from model group by name, variant having name = ? and variant "
+          << (_variant.empty() ? "is null" : "= ?");
     nanodbc::statement rev( _conn, rev_q.str() );
 
     rev.bind( 0, _name.c_str() );
-    if ( _variant.empty() )
-        rev.bind_null( 1 );
-    else
+    if ( !_variant.empty() )
         rev.bind( 1, _variant.c_str() );
 
     int next = 1;
