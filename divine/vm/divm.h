@@ -23,6 +23,53 @@
 #define NATIVE_VISIBLE
 #endif
 
+struct _VM_Instruction
+{
+    uint32_t is_instruction:1; /* always 1 */
+    uint32_t opcode:8;
+    uint32_t subcode:14;
+    uint32_t valuecount:6;
+    uint32_t extcount:2;
+    uint32_t immediate:1; /* second argument is an immediate constant */
+#if __cplusplus >= 201103L
+    explicit _VM_Instruction( int opc = 0, int subc = 0, int valc = 0, int extc = 0 )
+        : is_instruction( 1 ), opcode( opc ), subcode( subc ),
+          valuecount( valc ), extcount( extc ), immediate( 0 ) {}
+    uint32_t raw() const;
+#endif
+};
+
+#if __cplusplus >= 201103L
+inline uint32_t _VM_Instruction::raw() const
+{
+    union Cast { uint32_t r; _VM_Instruction c; Cast( _VM_Instruction c ) : c( c ) {} };
+    Cast c( *this ); return c.r;
+}
+#endif
+
+struct _VM_Operand
+{
+    uint32_t is_instruction:1; /* always 0 */
+    enum Type { I1, I8, I16, I32, I64, F32, F64, F80, Ptr, PtrC, PtrA, Agg, Void, Other } type:4;
+    /* NB. The numeric value of Location has to agree with the
+           corresponding register's index in the _VM_ControlRegister enum */
+    enum Location { Const, Global, Local, Invalid } location:3;
+    uint32_t offset:24;
+#if __cplusplus >= 201103L
+    _VM_Operand() : is_instruction( 0 ), type( Void ), location( Invalid ), offset( 0 ) {}
+#endif
+};
+
+struct _VM_OperandExt
+{
+    uint32_t is_instruction:1; /* always 0 */
+    uint32_t width:24;
+    uint32_t unused:7;
+#if __cplusplus >= 201103L
+    _VM_OperandExt() : is_instruction( 0 ), width( 0 ), unused( 0 ) {}
+#endif
+};
+
 typedef void (*_VM_CodePointer)( void );
 
 struct _VM_Frame
