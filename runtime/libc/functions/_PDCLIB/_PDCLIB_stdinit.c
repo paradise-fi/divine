@@ -50,26 +50,26 @@ static FILE _PDCLIB_serr = {
 static FILE _PDCLIB_sout = { 
     .ops        = &_PDCLIB_fileops, 
     .handle     = { .sval = 1 },
-    .buffer     = _PDCLIB_sout_buffer, 
-    .bufsize    = BUFSIZ, 
+    .buffer     = NULL,
+    .bufsize    = 0,
     .bufidx     = 0, 
     .bufend     = 0, 
     .ungetidx   = 0, 
     .ungetbuf   = _PDCLIB_sout_ungetbuf, 
-    .status     = _IOLBF | _PDCLIB_FWRITE | _PDCLIB_STATIC, 
+    .status     = _IONBF | _PDCLIB_FWRITE | _PDCLIB_STATIC,
     .filename   = NULL, 
     .next       = &_PDCLIB_serr 
 };
 static FILE _PDCLIB_sin  = { 
     .ops        = &_PDCLIB_fileops, 
     .handle     = { .sval = 0 }, 
-    .buffer     = _PDCLIB_sin_buffer, 
-    .bufsize    = BUFSIZ, 
+    .buffer     = NULL,
+    .bufsize    = 0,
     .bufidx     = 0, 
     .bufend     = 0, 
     .ungetidx   = 0, 
     .ungetbuf   = _PDCLIB_sin_ungetbuf, 
-    .status     = _IOLBF | _PDCLIB_FREAD | _PDCLIB_STATIC, 
+    .status     = _IONBF | _PDCLIB_FREAD | _PDCLIB_STATIC,
     .filename   = NULL, 
     .next       = &_PDCLIB_sout 
 };
