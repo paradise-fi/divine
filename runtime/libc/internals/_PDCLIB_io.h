@@ -249,19 +249,6 @@ static inline _PDCLIB_size_t _PDCLIB_getchars( char * out, _PDCLIB_size_t n,
         while ( stream->bufidx != stream->bufend && i != n )
         {
             c = (unsigned char) stream->buffer[ stream->bufidx++ ];
-#ifdef _PDCLIB_NEED_EOL_TRANSLATION
-            if ( !( stream->status & _PDCLIB_FBIN ) && c == '\r' )
-            {
-                if ( stream->bufidx == stream->bufend )
-                    break;
-
-                if ( stream->buffer[ stream->bufidx ] == '\n' )
-                {
-                    c = '\n';
-                    stream->bufidx++;
-                }
-            }
-#endif
             out[ i++ ] = c;
 
             if( c == stopchar )
@@ -276,14 +263,6 @@ static inline _PDCLIB_size_t _PDCLIB_getchars( char * out, _PDCLIB_size_t n,
             }
         }
     }
-
-#ifdef _PDCLIB_NEED_EOL_TRANSLATION
-    if ( i != n && stream->bufidx != stream->bufend )
-    {
-        // we must have EOF'd immediately after a \r
-        out[ i++ ] = stream->buffer[ stream->bufidx++ ];
-    }
-#endif
 
     return i;
 }
