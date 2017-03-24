@@ -239,6 +239,10 @@ const struct _PDCLIB_charcodec_t _PDCLIB_utf8_codec = {
     .__mb_max    = 4,
 };
 
+#undef state
+#undef accum
+#undef OUT32
+
 #endif
 
 #ifdef TEST
