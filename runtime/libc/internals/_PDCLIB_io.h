@@ -35,6 +35,14 @@
 /* stream handle should not be free()d on close (stdin, stdout, stderr) */
 #define _PDCLIB_STATIC     32768u
 
+/* See setvbuf(), third argument */
+#define _IOFBF 1
+#define _IOLBF 2
+#define _IONBF 4
+
+#define EOF -1
+
+
 union _PDCLIB_fd
 {
 #if defined(_PDCLIB_OSFD_T)

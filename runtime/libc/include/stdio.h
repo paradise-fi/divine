@@ -7,6 +7,7 @@
 #ifndef _PDCLIB_STDIO_H
 #define _PDCLIB_STDIO_H _PDCLIB_STDIO_H
 #include "_PDCLIB_int.h"
+#include "_PDCLIB_io.h"
 #include <sys/types.h>
 
 #ifdef __cplusplus
@@ -23,15 +24,9 @@ typedef _PDCLIB_size_t size_t;
 #define NULL _PDCLIB_NULL
 #endif
 
-/* See setvbuf(), third argument */
-#define _IOFBF 1
-#define _IOLBF 2
-#define _IONBF 4
-
 /* The following are platform-dependant, and defined in _PDCLIB_config.h. */
 typedef _PDCLIB_fpos_t fpos_t;
 typedef _PDCLIB_file_t FILE;
-#define EOF -1
 #define BUFSIZ _PDCLIB_BUFSIZ
 #define FOPEN_MAX _PDCLIB_FOPEN_MAX
 #define FILENAME_MAX _PDCLIB_FILENAME_MAX
