@@ -5,6 +5,7 @@
 */
 
 #include <stdio.h>
+#include <stdbool.h>
 
 #ifndef REGTEST
 #include "_PDCLIB_io.h"
@@ -19,14 +20,30 @@ int _PDCLIB_fputc_unlocked( int c, FILE * stream )
     {
         return EOF;
     }
-    stream->buffer[stream->bufidx++] = (char)c;
-    if ( ( stream->bufidx == stream->bufsize )                   /* _IOFBF */
-           || ( ( stream->status & _IOLBF ) && ( (char)c == '\n' ) ) /* _IOLBF */
-           || ( stream->status & _IONBF )                        /* _IONBF */
-    )
+
+    if ( stream->status & _IONBF )
     {
-        /* buffer filled, unbuffered stream, or end-of-line. */
-        return ( _PDCLIB_flushbuffer( stream ) == 0 ) ? c : EOF;
+        size_t justWrote;
+        bool res = stream->ops->write( stream->handle, &c, 1, &justWrote );
+        stream->pos.offset++;
+
+        if (!res)
+        {
+            stream->status |= _PDCLIB_ERRORFLAG;
+            return EOF;
+        }
+    }
+    else
+    {
+        stream->buffer[stream->bufidx++] = (char)c;
+        if ( ( stream->bufidx == stream->bufsize )                   /* _IOFBF */
+            || ( ( stream->status & _IOLBF ) && ( (char)c == '\n' ) ) /* _IOLBF */
+            || ( stream->status & _IONBF )                        /* _IONBF */
+        )
+        {
+            /* buffer filled, unbuffered stream, or end-of-line. */
+            return ( _PDCLIB_flushbuffer( stream ) == 0 ) ? c : EOF;
+        }
     }
     return c;
 }

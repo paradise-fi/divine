@@ -29,7 +29,8 @@ int _PDCLIB_prepread( FILE * stream )
         return EOF;
     }
     stream->status |= _PDCLIB_FREAD | _PDCLIB_BYTESTREAM;
-    if ( ( stream->bufidx == stream->bufend ) && ( stream->ungetidx == 0 ) )
+    if ((stream->status & _IONBF) == 0 && ( stream->bufidx == stream->bufend ) \
+        && ( stream->ungetidx == 0 ) )
     {
         return _PDCLIB_fillbuffer( stream );
     }

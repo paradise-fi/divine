@@ -216,13 +216,37 @@ static inline _PDCLIB_size_t _PDCLIB_getchars( char * out, _PDCLIB_size_t n,
     {
         c = (unsigned char)
                 ( out[ i++ ] = stream->ungetbuf[ --(stream->ungetidx) ] );
-        if( c == stopchar )
+        if( c == stopchar || i == n )
             return i;
+    }
+
+    if ( stream->status & _IONBF )
+    {
+        size_t bytesRead;
+        do
+        {
+            int ok = stream->ops->read( stream->handle, out+i, stopchar == EOF ? n-i : 1, &bytesRead );
+            i += bytesRead;
+
+            if( ok ) {
+                if( bytesRead == 0 ) {
+                    stream->status |= _PDCLIB_EOFFLAG;
+                    return i;
+                }
+                stream->pos.offset += bytesRead;
+                if ( stopchar == EOF )
+                    return i;
+            } else {
+                stream->status |= _PDCLIB_ERRORFLAG;
+                return i;
+            }
+        } while( out[i-1] != stopchar && --n > 0 );
+        return i;
     }
 
     while ( i != n )
     {
-        while ( stream->bufidx != stream->bufend && i != n)
+        while ( stream->bufidx != stream->bufend && i != n )
         {
             c = (unsigned char) stream->buffer[ stream->bufidx++ ];
 #ifdef _PDCLIB_NEED_EOL_TRANSLATION

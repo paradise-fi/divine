@@ -24,6 +24,22 @@ size_t _PDCLIB_fwrite_unlocked( const void *restrict vptr,
 
     const char *restrict ptr = vptr;
     size_t nmemb_i;
+
+    if ( stream->status & _IONBF )
+    {
+        size_t justWrote;
+
+        bool res = stream->ops->write( stream->handle, vptr, nmemb, &justWrote );
+        stream->pos.offset += nmemb;
+
+        if (!res)
+        {
+            stream->status |= _PDCLIB_ERRORFLAG;
+            return justWrote;
+        }
+        return nmemb;
+    }
+
     for ( nmemb_i = 0; nmemb_i < nmemb; ++nmemb_i )
     {
         for ( size_t size_i = 0; size_i < size; ++size_i )

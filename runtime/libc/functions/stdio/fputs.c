@@ -5,6 +5,8 @@
 */
 
 #include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
 
 #ifndef REGTEST
 #include "_PDCLIB_io.h"
@@ -16,23 +18,41 @@ int _PDCLIB_fputs_unlocked( const char * _PDCLIB_restrict s,
     {
         return EOF;
     }
-    while ( *s != '\0' )
+
+    if ( stream->status & _IONBF )
     {
-        /* Unbuffered and line buffered streams get flushed when fputs() does
-           write the terminating end-of-line. All streams get flushed if the
-           buffer runs full.
-        */
-        stream->buffer[ stream->bufidx++ ] = *s;
-        if ( ( stream->bufidx == stream->bufsize ) ||
-             ( ( stream->status & _IOLBF ) && *s == '\n' )
-           )
+        size_t justWrote;
+        size_t slen = strlen(s);
+
+        bool res = stream->ops->write( stream->handle, s, slen, &justWrote );
+        stream->pos.offset += slen;
+
+        if (!res)
         {
-            if ( _PDCLIB_flushbuffer( stream ) == EOF )
-            {
-                return EOF;
-            }
+            stream->status |= _PDCLIB_ERRORFLAG;
+            return EOF;
         }
-        ++s;
+    }
+    else
+    {
+        while ( *s != '\0' )
+        {
+            /* Unbuffered and line buffered streams get flushed when fputs() does
+            write the terminating end-of-line. All streams get flushed if the
+            buffer runs full.
+            */
+            stream->buffer[ stream->bufidx++ ] = *s;
+            if ( ( stream->bufidx == stream->bufsize ) ||
+                ( ( stream->status & _IOLBF ) && *s == '\n' )
+            )
+            {
+                if ( _PDCLIB_flushbuffer( stream ) == EOF )
+                {
+                    return EOF;
+                }
+            }
+            ++s;
+        }
     }
     if ( stream->status & _IONBF )
     {
