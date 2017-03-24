@@ -23,7 +23,7 @@ char * gets( char * s )
     dest += _PDCLIB_getchars( dest, SIZE_MAX, '\n', stdin );
     _PDCLIB_funlockfile( stdin );
 
-    if(*(dest - 1) == '\n') {
+    if(dest > s && *(dest - 1) == '\n') {
         *(--dest) = '\0';
     } else {
         *dest = '\0';
