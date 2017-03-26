@@ -55,12 +55,15 @@ int compare( H1 &h1, H2 &h2, HeapPointer r1, HeapPointer r2,
 {
     r1.offset( 0 ); r2.offset( 0 );
 
-    if ( v1.count( r1 ) && v2.count( r2 ) )
-        return v1[ r1 ] - v2[ r2 ];
+    auto v1r1 = v1.find( r1 );
+    auto v2r2 = v2.find( r2 );
 
-    if ( v1.count( r1 ) )
+    if ( v1r1 != v1.end() && v2r2 != v2.end() )
+        return v1r1->second - v2r2->second;
+
+    if ( v1r1 != v1.end() )
         return -1;
-    if ( v2.count( r2 ) )
+    if ( v2r2 != v2.end() )
         return 1;
 
     v1[ r1 ] = seq;
