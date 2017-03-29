@@ -32,6 +32,31 @@ bool isLifted( const std::vector< llvm::Value * > & deps ) {
     return false;
 }
 
+void clone( FunctionNodePtr node ) {
+    llvm::ValueToValueMapTy vmap;
+    auto clone = llvm::CloneFunction( node->function, vmap, true, nullptr );
+    node->function->getParent()->getFunctionList().push_back( clone );
+
+    FunctionNode::Entries entries;
+    for ( const auto & entry : node->entries )
+        if ( const auto & arg = llvm::dyn_cast< llvm::Argument >( entry.value ) ) {
+            entries.emplace( std::next( clone->arg_begin(), arg->getArgNo() ),
+                             entry.annotation );
+        }
+
+    auto it = query::query( *clone ).flatten().begin();
+    for ( auto & inst :  query::query( *node->function ).flatten() ) {
+        auto entry = std::find_if( node->entries.begin(), node->entries.end(),
+            [&] ( const ValueNode & n ) { return n.value == &inst; } );
+        if ( entry != node->entries.end() )
+            entries.emplace( &*it, entry->annotation );
+        ++it;
+    }
+
+    node->function = clone;
+    node->entries = entries;
+}
+
 } // anonymous namespace
 
 llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
@@ -50,13 +75,24 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
     using Preprocess = decltype( preprocess );
     AbstractWalker< Preprocess > walker{ preprocess, m };
 
-    llvm::ValueToValueMapTy vmap;
+    std::vector< llvm::Function * > remove;
 
     for ( const auto & node : walker.postorder() ) {
         // 1. if signature changes create a new function declaration
         auto changed = llvm::cast< llvm::Function >( builder.process( node ) );
 
-        // 2. prcess function abstract entries
+        // if proccessed function is called with abstract argument create clone of it
+        // to preserve original function for potential call without abstract argument
+        // TODO what about function with abstract argument and abstract annotation?
+        bool called = query::query( node->entries ).any( [] ( const ValueNode & n ) {
+            return llvm::isa< llvm::Argument >( n.value );
+        } );
+
+        if ( called ) {
+            clone( node );
+        }
+        // 2. process function abstract entries
+        // TODO let postorder stop on calls that does not return abstract value
         auto postorder = node->postorder();
         for ( auto & a : lart::util::reverse( postorder ) ) {
             // FIXME let builder take Annotation structure
@@ -73,6 +109,8 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
         // 4. copy function to declaration and handle function uses
         auto fn = node->function;
         if ( changed != fn ) {
+            remove.push_back( fn );
+            llvm::ValueToValueMapTy vmap;
             auto destIt = changed->arg_begin();
             for ( const auto &arg : fn->args() )
                 if ( vmap.count( &arg ) == 0 ) {
@@ -82,26 +120,26 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
             // FIXME CloneDebugInfoMeatadata
             llvm::SmallVector< llvm::ReturnInst *, 8 > returns;
             llvm::CloneFunctionInto( changed, fn, vmap, false, returns, "", nullptr );
-            // Remove lifts of arguments
+            // Remove lifts of abstract arguments
             for ( auto & arg : changed->args() ) {
-                auto lifts = query::query( arg.users() )
-                            .map( query::llvmdyncast< llvm::CallInst > )
-                            .filter( query::notnull )
-                            .filter( [&]( llvm::CallInst * call ) {
-                                 return intrinsic::isLift( call );
-                             } ).freeze();
-                for ( auto & lift : lifts ) {
-                    lift->replaceAllUsesWith( &arg );
-                    lift->eraseFromParent();
+                if ( types::isAbstract( arg.getType() ) ) {
+                    auto lifts = query::query( arg.users() )
+                        .map( query::llvmdyncast< llvm::CallInst > )
+                        .filter( query::notnull )
+                        .filter( [&]( llvm::CallInst * call ) {
+                             return intrinsic::isLift( call );
+                         } ).freeze();
+                    for ( auto & lift : lifts ) {
+                        lift->replaceAllUsesWith( &arg );
+                        lift->eraseFromParent();
+                    }
                 }
             }
         }
-
-        // 5. add function to unused functions ?
-        // TODO
     }
 
-    // TODO clean unused functions
+    for ( auto & fn : lart::util::reverse( remove ) )
+       fn->eraseFromParent();
 
     return llvm::PreservedAnalyses::none();
 }
