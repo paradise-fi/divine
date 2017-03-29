@@ -60,6 +60,7 @@ std::vector< Node > postorder( const std::vector< Node > & nodes, const Succs< N
 
         stack.emplace( true, node.second );
         for ( const auto & s : succs( node.second ) )
+            // TODO does not recognize that Node is already in visited
             if ( visited.find( s ) == visited.end() )
                 stack.emplace( false, s );
     }

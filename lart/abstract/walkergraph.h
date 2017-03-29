@@ -1,6 +1,10 @@
 // -*- C++ -*- (c) 2017 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
 
+DIVINE_RELAX_WARNINGS
+#include <llvm/Support/raw_ostream.h>
+DIVINE_UNRELAX_WARNINGS
+
 #include <utility>
 
 #include <lart/analysis/postorder.h>
@@ -41,20 +45,21 @@ namespace abstract {
                 && annotation == other.annotation;
         }
 
-        Nodes succs() const {
-            Nodes ns;
-            for ( auto val : value->users() )
-                ns.emplace_back( val, annotation );
-            return ns;
-        }
-
         Value value;
         Annotation annotation;
     };
 
+
     using ValueNode = AnnotationNode< llvm::Value *, std::string >;
-} // namespace abstract
-} // namespace lart
+
+    static auto value_succs( const ValueNode & n ) {
+        return query::query( n.value->users() )
+            // TODO.filter( [] ( const auto & val ) { return !llvm::isa< llvm::CallInst >( val ); } )
+            .map( [&] ( const auto & val ) { return ValueNode{ val, n.annotation }; } )
+            .freeze();
+    }
+}
+}
 
 namespace std {
     template<>
@@ -89,13 +94,26 @@ namespace abstract {
         }
 
         bool operator==( const FunctionNode & other ) const {
-            // FIXME need to compare entrie?
             return function == other.function && entries == other.entries;
         }
 
         std::vector< ValueNode > postorder() const{
             return analysis::postorder< ValueNode >( { entries.begin(), entries.end() },
-            []( const ValueNode & n ) { return n.succs(); } );
+                                                     value_succs );
+        }
+
+        void dump() const {
+            llvm::errs() << "\n---------------------------------\n";
+            llvm::errs() << "Node: " << function->getName() << "\n";
+            llvm::errs() << "Entries: \n";
+            for ( const auto & e : entries ){
+                e.value->dump();
+            }
+            llvm::errs() << "Succs: \n";
+            for ( const auto & s : succs ) {
+                std::cerr << s << "\n";
+            }
+            llvm::errs() << "\n---------------------------------\n";
         }
 
         llvm::Function * function;
@@ -105,6 +123,7 @@ namespace abstract {
 
     using FunctionNodePtr = std::shared_ptr< FunctionNode >;
     using FunctionNodes = std::vector< FunctionNodePtr >;
+
 } // namespace abstract
 } // namespace lart
 

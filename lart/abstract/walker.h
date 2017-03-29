@@ -67,10 +67,13 @@ struct Walker {
     using Nodes = std::vector< Node >;
 
     Walker( Preprocess preprocess, llvm::Module & m ) :
-        preprocess( preprocess ), nodes( get_nodes( m ) ) {}
+        preprocess( preprocess )
+    {
+        compute_nodes( m );
+    }
 
     Nodes postorder() {
-        return analysis::postorder< Node >( nodes, [] ( const Node & n ) -> Nodes {
+        return analysis::postorder< Node >( _nodes, [] ( const Node & n ) -> Nodes {
             return n->succs;
         } );
     }
@@ -82,57 +85,46 @@ private:
     using Entries = FunctionNode::Entries;
 
     // Computes the functions for abstraction
-    Nodes get_nodes( llvm::Module & m ) {
+    void compute_nodes( llvm::Module & m ) {
         Nodes queue = annotated( m );
-
-        // TODO what happens if i have same function with different entries (args)
-        Map< Function *, Set< Function * > > succs;
-        Set< Node > done;
-
+        for ( auto & n : queue )
+            _reachednodes.insert( n );
         while ( !queue.empty() ) {
             auto current = queue.back();
             queue.pop_back();
 
-            auto find = std::find_if( done.begin(), done.end(), [&] ( Node n ) {
-                // TODO compare entries
-                return current->function == n->function;
+            auto find = std::find_if( _nodes.begin(), _nodes.end(), [&] ( const Node & n ) {
+                return current == n;
             } );
-            if ( find == done.end() ) {
+            if ( find == _nodes.end() ) {
                 auto fn = current->function;
 
-                if ( query::query( done ).none( [&]( Node n ) { return n->function == fn; } ) ) {
+                bool called = query::query( current->entries ).all( [] ( const ValueNode & n ) {
+                    return llvm::isa< llvm::Argument >( n.value );
+                } );
+
+                if ( query::query( _nodes ).none( [&]( Node n ) { return n->function == fn; } ) )
                     preprocess( fn );
-                }
 
                 auto allocas = abstract_allocas( current );
                 current->entries.insert( allocas.begin(), allocas.end() );
 
+                // TODO propagate_through_calls( current );
+
                 for ( auto dep : dependent_functions( current ) ) {
+                    _reachednodes.insert( dep );
                     queue.push_back( dep );
-                    succs[ fn ].insert( dep->function );
+                    current->succs.push_back( dep );
                 }
 
-                // TODO do not propagate backward if has only argument entries
-                if ( returns_abstract( current ) )
+                if ( !called && returns_abstract( current ) )
                     for ( auto & dep : calls_of( current ) ) {
+                        _reachednodes.insert( dep );
                         queue.push_back( dep );
                     }
-                done.insert( current );
+                _nodes.push_back( current );
             }
         }
-
-        Nodes ns = { done.begin(), done.end() };
-        for ( auto & node : ns ) {
-            for ( auto & fn : succs[ node->function ] ) {
-                auto succ = std::find_if( ns.begin(), ns.end(), [&] ( const Node & n ) {
-                    return n->function == fn;
-                } );
-                assert( succ != ns.end() );
-                node->succs.push_back( *succ );
-            }
-        }
-
-        return { done.begin(), done.end() };
     }
 
     Nodes annotated( llvm::Module & m ) {
@@ -166,11 +158,8 @@ private:
 
         do {
             allocas = reached;
-            // FIXME rework to use range
             ValueNodes nodes = { reached.begin(), reached.end() };
-            // FIXME create global ValueSucc function
-            auto postorder = analysis::postorder< ValueNode >( nodes,
-            [] ( const ValueNode & n ) { return n.succs(); } );
+            auto postorder = analysis::postorder< ValueNode >( nodes, value_succs );
 
             auto uses_alloca = [] ( ValueNode & n ) {
                  return query::query( llvm::cast< llvm::Instruction >( n.value )->operands() )
@@ -326,7 +315,8 @@ private:
     }
 
     const Preprocess preprocess;
-    Nodes nodes;
+    Nodes _nodes;
+    Set< Node > _reachednodes;
 };
 
 
