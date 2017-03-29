@@ -309,20 +309,227 @@ struct Abstraction {
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
         auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
-        auto abstract_call = m->getFunction( "_Z4calli.2.3" );
-
-        auto i32_t = llvm::Type::getInt32Ty( m->getContext() );
-        ASSERT_EQ( abstract_call->getReturnType()
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT_EQ( abstract_call->getFunctionType()->getParamType( 0 )
+        auto call = m->getFunction( "_Z4calli.2" );
+        ASSERT_EQ( call->getNumUses(), 1 );
+        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
                  , alloca->getReturnType()->getPointerElementType() );
 
-        ASSERT_EQ( main->getReturnType(), i32_t );
+        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
 
-    TEST( call_propagate ) {
+    TEST( call_twice ) {
+        auto s = R"(int call( int arg ) { return arg; }
+                    int main() {
+                        __test int abs;
+                        int ret = call( abs );
+                        ret = call( ret );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call = m->getFunction( "_Z4calli.2" );
+        ASSERT_EQ( call->getNumUses(), 2 );
+        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+
+        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( call_independent ) {
+        auto s = R"(int call( int arg ) { return arg; }
+                    int main() {
+                        __test int abs;
+                        int ret = call( abs );
+                        ret = call( 10 );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call = m->getFunction( "_Z4calli.2" );
+        auto call_normal = m->getFunction( "_Z4calli" );
+        ASSERT_EQ( call->getNumUses(), 1 );
+        ASSERT_EQ( call_normal->getNumUses(), 1 );
+        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+
+        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( call_two_args_mixed ) {
+        auto s = R"(int call( int a, int b ) { return a + b; }
+                    int main() {
+                        __test int abs;
+                        int normal = 10;
+                        int ret = call( abs, normal );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call = m->getFunction( "_Z4callii.2" );
+        ASSERT_EQ( call->getNumUses(), 1 );
+        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( call_two_args_abstract ) {
+        auto s = R"(int call( int a, int b ) { return a + b; }
+                    int main() {
+                        __test int a;
+                        __test int b;
+                        int ret = call( a, b );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call = m->getFunction( "_Z4callii.2" );
+        ASSERT_EQ( call->getNumUses(), 1 );
+        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
+                 , alloca->getReturnType()->getPointerElementType() );
+
+        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( call_preserve_original_function ) {
+        auto s = R"(int call( int a ) { return a; }
+                    int main() {
+                        __test int a;
+                        call( a );
+                        call( 0 );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call = m->getFunction( "_Z4calli.2" );
+        ASSERT_EQ( call->getNumUses(), 1 );
+        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+
+        auto call2 = m->getFunction( "_Z4calli" );
+        ASSERT_EQ( call2->getNumUses(), 1 );
+        ASSERT_EQ( call2->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+
+        bool contains_abstract_calls = query::query( *call2 ).flatten()
+            .map( query::llvmdyncast< llvm::CallInst > )
+            .filter( query::notnull )
+            .any( []( llvm::CallInst * call ) {
+                return call->getCalledFunction()->getName().startswith( "lart.abstract" );
+            } );
+        ASSERT( !contains_abstract_calls );
+
+        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
+
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( call_two_args_multiple_times ) {
+        auto s = R"(int call( int a, int b ) { return a + b; }
+                    int main() {
+                        __test int a;
+                        __test int b;
+                        int ret, c = 0, d = 1;
+                        ret = call( a, b );
+                        ret = call( a, c );
+                        ret = call( c, d );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call = m->getFunction( "_Z4callii.2" );
+        ASSERT_EQ( call->getNumUses(), 1 );
+        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        auto call2 = m->getFunction( "_Z4callii.4" );
+        ASSERT_EQ( call2->getNumUses(), 1 );
+        ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call2->getFunctionType()->getParamType( 1 )
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+        auto call3 = m->getFunction( "_Z4callii" );
+        ASSERT_EQ( call3->getNumUses(), 1 );
+        ASSERT_EQ( call3->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT_EQ( call3->getFunctionType()->getParamType( 0 )
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT_EQ( call3->getFunctionType()->getParamType( 1 )
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+
+        ASSERT_EQ( main->getReturnType(), llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( call_two_times_from_different_source ) {
+        auto s = R"(int call1( int x ) { return x; }
+                    int call2( int x ) { return call1( x ); }
+                    int main() {
+                        __test int x;
+                        call2( x );
+                        call1( x );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call1 = m->getFunction( "_Z5call1i.2" );
+        ASSERT_EQ( call1->getNumUses(), 2);
+        ASSERT_EQ( call1->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call1->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        auto call2 = m->getFunction( "_Z5call2i.4" );
+        ASSERT_EQ( call2->getNumUses(), 1 );
+        ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    /*TEST( propagate_from_call_not_returning_abstract ) {
+        auto s = R"(int call( int x ) { return 10; }
+                    int main() {
+                        __test int x;
+                        int ret = call( x );
+                        ret = call( ret );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }*/
+
+    TEST( call_propagate_1 ) {
         auto s = R"(int call() {
                         __test int x;
                         return x;
@@ -341,20 +548,63 @@ struct Abstraction {
         ASSERT( ! liftingPointer( *m ) );
     }
 
-    TEST( call_propagate_deeper ) {
+    TEST( call_propagate_back_multiple_times ) {
+        auto s = R"(int nondet() {
+                        __test int x;
+                        return x;
+                    }
+                    int add() {
+                        int x = nondet();
+                        int y = nondet();
+                        return x + y;
+                    }
+                    int main() {
+                        int x = add();
+                        int y = add();
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto add = m->getFunction( "_Z3addv.3" );
+        ASSERT_EQ( add->getNumUses(), 2 );
+        for ( const auto & u : add->users() ) {
+            ASSERT_EQ( llvm::cast< llvm::CallInst >( u )->getParent()->getParent()
+                     , main );
+        }
+        ASSERT_EQ( add->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        auto nondet = m->getFunction( "_Z6nondetv.2" );
+        ASSERT_EQ( nondet->getNumUses(), 2 );
+        for ( const auto & u : nondet->users() ) {
+            ASSERT_EQ( llvm::cast< llvm::CallInst >( u )->getParent()->getParent()
+                     , add );
+        }
+        ASSERT_EQ( nondet->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( call_propagate_deeper_1 ) {
         auto s = R"(int call2( int x ) {
                         return x * x;
                     }
-                    int call() {
+                    int call1() {
                         __test int x;
                         return x;
                     }
                     int main() {
-                        int ret = call();
+                        int ret = call1();
                         call2( ret );
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call1 = m->getFunction( "_Z5call1v.2" );
+        auto call2 = m->getFunction( "_Z5call2i.3" );
+        ASSERT_EQ( call1->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
@@ -366,16 +616,31 @@ struct Abstraction {
                     int call2( int x ) {
                         return call3( x ) * call4( x );
                     }
-                    int call() {
+                    int call1() {
                         __test int x;
                         return x;
                     }
                     int main() {
-                        int ret = call();
+                        int ret = call1();
                         call2( ret );
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call1 = m->getFunction( "_Z5call1v.2" );
+        auto call2 = m->getFunction( "_Z5call2i.7" );
+        auto call3 = m->getFunction( "_Z5call3i.3" );
+        auto call4 = m->getFunction( "_Z5call4i.5" );
+        ASSERT_EQ( call1->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call2->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call3->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call3->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call4->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call4->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
