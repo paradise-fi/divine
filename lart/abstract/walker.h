@@ -197,34 +197,65 @@ private:
         return allocas;
     }
 
+    std::vector< size_t > abstract_args_of_call( const Node & node, const llvm::CallInst * call ) {
+        std::vector< size_t > args_idx;
+        for ( size_t i = 0; i < call->getNumArgOperands(); ++i ) {
+            bool abstract = query::query( node->postorder() )
+                .any( [&] ( const ValueNode & vn ) {
+                    return vn.value == call->getArgOperand( i );
+                } );
+            if ( abstract ) {
+                args_idx.push_back( i );
+            }
+        }
+        return args_idx;
+    }
+
     Nodes dependent_functions( const Node & node ) {
-        auto calls = query::query( node->postorder() )
-            // Find calls that take abstract arguments
+        // Compute potential new nodes
+        auto potential = query::query( node->postorder() )
             .filter( []( const ValueNode & n ) {
                 return llvm::dyn_cast< llvm::CallInst >( n.value );
             } )
             .filter( []( const ValueNode & n ) {
                 auto call = llvm::cast< llvm::CallInst >( n.value );
                 return !call->getCalledFunction()->isIntrinsic();
-            } ).freeze();
+            } )
+            .map( [&]( const ValueNode & n ) {
+                auto call = llvm::cast< llvm::CallInst >( n.value );
+                auto fn = call->getCalledFunction();
+                auto args_idx = abstract_args_of_call( node, call );
+                Entries e;
+                for ( auto a : args_idx )
+                    e.emplace( std::next( fn->arg_begin(), a ), n.annotation );
+                return std::make_shared< FunctionNode >( fn, e );
+            } )
+            .unstableUnique()
+            .freeze();
 
-        // Compute abstract entries to each called function
         Nodes functions;
-        for ( auto n : calls ) {
-            auto call = llvm::cast< llvm::CallInst >( n.value );
-            auto fn = call->getCalledFunction();
-
-            Entries entries;
-            for ( size_t i = 0; i < call->getNumArgOperands(); ++i ) {
-                bool abstract = query::query( node->postorder() )
-                    .any( [&] ( const ValueNode & vn ) {
-                        return vn.value == call->getArgOperand( i );
+        for ( const auto & p : potential ) {
+            auto deps = query::query( _reachednodes )
+                .filter( [&] ( const Node & n ) {
+                    if ( n->function != p->function )
+                        return false;
+                    // check whether entries match
+                    auto args = query::query( n->entries )
+                        .filter( []( const ValueNode & v ) {
+                            return llvm::dyn_cast< llvm::Argument >( v.value );
+                        } ).freeze();
+                    if ( args.size() != p->entries.size() )
+                        return false;
+                    return query::query( p->entries ).all( [&] ( const ValueNode & e ) {
+                        return std::find( args.begin(), args.end(), e ) != args.end();
                     } );
+                } ).freeze();
 
-                if ( abstract )
-                    entries.emplace( std::next( fn->arg_begin(), i ), n.annotation );
-            }
-            functions.push_back( std::make_shared< FunctionNode >( fn, entries ) );
+            if ( deps.empty() )
+                functions.push_back( p );
+            else
+                functions.insert( functions.end(), std::make_move_iterator( deps.begin() )
+                                                 , std::make_move_iterator( deps.end() ) );
         }
 
         return functions;
@@ -247,11 +278,49 @@ private:
     Nodes calls_of( const Node & node ) {
         Nodes ns;
         auto ret = get_return( node );
+        Map< Function *, std::vector< llvm::CallInst * > > users;
         for ( auto user : node->function->users() ) {
             auto call = llvm::cast< llvm::CallInst >( user );
             auto fn = call->getParent()->getParent();
-            Entries entries = { ValueNode{ call, ret.annotation } } ;
-            ns.emplace_back( std::make_shared< FunctionNode >( fn, entries ) );
+            users[ fn ].push_back( call );
+        }
+
+        for ( const auto & user : users ) {
+            // Compute already reached predecessors of given user function
+            auto preds = query::query( _reachednodes )
+                .filter( [&] ( const Node & n ) { return n->function == user.first; } ).freeze();
+            preds.emplace_back( new FunctionNode{ user.first, {} } );
+
+            bool called = query::query( node->entries ).any( [] ( const ValueNode & n ) {
+                return llvm::isa< llvm::Argument >( n.value );
+            } );
+
+            for ( const auto & p : preds ) {
+                for ( const auto & e : user.second ) {
+                    bool has_entry = query::query( p->entries ).any( [&] ( const ValueNode & n ) {
+                        return n.value == e;
+                    } );
+                    if ( has_entry )
+                        continue;
+                    // If this entry is need to be called - test whether it is reachable from
+                    // other entries of function else add this entry to node directly
+                    bool reachable = false;
+                    if ( called ) {
+                       reachable = query::query( p->postorder() )
+                        .filter( [] ( const ValueNode & n ) {
+                                return llvm::isa< llvm::CallInst >( n.value );
+                        } )
+                        .any( [&] ( const ValueNode & n ) {
+                            auto call = llvm::cast< llvm::CallInst >( n.value );
+                            return call->getCalledFunction() == node->function;
+                        } );
+                    }
+                    if ( !called || reachable ) {
+                        p->entries.emplace( e, ret.annotation );
+                        ns.push_back( p );
+                    }
+                }
+            }
         }
         return ns;
     }
