@@ -122,6 +122,8 @@ llvm::Value * AbstractBuilder::_process( llvm::Instruction * i ) {
 llvm::Value * AbstractBuilder::_process( llvm::Argument * arg ) {
     if ( types::isAbstract( arg->getType() ) )
         _values[ arg ] = arg;
+    else
+        store( arg->getType(), types::lift( arg->getType() ) );
     return arg;
 }
 
@@ -504,7 +506,6 @@ llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
 			 && fn->getReturnType() == at;
 
 	auto stored = same ? fn : getStoredFn( fn, types );
-
 	if ( !stored && _functions.count( fn ) ) {
 		auto res = getStoredFn( fn, fn->getFunctionType()->params() );
 		if ( res->empty() ) {
