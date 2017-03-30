@@ -103,7 +103,7 @@ struct MemInterrupt : lart::Pass {
                                          "__vm_interrupt_mem intrinsic." );
     }
 
-    void annotateFn( llvm::Function &fn ) {
+    void annotateFn( llvm::Function &fn, llvm::DataLayout &dl ) {
         // avoid changing bb while we iterate over it
         for ( auto inst : query::query( fn ).flatten().map( query::refToPtr ).freeze() ) {
             auto op = inst->getOpcode();
@@ -114,13 +114,17 @@ struct MemInterrupt : lart::Pass {
                 auto *type = _memInterrupt->getFunctionType();
                 auto point = llvm::BasicBlock::iterator( inst );
                 llvm::IRBuilder<> irb{ point };
-                auto ptr = irb.CreateBitCast( getPointerOperand( inst ), type->getParamType( 0 ) );
-                irb.CreateCall( _memInterrupt, { ptr, irb.getInt32( _VM_MAT_Load ) } );
+                auto *origPtr = getPointerOperand( inst );
+                auto *origT = llvm::cast< llvm::PointerType >( origPtr->getType() )
+                                  ->getElementType();
+                auto *ptr = irb.CreateBitCast( origPtr, type->getParamType( 0 ) );
+                auto *si = irb.getInt32( std::max( uint64_t( 1 ), dl.getTypeSizeInBits( origT ) / 8 ) );
+                irb.CreateCall( _memInterrupt, { ptr, si, irb.getInt32( _VM_MAT_Load ) } );
                 point ++;
                 if ( op != llvm::Instruction::Load )
                 {
                     irb.SetInsertPoint( point );
-                    irb.CreateCall( _memInterrupt, { ptr, irb.getInt32( _VM_MAT_Store ) } );
+                    irb.CreateCall( _memInterrupt, { ptr, si, irb.getInt32( _VM_MAT_Store ) } );
                 }
                 ++_mem;
             }
@@ -132,10 +136,11 @@ struct MemInterrupt : lart::Pass {
         if ( !tagModuleWithMetadata( m, "lart.divine.interrupt.mem" ) )
             return llvm::PreservedAnalyses::all();
 
+        llvm::DataLayout dl( &m );
         auto &ctx = m.getContext();
+        auto *i32t = llvm::Type::getInt32Ty( ctx );
         auto *ty = llvm::FunctionType::get( llvm::Type::getVoidTy( ctx ),
-                            { llvm::Type::getInt8PtrTy( ctx ), llvm::Type::getInt32Ty( ctx ) },
-                            false );
+                            { llvm::Type::getInt8PtrTy( ctx ), i32t, i32t }, false );
         _memInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_interrupt_mem", ty ) );
         ASSERT( _memInterrupt );
         _memInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
@@ -143,7 +148,7 @@ struct MemInterrupt : lart::Pass {
         for ( auto &fn : m ) {
             if ( fn.empty() )
                 continue;
-            annotateFn( fn );
+            annotateFn( fn, dl );
         }
         // std::cout << "Found " << _mem << " memory accesses" << std::endl;
         return llvm::PreservedAnalyses::none();
