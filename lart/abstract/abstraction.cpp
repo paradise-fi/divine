@@ -61,7 +61,8 @@ void clone( FunctionNodePtr node ) {
 
 llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
     auto preprocess = [] ( llvm::Function * fn ) {
-        auto lowerSwitchInsts = llvm::createLowerSwitchPass();
+        auto lowerSwitchInsts = std::unique_ptr< llvm::FunctionPass >(
+                                llvm::createLowerSwitchPass() );
         lowerSwitchInsts->runOnFunction( *fn );
 
         // FIXME lower only abstract selects
