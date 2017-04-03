@@ -516,7 +516,10 @@ llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
     assert( stored );
 
 	llvm::IRBuilder<> irb( i );
-	return irb.CreateCall( stored, args );
+	auto call = irb.CreateCall( stored, args );
+    if ( call->getType() == i->getType() )
+        i->replaceAllUsesWith( call );
+    return call;
 }
 
 llvm::Function * AbstractBuilder::getStoredFn( llvm::Function * fn,
