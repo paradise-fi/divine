@@ -516,7 +516,7 @@ struct Abstraction {
         ASSERT( ! liftingPointer( *m ) );
     }
 
-    /*TEST( propagate_from_call_not_returning_abstract ) {
+    TEST( propagate_from_call_not_returning_abstract ) {
         auto s = R"(int call( int x ) { return 10; }
                     int main() {
                         __test int x;
@@ -525,9 +525,22 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto calla = m->getFunction( "_Z4calli.2" );
+        ASSERT_EQ( calla->getNumUses(), 1);
+        ASSERT_EQ( calla->getReturnType()
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT_EQ( calla->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        auto call = m->getFunction( "_Z4calli" );
+        ASSERT_EQ( call->getNumUses(), 1 );
+        ASSERT_EQ( call->getReturnType()
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
-    }*/
+    }
 
     TEST( call_propagate_1 ) {
         auto s = R"(int call() {

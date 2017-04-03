@@ -89,11 +89,10 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
             return llvm::isa< llvm::Argument >( n.value );
         } );
 
-        if ( called ) {
+        if ( called )
             clone( node );
-        }
+
         // 2. process function abstract entries
-        // TODO let postorder stop on calls that does not return abstract value
         auto postorder = node->postorder();
         for ( auto & a : lart::util::reverse( postorder ) ) {
             // FIXME let builder take Annotation structure
@@ -141,7 +140,6 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
 
     for ( auto & fn : lart::util::reverse( remove ) )
        fn->eraseFromParent();
-
     return llvm::PreservedAnalyses::none();
 }
 

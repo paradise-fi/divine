@@ -424,6 +424,9 @@ llvm::Value * AbstractBuilder::createPtrCast( llvm::CastInst * i ) {
     auto val = _values[ i->getOperand( 0 ) ];
     assert( val && "ERR: Trying to bitcast value, that is not abstracted." );
 
+    if ( val->getType() == destTy )
+        return val;
+
     return irb.CreateBitCast( val, destTy );
 }
 

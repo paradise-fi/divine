@@ -60,7 +60,7 @@ static std::vector< ValueNode > getAbstractAnnotations( llvm::Module * m ) {
     }
 	return annotations;
 }
-}
+} // anonymous namespace
 
 template< typename Preprocess, typename Node >
 struct Walker {
@@ -89,6 +89,7 @@ private:
         Nodes queue = annotated( m );
         for ( auto & n : queue )
             _reachednodes.insert( n );
+
         while ( !queue.empty() ) {
             auto current = queue.back();
             queue.pop_back();
@@ -97,34 +98,79 @@ private:
                 return current == n;
             } );
             if ( find == _nodes.end() ) {
-                auto fn = current->function;
-
-                bool called = query::query( current->entries ).all( [] ( const ValueNode & n ) {
-                    return llvm::isa< llvm::Argument >( n.value );
-                } );
-
-                if ( query::query( _nodes ).none( [&]( Node n ) { return n->function == fn; } ) )
-                    preprocess( fn );
-
-                auto allocas = abstract_allocas( current );
-                current->entries.insert( allocas.begin(), allocas.end() );
-
-                // TODO propagate_through_calls( current );
-
-                for ( auto dep : dependent_functions( current ) ) {
-                    _reachednodes.insert( dep );
-                    queue.push_back( dep );
-                    current->succs.push_back( dep );
-                }
-
-                if ( !called && returns_abstract( current ) )
-                    for ( auto & dep : calls_of( current ) ) {
-                        _reachednodes.insert( dep );
-                        queue.push_back( dep );
-                    }
+                auto deps = process( current );
+                queue.insert( queue.end(), std::make_move_iterator( deps.begin() )
+                                         , std::make_move_iterator( deps.end() ) );
                 _nodes.push_back( current );
             }
         }
+    }
+
+    Nodes process( Node & node ) {
+        bool called = query::query( node->entries ).all( [] ( const ValueNode & n ) {
+            return llvm::isa< llvm::Argument >( n.value );
+        } );
+
+        auto fn = node->function;
+        if ( query::query( _nodes ).none( [&]( Node n ) { return n->function == fn; } ) )
+            preprocess( fn );
+
+        do {
+            auto allocas = abstract_allocas( node );
+            node->entries.insert( allocas.begin(), allocas.end() );
+            // FIXME deps can be directly computed in propagation
+            // - prevent the multiple passes of same function?
+        } while ( propagate_through_calls( node ) );
+
+        Nodes deps;
+        for ( auto & dep : dependent_functions( node ) ) {
+            _reachednodes.insert( dep );
+            deps.push_back( dep );
+            node->succs.push_back( dep );
+        }
+
+        if ( !called && returns_abstract( node ) )
+            for ( auto & dep : calls_of( node ) ) {
+                _reachednodes.insert( dep );
+                deps.push_back( dep );
+            }
+        return deps;
+    }
+
+    auto abstract_args_of_call( const Node & node, const llvm::CallInst * call ) {
+        std::vector< size_t > args_idx;
+        for ( size_t i = 0; i < call->getNumArgOperands(); ++i ) {
+            bool abstract = query::query( node->postorder() )
+                .any( [&] ( const ValueNode & vn ) {
+                    return vn.value == call->getArgOperand( i );
+                } );
+            if ( abstract ) {
+                args_idx.push_back( i );
+            }
+        }
+        return args_idx;
+    }
+
+    bool propagate_through_calls( Node & node ) {
+        bool newentry = false;
+        auto calls = query::query( node->postorder() )
+            .filter( []( const ValueNode & n ) { return llvm::isa< llvm::CallInst >( n.value ); } )
+            .freeze();
+        for ( auto & n : calls ) {
+            auto call = llvm::cast< llvm::CallInst >( n.value );
+            auto fn = call->getCalledFunction();
+            Entries entries;
+            for ( auto idx : abstract_args_of_call( node, call ) )
+                entries.emplace( std::next( fn->arg_begin(), idx ), n.annotation );
+            // FIXME save child as successor of node
+            Node child = std::make_shared< FunctionNode >( fn, entries );
+            process ( child );
+            if ( returns_abstract( child ) ) {
+                auto emp = node->entries.emplace( call, n.annotation, true );
+                newentry |= emp.second;
+            }
+        }
+        return newentry;
     }
 
     Nodes annotated( llvm::Module & m ) {
@@ -142,7 +188,7 @@ private:
                         return inst->getParent()->getParent() == fn;
                     } )
                     .map( []( const ValueNode & n ) {
-                        return ValueNode{ n.value, n.annotation };
+                        return ValueNode{ n.value, n.annotation, true };
                     } ).freeze();
 
                 preprocess( fn );
@@ -154,50 +200,39 @@ private:
 
     Entries abstract_allocas( const Node & node ) {
         Entries reached = { node->entries };
-        Entries allocas;
+        Entries abstract;
+
+        auto allocas = query::query( *node->function ).flatten()
+            .map( query::refToPtr )
+            .filter( []( llvm::Value * v ) { return llvm::isa< llvm::AllocaInst >( v ); } )
+            .map( []( llvm::Value * v ) { return ValueNode{ v, "alloca", true }; } )
+            .freeze();
 
         do {
-            allocas = reached;
+            abstract = reached;
             ValueNodes nodes = { reached.begin(), reached.end() };
             auto postorder = analysis::postorder< ValueNode >( nodes, value_succs );
-
-            auto uses_alloca = [] ( ValueNode & n ) {
-                 return query::query( llvm::cast< llvm::Instruction >( n.value )->operands() )
-                    .map( query::llvmdyncast< llvm::Instruction > )
+            for ( auto & a : allocas ) {
+                bool stores = query::query( postorder )
+                    .map( [&] ( const ValueNode & n ) { return n.value; } )
+                    .map( query::llvmdyncast< llvm::StoreInst > )
                     .filter( query::notnull )
-                    .any( [] ( llvm::Instruction * inst ) {
-                        return llvm::isa< llvm::AllocaInst >( inst );
+                    .any( [&] ( llvm::StoreInst * s ) {
+                        return s->getPointerOperand() == a.value;
                     } );
-            };
-
-            auto alloca_users = query::query( postorder )
-                .filter( []( const auto & n ) {
-                    return llvm::isa< llvm::Instruction >( n.value );
-                } )
-                .filter( uses_alloca )
-                .freeze();
-
-            for ( auto & user : alloca_users )
-                for ( auto & op : llvm::cast< llvm::Instruction >( user.value )->operands() )
-                    if ( llvm::isa< llvm::AllocaInst >( op ) )
-                        reached.emplace( op, user.annotation );
-        } while ( allocas != reached );
-
-        return allocas;
-    }
-
-    std::vector< size_t > abstract_args_of_call( const Node & node, const llvm::CallInst * call ) {
-        std::vector< size_t > args_idx;
-        for ( size_t i = 0; i < call->getNumArgOperands(); ++i ) {
-            bool abstract = query::query( node->postorder() )
-                .any( [&] ( const ValueNode & vn ) {
-                    return vn.value == call->getArgOperand( i );
-                } );
-            if ( abstract ) {
-                args_idx.push_back( i );
+                bool loads = query::query( postorder )
+                    .map( [&] ( const ValueNode & n ) { return n.value; } )
+                    .map( query::llvmdyncast< llvm::LoadInst > )
+                    .filter( query::notnull )
+                    .any( [&] ( llvm::LoadInst * l ) {
+                        return l->getPointerOperand() == a.value;
+                    } );
+                if ( loads || stores )
+                    reached.insert( a );
             }
-        }
-        return args_idx;
+        } while ( abstract != reached );
+
+        return abstract;
     }
 
     Nodes dependent_functions( const Node & node ) {
@@ -305,7 +340,7 @@ private:
                         } );
                     }
                     if ( !called || reachable ) {
-                        p->entries.emplace( e, ret.annotation );
+                        p->entries.emplace( e, ret.annotation, true );
                         ns.push_back( p );
                     }
                 }

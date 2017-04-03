@@ -20,8 +20,8 @@ namespace abstract {
         AnnotationNode() = default;
         AnnotationNode( const AnnotationNode & ) = default;
         AnnotationNode( AnnotationNode && ) = default;
-        AnnotationNode( const Value val, const Annotation ann )
-            : value( val ), annotation( ann ) {}
+        AnnotationNode( const Value val, const Annotation ann, bool root = false )
+            : value( val ), annotation( ann ), root( root ) {}
 
         AnnotationNode& operator=( const AnnotationNode & other ) {
             AnnotationNode temp( other );
@@ -41,21 +41,22 @@ namespace abstract {
         }
 
         bool operator==( const AnnotationNode & other ) const {
-            return value == other.value
-                && annotation == other.annotation;
+            return value == other.value;
         }
 
         Value value;
         Annotation annotation;
+        bool root;
     };
 
 
     using ValueNode = AnnotationNode< llvm::Value *, std::string >;
 
-    static auto value_succs( const ValueNode & n ) {
+    static std::vector< ValueNode > value_succs( const ValueNode & n ) {
+        if ( llvm::isa< llvm::CallInst >( n.value ) && !n.root )
+            return {};
         return query::query( n.value->users() )
-            // TODO.filter( [] ( const auto & val ) { return !llvm::isa< llvm::CallInst >( val ); } )
-            .map( [&] ( const auto & val ) { return ValueNode{ val, n.annotation }; } )
+            .map( [&] ( const auto & val ) { return ValueNode{ val, n.annotation, false }; } )
             .freeze();
     }
 }
