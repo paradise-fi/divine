@@ -39,8 +39,8 @@ namespace explore {
 struct State
 {
     CowHeap::Snapshot snap;
-    bool accepting:1;
     bool error:1;
+    bool operator==( const State& o ) const { return snap.intptr() == o.snap.intptr(); }
 };
 
 struct Context : vm::Context< Program, CowHeap >
@@ -179,8 +179,13 @@ struct Explore_
     using BC = explore::BC;
     using Env = std::vector< std::string >;
     using State = explore::State;
-    using Label = std::pair< std::vector< std::string >, std::vector< std::pair< int, int > > >;
     using Snapshot = CowHeap::Snapshot;
+
+    struct Label {
+        std::vector< std::string > trace;
+        std::vector< std::pair< int, int > > stack;
+        bool accepting;
+    };
 
     BC _bc;
 
@@ -196,7 +201,7 @@ struct Explore_
     Explore_( BC bc )
         : _bc( bc ), _ctx( _bc->program() ), _states( _ctx.heap(), 1024 )
     {
-        _initial.error = _initial.accepting = 0;
+        _initial.error = 0;
     }
 
     auto store( Snapshot snap )
@@ -251,12 +256,18 @@ struct Explore_
             if ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
             {
                 explore::State st;
+                Label lbl;
+
                 auto snap = _ctx.heap().snapshot();
                 auto r = store( snap );
                 st.snap = *r;
-                st.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
+
+                lbl.trace = _ctx._trace;
+                lbl.stack = _ctx._stack;
+                lbl.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
+
                 st.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-                yield( st, std::make_pair( _ctx._trace, _ctx._stack ), r.isnew() );
+                yield( st, lbl, r.isnew() );
             }
         } while ( !_ctx.finished() );
     }

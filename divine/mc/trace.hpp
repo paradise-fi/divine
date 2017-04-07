@@ -87,10 +87,10 @@ Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
     auto process =
         [&]( auto &label )
         {
-            for ( auto l : label.first )
+            for ( auto l : label.trace )
                 t.labels.push_back( l );
             t.choices.push();
-            std::transform( label.second.begin(), label.second.end(),
+            std::transform( label.stack.begin(), label.stack.end(),
                             std::back_inserter( t.choices.back() ),
                             []( auto x ) { return x.first; } );
         };

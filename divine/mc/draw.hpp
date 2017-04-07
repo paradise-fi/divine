@@ -68,15 +68,15 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
 
     ss::search(
         ss::Order::PseudoBFS, ex, 1, ss::listen(
-            [&]( auto f, auto t, auto trace )
+            [&]( auto f, auto t, auto l )
             {
                 init( f );
                 bool isnew = init( t );
 
                 ext( t ).distance = std::min( ext( t ).distance, ext( f ).distance + 1 );
                 std::string lbl, color;
-                for ( auto l : trace.first )
-                    lbl += l + "\n";
+                for ( auto txt : l.trace )
+                    lbl += txt + "\n";
                 if ( t.error )
                     color = "color=red";
                 str << ext( f ).seq << " -> " << ext( t ).seq
