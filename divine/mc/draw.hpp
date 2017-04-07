@@ -79,6 +79,8 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
                     lbl += txt + "\n";
                 if ( t.error )
                     color = "color=red";
+                if ( l.accepting )
+                    color = "color=blue";
                 str << ext( f ).seq << " -> " << ext( t ).seq
                     << " [ label = \"" << text2dot( lbl ) << "\" " << color << "]"
                     << std::endl;
