@@ -136,6 +136,20 @@ struct Thread {
         _pid = 1; // ToDo: Add process support
     }
 
+    template <class F>
+    Thread( void *mainFrame, void *mainTls, F routine, int tls_size ) noexcept {
+        auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) );
+        _frame = static_cast< _VM_Frame * >( mainFrame );
+        __vm_obj_resize( _frame, fun->frame_size );
+        _frame->pc = fun->entry_point;
+        _frame->parent = nullptr;
+
+        _tls = reinterpret_cast< struct _DiOS_TLS * >( mainTls );
+        __vm_obj_resize( _tls, sizeof( struct _DiOS_TLS ) + tls_size );
+        _tls->_errno = 0;
+        _pid = 1; // ToDo: Add process support
+    }
+
     Thread( const Thread& o ) noexcept = delete;
     Thread& operator=( const Thread& o ) noexcept = delete;
 
