@@ -18,6 +18,29 @@
 
 namespace __dios {
 
+struct MemoryPool {
+    MemoryPool( int size ) noexcept :
+        _pos( 0 ),
+        _pool( static_cast< void ** >( __vm_obj_make( size * sizeof( void * ) ) ) )
+    {
+        for ( int i = 0; i != size; i++ ) {
+            _pool[ i ] = __vm_obj_make( 1 );
+        }
+    }
+
+    MemoryPool( const MemoryPool& ) = delete;
+    MemoryPool& operator=( const MemoryPool& ) = delete;
+
+    void *get() noexcept {
+        if ( __vm_obj_size( _pool ) != sizeof( void * ) * _pos )
+            return _pool[ _pos++ ];
+        return nullptr;
+    }
+
+    int _pos;
+    void **_pool;
+};
+
 struct AllocatorBase {
 
     using pointer = void *;
