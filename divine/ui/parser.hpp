@@ -191,6 +191,7 @@ struct CLI : Interface
             .option( "[--threads {int}|-T {int}]", &Verify::_threads, "number of threads to use"s )
             .option( "[--max-memory {mem}]", &Verify::_max_mem, "limit memory use"s )
             .option( "[--max-time {int}]", &Verify::_max_time, "maximum allowed run time in seconds"s )
+            .option( "[--liveness]", &Verify::_liveness, "enables verification of liveness properties"s )
             .option( "[--report {repfmt}|-r {repfmt}]", &Verify::_report, "print a report (yaml, yaml-long or none)"s )
             .option( "[--num-callers {int}]"s, &Verify::_num_callers,
                      "the number of frames to print in a backtrace [default = 10]" );

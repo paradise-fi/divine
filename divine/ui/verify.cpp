@@ -45,6 +45,14 @@ void Verify::setup()
 
 void Verify::run()
 {
+    if ( _liveness )
+        liveness();
+    else
+        safety();
+}
+
+void Verify::safety()
+{
     vm::explore::State error;
 
     if ( !_threads )
@@ -95,6 +103,11 @@ void Verify::run()
     step._stop_on_error = true;
     step.run( dbg, Stepper::Quiet );
     mc::backtrace( dbg, dbg.snapshot(), _num_callers );
+}
+
+void Verify::liveness()
+{
+	NOT_IMPLEMENTED();
 }
 
 }

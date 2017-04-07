@@ -124,10 +124,13 @@ struct Verify : WithBC
     int _num_callers = 10;
     bool _no_counterexample = false;
     bool _interactive = true;
+    bool _liveness = false;
     Report _report = Report::Yaml;
 
     void setup() override;
     void run() override;
+    void safety();
+    void liveness();
 };
 
 struct Run : WithBC {
