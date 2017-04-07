@@ -27,7 +27,7 @@
 /* Memory allocation */
 void * malloc( size_t size ) noexcept
 {
-    using FaultFlag = __dios::Fault::FaultFlag;
+    using FaultFlag = __dios::FaultFlag;
     int masked = __vm_mask( 1 );
     void *r;
     bool ok = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled
@@ -44,7 +44,7 @@ void * malloc( size_t size ) noexcept
 
 void *realloc( void *orig, size_t size ) noexcept
 {
-    using FaultFlag = __dios::Fault::FaultFlag;
+    using FaultFlag = __dios::FaultFlag;
     int masked = __vm_mask( 1 );
     bool ok = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled
               ? __vm_choose( 2 ) : 1;
@@ -68,7 +68,7 @@ void *realloc( void *orig, size_t size ) noexcept
 
 void *calloc( size_t n, size_t size ) noexcept
 {
-    using FaultFlag = __dios::Fault::FaultFlag;
+    using FaultFlag = __dios::FaultFlag;
     int masked = __vm_mask( 1 );
     void *r;
     bool ok = _DiOS_fault_cfg[ _DiOS_SF_Malloc ] & FaultFlag::Enabled
