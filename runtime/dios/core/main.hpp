@@ -17,6 +17,9 @@ namespace __dios {
  */
 bool getSysOpts( const _VM_Env *e, SysOpts& res );
 
+String extractOpt( const String& key, SysOpts& opts );
+bool extractOpt( const String& key, const String& value, SysOpts& opts );
+
 /*
  * Construct null-terminated string from env->value
  */

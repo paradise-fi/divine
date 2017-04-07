@@ -14,8 +14,14 @@ extern "C" {
 #include <dios/core/syscall.hpp>
 #include <dios/core/trace.hpp>
 #include <dios/core/fault.hpp>
+#include <dios/core/monitor.hpp>
+#include <dios/core/machineparams.hpp>
 #include <dios/filesystem/fs-manager.h>
 #include <dios/filesystem/fs-constants.h>
+
+#include <sys/utsname.h>
+
+#include <algorithm>
 
 extern "C" {
 #include <unistd.h>
@@ -24,38 +30,6 @@ char **environ;
 
 namespace __dios {
 using FileTrace = fs::FileTrace;
-
-Context::Context() :
-    scheduler( __dios::new_object< Scheduler >() ),
-    fault( __dios::new_object< Fault >() ),
-    vfs( __dios::new_object< VFS >() ),
-    globals( __vm_control( _VM_CA_Get, _VM_CR_Globals ) ),
-    monitors( nullptr ),
-    sighandlers( nullptr )
-{}
-
-void Context::finalize() {
-    __dios::delete_object( vfs );
-    __dios::delete_object( fault );
-    __dios::delete_object( scheduler );
-}
-
-FileTrace getFileTraceConfig( const SysOpts& o, String stream ) {
-    for ( const auto& opt : o ) {
-        if ( stream == opt.first ) {
-            String s;
-            std::transform( opt.second.begin(), opt.second.end(),
-                std::back_inserter( s ), ::tolower );
-            if ( s == "notrace" )
-                return FileTrace::NOTRACE;
-            if ( s == "unbuffered" )
-                return FileTrace::UNBUFFERED;
-            if ( s == "trace" )
-                return FileTrace::TRACE;
-        }
-    }
-    return FileTrace::TRACE;
-}
 
 bool useSyscallPassthrough( const SysOpts& o ) {
     for ( const auto& opt : o ) {
@@ -70,23 +44,6 @@ bool useSyscallPassthrough( const SysOpts& o ) {
     }
     return false;
 }
-
-struct TraceDebugConfig {
-    bool threads:1;
-    bool help:1;
-    bool raw:1;
-    bool machineParams:1;
-    bool mainArgs:1;
-    bool faultCfg:1;
-
-    TraceDebugConfig() :
-        threads( false ), help( false ), raw( false ), machineParams( false ),
-        mainArgs( false ), faultCfg( false ) {}
-
-    bool anyDebugInfo() {
-        return help || raw || machineParams || mainArgs || faultCfg;
-    }
-};
 
 TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
     TraceDebugConfig config;
@@ -129,7 +86,18 @@ TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
     return config;
 }
 
-
+String extractDiosConfiguration( SysOpts& o ) {
+    auto r = std::find_if( o.begin(), o.end(),
+        []( const auto& opt ) {
+            return opt.first == "configuration";
+        } );
+    String cfg( "standard" );
+    if ( r != o.end() ) {
+        cfg = r->second;
+        o.erase( r );
+    }
+    return cfg;
+}
 
 void traceHelpOption( int i, String opt, String desc, const Vector<String>& args ) {
     __dios_trace_i( i, "- \"%s\":", opt.c_str() );
@@ -142,6 +110,9 @@ void traceHelpOption( int i, String opt, String desc, const Vector<String>& args
 void traceHelp( int i ) {
     __dios_trace_i( i, "help:" );
     __dios_trace_i( i + 1, "supported commands:" );
+    traceHelpOption( i + 2, "configuration", "run DiOS in given configuration",
+        { "standard - threads, processes, vfs"
+        });
     traceHelpOption( i + 2, "debug", "print debug information during boot",
         { "help - help and exit",
           // ToDo: trace binary blobs
@@ -182,79 +153,56 @@ void traceEnv( int ind, const _VM_Env *env ) {
     }
 }
 
-void init( const _VM_Env *env )
-{
-    // No active thread
-    __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
-    __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, __dios::Fault::handler );
-
-    // Activate temporary scheduler to handle errors
-    __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
-
-    // Initialize context
-    auto context = new_object< Context >();
+template < typename Configuration >
+void boot( MemoryPool& pool, const _VM_Env *env, SysOpts& opts ) {
+    auto *context = new_object< Configuration >();
     __vm_trace( _VM_T_StateType, context );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
+    context->linkSyscall( Syscall< Configuration >::kernelHandle );
+    context->setup( pool, env, opts );
+}
 
-    auto mainthr = context->scheduler->newThread( _start, 0 );
+void temporaryScheduler() {
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+}
 
-    auto argv = construct_main_arg( "arg.", env, true );
-    auto envp = construct_main_arg( "env.", env );
+void temporaryFaultHandler( _VM_Fault, _VM_Frame, void (*)(), ... ) { }
 
-    context->scheduler->setupMainThread( mainthr, argv.first, argv.second, envp.second );
+using DefaultConfiguration =
+    Scheduler< Fault < fs::VFS < MachineParams < MonitorManager < BaseContext > > > > >;
+
+void init( const _VM_Env *env )
+{
+    MemoryPool deterministicPool( 2 );
+
+    __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
+    __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, temporaryFaultHandler );
+    __vm_control( _VM_CA_Set, _VM_CR_Scheduler, temporaryScheduler );
+
     SysOpts sysOpts;
     if ( !getSysOpts( env, sysOpts ) ) {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         return;
     }
-    TraceDebugConfig traceCfg = getTraceDebugConfig( sysOpts );
 
-    if ( traceCfg.anyDebugInfo() ) {
-        __dios_trace_i( 0, "DiOS boot info:" );
-    }
-
-    if ( traceCfg.help ) {
+    __dios_trace_i( 0, "DiOS boot info:" );
+    if ( extractOpt( "help", "", sysOpts ) ) {
         traceHelp( 1 );
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
         return;
     }
 
-    if ( traceCfg.raw )
+    if ( extractOpt( "debug", "rawenvironment", sysOpts ) )
         traceEnv( 1, env );
 
-    if ( useSyscallPassthrough(sysOpts) ){
-        _DiOS_SysCalls = _DiOS_SysCalls_Passthru;
-    }
-
-    // Select scheduling mode
-    if ( traceCfg.threads )
-        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<true> );
-    else
-        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, __dios::sched<false> );
-
-     context->vfs->instance( ).setOutputFile(getFileTraceConfig(sysOpts, "stdout" ));
-     context->vfs->instance( ).setErrFile(getFileTraceConfig(sysOpts, "stderr" ));
-     context->vfs->instance( ).initializeFromSnapshot( env );
-
-    if ( !context->fault->load_user_pref( sysOpts ) ) {
+    auto cfg = extractDiosConfiguration( sysOpts );
+    if ( cfg == "standard" )
+        boot< DefaultConfiguration >( deterministicPool, env, sysOpts );
+    else {
+        __dios_trace_f( 0, "Unknown DiOS configuration %s specified", cfg.c_str() );
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         return;
     }
-
-    if ( traceCfg.faultCfg )
-        context->fault->trace_config( 1 );
-
-    context->machineParams.initialize( sysOpts );
-    if ( traceCfg.machineParams )
-        context->machineParams.traceParams( 1 );
-
-    if ( traceCfg.mainArgs ) {
-        trace_main_arg( 1, "main argv", argv );
-        trace_main_arg( 1, "main envp", envp );
-    }
-
-    environ = envp.second;
-
 }
 
 } // namespace __dios

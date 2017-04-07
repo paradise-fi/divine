@@ -78,6 +78,27 @@ bool getSysOpts( const _VM_Env *e, SysOpts& res ) {
     return true;
 }
 
+String extractOpt( const String& key, SysOpts& opts ) {
+    auto r = std::find_if( opts.begin(), opts.end(), [&]( const auto& opt ) {
+        return key == opt.first;
+    } );
+    if ( r == opts.end() )
+        return String{};
+    String s = r->second;
+    opts.erase( r );
+    return s;
+}
+
+bool extractOpt( const String& key, const String& value, SysOpts& opts ) {
+    auto r = std::find_if( opts.begin(), opts.end(), [&]( const auto& opt ) {
+        return key == opt.first && value == opt.second;
+    } );
+    if ( r == opts.end() )
+        return false;
+    opts.erase( r );
+    return true;
+}
+
 const _VM_Env *get_env_key( const char* key, const _VM_Env *e ) noexcept {
     for ( ; e->key; e++ ) {
         if ( strcmp( e->key, key ) == 0)
