@@ -37,6 +37,12 @@ struct stat
     int st_ctime;
 };
 
+// ToDo: Implement statfs properly
+struct statfs {
+    int _placeholder;
+};
+
+
 /* Tell code we have these members.  */
 #define	_STATBUF_ST_BLKSIZE
 #define _STATBUF_ST_RDEV
