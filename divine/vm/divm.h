@@ -336,7 +336,7 @@ int   __vm_obj_size( const void * ) NOTHROW NATIVE_VISIBLE;
  *                                    _VM_SC_Int32 | _VM_SC_In, fileno );
  */
 
-int __vm_syscall( int id, int retval_type, ... );
+int __vm_syscall( int id, int retval_type, ... ) NOTHROW;
 
 CPP_END
 
