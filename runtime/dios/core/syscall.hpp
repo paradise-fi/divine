@@ -83,6 +83,54 @@ typename Syscall< Context >::ScHandler Syscall< Context >::table[ SYS_MAXSYSCALL
     #undef SYSCALLSEP
 };
 
+struct BaseContext {
+    using SyscallInvoker = void (*)( void *, _DiOS_SC syscode, void *, va_list );
+
+    void linkSyscall( SyscallInvoker invoker ) {
+        _kernelCall = invoker;
+    };
+
+    void setup( MemoryPool&, const _VM_Env *, SysOpts opts ) {
+        if ( opts.empty() )
+            return;
+        for ( const auto& opt : opts )
+            __dios_trace_f( "ERROR: Unused option %s:%s", opt.first.c_str(), opt.second.c_str() );
+        __dios_fault( _DiOS_F_Config, "Unused options" );
+    }
+
+    void finalize() {}
+
+    void kernelSyscall( _DiOS_SC syscode, void *ret, ... ) {
+        va_list vl;
+        va_start( vl, ret );
+        _kernelCall( static_cast< void * >( this ), syscode, ret, vl );
+        va_end( vl );
+    }
+
+    static void kernelSyscall( void *c, _DiOS_SC syscode, void *ret, ... ) {
+        va_list vl;
+        va_start( vl, ret );
+        auto ctx = static_cast< BaseContext *>( c );
+        ctx->_kernelCall( ctx, syscode, ret, vl );
+        va_end( vl );
+    }
+
+    SyscallInvoker _kernelCall;
+
+    #include <dios/macro/syscall_common>
+    #include <dios/macro/no_memory_tags>
+    #define SYSCALL( name, schedule, ret, arg ) \
+        ret name ( int * IF(NOT(EMPTY arg ))(,) NAMED_ARGS arg );
+    #define SYSCALLSEP( ... ) EVAL( SYSCALL( __VA_ARGS__ ) )
+
+        #include <sys/syscall.def>
+
+    #undef SYSCALL
+    #undef SYSCALLSEP
+    #include <dios/macro/no_memory_tags.cleanup>
+    #include <dios/macro/syscall_common.cleanup>
+};
+
 } // namespace __dios
 
 
