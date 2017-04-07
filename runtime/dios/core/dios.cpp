@@ -40,24 +40,6 @@ void Context::finalize() {
     __dios::delete_object( scheduler );
 }
 
-void MachineParams::initialize( const SysOpts& opts ) {
-    hardwareConcurrency = 0;
-    for( const auto& i : opts ) {
-        if ( i.first == "ncpus" ) {
-            char *end;
-            hardwareConcurrency = strtol( i.second.c_str(), &end, 10 );
-            if ( i.second.data() == end || end - 1 != &i.second.back() )
-                __dios_fault( _DiOS_F_Config,
-                    "DiOS boot configuration: invalid ncpus specified" );
-        }
-    }
-}
-
-void MachineParams::traceParams( int indent ) {
-    __dios_trace_i( indent, "machine parameters:" );
-    __dios_trace_i( indent + 1, "ncpus: %d", hardwareConcurrency );
-}
-
 FileTrace getFileTraceConfig( const SysOpts& o, String stream ) {
     for ( const auto& opt : o ) {
         if ( stream == opt.first ) {
@@ -276,37 +258,6 @@ void init( const _VM_Env *env )
 }
 
 } // namespace __dios
-
-namespace __sc {
-
-void uname( __dios::Context&, int *, void *ret, va_list vl )
-{
-    utsname *name = va_arg( vl, utsname * );
-    strcpy( name->sysname, "DiOS" );
-    strcpy( name->nodename, "" );
-    strcpy( name->release, "0.1" );
-    strcpy( name->version, "0" );
-    strcpy( name->machine, "DIVINE 4 VM" );
-    *static_cast< int * >( ret ) = 0;
-}
-
-void hardware_concurrency (__dios::Context& c, int *, void *ret, va_list ) {
-    *static_cast< int * >( ret ) = c.machineParams.hardwareConcurrency;
-}
-
-} // namespace __sc
-
-namespace __sc_passthru {
-
-void uname( __dios::Context& ctx, int * err, void* retval, va_list vl )  {
-    __sc::uname(ctx, err, retval, vl);
-}
-
-void hardware_concurrency( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
-    __sc::hardware_concurrency(ctx, err, retval, vl);
-}
-
-} // namespace __sc_passthru
 
 /*
  * DiOS entry point. Defined weak to allow user to redefine it.

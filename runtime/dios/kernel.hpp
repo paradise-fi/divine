@@ -32,13 +32,6 @@ struct Syscall;
 struct Fault;
 using VFS = fs::VFS;
 
-struct MachineParams {
-    int hardwareConcurrency;
-
-    void initialize( const SysOpts& opts );
-    void traceParams( int indent );
-};
-
 struct sighandler_t
 {
     void ( *f )( int );
