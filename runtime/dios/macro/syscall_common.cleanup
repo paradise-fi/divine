@@ -1,0 +1,27 @@
+#ifndef __MACRO_SYSCALL_COMMON__
+#undef __MACRO_SYSCALL_COMMON__
+
+#include "base.cleanup"
+
+#undef NEXT_NAME
+
+#undef ARG_NAMES
+#undef ARG_NAMES_N
+#undef _ARG_NAMES_N
+
+#undef NAMED_ARGS
+#undef NAMED_ARGS_1
+#undef NAMED_ARGS_N
+#undef _NAMED_ARGS_N
+
+#undef UNNAMED_ARGS
+#undef UNNAMED_ARGS_1
+#undef UNNAMED_ARGS_N
+#undef _UNNAMED_ARGS_N
+
+
+#undef UNPACK
+#undef UNPACK_N
+#undef _UNPACK_N
+
+#endif

@@ -1,0 +1,36 @@
+#ifndef __MACRO_CORE__
+#define __MACRO_CORE__
+
+#define CAT(a, ...) PRIMITIVE_CAT(a, __VA_ARGS__)
+#define PRIMITIVE_CAT(a, ...) a ## __VA_ARGS__
+
+#define FST(a, ...) a
+#define SND(a, b, ...) b
+
+#define IF(condition) PRIMITIVE_CAT(_IF_, condition)
+#define _IF_1(...) __VA_ARGS__
+#define _IF_0(...)
+
+#define NOT(x) PRIMITIVE_CAT(_NOT_, x)
+#define _NOT_0 1
+#define _NOT_1 0
+
+#define IS_EMPTY_MARK(...) SND(__VA_ARGS__, 0)
+#define EMPTY_MARK() x, 1
+#define EMPTY(...) IS_EMPTY_MARK(FST(EMPTY_MARK __VA_ARGS__)())
+
+#define _IS_VOID(...) SND(__VA_ARGS__, 0)
+#define _TAG_void() x, 1
+#define IS_VOID(arg) _IS_VOID(PRIMITIVE_CAT(_TAG_, arg)())
+
+#define NOTHING()
+#define POSTPONE(m) m NOTHING NOTHING NOTHING NOTHING NOTHING ()()()()()
+
+#define EVAL(...)  EVAL1(EVAL1(EVAL1(__VA_ARGS__)))
+#define EVAL1(...) EVAL2(EVAL2(EVAL2(__VA_ARGS__)))
+#define EVAL2(...) EVAL3(EVAL3(EVAL3(__VA_ARGS__)))
+#define EVAL3(...) EVAL4(EVAL4(EVAL4(__VA_ARGS__)))
+#define EVAL4(...) EVAL5(EVAL5(EVAL5(__VA_ARGS__)))
+#define EVAL5(...) __VA_ARGS__
+
+#endif

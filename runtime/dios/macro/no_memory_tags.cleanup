@@ -1,0 +1,10 @@
+#ifdef __MACRO_NO_MEMORY_TAGS__
+#undef __MACRO_NO_MEMORY_TAGS__
+
+#undef OUT
+#undef MEM
+#undef COUNT
+#undef STRUCT
+#undef MEM
+
+#endif
