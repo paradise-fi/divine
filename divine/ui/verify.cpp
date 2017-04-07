@@ -16,6 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <divine/mc/liveness.hpp>
 #include <divine/mc/safety.hpp>
 #include <divine/mc/trace.hpp>
 #include <divine/vm/stepper.hpp>
@@ -107,7 +108,11 @@ void Verify::safety()
 
 void Verify::liveness()
 {
-	NOT_IMPLEMENTED();
+    auto liveness = mc::make_liveness( bitcode(), ss::passive_listen(), _symbolic );
+
+    liveness->start( 1 ); // threadcount
+    liveness->wait();
+    _log->result( liveness->result(), mc::Trace() );
 }
 
 }
