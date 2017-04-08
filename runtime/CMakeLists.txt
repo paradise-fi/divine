@@ -3,9 +3,11 @@
 include( stringify )
 
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
-      *.h divine/*.h dios/*.hpp dios/core/*.hpp dios/core/*.def atomic sys/*.h bits/*.h
+      *.h divine/*.h dios/*.hpp dios/core/*.hpp dios/core/*.def
+      dios/macro/*
+      atomic sys/*.h bits/*.h
       abstract/*.hpp abstract/*.h
-      libc/include/*.h libc/internals/*.h 
+      libc/include/*.h libc/internals/*.h
       libc/include/sys/*.h libc/include/sys/*.def libc/include/bits/*.h
       libm/include/*.h libm/include/machine/*.h
       libcxxabi/include/*

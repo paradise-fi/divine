@@ -1,97 +1,144 @@
-#ifdef SYSCALL
-
-#define SYSCALLSEP SYSCALL
-#define SYSCALL0 SYSCALL
-#define SYSCALL1 SYSCALL
-#define SYSCALL2 SYSCALL
-#define SYSCALL3 SYSCALL
-#define SYSCALL4 SYSCALL
-#define SYSCALL5 SYSCALL
-
-#define CONTINUE     SchedCommand::CONTINUE
-#define RESCHEDULE   SchedCommand::RESCHEDULE
-
-#endif // SYSCALL
-
-SYSCALL1(close, CONTINUE, int, int, fd)
-SYSCALL2(creat, CONTINUE, int, const char *, path, mode_t, mode)
-SYSCALL3(read, CONTINUE, ssize_t, int, fd, void *, buf, size_t, count)
-SYSCALL3(write, CONTINUE, ssize_t, int, fd, const void *, buf, size_t, count)
-SYSCALL3(lseek, CONTINUE, off_t, int, fildes, off_t, offset, int, whence)
-SYSCALL1(dup, CONTINUE, int, int, oldfd)
-SYSCALL2(dup2, CONTINUE, int, int, fildes, int, fildes2)
-SYSCALL2(ftruncate, CONTINUE, int, int, fd, off_t, length)
-SYSCALL2(truncate, CONTINUE, int, const char *, path, off_t, length)
-SYSCALL1(rmdir, CONTINUE, int, const char *, pathname)
-SYSCALL1(unlink, CONTINUE, int, const char *, path)
-SYSCALL3(unlinkat, CONTINUE, int, int, dirfd, const char *, path, int, flags)
-SYSCALL2(link, CONTINUE, int, const char *, target, const char *, linkpath)
-SYSCALL5(linkat, CONTINUE, int, int, olddirfd, const char *, target, int, newdirfd, const char *, linkpath, int, flags)
-SYSCALL2(symlink, CONTINUE, int, const char *, path1, const char *, path2)
-SYSCALL3(symlinkat, CONTINUE, int, const char *, target, int, newdirfd, const char *, linkpath)
-SYSCALL3(readlink, CONTINUE, ssize_t, const char *, pathname, char *, buf, size_t, bufsiz)
-SYSCALL4(readlinkat, CONTINUE, ssize_t, int, dirfd, const char *,path, char *,buf, size_t, count)
-SYSCALL2(access, CONTINUE, int, const char *, pathname, int, mode)
-SYSCALL1(chdir, CONTINUE, int, const char *, path)
-SYSCALL4(faccessat, CONTINUE, int, int, dirfd, const char *, path, int, mode, int, flags)
-SYSCALL1(fsync, CONTINUE, int, int, fd)
-SYSCALL1(fdatasync, CONTINUE, int, int, fd)
-SYSCALL1(fchdir, CONTINUE, int, int, fd)
-SYSCALL1(syncfs, CONTINUE, int, int, fd)
-SYSCALL2(fstat, CONTINUE, int, int, fd, struct stat *, buf)
-SYSCALL2(fstatfs, CONTINUE, int, int, fd, struct statfs *,buf)
-SYSCALL2(lstat, CONTINUE, int, const char *, pathname, struct stat *, buf)
-SYSCALL2(stat, CONTINUE, int, const char *, pathname, struct stat *, buf)
-SYSCALL2(statfs, CONTINUE, int, const char *, path, struct statfs *, buf)
-SYSCALL2(chmod, CONTINUE, int, const char *, path, mode_t, mode)
-SYSCALL2(fchmod, CONTINUE, int, int, fd, mode_t, mode)
-SYSCALL4(fchmodat, CONTINUE, int, int, dirfd, const char *, pathname, mode_t, mode, int, flags )
-SYSCALL1(umask, CONTINUE, mode_t, mode_t, mask)
-SYSCALL2(mkdir, CONTINUE, int, const char *, pathname, mode_t, mode)
-SYSCALL3(mkdirat, CONTINUE,int, int, dirfd, const char *, pathname, mode_t, mode)
-SYSCALL3(mknod, CONTINUE, int, const char *, path, mode_t, mode, dev_t, dev)
-SYSCALL4(mknodat, CONTINUE,int, int, dirfd, const char *, pathname, mode_t, mode, dev_t, dev)
-SYSCALLSEP(sync, CONTINUE)
-SYSCALLSEP(open, CONTINUE)
-SYSCALLSEP(openat, CONTINUE)
-SYSCALLSEP(fcntl, CONTINUE)
-SYSCALLSEP(pipe, CONTINUE)
-SYSCALLSEP(start_thread, CONTINUE)
-SYSCALLSEP(get_process_threads, CONTINUE)
-SYSCALLSEP(hardware_concurrency, CONTINUE)
-SYSCALLSEP(uname, CONTINUE)
-SYSCALLSEP(fault_handler, CONTINUE)
-SYSCALLSEP(kill, RESCHEDULE)
-SYSCALLSEP(kill_thread, RESCHEDULE)
-SYSCALLSEP(getpid, CONTINUE)
-SYSCALLSEP(sigaction, CONTINUE)
-SYSCALLSEP(configure_fault, CONTINUE)
-SYSCALLSEP(get_fault_config, CONTINUE)
-SYSCALLSEP(register_monitor, CONTINUE, struct _DiOS_Monitor *)
-SYSCALL3(socket, CONTINUE, int, int, domain, int, type, int, protocol )
-SYSCALLSEP(socketpair, CONTINUE)
-SYSCALL3(getsockname, CONTINUE, int, int, fd, struct sockaddr *, addr, socklen_t *, addrlen )
-SYSCALL3(bind, CONTINUE, int, int, fd, const struct sockaddr *, addr, socklen_t, len )
-SYSCALL3(connect, CONTINUE, int, int, fd, const struct sockaddr *, addr, socklen_t, len )
-SYSCALL3(getpeername, CONTINUE, int, int, fd, struct sockaddr *, addr, socklen_t *, len )
-SYSCALLSEP(sendto, CONTINUE)
-SYSCALL2(listen, CONTINUE, int, int, fd, int, n )
-SYSCALL3(accept, CONTINUE, int, int, fd, struct sockaddr *, addr,  socklen_t *, addr_len )
-SYSCALL4(accept4, CONTINUE, int, int, fd, struct sockaddr *, addr, socklen_t *, addr_len, int, flags )
-SYSCALL4(recv, CONTINUE, ssize_t, int, fd, void *,buf, size_t, n, int, flags )
-SYSCALLSEP(recvfrom, CONTINUE)
-SYSCALL4(renameat, CONTINUE, int, int, olddirfd, const char *, oldpath, int, newdirfd, const char *, newpath )
-SYSCALL2(rename, CONTINUE, int, const char *, old, const char *, newn )
-SYSCALL2(getcwd, CONTINUE, char*, char*, buf, size_t, size)
-
-#undef SYSCALL
-#undef SYSCALLSEP
-#undef SYSCALL0
-#undef SYSCALL1
-#undef SYSCALL2
-#undef SYSCALL3
-#undef SYSCALL4
-#undef SYSCALL5
-
-#undef CONTINUE
-#undef RESCHEDULE
+SYSCALLSEP(get_process_threads, CONTINUE,
+    _DiOS_ThreadHandle *, (_DiOS_ThreadHandle))
+SYSCALLSEP(start_thread, CONTINUE,
+    _DiOS_ThreadHandle, (_DiOS_ThreadRoutine, void *, int))
+SYSCALLSEP(die, RESCHEDULE,
+    void, ())
+SYSCALLSEP(kill_thread, RESCHEDULE,
+    void, (_DiOS_ThreadHandle))
+SYSCALLSEP(kill_process, RESCHEDULE,
+    void, (int))
+SYSCALLSEP(get_fault_config, CONTINUE,
+    int, (int))
+SYSCALLSEP(configure_fault, CONTINUE,
+    int, (int, int))
+SYSCALLSEP(fault_handler, CONTINUE,
+    void, (int, _VM_Frame *, int))
+SYSCALLSEP(register_monitor, CONTINUE,
+    void, (__dios::Monitor *))
+SYSCALL(rename, CONTINUE,
+    int, (MEM(const char *), MEM(const char *) ))
+SYSCALL(lseek, CONTINUE,
+    off_t, (int, off_t, int))
+SYSCALL(syncfs, CONTINUE,
+    int, (int))
+SYSCALL(accept4, CONTINUE,
+    int, (int, STRUCT(struct sockaddr *), OUT(socklen_t *), int ))
+SYSCALL(creat, CONTINUE,
+    int, (MEM(const char *), mode_t))
+SYSCALL(linkat, CONTINUE,
+    int, (int, MEM(const char *), int, MEM(const char *), int))
+SYSCALL(mkdir, CONTINUE,
+    int, (MEM(const char *), mode_t))
+SYSCALL(sync, CONTINUE,
+    void, ())
+SYSCALL(chmod, CONTINUE,
+    int, (MEM(const char *), mode_t))
+SYSCALL(renameat, CONTINUE,
+    int, (int, MEM(const char *), int, MEM(const char *) ))
+SYSCALL(uname, CONTINUE,
+    int, (struct utsname *))
+SYSCALL(mknod, CONTINUE,
+    int, (MEM(const char *), mode_t, dev_t))
+SYSCALL(symlinkat, CONTINUE,
+    int, (MEM(const char *), int, MEM(const char *)))
+SYSCALL(kill, RESCHEDULE,
+    int, (pid_t, int))
+SYSCALL(connect, CONTINUE,
+    int, (int, COUNT(const struct sockaddr *), socklen_t))
+SYSCALL(getsockname, CONTINUE,
+    int, (int, STRUCT(struct sockaddr *), OUT(socklen_t *)))
+SYSCALL(close, CONTINUE,
+    int, (int))
+SYSCALL(recvfrom, CONTINUE,
+    ssize_t, (int, void *, size_t, int, STRUCT(struct sockaddr *), OUT(socklen_t *)))
+SYSCALLSEP(open, CONTINUE,
+    int, (const char*, int, mode_t))
+SYSCALL(fstatfs, CONTINUE,
+    int, (int, STRUCT(struct statfs *)))
+SYSCALL(write, CONTINUE,
+    ssize_t, (int, COUNT(const void *), size_t))
+SYSCALL(bind, CONTINUE,
+    int, (int, COUNT(const struct sockaddr *), socklen_t))
+SYSCALL(fchmodat, CONTINUE,
+    int, (int, MEM(const char *), mode_t, int ))
+SYSCALL(lstat, CONTINUE,
+    int, (MEM(const char *), STRUCT(struct stat *)))
+SYSCALL(umask, CONTINUE,
+    mode_t, (mode_t))
+SYSCALL(access, CONTINUE,
+    int, (MEM(const char *), int))
+SYSCALL(faccessat, CONTINUE,
+    int, (int, MEM(const char *), int, int))
+SYSCALL(fchmod, CONTINUE,
+    int, (int, mode_t))
+SYSCALL(rmdir, CONTINUE,
+    int, (MEM(const char *)))
+SYSCALL(accept, CONTINUE,
+    int, (int, STRUCT(struct sockaddr *), OUT(socklen_t *) ))
+SYSCALL(dup, CONTINUE,
+    int, (int))
+SYSCALL(fdatasync, CONTINUE,
+    int, (int))
+SYSCALL(fstat, CONTINUE,
+    int, (int, STRUCT(struct stat *)))
+SYSCALL(getpid, CONTINUE,
+    pid_t, ())
+SYSCALL(fcntl, CONTINUE,
+    int, (int, int, va_list *))
+SYSCALL(stat, CONTINUE,
+    int, (MEM(const char *), STRUCT(struct stat *)))
+SYSCALL(getcwd, CONTINUE,
+    char*, (COUNT(char*), size_t))
+SYSCALL(truncate, CONTINUE,
+    int, (MEM(const char *), off_t))
+SYSCALL(dup2, CONTINUE,
+    int, (int, int))
+SYSCALL(read, CONTINUE,
+    ssize_t, (int, COUNT(void *), size_t))
+SYSCALL(openat, CONTINUE,
+    int, (int, const char *, int, mode_t))
+SYSCALL(sendto, CONTINUE,
+    ssize_t, (int, COUNT(const void *), size_t, int, COUNT(const struct sockaddr *), socklen_t ))
+SYSCALL(symlink, CONTINUE,
+    int, (MEM(const char *), MEM(const char *)))
+SYSCALL(readlink, CONTINUE,
+    ssize_t, (MEM(const char *), COUNT(char *), size_t))
+SYSCALL(fchdir, CONTINUE,
+    int, (int))
+SYSCALL(ftruncate, CONTINUE,
+    int, (int, off_t))
+SYSCALL(getpeername, CONTINUE,
+    int, (int, STRUCT(struct sockaddr *), OUT(socklen_t *)))
+SYSCALL(unlink, CONTINUE,
+    int, (MEM(const char *)))
+SYSCALL(sigaction, CONTINUE,
+    int, (int, const struct ::sigaction *, struct ::sigaction *))
+SYSCALL(unlinkat, CONTINUE,
+    int, (int, MEM(const char *), int ))
+SYSCALL(mknodat, CONTINUE,
+    int, (int, MEM(const char *), mode_t, dev_t))
+SYSCALL(readlinkat, CONTINUE,
+    ssize_t, (int, MEM(const char *), COUNT(char *), size_t))
+SYSCALL(chdir, CONTINUE,
+    int, (MEM(const char *)))
+SYSCALL(recv, CONTINUE,
+    ssize_t, (int, void *, size_t, int))
+SYSCALL(socket, CONTINUE,
+    int, (int, int, int ))
+SYSCALL(fsync, CONTINUE,
+    int, (int))
+SYSCALL(statfs, CONTINUE,
+    int, (MEM(const char *), STRUCT(struct statfs *)))
+SYSCALL(socketpair, CONTINUE,
+    int, (int, int, int, OUT(int *)))
+SYSCALLSEP(pipe, CONTINUE,
+    int, (OUT(int*)))
+SYSCALL(link, CONTINUE,
+    int, (MEM(const char *), MEM(const char *)))
+SYSCALL(listen, CONTINUE,
+    int, (int, int))
+SYSCALL(mkdirat, CONTINUE,
+    int, (int, MEM(const char *), mode_t))
+SYSCALLSEP(hardware_concurrency, CONTINUE,
+    int, ())

@@ -9,8 +9,10 @@ typedef enum
     SYS_NONE = 0,
 
     #define SYSCALL(n,...) SYS_ ## n,
-    #include <sys/syscall.def>
+    #define SYSCALLSEP(n,...) SYS_ ## n,
+        #include <sys/syscall.def>
     #undef SYSCALL
+    #undef SYSCALLSEP
 
     SYS_MAXSYSCALL
 } _DiOS_SC;
