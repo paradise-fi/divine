@@ -25,6 +25,7 @@
 
 #endif
 
+/*
 namespace __sc_passthru {
 
 	void read( __dios::Context& , int* err, void* retval, va_list vl ) {
@@ -770,4 +771,4 @@ namespace __sc_passthru {
     }
 
 } // eo namespace __sc_passthru
-
+*/
