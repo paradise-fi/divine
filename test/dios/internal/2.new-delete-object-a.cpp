@@ -1,3 +1,4 @@
+/* CC_OPTS: -std=c++11 */
 #include <dios/kernel.hpp>
 #include <cassert>
 
