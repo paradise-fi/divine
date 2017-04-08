@@ -8,21 +8,13 @@
 #include <cstring>
 #include <dios.h>
 #include <signal.h>
-#include <sys/signal.h>
 #include <sys/monitor.h>
+#include <sys/signal.h>
 #include <dios/core/syscall.hpp>
 #include <dios/core/fault.hpp>
+#include <dios/core/monitor.hpp>
+#include <dios/core/syscall.hpp>
 #include <divine/metadata.h>
-
-namespace __sc {
-
-void start_thread( __dios::Context& ctx, int *err, void *retval, va_list vl );
-void kill_thread( __dios::Context& ctx, int *err, void *retval, va_list vl );
-void kill_process( __dios::Context& ctx, int *err, void *retval, va_list vl );
-void get_process_threads( __dios::Context &ctx, int *err, void *_ret, va_list vl );
-
-
-} // namespace __sc
 
 namespace __dios {
 
@@ -192,32 +184,58 @@ private:
     void clearFrame() noexcept;
 };
 
-static void sig_ign( int ) {}
-static void sig_die( int ) {}
-static void sig_fault( int ) {}
+void sig_ign( int );
+void sig_die( int );
+void sig_fault( int );
 
 extern const sighandler_t defhandlers[ 32 ];
 
-struct Scheduler {
-    Scheduler() {}
-    int threadCount() const noexcept { return threads.size(); }
+template < typename Next >
+struct Scheduler : public Next {
+    using Sys = Syscall< Scheduler< Next > >;
+    Scheduler() :
+        sighandlers( nullptr ),
+        _global( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
+    { }
 
-    template< typename... Args >
-    Thread *newThread( void ( *routine )( Args... ), int tls_size ) noexcept
-    {
-        __dios_assert_v( routine, "Invalid thread routine" );
-        return threads.emplace( routine, tls_size );
+    void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) {
+        auto mainThr = newThreadMem( pool.get(), pool.get(), _start, 0 );
+        auto argv = construct_main_arg( "arg.", env, true );
+        auto envp = construct_main_arg( "env.", env );
+        setupMainThread( mainThr, argv.first, argv.second, envp.second );
+
+        bool notrace = extractOpt( "notrace", "thread", opts );
+        bool trace = extractOpt( "trace", "thread", opts );
+        if ( trace && notrace ) {
+            __dios_trace_t( "Cannot trace and notrace threads" );
+            __dios_fault( _DiOS_F_Config, "Thread tracing problem" );
+        }
+
+        if ( trace )
+            __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< true > );
+        else
+            __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< false > );
+
+        if ( extractOpt( "debug", "mainargs", opts ) ||
+             extractOpt( "debug", "mainarg", opts ) )
+        {
+            trace_main_arg( 1, "main argv", argv );
+            trace_main_arg( 1, "main envp", envp );
+        }
+
+        environ = envp.second;
+
+        Next::setup( pool, env, opts );
     }
 
+    int threadCount() const noexcept { return threads.size(); }
     Thread *chooseThread() noexcept
     {
         if ( threads.empty() )
             return nullptr;
         return threads[ __vm_choose( threads.size() ) ];
     }
-
-    void traceThreads() const noexcept __attribute__((noinline))
-    {
+    void traceThreads() const noexcept __attribute__((noinline))  {
         int c = threads.size();
         if ( c == 0 )
             return;
@@ -235,8 +253,21 @@ struct Scheduler {
         __vm_obj_free( pi );
     }
 
-    void setupMainThread( Thread *t, int argc, char** argv, char** envp ) noexcept
+    template< typename... Args >
+    Thread *newThreadMem( void *mainFrame, void *mainTls, void ( *routine )( Args... ), int tls_size ) noexcept
     {
+        __dios_assert_v( routine, "Invalid thread routine" );
+        return threads.emplace( mainFrame, mainTls, routine, tls_size );
+    }
+
+    template< typename... Args >
+    Thread *newThread( void ( *routine )( Args... ), int tls_size ) noexcept
+    {
+        __dios_assert_v( routine, "Invalid thread routine" );
+        return threads.emplace( routine, tls_size );
+    }
+
+    void setupMainThread( Thread * t, int argc, char** argv, char** envp ) noexcept {
         DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( t->_frame );
         frame->l = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( main ) )->arg_count;
 
@@ -245,20 +276,17 @@ struct Scheduler {
         frame->envp = envp;
     }
 
-    void setupThread( Thread *t, void *arg ) noexcept
-    {
+    void setupThread( Thread * t, void *arg ) noexcept {
         ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >( t->_frame );
         frame->arg = arg;
     }
 
-    void killThread( ThreadHandle tid ) noexcept
-    {
+    void killThread( ThreadHandle tid ) noexcept  {
         bool res = threads.remove( tid );
         __dios_assert_v( res, "Killing non-existing thread" );
     }
 
-    void killProcess( pid_t id ) noexcept
-    {
+    void killProcess( pid_t id ) noexcept  {
         if ( !id ) {
             threads.erase( threads.begin(), threads.end() );
             // ToDo: Erase processes
@@ -266,141 +294,103 @@ struct Scheduler {
         }
 
         auto r = std::remove_if( threads.begin(), threads.end(), [&]( Thread *t ) {
-                return t->_pid == id;
-            });
+            return t->_pid == id;
+        });
         threads.erase( r, threads.end() );
         // ToDo: Erase processes
     }
 
-    static void sigaction( __dios::Context& ctx, int *err, void *ret, va_list vl )
-    {
-        int sig = va_arg( vl, int );
-        auto act = va_arg( vl, const struct sigaction * );
-        auto oldact = va_arg( vl, struct sigaction * );
-
-        if ( sig < 0 ||
-             sig > static_cast<int>( sizeof(defhandlers) / sizeof( sighandler_t ) ) ||
-             sig == SIGKILL || sig == SIGSTOP )
+    int sigaction( int *err, int sig, const struct ::sigaction *act, struct sigaction *oldact ) {
+        if ( sig < 0 || sig > static_cast< int >( sizeof(defhandlers) / sizeof(__dios::sighandler_t) )
+            || sig == SIGKILL || sig == SIGSTOP )
         {
-            *static_cast< int * >( ret ) = -1;
             *err = EINVAL;
-            return;
+            return -1 ;
         }
-
-        if ( !ctx.sighandlers )
+        if ( !sighandlers )
         {
-            ctx.sighandlers = reinterpret_cast< sighandler_t * >(
-                __vm_obj_make( sizeof( defhandlers ) ) );
-            std::memcpy( ctx.sighandlers, defhandlers, sizeof( defhandlers ) );
+            sighandlers = reinterpret_cast< sighandler_t * >(
+                    __vm_obj_make( sizeof( defhandlers ) ) );
+            std::memcpy( sighandlers, defhandlers, sizeof(defhandlers) );
         }
 
-        oldact->sa_handler = ctx.sighandlers[sig].f;
-        ctx.sighandlers[sig].f = act->sa_handler;
-        *static_cast< int * >( ret ) = 0;
+        oldact->sa_handler = sighandlers[sig].f;
+        sighandlers[sig].f = act->sa_handler;
+        return 0;
     }
 
-    static void getpid( __dios::Context& ctx, int *, void *retval, va_list )
-    {
+    pid_t getpid( int * ) {
         auto tid = __dios_get_thread_handle();
-        auto thread = ctx.scheduler->threads.find( tid );
+        auto thread = threads.find( tid );
         __dios_assert( thread );
-        *static_cast< int * >( retval ) = thread->_pid;
+        return thread->_pid;
     }
 
-    static void start_thread( __dios::Context& ctx, int *, void *retval, va_list vl )
-    {
-        typedef void ( *r_type )( void * );
-        auto routine = va_arg( vl, r_type );
-        auto arg = va_arg( vl, void * );
-        auto tls = va_arg( vl, int );
-        auto ret = static_cast< __dios::ThreadHandle * >( retval );
-
-        auto t = ctx.scheduler->newThread( routine, tls );
-        ctx.scheduler->setupThread( t, arg );
+    _DiOS_ThreadHandle start_thread( int *, _DiOS_ThreadRoutine routine, void * arg, int tls_size ) {
+        auto t = newThread( routine, tls_size );
+        setupThread( t, arg );
         __vm_obj_shared( t->getId() );
         __vm_obj_shared( arg );
-        *ret = t->getId();
+        return t->getId();
     }
 
-    static void kill_thread( __dios::Context& ctx, int *, void *, va_list vl )
-    {
-        auto id = va_arg( vl, __dios::ThreadHandle );
-        ctx.scheduler->killThread( id );
+    void kill_thread( int *, _DiOS_ThreadHandle id ) {
+        killThread( id );
     }
 
-    static void kill_process( __dios::Context& ctx, int *, void *, va_list vl )
-    {
-        auto id = va_arg( vl, pid_t );
-        ctx.scheduler->killProcess( id );
-    }
-
-    static void get_process_threads( __dios::Context &ctx, int *, void *_ret, va_list vl )
-    {
-        auto *&ret = *reinterpret_cast< _DiOS_ThreadHandle ** >( _ret );
-        auto tid = va_arg( vl, _DiOS_ThreadHandle );
+    _DiOS_ThreadHandle *get_process_threads( int *, _DiOS_ThreadHandle tid ) {
         pid_t pid;
-        for ( auto &t : ctx.scheduler->threads ) {
+        for ( auto &t : threads ) {
             if ( t->_tls == tid ) {
                 pid = t->_pid;
                 break;
             }
         }
         int count = 0;
-        for ( auto &t : ctx.scheduler->threads ) {
+        for ( auto &t : threads ) {
             if ( t->_pid == pid )
                 ++count;
         }
-        ret = static_cast< _DiOS_ThreadHandle * >(
-            __vm_obj_make( sizeof( _DiOS_ThreadHandle ) * count ) );
+        auto ret = static_cast< _DiOS_ThreadHandle * >( __vm_obj_make( sizeof( _DiOS_ThreadHandle ) * count ) );
         int i = 0;
-        for ( auto &t : ctx.scheduler->threads ) {
+        for ( auto &t : threads ) {
             if ( t->_pid == pid ) {
                 ret[ i ] = t->_tls;
                 ++i;
             }
         }
+        return ret;
     }
 
-    static void kill( __dios::Context& ctx, int *err, void *ret, va_list vl )
-    {
-        int pid = va_arg( vl, pid_t );
-        auto sig = va_arg( vl, int );
+    int kill( int *err, pid_t pid, int sig ) {
         sighandler_t handler;
-
         bool found = false;
         __dios::Thread *thread;
-        for ( auto t : ctx.scheduler->threads )
+        for ( auto t : threads )
             if ( t->_pid == pid )
             {
                 found = true;
                 thread = t;
                 break;
             }
-
         if ( !found )
         {
             *err = ESRCH;
-            *static_cast< int* >( ret ) = -1;
-            return;
+            return -1;
         }
-
-        if ( ctx.sighandlers )
-            handler = ctx.sighandlers[sig];
+        if ( sighandlers )
+            handler = sighandlers[sig];
         else
             handler = defhandlers[sig];
-
-        *static_cast< int* >( ret ) = 0;
-
         if ( handler.f == sig_ign )
-            return;
+            return 0;
         if ( handler.f == sig_die )
-            ctx.scheduler->killProcess( pid );
+            killProcess( pid );
         else if ( handler.f == sig_fault )
             __dios_fault( _VM_F_Control, "Uncaught signal." );
         else
         {
-            auto fun = __md_get_pc_meta(
-                reinterpret_cast< _VM_CodePointer >( __dios_signal_trampoline ) );
+            auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( __dios_signal_trampoline ) );
             auto _frame = static_cast< __dios::TrampolineFrame * >( __vm_obj_make( fun->frame_size ) );
             _frame->pc = reinterpret_cast< _VM_CodePointer >( __dios_signal_trampoline );
             _frame->interrupted = thread->_frame;
@@ -408,45 +398,52 @@ struct Scheduler {
             _frame->parent = nullptr;
             _frame->handler = handler.f;
         }
+        return 0;
+    }
+
+    void die( int * ) {
+        killProcess( 0 );
+    }
+
+    template < bool THREAD_AWARE_SCHED >
+    static void run_scheduler() noexcept
+    {
+        void *ctx = __vm_control( _VM_CA_Get, _VM_CR_State );
+        Scheduler& scheduler = *static_cast< Scheduler * >( ctx );
+
+        if ( THREAD_AWARE_SCHED )
+            scheduler.traceThreads();
+        Thread *t = scheduler.chooseThread();
+        while ( t && t->_frame )
+        {
+            __vm_control( _VM_CA_Set, _VM_CR_User2,
+                reinterpret_cast< int64_t >( t->getId() ) );
+            __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
+                          _VM_CA_Bit, _VM_CR_Flags,
+                          uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
+            t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
+
+            scheduler.runMonitors();
+
+            auto syscall = static_cast< _DiOS_Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
+            __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
+            if ( !syscall || Sys::handle( scheduler, *syscall ) == SchedCommand::RESCHEDULE )
+                return;
+
+            /* reset intframe to ourselves */
+            auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
+            __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
+        }
+
+        // Program ends
+        scheduler.finalize();
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
     }
 
     SortedStorage< Thread > threads;
+    sighandler_t *sighandlers;
+    void *_global;
 };
-
-template < bool THREAD_AWARE_SCHED >
-void sched() noexcept
-{
-    auto ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
-    if ( THREAD_AWARE_SCHED )
-        ctx->scheduler->traceThreads();
-    Thread *t = ctx->scheduler->chooseThread();
-    while ( t && t->_frame )
-    {
-        __vm_control( _VM_CA_Set, _VM_CR_User2,
-            reinterpret_cast< int64_t >( t->getId() ) );
-        __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
-                      _VM_CA_Bit, _VM_CR_Flags,
-                      uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
-        t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
-
-        if ( ctx->monitors )
-            ctx->monitors->run( *ctx );
-
-        Syscall *syscall = static_cast< Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
-        __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
-        if ( !syscall || syscall->handle( ctx ) == SchedCommand::RESCHEDULE )
-            return;
-
-        /* reset intframe to ourselves */
-        auto self = __vm_control( _VM_CA_Get, _VM_CR_Frame );
-        __vm_control( _VM_CA_Set, _VM_CR_IntFrame, self );
-
-    }
-
-    // Program ends
-    ctx->finalize();
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
-}
 
 } // namespace __dios
 

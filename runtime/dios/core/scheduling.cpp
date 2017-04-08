@@ -43,65 +43,11 @@ _DiOS_ThreadHandle *__dios_get_process_threads() noexcept {
     return ret;
 }
 
-namespace __sc {
-
-void start_thread( __dios::Context& ctx, int *err, void *ret, va_list vl )
-{
-    __dios::Scheduler::start_thread( ctx, err, ret, vl );
-}
-
-void sigaction( __dios::Context& ctx, int *err, void *ret, va_list vl )
-{
-    __dios::Scheduler::sigaction( ctx, err, ret, vl );
-}
-
-void getpid( __dios::Context& ctx, int *err, void *ret, va_list vl )
-{
-    __dios::Scheduler::getpid( ctx, err, ret, vl );
-}
-
-void kill_thread( __dios::Context& ctx, int *err, void *ret, va_list vl )
-{
-    __dios::Scheduler::kill_thread( ctx, err, ret, vl );
-}
-
-void kill_process( __dios::Context& ctx, int *err, void *ret, va_list vl )
-{
-    __dios::Scheduler::kill_process( ctx, err, ret, vl );
-}
-
-void get_process_threads( __dios::Context& ctx, int *err, void *ret, va_list vl )
-{
-    __dios::Scheduler::get_process_threads( ctx, err, ret, vl );
-}
-
-void kill( __dios::Context& ctx, int *err, void *ret, va_list vl )
-{
-    __dios::Scheduler::kill( ctx, err, ret, vl );
-}
-
-} // namespace __sc
-
-namespace __sc_passthru {
-
-void start_thread( __dios::Context& ctx, int * err, void* retval, va_list vl )  {
-    __sc::start_thread(ctx, err, retval, vl);
-}
-
-void kill_thread( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
-    __sc::kill_thread(ctx, err, retval, vl);
-}
-
-void kill_process( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
-    __sc::kill_process(ctx, err, retval, vl);
-}
-
-void get_process_threads( __dios::Context& ctx, int * err, void* retval, va_list vl ) {
-    __sc::get_process_threads(ctx, err, retval, vl);
-}
-} // namespace __sc_passthru
-
 namespace __dios {
+
+void sig_ign( int ) {}
+void sig_die( int ) {}
+void sig_fault( int ) {}
 
 Thread::Thread( Thread&& o ) noexcept
     : _frame( o._frame ), _tls( o._tls ), _pid( o._pid )
