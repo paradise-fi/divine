@@ -1,19 +1,24 @@
-# TODO: So far we probably support just unixODBC
-
 find_program( ODBC_CONFIG_EXECUTABLE
               NAMES odbc_config iodbc-config
               DOC "path to the odbc_config executable" )
 
 get_filename_component( ODBC_CONFIG_REAL ${ODBC_CONFIG_EXECUTABLE} REALPATH )
+get_filename_component( ODBC_CONFIG_NAME ${ODBC_CONFIG_EXECUTABLE} NAME_WE )
 
 if( ODBC_CONFIG_EXECUTABLE )
-  exec_program(${ODBC_CONFIG_REAL} ARGS --lib-prefix     OUTPUT_VARIABLE ODBC_LIBRARY_DIRS_ )
-  exec_program(${ODBC_CONFIG_REAL} ARGS --include-prefix OUTPUT_VARIABLE ODBC_INCLUDE_DIRS_ )
+
+  if ( ${ODBC_CONFIG_NAME} EQUAL "iodbc-config" )
+      exec_program(${ODBC_CONFIG_REAL} ARGS --lib-prefix     OUTPUT_VARIABLE ODBC_LIBRARY_DIRS_ )
+      exec_program(${ODBC_CONFIG_REAL} ARGS --include-prefix OUTPUT_VARIABLE ODBC_INCLUDE_DIRS_ )
+  else()
+      exec_program(${ODBC_CONFIG_REAL} ARGS --prefix     OUTPUT_VARIABLE ODBC_PREFIX_DIR )
+      set( ODBC_LIBRARY_DIRS_ "${ODBC_PREFIX_DIR}/lib" )
+      set( ODBC_INCLUDE_DIRS_ "${ODBC_PREFIX_DIR}/include" )
+  endif()
   exec_program(${ODBC_CONFIG_REAL} ARGS --cflags         OUTPUT_VARIABLE ODBC_COMPILE_FLAGS_ )
-  exec_program(${ODBC_CONFIG_REAL} ARGS --ldflags        OUTPUT_VARIABLE ODBC_LDFLAGS )
   exec_program(${ODBC_CONFIG_REAL} ARGS --libs           OUTPUT_VARIABLE ODBC_LIBRARIES )
   string(REGEX REPLACE "-DNDEBUG" "" ODBC_COMPILE_FLAGS ${ODBC_COMPILE_FLAGS_})
-  string(REGEX REPLACE " +" ";" ODBC_SYSLIBS1 ${ODBC_LDFLAGS})
+  string(REGEX REPLACE " +" ";" ODBC_SYSLIBS1 ${ODBC_LIBRARIES})
   foreach( lib ${ODBC_SYSLIBS1} )
       if ( lib MATCHES "^-l" )
           string(REPLACE "-l" "" lib1 ${lib})
