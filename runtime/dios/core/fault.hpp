@@ -15,64 +15,69 @@ CPP_END
 
 #ifdef __cplusplus
 
-#include <array>
+#include <algorithm>
 #include <cstdarg>
+#include <divine/metadata.h>
 #include <dios.h>
 #include <dios/core/main.hpp>
 #include <dios/core/trace.hpp>
-#include <dios/core/syscall.hpp>
-#include <divine/metadata.h>
+#include <dios/core/scheduling.hpp>
 
 namespace __dios {
 
-struct Fault {
-    Fault() : triggered( false ), ready( false ) {
-        config.fill( FaultFlag::Enabled | FaultFlag::AllowOverride );
+enum FaultFlag
+{
+    Enabled       = 0x01,
+    Continue      = 0x02,
+    UserSpec      = 0x04,
+    AllowOverride = 0x08,
+};
+
+template < typename Next >
+struct Fault: public Next {
+    static constexpr int fault_count = _DiOS_SF_Last;
+
+    Fault() :
+        config( static_cast< uint8_t *>( __vm_obj_make( fault_count ) ) ),
+        triggered( false ),
+        ready( false )
+    {
+        std::fill_n( config, fault_count, FaultFlag::Enabled | FaultFlag::AllowOverride );
         ready = true;
 
         // Initialize pointer to C-compatible _DiOS_fault_cfg
         __dios_assert( !_DiOS_fault_cfg );
-        _DiOS_fault_cfg = &config[ 0 ];
+        _DiOS_fault_cfg = config;
     }
 
-    enum FaultFlag
-    {
-        Enabled       = 0x01,
-        Continue      = 0x02,
-        UserSpec      = 0x04,
-        AllowOverride = 0x08,
-    };
+    void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) {
+        __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, handler );
+        load_user_pref( opts );
 
-    static constexpr int fault_count = _DiOS_SF_Last;
+        if ( extractOpt( "debug", "faultcfg", opts ) ) {
+            trace_config( 1 );
+            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+        }
 
-    std::array< uint8_t, fault_count > config;
-    bool triggered;
-    bool ready;
-
-    static void die( __dios::Context& ctx ) noexcept;
-
-    static void sc_handler_wrap( __dios::Context& ctx, void *ret, ... ) noexcept {
-        va_list vl;
-        va_start( vl, ret );
-        int err;
-        sc_handler( ctx, &err, ret, vl );
-        va_end( vl );
+        Next::setup( pool, env, opts );
     }
 
-    static void sc_handler( __dios::Context& ctx, int *, void *, va_list vl ) noexcept {
-        bool kernel = va_arg( vl, int );
-        auto *frame = va_arg( vl, _VM_Frame * );
-        auto what = va_arg( vl, int );
+    void terminate() noexcept  {
+        BaseContext::kernelSyscall( SYS_die, nullptr );
+        static_cast< _VM_Frame * >
+            ( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent = nullptr;
+    }
 
+    void fault_handler( int *, int kernel, _VM_Frame * frame, int what )  {
         InTrace _; // avoid dumping what we do
 
         if ( what >= fault_count ) {
             traceInternal( 0, "Unknown fault in handler" );
-            die( ctx );
+            terminate();
         }
 
-        uint8_t fault_cfg = ctx.fault->config[ what ];
-        if ( !ctx.fault->ready || fault_cfg & FaultFlag::Enabled ) {
+        uint8_t fault_cfg = config[ what ];
+        if ( !ready || fault_cfg & FaultFlag::Enabled ) {
             if ( kernel )
                 traceInternal( 0, "Fault in kernel: %s", fault_to_str( what ).c_str() );
             else
@@ -84,8 +89,8 @@ struct Fault {
                 traceInternal( 0, "  %d: %s", ++i, __md_get_pc_meta( f->pc )->name );
             }
 
-            if ( !ctx.fault->ready || !( fault_cfg & FaultFlag::Continue ) )
-                die( ctx );
+            if ( !ready || !( fault_cfg & FaultFlag::Continue ) )
+                terminate();
         }
     }
 
@@ -100,8 +105,8 @@ struct Fault {
         auto *frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
 
         if ( kernel ) {
-            auto *ctx = static_cast< Context * >( __vm_control( _VM_CA_Get, _VM_CR_State ) );
-            sc_handler_wrap( *ctx, nullptr, kernel, frame, _what );
+            BaseContext::kernelSyscall( __vm_control( _VM_CA_Get, _VM_CR_State ),
+                SYS_fault_handler, nullptr, kernel, frame, _what );
         }
         else {
             __dios_syscall( SYS_fault_handler, nullptr, kernel, frame, _what  );
@@ -139,7 +144,7 @@ struct Fault {
         return static_cast< _VM_Fault >( -1 );
     }
 
-    static String fault_to_str( int f ) {
+    static String fault_to_str( int f )  {
         switch( f ) {
             case _VM_F_Assert: return "assert";
             case _VM_F_Arithmetic: return "arithmetic";
@@ -179,7 +184,8 @@ struct Fault {
         }
     }
 
-    bool load_user_pref( const SysOpts& opts ) {
+    void load_user_pref( SysOpts& opts )  {
+        SysOpts unused;
         for( const auto& i : opts ) {
             String cmd = i.first;
             String f = i.second;
@@ -197,29 +203,31 @@ struct Fault {
             else if ( cmd == "abort" )   { cfg |= FaultFlag::Enabled; }
             else if ( cmd == "nofail" )  { simfail = true; }
             else if ( cmd == "simfail" ) { cfg |= FaultFlag::Enabled; simfail = true; }
-            else continue;
+            else {
+                unused.push_back( i );
+                continue;
+            };
 
             int f_num = str_to_fault( f );
             if ( f_num == - 1 ) {
                 __dios_trace( 0, "Invalid argument '%s' in option '%s:%s'",
-                              f.c_str(), cmd.c_str(), f.c_str() );
-                return false;
+                    f.c_str(), cmd.c_str(), f.c_str() );
+                __dios_fault( _DiOS_F_Config, "Invalid configuration of fault handler" );
             }
 
             if ( simfail && f_num < _DiOS_F_Last ) {
                 __dios_trace( 0, "Invalid argument '%s' for command '%s'",
-                              f.c_str(), cmd.c_str() );
-                return false;
+                    f.c_str(), cmd.c_str() );
+                __dios_fault( _DiOS_F_Config, "Invalid configuration of fault handler" );
             }
 
             config[ f_num ] = cfg;
         }
-        return true;
+        opts = unused;
     }
 
-    static int internalFaultToStatus( __dios::Context& ctx, int fault ) {
-        using FaultFlag = __dios::Fault::FaultFlag;
-        uint8_t cfg = ctx.fault->config[ fault ];
+    int _faultToStatus( int fault )  {
+        uint8_t cfg = config[ fault ];
         if ( fault < _DiOS_F_Last) { // Fault
             switch ( cfg & (FaultFlag::Enabled | FaultFlag::Continue) ) {
                 case 0:
@@ -240,23 +248,17 @@ struct Fault {
         }
     }
 
-    static void configure_fault( __dios::Context& ctx, int *, void *retval, va_list vl ) {
-        using FaultFlag = __dios::Fault::FaultFlag;
-        auto fault = va_arg( vl, int );
-        auto res = static_cast< int * >( retval );
-        if ( fault >= __dios::Fault::fault_count ) {
-            *res = _DiOS_FC_EInvalidFault;
-            return;
+    int configure_fault( int *, int fault, int cfg ) {
+        if ( fault >= fault_count ) {
+            return _DiOS_FC_EInvalidFault;
         }
 
-        uint8_t& fc = ctx.fault->config[ fault ];
+        uint8_t& fc = config[ fault ];
         if ( !( fc & FaultFlag::AllowOverride ) ) {
-            *res = _DiOS_FC_ELocked;
-            return;
+            return _DiOS_FC_ELocked;
         }
 
-        *res = internalFaultToStatus( ctx, fault );
-        int cfg = va_arg( vl, int );
+        int lastCfg = _faultToStatus( fault );
         if ( fault < _DiOS_F_Last) { // Fault
             switch( cfg ) {
                 case _DiOS_FC_Ignore:
@@ -269,7 +271,7 @@ struct Fault {
                     fc = FaultFlag::AllowOverride | FaultFlag::Enabled;
                     break;
                 default:
-                    *res = _DiOS_FC_EInvalidCfg;
+                    return _DiOS_FC_EInvalidCfg;
             }
         }
         else { // Simfail
@@ -281,31 +283,24 @@ struct Fault {
                     fc = FaultFlag::AllowOverride;
                     break;
                 default:
-                    *res = _DiOS_FC_EInvalidCfg;
+                    return _DiOS_FC_EInvalidCfg;
             }
         }
+        return lastCfg;
     }
 
-    static void get_fault_config( __dios::Context& ctx, int *, void* retval, va_list vl ) {
-        auto fault = va_arg( vl, int );
-        auto res = static_cast< int * >( retval );
-        if ( fault >= __dios::Fault::fault_count ) {
-            *res = _DiOS_FC_EInvalidFault;
-            return;
-        }
-
-        *res = internalFaultToStatus( ctx, fault );
+    int get_fault_config( int *, int fault ) {
+        if ( fault >= fault_count )
+            return _DiOS_FC_EInvalidFault;
+        return _faultToStatus( fault );
     }
+
+    uint8_t *config;
+    bool triggered;
+    bool ready;
 };
 
 } // namespace __dios
-
-namespace __sc {
-
-void configure_fault( __dios::Context& ctx, int * err, void* retval, va_list vl );
-void get_fault_config( __dios::Context& ctx, int * err, void* retval, va_list vl );
-
-} // namespace __sc
 
 #endif // __cplusplus
 
