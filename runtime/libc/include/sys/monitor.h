@@ -11,8 +11,6 @@
 #ifdef __cplusplus
 namespace __dios {
 
-struct Context;
-
 /*
  * Custom monitors can be created by overriding the step method. This method is
  * called everytime an interrupt is triggered and therefore, can e.g. validate a
@@ -20,13 +18,13 @@ struct Context;
  */
 struct Monitor
 {
-    virtual void step( Context& ) = 0;
+    virtual void step() = 0;
 
-    void run( Context& c )
+    void run()
     {
-        step( c );
+        step();
         if ( next )
-            next->run( c );
+            next->run();
     }
 
     Monitor *next;
@@ -41,6 +39,7 @@ struct Monitor
 void register_monitor( Monitor *monitor ) _PDCLIB_nothrow;
 
 } // namespace __dios
+
 #endif
 
 #endif
