@@ -111,6 +111,8 @@ void (*signal( int sig, void (*func)( int ) ) )( int );
    Returns zero if successful, nonzero otherwise. */
 int raise( int sig );
 
+int kill(pid_t pid, int sig);
+
 typedef _PDCLIB_uint64_t sigset_t;
 
 typedef union sigval

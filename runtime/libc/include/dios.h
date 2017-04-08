@@ -35,6 +35,7 @@ struct _DiOS_TLS {
 };
 
 typedef struct _DiOS_TLS * _DiOS_ThreadHandle;
+typedef void ( *_DiOS_ThreadRoutine )( void * );
 
 static inline int __dios_pointer_get_type( void *ptr ) NOTHROW
 {

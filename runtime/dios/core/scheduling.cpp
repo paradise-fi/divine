@@ -9,13 +9,6 @@
 #include <signal.h>
 #include <errno.h>
 
-_DiOS_ThreadHandle __dios_start_thread( void ( *routine )( void * ), void *arg, int tls_size ) noexcept
-{
-    _DiOS_ThreadHandle ret;
-    __dios_syscall( SYS_start_thread, &ret, routine, arg, tls_size );
-    return ret;
-}
-
 _DiOS_ThreadHandle __dios_get_thread_handle() noexcept {
     return reinterpret_cast< _DiOS_ThreadHandle >
         ( __vm_control( _VM_CA_Get, _VM_CR_User2 ) );
@@ -23,24 +16,6 @@ _DiOS_ThreadHandle __dios_get_thread_handle() noexcept {
 
 int *__dios_get_errno() noexcept {
     return &( __dios_get_thread_handle()->_errno );
-}
-
-void __dios_kill_thread( _DiOS_ThreadHandle id ) noexcept {
-    __dios_syscall( SYS_kill_thread, nullptr, id );
-}
-
-void __dios_kill_process( pid_t id ) noexcept {
-    if ( id == 1 ) // TODO: all kinds of suicide
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
-    int ret;
-    __dios_syscall( SYS_kill, &ret, id, SIGKILL );
-}
-
-_DiOS_ThreadHandle *__dios_get_process_threads() noexcept {
-    _DiOS_ThreadHandle *ret;
-    auto tid = __dios_get_thread_handle();
-    __dios_syscall( SYS_get_process_threads, &ret, tid );
-    return ret;
 }
 
 namespace __dios {

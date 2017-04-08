@@ -124,21 +124,8 @@ extern "C" void _exit( int rv )
     _PDCLIB_Exit( rv );
 }
 
-extern "C" pid_t getpid( void )
-{
-    pid_t ret;
-    __dios_syscall( SYS_getpid, &ret );
-    return ret;
-}
 
 /* signals */
-
-extern "C" int kill( pid_t pid, int sig )
-{
-    int ret;
-    __dios_syscall( SYS_kill, &ret, pid, sig );
-    return ret;
-}
 
 void __dios_interrupt()
 {
@@ -178,11 +165,4 @@ SignalHandler signal( int sig, SignalHandler handler )
         return SIG_ERR;
     else
         return res.sa_handler;
-}
-
-int sigaction( int signum, const struct sigaction *act, struct sigaction *oldact )
-{
-    int ret;
-    __dios_syscall( SYS_sigaction, &ret, signum, act, oldact );
-    return ret;
 }

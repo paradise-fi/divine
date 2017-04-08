@@ -212,16 +212,3 @@ void init( const _VM_Env *env )
 extern "C" void  __attribute__((weak)) __boot( const _VM_Env *env ) {
     __dios::init( env );
 }
-
-int uname( struct utsname *__name ) {
-    int ret;
-    __dios_syscall( SYS_uname, &ret, __name );
-    return ret;
-}
-
-int __dios_hardware_concurrency() noexcept {
-    int ret;
-    __dios_syscall( SYS_hardware_concurrency, &ret );
-    return ret;
-}
-
