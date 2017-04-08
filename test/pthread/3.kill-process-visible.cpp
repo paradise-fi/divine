@@ -1,4 +1,5 @@
 #include <pthread.h>
+#include <signal.h>
 #include <cassert>
 
 int x, y;
@@ -10,6 +11,6 @@ int main() {
             return nullptr;
         }, nullptr );
     x = 1;
-    __dios_kill_process( 0 );
+    raise( SIGKILL );
     return 0;
 }
