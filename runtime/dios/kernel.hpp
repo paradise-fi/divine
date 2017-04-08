@@ -53,16 +53,6 @@ struct TraceDebugConfig {
     }
 };
 
-namespace fs {
-enum class FileTrace {
-    NOTRACE,     /* ignore write in file */
-    UNBUFFERED,  /* trace whenever possible */
-    TRACE        /* trace on newline */
-};
-}
-
-using FileTrace = fs::FileTrace;
-FileTrace getFileTraceConfig( const SysOpts& o, String stream );
 bool useSyscallPassthrough( const SysOpts& o );
 TraceDebugConfig getTraceDebugConfig( const SysOpts& o );
 

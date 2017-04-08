@@ -29,7 +29,6 @@ char **environ;
 }
 
 namespace __dios {
-using FileTrace = fs::FileTrace;
 
 bool useSyscallPassthrough( const SysOpts& o ) {
     for ( const auto& opt : o ) {
