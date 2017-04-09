@@ -12,6 +12,8 @@ namespace abstract {
 namespace {
     using BB = llvm::BasicBlock;
     using I = llvm::Instruction;
+    using V = llvm::Value;
+    using A = llvm::Argument;
 
     struct Assume {
         enum AssumeValue { Predicate, LHS, RHS };
@@ -69,7 +71,7 @@ namespace {
     using SCC = analysis::BasicBlockSCC;
     using Reachability = analysis::Reachability;
 
-    auto reachable( I * origin, I * constrain ) {
+    auto reachable( V * origin, I * constrain ) {
         llvm::Function * fn = constrain->getParent()->getParent();
         SCC sccs( *fn );
         Reachability reach( *fn, &sccs );
@@ -90,8 +92,12 @@ namespace {
 
     bool needToMerge( I * constrain, I * user ) {
         llvm::Function * fn = constrain->getParent()->getParent();
-        I * origin = llvm::cast< I >( constrain->getOperand( 0 ) );
-        BB * obb = origin->getParent();
+
+        V * origin = constrain->getOperand( 0 );
+        BB * obb = llvm::isa< A >( origin )
+                 ? &llvm::cast< A >( origin )->getParent()->front()
+                 : llvm::cast< I >( origin )->getParent();
+
         BB * ubb = user->getParent();
         BB * cbb = constrain->getParent();
 
@@ -141,11 +147,16 @@ namespace {
     /* Propagates constrained value and optionally merge with original value */
     void propagate( I * constrain ) {
         // original value, that is constrained by assume
-        I * origin = llvm::cast< I >( constrain->getOperand( 0 ) );
-        BB * obb = origin->getParent();
+        V * origin = constrain->getOperand( 0 );
+        BB * obb = llvm::isa< A >( origin )
+                 ? &llvm::cast< A >( origin )->getParent()->front()
+                 : llvm::cast< I >( origin )->getParent();
+
         BB * cbb = constrain->getParent();
 
-        std::vector< I * > merged = { origin };
+        std::vector< I * > merged;
+        if ( auto i = llvm::dyn_cast< I >( origin ) )
+            merged.push_back( i );
         // We need to replace users of original value
         // that are reachable from constrain.
         for ( I * user : reachable( origin, constrain ) ) {
