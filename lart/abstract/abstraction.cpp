@@ -32,31 +32,6 @@ bool isLifted( const std::vector< llvm::Value * > & deps ) {
     return false;
 }
 
-void clone( FunctionNodePtr node ) {
-    llvm::ValueToValueMapTy vmap;
-    auto clone = llvm::CloneFunction( node->function, vmap, true, nullptr );
-    node->function->getParent()->getFunctionList().push_back( clone );
-
-    FunctionNode::Entries entries;
-    for ( const auto & entry : node->entries )
-        if ( const auto & arg = llvm::dyn_cast< llvm::Argument >( entry.value ) ) {
-            entries.emplace( std::next( clone->arg_begin(), arg->getArgNo() ),
-                             entry.annotation );
-        }
-
-    auto it = query::query( *clone ).flatten().begin();
-    for ( auto & inst :  query::query( *node->function ).flatten() ) {
-        auto entry = std::find_if( node->entries.begin(), node->entries.end(),
-            [&] ( const ValueNode & n ) { return n.value == &inst; } );
-        if ( entry != node->entries.end() )
-            entries.emplace( &*it, entry->annotation );
-        ++it;
-    }
-
-    node->function = clone;
-    node->entries = entries;
-}
-
 } // anonymous namespace
 
 llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
@@ -78,9 +53,15 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
 
     std::vector< llvm::Function * > remove;
 
-    for ( const auto & node : walker.postorder() ) {
+    auto functions = walker.postorder();
+
+    // create function declarations
+    Map< FunctionNodePtr, llvm::Function * > declarations;
+
+    for ( const auto & node : functions )
+        declarations[ node ] = llvm::cast< llvm::Function >( builder.process( node ) );
+    for ( const auto & node : functions ) {
         // 1. if signature changes create a new function declaration
-        auto changed = llvm::cast< llvm::Function >( builder.process( node ) );
 
         // if proccessed function is called with abstract argument create clone of it
         // to preserve original function for potential call without abstract argument
@@ -90,7 +71,7 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
         } );
 
         if ( called )
-            clone( node );
+            builder.clone( node );
 
         // 2. process function abstract entries
         auto postorder = node->postorder();
@@ -108,6 +89,8 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
 
         // 4. copy function to declaration and handle function uses
         auto fn = node->function;
+        auto & changed = declarations[ node ];
+
         if ( changed != fn ) {
             remove.push_back( fn );
             llvm::ValueToValueMapTy vmap;

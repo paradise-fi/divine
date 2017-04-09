@@ -82,6 +82,35 @@ void AbstractBuilder::store( llvm::Function * f1, llvm::Function * f2 ) {
 		_functions[ f1 ] = { f2 };
 }
 
+void AbstractBuilder::clone( const FunctionNodePtr & node ) {
+    llvm::ValueToValueMapTy vmap;
+    auto clone = llvm::CloneFunction( node->function, vmap, true, nullptr );
+    node->function->getParent()->getFunctionList().push_back( clone );
+
+    FunctionNode::Entries entries;
+    for ( const auto & entry : node->entries )
+        if ( const auto & arg = llvm::dyn_cast< llvm::Argument >( entry.value ) ) {
+            entries.emplace( std::next( clone->arg_begin(), arg->getArgNo() ),
+                             entry.annotation );
+        }
+
+    auto it = query::query( *clone ).flatten().begin();
+    for ( auto & inst :  query::query( *node->function ).flatten() ) {
+        auto entry = std::find_if( node->entries.begin(), node->entries.end(),
+            [&] ( const ValueNode & n ) { return n.value == &inst; } );
+        if ( entry != node->entries.end() )
+            entries.emplace( &*it, entry->annotation );
+        ++it;
+    }
+
+    if ( _functions.count( node->function ) )
+        _functions[ clone ] = _functions[ node->function ];
+
+    node->function = clone;
+    node->entries = entries;
+}
+
+
 llvm::Value * AbstractBuilder::process( llvm::Value * v ) {
     if ( llvm::isa< llvm::Instruction >( v ) )
         return _process( llvm::dyn_cast< llvm::Instruction >( v ) );
@@ -202,7 +231,6 @@ llvm::Value * AbstractBuilder::createPtrInst( llvm::Instruction * inst ) {
 
 llvm::Value * AbstractBuilder::createInst( llvm::Instruction * inst ) {
     llvm::Value * ret = nullptr;
-
     llvmcase( inst,
         [&]( llvm::LoadInst * i ) {
             ret = createLoad( i );

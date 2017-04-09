@@ -19,6 +19,8 @@ struct AbstractBuilder {
     llvm::Value * process( llvm::Value * );
     llvm::Value * process( const FunctionNodePtr & );
 
+    void clone( const FunctionNodePtr & );
+
     void clean( std::vector< llvm::Value * > & );
 
 private:
