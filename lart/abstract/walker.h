@@ -19,13 +19,13 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
+namespace {
+
 template < typename K, typename V >
 using Map = std::map< K, V >;
 
 template < typename V >
 using Set = std::unordered_set< V >;
-
-namespace {
 
 static llvm::StringRef getAnnotationType( const llvm::CallInst * call ) {
 	return llvm::cast< llvm::ConstantDataArray > ( llvm::cast< llvm::GlobalVariable > (
@@ -94,19 +94,19 @@ private:
             auto current = queue.back();
             queue.pop_back();
 
-            auto find = std::find_if( _nodes.begin(), _nodes.end(), [&] ( const Node & n ) {
-                return current == n;
-            } );
-            if ( find == _nodes.end() ) {
-                auto deps = process( current );
-                queue.insert( queue.end(), std::make_move_iterator( deps.begin() )
-                                         , std::make_move_iterator( deps.end() ) );
-                _nodes.push_back( current );
-            }
+            auto deps = process( current );
+            queue.insert( queue.end(), std::make_move_iterator( deps.begin() )
+                                     , std::make_move_iterator( deps.end() ) );
         }
     }
 
     Nodes process( Node & node ) {
+        auto find = std::find_if( _nodes.begin(), _nodes.end(), [&] ( const Node & n ) {
+            return node == n;
+        } );
+        if ( find != _nodes.end() )
+            return {};
+
         bool called = query::query( node->entries ).all( [] ( const ValueNode & n ) {
             return llvm::isa< llvm::Argument >( n.value );
         } );
@@ -118,22 +118,17 @@ private:
         do {
             auto allocas = abstract_allocas( node );
             node->entries.insert( allocas.begin(), allocas.end() );
-            // FIXME deps can be directly computed in propagation
-            // - prevent the multiple passes of same function?
         } while ( propagate_through_calls( node ) );
 
-        Nodes deps;
-        for ( auto & dep : dependent_functions( node ) ) {
-            _reachednodes.insert( dep );
-            deps.push_back( dep );
-            node->succs.push_back( dep );
-        }
+        _nodes.push_back( node );
 
+        Nodes deps;
         if ( !called && returns_abstract( node ) )
             for ( auto & dep : calls_of( node ) ) {
                 _reachednodes.insert( dep );
                 deps.push_back( dep );
             }
+
         return deps;
     }
 
@@ -154,20 +149,43 @@ private:
     bool propagate_through_calls( Node & node ) {
         bool newentry = false;
         auto calls = query::query( node->postorder() )
-            .filter( []( const ValueNode & n ) { return llvm::isa< llvm::CallInst >( n.value ); } )
+            .filter( []( const ValueNode & n ) {
+                return llvm::isa< llvm::CallInst >( n.value );
+            } )
+            .filter( []( const ValueNode & n ) {
+                auto call = llvm::cast< llvm::CallInst >( n.value );
+                return !call->getCalledFunction()->isIntrinsic();
+            } )
             .freeze();
-        for ( auto & n : calls ) {
-            auto call = llvm::cast< llvm::CallInst >( n.value );
-            auto fn = call->getCalledFunction();
-            Entries entries;
-            for ( auto idx : abstract_args_of_call( node, call ) )
-                entries.emplace( std::next( fn->arg_begin(), idx ), n.annotation );
-            // FIXME save child as successor of node
-            Node child = std::make_shared< FunctionNode >( fn, entries );
-            process ( child );
-            if ( returns_abstract( child ) ) {
-                auto emp = node->entries.emplace( call, n.annotation, true );
-                newentry |= emp.second;
+
+        auto CreateFunctionNode = [&]( const ValueNode & n ) {
+                auto call = llvm::cast< llvm::CallInst >( n.value );
+                auto fn = call->getCalledFunction();
+                auto args_idx = abstract_args_of_call( node, call );
+                Entries e;
+                for ( auto a : args_idx )
+                    e.emplace( std::next( fn->arg_begin(), a ), n.annotation );
+                return std::make_shared< FunctionNode >( fn, e );
+        };
+
+        for ( auto & call : calls ) {
+            auto fn = CreateFunctionNode( call );
+            auto deps = reached( fn );
+            if ( deps.empty() ) {
+                _reachednodes.insert( fn );
+                process( fn );
+                deps.push_back( fn );
+            }
+
+            for ( auto & dep : deps ) {
+                auto succ = query::query( node->succs ).any( [&] ( auto & s ) {
+                    return s == dep;
+                } );
+                if ( !succ )
+                    node->succs.push_back( dep );
+                // TODO solve indirect recursion
+                if ( returns_abstract( dep ) )
+                    newentry |= node->entries.emplace( call.value, call.annotation, true ).second;
             }
         }
         return newentry;
@@ -235,54 +253,22 @@ private:
         return abstract;
     }
 
-    Nodes dependent_functions( const Node & node ) {
-        // Compute potential new nodes
-        auto potential = query::query( node->postorder() )
-            .filter( []( const ValueNode & n ) {
-                return llvm::dyn_cast< llvm::CallInst >( n.value );
-            } )
-            .filter( []( const ValueNode & n ) {
-                auto call = llvm::cast< llvm::CallInst >( n.value );
-                return !call->getCalledFunction()->isIntrinsic();
-            } )
-            .map( [&]( const ValueNode & n ) {
-                auto call = llvm::cast< llvm::CallInst >( n.value );
-                auto fn = call->getCalledFunction();
-                auto args_idx = abstract_args_of_call( node, call );
-                Entries e;
-                for ( auto a : args_idx )
-                    e.emplace( std::next( fn->arg_begin(), a ), n.annotation );
-                return std::make_shared< FunctionNode >( fn, e );
-            } )
-            .unstableUnique()
-            .freeze();
-
-        Nodes functions;
-        for ( const auto & p : potential ) {
-            auto deps = query::query( _reachednodes )
-                .filter( [&] ( const Node & n ) {
-                    if ( n->function != p->function )
+    Nodes reached( const FunctionNodePtr & node ) {
+        return query::query( _reachednodes )
+            .filter( [&] ( const Node & n ) {
+                if ( n->function != node->function )
                         return false;
-                    // check whether entries match
-                    auto args = query::query( n->entries )
-                        .filter( []( const ValueNode & v ) {
-                            return llvm::dyn_cast< llvm::Argument >( v.value );
-                        } ).freeze();
-                    if ( args.size() != p->entries.size() )
-                        return false;
-                    return query::query( p->entries ).all( [&] ( const ValueNode & e ) {
-                        return std::find( args.begin(), args.end(), e ) != args.end();
-                    } );
-                } ).freeze();
-
-            if ( deps.empty() )
-                functions.push_back( p );
-            else
-                functions.insert( functions.end(), std::make_move_iterator( deps.begin() )
-                                                 , std::make_move_iterator( deps.end() ) );
-        }
-
-        return functions;
+                // check whether entries match
+                auto args = query::query( n->entries )
+                    .filter( []( const ValueNode & v ) {
+                        return llvm::dyn_cast< llvm::Argument >( v.value );
+                    } ).freeze();
+                if ( args.size() != node->entries.size() )
+                    return false;
+                return query::query( node->entries ).all( [&] ( const ValueNode & e ) {
+                    return std::find( args.begin(), args.end(), e ) != args.end();
+                } );
+        } ).freeze();
     }
 
     bool returns_abstract( const Node & node ) {

@@ -751,6 +751,126 @@ struct Abstraction {
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
+
+    TEST( recursion_direct ) {
+        auto s = R"(
+                    int call( int x ) {
+                        if ( x < 100 )
+                            return x;
+                        else
+                            return call( x - 1 );
+                    }
+                    int main() {
+                        __test unsigned x;
+                        call( x );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call = m->getFunction( "_Z4calli.2" );
+        ASSERT_EQ( call->getReturnType(), alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        auto call_in_main = query::query( *main ).flatten()
+            .map( query::llvmdyncast< llvm::CallInst > )
+            .filter( query::notnull )
+            .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
+            .filter( [&]( llvm::CallInst * i ) { return !abstract::intrinsic::is( i ); } )
+            .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
+        ASSERT( call_in_main );
+        auto call_in_call = query::query( *call ).flatten()
+            .map( query::llvmdyncast< llvm::CallInst > )
+            .filter( query::notnull )
+            .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
+            .filter( [&]( llvm::CallInst * i ) { return !abstract::intrinsic::is( i ); } )
+            .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
+        ASSERT( call_in_call );
+        ASSERT_EQ( call->getNumUses(), 2 );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( recursion_multiple_times ) {
+        auto s = R"(
+                    void call( int x, int y ) {
+                        if ( x != y ) {
+                            int z = ( x + y ) / 2;
+                            call( x, z - 1 );
+                            call( z + 1, y );
+                        }
+                    }
+                    int main() {
+                        __test unsigned x;
+                        call( x, 100 );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call = m->getFunction( "_Z4callii.3" );
+        ASSERT_EQ( call->getNumUses(), 2 );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+        auto call2 = m->getFunction( "_Z4callii.2" );
+        ASSERT_EQ( call2->getFunctionType()->getParamType( 0 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        ASSERT_EQ( call2->getFunctionType()->getParamType( 1 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        auto test_function = [&] ( llvm::Function * fn ) {
+            return query::query( *fn ).flatten()
+            .map( query::llvmdyncast< llvm::CallInst > )
+            .filter( query::notnull )
+            .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
+            .filter( [&]( llvm::CallInst * i ) { return !abstract::intrinsic::is( i ); } )
+            .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call ||
+                                                      i->getCalledFunction() == call2; } );
+        };
+        ASSERT( test_function( main ) );
+        ASSERT( test_function( call ) );
+        ASSERT( test_function( call2 ) );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( recursion_without_abstract_return ) {
+        auto s = R"(
+                    int call( int x, int y ) {
+                        if ( y == 0 || x == 0 )
+                            return x;
+                        else return call(x - 1, y - 1);
+                    }
+                    int main() {
+                        __test unsigned x;
+                        call( 100, x );
+                        return 0;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto alloca = m->getFunction( "lart.abstract.alloca.i32" );
+        auto call = m->getFunction( "_Z4callii.2" );
+        ASSERT_EQ( call->getNumUses(), 2 );
+        ASSERT_EQ( call->getReturnType()
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 0 )
+                 , llvm::Type::getInt32Ty( m->getContext() ) );
+        ASSERT_EQ( call->getFunctionType()->getParamType( 1 )
+                 , alloca->getReturnType()->getPointerElementType() );
+        auto test_function = [&] ( llvm::Function * fn ) {
+            return query::query( *fn ).flatten()
+            .map( query::llvmdyncast< llvm::CallInst > )
+            .filter( query::notnull )
+            .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
+            .filter( [&]( llvm::CallInst * i ) { return !abstract::intrinsic::is( i ); } )
+            .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
+        };
+        ASSERT( test_function( main ) );
+        ASSERT( test_function( call ) );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
 };
 
 struct Assume {
