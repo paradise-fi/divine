@@ -22,13 +22,13 @@ DIVINE 4.1 (July 2017)
 - Add a (sequential) implementation of the Nested DFS algorithm for accepting
   cycle detection [P. Ročkai]
 - Re-introduce a context-switch-directed safety checking algorithm [V. Štill]
-- Add a parallel SCC decomposition algorithm based on an union-find data
+- Add a parallel SCC decomposition algorithm based on a union-find data
   structure [P. Ročkai]
 - Add a translator from LTL to a DiOS-compatible monitor automaton. [T. Kučera]
 
 ## DiOS
 
-- Implementat the `fork()` system call [Z. Baranová & H. Mrázek]
+- Implement the `fork()` system call [Z. Baranová & H. Mrázek]
 - Implement a fair scheduler that'd allow model checking of simple (safety)
   properties with fairness assumptions (e.g. that a particular program location
   is reached in every possible execution / thread interleaving of the program).
@@ -60,7 +60,7 @@ DIVINE 4.2 (January 2018)
   uninitialised values) in the VM. [J. Weiser]
 - A tracing mode for DiOS, where a single execution in a forwarding mode (based
   on `__vm_syscall`) is recorded and re-used for verification. [K. Kejstová]
-- Implement model checking of livenesss properties expressed in terms of LTL
+- Implement model checking of liveness properties expressed in terms of LTL
   formulae, including fairness assumptions. [T. Kučera]
 - Data-symbolic model checking.
 - Implement divine-cc and divine-ld as drop-in replacements for the system
