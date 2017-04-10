@@ -80,12 +80,6 @@ int *__dios_get_errno() NOTHROW;
  */
 void __dios_kill_thread( _DiOS_ThreadHandle id ) NOTHROW;
 
-/*
- * Kill process with given id. If NULL is passed, all processes are killed.
- */
-void __dios_kill_process( pid_t id ) NOTHROW;
-
-
 _DiOS_ThreadHandle *__dios_get_process_threads() NOTHROW;
 
 /*
