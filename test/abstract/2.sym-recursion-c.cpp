@@ -13,7 +13,7 @@ struct Node {
 };
 
 struct List {
-    List( std::initializer_list< int > list ) {
+    List( std::initializer_list< int > && list ) {
         for ( const auto val : list ) {
             auto node = new Node( val, head );
             head = node;
@@ -38,7 +38,6 @@ struct List {
 int main() {
     __sym int i;
     List list = { 1, 2, 3 };
-    assert( list.at( i ) == nullptr || list.at( i )->val <= 3 );
-
+    assert( list.at( i ) == nullptr || list.at( i )->val <= 3 ); /* ERROR */
     return 0;
 }

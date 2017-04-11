@@ -12,9 +12,8 @@ int sum( int a, int b ) {
 }
 
 int main() {
-    __sym int a;
     __sym int b;
-    int s = sum( a, b );
-    assert( s == a + b );
+    int s = sum( 10, b );
+    assert( s == 10 + b );
     return 0;
 }
