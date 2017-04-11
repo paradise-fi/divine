@@ -153,7 +153,15 @@ void Substitution::init( llvm::Module & m ) {
 }
 
 void Substitution::process( llvm::Value * val ) {
-    auto deps = analysis::postorder< llvm::Value * >( val );
+    auto succs = [&] ( llvm::Value * v ) -> std::vector< llvm::Value * > {
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( v ) ) {
+            auto fn = call->getCalledFunction();
+            if ( !intrinsic::is( fn ) && !types::isAbstract( fn->getReturnType() ) )
+                return {};
+        }
+        return { v->user_begin(), v->user_end() };
+    };
+    auto deps = analysis::postorder< llvm::Value * >( { val }, succs );
     for ( auto dep : lart::util::reverse( deps ) )
         if( auto i = llvm::dyn_cast< llvm::Instruction >( dep ) )
             builder.process( i );
