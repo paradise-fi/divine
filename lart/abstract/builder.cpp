@@ -128,10 +128,11 @@ llvm::Value * AbstractBuilder::_process( llvm::Instruction * i ) {
                 store( t, types::IntegerType::get( t ) );
             },
             [&]( llvm::StructType * t ) {
-                assert( t->getNumElements() == 1 );
-                auto et = t->getElementType( 0 );
-                assert( llvm::isa< llvm::IntegerType>( et ) );
-                store( t, types::IntegerType::get( et ) );
+                if ( t->getNumElements() == 1 ) {
+                    auto et = t->getElementType( 0 );
+                    assert( llvm::isa< llvm::IntegerType>( et ) );
+                    store( t, types::IntegerType::get( et ) );
+                }
             },
             [&]( llvm::Type * type ) {
                 std::cerr << "ERR: Abstracting unsupported type: ";
