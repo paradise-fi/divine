@@ -23,6 +23,11 @@ DIVINE 4.0
 - [4.0.2] Intrinsic lowering is now handled in LART.
 - [4.0.3] An improved and much faster implementation of C++ exceptions.
 - [4.0.3] Improved verification speed and smaller memory footprint.
+- [4.0.4] Improved POSIX signal handling in DiOS.
+- [4.0.4] Cleaner layout of runtime headers (libc/dios/divm).
+- [4.0.4] Fix a build error when the system compiler is clang 4.
+- [4.0.5] Make standard IO unbuffered by default to save memory.
+- [4.0.6] A rudimentary version of `verify --liveness`.
 
 DIVINE 3.90
 ===========
