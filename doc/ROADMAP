@@ -11,6 +11,8 @@ DIVINE 4.1 (July 2017)
 
 ## Virtual Machine
 
+- Make the program text part of the program's address space, using a suitable
+  (flat) instruction encoding. [P. Rockai]
 - Delta-compression of heap snapshots using logarithmically-deep delta chains
   to reduce memory use of snapshots (that is, objid → content maps). [P.
   Ročkai]
@@ -19,8 +21,6 @@ DIVINE 4.1 (July 2017)
 
 ## Model Checking
 
-- Add a (sequential) implementation of the Nested DFS algorithm for accepting
-  cycle detection [P. Ročkai]
 - Re-introduce a context-switch-directed safety checking algorithm [V. Štill]
 - Add a parallel SCC decomposition algorithm based on a union-find data
   structure [P. Ročkai]
@@ -33,7 +33,6 @@ DIVINE 4.1 (July 2017)
   properties with fairness assumptions (e.g. that a particular program location
   is reached in every possible execution / thread interleaving of the program).
   [H. Mrázek]
-- Implement unbuffered stdio in `libc`. [V. Štill]
 
 ## User Interface
 
