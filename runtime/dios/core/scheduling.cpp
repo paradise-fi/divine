@@ -24,33 +24,6 @@ void sig_ign( int ) {}
 void sig_die( int ) {}
 void sig_fault( int ) {}
 
-Thread::Thread( Thread&& o ) noexcept
-    : _frame( o._frame ), _tls( o._tls ), _pid( o._pid )
-{
-    o._frame = nullptr;
-    o._tls = nullptr;
-    o._pid = -1;
-}
-
-Thread& Thread::operator=( Thread&& o ) noexcept {
-    std::swap( _frame, o._frame );
-    std::swap( _tls, o._tls );
-    std::swap( _pid, o._pid);
-    return *this;
-}
-
-Thread::~Thread() noexcept {
-    clearFrame();
-    __vm_obj_free( _tls );
-}
-
-void Thread::clearFrame() noexcept {
-    while ( _frame ) {
-        _VM_Frame *f = _frame->parent;
-        __vm_obj_free( _frame );
-        _frame = f;
-    }
-}
 
 const sighandler_t defhandlers[] =
 {

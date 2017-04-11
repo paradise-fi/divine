@@ -133,6 +133,7 @@ private:
     T **_storage;
 };
 
+template < typename Process >
 struct Thread {
     _VM_Frame *_frame;
     struct _DiOS_TLS *_tls;
@@ -168,10 +169,25 @@ struct Thread {
     Thread( const Thread& o ) noexcept = delete;
     Thread& operator=( const Thread& o ) noexcept = delete;
 
-    Thread( Thread&& o ) noexcept;
-    Thread& operator=( Thread&& o ) noexcept;
+    Thread( Thread&& o ) noexcept
+        : _frame( o._frame ), _tls( o._tls ), _pid( o._pid )
+    {
+        o._frame = nullptr;
+        o._tls = nullptr;
+        o._pid = -1;
+    }
 
-    ~Thread() noexcept;
+    Thread& operator=( Thread&& o ) noexcept {
+        std::swap( _frame, o._frame );
+        std::swap( _tls, o._tls );
+        std::swap( _pid, o._pid);
+        return *this;
+    }
+
+    ~Thread() noexcept {
+        clearFrame();
+        __vm_obj_free( _tls );
+    }
 
     bool active() const noexcept { return _frame; }
     ThreadHandle getId() const noexcept { return _tls; }
@@ -181,7 +197,14 @@ struct Thread {
     }
 
 private:
-    void clearFrame() noexcept;
+
+    void clearFrame() noexcept {
+        while ( _frame ) {
+            _VM_Frame *f = _frame->parent;
+            __vm_obj_free( _frame );
+            _frame = f;
+        }
+    }
 };
 
 void sig_ign( int );
@@ -197,6 +220,13 @@ struct Scheduler : public Next {
         sighandlers( nullptr ),
         _global( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
     { }
+
+    struct Process : Next::Process
+    {
+        int pid;
+    };
+
+    using Thread = __dios::Thread< Process >;
 
     void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) {
         auto mainThr = newThreadMem( pool.get(), pool.get(), _start, 0 );
@@ -365,7 +395,7 @@ struct Scheduler : public Next {
     int kill( int *err, pid_t pid, int sig ) {
         sighandler_t handler;
         bool found = false;
-        __dios::Thread *thread;
+        Thread *thread;
         for ( auto t : threads )
             if ( t->_pid == pid )
             {
