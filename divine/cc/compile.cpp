@@ -10,6 +10,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <brick-fs>
 #include <brick-string>
+#include <brick-types>
 
 namespace divine {
 namespace cc {
@@ -102,6 +103,28 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
     return mod;
 }
 
+struct File {
+    using InPlace = brick::types::InPlace< File >;
+
+    File() = default;
+    explicit File( std::string name, Compiler::FileType type = Compiler::FileType::Unknown ) :
+        name( std::move( name ) ), type( type )
+    { }
+
+    std::string name;
+    Compiler::FileType type = Compiler::FileType::Unknown;
+};
+
+struct Lib {
+    using InPlace = brick::types::InPlace< Lib >;
+
+    Lib() = default;
+    explicit Lib( std::string name ) : name( std::move( name ) ) { }
+    std::string name;
+};
+
+using FileEntry = brick::types::Union< File, Lib >;
+
 void Compile::runCC( std::vector< std::string > rawCCOpts,
                      std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
 {
@@ -109,7 +132,7 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
     FT xType = FT::Unknown;
 
     std::vector< std::string > opts;
-    std::vector< std::pair< std::string, FT > > files;
+    std::vector< FileEntry > files;
 
     for ( auto it = rawCCOpts.begin(), end = rawCCOpts.end(); it != end; ++it )
     {
@@ -149,8 +172,12 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
             }
             // this option is propagated to CC by xType, not directly
         }
+        else if ( brick::string::startsWith( *it, "-l" ) ) {
+            std::string val = it->size() > 2 ? it->substr( 2 ) : *++it;
+            files.emplace_back( Lib::InPlace(), val );
+        }
         else if ( !brick::string::startsWith( *it, "-" ) )
-            files.emplace_back( *it, xType == FT::Unknown ? Compiler::typeFromFile( *it ) : xType );
+            files.emplace_back( File::InPlace(), *it, xType == FT::Unknown ? Compiler::typeFromFile( *it ) : xType );
         else
             opts.emplace_back( *it );
     }
@@ -160,11 +187,16 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
             return std::move( m );
         };
 
-    for ( auto &f : files ) {
-        auto m = moduleCallback( compile( f.first, f.second, opts ), f.first );
-        if ( m )
-            linker->link( std::move( m ) );
-    }
+    for ( auto &f : files )
+        f.match(
+            [&]( const File &f ) {
+                auto m = moduleCallback( compile( f.name, f.type, opts ), f.name );
+                if ( m )
+                    linker->link( std::move( m ) );
+            },
+            [&]( const Lib &l ) {
+                linkLib( l.name );
+            } );
     if ( linker->hasModule() ) {
         linkEssentials();
         linkLibs( defaultDIVINELibs );
@@ -212,12 +244,15 @@ void Compile::setupLib( std::string name, std::string_view content )
 }
 
 void Compile::linkLibs( const std::vector< std::string > &ls ) {
-    for ( auto lib : ls ) {
-        auto libit = libs.find( lib );
-        if ( libit == libs.end() )
-            throw std::runtime_error( "Library not found: " + lib );
-        linker->linkArchive( libit->second );
-    }
+    for ( auto lib : ls )
+        linkLib( lib );
+}
+
+void Compile::linkLib( std::string lib ) {
+    auto libit = libs.find( lib );
+    if ( libit == libs.end() )
+        throw std::runtime_error( "Library not found: " + lib );
+    linker->linkArchive( libit->second );
 }
 
 void Compile::linkEssentials() {

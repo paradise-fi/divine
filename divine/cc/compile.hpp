@@ -31,6 +31,7 @@ struct Compile
     void compileAndLink( std::string path, Compiler::FileType type, std::vector< std::string > flags = {} );
 
     void linkLibs( const std::vector< std::string > &libs );
+    void linkLib( std::string lib );
     void linkEssentials();
 
     static const std::vector< std::string > defaultDIVINELibs;
