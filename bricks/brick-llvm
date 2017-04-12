@@ -236,7 +236,7 @@ struct ArchiveReader
             _ctx.reset( new ::llvm::LLVMContext() );
     }
 
-    ArchiveReader( std::string filename, std::shared_ptr< Ctx > ctx = nullptr ) :
+    explicit ArchiveReader( std::string filename, std::shared_ptr< Ctx > ctx = nullptr ) :
         ArchiveReader( ctx )
     {
         _data = mmap::MMap( filename, mmap::ProtectMode::Read | mmap::ProtectMode::Private );
@@ -248,7 +248,7 @@ struct ArchiveReader
             _throwLLVMError( ec );
     }
 
-    ArchiveReader( std::string filename, std::string_view contents, std::shared_ptr< Ctx > ctx = nullptr ) :
+    explicit ArchiveReader( std::string filename, std::string_view contents, std::shared_ptr< Ctx > ctx = nullptr ) :
         ArchiveReader( ctx )
     {
         std::error_code ec;
@@ -258,12 +258,22 @@ struct ArchiveReader
             _throwLLVMError( ec );
     }
 
-    ArchiveReader( std::string filename, std::string &&contents, std::shared_ptr< Ctx > ctx = nullptr ) :
+    explicit ArchiveReader( std::string filename, std::string &&contents, std::shared_ptr< Ctx > ctx = nullptr ) :
         ArchiveReader( ctx )
     {
         _data = std::move( contents );
         std::error_code ec;
         _archive = std::make_unique< Archive >( ::llvm::MemoryBufferRef( _data.right(), filename ), ec );
+        if ( ec )
+            _throwLLVMError( ec );
+    }
+
+    explicit ArchiveReader( std::unique_ptr< ::llvm::MemoryBuffer > buffer, std::shared_ptr< Ctx > ctx = nullptr ) :
+        ArchiveReader( ctx )
+    {
+        _buffer = std::move( buffer );
+        std::error_code ec;
+        _archive = std::make_unique< Archive >( _buffer->getMemBufferRef(), ec );
         if ( ec )
             _throwLLVMError( ec );
     }
@@ -359,6 +369,7 @@ struct ArchiveReader
   private:
     types::Either< mmap::MMap, std::string > _data;
     std::unique_ptr< Archive > _archive;
+    std::unique_ptr< ::llvm::MemoryBuffer > _buffer;
     std::shared_ptr< Ctx > _ctx;
 };
 
