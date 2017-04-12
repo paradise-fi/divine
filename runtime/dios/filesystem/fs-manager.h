@@ -371,7 +371,7 @@ struct VFS: public Next {
         try {
             return _mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
         }catch( Error &e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -411,7 +411,7 @@ struct VFS: public Next {
         try {
             return instance( ).openFileAt( AT_FDCWD, path, f, mode );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -449,7 +449,7 @@ struct VFS: public Next {
         try {
             return instance( ).openFileAt( dirfd, path, f, mode );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -504,7 +504,7 @@ struct VFS: public Next {
 
         } catch ( Error & e ) {
             va_end( *vl );
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -515,7 +515,7 @@ struct VFS: public Next {
             instance().closeFile( fd );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -526,7 +526,7 @@ struct VFS: public Next {
             auto f = instance( ).getFile( fd );
             return f->write( buf, count );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -537,7 +537,7 @@ struct VFS: public Next {
             auto f = instance( ).getFile( fd );
             return f->read( buf, count );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -548,7 +548,7 @@ struct VFS: public Next {
             std::tie( pipefd[ 0 ], pipefd[ 1 ] ) = instance( ).pipe( );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -570,7 +570,7 @@ struct VFS: public Next {
             }
             return instance( ).lseek( fd, offset, w );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -580,7 +580,7 @@ struct VFS: public Next {
        try {
             return instance( ).duplicate( fd );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -590,7 +590,7 @@ struct VFS: public Next {
         try {
             return instance( ).duplicate2( oldfd, newfd );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -604,7 +604,7 @@ struct VFS: public Next {
             instance( ).truncate( item->inode( ), length );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -616,7 +616,7 @@ struct VFS: public Next {
             instance( ).truncate( item, length );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -627,7 +627,7 @@ struct VFS: public Next {
             instance( ).removeFile( path );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -638,7 +638,7 @@ struct VFS: public Next {
             instance( ).removeDirectory( path );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -661,7 +661,7 @@ struct VFS: public Next {
             instance( ).removeAt( dirfd, path, f );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -682,7 +682,7 @@ struct VFS: public Next {
         try {
             return _linkat( olddirfd, target, newdirfd, linkpath, flags );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -692,7 +692,7 @@ struct VFS: public Next {
         try {
             return _linkat(AT_FDCWD, target, AT_FDCWD, linkpath, 0 );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -703,7 +703,7 @@ struct VFS: public Next {
             instance( ).createSymLinkAt( dirfd, linkpath, target );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -714,7 +714,7 @@ struct VFS: public Next {
             instance( ).createSymLinkAt( AT_FDCWD, linkpath, target );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -724,7 +724,7 @@ struct VFS: public Next {
         try {
             return instance( ).readLinkAt( dirfd, path, buf, count );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -734,7 +734,7 @@ struct VFS: public Next {
         try {
             return instance( ).readLinkAt( AT_FDCWD, path, buf, count );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -758,7 +758,7 @@ struct VFS: public Next {
             instance( ).accessAt( dirfd, path, m, fl );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -778,7 +778,7 @@ struct VFS: public Next {
             instance( ).accessAt( AT_FDCWD, path, m, fl );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -789,7 +789,7 @@ struct VFS: public Next {
             instance( ).changeDirectory( path );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -800,7 +800,7 @@ struct VFS: public Next {
             instance( ).changeDirectory( dirfd );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -811,7 +811,7 @@ struct VFS: public Next {
             instance( ).getFile( fd );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -822,7 +822,7 @@ struct VFS: public Next {
             instance( ).getFile( fd );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -833,7 +833,7 @@ struct VFS: public Next {
             instance( ).getFile( fd );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -850,7 +850,7 @@ struct VFS: public Next {
                 throw Error( ENOENT );
             return _fillStat( item, buf );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -863,7 +863,7 @@ struct VFS: public Next {
                 throw Error( ENOENT );
             return _fillStat( item, buf );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -874,7 +874,7 @@ struct VFS: public Next {
             auto item = instance( ).getFile( fd );
             return _fillStat( item->inode( ), buf );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -902,7 +902,7 @@ struct VFS: public Next {
             instance( ).chmodAt( dirfd, path, mode, fl );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -915,7 +915,7 @@ struct VFS: public Next {
             instance( ).chmodAt( AT_FDCWD, path, mode, fl );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -926,7 +926,7 @@ struct VFS: public Next {
             instance( ).chmod( fd, mode );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -937,7 +937,7 @@ struct VFS: public Next {
             instance( ).createNodeAt( dirfd, path, ( ACCESSPERMS & mode ) | S_IFDIR );
             return  0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return  -1;
         }
     }
@@ -948,7 +948,7 @@ struct VFS: public Next {
             instance( ).createNodeAt( AT_FDCWD, path, ( ACCESSPERMS & mode ) | S_IFDIR );
             return  0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return  -1;
         }
     }
@@ -958,7 +958,7 @@ struct VFS: public Next {
         try {
             return _mknodat( dirfd, path, mode, dev );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return  -1;
         }
     }
@@ -973,7 +973,7 @@ struct VFS: public Next {
             instance( ).createNodeAt( AT_FDCWD, path, mode );
             return  0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return  -1;
         }
     }
@@ -1010,7 +1010,7 @@ struct VFS: public Next {
             return instance( ).socket( type, t & SOCK_NONBLOCK ? Open::NonBlock : Open::NoFlags );
 
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1041,7 +1041,7 @@ struct VFS: public Next {
                                                                                                  : Open::NoFlags );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1068,7 +1068,7 @@ struct VFS: public Next {
             *len = address.size( ) + 1 + sizeof( target->sun_family );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1090,7 +1090,7 @@ struct VFS: public Next {
             instance( ).bind( sockfd, std::move( address ));
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1112,7 +1112,7 @@ struct VFS: public Next {
             instance( ).connect( sockfd, address );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1139,7 +1139,7 @@ struct VFS: public Next {
             *len = address.size( ) + 1 + sizeof( target->sun_family );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1153,7 +1153,7 @@ struct VFS: public Next {
                 auto s = instance( ).getSocket( sockfd );
                 return s->send( static_cast< const char * >( buf ), n, conversion::message( flags ));
             } catch ( Error & e ) {
-                *err = e.code();
+                *__dios_get_errno() = e.code();
                 return -1;
             }
         }
@@ -1169,7 +1169,7 @@ struct VFS: public Next {
             return s->sendTo( static_cast< const char * >( buf ), n, conversion::message( flags ),
                               instance( ).resolveAddress( address ));
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1199,7 +1199,7 @@ struct VFS: public Next {
         try {
              return _recvfrom( sockfd, buf, n, flags, nullptr, nullptr );
         }catch( Error & e ){
-             *err = e.code();
+             *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1209,7 +1209,7 @@ struct VFS: public Next {
         try {
              return _recvfrom( sockfd, buf, n, flags, addr, len );
         }catch( Error & e ){
-             *err = e.code();
+             *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1221,7 +1221,7 @@ struct VFS: public Next {
             s->listen( n );
             return 0;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1257,7 +1257,7 @@ struct VFS: public Next {
         try {
             return _accept4( sockfd, addr, len, 0 );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1267,7 +1267,7 @@ struct VFS: public Next {
         try {
             return _accept4( sockfd, addr, len, flags );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1283,7 +1283,7 @@ struct VFS: public Next {
         try {
             return _renameitemat(olddirfd, oldpath, newdirfd, newpath );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1293,7 +1293,7 @@ struct VFS: public Next {
         try {
             return _renameitemat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return -1;
         }
     }
@@ -1304,7 +1304,7 @@ struct VFS: public Next {
             instance( ).getCurrentWorkingDir( buff, size );
             return buff;
         } catch ( Error & e ) {
-            *err = e.code();
+            *__dios_get_errno() = e.code();
             return nullptr;
         }
     }

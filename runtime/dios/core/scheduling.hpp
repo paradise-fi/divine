@@ -340,7 +340,7 @@ struct Scheduler : public Next {
         if ( sig < 0 || sig > static_cast< int >( sizeof(defhandlers) / sizeof(__dios::sighandler_t) )
             || sig == SIGKILL || sig == SIGSTOP )
         {
-            *err = EINVAL;
+            *__dios_get_errno() = EINVAL;
             return -1 ;
         }
         if ( !sighandlers )
@@ -411,7 +411,7 @@ struct Scheduler : public Next {
             }
         if ( !found )
         {
-            *err = ESRCH;
+            *__dios_get_errno() = ESRCH;
             return -1;
         }
         if ( sighandlers )

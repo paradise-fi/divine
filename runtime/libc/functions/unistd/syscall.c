@@ -23,16 +23,12 @@ void __dios_syscall( int syscode, void* ret, ... )
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
     va_list vl;
     va_start( vl, ret );
-    int err = 0;
-    __dios_trap( syscode, &err, ret,  &vl );
-    while ( err == EAGAIN2 )
+    __dios_trap( syscode, ret,  &vl );
+    while ( errno == EAGAIN2 )
     {
-        err = 0;
+        errno = 0;
         __dios_trap( syscode, &err, ret, &vl );
     }
-
-    if ( err != 0 )
-        errno = err;
 
     va_end( vl );
     __vm_control( _VM_CA_Bit, _VM_CR_Flags,

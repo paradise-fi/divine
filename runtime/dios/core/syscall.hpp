@@ -34,7 +34,7 @@ struct Syscall {
         if ( s._syscode != SYS_NONE ) {
             auto cmd = ( *( table[ s._syscode ] ) )( c, s._err, s._ret, s._args );
             s._syscode = SYS_NONE;
-            if ( *s._err == EAGAIN2 )
+            if ( __dios_get_errno() && *__dios_get_errno() == EAGAIN2 )
                 return SchedCommand::RESCHEDULE;
             return cmd;
         }
