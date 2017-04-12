@@ -5,11 +5,20 @@
 
 #define NEXT_NAME(BASE) BASE ## _
 
-#define ARG_NAMES(...) IF(NOT(EMPTY(__VA_ARGS__)))(EVAL(ARG_NAMES_N(arg, __VA_ARGS__)))
+#define ARG_NAMES(...) IF(NOT(EMPTY(__VA_ARGS__)))(EVAL(ARG_NAMES_1(arg, __VA_ARGS__)))
+#define ARG_NAMES_1(BASE, arg, ... ) \
+    NEXT_NAME(BASE) \
+    IF(NOT(EMPTY(__VA_ARGS__)))(POSTPONE(_ARG_NAMES_N)()(NEXT_NAME(BASE), __VA_ARGS__))
 #define ARG_NAMES_N(BASE, arg, ... ) \
     , NEXT_NAME(BASE) \
     IF(NOT(EMPTY(__VA_ARGS__)))(POSTPONE(_ARG_NAMES_N)()(NEXT_NAME(BASE), __VA_ARGS__))
 #define _ARG_NAMES_N() ARG_NAMES_N
+
+#define ARG_NAMESC(...) IF(NOT(EMPTY(__VA_ARGS__)))(EVAL(ARG_NAMESC_N(arg, __VA_ARGS__)))
+#define ARG_NAMESC_N(BASE, arg, ... ) \
+    , NEXT_NAME(BASE) \
+    IF(NOT(EMPTY(__VA_ARGS__)))(POSTPONE(_ARG_NAMESC_N)()(NEXT_NAME(BASE), __VA_ARGS__))
+#define _ARG_NAMESC_N() ARG_NAMESC_N
 
 #define NAMED_ARGS(...) IF(NOT(EMPTY(__VA_ARGS__)))(EVAL(NAMED_ARGS_1(arg, __VA_ARGS__)))
 #define NAMED_ARGS_1(BASE, type, ...) \

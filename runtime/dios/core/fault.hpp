@@ -68,7 +68,7 @@ struct Fault: public Next {
             ( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent = nullptr;
     }
 
-    void fault_handler( int *, int kernel, _VM_Frame * frame, int what )  {
+    void fault_handler( int kernel, _VM_Frame * frame, int what )  {
         InTrace _; // avoid dumping what we do
 
         if ( what >= fault_count ) {
@@ -248,7 +248,7 @@ struct Fault: public Next {
         }
     }
 
-    int configure_fault( int *, int fault, int cfg ) {
+    int configure_fault( int fault, int cfg ) {
         if ( fault >= fault_count ) {
             return _DiOS_FC_EInvalidFault;
         }
@@ -289,7 +289,7 @@ struct Fault: public Next {
         return lastCfg;
     }
 
-    int get_fault_config( int *, int fault ) {
+    int get_fault_config( int fault ) {
         if ( fault >= fault_count )
             return _DiOS_FC_EInvalidFault;
         return _faultToStatus( fault );

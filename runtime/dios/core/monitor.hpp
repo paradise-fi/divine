@@ -26,7 +26,7 @@ struct MonitorManager: public Next {
             first->run();
     }
 
-    void register_monitor( int *, __dios::Monitor *m ) {
+    void register_monitor( __dios::Monitor *m ) {
         m->next = nullptr;
         if ( !first ) {
             first = m;

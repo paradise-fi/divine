@@ -12,11 +12,11 @@
 #define SYSCALL(name, schedule, ret, arg) \
     extern "C" ret name ( NAMED_ARGS arg ) { \
         IF(IS_VOID(ret)) ( \
-            __dios_syscall( SYS_ ## name, nullptr ARG_NAMES arg ); \
+            __dios_syscall( SYS_ ## name, nullptr ARG_NAMESC arg );     \
         ) \
         IF(NOT(IS_VOID(ret))) ( \
             ret returnVal; \
-            __dios_syscall( SYS_ ## name, &returnVal ARG_NAMES arg ); \
+            __dios_syscall( SYS_ ## name, &returnVal ARG_NAMESC arg );  \
             return returnVal; \
         ) \
     } \

@@ -366,7 +366,7 @@ struct VFS: public Next {
             return  0;
     }
 
-    int creat( int* err, const char *path, mode_t mode  )
+    int creat( const char *path, mode_t mode  )
     {
         try {
             return _mknodat( AT_FDCWD, path, mode | S_IFREG, 0 );
@@ -376,7 +376,7 @@ struct VFS: public Next {
         }
     }
 
-    int open( int* err, const char *path, int flags, mode_t mode )
+    int open( const char *path, int flags, mode_t mode )
     {
         using namespace __dios::fs::flags;
         __dios::fs::Flags <Open> f = Open::NoFlags;
@@ -416,7 +416,7 @@ struct VFS: public Next {
         }
     }
 
-    int openat( int* err, int dirfd, const char *path, int flags, mode_t mode )
+    int openat( int dirfd, const char *path, int flags, mode_t mode )
     {
         using namespace __dios::fs::flags;
         __dios::fs::Flags <Open> f = Open::NoFlags;
@@ -454,7 +454,7 @@ struct VFS: public Next {
         }
     }
 
-    int fcntl( int* err, int fd, int cmd, va_list *vl )
+    int fcntl( int fd, int cmd, va_list *vl )
     {
         try {
             auto f = instance( ).getFile( fd );
@@ -509,7 +509,7 @@ struct VFS: public Next {
         }
     }
 
-    int close( int* err, int fd )
+    int close( int fd )
     {
         try {
             instance().closeFile( fd );
@@ -520,7 +520,7 @@ struct VFS: public Next {
         }
     }
 
-    ssize_t write( int* err, int fd, const void *buf, size_t count )
+    ssize_t write( int fd, const void *buf, size_t count )
     {
         try {
             auto f = instance( ).getFile( fd );
@@ -531,7 +531,7 @@ struct VFS: public Next {
         }
     }
 
-    ssize_t read( int* err, int fd, void* buf, size_t count )
+    ssize_t read( int fd, void* buf, size_t count )
     {
         try {
             auto f = instance( ).getFile( fd );
@@ -542,7 +542,7 @@ struct VFS: public Next {
         }
     }
 
-    int pipe( int* err, int *pipefd )
+    int pipe( int *pipefd )
     {
         try {
             std::tie( pipefd[ 0 ], pipefd[ 1 ] ) = instance( ).pipe( );
@@ -553,7 +553,7 @@ struct VFS: public Next {
         }
     }
 
-    off_t lseek( int* err, int fd, off_t offset, int whence )
+    off_t lseek( int fd, off_t offset, int whence )
     {
         try {
             __dios::fs::Seek w = __dios::fs::Seek::Undefined;
@@ -575,7 +575,7 @@ struct VFS: public Next {
         }
     }
 
-    int dup( int* err, int fd )
+    int dup( int fd )
     {
        try {
             return instance( ).duplicate( fd );
@@ -585,7 +585,7 @@ struct VFS: public Next {
         }
     }
 
-    int dup2( int* err, int oldfd, int newfd )
+    int dup2( int oldfd, int newfd )
     {
         try {
             return instance( ).duplicate2( oldfd, newfd );
@@ -595,7 +595,7 @@ struct VFS: public Next {
         }
     }
 
-    int ftruncate( int* err, int fd, off_t length )
+    int ftruncate( int fd, off_t length )
     {
         try {
             auto item = instance( ).getFile( fd );
@@ -609,7 +609,7 @@ struct VFS: public Next {
         }
     }
 
-    int truncate( int* err, const char *path, off_t length )
+    int truncate( const char *path, off_t length )
     {
         try {
             auto item = instance( ).findDirectoryItem( path );
@@ -621,7 +621,7 @@ struct VFS: public Next {
         }
     }
 
-    int unlink( int* err, const char *path )
+    int unlink( const char *path )
     {
         try {
             instance( ).removeFile( path );
@@ -632,7 +632,7 @@ struct VFS: public Next {
         }
     }
 
-    int rmdir( int* err, const char *path )
+    int rmdir( const char *path )
     {
         try {
             instance( ).removeDirectory( path );
@@ -643,7 +643,7 @@ struct VFS: public Next {
         }
     }
 
-    int unlinkat( int* err, int dirfd, const char *path, int flags )
+    int unlinkat( int dirfd, const char *path, int flags )
     {
         __dios::fs::flags::At f;
         switch ( flags ) {
@@ -677,7 +677,7 @@ struct VFS: public Next {
             return 0;
     }
 
-    int linkat( int* err, int olddirfd, const char *target, int newdirfd, const char * linkpath, int flags )
+    int linkat( int olddirfd, const char *target, int newdirfd, const char * linkpath, int flags )
     {
         try {
             return _linkat( olddirfd, target, newdirfd, linkpath, flags );
@@ -687,7 +687,7 @@ struct VFS: public Next {
         }
     }
 
-    int link( int *err, const char *target, const char *linkpath )
+    int link( const char *target, const char *linkpath )
     {
         try {
             return _linkat(AT_FDCWD, target, AT_FDCWD, linkpath, 0 );
@@ -697,7 +697,7 @@ struct VFS: public Next {
         }
     }
 
-    int symlinkat( int* err, const char *target, int dirfd, const char *linkpath )
+    int symlinkat( const char *target, int dirfd, const char *linkpath )
     {
         try {
             instance( ).createSymLinkAt( dirfd, linkpath, target );
@@ -708,7 +708,7 @@ struct VFS: public Next {
         }
     }
 
-    int symlink( int* err, const char *target, const char *linkpath )
+    int symlink( const char *target, const char *linkpath )
     {
         try {
             instance( ).createSymLinkAt( AT_FDCWD, linkpath, target );
@@ -719,7 +719,7 @@ struct VFS: public Next {
         }
     }
 
-    ssize_t readlinkat( int* err, int dirfd, const char *path, char *buf, size_t count )
+    ssize_t readlinkat( int dirfd, const char *path, char *buf, size_t count )
     {
         try {
             return instance( ).readLinkAt( dirfd, path, buf, count );
@@ -729,7 +729,7 @@ struct VFS: public Next {
         }
     }
 
-    ssize_t readlink( int* err, const char *path, char *buf, size_t count )
+    ssize_t readlink( const char *path, char *buf, size_t count )
     {
         try {
             return instance( ).readLinkAt( AT_FDCWD, path, buf, count );
@@ -739,7 +739,7 @@ struct VFS: public Next {
         }
     }
 
-    int faccessat( int* err, int dirfd, const char *path, int mode, int flags )
+    int faccessat( int dirfd, const char *path, int mode, int flags )
     {
         __dios::fs::Flags <__dios::fs::flags::Access> m = __dios::fs::flags::Access::OK;
         if ( mode & R_OK ) m |= __dios::fs::flags::Access::Read;
@@ -763,7 +763,7 @@ struct VFS: public Next {
         }
     }
 
-    int access( int* err, const char *path, int mode )
+    int access( const char *path, int mode )
     {
         __dios::fs::Flags <__dios::fs::flags::Access> m = __dios::fs::flags::Access::OK;
         if ( mode & R_OK ) m |= __dios::fs::flags::Access::Read;
@@ -783,7 +783,7 @@ struct VFS: public Next {
         }
     }
 
-    int chdir( int* err, const char *path )
+    int chdir( const char *path )
     {
         try {
             instance( ).changeDirectory( path );
@@ -794,7 +794,7 @@ struct VFS: public Next {
         }
     }
 
-    int fchdir( int* err, int dirfd )
+    int fchdir( int dirfd )
     {
         try {
             instance( ).changeDirectory( dirfd );
@@ -805,7 +805,7 @@ struct VFS: public Next {
         }
     }
 
-    int fdatasync( int* err, int fd  )
+    int fdatasync( int fd  )
     {
         try {
             instance( ).getFile( fd );
@@ -816,7 +816,7 @@ struct VFS: public Next {
         }
     }
 
-    int fsync( int* err, int fd )
+    int fsync( int fd )
     {
         try {
             instance( ).getFile( fd );
@@ -827,7 +827,7 @@ struct VFS: public Next {
         }
     }
 
-    int syncfs( int* err, int fd )
+    int syncfs( int fd )
     {
         try {
             instance( ).getFile( fd );
@@ -838,11 +838,11 @@ struct VFS: public Next {
         }
     }
 
-    void sync( int* /*err*/)
+    void sync()
     {
     }
 
-    int stat(  int* err, const char *path, struct stat *buf )
+    int stat( const char *path, struct stat *buf )
     {
         try {
             auto item = instance( ).findDirectoryItem( path );
@@ -855,7 +855,7 @@ struct VFS: public Next {
         }
     }
 
-    int lstat(  int* err, const char *path, struct stat *buf  )
+    int lstat( const char *path, struct stat *buf  )
     {
         try {
             auto item = instance( ).findDirectoryItem( path, false );
@@ -868,7 +868,7 @@ struct VFS: public Next {
         }
     }
 
-    int fstat(  int* err, int fd, struct stat *buf )
+    int fstat( int fd, struct stat *buf )
     {
         try {
             auto item = instance( ).getFile( fd );
@@ -879,19 +879,19 @@ struct VFS: public Next {
         }
     }
 
-    int fstatfs( int* , int, struct statfs* )
+    int fstatfs( int, struct statfs* )
     {
         FS_PROBLEM("Fstatfs not implemented");
         return -1;
     }
 
-    int statfs( int *, const char *, struct statfs * )
+    int statfs( const char *, struct statfs * )
     {
         FS_PROBLEM("statfs not implemented");
         return -1;
     }
 
-    int fchmodat( int* err, int dirfd, const char *path, mode_t mode, int flags )
+    int fchmodat( int dirfd, const char *path, mode_t mode, int flags )
     {
         __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
         if ( flags & AT_SYMLINK_NOFOLLOW ) fl |= __dios::fs::flags::At::SymNofollow;
@@ -907,7 +907,7 @@ struct VFS: public Next {
         }
     }
 
-    int chmod( int* err, const char *path, mode_t mode )
+    int chmod( const char *path, mode_t mode )
     {
         __dios::fs::Flags <__dios::fs::flags::At> fl = __dios::fs::flags::At::NoFlags;
 
@@ -920,7 +920,7 @@ struct VFS: public Next {
         }
     }
 
-    int fchmod( int* err, int fd, mode_t mode )
+    int fchmod( int fd, mode_t mode )
     {
         try {
             instance( ).chmod( fd, mode );
@@ -931,7 +931,7 @@ struct VFS: public Next {
         }
     }
 
-    int mkdirat( int* err, int dirfd, const char *path, mode_t mode )
+    int mkdirat( int dirfd, const char *path, mode_t mode )
     {
         try {
             instance( ).createNodeAt( dirfd, path, ( ACCESSPERMS & mode ) | S_IFDIR );
@@ -942,7 +942,7 @@ struct VFS: public Next {
         }
     }
 
-    int mkdir( int* err, const char *path, mode_t mode )
+    int mkdir( const char *path, mode_t mode )
     {
         try {
             instance( ).createNodeAt( AT_FDCWD, path, ( ACCESSPERMS & mode ) | S_IFDIR );
@@ -953,7 +953,7 @@ struct VFS: public Next {
         }
     }
 
-    int mknodat( int* err, int dirfd, const char *path, mode_t mode, dev_t dev )
+    int mknodat( int dirfd, const char *path, mode_t mode, dev_t dev )
     {
         try {
             return _mknodat( dirfd, path, mode, dev );
@@ -963,7 +963,7 @@ struct VFS: public Next {
         }
     }
 
-    int mknod( int* err, const char *path, mode_t mode, dev_t dev )
+    int mknod( const char *path, mode_t mode, dev_t dev )
     {
          try {
             if ( dev != 0 )
@@ -978,14 +978,14 @@ struct VFS: public Next {
         }
     }
 
-    mode_t umask( int* /*err*/, mode_t mask )
+    mode_t umask( mode_t mask )
     {
         mode_t result = instance( ).umask( );
         instance( ).umask( mask & 0777 );
         return result;
     }
 
-    int socket( int* err, int domain, int t, int protocol )
+    int socket( int domain, int t, int protocol )
     {
         using SocketType = __dios::fs::SocketType;
         using namespace __dios::fs::flags;
@@ -1015,7 +1015,7 @@ struct VFS: public Next {
         }
     }
 
-    int socketpair( int* err, int domain, int t, int protocol, int *fds )
+    int socketpair( int domain, int t, int protocol, int *fds )
     {
         using namespace conversion;
         try {
@@ -1046,7 +1046,7 @@ struct VFS: public Next {
         }
     }
 
-    int getsockname( int* err, int sockfd, struct sockaddr *addr, socklen_t *len )
+    int getsockname( int sockfd, struct sockaddr *addr, socklen_t *len )
     {
         try {
             if ( !len )
@@ -1073,7 +1073,7 @@ struct VFS: public Next {
         }
     }
 
-    int bind( int* err, int sockfd, const struct sockaddr * addr, socklen_t )
+    int bind( int sockfd, const struct sockaddr * addr, socklen_t )
     {
         using Address = __dios::fs::Socket::Address;
 
@@ -1095,7 +1095,7 @@ struct VFS: public Next {
         }
     }
 
-    int connect( int* err, int sockfd, const struct sockaddr *addr, socklen_t )
+    int connect( int sockfd, const struct sockaddr *addr, socklen_t )
     {
         using Address = __dios::fs::Socket::Address;
 
@@ -1117,7 +1117,7 @@ struct VFS: public Next {
         }
     }
 
-    int getpeername( int* err, int sockfd, struct sockaddr *addr, socklen_t *len )
+    int getpeername( int sockfd, struct sockaddr *addr, socklen_t *len )
     {
         try {
             if ( !len )
@@ -1144,7 +1144,7 @@ struct VFS: public Next {
         }
     }
 
-    ssize_t sendto( int* err, int sockfd, const void *buf, size_t n, int flags, const struct sockaddr * addr, socklen_t )
+    ssize_t sendto( int sockfd, const void *buf, size_t n, int flags, const struct sockaddr * addr, socklen_t )
     {
         using Address = __dios::fs::Socket::Address;
 
@@ -1194,7 +1194,7 @@ struct VFS: public Next {
         return n;
     }
 
-    ssize_t recv( int* err, int sockfd, void *buf, size_t n, int flags )
+    ssize_t recv( int sockfd, void *buf, size_t n, int flags )
     {
         try {
              return _recvfrom( sockfd, buf, n, flags, nullptr, nullptr );
@@ -1204,7 +1204,7 @@ struct VFS: public Next {
         }
     }
 
-    ssize_t recvfrom( int* err, int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len )
+    ssize_t recvfrom( int sockfd, void *buf, size_t n, int flags, struct sockaddr *addr, socklen_t *len )
     {
         try {
              return _recvfrom( sockfd, buf, n, flags, addr, len );
@@ -1214,7 +1214,7 @@ struct VFS: public Next {
         }
     }
 
-    int listen( int* err, int sockfd, int n )
+    int listen( int sockfd, int n )
     {
         try {
             auto s = instance( ).getSocket( sockfd );
@@ -1252,7 +1252,7 @@ struct VFS: public Next {
         return newSocket;
     }
 
-    int accept( int* err, int sockfd, struct sockaddr *addr, socklen_t *len )
+    int accept( int sockfd, struct sockaddr *addr, socklen_t *len )
     {
         try {
             return _accept4( sockfd, addr, len, 0 );
@@ -1262,7 +1262,7 @@ struct VFS: public Next {
         }
     }
 
-    int accept4( int* err, int sockfd, struct sockaddr *addr, socklen_t *len, int flags )
+    int accept4( int sockfd, struct sockaddr *addr, socklen_t *len, int flags )
     {
         try {
             return _accept4( sockfd, addr, len, flags );
@@ -1278,7 +1278,7 @@ struct VFS: public Next {
         return 0;
     }
 
-    int renameat( int* err, int olddirfd, const char *oldpath, int newdirfd, const char *newpath )
+    int renameat( int olddirfd, const char *oldpath, int newdirfd, const char *newpath )
     {
         try {
             return _renameitemat(olddirfd, oldpath, newdirfd, newpath );
@@ -1288,7 +1288,7 @@ struct VFS: public Next {
         }
     }
 
-    int rename( int* err, const char *oldpath, const char *newpath )
+    int rename( const char *oldpath, const char *newpath )
     {
         try {
             return _renameitemat( AT_FDCWD, oldpath, AT_FDCWD, newpath );
@@ -1299,7 +1299,7 @@ struct VFS: public Next {
     }
 
     //char *getcwd(char *buf, size_t size);
-    char *getcwd( int* err, char *buff, size_t size ) {
+    char *getcwd( char *buff, size_t size ) {
         try {
             instance( ).getCurrentWorkingDir( buff, size );
             return buff;

@@ -47,11 +47,11 @@ struct MachineParams: public Next {
         __dios_trace_i( indent + 1, "ncpus: %d", hardwareConcurrency );
     }
 
-    int hardware_concurrency( int * ) {
+    int hardware_concurrency() {
         return hardwareConcurrency;
     }
 
-    int uname( int *, struct ::utsname * name ) {
+    int uname( struct ::utsname * name ) {
         strcpy( name->sysname, "DiOS" );
         strcpy( name->nodename, "" );
         strcpy( name->release, "0.1" );

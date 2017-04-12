@@ -28,11 +28,11 @@ enum _VM_SC {
 
 template < typename Context >
 struct Syscall {
-    using ScHandler = SchedCommand (*)( Context& c, int *, void *, va_list );
+    using ScHandler = SchedCommand (*)( Context& c, void *, va_list );
 
     static SchedCommand handle( Context& c, _DiOS_Syscall& s ) noexcept {
         if ( s._syscode != SYS_NONE ) {
-            auto cmd = ( *( table[ s._syscode ] ) )( c, s._err, s._ret, s._args );
+            auto cmd = ( *( table[ s._syscode ] ) )( c, s._ret, s._args );
             s._syscode = SYS_NONE;
             if ( __dios_get_errno() && *__dios_get_errno() == EAGAIN2 )
                 return SchedCommand::RESCHEDULE;
@@ -43,8 +43,7 @@ struct Syscall {
 
     static void kernelHandle( void *ctx, _DiOS_SC syscode, void *ret, va_list vl ) noexcept {
         Context& c = *static_cast< Context* >( ctx );
-        int err;
-        ( *( table[ syscode ] ) )( c, &err, ret, vl );
+        ( *( table[ syscode ] ) )( c, ret, vl );
     }
 
     static ScHandler table[ SYS_MAXSYSCALL ];
@@ -52,14 +51,14 @@ struct Syscall {
     #include <dios/macro/syscall_common>
     #include <dios/macro/no_memory_tags>
     #define SYSCALL( name, schedule, ret, arg ) \
-        static SchedCommand name ## Wrappper( Context& ctx, int *err, void *retVal, va_list vl) { \
+        static SchedCommand name ## Wrappper( Context& ctx, void *retVal, va_list vl) { \
             UNPACK arg \
             IF(IS_VOID(ret))( \
-                ctx. name ( err ARG_NAMES arg ); \
+                ctx. name ( ARG_NAMES arg ); \
             ) \
             IF(NOT(IS_VOID(ret))) ( \
                 auto *r = static_cast< ret * >( retVal ); \
-                *r = ctx. name ( err ARG_NAMES arg ); \
+                *r = ctx. name ( ARG_NAMES arg ); \
             ) \
             va_end( vl ); \
             return SchedCommand:: schedule; \
@@ -122,7 +121,7 @@ struct BaseContext {
     #include <dios/macro/syscall_common>
     #include <dios/macro/no_memory_tags>
     #define SYSCALL( name, schedule, ret, arg ) \
-        ret name ( int * IF(NOT(EMPTY arg ))(,) NAMED_ARGS arg );
+        ret name ( NAMED_ARGS arg );
     #define SYSCALLSEP( ... ) EVAL( SYSCALL( __VA_ARGS__ ) )
 
         #include <sys/syscall.def>

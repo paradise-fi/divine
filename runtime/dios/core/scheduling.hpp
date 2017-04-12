@@ -336,7 +336,7 @@ struct Scheduler : public Next {
         // ToDo: Erase processes
     }
 
-    int sigaction( int *err, int sig, const struct ::sigaction *act, struct sigaction *oldact ) {
+    int sigaction( int sig, const struct ::sigaction *act, struct sigaction *oldact ) {
         if ( sig < 0 || sig > static_cast< int >( sizeof(defhandlers) / sizeof(__dios::sighandler_t) )
             || sig == SIGKILL || sig == SIGSTOP )
         {
@@ -355,14 +355,14 @@ struct Scheduler : public Next {
         return 0;
     }
 
-    pid_t getpid( int * ) {
+    pid_t getpid() {
         auto tid = __dios_get_thread_handle();
         auto thread = threads.find( tid );
         __dios_assert( thread );
         return thread->_pid;
     }
 
-    _DiOS_ThreadHandle start_thread( int *, _DiOS_ThreadRoutine routine, void * arg, int tls_size ) {
+    _DiOS_ThreadHandle start_thread( _DiOS_ThreadRoutine routine, void * arg, int tls_size ) {
         auto t = newThread( routine, tls_size );
         setupThread( t, arg );
         __vm_obj_shared( t->getId() );
@@ -370,11 +370,11 @@ struct Scheduler : public Next {
         return t->getId();
     }
 
-    void kill_thread( int *, _DiOS_ThreadHandle id ) {
+    void kill_thread( _DiOS_ThreadHandle id ) {
         killThread( id );
     }
 
-    _DiOS_ThreadHandle *get_process_threads( int *, _DiOS_ThreadHandle tid ) {
+    _DiOS_ThreadHandle *get_process_threads( _DiOS_ThreadHandle tid ) {
         pid_t pid;
         for ( auto &t : threads ) {
             if ( t->_tls == tid ) {
@@ -398,7 +398,7 @@ struct Scheduler : public Next {
         return ret;
     }
 
-    int kill( int *err, pid_t pid, int sig ) {
+    int kill( pid_t pid, int sig ) {
         sighandler_t handler;
         bool found = false;
         Thread *thread;
@@ -437,7 +437,7 @@ struct Scheduler : public Next {
         return 0;
     }
 
-    void die( int * ) {
+    void die() {
         killProcess( 0 );
     }
 
