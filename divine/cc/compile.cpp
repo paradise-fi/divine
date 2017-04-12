@@ -276,7 +276,7 @@ void Compile::linkEssentials() {
     linker->link( mem );
 }
 
-const std::vector< std::string > Compile::defaultDIVINELibs = { "cxx", "cxxabi", "c", "m" };
+const std::vector< std::string > Compile::defaultDIVINELibs = { "cxx", "cxxabi", "c" };
 
 }
 }
