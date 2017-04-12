@@ -312,6 +312,8 @@ struct Scheduler : public Next {
     }
 
     void killThread( ThreadHandle tid ) noexcept  {
+        if ( tid == __dios_get_thread_handle() )
+            __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
         bool res = threads.remove( tid );
         __dios_assert_v( res, "Killing non-existing thread" );
     }
@@ -319,13 +321,17 @@ struct Scheduler : public Next {
     void killProcess( pid_t id ) noexcept  {
         if ( !id ) {
             threads.erase( threads.begin(), threads.end() );
+            __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
             // ToDo: Erase processes
             return;
         }
 
-        auto r = std::remove_if( threads.begin(), threads.end(), [&]( Thread *t ) {
-            return t->_pid == id;
-        });
+        auto r = std::remove_if( threads.begin(), threads.end(), [&]( Thread *t )
+                                 {
+                                     if ( t->_tls == __dios_get_thread_handle() )
+                                         __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
+                                     return t->_pid == id;
+                                 } );
         threads.erase( r, threads.end() );
         // ToDo: Erase processes
     }
