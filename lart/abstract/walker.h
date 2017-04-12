@@ -231,25 +231,25 @@ private:
             ValueNodes nodes = { reached.begin(), reached.end() };
             auto postorder = analysis::postorder< ValueNode >( nodes, value_succs );
             for ( auto & a : allocas ) {
-                bool stores = query::query( postorder )
-                    .map( [&] ( const ValueNode & n ) { return n.value; } )
-                    .map( query::llvmdyncast< llvm::StoreInst > )
-                    .filter( query::notnull )
-                    .any( [&] ( llvm::StoreInst * s ) {
-                        return s->getPointerOperand() == a.value;
-                    } );
-                bool loads = query::query( postorder )
-                    .map( [&] ( const ValueNode & n ) { return n.value; } )
-                    .map( query::llvmdyncast< llvm::LoadInst > )
-                    .filter( query::notnull )
-                    .any( [&] ( llvm::LoadInst * l ) {
-                        return l->getPointerOperand() == a.value;
-                    } );
-                if ( loads || stores )
+                auto stores = query::query( postorder )
+                    .filter( [&] ( const ValueNode & n ) {
+                        if ( auto s = llvm::dyn_cast< llvm::StoreInst >( n.value ) )
+                            return s->getPointerOperand() == a.value;
+                        return false;
+                    } ).freeze();
+                auto loads = query::query( postorder )
+                    .filter( [&] ( const ValueNode & n ) {
+                        if ( auto l = llvm::dyn_cast< llvm::LoadInst >( n.value ) )
+                            return l->getPointerOperand() == a.value;
+                        return false;
+                    } ).freeze();
+
+                if ( loads.size() || stores.size() ) {
+                    a.annotation = loads.size() ? loads[0].annotation : stores[0].annotation;
                     reached.insert( a );
+                }
             }
         } while ( abstract != reached );
-
         return abstract;
     }
 
