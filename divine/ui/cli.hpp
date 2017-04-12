@@ -63,6 +63,7 @@ struct WithBC : Command
     std::vector< std::string > _useropts;
     std::vector< std::string > _systemopts;
     std::vector< std::string > _lartPasses;
+    std::vector< std::string > _linkLibs;
     std::vector< std::vector< std::string > > _ccOpts;
     std::vector< VfsDir > _vfs;
     size_t _vfsSizeLimit;

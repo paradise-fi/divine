@@ -216,9 +216,11 @@ void WithBC::setup()
         std::vector< std::string > ccopts;
         if ( !_std.empty() )
             ccopts.push_back( { "-std=" + _std } );
+        ccopts.push_back( _file );
         for ( auto &o : _ccOpts )
             std::copy( o.begin(), o.end(), std::back_inserter( ccopts ) );
-        ccopts.push_back( _file );
+        for ( auto &l : _linkLibs )
+            ccopts.push_back( "-l" + l );
 
         driver.setupFS( rt::each );
         driver.runCC( ccopts );
