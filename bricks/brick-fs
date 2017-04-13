@@ -725,13 +725,13 @@ struct TempDir {
 
 namespace {
 
-std::string readFile( std::ifstream &in ) {
+std::string readFile( std::ifstream &in, size_t length = std::numeric_limits< size_t >::max() )
+{
     if ( !in.is_open() )
         throw std::runtime_error( "reading filestream" );
-    size_t length;
 
     in.seekg( 0, std::ios::end );
-    length = in.tellg();
+    length = std::min< size_t >( length, in.tellg() );
     in.seekg( 0, std::ios::beg );
 
     std::string buffer;
@@ -741,11 +741,12 @@ std::string readFile( std::ifstream &in ) {
     return buffer;
 }
 
-std::string readFile( const std::string &file ) {
+std::string readFile( const std::string &file, size_t length = std::numeric_limits< size_t >::max() )
+{
     std::ifstream in( file.c_str(), std::ios::binary );
     if ( !in.is_open() )
         throw std::runtime_error( "reading file " + file );
-    return readFile( in );
+    return readFile( in, length );
 }
 
 }
