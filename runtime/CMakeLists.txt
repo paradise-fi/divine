@@ -92,8 +92,8 @@ mkobjs( libcxx    "${flags};-D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE" )
 
 list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks)
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem -I${CMAKE_CURRENT_BINARY_DIR}
-                   -Wall -Wextra -Wold-style-cast -Werror )
-mkobjs( libdios "${flags}" )
+                   -Wall -Wextra -Wold-style-cast -Werror)
+mkobjs( libdios "${flags};-D__dios_kernel__" )
 mkobjs( libabstract "${flags}" )
 
 mklib( libc libc_cpp )
