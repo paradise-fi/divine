@@ -38,7 +38,7 @@ macro( mkobjs var flags )
         DEPENDS runtime-cc ${f} ${H_RUNTIME} ${H_DIVM}
         OUTPUT bc/${out}
         COMMAND mkdir -p bc
-        COMMAND runtime-cc ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMAND runtime-cc ${CMAKE_CURRENT_BINARY_DIR} ${divine_SOURCE_DIR}
                            ${f} bc/${out} ${flags} )
     stringify( "runtime" "." ${f} )
   endforeach()
@@ -90,6 +90,7 @@ list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
 mkobjs( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
 mkobjs( libcxx    "${flags};-D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE" )
 
+list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks)
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem -I${CMAKE_CURRENT_BINARY_DIR}
                    -Wall -Wextra -Wold-style-cast -Werror )
 mkobjs( libdios "${flags}" )
