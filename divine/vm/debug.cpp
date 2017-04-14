@@ -278,6 +278,8 @@ std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias )
 
     if ( di_derived( llvm::dwarf::DW_TAG_inheritance, t ) )
         return "<" + di_name( di_base( t ) ) + ">";
+    if ( di_derived( llvm::dwarf::DW_TAG_ptr_to_member_type, t ) )
+        return di_name( di_base( t ) ) + "::*";
     if ( di_pointer( t ) )
         return di_name( di_base( t ) ) + "*";
     if ( di_derived( llvm::dwarf::DW_TAG_reference_type, t ) )
