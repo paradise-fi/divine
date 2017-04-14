@@ -6,26 +6,33 @@
 #include <signal.h>
 #include <dios.h>
 
-#include <dios/macro/syscall_common>
 #include <dios/macro/no_memory_tags>
 
-#define SYSCALL(name, schedule, ret, arg) \
-    extern "C" ret name ( NAMED_ARGS arg ) { \
-        IF(IS_VOID(ret)) ( \
-            __dios_syscall( SYS_ ## name, nullptr ARG_NAMESC arg );     \
-        ) \
-        IF(NOT(IS_VOID(ret))) ( \
-            ret returnVal; \
-            __dios_syscall( SYS_ ## name, &returnVal ARG_NAMESC arg );  \
-            return returnVal; \
-        ) \
-    } \
+static struct Pad {} _1, _2, _3, _4, _5, _6;
+template< typename T >
+struct UnVoid
+{
+    T t;
+    T *address() { return &t; }
+    T get() { return t; }
+};
+
+template<> struct UnVoid< void >
+{
+    void get() {}
+    void *address() { return nullptr; }
+};
+
+#define SYSCALL(name, schedule, ret, arg)                                     \
+    extern "C" ret name arg {                                                 \
+        UnVoid< ret > rv;                                                     \
+        __dios_syscall( SYS_ ## name, rv.address(), _1, _2, _3, _4, _5, _6 ); \
+        return rv.get();                                                      \
+    }
 
 #define SYSCALLSEP(...)
 
-    #include <sys/syscall.def>
+#include <sys/syscall.def>
 #include <dios/macro/no_memory_tags.cleanup>
-#include <dios/macro/syscall_common.cleanup>
 
-#undef SYSCALL
 #undef SYSCALL

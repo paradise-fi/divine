@@ -3,6 +3,11 @@
 #ifndef __DIOS_SYSCALL_H__
 #define __DIOS_SYSCALL_H__
 
+#ifdef __dios_kernel__
+#include <brick-tuple>
+#include <brick-hlist>
+#endif
+
 #include <cstdarg>
 #include <new>
 #include <dios.h>
@@ -26,6 +31,8 @@ enum _VM_SC {
 };
 #undef SYSCALL
 
+#ifdef __dios_kernel__
+
 template < typename Context >
 struct Syscall
 {
@@ -48,40 +55,60 @@ struct Syscall
     }
 
     static ScHandler table[ SYS_MAXSYSCALL ];
+    template< typename T > using Void = void;
 
-    #include <dios/macro/syscall_common>
+    template< typename Rem, typename Done, typename S, typename T, typename... Args >
+    static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
+        -> typename std::enable_if< !std::is_same< T, Void< typename Rem::Empty > >::value >::type
+    {
+        auto rvt = reinterpret_cast< T* >( rv );
+        *rvt = brick::tuple::pass( [&]( auto... x ) { return (c.*f)( x... ); }, d );
+    }
+
+    template< typename Rem, typename Done, typename S, typename T, typename... Args >
+    static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
+        -> typename std::enable_if< std::is_same< T, Void< typename Rem::Empty > >::value >::type
+    {
+        brick::tuple::pass( [&]( auto... x ) { return (c.*f)( x... ); }, d );
+    }
+
+    template< typename Rem, typename Done, typename S, typename T, typename... Args >
+    static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
+        -> Void< typename Rem::Head >
+    {
+        auto next = std::tuple_cat( d, std::make_tuple( va_arg( vl, typename Rem::Head ) ) );
+        unpack< typename Rem::Tail >( next, c, f, rv, vl );
+    }
+
+    template< typename S, typename T, typename... Args >
+    static void unpack( Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
+    {
+        unpack< brick::hlist::TypeList< Args... > >( std::make_tuple(), c, f, rv, vl );
+    }
+
     #include <dios/macro/no_memory_tags>
     #define SYSCALL( name, schedule, ret, arg ) \
-        static SchedCommand name ## Wrappper( Context& ctx, void *retVal, va_list vl) { \
-            UNPACK arg \
-            IF(IS_VOID(ret))( \
-                ctx. name ( ARG_NAMES arg ); \
-            ) \
-            IF(NOT(IS_VOID(ret))) ( \
-                auto *r = static_cast< ret * >( retVal ); \
-                *r = ctx. name ( ARG_NAMES arg ); \
-            ) \
-            va_end( vl ); \
+        static SchedCommand name ## Wrappper( Context& ctx, void *rv, va_list vl) { \
+            unpack( ctx, &Context::name, rv, vl );                         \
             return SchedCommand:: schedule; \
         }
-    #define SYSCALLSEP( ... ) EVAL( SYSCALL( __VA_ARGS__ ) )
-
-        #include <sys/syscall.def>
-
+    #define SYSCALLSEP SYSCALL
+    #include <sys/syscall.def>
     #undef SYSCALLSEP
     #undef SYSCALL
     #include <dios/macro/no_memory_tags.cleanup>
-    #include <dios/macro/syscall_common.cleanup>
 };
 
 template < typename Context >
 typename Syscall< Context >::ScHandler Syscall< Context >::table[ SYS_MAXSYSCALL ] = {
     #define SYSCALL( name, ... ) [ SYS_ ## name ] = Syscall:: name ## Wrappper,
-    #define SYSCALLSEP( ... ) EVAL( SYSCALL( __VA_ARGS__ ) )
+    #define SYSCALLSEP SYSCALL
         #include <sys/syscall.def>
     #undef SYSCALL
     #undef SYSCALLSEP
 };
+
+#endif
 
 struct BaseContext
 {
@@ -120,18 +147,15 @@ struct BaseContext
 
     SyscallInvoker _kernelCall;
 
-    #include <dios/macro/syscall_common>
     #include <dios/macro/no_memory_tags>
-    #define SYSCALL( name, schedule, ret, arg ) \
-        ret name ( NAMED_ARGS arg );
-    #define SYSCALLSEP( ... ) EVAL( SYSCALL( __VA_ARGS__ ) )
+    #define SYSCALL( name, schedule, ret, arg ) ret name arg;
+    #define SYSCALLSEP( name, schedule, ret, arg ) ret name arg;
 
-        #include <sys/syscall.def>
+    #include <sys/syscall.def>
 
     #undef SYSCALL
     #undef SYSCALLSEP
     #include <dios/macro/no_memory_tags.cleanup>
-    #include <dios/macro/syscall_common.cleanup>
 };
 
 } // namespace __dios

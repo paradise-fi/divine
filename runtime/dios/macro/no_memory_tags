@@ -2,9 +2,7 @@
 #define __MACRO_NO_MEMORY_TAGS__
 
 #define OUT(x) x
-#define MEM(x) x
 #define COUNT(x) x
 #define STRUCT(x) x
-#define MEM(x) x
 
 #endif

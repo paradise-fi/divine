@@ -207,6 +207,8 @@ private:
     }
 };
 
+#ifdef __dios_kernel__
+
 void sig_ign( int );
 void sig_die( int );
 void sig_fault( int );
@@ -480,6 +482,8 @@ struct Scheduler : public Next {
     sighandler_t *sighandlers;
     void *_global;
 };
+
+#endif
 
 } // namespace __dios
 
