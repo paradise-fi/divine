@@ -8,25 +8,23 @@
 namespace __dios {
 
 template < typename Next >
-struct MonitorManager: public Next {
+struct MonitorManager : Next
+{
     MonitorManager() : first( nullptr ) {}
 
-    void linkSyscall( BaseContext::SyscallInvoker invoker ) {
-        Next::linkSyscall( invoker );
-    }
-
-    void setup( MemoryPool& pool, const _VM_Env *env, const SysOpts& opts ) {
+    void setup( MemoryPool& pool, const _VM_Env *env, const SysOpts& opts )
+    {
         Next::setup( pool, env, opts );
     }
 
-    void finalize() {}
-
-    void runMonitors() {
+    void runMonitors()
+    {
         if ( first )
             first->run();
     }
 
-    void register_monitor( __dios::Monitor *m ) {
+    void register_monitor( __dios::Monitor *m )
+    {
         m->next = nullptr;
         if ( !first ) {
             first = m;

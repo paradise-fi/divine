@@ -27,7 +27,8 @@ enum _VM_SC {
 #undef SYSCALL
 
 template < typename Context >
-struct Syscall {
+struct Syscall
+{
     using ScHandler = SchedCommand (*)( Context& c, void *, va_list );
 
     static SchedCommand handle( Context& c, _DiOS_Syscall& s ) noexcept {
@@ -82,7 +83,8 @@ typename Syscall< Context >::ScHandler Syscall< Context >::table[ SYS_MAXSYSCALL
     #undef SYSCALLSEP
 };
 
-struct BaseContext {
+struct BaseContext
+{
     using SyscallInvoker = void (*)( void *, _DiOS_SC syscode, void *, va_list );
 
     struct Process {};

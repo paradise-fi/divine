@@ -9,14 +9,12 @@
 namespace __dios {
 
 template < typename Next >
-struct MachineParams: public Next {
+struct MachineParams : Next
+{
     int hardwareConcurrency;
 
-    void linkSyscall( BaseContext::SyscallInvoker invoker ) {
-        Next::linkSyscall( invoker );
-    }
-
-    void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) {
+    void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts )
+    {
         hardwareConcurrency = 0;
         readHardwareConcurrency( opts );
         if ( extractOpt( "debug", "machineparams", opts ) ) {
@@ -27,11 +25,8 @@ struct MachineParams: public Next {
         Next::setup( pool, env, opts );
     }
 
-    void finalize() {
-        Next::finalize();
-    }
-
-    void readHardwareConcurrency( SysOpts& opts )  {
+    void readHardwareConcurrency( SysOpts& opts )
+    {
         String ncpus = extractOpt( "ncpus", opts );
         if ( !ncpus.empty() ) {
             char *end;
@@ -42,16 +37,19 @@ struct MachineParams: public Next {
         }
     }
 
-    void traceConfig( int indent ) {
+    void traceConfig( int indent )
+    {
         __dios_trace_i( indent, "machine parameters:" );
         __dios_trace_i( indent + 1, "ncpus: %d", hardwareConcurrency );
     }
 
-    int hardware_concurrency() {
+    int hardware_concurrency()
+    {
         return hardwareConcurrency;
     }
 
-    int uname( struct ::utsname * name ) {
+    int uname( struct ::utsname * name )
+    {
         strcpy( name->sysname, "DiOS" );
         strcpy( name->nodename, "" );
         strcpy( name->release, "0.1" );

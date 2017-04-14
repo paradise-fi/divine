@@ -279,9 +279,6 @@ struct VFS: public Next {
         return *_manager;
     }
 
-    void linkSyscall( BaseContext::SyscallInvoker invoker ) {
-        Next::linkSyscall( invoker );
-    }
 
     void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) {
         instance().setOutputFile( getFileTraceConfig( opts, "stdout" ) );
@@ -291,7 +288,8 @@ struct VFS: public Next {
         Next::setup( pool, env, opts );
     }
 
-    void finalize() {
+    void finalize()
+    {
         delete _manager;
         _manager = nullptr;
         Next::finalize();
