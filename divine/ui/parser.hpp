@@ -153,7 +153,7 @@ struct CLI : Interface
 
         auto bcopts = cmd::make_option_set< WithBC >( v )
             .option( "[-D {string}|-D{string}]", &WithBC::_env, "add to the environment"s )
-            .option( "[-C,{commasep}]", &WithBC::_ccOpts, "options passed to compiler compiler"s )
+            .option( "[-C,{commasep}]", &WithBC::_ccOpts, "pass additional options to the compiler"s )
             .option( "[--autotrace {tracepoints}]", &WithBC::_autotrace, "insert trace calls"s )
             .option( "[--sequential]", &WithBC::_sequential, "disable support for threading"s )
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
@@ -165,11 +165,11 @@ struct CLI : Interface
             .option( "[--vfslimit {mem}]", &WithBC::_vfsSizeLimit,
                      "filesystem snapshot size limit (default 16 MiB)"s )
             .option( "[--capture {vfsdir}]", &WithBC::_vfs,
-                "capture directory in form {dir}[:{follow|nofollow}[:{mount point}]]"s )
+                     "capture directory in form {dir}[:{follow|nofollow}[:{mount point}]]"s )
             .option( "[--stdin {file}]", &WithBC::_stdin,
                      "capture file and pass it to OS as stdin for verified program" )
-            .option( "[--symbolic|--ceds]", &WithBC::_symbolic,
-                     "use control-explicit data-symbolic (CEDS) model checking algorithm"s )
+            .option( "[--symbolic]", &WithBC::_symbolic,
+                     "use semi-symbolic data representation"s )
             .option( "[--solver {string}]", &WithBC::_solver,
                      "solver command to be used by CEDS algorithms"s )
             .option( "[-l{string}|-l {string}]", &WithBC::_linkLibs,
@@ -194,7 +194,8 @@ struct CLI : Interface
             .option( "[--max-memory {mem}]", &Verify::_max_mem, "limit memory use"s )
             .option( "[--max-time {int}]", &Verify::_max_time, "maximum allowed run time in seconds"s )
             .option( "[--liveness]", &Verify::_liveness, "enables verification of liveness properties"s )
-            .option( "[--report {repfmt}|-r {repfmt}]", &Verify::_report, "print a report (yaml, yaml-long or none)"s )
+            .option( "[--report {repfmt}|-r {repfmt}]", &Verify::_report,
+                     "print a report (yaml, yaml-long or none)"s )
             .option( "[--num-callers {int}]"s, &Verify::_num_callers,
                      "the number of frames to print in a backtrace [default = 10]" );
 
