@@ -171,9 +171,9 @@ struct CLI : Interface
             .option( "[--symbolic|--ceds]", &WithBC::_symbolic,
                      "use control-explicit data-symbolic (CEDS) model checking algorithm"s )
             .option( "[--solver {string}]", &WithBC::_solver,
-                     "solver command to be used by CEDS algorithms (the solver must accept SMT-LIBv2 queries on standard input and produce results on standard output)"s )
+                     "solver command to be used by CEDS algorithms"s )
             .option( "[-l{string}|-l {string}]", &WithBC::_linkLibs,
-                     "libraries the result should be linked to, e.g. -lm for libm; all libraries are treated as if they were specified at the end of compiler invocation command line, in the order of the respective -l options"s )
+                     "link in a library, e.g. -lm for libm"s )
             .option( "{file}", &WithBC::_file, "the bitcode file to load"s,
                   cmd::OptionFlag::Required | cmd::OptionFlag::Final );
 
