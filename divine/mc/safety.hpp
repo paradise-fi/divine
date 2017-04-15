@@ -57,7 +57,7 @@ struct Safety : Job
                     if ( label.error )
                     {
                         _error_found = true;
-                        _error = to;
+                        _error = from; /* the error edge may not be the parent of 'to' */
                         return ss::Listen::Terminate;
                     }
                     return _next.edge( from, to, label, isnew );

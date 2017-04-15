@@ -104,20 +104,27 @@ Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
                         if ( t.final || !hasher.equal( from.snap, *last ) )
                             return ss::Listen::Ignore;
 
-                        if ( label.error )
-                        {
-                            t.final = from.snap;
-                            process( label );
+                        if ( next == states.end() )
                             return ss::Listen::Terminate;
-                        }
-
-                        if ( next == states.end() || !hasher.equal( to.snap, *next ) )
+                        if ( !hasher.equal( to.snap, *next ) )
                             return ss::Listen::Ignore;
 
                         process( label );
                         ++last, ++next;
                         return ss::Listen::Process;
                     }, []( auto ) { return ss::Listen::Process; } ) );
+
+    typename Explore::State origin;
+    origin.snap = *last;
+    ex.edges( origin, [&]( auto, auto label, bool )
+              {
+                  if ( label.error && !t.final )
+                  {
+                      t.final = *last;
+                      process( label );
+                  }
+              } );
+
     ASSERT( t.final );
     return t;
 }
