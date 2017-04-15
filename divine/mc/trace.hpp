@@ -104,7 +104,7 @@ Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
                         if ( t.final || !hasher.equal( from.snap, *last ) )
                             return ss::Listen::Ignore;
 
-                        if ( to.error )
+                        if ( label.error )
                         {
                             t.final = from.snap;
                             process( label );

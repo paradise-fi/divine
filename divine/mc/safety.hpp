@@ -54,7 +54,7 @@ struct Safety : Job
                         Parent &parent = *_ext.machinePointer< Parent >( to.snap );
                         parent = from.snap;
                     }
-                    if ( to.error )
+                    if ( label.error )
                     {
                         _error_found = true;
                         _error = to;

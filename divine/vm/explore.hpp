@@ -39,7 +39,6 @@ namespace explore {
 struct State
 {
     CowHeap::Snapshot snap;
-    bool error:1;
     bool operator==( const State& o ) const { return snap.intptr() == o.snap.intptr(); }
 };
 
@@ -184,7 +183,8 @@ struct Explore_
     struct Label {
         std::vector< std::string > trace;
         std::vector< std::pair< int, int > > stack;
-        bool accepting;
+        bool accepting:1;
+        bool error:1;
     };
 
     BC _bc;
@@ -201,7 +201,6 @@ struct Explore_
     Explore_( BC bc )
         : _bc( bc ), _ctx( _bc->program() ), _states( _ctx.heap(), 1024 )
     {
-        _initial.error = 0;
     }
 
     auto store( Snapshot snap )
@@ -265,8 +264,7 @@ struct Explore_
                 lbl.trace = _ctx._trace;
                 lbl.stack = _ctx._stack;
                 lbl.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
-
-                st.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
+                lbl.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
                 yield( st, lbl, r.isnew() );
             }
         } while ( !_ctx.finished() );

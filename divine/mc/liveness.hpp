@@ -123,7 +123,7 @@ struct NestedDFS : ss::Job
                     {
                         auto kid = std::make_pair( item.edge.second, to );
                         if( !_visited.count( kid ) ) {
-                            stack.emplace( DFSItem::Pre, kid, label.accepting );
+                            stack.emplace( DFSItem::Pre, kid, bool( label.accepting ) );
                             _visited.emplace( kid, false );
                         }
                     } );

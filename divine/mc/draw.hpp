@@ -77,7 +77,7 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
                 std::string lbl, color;
                 for ( auto txt : l.trace )
                     lbl += txt + "\n";
-                if ( t.error )
+                if ( l.error )
                     color = "color=red";
                 if ( l.accepting )
                     color = "color=blue";
