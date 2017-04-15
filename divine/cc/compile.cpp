@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2016 Vladimír Štill
+// -*- C++ -*- (c) 2016-2017 Vladimír Štill
 
 #include <divine/cc/compile.hpp>
 #include <divine/rt/runtime.hpp>
@@ -132,6 +132,7 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
     FT xType = FT::Unknown;
 
     std::vector< std::string > opts;
+    std::vector< std::string > libSearchPath;
     std::vector< FileEntry > files;
 
     for ( auto it = rawCCOpts.begin(), end = rawCCOpts.end(); it != end; ++it )
@@ -176,6 +177,11 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
             std::string val = it->size() > 2 ? it->substr( 2 ) : *++it;
             files.emplace_back( Lib::InPlace(), val );
         }
+        else if ( brick::string::startsWith( *it, "-L" ) ) {
+            std::string val = it->size() > 2 ? it->substr( 2 ) : *++it;
+            compiler.allowIncludePath( val );
+            libSearchPath.emplace_back( std::move( val ) );
+        }
         else if ( !brick::string::startsWith( *it, "-" ) )
             files.emplace_back( File::InPlace(), *it, xType == FT::Unknown ? Compiler::typeFromFile( *it ) : xType );
         else
@@ -195,7 +201,7 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
                     linker->link( std::move( m ) );
             },
             [&]( const Lib &l ) {
-                linkLib( l.name );
+                linkLib( l.name, libSearchPath );
             } );
     if ( linker->hasModule() ) {
         linkEssentials();
@@ -231,33 +237,45 @@ void Compile::addFlags( std::vector< std::string > flags ) {
 
 std::shared_ptr< llvm::LLVMContext > Compile::context() { return compiler.context(); }
 
-void Compile::setupLib( std::string name, std::string_view content )
-{
-    auto libname = brick::fs::splitExtension( brick::fs::basename( name ) ).first;
-    if ( libname.substr( 0, 3 ) == "lib" )
-        libname = libname.substr( 3 );
-
-    brick::llvm::ArchiveReader reader( name, content, context() );
-    auto ins = libs.emplace( libname, std::move( reader ) );
-    if ( !ins.second )
-        throw std::runtime_error( "Double definition of library " + name );
-}
-
-void Compile::linkLibs( const std::vector< std::string > &ls ) {
+void Compile::linkLibs( std::vector< std::string > ls, std::vector< std::string > searchPaths ) {
     for ( auto lib : ls )
-        linkLib( lib );
+        linkLib( lib, searchPaths );
 }
 
-void Compile::linkLib( std::string lib ) {
-    auto libit = libs.find( lib );
-    if ( libit == libs.end() )
+brick::llvm::ArchiveReader Compile::getLib( std::string lib, std::vector< std::string > searchPaths ) {
+    using namespace brick::fs;
+
+    std::string name;
+    searchPaths.push_back( "/lib" );
+    for ( auto p : searchPaths ) {
+        for ( auto suf : { "a", "bc" } ) {
+            auto n = joinPath( p, "lib" + lib + "."s + suf );
+            if ( compiler.fileExists( n ) ) {
+                name = n;
+                break;
+            }
+        }
+    }
+
+    if ( name.empty() )
         throw std::runtime_error( "Library not found: " + lib );
-    linker->linkArchive( libit->second );
+
+    auto buf = compiler.getFileBuffer( name );
+    if ( !buf )
+        throw std::runtime_error( "Cannot open library file: " + name );
+
+    return brick::llvm::ArchiveReader( std::move( buf ), context() );
+}
+
+void Compile::linkLib( std::string lib, std::vector< std::string > searchPaths ) {
+    auto archive = getLib( lib, std::move( searchPaths ) );
+    linker->linkArchive( archive );
 }
 
 void Compile::linkEssentials() {
     for ( auto e : { "dios", "abstract" } ) {
-        auto modules = libs.at( e ).modules();
+        auto archive = getLib( e );
+        auto modules = archive.modules();
         for ( auto it = modules.begin(); it != modules.end(); ++it )
             linker->link( it.take() );
     }

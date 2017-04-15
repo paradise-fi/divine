@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2016 Vladimír Štill
+// -*- C++ -*- (c) 2016-2017 Vladimír Štill
 #pragma once
 
 #include <divine/cc/clang.hpp>
@@ -30,8 +30,8 @@ struct Compile
     void compileAndLink( std::string path, std::vector< std::string > flags = {} );
     void compileAndLink( std::string path, Compiler::FileType type, std::vector< std::string > flags = {} );
 
-    void linkLibs( const std::vector< std::string > &libs );
-    void linkLib( std::string lib );
+    void linkLibs( std::vector< std::string > libs, std::vector< std::string > searchPaths = {} );
+    void linkLib( std::string lib, std::vector< std::string > searchPaths = {} );
     void linkEssentials();
 
     static const std::vector< std::string > defaultDIVINELibs;
@@ -67,24 +67,17 @@ struct Compile
     template< typename RT >
     void setupFS( RT each )
     {
-        each( [&]( auto path, auto c )
-              {
-                  if ( brick::string::endsWith( path, ".a" ) )
-                      setupLib( path, c );
-                  else
-                      compiler.mapVirtualFile( path, c );
-              } );
+        each( [&]( auto path, auto c ) { compiler.mapVirtualFile( path, c ); } );
     }
 
   private:
-    void setupLib( std::string name, std::string_view content );
+    brick::llvm::ArchiveReader getLib( std::string lib, std::vector< std::string > searchPaths = {} );
 
     Options opts;
     Compiler compiler;
     std::unique_ptr< brick::llvm::Linker > linker;
     std::vector< std::string > commonFlags; // set in CPP
     std::string runtimeVersMeta = "divine.compile.runtime.version";
-    std::map< std::string, brick::llvm::ArchiveReader > libs;
 };
 
 }

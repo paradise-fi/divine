@@ -457,5 +457,17 @@ std::unique_ptr< llvm::Module > Compiler::materializeModule( llvm::StringRef str
                 llvm::MemoryBufferRef( str, "module.bc" ), *ctx ).get() );
 }
 
+bool Compiler::fileExists( llvm::StringRef file )
+{
+    auto stat = overlayFS->status( file );
+    return stat && stat->exists();
+}
+
+std::unique_ptr< llvm::MemoryBuffer > Compiler::getFileBuffer( llvm::StringRef file )
+{
+    auto buf = overlayFS->getBufferForFile( file );
+    return buf ? std::move( buf.get() ) : nullptr;
+}
+
 } // namespace cc
 } // namespace divine

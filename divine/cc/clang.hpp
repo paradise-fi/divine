@@ -85,6 +85,9 @@ struct Compiler {
 
     std::shared_ptr< llvm::LLVMContext > context() { return ctx; }
 
+    bool fileExists( llvm::StringRef file );
+    std::unique_ptr< llvm::MemoryBuffer > getFileBuffer( llvm::StringRef file );
+
   private:
     template< typename CodeGenAction >
     std::unique_ptr< CodeGenAction > cc1( std::string filename,
