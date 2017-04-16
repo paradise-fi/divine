@@ -88,6 +88,7 @@ function(build_llvm)
 
     add_subdirectory( runtime/libunwind )
     add_subdirectory( runtime/libcxxabi )
+    set( LIBCXX_INCLUDE_BENCHMARKS OFF CACHE BOOL "" )
     add_subdirectory( runtime/libcxx )
   endif()
 endfunction()
