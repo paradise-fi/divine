@@ -29,6 +29,7 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <brick-assert>
+#include <brick-except>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -56,24 +57,19 @@
 namespace brick {
 namespace fs {
 
-struct SystemException : std::exception {
+struct SystemException : except::Error {
     // make sure we don't override errno accidentaly when constructing std::string
     explicit SystemException( std::string what ) : SystemException{ errno, what } { }
     explicit SystemException( const char *what ) : SystemException{ errno, what } { }
 
-    virtual const char *what() const noexcept override { return _what.c_str(); }
-
   private:
-    std::string _what;
-
-    explicit SystemException( int _errno, std::string what ) {
-        _what = "System error: " + std::string( std::strerror( _errno ) ) + ", when " + what;
-    }
+    explicit SystemException( int _errno, std::string what ) :
+        except::Error( "System error: " + std::string( std::strerror( _errno ) ) + ", when " + what )
+    { }
 };
 
-struct Exception : std::runtime_error {
-    explicit Exception( std::string what ) : std::runtime_error( what ) { }
-    explicit Exception( const char *what ) : std::runtime_error( what ) { }
+struct Exception : except::Error {
+    using except::Error::Error;
 };
 
 #if defined( __unix__ ) || defined( __APPLE__ ) || defined( __divine__ )
@@ -728,7 +724,7 @@ namespace {
 std::string readFile( std::ifstream &in, size_t length = std::numeric_limits< size_t >::max() )
 {
     if ( !in.is_open() )
-        throw std::runtime_error( "reading filestream" );
+        throw Exception( "reading filestream" );
 
     in.seekg( 0, std::ios::end );
     length = std::min< size_t >( length, in.tellg() );
@@ -745,7 +741,7 @@ std::string readFile( const std::string &file, size_t length = std::numeric_limi
 {
     std::ifstream in( file.c_str(), std::ios::binary );
     if ( !in.is_open() )
-        throw std::runtime_error( "reading file " + file );
+        throw Exception( "reading file " + file );
     return readFile( in, length );
 }
 
