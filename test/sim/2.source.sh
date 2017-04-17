@@ -10,6 +10,7 @@ EOF
 
 sim file.cpp <<EOF
 + ^# executing __boot at
+> source
 > start
 - ^# executing
 + ^# executing main at
