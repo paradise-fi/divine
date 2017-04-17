@@ -38,7 +38,7 @@ macro( mkobjs var flags )
         DEPENDS runtime-cc ${f} ${H_RUNTIME} ${H_DIVM}
         OUTPUT bc/${out}
         COMMAND mkdir -p bc
-        COMMAND runtime-cc ${CMAKE_CURRENT_BINARY_DIR} ${divine_SOURCE_DIR}
+        COMMAND runtime-cc ${divine_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
                            ${f} bc/${out} ${flags} )
     stringify( "runtime" "." ${f} )
   endforeach()
