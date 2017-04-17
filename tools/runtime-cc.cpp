@@ -26,10 +26,13 @@ int main( int argc, const char **argv )
         std::copy( argv + 5, argv + argc, std::back_inserter( opts ) );
         auto mod = clang.compileModule( argv[3], opts );
 
+        auto runtimeBase = fs::joinPath( srcDir, "runtime" );
+        if ( !fs::exists( runtimeBase ) )
+                runtimeBase = srcDir;
         lart::divine::rewriteDebugPaths( *mod, [=]( auto p ) {
                 std::string relpath;
-                if ( string::startsWith( p, srcDir ) )
-                    relpath = p.substr( srcDir.size() );
+                if ( string::startsWith( p, runtimeBase ) )
+                    relpath = p.substr( runtimeBase.size() );
                 else if ( string::startsWith( p, binDir ) )
                     relpath = p.substr( binDir.size() );
                 if ( !relpath.empty() ) {
