@@ -54,12 +54,12 @@ Compile::Compile( Options opts, std::shared_ptr< llvm::LLVMContext > ctx ) :
 {
     commonFlags = { "-D__divine__=4"
                   , "-isystem", rt::includeDir
-                  , "-isystem", joinPath( rt::includeDir, "libc/include" )
-                  , "-isystem", joinPath( rt::includeDir, "libc/internals" )
-                  , "-isystem", joinPath( rt::includeDir, "libm/include" )
                   , "-isystem", joinPath( rt::includeDir, "libcxx/include" )
                   , "-isystem", joinPath( rt::includeDir, "libcxxabi/include" )
                   , "-isystem", joinPath( rt::includeDir, "libunwind/include" )
+                  , "-isystem", joinPath( rt::includeDir, "libc/include" )
+                  , "-isystem", joinPath( rt::includeDir, "libc/internals" )
+                  , "-isystem", joinPath( rt::includeDir, "libm/include" )
                   , "-D_POSIX_C_SOURCE=2008098L"
                   , "-D_LITTLE_ENDIAN=1234"
                   , "-D_BYTE_ORDER=1234"
