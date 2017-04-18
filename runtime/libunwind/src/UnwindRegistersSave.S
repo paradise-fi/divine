@@ -87,6 +87,15 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
   xorl  %eax, %eax    # return UNW_ESUCCESS
   ret
 
+# elif defined(__mips__)
+
+#
+# extern int unw_getcontext(unw_context_t* thread_state)
+#
+# Just trap for the time being.
+DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+  teq $0, $0
+
 #elif defined(__ppc__)
 
 ;
@@ -254,11 +263,11 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
   stp    x22,x23, [x0, #0x0B0]
   stp    x24,x25, [x0, #0x0C0]
   stp    x26,x27, [x0, #0x0D0]
-  stp    x28,fp,  [x0, #0x0E0]
-  str    lr,      [x0, #0x0F0]
+  stp    x28,x29, [x0, #0x0E0]
+  str    x30,     [x0, #0x0F0]
   mov    x1,sp
   str    x1,      [x0, #0x0F8]
-  str    lr,      [x0, #0x100]    // store return address as pc
+  str    x30,     [x0, #0x100]    // store return address as pc
   // skip cpsr
   stp    d0, d1,  [x0, #0x110]
   stp    d2, d3,  [x0, #0x120]
@@ -300,13 +309,24 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
 @
   .p2align 2
 DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
-#if !defined(__ARM_ARCH_ISA_ARM)
-  stm r0, {r0-r7}
+#if !defined(__ARM_ARCH_ISA_ARM) && __ARM_ARCH_ISA_THUMB == 1
+  stm r0!, {r0-r7}
+  mov r1, r8
+  mov r2, r9
+  mov r3, r10
+  stm r0!, {r1-r3}
+  mov r1, r11
   mov r2, sp
   mov r3, lr
-  str r2, [r0, #52]
-  str r3, [r0, #56]
-  str r3, [r0, #60]  @ store return address as pc
+  str r1, [r0, #0]   @ r11
+  @ r12 does not need storing, it it the intra-procedure-call scratch register
+  str r2, [r0, #8]   @ sp
+  str r3, [r0, #12]  @ lr
+  str r3, [r0, #16]  @ store return address as pc
+  @ T1 does not have a non-cpsr-clobbering register-zeroing instruction.
+  @ It is safe to use here though because we are about to return, and cpsr is
+  @ not expected to be preserved.
+  movs r0, #0        @ return UNW_ESUCCESS
 #else
   @ 32bit thumb-2 restrictions for stm:
   @ . the sp (r13) cannot be in the list
@@ -315,13 +335,6 @@ DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
   str sp, [r0, #52]
   str lr, [r0, #56]
   str lr, [r0, #60]  @ store return address as pc
-#endif
-#if __ARM_ARCH_ISA_THUMB == 1
-  @ T1 does not have a non-cpsr-clobbering register-zeroing instruction.
-  @ It is safe to use here though because we are about to return, and cpsr is
-  @ not expected to be preserved.
-  movs r0, #0        @ return UNW_ESUCCESS
-#else
   mov r0, #0         @ return UNW_ESUCCESS
 #endif
   JMP(lr)
@@ -369,6 +382,8 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm9saveVFPv3EPy)
   vstmia r0, {d16-d31}
   JMP(lr)
 
+#if defined(_LIBUNWIND_ARM_WMMX)
+
 @
 @ static void libunwind::Registers_arm::saveiWMMX(unw_fpreg_t* values)
 @
@@ -376,8 +391,8 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm9saveVFPv3EPy)
 @  values pointer is in r0
 @
   .p2align 2
+  .arch armv5te
 DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm9saveiWMMXEPy)
-#if (!defined(__ARM_ARCH_6M__) && !defined(__ARM_ARCH_6SM__)) || defined(__ARM_WMMX)
   stcl p1, cr0, [r0], #8  @ wstrd wR0, [r0], #8
   stcl p1, cr1, [r0], #8  @ wstrd wR1, [r0], #8
   stcl p1, cr2, [r0], #8  @ wstrd wR2, [r0], #8
@@ -394,7 +409,6 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm9saveiWMMXEPy)
   stcl p1, cr13, [r0], #8  @ wstrd wR13, [r0], #8
   stcl p1, cr14, [r0], #8  @ wstrd wR14, [r0], #8
   stcl p1, cr15, [r0], #8  @ wstrd wR15, [r0], #8
-#endif
   JMP(lr)
 
 @
@@ -404,13 +418,58 @@ DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm9saveiWMMXEPy)
 @  values pointer is in r0
 @
   .p2align 2
+  .arch armv5te
 DEFINE_LIBUNWIND_PRIVATE_FUNCTION(_ZN9libunwind13Registers_arm16saveiWMMXControlEPj)
-#if (!defined(__ARM_ARCH_6M__) && !defined(__ARM_ARCH_6SM__)) || defined(__ARM_WMMX)
   stc2 p1, cr8, [r0], #4  @ wstrw wCGR0, [r0], #4
   stc2 p1, cr9, [r0], #4  @ wstrw wCGR1, [r0], #4
   stc2 p1, cr10, [r0], #4  @ wstrw wCGR2, [r0], #4
   stc2 p1, cr11, [r0], #4  @ wstrw wCGR3, [r0], #4
-#endif
   JMP(lr)
 
 #endif
+
+#elif defined(__or1k__)
+
+#
+# extern int unw_getcontext(unw_context_t* thread_state)
+#
+# On entry:
+#  thread_state pointer is in r3
+#
+DEFINE_LIBUNWIND_FUNCTION(unw_getcontext)
+  l.sw       0(r3), r0
+  l.sw       4(r3), r1
+  l.sw       8(r3), r2
+  l.sw      12(r3), r3
+  l.sw      16(r3), r4
+  l.sw      20(r3), r5
+  l.sw      24(r3), r6
+  l.sw      28(r3), r7
+  l.sw      32(r3), r8
+  l.sw      36(r3), r9
+  l.sw      40(r3), r10
+  l.sw      44(r3), r11
+  l.sw      48(r3), r12
+  l.sw      52(r3), r13
+  l.sw      56(r3), r14
+  l.sw      60(r3), r15
+  l.sw      64(r3), r16
+  l.sw      68(r3), r17
+  l.sw      72(r3), r18
+  l.sw      76(r3), r19
+  l.sw      80(r3), r20
+  l.sw      84(r3), r21
+  l.sw      88(r3), r22
+  l.sw      92(r3), r23
+  l.sw      96(r3), r24
+  l.sw     100(r3), r25
+  l.sw     104(r3), r26
+  l.sw     108(r3), r27
+  l.sw     112(r3), r28
+  l.sw     116(r3), r29
+  l.sw     120(r3), r30
+  l.sw     124(r3), r31
+#endif
+
+NO_EXEC_STACK_DIRECTIVE
+
