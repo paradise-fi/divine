@@ -83,7 +83,7 @@ std::vector< F > callPostorder( llvm::Module &m, std::vector< F > functions ) {
     auto fty = llvm::FunctionType::get( llvm::Type::getVoidTy( ctx ), false );
 
     auto c = m.getOrInsertFunction( "__callgraph_root", fty );
-    llvm::Function * root = llvm::cast< llvm::Function >( c );
+    auto root = llvm::cast< llvm::Function >( c );
 
     auto bb = llvm::BasicBlock::Create( ctx, "entry", root );
     llvm::IRBuilder<> irb( bb );
@@ -94,27 +94,20 @@ std::vector< F > callPostorder( llvm::Module &m, std::vector< F > functions ) {
         irb.CreateCall( f, args );
     }
 
-    std::vector< llvm::Function * > order;
+    std::vector< F > order;
     {
         llvm::CallGraph cg( m );
         auto node = cg[ root ];
-        for ( auto it = po_begin( node ); it != po_end( node ); ++it) {
-            auto fn = (*it)->getFunction();
-            if ( fn != nullptr && fn != root )
-                 order.push_back( fn );
-        }
+        order = query::query( po_begin( node ), po_end( node ) )
+            .map( [] ( auto fn ) { return fn->getFunction(); } )
+            .filter( [&] ( auto fn ) {
+                bool node = std::find( functions.begin(), functions.end(), fn ) != functions.end();
+                return fn != nullptr && fn != root && node;
+            } )
+            .freeze();
     }
-
     root->eraseFromParent();
-
-    auto filter = query::query( order )
-                  .filter( [&]( llvm::Function *fn ) {
-                      return std::find( functions.begin(), functions.end(), fn )
-                          != functions.end();
-                  } )
-                  .freeze();
-
-    return filter;
+    return order;
 }
 
 } // namespace analysis
