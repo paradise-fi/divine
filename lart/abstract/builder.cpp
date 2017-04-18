@@ -150,11 +150,15 @@ llvm::Value * AbstractBuilder::_process( llvm::Instruction * i ) {
 }
 
 llvm::Value * AbstractBuilder::_process( llvm::Argument * arg ) {
-    if ( types::isAbstract( arg->getType() ) )
-        _values[ arg ] = arg;
-    else
+    if ( !types::isAbstract( arg->getType() ) )
         store( arg->getType(), types::lift( arg->getType() ) );
-    return arg;
+
+    llvm::IRBuilder<> irb( arg->getParent()->front().begin() );
+    auto a = types::isAbstract( arg->getType() )
+           ? arg
+           : lift( arg, irb );
+    _values[ arg ] = a;
+    return a;
 }
 
 llvm::Value * AbstractBuilder::process( const FunctionNodePtr & node ) {
@@ -559,7 +563,7 @@ llvm::Function * AbstractBuilder::getStoredFn( llvm::Function * fn,
 {
 	if ( _functions.count( fn ) )
 	  for ( auto stored : _functions[ fn ] )
-		  if ( _detail::sameTypes( stored->getFunctionType()->params(), params ) )
+          if ( _detail::sameTypes( stored->getFunctionType()->params(), params ) )
 			  return stored;
 	return nullptr;
 }

@@ -90,7 +90,6 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
         // 4. copy function to declaration and handle function uses
         auto fn = node->function;
         auto & changed = declarations[ node ];
-
         if ( changed != fn ) {
             remove.push_back( fn );
             llvm::ValueToValueMapTy vmap;
