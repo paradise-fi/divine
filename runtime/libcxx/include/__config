@@ -30,7 +30,7 @@
 #define _LIBCPP_VERSION 4000
 
 #ifndef _LIBCPP_ABI_VERSION
-#define _LIBCPP_ABI_VERSION 1
+#define _LIBCPP_ABI_VERSION 2
 #endif
 
 #if defined(_LIBCPP_ABI_UNSTABLE) || _LIBCPP_ABI_VERSION >= 2
