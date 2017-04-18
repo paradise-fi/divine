@@ -67,23 +67,26 @@ DIVINE_UNRELAX_WARNINGS
 #include <set>
 #include <sstream>
 #include <algorithm>
-#include <experimental/string_view>
 
 #ifndef BRICKS_LLVM_LINK_STRIP_H
 #define BRICKS_LLVM_LINK_STRIP_H
 
+#if _LIBCPP_VERSION >= 4000
+#include <string_view>
+#else
+#include <experimental/string_view>
+namespace std { using experimental::string_view; }
+#endif
+
 namespace std {
-
-using experimental::string_view;
-
 template<>
 struct hash< llvm::StringRef > {
     size_t operator()( llvm::StringRef sr ) const {
         return hash< std::string_view >()( std::string_view( sr.data(), sr.size() ) );
     }
 };
-
 }
+
 
 namespace brick {
 

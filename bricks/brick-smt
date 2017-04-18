@@ -42,11 +42,12 @@
 #include <sstream>
 #include <functional>
 
+#if _LIBCPP_VERSION >= 4000
+#include <string_view>
+#else
 #include <experimental/string_view>
-
-namespace std {
-    using string_view = experimental::string_view;
-}
+namespace std { using experimental::string_view; }
+#endif
 
 namespace brick {
 namespace smt {
