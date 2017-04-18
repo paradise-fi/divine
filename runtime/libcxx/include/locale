@@ -199,6 +199,9 @@ template <class charT> class messages_byname;
 // include of <sys/cdefs.h> once https://sourceware.org/ml/newlib-cvs/2014-q3/msg00038.html
 // has had a chance to bake for a bit
 #include <support/newlib/xlocale.h>
+#elif defined(__divine__)
+#include <support/xlocale/__strtonum_fallback.h>
+#include <support/xlocale/__posix_l_fallback.h>
 #endif
 #ifdef _LIBCPP_HAS_CATOPEN
 #include <nl_types.h>

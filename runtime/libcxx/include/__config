@@ -551,7 +551,7 @@ namespace std {
 
 #endif // _LIBCPP_COMPILER_[CLANG|GCC|MSVC|IBM]
 
-#if defined(__ELF__)
+#if defined(__ELF__) || defined(__divine__)
 #define _LIBCPP_OBJECT_FORMAT_ELF   1
 #elif defined(__MACH__)
 #define _LIBCPP_OBJECT_FORMAT_MACHO 1
@@ -822,8 +822,9 @@ template <unsigned> struct __static_assert_check {};
 #define _LIBCPP_LOCALE__L_EXTENSIONS 1
 #endif
 
-#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(_NEWLIB_VERSION) && \
-    !defined(__CloudABI__)
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+// Most unix variants have catopen.  These are the specific ones that don't.
+#if !defined(__BIONIC__) && !defined(_NEWLIB_VERSION) && !defined(__divine__)
 #define _LIBCPP_HAS_CATOPEN 1
 #endif
 #endif
@@ -929,7 +930,8 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
     defined(__linux__) || \
     defined(__APPLE__) || \
     defined(__CloudABI__) || \
-    defined(__sun__)
+    defined(__sun__) || \
+    defined(__divine__)
 #   define _LIBCPP_HAS_THREAD_API_PTHREAD
 # elif defined(_LIBCPP_WIN32API)
 #  define _LIBCPP_HAS_THREAD_API_WIN32
@@ -1013,6 +1015,11 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
 #if defined(_LIBCPP_MSVCRT) || defined(_NEWLIB_VERSION)
 #define _LIBCPP_HAS_NO_OFF_T_FUNCTIONS
 #endif
+#endif
+
+#if defined(__divine__)
+#define _LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE 1
+#define _LIBCPP_HAS_NO_ALIGNED_ALLOCATION  1
 #endif
 
 #endif // __cplusplus
