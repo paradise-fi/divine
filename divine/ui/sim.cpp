@@ -115,6 +115,9 @@ struct Setup
     Setup() : debug_kernel( false ) {}
 };
 
+struct Down {};
+struct Up {};
+
 struct Exit {};
 struct Help { std::string _cmd; };
 
@@ -603,11 +606,46 @@ struct Interpreter
 
     void go( command::Inspect i )
     {
-        command::Show s;
-        s.var = i.var;
-        s.raw = i.raw;
-        go( s );
-        set( "$_", s.var );
+        go( command::Show( i ) );
+        set( "$_", i.var );
+    }
+
+    DN frame_up( DN frame ) {
+        auto fup = std::make_unique< DN >( frame );
+        if ( !_debug_kernel ) {
+            // TODO: obtain this through some DiOS API?
+            std::regex fault( "__dios.*fault_handler", std::regex::basic );
+            if ( frame._kind == vm::DNKind::Frame &&
+                    std::regex_search( frame.attribute( "symbol" ), fault  ) )
+                return get( "frame:deref", false, std::move( fup ), true );
+        }
+        return get( "caller", false, std::move( fup ) );
+    }
+
+    void go( command::Up ) {
+        auto current =  get( "$_" );
+        if ( current._kind != vm::DNKind::Frame )
+            throw brick::except::Error( "$_ not set to a frame, can't go up" );
+        try {
+            set( "$_", frame_up( current ) );
+        } catch ( brick::except::Error & ) {
+            throw brick::except::Error( "outermost frame selected, can't go up" );
+        }
+    }
+
+    void go( command::Down ) {
+        auto frame = get( "$top" ), prev = frame, current = get( "$_" );
+        if ( current._kind != vm::DNKind::Frame )
+            throw brick::except::Error( "$_ not set to a frame, can't go down" );
+        if ( frame == current )
+            throw brick::except::Error( "bottom (innermost) frame selected, can't go down" );
+
+        frame = frame_up( frame );
+        while ( frame != current ) {
+            prev = frame;
+            frame = frame_up( frame );
+        }
+        set( "$_", prev );
     }
 
     void go( command::Set s )
@@ -800,7 +838,9 @@ void Interpreter::command( cmd::Tokens tok )
         .command< command::Draw >( "draw a portion of the heap"s, varopts )
         .command< command::Setup >( "set configuration options"s, setupopts )
         .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
-        .command< command::BackTrace >( "show a stack trace"s, varopts );
+        .command< command::BackTrace >( "show a stack trace"s, varopts )
+        .command< command::Up >( "move up the stack (towards caller)"s )
+        .command< command::Down >( "move down the stack (towards callee)"s );
 
     try {
         auto cmd = parser.parse( tok.begin(), tok.end() );
