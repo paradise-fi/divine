@@ -10,7 +10,10 @@
 #   abidefines: A list of defines needed to compile libc++ with the ABI library
 #   abilib    : The ABI library to link against.
 #   abifiles  : A list of files (which may be relative paths) to copy into the
-#               libc++ build tree for the build.  These files will also be
+#               libc++ build tree for the build.  These files will be copied
+#               twice: once into include/, so the libc++ build itself can find
+#               them, and once into include/c++/v1, so that a clang built into
+#               the same build area will find them.  These files will also be
 #               installed alongside the libc++ headers.
 #   abidirs   : A list of relative paths to create under an include directory
 #               in the libc++ build directory.
@@ -21,14 +24,20 @@ macro(setup_abi_lib abidefines abilib abifiles abidirs)
     CACHE PATH
     "Paths to C++ ABI header directories separated by ';'." FORCE
     )
-
+  set(LIBCXX_CXX_ABI_LIBRARY_PATH "${LIBCXX_CXX_ABI_LIBRARY_PATH}"
+    CACHE PATH
+    "Paths to C++ ABI library directory"
+    )
   set(LIBCXX_CXX_ABI_LIBRARY ${abilib})
-
   set(LIBCXX_ABILIB_FILES ${abifiles})
 
-  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/include")
+  # The place in the build tree where we store out-of-source headers.
+  set(LIBCXX_BUILD_HEADERS_ROOT "${CMAKE_BINARY_DIR}/include/c++-build")
+  file(MAKE_DIRECTORY "${LIBCXX_BUILD_HEADERS_ROOT}")
+  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/include/c++/v1")
   foreach(_d ${abidirs})
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/include/${_d}")
+    file(MAKE_DIRECTORY "${LIBCXX_BUILD_HEADERS_ROOT}/${_d}")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/include/c++/v1/${_d}")
   endforeach()
 
   foreach(fpath ${LIBCXX_ABILIB_FILES})
@@ -39,13 +48,19 @@ macro(setup_abi_lib abidefines abilib abifiles abidirs)
         get_filename_component(dstdir ${fpath} PATH)
         get_filename_component(ifile ${fpath} NAME)
         file(COPY "${incpath}/${fpath}"
-          DESTINATION "${CMAKE_BINARY_DIR}/include/${dstdir}"
+          DESTINATION "${LIBCXX_BUILD_HEADERS_ROOT}/${dstdir}"
           )
-        install(FILES "${CMAKE_BINARY_DIR}/include/${fpath}"
-          DESTINATION include/c++/v1/${dstdir}
-          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+        file(COPY "${incpath}/${fpath}"
+          DESTINATION "${CMAKE_BINARY_DIR}/include/c++/v1/${dstdir}"
           )
-        list(APPEND abilib_headers "${CMAKE_BINARY_DIR}/include/${fpath}")
+        if (LIBCXX_INSTALL_HEADERS)
+          install(FILES "${LIBCXX_BUILD_HEADERS_ROOT}/${fpath}"
+            DESTINATION include/c++/v1/${dstdir}
+            COMPONENT libcxx
+            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+            )
+        endif()
+        list(APPEND abilib_headers "${LIBCXX_BUILD_HEADERS_ROOT}/${fpath}")
       endif()
     endforeach()
     if (NOT found)
@@ -53,11 +68,11 @@ macro(setup_abi_lib abidefines abilib abifiles abidirs)
     endif()
   endforeach()
 
-  add_custom_target(LIBCXX_CXX_ABI_DEPS DEPENDS ${abilib_headers})
-  include_directories("${CMAKE_BINARY_DIR}/include")
-
+  include_directories("${LIBCXX_BUILD_HEADERS_ROOT}")
 endmacro()
 
+
+# Configure based on the selected ABI library.
 if ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libstdc++" OR
     "${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libsupc++")
   set(_LIBSUPCXX_INCLUDE_FILES
@@ -95,9 +110,14 @@ elseif ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libcxxrt")
   setup_abi_lib("-DLIBCXXRT"
     "cxxrt" "cxxabi.h;unwind.h;unwind-arm.h;unwind-itanium.h" ""
     )
-elseif (NOT "${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "none")
+elseif ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "none")
+  list(APPEND LIBCXX_COMPILE_FLAGS "-D_LIBCPP_BUILDING_HAS_NO_ABI_LIBRARY")
+elseif ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "default")
+  # Nothing TODO
+else()
   message(FATAL_ERROR
-    "Currently libstdc++, libsupc++, libcxxabi, libcxxrt and none are "
-    "supported for c++ abi."
+    "Unsupported c++ abi: '${LIBCXX_CXX_ABI_LIBNAME}'. \
+     Currently libstdc++, libsupc++, libcxxabi, libcxxrt, default and none are
+     supported for c++ abi."
     )
 endif ()

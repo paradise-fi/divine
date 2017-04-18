@@ -12,11 +12,11 @@
 #include "exception"
 #include "new"
 
-#ifndef __has_include
-#define __has_include(inc) 0
-#endif
-
-#if defined(__APPLE__) && !defined(LIBCXXRT)
+#if defined(_LIBCPP_ABI_MICROSOFT)
+#include <eh.h>
+#include <corecrt_terminate.h>
+#elif defined(__APPLE__) && !defined(LIBCXXRT) && \
+    !defined(_LIBCPP_BUILDING_HAS_NO_ABI_LIBRARY)
   #include <cxxabi.h>
 
   using namespace __cxxabiv1;
@@ -29,16 +29,16 @@
     #define __terminate_handler  __cxxabiapple::__cxa_terminate_handler
     #define __unexpected_handler __cxxabiapple::__cxa_unexpected_handler
   #endif  // _LIBCPPABI_VERSION
-#elif defined(LIBCXXRT) || defined(LIBCXX_BUILDING_LIBCXXABI) || __has_include(<cxxabi.h>)
+#elif defined(LIBCXXRT) || defined(LIBCXX_BUILDING_LIBCXXABI)
   #include <cxxabi.h>
   using namespace __cxxabiv1;
   #if defined(LIBCXXRT) || defined(_LIBCPPABI_VERSION)
     #define HAVE_DEPENDENT_EH_ABI 1
   #endif
-#elif !defined(__GLIBCXX__) // __has_include(<cxxabi.h>)
-  static std::terminate_handler  __terminate_handler;
-  static std::unexpected_handler __unexpected_handler;
-#endif // __has_include(<cxxabi.h>)
+#elif !defined(__GLIBCXX__) // defined(LIBCXX_BUILDING_LIBCXXABI)
+  _LIBCPP_SAFE_STATIC static std::terminate_handler  __terminate_handler;
+  _LIBCPP_SAFE_STATIC static std::unexpected_handler __unexpected_handler;
+#endif // defined(LIBCXX_BUILDING_LIBCXXABI)
 
 namespace std
 {
@@ -49,13 +49,21 @@ namespace std
 unexpected_handler
 set_unexpected(unexpected_handler func) _NOEXCEPT
 {
-    return __sync_lock_test_and_set(&__unexpected_handler, func);
+#if defined(_LIBCPP_ABI_MICROSOFT)
+  return ::set_unexpected(func);
+#else
+  return __sync_lock_test_and_set(&__unexpected_handler, func);
+#endif
 }
 
 unexpected_handler
 get_unexpected() _NOEXCEPT
 {
-    return __sync_fetch_and_add(&__unexpected_handler, (unexpected_handler)0);
+#if defined(_LIBCPP_ABI_MICROSOFT)
+  return ::_get_unexpected();
+#else
+  return __sync_fetch_and_add(&__unexpected_handler, (unexpected_handler)0);
+#endif
 }
 
 _LIBCPP_NORETURN
@@ -70,13 +78,21 @@ unexpected()
 terminate_handler
 set_terminate(terminate_handler func) _NOEXCEPT
 {
-    return __sync_lock_test_and_set(&__terminate_handler, func);
+#if defined(_LIBCPP_ABI_MICROSOFT)
+  return ::set_terminate(func);
+#else
+  return __sync_lock_test_and_set(&__terminate_handler, func);
+#endif
 }
 
 terminate_handler
 get_terminate() _NOEXCEPT
 {
-    return __sync_fetch_and_add(&__terminate_handler, (terminate_handler)0);
+#if defined(_LIBCPP_ABI_MICROSOFT)
+  return ::_get_terminate();
+#else
+  return __sync_fetch_and_add(&__terminate_handler, (terminate_handler)0);
+#endif
 }
 
 #ifndef __EMSCRIPTEN__ // We provide this in JS
@@ -106,18 +122,22 @@ terminate() _NOEXCEPT
 #endif // !defined(LIBCXXRT) && !defined(_LIBCPPABI_VERSION)
 
 #if !defined(LIBCXXRT) && !defined(__GLIBCXX__) && !defined(__EMSCRIPTEN__)
+
 bool uncaught_exception() _NOEXCEPT { return uncaught_exceptions() > 0; }
 
 int uncaught_exceptions() _NOEXCEPT
 {
-#if defined(__APPLE__) || defined(_LIBCPPABI_VERSION)
+#if !defined(_LIBCPP_BUILDING_HAS_NO_ABI_LIBRARY) && \
+    (defined(__APPLE__) || defined(_LIBCPPABI_VERSION))
    // on Darwin, there is a helper function so __cxa_get_globals is private
 # if _LIBCPPABI_VERSION > 1101
     return __cxa_uncaught_exceptions();
 # else
     return __cxa_uncaught_exception() ? 1 : 0;
 # endif
-#else  // __APPLE__
+#elif defined(_LIBCPP_ABI_MICROSOFT)
+    return __uncaught_exceptions();
+#else
 #   if defined(_MSC_VER) && ! defined(__clang__)
         _LIBCPP_WARNING("uncaught_exceptions not yet implemented")
 #   else
