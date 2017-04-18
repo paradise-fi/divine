@@ -24,6 +24,7 @@
 #include <divine/cc/compile.hpp>
 #include <divine/rt/runtime.hpp>
 #include <brick-string>
+#include <brick-fs>
 
 #include <runtime/divine/stat.h>
 
@@ -206,10 +207,12 @@ void WithBC::setup()
 
     env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
 
+    auto magic = brick::fs::readFile( _file, 4 );
+    auto magicuc = reinterpret_cast< const unsigned char * >( magic.data() );
 
-    try {
+    if ( magic.size() == 4 && llvm::isBitcode( magicuc, magicuc + magic.size() ) )
         _bc = std::make_shared< vm::BitCode >( _file );
-    } catch ( vm::BCParseError &err ) /* probably not a bitcode file */
+    else if ( cc::Compiler::typeFromFile( _file ) != cc::Compiler::FileType::Unknown )
     {
         cc::Options ccopt;
         cc::Compile driver( ccopt );
@@ -227,6 +230,8 @@ void WithBC::setup()
         _bc = std::make_shared< vm::BitCode >(
             std::unique_ptr< llvm::Module >( driver.getLinked() ),
             driver.context() );
+    } else {
+        throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
     }
     _bc->environment( env );
     _bc->autotrace( _autotrace );
