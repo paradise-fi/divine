@@ -45,9 +45,9 @@
         #define _PDCLIB_CXX_VERSION 2011
     #endif
     /* TODO: Do we want this? */
-    #if _PDCLIB_C_VERSION < 2011
+    #if _PDCLIB_C_VERSION < 1999
         #undef _PDCLIB_C_VERSION
-        #define _PDCLIB_C_VERSION 2011
+        #define _PDCLIB_C_VERSION 1999
     #endif
 #elif __cplusplus == 199711L
    #define _PDCLIB_CXX_VERSION 1997
