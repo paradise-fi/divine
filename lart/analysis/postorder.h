@@ -24,12 +24,18 @@ namespace analysis {
 template< typename N >
 using Succs = std::function< std::vector< N > ( const N & ) >;
 
+
+template< typename Node >
+std::vector< Node > postorder_impl( const std::vector< Node >&, const Succs< Node > & );
+
 template< typename Node >
 std::vector< Node > roots( const std::vector< Node > & nodes, const Succs< Node > & succs ) {
     auto has_no_predecessor = [&] ( const auto & node ) {
         return query::query( nodes )
             .all( [&] ( const auto & n ) {
-                return query::query( succs( n ) )
+                if ( n == node )
+                    return true;
+                return query::query( postorder_impl( { n }, succs ) )
                     .none( [&] ( const auto & succ ) { return succ == node; } );
             } );
     };
@@ -39,11 +45,16 @@ std::vector< Node > roots( const std::vector< Node > & nodes, const Succs< Node 
 
 template< typename Node >
 std::vector< Node > postorder( const std::vector< Node > & nodes, const Succs< Node > & succs ) {
+    return postorder_impl( roots( nodes, succs ), succs );
+}
+
+template< typename Node >
+std::vector< Node > postorder_impl( const std::vector< Node > & roots, const Succs< Node > & succs ) {
     std::unordered_set< Node > visited;
     std::stack< std::pair< bool, Node > > stack;
     std::vector< Node > order;
 
-    for ( const auto & r : roots< Node >( nodes, succs ) )
+    for ( const auto & r : roots )
         stack.emplace( false, r );
 
     while ( !stack.empty() ) {
@@ -60,7 +71,6 @@ std::vector< Node > postorder( const std::vector< Node > & nodes, const Succs< N
 
         stack.emplace( true, node.second );
         for ( const auto & s : succs( node.second ) )
-            // TODO does not recognize that Node is already in visited
             if ( visited.find( s ) == visited.end() )
                 stack.emplace( false, s );
     }

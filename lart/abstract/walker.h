@@ -229,7 +229,7 @@ private:
         do {
             abstract = reached;
             ValueNodes nodes = { reached.begin(), reached.end() };
-            auto postorder = analysis::postorder< ValueNode >( nodes, value_succs );
+            auto postorder = values_postorder( nodes );
             for ( auto & a : allocas ) {
                 auto stores = query::query( postorder )
                     .filter( [&] ( const ValueNode & n ) {
@@ -316,7 +316,7 @@ private:
                     // other entries of function else add this entry to node directly
                     bool reachable = false;
                     if ( called ) {
-                       reachable = query::query( p->postorder() )
+                        reachable = query::query( p->postorder() )
                         .filter( [] ( const ValueNode & n ) {
                                 return llvm::isa< llvm::CallInst >( n.value );
                         } )

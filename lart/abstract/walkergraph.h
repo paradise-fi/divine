@@ -52,15 +52,26 @@ namespace abstract {
 
     using ValueNode = AnnotationNode< llvm::Value *, std::string >;
 
-    static std::vector< ValueNode > value_succs( const ValueNode & n ) {
-        if ( llvm::isa< llvm::CallInst >( n.value ) && !n.root )
-            return {};
-        return query::query( n.value->users() )
-            .map( [&] ( const auto & val ) { return ValueNode{ val, n.annotation, false }; } )
-            .freeze();
-    }
-}
-}
+    template< typename PassThrough >
+    auto value_succs( PassThrough & calls ) {
+        return [&calls] ( const ValueNode & n ) -> std::vector< ValueNode > {
+            bool pass = query::query( calls ).any( [n] ( const auto & node ) {
+                return n.value == node.value;
+            } );
+
+            if ( llvm::isa< llvm::CallInst >( n.value ) && !n.root && !pass )
+                return {};
+            return query::query( n.value->users() )
+                .map( [&] ( const auto & val ) { return ValueNode{ val, n.annotation, false }; } )
+                .freeze();
+        };
+    };
+
+    static std::vector< ValueNode > values_postorder( const std::vector< ValueNode >& entries ) {
+        return analysis::postorder< ValueNode >( entries, value_succs( entries ) );
+    };
+} // namespace abstract
+} // namespace lart
 
 namespace std {
     template<>
@@ -99,8 +110,7 @@ namespace abstract {
         }
 
         std::vector< ValueNode > postorder() const{
-            return analysis::postorder< ValueNode >( { entries.begin(), entries.end() },
-                                                     value_succs );
+            return values_postorder( { entries.begin(), entries.end() } );
         }
 
         void dump() const {
