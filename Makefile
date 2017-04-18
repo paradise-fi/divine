@@ -18,14 +18,13 @@ OBJ ?= $(PWD)/_build.
 EXTRA != if test "$(GENERATOR)" = Ninja && test -n "$(VERBOSE)"; then echo -v -d explain; fi; \
          if test -n "$(JOBS)"; then echo -j $(JOBS); fi
 
-TOOLDIR = $(OBJ)toolchain/
+TOOLDIR = $(OBJ)toolchain
 CLANG = $(TOOLDIR)/clang/
 RTBIN = $(TOOLDIR)/runtime
 RTSRC = $(PWD)/runtime
 
 LDFLAGS_ = -L$(RTBIN)/libunwind/src -Wl,-rpath,$(RTBIN)/libunwind/src \
-           -L$(RTBIN)/libcxxabi/src -Wl,-rpath,$(RTBIN)/libcxxabi/src \
-           -L$(RTBIN)/libcxx/lib -Wl,-rpath,$(RTBIN)/libcxx/lib \
+           -L$(TOOLDIR)/lib -Wl,-rpath,$(TOOLDIR)/lib \
 
 CXXFLAGS_ = -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include \
             -isystem $(RTSRC)/libunwind/include \
@@ -101,6 +100,9 @@ toolchain: $(OBJ)toolchain/stamp
 $(OBJ)toolchain/stamp:
 	mkdir -p $(OBJ)toolchain
 	cd $(OBJ)toolchain && $(CMAKE) $(PWD) $(toolchain_FLAGS) -G "$(GENERATOR)"
+	$(CMAKE) --build $(OBJ)toolchain --target unwind_static -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)toolchain --target cxxabi_static -- $(EXTRA)
+	$(CMAKE) --build $(OBJ)toolchain --target cxx_static -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target cxx -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target clang -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target compiler-rt -- $(EXTRA)
