@@ -106,11 +106,6 @@ void perror(const char* s);
 #pragma GCC system_header
 #endif
 
-// snprintf
-#if defined(_LIBCPP_MSVCRT)
-#include "support/win32/support.h"
-#endif
-
 #ifdef getc
 inline _LIBCPP_INLINE_VISIBILITY int __libcpp_getc(FILE* __stream) {return getc(__stream);}
 #undef getc
@@ -140,7 +135,6 @@ inline _LIBCPP_INLINE_VISIBILITY int __libcpp_ferror(FILE* __stream) { return fe
 #undef ferror
 inline _LIBCPP_INLINE_VISIBILITY int ferror(FILE* __stream) { return __libcpp_ferror(__stream); }
 #endif  // ferror
-
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 using ::FILE;
@@ -184,7 +178,7 @@ using ::perror;
 using ::fopen;
 using ::freopen;
 using ::remove;
-// using ::rename;
+using ::rename;
 using ::tmpfile;
 using ::tmpnam;
 #endif
@@ -193,7 +187,7 @@ using ::tmpnam;
 using ::getchar;
 #if _LIBCPP_STD_VER <= 11 && \
     (!defined(_VC_CRT_MAJOR_VERSION) || _VC_CRT_MAJOR_VERSION < 14)
-// using ::gets;
+using ::gets;
 #endif
 using ::scanf;
 using ::vscanf;
