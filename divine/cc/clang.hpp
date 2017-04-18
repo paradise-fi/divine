@@ -11,11 +11,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-assert>
 #include <brick-except>
 
-#include <experimental/string_view>
-
-namespace std {
-    using experimental::string_view;
-}
+#include <string_view>
 
 namespace divine {
 namespace cc {

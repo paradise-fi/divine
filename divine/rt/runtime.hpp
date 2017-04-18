@@ -20,14 +20,14 @@
 
 #include <brick-fs>
 #include <brick-string>
-#include <experimental/string_view>
+#include <string_view>
 
 namespace divine {
 namespace rt {
 
 using brick::fs::joinPath;
 using brick::string::endsWith;
-using std::experimental::string_view;
+using std::string_view;
 
 const std::string includeDir = "/divine/include";
 const std::string srcDir = "/divine/src";

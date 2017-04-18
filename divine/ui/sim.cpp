@@ -34,7 +34,7 @@
 
 namespace divine {
 
-namespace str::doc { extern const std::experimental::string_view manual_sim_md; }
+namespace str::doc { extern const std::string_view manual_sim_md; }
 
 namespace ui {
 
