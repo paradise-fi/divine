@@ -14,7 +14,7 @@ file( GLOB H_RUNTIME LIST_DIRECTORIES false
       libcxxabi/src/*.h libcxxabi/src/*.hpp libcxxabi/src/*.ipp
       libcxx/include/* libcxx/ext/* libcxx/include/experimental/*
       libcxx/src/*.h
-      libcxx/include/support/xlocale/xlocale.h libcxx/src/support/atomic_support.h
+      libcxx/include/support/xlocale/*.h libcxx/src/support/atomic_support.h
       libunwind/include/* libunwind/include/mach-o/* dios/filesystem/*.h )
 
 file( GLOB SRC_libdios
@@ -83,12 +83,12 @@ mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;-std=c++14;-I${CMAKE_CURRENT_BINARY_D
 mkobjs( libm "${flags}" )
 
 list( APPEND flags -std=c++14 )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/include )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
+list( INSERT flags 0 -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include
+                     -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/include
+                     -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
 
 mkobjs( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
-mkobjs( libcxx    "${flags};-D_LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE" )
+mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXABI" )
 
 list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks)
 list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem -I${CMAKE_CURRENT_BINARY_DIR}
