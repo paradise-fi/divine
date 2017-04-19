@@ -51,21 +51,23 @@ void SubstitutionBuilder::process( llvm::Argument * arg ) {
     _values[ arg ] = arg;
 }
 
-void SubstitutionBuilder::process( llvm::Function * fn ) {
+llvm::Function * SubstitutionBuilder::process( llvm::Function * fn ) {
     std::vector < llvm::Type * > types;
     for ( auto &arg : fn->args() ) {
         auto t = types::isAbstract( arg.getType() )
-               ? abstraction->abstract( arg.getType() )
-               : arg.getType();
+               ? abstraction->abstract( arg.getType() ) : arg.getType();
         types.push_back( t );
     }
     auto rty = fn->getFunctionType()->getReturnType();
     auto arty = types::isAbstract( rty ) ? abstraction->abstract( rty ) : rty;
     auto fty = llvm::FunctionType::get( arty, types, fn->getFunctionType()->isVarArg() );
     auto newfn = cloneFunction( fn, fty );
-
     assert( !_functions.count( fn ) );
+    for ( auto & arg : newfn->args() )
+        if ( abstraction->is( arg.getType() ) )
+            process( &arg );
     _functions[ fn ] = newfn;
+    return newfn;
 }
 
 void SubstitutionBuilder::changeCallFunction( llvm::CallInst * call ) {

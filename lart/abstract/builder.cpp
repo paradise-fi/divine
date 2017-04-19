@@ -40,7 +40,6 @@ namespace _detail{
 
 	auto remapArgs( const llvm::CallInst * i,
 			        const std::map< llvm::Value *, llvm::Value * > & _values )
-	             -> std::vector< llvm::Value * >
 	{
 		std::vector< llvm::Value * > args;
 		for ( auto & op : i->arg_operands() ) {
@@ -50,11 +49,11 @@ namespace _detail{
 		return args;
 	}
 
-    auto liftsOf( llvm::Instruction * i ) ->  std::vector< llvm::CallInst * > {
+    auto liftsOf( llvm::Instruction * i ) {
         return query::query( i->users() )
                      .map( query::llvmdyncast< llvm::CallInst > )
                      .filter( query::notnull )
-                     .filter( [&]( llvm::CallInst * call ) {
+                     .filter( []( llvm::CallInst * call ) {
                          return intrinsic::isLift( call );
                      } ).freeze();
     }

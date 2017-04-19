@@ -32,7 +32,7 @@ struct SubstitutionBuilder {
 
     void process( llvm::Instruction * );
     void process( llvm::Argument * );
-    void process( llvm::Function * );
+    llvm::Function * process( llvm::Function * );
 
     void clean( llvm::Function * );
     void clean( llvm::Module & );
