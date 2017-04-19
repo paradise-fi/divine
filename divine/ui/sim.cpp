@@ -92,7 +92,13 @@ struct Show : WithVar
     Show() : raw( false ), depth( 10 ), deref( 0 ) {}
 };
 
-struct Draw : WithVar {};
+struct Dot : WithVar {
+    std::string type = "none";
+    std::string output_file;
+};
+struct Draw : Dot {
+    Draw() { type = "x11"; }
+};
 
 struct Inspect : Show {};
 struct BitCode : WithFrame {};
@@ -598,10 +604,23 @@ struct Interpreter
             dn.format( std::cerr, cmd.depth, cmd.deref );
     }
 
-    void go( command::Draw cmd )
+    void go( command::Dot cmd )
     {
         std::string dot = dotDN( get( cmd.var ), true );
-        brick::proc::spawnAndWait( brick::proc::StdinString( dot ), "dot", "-Tx11" );
+        std::string out;
+        if ( cmd.type == "none" )
+            out = dot;
+        else {
+            auto r = brick::proc::spawnAndWait( brick::proc::StdinString( dot ) | brick::proc::CaptureStdout,
+                                                "dot", "-T" + cmd.type );
+            if ( !r )
+                std::cerr << "ERROR: dot failed" << std::endl;
+            out = r.out();
+        }
+        if ( !cmd.output_file.empty() )
+            brick::fs::writeFile( cmd.output_file, out );
+        else
+            std::cout << out << std::endl;
     }
 
     void go( command::Inspect i )
@@ -817,6 +836,11 @@ void Interpreter::command( cmd::Tokens tok )
     auto o_trace = cmd::make_option_set< command::Trace >( v )
         .option( "[--from {string}]", &command::Trace::from,
                  "start in a given state, instead of initial"s );
+    auto dotopts = cmd::make_option_set< command::Dot >( v )
+        .option( "[-T{string}|-T {string}]", &command::Dot::type,
+                 "type of output (none,ps,svg,png…)"s )
+        .option( "[-o{string}|-o {string}]", &command::Dot::output_file,
+                "file to write output to"s );
 
     auto parser = cmd::make_parser( v )
         .command< command::Exit >( "exit from divine"s )
@@ -836,6 +860,7 @@ void Interpreter::command( cmd::Tokens tok )
                                     &command::Trace::choices, o_trace )
         .command< command::Show >( "show an object"s, varopts, showopts )
         .command< command::Draw >( "draw a portion of the heap"s, varopts )
+        .command< command::Dot >( "draw a portion of the heap to a file of given type"s, varopts, dotopts )
         .command< command::Setup >( "set configuration options"s, setupopts )
         .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
         .command< command::BackTrace >( "show a stack trace"s, varopts )
