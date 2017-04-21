@@ -3,14 +3,35 @@ Installation
 
 This section is only relevant when you are installing from source.  We will
 assume that you have obtained a source tarball from <http://divine.fi.muni.cz>,
-eg. `divine-4.0.tar.gz`.
+eg. `divine-@version@.tar.gz`.
+
+DIVINE can be built on Linux and possibly on other POSIX-compatible systems
+including macOS (not tested). There is currently no support for DIVINE on
+Windows. If you do not want to build DIVINE from sources, you can download a
+virtual machine image with pre-built DIVINE.
 
 Prerequisites
 -------------
 
-To build DIVINE from source, you will need the following:
+### Automatic Installation
+
+If you use recent Ubuntu, Fedora or Arch Linux (or possibly another distribution
+which uses `apt-get`, `yum` or `pacman` as a package manager) the easiest way to
+get dependencies of DIVINE is to run `make prerequisites` in the directory with
+the sources (you will need to have `make` installed):
+
+```{.bash}
+$ tar xvzf divine-@version@.tar.gz
+$ cd divine-@version@
+$ make prerequisites
+```
+
+### Manual Installation
+
+Otherwise, to build DIVINE, you will need the following:
 
 * A POSIX-compatible operating system,
+* Make,
 * GNU C++ (4.9 or newer) or clang (3.2 or newer),
 * CMake \[[www.cmake.org](http://www.cmake.org)\] 3.2 or newer,
 * libedit \[[thrysoee.dk/editline](http://thrysoee.dk/editline/)\],
@@ -24,17 +45,13 @@ Additionally, DIVINE can make use of the following optional components:
 * pandoc \[[pandoc.org](http://pandoc.org)\] for formatting the manual (HTML
   and PDF with pdflatex).
 
-It should be possible to install most of the prerequisites automatically using
-`make prerequisites` on any Linux which uses `apt-get`, `yum` or `pacman`
-package manager.
-
 Building & Installing
 ---------------------
 
 First, unzip the distribution tarball and enter the newly created directory
 
-    $ tar xvzf divine-4.0.tar.gz
-    $ cd divine-4.0
+    $ tar xvzf divine-@version@.tar.gz
+    $ cd divine-@version@
 
 The build is driven by a Makefile, and should be fully automatic. You only need
 to run:
@@ -51,6 +68,8 @@ You can now run DIVINE from its build directory, or you can optionally install
 it by issuing
 
     $ make install
+
+This will install DIVINE and its version of LLVM into `/opt/divine/`.
 
 You can also run the test-suite if you like:
 
