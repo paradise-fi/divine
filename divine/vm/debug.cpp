@@ -363,7 +363,8 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
 template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
 {
-    ASSERT_EQ( _kind, DNKind::Frame );
+    if ( _kind != DNKind::Frame )
+        throw brick::except::Error( "cannot display bitcode, not a stack frame" );
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     CodePointer iter = pc(), origpc = pc();
     auto &prog = _ctx.program();
@@ -389,7 +390,8 @@ void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
 template< typename Prog, typename Heap >
 void DebugNode< Prog, Heap >::source( std::ostream &out )
 {
-    ASSERT_EQ( _kind, DNKind::Frame );
+    if ( _kind != DNKind::Frame )
+        throw brick::except::Error( "cannot display source code, not a stack frame" );
     out << print::source( subprogram(), _ctx.program(), pc() );
 }
 
