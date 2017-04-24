@@ -60,6 +60,16 @@ static std::vector< ValueNode > getAbstractAnnotations( llvm::Module * m ) {
     }
 	return annotations;
 }
+
+template< typename I >
+auto instructions( llvm::Function * fn ) {
+    return query::query( *fn ).flatten()
+        .map( query::refToPtr )
+        .map( query::llvmdyncast< I > )
+        .filter( query::notnull )
+        .freeze();
+};
+
 } // anonymous namespace
 
 template< typename Preprocess, typename Node >
@@ -220,35 +230,41 @@ private:
         Entries reached = { node->entries };
         Entries abstract;
 
-        auto allocas = query::query( *node->function ).flatten()
-            .map( query::refToPtr )
-            .filter( []( llvm::Value * v ) { return llvm::isa< llvm::AllocaInst >( v ); } )
-            .map( []( llvm::Value * v ) { return ValueNode{ v, "alloca", true }; } )
-            .freeze();
+        auto allocas = query::query( instructions< llvm::AllocaInst >( node->function ) )
+            .map( []( llvm::Value * v ) { return ValueNode{ v, "alloca", true }; } ).freeze();
+        auto geps = query::query( instructions< llvm::GetElementPtrInst >( node->function ) )
+            .map( []( llvm::Value * v ) { return ValueNode{ v, "gep", true }; } ).freeze();
+
+        auto Accesses = [] ( const auto & v, const auto & insts ) {
+            return query::query( insts )
+                .filter( [&] ( const ValueNode & n ) {
+                    if ( auto s = llvm::dyn_cast< llvm::StoreInst >( n.value ) )
+                        return s->getPointerOperand() == v.value;
+                    if ( auto l = llvm::dyn_cast< llvm::LoadInst >( n.value ) )
+                        return l->getPointerOperand() == v.value;
+                    return false;
+                } ).freeze();
+        };
+
+        auto MapAccessed = [&] ( auto & insts, auto & postorder, auto functor ) {
+            for ( auto & i : insts ) {
+                auto accs = Accesses( i, postorder );
+                if ( accs.size() )
+                    functor( i, accs );
+            }
+        };
 
         do {
             abstract = reached;
             ValueNodes nodes = { reached.begin(), reached.end() };
             auto postorder = values_postorder( nodes );
-            for ( auto & a : allocas ) {
-                auto stores = query::query( postorder )
-                    .filter( [&] ( const ValueNode & n ) {
-                        if ( auto s = llvm::dyn_cast< llvm::StoreInst >( n.value ) )
-                            return s->getPointerOperand() == a.value;
-                        return false;
-                    } ).freeze();
-                auto loads = query::query( postorder )
-                    .filter( [&] ( const ValueNode & n ) {
-                        if ( auto l = llvm::dyn_cast< llvm::LoadInst >( n.value ) )
-                            return l->getPointerOperand() == a.value;
-                        return false;
-                    } ).freeze();
 
-                if ( loads.size() || stores.size() ) {
-                    a.annotation = loads.size() ? loads[0].annotation : stores[0].annotation;
-                    reached.insert( a );
+            MapAccessed( allocas, postorder,
+                [&] ( ValueNode & n, auto & accesses ) {
+                     n.annotation = accesses[0].annotation;
+                     reached.insert( n );
                 }
-            }
+            );
         } while ( abstract != reached );
         return abstract;
     }
