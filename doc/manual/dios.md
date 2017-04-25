@@ -1,4 +1,4 @@
-# DiOS, DIVINE's Operating System
+# DiOS, DIVINE's Operating System {#dios}
 
 Programs traditionally rely on a wide array of services provided by their
 runtime environment (that is, a combination of libraries, the operating system

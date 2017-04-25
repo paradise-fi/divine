@@ -1,4 +1,4 @@
-# Interactive Debugging
+# Interactive Debugging {#sim}
 
 DIVINE comes with an interactive debugger, available as `divine sim`. The
 debugger loads programs the same way `verify` and other DIVINE commands do, so
