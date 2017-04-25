@@ -656,11 +656,12 @@ struct Interpreter
         auto frame = get( "$top" ), prev = frame, current = get( "$_" );
         if ( current._kind != vm::DNKind::Frame )
             throw brick::except::Error( "$_ not set to a frame, can't go down" );
-        if ( frame == current )
+        if ( frame.address() == current.address() )
             throw brick::except::Error( "bottom (innermost) frame selected, can't go down" );
 
         frame = frame_up( frame );
-        while ( frame != current ) {
+        while ( frame.address() != current.address() )
+        {
             prev = frame;
             frame = frame_up( frame );
         }
