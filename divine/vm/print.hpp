@@ -178,6 +178,7 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
             case HypercallObjShared: op += ".obj.shared"; break;
             case HypercallObjResize: op += ".obj.resize"; break;
             case HypercallObjSize: op += ".obj.size"; break;
+            case HypercallObjClone: op += ".obj.clone"; break;
 
             default: UNREACHABLE( "unexpected debug opcode" ); break;
         }

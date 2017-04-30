@@ -306,6 +306,8 @@ Hypercall Program::hypercall( llvm::Function *f )
         return HypercallObjResize;
     if ( name == "__vm_obj_size" )
         return HypercallObjSize;
+    if ( name == "__vm_obj_clone" )
+        return HypercallObjClone;
 
     if ( f->getIntrinsicID() != llvm::Intrinsic::not_intrinsic )
         return NotHypercallButIntrinsic;

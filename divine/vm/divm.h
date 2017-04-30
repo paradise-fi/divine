@@ -308,6 +308,7 @@ void  __vm_obj_resize( void *ptr, int size ) NOTHROW NATIVE_VISIBLE;
 void  __vm_obj_shared( void *ptr ) NOTHROW NATIVE_VISIBLE;
 void  __vm_obj_free( void *ptr ) NOTHROW NATIVE_VISIBLE;
 int   __vm_obj_size( const void * ) NOTHROW NATIVE_VISIBLE;
+void *__vm_obj_clone( const void * ) NOTHROW NATIVE_VISIBLE;
 
 /*
  * Pass a syscall through the VM to the host system. The parameters must

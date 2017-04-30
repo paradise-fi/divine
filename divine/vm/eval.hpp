@@ -1230,6 +1230,15 @@ struct Eval
                     result( IntV( heap().size( ptr ) ) );
                 return;
             }
+            case HypercallObjClone:
+            {
+                auto ptr = operandCk< PointerV >( 0 ).cooked();
+                if ( !heap().valid( ptr ) )
+                    fault( _VM_F_Hypercall ) << "invalid pointer " << ptr << " passed to __vm_obj_clone";
+                else
+                    result( PointerV( heap::clone( heap(), heap(), ptr ) ) );
+                return;
+            }
             default:
                 UNREACHABLE_F( "unknown hypercall %d", instruction().subcode );
         }

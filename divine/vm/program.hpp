@@ -70,7 +70,8 @@ enum Hypercall /* see divine.h for prototypes & documentation */
     HypercallObjFree,
     HypercallObjShared,
     HypercallObjResize,
-    HypercallObjSize
+    HypercallObjSize,
+    HypercallObjClone
 };
 
 enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1, OpBB, OpDbg, OpArgs };
