@@ -5,7 +5,7 @@
  */
 
 /*
- * (c) 2014-2015 Vladimír Štill <xstill@fi.muni.cz>
+ * (c) 2014-2017 Vladimír Štill <xstill@fi.muni.cz>
  */
 
 /* Redistribution and use in source and binary forms, with or without
@@ -62,8 +62,10 @@ struct RMap : std::map< K, V > {
 
 template< typename A, typename B > struct Bimap;
 
+namespace _impl {
+
 template< typename A, typename B >
-struct _BimapIx {
+struct BimapIx {
 
     B operator[]( const A &key ) const { return self().left()[ key ]; }
     A operator[]( const B &key ) const { return self().right()[ key ]; }
@@ -75,10 +77,12 @@ struct _BimapIx {
 };
 
 template< typename A >
-struct _BimapIx< A, A > { };
+struct BimapIx< A, A > { };
+
+}
 
 template< typename A, typename B >
-struct Bimap : _BimapIx< A, B > {
+struct Bimap : _impl::BimapIx< A, B > {
     using value_type = std::pair< const A, const B >;
 
     static_assert( std::is_same< value_type,
@@ -147,13 +151,7 @@ namespace uninitialized {
     }
 
     template< typename T, typename ForwardIt >
-    auto construct( ForwardIt, ForwardIt ) ->
-        typename std::enable_if< std::is_trivially_default_constructible< T >::value >::type
-    { }
-
-    template< typename T, typename ForwardIt >
-    auto construct( ForwardIt first, ForwardIt last ) ->
-        typename std::enable_if< !std::is_trivially_default_constructible< T >::value >::type
+    void construct( ForwardIt first, ForwardIt last )
     {
         ForwardIt current = first;
         try {
