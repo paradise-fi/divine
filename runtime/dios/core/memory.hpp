@@ -80,7 +80,7 @@ struct AllocatorBase {
 
     template< typename U, typename... Args >
     void construct( U *p, Args &&... args ) {
-        ::new( p ) U( std::forward< Args >( args )... );
+        ::new( (void *)p ) U( std::forward< Args >( args )... );
     }
 
     template< typename U >
