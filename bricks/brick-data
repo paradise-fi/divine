@@ -46,6 +46,7 @@
 #define BRICK_DATA_H
 
 namespace brick {
+namespace t_data { struct TestIntervalSet; } /* forward declare for friend declarations */
 namespace data {
 
 template< typename K, typename V >
@@ -131,6 +132,120 @@ struct Bimap : _impl::BimapIx< A, B > {
     }
     static std::pair< const B, const A > swap( std::pair< const A, const B > &&pair ) {
         return { std::move( pair.second ), std::move( pair.first ) };
+    }
+};
+
+// a set for efficient storage of intervals [a, b) (i.e. from is inclusive,
+// while to is exclusive)
+template< typename T, typename Cmp = std::less< T > >
+struct IntervalSet
+{
+    using value_type = std::pair< T, T >;
+    using map = std::map< T, T, Cmp >;
+    using iterator = typename map::const_iterator;
+    using const_iterator = iterator;
+
+    struct Inserted {
+        Inserted( bool was_contained, bool had_intersection ) :
+            was_contained( was_contained ), had_intersection( had_intersection )
+        { }
+
+        bool was_contained;
+        bool had_intersection;
+    };
+
+    Inserted insert( value_type v ) {
+        ASSERT( _less( v.first, v.second ) );
+
+        typename map::iterator next = _map.upper_bound( v.first ),
+                 prev = next == _map.begin() ? next : std::prev( next );
+        if ( ( next == prev || _less( prev->second, v.first ))
+                 && ( next == _map.end() || _less( v.second, next->first ) ) )
+        {
+            _map[ v.first ] = v.second;
+            return { false, false };
+        }
+
+        if ( _subset( v, *prev ) )
+            return { true, true };
+
+        Inserted i = { false, false };
+        if ( prev != next && _leq( v.first, prev->second ) )
+            i.had_intersection = _less( v.first, prev->second );
+        else
+            prev = _map.insert( next, { v.first, next->second } );
+
+        while ( next != _map.end() && _leq( next->first, v.second ) ) {
+            i.had_intersection |= _less( next->first, v.second );
+            prev->second = next->second;
+            _map.erase( next++ );
+        }
+        if ( _less( prev->second, v.second ) )
+            prev->second = v.second;
+        return i;
+    }
+
+    Inserted insert( T first, T second ) { return insert( { first, second } ); }
+
+    const_iterator find( T val ) const {
+        auto it = _map.upper_bound( val );
+        if ( it == _map.begin() )
+            return _map.end();
+        --it;
+        if ( _less( it->second, val ) )
+            return _map.end();
+        return it;
+    }
+
+    size_t count( T val ) const {
+        return find( val ) != _map.end();
+    }
+
+    bool empty() const { return _map.empty(); }
+    size_t size() const { return _map.size(); }
+
+    void clear() { _map.clear(); }
+
+    const_iterator begin() const { return _map.begin(); }
+    const_iterator cbegin() const { return _map.begin(); }
+
+    const_iterator end() const { return _map.end(); }
+    const_iterator cend() const { return _map.end(); }
+
+  private:
+    friend struct brick::t_data::TestIntervalSet;
+
+    map _map;
+
+    void _validate() {
+        bool prevSet = false;
+        T prev;
+        for ( const auto &p : _map ) {
+            ASSERT( _less( p.first, p.second ) );
+            ASSERT( !prevSet || _less( prev, p.first ) );
+            prev = p.second;
+            prevSet = true;
+        }
+    }
+
+    static bool _less( const T &a, const T &b ) {
+        return Cmp()( a, b );
+    }
+
+    static bool _eq( const T &a, const T &b ) {
+        return !_less( a, b ) && !_less( b, a );
+    }
+
+    static bool _geq( const T &a, const T &b ) {
+        return !_less( a, b );
+    }
+
+    static bool _leq( const T &a, const T &b ) {
+        return _geq( b, a );
+    }
+
+    static bool _subset( const value_type &a, const value_type &b ) {
+        return _geq( a.first, b.first ) && _leq( a.second, b.second );
     }
 };
 
@@ -440,6 +555,296 @@ struct BimapTest {
             Bimap< int, int > bim{ { 2, 42 }, { 1, 42 } };
             ASSERT( false );
         } catch ( std::invalid_argument & ) { }
+    }
+};
+
+struct TestIntervalSet {
+
+    TEST(disjoint_insert) {
+        IntervalSet< int > set;
+        ASSERT( set.empty() );
+        ASSERT_EQ( set.size(), 0 );
+        set._validate();
+
+        auto i = set.insert( 0, 1 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 1 );
+        set._validate();
+
+        // before
+        i = set.insert( -10, -8 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 2 );
+        set._validate();
+
+        // after
+        i = set.insert( 8, 12 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 3 );
+        set._validate();
+
+        // inbetween
+        i = set.insert( 3, 5 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 4 );
+        set._validate();
+
+        // close to, but not overlaping
+        i = set.insert( -7, -6 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 5 );
+        set._validate();
+
+        // close to, but not overlaping
+        i = set.insert( -3, -1 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 6 );
+        set._validate();
+
+        // close to end
+        i = set.insert( 13, 15 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 7 );
+        set._validate();
+    }
+
+    TEST(overlap_inserts) {
+        IntervalSet< int > set;
+        ASSERT( set.empty() );
+        ASSERT_EQ( set.size(), 0 );
+        set._validate();
+
+        // no overlap
+        auto i = set.insert( 4, 8 );
+        ASSERT( !set.empty() );
+        ASSERT_EQ( set.size(), 1 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 4 );
+        ASSERT_EQ( set.find( 5 )->second, 8 );
+
+        // no overlap, after end
+        i = set.insert( 32, 35 );
+        ASSERT( !set.empty() );
+        ASSERT_EQ( set.size(), 2 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        set._validate();
+        ASSERT_EQ( set.find( 34 )->first, 32 );
+        ASSERT_EQ( set.find( 34 )->second, 35 );
+
+        // overlaps with end
+        i = set.insert( 5, 10 );
+        ASSERT( !set.empty() );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 2 );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 4 );
+        ASSERT_EQ( set.find( 5 )->second, 10 );
+
+        // subset
+        i = set.insert( 5, 8 );
+        ASSERT( !set.empty() );
+        ASSERT( i.had_intersection );
+        ASSERT( i.was_contained );
+        ASSERT_EQ( set.size(), 2 );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 4 );
+        ASSERT_EQ( set.find( 5 )->second, 10 );
+
+        // the same
+        i = set.insert( 4, 10 );
+        ASSERT( !set.empty() );
+        ASSERT( i.had_intersection );
+        ASSERT( i.was_contained );
+        ASSERT_EQ( set.size(), 2 );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 4 );
+        ASSERT_EQ( set.find( 5 )->second, 10 );
+
+        // overlaps with begin
+        i = set.insert( 30, 35 );
+        ASSERT( !set.empty() );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 2 );
+        set._validate();
+        ASSERT_EQ( set.find( 34 )->first, 30 );
+        ASSERT_EQ( set.find( 34 )->second, 35 );
+
+        // right after end
+        i = set.insert( 10, 12 );
+        ASSERT( !set.empty() );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 2 );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 4 );
+        ASSERT_EQ( set.find( 5 )->second, 12 );
+
+        // right before end
+        i = set.insert( 25, 30 );
+        ASSERT( !set.empty() );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 2 );
+        set._validate();
+        ASSERT_EQ( set.find( 34 )->first, 25 );
+        ASSERT_EQ( set.find( 34 )->second, 35 );
+
+        // inbetween
+        i = set.insert( 15, 20 );
+        ASSERT( !set.empty() );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 3 );
+        set._validate();
+        ASSERT_EQ( set.find( 16 )->first, 15 );
+        ASSERT_EQ( set.find( 16 )->second, 20 );
+
+        // two sided overlap
+        i = set.insert( 10, 16 );
+        ASSERT( !set.empty() );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 2 );
+        set._validate();
+        ASSERT_EQ( set.find( 16 )->first, 4 );
+        ASSERT_EQ( set.find( 16 )->second, 20);
+
+        // right inbetween
+        i = set.insert( 20, 25 );
+        ASSERT( !set.empty() );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 1 );
+        set._validate();
+        ASSERT_EQ( set.find( 16 )->first, 4 );
+        ASSERT_EQ( set.find( 16 )->second, 35 );
+
+        // no overlap, before fisrt
+        i = set.insert( -5, -2 );
+        ASSERT( !set.empty() );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.size(), 2 );
+        set._validate();
+
+        // spanning multiple succeeding with start overlap
+        set.insert( 40, 45 );
+        set.insert( 50, 55 );
+        set.insert( 60, 65 );
+        ASSERT_EQ( set.size(), 5 );
+        i = set.insert( 30, 70 );
+        ASSERT_EQ( set.size(), 2 );
+        ASSERT( !set.empty() );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.find( 16 )->first, 4 );
+        ASSERT_EQ( set.find( 16 )->second, 70 );
+        set._validate();
+
+        // spanning multiple succeeding without start overlap
+        set.insert( 80, 85 );
+        set.insert( 90, 95 );
+        set.insert( 100, 105 );
+        ASSERT_EQ( set.size(), 5 );
+        i = set.insert( 75, 102 );
+        ASSERT_EQ( set.size(), 3 );
+        ASSERT( !set.empty() );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.find( 80 )->first, 75 );
+        ASSERT_EQ( set.find( 80 )->second, 105 );
+        set._validate();
+
+        // the same but the inserted subsumes all in between and adds to them
+        i = set.insert( 2, 110 );
+        ASSERT_EQ( set.size(), 2 );
+        ASSERT( !set.empty() );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        ASSERT_EQ( set.find( 80 )->first, 2 );
+        ASSERT_EQ( set.find( 80 )->second, 110 );
+        set._validate();
+    }
+
+    auto overlap_start() {
+        IntervalSet< int > set;
+        ASSERT( set.empty() );
+        ASSERT_EQ( set.size(), 0 );
+        set._validate();
+
+        auto i = set.insert( 4, 8 );
+        ASSERT( !set.empty() );
+        ASSERT_EQ( set.size(), 1 );
+        ASSERT( !i.had_intersection );
+        ASSERT( !i.was_contained );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 4 );
+        ASSERT_EQ( set.find( 5 )->second, 8 );
+        return set;
+    }
+
+    TEST(overlap_second_insert_back_subset) {
+        auto set = overlap_start();
+
+        auto i = set.insert( 4, 12 );
+        ASSERT( !set.empty() );
+        ASSERT_EQ( set.size(), 1 );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 4 );
+        ASSERT_EQ( set.find( 5 )->second, 12 );
+    }
+
+    TEST(overlap_second_insert_back_nosubset) {
+        auto set = overlap_start();
+
+        auto i = set.insert( 6, 12 );
+        ASSERT( !set.empty() );
+        ASSERT_EQ( set.size(), 1 );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 4 );
+        ASSERT_EQ( set.find( 5 )->second, 12 );
+    }
+
+    TEST(overlap_second_insert_front_subset) {
+        auto set = overlap_start();
+
+        auto i = set.insert( 0, 8 );
+        ASSERT( !set.empty() );
+        ASSERT_EQ( set.size(), 1 );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 0 );
+        ASSERT_EQ( set.find( 5 )->second, 8 );
+    }
+
+    TEST(overlap_second_insert_front_nosubset) {
+        auto set = overlap_start();
+
+        auto i = set.insert( 0, 6 );
+        ASSERT( !set.empty() );
+        ASSERT_EQ( set.size(), 1 );
+        ASSERT( i.had_intersection );
+        ASSERT( !i.was_contained );
+        set._validate();
+        ASSERT_EQ( set.find( 5 )->first, 0 );
+        ASSERT_EQ( set.find( 5 )->second, 8 );
     }
 };
 
