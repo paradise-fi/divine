@@ -106,43 +106,12 @@ void traceHelpOption( int i, String opt, String desc, const Vector<String>& args
         __dios_trace_i( i + 3, "- %s", arg.c_str() );
 }
 
-void traceHelp( int i ) {
+void traceHelp( int i, const Map< String, HelpOption >& help ) {
     __dios_trace_i( i, "help:" );
     __dios_trace_i( i + 1, "supported commands:" );
-    traceHelpOption( i + 2, "configuration", "run DiOS in given configuration",
-        { "standard - threads, processes, vfs"
-        });
-    traceHelpOption( i + 2, "debug", "print debug information during boot",
-        { "help - help and exit",
-          // ToDo: trace binary blobs
-          /*"rawenvironment - user DiOS boot parameters",*/
-          "machineparams - specified by user, e.g. number of cpus",
-          "mainargs - argv and envp",
-          "faultcfg - fault and simfail configuration" } );
-    traceHelpOption( i + 2, "{trace|notrace}",
-        "report/not report item back to VM",
-        { "threads - thread info during execution"} );
-    traceHelpOption( i + 2, "[force-]{ignore|report|abort}",
-        "configure fault, force disables program override",
-        { "assert",
-          "arithmetic",
-          "memory",
-          "control",
-          "locking",
-          "hypercall",
-          "notimplemented",
-          "diosassert" } );
-    traceHelpOption( i + 2, "{nofail|simfail}",
-        "enable/disable simulation of failure",
-        { "malloc" } );
-    traceHelpOption( i + 2, "ncpus", "specify number of cpu units (default 0)", { "<num>" } );
-    traceHelpOption( i + 2, "{stdout|stderr}", "specify how to treat program output",
-        { "notrace - ignore the stream",
-          "unbuffered - trace each write",
-          "trace - trace after each newline (default)"} );
-    traceHelpOption( i + 2, "syscall", "specify how to treat standard syscalls",
-        { "simulate - simulate syscalls, use virtual file system (can be used with verify and run)",
-          "passthrough - use syscalls from the underlying host OS (cannot be used with verify) "} );
+    for ( const auto& option : help )
+        traceHelpOption( i + 2, option.first, option.second.description,
+            option.second.options );
 }
 
 void traceEnv( int ind, const _VM_Env *env ) {
@@ -158,6 +127,38 @@ void boot( MemoryPool& pool, const _VM_Env *env, SysOpts& opts ) {
     __vm_trace( _VM_T_StateType, context );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
     context->linkSyscall( Syscall< Configuration >::kernelHandle );
+
+    const char *bootInfo = "DiOS boot info:";
+    bool initTrace = false;
+    if ( extractOpt( "debug", "help", opts ) ) {
+        if ( !initTrace )
+            __dios_trace_i( 0, bootInfo );
+        initTrace = true;
+
+        Map< String, HelpOption > help = {
+            { "configuration" , { "run DiOS in given configuration",
+                { "standard - threads, processes, vfs" } } },
+            { "debug", { "print debug information during boot",
+                { "help - help of selected configuration and exit",
+                  // ToDo: trace binary blobs
+                  /*"rawenvironment - user DiOS boot parameters",*/
+                  "machineparams - specified by user, e.g. number of cpus",
+                  "mainargs - argv and envp",
+                  "faultcfg - fault and simfail configuration" } } }
+        };
+        context->getHelp( help );
+        traceHelp( 1, help );
+        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
+        return;
+    }
+
+    if ( extractOpt( "debug", "rawenvironment", opts ) ) {
+        if ( !initTrace )
+            __dios_trace_i( 0, bootInfo );
+        initTrace = true;
+        traceEnv( 1, env );
+    }
+
     context->setup( pool, env, opts );
 }
 
@@ -183,16 +184,6 @@ void init( const _VM_Env *env )
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         return;
     }
-
-    __dios_trace_i( 0, "DiOS boot info:" );
-    if ( extractOpt( "help", "", sysOpts ) ) {
-        traceHelp( 1 );
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
-        return;
-    }
-
-    if ( extractOpt( "debug", "rawenvironment", sysOpts ) )
-        traceEnv( 1, env );
 
     auto cfg = extractDiosConfiguration( sysOpts );
     if ( cfg == "standard" )

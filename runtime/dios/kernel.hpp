@@ -56,6 +56,11 @@ struct TraceDebugConfig {
     }
 };
 
+struct HelpOption {
+    String description;
+    Vector< String > options;
+};
+
 bool useSyscallPassthrough( const SysOpts& o );
 TraceDebugConfig getTraceDebugConfig( const SysOpts& o );
 
