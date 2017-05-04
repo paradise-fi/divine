@@ -86,11 +86,22 @@ struct Syscall
         unpack< brick::hlist::TypeList< Args... > >( std::make_tuple(), c, f, rv, vl );
     }
 
+    static uint64_t cmdToFlag( SchedCommand cmd ) {
+        return cmd == SchedCommand::RESCHEDULE ? _DiOS_CF_SyscallSchedule : 0;
+    }
+
+    static SchedCommand flagToCmd( void *flags ) {
+        return ( reinterpret_cast< uint64_t >( flags ) & _DiOS_CF_SyscallSchedule ) ?
+            SchedCommand::RESCHEDULE : SchedCommand::CONTINUE;
+    }
+
     #include <dios/macro/no_memory_tags>
     #define SYSCALL( name, schedule, ret, arg ) \
         static SchedCommand name ## Wrappper( Context& ctx, void *rv, va_list vl) { \
-            unpack( ctx, &Context::name, rv, vl );                         \
-            return SchedCommand:: schedule; \
+            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _DiOS_CF_SyscallSchedule, \
+                cmdToFlag( schedule ) ); \
+            unpack( ctx, &Context::name, rv, vl ); \
+            return flagToCmd( __vm_control( _VM_CA_Get, _VM_CR_Flags ) ); \
         }
     #define SYSCALLSEP SYSCALL
     #include <sys/syscall.def>

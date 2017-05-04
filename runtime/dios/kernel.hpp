@@ -12,6 +12,9 @@
 
 namespace __dios {
 
+// DiOS register constants
+static const uint64_t _DiOS_CF_SyscallSchedule = 0b000001 << 8;
+
 template < class T, class... Args >
 T *new_object( Args... args ) {
     T* obj = static_cast< T * >( __vm_obj_make( sizeof( T ) ?: 1 ) );
