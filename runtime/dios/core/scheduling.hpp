@@ -260,6 +260,19 @@ struct Scheduler : public Next {
         Next::setup( pool, env, opts );
     }
 
+    void getHelp( Map< String, HelpOption >& options ) {
+        const char *opt = "{trace|notrace}";
+        if ( options.find( opt ) != options.end() ) {
+            __dios_trace_f( "Option %s already present", opt );
+            __dios_fault( _DiOS_F_Config, "Option conflict" );
+        };
+
+        options[ opt ] = HelpOption{ "report/not report item back to VM",
+            { "threads - thread info during execution"} };
+        Next::getHelp( options );
+    }
+
+
     int threadCount() const noexcept { return threads.size(); }
     Thread *chooseThread() noexcept
     {

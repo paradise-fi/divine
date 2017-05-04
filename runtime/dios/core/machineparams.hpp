@@ -25,6 +25,18 @@ struct MachineParams : Next
         Next::setup( pool, env, opts );
     }
 
+    void getHelp( Map< String, HelpOption >& options ) {
+        const char *opt = "ncpus";
+        if ( options.find( opt ) != options.end() ) {
+            __dios_trace_f( "Option %s already present", opt );
+            __dios_fault( _DiOS_F_Config, "Option conflict" );
+        };
+
+        options[ { opt } ] = { "specify number of cpu units (default 0)",
+            { "<num>" } };
+        Next::getHelp( options );
+    }
+
     void readHardwareConcurrency( SysOpts& opts )
     {
         String ncpus = extractOpt( "ncpus", opts );

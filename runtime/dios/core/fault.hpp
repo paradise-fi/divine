@@ -62,6 +62,33 @@ struct Fault: public Next {
         Next::setup( pool, env, opts );
     }
 
+    void getHelp( Map< String, HelpOption >& options ) {
+        const char *opt1 = "[force-]{ignore|report|abort}";
+        if ( options.find( opt1 ) != options.end() ) {
+            __dios_trace_f( "Option %s already present", opt1 );
+            __dios_fault( _DiOS_F_Config, "Option conflict" );
+        }
+        options[ opt1 ] = { "configure fault, force disables program override",
+          { "assert",
+            "arithmetic",
+            "memory",
+            "control",
+            "locking",
+            "hypercall",
+            "notimplemented",
+            "diosassert" } };
+
+        const char *opt2 = "{nofail|simfail}";
+        if ( options.find( opt2 ) != options.end() ) {
+            __dios_trace_f( "Option %s already present", opt2 );
+            __dios_fault( _DiOS_F_Config, "Option conflict" );
+        }
+        options[ opt2 ] = { "enable/disable simulation of failure",
+          { "malloc" } };
+
+        Next::getHelp( options );
+    }
+
     void terminate() noexcept  {
         BaseContext::kernelSyscall( SYS_die, nullptr );
         static_cast< _VM_Frame * >

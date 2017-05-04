@@ -141,6 +141,8 @@ struct BaseContext
 
     void finalize() {}
 
+    void getHelp( Map< String, HelpOption >& ) {}
+
     void kernelSyscall( _DiOS_SC syscode, void *ret, ... ) {
         va_list vl;
         va_start( vl, ret );

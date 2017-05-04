@@ -288,6 +288,31 @@ struct VFS: public Next {
         Next::setup( pool, env, opts );
     }
 
+     void getHelp( Map< String, HelpOption >& options ) {
+        const char *opt1 = "{stdout|stderr}";
+        if ( options.find( opt1 ) != options.end() ) {
+            __dios_trace_f( "Option %s already present", opt1 );
+            __dios_fault( _DiOS_F_Config, "Option conflict" );
+        };
+
+        options[ { opt1 } ] = { "specify how to treat program output",
+          { "notrace - ignore the stream",
+            "unbuffered - trace each write",
+            "trace - trace after each newline (default)"} };
+
+        const char *opt2 = "syscall";
+        if ( options.find( opt2 ) != options.end() ) {
+            __dios_trace_f( "Option %s already present", opt2 );
+            __dios_fault( _DiOS_F_Config, "Option conflict" );
+        };
+
+        options[ { opt2 } ] = { "specify how to treat standard syscalls",
+          { "simulate - simulate syscalls, use virtual file system (can be used with verify and run)",
+            "passthrough - use syscalls from the underlying host OS (cannot be used with verify) " } };
+
+        Next::getHelp( options );
+    }
+
     void finalize()
     {
         delete _manager;
