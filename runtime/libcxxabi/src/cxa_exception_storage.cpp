@@ -15,11 +15,6 @@
 
 #include "config.h"
 
-#ifdef __divine__
-#include <sys/divm.h>
-#include <cstring> // memset
-#endif
-
 #if LIBCXXABI_HAS_NO_THREADS
 
 namespace __cxxabiv1 {
@@ -49,28 +44,27 @@ extern "C" {
 
 #else
 
-#include <pthread.h>
-#include <cstdlib>          // for calloc, free
 #include "abort_message.h"
+#include "fallback_malloc.h"
 
-//  In general, we treat all pthread errors as fatal.
+//  In general, we treat all threading errors as fatal.
 //  We cannot call std::terminate() because that will in turn
 //  call __cxa_get_globals() and cause infinite recursion.
 
 namespace __cxxabiv1 {
 namespace {
-    pthread_key_t  key_;
-    pthread_once_t flag_ = PTHREAD_ONCE_INIT;
+    std::__libcpp_tls_key key_;
+    std::__libcpp_exec_once_flag flag_ = _LIBCPP_EXEC_ONCE_INITIALIZER;
 
     void destruct_ (void *p) {
-        std::free ( p );
-        if ( 0 != ::pthread_setspecific ( key_, NULL ) ) 
+        __free_with_fallback ( p );
+        if ( 0 != std::__libcpp_tls_set ( key_, NULL ) )
             abort_message("cannot zero out thread value for __cxa_get_globals()");
         }
 
     void construct_ () {
-        if ( 0 != pthread_key_create ( &key_, destruct_ ) )
-            abort_message("cannot create pthread key for __cxa_get_globals()");
+        if ( 0 != std::__libcpp_tls_create ( &key_, destruct_ ) )
+            abort_message("cannot create thread specific key for __cxa_get_globals()");
         }
 }   
 
@@ -82,16 +76,11 @@ extern "C" {
     //  If this is the first time we've been asked for these globals, create them
         if ( NULL == retVal ) {
             retVal = static_cast<__cxa_eh_globals*>
-#ifdef __divine__
-                        (__vm_obj_make(sizeof (__cxa_eh_globals)));
-            std::memset(retVal, 0, sizeof (__cxa_eh_globals));
-#else
                         (std::calloc (1, sizeof (__cxa_eh_globals)));
-#endif
             if ( NULL == retVal )
                 abort_message("cannot allocate __cxa_eh_globals");
-            if ( 0 != pthread_setspecific ( key_, retVal ) )
-               abort_message("pthread_setspecific failure in __cxa_get_globals()");
+            if ( 0 != std::__libcpp_tls_set ( key_, retVal ) )
+               abort_message("std::__libcpp_tls_set failure in __cxa_get_globals()");
            }
         return retVal;
         }
@@ -102,10 +91,10 @@ extern "C" {
     // libc++abi.
     __cxa_eh_globals * __cxa_get_globals_fast () {
     //  First time through, create the key.
-        if (0 != pthread_once(&flag_, construct_))
-            abort_message("pthread_once failure in __cxa_get_globals_fast()");
+        if (0 != std::__libcpp_execute_once(&flag_, construct_))
+            abort_message("execute once failure in __cxa_get_globals_fast()");
 //        static int init = construct_();
-        return static_cast<__cxa_eh_globals*>(::pthread_getspecific(key_));
+        return static_cast<__cxa_eh_globals*>(std::__libcpp_tls_get(key_));
         }
     
 }

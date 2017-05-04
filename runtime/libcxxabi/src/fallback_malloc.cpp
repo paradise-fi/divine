@@ -1,21 +1,15 @@
-//===------------------------ fallback_malloc.ipp -------------------------===//
+//===------------------------ fallback_malloc.cpp -------------------------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
 // This file is dual licensed under the MIT and the University of Illinois Open
 // Source Licenses. See LICENSE.TXT for details.
 //
-//  
-//  This file implements the "Exception Handling APIs"
-//  http://mentorembedded.github.io/cxx-abi/abi-eh.html
-//  
 //===----------------------------------------------------------------------===//
 
-#include "config.h"
+#include "fallback_malloc.h"
 
-#ifdef __divine__
-#include <sys/divm.h>
-#endif
+#include "config.h"
 
 //  A small, simple heap manager based (loosely) on 
 //  the startup heap manager from FreeBSD, optimized for space.
@@ -30,36 +24,35 @@
 namespace {
 
 // When POSIX threads are not available, make the mutex operations a nop
-#if LIBCXXABI_HAS_NO_THREADS
-static void * heap_mutex = 0;
+#ifndef _LIBCXXABI_HAS_NO_THREADS
+_LIBCPP_SAFE_STATIC
+static std::__libcpp_mutex_t heap_mutex = _LIBCPP_MUTEX_INITIALIZER;
 #else
-static pthread_mutex_t heap_mutex = PTHREAD_MUTEX_INITIALIZER;
+static void * heap_mutex = 0;
 #endif
 
 class mutexor {
 public:
-#if LIBCXXABI_HAS_NO_THREADS
+#ifndef _LIBCXXABI_HAS_NO_THREADS
+    mutexor ( std::__libcpp_mutex_t *m ) : mtx_(m) {
+      std::__libcpp_mutex_lock ( mtx_ );
+    }
+    ~mutexor () { std::__libcpp_mutex_unlock ( mtx_ ); }
+#else
     mutexor ( void * ) {}
     ~mutexor () {}
-#else
-    mutexor ( pthread_mutex_t *m ) : mtx_(m) { pthread_mutex_lock ( mtx_ ); }
-    ~mutexor () { pthread_mutex_unlock ( mtx_ ); }
 #endif
 private:
     mutexor ( const mutexor &rhs );
     mutexor & operator = ( const mutexor &rhs );
-#if !LIBCXXABI_HAS_NO_THREADS
-    pthread_mutex_t *mtx_;
+#ifndef _LIBCXXABI_HAS_NO_THREADS
+    std::__libcpp_mutex_t *mtx_;
 #endif
     };
 
         
 #define HEAP_SIZE   512
-#ifdef __divine__
-char *heap = nullptr;
-#else
 char heap [ HEAP_SIZE ];
-#endif
 
 typedef unsigned short heap_offset;
 typedef unsigned short heap_size;
@@ -77,7 +70,7 @@ heap_node *node_from_offset ( const heap_offset offset )
 
 heap_offset offset_from_node ( const heap_node *ptr )
     { return static_cast<heap_offset>(static_cast<size_t>(reinterpret_cast<const char *>(ptr) - heap)  / sizeof (heap_node)); }
- 
+
 void init_heap () {
 #ifdef __divine__
     if ( !heap ) heap = reinterpret_cast< char * >( __vm_obj_make( HEAP_SIZE ) );
@@ -87,7 +80,7 @@ void init_heap () {
     freelist->next_node = offset_from_node ( list_end );
     freelist->len = HEAP_SIZE / sizeof (heap_node);
     }
-    
+
 //  How big a chunk we allocate
 size_t alloc_size (size_t len)
     { return (len + sizeof(heap_node) - 1) / sizeof(heap_node) + 1; }
@@ -99,12 +92,12 @@ void *fallback_malloc(size_t len) {
     heap_node *p, *prev;
     const size_t nelems = alloc_size ( len );
     mutexor mtx ( &heap_mutex );
-    
+
     if ( NULL == freelist )
         init_heap ();
 
 //  Walk the free list, looking for a "big enough" chunk
-    for (p = freelist, prev = 0; 
+    for (p = freelist, prev = 0;
             p && p != list_end;     prev = p, p = node_from_offset ( p->next_node)) {
 
         if (p->len > nelems) {  //  chunk is larger, shorten, and return the tail
@@ -116,7 +109,7 @@ void *fallback_malloc(size_t len) {
             q->len = static_cast<heap_size>(nelems);
             return (void *) (q + 1);
         }
-        
+
         if (p->len == nelems) { // exact size match
             if (prev == 0)
                 freelist = node_from_offset(p->next_node);
@@ -142,7 +135,7 @@ void fallback_free (void *ptr) {
         std::cout << "Freeing item at " << offset_from_node ( cp ) << " of size " << cp->len << std::endl;
 #endif
 
-    for (p = freelist, prev = 0; 
+    for (p = freelist, prev = 0;
             p && p != list_end;     prev = p, p = node_from_offset (p->next_node)) {
 #ifdef DEBUG_FALLBACK_MALLOC
         std::cout << "  p, cp, after (p), after(cp) "
@@ -186,10 +179,10 @@ size_t print_free_list () {
     heap_size total_free = 0;
     if ( NULL == freelist )
         init_heap ();
-    
-    for (p = freelist, prev = 0; 
+
+    for (p = freelist, prev = 0;
             p && p != list_end;     prev = p, p = node_from_offset (p->next_node)) {
-        std::cout << ( prev == 0 ? "" : "  ")  << "Offset: " << offset_from_node ( p ) 
+        std::cout << ( prev == 0 ? "" : "  ")  << "Offset: " << offset_from_node ( p )
                 << "\tsize: " << p->len << " Next: " << p->next_node << std::endl;
         total_free += p->len;
         }
@@ -198,3 +191,36 @@ size_t print_free_list () {
     }
 #endif
 }  // end unnamed namespace
+
+namespace __cxxabiv1 {
+
+#pragma GCC visibility push(hidden)
+
+void * __malloc_with_fallback(size_t size) {
+    void *ptr = std::malloc(size);
+    if (NULL == ptr) // if malloc fails, fall back to emergency stash
+        ptr = fallback_malloc(size);
+    return ptr;
+}
+
+void * __calloc_with_fallback(size_t count, size_t size) {
+    void *ptr = std::calloc(count, size);
+    if (NULL != ptr)
+        return ptr;
+    // if calloc fails, fall back to emergency stash
+    ptr = fallback_malloc(size * count);
+    if (NULL != ptr)
+        std::memset(ptr, 0, size * count);
+    return ptr;
+}
+
+void __free_with_fallback(void *ptr) {
+    if (is_fallback_ptr(ptr))
+        fallback_free(ptr);
+    else
+        std::free(ptr);
+}
+
+#pragma GCC visibility pop
+
+} // namespace __cxxabiv1

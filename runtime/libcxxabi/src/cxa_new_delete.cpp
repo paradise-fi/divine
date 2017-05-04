@@ -14,6 +14,11 @@
 #include <new>
 #include <cstdlib>
 
+#if !defined(_THROW_BAD_ALLOC) || !defined(_NOEXCEPT)
+#error _THROW_BAD_ALLOC and _NOEXCEPT libc++ macros must already be defined \
+       by libc++.
+#endif
+
 /*
 [new.delete.single]
 
@@ -33,10 +38,7 @@
 */
 __attribute__((__weak__, __visibility__("default")))
 void *
-operator new(std::size_t size)
-#if !__has_feature(cxx_noexcept)
-    throw(std::bad_alloc)
-#endif
+operator new(std::size_t size) _THROW_BAD_ALLOC
 {
     if (size == 0)
         size = 1;
@@ -47,7 +49,11 @@ operator new(std::size_t size)
         if (nh)
             nh();
         else
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
             throw std::bad_alloc();
+#else
+            break;
+#endif
     }
     return p;
 }
@@ -66,21 +72,20 @@ that call. Otherwise, returns a null pointer.
 */
 __attribute__((__weak__, __visibility__("default")))
 void*
-operator new(size_t size, const std::nothrow_t&)
-#if __has_feature(cxx_noexcept)
-    noexcept
-#else
-    throw()
-#endif
+operator new(size_t size, const std::nothrow_t&) _NOEXCEPT
 {
     void* p = 0;
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
     try
     {
+#endif
         p = ::operator new(size);
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
     }
     catch (...)
     {
     }
+#endif
     return p;
 }
 
@@ -91,10 +96,7 @@ Returns operator new(size).
 */
 __attribute__((__weak__, __visibility__("default")))
 void*
-operator new[](size_t size)
-#if !__has_feature(cxx_noexcept)
-    throw(std::bad_alloc)
-#endif
+operator new[](size_t size) _THROW_BAD_ALLOC
 {
     return ::operator new(size);
 }
@@ -107,21 +109,20 @@ of that call. Otherwise, returns a null pointer.
 */
 __attribute__((__weak__, __visibility__("default")))
 void*
-operator new[](size_t size, const std::nothrow_t&)
-#if __has_feature(cxx_noexcept)
-    noexcept
-#else
-    throw()
-#endif
+operator new[](size_t size, const std::nothrow_t&) _NOEXCEPT
 {
     void* p = 0;
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
     try
     {
+#endif
         p = ::operator new[](size);
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
     }
     catch (...)
     {
     }
+#endif
     return p;
 }
 
@@ -133,12 +134,7 @@ earlier call to operator new.
 */
 __attribute__((__weak__, __visibility__("default")))
 void
-operator delete(void* ptr)
-#if __has_feature(cxx_noexcept)
-    noexcept
-#else
-    throw()
-#endif
+operator delete(void* ptr) _NOEXCEPT
 {
     if (ptr)
         std::free(ptr);
@@ -151,12 +147,7 @@ calls operator delete(ptr)
 */
 __attribute__((__weak__, __visibility__("default")))
 void
-operator delete(void* ptr, const std::nothrow_t&)
-#if __has_feature(cxx_noexcept)
-    noexcept
-#else
-    throw()
-#endif
+operator delete(void* ptr, const std::nothrow_t&) _NOEXCEPT
 {
     ::operator delete(ptr);
 }
@@ -168,12 +159,7 @@ Calls operator delete(ptr)
 */
 __attribute__((__weak__, __visibility__("default")))
 void
-operator delete[] (void* ptr)
-#if __has_feature(cxx_noexcept)
-    noexcept
-#else
-    throw()
-#endif
+operator delete[] (void* ptr) _NOEXCEPT
 {
     ::operator delete(ptr);
 }
@@ -185,12 +171,7 @@ calls operator delete[](ptr)
 */
 __attribute__((__weak__, __visibility__("default")))
 void
-operator delete[] (void* ptr, const std::nothrow_t&)
-#if __has_feature(cxx_noexcept)
-    noexcept
-#else
-    throw()
-#endif
+operator delete[] (void* ptr, const std::nothrow_t&) _NOEXCEPT
 {
     ::operator delete[](ptr);
 }
