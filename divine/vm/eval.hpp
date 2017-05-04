@@ -1151,9 +1151,10 @@ struct Eval
             {
                 auto ptr = operand< PointerV >( 0 );
                 /* TODO fault on failing pointers? */
-                if ( boundcheck( ptr, 1, false ) )
-                    context().mem_interrupt( ptr.cooked(),
-                                             operandCk< IntV >( 1 ).cooked() );
+                auto size = operandCk< IntV >( 1 ).cooked();
+                if ( boundcheck( ptr, size, false ) )
+                    context().mem_interrupt( ptr.cooked(), size,
+                                             operandCk< IntV >( 2 ).cooked() );
                 return;
             }
             case HypercallTrace:
