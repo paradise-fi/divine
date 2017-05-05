@@ -137,8 +137,9 @@ __cxa_vec_cctor(void *dest_array, void *src_array, size_t element_count,
                 void (*destructor)(void *));
 
 // 3.3.5.3 Runtime API
-extern int __cxa_atexit(void (*f)(void*), void* p, void* d);
-extern int __cxa_finalize(void*);
+extern _LIBCXXABI_FUNC_VIS int __cxa_atexit(void (*f)(void *), void *p,
+                                            void *d);
+extern _LIBCXXABI_FUNC_VIS int __cxa_finalize(void *);
 
 // 3.4 Demangler API
 extern _LIBCXXABI_FUNC_VIS char *__cxa_demangle(const char *mangled_name,

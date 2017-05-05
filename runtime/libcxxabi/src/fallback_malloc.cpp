@@ -10,8 +10,15 @@
 #include "fallback_malloc.h"
 
 #include "config.h"
+#ifdef __divine__
+#include <sys/divm.h>
+#endif
+#include <__threading_support>
 
-//  A small, simple heap manager based (loosely) on 
+#include <cstdlib> // for malloc, calloc, free
+#include <cstring> // for memset
+
+//  A small, simple heap manager based (loosely) on
 //  the startup heap manager from FreeBSD, optimized for space.
 //
 //  Manages a fixed-size memory pool, supports malloc and free only.
@@ -52,7 +59,11 @@ private:
 
         
 #define HEAP_SIZE   512
+#ifdef __divine__
+char *heap = nullptr;
+#else
 char heap [ HEAP_SIZE ];
+#endif
 
 typedef unsigned short heap_offset;
 typedef unsigned short heap_size;

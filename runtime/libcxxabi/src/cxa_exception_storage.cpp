@@ -14,8 +14,9 @@
 #include "cxa_exception.hpp"
 
 #include "config.h"
+#include <__threading_support>
 
-#if LIBCXXABI_HAS_NO_THREADS
+#if defined(_LIBCXXABI_HAS_NO_THREADS)
 
 namespace __cxxabiv1 {
 extern "C" {
@@ -76,7 +77,7 @@ extern "C" {
     //  If this is the first time we've been asked for these globals, create them
         if ( NULL == retVal ) {
             retVal = static_cast<__cxa_eh_globals*>
-                        (std::calloc (1, sizeof (__cxa_eh_globals)));
+                        (__calloc_with_fallback (1, sizeof (__cxa_eh_globals)));
             if ( NULL == retVal )
                 abort_message("cannot allocate __cxa_eh_globals");
             if ( 0 != std::__libcpp_tls_set ( key_, retVal ) )

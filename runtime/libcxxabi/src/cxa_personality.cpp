@@ -529,11 +529,14 @@ void
 set_registers(_Unwind_Exception* unwind_exception, _Unwind_Context* context,
               const scan_results& results)
 {
-    _Unwind_SetGR(context, __builtin_eh_return_data_regno(0),
-                                 reinterpret_cast<uintptr_t>(unwind_exception));
-    _Unwind_SetGR(context, __builtin_eh_return_data_regno(1),
-                                    static_cast<uintptr_t>(results.ttypeIndex));
-    _Unwind_SetIP(context, results.landingPad);
+#if defined(__USING_SJLJ_EXCEPTIONS__)
+#define __builtin_eh_return_data_regno(regno) regno
+#endif
+  _Unwind_SetGR(context, __builtin_eh_return_data_regno(0),
+                reinterpret_cast<uintptr_t>(unwind_exception));
+  _Unwind_SetGR(context, __builtin_eh_return_data_regno(1),
+                static_cast<uintptr_t>(results.ttypeIndex));
+  _Unwind_SetIP(context, results.landingPad);
 }
 
 /*
@@ -561,8 +564,7 @@ __attribute__((__annotate__("lart.interrupt.skipcfl")))
 static void scan_eh_tab(scan_results &results, _Unwind_Action actions,
                         bool native_exception,
                         _Unwind_Exception *unwind_exception,
-                        _Unwind_Context *context)
-{
+                        _Unwind_Context *context) {
     // Initialize results to found nothing but an error
     results.ttypeIndex = 0;
     results.actionRecord = 0;
@@ -1081,6 +1083,7 @@ __gxx_personality_v0(_Unwind_State state,
 {
     if (unwind_exception == 0 || context == 0)
         return _URC_FATAL_PHASE1_ERROR;
+
     bool native_exception = (unwind_exception->exception_class & get_vendor_and_language) ==
                             (kOurExceptionClass & get_vendor_and_language);
 
