@@ -3,8 +3,7 @@ An Introduction to Using DIVINE
 
 In this section, we will give a short example on how to invoke DIVINE and its
 various functions. We will use a small C program (consisting of a single
-compile unit) as an example in this section, along with a few simple
-properties.
+compile unit) as an example, along with a few simple properties.
 
 ## Basics of Program Analysis
 
@@ -28,21 +27,21 @@ int main() {
 }
 ```
 
-This code contains a bug, an access out of bounds of `array` if `i == 4`, we
+The above code contains a bug, an access out of bounds of `array` for `i == 4`; we
 will see how this is presented by DIVINE.
 
 The program as it is can be compiled by your system's C compiler and run. If you
-do so, it will probably run OK despite the access out of bound of `array` (it
-will overwrite a value on the stack which seems not to interfere with programs
-execution, but it is an example of stack buffer overflow). We can run
-verification using DIVINE:
+do so, it will probably run OK despite the out of bounds access (this is an example
+of a stack buffer overflow – the program will incorrectly overwrite an adjacent
+value on the stack which, in most cases, does not interfere with its execution).
+We can proceed to verify the program using DIVINE:
 
 ```{.bash}
 $ divine verify program.c
 ```
 
-Now DIVINE will compile your program and run the verifier on the compiled
-program. After a short while, it will produce the following output:
+DIVINE will now compile your program and run the verifier on the compiled
+code. After a short while, it will produce the following output:
 
 ```
 compiling /tmp/test.c
@@ -136,32 +135,33 @@ error state:
       symbol: _start
 ```
 
-At the beginning, there are some notices from DIVINE's compiler and loader,
-followed by some statistics. Then, starting with `error found: yes`, the output
-presents the found error. The error informations contains:
+The output begins with compile- and load-time report messages,
+followed by some statistics. Then, starting with `error found: yes`, the detected error
+is introduced. The error-related information contains:
 
-*   `error trace` -- contains is the output that the program printed on its run
-    from the beginning to the point of the error. It is finished by error
-    description.
+*   `error trace` -- shows the output that the program printed on its run
+    from the beginning of the execution to the point of the error.
+    A description of the error concludes this section.
 
-*   `choices made` -- values of nondeterministic choices DIVINE made in the
-    run.[^choices] This information is mostly useful as an identifier of the
+*   `choices made` -- indicates the values of nondeterministic choices DIVINE made
+    in the run.[^choices] This information is mostly useful as an identifier of the
     error trace.
 
-*   `error state` -- this field contains backtraces of all the stacks present in
-    the program. In a single-threaded program in an error state, there are two
-    stacks -- the stack of the program's main thread (with `_start`, followed by
+*   `error state` -- this field contains backtraces of all stacks present in
+    the program. For a single-threaded program in an error state, there are two stacks --
+    the stack of the program's main thread (with `_start`, followed by
     `main`, at the bottom) and the stack of DIVINE's runtime (DiOS, see later),
     which contains the fault handler responsible for terminating the
     verification.
 
 [^choices]: this information is run-length encoded (e.g. `0^2 2^4` means the first two
-    choices returned 0 and the following 4 returned 4);
+    choices returned 0 and the following four returned 2);
 
 In our case, the most important information is `FAULT: access of size 1 at
-[heap* 712567f3 10 ddp] is 1 bytes out of bound` which indicates the error is
-caused by invalid memory access, together with the line of code which caused it
-(on the second stack, in the entry for `foo` function):
+[heap* 712567f3 10 ddp] is 1 bytes out of bounds` which indicates the error is
+caused by an invalid memory access. The other crucial information is the line of code
+which caused it (this can be found on the second stack, in the entry for the `foo`
+function):
 
 ```
 - address: heap* 4a0081dc 0+0
@@ -170,20 +170,20 @@ caused by invalid memory access, together with the line of code which caused it
   symbol: foo
 ```
 
-So we can see that the problem is caused by invalid memory access on line 8 in
+Hence we can see that the problem is caused by an invalid memory access on line 8 in
 our program.
 
-*Note*: one might notice that the addresses in DIVINE are printed in form `
-[heap* 712567f3 10 ddp]`; the meaning is: it is a heap pointer (other types of
-pointers are constant pointers and global pointers; stack pointers are not
-distinguished from heap pointers), the object id (in hexa, assigned to the
-allocation) is `712567f3`, the offset (again in hexa) is `10` and the value is a
-defined pointer (`ddp`, i.e. it is not an uninitialized value).
+*Note*: one might notice that the addresses in DIVINE are printed in the form `
+[heap* 712567f3 10 ddp]`; the meaning of which is: the pointer in question is a heap
+pointer (other types of pointers are constant pointers and global pointers; stack
+pointers are not distinguished from heap pointers); the object id (in hexadecimal, assigned
+to the allocation) is `712567f3`; the offset (again in hexadecimal) is `10` and the value is a
+defined pointer (`ddp`, i.e. it is not an uninitialised value).
 
 ### Debugging Counterexamples with the Interactive Simulator
 
-We have found a bug in our program. While in this case it might be visible
-directly, it is useful to be able to inspect the error in more details. For
+We have found a bug in our program. While in this case the cause might be visible
+directly, it is useful to be able to inspect the error in more detail. For
 this, we can use DIVINE's simulator.
 
 ```{.bash}
@@ -198,12 +198,13 @@ Welcome to 'divine sim', an interactive debugger. Type 'help' to get started.
 >
 ```
 
-We can start by executing the `start` command which starts the program and stops
-at the beginning of the `main` function; however, since we have the error trace,
-we will instead jump to the end of the trace with `trace 0^182` (the sequence of
-numbers after the `trace` keyword should be replaced by value taken from
+There are a few commands we could use in this situation. For instance,
+the `start` command brings the program to the beginning of the `main`
+function (skipping the internal program initialization process). However, since
+we have the error trace, we will instead jump to the end of the trace with `trace 0^182`
+(the sequence of numbers after the `trace` keyword should be replaced by the value taken from
 `choices made` from the output of `divine verify`). The simulator now outputs
-identifiers of produced states, together with outputs the program printed so far
+identifiers of the produced states, together with outputs the program printed so far
 (prefixed with `T:`), and ends just after the last choice before the error. We
 can now let the simulator run the program until the error is found (or a new
 state is produced) with `stepa`.
@@ -211,11 +212,11 @@ state is produced) with `stepa`.
 At this point, the simulator should have stopped in the fault handler which is
 executed by DIVINE when an error is found. We can use the `up` command to step
 from the fault handler to the frame of the function in which the error occurred
-(generally, `up` can used to move from the callee to the caller on the stack,
+(generally, `up` can be used to move from the callee to the caller on the stack,
 `down` can be used to move in the opposite direction). As we should be in the
 frame of the `foo` function, we can use the `show` command to print local
 variables present in this function. In the output there should be an entry for
-`i` (mangled a bit by the compiler):
+`i`:
 
 ```
 .i$1:
@@ -223,9 +224,9 @@ variables present in this function. In the output there should be an entry for
     value:   [i32 4 d]
 ```
 
-From this we can see that `i` is an `int`{.c} variable with value represented as
-`[i32 4 d]`, meaning it is a 32 bit integer with value 4 which is fully defined
-(`d`). If we jump one frame `up` and use `show` again, we can see entry for `x`:
+The entry suggests that `i` is an `int`{.c} variable. It is represented as
+`[i32 4 d]`, meaning it is a 32 bit integer with value 4 and it is fully defined
+(`d`). If we jump one frame `up` and use `show` again, we can see the entry for `x`:
 
 ```
 .x:
@@ -252,10 +253,10 @@ section](#sim).
 
 ### Controlling the Execution Environment
 
-Programs in DIVINE are running in environment provided by [DiOS](#dios),
-DIVINE's operating system and by DIVINE runtime libraries (including C and C++
-standard libraries and `pthreads`). Behavior of this runtime can be configured
-using the `-o` option. To get list of options, run `divine info program.c`:
+Programs in DIVINE run in an environment provided by [DiOS](#dios),
+DIVINE's operating system, and by runtime libraries (including C and C++
+standard libraries and `pthreads`). The behaviour of this runtime can be configured
+using the `-o` option. To get the list of options, run `divine info program.c`:
 
 ```
 $ divine info program.c
@@ -311,31 +312,32 @@ I:             - passthrough - use syscalls from the underlying host OS (cannot 
 use -o {option}:{value} to pass these options to the program
 ```
 
-The most notable options are `-o nofail:malloc` which disables memory allocation
-failure simulation and options which control which errors are considered fatal
-(`ignore` -- error is ignored, `abort` -- error causes verification to end with
-an error report).
+It is often convenient to assume that malloc never fails: this can be achieved by
+passing the `-o nofail:malloc` option to DiOS. Other important options are those controlling
+the fatalness of errors (the default option is `abort` -- if an error of type `abort` is
+encountered, the verification ends with an error report; on the other hand, the verifier
+will attempt to continue when it detects an error that was marked as `ignore`).
 
 Furthermore, it is possible to pass arguments to the `main` function of the
 program by appending them after the name of the source file (e.g. `divine verify
-program.c main-arg-1 main-arg-2`), and to add environmental variables for the
-program using `-DVAR=VALUE` option.
+program.c main-arg-1 main-arg-2`), and to add environment variables for the
+program using the `-DVAR=VALUE` option.
 
 
 ### Compilation Options and Compilation of Multiple Files
 
-It your program is not just a simple C program, you might have to pass
-compilation options to DIVINE. In some cases it is sufficient to pass these
-options to `divine verify`:
+Supposing you wish to verify something that is not just a simple C program,
+you may have to pass compilation options to DIVINE. In some cases, it is sufficient
+to pass the following options to `divine verify`:
 
 *   `-std=<version>`, (e.g. `-std=c++14`) option sets the standard of C/C++ to
     be used and is directly forwarded to the compiler;
 
-*   other options can be passed using `-C` option, i.e. `-C,-O3` to enable
+*   other options can be passed using the `-C` option, i.e. `-C,-O3` to enable
     optimizations, or `-C,-I,include-path` to add `include-path` to the
     directories in which compiler looks for header files.
 
-However, if you need to pass more options, or if your program consists of more
+However, if you need to pass more options or if your program consists of more
 than one source file, it might be more practical to compile it to LLVM bitcode
 first and pass this bitcode to `divine verify`:
 
@@ -344,5 +346,5 @@ $ divine cc -Iinclude-path -O1 -std=c++14 -DFOO=bar program.c other.c
 $ divine verify program.bc
 ```
 
-`divine cc` is a wrapper of the clang compiler and it is possible to pass most
+`divine cc` is a wrapper for the clang compiler and it is possible to pass most
 of clang's options to it directly.

@@ -9,12 +9,12 @@ traditional (real) execution environment: the libraries can be compiled just
 like other programs and the resulting bitcode files can be linked just as
 easily.
 
-The remaining services, though, must be somehow provided by DIVINE, since they
+The remaining services, though, must be somehow supplied by DIVINE, since they
 are not readily available as libraries. Some of them are part of the virtual
 machine, like memory management and interrupt control (cf. [The DIVINE Virtual
 Machine]). The rest is provided by an "operating system". In principle, you can
 write your own small operating system for use with DIVINE; however, to make
-common verification tasks easier, DIVINE ships with a small OS that provides a
+common verification tasks easier, DIVINE ships with a small OS that implements a
 subset of POSIX interfaces that should cover the requirements of a typical
 user-level program.
 
@@ -22,7 +22,7 @@ user-level program.
 
 The main goal of DiOS is to provide a runtime environment for programs under
 inspection, which should not be distinguishable from the real environment. To
-achieve this goal, it provides an API for threads (and processes in the future)
+achieve this goal, it presents an API for thread (and process in the future)
 handling, faults and virtual machine configuration. DiOS API is then used to
 implement the POSIX interface and supports the implementation of standard C and
 C++ library.
@@ -33,7 +33,7 @@ should be aware of:
 - First of all, DiOS is trapped inside DIVINE VM, and therefore, it cannot
   perform any I/O operations with the outside world. All I/O has to be emulated.
 - Consequently, DiOS cannot provide an access to a real file system, but
-  supplies a tools for capturing a file system snapshot, which can be used for
+  supplies tools for capturing a file system snapshot, which can be used for
   emulation of file operations. See the file system section of this manual for
   further information.
 - As the goal of the verification is to show that a program is safe no matter
@@ -45,9 +45,9 @@ should be aware of:
 ## DiOS Fault Handling And Error Traces
 
 When DIVINE 4 VM performs an illegal operation (e.g. division by zero or null
-pointer dereference), it performs so-called fault and a user supplied function,
-fault handler, is called. This function can react to error - e.g. collect
-additional information, or decide, how the error should be handled. DiOS
+pointer dereference), it performs a so-called fault and a user supplied function,
+the fault handler, is called. This function can react to the error - collect
+additional information or decide how the error should be handled. DiOS
 provides its own fault handler, so that verified programs do not have to.
 
 The DiOS fault handler prints a simple human readable stack trace together with
@@ -78,12 +78,13 @@ T:   2: _start
 ```
 
 By inspecting the trace, we can see that a fault was triggered. When VM triggers
-a fault, it prints the reason -- here a null pointer dereference caused it. Then
-a DiOS fault handler was called. First, it printed whether the fault occurred in
-DiOS kernel or in the user space -- in the actual verified program. Then a
-simple backtrace was printed. Note that `_start` is a DiOS function, which is
-always at the bottom of a backtrace. It calls all global constructors,
-initializes the standard libraries and calls `main` with the right arguments.
+a fault, it prints the reason -- here a null pointer dereference caused it. The
+encounter of an error caused a DiOS fault handler to be called. The fault handler
+first communicates whether the fault occurred in the DiOS kernel or in the user space --
+in the actual verified program. This is followed by a simple backtrace. Note that
+`_start` is a DiOS function, which is always at the bottom of a backtrace. It calls
+all global constructors, initializes the standard libraries and calls `main` with
+the right arguments.
 
 If we run `./divine verify -std=c++11 test.cpp`, we obtain a more detailed
 backtrace:
@@ -145,15 +146,15 @@ backtrace #2:
 
 ```
 
-The first part of the output is the same as in the previous case. The rest are
+The first part of the output is the same as in the previous case, the rest are
 full DIVINE backtraces for all the active threads. In this concrete example, we
 see two backtraces even for a single threaded program. To see the reason for
 this, let us first examine backtrace #2. If we go through the backtrace from
 its end, we can see an invocation of `_start`, which called `main`. `main` was
 then interrupted on line 3 because of the fault. Next, we can see a call to the
 DiOS fault handler `__dios::Fault::handler`. As the handler is called from user
-space and therefore, it is isolated from DiOS internal state, it performs a
-syscall to jump in the kernel, as we can see from the first two entries of the
+space and, consequently, is isolated from the internal state of DiOS, it performs a
+syscall to jump into the kernel, as we can see from the first two entries of the
 backtrace.
 
 All DiOS kernel routines, including scheduling and syscalls, feature a separate
@@ -164,63 +165,63 @@ handler is called in kernel mode and can do further inspection.
 ## DiOS Configuration
 
 DIVINE supports passing of boot parameters to the OS. Some of these parameters
-are automatically generated by DIVINE (e.g. name of the program, program
-parameters or a snapshot of a file system), others can be specified by the user.
-These parameters can be specified using command line option `-o {argument}`.
+are automatically generated by DIVINE (e.g. the name of the program, program
+parameters or a snapshot of a file system), others can be supplied by the user.
+These parameters can be specified using the command line option `-o {argument}`.
 
 DiOS expects `{argument}` to be in the form `{command}:{argument}`. DiOS help
 can be also invoked with a shortcut `-o help`. All arguments are processed
-during the boot. If an invalid command or argument is passed, DiOS fails to
+during the boot phase, so if an invalid command or argument is passed, DiOS fails to
 boot. DIVINE handles this state as unsuccessful verification and the output
 contains a description of the error. DiOS supports the following commands:
 
 - `debug`: print debug information during the boot. By default no information is
   printed during the boot. Supported arguments:
-    - `help`: printed help and abort the boot.
-    - `machineparams`: printed user specified machine parameters, e.g. number of
+    - `help`: print help and abort the boot.
+    - `machineparams`: print user specified machine parameters, e.g. number of
       cpus.
-    - `mainargs`: printed `argv` and `envp`, which will be passed to the `main`
+    - `mainargs`: print `argv` and `envp`, which will be passed to the `main`
       function.
-    - `faultcfg`: printed fault and simfail configuration, which will be used
-      for verification. Note that if the configuration is not forced, program
+    - `faultcfg`: print fault and simfail configuration, which will be used
+      for verification. Note that if the configuration is not forced, the program
       under inspection can change it during its run.
 - `trace` and `notrace`: report/do not report state of its argument back to VM.
   Supported arguments:
-    - `threads`: reports all active threads back to VM, so it can e.g. allow
+    - `threads`: report all active threads back to the VM, so it can e.g. allow
       user to choose which thread to run. By default, threads are not traced.
 - `ignore`, `report`, `abort` with variant prefixed with `force-`: configure
   handling of a given fault. When `abort` is specified, DiOS passes the fault as
   an error back to the VM and the verification is terminated. Faults marked as
   `report` are reported back to the VM (i.e. the fault is recorded to
   backtrace), but are not treated as errors -- the verification process
-  continues. When fault is ignored it is not reported back to the VM at all. If
-  the execution after fault continues, instruction producing the fault is
-  ignored or produces undefined value. There are following fault categories in
-  DIVINE and these faults can be passed to this command:
+  continues. When a fault is ignored, it is not reported back to the VM at all. If
+  the execution after a fault continues, instruction causing the fault is
+  ignored or produces an undefined value. The following fault categories are
+  present in DIVINE and these faults can be passed to the command:
     - `assert`: C-assert is violated. Default abort.
     - `arithmetic`: arithmetic error occurs -- e.g. division by 0. Default
       abort.
-    - `memory`: access to uninitialized memory or invalid pointer dereference
+    - `memory`: access to uninitialised memory or invalid pointer dereference
       Default abort.
-    - `control`: check return value of function and jumps on undefined values.
+    - `control`: check the return value of a function and jump on undefined values.
       Default abort.
-    - `hypercall`: invalid parameter to VM hypercall was passed. Default abort.
+    - `hypercall`: an invalid parameter to a VM hypercall was passed. Default abort.
     - `notimplemented`: unimplemented operation should be performed. Default
       abort.
     - `diosassert`: internal DiOS assert was violated, can occur in case of
-      invalid DiOS API usage. Default abort.
-- `simfail` and `nofail`: simulate possible failure of given feature. E.g.
+      an invalid DiOS API usage. Default abort.
+- `simfail` and `nofail`: simulate possible failure of a given feature. E.g.
   `malloc` can fail in a real system and therefore, when simfailing, both
   success and failure of `malloc` are tested. Supported arguments:
     - `malloc`: simulate failure of memory allocation.
 - `ncpus:<num>`: specify number of machine physical cores. Has no direct impact
   on verification, affects only library calls, which can return number of cores.
-- `stdout`: specify how to treat program output on standard output. Following
+- `stdout`: specify how to treat program output on standard output. The following
   options are supported:
     - `notrace`: the output is ignored.
     - `unbuffered`: each write is printed. Can lead to an unexpected formatting
       of the backtrace.
-    - `buffered`: each line of output is printed (i.e. formatting of backtrace
+    - `buffered`: each line of the output is printed (i.e. formatting of backtrace
       should be reasonable). Default option.
 - `stderr`: specify how to treat program output on standard error output. For
   options, see `stdout`.
@@ -229,10 +230,10 @@ contains a description of the error. DiOS supports the following commands:
 
 DiOS provides a POSIX-compatible filesystem implementation. As there are no real
 I/O operations allowed, DiOS *Virtual File System* (VFS) operates on top of a
-filesystem snapshot. Effect of all operations performed by the VFS is not
-propagated back to host. Snapshots are created by DIVINE just before DiOS boots.
-To create a snapshot of a directory, the command line option `--capture
-{vfsdir}` can be used. `{vfsdir}` is a `:`-separated list of up to three
+filesystem snapshot. The effect of all operations performed by the VFS is not
+propagated back to the host. Snapshots are created by DIVINE just before DiOS boots;
+to create a snapshot of a directory, the command line option `--capture
+{vfsdir}` can be used, where `{vfsdir}` is a `:`-separated list of up to three
 options:
 
     - Path to a directory. Mandatory.
@@ -241,29 +242,29 @@ options:
     - Mount point in the VFS. If not specified, directory is mounted to the
       capture path.
 
-DIVINE can handle capture files, directories, sym- and hardlinks. DiOS can also
-create pipes or UNIX sockets. These howeverer cannot be captured from the host
+DIVINE can handle capture of files, directories, sym- and hardlinks, DiOS can also
+create pipes or UNIX sockets. These, however, cannot be captured from the host
 system by DIVINE.
 
-Size of the snapshot is by default limited to 16 MiB, to prevent accidental
-capture of much larger portions of filesystem than intended (due to presence of
+The size of the snapshot is by default limited to 16 MiB, to prevent an accidental
+capture of much larger portions of the filesystem than intended (due to the presence of
 symlinks).
 
 Example: `divine verify --capture testdir:follow:/home/test/ --vfslimit 1kB
 test.cpp`
 
-The VFS implements the basic POSIX syscalls -- e.g. `write`, `read`, etc. This
-allows DiOS to directly use implementation of C-library functions like `printf`,
-`scanf` or C++ streams. If the functions should operate with filesystem, they
-modify DiOS internal filesystem snapshot. User can specify a file with content
-using DIVINE switch `--stdin {file}`, which will be supplied as stdin of the
-verified program. The standard output can be handled in several ways:
+The VFS implements basic POSIX syscalls -- `write`, `read`, etc. This
+allows DiOS to directly use implementations of C-library functions like `printf`,
+`scanf` or C++ streams. Clearly, functions which operate on the filesystem modify
+the internal filesystem snapshot of DiOS. The user can further specify a file
+(containing some data) using the DIVINE switch `--stdin {file}`, which will be supplied
+as stdin of the verified program. The standard output can be handled in several ways:
 
 - It can be either ignored, or
-- can be part of a backtrace in two modes:
+- it can be part of a backtrace in two modes:
     - in a buffered way, where each line is printed, or
     - in an unbuffered way, where each write is printed -- this can lead to
       unexpected backtrace formatting.
 
-All these options, can be specified via DiOS boot parameters. See DiOS
+All of the above options can be specified via DiOS boot parameters. See DiOS
 configuration for more details.
