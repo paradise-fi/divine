@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2015-2017 Vladimír Štill <xstill@fi.muni.cz>
 //
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/PassManager.h>
@@ -9,8 +9,13 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Dominators.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/Transforms/Utils/PromoteMemToReg.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Analysis/CaptureTracking.h>
+#include <llvm/IR/DebugInfoMetadata.h>
+#include <llvm/IR/DIBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/util.h>
@@ -168,7 +173,8 @@ struct ConstAllocaElimination : lart::Pass {
             llvmcase( inst, [&]( llvm::AllocaInst *alloca ) {
                 ++allAllocas;
                 if ( !llvm::PointerMayBeCaptured( alloca, false, true ) ) {
-                    auto users = query::query( alloca->users() ).filter( query::isnot< llvm::DbgDeclareInst > );
+                    auto users = query::query( alloca->users() )
+                                    .filter( query::isnot< llvm::DbgDeclareInst > && query::isnot< llvm::DbgValueInst > );
                     llvm::StoreInst *store = users.map( query::llvmdyncast< llvm::StoreInst > )
                             .filter( query::notnull )
                             .singleton()
@@ -186,20 +192,46 @@ struct ConstAllocaElimination : lart::Pass {
         }
 
         for ( auto var : vars ) {
+            std::vector< llvm::DbgInfoIntrinsic * > dbgs;
             auto val = var.second->getValueOperand();
             std::vector< llvm::Instruction * > toDelete;
+            auto dbgdec = llvm::FindAllocaDbgDeclare( var.first );
+            if ( dbgdec ) {
+                auto expr = dbgdec->getExpression();
+                if ( expr->getElements().size() ) {
+                    // don't know what to do with this
+                    dbgdec->dump();
+                    dbgdec = nullptr;
+                }
+            }
             for ( auto user : var.first->users() )
                 llvmcase( user,
                     [val,&toDelete]( llvm::LoadInst *load ) {
                         load->replaceAllUsesWith( val );
                         toDelete.push_back( load );
                     },
-                    [&toDelete]( llvm::DbgDeclareInst *dbg ) {
-                        toDelete.push_back( dbg ); // TODO: fixme: copy debuginfo somehow
+                    [&]( llvm::DbgInfoIntrinsic *dbg ) {
+                        toDelete.push_back( dbg );
                     },
-                    [var,&toDelete]( llvm::StoreInst *store ) {
+                    [&]( llvm::StoreInst *store ) {
                         ASSERT_EQ( store, var.second );
                         toDelete.push_back( store );
+
+                        if ( !dbgdec )
+                            return;
+
+                        auto local = dbgdec->getVariable();
+                        auto localSubprogram = local->getScope()->getSubprogram();
+                        auto dbgloc = store->getDebugLoc().get();
+                        // TODO: dbg.value needs subprograms to match, but where can we find the right dbgloc?
+                        if ( dbgloc && dbgloc->getScope()->getSubprogram() != localSubprogram )
+                            dbgloc = nullptr;
+
+                        if ( !dbgloc )
+                            return;
+
+                        llvm::DIBuilder dib( *fn.getParent() );
+                        dib.insertDbgValueIntrinsic( val, 0, local, dbgdec->getExpression(), dbgloc, store );
                     },
                     [&]( llvm::Value *val ) {
                         std::cerr << "in " << fn.getName().str() << std::endl;
