@@ -19,6 +19,7 @@ EXTRA != if test "$(GENERATOR)" = Ninja && test -n "$(VERBOSE)"; then echo -v -d
          if test -n "$(JOBS)"; then echo -j $(JOBS); fi
 
 TOOLDIR = $(OBJ)toolchain
+TOOLSTAMP = $(TOOLDIR)/stamp-v1
 CLANG = $(TOOLDIR)/clang/
 RTBIN = $(TOOLDIR)/runtime
 RTSRC = $(PWD)/runtime
@@ -68,7 +69,7 @@ GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
 SETENV = env TOOLCHAIN_RPATH=$(RTBIN) TESTHOOK="$(TESTHOOK)"
 
-${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(OBJ)toolchain/stamp
+${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(TOOLSTAMP)
 	chmod +x test/divine # darcs does not remember +x on files
 	mkdir -p $$(dirname $@)
 	@if test -z "$(FLAVOUR)"; then echo "ERROR: FLAVOUR must be provided"; false; fi
@@ -95,9 +96,9 @@ ${TARGETS:%=asan-%}:
 	$(MAKE) $(OBJ)asan/cmake.stamp $(GETCONFDEPS) FLAVOUR=asan
 	$(SETENV) $(CMAKE) --build $(OBJ)asan --target ${@:asan-%=%} -- $(EXTRA)
 
-toolchain: $(OBJ)toolchain/stamp
+toolchain: $(TOOLSTAMP)
 
-$(OBJ)toolchain/stamp:
+$(TOOLSTAMP):
 	mkdir -p $(OBJ)toolchain
 	cd $(OBJ)toolchain && $(CMAKE) $(PWD) $(toolchain_FLAGS) -G "$(GENERATOR)"
 	$(CMAKE) --build $(OBJ)toolchain --target unwind_static -- $(EXTRA)
