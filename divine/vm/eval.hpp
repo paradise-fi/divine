@@ -1286,14 +1286,16 @@ struct Eval
 
         if ( !function.vararg && argcount > function.argcount )
         {
-            fault( _VM_F_Control ) << "too many arguments given to a call: "
+            fault( _VM_F_Control ) << "too many arguments given to a call of "
+                                   << _program.llvmfunction( target )->getName().str() << ": "
                                    << function.argcount << " expected but "
                                    << argcount << " given";
             return;
         }
 
         if ( argcount < function.argcount ) {
-            fault( _VM_F_Control ) << "too few arguments given to a call: "
+            fault( _VM_F_Control ) << "too few arguments given to a call of "
+                                   << _program.llvmfunction( target )->getName().str() << ": "
                                    << function.argcount << " expected but "
                                    << argcount << " given";
             return;
