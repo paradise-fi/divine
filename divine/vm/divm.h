@@ -238,7 +238,7 @@ void __boot( const struct _VM_Env *env )
     __attribute__((__annotate__("brick.llvm.prune.root")));
 
 /*
- * The type of the fault handler. The 'type' parameter exists ot make it easier
+ * The type of the fault handler. The 'type' parameter exists to make it easier
  * for the handler to quickly decide whether to continue execution and whether
  * to raise an user-reported error. In case the handler decides to continue
  * execution, it should transfer control to the cont_frame at the cont_pc
@@ -256,7 +256,7 @@ typedef void (*__vm_sched_t)( void *state );
 /*
  * Access the control registers of the VM. See the definition of
  * _VM_ControlRegister above for details on the registers themselves. It is
- * possible to pass multiple requests at once, making it posible to control
+ * possible to pass multiple requests at once, making it possible to control
  * transfer (by manipulating _VM_CR_PC and/or _VM_CR_Frame) and set other
  * register values atomically (eg. clear the interrupt flag or unmask
  * interrupts, or to also transfer control within the target frame).
