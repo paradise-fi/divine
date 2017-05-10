@@ -123,7 +123,7 @@ struct YamlSink : TimedSink
         for ( auto l : trace.labels )
             std::cout << "  " << l << std::endl;
         if ( !trace.bootinfo.empty() )
-            std::cout << "boot info:" << trace.bootinfo << std::endl;
+            std::cout << "boot info:\n" << trace.bootinfo << std::endl;
         std::cout << std::endl;
         std::cout << "choices made:" << trace.choices << std::endl;
     }
