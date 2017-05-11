@@ -30,6 +30,23 @@ auto identify( llvm::Module &m, Filter filter ) {
         .freeze();
 }
 
+void removeInvalidAttributes( llvm::Function* fn ) {
+    using AttrSet = llvm::AttributeSet;
+    using Kind = llvm::Attribute::AttrKind;
+
+    auto removeAttributes = [&] ( size_t i, const auto& attrs ) {
+        auto rem = AttrSet::get( fn->getContext(), i, attrs );
+        fn->removeAttributes( i, rem );
+    };
+    auto attrs = llvm::ArrayRef< Kind >{ Kind::SExt, Kind::ZExt };
+
+    if ( types::isAbstract( fn->getReturnType() ) )
+        removeAttributes( 0, attrs );
+    for ( size_t i = 0; i < fn->arg_size(); ++i )
+        if ( types::isAbstract( fn->getFunctionType()->getParamType( i ) ) )
+            removeAttributes( i + 1, attrs );
+}
+
 } //empty namespace
 
 llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
@@ -71,6 +88,7 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
     for ( auto & fn : funToValMap ) {
         if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
             continue;
+        removeInvalidAttributes( fn.first );
         for ( auto & inst : fn.second )
             process( inst );
     }
