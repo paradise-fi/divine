@@ -306,9 +306,10 @@ private:
         auto ret = get_return( node );
         Map< Function *, std::vector< llvm::CallInst * > > users;
         for ( auto user : node->function->users() ) {
-            auto call = llvm::cast< llvm::CallInst >( user );
-            auto fn = call->getParent()->getParent();
-            users[ fn ].push_back( call );
+            if ( auto call = llvm::dyn_cast< llvm::CallInst >( user ) ) {
+                auto fn = call->getParent()->getParent();
+                users[ fn ].push_back( call );
+            }
         }
 
         for ( const auto & user : users ) {
