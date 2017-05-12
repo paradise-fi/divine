@@ -44,47 +44,6 @@ bool useSyscallPassthrough( const SysOpts& o ) {
     return false;
 }
 
-TraceDebugConfig getTraceDebugConfig( const SysOpts& o ) {
-    TraceDebugConfig config;
-    for( const auto& opt : o ) {
-        String key;
-        std::transform( opt.first.begin(), opt.first.end(),
-            std::back_inserter( key ), ::tolower );
-
-        if ( key == "notrace" || key == "trace" ) {
-            bool trace = opt.first == "trace";
-            String what;
-            std::transform( opt.second.begin(), opt.second.end(),
-                std::back_inserter( what ), ::tolower );
-
-            if ( what == "threads" || what == "thread" )
-                config.threads = trace;
-            else
-                __dios_trace_f( "Warning: uknown tracing param \"%s\"", opt.second.c_str() );
-        }
-        else if ( key == "debug" ) {
-            String what;
-            std::transform( opt.second.begin(), opt.second.end(),
-                std::back_inserter( what ), ::tolower );
-
-            if ( what == "help" )
-                config.help = true;
-            // ToDo: Trace binary blobs
-            /*else if ( what == "rawenvironment" )
-                config.raw = true;*/
-            else if ( what == "machineparams" )
-                config.machineParams = true;
-            else if ( what == "mainargs" || what == "mainarg" )
-                config.mainArgs = true;
-            else if ( what == "faultcfg" )
-                config.faultCfg = true;
-            else
-                __dios_trace_f( "Warning: uknown debug param \"%s\"", opt.second.c_str() );
-        }
-    }
-    return config;
-}
-
 String extractDiosConfiguration( SysOpts& o ) {
     auto r = std::find_if( o.begin(), o.end(),
         []( const auto& opt ) {

@@ -39,30 +39,12 @@ struct sighandler_t
     int sa_flags;
 };
 
-struct TraceDebugConfig {
-    bool threads:1;
-    bool help:1;
-    bool raw:1;
-    bool machineParams:1;
-    bool mainArgs:1;
-    bool faultCfg:1;
-
-    TraceDebugConfig() :
-        threads( false ), help( false ), raw( false ), machineParams( false ),
-        mainArgs( false ), faultCfg( false ) {}
-
-    bool anyDebugInfo() {
-        return help || raw || machineParams || mainArgs || faultCfg;
-    }
-};
-
 struct HelpOption {
     String description;
     Vector< String > options;
 };
 
 bool useSyscallPassthrough( const SysOpts& o );
-TraceDebugConfig getTraceDebugConfig( const SysOpts& o );
 
 
 } // namespace __dios
