@@ -15,6 +15,7 @@
 #include <dios/core/monitor.hpp>
 #include <dios/core/syscall.hpp>
 #include <divine/metadata.h>
+#include <sys/start.h>
 
 namespace __dios {
 

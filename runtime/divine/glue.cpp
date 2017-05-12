@@ -9,6 +9,7 @@
 #include <sys/divm.h>
 #include <dios/core/fault.hpp>
 #include <dios/core/syscall.hpp>
+#include <sys/start.h>
 #include <string.h>
 #include <dios.h>
 #include <dios/core/main.hpp>
@@ -101,7 +102,7 @@ extern "C" void _PDCLIB_Exit( int rv )
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
     __cxa_finalize( 0 );
-    __dios::runDtors();
+    __dios_run_dtors();
     raise( SIGKILL );
     __builtin_unreachable();
 }

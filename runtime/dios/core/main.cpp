@@ -10,34 +10,6 @@
 
 namespace __dios {
 
-struct CtorDtorEntry {
-    int32_t prio;
-    void (*fn)();
-    void *ignored; // should be used only by linker to discard entries
-};
-
-template< typename Sort >
-static void runCtorsDtors( const char *name, Sort sort ) {
-    auto *meta = __md_get_global_meta( name );
-    if ( !meta )
-        return;
-    auto *begin = reinterpret_cast< CtorDtorEntry * >( meta->address ),
-         *end = begin + meta->size / sizeof( CtorDtorEntry );
-    std::sort( begin, end, sort );
-    for ( ; begin != end; ++begin )
-        begin->fn();
-}
-
-void runCtors() {
-    runCtorsDtors( "llvm.global_ctors",
-            []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio < b.prio; } );
-}
-
-void runDtors() {
-    runCtorsDtors( "llvm.global_dtors",
-            []( CtorDtorEntry &a, CtorDtorEntry &b ) { return a.prio > b.prio; } );
-}
-
 char *env_to_string( const _VM_Env *env ) noexcept {
     auto arg = static_cast< char * >( __vm_obj_make( env->size + 1 ) );
     memcpy( arg, env->value, env->size );
@@ -143,15 +115,6 @@ std::pair<int, char**> construct_main_arg( const char* prefix, const _VM_Env *en
     return { argc, argv };
 }
 
-void free_main_arg( char** argv ) noexcept {
-    char **orig = argv;
-    while( *argv ) {
-        __vm_obj_free( *argv );
-        ++argv;
-    }
-    __vm_obj_free( orig );
-}
-
 void trace_main_arg( int indent, String name, std::pair<int, char**> args ) {
     __dios_trace_i( indent, "%s:", name.c_str() );
     for (int i = 0; i != args.first; i++ )
@@ -159,35 +122,3 @@ void trace_main_arg( int indent, String name, std::pair<int, char**> args ) {
 }
 
 } // namespace __dios
-
-void _start( int l, int argc, char **argv, char **envp ) {
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
-    __pthread_initialize(); // must run before constructors, constructors can
-                            // use pthreads (such as pthread_once or thread
-                            // local storage)
-    __dios::runCtors();
-    int res;
-    switch (l) {
-    case 0:
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_None );
-        res = main();
-        break;
-    case 2:
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_None );
-        res = main( argc, argv );
-        break;
-    case 3:
-        __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_None );
-        res = main( argc, argv, envp );
-        break;
-    default:
-        __dios_assert_v( false, "Unexpected prototype of main" );
-        res = 256;
-    }
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
-
-    __dios::free_main_arg( argv );
-    __dios::free_main_arg( envp );
-
-    exit( res );
-}
