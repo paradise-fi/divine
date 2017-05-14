@@ -68,6 +68,14 @@ struct Compiler {
         return compileModule( filename, typeFromFile( filename ), args );
     }
 
+    std::string preprocessModule( std::string filename,
+                            FileType type, std::vector< std::string > args );
+
+    std::string preprocessModule( std::string filename, std::vector< std::string > args = { } )
+    {
+        return preprocessModule( filename, typeFromFile( filename ), args );
+    }
+
     static std::string serializeModule( llvm::Module &m );
 
     template< typename ... Args >

@@ -4,12 +4,14 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Support/Signals.h>
 #include <clang/Tooling/Tooling.h> // ClangTool
 #include <clang/CodeGen/CodeGenAction.h> // EmitLLVMAction
+#include <clang/Frontend/FrontendActions.h>
 #include <clang/Basic/DiagnosticOptions.h>
 #include <clang/Frontend/TextDiagnosticPrinter.h>
 #include <clang/Driver/Driver.h>
 #include <clang/Driver/Compilation.h>
 #include <clang/Frontend/CompilerInstance.h> // CompilerInvocation
 #include <clang/Frontend/DependencyOutputOptions.h>
+#include <clang/Frontend/Utils.h>
 #include <llvm/Support/Errc.h> // for VFS
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/Support/TargetSelect.h>
@@ -28,6 +30,36 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine {
 namespace cc {
+
+class GetPreprocessedAction : public clang::PreprocessorFrontendAction {
+public:
+    std::string output;
+protected:
+    void ExecuteAction() override {
+        clang::CompilerInstance &CI = getCompilerInstance();
+        llvm::raw_string_ostream os( output );
+        clang::DoPrintPreprocessedInput(CI.getPreprocessor(), &os,
+                            CI.getPreprocessorOutputOpts());
+    }
+
+    bool hasPCHSupport() const override { return true; }
+};
+
+template < typename Action >
+auto buildAction( llvm::LLVMContext *ctx )
+    -> decltype( std::enable_if_t< std::is_base_of< clang::CodeGenAction, Action >::value,
+        std::unique_ptr< Action > >{} )
+{
+    return std::make_unique< Action >( ctx );
+}
+
+template < typename Action >
+auto buildAction( llvm::LLVMContext * )
+    -> decltype( std::enable_if_t< !std::is_base_of< clang::CodeGenAction, Action >::value,
+        std::unique_ptr< Action > >{} )
+{
+    return std::make_unique< Action >();
+}
 
 template< typename Contailer >
 void dump( const Contailer &c ) {
@@ -400,12 +432,20 @@ std::unique_ptr< CodeGenAction > Compiler::cc1( std::string filename,
     compiler.createDiagnostics( &diagprinter, false );
     ASSERT( compiler.hasDiagnostics() );
     compiler.createSourceManager( *fmgr.release() );
-    auto emit = std::make_unique< CodeGenAction >( ctx.get() );
+    compiler.getPreprocessorOutputOpts().ShowCPP = 1; // Allows for printing preprocessor
+    auto emit = buildAction< CodeGenAction >( ctx.get() );
     succ = compiler.ExecuteAction( *emit );
     if ( !succ )
         throw CompileError( "Error building " + filename );
 
     return emit;
+}
+
+std::string  Compiler::preprocessModule( std::string filename,
+                            FileType type, std::vector< std::string > args )
+{
+    auto prep = cc1< GetPreprocessedAction >( filename, type, args );
+    return prep->output;
 }
 
 std::unique_ptr< llvm::Module > Compiler::compileModule( std::string filename,
