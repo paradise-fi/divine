@@ -106,14 +106,14 @@ inline static uint64_t u64mask( int bitwidth ) {
 inline Printer bitvec( brick::data::SmallVector< uint64_t > data, int bitwidth ) {
     int bw = bitwidth;
     int i = 0;
-    while ( bw > 0 && i < data.size() ) {
+    while ( bw > 0 && i < int( data.size() ) ) {
         data[ i ] &= u64mask( bw );
         bw -= 64;
         ++i;
     }
-    while ( i < data.size() )
+    while ( i < int( data.size() ) )
         data.pop_back();
-    while ( data.size() < (bitwidth + 63) / 64 )
+    while ( int( data.size() ) < (bitwidth + 63) / 64 )
         data.push_back( 0 );
 
     return Printer( [=]( std::ostream &o ) {

@@ -280,10 +280,40 @@ namespace uninitialized {
     }
 }
 
-template< typename T, int stackCapacity = (4 > (2 * sizeof( void * )) / sizeof( T ))
-                                            ? 4 : (2 * sizeof( void * )) / sizeof( T ) >
+namespace _impl {
+
+template< typename T >
+constexpr size_t minimalStackCapacity() {
+    return (sizeof( void * ) + sizeof( size_t )) / sizeof( T );
+}
+
+template< typename T >
+constexpr size_t defaultStackCapacity() {
+    return minimalStackCapacity< T >() > 4 ? minimalStackCapacity< T >() : 4;
+}
+
+template< size_t factor = 1 >
+struct SizeWrapper {
+    static size_t get( size_t x ) { return (x + factor - 1) / factor; }
+    static size_t set( size_t x ) { return x * factor; }
+};
+
+}
+
+template< typename T, size_t _stackCapacity = _impl::defaultStackCapacity< T >() >
 struct SmallVector {
-    SmallVector() : _sos( 0 ) {
+
+    static const size_t minimal_capacity = _impl::minimalStackCapacity< T >() > _stackCapacity
+                                           ? _impl::minimalStackCapacity< T >()
+                                           : _stackCapacity;
+
+    using value_type = T;
+    using iterator = T *;
+    using const_iterator = const T *;
+    using reverse_iterator = std::reverse_iterator< iterator >;
+    using const_reverse_iterator = std::reverse_iterator< const_iterator >;
+
+    SmallVector() noexcept : _sos( 0 ) {
         _onstack = true;
     }
 
@@ -318,7 +348,7 @@ struct SmallVector {
     }
 
     ~SmallVector() {
-        _drop< T >( begin(), end() );
+        _drop( begin(), end() );
         if ( !_onstack )
             operator delete( _data.range.begin );
     }
@@ -336,30 +366,32 @@ struct SmallVector {
         return *this;
     }
 
-    T *begin() { return _onstack ? _data.data : _data.range.begin; }
-    const T *begin() const { return _onstack ? _data.data : _data.range.begin; }
-    const T *cbegin() const { return begin(); }
-    T &front() { return begin()[ 0 ]; }
-    const T &front() const { return begin()[ 0 ]; }
+    iterator begin() noexcept { return _onstack ? _data.data : _data.range.begin; }
+    const_iterator begin() const noexcept { return _onstack ? _data.data : _data.range.begin; }
+    const_iterator cbegin() const noexcept { return begin(); }
 
-    T *end() { return begin() + _size; }
-    const T *end() const { return begin() + _size; }
-    const T *cend() const { return begin() + _size; }
-    T &back() { return end()[ -1 ]; }
-    const T &back() const { return end()[ -1 ]; }
+    T &front() noexcept { return begin()[ 0 ]; }
+    const T &front() const noexcept { return begin()[ 0 ]; }
 
-    T *data() { return begin(); }
-    const T *data() const { return begin(); }
+    iterator end() noexcept { return begin() + size(); }
+    const_iterator end() const noexcept { return begin() + size(); }
+    const_iterator cend() const noexcept { return begin() + size(); }
 
-    long size() const { return _size; }
-    long empty() const { return _size == 0; }
+    T &back() noexcept { return end()[ -1 ]; }
+    const T &back() const noexcept { return end()[ -1 ]; }
 
-    long capacity() const {
-        return _onstack ? stackCapacity : _data.range.capacity;
+    T *data() noexcept { return begin(); }
+    const T *data() const noexcept { return begin(); }
+
+    size_t size() const noexcept { return _size; }
+    bool empty() const noexcept { return _size == 0; }
+
+    size_t capacity() const noexcept {
+        return _onstack ? minimal_capacity : _data.range.capacity;
     }
 
-    T &operator[]( long ix ) { return begin()[ ix ]; }
-    const T &operator[]( long ix ) const { return begin()[ ix ]; }
+    T &operator[]( size_t ix ) noexcept { return begin()[ ix ]; }
+    const T &operator[]( size_t ix ) const noexcept { return begin()[ ix ]; }
 
     template< typename... Args >
     void emplace_back( Args&&... args ) {
@@ -368,10 +400,10 @@ struct SmallVector {
     }
 
     void push_back( const T &value ) { emplace_back( value ); }
-    void pop_back() { _resize( _size - 1 ); }
+    void pop_back() noexcept { _resize( size() - 1 ); }
 
-    void resize( long count ) {
-        long old = _size;
+    void resize( size_t count ) {
+        size_t old = size();
         _resize( count );
         auto from = begin() + old;
         auto to = end();
@@ -379,8 +411,8 @@ struct SmallVector {
             uninitialized::construct< T >( from, to );
     }
 
-    void resize( long count, const T &value ) {
-        long old = _size;
+    void resize( size_t count, const T &value ) {
+        size_t old = size();
         _resize( count );
         auto from = begin() + old;
         auto to = end();
@@ -388,13 +420,13 @@ struct SmallVector {
             std::uninitialized_fill( from, to, value );
     }
 
-    void reserve( long newcap ) {
+    void reserve( size_t newcap ) {
         if ( newcap > capacity() )
             _reserve( newcap );
     }
 
-    void clear() { _resize( 0 ); }
-    void clear_and_drop_memory() {
+    void clear() noexcept { _resize( 0 ); }
+    void clear_and_drop_memory() noexcept {
         clear();
         if ( !_onstack ) {
             operator delete( _data.range.begin );
@@ -407,11 +439,11 @@ struct SmallVector {
 
     struct Range {
         T *begin;
-        long capacity;
+        size_t capacity;
     };
     union Data {
         Range range;
-        T data[ stackCapacity ];
+        T data[ minimal_capacity ];
         Data() { }
         ~Data() { }
     };
@@ -419,37 +451,37 @@ struct SmallVector {
     Data _data;
     union {
         struct {
-            unsigned long _size : sizeof( unsigned long ) * 8 - 1;
+            size_t _size : sizeof( size_t ) * 8 - 1;
             bool _onstack : 1;
         };
-        unsigned long _sos;
+        size_t _sos;
     };
 
-    template< typename X >
-    auto _drop( X *, X * ) ->
-        typename std::enable_if< std::is_trivially_destructible< X >::value >::type
+    void _drop( T *, T *, std::true_type ) noexcept
     { }
 
-    template< typename X >
-    auto _drop( X *from, X *to ) ->
-        typename std::enable_if< !std::is_trivially_destructible< X >::value >::type
+    void _drop( T *from, T *to, std::false_type ) noexcept( std::is_nothrow_destructible< T >::value )
     {
         for ( ; from < to; ++from )
-            from->~X();
+            from->~T();
+    }
+
+    void _drop( T *from, T *to ) {
+        _drop( from, to, std::is_trivially_destructible< T >() );
     }
 
     struct MemDeleter { void operator()( T *x ) { operator delete( x ); } };
 
-    void _reserve( long count ) {
-        if ( count < long( _size ) )
-            _drop< T >( begin() + count, end() );
+    void _reserve( size_t count ) {
+        if ( count < size() )
+            _drop( begin() + count, end() );
         else if ( count > capacity() ) {
-            long newcap = 1;
+            size_t newcap = 1;
             for ( ; newcap < count; newcap <<= 1 ) { }
             std::unique_ptr< T, MemDeleter > nstor(
                     static_cast< T * >( operator new( sizeof( T ) * newcap ) ) );
             uninitialized::move( begin(), end(), nstor.get() );
-            _drop< T >( begin(), end() );
+            _drop( begin(), end() );
             if ( !_onstack )
                 operator delete( _data.range.begin );
             _data.range.begin = nstor.release();
@@ -458,7 +490,7 @@ struct SmallVector {
         }
     }
 
-    void _resize( long count ) {
+    void _resize( size_t count ) {
         _reserve( count );
         _size = count;
     }
@@ -1044,7 +1076,8 @@ struct TestSmallVector {
         ASSERT_EQ( px, &x[ 0 ] );
         ASSERT_NEQ( px, py );
 
-        x.push_back( 3 ); // move it out of stack, now move should preserve references
+        while ( x.capacity() == x.minimal_capacity )
+            x.push_back( 3 ); // move it out of stack, now move should preserve references
         ASSERT_NEQ( px, &x[ 0 ] );
         px = &x[ 0 ];
         SmallVector< int, 2 > z( std::move( x ) );
@@ -1063,4 +1096,4 @@ struct TestSmallVector {
 
 #endif // BRICK_DATA_H
 
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
