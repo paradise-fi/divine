@@ -13,7 +13,6 @@ DEFAULT_FLAVOUR ?= release
 PREFIX ?= /opt/divine
 
 MAKEFLAGS ?= --no-print-directory
-CONFIG ?= -DBUILD_SHARED_LIBS=ON
 OBJ ?= $(PWD)/_build.
 EXTRA != if test "$(GENERATOR)" = Ninja && test -n "$(VERBOSE)"; then echo -v -d explain; fi; \
          if test -n "$(JOBS)"; then echo -j $(JOBS); fi
@@ -24,20 +23,30 @@ CLANG = $(TOOLDIR)/clang/
 RTBIN = $(TOOLDIR)/runtime
 RTSRC = $(PWD)/runtime
 
-LDFLAGS_ = -L$(RTBIN)/libunwind/src -Wl,-rpath,$(RTBIN)/libunwind/src \
-           -L$(TOOLDIR)/lib -Wl,-rpath,$(TOOLDIR)/lib \
+LIBUNWIND_LDIR = $(RTBIN)/libunwind/src
+CXX_LDIR = $(TOOLDIR)/lib
+
+STLIB = $(TOOLDIR)/stlib
+
+LDFLAGS_ = -L$(LIBUNWIND_LDIR) -Wl,-rpath,$(LIBUNWIND_LDIR) \
+           -L$(CXX_LDIR) -Wl,-rpath,$(CXX_LDIR)
+
+STATIC_LDFLAGS = -L$(STLIB)
 
 CXXFLAGS_ = -isystem $(RTSRC)/libcxxabi/include -isystem $(RTSRC)/libcxx/include \
             -isystem $(RTSRC)/libunwind/include \
             -stdlib=libc++ -nostdinc++ -Wno-unused-command-line-argument
 
-TOOLCHAIN = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
+TOOLCHAIN_ = -DCMAKE_C_COMPILER=$(CLANG)/bin/clang \
 	    -DCMAKE_CXX_COMPILER=$(CLANG)/bin/clang++ \
-	    -DCMAKE_CXX_FLAGS="$(CXXFLAGS_)" \
+	    -DCMAKE_CXX_FLAGS="$(CXXFLAGS_)"
+TOOLCHAIN = $(TOOLCHAIN_) \
 	    -DCMAKE_EXE_LINKER_FLAGS="$(LDFLAGS_)" -DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS_)"
+# Hack to hide shared libraries from clang
+STATIC_TOOLCHAIN = $(TOOLCHAIN_) -DCMAKE_EXE_LINKER_FLAGS="$(STATIC_LDFLAGS)" -DBUILD_PREFER_STATIC=ON
 
-CONFIG += -DCMAKE_INSTALL_PREFIX=${PREFIX}
-static_FLAGS = -DCMAKE_BUILD_TYPE=Release $(TOOLCHAIN) $(CONFIG) -DBUILD_SHARED_LIBS=OFF
+CONFIG += -DCMAKE_INSTALL_PREFIX=${PREFIX} -DBUILD_SHARED_LIBS=ON
+static_FLAGS = -DCMAKE_BUILD_TYPE=Release $(STATIC_TOOLCHAIN) $(CONFIG) -DBUILD_SHARED_LIBS=OFF
 release_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo $(TOOLCHAIN) $(CONFIG)
 semidbg_FLAGS = -DCMAKE_BUILD_TYPE=SemiDbg $(TOOLCHAIN) $(CONFIG)
 debug_FLAGS = -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
@@ -46,7 +55,7 @@ asan_FLAGS = $(debug_FLAGS) -DCMAKE_CXX_FLAGS_DEBUG="$(asan_CXXFLAGS)"
 
 toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
 		  -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_C_COMPILER=$(CC) \
-		  -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=${PREFIX}
+		  -DCMAKE_INSTALL_PREFIX=${PREFIX}
 
 all: $(DEFAULT_FLAVOUR)
 
@@ -77,6 +86,7 @@ ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP
 	touch $@
 
 ${TARGETS:%=static-%}:
+	$(MAKE) static-toolchain-libs
 	$(MAKE) $(OBJ)static/cmake.stamp $(GETCONFDEPS) FLAVOUR=static
 	$(SETENV) $(CMAKE) --build $(OBJ)static --target ${@:static-%=%} -- $(EXTRA)
 
@@ -108,6 +118,17 @@ $(TOOLSTAMP):
 	$(CMAKE) --build $(OBJ)toolchain --target clang -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target compiler-rt -- $(EXTRA)
 	touch $@
+
+CURSES = libncursesw.a libncurses.a libcurses.a
+
+static-toolchain-libs : toolchain
+	mkdir -p $(STLIB)
+	-ln -s $(LIBUNWIND_LDIR)/libunwind.a $(STLIB)/
+	-ln -s $(CXX_LDIR)/libc++.a $(STLIB)/
+	-ln -s $(CXX_LDIR)/libc++abi.a $(STLIB)/
+	-for i in $(CURSES); do test -f /usr/lib/$$i && ln -s /usr/lib/$$i $(STLIB)/libcurses.a; done
+	-test -f /usr/lib/libedit.a && ln -s /usr/lib/libedit.a $(STLIB)/
+	-test -f /usr/lib/libodbc.a && ln -s /usr/lib/libodbc.a $(STLIB)/
 
 ${FLAVOURS:%=%-env}:
 	$(MAKE) ${@:%-env=%} ${@:%-env=%}-llvm-utils

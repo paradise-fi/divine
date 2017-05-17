@@ -57,10 +57,16 @@ set( LIBCXX_CXX_ABI_INCLUDE_PATHS "${CMAKE_SOURCE_DIR}/runtime/libcxxabi/include
 set( LIBCXX_CXX_ABI_INTREE 1 CACHE BOOL "" )
 set( LIBCXX_CXX_ABI "libcxxabi" CACHE STRING "" )
 
+set( BUILD_PREFER_STATIC OFF CACHE BOOL "prefer static library dependencies" )
+
 project( divine-meta )
 enable_language( CXX )
 set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
+
+if ( BUILD_PREFER_STATIC )
+    SET( CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so" )
+endif()
 
 function(build_llvm)
   include( AddLLVMDefinitions )
