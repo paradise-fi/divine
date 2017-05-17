@@ -13,7 +13,9 @@ import() { echo "$@"; $exe import "$@" -d "$ODBC"; }
 
 wd=$PWD
 
-find -L test/ -name \*.pkg | grep -v todo | while read f; do
+test -z $DIR && DIR=test
+
+find -L $DIR/ -name \*.pkg | grep -v todo | while read f; do
     cp -R $f __pkg.$$
     cd __pkg.$$
     tag=$(echo $f | cut -d/ -f2 | sed -e s,ext-,,)
@@ -35,7 +37,7 @@ find -L test/ -name \*.pkg | grep -v todo | while read f; do
     rm -rf __pkg.$$
 done
 
-find -L test -name \*.c -or -name \*.cpp | grep -v \.pkg/ | grep -v todo | while read f; do
+find -L $DIR -name \*.c -or -name \*.cpp | grep -v \.pkg/ | grep -v todo | while read f; do
     std=
     echo "$f" | grep -q '.cpp$' && std="-std=c++14"
 
