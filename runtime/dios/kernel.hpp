@@ -4,9 +4,8 @@
 
 #include <cstdint>
 #include <cstdarg>
+
 #include <dios/core/stdlibwrap.hpp>
-#include <sys/monitor.h>
-#include <sys/utsname.h>
 
 #define DIOS_DBG( ... ) __dios_trace_f( __VA_ARGS__ )
 

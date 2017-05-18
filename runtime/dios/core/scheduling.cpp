@@ -2,12 +2,11 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 //                 2016 Petr Rockai <me@mornfall.net>
 
-#include <dios/core/scheduling.hpp>
-#include <dios/core/main.hpp>
-#include <divine/metadata.h>
 #include <sys/signal.h>
 #include <signal.h>
 #include <errno.h>
+
+#include <dios/core/scheduling.hpp>
 
 _DiOS_ThreadHandle __dios_get_thread_handle() noexcept {
     return reinterpret_cast< _DiOS_ThreadHandle >

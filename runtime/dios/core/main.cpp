@@ -3,10 +3,11 @@
 
 
 #include <algorithm>
-#include <divine/metadata.h>
-#include <dios/core/main.hpp>
 #include <cstdlib>
 #include <pthread.h>
+
+#include <divine/metadata.h>
+#include <dios/core/main.hpp>
 
 namespace __dios {
 

@@ -2,11 +2,14 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 //                 2016 Petr Rockai <me@mornfall.net>
 
-#include <sys/utsname.h>
+#include <algorithm>
+#include <unistd.h>
 
-#include <dios.h>
+#include <sys/utsname.h>
 #include <sys/bitcode.h>
 #include <divine/metadata.h>
+
+#include <dios.h>
 #include <dios/core/main.hpp>
 #include <dios/core/scheduling.hpp>
 #include <dios/core/syscall.hpp>
@@ -15,14 +18,7 @@
 #include <dios/core/monitor.hpp>
 #include <dios/core/machineparams.hpp>
 #include <dios/filesystem/fs-manager.h>
-#include <dios/filesystem/fs-constants.h>
 
-#include <sys/utsname.h>
-
-#include <algorithm>
-
-
-#include <unistd.h>
 extern "C" { char **environ; }
 
 namespace __dios {

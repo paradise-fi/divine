@@ -6,16 +6,15 @@
 #define __DIOS_SCHEDULING_H__
 
 #include <cstring>
-#include <dios.h>
 #include <signal.h>
 #include <sys/monitor.h>
 #include <sys/signal.h>
-#include <dios/core/syscall.hpp>
-#include <dios/core/fault.hpp>
-#include <dios/core/monitor.hpp>
+#include <sys/start.h>
+#include <dios.h>
+
+#include <dios/core/main.hpp>
 #include <dios/core/syscall.hpp>
 #include <divine/metadata.h>
-#include <sys/start.h>
 
 namespace __dios {
 

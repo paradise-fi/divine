@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <dios/core/memory.hpp>
-#include <dios/kernel.hpp>
 #include <dios/core/main.hpp>
 
 namespace __dios {

@@ -18,10 +18,10 @@ CPP_END
 #include <algorithm>
 #include <cstdarg>
 #include <divine/metadata.h>
-#include <dios.h>
+
 #include <dios/core/main.hpp>
 #include <dios/core/trace.hpp>
-#include <dios/core/scheduling.hpp>
+#include <dios/core/syscall.hpp>
 
 namespace __dios {
 

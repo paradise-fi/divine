@@ -4,9 +4,9 @@
 #define __DIOS_MAIN_H__
 
 #include <utility>
+
 #include <dios.h>
 #include <dios/kernel.hpp>
-#include <dios/core/stdlibwrap.hpp>
 
 namespace __dios {
 
