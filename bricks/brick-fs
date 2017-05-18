@@ -745,6 +745,28 @@ std::string readFile( const std::string &file, size_t length = std::numeric_limi
     return readFile( in, length );
 }
 
+std::string readFileOr( const std::string& file, const std::string& def,
+    size_t length = std::numeric_limits< size_t >::max() )
+{
+    std::ifstream in( file.c_str(), std::ios::binary );
+    if ( !in.is_open() )
+        return def;
+    return readFile( in, length );
+}
+
+void writeFile( std::ofstream &out, const std::string& s ) {
+    if ( !out.is_open() )
+        throw Exception( "writing filestream" );
+    out.write( s.data(), s.size() );
+}
+
+void writeFile( const std::string& file, const std::string& s ) {
+    std::ofstream out( file.c_str(), std::ios::binary );
+    if ( !out.is_open() )
+        throw Exception( "writing file " + file );
+    writeFile( out, s );
+}
+
 }
 
 #ifdef _WIN32
