@@ -19,6 +19,10 @@
 #ifndef _DIOS_SYS_UTSNAME_H
 #define _DIOS_SYS_UTSNAME_H
 
+#include <_PDCLIB_aux.h>
+
+_PDCLIB_EXTERN_C
+
 #define SYS_NMLN 65 /* SVID compat */
 
 struct utsname
@@ -29,5 +33,7 @@ struct utsname
     char version[SYS_NMLN];
     char machine[SYS_NMLN]; /* hardware type */
 };
+
+_PDCLIB_EXTERN_END
 
 #endif

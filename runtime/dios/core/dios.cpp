@@ -2,9 +2,7 @@
 //                 2016 Vladimir Still <xstill@fi.muni.cz>
 //                 2016 Petr Rockai <me@mornfall.net>
 
-extern "C" {
 #include <sys/utsname.h>
-}
 
 #include <dios.h>
 #include <sys/bitcode.h>
@@ -23,10 +21,9 @@ extern "C" {
 
 #include <algorithm>
 
-extern "C" {
+
 #include <unistd.h>
-char **environ;
-}
+extern "C" { char **environ; }
 
 namespace __dios {
 
