@@ -16,7 +16,8 @@ add_custom_command(
   COMMAND sh ${UPDATE_VERSION} "${SHA1SUM}" "${divine_SOURCE_DIR}" "${VERSION_FILE}" "${DIVINE_VERSION}" "${CMAKE_BUILD_TYPE}"
   DEPENDS ${UPDATE_VERSION}
   VERBATIM
-  OUTPUT "${VERSION_FILE}.check"
+  BYPRODUCTS "${VERSION_FILE}"
+  OUTPUT "${VERSION_FILE}.check" "${VERSION_FILE}"
 )
 set_source_files_properties( "${VERSION_FILE}.check" PROPERTIES SYMBOLIC ON )
 set_source_files_properties( "${VERSION_FILE}" PROPERTIES GENERATED ON )
