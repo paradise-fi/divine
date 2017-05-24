@@ -8,7 +8,7 @@ empty="0000000000000000000000000000000000000000";
 
 cd $from
 
-interesting='.*(\.c$|\.cpp$|\.hpp$|\.h$|\.cc$|\.hh$)';
+interesting='.*(\.c$|\.cpp$|\.hpp$|\.h$|\.cc$|\.hh$|\.flags$)';
 boring='\.orig$|~$';
 if test -e releng/manifest; then
     manifest=`cat releng/manifest`;
