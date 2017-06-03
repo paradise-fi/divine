@@ -230,6 +230,8 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
 {
     if ( root.null() )
         return root;
+    if ( !f.valid( root ) )
+        return root;
     auto seen = visited.find( root );
     if ( seen != visited.end() )
         return seen->second;
