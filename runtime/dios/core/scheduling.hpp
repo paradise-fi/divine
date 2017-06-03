@@ -144,10 +144,12 @@ template < typename Process >
 struct Thread {
     _VM_Frame *_frame;
     struct _DiOS_TLS *_tls;
-    pid_t _pid;
+    Process *_proc;
 
     template <class F>
-    Thread( F routine, int tls_size ) noexcept {
+    Thread( F routine, int tls_size, Process *proc ) noexcept
+        : _proc( proc )
+    {
         auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) );
         _frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
         _frame->pc = fun->entry_point;
@@ -156,11 +158,12 @@ struct Thread {
         _tls = reinterpret_cast< struct _DiOS_TLS * >
             ( __vm_obj_make( sizeof( struct _DiOS_TLS ) + tls_size ) );
         _tls->_errno = 0;
-        _pid = 1; // ToDo: Add process support
     }
 
     template <class F>
-    Thread( void *mainFrame, void *mainTls, F routine, int tls_size ) noexcept {
+    Thread( void *mainFrame, void *mainTls, F routine, int tls_size, Process *proc ) noexcept
+        : _proc( proc )
+    {
         auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) );
         _frame = static_cast< _VM_Frame * >( mainFrame );
         __vm_obj_resize( _frame, fun->frame_size );
@@ -170,24 +173,22 @@ struct Thread {
         _tls = reinterpret_cast< struct _DiOS_TLS * >( mainTls );
         __vm_obj_resize( _tls, sizeof( struct _DiOS_TLS ) + tls_size );
         _tls->_errno = 0;
-        _pid = 1; // ToDo: Add process support
     }
 
     Thread( const Thread& o ) noexcept = delete;
     Thread& operator=( const Thread& o ) noexcept = delete;
 
     Thread( Thread&& o ) noexcept
-        : _frame( o._frame ), _tls( o._tls ), _pid( o._pid )
+        : _frame( o._frame ), _tls( o._tls ), _proc( o._proc )
     {
         o._frame = nullptr;
         o._tls = nullptr;
-        o._pid = -1;
     }
 
     Thread& operator=( Thread&& o ) noexcept {
         std::swap( _frame, o._frame );
         std::swap( _tls, o._tls );
-        std::swap( _pid, o._pid);
+        std::swap( _proc, o._proc );
         return *this;
     }
 
@@ -226,19 +227,22 @@ template < typename Next >
 struct Scheduler : public Next {
     using Sys = Syscall< Scheduler< Next > >;
     Scheduler() :
-        sighandlers( nullptr ),
-        _global( __vm_control( _VM_CA_Get, _VM_CR_Globals ) )
-    { }
+        sighandlers( nullptr ){}
 
     struct Process : Next::Process
     {
         int pid;
+        void *globals;
     };
 
     using Thread = __dios::Thread< Process >;
 
     void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) {
-        auto mainThr = newThreadMem( pool.get(), pool.get(), _start, 0 );
+        Process *proc1 = static_cast< Process * >( __vm_obj_make( sizeof( Process ) ) );
+        proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
+        proc1->pid = 1;
+
+        auto mainThr = newThreadMem( pool.get(), pool.get(), _start, 0, proc1 );
         auto argv = construct_main_arg( "arg.", env, true );
         auto envp = construct_main_arg( "env.", env );
         setupMainThread( mainThr, argv.first, argv.second, envp.second );
@@ -306,17 +310,17 @@ struct Scheduler : public Next {
     }
 
     template< typename... Args >
-    Thread *newThreadMem( void *mainFrame, void *mainTls, void ( *routine )( Args... ), int tls_size ) noexcept
+    Thread *newThreadMem( void *mainFrame, void *mainTls, void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
     {
         __dios_assert_v( routine, "Invalid thread routine" );
-        return threads.emplace( mainFrame, mainTls, routine, tls_size );
+        return threads.emplace( mainFrame, mainTls, routine, tls_size, proc );
     }
 
     template< typename... Args >
-    Thread *newThread( void ( *routine )( Args... ), int tls_size ) noexcept
+    Thread *newThread( void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
     {
         __dios_assert_v( routine, "Invalid thread routine" );
-        return threads.emplace( routine, tls_size );
+        return threads.emplace( routine, tls_size, proc );
     }
 
     void setupMainThread( Thread * t, int argc, char** argv, char** envp ) noexcept {
@@ -352,7 +356,7 @@ struct Scheduler : public Next {
                                  {
                                      if ( t->_tls == __dios_get_thread_handle() )
                                          __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
-                                     return t->_pid == id;
+                                     return t->_proc->pid == id;
                                  } );
         threads.erase( r, threads.end() );
         // ToDo: Erase processes
@@ -377,15 +381,20 @@ struct Scheduler : public Next {
         return 0;
     }
 
-    pid_t getpid() {
+
+    Process* getProcess(  ) {
         auto tid = __dios_get_thread_handle();
         auto thread = threads.find( tid );
         __dios_assert( thread );
-        return thread->_pid;
+        return thread->_proc;
+    }
+
+    pid_t getpid( ) {
+        return getProcess()->pid;
     }
 
     _DiOS_ThreadHandle start_thread( _DiOS_ThreadRoutine routine, void * arg, int tls_size ) {
-        auto t = newThread( routine, tls_size );
+        auto t = newThread( routine, tls_size, getProcess() );
         setupThread( t, arg );
         __vm_obj_shared( t->getId() );
         __vm_obj_shared( arg );
@@ -397,22 +406,22 @@ struct Scheduler : public Next {
     }
 
     _DiOS_ThreadHandle *get_process_threads( _DiOS_ThreadHandle tid ) {
-        pid_t pid;
+        Process *proc;
         for ( auto &t : threads ) {
             if ( t->_tls == tid ) {
-                pid = t->_pid;
+                proc = t->_proc;
                 break;
             }
         }
         int count = 0;
         for ( auto &t : threads ) {
-            if ( t->_pid == pid )
+            if ( t->_proc == proc )
                 ++count;
         }
         auto ret = static_cast< _DiOS_ThreadHandle * >( __vm_obj_make( sizeof( _DiOS_ThreadHandle ) * count ) );
         int i = 0;
         for ( auto &t : threads ) {
-            if ( t->_pid == pid ) {
+            if ( t->_proc == proc ) {
                 ret[ i ] = t->_tls;
                 ++i;
             }
@@ -425,7 +434,7 @@ struct Scheduler : public Next {
         bool found = false;
         Thread *thread;
         for ( auto t : threads )
-            if ( t->_pid == pid )
+            if ( t->_proc->pid == pid )
             {
                 found = true;
                 thread = t;
@@ -500,7 +509,6 @@ struct Scheduler : public Next {
 
     SortedStorage< Thread > threads;
     sighandler_t *sighandlers;
-    void *_global;
 };
 
 #endif
