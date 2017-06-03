@@ -92,9 +92,6 @@ struct SortedStorage {
         if ( empty() )
             return;
         int orig_size = size();
-        for ( T** f = first; f != last; f++ ) {
-            delete_object( *f );
-        }
         int s = last - first;
         if ( s != orig_size )
             memmove( first, last, ( end() - last ) * sizeof( T * ) );
@@ -346,6 +343,12 @@ struct Scheduler : public Next {
 
     void killProcess( pid_t id ) noexcept  {
         if ( !id ) {
+
+            size_t c = threads.size();
+
+            for ( int i = 0; i < c; ++i )
+                delete_object( threads[ i ] );
+
             threads.erase( threads.begin(), threads.end() );
             __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
             // ToDo: Erase processes
@@ -356,8 +359,14 @@ struct Scheduler : public Next {
                                  {
                                      if ( t->_tls == __dios_get_thread_handle() )
                                          __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
-                                     return t->_proc->pid == id;
-                                 } );
+                                     if ( t->_proc->pid == id )
+                                     {
+                                         delete_object( t );
+                                         return true;
+                                     }
+                                     return false;
+                                } );
+
         threads.erase( r, threads.end() );
         // ToDo: Erase processes
     }
