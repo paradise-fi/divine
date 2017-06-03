@@ -81,6 +81,13 @@ struct SortedStorage {
         return ret;
     }
 
+    void insert( T* t ) noexcept {
+        resize( size() + 1 );
+        int idx = size() - 1;
+        _storage[ idx ] = t;
+        sort();
+    }
+
     void erase( T** first, T** last ) noexcept {
         if ( empty() )
             return;
