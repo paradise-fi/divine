@@ -111,6 +111,8 @@ int renameat( int olddirfd, const char *oldpath, int newdirfd, const char *newpa
 
 char *getcwd(char *buf, size_t size);
 
+pid_t fork( void );
+
 #ifdef __cplusplus
 } // extern C
 #endif

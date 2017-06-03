@@ -472,6 +472,17 @@ struct Scheduler : public Next {
         killProcess( 0 );
     }
 
+
+    pid_t sysfork( void )
+    {
+        auto tid = __dios_get_thread_handle();
+        auto thread = threads.find( tid );
+        Thread *newThread = static_cast< Thread * >( __vm_obj_clone( thread ) );
+        newThread->_proc->pid = pid_gen++;
+        threads.insert( newThread );
+        return newThread->_proc->pid;
+    }
+
     template < bool THREAD_AWARE_SCHED >
     static void run_scheduler() noexcept
     {
@@ -509,6 +520,7 @@ struct Scheduler : public Next {
 
     SortedStorage< Thread > threads;
     sighandler_t *sighandlers;
+    pid_t pid_gen = 2;
 };
 
 #endif
