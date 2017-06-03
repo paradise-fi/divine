@@ -132,7 +132,7 @@ enum _VM_ControlAction
  * disallow interrupts; that is, the program will execute atomically until the
  * register is reset to 0.
  *
- * When interrupts are masked but an interrupt is raised, a the
+ * When interrupts are masked but an interrupt is raised, the
  * _VM_IF_Interrupted bit is set in this register by the VM and the call that
  * clears the mask (but not the _VM_IF_Interrupted bit) will cause an
  * interrupt.
@@ -140,7 +140,7 @@ enum _VM_ControlAction
  * When the scheduler returns, the value of the _VM_CF_Accepting and
  * _VM_CF_Error bits indicate whether the edge in the state space should be
  * treated as erroneous or accepting. The _VM_CF_Cancel flag indicates, on the
- * other hand, that it is impossible to proceed (eg. there are no runnable
+ * other hand, that it is impossible to proceed (e.g. there are no runnable
  * processes).
  */
 
@@ -157,7 +157,7 @@ static const uint64_t _VM_CF_KernelMode  = 0b100000;
  * (one integer and one pointer). The __vm_control hypercall can be used to get
  * and set register values (as applicable). Bitwise changes to the _VM_CR_Flags
  * register are also possible, using the _VM_CA_Bit action, providing a mask
- * (which bits should be affected) and a the values to set those bits to.
+ * (which bits should be affected) and the values to set those bits to.
  */
 enum _VM_ControlRegister
 {
@@ -240,7 +240,7 @@ void __boot( const struct _VM_Env *env )
 /*
  * The type of the fault handler. The 'type' parameter exists to make it easier
  * for the handler to quickly decide whether to continue execution and whether
- * to raise an user-reported error. In case the handler decides to continue
+ * to raise a user-reported error. In case the handler decides to continue
  * execution, it should transfer control to the cont_frame at the cont_pc
  * location:
  * __vm_control( _VM_CA_Set, _VM_CR_Frame, cont_frame,
@@ -258,7 +258,7 @@ typedef void (*__vm_sched_t)( void *state );
  * _VM_ControlRegister above for details on the registers themselves. It is
  * possible to pass multiple requests at once, making it possible to control
  * transfer (by manipulating _VM_CR_PC and/or _VM_CR_Frame) and set other
- * register values atomically (eg. clear the interrupt flag or unmask
+ * register values atomically (e.g. clear the interrupt flag or unmask
  * interrupts, or to also transfer control within the target frame).
  */
 void *__vm_control( enum _VM_ControlAction, ... ) NOTHROW NATIVE_VISIBLE;
