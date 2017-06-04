@@ -506,6 +506,7 @@ struct Scheduler : public Next {
             __vm_control( _VM_CA_Set, _VM_CR_User2,
                 reinterpret_cast< int64_t >( t->getId() ) );
             __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
+                          _VM_CA_Set, _VM_CR_Globals, t->_proc->globals,
                           _VM_CA_Bit, _VM_CR_Flags,
                           uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
             t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
