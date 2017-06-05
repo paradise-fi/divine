@@ -1,8 +1,5 @@
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <divine.h>
-#include <divine/problem.h>
-
 #ifndef __LART_WEAKMEM_H_
 #define __LART_WEAKMEM_H_
 #include <stdint.h>

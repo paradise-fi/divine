@@ -1,7 +1,9 @@
 // divine-cflags: -std=c++11
 // -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <weakmem.h>
+#include <lart/weakmem.h>
+#include <divine/interrupt.h>
+#include <divine/problem.h>
 #include <algorithm> // reverse iterator
 #include <cstdarg>
 
@@ -158,18 +160,14 @@ struct Array {
         }
     }
 
-    void flusher() _lart_weakmem_bypass_ {
-        while ( true ) {
-            divine::InterruptMask masked;
-            if ( buffers ) {
-                int tid = __divine_choice( __divine_heap_object_size( buffers ) / sizeof( Buffer * ) );
-                auto &b = buffers[ tid ];
-                if ( b->size() ) {
-                    auto line = pop( b );
-                    line.store();
-                }
-            }
-        }
+    T &operator[]( int i ) { return data[ i ]; }
+
+  protected:
+    void drop() {
+        for ( auto &x : *this )
+            x.~T();
+        __divine_free( data );
+        data = nullptr;
     }
 
     T *data = nullptr;
@@ -543,6 +541,9 @@ void __lart_weakmem_memset( char *_dst, int c, size_t n ) noexcept {
 
 void __lart_weakmem_cleanup( int cnt, ... ) noexcept {
     divine::InterruptMask masked;
+    if ( cnt <= 0 )
+        __divine_problem( Problem::InvalidArgument, "invalid cleanup count" );
+
     va_list ptrs;
     va_start( ptrs, cnt );
 
@@ -560,4 +561,3 @@ void __lart_weakmem_cleanup( int cnt, ... ) noexcept {
 }
 
 #pragma GCC diagnostic pop
-#endif
