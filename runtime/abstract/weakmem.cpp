@@ -1,13 +1,19 @@
 // divine-cflags: -std=c++11
-// -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2015,2017 Vladimír Štill <xstill@fi.muni.cz>
 
-#include <lart/weakmem.h>
-#include <divine/interrupt.h>
-#include <divine/problem.h>
+#include <abstract/weakmem.h>
 #include <algorithm> // reverse iterator
 #include <cstdarg>
+#include <dios.h>
 
 #define forceinline __attribute__((always_inline))
+
+#define assume( x ) do { \
+        if ( !(x) ) \
+            __vm_control( _VM_CA_Bit, _VM_CR_Flags, \
+                          _VM_CF_Interrupted | _VM_CF_Cancel | _VM_CF_Mask, \
+                          _VM_CF_Interrupted | _VM_CF_Cancel ); \
+    } while ( false )
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"
@@ -48,7 +54,7 @@ static Reversed< T > reversed( T &x ) __lart_weakmem_bypass { return Reversed< T
 
 template< typename T >
 static T *alloc( int n ) __lart_weakmem_bypass {
-    return static_cast< T * >( __divine_malloc( n * sizeof( T ) ) );
+    return static_cast< T * >( __vm_obj_make( n * sizeof( T ) ) );
 }
 
 template< typename ItIn, typename ItOut >
@@ -77,7 +83,7 @@ struct BufferLine {
                 case 16: store< uint16_t >(); break;
                 case 32: store< uint32_t >(); break;
                 case 64: store< uint64_t >(); break;
-                default: __divine_problem( Problem::Other, "Unhandled case" );
+                default: __dios_fault( _VM_F_Control, "Unhandled case" );
             }
             flushed = true;
         }
@@ -89,11 +95,13 @@ struct BufferLine {
     }
 
     void observe() {
-        observers |= uint64_t( 1 ) << __divine_get_tid();
+        // observers |= uint64_t( 1 ) << __dios_get_thread_handle();
+        __builtin_unreachable();
     }
 
     bool observed() const {
-        return ( observers & (uint64_t( 1 ) << __divine_get_tid()) ) != 0;
+        // return ( observers & (uint64_t( 1 ) << __dios_get_thread_handle()) ) != 0;
+        __builtin_unreachable();
     }
 
     bool matches( char *const mem, uint32_t size ) const {
@@ -133,7 +141,7 @@ struct Array {
 
     explicit operator bool() const { return data; }
     bool empty() const { return !data; }
-    int size() const { return data ? __divine_heap_object_size( data ) / sizeof( T ) : 0; }
+    int size() const { return data ? __vm_obj_size( data ) / sizeof( T ) : 0; }
 
     T *begin() { return data; }
     T *end() { return data + size(); }
@@ -166,7 +174,7 @@ struct Array {
     void drop() {
         for ( auto &x : *this )
             x.~T();
-        __divine_free( data );
+        __vm_obj_free( data );
         data = nullptr;
     }
 
@@ -218,10 +226,10 @@ struct Buffer : Array< BufferLine > {
 
     void flushOne() __attribute__((__always_inline__, __flatten__)) {
         int sz = size();
-        __divine_assume( sz > 0 );
+        assume( sz > 0 );
         // If minimap ordering ic acquire-release, there is no point in
         // reordering, as it will sync anyway
-        int i = sz == 1 || minIsAcqRel() ? 0 : __divine_choice( sz );
+        int i = sz == 1 || minIsAcqRel() ? 0 : __vm_choose( sz );
 
         BufferLine &entry = (*this)[ i ];
 
@@ -231,9 +239,9 @@ struct Buffer : Array< BufferLine > {
         for ( int j = 0; j < i; ++j ) {
             auto &other = (*this)[ j ];
             // don't flush stores after any mathcing stores
-            __divine_assume( !other.matches( entry.addr, entry.bitwidth / 8 ) );
+            assume( !other.matches( entry.addr, entry.bitwidth / 8 ) );
             // don't ever flush SC stores before other SC stores
-            // __divine_assume( entry.order != MemoryOrder::SeqCst || other.order != MemoryOrder::SeqCst );
+            // assume( entry.order != MemoryOrder::SeqCst || other.order != MemoryOrder::SeqCst );
             if ( subseteq( MemoryOrder::Release, other.order ) )
                 releaseOrAfterRelease = true;
         }
@@ -252,34 +260,34 @@ struct Buffer : Array< BufferLine > {
 
 struct BufferHelper : Array< Buffer > {
 
-    void flushOne( int which ) __attribute__((__noinline__, __flatten__)) __lart_weakmem_bypass {
-        __divine_interrupt_mask();
+    void flushOne( _DiOS_ThreadHandle which ) __attribute__((__noinline__, __flatten__)) __lart_weakmem_bypass {
+        __dios::InterruptMask masked;
         auto *buf = getIfExists( which );
-        __divine_assert( bool( buf ) );
+        assert( bool( buf ) );
         buf->flushOne();
-        __divine_interrupt_unmask();
     }
 
-    Buffer *getIfExists( int i ) {
-        if ( size() <= i )
-            return nullptr;
-        return begin() + i;
+    Buffer *getIfExists( _DiOS_ThreadHandle ) {
+        __builtin_unreachable();
     }
 
-    Buffer &get( int i ) {
+    Buffer &get( _DiOS_ThreadHandle i ) {
         Buffer *b = getIfExists( i );
         if ( !b ) {
+            __builtin_unreachable();
+            /*
             resize( i + 1 );
             b = getIfExists( i );
             // start flusher thread when store buffer for the
             // thread is first used
-            __divine_new_thread( &startFlusher, reinterpret_cast< void * >( size_t( i ) ) );
+            */
+            __dios_start_thread( &startFlusher, i, 0 );
         }
         return *b;
     }
 
-    Buffer *getIfExists() { return getIfExists( __divine_get_tid() ); }
-    Buffer &get() { return get( __divine_get_tid() ); }
+    Buffer *getIfExists() { return getIfExists( __dios_get_thread_handle() ); }
+    Buffer &get() { return get( __dios_get_thread_handle() ); }
 
     // mo must be other then Unordered
     template< bool strong = false >
@@ -288,7 +296,7 @@ struct BufferHelper : Array< Buffer > {
         for ( auto &sb : *this )
             if ( &sb != local )
                 for ( auto &l : sb ) {
-                    __divine_assume( !( // conditions for waiting
+                    assume( !( // conditions for waiting
                         // wait for all SC operations, synchronize with them
                         ( mo == MemoryOrder::SeqCst && l.order == MemoryOrder::SeqCst )
                         || // strong: wait for non-SC atomic operations on matching location
@@ -328,7 +336,7 @@ uint64_t load( char *addr, uint32_t bitwidth ) {
         case 16: return *reinterpret_cast< uint16_t * >( addr );
         case 32: return *reinterpret_cast< uint32_t * >( addr );
         case 64: return *reinterpret_cast< uint64_t * >( addr );
-        default: __divine_problem( Problem::Other, "Unhandled case" );
+        default: __dios_fault( _VM_F_Control, "Unhandled case" );
     }
     return 0;
 }
@@ -344,11 +352,7 @@ union BFH {
 } __lart_weakmem;
 
 void startFlusher( void *_which ) __lart_weakmem_bypass {
-    union { // beware of optimizer
-        void *x;
-        int which;
-    };
-    x = _which;
+    _DiOS_ThreadHandle which = static_cast< _DiOS_ThreadHandle >( _which );
 
     while ( true )
         __lart_weakmem.storeBuffers.flushOne( which );
@@ -362,18 +366,18 @@ volatile int __lart_weakmem_min_ordering = 0;
 using namespace lart::weakmem;
 
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth, __lart_weakmem_order _ord ) noexcept {
-    __divine_interrupt_mask();
+    __dios::InterruptMask masked;
     if ( !addr )
-        __divine_problem( Problem::InvalidDereference, "weakmem.store: invalid address" );
+        __dios_fault( _VM_F_Memory, "weakmem.store: invalid address" );
     if ( bitwidth <= 0 || bitwidth > 64 )
-        __divine_problem( Problem::InvalidArgument, "weakmem.store: invalid bitwidth" );
+        __dios_fault( _VM_F_Memory, "weakmem.store: invalid bitwidth" );
 
     MemoryOrder ord = MemoryOrder( _ord );
     BufferLine line{ addr, value, bitwidth, ord };
     // bypass store buffer if acquire-release is minimal ordering (and
     // therefore the memory model is at least TSO) and the memory location
     // is thread-private
-    if ( minIsAcqRel() && __divine_is_private( addr ) ) {
+    if ( minIsAcqRel() && false /* __divine_is_private( addr ) */ ) {
         line.store();
         return;
     }
@@ -387,7 +391,7 @@ void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth, __lart
 }
 
 void __lart_weakmem_fence( __lart_weakmem_order _ord ) noexcept {
-    __divine_interrupt_mask();
+    __dios::InterruptMask masked;
     MemoryOrder ord = MemoryOrder( _ord );
     if ( subseteq( MemoryOrder::Release, ord ) ) { // write barrier
         if ( auto *buf = __lart_weakmem.storeBuffers.getIfExists() ) { // no need for fence if there is nothing in SB
@@ -404,9 +408,9 @@ void __lart_weakmem_fence( __lart_weakmem_order _ord ) noexcept {
 }
 
 void __lart_weakmem_sync( char *addr, uint32_t bitwidth, __lart_weakmem_order _ord ) noexcept {
-    divine::InterruptMask masked;
+    __dios::InterruptMask masked;
     MemoryOrder ord = MemoryOrder( _ord );
-    if ( subseteq( MemoryOrder::Monotonic, ord ) && (!addr || ord == MemoryOrder::SeqCst || !__divine_is_private( addr )) )
+    if ( subseteq( MemoryOrder::Monotonic, ord ) && (!addr || ord == MemoryOrder::SeqCst  || !false /* __divine_is_private( addr ) */) )
         __lart_weakmem.storeBuffers.waitForOther< true >( addr, bitwidth / 8, ord );
 }
 
@@ -416,16 +420,16 @@ union I64b {
 };
 
 uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order _ord ) noexcept {
-    __divine_interrupt_mask();
+    __dios::InterruptMask masked;
     if ( !addr )
-        __divine_problem( Problem::InvalidDereference, "weakmem.load: invalid address" );
+        __dios_fault( _VM_F_Memory, "weakmem.load: invalid address" );
     if ( bitwidth <= 0 || bitwidth > 64 )
-        __divine_problem( Problem::InvalidArgument, "weakmem.load: invalid bitwidth" );
+        __dios_fault( _VM_F_Control, "weakmem.load: invalid bitwidth" );
 
     MemoryOrder ord = MemoryOrder( _ord );
 
     // first wait, SequentiallyConsistent loads have to synchronize with all SC stores
-    if ( __divine_is_private( addr ) && ord != MemoryOrder::SeqCst ) { // private -> not in any store buffer
+    if ( false /* __divine_is_private( addr ) */ && ord != MemoryOrder::SeqCst ) { // private -> not in any store buffer
         return load( addr, bitwidth );
     }
     if ( ord != MemoryOrder::Unordered ) {
@@ -433,7 +437,7 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
         __lart_weakmem.storeBuffers.waitForOther( addr, bitwidth / 8, ord );
     }
     // fastpath for SC loads (after synchrnonization)
-    if ( __divine_is_private( addr ) ) { // private -> not in any store buffer
+    if ( false /* __divine_is_private( addr ) */ ) { // private -> not in any store buffer
         return load( addr, bitwidth );
     }
 
@@ -453,14 +457,14 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
                 I64b bval = { .i64 = it.value };
                 const int shift = intptr_t( it.addr ) - intptr_t( addr );
                 if ( shift >= 0 ) {
-                    for ( int i = shift, j = 0; i < bitwidth / 8 && j < it.bitwidth / 8; ++i, ++j )
+                    for ( unsigned i = shift, j = 0; i < bitwidth / 8 && j < it.bitwidth / 8; ++i, ++j )
                         if ( !bmask[ i ] ) {
                             val.b[ i ] = bval.b[ j ];
                             bmask[ i ] = true;
                             any = true;
                         }
                 } else {
-                    for ( int i = 0, j = -shift; i < bitwidth / 8 && j < it.bitwidth / 8; ++i, ++j )
+                    for ( unsigned i = 0, j = -shift; i < bitwidth / 8 && j < it.bitwidth / 8; ++i, ++j )
                         if ( !bmask[ i ] ) {
                             val.b[ i ] = bval.b[ j ];
                             bmask[ i ] = true;
@@ -471,7 +475,7 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
         }
     }
     if ( any ) {
-        for ( int i = 0; i < bitwidth / 8; ++i )
+        for ( unsigned i = 0; i < bitwidth / 8; ++i )
             if ( !bmask[ i ] )
                 val.b[ i ] = mval.b[ i ];
         return val.i64;
@@ -505,9 +509,9 @@ void internal_memcpy( volatile char *dst, char *src, size_t n ) forceinline {
 
 void __lart_weakmem_memmove( char *_dst, const char *_src, size_t n ) noexcept {
     if ( !_dst )
-        __divine_problem( Problem::InvalidDereference, "invalid dst in memmove" );
+        __dios_fault( _VM_F_Memory, "invalid dst in memmove" );
     if ( !_src )
-        __divine_problem( Problem::InvalidDereference, "invalid src in memmove" );
+        __dios_fault( _VM_F_Memory, "invalid src in memmove" );
 
     volatile char *dst = const_cast< volatile char * >( reinterpret_cast< char * >( _dst ) );
     char *src = reinterpret_cast< char * >( const_cast< char * >( _src ) );
@@ -519,9 +523,9 @@ void __lart_weakmem_memmove( char *_dst, const char *_src, size_t n ) noexcept {
 
 void __lart_weakmem_memcpy( char *_dst, const char *_src, size_t n ) noexcept {
     if ( !_dst )
-        __divine_problem( Problem::InvalidDereference, "invalid dst in memcpy" );
+        __dios_fault( _VM_F_Memory, "invalid dst in memcpy" );
     if ( !_src )
-        __divine_problem( Problem::InvalidDereference, "invalid src in memcpy" );
+        __dios_fault( _VM_F_Memory, "invalid src in memcpy" );
 
     assert( _src < _dst ? _src + n < _dst : _dst + n < _src );
 
@@ -532,7 +536,7 @@ void __lart_weakmem_memcpy( char *_dst, const char *_src, size_t n ) noexcept {
 
 void __lart_weakmem_memset( char *_dst, int c, size_t n ) noexcept {
     if ( !_dst )
-        __divine_problem( Problem::InvalidDereference, "invalid dst in memset" );
+        __dios_fault( _VM_F_Memory, "invalid dst in memset" );
 
     volatile char *dst = const_cast< volatile char * >( _dst );
     for ( ; n; --n, ++dst )
@@ -540,9 +544,9 @@ void __lart_weakmem_memset( char *_dst, int c, size_t n ) noexcept {
 }
 
 void __lart_weakmem_cleanup( int cnt, ... ) noexcept {
-    divine::InterruptMask masked;
+    __dios::InterruptMask masked;
     if ( cnt <= 0 )
-        __divine_problem( Problem::InvalidArgument, "invalid cleanup count" );
+        __dios_fault( _VM_F_Control, "invalid cleanup count" );
 
     va_list ptrs;
     va_start( ptrs, cnt );
@@ -555,7 +559,7 @@ void __lart_weakmem_cleanup( int cnt, ... ) noexcept {
         char *ptr = va_arg( ptrs, char * );
         if ( !ptr )
             continue;
-        buf->evict( ptr, ptr + __divine_heap_object_size( ptr ) );
+        buf->evict( ptr, ptr + __vm_obj_size( ptr ) );
     }
     va_end( ptrs );
 }
