@@ -23,7 +23,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 #include <lart/support/cleanup.h>
-#include <lart/userspace/weakmem.h>
+#include <runtime/abstract/weakmem.h>
 
 namespace lart {
 namespace weakmem {
@@ -501,7 +501,7 @@ struct Substitute : lart::Pass {
     }
 
     template< typename Inst >
-    bool withLocal( Inst *i, brick::types::NotPreferred ) { return false; }
+    bool withLocal( Inst *, brick::types::NotPreferred ) { return false; }
 
     // TODO: resolve bitcasts to allocas
     bool local( llvm::Value *i ) {
@@ -668,7 +668,7 @@ struct Substitute : lart::Pass {
                     break;
                 case llvm::AtomicRMWInst::BAD_BINOP:
                     at->dump();
-                    ASSERT_UNREACHABLE( "weakmem: bad binop in AtomicRMW" );
+                    UNREACHABLE( "weakmem: bad binop in AtomicRMW" );
             }
 
             irb.CreateStore( val, ptr )->setAtomic( usememord(
