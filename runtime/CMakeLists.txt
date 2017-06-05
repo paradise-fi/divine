@@ -64,55 +64,7 @@ add_custom_command(
     VERBATIM
     COMMAND cmake -E copy_if_different ${divine_SOURCE_DIR}/divine/vm/divm.h ${H_DIVM} )
 
-list( APPEND flags -Oz )
-list( APPEND flags -g )
-list( APPEND flags -D__divine__ )
-list( APPEND flags -D_POSIX_C_SOURCE=2008098L )
-list( APPEND flags -D_LITTLE_ENDIAN=1234 )
-list( APPEND flags -D_BYTE_ORDER=1234 )
-
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/ ) # dios
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/include )
-list( APPEND flags -isystem${CMAKE_CURRENT_BINARY_DIR}/libc/include )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libc/internals )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/include )
-list( APPEND flags -isystem${CMAKE_CURRENT_SOURCE_DIR}/libm/src/ld80 )
-
-mkobjs( libc "${flags};-D_PDCLIB_BUILD" )
-mkobjs( libc_cpp "${flags};-D_PDCLIB_BUILD;-std=c++14;-I${CMAKE_CURRENT_BINARY_DIR}" )
-mkobjs( libm "${flags}" )
-
-list( APPEND flags -std=c++14 )
-list( INSERT flags 0 -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxx/include
-                     -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/include
-                     -isystem${CMAKE_CURRENT_SOURCE_DIR}/libcxxabi/src )
-
-mkobjs( libcxxabi "${flags};-DLIBCXXABI_USE_LLVM_UNWINDER" )
-mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXABI" )
-
-list( APPEND flags -isystem${divine_SOURCE_DIR}/bricks)
-list( APPEND flags -I${CMAKE_CURRENT_SOURCE_DIR}/filesystem -I${CMAKE_CURRENT_BINARY_DIR}
-                   -Wall -Wextra -Wold-style-cast -Werror)
-mkobjs( libdios "${flags};-D__dios_kernel__" )
-mkobjs( libabstract "${flags}" )
-
-mklib( libc libc_cpp )
-mklib( libm )
-mklib( libcxxabi )
-mklib( libcxx)
-mklib( libdios )
-mklib( libabstract )
-
-foreach( f ${H_RUNTIME} )
-  stringify( "runtime" "." ${f} )
-endforeach()
-
-set( OPS_src "${CMAKE_SOURCE_DIR}/llvm/include/llvm/IR/Instruction.def" )
-set( OPS_dest "divine/Instruction.def" )
-file( COPY ${OPS_src} DESTINATION "divine" )
-stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} ${OPS_dest} )
-stringify( "runtime" ${CMAKE_CURRENT_BINARY_DIR} libc/include/sys/divm.h )
-stringlist( "runtime" runtime )
+include( compile-rt.flags )
 
 include_directories( ${divine_SOURCE_DIR} )
 add_definitions( -Wno-overlength-strings ${DIVINE_DEFINES} )
