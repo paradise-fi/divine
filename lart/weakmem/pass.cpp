@@ -434,24 +434,6 @@ struct Substitute : lart::Pass {
                                             : type->getPrimitiveSizeInBits() );
     }
 
-    void transform( llvm::Function &f, llvm::DataLayout &dl ) {
-        if ( f.empty() )
-            return;
-        switch ( functionType( &f ) ) {
-            case Type::Bypass:
-                transformBypass( f );
-                return;
-            case Type::SC:
-                transformSC( f );
-                return;
-            case Type::TSO:
-            case Type::PSO:
-                transformWeak( f, dl );
-                return;
-        }
-        ASSERT_UNREACHABLE( "Unhandled case" );
-    }
-
     // in bypass functions we replace all memory transfer intrinsics with lart
     // memmove
     void transformBypass( llvm::Function &fn ) {
@@ -533,26 +515,6 @@ struct Substitute : lart::Pass {
     // *  for TSO: insert PSO -> TSO fence at the beginning and after call to
     //    any function which is neither TSO, SC, or bypass
     void transformWeak( llvm::Function &f, llvm::DataLayout &dl ) {
-        transformWeak( f, dl, functionType( &f ) );
-    }
-
-    template< typename Inst >
-    bool withLocal( Inst *i ) { return withLocal( i, brick::types::Preferred() ); }
-
-    template< typename Inst >
-    auto withLocal( Inst *i, brick::types::Preferred ) -> decltype( bool( i->getPointerOperand() ) )
-    {
-        return local( i->getPointerOperand() );
-    }
-
-    template< typename Inst >
-    bool withLocal( Inst *i, brick::types::NotPreferred ) { return false; }
-
-    bool local( llvm::Value *i ) {
-        return llvm::isa< llvm::AllocaInst >( i ) && !llvm::PointerMayBeCaptured( i, false, true );
-    };
-
-    void transformWeak( llvm::Function &f, llvm::DataLayout &dl, Type type ) {
         auto &ctx = f.getContext();
         auto *i8ptr = llvm::Type::getInt8PtrTy( ctx );
 
@@ -841,25 +803,7 @@ struct Substitute : lart::Pass {
             } );
     }
 
-    LLVMFunctionSet &_default() {
-        return setOfType( _defaultType );
-    }
-
-    LLVMFunctionSet &setOfType( Type type ) {
-        switch ( type ) {
-            case Type::SC: return _sc;
-            case Type::TSO: return _tso;
-            case Type::PSO: return _pso;
-            case Type::Bypass: return _bypass;
-            default: ASSERT_UNREACHABLE( "unhandled case" );
-        }
-    }
-
-    LLVMFunctionSet &fnSet( llvm::Function *fn ) {
-        return setOfType( functionType( fn ) );
-    }
-
-    Type _defaultType;
+    OrderConfig _config;
     int _bufferSize;
     LLVMFunctionSet _bypass;
     llvm::Function *_store = nullptr, *_load = nullptr, *_fence = nullptr, *_sync = nullptr;
