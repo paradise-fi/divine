@@ -9,6 +9,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <brick-string>
 #include <brick-fs>
 #include <brick-llvm>
+#include <brick-sha2>
 #include <iostream>
 
 using namespace divine;
@@ -24,6 +25,18 @@ int main( int argc, const char **argv )
         clang.allowIncludePath( binDir );
         std::vector< std::string > opts;
         std::copy( argv + 5, argv + argc, std::back_inserter( opts ) );
+
+        /* Compile only if SHA-2 hash of preprocessed file differs */
+        auto prec = clang.preprocessModule( argv[3], opts );
+        std::string fpFilename = std::string( argv[ 4 ] ) + ".fp";
+        std::string oldFp = fs::readFileOr( fpFilename, {} );
+        std::string newFp = sha2_512( prec );
+        if ( oldFp == newFp && fs::exists( argv[ 4 ] ) ) {
+            fs::touch( argv[ 4 ] );
+            return 0;
+        }
+        fs::writeFile( fpFilename, newFp );
+
         auto mod = clang.compileModule( argv[3], opts );
 
         auto runtimeBase = fs::joinPath( srcDir, "runtime" );
