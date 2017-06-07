@@ -22,14 +22,9 @@
 #include <sys/socket.h>
 #include <sys/monitor.h>
 #include <signal.h>
+#include <dios/filesystem/passthru-table.h>
 
 namespace __dios {
-
-#define SYSCALL(num,name) name = num,
-enum _VM_SC {
-    #include <dios/core/systable.def>
-};
-#undef SYSCALL
 
 #ifdef __dios_kernel__
 
