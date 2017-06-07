@@ -74,8 +74,16 @@ long syscall_helper( int id, std::vector< long > args, std::vector< bool > argty
         return syscall( id, args[0], args[1], int( args[2] ) );
     else if ( argtypes == A{1, 1, 1} )
         return syscall( id, args[0], args[1], args[2] );
-    else
+    else if ( argtypes == A{0, 1, 1, 0, 1} )
+        return syscall( id, int(args[0]), args[1], args[2], int(args[3]), args[4] );
+    else if ( argtypes == A{0, 1, 1, 0, 1, 1} )
+        return syscall( id, int(args[0]), args[1], args[2], int(args[3]), args[4], args[5] );
+    else if ( argtypes == A{0, 1, 1, 0, 1, 0} )
+        return syscall( id, int(args[0]), args[1], args[2], int(args[3]), args[4], int(args[5]) );
+    else {
+        std::cerr << brick::string::fmt(argtypes) << std::endl;
         NOT_IMPLEMENTED();
+    }
 }
 
 }
