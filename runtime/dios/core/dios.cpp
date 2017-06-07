@@ -18,24 +18,13 @@
 #include <dios/core/monitor.hpp>
 #include <dios/core/machineparams.hpp>
 #include <dios/filesystem/fs-manager.h>
+#include <dios/filesystem/fs-passthru.h>
+#include <dios/filesystem/fs-replay.h>
+#include <dios/filesystem/fs-constants.h>
 
 extern "C" { char **environ; }
 
 namespace __dios {
-
-bool useSyscallPassthrough( const SysOpts& o ) {
-    for ( const auto& opt : o ) {
-        if ( opt.first == "syscall" ) {
-            if ( opt.second == "simulate" )
-                return false;
-            if ( opt.second == "passthrough" )
-                return true;
-            __dios_fault( _DiOS_F_Config,
-                "DiOS boot configuration: invalid syscall option" );
-        }
-    }
-    return false;
-}
 
 String extractDiosConfiguration( SysOpts& o ) {
     auto r = std::find_if( o.begin(), o.end(),
@@ -127,6 +116,11 @@ void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)(), ... ) {
 
 using DefaultConfiguration =
     Scheduler< Fault < fs::VFS < MachineParams < MonitorManager < BaseContext > > > > >;
+using PassthruConfiguration =
+    Scheduler< Fault < fs::PassThrough < MachineParams < MonitorManager < BaseContext > > > > >;
+
+using ReplayConfiguration =
+    Scheduler< Fault < fs::Replay < MachineParams < MonitorManager < BaseContext > > > > >;
 
 void init( const _VM_Env *env )
 {
@@ -135,6 +129,7 @@ void init( const _VM_Env *env )
     __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
     __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, temporaryFaultHandler );
     __vm_control( _VM_CA_Set, _VM_CR_Scheduler, temporaryScheduler );
+
 
     SysOpts sysOpts;
     if ( !getSysOpts( env, sysOpts ) ) {
@@ -145,10 +140,16 @@ void init( const _VM_Env *env )
     auto cfg = extractDiosConfiguration( sysOpts );
     if ( cfg == "standard" )
         boot< DefaultConfiguration >( deterministicPool, env, sysOpts );
-    else {
-        __dios_trace_f( 0, "Unknown DiOS configuration %s specified", cfg.c_str() );
+    else if (cfg == "passthrough") {
+        if (__dios_clear_file("passtrough.out") == 0)
+            __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
+
+        boot< PassthruConfiguration >( deterministicPool, env, sysOpts );
+
+    } else if (cfg == "replay") {
+        boot< ReplayConfiguration >( deterministicPool, env, sysOpts );
+    } else {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
-        return;
     }
 }
 
