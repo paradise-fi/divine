@@ -1,0 +1,10 @@
+#ifdef __MACRO_TAGS_TO_CLASS__
+#undef __MACRO_TAGS_TO_CLASS__
+
+#undef OUT
+#undef MEM
+#undef COUNT
+#undef STRUCT
+#undef MEM
+
+#endif

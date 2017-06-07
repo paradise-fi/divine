@@ -1,0 +1,9 @@
+#ifndef __MACRO_TAGS_TO_CLASS__
+#define __MACRO_TAGS_TO_CLASS__
+
+#define OUT(x) Out<x>
+#define MEM Mem<const char *>
+#define COUNT(x) Count<x>
+#define STRUCT(x) Struct<x>
+
+#endif
