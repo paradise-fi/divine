@@ -229,6 +229,12 @@ extern "C" {
         return mknod( pathname, ( ACCESSPERMS & mode ) | S_IFIFO, 0 );
     }
 
+
+    ssize_t recv(int sockfd, void *buf, size_t len, int flags)
+    {
+        return recvfrom( sockfd, buf, len, flags, nullptr, nullptr );   
+    }
+
     char *ttyname(int fd)
     {
         using __dios::fs::Mode;
