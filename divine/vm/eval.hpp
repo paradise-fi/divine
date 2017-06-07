@@ -1059,11 +1059,11 @@ struct Eval
             else if ( type( action ) == _VM_SC_Mem )
             {
                 int size = operandCk< IntV >( idx ).cooked();
-                bufs.push_back( new char[ size ] );
+                bufs.push_back( size ? new char[ size ] : nullptr );
                 args.push_back( long( bufs.back() ) );
                 auto ptr = operand< PointerV >( idx + 1 );
                 CharV ch;
-                if ( !boundcheck( ptr, size, out( action ) ) )
+                if ( !ptr.cooked().null() && !boundcheck( ptr, size, out( action ) ) )
                     return false;
                 ptr = PointerV( ptr2h( ptr ) );
                 if ( in( action ) )
@@ -1081,7 +1081,8 @@ struct Eval
             else if ( out( action ) )
             {
                 auto ptr = operand< PointerV >( idx );
-                if ( !boundcheck( ptr, type( action ) == _VM_SC_Int32 ? 4 : 8, true ) )
+                if ( !ptr.cooked().null() &&
+                     !boundcheck( ptr, type( action ) == _VM_SC_Int32 ? 4 : 8, true ) )
                     return false;
             }
             return true;
@@ -1104,11 +1105,13 @@ struct Eval
             }
             else if ( out( action ) )
             {
-                auto ptr = ptr2h( operand< PointerV >( idx ) );
-                if ( type( action ) == _VM_SC_Int32 )
-                    heap().write( ptr, IntV( val ) );
-                else
-                    heap().write( ptr, PtrIntV( val ) );
+                auto ptr = operand< PointerV >( idx );
+                if (!ptr.cooked().null()) {
+                    if ( type( action ) == _VM_SC_Int32 )
+                        heap().write( ptr2h(ptr), IntV( val ) );
+                    else
+                        heap().write( ptr2h(ptr), PtrIntV( val ) );
+                }
             }
         };
 
