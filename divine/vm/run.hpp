@@ -19,11 +19,48 @@
 #pragma once
 
 #include <random>
+#include <divine/vm/context.hpp>
+#include <divine/vm/program.hpp>
+#include <divine/vm/heap.hpp>
 
 namespace divine {
 namespace vm {
 
 struct BitCode;
+
+struct RunContext : Context< Program, MutableHeap<> >
+{
+    std::mt19937 _rand;
+    using Context::Context;
+    std::vector< std::string > _trace;
+
+    template< typename I >
+    int choose( int o, I, I )
+    {
+        std::uniform_int_distribution< int > dist( 0, o - 1 );
+        return dist( _rand );
+    }
+
+    void doublefault()
+    {
+        std::cerr << "E: Double fault, program terminated." << std::endl;
+        this->set( _VM_CR_Frame, nullPointer() );
+        this->ref( _VM_CR_Flags ).integer |= _VM_CF_Cancel;
+    }
+
+    void load( typename Heap::Snapshot ) { UNREACHABLE( "RunContext does not support load" ); }
+    typename Heap::Snapshot snapshot() { UNREACHABLE( "RunContext does not support snapshots" ); }
+
+    void trace( vm::TraceText tt ) { std::cerr << "T: " << heap().read_string( tt.text ) << std::endl; }
+    void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
+    void trace( vm::TraceSchedChoice ) {}
+    void trace( vm::TraceStateType ) {}
+    void trace( vm::TraceInfo ti )
+    {
+        std::cerr << "I: " << heap().read_string( ti.text ) << std::endl;
+    }
+    void trace( vm::TraceAlg ) { }
+};
 
 struct Run
 {

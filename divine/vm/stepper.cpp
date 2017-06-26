@@ -21,6 +21,8 @@
 #include <divine/vm/print.hpp>
 #include <divine/vm/eval.hpp>
 
+#include <divine/vm/run.hpp>
+
 namespace divine {
 namespace vm {
 
@@ -97,6 +99,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
 }
 
 template struct Stepper< DebugContext< Program, CowHeap > >;
+template struct Stepper< RunContext >;
 
 }
 }
