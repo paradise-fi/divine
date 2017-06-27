@@ -64,3 +64,15 @@ DIVINE 4.2 (January 2018)
 - Data-symbolic model checking.
 - Implement divine-cc and divine-ld as drop-in replacements for the system
   compiler and linker. [V. Štill]
+
+Long-Term Goals
+===============
+
+- Support for weak memory models. [V. Štill]
+- Support for (over-approximating) abstract domains (predicate abstraction &c).
+- Automated abstraction refinement.
+- Fuzzing: system call traces (offline -- explicit, online -- symbolic) and
+  function call arguments (online -- randomised and symbolic).
+- An OS distribution with `divcc` as a system compiler -- all programs and
+  libraries carry DIVINE-verifiable bitcode.
+- Integration with the McSema LLVM decompiler.
