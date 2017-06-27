@@ -540,7 +540,13 @@ struct Interpreter
                 else
                 {
                     std::string file( w, 0, w.find( ':' ) );
-                    int line = std::stoi( std::string( w, w.find( ':' ) + 1, std::string::npos ) );
+                    int line;
+                    try {
+                        line = std::stoi( std::string( w, w.find( ':' ) + 1,
+                                          std::string::npos ) );
+                    } catch ( std::invalid_argument &e ) {
+                        throw brick::except::Error( "Line number expected after ':'" );
+                    }
                     _bps.emplace_back( std::make_pair( file, line ) );
                 }
     }
@@ -693,15 +699,19 @@ struct Interpreter
         _trace.clear();
         std::deque< int > choices;
         std::set< vm::CowHeap::Snapshot > visited;
-        for ( auto c : tr.choices )
-        {
-            if ( c.find( '^' ) != std::string::npos )
-                for ( int i = 0;
-                      i < std::stoi( std::string( c, c.find( '^' ) + 1, std::string::npos ) );
-                      ++ i )
+        try {
+            for ( auto c : tr.choices )
+            {
+                if ( c.find( '^' ) != std::string::npos )
+                    for ( int i = 0;
+                          i < std::stoi( std::string( c, c.find( '^' ) + 1, std::string::npos ) );
+                          ++ i )
+                        choices.push_back( std::stoi( c ) );
+                else
                     choices.push_back( std::stoi( c ) );
-            else
-                choices.push_back( std::stoi( c ) );
+            }
+        } catch ( std::invalid_argument &e ) {
+            throw brick::except::Error( "Invalid choices format" );
         }
         _ctx._choices = choices;
 
