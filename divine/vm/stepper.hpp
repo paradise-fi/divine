@@ -32,7 +32,7 @@ namespace vm {
 template< typename Context >
 struct Stepper
 {
-    enum Verbosity { Quiet, TraceOnly, PrintSource, PrintInstructions };
+    enum Verbosity { Quiet, TraceOnly, PrintSource, PrintInstructions, TraceInstructions };
     using Snapshot = typename Context::Heap::Snapshot;
     using YieldState = std::function< Snapshot( Snapshot ) >;
     using SchedPolicy = std::function< void() >;
