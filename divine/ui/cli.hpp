@@ -135,7 +135,10 @@ struct Verify : WithBC
 };
 
 struct Run : WithBC {
+    bool _trace = false;
+
     void run();
+    void trace();
 };
 
 struct Sim : WithBC

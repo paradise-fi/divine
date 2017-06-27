@@ -217,12 +217,15 @@ struct CLI : Interface
                      "generate incremental/relocable object file"s )
             .option( "[{string}]", &DivineLd::_flags, "any ld options or input files"s );
 
+        auto runopts = cmd::make_option_set< Run >( v )
+            .option( "[--trace]", &Run::_trace, "trace instructions"s);
+
         auto simopts = cmd::make_option_set< Sim >( v )
             .option( "[--batch]", &Sim::_batch, "execute in batch mode"s );
 
         auto parser = cmd::make_parser( v )
             .command< Verify >( &WithBC::_useropts, vrfyopts, bcopts )
-            .command< Run >( &WithBC::_useropts, bcopts )
+            .command< Run >( &WithBC::_useropts, bcopts, runopts )
             .command< Sim >( &WithBC::_useropts, bcopts, simopts )
             .command< Draw >( drawopts, bcopts )
             .command< Info >( bcopts )

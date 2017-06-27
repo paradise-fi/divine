@@ -18,11 +18,39 @@
 
 #include <divine/vm/run.hpp>
 #include <divine/ui/cli.hpp>
+#include <divine/vm/setup.hpp>
+#include <divine/vm/stepper.hpp>
 
 namespace divine {
 namespace ui {
 
-void Run::run() { vm::Run( bitcode() ).run(); }
+void Run::run() {
+    if ( _trace )
+        trace();
+    else
+        vm::Run( bitcode() ).run();
+}
+
+void Run::trace()
+{
+    using Stepper = vm::Stepper<vm::RunContext>;
+    Stepper step;
+    step._ff_kernel = true;
+    step._booting = true;
+
+    vm::RunContext ctx(bitcode()->program());
+    vm::setup::boot( ctx );
+
+    auto mainpc = bitcode()->program().functionByName( "main" );
+    auto startpc = bitcode()->program().functionByName( "_start" );
+
+    step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
+    step.run(ctx, Stepper::Verbosity::Quiet);
+    step._breakpoint = [startpc]( vm::CodePointer pc, bool ) { return pc.function() == startpc.function(); };
+    step.run(ctx, Stepper::Verbosity::TraceInstructions);
+    step._breakpoint = {};
+    step.run(ctx, Stepper::Verbosity::Quiet);
+}
 
 }
 }
