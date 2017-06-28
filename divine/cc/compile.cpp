@@ -103,37 +103,10 @@ std::unique_ptr< llvm::Module > Compile::compile( std::string path,
     return mod;
 }
 
-struct File {
-    using InPlace = brick::types::InPlace< File >;
-
-    File() = default;
-    explicit File( std::string name, Compiler::FileType type = Compiler::FileType::Unknown ) :
-        name( std::move( name ) ), type( type )
-    { }
-
-    std::string name;
-    Compiler::FileType type = Compiler::FileType::Unknown;
-};
-
-struct Lib {
-    using InPlace = brick::types::InPlace< Lib >;
-
-    Lib() = default;
-    explicit Lib( std::string name ) : name( std::move( name ) ) { }
-    std::string name;
-};
-
-using FileEntry = brick::types::Union< File, Lib >;
-
-void Compile::runCC( std::vector< std::string > rawCCOpts,
-                     std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
-{
+ParsedOpts parseOpts( std::vector< std::string > rawCCOpts ) {
     using FT = Compiler::FileType;
     FT xType = FT::Unknown;
-
-    std::vector< std::string > opts;
-    std::vector< std::string > libSearchPath;
-    std::vector< FileEntry > files;
+    ParsedOpts po;
 
     for ( auto it = rawCCOpts.begin(), end = rawCCOpts.end(); it != end; ++it )
     {
@@ -144,8 +117,8 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
                 val = it->substr( 2 );
             else
                 val = *++it;
-            compiler.allowIncludePath( val );
-            opts.emplace_back( "-I" + val );
+            po.allowedPaths.emplace_back( val );
+            po.opts.emplace_back( "-I" + val );
         }
         else if ( brick::string::startsWith( *it, isystem ) ) {
             std::string val;
@@ -153,11 +126,11 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
                 val = it->substr( isystem.size() );
             else
                 val = *++it;
-            compiler.allowIncludePath( val );
-            opts.emplace_back( isystem + val );
+            po.allowedPaths.emplace_back( val );
+            po.opts.emplace_back( isystem + val );
         }
         else if ( *it == "-include" )
-            opts.emplace_back( *it ), opts.emplace_back( *++it );
+            po.opts.emplace_back( *it ), po.opts.emplace_back( *++it );
         else if ( brick::string::startsWith( *it, "-x" ) ) {
             std::string val;
             if ( it->size() > 2 )
@@ -175,35 +148,55 @@ void Compile::runCC( std::vector< std::string > rawCCOpts,
         }
         else if ( brick::string::startsWith( *it, "-l" ) ) {
             std::string val = it->size() > 2 ? it->substr( 2 ) : *++it;
-            files.emplace_back( Lib::InPlace(), val );
+            po.files.emplace_back( Lib::InPlace(), val );
         }
         else if ( brick::string::startsWith( *it, "-L" ) ) {
             std::string val = it->size() > 2 ? it->substr( 2 ) : *++it;
-            compiler.allowIncludePath( val );
-            libSearchPath.emplace_back( std::move( val ) );
+            po.allowedPaths.emplace_back( val );
+            po.libSearchPath.emplace_back( std::move( val ) );
+        }
+        else if ( brick::string::startsWith( *it, "-o" )) {
+            std::string val;
+            if ( it->size() > 2 )
+                val = it->substr( 2 );
+            else
+                val = *++it;
+            po.outputFile = val;
         }
         else if ( !brick::string::startsWith( *it, "-" ) )
-            files.emplace_back( File::InPlace(), *it, xType == FT::Unknown ? Compiler::typeFromFile( *it ) : xType );
+            po.files.emplace_back( File::InPlace(), *it, xType == FT::Unknown ? Compiler::typeFromFile( *it ) : xType );
         else
-            opts.emplace_back( *it );
+            po.opts.emplace_back( *it );
     }
+
+    return po;
+}
+
+void Compile::runCC( std::vector< std::string > rawCCOpts,
+                     std::function< ModulePtr( ModulePtr &&, std::string ) > moduleCallback )
+{
+    using FT = Compiler::FileType;
+    auto po = parseOpts( rawCCOpts );
+
+    for ( auto path : po.allowedPaths )
+        compiler.allowIncludePath( path );
 
     if ( !moduleCallback )
         moduleCallback = []( ModulePtr &&m, std::string ) -> ModulePtr {
             return std::move( m );
         };
 
-    for ( auto &f : files )
+    for ( auto &f : po.files )
         f.match(
             [&]( const File &f ) {
                 if ( f.type == FT::Unknown )
                     throw std::runtime_error( "cannot detect file format for file '" + f.name + "', please supply -x option for it" );
-                auto m = moduleCallback( compile( f.name, f.type, opts ), f.name );
+                auto m = moduleCallback( compile( f.name, f.type, po.opts ), f.name );
                 if ( m )
                     linker->link( std::move( m ) );
             },
             [&]( const Lib &l ) {
-                linkLib( l.name, libSearchPath );
+                linkLib( l.name, po.libSearchPath );
             } );
     if ( linker->hasModule() ) {
         linkEssentials();

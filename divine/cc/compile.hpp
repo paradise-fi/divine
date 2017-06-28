@@ -6,6 +6,7 @@
 
 #include <brick-assert>
 #include <brick-string>
+#include <brick-types>
 #include <thread>
 #include <stdexcept>
 
@@ -17,6 +18,38 @@ namespace cc {
 // get generate source which defines symbol with name 'name' in namespaces 'ns'
 // which contains char array literal 'value'
 std::string stringifyToCode( std::vector< std::string > ns, std::string name, std::string value );
+
+struct Lib {
+    using InPlace = brick::types::InPlace< Lib >;
+
+    Lib() = default;
+    explicit Lib( std::string name ) : name( std::move( name ) ) { }
+    std::string name;
+};
+
+struct File {
+    using InPlace = brick::types::InPlace< File >;
+
+    File() = default;
+    explicit File( std::string name, Compiler::FileType type = Compiler::FileType::Unknown ) :
+        name( std::move( name ) ), type( type )
+    { }
+
+    std::string name;
+    Compiler::FileType type = Compiler::FileType::Unknown;
+};
+
+using FileEntry = brick::types::Union< File, Lib >;
+
+struct ParsedOpts {
+    std::vector< std::string > opts;
+    std::vector< std::string > libSearchPath;
+    std::vector< FileEntry > files;
+    std::string outputFile;
+    std::vector< std::string > allowedPaths;
+};
+
+ParsedOpts parseOpts( std::vector< std::string > rawCCOpts );
 
 struct Compile
 {
