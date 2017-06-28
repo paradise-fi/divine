@@ -201,6 +201,15 @@ inline void writeModule( ::llvm::Module *m, std::string out ) {
     WriteBitcodeToFile( m, fs );
 }
 
+inline std::string getModuleBytes( ::llvm::Module *m ) {
+    std::string s;
+    verifyModule( *m );
+    {
+        ::llvm::raw_string_ostream fs( s );
+        WriteBitcodeToFile( m, fs );
+    }
+    return s;
+}
 
 template< typename It >
 inline void writeArchive( It begin, It end, std::string out )
