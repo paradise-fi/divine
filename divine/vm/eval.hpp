@@ -401,17 +401,6 @@ struct Eval
 
     FaultStream fault( Fault f )
     {
-        PointerV fr( frame() );
-        PointerV fpc;
-        while ( !fr.cooked().null() && heap().valid( fr.cooked() ) )
-        {
-            heap().read_shift( fr, fpc );
-            if ( fpc.cooked().object() == context().get( _VM_CR_FaultHandler ).pointer.object() )
-                return FaultStream( context(), f, nullPointer( PointerType::Heap ),
-                                    nullPointer( PointerType::Code ), true, true );
-            heap().read( fr.cooked(), fr );
-        }
-
         if ( frame().null() || !heap().valid( frame() ) )
             return fault( f, nullPointer( PointerType::Heap ),
                              nullPointer( PointerType::Code ) );
@@ -421,6 +410,16 @@ struct Eval
 
     FaultStream fault( Fault f, HeapPointer frame, CodePointer c )
     {
+        PointerV fr( frame );
+        PointerV fpc;
+        while ( !fr.cooked().null() && heap().valid( fr.cooked() ) )
+        {
+            heap().read_shift( fr, fpc );
+            if ( fpc.cooked().object() == context().get( _VM_CR_FaultHandler ).pointer.object() )
+                return FaultStream( context(), f, frame, c, true, true );
+            heap().read( fr.cooked(), fr );
+        }
+
         context().sync_pc();
         FaultStream fs( context(), f, frame, c, true, false );
         return fs;
