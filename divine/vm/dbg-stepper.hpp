@@ -26,8 +26,8 @@
 #include <divine/vm/setup.hpp>
 #include <set>
 
-namespace divine {
-namespace vm {
+namespace divine::vm::dbg
+{
 
 template< typename Context >
 struct Stepper
@@ -168,6 +168,5 @@ struct Stepper
     void run( Context &ctx, Verbosity verb );
 };
 
-}
 }
 

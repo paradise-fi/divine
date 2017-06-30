@@ -22,7 +22,6 @@
 #include <divine/vm/bitcode.hpp>
 #include <divine/vm/dbg-node.hpp>
 #include <divine/vm/dbg-util.hpp>
-#include <divine/vm/stepper.hpp>
 #include <divine/ss/search.hpp>
 
 namespace divine {

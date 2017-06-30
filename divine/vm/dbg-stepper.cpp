@@ -16,14 +16,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/stepper.hpp>
+#include <divine/vm/dbg-stepper.hpp>
 #include <divine/vm/dbg-context.hpp>
 #include <divine/vm/dbg-print.hpp>
 #include <divine/vm/eval.hpp>
 
 #include <divine/vm/run.hpp>
 
-namespace divine::vm
+namespace divine::vm::dbg
 {
 
 template< typename Context >
@@ -61,7 +61,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
              ( !in_kernel || !_ff_kernel ) )
         {
             auto frame = ctx.frame();
-            std::string output = dbg::print::instruction( ctx.debug(), eval, 2 );
+            std::string output = print::instruction( ctx.debug(), eval, 2 );
             std::string indent = ( verb == PrintInstructions ) ? "  " : "";
             eval.dispatch();
             if ( ctx.heap().valid( frame ) )
@@ -70,7 +70,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
                 auto newpc = ctx.get( _VM_CR_PC ).pointer;
                 ctx.set( _VM_CR_Frame, frame ); /* :-( */
                 ctx.set( _VM_CR_PC, oldpc );
-                output = dbg::print::instruction( ctx.debug(), eval, 2 );
+                output = print::instruction( ctx.debug(), eval, 2 );
                 ctx.set( _VM_CR_Frame, newframe );
                 ctx.set( _VM_CR_PC, newpc );
             }

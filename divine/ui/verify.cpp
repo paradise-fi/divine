@@ -19,7 +19,7 @@
 #include <divine/mc/liveness.hpp>
 #include <divine/mc/safety.hpp>
 #include <divine/mc/trace.hpp>
-#include <divine/vm/stepper.hpp>
+#include <divine/vm/dbg-stepper.hpp>
 #include <divine/ui/cli.hpp>
 #include <divine/ui/sysinfo.hpp>
 
@@ -99,7 +99,7 @@ void Verify::safety()
     dbg._choices = { trace.choices.back().begin(), trace.choices.back().end() };
     dbg._choices.push_back( -1 ); // prevent execution after choices are depleted
     vm::setup::scheduler( dbg );
-    using Stepper = vm::Stepper< decltype( dbg ) >;
+    using Stepper = vm::dbg::Stepper< decltype( dbg ) >;
     Stepper step;
     step._stop_on_error = true;
     step.run( dbg, Stepper::Quiet );

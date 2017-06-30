@@ -19,7 +19,7 @@
 #include <divine/vm/run.hpp>
 #include <divine/ui/cli.hpp>
 #include <divine/vm/setup.hpp>
-#include <divine/vm/stepper.hpp>
+#include <divine/vm/dbg-stepper.hpp>
 
 namespace divine {
 namespace ui {
@@ -33,7 +33,7 @@ void Run::run() {
 
 void Run::trace()
 {
-    using Stepper = vm::Stepper< vm::DbgRunContext >;
+    using Stepper = vm::dbg::Stepper< vm::DbgRunContext >;
     Stepper step;
     step._ff_kernel = true;
     step._booting = true;

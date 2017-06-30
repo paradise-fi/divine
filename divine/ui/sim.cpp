@@ -17,10 +17,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/stepper.hpp>
 #include <divine/vm/explore.hpp>
+#include <divine/vm/dbg-stepper.hpp>
 #include <divine/vm/dbg-node.hpp>
-#include <divine/vm/print.hpp>
+#include <divine/vm/dbg-print.hpp>
 #include <divine/vm/dbg-dot.hpp>
 
 #include <divine/ui/cli.hpp>
@@ -140,7 +140,7 @@ struct Interpreter
     using BC = std::shared_ptr< vm::BitCode >;
     using DN = vm::dbg::Node< vm::Program, vm::CowHeap >;
     using PointerV = Context::PointerV;
-    using Stepper = vm::Stepper< Context >;
+    using Stepper = vm::dbg::Stepper< Context >;
 
     bool _exit, _batch;
     BC _bc;
