@@ -16,13 +16,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/print.hpp>
+#include <divine/vm/dbg-print.hpp>
 
 using namespace std::literals;
 
-namespace divine {
-namespace vm {
-namespace print {
+namespace divine::vm::dbg::print
+{
 
 #define HANDLE_INST(num, opc, class) [num] = #opc ## s,
 static std::string _opcode[] = {
@@ -51,6 +50,4 @@ std::string opcode( int op )
     return _opcode[ op ];
 }
 
-}
-}
 }

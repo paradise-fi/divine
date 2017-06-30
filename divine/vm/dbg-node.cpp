@@ -18,7 +18,7 @@
 
 #include <divine/vm/dbg-info.hpp>
 #include <divine/vm/dbg-node.hpp>
-#include <divine/vm/print.hpp>
+#include <divine/vm/dbg-print.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/formula.hpp>
 

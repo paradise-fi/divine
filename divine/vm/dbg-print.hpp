@@ -31,10 +31,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <cxxabi.h>
 #include <brick-fs>
 
-namespace divine {
-namespace vm {
-
-namespace print {
+namespace divine::vm::dbg::print
+{
 
 std::string opcode( int );
 
@@ -338,7 +336,4 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
     return out.str();
 }
 
-}
-
-}
 }

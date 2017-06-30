@@ -20,10 +20,10 @@
 
 #include <divine/vm/pointer.hpp>
 #include <divine/vm/dbg-info.hpp>
+#include <divine/vm/dbg-print.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/value.hpp>
 #include <divine/vm/setup.hpp>
-#include <divine/vm/print.hpp>
 #include <set>
 
 namespace divine {
