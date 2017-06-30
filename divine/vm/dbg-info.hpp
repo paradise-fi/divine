@@ -96,6 +96,8 @@ struct Info
         CodePointer pc( 0, 0 );
         for ( auto &f : *m )
         {
+            if ( f.isDeclaration() )
+                continue;
             pc.function( pc.function() + 1 );
             _funmap[ pc.function() ] = &f;
         }
