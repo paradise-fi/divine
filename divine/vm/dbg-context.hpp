@@ -105,14 +105,11 @@ struct Context : DNContext< Heap >
         _info += this->heap().read_string( ti.text ) + "\n";
     }
 
-    void state_type( llvm::DIVariable */*di*/ )
+    void state_type( llvm::DIVariable *di )
     {
-        NOT_IMPLEMENTED();
-        /*
         auto ptrtype = llvm::cast< llvm::DIDerivedType >(
-            di->getType().resolve( this->program().ditypemap ) );
-        _state_di_type = ptrtype->getBaseType().resolve( this->program().ditypemap );
-        */
+            di->getType().resolve( this->debug().typemap() ) );
+        _state_di_type = ptrtype->getBaseType().resolve( this->debug().typemap() );
     }
 
     void trace( vm::TraceStateType s )
