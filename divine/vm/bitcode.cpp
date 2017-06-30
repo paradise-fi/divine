@@ -105,6 +105,7 @@ void BitCode::do_rr()
     _program.reset( new Program( mod ) );
     _program->setupRR();
     _program->computeRR();
+    _dbg.reset( new dbg::Info( _module.get(), *_program.get() ) );
 }
 
 void BitCode::do_constants()
@@ -117,7 +118,6 @@ void BitCode::init()
     do_lart();
     do_rr();
     do_constants();
-    _dbg.reset( new dbg::Info( _module.get(), *_program.get() ) );
 }
 
 BitCode::~BitCode() { }
