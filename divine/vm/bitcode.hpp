@@ -28,6 +28,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/cc/clang.hpp>
+#include <divine/vm/dbg-info.hpp>
 
 namespace llvm {
 class LLVMContext;
@@ -49,6 +50,8 @@ struct BitCode {
     std::unique_ptr< llvm::Module > _module;   // _program depends on _module which depends on _ctx
     std::unique_ptr< Program > _program;       // and they have to be destroyed in the right order
                                                // otherwise DIVINE will SEGV if exception is thrown
+    std::unique_ptr< dbg::Info > _dbg;
+
     using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
 
     AutoTraceFlags _autotrace;
@@ -57,6 +60,7 @@ struct BitCode {
     std::vector< std::string > _lart;
 
     Program &program() { ASSERT( _program.get() ); return *_program.get(); }
+    dbg::Info &debug() { ASSERT( _dbg.get() ); return *_dbg.get(); }
 
     BitCode( std::string file );
     BitCode( std::unique_ptr< llvm::Module > m,

@@ -36,7 +36,7 @@ using Fault = ::_VM_Fault;
 struct TraceText { GenericPointer text; };
 struct TraceSchedChoice { value::Pointer list; };
 struct TraceSchedInfo { int pid; int tid; };
-struct TraceStateType { llvm::Value *stateptr; };
+struct TraceStateType { CodePointer pc; };
 struct TraceInfo { GenericPointer text; };
 struct TraceAlg { brick::data::SmallVector< divine::vm::GenericPointer > args; };
 

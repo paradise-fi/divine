@@ -16,46 +16,22 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/debug.hpp>
+#include <divine/vm/dbg-info.hpp>
+#include <divine/vm/dbg-node.hpp>
 #include <divine/vm/print.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/formula.hpp>
 
-namespace divine {
-namespace vm {
+namespace divine::vm::dbg
+{
 
 using namespace std::literals;
 
-std::pair< llvm::StringRef, int > fileline( const llvm::Instruction &insn )
-{
-    auto loc = insn.getDebugLoc().get();
-    if ( loc && loc->getNumOperands() )
-        return std::make_pair( loc->getFilename(),
-                               loc->getLine() );
-    auto prog = llvm::getDISubprogram( insn.getParent()->getParent() );
-    if ( prog )
-        return std::make_pair( prog->getFilename(),
-                               prog->getScopeLine() );
-    return std::make_pair( "", 0 );
-}
-
-std::string location( const llvm::Instruction &insn )
-{
-    return location( fileline( insn ) );
-}
-
-std::string location( std::pair< llvm::StringRef, int > fl )
-{
-    if ( fl.second )
-        return fl.first.str() + ":" + brick::string::fmt( fl.second );
-    return "(unknown location)";
-}
+template< typename Prog, typename Heap >
+using DNEval = Eval< Prog, DNContext< Heap >, value::Void >;
 
 template< typename Prog, typename Heap >
-using DNEval = Eval< Prog, ConstContext< Prog, Heap >, value::Void >;
-
-template< typename Prog, typename Heap >
-int DebugNode< Prog, Heap >::size()
+int Node< Prog, Heap >::size()
 {
     int sz = INT_MAX;
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
@@ -67,7 +43,7 @@ int DebugNode< Prog, Heap >::size()
 }
 
 template< typename Prog, typename Heap >
-llvm::DIDerivedType *DebugNode< Prog, Heap >::di_derived( uint64_t tag, llvm::DIType *t )
+llvm::DIDerivedType *Node< Prog, Heap >::di_derived( uint64_t tag, llvm::DIType *t )
 {
     t = t ?: _di_type;
     if ( !t )
@@ -79,32 +55,32 @@ llvm::DIDerivedType *DebugNode< Prog, Heap >::di_derived( uint64_t tag, llvm::DI
 }
 
 template< typename Prog, typename Heap >
-llvm::DIDerivedType *DebugNode< Prog, Heap >::di_member( llvm::DIType *t )
+llvm::DIDerivedType *Node< Prog, Heap >::di_member( llvm::DIType *t )
 {
     return di_derived( llvm::dwarf::DW_TAG_member, t );
 }
 
 template< typename Prog, typename Heap >
-llvm::DIDerivedType *DebugNode< Prog, Heap >::di_pointer( llvm::DIType *t )
+llvm::DIDerivedType *Node< Prog, Heap >::di_pointer( llvm::DIType *t )
 {
     return di_derived( llvm::dwarf::DW_TAG_pointer_type, t );
 }
 
 template< typename Prog, typename Heap >
-llvm::DIType *DebugNode< Prog, Heap >::di_base( llvm::DIType *t )
+llvm::DIType *Node< Prog, Heap >::di_base( llvm::DIType *t )
 {
     t = t ?: di_resolve();
     if ( !t )
         return nullptr;
     if ( auto deriv = llvm::dyn_cast< llvm::DIDerivedType >( t ) )
-        return deriv->getBaseType().resolve( _ctx.program().ditypemap );
+        return deriv->getBaseType().resolve( _ctx.debug().typemap() );
     if ( auto comp = llvm::dyn_cast< llvm::DICompositeType >( t ) )
-        return comp->getBaseType().resolve(  _ctx.program().ditypemap );
+        return comp->getBaseType().resolve(  _ctx.debug().typemap() );
     return nullptr;
 }
 
 template< typename Prog, typename Heap >
-llvm::DICompositeType *DebugNode< Prog, Heap >::di_composite( uint64_t tag, llvm::DIType *t )
+llvm::DICompositeType *Node< Prog, Heap >::di_composite( uint64_t tag, llvm::DIType *t )
 {
     t = t ?: di_resolve();
     if ( t && t->getTag() == tag )
@@ -113,7 +89,7 @@ llvm::DICompositeType *DebugNode< Prog, Heap >::di_composite( uint64_t tag, llvm
 }
 
 template< typename Prog, typename Heap >
-int DebugNode< Prog, Heap >::width()
+int Node< Prog, Heap >::width()
 {
     if ( di_member() )
         return di_member()->getSizeInBits();
@@ -121,7 +97,7 @@ int DebugNode< Prog, Heap >::width()
 }
 
 template< typename Prog, typename Heap >
-int DebugNode< Prog, Heap >::bitoffset()
+int Node< Prog, Heap >::bitoffset()
 {
     int rv = 0;
     if ( di_member() )
@@ -132,14 +108,14 @@ int DebugNode< Prog, Heap >::bitoffset()
 }
 
 template< typename Prog, typename Heap >
-bool DebugNode< Prog, Heap >::boundcheck( PointerV ptr, int size )
+bool Node< Prog, Heap >::boundcheck( PointerV ptr, int size )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     return eval.boundcheck( []( auto ) { return std::stringstream(); }, ptr, size, false );
 }
 
 template< typename Prog, typename Heap >
-bool DebugNode< Prog, Heap >::valid()
+bool Node< Prog, Heap >::valid()
 {
     if ( _address.null() )
         return false;
@@ -156,7 +132,7 @@ bool DebugNode< Prog, Heap >::valid()
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::value( YieldAttr yield )
+void Node< Prog, Heap >::value( YieldAttr yield )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     PointerV loc( _address + _offset );
@@ -210,13 +186,13 @@ void DebugNode< Prog, Heap >::value( YieldAttr yield )
 }
 
 template< typename Prog, typename Heap >
-std::string DebugNode< Prog, Heap >::di_scopename( llvm::DIScope *scope )
+std::string Node< Prog, Heap >::di_scopename( llvm::DIScope *scope )
 {
     std::string n;
     if ( !scope )
         scope = _di_var->getScope();
 
-    auto parent = scope->getScope().resolve( _ctx.program().ditypemap );
+    auto parent = scope->getScope().resolve( _ctx.debug().typemap() );
 
     if ( parent && llvm::isa< llvm::DINamespace >( parent ) )
         n = di_scopename( parent ) + "::";
@@ -232,14 +208,14 @@ std::string DebugNode< Prog, Heap >::di_scopename( llvm::DIScope *scope )
 }
 
 template< typename Prog, typename Heap >
-std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias )
+std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias )
 {
     if ( !t )
         t = _di_type;
     if ( di_member( t ) )
         return di_name( di_base( t ) );
 
-    auto &ditmap = _ctx.program().ditypemap;
+    auto &ditmap = _ctx.debug().typemap();
     if ( auto subr = llvm::dyn_cast< llvm::DISubroutineType >( t ) )
     {
         auto types = subr->getTypeArray();
@@ -299,7 +275,7 @@ std::string DebugNode< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
+void Node< Prog, Heap >::attributes( YieldAttr yield )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     Prog &program = _ctx.program();
@@ -349,10 +325,10 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
         if ( insn->opcode != OpArgs && insn->opcode != OpBB )
         {
             eval._instruction = insn;
-            yield( "insn", print::instruction( eval, 0, 1000 ) );
+            yield( "insn", print::instruction( _ctx.debug(), eval, 0, 1000 ) );
         }
         auto npc = program.nextpc( pc() );
-        auto op = program.find( nullptr, npc ).first;
+        auto op = _ctx.debug().find( nullptr, npc ).first;
         yield( "location", location( *op ) );
 
         auto sym = op->getParent()->getParent()->getName().str();
@@ -361,7 +337,7 @@ void DebugNode< Prog, Heap >::attributes( YieldAttr yield )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
+void Node< Prog, Heap >::bitcode( std::ostream &out )
 {
     if ( _kind != DNKind::Frame )
         throw brick::except::Error( "cannot display bitcode, not a stack frame" );
@@ -378,25 +354,25 @@ void DebugNode< Prog, Heap >::bitcode( std::ostream &out )
         out << ( iter == CodePointer( pc() ) ? ">>" : "  " );
         if ( i.opcode == OpBB )
         {
-            auto iop = _ctx.program().find( nullptr, iter + 1 ).first;
-            out << print::value( eval, iop->getParent() ) << ":" << std::endl;
+            auto iop = _ctx.debug().find( nullptr, iter + 1 ).first;
+            out << print::value( _ctx.debug(), eval, iop->getParent() ) << ":" << std::endl;
         }
         else
-            out << "  " << print::instruction( eval, 4 ) << std::endl;
+            out << "  " << print::instruction( _ctx.debug(), eval, 4 ) << std::endl;
     }
     _ctx.set( _VM_CR_PC, origpc );
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::source( std::ostream &out )
+void Node< Prog, Heap >::source( std::ostream &out )
 {
     if ( _kind != DNKind::Frame )
         throw brick::except::Error( "cannot display source code, not a stack frame" );
-    out << print::source( subprogram(), _ctx.program(), pc() );
+    out << print::source( _ctx.debug(), subprogram(), _ctx.program(), pc() );
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::components( YieldDN yield )
+void Node< Prog, Heap >::components( YieldDN yield )
 {
     if ( _kind == DNKind::Frame )
         framevars( yield );
@@ -417,7 +393,7 @@ void DebugNode< Prog, Heap >::components( YieldDN yield )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
+void Node< Prog, Heap >::related( YieldDN yield, bool anon )
 {
     if ( !valid() )
         return;
@@ -436,7 +412,7 @@ void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
         auto kind = DNKind::Object;
         if ( di_name() == "_VM_Frame*" )
             kind = DNKind::Frame;
-        DebugNode rel( _ctx, _snapshot );
+        Node rel( _ctx, _snapshot );
         rel.address( kind, addr.cooked() );
         rel.type( _type->getPointerElementType() );
         rel.di_type( di_base() );
@@ -451,7 +427,7 @@ void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
         if ( !fr.cooked().null() )
         {
             _related_ptrs.insert( fr.cooked() );
-            DebugNode caller( _ctx, _snapshot );
+            Node caller( _ctx, _snapshot );
             caller.address( DNKind::Frame, fr.cooked() );
             yield( "caller", caller );
         }
@@ -472,14 +448,14 @@ void DebugNode< Prog, Heap >::related( YieldDN yield, bool anon )
         if ( _related_ptrs.find( pp ) != _related_ptrs.end() )
             continue;
         pp.offset( 0 );
-        DebugNode deref( _ctx, _snapshot );
+        Node deref( _ctx, _snapshot );
         deref.address( DNKind::Object, pp );
         yield( brick::string::fmt( ptroff->offset() ), deref );
     }
 }
 
 template< typename Prog, typename Heap >
-llvm::DIType *DebugNode< Prog, Heap >::di_resolve( llvm::DIType *t )
+llvm::DIType *Node< Prog, Heap >::di_resolve( llvm::DIType *t )
 {
     llvm::DIType *base = t ?: _di_type;
     llvm::DIDerivedType *DT = nullptr;
@@ -491,13 +467,13 @@ llvm::DIType *DebugNode< Prog, Heap >::di_resolve( llvm::DIType *t )
                DT->getTag() == llvm::dwarf::DW_TAG_restrict_type ||
                DT->getTag() == llvm::dwarf::DW_TAG_volatile_type ||
                DT->getTag() == llvm::dwarf::DW_TAG_const_type ) )
-            base = DT->getBaseType().resolve( _ctx.program().ditypemap );
+            base = DT->getBaseType().resolve( _ctx.debug().typemap() );
         else return base;
     return t;
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
+void Node< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
 {
     auto CT = llvm::cast< llvm::DICompositeType >( di_resolve() );
     auto ST = llvm::cast< llvm::StructType >( _type );
@@ -521,7 +497,7 @@ void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
                 _related_ptrs.insert( ptr.cooked() );
             }
 
-            DebugNode field( _ctx, _snapshot );
+            Node field( _ctx, _snapshot );
             field.address( DNKind::Object, _address );
             field.offset( _offset + offset );
             field.type( *STE );
@@ -536,7 +512,7 @@ void DebugNode< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::array_elements( YieldDN yield )
+void Node< Prog, Heap >::array_elements( YieldDN yield )
 {
     // variable-length arrays are allocated as pointers to the element type,
     // not as sequential types
@@ -548,7 +524,7 @@ void DebugNode< Prog, Heap >::array_elements( YieldDN yield )
 
     for ( int idx = 0; boundcheck( addr + idx * size, size ); ++ idx )
     {
-        DebugNode elem( _ctx, _snapshot );
+        Node elem( _ctx, _snapshot );
         elem.address( DNKind::Object, _address );
         elem.offset( _offset + idx * size );
         elem.type( type );
@@ -558,12 +534,12 @@ void DebugNode< Prog, Heap >::array_elements( YieldDN yield )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
+void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
 
     auto divar = DDI->getVariable();
-    auto ditype = divar->getType().resolve( _ctx.program().ditypemap );
+    auto ditype = divar->getType().resolve( _ctx.debug().typemap() );
     auto var = DDI->getAddress();
     auto &vmap = _ctx.program().valuemap;
     if ( vmap.find( var ) == vmap.end() )
@@ -579,7 +555,7 @@ void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI
     if ( divar->getScope() != subprogram() )
         name += "$" + brick::string::fmt( ++ _related_count[ name ] );
 
-    DebugNode lvar( _ctx, _snapshot );
+    Node lvar( _ctx, _snapshot );
     lvar.address( DNKind::Object, ptr.cooked() );
     lvar.type( type );
     lvar.di_type( ditype );
@@ -587,7 +563,7 @@ void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
+void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
 
@@ -613,7 +589,7 @@ void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
     if ( divar->getScope() != subprogram() )
         name += "$" + brick::string::fmt( ++ _related_count[ name ] );
 
-    DebugNode lvar( _ctx, _snapshot );
+    Node lvar( _ctx, _snapshot );
     lvar.address( DNKind::Object, ptr );
     lvar.type( type );
     lvar.di_var( divar );
@@ -621,13 +597,13 @@ void DebugNode< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::framevars( YieldDN yield )
+void Node< Prog, Heap >::framevars( YieldDN yield )
 {
     if ( pc().type() != PointerType::Code )
         return;
 
     auto npc = _ctx.program().nextpc( pc() );
-    auto op = _ctx.program().find( nullptr, npc ).first;
+    auto op = _ctx.debug().find( nullptr, npc ).first;
     auto F = op->getParent()->getParent();
 
     for ( auto &BB : *F )
@@ -639,7 +615,7 @@ void DebugNode< Prog, Heap >::framevars( YieldDN yield )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::globalvars( YieldDN yield )
+void Node< Prog, Heap >::globalvars( YieldDN yield )
 {
     DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
     llvm::DebugInfoFinder finder;
@@ -660,7 +636,7 @@ void DebugNode< Prog, Heap >::globalvars( YieldDN yield )
         if ( deref.pointer() )
             _related_ptrs.insert( deref.cooked() );
 
-        DebugNode dn( _ctx, _snapshot );
+        Node dn( _ctx, _snapshot );
         dn.address( DNKind::Object, ptr );
         dn.di_var( GV );
         dn.type( var->getType()->getPointerElementType() );
@@ -683,7 +659,7 @@ static std::string rightpad( std::string s, int i )
 }
 
 template< typename Prog, typename Heap >
-void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int indent )
+void Node< Prog, Heap >::format( std::ostream &out, int depth, int derefs, int indent )
 {
     std::string ind_attr( indent + 4, ' ' ), ind( indent, ' ' );
     std::set< std::string > ck{ "value", "type", "location", "symbol", "scope", "formula" };
@@ -758,7 +734,7 @@ void DebugNode< Prog, Heap >::format( std::ostream &out, int depth, int derefs, 
 }
 
 template< typename Prog, typename Heap >
-std::string DebugNode< Prog, Heap >::attribute( std::string key )
+std::string Node< Prog, Heap >::attribute( std::string key )
 {
     std::string res = "-";
     attributes( [&]( auto k, auto v )
@@ -769,7 +745,6 @@ std::string DebugNode< Prog, Heap >::attribute( std::string key )
     return res;
 }
 
-template struct DebugNode< Program, CowHeap >;
+template struct Node< Program, CowHeap >;
 
-}
 }

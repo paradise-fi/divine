@@ -117,6 +117,7 @@ void BitCode::init()
     do_lart();
     do_rr();
     do_constants();
+    _dbg.reset( new dbg::Info( _module.get(), *_program.get() ) );
 }
 
 BitCode::~BitCode() { }

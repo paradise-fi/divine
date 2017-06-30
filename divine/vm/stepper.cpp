@@ -17,7 +17,7 @@
  */
 
 #include <divine/vm/stepper.hpp>
-#include <divine/vm/debug.hpp>
+#include <divine/vm/dbg-context.hpp>
 #include <divine/vm/print.hpp>
 #include <divine/vm/eval.hpp>
 
@@ -61,7 +61,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
              ( !in_kernel || !_ff_kernel ) )
         {
             auto frame = ctx.frame();
-            std::string output = vm::print::instruction( eval, 2 );
+            std::string output = vm::print::instruction( ctx.debug(), eval, 2 );
             std::string indent = ( verb == PrintInstructions ) ? "  " : "";
             eval.dispatch();
             if ( ctx.heap().valid( frame ) )
@@ -70,7 +70,7 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
                 auto newpc = ctx.get( _VM_CR_PC ).pointer;
                 ctx.set( _VM_CR_Frame, frame ); /* :-( */
                 ctx.set( _VM_CR_PC, oldpc );
-                output = vm::print::instruction( eval, 2 );
+                output = vm::print::instruction( ctx.debug(), eval, 2 );
                 ctx.set( _VM_CR_Frame, newframe );
                 ctx.set( _VM_CR_PC, newpc );
             }
@@ -99,8 +99,8 @@ void Stepper< Context >::run( Context &ctx, Verbosity verb )
     ctx.sync_pc();
 }
 
-template struct Stepper< DebugContext< Program, CowHeap > >;
-template struct Stepper< RunContext >;
+template struct Stepper< dbg::Context< CowHeap > >;
+template struct Stepper< DbgRunContext >;
 
 }
 }

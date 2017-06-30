@@ -20,7 +20,8 @@
 
 #include <divine/vm/explore.hpp>
 #include <divine/vm/bitcode.hpp>
-#include <divine/vm/debug.hpp>
+#include <divine/vm/dbg-node.hpp>
+#include <divine/vm/dbg-util.hpp>
 #include <divine/vm/stepper.hpp>
 #include <divine/ss/search.hpp>
 
@@ -30,16 +31,16 @@ namespace mc {
 template< typename Dbg >
 void backtrace( Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
 {
-    vm::DebugNode< vm::Program, vm::CowHeap > dn( dbg, snap ), dn_top( dbg, snap );
-    dn.address( vm::DNKind::Object, dbg.get( _VM_CR_State ).pointer );
+    vm::dbg::Node< vm::Program, vm::CowHeap > dn( dbg, snap ), dn_top( dbg, snap );
+    dn.address( vm::dbg::DNKind::Object, dbg.get( _VM_CR_State ).pointer );
     dn.type( dbg._state_type );
     dn.di_type( dbg._state_di_type );
-    dn_top.address( vm::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
-    vm::DNSet visited;
+    dn_top.address( vm::dbg::DNKind::Frame, dbg.get( _VM_CR_Frame ).pointer );
+    vm::dbg::DNSet visited;
     int stacks = 1;
     std::cout << "  backtrace 1: # active stack" << std::endl;
-    vm::backtrace( dn_top, visited, stacks, maxdepth );
-    vm::backtrace( dn, visited, stacks, maxdepth );
+    vm::dbg::backtrace( dn_top, visited, stacks, maxdepth );
+    vm::dbg::backtrace( dn, visited, stacks, maxdepth );
 }
 
 struct Choices {

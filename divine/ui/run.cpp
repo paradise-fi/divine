@@ -33,12 +33,12 @@ void Run::run() {
 
 void Run::trace()
 {
-    using Stepper = vm::Stepper<vm::RunContext>;
+    using Stepper = vm::Stepper< vm::DbgRunContext >;
     Stepper step;
     step._ff_kernel = true;
     step._booting = true;
 
-    vm::RunContext ctx(bitcode()->program());
+    vm::DbgRunContext ctx( bitcode()->program(), bitcode()->debug() );
     vm::setup::boot( ctx );
 
     auto mainpc = bitcode()->program().functionByName( "main" );
@@ -46,7 +46,10 @@ void Run::trace()
 
     step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
     step.run(ctx, Stepper::Verbosity::Quiet);
-    step._breakpoint = [startpc]( vm::CodePointer pc, bool ) { return pc.function() == startpc.function(); };
+    step._breakpoint = [startpc]( vm::CodePointer pc, bool )
+                       {
+                           return pc.function() == startpc.function();
+                       };
     step.run(ctx, Stepper::Verbosity::TraceInstructions);
     step._breakpoint = {};
     step.run(ctx, Stepper::Verbosity::Quiet);

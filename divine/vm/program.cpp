@@ -467,9 +467,6 @@ void Program::setupRR()
     for ( auto &f : *module )
         if ( f.getName() == "memset" || f.getName() == "memmove" || f.getName() == "memcpy" )
             f.setLinkage( llvm::GlobalValue::ExternalLinkage );
-    auto dbg_cu = module->getNamedMetadata( "llvm.dbg.cu" );
-    if ( dbg_cu )
-        ditypemap = llvm::generateDITypeIdentifierMap( dbg_cu );
 }
 
 void Program::computeRR()
@@ -610,7 +607,6 @@ void Program::pass()
 
         makeFit( functions, pc.function() );
         functionmap[ &function ] = pc.function();
-        llvmfunctionmap[ pc.function() ] = &function;
         pc.instruction( 0 );
 
         if ( !codepointers )

@@ -20,14 +20,15 @@
 
 #include <divine/vm/explore.hpp>
 #include <divine/vm/heap.hpp>
-#include <divine/vm/draw.hpp>
+#include <divine/vm/dbg-dot.hpp>
 #include <brick-proc>
 
 namespace divine {
 namespace mc {
 
 std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
-                  vm::explore::SymbolicContext *ctx = nullptr, vm::SymbolicExplore::Snapshot *initial = nullptr )
+                  vm::explore::SymbolicContext *ctx = nullptr,
+                  vm::SymbolicExplore::Snapshot *initial = nullptr )
 {
     vm::SymbolicExplore ex( bc );
 
@@ -39,7 +40,7 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
     else
         ex.start();
 
-    vm::DebugContext< vm::Program, vm::CowHeap > dbg( bc->program() );
+    vm::dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
     vm::setup::boot( dbg );
     vm::Eval< vm::Program, decltype( dbg ), vm::value::Void > dbg_eval( dbg.program(), dbg );
     dbg_eval.run();
@@ -91,8 +92,8 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
             [&]( auto st )
             {
                 init( st );
-                vm::DebugNode< vm::Program, vm::CowHeap > dn( ex._ctx, st.snap );
-                dn.address( vm::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
+                vm::dbg::Node< vm::Program, vm::CowHeap > dn( dbg, st.snap );
+                dn.address( vm::dbg::DNKind::Object, ex._ctx.get( _VM_CR_State ).pointer );
                 dn.type( dbg._state_type );
                 dn.di_type( dbg._state_di_type );
                 str << ext( st ).seq << " [ style=filled fillcolor=gray ]" << std::endl;

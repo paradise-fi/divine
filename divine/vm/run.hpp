@@ -20,6 +20,7 @@
 
 #include <random>
 #include <divine/vm/context.hpp>
+#include <divine/vm/dbg-context.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/heap.hpp>
 
@@ -28,10 +29,12 @@ namespace vm {
 
 struct BitCode;
 
-struct RunContext : Context< Program, MutableHeap<> >
+template< typename Super >
+struct RunContext_ : Super
 {
     std::mt19937 _rand;
-    using Context::Context;
+    using Super::Super;
+    using typename Super::Heap;
     std::vector< std::string > _trace;
 
     template< typename I >
@@ -51,16 +54,22 @@ struct RunContext : Context< Program, MutableHeap<> >
     void load( typename Heap::Snapshot ) { UNREACHABLE( "RunContext does not support load" ); }
     typename Heap::Snapshot snapshot() { UNREACHABLE( "RunContext does not support snapshots" ); }
 
-    void trace( vm::TraceText tt ) { std::cerr << "T: " << heap().read_string( tt.text ) << std::endl; }
+    void trace( vm::TraceText tt )
+    {
+        std::cerr << "T: " << this->heap().read_string( tt.text ) << std::endl;
+    }
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceSchedChoice ) {}
     void trace( vm::TraceStateType ) {}
     void trace( vm::TraceInfo ti )
     {
-        std::cerr << "I: " << heap().read_string( ti.text ) << std::endl;
+        std::cerr << "I: " << this->heap().read_string( ti.text ) << std::endl;
     }
     void trace( vm::TraceAlg ) { }
 };
+
+using RunContext = RunContext_< vm::Context< Program, MutableHeap<> > >;
+using DbgRunContext = RunContext_< dbg::Context< MutableHeap<> > >;
 
 struct Run
 {

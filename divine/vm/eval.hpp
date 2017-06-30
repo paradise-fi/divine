@@ -1192,8 +1192,7 @@ struct Eval
                         context().trace( TraceText{ ptr2h( operandCk< PointerV >( 1 ) ) } );
                         return;
                     case _VM_T_StateType:
-                        context().trace( TraceStateType{
-                                program().find( nullptr, pc() ).first->getOperand( 1 ) } );
+                        context().trace( TraceStateType{ pc() } );
                         return;
                     case _VM_T_SchedChoice:
                         context().trace( TraceSchedChoice{
@@ -1312,16 +1311,14 @@ struct Eval
 
         if ( !function.vararg && argcount > function.argcount )
         {
-            fault( _VM_F_Control ) << "too many arguments given to a call of "
-                                   << _program.llvmfunction( target )->getName().str() << ": "
+            fault( _VM_F_Control ) << "too many arguments given to a call: "
                                    << function.argcount << " expected but "
                                    << argcount << " given";
             return;
         }
 
         if ( argcount < function.argcount ) {
-            fault( _VM_F_Control ) << "too few arguments given to a call of "
-                                   << _program.llvmfunction( target )->getName().str() << ": "
+            fault( _VM_F_Control ) << "too few arguments given to a call: "
                                    << function.argcount << " expected but "
                                    << argcount << " given";
             return;

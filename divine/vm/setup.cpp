@@ -17,7 +17,7 @@
  */
 
 #include <divine/vm/setup.hpp>
-#include <divine/vm/debug.hpp>
+#include <divine/vm/dbg-context.hpp>
 #include <divine/vm/eval.hpp>
 
 namespace divine {
@@ -32,7 +32,7 @@ void dbg_boot( Context &ctx )
     eval.run();
 }
 
-template void dbg_boot< DebugContext< Program, CowHeap > >( DebugContext< Program, CowHeap > & );
+template void dbg_boot< dbg::Context< CowHeap > >( dbg::Context< CowHeap > & );
 
 }
 }

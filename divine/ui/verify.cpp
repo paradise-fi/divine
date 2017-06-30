@@ -78,7 +78,7 @@ void Verify::safety()
     if ( safety->result() == mc::Result::Valid )
         return _log->result( safety->result(), mc::Trace() );
 
-    vm::DebugContext< vm::Program, vm::CowHeap > dbg( bitcode()->program() );
+    vm::dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
     vm::setup::dbg_boot( dbg );
 
     std::cout << std::endl;

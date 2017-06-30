@@ -19,7 +19,7 @@
 #pragma once
 
 #include <divine/vm/pointer.hpp>
-#include <divine/vm/debug.hpp>
+#include <divine/vm/dbg-info.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/value.hpp>
 #include <divine/vm/setup.hpp>
@@ -87,7 +87,7 @@ struct Stepper
 
         if ( dbg_changed )
         {
-            auto l = fileline( *op );
+            auto l = dbg::fileline( *op );
             if ( _line.second && l != _line )
                 add( _lines );
             if ( _frame.null() || _frame == _frame_cur )
@@ -101,7 +101,7 @@ struct Stepper
     template< typename Eval >
     bool check( Context &ctx, Eval &eval, CodePointer oldpc, bool moved )
     {
-        if ( moved && check_location( eval.pc(), eval.program().find( nullptr, oldpc ).first ) )
+        if ( moved && check_location( eval.pc(), ctx.debug().find( nullptr, oldpc ).first ) )
             return true;
         if ( !_frame.null() && !ctx.heap().valid( _frame ) )
             return true;

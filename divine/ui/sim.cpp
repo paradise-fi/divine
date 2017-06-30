@@ -19,9 +19,9 @@
 
 #include <divine/vm/stepper.hpp>
 #include <divine/vm/explore.hpp>
-#include <divine/vm/debug.hpp>
+#include <divine/vm/dbg-node.hpp>
 #include <divine/vm/print.hpp>
-#include <divine/vm/draw.hpp>
+#include <divine/vm/dbg-dot.hpp>
 
 #include <divine/ui/cli.hpp>
 #include <divine/ui/logo.hpp>
@@ -92,11 +92,14 @@ struct Show : WithVar
     Show() : raw( false ), depth( 10 ), deref( 0 ) {}
 };
 
-struct Dot : WithVar {
+struct Dot : WithVar
+{
     std::string type = "none";
     std::string output_file;
 };
-struct Draw : Dot {
+
+struct Draw : Dot
+{
     Draw() { type = "x11"; }
 };
 
@@ -129,12 +132,13 @@ struct Help { std::string _cmd; };
 
 }
 
-using Context = vm::DebugContext< vm::Program, vm::CowHeap >;
+using Context = vm::dbg::Context< vm::CowHeap >;
+namespace dbg = vm::dbg;
 
 struct Interpreter
 {
     using BC = std::shared_ptr< vm::BitCode >;
-    using DN = vm::DebugNode< vm::Program, vm::CowHeap >;
+    using DN = vm::dbg::Node< vm::Program, vm::CowHeap >;
     using PointerV = Context::PointerV;
     using Stepper = vm::Stepper< Context >;
 
@@ -170,11 +174,11 @@ struct Interpreter
     RefLocation location( vm::CodePointer pc )
     {
         auto npc = _bc->program().nextpc( pc );
-        auto insn = _bc->program().find( nullptr, npc ).first;
-        return vm::fileline( *insn );
+        auto insn = _bc->debug().find( nullptr, npc ).first;
+        return dbg::fileline( *insn );
     };
 
-    DN dn( vm::GenericPointer p, vm::DNKind k, llvm::Type *t, llvm::DIType *dit )
+    DN dn( vm::GenericPointer p, dbg::DNKind k, llvm::Type *t, llvm::DIType *dit )
     {
         DN r( _ctx, _ctx.snapshot() );
         r.address( k, p );
@@ -183,12 +187,12 @@ struct Interpreter
         return r;
     }
 
-    DN nullDN() { return dn( vm::nullPointer(), vm::DNKind::Object, nullptr, nullptr ); }
-    DN frameDN() { return dn( _ctx.frame(), vm::DNKind::Frame, nullptr, nullptr ); }
+    DN nullDN() { return dn( vm::nullPointer(), dbg::DNKind::Object, nullptr, nullptr ); }
+    DN frameDN() { return dn( _ctx.frame(), dbg::DNKind::Frame, nullptr, nullptr ); }
 
     DN objDN( vm::GenericPointer p, llvm::Type *t, llvm::DIType *dit )
     {
-        return dn( p, vm::DNKind::Object, t, dit );
+        return dn( p, dbg::DNKind::Object, t, dit );
     }
 
     void set( std::string n, DN dn ) { _dbg.erase( n ); _dbg.emplace( n, dn ); }
@@ -266,7 +270,7 @@ struct Interpreter
         if ( !get( "$globals", true ).valid() || get( "$globals" ).address() != globals )
         {
             DN gdn( _ctx, _ctx.snapshot() );
-            gdn.address( vm::DNKind::Globals, globals );
+            gdn.address( dbg::DNKind::Globals, globals );
             set( "$globals", gdn );
         }
 
@@ -274,13 +278,13 @@ struct Interpreter
         if ( !get( "$state", true ).valid() || get( "$state" ).address() != state )
         {
             DN sdn( _ctx, _ctx.snapshot() );
-            sdn.address( vm::DNKind::Object, state );
+            sdn.address( dbg::DNKind::Object, state );
             sdn.type( _ctx._state_type );
             sdn.di_type( _ctx._state_di_type );
             set( "$state", sdn );
         }
 
-        if ( get( "$_" ).kind() == vm::DNKind::Frame )
+        if ( get( "$_" ).kind() == dbg::DNKind::Frame )
             set( "$frame", "$_" );
         else
             set( "$data", "$_" );
@@ -311,7 +315,8 @@ struct Interpreter
 
     Interpreter( BC bc )
         : _exit( false ), _batch( false ), _bc( bc ), _explore( bc ), _sticky_tid( -1, 0 ),
-          _sched_random( false ), _debug_kernel( false ), _ctx( _bc->program() ), _state_count( 0 )
+          _sched_random( false ), _debug_kernel( false ), _ctx( _bc->program(), _bc->debug() ),
+          _state_count( 0 )
     {
         vm::setup::boot( _ctx );
         _prompt = strdup( "> " );
@@ -338,7 +343,7 @@ struct Interpreter
             isnew = true;
             name = _state_names[ snap ] = "#"s + brick::string::fmt( ++_state_count );
             DN state( _ctx, snap );
-            state.address( vm::DNKind::Object, _ctx.get( _VM_CR_State ).pointer );
+            state.address( dbg::DNKind::Object, _ctx.get( _VM_CR_State ).pointer );
             state.type( _ctx._state_type );
             state.di_type( _ctx._state_di_type );
             set( name, state );
@@ -425,7 +430,7 @@ struct Interpreter
                                          {
                                              if ( pc != bp_pc )
                                                  return false;
-                                             auto name = _bc->program().llvmfunction( pc )->getName();
+                                             auto name = _bc->debug().function( pc )->getName();
                                              std::cerr << "# stopped at breakpoint " << name.str()
                                                        << std::endl;
                                              return true;
@@ -500,9 +505,9 @@ struct Interpreter
             bp.match(
                 [&]( vm::CodePointer pc )
                 {
-                    auto fun = _bc->program().llvmfunction( pc )->getName().str();
+                    auto fun = _bc->debug().function( pc )->getName().str();
                     std::cerr << fun << " +" << pc.instruction()
-                              << " (at " << vm::location( location( pc ) ) << ")";
+                              << " (at " << dbg::location( location( pc ) ) << ")";
                     if ( !b.del.empty() && !pc.instruction() && b.del == fun )
                         del_this = true;
                 },
@@ -596,9 +601,9 @@ struct Interpreter
 
     void go( command::BackTrace bt )
     {
-        vm::DNSet visited;
+        dbg::DNSet visited;
         int stacks = 0;
-        vm::backtrace( get( bt.var ), visited, stacks, 100 );
+        dbg::backtrace( get( bt.var ), visited, stacks, 100 );
     }
 
     void go( command::Show cmd )
@@ -640,7 +645,7 @@ struct Interpreter
         if ( !_debug_kernel ) {
             // TODO: obtain this through some DiOS API?
             std::regex fault( "__dios.*fault_handler", std::regex::basic );
-            if ( frame._kind == vm::DNKind::Frame &&
+            if ( frame._kind == dbg::DNKind::Frame &&
                     std::regex_search( frame.attribute( "symbol" ), fault  ) )
                 return get( "frame:deref", false, std::move( fup ), true );
         }
@@ -649,7 +654,7 @@ struct Interpreter
 
     void go( command::Up ) {
         auto current =  get( "$_" );
-        if ( current._kind != vm::DNKind::Frame )
+        if ( current._kind != dbg::DNKind::Frame )
             throw brick::except::Error( "$_ not set to a frame, can't go up" );
         try {
             set( "$_", frame_up( current ) );
@@ -660,7 +665,7 @@ struct Interpreter
 
     void go( command::Down ) {
         auto frame = get( "$top" ), prev = frame, current = get( "$_" );
-        if ( current._kind != vm::DNKind::Frame )
+        if ( current._kind != dbg::DNKind::Frame )
             throw brick::except::Error( "$_ not set to a frame, can't go down" );
         if ( frame.address() == current.address() )
             throw brick::except::Error( "bottom (innermost) frame selected, can't go down" );

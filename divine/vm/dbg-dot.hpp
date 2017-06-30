@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <divine/vm/debug.hpp>
+#include <divine/vm/dbg-node.hpp>
 #include <divine/vm/heap.hpp>
 #include <brick-proc>
 
@@ -45,9 +45,10 @@ std::string text2dot( std::string s )
 
 }
 
-namespace vm {
+namespace vm::dbg
+{
 
-using DNMap = std::map< vm::DNKey, int >;
+using DNMap = std::map< DNKey, int >;
 
 template< typename DN >
 int dotDN( std::ostream &o, DN dn, DNMap &visited, int &seq, std::string prefix )

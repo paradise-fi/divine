@@ -20,6 +20,7 @@
 
 #include <divine/vm/pointer.hpp>
 #include <divine/vm/program.hpp>
+#include <divine/vm/dbg-info.hpp>
 #include <divine/rt/runtime.hpp>
 
 DIVINE_RELAX_WARNINGS
@@ -65,7 +66,8 @@ void ascbyte( std::ostream &o, int &col, B byte )
 enum class DisplayVal { Name, Value, PreferName };
 
 template< typename Eval >
-static std::string value( Eval &eval, llvm::Value *val, DisplayVal disp = DisplayVal::PreferName )
+static std::string value( dbg::Info &dbg, Eval &eval, llvm::Value *val,
+                          DisplayVal disp = DisplayVal::PreferName )
 {
     std::stringstream num2str;
     num2str << std::setw( 2 ) << std::setfill( '0' ) << std::hex;
@@ -76,14 +78,14 @@ static std::string value( Eval &eval, llvm::Value *val, DisplayVal disp = Displa
     {
         if ( auto I = llvm::dyn_cast< llvm::Instruction >( val ) )
         {
-            num2str << eval.program().find( I, CodePointer() ).second.instruction();
+            num2str << dbg.find( I, CodePointer() ).second.instruction();
             name = "%" + num2str.str();
         }
         else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
         {
-            auto insn = eval.program().first_indexed( B->begin(), B->end() );
+            auto insn = dbg.first_indexed( B->begin(), B->end() );
             ASSERT( insn != B->end() );
-            num2str << eval.program().find( &*insn, CodePointer() ).second.instruction() - 1;
+            num2str << dbg.find( &*insn, CodePointer() ).second.instruction() - 1;
             name = B->getName().str();
             name = "label %" + ( name.empty() || name.size() > 20 ? num2str.str() : name );
         }
@@ -101,14 +103,6 @@ static std::string value( Eval &eval, llvm::Value *val, DisplayVal disp = Displa
     }
 
     return name;
-}
-
-template< typename Eval >
-static void result( std::ostream &out, int col, Eval &eval )
-{
-    while ( col < 60 )
-        col ++, out << " ";
-    out << "# " << value( eval, eval.program().find( nullptr, eval.pc() ).first, DisplayVal::Value );
 }
 
 template< typename I >
@@ -186,17 +180,17 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
 }
 
 template< typename Eval >
-static std::string instruction( Eval &eval, int padding = 0, int colmax = 80 )
+static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int colmax = 80 )
 {
     std::stringstream out;
     auto &insn = eval.instruction();
-    auto I = eval.program().find( nullptr, eval.pc() ).first;
+    auto I = dbg.find( nullptr, eval.pc() ).first;
     ASSERT( I );
 
     bool printres = true;
 
     if ( insn.result().type != Program::Slot::Void )
-        out << value( eval, I, DisplayVal::Name ) << " = ";
+        out << value( dbg, eval, I, DisplayVal::Name ) << " = ";
     else
         printres = false;
 
@@ -216,11 +210,19 @@ static std::string instruction( Eval &eval, int padding = 0, int colmax = 80 )
             out << "@" << tgt << " ";
         } else {
             auto *val = cs.getCalledValue();
-            auto oname = value( eval, val, DisplayVal::PreferName );
+            auto oname = value( dbg, eval, val, DisplayVal::PreferName );
             argcols = oname.size() + 1;
             out << ( oname.empty() ? "?" : oname ) << " ";
         }
     }
+
+    auto result = [&]( int col )
+                  {
+                      while ( col < 60 )
+                          col ++, out << " ";
+                      out << "# " << value( dbg, eval, dbg.find( nullptr, eval.pc() ).first,
+                                            DisplayVal::Value );
+                  };
 
     for ( int i = 0; i < argc; ++i )
     {
@@ -228,13 +230,13 @@ static std::string instruction( Eval &eval, int padding = 0, int colmax = 80 )
             continue;
 
         auto val = I->getOperand( i );
-        auto oname = value( eval, val, DisplayVal::PreferName );
+        auto oname = value( dbg, eval, val, DisplayVal::PreferName );
 
         int cols = argalign + argcols + oname.size() + 1;
         if ( ( printres && cols >= colmax - 20 ) || cols >= colmax )
         {
             if ( printres )
-                printres = false, result( out, argalign + argcols, eval );
+                printres = false, result( argalign + argcols );
             out << std::endl;
             for ( int i = 0; i < argalign; ++i ) out << " ";
             argcols = 0;
@@ -245,7 +247,7 @@ static std::string instruction( Eval &eval, int padding = 0, int colmax = 80 )
     }
 
     if ( printres )
-        result( out, argalign + argcols, eval );
+        result( argalign + argcols );
 
     return out.str();
 }
@@ -291,7 +293,7 @@ static std::string demangle( std::string mangled )
 }
 
 template< typename Program >
-static std::string source( llvm::DISubprogram *di, Program &program, CodePointer pc )
+static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &program, CodePointer pc )
 {
     std::stringstream out;
 
@@ -311,7 +313,7 @@ static std::string source( llvm::DISubprogram *di, Program &program, CodePointer
     /* figure out the source code span the function covers; painfully */
     for ( iter = program.nextpc( iter ); program.valid( iter ); iter = program.advance( iter ) )
     {
-        auto dl = program.find( nullptr, iter ).first->getDebugLoc().get();
+        auto dl = dbg.find( nullptr, iter ).first->getDebugLoc().get();
         if ( !dl )
             continue;
         while ( dl->getInlinedAt() )
