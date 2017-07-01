@@ -126,6 +126,29 @@ template< int i > using bitvec = typename _bitvec< i >::T;
 
 namespace {
 
+template< typename T >
+union Cast
+{
+    bitvec< sizeof( T ) * 8 > r;
+    T c;
+    Cast( T c ) : c( c ) {}
+    Cast( bitvec< sizeof( T ) * 8 > r ) : r( r ) {}
+};
+
+template< typename T >
+bitvec< sizeof( T ) * 8 > raw( T t )
+{
+    Cast< T > c( t );
+    return c.r;
+}
+
+template< typename T >
+T unraw( bitvec< sizeof( T ) * 8 > r )
+{
+    Cast< T > c( r );
+    return c.c;
+}
+
 uint32_t mixdown( uint64_t i ) /* due to Thomas Wang */
 {
     i = (~i) + (i << 18);
