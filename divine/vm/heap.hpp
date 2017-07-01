@@ -606,9 +606,15 @@ struct SimpleHeap : HeapMixin< Self, typename mem::Pool< PR >::Pointer >
     }
 
     template< typename T >
+    T *unsafe_deref( HeapPointer p, Internal i ) const
+    {
+        return _objects.template machinePointer< T >( i, p.offset() );
+    }
+
+    template< typename T >
     void unsafe_read( HeapPointer p, T &t, Internal i ) const
     {
-        t.raw( *_objects.template machinePointer< typename T::Raw >( i, p.offset() ) );
+        t.raw( *unsafe_deref< typename T::Raw >( p, i ) );
     }
 
     template< typename T >
