@@ -170,6 +170,7 @@ struct Eval
     auto &heap() { return _context.heap(); }
     auto &context() { return _context; }
     auto &program() { return _program; }
+    auto &types() { return *_program._types; }
 
     Eval( Program &p, Context &c )
         : _program( p ), _context( c )
@@ -484,7 +485,7 @@ struct Eval
     template< typename... Args >
     AtOffset compositeOffset( int t, IntV index, Args... indices )
     {
-        auto st = program().subtype( t, index.cooked() );
+        auto st = types().subtype( t, index.cooked() );
         IntV offset( st.first );
         offset.defined( index.defined() );
         auto r = compositeOffset( st.second, indices... );
@@ -594,7 +595,7 @@ struct Eval
     void implement_alloca()
     {
         int count = operandCk< IntV >( 0 ).cooked();
-        int size = program().allocsize( instruction().subcode );
+        int size = types().allocsize( instruction().subcode );
 
         unsigned alloc = std::max( 1, count * size );
         auto res = makeobj( alloc );

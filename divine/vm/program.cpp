@@ -236,6 +236,9 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
         return r;
     }
 
+    if ( auto CE = dyn_cast< llvm::ConstantExpr >( val ) )
+        initSubcode( CE );
+
     makeFit( functions, function );
 
     auto slot = initSlot( val, sl );
@@ -414,49 +417,6 @@ Program::Position Program::insert( Position p )
     return p;
 }
 
-int Program::insert( llvm::Type *T )
-{
-    if ( typemap.count( T ) )
-        return typemap[ T ];
-    int key = typemap[ T ] = _types.size();
-    _types.emplace_back();
-    _VM_Type &t = _types.back().type;
-    t.size = T->isSized() ? TD.getTypeAllocSize( T ) : 0;
-    int items = 0;
-
-    if ( T->isStructTy() )
-    {
-        t.type = _VM_Type::Struct;
-        items = t.items = T->getStructNumElements();
-        _types.resize( _types.size() + items );
-    }
-    else if ( auto ST = dyn_cast< llvm::SequentialType >( T ) )
-    {
-        t.type = _VM_Type::Array;
-        t.items = T->isArrayTy() ? T->getArrayNumElements() : 0;
-        int ar_id = _types.size();
-        _types.emplace_back();
-        int tid = insert( ST->getElementType() );
-        _types[ ar_id ].item.offset = 0;
-        _types[ ar_id ].item.type_id = tid;
-    }
-    else
-        t.type = _VM_Type::Scalar;
-
-    if ( auto ST = dyn_cast< llvm::StructType >( T ) )
-    {
-        auto SL = TD.getStructLayout( ST );
-        for ( int i = 0; i < items; ++i )
-        {
-            _VM_TypeItem item { .type_id = insert( ST->getElementType( i ) ),
-                                .offset = unsigned( SL->getElementOffset( i ) ) };
-            _types[ key + 1 + i ].item = item;
-        }
-    }
-
-    return key;
-}
-
 void Program::setupRR()
 {
     /* null pointers are heap = 0, segment = 0, where segment is an index into
@@ -486,6 +446,7 @@ void Program::computeRR()
     framealign = 1;
     pass();
 
+    _types.reset( new LXTypes( _ccontext._heap, _types_gen.emit( _ccontext._heap ) ) );
     coverage.clear();
 }
 

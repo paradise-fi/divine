@@ -40,6 +40,9 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/vm/context.hpp>
 #include <divine/cc/clang.hpp>
 
+#include <divine/vm/lx-type.hpp>
+#include <divine/vm/xg-type.hpp>
+
 #include <divine/vm/divm.h>
 
 #include <map>
@@ -213,7 +216,6 @@ struct Program
         Function( Function && ) noexcept = default;
     };
 
-    std::vector< _VM_TypeTable > _types;
     std::vector< Function > functions;
     std::vector< Slot > _globals, _constants;
     int _globals_size, _constants_size;
@@ -233,6 +235,11 @@ struct Program
 
     using Context = ConstContext< Program, MutableHeap< 8 > >;
     Context _ccontext;
+
+    using LXTypes = lx::Types< typename Context::Heap >;
+
+    std::unique_ptr< LXTypes > _types;
+    xg::Types _types_gen;
 
     auto &heap() { return _ccontext.heap(); }
 
@@ -287,27 +294,6 @@ struct Program
 
     CodePointer advance( CodePointer pc ) { return nextpc( pc + 1 ); }
     bool valid( CodePointer pc ) { return pc.instruction() < function( pc ).instructions.size(); }
-    int64_t allocsize( int id ) { return _types[ id ].type.size; }
-
-    std::pair< int64_t, int > subtype( int id, int sub )
-    {
-        switch ( _types[ id ].type.type )
-        {
-            case _VM_Type::Array:
-            {
-                auto tid = _types[ id + 1 ].item.type_id;
-                return std::make_pair( sub * allocsize( tid ), tid );
-            }
-            case _VM_Type::Struct:
-            {
-                ASSERT_LT( sub, _types[ id ].type.items );
-                auto it = _types[ id + 1 + sub ].item;
-                return std::make_pair( int64_t( it.offset ), it.type_id );
-            }
-            default:
-                UNREACHABLE_F( "attempted to obtain an offset into a scalar, type = %d", id );
-        }
-    }
 
     SlotRef allocateSlot( Slot slot, int function = 0, llvm::Value *val = nullptr )
     {
@@ -383,13 +369,13 @@ struct Program
     int initSubcode( IorCE *I )
     {
         if ( I->getOpcode() == llvm::Instruction::GetElementPtr )
-            return insert( I->getOperand( 0 )->getType() );
+            return _types_gen.add( I->getOperand( 0 )->getType() );
         if ( I->getOpcode() == llvm::Instruction::ExtractValue )
-            return insert( I->getOperand( 0 )->getType() );
+            return _types_gen.add( I->getOperand( 0 )->getType() );
         if ( I->getOpcode() == llvm::Instruction::InsertValue )
-            return insert( I->getType() );
+            return _types_gen.add( I->getType() );
         if ( I->getOpcode() == llvm::Instruction::Alloca )
-            return insert( I->getType()->getPointerElementType() );
+            return _types_gen.add( I->getType()->getPointerElementType() );
         if ( I->getOpcode() == llvm::Instruction::Call )
             return intrinsic_id( I );
         if ( I->getOpcode() == llvm::Instruction::ICmp ||
@@ -436,7 +422,7 @@ struct Program
        3a) (optional) set up additional constant/global data
        3b) computeRR
        4) computeStatic */
-    Program( llvm::Module *m ) : module( m ), TD( m ), _ccontext( *this )
+    Program( llvm::Module *m ) : module( m ), TD( m ), _ccontext( *this ), _types_gen( m )
     {
         _constants_size = 0;
         _globals_size = 0;
