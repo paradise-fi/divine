@@ -228,7 +228,8 @@ struct Scheduler : public Next {
 
     struct Process : Next::Process
     {
-        int pid;
+        uint16_t pid;
+        uint16_t ppid;
         void *globals;
     };
 
@@ -238,6 +239,7 @@ struct Scheduler : public Next {
         Process *proc1 = static_cast< Process * >( __vm_obj_make( sizeof( Process ) ) );
         proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
         proc1->pid = 1;
+        proc1->ppid = 0;
 
         auto mainThr = newThreadMem( pool.get(), pool.get(), _start, 0, proc1 );
         auto argv = construct_main_arg( "arg.", env, true );
@@ -402,6 +404,10 @@ struct Scheduler : public Next {
         return getProcess()->pid;
     }
 
+    pid_t getppid( ) {
+        return getProcess()->ppid;
+    }
+
     _DiOS_ThreadHandle start_thread( _DiOS_ThreadRoutine routine, void * arg, int tls_size ) {
         auto t = newThread( routine, tls_size, getProcess() );
         setupThread( t, arg );
@@ -496,6 +502,7 @@ struct Scheduler : public Next {
         }
 
         newThread->_proc->pid = maxPid + 1;
+        newThread->_proc->ppid = thread->_proc->pid;
         threads.insert( newThread );
         return newThread->_proc->pid;
     }

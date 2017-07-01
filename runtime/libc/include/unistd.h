@@ -90,6 +90,7 @@ int fchdir( int dirfd );
 
 void _exit( int status );
 pid_t getpid( void );
+pid_t getppid( void );
 
 int fsync( int fd );
 int fdatasync( int fd );
