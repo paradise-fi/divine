@@ -35,17 +35,8 @@ struct _VM_Instruction
     explicit _VM_Instruction( int opc = 0, int subc = 0, int valc = 0, int extc = 0 )
         : is_instruction( 1 ), opcode( opc ), subcode( subc ),
           valuecount( valc ), extcount( extc ), immediate( 0 ) {}
-    uint32_t raw() const;
 #endif
 };
-
-#if __cplusplus >= 201103L
-inline uint32_t _VM_Instruction::raw() const
-{
-    union Cast { uint32_t r; _VM_Instruction c; Cast( _VM_Instruction c ) : c( c ) {} };
-    Cast c( *this ); return c.r;
-}
-#endif
 
 struct _VM_Operand
 {
@@ -128,13 +119,13 @@ enum _VM_ControlAction
 };
 
 /*
- * Setting the _VM_IF_Mask bit in the _VM_CR_Int register (see below) to 1 will
+ * Setting the _VM_CF_Mask bit in the _VM_CR_Int register (see below) to 1 will
  * disallow interrupts; that is, the program will execute atomically until the
  * register is reset to 0.
  *
  * When interrupts are masked but an interrupt is raised, the
- * _VM_IF_Interrupted bit is set in this register by the VM and the call that
- * clears the mask (but not the _VM_IF_Interrupted bit) will cause an
+ * _VM_CF_Interrupted bit is set in this register by the VM and the call that
+ * clears the mask (but not the _VM_CF_Interrupted bit) will cause an
  * interrupt.
  *
  * When the scheduler returns, the value of the _VM_CF_Accepting and
@@ -187,9 +178,9 @@ enum _VM_ControlRegister
                  _VM_CA_Set, _VM_CR_PC, dest_pc );
    masking interrupts:
    int oldint = __vm_control( _VM_CA_Get, _VM_CR_Int,
-                              _VM_CA_Bit, _VM_CR_Int, _VM_IF_Mask, _VM_IF_Mask );
+                              _VM_CA_Bit, _VM_CR_Int, _VM_CF_Mask, _VM_CF_Mask );
    ...
-   __vm_control( _VM_CA_Bit, _VM_CR_Int, _VM_IF_Mask, oldint );
+   __vm_control( _VM_CA_Bit, _VM_CR_Int, _VM_CF_Mask, oldint );
 */
 
 struct _VM_Env
