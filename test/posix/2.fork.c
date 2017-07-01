@@ -24,11 +24,12 @@ int main()
 
     if ( pid != 0 )
     {
-        parent( pipefd[1] );
         assert ( pid == 2 );
 
         pid_t pid = fork();
         assert( pid == 3 || pid == 0 );
+        if ( pid == 0 )
+            parent( pipefd[1] );
     }
     else
         child( pipefd[0] );
