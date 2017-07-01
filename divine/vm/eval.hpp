@@ -257,9 +257,7 @@ struct Eval
 
     typename Program::Slot ptr2s( GenericPointer p )
     {
-        if ( p.type() == PointerType::Const )
-            return program()._constants[ p.object() ];
-        else if ( p.type() == PointerType::Global )
+        if ( p.type() == PointerType::Global )
             return program()._globals[ p.object() ];
         else UNREACHABLE( "bad pointer in ptr2s" );
     }
@@ -298,12 +296,6 @@ struct Eval
             return false;
         }
 
-        if ( write && pp.type() == PointerType::Const )
-        {
-            mkf( _VM_F_Memory ) << "attempted write to a constant location " << p << dsc;
-            return false;
-        }
-
         if ( !p.pointer() )
         {
             mkf( _VM_F_Memory ) << "attempted to dereference a broken pointer " << p << dsc;
@@ -319,15 +311,23 @@ struct Eval
                 return false;
             }
             width = heap().size( hp );
-        } else if ( ( pp.type() == PointerType::Const &&
-                      pp.object() >= program()._constants.size() ) ||
-                    ( pp.type() == PointerType::Global &&
-                      pp.object() >= program()._globals.size() ) )
+        }
+        else if ( pp.type() == PointerType::Global )
         {
-            mkf( _VM_F_Memory ) << "pointer object out of bounds in " << p << dsc;
-            return false;
-        } else
+            if ( write && ptr2s( pp ).location == Slot::Constant )
+            {
+                mkf( _VM_F_Memory ) << "attempted write to a constant location " << p << dsc;
+                return false;
+            }
+
+            if ( pp.object() >= program()._globals.size() )
+            {
+                mkf( _VM_F_Memory ) << "pointer object out of bounds in " << p << dsc;
+                return false;
+            }
+
             width = ptr2s( pp ).size();
+        }
 
         if ( int( pp.offset() ) + sz > width )
         {
@@ -349,8 +349,6 @@ struct Eval
         auto pp = p.cooked();
         if ( pp.heap() )
             return heap().size( pp );
-        if ( pp.type() == PointerType::Const )
-            return program()._constants[ pp.object() ].size();
         if ( pp.type() == PointerType::Global )
             return program()._globals[ pp.object() ].size();
         UNREACHABLE_F( "a bad pointer in ptr2sz: %s", brick::string::fmt( PointerV( p ) ).c_str() );
@@ -1177,6 +1175,9 @@ struct Eval
             case HypercallInterruptMem:
             {
                 auto ptr = operand< PointerV >( 0 );
+                if ( ptr.cooked().type() == PointerType::Global &&
+                     ptr2s( ptr.cooked() ).location == Slot::Constant )
+                    return;
                 /* TODO fault on failing pointers? */
                 auto size = operandCk< IntV >( 1 ).cooked();
                 if ( boundcheck( ptr, size, false ) )

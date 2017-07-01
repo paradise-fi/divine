@@ -217,7 +217,7 @@ struct Program
     };
 
     std::vector< Function > functions;
-    std::vector< Slot > _globals, _constants;
+    std::vector< Slot > _globals;
     int _globals_size, _constants_size;
 
     int framealign;
@@ -302,8 +302,8 @@ struct Program
             case Slot::Constant:
                 slot.offset = _constants_size;
                 _constants_size = mem::align( _constants_size + slot.size(), 4 );
-                _constants.push_back( slot );
-                return SlotRef( slot, _constants.size() - 1 );
+                _globals.push_back( slot );
+                return SlotRef( slot, _globals.size() - 1 );
             case Slot::Global:
                 slot.offset = _globals_size;
                 _globals_size = mem::align( _globals_size + slot.size(), 4 );
@@ -323,7 +323,7 @@ struct Program
     {
         switch ( sr.slot.location )
         {
-            case Slot::Constant: return ConstPointer( sr.seqno, 0 );
+            case Slot::Constant:
             case Slot::Global: return GlobalPointer( sr.seqno, 0 );
             default: UNREACHABLE( "invalid slot type in Program::s2ptr" );
         }

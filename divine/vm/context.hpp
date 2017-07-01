@@ -199,9 +199,6 @@ struct Context
 
     void mem_interrupt( GenericPointer ptr, int size, int type )
     {
-        if ( ptr.type() == PointerType::Const )
-            return;
-
         if ( ptr.heap() && !heap().shared( ptr ) )
             return;
 

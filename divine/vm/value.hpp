@@ -258,8 +258,6 @@ struct Pointer : Base
     template< typename L >
     auto withType( L l )
     {
-        if ( _cooked.type() == PointerType::Const )
-            return GenericPointer( l( ConstPointer( _cooked ) ) );
         if ( _cooked.type() == PointerType::Global )
             return GenericPointer( l( GlobalPointer( _cooked ) ) );
         if ( _cooked.heap() )
@@ -326,7 +324,7 @@ struct Pointer : Base
     }
 
     template< int w, bool s > explicit Pointer( Int< w, s > i )
-        : _cooked( PointerType::Const )
+        : _cooked( PointerType::Global )
     {
         if ( w >= PointerBytes )
         {

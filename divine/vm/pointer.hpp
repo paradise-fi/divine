@@ -28,17 +28,17 @@ namespace vm {
 
 namespace bitlevel = brick::bitlevel;
 
-enum class PointerType : unsigned { Const, Global, Heap, Code, Weak, Marked };
+enum class PointerType : unsigned { Global, Heap, Code, Weak, Marked };
 
 static const int PointerBytes = _VM_PB_Full / 8;
 using PointerRaw = bitlevel::bitvec< _VM_PB_Full >;
 
 /*
- * There are multiple pointer types, distinguished by a two-bit type tag. The
+ * There are multiple pointer types, distinguished by a three-bit type tag. The
  * generic pointer cannot be used directly, but it is the same size as all
  * other pointer types and it retains the type-specific content (i.e. it can be
- * treated like a value). All non-code pointers are ultimately resolved through
- * the heap, but for Const and Global pointers through an indirection.
+ * treated like a value). All pointers are ultimately resolved through the
+ * heap, but Global pointers go through an indirection.
  */
 
 struct GenericPointer : brick::types::Comparable
@@ -94,7 +94,7 @@ struct GenericPointer : brick::types::Comparable
 
 /* the canonic null pointer, do *not* use as a null check through comparison;
  * see GenericPointer::null() instead */
-static inline GenericPointer nullPointer( PointerType t = PointerType::Const )
+static inline GenericPointer nullPointer( PointerType t = PointerType::Global )
 {
     return GenericPointer( t );
 }
@@ -115,23 +115,6 @@ struct CodePointer : GenericPointer
     void function( ObjT f ) { _rep.obj = f; }
     auto instruction() const { return _rep.off; }
     void instruction( OffT i ) { _rep.off = i; }
-};
-
-/*
- * Pointer to constant memory. This is separate from a GlobalPointer, because
- * a) it allows an important optimisation of memory footprint b) improves
- * clarity and error checking.
- */
-struct ConstPointer : GenericPointer
-{
-    ConstPointer( ObjT obj = 0, OffT off = 0 )
-        : GenericPointer( PointerType::Const, obj, off ) {}
-    ConstPointer( GenericPointer r ) : GenericPointer( r )
-    {
-        if ( null() )
-            type( PointerType::Const );
-        ASSERT_EQ( type(), PointerType::Const );
-    }
 };
 
 /*
@@ -171,7 +154,6 @@ static inline std::ostream &operator<<( std::ostream &o, PointerType p )
 {
     switch ( p )
     {
-        case PointerType::Const: return o << "const";
         case PointerType::Global: return o << "global";
         case PointerType::Code: return o << "code";
         case PointerType::Heap: return o << "heap";
@@ -196,8 +178,8 @@ struct TestPointer
 {
     TEST(conversion)
     {
-        vm::ConstPointer c( 1, 3 );
-        ASSERT_EQ( c, vm::ConstPointer( vm::GenericPointer( c ) ) );
+        vm::GlobalPointer g( 1, 3 );
+        ASSERT_EQ( g, vm::GlobalPointer( vm::GenericPointer( g ) ) );
     }
 };
 
