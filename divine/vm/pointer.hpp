@@ -28,7 +28,11 @@ namespace vm {
 
 namespace bitlevel = brick::bitlevel;
 
-enum class PointerType : unsigned { Global, Heap, Code, Weak, Marked };
+enum class PointerType : unsigned { Global = _VM_PT_Global,
+                                    Code = _VM_PT_Code,
+                                    Heap = _VM_PT_Heap,
+                                    Weak = _VM_PT_Weak,
+                                    Marked = _VM_PT_Marked };
 
 static const int PointerBytes = _VM_PB_Full / 8;
 using PointerRaw = bitlevel::bitvec< _VM_PB_Full >;
