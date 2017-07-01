@@ -16,13 +16,15 @@ for ( @$bib )
     $coll = "volume $_->{volume} of $coll" if ( $coll && $_->{volume} );
     my $book = $_->{"container-title"};
     my $url = $_->{URL};
+    my $note = $_->{note};
 
-    $url = " [[url]($url)]" if ( $url );
+    $title = "[$title]($url)" if ( $url );
     $publisher = "$publisher, " if ( $publisher );
     $coll = ", $coll" if ( $coll );
     $book = "In *$book*, " if ( $book );
+    $note = " $note" if ( $note );
 
-    $sorted{$year} .= "$authors: **$title**. $book$publisher$year$coll.$url\n\n";
+    $sorted{$year} .= "$authors: **$title**. $book$publisher$year$coll.$note\n\n";
 }
 
 my $biburl = $ARGV[0];
