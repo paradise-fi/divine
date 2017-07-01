@@ -9,6 +9,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-types>
+#include <brick-data>
 
 #include <lart/support/query.h>
 #include <lart/analysis/bbreach.h>
@@ -110,7 +111,7 @@ template< typename AtExit >
 void atExits( llvm::Function &fn, AtExit &&atExit ) {
     using query::operator&&;
     using query::operator||;
-    auto *dunwind = fn.getParent()->getFunction( "__divine_unwind" );
+    auto *dunwind = fn.getParent()->getFunction( "__divine_unwind" ); // TODO
     auto exits = query::query( fn ).flatten()
             .map( query::refToPtr )
             // exits are ret, resume and call to __divine_unwind
@@ -182,6 +183,8 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
 
         // union predecessors
         for ( auto &pbb : util::preds( bb ) ) {
+            if ( &pbb == bb )
+                continue;
             for ( auto alloca : reachingAllocas[ &pbb ] ) {
                 if ( reachingHere.insert( alloca ).second )
                     propagate = true;
@@ -191,15 +194,16 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
                 if ( it == allocaMap.end() ) {
                     allocaMap[ { bb, alloca } ] = std::pair< util::Set< llvm::BasicBlock * >, llvm::PHINode * >{ { &pbb }, nullptr };
                     addToPhi = true;
-                } else {
-                    ASSERT( it->second.isRight() );
+                } else if ( it->second.isRight() ) {
                     addToPhi = it->second.right().first.insert( &pbb ).second;
+                } else {
+                    ASSERT( alloca->getParent() == bb );
                 }
 
-                llvm::PHINode *&phi = allocaMap[ { bb, alloca } ].right().second;
                 if ( addToPhi && !dt->dominates( alloca, bb ) ) {
+                    llvm::PHINode *&phi = allocaMap[ { bb, alloca } ].right().second;
                     if ( !phi )
-                        phi = llvm::IRBuilder<>( bb ).CreatePHI( alloca->getType(), 0 );
+                        phi = llvm::IRBuilder<>( bb, bb->begin() ).CreatePHI( alloca->getType(), 0 );
                     phi->addIncoming( allocaReprInBB( alloca, &pbb ), &pbb );
                 }
             }
@@ -229,6 +233,32 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
                     if ( id.right().first.count( &pbb ) == 0 )
                         phi->addIncoming( llvm::ConstantPointerNull::get( alloca->getType() ), &pbb );
                 }
+            }
+        }
+    }
+
+    // reorder all phi nodes to have same order of arguments
+    std::vector< std::pair< llvm::Value *, llvm::BasicBlock * > > saved;
+    for ( auto &bb : fn ) {
+        const auto *phi0 = llvm::dyn_cast< llvm::PHINode >( &*bb.begin() );
+        if ( !phi0 )
+            continue;
+        int n = phi0->getNumIncomingValues();
+
+        llvm::PHINode *phi;
+        for ( auto it = std::next( bb.begin() );
+              ( phi = llvm::dyn_cast< llvm::PHINode >( &*it ) );
+              ++it )
+        {
+            saved.clear();
+            ASSERT_EQ( phi->getNumIncomingValues(), n );
+            for ( int i = 0; i < n; ++i ) {
+                saved.emplace_back( phi->getIncomingValue( i ), phi->getIncomingBlock( i ) );
+            }
+            for ( int i = 0; i < n; ++i ) {
+                auto refidx = phi0->getBasicBlockIndex( saved[ i ].second );
+                phi->setIncomingValue( refidx, saved[ i ].first );
+                phi->setIncomingBlock( refidx, saved[ i ].second );
             }
         }
     }
