@@ -368,7 +368,10 @@ void Node< Prog, Heap >::source( std::ostream &out )
 {
     if ( _kind != DNKind::Frame )
         throw brick::except::Error( "cannot display source code, not a stack frame" );
-    out << print::source( _ctx.debug(), subprogram(), _ctx.program(), pc() );
+    auto s = subprogram();
+    if ( !s )
+        throw brick::except::Error( "cannot display source code, no debugging information found" );
+    out << print::source( _ctx.debug(), s, _ctx.program(), pc() );
 }
 
 template< typename Prog, typename Heap >
