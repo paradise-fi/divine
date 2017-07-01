@@ -26,10 +26,8 @@
 #include <cmath>
 #include <iomanip>
 
-namespace divine {
-
-namespace vm {
-namespace value {
+namespace divine::vm::value
+{
 
 namespace bitlevel = brick::bitlevel;
 
@@ -378,11 +376,18 @@ OP( compare, >= );
 
 }
 
+namespace divine::vm
+{
+
 static inline value::Pointer nullPointerV() { return value::Pointer( nullPointer() ); }
+using CharV = value::Int< 8, true >;
+using IntV = value::Int< 32, true >;
+using PointerV = value::Pointer;
+using BoolV = value::Bool;
 
 }
 
-namespace t_vm
+namespace divine::t_vm
 {
 
 struct TestInt
@@ -452,7 +457,5 @@ struct TestPtr
         ASSERT( !p.defined() );
     }
 };
-
-}
 
 }
