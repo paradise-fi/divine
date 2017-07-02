@@ -42,7 +42,7 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
 
     vm::dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
     vm::setup::boot( dbg );
-    vm::Eval< vm::Program, decltype( dbg ), vm::value::Void > dbg_eval( dbg.program(), dbg );
+    vm::Eval< decltype( dbg ), vm::value::Void > dbg_eval( dbg );
     dbg_eval.run();
 
     struct ext_data { int seq; int distance; };

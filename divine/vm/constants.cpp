@@ -25,11 +25,11 @@ using namespace divine::vm;
 using llvm::dyn_cast;
 using llvm::isa;
 
-using PEval = Eval< Program, typename Program::Context, value::Void >;
+using PEval = Eval< typename Program::Context, value::Void >;
 
 HeapPointer Program::s2hptr( Program::Slot v, int offset )
 {
-    PEval eval( *this, _ccontext );
+    PEval eval( _ccontext );
     return eval.s2ptr( v, offset );
 }
 
@@ -40,7 +40,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     ASSERT_EQ( v.location, Slot::Constant );
 
     auto &heap = _ccontext.heap();
-    PEval eval( *this, _ccontext );
+    PEval eval( _ccontext );
     auto ptr = value::Pointer( eval.s2ptr( v ) );
     auto C = dyn_cast< llvm::Constant >( V );
 

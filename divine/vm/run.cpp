@@ -26,10 +26,10 @@ namespace vm {
 
 void Run::run()
 {
-    using Eval = vm::Eval< Program, RunContext, value::Pointer >;
+    using Eval = vm::Eval< RunContext, value::Pointer >;
     auto &program = _bc->program();
     RunContext _ctx( program );
-    Eval eval( program, _ctx );
+    Eval eval( _ctx );
 
     setup::boot( _ctx );
     eval.run();

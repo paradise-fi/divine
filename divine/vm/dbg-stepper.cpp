@@ -29,7 +29,7 @@ namespace divine::vm::dbg
 template< typename Context >
 void Stepper< Context >::run( Context &ctx, Verbosity verb )
 {
-    Eval< typename Context::Program, Context, value::Void > eval( ctx.program(), ctx );
+    Eval< Context, value::Void > eval( ctx );
     bool in_fault = !_stop_on_fault ||
                     eval.pc().function() == ctx.get( _VM_CR_FaultHandler ).pointer.object();
     bool in_kernel = ctx.get( _VM_CR_Flags ).integer & _VM_CF_KernelMode;

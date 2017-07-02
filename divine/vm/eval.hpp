@@ -1,7 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * (c) 2012-2016 Petr Ročkai <code@fixp.eu>
+ * (c) 2012-2017 Petr Ročkai <code@fixp.eu>
  * (c) 2015 Vladimír Štill
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -158,10 +158,9 @@ template< typename > struct Any { static const bool value = true; };
  * instruction. The return value type must match that of the 'Result' template
  * parameter.
  */
-template < typename Program, typename Context, typename Result >
+template < typename Context, typename Result >
 struct Eval
 {
-    Program &_program;
     Context &_context;
 
     using Slot = typename Program::Slot;
@@ -169,11 +168,11 @@ struct Eval
 
     auto &heap() { return _context.heap(); }
     auto &context() { return _context; }
-    auto &program() { return _program; }
-    auto &types() { return *_program._types; }
+    auto &program() { return _context.program(); }
+    auto &types() { return *program()._types; }
 
-    Eval( Program &p, Context &c )
-        : _program( p ), _context( c )
+    Eval( Context &c )
+        : _context( c )
     {}
 
     using OpCode = llvm::Instruction;
@@ -660,7 +659,7 @@ struct Eval
 
         PointerV caller_pc;
         heap().read( parent.cooked(), caller_pc );
-        const auto &caller = _program.instruction( caller_pc.cooked() );
+        const auto &caller = program().instruction( caller_pc.cooked() );
         if ( instruction().argcount() ) /* return value */
         {
             if ( !caller.has_result() ) {
@@ -725,7 +724,7 @@ struct Eval
         auto pc = first;
         while ( true )
         {
-            auto &i = _program.instruction( pc );
+            auto &i = program().instruction( pc );
             if ( i.opcode != OpCode::PHI )
                 return;
             f( i );
@@ -748,7 +747,7 @@ struct Eval
         // std::cerr << "switchBB: " << pc() << std::endl;
 
         target.instruction( target.instruction() + 1 );
-        auto &i0 = _program.instruction( target );
+        auto &i0 = program().instruction( target );
         if ( i0.opcode != OpCode::PHI )
             return;
 
@@ -884,7 +883,7 @@ struct Eval
                 // contains all the varargs, successively assigned higher
                 // addresses (going from left to right in the argument list) to
                 // the argument of the intrinsic
-                const auto &f = _program.functions[ pc().function() ];
+                const auto &f = program().functions[ pc().function() ];
                 if ( !f.vararg ) {
                     fault( _VM_F_Hypercall ) << "va_start called in non-variadic function";
                     return;
@@ -1306,7 +1305,7 @@ struct Eval
             return;
         }
 
-        const auto &function = _program.function( target );
+        const auto &function = program().function( target );
 
         /* report problems with the call before pushing the new stackframe */
         const int argcount = instruction().argcount() - ( invoke ? 3 : 1 );
@@ -1831,7 +1830,7 @@ struct Eval
     {
         TProgram p;
         TContext< TProgram > c( p );
-        vm::Eval< TProgram, TContext< TProgram >, vm::value::Void > e( p, c );
+        vm::Eval< TContext< TProgram >, vm::value::Void > e( c );
     }
 
     template< typename... Args >
@@ -1841,7 +1840,7 @@ struct Eval
         auto data = p->exportHeap( c.heap() );
         c.set( _VM_CR_Constants, data.first );
         c.set( _VM_CR_Globals , data.second );
-        vm::Eval< vm::Program, TContext< vm::Program >, IntV > e( *p, c );
+        vm::Eval< TContext< vm::Program >, IntV > e( c );
         auto pc = p->functionByName( "f" );
         c.enter( pc, vm::nullPointerV(), args... );
         c.set( _VM_CR_Flags, _VM_CF_KernelMode | _VM_CF_Mask );

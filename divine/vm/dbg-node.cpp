@@ -27,14 +27,14 @@ namespace divine::vm::dbg
 
 using namespace std::literals;
 
-template< typename Prog, typename Heap >
-using DNEval = Eval< Prog, DNContext< Heap >, value::Void >;
+template< typename Heap >
+using DNEval = Eval< DNContext< Heap >, value::Void >;
 
 template< typename Prog, typename Heap >
 int Node< Prog, Heap >::size()
 {
     int sz = INT_MAX;
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
     if ( _type )
         sz = _ctx.program().TD.getTypeAllocSize( _type );
     if ( !_address.null() )
@@ -110,7 +110,7 @@ int Node< Prog, Heap >::bitoffset()
 template< typename Prog, typename Heap >
 bool Node< Prog, Heap >::boundcheck( PointerV ptr, int size )
 {
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
     return eval.boundcheck( []( auto ) { return std::stringstream(); }, ptr, size, false );
 }
 
@@ -122,7 +122,7 @@ bool Node< Prog, Heap >::valid()
     if ( _address.type() == PointerType::Heap && !_ctx.heap().valid( _address ) )
         return false;
 
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
     PointerV addr( _address );
     if ( !boundcheck( addr, 1 ) )
         return false;
@@ -134,7 +134,7 @@ bool Node< Prog, Heap >::valid()
 template< typename Prog, typename Heap >
 void Node< Prog, Heap >::value( YieldAttr yield )
 {
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
     PointerV loc( _address + _offset );
 
     int bitw = 0;
@@ -277,7 +277,7 @@ std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias )
 template< typename Prog, typename Heap >
 void Node< Prog, Heap >::attributes( YieldAttr yield )
 {
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
     Prog &program = _ctx.program();
 
     yield( "address", brick::string::fmt( _address ) + "+" +
@@ -341,7 +341,7 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
 {
     if ( _kind != DNKind::Frame )
         throw brick::except::Error( "cannot display bitcode, not a stack frame" );
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
     CodePointer iter = pc(), origpc = pc();
     auto &prog = _ctx.program();
     for ( iter.instruction( 0 ); prog.valid( iter ); iter = iter + 1 )
@@ -383,7 +383,7 @@ void Node< Prog, Heap >::components( YieldDN yield )
     if ( _kind == DNKind::Globals )
         globalvars( yield );
 
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
     auto hloc = eval.ptr2h( PointerV( _address ) );
 
     if ( _type && _di_type &&
@@ -401,7 +401,7 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
     if ( !valid() )
         return;
 
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
 
     PointerV ptr;
     auto hloc = eval.ptr2h( PointerV( _address ) );
@@ -539,7 +539,7 @@ void Node< Prog, Heap >::array_elements( YieldDN yield )
 template< typename Prog, typename Heap >
 void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
 {
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
 
     auto divar = DDI->getVariable();
     auto ditype = divar->getType().resolve( _ctx.debug().typemap() );
@@ -568,7 +568,7 @@ void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgDeclareInst *DDI )
 template< typename Prog, typename Heap >
 void Node< Prog, Heap >::localvar( YieldDN yield, llvm::DbgValueInst *DDV )
 {
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
 
     auto divar = DDV->getVariable();
     auto var = DDV->getValue();
@@ -620,7 +620,7 @@ void Node< Prog, Heap >::framevars( YieldDN yield )
 template< typename Prog, typename Heap >
 void Node< Prog, Heap >::globalvars( YieldDN yield )
 {
-    DNEval< Prog, Heap > eval( _ctx.program(), _ctx );
+    DNEval< Heap > eval( _ctx );
     llvm::DebugInfoFinder finder;
     finder.processModule( *_ctx.program().module );
     auto &map = _ctx.program().globalmap;

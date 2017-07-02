@@ -173,7 +173,7 @@ template< typename Hasher, typename Context >
 struct Explore_
 {
     using PointerV = value::Pointer;
-    using Eval = vm::Eval< Program, Context, value::Void >;
+    using Eval = vm::Eval< Context, value::Void >;
 
     using BC = explore::BC;
     using Env = std::vector< std::string >;
@@ -215,7 +215,7 @@ struct Explore_
 
     void start()
     {
-        Eval eval( program(), _ctx );
+        Eval eval( _ctx );
         setup::boot( _ctx );
         eval.run();
         _states.hasher.root = _ctx.get( _VM_CR_State ).pointer;
@@ -243,7 +243,7 @@ struct Explore_
     template< typename Y >
     void edges( explore::State from, Y yield )
     {
-        Eval eval( program(), _ctx );
+        Eval eval( _ctx );
         ASSERT_EQ( _ctx._level, 0 );
         ASSERT( _ctx._stack.empty() );
         ASSERT( _ctx._trace.empty() );
