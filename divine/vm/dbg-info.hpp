@@ -67,7 +67,7 @@ struct Info
 
         for ( auto &BB : *F )
         {
-            ASSERT_EQ( _program.instruction( pcf ).opcode, OpBB );
+            ASSERT_EQ( _program.instruction( pcf ).opcode, lx::OpBB );
             pcf = pcf + 1;
             for ( auto it = first_indexed( BB.begin(), BB.end() );
                   it != BB.end();
@@ -75,8 +75,7 @@ struct Info
             {
                 if ( ( I && I == &*it ) || ( pc.function() && pc == pcf ) )
                     return std::make_pair( &*it, pcf );
-                do pcf = pcf + 1; while ( _program.valid( pcf ) &&
-                                          _program.instruction( pcf ).opcode == OpArgs );
+                pcf = pcf + 1;
             }
         }
         UNREACHABLE( "dbg::Info::find() failed" );

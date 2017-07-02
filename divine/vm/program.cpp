@@ -19,6 +19,7 @@
 #include <stdexcept>
 
 #include <divine/vm/program.hpp>
+#include <divine/vm/xg-code.hpp>
 #include <lart/divine/cppeh.h>
 
 DIVINE_RELAX_WARNINGS
@@ -41,7 +42,7 @@ CodePointer Program::functionByName( std::string s )
     llvm::Function *f = module->getFunction( s );
     if ( !f )
         return CodePointer();
-    if ( hypercall( f ) )
+    if ( xg::hypercall( f ) )
         return CodePointer();
     if ( !functionmap.count( f ) )
         UNREACHABLE_F( "function %s does not have a functionmap entry", s.c_str() );
@@ -86,12 +87,12 @@ CodePointer Program::getCodePointer( llvm::Value *val )
         ASSERT( blockmap.count( B->getBasicBlock() ) );
         return blockmap[ B->getBasicBlock() ];
     } else if ( auto F = dyn_cast< llvm::Function >( val ) ) {
-        if ( !functionmap.count( F ) && hypercall( F ) == NotHypercall )
+        if ( !functionmap.count( F ) && xg::hypercall( F ) == lx::NotHypercall )
             throw brick::except::Error(
                 "Program::insert: " +
                 std::string( "Unresolved symbol (function): " ) + F->getName().str() );
 
-        if ( hypercall( F ) )
+        if ( xg::hypercall( F ) )
             return CodePointer();
 
         return CodePointer( functionmap[ F ], 0 );
@@ -101,43 +102,22 @@ CodePointer Program::getCodePointer( llvm::Value *val )
 
 Program::Slot Program::initSlot( llvm::Value *val, Slot::Location loc )
 {
-    Slot result;
-    result.location = loc;
+    auto t = val->getType();
+    Slot result( loc, xg::type( t ),
+                 t->isSized() ? 8 * TD.getTypeAllocSize( t ) : 0 );
 
-    if ( val->getType()->isVoidTy() ) {
-        result._width = 0;
-        result.type = Slot::Void;
-    } else if ( isCodePointer( val ) ) {
-        result._width = val->getType()->isPointerTy() ? 8 * TD.getTypeAllocSize( val->getType() )
-                        : 8 * sizeof( CodePointer );
-        result.type = Slot::CodePointer;
-    } else if ( val->getType()->isPointerTy() ) {
-        result._width = 8 * TD.getTypeAllocSize( val->getType() );
-        result.type = Slot::Pointer;
-    } else {
-        result._width = 8 * TD.getTypeAllocSize( val->getType() );
-        if ( val->getType()->isIntegerTy() )
-        {
-            result._width = val->getType()->getIntegerBitWidth();
-            result.type = Slot::Integer;
-        }
-        else if ( val->getType()->isFloatingPointTy() )
-            result.type = Slot::Float;
-        else
-            result.type = Slot::Aggregate;
-    }
+    if ( isCodePointer( val ) )
+        result.type = Slot::PtrC;
 
-    if ( auto CDS = dyn_cast< llvm::ConstantDataSequential >( val ) ) {
-        result.type = Slot::Aggregate;
-        result._width = 8 * CDS->getNumElements() * CDS->getElementByteSize();
-    }
+    if ( auto CDS = dyn_cast< llvm::ConstantDataSequential >( val ) )
+        ASSERT_EQ( result.width(), 8 * CDS->getNumElements() * CDS->getElementByteSize() );
 
-    if ( isa< llvm::AllocaInst >( val ) ||
-         intrinsic_id( val ) == llvm::Intrinsic::stacksave )
+    if ( isa< llvm::AllocaInst >( val ) || intrinsic_id( val ) == llvm::Intrinsic::stacksave )
     {
         ASSERT_EQ( loc, Slot::Local );
-        result.type = Program::Slot::Alloca;
+        result.type = Slot::PtrA;
     }
+
     return result;
 }
 
@@ -217,7 +197,7 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
 
     /* global scope is only applied to GlobalVariable initializers */
     if ( !function || isa< llvm::Constant >( val ) || isCodePointerConst( val ) )
-        sl = Slot::Constant;
+        sl = Slot::Const;
     else
         sl = Slot::Local;
 
@@ -278,46 +258,6 @@ Program::SlotRef Program::insert( int function, llvm::Value *val )
     return sref;
 }
 
-Hypercall Program::hypercall( llvm::Function *f )
-{
-    std::string name = f->getName().str();
-
-    if ( name == "__vm_control" )
-        return HypercallControl;
-    if ( name == "__vm_choose" )
-        return HypercallChoose;
-    if ( name == "__vm_fault" )
-        return HypercallFault;
-
-    if ( name == "__vm_interrupt_cfl" )
-        return HypercallInterruptCfl;
-    if ( name == "__vm_interrupt_mem" )
-        return HypercallInterruptMem;
-
-    if ( name == "__vm_trace" )
-        return HypercallTrace;
-    if ( name == "__vm_syscall" )
-        return HypercallSyscall;
-
-    if ( name == "__vm_obj_make" )
-        return HypercallObjMake;
-    if ( name == "__vm_obj_free" )
-        return HypercallObjFree;
-    if ( name == "__vm_obj_shared" )
-        return HypercallObjShared;
-    if ( name == "__vm_obj_resize" )
-        return HypercallObjResize;
-    if ( name == "__vm_obj_size" )
-        return HypercallObjSize;
-    if ( name == "__vm_obj_clone" )
-        return HypercallObjClone;
-
-    if ( f->getIntrinsicID() != llvm::Intrinsic::not_intrinsic )
-        return NotHypercallButIntrinsic;
-
-    return NotHypercall;
-}
-
 void Program::hypercall( Position p )
 {
     Program::Instruction &insn = instruction( p.pc );
@@ -327,9 +267,9 @@ void Program::hypercall( Position p )
         throw std::logic_error(
             std::string( "Program::hypercall: " ) +
             "Cannot 'invoke' a hypercall, use 'call' instead: " + F->getName().str() );
-    insn.opcode = OpHypercall;
-    insn.subcode = hypercall( F );
-    if ( insn.subcode == NotHypercall )
+    insn.opcode = lx::OpHypercall;
+    insn.subcode = xg::hypercall( F );
+    if ( insn.subcode == lx::NotHypercall )
         throw std::logic_error(
             std::string( "Program::hypercall: " ) +
             "Can't call an undefined function: " + F->getName().str() );
@@ -346,8 +286,7 @@ void Program::insertIndices( Position p )
 
     for ( unsigned i = 0; i < I->getNumIndices(); ++i )
     {
-        Slot v( Slot::Constant );
-        v._width = 32;
+        Slot v( Slot::Const, Slot::I32 );
         auto sr = allocateSlot( v );
         _toinit.emplace_back(
             [=]{ initConstant( sr.slot, value::Int< 32 >( I->getIndices()[ i ] ) ); } );
@@ -372,7 +311,7 @@ Program::Position Program::insert( Position p )
             switch ( F->getIntrinsicID() )
             {
                 case llvm::Intrinsic::not_intrinsic:
-                    if ( hypercall( F ) )
+                    if ( xg::hypercall( F ) )
                         hypercall( p );
                     break;
                 case llvm::Intrinsic::dbg_declare:
@@ -392,8 +331,7 @@ Program::Position Program::insert( Position p )
             for ( unsigned idx = 0; idx < PHI->getNumOperands(); ++idx )
             {
                 auto from = pcmap[ PHI->getIncomingBlock( idx )->getTerminator() ];
-                auto slot = allocateSlot( Slot( Slot::Constant, 64 ) ).slot;
-                slot.type = Slot::CodePointer;
+                auto slot = allocateSlot( Slot( Slot::Const, Slot::PtrC ) ).slot;
                 _toinit.emplace_back( [=]{ initConstant( slot, value::Pointer( from ) ); } );
                 insn.values.push_back( slot );
             }
@@ -588,8 +526,7 @@ void Program::pass()
             if ( ( pi_function.vararg = function.isVarArg() ) )
             {
                 Slot vaptr( Slot::Local );
-                vaptr._width = _VM_PB_Full;
-                vaptr.type = Slot::Pointer;
+                vaptr.type = Slot::Ptr;
                 allocateSlot( vaptr, pc.function() );
             }
 
@@ -603,7 +540,7 @@ void Program::pass()
         {
             blockmap[ &block ] = pc;
             makeFit( this->function( pc ).instructions, pc.instruction() );
-            this->instruction( pc ).opcode = OpBB;
+            this->instruction( pc ).opcode = lx::OpBB;
             pc.instruction( pc.instruction() + 1 ); /* leave one out for use as a bb label */
 
             if ( block.begin() == block.end() )

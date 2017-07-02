@@ -19,6 +19,7 @@
 #include <divine/vm/dbg-info.hpp>
 #include <divine/vm/dbg-node.hpp>
 #include <divine/vm/dbg-print.hpp>
+#include <divine/vm/xg-code.hpp>
 #include <divine/vm/eval.hpp>
 #include <divine/vm/formula.hpp>
 
@@ -137,13 +138,9 @@ void Node< Prog, Heap >::value( YieldAttr yield )
     DNEval< Heap > eval( _ctx );
     PointerV loc( _address + _offset );
 
-    int bitw = 0;
-    if ( _type )
-        bitw = _type->getPrimitiveSizeInBits();
-
     if ( _type && _type->isIntegerTy() )
         eval.template type_dispatch< IsIntegral >(
-            bitw, Prog::Slot::Integer,
+            xg::type( _type ),
             [&]( auto v )
             {
                 auto raw = v.get( loc );
@@ -162,7 +159,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
 
     if ( _type && _type->isFloatingPointTy() )
         eval.template type_dispatch< IsFloat >(
-            bitw, Prog::Slot::Float,
+            xg::type( _type ),
             [&]( auto v )
             {
                 yield( "value", brick::string::fmt( v.get( loc ) ) );
@@ -180,7 +177,7 @@ void Node< Prog, Heap >::value( YieldAttr yield )
 
     if ( _type && _type->isPointerTy() )
         eval.template type_dispatch< Any >(
-            PointerBytes, Prog::Slot::Pointer,
+            xg::type( _type ),
             [&]( auto v ) { yield( "value", brick::string::fmt( v.get( loc ) ) ); } );
 
 }
@@ -322,7 +319,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
             return;
         auto *insn = &program.instruction( pc() );
         ASSERT_EQ( eval.pc(), CodePointer( pc() ) );
-        if ( insn->opcode != OpArgs && insn->opcode != OpBB )
+        if ( insn->opcode != lx::OpBB )
         {
             eval._instruction = insn;
             yield( "insn", print::instruction( _ctx.debug(), eval, 0, 1000 ) );
@@ -347,12 +344,10 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
     for ( iter.instruction( 0 ); prog.valid( iter ); iter = iter + 1 )
     {
         auto &i = prog.instruction( iter );
-        if ( i.opcode == OpArgs )
-            continue;
         eval._instruction = &i;
         _ctx.set( _VM_CR_PC, iter );
         out << ( iter == CodePointer( pc() ) ? ">>" : "  " );
-        if ( i.opcode == OpBB )
+        if ( i.opcode == lx::OpBB )
         {
             auto iop = _ctx.debug().find( nullptr, iter + 1 ).first;
             out << print::value( _ctx.debug(), eval, iop->getParent() ) << ":" << std::endl;

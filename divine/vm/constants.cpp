@@ -37,7 +37,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
 {
     bool done = true;
 
-    ASSERT_EQ( v.location, Slot::Constant );
+    ASSERT_EQ( v.location, Slot::Const );
 
     auto &heap = _ccontext.heap();
     PEval eval( _ccontext );
@@ -127,14 +127,16 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
     }
     else if ( auto FP = dyn_cast< llvm::ConstantFP >( V ) )
     {
-        switch ( v.size() ) {
+        switch ( v.size() )
+        {
             case sizeof( float ):
                 heap.write_shift( ptr, value::Float< float >( FP->getValueAPF().convertToFloat() ) );
                 break;
             case sizeof( double ):
                 heap.write_shift( ptr, value::Float< double >( FP->getValueAPF().convertToDouble() ) );
                 break;
-            case sizeof( long double ): {
+            case sizeof( long double ):
+            {
                 bool lossy;
                 llvm::APFloat x = FP->getValueAPF();
                 x.convert( llvm::APFloat::IEEEdouble, llvm::APFloat::rmNearestTiesToEven, &lossy );
@@ -142,7 +144,7 @@ void Program::initConstant( Program::Slot v, llvm::Value *V )
                 heap.write_shift( ptr, value::Float< long double >( x.convertToDouble() ) );
                 break;
             }
-            default: UNREACHABLE( "non-double, non-float FP constant" );
+            default: UNREACHABLE_F( "non-double, non-float FP constant (bits = %d)", v.width() );
         }
     }
     else if ( isa< llvm::ConstantPointerNull >( V ) )

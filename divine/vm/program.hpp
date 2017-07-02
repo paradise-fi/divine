@@ -41,6 +41,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/cc/clang.hpp>
 
 #include <divine/vm/lx-type.hpp>
+#include <divine/vm/lx-code.hpp>
+#include <divine/vm/lx-slot.hpp>
 #include <divine/vm/xg-type.hpp>
 
 #include <divine/vm/divm.h>
@@ -52,32 +54,6 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine {
 namespace vm {
-
-enum Hypercall /* see divine.h for prototypes & documentation */
-{
-    NotHypercall = 0,
-    NotHypercallButIntrinsic = 1,
-
-    HypercallControl,
-    HypercallChoose,
-    HypercallFault,
-    HypercallInterruptCfl,
-    HypercallInterruptMem,
-
-    /* feedback */
-    HypercallTrace,
-    HypercallSyscall,
-
-    /* memory management */
-    HypercallObjMake,
-    HypercallObjFree,
-    HypercallObjShared,
-    HypercallObjResize,
-    HypercallObjSize,
-    HypercallObjClone
-};
-
-enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1, OpBB, OpDbg, OpArgs };
 
 struct Choice {
     int options;
@@ -104,53 +80,7 @@ struct Program
 {
     llvm::Module *module;
     llvm::DataLayout TD;
-
-    /*
-     * Values (data) used in a program are organised into blocks of memory:
-     * frames (one for each function), globals (for each process) and constants
-     * (immutable and shared across all processes). These blocks consist of
-     * individual slots, one slot per value stored in the given block. Slots
-     * are typed and they can overlap *if* the lifetimes of the values stored
-     * in them do not. In this respect, slots behave like pointers into the
-     * given memory block. All slots are assigned statically. All LLVM Values
-     * are allocated into slots.
-     */
-    struct Slot
-    {
-        enum Type { Void, Pointer, Integer, Float, Aggregate, CodePointer, Alloca } type:3;
-        /* NB. The numeric value of Location has to agree with the
-           corresponding register's index in the _VM_ControlRegister enum */
-        enum Location { Constant, Global, Local, Invalid } location:2;
-        uint32_t _width:29;
-        uint32_t offset:30;
-
-        bool pointer() { return type == Pointer || type == Alloca; }
-        bool alloca() { return type == Alloca; }
-        bool integer() { return type == Integer; }
-        bool isfloat() { return type == Float; }
-        bool aggregate() { return type == Aggregate; }
-        bool codePointer() { return type == CodePointer; }
-
-        int size() const { return _width % 8 ? _width / 8 + 1 : _width / 8; }
-        int width() const { return _width; }
-
-        explicit Slot( Location l = Invalid, int w = 0 )
-            : type( Integer ), location( l ), _width( w ), offset( 0 )
-        {
-        }
-
-        Slot &operator=( const Slot & ) & = default;
-
-        friend std::ostream &operator<<( std::ostream &o, Program::Slot p )
-        {
-            static std::vector< std::string > t =
-                { "void", "ptr", "int", "float", "agg", "code", "alloca" };
-            static std::vector< std::string > l = { "const", "global", "local", "invalid" };
-            return o << "[" << l[ p.location ] << " " << t[ p.type ] << " @" << p.offset << " ↔"
-                     << p.width() << "]";
-        }
-
-    };
+    using Slot = lx::Slot;
 
     struct SlotRef
     {
@@ -287,7 +217,7 @@ struct Program
         if ( !valid( pc ) )
             return pc;
         auto op = instruction( pc ).opcode;
-        if ( valid( pc + 1 ) && ( op == OpBB || op == OpArgs ) )
+        if ( valid( pc + 1 ) && op == lx::OpBB )
             return nextpc( pc + 1 );
         return pc;
     }
@@ -299,7 +229,7 @@ struct Program
     {
         switch ( slot.location )
         {
-            case Slot::Constant:
+            case Slot::Const:
                 slot.offset = _constants_size;
                 _constants_size = mem::align( _constants_size + slot.size(), 4 );
                 _globals.push_back( slot );
@@ -323,7 +253,7 @@ struct Program
     {
         switch ( sr.slot.location )
         {
-            case Slot::Constant:
+            case Slot::Const:
             case Slot::Global: return GlobalPointer( sr.seqno, 0 );
             default: UNREACHABLE( "invalid slot type in Program::s2ptr" );
         }
@@ -404,7 +334,6 @@ struct Program
     template< typename Insn > void insertIndices( Position p );
     Position insert( Position );
     Position lower( Position ); // convert intrinsic into normal insns
-    Hypercall hypercall( llvm::Function *f );
     void hypercall( Position );
     Slot initSlot( llvm::Value *val, Slot::Location loc );
     SlotRef insert( int function, llvm::Value *val );

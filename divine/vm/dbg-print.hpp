@@ -92,11 +92,11 @@ static std::string value( dbg::Info &dbg, Eval &eval, llvm::Value *val,
     if ( name.empty() && disp != DisplayVal::Name )
     {
         auto slot = eval.program().valuemap[ val ].slot;
-        if ( slot.type == Eval::Slot::Aggregate )
+        if ( slot.type == Eval::Slot::Agg )
             name = "<aggregate>";
         else
             eval.template type_dispatch<>(
-                slot.width(), slot.type,
+                slot.type,
                 [&]( auto v ) { name = brick::string::fmt( v.get( slot ) ); } );
     }
 
@@ -145,32 +145,32 @@ decltype( I::opcode, std::string() ) opcode( I &insn )
             case llvm::FCmpInst::FCMP_UNO: op += ".uno"; break;
             default: UNREACHABLE( "unexpected fcmp predicate" ); break;
         }
-    if ( insn.opcode == OpDbg )
+    if ( insn.opcode == lx::OpDbg )
         switch ( insn.subcode )
         {
             case llvm::Intrinsic::dbg_value: op += ".value"; break;
             case llvm::Intrinsic::dbg_declare: op += ".declare"; break;
             default: UNREACHABLE( "unexpected debug opcode" ); break;
         }
-    if ( insn.opcode == OpHypercall )
+    if ( insn.opcode == lx::OpHypercall )
         switch ( insn.subcode )
         {
-            case HypercallControl: op += ".control"; break;
-            case HypercallChoose: op += ".choose"; break;
-            case HypercallFault: op += ".fault"; break;
+            case lx::HypercallControl: op += ".control"; break;
+            case lx::HypercallChoose: op += ".choose"; break;
+            case lx::HypercallFault: op += ".fault"; break;
 
-            case HypercallInterruptCfl: op += ".interrupt.cfl"; break;
-            case HypercallInterruptMem: op += ".interrupt.mem"; break;
+            case lx::HypercallInterruptCfl: op += ".interrupt.cfl"; break;
+            case lx::HypercallInterruptMem: op += ".interrupt.mem"; break;
 
-            case HypercallTrace : op += ".trace"; break;
-            case HypercallSyscall: op += ".syscall"; break;
+            case lx::HypercallTrace : op += ".trace"; break;
+            case lx::HypercallSyscall: op += ".syscall"; break;
 
-            case HypercallObjMake: op += ".obj.make"; break;
-            case HypercallObjFree: op += ".obj.free"; break;
-            case HypercallObjShared: op += ".obj.shared"; break;
-            case HypercallObjResize: op += ".obj.resize"; break;
-            case HypercallObjSize: op += ".obj.size"; break;
-            case HypercallObjClone: op += ".obj.clone"; break;
+            case lx::HypercallObjMake: op += ".obj.make"; break;
+            case lx::HypercallObjFree: op += ".obj.free"; break;
+            case lx::HypercallObjShared: op += ".obj.shared"; break;
+            case lx::HypercallObjResize: op += ".obj.resize"; break;
+            case lx::HypercallObjSize: op += ".obj.size"; break;
+            case lx::HypercallObjClone: op += ".obj.clone"; break;
 
             default: UNREACHABLE( "unexpected debug opcode" ); break;
         }
@@ -194,7 +194,7 @@ static std::string instruction( dbg::Info &dbg, Eval &eval, int padding = 0, int
 
     out << opcode( insn ) << " ";
     uint64_t skipMask = 0;
-    const int argc = insn.opcode == OpDbg ? 0 : I->getNumOperands();
+    const int argc = insn.opcode == lx::OpDbg ? 0 : I->getNumOperands();
     int argalign = out.str().size() + padding, argcols = 0;
 
     if ( insn.opcode == llvm::Instruction::Call || insn.opcode == llvm::Instruction::Invoke )

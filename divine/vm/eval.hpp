@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <divine/vm/lx-code.hpp>
 #include <divine/vm/program.hpp>
 #include <divine/vm/value.hpp>
 #include <divine/vm/context.hpp>
@@ -217,13 +218,13 @@ struct Eval
 
     GenericPointer s2ptr( Slot v, int off = 0 )
     {
-        ASSERT_LT( v.location, Program::Slot::Invalid );
+        ASSERT_LT( v.location, Slot::Invalid );
         return context().get( v.location ).pointer + v.offset + off;
     }
 
     GenericPointer s2ptr( Slot v, int off, HeapPointer f )
     {
-        if ( v.location == Program::Slot::Local )
+        if ( v.location == Slot::Local )
             return f + v.offset + off;
         return s2ptr( v, off );
     }
@@ -254,7 +255,7 @@ struct Eval
         heap().read( s2ptr( s, 0, fr ), v );
     }
 
-    typename Program::Slot ptr2s( GenericPointer p )
+    Slot ptr2s( GenericPointer p )
     {
         if ( p.type() == PointerType::Global )
             return program()._globals[ p.object() ];
@@ -313,7 +314,7 @@ struct Eval
         }
         else if ( pp.type() == PointerType::Global )
         {
-            if ( write && ptr2s( pp ).location == Slot::Constant )
+            if ( write && ptr2s( pp ).location == Slot::Const )
             {
                 mkf( _VM_F_Memory ) << "attempted write to a constant location " << p << dsc;
                 return false;
@@ -349,7 +350,7 @@ struct Eval
         if ( pp.heap() )
             return heap().size( pp );
         if ( pp.type() == PointerType::Global )
-            return program()._globals[ pp.object() ].size();
+            return ptr2s( pp ).size();
         UNREACHABLE_F( "a bad pointer in ptr2sz: %s", brick::string::fmt( PointerV( p ) ).c_str() );
     }
 
@@ -542,36 +543,27 @@ struct Eval
     void op( int off, Op _op )
     {
         auto v = instruction().value( off );
-        return type_dispatch< Guard >( v.width(), v.type, _op );
+        return type_dispatch< Guard >( v.type, _op );
     }
 
     template< template< typename > class Guard = Any, typename Op >
-    void type_dispatch( int width, typename Slot::Type type, Op _op )
+    void type_dispatch( typename Slot::Type type, Op _op )
     {
-        switch ( type ) {
-            case Slot::Integer:
-                switch ( width )
-                {
-                    case  1: return op< Guard, value::Int<  1 > >( _op );
-                    case  8: return op< Guard, value::Int<  8 > >( _op );
-                    case 16: return op< Guard, value::Int< 16 > >( _op );
-                    case 24: return op< Guard, value::Int< 24 > >( _op );
-                    case 32: return op< Guard, value::Int< 32 > >( _op );
-                    case 64: return op< Guard, value::Int< 64 > >( _op );
-                }
-                UNREACHABLE_F( "Unsupported integer width %d", width );
-            case Slot::Pointer: case Slot::Alloca: case Slot::CodePointer:
+        switch ( type )
+        {
+            case Slot::I1: return op< Guard, value::Int<  1 > >( _op );
+            case Slot::I8: return op< Guard, value::Int<  8 > >( _op );
+            case Slot::I16: return op< Guard, value::Int< 16 > >( _op );
+            case Slot::I32: return op< Guard, value::Int< 32 > >( _op );
+            case Slot::I64: return op< Guard, value::Int< 64 > >( _op );
+            case Slot::Ptr: case Slot::PtrA: case Slot::PtrC:
                 return op< Guard, PointerV >( _op );
-            case Slot::Float:
-                switch ( width )
-                {
-                    case 8 * sizeof( float ):
-                        return op< Guard, value::Float< float > >( _op );
-                    case 8 * sizeof( double ):
-                        return op< Guard, value::Float< double > >( _op );
-                    case 8 * sizeof( long double ):
-                        return op< Guard, value::Float< long double > >( _op );
-                }
+            case Slot::F32:
+                return op< Guard, value::Float< float > >( _op );
+            case Slot::F64:
+                return op< Guard, value::Float< double > >( _op );
+            case Slot::F80:
+                return op< Guard, value::Float< long double > >( _op );
             case Slot::Void:
                 return;
             default:
@@ -1150,7 +1142,7 @@ struct Eval
     {
         switch( instruction().subcode )
         {
-            case HypercallChoose:
+            case lx::HypercallChoose:
             {
                 int options = operandCk< IntV >( 0 ).cooked();
                 std::vector< int > p;
@@ -1163,19 +1155,19 @@ struct Eval
                 return;
             }
 
-            case HypercallControl:
+            case lx::HypercallControl:
                 return implement_hypercall_control();
-            case HypercallSyscall:
+            case lx::HypercallSyscall:
                 return implement_hypercall_syscall();
 
-            case HypercallInterruptCfl:
+            case lx::HypercallInterruptCfl:
                 context().cfl_interrupt( pc() );
                 return;
-            case HypercallInterruptMem:
+            case lx::HypercallInterruptMem:
             {
                 auto ptr = operand< PointerV >( 0 );
                 if ( ptr.cooked().type() == PointerType::Global &&
-                     ptr2s( ptr.cooked() ).location == Slot::Constant )
+                     ptr2s( ptr.cooked() ).location == Slot::Const )
                     return;
                 /* TODO fault on failing pointers? */
                 auto size = operandCk< IntV >( 1 ).cooked();
@@ -1184,7 +1176,7 @@ struct Eval
                                              operandCk< IntV >( 2 ).cooked() );
                 return;
             }
-            case HypercallTrace:
+            case lx::HypercallTrace:
             {
                 _VM_Trace t = _VM_Trace( operandCk< IntV >( 0 ).cooked() );
                 switch ( t )
@@ -1220,11 +1212,11 @@ struct Eval
                 return;
             }
 
-            case HypercallFault:
+            case lx::HypercallFault:
                 fault( Fault( operandCk< IntV >( 0 ).cooked() ) ) << "__vm_fault called";
                 return;
 
-            case HypercallObjMake:
+            case lx::HypercallObjMake:
             {
                 int64_t size = operandCk< IntV >( 0 ).cooked();
                 if ( size >= ( 2ll << _VM_PB_Off ) || size < 1 )
@@ -1236,19 +1228,19 @@ struct Eval
                 result( size ? makeobj( size ) : nullPointerV() );
                 return;
             }
-            case HypercallObjFree:
+            case lx::HypercallObjFree:
                 if ( !freeobj( operand< PointerV >( 0 ).cooked() ) )
                     fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_free";
                 return;
-            case HypercallObjShared:
+            case lx::HypercallObjShared:
                 heap().shared( operandCk< PointerV >( 0 ).cooked(), true );
                 return;
-            case HypercallObjResize:
+            case lx::HypercallObjResize:
                 if ( !heap().resize( operandCk< PointerV >( 0 ).cooked(),
                                      operandCk< IntV >( 1 ).cooked() ) )
                     fault( _VM_F_Memory ) << "invalid pointer passed to __vm_obj_resize";
                 return;
-            case HypercallObjSize:
+            case lx::HypercallObjSize:
             {
                 auto ptr = operandCk< PointerV >( 0 ).cooked();
                 if ( !heap().valid( ptr ) )
@@ -1257,7 +1249,7 @@ struct Eval
                     result( IntV( heap().size( ptr ) ) );
                 return;
             }
-            case HypercallObjClone:
+            case lx::HypercallObjClone:
             {
                 auto ptr = operandCk< PointerV >( 0 ).cooked();
                 if ( !heap().valid( ptr ) )
@@ -1618,7 +1610,7 @@ struct Eval
                         return this->jumpTo( target );
                     } );
 
-            case OpHypercall:
+            case lx::OpHypercall:
                 return implement_hypercall();
             case OpCode::Call:
                 implement_call( false ); break;
@@ -1771,14 +1763,12 @@ struct Eval
                 }
                 return;
 
-            case OpCode::LandingPad:
-                break; /* nothing to do, handled by the unwinder */
-
-            case OpCode::Fence: /* noop until we have reordering simulation */
-                break;
+            case lx::OpDbg: break;
+            case OpCode::LandingPad: break; /* nothing to do, handled by the unwinder */
+            case OpCode::Fence: break; /* noop until we have reordering simulation */
 
             default:
-                UNREACHABLE( "attempted to execute null instruction" );
+                UNREACHABLE_F( "unknown opcode %d", instruction().opcode );
         }
     }
 };

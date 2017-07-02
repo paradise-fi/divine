@@ -1,7 +1,7 @@
 // -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 
 /*
- * (c) 2016 Petr Ročkai <code@fixp.eu>
+ * (c) 2017 Petr Ročkai <code@fixp.eu>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,38 +16,41 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <divine/vm/dbg-print.hpp>
+#pragma once
+#include <divine/vm/heap.hpp>
+#include <divine/vm/lx-slot.hpp>
 
-using namespace std::literals;
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/Instructions.h>
+DIVINE_UNRELAX_WARNINGS
 
-namespace divine::vm::dbg::print
+namespace divine::vm::lx
 {
 
-#define HANDLE_INST(num, opc, class) [num] = #opc ## s,
-static std::string _opcode[] = {
-#include <llvm/IR/Instruction.def>
+enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1, OpBB, OpArg, OpDbg };
+
+enum Hypercall /* see divm.h for prototypes & documentation */
+{
+    NotHypercall = 0,
+    NotHypercallButIntrinsic = 1,
+
+    HypercallControl,
+    HypercallChoose,
+    HypercallFault,
+    HypercallInterruptCfl,
+    HypercallInterruptMem,
+
+    /* feedback */
+    HypercallTrace,
+    HypercallSyscall,
+
+    /* memory management */
+    HypercallObjMake,
+    HypercallObjClone,
+    HypercallObjFree,
+    HypercallObjShared,
+    HypercallObjResize,
+    HypercallObjSize
 };
-#undef HANDLE_INST
-
-void opcode_tolower()
-{
-    static bool done = false;
-    if ( done )
-        return;
-    for ( int i = 0; i < int( sizeof( _opcode ) / sizeof( _opcode[0] ) ); ++i )
-        std::transform( _opcode[i].begin(), _opcode[i].end(),
-                        _opcode[i].begin(), ::tolower );
-    done = true;
-}
-
-std::string opcode( int op )
-{
-    if ( op == lx::OpDbg )
-        return "dbg";
-    if ( op == lx::OpHypercall )
-        return "vm";
-    opcode_tolower();
-    return _opcode[ op ];
-}
 
 }
