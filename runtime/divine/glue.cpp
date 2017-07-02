@@ -128,7 +128,7 @@ extern "C" void _exit( int rv )
 
 /* signals */
 
-void __dios_interrupt()
+extern "C" void __dios_interrupt()
 {
     uintptr_t fl = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
