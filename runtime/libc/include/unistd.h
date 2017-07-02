@@ -91,6 +91,12 @@ int fchdir( int dirfd );
 void _exit( int status );
 pid_t getpid( void );
 pid_t getppid( void );
+pid_t getsid( pid_t pid );
+pid_t getpgid( pid_t pid );
+pid_t getpgrp( void );
+pid_t setsid( void );
+int setpgrp( void );
+int setpgid( pid_t pid, pid_t pgid );
 
 int fsync( int fd );
 int fdatasync( int fd );
