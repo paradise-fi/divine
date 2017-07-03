@@ -50,6 +50,7 @@ struct Fault: public Next {
         _DiOS_fault_cfg = config;
     }
 
+    template< typename Setup >
     void setup( Setup s ) {
         __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, handler );
         load_user_pref( s.opts );

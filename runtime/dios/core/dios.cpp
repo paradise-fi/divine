@@ -63,7 +63,7 @@ void traceEnv( int ind, const _VM_Env *env ) {
 }
 
 template < typename Configuration >
-void boot( Setup s ) {
+void boot( SetupBase sb ) {
     auto *context = new_object< Configuration >();
     __vm_trace( _VM_T_StateType, context );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
@@ -71,7 +71,7 @@ void boot( Setup s ) {
 
     const char *bootInfo = "DiOS boot info:";
     bool initTrace = false;
-    if ( extractOpt( "debug", "help", s.opts ) ) {
+    if ( extractOpt( "debug", "help", sb.opts ) ) {
         if ( !initTrace )
             __dios_trace_i( 0, bootInfo );
         initTrace = true;
@@ -93,13 +93,14 @@ void boot( Setup s ) {
         return;
     }
 
-    if ( extractOpt( "debug", "rawenvironment", s.opts ) ) {
+    if ( extractOpt( "debug", "rawenvironment", sb.opts ) ) {
         if ( !initTrace )
             __dios_trace_i( 0, bootInfo );
         initTrace = true;
-        traceEnv( 1, s.env );
+        traceEnv( 1, sb.env );
     }
 
+    Setup< Configuration > s = sb;
     context->setup( s );
 }
 
@@ -138,7 +139,7 @@ void init( const _VM_Env *env )
     }
 
     auto cfg = extractDiosConfiguration( sysOpts );
-    Setup setup{ .pool = &deterministicPool, .env = env, .opts = sysOpts };
+    SetupBase setup{ .pool = &deterministicPool, .env = env, .opts = sysOpts };
     if ( cfg == "standard" )
         boot< DefaultConfiguration >( setup );
     else if (cfg == "passthrough") {

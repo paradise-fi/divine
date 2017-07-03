@@ -222,7 +222,7 @@ extern const sighandler_t defhandlers[ 32 ];
 
 template < typename Next >
 struct Scheduler : public Next {
-    using Sys = Syscall< Scheduler< Next > >;
+
     Scheduler() :
         sighandlers( nullptr ){}
 
@@ -238,6 +238,7 @@ struct Scheduler : public Next {
 
     using Thread = __dios::Thread< Process >;
 
+    template< typename Setup >
     void setup( Setup s ) {
         Process *proc1 = static_cast< Process * >( __vm_obj_make( sizeof( Process ) ) );
         proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
@@ -259,9 +260,9 @@ struct Scheduler : public Next {
         }
 
         if ( trace )
-            __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< true > );
+            __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< typename Setup::Context, true > );
         else
-            __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< false > );
+            __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< typename Setup::Context, false > );
 
         if ( extractOpt( "debug", "mainargs", s.opts ) ||
              extractOpt( "debug", "mainarg", s.opts ) )
@@ -615,11 +616,12 @@ struct Scheduler : public Next {
         return newThread->_proc->pid;
     }
 
-    template < bool THREAD_AWARE_SCHED >
+    template < typename Context, bool THREAD_AWARE_SCHED >
     static void run_scheduler() noexcept
     {
         void *ctx = __vm_control( _VM_CA_Get, _VM_CR_State );
-        Scheduler& scheduler = *static_cast< Scheduler * >( ctx );
+        auto& scheduler = *static_cast< Context * >( ctx );
+        using Sys = Syscall< Context >;
 
         if ( THREAD_AWARE_SCHED )
             scheduler.traceThreads();

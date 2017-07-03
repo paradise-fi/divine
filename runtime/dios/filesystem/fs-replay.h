@@ -42,6 +42,7 @@ namespace fs {
 template< typename Next >
 struct Replay : public Next {
 
+    template< typename Setup >
     void setup( Setup s )
     {
         if ( !init( "passtrough.out" )) {

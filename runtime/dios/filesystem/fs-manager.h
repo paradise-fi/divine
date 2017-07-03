@@ -279,7 +279,7 @@ struct VFS: public Next {
         return *_manager;
     }
 
-
+    template< typename Setup >
     void setup( Setup s ) {
         instance().setOutputFile( getFileTraceConfig( s.opts, "stdout" ) );
         instance().setErrFile( getFileTraceConfig( s.opts, "stderr" ) );

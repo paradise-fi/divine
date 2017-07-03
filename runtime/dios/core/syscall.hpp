@@ -116,11 +116,19 @@ typename Syscall< Context >::ScHandler Syscall< Context >::table[ SYS_MAXSYSCALL
 
 #endif
 
-struct Setup
+struct SetupBase
 {
-    MemoryPool* pool;
-    const _VM_Env* env;
+    MemoryPool *pool;
+    const _VM_Env *env;
     SysOpts opts;
+};
+
+template< typename Context_ >
+struct Setup : SetupBase
+{
+    using Context = Context_;
+
+    Setup( const SetupBase &s ) : SetupBase( s ) {}
 };
 
 struct BaseContext
@@ -133,6 +141,7 @@ struct BaseContext
         _kernelCall = invoker;
     };
 
+    template< typename Setup >
     void setup( Setup s ) {
         if ( s.opts.empty() )
             return;

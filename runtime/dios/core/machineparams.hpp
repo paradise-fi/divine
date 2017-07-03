@@ -11,6 +11,7 @@ struct MachineParams : Next
 {
     int hardwareConcurrency;
 
+    template< typename Setup >
     void setup( Setup s )
     {
         hardwareConcurrency = 0;

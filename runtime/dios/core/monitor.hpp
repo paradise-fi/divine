@@ -11,6 +11,7 @@ struct MonitorManager : Next
 {
     MonitorManager() : first( nullptr ) {}
 
+    template< typename Setup >
     void setup( Setup s )
     {
         Next::setup( s );

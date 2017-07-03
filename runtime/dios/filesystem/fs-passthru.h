@@ -114,6 +114,7 @@ namespace fs {
     template< typename Next >
     struct PassThrough : public Next {
 
+        template< typename Setup >
         void setup( Setup s )
         {
             Next::setup( s );
