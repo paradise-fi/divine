@@ -509,9 +509,9 @@ struct Eval
             return;
         auto slot = operand( 0 );
         auto mem = ptr2h( to );
-        auto mem_i = heap().ptr2i( mem ), new_i = mem_i;
+        auto mem_i = heap().ptr2i( mem ), old_i = mem_i;
         heap().copy( heap(), s2ptr( slot ), context().ptr2i( slot.location ), mem, mem_i, sz );
-        if ( mem_i != new_i )
+        if ( mem_i != old_i )
             context().flush_ptr2i(); /* might have affected register-held objects */
     }
 
