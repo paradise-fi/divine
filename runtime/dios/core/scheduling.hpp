@@ -238,7 +238,7 @@ struct Scheduler : public Next {
 
     using Thread = __dios::Thread< Process >;
 
-    void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) {
+    void setup( Setup s ) {
         Process *proc1 = static_cast< Process * >( __vm_obj_make( sizeof( Process ) ) );
         proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
         proc1->pid = 1;
@@ -246,13 +246,13 @@ struct Scheduler : public Next {
         proc1->sid = 1;
         proc1->pgid = 1;
 
-        auto mainThr = newThreadMem( pool.get(), pool.get(), _start, 0, proc1 );
-        auto argv = construct_main_arg( "arg.", env, true );
-        auto envp = construct_main_arg( "env.", env );
+        auto mainThr = newThreadMem( s.pool->get(), s.pool->get(), _start, 0, proc1 );
+        auto argv = construct_main_arg( "arg.", s.env, true );
+        auto envp = construct_main_arg( "env.", s.env );
         setupMainThread( mainThr, argv.first, argv.second, envp.second );
 
-        bool notrace = extractOpt( "notrace", "thread", opts );
-        bool trace = extractOpt( "trace", "thread", opts );
+        bool notrace = extractOpt( "notrace", "thread", s.opts );
+        bool trace = extractOpt( "trace", "thread", s.opts );
         if ( trace && notrace ) {
             __dios_trace_t( "Cannot trace and notrace threads" );
             __dios_fault( _DiOS_F_Config, "Thread tracing problem" );
@@ -263,8 +263,8 @@ struct Scheduler : public Next {
         else
             __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< false > );
 
-        if ( extractOpt( "debug", "mainargs", opts ) ||
-             extractOpt( "debug", "mainarg", opts ) )
+        if ( extractOpt( "debug", "mainargs", s.opts ) ||
+             extractOpt( "debug", "mainarg", s.opts ) )
         {
             trace_main_arg( 1, "main argv", argv );
             trace_main_arg( 1, "main envp", envp );
@@ -272,7 +272,7 @@ struct Scheduler : public Next {
 
         environ = envp.second;
 
-        Next::setup( pool, env, opts );
+        Next::setup( s );
     }
 
     void getHelp( Map< String, HelpOption >& options ) {

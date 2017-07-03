@@ -42,13 +42,13 @@ namespace fs {
 template< typename Next >
 struct Replay : public Next {
 
-    void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) 
+    void setup( Setup s )
     {
         if ( !init( "passtrough.out" )) {
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
             return;
         };
-        Next::setup( pool, env, opts );
+        Next::setup( s );
     }
 
     void finalize() 

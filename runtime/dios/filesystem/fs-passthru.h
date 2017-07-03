@@ -114,9 +114,9 @@ namespace fs {
     template< typename Next >
     struct PassThrough : public Next {
 
-        void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) 
+        void setup( Setup s )
         {
-            Next::setup( pool, env, opts );
+            Next::setup( s );
         }
 
         void finalize() 

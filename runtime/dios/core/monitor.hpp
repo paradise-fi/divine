@@ -11,9 +11,9 @@ struct MonitorManager : Next
 {
     MonitorManager() : first( nullptr ) {}
 
-    void setup( MemoryPool& pool, const _VM_Env *env, const SysOpts& opts )
+    void setup( Setup s )
     {
-        Next::setup( pool, env, opts );
+        Next::setup( s );
     }
 
     void runMonitors()

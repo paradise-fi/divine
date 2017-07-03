@@ -50,16 +50,16 @@ struct Fault: public Next {
         _DiOS_fault_cfg = config;
     }
 
-    void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) {
+    void setup( Setup s ) {
         __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, handler );
-        load_user_pref( opts );
+        load_user_pref( s.opts );
 
-        if ( extractOpt( "debug", "faultcfg", opts ) ) {
+        if ( extractOpt( "debug", "faultcfg", s.opts ) ) {
             trace_config( 1 );
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         }
 
-        Next::setup( pool, env, opts );
+        Next::setup( s );
     }
 
     void getHelp( Map< String, HelpOption >& options ) {

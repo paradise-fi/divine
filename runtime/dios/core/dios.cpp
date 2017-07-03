@@ -63,7 +63,7 @@ void traceEnv( int ind, const _VM_Env *env ) {
 }
 
 template < typename Configuration >
-void boot( MemoryPool& pool, const _VM_Env *env, SysOpts& opts ) {
+void boot( Setup s ) {
     auto *context = new_object< Configuration >();
     __vm_trace( _VM_T_StateType, context );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
@@ -71,7 +71,7 @@ void boot( MemoryPool& pool, const _VM_Env *env, SysOpts& opts ) {
 
     const char *bootInfo = "DiOS boot info:";
     bool initTrace = false;
-    if ( extractOpt( "debug", "help", opts ) ) {
+    if ( extractOpt( "debug", "help", s.opts ) ) {
         if ( !initTrace )
             __dios_trace_i( 0, bootInfo );
         initTrace = true;
@@ -93,14 +93,14 @@ void boot( MemoryPool& pool, const _VM_Env *env, SysOpts& opts ) {
         return;
     }
 
-    if ( extractOpt( "debug", "rawenvironment", opts ) ) {
+    if ( extractOpt( "debug", "rawenvironment", s.opts ) ) {
         if ( !initTrace )
             __dios_trace_i( 0, bootInfo );
         initTrace = true;
-        traceEnv( 1, env );
+        traceEnv( 1, s.env );
     }
 
-    context->setup( pool, env, opts );
+    context->setup( s );
 }
 
 void temporaryScheduler() {
@@ -138,16 +138,17 @@ void init( const _VM_Env *env )
     }
 
     auto cfg = extractDiosConfiguration( sysOpts );
+    Setup setup{ .pool = &deterministicPool, .env = env, .opts = sysOpts };
     if ( cfg == "standard" )
-        boot< DefaultConfiguration >( deterministicPool, env, sysOpts );
+        boot< DefaultConfiguration >( setup );
     else if (cfg == "passthrough") {
         if (__dios_clear_file("passtrough.out") == 0)
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
 
-        boot< PassthruConfiguration >( deterministicPool, env, sysOpts );
+        boot< PassthruConfiguration >( setup );
 
     } else if (cfg == "replay") {
-        boot< ReplayConfiguration >( deterministicPool, env, sysOpts );
+        boot< ReplayConfiguration >( setup );
     } else {
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
     }

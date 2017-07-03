@@ -116,6 +116,13 @@ typename Syscall< Context >::ScHandler Syscall< Context >::table[ SYS_MAXSYSCALL
 
 #endif
 
+struct Setup
+{
+    MemoryPool* pool;
+    const _VM_Env* env;
+    SysOpts opts;
+};
+
 struct BaseContext
 {
     using SyscallInvoker = void (*)( void *, _DiOS_SC syscode, void *, va_list );
@@ -126,10 +133,10 @@ struct BaseContext
         _kernelCall = invoker;
     };
 
-    void setup( MemoryPool&, const _VM_Env *, SysOpts opts ) {
-        if ( opts.empty() )
+    void setup( Setup s ) {
+        if ( s.opts.empty() )
             return;
-        for ( const auto& opt : opts )
+        for ( const auto& opt : s.opts )
             __dios_trace_f( "ERROR: Unused option %s:%s", opt.first.c_str(), opt.second.c_str() );
         __dios_fault( _DiOS_F_Config, "Unused options" );
     }

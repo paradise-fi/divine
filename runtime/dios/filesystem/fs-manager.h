@@ -280,12 +280,12 @@ struct VFS: public Next {
     }
 
 
-    void setup( MemoryPool& pool, const _VM_Env *env, SysOpts opts ) {
-        instance().setOutputFile( getFileTraceConfig( opts, "stdout" ) );
-        instance().setErrFile( getFileTraceConfig( opts, "stderr" ) );
-        instance().initializeFromSnapshot( env );
+    void setup( Setup s ) {
+        instance().setOutputFile( getFileTraceConfig( s.opts, "stdout" ) );
+        instance().setErrFile( getFileTraceConfig( s.opts, "stderr" ) );
+        instance().initializeFromSnapshot( s.env );
 
-        Next::setup( pool, env, opts );
+        Next::setup( s );
     }
 
      void getHelp( Map< String, HelpOption >& options ) {
