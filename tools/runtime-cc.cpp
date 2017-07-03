@@ -35,8 +35,6 @@ int main( int argc, const char **argv )
             fs::touch( argv[ 4 ] );
             return 0;
         }
-        fs::writeFile( fpFilename, newFp );
-
         auto mod = clang.compileModule( argv[3], opts );
 
         auto runtimeBase = fs::joinPath( srcDir, "runtime" );
@@ -57,6 +55,8 @@ int main( int argc, const char **argv )
             } );
 
         brick::llvm::writeModule( mod.get(), argv[4] );
+        fs::writeFile( fpFilename, newFp );
+
         return 0;
     } catch ( cc::CompileError &err ) {
         std::cerr << err.what() << std::endl;
