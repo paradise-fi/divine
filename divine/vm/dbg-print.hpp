@@ -81,7 +81,7 @@ static std::string value( dbg::Info &dbg, Eval &eval, llvm::Value *val,
         }
         else if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( val ) )
         {
-            auto insn = dbg.first_indexed( B->begin(), B->end() );
+            auto insn = B->begin();
             ASSERT( insn != B->end() );
             num2str << dbg.find( &*insn, CodePointer() ).second.instruction() - 1;
             name = B->getName().str();

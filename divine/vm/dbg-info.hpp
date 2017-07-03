@@ -44,19 +44,6 @@ struct Info
         return _funmap[ pc.function() ];
     }
 
-    auto first_indexed( llvm::BasicBlock::iterator it, llvm::BasicBlock::iterator end )
-    {
-        for ( ; it != end; ++it )
-        {
-            if ( llvm::isa< llvm::DbgDeclareInst >( &*it ) )
-                continue;
-            if ( llvm::isa< llvm::DbgValueInst >( &*it ) )
-                continue;
-            return it;
-        }
-        return end;
-    }
-
     auto find( llvm::Instruction *I, CodePointer pc )
         -> std::pair< llvm::Instruction *, CodePointer >
     {
@@ -69,9 +56,7 @@ struct Info
         {
             ASSERT_EQ( _program.instruction( pcf ).opcode, lx::OpBB );
             pcf = pcf + 1;
-            for ( auto it = first_indexed( BB.begin(), BB.end() );
-                  it != BB.end();
-                  it = first_indexed( std::next( it ), BB.end() ) )
+            for ( auto it = BB.begin(); it != BB.end(); it = std::next( it ) )
             {
                 if ( ( I && I == &*it ) || ( pc.function() && pc == pcf ) )
                     return std::make_pair( &*it, pcf );

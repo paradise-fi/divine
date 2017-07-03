@@ -28,7 +28,6 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
-#include <llvm/CodeGen/IntrinsicLowering.h>
 #include <llvm/ADT/StringMap.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -315,7 +314,9 @@ Program::Position Program::insert( Position p )
                         hypercall( p );
                     break;
                 case llvm::Intrinsic::dbg_declare:
-                case llvm::Intrinsic::dbg_value: p.I++; return p;
+                case llvm::Intrinsic::dbg_value:
+                    insn.opcode = lx::OpDbg;
+                    break;
                 default: ;
             }
     }
