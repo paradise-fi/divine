@@ -229,10 +229,6 @@ struct Scheduler : public Next {
     struct Process : Next::Process
     {
         uint16_t pid;
-        uint16_t ppid;
-        uint16_t sid;
-        uint16_t pgid;
-        bool calledExecve = false;
         void *globals;
     };
 
@@ -240,14 +236,10 @@ struct Scheduler : public Next {
 
     template< typename Setup >
     void setup( Setup s ) {
-        Process *proc1 = static_cast< Process * >( __vm_obj_make( sizeof( Process ) ) );
-        proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
-        proc1->pid = 1;
-        proc1->ppid = 0;
-        proc1->sid = 1;
-        proc1->pgid = 1;
+        s.proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
+        s.proc1->pid = 1;
 
-        auto mainThr = newThreadMem( s.pool->get(), s.pool->get(), _start, 0, proc1 );
+        auto mainThr = newThreadMem( s.pool->get(), s.pool->get(), _start, 0, s.proc1 );
         auto argv = construct_main_arg( "arg.", s.env, true );
         auto envp = construct_main_arg( "env.", s.env );
         setupMainThread( mainThr, argv.first, argv.second, envp.second );
@@ -398,125 +390,19 @@ struct Scheduler : public Next {
         return 0;
     }
 
-    Process* getCurrentProcess() {
+    Thread* getCurrentThread() {
         auto tid = __dios_get_thread_handle();
         auto thread = threads.find( tid );
         __dios_assert( thread );
-        return thread->_proc;
-    }
-
-    Process* findProcess( pid_t pid ) {
-        auto thread = std::find_if( threads.begin(), threads.end(), [&]( Thread *t )
-                                     { return t->_proc->pid == pid; } );
-        if ( thread == threads.end() )
-        {
-            *__dios_get_errno() = ESRCH;
-            return nullptr;
-        }
-        return (*thread)->_proc;
-    }
-
-    bool isChild( Process* child, Process* parent ) {
-        if (!child || !parent)
-            return false;
-        return child->ppid == parent->pid;
+        return thread;
     }
 
     pid_t getpid() {
-        return getCurrentProcess()->pid;
-    }
-
-    pid_t getppid() {
-        return getCurrentProcess()->ppid;
-    }
-
-    pid_t getsid( pid_t pid ) {
-        if ( pid == 0 )
-            return getCurrentProcess()->sid;
-        Process* proc = findProcess( pid );
-        return proc ? proc->sid : -1;
-    }
-
-    pid_t setsid() {
-        Process* p = getCurrentProcess();
-        for( Thread* t : threads )
-            if( t->_proc->sid == p->sid && t->_proc->pgid == p->pid )
-            {
-                *__dios_get_errno() = EPERM;
-                return -1;
-            }
-        p->sid = p->pid;
-        p->pgid = p->pid;
-        return p->sid;
-    }
-
-    pid_t getpgid( pid_t pid ) {
-        if ( pid == 0 )
-            return getCurrentProcess()->pgid;
-        Process* proc = findProcess( pid );
-        return proc ? proc->pgid : -1;
-    }
-
-    int setpgid( pid_t pid, pid_t pgid ) {
-        if ( pgid < 0 )
-        {
-            *__dios_get_errno() = EINVAL;
-            return -1;
-        }
-
-        Process* procToSet;
-        Process* currentProc = getCurrentProcess();
-        if ( pid == 0 )
-            procToSet = currentProc;
-        else
-        {
-            procToSet = findProcess( pid );
-            if ( !procToSet )
-                return -1;
-            if ( !isChild( procToSet, currentProc ) && pid != currentProc->pid )
-            {
-                *__dios_get_errno() = ESRCH;
-                return -1;
-            }
-        }
-
-        if ( procToSet->pgid == procToSet->pid ||
-             ( isChild( procToSet, currentProc ) && procToSet->sid != currentProc->sid ) )
-        {
-            *__dios_get_errno() = EPERM;
-            return -1;
-        }
-        if ( std::find_if( threads.begin(), threads.end(), [&]( Thread *t ){
-                          return t->_proc->pgid == pgid && t->_proc->sid == procToSet->sid; } ) == threads.end() )
-            if ( procToSet->pid != pgid && pgid != 0 )
-            {
-                *__dios_get_errno() = EPERM;
-                return -1;
-            }
-
-        if ( isChild( procToSet, currentProc ) && procToSet->calledExecve )
-        {
-            *__dios_get_errno() = EACCES;
-            return -1;
-        }
-        if ( pgid == 0 )
-            procToSet->pgid = procToSet->pid;
-        else
-            procToSet->pgid = pgid;
-
-        return 0;
-    }
-
-    pid_t getpgrp() {
-        return getpgid( 0 );
-    }
-
-    int setpgrp() {
-        return setpgid( 0, 0 );
+        return getCurrentThread()->_proc->pid;
     }
 
     _DiOS_ThreadHandle start_thread( _DiOS_ThreadRoutine routine, void * arg, int tls_size ) {
-        auto t = newThread( routine, tls_size, getCurrentProcess() );
+        auto t = newThread( routine, tls_size, getCurrentThread()->_proc );
         setupThread( t, arg );
         __vm_obj_shared( t->getId() );
         __vm_obj_shared( arg );
@@ -592,28 +478,6 @@ struct Scheduler : public Next {
 
     void die() {
         killProcess( 0 );
-    }
-
-
-    pid_t sysfork( void )
-    {
-        auto tid = __dios_get_thread_handle();
-        auto thread = threads.find( tid );
-        Thread *newThread = static_cast< Thread * >( __vm_obj_clone( thread ) );
-
-        pid_t maxPid = 0;
-        for( auto t : threads )
-        {
-            if ( t->_proc->pid > maxPid )
-                maxPid = t->_proc->pid;
-        }
-
-        newThread->_proc->pid = maxPid + 1;
-        newThread->_proc->ppid = thread->_proc->pid;
-        newThread->_proc->sid = thread->_proc->sid;
-        newThread->_proc->pgid = thread->_proc->pgid;
-        threads.insert( newThread );
-        return newThread->_proc->pid;
     }
 
     template < typename Context, bool THREAD_AWARE_SCHED >

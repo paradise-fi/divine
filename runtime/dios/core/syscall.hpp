@@ -127,6 +127,7 @@ template< typename Context_ >
 struct Setup : SetupBase
 {
     using Context = Context_;
+    typename Context::Process *proc1;
 
     Setup( const SetupBase &s ) : SetupBase( s ) {}
 };

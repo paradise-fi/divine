@@ -1,0 +1,172 @@
+namespace __dios
+{
+
+template < typename Next >
+struct ProcessManager : public Next
+{
+    struct Process : Next::Process
+    {
+        uint16_t ppid;
+        uint16_t sid;
+        uint16_t pgid;
+        bool calledExecve = false;
+    };
+
+    using Thread = typename Next::Thread;
+
+    Process* proc( Thread *t )
+    {
+        return static_cast< Process* >( t->_proc );
+    }
+
+    template< typename Setup >
+    void setup( Setup s )
+    {
+        s.proc1->ppid = 0;
+        s.proc1->sid = 1;
+        s.proc1->pgid = 1;
+        bool calledExecve = false;
+        Next::setup( s );
+    }
+
+    bool isChild( Process* child, Process* parent )
+    {
+        if (!child || !parent)
+            return false;
+        return child->ppid == parent->pid;
+    }
+
+    Process* findProcess( pid_t pid )
+    {
+        auto thread = std::find_if( this->threads.begin(), this->threads.end(), [&]( Thread *t )
+                                     { return proc(t)->pid == pid; } );
+        if ( thread == this->threads.end() )
+        {
+            *__dios_get_errno() = ESRCH;
+            return nullptr;
+        }
+        return proc(*thread);
+    }
+
+    pid_t getppid()
+    {
+        return proc(this->getCurrentThread())->ppid;
+    }
+
+    pid_t getsid( pid_t pid )
+    {
+        if ( pid == 0 )
+            return proc(this->getCurrentThread())->sid;
+        Process* proc = this->findProcess( pid );
+        return proc ? proc->sid : -1;
+    }
+
+    pid_t setsid()
+    {
+        Process* p = proc(this->getCurrentThread());
+        for( Thread* t : this->threads )
+            if( proc(t)->sid == p->sid && proc(t)->pgid == p->pid )
+            {
+                *__dios_get_errno() = EPERM;
+                return -1;
+            }
+        p->sid = p->pid;
+        p->pgid = p->pid;
+        return p->sid;
+    }
+
+    pid_t getpgid( pid_t pid )
+    {
+        if ( pid == 0 )
+            return proc(this->getCurrentThread())->pgid;
+        Process* proc = this->findProcess( pid );
+        return proc ? proc->pgid : -1;
+    }
+
+    int setpgid( pid_t pid, pid_t pgid )
+    {
+        if ( pgid < 0 )
+        {
+            *__dios_get_errno() = EINVAL;
+            return -1;
+        }
+
+        Process* procToSet;
+        Process* currentProc = proc(this->getCurrentThread());
+        if ( pid == 0 )
+            procToSet = currentProc;
+        else
+        {
+            procToSet = this->findProcess( pid );
+            if ( !procToSet )
+                return -1;
+            if ( !isChild( procToSet, currentProc ) && pid != currentProc->pid )
+            {
+                *__dios_get_errno() = ESRCH;
+                return -1;
+            }
+        }
+
+        if ( procToSet->pgid == procToSet->pid ||
+             ( isChild( procToSet, currentProc ) && procToSet->sid != currentProc->sid ) )
+        {
+            *__dios_get_errno() = EPERM;
+            return -1;
+        }
+        if ( std::find_if( this->threads.begin(), this->threads.end(), [&]( Thread *t )
+                          { return proc(t)->pgid == pgid && proc(t)->sid == procToSet->sid; } )
+            == this->threads.end() )
+            if ( procToSet->pid != pgid && pgid != 0 )
+            {
+                *__dios_get_errno() = EPERM;
+                return -1;
+            }
+
+        if ( isChild( procToSet, currentProc ) && procToSet->calledExecve )
+        {
+            *__dios_get_errno() = EACCES;
+            return -1;
+        }
+        if ( pgid == 0 )
+            procToSet->pgid = procToSet->pid;
+        else
+            procToSet->pgid = pgid;
+
+        return 0;
+    }
+
+    pid_t getpgrp()
+    {
+        return getpgid( 0 );
+    }
+
+    int setpgrp()
+    {
+        return setpgid( 0, 0 );
+    }
+
+    pid_t sysfork( void )
+    {
+        auto tid = __dios_get_thread_handle();
+        auto thread = this->threads.find( tid );
+        Thread *newThread = static_cast< Thread * >( __vm_obj_clone( thread ) );
+
+        pid_t maxPid = 0;
+        for( auto t : this->threads )
+        {
+            if ( (proc(t))->pid > maxPid )
+                maxPid = (proc(t))->pid;
+        }
+
+        Process *newThreadProc = proc( newThread );
+        Process *threadProc = proc( thread );
+        newThreadProc->pid = maxPid + 1;
+        newThreadProc->ppid = threadProc->pid;
+        newThreadProc->sid = threadProc->sid;
+        newThreadProc->pgid = threadProc->pgid;
+        this->threads.insert( newThread );
+        return newThreadProc->pid;
+    }
+};
+
+} //namespace __dios

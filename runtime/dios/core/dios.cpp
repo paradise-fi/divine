@@ -17,6 +17,7 @@
 #include <dios/core/fault.hpp>
 #include <dios/core/monitor.hpp>
 #include <dios/core/machineparams.hpp>
+#include <dios/core/procmanager.hpp>
 #include <dios/filesystem/fs-manager.h>
 #include <dios/filesystem/fs-passthru.h>
 #include <dios/filesystem/fs-replay.h>
@@ -100,7 +101,9 @@ void boot( SetupBase sb ) {
         traceEnv( 1, sb.env );
     }
 
+    using Process = typename Configuration::Process;
     Setup< Configuration > s = sb;
+    s.proc1 = static_cast< Process * >( __vm_obj_make( sizeof( Process ) ) );
     context->setup( s );
 }
 
@@ -116,7 +119,7 @@ void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)(), ... ) {
 }
 
 using DefaultConfiguration =
-    Scheduler< Fault < fs::VFS < MachineParams < MonitorManager < BaseContext > > > > >;
+    ProcessManager< Scheduler< Fault < fs::VFS < MachineParams < MonitorManager < BaseContext > > > > > >;
 using PassthruConfiguration =
     Scheduler< Fault < fs::PassThrough < MachineParams < MonitorManager < BaseContext > > > > >;
 
