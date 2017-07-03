@@ -26,6 +26,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/GlobalAlias.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/CallSite.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/lx-code.hpp>
@@ -43,6 +44,18 @@ namespace divine::vm::xg
 {
 
 namespace {
+
+static int intrinsic_id( llvm::Value *v )
+{
+    auto insn = llvm::dyn_cast< llvm::Instruction >( v );
+    if ( !insn || insn->getOpcode() != llvm::Instruction::Call )
+        return llvm::Intrinsic::not_intrinsic;
+    llvm::CallSite CS( insn );
+    auto f = CS.getCalledFunction();
+    if ( !f )
+        return llvm::Intrinsic::not_intrinsic;
+    return f->getIntrinsicID();
+}
 
 lx::Hypercall hypercall( llvm::Function *f )
 {

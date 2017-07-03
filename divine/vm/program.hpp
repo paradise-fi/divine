@@ -44,6 +44,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/vm/lx-code.hpp>
 #include <divine/vm/lx-slot.hpp>
 #include <divine/vm/xg-type.hpp>
+#include <divine/vm/xg-code.hpp>
 
 #include <divine/vm/divm.h>
 
@@ -60,18 +61,6 @@ struct Choice {
     // might be empty or contain probability for each option
     std::vector< int > p;
 };
-
-static int intrinsic_id( llvm::Value *v )
-{
-    auto insn = llvm::dyn_cast< llvm::Instruction >( v );
-    if ( !insn || insn->getOpcode() != llvm::Instruction::Call )
-        return llvm::Intrinsic::not_intrinsic;
-    llvm::CallSite CS( insn );
-    auto f = CS.getCalledFunction();
-    if ( !f )
-        return llvm::Intrinsic::not_intrinsic;
-    return f->getIntrinsicID();
-}
 
 /*
  * A representation of the LLVM program that is suitable for execution.
@@ -307,7 +296,7 @@ struct Program
         if ( I->getOpcode() == llvm::Instruction::Alloca )
             return _types_gen.add( I->getType()->getPointerElementType() );
         if ( I->getOpcode() == llvm::Instruction::Call )
-            return intrinsic_id( I );
+            return xg::intrinsic_id( I );
         if ( I->getOpcode() == llvm::Instruction::ICmp ||
              I->getOpcode() == llvm::Instruction::FCmp ||
              I->getOpcode() == llvm::Instruction::Invoke ||
