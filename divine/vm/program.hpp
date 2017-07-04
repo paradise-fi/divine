@@ -145,12 +145,7 @@ struct Program
     std::map< const llvm::Value *, SlotRef > valuemap;
     std::map< const llvm::Value *, SlotRef > globalmap;
     std::map< const llvm::Type *, int > typemap;
-
-    std::map< const llvm::Instruction *, CodePointer > pcmap;
     std::map< const llvm::Value *, std::string > anonmap;
-
-    std::map< const llvm::BasicBlock *, CodePointer > blockmap;
-    std::map< const llvm::Function *, int > functionmap;
 
     using Context = ConstContext< Program, MutableHeap< 8 > >;
     Context _ccontext;
@@ -159,6 +154,7 @@ struct Program
 
     std::unique_ptr< LXTypes > _types;
     xg::Types _types_gen;
+    xg::AddressMap _addr;
 
     auto &heap() { return _ccontext.heap(); }
 
@@ -198,7 +194,7 @@ struct Program
 
     Function &function( llvm::Function *F )
     {
-        return functions[ functionmap[ F ] ];
+        return functions[ _addr.code( F ).function() ];
     }
 
     CodePointer nextpc( CodePointer pc )
@@ -277,7 +273,7 @@ struct Program
         if ( auto ARMW = llvm::dyn_cast< llvm::AtomicRMWInst >( I ) )
             return ARMW->getOperation();
         if ( auto INV = llvm::dyn_cast< llvm::InvokeInst >( I ) ) /* FIXME remove */
-            return blockmap[ INV->getUnwindDest() ].instruction();
+            return _addr.code( INV->getUnwindDest() ).instruction();
 
         UNREACHABLE( "bad instruction type in Program::getPredicate" );
     }

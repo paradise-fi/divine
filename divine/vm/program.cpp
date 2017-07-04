@@ -43,9 +43,7 @@ CodePointer Program::functionByName( std::string s )
         return CodePointer();
     if ( xg::hypercall( f ) )
         return CodePointer();
-    if ( !functionmap.count( f ) )
-        UNREACHABLE_F( "function %s does not have a functionmap entry", s.c_str() );
-    return CodePointer( functionmap[ f ], 0 );
+    return _addr.code( f );
 }
 
 GenericPointer Program::globalByName( std::string s )
@@ -80,13 +78,11 @@ bool Program::isCodePointer( llvm::Value *val )
 CodePointer Program::getCodePointer( llvm::Value *val )
 {
     if ( auto B = dyn_cast< llvm::BasicBlock >( val ) ) {
-        ASSERT( blockmap.count( B ) );
-        return blockmap[ B ];
+        return _addr.code( B );
     } else if ( auto B = dyn_cast< llvm::BlockAddress >( val ) ) {
-        ASSERT( blockmap.count( B->getBasicBlock() ) );
-        return blockmap[ B->getBasicBlock() ];
+        return _addr.code( B->getBasicBlock() );
     } else if ( auto F = dyn_cast< llvm::Function >( val ) ) {
-        if ( !functionmap.count( F ) && xg::hypercall( F ) == lx::NotHypercall )
+        if ( F->isDeclaration() && xg::hypercall( F ) == lx::NotHypercall )
             throw brick::except::Error(
                 "Program::insert: " +
                 std::string( "Unresolved symbol (function): " ) + F->getName().str() );
@@ -94,7 +90,7 @@ CodePointer Program::getCodePointer( llvm::Value *val )
         if ( xg::hypercall( F ) )
             return CodePointer();
 
-        return CodePointer( functionmap[ F ], 0 );
+        return _addr.code( F );
     }
     return CodePointer();
 }
@@ -331,7 +327,7 @@ Program::Position Program::insert( Position p )
         if ( auto PHI = dyn_cast< llvm::PHINode >( p.I ) )
             for ( unsigned idx = 0; idx < PHI->getNumOperands(); ++idx )
             {
-                auto from = pcmap[ PHI->getIncomingBlock( idx )->getTerminator() ];
+                auto from = _addr.terminator( PHI->getIncomingBlock( idx ) );
                 auto slot = allocateSlot( Slot( Slot::Const, Slot::PtrC ) ).slot;
                 _toinit.emplace_back( [=]{ initConstant( slot, value::Pointer( from ) ); } );
                 insn.values.push_back( slot );
@@ -342,8 +338,7 @@ Program::Position Program::insert( Position p )
 
         if ( isa< llvm::InsertValueInst >( p.I ) )
             insertIndices< llvm::InsertValueInst >( p );
-    } else
-        pcmap.insert( std::make_pair( p.I, p.pc ) );
+    }
 
     ++ p.I; /* next please */
     p.pc.instruction( p.pc.instruction() + 1 );
@@ -370,6 +365,8 @@ void Program::setupRR()
 
 void Program::computeRR()
 {
+    _addr.build( module );
+
     framealign = 1;
 
     codepointers = true;
@@ -506,7 +503,6 @@ void Program::pass()
                 "\nCan't deal with empty functions" );
 
         makeFit( functions, pc.function() );
-        functionmap[ &function ] = pc.function();
         pc.instruction( 0 );
 
         if ( !codepointers )
@@ -539,7 +535,6 @@ void Program::pass()
 
         for ( auto &block : function )
         {
-            blockmap[ &block ] = pc;
             makeFit( this->function( pc ).instructions, pc.instruction() );
             this->instruction( pc ).opcode = lx::OpBB;
             pc.instruction( pc.instruction() + 1 ); /* leave one out for use as a bb label */

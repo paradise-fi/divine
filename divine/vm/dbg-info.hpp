@@ -48,7 +48,7 @@ struct Info
         -> std::pair< llvm::Instruction *, CodePointer >
     {
         llvm::Function *F = I ? I->getParent()->getParent() : function( pc );
-        CodePointer pcf( pc.function() ? pc.function() : _program.functionmap[ F ], 0 );
+        CodePointer pcf( pc.function() ? pc.function() : _program._addr.code( F ).function(), 0 );
         ASSERT( F );
         ASSERT( pcf.function() );
 

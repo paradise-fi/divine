@@ -27,6 +27,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/GlobalAlias.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/CallSite.h>
+#include <llvm/IR/Module.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/lx-code.hpp>
@@ -43,7 +44,105 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine::vm::xg
 {
 
-namespace {
+
+/*
+ * The address map keeps track of things that can have their address taken.
+ */
+struct AddressMap
+{
+    std::map< llvm::BasicBlock *, CodePointer > _code, _terminator;
+    std::map< llvm::Constant *, GlobalPointer > _const;
+    std::map< llvm::GlobalVariable *, GlobalPointer > _mutable;
+
+    CodePointer code( llvm::BasicBlock *bb )
+    {
+        ASSERT( _code.count( bb ) );
+        return _code[ bb ];
+    }
+
+    CodePointer code( llvm::Function *f )
+    {
+        return addr( &*f->begin() );
+    }
+
+    CodePointer terminator( llvm::BasicBlock *bb )
+    {
+        ASSERT( _terminator.count( bb ) );
+        return _terminator[ bb ];
+    }
+
+    GlobalPointer constant( llvm::Constant *v )
+    {
+        if ( auto GA = llvm::dyn_cast< llvm::GlobalAlias >( v ) )
+            return constant( GA->getBaseObject() );
+        ASSERT( _const.count( v ) );
+        return _const[ v ];
+    }
+
+    GlobalPointer mut( llvm::GlobalVariable *v )
+    {
+        ASSERT( _mutable.count( v ) );
+        return _mutable[ v ];
+    }
+
+    template< typename F >
+    void each_const( F )
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    template< typename F >
+    void each_mutable( F )
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    GenericPointer addr( llvm::Value *v )
+    {
+        if ( auto GA = llvm::dyn_cast< llvm::GlobalAlias >( v ) )
+            return addr( GA->getBaseObject() );
+        if ( auto F = llvm::dyn_cast< llvm::Function >( v ) )
+            return code( F );
+        if ( auto B = llvm::dyn_cast< llvm::BasicBlock >( v ) )
+            return code( B );
+        if ( auto B = llvm::dyn_cast< llvm::BlockAddress >( v ) )
+            return code( B->getBasicBlock() );
+
+        if ( auto C = llvm::dyn_cast< llvm::Constant >( v ) )
+            return constant( C );
+
+        UNREACHABLE( "impossible value type" );
+    }
+
+    void add( llvm::BasicBlock *b, CodePointer p )
+    {
+        _code[ b ] = p;
+    }
+
+    void build( llvm::Module *m )
+    {
+        CodePointer pc( 0, 0 );
+        for ( auto &f : *m )
+        {
+            if ( f.isDeclaration() )
+                continue;
+            pc.function( pc.function() + 1 );
+            pc.instruction( 0 );
+
+            for ( auto &b : f )
+            {
+                _code[ &b ] = pc;
+                for ( auto &i : b )
+                    pc.instruction( pc.instruction() + 1 ), void(i);
+                _terminator[ &b ] = pc;
+                pc.instruction( pc.instruction() + 1 );
+            }
+        }
+    }
+};
+
+namespace
+{
 
 static int intrinsic_id( llvm::Value *v )
 {
