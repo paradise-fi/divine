@@ -167,7 +167,7 @@ extern "C" {
 /* Implementation prototypes */
 void __pthread_initialize() _PTHREAD_NOEXCEPT;
 
-int pthread_atfork( void (*)(void), void (*)(void), void(*)(void) ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE _PTHREAD_UNSUPPORTED;
+int pthread_atfork( void (*)(void), void (*)(void), void(*)(void) ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 
 int pthread_create( pthread_t *, const pthread_attr_t *, void *(*)(void *), void * ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE;
 void pthread_exit( void * ) _PTHREAD_NOEXCEPT _PTHREAD_NOINLINE /* XXX _PTHREAD_UNSUPPORTED */;

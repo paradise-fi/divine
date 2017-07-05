@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <utility>
 #include <dios.h>
+#include <dios/core/stdlibwrap.hpp>
+#include <tuple>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wgcc-compat"
@@ -132,7 +134,8 @@ struct _PthreadTLSDestructors {
 };
 
 static _PthreadTLSDestructors tlsDestructors;
-
+using ForkHandler = void ( * )( void );
+static __dios::Vector< std::tuple< ForkHandler, ForkHandler, ForkHandler > > atForkHandlers;
 
 struct _PthreadTLS {
 
@@ -247,9 +250,23 @@ static void iterateThreads( Yield yield ) noexcept {
 }
 
 /* Process */
-int pthread_atfork( void ( * )( void ), void ( * )( void ), void ( * )( void ) ) noexcept {
-    /* TODO */
+int pthread_atfork( void ( *prepare )( void ), void ( *parent )( void ), void ( *child )( void ) ) noexcept {
+    if ( __vm_choose( 2 ) )
+        return ENOMEM;
+    atForkHandlers.emplace_back( prepare, parent, child );
     return 0;
+}
+
+extern "C" void _run_atfork_handlers( ushort index ) noexcept {
+
+    auto invoke = []( ForkHandler h ){ if ( h ) h(); };
+
+    if ( index == 0 )
+        for( auto h = atForkHandlers.rbegin(); h != atForkHandlers.rend(); ++h )
+            invoke( std::get< 0 >( *h ) );
+    else
+        for( auto h : atForkHandlers )
+            invoke( index == 1 ? std::get< 1 >( h ) : std::get< 2 >( h ) );
 }
 
 static void __init_thread( const _DiOS_ThreadHandle gtid, const pthread_attr_t attr ) noexcept {
