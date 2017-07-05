@@ -156,6 +156,7 @@ struct _PthreadTLS {
     int keyCount() noexcept {
         return (__vm_obj_size( raw() ) - size( 0 )) / sizeof( void * );
     }
+
     void makeFit( int count ) noexcept {
         int now = keyCount();
         if ( count > now ) {
@@ -164,6 +165,7 @@ struct _PthreadTLS {
                 keys[ i ] = nullptr;
         }
     }
+
     void shrink() noexcept {
         int count = keyCount();
         int toDrop = 0;
@@ -175,6 +177,7 @@ struct _PthreadTLS {
         if ( toDrop )
             __vm_obj_resize( raw(), size( count - toDrop ) );
     }
+
     void *getKey( int key ) noexcept {
         assert( key >= 0 && key < tlsDestructors.count() );
         if ( key >= keyCount() )
@@ -257,7 +260,7 @@ int pthread_atfork( void ( *prepare )( void ), void ( *parent )( void ), void ( 
     return 0;
 }
 
-extern "C" void _run_atfork_handlers( ushort index ) noexcept {
+extern "C" void __run_atfork_handlers( ushort index ) noexcept {
 
     auto invoke = []( ForkHandler h ){ if ( h ) h(); };
 
@@ -295,7 +298,7 @@ void __pthread_initialize() noexcept {
 }
 
 // this is not run when thread's main returns!
-void _run_cleanup_handlers() noexcept {
+static void _run_cleanup_handlers() noexcept {
     _PThread &thread = getThread();
 
     CleanupHandler *handler = thread.cleanup_handlers;
@@ -312,7 +315,7 @@ void _run_cleanup_handlers() noexcept {
 
 static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_ThreadHandle tid ) noexcept;
 
-void _cancel( __dios::FencedInterruptMask &mask ) noexcept {
+static void _cancel( __dios::FencedInterruptMask &mask ) noexcept {
     _DiOS_ThreadHandle tid = __dios_get_thread_handle();
     _PThread &thread = getThread( tid );
     thread.sleeping = NotSleeping;
@@ -322,7 +325,7 @@ void _cancel( __dios::FencedInterruptMask &mask ) noexcept {
     _clean_and_become_zombie( mask, tid );
 }
 
-bool _canceled() noexcept {
+static bool _canceled() noexcept {
     return getThread().cancelled;
 }
 
@@ -446,7 +449,7 @@ int pthread_create( pthread_t *ptid, const pthread_attr_t *attr, void *( *entry 
     return 0;
 }
 
-int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **result ) noexcept {
+static int _pthread_join( __dios::FencedInterruptMask &mask, pthread_t gtid, void **result ) noexcept {
     _PThread &thread = getThread( gtid );
 
     if ( gtid == __dios_get_thread_handle() )
@@ -688,7 +691,7 @@ int pthread_setschedprio( pthread_t, int ) noexcept {
   -----------------------------------------------------------------------------------------------
   */
 
-int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) noexcept {
+static int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) noexcept {
     int count = mutex->__lockCounter;
     count += adj;
     if ( count >= ( 1 << 28 ) || count < 0 )
@@ -698,7 +701,7 @@ int _mutex_adjust_count( pthread_mutex_t *mutex, int adj ) noexcept {
     return 0;
 }
 
-void _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept {
+static void _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept {
     // note: the cycle is detected first time it occurs, therefore it must go
     // through this mutex, for this reason, we don't need to keep closed set of
     // visited threads and mutexes.
@@ -723,11 +726,11 @@ void _check_deadlock( pthread_mutex_t *mutex, _PThread &tid ) noexcept {
     }
 }
 
-bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) noexcept {
+static bool _mutex_can_lock( pthread_mutex_t *mutex, _PThread &thr ) noexcept {
     return !mutex->__owner || ( mutex->__owner == &thr );
 }
 
-int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) noexcept {
+static int _mutex_lock( __dios::FencedInterruptMask &mask, pthread_mutex_t *mutex, bool wait ) noexcept {
 
     _DiOS_ThreadHandle gtid = __dios_get_thread_handle();
     _PThread &thr = getThread( gtid );
@@ -1107,7 +1110,7 @@ static inline bool _eqSleepTrait( _PThread &t, pthread_barrier_t *bar ) noexcept
 }
 
 template< bool broadcast, typename CondOrBarrier >
-int _cond_signal( CondOrBarrier *cond ) noexcept {
+static int _cond_signal( CondOrBarrier *cond ) noexcept {
     if ( cond == NULL || !cond->__initialized )
         return EINVAL;
 
@@ -1354,7 +1357,7 @@ void pthread_cleanup_pop( int execute ) noexcept {
 
 /* Readers-Writer lock */
 
-int _rlock_adjust_count( _ReadLock *rlock, int adj ) noexcept {
+static int _rlock_adjust_count( _ReadLock *rlock, int adj ) noexcept {
     int count = rlock->__count;
     count += adj;
     if ( count < 0 )
@@ -1363,7 +1366,7 @@ int _rlock_adjust_count( _ReadLock *rlock, int adj ) noexcept {
     return 0;
 }
 
-_ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _PThread &tid, _ReadLock **prev = nullptr ) noexcept {
+static _ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _PThread &tid, _ReadLock **prev = nullptr ) noexcept {
     _ReadLock *rlock = rwlock->__rlocks;
     _ReadLock *_prev = nullptr;
 
@@ -1378,7 +1381,7 @@ _ReadLock *_get_rlock( pthread_rwlock_t *rwlock, _PThread &tid, _ReadLock **prev
     return rlock;
 }
 
-_ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _PThread &tid ) noexcept {
+static _ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _PThread &tid ) noexcept {
     _ReadLock *rlock = reinterpret_cast< _ReadLock * >( __vm_obj_make( sizeof( _ReadLock ) ) );
     rlock->__owner = &tid;
     rlock->__count = 1;
@@ -1387,11 +1390,11 @@ _ReadLock *_create_rlock( pthread_rwlock_t *rwlock, _PThread &tid ) noexcept {
     return rlock;
 }
 
-bool _rwlock_can_lock( pthread_rwlock_t *rwlock, bool writer ) noexcept {
+static bool _rwlock_can_lock( pthread_rwlock_t *rwlock, bool writer ) noexcept {
     return !rwlock->__wrowner && !( writer && rwlock->__rlocks );
 }
 
-int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) noexcept {
+static int _rwlock_lock( __dios::FencedInterruptMask &mask, pthread_rwlock_t *rwlock, bool shouldwait, bool writer ) noexcept {
     _PThread &thr = getThread();
 
     if ( rwlock == nullptr || !rwlock->__initialized ) {
