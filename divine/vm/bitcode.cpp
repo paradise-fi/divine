@@ -71,7 +71,7 @@ void BitCode::do_lart()
     if ( _reduce )
         lart.setup( lart::reduction::paroptPass() );
     if ( _symbolic )
-        lart.setup( "abstraction:sym" );
+        lart.setup( lart::abstract::passes() );
 
     if ( _sequential )
         lart.setup( lart::divine::cflInterruptPass() );
