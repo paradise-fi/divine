@@ -44,6 +44,12 @@ void Verify::setup()
     WithBC::setup();
 }
 
+void Check::setup()
+{
+    _systemopts.push_back( "nofail:malloc" );
+    Verify::setup();
+}
+
 void Verify::run()
 {
     if ( _liveness )

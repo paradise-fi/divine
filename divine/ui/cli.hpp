@@ -135,6 +135,11 @@ struct Verify : WithBC
     void liveness();
 };
 
+struct Check : Verify
+{
+    void setup() override;
+};
+
 struct Run : WithBC {
     bool _trace = false;
 
