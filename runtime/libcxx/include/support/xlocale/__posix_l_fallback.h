@@ -16,9 +16,13 @@
 #ifndef _LIBCPP_SUPPORT_XLOCALE_POSIX_L_FALLBACK_H
 #define _LIBCPP_SUPPORT_XLOCALE_POSIX_L_FALLBACK_H
 
+#include <stdarg.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define MB_CUR_MAX_L(l) MB_CUR_MAX
 
 inline _LIBCPP_ALWAYS_INLINE int isalnum_l(int c, locale_t) {
   return ::isalnum(c);
@@ -156,6 +160,93 @@ inline _LIBCPP_ALWAYS_INLINE int wcscoll_l(const wchar_t *ws1,
 inline _LIBCPP_ALWAYS_INLINE size_t wcsxfrm_l(wchar_t *dest, const wchar_t *src,
                                               size_t n, locale_t) {
   return ::wcsxfrm(dest, src, n);
+}
+
+static inline int vsnprintf_l(char *__s, size_t __n, locale_t __l, const char *__format, va_list __va)
+{
+  return vsnprintf(__s, __n, __format, __va);
+}
+
+static inline int snprintf_l(char *__s, size_t __n, locale_t __l, const char *__format, ...)
+{
+  va_list __va;
+  va_start(__va, __format);
+  int __res = vsnprintf_l(__s, __n , __l, __format, __va);
+  va_end(__va);
+  return __res;
+}
+
+static inline int asprintf_l(char **__s, locale_t __l, const char *__format, ...) {
+  va_list __va;
+  va_start(__va, __format);
+  // FIXME:
+  int __res = vasprintf(__s, __format, __va);
+  va_end(__va);
+  return __res;
+}
+
+static inline int sscanf_l(const char *__s, locale_t __l, const char *__format, ...) {
+  va_list __va;
+  va_start(__va, __format);
+  // FIXME:
+  int __res = vsscanf(__s, __format, __va);
+  va_end(__va);
+  return __res;
+}
+
+static inline wint_t btowc_l(int c, locale_t) {
+    return btowc(c);
+}
+
+static inline size_t mbsrtowcs_l(wchar_t *dst, const char **src, size_t len, mbstate_t *ps, locale_t) {
+    return mbsrtowcs(dst, src, len, ps);
+}
+
+static inline struct lconv *localeconv_l(locale_t) {
+    return localeconv();
+}
+
+static inline size_t wcrtomb_l(char *s, wchar_t wc, mbstate_t *ps, locale_t) {
+    return wcrtomb(s, wc, ps);
+}
+
+static inline size_t mbrlen_l(const char *s, size_t n, mbstate_t *ps, locale_t) {
+    return mbrlen(s, n, ps);
+}
+
+static inline size_t mbrtowc_l(wchar_t *wc, const char *s, size_t n, mbstate_t *mbs, locale_t) {
+    return mbrtowc(wc, s, n, mbs);
+}
+
+static inline int wctob_l(wint_t wc, locale_t) {
+    return wctob(wc);
+}
+
+static inline int mbtowc_l(wchar_t *pwc, const char *s, size_t n, locale_t) {
+    return mbtowc(pwc, s, n);
+}
+
+static inline size_t mbsnrtowcs_l(wchar_t *dst, const char **src, size_t nmc, size_t len, mbstate_t *ps, locale_t) {
+    return mbsnrtowcs(dst, src, nmc, len, ps);
+}
+
+static inline size_t wcsrtombs_l(char *dst, const wchar_t **src, size_t len, mbstate_t *ps, locale_t) {
+    return wcsrtombs(dst, src, len, ps);
+}
+
+static inline size_t wcsnrtombs_l(char *dst, const wchar_t **src, size_t nwc, size_t len, mbstate_t *ps, locale_t) {
+    return wcsnrtombs(dst, src, nwc, len, ps);
+}
+
+static inline
+long strtol_l(const char *__nptr, char **__endptr,
+    int __base, locale_t __loc) {
+  return strtol(__nptr, __endptr, __base);
+}
+static inline
+unsigned long strtoul_l(const char *__nptr, char **__endptr,
+    int __base, locale_t __loc) {
+  return strtoul(__nptr, __endptr, __base);
 }
 
 #ifdef __cplusplus

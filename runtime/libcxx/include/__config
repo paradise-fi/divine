@@ -927,6 +927,7 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
 # if defined(__FreeBSD__) || \
     defined(__Fuchsia__) || \
     defined(__NetBSD__) || \
+    defined(__OpenBSD__) || \
     defined(__linux__) || \
     defined(__APPLE__) || \
     defined(__CloudABI__) || \
@@ -971,7 +972,7 @@ _LIBCPP_FUNC_VIS extern "C" void __sanitizer_annotate_contiguous_container(
 #endif
 
 #if defined(__BIONIC__) || defined(__CloudABI__) ||                            \
-    defined(_LIBCPP_HAS_MUSL_LIBC)
+    defined(_LIBCPP_HAS_MUSL_LIBC) || defined(__OpenBSD__)
 #define _LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE
 #endif
 

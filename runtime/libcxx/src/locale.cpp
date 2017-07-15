@@ -1123,7 +1123,7 @@ ctype<char>::classic_table()  _NOEXCEPT
 #endif
 #elif defined(__EMSCRIPTEN__)
     return *__ctype_b_loc();
-#elif defined(_NEWLIB_VERSION) || defined(__OpenBSD__)
+#elif defined(_NEWLIB_VERSION)
     // Newlib has a 257-entry table in ctype_.c, where (char)0 starts at [1].
     return _ctype_ + 1;
 #elif defined(_AIX)
