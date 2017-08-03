@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <map>
+#include <regex>
 
 #include <brick-assert>
 #include <brick-types>
@@ -257,13 +258,16 @@ struct Terminal {
         UNREACHABLE_F( "unknown unit %s", u.c_str() );
     }
 
-    void fromString( std::string s ) {
-        string::ERegexp rx( "([0-9.]+)([a-z]+),([0-9.]+)([a-z]+)", 5 );
-        if ( rx.match( s ) ) {
-            width = std::atof( rx[1].c_str() );
-            height = std::atof( rx[3].c_str() );
-            width *= unit( rx[2] );
-            height *= unit( rx[4] );
+    void fromString( std::string s )
+    {
+        std::regex rx( "([0-9.]+)([a-z]+),([0-9.]+)([a-z]+)", std::regex_constants::extended );
+        std::smatch res;
+        if ( std::regex_match( s, res, rx ) )
+        {
+            width = std::atof( res[1].str().c_str() );
+            height = std::atof( res[3].str().c_str() );
+            width *= unit( res[2].str() );
+            height *= unit( res[4].str() );
         }
     }
 
@@ -272,7 +276,8 @@ struct Terminal {
           font( "Liberation Sans,10" )
     {}
 
-    std::string string() {
+    std::string string()
+    {
         std::stringstream str;
         str << "set terminal ";
         switch ( type ) {
