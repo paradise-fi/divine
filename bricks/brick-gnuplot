@@ -245,7 +245,8 @@ struct Colour {
     Colour() : _c { 0, 0, 0 } {}
 };
 
-struct Terminal {
+struct Terminal
+{
     enum Type { PDF, ConTeXt, X11 } type;
     float width, height; /* cm, because gnuplot ... */
     std::string font;
@@ -305,7 +306,7 @@ struct Style {
 
     double pointsize( Terminal t )
     {
-        return t.type == Terminal::X11 ? 1 : 0.1;
+        return t.type == Terminal::X11 ? 1 : 1;
     }
 
     void set( Type t, Lab from, Lab to ) {
@@ -516,46 +517,6 @@ inline bool operator<( ColourKey a, ColourKey b ) {
 }
 
 using ColourMap = std::map< ColourKey, Colour::RGB >;
-
-struct Terminal {
-    enum Type { PDF, ConTeXt } type;
-    float width, height; /* cm, because gnuplot ... */
-    std::string font;
-
-    float unit( std::string u ) {
-        if ( u == "cm" )
-            return 1;
-        if ( u == "mm" )
-            return 0.1;
-        ASSERT_UNREACHABLE_F( "unknown unit %s", u.c_str() );
-    }
-
-    void fromString( std::string s ) {
-        string::ERegexp rx( "([0-9.]+)([a-z]+),([0-9.]+)([a-z]+)", 5 );
-        if ( rx.match( s ) ) {
-            width = std::atof( rx[1].c_str() );
-            height = std::atof( rx[3].c_str() );
-            width *= unit( rx[2] );
-            height *= unit( rx[4] );
-        }
-    }
-
-    Terminal( Type t = PDF )
-        : type( t ), width( 14 ), height( 9 ),
-          font( "Liberation Sans,10" )
-    {}
-
-    std::string string() {
-        std::stringstream str;
-        str << "set terminal ";
-        switch ( type ) {
-            case PDF: str << "pdfcairo font '" << font << "'"; break;
-            case ConTeXt: str << "context"; break;
-        }
-        str << " size " << width << "cm," << height << "cm";
-        return str.str();
-    }
-};
 
 struct Plot {
     enum Axis { X, Y, Z };
