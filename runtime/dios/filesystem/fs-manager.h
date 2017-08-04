@@ -269,10 +269,12 @@ struct VFS: public Next {
         // __divine_interrupt_mask();
         _manager = new( __dios::nofail ) Manager{ in, length, items };
     }
+    VFS( const VFS& ) = delete;
     ~VFS() {
         if ( _manager )
             delete _manager;
     }
+    VFS& operator=( const VFS& ) = delete;
 
     Manager &instance() {
         __FS_assert( _manager );
