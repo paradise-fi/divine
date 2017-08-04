@@ -3,7 +3,7 @@
 include( stringify )
 
 file( GLOB H_RUNTIME LIST_DIRECTORIES false
-      *.h divine/*.h dios/*.hpp dios/core/*.hpp dios/core/*.def
+      *.h divine/*.h dios/*.hpp dios/core/*.hpp dios/core/*.def dios/lib/*.hpp
       dios/macro/*
       atomic sys/*.h bits/*.h
       abstract/*.hpp abstract/*.h
