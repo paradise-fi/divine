@@ -9,6 +9,7 @@ inline void __dios_trap( int syscode, void* ret, va_list *args )
     inst._syscode = ( _DiOS_SC ) syscode;
     inst._ret = ret;
     va_copy( inst._args, *args );
+    __sync_synchronize(); // for the same of relaxed memory models (kernel is SC)
     __vm_control( _VM_CA_Set, _VM_CR_User1, &inst );
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
