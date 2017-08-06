@@ -725,5 +725,74 @@ inline llvm::Function * changeReturnType( llvm::Function *fn, llvm::Type *rty )
     return changeFunctionSignature( fn, fty );
 }
 
+namespace detail {
+inline llvm::Function *throwOnUnknown( llvm::CallSite &cs ) {
+    cs.getCalledValue()->dump();
+    throw std::runtime_error( "could not clone function: calling unknown value" );
+}
+
+inline bool cloneAll( llvm::Function & ) {  return true; }
+}
+
+template< typename FunMap,
+          typename Filter = bool (*)( llvm::Function & ),
+          typename OnUnknown = llvm::Function *(*)( llvm::CallSite & ),
+          typename = decltype( std::declval< FunMap & >().emplace( nullptr, nullptr ) ),
+          typename = std::result_of_t< Filter( llvm::Function & ) >,
+          typename = std::result_of_t< OnUnknown( llvm::CallSite & ) > >
+llvm::Function *cloneFunctionRecursively( llvm::Function *fn, FunMap &map,
+                                        Filter filter = detail::cloneAll,
+                                        OnUnknown onUnknown = detail::throwOnUnknown );
+
+// map can be initializet to fnptr -> fnptr to skip cloning *fnptr
+template< typename FunMap,
+          typename Filter = bool (*)( llvm::Function & ),
+          typename OnUnknown = llvm::Function *(*)( llvm::CallSite & ),
+          typename = decltype( std::declval< FunMap & >().emplace( nullptr, nullptr ) ),
+          typename = std::result_of_t< Filter( llvm::Function & ) >,
+          typename = std::result_of_t< OnUnknown( llvm::CallSite & ) > >
+void cloneCalleesRecursively( llvm::Function *fn, FunMap &map,
+                              Filter filter = detail::cloneAll,
+                              OnUnknown onUnknown = detail::throwOnUnknown )
+{
+    for ( auto &bb : *fn ) {
+        for ( auto &ins : bb ) {
+            if ( llvm::isa< llvm::IntrinsicInst >( ins ) )
+                continue;
+            llvm::CallSite cs( &ins );
+            if ( !cs )
+                continue;
+            auto *callee = cs.getCalledFunction();
+            callee = callee ? callee : onUnknown( cs );
+            if ( !callee )
+                continue; // ignored by onUnknown
+            cs.setCalledFunction( cloneFunctionRecursively( callee, map, filter, onUnknown ) );
+        }
+    }
+}
+
+// map can be initializet to fnptr -> fnptr to skip cloning *fnptr
+template< typename FunMap, typename Filter, typename OnUnknown, typename, typename, typename >
+llvm::Function *cloneFunctionRecursively( llvm::Function *fn, FunMap &map,
+                                          Filter filter, OnUnknown onUnknown )
+{
+    if ( !filter( *fn ) )
+        return fn;
+    auto it = map.find( fn );
+    if ( it != map.end() )
+        return it->second;
+    auto *clone = cloneFunction( fn );
+    map.emplace( fn, clone );
+    map.emplace( clone, clone );
+    cloneCalleesRecursively( clone, map, filter, onUnknown );
+    return clone;
+}
+
+inline llvm::Function *cloneFunctionRecursively( llvm::Function *fn )
+{
+    util::Map< llvm::Function *, llvm::Function * > map;
+    return cloneFunctionRecursively( fn, map, detail::cloneAll, detail::throwOnUnknown );
+}
+
 }
 #endif // LART_SUPPORT_UTIL_H
