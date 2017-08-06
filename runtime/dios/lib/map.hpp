@@ -56,7 +56,8 @@ struct Array {
 
     void _resize( size_type n ) {
         if ( n == 0 ) {
-            __vm_obj_free( _data );
+            if ( _data )
+                __vm_obj_free( _data );
             _data = nullptr;
         }
         else if ( empty() )
