@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #include <lart/abstract/substitution.h>
 
-#include <lart/abstract/types.h>
+#include <lart/abstract/types/common.h>
 #include <lart/abstract/walker.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/support/query.h>
@@ -93,7 +93,6 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
             process( inst );
     }
 
-    // FIXME maybe can be done at the start - more optimally
     auto retAbsVal = query::query( m )
                     .map( query::refToPtr )
                     .filter( [&]( llvm::Function * fn ) {
@@ -153,7 +152,7 @@ void Substitution::process( llvm::Value * val ) {
 
 void Substitution::changeReturn( llvm::Function * fn ) {
     builder.clean( fn );
-    if ( ! builder.stored( fn ) ) {
+    if ( !builder.stored( fn ) ) {
         auto newfn = changeReturnType( fn,
              builder.abstraction->abstract( fn->getReturnType() ) );
         builder.store( fn, newfn );

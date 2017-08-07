@@ -16,7 +16,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/assume.h>
 #include <lart/abstract/intrinsic.h>
-#include <lart/abstract/types.h>
+#include <lart/abstract/types/common.h>
 #include <lart/support/query.h>
 #include <lart/analysis/edge.h>
 
@@ -40,7 +40,7 @@ namespace {
             unsigned i = succ_idx( from, to );
             llvm::SplitEdge( from, to );
             auto edgeBB = from->getTerminator()->getSuccessor( i );
-            auto rty = llvm::Type::getVoidTy( from->getContext() );
+            auto rty = types::VoidType( from->getContext() );
             auto fty = llvm::FunctionType::get( rty,
                                               { assume.cond->getType(), assume.val->getType()},
                                                 false );

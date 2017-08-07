@@ -1,16 +1,13 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #include <lart/abstract/sbuilder.h>
 
-#include <lart/abstract/types.h>
+#include <lart/abstract/types/common.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/support/util.h>
 
+
 namespace lart {
 namespace abstract {
-
-void SubstitutionBuilder::store( llvm::Value * a, llvm::Value * b ) {
-    _values[ a ] = b;
-}
 
 void SubstitutionBuilder::store( llvm::Function * a, llvm::Function * b ) {
     _functions[ a ] = b;
@@ -139,20 +136,31 @@ void SubstitutionBuilder::substituteBranch( llvm::BranchInst * br ) {
     }
 }
 void SubstitutionBuilder::substituteCall( llvm::CallInst * call ) {
-    if ( intrinsic::is( call ) ) {
-   		std::vector < llvm::Value * > args;
-		for ( auto &arg : call->arg_operands() ) {
-			if ( types::isAbstract( arg->getType() ) && !_values.count( arg ) )
-				break;
-			auto lowered = types::isAbstract( arg->getType() ) ? _values[ arg ] : arg;
-			args.push_back( lowered );
-		}
+	std::vector < llvm::Value * > args;
 
-		//skip if do not have enough substituted arguments
-		if ( call->getNumArgOperands() == args.size() )
-        	_values[ call ] = abstraction->process( call, args );
+    for ( auto &arg : call->arg_operands() ) {
+        if ( types::isAbstract( arg->getType() ) && !_values.count( arg ) )
+            //not all incoming values substituted
+            //wait till have all args
+            break;
+        auto lowered = types::isAbstract( arg->getType() ) ? _values[ arg ] : arg;
+        args.push_back( lowered );
+    }
+	//skip if do not have enough substituted arguments
+    if ( call->getNumArgOperands() != args.size() )
+        return;
+
+    if ( intrinsic::is( call ) ) {
+        _values[ call ] = abstraction->process( call, args );
     } else {
-        processCall( call );
+        llvm::Module * m = call->getCalledFunction()->getParent();
+
+        auto fn = m->getFunction( call->getCalledFunction()->getName() );
+        fn = _functions.count( fn ) ? _functions[ fn ] : fn;
+        assert ( fn != nullptr );
+
+        llvm::IRBuilder<> irb( call );
+        _values[ call ] = irb.CreateCall( fn, args );
     }
 }
 
@@ -173,33 +181,6 @@ void SubstitutionBuilder::substituteReturn( llvm::ReturnInst * ret ) {
     if ( val != _values.end() ) {
         llvm::IRBuilder<> irb( ret );
         _values[ ret ] = irb.CreateRet( val->second );
-    }
-}
-
-void SubstitutionBuilder::processCall( llvm::CallInst * call ) {
-    llvm::Module * m = call->getCalledFunction()->getParent();
-    auto name = call->getCalledFunction()->getName();
-
-    auto fn = m->getFunction( name );
-    fn = _functions.count( fn ) ? _functions[ fn ] : fn;
-    assert ( fn != nullptr );
-
-    std::vector < llvm::Value * > args;
-
-    for ( auto &arg : call->arg_operands() ) {
-        if ( types::isAbstract( arg->getType() ) && !_values.count( arg ) )
-            //not all incoming values substituted
-            //wait till have all args
-            break;
-        auto tmp = types::isAbstract( arg->getType() ) ? _values[ arg ] : arg;
-        args.push_back( tmp );
-    }
-
-    //skip if do not have enough substituted arguments
-    if ( call->getNumArgOperands() == args.size() ) {
-        llvm::IRBuilder<> irb( call );
-        auto ncall = irb.CreateCall( fn, args );
-        _values[ call ] = ncall;
     }
 }
 

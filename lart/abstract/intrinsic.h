@@ -12,8 +12,9 @@ namespace lart {
 namespace abstract {
 namespace intrinsic {
 
-Domain::Value domain( const llvm::CallInst * );
-Domain::Value domain( const llvm::Function * );
+using MaybeDomain = Domain::MaybeDomain;
+MaybeDomain domain( const llvm::CallInst * );
+MaybeDomain domain( const llvm::Function * );
 const std::string name( const llvm::CallInst * );
 const std::string name( const llvm::Function * );
 const std::string ty1( const llvm::CallInst * );

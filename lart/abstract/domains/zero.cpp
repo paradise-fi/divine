@@ -2,8 +2,6 @@
 #include <lart/abstract/domains/zero.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/domains/domains.h>
-#include <lart/abstract/types.h>
-
 
 namespace lart {
 namespace abstract {
@@ -24,12 +22,6 @@ namespace {
         }
         return name;
     }
-
-    bool hasSpecifiedName( llvm::Type * type, const std::string & name ) {
-        type = type->isPointerTy() ? type->getPointerElementType() : type;
-        auto structTy = llvm::dyn_cast< llvm::StructType >( type );
-        return structTy && structTy->hasName() && structTy->getName() == name;
-    }
 }
 
 Zero::Zero( llvm::Module & m ) {
@@ -37,7 +29,7 @@ Zero::Zero( llvm::Module & m ) {
 }
 
 llvm::Value * Zero::process( llvm::CallInst * i, std::vector< llvm::Value * > &args ) {
-    auto domain = intrinsic::domain( i ) == Domain::Value::Tristate
+    auto domain = intrinsic::domain( i ).value() == Domain::Value::Tristate
                 ? Domain::Value::Tristate
                 : this->domain();
     // TODO rework use intrinsic::domain directly

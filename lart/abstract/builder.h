@@ -9,6 +9,7 @@ DIVINE_UNRELAX_WARNINGS
 
 //FIXME refactor annotation definitions out
 #include <lart/abstract/walkergraph.h>
+#include <lart/abstract/domains/domains.h>
 #include <lart/support/util.h>
 
 namespace lart {
@@ -25,12 +26,11 @@ struct AbstractBuilder {
 
 private:
     /* maps real types to abstract types */
-    void store( llvm::Type *, llvm::Type * );
     void store( llvm::Value *, llvm::Value * );
     void store( llvm::Function *, llvm::Function * );
 
 
-    std::vector< llvm::Type * > arg_types( llvm::CallInst * );
+    std::vector< llvm::Type * > argTypes( llvm::CallInst * );
 
     llvm::Value * create( llvm::Instruction * );
     llvm::Value * createPtrInst( llvm::Instruction * );
@@ -54,7 +54,7 @@ private:
 
     llvm::Value * lower( llvm::Value *, llvm::IRBuilder<> & );
     llvm::Value * lift( llvm::Value *, llvm::IRBuilder<> & );
-    llvm::Value * toTristate( llvm::Value * v, llvm::IRBuilder<> & );
+    llvm::Value * toTristate( llvm::Value * v, Domain::Value domain, llvm::IRBuilder<> & irb );
 
     llvm::Value * clone( llvm::CallInst * );
 
@@ -68,10 +68,9 @@ private:
     llvm::Value * _process( llvm::Instruction * );
     llvm::Value * _process( llvm::Argument * );
 
-    std::map< llvm::Type *, llvm::Type * > _types;
+    //std::map< llvm::Type *, llvm::Type * > _types;
     std::map< llvm::Value *, llvm::Value * > _values;
     std::map< llvm::Function *, std::vector< llvm::Function * > > _functions;
-
 };
 
 } // namespace abstract

@@ -29,7 +29,10 @@ struct Substitution : lart::Pass
     	return passMetaC( "Substitution",
                 "Substitutes abstract values by concrete abstraction.",
                 []( llvm::ModulePassManager &mgr, std::string opt ) {
-                    return mgr.addPass( Substitution( Domain::value( opt ) ) );
+                    auto dom = Domain::value( opt );
+                    if ( dom.isNothing() )
+                        throw std::runtime_error( "unknown alias-analysis type: " + opt );
+                    return mgr.addPass( Substitution( dom.value() ) );
                 } );
     }
 

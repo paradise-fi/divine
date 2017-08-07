@@ -8,7 +8,8 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/util.h>
-#include <lart/abstract/types.h>
+#include <lart/abstract/types/common.h>
+#include <lart/abstract/types/transform.h>
 #include <lart/abstract/intrinsic.h>
 
 #include <algorithm>
@@ -16,8 +17,15 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-namespace _detail{
-	using Predicate = llvm::CmpInst::Predicate;
+using namespace llvm;
+
+namespace {
+    using Types = std::vector< Type * >;
+    using Values = std::vector< Value * >;
+
+    const Domain::Value AbstractDomain = Domain::Value::Abstract;
+
+    using Predicate = llvm::CmpInst::Predicate;
     const std::map< Predicate, std::string > predicate = {
 	    { Predicate::ICMP_EQ, "eq" },
 	    { Predicate::ICMP_NE, "ne" },
@@ -31,22 +39,18 @@ namespace _detail{
         { Predicate::ICMP_SLE, "sle" }
     };
 
-    std::vector< llvm::Type * > types( std::vector< llvm::Value * > values ) {
-        std::vector< llvm::Type * > tys;
-        for ( auto & v : values )
-            tys.push_back( v->getType() );
-        return tys;
+    Types typesOf( const Values & vs ) {
+        Types ts;
+        std::transform( vs.begin(), vs.end(), std::back_inserter( ts ),
+            [] ( const Value * v ) { return v->getType(); } );
+        return ts;
     }
 
-	auto remapArgs( const llvm::CallInst * i,
-			        const std::map< llvm::Value *, llvm::Value * > & _values )
-	{
-		std::vector< llvm::Value * > args;
-		for ( auto & op : i->arg_operands() ) {
-			auto arg = _values.count( op ) ? _values.at( op ) : op;
-			args.push_back( arg );
-		}
-		return args;
+	auto remap( const Values & vs, const std::map< Value *, Value * > & vmap ) {
+		Values res;
+        std::transform( vs.begin(), vs.end(), std::back_inserter( res ),
+			[&]( Value * v ) { return vmap.count( v ) ? vmap.at( v ) : v; } );
+		return res;
 	}
 
     auto liftsOf( llvm::Instruction * i ) {
@@ -58,15 +62,10 @@ namespace _detail{
                      } ).freeze();
     }
 
-    bool sameTypes( std::vector< llvm::Type * > a, std::vector< llvm::Type * > b ) {
+
+    bool equal( const Types & a, const Types & b ) {
         return std::equal( a.begin(), a.end(), b.begin(), b.end() );
     }
-}
-
-void AbstractBuilder::store( llvm::Type * t1, llvm::Type * t2 ) {
-    assert( types::isAbstract( t2 ) );
-    _types[ t1 ] = t2;
-    _types[ t1->getPointerTo() ] = t2->getPointerTo();
 }
 
 void AbstractBuilder::store( llvm::Value * v1, llvm::Value * v2 ) {
@@ -119,43 +118,18 @@ llvm::Value * AbstractBuilder::process( llvm::Value * v ) {
 
 llvm::Value * AbstractBuilder::_process( llvm::Instruction * i ) {
     if ( ignore( i ) ) return nullptr;
-
-    auto type = types::stripPtr( i->getType() );
-    if ( !_types.count( type ) && !type->isVoidTy() && !types::isAbstract( type ) )
-        llvmcase( type,
-            [&]( llvm::IntegerType * t ) {
-                store( t, types::IntegerType::get( t ) );
-            },
-            [&]( llvm::StructType * t ) {
-                if ( t->getNumElements() == 1 ) {
-                    auto et = t->getElementType( 0 );
-                    assert( llvm::isa< llvm::IntegerType>( et ) );
-                    store( t, types::IntegerType::get( et ) );
-                }
-            },
-            [&]( llvm::Type * type ) {
-                std::cerr << "ERR: Abstracting unsupported type: ";
-                type->dump();
-                std::exit( EXIT_FAILURE );
-            } );
-
-    auto abstract = create( i );
-	if ( abstract ) {
+    if ( auto abstract = create( i ) ) {
         _values[i] = abstract;
-        for ( auto & lift : _detail::liftsOf( i ) )
+        for ( auto & lift : liftsOf( i ) )
             lift->replaceAllUsesWith( _values[ i ] );
+        return abstract;
     }
-	return abstract ? abstract : i;
+	return i;
 }
 
 llvm::Value * AbstractBuilder::_process( llvm::Argument * arg ) {
-    if ( !types::isAbstract( arg->getType() ) )
-        store( arg->getType(), types::lift( arg->getType() ) );
-
     llvm::IRBuilder<> irb( arg->getParent()->front().begin() );
-    auto a = types::isAbstract( arg->getType() )
-           ? arg
-           : lift( arg, irb );
+    auto a = types::isAbstract( arg->getType() ) ? arg : lift( arg, irb );
     _values[ arg ] = a;
     return a;
 }
@@ -179,23 +153,23 @@ llvm::Value * AbstractBuilder::process( const FunctionNodePtr & node ) {
     auto fty = node->function->getFunctionType();
     auto ret_type = rets.empty()
                   ? fty->getReturnType()
-                  : types::lift( fty->getReturnType() );
-    std::vector< llvm::Type * > arg_types;
+                  : types::lift( fty->getReturnType(), AbstractDomain );
+    Types argTys;
     if ( !args.empty() ) {
         for ( auto & arg : fn->args() ) {
             bool changed = query::query( args ).any( [&]( ValueNode & n ) {
                                return llvm::cast< llvm::Argument >( n.value ) == &arg;
                            } );
             if ( changed )
-                arg_types.push_back( types::lift( arg.getType() ) );
+                argTys.push_back( types::lift( arg.getType(), AbstractDomain ) );
             else
-                arg_types.push_back( arg.getType() );
+                argTys.push_back( arg.getType() );
         }
     } else {
-        arg_types = fty->params();
+        argTys = fty->params();
     }
 
-    auto newfty = llvm::FunctionType::get( ret_type, arg_types, fty->isVarArg() );
+    auto newfty = llvm::FunctionType::get( ret_type, argTys, fty->isVarArg() );
     auto newfn = llvm::Function::Create( newfty, fn->getLinkage(), fn->getName(), fn->getParent() );
     store( fn, newfn );
     return newfn;
@@ -279,10 +253,10 @@ llvm::Value * AbstractBuilder::createInst( llvm::Instruction * inst ) {
     return ret;
 }
 
-void AbstractBuilder::clean( std::vector< llvm::Value * > & deps ) {
+void AbstractBuilder::clean( Values & deps ) {
     for ( auto dep : deps ) {
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( dep ) )
-            for ( auto & lift : _detail::liftsOf( inst ) )
+            for ( auto & lift : liftsOf( inst ) )
                 if ( std::find( deps.begin(), deps.end(), lift ) == deps.end() )
                     lift->eraseFromParent();
         if ( auto inst = llvm::dyn_cast< llvm::Instruction >( dep ) )
@@ -308,16 +282,19 @@ bool AbstractBuilder::ignore( llvm::Instruction * i ) {
 
 llvm::Value * AbstractBuilder::createAlloca( llvm::AllocaInst * i ) {
     assert( !i->isArrayAllocation() );
-    auto rty = _types[ i->getType() ];
-    auto tag = intrinsic::tag( i ) + "." + types::name( i->getAllocatedType() );
+    auto lifted = llvm::cast< llvm::StructType >( types::lift( i->getAllocatedType(),
+                                                            AbstractDomain ) );
+    auto rty = lifted->getPointerTo();
+    auto tag = intrinsic::tag( i ) + "." + types::basename( lifted ).value();
     llvm::IRBuilder<> irb( i );
     return intrinsic::build( i->getModule(), irb, rty, tag );
 }
 
 llvm::Value * AbstractBuilder::createLoad( llvm::LoadInst * i ) {
     auto args = { _values[ i->getOperand( 0 ) ] };
-    auto rty = _types[ i->getType() ];
-    auto tag = intrinsic::tag( i ) + "." + types::name( i->getType() );
+    auto rty = types::lift( i->getType(), AbstractDomain );
+    auto base = types::basename( cast< StructType >( types::stripPtr( rty ) ) );
+    auto tag = intrinsic::tag( i ) + "." + base.value();
     llvm::IRBuilder<> irb( i );
     return intrinsic::build( i->getModule(), irb, rty, tag, args );
 }
@@ -330,25 +307,26 @@ llvm::Value * AbstractBuilder::createStore( llvm::StoreInst * i ) {
     auto ptr = _values.count( i->getOperand( 1 ) )
              ? _values[ i->getOperand( 1 ) ]
              : lift( i->getOperand( 1 ), irb );
-    auto rty = llvm::Type::getVoidTy( i->getContext() );
-    auto tag = intrinsic::tag( i ) + "." + types::lowerTypeName( val->getType() );
+    auto rty = types::VoidType( i->getContext() );
+    auto base = types::basename( cast< StructType >( types::stripPtr( val->getType() ) ) );
+    auto tag = intrinsic::tag( i ) + "." + base.value();
 
     return intrinsic::build( i->getModule(), irb, rty, tag, { val, ptr } );
 }
 
 llvm::Value * AbstractBuilder::createICmp( llvm::ICmpInst * i ) {
     llvm::IRBuilder<> irb( i );
-    std::vector< llvm::Value * > args;
+    Values args;
     for ( const auto & op : i->operands() ) {
         auto arg = _values.count( op ) ? _values.at( op ) : lift( op, irb );
         args.push_back( arg );
     }
-    auto type = types::lower( args[ 0 ]->getType() );
-	auto tag = intrinsic::tag( i ) + "_"
-             + _detail::predicate.at( i->getPredicate() ) + "."
-             + types::name( type );
-    return intrinsic::build( i->getModule(), irb,
-           types::IntegerType::get( i->getContext(), 1 ), tag, args );
+
+    auto rty = types::lift( types::BoolType( i->getContext() ), Domain::Value::Abstract );
+    auto base = types::basename( cast< StructType >( types::stripPtr( args[0]->getType() ) ) );
+	auto tag = intrinsic::tag( i ) + "_" + predicate.at( i->getPredicate() ) + "." + base.value();
+
+    return intrinsic::build( i->getModule(), irb, rty, tag, args );
 }
 
 llvm::Value * AbstractBuilder::createBranch( llvm::BranchInst * i ) {
@@ -357,9 +335,13 @@ llvm::Value * AbstractBuilder::createBranch( llvm::BranchInst * i ) {
         auto dest = i->getSuccessor( 0 );
         return irb.CreateBr( dest );
     } else {
-        auto cond = _values.count( i->getCondition() )
-                  ? lower( toTristate( _values[ i->getCondition() ], irb ), irb )
-                  : i->getCondition();
+        llvm::Value * cond;
+        if ( _values.count( i->getCondition() ) ) {
+            auto tristate =  toTristate( _values[ i->getCondition() ], Domain::Value::Abstract, irb );
+            cond = lower( tristate, irb );
+        } else {
+            cond = i->getCondition();
+        }
         auto tbb = i->getSuccessor( 0 );
         auto fbb = i->getSuccessor( 1 );
         return irb.CreateCondBr( cond, tbb, fbb );
@@ -369,14 +351,14 @@ llvm::Value * AbstractBuilder::createBranch( llvm::BranchInst * i ) {
 llvm::Value * AbstractBuilder::createBinaryOperator( llvm::BinaryOperator * i ) {
     llvm::IRBuilder<> irb( i );
 
-    std::vector< llvm::Value * > args;
+    Values args;
     for ( auto & arg : i->operands() ) {
         auto v = _values.count( arg ) ? _values[ arg ] : lift( arg, irb );
         args.push_back( v );
     }
-    auto tag = intrinsic::tag( i ) + "."
-             + types::name( i->getType() );
-    auto rty = _types[ i->getType() ];
+    auto rty = types::lift( i->getType(), AbstractDomain );
+    auto st = llvm::cast< llvm::StructType >( types::stripPtr( rty ) );
+    auto tag = intrinsic::tag( i ) + "." + types::basename( st ).value();
 
     return intrinsic::build( i->getModule(), irb, rty, tag, args );
 }
@@ -387,20 +369,16 @@ llvm::Value * AbstractBuilder::createCast( llvm::CastInst * i ) {
     auto arg = _values.count( op ) ? _values[ op ] : lift( op, irb );
 
     auto tag = intrinsic::tag( i ) + "." +
-               types::name( i->getSrcTy() ) + "." +
-               types::name( i->getDestTy() );
+               types::llvmname( i->getSrcTy() ) + "." +
+               types::llvmname( i->getDestTy() );
 
-    auto dest = i->getDestTy();
-    store( dest, types::lift( dest ) );
-    auto rty = _types[ dest ];
+    auto rty = types::lift( i->getDestTy(), AbstractDomain );
 
     return intrinsic::build( i->getModule(), irb, rty, tag, { arg } );
 }
 
 llvm::Value * AbstractBuilder::createPhi( llvm::PHINode * n ) {
-    auto rty = types::isAbstract( n->getType() )
-             ? n->getType()
-             : _types[ n->getType() ];
+    auto rty = types::lift( n->getType(), AbstractDomain );
 
     unsigned int niv = n->getNumIncomingValues();
     llvm::IRBuilder<> irb( n );
@@ -410,7 +388,7 @@ llvm::Value * AbstractBuilder::createPhi( llvm::PHINode * n ) {
         n->replaceAllUsesWith( phi );
 
     for ( unsigned int i = 0; i < niv; ++i ) {
-        auto val = llvm::cast< llvm::Value >( n->getIncomingValue( i ) );
+        auto val = n->getIncomingValue( i );
         auto parent = n->getIncomingBlock( i );
         if ( _values.count( val ) ) {
             phi->addIncoming( _values[ val ], parent );
@@ -455,35 +433,30 @@ llvm::Value * AbstractBuilder::createPtrCast( llvm::CastInst * i ) {
            "ERR: Only bitcast is supported for pointer cast instractions." );
 
     llvm::IRBuilder<> irb( i );
-    auto destTy = _types[ i->getDestTy() ];
+    auto destTy = types::lift( i->getDestTy(), AbstractDomain );
     auto val = _values[ i->getOperand( 0 ) ];
     assert( val && "ERR: Trying to bitcast value, that is not abstracted." );
-
-    if ( val->getType() == destTy )
-        return val;
-
-    return irb.CreateBitCast( val, destTy );
+    return ( val->getType() == destTy ) ? val : irb.CreateBitCast( val, destTy );
 }
 
 llvm::Value * AbstractBuilder::createGEP( llvm::GetElementPtrInst * i ) {
     llvm::IRBuilder<> irb( i );
-    auto type = _types[ i->getResultElementType() ];
+    auto type = types::lift( i->getResultElementType(), AbstractDomain );
     auto val = _values[ i->getPointerOperand() ];
-    std::vector< llvm::Value * > idxs = { i->idx_begin() , i->idx_end() };
+    Values idxs = { i->idx_begin() , i->idx_end() };
     return irb.CreateGEP( type, val, idxs, i->getName() );
 }
 
 llvm::Value * AbstractBuilder::lower( llvm::Value * v, llvm::IRBuilder<> & irb ) {
-    const auto & ty = v->getType();
-    assert( types::isAbstract( ty ) && !ty->isPointerTy() );
+    const auto & type = llvm::cast< llvm::StructType >( v->getType() );
+    assert( types::isAbstract( type ) && !type->isPointerTy() );
 
-    auto fty = llvm::FunctionType::get( types::lower( ty ), { ty }, false );
-    auto dom = types::domain( ty );
+    auto fty = llvm::FunctionType::get( types::lower( type ), { type }, false );
+    auto dom = types::domain( type ).value();
     auto tag = "lart." + Domain::name( dom ) + ".lower";
     if ( dom != Domain::Value::Tristate )
-        tag += "." + types::lowerTypeName( v->getType() );
-    auto m = irb.GetInsertBlock()->getModule();
-    auto fn = m->getOrInsertFunction( tag, fty );
+        tag += "." + types::basename( type ).value();
+    auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     auto call = irb.CreateCall( fn , v );
 
     _values[ v ] = call;
@@ -491,24 +464,24 @@ llvm::Value * AbstractBuilder::lower( llvm::Value * v, llvm::IRBuilder<> & irb )
 }
 
 llvm::Value * AbstractBuilder::lift( llvm::Value * v, llvm::IRBuilder<> & irb ) {
-    auto type = _types[ v->getType() ];
+    auto type = types::lift( v->getType(), AbstractDomain );
     auto fty = llvm::FunctionType::get( type, { v->getType() }, false );
-    auto dom = types::domain( type );
-    auto tag = "lart." + Domain::name( dom ) + ".lift." + types::lowerTypeName( type );
-    auto m = irb.GetInsertBlock()->getModule();
-    auto fn = m->getOrInsertFunction( tag, fty );
+    auto st = llvm::cast< llvm::StructType >( types::stripPtr( type ) );
+    auto dom = types::domain( st ).value();
+    auto tag = "lart." + Domain::name( dom ) + ".lift." + types::basename( st ).value();
+    auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     return irb.CreateCall( fn , v );
 }
 
-llvm::Value * AbstractBuilder::toTristate( llvm::Value * v, llvm::IRBuilder<> & irb ) {
-    const auto & ty = v->getType();
-    assert( types::IntegerType::isa( ty, 1 ) );
-    auto tristate = types::Tristate::get( v->getContext() );
-    auto fty = llvm::FunctionType::get( tristate, { ty }, false );
-    auto dom = types::domain( ty );
-    auto tag = "lart." + Domain::name( dom ) + ".bool_to_tristate";
-    auto m = irb.GetInsertBlock()->getModule();
-    auto fn = m->getOrInsertFunction( tag, fty );
+llvm::Value * AbstractBuilder::toTristate( llvm::Value * v, Domain::Value domain,
+                                           llvm::IRBuilder<> & irb )
+{
+    const auto & type = llvm::cast< llvm::StructType >( types::lift( v->getType(), domain ) );
+    assert( types::base( type ).value() ==  types::TypeBase::Value::Int1 );
+    auto tristate = types::Tristate( v->getType() ).llvm();
+    auto fty = llvm::FunctionType::get( tristate, { v->getType() }, false );
+    auto tag = "lart." + Domain::name( types::domain( type ).value() ) + ".bool_to_tristate";
+    auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     return irb.CreateCall( fn , v );
 }
 
@@ -543,14 +516,12 @@ llvm::Value * AbstractBuilder::processIntrinsic( llvm::CallInst * i ) {
 }
 
 llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
-    auto args = _detail::remapArgs( i, _values );
-    std::vector< llvm::Type * > types = arg_types( i );
+    Values args = { i->arg_operands().begin(), i->arg_operands().end() };
+    Types types = argTypes( i );
     auto fn = i->getCalledFunction();
-    auto at = types::isAbstract( i->getType() )
-            ? i->getType()
-            : _types[ i->getType() ];
+    auto at = types::lift( i->getType(), AbstractDomain );
 
-	bool same = _detail::sameTypes( fn->getFunctionType()->params(), types )
+	bool same = equal( fn->getFunctionType()->params(), types )
 			 && fn->getReturnType() == at;
 
 	auto stored = same ? fn : getStoredFn( fn, types );
@@ -564,7 +535,7 @@ llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
     assert( stored );
 
 	llvm::IRBuilder<> irb( i );
-	auto call = irb.CreateCall( stored, args );
+	auto call = irb.CreateCall( stored, remap( args, _values ) );
     if ( call->getType() == i->getType() )
         i->replaceAllUsesWith( call );
     return call;
@@ -575,14 +546,14 @@ llvm::Function * AbstractBuilder::getStoredFn( llvm::Function * fn,
 {
 	if ( _functions.count( fn ) )
 	  for ( auto stored : _functions[ fn ] )
-          if ( _detail::sameTypes( stored->getFunctionType()->params(), params ) )
+          if ( equal( stored->getFunctionType()->params(), params ) )
 			  return stored;
 	return nullptr;
 }
 
-std::vector< llvm::Type * > AbstractBuilder::arg_types( llvm::CallInst * call ) {
-    auto args = _detail::remapArgs( call, _values );
-    return _detail::types( args );
+Types AbstractBuilder::argTypes( llvm::CallInst * call ) {
+    Values args = { call->arg_operands().begin(), call->arg_operands().end() };
+    return typesOf( remap( args, _values ) );
 }
 
 } // namespace abstract

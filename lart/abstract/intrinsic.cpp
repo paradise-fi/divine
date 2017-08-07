@@ -26,11 +26,16 @@ namespace {
 }
 
 // intrinsic format: lart.<domain>.<name>.<type1>.<type2>
-Domain::Value domain( const llvm::Function * fn ) {
+MaybeDomain domain( const llvm::Function * fn ) {
     auto parts = parse( fn );
     assert( parts.size() > 2 );
     return Domain::value( parts[1] );
 }
+
+MaybeDomain domain( const llvm::CallInst * call ) {
+    return domain( call->getCalledFunction() );
+}
+
 
 const std::string name( const llvm::Function * fn ) {
     auto parts = parse( fn );
@@ -45,10 +50,6 @@ const std::string ty1( const llvm::Function * fn ) {
 const std::string ty2( const llvm::Function * fn ) {
     auto parts = parse( fn );
     return parts.size() > 4 ? parts[4] : "";
-}
-
-Domain::Value domain( const llvm::CallInst * call ) {
-    return domain( call->getCalledFunction() );
 }
 
 const std::string name( const llvm::CallInst * call ) {

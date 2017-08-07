@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 
 #include <lart/abstract/bcp.h>
-#include <lart/abstract/types.h>
+#include <lart/abstract/types/common.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/domains/domains.h>
 #include <lart/analysis/bbreach.h>
@@ -33,20 +33,22 @@ namespace {
            or right argument of condition.
          */
         llvm::Instruction * constrain( const Domain::Value domain, AssumeValue v ) {
+            using StructType = llvm::StructType;
             llvm::IRBuilder<> irb( assume );
-            llvm::Type * rty;
+            StructType * rty;
             std::vector< llvm::Value * > args;
+
             switch ( v ) {
                 case AssumeValue::Predicate:
-                    rty = condition()->getType();
+                    rty = llvm::cast< StructType >( condition()->getType() );
                     args.push_back( condition() );
                     break;
                 case AssumeValue::LHS:
-                    rty = condition()->getArgOperand( 0 )->getType();
+                    rty = llvm::cast< StructType >( condition()->getArgOperand( 0 )->getType() );
                     args.push_back( condition()->getArgOperand( 0 ) );
                     break;
                 case AssumeValue::RHS:
-                    rty = condition()->getArgOperand( 1 )->getType();
+                    rty = llvm::cast< StructType >( condition()->getArgOperand( 1 )->getType() );
                     args.push_back( condition()->getArgOperand( 1 ) );
             };
             args.push_back( condition() );
@@ -57,7 +59,8 @@ namespace {
             std::vector< llvm::Type * > arg_types;
             for ( const auto & arg : args )
                 arg_types.push_back( arg->getType() );
-            const std::string tag = "lart." + Domain::name( domain ) + ".assume." + types::lowerTypeName( rty );
+            const std::string tag = "lart." + Domain::name( domain ) + ".assume."
+                                  + types::TypeBase::name( types::base( rty ).value() );
 
             auto fty = llvm::FunctionType::get( rty, arg_types, false );
             auto m = irb.GetInsertBlock()->getModule();
@@ -193,7 +196,7 @@ namespace {
 
     void BCP::process( llvm::Instruction * assume ) {
         Assume ass = { assume };
-        const Domain::Value domain = intrinsic::domain( ass.condition() );
+        auto domain = intrinsic::domain( ass.condition() ).value();
 
         // create constraints on arguments from condition, that created tristate
         auto lhs = ass.constrain( domain, Assume::AssumeValue::LHS );

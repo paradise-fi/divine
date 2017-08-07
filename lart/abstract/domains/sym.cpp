@@ -2,7 +2,8 @@
 #include <lart/abstract/domains/sym.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/domains/domains.h>
-#include <lart/abstract/types.h>
+
+#include <iostream>
 
 namespace lart {
 namespace abstract {
@@ -94,7 +95,7 @@ Symbolic::Symbolic( llvm::Module & m ) {
 
 llvm::Value * Symbolic::process( llvm::CallInst * i, std::vector< llvm::Value * > & args ) {
     std::string name;
-    if ( intrinsic::domain( i ) == Domain::Value::Tristate ) {
+    if ( intrinsic::domain( i ).value() == Domain::Value::Tristate ) {
         name = "__abstract_tristate_lower";
     } else {
         name = constructFunctionName( i );

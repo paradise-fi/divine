@@ -18,7 +18,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 
-#include <lart/abstract/types.h>
+#include <lart/abstract/types/common.h>
 
 namespace lart {
 namespace abstract {

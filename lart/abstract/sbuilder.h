@@ -10,6 +10,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/domains/common.h>
+
 namespace lart {
 namespace abstract {
 
@@ -27,7 +28,6 @@ struct SubstitutionBuilder {
         return *this;
     }
 
-    void store( llvm::Value *, llvm::Value * );
     void store( llvm::Function *, llvm::Function * );
 
     void process( llvm::Instruction * );
@@ -47,8 +47,6 @@ struct SubstitutionBuilder {
     void substituteCall( llvm::CallInst * );
     void substituteCast( llvm::CastInst * );
     void substituteReturn( llvm::ReturnInst * );
-
-    void processCall( llvm::CallInst * );
 
     std::map< llvm::Value *, llvm::Value * > _values;
     std::map< llvm::Function *, llvm::Function * > _functions;
