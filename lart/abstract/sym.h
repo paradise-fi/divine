@@ -19,7 +19,10 @@ struct Symbolic : Common {
     virtual bool is( llvm::Type * );
 
     virtual llvm::Type * abstract( llvm::Type * );
-    std::string domain() const { return "sym"; }
+
+    Domain::Value domain() const {
+        return Domain::Value::Symbolic;
+    }
 
     llvm::Type * formula_type;
 };

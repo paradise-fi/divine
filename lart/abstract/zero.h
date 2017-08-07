@@ -19,7 +19,11 @@ struct Zero : Common {
     virtual bool is( llvm::Type * );
 
     virtual llvm::Type * abstract( llvm::Type * );
-    std::string domain() const { return "zero"; }
+
+    Domain::Value domain() const {
+        return Domain::Value::Zero;
+    }
+
 
     llvm::Type * zero_type;
 };

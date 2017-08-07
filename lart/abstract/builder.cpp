@@ -474,15 +474,14 @@ llvm::Value * AbstractBuilder::createGEP( llvm::GetElementPtrInst * i ) {
 }
 
 llvm::Value * AbstractBuilder::lower( llvm::Value * v, llvm::IRBuilder<> & irb ) {
-    assert( types::isAbstract( v->getType() ) );
-    assert( !v->getType()->isPointerTy() );
+    const auto & ty = v->getType();
+    assert( types::isAbstract( ty ) && !ty->isPointerTy() );
 
-    auto fty = llvm::FunctionType::get( types::lower( v->getType() ),
-                                        { v->getType() }, false );
-    auto tag = types::domain( v->getType() ) == "tristate"
-             ? "lart.tristate.lower"
-             : "lart." + types::domain( v->getType() ) + ".lower." +
-               types::lowerTypeName( v->getType() );
+    auto fty = llvm::FunctionType::get( types::lower( ty ), { ty }, false );
+    auto dom = types::domain( ty );
+    auto tag = "lart." + Domain::name( dom ) + ".lower";
+    if ( dom != Domain::Value::Tristate )
+        tag += "." + types::lowerTypeName( v->getType() );
     auto m = irb.GetInsertBlock()->getModule();
     auto fn = m->getOrInsertFunction( tag, fty );
     auto call = irb.CreateCall( fn , v );
@@ -494,17 +493,20 @@ llvm::Value * AbstractBuilder::lower( llvm::Value * v, llvm::IRBuilder<> & irb )
 llvm::Value * AbstractBuilder::lift( llvm::Value * v, llvm::IRBuilder<> & irb ) {
     auto type = _types[ v->getType() ];
     auto fty = llvm::FunctionType::get( type, { v->getType() }, false );
-    auto tag = "lart." + types::domain( type ) + ".lift." + types::lowerTypeName( type );
+    auto dom = types::domain( type );
+    auto tag = "lart." + Domain::name( dom ) + ".lift." + types::lowerTypeName( type );
     auto m = irb.GetInsertBlock()->getModule();
     auto fn = m->getOrInsertFunction( tag, fty );
     return irb.CreateCall( fn , v );
 }
 
 llvm::Value * AbstractBuilder::toTristate( llvm::Value * v, llvm::IRBuilder<> & irb ) {
-    assert( types::IntegerType::isa( v->getType(), 1 ) );
+    const auto & ty = v->getType();
+    assert( types::IntegerType::isa( ty, 1 ) );
     auto tristate = types::Tristate::get( v->getContext() );
-    auto fty = llvm::FunctionType::get( tristate, { v->getType() }, false );
-    auto tag = "lart." + types::domain( v->getType() ) + ".bool_to_tristate";
+    auto fty = llvm::FunctionType::get( tristate, { ty }, false );
+    auto dom = types::domain( ty );
+    auto tag = "lart." + Domain::name( dom ) + ".bool_to_tristate";
     auto m = irb.GetInsertBlock()->getModule();
     auto fn = m->getOrInsertFunction( tag, fty );
     return irb.CreateCall( fn , v );

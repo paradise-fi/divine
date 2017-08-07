@@ -5,6 +5,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/abstract/domains/domains.h>
 #include <set>
 
 #ifndef LART_ABSTRACT_COMMON
@@ -34,7 +35,7 @@ struct Common
      * i.e. if domain is "interval" then values of type
      * "%lart.interval.*" are the responsibility of this abstraction.
      */
-    virtual std::string domain() const = 0;
+    virtual Domain::Value domain() const = 0;
 
     /*
      * Construct a basic block that compute refined abstract values given the

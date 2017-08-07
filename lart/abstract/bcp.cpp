@@ -3,6 +3,7 @@
 #include <lart/abstract/bcp.h>
 #include <lart/abstract/types.h>
 #include <lart/abstract/intrinsic.h>
+#include <lart/abstract/domains/domains.h>
 #include <lart/analysis/bbreach.h>
 #include <lart/analysis/edge.h>
 #include <lart/support/query.h>
@@ -31,7 +32,7 @@ namespace {
         /* Creates appropriate assume in given domain about predicate, left
            or right argument of condition.
          */
-        llvm::Instruction * constrain( const std::string & domain, AssumeValue v ) {
+        llvm::Instruction * constrain( const Domain::Value domain, AssumeValue v ) {
             llvm::IRBuilder<> irb( assume );
             llvm::Type * rty;
             std::vector< llvm::Value * > args;
@@ -56,7 +57,7 @@ namespace {
             std::vector< llvm::Type * > arg_types;
             for ( const auto & arg : args )
                 arg_types.push_back( arg->getType() );
-            const std::string tag = "lart." + domain + ".assume." + types::lowerTypeName( rty );
+            const std::string tag = "lart." + Domain::name( domain ) + ".assume." + types::lowerTypeName( rty );
 
             auto fty = llvm::FunctionType::get( rty, arg_types, false );
             auto m = irb.GetInsertBlock()->getModule();
@@ -192,7 +193,7 @@ namespace {
 
     void BCP::process( llvm::Instruction * assume ) {
         Assume ass = { assume };
-        const std::string domain = intrinsic::domain( ass.condition() );
+        const Domain::Value domain = intrinsic::domain( ass.condition() );
 
         // create constraints on arguments from condition, that created tristate
         auto lhs = ass.constrain( domain, Assume::AssumeValue::LHS );

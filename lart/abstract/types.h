@@ -8,6 +8,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Support/raw_ostream.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/abstract/domains/domains.h>
+
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -136,7 +138,6 @@ static std::vector< std::string > parseTypeName( llvm::StructType * type ) {
         parts.push_back( part );
     return parts;
 }
-
 } // empty namespace
 
 static std::string name( const llvm::Type * type ) {
@@ -216,11 +217,11 @@ static llvm::Type * lower( llvm::Type * type ) {
 }
 
 // type format: lart.<domain>.<lower type>
-static std::string domain( llvm::Type * type ) {
+static Domain::Value domain( llvm::Type * type ) {
     auto structT = llvm::cast< llvm::StructType >( stripPtr( type ) );
     auto parts = parseTypeName( structT );
     assert( parts.size() >= 2 );
-    return parts[ 1 ];
+    return Domain::value( parts[ 1 ] );
 }
 
 static std::string lowerTypeName( llvm::Type * type ) {

@@ -6,20 +6,14 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/abstract/domains/domains.h>
+
 namespace lart {
 namespace abstract {
 namespace intrinsic {
 
-enum Domain { Abstract, Tristate };
-static std::string domainName( Domain d ) {
-    switch( d ) {
-        case Domain::Abstract : return "abstract";
-        case Domain::Tristate : return "tristate";
-    }
-}
-
-const std::string domain( const llvm::CallInst * );
-const std::string domain( const llvm::Function * );
+Domain::Value domain( const llvm::CallInst * );
+Domain::Value domain( const llvm::Function * );
 const std::string name( const llvm::CallInst * );
 const std::string name( const llvm::Function * );
 const std::string ty1( const llvm::CallInst * );
@@ -28,7 +22,7 @@ const std::string ty2( const llvm::CallInst * );
 const std::string ty2( const llvm::Function * );
 
 const std::string tag( const llvm::Instruction * );
-const std::string tag( const llvm::Instruction * , Domain );
+const std::string tag( const llvm::Instruction * , Domain::Value );
 
 auto types( std::vector< llvm::Value * > & ) -> llvm::ArrayRef< llvm::Type * >;
 

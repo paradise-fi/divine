@@ -1,20 +1,22 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #include <lart/abstract/zero.h>
 #include <lart/abstract/intrinsic.h>
+#include <lart/abstract/domains/domains.h>
 #include <lart/abstract/types.h>
+
 
 namespace lart {
 namespace abstract {
 
 namespace {
     const std::string prefix = "__abstract_";
-    std::string constructFunctionName( const std::string & domain, const llvm::CallInst * inst ) {
-        std::string name = prefix + domain + "_" + intrinsic::name( inst );
+    std::string constructFunctionName( const Domain::Value domain, const llvm::CallInst * inst ) {
+        std::string name = prefix + Domain::name( domain ) + "_" + intrinsic::name( inst );
         if ( intrinsic::name( inst ) == "load" ) {
             //do nothing
         }
         else if ( intrinsic::isLift( inst ) || intrinsic::isLower( inst ) ) {
-            if ( domain != "tristate" )
+            if ( domain != Domain::Value::Tristate )
                 name +=  "_" + intrinsic::ty1( inst );
         }
         else if ( inst->getNumArgOperands() > 0 && intrinsic::ty1( inst ).back() == '*' ) {
@@ -35,7 +37,11 @@ Zero::Zero( llvm::Module & m ) {
 }
 
 llvm::Value * Zero::process( llvm::CallInst * i, std::vector< llvm::Value * > &args ) {
-    auto domain = intrinsic::domain( i ) == "tristate" ? "tristate" : this->domain();
+    auto domain = intrinsic::domain( i ) == Domain::Value::Tristate
+                ? Domain::Value::Tristate
+                : this->domain();
+    // TODO rework use intrinsic::domain directly
+    //assert( domain == this->domain() || domain == Domain::Value::Tristate );
     auto name = constructFunctionName( domain, i );
     llvm::Module * m = i->getParent()->getParent()->getParent();
 
