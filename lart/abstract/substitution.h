@@ -1,9 +1,10 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
 
-#include <lart/abstract/trivial.h>
-#include <lart/abstract/zero.h>
-#include <lart/abstract/sym.h>
+#include <lart/abstract/domains/trivial.h>
+#include <lart/abstract/domains/zero.h>
+#include <lart/abstract/domains/sym.h>
+
 #include <lart/abstract/sbuilder.h>
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>

@@ -5,7 +5,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/trivial.h>
+#include <lart/abstract/domains/trivial.h>
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 

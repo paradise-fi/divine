@@ -1,7 +1,7 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
 
-#include <lart/abstract/common.h>
+#include <lart/abstract/domains/common.h>
 
 namespace lart {
 namespace abstract {

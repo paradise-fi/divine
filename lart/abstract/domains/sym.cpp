@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
-#include <lart/abstract/sym.h>
+#include <lart/abstract/domains/sym.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/domains/domains.h>
 #include <lart/abstract/types.h>

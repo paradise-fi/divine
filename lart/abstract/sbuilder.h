@@ -9,7 +9,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/common.h>
+#include <lart/abstract/domains/common.h>
 namespace lart {
 namespace abstract {
 

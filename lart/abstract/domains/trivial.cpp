@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
-#include <lart/abstract/trivial.h>
+#include <lart/abstract/domains/trivial.h>
 
 namespace lart {
 namespace abstract {

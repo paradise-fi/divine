@@ -1,14 +1,16 @@
-// -*- C++ -*- (c) 2014 Petr Rockai <me@mornfall.net>
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
 
-#include <lart/abstract/common.h>
+#include <lart/abstract/domains/common.h>
 
 namespace lart {
 namespace abstract {
+struct Symbolic : Common {
 
-struct Trivial : Common {
+    Symbolic( llvm::Module & m );
+
     virtual Constrain constrain( llvm::Value *, llvm::Value * /* constraint */ ) {
+        // TODO
         return Constrain();
     }
 
@@ -17,10 +19,14 @@ struct Trivial : Common {
     virtual bool is( llvm::Type * );
 
     virtual llvm::Type * abstract( llvm::Type * );
+
     Domain::Value domain() const {
-        return Domain::Value::Trivial;
+        return Domain::Value::Symbolic;
     }
+
+    llvm::Type * formula_type;
 };
 
 } // namespace abstract
 } // namespace lart
+

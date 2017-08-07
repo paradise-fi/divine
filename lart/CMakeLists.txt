@@ -1,6 +1,7 @@
 file( GLOB SRC reduction/*.cpp analysis/*.cpp support/*.cpp aa/*.cpp
-               interference/*.cpp weakmem/*.cpp abstract/*.cpp svcomp/*.cpp
-               divine/*.cpp )
+               interference/*.cpp weakmem/*.cpp abstract/*.cpp
+               abstract/domains/*.cpp
+               svcomp/*.cpp divine/*.cpp )
 
 file( GLOB H_ABSTRACT abstract/*.h )
 install( FILES ${H_ABSTRACT} DESTINATION include/lart/abstract )
