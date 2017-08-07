@@ -14,8 +14,7 @@ namespace {
             //do nothing
         }
         else if ( intrinsic::isLift( inst ) || intrinsic::isLower( inst ) ) {
-            if ( domain != Domain::Value::Tristate )
-                name +=  "_" + intrinsic::ty1( inst );
+            name +=  "_" + intrinsic::ty1( inst );
         }
         else if ( inst->getNumArgOperands() > 0 && intrinsic::ty1( inst ).back() == '*' ) {
             name += "_p";
@@ -29,12 +28,8 @@ Zero::Zero( llvm::Module & m ) {
 }
 
 llvm::Value * Zero::process( llvm::CallInst * i, std::vector< llvm::Value * > &args ) {
-    auto domain = intrinsic::domain( i ).value() == Domain::Value::Tristate
-                ? Domain::Value::Tristate
-                : this->domain();
-    // TODO rework use intrinsic::domain directly
-    //assert( domain == this->domain() || domain == Domain::Value::Tristate );
-    auto name = constructFunctionName( domain, i );
+    assert( intrinsic::domain( i ).value() == domain() );
+    auto name = constructFunctionName( domain(), i );
     llvm::Module * m = i->getParent()->getParent()->getParent();
 
     llvm::Function * fn = m->getFunction( name );

@@ -94,13 +94,8 @@ Symbolic::Symbolic( llvm::Module & m ) {
 }
 
 llvm::Value * Symbolic::process( llvm::CallInst * i, std::vector< llvm::Value * > & args ) {
-    std::string name;
-    if ( intrinsic::domain( i ).value() == Domain::Value::Tristate ) {
-        name = "__abstract_tristate_lower";
-    } else {
-        name = constructFunctionName( i );
-        args = arguments( i, args );
-    }
+    auto name = constructFunctionName( i );
+    args = arguments( i, args );
 
     llvm::Module * m = i->getParent()->getParent()->getParent();
 

@@ -8,8 +8,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/domains/domains.h>
 #include <set>
 
-#ifndef LART_ABSTRACT_COMMON
-#define LART_ABSTRACT_COMMON
+#define UNSUPPORTED_BY_DOMAIN \
+        UNREACHABLE( "This function is not supported by this domain");
 
 namespace lart {
 namespace abstract {
@@ -71,5 +71,3 @@ struct Common
 
 }
 }
-
-#endif
