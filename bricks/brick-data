@@ -47,7 +47,6 @@
 #define BRICK_DATA_H
 
 namespace brick {
-namespace t_data { struct TestIntervalSet; } /* forward declare for friend declarations */
 namespace data {
 
 template< typename K, typename V >
@@ -212,9 +211,6 @@ struct IntervalSet
 
     const_iterator end() const { return _map.end(); }
     const_iterator cend() const { return _map.end(); }
-
-  private:
-    friend struct brick::t_data::TestIntervalSet;
 
     map _map;
 
