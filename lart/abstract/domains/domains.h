@@ -23,8 +23,8 @@ namespace Domain {
          { Value::LLVM, "llvm" }
         ,{ Value::Abstract, "abstract" }
         ,{ Value::Tristate, "tristate" }
-        ,{ Value::Trivial, "trivial" }
-        ,{ Value::Symbolic, "symbolic" }
+        ,{ Value::Trivial, "triv" }
+        ,{ Value::Symbolic, "sym" }
         ,{ Value::Zero, "zero" }
     };
     } // empty namespace

@@ -1,6 +1,7 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
 
+#include <lart/abstract/domains/domains.h>
 #include <lart/abstract/domains/trivial.h>
 #include <lart/abstract/domains/zero.h>
 #include <lart/abstract/domains/sym.h>
@@ -18,12 +19,9 @@ namespace abstract {
 
 struct Substitution : lart::Pass
 {
-    enum Type { Trivial, Zero, Symbolic };
+    Substitution( Domain::Value domain ) : domain( domain ) {}
 
-    Substitution( Type t ) : type( t ) {}
-
-    Substitution( Substitution && s )
-        : type( s.type ), builder( std::move( s.builder ) ) {}
+    Substitution( Substitution && s ) = default;
 
     virtual ~Substitution() {}
 
@@ -31,19 +29,8 @@ struct Substitution : lart::Pass
     	return passMetaC( "Substitution",
                 "Substitutes abstract values by concrete abstraction.",
                 []( llvm::ModulePassManager &mgr, std::string opt ) {
-                    return mgr.addPass( Substitution( getType( opt ) ) );
+                    return mgr.addPass( Substitution( Domain::value( opt ) ) );
                 } );
-    }
-
-    static Type getType( std::string opt ) {
-        if ( opt == "trivial" )
-            return Type::Trivial;
-        if ( opt == "zero" )
-            return Type::Zero;
-        if ( opt == "sym" )
-            return Type::Symbolic;
-        std::cerr << "Unsupported abstraction " << opt <<std::endl;
-        std::exit( EXIT_FAILURE );
     }
 
     llvm::PreservedAnalyses run( llvm::Module & ) override;
@@ -54,7 +41,7 @@ private:
 
     void changeReturn( llvm::Function * );
 
-    Type type;
+    Domain::Value domain;
     SubstitutionBuilder builder;
 };
 

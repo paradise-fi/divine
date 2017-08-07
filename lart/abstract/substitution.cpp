@@ -115,20 +115,22 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
 }
 
 void Substitution::init( llvm::Module & m ) {
-    std::unique_ptr< abstract::Common > abstraction;
-    switch ( type ) {
-        case Trivial: {
-            abstraction = std::make_unique< abstract::Trivial >();
+    std::unique_ptr< Common > abstraction;
+    switch ( domain ) {
+        case Domain::Value::Trivial: {
+            abstraction = std::make_unique< Trivial >();
             break;
         }
-        case Zero: {
-            abstraction = std::make_unique< abstract::Zero >( m );
+        case Domain::Value::Zero: {
+            abstraction = std::make_unique< Zero >( m );
             break;
         }
-        case Symbolic: {
-            abstraction = std::make_unique< abstract::Symbolic >( m );
+        case Domain::Value::Symbolic: {
+            abstraction = std::make_unique< Symbolic >( m );
             break;
         }
+        default:
+            UNREACHABLE( "Trying to use unsupported domain in substitution." );
     }
 
     builder = SubstitutionBuilder( std::move( abstraction ) );
