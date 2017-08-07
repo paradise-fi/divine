@@ -14,7 +14,10 @@
 
 #include <dios/core/main.hpp>
 #include <dios/core/syscall.hpp>
+#include <dios/lib/map.hpp>
 #include <divine/metadata.h>
+
+#include <abstract/common.h>
 
 namespace __dios {
 
@@ -222,9 +225,19 @@ extern const sighandler_t defhandlers[ 32 ];
 
 template < typename Next >
 struct Scheduler : public Next {
+    using Sys = Syscall< Scheduler< Next > >;
+    using HidMap = AutoIncMap< ThreadHandle, int >;
 
     Scheduler() :
-        sighandlers( nullptr ){}
+        hids( new_object< HidMap >() ),
+        sighandlers( nullptr )
+    {
+        hids = abstract::weaken( hids );
+    }
+
+    ~Scheduler() {
+        delete_object( hids );
+    }
 
     struct Process : Next::Process
     {
@@ -292,12 +305,16 @@ struct Scheduler : public Next {
         int c = threads.size();
         if ( c == 0 )
             return;
-        struct PI { unsigned pid, tid, choice; };
+        struct PI { int pid, tid; unsigned choice; };
         PI *pi = reinterpret_cast< PI * >( __vm_obj_make( c * sizeof( PI ) ) );
         PI *pi_it = pi;
         for ( int i = 0; i != c; i++ ) {
             pi_it->pid = 0;
-            pi_it->tid = threads[ i ]->getUserId();
+            auto tidhid = hids->find( threads[ i ]->getId() );
+            if ( tidhid != hids->end() )
+                pi_it->tid = tidhid->second;
+            else
+                pi_it->tid = hids->push( threads[ i ]->getId() );
             pi_it->choice = i;
             ++pi_it;
         }
@@ -518,6 +535,7 @@ struct Scheduler : public Next {
     }
 
     SortedStorage< Thread > threads;
+    HidMap *hids;
     sighandler_t *sighandlers;
 };
 
