@@ -225,6 +225,9 @@ llvm::Value * AbstractBuilder::createPtrInst( llvm::Instruction * inst ) {
                 i->replaceAllUsesWith( i->getArgOperand( 0 ) );
             }
         },
+        [&]( llvm::GetElementPtrInst * i ) {
+            ret = createGEP( i );
+        },
         [&]( llvm::Instruction * inst ) {
             std::cerr << "ERR: unknown pointer instruction: ";
             inst->dump();
@@ -460,6 +463,14 @@ llvm::Value * AbstractBuilder::createPtrCast( llvm::CastInst * i ) {
         return val;
 
     return irb.CreateBitCast( val, destTy );
+}
+
+llvm::Value * AbstractBuilder::createGEP( llvm::GetElementPtrInst * i ) {
+    llvm::IRBuilder<> irb( i );
+    auto type = _types[ i->getResultElementType() ];
+    auto val = _values[ i->getPointerOperand() ];
+    std::vector< llvm::Value * > idxs = { i->idx_begin() , i->idx_end() };
+    return irb.CreateGEP( type, val, idxs, i->getName() );
 }
 
 llvm::Value * AbstractBuilder::lower( llvm::Value * v, llvm::IRBuilder<> & irb ) {

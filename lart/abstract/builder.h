@@ -50,6 +50,7 @@ private:
     llvm::Value * createReturn( llvm::ReturnInst * );
 
     llvm::Value * createPtrCast( llvm::CastInst * );
+    llvm::Value * createGEP( llvm::GetElementPtrInst * );
 
     llvm::Value * lower( llvm::Value *, llvm::IRBuilder<> & );
     llvm::Value * lift( llvm::Value *, llvm::IRBuilder<> & );
