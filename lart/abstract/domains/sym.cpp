@@ -3,8 +3,6 @@
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/domains/domains.h>
 
-#include <iostream>
-
 namespace lart {
 namespace abstract {
 

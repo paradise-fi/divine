@@ -5,12 +5,10 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/domains/trivial.h>
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 
 #include <lart/abstract/builder.h>
-#include <lart/abstract/walker.h>
 
 namespace lart {
 namespace abstract {

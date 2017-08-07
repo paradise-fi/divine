@@ -6,28 +6,27 @@
 namespace lart {
 namespace abstract {
 
-struct Zero : Common {
+struct Zero final : Common {
 
     Zero( llvm::Module & m );
 
-    virtual Constrain constrain( llvm::Value *, llvm::Value * /* constraint */ ) {
-        return Constrain();
-    }
+    llvm::Value * process( llvm::CallInst *, std::vector< llvm::Value * > & ) override;
 
-    virtual llvm::Value * process( llvm::CallInst *, std::vector< llvm::Value * > & );
+    bool is( llvm::Type * ) override;
 
-    virtual bool is( llvm::Type * );
+    llvm::Type * abstract( llvm::Type * ) override;
 
-    virtual llvm::Type * abstract( llvm::Type * );
-
-    Domain::Value domain() const {
+    Domain::Value domain() const override {
         return Domain::Value::Zero;
     }
 
+    static bool isPresent( llvm::Module & m ) {
+        return m.getFunction( "__abstract_zero_load" ) != nullptr;
+    }
 
+private:
     llvm::Type * zero_type;
 };
-
 
 } // namespace abstract
 } // namespace lart

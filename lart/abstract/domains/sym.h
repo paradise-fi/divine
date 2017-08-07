@@ -5,25 +5,26 @@
 
 namespace lart {
 namespace abstract {
-struct Symbolic : Common {
+
+struct Symbolic final : Common {
 
     Symbolic( llvm::Module & m );
 
-    virtual Constrain constrain( llvm::Value *, llvm::Value * /* constraint */ ) {
-        // TODO
-        return Constrain();
-    }
+    llvm::Value * process( llvm::CallInst *, std::vector< llvm::Value * > & ) override;
 
-    virtual llvm::Value * process( llvm::CallInst *, std::vector< llvm::Value * > & );
+    bool is( llvm::Type * ) override;
 
-    virtual bool is( llvm::Type * );
+    llvm::Type * abstract( llvm::Type * ) override;
 
-    virtual llvm::Type * abstract( llvm::Type * );
-
-    Domain::Value domain() const {
+    Domain::Value domain() const override {
         return Domain::Value::Symbolic;
     }
 
+    static bool isPresent( llvm::Module & m ) {
+        return m.getFunction( "__abstract_sym_load" ) != nullptr;
+    }
+
+private:
     llvm::Type * formula_type;
 };
 

@@ -6,29 +6,24 @@
 namespace lart {
 namespace abstract {
 
-struct TristateDomain : Common {
+struct TristateDomain final : Common {
 
     TristateDomain() = default;
 
-    virtual llvm::Value * process( llvm::CallInst *, std::vector< llvm::Value * > & );
+    llvm::Value * process( llvm::CallInst *, std::vector< llvm::Value * > & ) override;
 
-    virtual Constrain constrain( llvm::Value *, llvm::Value * /* constraint */ ) {
-        UNSUPPORTED_BY_DOMAIN
-    }
-
-    virtual bool is( llvm::Type * ) {
+    bool is( llvm::Type * ) override {
         return false;
     }
 
-    virtual llvm::Type * abstract( llvm::Type * ) {
+    llvm::Type * abstract( llvm::Type * ) override {
         UNSUPPORTED_BY_DOMAIN
     }
 
-    Domain::Value domain() const {
+    Domain::Value domain() const override {
         return Domain::Value::Tristate;
     }
 };
-
 
 } // namespace abstract
 } // namespace lart
