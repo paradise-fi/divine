@@ -260,7 +260,7 @@ int pthread_atfork( void ( *prepare )( void ), void ( *parent )( void ), void ( 
     return 0;
 }
 
-extern "C" void __run_atfork_handlers( ushort index ) noexcept {
+void __run_atfork_handlers( ushort index ) noexcept {
 
     auto invoke = []( ForkHandler h ){ if ( h ) h(); };
 

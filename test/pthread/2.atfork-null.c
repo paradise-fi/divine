@@ -16,5 +16,4 @@ int main ()
 
 	if(pid == 0)
 		pthread_exit(0);
-	else;
 }

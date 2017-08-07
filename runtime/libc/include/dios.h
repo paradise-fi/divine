@@ -88,6 +88,8 @@ _DiOS_ThreadHandle *__dios_get_process_threads() NOTHROW;
  */
 int __dios_hardware_concurrency() NOTHROW;
 
+void __run_atfork_handlers( unsigned short index ) NOTHROW;
+
 #define __dios_assert_v( x, msg ) do { \
         if ( !(x) ) { \
             __dios_trace( 0, "DiOS assert failed at %s:%d: %s", \
