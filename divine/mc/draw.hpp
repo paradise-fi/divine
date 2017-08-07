@@ -41,6 +41,7 @@ std::string draw( std::shared_ptr< vm::BitCode > bc, int distance, bool heap,
         ex.start();
 
     vm::dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
+    dbg.load( ex._ctx );
     vm::setup::boot( dbg );
     vm::Eval< decltype( dbg ), vm::value::Void > dbg_eval( dbg );
     dbg_eval.run();
