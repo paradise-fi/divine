@@ -1,4 +1,4 @@
-/* CC_OPTS: -std=c++11 */
+/* CC_OPTS: -std=c++14 -I$SRC_ROOT/bricks */
 #include <dios.h>
 #include <dios/core/scheduling.hpp>
 #include <cassert>
