@@ -51,18 +51,6 @@ struct ScalarType : public AbstractType {
         else
             return "lart." + domainName() + "." + baseName();
     }
-
-    static ScalarTypePtr make( Type * origin, DomainValue dom ) {
-        return std::make_shared< ScalarType >( origin, dom );
-    }
-
-    static ScalarTypePtr make( Type * origin, DomainPtr dom ) {
-        return std::make_shared< ScalarType >( origin, dom );
-    }
-
-    static ScalarTypePtr make( Type * abstract ) {
-        return std::make_shared< ScalarType >( abstract );
-    }
 };
 
 template< size_t bw >

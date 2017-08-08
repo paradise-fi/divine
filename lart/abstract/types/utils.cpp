@@ -17,9 +17,9 @@ namespace abstract {
 AbstractTypePtr getFromLLVM( Type * type ) {
     auto sty = llvm::cast< llvm::StructType >( stripPtr( type ) );
     if ( TypeName( sty ).base() != TypeBaseValue::Struct )
-        return ScalarType::make( type );
+        return AbstractType::make< ScalarType >( type );
     else
-        return ComposedType::make( type );
+        return AbstractType::make< ComposedType >( type );
 }
 
 AbstractTypePtr liftType( Type * type, DomainPtr dom ) {
@@ -28,10 +28,10 @@ AbstractTypePtr liftType( Type * type, DomainPtr dom ) {
         return getFromLLVM( type );
     return dom->match(
         [&] ( UnitDomain ) -> AbstractTypePtr {
-            return ScalarType::make( type, dom );
+            return AbstractType::make< ScalarType >( type, dom );
         },
         [&] ( ComposedDomain ) -> AbstractTypePtr {
-            return ComposedType::make( type, dom );
+            return AbstractType::make< ComposedType >( type, dom );
         } ).value();
 }
 

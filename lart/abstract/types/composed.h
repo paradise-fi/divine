@@ -83,17 +83,6 @@ struct ComposedType : public AbstractType {
         return _elements;
     }
 
-    static ComposedTypePtr make( Type * type, const DomainMap & dmap ) {
-        return std::make_shared< ComposedType >( type, dmap );
-    }
-
-    static ComposedTypePtr make( Type * type, DomainPtr dom ) {
-        return std::make_shared< ComposedType >( type, dom );
-    }
-
-    static ComposedTypePtr make( Type * abstract ) {
-        return std::make_shared< ComposedType >( abstract );
-    }
 private:
     void initElements( Type * type ) {
         auto sty = llvm::cast< StructType >( stripPtr( type ) );

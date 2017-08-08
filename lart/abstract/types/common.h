@@ -231,6 +231,7 @@ static bool isAbstract( Type * type ) {
     return false;
 }
 
+
 struct AbstractType {
     AbstractType( Type * origin, DomainPtr domain )
         : _origin( stripPtr( origin ) )
@@ -260,6 +261,20 @@ struct AbstractType {
     Type * origin() const { return _ptr ? _origin->getPointerTo() : _origin; }
     bool pointer() const { return _ptr; }
     bool isAbstract() { return ::lart::abstract::isAbstract( llvm() ); }
+
+    template< typename A, typename T, typename D >
+    static decltype( auto ) make( T && org, D && dom ) {
+        return std::make_shared< A >( std::forward< T >( org ), std::forward< D >( dom ) );
+    }
+
+    template< typename A, typename T >
+    static decltype( auto ) make( T && abstract ) {
+        return std::make_shared< A >( std::forward< T >( abstract ) );
+    }
+
+    Type * wrapPtr( Type * type ) const {
+        return _ptr ? type->getPointerTo() : type;
+    }
 
     friend bool operator==( const AbstractType & l, const AbstractType & r );
 private:

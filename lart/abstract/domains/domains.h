@@ -37,6 +37,7 @@ struct Domain;
 using DomainPtr = std::shared_ptr< Domain >;
 
 struct UnitDomain {
+    UnitDomain( DomainValue && value ) : value( value ) {}
     std::string name() const { return DomainTable[ value ]; }
     bool isAbstract() const { return value != DomainValue::LLVM; }
     DomainValue value;
@@ -68,10 +69,9 @@ struct Domain : ADomain {
         return apply( [] ( const auto & d ) { return d.isAbstract(); } ).value();
     }
 
-    static DomainPtr make( DomainValue val ) {
-        UnitDomain dom;
-        dom.value = val;
-        return std::make_shared< Domain >( dom );
+    template< typename Value >
+    static DomainPtr make( Value && val ) {
+        return std::make_shared< Domain >( std::forward< Value >( val ) );
     }
 
     static DomainPtr make( llvm::StructType * type ) {
@@ -93,8 +93,8 @@ struct Domain : ADomain {
         return make( llvm::cast< llvm::StructType >( type ), dmap );
     }
 
-    static DomainPtr make( Domain dom ) {
-        return std::make_shared< Domain >( dom );
+    static DomainPtr make( Domain && dom ) {
+        return std::make_shared< Domain >( std::forward< Domain >( dom ) );
     }
 };
 
