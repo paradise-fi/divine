@@ -2,11 +2,10 @@
 #pragma once
 
 #include <lart/abstract/domains/domains.h>
-#include <lart/abstract/domains/trivial.h>
 #include <lart/abstract/domains/zero.h>
 #include <lart/abstract/domains/sym.h>
 
-#include <lart/abstract/sbuilder.h>
+#include <lart/abstract/substituter.h>
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 
@@ -19,33 +18,32 @@ namespace abstract {
 
 struct Substitution : lart::Pass
 {
-    Substitution( Domain::Value domain ) : domain( domain ) {}
-
-    Substitution( Substitution && s ) = default;
+    Substitution() {}
 
     virtual ~Substitution() {}
 
     static PassMeta meta() {
-    	return passMetaC( "Substitution",
-                "Substitutes abstract values by concrete abstraction.",
-                []( llvm::ModulePassManager &mgr, std::string opt ) {
-                    auto dom = Domain::value( opt );
-                    if ( dom.isNothing() )
-                        throw std::runtime_error( "unknown abstraction type: " + opt );
-                    return mgr.addPass( Substitution( dom.value() ) );
-                } );
+	    return passMeta< Substitution >(
+            "Substitution",
+            "Substitutes abstract values by concrete abstraction." );
     }
 
     llvm::PreservedAnalyses run( llvm::Module & ) override;
 
 private:
-    void init( llvm::Module & );
+    void init( llvm::Module & m ) {
+        if ( Zero::isPresent( m ) )
+            subst.registerAbstraction( std::make_shared< Zero >( m ) );
+        if ( Symbolic::isPresent( m ) )
+            subst.registerAbstraction( std::make_shared< Symbolic >( m ) );
+    }
+
+
     void process( llvm::Value * );
 
     void changeReturn( llvm::Function * );
 
-    Domain::Value domain;
-    SubstitutionBuilder builder;
+    Substituter subst;
 };
 
 static inline PassMeta substitution_pass() {

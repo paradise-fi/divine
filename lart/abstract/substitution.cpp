@@ -51,7 +51,6 @@ void removeInvalidAttributes( llvm::Function* fn ) {
 
 llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
     init( m );
-
     auto functions = query::query( m )
         .map( query::refToPtr )
         .filter( []( llvm::Function * f ) {
@@ -64,7 +63,7 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
     // TODO solve returns of functions without arguments
     // = move changing of returns to here
     for ( const auto & fn : functions )
-        builder.process( fn );
+        subst.process( fn );
 
     auto allocas = identify( m, CallDomainFilter( "alloca" ) );
     auto lifts = identify( m, CallDomainFilter( "lift" ) );
@@ -80,7 +79,7 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
         assert( inst );
 
         llvm::Function * fn = inst->getParent()->getParent();
-        if ( builder.stored( fn ) )
+        if ( subst.visited( fn ) )
             continue;
         funToValMap[ fn ].push_back( inst );
     }
@@ -100,7 +99,7 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
                             && ! intrinsic::is( fn );
                     } )
                     .filter( [&]( llvm::Function * fn ) {
-                        return !builder.stored( fn )
+                        return !subst.visited( fn )
                              || funToValMap.count( fn );
                     } ).freeze();
 
@@ -108,31 +107,8 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
 
     for ( auto fn : retorder )
         changeReturn( fn );
-    builder.clean( m );
-
+    subst.clean( m );
     return llvm::PreservedAnalyses::none();
-}
-
-void Substitution::init( llvm::Module & m ) {
-    std::unique_ptr< Common > abstraction;
-    switch ( domain ) {
-        case Domain::Value::Trivial: {
-            abstraction = std::make_unique< Trivial >();
-            break;
-        }
-        case Domain::Value::Zero: {
-            abstraction = std::make_unique< Zero >( m );
-            break;
-        }
-        case Domain::Value::Symbolic: {
-            abstraction = std::make_unique< Symbolic >( m );
-            break;
-        }
-        default:
-            UNREACHABLE( "Trying to use unsupported domain in substitution." );
-    }
-
-    builder = SubstitutionBuilder( std::move( abstraction ) );
 }
 
 void Substitution::process( llvm::Value * val ) {
@@ -149,19 +125,19 @@ void Substitution::process( llvm::Value * val ) {
     auto deps = analysis::postorder( Values{ val }, succs );
     for ( auto dep : lart::util::reverse( deps ) )
         if( auto i = llvm::dyn_cast< llvm::Instruction >( dep ) )
-            builder.process( i );
+            subst.process( i );
 }
 
 void Substitution::changeReturn( llvm::Function * fn ) {
-    builder.clean( fn );
-    if ( !builder.stored( fn ) ) {
+    subst.clean( fn );
+    if ( !subst.visited( fn ) ) {
         auto newfn = changeReturnType( fn,
-             builder.abstraction->abstract( fn->getReturnType() ) );
-        builder.store( fn, newfn );
+             subst.process( fn->getReturnType() ) );
+        subst.store( fn, newfn );
     }
 
     for ( auto user : fn->users() ) {
-        builder.changeCallFunction( llvm::cast< llvm::CallInst >( user ) );
+        subst.changeCallFunction( llvm::cast< llvm::CallInst >( user ) );
         for ( auto val : user->users() )
             process( val );
     }

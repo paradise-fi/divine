@@ -166,6 +166,7 @@ private:
     MaybeBase _base;
     // StructElements elements;
 };
+
 // Base class representing abstract type
 //
 // Stores:
@@ -244,8 +245,9 @@ static inline Maybe< std::string > basename( const StructType * type ) {
 
 static inline bool isAbstract( Type * type ) {
     if ( auto st = llvm::dyn_cast< llvm::StructType >( stripPtr( type ) ) )
-        if ( auto dom = TypeName( st ).domain() )
-            return dom.value() != Domain::Value::LLVM;
+        if ( st->hasName() )
+            if ( auto dom = TypeName( st ).domain() )
+                return dom.value() != Domain::Value::LLVM;
     return false;
 }
 

@@ -43,18 +43,8 @@ namespace abstract {
     PassMeta bcp_pass();
     PassMeta substitution_pass();
 
-    PassMeta full_abstraction_pass() {
-    return passMetaC< Abstraction, Substitution >( "abstraction", "",
-        []( llvm::ModulePassManager &mgr, std::string opt ) {
-            Abstraction::meta().create( mgr, "" );
-            AddAssumes::meta().create( mgr, "" );
-            BCP::meta().create( mgr, "" );
-            Substitution::meta().create( mgr, opt );
-        } );
-    };
-
     inline std::vector< PassMeta > passes() {
-        return { full_abstraction_pass() };
+        return { abstraction_pass(), assume_pass(), bcp_pass(), substitution_pass() };
     }
 }
 
@@ -164,7 +154,6 @@ ModulePtr test_bcp( const std::string & src ) {
 }
 
 ModulePtr test_substitution( const std::string & src,
-                             const std::string & opt,
                              std::vector< std::string > & link,
                              std::vector< std::string > & headers )
 {
@@ -174,31 +163,21 @@ ModulePtr test_substitution( const std::string & src,
     abstract::abstraction_pass().create( manager, "" );
     abstract::assume_pass().create( manager, "" );
     abstract::bcp_pass().create( manager, "" );
-    abstract::substitution_pass().create( manager, opt );
+    abstract::substitution_pass().create( manager, "" );
 
     manager.run( *m );
 
     return m;
 }
 
-ModulePtr test_zero_substitution( const std::string & src ) {
-    const std::string opt = "zero";
-    std::vector< std::string > link = { opt + ".cpp", "tristate.cpp" };
-    std::vector< std::string > headers = { opt + ".h", "tristate.h", "common.h" };
-    return test_substitution( src, opt, link, headers );
-}
-
-ModulePtr test_symbolic( const std::string & src ) {
-    const std::string opt = "sym";
-    std::vector< std::string > link = { opt + ".cpp", "tristate.cpp", "formula.cpp" };
-    std::vector< std::string > headers = { opt + ".h", "tristate.h", "common.h", "formula.h" };
-    return test_substitution( src, opt, link, headers );
+ModulePtr test_symbolic_substitution( const std::string & src ) {
+    std::vector< std::string > link = { "sym.cpp", "tristate.cpp", "formula.cpp" };
+    std::vector< std::string > headers = { "sym.h", "tristate.h", "common.h", "formula.h" };
+    return test_substitution( src, link, headers );
 }
 
 namespace {
 const std::string annotation =
-                  "#define __test __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
-const std::string symbolic =
                   "#define __sym __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
 
 bool containsUndefValue( llvm::Function &f ) {
@@ -251,7 +230,7 @@ struct Abstraction {
 
     TEST( create ) {
         auto s = R"(int main() {
-                        __test int abs;
+                        __sym int abs;
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
@@ -261,9 +240,9 @@ struct Abstraction {
 
     TEST( types ) {
         auto s = R"(int main() {
-                        __test short abs_s;
-                        __test int abs;
-                        __test long abs_l;
+                        __sym short abs_s;
+                        __sym int abs;
+                        __sym long abs_l;
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
@@ -277,7 +256,7 @@ struct Abstraction {
 
     TEST( binary_ops ) {
         auto s = R"(int main() {
-                        __test int abs;
+                        __sym int abs;
                         int a = abs + 42;
                         int b = abs + a;
                         return 0;
@@ -288,8 +267,8 @@ struct Abstraction {
 
     TEST( phi ) {
         auto s = R"(int main() {
-                        __test int x = 0;
-                        __test int y = 42;
+                        __sym int x = 0;
+                        __sym int y = 42;
                         int z = x || y;
                         return 0;
                     })";
@@ -307,7 +286,7 @@ struct Abstraction {
     TEST( call_simple ) {
         auto s = R"(int call( int arg ) { return arg; }
                     int main() {
-                        __test int abs;
+                        __sym int abs;
                         int ret = call( abs );
                         return 0;
                     })";
@@ -328,7 +307,7 @@ struct Abstraction {
     TEST( call_twice ) {
         auto s = R"(int call( int arg ) { return arg; }
                     int main() {
-                        __test int abs;
+                        __sym int abs;
                         int ret = call( abs );
                         ret = call( ret );
                         return 0;
@@ -350,7 +329,7 @@ struct Abstraction {
     TEST( call_independent ) {
         auto s = R"(int call( int arg ) { return arg; }
                     int main() {
-                        __test int abs;
+                        __sym int abs;
                         int ret = call( abs );
                         ret = call( 10 );
                         return 0;
@@ -374,7 +353,7 @@ struct Abstraction {
     TEST( call_two_args_mixed ) {
         auto s = R"(int call( int a, int b ) { return a + b; }
                     int main() {
-                        __test int abs;
+                        __sym int abs;
                         int normal = 10;
                         int ret = call( abs, normal );
                         return 0;
@@ -397,8 +376,8 @@ struct Abstraction {
     TEST( call_two_args_abstract ) {
         auto s = R"(int call( int a, int b ) { return a + b; }
                     int main() {
-                        __test int a;
-                        __test int b;
+                        __sym int a;
+                        __sym int b;
                         int ret = call( a, b );
                         return 0;
                     })";
@@ -421,7 +400,7 @@ struct Abstraction {
     TEST( call_preserve_original_function ) {
         auto s = R"(int call( int a ) { return a; }
                     int main() {
-                        __test int a;
+                        __sym int a;
                         call( a );
                         call( 0 );
                         return 0;
@@ -458,8 +437,8 @@ struct Abstraction {
     TEST( call_two_args_multiple_times ) {
         auto s = R"(int call( int a, int b ) { return a + b; }
                     int main() {
-                        __test int a;
-                        __test int b;
+                        __sym int a;
+                        __sym int b;
                         int ret, c = 0, d = 1;
                         ret = call( a, b );
                         ret = call( a, c );
@@ -500,7 +479,7 @@ struct Abstraction {
         auto s = R"(int call1( int x ) { return x; }
                     int call2( int x ) { return call1( x ); }
                     int main() {
-                        __test int x;
+                        __sym int x;
                         call2( x );
                         call1( x );
                         return 0;
@@ -524,7 +503,7 @@ struct Abstraction {
     TEST( propagate_from_call_not_returning_abstract ) {
         auto s = R"(int call( int x ) { return 10; }
                     int main() {
-                        __test int x;
+                        __sym int x;
                         int ret = call( x );
                         ret = call( ret );
                         return 0;
@@ -549,7 +528,7 @@ struct Abstraction {
 
     TEST( call_propagate_1 ) {
         auto s = R"(int call() {
-                        __test int x;
+                        __sym int x;
                         return x;
                     }
                     int main() {
@@ -568,7 +547,7 @@ struct Abstraction {
 
     TEST( call_propagate_back_multiple_times ) {
         auto s = R"(int nondet() {
-                        __test int x;
+                        __sym int x;
                         return x;
                     }
                     int add() {
@@ -607,7 +586,7 @@ struct Abstraction {
                         return x * x;
                     }
                     int call1() {
-                        __test int x;
+                        __sym int x;
                         return x;
                     }
                     int main() {
@@ -635,7 +614,7 @@ struct Abstraction {
                         return call3( x ) * call4( x );
                     }
                     int call1() {
-                        __test int x;
+                        __sym int x;
                         return x;
                     }
                     int main() {
@@ -665,7 +644,7 @@ struct Abstraction {
 
     TEST( tristate ) {
         auto s = R"(int main() {
-                        __test int x;
+                        __sym int x;
                         if ( x > 0 )
                             return 42;
                         else
@@ -686,7 +665,7 @@ struct Abstraction {
 
     TEST( lift ) {
         auto s = R"(int main() {
-                        __test int x;
+                        __sym int x;
                         return x + 42;
                     })";
         auto m = test_abstraction( annotation + s );
@@ -699,8 +678,8 @@ struct Abstraction {
 
     TEST( lift_replace ) {
         auto s = R"(int main() {
-                        __test int x;
-                        __test int y;
+                        __sym int x;
+                        __sym int y;
                         return x + y;
                     })";
         auto m = test_abstraction( annotation + s );
@@ -710,7 +689,7 @@ struct Abstraction {
 
     TEST( switch_test ) {
         auto s = R"(int main() {
-                        __test int x;
+                        __sym int x;
                         int i = 0;
                         switch( x ) {
                             case 0: i = x; break;
@@ -725,11 +704,11 @@ struct Abstraction {
 
     TEST( loop_test ) {
         auto s = R"(int main() {
-                        __test int x;
+                        __sym int x;
                         for ( int i = 0; i < x; ++i )
                             for ( int j = 0; j < x; ++j )
                                 for ( int k = 0; k < x; ++k ) {
-                                    __test int y = i * j *k;
+                                    __sym int y = i * j *k;
                                 }
                     })";
         auto m = test_abstraction( annotation + s );
@@ -742,7 +721,7 @@ struct Abstraction {
                       unsigned N = 1000;
                       unsigned long long Q = 10000000000ULL;
                       unsigned long long rem = 0;
-                      __test unsigned i;
+                      __sym unsigned i;
                       for (i = 1; i < N; i++) {
                         unsigned long long r = 1;
                         unsigned j;
@@ -768,7 +747,7 @@ struct Abstraction {
                             return call( x - 1 );
                     }
                     int main() {
-                        __test unsigned x;
+                        __sym unsigned x;
                         call( x );
                         return 0;
                     })";
@@ -808,7 +787,7 @@ struct Abstraction {
                         }
                     }
                     int main() {
-                        __test unsigned x;
+                        __sym unsigned x;
                         call( x, 100 );
                         return 0;
                     })";
@@ -850,7 +829,7 @@ struct Abstraction {
                         else return call(x - 1, y - 1);
                     }
                     int main() {
-                        __test unsigned x;
+                        __sym unsigned x;
                         call( 100, x );
                         return 0;
                     })";
@@ -883,7 +862,7 @@ struct Abstraction {
         auto s = R"(struct S { int x; };
 
                     int main() {
-                        __test int x;
+                        __sym int x;
                         S s;
                         s.x = x;
                     })";
@@ -896,7 +875,7 @@ struct Abstraction {
         auto s = R"(struct S { int x, y, z; };
 
                     int main() {
-                        __test int x;
+                        __sym int x;
                         S s;
                         s.y = x;
                     })";
@@ -950,7 +929,7 @@ struct Assume {
 
     TEST( tristate ) {
         auto s = R"(int main() {
-                        __test int x;
+                        __sym int x;
                         if ( x > 0 )
                             return 42;
                         else
@@ -972,7 +951,7 @@ struct Assume {
 
     TEST( loop ) {
         auto s = R"(int main() {
-                        __test int abs;
+                        __sym int abs;
                         while( abs ) {
                             ++abs;
                         }
@@ -997,8 +976,8 @@ struct Assume {
 struct BCP {
     TEST( tristate ) {
         auto s = R"(int call() {
-                        __test int x;
-                        __test int y;
+                        __sym int x;
+                        __sym int y;
                         if ( x == 0 ) {
                             y = x;
                         }
@@ -1017,217 +996,45 @@ struct BCP {
 struct Substitution {
     TEST( simple ) {
         auto s = "int main() { return 0; }";
-        test_zero_substitution( annotation + s );
+        test_symbolic_substitution( annotation + s );
     }
 
     TEST( create ) {
         auto s = R"(int main() {
-                        __test int abs;
+                        __sym int abs;
                         return 0;
                     })";
-        auto m = test_zero_substitution( annotation + s );
-        auto f = m->getFunction( "__abstract_zero_alloca" );
-        ASSERT( f->hasNUses( 2 ) );
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( types ) {
-        auto s = R"(int main() {
-                        __test short abs_s;
-                        __test int abs;
-                        __test long abs_l;
-                        return 0;
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-        auto alloca = m->getFunction( "__abstract_zero_alloca" );
-        ASSERT( alloca->hasNUses( 4 ) );
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( binary_ops ) {
-        auto s = R"(int main() {
-                        __test int abs;
-                        int a = abs + 42;
-                        int b = abs + a;
-                        return 0;
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-        auto add = m->getFunction( "__abstract_zero_add" );
-        ASSERT( add->hasNUses( 3 ) );
-
-        auto lift = m->getFunction( "__abstract_zero_lift_i32" )->user_begin();
-        ASSERT( llvm::isa< llvm::ConstantInt >( lift->getOperand( 0 ) ) );
-        ASSERT_EQ( add->user_begin()->getOperand( 1 ), *lift );
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( tristate ) {
-        auto s = R"(int main() {
-                        __test int x;
-                        if ( x > 0 )
-                            return 42;
-                        else
-                            return 0;
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-
-        auto icmp = m->getFunction( "__abstract_zero_icmp_sgt" );
-        ASSERT_EQ( icmp->getReturnType(),
-                   m->getTypeByName( "struct.abstract::Zero" )->getPointerTo() );
-        auto to_tristate = m->getFunction( "__abstract_zero_bool_to_tristate" );
-        ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
-        auto lower = llvm::cast< llvm::Instruction >(
-                     *m->getFunction( "__abstract_tristate_lower" )->user_begin() );
-        ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
-
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( phi ) {
-        auto s = R"(int main() {
-                        __test int x = 0;
-                        __test int y = 42;
-                        int z = x || y;
-                        return 0;
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-        auto nodes = query::query( *m ).flatten().flatten()
-                           .map( query::refToPtr )
-                           .map( query::llvmdyncast< llvm::PHINode > )
-                           .filter( query::notnull )
-                           .freeze();
-
-        ASSERT_EQ( nodes.size(), 1 );
-        ASSERT_EQ( nodes[0]->getNumIncomingValues(), 2 );
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( switch_test ) {
-        auto s = R"(int main() {
-                        __test int x;
-                        int i = 0;
-                        switch( x ) {
-                            case 0: i = x; break;
-                            case 1: i = (-x); break;
-                            case 2: i = 42; break;
-                        }
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( lift ) {
-        auto s = R"(int main() {
-                        __test int x;
-                        return x + 42;
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-        auto lift = m->getFunction( "__abstract_zero_lift_i32" )->user_begin();
-        auto val = llvm::cast< llvm::ConstantInt >( lift->getOperand( 0 ) );
-        ASSERT( val->equalsInt( 42 ) );
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( loop_test ) {
-        auto s = R"(int main() {
-                        __test int x;
-                        for ( int i = 0; i < x; ++i )
-                            for ( int j = 0; j < x; ++j )
-                                for ( int k = 0; k < x; ++k ) {
-                                    __test int y = i * j *k;
-                                }
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( call_propagate_ones ) {
-        auto s = R"(int call() {
-                        __test int x;
-                        return x;
-                    }
-                    int main() {
-                        int ret = call();
-                        return 0;
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-        auto abstract_call = m->getFunction( "_Z4callv.8.9" );
-        ASSERT( abstract_call );
-        auto alloca = m->getFunction( "__abstract_zero_alloca" );
-        ASSERT_EQ( abstract_call->getReturnType()
-                 , alloca->getReturnType()->getPointerElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( call_propagate_deeper_1 ) {
-        auto s = R"(int call2( int x ) {
-                        return x * x;
-                    }
-                    int call() {
-                        __test int x;
-                        return x;
-                    }
-                    int main() {
-                        int ret = call();
-                        call2( ret );
-                        return 0;
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-        //TODO asserts
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-
-    TEST( call_propagate_deeper_2 ) {
-        auto s = R"(
-                    int call4( int x ) { return x; }
-                    int call3( int x ) { return x; }
-                    int call2( int x ) {
-                        return call3( x ) * call4( x );
-                    }
-                    int call() {
-                        __test int x;
-                        return x;
-                    }
-                    int main() {
-                        int ret = call();
-                        call2( ret );
-                        return 0;
-                    })";
-        auto m = test_zero_substitution( annotation + s );
-        //TODO asserts
-        ASSERT( ! containsUndefValue( *m ) );
-    }
-};
-
-struct Symbolic {
-    TEST( create ) {
-        auto s = R"(int main() {
-                        __sym int x;
-                        return 0;
-                    })";
-        auto m = test_symbolic( symbolic + s );
+        auto m = test_symbolic_substitution( annotation + s );
         auto f = m->getFunction( "__abstract_sym_alloca" );
         ASSERT( f->hasNUses( 2 ) );
     }
 
     TEST( types ) {
         auto s = R"(int main() {
-                        __sym short x;
-                        __sym int y;
-                        __sym long z;
+                        __sym short abs_s;
+                        __sym int abs;
+                        __sym long abs_l;
                         return 0;
                     })";
-        auto m = test_symbolic( symbolic + s );
+        auto m = test_symbolic_substitution( annotation + s );
         auto alloca = m->getFunction( "__abstract_sym_alloca" );
-        std::set< int > bws;
-        for ( auto a : alloca->users() ) {
-            if( auto call = llvm::dyn_cast< llvm::CallInst >( a ) )
-                bws.insert(
-                llvm::cast< llvm::ConstantInt >( call->getArgOperand( 0 ) )->getSExtValue() );
-        }
-        std::set< int > expected{16, 32, 64};
-        ASSERT( bws == expected );
         ASSERT( alloca->hasNUses( 4 ) );
+    }
+
+    TEST( binary_ops ) {
+        auto s = R"(int main() {
+                        __sym int abs;
+                        int a = abs + 42;
+                        int b = abs + a;
+                        return 0;
+                    })";
+        auto m = test_symbolic_substitution( annotation + s );
+        auto add = m->getFunction( "__abstract_sym_add" );
+        ASSERT( add->hasNUses( 3 ) );
+
+        auto lift = m->getFunction( "__abstract_sym_lift" )->user_begin();
+        ASSERT( llvm::isa< llvm::ConstantInt >( lift->getOperand( 0 ) ) );
+        ASSERT_EQ( add->user_begin()->getOperand( 1 ), *lift );
     }
 
     TEST( tristate ) {
@@ -1238,7 +1045,7 @@ struct Symbolic {
                         else
                             return 0;
                     })";
-        auto m = test_symbolic( symbolic + s );
+        auto m = test_symbolic_substitution( annotation + s );
         auto icmp = m->getFunction( "__abstract_sym_icmp_sgt" );
         ASSERT_EQ( icmp->getReturnType(),
                    m->getTypeByName( "union.sym::Formula" )->getPointerTo() );
@@ -1249,7 +1056,122 @@ struct Symbolic {
         ASSERT_EQ( lower->getOperand( 0 ), *to_tristate->user_begin() );
     }
 
-    TEST( call_propagate ) {
+    TEST( phi ) {
+        auto s = R"(int main() {
+                        __sym int x = 0;
+                        __sym int y = 42;
+                        int z = x || y;
+                        return 0;
+                    })";
+        auto m = test_symbolic_substitution( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto nodes = query::query( *main ).flatten()
+                           .map( query::refToPtr )
+                           .map( query::llvmdyncast< llvm::PHINode > )
+                           .filter( query::notnull )
+                           .freeze();
+
+        ASSERT_EQ( nodes.size(), 1 );
+        ASSERT_EQ( nodes[0]->getNumIncomingValues(), 2 );
+    }
+
+    TEST( switch_test ) {
+        auto s = R"(int main() {
+                        __sym int x;
+                        int i = 0;
+                        switch( x ) {
+                            case 0: i = x; break;
+                            case 1: i = (-x); break;
+                            case 2: i = 42; break;
+                        }
+                    })";
+        auto m = test_symbolic_substitution( annotation + s );
+        //TODO asserts
+    }
+
+    TEST( lift_1 ) {
+        auto s = R"(int main() {
+                        __sym int x;
+                        return x + 42;
+                    })";
+        auto m = test_symbolic_substitution( annotation + s );
+        auto lift = m->getFunction( "__abstract_sym_lift" )->user_begin();
+        auto val = llvm::cast< llvm::ConstantInt >( lift->getOperand( 0 ) );
+        ASSERT( val->equalsInt( 42 ) );
+    }
+
+    TEST( lift_2 ) {
+		auto s = R"(
+					int main() {
+						__sym int x;
+						x %= 5;
+						while( true )
+							x = (x + 1) % 5;
+					})";
+		test_symbolic_substitution( annotation + s );
+        //TODO asserts
+	}
+
+    TEST( loop_1 ) {
+        auto s = R"(
+                    int main() {
+                        __sym int val;
+						do {
+						   val++;
+						} while(val % 6 != 0);
+                    })";
+        auto m = test_symbolic_substitution( annotation + s );
+        //TODO asserts
+	}
+
+    TEST( loop_2 ) {
+        auto s = R"(int main() {
+                        __sym int x;
+                        for ( int i = 0; i < x; ++i )
+                            for ( int j = 0; j < x; ++j )
+                                for ( int k = 0; k < x; ++k ) {
+                                    __sym int y = i * j *k;
+                                }
+                    })";
+        auto m = test_symbolic_substitution( annotation + s );
+        //TODO asserts
+    }
+
+    TEST( call_propagate_ones ) {
+        auto s = R"(int call() {
+                        __sym int x;
+                        return x;
+                    }
+                    int main() {
+                        int ret = call();
+                        return 0;
+                    })";
+        auto m = test_symbolic_substitution( annotation + s );
+        auto abstract_call = m->getFunction( "_Z4callv.20.21" );
+        ASSERT( abstract_call );
+        auto alloca = m->getFunction( "__abstract_sym_alloca" );
+        ASSERT_EQ( abstract_call->getReturnType()
+                 , alloca->getReturnType()->getPointerElementType() );
+    }
+
+    TEST( call_propagate_deeper_1 ) {
+        auto s = R"(int call2( int x ) {
+                        return x * x;
+                    }
+                    int call() {
+                        __sym int x;
+                        return x;
+                    }
+                    int main() {
+                        int ret = call();
+                        call2( ret );
+                        return 0;
+                    })";
+        auto m = test_symbolic_substitution( annotation + s );
+        //TODO asserts
+    }
+
+    TEST( call_propagate_deeper_2 ) {
         auto s = R"(
                     int call4( int x ) { return x; }
                     int call3( int x ) { return x; }
@@ -1265,30 +1187,9 @@ struct Symbolic {
                         call2( ret );
                         return 0;
                     })";
-        test_symbolic( symbolic + s );
+        auto m = test_symbolic_substitution( annotation + s );
+        //TODO asserts
     }
-
-    TEST( loop ) {
-        auto s = R"(
-                    int main() {
-                   		__sym int val;
-						do {
-						   val++;
-						} while(val % 6 != 0);
-                    })";
-        test_symbolic( symbolic + s );
-	}
-
-	TEST( lift ) {
-		auto s = R"(
-					int main() {
-						__sym int x;
-						x %= 5;
-						while( true )
-							x = (x + 1) % 5;
-					})";
-		test_symbolic( symbolic + s );
-	}
 
 };
 

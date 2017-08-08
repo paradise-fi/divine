@@ -61,6 +61,12 @@ struct Driver {
         pass.create( manager, opt );
     }
 
+    void setup( std::vector< PassMeta > passes, std::string opt = "" ) {
+        for ( auto pass : passes ) {
+            pass.create( manager, opt );
+        }
+    }
+
     bool addPass( std::string n, std::string opt )
     {
         for ( auto pass : passes() ) {
