@@ -9,6 +9,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <lart/abstract/types/common.h>
+#include <lart/abstract/types/composed.h>
 #include <lart/abstract/domains/common.h>
 
 namespace lart {
@@ -53,6 +55,7 @@ private:
     void substituteAbstractIntrinsic( llvm::CallInst * );
     void substitutePhi( llvm::PHINode * );
     void substituteSelect( llvm::SelectInst * );
+    void substituteGEP( llvm::GetElementPtrInst * );
     void substituteBranch( llvm::BranchInst * );
     void substituteCall( llvm::CallInst * );
     void substituteCast( llvm::CastInst * );

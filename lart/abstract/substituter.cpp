@@ -46,6 +46,9 @@ void Substituter::process( llvm::Value * val ) {
         [&]( llvm::ReturnInst * i ) {
             substituteReturn( i );
         },
+        [&]( llvm::GetElementPtrInst * i ) {
+            substituteGEP( i );
+        },
         [&]( llvm::Instruction *i ) {
             std::cerr << "ERR: unknown instruction: ";
             i->dump();
@@ -204,6 +207,16 @@ void Substituter::substituteReturn( llvm::ReturnInst * ret ) {
         llvm::IRBuilder<> irb( ret );
         processedValues[ ret ] = irb.CreateRet( val->second );
     }
+}
+
+void Substituter::substituteGEP( llvm::GetElementPtrInst * gep ) {
+    llvm::IRBuilder<> irb( gep );
+    auto op = gep->getPointerOperand();
+    assert( isAbstract( op->getType() ) );
+    auto val = processedValues[ op ];
+    std::vector< llvm::Value * > idxs = { gep->idx_begin(), gep->idx_end() };
+    auto type = val->getType()->getScalarType()->getPointerElementType();
+    processedValues[ gep ] = irb.CreateGEP( type, processedValues[ op ], idxs, gep->getName() );
 }
 
 void Substituter::clean( llvm::Function * fn ) {
