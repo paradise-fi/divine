@@ -1,5 +1,5 @@
 // -*- C++ -*- (c) 2015 Petr Rockai <me@mornfall.net>
-//             (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
+//             (c) 2015,2017 Vladimír Štill <xstill@fi.muni.cz>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/Pass.h>
@@ -23,10 +23,14 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 #include <lart/support/cleanup.h>
+#include <lart/support/context.hpp>
+#include <lart/support/error.h>
 #include <runtime/abstract/weakmem.h>
 
 namespace lart {
 namespace weakmem {
+
+using namespace std::literals;
 
 using LLVMFunctionSet = std::unordered_set< llvm::Function * >;
 
@@ -278,18 +282,21 @@ struct Substitute {
                 } );
     }
 
-    void transformFree( llvm::Function *free ) {
-        ASSERT( free );
-        auto &ctx = free->getParent()->getContext();
-        auto calls = query::query( free->users() )
+    auto getCallSites( llvm::Function *fn ) {
+        return query::query( fn->users() )
                     .filter( query::is< llvm::CallInst > || query::is< llvm::InvokeInst > )
                     .filter( [&]( llvm::User *i ) {
                         return _bypass.count( llvm::cast< llvm::Instruction >( i )->getParent()->getParent() ) == 0;
                     } )
                     .map( []( llvm::User *i ) { return llvm::CallSite( i ); } )
                     .freeze();
+    }
 
-        for ( auto &cs : calls ) {
+    void transformFree( llvm::Function *free ) {
+        ASSERT( free );
+        auto &ctx = free->getParent()->getContext();
+
+        for ( auto &cs : getCallSites( free ) ) {
             std::vector< llvm::Value * > args;
             args.emplace_back( llvm::ConstantInt::get( llvm::Type::getInt32Ty( ctx ), 1 ) );
             args.emplace_back( cs.getArgOperand( 0 ) );
@@ -297,7 +304,26 @@ struct Substitute {
         }
     }
 
-    void run( llvm::Module &m ) {
+    void transformResize( llvm::Function *resize ) {
+        ASSERT( resize );
+        auto i32 = llvm::IntegerType::getInt32Ty( resize->getParent()->getContext() );
+
+        for ( auto &cs : getCallSites( resize ) ) {
+            std::vector< llvm::Value * > args;
+            llvm::IRBuilder<> irb( cs.getInstruction() );
+            args.push_back( cs.getArgOperand( 0 ) );
+            auto size = cs.getArgOperand( 1 );
+            if ( size->getType() != i32 ) {
+                args.push_back( irb.CreateIntCast( size, i32, false ) );
+            } else {
+                args.push_back( size );
+            }
+            irb.CreateCall( _resize, args );
+        }
+    }
+
+    void run( llvm::Module &m, context::Context &lctx )
+    {
         auto i32 = llvm::IntegerType::getInt32Ty( m.getContext() );
         if ( _bufferSize > 0 ) {
             auto bufSize = llvm::ConstantInt::getSigned( i32, _bufferSize );
@@ -307,33 +333,60 @@ struct Substitute {
 
         llvm::DataLayout dl( &m );
 
-        _mask = m.getFunction( "__divine_interrupt_mask" );
-        _unmask = m.getFunction( "__divine_interrupt_unmask" );
-        ASSERT( _mask ); ASSERT( _unmask );
+        auto get = [&m]( const char *n ) {
+            auto *f = m.getFunction( n );
+            ENSURE_LLVM( f, n, " is null" );
+            return f;
+        };
 
-        _store = m.getFunction( "__lart_weakmem_store" );
-        _load = m.getFunction( "__lart_weakmem_load" );
-        _fence = m.getFunction( "__lart_weakmem_fence" );
-        _sync = m.getFunction( "__lart_weakmem_sync" );
-        _cleanup = m.getFunction( "__lart_weakmem_cleanup" );
-        ASSERT( _store ); ASSERT( _load ); ASSERT( _fence ); ASSERT( _sync ); ASSERT( _cleanup );
+        _store = get( "__lart_weakmem_store" );
+        _load = get( "__lart_weakmem_load" );
+        _fence = get( "__lart_weakmem_fence" );
+        _sync = get( "__lart_weakmem_sync" );
+        _cleanup = get( "__lart_weakmem_cleanup" );
+        _resize = get( "__lart_weakmem_resize" );
+        _memmove = get( "memmove" );
+        _memcpy = get( "memcpy" );
+        _memset = get( "memset" );
+        auto flusher = get( "__lart_weakmem_flusher_main" );
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
-        transformMemManip( {
-                std::make_tuple( &_memmove, &_wmemmove, m.getFunction( "__lart_weakmem_memmove" ) ),
-                std::make_tuple( &_memcpy, &_wmemcpy,  m.getFunction( "__lart_weakmem_memcpy" ) ),
-                std::make_tuple( &_memset, &_wmemset, m.getFunction( "__lart_weakmem_memset" ) ) } );
+        auto inteface = { _store, _load, _fence, _sync, _cleanup, _resize, flusher };
+        for ( auto i : inteface ) {
+            _cloneMap.emplace( i, i );
+        }
 
-        processAnnos( m );
+        for ( auto i : inteface ) {
+            cloneCalleesRecursively( i, _cloneMap,
+                 [&]( auto &fn ) { return !lctx.isInterpreterHypercall( fn ); },
+                 []( auto & ) { return nullptr; } );
+        }
 
-        transformFree( m.getFunction( "__divine_free" ) );
+        using P = std::pair< llvm::Function *, llvm::Function ** >;
+        for ( auto p : { P{ _memmove, &_scmemmove },
+                         P{ _memcpy, &_scmemcpy },
+                         P{ _memset, &_scmemset } } )
+        {
+            *p.second = cloneFunctionRecursively( p.first, _cloneMap,
+                             [&]( auto &fn ) { return !lctx.isInterpreterHypercall( fn ); },
+                             []( auto & ) { return nullptr; } );
+        }
 
-        for ( auto &f : m )
+        for ( auto p : _cloneMap ) {
+            _bypass.emplace( p.second );
+        }
+
+        transformFree( lctx.getFreeFn() );
+        if ( auto *resize = lctx.getResizeFn() )
+            transformResize( resize );
+
+        for ( auto &f : m ) {
             if ( _bypass.count( &f ) )
                 transformBypass( f );
             else
-                transformWeak( f, dl );
+                transformWeak( f, dl, lctx );
+        }
 
         if ( _minMemOrd != MemoryOrder::Unordered ) {
             if ( auto min = llvm::dyn_cast< llvm::GlobalVariable >( m.getOrInsertGlobal( "__lart_weakmem_min_ordering", i32 ) ) )
@@ -345,11 +398,12 @@ struct Substitute {
 
     void transformMemManip( std::initializer_list< std::tuple< llvm::Function **, llvm::Function **, llvm::Function * > > what )
     {
+        // TODO: hanlde calls from these functions
         for ( auto p : what ) {
-            ASSERT( std::get< 2 >( p ) );
-            _bypass.insert( *std::get< 0 >( p ) = std::get< 2 >( p ) );
-
-            *std::get< 1 >( p ) = memFn( std::get< 2 >( p ), "_weak" );
+            auto *orig = std::get< 2 >( p );
+            ASSERT( orig ); // TODO xxx
+            *std::get< 1 >( p ) = orig;
+            _bypass.insert( *std::get< 0 >( p ) = memFn( orig, "lart.weakmem.strong."s + orig->getName().str() ) );
         }
     }
 
@@ -363,52 +417,6 @@ struct Substitute {
 
     std::string parseTag( std::string str ) {
         return str.substr( tagNamespace.size() );
-    }
-
-    template< typename Yield >
-    void forAnnos( llvm::Module &m, Yield yield ) {
-        auto annos = m.getNamedGlobal( "llvm.global.annotations" );
-        ASSERT( annos );
-        auto a = llvm::cast< llvm::ConstantArray >( annos->getOperand(0) );
-        for ( int i = 0; i < int( a->getNumOperands() ); i++ ) {
-            auto e = llvm::cast< llvm::ConstantStruct >( a->getOperand(i) );
-            if ( auto fn = llvm::dyn_cast< llvm::Function >( e->getOperand(0)->getOperand(0) ) ) {
-                std::string anno = llvm::cast< llvm::ConstantDataArray >(
-                            llvm::cast< llvm::GlobalVariable >( e->getOperand(1)->getOperand(0) )->getOperand(0)
-                        )->getAsCString();
-                if ( anno.find( tagNamespace ) != std::string::npos )
-                    yield( fn, parseTag( anno ) );
-            }
-        }
-    }
-
-    void propagateBypass( llvm::Function *fn, LLVMFunctionSet &seen ) {
-        for ( auto &bb : *fn )
-            for ( auto &i : bb ) {
-                llvm::Function *called = nullptr;
-                if ( auto call = llvm::dyn_cast< llvm::CallInst >( &i ) )
-                    called = llvm::dyn_cast< llvm::Function >( call->getCalledValue()->stripPointerCasts() );
-                else if ( auto invoke = llvm::dyn_cast< llvm::InvokeInst >( &i ) )
-                    called = llvm::dyn_cast< llvm::Function >( invoke->getCalledValue()->stripPointerCasts() );
-
-                if ( called && !called->isDeclaration() && !seen.count( called ) ) {
-                    if ( _bypass.insert( called ).second )
-                        std::cout << "INFO: propagating bypass flag to " << called->getName().str() << std::endl;
-                    propagateBypass( called, seen );
-                }
-            }
-    }
-
-    void processAnnos( llvm::Module &m ) {
-        forAnnos( m, [&]( llvm::Function *fn, std::string anno ) {
-                if ( anno == "bypass" )
-                    _bypass.insert( fn );
-            } );
-        LLVMFunctionSet seen;
-        forAnnos( m, [&]( llvm::Function *fn, std::string anno ) {
-                if ( anno == "propagate" )
-                    propagateBypass( fn, seen );
-            } );
     }
 
     llvm::Type *intTypeOfSize( int size, llvm::LLVMContext &ctx ) {
@@ -429,18 +437,18 @@ struct Substitute {
                                             : type->getPrimitiveSizeInBits() );
     }
 
-    // in bypass functions we replace all memory transfer intrinsics with lart
-    // memmove
+    // in bypass functions we replace all memory transfer intrinsics with clones
+    // of original functions which will not be transformed
     void transformBypass( llvm::Function &fn ) {
-        transformMemTrans< llvm::MemSetInst >( fn, _memset );
-        transformMemTrans< llvm::MemCpyInst >( fn, _memcpy );
-        transformMemTrans< llvm::MemMoveInst >( fn, _memmove );
+        transformMemTrans< llvm::MemSetInst >( fn, _scmemset );
+        transformMemTrans< llvm::MemCpyInst >( fn, _scmemcpy );
+        transformMemTrans< llvm::MemMoveInst >( fn, _scmemmove );
     }
 
     void transformMemTrans( llvm::Function &fn ) {
-        transformMemTrans< llvm::MemSetInst >( fn, _wmemset );
-        transformMemTrans< llvm::MemCpyInst >( fn, _wmemcpy );
-        transformMemTrans< llvm::MemMoveInst >( fn, _wmemmove );
+        transformMemTrans< llvm::MemSetInst >( fn, _memset );
+        transformMemTrans< llvm::MemCpyInst >( fn, _memcpy );
+        transformMemTrans< llvm::MemMoveInst >( fn, _memmove );
     }
 
     llvm::Instruction::CastOps castOpFrom( llvm::Type *from, llvm::Type *to, bool isSigned = false ) {
@@ -481,7 +489,8 @@ struct Substitute {
             if ( len->getType() != lenTy )
                 len = builder.CreateCast( castOpFrom( len->getType(), lenTy, true ), len, lenTy );
             auto replace = builder.CreateCall( rfn, { dst, src, len } );
-            mem->replaceAllUsesWith( replace );
+            if ( mem->getType() != builder.getVoidTy() )
+                mem->replaceAllUsesWith( replace );
             mem->eraseFromParent();
         }
     }
@@ -509,7 +518,7 @@ struct Substitute {
     // *  transform fence instructions to call to lart fence
     // *  for TSO: insert PSO -> TSO fence at the beginning and after call to
     //    any function which is neither TSO, SC, or bypass
-    void transformWeak( llvm::Function &f, llvm::DataLayout &dl ) {
+    void transformWeak( llvm::Function &f, llvm::DataLayout &dl, context::Context &lctx ) {
         auto &ctx = f.getContext();
         auto *i8ptr = llvm::Type::getInt8PtrTy( ctx );
 
@@ -541,8 +550,7 @@ struct Substitute {
              *
              * into:
              *    something
-             *    %v = call __divine_interrupt_mask()
-             *    %shouldunlock = icmp eq %v, 0
+             *    %v = call lctx.mask()
              *    %orig = load %ptr failord
              *    %eq = icmp eq %orig, %cmp
              *    br %eq, %ifeq, %end
@@ -555,13 +563,7 @@ struct Substitute {
              *   end:
              *    %r0 = insertvalue undef, %orig, 0
              *    %valsucc = insertvalue %0, %ew, 1
-             *    br %shouldunlock, %unmask, %coninue
-             *
-             *   unmask:
-             *    call __divine_interrupt_unmask()
-             *    br %continue
-             *
-             *   continue:
+             *    call lctx.restoreMask( v )
              *    something_else
             */
             auto *rt = cas->getType();
@@ -572,16 +574,13 @@ struct Substitute {
 
             auto *end = bb->splitBasicBlock( cas, "lart.weakmem.cmpxchg.end" ); // adds br instead of cas, cas is at beginning of new bb
             auto *ifeq = llvm::BasicBlock::Create( ctx, "lart.weakmem.cmpxchg.ifeq", &f, end );
-            auto *cont = end->splitBasicBlock( std::next( llvm::BasicBlock::iterator( cas ) ), "lart.weakmem.cmpxchg.continue" );
-            auto *unmask = llvm::BasicBlock::Create( ctx, "lart.weakmem.cmpxchg.unmask", &f, cont );
 
             llvm::IRBuilder<> irb( bb->getTerminator() );
-            auto *mask = irb.CreateCall( _mask, { } );
-            auto *shouldunlock = irb.CreateICmpEQ( mask, llvm::ConstantInt::get( mask->getType(), 0 ), "lart.weakmem.cmpxchg.shouldunlock" );
+            auto *mask = lctx.insertSetMask( irb );
             auto *vptr = irb.CreateBitCast( ptr, i8ptr );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.cmpxchg.orig" );
             orig->setAtomic( failord );
-            irb.CreateCall( _sync, { vptr,
+            irb.CreateCall( _sync, { vptr, // TODO: probably wrong
                                      getBitwidth( ptr->getType(), ctx, dl ),
                                      llvm::ConstantInt::get( _moTy, uint64_t( usememord( castmemord( failord ) ) ) )
                                    } );
@@ -600,14 +599,10 @@ struct Substitute {
             irb.SetInsertPoint( end->getFirstInsertionPt() );
             auto *r0 = irb.CreateInsertValue( llvm::UndefValue::get( rt ), orig, { 0 } );
             auto *r = irb.CreateInsertValue( r0, eq, { 1 } );
+            lctx.insertRestoreMask( irb, mask );
+
             cas->replaceAllUsesWith( r );
             cas->eraseFromParent();
-            llvm::ReplaceInstWithInst( end->getTerminator(),
-                    llvm::BranchInst::Create( unmask, cont, shouldunlock ) );
-
-            irb.SetInsertPoint( unmask );
-            irb.CreateCall( _unmask, { } );
-            irb.CreateBr( cont );
         }
         for ( auto *at : ats ) {
             auto aord = castmemord( castmemord( at->getOrdering() ) | _config.rmw );
@@ -615,13 +610,8 @@ struct Substitute {
             auto *val = at->getValOperand();
             auto op = at->getOperation();
 
-            auto *bb = at->getParent();
-            auto *cont = bb->splitBasicBlock( std::next( llvm::BasicBlock::iterator( at ) ), "lart.weakmem.atomicrmw.continue" );
-            auto *unmask = llvm::BasicBlock::Create( ctx, "lart.weakmem.atomicrmw.unmask", &f, cont );
-
             llvm::IRBuilder<> irb( at );
-            auto *mask = irb.CreateCall( _mask, { } );
-            auto *shouldunlock = irb.CreateICmpEQ( mask, llvm::ConstantInt::get( mask->getType(), 0 ), "lart.weakmem.atomicrmw.shouldunlock" );
+            auto *mask = lctx.insertSetMask( irb );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.atomicrmw.orig" );
             orig->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord, InstType::Load ) );
             irb.CreateCall( _sync, { irb.CreateBitCast( ptr, i8ptr ),
@@ -668,16 +658,14 @@ struct Substitute {
 
             irb.CreateStore( val, ptr )->setAtomic( usememord(
                     aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Release : aord, InstType::Store ) );
-            llvm::ReplaceInstWithInst( bb->getTerminator(),
-                    llvm::BranchInst::Create( unmask, cont, shouldunlock ) );
-
-            irb.SetInsertPoint( unmask );
-            irb.CreateCall( _unmask, { } );
-            irb.CreateBr( cont );
+            lctx.insertRestoreMask( irb, mask );
 
             at->replaceAllUsesWith( orig );
             at->eraseFromParent();
         }
+
+        for ( auto &bb : f )
+            ASSERT( bb.getTerminator() );
 
         // now translate load/store/fence
         std::vector< llvm::LoadInst * > loads;
@@ -782,6 +770,9 @@ struct Substitute {
 
         transformMemTrans( f );
 
+        for ( auto &bb : f )
+            ASSERT( bb.getTerminator() );
+
         // add cleanups
         cleanup::addAllocaCleanups( cleanup::EhInfo::cpp( *f.getParent() ), f,
             [&]( llvm::AllocaInst *alloca ) {
@@ -793,19 +784,24 @@ struct Substitute {
 
                 std::vector< llvm::Value * > args;
                 args.emplace_back( llvm::ConstantInt::get( llvm::Type::getInt32Ty( ctx ), allocas.size() ) );
+
                 std::copy( allocas.begin(), allocas.end(), std::back_inserter( args ) );
-                llvm::CallInst::Create( _cleanup, args, "", insPoint );
+                auto c = llvm::CallInst::Create( _cleanup, args, "", insPoint );
+                ASSERT( c->getParent()->getTerminator() );
             } );
+
+        for ( auto &bb : f )
+            ASSERT( bb.getTerminator() );
     }
 
     OrderConfig _config;
     int _bufferSize;
     LLVMFunctionSet _bypass;
+    util::Map< llvm::Function *, llvm::Function * > _cloneMap;
     llvm::Function *_store = nullptr, *_load = nullptr, *_fence = nullptr, *_sync = nullptr;
     llvm::Function *_memmove = nullptr, *_memcpy = nullptr, *_memset = nullptr;
-    llvm::Function *_wmemmove = nullptr, *_wmemcpy = nullptr, *_wmemset = nullptr;
-    llvm::Function *_cleanup = nullptr;
-    llvm::Function *_mask = nullptr, *_unmask = nullptr;
+    llvm::Function *_scmemmove = nullptr, *_scmemcpy = nullptr, *_scmemset = nullptr;
+    llvm::Function *_cleanup = nullptr, *_resize = nullptr;
     llvm::Type *_moTy = nullptr;
     MemoryOrder _minMemOrd = MemoryOrder::SeqCst;
     static const std::string tagNamespace;
