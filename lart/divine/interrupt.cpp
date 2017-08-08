@@ -19,6 +19,8 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/support/util.h>
 #include <lart/support/metadata.h>
+#include <lart/divine/passes.h>
+#include <lart/reduction/passes.h>
 
 #include <divine/vm/divm.h>
 
@@ -114,13 +116,14 @@ struct MemInterrupt {
                                          "__vm_interrupt_mem intrinsic." );
     }
 
-    void annotateFn( llvm::Function &fn, llvm::DataLayout &dl ) {
+    void annotateFn( llvm::Function &fn, llvm::DataLayout &dl, unsigned silentID ) {
         // avoid changing bb while we iterate over it
         for ( auto inst : query::query( fn ).flatten().map( query::refToPtr ).freeze() ) {
             auto op = inst->getOpcode();
-            if ( op == llvm::Instruction::Load || op == llvm::Instruction::Store
-                || op == llvm::Instruction::AtomicRMW
-                || op == llvm::Instruction::AtomicCmpXchg )
+            if ( ( op == llvm::Instruction::Load || op == llvm::Instruction::Store
+                    || op == llvm::Instruction::AtomicRMW
+                    || op == llvm::Instruction::AtomicCmpXchg )
+                  && !reduction::isSilent( *inst, silentID ) )
             {
                 auto *type = _memInterrupt->getFunctionType();
                 auto point = llvm::BasicBlock::iterator( inst );
@@ -155,10 +158,12 @@ struct MemInterrupt {
         ASSERT( _memInterrupt );
         _memInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
 
+        auto silentID = m.getMDKindID( reduction::silentTag );
+
         for ( auto &fn : m ) {
             if ( fn.empty() )
                 continue;
-            annotateFn( fn, dl );
+            annotateFn( fn, dl, silentID );
         }
         // std::cout << "Found " << _mem << " memory accesses" << std::endl;
     }

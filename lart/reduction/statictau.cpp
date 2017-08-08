@@ -28,33 +28,6 @@ struct SimpleEscape {
                 "simple escape analysis and __vm_interrupt_mem removeal for memory accesses within a function" );
     }
 
-    static void silence( llvm::Instruction *i ) {
-
-        auto fn = i->getParent()->getParent();
-        std::vector< llvm::Instruction * > toDeleteExtra;
-        auto toDelete = query::query( *fn ).flatten().map( query::refToPtr )
-                          .map( query::llvmdyncast< llvm::CallInst > )
-                          .filter( query::notnull )
-                          .filter( [&]( auto *call ) {
-                              ASSERT( call );
-                              bool del = call->getCalledFunction()
-                                  && call->getCalledFunction()->getName() == "__vm_interrupt_mem"
-                                  && call->getArgOperand( 0 )->stripPointerCasts() == i;
-                              if ( !del )
-                                  return false;
-                              auto *arg = llvm::dyn_cast< llvm::Instruction >( call->getArgOperand( 0 ) );
-                              if ( arg && arg->hasOneUse() )
-                                  toDeleteExtra.push_back( arg );
-                              return true;
-                          } )
-                          .map( []( auto *i ) { ASSERT( i ); return llvm::cast< llvm::Instruction >( i ); } )
-                          .freeze();
-
-        for ( auto x : query::query( toDelete ).append( toDeleteExtra ) ) {
-            x->eraseFromParent();
-        }
-    }
-
     static bool isAllocation( llvm::Instruction *i ) {
         if ( llvm::isa< llvm::AllocaInst >( i ) )
             return true;
@@ -67,55 +40,69 @@ struct SimpleEscape {
                || name.startswith( "_Znwm" ) || name.startswith( "_Znam" );
     }
 
-    static bool isSafe( llvm::Instruction *, llvm::Instruction * ) {
-        return false;
-    }
-    static bool isSafe( llvm::DbgInfoIntrinsic *, llvm::Instruction * ) { return true; }
-    // ret is OK, if there are not other escapes the value cannot escape in this function
-    static bool isSafe( llvm::ReturnInst *, llvm::Instruction * ) { return true; }
-    static bool isSafe( llvm::LoadInst *, llvm::Instruction * ) { return true; }
-    static bool isSafe( llvm::StoreInst *i, llvm::Instruction *alloc ) {
-        return i->getPointerOperand()->stripPointerCasts() == alloc;
-    }
-    static bool isSafe( llvm::AtomicRMWInst *i, llvm::Instruction *alloc ) {
-        return i->getPointerOperand()->stripPointerCasts() == alloc;
-    }
-    static bool isSafe( llvm::AtomicCmpXchgInst *i, llvm::Instruction *alloc ) {
-        return i->getPointerOperand()->stripPointerCasts() == alloc;
-    }
-    static bool isSafe( llvm::BitCastInst *i, llvm::Instruction *alloc ) {
-        return i->stripPointerCasts() == alloc
-            && doesNotEscape( i, alloc );
-    }
-    static bool isSafe( llvm::CallInst *i, llvm::Instruction *alloc ) {
-        return i->getCalledFunction()
-            && i->getCalledFunction()->getName() == "__vm_interrupt_mem"
-            && i->getArgOperand( 0 )->stripPointerCasts() == alloc;
-    }
-    static bool isSafe( llvm::MemSetInst *i, llvm::Instruction *alloc ) {
-        return i->getRawDest()->stripPointerCasts() == alloc;
-    }
+    struct EscapeVisitor {
 
-    static bool doesNotEscape( llvm::Instruction *i, llvm::Instruction *alloc = nullptr ) {
-        alloc = alloc ?: i;
-        return query::query( i->users() )
-                .map( query::llvmdyncast< llvm::Instruction > )
-                .filter( query::notnull )
-                .all( [alloc]( llvm::Instruction *i ) {
-                    return applyInst( i, [alloc]( auto x ) { return isSafe( x, alloc ); } );
-                } );
-    }
+        bool _visit( llvm::Instruction *, llvm::Instruction * ) {
+            return false;
+        }
+        bool _visit( llvm::DbgInfoIntrinsic *, llvm::Instruction * ) { return true; }
+        // ret is OK, if there are not other escapes the value cannot escape in this function
+        bool _visit( llvm::ReturnInst *, llvm::Instruction * ) { return true; }
+        bool _visit( llvm::LoadInst *l, llvm::Instruction * ) {
+            return collect( l );
+        }
+        bool _visit( llvm::StoreInst *i, llvm::Instruction *alloc ) {
+            return i->getValueOperand()->stripPointerCasts() != alloc
+                && collect( i );
+        }
+        bool _visit( llvm::AtomicRMWInst *i, llvm::Instruction *alloc ) {
+            return i->getValOperand()->stripPointerCasts() != alloc
+                && collect( i );
+        }
+        bool _visit( llvm::AtomicCmpXchgInst *i, llvm::Instruction *alloc ) {
+            return i->getCompareOperand()->stripPointerCasts() != alloc
+                && i->getNewValOperand()->stripPointerCasts() != alloc
+                && collect( i );
+        }
+        bool _visit( llvm::BitCastInst *i, llvm::Instruction *alloc ) {
+            return i->stripPointerCasts() == alloc && run( i, alloc );
+        }
+
+        bool collect( llvm::Instruction *i ) {
+            collected.push_back( i );
+            return true;
+        }
+
+        bool run( llvm::Instruction *i, llvm::Instruction *alloc = nullptr ) {
+            alloc = alloc ?: i;
+            return query::query( i->users() )
+                    .map( query::llvmdyncast< llvm::Instruction > )
+                    .filter( query::notnull )
+                    .all( [=]( llvm::Instruction *i ) {
+                        return applyInst( i, [=]( auto x ) { return _visit( x, alloc ); } );
+                    } );
+        }
+
+        std::vector< llvm::Instruction * > collected;
+    };
 
     void run( llvm::Module &m ) {
         long all = 0, silenced = 0;
         auto allocations = query::query( m ).flatten().flatten().map( query::refToPtr )
                                             .filter( isAllocation );
+        auto &ctx = m.getContext();
+        auto *mdstr = llvm::MDString::get( ctx, silentTag );
+        auto *meta = llvm::MDNode::get( ctx, { mdstr } );
+        auto mid = m.getMDKindID( silentTag );
 
         for ( auto a : allocations ) {
             ++all;
-            if ( doesNotEscape( a ) ) {
+            EscapeVisitor ev;
+            if ( ev.run( a ) ) {
                 ++silenced;
-                silence( a );
+                for ( auto *i : ev.collected ) {
+                    i->setMetadata( mid, meta );
+                }
             }
         }
     }
