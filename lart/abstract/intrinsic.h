@@ -86,8 +86,15 @@ static std::string intrinsicName( const AbstractValue & av ) {
     auto i = llvm::cast< llvm::Instruction >( av.value() );
     auto res = "lart." + av.domain()->name() + "." + i->getOpcodeName();
 
-    if ( llvm::isa< llvm::AllocaInst >( av.value() ) )
-        return res + "." + av.type()->baseName();
+    if ( llvm::isa< llvm::AllocaInst >( av.value() ) ) {
+        if ( av.type()->base() == TypeBaseValue::Struct ) {
+            auto ct = std::dynamic_pointer_cast< ComposedType >( av.type() );
+            auto sname = stripPtr( ct->origin() )->getStructName().str();
+            return res + "." + sname + "." + elementsName( ct->elements() );
+        } else {
+            return res + "." + av.type()->baseName();
+        }
+    }
     if ( llvm::isa< llvm::LoadInst >( av.value() ) )
         return res + "." + av.type()->baseName();
     if ( llvm::isa< llvm::StoreInst >( av.value() ) )

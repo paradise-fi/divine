@@ -143,6 +143,8 @@ void Substituter::substituteBranch( llvm::BranchInst * br ) {
 }
 
 llvm::Type * Substituter::process( const AbstractTypePtr & type ) const {
+    if ( !type->isAbstract() )
+        return type->origin();
     return getAbstraction( type )->abstract( type->llvm() );
 }
 
