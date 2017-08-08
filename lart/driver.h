@@ -1,4 +1,4 @@
-// -*- C++ -*- (c) 2015 Vladimír Štill <xstill@fi.muni.cz>
+// -*- C++ -*- (c) 2015,2017 Vladimír Štill <xstill@fi.muni.cz>
 
 #include <lart/interference/pass.h>
 #include <lart/aa/pass.h>
@@ -7,6 +7,7 @@
 #include <lart/reduction/passes.h>
 #include <lart/svcomp/passes.h>
 #include <lart/divine/passes.h>
+#include <lart/support/context.hpp>
 
 #include <iostream>
 
@@ -27,6 +28,9 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 
 struct Driver {
+
+    Driver() : context( std::make_unique< context::DiOS >() ) { }
+    Driver( std::unique_ptr< context::Context > &&ctx ) : context( std::move( ctx ) ) { }
 
     std::vector< PassMeta > passes() const {
         std::vector< PassMeta > out;
@@ -96,8 +100,9 @@ struct Driver {
 
     void process( llvm::Module *m )
     {
+        context->setModule( *m );
         for ( auto &p : ps )
-            p->run( *m );
+            p->run( *m, *context );
     }
 
   private:
@@ -106,6 +111,7 @@ struct Driver {
     }
 
     PassVector ps;
+    std::unique_ptr< context::Context > context;
 };
 } // namespace lart
 
