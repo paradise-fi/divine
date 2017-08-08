@@ -8,35 +8,49 @@ namespace abstract {
 
 namespace {
     const std::string prefix = "__abstract_";
-    std::string constructFunctionName( const llvm::CallInst * inst ) {
-        std::string name = prefix + "sym_" + intrinsic::name( inst );
-        if ( inst->getNumArgOperands() > 0 && intrinsic::ty1( inst ).back() == '*' )
+    std::string constructFunctionName( const Intrinsic & intr ) {
+        std::string name = prefix + "sym_" + intr.name();
+        if ( intr.name() == "load" ) {
+            //do nothing
+        }
+        else if ( intr.declaration()->arg_size() > 0 && intr.argType< 0 >()->isPointerTy() ) {
             name += "_p";
+        }
         return name;
     }
 
-    llvm::ConstantInt * bitwidth( llvm::LLVMContext & ctx, const std::string & type ) {
-        int bw = std::stoi( type.substr(1) );
+    llvm::ConstantInt * bitwidth( llvm::Type * type ) {
+        auto & ctx = type->getContext();
+        if ( isAbstract( type ) ) {
+            auto sty = llvm::cast< llvm::StructType >( stripPtr( type ) );
+            type = TypeBase::llvm( TypeName( sty ).base().value(), ctx );
+        }
+        auto bw = llvm::cast< llvm::IntegerType >( type )->getBitWidth();
         return llvm::ConstantInt::get( llvm::IntegerType::get( ctx, 32 ), bw );
     }
 
-    std::vector< llvm::Value * > arguments( llvm::CallInst * i,
+    std::vector< llvm::Value * > arguments( llvm::CallInst * call,
                                             std::vector< llvm::Value * > & args )
     {
-        const std::string & n = intrinsic::name( i );
+        auto intr = Intrinsic( call );
+        const auto & n = intr.name();
+        auto & ctx = call->getContext();
+
         if ( n == "alloca" )
         {
-            return { bitwidth( i->getContext(), intrinsic::ty1( i ) ) };
+            auto typeName = intr.nameElement( 3 );
+            auto type = TypeBase::llvm( TypeBase::value( typeName ).value(), ctx );
+            return { bitwidth( type ) };
         }
         else if ( n == "lift" )
         {
-            llvm::IRBuilder<> irb( i );
-            auto sext = irb.CreateSExt( args[ 0 ], llvm::IntegerType::get(i->getContext(), 64) );
-            return { sext, bitwidth( i->getContext(), intrinsic::ty1( i ) ) };
+            llvm::IRBuilder<> irb( call );
+            auto sext = irb.CreateSExt( args[ 0 ], llvm::IntegerType::get( ctx, 64 ) );
+            return { sext, bitwidth( intr.argType< 0 >() ) };
         }
         else if ( n == "load" )
         {
-            return { args[0],  bitwidth( i->getContext(), intrinsic::ty1( i ) ) };
+            return { args[0],  bitwidth( intr.argType< 0 >() ) };
         }
         else if ( ( n == "store" ) ||
                   // binary operations
@@ -76,12 +90,14 @@ namespace {
                   ( n == "sext" ) ||
                   ( n == "bitcast" ) )
         {
-            return { args[0], bitwidth( i->getContext(), intrinsic::ty2( i ) ) };
+            auto typeName = intr.nameElement( 4 );
+            auto type = TypeBase::llvm( TypeBase::value( typeName ).value(), ctx );
+            return { args[0], bitwidth( type ) };
         }
         else
         {
             std::cerr << "ERR: unknown instruction: ";
-            i->dump();
+            call->dump();
             std::exit( EXIT_FAILURE );
         }
     }
@@ -91,17 +107,19 @@ Symbolic::Symbolic( llvm::Module & m ) {
     formula_type = m.getFunction( "__abstract_sym_load" )->getReturnType();
 }
 
-llvm::Value * Symbolic::process( llvm::CallInst * i, std::vector< llvm::Value * > & args ) {
-    auto name = constructFunctionName( i );
-    args = arguments( i, args );
+llvm::Value * Symbolic::process( llvm::CallInst * call, std::vector< llvm::Value * > & args ) {
+    auto intr = Intrinsic( call );
+    assert( intr.domain() == domain() );
+    auto name = constructFunctionName( call );
+    args = arguments( call, args );
 
-    llvm::Module * m = i->getParent()->getParent()->getParent();
+    llvm::Module * m = intr.declaration()->getParent();
 
     llvm::Function * fn = m->getFunction( name );
     assert( fn && "Function for intrinsic substitution was not found." );
     assert( fn->arg_size() == args.size() );
 
-    llvm::IRBuilder<> irb( i );
+    llvm::IRBuilder<> irb( call );
     return irb.CreateCall( fn, args );
 }
 

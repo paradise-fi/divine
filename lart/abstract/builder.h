@@ -64,6 +64,9 @@ private:
     llvm::Function * getStoredFn( llvm::Function *,
                                   llvm::ArrayRef< llvm::Type * > );
 
+    using Values = std::vector< llvm::Value * >;
+    Values operands( const AbstractValue & );
+
     // TODO values to be map< Value, AbstractValue >
     std::map< llvm::Value *, llvm::Value * > _values;
     std::map< llvm::Function *, std::vector< llvm::Function * > > _functions;

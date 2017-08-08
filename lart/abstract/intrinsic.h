@@ -11,41 +11,100 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart {
 namespace abstract {
-namespace intrinsic {
 
-using MaybeDomain = Domain::MaybeDomain;
-MaybeDomain domain( const llvm::CallInst * );
-MaybeDomain domain( const llvm::Function * );
-const std::string name( const llvm::CallInst * );
-const std::string name( const llvm::Function * );
-const std::string ty1( const llvm::CallInst * );
-const std::string ty1( const llvm::Function * );
-const std::string ty2( const llvm::CallInst * );
-const std::string ty2( const llvm::Function * );
+struct Intrinsic {
+    using Args = std::vector< llvm::Value * >;
+    using ArgTypes = std::vector< llvm::Type * >;
 
-const std::string tag( const AbstractValue & );
-const std::string tag( const llvm::Instruction * , Domain::Value );
+    enum class Type {
+        LLVM, Lift, Lower, Assume
+    };
 
-auto types( std::vector< llvm::Value * > & ) -> llvm::ArrayRef< llvm::Type * >;
+    Intrinsic( llvm::Module * m,
+               llvm::Type * rty,
+               const std::string & tag,
+               const ArgTypes & args = {} );
 
-llvm::Function * get( llvm::Module *,
-                      llvm::Type *,
-                      const std::string &,
-                      llvm::ArrayRef < llvm::Type * > );
+    Intrinsic( llvm::Function * intr ) :
+        intr( intr ) {}
 
-llvm::CallInst * build( llvm::Module *,
-                        llvm::IRBuilder<> &,
-                        llvm::Type *,
-                        const std::string &,
-                        std::vector< llvm::Value * > args = {} );
+    Intrinsic( llvm::CallInst * call ) :
+        intr( call->getCalledFunction() ) {}
 
-//helpers
-bool is( const llvm::Function * );
-bool is( const llvm::CallInst * );
-bool isAssume( const llvm::CallInst * );
-bool isLift( const llvm::CallInst * );
-bool isLower( const llvm::CallInst * );
+    Domain::Value domain() const;
 
-} // namespace intrinsic
+    std::string name() const;
+
+    Type type() const;
+
+    bool is() const;
+
+    llvm::Function * declaration() const { return intr; }
+
+    template< size_t idx >
+    llvm::Type * argType() const {
+        assert( intr->arg_size() > idx );
+        return intr->getFunctionType()->getParamType( idx );
+    }
+
+    std::string nameElement( size_t idx ) const;
+
+private:
+    llvm::Function * intr;
+};
+
+static bool isIntrinsic( llvm::Function * fn ) {
+    return Intrinsic( fn ).is();
+}
+
+static bool isIntrinsic( llvm::CallInst * call ) {
+    return isIntrinsic( call->getCalledFunction() );
+}
+
+static bool isAssume( const Intrinsic & intr ) {
+    return intr.type() == Intrinsic::Type::Assume;
+}
+
+static bool isAssume( llvm::CallInst * call ) {
+    return isAssume( Intrinsic( call ) );
+}
+
+static bool isLift( const Intrinsic & intr ) {
+    return intr.type() == Intrinsic::Type::Lift;
+}
+
+static bool isLift( llvm::CallInst* call ) {
+    return isLift( Intrinsic( call ) );
+}
+
+static bool isLower( const Intrinsic & intr ) {
+    return intr.type() == Intrinsic::Type::Lower;
+}
+
+static bool isLower( llvm::Function * call ) {
+    return isLower( Intrinsic( call ) );
+}
+
+// Returns name for abstract value as "lart.<domain>.<inst name>.<extra data>"
+static std::string intrinsicName( const AbstractValue & av ) {
+    auto i = llvm::cast< llvm::Instruction >( av.value() );
+    auto res = "lart." + Domain::name( av.domain() ) + "." + i->getOpcodeName();
+
+    if ( llvm::isa< llvm::AllocaInst >( av.value() ) )
+        return res + "." + av.type()->baseName();
+    if ( llvm::isa< llvm::LoadInst >( av.value() ) )
+        return res + "." + av.type()->baseName();
+    if ( llvm::isa< llvm::StoreInst >( av.value() ) )
+        return res;
+    if ( llvm::isa< llvm::ICmpInst >( av.value() ) )
+        return res;
+    if ( llvm::isa< llvm::BinaryOperator >( av.value() ) )
+        return res + "." + av.type()->baseName();
+    if ( auto i = llvm::dyn_cast< llvm::CastInst >( av.value() ) )
+        return res + "." + llvmname( i->getSrcTy() ) + "." + llvmname( i->getDestTy() );
+
+    UNREACHABLE( "Unhandled intrinsic." );
+}
+
 } // namespace abstract
 } // namespace lart

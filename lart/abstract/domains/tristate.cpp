@@ -8,12 +8,13 @@ namespace abstract {
 using Arguments = std::vector< llvm::Value * >;
 
 llvm::Value * TristateDomain::process( llvm::CallInst * i, Arguments & args ) {
-    assert( intrinsic::domain( i ).value() == Domain::Value::Tristate );
-    auto name = "__abstract_tristate_" + intrinsic::name( i );
+    auto intr = Intrinsic( i );
+    assert( intr.domain() == Domain::Value::Tristate );
+    auto name = "__abstract_tristate_" + intr.name();
 
-    llvm::Module * m = i->getParent()->getParent()->getParent();
+    auto m = intr.declaration()->getParent();
 
-    llvm::Function * fn = m->getFunction( name );
+    auto fn = m->getFunction( name );
     assert( fn && "Function for intrinsic substitution was not found." );
     assert( fn->arg_size() == args.size() );
 

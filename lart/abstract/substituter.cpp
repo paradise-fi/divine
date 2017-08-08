@@ -138,8 +138,6 @@ void Substituter::substituteBranch( llvm::BranchInst * br ) {
     }
 }
 
-void substituteAlloca( AbstractIntrinsic * ) {}
-
 llvm::Type * Substituter::process( llvm::Type * type ) const {
     if ( isAbstract( type ) )
         return getAbstraction( type )->abstract( type );
@@ -158,17 +156,25 @@ Arguments callArgs( llvm::CallInst * call, const ValueMap & vmap ) {
     return res;
 }
 
-void Substituter::substituteCall( llvm::CallInst * call ) {
-	auto args = callArgs( call, processedValues );
-    //skip if do not have enough substituted arguments
-    if ( call->getNumArgOperands() != args.size() )
-        return;
+void Substituter::substituteAbstractIntrinsic( llvm::CallInst * intr ) {
+    assert( isIntrinsic( intr ) );
 
-    if ( intrinsic::is( call ) ) {
-        auto dom = intrinsic::domain( call ).value();
-        auto a = abstractions.at( dom );
-        processedValues[ call ] = a->process( call, args );
+    auto args = callArgs( intr, processedValues );
+    //skip if do not have enough substituted arguments
+    if ( intr->getNumArgOperands() != args.size() )
+        return;
+    auto abst = abstractions[ Intrinsic( intr ).domain() ];
+    processedValues[ intr ] = abst->process( intr, args );
+}
+
+void Substituter::substituteCall( llvm::CallInst * call ) {
+    if ( isIntrinsic( call ) ) {
+        substituteAbstractIntrinsic( call );
     } else {
+	    auto args = callArgs( call, processedValues );
+        //skip if do not have enough substituted arguments
+        if ( call->getNumArgOperands() != args.size() )
+            return;
         llvm::Module * m = call->getCalledFunction()->getParent();
 
         auto fn = m->getFunction( call->getCalledFunction()->getName() );
@@ -246,7 +252,7 @@ void Substituter::clean( llvm::Module & m ) {
     auto intrinsics = query::query( m )
         .map( query::refToPtr )
         .filter( []( llvm::Function * fn ) {
-            return intrinsic::is( fn );
+            return isIntrinsic( fn );
         } ).freeze();
     for ( auto & in : intrinsics )
         in->eraseFromParent();
@@ -280,6 +286,10 @@ bool Substituter::isSubstituted( llvm::Type * type ) const {
             return true;
     return false;
 }
+
+/*Intrinsic Substituter::intrinsic( llvm::CallInst * call ) const {
+    return Intrinsic();
+}*/
 
 } // namespace abstract
 } // namespace lart

@@ -13,23 +13,6 @@ namespace lart {
 namespace abstract {
 namespace {
 
-auto CallDomainFilter( const std::string& name ) {
-    return [&name]( llvm::CallInst * call ) -> bool {
-        auto fn = call->getCalledFunction();
-        return fn != nullptr && ( intrinsic::name( call ) == name );
-    };
-};
-
-template< typename Filter >
-auto identify( llvm::Module& m, Filter filter ) {
-    return query::query( m ).flatten().flatten()
-        .map( query::refToPtr )
-        .map( query::llvmdyncast< llvm::CallInst > )
-        .filter( query::notnull )
-        .filter( filter )
-        .freeze();
-}
-
 void removeInvalidAttributes( llvm::Function* fn ) {
     using AttrSet = llvm::AttributeSet;
     using Kind = llvm::Attribute::AttrKind;
@@ -65,8 +48,23 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
     for ( const auto & fn : functions )
         subst.process( fn );
 
-    auto allocas = identify( m, CallDomainFilter( "alloca" ) );
-    auto lifts = identify( m, CallDomainFilter( "lift" ) );
+    auto intrinsics = query::query( m ).flatten().flatten()
+        .map( query::refToPtr )
+        .map( query::llvmdyncast< llvm::CallInst > )
+        .filter( query::notnull )
+        .filter( [] ( llvm::CallInst * call ) {
+            return isIntrinsic( call );
+        } ).freeze();
+
+    auto allocas = query::query( intrinsics )
+        .filter( []( const Intrinsic & intr ) {
+            return intr.name() == "alloca";
+        } ).freeze();
+
+    auto lifts = query::query( intrinsics )
+        .filter( []( const Intrinsic & intr ) {
+            return isLift( intr );
+        } ).freeze();
 
     std::vector< llvm::Instruction * > abstract;
     abstract.reserve( allocas.size() + lifts.size() );
@@ -95,8 +93,7 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
     auto retAbsVal = query::query( m )
                     .map( query::refToPtr )
                     .filter( [&]( llvm::Function * fn ) {
-                        return isAbstract( fn->getReturnType() )
-                            && ! intrinsic::is( fn );
+                        return isAbstract( fn->getReturnType() ) && !isIntrinsic( fn );
                     } )
                     .filter( [&]( llvm::Function * fn ) {
                         return !subst.visited( fn )
@@ -116,7 +113,7 @@ void Substitution::process( llvm::Value * val ) {
     auto succs = [&] ( llvm::Value * v ) -> Values {
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( v ) ) {
             auto fn = call->getCalledFunction();
-            if ( !intrinsic::is( fn ) && !isAbstract( fn->getReturnType() ) )
+            if ( !isAbstract( fn->getReturnType() ) && !isIntrinsic( fn ) )
                 return {};
         }
         return { v->user_begin(), v->user_end() };

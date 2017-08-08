@@ -187,7 +187,7 @@ namespace {
             .map( query::llvmdyncast< llvm::CallInst > )
             .filter( query::notnull )
             .filter( []( llvm::CallInst * call ) {
-                return intrinsic::isAssume( call );
+                return isAssume( call );
             } )
             .freeze();
         for ( auto ass : assumes )
@@ -196,7 +196,7 @@ namespace {
 
     void BCP::process( llvm::Instruction * assume ) {
         Assume ass = { assume };
-        auto domain = intrinsic::domain( ass.condition() ).value();
+        auto domain = Intrinsic( ass.condition() ).domain();
 
         // create constraints on arguments from condition, that created tristate
         auto lhs = ass.constrain( domain, Assume::AssumeValue::LHS );

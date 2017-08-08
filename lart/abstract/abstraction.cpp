@@ -81,7 +81,7 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
                         .map( query::llvmdyncast< llvm::CallInst > )
                         .filter( query::notnull )
                         .filter( [&]( llvm::CallInst * call ) {
-                             return intrinsic::isLift( call );
+                             return isLift( call );
                          } ).freeze();
                     for ( auto & lift : lifts ) {
                         lift->replaceAllUsesWith( &arg );

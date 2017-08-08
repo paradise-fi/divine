@@ -14,9 +14,6 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-using AbstractIntrinsic = llvm::CallInst;
-using AbstractInst = llvm::CallInst;
-
 template< typename T >
 using Mapper = std::map< T, T>;
 
@@ -48,22 +45,23 @@ struct Substituter {
     /* Stores function f2 as substituted equivalent for function f1 */
     void store( llvm::Function * f1, llvm::Function * f2 );
 
-
     /* Add 'abstraction' to available abstractions for builder */
     void registerAbstraction( Abstraction && abstraction  );
 
     void changeCallFunction( llvm::CallInst * );
 private:
-
+    void substituteAbstractIntrinsic( llvm::CallInst * );
     void substitutePhi( llvm::PHINode * );
     void substituteSelect( llvm::SelectInst * );
     void substituteBranch( llvm::BranchInst * );
-    void substituteCall( AbstractIntrinsic * );
+    void substituteCall( llvm::CallInst * );
     void substituteCast( llvm::CastInst * );
     void substituteReturn( llvm::ReturnInst * );
 
     const Abstraction getAbstraction( llvm::Value * value ) const;
     const Abstraction getAbstraction( llvm::Type * type ) const;
+
+    //Intrinsic intrinsic( llvm::CallInst * ) const;
 
     bool isSubstituted( llvm::Value * value ) const;
     bool isSubstituted( llvm::Type * type ) const;

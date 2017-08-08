@@ -209,7 +209,7 @@ bool liftingPointer( llvm::Module &m ) {
            .map( query::llvmdyncast< llvm::CallInst > )
            .filter( query::notnull )
            .filter( [&]( llvm::CallInst * call ) {
-                return abstract::intrinsic::isLift( call );
+                return abstract::isLift( call );
             } )
             .any( []( llvm::CallInst * call ) {
                 return call->getOperand( 0 )->getType()
@@ -762,14 +762,14 @@ struct Abstraction {
             .map( query::llvmdyncast< llvm::CallInst > )
             .filter( query::notnull )
             .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
-            .filter( [&]( llvm::CallInst * i ) { return !abstract::intrinsic::is( i ); } )
+            .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
             .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
         ASSERT( call_in_main );
         auto call_in_call = query::query( *call ).flatten()
             .map( query::llvmdyncast< llvm::CallInst > )
             .filter( query::notnull )
             .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
-            .filter( [&]( llvm::CallInst * i ) { return !abstract::intrinsic::is( i ); } )
+            .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
             .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
         ASSERT( call_in_call );
         ASSERT_EQ( call->getNumUses(), 2 );
@@ -810,7 +810,7 @@ struct Abstraction {
             .map( query::llvmdyncast< llvm::CallInst > )
             .filter( query::notnull )
             .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
-            .filter( [&]( llvm::CallInst * i ) { return !abstract::intrinsic::is( i ); } )
+            .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
             .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call ||
                                                       i->getCalledFunction() == call2; } );
         };
@@ -849,7 +849,7 @@ struct Abstraction {
             .map( query::llvmdyncast< llvm::CallInst > )
             .filter( query::notnull )
             .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
-            .filter( [&]( llvm::CallInst * i ) { return !abstract::intrinsic::is( i ); } )
+            .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
             .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
         };
         ASSERT( test_function( main ) );

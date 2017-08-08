@@ -6,22 +6,21 @@
 namespace lart {
 namespace abstract {
 
-namespace intrinsic {
-
 namespace {
-    std::vector< std::string > parse( const llvm::Function * fn ) {
-        if ( !fn || !fn->hasName() )
-            return {};
-        auto name = fn->getName();
+    std::vector< std::string > parse( const std::string & name ) {
         std::istringstream ss(name);
-
         std::string part;
         std::vector< std::string > parts;
         while( std::getline( ss, part, '.' ) ) {
             parts.push_back( part );
         }
-
         return parts;
+    }
+
+    std::vector< std::string > parse( const llvm::Function * fn ) {
+        if ( !fn || !fn->hasName() )
+            return {};
+        return parse( fn->getName() );
     }
 
     std::vector< llvm::Type * > typesOf( const std::vector< llvm::Value * > & vs ) {
@@ -32,96 +31,44 @@ namespace {
     }
 }
 
-// intrinsic format: lart.<domain>.<name>.<type1>.<type2>
-MaybeDomain domain( const llvm::Function * fn ) {
-    auto parts = parse( fn );
-    assert( parts.size() > 2 );
-    return Domain::value( parts[1] );
-}
-
-MaybeDomain domain( const llvm::CallInst * call ) {
-    return domain( call->getCalledFunction() );
-}
-
-
-const std::string name( const llvm::Function * fn ) {
-    auto parts = parse( fn );
-    return parts.size() > 2 ? parts[2] : "";
-}
-
-const std::string ty1( const llvm::Function * fn ) {
-    auto parts = parse( fn );
-    return parts.size() > 3 ? parts[3] : "";
-}
-
-const std::string ty2( const llvm::Function * fn ) {
-    auto parts = parse( fn );
-    return parts.size() > 4 ? parts[4] : "";
-}
-
-const std::string name( const llvm::CallInst * call ) {
-    return name( call->getCalledFunction() );
-}
-
-const std::string ty1( const llvm::CallInst * call ) {
-    return ty1( call->getCalledFunction() );
-}
-
-const std::string ty2( const llvm::CallInst * call ) {
-    return ty2( call->getCalledFunction() );
-}
-
-const std::string tag( const AbstractValue & av ) {
-    return tag( llvm::cast< llvm::Instruction >( av.value() ), av.domain() );
-}
-
-const std::string tag( const llvm::Instruction * i, Domain::Value dom  ) {
-    return std::string("lart.") + Domain::name( dom ) +
-           "." + i->getOpcodeName( i->getOpcode() );
-}
-
-llvm::Function * get( llvm::Module * m,
+Intrinsic::Intrinsic( llvm::Module * m,
                       llvm::Type * rty,
                       const std::string & tag,
-                      llvm::ArrayRef < llvm::Type * > types )
+                      const ArgTypes & args )
 {
-	auto fty = llvm::FunctionType::get( rty, types, false );
-    return llvm::cast< llvm::Function >( m->getOrInsertFunction( tag, fty ) );
+    assert( parse( tag ).size() > 2 );
+    auto fty = llvm::FunctionType::get( rty, args, false );
+    intr = llvm::cast< llvm::Function >( m->getOrInsertFunction( tag, fty ) );
 }
 
-llvm::CallInst * build( llvm::Module * m,
-                        llvm::IRBuilder<> & irb,
-                        llvm::Type * rty,
-                        const std::string & tag,
-                        std::vector< llvm::Value * > args )
-{
-    auto call = get( m, rty, tag, typesOf( args ) );
-    return irb.CreateCall( call, args );
+Domain::Value Intrinsic::domain() const {
+    return Domain::value( nameElement( 1 ) ).value();
 }
 
-//helpers
-bool is( const llvm::Function * fn ) {
-    auto parts = parse( fn );
+std::string Intrinsic::name() const {
+    return nameElement( 2 );
+}
+
+bool Intrinsic::is() const {
+    auto parts = parse( intr );
     return parts.size() > 2 && parts[0] == "lart";
 }
 
-bool is( const llvm::CallInst * call ) {
-    return intrinsic::is( call->getCalledFunction() );
+Intrinsic::Type Intrinsic::type() const {
+    auto n = name();
+    if ( n == "lift" )
+        return Intrinsic::Type::Lift;
+    if ( n == "lower" )
+        return Intrinsic::Type::Lower;
+    if ( n == "assume" )
+        return Intrinsic::Type::Assume;
+    return Intrinsic::Type::LLVM;
 }
 
-bool isAssume( const llvm::CallInst * call ) {
-    return intrinsic::name( call ) == "assume";
+std::string Intrinsic::nameElement( size_t idx ) const {
+    auto pars = parse( intr );
+    return pars.size() > idx ? pars[ idx ] : "";
 }
-
-bool isLift( const llvm::CallInst * call ) {
-    return intrinsic::name( call ) == "lift";
-}
-
-bool isLower( const llvm::CallInst * call ) {
-    return intrinsic::name( call ) == "lower";
-}
-
-} // namespace intrinsic
 
 } // namespace abstract
 } // namespace lart

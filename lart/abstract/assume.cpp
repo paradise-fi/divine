@@ -89,7 +89,7 @@ namespace {
         ASSERT( br && "Cannot assume about non-branch instruction.");
 
         auto lower = llvm::dyn_cast< llvm::CallInst >( br->getCondition() );
-        if ( lower && intrinsic::isLower( lower ) ) {
+        if ( lower && isLower( lower ) ) {
             auto tristate = getTristate( lower );
 
             AssumeEdge trueBr = { br->getParent(), br->getSuccessor( 0 ) };

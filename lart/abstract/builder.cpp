@@ -41,14 +41,14 @@ namespace {
 
     Types typesOf( const Values & vs ) {
         Types ts;
-        std::transform( vs.begin(), vs.end(), std::back_inserter( ts ),
+        std::transform( vs.cbegin(), vs.cend(), std::back_inserter( ts ),
             [] ( const Value * v ) { return v->getType(); } );
         return ts;
     }
 
 	auto remap( const Values & vs, const std::map< Value *, Value * > & vmap ) {
 		Values res;
-        std::transform( vs.begin(), vs.end(), std::back_inserter( res ),
+        std::transform( vs.cbegin(), vs.cend(), std::back_inserter( res ),
 			[&]( Value * v ) { return vmap.count( v ) ? vmap.at( v ) : v; } );
 		return res;
 	}
@@ -58,7 +58,7 @@ namespace {
                      .map( query::llvmdyncast< CallInst > )
                      .filter( query::notnull )
                      .filter( []( CallInst * call ) {
-                         return intrinsic::isLift( call );
+                         return isLift( call );
                      } ).freeze();
     }
 
@@ -77,6 +77,18 @@ void AbstractBuilder::store( Function * f1, Function * f2 ) {
 		_functions[ f1 ].push_back( f2 );
 	else
 		_functions[ f1 ] = { f2 };
+}
+
+Values AbstractBuilder::operands( const AbstractValue & av ) {
+    std::vector< Value * > res;
+    auto inst = cast< Instruction >( av.value() );
+    IRBuilder<> irb( inst );
+    const auto & ops = inst->operands();
+    std::transform( ops.begin(), ops.end(), std::back_inserter( res ),
+        [&] ( const auto & op ) {
+            return _values.count( op ) ? _values.at( op ) : lift( op, av.domain(), irb );
+        } );
+    return res;
 }
 
 void AbstractBuilder::clone( const FunctionNodePtr & node ) {
@@ -262,7 +274,7 @@ void AbstractBuilder::clean( Values & deps ) {
 
 bool AbstractBuilder::ignore( Instruction * i ) {
     if ( auto call = dyn_cast< CallInst >( i ) )
-        return intrinsic::isLift( call );
+        return isLift( call );
     return false;
 }
 
@@ -276,53 +288,37 @@ Value * AbstractBuilder::createAlloca( const AbstractValue & av ) {
         rty = ComposedType( sty, DomainMap{ { 0, av.domain() } } ).llvm()->getPointerTo();
     else
         rty = av.type()->llvm()->getPointerTo();
-
-    auto tag = intrinsic::tag( av ) + "." + av.type()->baseName();
-    IRBuilder<> irb( i );
-    return intrinsic::build( i->getModule(), irb, rty, tag );
+    auto intr = Intrinsic( i->getModule(), rty, intrinsicName( av ) );
+    return IRBuilder<>( i ).CreateCall( intr.declaration(), {} );
 }
 
 Value * AbstractBuilder::createLoad( const AbstractValue & av ) {
     auto i = av.value< LoadInst >();
     auto args = { _values[ i->getOperand( 0 ) ] };
     auto rty = av.type()->llvm();
-    auto tag = intrinsic::tag( av ) + "." + av.type()->baseName();
-    IRBuilder<> irb( i );
-    return intrinsic::build( i->getModule(), irb, rty, tag, args );
+    auto intr = Intrinsic( i->getModule(), rty, intrinsicName( av ), typesOf( args ) );
+    return IRBuilder<>( i ).CreateCall( intr.declaration(), args );
 }
 
 Value * AbstractBuilder::createStore( const AbstractValue & av ) {
     auto i = av.value< StoreInst >();
-
     IRBuilder<> irb( i );
-    auto val = _values.count( i->getOperand( 0 ) )
-             ? _values[ i->getOperand( 0 ) ]
-             : lift( i->getOperand( 0 ), av.domain(), irb );
-    auto ptr = _values.count( i->getOperand( 1 ) )
-             ? _values[ i->getOperand( 1 ) ]
-             : lift( i->getOperand( 1 ), av.domain(), irb );
+    auto args = operands( av );
     auto rty = VoidType( i->getContext() );
-    auto base = basename( cast< StructType >( stripPtr( val->getType() ) ) );
-    auto tag = intrinsic::tag( av ) + "." + base.value();
-
-    return intrinsic::build( i->getModule(), irb, rty, tag, { val, ptr } );
+    auto storedName = basename( cast< StructType >( stripPtr( args[0]->getType() ) ) ).value();
+    auto name = intrinsicName( av ) + "." + storedName;
+    auto intr = Intrinsic( i->getModule(), rty, name, typesOf( args ) );
+    return IRBuilder<>( i ).CreateCall( intr.declaration(), args );
 }
 
 Value * AbstractBuilder::createICmp( const AbstractValue & av ) {
     auto i = av.value< ICmpInst >();
-    IRBuilder<> irb( i );
-
-    Values args;
-    for ( const auto & op : i->operands() ) {
-        auto arg = _values.count( op ) ? _values.at( op ) : lift( op, av.domain(), irb );
-        args.push_back( arg );
-    }
-
+    auto args = operands( av );
     auto rty = liftTypeLLVM( BoolType( i->getContext() ), av.domain() );
-	auto tag = intrinsic::tag( av ) + "_" + predicate.at( i->getPredicate() )
+	auto name = intrinsicName( av ) + "_" + predicate.at( i->getPredicate() )
              + "." + basename( cast< StructType >( args[0]->getType() ) ).value();
-
-    return intrinsic::build( i->getModule(), irb, rty, tag, args );
+    auto intr = Intrinsic( i->getModule(), rty, name, typesOf( args ) );
+    return IRBuilder<>( i ).CreateCall( intr.declaration(), args );
 }
 
 Value * AbstractBuilder::createBranch( const AbstractValue & av ) {
@@ -346,30 +342,19 @@ Value * AbstractBuilder::createBranch( const AbstractValue & av ) {
 Value * AbstractBuilder::createBinaryOperator( const AbstractValue & av ) {
     auto i = av.value< BinaryOperator >();
     IRBuilder<> irb( i );
-
-    Values args;
-    for ( auto & arg : i->operands() ) {
-        auto v = _values.count( arg ) ? _values[ arg ] : lift( arg, av.domain(), irb );
-        args.push_back( v );
-    }
+    auto args = operands( av );
     auto rty = av.type()->llvm();
-    auto tag = intrinsic::tag( av ) + "." + av.type()->baseName();
-
-    return intrinsic::build( i->getModule(), irb, rty, tag, args );
+    auto intr = Intrinsic( i->getModule(), rty, intrinsicName( av ), typesOf( args ) );
+    return IRBuilder<>( i ).CreateCall( intr.declaration(), args );
 }
 
 Value * AbstractBuilder::createCast( const AbstractValue & av ) {
     auto i = av.value< CastInst >();
     IRBuilder<> irb( i );
-    auto op = i->getOperand( 0 );
-    auto arg = _values.count( op ) ? _values[ op ] : lift( op, av.domain(), irb );
-
-    auto tag = intrinsic::tag( av ) + "." + llvmname( i->getSrcTy() ) + "." +
-               llvmname( i->getDestTy() );
-
+    auto args = operands( av );
     auto rty = liftTypeLLVM( i->getDestTy(), av.domain() );
-
-    return intrinsic::build( i->getModule(), irb, rty, tag, { arg } );
+    auto intr = Intrinsic( i->getModule(), rty, intrinsicName( av ), typesOf( args ) );
+    return IRBuilder<>( i ).CreateCall( intr.declaration(), args );
 }
 
 Value * AbstractBuilder::createPhi( const AbstractValue & av ) {
@@ -406,11 +391,11 @@ Value * AbstractBuilder::createPhi( const AbstractValue & av ) {
 
 Value * AbstractBuilder::createCall( const AbstractValue & av ) {
     auto i = av.value< CallInst >();
-    if ( intrinsic::isLift( i ) ) {
+    if ( isLift( i ) ) {
         return processLiftCall( i );
-    } else if ( intrinsic::is( i ) ) {
+    } else if ( isIntrinsic( i ) ) { // Abstract intrinsic
         return clone( i );
-    } else if ( i->getCalledFunction()->isIntrinsic() ){
+    } else if ( i->getCalledFunction()->isIntrinsic() ){ // llvm intrinsic
         return processIntrinsic( cast< IntrinsicInst >( i ) );
     } else {
         return processCall( av );
@@ -497,7 +482,7 @@ Value * AbstractBuilder::clone( CallInst * i ) {
 
 Value * AbstractBuilder::processIntrinsic( CallInst * i ) {
     auto intr = cast< IntrinsicInst >( i );
-	auto name = Intrinsic::getName( intr->getIntrinsicID() );
+	auto name = llvm::Intrinsic::getName( intr->getIntrinsicID() );
     if ( ( name == "llvm.lifetime.start" ) || ( name == "llvm.lifetime.end" ) ) {
         //ignore
     }
