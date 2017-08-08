@@ -25,6 +25,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/cleanup.h>
 #include <lart/support/context.hpp>
 #include <lart/support/error.h>
+#include <lart/reduction/passes.h>
 #include <runtime/abstract/weakmem.h>
 
 namespace lart {
@@ -381,11 +382,13 @@ struct Substitute {
         if ( auto *resize = lctx.getResizeFn() )
             transformResize( resize );
 
+        auto silentID = m.getMDKindID( reduction::silentTag );
+
         for ( auto &f : m ) {
             if ( _bypass.count( &f ) )
                 transformBypass( f );
             else
-                transformWeak( f, dl, lctx );
+                transformWeak( f, dl, lctx, silentID );
         }
 
         if ( _minMemOrd != MemoryOrder::Unordered ) {
@@ -518,7 +521,9 @@ struct Substitute {
     // *  transform fence instructions to call to lart fence
     // *  for TSO: insert PSO -> TSO fence at the beginning and after call to
     //    any function which is neither TSO, SC, or bypass
-    void transformWeak( llvm::Function &f, llvm::DataLayout &dl, context::Context &lctx ) {
+    void transformWeak( llvm::Function &f, llvm::DataLayout &dl, context::Context &lctx,
+                        unsigned silentID )
+    {
         auto &ctx = f.getContext();
         auto *i8ptr = llvm::Type::getInt8PtrTy( ctx );
 
@@ -527,7 +532,9 @@ struct Substitute {
         std::vector< llvm::AtomicCmpXchgInst * > cass;
         std::vector< llvm::AtomicRMWInst * > ats;
 
-        for ( auto &i : query::query( f ).flatten() )
+        for ( auto &i : query::query( f ).flatten() ) {
+            if ( reduction::isSilent( i, silentID ) )
+                continue;
             llvmcase( i,
                 [&]( llvm::AtomicCmpXchgInst *cas ) {
                     // if ( !withLocal( cas ) )
@@ -537,6 +544,7 @@ struct Substitute {
                     // if ( !withLocal( at ) )
                     ats.push_back( at );
                 } );
+        }
 
         for ( auto cas : cass ) {
             // we don't need to consider failure ordering for TSO, this is the same case
@@ -672,7 +680,9 @@ struct Substitute {
         std::vector< llvm::StoreInst * > stores;
         std::vector< llvm::FenceInst * > fences;
 
-        for ( auto &i : query::query( f ).flatten() )
+        for ( auto &i : query::query( f ).flatten() ) {
+            if ( reduction::isSilent( i, silentID ) )
+                continue;
             llvmcase( i,
                 [&]( llvm::LoadInst *load ) {
                     // if ( !withLocal( load ) )
@@ -685,6 +695,7 @@ struct Substitute {
                 [&]( llvm::FenceInst *fence ) {
                     fences.push_back( fence );
                 } );
+        }
 
         for ( auto load : loads ) {
 
