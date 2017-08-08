@@ -16,9 +16,7 @@ struct Zero final : Common {
 
     llvm::Type * abstract( llvm::Type * ) override;
 
-    Domain::Value domain() const override {
-        return Domain::Value::Zero;
-    }
+    DomainPtr domain() const override { return _domain; }
 
     static bool isPresent( llvm::Module & m ) {
         return m.getFunction( "__abstract_zero_load" ) != nullptr;
@@ -26,6 +24,7 @@ struct Zero final : Common {
 
 private:
     llvm::Type * zero_type;
+    const DomainPtr _domain = Domain::make( DomainValue::Zero );
 };
 
 } // namespace abstract

@@ -12,6 +12,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <vector>
 #include <utility>
 #include <algorithm>
+#include <iterator>
 
 #include <lart/support/util.h>
 #include <lart/support/query.h>
@@ -47,6 +48,12 @@ auto Insts( llvm::Function * fn ) {
         .freeze();
 };
 
+DomainPtr getDomainFromGEP( llvm::GetElementPtrInst * gep, DomainPtr dom ) {
+    // TODO for now we are expecting only one layerd structures
+    assert( gep->getNumIndices() == 2 );
+    auto idx = llvm::cast< llvm::ConstantInt >( gep->getOperand( 2 ) )->getZExtValue();
+    return dom->get< ComposedDomain >().values[ idx ];
+}
 
 struct ValuesPostOrder {
     ValuesPostOrder( const AbstractValues & roots )
@@ -61,10 +68,13 @@ struct ValuesPostOrder {
                 return {};
 
             return query::query( n.value()->users() )
-                .map( [&] ( const auto & val ) {
-                    return AbstractValue{ val, n.domain() };
-                } )
-                .freeze();
+            .map( [&] ( const auto & val ) -> AbstractValue {
+                if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( val ) )
+                    return { val, getDomainFromGEP( gep, n.domain() ) };
+                else
+                    return { val, n.domain() };
+            } )
+            .freeze();
         };
     }
 
@@ -88,25 +98,16 @@ std::vector< FunctionNodePtr > Walker::postorder() const {
     return analysis::postorder( functions, succs );
 }
 
-
-Maybe< AbstractValue > getValueFromAnnotation( const llvm::CallInst * call ) {
+AbstractValue getValueFromAnnotation( const llvm::CallInst * call ) {
     auto data = llvm::cast< llvm::GlobalVariable >(
                 call->getOperand( 1 )->stripPointerCasts() );
     auto annotation = llvm::cast< llvm::ConstantDataArray >(
                       data->getInitializer() )->getAsCString();
     const std::string prefix = "lart.abstract.";
-    if ( annotation.startswith( prefix ) ) {
-        auto tmp = annotation.str().substr( prefix.size() );
-        auto domain = Domain::value( annotation.str().substr( prefix.size() ) );
-        if ( domain.isNothing() )
-            throw std::runtime_error( "unknown abstraction domain" );
-
-        return Maybe< AbstractValue >::Just( AbstractValue(
-                                             call->getOperand( 0 )->stripPointerCasts(),
-                                             domain.value() ) );
-    }
-
-    return Maybe< AbstractValue >::Nothing();
+    assert( annotation.startswith( prefix ) );
+    auto tmp = annotation.str().substr( prefix.size() );
+    auto dom = domain( annotation.str().substr( prefix.size() ) );
+    return AbstractValue( call->getOperand( 0 )->stripPointerCasts(), dom );
 }
 
 std::vector< FunctionNodePtr > Walker::annotations( llvm::Module & m ) {
@@ -126,11 +127,8 @@ std::vector< FunctionNodePtr > Walker::annotations( llvm::Module & m ) {
 
         for ( auto a : annotated ) {
             std::vector< llvm::Value * > users = { a->user_begin(), a->user_end() };
-            for ( const auto & call : Insts< llvm::CallInst >( users ) ) {
-                auto val = getValueFromAnnotation( call );
-                if ( val.isJust() )
-                    values.push_back( val.value() );
-            }
+            for ( const auto & call : Insts< llvm::CallInst >( users ) )
+                values.push_back( getValueFromAnnotation( call ) );
         }
     }
 
@@ -184,11 +182,11 @@ Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
 
     auto allocas = query::query( Insts< llvm::AllocaInst >( processed->function ) )
         .map( []( llvm::Value * v ) {
-            return AbstractValue{ v, LLVMDomain };
+            return AbstractValue( v, LLVMDomain );
         } ).freeze();
     auto geps = query::query( Insts< llvm::GetElementPtrInst >( processed->function ) )
         .map( []( llvm::Value * v ) {
-            return AbstractValue{ v, LLVMDomain };
+            return AbstractValue( v, LLVMDomain );
         } ).freeze();
 
     auto writes = [] ( const auto & roots ) {
@@ -243,8 +241,13 @@ Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
         MapAccessed( geps, accesses,
             [&] ( auto & n , const auto & accs ) {
                 auto gep = llvm::cast< llvm::GetElementPtrInst >( n.value() );
-                auto av = AbstractValue( gep->getPointerOperand(), accs.second->domain() );
-                reached.insert( av );
+                auto pet = gep->getPointerOperandType()->getPointerElementType();
+                assert( pet->isStructTy() );
+
+                // TODO compute correct index and check whether the element is abstract
+                DomainMap dmap = { { 0, accs.second->domain() } };
+                auto val = AbstractValue( gep->getPointerOperand(), dmap );
+                reached.insert( val );
             } );
     } while ( abstract != reached );
 

@@ -2,6 +2,7 @@
 #include <lart/abstract/substituter.h>
 
 #include <lart/abstract/types/common.h>
+#include <lart/abstract/domains/domains.h>
 #include <lart/abstract/domains/tristate.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/support/util.h>
@@ -166,7 +167,9 @@ void Substituter::substituteAbstractIntrinsic( llvm::CallInst * intr ) {
     //skip if do not have enough substituted arguments
     if ( intr->getNumArgOperands() != args.size() )
         return;
-    auto abst = abstractions[ Intrinsic( intr ).domain() ];
+    // TODO may be struct
+    auto dom = Intrinsic( intr ).domain()->get< UnitDomain >().value;
+    auto abst = abstractions[ dom ];
     processedValues[ intr ] = abst->process( intr, args );
 }
 
@@ -272,7 +275,7 @@ void Substituter::clean( llvm::Module & m ) {
 }
 
 void Substituter::registerAbstraction( Abstraction && abstraction ) {
-    auto dom = abstraction->domain();
+    auto dom = abstraction->domain()->get< UnitDomain >().value;
     abstractions.emplace( dom, std::move( abstraction ) );
 }
 
@@ -283,7 +286,7 @@ const Abstraction Substituter::getAbstraction( llvm::Value * value ) const {
 const Abstraction Substituter::getAbstraction( llvm::Type * type ) const {
     assert( isAbstract( type ) );
     auto sty = llvm::cast< llvm::StructType >( stripPtr( type ) );
-    auto domain = TypeName( sty ).domain().value();
+    auto domain = TypeName( sty ).domain()->get< UnitDomain >().value;
     if ( !abstractions.count( domain ) )
         throw std::runtime_error( "unknown abstraction domain" );
     return abstractions.at( domain );
@@ -299,10 +302,6 @@ bool Substituter::isSubstituted( llvm::Type * type ) const {
             return true;
     return false;
 }
-
-/*Intrinsic Substituter::intrinsic( llvm::CallInst * call ) const {
-    return Intrinsic();
-}*/
 
 } // namespace abstract
 } // namespace lart

@@ -12,17 +12,18 @@ struct TristateDomain final : Common {
 
     llvm::Value * process( llvm::CallInst *, std::vector< llvm::Value * > & ) override;
 
-    bool is( llvm::Type * ) override {
-        return false;
+    bool is( llvm::Type * type ) override {
+        return type->isStructTy() && type->getStructName() == "lart.tristate";
     }
 
     llvm::Type * abstract( llvm::Type * ) override {
         UNSUPPORTED_BY_DOMAIN
     }
 
-    Domain::Value domain() const override {
-        return Domain::Value::Tristate;
-    }
+    DomainPtr domain() const override { return _domain; }
+
+private:
+    const DomainPtr _domain = Domain::make( DomainValue::Tristate );
 };
 
 } // namespace abstract

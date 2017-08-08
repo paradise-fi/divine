@@ -1,5 +1,4 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
-
 #include <lart/abstract/builder.h>
 
 DIVINE_RELAX_WARNINGS
@@ -10,7 +9,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/util.h>
 #include <lart/abstract/types/common.h>
 #include <lart/abstract/types/scalar.h>
-#include <lart/abstract/types/transform.h>
+#include <lart/abstract/types/utils.h>
 #include <lart/abstract/value.h>
 #include <lart/abstract/intrinsic.h>
 
@@ -136,8 +135,11 @@ void AbstractBuilder::process( const AbstractValue & av ) {
         },
         [&] ( Argument * arg ) {
             IRBuilder<> irb( arg->getParent()->front().begin() );
-            auto a = isAbstract( arg->getType() ) ? arg : lift( arg, av.domain(), irb );
-            _values[ arg ] = a;
+            if ( isAbstract( arg->getType() ) ) {
+                _values[ arg ] = arg;
+            } else {
+                _values[ arg ] = lift( arg, av.domain(), irb );
+            }
         });
 }
 
@@ -158,9 +160,16 @@ Function * AbstractBuilder::process( const FunctionNodePtr & node ) {
         return fn;
 
     auto fty = node->function->getFunctionType();
-    auto ret_type = rets.empty()
-                  ? fty->getReturnType()
-                  : ScalarType( fty->getReturnType(), rets.at(0).domain() ).llvm();
+    auto rty = fty->getReturnType();
+    if ( !rets.empty() ) {
+        // TODO refactore
+        auto dom = rets.at( 0 ).domain();
+        rty = dom->match(
+            [&] ( ComposedDomain ) { return ComposedType( rty, dom ).llvm(); },
+            [&] ( UnitDomain ) { return ScalarType( rty, dom ).llvm(); } )
+            .value();
+    }
+
     Types argTys;
     if ( !args.empty() ) {
         for ( auto & arg : fn->args() ) {
@@ -177,7 +186,7 @@ Function * AbstractBuilder::process( const FunctionNodePtr & node ) {
         argTys = fty->params();
     }
 
-    auto newfty = FunctionType::get( ret_type, argTys, fty->isVarArg() );
+    auto newfty = FunctionType::get( rty, argTys, fty->isVarArg() );
     auto newfn = Function::Create( newfty, fn->getLinkage(), fn->getName(), fn->getParent() );
     store( fn, newfn );
     return newfn;
@@ -281,13 +290,7 @@ bool AbstractBuilder::ignore( Instruction * i ) {
 Value * AbstractBuilder::createAlloca( const AbstractValue & av ) {
     auto i = av.value< AllocaInst >();
     assert( !i->isArrayAllocation() );
-    auto allocatedType = i->getType()->getPointerElementType();
-    // TODO let abstract value contain correct domain and type (ie. strip pointer)
-    PointerType * rty;
-    if ( auto sty = dyn_cast< StructType >( allocatedType ) )
-        rty = ComposedType( sty, DomainMap{ { 0, av.domain() } } ).llvm()->getPointerTo();
-    else
-        rty = av.type()->llvm()->getPointerTo();
+    auto rty = av.type()->llvm();
     auto intr = Intrinsic( i->getModule(), rty, intrinsicName( av ) );
     return IRBuilder<>( i ).CreateCall( intr.declaration(), {} );
 }
@@ -305,7 +308,7 @@ Value * AbstractBuilder::createStore( const AbstractValue & av ) {
     IRBuilder<> irb( i );
     auto args = operands( av );
     auto rty = VoidType( i->getContext() );
-    auto storedName = basename( cast< StructType >( stripPtr( args[0]->getType() ) ) ).value();
+    auto storedName = TypeName( cast< StructType >( args[0]->getType() ) ).base().name();
     auto name = intrinsicName( av ) + "." + storedName;
     auto intr = Intrinsic( i->getModule(), rty, name, typesOf( args ) );
     return IRBuilder<>( i ).CreateCall( intr.declaration(), args );
@@ -316,7 +319,7 @@ Value * AbstractBuilder::createICmp( const AbstractValue & av ) {
     auto args = operands( av );
     auto rty = liftTypeLLVM( BoolType( i->getContext() ), av.domain() );
 	auto name = intrinsicName( av ) + "_" + predicate.at( i->getPredicate() )
-             + "." + basename( cast< StructType >( args[0]->getType() ) ).value();
+             + "." + TypeName( cast< StructType >( args[0]->getType() ) ).base().name();
     auto intr = Intrinsic( i->getModule(), rty, name, typesOf( args ) );
     return IRBuilder<>( i ).CreateCall( intr.declaration(), args );
 }
@@ -330,7 +333,7 @@ Value * AbstractBuilder::createBranch( const AbstractValue & av ) {
     } else {
         Value * cond;
         if ( _values.count( i->getCondition() ) ) {
-            auto tristate =  toTristate( _values[ i->getCondition() ], av.domain(), irb );
+            auto tristate = toTristate( _values[ i->getCondition() ], av.domain(), irb );
             cond = lower( tristate, irb );
         } else {
             cond = i->getCondition();
@@ -434,13 +437,14 @@ Value * AbstractBuilder::createGEP( const AbstractValue & av ) {
 
 Value * AbstractBuilder::lower( Value * v, IRBuilder<> & irb ) {
     const auto & type = cast< StructType >( v->getType() );
-    assert( isAbstract( type ) && !type->isPointerTy() );
+    bool abs = isAbstract( type );
+    assert( abs && !type->isPointerTy() );
 
     auto fty = FunctionType::get( lowerTypeLLVM( type ), { type }, false );
-    auto dom = TypeName( type ).domain().value();
-    auto tag = "lart." + Domain::name( dom ) + ".lower";
-    if ( dom != Domain::Value::Tristate )
-        tag += "." + basename( type ).value();
+    auto dom = TypeName( type ).domain();
+    auto tag = "lart." + dom->name() + ".lower";
+    if ( dom->get< UnitDomain >().value != DomainValue::Tristate )
+        tag += "." + TypeName( type ).base().name();
     auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     auto call = irb.CreateCall( fn , v );
 
@@ -448,21 +452,19 @@ Value * AbstractBuilder::lower( Value * v, IRBuilder<> & irb ) {
     return call;
 }
 
-Value * AbstractBuilder::lift( Value * v, Domain::Value domain, IRBuilder<> & irb ) {
-    auto type = ScalarType( v->getType(), domain );
-    auto fty = FunctionType::get( type.llvm(), { v->getType() }, false );
-    auto tag = "lart." + type.domainName() + ".lift." + type.baseName();
+Value * AbstractBuilder::lift( Value * v, DomainPtr domain, IRBuilder<> & irb ) {
+    auto type = liftType( v->getType(), domain );
+    auto fty = FunctionType::get( type->llvm(), { v->getType() }, false );
+    auto tag = "lart." + domain->name() + ".lift." + type->baseName();
     auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     return irb.CreateCall( fn , v );
 }
 
-Value * AbstractBuilder::toTristate( Value * v, Domain::Value domain,
-                                           IRBuilder<> & irb )
-{
+Value * AbstractBuilder::toTristate( Value * v, DomainPtr domain, IRBuilder<> & irb ) {
     auto type = liftType( v->getType(), domain );
     auto tristate = Tristate( type->origin() ).llvm();
     auto fty = FunctionType::get( tristate, { v->getType() }, false );
-    auto tag = "lart." + type->domainName() + ".bool_to_tristate";
+    auto tag = "lart." + domain->name() + ".bool_to_tristate";
     auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     return irb.CreateCall( fn , v );
 }

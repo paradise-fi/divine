@@ -23,7 +23,7 @@ namespace {
         auto & ctx = type->getContext();
         if ( isAbstract( type ) ) {
             auto sty = llvm::cast< llvm::StructType >( stripPtr( type ) );
-            type = TypeBase::llvm( TypeName( sty ).base().value(), ctx );
+            type = TypeName( sty ).base().llvm( ctx );
         }
         auto bw = llvm::cast< llvm::IntegerType >( type )->getBitWidth();
         return llvm::ConstantInt::get( llvm::IntegerType::get( ctx, 32 ), bw );
@@ -38,8 +38,7 @@ namespace {
 
         if ( n == "alloca" )
         {
-            auto typeName = intr.nameElement( 3 );
-            auto type = TypeBase::llvm( TypeBase::value( typeName ).value(), ctx );
+            auto type = typebase( intr.nameElement( 3 ) ).llvm( ctx );
             return { bitwidth( type ) };
         }
         else if ( n == "lift" )
@@ -90,8 +89,7 @@ namespace {
                   ( n == "sext" ) ||
                   ( n == "bitcast" ) )
         {
-            auto typeName = intr.nameElement( 4 );
-            auto type = TypeBase::llvm( TypeBase::value( typeName ).value(), ctx );
+            auto type = typebase( intr.nameElement( 4 ) ).llvm( ctx );
             return { args[0], bitwidth( type ) };
         }
         else
@@ -109,7 +107,7 @@ Symbolic::Symbolic( llvm::Module & m ) {
 
 llvm::Value * Symbolic::process( llvm::CallInst * call, std::vector< llvm::Value * > & args ) {
     auto intr = Intrinsic( call );
-    assert( intr.domain() == domain() );
+    assert( (*intr.domain()) == (*domain()) );
     auto name = constructFunctionName( call );
     args = arguments( call, args );
 

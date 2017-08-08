@@ -14,36 +14,60 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
+struct ScalarType;
+using ScalarTypePtr = std::shared_ptr< ScalarType >;
+
 struct ScalarType : public AbstractType {
 
-    ScalarType( Type * origin, Domain::Value domain )
-        : AbstractType( origin, domain )
+    ScalarType( Type * origin, DomainValue dom )
+        : AbstractType( origin, Domain::make( dom ) )
     {
         assert( origin->isSingleValueType() || origin->isVoidTy() );
     }
 
-    StructType * llvm() const override final {
+    ScalarType( Type * origin, DomainPtr dom )
+        : AbstractType( origin, dom )
+    {
+      assert( origin->isSingleValueType() || origin->isVoidTy() );
+      assert( dom->is< UnitDomain >() );
+    }
+
+    Type * llvm() override final {
         const auto & ctx = origin()->getContext();
+        Type * res = nullptr;
         if( auto lookup = ctx.pImpl->NamedStructTypes.lookup( name() ) )
-            return lookup;
-        return llvm::StructType::create( { origin() }, name() );
-    }
-
-    std::string name() const override final {
-        if ( domain() == Domain::Value::Tristate )
-            return "lart." + Domain::name( domain() );
+            res = lookup;
         else
-            return "lart." + Domain::name( domain() ) + "."
-                  + TypeBase::name( base() );
+            res = llvm::StructType::create( { origin() }, name() );
+        return pointer() ? res->getPointerTo() : res;
     }
 
+    std::string name() override final {
+        auto dom = domain()->cget< UnitDomain >();
+        if ( dom.value == DomainValue::Tristate )
+            return "lart." + domainName();
+        else
+            return "lart." + domainName() + "." + baseName();
+    }
+
+    static ScalarTypePtr make( Type * origin, DomainValue dom ) {
+        return std::make_shared< ScalarType >( origin, dom );
+    }
+
+    static ScalarTypePtr make( Type * origin, DomainPtr dom ) {
+        return std::make_shared< ScalarType >( origin, dom );
+    }
 };
 
-using AbstractInt = ScalarType;
+template< size_t bw >
+struct AbstractInt : ScalarType {
+    AbstractInt( Type * type, DomainValue domain )
+        : ScalarType( type, domain )
+    { assert( type->isIntegerTy( bw ) ); }
+};
 
-struct Tristate : AbstractInt {
-    Tristate( Type * type )
-        : AbstractInt( type, Domain::Value::Tristate ) {}
+struct Tristate : AbstractInt< 1 > {
+    Tristate( Type * type ) : AbstractInt< 1 >( type, DomainValue::Tristate ) {}
 };
 
 } // namespace abstract

@@ -7,20 +7,17 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/types/common.h>
 #include <lart/abstract/types/scalar.h>
+#include <lart/abstract/types/composed.h>
 #include <lart/abstract/domains/domains.h>
 
 namespace lart {
 namespace abstract {
 
-using AbstractTypePtr = std::shared_ptr< AbstractType >;
-
 // Lift 'type' to abstract type in 'domain'
-AbstractTypePtr liftType( llvm::Type * type, const Domain::Value & domain );
-
-AbstractTypePtr liftType( llvm::Type * type, const DomainMap & dmap );
+AbstractTypePtr liftType( llvm::Type * type, DomainPtr dom );
 
 // Lift 'type' to abstract 'domain' and return llvm representation of it
-llvm::Type * liftTypeLLVM( llvm::Type * type, const Domain::Value & domain );
+llvm::Type * liftTypeLLVM( llvm::Type * type, DomainPtr dom );
 
 llvm::Type * lowerTypeLLVM( llvm::Type * type );
 

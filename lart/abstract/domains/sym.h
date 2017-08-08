@@ -16,9 +16,7 @@ struct Symbolic final : Common {
 
     llvm::Type * abstract( llvm::Type * ) override;
 
-    Domain::Value domain() const override {
-        return Domain::Value::Symbolic;
-    }
+    DomainPtr domain() const override { return _domain; }
 
     static bool isPresent( llvm::Module & m ) {
         return m.getFunction( "__abstract_sym_load" ) != nullptr;
@@ -26,6 +24,7 @@ struct Symbolic final : Common {
 
 private:
     llvm::Type * formula_type;
+    const DomainPtr _domain = Domain::make( DomainValue::Symbolic );
 };
 
 } // namespace abstract

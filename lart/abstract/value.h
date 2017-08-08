@@ -9,45 +9,38 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/types/common.h>
 #include <lart/abstract/types/composed.h>
 #include <lart/abstract/types/scalar.h>
+#include <lart/abstract/types/utils.h>
 
 namespace lart {
 namespace abstract {
 
 struct AbstractValue {
 
-    AbstractValue( llvm::Value * value, const DomainMap & dmap )
+    AbstractValue( llvm::Value * value, DomainPtr dom )
         : _value( value ),
-          _type( std::make_shared< ComposedType >(
-                      llvm::cast< llvm::StructType >( value->getType() ), dmap ) )
+          _type( liftType( value->getType(), dom ) )
     {}
 
-    AbstractValue( llvm::Value * value, Domain::Value dom )
-        : _value( value ),
-          _type( std::make_shared< ScalarType >( value->getType(), dom ) )
+    AbstractValue( llvm::Value * value, const DomainMap & dmap )
+        : AbstractValue( value, Domain::make( value->getType(), dmap ) )
+    {}
+
+    AbstractValue( llvm::Value * value, DomainValue dom )
+        : AbstractValue( value, Domain::make( dom ) )
     {}
 
     AbstractValue( const AbstractValue & ) = default;
     AbstractValue( AbstractValue && ) = default;
-
     AbstractValue &operator=( const AbstractValue & other ) = default;
     AbstractValue &operator=( AbstractValue && other ) = default;
 
-    Domain::Value domain() const  {
-        return _type->domain();
-    }
-
-    llvm::Value * value() const {
-        return _value;
-    }
-
     template< typename T >
-    decltype(auto) value() const {
-        return llvm::cast< T >( _value );
-    }
+    decltype(auto) value() const { return llvm::cast< T >( _value ); }
 
-    const AbstractTypePtr type() const {
-        return _type;
-    }
+    llvm::Value * value() const { return _value; }
+    DomainPtr domain() const  { return _type->domain(); }
+    const AbstractTypePtr type() const { return _type; }
+
 private:
     llvm::Value * _value;
     AbstractTypePtr _type;
@@ -65,7 +58,7 @@ namespace std {
     template <>
     struct hash< lart::abstract::AbstractValue > {
         size_t operator()( const lart::abstract::AbstractValue& n ) const {
-            // TODO want root ant type ?
+            // TODO type
             return hash_value( n.value() );
         }
     };

@@ -32,7 +32,7 @@ struct Common
      * i.e. if domain is "interval" then values of type
      * "%lart.interval.*" are the responsibility of this abstraction.
      */
-    virtual Domain::Value domain() const = 0;
+    virtual DomainPtr domain() const = 0;
 
     /* The outside interface of abstraction passes.
      * Translate an abstract intrinsic call to a code block computing the effect of the

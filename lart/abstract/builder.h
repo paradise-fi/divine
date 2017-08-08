@@ -52,8 +52,8 @@ private:
     llvm::Value * createGEP( const AbstractValue & );
 
     llvm::Value * lower( llvm::Value *, llvm::IRBuilder<> & );
-    llvm::Value * lift( llvm::Value *, Domain::Value , llvm::IRBuilder<> & );
-    llvm::Value * toTristate( llvm::Value *, Domain::Value , llvm::IRBuilder<> & );
+    llvm::Value * lift( llvm::Value *, DomainPtr, llvm::IRBuilder<> & );
+    llvm::Value * toTristate( llvm::Value *, DomainPtr, llvm::IRBuilder<> & );
 
     llvm::Value * clone( llvm::CallInst * );
 

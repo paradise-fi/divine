@@ -14,219 +14,173 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-template < typename ...Ts >
-using Union = brick::types::Union< Ts... >;
+using brick::types::Union;
+using brick::types::Maybe;
 
-template< typename T >
-using Maybe = brick::types::Maybe< T >;
-
-using Type = llvm::Type;
-using IntegerType = llvm::IntegerType;
-using StructType = llvm::StructType;
-using Context = llvm::LLVMContext;
+using llvm::Type;
+using llvm::IntegerType;
+using llvm::StructType;
+using llvm::LLVMContext;
 
 static inline Type * stripPtr( Type * type ) {
     return type->isPointerTy() ? type->getPointerElementType() : type;
 }
 
-// TODO solve pointers in TypeBase
-namespace TypeBase {
+enum class TypeBaseValue : uint16_t {
+    Void,
+    Int1,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Struct,
+    LastBaseType = Struct
+};
 
-    enum class Value : uint16_t {
-        Int1,
-        Int8,
-        Int16,
-        Int32,
-        Int64,
-        Struct,
-        LastBaseType = Struct
-    };
+namespace {
+const brick::data::Bimap< TypeBaseValue, std::string > TypeBaseTable {
+     { TypeBaseValue::Void,  "void" }
+    ,{ TypeBaseValue::Int1,  "i1" }
+    ,{ TypeBaseValue::Int8,  "i8" }
+    ,{ TypeBaseValue::Int16, "i16" }
+    ,{ TypeBaseValue::Int32, "i32" }
+    ,{ TypeBaseValue::Int64, "i64" }
+    ,{ TypeBaseValue::Struct, "struct" }
+};
+} // anonymous namespace
 
-    namespace {
-    const brick::data::Bimap< Value, std::string > BaseTypeMap = {
-         { Value::Int1,  "i1" }
-        ,{ Value::Int8,  "i8" }
-        ,{ Value::Int16, "i16" }
-        ,{ Value::Int32, "i32" }
-        ,{ Value::Int64, "i64" }
-        ,{ Value::Struct, "struct" }
-    };
-    } // empty namespace
+struct TypeBase {
+    TypeBase( TypeBaseValue value ) : value( value ) {}
+    std::string name() const { return TypeBaseTable[ value ]; }
 
-    using MaybeBase = Maybe< TypeBase::Value >;
-
-    static inline std::string name( const Value & v ) {
-        return BaseTypeMap[ v ];
-    }
-
-    static inline MaybeBase value( const std::string & s ) {
-        if ( BaseTypeMap.right().count( s ) )
-            return MaybeBase::Just( BaseTypeMap[ s ] );
-        else
-            return MaybeBase::Nothing();
-    }
-
-    static inline Type * llvm( const Value & v, Context & ctx ) {
-        switch( v ) {
-            case Value::Int1:
-                return llvm::IntegerType::get( ctx, 1 );
-            case Value::Int8:
-                return llvm::IntegerType::get( ctx, 8 );
-            case Value::Int16:
-                return llvm::IntegerType::get( ctx, 16 );
-            case Value::Int32:
-                return llvm::IntegerType::get( ctx, 32 );
-            case Value::Int64:
-                return llvm::IntegerType::get( ctx, 64 );
-            case Value::Struct:
+    Type * llvm( LLVMContext & ctx ) const {
+        switch( value ) {
+            case TypeBaseValue::Void:  return Type::getVoidTy( ctx );
+            case TypeBaseValue::Int1:  return IntegerType::get( ctx, 1 );
+            case TypeBaseValue::Int8:  return IntegerType::get( ctx, 8 );
+            case TypeBaseValue::Int16: return IntegerType::get( ctx, 16 );
+            case TypeBaseValue::Int32: return IntegerType::get( ctx, 32 );
+            case TypeBaseValue::Int64: return IntegerType::get( ctx, 64 );
+            case TypeBaseValue::Struct:
                 UNREACHABLE( "Trying to get llvm of struct type." );
         }
         UNREACHABLE( "Trying to get llvm of unsupported type." );
     }
 
-    static inline Value get( Type * t ) {
-        auto& ctx = t->getContext();
-        if ( t  == llvm::IntegerType::get( ctx, 1 ) )
-            return TypeBase::Value::Int1;
-        if ( t  == llvm::IntegerType::get( ctx, 8 ) )
-            return TypeBase::Value::Int8;
-        if ( t  == llvm::IntegerType::get( ctx, 16 ) )
-            return TypeBase::Value::Int16;
-        if ( t  == llvm::IntegerType::get( ctx, 32 ) )
-            return TypeBase::Value::Int32;
-        if ( t  == llvm::IntegerType::get( ctx, 64 ) )
-            return TypeBase::Value::Int64;
-        if ( t->isStructTy() )
-            return TypeBase::Value::Struct;
-       assert( false );
-        UNREACHABLE( "Trying to get base of unsupported type." );
-    }
-} // namespace TypeBase
+    TypeBaseValue value;
+};
 
-using MaybeDomain = Maybe< Domain::Value >;
-using MaybeBase = Maybe< TypeBase::Value >;
+static TypeBase typebase( const std::string & s ) {
+    return TypeBaseTable[ s ];
+}
 
-struct TypeName {
-    using StructElements = std::vector< TypeName >;
+static TypeBase typebase( Type * t ) {
+    auto& ctx = t->getContext();
+    if ( t->isVoidTy() ) return TypeBaseValue::Void;
+    if ( t == llvm::IntegerType::get( ctx, 1 ) )  return TypeBaseValue::Int1;
+    if ( t == llvm::IntegerType::get( ctx, 8 ) )  return TypeBaseValue::Int8;
+    if ( t == llvm::IntegerType::get( ctx, 16 ) ) return TypeBaseValue::Int16;
+    if ( t == llvm::IntegerType::get( ctx, 32 ) ) return TypeBaseValue::Int32;
+    if ( t == llvm::IntegerType::get( ctx, 64 ) ) return TypeBaseValue::Int64;
+    if ( t->isStructTy() ) return TypeBaseValue::Struct;
+    UNREACHABLE( "Trying to get base of unsupported type." );
+}
 
-    TypeName( const StructType * type )
-        : _domain( MaybeDomain::Nothing() )
-        , _base( MaybeBase::Nothing() )
-    {
-        parse( type );
-    }
 
-    MaybeDomain domain() const { return _domain; }
-    MaybeBase base() const { return _base; }
-
-private:
+struct TypeNameParser {
     using Tokens = std::vector< std::string >;
 
-    void parse( const StructType * type ) {
-        auto ts = tokens( type );
-        _domain = parseDomain( ts );
-        _base = parseBase( ts );
-    }
+    TypeNameParser( StructType * type )
+        : tokens( parse( type ) ) {}
+    TypeNameParser( const TypeNameParser & ) = default;
+    TypeNameParser &operator=( const TypeNameParser & other ) = default;
 
-    MaybeDomain parseDomain( const Tokens & tokens ) const {
-        assert( tokens.size() >= 2 );
-        return Domain::value( tokens[1] );
-    }
-
-    MaybeBase parseBase( const Tokens & tokens ) const {
-        if ( _domain.isNothing() )
-            return MaybeBase::Nothing();
-
-        switch( _domain.value() ) {
-            case Domain::Value::Tristate :
-                return MaybeBase::Just( TypeBase::Value::Int1 );
-            case Domain::Value::Struct :
-                return MaybeBase::Just( TypeBase::Value::Struct );
-            default:
-                assert( tokens.size() >= 3 );
-                return TypeBase::value( tokens[2] );
-        }
-        // TODO elements
-    }
-
-    static Tokens tokens( const StructType * type ) {
+    Tokens parse( StructType * type ) const {
         if ( !type->hasName() )
             return {};
         std::stringstream ss;
         ss.str( type->getStructName().str() );
-
-        std::vector< std::string > ts;
+        Tokens ts;
         std::string t;
         while( std::getline( ss, t, '.' ) )
             ts.push_back( t );
         return ts;
     }
 
-    MaybeDomain _domain;
-    MaybeBase _base;
-    // StructElements elements;
+    DomainPtr getDomain() const { return domain( tokens.at( 1 ) ); }
+    TypeBase getBase() const {
+        return getDomain()->match(
+        [&] ( const UnitDomain & dom ) -> TypeBase {
+            switch( dom.value ) {
+                case DomainValue::Tristate : return TypeBaseValue::Int1;
+                default : return typebase( tokens[2] );
+            }
+        },
+        [] ( const ComposedDomain & /* dom */ ) -> TypeBase {
+            return TypeBaseValue::Struct;
+        } ).value();
+    }
+
+    bool parsable() const {
+        if ( tokens.size() == 2 )
+            return tokens[ 1 ] == "tristate";
+        return tokens.size() > 2;
+    }
+
+    Tokens tokens;
 };
 
-// Base class representing abstract type
-//
-// Stores:
-//  'origin()' - original llvm type
-//  'domain()' - abstract domain of abstracted type
-//
-// Enables:
-//  'llvm()'   - lowering of 'AbstractType' to llvm representation
-//  'name()'   - name of abstract type in llvm representation
-//  'base()'   - TODO remove? origin has same purpose
+
+struct TypeName {
+    TypeName( DomainPtr domain, TypeBase base )
+        : _domain( domain ), _base( base ) {}
+    TypeName( const TypeNameParser & prs )
+        : TypeName( prs.getDomain(), prs.getBase() ) {}
+    TypeName( StructType * type )
+        : TypeName( TypeNameParser( type ) ) {}
+
+    DomainPtr domain() const { return _domain; }
+    TypeBase base() const { return _base; }
+private:
+    DomainPtr _domain;
+    TypeBase _base;
+};
+
 struct AbstractType {
-
-    AbstractType( Type * origin, Domain::Value domain )
-        : _origin( origin ), _domain( domain ) {}
-
-    /*AbstractType( Type * abstract ) {
-        assert( isAbstract( abstract ) );
-        auto st = llvm::cast< StructType >( abstract );
-        _origin = TypeBase::llvm( Type( st ).value(), st->getContext() );
-        _domain = TypeName( st ).domain().value();
-    }*/
+    AbstractType( Type * origin, DomainPtr domain )
+        : _origin( stripPtr( origin ) ),
+          _domain( domain ),
+          _ptr( origin->isPointerTy() )
+    {}
 
     AbstractType( const AbstractType & ) = default;
     AbstractType( AbstractType && ) = default;
-
     AbstractType &operator=( const AbstractType & other ) = default;
     AbstractType &operator=( AbstractType && other ) = default;
 
-    virtual StructType * llvm() const = 0;
+    virtual Type * llvm() = 0;
+    virtual std::string name()  = 0;
 
-    virtual std::string name() const = 0;
+    TypeBase base() const { return typebase( stripPtr( _origin ) ); }
+    std::string baseName() const { return base().name(); }
+    DomainPtr domain() const { return _domain; }
+    std::string domainName() { return _domain->name(); }
+    Type * origin() const { return _ptr ? _origin->getPointerTo() : _origin; }
+    bool pointer() const { return _ptr; }
 
-    TypeBase::Value base() const {
-        return TypeBase::get( stripPtr( _origin ) );
-    }
-
-    std::string baseName() const {
-        // TODO ptr?
-        return TypeBase::name( base() );
-    }
-
-    // TODO let only ScalarType to have domain
-    Domain::Value domain() const {
-        return _domain;
-    }
-
-    std::string domainName() const {
-        return Domain::name( _domain );
-    }
-
-    Type * origin() const {
-        return _origin;
-    }
+    friend bool operator==( const AbstractType & l, const AbstractType & r );
 private:
     Type * _origin;
-    Domain::Value _domain;
+    DomainPtr _domain;
+    bool _ptr;
 };
 
-using AbstractTypePtr = std::shared_ptr< AbstractType >;
+inline bool operator==( const AbstractType & l, const AbstractType & r ) {
+    return std::tie( l._origin, l._domain, l._ptr )
+        == std::tie( r._origin, r._domain, r._ptr );
+}
 
+using AbstractTypePtr = std::shared_ptr< AbstractType >;
 
 static inline std::string llvmname( const Type * type ) {
     std::string buffer;
@@ -235,27 +189,19 @@ static inline std::string llvmname( const Type * type ) {
     return rso.str();
 }
 
-// TODO remove and use AbstractValue.base() instead
-static inline Maybe< std::string > basename( const StructType * type ) {
-    if ( auto b = TypeName( type ).base() )
-        return Maybe< std::string >::Just( TypeBase::name( b.value() ) );
-    else
-        return Maybe< std::string >::Nothing();
-}
-
-static inline bool isAbstract( Type * type ) {
-    if ( auto st = llvm::dyn_cast< llvm::StructType >( stripPtr( type ) ) )
-        if ( st->hasName() )
-            if ( auto dom = TypeName( st ).domain() )
-                return dom.value() != Domain::Value::LLVM;
+static bool isAbstract( Type * type ) {
+    auto st = llvm::dyn_cast< llvm::StructType >( stripPtr( type ) );
+    if ( st && st->hasName() && st->getName().startswith( "lart" )
+            && TypeNameParser( st ).parsable() )
+        return TypeName( st ).domain()->isAbstract();
     return false;
 }
 
-static inline Type * VoidType( Context & ctx ) {
+static inline Type * VoidType( LLVMContext & ctx ) {
    return Type::getVoidTy( ctx );
 }
 
-static inline Type * BoolType( Context & ctx ) {
+static inline Type * BoolType( LLVMContext & ctx ) {
     return IntegerType::get( ctx, 1 );
 }
 

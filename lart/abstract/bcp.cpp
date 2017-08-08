@@ -32,7 +32,7 @@ namespace {
         /* Creates appropriate assume in given domain about predicate, left
            or right argument of condition.
          */
-        llvm::Instruction * constrain( const Domain::Value domain, AssumeValue v ) {
+        llvm::Instruction * constrain( const DomainPtr & domain, AssumeValue v ) {
             using StructType = llvm::StructType;
             llvm::IRBuilder<> irb( assume );
             StructType * rty;
@@ -59,8 +59,8 @@ namespace {
             std::vector< llvm::Type * > arg_types;
             for ( const auto & arg : args )
                 arg_types.push_back( arg->getType() );
-            const std::string tag = "lart." + Domain::name( domain ) + ".assume."
-                                  + TypeBase::name( TypeName( rty ).base().value() );
+            const std::string tag = "lart." + domain->name() + ".assume."
+                                  + TypeName( rty ).base().name();
 
             auto fty = llvm::FunctionType::get( rty, arg_types, false );
             auto m = irb.GetInsertBlock()->getModule();

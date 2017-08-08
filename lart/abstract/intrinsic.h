@@ -31,15 +31,12 @@ struct Intrinsic {
     Intrinsic( llvm::CallInst * call ) :
         intr( call->getCalledFunction() ) {}
 
-    Domain::Value domain() const;
-
+    DomainPtr domain() const;
     std::string name() const;
-
     Type type() const;
-
     bool is() const;
-
     llvm::Function * declaration() const { return intr; }
+    std::string nameElement( size_t idx ) const; //TODO rename to elementName
 
     template< size_t idx >
     llvm::Type * argType() const {
@@ -47,7 +44,6 @@ struct Intrinsic {
         return intr->getFunctionType()->getParamType( idx );
     }
 
-    std::string nameElement( size_t idx ) const;
 
 private:
     llvm::Function * intr;
@@ -88,7 +84,7 @@ static bool isLower( llvm::Function * call ) {
 // Returns name for abstract value as "lart.<domain>.<inst name>.<extra data>"
 static std::string intrinsicName( const AbstractValue & av ) {
     auto i = llvm::cast< llvm::Instruction >( av.value() );
-    auto res = "lart." + Domain::name( av.domain() ) + "." + i->getOpcodeName();
+    auto res = "lart." + av.domain()->name() + "." + i->getOpcodeName();
 
     if ( llvm::isa< llvm::AllocaInst >( av.value() ) )
         return res + "." + av.type()->baseName();

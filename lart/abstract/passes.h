@@ -20,7 +20,7 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/passes.h>
 #include <lart/abstract/types/common.h>
-#include <lart/abstract/types/transform.h>
+#include <lart/abstract/types/utils.h>
 #include <lart/abstract/types/scalar.h>
 #include <lart/abstract/intrinsic.h>
 
@@ -652,8 +652,7 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto sgt = m->getFunction( "lart.sym.icmp_sgt.i32" );
-        auto expected = liftTypeLLVM( BoolType( m->getContext() ),
-                                      Domain::Value::Symbolic );
+        auto expected = liftTypeLLVM( BoolType( m->getContext() ), SymbolicDomain );
         ASSERT_EQ( expected, sgt->getReturnType() );
         auto to_tristate = m->getFunction( "lart.sym.bool_to_tristate" );
         ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *sgt->user_begin() );
@@ -937,8 +936,7 @@ struct Assume {
                     })";
         auto m = test_assume( annotation + s );
         auto icmp = m->getFunction( "lart.sym.icmp_sgt.i32" );
-        auto expected = liftTypeLLVM( BoolType( m->getContext() ),
-                                      Domain::Value::Symbolic );
+        auto expected = liftTypeLLVM( BoolType( m->getContext() ), SymbolicDomain );
         ASSERT_EQ( expected, icmp->getReturnType() );
         auto to_tristate = m->getFunction( "lart.sym.bool_to_tristate" );
         ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
@@ -960,8 +958,7 @@ struct Assume {
         auto m = test_assume( annotation + s );
 
         auto icmp = m->getFunction( "lart.sym.icmp_ne.i32" );
-        auto expected = liftTypeLLVM( BoolType( m->getContext() ),
-                                      Domain::Value::Symbolic );
+        auto expected = liftTypeLLVM( BoolType( m->getContext() ), SymbolicDomain );
         ASSERT_EQ( expected, icmp->getReturnType() );
         auto to_tristate = m->getFunction( "lart.sym.bool_to_tristate" );
         ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );

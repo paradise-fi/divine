@@ -10,101 +10,49 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/util.h>
 #include <lart/abstract/domains/domains.h>
 #include <lart/abstract/types/common.h>
-#include <lart/abstract/types/transform.h>
+#include <lart/abstract/types/scalar.h>
 
 namespace lart {
 namespace abstract {
 
-struct ElementsDomains {
-    // TODO make elements domains recursive structure
-    // using ElementDomain = brick::Union< Domain::Value, ElementsDomains >;
+using TypeContainer = std::vector< AbstractTypePtr >;
+static std::string structTypeName( llvm::StructType * type );
+static std::string elementsName( const TypeContainer & elems );
+AbstractTypePtr liftType( llvm::Type * type, DomainPtr dom );
 
-    ElementsDomains( const StructType * type )
-    {
-        domains.resize( type->getNumElements(), Domain::Value::LLVM );
-    }
-
-    ElementsDomains( const StructType * type, const DomainMap & dmap )
-        : ElementsDomains( type )
-    {
-        for( const auto & e : dmap ) {
-            assert( e.first < domains.size() );
-            domains[ e.first ] = e.second;
-        }
-    }
-
-    size_t size() const { return domains.size(); }
-    Domain::Value get( size_t i ) const { return domains.at( i ); }
-
-private:
-    std::vector< Domain::Value > domains;
-};
-
+struct ComposedType;
+using ComposedTypePtr = std::shared_ptr< ComposedType >;
 
 struct ComposedType : public AbstractType {
-
-    ComposedType( StructType * type, const ElementsDomains & domains )
-        : AbstractType( type, Domain::Value::Struct )
+    ComposedType( Type * type, DomainPtr domain )
+        : AbstractType( type, domain )
     {
-        assert( domains.size() == type->getNumElements() );
-        for( size_t i = 0; i < type->getNumElements(); ++i ) {
-            if ( llvm::dyn_cast< StructType >( type->getElementType( i ) ) ) {
-                assert( domains.get( i ) == Domain::Value::Struct );
-                NOT_IMPLEMENTED();
-            } else {
-                assert( domains.get( i ) != Domain::Value::Struct );
-                _elements.push_back( std::make_shared< ScalarType >(
-                                     type->getElementType( i ),
-                                     domains.get( i ) ) );
-            }
+        auto sty = llvm::cast< StructType >( stripPtr( type ) );
+        const auto & values = domain->cget< ComposedDomain>().values;
+        assert( values.size() == sty->getNumElements() );
+        auto dom = values.begin();
+        for ( const auto & elem : sty->elements() ) {
+            _elements.push_back( liftType( elem, *dom ) );
+            ++dom;
         }
     }
 
-    ComposedType( StructType * type, const DomainMap & dmap )
-        : ComposedType( type, ElementsDomains( type, dmap ) ) {}
+    ComposedType( Type * type, const DomainMap & dmap )
+        : ComposedType( type, Domain::make( type, dmap ) ) {}
 
-    ComposedType( StructType * type )
-        : ComposedType( type, { type } ) {}
-
-    StructType * llvm() const override final {
+    Type * llvm() override final {
         const auto & ctx = origin()->getContext();
         auto structName = name();
-        if ( auto lookup = ctx.pImpl->NamedStructTypes.lookup( structName ) )
-            return lookup;
-
-        std::vector< llvm::Type * > types;
-        for ( const auto& e : _elements )
-            types.push_back( e->llvm() );
-        return llvm::StructType::create( types, structName );
-    }
-
-    Domain::Value domain() const {
-        return Domain::Value::Struct;
-    }
-
-    std::string prefixName( StructType * type ) const {
-        // TODO anonymous structs
-        assert( type->hasName() );
-        assert( type->getName().startswith( "struct" ) );
-        return type->getName().str();
-    }
-
-    std::string elementsName( const std::vector< AbstractTypePtr > & elems ) const {
-        std::string n = "[";
-        for ( size_t i = 0; i < elems.size(); ++i ) {
-            auto b = elems[ i ]->base();
-            if ( i != 0 )
-                n += ",";
-            if ( b == TypeBase::Value::Struct ) {
-                // TODO
-                assert( false && "Nested structs are not yet supported" );
-            } else {
-                // TODO pointers
-                n += Domain::name( elems[ i ]->domain() ) + "." + TypeBase::name( b );
-            }
+        Type * res;
+        if ( auto lookup = ctx.pImpl->NamedStructTypes.lookup( structName ) ) {
+            res = lookup;
+        } else {
+            std::vector< llvm::Type * > types;
+            for ( const auto& e : _elements )
+                types.push_back( e->llvm() );
+            res = llvm::StructType::create( types, structName );
         }
-        n += "]";
-        return n;
+        return pointer() ? res->getPointerTo() : res;
     }
 
     // Returns name representing struct, where name obey the following grammar
@@ -124,19 +72,47 @@ struct ComposedType : public AbstractType {
     // };
     //
     // then lart name for abstracted Struct is lart.struct.S.[sym.i32,struct.B.ptr]
-    std::string name() const override final {
-        auto st = llvm::cast< StructType >( origin() );
+    std::string name() override final {
+        auto st = llvm::cast< StructType >( stripPtr( origin() ) );
         assert( st->getNumElements() == _elements.size() );
-
-        // TODO pointer type?
-        return "lart." + prefixName( st ) + "." + elementsName( _elements );
+        return "lart." + structTypeName( st ) + "." + elementsName( _elements );
         // TODO recursive structures - use original struct name: lart.struct.name...
         // return _name;
         // TODO cache name
     }
+
+    static ComposedTypePtr make( llvm::Type * type, const DomainMap & dmap ) {
+        return std::make_shared< ComposedType >( type, dmap );
+    }
+
+    static ComposedTypePtr make( llvm::Type * type, DomainPtr dom ) {
+        return std::make_shared< ComposedType >( type, dom );
+    }
 private:
-    std::vector< AbstractTypePtr > _elements;
+    TypeContainer _elements;
 };
+
+static std::string structTypeName( llvm::StructType * type ) {
+    // TODO anonymous structs
+    assert( type->hasName() );
+    assert( type->getName().startswith( "struct" ) );
+    return type->getName().str();
+}
+
+static std::string elementsName( const TypeContainer & elems ) {
+    std::string n = "[";
+    for ( size_t i = 0; i < elems.size(); ++i ) {
+        if ( i != 0 ) n += ",";
+        if ( elems[ i ]->base().value == TypeBaseValue::Struct )
+            assert( false && "Nested structs are not yet supported" ); // TODO
+        else
+            n += elems[ i ]->domainName() + "." + elems[ i ]->baseName();
+        if ( elems[ i ]->pointer() ) n += ".ptr";
+    }
+    n += "]";
+    return n;
+}
+
 
 } // namespace abstract
 } // namespace lart

@@ -9,12 +9,13 @@ namespace abstract {
 namespace {
     const std::string prefix = "__abstract_";
     std::string constructFunctionName( const Intrinsic & intr ) {
-        std::string name = prefix + Domain::name( intr.domain() ) + "_" + intr.name();
+        std::string name = prefix + intr.domain()->name() + "_" + intr.name();
         if ( intr.name() == "load" ) {
             //do nothing
         }
         else if ( isLift( intr ) || isLower( intr ) ) {
-            name +=  "_" + TypeBase::name( TypeBase::get( intr.argType< 0 > () ) );
+            auto tn = TypeName( llvm::cast< llvm::StructType >( intr.argType< 0 >() ) );
+            name +=  "_" + tn.base().name();
         }
         else if ( intr.declaration()->arg_size() > 0 && intr.argType< 0 >()->isPointerTy() ) {
             name += "_p";
@@ -29,7 +30,7 @@ Zero::Zero( llvm::Module & m ) {
 
 llvm::Value * Zero::process( llvm::CallInst * i, std::vector< llvm::Value * > &args ) {
     auto intr = Intrinsic( i );
-    assert( intr.domain() == domain() );
+    assert( (*intr.domain()) == (*domain()) );
     auto name = constructFunctionName( intr );
     llvm::Module * m = i->getParent()->getParent()->getParent();
 

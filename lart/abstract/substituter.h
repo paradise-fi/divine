@@ -24,7 +24,7 @@ using FunctionMap = Mapper< llvm::Function * >;
 
 struct Substituter {
     using Abstraction = std::shared_ptr< Common >;
-    using Abstractions = std::map< Domain::Value, Abstraction >;
+    using Abstractions = std::map< DomainValue, Abstraction >;
 
     Substituter();
 
@@ -63,8 +63,6 @@ private:
 
     const Abstraction getAbstraction( llvm::Value * value ) const;
     const Abstraction getAbstraction( llvm::Type * type ) const;
-
-    //Intrinsic intrinsic( llvm::CallInst * ) const;
 
     bool isSubstituted( llvm::Value * value ) const;
     bool isSubstituted( llvm::Type * type ) const;

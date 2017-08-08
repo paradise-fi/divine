@@ -9,7 +9,7 @@ using Arguments = std::vector< llvm::Value * >;
 
 llvm::Value * TristateDomain::process( llvm::CallInst * i, Arguments & args ) {
     auto intr = Intrinsic( i );
-    assert( intr.domain() == Domain::Value::Tristate );
+    assert( (*intr.domain()) == (*domain()) );
     auto name = "__abstract_tristate_" + intr.name();
 
     auto m = intr.declaration()->getParent();
