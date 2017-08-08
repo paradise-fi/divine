@@ -16,7 +16,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-struct Substitution : lart::Pass
+struct Substitution
 {
     Substitution() {}
 
@@ -28,7 +28,7 @@ struct Substitution : lart::Pass
             "Substitutes abstract values by concrete abstraction." );
     }
 
-    llvm::PreservedAnalyses run( llvm::Module & ) override;
+    void run( llvm::Module & );
 
 private:
     void init( llvm::Module & m ) {

@@ -26,7 +26,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace reduction {
 
-struct DeadAllocaZeoring : lart::Pass {
+struct DeadAllocaZeoring {
 
     static PassMeta meta() {
         return passMeta< DeadAllocaZeoring >( "DeadAllocaZeoring", "Zero allocas after last use" );
@@ -163,8 +163,7 @@ struct DeadAllocaZeoring : lart::Pass {
 
     llvm::Module *_m;
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         _m = &m;
         _dl = std::make_unique< llvm::DataLayout >( &m );
         _mzero = _mkmzero( m );
@@ -173,7 +172,6 @@ struct DeadAllocaZeoring : lart::Pass {
                 runFn( fn );
         std::cerr << "INFO: zeroed " << _zeroed << " out of " << _allocas << " allocas ("
                   << double( _zeroed * 100 ) / _allocas << "%), (" << _nonescaping << " nonescaping)" << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 
     llvm::Function *_mkmzero( llvm::Module &m ) {

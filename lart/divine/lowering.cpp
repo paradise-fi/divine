@@ -16,14 +16,13 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct LowerLLVM : lart::Pass {
+struct LowerLLVM {
 
     static PassMeta meta() {
         return passMeta< LowerLLVM >( "LowerLLVM", "Lower LLVM intrinsics." );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
 
         llvm::IntrinsicLowering il( m.getDataLayout() );
 
@@ -36,8 +35,6 @@ struct LowerLLVM : lart::Pass {
             for ( auto *call : toLower )
                 il.LowerIntrinsicCall( call );
         }
-
-        return llvm::PreservedAnalyses::none();
     }
 
     static bool keepForDIVINE( llvm::Intrinsic::ID id ) {
@@ -65,17 +62,16 @@ struct LowerLLVM : lart::Pass {
 
 };
 
-struct LowerEH : lart::Pass {
+struct LowerEH {
 
     static PassMeta meta() {
         return passMeta< LowerEH >( "LowerEH", "Lower resume instruction to _Unwind_Resume." );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         auto *resumeFn = m.getFunction( "_Unwind_Resume" );
         if ( !resumeFn )
-            return llvm::PreservedAnalyses::all();
+            return;
         auto *resumeFnT = resumeFn->getFunctionType();
         ASSERT_EQ( resumeFnT->getNumParams(), 1 );
         auto *exceptT = resumeFnT->getParamType( 0 );
@@ -110,7 +106,6 @@ struct LowerEH : lart::Pass {
                 id->eraseFromParent();
             }
         }
-        return llvm::PreservedAnalyses::none();
     }
 
 };

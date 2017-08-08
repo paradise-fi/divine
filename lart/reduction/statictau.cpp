@@ -21,7 +21,7 @@ unsigned getSilentKind( llvm::Module &m ) {
     return m.getMDKindID( "lart.silent" );
 }
 
-struct SimpleEscape : lart::Pass {
+struct SimpleEscape {
 
     static PassMeta meta() {
         return passMeta< SimpleEscape >( "SimpleEscape",
@@ -106,8 +106,7 @@ struct SimpleEscape : lart::Pass {
                 } );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         long all = 0, silenced = 0;
         auto allocations = query::query( m ).flatten().flatten().map( query::refToPtr )
                                             .filter( isAllocation );
@@ -119,8 +118,6 @@ struct SimpleEscape : lart::Pass {
                 silence( a );
             }
         }
-
-        return llvm::PreservedAnalyses::all();
     }
 
   private:

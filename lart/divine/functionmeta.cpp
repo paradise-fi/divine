@@ -89,16 +89,15 @@ struct GlobalMeta {
     llvm::StringRef name() const { return address->getName(); }
 };
 
-struct IndexFunctions : lart::Pass {
+struct IndexFunctions {
 
     static PassMeta meta() {
         return passMeta< IndexFunctions >( "IndexFunctions", "Create function metadata tables" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &mod ) override {
+    void run( llvm::Module &mod ) {
         if ( !tagModuleWithMetadata( mod, "lart.divine.index.functions" ) )
-            return llvm::PreservedAnalyses::all();
+            return;
 
         _dl = std::make_unique< llvm::DataLayout >( &mod );
 
@@ -216,8 +215,6 @@ struct IndexFunctions : lart::Pass {
                     glometa.size() ) );
         auto *gloArrayT = llvm::ArrayType::get( gloMetaT, glometa.size() );
         util::replaceGlobalArray( mdGlobals, llvm::ConstantArray::get( gloArrayT, glometa ) );
-
-        return llvm::PreservedAnalyses::none();
     }
 
     llvm::Constant *mkint( llvm::StructType *st, int i, int64_t val ) {

@@ -20,14 +20,13 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct DropEmptyDecls : lart::Pass {
+struct DropEmptyDecls {
 
     static PassMeta meta() {
         return passMeta< DropEmptyDecls >( "DropEmptyDecls", "Remove unused function declarations." );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         std::vector< llvm::Function * > toDrop;
         long all = 0;
         for ( auto &fn : m ) {
@@ -41,20 +40,18 @@ struct DropEmptyDecls : lart::Pass {
             f->eraseFromParent();
         if ( toDrop.size() )
             std::cerr << "INFO: erased " << toDrop.size() << " empty declarations out of " << all << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 };
 
 
 
-struct StubDecls : lart::Pass {
+struct StubDecls {
 
     static PassMeta meta() {
         return passMeta< StubDecls >( "StubDecls", "Replace non-intrinsic function declarations with definitions call to __dios_fault( _VM_F_NotImplemented )" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         auto &ctx = m.getContext();
         auto problem = m.getFunction( "__dios_fault" );
         ASSERT( problem );
@@ -81,7 +78,6 @@ struct StubDecls : lart::Pass {
         }
         if ( all )
             std::cerr << "INFO: stubbed " << all << " declarations" << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 };
 

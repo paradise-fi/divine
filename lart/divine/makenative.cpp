@@ -21,15 +21,14 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct HideSymbols : lart::Pass {
+struct HideSymbols {
 
     static PassMeta meta() {
         return passMeta< HideSymbols >( "HideSymbols",
                 "Make all defined symbols hidden so that they cannot be accessed by shared library." );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         query::query( m )
             .map( query::refToPtr )
             .filter( []( auto *fn ) { return !fn->empty(); } )
@@ -52,19 +51,17 @@ struct HideSymbols : lart::Pass {
             .forall( []( auto *g ) {
                     g->setVisibility( llvm::GlobalValue::VisibilityTypes::HiddenVisibility );
                 } );
-        return llvm::PreservedAnalyses::none();
     }
 };
 
-struct NativeStart : lart::Pass {
+struct NativeStart {
 
     static PassMeta meta() {
         return passMeta< NativeStart >( "NativeStart",
                 "add functions to allow starting the model natively" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         auto *voidFunT = llvm::FunctionType::get( llvm::Type::getVoidTy( m.getContext() ), false );
 
         // create __native_start_rt declaration (will be provided by libnativert.so
@@ -95,7 +92,6 @@ struct NativeStart : lart::Pass {
 #else
 #error Please provide _start for your platform
 #endif
-        return llvm::PreservedAnalyses::none();
     }
 };
 

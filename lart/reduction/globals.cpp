@@ -16,7 +16,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace reduction {
 
-struct ReadOnlyGlobals : lart::Pass {
+struct ReadOnlyGlobals {
 
     static PassMeta meta() {
         return passMeta< ReadOnlyGlobals >( "ReadOnlyGlobals" );
@@ -89,8 +89,7 @@ struct ReadOnlyGlobals : lart::Pass {
         return dispatchReadOnly( x );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         long all = 0, constified = 0;
         for ( auto &glo : m.globals() ) {
             if ( !glo.isConstant() && !glo.isExternallyInitialized() && glo.hasUniqueInitializer() ) {
@@ -104,7 +103,6 @@ struct ReadOnlyGlobals : lart::Pass {
 
         std::cerr << "INFO: constified " << constified << " global out of " << all << " candidates" << std::endl;
 
-        return llvm::PreservedAnalyses::none();
     }
 
   private:

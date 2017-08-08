@@ -29,7 +29,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace svcomp {
 
-struct Atomic : lart::Pass {
+struct Atomic {
 
     static PassMeta meta() {
         return passMeta< Atomic >( "atomic", "" );
@@ -46,8 +46,7 @@ struct Atomic : lart::Pass {
         irb.CreateRetVoid();
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         auto vbegin = m.getFunction( "__VERIFIER_atomic_begin" ),
              vend = m.getFunction( "__VERIFIER_atomic_end" ),
              dbegin = m.getFunction( "__divine_interrupt_mask" ),
@@ -55,7 +54,7 @@ struct Atomic : lart::Pass {
 
         if ( !dbegin || !dend ) {
             std::cerr << "WARN: no atomic intrinsics found, skipping pass 'atomic'" << std::endl;
-            return llvm::PreservedAnalyses::all();
+            return;
         }
 
         replace( vbegin, dbegin );
@@ -77,19 +76,16 @@ struct Atomic : lart::Pass {
         }
 
         std::cerr << "INFO: atomized " << atomicfs << " functions" << std::endl;
-
-        return llvm::PreservedAnalyses::none();
     }
 };
 
-struct Volatilize : lart::Pass {
+struct Volatilize {
 
     static PassMeta meta() {
         return passMeta< Volatilize >( "Volatilize", "" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         long changed = 0;
 //        auto ci = brick::llvm::CompileUnitInfo( m.getFunction( "main" ) );
 //        if ( !ci.valid() )
@@ -112,7 +108,6 @@ struct Volatilize : lart::Pass {
             } );
 
         std::cout << "INFO: set volatile on " << changed << " instructions" << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 
 };

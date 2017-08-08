@@ -13,16 +13,14 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-struct Abstraction : lart::Pass
+struct Abstraction
 {
-    virtual ~Abstraction() {}
-
     static PassMeta meta() {
         return passMeta< Abstraction >(
             "Abstraction", "Substitutes annotated values by abstract values." );
     }
 
-    llvm::PreservedAnalyses run( llvm::Module & ) override;
+    void run( llvm::Module & );
 
 private:
     AbstractBuilder builder;

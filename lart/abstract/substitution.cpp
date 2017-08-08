@@ -32,7 +32,7 @@ void removeInvalidAttributes( llvm::Function* fn ) {
 
 } // anonymous namespace
 
-llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
+void Substitution::run( llvm::Module & m ) {
     init( m );
     auto functions = query::query( m )
         .map( query::refToPtr )
@@ -105,7 +105,6 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
     for ( auto fn : retorder )
         changeReturn( fn );
     subst.clean( m );
-    return llvm::PreservedAnalyses::none();
 }
 
 void Substitution::process( llvm::Value * val ) {

@@ -58,19 +58,19 @@ struct Driver {
     }
 
     void setup( PassMeta pass, std::string opt = "" ) {
-        pass.create( manager, opt );
+        pass.create( ps, opt );
     }
 
     void setup( std::vector< PassMeta > passes, std::string opt = "" ) {
         for ( auto pass : passes ) {
-            pass.create( manager, opt );
+            pass.create( ps, opt );
         }
     }
 
     bool addPass( std::string n, std::string opt )
     {
         for ( auto pass : passes() ) {
-            if ( pass.select( manager, n, opt ) )
+            if ( pass.select( ps, n, opt ) )
                 return true;
         }
 
@@ -82,12 +82,12 @@ struct Driver {
             else
                 throw std::runtime_error( "unknown alias-analysis type: " + opt );
 
-            manager.addPass( aa::Pass( t ) );
+            ps.push_back( aa::Pass( t ) );
             return true;
         }
 
         if ( n == "interference" ) {
-            manager.addPass( interference::Pass() );
+            ps.push_back( interference::Pass() );
             return true;
         }
 
@@ -96,7 +96,8 @@ struct Driver {
 
     void process( llvm::Module *m )
     {
-        manager.run( *m );
+        for ( auto &p : ps )
+            p->run( *m );
     }
 
   private:
@@ -104,7 +105,7 @@ struct Driver {
         std::copy( toadd.begin(), toadd.end(), std::back_inserter( out ) );
     }
 
-    llvm::ModulePassManager manager;
+    PassVector ps;
 };
 } // namespace lart
 

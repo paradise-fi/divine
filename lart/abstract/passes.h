@@ -49,6 +49,8 @@ namespace abstract {
 }
 
 #ifdef BRICK_UNITTEST_REG
+#include <lart/driver.h>
+
 namespace t_abstract {
 
 using Compile = divine::cc::Compile;
@@ -120,36 +122,37 @@ std::string load( const std::string & path ) {
 ModulePtr test_abstraction( const std::string & src ) {
     auto m = compile( src );
 
-    llvm::ModulePassManager manager;
+    lart::Driver drv;
 
-    abstract::abstraction_pass().create( manager, "" );
+    drv.setup( abstract::abstraction_pass() );
 
-    manager.run( *m );
+    drv.process( m.get() );
     return m;
 }
 
 ModulePtr test_assume( const std::string & src ) {
     auto m = compile( src );
 
-    llvm::ModulePassManager manager;
+    lart::Driver drv;
 
-    abstract::abstraction_pass().create( manager, "" );
-    abstract::assume_pass().create( manager, "" );
+    drv.setup( abstract::abstraction_pass() );
+    drv.setup( abstract::assume_pass() );
 
-    manager.run( *m );
+    drv.process( m.get() );
     return m;
 }
 
 ModulePtr test_bcp( const std::string & src ) {
     auto m = compile( src );
 
-    llvm::ModulePassManager manager;
+    lart::Driver drv;
 
-    abstract::abstraction_pass().create( manager, "" );
-    abstract::assume_pass().create( manager, "" );
-    abstract::bcp_pass().create( manager, "" );
+    drv.setup( abstract::abstraction_pass() );
+    drv.setup( abstract::assume_pass() );
+    drv.setup( abstract::bcp_pass() );
 
-    manager.run( *m );
+    drv.process( m.get() );
+
     return m;
 }
 
@@ -158,14 +161,14 @@ ModulePtr test_substitution( const std::string & src,
                              std::vector< std::string > & headers )
 {
     auto m = compile( src, link, headers );
-    llvm::ModulePassManager manager;
+    lart::Driver drv;
 
-    abstract::abstraction_pass().create( manager, "" );
-    abstract::assume_pass().create( manager, "" );
-    abstract::bcp_pass().create( manager, "" );
-    abstract::substitution_pass().create( manager, "" );
+    drv.setup( abstract::abstraction_pass() );
+    drv.setup( abstract::assume_pass() );
+    drv.setup( abstract::bcp_pass() );
+    drv.setup( abstract::substitution_pass() );
 
-    manager.run( *m );
+    drv.process( m.get() );
 
     return m;
 }

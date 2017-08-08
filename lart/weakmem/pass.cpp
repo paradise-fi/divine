@@ -34,7 +34,7 @@ using LLVMFunctionSet = std::unordered_set< llvm::Function * >;
  * Replace non-scalar load and store instructions with series of scalar-based
  * ones, along with requisite aggregate value (de)composition.
  */
-struct ScalarMemory : lart::Pass
+struct ScalarMemory
 {
 
     static PassMeta meta() {
@@ -44,11 +44,9 @@ struct ScalarMemory : lart::Pass
     static char ID;
     const unsigned _wordsize = 8;
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) {
+    void run( llvm::Module &m ) {
         for ( auto &f : m )
             transform( f );
-        return llvm::PreservedAnalyses::none();
     }
 
     void transform( llvm::Function &f ) {
@@ -128,7 +126,7 @@ MemoryOrder operator|( MemoryOrder a, MemoryOrder b ) {
     return MemoryOrder( uint( a ) | uint( b ) );
 }
 
-struct Substitute : lart::Pass {
+struct Substitute {
 
     struct OrderConfig {
         MemoryOrder load = MemoryOrder::Unordered;
@@ -204,7 +202,7 @@ struct Substitute : lart::Pass {
         return passMetaC( "Substitute",
                 "Substitute loads and stores (and other memory manipulations) with appropriate "
                 "weak memory model versions.",
-                []( llvm::ModulePassManager &mgr, std::string opt ) {
+                []( PassVector &ps, std::string opt ) {
                     OrderConfig config;
 
                     auto c = opt.find( ':' );
@@ -276,7 +274,7 @@ struct Substitute : lart::Pass {
                         }
                     }
 
-                    return mgr.addPass( Substitute( config, bufferSize ) );
+                    ps.emplace_back< Substitute >( config, bufferSize );
                 } );
     }
 
@@ -299,8 +297,7 @@ struct Substitute : lart::Pass {
         }
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) {
+    void run( llvm::Module &m ) {
         auto i32 = llvm::IntegerType::getInt32Ty( m.getContext() );
         if ( _bufferSize > 0 ) {
             auto bufSize = llvm::ConstantInt::getSigned( i32, _bufferSize );
@@ -342,8 +339,6 @@ struct Substitute : lart::Pass {
             if ( auto min = llvm::dyn_cast< llvm::GlobalVariable >( m.getOrInsertGlobal( "__lart_weakmem_min_ordering", i32 ) ) )
                 min->setInitializer( llvm::ConstantInt::get( i32, uint32_t( _minMemOrd ) ) );
         }
-
-        return llvm::PreservedAnalyses::none();
     }
 
   private:
@@ -849,7 +844,7 @@ PassMeta meta() {
             "   std - equivalent to all=unordered\n"
             "         no ordering apart from the guarantees of C++11/LLVM standard\n",
 
-            []( llvm::ModulePassManager &mgr, std::string opt ) {
+            []( PassVector &mgr, std::string opt ) {
                 ScalarMemory::meta().create( mgr, "" );
                 Substitute::meta().create( mgr, opt );
             } );

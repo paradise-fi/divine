@@ -25,7 +25,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct CflInterrupt : lart::Pass {
+struct CflInterrupt {
 
     static PassMeta meta() {
         return passMeta< CflInterrupt >( "CflInterrupt", "Instrument all control flow cycles "
@@ -69,10 +69,9 @@ struct CflInterrupt : lart::Pass {
         }
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         if ( !tagModuleWithMetadata( m, "lart.divine.interrupt.cfl" ) )
-            return llvm::PreservedAnalyses::all();
+            return;
 
         auto *spcty = llvm::FunctionType::get( llvm::Type::getVoidTy( m.getContext() ), false );
         _cflInterrupt = llvm::cast< llvm::Function >( m.getOrInsertFunction( "__vm_interrupt_cfl", spcty ) );
@@ -89,14 +88,13 @@ struct CflInterrupt : lart::Pass {
             annotateFn( fn );
         }
         // std::cout << "Found " << _backedges << " backedges" << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 
     llvm::Function *_cflInterrupt;
     long _backedges = 0;
 };
 
-struct MemInterrupt : lart::Pass {
+struct MemInterrupt {
 
     static PassMeta meta() {
         return passMeta< MemInterrupt >( "MemInterrupt", "Instrument all memory accesses with "
@@ -131,10 +129,9 @@ struct MemInterrupt : lart::Pass {
         }
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         if ( !tagModuleWithMetadata( m, "lart.divine.interrupt.mem" ) )
-            return llvm::PreservedAnalyses::all();
+            return;
 
         llvm::DataLayout dl( &m );
         auto &ctx = m.getContext();
@@ -151,7 +148,6 @@ struct MemInterrupt : lart::Pass {
             annotateFn( fn, dl );
         }
         // std::cout << "Found " << _mem << " memory accesses" << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 
     llvm::Function *_memInterrupt;

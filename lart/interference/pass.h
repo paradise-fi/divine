@@ -16,7 +16,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace interference {
 
-struct Pass : lart::Pass
+struct Pass
 {
     std::unordered_map< llvm::Instruction *, std::unordered_set< llvm::Instruction * > > _interference;
 
@@ -24,7 +24,7 @@ struct Pass : lart::Pass
     void clear() { _interference.clear(); }
     void propagate( llvm::Instruction *def, llvm::Instruction *use );
 
-    llvm::PreservedAnalyses run( llvm::Module &m ) {
+    void run( llvm::Module &m ) {
         updateIDs( m );
         int total = 0;
         for ( auto f = m.begin(); f != m.end(); ++ f )
@@ -36,8 +36,6 @@ struct Pass : lart::Pass
             annotate( f );
             clear();
         }
-
-        return llvm::PreservedAnalyses::all();
     }
 };
 

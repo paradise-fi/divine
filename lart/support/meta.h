@@ -1,7 +1,5 @@
-DIVINE_RELAX_WARNINGS
-#include <llvm/IR/PassManager.h>
-DIVINE_UNRELAX_WARNINGS
 
+#include <lart/support/pass.h>
 #include <iostream>
 #include <brick-assert>
 #include <string>
@@ -13,10 +11,12 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace lart {
 
+using CreateFn = std::function< void ( PassVector &, std::string ) >;
+
 struct PassMeta {
 
     explicit PassMeta( std::string name, std::string description = "",
-            std::function< void ( llvm::ModulePassManager &, std::string ) > create = nullptr,
+            CreateFn create = nullptr,
             std::vector< std::shared_ptr< PassMeta > > subpasses = { } ) :
         _name( name ), _description( description ), _create( create ),
         _subpasses( subpasses )
@@ -42,22 +42,23 @@ struct PassMeta {
             sub->description( os, level + 1 );
     }
 
-    void create( llvm::ModulePassManager &mgr, std::string opt ) {
+    void create( PassVector &ps, std::string opt ) {
         if ( _create )
-            _create( mgr, opt );
+            _create( ps, opt );
         else
-            defCreate( mgr, opt );
+            defCreate( ps, opt );
     }
 
-    void defCreate( llvm::ModulePassManager &mgr, std::string opt ) {
+    void defCreate( PassVector &ps, std::string opt ) {
         ASSERT( opt.empty() );
         ASSERT( !_subpasses.empty() );
         for ( auto &s : _subpasses )
-            s->create( mgr, "" );
+            s->create( ps, "" );
     }
 
 
-    bool select( llvm::ModulePassManager &mgr, std::string selector, std::string opt ) {
+    template< typename PassManager >
+    bool select( PassManager &mgr, std::string selector, std::string opt ) {
         if ( _name == selector ) {
             create( mgr, opt );
             return true;
@@ -68,7 +69,7 @@ struct PassMeta {
   private:
     std::string _name;
     std::string _description;
-    std::function< void ( llvm::ModulePassManager &, std::string ) > _create;
+    CreateFn _create;
     std::vector< std::shared_ptr< PassMeta > > _subpasses;
 
     void _indent( std::string indent, std::string text, std::ostream &os ) {
@@ -88,7 +89,7 @@ std::vector< std::shared_ptr< PassMeta > > passVector() {
 
 template< typename... Subs >
 PassMeta passMetaC( std::string name, std::string description = "",
-            std::function< void ( llvm::ModulePassManager &, std::string ) > create = nullptr )
+                    CreateFn create = nullptr )
 {
     return PassMeta( name, description, create, passVector< Subs... >() );
 }
@@ -97,7 +98,7 @@ template< typename Self, typename... Subs >
 PassMeta passMeta( std::string name, std::string description = "" ) {
 
     return passMetaC< Subs... >( name, description,
-            []( llvm::ModulePassManager &mgr, std::string ) { mgr.addPass( Self() ); } );
+            []( PassVector &ps, std::string ) { return ps.emplace_back< Self >(); } );
 }
 
 template< typename... Subs >

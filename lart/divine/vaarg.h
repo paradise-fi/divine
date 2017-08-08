@@ -20,17 +20,16 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct VaArgInstr : lart::Pass
+struct VaArgInstr
 {
     static PassMeta meta() {
         return passMeta< VaArgInstr >( "VaArgInstr", "" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         auto *vaargfn = m.getFunction( "__lart_llvm_va_arg" );
         if ( !vaargfn )
-            return llvm::PreservedAnalyses::all();
+            return;
         ENSURE_LLVM( !vaargfn->hasAddressTaken() );
 
         for ( auto *v : vaargfn->users() )
@@ -67,8 +66,6 @@ struct VaArgInstr : lart::Pass
         }
 
         vaargfn->eraseFromParent();
-
-        return llvm::PreservedAnalyses::none();
     }
 };
 

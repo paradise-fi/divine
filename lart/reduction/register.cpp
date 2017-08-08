@@ -28,7 +28,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace reduction {
 
-struct DeadRegisterZeoring : lart::Pass {
+struct DeadRegisterZeoring {
 
     static PassMeta meta() {
         return passMeta< DeadRegisterZeoring >( "DeadRegisterZeoring", "Zero registers and free allocas after last use." );
@@ -123,15 +123,13 @@ struct DeadRegisterZeoring : lart::Pass {
     }
 
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         util::Timer t( "DeadRegisterZeoring" );
         _module = &m;
         _free = m.getFunction( "__divine_free" );
         ASSERT( _free );
         for ( auto &f : m )
             runFn( f );
-        return llvm::PreservedAnalyses::none();
     }
 
     llvm::Function *getDrop( llvm::Type *ty ) {

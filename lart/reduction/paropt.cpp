@@ -37,7 +37,7 @@ namespace reduction {
 /*MD
 # Const Conditional Jump Elimination
 */
-struct ConstConditionalJumpElimination : lart::Pass {
+struct ConstConditionalJumpElimination {
 
     static PassMeta meta() {
         return passMeta< ConstConditionalJumpElimination >(
@@ -79,8 +79,7 @@ struct ConstConditionalJumpElimination : lart::Pass {
         return unreachable;
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         for ( auto &fn : m ) {
             std::unordered_set< llvm::BasicBlock * > unreachable;
 
@@ -95,7 +94,6 @@ struct ConstConditionalJumpElimination : lart::Pass {
             }
         }
         // std::cerr << "INFO: changed " << changed << " branches, removed " << removed << " basic blocks" << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 
   private:
@@ -106,7 +104,7 @@ struct ConstConditionalJumpElimination : lart::Pass {
 /*MD
 # Merge Basic Blocks
 */
-struct MergeBasicBlocks : lart::Pass {
+struct MergeBasicBlocks {
 
     static PassMeta meta() {
         return passMeta< MergeBasicBlocks >( "MergeBasicBlocks" );
@@ -132,13 +130,11 @@ struct MergeBasicBlocks : lart::Pass {
                 ++merged;
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         for ( auto &f : m )
             if ( !f.empty() )
                 mergeBB( &f.getEntryBlock() );
         // std::cerr << "INFO: merged " << merged << " basic blocks" << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 
     long merged = 0;
@@ -159,7 +155,7 @@ The alloca can be eliminated if:
 
 Not that calls to llvm.dbg.declare do not count as uses.
 */
-struct ConstAllocaElimination : lart::Pass {
+struct ConstAllocaElimination {
 
     static auto meta() {
         return passMeta< ConstAllocaElimination >( "ConstAllocaElimination" );
@@ -248,8 +244,7 @@ struct ConstAllocaElimination : lart::Pass {
         }
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
 
         for ( auto &fn : m )
             processFunction( fn );
@@ -257,7 +252,6 @@ struct ConstAllocaElimination : lart::Pass {
         // std::cerr << "INFO: removed " << deletedAllocas << " out of " << allAllocas
         //          << " (" << double( 100 * deletedAllocas ) / allAllocas
         //          << "%) allocas" << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 
     long allAllocas = 0;

@@ -21,7 +21,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct Autotrace : lart::Pass {
+struct Autotrace {
 
     using Vals = std::vector< llvm::Value * >;
 
@@ -29,15 +29,14 @@ struct Autotrace : lart::Pass {
         return passMeta< Autotrace >( "Autotrace", "" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         // void __dios_trace( int upDown, const char *p, ... )
         auto *trace = m.getFunction( "__dios_trace_auto" );
         if ( !trace )
-            return llvm::PreservedAnalyses::all();
+            return;
 
         if ( !tagModuleWithMetadata( m, "lart.divine.autotrace" ) )
-            return llvm::PreservedAnalyses::all();
+            return;
 
         auto *traceT = trace->getFunctionType();
         traceUp = llvm::ConstantInt::get( traceT->getParamType( 0 ), 1 );
@@ -61,7 +60,6 @@ struct Autotrace : lart::Pass {
                     ++exit;
                 } );
         }
-        return llvm::PreservedAnalyses::none();
     }
 
     std::string demangle( std::string x ) {

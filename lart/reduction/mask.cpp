@@ -22,14 +22,13 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace reduction {
 
-struct EliminateInterrupt : lart::Pass {
+struct EliminateInterrupt {
 
     static PassMeta meta() {
         return passMeta< EliminateInterrupt >( "EliminateInterrupt", "Remove all __divine_interrupt calls (they are deprecated)" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         auto interrupt = m.getFunction( "__divine_interrupt" );
         std::vector< llvm::CallInst * > interrupts;
         for ( auto &fn : m )
@@ -41,11 +40,10 @@ struct EliminateInterrupt : lart::Pass {
         for ( auto call : interrupts )
             call->eraseFromParent();
         std::cout << "INFO: erased " << interrupts.size() << " interrupts" << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 };
 
-struct HoistMasks : lart::Pass {
+struct HoistMasks {
 
     HoistMasks() : _total( 0 ), _hoisted( 0 ) {}
 
@@ -112,12 +110,11 @@ struct HoistMasks : lart::Pass {
         }
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         _mask = m.getFunction( "__divine_interrupt_mask" );
         if ( !_mask ) {
             std::cerr << "ERROR: could not find __divine_interrupt_mask" << std::endl;
-            return llvm::PreservedAnalyses::all();
+            return;
         }
 
         for ( auto &fn : m )
@@ -126,7 +123,6 @@ struct HoistMasks : lart::Pass {
 
         std::cout << "INFO: hoisted " << _hoisted << " out of " << _total
                   << " interrupt masks (" << 100 * double( _hoisted ) / _total << " %)"  << std::endl;
-        return llvm::PreservedAnalyses::none();
     }
 
   private:
@@ -134,21 +130,19 @@ struct HoistMasks : lart::Pass {
     int _total, _hoisted;
 };
 
-struct Mask : lart::Pass {
+struct Mask {
 
     static PassMeta meta() {
         return passMeta< Mask >( "Mask", "Mask whole functions annotated with 'lart.interrupt.masked'" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         auto mask = m.getFunction( "__divine_interrupt_mask" );
         ASSERT( mask );
         brick::llvm::enumerateFunctionsForAnno( "lart.interrupt.masked", m, [&]( llvm::Function *fn ) {
                 ASSERT( !fn->empty() );
                 llvm::CallInst::Create( mask )->insertBefore( fn->front().begin() );
             } );
-        return llvm::PreservedAnalyses::none();
     }
 };
 

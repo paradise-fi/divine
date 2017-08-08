@@ -47,7 +47,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-struct BCP : lart::Pass {
+struct BCP {
 
     virtual ~BCP() {}
 
@@ -56,9 +56,8 @@ struct BCP : lart::Pass {
               "Backward Constraint Propagation expands calls to @lart.tristate.assume" );
     }
 
-	llvm::PreservedAnalyses run( llvm::Module &m ) {
+	void run( llvm::Module &m ) {
         process( m );
-        return llvm::PreservedAnalyses::none();
     }
 
     void process( llvm::Module & m );

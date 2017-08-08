@@ -12,7 +12,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
+void Abstraction::run( llvm::Module & m ) {
     auto preprocess = [] ( llvm::Function * fn ) {
         auto lowerSwitchInsts = std::unique_ptr< llvm::FunctionPass >(
                                 llvm::createLowerSwitchPass() );
@@ -94,7 +94,6 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
 
     for ( auto & fn : lart::util::reverse( remove ) )
        fn->eraseFromParent();
-    return llvm::PreservedAnalyses::none();
 }
 
 } // abstract

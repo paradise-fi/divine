@@ -31,7 +31,7 @@ namespace svcomp {
 #define LART_DEBUG( X ) ((void)0)
 #endif
 
-struct NondetTracking : lart::Pass {
+struct NondetTracking {
 
     enum class Signed { Unknown = -1, No = 0, Yes = 1 };
 
@@ -39,8 +39,7 @@ struct NondetTracking : lart::Pass {
         return passMeta< NondetTracking >( "nonteterminism-tracking", "" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         _dl = std::make_unique< llvm::DataLayout >( &m );
         _ctx = &m.getContext();
         auto choice = m.getFunction( "__divine_choice" );
@@ -87,8 +86,6 @@ struct NondetTracking : lart::Pass {
                 replace->dump();
             }
         }
-
-        return llvm::PreservedAnalyses::none();
     }
 
     struct Interval {
@@ -273,7 +270,7 @@ struct NondetTracking : lart::Pass {
     llvm::LLVMContext *_ctx;
 };
 
-struct Intrinsic : lart::Pass {
+struct Intrinsic {
 
     static PassMeta meta() {
         return passMeta< Intrinsic >( "Intrinsic", "" );
@@ -344,8 +341,7 @@ struct Intrinsic : lart::Pass {
         }
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         _ctx = &m.getContext();
         _divineProblem = m.getFunction( "__divine_problem" );
         _divineInterruptUnmask = m.getFunction( "__divine_interrupt_unmask" );
@@ -368,8 +364,6 @@ struct Intrinsic : lart::Pass {
         };
         dropfn( _vassumeName );
         dropfn( _verrorName );
-
-        return llvm::PreservedAnalyses::none();
     }
 
     llvm::CallInst *callProblem() {
@@ -392,7 +386,7 @@ struct Intrinsic : lart::Pass {
 llvm::StringRef Intrinsic::_verrorName = "__VERIFIER_error";
 llvm::StringRef Intrinsic::_vassumeName = "__VERIFIER_assume";
 
-struct NoMallocFail : lart::Pass {
+struct NoMallocFail {
 
     static PassMeta meta() {
         return passMeta< NoMallocFail >( "NoMallocFail", "" );
@@ -419,15 +413,13 @@ struct NoMallocFail : lart::Pass {
         std::cout << "INFO: removed " << removed << " choices from " << fn->getName().str() << std::endl;
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &m ) override {
+    void run( llvm::Module &m ) {
         choice = m.getFunction( "__divine_choice" );
         ctx = &m.getContext();
 
         dechoice( m.getFunction( "malloc" ) );
         dechoice( m.getFunction( "realloc" ) );
         dechoice( m.getFunction( "calloc" ) );
-        return llvm::PreservedAnalyses::none();
     }
 
     llvm::Function *choice = nullptr;

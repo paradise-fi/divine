@@ -7,15 +7,13 @@
 namespace lart {
 namespace abstract {
 
-struct AddAssumes : lart::Pass {
-
-    virtual ~AddAssumes() {}
+struct AddAssumes {
 
 	static PassMeta meta() {
     	return passMeta< AddAssumes >( "AddAssumes", "Add assumes to controlflow of program." );
     }
 
-	llvm::PreservedAnalyses run( llvm::Module &m );
+	void run( llvm::Module &m );
 
     void process( llvm::Instruction * inst );
 };

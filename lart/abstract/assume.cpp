@@ -67,7 +67,7 @@ namespace {
     }
 }
 
-    llvm::PreservedAnalyses AddAssumes::run( llvm::Module & m ) {
+    void AddAssumes::run( llvm::Module & m ) {
         auto branches = query::query( m )
 					   .flatten().flatten()
 					   .map( query::refToPtr )
@@ -80,8 +80,6 @@ namespace {
 
 		for ( auto & br : branches )
 			process( br );
-
-        return llvm::PreservedAnalyses::none();
     }
 
     void AddAssumes::process( llvm::Instruction * inst ) {

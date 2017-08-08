@@ -1,11 +1,9 @@
 // -*- C++ -*- (c) 2015 Petr Rockai <me@mornfall.net>
+//             (c) 2017 Vladimír Štill <xstill@fi.muni.cz>
 
 DIVINE_RELAX_WARNINGS
-#include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
-#include <llvm/IR/PassManager.h>
 DIVINE_UNRELAX_WARNINGS
-#include <vector>
 
 #ifndef LART_SUPPORT_PASS_H
 #define LART_SUPPORT_PASS_H
@@ -14,12 +12,47 @@ namespace lart {
 
 struct Pass
 {
-    virtual llvm::PreservedAnalyses run( llvm::Module &m ) = 0;
-    virtual llvm::PreservedAnalyses run( llvm::Module *m ) {
-        return run( *m );
-    }
+    virtual void run( llvm::Module &m ) = 0;
     virtual ~Pass() { };
-    static std::string name() { return "anonymous LART pass"; }
+};
+
+namespace detail {
+
+template< typename T >
+struct PassWrapper : Pass, T
+{
+    PassWrapper( T &&p ) : T( std::move( p ) ) { }
+
+    void run( llvm::Module &m ) override
+    {
+        T::run( m );
+    }
+};
+
+} // namespace detail
+
+template< typename P >
+std::unique_ptr< Pass > mkPass( P &&pass ) {
+    return std::unique_ptr< Pass >{ new detail::PassWrapper< P >( std::move( pass ) ) };
+}
+
+struct PassVector {
+
+    template< typename Pass >
+    void push_back( Pass &&p ) {
+        _passes.push_back( mkPass( std::move( p ) ) );
+    }
+
+    template< typename Pass, typename... Args >
+    void emplace_back( Args &&... args ) {
+        _passes.push_back( mkPass( Pass( std::forward< Args >( args )... ) ) );
+    }
+
+    auto begin() const { return _passes.begin(); }
+    auto end() const { return _passes.end(); }
+
+  private:
+    std::vector< std::unique_ptr< Pass > > _passes;
 };
 
 }

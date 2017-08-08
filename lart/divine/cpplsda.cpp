@@ -11,15 +11,14 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace divine {
 
-struct AddCppLSDA : lart::Pass {
+struct AddCppLSDA {
 
     static PassMeta meta() {
         return passMeta< AddCppLSDA >( "AddCppLSDA",
                 "Add language specific data for C++ LSDA to function's LLVM metadata" );
     }
 
-    using lart::Pass::run;
-    llvm::PreservedAnalyses run( llvm::Module &mod ) override
+    void run( llvm::Module &mod )
     {
         auto &ctx = mod.getContext();
         auto vptr = llvm::Type::getInt8PtrTy( ctx );
@@ -39,7 +38,6 @@ struct AddCppLSDA : lart::Pass {
             auto *lsdam = llvm::ConstantAsMetadata::get( lsdap );
             fn.setMetadata( "lart.lsda", llvm::MDTuple::get( ctx, { lsdam } ) );
         }
-        return llvm::PreservedAnalyses::all();
     }
 };
 
