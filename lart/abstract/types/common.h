@@ -263,6 +263,30 @@ struct AbstractType {
 
     friend bool operator==( const AbstractType & l, const AbstractType & r );
 private:
+    static Type * getOriginFrom( Type * type ) {
+        auto sty = llvm::cast< llvm::StructType >( stripPtr( type ) );
+        auto tnp = TypeNameParser( sty );
+        if ( tnp.getBase().value == TypeBaseValue::Struct ) {
+            auto & ctx = type->getContext();
+            auto name = tnp.tokens[ TypeNameParser::struct_name_idx ];
+            if ( auto s = ctx.pImpl->NamedStructTypes.lookup( name ) )
+                return s;
+            auto elems = query::query( tnp.elems )
+                .map( [] ( const auto & e ) {
+                    return TypeNameParser::parse( e );
+                } )
+                .map( [&] ( const auto & parsed ) {
+                    return TypeNameParser( ctx, parsed.first, parsed.second );
+                } )
+                .map( [&] ( const auto & parser ) {
+                    return parser.getBase().llvm( ctx );
+                } ).freeze();
+            return StructType::create( ctx, elems, name);
+        } else {
+            return tnp.getBase().llvm( type->getContext() );
+        }
+    }
+
     Type * _origin;
     DomainPtr _domain;
     bool _ptr;
