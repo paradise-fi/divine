@@ -27,12 +27,11 @@ struct AbstractBuilder {
 
     llvm::Value * create( const AbstractValue & );
 
-private:
     /* maps real types to abstract types */
     void store( llvm::Value *, llvm::Value * );
     void store( llvm::Function *, llvm::Function * );
 
-
+private:
     std::vector< llvm::Type * > argTypes( llvm::CallInst * );
 
     bool ignore( llvm::Instruction * );

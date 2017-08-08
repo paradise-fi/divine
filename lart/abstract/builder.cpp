@@ -85,6 +85,8 @@ Values AbstractBuilder::operands( const AbstractValue & av ) {
     const auto & ops = inst->operands();
     std::transform( ops.begin(), ops.end(), std::back_inserter( res ),
         [&] ( const auto & op ) {
+            if ( isAbstract( op->getType() ) )
+                return op.get();
             return _values.count( op ) ? _values.at( op ) : lift( op, av.domain(), irb );
         } );
     return res;

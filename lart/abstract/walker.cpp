@@ -173,23 +173,17 @@ void Walker::init( llvm::Module & m ) {
 using WriteAccess = std::pair< llvm::StoreInst *, AbstractTypePtr >;
 
 
-// Propagate abstract value through write and read accesses
+// Propagate abstract value through stores to allocas
 // 1. whenever some obstract value is stored to some alloca we mark this alloca
 // as abstract origin, same with storing to value obtained by GEP
 Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
     Set< AbstractValue > reached = { processed->origins };
     Set< AbstractValue > abstract;
 
-    auto allocas = query::query( Insts< llvm::AllocaInst >( processed->function ) )
-        .map( []( llvm::Value * v ) {
-            return AbstractValue( v, LLVMDomain );
-        } ).freeze();
-    auto geps = query::query( Insts< llvm::GetElementPtrInst >( processed->function ) )
-        .map( []( llvm::Value * v ) {
-            return AbstractValue( v, LLVMDomain );
-        } ).freeze();
+    auto allocas = Insts< llvm::AllocaInst >( processed->function );
+    auto geps = Insts< llvm::GetElementPtrInst >( processed->function );
 
-    auto writes = [] ( const auto & roots ) {
+    auto stores = [] ( const auto & roots ) {
         std::vector< WriteAccess > accs;
         for ( const auto & av : ValuesPostOrder( roots ).get() ) {
             // Propagate only through root calls, because they return abstract values
@@ -209,46 +203,47 @@ Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
         return accs;
     };
 
-    auto MapAccessed = [&] ( auto & insts, auto & accesses, auto functor ) {
-        for ( auto & i : insts ) {
-            auto instAccesses = query::query( accesses )
-                .filter( [&] ( const auto & accs ) {
-                    return accs.first->getPointerOperand() == i.value();
-                } ).freeze();
-            if ( instAccesses.size() )
-                functor( i , instAccesses[0] );
-        }
+    auto storesTo = [] ( const auto & val, const auto & accs ) {
+        return query::query( accs ).filter( [&] ( const auto & acc ) {
+            return acc.first->getPointerOperand() == val;
+        } ).freeze();
     };
 
     do {
         abstract = reached;
         // TODO do not propagate nonabstract elements of struct
-        AbstractValues unordered( reached.begin(), reached.end() );
-        auto accesses = writes( unordered );
-        MapAccessed( allocas, accesses,
-            [&] ( const auto & n, const auto & accs ) {
-                // TODO compute struct domain
-                if ( n.value()->getType()->isStructTy() ) {
-                    DomainMap dmap = { { 0, accs.second->domain() } };
-                    auto val = AbstractValue( n.value(), dmap );
-                    reached.insert( val );
-                } else {
-                    auto val = AbstractValue( n.value(), accs.second->domain() );
-                    reached.insert( val );
-                }
-            } );
+        auto strs = stores( AbstractValues{ reached.begin(), reached.end() } );
+        for ( const auto & a : allocas ) {
+            auto storesToAlloca = storesTo( a, strs );
+            if ( !storesToAlloca.empty() ) {
+                assert( !a->getType()->isStructTy() );
+                reached.emplace( a, storesToAlloca[0].second->domain() );
+            }
+        }
 
-        MapAccessed( geps, accesses,
-            [&] ( auto & n , const auto & accs ) {
-                auto gep = llvm::cast< llvm::GetElementPtrInst >( n.value() );
+        std::map< llvm::Value *, std::vector< AbstractValue > > storesToStructs;
+        for ( const auto & gep : geps ) {
+            auto storesToGEP = storesTo( gep, strs );
+            if ( !storesToGEP.empty() ) {
+                auto dom = storesToGEP[0].second->domain();
+                storesToStructs[ gep->getPointerOperand() ].emplace_back( gep, dom );
+            }
+        }
+
+        for ( const auto & s : storesToStructs ) {
+            DomainMap dmap;
+            for ( const auto & abs : s.second ) {
+                auto gep = llvm::cast< llvm::GetElementPtrInst >( abs.value() );
+                assert( gep->getNumIndices() == 2 );
+
                 auto pet = gep->getPointerOperandType()->getPointerElementType();
                 assert( pet->isStructTy() );
 
-                // TODO compute correct index and check whether the element is abstract
-                DomainMap dmap = { { 0, accs.second->domain() } };
-                auto val = AbstractValue( gep->getPointerOperand(), dmap );
-                reached.insert( val );
-            } );
+                auto idx = llvm::cast< llvm::ConstantInt >( ( gep->idx_begin() + 1 )->get() )->getZExtValue();
+                dmap[ idx] = abs.domain();
+            }
+            reached.emplace( s.first, dmap );
+        }
     } while ( abstract != reached );
 
     return abstract;

@@ -866,11 +866,20 @@ struct Abstraction {
                         s.x = x;
                     })";
         auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto gep = query::query( *main ).flatten()
+            .map( query::refToPtr )
+            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
+            .filter( query::notnull )
+            .freeze();
+        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
+        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
+                   gep[0]->getResultElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
 
-/*    TEST( struct_complex ) {
+    TEST( struct_complex ) {
         auto s = R"(struct S { int x, y, z; };
 
                     int main() {
@@ -887,10 +896,38 @@ struct Abstraction {
             .freeze();
 
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ(alloca->getType(), gep[0]->getType());
+        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
+                   gep[0]->getResultElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
-    }*/
+    }
+
+    TEST( struct_multiple_abstract_values ) {
+        auto s = R"(struct S { int x, y, z; };
+
+                    int main() {
+                        __sym int x;
+                        __sym int y;
+                        S s;
+                        s.x = x;
+                        s.y = y;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto gep = query::query( *main ).flatten()
+            .map( query::refToPtr )
+            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
+            .filter( query::notnull )
+            .freeze();
+
+        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
+        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
+                   gep[0]->getResultElementType() );
+        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
+                   gep[1]->getResultElementType() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
 };
 
 struct Assume {
