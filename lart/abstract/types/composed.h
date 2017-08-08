@@ -73,7 +73,7 @@ struct ComposedType : public AbstractType {
     std::string name() override final {
         auto st = llvm::cast< StructType >( stripPtr( origin() ) );
         assert( st->getNumElements() == _elements.size() );
-        return "lart.struct." + st->getName().str() + "." + elementsName( _elements );
+        return "lart." + st->getName().str() + "." + elementsName( _elements );
         // TODO recursive structures - use original struct name: lart.struct.name...
         // return _name;
         // TODO cache name
