@@ -142,10 +142,12 @@ void Substituter::substituteBranch( llvm::BranchInst * br ) {
     }
 }
 
+llvm::Type * Substituter::process( const AbstractTypePtr & type ) const {
+    return getAbstraction( type )->abstract( type->llvm() );
+}
+
 llvm::Type * Substituter::process( llvm::Type * type ) const {
-    if ( isAbstract( type ) )
-        return getAbstraction( type )->abstract( type );
-    return type;
+    return isAbstract( type ) ? process( getFromLLVM( type ) ) : type;
 }
 
 using Arguments = std::vector< llvm::Value * >;
@@ -160,6 +162,16 @@ Arguments callArgs( llvm::CallInst * call, const ValueMap & vmap ) {
     return res;
 }
 
+llvm::Type * Substituter::createStructType( const ComposedTypePtr & ct ) {
+    auto & ctx = ct->origin()->getContext();
+    if ( auto t = ctx.pImpl->NamedStructTypes.lookup( ct->name() ) )
+        return t;
+    std::vector< llvm::Type * > elems;
+    for ( const auto & t : ct->elements() )
+        elems.push_back( process( t ) );
+    return StructType::create( ctx, elems, ct->name() );
+}
+
 void Substituter::substituteAbstractIntrinsic( llvm::CallInst * intr ) {
     assert( isIntrinsic( intr ) );
 
@@ -167,10 +179,18 @@ void Substituter::substituteAbstractIntrinsic( llvm::CallInst * intr ) {
     //skip if do not have enough substituted arguments
     if ( intr->getNumArgOperands() != args.size() )
         return;
-    // TODO may be struct
-    auto dom = Intrinsic( intr ).domain()->get< UnitDomain >().value;
-    auto abst = abstractions[ dom ];
-    processedValues[ intr ] = abst->process( intr, args );
+    Intrinsic( intr ).domain()->match (
+        [&] ( const UnitDomain & ud ) {
+            auto abst = abstractions[ ud.value ];
+            processedValues[ intr ] = abst->process( intr, args );
+        },
+        [&] ( const ComposedDomain & /*cd*/ ) {
+            assert( Intrinsic( intr ).name() == "alloca" );
+            auto ct = std::static_pointer_cast< ComposedType >( getFromLLVM( intr->getType() ) );
+            llvm::IRBuilder<> irb( intr );
+            auto alloca = irb.CreateAlloca( createStructType( ct ) );
+            processedValues[ intr ] = alloca;
+        } );
 }
 
 void Substituter::substituteCall( llvm::CallInst * call ) {
@@ -280,13 +300,11 @@ void Substituter::registerAbstraction( Abstraction && abstraction ) {
 }
 
 const Abstraction Substituter::getAbstraction( llvm::Value * value ) const {
-    return getAbstraction( value->getType() );
+    return getAbstraction( getFromLLVM( value->getType() ) );
 }
 
-const Abstraction Substituter::getAbstraction( llvm::Type * type ) const {
-    assert( isAbstract( type ) );
-    auto sty = llvm::cast< llvm::StructType >( stripPtr( type ) );
-    auto domain = TypeName( sty ).domain()->get< UnitDomain >().value;
+const Abstraction Substituter::getAbstraction( const AbstractTypePtr & ty ) const {
+    auto domain = ty->domain()->get< UnitDomain >().value;
     if ( !abstractions.count( domain ) )
         throw std::runtime_error( "unknown abstraction domain" );
     return abstractions.at( domain );

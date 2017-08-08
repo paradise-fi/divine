@@ -36,7 +36,8 @@ struct Substituter {
 
     /* Returns type in corresponding abstract domain if the type is
      * 'lart' type. Else it returns original type */
-    llvm::Type* process( llvm::Type * ) const;
+    llvm::Type * process( llvm::Type * ) const;
+    llvm::Type * process( const AbstractTypePtr & type ) const;
 
     void clean( llvm::Function * );
     void clean( llvm::Module & );
@@ -61,8 +62,10 @@ private:
     void substituteCast( llvm::CastInst * );
     void substituteReturn( llvm::ReturnInst * );
 
+    llvm::Type * createStructType( const ComposedTypePtr & ct );
+
     const Abstraction getAbstraction( llvm::Value * value ) const;
-    const Abstraction getAbstraction( llvm::Type * type ) const;
+    const Abstraction getAbstraction( const AbstractTypePtr & ty ) const;
 
     bool isSubstituted( llvm::Value * value ) const;
     bool isSubstituted( llvm::Type * type ) const;
