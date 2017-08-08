@@ -911,6 +911,7 @@ struct Abstraction {
                         S s;
                         s.x = x;
                         s.y = y;
+                        s.z = 42;
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
@@ -925,6 +926,36 @@ struct Abstraction {
                    gep[0]->getResultElementType() );
         ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
                    gep[1]->getResultElementType() );
+        ASSERT_EQ( llvm::Type::getInt32Ty( m->getContext() ),
+                   gep[2]->getResultElementType() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( struct_with_pointer ) {
+        auto s = R"(struct S {
+                        int x;
+                        int * y;
+                    };
+
+                    int main() {
+                        __sym int x;
+                        int y = 0;
+                        S s;
+                        s.x = x;
+                        s.y = &y;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto gep = query::query( *main ).flatten()
+            .map( query::refToPtr )
+            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
+            .filter( query::notnull )
+            .freeze();
+
+        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
+        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
+                   gep[0]->getResultElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
@@ -1181,7 +1212,7 @@ struct Substitution {
                         return 0;
                     })";
         auto m = test_symbolic_substitution( annotation + s );
-        auto abstract_call = m->getFunction( "_Z4callv.20.21" );
+        auto abstract_call = m->getFunction( "_Z4callv.18.19" );
         ASSERT( abstract_call );
         auto alloca = m->getFunction( "__abstract_sym_alloca" );
         ASSERT_EQ( abstract_call->getReturnType()

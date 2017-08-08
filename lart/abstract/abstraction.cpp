@@ -94,7 +94,6 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
 
     for ( auto & fn : lart::util::reverse( remove ) )
        fn->eraseFromParent();
-
     return llvm::PreservedAnalyses::none();
 }
 

@@ -66,6 +66,8 @@ struct ValuesPostOrder {
             bool root = std::find( roots.begin(), roots.end(), n ) != roots.end();
             if ( llvm::isa< llvm::CallInst >( n.value() ) && !root )
                 return {};
+            if ( !n.domain()->isAbstract() )
+                return {};
 
             return query::query( n.value()->users() )
             .map( [&] ( const auto & val ) -> AbstractValue {

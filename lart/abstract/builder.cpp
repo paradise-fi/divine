@@ -431,7 +431,11 @@ Value * AbstractBuilder::createGEP( const AbstractValue & av ) {
     auto val = isAbstract( op->getType() ) ? op : _values[ op ];
     Values idxs = { i->idx_begin() , i->idx_end() };
     auto type = val->getType()->getScalarType()->getPointerElementType();
-    return irb.CreateGEP( type, val, idxs, i->getName() );
+    auto gep = irb.CreateGEP( type, val, idxs, i->getName() );
+    if ( !av.domain()->isAbstract() ) {
+        av.value()->replaceAllUsesWith( gep );
+    }
+    return gep;
 }
 
 Value * AbstractBuilder::lower( Value * v, IRBuilder<> & irb ) {

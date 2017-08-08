@@ -36,12 +36,14 @@ struct ScalarType : public AbstractType {
 
     Type * llvm() override final {
         const auto & ctx = origin()->getContext();
-        Type * res = nullptr;
-        if( auto lookup = ctx.pImpl->NamedStructTypes.lookup( name() ) )
-            res = lookup;
-        else
-            res = llvm::StructType::create( { origin() }, name() );
-        return pointer() ? res->getPointerTo() : res;
+        if( auto lookup = ctx.pImpl->NamedStructTypes.lookup( name() ) ) {
+            return wrapPtr( lookup );
+        } else {
+            if ( domain()->isAbstract() )
+                return wrapPtr( llvm::StructType::create( { origin() }, name() ) );
+            else
+                return origin();
+        }
     }
 
     std::string name() override final {

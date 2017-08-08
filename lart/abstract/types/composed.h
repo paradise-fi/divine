@@ -50,7 +50,7 @@ struct ComposedType : public AbstractType {
                 types.push_back( e->llvm() );
             res = StructType::create( types, structName );
         }
-        return pointer() ? res->getPointerTo() : res;
+        return isPtr() ? res->getPointerTo() : res;
     }
 
     // Returns name representing struct, where name obey the following grammar
@@ -106,7 +106,7 @@ static std::string elementsName( const TypeContainer & elems ) {
             assert( false && "Nested structs are not yet supported" ); // TODO
         else
             n += elems[ i ]->domainName() + "." + elems[ i ]->baseName();
-        if ( elems[ i ]->pointer() ) n += ".ptr";
+        if ( elems[ i ]->isPtr() ) n += ".ptr";
     }
     n += "]";
     return n;

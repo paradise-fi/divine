@@ -38,8 +38,7 @@ AbstractTypePtr liftType( Type * type, DomainPtr dom ) {
 Type * liftTypeLLVM( Type * type, DomainPtr domain ) {
     if ( type->isVoidTy() )
         return type;
-    auto lifted = liftType( type, domain );
-    return lifted->pointer() ? lifted->llvm()->getPointerTo() : lifted->llvm();
+    return liftType( type, domain )->llvm();
 }
 
 Type * lowerTypeLLVM( Type * type ) {

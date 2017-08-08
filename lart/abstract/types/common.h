@@ -258,8 +258,8 @@ struct AbstractType {
     std::string baseName() const { return base().name(); }
     DomainPtr domain() const { return _domain; }
     std::string domainName() { return _domain->name(); }
-    Type * origin() const { return _ptr ? _origin->getPointerTo() : _origin; }
-    bool pointer() const { return _ptr; }
+    Type * origin() const { return wrapPtr( _origin ); }
+    bool isPtr() const { return _ptr; }
     bool isAbstract() { return ::lart::abstract::isAbstract( llvm() ); }
 
     template< typename A, typename T, typename D >
@@ -306,6 +306,7 @@ private:
     DomainPtr _domain;
     bool _ptr;
 };
+
 
 inline bool operator==( const AbstractType & l, const AbstractType & r ) {
     return std::tie( l._origin, l._domain, l._ptr )
