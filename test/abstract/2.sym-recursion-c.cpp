@@ -20,7 +20,7 @@ struct List {
         }
     }
 
-    Node * head;
+    Node * head = nullptr;
 
     Node * at( int i ) {
         return at_impl( head, i );
