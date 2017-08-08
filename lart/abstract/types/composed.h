@@ -16,9 +16,9 @@ namespace lart {
 namespace abstract {
 
 using TypeContainer = std::vector< AbstractTypePtr >;
-static std::string structTypeName( llvm::StructType * type );
 static std::string elementsName( const TypeContainer & elems );
-AbstractTypePtr liftType( llvm::Type * type, DomainPtr dom );
+
+AbstractTypePtr liftType( Type * type, DomainPtr dom );
 
 struct ComposedType;
 using ComposedTypePtr = std::shared_ptr< ComposedType >;
@@ -27,18 +27,16 @@ struct ComposedType : public AbstractType {
     ComposedType( Type * type, DomainPtr domain )
         : AbstractType( type, domain )
     {
-        auto sty = llvm::cast< StructType >( stripPtr( type ) );
-        const auto & values = domain->cget< ComposedDomain>().values;
-        assert( values.size() == sty->getNumElements() );
-        auto dom = values.begin();
-        for ( const auto & elem : sty->elements() ) {
-            _elements.push_back( liftType( elem, *dom ) );
-            ++dom;
-        }
+        initElements( type );
     }
 
     ComposedType( Type * type, const DomainMap & dmap )
         : ComposedType( type, Domain::make( type, dmap ) ) {}
+
+    ComposedType( Type * abstract ) : AbstractType( abstract )
+    {
+        initElements( abstract );
+    }
 
     Type * llvm() override final {
         const auto & ctx = origin()->getContext();
@@ -47,10 +45,10 @@ struct ComposedType : public AbstractType {
         if ( auto lookup = ctx.pImpl->NamedStructTypes.lookup( structName ) ) {
             res = lookup;
         } else {
-            std::vector< llvm::Type * > types;
+            std::vector< Type * > types;
             for ( const auto& e : _elements )
                 types.push_back( e->llvm() );
-            res = llvm::StructType::create( types, structName );
+            res = StructType::create( types, structName );
         }
         return pointer() ? res->getPointerTo() : res;
     }
@@ -75,29 +73,41 @@ struct ComposedType : public AbstractType {
     std::string name() override final {
         auto st = llvm::cast< StructType >( stripPtr( origin() ) );
         assert( st->getNumElements() == _elements.size() );
-        return "lart." + structTypeName( st ) + "." + elementsName( _elements );
+        return "lart.struct." + st->getName().str() + "." + elementsName( _elements );
         // TODO recursive structures - use original struct name: lart.struct.name...
         // return _name;
         // TODO cache name
     }
 
-    static ComposedTypePtr make( llvm::Type * type, const DomainMap & dmap ) {
+    TypeContainer elements() const {
+        return _elements;
+    }
+
+    static ComposedTypePtr make( Type * type, const DomainMap & dmap ) {
         return std::make_shared< ComposedType >( type, dmap );
     }
 
-    static ComposedTypePtr make( llvm::Type * type, DomainPtr dom ) {
+    static ComposedTypePtr make( Type * type, DomainPtr dom ) {
         return std::make_shared< ComposedType >( type, dom );
     }
+
+    static ComposedTypePtr make( Type * abstract ) {
+        return std::make_shared< ComposedType >( abstract );
+    }
 private:
+    void initElements( Type * type ) {
+        auto sty = llvm::cast< StructType >( stripPtr( type ) );
+        const auto & values = domain()->cget< ComposedDomain>().values;
+        assert( values.size() == sty->getNumElements() );
+        auto dom = values.begin();
+        for ( const auto & elem : sty->elements() ) {
+            _elements.push_back( liftType( elem, *dom ) );
+            ++dom;
+        }
+    }
+
     TypeContainer _elements;
 };
-
-static std::string structTypeName( llvm::StructType * type ) {
-    // TODO anonymous structs
-    assert( type->hasName() );
-    assert( type->getName().startswith( "struct" ) );
-    return type->getName().str();
-}
 
 static std::string elementsName( const TypeContainer & elems ) {
     std::string n = "[";

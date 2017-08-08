@@ -14,15 +14,12 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-AbstractTypePtr getFromLLVM( Type * type, DomainPtr dom = nullptr ) {
-    auto tn = TypeName( llvm::cast< llvm::StructType >( stripPtr( type ) ) );
-    auto origin = tn.base().llvm( type->getContext() );
-    if ( type->isPointerTy() )
-        origin = origin->getPointerTo();
-    if ( dom )
-        return liftType( origin, dom );
+AbstractTypePtr getFromLLVM( Type * type ) {
+    auto sty = llvm::cast< llvm::StructType >( stripPtr( type ) );
+    if ( TypeName( sty ).base() != TypeBaseValue::Struct )
+        return ScalarType::make( type );
     else
-        return liftType( origin, tn.domain() );
+        return ComposedType::make( type );
 }
 
 AbstractTypePtr liftType( Type * type, DomainPtr dom ) {
@@ -30,10 +27,10 @@ AbstractTypePtr liftType( Type * type, DomainPtr dom ) {
     if ( isAbstract( stripPtr( type ) ) )
         return getFromLLVM( type );
     return dom->match(
-        [&] ( const UnitDomain & ) -> AbstractTypePtr {
+        [&] ( UnitDomain ) -> AbstractTypePtr {
             return ScalarType::make( type, dom );
         },
-        [&] ( const ComposedDomain & ) -> AbstractTypePtr {
+        [&] ( ComposedDomain ) -> AbstractTypePtr {
             return ComposedType::make( type, dom );
         } ).value();
 }
@@ -48,8 +45,7 @@ Type * liftTypeLLVM( Type * type, DomainPtr domain ) {
 Type * lowerTypeLLVM( Type * type ) {
     if ( !isAbstract( type ) )
         return type;
-    auto lowered = getFromLLVM( type );
-    return lowered->pointer() ? lowered->origin()->getPointerTo() : lowered->origin();
+    return getFromLLVM( type )->origin();
 }
 
 } // namespace abstract

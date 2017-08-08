@@ -13,6 +13,9 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
+// Recreates 'AbstractType' from llvm representation
+AbstractTypePtr getFromLLVM( Type * type );
+
 // Lift 'type' to abstract type in 'domain'
 AbstractTypePtr liftType( llvm::Type * type, DomainPtr dom );
 

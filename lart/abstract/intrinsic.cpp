@@ -42,10 +42,10 @@ Intrinsic::Intrinsic( llvm::Module * m,
 }
 
 DomainPtr Intrinsic::domain() const {
-    auto dom = nameElement( 1 );
-    if ( dom != "struct" )
-        return ::lart::abstract::domain( dom );
-    UNREACHABLE( "Intrinsic domain fro structs not yet implemented." );
+    if ( nameElement( 1 ) != "struct" )
+        return Domain::make( DomainTable[ nameElement( 1 ) ] );
+    else
+        return getFromLLVM( intr->getReturnType() )->domain();
 }
 
 std::string Intrinsic::name() const {

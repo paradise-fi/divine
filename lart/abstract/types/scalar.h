@@ -32,6 +32,8 @@ struct ScalarType : public AbstractType {
       assert( dom->is< UnitDomain >() );
     }
 
+    ScalarType( Type * abstract ) : AbstractType( abstract ) {}
+
     Type * llvm() override final {
         const auto & ctx = origin()->getContext();
         Type * res = nullptr;
@@ -56,6 +58,10 @@ struct ScalarType : public AbstractType {
 
     static ScalarTypePtr make( Type * origin, DomainPtr dom ) {
         return std::make_shared< ScalarType >( origin, dom );
+    }
+
+    static ScalarTypePtr make( Type * abstract ) {
+        return std::make_shared< ScalarType >( abstract );
     }
 };
 

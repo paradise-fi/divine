@@ -122,10 +122,6 @@ void AbstractBuilder::clone( const FunctionNodePtr & node ) {
 void AbstractBuilder::process( const AbstractValue & av ) {
     llvmcase( av.value(),
         [&] ( Instruction * inst ) {
-            if ( inst->getType()->isStructTy() ) {
-                inst->dump();
-                return;
-            }
             if ( !ignore( inst ) )
                 if ( auto abstract = create( av ) ) {
                     store( inst, abstract );
@@ -308,7 +304,7 @@ Value * AbstractBuilder::createStore( const AbstractValue & av ) {
     IRBuilder<> irb( i );
     auto args = operands( av );
     auto rty = VoidType( i->getContext() );
-    auto storedName = TypeName( cast< StructType >( args[0]->getType() ) ).base().name();
+    auto storedName = getFromLLVM( args[0]->getType() )->baseName();
     auto name = intrinsicName( av ) + "." + storedName;
     auto intr = Intrinsic( i->getModule(), rty, name, typesOf( args ) );
     return IRBuilder<>( i ).CreateCall( intr.declaration(), args );
@@ -319,7 +315,7 @@ Value * AbstractBuilder::createICmp( const AbstractValue & av ) {
     auto args = operands( av );
     auto rty = liftTypeLLVM( BoolType( i->getContext() ), av.domain() );
 	auto name = intrinsicName( av ) + "_" + predicate.at( i->getPredicate() )
-             + "." + TypeName( cast< StructType >( args[0]->getType() ) ).base().name();
+             + "." + getFromLLVM( args[0]->getType() )->baseName();
     auto intr = Intrinsic( i->getModule(), rty, name, typesOf( args ) );
     return IRBuilder<>( i ).CreateCall( intr.declaration(), args );
 }
@@ -429,22 +425,21 @@ Value * AbstractBuilder::createPtrCast( const AbstractValue & av ) {
 Value * AbstractBuilder::createGEP( const AbstractValue & av ) {
     auto i = cast< GetElementPtrInst >( av.value() );
     IRBuilder<> irb( i );
-    auto val = _values[ i->getPointerOperand() ];
+    auto op = i->getPointerOperand();
+    auto val = isAbstract( op->getType() ) ? op : _values[ op ];
     Values idxs = { i->idx_begin() , i->idx_end() };
     auto type = val->getType()->getScalarType()->getPointerElementType();
     return irb.CreateGEP( type, val, idxs, i->getName() );
 }
 
 Value * AbstractBuilder::lower( Value * v, IRBuilder<> & irb ) {
-    const auto & type = cast< StructType >( v->getType() );
-    bool abs = isAbstract( type );
-    assert( abs && !type->isPointerTy() );
+    const auto & type = getFromLLVM( v->getType() );
 
-    auto fty = FunctionType::get( lowerTypeLLVM( type ), { type }, false );
-    auto dom = TypeName( type ).domain();
+    auto fty = FunctionType::get( type->origin(), { type->llvm() }, false );
+    auto dom = type->domain();
     auto tag = "lart." + dom->name() + ".lower";
     if ( dom->get< UnitDomain >().value != DomainValue::Tristate )
-        tag += "." + TypeName( type ).base().name();
+        tag += "." + type->baseName();
     auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     auto call = irb.CreateCall( fn , v );
 

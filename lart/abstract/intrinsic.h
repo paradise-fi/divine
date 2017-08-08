@@ -36,14 +36,13 @@ struct Intrinsic {
     Type type() const;
     bool is() const;
     llvm::Function * declaration() const { return intr; }
-    std::string nameElement( size_t idx ) const; //TODO rename to elementName
+    std::string nameElement( size_t idx ) const;
 
     template< size_t idx >
     llvm::Type * argType() const {
         assert( intr->arg_size() > idx );
         return intr->getFunctionType()->getParamType( idx );
     }
-
 
 private:
     llvm::Function * intr;

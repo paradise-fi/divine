@@ -6,6 +6,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/lib/IR/LLVMContextImpl.h>
 DIVINE_UNRELAX_WARNINGS
 
 #include <brick-types>
@@ -23,7 +24,9 @@ using llvm::StructType;
 using llvm::LLVMContext;
 
 static inline Type * stripPtr( Type * type ) {
-    return type->isPointerTy() ? type->getPointerElementType() : type;
+    while ( type->isPointerTy() )
+        type = type->getPointerElementType();
+    return type;
 }
 
 enum class TypeBaseValue : uint16_t {
@@ -49,7 +52,7 @@ const brick::data::Bimap< TypeBaseValue, std::string > TypeBaseTable {
 };
 } // anonymous namespace
 
-struct TypeBase {
+struct TypeBase : brick::types::Eq {
     TypeBase( TypeBaseValue value ) : value( value ) {}
     std::string name() const { return TypeBaseTable[ value ]; }
 
@@ -70,6 +73,27 @@ struct TypeBase {
     TypeBaseValue value;
 };
 
+inline bool operator==(const TypeBase& lhs, const TypeBase& rhs) {
+    return lhs.value == rhs.value;
+}
+
+inline bool operator==(const TypeBase& lhs, const TypeBaseValue& rhs) {
+    return lhs.value == rhs;
+}
+
+inline bool operator==(const TypeBaseValue& lhs, const TypeBase& rhs) {
+    return lhs == rhs.value;
+}
+
+inline bool operator!=(const TypeBase& lhs, const TypeBaseValue& rhs) {
+    return !( lhs.value == rhs);
+}
+
+inline bool operator!=(const TypeBaseValue& lhs, const TypeBase& rhs) {
+    return !(lhs == rhs.value);
+}
+
+
 static TypeBase typebase( const std::string & s ) {
     return TypeBaseTable[ s ];
 }
@@ -86,34 +110,48 @@ static TypeBase typebase( Type * t ) {
     UNREACHABLE( "Trying to get base of unsupported type." );
 }
 
-
 struct TypeNameParser {
     using Tokens = std::vector< std::string >;
 
+    static const size_t dom_idx = 0;
+    static const size_t struct_name_idx = 1;
+    static const size_t base_idx = 1;
+
     TypeNameParser( StructType * type )
-        : tokens( parse( type ) ) {}
+        : ctx( type->getContext() )
+    {
+        std::tie( tokens, elems ) = parse( type );
+    }
+
+    TypeNameParser( LLVMContext & ctx, const Tokens & tokens, const Tokens & elems )
+        : ctx( ctx ), tokens( tokens ), elems( elems ) {}
     TypeNameParser( const TypeNameParser & ) = default;
     TypeNameParser &operator=( const TypeNameParser & other ) = default;
 
-    Tokens parse( StructType * type ) const {
-        if ( !type->hasName() )
-            return {};
-        std::stringstream ss;
-        ss.str( type->getStructName().str() );
-        Tokens ts;
-        std::string t;
-        while( std::getline( ss, t, '.' ) )
-            ts.push_back( t );
-        return ts;
+    DomainPtr getDomain() const {
+        if ( tokens.at( dom_idx ) == "struct" ) {
+            DomainMap dmap;
+            std::vector< Type * > structTypes;
+            size_t idx = 0;
+            for ( const auto & e : elems ) {
+                auto p = parse( e );
+                auto tnp = TypeNameParser( ctx, p.first, p.second );
+                dmap[ idx ] = tnp.getDomain();
+                structTypes.push_back( tnp.getBase().llvm( ctx ) );
+                ++idx;
+            }
+            return Domain::make( StructType::create( structTypes ), dmap );
+        } else {
+            return domain( tokens.at( dom_idx ) );
+        }
     }
 
-    DomainPtr getDomain() const { return domain( tokens.at( 1 ) ); }
     TypeBase getBase() const {
         return getDomain()->match(
         [&] ( const UnitDomain & dom ) -> TypeBase {
             switch( dom.value ) {
                 case DomainValue::Tristate : return TypeBaseValue::Int1;
-                default : return typebase( tokens[2] );
+                default : return typebase( tokens.at( base_idx ) );
             }
         },
         [] ( const ComposedDomain & /* dom */ ) -> TypeBase {
@@ -121,13 +159,53 @@ struct TypeNameParser {
         } ).value();
     }
 
-    bool parsable() const {
-        if ( tokens.size() == 2 )
-            return tokens[ 1 ] == "tristate";
-        return tokens.size() > 2;
+    static std::pair< Tokens, Tokens > parse( const std::string & name ) {
+        using std::istringstream;
+
+        auto elem_begin = name.find( '[' );
+        auto elem_end = name.find( ']' );
+
+        istringstream ss;
+        if ( elem_begin == std::string::npos )
+            ss.str( name );
+        else
+            ss.str( name.substr( 0, elem_begin ) );
+
+        std::string t;
+        Tokens tokens, elems;
+        while( std::getline( ss, t, '.' ) )
+            tokens.push_back( t );
+
+        if ( elem_begin != std::string::npos ) {
+            istringstream es( name.substr(elem_begin + 1, elem_end - elem_begin - 1) );
+            while( std::getline( es, t, ',' ) )
+                elems.push_back( t );
+        }
+        return { tokens, elems };
     }
 
+    static std::pair< Tokens, Tokens > parse( StructType * type ) {
+        assert( type->hasName() );
+        auto name = type->getStructName().str();
+        assert( name.substr( 0, 5 ) == "lart." );
+        name = name.substr( 5 );
+        return parse( name );
+    }
+
+    static bool parsable( StructType * type ) {
+        if ( type && type->hasName() && type->getName().startswith( "lart" ) ) {
+            Tokens tokens, elems;
+            std::tie( tokens, elems ) = parse( type );
+            if ( tokens.size() == 1 )
+                return tokens.at( dom_idx ) == "tristate";
+            return tokens.size() > 1;
+        }
+        return false;
+    }
+
+    LLVMContext & ctx;
     Tokens tokens;
+    Tokens elems;
 };
 
 
@@ -146,11 +224,25 @@ private:
     TypeBase _base;
 };
 
+static bool isAbstract( Type * type ) {
+    auto st = llvm::dyn_cast< llvm::StructType >( stripPtr( type ) );
+    if ( TypeNameParser::parsable( st ) )
+        return TypeName( st ).domain()->isAbstract();
+    return false;
+}
+
 struct AbstractType {
     AbstractType( Type * origin, DomainPtr domain )
-        : _origin( stripPtr( origin ) ),
-          _domain( domain ),
-          _ptr( origin->isPointerTy() )
+        : _origin( stripPtr( origin ) )
+        , _domain( domain )
+        , _ptr( origin->isPointerTy() )
+    {}
+
+    AbstractType( Type * abstract )
+        : _origin( getOriginFrom( abstract ) )
+        , _domain( TypeName( llvm::cast< StructType >( stripPtr( abstract ) ) )
+                  .domain() )
+        , _ptr( abstract->isPointerTy() )
     {}
 
     AbstractType( const AbstractType & ) = default;
@@ -167,6 +259,7 @@ struct AbstractType {
     std::string domainName() { return _domain->name(); }
     Type * origin() const { return _ptr ? _origin->getPointerTo() : _origin; }
     bool pointer() const { return _ptr; }
+    bool isAbstract() { return ::lart::abstract::isAbstract( llvm() ); }
 
     friend bool operator==( const AbstractType & l, const AbstractType & r );
 private:
@@ -187,14 +280,6 @@ static inline std::string llvmname( const Type * type ) {
     llvm::raw_string_ostream rso( buffer );
     type->print( rso );
     return rso.str();
-}
-
-static bool isAbstract( Type * type ) {
-    auto st = llvm::dyn_cast< llvm::StructType >( stripPtr( type ) );
-    if ( st && st->hasName() && st->getName().startswith( "lart" )
-            && TypeNameParser( st ).parsable() )
-        return TypeName( st ).domain()->isAbstract();
-    return false;
 }
 
 static inline Type * VoidType( LLVMContext & ctx ) {

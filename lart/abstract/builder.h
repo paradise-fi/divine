@@ -25,6 +25,8 @@ struct AbstractBuilder {
     void clone( const FunctionNodePtr & );
     void clean( std::vector< llvm::Value * > & );
 
+    llvm::Value * create( const AbstractValue & );
+
 private:
     /* maps real types to abstract types */
     void store( llvm::Value *, llvm::Value * );
@@ -32,8 +34,6 @@ private:
 
 
     std::vector< llvm::Type * > argTypes( llvm::CallInst * );
-
-    llvm::Value * create( const AbstractValue & );
 
     bool ignore( llvm::Instruction * );
 
