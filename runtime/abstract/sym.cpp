@@ -47,15 +47,6 @@ Formula *__abstract_sym_load( Formula **a, int bitwidth ) {
 }
 
 void __abstract_sym_store( Formula *val, Formula **ptr ) {
-    auto *current = *ptr;
-    const int cw = current->type.bitwidth(), vw = val->type.bitwidth();
-    if ( vw < cw ) {
-        auto *hi = __newf< Unary >( Op::Extract, Type{ Type::Int, cw - vw }, cw - 1, cw - vw, current );
-        val = __newf< Binary >( Op::Concat, current->type, hi, val );
-    } else if ( cw < vw ) {
-        UNREACHABLE_F( "String of %d bit value to %d bit abstract value is not supported (yet).",
-                       vw, cw );
-    }
     *ptr = weaken( val );
 }
 
