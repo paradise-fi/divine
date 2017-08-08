@@ -13,7 +13,6 @@ namespace Domain {
     enum class Value : Type {
         LLVM,
         Struct,
-        Abstract,
         Tristate,
         Trivial,
         Symbolic,
@@ -25,7 +24,6 @@ namespace Domain {
     const brick::data::Bimap< Value, std::string > Values = {
          { Value::LLVM, "llvm" }
         ,{ Value::Struct, "struct" } // TODO rename/remove ?
-        ,{ Value::Abstract, "abstract" }
         ,{ Value::Tristate, "tristate" }
         ,{ Value::Trivial, "triv" }
         ,{ Value::Symbolic, "sym" }
