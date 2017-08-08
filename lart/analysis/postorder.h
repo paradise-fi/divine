@@ -21,35 +21,33 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace analysis {
 
-template< typename N >
-using Succs = std::function< std::vector< N > ( const N & ) >;
+template< typename Nodes, typename Succs >
+Nodes postorder_impl( const Nodes& roots, const Succs& succs );
 
-
-template< typename Node >
-std::vector< Node > postorder_impl( const std::vector< Node >&, const Succs< Node > & );
-
-template< typename Node >
-std::vector< Node > roots( const std::vector< Node > & nodes, const Succs< Node > & succs ) {
+template< typename Nodes, typename Succs >
+Nodes roots( const Nodes& nodes, const Succs& succs ) {
     auto has_no_predecessor = [&] ( const auto & node ) {
-        return query::query( nodes )
-            .all( [&] ( const auto & n ) {
-                if ( n == node )
-                    return true;
-                return query::query( postorder_impl( { n }, succs ) )
-                    .none( [&] ( const auto & succ ) { return succ == node; } );
-            } );
+        return query::query( nodes ).all( [&] ( const auto & n ) {
+            if ( n == node )
+                return true;
+            return query::query( postorder_impl( Nodes{ n }, succs ) )
+                .none( [&] ( const auto & succ ) { return succ == node; } );
+        } );
     };
 
     return query::query( nodes ).filter( has_no_predecessor ).freeze();
 }
 
-template< typename Node >
-std::vector< Node > postorder( const std::vector< Node > & nodes, const Succs< Node > & succs ) {
-    return postorder_impl( roots( nodes, succs ), succs );
+template< typename Nodes, typename Succs >
+Nodes postorder( const Nodes& nodes, const Succs& succs ) {
+    auto order_roots = roots( nodes, succs );
+    return postorder_impl( order_roots, succs );
 }
 
-template< typename Node >
-std::vector< Node > postorder_impl( const std::vector< Node > & roots, const Succs< Node > & succs ) {
+template< typename Nodes, typename Succs >
+Nodes postorder_impl( const Nodes & roots, const Succs& succs ) {
+    using Node = typename Nodes::value_type;
+
     std::unordered_set< Node > visited;
     std::stack< std::pair< bool, Node > > stack;
     std::vector< Node > order;

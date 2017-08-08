@@ -2,23 +2,12 @@
 #include <lart/abstract/abstraction.h>
 
 DIVINE_RELAX_WARNINGS
-#include <llvm/IR/PassManager.h>
-
-#include <llvm/IR/Value.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Instructions.h>
-
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/UnifyFunctionExitNodes.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/walker.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/support/lowerselect.h>
-#include <lart/support/query.h>
-#include <lart/support/util.h>
-
-#include <lart/abstract/types/common.h>
 
 namespace lart {
 namespace abstract {
@@ -27,7 +16,7 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
     auto preprocess = [] ( llvm::Function * fn ) {
         auto lowerSwitchInsts = std::unique_ptr< llvm::FunctionPass >(
                                 llvm::createLowerSwitchPass() );
-        lowerSwitchInsts->runOnFunction( *fn );
+        lowerSwitchInsts.get()->runOnFunction( *fn );
 
         // FIXME lower only abstract selects
         LowerSelect lowerSelectInsts;
@@ -37,26 +26,22 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
         ufen.runOnFunction( *fn );
     };
 
-    using Preprocess = decltype( preprocess );
-    AbstractWalker< Preprocess > walker{ preprocess, m };
-
     std::vector< llvm::Function * > remove;
-
-    auto functions = walker.postorder();
+    auto functions = Walker( m, preprocess ).postorder();
 
     // create function declarations
-    Map< FunctionNodePtr, llvm::Function * > declarations;
+    std::unordered_map< FunctionNodePtr, llvm::Function * > declarations;
 
     for ( const auto & node : functions )
-        declarations[ node ] = llvm::cast< llvm::Function >( builder.process( node ) );
+        declarations[ node ] =  builder.process( node );
     for ( const auto & node : functions ) {
         // 1. if signature changes create a new function declaration
 
         // if proccessed function is called with abstract argument create clone of it
         // to preserve original function for potential call without abstract argument
         // TODO what about function with abstract argument and abstract annotation?
-        bool called = query::query( node->entries ).any( [] ( const ValueNode & n ) {
-            return llvm::isa< llvm::Argument >( n.value );
+        bool called = query::query( node->origins ).any( [] ( const auto & n ) {
+            return llvm::isa< llvm::Argument >( n.value() );
         } );
 
         if ( called )
@@ -64,16 +49,14 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
 
         // 2. process function abstract entries
         auto postorder = node->postorder();
-        for ( auto & a : lart::util::reverse( postorder ) ) {
-            // FIXME let builder take Annotation structure
-            builder.process( a.value );
-        }
+        for ( auto & val : lart::util::reverse( postorder ) )
+            builder.process( val );
 
         // 3. clean function
         // FIXME let builder take annotation structure
         std::vector< llvm::Value * > deps;
-        for ( auto & a : postorder )
-            deps.emplace_back( a.value );
+        for ( auto & val : postorder )
+            deps.emplace_back( val.value() );
         builder.clean( deps );
 
         // 4. copy function to declaration and handle function uses
@@ -93,7 +76,7 @@ llvm::PreservedAnalyses Abstraction::run( llvm::Module & m ) {
             llvm::CloneFunctionInto( changed, fn, vmap, false, returns, "", nullptr );
             // Remove lifts of abstract arguments
             for ( auto & arg : changed->args() ) {
-                if ( types::isAbstract( arg.getType() ) ) {
+                if ( isAbstract( arg.getType() ) ) {
                     auto lifts = query::query( arg.users() )
                         .map( query::llvmdyncast< llvm::CallInst > )
                         .filter( query::notnull )

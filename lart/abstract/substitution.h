@@ -31,7 +31,7 @@ struct Substitution : lart::Pass
                 []( llvm::ModulePassManager &mgr, std::string opt ) {
                     auto dom = Domain::value( opt );
                     if ( dom.isNothing() )
-                        throw std::runtime_error( "unknown alias-analysis type: " + opt );
+                        throw std::runtime_error( "unknown abstraction type: " + opt );
                     return mgr.addPass( Substitution( dom.value() ) );
                 } );
     }

@@ -8,8 +8,10 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 //FIXME refactor annotation definitions out
-#include <lart/abstract/walkergraph.h>
+#include <lart/abstract/walker.h>
 #include <lart/abstract/domains/domains.h>
+#include <lart/abstract/types/common.h>
+#include <lart/abstract/types/composed.h>
 #include <lart/support/util.h>
 
 namespace lart {
@@ -17,11 +19,10 @@ namespace abstract {
 
 struct AbstractBuilder {
 
-    llvm::Value * process( llvm::Value * );
-    llvm::Value * process( const FunctionNodePtr & );
+    void process( const AbstractValue & );
 
+    llvm::Function * process( const FunctionNodePtr & );
     void clone( const FunctionNodePtr & );
-
     void clean( std::vector< llvm::Value * > & );
 
 private:
@@ -32,43 +33,38 @@ private:
 
     std::vector< llvm::Type * > argTypes( llvm::CallInst * );
 
-    llvm::Value * create( llvm::Instruction * );
-    llvm::Value * createPtrInst( llvm::Instruction * );
-    llvm::Value * createInst( llvm::Instruction * );
+    llvm::Value * create( const AbstractValue & );
 
     bool ignore( llvm::Instruction * );
 
-    llvm::Value * createAlloca( llvm::AllocaInst * );
-    llvm::Value * createLoad( llvm::LoadInst * );
-    llvm::Value * createStore( llvm::StoreInst * );
-    llvm::Value * createICmp( llvm::ICmpInst * );
-    llvm::Value * createBranch( llvm::BranchInst * );
-    llvm::Value * createBinaryOperator( llvm::BinaryOperator * );
-    llvm::Value * createCast( llvm::CastInst * );
-    llvm::Value * createPhi( llvm::PHINode * );
-    llvm::Value * createCall( llvm::CallInst * );
-    llvm::Value * createReturn( llvm::ReturnInst * );
+    llvm::Value * createAlloca( const AbstractValue & );
+    llvm::Value * createLoad( const AbstractValue & );
+    llvm::Value * createStore( const AbstractValue & );
+    llvm::Value * createICmp( const AbstractValue & );
+    llvm::Value * createBranch( const AbstractValue & );
+    llvm::Value * createBinaryOperator( const AbstractValue & );
+    llvm::Value * createCast( const AbstractValue & );
+    llvm::Value * createPhi( const AbstractValue & );
+    llvm::Value * createCall( const AbstractValue & );
+    llvm::Value * createReturn( const AbstractValue & );
 
-    llvm::Value * createPtrCast( llvm::CastInst * );
-    llvm::Value * createGEP( llvm::GetElementPtrInst * );
+    llvm::Value * createPtrCast( const AbstractValue & );
+    llvm::Value * createGEP( const AbstractValue & );
 
     llvm::Value * lower( llvm::Value *, llvm::IRBuilder<> & );
-    llvm::Value * lift( llvm::Value *, llvm::IRBuilder<> & );
-    llvm::Value * toTristate( llvm::Value * v, Domain::Value domain, llvm::IRBuilder<> & irb );
+    llvm::Value * lift( llvm::Value *, Domain::Value , llvm::IRBuilder<> & );
+    llvm::Value * toTristate( llvm::Value *, Domain::Value , llvm::IRBuilder<> & );
 
     llvm::Value * clone( llvm::CallInst * );
 
     llvm::Value * processLiftCall( llvm::CallInst * );
     llvm::Value * processIntrinsic( llvm::CallInst * );
-    llvm::Value * processCall( llvm::CallInst * );
+    llvm::Value * processCall( const AbstractValue & );
 
     llvm::Function * getStoredFn( llvm::Function *,
                                   llvm::ArrayRef< llvm::Type * > );
 
-    llvm::Value * _process( llvm::Instruction * );
-    llvm::Value * _process( llvm::Argument * );
-
-    //std::map< llvm::Type *, llvm::Type * > _types;
+    // TODO values to be map< Value, AbstractValue >
     std::map< llvm::Value *, llvm::Value * > _values;
     std::map< llvm::Function *, std::vector< llvm::Function * > > _functions;
 };

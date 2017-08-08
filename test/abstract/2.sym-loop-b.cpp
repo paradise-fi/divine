@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <cstdint>
 
-#define __sym __attribute__((__annotate__("lart.abstract.symbolic")))
+#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int main() {
     __sym uint16_t x;

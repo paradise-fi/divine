@@ -13,15 +13,15 @@ namespace lart {
 namespace abstract {
 namespace {
 
-auto CallDomainFilter( std::string name ) {
+auto CallDomainFilter( const std::string& name ) {
     return [&name]( llvm::CallInst * call ) -> bool {
         auto fn = call->getCalledFunction();
         return fn != nullptr && ( intrinsic::name( call ) == name );
     };
 };
 
-template < typename Filter >
-auto identify( llvm::Module &m, Filter filter ) {
+template< typename Filter >
+auto identify( llvm::Module& m, Filter filter ) {
     return query::query( m ).flatten().flatten()
         .map( query::refToPtr )
         .map( query::llvmdyncast< llvm::CallInst > )
@@ -40,14 +40,14 @@ void removeInvalidAttributes( llvm::Function* fn ) {
     };
     auto attrs = llvm::ArrayRef< Kind >{ Kind::SExt, Kind::ZExt };
 
-    if ( types::isAbstract( fn->getReturnType() ) )
+    if ( isAbstract( fn->getReturnType() ) )
         removeAttributes( 0, attrs );
     for ( size_t i = 0; i < fn->arg_size(); ++i )
-        if ( types::isAbstract( fn->getFunctionType()->getParamType( i ) ) )
+        if ( isAbstract( fn->getFunctionType()->getParamType( i ) ) )
             removeAttributes( i + 1, attrs );
 }
 
-} //empty namespace
+} // anonymous namespace
 
 llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
     init( m );
@@ -59,7 +59,7 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
         } )
         .filter( []( llvm::Function * f ) {
             return query::query( f->args() )
-                .any( [] ( auto& arg ) { return types::isAbstract( arg.getType() ); } );
+                .any( [] ( auto& arg ) { return isAbstract( arg.getType() ); } );
         } ).freeze();
     // TODO solve returns of functions without arguments
     // = move changing of returns to here
@@ -96,7 +96,7 @@ llvm::PreservedAnalyses Substitution::run( llvm::Module & m ) {
     auto retAbsVal = query::query( m )
                     .map( query::refToPtr )
                     .filter( [&]( llvm::Function * fn ) {
-                        return types::isAbstract( fn->getReturnType() )
+                        return isAbstract( fn->getReturnType() )
                             && ! intrinsic::is( fn );
                     } )
                     .filter( [&]( llvm::Function * fn ) {
@@ -136,15 +136,17 @@ void Substitution::init( llvm::Module & m ) {
 }
 
 void Substitution::process( llvm::Value * val ) {
-    auto succs = [&] ( llvm::Value * v ) -> std::vector< llvm::Value * > {
+    using Values = std::vector< llvm::Value * >;
+    auto succs = [&] ( llvm::Value * v ) -> Values {
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( v ) ) {
             auto fn = call->getCalledFunction();
-            if ( !intrinsic::is( fn ) && !types::isAbstract( fn->getReturnType() ) )
+            if ( !intrinsic::is( fn ) && !isAbstract( fn->getReturnType() ) )
                 return {};
         }
         return { v->user_begin(), v->user_end() };
     };
-    auto deps = analysis::postorder< llvm::Value * >( { val }, succs );
+
+    auto deps = analysis::postorder( Values{ val }, succs );
     for ( auto dep : lart::util::reverse( deps ) )
         if( auto i = llvm::dyn_cast< llvm::Instruction >( dep ) )
             builder.process( i );

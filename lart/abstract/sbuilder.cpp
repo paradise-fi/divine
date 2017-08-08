@@ -51,12 +51,12 @@ void SubstitutionBuilder::process( llvm::Argument * arg ) {
 llvm::Function * SubstitutionBuilder::process( llvm::Function * fn ) {
     std::vector < llvm::Type * > types;
     for ( auto &arg : fn->args() ) {
-        auto t = types::isAbstract( arg.getType() )
+        auto t = isAbstract( arg.getType() )
                ? abstraction->abstract( arg.getType() ) : arg.getType();
         types.push_back( t );
     }
     auto rty = fn->getFunctionType()->getReturnType();
-    auto arty = types::isAbstract( rty ) ? abstraction->abstract( rty ) : rty;
+    auto arty = isAbstract( rty ) ? abstraction->abstract( rty ) : rty;
     auto fty = llvm::FunctionType::get( arty, types, fn->getFunctionType()->isVarArg() );
     auto newfn = cloneFunction( fn, fty );
     assert( !_functions.count( fn ) );
@@ -72,7 +72,8 @@ void SubstitutionBuilder::changeCallFunction( llvm::CallInst * call ) {
     std::vector< llvm::Value * > args;
     for ( auto & arg : call->arg_operands() )
         args.push_back( arg );
-    auto ncall = irb.CreateCall( _functions[ call->getCalledFunction() ], args );
+    auto nfn = _functions[ call->getCalledFunction() ];
+    auto ncall = irb.CreateCall( nfn, args );
     _values[ call ] = ncall ;
 }
 
@@ -139,11 +140,11 @@ void SubstitutionBuilder::substituteCall( llvm::CallInst * call ) {
 	std::vector < llvm::Value * > args;
 
     for ( auto &arg : call->arg_operands() ) {
-        if ( types::isAbstract( arg->getType() ) && !_values.count( arg ) )
+        if ( isAbstract( arg->getType() ) && !_values.count( arg ) )
             //not all incoming values substituted
             //wait till have all args
             break;
-        auto lowered = types::isAbstract( arg->getType() ) ? _values[ arg ] : arg;
+        auto lowered = isAbstract( arg->getType() ) ? _values[ arg ] : arg;
         args.push_back( lowered );
     }
 	//skip if do not have enough substituted arguments
@@ -151,6 +152,8 @@ void SubstitutionBuilder::substituteCall( llvm::CallInst * call ) {
         return;
 
     if ( intrinsic::is( call ) ) {
+        if ( intrinsic::domain( call ).value() == Domain::Value::Struct )
+            call->dump();
         _values[ call ] = abstraction->process( call, args );
     } else {
         llvm::Module * m = call->getCalledFunction()->getParent();
@@ -186,15 +189,15 @@ void SubstitutionBuilder::substituteReturn( llvm::ReturnInst * ret ) {
 
 void SubstitutionBuilder::clean( llvm::Function * fn ) {
     auto abstracted = query::query( _values )
-                      .map( [&]( const auto & pair ) {
-                          return pair.first;
-                      } )
-					  .map( query::llvmdyncast< llvm::Instruction > )
-					  .filter( query::notnull )
-                      .filter( [&]( llvm::Instruction * i ) {
-                          return i->getParent()->getParent() == fn;
-                      } )
-                      .freeze();
+        .map( [&]( const auto & pair ) {
+            return pair.first;
+        } )
+        .map( query::llvmdyncast< llvm::Instruction > )
+        .filter( query::notnull )
+        .filter( [&]( llvm::Instruction * i ) {
+            return i->getParent()->getParent() == fn;
+        } )
+        .freeze();
 
     for ( auto & v : abstracted )
         _values.erase( v );
@@ -206,12 +209,12 @@ void SubstitutionBuilder::clean( llvm::Function * fn ) {
 
 void SubstitutionBuilder::clean( llvm::Module & m ) {
     auto abstracted = query::query( _values )
-                      .map( [&]( const auto & pair ) {
-                          return pair.first;
-                      } )
-					  .map( query::llvmdyncast< llvm::Instruction > )
-					  .filter( query::notnull )
-                      .freeze();
+        .map( [&]( const auto & pair ) {
+            return pair.first;
+        } )
+        .map( query::llvmdyncast< llvm::Instruction > )
+        .filter( query::notnull )
+        .freeze();
 
     _values.clear();
     for ( auto & v : abstracted ) {
@@ -228,10 +231,10 @@ void SubstitutionBuilder::clean( llvm::Module & m ) {
     }
 
     auto intrinsics = query::query( m )
-                    .map( query::refToPtr )
-                    .filter( []( llvm::Function * fn ) {
-                        return intrinsic::is( fn );
-                    } ).freeze();
+        .map( query::refToPtr )
+        .filter( []( llvm::Function * fn ) {
+            return intrinsic::is( fn );
+        } ).freeze();
     for ( auto & in : intrinsics )
         in->eraseFromParent();
 }

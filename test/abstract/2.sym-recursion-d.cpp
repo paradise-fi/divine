@@ -2,7 +2,7 @@
 
 #include <cassert>
 #include <limits>
-#define __sym __attribute__((__annotate__("lart.abstract.symbolic")))
+#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 unsigned sum( unsigned a, unsigned b );
 
 unsigned sum_impl( unsigned a, unsigned b ) {

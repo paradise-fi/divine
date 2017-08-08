@@ -2,7 +2,7 @@
 
 #include <cassert>
 #include <limits>
-#define __sym __attribute__((__annotate__("lart.abstract.symbolic")))
+#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int main() {
     union {

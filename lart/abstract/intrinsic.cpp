@@ -23,6 +23,13 @@ namespace {
 
         return parts;
     }
+
+    std::vector< llvm::Type * > typesOf( const std::vector< llvm::Value * > & vs ) {
+        std::vector< llvm::Type * > ts;
+        std::transform( vs.begin(), vs.end(), std::back_inserter( ts ),
+            [] ( const auto & v ) { return v->getType(); } );
+        return ts;
+    }
 }
 
 // intrinsic format: lart.<domain>.<name>.<type1>.<type2>
@@ -64,8 +71,8 @@ const std::string ty2( const llvm::CallInst * call ) {
     return ty2( call->getCalledFunction() );
 }
 
-const std::string tag( const llvm::Instruction * i ) {
-    return tag( i, Domain::Value::Abstract );
+const std::string tag( const AbstractValue & av ) {
+    return tag( llvm::cast< llvm::Instruction >( av.value() ), av.domain() );
 }
 
 const std::string tag( const llvm::Instruction * i, Domain::Value dom  ) {
@@ -88,10 +95,7 @@ llvm::CallInst * build( llvm::Module * m,
                         const std::string & tag,
                         std::vector< llvm::Value * > args )
 {
-    std::vector< llvm::Type * > argTypes ;
-    for ( auto arg : args )
-        argTypes.push_back( arg->getType() );
-    auto call = get( m, rty, tag, argTypes );
+    auto call = get( m, rty, tag, typesOf( args ) );
     return irb.CreateCall( call, args );
 }
 

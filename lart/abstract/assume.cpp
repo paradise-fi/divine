@@ -40,7 +40,7 @@ namespace {
             unsigned i = succ_idx( from, to );
             llvm::SplitEdge( from, to );
             auto edgeBB = from->getTerminator()->getSuccessor( i );
-            auto rty = types::VoidType( from->getContext() );
+            auto rty = VoidType( from->getContext() );
             auto fty = llvm::FunctionType::get( rty,
                                               { assume.cond->getType(), assume.val->getType()},
                                                 false );

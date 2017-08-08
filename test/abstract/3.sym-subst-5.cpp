@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-#define __sym __attribute__((__annotate__("lart.abstract.symbolic")))
+#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int main() {
     __sym short x;

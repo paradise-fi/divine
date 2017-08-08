@@ -1,4 +1,5 @@
 // -*- C++ -*- (c) 2014 Petr Rockai <me@mornfall.net>
+#pragma once
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Value.h>

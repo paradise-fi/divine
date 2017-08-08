@@ -3,363 +3,78 @@
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
-#include <llvm/IR/Value.h>
-#include <llvm/Support/raw_ostream.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <string>
-#include <vector>
-#include <utility>
-#include <algorithm>
+#include <lart/abstract/value.h>
+#include <lart/abstract/types/common.h>
 
-#include <lart/support/util.h>
-#include <lart/support/query.h>
-#include <lart/abstract/walkergraph.h>
+#include <unordered_set>
 
 namespace lart {
 namespace abstract {
 
-namespace {
 
-template < typename K, typename V >
-using Map = std::map< K, V >;
+struct FunctionNode;
 
-template < typename V >
-using Set = std::unordered_set< V >;
+using FunctionNodePtr = std::shared_ptr< FunctionNode >;
+using FunctionNodes = std::vector< FunctionNodePtr >;
 
-static llvm::StringRef getAnnotationType( const llvm::CallInst * call ) {
-	return llvm::cast< llvm::ConstantDataArray > ( llvm::cast< llvm::GlobalVariable > (
-		   call->getOperand( 1 )->stripPointerCasts() )->getInitializer() )->getAsCString();
-}
 
-static bool isAbstractAnnotation( const llvm::CallInst * call ) {
-	return getAnnotationType( call ).startswith( "lart.abstract" );
-}
-
-static ValueNode getAnnotation( llvm::CallInst * call ) {
-	assert( isAbstractAnnotation( call ) );
-	return { call->getOperand( 0 )->stripPointerCasts(), getAnnotationType( call ) };
-}
-
-static std::vector< ValueNode > getAbstractAnnotations( llvm::Module * m ) {
-    std::vector< std::string > annotationFunctions = {
-        "llvm.var.annotation",
-        "llvm.ptr.annotation"
-    };
-
-    std::vector< ValueNode > annotations;
-    for ( const auto & a : annotationFunctions ) {
-        for ( auto & f : m->functions() ) {
-            if ( f.getName().startswith( a ) )
-            for ( auto user : f.users() ) {
-                auto call = llvm::cast< llvm::CallInst >( user );
-                if ( isAbstractAnnotation( call ) )
-                    annotations.emplace_back( getAnnotation( call ) );
-            }
-        }
-    }
-	return annotations;
-}
-
-template< typename I >
-auto instructions( llvm::Function * fn ) {
-    return query::query( *fn ).flatten()
-        .map( query::refToPtr )
-        .map( query::llvmdyncast< I > )
-        .filter( query::notnull )
-        .freeze();
-};
-
-} // anonymous namespace
-
-template< typename Preprocess, typename Node >
 struct Walker {
-    using Nodes = std::vector< Node >;
+    using Preprocessor = std::function< void( llvm::Function * ) >;
 
-    Walker( Preprocess preprocess, llvm::Module & m ) :
-        preprocess( preprocess )
-    {
-        compute_nodes( m );
-    }
+    Walker( llvm::Module & m, Preprocessor p )
+        : preprocess( p ) { init( m ); }
 
-    Nodes postorder() {
-        return analysis::postorder< Node >( _nodes, [] ( const Node & n ) -> Nodes {
-            return n->succs;
-        } );
-    }
+    std::vector< FunctionNodePtr > postorder() const;
 
 private:
-    using Value = llvm::Value;
-    using Function = llvm::Function;
-    using ValueNodes = std::vector< ValueNode >;
-    using Entries = FunctionNode::Entries;
+    void init( llvm::Module & m );
 
-    // Computes the functions for abstraction
-    void compute_nodes( llvm::Module & m ) {
-        Nodes queue = annotated( m );
-        for ( auto & n : queue )
-            _reachednodes.insert( n );
+    // returns functions with packed annotated values
+    std::vector< FunctionNodePtr > annotations( llvm::Module & m );
 
-        while ( !queue.empty() ) {
-            auto current = queue.back();
-            queue.pop_back();
+    // returns dependent functions
+    std::vector< FunctionNodePtr > process( FunctionNodePtr & processed );
 
-            auto deps = process( current );
-            queue.insert( queue.end(), std::make_move_iterator( deps.begin() )
-                                     , std::make_move_iterator( deps.end() ) );
-        }
-    }
+    // returns true if propagation crearted new entry
+    bool propagateThroughCalls( FunctionNodePtr & processed );
 
-    Nodes process( Node & node ) {
-        auto find = std::find_if( _nodes.begin(), _nodes.end(), [&] ( const Node & n ) {
-            return node == n;
-        } );
-        if ( find != _nodes.end() )
-            return {};
+    // returns dependent function nodes
+    std::vector< FunctionNodePtr > dependencies( const FunctionNodePtr & processed );
 
-        bool called = query::query( node->entries ).all( [] ( const ValueNode & n ) {
-            return llvm::isa< llvm::Argument >( n.value );
-        } );
+    // returns calls of 'processed' from other nodes
+    std::vector< FunctionNodePtr > callsOf( const FunctionNodePtr & processed );
 
-        auto fn = node->function;
-        if ( query::query( _nodes ).none( [&]( Node n ) { return n->function == fn; } ) )
-            preprocess( fn );
-
-        do {
-            auto allocas = abstract_allocas( node );
-            node->entries.insert( allocas.begin(), allocas.end() );
-        } while ( propagate_through_calls( node ) );
-
-        _nodes.push_back( node );
-
-        Nodes deps;
-        if ( !called && returns_abstract( node ) )
-            for ( auto & dep : calls_of( node ) ) {
-                _reachednodes.insert( dep );
-                deps.push_back( dep );
-            }
-
-        return deps;
-    }
-
-    auto abstract_args_of_call( const Node & node, const llvm::CallInst * call ) {
-        std::vector< size_t > args_idx;
-        for ( size_t i = 0; i < call->getNumArgOperands(); ++i ) {
-            bool abstract = query::query( node->postorder() )
-                .any( [&] ( const ValueNode & vn ) {
-                    return vn.value == call->getArgOperand( i );
-                } );
-            if ( abstract ) {
-                args_idx.push_back( i );
-            }
-        }
-        return args_idx;
-    }
-
-    bool propagate_through_calls( Node & node ) {
-        bool newentry = false;
-        auto calls = query::query( node->postorder() )
-            .filter( []( const ValueNode & n ) {
-                return llvm::isa< llvm::CallInst >( n.value );
-            } )
-            .filter( []( const ValueNode & n ) {
-                auto call = llvm::cast< llvm::CallInst >( n.value );
-                return !call->getCalledFunction()->isIntrinsic();
-            } )
-            .freeze();
-
-        auto CreateFunctionNode = [&]( const ValueNode & n ) {
-                auto call = llvm::cast< llvm::CallInst >( n.value );
-                auto fn = call->getCalledFunction();
-                auto args_idx = abstract_args_of_call( node, call );
-                Entries e;
-                for ( auto a : args_idx )
-                    e.emplace( std::next( fn->arg_begin(), a ), n.annotation );
-                return std::make_shared< FunctionNode >( fn, e );
-        };
-
-        for ( auto & call : calls ) {
-            auto fn = CreateFunctionNode( call );
-            auto deps = reached( fn );
-            if ( deps.empty() ) {
-                _reachednodes.insert( fn );
-                process( fn );
-                deps.push_back( fn );
-            }
-
-            for ( auto & dep : deps ) {
-                auto succ = query::query( node->succs ).any( [&] ( auto & s ) {
-                    return s == dep;
-                } );
-                if ( !succ )
-                    node->succs.push_back( dep );
-                // TODO solve indirect recursion
-                if ( returns_abstract( dep ) )
-                    newentry |= node->entries.emplace( call.value, call.annotation, true ).second;
-            }
-        }
-        return newentry;
-    }
-
-    Nodes annotated( llvm::Module & m ) {
-        auto annotations = getAbstractAnnotations( &m );
-        return query::query( annotations )
-            .map( []( const ValueNode & ann ) {
-                auto inst = llvm::dyn_cast< llvm::Instruction >( ann.value );
-                return inst->getParent()->getParent();
-            } )
-            .unstableUnique()
-            .map( [&]( Function * fn ) {
-                auto values = query::query( annotations )
-                    .filter( [&]( const ValueNode & n ) {
-                        const auto & inst = llvm::dyn_cast< llvm::Instruction >( n.value );
-                        return inst->getParent()->getParent() == fn;
-                    } )
-                    .map( []( const ValueNode & n ) {
-                        return ValueNode{ n.value, n.annotation, true };
-                    } ).freeze();
-
-                preprocess( fn );
-                Entries entries{ values.begin(), values.end() };
-
-                return std::make_shared< FunctionNode >( fn, entries );
-            } ).freeze();
-    }
-
-    Entries abstract_allocas( const Node & node ) {
-        Entries reached = { node->entries };
-        Entries abstract;
-
-        auto allocas = query::query( instructions< llvm::AllocaInst >( node->function ) )
-            .map( []( llvm::Value * v ) { return ValueNode{ v, "alloca", true }; } ).freeze();
-        auto geps = query::query( instructions< llvm::GetElementPtrInst >( node->function ) )
-            .map( []( llvm::Value * v ) { return ValueNode{ v, "gep", true }; } ).freeze();
-
-        auto Accesses = [] ( const auto & v, const auto & insts ) {
-            return query::query( insts )
-                .filter( [&] ( const ValueNode & n ) {
-                    if ( auto s = llvm::dyn_cast< llvm::StoreInst >( n.value ) )
-                        return s->getPointerOperand() == v.value;
-                    if ( auto l = llvm::dyn_cast< llvm::LoadInst >( n.value ) )
-                        return l->getPointerOperand() == v.value;
-                    return false;
-                } ).freeze();
-        };
-
-        auto MapAccessed = [&] ( auto & insts, auto & postorder, auto functor ) {
-            for ( auto & i : insts ) {
-                auto accs = Accesses( i, postorder );
-                if ( accs.size() )
-                    functor( i, accs );
-            }
-        };
-
-        do {
-            abstract = reached;
-            ValueNodes nodes = { reached.begin(), reached.end() };
-            auto postorder = values_postorder( nodes );
-
-            MapAccessed( allocas, postorder,
-                [&] ( ValueNode & n, auto & accesses ) {
-                     n.annotation = accesses[0].annotation;
-                     reached.insert( n );
-                }
-            );
-        } while ( abstract != reached );
-        return abstract;
-    }
-
-    Nodes reached( const FunctionNodePtr & node ) {
-        return query::query( _reachednodes )
-            .filter( [&] ( const Node & n ) {
-                if ( n->function != node->function )
-                        return false;
-                // check whether entries match
-                auto args = query::query( n->entries )
-                    .filter( []( const ValueNode & v ) {
-                        return llvm::dyn_cast< llvm::Argument >( v.value );
-                    } ).freeze();
-                if ( args.size() != node->entries.size() )
-                    return false;
-                return query::query( node->entries ).all( [&] ( const ValueNode & e ) {
-                    return std::find( args.begin(), args.end(), e ) != args.end();
-                } );
-        } ).freeze();
-    }
-
-    bool returns_abstract( const Node & node ) {
-        for ( const auto & n : node->postorder() )
-            if ( llvm::dyn_cast< llvm::ReturnInst >( n.value ) )
-                return true;
-        return false;
-    }
-
-    ValueNode get_return( const Node & node ) {
-        for ( const auto & n : node->postorder() )
-            if ( llvm::dyn_cast< llvm::ReturnInst >( n.value ) )
-                return n;
-        UNREACHABLE( "Function without abstract return." );
-    }
-
-    Nodes calls_of( const Node & node ) {
-        Nodes ns;
-        auto ret = get_return( node );
-        Map< Function *, std::vector< llvm::CallInst * > > users;
-        for ( auto user : node->function->users() ) {
-            if ( auto call = llvm::dyn_cast< llvm::CallInst >( user ) ) {
-                auto fn = call->getParent()->getParent();
-                users[ fn ].push_back( call );
-            }
-        }
-
-        for ( const auto & user : users ) {
-            // Compute already reached predecessors of given user function
-            auto preds = query::query( _reachednodes )
-                .filter( [&] ( const Node & n ) { return n->function == user.first; } ).freeze();
-            preds.emplace_back( new FunctionNode{ user.first, {} } );
-
-            bool called = query::query( node->entries ).any( [] ( const ValueNode & n ) {
-                return llvm::isa< llvm::Argument >( n.value );
-            } );
-
-            for ( const auto & p : preds ) {
-                for ( const auto & e : user.second ) {
-                    bool has_entry = query::query( p->entries ).any( [&] ( const ValueNode & n ) {
-                        return n.value == e;
-                    } );
-                    if ( has_entry )
-                        continue;
-                    // If this entry is need to be called - test whether it is reachable from
-                    // other entries of function else add this entry to node directly
-                    bool reachable = false;
-                    if ( called ) {
-                        reachable = query::query( p->postorder() )
-                        .filter( [] ( const ValueNode & n ) {
-                                return llvm::isa< llvm::CallInst >( n.value );
-                        } )
-                        .any( [&] ( const ValueNode & n ) {
-                            auto call = llvm::cast< llvm::CallInst >( n.value );
-                            return call->getCalledFunction() == node->function;
-                        } );
-                    }
-                    if ( !called || reachable ) {
-                        p->entries.emplace( e, ret.annotation, true );
-                        ns.push_back( p );
-                    }
-                }
-            }
-        }
-        return ns;
-    }
-
-    const Preprocess preprocess;
-    Nodes _nodes;
-    Set< Node > _reachednodes;
+    std::vector< FunctionNodePtr > functions;
+    std::unordered_set< FunctionNodePtr > seen;
+    Preprocessor preprocess;
 };
 
 
-template< typename Preprocess >
-using AbstractWalker = Walker< Preprocess, FunctionNodePtr >;
+struct FunctionNode {
+    FunctionNode() = default;
+    FunctionNode( const FunctionNode & ) = default;
+    FunctionNode( FunctionNode && ) = default;
 
+    FunctionNode( llvm::Function * fn,
+                  const std::unordered_set< AbstractValue > & origins,
+                  FunctionNodes succs = {} )
+        : function( fn ), origins( origins ), succs( succs )
+    {}
+
+    FunctionNode &operator=( FunctionNode && other ) = default;
+
+    std::vector< AbstractValue > postorder() const;
+
+    llvm::Function * function;
+    std::unordered_set< AbstractValue > origins;
+    FunctionNodes succs;
+};
+
+inline bool operator==( const FunctionNode& l, const FunctionNode& r ) {
+    return l.function == r.function
+        && l.origins  == r.origins;
+}
 } // namespace abstract
 } // namespace lart

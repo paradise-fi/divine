@@ -9,7 +9,9 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/util.h>
 #include <lart/abstract/types/common.h>
+#include <lart/abstract/types/scalar.h>
 #include <lart/abstract/types/transform.h>
+#include <lart/abstract/value.h>
 #include <lart/abstract/intrinsic.h>
 
 #include <algorithm>
@@ -23,9 +25,7 @@ namespace {
     using Types = std::vector< Type * >;
     using Values = std::vector< Value * >;
 
-    const Domain::Value AbstractDomain = Domain::Value::Abstract;
-
-    using Predicate = llvm::CmpInst::Predicate;
+    using Predicate = CmpInst::Predicate;
     const std::map< Predicate, std::string > predicate = {
 	    { Predicate::ICMP_EQ, "eq" },
 	    { Predicate::ICMP_NE, "ne" },
@@ -53,11 +53,11 @@ namespace {
 		return res;
 	}
 
-    auto liftsOf( llvm::Instruction * i ) {
+    auto liftsOf( Instruction * i ) {
         return query::query( i->users() )
-                     .map( query::llvmdyncast< llvm::CallInst > )
+                     .map( query::llvmdyncast< CallInst > )
                      .filter( query::notnull )
-                     .filter( []( llvm::CallInst * call ) {
+                     .filter( []( CallInst * call ) {
                          return intrinsic::isLift( call );
                      } ).freeze();
     }
@@ -68,12 +68,11 @@ namespace {
     }
 }
 
-void AbstractBuilder::store( llvm::Value * v1, llvm::Value * v2 ) {
-    assert( types::isAbstract( v2->getType() ) );
+void AbstractBuilder::store( Value * v1, Value * v2 ) {
     _values[ v1 ] = v2;
 }
 
-void AbstractBuilder::store( llvm::Function * f1, llvm::Function * f2 ) {
+void AbstractBuilder::store( Function * f1, Function * f2 ) {
 	if ( _functions.count( f1 ) )
 		_functions[ f1 ].push_back( f2 );
 	else
@@ -81,23 +80,23 @@ void AbstractBuilder::store( llvm::Function * f1, llvm::Function * f2 ) {
 }
 
 void AbstractBuilder::clone( const FunctionNodePtr & node ) {
-    llvm::ValueToValueMapTy vmap;
-    auto clone = llvm::CloneFunction( node->function, vmap, true, nullptr );
+    ValueToValueMapTy vmap;
+    auto clone = CloneFunction( node->function, vmap, true, nullptr );
     node->function->getParent()->getFunctionList().push_back( clone );
 
-    FunctionNode::Entries entries;
-    for ( const auto & entry : node->entries )
-        if ( const auto & arg = llvm::dyn_cast< llvm::Argument >( entry.value ) ) {
-            entries.emplace( std::next( clone->arg_begin(), arg->getArgNo() ),
-                             entry.annotation );
+    std::unordered_set< AbstractValue > origins;
+    for ( const auto & origin : node->origins )
+        if ( const auto & arg = dyn_cast< Argument >( origin.value() ) ) {
+            auto ca = std::next( clone->arg_begin(), arg->getArgNo() );
+            origins.emplace( ca, origin.domain() );
         }
 
     auto it = query::query( *clone ).flatten().begin();
-    for ( auto & inst :  query::query( *node->function ).flatten() ) {
-        auto entry = std::find_if( node->entries.begin(), node->entries.end(),
-            [&] ( const ValueNode & n ) { return n.value == &inst; } );
-        if ( entry != node->entries.end() )
-            entries.emplace( &*it, entry->annotation );
+    for ( const auto & inst : query::query( *node->function ).flatten() ) {
+        auto origin = std::find_if( node->origins.begin(), node->origins.end(),
+            [&] ( const auto & n ) { return n.value() == &inst; } );
+        if ( origin != node->origins.end() )
+            origins.emplace( &(*it), origin->domain() );
         ++it;
     }
 
@@ -105,147 +104,134 @@ void AbstractBuilder::clone( const FunctionNodePtr & node ) {
         _functions[ clone ] = _functions[ node->function ];
 
     node->function = clone;
-    node->entries = entries;
+    node->origins = origins;
 }
 
 
-llvm::Value * AbstractBuilder::process( llvm::Value * v ) {
-    if ( llvm::isa< llvm::Instruction >( v ) )
-        return _process( llvm::dyn_cast< llvm::Instruction >( v ) );
-    else
-        return _process( llvm::dyn_cast< llvm::Argument >( v ) );
+void AbstractBuilder::process( const AbstractValue & av ) {
+    llvmcase( av.value(),
+        [&] ( Instruction * inst ) {
+            if ( inst->getType()->isStructTy() ) {
+                inst->dump();
+                return;
+            }
+            if ( !ignore( inst ) )
+                if ( auto abstract = create( av ) ) {
+                    store( inst, abstract );
+                    for ( auto & lift : liftsOf( inst ) )
+                        lift->replaceAllUsesWith( abstract );
+                }
+        },
+        [&] ( Argument * arg ) {
+            IRBuilder<> irb( arg->getParent()->front().begin() );
+            auto a = isAbstract( arg->getType() ) ? arg : lift( arg, av.domain(), irb );
+            _values[ arg ] = a;
+        });
 }
 
-llvm::Value * AbstractBuilder::_process( llvm::Instruction * i ) {
-    if ( ignore( i ) ) return nullptr;
-    if ( auto abstract = create( i ) ) {
-        _values[i] = abstract;
-        for ( auto & lift : liftsOf( i ) )
-            lift->replaceAllUsesWith( _values[ i ] );
-        return abstract;
-    }
-	return i;
-}
-
-llvm::Value * AbstractBuilder::_process( llvm::Argument * arg ) {
-    llvm::IRBuilder<> irb( arg->getParent()->front().begin() );
-    auto a = types::isAbstract( arg->getType() ) ? arg : lift( arg, irb );
-    _values[ arg ] = a;
-    return a;
-}
-
-llvm::Value * AbstractBuilder::process( const FunctionNodePtr & node ) {
+Function * AbstractBuilder::process( const FunctionNodePtr & node ) {
     auto fn = node->function;
     auto rets = query::query( node->postorder() )
-               .filter( []( const ValueNode & n ) {
-                    return llvm::isa< llvm::ReturnInst >( n.value );
-                } ).freeze();
+        .filter( []( const auto & n ) {
+            return isa< ReturnInst >( n.value() );
+        } ).freeze();
 
     auto args = query::query( node->postorder() )
-               .filter( []( const ValueNode & n ) {
-                    return llvm::isa< llvm::Argument >( n.value );
-                } ).freeze();
+        .filter( []( const auto & n ) {
+            return isa< Argument >( n.value() );
+        } ).freeze();
 
+    // Signature does not need to be changed
     if ( rets.empty() && args.empty() )
-        // Signature does not need to be changed
         return fn;
 
     auto fty = node->function->getFunctionType();
     auto ret_type = rets.empty()
                   ? fty->getReturnType()
-                  : types::lift( fty->getReturnType(), AbstractDomain );
+                  : ScalarType( fty->getReturnType(), rets.at(0).domain() ).llvm();
     Types argTys;
     if ( !args.empty() ) {
         for ( auto & arg : fn->args() ) {
-            bool changed = query::query( args ).any( [&]( ValueNode & n ) {
-                               return llvm::cast< llvm::Argument >( n.value ) == &arg;
-                           } );
-            if ( changed )
-                argTys.push_back( types::lift( arg.getType(), AbstractDomain ) );
-            else
+            auto changed = query::query( args )
+                .filter( [&]( const auto & n ) {
+                    return cast< Argument >( n.value() ) == &arg;
+                } ).freeze();
+            if ( changed.empty() )
                 argTys.push_back( arg.getType() );
+            else
+                argTys.push_back( changed.at(0).type()->llvm() );
         }
     } else {
         argTys = fty->params();
     }
 
-    auto newfty = llvm::FunctionType::get( ret_type, argTys, fty->isVarArg() );
-    auto newfn = llvm::Function::Create( newfty, fn->getLinkage(), fn->getName(), fn->getParent() );
+    auto newfty = FunctionType::get( ret_type, argTys, fty->isVarArg() );
+    auto newfn = Function::Create( newfty, fn->getLinkage(), fn->getName(), fn->getParent() );
     store( fn, newfn );
     return newfn;
 }
 
-llvm::Value * AbstractBuilder::create( llvm::Instruction * inst ) {
-    if ( inst->getType()->isPointerTy() )
-        return createPtrInst( inst );
-    else
-        return createInst( inst );
-}
+#define ASSERT_NOT_POINTER_TYPE( inst ) \
+    assert( !inst->getType()->isPointerTy() );
 
-llvm::Value * AbstractBuilder::createPtrInst( llvm::Instruction * inst ) {
-    llvm::Value * ret = nullptr;
-    llvmcase( inst,
-        [&]( llvm::AllocaInst * i ) {
-            ret = createAlloca( i );
+Value * AbstractBuilder::create( const AbstractValue & v ) {
+    Value * ret = nullptr;
+    llvmcase( v.value(),
+        [&]( LoadInst * i ) {
+            ASSERT_NOT_POINTER_TYPE( i );
+            ret = createLoad( v );
         },
-        [&]( llvm::CastInst * i ) {
-            ret = createPtrCast( i );
+        [&]( StoreInst * i ) {
+            ASSERT_NOT_POINTER_TYPE( i );
+            ret = createStore( v );
         },
-        [&]( llvm::CallInst * i ) {
-            auto fn = i->getCalledFunction();
-            if ( fn->isIntrinsic() ) {
-                // skip llvm.ptr.annotation function calls
-                assert( fn->getName().startswith( "llvm.ptr.annotation" ) );
-                i->replaceAllUsesWith( i->getArgOperand( 0 ) );
-            }
+        [&]( ICmpInst * i ) {
+            ASSERT_NOT_POINTER_TYPE( i );
+            ret = createICmp( v );
         },
-        [&]( llvm::GetElementPtrInst * i ) {
-            ret = createGEP( i );
-        },
-        [&]( llvm::Instruction * inst ) {
-            std::cerr << "ERR: unknown pointer instruction: ";
-            inst->dump();
-            std::exit( EXIT_FAILURE );
-        } );
-    return ret;
-}
-
-llvm::Value * AbstractBuilder::createInst( llvm::Instruction * inst ) {
-    llvm::Value * ret = nullptr;
-    llvmcase( inst,
-        [&]( llvm::LoadInst * i ) {
-            ret = createLoad( i );
-        },
-        [&]( llvm::StoreInst * i ) {
-            ret = createStore( i );
-        },
-        [&]( llvm::ICmpInst * i ) {
-            ret = createICmp( i );
-        },
-        [&]( llvm::SelectInst * ) {
+        [&]( SelectInst * ) {
             // Every SelectInst should be lowered to branching.
             std::cerr << "ERR: Abstraction of 'select' instruction should never happen.";
             std::exit( EXIT_FAILURE );
         },
-        [&]( llvm::BranchInst * i ) {
-            ret = createBranch( i );
+        [&]( BranchInst * i ) {
+            ASSERT_NOT_POINTER_TYPE( i );
+            ret = createBranch( v );
         },
-        [&]( llvm::BinaryOperator * i ) {
-            ret = createBinaryOperator( i );
+        [&]( BinaryOperator * i ) {
+            ASSERT_NOT_POINTER_TYPE( i );
+            ret = createBinaryOperator( v );
         },
-        [&]( llvm::CastInst * i ) {
-            ret = createCast( i );
+        [&]( CastInst * i ) {
+            ret = i->getType()->isPointerTy() ? createPtrCast( v ) : createCast( v );
         },
-        [&]( llvm::PHINode * i ) {
-            ret = createPhi( i );
+        [&]( GetElementPtrInst * ) {
+            ret = createGEP( v );
         },
-        [&]( llvm::CallInst * i ) {
-            ret = createCall( i );
+        [&]( PHINode * i ) {
+            ASSERT_NOT_POINTER_TYPE( i );
+            ret = createPhi( v );
         },
-        [&]( llvm::ReturnInst * i ) {
-            ret = createReturn( i );
+        [&]( CallInst * i ) {
+            if ( i->getType()->isPointerTy() ) {
+                // TODO why?
+                auto fn = i->getCalledFunction();
+                if ( fn->isIntrinsic() ) {
+                    // skip llvm.ptr.annotation function calls
+                    assert( fn->getName().startswith( "llvm.ptr.annotation" ) );
+                    i->replaceAllUsesWith( i->getArgOperand( 0 ) );
+                }
+            } else {
+                ret = createCall( v );
+            }
         },
-        [&]( llvm::Instruction * inst ) {
+        [&]( ReturnInst * ) {
+            ret = createReturn( v );
+        },
+        [&]( AllocaInst * ) {
+            ret = createAlloca( v );
+        },
+        [&]( Instruction * inst ) {
             std::cerr << "ERR: unknown instruction: ";
             inst->dump();
             std::exit( EXIT_FAILURE );
@@ -255,18 +241,18 @@ llvm::Value * AbstractBuilder::createInst( llvm::Instruction * inst ) {
 
 void AbstractBuilder::clean( Values & deps ) {
     for ( auto dep : deps ) {
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( dep ) )
+        if ( auto inst = dyn_cast< Instruction >( dep ) )
             for ( auto & lift : liftsOf( inst ) )
                 if ( std::find( deps.begin(), deps.end(), lift ) == deps.end() )
                     lift->eraseFromParent();
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( dep ) )
+        if ( auto inst = dyn_cast< Instruction >( dep ) )
             inst->removeFromParent();
     }
     for ( auto dep : deps )
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( dep ) )
-            inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
+        if ( auto inst = dyn_cast< Instruction >( dep ) )
+            inst->replaceAllUsesWith( UndefValue::get( inst->getType() ) );
     for ( auto dep : deps )
-        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( dep ) ) {
+        if ( auto inst = dyn_cast< Instruction >( dep ) ) {
             auto val = _values.find( inst );
             if ( val != _values.end() )
                 _values.erase( val );
@@ -274,117 +260,127 @@ void AbstractBuilder::clean( Values & deps ) {
         }
 }
 
-bool AbstractBuilder::ignore( llvm::Instruction * i ) {
-    if ( auto call = llvm::dyn_cast< llvm::CallInst >( i ) )
+bool AbstractBuilder::ignore( Instruction * i ) {
+    if ( auto call = dyn_cast< CallInst >( i ) )
         return intrinsic::isLift( call );
     return false;
 }
 
-llvm::Value * AbstractBuilder::createAlloca( llvm::AllocaInst * i ) {
+Value * AbstractBuilder::createAlloca( const AbstractValue & av ) {
+    auto i = av.value< AllocaInst >();
     assert( !i->isArrayAllocation() );
-    auto lifted = llvm::cast< llvm::StructType >( types::lift( i->getAllocatedType(),
-                                                            AbstractDomain ) );
-    auto rty = lifted->getPointerTo();
-    auto tag = intrinsic::tag( i ) + "." + types::basename( lifted ).value();
-    llvm::IRBuilder<> irb( i );
+    auto allocatedType = i->getType()->getPointerElementType();
+    // TODO let abstract value contain correct domain and type (ie. strip pointer)
+    PointerType * rty;
+    if ( auto sty = dyn_cast< StructType >( allocatedType ) )
+        rty = ComposedType( sty, DomainMap{ { 0, av.domain() } } ).llvm()->getPointerTo();
+    else
+        rty = av.type()->llvm()->getPointerTo();
+
+    auto tag = intrinsic::tag( av ) + "." + av.type()->baseName();
+    IRBuilder<> irb( i );
     return intrinsic::build( i->getModule(), irb, rty, tag );
 }
 
-llvm::Value * AbstractBuilder::createLoad( llvm::LoadInst * i ) {
+Value * AbstractBuilder::createLoad( const AbstractValue & av ) {
+    auto i = av.value< LoadInst >();
     auto args = { _values[ i->getOperand( 0 ) ] };
-    auto rty = types::lift( i->getType(), AbstractDomain );
-    auto base = types::basename( cast< StructType >( types::stripPtr( rty ) ) );
-    auto tag = intrinsic::tag( i ) + "." + base.value();
-    llvm::IRBuilder<> irb( i );
+    auto rty = av.type()->llvm();
+    auto tag = intrinsic::tag( av ) + "." + av.type()->baseName();
+    IRBuilder<> irb( i );
     return intrinsic::build( i->getModule(), irb, rty, tag, args );
 }
 
-llvm::Value * AbstractBuilder::createStore( llvm::StoreInst * i ) {
-    llvm::IRBuilder<> irb( i );
+Value * AbstractBuilder::createStore( const AbstractValue & av ) {
+    auto i = av.value< StoreInst >();
+
+    IRBuilder<> irb( i );
     auto val = _values.count( i->getOperand( 0 ) )
              ? _values[ i->getOperand( 0 ) ]
-             : lift( i->getOperand( 0 ), irb );
+             : lift( i->getOperand( 0 ), av.domain(), irb );
     auto ptr = _values.count( i->getOperand( 1 ) )
              ? _values[ i->getOperand( 1 ) ]
-             : lift( i->getOperand( 1 ), irb );
-    auto rty = types::VoidType( i->getContext() );
-    auto base = types::basename( cast< StructType >( types::stripPtr( val->getType() ) ) );
-    auto tag = intrinsic::tag( i ) + "." + base.value();
+             : lift( i->getOperand( 1 ), av.domain(), irb );
+    auto rty = VoidType( i->getContext() );
+    auto base = basename( cast< StructType >( stripPtr( val->getType() ) ) );
+    auto tag = intrinsic::tag( av ) + "." + base.value();
 
     return intrinsic::build( i->getModule(), irb, rty, tag, { val, ptr } );
 }
 
-llvm::Value * AbstractBuilder::createICmp( llvm::ICmpInst * i ) {
-    llvm::IRBuilder<> irb( i );
+Value * AbstractBuilder::createICmp( const AbstractValue & av ) {
+    auto i = av.value< ICmpInst >();
+    IRBuilder<> irb( i );
+
     Values args;
     for ( const auto & op : i->operands() ) {
-        auto arg = _values.count( op ) ? _values.at( op ) : lift( op, irb );
+        auto arg = _values.count( op ) ? _values.at( op ) : lift( op, av.domain(), irb );
         args.push_back( arg );
     }
 
-    auto rty = types::lift( types::BoolType( i->getContext() ), Domain::Value::Abstract );
-    auto base = types::basename( cast< StructType >( types::stripPtr( args[0]->getType() ) ) );
-	auto tag = intrinsic::tag( i ) + "_" + predicate.at( i->getPredicate() ) + "." + base.value();
+    auto rty = liftTypeLLVM( BoolType( i->getContext() ), av.domain() );
+	auto tag = intrinsic::tag( av ) + "_" + predicate.at( i->getPredicate() )
+             + "." + basename( cast< StructType >( args[0]->getType() ) ).value();
 
     return intrinsic::build( i->getModule(), irb, rty, tag, args );
 }
 
-llvm::Value * AbstractBuilder::createBranch( llvm::BranchInst * i ) {
-    llvm::IRBuilder<> irb( i );
+Value * AbstractBuilder::createBranch( const AbstractValue & av ) {
+    auto i = av.value< BranchInst >();
+    IRBuilder<> irb( i );
     if ( i->isUnconditional() ) {
         auto dest = i->getSuccessor( 0 );
         return irb.CreateBr( dest );
     } else {
-        llvm::Value * cond;
+        Value * cond;
         if ( _values.count( i->getCondition() ) ) {
-            auto tristate =  toTristate( _values[ i->getCondition() ], Domain::Value::Abstract, irb );
+            auto tristate =  toTristate( _values[ i->getCondition() ], av.domain(), irb );
             cond = lower( tristate, irb );
         } else {
             cond = i->getCondition();
         }
-        auto tbb = i->getSuccessor( 0 );
-        auto fbb = i->getSuccessor( 1 );
-        return irb.CreateCondBr( cond, tbb, fbb );
+        return irb.CreateCondBr( cond, i->getSuccessor( 0 ), i->getSuccessor( 1 ) );
     }
 }
 
-llvm::Value * AbstractBuilder::createBinaryOperator( llvm::BinaryOperator * i ) {
-    llvm::IRBuilder<> irb( i );
+Value * AbstractBuilder::createBinaryOperator( const AbstractValue & av ) {
+    auto i = av.value< BinaryOperator >();
+    IRBuilder<> irb( i );
 
     Values args;
     for ( auto & arg : i->operands() ) {
-        auto v = _values.count( arg ) ? _values[ arg ] : lift( arg, irb );
+        auto v = _values.count( arg ) ? _values[ arg ] : lift( arg, av.domain(), irb );
         args.push_back( v );
     }
-    auto rty = types::lift( i->getType(), AbstractDomain );
-    auto st = llvm::cast< llvm::StructType >( types::stripPtr( rty ) );
-    auto tag = intrinsic::tag( i ) + "." + types::basename( st ).value();
+    auto rty = av.type()->llvm();
+    auto tag = intrinsic::tag( av ) + "." + av.type()->baseName();
 
     return intrinsic::build( i->getModule(), irb, rty, tag, args );
 }
 
-llvm::Value * AbstractBuilder::createCast( llvm::CastInst * i ) {
-    llvm::IRBuilder<> irb( i );
+Value * AbstractBuilder::createCast( const AbstractValue & av ) {
+    auto i = av.value< CastInst >();
+    IRBuilder<> irb( i );
     auto op = i->getOperand( 0 );
-    auto arg = _values.count( op ) ? _values[ op ] : lift( op, irb );
+    auto arg = _values.count( op ) ? _values[ op ] : lift( op, av.domain(), irb );
 
-    auto tag = intrinsic::tag( i ) + "." +
-               types::llvmname( i->getSrcTy() ) + "." +
-               types::llvmname( i->getDestTy() );
+    auto tag = intrinsic::tag( av ) + "." + llvmname( i->getSrcTy() ) + "." +
+               llvmname( i->getDestTy() );
 
-    auto rty = types::lift( i->getDestTy(), AbstractDomain );
+    auto rty = liftTypeLLVM( i->getDestTy(), av.domain() );
 
     return intrinsic::build( i->getModule(), irb, rty, tag, { arg } );
 }
 
-llvm::Value * AbstractBuilder::createPhi( llvm::PHINode * n ) {
-    auto rty = types::lift( n->getType(), AbstractDomain );
+Value * AbstractBuilder::createPhi( const AbstractValue & av ) {
+    auto n = av.value< PHINode >();
+    auto rty = av.type()->llvm();
 
     unsigned int niv = n->getNumIncomingValues();
-    llvm::IRBuilder<> irb( n );
+    IRBuilder<> irb( n );
     auto phi = irb.CreatePHI( rty, niv );
     _values[ n ] = phi;
-    if ( types::isAbstract( n->getType() ) )
+    if ( isAbstract( n->getType() ) )
         n->replaceAllUsesWith( phi );
 
     for ( unsigned int i = 0; i < niv; ++i ) {
@@ -393,69 +389,73 @@ llvm::Value * AbstractBuilder::createPhi( llvm::PHINode * n ) {
         if ( _values.count( val ) ) {
             phi->addIncoming( _values[ val ], parent );
         } else {
-            if ( types::isAbstract( val->getType() ) )
+            if ( isAbstract( val->getType() ) )
                 phi->addIncoming( val, parent );
             else {
                 auto term = _values.count( parent->getTerminator() )
                             ? _values[ parent->getTerminator() ]
                             : parent->getTerminator();
-                auto nbb =  parent->splitBasicBlock( llvm::cast< llvm::Instruction >( term ) );
-                llvm::IRBuilder<> b( nbb->begin() );
-                phi->addIncoming( lift( val, b ), nbb );
+                auto nbb =  parent->splitBasicBlock( cast< Instruction >( term ) );
+                IRBuilder<> b( nbb->begin() );
+                phi->addIncoming( lift( val, av.domain(), b ), nbb );
             }
         }
     }
     return phi;
 }
 
-llvm::Value * AbstractBuilder::createCall( llvm::CallInst * i ) {
+Value * AbstractBuilder::createCall( const AbstractValue & av ) {
+    auto i = av.value< CallInst >();
     if ( intrinsic::isLift( i ) ) {
         return processLiftCall( i );
     } else if ( intrinsic::is( i ) ) {
         return clone( i );
     } else if ( i->getCalledFunction()->isIntrinsic() ){
-        return processIntrinsic( llvm::cast< llvm::IntrinsicInst >( i ) );
+        return processIntrinsic( cast< IntrinsicInst >( i ) );
     } else {
-        return processCall( i );
+        return processCall( av );
     }
 }
 
-llvm::Value * AbstractBuilder::createReturn( llvm::ReturnInst * i ) {
-    llvm::IRBuilder<> irb( i );
+Value * AbstractBuilder::createReturn( const AbstractValue & av ) {
+    auto i = av.value< ReturnInst >();
+    IRBuilder<> irb( i );
     auto ret = _values.count( i->getReturnValue() )
              ? _values[ i->getReturnValue() ]
              : i->getReturnValue();
     return irb.CreateRet( ret );
 }
 
-llvm::Value * AbstractBuilder::createPtrCast( llvm::CastInst * i ) {
-    assert( llvm::isa< llvm::BitCastInst >( i ) &&
-           "ERR: Only bitcast is supported for pointer cast instractions." );
+Value * AbstractBuilder::createPtrCast( const AbstractValue & av ) {
+    auto i = cast< CastInst >( av.value() );
+    assert( isa< BitCastInst >( i ) &&
+           "ERR: Only bitcast is supported from pointer cast instractions." );
 
-    llvm::IRBuilder<> irb( i );
-    auto destTy = types::lift( i->getDestTy(), AbstractDomain );
+    IRBuilder<> irb( i );
+    auto destTy = liftTypeLLVM( i->getDestTy(), av.domain() );
     auto val = _values[ i->getOperand( 0 ) ];
     assert( val && "ERR: Trying to bitcast value, that is not abstracted." );
     return ( val->getType() == destTy ) ? val : irb.CreateBitCast( val, destTy );
 }
 
-llvm::Value * AbstractBuilder::createGEP( llvm::GetElementPtrInst * i ) {
-    llvm::IRBuilder<> irb( i );
-    auto type = types::lift( i->getResultElementType(), AbstractDomain );
+Value * AbstractBuilder::createGEP( const AbstractValue & av ) {
+    auto i = cast< GetElementPtrInst >( av.value() );
+    IRBuilder<> irb( i );
     auto val = _values[ i->getPointerOperand() ];
     Values idxs = { i->idx_begin() , i->idx_end() };
+    auto type = val->getType()->getScalarType()->getPointerElementType();
     return irb.CreateGEP( type, val, idxs, i->getName() );
 }
 
-llvm::Value * AbstractBuilder::lower( llvm::Value * v, llvm::IRBuilder<> & irb ) {
-    const auto & type = llvm::cast< llvm::StructType >( v->getType() );
-    assert( types::isAbstract( type ) && !type->isPointerTy() );
+Value * AbstractBuilder::lower( Value * v, IRBuilder<> & irb ) {
+    const auto & type = cast< StructType >( v->getType() );
+    assert( isAbstract( type ) && !type->isPointerTy() );
 
-    auto fty = llvm::FunctionType::get( types::lower( type ), { type }, false );
-    auto dom = types::domain( type ).value();
+    auto fty = FunctionType::get( lowerTypeLLVM( type ), { type }, false );
+    auto dom = TypeName( type ).domain().value();
     auto tag = "lart." + Domain::name( dom ) + ".lower";
     if ( dom != Domain::Value::Tristate )
-        tag += "." + types::basename( type ).value();
+        tag += "." + basename( type ).value();
     auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     auto call = irb.CreateCall( fn , v );
 
@@ -463,44 +463,41 @@ llvm::Value * AbstractBuilder::lower( llvm::Value * v, llvm::IRBuilder<> & irb )
     return call;
 }
 
-llvm::Value * AbstractBuilder::lift( llvm::Value * v, llvm::IRBuilder<> & irb ) {
-    auto type = types::lift( v->getType(), AbstractDomain );
-    auto fty = llvm::FunctionType::get( type, { v->getType() }, false );
-    auto st = llvm::cast< llvm::StructType >( types::stripPtr( type ) );
-    auto dom = types::domain( st ).value();
-    auto tag = "lart." + Domain::name( dom ) + ".lift." + types::basename( st ).value();
+Value * AbstractBuilder::lift( Value * v, Domain::Value domain, IRBuilder<> & irb ) {
+    auto type = ScalarType( v->getType(), domain );
+    auto fty = FunctionType::get( type.llvm(), { v->getType() }, false );
+    auto tag = "lart." + type.domainName() + ".lift." + type.baseName();
     auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     return irb.CreateCall( fn , v );
 }
 
-llvm::Value * AbstractBuilder::toTristate( llvm::Value * v, Domain::Value domain,
-                                           llvm::IRBuilder<> & irb )
+Value * AbstractBuilder::toTristate( Value * v, Domain::Value domain,
+                                           IRBuilder<> & irb )
 {
-    const auto & type = llvm::cast< llvm::StructType >( types::lift( v->getType(), domain ) );
-    assert( types::base( type ).value() ==  types::TypeBase::Value::Int1 );
-    auto tristate = types::Tristate( v->getType() ).llvm();
-    auto fty = llvm::FunctionType::get( tristate, { v->getType() }, false );
-    auto tag = "lart." + Domain::name( types::domain( type ).value() ) + ".bool_to_tristate";
+    auto type = liftType( v->getType(), domain );
+    auto tristate = Tristate( type->origin() ).llvm();
+    auto fty = FunctionType::get( tristate, { v->getType() }, false );
+    auto tag = "lart." + type->domainName() + ".bool_to_tristate";
     auto fn = irb.GetInsertBlock()->getModule()->getOrInsertFunction( tag, fty );
     return irb.CreateCall( fn , v );
 }
 
-llvm::Value * AbstractBuilder::processLiftCall( llvm::CallInst * i ) {
+Value * AbstractBuilder::processLiftCall( CallInst * i ) {
     assert( _values[ i->getArgOperand( 0 ) ] );
     i->replaceAllUsesWith( _values[ i->getArgOperand( 0 ) ] );
     return i;
 }
 
-llvm::Value * AbstractBuilder::clone( llvm::CallInst * i ) {
+Value * AbstractBuilder::clone( CallInst * i ) {
     auto clone = i->clone();
     clone->insertBefore( i );
     i->replaceAllUsesWith( clone );
     return clone;
 }
 
-llvm::Value * AbstractBuilder::processIntrinsic( llvm::CallInst * i ) {
-    auto intr = llvm::cast< llvm::IntrinsicInst >( i );
-	auto name = llvm::Intrinsic::getName( intr->getIntrinsicID() );
+Value * AbstractBuilder::processIntrinsic( CallInst * i ) {
+    auto intr = cast< IntrinsicInst >( i );
+	auto name = Intrinsic::getName( intr->getIntrinsicID() );
     if ( ( name == "llvm.lifetime.start" ) || ( name == "llvm.lifetime.end" ) ) {
         //ignore
     }
@@ -515,14 +512,14 @@ llvm::Value * AbstractBuilder::processIntrinsic( llvm::CallInst * i ) {
     return nullptr;
 }
 
-llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
+Value * AbstractBuilder::processCall( const AbstractValue & av ) {
+    auto i = av.value< CallInst >();
     Values args = { i->arg_operands().begin(), i->arg_operands().end() };
     Types types = argTypes( i );
     auto fn = i->getCalledFunction();
-    auto at = types::lift( i->getType(), AbstractDomain );
 
 	bool same = equal( fn->getFunctionType()->params(), types )
-			 && fn->getReturnType() == at;
+			 && fn->getReturnType() == av.type()->llvm();
 
 	auto stored = same ? fn : getStoredFn( fn, types );
 	if ( !stored && _functions.count( fn ) ) {
@@ -534,15 +531,15 @@ llvm::Value * AbstractBuilder::processCall( llvm::CallInst * i ) {
 	}
     assert( stored );
 
-	llvm::IRBuilder<> irb( i );
+	IRBuilder<> irb( i );
 	auto call = irb.CreateCall( stored, remap( args, _values ) );
     if ( call->getType() == i->getType() )
         i->replaceAllUsesWith( call );
     return call;
 }
 
-llvm::Function * AbstractBuilder::getStoredFn( llvm::Function * fn,
-                                  llvm::ArrayRef< llvm::Type * >  params)
+Function * AbstractBuilder::getStoredFn( Function * fn,
+                                  ArrayRef< Type * >  params)
 {
 	if ( _functions.count( fn ) )
 	  for ( auto stored : _functions[ fn ] )
@@ -551,7 +548,7 @@ llvm::Function * AbstractBuilder::getStoredFn( llvm::Function * fn,
 	return nullptr;
 }
 
-Types AbstractBuilder::argTypes( llvm::CallInst * call ) {
+Types AbstractBuilder::argTypes( CallInst * call ) {
     Values args = { call->arg_operands().begin(), call->arg_operands().end() };
     return typesOf( remap( args, _values ) );
 }

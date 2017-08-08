@@ -12,6 +12,7 @@ namespace Domain {
     using Type = uint16_t;
     enum class Value : Type {
         LLVM,
+        Struct,
         Abstract,
         Tristate,
         Trivial,
@@ -21,29 +22,34 @@ namespace Domain {
     };
 
     namespace {
-    const brick::data::Bimap< Value, std::string > DomainMap = {
+    const brick::data::Bimap< Value, std::string > Values = {
          { Value::LLVM, "llvm" }
+        ,{ Value::Struct, "struct" } // TODO rename/remove ?
         ,{ Value::Abstract, "abstract" }
         ,{ Value::Tristate, "tristate" }
         ,{ Value::Trivial, "triv" }
         ,{ Value::Symbolic, "sym" }
         ,{ Value::Zero, "zero" }
     };
-    } // empty namespace
+    } // anonymous namespace
 
     using MaybeDomain = brick::types::Maybe< Domain::Value >;
 
     static std::string name( const Value & d ) {
-        return DomainMap[ d ];
+        return Values[ d ];
     }
 
     static MaybeDomain value( const std::string & n ) {
-        if ( DomainMap.right().count( n ) )
-            return MaybeDomain::Just( DomainMap[ n ] );
+        if ( Values.right().count( n ) )
+            return MaybeDomain::Just( Values[ n ] );
         else
             return MaybeDomain::Nothing();
     }
 
 } // namespce Domain
+
+const Domain::Value LLVMDomain = Domain::Value::LLVM;
+
+using DomainMap = std::map< size_t, Domain::Value >;
 } // namespace abstract
 } // namespace lart

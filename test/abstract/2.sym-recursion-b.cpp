@@ -2,7 +2,7 @@
 
 #include <cassert>
 #include <limits>
-#define __sym __attribute__((__annotate__("lart.abstract.symbolic")))
+#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int zero( int a ) {
     if ( a % 2 == 0 )

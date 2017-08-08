@@ -7,6 +7,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/domains/domains.h>
+#include <lart/abstract/value.h>
 
 namespace lart {
 namespace abstract {
@@ -22,7 +23,7 @@ const std::string ty1( const llvm::Function * );
 const std::string ty2( const llvm::CallInst * );
 const std::string ty2( const llvm::Function * );
 
-const std::string tag( const llvm::Instruction * );
+const std::string tag( const AbstractValue & );
 const std::string tag( const llvm::Instruction * , Domain::Value );
 
 auto types( std::vector< llvm::Value * > & ) -> llvm::ArrayRef< llvm::Type * >;

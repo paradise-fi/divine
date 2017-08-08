@@ -1,6 +1,7 @@
 file( GLOB SRC reduction/*.cpp analysis/*.cpp support/*.cpp aa/*.cpp
                interference/*.cpp weakmem/*.cpp abstract/*.cpp
                abstract/domains/*.cpp
+               abstract/types/*.cpp
                svcomp/*.cpp divine/*.cpp )
 
 file( GLOB H_ABSTRACT abstract/*.h )

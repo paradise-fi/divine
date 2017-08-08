@@ -3,7 +3,7 @@
 #include <cassert>
 #include <limits>
 #include <initializer_list>
-#define __sym __attribute__((__annotate__("lart.abstract.symbolic")))
+#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 struct Node {
     Node( int val, Node * next ) : val( val ), next( next ) {}

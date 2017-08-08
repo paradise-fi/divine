@@ -60,7 +60,7 @@ namespace {
             for ( const auto & arg : args )
                 arg_types.push_back( arg->getType() );
             const std::string tag = "lart." + Domain::name( domain ) + ".assume."
-                                  + types::TypeBase::name( types::base( rty ).value() );
+                                  + TypeBase::name( TypeName( rty ).base().value() );
 
             auto fty = llvm::FunctionType::get( rty, arg_types, false );
             auto m = irb.GetInsertBlock()->getModule();
