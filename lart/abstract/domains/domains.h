@@ -76,6 +76,12 @@ struct Domain : ADomain {
 
     static DomainPtr make( llvm::StructType * type ) {
         ComposedDomain dom;
+        for ( const auto & e : type->elements() ) {
+            auto d = e->isStructTy()
+                   ? make( llvm::cast< llvm::StructType >( e ) )
+                   : make( DomainValue::LLVM );
+            dom.values.emplace_back( d );
+        }
         dom.values.resize( type->getNumElements(), make( DomainValue::LLVM ) );
         return std::make_shared< Domain >( dom );
     }

@@ -102,10 +102,14 @@ static std::string elementsName( const TypeContainer & elems ) {
     std::string n = "[";
     for ( size_t i = 0; i < elems.size(); ++i ) {
         if ( i != 0 ) n += ",";
-        if ( elems[ i ]->base().value == TypeBaseValue::Struct )
-            assert( false && "Nested structs are not yet supported" ); // TODO
-        else
+        if ( elems[ i ]->base().value == TypeBaseValue::Struct ) {
+            auto ct = std::static_pointer_cast< ComposedType >( elems[ i ] );
+            auto st = stripPtr( ct->origin() );
+            n += st->getStructName().str() + "." + elementsName( ct->elements() );
+            // TODO recursive structures
+        } else {
             n += elems[ i ]->domainName() + "." + elems[ i ]->baseName();
+        }
         if ( elems[ i ]->isPtr() ) n += ".ptr";
     }
     n += "]";

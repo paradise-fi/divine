@@ -959,6 +959,67 @@ struct Abstraction {
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
+
+    TEST( struct_nested_1 ) {
+        auto s = R"(struct S { int x; };
+                    struct T { S a; S b; };
+
+                    int main() {
+                        __sym int x;
+                        T t;
+                        t.a.x = x;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto gep = query::query( *main ).flatten()
+            .map( query::refToPtr )
+            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
+            .filter( query::notnull )
+            .freeze();
+
+        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
+
+        auto symS = llvm::StructType::create( { alloca->getReturnType()
+                                                ->getPointerElementType() } );
+
+        ASSERT( symS->isLayoutIdentical( llvm::cast< llvm::StructType >(
+                                         gep[0]->getResultElementType() ) ) );
+        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
+                   gep[1]->getResultElementType() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( struct_nested_2 ) {
+        auto s = R"(struct S { int x; };
+                    struct U { S s; };
+                    struct V { U u; };
+
+                    int main() {
+                        __sym int x;
+                        V v;
+                        v.u.s.x = x;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto gep = query::query( *main ).flatten()
+            .map( query::refToPtr )
+            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
+            .filter( query::notnull )
+            .freeze();
+
+        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
+
+        auto symS = llvm::StructType::create( { alloca->getReturnType()
+                                                ->getPointerElementType() } );
+        ASSERT( symS->isLayoutIdentical( llvm::cast< llvm::StructType >(
+                                         gep[1]->getResultElementType() ) ) );
+
+        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
+                   gep[2]->getResultElementType() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
 };
 
 struct Assume {

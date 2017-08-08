@@ -174,10 +174,68 @@ void Walker::init( llvm::Module & m ) {
 // we need %abstract_value type information for correct propagation of domains
 using WriteAccess = std::pair< llvm::StoreInst *, AbstractTypePtr >;
 
+template< typename Roots >
+std::vector< WriteAccess > abstractStores( const Roots & roots ) {
+    std::vector< WriteAccess > accs;
+    for ( const auto & av : ValuesPostOrder( roots ).get() ) {
+        // Do not propagate through calls that does not return abstract value
+        // ie. are not roots.
+        if ( llvm::isa< llvm::CallInst >( av.value() ) )
+            if ( std::find( roots.begin(), roots.end(), av ) == roots.end() )
+                continue;
+        auto stores = query::query( av.value()->users() )
+            .map( query::llvmdyncast< llvm::StoreInst > )
+            .filter( query::notnull )
+            .filter( [&] ( llvm::StoreInst * store ) {
+                return store->getValueOperand() == av.value();
+            } ).freeze();
+        for ( const auto & store : stores )
+            accs.emplace_back( store, av.type() );
+    }
+    return accs;
+}
 
-// Propagate abstract value through stores to allocas
-// 1. whenever some obstract value is stored to some alloca we mark this alloca
-// as abstract origin, same with storing to value obtained by GEP
+template< typename Value, typename Stores >
+auto storesTo( const Value & val, const Stores & stores ) {
+    return query::query( stores ).filter( [&] ( const auto & store ) {
+        return store.first->getPointerOperand() == val;
+    } ).freeze();
+}
+
+
+template< typename Value, typename GEPS >
+void propagateGEP( const Value & v, GEPS & geps ) {
+    using GEP = llvm::GetElementPtrInst;
+    auto val = llvm::cast< GEP >( v.value() );
+    if ( auto gep = llvm::dyn_cast< GEP >( val->getPointerOperand() ) ) {
+        AbstractValue av{ gep, { { 0, v.domain() } } };
+        geps[ gep->getPointerOperand() ].push_back( av );
+        propagateGEP( av, geps );
+    }
+}
+
+template< typename GEPS, typename Accesses >
+auto getAbstractGeps( const GEPS & geps, const Accesses & accs ) {
+    std::map< llvm::Value *, std::vector< AbstractValue > > gepsFromStructs;
+
+    for ( const auto & gep : geps ) {
+        auto storesToGEP = storesTo( gep, accs );
+        if ( !storesToGEP.empty() ) {
+            auto dom = storesToGEP[0].second->domain();
+            AbstractValue av{ gep, dom };
+            gepsFromStructs[ gep->getPointerOperand() ].push_back( av );
+            propagateGEP( av, gepsFromStructs );
+        }
+    }
+    return gepsFromStructs;
+}
+
+// Propagate abstract value through stores to allocas.
+// Whenever some obstract value is stored to some alloca we mark this alloca
+// as abstract origin.
+//
+// For abstract structs we precompute all geps to which are stored abstract
+// values. And consequently we creates abstract structs.
 Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
     Set< AbstractValue > reached = { processed->origins };
     Set< AbstractValue > abstract;
@@ -185,54 +243,19 @@ Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
     auto allocas = Insts< llvm::AllocaInst >( processed->function );
     auto geps = Insts< llvm::GetElementPtrInst >( processed->function );
 
-    auto stores = [] ( const auto & roots ) {
-        std::vector< WriteAccess > accs;
-        for ( const auto & av : ValuesPostOrder( roots ).get() ) {
-            // Propagate only through root calls, because they return abstract values
-            if ( llvm::isa< llvm::CallInst >( av.value() ) ) {
-                if ( std::find( roots.begin(), roots.end(), av ) == roots.end() )
-                    continue;
-            }
-            auto stores = query::query( av.value()->users() )
-                .map( query::llvmdyncast< llvm::StoreInst > )
-                .filter( query::notnull )
-                .filter( [&] ( llvm::StoreInst * store ) {
-                    return store->getValueOperand() == av.value();
-                } ).freeze();
-            for ( const auto & store : stores )
-                accs.emplace_back( store, av.type() );
-        }
-        return accs;
-    };
-
-    auto storesTo = [] ( const auto & val, const auto & accs ) {
-        return query::query( accs ).filter( [&] ( const auto & acc ) {
-            return acc.first->getPointerOperand() == val;
-        } ).freeze();
-    };
-
     do {
         abstract = reached;
         // TODO do not propagate nonabstract elements of struct
-        auto strs = stores( AbstractValues{ reached.begin(), reached.end() } );
+        auto stores = abstractStores( AbstractValues{ reached.begin(), reached.end() } );
         for ( const auto & a : allocas ) {
-            auto storesToAlloca = storesTo( a, strs );
+            auto storesToAlloca = storesTo( a, stores );
             if ( !storesToAlloca.empty() ) {
                 assert( !a->getType()->isStructTy() );
                 reached.emplace( a, storesToAlloca[0].second->domain() );
             }
         }
 
-        std::map< llvm::Value *, std::vector< AbstractValue > > storesToStructs;
-        for ( const auto & gep : geps ) {
-            auto storesToGEP = storesTo( gep, strs );
-            if ( !storesToGEP.empty() ) {
-                auto dom = storesToGEP[0].second->domain();
-                storesToStructs[ gep->getPointerOperand() ].emplace_back( gep, dom );
-            }
-        }
-
-        for ( const auto & s : storesToStructs ) {
+        for ( const auto & s : getAbstractGeps( geps, stores ) ) {
             DomainMap dmap;
             for ( const auto & abs : s.second ) {
                 auto gep = llvm::cast< llvm::GetElementPtrInst >( abs.value() );
@@ -242,7 +265,7 @@ Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
                 assert( pet->isStructTy() );
 
                 auto idx = llvm::cast< llvm::ConstantInt >( ( gep->idx_begin() + 1 )->get() )->getZExtValue();
-                dmap[ idx] = abs.domain();
+                dmap[ idx ] = abs.domain();
             }
             reached.emplace( s.first, dmap );
         }
