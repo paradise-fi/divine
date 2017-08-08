@@ -68,8 +68,11 @@ void BitCode::do_lart()
         lart.setup( p );
 
     // reduce before any instrumentation to avoid unnecessary instrumentation
-    if ( _reduce )
+    // and mark silent operations
+    if ( _reduce ) {
         lart.setup( lart::reduction::paroptPass() );
+        lart.setup( lart::reduction::staticTauMemPass() );
+    }
     if ( _symbolic )
         lart.setup( lart::abstract::passes() );
 
@@ -83,10 +86,8 @@ void BitCode::do_lart()
     lart.setup( lart::divine::lowering() );
     // reduce again before metadata are added to possibly tweak some generated
     // code + perform static tau
-    if ( _reduce ) {
+    if ( _reduce )
         lart.setup( lart::reduction::paroptPass() );
-        lart.setup( lart::reduction::staticTauMemPass() );
-    }
 
     lart.setup( lart::divine::lsda() );
     auto mod = _module.get();
