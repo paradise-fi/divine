@@ -22,6 +22,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/meta.h>
 #include <lart/support/pass.h>
 #include <lart/support/query.h>
+#include <lart/support/error.h>
 
 #include <brick-types>
 
@@ -165,10 +166,27 @@ struct ConstAllocaElimination {
         std::vector< std::pair< llvm::AllocaInst *, llvm::StoreInst * > > vars;
         auto dt = brick::types::lazy( [&]() { return llvm::DominatorTreeAnalysis().run( fn ); } );
 
+        auto stacksaves = query::query( fn ).flatten()
+                            .map( query::refToPtr )
+                            .map( query::llvmdyncast< llvm::IntrinsicInst > )
+                            .filter( query::notnull )
+                            .filter( []( llvm::IntrinsicInst *ii ) {
+                                        return ii->getIntrinsicID() == llvm::Intrinsic::stacksave;
+                                    } )
+                            .freeze();
+
         for ( auto &inst: query::query( fn ).flatten() ) {
-            llvmcase( inst, [&]( llvm::AllocaInst *alloca ) {
+            if ( auto *alloca = llvm::dyn_cast< llvm::AllocaInst >( &inst ) ) {
                 ++allAllocas;
-                if ( !llvm::PointerMayBeCaptured( alloca, false, true ) ) {
+                bool captured = llvm::PointerMayBeCaptured( alloca, false, true );
+                // we can't safely eliminaty allocas within scope of stacksave
+                // as they can be later freed before the function exits --
+                // eliminating them could hide memory errors
+                bool stacksaveDominated = query::query( stacksaves ).any( [&]( auto *ss ) {
+                                return dt->dominates( ss, alloca );
+                            } );
+
+                if ( !captured && !stacksaveDominated ) {
                     auto users = query::query( alloca->users() )
                                     .filter( query::isnot< llvm::DbgDeclareInst > && query::isnot< llvm::DbgValueInst > );
                     llvm::StoreInst *store = users.map( query::llvmdyncast< llvm::StoreInst > )
@@ -184,7 +202,7 @@ struct ConstAllocaElimination {
                        )
                         vars.emplace_back( alloca, store );
                 }
-            } );
+            }
         }
 
         for ( auto var : vars ) {
@@ -195,8 +213,8 @@ struct ConstAllocaElimination {
             if ( dbgdec ) {
                 auto expr = dbgdec->getExpression();
                 if ( expr->getElements().size() ) {
-                    // don't know what to do with this
-                    dbgdec->dump();
+                    WARN_LLVM( false, "don't know what to do with this dbg.declare:",
+                               dbgdec, "for", var.first );
                     dbgdec = nullptr;
                 }
             }
