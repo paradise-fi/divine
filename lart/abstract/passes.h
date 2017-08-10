@@ -113,27 +113,46 @@ void setupFS( Compile & c ) {
 	} ) );
 }
 
-auto compile( const File & src, const Files & link, const Files & hdrs ) {
-    static auto ctx = std::make_shared< llvm::LLVMContext >();
-    const bool dont_link = false;
-    const bool verbose = false;
-    Compile c( { dont_link, verbose }, ctx );
+struct TestCompile {
+    static const bool dont_link = false;
+    static const bool verbose = false;
+    const std::vector< std::string > flags = { "-std=c++14" };
 
-    mapVirtualFile( c, "main.cpp", src );
-    for ( const auto & f : link )
-        mapVirtualFile( c, f, source( f ) );
-    for ( const auto & f : hdrs )
-        mapVirtualFile( c, f, source( f ) );
+    using Linker = brick::llvm::Linker;
 
-    setupFS( c );
-    std::vector< std::string > flags = { "-std=c++14" };
+    TestCompile() : cmp( { dont_link, verbose }, std::make_shared< llvm::LLVMContext >() )
+    {
+        setupFS( cmp );
+    }
 
-    brick::llvm::Linker linker;
-    linker.link( c.compile( "main.cpp", flags ) );
-    for ( const auto & f : link )
-        linker.link( c.compile( f, flags ) );
-    return linker.take();
-}
+    TestCompile( const Files & link, const Files & hdrs ) : TestCompile() {
+        std::vector< std::string > flags = { "-std=c++14" };
+
+        for ( const auto & f : link )
+            mapVirtualFile( cmp, f, source( f ) );
+        for ( const auto & f : hdrs )
+            mapVirtualFile( cmp, f, source( f ) );
+        for ( const auto & f : link )
+            linker.link( cmp.compile( f, flags ) );
+    }
+
+    auto compile( const File & src ) {
+        mapVirtualFile( cmp, "main.cpp", src );
+        Linker l;
+        if ( linker.hasModule() )
+            l.link( (*linker.get()) );
+        l.link( cmp.compile( "main.cpp", flags ) );
+        return l.take();
+    }
+
+private:
+    Linker linker;
+    Compile cmp;
+};
+
+static TestCompile cmp;
+static TestCompile symcmp( { "sym.cpp", "tristate.cpp", "formula.cpp" },
+                           { "sym.h", "tristate.h", "common.h", "formula.h" } );
 
 std::string load( const File & path ) {
     std::ifstream file( path );
@@ -151,39 +170,28 @@ auto test( Compile::ModulePtr m, Passes&&... passes ) {
 }
 
 template< typename... Passes >
-auto test( const File & src, Passes&&... passes ) {
-    return test( compile( src, {}, {} ), std::forward< Passes >( passes )... );
-}
-
-template< typename... Passes >
-auto test_and_link( const File & src, const Files & link, const Files & hdrs, Passes&&... passes ) {
-    return test( compile( src, link, hdrs ), std::forward< Passes >( passes )... );
+auto test( TestCompile & c, const File & src, Passes&&... passes ) {
+    return test( c.compile( src ), std::forward< Passes >( passes )... );
 }
 
 auto test_abstraction( const File & src ) {
     using namespace abstract;
-    return test( src, Abstraction() );
+    return test( cmp, src, Abstraction() );
 }
 
 auto test_assume( const File & src ) {
     using namespace abstract;
-    return test( src, Abstraction(), AddAssumes() );
+    return test( cmp, src, Abstraction(), AddAssumes() );
 }
 
 auto test_bcp( const File & src ) {
     using namespace abstract;
-    return test( src, Abstraction(), AddAssumes(), BCP() );
+    return test( cmp, src, Abstraction(), AddAssumes(), BCP() );
 }
 
-auto test_substitution( const File & src, const Files & link, const Files & hdrs ) {
+auto test_substitution( const File & src ) {
     using namespace abstract;
-    return test_and_link( src, link, hdrs, Abstraction(), AddAssumes(), BCP(), Substitution() );
-}
-
-auto test_symbolic_substitution( const File & src ) {
-    Files link = { "sym.cpp", "tristate.cpp", "formula.cpp" };
-    Files hdrs = { "sym.h", "tristate.h", "common.h", "formula.h" };
-    return test_substitution( src, link, hdrs );
+    return test( symcmp, src, Abstraction(), AddAssumes(), BCP(), Substitution() );
 }
 
 namespace {
@@ -1127,7 +1135,7 @@ struct BCP {
 struct Substitution {
     TEST( simple ) {
         auto s = "int main() { return 0; }";
-        test_symbolic_substitution( annotation + s );
+        test_substitution( annotation + s );
     }
 
     TEST( create ) {
@@ -1135,7 +1143,7 @@ struct Substitution {
                         __sym int abs;
                         return 0;
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         auto f = m->getFunction( "__abstract_sym_alloca" );
         ASSERT( f->hasNUses( 2 ) );
     }
@@ -1147,7 +1155,7 @@ struct Substitution {
                         __sym long abs_l;
                         return 0;
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         auto alloca = m->getFunction( "__abstract_sym_alloca" );
         ASSERT( alloca->hasNUses( 4 ) );
     }
@@ -1159,7 +1167,7 @@ struct Substitution {
                         int b = abs + a;
                         return 0;
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         auto add = m->getFunction( "__abstract_sym_add" );
         ASSERT( add->hasNUses( 3 ) );
 
@@ -1176,7 +1184,7 @@ struct Substitution {
                         else
                             return 0;
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         auto icmp = m->getFunction( "__abstract_sym_icmp_sgt" );
         ASSERT_EQ( icmp->getReturnType(),
                    m->getTypeByName( "union.sym::Formula" )->getPointerTo() );
@@ -1194,7 +1202,7 @@ struct Substitution {
                         int z = x || y;
                         return 0;
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         auto main = m->getFunction( "main" );
         auto nodes = query::query( *main ).flatten()
                            .map( query::refToPtr )
@@ -1216,7 +1224,7 @@ struct Substitution {
                             case 2: i = 42; break;
                         }
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         //TODO asserts
     }
 
@@ -1225,7 +1233,7 @@ struct Substitution {
                         __sym int x;
                         return x + 42;
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         auto lift = m->getFunction( "__abstract_sym_lift" )->user_begin();
         auto val = llvm::cast< llvm::ConstantInt >( lift->getOperand( 0 ) );
         ASSERT( val->equalsInt( 42 ) );
@@ -1239,7 +1247,7 @@ struct Substitution {
 						while( true )
 							x = (x + 1) % 5;
 					})";
-		test_symbolic_substitution( annotation + s );
+		test_substitution( annotation + s );
         //TODO asserts
 	}
 
@@ -1251,7 +1259,7 @@ struct Substitution {
 						   val++;
 						} while(val % 6 != 0);
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         //TODO asserts
 	}
 
@@ -1264,7 +1272,7 @@ struct Substitution {
                                     __sym int y = i * j *k;
                                 }
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         //TODO asserts
     }
 
@@ -1277,7 +1285,7 @@ struct Substitution {
                         int ret = call();
                         return 0;
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         auto abstract_call = m->getFunction( "_Z4callv.18.19" );
         ASSERT( abstract_call );
         auto alloca = m->getFunction( "__abstract_sym_alloca" );
@@ -1298,7 +1306,7 @@ struct Substitution {
                         call2( ret );
                         return 0;
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         //TODO asserts
     }
 
@@ -1318,7 +1326,7 @@ struct Substitution {
                         call2( ret );
                         return 0;
                     })";
-        auto m = test_symbolic_substitution( annotation + s );
+        auto m = test_substitution( annotation + s );
         //TODO asserts
     }
 
