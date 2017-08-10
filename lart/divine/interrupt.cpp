@@ -41,11 +41,24 @@ struct CflInterrupt {
             auto *dst = term->getSuccessor( idx );
             ASSERT_LEQ( 1, term->getNumSuccessors() );
 
-            if ( term->getNumSuccessors() == 1 ) {
+            // Try to be smart and avoid invoking unnecessary interrupts which
+            // are not on back edges.
+            // However, for IndirectBr, there is no way to be smart as the
+            // successors in the code are only hints for LLVM and real
+            // successors are determined at runtime and therefore cannot be
+            // rewritten -- so for IndirectBr we fallback to instrumenting
+            // eagerly.
+            if ( term->getNumSuccessors() == 1
+                    || term->getOpcode() == llvm::Instruction::IndirectBr )
+            {
                 llvm::IRBuilder<>( term ).CreateCall( _cflInterrupt, { } );
-            } else if ( dst->getUniquePredecessor() ) {
+            }
+            else if ( dst->getUniquePredecessor() )
+            {
                 llvm::IRBuilder<>( dst->getFirstInsertionPt() ).CreateCall( _cflInterrupt, { } );
-            } else {
+            }
+            else
+            {
                 // neither of the blocks of the edge is used only by this path,
                 // insert backedge block for savepc and fix branch and PHI nodes
                 auto *back = llvm::BasicBlock::Create( fn.getParent()->getContext(), "backedge", &fn );
