@@ -13,15 +13,11 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/cc/options.hpp>
 #include <divine/rt/runtime.hpp>
 
-#include <lart/support/pass.h>
 #include <lart/support/meta.h>
 #include <lart/support/util.h>
 #include <lart/support/query.h>
 
 #include <lart/abstract/passes.h>
-#include <lart/abstract/types/common.h>
-#include <lart/abstract/types/utils.h>
-#include <lart/abstract/types/scalar.h>
 #include <lart/abstract/intrinsic.h>
 
 #include <brick-string>
@@ -29,6 +25,8 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <fstream>
 #include <string>
+
+#include <experimental/tuple>
 
 #include <lart/abstract/abstraction.h>
 #include <lart/abstract/assume.h>
@@ -38,13 +36,38 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
-    PassMeta abstraction_pass();
-    PassMeta assume_pass();
-    PassMeta bcp_pass();
-    PassMeta substitution_pass();
+    template< typename Passes >
+    struct PassWrapperImpl {
+        PassWrapperImpl( Passes&& passes ) : passes( std::move( passes ) ) {}
+
+        void run( llvm::Module & m ) {
+            using std::experimental::apply;
+            apply( [&]( auto... p ) { ( p.run( m ),... ); }, passes );
+        }
+
+        Passes passes;
+    };
+
+    template < typename... Passes >
+    auto make_pass_wrapper( Passes... passes ) {
+        using passes_t = std::tuple< Passes... >;
+        return PassWrapperImpl< passes_t >( std::forward_as_tuple( passes... ) );
+    }
+
+    struct PassWrapper {
+        static PassMeta meta() {
+            return passMeta< PassWrapper >(
+                "Abstraction", "Abstract annotated values to given domains." );
+        }
+
+        void run( llvm::Module & m ) {
+            auto passes = make_pass_wrapper( Abstraction(), AddAssumes(), BCP(), Substitution() );
+            passes.run( m );
+        }
+    };
 
     inline std::vector< PassMeta > passes() {
-        return { abstraction_pass(), assume_pass(), bcp_pass(), substitution_pass() };
+        return { PassWrapper::meta() };
     }
 }
 
@@ -53,9 +76,12 @@ namespace abstract {
 
 namespace t_abstract {
 
+using File = std::string;
+using Files = std::vector< File >;
+
 using Compile = divine::cc::Compile;
-using ModulePtr = Compile::ModulePtr;
-void mapVirtualFile( Compile & c, const std::string & path, const std::string & src ) {
+
+void mapVirtualFile( Compile & c, const File & path, const File & src ) {
     c.setupFS( [&]( std::function< void( std::string, const std::string & ) > yield ) {
         yield( path, src );
     } );
@@ -63,10 +89,10 @@ void mapVirtualFile( Compile & c, const std::string & path, const std::string & 
 
 namespace rt = divine::rt;
 
-std::string source( std::string fileName ) {
+std::string source( const File & name ) {
     std::string res;
     rt::each( [&]( auto path, auto src ) {
-        if ( brick::string::endsWith( path, fileName ) )
+        if ( brick::string::endsWith( path, name ) )
             res = std::string( src );
     } );
     return res;
@@ -87,11 +113,8 @@ void setupFS( Compile & c ) {
 	} ) );
 }
 
-ModulePtr compile( const std::string & src,
-                   const std::vector< std::string > & link = {},
-                   const std::vector< std::string > & headers = {} )
-{
-    static std::shared_ptr< llvm::LLVMContext > ctx( new llvm::LLVMContext );
+auto compile( const File & src, const Files & link, const Files & hdrs ) {
+    static auto ctx = std::make_shared< llvm::LLVMContext >();
     const bool dont_link = false;
     const bool verbose = false;
     Compile c( { dont_link, verbose }, ctx );
@@ -99,7 +122,7 @@ ModulePtr compile( const std::string & src,
     mapVirtualFile( c, "main.cpp", src );
     for ( const auto & f : link )
         mapVirtualFile( c, f, source( f ) );
-    for ( const auto & f : headers )
+    for ( const auto & f : hdrs )
         mapVirtualFile( c, f, source( f ) );
 
     setupFS( c );
@@ -112,79 +135,63 @@ ModulePtr compile( const std::string & src,
     return linker.take();
 }
 
-std::string load( const std::string & path ) {
+std::string load( const File & path ) {
     std::ifstream file( path );
     std::stringstream buffer;
     buffer << file.rdbuf();
     return buffer.str();
 }
 
-ModulePtr test_abstraction( const std::string & src ) {
-    auto m = compile( src );
-
+template< typename... Passes >
+auto test( Compile::ModulePtr m, Passes&&... passes ) {
     lart::Driver drv;
-
-    drv.setup( abstract::abstraction_pass() );
-
+    drv.setup( std::forward< Passes >( passes )... );
     drv.process( m.get() );
     return m;
 }
 
-ModulePtr test_assume( const std::string & src ) {
-    auto m = compile( src );
-
-    lart::Driver drv;
-
-    drv.setup( abstract::abstraction_pass() );
-    drv.setup( abstract::assume_pass() );
-
-    drv.process( m.get() );
-    return m;
+template< typename... Passes >
+auto test( const File & src, Passes&&... passes ) {
+    return test( compile( src, {}, {} ), std::forward< Passes >( passes )... );
 }
 
-ModulePtr test_bcp( const std::string & src ) {
-    auto m = compile( src );
-
-    lart::Driver drv;
-
-    drv.setup( abstract::abstraction_pass() );
-    drv.setup( abstract::assume_pass() );
-    drv.setup( abstract::bcp_pass() );
-
-    drv.process( m.get() );
-
-    return m;
+template< typename... Passes >
+auto test_and_link( const File & src, const Files & link, const Files & hdrs, Passes&&... passes ) {
+    return test( compile( src, link, hdrs ), std::forward< Passes >( passes )... );
 }
 
-ModulePtr test_substitution( const std::string & src,
-                             std::vector< std::string > & link,
-                             std::vector< std::string > & headers )
-{
-    auto m = compile( src, link, headers );
-    lart::Driver drv;
-
-    drv.setup( abstract::abstraction_pass() );
-    drv.setup( abstract::assume_pass() );
-    drv.setup( abstract::bcp_pass() );
-    drv.setup( abstract::substitution_pass() );
-
-    drv.process( m.get() );
-
-    return m;
+auto test_abstraction( const File & src ) {
+    using namespace abstract;
+    return test( src, Abstraction() );
 }
 
-ModulePtr test_symbolic_substitution( const std::string & src ) {
-    std::vector< std::string > link = { "sym.cpp", "tristate.cpp", "formula.cpp" };
-    std::vector< std::string > headers = { "sym.h", "tristate.h", "common.h", "formula.h" };
-    return test_substitution( src, link, headers );
+auto test_assume( const File & src ) {
+    using namespace abstract;
+    return test( src, Abstraction(), AddAssumes() );
+}
+
+auto test_bcp( const File & src ) {
+    using namespace abstract;
+    return test( src, Abstraction(), AddAssumes(), BCP() );
+}
+
+auto test_substitution( const File & src, const Files & link, const Files & hdrs ) {
+    using namespace abstract;
+    return test_and_link( src, link, hdrs, Abstraction(), AddAssumes(), BCP(), Substitution() );
+}
+
+auto test_symbolic_substitution( const File & src ) {
+    Files link = { "sym.cpp", "tristate.cpp", "formula.cpp" };
+    Files hdrs = { "sym.h", "tristate.h", "common.h", "formula.h" };
+    return test_substitution( src, link, hdrs );
 }
 
 namespace {
 const std::string annotation =
                   "#define __sym __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
 
-bool containsUndefValue( llvm::Function &f ) {
-    for ( auto & bb : f ) {
+bool containsUndefValue( llvm::Function & f ) {
+    for ( auto & bb : f )
         for ( auto & i : bb ) {
             if ( llvm::isa< llvm::UndefValue >( i ) )
                 return true;
@@ -192,17 +199,13 @@ bool containsUndefValue( llvm::Function &f ) {
                 if ( llvm::isa< llvm::UndefValue >( op ) )
                     return true;
         }
-    }
-
     return false;
 }
 
-bool containsUndefValue( llvm::Module &m ) {
-    for ( auto & f : m ) {
+bool containsUndefValue( llvm::Module & m ) {
+    for ( auto & f : m )
         if ( containsUndefValue( f ) )
             return true;
-    }
-
     return false;
 }
 
@@ -655,7 +658,7 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto sgt = m->getFunction( "lart.sym.icmp_sgt.i32" );
-        auto expected = liftTypeLLVM( BoolType( m->getContext() ), SymbolicDomain );
+        auto expected = liftType( BoolType( m->getContext() ), Domain::Symbolic );
         ASSERT_EQ( expected, sgt->getReturnType() );
         auto to_tristate = m->getFunction( "lart.sym.bool_to_tristate" );
         ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *sgt->user_begin() );

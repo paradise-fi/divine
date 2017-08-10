@@ -1,26 +1,19 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #pragma once
 
-#include <lart/support/pass.h>
-#include <lart/support/meta.h>
+DIVINE_RELAX_WARNINGS
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Module.h>
+DIVINE_UNRELAX_WARNINGS
 
 namespace lart {
 namespace abstract {
 
 struct AddAssumes {
-
-	static PassMeta meta() {
-    	return passMeta< AddAssumes >( "AddAssumes", "Add assumes to controlflow of program." );
-    }
-
 	void run( llvm::Module &m );
 
     void process( llvm::Instruction * inst );
 };
 
-static inline PassMeta assume_pass() {
-    return AddAssumes::meta();
-}
-
-}
-}
+} // namespace abstract
+} // namespace lart

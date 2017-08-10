@@ -7,9 +7,6 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/support/pass.h>
-#include <lart/support/meta.h>
-
 /*
  * Backward Constraint Propagation
  *
@@ -48,25 +45,9 @@ namespace lart {
 namespace abstract {
 
 struct BCP {
-
-    virtual ~BCP() {}
-
-	static PassMeta meta() {
-    	return passMeta< BCP >( "BCP",
-              "Backward Constraint Propagation expands calls to @lart.tristate.assume" );
-    }
-
-	void run( llvm::Module &m ) {
-        process( m );
-    }
-
-    void process( llvm::Module & m );
+	void run( llvm::Module & m );
     void process( llvm::Instruction * inst );
 };
-
-static inline PassMeta bcp_pass() {
-    return BCP::meta();
-}
 
 } // namespace abstract
 } // namespace lart

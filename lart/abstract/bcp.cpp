@@ -1,7 +1,6 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 
 #include <lart/abstract/bcp.h>
-#include <lart/abstract/types/common.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/domains/domains.h>
 #include <lart/analysis/bbreach.h>
@@ -30,7 +29,7 @@ namespace {
         }
 
         /* Creates appropriate assume in given domain about predicate, left
-           or right argument of condition.
+         * or right argument of condition.
          */
         llvm::Instruction * constrain( const DomainPtr & domain, AssumeValue v ) {
             using StructType = llvm::StructType;
@@ -180,36 +179,37 @@ namespace {
             }
         }
     }
+} // anonymous namespace
+
+void BCP::run( llvm::Module & m ) {
+    auto assumes = query::query( m ).flatten().flatten()
+        .map( query::refToPtr )
+        .map( query::llvmdyncast< llvm::CallInst > )
+        .filter( query::notnull )
+        .filter( []( llvm::CallInst * call ) {
+            return isAssume( call );
+        } )
+        .freeze();
+    for ( auto ass : assumes )
+        process( ass );
 }
-    void BCP::process( llvm::Module & m ) {
-        auto assumes = query::query( m ).flatten().flatten()
-            .map( query::refToPtr )
-            .map( query::llvmdyncast< llvm::CallInst > )
-            .filter( query::notnull )
-            .filter( []( llvm::CallInst * call ) {
-                return isAssume( call );
-            } )
-            .freeze();
-        for ( auto ass : assumes )
-            process( ass );
-    }
 
-    void BCP::process( llvm::Instruction * assume ) {
-        Assume ass = { assume };
-        auto domain = Intrinsic( ass.condition() ).domain();
+void BCP::process( llvm::Instruction * assume ) {
+    Assume ass = { assume };
+    auto domain = Intrinsic::make( ass.condition() ).value().domain();
 
-        // create constraints on arguments from condition, that created tristate
-        auto lhs = ass.constrain( domain, Assume::AssumeValue::LHS );
-        auto rhs = ass.constrain( domain, Assume::AssumeValue::RHS );
-        auto pre = ass.constrain( domain, Assume::AssumeValue::Predicate );
+    // create constraints on arguments from condition, that created tristate
+    auto lhs = ass.constrain( domain, Assume::AssumeValue::LHS );
+    auto rhs = ass.constrain( domain, Assume::AssumeValue::RHS );
+    auto pre = ass.constrain( domain, Assume::AssumeValue::Predicate );
 
-        // forward propagate constrained values
-        propagate( lhs );
-        propagate( rhs );
-        propagate( pre );
+    // forward propagate constrained values
+    propagate( lhs );
+    propagate( rhs );
+    propagate( pre );
 
-        assume->eraseFromParent();
-    }
+    assume->eraseFromParent();
+}
 
 } // namespace abstract
 } // namespace lart

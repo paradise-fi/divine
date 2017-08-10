@@ -69,6 +69,11 @@ struct Driver {
         }
     }
 
+    template< typename... Passes >
+    void setup( Passes&&... passes ) {
+        ( ps.push_back( std::move( passes ) ),... );
+    }
+
     bool addPass( std::string n, std::string opt )
     {
         for ( auto pass : passes() ) {
