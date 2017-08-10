@@ -611,8 +611,10 @@ struct Eval
     void jumpTo( PointerV _to )
     {
         CodePointer to( _to.cooked() );
-        if ( pc().function() != to.function() )
-            UNREACHABLE( "illegal cross-function jump" );
+        if ( pc().function() != to.function() ) {
+            fault( _VM_F_Control ) << "illegal cross-function jump to " << _to;
+            return;
+        }
         switchBB( to );
     }
 
