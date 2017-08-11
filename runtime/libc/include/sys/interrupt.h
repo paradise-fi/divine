@@ -24,6 +24,8 @@ struct _InterruptMask
     }
 
     ~_InterruptMask() _PDCLIB_nothrow {
+        if ( fenced )
+            __sync_synchronize();
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ),
                       _orig_state ? uintptr_t( _VM_CF_Mask ) : 0ull );
     }
