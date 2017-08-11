@@ -15,6 +15,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/IR/CallSite.h>
 #include <llvm/IR/ValueMap.h>
+#include <llvm/IR/DebugInfo.h>
 
 #include <llvm/Transforms/Utils/Cloning.h>
 DIVINE_UNRELAX_WARNINGS
@@ -683,15 +684,74 @@ inline llvm::Function * createFunctionSignature( llvm::Function *fn,
     return newfn;
 }
 
+namespace llvmstolen {
+
+using namespace llvm;
+// NOTE: these functions are copied from LLVM 3.7's lib/Transforms/Utils/CloneFunction.cpp
+// as they are static in LLVM and therefore cannot be used from the library
+
+// Add an operand to an existing MDNode. The new operand will be added at the
+// back of the operand list.
+inline void AddOperand(DICompileUnit *CU, DISubprogramArray SPs,
+                       Metadata *NewSP) {
+  SmallVector<Metadata *, 16> NewSPs;
+  NewSPs.reserve(SPs.size() + 1);
+  for (auto *SP : SPs)
+    NewSPs.push_back(SP);
+  NewSPs.push_back(NewSP);
+  CU->replaceSubprograms(MDTuple::get(CU->getContext(), NewSPs));
+}
+
+// Find the MDNode which corresponds to the subprogram data that described F.
+inline DISubprogram *FindSubprogram(const Function *F,
+                                    DebugInfoFinder &Finder) {
+  for (DISubprogram *Subprogram : Finder.subprograms()) {
+    if (Subprogram->describes(F))
+      return Subprogram;
+  }
+  return nullptr;
+}
+
+// Clone the module-level debug info associated with OldFunc. The cloned data
+// will point to NewFunc instead.
+inline void CloneDebugInfoMetadata(Function *NewFunc, const Function *OldFunc,
+                            ValueToValueMapTy &VMap) {
+  DebugInfoFinder Finder;
+  Finder.processModule(*OldFunc->getParent());
+
+  const DISubprogram *OldSubprogramMDNode = FindSubprogram(OldFunc, Finder);
+  if (!OldSubprogramMDNode) return;
+
+  // Ensure that OldFunc appears in the map.
+  // (if it's already there it must point to NewFunc anyway)
+  VMap[OldFunc] = NewFunc;
+  auto *NewSubprogram =
+      cast<DISubprogram>(MapMetadata(OldSubprogramMDNode, VMap));
+
+  for (auto *CU : Finder.compile_units()) {
+    auto Subprograms = CU->getSubprograms();
+    // If the compile unit's function list contains the old function, it should
+    // also contain the new one.
+    for (auto *SP : Subprograms) {
+      if (SP == OldSubprogramMDNode) {
+        AddOperand(CU, Subprograms, NewSubprogram);
+        break;
+      }
+    }
+  }
+}
+
+}
+
 inline llvm::Function * cloneFunction( llvm::Function *fn, llvm::FunctionType *fty )
 {
     llvm::ValueToValueMapTy vmap;
     auto m = fn->getParent();
     auto newfn = createFunctionSignature( fn, fty, vmap );
     m->getFunctionList().push_back( newfn );
-    // FIXME CloneDebugInfoMeatadata
     llvm::SmallVector< llvm::ReturnInst *, 8 > returns;
-    llvm::CloneFunctionInto( newfn, fn, vmap, false, returns, "", nullptr );
+    llvmstolen::CloneDebugInfoMetadata( newfn, fn, vmap );
+    llvm::CloneFunctionInto( newfn, fn, vmap, true, returns, "", nullptr );
 
     return newfn;
 }
