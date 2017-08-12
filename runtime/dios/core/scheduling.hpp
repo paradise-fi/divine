@@ -225,7 +225,6 @@ extern const sighandler_t defhandlers[ 32 ];
 
 template < typename Next >
 struct Scheduler : public Next {
-    using Sys = Syscall< Scheduler< Next > >;
     using HidMap = AutoIncMap< ThreadHandle, int >;
 
     Scheduler() :
