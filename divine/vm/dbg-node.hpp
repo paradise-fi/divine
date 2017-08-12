@@ -122,7 +122,11 @@ struct Node
 
     Node( const Node &o ) = default;
 
-    void relocate( typename Heap::Snapshot s ) { _ctx.load( s ); }
+    void relocate( typename Heap::Snapshot s )
+    {
+        _ctx.load( s );
+        address( _kind, _address );
+    }
 
     DNKind kind() { return _kind; }
     GenericPointer address() { return _address; }
