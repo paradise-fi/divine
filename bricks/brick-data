@@ -71,6 +71,9 @@ struct BimapIx {
     B operator[]( const A &key ) const { return self().left()[ key ]; }
     A operator[]( const B &key ) const { return self().right()[ key ]; }
 
+    size_t count( const A &key ) const { return self().left().count( key ); }
+    size_t count( const B &key ) const { return self().right().count( key ); }
+
   private:
     const Bimap< A, B > &self() const {
         return *static_cast< const Bimap< A, B > * >( this );
