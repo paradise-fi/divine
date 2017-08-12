@@ -123,6 +123,15 @@ struct Bimap : _impl::BimapIx< A, B > {
         return l.second;
     }
 
+    void erase( const value_type &value ) {
+        auto l = _left.find( value.first );
+        auto r = _right.find( value.second );
+        if ( l != _left.end() && r != _right.end() ) {
+            _left.erase( l );
+            _right.erase( r );
+        }
+    }
+
   private:
     RMap< A, const B > _left;
     RMap< B, const A > _right;
@@ -713,6 +722,14 @@ struct BimapTest {
             Bimap< int, int > bim{ { 2, 42 }, { 1, 42 } };
             ASSERT( false );
         } catch ( std::invalid_argument & ) { }
+    }
+
+    TEST(erase) {
+        Bimap< int, bool > bim{ { 1, true } };
+        bim.erase( { 1, false } );
+        ASSERT_EQ( bim.count( 1 ), 1 );
+        bim.erase( { 1, true } );
+        ASSERT_EQ( bim.count( 1 ), 0 );
     }
 };
 
