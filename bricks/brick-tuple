@@ -116,6 +116,9 @@ template< int... ix >
 struct _Pass< Indices< ix... > > {
 
     template< typename Fn, typename Tuple >
+#ifdef BRICK_TUPLE_INLINE_PASS
+    __attribute__(( __always_inline__, __flatten__))
+#endif
     static auto call( Fn &&fn, typename std::remove_reference< Tuple >::type &tuple )
         -> decltype( fn( std::get< ix >( tuple )... ) )
     {
@@ -123,6 +126,9 @@ struct _Pass< Indices< ix... > > {
     }
 
     template< size_t i, typename Tuple >
+#ifdef BRICK_TUPLE_INLINE_PASS
+    __attribute__(( __always_inline__, __flatten__))
+#endif
     static auto getrvalue( Tuple &tuple )
         -> typename std::tuple_element< i, Tuple >::type &&
     {
@@ -131,6 +137,9 @@ struct _Pass< Indices< ix... > > {
     }
 
     template< typename Fn, typename Tuple >
+#ifdef BRICK_TUPLE_INLINE_PASS
+    __attribute__(( __always_inline__, __flatten__))
+#endif
     static auto call( Fn &&fn, typename std::remove_reference< Tuple >::type &&tuple )
         -> decltype( fn( getrvalue< ix >( tuple )... ) )
     {
