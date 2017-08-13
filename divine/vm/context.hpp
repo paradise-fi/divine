@@ -39,6 +39,7 @@ struct TraceSchedInfo { int pid; int tid; };
 struct TraceStateType { CodePointer pc; };
 struct TraceInfo { GenericPointer text; };
 struct TraceAlg { brick::data::SmallVector< divine::vm::GenericPointer > args; };
+struct TraceTypeAlias { CodePointer pc; GenericPointer alias; };
 
 template< typename _Program, typename _Heap >
 struct Context
@@ -243,6 +244,7 @@ struct Context
     virtual void trace( TraceStateType ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceInfo ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceAlg ) { NOT_IMPLEMENTED(); }
+    virtual void trace( TraceTypeAlias ) { NOT_IMPLEMENTED(); }
 
     virtual void doublefault()
     {

@@ -1210,6 +1210,11 @@ struct Eval
                         context().trace( TraceAlg{ args } );
                         break;
                     }
+                    case _VM_T_TypeAlias:
+                        context().trace( TraceTypeAlias{
+                            pc(), ptr2h( operandCk< PointerV >( 2 ) )
+                        } );
+                        break;
                     default:
                         fault( _VM_F_Hypercall ) << "invalid __vm_trace type " << t;
                 }

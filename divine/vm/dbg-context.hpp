@@ -146,6 +146,9 @@ struct Context : DNContext< Heap >
     }
 
     void trace( vm::TraceAlg ) { }
+
+    void trace( TraceTypeAlias a ) {
+    }
 };
 
 }

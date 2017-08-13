@@ -66,6 +66,7 @@ struct RunContext_ : Super
         std::cerr << "I: " << this->heap().read_string( ti.text ) << std::endl;
     }
     void trace( vm::TraceAlg ) { }
+    void trace( TraceTypeAlias ) { }
 };
 
 using RunContext = RunContext_< vm::Context< Program, MutableHeap<> > >;

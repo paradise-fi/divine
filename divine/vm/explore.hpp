@@ -78,6 +78,7 @@ struct Context : vm::Context< Program, CowHeap >
         _info += heap().read_string( ti.text ) + "\n";
     }
     void trace( TraceAlg ) { NOT_IMPLEMENTED(); }
+    void trace( TraceTypeAlias ) {}
 
     bool finished()
     {
