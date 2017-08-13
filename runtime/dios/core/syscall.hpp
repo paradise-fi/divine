@@ -4,8 +4,10 @@
 #define __DIOS_SYSCALL_H__
 
 #ifdef __dios_kernel__
+#define BRICK_TUPLE_INLINE_PASS
 #include <brick-tuple>
 #include <brick-hlist>
+#undef BRICK_TUPLE_INLINE_PASS
 #endif
 
 #include <cstdarg>
@@ -54,7 +56,7 @@ struct Syscall
     template< typename T > using Void = void;
 
     template< typename Rem, typename Done, typename S, typename T, typename... Args >
-    static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
+    __attribute__(( __always_inline__, __flatten__)) static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
         -> typename std::enable_if< !std::is_same< T, Void< typename Rem::Empty > >::value >::type
     {
         auto rvt = reinterpret_cast< T* >( rv );
@@ -62,14 +64,14 @@ struct Syscall
     }
 
     template< typename Rem, typename Done, typename S, typename T, typename... Args >
-    static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
+    __attribute__(( __always_inline__, __flatten__)) static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl, int = 0 )
         -> typename std::enable_if< std::is_same< T, Void< typename Rem::Empty > >::value >::type
     {
         brick::tuple::pass( [&]( auto... x ) { return (c.*f)( x... ); }, d );
     }
 
     template< typename Rem, typename Done, typename S, typename T, typename... Args >
-    static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
+    __attribute__(( __always_inline__, __flatten__)) static auto unpack( Done d, Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
         -> Void< typename Rem::Head >
     {
         auto next = std::tuple_cat( d, std::make_tuple( va_arg( vl, typename Rem::Head ) ) );
@@ -77,7 +79,7 @@ struct Syscall
     }
 
     template< typename S, typename T, typename... Args >
-    static void unpack( Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
+    __attribute__(( __always_inline__, __flatten__)) static void unpack( Context &c, T (S::*f)( Args... ), void *rv, va_list vl )
     {
         unpack< brick::hlist::TypeList< Args... > >( std::make_tuple(), c, f, rv, vl );
     }
@@ -93,7 +95,7 @@ struct Syscall
 
     #include <dios/macro/no_memory_tags>
     #define SYSCALL( name, schedule, ret, arg ) \
-        static SchedCommand name ## Wrappper( Context& ctx, void *rv, va_list vl) { \
+        __attribute__(( __always_inline__, __flatten__)) static SchedCommand name ## Wrappper( Context& ctx, void *rv, va_list vl) { \
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _DiOS_CF_SyscallSchedule, \
                 cmdToFlag( schedule ) ); \
             unpack( ctx, &Context::name, rv, vl ); \
