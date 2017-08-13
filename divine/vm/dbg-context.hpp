@@ -105,6 +105,30 @@ struct Context : DNContext< Heap >
         _info += this->heap().read_string( ti.text ) + "\n";
     }
 
+    template < typename F >
+    void find_dbg_inst( llvm::Function *f, llvm::Value *v, F yield ) {
+        for ( auto &BB : *f )
+            for ( auto &I : BB ) {
+                if ( auto DVI = llvm::dyn_cast< llvm::DbgValueInst >( &I ) )
+                        if ( DVI->getValue() == v )
+                            yield( DVI->getVariable() );
+                if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
+                    if ( DDI->getAddress() == v )
+                        yield( DDI->getVariable() );
+            }
+    }
+
+    template < typename F >
+    void find_dbg_inst( llvm::Value *val, F yield )
+    {
+        if ( auto inst = llvm::dyn_cast< llvm::Instruction >( val ) )
+            find_dbg_inst( inst->getParent()->getParent(), val, yield );
+        else if ( auto inst = llvm::dyn_cast< llvm::Argument >( val ) )
+            find_dbg_inst( inst->getParent(), val, yield );
+        else
+            UNREACHABLE( "dbg::Context::find_dbg_inst() failed" );
+    }
+
     void state_type( llvm::DIVariable *di )
     {
         auto ptrtype = llvm::cast< llvm::DIDerivedType >(
@@ -116,16 +140,9 @@ struct Context : DNContext< Heap >
     {
         auto sptr = this->debug().find( nullptr, s.pc ).first->getOperand( 1 );
         _state_type = sptr->getType()->getPointerElementType();
-        for ( auto &BB : *llvm::cast< llvm::Instruction >( sptr )->getParent()->getParent() )
-            for ( auto &I : BB )
-            {
-                if ( auto DVI = llvm::dyn_cast< llvm::DbgValueInst >( &I ) )
-                    if ( DVI->getValue() == sptr )
-                        state_type( DVI->getVariable() );
-                if ( auto DDI = llvm::dyn_cast< llvm::DbgDeclareInst >( &I ) )
-                    if ( DDI->getAddress() == sptr )
-                        state_type( DDI->getVariable() );
-            }
+        find_dbg_inst( sptr, [&]( llvm::DIVariable *di ) {
+            state_type( di );
+        } );
     }
 
     void trace( vm::TraceAlg ) { }
