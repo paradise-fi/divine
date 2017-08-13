@@ -14,7 +14,7 @@ sim $TESTS/c/1.malloc.c <<EOF
 > step --out
 > step --count 2
 + ^T: FAULT: null pointer dereference
-+ ^# executing __dios::.*::handler
++ ^# executing .*::handler
 > trace 0 0 0 0
 + traced states: #1 #2 #5
 + unused choices: 0
