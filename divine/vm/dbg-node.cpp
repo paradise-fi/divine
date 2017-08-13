@@ -205,7 +205,7 @@ std::string Node< Prog, Heap >::di_scopename( llvm::DIScope *scope )
 }
 
 template< typename Prog, typename Heap >
-std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias )
+std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias, bool prettify )
 {
     if ( !t )
         t = _di_type;
@@ -230,7 +230,12 @@ std::string Node< Prog, Heap >::di_name( llvm::DIType *t, bool in_alias )
         return fmt.str();
     }
 
-    std::string name = t->getName().str();
+    const auto& fnMap = _ctx.debug()._typenamemap;
+    std::string name;
+    if ( prettify && fnMap.find( t ) != fnMap.end() )
+        name = fnMap.find( t )->second;
+    else
+        name = t->getName().str();
 
     if ( di_pointer( t ) && !di_base( t ) ) /* special case */
         return "void *";
@@ -276,6 +281,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
 {
     DNEval< Heap > eval( _ctx );
     Prog &program = _ctx.program();
+    Info &dbgInfo = _ctx.debug();
 
     yield( "address", brick::string::fmt( _address ) + "+" +
            brick::string::fmt( _offset ) );
@@ -329,7 +335,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
         yield( "location", location( *op ) );
 
         auto sym = op->getParent()->getParent()->getName().str();
-        yield( "symbol", print::demangle( sym ) );
+        yield( "symbol", dbgInfo.makePretty( print::demangle( sym ) ) );
     }
 }
 

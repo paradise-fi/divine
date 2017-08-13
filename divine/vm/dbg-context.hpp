@@ -148,6 +148,14 @@ struct Context : DNContext< Heap >
     void trace( vm::TraceAlg ) { }
 
     void trace( TraceTypeAlias a ) {
+        auto ptr = this->debug().find( nullptr, a.pc ).first->getOperand( 1 );
+        std::string alias = this->_heap.read_string( a.alias );
+        find_dbg_inst( ptr, [&]( llvm::DIVariable *di ) {
+            auto ptrtype = llvm::cast< llvm::DIDerivedType >(
+                di->getType().resolve( this->debug().typemap() ) );
+            auto type = ptrtype->getBaseType().resolve( this->debug().typemap() );
+            this->debug()._typenamemap.insert( { type, alias } );
+        } );
     }
 };
 

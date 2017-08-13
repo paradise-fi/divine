@@ -66,6 +66,36 @@ struct Info
         UNREACHABLE( "dbg::Info::find() failed" );
     }
 
+    template < typename F >
+    void initPretty( F getName ) {
+        if ( _typenamemap.size() == _prettyNames.size() )
+            return;
+        for ( const auto& x : _typenamemap )
+            _prettyNames.insert( { getName( x.first ), x.second } );
+    }
+
+    std::string makePretty( std::string name ) {
+        for ( const auto& pattern : _prettyNames ) {
+            size_t start = 0;
+            while( true ) {
+                start = name.find( pattern.first, start );
+                if ( start == std::string::npos )
+                    break;
+                name.replace( start, pattern.first.size(), pattern.second );
+                start += pattern.second.size();
+            }
+        }
+        return name;
+    }
+
+    struct StringLenCmp {
+        bool operator()( const std::string& a, const std::string& b ) const {
+            if ( a.size() == b.size() )
+                return a < b;
+            return a.size() > b.size();
+        }
+    };
+
     llvm::DataLayout &layout() { return _layout; }
     llvm::DITypeIdentifierMap &typemap() { return _typemap; }
 
@@ -74,6 +104,8 @@ struct Info
     llvm::Module *_module;
     Program &_program;
     std::map< int, llvm::Function * > _funmap;
+    std::map< llvm::DIType *, std::string > _typenamemap;
+    std::map< std::string, std::string, StringLenCmp > _prettyNames;
 
     Info( llvm::Module *m, Program &p ) : _layout( m ), _module( m ), _program( p )
     {

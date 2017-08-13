@@ -24,6 +24,7 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <divine/vm/dbg-context.hpp>
+#include <divine/vm/dbg-print.hpp>
 #include <brick-string>
 
 namespace divine::vm::dbg
@@ -66,6 +67,15 @@ struct Node
     llvm::DIVariable *_di_var;
 
     using PointerV = value::Pointer;
+
+    void init()
+    {
+        _type = nullptr;
+        _di_type = nullptr;
+        _di_var = nullptr;
+        _kind = DNKind::Object;
+        _offset = 0;
+    }
 
     void di_var( llvm::DIVariable *var )
     {
@@ -150,7 +160,7 @@ struct Node
     llvm::DIDerivedType *di_pointer( llvm::DIType *t = nullptr );
     llvm::DIType *di_base( llvm::DIType *t = nullptr );
     llvm::DIType *di_resolve( llvm::DIType *t = nullptr );
-    std::string di_name( llvm::DIType * = nullptr, bool in_alias = false );
+    std::string di_name( llvm::DIType * = nullptr, bool in_alias = false, bool prettify = true );
     std::string di_scopename( llvm::DIScope * = nullptr );
     llvm::DICompositeType *di_composite( uint64_t tag, llvm::DIType *t = nullptr );
 
