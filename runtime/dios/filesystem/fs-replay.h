@@ -17,6 +17,7 @@
 #include <brick-tuple>
 #include <brick-hlist>
 #include <sys/syscall.h>
+#include <sys/resource.h>
 #include <dios/core/stdlibwrap.hpp>
 #include <dios/filesystem/passthru-table.h>
 #include <dios/filesystem/fs-passthru-types.h>

@@ -378,6 +378,7 @@ struct Scheduler : public Next {
                                          __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
                                      if ( t->_proc->pid == id )
                                      {
+                                         zombies.insert( {id, t->_proc} );
                                          delete_object( t );
                                          return true;
                                      }
@@ -454,7 +455,13 @@ struct Scheduler : public Next {
         return ret;
     }
 
-    int kill( pid_t pid, int sig ) {
+    int kill( pid_t pid, int sig )
+    {
+        return _kill( pid, sig, []( auto ){} );
+    }
+
+    template < typename F >
+    int _kill( pid_t pid, int sig, F func ) {
         sighandler_t handler;
         bool found = false;
         Thread *thread;
@@ -477,7 +484,10 @@ struct Scheduler : public Next {
         if ( handler.f == sig_ign )
             return 0;
         if ( handler.f == sig_die )
+        {
+            func( thread->_proc );
             killProcess( pid );
+        }
         else if ( handler.f == sig_fault )
             __dios_fault( _VM_F_Control, "Uncaught signal." );
         else
@@ -536,6 +546,7 @@ struct Scheduler : public Next {
 
     SortedStorage< Thread > threads;
     HidMap *hids;
+    Map< pid_t, Process* > zombies;
     sighandler_t *sighandlers;
 };
 

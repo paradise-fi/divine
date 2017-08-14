@@ -20,6 +20,7 @@
 #include <brick-hlist>
 #include <sys/syscall.h>
 #include <dios/core/stdlibwrap.hpp>
+#include <sys/resource.h>
 
 #include <dios/filesystem/fs-passthru-types.h>
 #include <dios/filesystem/fs-passthru-process.h>

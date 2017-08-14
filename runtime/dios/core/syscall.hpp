@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/resource.h>
 #include <sys/monitor.h>
 #include <signal.h>
 #include <dios/filesystem/passthru-table.h>

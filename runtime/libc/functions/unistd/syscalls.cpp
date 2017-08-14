@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/monitor.h>
+#include <sys/resource.h>
 #include <signal.h>
 #include <dios.h>
 

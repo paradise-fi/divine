@@ -1,3 +1,7 @@
+#include <string.h>
+#include <errno.h>
+#include <sys/wait.h>
+
 namespace __dios
 {
 
@@ -9,6 +13,7 @@ struct ProcessManager : public Next
         uint16_t ppid;
         uint16_t sid;
         uint16_t pgid;
+        uint16_t exitStatus = 0;
         bool calledExecve = false;
     };
 
@@ -173,9 +178,73 @@ struct ProcessManager : public Next
         return newThreadProc->pid;
     }
 
+    pid_t wait4(pid_t pid, int *wstatus, int options, struct rusage *rusage)
+    {
+        if ( options & ~( WNOHANG | WUNTRACED | WCONTINUED ) )
+        {
+            *__dios_get_errno() = EINVAL;
+            return -1;
+        }
+
+        if ( rusage )
+            memset( rusage, 0, sizeof( struct rusage ) );
+
+        Process* parent = proc( this->threads.find( __dios_get_thread_handle() ) );
+        pid_t childpid;
+
+        auto pid_criteria_func = [&]( auto pr )
+        {
+            Process* p = proc( pr );
+
+            if ( p->ppid != parent->pid )
+                return false;
+            if ( pid < -1 )
+                return p->pgid == abs( pid );
+            if ( pid == -1 )
+                return true;
+            if ( pid == 0 )
+                return p->pgid == parent->pgid;
+            return p->pid == pid;
+        };
+
+        auto child = std::find_if( this->zombies.begin(), this->zombies.end(),
+                                   [&]( auto p ) { return pid_criteria_func( p.second ); } );
+
+        if ( child == this->zombies.end() )
+        {
+            if ( options & WNOHANG )
+            {
+                *__dios_get_errno() = ECHILD;
+                if ( std::count_if( this->threads.begin(), this->threads.end(), pid_criteria_func ) )
+                    return 0;
+                else
+                    return -1;
+            }
+            else
+                *__dios_get_errno() = EAGAIN2;
+        }
+        else
+        {
+            Process *p = proc( child->second );
+            if ( wstatus )
+                *wstatus = p->exitStatus;
+            childpid = p->pid;
+            __vm_obj_free( p );
+            this->zombies.erase( pid );
+        }
+        return childpid;
+    }
+
+    int kill( pid_t pid, int sig )
+    {
+        return Next::_kill( pid, sig,
+                            [&]( typename Next::Process* p ) { proc( p )->exitStatus = sig; } );
+    }
+
     void exit_process( int code )
     {
         Process* p = proc( this->threads.find( __dios_get_thread_handle() ) );
+        p->exitStatus = code << 8;
         Next::kill( p->pid, SIGKILL );
     }
 };

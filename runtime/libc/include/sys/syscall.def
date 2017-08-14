@@ -87,5 +87,6 @@ SYSCALL( socketpair,  CONTINUE, int,     ( int _1, int _2, int _3, OUT(int *) _4
 SYSCALL( link,        CONTINUE, int,     ( MEM _1, MEM _2 ) )
 SYSCALL( listen,      CONTINUE, int,     ( int _1, int _2 ) )
 SYSCALL( mkdirat,     CONTINUE, int,     ( int _1, MEM _2, mode_t _3 ) )
+SYSCALL( wait4,       CONTINUE, pid_t,   ( pid_t _1, int *_2, int _3, STRUCT(struct rusage *) _4 ) )
 
 #undef MEM
