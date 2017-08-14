@@ -269,7 +269,15 @@ void __run_atfork_handlers( ushort index ) noexcept {
             invoke( std::get< 0 >( *h ) );
     else
         for( auto h : atForkHandlers )
-            invoke( index == 1 ? std::get< 1 >( h ) : std::get< 2 >( h ) );
+        {
+            if ( index == 1 )
+                invoke( std::get< 1 >( h ) );
+            else
+            {
+                getThread().is_main = true;
+                invoke( std::get< 2 >( h ) );
+            }
+        }
 }
 
 static void __init_thread( const _DiOS_ThreadHandle gtid, const pthread_attr_t attr ) noexcept {
@@ -388,6 +396,9 @@ static void _clean_and_become_zombie( __dios::FencedInterruptMask &mask, _DiOS_T
               && std::find_if( tls.begin(), tls.end(), []( auto tls ) { return !tls.getData(); } ) != tls.end() );
 
     thread.running = false;
+
+    if ( thread.is_main )
+        exit( 0 );
 
     if ( thread.detached ) {
         // leak &thread so that metadata can be read for use by deadlock
