@@ -248,6 +248,8 @@ struct Scheduler : public Next {
 
     template< typename Setup >
     void setup( Setup s ) {
+        traceAlias< Scheduler >( "{Scheduler}" );
+
         s.proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
         s.proc1->pid = 1;
 

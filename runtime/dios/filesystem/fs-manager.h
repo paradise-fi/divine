@@ -283,6 +283,7 @@ struct VFS: public Next {
 
     template< typename Setup >
     void setup( Setup s ) {
+        traceAlias< VFS >( "{VFS}" );
         instance().setOutputFile( getFileTraceConfig( s.opts, "stdout" ) );
         instance().setErrFile( getFileTraceConfig( s.opts, "stderr" ) );
         instance().initializeFromSnapshot( s.env );

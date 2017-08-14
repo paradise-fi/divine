@@ -27,6 +27,11 @@ void delete_object( T *obj ) {
     __vm_obj_free( obj );
 }
 
+template < typename T >
+void __attribute__((__noinline__)) traceAlias( const char *name, T *type = nullptr ) {
+    __vm_trace( _VM_T_TypeAlias, type, name );
+}
+
 enum SchedCommand { RESCHEDULE, CONTINUE };
 
 using SysOpts = Vector< std::pair< String, String > >;

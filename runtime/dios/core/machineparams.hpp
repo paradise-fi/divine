@@ -14,6 +14,7 @@ struct MachineParams : Next
     template< typename Setup >
     void setup( Setup s )
     {
+        traceAlias< MachineParams >( "{MachineParams}" );
         hardwareConcurrency = 0;
         readHardwareConcurrency( s.opts );
         if ( extractOpt( "debug", "machineparams", s.opts ) ) {

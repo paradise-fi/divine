@@ -46,6 +46,7 @@ struct Replay : public Next {
     template< typename Setup >
     void setup( Setup s )
     {
+        traceAlias< Replay >( "{Replay}" );
         if ( !init( "passtrough.out" )) {
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
             return;

@@ -33,6 +33,7 @@ struct ProcessManager : public Next
     template< typename Setup >
     void setup( Setup s )
     {
+        traceAlias< ProcessManager >( "{ProcMan}" );
         s.proc1->ppid = 0;
         s.proc1->sid = 1;
         s.proc1->pgid = 1;

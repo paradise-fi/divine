@@ -14,6 +14,7 @@ struct MonitorManager : Next
     template< typename Setup >
     void setup( Setup s )
     {
+        traceAlias< MonitorManager >( "{Monitor}" );
         Next::setup( s );
     }
 

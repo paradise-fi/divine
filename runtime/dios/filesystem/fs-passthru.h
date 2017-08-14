@@ -118,6 +118,7 @@ namespace fs {
         template< typename Setup >
         void setup( Setup s )
         {
+            traceAlias< PassThrough >( "{PassThrough}" );
             Next::setup( s );
         }
 

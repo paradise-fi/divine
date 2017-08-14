@@ -52,6 +52,7 @@ struct Fault: public Next {
 
     template< typename Setup >
     void setup( Setup s ) {
+        traceAlias< Fault >( "{Fault}" );
         __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, handler );
         load_user_pref( s.opts );
 

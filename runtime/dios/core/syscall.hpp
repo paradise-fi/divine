@@ -147,6 +147,7 @@ struct BaseContext
 
     template< typename Setup >
     void setup( Setup s ) {
+        traceAlias< BaseContext >( "{BaseContext}" );
         if ( s.opts.empty() )
             return;
         for ( const auto& opt : s.opts )
