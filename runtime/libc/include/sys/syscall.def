@@ -5,6 +5,7 @@
 SYSCALLSEP( get_process_threads, CONTINUE, _DiOS_ThreadHandle *, ( _DiOS_ThreadHandle _1 ) )
 SYSCALLSEP( start_thread, CONTINUE, _DiOS_ThreadHandle, ( _DiOS_ThreadRoutine _1, void *_2, int _3 ) )
 SYSCALLSEP( get_fault_config, CONTINUE, int, ( int _1 ) )
+SYSCALLSEP( exit_process, RESCHEDULE, void, ( int _1 ) )
 SYSCALLSEP( configure_fault, CONTINUE, int, ( int _1, int _2 ) )
 SYSCALLSEP( register_monitor, CONTINUE, void, ( __dios::Monitor *_1 ) )
 SYSCALLSEP( die, RESCHEDULE, void, () )

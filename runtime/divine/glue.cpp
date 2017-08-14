@@ -103,7 +103,7 @@ extern "C" void _PDCLIB_Exit( int rv )
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask );
     __cxa_finalize( 0 );
     __dios_run_dtors();
-    raise( SIGKILL );
+    __dios_syscall( SYS_exit_process, NULL, rv );
     __builtin_unreachable();
 }
 

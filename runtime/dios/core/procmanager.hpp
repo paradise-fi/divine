@@ -19,6 +19,11 @@ struct ProcessManager : public Next
         return static_cast< Process* >( t->_proc );
     }
 
+    Process* proc( typename Next::Process *p )
+    {
+        return static_cast< Process* >( p );
+    }
+
     template< typename Setup >
     void setup( Setup s )
     {
@@ -166,6 +171,12 @@ struct ProcessManager : public Next
         newThreadProc->pgid = threadProc->pgid;
         this->threads.insert( newThread );
         return newThreadProc->pid;
+    }
+
+    void exit_process( int code )
+    {
+        Process* p = proc( this->threads.find( __dios_get_thread_handle() ) );
+        Next::kill( p->pid, SIGKILL );
     }
 };
 
