@@ -456,20 +456,31 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         initL();
     }
 
-    ~Pool()
+    void sync()
     {
         for ( int i = 0; i < 4096; ++i )
         {
-            _s->freelist_return( i, _l.size[ i ].tofree );
-            _s->freelist_return( i, _l.size[ i ].touse );
+            auto &si = _l.size[ i ];
+            _s->freelist_return( i, si.tofree );
+            _s->freelist_return( i, si.touse );
+            si.tofree = FreeList();
+            si.touse = FreeList();
+
             if ( _l.size_big[ i ] )
                 for ( int j = 0; j < 4096; ++j )
                 {
-                    _s->freelist_return( i * 4096 + j, _l.size_big[ i ][ j ].tofree );
-                    _s->freelist_return( i * 4096 + j, _l.size_big[ i ][ j ].touse );
+                    auto &si = _l.size_big[ i ][ j ];
+                    _s->freelist_return( i * 4096 + j, si.tofree );
+                    _s->freelist_return( i * 4096 + j, si.touse );
+                    si.tofree = FreeList();
+                    si.touse = FreeList();
                 }
         }
+    }
 
+    ~Pool()
+    {
+        sync();
         for ( int i = 0; i < 4096; ++i )
             delete[] _l.size_big[ i ];
         delete[] _l.size_big;
