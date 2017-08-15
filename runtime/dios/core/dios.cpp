@@ -121,12 +121,12 @@ void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)(), ... ) {
 }
 
 using DefaultConfiguration =
-    ProcessManager< Scheduler< Fault < fs::VFS < MachineParams < MonitorManager < BaseContext > > > > > >;
+    ProcessManager< Fault< Scheduler < fs::VFS < MachineParams < MonitorManager < BaseContext > > > > > >;
 using PassthruConfiguration =
-    Scheduler< Fault < fs::PassThrough < MachineParams < MonitorManager < BaseContext > > > > >;
+    Fault< Scheduler < fs::PassThrough < MachineParams < MonitorManager < BaseContext > > > > >;
 
 using ReplayConfiguration =
-    Scheduler< Fault < fs::Replay < MachineParams < MonitorManager < BaseContext > > > > >;
+    Fault< Scheduler < fs::Replay < MachineParams < MonitorManager < BaseContext > > > > >;
 
 void init( const _VM_Env *env )
 {
