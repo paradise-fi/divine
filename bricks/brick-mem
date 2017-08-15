@@ -339,8 +339,8 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         }
 #pragma GCC diagnostic pop
 #else
-        void valgrind_alloc( Pointer ) {}
-        void valgrind_dealloc( Pointer ) {}g
+        void valgrind_alloc( Pointer, const char *, int ) {}
+        void valgrind_dealloc( Pointer, const char *, int ) {}
         void valgrind_newblock( int, int ) {}
         void valgrind_fini() {}
         void valgrind_init() {}
