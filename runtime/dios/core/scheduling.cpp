@@ -26,7 +26,7 @@ void sig_fault( int ) {}
 
 const sighandler_t defhandlers[] =
 {
-    { sig_fault, 0 },  // fluff, so that signal numbers match
+    { sig_ign, 0 },  // fluff, so that signal numbers match
     { sig_die, 0 },    // SIGHUP    = 1
     { sig_die, 0 },    // SIGINT    = 2
     { sig_fault, 0 },  // SIGQUIT   = 3

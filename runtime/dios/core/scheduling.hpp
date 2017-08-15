@@ -389,7 +389,7 @@ struct Scheduler : public Next {
     }
 
     int sigaction( int sig, const struct ::sigaction *act, struct sigaction *oldact ) {
-        if ( sig < 0 || sig > static_cast< int >( sizeof(defhandlers) / sizeof(__dios::sighandler_t) )
+        if ( sig <= 0 || sig > static_cast< int >( sizeof(defhandlers) / sizeof(__dios::sighandler_t) )
             || sig == SIGKILL || sig == SIGSTOP )
         {
             *__dios_get_errno() = EINVAL;
