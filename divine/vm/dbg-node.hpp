@@ -67,15 +67,6 @@ struct Node
 
     using PointerV = value::Pointer;
 
-    void init()
-    {
-        _type = nullptr;
-        _di_type = nullptr;
-        _di_var = nullptr;
-        _kind = DNKind::Object;
-        _offset = 0;
-    }
-
     void di_var( llvm::DIVariable *var )
     {
         _di_var = var;
@@ -104,20 +95,14 @@ struct Node
             _ctx.set( _VM_CR_Globals, _address );
     }
 
-    template< typename Context >
-    Node( Context ctx, Snapshot s )
-        : _ctx( ctx.program(), ctx.debug(), ctx.heap() ), _snapshot( s )
-    {
-        _ctx.heap().restore( s );
-        _ctx.set( _VM_CR_Globals, ctx.globals() );
-        _ctx.set( _VM_CR_Constants, ctx.constants() );
-        init();
-    }
-
-    Node( DNContext< Heap > ctx, Snapshot s )
+    Node( const DNContext< Heap > &ctx, Snapshot s )
         : _ctx( ctx ), _snapshot( s )
     {
-        init();
+        _type = nullptr;
+        _di_type = nullptr;
+        _di_var = nullptr;
+        _kind = DNKind::Object;
+        _offset = 0;
     }
 
     Node( const Node &o ) = default;
