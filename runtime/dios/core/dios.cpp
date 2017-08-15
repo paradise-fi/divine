@@ -103,7 +103,7 @@ void boot( SetupBase sb ) {
 
     using Process = typename Configuration::Process;
     Setup< Configuration > s = sb;
-    s.proc1 = static_cast< Process * >( __vm_obj_make( sizeof( Process ) ) );
+    s.proc1 = new_object< Process >();
     context->setup( s );
 }
 
