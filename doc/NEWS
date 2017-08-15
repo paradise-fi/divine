@@ -28,6 +28,14 @@ DIVINE 4.0
 - [4.0.4] Fix a build error when the system compiler is clang 4.
 - [4.0.5] Make standard IO unbuffered by default to save memory.
 - [4.0.6] A rudimentary version of `verify --liveness`.
+- [4.0.6] The DiOS kernel has been separated into reusable components.
+- [4.0.8] Improved precision of memory access tracking in τ reduction.
+- [4.0.8] Update the bundled `libc++abi` and `libc++` to version 4.0.0.
+- [4.0.10] Preliminary support for syscall passthrough in `divine run`.
+- [4.0.10] Initial implementation of the `fork` system call.
+- [4.0.11] Add a `--trace` option to `divine run` to trace instructions.
+- [4.0.12] Implement assorted process-related syscalls.
+- [4.0.12] Add `pthread_atfork` to the threading library.
 
 DIVINE 3.90
 ===========
