@@ -1817,6 +1817,7 @@ struct TContext : vm::Context< Prog, vm::MutableHeap<> >
     void trace( vm::TraceSchedChoice ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceStateType ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceAlg ) { NOT_IMPLEMENTED(); }
+    void trace( vm::TraceTypeAlias ) { NOT_IMPLEMENTED(); }
 
     TContext( Prog &p ) : vm::Context< Prog, vm::MutableHeap<> >( p ), _fault( _VM_F_NoFault ) {}
 };
