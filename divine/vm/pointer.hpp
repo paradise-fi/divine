@@ -74,13 +74,13 @@ struct GenericPointer : brick::types::Comparable
 
     explicit GenericPointer( Rep r = Rep() ) : _rep( r ) {}
 
-    ObjT object() { return _rep.obj; }
-    OffT offset() { return _rep.off; }
+    ObjT object() const { return _rep.obj; }
+    OffT offset() const { return _rep.off; }
     void offset( OffT o ) { _rep.off = o; }
     void object( ObjT o ) { _rep.obj = o; }
-    PointerRaw raw() { return _rep.raw; }
+    PointerRaw raw() const { return _rep.raw; }
     void raw( PointerRaw r ) { _rep.raw = r; }
-    bool null() { return object() == 0; } /* check whether a pointer is null */
+    bool null() const { return object() == 0; } /* check whether a pointer is null */
 
     bool operator<= ( GenericPointer o ) const
     {
