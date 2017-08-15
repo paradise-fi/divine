@@ -141,6 +141,7 @@ struct Interpreter
     using DN = vm::dbg::Node< vm::Program, vm::CowHeap >;
     using PointerV = Context::PointerV;
     using Stepper = vm::dbg::Stepper< Context >;
+    using RefCnt = brick::mem::RefCnt< typename Context::RefCnt >;
 
     bool _exit, _batch;
     BC _bc;
@@ -148,6 +149,7 @@ struct Interpreter
     std::vector< std::string > _env;
 
     std::map< std::string, DN > _dbg;
+    std::map< vm::CowHeap::Snapshot, RefCnt > _state_refs;
     std::map< vm::CowHeap::Snapshot, std::string > _state_names;
     std::map< vm::CowHeap::Snapshot, std::deque< int > > _trace;
     vm::Explore _explore;
@@ -343,6 +345,7 @@ struct Interpreter
         {
             isnew = true;
             name = _state_names[ snap ] = "#"s + brick::string::fmt( ++_state_count );
+            _state_refs[ snap ] = RefCnt( _ctx._refcnt, snap );
             DN state( _ctx, snap );
             state.address( dbg::DNKind::Object, _ctx.get( _VM_CR_State ).pointer );
             state.type( _ctx._state_type );
