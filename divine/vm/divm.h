@@ -144,6 +144,19 @@ static const uint64_t _VM_CF_Cancel      = 0b010000;
 static const uint64_t _VM_CF_KernelMode  = 0b100000;
 
 /*
+ * Control flags are split up into 4 blocks of 16 bits, each reserved for a
+ * different area of use. The first block is reserved for VM use (see above),
+ * the second block is for operating system use, third one for bitcode
+ * transformations that require runtime support (such as relaxed memory) and
+ * the final block is reserved for use by model checking algorithms.
+ */
+
+static const uint64_t _VM_CFB_VM        = 1ull <<  0;
+static const uint64_t _VM_CFB_OS        = 1ull << 16;
+static const uint64_t _VM_CFB_Transform = 1ull << 32;
+static const uint64_t _VM_CFB_Alg       = 1ull << 48;
+
+/*
  * The VM maintains 8 control registers and 2 registers available for OS use
  * (one integer and one pointer). The __vm_control hypercall can be used to get
  * and set register values (as applicable). Bitwise changes to the _VM_CR_Flags
