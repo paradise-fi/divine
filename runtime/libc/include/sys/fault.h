@@ -15,6 +15,7 @@ enum _DiOS_Fault
 
 enum _DiOS_SimFail
 {
+    _DiOS_SF_First = _DiOS_F_Last,
     _DiOS_SF_Malloc = _DiOS_F_Last,
     _DiOS_SF_Last
 };
@@ -32,6 +33,8 @@ enum _DiOS_FaultConfig
 };
 
 _PDCLIB_EXTERN_C
+
+extern uint8_t _DiOS_SimFail_flags;
 
 /*
  * Configures given fault or symfail and returns original value. Possible
@@ -92,7 +95,11 @@ struct DetectFault
     int _orig;
 };
 
+static inline bool simFail( _DiOS_SimFail x ) {
+    return _DiOS_SimFail_flags & ( 1 << ( x - _DiOS_SF_First ) );
 }
+
+} // namespace __dios
 
 #endif
 
