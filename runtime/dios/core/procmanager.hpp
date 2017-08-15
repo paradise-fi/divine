@@ -24,7 +24,8 @@ struct ProcessManager : public Next
         return static_cast< Process* >( t->_proc );
     }
 
-    Process* proc( typename Next::Process *p )
+    template < typename P >
+    Process* proc( P *p )
     {
         return static_cast< Process* >( p );
     }
@@ -238,7 +239,7 @@ struct ProcessManager : public Next
     int kill( pid_t pid, int sig )
     {
         return Next::_kill( pid, sig,
-                            [&]( typename Next::Process* p ) { proc( p )->exitStatus = sig; } );
+                            [&]( auto* p ) { proc( p )->exitStatus = sig; } );
     }
 
     void exit_process( int code )
