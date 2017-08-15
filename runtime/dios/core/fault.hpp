@@ -9,10 +9,6 @@
 #define CPP_END }
 #endif
 
-EXTERN_C
-extern uint8_t const *_DiOS_fault_cfg;
-CPP_END
-
 #ifdef __cplusplus
 
 #include <algorithm>
@@ -37,30 +33,32 @@ template < typename Next >
 struct Fault: public Next {
     static constexpr int fault_count = _DiOS_SF_Last;
 
-    Fault() :
-        config( static_cast< uint8_t *>( __vm_obj_make( fault_count ) ) ),
-        triggered( false ),
-        ready( false )
+    struct Process : Next::Process
     {
-        std::fill_n( config, fault_count, FaultFlag::Enabled | FaultFlag::AllowOverride );
-        ready = true;
+        Process() {
+            std::fill_n( faultConfig, _DiOS_SF_Last,
+                FaultFlag::Enabled | FaultFlag::AllowOverride );
+        }
 
-        // Initialize pointer to C-compatible _DiOS_fault_cfg
-        __dios_assert( !_DiOS_fault_cfg );
-        _DiOS_fault_cfg = config;
+        uint8_t faultConfig[ _DiOS_SF_Last ];
+    };
     }
+
+    Fault()
+        : ready( false )
+    {}
 
     template< typename Setup >
     void setup( Setup s ) {
         traceAlias< Fault >( "{Fault}" );
         __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, handler );
-        load_user_pref( s.opts );
+        load_user_pref( s.proc1->faultConfig, s.opts );
 
         if ( extractOpt( "debug", "faultcfg", s.opts ) ) {
             trace_config( 1 );
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
         }
-
+        ready = true;
         Next::setup( s );
     }
 
@@ -91,6 +89,23 @@ struct Fault: public Next {
         Next::getHelp( options );
     }
 
+    uint8_t *getCurrentConfig() {
+        return static_cast< Process * >( Next::getCurrentThread()->_proc )->faultConfig;
+    }
+
+    void updateSimFail( uint8_t *config = nullptr ) {
+        config = config ? config : getCurrentConfig();
+        uint8_t flags = 0;
+        uint8_t bit = 1;
+        for ( int x = _DiOS_SF_First; x != _DiOS_SF_Last; x++, bit <<= 1 )
+            flags |= config[ x ] & FaultFlag::Enabled ? bit : 0;
+        auto *meta = __md_get_global_meta( "_DiOS_SimFail_flags" );
+        if ( !meta )
+            traceInternal( 0, "Warning: Cannot update SimFail" );
+        else
+            *reinterpret_cast< char *>( meta->address ) = flags;
+    }
+
     void terminate() noexcept  {
         BaseContext::kernelSyscall( SYS_die, nullptr );
         static_cast< _VM_Frame * >
@@ -105,7 +120,7 @@ struct Fault: public Next {
             terminate();
         }
 
-        uint8_t fault_cfg = config[ what ];
+        uint8_t fault_cfg = getCurrentConfig()[ what ];
         if ( !ready || fault_cfg & FaultFlag::Enabled ) {
             if ( kernel )
                 traceInternal( 0, "Fault in kernel: %s", fault_to_str( what ).c_str() );
@@ -190,6 +205,7 @@ struct Fault: public Next {
     }
 
     void trace_config( int indent ) {
+        auto config = getCurrentConfig();
         __dios_trace_i( indent, "fault and simfail configuration:" );
         for (int f = _VM_F_NoFault + 1; f != _DiOS_SF_Last; f++ ) {
             uint8_t cfg = config[f];
@@ -213,7 +229,7 @@ struct Fault: public Next {
         }
     }
 
-    void load_user_pref( SysOpts& opts )  {
+    void load_user_pref( uint8_t *config, SysOpts& opts )  {
         SysOpts unused;
         for( const auto& i : opts ) {
             String cmd = i.first;
@@ -253,9 +269,11 @@ struct Fault: public Next {
             config[ f_num ] = cfg;
         }
         opts = unused;
+        updateSimFail( config );
     }
 
     int _faultToStatus( int fault )  {
+        auto config = getCurrentConfig();
         uint8_t cfg = config[ fault ];
         if ( fault < _DiOS_F_Last) { // Fault
             switch ( cfg & (FaultFlag::Enabled | FaultFlag::Continue) ) {
@@ -278,6 +296,7 @@ struct Fault: public Next {
     }
 
     int configure_fault( int fault, int cfg ) {
+        auto config = getCurrentConfig();
         if ( fault >= fault_count ) {
             return _DiOS_FC_EInvalidFault;
         }
@@ -315,6 +334,7 @@ struct Fault: public Next {
                     return _DiOS_FC_EInvalidCfg;
             }
         }
+        updateSimFail();
         return lastCfg;
     }
 
@@ -324,8 +344,6 @@ struct Fault: public Next {
         return _faultToStatus( fault );
     }
 
-    uint8_t *config;
-    bool triggered;
     bool ready;
 };
 

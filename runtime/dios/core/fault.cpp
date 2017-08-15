@@ -3,4 +3,4 @@
 
 #include <cstdint>
 
-uint8_t const *_DiOS_fault_cfg;
+uint8_t _DiOS_SimFail_flags;
