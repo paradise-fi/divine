@@ -327,6 +327,7 @@ struct Interpreter
     auto newstate( vm::CowHeap::Snapshot snap, bool update_choices = true, bool terse = false )
     {
         snap = _explore.start( _ctx, snap );
+        _explore.pool().sync();
         _ctx.load( snap );
 
         bool isnew = false;
