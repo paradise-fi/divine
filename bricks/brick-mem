@@ -236,10 +236,114 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
     {
         BlockHeader *block[ blockcount ];
         std::atomic< int > usedblocks;
-        FreeListPtr freelist[ 4096 ];
-        std::atomic< FreeListPtr * > freelist_big[ 4096 ];
+        FreeListPtr _freelist[ 4096 ];
+        std::atomic< FreeListPtr * > _freelist_big[ 4096 ];
 #ifndef NVALGRIND
         std::atomic< VHandle * > vhandles[ blockcount ]; /* one for each block */
+#endif
+
+        void freelist_return( int size, const FreeList &fl )
+        {
+            if ( !fl.count )
+                return;
+            std::atomic< FreeList * > &fhead = freelist( size );
+            auto newfl = new FreeList( fl );
+            newfl->next = fhead;
+            while ( !fhead.compare_exchange_weak( newfl->next, newfl ) );
+        }
+
+        std::atomic< FreeList * > &freelist( int size )
+        {
+            if ( size < 4096 )
+                return _freelist[ size ];
+
+            std::atomic< FreeList * > *chunk, *newchunk;
+            if ( !( chunk = _freelist_big[ size / 4096 ] ) )
+            {
+                if ( _freelist_big[ size / 4096 ].compare_exchange_strong(
+                         chunk, newchunk = new FreeListPtr[ 4096 ]() ) )
+                    chunk = newchunk;
+                else
+                    delete newchunk;
+            }
+            ASSERT( chunk );
+            return chunk[ size % 4096 ];
+        }
+
+#ifndef NVALGRIND
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+
+        void valgrind_alloc( Pointer p, const char *mem, int size )
+        {
+            VALGRIND_MALLOCLIKE_BLOCK( mem, size, 0, 1 );
+
+            VHandle *h = vhandles[ p.slab() ], *alloc;
+            if ( !h )
+            {
+                if ( vhandles[ p.slab() ].compare_exchange_strong(
+                         h, alloc = new VHandle[ block[ p.slab() ]->total ]) )
+                    h = alloc;
+                else
+                    delete[] alloc;
+            }
+
+            ASSERT( h );
+            ASSERT( !h[ p.chunk() ].allocated );
+            VALGRIND_DISCARD( h[ p.chunk() ].handle );
+            h[ p.chunk() ].handle =
+                VALGRIND_CREATE_BLOCK( mem, size,
+                                       brick::string::fmtf( "blob %llu:%llu @ %p",
+                                                            p.slab(), p.chunk(), mem ).c_str() );
+            h[ p.chunk() ].allocated = true;
+        }
+
+        void valgrind_dealloc( Pointer p, const char *mem, int size )
+        {
+            VALGRIND_FREELIKE_BLOCK( mem, 0 );
+            VALGRIND_MAKE_MEM_NOACCESS( mem, size );
+
+            ASSERT( vhandles[ p.slab() ].load() );
+            ASSERT( vhandles[ p.slab() ][ p.chunk() ].allocated );
+
+            VALGRIND_DISCARD( vhandles[ p.slab() ][ p.chunk() ].handle );
+            vhandles[ p.slab() ][ p.chunk() ].handle =
+                VALGRIND_CREATE_BLOCK( mem, size,
+                                       brick::string::fmtf( "blob %llu:%llu @ %p [DELETED]",
+                                                            p.slab(), p.chunk(), mem ).c_str() );
+            vhandles[ p.slab() ][ p.chunk() ].allocated = false;
+        }
+
+        void valgrind_newblock( int b, int bytes )
+        {
+            VALGRIND_MAKE_MEM_NOACCESS( block[ b ] + sizeof( BlockHeader ), bytes );
+            VALGRIND_CREATE_MEMPOOL( block[ b ], 0, 0 );
+        }
+
+        void valgrind_init()
+        {
+            for ( int i = 0; i < blockcount; ++i )
+                vhandles[ i ] = nullptr;
+        }
+
+        void valgrind_fini()
+        {
+            for ( int i = 0; i < usedblocks; ++i )
+            {
+                if ( vhandles[ i ] )
+                    delete[] vhandles[ i ].load();
+                if ( block[ i ] )
+                    VALGRIND_DESTROY_MEMPOOL( block[ i ] );
+            }
+        }
+#pragma GCC diagnostic pop
+#else
+        void valgrind_alloc( Pointer ) {}
+        void valgrind_dealloc( Pointer ) {}g
+        void valgrind_newblock( int, int ) {}
+        void valgrind_fini() {}
+        void valgrind_init() {}
 #endif
     };
 
@@ -254,100 +358,17 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
 
     std::shared_ptr< Shared > _s;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-
-#ifndef NVALGRIND
-    void valgrindInit()
-    {
-        for ( int i = 0; i < blockcount; ++i )
-            _s->vhandles[ i ] = nullptr;
-    }
-
-    void valgrindAllocated( Pointer p, bool materialized )
-    {
-        VALGRIND_MALLOCLIKE_BLOCK( dereference( p ), size( p ), 0, 1 );
-
-        VHandle *h = _s->vhandles[ p.slab() ], *alloc;
-        if ( !h ) {
-            if ( _s->vhandles[ p.slab() ].compare_exchange_strong(
-                     h, alloc = new VHandle[ header( p ).total ]) )
-                h = alloc;
-            else
-                delete[] alloc;
-        }
-
-        ASSERT( h );
-        ASSERT( materialized || !h[ p.chunk() ].allocated );
-        VALGRIND_DISCARD( h[ p.chunk() ].handle );
-        h[ p.chunk() ].handle =
-            VALGRIND_CREATE_BLOCK( dereference( p ), size( p ),
-                                   brick::string::fmtf( "blob %llu:%llu @ %p",
-                                                        p.slab(), p.chunk(),
-                                                        dereference( p ) ).c_str() );
-        h[ p.chunk() ].allocated = true;
-    }
-
-    void valgrindDeallocated( Pointer p )
-    {
-        VALGRIND_FREELIKE_BLOCK( dereference( p ), 0 );
-        VALGRIND_MAKE_MEM_NOACCESS( dereference( p ), size( p ) );
-
-        ASSERT( _s->vhandles[ p.slab() ].load() );
-        ASSERT( _s->vhandles[ p.slab() ][ p.chunk() ].allocated );
-
-        VALGRIND_DISCARD( _s->vhandles[ p.slab() ][ p.chunk() ].handle );
-        _s->vhandles[ p.slab() ][ p.chunk() ].handle =
-            VALGRIND_CREATE_BLOCK( dereference( p ), size( p ),
-                                   brick::string::fmtf( "blob %llu:%llu @ %p [DELETED]",
-                                                        p.slab(), p.chunk(),
-                                                        dereference( p ) ).c_str() );
-        _s->vhandles[ p.slab() ][ p.chunk() ].allocated = false;
-    }
-
-    void valgrindNewBlock( int b, int bytes )
-    {
-        VALGRIND_MAKE_MEM_NOACCESS( _s->block[ b ] + sizeof( BlockHeader ), bytes );
-        VALGRIND_CREATE_MEMPOOL( _s->block[ b ], 0, 0 );
-    }
-
-    static void valgrindFini( Shared *s )
-    {
-        for ( int i = 0; i < s->usedblocks; ++i )
-        {
-            if ( s->vhandles[ i ] )
-                delete[] s->vhandles[ i ].load();
-            if ( s->block[ i ] )
-                VALGRIND_DESTROY_MEMPOOL( s->block[ i ] );
-        }
-    }
-#else
+#ifdef NVALGRIND
 
 #define VALGRIND_MAKE_MEM_DEFINED(x, y)
 #define VALGRIND_MAKE_MEM_NOACCESS(x, y)
 #define VALGRIND_MAKE_MEM_UNDEFINED(x, y)
-
-    void valgrindAllocated( Pointer, bool ) {}
-    void valgrindDeallocated( Pointer ) {}
-    void valgrindNewBlock( int, int ) {}
-    static void valgrindFini( Shared * ) {}
-    void valgrindInit() {}
 
 #endif
 
     int freelist_count( FreeList *fl )
     {
         return fl ? fl->count + freelist_count( fl->next ) : 0;
-    }
-
-    void freelist_return( int size, FreeList &fl )
-    {
-        if ( !fl.count )
-            return;
-        std::atomic< FreeList * > &fhead = freelist( size );
-        auto newfl = new FreeList( fl );
-        newfl->next = fhead;
-        while ( !fhead.compare_exchange_weak( newfl->next, newfl ) );
     }
 
     Stats stats()
@@ -363,7 +384,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
             }
 
         for ( auto &i : s )
-            i.count.used -= freelist_count( freelist( i.size ).load() );
+            i.count.used -= freelist_count( _s->freelist( i.size ).load() );
 
         for ( auto &i : s )
             i.bytes.used = i.count.used * i.size,
@@ -389,19 +410,17 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         std::cerr << " " << s.total.bytes.used / 1024 << " kbytes used + "
                          << ( s.total.bytes.held - s.total.bytes.used ) / 1024 << " kbytes wasted" << std::endl;
     }
-#pragma GCC diagnostic pop
-
     static void finalize( Shared *s )
     {
-        valgrindFini( s );
+        s->valgrind_fini();
 
         for ( int i = 0; i < 4096; ++i )
         {
-            nukeList( s->freelist[ i ] );
-            if ( s->freelist_big[ i ] ) {
+            nukeList( s->_freelist[ i ] );
+            if ( s->_freelist_big[ i ] ) {
                 for ( int j = 0; j < 4096; ++j )
-                    nukeList( s->freelist_big[ i ][ j ] );
-                delete[] s->freelist_big[ i ].load();
+                    nukeList( s->_freelist_big[ i ][ j ] );
+                delete[] s->_freelist_big[ i ].load();
             }
         }
 
@@ -428,12 +447,12 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
     {
         _s->usedblocks = 8;
         for ( int i = 0; i < 4096; ++i )
-            _s->freelist[ i ] = nullptr;
+            _s->_freelist[ i ] = nullptr;
         for ( int i = 0; i < 4096; ++i )
-            _s->freelist_big[ i ] = nullptr;
+            _s->_freelist_big[ i ] = nullptr;
         for ( int i = 0; i < blockcount; ++i )
             _s->block[ i ] = nullptr;
-        valgrindInit();
+        _s->valgrind_init();
         initL();
     }
 
@@ -441,13 +460,13 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
     {
         for ( int i = 0; i < 4096; ++i )
         {
-            freelist_return( i, _l.size[ i ].tofree );
-            freelist_return( i, _l.size[ i ].touse );
+            _s->freelist_return( i, _l.size[ i ].tofree );
+            _s->freelist_return( i, _l.size[ i ].touse );
             if ( _l.size_big[ i ] )
                 for ( int j = 0; j < 4096; ++j )
                 {
-                    freelist_return( i * 4096 + j, _l.size_big[ i ][ j ].tofree );
-                    freelist_return( i * 4096 + j, _l.size_big[ i ][ j ].touse );
+                    _s->freelist_return( i * 4096 + j, _l.size_big[ i ][ j ].tofree );
+                    _s->freelist_return( i * 4096 + j, _l.size_big[ i ][ j ].touse );
                 }
         }
 
@@ -479,23 +498,6 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
             _l.size_big[ i ] = nullptr;
         _l.size[ 0 ].blocksize = blocksize;
 		_l.emptyblocks.clear();
-    }
-
-    std::atomic< FreeList * > &freelist( int size )
-    {
-        if ( size < 4096 )
-            return _s->freelist[ size ];
-
-        std::atomic< FreeList * > *chunk, *newchunk;
-        if ( !( chunk = _s->freelist_big[ size / 4096 ] ) ) {
-            if ( _s->freelist_big[ size / 4096 ].compare_exchange_strong(
-                     chunk, newchunk = new FreeListPtr[ 4096 ]() ) )
-                chunk = newchunk;
-            else
-                delete newchunk;
-        }
-        ASSERT( chunk );
-        return chunk[ size % 4096 ];
     }
 
     int &ephemeralSize( Pointer p )
@@ -583,7 +585,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
                 p.slab( si.active );
                 p.chunk( header( p ).allocated ++ );
             } else { /* still nothing. try nicking something from the shared freelist */
-                std::atomic< FreeList * > &fhead = freelist( size );
+                std::atomic< FreeList * > &fhead = _s->freelist( size );
                 FreeList *fb = fhead;
                 while ( fb && !fhead.compare_exchange_weak( fb, fb->next ) );
                 if ( fb ) {
@@ -599,7 +601,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
             }
         }
 
-        valgrindAllocated( p, false );
+        _s->valgrind_alloc( p, dereference( p ), size );
         if ( clear )
             ::memset( dereference( p ), 0, size );
         return p;
@@ -622,11 +624,11 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         fl->head = p;
         ++ fl->count;
 
-        valgrindDeallocated( p );
+        _s->valgrind_dealloc( p, dereference( p ), size( p ) );
 
         /* if there's a lot on our freelists, give some to the pool */
         if ( fl == &si.tofree && fl->count >= 4096 ) {
-            freelist_return( size( p ), si.tofree );
+            _s->freelist_return( size( p ), si.tofree );
             si.tofree = FreeList();
         }
     }
@@ -677,7 +679,7 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
         header( b ).itemsize = size;
         header( b ).total = total;
         header( b ).allocated = 0;
-        valgrindNewBlock( b, total );
+        _s->valgrind_newblock( b, total );
         si.blocksize = std::min( 4 * si.blocksize, int( blocksize ) );
         return si.active = b;
     }
