@@ -685,9 +685,10 @@ struct Pool : PoolMixin< Pool< PointerRep >, PoolPointer< PointerRep > >
     }
 };
 
-template< typename Master >
-struct SlavePool : PoolMixin< SlavePool< Master >, typename Master::Pointer >
+template< typename Master_ >
+struct SlavePool : PoolMixin< SlavePool< Master_ >, typename Master_::Pointer >
 {
+    using Master = Master_;
     static const int blockcount = Master::blockcount;
 
     struct BlockHeader
@@ -706,11 +707,13 @@ struct SlavePool : PoolMixin< SlavePool< Master >, typename Master::Pointer >
 
     using Pointer = typename Master::Pointer;
 
-    SlavePool( const Master &m ) : _s( new Shared() ), _m( m._s )
+    explicit SlavePool( const Master &m ) : _s( new Shared() ), _m( m._s )
     {
         for ( int i = 0; i < blockcount; ++i )
             _s->block[ i ] = nullptr;
     }
+
+    SlavePool() = default;
 
     void materialise( Pointer p, int size, bool clear = true )
     {
@@ -735,6 +738,64 @@ struct SlavePool : PoolMixin< SlavePool< Master >, typename Master::Pointer >
         return h.data + p.chunk() * ( h.itemsize > 1 ? align( h.itemsize, 4 ) : h.itemsize );
     }
 
+};
+
+template< typename SlavePool >
+struct RefCnt
+{
+    using Pointer = typename SlavePool::Pointer;
+
+    SlavePool _pool;
+    Pointer _ptr;
+
+    short &count() /* TODO atomic? */
+    {
+        _pool.materialise( _ptr, sizeof( short ), false );
+        return *_pool.template machinePointer< short >( _ptr );
+    }
+
+    void get()
+    {
+        if ( _ptr.slab() )
+            count() ++;
+    }
+
+    void put()
+    {
+        if ( !_ptr.slab() )
+            return;
+
+        ASSERT_LEQ( 1, count() );
+        if ( ! -- count() ) /* TODO refactor */
+        {
+            typename SlavePool::Master::FreeList fl;
+            fl.count = 1;
+            fl.head = _ptr;
+            auto block = _pool._m->block[ _ptr.slab() ];
+            int sz = block->itemsize;
+            const char *mem = block->data + _ptr.chunk() * ( sz > 1 ? align( sz , 4 ) : sz );
+            _pool._m->freelist_return( sz, fl );
+            _pool._m->valgrind_dealloc( _ptr, mem, sz );
+        }
+    }
+
+    RefCnt() {}
+    RefCnt( SlavePool &s, Pointer p ) : _pool( s ), _ptr( p )    { get(); }
+    RefCnt( const RefCnt &o ) : _pool( o._pool ), _ptr( o._ptr ) { get(); }
+
+    RefCnt &operator=( const RefCnt &r )
+    {
+        if ( &r == this )
+            return *this;
+
+        put();
+        _pool = r._pool;
+        _ptr = r._ptr;
+        get();
+        return *this;
+    }
+
+    ~RefCnt() { put(); }
 };
 
 template< typename P >
@@ -828,6 +889,27 @@ struct Pool
             ASSERT_EQ( *a.template machinePointer< int >( p[i] ), i );
             ASSERT_EQ( *b.template machinePointer< int >( p[i] ), i ) ;
         }
+    }
+
+    TEST(refcnt)
+    {
+        using SP = mem::SlavePool< _Pool >;
+
+        _Pool pool;
+        SP slave( pool );
+
+        auto p = pool.allocate( 10 );
+        {
+            mem::RefCnt< SP > ref( slave, p );
+            ASSERT_EQ( ref.count(), 1 );
+            {
+                auto ref2 = ref;
+                ASSERT_EQ( ref.count(), 2 );
+            }
+            ASSERT_EQ( ref.count(), 1 );
+            ASSERT_EQ( pool.stats().total.bytes.used, 10 );
+        }
+        ASSERT_EQ( pool.stats().total.bytes.used, 0 );
     }
 
     TEST(parallel)
