@@ -47,13 +47,15 @@ template< typename Program, typename Heap >
 struct Node
 {
     using Snapshot = typename Heap::Snapshot;
+    using Context = DNContext< Heap >;
 
-    DNContext< Heap > _ctx;
+    Context _ctx;
 
     GenericPointer _address;
     int _offset;
     Snapshot _snapshot;
     DNKind _kind;
+    brick::mem::RefCnt< typename Context::RefCnt > _ref;
 
     std::map< std::string, int > _related_count;
     std::set< GenericPointer > _related_ptrs;
@@ -97,7 +99,7 @@ struct Node
     }
 
     Node( const DNContext< Heap > &ctx, Snapshot s )
-        : _ctx( ctx ), _snapshot( s )
+        : _ctx( ctx ), _snapshot( s ), _ref( _ctx._refcnt, s )
     {
         _type = nullptr;
         _di_type = nullptr;
@@ -118,6 +120,7 @@ struct Node
     void relocate( typename Heap::Snapshot s )
     {
         _ctx.load( s );
+        _ref = decltype( _ref )( _ctx._refcnt, s );
         address( _kind, _address );
     }
 

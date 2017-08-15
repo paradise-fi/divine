@@ -32,10 +32,25 @@ namespace divine::vm::dbg
 template< typename Heap >
 struct DNContext : vm::Context< Program, Heap >
 {
+    using Super = vm::Context< Program, Heap >;
+    using Snapshot = typename Heap::Snapshot;
+    using RefCnt = brick::mem::SlavePool< typename Heap::SnapPool >;
+
     Info *_debug;
+    RefCnt _refcnt;
+
     Info &debug() { return *_debug; }
     DNContext( Program &p, Info &i, const Heap &h )
-        : vm::Context< Program, Heap >( p, h ), _debug( &i ) {}
+        : Super( p, h ), _debug( &i ), _refcnt( this->heap()._snapshots ) {}
+
+    template< typename Ctx >
+    void load( const Ctx &ctx )
+    {
+        Super::load( ctx );
+        _refcnt = RefCnt( this->heap()._snapshots );
+    }
+
+    void load( typename Heap::Snapshot snap ) { Super::load( snap ); }
 };
 
 template< typename Heap >
