@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstdarg>
 #include <divine/metadata.h>
+#include <cxxabi.h>
 
 #include <dios/core/main.hpp>
 #include <dios/core/trace.hpp>
@@ -42,6 +43,32 @@ struct Fault: public Next {
 
         uint8_t faultConfig[ _DiOS_SF_Last ];
     };
+
+    struct MallocNofailGuard {
+    private:
+        MallocNofailGuard( Fault< Next >& f )
+            : _f( f ),
+              _config( _f.getCurrentConfig() ),
+              _s( _config[ _DiOS_SF_Malloc ] )
+        {
+            _config[ _DiOS_SF_Malloc ] = 0;
+            _f.updateSimFail();
+        }
+    public:
+        ~MallocNofailGuard() {
+            _config[ _DiOS_SF_Malloc ] = _s;
+            _f.updateSimFail();
+        }
+
+        Fault< Next >& _f;
+        uint8_t *_config;
+        uint8_t _s;
+
+        friend struct Fault< Next >;
+    };
+
+    MallocNofailGuard makeMallocNofail() {
+        return { *this };
     }
 
     Fault()
@@ -128,9 +155,23 @@ struct Fault: public Next {
                 traceInternal( 0, "Fault in userspace: %s", fault_to_str( what ).c_str() );
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
             traceInternal( 0, "Backtrace:" );
-            int i = 0;
-            for ( auto *f = frame; f != nullptr; f = f->parent ) {
-                traceInternal( 0, "  %d: %s", ++i, __md_get_pc_meta( f->pc )->name );
+
+            {
+                auto guard = makeMallocNofail();
+                char *buffer = static_cast< char * >( malloc( 1024 ) );
+                size_t len = 1024;
+                int i = 0;
+                for ( auto *f = frame; f != nullptr; f = f->parent ) {
+                    const char *name = __md_get_pc_meta( f->pc )->name;
+                    int status;
+                    char *b = __cxxabiv1::__cxa_demangle( name, buffer, &len, &status );
+                    if ( b )
+                        traceInternal( 0, "  %d: %s", ++i, b );
+                    else
+                        traceInternal( 0, "  %d: %s", ++i, name );
+                    free( b );
+                }
+                free( buffer );
             }
 
             if ( !ready || !( fault_cfg & FaultFlag::Continue ) )
