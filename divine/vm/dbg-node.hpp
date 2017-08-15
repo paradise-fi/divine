@@ -68,15 +68,6 @@ struct Node
 
     using PointerV = value::Pointer;
 
-    void init()
-    {
-        _type = nullptr;
-        _di_type = nullptr;
-        _di_var = nullptr;
-        _kind = DNKind::Object;
-        _offset = 0;
-    }
-
     void di_var( llvm::DIVariable *var )
     {
         _di_var = var;
@@ -113,6 +104,13 @@ struct Node
         _di_var = nullptr;
         _kind = DNKind::Object;
         _offset = 0;
+
+        _ctx.debug().initPretty( [&]( llvm::DIType *di ) {
+            static const int offset = strlen( "typeinfo name for " );
+            if ( auto dic = llvm::dyn_cast< llvm::DICompositeType >( di ) )
+                return print::demangle( dic->getIdentifier().str() ).substr( offset );
+            return di_name( di, false, false );
+        } );
     }
 
     Node( const Node &o ) = default;
