@@ -411,9 +411,7 @@ struct Scheduler : public Next {
 
     Thread* getCurrentThread() {
         auto tid = __dios_get_thread_handle();
-        auto thread = threads.find( tid );
-        __dios_assert( thread );
-        return thread;
+        return threads.find( tid );
     }
 
     pid_t getpid() {
