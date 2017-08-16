@@ -851,6 +851,14 @@ int pthread_mutex_unlock( pthread_mutex_t *mutex ) noexcept {
         return EINVAL; // mutex does not refer to an initialized mutex object
     }
 
+    if ( mutex->__owner == nullptr ) {
+        if ( mutex->__type == PTHREAD_MUTEX_NORMAL )
+            __dios_fault( _VM_Fault::_VM_F_Locking,
+                          "Attempting to unlock mutex which is not locked." );
+        else
+            return EPERM;
+    }
+
     if ( mutex->__owner != &thr ) {
         // mutex is not locked or it is already locked by another thread
         assert( mutex->__lockCounter ); // count should be > 0
