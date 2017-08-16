@@ -157,13 +157,14 @@ struct Substitute {
     { }
 
     static llvm::AtomicOrdering castmemord( MemoryOrder mo ) {
-        switch ( mo ) {
+        switch ( MemoryOrder( uint32_t( mo ) & ~uint32_t( MemoryOrder::AtomicOp ) ) ) {
             case MemoryOrder::Unordered: return llvm::AtomicOrdering::Unordered;
             case MemoryOrder::Monotonic: return llvm::AtomicOrdering::Monotonic;
             case MemoryOrder::Acquire: return llvm::AtomicOrdering::Acquire;
             case MemoryOrder::Release: return llvm::AtomicOrdering::Release;
             case MemoryOrder::AcqRel: return llvm::AtomicOrdering::AcquireRelease;
             case MemoryOrder::SeqCst: return llvm::AtomicOrdering::SequentiallyConsistent;
+            case MemoryOrder::AtomicOp: UNREACHABLE( "cannot happen" );
         }
     }
 
@@ -227,7 +228,7 @@ struct Substitute {
                         config.rmw = MemoryOrder::SeqCst;
                     } else if ( opt == "tso" ) {
                         config.setAll( MemoryOrder::AcqRel );
-                    } else if ( opt == "std" ) {
+                    } else if ( opt == "pso" ) {
                         // no reconfiguration
                     } else {
                         while ( !opt.empty() ) {
@@ -343,7 +344,7 @@ struct Substitute {
         _store = get( "__lart_weakmem_store" );
         _load = get( "__lart_weakmem_load" );
         _fence = get( "__lart_weakmem_fence" );
-        _sync = get( "__lart_weakmem_sync" );
+        _cas = get( "__lart_weakmem_cas" );
         _cleanup = get( "__lart_weakmem_cleanup" );
         _resize = get( "__lart_weakmem_resize" );
         _memmove = get( "memmove" );
@@ -353,7 +354,7 @@ struct Substitute {
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
-        auto inteface = { _store, _load, _fence, _sync, _cleanup, _resize, flusher };
+        auto inteface = { _store, _load, _fence, _cas, _cleanup, _resize, flusher };
         for ( auto i : inteface ) {
             _cloneMap.emplace( i, i );
         }
@@ -526,11 +527,34 @@ struct Substitute {
     {
         auto &ctx = f.getContext();
         auto *i8ptr = llvm::Type::getInt8PtrTy( ctx );
+        auto *i64 = llvm::Type::getInt64Ty( ctx );
+        auto *i32 = llvm::Type::getInt32Ty( ctx );
+
+        auto addrCast = [i8ptr]( llvm::Value *op, llvm::IRBuilder<> &builder )
+        {
+            auto ety = llvm::cast< llvm::PointerType >( op->getType() )->getElementType();
+            if ( !ety->isIntegerTy() || ety->getPrimitiveSizeInBits() != 8 ) {
+                return builder.CreateBitCast( op, i8ptr );
+            }
+            return op;
+        };
+        auto i64Cast = [i64]( llvm::Value *op, llvm::IRBuilder<> &builder ) {
+            return builder.CreateIntCast( op, i64, false );
+        };
+
+        auto bw = [&, i32]( llvm::Value *op ) {
+            return getBitwidth( op->getType(), ctx, dl );
+        };
+
+        auto mo = [this]( MemoryOrder mo ) {
+            return llvm::ConstantInt::get( _moTy, uint64_t( usememord( mo ) ) );
+        };
 
         // fist translate atomics, so that if they are translated to
         // non-atomic equievalents under mask these are later converted to TSO
         std::vector< llvm::AtomicCmpXchgInst * > cass;
         std::vector< llvm::AtomicRMWInst * > ats;
+        std::set< llvm::Instruction * > atomicOps;
 
         for ( auto &i : query::query( f ).flatten() ) {
             if ( reduction::isSilent( i, silentID ) )
@@ -547,10 +571,8 @@ struct Substitute {
         }
 
         for ( auto cas : cass ) {
-            // we don't need to consider failure ordering for TSO, this is the same case
-            // as ordering for load instruction
-            auto succord = castmemord( castmemord( cas->getSuccessOrdering() ) | _config.casOK );
-            auto failord = castmemord( castmemord( cas->getFailureOrdering() ) | _config.casFail );
+            auto succord = castmemord( cas->getSuccessOrdering() ) | _config.casOK;
+            auto failord = castmemord( cas->getFailureOrdering() ) | _config.casFail;
             /* transform:
              *    something
              *    %valsucc = cmpxchg %ptr, %cmp, %val succord failord
@@ -558,59 +580,28 @@ struct Substitute {
              *
              * into:
              *    something
-             *    %v = call lctx.mask()
-             *    %orig = load %ptr failord
+             *    %orig = call wm_cas(%ptr, %cmp, %val, bw, succord, failord)
              *    %eq = icmp eq %orig, %cmp
-             *    br %eq, %ifeq, %end
-             *
-             *   ifeq:
-             *    fence succord
-             *    store %ptr, %val succord
-             *    br %end
-             *
-             *   end:
              *    %r0 = insertvalue undef, %orig, 0
-             *    %valsucc = insertvalue %0, %ew, 1
-             *    call lctx.restoreMask( v )
+             *    %valsucc = insertvalue %0, %eq, 1
              *    something_else
             */
-            auto *rt = cas->getType();
             auto *ptr = cas->getPointerOperand();
             auto *cmp = cas->getCompareOperand();
             auto *val = cas->getNewValOperand();
-            auto *bb = cas->getParent();
+            auto *rt = cas->getType();
 
-            auto *end = bb->splitBasicBlock( cas, "lart.weakmem.cmpxchg.end" ); // adds br instead of cas, cas is at beginning of new bb
-            auto *ifeq = llvm::BasicBlock::Create( ctx, "lart.weakmem.cmpxchg.ifeq", &f, end );
-
-            llvm::IRBuilder<> irb( bb->getTerminator() );
-            auto *mask = lctx.insertSetMask( irb );
-            auto *vptr = irb.CreateBitCast( ptr, i8ptr );
-            auto *orig = irb.CreateLoad( ptr, "lart.weakmem.cmpxchg.orig" );
-            orig->setAtomic( failord );
-            irb.CreateCall( _sync, { vptr, // TODO: probably wrong
-                                     getBitwidth( ptr->getType(), ctx, dl ),
-                                     llvm::ConstantInt::get( _moTy, uint64_t( usememord( castmemord( failord ) ) ) )
-                                   } );
-            auto *eq = irb.CreateICmpEQ( orig, cmp, "lart.weakmem.cmpxchg.eq" );
-            llvm::ReplaceInstWithInst( bb->getTerminator(), llvm::BranchInst::Create( ifeq, end, eq ) );
-
-            irb.SetInsertPoint( ifeq );
-            if ( succord != failord )
-                irb.CreateCall( _sync, { vptr,
-                                         getBitwidth( ptr->getType(), ctx, dl ),
-                                         llvm::ConstantInt::get( _moTy, uint64_t( usememord( castmemord( succord ) ) ) )
-                                       } );
-            irb.CreateStore( val, ptr )->setAtomic( succord );
-            irb.CreateBr( end );
-
-            irb.SetInsertPoint( end->getFirstInsertionPt() );
-            auto *r0 = irb.CreateInsertValue( llvm::UndefValue::get( rt ), orig, { 0 } );
-            auto *r = irb.CreateInsertValue( r0, eq, { 1 } );
-            lctx.insertRestoreMask( irb, mask );
-
-            cas->replaceAllUsesWith( r );
-            cas->eraseFromParent();
+            llvm::IRBuilder<> builder( cas );
+            auto *orig = builder.CreateCall( _cas, { addrCast( ptr, builder ),
+                                                     i64Cast( cmp, builder ),
+                                                     i64Cast( val, builder ),
+                                                     bw( val ),
+                                                     mo( succord ), mo( failord ) } );
+            auto *eq = builder.CreateICmpEQ( orig, cmp );
+            auto *r0 = builder.CreateInsertValue( llvm::UndefValue::get( rt ), orig, { 0 } );
+            auto *r = llvm::cast< llvm::Instruction >( builder.CreateInsertValue( r0, eq, { 1 } ) );
+            r->removeFromParent();
+            llvm::ReplaceInstWithInst( cas, r );
         }
         for ( auto *at : ats ) {
             auto aord = castmemord( castmemord( at->getOrdering() ) | _config.rmw );
@@ -622,10 +613,7 @@ struct Substitute {
             auto *mask = lctx.insertSetMask( irb );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.atomicrmw.orig" );
             orig->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord, InstType::Load ) );
-            irb.CreateCall( _sync, { irb.CreateBitCast( ptr, i8ptr ),
-                                     getBitwidth( ptr->getType(), ctx, dl ),
-                                     llvm::ConstantInt::get( _moTy, uint64_t( usememord( castmemord( aord ) ) ) )
-                                   } );
+            atomicOps.insert( orig );
 
             switch ( op ) {
                 case llvm::AtomicRMWInst::Xchg: break;
@@ -664,8 +652,10 @@ struct Substitute {
                     UNREACHABLE( "weakmem: bad binop in AtomicRMW" );
             }
 
-            irb.CreateStore( val, ptr )->setAtomic( usememord(
-                    aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Release : aord, InstType::Store ) );
+            auto *store = irb.CreateStore( val, ptr );
+            store->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease
+                        ? llvm::AtomicOrdering::Release : aord, InstType::Store ) );
+            atomicOps.insert( store );
             lctx.insertRestoreMask( irb, mask );
 
             at->replaceAllUsesWith( orig );
@@ -809,7 +799,7 @@ struct Substitute {
     int _bufferSize;
     LLVMFunctionSet _bypass;
     util::Map< llvm::Function *, llvm::Function * > _cloneMap;
-    llvm::Function *_store = nullptr, *_load = nullptr, *_fence = nullptr, *_sync = nullptr;
+    llvm::Function *_store = nullptr, *_load = nullptr, *_fence = nullptr, *_cas = nullptr;
     llvm::Function *_memmove = nullptr, *_memcpy = nullptr, *_memset = nullptr;
     llvm::Function *_scmemmove = nullptr, *_scmemcpy = nullptr, *_scmemset = nullptr;
     llvm::Function *_cleanup = nullptr, *_resize = nullptr;
