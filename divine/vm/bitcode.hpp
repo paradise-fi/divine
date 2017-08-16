@@ -58,6 +58,7 @@ struct BitCode {
     bool _reduce = false, _symbolic = false, _sequential = false;
     Env _env;
     std::vector< std::string > _lart;
+    std::string _relaxed;
 
     Program &program() { ASSERT( _program.get() ); return *_program.get(); }
     dbg::Info &debug() { ASSERT( _dbg.get() ); return *_dbg.get(); }
@@ -72,6 +73,7 @@ struct BitCode {
     void symbolic( bool s ) { _symbolic = s; }
     void environment( Env env ) { _env = env; }
     void lart( std::vector< std::string > passes ) { _lart = passes; }
+    void relaxed( std::string r ) { _relaxed = r; }
 
     void do_lart();
     void do_rr();

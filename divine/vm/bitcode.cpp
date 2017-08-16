@@ -83,6 +83,10 @@ void BitCode::do_lart()
 
     if ( _autotrace )
         lart.setup( lart::divine::autotracePass() );
+
+    if ( !_relaxed.empty() )
+        lart.setup( "weakmem:" + _relaxed );
+
     lart.setup( lart::divine::lowering() );
     // reduce again before metadata are added to possibly tweak some generated
     // code + perform static tau

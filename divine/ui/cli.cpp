@@ -239,6 +239,7 @@ void WithBC::setup()
     _bc->sequential( _sequential );
     _bc->symbolic( _symbolic );
     _bc->lart( _lartPasses );
+    _bc->relaxed( _relaxed );
 }
 
 void WithBC::init()

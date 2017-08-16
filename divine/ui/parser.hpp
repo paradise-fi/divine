@@ -159,6 +159,8 @@ struct CLI : Interface
             .option( "[-std={string}]", &WithBC::_std, "set the C or C++ standard to use"s )
             .option( "[--disable-static-reduction]", &WithBC::_disableStaticReduction,
                      "disable static (transformation based) state space reductions"s )
+            .option( "[--relaxed-memory {string}]", &WithBC::_relaxed,
+                     "enable relaxed memory semantics (tso|pso[:N]) where N is size of buffers"s )
             .option( "[--lart {string}]", &WithBC::_lartPasses,
                      "run an additional LART pass in the loader" )
             .option( "[-o {string}|-o{string}]", &WithBC::_systemopts, "system options"s )

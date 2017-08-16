@@ -73,6 +73,7 @@ struct WithBC : Command
     std::string _solver;
     bool _init_done = false;
     SinkPtr _log = nullsink();
+    std::string _relaxed;
 
     void setup();
     void init();
