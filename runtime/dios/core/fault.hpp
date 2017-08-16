@@ -28,6 +28,7 @@ enum FaultFlag
     Continue      = 0x02,
     UserSpec      = 0x04,
     AllowOverride = 0x08,
+    Artificial    = 0x10
 };
 
 template < typename Next >
@@ -60,11 +61,11 @@ struct Fault: public Next {
             _f.updateSimFail();
         }
 
-        Fault< Next >& _f;
+        Fault& _f;
         uint8_t *_config;
         uint8_t _s;
 
-        friend struct Fault< Next >;
+        friend Fault;
     };
 
     MallocNofailGuard makeMallocNofail() {
@@ -117,7 +118,10 @@ struct Fault: public Next {
     }
 
     uint8_t *getCurrentConfig() {
-        return static_cast< Process * >( Next::getCurrentThread()->_proc )->faultConfig;
+        auto *thread = Next::getCurrentThread();
+        if ( !thread )
+            return nullptr;
+        return static_cast< Process * >( thread->_proc )->faultConfig;
     }
 
     void updateSimFail( uint8_t *config = nullptr ) {
@@ -139,6 +143,23 @@ struct Fault: public Next {
             ( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent = nullptr;
     }
 
+    void backtrace( _VM_Frame * frame ) {
+        auto guard = makeMallocNofail();
+        char *buffer = static_cast< char * >( malloc( 1024 ) );
+        size_t len = 1024;
+        int i = 0;
+        for ( auto *f = frame; f != nullptr; f = f->parent ) {
+            const char *name = __md_get_pc_meta( f->pc )->name;
+            int status;
+            char *b = __cxxabiv1::__cxa_demangle( name, buffer, &len, &status );
+            if ( b )
+                traceInternal( 0, "  %d: %s", ++i, b );
+            else
+                traceInternal( 0, "  %d: %s", ++i, name );
+        }
+        free( buffer );
+    }
+
     void fault_handler( int kernel, _VM_Frame * frame, int what )  {
         InTrace _; // avoid dumping what we do
 
@@ -147,7 +168,9 @@ struct Fault: public Next {
             terminate();
         }
 
-        uint8_t fault_cfg = getCurrentConfig()[ what ];
+        auto *cfg = getCurrentConfig();
+        // If no thread exists, trigger the fault
+        uint8_t fault_cfg = cfg ? cfg[ what ] : FaultFlag::Enabled;
         if ( !ready || fault_cfg & FaultFlag::Enabled ) {
             if ( kernel )
                 traceInternal( 0, "Fault in kernel: %s", fault_to_str( what ).c_str() );
@@ -155,24 +178,7 @@ struct Fault: public Next {
                 traceInternal( 0, "Fault in userspace: %s", fault_to_str( what ).c_str() );
             __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Error, _VM_CF_Error );
             traceInternal( 0, "Backtrace:" );
-
-            {
-                auto guard = makeMallocNofail();
-                char *buffer = static_cast< char * >( malloc( 1024 ) );
-                size_t len = 1024;
-                int i = 0;
-                for ( auto *f = frame; f != nullptr; f = f->parent ) {
-                    const char *name = __md_get_pc_meta( f->pc )->name;
-                    int status;
-                    char *b = __cxxabiv1::__cxa_demangle( name, buffer, &len, &status );
-                    if ( b )
-                        traceInternal( 0, "  %d: %s", ++i, b );
-                    else
-                        traceInternal( 0, "  %d: %s", ++i, name );
-                    free( b );
-                }
-                free( buffer );
-            }
+            backtrace( frame );
 
             if ( !ready || !( fault_cfg & FaultFlag::Continue ) )
                 terminate();
