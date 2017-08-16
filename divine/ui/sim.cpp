@@ -170,6 +170,75 @@ struct Interpreter
 
     static bool *_sigint;
 
+    auto make_parser() {
+        auto v = cmd::make_validator()->
+             add( "function", []( std::string s, auto good, auto bad )
+                  {
+                      if ( isdigit( s[0] ) ) /* FIXME! zisit, kde sa to rozbije */
+                          return bad( cmd::BadFormat, "function names cannot start with a digit" );
+                      return good( s );
+                  } );
+
+        auto varopts = cmd::make_option_set< command::WithVar >( v )
+            .option( "[{string}]", &command::WithVar::var, "a variable reference"s );
+        auto breakopts = cmd::make_option_set< command::Break >( v )
+            .option( "[--delete {int}|--delete {function}]",
+                    &command::Break::del, "delete the designated breakpoint(s)"s )
+            .option( "[--list]", &command::Break::list, "list breakpoints"s );
+        auto showopts = cmd::make_option_set< command::Show >( v )
+            .option( "[--raw]", &command::Show::raw, "dump raw data"s )
+            .option( "[--depth {int}]", &command::Show::depth, "maximal component unfolding"s )
+            .option( "[--deref {int}]", &command::Show::deref, "maximal pointer dereference unfolding"s );
+        auto stepopts = cmd::make_option_set< command::WithSteps >( v )
+            .option( "[--over]", &command::WithSteps::over, "execute calls as one step"s )
+            .option( "[--quiet]", &command::WithSteps::quiet, "suppress output"s )
+            .option( "[--verbose]", &command::WithSteps::verbose, "increase verbosity"s )
+            .option( "[--count {int}]", &command::WithSteps::count, "execute {int} steps (default = 1)"s );
+        auto startopts = cmd::make_option_set< command::Start >( v )
+            .option( "[--verbose]", &command::Start::verbose, "increase verbosity"s );
+        auto stepoutopts = cmd::make_option_set< command::WithSteps >( v )
+            .option( "[--out]", &command::WithSteps::out, "execute until the current function returns"s );
+        auto threadopts = cmd::make_option_set< command::Thread >( v )
+            .option( "[--random]", &command::Thread::random, "pick the thread to run randomly"s )
+            .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
+        auto setupopts = cmd::make_option_set< command::Setup >( v )
+            .option( "[--debug-kernel]", &command::Setup::debug_kernel, "enable kernel debugging"s )
+            .option( "[--sticky {string}]", &command::Setup::sticky_commands, "run given commands after each step"s );
+        auto o_trace = cmd::make_option_set< command::Trace >( v )
+            .option( "[--from {string}]", &command::Trace::from,
+                    "start in a given state, instead of initial"s );
+        auto dotopts = cmd::make_option_set< command::Dot >( v )
+            .option( "[-T{string}|-T {string}]", &command::Dot::type,
+                    "type of output (none,ps,svg,png…)"s )
+            .option( "[-o{string}|-o {string}]", &command::Dot::output_file,
+                    "file to write output to"s );
+
+        return cmd::make_parser( v )
+            .command< command::Exit >( "exit from divine"s )
+            .command< command::Help >( "show this help, or describe a particular command in more detail"s,
+                                    cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
+            .command< command::Start >( "boot the system and stop at main()"s, startopts )
+            .command< command::Break >( "insert a breakpoint"s, &command::Break::where, breakopts )
+            .command< command::StepA >( "execute one atomic action"s, stepopts )
+            .command< command::Step >( "execute source line"s, varopts, stepopts, stepoutopts )
+            .command< command::StepI >( "execute one instruction"s, varopts, stepopts )
+            .command< command::Rewind >( "rewind to a stored program state"s, varopts )
+            .command< command::Set >( "set a variable "s, &command::Set::options )
+            .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
+            .command< command::Source >( "show the source code of the current function"s, varopts )
+            .command< command::Thread >( "control thread scheduling"s, threadopts )
+            .command< command::Trace >( "load a counterexample trace"s,
+                                        &command::Trace::choices, o_trace )
+            .command< command::Show >( "show an object"s, varopts, showopts )
+            .command< command::Draw >( "draw a portion of the heap"s, varopts )
+            .command< command::Dot >( "draw a portion of the heap to a file of given type"s, varopts, dotopts )
+            .command< command::Setup >( "set configuration options"s, setupopts )
+            .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
+            .command< command::BackTrace >( "show a stack trace"s, varopts )
+            .command< command::Up >( "move up the stack (towards caller)"s )
+            .command< command::Down >( "move down the stack (towards callee)"s );
+    }
+
     void command( cmd::Tokens cmd );
     char *prompt() { return _prompt; }
 
@@ -821,83 +890,10 @@ void sigint_handler( int raised )
 
 void Interpreter::command( cmd::Tokens tok )
 {
-    auto v = cmd::make_validator()->
-             add( "function", []( std::string s, auto good, auto bad )
-                  {
-                      if ( isdigit( s[0] ) ) /* FIXME! zisit, kde sa to rozbije */
-                          return bad( cmd::BadFormat, "function names cannot start with a digit" );
-                      return good( s );
-                  } );
-
-    auto varopts = cmd::make_option_set< command::WithVar >( v )
-        .option( "[{string}]", &command::WithVar::var, "a variable reference"s );
-    auto breakopts = cmd::make_option_set< command::Break >( v )
-        .option( "[--delete {int}|--delete {function}]",
-                 &command::Break::del, "delete the designated breakpoint(s)"s )
-        .option( "[--list]", &command::Break::list, "list breakpoints"s );
-    auto showopts = cmd::make_option_set< command::Show >( v )
-        .option( "[--raw]", &command::Show::raw, "dump raw data"s )
-        .option( "[--depth {int}]", &command::Show::depth, "maximal component unfolding"s )
-        .option( "[--deref {int}]", &command::Show::deref, "maximal pointer dereference unfolding"s );
-    auto stepopts = cmd::make_option_set< command::WithSteps >( v )
-        .option( "[--over]", &command::WithSteps::over, "execute calls as one step"s )
-        .option( "[--quiet]", &command::WithSteps::quiet, "suppress output"s )
-        .option( "[--verbose]", &command::WithSteps::verbose, "increase verbosity"s )
-        .option( "[--count {int}]", &command::WithSteps::count, "execute {int} steps (default = 1)"s );
-    auto startopts = cmd::make_option_set< command::Start >( v )
-        .option( "[--verbose]", &command::Start::verbose, "increase verbosity"s );
-    auto stepoutopts = cmd::make_option_set< command::WithSteps >( v )
-        .option( "[--out]", &command::WithSteps::out, "execute until the current function returns"s );
-    auto threadopts = cmd::make_option_set< command::Thread >( v )
-        .option( "[--random]", &command::Thread::random, "pick the thread to run randomly"s )
-        .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
-    auto setupopts = cmd::make_option_set< command::Setup >( v )
-        .option( "[--debug-kernel]", &command::Setup::debug_kernel, "enable kernel debugging"s );
-    auto o_trace = cmd::make_option_set< command::Trace >( v )
-        .option( "[--from {string}]", &command::Trace::from,
-                 "start in a given state, instead of initial"s );
-    auto dotopts = cmd::make_option_set< command::Dot >( v )
-        .option( "[-T{string}|-T {string}]", &command::Dot::type,
-                 "type of output (none,ps,svg,png…)"s )
-        .option( "[-o{string}|-o {string}]", &command::Dot::output_file,
-                "file to write output to"s );
-
-    auto parser = cmd::make_parser( v )
-        .command< command::Exit >( "exit from divine"s )
-        .command< command::Help >( "show this help, or describe a particular command in more detail"s,
-                                   cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
-        .command< command::Start >( "boot the system and stop at main()"s, startopts )
-        .command< command::Break >( "insert a breakpoint"s, &command::Break::where, breakopts )
-        .command< command::StepA >( "execute one atomic action"s, stepopts )
-        .command< command::Step >( "execute source line"s, varopts, stepopts, stepoutopts )
-        .command< command::StepI >( "execute one instruction"s, varopts, stepopts )
-        .command< command::Rewind >( "rewind to a stored program state"s, varopts )
-        .command< command::Set >( "set a variable "s, &command::Set::options )
-        .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
-        .command< command::Source >( "show the source code of the current function"s, varopts )
-        .command< command::Thread >( "control thread scheduling"s, threadopts )
-        .command< command::Trace >( "load a counterexample trace"s,
-                                    &command::Trace::choices, o_trace )
-        .command< command::Show >( "show an object"s, varopts, showopts )
-        .command< command::Draw >( "draw a portion of the heap"s, varopts )
-        .command< command::Dot >( "draw a portion of the heap to a file of given type"s, varopts, dotopts )
-        .command< command::Setup >( "set configuration options"s, setupopts )
-        .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
-        .command< command::BackTrace >( "show a stack trace"s, varopts )
-        .command< command::Up >( "move up the stack (towards caller)"s )
-        .command< command::Down >( "move down the stack (towards callee)"s );
-
-    try {
-        auto cmd = parser.parse( tok.begin(), tok.end() );
-        cmd.match( [&] ( command::Help h ) { help( parser, h._cmd ); },
-                   [&] ( auto opt ) { go( opt ); } );
-        update();
-    }
-    catch ( brick::except::Error &e )
-    {
-        std::cerr << "ERROR: " << e.what() << std::endl;
-        return;
-    }
+    auto parser = make_parser();
+    auto cmd = parser.parse( tok.begin(), tok.end() );
+    cmd.match( [&] ( command::Help h ) { help( parser, h._cmd ); },
+                [&] ( auto opt ) { go( opt ); finalize( opt ); } );
 }
 
 }
