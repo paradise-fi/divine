@@ -54,7 +54,7 @@ struct Replay : public Next {
         Next::setup( s );
     }
 
-    void finalize() 
+    void finalize()
     {
         while ( !_currents.empty()) {
             SyscallSnapshot *node = *_currents.begin();
@@ -107,29 +107,29 @@ struct Replay : public Next {
         return red;
     }
 
-    bool parseFile( int fd ) 
+    bool parseFile( int fd )
     {
         SyscallSnapshot *prev = nullptr;
         SyscallSnapshot *next = nullptr;
         while ( true ) {
             next = new_object< SyscallSnapshot >();
             bool stop = false;
-            if ( !getSyscall( fd, next, &stop )) 
+            if ( !getSyscall( fd, next, &stop ))
             {
                 __vm_obj_free( next );
                 return false;
             }
 
-            if ( stop ) 
+            if ( stop )
             {
                 return true;
             }
 
-            if ( prev == nullptr ) 
+            if ( prev == nullptr )
             {
                 _currents.insert( next );
                 prev = next;
-            } else 
+            } else
             {
                 prev->next = next;
                 prev = next;
@@ -137,7 +137,7 @@ struct Replay : public Next {
         }
     }
 
-    bool getSyscall( int fd, SyscallSnapshot *snapshot, bool *shouldStop ) 
+    bool getSyscall( int fd, SyscallSnapshot *snapshot, bool *shouldStop )
     {
         ssize_t red = 0;
         size_t length = 8 + sizeof( int ); //8 for SYSCALL:
@@ -147,18 +147,18 @@ struct Replay : public Next {
         red = readWrap( fd, nameBuf, length );
 
         //No data left
-        if ( red == 0 ) 
+        if ( red == 0 )
         {
             *shouldStop = true;
             return true;
         }
 
-        if ( red != length ) 
+        if ( red != length )
         {
             return false;
         }
 
-        if ( strncmp( "SYSCALL:", nameBuf, 8 )) 
+        if ( strncmp( "SYSCALL:", nameBuf, 8 ))
         {
             return false;
         }
@@ -190,7 +190,7 @@ struct Replay : public Next {
         length = sizeof( int );
         char errnoBuf[length];
         red = readWrap( fd, errnoBuf, length );
-        if ( red != length ) 
+        if ( red != length )
             return false;
         snapshot->_errno = *reinterpret_cast< int * >(errnoBuf);
 
@@ -233,9 +233,9 @@ struct Replay : public Next {
         gives a guess if it is even reasonable to try parsing given system call
         can be extended by some heuristics in the future
         */
-        bool isProcessible( int sysNumber ) 
+        bool isProcessible( int sysNumber )
         {
-            for ( auto& item : _currents ) 
+            for ( auto& item : _currents )
             {
                 if ( item->number == sysNumber )
                     return true;
@@ -244,7 +244,7 @@ struct Replay : public Next {
         }
 
         template< typename Out, class... Args >
-        bool parse( int sysNumber, UnVoid <Out>& rv, Args ... args ) 
+        bool parse( int sysNumber, UnVoid <Out>& rv, Args ... args )
         {
             for ( auto& item : _currents ) {
                 if ( item->number == sysNumber ) {
@@ -263,16 +263,16 @@ struct Replay : public Next {
             return false;
         }
 
-        int open( const char *pathname, int flags, mode_t mode ) 
+        int open( const char *pathname, int flags, mode_t mode )
         {
             UnVoid< int > rv;
-            if ( !isProcessible( _VM_SC_open )) 
+            if ( !isProcessible( _VM_SC_open ))
             {
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                 return rv.get();
             }
             int outType;
-            switch ( rv.size()) 
+            switch ( rv.size())
             {
                 case 4 :
                     outType = _VM_SC_Int32 | _VM_SC_Out;
@@ -281,11 +281,11 @@ struct Replay : public Next {
                     outType = _VM_SC_Int64 | _VM_SC_Out;
                     break;
             }
-            if ( !( flags & O_CREAT )) 
+            if ( !( flags & O_CREAT ))
             {
                 mode = 0;
             }
-            if ( !parse( _VM_SC_open, rv, Mem< const char * >( pathname ), flags, mode, _5, _6, _7 )) 
+            if ( !parse( _VM_SC_open, rv, Mem< const char * >( pathname ), flags, mode, _5, _6, _7 ))
             {
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                 return rv.get();
@@ -294,16 +294,16 @@ struct Replay : public Next {
         }
 
 
-        int fcntl( int fd, int cmd, va_list *vl ) 
+        int fcntl( int fd, int cmd, va_list *vl )
         {
             UnVoid< int > rv;
-            if ( !isProcessible( _VM_SC_open )) 
+            if ( !isProcessible( _VM_SC_open ))
             {
                 __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                 return rv.get();
             }
             int outType;
-            switch ( rv.size()) 
+            switch ( rv.size())
             {
                 case 4 :
                     outType = _VM_SC_Int32 | _VM_SC_Out;
@@ -312,16 +312,16 @@ struct Replay : public Next {
                     outType = _VM_SC_Int64 | _VM_SC_Out;
                     break;
             }
-            switch ( cmd ) 
+            switch ( cmd )
             {
                 case F_DUPFD:
                 case F_DUPFD_CLOEXEC:
                 case F_SETFD:
-                case F_SETFL: 
+                case F_SETFL:
                 {
                     int flag = va_arg( *vl, int );
                     va_end( *vl );
-                    if ( !parse( _VM_SC_open, rv, fd, cmd, flag, _5, _6, _7 )) 
+                    if ( !parse( _VM_SC_open, rv, fd, cmd, flag, _5, _6, _7 ))
                     {
                         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                         return rv.get();
@@ -330,7 +330,7 @@ struct Replay : public Next {
                     break;
                 default: {
                     va_end( *vl );
-                    if ( !parse( _VM_SC_open, rv, fd, cmd, _3, _4, _5, _6, _7 )) 
+                    if ( !parse( _VM_SC_open, rv, fd, cmd, _3, _4, _5, _6, _7 ))
                     {
                         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
                         return rv.get();

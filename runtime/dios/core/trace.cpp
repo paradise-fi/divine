@@ -57,7 +57,7 @@ void traceInternal( int indent, const char *fmt, ... ) noexcept
 void traceInFile( const char *file, const char *msg, size_t size ) noexcept
 {
     int fd;
-    auto err = __vm_syscall( __dios::_VM_SC_open, 
+    auto err = __vm_syscall( __dios::_VM_SC_open,
             _VM_SC_Out | _VM_SC_Int32, &fd,
             _VM_SC_In | _VM_SC_Mem, strlen( file ) + 1, file,
             _VM_SC_In | _VM_SC_Int32, O_WRONLY|O_CREAT|O_APPEND,
@@ -78,7 +78,7 @@ void traceInFile( const char *file, const char *msg, size_t size ) noexcept
    if (!written)
         __dios_trace_f("Error by writing into file");
 
-        err = __vm_syscall( __dios::_VM_SC_close, 
+        err = __vm_syscall( __dios::_VM_SC_close,
                 _VM_SC_Out | _VM_SC_Int32, &written, //reuse
                 _VM_SC_In | _VM_SC_Int32, fd );
    if (written == -1)
@@ -177,7 +177,7 @@ unmask:
 
 int __dios_clear_file( const char *name ) {
 
-    __vm_syscall( __dios::_VM_SC_unlink, 
+    __vm_syscall( __dios::_VM_SC_unlink,
             _VM_SC_In | _VM_SC_Mem, strlen( name ) + 1, name);
 
     return 1;

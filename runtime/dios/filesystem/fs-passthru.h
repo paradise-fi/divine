@@ -48,13 +48,13 @@ static size_t getPos( size_t num ) {
 }
 
 template< typename InputTuple, class... Args >
-int parse( __dios::Vector <String>& _out, InputTuple currTup, Pad, Args ... ) 
+int parse( __dios::Vector <String>& _out, InputTuple currTup, Pad, Args ... )
 {
     return brick::tuple::pass( __vm_syscall, currTup );
 }
 
 template< typename InputTuple >
-int parse( __dios::Vector <String>& _out, InputTuple currTup, Pad ) 
+int parse( __dios::Vector <String>& _out, InputTuple currTup, Pad )
 {
     return brick::tuple::pass( __vm_syscall, currTup );
 }
@@ -66,7 +66,7 @@ int parse( __dios::Vector <String>& _out, InputTuple tuple, Type process, Args .
 
 //parsing if Type is not Count<X>
 template< typename InputTuple, typename Type, class... Args >
-int parse( std::false_type, __dios::Vector <String>& _out, InputTuple currTup, Type process, Args ...args ) 
+int parse( std::false_type, __dios::Vector <String>& _out, InputTuple currTup, Type process, Args ...args )
 {
     auto toAdd = getArg( process );
 
@@ -78,7 +78,7 @@ int parse( std::false_type, __dios::Vector <String>& _out, InputTuple currTup, T
 
 //parsing if Type is Count<X>
 template< typename InputTuple, typename Type, class... Args >
-int parse( std::true_type, __dios::Vector <String>& _out, InputTuple currTup, Type process, Args ...args ) 
+int parse( std::true_type, __dios::Vector <String>& _out, InputTuple currTup, Type process, Args ...args )
 {
     auto toAdd = getArg( process );
     auto res = std::tuple_cat( currTup, toAdd );
@@ -89,7 +89,7 @@ int parse( std::true_type, __dios::Vector <String>& _out, InputTuple currTup, Ty
 
 //parsing if previous was Cout<X> and thus next argument defines size argument for it
 template< typename InputTuple, typename Type, class... Args >
-int parseWithCount( __dios::Vector <String>& _out, InputTuple currTup, Type process, Args ...args ) 
+int parseWithCount( __dios::Vector <String>& _out, InputTuple currTup, Type process, Args ...args )
 {
     auto toAdd = getArg( process );
 
@@ -104,7 +104,7 @@ int parseWithCount( __dios::Vector <String>& _out, InputTuple currTup, Type proc
 }
 
 template< typename InputTuple, typename Type, class... Args >
-int parse( __dios::Vector <String>& _out, InputTuple tuple, Type process, Args ... args ) 
+int parse( __dios::Vector <String>& _out, InputTuple tuple, Type process, Args ... args )
 {
     return parse( typename IsCout< Type >::type(), _out, tuple, process, args... );
 }
@@ -122,17 +122,17 @@ namespace fs {
             Next::setup( s );
         }
 
-        void finalize() 
+        void finalize()
         {
             Next::finalize();
         }
 
         template< typename ret >
-        void writeOut( UnVoid <ret>& output ) 
+        void writeOut( UnVoid <ret>& output )
         {
             // for parsing we need to know the  length of data first
             size_t fullFize = 0;
-            for ( auto& word : _out ) 
+            for ( auto& word : _out )
             {
                 fullFize += word.size();
             }
@@ -140,7 +140,7 @@ namespace fs {
             fullFize += sizeof( *output.address());
             __dios_trace_out( reinterpret_cast<const char *>(&fullFize), sizeof( &fullFize ));
 
-            for ( auto it = _out.rbegin(); it != _out.rend(); ++it ) 
+            for ( auto it = _out.rbegin(); it != _out.rend(); ++it )
             {
                 __dios_trace_out( it->data(), it->size());
             }
@@ -178,7 +178,7 @@ namespace fs {
 
     #include <dios/macro/tags_to_class.cleanup>
 
-        int open( const char *pathname, int flags, mode_t mode ) 
+        int open( const char *pathname, int flags, mode_t mode )
         {
             UnVoid< int > rv;
             int outType;
@@ -190,7 +190,7 @@ namespace fs {
                     outType = _VM_SC_Int64 | _VM_SC_Out;
                     break;
             }
-            if ( !( flags & O_CREAT )) 
+            if ( !( flags & O_CREAT ))
             {
                 mode = 0;
             }
@@ -205,11 +205,11 @@ namespace fs {
             return rv.get();
         }
 
-        int fcntl( int fd, int cmd, va_list *vl ) 
+        int fcntl( int fd, int cmd, va_list *vl )
         {
             UnVoid< int > rv;
             int outType;
-            switch ( rv.size()) 
+            switch ( rv.size())
             {
                 case 4 :
                     outType = _VM_SC_Int32 | _VM_SC_Out;
@@ -222,12 +222,12 @@ namespace fs {
             int sysnum = static_cast<int>(_VM_SC_open);
             __dios_trace_out( reinterpret_cast<const char *>(&sysnum), sizeof( int ));
             *__dios_get_errno() = 0;
-            switch ( cmd ) 
+            switch ( cmd )
             {
                 case F_DUPFD:
                 case F_DUPFD_CLOEXEC:
                 case F_SETFD:
-                case F_SETFL: 
+                case F_SETFL:
                 {
                     int flag = va_arg( *vl, int );
                     va_end( *vl );
@@ -235,7 +235,7 @@ namespace fs {
                     *__dios_get_errno() = parse( _out, input, fd, cmd, flag, _4 );
                 }
                     break;
-                default: 
+                default:
                 {
                     auto input = std::make_tuple( _VM_SC_open, outType, rv.address());
                     *__dios_get_errno() = parse( _out, input, fd, cmd, _3 );
