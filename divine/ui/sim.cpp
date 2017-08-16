@@ -41,9 +41,34 @@ namespace ui {
 using namespace std::literals;
 namespace cmd = brick::cmd;
 
+struct OneLineTokenizer {
+    OneLineTokenizer() : _tok( tok_init( nullptr ) ) {}
+    ~OneLineTokenizer() {
+        tok_end( _tok );
+    }
+
+    cmd::Tokens tokenize( const std::string& s ) {
+        int argc;
+        const char **argv;
+        int r = tok_str( _tok, s.c_str(), &argc, &argv );
+        if ( r == -1 )
+            throw brick::except::Error{ "Uknown tokenizer error" };
+        if ( r > 0 )
+            throw brick::except::Error{ "Unmatched quotes" };
+        cmd::Tokens ret;
+        std::copy_n( argv, argc, std::back_inserter( ret ) );
+        return ret;
+    }
+
+    ::Tokenizer *_tok;
+};
+
 namespace sim {
 
 namespace command {
+
+struct CastIron {}; // finalize with sticky commands
+struct Teflon {};   // finalize without sticky commands
 
 struct WithVar
 {
@@ -56,20 +81,20 @@ struct WithFrame : WithVar
     WithFrame() : WithVar( "$frame" ) {}
 };
 
-struct Set { std::vector< std::string > options; };
+struct Set : CastIron { std::vector< std::string > options; };
 struct WithSteps : WithFrame
 {
     bool over, out, quiet, verbose; int count;
     WithSteps() : over( false ), out( false ), quiet( false ), verbose( false ), count( 1 ) {}
 };
 
-struct Start
+struct Start : CastIron
 {
     bool verbose;
     Start() : verbose( false ) {}
 };
 
-struct Break
+struct Break : Teflon
 {
     std::vector< std::string > where;
     bool list;
@@ -77,22 +102,22 @@ struct Break
     Break() : list( false ) {}
 };
 
-struct StepI : WithSteps {};
-struct StepA : WithSteps {};
-struct Step : WithSteps {};
-struct Rewind : WithVar
+struct StepI : WithSteps, CastIron {};
+struct StepA : WithSteps, CastIron {};
+struct Step : WithSteps, CastIron {};
+struct Rewind : WithVar, CastIron
 {
     Rewind() : WithVar( "#last" ) {}
 };
 
-struct Show : WithVar
+struct Show : WithVar, Teflon
 {
     bool raw;
     int depth, deref;
     Show() : raw( false ), depth( 10 ), deref( 0 ) {}
 };
 
-struct Dot : WithVar
+struct Dot : WithVar, Teflon
 {
     std::string type = "none";
     std::string output_file;
@@ -104,31 +129,32 @@ struct Draw : Dot
 };
 
 struct Inspect : Show {};
-struct BitCode : WithFrame {};
-struct Source : WithFrame {};
-struct Thread  { std::string spec; bool random; };
-struct Trace
+struct BitCode : WithFrame, Teflon {};
+struct Source : WithFrame, Teflon {};
+struct Thread : CastIron  { std::string spec; bool random; };
+struct Trace : CastIron
 {
     std::string from;
     std::vector< std::string > choices;
 };
 
-struct BackTrace : WithVar
+struct BackTrace : WithVar, Teflon
 {
     BackTrace() : WithVar( "$top" ) {}
 };
 
-struct Setup
+struct Setup : Teflon
 {
     bool debug_kernel;
+    std::vector< std::string > sticky_commands;
     Setup() : debug_kernel( false ) {}
 };
 
-struct Down {};
-struct Up {};
+struct Down : CastIron {};
+struct Up : CastIron {};
 
-struct Exit {};
-struct Help { std::string _cmd; };
+struct Exit : Teflon {};
+struct Help : Teflon { std::string _cmd; };
 
 }
 
@@ -157,6 +183,8 @@ struct Interpreter
     std::pair< int, int > _sticky_tid;
     std::mt19937 _rand;
     bool _sched_random, _debug_kernel;
+
+    std::vector< cmd::Tokens > _stickyCommands;
 
     Context _ctx;
 
@@ -857,6 +885,11 @@ struct Interpreter
     void go( command::Setup set )
     {
         _debug_kernel = set.debug_kernel;
+        _stickyCommands.clear();
+        for ( const std::string& cmd : set.sticky_commands ) {
+            OneLineTokenizer tok;
+            _stickyCommands.push_back( tok.tokenize( cmd ) );
+        }
     }
 
     void go( command::Help ) { UNREACHABLE( "impossible case" ); }
@@ -868,6 +901,20 @@ struct Interpreter
             std::cerr << str::doc::manual_sim_md << std::endl
                       << "# Command overview" << std::endl << std::endl;
         std::cerr << p.describe( arg ) << std::endl;
+    }
+
+
+    void finalize( command::Teflon ) {
+        update();
+    }
+
+    void finalize( command::CastIron ) {
+        update();
+        auto parser = make_parser();
+        for ( auto t : _stickyCommands ) {
+            auto cmd = parser.parse( t.begin(), t.end() );
+            cmd.match( [&] ( auto opt ){ go( opt ); } );
+        }
     }
 };
 
@@ -948,11 +995,15 @@ void Sim::run()
         if ( _batch )
             std::cerr << "> " << cmd << std::flush;
 
-        /* TODO use tok_* for quoting support */
-        brick::string::Splitter split( "[ \t\n]+", std::regex::extended );
-        cmd::Tokens tok;
-        std::copy( split.begin( cmd ), split.end(), std::back_inserter( tok ) );
-        interp.command( tok );
+        try
+        {
+            OneLineTokenizer tok;
+            interp.command( tok.tokenize( cmd ) );
+        }
+        catch ( brick::except::Error &e )
+        {
+            std::cerr << "ERROR: " << e.what() << std::endl;
+        }
     }
 
     history( hist, &hist_ev, H_SAVE, hist_path.c_str() );
