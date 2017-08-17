@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e -o pipefail
 cat > sim.script
-grep '^>' sim.script | cut -c3- | divine sim --batch "$@" 2>&1 | tee sim.out
+grep '^>' sim.script | cut -c3- | divine sim --skip-init --batch "$@" 2>&1 | tee sim.out
 echo; echo = expected ==========
 cat sim.script
 echo; echo = matched ===========
