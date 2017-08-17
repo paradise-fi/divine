@@ -377,7 +377,7 @@ void swapStack( MutexGuard &g, Frame *f )
 using namespace nativeRuntime;
 
 // this is firts thing called from _start
-extern "C" void __native_start_rt() __attribute__((__annotate__("brick.llvm.prune.root"),
+extern "C" void __native_start_rt() __attribute__((__annotate__("divine.link.always"),
                                                    __visibility__("default")))
 {
     threads.emplace_back( nullptr ); // dummy thread 0 (invalid)

@@ -9,6 +9,7 @@
 
 #ifndef REGTEST
 
+__attribute__((__annotate__("divine.link.always")))
 __attribute__((optnone)) /* do not replace the memmove call below with a (recursive) memcpy */
 void * memcpy( void * _PDCLIB_restrict s1, const void * _PDCLIB_restrict s2, size_t n )
 {

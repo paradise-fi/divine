@@ -1,4 +1,4 @@
-#define _ROOT __attribute__((__annotate__("brick.llvm.prune.root")))
+#define _ROOT __attribute__((__annotate__("divine.link.always")))
 
 typedef unsigned char bool;
 typedef unsigned char uint8_t;

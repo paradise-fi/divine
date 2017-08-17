@@ -20,7 +20,7 @@
 #define CPP_END
 #define NOTHROW __attribute__((__nothrow__))
 #endif
-#define _ROOT __attribute__((__annotate__("brick.llvm.prune.root")))
+#define _ROOT __attribute__((__annotate__("divine.link.always")))
 
 EXTERN_C
 

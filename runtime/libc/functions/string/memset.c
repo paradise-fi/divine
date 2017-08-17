@@ -9,8 +9,9 @@
 
 #ifndef REGTEST
 
+__attribute__((__annotate__("lart.interrupt.skipcfl")))
+__attribute__((__annotate__("divine.link.always")))
 void * memset( void * s, int c, size_t n )
-    __attribute__((__annotate__("lart.interrupt.skipcfl")))
 {
     unsigned char * p = (unsigned char *) s;
     while ( n-- )

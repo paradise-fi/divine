@@ -9,7 +9,7 @@
 #endif
 
 #define _NOTHROW __attribute__((__nothrow__))
-#define _ROOT __attribute__((__annotate__("brick.llvm.prune.root")))
+#define _ROOT __attribute__((__annotate__("divine.link.always")))
 
 namespace abstract {
 
