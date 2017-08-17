@@ -38,8 +38,10 @@
 
 #if !defined(__cplusplus) || defined(_PDCLIB_CXX_VERSION)
    #define _PDCLIB_CXX_VERSION 0
-#elif __cplusplus == 201103L || __cplusplus == 201402L
-    #if __cplusplus == 201402L
+#elif __cplusplus >= 201103L && __cplusplus <= 201703L
+    #if __cplusplus > 201402L
+        #define _PDCLIB_CXX_VERSION 2017
+    #elif __cplusplus > 201103L
         #define _PDCLIB_CXX_VERSION 2014
     #else
         #define _PDCLIB_CXX_VERSION 2011
@@ -63,7 +65,7 @@
      */
    #define _PDCLIB_CXX_VERSION 1997
 #else
-    #if __cplusplus > 201402L
+    #if __cplusplus > 201703L
         #warning Unsupported _ _cplusplus (__cplusplus) (too new) (supported: ISO/IEC 14882:1997, ISO/IEC 14882:2011).
         #define _PDCLIB_CXX_VERSION 2015
     #else
