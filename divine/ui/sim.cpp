@@ -201,6 +201,8 @@ struct Interpreter
 
     static bool *_sigint;
 
+    std::ostream &out() { return std::cerr; }
+
     auto make_parser()
     {
         auto v = cmd::make_validator()->
@@ -412,14 +414,14 @@ struct Interpreter
     {
         auto top = get( "$top" ), frame = get( "$frame" );
         auto sym = top.attribute( "symbol" ), loc = top.attribute( "location" );
-        std::cerr << "# executing " << sym;
+        out() << "# executing " << sym;
         if ( sym.size() + loc.size() > 60 && !_batch )
-            std::cerr << std::endl << "#        at ";
+            out() << std::endl << "#        at ";
         else
-            std::cerr << " at ";
-        std::cerr << loc << std::endl;
+            out() << " at ";
+        out() << loc << std::endl;
         if ( frame._address != top._address )
-            std::cerr << "# NOTE: $frame in " << frame.attribute( "symbol" ) << std::endl;
+            out() << "# NOTE: $frame in " << frame.attribute( "symbol" ) << std::endl;
     }
 
     Interpreter( BC bc )
@@ -463,11 +465,11 @@ struct Interpreter
         set( "#last", name );
 
         if ( terse )
-            std::cerr << " " << name << std::flush;
+            out() << " " << name << std::flush;
         else if ( isnew )
-            std::cerr << "# a new program state was stored as " << name << std::endl;
+            out() << "# a new program state was stored as " << name << std::endl;
         else
-            std::cerr << "# program entered state " << name << " (already seen)" << std::endl;
+            out() << "# program entered state " << name << " (already seen)" << std::endl;
 
         return snap;
     }
@@ -501,16 +503,16 @@ struct Interpreter
         if ( choices.empty() )
             choices.push_back( choice );
 
-        std::cerr << "# active threads:";
+        out() << "# active threads:";
         for ( auto pi : proc )
         {
             bool active = pi.second == choices.front();
-            std::cerr << ( active ? " [" : " " )
+            out() << ( active ? " [" : " " )
                       << pi.first.first << ":" << pi.first.second
                       << ( active ? "]" : "" );
         }
         proc.clear();
-        std::cerr << std::endl;
+        out() << std::endl;
     }
 
     void check_running()
@@ -542,8 +544,8 @@ struct Interpreter
                                              if ( pc != bp_pc )
                                                  return false;
                                              auto name = _bc->debug().function( pc )->getName();
-                                             std::cerr << "# stopped at breakpoint " << name.str()
-                                                       << std::endl;
+                                             out() << "# stopped at breakpoint " << name.str()
+                                                   << std::endl;
                                              return true;
                                          },
                                          [&]( Location l )
@@ -556,8 +558,8 @@ struct Interpreter
                                                  return false;
                                              if ( !brick::string::endsWith( current.first, l.first ) )
                                                  return false;
-                                             std::cerr << "# stopped at breakpoint "
-                                                       << l.first << ":" << l.second << std::endl;
+                                             out() << "# stopped at breakpoint "
+                                                   << l.first << ":" << l.second << std::endl;
                                              return true;
                                          } ) )
                               return true;
@@ -599,7 +601,7 @@ struct Interpreter
         step._breakpoint = [mainpc]( vm::CodePointer pc, bool ) { return pc == mainpc; };
         run( step, s.verbose );
         if ( !_ctx._info.empty() )
-            std::cerr << "# boot info:\n" << _ctx._info;
+            out() << "# boot info:\n" << _ctx._info;
         set( "$_", frameDN() );
     }
 
@@ -608,31 +610,31 @@ struct Interpreter
         std::deque< decltype( _bps )::iterator > remove;
         int id = 1;
         if ( _bps.empty() )
-            std::cerr << "no breakpoints defined" << std::endl;
+            out() << "no breakpoints defined" << std::endl;
         for ( auto bp : _bps )
         {
-            std::cerr << std::setw( 2 ) << id << ": ";
+            out() << std::setw( 2 ) << id << ": ";
             bool del_this = !b.del.empty() && id == b.del;
             bp.match(
                 [&]( vm::CodePointer pc )
                 {
                     auto fun = _bc->debug().function( pc )->getName().str();
-                    std::cerr << fun << " +" << pc.instruction()
-                              << " (at " << dbg::location( location( pc ) ) << ")";
+                    out() << fun << " +" << pc.instruction()
+                          << " (at " << dbg::location( location( pc ) ) << ")";
                     if ( !b.del.empty() && !pc.instruction() && b.del == fun )
                         del_this = true;
                 },
                 [&]( Location loc )
                 {
-                    std::cerr << loc.first << ":" << loc.second;
+                    out() << loc.first << ":" << loc.second;
                 } );
 
             if ( del_this )
             {
                 remove.push_front( _bps.begin() + id - 1 );
-                std::cerr << " [deleted]";
+                out() << " [deleted]";
             }
-            std::cerr << std::endl;
+            out() << std::endl;
             ++ id;
         }
 
@@ -721,28 +723,27 @@ struct Interpreter
     {
         auto dn = get( cmd.var );
         if ( cmd.raw )
-            std::cerr << dn.attribute( "raw" ) << std::endl;
+            out() << dn.attribute( "raw" ) << std::endl;
         else
-            dn.format( std::cerr, cmd.depth, cmd.deref );
+            dn.format( out(), cmd.depth, cmd.deref );
     }
 
     void go( command::Dot cmd )
     {
-        std::string dot = dotDN( get( cmd.var ), true );
-        std::string out;
+        std::string dot = dotDN( get( cmd.var ), true ), print;
         if ( cmd.type == "none" )
-            out = dot;
+            print = dot;
         else {
-            auto r = brick::proc::spawnAndWait( brick::proc::StdinString( dot ) | brick::proc::CaptureStdout,
-                                                "dot", "-T" + cmd.type );
+            auto r = brick::proc::spawnAndWait( brick::proc::StdinString( dot ) |
+                                                brick::proc::CaptureStdout, "dot", "-T" + cmd.type );
             if ( !r )
                 std::cerr << "ERROR: dot failed" << std::endl;
-            out = r.out();
+            print = r.out();
         }
         if ( !cmd.output_file.empty() )
-            brick::fs::writeFile( cmd.output_file, out );
+            brick::fs::writeFile( cmd.output_file, print );
         else
-            std::cout << out << std::endl;
+            out() << print << std::endl;
     }
 
     void go( command::Inspect i )
@@ -832,7 +833,7 @@ struct Interpreter
         _ctx._choices = choices;
 
         auto last = get( "#last", true ).snapshot();
-        std::cerr << "traced states:";
+        out() << "traced states:";
         bool stop = false;
         step._sched_policy = [&]() { if ( _ctx._choices.empty() ) stop = true; };
         step._breakpoint = [&]( vm::CodePointer, bool ) { return stop; };
@@ -843,7 +844,7 @@ struct Interpreter
                 auto next = newstate( snap, false, true );
                 if ( visited.count( next ) )
                 {
-                    std::cerr << " [loop closed]" << std::flush;
+                    out() << " [loop closed]" << std::flush;
                     step._ff_kernel = false;
                     stop = true;
                     return next;
@@ -858,20 +859,20 @@ struct Interpreter
             };
         run( step, Stepper::Quiet );
 
-        std::cerr << std::endl;
+        out() << std::endl;
 
         if ( !_ctx._choices.empty() )
         {
-            std::cerr << "unused choices:";
+            out() << "unused choices:";
             for ( auto c : _ctx._choices )
-                std::cerr << " " << c;
-            std::cerr << std::endl;
+                out() << " " << c;
+            out() << std::endl;
         }
 
         if ( !_ctx._trace.empty() )
-            std::cerr << "trace:" << std::endl;;
+            out() << "trace:" << std::endl;;
         for ( auto t : _ctx._trace )
-            std::cerr << "T: " << t << std::endl;
+            out() << "T: " << t << std::endl;
         _ctx._trace.clear();
         reach_user();
         set( "$_", frameDN() );
@@ -890,8 +891,8 @@ struct Interpreter
         }
     }
 
-    void go( command::BitCode bc ) { get( bc.var ).bitcode( std::cerr ); }
-    void go( command::Source src ) { get( src.var ).source( std::cerr ); }
+    void go( command::BitCode bc ) { get( bc.var ).bitcode( out() ); }
+    void go( command::Source src ) { get( src.var ).source( out() ); }
     void go( command::Setup set )
     {
         OneLineTokenizer tok;
@@ -908,9 +909,9 @@ struct Interpreter
     void help( Parser &p, std::string arg )
     {
         if ( arg.empty() )
-            std::cerr << str::doc::manual_sim_md << std::endl
-                      << "# Command overview" << std::endl << std::endl;
-        std::cerr << p.describe( arg ) << std::endl;
+            out() << str::doc::manual_sim_md << std::endl
+                  << "# Command overview" << std::endl << std::endl;
+        out() << p.describe( arg ) << std::endl;
     }
 
 
