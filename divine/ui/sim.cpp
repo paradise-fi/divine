@@ -989,7 +989,7 @@ void Sim::run()
 
     OneLineTokenizer tok;
 
-    if ( !init_path.empty() )
+    if ( !init_path.empty() && !_skip_init )
     {
         std::ifstream init( init_path.c_str() );
         std::string line;

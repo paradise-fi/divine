@@ -149,7 +149,7 @@ struct Run : WithBC {
 
 struct Sim : WithBC
 {
-    bool _batch = false;
+    bool _batch = false, _skip_init = false;
 
     Sim() { _systemopts.emplace_back( "trace:thread" ); }
     void run();

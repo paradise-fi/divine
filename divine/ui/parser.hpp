@@ -223,7 +223,8 @@ struct CLI : Interface
             .option( "[--trace]", &Run::_trace, "trace instructions"s);
 
         auto simopts = cmd::make_option_set< Sim >( v )
-            .option( "[--batch]", &Sim::_batch, "execute in batch mode"s );
+            .option( "[--batch]", &Sim::_batch, "execute in batch mode"s )
+            .option( "[--skip-init]", &Sim::_skip_init, "do not load ~/.divine/sim.init"s );
 
         auto parser = cmd::make_parser( v )
             .command< Verify >( &WithBC::_useropts, vrfyopts, bcopts )
