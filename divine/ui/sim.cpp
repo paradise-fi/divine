@@ -148,8 +148,9 @@ struct BackTrace : WithVar, Teflon
 struct Setup : Teflon
 {
     bool debug_kernel;
+    bool clear_sticky;
     std::vector< std::string > sticky_commands;
-    Setup() : debug_kernel( false ) {}
+    Setup() : debug_kernel( false ), clear_sticky( false ) {}
 };
 
 struct Down : CastIron {};
@@ -186,7 +187,7 @@ struct Interpreter
     std::mt19937 _rand;
     bool _sched_random, _debug_kernel;
 
-    std::vector< cmd::Tokens > _stickyCommands;
+    std::vector< cmd::Tokens > _sticky_commands;
 
     Context _ctx;
 
@@ -893,12 +894,12 @@ struct Interpreter
     void go( command::Source src ) { get( src.var ).source( std::cerr ); }
     void go( command::Setup set )
     {
+        OneLineTokenizer tok;
         _debug_kernel = set.debug_kernel;
-        _stickyCommands.clear();
-        for ( const std::string& cmd : set.sticky_commands ) {
-            OneLineTokenizer tok;
-            _stickyCommands.push_back( tok.tokenize( cmd ) );
-        }
+        if ( set.clear_sticky )
+            _sticky_commands.clear();
+        for ( const std::string& cmd : set.sticky_commands )
+            _sticky_commands.push_back( tok.tokenize( cmd ) );
     }
 
     void go( command::Help ) { UNREACHABLE( "impossible case" ); }
@@ -920,7 +921,7 @@ struct Interpreter
     void finalize( command::CastIron ) {
         update();
         auto parser = make_parser();
-        for ( auto t : _stickyCommands ) {
+        for ( auto t : _sticky_commands ) {
             auto cmd = parser.parse( t.begin(), t.end() );
             cmd.match( [&] ( auto opt ){ go( opt ); } );
         }
