@@ -23,7 +23,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 #include <lart/support/cleanup.h>
-#include <lart/support/context.hpp>
 #include <lart/support/error.h>
 #include <lart/reduction/passes.h>
 #include <runtime/abstract/weakmem.h>
@@ -324,7 +323,7 @@ struct Substitute {
         }
     }
 
-    void run( llvm::Module &m, context::Context &lctx )
+    void run( llvm::Module &m )
     {
         auto i32 = llvm::IntegerType::getInt32Ty( m.getContext() );
         if ( _bufferSize > 0 ) {
@@ -351,6 +350,7 @@ struct Substitute {
         _memcpy = get( "memcpy" );
         _memset = get( "memset" );
         auto flusher = get( "__lart_weakmem_flusher_main" );
+        _mask = get( "__vmutil_mask" );
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
@@ -359,9 +359,11 @@ struct Substitute {
             _cloneMap.emplace( i, i );
         }
 
+        auto isvm = []( llvm::Function &fn ) { return fn.getName().startswith( "__vm_" ); };
+
         for ( auto i : inteface ) {
             cloneCalleesRecursively( i, _cloneMap,
-                 [&]( auto &fn ) { return !lctx.isInterpreterHypercall( fn ); },
+                 [&]( auto &fn ) { return !isvm( fn ); },
                  []( auto & ) { return nullptr; } );
         }
 
@@ -371,7 +373,7 @@ struct Substitute {
                          P{ _memset, &_scmemset } } )
         {
             *p.second = cloneFunctionRecursively( p.first, _cloneMap,
-                             [&]( auto &fn ) { return !lctx.isInterpreterHypercall( fn ); },
+                             [&]( auto &fn ) { return !isvm( fn ); },
                              []( auto & ) { return nullptr; } );
         }
 
@@ -379,8 +381,9 @@ struct Substitute {
             _bypass.emplace( p.second );
         }
 
-        transformFree( lctx.getFreeFn() );
-        if ( auto *resize = lctx.getResizeFn() )
+        auto *free = m.getFunction( "__vm_obj_free" ) ?: m.getFunction( "free" );
+        transformFree( free );
+        if ( auto *resize = m.getFunction( "__vm_obj_resize" ) )
             transformResize( resize );
 
         auto silentID = m.getMDKindID( reduction::silentTag );
@@ -389,7 +392,7 @@ struct Substitute {
             if ( _bypass.count( &f ) )
                 transformBypass( f );
             else
-                transformWeak( f, dl, lctx, silentID );
+                transformWeak( f, dl, silentID );
         }
 
         if ( _minMemOrd != MemoryOrder::Unordered ) {
@@ -522,8 +525,7 @@ struct Substitute {
     // *  transform fence instructions to call to lart fence
     // *  for TSO: insert PSO -> TSO fence at the beginning and after call to
     //    any function which is neither TSO, SC, or bypass
-    void transformWeak( llvm::Function &f, llvm::DataLayout &dl, context::Context &lctx,
-                        unsigned silentID )
+    void transformWeak( llvm::Function &f, llvm::DataLayout &dl, unsigned silentID )
     {
         auto &ctx = f.getContext();
         auto *i8ptr = llvm::Type::getInt8PtrTy( ctx );
@@ -610,7 +612,7 @@ struct Substitute {
             auto op = at->getOperation();
 
             llvm::IRBuilder<> irb( at );
-            auto *mask = lctx.insertSetMask( irb );
+            auto *mask = irb.CreateCall( _mask, { irb.getInt32( 1 ) } );
             auto *orig = irb.CreateLoad( ptr, "lart.weakmem.atomicrmw.orig" );
             orig->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease ? llvm::AtomicOrdering::Acquire : aord, InstType::Load ) );
             atomicOps.insert( orig );
@@ -656,7 +658,7 @@ struct Substitute {
             store->setAtomic( usememord( aord == llvm::AtomicOrdering::AcquireRelease
                         ? llvm::AtomicOrdering::Release : aord, InstType::Store ) );
             atomicOps.insert( store );
-            lctx.insertRestoreMask( irb, mask );
+            irb.CreateCall( _mask, { mask } );
 
             at->replaceAllUsesWith( orig );
             at->eraseFromParent();
@@ -803,6 +805,7 @@ struct Substitute {
     llvm::Function *_memmove = nullptr, *_memcpy = nullptr, *_memset = nullptr;
     llvm::Function *_scmemmove = nullptr, *_scmemcpy = nullptr, *_scmemset = nullptr;
     llvm::Function *_cleanup = nullptr, *_resize = nullptr;
+    llvm::Function *_mask = nullptr;
     llvm::Type *_moTy = nullptr;
     MemoryOrder _minMemOrd = MemoryOrder::SeqCst;
     static const std::string tagNamespace;

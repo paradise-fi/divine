@@ -7,7 +7,6 @@
 #include <lart/reduction/passes.h>
 #include <lart/svcomp/passes.h>
 #include <lart/divine/passes.h>
-#include <lart/support/context.hpp>
 
 #include <iostream>
 
@@ -29,8 +28,7 @@ namespace lart {
 
 struct Driver {
 
-    Driver() : context( std::make_unique< context::DiOS >() ) { }
-    Driver( std::unique_ptr< context::Context > &&ctx ) : context( std::move( ctx ) ) { }
+    Driver() { }
 
     std::vector< PassMeta > passes() const {
         std::vector< PassMeta > out;
@@ -100,9 +98,8 @@ struct Driver {
 
     void process( llvm::Module *m )
     {
-        context->setModule( *m );
         for ( auto &p : ps )
-            p->run( *m, *context );
+            p->run( *m );
     }
 
   private:
@@ -111,7 +108,6 @@ struct Driver {
     }
 
     PassVector ps;
-    std::unique_ptr< context::Context > context;
 };
 } // namespace lart
 
