@@ -199,7 +199,8 @@ struct Interpreter
 
     static bool *_sigint;
 
-    auto make_parser() {
+    auto make_parser()
+    {
         auto v = cmd::make_validator()->
              add( "function", []( std::string s, auto good, auto bad )
                   {
@@ -217,22 +218,27 @@ struct Interpreter
         auto showopts = cmd::make_option_set< command::Show >( v )
             .option( "[--raw]", &command::Show::raw, "dump raw data"s )
             .option( "[--depth {int}]", &command::Show::depth, "maximal component unfolding"s )
-            .option( "[--deref {int}]", &command::Show::deref, "maximal pointer dereference unfolding"s );
+            .option( "[--deref {int}]", &command::Show::deref,
+                     "maximal pointer dereference unfolding"s );
         auto stepopts = cmd::make_option_set< command::WithSteps >( v )
             .option( "[--over]", &command::WithSteps::over, "execute calls as one step"s )
             .option( "[--quiet]", &command::WithSteps::quiet, "suppress output"s )
             .option( "[--verbose]", &command::WithSteps::verbose, "increase verbosity"s )
-            .option( "[--count {int}]", &command::WithSteps::count, "execute {int} steps (default = 1)"s );
+            .option( "[--count {int}]", &command::WithSteps::count,
+                     "execute {int} steps (default = 1)"s );
         auto startopts = cmd::make_option_set< command::Start >( v )
             .option( "[--verbose]", &command::Start::verbose, "increase verbosity"s );
         auto stepoutopts = cmd::make_option_set< command::WithSteps >( v )
-            .option( "[--out]", &command::WithSteps::out, "execute until the current function returns"s );
+            .option( "[--out]", &command::WithSteps::out,
+                     "execute until the current function returns"s );
         auto threadopts = cmd::make_option_set< command::Thread >( v )
             .option( "[--random]", &command::Thread::random, "pick the thread to run randomly"s )
             .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
         auto setupopts = cmd::make_option_set< command::Setup >( v )
             .option( "[--debug-kernel]", &command::Setup::debug_kernel, "enable kernel debugging"s )
-            .option( "[--sticky {string}]", &command::Setup::sticky_commands, "run given commands after each step"s );
+            .option( "[--clear-sticky]", &command::Setup::clear_sticky, "remove sticky commands"s )
+            .option( "[--sticky {string}]", &command::Setup::sticky_commands,
+                     "run given commands after each step"s );
         auto o_trace = cmd::make_option_set< command::Trace >( v )
             .option( "[--from {string}]", &command::Trace::from,
                     "start in a given state, instead of initial"s );
@@ -244,7 +250,7 @@ struct Interpreter
 
         return cmd::make_parser( v )
             .command< command::Exit >( "exit from divine"s )
-            .command< command::Help >( "show this help, or describe a particular command in more detail"s,
+            .command< command::Help >( "show this help or describe a particular command in more detail"s,
                                     cmd::make_option( v, "[{string}]", &command::Help::_cmd ) )
             .command< command::Start >( "boot the system and stop at main()"s, startopts )
             .command< command::Break >( "insert a breakpoint"s, &command::Break::where, breakopts )
@@ -260,7 +266,8 @@ struct Interpreter
                                         &command::Trace::choices, o_trace )
             .command< command::Show >( "show an object"s, varopts, showopts )
             .command< command::Draw >( "draw a portion of the heap"s, varopts )
-            .command< command::Dot >( "draw a portion of the heap to a file of given type"s, varopts, dotopts )
+            .command< command::Dot >( "draw a portion of the heap to a file of given type"s,
+                                      varopts, dotopts )
             .command< command::Setup >( "set configuration options"s, setupopts )
             .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
             .command< command::BackTrace >( "show a stack trace"s, varopts )
