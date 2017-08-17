@@ -30,6 +30,7 @@
 
 #if OPT_SIM
 #include <histedit.h>
+#include <sys/stat.h>
 #include <pwd.h>
 
 namespace divine {
@@ -961,12 +962,15 @@ void Sim::run()
     sim::Interpreter interp( bitcode() );
     interp._batch = _batch;
 
-    std::string hist_path;
+    std::string hist_path, init_path, dotfiles;
 
     if ( passwd *p = getpwuid( getuid() ) )
     {
-        hist_path = p->pw_dir;
-        hist_path += "/.divine.history";
+        dotfiles = p->pw_dir;
+        dotfiles += "/.divine/";
+        mkdir( dotfiles.c_str(), 0777 );
+        hist_path = dotfiles + "sim.history";
+        init_path = dotfiles + "sim.init";
     }
 
     history( hist, &hist_ev, H_SETSIZE, 1000 );
@@ -983,6 +987,14 @@ void Sim::run()
               << std::endl;
 
     OneLineTokenizer tok;
+
+    if ( !init_path.empty() )
+    {
+        std::ifstream init( init_path.c_str() );
+        std::string line;
+        while ( std::getline( init, line ), !init.eof() )
+            interp.command( tok.tokenize( line ) );
+    }
 
     while ( !interp._exit )
     {
