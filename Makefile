@@ -53,9 +53,9 @@ debug_FLAGS = -DCMAKE_BUILD_TYPE=Debug $(TOOLCHAIN) $(CONFIG)
 asan_CXXFLAGS = -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls -g -O1
 asan_FLAGS = $(debug_FLAGS) -DCMAKE_CXX_FLAGS_DEBUG="$(asan_CXXFLAGS)"
 
-toolchain_FLAGS = -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
-		  -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_C_COMPILER=$(CC) \
-		  -DCMAKE_INSTALL_PREFIX=${PREFIX}
+toolchain_FLAGS += -DCMAKE_BUILD_TYPE=RelWithDebInfo -DTOOLCHAIN=ON \
+		   -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_C_COMPILER=$(CC) \
+		   -DCMAKE_INSTALL_PREFIX=${PREFIX}
 
 all: $(DEFAULT_FLAVOUR)
 
