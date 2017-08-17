@@ -41,15 +41,16 @@ namespace ui {
 using namespace std::literals;
 namespace cmd = brick::cmd;
 
-struct OneLineTokenizer {
+struct OneLineTokenizer
+{
     OneLineTokenizer() : _tok( tok_init( nullptr ) ) {}
-    ~OneLineTokenizer() {
-        tok_end( _tok );
-    }
+    ~OneLineTokenizer() { tok_end( _tok ); }
 
-    cmd::Tokens tokenize( const std::string& s ) {
+    cmd::Tokens tokenize( const std::string& s )
+    {
         int argc;
         const char **argv;
+        tok_reset( _tok );
         int r = tok_str( _tok, s.c_str(), &argc, &argv );
         if ( r == -1 )
             throw brick::except::Error{ "Uknown tokenizer error" };
@@ -974,6 +975,8 @@ void Sim::run()
     std::cerr << "Welcome to 'divine sim', an interactive debugger. Type 'help' to get started."
               << std::endl;
 
+    OneLineTokenizer tok;
+
     while ( !interp._exit )
     {
         interp.info();
@@ -997,7 +1000,6 @@ void Sim::run()
 
         try
         {
-            OneLineTokenizer tok;
             interp.command( tok.tokenize( cmd ) );
         }
         catch ( brick::except::Error &e )
