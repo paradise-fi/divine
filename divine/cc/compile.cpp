@@ -274,19 +274,14 @@ void Compile::linkEssentials() {
         for ( auto it = modules.begin(); it != modules.end(); ++it )
             linker->link( it.take() );
     }
-
-    // these functions are implemented as intrinsics in LLVM so they don't have
-    // declarations and aren't linked unless explicitly added
-    llvm::Module mem( "divine-mem.ll", *context() );
-    mem.setDataLayout( linker->get()->getDataLayoutStr() );
-    auto *vptrt = llvm::Type::getInt8PtrTy( *context() );
-    auto *sizet = llvm::Type::getInt64Ty( *context() );
-    auto *intt = llvm::Type::getInt32Ty( *context() );
-    auto *mct = llvm::FunctionType::get( vptrt, { vptrt, vptrt, sizet }, false );
-    mem.getOrInsertFunction( "memcpy", mct );
-    mem.getOrInsertFunction( "memmove", mct );
-    mem.getOrInsertFunction( "memset", llvm::FunctionType::get( vptrt, { vptrt, intt, sizet }, false ) );
-    linker->link( mem );
+    // the _link_essentials modules are built from divine.link.always annotations
+    for ( auto e : defaultDIVINELibs ) {
+        auto archive = getLib( e );
+        auto modules = archive.modules();
+        for ( auto it = modules.begin(); it != modules.end(); ++it )
+            if ( it->getModuleIdentifier() == "_link_essentials.ll"s )
+                linker->link( it.take() );
+    }
 }
 
 const std::vector< std::string > Compile::defaultDIVINELibs = { "cxx", "cxxabi", "c" };
