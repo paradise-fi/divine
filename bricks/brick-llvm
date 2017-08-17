@@ -311,6 +311,11 @@ struct ArchiveReader
             return _iro->getModule();
         }
 
+        ::llvm::Module *operator->() {
+            _load( true );
+            return &_iro->getModule();
+        }
+
         std::unique_ptr< ::llvm::Module > take() {
             _load( true );
             return _iro->takeModule();
