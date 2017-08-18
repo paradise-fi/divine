@@ -26,6 +26,25 @@
 namespace divine {
 namespace ui {
 
+std::shared_ptr< std::ostream > random_out( std::string in, std::string suff )
+{
+    std::random_device rd;
+    std::uniform_int_distribution< char > dist( 'a', 'z' );
+    std::string rand;
+    int fd;
+
+    for ( int i = 0; i < 6; ++i )
+        rand += dist( rd );
+
+    auto name = outputName( in, suff + "." + rand );
+    if ( ( fd = open( name.c_str(), O_CREAT | O_EXCL, 0666 ) ) < 0 )
+        return random_out( in, suff );
+    std::shared_ptr< std::ostream > ret;
+    ret.reset( new std::ofstream( name ) );
+    close( fd );
+    return ret;
+}
+
 void Verify::setup()
 {
     if ( _log == nullsink() )
@@ -38,6 +57,8 @@ void Verify::setup()
         if ( _report != Report::None )
             log.push_back( make_yaml( std::cout, _report == Report::YamlLong ) );
 
+        _file_report = random_out( _file, "report" );
+        log.push_back( make_yaml( *_file_report.get(), true ) );
         _log = make_composite( log );
     }
 

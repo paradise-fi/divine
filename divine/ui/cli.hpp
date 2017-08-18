@@ -128,6 +128,7 @@ struct Verify : WithBC
     bool _interactive = true;
     bool _liveness = false;
     Report _report = Report::Yaml;
+    std::shared_ptr< std::ostream > _file_report;
 
     void setup() override;
     void run() override;
