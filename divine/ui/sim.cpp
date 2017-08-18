@@ -149,6 +149,7 @@ struct Setup : Teflon
 {
     bool debug_kernel;
     bool clear_sticky;
+    std::string xterm;
     std::vector< std::string > sticky_commands;
     Setup() : debug_kernel( false ), clear_sticky( false ) {}
 };
@@ -201,7 +202,9 @@ struct Interpreter
 
     static bool *_sigint;
 
-    std::ostream &out() { return std::cerr; }
+    std::map< std::string, brick::proc::XTerm > _xterms;
+    std::ostream *_stream;
+    std::ostream &out() { return *_stream; }
 
     auto make_parser()
     {
@@ -240,6 +243,7 @@ struct Interpreter
             .option( "[{string}]", &command::Thread::spec, "stick to the given thread"s );
         auto setupopts = cmd::make_option_set< command::Setup >( v )
             .option( "[--debug-kernel]", &command::Setup::debug_kernel, "enable kernel debugging"s )
+            .option( "[--xterm {string}]", &command::Setup::xterm, "setup & name an X terminal"s )
             .option( "[--clear-sticky]", &command::Setup::clear_sticky, "remove sticky commands"s )
             .option( "[--sticky {string}]", &command::Setup::sticky_commands,
                      "run given commands after each step"s );
@@ -375,6 +379,7 @@ struct Interpreter
 
     void update()
     {
+        _stream = &std::cerr; /* always revert to the main output */
         set( "$top", frameDN() );
 
         auto globals = _ctx.get( _VM_CR_Globals ).pointer;
@@ -427,7 +432,7 @@ struct Interpreter
     Interpreter( BC bc )
         : _exit( false ), _batch( false ), _bc( bc ), _explore( bc ), _sticky_tid( -1, 0 ),
           _sched_random( false ), _debug_kernel( false ), _ctx( _bc->program(), _bc->debug() ),
-          _state_count( 0 )
+          _state_count( 0 ), _stream( &std::cerr )
     {
         vm::setup::boot( _ctx );
         _prompt = strdup( "> " );
@@ -899,6 +904,12 @@ struct Interpreter
         _debug_kernel = set.debug_kernel;
         if ( set.clear_sticky )
             _sticky_commands.clear();
+        if ( !set.xterm.empty() )
+        {
+            brick::proc::XTerm xt;
+            xt.open();
+            _xterms.emplace( set.xterm, std::move( xt ) );
+        }
         for ( const std::string& cmd : set.sticky_commands )
             _sticky_commands.push_back( tok.tokenize( cmd ) );
     }
