@@ -64,13 +64,13 @@ std::string printitem( S s )
     return str.str();
 }
 
-void printpool( std::string name, const brick::mem::Stats &s )
+void printpool( std::ostream &ostr, std::string name, const brick::mem::Stats &s )
 {
-    std::cout << name << ":" << std::endl;
-    std::cout << "  total: " << printitem( s.total ) << std::endl;
+    ostr << name << ":" << std::endl;
+    ostr << "  total: " << printitem( s.total ) << std::endl;
     for ( auto i : s )
         if ( i.count.held )
-            std::cout << "  " << i.size << ": " << printitem( i ) << std::endl;
+            ostr << "  " << i.size << ": " << printitem( i ) << std::endl;
 }
 
 /* format a yaml report */
@@ -79,8 +79,9 @@ struct YamlSink : TimedSink
     bool _detailed;
     mc::Job::PoolStats latest;
     SysInfo _sysinfo;
+    std::ostream &_out;
 
-    YamlSink( bool detailed ) : _detailed( detailed ) {}
+    YamlSink( std::ostream &o, bool detailed ) : _detailed( detailed ), _out( o ) {}
 
     void progress( int states, int q, bool last ) override
     {
@@ -89,12 +90,12 @@ struct YamlSink : TimedSink
         if ( !last )
             return;
 
-        std::cout << std::endl << "state count: " << states
-                  << std::endl << "states per second: " << timeavg( states, _time_search )
-                  << std::endl << "version: " << version()
-                  << std::endl << std::endl;
-        _sysinfo.report( []( auto k, auto v )
-                         { std::cout << k << ": " << v << std::endl; } );
+        _out << std::endl << "state count: " << states
+             << std::endl << "states per second: " << timeavg( states, _time_search )
+             << std::endl << "version: " << version()
+             << std::endl << std::endl;
+        _sysinfo.report( [this]( auto k, auto v )
+                         { _out << k << ": " << v << std::endl; } );
     }
 
     void memory( const mc::Job::PoolStats &st, bool last ) override
@@ -102,30 +103,30 @@ struct YamlSink : TimedSink
         if ( !last || !_detailed )
             return;
         for ( auto p : st )
-            printpool( p.first, p.second );
+            printpool( _out, p.first, p.second );
     }
 
     void result( mc::Result result, const mc::Trace &trace ) override
     {
         TimedSink::result( result, trace );
-        std::cout << "timers:";
-        std::cout << std::setprecision( 3 );
-        std::cout << std::endl << "  lart: " << double( _time_lart.count() ) / 1000
-                  << std::endl << "  loader: " << double( _time_rr.count() + _time_const.count() ) / 1000
-                  << std::endl << "  boot: " << double( _time_boot.count() ) / 1000
-                  << std::endl << "  search: " << double( _time_search.count() ) / 1000
-                  << std::endl << "  ce: " << double( _time_ce.count() ) / 1000 << std::endl;
+        _out << "timers:";
+        _out << std::setprecision( 3 );
+        _out << std::endl << "  lart: " << double( _time_lart.count() ) / 1000
+             << std::endl << "  loader: " << double( _time_rr.count() + _time_const.count() ) / 1000
+             << std::endl << "  boot: " << double( _time_boot.count() ) / 1000
+             << std::endl << "  search: " << double( _time_search.count() ) / 1000
+             << std::endl << "  ce: " << double( _time_ce.count() ) / 1000 << std::endl;
 
-        std::cout << result << std::endl;
+        _out << result << std::endl;
         if ( result == mc::Result::None || result == mc::Result::Valid )
             return;
-        std::cout << "error trace: |" << std::endl;
+        _out << "error trace: |" << std::endl;
         for ( auto l : trace.labels )
-            std::cout << "  " << l << std::endl;
+            _out << "  " << l << std::endl;
         if ( !trace.bootinfo.empty() )
-            std::cout << "boot info:\n" << trace.bootinfo << std::endl;
-        std::cout << std::endl;
-        std::cout << "choices made:" << trace.choices << std::endl;
+            _out << "boot info:\n" << trace.bootinfo << std::endl;
+        _out << std::endl;
+        _out << "choices made:" << trace.choices << std::endl;
     }
 
 };
@@ -138,14 +139,14 @@ struct InteractiveSink : TimedSink
         TimedSink::progress( states, queued, last );
         if ( last )
             std::cerr << "\rfound " << states
-                << " states in " << interval_str( _time_search )
-                << ", averaging " << timeavg_str( states, _time_search )
-                << "                             " << std::endl;
+                      << " states in " << interval_str( _time_search )
+                      << ", averaging " << timeavg_str( states, _time_search )
+                      << "                             " << std::endl;
         else
             std::cerr << "\rsearching: " << states
-                << " states found in " << interval_str( interval() )
-                << ", averaging " << timeavg_str( states, interval() )
-                << ", queued: " << queued << "      ";
+                      << " states found in " << interval_str( interval() )
+                      << ", averaging " << timeavg_str( states, interval() )
+                      << ", queued: " << queued << "      ";
     }
 
     void loader( Phase p ) override
@@ -178,7 +179,7 @@ SinkPtr nullsink()
     return global;
 }
 
-SinkPtr make_yaml( bool d ) { return std::make_shared< YamlSink >( d ); }
+SinkPtr make_yaml( std::ostream &o, bool d ) { return std::make_shared< YamlSink >( o, d ); }
 SinkPtr make_interactive() { return std::make_shared< InteractiveSink >(); }
 
 SinkPtr make_composite( std::vector< SinkPtr > s )

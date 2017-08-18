@@ -36,7 +36,7 @@ void Verify::setup()
             log.push_back( make_interactive() );
 
         if ( _report != Report::None )
-            log.push_back( make_yaml( _report == Report::YamlLong ) );
+            log.push_back( make_yaml( std::cout, _report == Report::YamlLong ) );
 
         _log = make_composite( log );
     }

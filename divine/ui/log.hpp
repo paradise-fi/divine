@@ -43,7 +43,7 @@ using SinkPtr = std::shared_ptr< LogSink >;
 
 SinkPtr nullsink(); /* a global null sink */
 SinkPtr make_interactive();
-SinkPtr make_yaml( bool detailed );
+SinkPtr make_yaml( std::ostream &output, bool detailed );
 SinkPtr make_composite( std::vector< SinkPtr > );
 
 struct TimedSink : LogSink
