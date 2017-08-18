@@ -1005,8 +1005,9 @@ void Sim::run()
     {
         std::ifstream init( init_path.c_str() );
         std::string line;
-        while ( std::getline( init, line ), !init.eof() )
-            interp.command( tok.tokenize( line ) );
+        if ( init.is_open() )
+            while ( std::getline( init, line ), !init.eof() )
+                interp.command( tok.tokenize( line ) );
     }
 
     while ( !interp._exit )
