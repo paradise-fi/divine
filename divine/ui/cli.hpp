@@ -154,9 +154,9 @@ struct Run : WithBC {
 
 struct Sim : WithBC
 {
-    bool _batch = false, _skip_init = false;
+    bool _batch = false, _skip_init = false, _load_report = false;
 
-    Sim() { _systemopts.emplace_back( "trace:thread" ); }
+    void setup();
     void run();
 };
 

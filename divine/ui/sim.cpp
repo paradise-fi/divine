@@ -26,6 +26,7 @@
 #include <divine/ui/cli.hpp>
 #include <divine/ui/logo.hpp>
 #include <brick-string>
+#include <brick-yaml>
 #include <cstring>
 
 #if OPT_SIM
@@ -1075,6 +1076,20 @@ void Sim::run()
     el_end( el );
 }
 
+void Sim::setup()
+{
+    _systemopts.emplace_back( "trace:thread" );
+
+    if ( _load_report )
+    {
+        std::string yaml = brick::fs::readFile( _file );
+        brick::yaml::Parser parsed( yaml );
+        _file = parsed.get< std::string >( { "input file" } );
+    }
+
+    WithBC::setup();
+}
+
 }
 }
 
@@ -1083,6 +1098,7 @@ void Sim::run()
 namespace divine {
 namespace ui {
 
+void Sim::setup() {}
 void Sim::run()
 {
     throw std::runtime_error( "This build of DIVINE does not support the 'sim' command." );

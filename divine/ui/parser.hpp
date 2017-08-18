@@ -225,6 +225,7 @@ struct CLI : Interface
 
         auto simopts = cmd::make_option_set< Sim >( v )
             .option( "[--batch]", &Sim::_batch, "execute in batch mode"s )
+            .option( "[--load-report]", &Sim::_load_report, "load a verify report"s )
             .option( "[--skip-init]", &Sim::_skip_init, "do not load ~/.divine/sim.init"s );
 
         auto parser = cmd::make_parser( v )
