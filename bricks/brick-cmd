@@ -274,10 +274,12 @@ struct Pattern
         Tokens::iterator next = begin;
         if ( _type == Match && *begin == _text )
             next = begin + 1;
-        if ( _type == Capture && _validator->validate( _capture, *begin ) )
+        while ( _type == Capture && next != end && _validator->validate( _capture, *next ) )
         {
-            capture( _capture_id++, _many, _capture, *begin );
-            next = begin + 1;
+            capture( _capture_id++, _many, _capture, *next );
+            next = next + 1;
+            if ( !_many )
+                break;
         }
         if ( _type == Mixed && begin->find( _text ) == 0 && begin->size() > _text.size() )
         {
@@ -1128,7 +1130,7 @@ struct TestCmd
         auto v = validator();
         auto opts = cmd::make_option_set< X >( v )
                     .option( "[-y {int}]", &X::x )
-                    .option( "{string}+", &X::a );
+                    .option( "{string}", &X::a );
         auto p = cmd::make_parser( v ).command< X >( opts );
 
         cmd::Tokens in = { "x", "10", "20" };
@@ -1140,6 +1142,21 @@ struct TestCmd
                      ASSERT_EQ( x.a.size(), 2 );
                  } );
         ASSERT( matched );
+    }
+
+    TEST(multi_capture)
+    {
+        struct X { std::vector< int > a; };
+        auto v = validator();
+        auto opts = cmd::make_option_set< X >( v )
+                    .option( "-y {int}+", &X::a );
+        X x;
+
+        cmd::Tokens in = { "-y", "10", "20" };
+        opts.parse( x, in.begin(), in.end() );
+        ASSERT_EQ( x.a.size(), 2u );
+        ASSERT_EQ( x.a[ 0 ], 10 );
+        ASSERT_EQ( x.a[ 1 ], 20 );
     }
 };
 
