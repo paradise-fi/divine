@@ -158,11 +158,6 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
 
 } // namespace
 
-std::string outputName( std::string path )
-{
-    return brick::fs::replaceExtension( brick::fs::basename( path ), "bc" );
-}
-
 void WithBC::setup()
 {
     using namespace brick::string;
@@ -279,7 +274,7 @@ void Cc::run()
             if ( _drv.dont_link ) {
                 if ( !_output.empty() && !first )
                     die( "CC: Cannot specify --dont-link/-c with -o with multiple input files." );
-                driver.writeToFile( _output.empty() ? outputName( name ) : _output, m.get() );
+                driver.writeToFile( _output.empty() ? outputName( name, "bc" ) : _output, m.get() );
                 return nullptr;
             }
             return std::move( m );
@@ -289,7 +284,7 @@ void Cc::run()
         die( "CC: You must specify at least one source file." );
 
     if ( !_drv.dont_link )
-        driver.writeToFile( _output.empty() ? outputName( firstFile ) : _output );
+        driver.writeToFile( _output.empty() ? outputName( firstFile, "bc" ) : _output );
 }
 
 void Info::run()

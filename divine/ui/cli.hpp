@@ -233,6 +233,11 @@ size_t memFromString( std::string s ) {
     return base;
 }
 
+std::string outputName( std::string path, std::string ext )
+{
+    return brick::fs::replaceExtension( brick::fs::basename( path ), ext );
+}
+
 }
 
 std::shared_ptr< Interface > make_cli( std::vector< std::string > args );
