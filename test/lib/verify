@@ -34,7 +34,7 @@ divine verify $resources $extra $opts $run $args | tee verify.out
 
 choices=$(grep "choices made:" verify.out | cut -d' ' -f3- || true)
 if [ -n "$choices" ]; then
-    printf "trace $choices\nstepa --count 1000\nbacktrace" | \
+    printf "trace --choices $choices\nstepa --count 1000\nbacktrace" | \
         divine sim --skip-init $opts $run $args 2>&1 | tee sim.out
 fi
 check verify "$1"
