@@ -906,8 +906,8 @@ struct Interpreter
         }
     }
 
-    void go( command::BitCode bc ) { get( bc.var ).bitcode( out() ); }
-    void go( command::Source src ) { get( src.var ).source( out() ); }
+    void go( command::BitCode bc ) { get( bc.var ).bitcode( out() ); out() << std::flush; }
+    void go( command::Source src ) { get( src.var ).source( out() ); out() << std::flush; }
     void go( command::Setup set )
     {
         OneLineTokenizer tok;
