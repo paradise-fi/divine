@@ -389,7 +389,6 @@ struct Interpreter
 
     void update()
     {
-        _stream = &std::cerr; /* always revert to the main output */
         set( "$top", frameDN() );
 
         auto globals = _ctx.get( _VM_CR_Globals ).pointer;
@@ -960,9 +959,11 @@ struct Interpreter
     {
         update();
         auto parser = make_parser();
-        for ( auto t : _sticky_commands ) {
+        for ( auto t : _sticky_commands )
+        {
             auto cmd = parser.parse( t.begin(), t.end() );
             cmd.match( [&] ( auto opt ){ prepare( opt ); go( opt ); } );
+            _stream = &std::cerr;
         }
     }
 };
@@ -990,6 +991,7 @@ void Interpreter::command( cmd::Tokens tok )
     auto cmd = parser.parse( tok.begin(), tok.end() );
     cmd.match( [&] ( command::Help h ) { help( parser, h._cmd ); },
                [&] ( auto opt ) { prepare( opt ); go( opt ); finalize( opt ); } );
+    _stream = &std::cerr; /* always revert to the main output */
 }
 
 }
