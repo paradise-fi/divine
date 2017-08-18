@@ -65,13 +65,9 @@ namespace fs {
 #ifdef __unix__
 struct PosixBuf : std::streambuf
 {
-private:
     std::unique_ptr< char > _pbuf, _gbuf;
     size_t _buf_size;
     int _fd;
-
-public:
-	// PosixBuf functions
 
     PosixBuf(const PosixBuf&) = delete;
     PosixBuf& operator=(const PosixBuf&) = delete;
@@ -163,23 +159,24 @@ public:
         return *gptr();
     }
 
+    void do_sync( const char *start, int amount )
+    {
+        while ( amount )
+        {
+            int res = ::write( _fd, start, amount );
+            if ( res < 0 )
+                throw std::system_error( errno, std::system_category(),
+                                         "writing to a file descriptor" );
+            amount -= res;
+            start += res;
+        }
+        setp( _pbuf.get(), _pbuf.get() + _buf_size );
+    }
+
     int sync()
     {
         if ( pptr() > pbase() )
-        {
-            auto start = pbase();
-            int amount = pptr() - pbase();
-            while ( amount )
-            {
-                int res = ::write( _fd, start, amount );
-                if ( res < 0 )
-                    throw std::system_error( errno, std::system_category(),
-                                             "writing to a file descriptor" );
-                amount -= res;
-                start += res;
-            }
-            setp( _pbuf.get(), _pbuf.get() + _buf_size );
-        }
+            do_sync( pbase(), pptr() - pbase() );
         return 0;
     }
 };
