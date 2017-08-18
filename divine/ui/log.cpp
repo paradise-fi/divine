@@ -129,6 +129,10 @@ struct YamlSink : TimedSink
         _out << "choices made:" << trace.choices << std::endl;
     }
 
+    void info( std::string str ) override
+    {
+        _out << str;
+    }
 };
 
 /* print progress updates to stderr */

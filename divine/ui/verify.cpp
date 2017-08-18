@@ -87,7 +87,7 @@ void Verify::safety()
     vm::dbg::Context< vm::CowHeap > dbg( bitcode()->program(), bitcode()->debug() );
     vm::setup::dbg_boot( dbg );
 
-    std::cout << std::endl;
+    _log->info( "\n" ); /* makes the output prettier */
 
     auto trace = safety->ce_trace();
 
@@ -99,7 +99,7 @@ void Verify::safety()
     if ( safety->result() != mc::Result::Error )
         return;
 
-    std::cout << "error state:" << std::endl;
+    _log->info( "error state:\n" );
     safety->dbg_fill( dbg );
     dbg.load( trace.final );
     dbg._choices = { trace.choices.back().begin(), trace.choices.back().end() };
@@ -109,7 +109,9 @@ void Verify::safety()
     Stepper step;
     step._stop_on_error = true;
     step.run( dbg, Stepper::Quiet );
-    mc::backtrace( std::cout, dbg, dbg.snapshot(), _num_callers );
+    std::stringstream bt;
+    mc::backtrace( bt, dbg, dbg.snapshot(), _num_callers );
+    _log->info( bt.str() );
 }
 
 void Verify::liveness()
