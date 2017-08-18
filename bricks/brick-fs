@@ -138,14 +138,16 @@ public:
     {
         if ( pptr() > pbase() )
         {
+            auto start = pbase();
             int amount = pptr() - pbase();
-            while ( true )
+            while ( amount )
             {
-                int res = ::write( _fd, _buf.get(), amount );
+                int res = ::write( _fd, start, amount );
                 if ( res < 0 )
                     throw std::system_error( errno, std::system_category(),
                                              "writing to a file descriptor" );
                 amount -= res;
+                start += res;
             }
             setp( _buf.get(), _buf.get() + _buf_size );
         }
