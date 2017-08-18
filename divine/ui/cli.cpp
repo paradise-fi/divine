@@ -228,6 +228,7 @@ void WithBC::setup()
     } else {
         throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
     }
+    _log->info( "input file: " + _file + "\n", true );
     _bc->environment( env );
     _bc->autotrace( _autotrace );
     _bc->reduce( !_disableStaticReduction );

@@ -32,7 +32,7 @@ struct LogSink
     virtual void progress( int, int, bool ) {}
     virtual void memory( const mc::Job::PoolStats &, bool ) {}
     virtual void loader( Phase ) {}
-    virtual void info( std::string ) {}
+    virtual void info( std::string, bool = false ) {}
     virtual void result( mc::Result, const mc::Trace & ) {}
     virtual void start() {}
     virtual int log_id() { return 0; } // only useful for ODBC logs

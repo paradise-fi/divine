@@ -41,8 +41,8 @@ struct CompositeSink : LogSink
     void memory( const mc::Job::PoolStats &st, bool l ) override
     { each( [&]( auto s ) { s->memory( st, l ); } ); }
 
-    void info( std::string i ) override
-    { each( [&]( auto s ) { s->info( i ); } ); }
+    void info( std::string i, bool detail ) override
+    { each( [&]( auto s ) { s->info( i, detail ); } ); }
 
     void loader( Phase p ) override
     { each( [&]( auto s ) { s->loader( p ); } ); }
@@ -131,9 +131,10 @@ struct YamlSink : TimedSink
              << std::endl;
     }
 
-    void info( std::string str ) override
+    void info( std::string str, bool detail ) override
     {
-        _out << str;
+        if ( !detail || _detailed )
+            _out << str;
     }
 };
 
@@ -171,8 +172,6 @@ struct InteractiveSink : TimedSink
         TimedSink::start();
         std::cerr << "done" << std::endl;
     }
-
-    virtual void info( std::string ) override {}
 };
 
 struct NullSink : LogSink {};
