@@ -129,7 +129,10 @@ struct Verify : WithBC
     bool _liveness = false;
     bool _no_report_file = false;
     Report _report = Report::Yaml;
+
     std::shared_ptr< std::ostream > _report_file;
+    std::string _report_filename;
+    void setup_report_file();
 
     void setup() override;
     void run() override;

@@ -26,7 +26,7 @@
 namespace divine {
 namespace ui {
 
-std::shared_ptr< std::ostream > random_out( std::string in, std::string suff )
+void Verify::setup_report_file()
 {
     std::random_device rd;
     std::uniform_int_distribution< char > dist( 'a', 'z' );
@@ -36,13 +36,11 @@ std::shared_ptr< std::ostream > random_out( std::string in, std::string suff )
     for ( int i = 0; i < 6; ++i )
         rand += dist( rd );
 
-    auto name = outputName( in, suff + "." + rand );
-    if ( ( fd = open( name.c_str(), O_CREAT | O_EXCL, 0666 ) ) < 0 )
-        return random_out( in, suff );
-    std::shared_ptr< std::ostream > ret;
-    ret.reset( new std::ofstream( name ) );
+    _report_filename = outputName( _file, "report." + rand );
+    if ( ( fd = open( _report_filename.c_str(), O_CREAT | O_EXCL, 0666 ) ) < 0 )
+        return setup_report_file();
+    _report_file.reset( new std::ofstream( _report_filename ) );
     close( fd );
-    return ret;
 }
 
 void Verify::setup()
@@ -59,7 +57,7 @@ void Verify::setup()
 
         if ( !_no_report_file )
         {
-            _report_file = random_out( _file, "report" );
+            setup_report_file();
             log.push_back( make_yaml( *_report_file.get(), true ) );
         }
 
@@ -121,22 +119,25 @@ void Verify::safety()
 
     _log->result( safety->result(), trace );
 
-    if ( safety->result() != mc::Result::Error )
-        return;
+    if ( safety->result() == mc::Result::Error )
+    {
+        _log->info( "error state:\n" );
+        safety->dbg_fill( dbg );
+        dbg.load( trace.final );
+        dbg._choices = { trace.choices.back().begin(), trace.choices.back().end() };
+        dbg._choices.push_back( -1 ); // prevent execution after choices are depleted
+        vm::setup::scheduler( dbg );
+        using Stepper = vm::dbg::Stepper< decltype( dbg ) >;
+        Stepper step;
+        step._stop_on_error = true;
+        step.run( dbg, Stepper::Quiet );
+        std::stringstream bt;
+        mc::backtrace( bt, dbg, dbg.snapshot(), _num_callers );
+        _log->info( bt.str() );
+    }
 
-    _log->info( "error state:\n" );
-    safety->dbg_fill( dbg );
-    dbg.load( trace.final );
-    dbg._choices = { trace.choices.back().begin(), trace.choices.back().end() };
-    dbg._choices.push_back( -1 ); // prevent execution after choices are depleted
-    vm::setup::scheduler( dbg );
-    using Stepper = vm::dbg::Stepper< decltype( dbg ) >;
-    Stepper step;
-    step._stop_on_error = true;
-    step.run( dbg, Stepper::Quiet );
-    std::stringstream bt;
-    mc::backtrace( bt, dbg, dbg.snapshot(), _num_callers );
-    _log->info( bt.str() );
+    if ( !_report_filename.empty() )
+        std::cerr << "a report was written to " << _report_filename << std::endl;
 }
 
 void Verify::liveness()
