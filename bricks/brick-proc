@@ -354,7 +354,7 @@ struct XTerm
         tcgetattr( _d.slavefd, &tio );
         tio.c_lflag = 0; /* no ECHO means we don't read things back */
         tio.c_iflag = 0;
-        tio.c_oflag = OPOST | OXTABS | OLCUC | ONLCR;
+        tio.c_oflag = 0;
         tcsetattr( _d.slavefd, TCSANOW, &tio );
 
         _d.buf.reset( new SBuf( _d.masterfd ) );
