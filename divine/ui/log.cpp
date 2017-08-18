@@ -127,6 +127,8 @@ struct YamlSink : TimedSink
             _out << "boot info:\n" << trace.bootinfo << std::endl;
         _out << std::endl;
         _out << "choices made:" << trace.choices << std::endl;
+        _out << "interrupts:" << brick::string::fmt_container( trace.interrupts, "", "", " " )
+             << std::endl;
     }
 
     void info( std::string str ) override
