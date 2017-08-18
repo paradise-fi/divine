@@ -62,6 +62,7 @@ struct Context
 
     Program *_program;
     Heap _heap;
+    int _interrupt_skips = -1;
     std::unordered_set< GenericPointer > _cfl_visited;
     std::unordered_set< int > _mem_loads;
 
@@ -89,6 +90,7 @@ struct Context
 
     void clear()
     {
+        _interrupt_skips = -1;
         reset_interrupted();
         flush_ptr2i();
         set( _VM_CR_User1, 0 );
@@ -183,6 +185,8 @@ struct Context
 
     void cfl_interrupt( CodePointer pc )
     {
+        ++ _interrupt_skips;
+
         if ( _cfl_visited.count( pc ) )
             set_interrupted( true );
         else
@@ -200,6 +204,8 @@ struct Context
 
     void mem_interrupt( GenericPointer ptr, int, int type )
     {
+        ++ _interrupt_skips;
+
         if ( ptr.heap() && !heap().shared( ptr ) )
             return;
 

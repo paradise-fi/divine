@@ -181,9 +181,11 @@ struct Explore_
     using State = explore::State;
     using Snapshot = CowHeap::Snapshot;
 
-    struct Label {
+    struct Label
+    {
         std::vector< std::string > trace;
         std::vector< std::pair< int, int > > stack;
+        uint32_t interrupt_skips:30;
         bool accepting:1;
         bool error:1;
     };
@@ -258,14 +260,15 @@ struct Explore_
                 explore::State st;
                 Label lbl;
 
-                auto snap = _ctx.heap().snapshot();
-                auto r = store( snap );
-                st.snap = *r;
-
                 lbl.trace = _ctx._trace;
                 lbl.stack = _ctx._stack;
                 lbl.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
                 lbl.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
+                lbl.interrupt_skips = _ctx._interrupt_skips;
+
+                auto snap = _ctx.heap().snapshot();
+                auto r = store( snap );
+                st.snap = *r;
                 yield( st, lbl, r.isnew() );
             }
         } while ( !_ctx.finished() );

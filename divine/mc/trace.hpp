@@ -52,6 +52,7 @@ struct Trace
 {
     Choices choices;
     std::vector< std::string > labels;
+    std::vector< int > interrupts;
     std::string bootinfo;
     vm::CowHeap::Snapshot final;
 };
@@ -93,6 +94,7 @@ Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
             std::transform( label.stack.begin(), label.stack.end(),
                             std::back_inserter( t.choices.back() ),
                             []( auto x ) { return x.first; } );
+            t.interrupts.push_back( label.interrupt_skips );
         };
 
     ss::search( ss::Order::PseudoBFS, ex, 1,
