@@ -127,8 +127,9 @@ struct Verify : WithBC
     bool _no_counterexample = false;
     bool _interactive = true;
     bool _liveness = false;
+    bool _no_report_file = false;
     Report _report = Report::Yaml;
-    std::shared_ptr< std::ostream > _file_report;
+    std::shared_ptr< std::ostream > _report_file;
 
     void setup() override;
     void run() override;

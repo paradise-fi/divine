@@ -57,8 +57,12 @@ void Verify::setup()
         if ( _report != Report::None )
             log.push_back( make_yaml( std::cout, _report == Report::YamlLong ) );
 
-        _file_report = random_out( _file, "report" );
-        log.push_back( make_yaml( *_file_report.get(), true ) );
+        if ( !_no_report_file )
+        {
+            _report_file = random_out( _file, "report" );
+            log.push_back( make_yaml( *_report_file.get(), true ) );
+        }
+
         _log = make_composite( log );
     }
 
