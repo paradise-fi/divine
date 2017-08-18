@@ -38,8 +38,8 @@ void backtrace( Dbg &dbg, vm::CowHeap::Snapshot snap, int maxdepth = 10 )
     vm::dbg::DNSet visited;
     int stacks = 1;
     std::cout << "  backtrace 1: # active stack" << std::endl;
-    vm::dbg::backtrace( dn_top, visited, stacks, maxdepth );
-    vm::dbg::backtrace( dn, visited, stacks, maxdepth );
+    vm::dbg::backtrace( std::cout, dn_top, visited, stacks, maxdepth );
+    vm::dbg::backtrace( std::cout, dn, visited, stacks, maxdepth );
 }
 
 struct Choices {

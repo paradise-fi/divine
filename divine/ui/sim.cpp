@@ -731,7 +731,7 @@ struct Interpreter
     {
         dbg::DNSet visited;
         int stacks = 0;
-        dbg::backtrace( get( bt.var ), visited, stacks, 100 );
+        dbg::backtrace( out(), get( bt.var ), visited, stacks, 100 );
     }
 
     void go( command::Show cmd )

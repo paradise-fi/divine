@@ -25,7 +25,7 @@ namespace divine::vm::dbg
 using DNSet = std::set< DNKey >;
 
 template< typename DN >
-void backtrace( DN dn, DNSet &visited, int &stacks, int maxdepth )
+void backtrace( std::ostream &ostr, DN dn, DNSet &visited, int &stacks, int maxdepth )
 {
     if ( visited.count( dn.sortkey() ) || dn.address().type() != PointerType::Heap )
         return;
@@ -42,12 +42,12 @@ void backtrace( DN dn, DNSet &visited, int &stacks, int maxdepth )
                            if ( k != "pc" && k != "address" && k != "location" && k != "symbol" )
                                return;
                            if ( itemized )
-                               std::cout << "      ";
+                               ostr << "      ";
                            else
-                               std::cout << "    - ", itemized = true;
-                           std::cout << k << ": " << v << std::endl;
+                               ostr << "    - ", itemized = true;
+                           ostr << k << ": " << v << std::endl;
                        } );
-        std::cout << std::endl;
+        ostr << std::endl;
     }
 
     auto follow =
@@ -56,8 +56,8 @@ void backtrace( DN dn, DNSet &visited, int &stacks, int maxdepth )
             if ( rel.kind() == DNKind::Frame && k != "caller" &&
                  rel.address().type() == PointerType::Heap &&
                  !visited.count( rel.sortkey() ) && maxdepth > 1 )
-                std::cout << "  backtrace " << ++stacks << ":" << std::endl;
-            backtrace( rel, visited, stacks, k == "caller" ? maxdepth - 1 : maxdepth );
+                ostr << "  backtrace " << ++stacks << ":" << std::endl;
+            backtrace( ostr, rel, visited, stacks, k == "caller" ? maxdepth - 1 : maxdepth );
         };
 
     dn.related( follow, false );
