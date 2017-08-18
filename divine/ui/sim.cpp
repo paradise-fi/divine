@@ -68,6 +68,12 @@ struct OneLineTokenizer
 
 namespace sim {
 
+struct Trace
+{
+    std::vector< std::pair< int, int > > choices;
+    std::vector< int > interrupts;
+};
+
 namespace command {
 
 struct CastIron {}; // finalize with sticky commands
@@ -139,10 +145,9 @@ struct Inspect : Show {};
 struct BitCode : WithFrame, Teflon {};
 struct Source : WithFrame, Teflon {};
 struct Thread : CastIron  { std::string spec; bool random; };
-struct Trace : CastIron
+struct Trace : CastIron, sim::Trace
 {
     std::string from;
-    std::vector< std::string > choices;
 };
 
 struct BackTrace : WithVar, Teflon
@@ -219,6 +224,22 @@ struct Interpreter
                       if ( isdigit( s[0] ) ) /* FIXME! zisit, kde sa to rozbije */
                           return bad( cmd::BadFormat, "function names cannot start with a digit" );
                       return good( s );
+                  } )->
+             add( "choice", []( std::string s, auto good, auto bad )
+                  {
+                      try {
+                          if ( s.find( '^' ) == std::string::npos )
+                              return good( std::make_pair( std::stoi( s ), 1 ) );
+                          else
+                          {
+                              std::string repeat( s, s.find( '^' ) + 1 );
+                              return good( std::make_pair( std::stoi( s ),
+                                                           std::stoi( repeat ) ) );
+                          }
+                      } catch ( std::invalid_argument &e )
+                      {
+                          return bad( cmd::BadFormat, e.what() );
+                      }
                   } );
 
         auto teflopts = cmd::make_option_set< command::Teflon >( v )
@@ -257,9 +278,14 @@ struct Interpreter
             .option( "[--clear-sticky]", &command::Setup::clear_sticky, "remove sticky commands"s )
             .option( "[--sticky {string}]", &command::Setup::sticky_commands,
                      "run given commands after each step"s );
-        auto o_trace = cmd::make_option_set< command::Trace >( v )
+
+        auto o_trace = cmd::make_option_set< Trace >( v )
+            .option( "[--interrupts {int}+]", &Trace::interrupts, "interrupt skip counts" )
+            .option( "--choices {choice}+", &Trace::choices, "non-deterministic choices" );
+        auto o_trace_cmd = cmd::make_option_set< command::Trace >( v )
             .option( "[--from {string}]", &command::Trace::from,
-                    "start in a given state, instead of initial"s );
+                     "start in a given state, instead of initial"s );
+
         auto dotopts = cmd::make_option_set< command::Dot >( v )
             .option( "[-T{string}|-T {string}]", &command::Dot::type,
                     "type of output (none,ps,svg,png…)"s )
@@ -281,8 +307,7 @@ struct Interpreter
             .command< command::Source >( "show the source code of the current function"s,
                                          teflopts, varopts )
             .command< command::Thread >( "control thread scheduling"s, threadopts )
-            .command< command::Trace >( "load a counterexample trace"s,
-                                        &command::Trace::choices, o_trace )
+            .command< command::Trace >( "load a counterexample trace"s, o_trace, o_trace_cmd )
             .command< command::Show >( "show an object"s, teflopts, varopts, showopts )
             .command< command::Draw >( "draw a portion of the heap"s, varopts )
             .command< command::Dot >( "draw a portion of the heap to a file of given type"s,
@@ -831,20 +856,9 @@ struct Interpreter
         _trace.clear();
         std::deque< int > choices;
         std::set< vm::CowHeap::Snapshot > visited;
-        try {
-            for ( auto c : tr.choices )
-            {
-                if ( c.find( '^' ) != std::string::npos )
-                    for ( int i = 0;
-                          i < std::stoi( std::string( c, c.find( '^' ) + 1, std::string::npos ) );
-                          ++ i )
-                        choices.push_back( std::stoi( c ) );
-                else
-                    choices.push_back( std::stoi( c ) );
-            }
-        } catch ( std::invalid_argument &e ) {
-            throw brick::except::Error( "Invalid choices format" );
-        }
+        for ( auto c : tr.choices )
+            for ( int i = 0; i < c.second; ++i )
+                choices.push_back( c.first );
         _ctx._choices = choices;
 
         auto last = get( "#last", true ).snapshot();
