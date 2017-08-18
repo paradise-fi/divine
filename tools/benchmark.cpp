@@ -191,7 +191,8 @@ void Cmd::setup()
     }
     catch ( nanodbc::database_error &err )
     {
-        std::cerr << "could not connect: " << err.what() << std::endl;
+        std::cerr << "could not connect to " << _odbc << std::endl
+                  << err.what() << std::endl;
     }
 }
 
