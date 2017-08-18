@@ -63,7 +63,7 @@ struct Context
     Program *_program;
     Heap _heap;
     std::unordered_set< GenericPointer > _cfl_visited;
-    brick::data::IntervalSet< GenericPointer > _mem_loads;
+    std::unordered_set< int > _mem_loads;
 
     template< typename Ctx >
     void load( const Ctx &ctx )
@@ -198,20 +198,19 @@ struct Context
         std::swap( pruned, _cfl_visited );
     }
 
-    void mem_interrupt( GenericPointer ptr, int size, int type )
+    void mem_interrupt( GenericPointer ptr, int, int type )
     {
         if ( ptr.heap() && !heap().shared( ptr ) )
             return;
 
         if ( type == _VM_MAT_Load )
         {
-            auto start = ptr;
-            if ( start.heap() )
-                start.type( PointerType::Heap );
-            auto end = start;
-            end.offset( start.offset() + size );
-            if ( _mem_loads.insert( start, end ).had_intersection ) /* already seen */
+            if ( ptr.heap() )
+                ptr.type( PointerType::Heap );
+            if ( _mem_loads.count( ptr.object() ) )
                 set_interrupted( true );
+            else
+                _mem_loads.insert( ptr.object() );
         }
         else
             set_interrupted( true );
