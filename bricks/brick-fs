@@ -58,6 +58,101 @@
 namespace brick {
 namespace fs {
 
+/*
+ * Based on code by Enrico Zini.
+ */
+struct PosixBuf : std::streambuf
+{
+private:
+    std::unique_ptr< char > _buf;
+    size_t _buf_size;
+    int _fd;
+
+public:
+	// PosixBuf functions
+
+    PosixBuf(const PosixBuf&) = delete;
+    PosixBuf& operator=(const PosixBuf&) = delete;
+
+    PosixBuf() : _buf( nullptr ), _buf_size( 0 ), _fd( -1 ) {}
+    PosixBuf( int fd, size_t bufsize = 4096 ) : PosixBuf()
+    {
+        attach(fd, bufsize);
+    }
+
+    ~PosixBuf()
+    {
+        if ( _buf )
+            sync();
+        if ( _fd != -1 )
+            ::close( _fd );
+    }
+
+    /**
+     * Attach the stream to a file descriptor, using the given stream size.
+     *
+     * Management of the file descriptor will be taken over by the PosixBuf,
+     * and the file descriptor will be closed with PosixBuf goes out of scope.
+     */
+    void attach( int fd, size_t bufsize = 4096 )
+    {
+        _buf.reset( new char[ bufsize ] );
+        _fd = fd;
+        _buf_size = bufsize;
+        setp( _buf.get(), _buf.get() + _buf_size );
+    }
+
+    /**
+     * Sync the PosixBuf and detach it from the file descriptor.  PosixBuf will
+     * not touch the file descriptor anymore, and it is the responsibility of
+     * the caller to close it.
+     *
+     * @returns The file descriptor
+     */
+    int detach()
+    {
+        sync();
+        int res = _fd;
+        _buf.reset( nullptr );
+        _buf_size = 0;
+        _fd = -1;
+        setp( nullptr, nullptr );
+        return res;
+    }
+
+    /// Access the underlying file descriptor
+    int fd() const { return _fd; }
+
+    int overflow( int c )
+    {
+        sync();
+        if ( c != EOF )
+        {
+            *pptr() = c;
+            pbump( 1 );
+        }
+        return c;
+    }
+
+    int sync()
+    {
+        if ( pptr() > pbase() )
+        {
+            int amount = pptr() - pbase();
+            while ( true )
+            {
+                int res = ::write( _fd, _buf.get(), amount );
+                if ( res < 0 )
+                    throw std::system_error( errno, std::system_category(),
+                                             "writing to a file descriptor" );
+                amount -= res;
+            }
+            setp( _buf.get(), _buf.get() + _buf_size );
+        }
+        return 0;
+    }
+};
+
 struct SystemException : except::Error {
     // make sure we don't override errno accidentaly when constructing std::string
     explicit SystemException( std::string what ) : SystemException{ errno, what } { }
