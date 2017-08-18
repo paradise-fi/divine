@@ -4,6 +4,7 @@
 #define __LART_WEAKMEM_H_
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #if __cplusplus
 #if __cplusplus >= 201103L
@@ -30,16 +31,19 @@ enum __lart_weakmem_order {
     __lart_weakmem_order_release = 0x4 | __lart_weakmem_order_monotonic,
     __lart_weakmem_order_acq_rel = __lart_weakmem_order_acquire | __lart_weakmem_order_release,
     __lart_weakmem_order_seq_cst = 0x8 | __lart_weakmem_order_acq_rel,
-    __lart_weakmem_order_atomic_op = 0x10
+    __lart_weakmem_order_atomic_op = 0x10,
+    __lart_weakmem_order_weak_cas = 0x20,
 };
 
 #ifdef __divine__
+struct CasRes { uint64_t value; bool success; };
+
 void __lart_weakmem_store( char *addr, uint64_t value, uint32_t bitwidth, __lart_weakmem_order ord ) _WM_INTERFACE;
 uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_order ord ) _WM_INTERFACE;
 
 void __lart_weakmem_fence( __lart_weakmem_order ord ) _WM_INTERFACE;
-uint64_t __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
-                             __lart_weakmem_order _ordSucc, __lart_weakmem_order _ordFail ) _WM_INTERFACE;
+CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
+                           __lart_weakmem_order _ordSucc, __lart_weakmem_order _ordFail ) _WM_INTERFACE;
 void __lart_weakmem_cleanup( int32_t cnt, ... ) _WM_INTERFACE;
 void __lart_weakmem_resize( char *addr, uint32_t newsize ) _WM_INTERFACE;
 
@@ -62,7 +66,8 @@ enum class MemoryOrder : uint32_t {
     Release = __lart_weakmem_order_release,
     AcqRel = __lart_weakmem_order_acq_rel,
     SeqCst = __lart_weakmem_order_seq_cst,
-    AtomicOp = __lart_weakmem_order_atomic_op
+    AtomicOp = __lart_weakmem_order_atomic_op,
+    WeakCAS = __lart_weakmem_order_weak_cas,
 };
 
 }

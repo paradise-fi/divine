@@ -156,14 +156,18 @@ struct Substitute {
     { }
 
     static llvm::AtomicOrdering castmemord( MemoryOrder mo ) {
-        switch ( MemoryOrder( uint32_t( mo ) & ~uint32_t( MemoryOrder::AtomicOp ) ) ) {
+        mo = MemoryOrder( uint32_t( mo )
+                        & ~uint32_t( MemoryOrder::AtomicOp | MemoryOrder::WeakCAS ) );
+        switch ( mo ) {
             case MemoryOrder::Unordered: return llvm::AtomicOrdering::Unordered;
             case MemoryOrder::Monotonic: return llvm::AtomicOrdering::Monotonic;
             case MemoryOrder::Acquire: return llvm::AtomicOrdering::Acquire;
             case MemoryOrder::Release: return llvm::AtomicOrdering::Release;
             case MemoryOrder::AcqRel: return llvm::AtomicOrdering::AcquireRelease;
             case MemoryOrder::SeqCst: return llvm::AtomicOrdering::SequentiallyConsistent;
-            case MemoryOrder::AtomicOp: UNREACHABLE( "cannot happen" );
+            case MemoryOrder::AtomicOp:
+            case MemoryOrder::WeakCAS:
+                UNREACHABLE( "cannot happen" );
         }
     }
 
@@ -573,8 +577,10 @@ struct Substitute {
         }
 
         for ( auto cas : cass ) {
-            auto succord = castmemord( cas->getSuccessOrdering() ) | _config.casOK;
-            auto failord = castmemord( cas->getFailureOrdering() ) | _config.casFail;
+            auto casord = (cas->isWeak() ? MemoryOrder::WeakCAS : MemoryOrder( 0 ))
+                          | MemoryOrder::AtomicOp;
+            auto succord = castmemord( cas->getSuccessOrdering() ) | _config.casOK | casord;
+            auto failord = castmemord( cas->getFailureOrdering() ) | _config.casFail | casord;
             /* transform:
              *    something
              *    %valsucc = cmpxchg %ptr, %cmp, %val succord failord
@@ -591,15 +597,26 @@ struct Substitute {
             auto *ptr = cas->getPointerOperand();
             auto *cmp = cas->getCompareOperand();
             auto *val = cas->getNewValOperand();
-            auto *rt = cas->getType();
+            auto *rt = llvm::cast< llvm::StructType >( cas->getType() );
+            auto *rtval = rt->getElementType( 0 );
+            auto *rtbool = rt->getElementType( 1 );
 
             llvm::IRBuilder<> builder( cas );
-            auto *orig = builder.CreateCall( _cas, { addrCast( ptr, builder ),
-                                                     i64Cast( cmp, builder ),
-                                                     i64Cast( val, builder ),
-                                                     bw( val ),
-                                                     mo( succord ), mo( failord ) } );
-            auto *eq = builder.CreateICmpEQ( orig, cmp );
+            ASSERT_EQ( rtbool, builder.getInt1Ty() );
+            auto *raw = builder.CreateCall( _cas, { addrCast( ptr, builder ),
+                                                    i64Cast( cmp, builder ),
+                                                    i64Cast( val, builder ),
+                                                    bw( val ),
+                                                    mo( succord ), mo( failord ) } );
+            auto *orig = builder.CreateExtractValue( raw, { 0 } );
+            auto *req = builder.CreateExtractValue( raw, { 1 } );
+            auto *eq = builder.CreateICmpNE( req, llvm::ConstantInt::get( req->getType(), 0 ) );
+            if ( orig->getType() != rtval ) {
+                if ( rtval->isIntegerTy() )
+                    orig = builder.CreateIntCast( orig, rtval, false );
+                else
+                    orig = builder.CreateBitOrPointerCast( orig, rtval );
+            }
             auto *r0 = builder.CreateInsertValue( llvm::UndefValue::get( rt ), orig, { 0 } );
             auto *r = llvm::cast< llvm::Instruction >( builder.CreateInsertValue( r0, eq, { 1 } ) );
             r->removeFromParent();

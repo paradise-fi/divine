@@ -445,20 +445,21 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
     return __lart_weakmem_load( addr, bitwidth, _ord, masked );
 }
 
-uint64_t __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
-                         __lart_weakmem_order _ordSucc, __lart_weakmem_order _ordFail ) noexcept
+CasRes __lart_weakmem_cas( char *addr, uint64_t expected, uint64_t value, uint32_t bitwidth,
+                           __lart_weakmem_order _ordSucc, __lart_weakmem_order _ordFail ) noexcept
 {
     InterruptMask masked;
 
     auto loaded = __lart_weakmem_load( addr, bitwidth, _ordFail, masked );
 
-    if ( loaded != expected )
-        return loaded;
+    if ( loaded != expected
+            || ( subseteq( MemoryOrder::WeakCAS, MemoryOrder( _ordFail ) ) && __vm_choose( 2 ) ) )
+        return { loaded, false };
 
     // TODO: when implementing NSW, make sure we order properly with _ordSucc
 
     __lart_weakmem_store( addr, value, bitwidth, _ordSucc );
-    return value;
+    return { value, true };
 }
 
 void __lart_weakmem_cleanup( int32_t cnt, ... ) noexcept {
