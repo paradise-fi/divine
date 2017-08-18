@@ -142,12 +142,12 @@ public:
 
     int underflow()
     {
-        int orig = fcntl( _fd, F_GETFL );
+        int res, err, orig = fcntl( _fd, F_GETFL );
         fcntl( _fd, F_SETFL, orig | O_NONBLOCK );
-        int res = ::read( _fd, _gbuf.get(), _buf_size );
+        res = ::read( _fd, _gbuf.get(), _buf_size ), err = errno;
         fcntl( _fd, F_SETFL, orig & ~O_NONBLOCK );
-        if ( res == 0 )
-            res = ::read( _fd, _gbuf.get(), 1 );
+        if ( res == -1 && err == EAGAIN ) /* pull in at least one character */
+            res = ::read( _fd, _gbuf.get(), 1 ), err = errno;
         fcntl( _fd, F_SETFL, orig );
 
         if ( res > 0 )
@@ -156,7 +156,7 @@ public:
         {
             setg( nullptr, nullptr, nullptr );
             if ( res < 0 )
-                throw std::system_error( errno, std::system_category(),
+                throw std::system_error( err, std::system_category(),
                                          "reading from a file descriptor" );
             return traits_type::eof();
         }
