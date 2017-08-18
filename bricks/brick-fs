@@ -66,7 +66,7 @@ namespace fs {
 struct PosixBuf : std::streambuf
 {
 private:
-    std::unique_ptr< char > _buf;
+    std::unique_ptr< char > _pbuf, _gbuf;
     size_t _buf_size;
     int _fd;
 
@@ -76,15 +76,15 @@ public:
     PosixBuf(const PosixBuf&) = delete;
     PosixBuf& operator=(const PosixBuf&) = delete;
 
-    PosixBuf() : _buf( nullptr ), _buf_size( 0 ), _fd( -1 ) {}
-    PosixBuf( int fd, size_t bufsize = 4096 ) : PosixBuf()
+    PosixBuf() : _pbuf( nullptr ), _gbuf( nullptr ), _buf_size( 0 ), _fd( -1 ) {}
+    PosixBuf( int fd, size_t bufsize = 1024 ) : PosixBuf()
     {
-        attach(fd, bufsize);
+        attach( fd, bufsize );
     }
 
     ~PosixBuf()
     {
-        if ( _buf )
+        if ( _pbuf )
             sync();
         if ( _fd != -1 )
             ::close( _fd );
@@ -98,10 +98,12 @@ public:
      */
     void attach( int fd, size_t bufsize = 4096 )
     {
-        _buf.reset( new char[ bufsize ] );
+        _pbuf.reset( new char[ bufsize ] );
+        _gbuf.reset( new char[ bufsize ] );
         _fd = fd;
         _buf_size = bufsize;
-        setp( _buf.get(), _buf.get() + _buf_size );
+        setp( _pbuf.get(), _pbuf.get() + _buf_size );
+        setg( nullptr, nullptr, nullptr );
     }
 
     /**
@@ -115,10 +117,12 @@ public:
     {
         sync();
         int res = _fd;
-        _buf.reset( nullptr );
+        _pbuf.reset( nullptr );
+        _gbuf.reset( nullptr );
         _buf_size = 0;
         _fd = -1;
         setp( nullptr, nullptr );
+        setg( nullptr, nullptr, nullptr );
         return res;
     }
 
@@ -136,6 +140,29 @@ public:
         return c;
     }
 
+    int underflow()
+    {
+        int orig = fcntl( _fd, F_GETFL );
+        fcntl( _fd, F_SETFL, orig | O_NONBLOCK );
+        int res = ::read( _fd, _gbuf.get(), _buf_size );
+        fcntl( _fd, F_SETFL, orig & ~O_NONBLOCK );
+        if ( res == 0 )
+            res = ::read( _fd, _gbuf.get(), 1 );
+        fcntl( _fd, F_SETFL, orig );
+
+        if ( res > 0 )
+            setg( _gbuf.get(), _gbuf.get(), _gbuf.get() + res );
+        else
+        {
+            setg( nullptr, nullptr, nullptr );
+            if ( res < 0 )
+                throw std::system_error( errno, std::system_category(),
+                                         "reading from a file descriptor" );
+            return traits_type::eof();
+        }
+        return *gptr();
+    }
+
     int sync()
     {
         if ( pptr() > pbase() )
@@ -151,7 +178,7 @@ public:
                 amount -= res;
                 start += res;
             }
-            setp( _buf.get(), _buf.get() + _buf_size );
+            setp( _pbuf.get(), _pbuf.get() + _buf_size );
         }
         return 0;
     }
@@ -972,7 +999,53 @@ struct TextExtension {
 #ifdef __unix__
 struct TestPosixBuf
 {
-    TEST(basic)
+    TEST(read)
+    {
+        int fd = open( "/dev/zero", O_RDWR );
+        ASSERT( fd != -1 );
+
+        PosixBuf buf( fd );
+        std::istream is( &buf );
+        ASSERT( !is.eof() );
+
+        char c;
+        is >> c;
+        ASSERT( !is.eof() );
+        ASSERT_EQ( c, 0 );
+    }
+
+    TEST(read_rand)
+    {
+        int fd = open( "/dev/random", O_RDONLY );
+        ASSERT( fd != -1 );
+
+        PosixBuf buf( fd );
+        std::istream is( &buf );
+        ASSERT( !is.eof() );
+
+        char c = 0;
+        while ( c == 0 )
+            is >> c;
+        ASSERT( c != 0 );
+        ASSERT( !is.eof() );
+    }
+
+    TEST(pipe)
+    {
+        int fds[2];
+        ::pipe( fds );
+        PosixBuf read( fds[0] ), write( fds[1] );
+        std::istream is( &read );
+        std::ostream os( &write );
+        os << "hello world" << std::endl;
+        std::string str;
+        is >> str;
+        ASSERT_EQ( str, "hello" );
+        is >> str;
+        ASSERT_EQ( str, "world" );
+    }
+
+    TEST(write)
     {
         int fd = open( "/dev/null", O_WRONLY );
         ASSERT( fd != -1 );
