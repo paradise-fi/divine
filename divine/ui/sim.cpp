@@ -70,7 +70,11 @@ namespace sim {
 namespace command {
 
 struct CastIron {}; // finalize with sticky commands
-struct Teflon {};   // finalize without sticky commands
+struct Teflon       // finalize without sticky commands
+{
+    std::string output_to;
+    bool clear_screen = false;
+};
 
 struct WithVar
 {
@@ -216,6 +220,11 @@ struct Interpreter
                       return good( s );
                   } );
 
+        auto teflopts = cmd::make_option_set< command::Teflon >( v )
+            .option( "[--clear-screen]", &command::Teflon::clear_screen,
+                     "clear screen before writing"s )
+            .option( "[--output-to {string}]", &command::Teflon::output_to,
+                     "write output to a given stream"s );
         auto varopts = cmd::make_option_set< command::WithVar >( v )
             .option( "[{string}]", &command::WithVar::var, "a variable reference"s );
         auto breakopts = cmd::make_option_set< command::Break >( v )
@@ -268,17 +277,18 @@ struct Interpreter
             .command< command::Rewind >( "rewind to a stored program state"s, varopts )
             .command< command::Set >( "set a variable "s, &command::Set::options )
             .command< command::BitCode >( "show the bitcode of the current function"s, varopts )
-            .command< command::Source >( "show the source code of the current function"s, varopts )
+            .command< command::Source >( "show the source code of the current function"s,
+                                         teflopts, varopts )
             .command< command::Thread >( "control thread scheduling"s, threadopts )
             .command< command::Trace >( "load a counterexample trace"s,
                                         &command::Trace::choices, o_trace )
-            .command< command::Show >( "show an object"s, varopts, showopts )
+            .command< command::Show >( "show an object"s, teflopts, varopts, showopts )
             .command< command::Draw >( "draw a portion of the heap"s, varopts )
             .command< command::Dot >( "draw a portion of the heap to a file of given type"s,
-                                      varopts, dotopts )
+                                      teflopts, varopts, dotopts )
             .command< command::Setup >( "set configuration options"s, setupopts )
-            .command< command::Inspect >( "like show, but also set $_"s, varopts, showopts )
-            .command< command::BackTrace >( "show a stack trace"s, varopts )
+            .command< command::Inspect >( "like show, but also set $_"s, teflopts, varopts, showopts )
+            .command< command::BackTrace >( "show a stack trace"s, teflopts, varopts )
             .command< command::Up >( "move up the stack (towards caller)"s )
             .command< command::Down >( "move down the stack (towards callee)"s );
     }
@@ -925,17 +935,34 @@ struct Interpreter
         out() << p.describe( arg ) << std::endl;
     }
 
+    void prepare( const command::Teflon &tfl )
+    {
+        if ( !tfl.output_to.empty() )
+        {
+            if ( _xterms.count( tfl.output_to ) )
+                _stream = &_xterms[ tfl.output_to ].stream();
+            else
+                out() << "ERROR: no xterm named " << tfl.output_to << " found!";
+        }
 
-    void finalize( command::Teflon ) {
+        if ( tfl.clear_screen )
+            out() << char( 27 ) << "[2J" << char( 27 ) << "[;H";
+    }
+
+    void prepare( command::CastIron ) {}
+
+    void finalize( command::Teflon )
+    {
         update();
     }
 
-    void finalize( command::CastIron ) {
+    void finalize( command::CastIron )
+    {
         update();
         auto parser = make_parser();
         for ( auto t : _sticky_commands ) {
             auto cmd = parser.parse( t.begin(), t.end() );
-            cmd.match( [&] ( auto opt ){ go( opt ); } );
+            cmd.match( [&] ( auto opt ){ prepare( opt ); go( opt ); } );
         }
     }
 };
@@ -962,7 +989,7 @@ void Interpreter::command( cmd::Tokens tok )
     auto parser = make_parser();
     auto cmd = parser.parse( tok.begin(), tok.end() );
     cmd.match( [&] ( command::Help h ) { help( parser, h._cmd ); },
-                [&] ( auto opt ) { go( opt ); finalize( opt ); } );
+               [&] ( auto opt ) { prepare( opt ); go( opt ); finalize( opt ); } );
 }
 
 }
