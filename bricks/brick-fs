@@ -40,6 +40,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <utime.h>
+#include <fcntl.h>
 #endif
 
 #include <vector>
@@ -61,6 +62,7 @@ namespace fs {
 /*
  * Based on code by Enrico Zini.
  */
+#ifdef __unix__
 struct PosixBuf : std::streambuf
 {
 private:
@@ -154,6 +156,7 @@ public:
         return 0;
     }
 };
+#endif
 
 struct SystemException : except::Error {
     // make sure we don't override errno accidentaly when constructing std::string
@@ -965,6 +968,25 @@ struct TextExtension {
         ASSERT_EQ( ".c", takeExtension( "a.b.c" ) );
     }
 };
+
+#ifdef __unix__
+struct TestPosixBuf
+{
+    TEST(basic)
+    {
+        int fd = open( "/dev/null", O_WRONLY );
+        ASSERT( fd != -1 );
+
+        PosixBuf buf( fd );
+        std::ostream os( &buf );
+
+        os << "Foo";
+        os << "Bar";
+        os << std::endl;
+    }
+};
+#endif
+
 }
 }
 
