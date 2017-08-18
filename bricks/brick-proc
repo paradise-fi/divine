@@ -27,6 +27,8 @@
  * POSSIBILITY OF SUCH DAMAGE. */
 
 #include <brick-except>
+#include <brick-fs>
+#include <brick-string>
 
 #include <string>
 #include <vector>
@@ -35,9 +37,13 @@
 #include <sstream>
 #include <iostream>
 #include <future>
+#include <memory>
 
 #if defined( __unix__ ) || defined( __divine__ )
+#include <termios.h>
 #include <unistd.h>
+#include <signal.h>
+#include <spawn.h>
 #include <sys/wait.h>
 #endif
 
@@ -294,6 +300,89 @@ inline SystemOutput shellSpawnAndWait( SpawnOpts opts, std::string shellcmd ) {
 inline SystemOutput shellSpawnAndWait( std::string shellcmd ) {
     return shellSpawnAndWait( None, shellcmd );
 }
+
+struct XTerm
+{
+    struct
+    {
+        int pid = 0;
+        int masterfd, slavefd;
+
+        std::unique_ptr< std::iostream > stream;
+        std::unique_ptr< brick::fs::PosixBuf > buf;
+    } _d;
+
+    struct SBuf : fs::PosixBuf
+    {
+        using fs::PosixBuf::PosixBuf;
+
+        int sync()
+        {
+            char tmp[ _buf_size * 2 ];
+            int i = 0;
+            for ( auto p = pbase(); p < pptr(); ++p )
+            {
+                if ( *p == '\n' )
+                    tmp[ i++ ] = '\r';
+                tmp[ i++ ] = *p;
+            }
+            do_sync( tmp, i );
+            return 0;
+        }
+    };
+
+    void open()
+    {
+        _d.masterfd = posix_openpt( O_RDWR );
+        if ( grantpt( _d.masterfd ) )
+            throw std::system_error( errno, std::system_category(),
+                                     "Could not grantpt()." );
+
+        _d.slavefd = ::open( ptsname( _d.masterfd ), O_RDWR );
+
+        std::string slave = std::string( "-S" ) +
+                            ptsname( _d.masterfd ) + "/" + brick::string::fmt( _d.slavefd );
+        const char *argv[] = { "xterm", slave.c_str(), nullptr };
+
+        posix_spawnp( &_d.pid, "xterm", nullptr, nullptr,
+                      const_cast< char ** >( argv ), nullptr );
+
+        char buf[8];
+        ::read( _d.masterfd, buf, 8 ); /* handshake */
+
+        struct termios tio;
+        tcgetattr( _d.slavefd, &tio );
+        tio.c_lflag = 0; /* no ECHO means we don't read things back */
+        tio.c_iflag = 0;
+        tio.c_oflag = OPOST | OXTABS | OLCUC | ONLCR;
+        tcsetattr( _d.slavefd, TCSANOW, &tio );
+
+        _d.buf.reset( new SBuf( _d.masterfd ) );
+        _d.stream.reset( new std::iostream( _d.buf.get() ) );
+    }
+
+    std::iostream &stream() { return *_d.stream; }
+
+    XTerm() = default;
+    XTerm( const XTerm & ) = delete;
+    XTerm( XTerm &&o )
+    {
+        _d = std::move( o._d );
+        o._d.pid = 0;
+    }
+
+    ~XTerm()
+    {
+        if ( _d.pid )
+        {
+            kill( _d.pid, SIGTERM );
+            close( _d.masterfd );
+            close( _d.slavefd );
+            waitpid( _d.pid, nullptr, 0 );
+        }
+        _d.pid = 0;
+    }
+};
 
 }
 
