@@ -26,8 +26,8 @@
 #include <thread>
 #include <chrono>
 #include <regex>
+#include <optional>
 
-#include <brick-types>
 #include <brick-string>
 
 #ifdef __unix
@@ -65,7 +65,7 @@ struct SysInfo::Data {
     std::mutex lock;
 };
 
-using MaybeStr = brick::types::Maybe< std::string >;
+using MaybeStr = std::optional< std::string >;
 
 static MaybeStr matchLine( std::string file, std::regex &r, int matchIndex ) {
     std::string line;
@@ -74,9 +74,9 @@ static MaybeStr matchLine( std::string file, std::regex &r, int matchIndex ) {
     while ( !f.eof() ) {
         std::getline( f, line );
         if ( std::regex_match( line, match, r ) )
-            return MaybeStr::Just( match[ matchIndex ].str() );
+            return match[ matchIndex ].str();
     }
-    return MaybeStr::Nothing();
+    return std::nullopt;
 }
 
 #ifdef __linux
@@ -85,7 +85,7 @@ long long procStatusLine( std::string key ) {
     file << "/proc/" << uint64_t( getpid() ) << "/status";
     std::regex r( key + ":[\t ]*([0-9]+) .*", std::regex::extended );
     auto m = matchLine( file.str(), r, 1 );
-    if ( m.isJust() )
+    if ( m.has_value() )
         return std::atol( m.value().c_str() );
     return 0;
 }
@@ -205,7 +205,7 @@ uint64_t SysInfo::memory() const
 #ifdef __linux
     std::regex r( "MemTotal[\t ]*: (.+)", std::regex::extended );
     auto m = matchLine( "/proc/meminfo", r, 1 );
-    if ( m.isJust() )
+    if ( m.has_value() )
         return std::atoll( m.value().c_str() );
 #endif
     return 0;
@@ -215,9 +215,7 @@ std::string SysInfo::architecture() const {
 #ifdef __linux
     std::regex r( "model name[\t ]*: (.+)", std::regex::extended );
     auto m = matchLine( "/proc/cpuinfo", r, 1 );
-    if ( m.isJust() )
-        return m.value();
-    return "Unknown";
+    return m.value_or( "Unknown" );
 #endif
 
 #ifdef _WIN32
