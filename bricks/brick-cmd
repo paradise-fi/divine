@@ -467,7 +467,7 @@ struct Option : OptionInterface< T >
         auto _set( types::NotPreferred, X_ &x, Y y )
             -> typename std::enable_if< std::is_convertible< Y, X_ >::value >::type
         {
-            x = y;
+            x = static_cast< X_ >( y );
         }
 
         template< typename X_, typename Y >
