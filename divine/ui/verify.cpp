@@ -109,7 +109,7 @@ void Verify::safety()
     Stepper step;
     step._stop_on_error = true;
     step.run( dbg, Stepper::Quiet );
-    mc::backtrace( dbg, dbg.snapshot(), _num_callers );
+    mc::backtrace( std::cout, dbg, dbg.snapshot(), _num_callers );
 }
 
 void Verify::liveness()
