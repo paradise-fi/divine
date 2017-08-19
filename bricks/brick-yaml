@@ -69,7 +69,9 @@ struct Parser
 
         auto *map = dyn_cast< lyaml::MappingNode >( node );
         if ( !map )
-            fail( result, "YAML error: not an object node", done, todo );
+            return fail( result, "YAML error: not an object node", done, todo );
+
+        bool found = false;
 
         for ( auto &pair : *map )
         {
@@ -78,11 +80,12 @@ struct Parser
                 ::llvm::SmallVector< char, 128 > storage;
                 auto ref = skey->getValue( storage );
                 if ( ref == key )
-                    return getF( done, todo, fail, result, pair.getValue() );
+                    getF( done, todo, fail, result, pair.getValue() ), found = true;
             }
         }
 
-        fail( result, "YAML error: key not found: " + key, todo, done  );
+        if ( !found )
+            return fail( result, "YAML error: key not found: " + key, todo, done  );
     }
 
     template< typename T, typename Fail >
@@ -114,7 +117,7 @@ struct Parser
     T get( KeyList keys )
     {
         return getF< T >( std::move( keys ),
-                          [&]( T &, std::string &&msg, KeyList next, KeyList seen )
+                          [&]( T &, const std::string &msg, KeyList next, KeyList seen )
                           {
                               std::stringstream ss;
                               ss << msg << std::endl << "found key trace: ";
@@ -196,6 +199,23 @@ struct TestParse
         ASSERT_EQ( vec.size(), 2 );
         ASSERT_EQ( vec[ 0 ], "item 1" );
         ASSERT_EQ( vec[ 1 ], "item 2" );
+    }
+
+    TEST(nested_list)
+    {
+        yaml::Parser y( "- [ 1, 2 ] \n- [ 3, 4 ]" );
+        auto vec = y.get< std::vector< int > >( { "*", "*" } );
+        ASSERT_EQ( vec.size(), 4 );
+        ASSERT( vec == decltype( vec ){ 1, 2, 3, 4 } );
+    }
+
+    TEST(list_of_maps)
+    {
+        yaml::Parser y( "- item: 1\n- item: 2" );
+        auto vec = y.get< std::vector< int > >( { "*", "item" } );
+        ASSERT_EQ( vec.size(), 2 );
+        ASSERT_EQ( vec[ 0 ], 1 );
+        ASSERT_EQ( vec[ 1 ], 2 );
     }
 };
 
