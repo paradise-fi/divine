@@ -126,8 +126,8 @@ void Verify::safety()
         _log->info( "error state:\n" );
         safety->dbg_fill( dbg );
         dbg.load( trace.final );
-        dbg._choices = { trace.choices.back().begin(), trace.choices.back().end() };
-        dbg._choices.push_back( -1 ); // prevent execution after choices are depleted
+        dbg._lock.choices = { trace.choices.back().begin(), trace.choices.back().end() };
+        dbg._lock.choices.push_back( -1 ); // prevent execution after choices are depleted
         vm::setup::scheduler( dbg );
         using Stepper = vm::dbg::Stepper< decltype( dbg ) >;
         Stepper step;

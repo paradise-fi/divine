@@ -488,8 +488,8 @@ struct Interpreter
         if ( !_trace.count( snap ) )
             return false;
 
-        _ctx._choices = _trace[ snap ];
-        _ctx._suppress_interrupts = _trace_intr[ snap ];
+        _ctx._lock.choices = _trace[ snap ];
+        _ctx._lock.interrupts = _trace_intr[ snap ];
         return true;
     }
 
@@ -538,7 +538,7 @@ struct Interpreter
     void sched_policy()
     {
         auto &proc = _ctx._proc;
-        auto &choices = _ctx._choices;
+        auto &choices = _ctx._lock.choices;
 
         if ( proc.empty() )
             return;
@@ -883,13 +883,13 @@ struct Interpreter
         for ( auto s : tr.interrupts )
             intr.push_back( s );
 
-        _ctx._choices = choices;
-        _ctx._suppress_interrupts = intr;
+        _ctx._lock.choices = choices;
+        _ctx._lock.interrupts = intr;
 
         auto last = get( "#last", true ).snapshot();
         out() << "traced states:";
         bool stop = false;
-        step._sched_policy = [&]() { if ( _ctx._choices.empty() ) stop = true; };
+        step._sched_policy = [&]() { if ( _ctx._lock.choices.empty() ) stop = true; };
         step._breakpoint = [&]( vm::CodePointer, bool ) { return stop; };
         step._stop_on_error = false;
         step._yield_state =
@@ -904,8 +904,8 @@ struct Interpreter
                     return next;
                 }
                 visited.insert( next );
-                int c_count = choices.size() - _ctx._choices.size(),
-                    i_count = intr.size() - _ctx._suppress_interrupts.size();
+                int c_count = choices.size() - _ctx._lock.choices.size(),
+                    i_count = intr.size() - _ctx._lock.interrupts.size();
                 auto c_b = choices.begin(), c_e = c_b + c_count;
                 auto i_b = intr.begin(), i_e = i_b + i_count;
                 _trace[ last ] = std::deque< int >( c_b, c_e );
@@ -919,10 +919,10 @@ struct Interpreter
 
         out() << std::endl;
 
-        if ( !_ctx._choices.empty() )
+        if ( !_ctx._lock.choices.empty() )
         {
             out() << "unused choices:";
-            for ( auto c : _ctx._choices )
+            for ( auto c : _ctx._lock.choices )
                 out() << " " << c;
             out() << std::endl;
         }
