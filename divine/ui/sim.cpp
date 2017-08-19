@@ -207,6 +207,7 @@ struct Interpreter
     std::map< vm::CowHeap::Snapshot, RefCnt > _state_refs;
     std::map< vm::CowHeap::Snapshot, std::string > _state_names;
     std::map< vm::CowHeap::Snapshot, std::deque< int > > _trace;
+    std::map< vm::CowHeap::Snapshot, int > _trace_intr;
     vm::Explore _explore;
 
     std::pair< int, int > _sticky_tid;
@@ -483,6 +484,17 @@ struct Interpreter
         update();
     }
 
+    bool update_lock( vm::CowHeap::Snapshot snap )
+    {
+        if ( !_trace.count( snap ) )
+            return false;
+
+        _ctx._choices = _trace[ snap ];
+        _ctx._suppress_interrupts.clear();
+        _ctx._suppress_interrupts.push_back( _trace_intr[ snap ] );
+        return true;
+    }
+
     auto newstate( vm::CowHeap::Snapshot snap, bool update_choices = true, bool terse = false )
     {
         snap = _explore.start( _ctx, snap );
@@ -495,8 +507,8 @@ struct Interpreter
         if ( _state_names.count( snap ) )
         {
             name = _state_names[ snap ];
-            if ( update_choices && _trace.count( snap ) )
-                _ctx._choices = _trace[ snap ];
+            if ( update_choices )
+                update_lock( snap );
         }
         else
         {
@@ -757,8 +769,8 @@ struct Interpreter
         auto tgt = get( re.var );
         _ctx.load( tgt.snapshot() );
         vm::setup::scheduler( _ctx );
-        if ( _trace.count( tgt.snapshot() ) )
-            _ctx._choices = _trace[ tgt.snapshot() ];
+        if ( update_lock( tgt.snapshot() ) )
+            out() << "# rewound to a trace location, locking the scheduler" << std::endl;
         reach_user();
         set( "$_", re.var );
     }
@@ -897,7 +909,9 @@ struct Interpreter
                 int count = choices.size() - _ctx._choices.size();
                 auto b = choices.begin(), e = b + count;
                 _trace[ last ] = std::deque< int >( b, e );
+                _trace_intr[ last ] = intr.front();
                 choices.erase( b, e );
+                intr.pop_front();
                 last = get( "#last", true ).snapshot();
                 return next;
             };
