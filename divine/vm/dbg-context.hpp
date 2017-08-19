@@ -56,9 +56,11 @@ struct DNContext : vm::Context< Program, Heap >
 template< typename Heap >
 struct Context : DNContext< Heap >
 {
+    using Super = DNContext< Heap >;
     std::vector< std::string > _trace;
     std::string _info;
     std::deque< int > _choices;
+    std::deque< int > _suppress_interrupts;
     ProcInfo _proc;
 
     llvm::DIType *_state_di_type;
@@ -90,6 +92,28 @@ struct Context : DNContext< Heap >
         auto rv = _choices.front();
         _choices.pop_front();
         return rv;
+    }
+
+    template< typename Upcall, typename... Args >
+    void maybe_interrupt( Upcall up, Args... args )
+    {
+        if ( _suppress_interrupts.empty() )
+            return (this->*up)( args... );
+        if ( ! -- _suppress_interrupts.front() )
+        {
+            _suppress_interrupts.pop_front();
+            this->set_interrupted( true );
+        }
+    }
+
+    void mem_interrupt( GenericPointer pc, int sz, int t )
+    {
+        maybe_interrupt( &Super::mem_interrupt, pc, sz, t );
+    }
+
+    void cfl_interrupt( CodePointer pc )
+    {
+        maybe_interrupt( &Super::cfl_interrupt, pc );
     }
 
     void trace( vm::TraceText tt )
