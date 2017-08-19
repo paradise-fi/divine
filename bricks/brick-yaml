@@ -40,7 +40,7 @@ using ::llvm::isa;
 
 class Parser
 {
-    template< typename T > struct Wintess { };
+    template< typename T > struct Witness {};
   public:
 
     using KeyList = std::deque< std::string >;
@@ -94,16 +94,18 @@ class Parser
 
         ASSERT( node );
 
-        return extractValue( Wintess< T >(), node, fail );
+        return extractValue( Witness< T >(), node, fail );
     }
 
     template< typename T >
-    T getOr( KeyList keys, T def ) {
+    T getOr( KeyList keys, T def )
+    {
         return getF< T >( std::move( keys ), [&]( auto &&... ) { return def; });
     }
 
     template< typename T >
-    T get( KeyList keys ) {
+    T get( KeyList keys )
+    {
         return getF< T >( std::move( keys ), [&]( std::string &&msg, KeyList next, KeyList seen ) -> T {
                 std::stringstream ss;
                 ss << msg << std::endl << "found key trace: ";
@@ -119,7 +121,7 @@ class Parser
   private:
 
     template< typename Fail >
-    std::string extractValue( Wintess< std::string >, lyaml::Node *node, Fail fail )
+    std::string extractValue( Witness< std::string >, lyaml::Node *node, Fail fail )
     {
         auto *scalar = dyn_cast< lyaml::ScalarNode >( node );
         if ( !scalar )
@@ -131,7 +133,7 @@ class Parser
     }
 
     template< typename T, typename Fail >
-    auto extractValue( Wintess< T >, lyaml::Node *node, Fail fail )
+    auto extractValue( Witness< T >, lyaml::Node *node, Fail fail )
         -> std::enable_if_t< std::is_arithmetic< T >::value, T >
     {
         auto *scalar = dyn_cast< lyaml::ScalarNode >( node );
