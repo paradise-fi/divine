@@ -516,6 +516,9 @@ struct Interpreter
             out() << " " << name << std::flush;
         else if ( isnew )
             out() << "# a new program state was stored as " << name << std::endl;
+        else if ( _trace.count( snap ) )
+            out() << "# program follows the trace at " << name
+                  << " (the scheduler is locked)"<< std::endl;
         else
             out() << "# program entered state " << name << " (already seen)" << std::endl;
 
