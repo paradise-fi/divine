@@ -217,6 +217,15 @@ struct TestParse
         ASSERT_EQ( vec[ 0 ], 1 );
         ASSERT_EQ( vec[ 1 ], 2 );
     }
+
+    TEST(list_of_maps_2)
+    {
+        yaml::Parser y( "- item: 1\n  foo: 2\n- item: 2\n  foo: 1" );
+        auto vec = y.get< std::vector< int > >( { "*", "foo" } );
+        ASSERT_EQ( vec.size(), 2 );
+        ASSERT_EQ( vec[ 0 ], 2 );
+        ASSERT_EQ( vec[ 1 ], 1 );
+    }
 };
 
 }
