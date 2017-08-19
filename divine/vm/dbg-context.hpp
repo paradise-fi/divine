@@ -63,7 +63,7 @@ struct Context : DNContext< Heap >
     struct
     {
         std::deque< int > choices;
-        std::deque< int > interrupts;
+        std::deque< Interrupt > interrupts;
     } _lock;
 
     ProcInfo _proc;
@@ -100,35 +100,31 @@ struct Context : DNContext< Heap >
     }
 
     template< typename Upcall, typename... Args >
-    void maybe_interrupt( Upcall up, Args... args )
+    void maybe_interrupt( Interrupt::Type t, CodePointer pc, Upcall up, Args... args )
     {
         if( this->in_kernel() )
             return;
 
         if ( _lock.interrupts.empty() )
-            return (this->*up)( args... );
+            return (this->*up)( pc, args... );
 
-        ASSERT_LEQ( 1, _lock.interrupts.front() );
-        if ( !--_lock.interrupts.front() )
+        if ( this->_instruction_counter == _lock.interrupts.front().ictr )
+        {
+            ASSERT_EQ( t, _lock.interrupts.front().type );
+            ASSERT_EQ( pc, _lock.interrupts.front().pc );
+            _lock.interrupts.pop_front();
             this->set_interrupted( true );
+        }
     }
 
-    template< typename Eval >
-    void check_interrupt( Eval &eval )
+    void mem_interrupt( CodePointer pc, GenericPointer ptr, int sz, int t )
     {
-        if ( Super::check_interrupt( eval ) && !_lock.interrupts.empty() )
-            if ( _lock.interrupts.front() == 0 )
-                _lock.interrupts.pop_front();
-    }
-
-    void mem_interrupt( GenericPointer pc, int sz, int t )
-    {
-        maybe_interrupt( &Super::mem_interrupt, pc, sz, t );
+        maybe_interrupt( Interrupt::Mem, pc, &Super::mem_interrupt, ptr, sz, t );
     }
 
     void cfl_interrupt( CodePointer pc )
     {
-        maybe_interrupt( &Super::cfl_interrupt, pc );
+        maybe_interrupt( Interrupt::Cfl, pc, &Super::cfl_interrupt );
     }
 
     void trace( vm::TraceText tt )
