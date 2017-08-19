@@ -42,17 +42,16 @@ void backtrace( std::ostream &ostr, Dbg &dbg, vm::CowHeap::Snapshot snap, int ma
     vm::dbg::backtrace( ostr, dn, visited, stacks, maxdepth );
 }
 
-struct Choices {
-    std::vector< std::vector< int > > c;
-    auto &back() { return c.back(); };
-    void push() { c.emplace_back(); };
+struct Step
+{
+    std::vector< vm::Interrupt > interrupts;
+    std::vector< vm::Choice > choices;
 };
 
 struct Trace
 {
-    Choices choices;
+    std::vector< Step > steps;
     std::vector< std::string > labels;
-    std::vector< vm::Interrupt > interrupts;
     std::string bootinfo;
     vm::CowHeap::Snapshot final;
 };
@@ -90,12 +89,9 @@ Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
         {
             for ( auto l : label.trace )
                 t.labels.push_back( l );
-            t.choices.push();
-            std::transform( label.stack.begin(), label.stack.end(),
-                            std::back_inserter( t.choices.back() ),
-                            []( auto x ) { return x.first; } );
-            std::copy( label.interrupts.begin(), label.interrupts.end(),
-                       std::back_inserter( t.interrupts ) );
+            t.steps.emplace_back();
+            t.steps.back().interrupts = label.interrupts;
+            t.steps.back().choices = label.stack;
         };
 
     ss::search( ss::Order::PseudoBFS, ex, 1,
