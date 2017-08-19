@@ -206,8 +206,7 @@ struct Interpreter
     std::map< std::string, DN > _dbg;
     std::map< vm::CowHeap::Snapshot, RefCnt > _state_refs;
     std::map< vm::CowHeap::Snapshot, std::string > _state_names;
-    std::map< vm::CowHeap::Snapshot, std::deque< int > > _trace;
-    std::map< vm::CowHeap::Snapshot, int > _trace_intr;
+    std::map< vm::CowHeap::Snapshot, std::deque< int > > _trace, _trace_intr;
     vm::Explore _explore;
 
     std::pair< int, int > _sticky_tid;
@@ -490,8 +489,7 @@ struct Interpreter
             return false;
 
         _ctx._choices = _trace[ snap ];
-        _ctx._suppress_interrupts.clear();
-        _ctx._suppress_interrupts.push_back( _trace_intr[ snap ] );
+        _ctx._suppress_interrupts = _trace_intr[ snap ];
         return true;
     }
 
@@ -906,12 +904,14 @@ struct Interpreter
                     return next;
                 }
                 visited.insert( next );
-                int count = choices.size() - _ctx._choices.size();
-                auto b = choices.begin(), e = b + count;
-                _trace[ last ] = std::deque< int >( b, e );
-                _trace_intr[ last ] = intr.front();
-                choices.erase( b, e );
-                intr.pop_front();
+                int c_count = choices.size() - _ctx._choices.size(),
+                    i_count = intr.size() - _ctx._suppress_interrupts.size();
+                auto c_b = choices.begin(), c_e = c_b + c_count;
+                auto i_b = intr.begin(), i_e = i_b + i_count;
+                _trace[ last ] = std::deque< int >( c_b, c_e );
+                _trace_intr[ last ] = std::deque< int >( i_b, i_e );
+                choices.erase( c_b, c_e );
+                intr.erase( i_b, i_e );
                 last = get( "#last", true ).snapshot();
                 return next;
             };
