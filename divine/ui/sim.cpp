@@ -865,12 +865,16 @@ struct Interpreter
         }
 
         _trace.clear();
-        std::deque< int > choices;
+        std::deque< int > choices, intr;
         std::set< vm::CowHeap::Snapshot > visited;
         for ( auto c : tr.choices )
             for ( int i = 0; i < c.second; ++i )
                 choices.push_back( c.first );
+        for ( auto s : tr.interrupts )
+            intr.push_back( s );
+
         _ctx._choices = choices;
+        _ctx._suppress_interrupts = intr;
 
         auto last = get( "#last", true ).snapshot();
         out() << "traced states:";
