@@ -69,15 +69,13 @@ struct OneLineTokenizer
 
 namespace sim {
 
-std::pair< int, int > parse_choice( std::string s )
+vm::Choice parse_choice( std::string s )
 {
-    if ( s.find( '^' ) == std::string::npos )
-        return std::make_pair( std::stoi( s ), 1 );
-    else
-    {
-        std::string repeat( s, s.find( '^' ) + 1 );
-        return std::make_pair( std::stoi( s ), std::stoi( repeat ) );
-    }
+    auto i = s.find( '/' );
+    if ( i == std::string::npos )
+        throw std::runtime_error( "unexpected choice format: " + s );
+    return vm::Choice( std::stoi( std::string( s, 0, i ) ),
+                       std::stoi( std::string( s, i + 1, std::string::npos ) ) );
 }
 
 vm::Interrupt parse_interrupt( std::string s )
@@ -107,7 +105,7 @@ vm::Interrupt parse_interrupt( std::string s )
 
 struct Trace
 {
-    std::vector< std::pair< int, int > > choices;
+    std::vector< vm::Choice > choices;
     std::vector< vm::Interrupt > interrupts;
 };
 
@@ -231,7 +229,7 @@ struct Interpreter
     std::map< std::string, DN > _dbg;
     std::map< vm::CowHeap::Snapshot, RefCnt > _state_refs;
     std::map< vm::CowHeap::Snapshot, std::string > _state_names;
-    std::map< vm::CowHeap::Snapshot, std::deque< int > > _trace;
+    std::map< vm::CowHeap::Snapshot, std::deque< vm::Choice > > _trace;
     std::map< vm::CowHeap::Snapshot, std::deque< vm::Interrupt > > _trace_intr;
     vm::Explore _explore;
 
@@ -570,21 +568,21 @@ struct Interpreter
             return;
 
         std::uniform_int_distribution< int > dist( 0, proc.size() - 1 );
-        int choice = -1;
+        vm::Choice choice( -1, proc.size() );
 
         if ( _sched_random )
-            choice = dist( _rand );
+            choice.taken = dist( _rand );
         else
             for ( auto pi : proc )
                 if ( pi.first == _sticky_tid )
-                    choice = pi.second;
+                    choice.taken = pi.second;
 
-        if ( choice < 0 )
+        if ( choice.taken < 0 )
         {
             /* thread is gone, pick a replacement at random */
             int seq = dist( _rand );
             _sticky_tid = proc[ seq ].first;
-            choice = proc[ seq ].second;
+            choice.taken = proc[ seq ].second;
         }
 
         if ( choices.empty() )
@@ -593,7 +591,7 @@ struct Interpreter
         out() << "# active threads:";
         for ( auto pi : proc )
         {
-            bool active = pi.second == choices.front();
+            bool active = pi.second == choices.front().taken;
             out() << ( active ? " [" : " " )
                       << pi.first.first << ":" << pi.first.second
                       << ( active ? "]" : "" );
@@ -901,14 +899,9 @@ struct Interpreter
         }
 
         _trace.clear();
-        std::deque< int > choices;
-        std::deque< vm::Interrupt > intr;
+        std::deque< vm::Choice > choices = { tr.choices.begin(), tr.choices.end() };
+        std::deque< vm::Interrupt > intr = { tr.interrupts.begin(), tr.interrupts.end() };
         std::set< vm::CowHeap::Snapshot > visited;
-        for ( auto c : tr.choices )
-            for ( int i = 0; i < c.second; ++i )
-                choices.push_back( c.first );
-        for ( auto s : tr.interrupts )
-            intr.push_back( s );
 
         _ctx._lock.choices = choices;
         _ctx._lock.interrupts = intr;
@@ -936,7 +929,7 @@ struct Interpreter
                     i_count = intr.size() - _ctx._lock.interrupts.size();
                 auto c_b = choices.begin(), c_e = c_b + c_count;
                 auto i_b = intr.begin(), i_e = i_b + i_count;
-                _trace[ last ] = std::deque< int >( c_b, c_e );
+                _trace[ last ] = decltype( choices )( c_b, c_e );
                 _trace_intr[ last ] = decltype( intr )( i_b, i_e );
                 choices.erase( c_b, c_e );
                 intr.erase( i_b, i_e );
