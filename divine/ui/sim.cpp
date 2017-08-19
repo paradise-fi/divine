@@ -108,7 +108,7 @@ vm::Interrupt parse_interrupt( std::string s )
 struct Trace
 {
     std::vector< std::pair< int, int > > choices;
-    std::vector< int > interrupts;
+    std::vector< vm::Interrupt > interrupts;
 };
 
 namespace command {
@@ -231,7 +231,8 @@ struct Interpreter
     std::map< std::string, DN > _dbg;
     std::map< vm::CowHeap::Snapshot, RefCnt > _state_refs;
     std::map< vm::CowHeap::Snapshot, std::string > _state_names;
-    std::map< vm::CowHeap::Snapshot, std::deque< int > > _trace, _trace_intr;
+    std::map< vm::CowHeap::Snapshot, std::deque< int > > _trace;
+    std::map< vm::CowHeap::Snapshot, std::deque< vm::Interrupt > > _trace_intr;
     vm::Explore _explore;
 
     std::pair< int, int > _sticky_tid;
@@ -900,7 +901,8 @@ struct Interpreter
         }
 
         _trace.clear();
-        std::deque< int > choices, intr;
+        std::deque< int > choices;
+        std::deque< vm::Interrupt > intr;
         std::set< vm::CowHeap::Snapshot > visited;
         for ( auto c : tr.choices )
             for ( int i = 0; i < c.second; ++i )
@@ -929,12 +931,13 @@ struct Interpreter
                     return next;
                 }
                 visited.insert( next );
+                _ctx._instruction_counter = 0;
                 int c_count = choices.size() - _ctx._lock.choices.size(),
                     i_count = intr.size() - _ctx._lock.interrupts.size();
                 auto c_b = choices.begin(), c_e = c_b + c_count;
                 auto i_b = intr.begin(), i_e = i_b + i_count;
                 _trace[ last ] = std::deque< int >( c_b, c_e );
-                _trace_intr[ last ] = std::deque< int >( i_b, i_e );
+                _trace_intr[ last ] = decltype( intr )( i_b, i_e );
                 choices.erase( c_b, c_e );
                 intr.erase( i_b, i_e );
                 last = get( "#last", true ).snapshot();
@@ -1166,7 +1169,7 @@ void Sim::setup()
             for ( auto c : choices )
                 _trace->choices.push_back( sim::parse_choice( c ) );
             for ( auto c : interrupts )
-                _trace->interrupts.push_back( std::stoi( c ) );
+                _trace->interrupts.push_back( sim::parse_interrupt( c ) );
         }
         else
             std::cerr << "WARNING: There is no counterexample in the report." << std::endl;
