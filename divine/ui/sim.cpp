@@ -67,6 +67,8 @@ struct OneLineTokenizer
 };
 
 
+namespace sim {
+
 std::pair< int, int > parse_choice( std::string s )
 {
     if ( s.find( '^' ) == std::string::npos )
@@ -78,7 +80,30 @@ std::pair< int, int > parse_choice( std::string s )
     }
 }
 
-namespace sim {
+vm::Interrupt parse_interrupt( std::string s )
+{
+    auto i = s.find( '/' ), p = s.rfind( '/' );
+    if ( i == std::string::npos || p == std::string::npos )
+        throw std::runtime_error( "unexpected interrupt format: " + s );
+    std::string type( s, 0, i ), ictr( s, i + 1, p ), pc( s, p + 1, std::string::npos );
+    auto c = pc.find( ':' );
+    if ( c == std::string::npos )
+        throw std::runtime_error( "unexpected program counter format: " + pc );
+    vm::Interrupt res;
+
+    if ( type == "M" )
+        res.type = vm::Interrupt::Mem;
+    else if ( type == "C" )
+        res.type = vm::Interrupt::Cfl;
+    else
+        throw std::runtime_error( "unexpected interrupt type: " + type );
+
+    res.ictr = std::stoi( ictr );
+    res.pc.function( std::stoi( std::string( pc, 0, c ) ) );
+    res.pc.instruction( std::stoi( std::string( pc, c + 1, std::string::npos ) ) );
+
+    return res;
+}
 
 struct Trace
 {
@@ -243,7 +268,7 @@ struct Interpreter
              add( "choice", []( std::string s, auto good, auto bad )
                   {
                       try {
-                          return good( parse_choice( s ) );
+                          return good( sim::parse_choice( s ) );
                       } catch ( std::invalid_argument &e )
                       {
                           return bad( cmd::BadFormat, e.what() );
@@ -1139,7 +1164,7 @@ void Sim::setup()
             auto choices = tok.tokenize( parsed.get< std::string >( { "choices made" } ) );
             auto interrupts = tok.tokenize( parsed.get< std::string >( { "interrupts" } ) );
             for ( auto c : choices )
-                _trace->choices.push_back( parse_choice( c ) );
+                _trace->choices.push_back( sim::parse_choice( c ) );
             for ( auto c : interrupts )
                 _trace->interrupts.push_back( std::stoi( c ) );
         }
