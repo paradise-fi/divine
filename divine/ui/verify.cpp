@@ -39,7 +39,6 @@ void Verify::setup_report_file()
     _report_filename = outputName( _file, "report." + rand );
     if ( ( fd = open( _report_filename.c_str(), O_CREAT | O_EXCL, 0666 ) ) < 0 )
         return setup_report_file();
-    _report_file.reset( new std::ofstream( _report_filename ) );
     close( fd );
 }
 
@@ -57,7 +56,10 @@ void Verify::setup()
 
         if ( !_no_report_file )
         {
-            setup_report_file();
+            if ( _report_filename.empty() )
+                setup_report_file();
+            _report_file.reset( new std::ofstream( _report_filename ) );
+
             log.push_back( make_yaml( *_report_file.get(), true ) );
         }
 

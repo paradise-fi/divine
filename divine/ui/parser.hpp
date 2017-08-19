@@ -199,6 +199,8 @@ struct CLI : Interface
             .option( "[--report {repfmt}|-r {repfmt}]", &Verify::_report,
                      "print a report (yaml, yaml-long or none)"s )
             .option( "[--no-report-file]", &Verify::_no_report_file, "skip creation of a report file"s )
+            .option( "[--report-filename {string}]", &Verify::_report_filename,
+                     "write the report into a given file"s )
             .option( "[--num-callers {int}]"s, &Verify::_num_callers,
                      "the number of frames to print in a backtrace [default = 10]" );
 
