@@ -94,7 +94,8 @@ Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
             std::transform( label.stack.begin(), label.stack.end(),
                             std::back_inserter( t.choices.back() ),
                             []( auto x ) { return x.first; } );
-            t.interrupts.push_back( label.interrupt_skips );
+            std::copy( label.interrupts.begin(), label.interrupts.end(),
+                       std::back_inserter( t.interrupts ) );
         };
 
     ss::search( ss::Order::PseudoBFS, ex, 1,

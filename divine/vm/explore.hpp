@@ -185,7 +185,7 @@ struct Explore_
     {
         std::vector< std::string > trace;
         std::vector< std::pair< int, int > > stack;
-        uint32_t interrupt_skips:30;
+        std::deque< int > interrupts;
         bool accepting:1;
         bool error:1;
     };
@@ -264,7 +264,9 @@ struct Explore_
                 lbl.stack = _ctx._stack;
                 lbl.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
                 lbl.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-                lbl.interrupt_skips = _ctx._interrupt_counter;
+                lbl.interrupts = _ctx._interrupt_counter;
+                ASSERT_EQ( lbl.interrupts.back(), 0 );
+                lbl.interrupts.pop_back();
 
                 auto snap = _ctx.heap().snapshot();
                 auto r = store( snap );

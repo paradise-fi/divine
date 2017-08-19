@@ -62,7 +62,7 @@ struct Context
 
     Program *_program;
     Heap _heap;
-    int _interrupt_counter = 0;
+    std::deque< int > _interrupt_counter;
     std::unordered_set< GenericPointer > _cfl_visited;
     std::unordered_set< int > _mem_loads;
 
@@ -90,7 +90,8 @@ struct Context
 
     void clear()
     {
-        _interrupt_counter = 0;
+        _interrupt_counter.clear();
+        _interrupt_counter.push_back( 0 );
         reset_interrupted();
         flush_ptr2i();
         set( _VM_CR_User1, 0 );
@@ -188,7 +189,7 @@ struct Context
         if( in_kernel() )
             return;
 
-        ++ _interrupt_counter;
+        ++ _interrupt_counter.back();
 
         if ( _cfl_visited.count( pc ) )
             set_interrupted( true );
@@ -210,7 +211,7 @@ struct Context
         if( in_kernel() )
             return;
 
-        ++ _interrupt_counter;
+        ++ _interrupt_counter.back();
 
         if ( ptr.heap() && !heap().shared( ptr ) )
             return;
@@ -247,6 +248,7 @@ struct Context
         heap().read( frame(), pc );
         set( _VM_CR_PC, pc.cooked() );
         reset_interrupted();
+        _interrupt_counter.push_back( 0 );
         ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
         return true;
     }
