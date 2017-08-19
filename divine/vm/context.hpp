@@ -31,6 +31,19 @@ namespace llvm { class Value; }
 namespace divine {
 namespace vm {
 
+struct Interrupt
+{
+    enum Type { Mem, Cfl } type:1;
+    uint32_t ictr:31;
+    CodePointer pc;
+};
+
+static inline std::ostream &operator<<( std::ostream &o, Interrupt i )
+{
+    return o << ( i.type == Interrupt::Mem ? 'M' : 'C' ) << "/" << i.ictr
+             << "/" << i.pc.function() << ":" << i.pc.instruction();
+}
+
 using Fault = ::_VM_Fault;
 
 struct TraceText { GenericPointer text; };
@@ -62,9 +75,10 @@ struct Context
 
     Program *_program;
     Heap _heap;
-    std::deque< int > _interrupt_counter;
+    std::vector< Interrupt > _interrupts;
     std::unordered_set< GenericPointer > _cfl_visited;
     std::unordered_set< int > _mem_loads;
+    uint32_t _instruction_counter;
 
     template< typename Ctx >
     void load( const Ctx &ctx )
@@ -90,13 +104,13 @@ struct Context
 
     void clear()
     {
-        _interrupt_counter.clear();
-        _interrupt_counter.push_back( 0 );
+        _interrupts.clear();
         reset_interrupted();
         flush_ptr2i();
         set( _VM_CR_User1, 0 );
         set( _VM_CR_User2, 0 );
         set( _VM_CR_ObjIdShuffle, 0 );
+        _instruction_counter = 0;
     }
 
     void load( typename Heap::Snapshot snap ) { _heap.restore( snap ); clear(); }
@@ -189,10 +203,8 @@ struct Context
         if( in_kernel() )
             return;
 
-        ++ _interrupt_counter.back();
-
         if ( _cfl_visited.count( pc ) )
-            set_interrupted( true );
+            trigger_interrupted( Interrupt::Cfl, pc );
         else
             _cfl_visited.insert( pc );
     }
@@ -206,12 +218,16 @@ struct Context
         std::swap( pruned, _cfl_visited );
     }
 
-    void mem_interrupt( GenericPointer ptr, int, int type )
+    void trigger_interrupted( Interrupt::Type t, CodePointer pc )
+    {
+        if ( !set_interrupted( true ) )
+            _interrupts.push_back( Interrupt{ t, _instruction_counter, pc } );
+    }
+
+    void mem_interrupt( CodePointer pc, GenericPointer ptr, int, int type )
     {
         if( in_kernel() )
             return;
-
-        ++ _interrupt_counter.back();
 
         if ( ptr.heap() && !heap().shared( ptr ) )
             return;
@@ -221,19 +237,22 @@ struct Context
             if ( ptr.heap() )
                 ptr.type( PointerType::Heap );
             if ( _mem_loads.count( ptr.object() ) )
-                set_interrupted( true );
+                trigger_interrupted( Interrupt::Mem, pc );
             else
                 _mem_loads.insert( ptr.object() );
         }
         else
-            set_interrupted( true );
+            trigger_interrupted( Interrupt::Mem, pc );
     }
 
     template< typename Eval >
     bool check_interrupt( Eval &eval )
     {
+        ++ _instruction_counter;
+
         if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
             return false;
+
         if( in_kernel() )
         {
             eval.fault( _VM_F_Control ) << " illegal interrupt in kernel mode";
@@ -248,7 +267,6 @@ struct Context
         heap().read( frame(), pc );
         set( _VM_CR_PC, pc.cooked() );
         reset_interrupted();
-        _interrupt_counter.push_back( 0 );
         ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
         return true;
     }

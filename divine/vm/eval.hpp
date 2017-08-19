@@ -1176,7 +1176,7 @@ struct Eval
                 /* TODO fault on failing pointers? */
                 auto size = operandCk< IntV >( 1 ).cooked();
                 if ( boundcheck( ptr, size, false ) )
-                    context().mem_interrupt( ptr.cooked(), size,
+                    context().mem_interrupt( pc(), ptr.cooked(), size,
                                              operandCk< IntV >( 2 ).cooked() );
                 return;
             }
