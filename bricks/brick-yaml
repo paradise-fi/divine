@@ -38,11 +38,8 @@ using ::llvm::dyn_cast;
 using ::llvm::cast;
 using ::llvm::isa;
 
-class Parser
+struct Parser
 {
-    template< typename T > struct Witness {};
-  public:
-
     using KeyList = std::deque< std::string >;
 
     Parser( std::string data ) :
@@ -50,105 +47,108 @@ class Parser
     { }
 
     template< typename T, typename Fail >
+    void getF( KeyList done, KeyList todo, Fail fail, T &result, lyaml::Node *node )
+    {
+        if ( todo.empty() )
+            return extractValue( result, node, fail );
+
+        auto key = todo.front();
+        todo.pop_front();
+        done.push_back( key );
+        ASSERT( node );
+
+        if ( key == "*" ) /* collect items from a sequence */
+            NOT_IMPLEMENTED();
+
+        auto *map = dyn_cast< lyaml::MappingNode >( node );
+        if ( !map )
+            fail( result, "YAML error: not an object node", done, todo );
+
+        for ( auto &pair : *map )
+        {
+            if ( auto *skey = dyn_cast< lyaml::ScalarNode >( pair.getKey() ) )
+            {
+                ::llvm::SmallVector< char, 128 > storage;
+                auto ref = skey->getValue( storage );
+                if ( ref == key )
+                    return getF( done, todo, fail, result, pair.getValue() );
+            }
+        }
+
+        fail( result, "YAML error: key not found: " + key, todo, done  );
+    }
+
+    template< typename T, typename Fail >
     T getF( KeyList keys, Fail fail )
     {
         ::llvm::SourceMgr smgr;
         lyaml::Stream input( _data, smgr );
+        T result;
 
         if ( input.failed() )
-            return fail( "YAML input failed", keys, KeyList{} );
+            return fail( result, "YAML input failed", keys, KeyList{} ), result;
         // begin can be called only once
         auto beg = input.begin(),
              end = input.end();
         if ( beg == end )
-            return fail( "YAML input empty", keys, KeyList{} );
+            return fail( result, "YAML input empty", keys, KeyList{} ), result;
 
-        lyaml::Node *node = beg->getRoot(), *next;
-
-        KeyList seenKeys;
-        while ( !keys.empty() ) {
-            ASSERT( node );
-            next = nullptr;
-            auto *map = dyn_cast< lyaml::MappingNode >( node );
-            if ( !map )
-                fail( "YAML error: not an object node", seenKeys, keys );
-
-            auto key = keys.front();
-            keys.pop_front();
-            for ( auto &pair : *map ) {
-                if ( auto *skey = dyn_cast< lyaml::ScalarNode >( pair.getKey() ) ) {
-                    ::llvm::SmallVector< char, 128 > storage;
-                    auto ref = skey->getValue( storage );
-                    if ( ref == key ) {
-                        next = pair.getValue();
-                        break;
-                    }
-                }
-            }
-            if ( !next )
-                return fail( "YAML error: key not found: " + key, keys, seenKeys );
-            node = next;
-
-            seenKeys.emplace_back( std::move( key ) );
-        }
-
-        ASSERT( node );
-
-        return extractValue( Witness< T >(), node, fail );
+        getF( {}, keys, fail, result, beg->getRoot() );
+        return result;
     }
 
     template< typename T >
     T getOr( KeyList keys, T def )
     {
-        return getF< T >( std::move( keys ), [&]( auto &&... ) { return def; });
+        return getF< T >( std::move( keys ), [&]( T &r, auto &&... ) { r = def; } );
     }
 
     template< typename T >
     T get( KeyList keys )
     {
-        return getF< T >( std::move( keys ), [&]( std::string &&msg, KeyList next, KeyList seen ) -> T {
-                std::stringstream ss;
-                ss << msg << std::endl << "found key trace: ";
-                for ( auto &k : seen )
-                    ss << k << ", ";
-                ss << std::endl << "remaining keys: ";
-                for ( auto &k : next )
-                    ss << k << ", ";
-                throw std::runtime_error( ss.str() );
-            } );
+        return getF< T >( std::move( keys ),
+                          [&]( T &, std::string &&msg, KeyList next, KeyList seen )
+                          {
+                              std::stringstream ss;
+                              ss << msg << std::endl << "found key trace: ";
+                              for ( auto &k : seen )
+                                  ss << k << ", ";
+                              ss << std::endl << "remaining keys: ";
+                              for ( auto &k : next )
+                                  ss << k << ", ";
+                              throw std::runtime_error( ss.str() );
+                          } );
     }
 
   private:
 
     template< typename Fail >
-    std::string extractValue( Witness< std::string >, lyaml::Node *node, Fail fail )
+    void extractValue( std::string &str, lyaml::Node *node, Fail fail )
     {
         auto *scalar = dyn_cast< lyaml::ScalarNode >( node );
         if ( !scalar )
-            return fail( "YAML error: expected scalar", KeyList{}, KeyList{} );
+            return fail( str, "YAML error: expected scalar", KeyList{}, KeyList{} );
 
         ::llvm::SmallVector< char, 128 > storage;
         auto ref = scalar->getValue( storage );
-        return ref.str();
+        str = ref.str();
     }
 
     template< typename T, typename Fail >
-    auto extractValue( Witness< T >, lyaml::Node *node, Fail fail )
-        -> std::enable_if_t< std::is_arithmetic< T >::value, T >
+    auto extractValue( T &num, lyaml::Node *node, Fail fail )
+        -> std::enable_if_t< std::is_arithmetic< T >::value, void >
     {
         auto *scalar = dyn_cast< lyaml::ScalarNode >( node );
         if ( !scalar )
-            return fail( "YAML error: expected scalar", KeyList{}, KeyList{} );
+            return fail( num, "YAML error: expected scalar", KeyList{}, KeyList{} );
 
         ::llvm::SmallVector< char, 128 > storage;
         auto ref = scalar->getValue( storage );
 
         std::stringstream ss( ref.str() );
-        T val;
-        ss >> val;
+        ss >> num;
         if ( ss.fail() )
-            return fail( "YAML conversion error from " + ref.str(), KeyList{}, KeyList{} );
-        return val;
+            return fail( num, "YAML conversion error from " + ref.str(), KeyList{}, KeyList{} );
     }
 
     std::string _data;
