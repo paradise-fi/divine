@@ -58,7 +58,14 @@ struct Parser
         ASSERT( node );
 
         if ( key == "*" ) /* collect items from a sequence */
-            NOT_IMPLEMENTED();
+        {
+            auto *seq = dyn_cast< lyaml::SequenceNode >( node );
+            if ( !seq )
+                return fail( result, "YAML error: not a sequence node", done, todo );
+            for ( auto &sub : *seq )
+                getF( done, todo, fail, result, &sub );
+            return;
+        }
 
         auto *map = dyn_cast< lyaml::MappingNode >( node );
         if ( !map )
@@ -151,6 +158,13 @@ struct Parser
             return fail( num, "YAML conversion error from " + ref.str(), KeyList{}, KeyList{} );
     }
 
+    template< typename T, typename Fail >
+    void extractValue( std::vector< T > &vec, lyaml::Node *node, Fail fail )
+    {
+        vec.emplace_back();
+        extractValue( vec.back(), node, [&]( auto &, auto&&... args ) { fail( vec, args... ); } );
+    }
+
     std::string _data;
 };
 
@@ -173,6 +187,15 @@ struct TestParse
         yaml::Parser y( "key:\n  nested: value\n  another: 2" );
         ASSERT_EQ( y.get< std::string >( { "key", "nested" } ), "value" );
         ASSERT_EQ( y.get< int >( { "key", "another" } ), 2 );
+    }
+
+    TEST(list)
+    {
+        yaml::Parser y( "- item 1\n- item 2" );
+        auto vec = y.get< std::vector< std::string > >( { "*" } );
+        ASSERT_EQ( vec.size(), 2 );
+        ASSERT_EQ( vec[ 0 ], "item 1" );
+        ASSERT_EQ( vec[ 1 ], "item 2" );
     }
 };
 
