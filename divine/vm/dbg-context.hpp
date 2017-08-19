@@ -59,8 +59,13 @@ struct Context : DNContext< Heap >
     using Super = DNContext< Heap >;
     std::vector< std::string > _trace;
     std::string _info;
-    std::deque< int > _choices;
-    std::deque< int > _suppress_interrupts;
+
+    struct
+    {
+        std::deque< int > choices;
+        std::deque< int > interrupts;
+    } _lock;
+
     ProcInfo _proc;
 
     llvm::DIType *_state_di_type;
@@ -82,15 +87,15 @@ struct Context : DNContext< Heap >
     template< typename I >
     int choose( int count, I, I )
     {
-        if ( _choices.empty() )
-            _choices.emplace_back( 0 );
+        if ( _lock.choices.empty() )
+            _lock.choices.emplace_back( 0 );
 
-        ASSERT_LT( _choices.front(), count );
-        ASSERT_LEQ( 0, _choices.front() );
+        ASSERT_LT( _lock.choices.front(), count );
+        ASSERT_LEQ( 0, _lock.choices.front() );
         if ( !_proc.empty() )
             _proc.clear();
-        auto rv = _choices.front();
-        _choices.pop_front();
+        auto rv = _lock.choices.front();
+        _lock.choices.pop_front();
         return rv;
     }
 
@@ -100,20 +105,20 @@ struct Context : DNContext< Heap >
         if( this->in_kernel() )
             return;
 
-        if ( _suppress_interrupts.empty() )
+        if ( _lock.interrupts.empty() )
             return (this->*up)( args... );
 
-        ASSERT_LEQ( 1, _suppress_interrupts.front() );
-        if ( !--_suppress_interrupts.front() )
+        ASSERT_LEQ( 1, _lock.interrupts.front() );
+        if ( !--_lock.interrupts.front() )
             this->set_interrupted( true );
     }
 
     template< typename Eval >
     void check_interrupt( Eval &eval )
     {
-        if ( Super::check_interrupt( eval ) && !_suppress_interrupts.empty() )
-            if ( _suppress_interrupts.front() == 0 )
-                _suppress_interrupts.pop_front();
+        if ( Super::check_interrupt( eval ) && !_lock.interrupts.empty() )
+            if ( _lock.interrupts.front() == 0 )
+                _lock.interrupts.pop_front();
     }
 
     void mem_interrupt( GenericPointer pc, int sz, int t )
