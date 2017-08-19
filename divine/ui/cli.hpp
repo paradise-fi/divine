@@ -152,9 +152,12 @@ struct Run : WithBC {
     void trace();
 };
 
+namespace sim { struct Trace; }
+
 struct Sim : WithBC
 {
     bool _batch = false, _skip_init = false, _load_report = false;
+    std::shared_ptr< sim::Trace > _trace;
 
     void setup();
     void run();

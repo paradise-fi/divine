@@ -66,6 +66,18 @@ struct OneLineTokenizer
     ::Tokenizer *_tok;
 };
 
+
+std::pair< int, int > parse_choice( std::string s )
+{
+    if ( s.find( '^' ) == std::string::npos )
+        return std::make_pair( std::stoi( s ), 1 );
+    else
+    {
+        std::string repeat( s, s.find( '^' ) + 1 );
+        return std::make_pair( std::stoi( s ), std::stoi( repeat ) );
+    }
+}
+
 namespace sim {
 
 struct Trace
@@ -145,8 +157,11 @@ struct Inspect : Show {};
 struct BitCode : WithFrame, Teflon {};
 struct Source : WithFrame, Teflon {};
 struct Thread : CastIron  { std::string spec; bool random; };
+
 struct Trace : CastIron, sim::Trace
 {
+    Trace() = default;
+    explicit Trace( const sim::Trace &tr ) : sim::Trace( tr ) {}
     std::string from;
 };
 
@@ -228,14 +243,7 @@ struct Interpreter
              add( "choice", []( std::string s, auto good, auto bad )
                   {
                       try {
-                          if ( s.find( '^' ) == std::string::npos )
-                              return good( std::make_pair( std::stoi( s ), 1 ) );
-                          else
-                          {
-                              std::string repeat( s, s.find( '^' ) + 1 );
-                              return good( std::make_pair( std::stoi( s ),
-                                                           std::stoi( repeat ) ) );
-                          }
+                          return good( parse_choice( s ) );
                       } catch ( std::invalid_argument &e )
                       {
                           return bad( cmd::BadFormat, e.what() );
@@ -1054,6 +1062,9 @@ void Sim::run()
                 interp.command( tok.tokenize( line ) );
     }
 
+    if ( _trace )
+        interp.go( sim::command::Trace( *_trace ) );
+
     while ( !interp._exit )
     {
         interp.info();
@@ -1099,6 +1110,20 @@ void Sim::setup()
         std::string yaml = brick::fs::readFile( _file );
         brick::yaml::Parser parsed( yaml );
         _file = parsed.get< std::string >( { "input file" } );
+
+        if ( parsed.get< std::string >( { "error found" } ) == "yes" )
+        {
+            _trace.reset( new sim::Trace );
+            OneLineTokenizer tok;
+            auto choices = tok.tokenize( parsed.get< std::string >( { "choices made" } ) );
+            auto interrupts = tok.tokenize( parsed.get< std::string >( { "interrupts" } ) );
+            for ( auto c : choices )
+                _trace->choices.push_back( parse_choice( c ) );
+            for ( auto c : interrupts )
+                _trace->interrupts.push_back( std::stoi( c ) );
+        }
+        else
+            std::cerr << "WARNING: There is no counterexample in the report." << std::endl;
     }
 
     WithBC::setup();
