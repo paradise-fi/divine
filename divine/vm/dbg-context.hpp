@@ -102,11 +102,18 @@ struct Context : DNContext< Heap >
 
         if ( _suppress_interrupts.empty() )
             return (this->*up)( args... );
-        if ( ! -- _suppress_interrupts.front() )
-        {
-            _suppress_interrupts.pop_front();
+
+        ASSERT_LEQ( 1, _suppress_interrupts.front() );
+        if ( !--_suppress_interrupts.front() )
             this->set_interrupted( true );
-        }
+    }
+
+    template< typename Eval >
+    void check_interrupt( Eval &eval )
+    {
+        if ( Super::check_interrupt( eval ) && !_suppress_interrupts.empty() )
+            if ( _suppress_interrupts.front() == 0 )
+                _suppress_interrupts.pop_front();
     }
 
     void mem_interrupt( GenericPointer pc, int sz, int t )

@@ -229,14 +229,14 @@ struct Context
     }
 
     template< typename Eval >
-    void check_interrupt( Eval &eval )
+    bool check_interrupt( Eval &eval )
     {
         if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
-            return;
+            return false;
         if( in_kernel() )
         {
             eval.fault( _VM_F_Control ) << " illegal interrupt in kernel mode";
-            return;
+            return false;
         }
 
         sync_pc();
@@ -248,6 +248,7 @@ struct Context
         set( _VM_CR_PC, pc.cooked() );
         reset_interrupted();
         ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
+        return true;
     }
 
     virtual void trace( TraceText ) {} // fixme?
