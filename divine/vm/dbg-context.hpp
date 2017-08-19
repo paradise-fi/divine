@@ -97,6 +97,9 @@ struct Context : DNContext< Heap >
     template< typename Upcall, typename... Args >
     void maybe_interrupt( Upcall up, Args... args )
     {
+        if( this->in_kernel() )
+            return;
+
         if ( _suppress_interrupts.empty() )
             return (this->*up)( args... );
         if ( ! -- _suppress_interrupts.front() )

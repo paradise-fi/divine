@@ -264,7 +264,7 @@ struct Explore_
                 lbl.stack = _ctx._stack;
                 lbl.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
                 lbl.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-                lbl.interrupt_skips = _ctx._interrupt_skips;
+                lbl.interrupt_skips = _ctx._interrupt_counter;
 
                 auto snap = _ctx.heap().snapshot();
                 auto r = store( snap );
