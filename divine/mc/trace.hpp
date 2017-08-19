@@ -56,27 +56,6 @@ struct Trace
     vm::CowHeap::Snapshot final;
 };
 
-static std::ostream &operator<<( std::ostream &o, const Choices &choices )
-{
-    int last = -1, multiply = 1;
-    for ( auto &v : choices.c )
-        for ( int c : v )
-        {
-            if ( c == last )
-                multiply ++;
-            else
-            {
-                if ( multiply > 1 )
-                    o << "^" << multiply;
-                multiply = 1, last = c;
-                o << " " << c;
-            }
-        }
-    if ( multiply > 1 )
-        o << "^" << multiply;
-    return o;
-}
-
 template< typename Explore >
 Trace trace( Explore &ex, std::deque< vm::CowHeap::Snapshot > states )
 {

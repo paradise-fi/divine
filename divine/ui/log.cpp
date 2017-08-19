@@ -73,6 +73,8 @@ void printpool( std::ostream &ostr, std::string name, const brick::mem::Stats &s
             ostr << "  " << i.size << ": " << printitem( i ) << std::endl;
 }
 
+using brick::string::fmt_container;
+
 /* format a yaml report */
 struct YamlSink : TimedSink
 {
@@ -126,9 +128,16 @@ struct YamlSink : TimedSink
         if ( !trace.bootinfo.empty() )
             _out << "boot info:\n" << trace.bootinfo << std::endl;
         _out << std::endl;
-        _out << "choices made:" << trace.choices << std::endl;
-        _out << "interrupts:" << brick::string::fmt_container( trace.interrupts, "", "", " " )
-             << std::endl;
+        if ( _detailed )
+        {
+            _out << "machine trace:" << std::endl;
+            for ( auto &s : trace.steps )
+            {
+                _out << "  - choices:" << fmt_container( s.choices, "", "", " " ) << std::endl;
+                _out << "    interrupts:" << fmt_container( s.interrupts, "", "", " " ) << std::endl;
+            }
+            _out << std::endl;
+        }
     }
 
     void info( std::string str, bool detail ) override
