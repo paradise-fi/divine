@@ -155,6 +155,29 @@ struct Parser
 };
 
 } // namespace yaml
+
+namespace t_yaml
+{
+
+struct TestParse
+{
+    TEST(simple)
+    {
+        yaml::Parser y( "key: value\nanother: 2" );
+        ASSERT_EQ( y.get< std::string >( { "key" } ), "value" );
+        ASSERT_EQ( y.get< int >( { "another" } ), 2 );
+    }
+
+    TEST(nested)
+    {
+        yaml::Parser y( "key:\n  nested: value\n  another: 2" );
+        ASSERT_EQ( y.get< std::string >( { "key", "nested" } ), "value" );
+        ASSERT_EQ( y.get< int >( { "key", "another" } ), 2 );
+    }
+};
+
+}
+
 } // namespace brick
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
