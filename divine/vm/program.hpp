@@ -56,7 +56,8 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine {
 namespace vm {
 
-struct Choice {
+struct ChoiceOptions
+{
     int options;
     // might be empty or contain probability for each option
     std::vector< int > p;

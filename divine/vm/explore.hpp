@@ -47,7 +47,7 @@ struct Context : vm::Context< Program, CowHeap >
     using Program = Program;
     std::vector< std::string > _trace;
     std::string _info;
-    std::vector< std::pair< int, int > > _stack;
+    std::vector< Choice > _stack;
     int _level;
 
     Context( Program &p ) : vm::Context< Program, CowHeap >( p ), _level( 0 ) {}
@@ -58,9 +58,9 @@ struct Context : vm::Context< Program, CowHeap >
         ASSERT_LEQ( _level, int( _stack.size() ) );
         _level ++;
         if ( _level < int( _stack.size() ) )
-            return _stack[ _level - 1 ].first;
+            return _stack[ _level - 1 ].taken;
         if ( _level == int( _stack.size() ) )
-            return ++ _stack[ _level - 1 ].first;
+            return ++ _stack[ _level - 1 ].taken;
         _stack.emplace_back( 0, count );
         return 0;
     }
@@ -84,7 +84,7 @@ struct Context : vm::Context< Program, CowHeap >
     {
         _level = 0;
         _trace.clear();
-        while ( !_stack.empty() && _stack.back().first + 1 == _stack.back().second )
+        while ( !_stack.empty() && _stack.back().taken + 1 == _stack.back().total )
             _stack.pop_back();
         return _stack.empty();
     }
@@ -184,7 +184,7 @@ struct Explore_
     struct Label
     {
         std::vector< std::string > trace;
-        std::vector< std::pair< int, int > > stack;
+        std::vector< Choice > stack;
         std::vector< Interrupt > interrupts;
         bool accepting:1;
         bool error:1;

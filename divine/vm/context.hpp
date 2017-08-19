@@ -44,6 +44,17 @@ static inline std::ostream &operator<<( std::ostream &o, Interrupt i )
              << "/" << i.pc.function() << ":" << i.pc.instruction();
 }
 
+struct Choice
+{
+    int taken, total;
+    Choice( int taken, int total ) : taken( taken ), total( total ) {}
+};
+
+static inline std::ostream &operator<<( std::ostream &o, Choice i )
+{
+    return o << i.taken << "/" << i.total;
+}
+
 using Fault = ::_VM_Fault;
 
 struct TraceText { GenericPointer text; };

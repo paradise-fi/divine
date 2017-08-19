@@ -62,7 +62,7 @@ struct Context : DNContext< Heap >
 
     struct
     {
-        std::deque< int > choices;
+        std::deque< Choice > choices;
         std::deque< Interrupt > interrupts;
     } _lock;
 
@@ -88,15 +88,16 @@ struct Context : DNContext< Heap >
     int choose( int count, I, I )
     {
         if ( _lock.choices.empty() )
-            _lock.choices.emplace_back( 0 );
+            _lock.choices.emplace_back( 0, 1 );
 
-        ASSERT_LT( _lock.choices.front(), count );
-        ASSERT_LEQ( 0, _lock.choices.front() );
+        auto front = _lock.choices.front();
+        ASSERT_LT( front.taken, count );
+        ASSERT_EQ( front.total, count );
+        ASSERT_LEQ( 0, front.taken );
         if ( !_proc.empty() )
             _proc.clear();
-        auto rv = _lock.choices.front();
         _lock.choices.pop_front();
-        return rv;
+        return front.taken;
     }
 
     template< typename Upcall, typename... Args >
