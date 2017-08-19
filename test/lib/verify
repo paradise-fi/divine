@@ -12,7 +12,7 @@ ccopt=$(eval echo $(getopt CC_OPTS $1))
 gtest=
 skipcc=$(getopt SKIP_CC $1)
 resources="--max-memory 4GiB --threads 1"
-extra="--num-callers 65536"
+extra="--num-callers 65536 --report-filename verify.out"
 
 if test "$(eval echo $(getopt USE_GTEST $1))" = 1; then
     gtest="$TESTS/lib/gtest/src/gtest-all.cc $TESTS/lib/gtest/src/gtest_main.cc -I$TESTS/lib/gtest"
@@ -30,12 +30,12 @@ else
     run=testcase.bc
 fi
 
-divine verify $resources $extra $opts $run $args | tee verify.out
+divine verify $resources $extra $opts $run $args
 
-choices=$(grep "choices made:" verify.out | cut -d' ' -f3- || true)
-if [ -n "$choices" ]; then
-    printf "trace --choices $choices\nstepa --count 1000\nbacktrace" | \
-        divine sim --skip-init $opts $run $args 2>&1 | tee sim.out
+err=$(grep "error found:" verify.out | cut -d' ' -f3- || true)
+if [ "$err" = yes ]; then
+    printf "stepa --count 1000\nbacktrace" | \
+        divine sim --skip-init $opts --load-report verify.out $args 2>&1 | tee sim.out
 fi
 check verify "$1"
 
