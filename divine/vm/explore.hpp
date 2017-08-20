@@ -48,6 +48,8 @@ struct Context : vm::Context< Program, CowHeap >
     std::vector< std::string > _trace;
     std::string _info;
     std::vector< Choice > _stack;
+    std::deque< Choice > _lock;
+
     int _level;
 
     Context( Program &p ) : vm::Context< Program, CowHeap >( p ), _level( 0 ) {}
@@ -55,6 +57,14 @@ struct Context : vm::Context< Program, CowHeap >
     template< typename I >
     int choose( int count, I, I )
     {
+        if ( _lock.size() )
+        {
+            auto rv = _lock.front();
+            _lock.pop_front();
+            _stack.push_back( rv );
+            return rv.taken;
+        }
+
         ASSERT_LEQ( _level, int( _stack.size() ) );
         _level ++;
         if ( _level < int( _stack.size() ) )
@@ -244,6 +254,17 @@ struct Explore_
         return _initial.snap;
     }
 
+    Label label()
+    {
+        Label lbl;
+        lbl.trace = _ctx._trace;
+        lbl.stack = _ctx._stack;
+        lbl.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
+        lbl.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
+        lbl.interrupts = _ctx._interrupts;
+        return lbl;
+    }
+
     template< typename Y >
     void edges( explore::State from, Y yield )
     {
@@ -251,6 +272,29 @@ struct Explore_
         ASSERT_EQ( _ctx._level, 0 );
         ASSERT( _ctx._stack.empty() );
         ASSERT( _ctx._trace.empty() );
+        ASSERT( _ctx._lock.empty() );
+
+        struct Check
+        {
+            std::deque< Choice > lock;
+            typename Context::MemMap loads, stores;
+            Label lbl;
+            Snapshot snap;
+        };
+
+        std::vector< Check > to_check;
+
+        _ctx._crit_loads.clear();
+        _ctx._crit_stores.clear();
+
+        auto do_yield = [&]( Snapshot snap, Label lbl )
+        {
+            explore::State st;
+            auto r = store( snap );
+            st.snap = *r;
+
+            yield( st, lbl, r.isnew() );
+        };
 
         do {
             _ctx.load( from.snap );
@@ -258,21 +302,67 @@ struct Explore_
             eval.run();
             if ( !( _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Cancel ) )
             {
-                explore::State st;
-                Label lbl;
+                to_check.emplace_back();
+                auto &tc = to_check.back();
+                tc.loads = _ctx._mem_loads;
+                tc.stores = _ctx._mem_stores;
 
-                lbl.trace = _ctx._trace;
-                lbl.stack = _ctx._stack;
-                lbl.accepting = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Accepting;
-                lbl.error = _ctx.get( _VM_CR_Flags ).integer & _VM_CF_Error;
-                lbl.interrupts = _ctx._interrupts;
+                for ( auto c : _ctx._stack )
+                    tc.lock.push_back( c );
 
-                auto snap = _ctx.heap().snapshot();
-                auto r = store( snap );
-                st.snap = *r;
-                yield( st, lbl, r.isnew() );
+                tc.snap = _ctx.heap().snapshot();
+                tc.lbl = label();
             }
         } while ( !_ctx.finished() );
+
+        for ( auto &tc : to_check )
+        {
+            typename Context::MemMap l, s;
+
+            for ( auto &other : to_check )
+            {
+                if ( &tc == &other )
+                    continue;
+                for ( auto ol : other.loads )
+                {
+                    if ( tc.stores.intersect( ol.first, ol.second ) )
+                        s.insert( ol.first, ol.second );
+                }
+                for ( auto sl : other.stores )
+                {
+                    if ( tc.stores.intersect( sl.first, sl.second ) )
+                        s.insert( sl.first, sl.second );
+                    if ( tc.loads.intersect( sl.first, sl.second ) )
+                        l.insert( sl.first, sl.second );
+                }
+            }
+
+            if ( s.empty() && l.empty() )
+                do_yield( tc.snap, tc.lbl );
+            else
+            {
+                pool().free( tc.snap );
+                _ctx._lock = tc.lock;
+                _ctx.load( from.snap );
+                ASSERT( _ctx._stack.empty() );
+                ASSERT_EQ( _ctx._level, 0 );
+                _ctx._crit_loads = l;
+                _ctx._crit_stores = s;
+                setup::scheduler( _ctx );
+
+                eval.run(); /* will not cancel since this is a prefix */
+                auto lbl = label();
+                do_yield( _ctx.heap().snapshot(), lbl );
+
+                int i = 0;
+                for ( auto t : lbl.stack )
+                    ASSERT( t == tc.lock[ i++ ] );
+
+                _ctx._stack.clear();
+                _ctx._lock.clear();
+                _ctx.finished();
+            }
+        }
     }
 
     template< typename Y >

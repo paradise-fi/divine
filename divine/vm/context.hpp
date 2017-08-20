@@ -94,10 +94,13 @@ struct Context
     Program *_program;
     Heap _heap;
     std::vector< Interrupt > _interrupts;
-    std::unordered_set< GenericPointer > _cfl_visited;
-    std::unordered_set< int > _mem_loads;
+
     uint32_t _instruction_counter;
     bool _debug_mode = false;
+
+    using MemMap = brick::data::IntervalSet< GenericPointer >;
+    std::unordered_set< GenericPointer > _cfl_visited;
+    MemMap _mem_loads, _mem_stores, _crit_loads, _crit_stores;
 
     template< typename Ctx >
     void load( const Ctx &ctx )
@@ -117,7 +120,6 @@ struct Context
     void reset_interrupted()
     {
         _cfl_visited.clear();
-        _mem_loads.clear();
         set_interrupted( false );
     }
 
@@ -129,6 +131,8 @@ struct Context
         set( _VM_CR_User1, 0 );
         set( _VM_CR_User2, 0 );
         set( _VM_CR_ObjIdShuffle, 0 );
+        _mem_loads.clear();
+        _mem_stores.clear();
         _instruction_counter = 0;
     }
 
@@ -246,7 +250,7 @@ struct Context
             _interrupts.push_back( Interrupt{ t, _instruction_counter, pc } );
     }
 
-    void mem_interrupt( CodePointer pc, GenericPointer ptr, int, int type )
+    void mem_interrupt( CodePointer pc, GenericPointer ptr, int size, int type )
     {
         if( in_kernel() || _debug_mode )
             return;
@@ -254,17 +258,27 @@ struct Context
         if ( ptr.heap() && !heap().shared( ptr ) )
             return;
 
-        if ( type == _VM_MAT_Load )
+        auto start = ptr;
+        if ( start.heap() )
+            start.type( PointerType::Heap );
+        auto end = start;
+        end.offset( start.offset() + size );
+
+        if ( type == _VM_MAT_Load || type == _VM_MAT_Both )
         {
-            if ( ptr.heap() )
-                ptr.type( PointerType::Heap );
-            if ( _mem_loads.count( ptr.object() ) )
+            if ( _crit_loads.intersect( start, end ) )
                 trigger_interrupted( Interrupt::Mem, pc );
             else
-                _mem_loads.insert( ptr.object() );
+                _mem_loads.insert( start, end );
         }
-        else
-            trigger_interrupted( Interrupt::Mem, pc );
+
+        if ( type == _VM_MAT_Store || type == _VM_MAT_Both )
+        {
+            if ( _crit_stores.intersect( start, end ) )
+                trigger_interrupted( Interrupt::Mem, pc );
+            else
+                _mem_stores.insert( start, end );
+        }
     }
 
     void count_instruction()
