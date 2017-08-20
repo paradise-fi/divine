@@ -504,11 +504,17 @@ struct Interpreter
 
     bool update_lock( vm::CowHeap::Snapshot snap )
     {
-        if ( !_trace.count( snap ) )
+        if ( _trace.count( snap ) )
+        {
+            _ctx._lock = _trace[ snap ];
+            _ctx._lock_mode = Context::LockBoth;
+            return true;
+        }
+        else
+        {
+            _ctx._lock_mode = Context::LockScheduler;
             return false;
-
-        _ctx._lock = _trace[ snap ];
-        return true;
+        }
     }
 
     auto newstate( vm::CowHeap::Snapshot snap, bool update_choices = true, bool terse = false )
@@ -516,7 +522,6 @@ struct Interpreter
         snap = _explore.start( _ctx, snap );
         _explore.pool().sync();
         _ctx.load( snap );
-        _ctx._lock_mode = _trace.count( snap ) ? Context::LockBoth : Context::LockScheduler;
 
         bool isnew = false;
         std::string name;
