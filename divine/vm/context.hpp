@@ -220,7 +220,7 @@ struct Context
 
     void cfl_interrupt( CodePointer pc )
     {
-        if( in_kernel() )
+        if( in_kernel() || _debug_mode )
             return;
 
         if ( _cfl_visited.count( pc ) )
@@ -247,7 +247,7 @@ struct Context
 
     void mem_interrupt( CodePointer pc, GenericPointer ptr, int, int type )
     {
-        if( in_kernel() )
+        if( in_kernel() || _debug_mode )
             return;
 
         if ( ptr.heap() && !heap().shared( ptr ) )
