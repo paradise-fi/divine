@@ -17,7 +17,7 @@ sim $TESTS/c/1.malloc.c <<EOF
 + ^# executing .*::handler
 > trace --choices 0 0 0 0
 + traced states: #1 #2 #5
-+ unused choices: 0
++ unused choices: 0/0
 EOF
 
 tee loop.c <<EOF
@@ -36,5 +36,5 @@ EOF
 sim loop.c <<EOF
 > trace --choices 0 0
 + traced states: #1 #1 \[loop closed\]
-+ unused choices: 0 0
++ unused choices: 0/0 0/0
 EOF
