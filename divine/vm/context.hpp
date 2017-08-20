@@ -19,10 +19,10 @@
 #pragma once
 
 #include <divine/vm/value.hpp>
-
 #include <divine/vm/divm.h>
 
 #include <brick-data>
+#include <brick-types>
 
 #include <unordered_set>
 
@@ -44,10 +44,11 @@ static inline std::ostream &operator<<( std::ostream &o, Interrupt i )
              << "/" << i.pc.function() << ":" << i.pc.instruction();
 }
 
-struct Choice
+struct Choice : brick::types::Ord
 {
     int taken, total;
     Choice( int taken, int total ) : taken( taken ), total( total ) {}
+    auto as_tuple() const { return std::make_tuple( taken, total ); }
 };
 
 static inline std::ostream &operator<<( std::ostream &o, Choice i )
