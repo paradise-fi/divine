@@ -1161,8 +1161,6 @@ void Sim::run()
 
 void Sim::setup()
 {
-    _systemopts.emplace_back( "trace:thread" );
-
     if ( _load_report )
     {
         std::string yaml = brick::fs::readFile( _file );
