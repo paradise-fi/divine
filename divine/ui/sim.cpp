@@ -495,6 +495,7 @@ struct Interpreter
           _sched_random( false ), _debug_kernel( false ), _ctx( _bc->program(), _bc->debug() ),
           _state_count( 0 ), _stream( &std::cerr )
     {
+        _ctx._lock_mode = Context::LockScheduler;
         vm::setup::boot( _ctx );
         _prompt = strdup( "> " );
         set( "$_", nullDN() );
@@ -515,6 +516,7 @@ struct Interpreter
         snap = _explore.start( _ctx, snap );
         _explore.pool().sync();
         _ctx.load( snap );
+        _ctx._lock_mode = _trace.count( snap ) ? Context::LockBoth : Context::LockScheduler;
 
         bool isnew = false;
         std::string name;
@@ -578,8 +580,11 @@ struct Interpreter
             choice.taken = proc[ seq ].second;
         }
 
-        if ( choices.empty() )
+        if ( _ctx._lock_mode == Context::LockScheduler )
+        {
+            ASSERT( choices.empty() );
             choices.push_back( choice );
+        }
 
         out() << "# active threads:";
         for ( auto pi : proc )
@@ -893,10 +898,12 @@ struct Interpreter
 
         _trace.clear();
         bool simple = false;
+        _ctx._lock_mode = Context::LockBoth;
 
         if ( !tr.simple_choices.empty() )
         {
             simple = true;
+            _ctx._lock_mode = Context::LockChoices;
             if ( !tr.steps.empty() )
                 throw brick::except::Error( "Can't specify both steps and (simple) choices." );
             for ( auto i : tr.simple_choices )
@@ -961,6 +968,7 @@ struct Interpreter
             out() << "T: " << t << std::endl;
         _ctx._trace.clear();
         reach_user();
+        _ctx._lock_mode = Context::LockScheduler;
         set( "$_", frameDN() );
     }
 

@@ -61,6 +61,7 @@ struct Context : DNContext< Heap >
     std::string _info;
 
     Step _lock;
+    enum { LockDisabled, LockScheduler, LockChoices, LockBoth } _lock_mode;
     ProcInfo _proc;
 
     llvm::DIType *_state_di_type;
@@ -68,7 +69,7 @@ struct Context : DNContext< Heap >
 
     Context( Program &p, dbg::Info &dbg ) : Context( p, dbg, Heap() ) {}
     Context( Program &p, dbg::Info &dbg, const Heap &h )
-        : DNContext< Heap >( p, dbg, h ),
+        : DNContext< Heap >( p, dbg, h ), _lock_mode( LockDisabled ),
           _state_di_type( nullptr ), _state_type( nullptr )
     {}
 
@@ -82,8 +83,14 @@ struct Context : DNContext< Heap >
     template< typename I >
     int choose( int count, I, I )
     {
-        if ( _lock.choices.empty() )
-            _lock.choices.emplace_back( 0, 1 );
+        switch ( _lock_mode )
+        {
+            case LockDisabled: case LockScheduler:
+                if ( _lock.choices.empty() )
+                    _lock.choices.emplace_back( 0, 0 ); break;
+            default:
+                ASSERT( !_lock.choices.empty() );
+        }
 
         auto front = _lock.choices.front();
         ASSERT_LT( front.taken, count );
@@ -102,8 +109,10 @@ struct Context : DNContext< Heap >
         if( this->in_kernel() )
             return;
 
-        if ( _lock.interrupts.empty() )
+        if ( _lock_mode != LockBoth )
             return (this->*up)( pc, args... );
+
+        ASSERT( !_lock.interrupts.empty() );
 
         if ( this->_instruction_counter == _lock.interrupts.front().ictr )
         {
