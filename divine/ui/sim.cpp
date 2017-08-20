@@ -943,7 +943,8 @@ struct Interpreter
                 }
                 visited.insert( next );
                 _ctx._instruction_counter = 0;
-                update_lock( snap );
+                if ( !simple )
+                    update_lock( snap );
                 last = get( "#last", true ).snapshot();
                 return next;
             };
