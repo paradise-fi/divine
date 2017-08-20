@@ -105,8 +105,7 @@ vm::Interrupt parse_interrupt( std::string s )
 
 struct Trace
 {
-    std::vector< vm::Choice > choices;
-    std::vector< vm::Interrupt > interrupts;
+    std::vector< mc::Step > steps;
 };
 
 namespace command {
@@ -186,6 +185,7 @@ struct Trace : CastIron, sim::Trace
     Trace() = default;
     explicit Trace( const sim::Trace &tr ) : sim::Trace( tr ) {}
     std::string from;
+    std::vector< int > simple_choices;
 };
 
 struct BackTrace : WithVar, Teflon
@@ -264,14 +264,9 @@ struct Interpreter
                           return bad( cmd::BadFormat, "function names cannot start with a digit" );
                       return good( s );
                   } )->
-             add( "choice", []( std::string s, auto good, auto bad )
+             add( "step", []( std::string, auto, auto bad )
                   {
-                      try {
-                          return good( sim::parse_choice( s ) );
-                      } catch ( std::invalid_argument &e )
-                      {
-                          return bad( cmd::BadFormat, e.what() );
-                      }
+                      return bad( cmd::BadFormat, "not implemented yet" );
                   } );
 
         auto teflopts = cmd::make_option_set< command::Teflon >( v )
@@ -312,9 +307,9 @@ struct Interpreter
                      "run given commands after each step"s );
 
         auto o_trace = cmd::make_option_set< Trace >( v )
-            .option( "[--interrupts {int}+]", &Trace::interrupts, "interrupt skip counts" )
-            .option( "--choices {choice}+", &Trace::choices, "non-deterministic choices" );
+            .option( "[{step}+]", &Trace::steps, "step descriptions" );
         auto o_trace_cmd = cmd::make_option_set< command::Trace >( v )
+            .option( "--choices {int}+", &command::Trace::simple_choices, "use simple choices" )
             .option( "[--from {string}]", &command::Trace::from,
                      "start in a given state, instead of initial"s );
 
@@ -899,8 +894,21 @@ struct Interpreter
         }
 
         _trace.clear();
-        std::deque< vm::Choice > choices = { tr.choices.begin(), tr.choices.end() };
-        std::deque< vm::Interrupt > intr = { tr.interrupts.begin(), tr.interrupts.end() };
+        std::deque< vm::Choice > choices;
+        std::deque< vm::Interrupt > intr;
+        for ( auto s : tr.steps )
+        {
+            std::copy( s.choices.begin(), s.choices.end(), std::back_inserter( choices ) );
+            std::copy( s.interrupts.begin(), s.interrupts.end(), std::back_inserter( intr ) );
+        }
+
+        if ( !tr.simple_choices.empty() )
+        {
+            ASSERT( choices.empty() );
+            for ( auto i : tr.simple_choices )
+                choices.emplace_back( i, 0 );
+        }
+
         std::set< vm::CowHeap::Snapshot > visited;
 
         _ctx._lock.choices = choices;
@@ -1157,12 +1165,20 @@ void Sim::setup()
         {
             _trace.reset( new sim::Trace );
             OneLineTokenizer tok;
-            auto choices = tok.tokenize( parsed.get< std::string >( { "choices made" } ) );
-            auto interrupts = tok.tokenize( parsed.get< std::string >( { "interrupts" } ) );
-            for ( auto c : choices )
-                _trace->choices.push_back( sim::parse_choice( c ) );
-            for ( auto c : interrupts )
-                _trace->interrupts.push_back( sim::parse_interrupt( c ) );
+            using Lines = std::vector< std::string >;
+            auto choices = parsed.get< Lines >( { "machine trace", "*", "choices" } );
+            auto interrupts = parsed.get< Lines >( { "machine trace", "*", "interrupts" } );
+            if ( choices.size() != interrupts.size() )
+                throw brick::except::Error( "The machine trace is corrupt." );
+            for ( unsigned i = 0; i < choices.size(); ++i )
+            {
+                _trace->steps.emplace_back();
+                auto &step = _trace->steps.back();
+                for ( auto c : tok.tokenize( choices[ i ] ) )
+                    step.choices.push_back( sim::parse_choice( c ) );
+                for ( auto i : tok.tokenize( interrupts[ i ] ) )
+                    step.interrupts.push_back( sim::parse_interrupt( i ) );
+            }
         }
         else
             std::cerr << "WARNING: There is no counterexample in the report." << std::endl;
