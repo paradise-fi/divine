@@ -112,9 +112,7 @@ struct Context : DNContext< Heap >
         if ( _lock_mode != LockBoth )
             return (this->*up)( pc, args... );
 
-        ASSERT( !_lock.interrupts.empty() );
-
-        if ( this->_instruction_counter == _lock.interrupts.front().ictr )
+        if ( !_lock.interrupts.empty() && this->_instruction_counter == _lock.interrupts.front().ictr )
         {
             ASSERT_EQ( t, _lock.interrupts.front().type );
             ASSERT_EQ( pc, _lock.interrupts.front().pc );
