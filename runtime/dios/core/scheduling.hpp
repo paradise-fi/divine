@@ -258,17 +258,7 @@ struct Scheduler : public Next {
         auto envp = construct_main_arg( "env.", s.env );
         setupMainThread( mainThr, argv.first, argv.second, envp.second );
 
-        bool notrace = extractOpt( "notrace", "thread", s.opts );
-        bool trace = extractOpt( "trace", "thread", s.opts );
-        if ( trace && notrace ) {
-            __dios_trace_t( "Cannot trace and notrace threads" );
-            __dios_fault( _DiOS_F_Config, "Thread tracing problem" );
-        }
-
-        if ( trace )
-            __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< typename Setup::Context, true > );
-        else
-            __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< typename Setup::Context, false > );
+        __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< typename Setup::Context > );
 
         if ( extractOpt( "debug", "mainargs", s.opts ) ||
              extractOpt( "debug", "mainarg", s.opts ) )
@@ -282,19 +272,6 @@ struct Scheduler : public Next {
         Next::setup( s );
     }
 
-    void getHelp( Map< String, HelpOption >& options ) {
-        const char *opt = "{trace|notrace}";
-        if ( options.find( opt ) != options.end() ) {
-            __dios_trace_f( "Option %s already present", opt );
-            __dios_fault( _DiOS_F_Config, "Option conflict" );
-        };
-
-        options[ opt ] = HelpOption{ "report/not report item back to VM",
-            { "threads - thread info during execution"} };
-        Next::getHelp( options );
-    }
-
-
     int threadCount() const noexcept { return threads.size(); }
     Thread *chooseThread() noexcept
     {
@@ -302,7 +279,10 @@ struct Scheduler : public Next {
             return nullptr;
         return threads[ __vm_choose( threads.size() ) ];
     }
-    void traceThreads() const noexcept __attribute__((noinline))  {
+
+    __attribute__(( noinline, __annotate__( "divine.debugfn" ) ))
+    void traceThreads() const noexcept
+    {
         int c = threads.size();
         if ( c == 0 )
             return;
@@ -506,15 +486,14 @@ struct Scheduler : public Next {
         killProcess( 0 );
     }
 
-    template < typename Context, bool THREAD_AWARE_SCHED >
+    template < typename Context >
     static void run_scheduler() noexcept
     {
         void *ctx = __vm_control( _VM_CA_Get, _VM_CR_State );
         auto& scheduler = *static_cast< Context * >( ctx );
         using Sys = Syscall< Context >;
 
-        if ( THREAD_AWARE_SCHED )
-            scheduler.traceThreads();
+        scheduler.traceThreads();
         Thread *t = scheduler.chooseThread();
         while ( t && t->_frame )
         {
