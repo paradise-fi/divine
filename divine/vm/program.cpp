@@ -31,6 +31,8 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/ADT/StringMap.h>
 DIVINE_UNRELAX_WARNINGS
 
+#include <brick-llvm>
+
 using namespace divine::vm;
 using llvm::isa;
 using llvm::dyn_cast;
@@ -315,6 +317,12 @@ Program::Position Program::insert( Position p )
                     break;
                 default: ;
             }
+        if ( F && is_debug.count( F ) )
+        {
+            if ( dyn_cast< llvm::InvokeInst >( p.I ) )
+                throw std::logic_error( "Cannot turn an 'invoke' into a 'dbg.call'." );
+            insn.opcode = lx::OpDbgCall;
+        }
     }
 
     if ( !codepointers )
@@ -366,6 +374,10 @@ void Program::setupRR()
 void Program::computeRR()
 {
     _addr.build( module );
+    brick::llvm::enumerateFunctionsForAnno( "divine.debugfn", *module, [this]( llvm::Function *f )
+                                            {
+                                                is_debug.insert( f );
+                                            } );
 
     framealign = 1;
 

@@ -147,6 +147,7 @@ struct Program
     std::map< const llvm::Value *, SlotRef > globalmap;
     std::map< const llvm::Type *, int > typemap;
     std::map< const llvm::Value *, std::string > anonmap;
+    std::set< const llvm::Function * > is_debug;
 
     using Context = ConstContext< Program, MutableHeap< 8 > >;
     Context _ccontext;
