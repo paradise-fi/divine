@@ -27,7 +27,7 @@ DIVINE_UNRELAX_WARNINGS
 namespace divine::vm::lx
 {
 
-enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1, OpBB, OpArg, OpDbg };
+enum OpCodes { OpHypercall = llvm::Instruction::OtherOpsEnd + 1, OpBB, OpArg, OpDbg, OpDbgCall };
 
 enum Hypercall /* see divm.h for prototypes & documentation */
 {

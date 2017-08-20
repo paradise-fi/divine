@@ -678,7 +678,7 @@ struct Eval
             return;
         }
 
-        context().leave( pc() );
+        auto retpc = pc();
         context().set( _VM_CR_Frame, parent.cooked() );
         context().set( _VM_CR_PC, caller_pc.cooked() );
 
@@ -689,6 +689,7 @@ struct Eval
             jumpTo( br );
         }
         freeobj( fr.cooked() );
+        context().left( retpc );
     }
 
     void implement_br()
@@ -1357,6 +1358,13 @@ struct Eval
         context().sync_pc();
         context().set( _VM_CR_Frame, frameptr.cooked() );
         context().set( _VM_CR_PC, target );
+        context().entered( target );
+    }
+
+    void implement_dbg_call()
+    {
+        if ( context().enter_debug() )
+            implement_call( false );
     }
 
     void run()
@@ -1371,6 +1379,7 @@ struct Eval
     void advance()
     {
         ASSERT_EQ( CodePointer( context().get( _VM_CR_PC ).pointer ), pc() );
+        context().count_instruction();
         context().check_interrupt( *this );
         if ( !context().frame().null() )
             context().set( _VM_CR_PC, program().nextpc( pc() + 1 ) );
@@ -1621,6 +1630,8 @@ struct Eval
 
             case lx::OpHypercall:
                 return implement_hypercall();
+            case lx::OpDbgCall:
+                return implement_dbg_call();
             case OpCode::Call:
                 implement_call( false ); break;
             case OpCode::Invoke:

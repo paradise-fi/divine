@@ -96,6 +96,7 @@ struct Context
     std::unordered_set< GenericPointer > _cfl_visited;
     std::unordered_set< int > _mem_loads;
     uint32_t _instruction_counter;
+    bool _debug_mode = false;
 
     template< typename Ctx >
     void load( const Ctx &ctx )
@@ -195,6 +196,8 @@ struct Context
         push( p, args... );
     }
 
+    bool enter_debug() { return false; }
+
     template< typename... Args >
     void enter( CodePointer pc, PointerV parent, Args... args )
     {
@@ -226,7 +229,8 @@ struct Context
             _cfl_visited.insert( pc );
     }
 
-    void leave( CodePointer pc )
+    void entered( CodePointer ) {}
+    void left( CodePointer pc )
     {
         std::unordered_set< GenericPointer > pruned;
         for ( auto check : _cfl_visited )
@@ -262,11 +266,15 @@ struct Context
             trigger_interrupted( Interrupt::Mem, pc );
     }
 
+    void count_instruction()
+    {
+        if ( !_debug_mode )
+            ++ _instruction_counter;
+    }
+
     template< typename Eval >
     bool check_interrupt( Eval &eval )
     {
-        ++ _instruction_counter;
-
         if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
             return false;
 

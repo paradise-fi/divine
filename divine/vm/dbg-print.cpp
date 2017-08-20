@@ -42,6 +42,8 @@ void opcode_tolower()
 
 std::string opcode( int op )
 {
+    if ( op == lx::OpDbgCall )
+        return "dbg.call";
     if ( op == lx::OpDbg )
         return "dbg";
     if ( op == lx::OpHypercall )
