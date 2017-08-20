@@ -5,6 +5,7 @@
 #include <cstdarg>
 #include <dios.h>
 #include <dios/lib/map.hpp>
+#include <sys/interrupt.h>
 #include <sys/lart.h>
 
 #define forceinline __attribute__((always_inline))
@@ -232,7 +233,7 @@ struct Buffer : Array< BufferLine > {
 struct Buffers : ThreadMap< Buffer > {
 
     void flushOne( _DiOS_ThreadHandle which ) __attribute__((__noinline__, __flatten__)) {
-        InterruptMask masked;
+        __dios::InterruptMask masked;
         auto *buf = getIfExists( which );
         assert( bool( buf ) );
         buf->flushOne();
