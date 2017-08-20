@@ -10,6 +10,7 @@
 #include <dios/core/fault.hpp>
 #include <dios/core/syscall.hpp>
 #include <sys/start.h>
+#include <sys/vmutil.h>
 #include <string.h>
 #include <dios.h>
 #include <dios/core/main.hpp>
@@ -122,21 +123,12 @@ extern "C" void _exit( int rv )
 
 /* signals */
 
-extern "C" void __dios_interrupt()
-{
-    uintptr_t fl = reinterpret_cast< uintptr_t >(
-        __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, fl | _VM_CF_Interrupted ); /*  restore */
-}
-
 int raise( int sig )
 {
     switch ( sig )
     {
         case SIGKILL:
-            __dios_interrupt();
+            __vmutil_interrupt();
         default:
             return kill( getpid(), sig );
     }

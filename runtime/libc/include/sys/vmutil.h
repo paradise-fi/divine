@@ -43,6 +43,15 @@ _VMUTIL_INLINE int __vmutil_mask( int set ) {
               & _VM_CF_Mask) != 0;
 }
 
+_VMUTIL_INLINE void __vmutil_interrupt()
+{
+    uint64_t fl = _VMUTIL_CAST( uint64_t,
+        __vm_control( _VM_CA_Get, _VM_CR_Flags,
+                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, _VM_CF_Interrupted );
+    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, fl | _VM_CF_Interrupted );
+}
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
