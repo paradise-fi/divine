@@ -73,7 +73,13 @@ void printpool( std::ostream &ostr, std::string name, const brick::mem::Stats &s
             ostr << "  " << i.size << ": " << printitem( i ) << std::endl;
 }
 
-using brick::string::fmt_container;
+template< typename T >
+std::string fmt_list( const std::vector< T > &v )
+{
+    if ( v.empty() )
+        return " \"\"";
+    return brick::string::fmt_container( v, "", "", " " );
+}
 
 /* format a yaml report */
 struct YamlSink : TimedSink
@@ -133,8 +139,8 @@ struct YamlSink : TimedSink
             _out << "machine trace:" << std::endl;
             for ( auto &s : trace.steps )
             {
-                _out << "  - choices:" << fmt_container( s.choices, "", "", " " ) << std::endl;
-                _out << "    interrupts:" << fmt_container( s.interrupts, "", "", " " ) << std::endl;
+                _out << "  - choices:" << fmt_list( s.choices ) << std::endl;
+                _out << "    interrupts:" << fmt_list( s.interrupts ) << std::endl;
             }
             _out << std::endl;
         }
