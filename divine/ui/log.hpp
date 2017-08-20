@@ -50,7 +50,8 @@ struct TimedSink : LogSink
 {
     Clock::time_point _start;
     MSecs _interval{ 0 };
-    MSecs _time_lart{ 0 }, _time_rr{ 0 }, _time_const{ 0 }, _time_boot{ 0 }, _time_search{ 0 }, _time_ce{ 0 };
+    MSecs _time_lart{ 0 }, _time_rr{ 0 }, _time_const{ 0 }, _time_boot{ 0 },
+          _time_search{ 0 }, _time_ce{ 0 };
 
     double timeavg( double val, MSecs timer )
     {

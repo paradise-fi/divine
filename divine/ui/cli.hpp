@@ -216,7 +216,8 @@ struct Info   : Run
 
 namespace {
 
-size_t memFromString( std::string s ) {
+size_t memFromString( std::string s )
+{
     size_t pos;
     size_t base = stoull( s, &pos );
     std::string r = s.substr( pos );
