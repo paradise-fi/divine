@@ -105,7 +105,7 @@ vm::Interrupt parse_interrupt( std::string s )
 
 struct Trace
 {
-    std::vector< mc::Step > steps;
+    std::deque< vm::Step > steps;
 };
 
 namespace command {
@@ -229,8 +229,7 @@ struct Interpreter
     std::map< std::string, DN > _dbg;
     std::map< vm::CowHeap::Snapshot, RefCnt > _state_refs;
     std::map< vm::CowHeap::Snapshot, std::string > _state_names;
-    std::map< vm::CowHeap::Snapshot, std::deque< vm::Choice > > _trace;
-    std::map< vm::CowHeap::Snapshot, std::deque< vm::Interrupt > > _trace_intr;
+    std::map< vm::CowHeap::Snapshot, vm::Step > _trace;
     vm::Explore _explore;
 
     std::pair< int, int > _sticky_tid;
@@ -507,8 +506,7 @@ struct Interpreter
         if ( !_trace.count( snap ) )
             return false;
 
-        _ctx._lock.choices = _trace[ snap ];
-        _ctx._lock.interrupts = _trace_intr[ snap ];
+        _ctx._lock = _trace[ snap ];
         return true;
     }
 
@@ -894,30 +892,35 @@ struct Interpreter
         }
 
         _trace.clear();
-        std::deque< vm::Choice > choices;
-        std::deque< vm::Interrupt > intr;
-        for ( auto s : tr.steps )
-        {
-            std::copy( s.choices.begin(), s.choices.end(), std::back_inserter( choices ) );
-            std::copy( s.interrupts.begin(), s.interrupts.end(), std::back_inserter( intr ) );
-        }
+        bool simple = false;
 
         if ( !tr.simple_choices.empty() )
         {
-            ASSERT( choices.empty() );
+            simple = true;
+            if ( !tr.steps.empty() )
+                throw brick::except::Error( "Can't specify both steps and (simple) choices." );
             for ( auto i : tr.simple_choices )
-                choices.emplace_back( i, 0 );
+                _ctx._lock.choices.emplace_back( i, 0 );
         }
 
         std::set< vm::CowHeap::Snapshot > visited;
 
-        _ctx._lock.choices = choices;
-        _ctx._lock.interrupts = intr;
+        auto update_lock = [&]( vm::CowHeap::Snapshot snap )
+        {
+            _trace[ snap ] = _ctx._lock = tr.steps.front();
+            tr.steps.pop_front();
+        };
 
         auto last = get( "#last", true ).snapshot();
         out() << "traced states:";
         bool stop = false;
-        step._sched_policy = [&]() { if ( _ctx._lock.choices.empty() ) stop = true; };
+        step._sched_policy = [&]()
+        {
+            if ( simple && _ctx._lock.choices.empty() )
+                stop = true;
+            if ( !simple && tr.steps.empty() )
+                stop = true;
+        };
         step._breakpoint = [&]( vm::CodePointer, bool ) { return stop; };
         step._stop_on_error = false;
         step._yield_state =
@@ -933,14 +936,7 @@ struct Interpreter
                 }
                 visited.insert( next );
                 _ctx._instruction_counter = 0;
-                int c_count = choices.size() - _ctx._lock.choices.size(),
-                    i_count = intr.size() - _ctx._lock.interrupts.size();
-                auto c_b = choices.begin(), c_e = c_b + c_count;
-                auto i_b = intr.begin(), i_e = i_b + i_count;
-                _trace[ last ] = decltype( choices )( c_b, c_e );
-                _trace_intr[ last ] = decltype( intr )( i_b, i_e );
-                choices.erase( c_b, c_e );
-                intr.erase( i_b, i_e );
+                update_lock( snap );
                 last = get( "#last", true ).snapshot();
                 return next;
             };
@@ -948,13 +944,16 @@ struct Interpreter
 
         out() << std::endl;
 
-        if ( !_ctx._lock.choices.empty() )
+        if ( simple && !_ctx._lock.choices.empty() )
         {
             out() << "unused choices:";
             for ( auto c : _ctx._lock.choices )
                 out() << " " << c;
             out() << std::endl;
         }
+
+        if ( !simple && !tr.steps.empty() )
+            out() << "WARNING: Program terminated unexpectedly." << std::endl;
 
         if ( !_ctx._trace.empty() )
             out() << "trace:" << std::endl;;
