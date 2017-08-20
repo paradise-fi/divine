@@ -70,6 +70,7 @@ struct Context : vm::Context< Program, CowHeap >
         _trace.push_back( heap().read_string( tt.text ) );
     }
 
+    void trace( std::string s ) { _trace.push_back( s ); }
     void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
     void trace( TraceStateType ) {}

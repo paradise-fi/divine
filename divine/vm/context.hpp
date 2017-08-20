@@ -304,6 +304,7 @@ struct Context
     virtual void trace( TraceInfo ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceAlg ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceTypeAlias ) { NOT_IMPLEMENTED(); }
+    virtual void trace( std::string ) {}
 
     virtual void doublefault()
     {
