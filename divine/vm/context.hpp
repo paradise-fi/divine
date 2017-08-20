@@ -55,6 +55,12 @@ static inline std::ostream &operator<<( std::ostream &o, Choice i )
     return o << i.taken << "/" << i.total;
 }
 
+struct Step
+{
+    std::deque< Interrupt > interrupts;
+    std::deque< Choice > choices;
+};
+
 using Fault = ::_VM_Fault;
 
 struct TraceText { GenericPointer text; };

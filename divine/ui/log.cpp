@@ -74,7 +74,7 @@ void printpool( std::ostream &ostr, std::string name, const brick::mem::Stats &s
 }
 
 template< typename T >
-std::string fmt_list( const std::vector< T > &v )
+std::string fmt_list( const std::deque< T > &v )
 {
     if ( v.empty() )
         return " \"\"";

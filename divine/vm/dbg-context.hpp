@@ -60,12 +60,7 @@ struct Context : DNContext< Heap >
     std::vector< std::string > _trace;
     std::string _info;
 
-    struct
-    {
-        std::deque< Choice > choices;
-        std::deque< Interrupt > interrupts;
-    } _lock;
-
+    Step _lock;
     ProcInfo _proc;
 
     llvm::DIType *_state_di_type;
