@@ -133,13 +133,16 @@ struct MemInterrupt {
                                   ->getElementType();
                 auto *ptr = irb.CreateBitCast( origPtr, type->getParamType( 0 ) );
                 auto *si = irb.getInt32( std::max( uint64_t( 1 ), dl.getTypeSizeInBits( origT ) / 8 ) );
-                irb.CreateCall( _memInterrupt, { ptr, si, irb.getInt32( _VM_MAT_Load ) } );
                 point ++;
-                if ( op != llvm::Instruction::Load )
+                int intr_type;
+                switch ( op )
                 {
-                    irb.SetInsertPoint( point );
-                    irb.CreateCall( _memInterrupt, { ptr, si, irb.getInt32( _VM_MAT_Store ) } );
+                    case llvm::Instruction::Load: intr_type = _VM_MAT_Load; break;
+                    case llvm::Instruction::Store: intr_type = _VM_MAT_Store; break;
+                    default: intr_type = _VM_MAT_Both; break;
                 }
+                irb.SetInsertPoint( point );
+                irb.CreateCall( _memInterrupt, { ptr, si, irb.getInt32( intr_type ) } );
                 ++_mem;
             }
         }
