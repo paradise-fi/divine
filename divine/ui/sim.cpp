@@ -1184,6 +1184,8 @@ void Sim::setup()
             _bc_env.emplace_back( p.first, std::vector< uint8_t >( p.second.begin(), p.second.end() ) );
 
         _ccopts_final = parsed.getOr( { "compile options", "*" }, _ccopts_final );
+        _relaxed = parsed.getOr( { "relaxed memory" }, _relaxed );
+        _symbolic = parsed.getOr( { "symbolic" }, _symbolic );
 
         if ( parsed.get< std::string >( { "error found" } ) == "yes" )
         {

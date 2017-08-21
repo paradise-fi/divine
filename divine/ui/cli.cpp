@@ -252,6 +252,11 @@ void WithBC::setup()
             _log->info( " " + k + ": " + std::string( t.begin(), t.end() ) + "\n" ); /* FIXME quote */
     }
 
+    if ( _symbolic )
+        _log->info( "symbolic: 1" );
+    if ( !_relaxed.empty() )
+        _log->info( "relaxed memory: " + _relaxed );
+
     _bc->environment( _bc_env );
     _bc->autotrace( _autotrace );
     _bc->reduce( !_disableStaticReduction );
