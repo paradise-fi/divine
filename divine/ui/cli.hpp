@@ -74,6 +74,7 @@ struct WithBC : Command
     bool _init_done = false;
     SinkPtr _log = nullsink();
     std::string _relaxed;
+    vm::BitCode::Env _bc_env;
 
     void setup();
     void init();

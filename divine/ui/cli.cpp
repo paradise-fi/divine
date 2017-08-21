@@ -161,17 +161,16 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
 void WithBC::setup()
 {
     using namespace brick::string;
-    vm::BitCode::Env env;
     using bstr = std::vector< uint8_t >;
     int i = 0;
     for ( auto s : _env )
-        env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
+        _bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
     i = 0;
     for ( auto o : _useropts )
-        env.emplace_back( "arg." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+        _bc_env.emplace_back( "arg." + fmt( i++ ), bstr( o.begin(), o.end() ) );
     i = 0;
     for ( auto o : _systemopts )
-        env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+        _bc_env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
     i = 0;
     std::set< std::string > vfsCaptured;
     size_t limit = _vfsSizeLimit;
@@ -183,7 +182,7 @@ void WithBC::setup()
                 [&]( const std::string& s ) { return visited( vfsCaptured, s); },
                 [&]( ) { return i++; },
                 [&]( size_t s ) { if ( limit < s ) die( "VFS capture limit reached"); limit -= s;  },
-                env,
+                _bc_env,
                 item );
         };
 
@@ -197,10 +196,10 @@ void WithBC::setup()
         std::ifstream f( _stdin, std::ios::binary );
         bstr content( (std::istreambuf_iterator< char >( f )),
                       std::istreambuf_iterator< char >() );
-        env.emplace_back( "vfs.stdin", content );
+        _bc_env.emplace_back( "vfs.stdin", content );
     }
 
-    env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
+    _bc_env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
 
     auto magic = brick::fs::readFile( _file, 4 );
     auto magicuc = reinterpret_cast< const unsigned char * >( magic.data() );
@@ -228,8 +227,19 @@ void WithBC::setup()
     } else {
         throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
     }
+
     _log->info( "input file: " + _file + "\n", true );
-    _bc->environment( env );
+    _log->info( "input options:\n" );
+
+    for ( auto e : _bc_env )
+    {
+        auto &k = std::get< 0 >( e );
+        auto &t = std::get< 1 >( e );
+        if ( !brick::string::startsWith( "vfs.", k ) )
+            _log->info( " " + k + ": " + std::string( t.begin(), t.end() ) + "\n" ); /* FIXME quote */
+    }
+
+    _bc->environment( _bc_env );
     _bc->autotrace( _autotrace );
     _bc->reduce( !_disableStaticReduction );
     _bc->sequential( _sequential );

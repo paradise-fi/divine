@@ -1172,6 +1172,15 @@ void Sim::setup()
         brick::yaml::Parser parsed( yaml );
         _file = parsed.get< std::string >( { "input file" } );
 
+        if ( !_env.empty() || !_useropts.empty() || !_systemopts.empty() )
+            throw brick::except::Error( "ERROR: --load-report is incompatible with passing "
+                                        "options to the program" );
+
+        std::vector< std::pair< std::string, std::string > > env;
+        parsed.get( { "input options", "*" }, env );
+        for ( auto p : env )
+            _bc_env.emplace_back( p.first, std::vector< uint8_t >( p.second.begin(), p.second.end() ) );
+
         if ( parsed.get< std::string >( { "error found" } ) == "yes" )
         {
             _trace.reset( new sim::Trace );
