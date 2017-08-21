@@ -133,6 +133,12 @@ struct Parser
                           } );
     }
 
+    template< typename T >
+    void get( KeyList keys, T &result )
+    {
+        result = get< T >( keys );
+    }
+
   private:
 
     template< typename Fail >
