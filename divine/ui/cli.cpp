@@ -228,9 +228,9 @@ void WithBC::setup()
                 _ccopts_final.push_back( "-l" + l );
         }
 
-        _log->info( "compile options:\n" );
+        _log->info( "compile options:\n", true );
         for ( auto o : _ccopts_final )
-            _log->info( "  - " + o + "\n" );
+            _log->info( "  - " + o + "\n", true );
 
         driver.setupFS( rt::each );
         driver.runCC( _ccopts_final );
@@ -242,14 +242,15 @@ void WithBC::setup()
     }
 
     _log->info( "input file: " + _file + "\n", true );
-    _log->info( "input options:\n" );
+    _log->info( "input options:\n", true );
 
     for ( auto e : _bc_env )
     {
         auto &k = std::get< 0 >( e );
         auto &t = std::get< 1 >( e );
         if ( !brick::string::startsWith( "vfs.", k ) )
-            _log->info( " " + k + ": " + std::string( t.begin(), t.end() ) + "\n" ); /* FIXME quote */
+            /* FIXME quoting */
+            _log->info( " " + k + ": " + std::string( t.begin(), t.end() ) + "\n", true );
     }
 
     if ( _symbolic )
