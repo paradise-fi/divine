@@ -164,7 +164,7 @@ void WithBC::setup()
     using bstr = std::vector< uint8_t >;
     int i = 0;
 
-    if ( !_bc_env_preloaded )
+    if ( !_options_processed )
     {
         for ( auto s : _env )
             _bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
@@ -204,7 +204,7 @@ void WithBC::setup()
         _bc_env.emplace_back( "vfs.stdin", content );
     }
 
-    if ( !_bc_env_preloaded )
+    if ( !_options_processed )
         _bc_env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
 
     auto magic = brick::fs::readFile( _file, 4 );
@@ -216,17 +216,24 @@ void WithBC::setup()
     {
         cc::Options ccopt;
         cc::Compile driver( ccopt );
-        std::vector< std::string > ccopts;
-        if ( !_std.empty() )
-            ccopts.push_back( { "-std=" + _std } );
-        ccopts.push_back( _file );
-        for ( auto &o : _ccOpts )
-            std::copy( o.begin(), o.end(), std::back_inserter( ccopts ) );
-        for ( auto &l : _linkLibs )
-            ccopts.push_back( "-l" + l );
+        if ( !_options_processed )
+        {
+            std::vector< std::string > ccopts;
+            if ( !_std.empty() )
+                _ccopts_final.push_back( { "-std=" + _std } );
+            _ccopts_final.push_back( _file );
+            for ( auto &o : _ccOpts )
+                std::copy( o.begin(), o.end(), std::back_inserter( ccopts ) );
+            for ( auto &l : _linkLibs )
+                _ccopts_final.push_back( "-l" + l );
+        }
+
+        _log->info( "compile options:\n" );
+        for ( auto o : _ccopts_final )
+            _log->info( "  - " + o + "\n" );
 
         driver.setupFS( rt::each );
-        driver.runCC( ccopts );
+        driver.runCC( _ccopts_final );
         _bc = std::make_shared< vm::BitCode >(
             std::unique_ptr< llvm::Module >( driver.getLinked() ),
             driver.context() );
