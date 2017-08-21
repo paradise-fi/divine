@@ -163,15 +163,20 @@ void WithBC::setup()
     using namespace brick::string;
     using bstr = std::vector< uint8_t >;
     int i = 0;
-    for ( auto s : _env )
-        _bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
-    i = 0;
-    for ( auto o : _useropts )
-        _bc_env.emplace_back( "arg." + fmt( i++ ), bstr( o.begin(), o.end() ) );
-    i = 0;
-    for ( auto o : _systemopts )
-        _bc_env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
-    i = 0;
+
+    if ( !_bc_env_preloaded )
+    {
+        for ( auto s : _env )
+            _bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
+        i = 0;
+        for ( auto o : _useropts )
+            _bc_env.emplace_back( "arg." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+        i = 0;
+        for ( auto o : _systemopts )
+            _bc_env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+        i = 0;
+    }
+
     std::set< std::string > vfsCaptured;
     size_t limit = _vfsSizeLimit;
     for ( auto vfs : _vfs ) {
@@ -199,7 +204,8 @@ void WithBC::setup()
         _bc_env.emplace_back( "vfs.stdin", content );
     }
 
-    _bc_env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
+    if ( !_bc_env_preloaded )
+        _bc_env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
 
     auto magic = brick::fs::readFile( _file, 4 );
     auto magicuc = reinterpret_cast< const unsigned char * >( magic.data() );

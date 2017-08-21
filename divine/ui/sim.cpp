@@ -1176,6 +1176,7 @@ void Sim::setup()
             throw brick::except::Error( "ERROR: --load-report is incompatible with passing "
                                         "options to the program" );
 
+        _bc_env_preloaded = true;
         std::vector< std::pair< std::string, std::string > > env;
         parsed.get( { "input options", "*" }, env );
         for ( auto p : env )
