@@ -158,24 +158,71 @@ bool explore( bool follow, MountPath mountPath, See see, Seen seen, Count count,
 
 } // namespace
 
+void WithBC::process_options()
+{
+    using bstr = std::vector< uint8_t >;
+    int i = 0;
+
+    for ( auto s : _env )
+        _bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
+    i = 0;
+    for ( auto o : _useropts )
+        _bc_env.emplace_back( "arg." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+    i = 0;
+    for ( auto o : _systemopts )
+        _bc_env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
+    i = 0;
+
+    _bc_env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
+
+    if ( cc::Compiler::typeFromFile( _file ) != cc::Compiler::FileType::Unknown )
+    {
+        if ( !_std.empty() )
+            _ccopts_final.push_back( { "-std=" + _std } );
+        _ccopts_final.push_back( _file );
+        for ( auto &o : _ccOpts )
+            std::copy( o.begin(), o.end(), std::back_inserter( _ccopts_final ) );
+        for ( auto &l : _linkLibs )
+            _ccopts_final.push_back( "-l" + l );
+    }
+}
+
+void WithBC::report_options()
+{
+    _log->info( "input file: " + _file + "\n", true );
+
+    if ( !_ccopts_final.empty() )
+    {
+        _log->info( "compile options:\n", true );
+        for ( auto o : _ccopts_final )
+            _log->info( "  - " + o + "\n", true );
+    }
+
+    _log->info( "input options:\n", true ); /* never empty */
+
+    for ( auto e : _bc_env )
+    {
+        auto &k = std::get< 0 >( e );
+        auto &t = std::get< 1 >( e );
+        if ( !brick::string::startsWith( "vfs.", k ) )
+            /* FIXME quoting */
+            _log->info( "  " + k + ": " + std::string( t.begin(), t.end() ) + "\n", true );
+    }
+
+    if ( _symbolic )
+        _log->info( "symbolic: 1" );
+    if ( !_relaxed.empty() )
+        _log->info( "relaxed memory: " + _relaxed );
+}
+
 void WithBC::setup()
 {
     using namespace brick::string;
     using bstr = std::vector< uint8_t >;
     int i = 0;
 
-    if ( !_options_processed )
-    {
-        for ( auto s : _env )
-            _bc_env.emplace_back( "env." + fmt( i++ ), bstr( s.begin(), s.end() ) );
-        i = 0;
-        for ( auto o : _useropts )
-            _bc_env.emplace_back( "arg." + fmt( i++ ), bstr( o.begin(), o.end() ) );
-        i = 0;
-        for ( auto o : _systemopts )
-            _bc_env.emplace_back( "sys." + fmt( i++ ), bstr( o.begin(), o.end() ) );
-        i = 0;
-    }
+    process_options();
+    report_options();
 
     std::set< std::string > vfsCaptured;
     size_t limit = _vfsSizeLimit;
@@ -204,9 +251,6 @@ void WithBC::setup()
         _bc_env.emplace_back( "vfs.stdin", content );
     }
 
-    if ( !_options_processed )
-        _bc_env.emplace_back( "divine.bcname", bstr( _file.begin(), _file.end() ) );
-
     auto magic = brick::fs::readFile( _file, 4 );
     auto magicuc = reinterpret_cast< const unsigned char * >( magic.data() );
 
@@ -216,47 +260,14 @@ void WithBC::setup()
     {
         cc::Options ccopt;
         cc::Compile driver( ccopt );
-        if ( !_options_processed )
-        {
-            std::vector< std::string > ccopts;
-            if ( !_std.empty() )
-                _ccopts_final.push_back( { "-std=" + _std } );
-            _ccopts_final.push_back( _file );
-            for ( auto &o : _ccOpts )
-                std::copy( o.begin(), o.end(), std::back_inserter( ccopts ) );
-            for ( auto &l : _linkLibs )
-                _ccopts_final.push_back( "-l" + l );
-        }
-
-        _log->info( "compile options:\n", true );
-        for ( auto o : _ccopts_final )
-            _log->info( "  - " + o + "\n", true );
 
         driver.setupFS( rt::each );
         driver.runCC( _ccopts_final );
         _bc = std::make_shared< vm::BitCode >(
             std::unique_ptr< llvm::Module >( driver.getLinked() ),
             driver.context() );
-    } else {
+    } else
         throw std::runtime_error( "don't know how to verify file " + _file + " (unknown type)" );
-    }
-
-    _log->info( "input file: " + _file + "\n", true );
-    _log->info( "input options:\n", true );
-
-    for ( auto e : _bc_env )
-    {
-        auto &k = std::get< 0 >( e );
-        auto &t = std::get< 1 >( e );
-        if ( !brick::string::startsWith( "vfs.", k ) )
-            /* FIXME quoting */
-            _log->info( " " + k + ": " + std::string( t.begin(), t.end() ) + "\n", true );
-    }
-
-    if ( _symbolic )
-        _log->info( "symbolic: 1" );
-    if ( !_relaxed.empty() )
-        _log->info( "relaxed memory: " + _relaxed );
 
     _bc->environment( _bc_env );
     _bc->autotrace( _autotrace );

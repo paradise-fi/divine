@@ -77,8 +77,9 @@ struct WithBC : Command
 
     vm::BitCode::Env _bc_env;
     std::vector< std::string > _ccopts_final;
-    bool _options_processed = false;
 
+    virtual void process_options();
+    void report_options();
     void setup();
     void init();
 
@@ -163,8 +164,8 @@ struct Sim : WithBC
     bool _batch = false, _skip_init = false, _load_report = false;
     std::shared_ptr< sim::Trace > _trace;
 
-    void setup();
-    void run();
+    void process_options() override;
+    void run() override;
 };
 
 struct Draw : WithBC

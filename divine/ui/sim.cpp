@@ -1164,53 +1164,49 @@ void Sim::run()
     el_end( el );
 }
 
-void Sim::setup()
+void Sim::process_options()
 {
-    if ( _load_report )
+    if ( !_load_report )
+        return WithBC::process_options();
+
+    std::string yaml = brick::fs::readFile( _file );
+    brick::yaml::Parser parsed( yaml );
+    _file = parsed.get< std::string >( { "input file" } );
+
+    if ( !_env.empty() || !_useropts.empty() || !_systemopts.empty() )
+        throw brick::except::Error( "ERROR: --load-report is incompatible with passing "
+                                    "options to the program" );
+
+    std::vector< std::pair< std::string, std::string > > env;
+    parsed.get( { "input options", "*" }, env );
+    for ( auto p : env )
+        _bc_env.emplace_back( p.first, std::vector< uint8_t >( p.second.begin(), p.second.end() ) );
+
+    _ccopts_final = parsed.getOr( { "compile options", "*" }, _ccopts_final );
+    _relaxed = parsed.getOr( { "relaxed memory" }, _relaxed );
+    _symbolic = parsed.getOr( { "symbolic" }, _symbolic );
+
+    if ( parsed.get< std::string >( { "error found" } ) == "yes" )
     {
-        std::string yaml = brick::fs::readFile( _file );
-        brick::yaml::Parser parsed( yaml );
-        _file = parsed.get< std::string >( { "input file" } );
-
-        if ( !_env.empty() || !_useropts.empty() || !_systemopts.empty() )
-            throw brick::except::Error( "ERROR: --load-report is incompatible with passing "
-                                        "options to the program" );
-
-        _options_processed = true;
-
-        std::vector< std::pair< std::string, std::string > > env;
-        parsed.get( { "input options", "*" }, env );
-        for ( auto p : env )
-            _bc_env.emplace_back( p.first, std::vector< uint8_t >( p.second.begin(), p.second.end() ) );
-
-        _ccopts_final = parsed.getOr( { "compile options", "*" }, _ccopts_final );
-        _relaxed = parsed.getOr( { "relaxed memory" }, _relaxed );
-        _symbolic = parsed.getOr( { "symbolic" }, _symbolic );
-
-        if ( parsed.get< std::string >( { "error found" } ) == "yes" )
+        _trace.reset( new sim::Trace );
+        OneLineTokenizer tok;
+        using Lines = std::vector< std::string >;
+        auto choices = parsed.get< Lines >( { "machine trace", "*", "choices" } );
+        auto interrupts = parsed.get< Lines >( { "machine trace", "*", "interrupts" } );
+        if ( choices.size() != interrupts.size() )
+            throw brick::except::Error( "The machine trace is corrupt." );
+        for ( unsigned i = 0; i < choices.size(); ++i )
         {
-            _trace.reset( new sim::Trace );
-            OneLineTokenizer tok;
-            using Lines = std::vector< std::string >;
-            auto choices = parsed.get< Lines >( { "machine trace", "*", "choices" } );
-            auto interrupts = parsed.get< Lines >( { "machine trace", "*", "interrupts" } );
-            if ( choices.size() != interrupts.size() )
-                throw brick::except::Error( "The machine trace is corrupt." );
-            for ( unsigned i = 0; i < choices.size(); ++i )
-            {
-                _trace->steps.emplace_back();
-                auto &step = _trace->steps.back();
-                for ( auto c : tok.tokenize( choices[ i ] ) )
-                    step.choices.push_back( sim::parse_choice( c ) );
-                for ( auto i : tok.tokenize( interrupts[ i ] ) )
-                    step.interrupts.push_back( sim::parse_interrupt( i ) );
-            }
+            _trace->steps.emplace_back();
+            auto &step = _trace->steps.back();
+            for ( auto c : tok.tokenize( choices[ i ] ) )
+                step.choices.push_back( sim::parse_choice( c ) );
+            for ( auto i : tok.tokenize( interrupts[ i ] ) )
+                step.interrupts.push_back( sim::parse_interrupt( i ) );
         }
-        else
-            std::cerr << "WARNING: There is no counterexample in the report." << std::endl;
     }
-
-    WithBC::setup();
+    else
+        std::cerr << "WARNING: There is no counterexample in the report." << std::endl;
 }
 
 }
@@ -1221,7 +1217,7 @@ void Sim::setup()
 namespace divine {
 namespace ui {
 
-void Sim::setup() {}
+void Sim::process_options() {}
 void Sim::run()
 {
     throw std::runtime_error( "This build of DIVINE does not support the 'sim' command." );
