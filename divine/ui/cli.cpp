@@ -209,8 +209,19 @@ void WithBC::report_options()
             _log->info( "  " + k + ": " + std::string( t.begin(), t.end() ) + "\n", true );
     }
 
+    if ( !_lartPasses.empty() )
+    {
+        _log->info( "lart passes:\n", true );
+        for ( auto p : _lartPasses )
+            _log->info( "  - " + p + "\n", true );
+    }
+
     if ( _symbolic )
         _log->info( "symbolic: 1" );
+    if ( _sequential )
+        _log->info( "sequential: 1", true );
+    if ( _disableStaticReduction )
+        _log->info( "disable static reduction: 1", true );
     if ( !_relaxed.empty() )
         _log->info( "relaxed memory: " + _relaxed );
 }

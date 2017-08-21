@@ -1183,8 +1183,11 @@ void Sim::process_options()
         _bc_env.emplace_back( p.first, std::vector< uint8_t >( p.second.begin(), p.second.end() ) );
 
     _ccopts_final = parsed.getOr( { "compile options", "*" }, _ccopts_final );
+    _lartPasses = parsed.getOr( { "lart passes", "*" }, _lartPasses );
     _relaxed = parsed.getOr( { "relaxed memory" }, _relaxed );
     _symbolic = parsed.getOr( { "symbolic" }, _symbolic );
+    _sequential = parsed.getOr( { "sequential" }, _sequential );
+    _disableStaticReduction = parsed.getOr( { "disable static reduction" }, _disableStaticReduction );
 
     if ( parsed.get< std::string >( { "error found" } ) == "yes" )
     {
