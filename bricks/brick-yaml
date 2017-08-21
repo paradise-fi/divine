@@ -57,7 +57,9 @@ struct Parser
         done.push_back( key );
         ASSERT( node );
 
-        if ( key == "*" ) /* collect items from a sequence */
+        auto *map = dyn_cast< lyaml::MappingNode >( node );
+
+        if ( !map && key == "*" ) /* collect items from a sequence */
         {
             auto *seq = dyn_cast< lyaml::SequenceNode >( node );
             if ( !seq )
@@ -67,7 +69,6 @@ struct Parser
             return;
         }
 
-        auto *map = dyn_cast< lyaml::MappingNode >( node );
         if ( !map )
             return fail( result, "YAML error: not an object node", done, todo );
 
@@ -79,7 +80,9 @@ struct Parser
             {
                 ::llvm::SmallVector< char, 128 > storage;
                 auto ref = skey->getValue( storage );
-                if ( ref == key )
+                if ( key == "*" )
+                    extractValue( result, &pair, fail ), found = true;
+                else if ( ref == key )
                     getF( done, todo, fail, result, pair.getValue() ), found = true;
             }
         }
@@ -161,6 +164,20 @@ struct Parser
             return fail( num, "YAML conversion error from " + ref.str(), KeyList{}, KeyList{} );
     }
 
+    using StringPair = std::pair< std::string, std::string >;
+
+    template< typename Fail >
+    void extractValue( StringPair &pair, lyaml::Node *node, Fail fail )
+    {
+        if ( auto kvnode = dyn_cast< lyaml::KeyValueNode >( node ) )
+        {
+            extractValue( pair.first, kvnode->getKey(), fail );
+            extractValue( pair.second, kvnode->getValue(), fail );
+        }
+        else
+            fail( pair, "YAML error: expected a key-value pair", KeyList{}, KeyList{} );
+    }
+
     template< typename T, typename Fail >
     void extractValue( std::vector< T > &vec, lyaml::Node *node, Fail fail )
     {
@@ -226,6 +243,18 @@ struct TestParse
         ASSERT_EQ( vec[ 0 ], 2 );
         ASSERT_EQ( vec[ 1 ], 1 );
     }
+
+    TEST(map_glob)
+    {
+        yaml::Parser y( "foo: a\nbar: b" );
+        auto vec = y.get< std::vector< std::pair< std::string, std::string > > >( { "*" } );
+        ASSERT_EQ( vec.size(), 2 );
+        ASSERT_EQ( vec[ 0 ].first, "foo" );
+        ASSERT_EQ( vec[ 0 ].second, "a" );
+        ASSERT_EQ( vec[ 1 ].first, "bar" );
+        ASSERT_EQ( vec[ 1 ].second, "b" );
+    }
+
 };
 
 }
