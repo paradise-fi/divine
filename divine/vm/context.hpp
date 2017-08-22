@@ -99,7 +99,7 @@ struct Context
     bool _debug_mode = false;
 
     using MemMap = brick::data::IntervalSet< GenericPointer >;
-    std::unordered_set< GenericPointer > _cfl_visited;
+    std::vector< std::unordered_set< GenericPointer > > _cfl_visited;
     MemMap _mem_loads, _mem_stores, _crit_loads, _crit_stores;
 
     template< typename Ctx >
@@ -120,6 +120,7 @@ struct Context
     void reset_interrupted()
     {
         _cfl_visited.clear();
+        _cfl_visited.emplace_back();
         set_interrupted( false );
     }
 
@@ -228,20 +229,23 @@ struct Context
         if( in_kernel() || _debug_mode )
             return;
 
-        if ( _cfl_visited.count( pc ) )
+        if ( _cfl_visited.back().count( pc ) )
             trigger_interrupted( Interrupt::Cfl, pc );
         else
-            _cfl_visited.insert( pc );
+            _cfl_visited.back().insert( pc );
     }
 
-    void entered( CodePointer ) {}
-    void left( CodePointer pc )
+    void entered( CodePointer )
     {
-        std::unordered_set< GenericPointer > pruned;
-        for ( auto check : _cfl_visited )
-            if ( check.object() != pc.function() )
-                pruned.insert( check );
-        std::swap( pruned, _cfl_visited );
+        if ( !_debug_mode )
+            _cfl_visited.emplace_back();
+    }
+
+    void left( CodePointer )
+    {
+        _cfl_visited.pop_back();
+        if ( _cfl_visited.empty() ) /* more returns than calls could happen along an edge */
+            _cfl_visited.emplace_back();
     }
 
     void trigger_interrupted( Interrupt::Type t, CodePointer pc )
