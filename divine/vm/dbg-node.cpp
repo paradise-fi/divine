@@ -369,6 +369,8 @@ void Node< Prog, Heap >::source( std::ostream &out )
 {
     if ( _kind != DNKind::Frame )
         throw brick::except::Error( "cannot display source code, not a stack frame" );
+    if ( !valid() )
+        throw brick::except::Error( "cannot display source code for a null/invalid frame" );
     auto s = subprogram();
     if ( !s )
         throw brick::except::Error( "cannot display source code, no debugging information found" );
