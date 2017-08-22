@@ -121,7 +121,7 @@ void temporaryFaultHandler( _VM_Fault, _VM_Frame *, void (*)(), ... ) {
 }
 
 using DefaultConfiguration =
-    ProcessManager< Fault< Scheduler < fs::VFS < MachineParams < MonitorManager < BaseContext > > > > > >;
+    fs::VFS< ProcessManager< Fault< Scheduler< MachineParams< MonitorManager< BaseContext > > > > > >;
 using PassthruConfiguration =
     Fault< Scheduler < fs::PassThrough < MachineParams < MonitorManager < BaseContext > > > > >;
 

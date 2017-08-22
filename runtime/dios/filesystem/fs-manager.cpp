@@ -24,13 +24,7 @@ Manager::Manager( bool ) :
         std::allocate_shared< INode >( __dios::AllocatorPure(), Mode::FILE | Mode::RUSER ),// stdin
         std::allocate_shared< INode >( __dios::AllocatorPure(), Mode::FILE | Mode::RUSER ),// stdout
         std::allocate_shared< INode >( __dios::AllocatorPure(), Mode::FILE | Mode::RUSER )// stderr
-    } },
-    _openFD{
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), _standardIO[ 0 ], flags::Open::Read ),// stdin
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), _standardIO[ 1 ], flags::Open::Write ),// stdout
-        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), _standardIO[ 2 ], flags::Open::Write )// stderr
-    },
-    _umask{ Mode::WGROUP | Mode::WOTHER }
+    } }
 {
     _root->assign( new( __dios::nofail ) Directory( "/", _root ) );
 }
@@ -251,15 +245,15 @@ int Manager::duplicate2( int oldfd, int newfd ) {
     auto f = getFile( oldfd );
     if ( newfd < 0 || newfd > FILE_DESCRIPTOR_LIMIT )
         throw Error( EBADF );
-    if ( newfd >= int( _openFD.size() ) )
-        _openFD.resize( newfd + 1 );
-    _openFD[ newfd ] = f;
+    if ( newfd >= int( _proc->_openFD.size() ) )
+        _proc->_openFD.resize( newfd + 1 );
+    _proc->_openFD[ newfd ] = f;
     return newfd;
 }
 
 std::shared_ptr< FileDescriptor > &Manager::getFile( int fd ) {
-    if ( fd >= 0 && fd < int( _openFD.size() ) && _openFD[ fd ] )
-        return _openFD[ fd ];
+    if ( fd >= 0 && fd < int( _proc->_openFD.size() ) && _proc->_openFD[ fd ] )
+        return _proc->_openFD[ fd ];
     throw Error( EBADF );
 }
 
@@ -686,20 +680,20 @@ int Manager::_getFileDescriptor( std::shared_ptr< FileDescriptor > f, int lowEdg
     if ( lowEdge < 0 || lowEdge >= FILE_DESCRIPTOR_LIMIT )
         throw Error( EINVAL );
 
-    if ( lowEdge >= int( _openFD.size() ) )
-        _openFD.resize( lowEdge + 1 );
+    if ( lowEdge >= int( _proc->_openFD.size() ) )
+        _proc->_openFD.resize( lowEdge + 1 );
 
-    for ( auto &fd : utils::withOffset( _openFD, lowEdge ) ) {
+    for ( auto &fd : utils::withOffset( _proc->_openFD, lowEdge ) ) {
         if ( !fd ) {
             fd = f;
             return i;
         }
         ++i;
     }
-    if ( _openFD.size() >= FILE_DESCRIPTOR_LIMIT )
+    if ( _proc->_openFD.size() >= FILE_DESCRIPTOR_LIMIT )
         throw Error( ENFILE );
 
-   _openFD.push_back( f );
+   _proc->_openFD.push_back( f );
     return i;
 }
 

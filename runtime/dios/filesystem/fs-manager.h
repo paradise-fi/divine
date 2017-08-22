@@ -32,6 +32,12 @@
 namespace __dios {
 namespace fs {
 
+struct VFSProc
+{
+    unsigned short _umask;
+    __dios::Vector< std::shared_ptr< FileDescriptor > > _openFD;
+};
+
 struct Manager {
 
     Manager() :
@@ -129,10 +135,10 @@ struct Manager {
     void chmod( int fd, mode_t mode );
 
     mode_t umask() const {
-        return _umask;
+        return _proc->_umask;
     }
     void umask( mode_t mask ) {
-        _umask = Mode::GRANTS & mask;
+        _proc->_umask = Mode::GRANTS & mask;
     }
 
     int socket( SocketType type, Flags< flags::Open > fl );
@@ -154,13 +160,14 @@ struct Manager {
     }
 
 private:
+
+    template< typename U > friend struct VFS;
     Node _root;
     int _error;
     WeakNode _currentDirectory;
     std::array< Node, 3 > _standardIO;
-    __dios::Vector< std::shared_ptr< FileDescriptor > > _openFD;
 
-    unsigned short _umask;
+    VFSProc *_proc;
 
     Manager( bool );// private default ctor
 
@@ -278,8 +285,14 @@ struct VFS: public Next {
 
     Manager &instance() {
         __FS_assert( _manager );
+
+        if ( this->getCurrentThread() )
+            _manager->_proc = static_cast< Process* >( this->getCurrentThread()->_proc );
         return *_manager;
     }
+
+    struct Process : Next::Process, VFSProc
+    {};
 
     template< typename Setup >
     void setup( Setup s ) {
@@ -287,6 +300,13 @@ struct VFS: public Next {
         instance().setOutputFile( getFileTraceConfig( s.opts, "stdout" ) );
         instance().setErrFile( getFileTraceConfig( s.opts, "stderr" ) );
         instance().initializeFromSnapshot( s.env );
+
+        s.proc1->_openFD = __dios::Vector< std::shared_ptr< FileDescriptor > > ( {
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), instance()._standardIO[ 0 ], flags::Open::Read ),// stdin
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), instance()._standardIO[ 1 ], flags::Open::Write ),// stdout
+        std::allocate_shared< FileDescriptor >( __dios::AllocatorPure(), instance()._standardIO[ 2 ], flags::Open::Write )// stderr
+    } );
+        s.proc1->_umask = Mode::WGROUP | Mode::WOTHER;
 
         Next::setup( s );
     }
