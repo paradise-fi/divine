@@ -103,6 +103,7 @@ struct SimpleEscape {
                 for ( auto *i : ev.collected ) {
                     i->setMetadata( mid, meta );
                 }
+                a->setMetadata( mid, meta );
             }
         }
     }
