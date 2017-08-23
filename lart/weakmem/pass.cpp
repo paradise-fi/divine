@@ -507,23 +507,6 @@ struct Substitute {
         }
     }
 
-    template< typename Inst >
-    bool withLocal( Inst *i ) { return withLocal( i, brick::types::Preferred() ); }
-
-    template< typename Inst >
-    auto withLocal( Inst *i, brick::types::Preferred ) -> decltype( bool( i->getPointerOperand() ) )
-    {
-        return local( i->getPointerOperand() );
-    }
-
-    template< typename Inst >
-    bool withLocal( Inst *, brick::types::NotPreferred ) { return false; }
-
-    // TODO: resolve bitcasts to allocas
-    bool local( llvm::Value *i ) {
-        return llvm::isa< llvm::AllocaInst >( i ) && !llvm::PointerMayBeCaptured( i, false, true );
-    };
-
     // for weak memory functions we have to:
     // *  transform all loads and stores to appropriate lart function
     // *  transform all memcpy/memmove (both calls and intrinsics) to call to lart memcpy/memmove
@@ -568,11 +551,9 @@ struct Substitute {
                 continue;
             llvmcase( i,
                 [&]( llvm::AtomicCmpXchgInst *cas ) {
-                    // if ( !withLocal( cas ) )
                     cass.push_back( cas );
                 },
                 [&]( llvm::AtomicRMWInst *at ) {
-                    // if ( !withLocal( at ) )
                     ats.push_back( at );
                 } );
         }
@@ -695,12 +676,10 @@ struct Substitute {
                 continue;
             llvmcase( i,
                 [&]( llvm::LoadInst *load ) {
-                    // if ( !withLocal( load ) )
                     loads.push_back( load );
                 },
                 [&]( llvm::StoreInst *store ) {
-                    if ( !withLocal( store ) )
-                        stores.push_back( store );
+                    stores.push_back( store );
                 },
                 [&]( llvm::FenceInst *fence ) {
                     fences.push_back( fence );
@@ -797,7 +776,7 @@ struct Substitute {
         // add cleanups
         cleanup::addAllocaCleanups( cleanup::EhInfo::cpp( *f.getParent() ), f,
             [&]( llvm::AllocaInst *alloca ) {
-                return !query::query( alloca->users() ).all( [this]( llvm::Value *v ) { return this->withLocal( v ); } );
+                return !reduction::isSilent( *alloca, silentID );
             },
             [&]( llvm::Instruction *insPoint, auto &allocas ) {
                 if ( allocas.empty() )
