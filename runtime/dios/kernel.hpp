@@ -6,6 +6,8 @@
 #include <cstdarg>
 
 #include <dios/core/stdlibwrap.hpp>
+#include <dios/lib/map.hpp>
+#include <dios.h>
 
 #define DIOS_DBG( ... ) __dios_trace_f( __VA_ARGS__ )
 
@@ -50,5 +52,15 @@ struct HelpOption {
 
 bool useSyscallPassthrough( const SysOpts& o );
 
+struct Debug
+{
+    AutoIncMap< _DiOS_ThreadHandle, int > hids;
+};
+
+static inline Debug &get_debug() noexcept
+{
+    void *dbg = __vm_control( _VM_CA_Get, _VM_CR_User1 );
+    return *static_cast< Debug * >( dbg );
+}
 
 } // namespace __dios

@@ -224,18 +224,17 @@ void sig_fault( int );
 extern const sighandler_t defhandlers[ 32 ];
 
 template < typename Next >
-struct Scheduler : public Next {
-    using HidMap = AutoIncMap< ThreadHandle, int >;
-
+struct Scheduler : public Next
+{
     Scheduler() :
-        hids( new_object< HidMap >() ),
+        debug( new_object< Debug >() ),
         sighandlers( nullptr )
     {
-        hids = abstract::weaken( hids );
+        debug = abstract::weaken( debug );
     }
 
     ~Scheduler() {
-        delete_object( hids );
+        delete_object( debug );
     }
 
     struct Process : Next::Process
@@ -291,11 +290,11 @@ struct Scheduler : public Next {
         PI *pi_it = pi;
         for ( int i = 0; i != c; i++ ) {
             pi_it->pid = 0;
-            auto tidhid = hids->find( threads[ i ]->getId() );
-            if ( tidhid != hids->end() )
+            auto tidhid = debug->hids.find( threads[ i ]->getId() );
+            if ( tidhid != debug->hids.end() )
                 pi_it->tid = tidhid->second;
             else
-                pi_it->tid = hids->push( threads[ i ]->getId() );
+                pi_it->tid = debug->hids.push( threads[ i ]->getId() );
             pi_it->choice = i;
             ++pi_it;
         }
@@ -501,6 +500,7 @@ struct Scheduler : public Next {
                 reinterpret_cast< int64_t >( t->getId() ) );
             __vm_control( _VM_CA_Set, _VM_CR_Frame, t->_frame,
                           _VM_CA_Set, _VM_CR_Globals, t->_proc->globals,
+                          _VM_CA_Set, _VM_CR_User1, scheduler.debug,
                           _VM_CA_Bit, _VM_CR_Flags,
                           uintptr_t( _VM_CF_Interrupted | _VM_CF_Mask | _VM_CF_KernelMode ), 0ull );
             t->_frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_IntFrame ) );
@@ -508,8 +508,9 @@ struct Scheduler : public Next {
             scheduler.runMonitors();
 
             auto syscall = static_cast< _DiOS_Syscall * >( __vm_control( _VM_CA_Get, _VM_CR_User1 ) );
-            __vm_control( _VM_CA_Set, _VM_CR_User1, nullptr );
-            if ( !syscall || Sys::handle( scheduler, *syscall ) == SchedCommand::RESCHEDULE )
+            __vm_control( _VM_CA_Set, _VM_CR_User1, scheduler.debug );
+            if ( syscall == reinterpret_cast< _DiOS_Syscall * >( scheduler.debug ) ||
+                 Sys::handle( scheduler, *syscall ) == SchedCommand::RESCHEDULE )
                 return;
 
             /* reset intframe to ourselves */
@@ -523,7 +524,7 @@ struct Scheduler : public Next {
     }
 
     SortedStorage< Thread > threads;
-    HidMap *hids;
+    Debug *debug;
     Map< pid_t, Process* > zombies;
     sighandler_t *sighandlers;
 };
