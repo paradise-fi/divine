@@ -1,6 +1,8 @@
 // -*- C++ -*- (c) 2016-2017 Vladimír Štill
 #pragma once
 
+#include <variant>
+
 #include <divine/cc/clang.hpp>
 #include <divine/cc/options.hpp>
 
@@ -20,7 +22,7 @@ namespace cc {
 std::string stringifyToCode( std::vector< std::string > ns, std::string name, std::string value );
 
 struct Lib {
-    using InPlace = brick::types::InPlace< Lib >;
+    using InPlace = std::in_place_type_t< Lib >;
 
     Lib() = default;
     explicit Lib( std::string name ) : name( std::move( name ) ) { }
@@ -28,7 +30,7 @@ struct Lib {
 };
 
 struct File {
-    using InPlace = brick::types::InPlace< File >;
+    using InPlace = std::in_place_type_t< File >;
 
     File() = default;
     explicit File( std::string name, Compiler::FileType type = Compiler::FileType::Unknown ) :
@@ -39,7 +41,7 @@ struct File {
     Compiler::FileType type = Compiler::FileType::Unknown;
 };
 
-using FileEntry = brick::types::Union< File, Lib >;
+using FileEntry = std::variant< File, Lib >;
 
 struct ParsedOpts {
     std::vector< std::string > opts;
