@@ -160,9 +160,8 @@ struct Fault: public Next {
         free( buffer );
     }
 
-    void fault_handler( int kernel, _VM_Frame * frame, int what )  {
-        InTrace _; // avoid dumping what we do
-
+    void fault_handler( int kernel, _VM_Frame * frame, int what )
+    {
         if ( what >= fault_count ) {
             traceInternal( 0, "Unknown fault in handler" );
             terminate();

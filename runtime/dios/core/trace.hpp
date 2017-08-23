@@ -9,14 +9,6 @@
 
 namespace __dios {
 
-struct InTrace {
-    InTrace() : prev( inTrace ) { inTrace = true; }
-    ~InTrace() { inTrace = prev; }
-
-    bool prev;
-    static bool inTrace;
-};
-
 void traceInternalV( int indent, const char *fmt, va_list ap ) noexcept __attribute__((always_inline));
 void traceInternal( int indent, const char *fmt, ... ) noexcept;
 void traceInFile( const char *file, const char *msg, size_t size ) noexcept;

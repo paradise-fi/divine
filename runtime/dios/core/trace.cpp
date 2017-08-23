@@ -11,15 +11,12 @@
 
 namespace __dios {
 
-bool InTrace::inTrace = false;
-
 void __attribute__((always_inline)) traceInternalV( int indent, const char *fmt, va_list ap ) noexcept
 {
     static int fmtIndent = 0;
 
     if ( *fmt )
     {
-        InTrace _;
         char buffer[1024];
 
         int n = 0;
@@ -100,14 +97,10 @@ void __dios_trace_f( const char *fmt, ... ) noexcept
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
 
-    if ( __dios::InTrace::inTrace )
-        goto unmask;
-
     va_list ap;
     va_start( ap, fmt );
     __dios::traceInternalV( 0, fmt, ap );
     va_end( ap );
-unmask:
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
@@ -130,14 +123,10 @@ void __dios_trace( int indent, const char *fmt, ... ) noexcept
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
 
-    if ( __dios::InTrace::inTrace )
-        goto unmask;
-
     va_list ap;
     va_start( ap, fmt );
     __dios::traceInternalV( indent, fmt, ap );
     va_end( ap );
-unmask:
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
@@ -148,8 +137,6 @@ void __dios_trace_auto( int indent, const char *fmt, ... ) noexcept
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
 
     if ( flags & _VM_CF_KernelMode )
-        goto unmask;
-    if ( __dios::InTrace::inTrace )
         goto unmask;
 
     va_list ap;
@@ -167,11 +154,7 @@ void __dios_trace_out( const char *msg, size_t size) noexcept
         __vm_control( _VM_CA_Get, _VM_CR_Flags,
                       _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
 
-    if ( __dios::InTrace::inTrace )
-        goto unmask;
-
     __dios::traceInFile("passtrough.out", msg, size);
-unmask:
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
