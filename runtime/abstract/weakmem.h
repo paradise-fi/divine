@@ -25,15 +25,15 @@ volatile extern int __lart_weakmem_buffer_size;
 volatile extern int __lart_weakmem_min_ordering;
 
 enum __lart_weakmem_order {
-    __lart_weakmem_order_not_atomic = 0,
-    __lart_weakmem_order_unordered  = (1 << 0),
-    __lart_weakmem_order_monotonic  = (1 << 1),
-    __lart_weakmem_order_acquire    = (1 << 2) | __lart_weakmem_order_monotonic,
-    __lart_weakmem_order_release    = (1 << 3) | __lart_weakmem_order_monotonic,
-    __lart_weakmem_order_acq_rel    = __lart_weakmem_order_acquire | __lart_weakmem_order_release,
-    __lart_weakmem_order_seq_cst    = (1 << 4) | __lart_weakmem_order_acq_rel,
-    __lart_weakmem_order_atomic_op  = (1 << 5),
-    __lart_weakmem_order_weak_cas   = (1 << 6),
+    __lart_wmo_not_atomic = 0,
+    __lart_wmo_unordered  = (1 << 0),
+    __lart_wmo_monotonic  = (1 << 1),
+    __lart_wmo_acquire    = (1 << 2) | __lart_wmo_monotonic,
+    __lart_wmo_release    = (1 << 3) | __lart_wmo_monotonic,
+    __lart_wmo_acq_rel    = __lart_wmo_acquire | __lart_wmo_release,
+    __lart_wmo_seq_cst    = (1 << 4) | __lart_wmo_acq_rel,
+    __lart_wmo_atomic_op  = (1 << 5),
+    __lart_wmo_weak_cas   = (1 << 6),
 };
 
 #ifdef __divine__
@@ -61,15 +61,15 @@ namespace lart {
 namespace weakmem {
 
 enum class MemoryOrder : uint32_t {
-    NotAtomic = __lart_weakmem_order_not_atomic,
-    Unordered = __lart_weakmem_order_unordered,
-    Monotonic = __lart_weakmem_order_monotonic,
-    Acquire = __lart_weakmem_order_acquire,
-    Release = __lart_weakmem_order_release,
-    AcqRel = __lart_weakmem_order_acq_rel,
-    SeqCst = __lart_weakmem_order_seq_cst,
-    AtomicOp = __lart_weakmem_order_atomic_op,
-    WeakCAS = __lart_weakmem_order_weak_cas,
+    NotAtomic = __lart_wmo_not_atomic,
+    Unordered = __lart_wmo_unordered,
+    Monotonic = __lart_wmo_monotonic,
+    Acquire = __lart_wmo_acquire,
+    Release = __lart_wmo_release,
+    AcqRel = __lart_wmo_acq_rel,
+    SeqCst = __lart_wmo_seq_cst,
+    AtomicOp = __lart_wmo_atomic_op,
+    WeakCAS = __lart_wmo_weak_cas,
 };
 
 }
