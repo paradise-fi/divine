@@ -31,6 +31,11 @@
 #include <cstring>
 #include <type_traits>
 #include <functional>
+#if __cplusplus > 201402L && __has_include(<variant>) && __has_include(<optional>) // C++17
+#define BRICK_TYPES_HAS_MATCH
+#include <variant>
+#include <optional>
+#endif
 
 #ifndef BRICK_TYPES_H
 #define BRICK_TYPES_H
@@ -1082,6 +1087,135 @@ template< typename A, typename B >
 auto operator>=( const A &a, const B &b ) -> typename _OneUnion< A, B >::type
 { return b <= a; }
 
+template< typename... Fs >
+struct Overloaded;
+
+template< typename F, typename... Fs >
+struct Overloaded< F, Fs... > : F, Overloaded< Fs... >
+{
+    template< typename Ff, typename... Ffs >
+    Overloaded( Ff &&f, Ffs &&...fs ) :
+        F( std::forward< Ff >( f ) ),
+        Overloaded< Fs... >( std::forward< Ffs >( fs )... )
+    { }
+    using F::operator();
+    using Overloaded< Fs... >::operator();
+};
+
+template< typename F >
+struct Overloaded< F > : F
+{
+    template< typename Ff >
+    Overloaded( Ff &&f ) :
+        F( std::forward< Ff >( f ) )
+    { }
+    using F::operator();
+};
+
+template< typename F, typename... Fs >
+auto overloaded( F &&f, Fs &&...fs ) {
+    using O = Overloaded< std::remove_reference_t< F >, std::remove_reference_t< Fs >... >;
+    return O( std::forward< F >( f ), std::forward< Fs >( fs )... );
+}
+
+#ifdef BRICK_TYPES_HAS_MATCH
+
+/* Works similarly to std::visit, except it takes only one variant and any
+ * number of callable objects which are combined together to create one
+ * callable object with overloads of operator() corresponding to all given
+ * callables.
+ * That is, visit_alternatives( v, fs... ) calls the function from fs which best
+ * matches the type stored in the variant v.
+ */
+template< typename Variant, typename... Fs >
+auto visit_alternatives( Variant &&v, Fs &&...fs ) {
+    return std::visit( overloaded( std::forward< Fs >( fs )... ), v );
+}
+
+namespace _impl {
+
+template< typename T >
+using OptV = std::conditional_t< std::is_same< T, void >::value, bool, std::optional< T > >;
+
+template< typename, typename > struct AppliedHelper;
+
+template< template< typename ... > class Variant, typename... Ts, typename F >
+struct AppliedHelper< Variant< Ts... >, F > {
+    using T = OptV< typename _impl::ApplyResult< F, Ts... >::Result >;
+};
+
+template< typename R, typename F >
+struct Match1
+{
+    Match1( F &&f ) : f( std::forward< F >( f ) ) { }
+
+    template< typename T,
+              typename = decltype( std::declval< F >()( std::declval< T >() ) ) >
+    R match( T &&x, Witness< bool >, Preferred ) {
+        f( std::forward< T >( x ) );
+        return true;
+    }
+
+    template< typename T, typename W,
+              typename = decltype( R( std::declval< F >()( std::declval< T >() ) ) ) >
+    R match( T &&x, W, Preferred ) {
+        return R{ f( std::forward< T >( x ) ) };
+    }
+
+    template< typename T, typename W >
+    R match( T &&, W, NotPreferred ) { return R{}; }
+
+    template< typename T >
+    R operator()( T &&x ) {
+        return match( std::forward< T >( x ), Witness< R >(), Preferred() );
+    }
+
+    F f;
+};
+
+template< typename V >
+bool has_value( const V &v ) { return v.has_value(); }
+
+inline bool has_value( bool v ) { return v; }
+
+template< typename R, typename Variant >
+R match( Variant && ) { return R{}; }
+
+template< typename R, typename Variant, typename F, typename... Fs >
+R match( Variant &&v, F &&f, Fs &&...fs )
+{
+    auto r = std::visit( Match1< R, F >( std::forward< F >( f ) ), v );
+    if ( has_value( r ) )
+        return r;
+    else
+        return match< R >( std::forward< Variant >( v ), std::forward< Fs >( fs )... );
+}
+
+}
+
+/* A type-based patter matching on std::variant, accepts a variant and any
+ * number of callables.
+ * Uses the first callable that can be called with the current value of the
+ * variant.
+ * The return value is derived from the fisrt callable, if it returns R, the
+ * return value will be std::optional< R >, nullopt meaning no callable was
+ * matched.
+ * If the return value of the first callable is void, match returns bool (false
+ * means not matched).
+ * Compared to visit_alternatives, this function is slower as it goes through
+ * the callable one by one from the first to the last.
+ */
+template< typename Variant, typename F, typename... Fs >
+auto match( Variant &&v, F &&f, Fs &&...fs )
+{
+    using R = typename _impl::AppliedHelper< std::remove_reference_t< Variant >,
+                                             std::remove_reference_t< F > >::T;
+    return _impl::match< R >( std::forward< Variant >( v ),
+                              std::forward< F >( f ), std::forward< Fs >( fs )... );
+}
+
+#endif // C++17
+
 #endif // C++11
 
 }
@@ -1421,11 +1555,136 @@ struct StrongEnumFlagsTest {
     TEST(enum_ulong) { testEnum< FD >(); }
 };
 
-#endif
+struct OverloadedTest {
+
+    TEST(basic) {
+        auto x = overloaded( []( int x ) { return x + 1; } )( 0 );
+        ASSERT_EQ( x, 1 );
+        ASSERT( std::is_same< decltype( x ), int >::value );
+
+        auto f = overloaded( []( int ) -> int { return 0; },
+                             []( long ) -> long { return 1; },
+                             []( short ) -> short { return 2; } );
+        ASSERT_EQ( f( 0 ), 0 );
+        ASSERT_EQ( f( long( 0 ) ), 1 );
+        ASSERT_EQ( f( short( 0 ) ), 2 );
+
+        ASSERT( std::is_same< decltype( f( int( 0 ) ) ), int >::value );
+        ASSERT( std::is_same< decltype( f( long( 0 ) ) ), long >::value );
+        ASSERT( std::is_same< decltype( f( short( 0 ) ) ), short >::value );
+    }
+
+    TEST(cast) {
+        auto f1 = overloaded( []( long ) { return 0; },
+                              []( std::string ) { return 1; } );
+        ASSERT_EQ( f1( 0 ), 0 );
+        ASSERT_EQ( f1( "ahoj" ), 1 );
+
+        auto f2 = overloaded( []( long ) { return 0; },
+                              []( auto && ) { return 1; } );
+        ASSERT_EQ( f2( 0 ), 1 );
+        ASSERT_EQ( f2( long( 0 ) ), 0 );
+    }
+};
+
+#ifdef BRICK_TYPES_HAS_MATCH
+
+struct VisitAlternativesTest {
+    TEST(basic_void) {
+        using namespace std::literals;
+
+        std::variant< int, std::string > v{ "ahoj" };
+        int m = 0;
+        visit_alternatives( v, [&m]( int ) { m = 1; ASSERT( false ); },
+                               [&m]( std::string &x ) { m = 2; ASSERT_EQ( x, "ahoj"s ); } );
+        ASSERT_EQ( m, 2 );
+
+        m = 0;
+        visit_alternatives( v, [&m]( std::string &x ) { m = 2; ASSERT_EQ( x, "ahoj"s ); },
+                               [&m]( int ) { m = 1; ASSERT( false ); } );
+        ASSERT_EQ( m, 2 );
+    }
+
+    TEST(basic_ret) {
+        using namespace std::literals;
+
+        std::variant< int, std::string > v{ "ahoj" };
+        auto x = visit_alternatives( v, []( int ) { ASSERT( false ); return 1; },
+                                        []( std::string &x ) { ASSERT_EQ( x, "ahoj"s ); return 2; } );
+        ASSERT_EQ( x, 2 );
+
+        x = visit_alternatives( v, []( std::string &x ) { ASSERT_EQ( x, "ahoj"s ); return 2; },
+                                   []( int ) { ASSERT( false ); return 1; } );
+        ASSERT_EQ( x, 2 );
+    }
+
+    TEST(templated) {
+        std::variant< int, long, std::string > v{ long( 1 ) };
+        auto x = visit_alternatives( v, []( int ) { return 1; },
+                                        []( std::string & ) { return 2; },
+                                        []( auto && ) { return 3; } );
+        ASSERT_EQ( x, 3 );
+
+        v = 1;
+        x = visit_alternatives( v, []( int ) { return 1; },
+                                   []( std::string & ) { return 2; },
+                                   []( auto && ) { return 3; } );
+        ASSERT_EQ( x, 1 );
+    }
+};
+
+struct MatchTest {
+
+    TEST(basic_void) {
+        using namespace std::literals;
+
+        std::variant< int, std::string > v{ "ahoj" };
+        int m = 0;
+        auto x = match( v, [&m]( int ) { m = 1; ASSERT( false ); },
+                           [&m]( std::string &x ) { m = 2; ASSERT_EQ( x, "ahoj"s ); } );
+        ASSERT_EQ( m, 2 );
+        ASSERT( std::is_same< decltype( x ), bool >::value );
+        ASSERT( x );
+
+        m = 0;
+        x = match( v, [&m]( std::string &x ) { m = 2; ASSERT_EQ( x, "ahoj"s ); },
+                      [&m]( int ) { m = 1; ASSERT( false ); } );
+        ASSERT_EQ( m, 2 );
+        ASSERT( x );
+    }
+
+    TEST(basic_ret) {
+        using namespace std::literals;
+
+        std::variant< int, std::string > v{ "ahoj" };
+        auto x = match( v, []( int ) { ASSERT( false ); return 1; },
+                           []( std::string &x ) { ASSERT_EQ( x, "ahoj"s ); return 2; } );
+        ASSERT( x.has_value() );
+        ASSERT_EQ( x.value(), 2 );
+
+        x = match( v, []( std::string &x ) { ASSERT_EQ( x, "ahoj"s ); return 2; },
+                      []( int ) { ASSERT( false ); return 1; } );
+        ASSERT( x.has_value() );
+        ASSERT_EQ( x.value(), 2 );
+    }
+
+    TEST(order) {
+        std::variant< long, int, std::string > v{ 1 };
+        auto x = match( v, []( std::string & ) { return 1; },
+                           []( long ) { return 2; },
+                           []( int ) { return 3; } );
+        ASSERT( x.has_value() );
+        ASSERT_EQ( x.value(), 2 );
+    }
+};
+
+#endif // BRICK_TYPES_HAS_MATCH
+
+#endif // C++11
 
 }
 }
 
 
 #endif
-// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
