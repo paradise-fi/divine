@@ -159,6 +159,7 @@ struct Substitute {
         mo = MemoryOrder( uint32_t( mo )
                         & ~uint32_t( MemoryOrder::AtomicOp | MemoryOrder::WeakCAS ) );
         switch ( mo ) {
+            case MemoryOrder::NotAtomic: return llvm::AtomicOrdering::NotAtomic;
             case MemoryOrder::Unordered: return llvm::AtomicOrdering::Unordered;
             case MemoryOrder::Monotonic: return llvm::AtomicOrdering::Monotonic;
             case MemoryOrder::Acquire: return llvm::AtomicOrdering::Acquire;
@@ -173,7 +174,7 @@ struct Substitute {
 
     static MemoryOrder castmemord( llvm::AtomicOrdering mo ) {
         switch ( mo ) {
-            case llvm::AtomicOrdering::NotAtomic: // its the same as Unordered for us
+            case llvm::AtomicOrdering::NotAtomic: return MemoryOrder::NotAtomic;
             case llvm::AtomicOrdering::Unordered: return MemoryOrder::Unordered;
             case llvm::AtomicOrdering::Monotonic: return MemoryOrder::Monotonic;
             case llvm::AtomicOrdering::Acquire: return MemoryOrder::Acquire;
@@ -399,7 +400,7 @@ struct Substitute {
                 transformWeak( f, dl, silentID );
         }
 
-        if ( _minMemOrd != MemoryOrder::Unordered ) {
+        if ( _minMemOrd != MemoryOrder::NotAtomic ) {
             if ( auto min = llvm::dyn_cast< llvm::GlobalVariable >( m.getOrInsertGlobal( "__lart_weakmem_min_ordering", i32 ) ) )
                 min->setInitializer( llvm::ConstantInt::get( i32, uint32_t( _minMemOrd ) ) );
         }

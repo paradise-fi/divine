@@ -25,14 +25,15 @@ volatile extern int __lart_weakmem_buffer_size;
 volatile extern int __lart_weakmem_min_ordering;
 
 enum __lart_weakmem_order {
-    __lart_weakmem_order_unordered = 0,
-    __lart_weakmem_order_monotonic = 0x1,
-    __lart_weakmem_order_acquire = 0x2 | __lart_weakmem_order_monotonic,
-    __lart_weakmem_order_release = 0x4 | __lart_weakmem_order_monotonic,
-    __lart_weakmem_order_acq_rel = __lart_weakmem_order_acquire | __lart_weakmem_order_release,
-    __lart_weakmem_order_seq_cst = 0x8 | __lart_weakmem_order_acq_rel,
-    __lart_weakmem_order_atomic_op = 0x10,
-    __lart_weakmem_order_weak_cas = 0x20,
+    __lart_weakmem_order_not_atomic = 0,
+    __lart_weakmem_order_unordered  = (1 << 0),
+    __lart_weakmem_order_monotonic  = (1 << 1),
+    __lart_weakmem_order_acquire    = (1 << 2) | __lart_weakmem_order_monotonic,
+    __lart_weakmem_order_release    = (1 << 3) | __lart_weakmem_order_monotonic,
+    __lart_weakmem_order_acq_rel    = __lart_weakmem_order_acquire | __lart_weakmem_order_release,
+    __lart_weakmem_order_seq_cst    = (1 << 4) | __lart_weakmem_order_acq_rel,
+    __lart_weakmem_order_atomic_op  = (1 << 5),
+    __lart_weakmem_order_weak_cas   = (1 << 6),
 };
 
 #ifdef __divine__
@@ -60,6 +61,7 @@ namespace lart {
 namespace weakmem {
 
 enum class MemoryOrder : uint32_t {
+    NotAtomic = __lart_weakmem_order_not_atomic,
     Unordered = __lart_weakmem_order_unordered,
     Monotonic = __lart_weakmem_order_monotonic,
     Acquire = __lart_weakmem_order_acquire,
