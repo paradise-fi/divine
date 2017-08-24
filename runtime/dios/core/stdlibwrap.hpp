@@ -35,6 +35,19 @@ using List = std::list< T, Allocator< T > >;
 template < class K, class V >
 using Map = std::map< K, V, std::less< K >, Allocator< std::pair< const K, V > > >;
 
+template < class T, class... Args >
+T *new_object( Args... args ) {
+    T* obj = static_cast< T * >( __vm_obj_make( sizeof( T ) ?: 1 ) );
+    new (obj) T( args... );
+    return obj;
+}
+
+template < class T >
+void delete_object( T *obj ) {
+    obj->~T();
+    __vm_obj_free( obj );
+}
+
 } // namespace __dios
 
 

@@ -16,19 +16,6 @@ namespace __dios {
 // DiOS register constants
 static const uint64_t _DiOS_CF_SyscallSchedule = 0b000001 << 8;
 
-template < class T, class... Args >
-T *new_object( Args... args ) {
-    T* obj = static_cast< T * >( __vm_obj_make( sizeof( T ) ?: 1 ) );
-    new (obj) T( args... );
-    return obj;
-}
-
-template < class T >
-void delete_object( T *obj ) {
-    obj->~T();
-    __vm_obj_free( obj );
-}
-
 template < typename T >
 void __attribute__((__noinline__)) traceAlias( const char *name, T *type = nullptr ) {
     __vm_trace( _VM_T_TypeAlias, type, name );
