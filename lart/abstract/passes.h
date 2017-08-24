@@ -246,7 +246,10 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto f = m->getFunction( "lart.sym.alloca.i32" );
+        ASSERT( ! m->getFunction( "lart.sym.lift.i32" ) );
         ASSERT( f->hasOneUse() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
     }
 
     TEST( types ) {
@@ -262,7 +265,10 @@ struct Abstraction {
         auto f32 = m->getFunction( "lart.sym.alloca.i32" );
         ASSERT( f32->hasOneUse() );
         auto f64 = m->getFunction( "lart.sym.alloca.i64" );
+        ASSERT( ! m->getFunction( "lart.sym.lift.i32" ) );
         ASSERT( f64->hasOneUse() );
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
     }
 
     TEST( binary_ops ) {
@@ -273,6 +279,7 @@ struct Abstraction {
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
+        ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
 
@@ -291,6 +298,7 @@ struct Abstraction {
                            .freeze();
         ASSERT_EQ( nodes.size(), 1 );
         ASSERT_EQ( nodes[0]->getNumIncomingValues(), 2 );
+        ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
 
@@ -671,6 +679,17 @@ struct Abstraction {
         ASSERT_EQ( lower->user_begin()->getOperand( 0 ), *to_tristate->user_begin() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
+    }
+
+    TEST( double_icmp ) {
+        auto s = R"(int main() {
+                        __sym int x;
+                        if ( x > 0 || x < 0 ) return 0;
+                        return 1;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        ASSERT( m->getFunction( "lart.sym.icmp_sgt.i32" ) );
+        ASSERT( m->getFunction( "lart.sym.icmp_slt.i32" ) );
     }
 
     TEST( lift ) {
@@ -1075,7 +1094,7 @@ struct Assume {
                     })";
         auto m = test_assume( annotation + s );
         auto icmp = m->getFunction( "lart.sym.icmp_sgt.i32" );
-        auto expected = liftTypeLLVM( BoolType( m->getContext() ), SymbolicDomain );
+        auto expected = liftType( BoolType( m->getContext() ), Domain::Symbolic );
         ASSERT_EQ( expected, icmp->getReturnType() );
         auto to_tristate = m->getFunction( "lart.sym.bool_to_tristate" );
         ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
@@ -1097,7 +1116,7 @@ struct Assume {
         auto m = test_assume( annotation + s );
 
         auto icmp = m->getFunction( "lart.sym.icmp_ne.i32" );
-        auto expected = liftTypeLLVM( BoolType( m->getContext() ), SymbolicDomain );
+        auto expected = liftType( BoolType( m->getContext() ), Domain::Symbolic );
         ASSERT_EQ( expected, icmp->getReturnType() );
         auto to_tristate = m->getFunction( "lart.sym.bool_to_tristate" );
         ASSERT_EQ( to_tristate->user_begin()->getOperand( 0 ), *icmp->user_begin() );
@@ -1130,6 +1149,10 @@ struct BCP {
 };
 
 struct Substitution {
+    uint64_t allocaArg( llvm::User * u ) {
+        return llvm::cast< llvm::ConstantInt >( u->getOperand( 0 ) )->getZExtValue();
+    }
+
     TEST( simple ) {
         auto s = "int main() { return 0; }";
         test_substitution( annotation + s );
@@ -1143,6 +1166,7 @@ struct Substitution {
         auto m = test_substitution( annotation + s );
         auto f = m->getFunction( "__abstract_sym_alloca" );
         ASSERT( f->hasNUses( 2 ) );
+        ASSERT_EQ( allocaArg( *f->user_begin() ), 32 );
     }
 
     TEST( types ) {
@@ -1155,6 +1179,10 @@ struct Substitution {
         auto m = test_substitution( annotation + s );
         auto alloca = m->getFunction( "__abstract_sym_alloca" );
         ASSERT( alloca->hasNUses( 4 ) );
+        auto a = alloca->user_begin();
+        ASSERT_EQ( allocaArg( *a ), 64 );
+        ASSERT_EQ( allocaArg( *std::next( a ) ), 32 );
+        ASSERT_EQ( allocaArg( *std::next( a, 2 ) ), 16 );
     }
 
     TEST( binary_ops ) {
@@ -1228,7 +1256,7 @@ struct Substitution {
     TEST( lift_1 ) {
         auto s = R"(int main() {
                         __sym int x;
-                        return x + 42;
+                        x += 42;
                     })";
         auto m = test_substitution( annotation + s );
         auto lift = m->getFunction( "__abstract_sym_lift" )->user_begin();
@@ -1283,7 +1311,7 @@ struct Substitution {
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
-        auto abstract_call = m->getFunction( "_Z4callv.18.19" );
+        auto abstract_call = m->getFunction( "_Z4callv.75.76" );
         ASSERT( abstract_call );
         auto alloca = m->getFunction( "__abstract_sym_alloca" );
         ASSERT_EQ( abstract_call->getReturnType()
