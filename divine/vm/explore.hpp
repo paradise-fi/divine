@@ -81,8 +81,8 @@ struct Context : vm::Context< Program, CowHeap >
     }
 
     void trace( std::string s ) { _trace.push_back( s ); }
-    void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
-    void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
+    void trace( TraceSchedInfo ) {} /* noop */
+    void trace( TraceSchedChoice ) {} /* noop */
     void trace( TraceStateType ) {}
     void trace( TraceInfo ti )
     {
