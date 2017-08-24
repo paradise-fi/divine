@@ -178,6 +178,7 @@ struct Draw : Dot
 struct Inspect : Show {};
 struct BitCode : WithFrame, Teflon {};
 struct Source : WithFrame, Teflon {};
+struct Register : Teflon {};
 struct Thread : CastIron  { std::string spec; bool random; };
 
 struct Trace : CastIron, sim::Trace
@@ -335,6 +336,7 @@ struct Interpreter
             .command< command::Thread >( "control thread scheduling"s, threadopts )
             .command< command::Trace >( "load a counterexample trace"s, o_trace, o_trace_cmd )
             .command< command::Show >( "show an object"s, teflopts, varopts, showopts )
+            .command< command::Register >( "show (manipulate) machine control registers"s )
             .command< command::Draw >( "draw a portion of the heap"s, varopts )
             .command< command::Dot >( "draw a portion of the heap to a file of given type"s,
                                       teflopts, varopts, dotopts )
@@ -814,6 +816,13 @@ struct Interpreter
             out() << dn.attribute( "raw" ) << std::endl;
         else
             dn.format( out(), cmd.depth, cmd.deref );
+    }
+
+    void go( command::Register )
+    {
+        for ( int i = 0; i < _VM_CR_Last; ++i )
+            out() << i << ": " << std::hex << _ctx.ref( _VM_ControlRegister( i ) ).integer
+                  << std::dec << std::endl;
     }
 
     void go( command::Dot cmd )
