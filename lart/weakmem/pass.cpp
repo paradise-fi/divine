@@ -330,13 +330,6 @@ struct Substitute {
 
     void run( llvm::Module &m )
     {
-        auto i32 = llvm::IntegerType::getInt32Ty( m.getContext() );
-        if ( _bufferSize > 0 ) {
-            auto bufSize = llvm::ConstantInt::getSigned( i32, _bufferSize );
-            auto glo = llvm::cast< llvm::GlobalVariable >( m.getOrInsertGlobal( "__lart_weakmem_buffer_size", i32 ) );
-            glo->setInitializer( bufSize );
-        }
-
         llvm::DataLayout dl( &m );
 
         auto get = [&m]( const char *n ) {
@@ -400,13 +393,27 @@ struct Substitute {
                 transformWeak( f, dl, silentID );
         }
 
-        if ( _minMemOrd != MemoryOrder::NotAtomic ) {
-            if ( auto min = llvm::dyn_cast< llvm::GlobalVariable >( m.getOrInsertGlobal( "__lart_weakmem_min_ordering", i32 ) ) )
-                min->setInitializer( llvm::ConstantInt::get( i32, uint32_t( _minMemOrd ) ) );
+        auto *fsize = get( "__lart_weakmem_buffer_size" );
+        if ( _bufferSize > 0 ) {
+            makeReturnConstant( fsize, _bufferSize );
         }
+        inlineIntoCallers( fsize );
+
+        auto *ford = get( "__lart_weakmem_min_ordering" );
+        if ( _minMemOrd != MemoryOrder::NotAtomic ) {
+            makeReturnConstant( ford, int( _minMemOrd ) );
+        }
+        inlineIntoCallers( ford );
     }
 
   private:
+
+    static void makeReturnConstant( llvm::Function *f, int val ) {
+        f->deleteBody();
+        auto *bb = llvm::BasicBlock::Create( f->getContext(), "entry", f );
+        llvm::IRBuilder<> irb( bb );
+        irb.CreateRet( llvm::ConstantInt::getSigned( f->getReturnType(), val ) );
+    }
 
     void transformMemManip( std::initializer_list< std::tuple< llvm::Function **, llvm::Function **, llvm::Function * > > what )
     {

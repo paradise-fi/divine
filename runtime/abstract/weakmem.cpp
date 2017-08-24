@@ -62,7 +62,7 @@ bool subseteq( const MemoryOrder a, const MemoryOrder b ) forceinline {
     return (unsigned( a ) & unsigned( b )) == unsigned( a );
 }
 
-MemoryOrder minMemOrd() forceinline { return MemoryOrder( __lart_weakmem_min_ordering ); }
+MemoryOrder minMemOrd() forceinline { return MemoryOrder( __lart_weakmem_min_ordering() ); }
 bool minIsAcqRel() forceinline { return subseteq( MemoryOrder::AcqRel, minMemOrd() ); }
 
 template< typename Collection >
@@ -158,7 +158,7 @@ struct Buffer : Array< BufferLine > {
         push_back( std::move( l ) );
 
         // there can be fence as oldest entry, so we need while here
-        while ( storeCount() > __lart_weakmem_buffer_size ) {
+        while ( storeCount() > __lart_weakmem_buffer_size() ) {
             oldest().store();
             erase( 0 );
             cleanOldAndFlushed();
@@ -284,8 +284,8 @@ union BFH {
 
 static bool direct( void * ) { return false; }
 
-volatile int __lart_weakmem_buffer_size = 2;
-volatile int __lart_weakmem_min_ordering = 0;
+int __lart_weakmem_buffer_size () { return 2; }
+int __lart_weakmem_min_ordering() { return 0; }
 
 using namespace lart::weakmem;
 
