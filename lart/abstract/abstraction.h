@@ -6,14 +6,18 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/builder.h>
+#include <lart/abstract/data.h>
+#include <lart/abstract/util.h>
 
 namespace lart {
 namespace abstract {
 
 struct Abstraction {
+    Abstraction( PassData & data ) : data( data ) {}
+
     void run( llvm::Module & );
 
-    AbstractBuilder builder;
+    PassData & data;
 };
 
 } // namespace abstract

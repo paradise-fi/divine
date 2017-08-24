@@ -2,9 +2,9 @@
 #pragma once
 
 DIVINE_RELAX_WARNINGS
-#include <llvm/IR/PassManager.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/Support/Casting.h>
 DIVINE_UNRELAX_WARNINGS
 
@@ -14,14 +14,14 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/rt/runtime.hpp>
 
 #include <lart/support/meta.h>
-#include <lart/support/util.h>
 #include <lart/support/query.h>
+#include <lart/support/util.h>
 
 #include <lart/abstract/passes.h>
 #include <lart/abstract/intrinsic.h>
 
-#include <brick-string>
 #include <brick-llvm>
+#include <brick-string>
 
 #include <fstream>
 #include <string>
@@ -58,9 +58,14 @@ namespace abstract {
         }
 
         void run( llvm::Module & m ) {
-            auto passes = make_pass_wrapper( Abstraction(), AddAssumes(), BCP(), Substitution() );
+            PassData data;
+            auto passes = make_pass_wrapper( Abstraction( data ),
+                                             AddAssumes(),
+                                             BCP( data ),
+                                             Substitution( data ) );
             passes.run( m );
         }
+
     };
 
     inline std::vector< PassMeta > passes() {
@@ -173,22 +178,26 @@ auto test( TestCompile & c, const File & src, Passes&&... passes ) {
 
 auto test_abstraction( const File & src ) {
     using namespace abstract;
-    return test( cmp, src, Abstraction() );
+    PassData data;
+    return test( cmp, src, Abstraction( data ) );
 }
 
 auto test_assume( const File & src ) {
     using namespace abstract;
-    return test( cmp, src, Abstraction(), AddAssumes() );
+    PassData data;
+    return test( cmp, src, Abstraction( data ), AddAssumes() );
 }
 
 auto test_bcp( const File & src ) {
     using namespace abstract;
-    return test( cmp, src, Abstraction(), AddAssumes(), BCP() );
+    PassData data;
+    return test( cmp, src, Abstraction( data ), AddAssumes(), BCP( data ) );
 }
 
 auto test_substitution( const File & src ) {
     using namespace abstract;
-    return test( symcmp, src, Abstraction(), AddAssumes(), BCP(), Substitution() );
+    PassData data;
+    return test( symcmp, src, Abstraction( data ), AddAssumes(), BCP( data ), Substitution( data ) );
 }
 
 namespace {
@@ -1354,7 +1363,6 @@ struct Substitution {
         auto m = test_substitution( annotation + s );
         //TODO asserts
     }
-
 };
 
 } // namespace t_abstract
