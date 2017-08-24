@@ -415,38 +415,9 @@ struct Substitute {
         irb.CreateRet( llvm::ConstantInt::getSigned( f->getReturnType(), val ) );
     }
 
-    void transformMemManip( std::initializer_list< std::tuple< llvm::Function **, llvm::Function **, llvm::Function * > > what )
-    {
-        // TODO: hanlde calls from these functions
-        for ( auto p : what ) {
-            auto *orig = std::get< 2 >( p );
-            ASSERT( orig ); // TODO xxx
-            *std::get< 1 >( p ) = orig;
-            _bypass.insert( *std::get< 0 >( p ) = memFn( orig, "lart.weakmem.strong."s + orig->getName().str() ) );
-        }
-    }
-
-    llvm::Function *memFn( llvm::Function *fn, std::string nameSuff ) {
-        llvm::ValueToValueMapTy vmap;
-        auto dup = llvm::CloneFunction( fn, vmap, false );
-        dup->setName( fn->getName().str() + nameSuff );
-        fn->getParent()->getFunctionList().push_back( dup );
-        return dup;
-    }
-
-    std::string parseTag( std::string str ) {
-        return str.substr( tagNamespace.size() );
-    }
-
     llvm::Type *intTypeOfSize( int size, llvm::LLVMContext &ctx ) {
-        switch ( size ) {
-            case 64: return llvm::IntegerType::getInt64Ty( ctx );
-            case 32: return llvm::IntegerType::getInt32Ty( ctx );
-            case 16: return llvm::IntegerType::getInt16Ty( ctx );
-            case 8: return llvm::IntegerType::getInt8Ty( ctx );
-            case 1: return llvm::IntegerType::getInt1Ty( ctx );
-        }
-        UNREACHABLE( "unhandled case" );
+        ASSERT_LEQ( size, 64 );
+        return llvm::IntegerType::get( ctx, size );
     }
 
     llvm::Value *getBitwidth( llvm::Type *type, llvm::LLVMContext &ctx, llvm::DataLayout &dl ) {
@@ -812,7 +783,6 @@ struct Substitute {
     llvm::Function *_mask = nullptr;
     llvm::Type *_moTy = nullptr;
     MemoryOrder _minMemOrd = MemoryOrder::SeqCst;
-    static const std::string tagNamespace;
 };
 
 PassMeta meta() {
@@ -853,8 +823,6 @@ PassMeta meta() {
                 Substitute::meta().create( mgr, opt );
             } );
 }
-
-const std::string Substitute::tagNamespace = "lart.weakmem.";
 
 }
 }
