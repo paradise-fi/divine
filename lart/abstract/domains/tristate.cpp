@@ -1,24 +1,22 @@
 // -*- C++ -*- (c) 2017 Henrich Lauko <xlauko@mail.muni.cz>
 #include <lart/abstract/domains/tristate.h>
 #include <lart/abstract/intrinsic.h>
+#include <lart/abstract/util.h>
 
 namespace lart {
 namespace abstract {
 
-using Arguments = std::vector< llvm::Value * >;
+llvm::Value * TristateDomain::process( llvm::CallInst * call, Values & args ) {
+    auto intr = intrinsic::parse( call->getCalledFunction() ).value();
+    assert( intr.domain == domain() );
+    auto name = "__abstract_tristate_" + intr.name;
 
-llvm::Value * TristateDomain::process( llvm::CallInst * i, Arguments & args ) {
-    auto intr = Intrinsic( i );
-    assert( (*intr.domain()) == (*domain()) );
-    auto name = "__abstract_tristate_" + intr.name();
-
-    auto m = intr.declaration()->getParent();
+    auto m = getModule( call );
 
     auto fn = m->getFunction( name );
     assert( fn && "Function for intrinsic substitution was not found." );
-    assert( fn->arg_size() == args.size() );
 
-    llvm::IRBuilder<> irb( i );
+    llvm::IRBuilder<> irb( call );
     return irb.CreateCall( fn, args );
 }
 
