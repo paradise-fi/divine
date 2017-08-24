@@ -35,7 +35,8 @@ namespace detail {
         }
     }
 
-    static void dump( llvm::raw_string_ostream &str, llvm::StringRef v, brick::types::NotPreferred )
+    template< typename T >
+    static void dump( llvm::raw_string_ostream &str, const T &v, brick::types::NotPreferred )
     { str << "  " << v << "\n"; }
 
     template< typename Range,
