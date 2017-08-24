@@ -696,22 +696,6 @@ inline UserSet pointerTransitiveUsers( llvm::Instruction &v, TrackPointers track
 }
 
 // function manipulations
-inline llvm::Function * createFunctionSignature( llvm::Function *fn,
-                                                 llvm::FunctionType *fty,
-                                                 llvm::ValueToValueMapTy &vmap )
-{
-    auto newfn = llvm::Function::Create( fty, fn->getLinkage(),fn->getName() );
-
-    auto destIt = newfn->arg_begin();
-    for ( const auto &arg : fn->args() )
-        if ( vmap.count( &arg ) == 0 ) {
-            destIt->setName( arg.getName() );
-            vmap[&arg] = &*destIt++;
-        }
-
-    return newfn;
-}
-
 namespace llvmstolen {
 
 using namespace llvm;
@@ -771,16 +755,44 @@ inline void CloneDebugInfoMetadata(Function *NewFunc, const Function *OldFunc,
 
 }
 
+inline void remapArgs( llvm::Function * from,
+                       llvm::Function * to,
+                       llvm::ValueToValueMapTy & vmap )
+{
+    auto destIt = to->arg_begin();
+    for ( const auto &arg : from->args() )
+        if ( vmap.count( &arg ) == 0 ) {
+            destIt->setName( arg.getName() );
+            vmap[&arg] = &*destIt++;
+        }
+}
+
+inline llvm::Function * createFunctionSignature( llvm::Function *fn,
+                                                 llvm::FunctionType *fty,
+                                                 llvm::ValueToValueMapTy &vmap )
+{
+    auto newfn = llvm::Function::Create( fty, fn->getLinkage(),fn->getName() );
+    remapArgs( fn, newfn, vmap );
+    return newfn;
+}
+
+inline void cloneFunctionInto( llvm::Function * to,
+                               llvm::Function * from,
+                               llvm::ValueToValueMapTy &vmap )
+{
+    remapArgs( from, to, vmap );
+    llvm::SmallVector< llvm::ReturnInst *, 8 > returns;
+    llvmstolen::CloneDebugInfoMetadata( to, from, vmap );
+    llvm::CloneFunctionInto( to, from, vmap, true, returns, "", nullptr );
+}
+
 inline llvm::Function * cloneFunction( llvm::Function *fn, llvm::FunctionType *fty )
 {
     llvm::ValueToValueMapTy vmap;
     auto m = fn->getParent();
     auto newfn = createFunctionSignature( fn, fty, vmap );
     m->getFunctionList().push_back( newfn );
-    llvm::SmallVector< llvm::ReturnInst *, 8 > returns;
-    llvmstolen::CloneDebugInfoMetadata( newfn, fn, vmap );
-    llvm::CloneFunctionInto( newfn, fn, vmap, true, returns, "", nullptr );
-
+    cloneFunctionInto( newfn, fn, vmap );
     return newfn;
 }
 
@@ -801,7 +813,6 @@ inline llvm::Function * changeFunctionSignature( llvm::Function * fn, llvm::Func
         newfn = createFunctionSignature( fn, fty, vmap );
         m->getFunctionList().push_back( newfn );
     }
-
     return newfn;
 }
 
