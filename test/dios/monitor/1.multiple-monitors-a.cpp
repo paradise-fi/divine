@@ -1,6 +1,6 @@
 #include <sys/monitor.h>
 #include <sys/vmutil.h>
-#include <dios/kernel.hpp>
+#include <dios/core/stdlibwrap.hpp>
 
 volatile int glob;
 

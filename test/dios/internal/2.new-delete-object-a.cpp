@@ -1,5 +1,5 @@
 /* CC_OPTS: -std=c++11 */
-#include <dios/kernel.hpp>
+#include <dios/core/stdlibwrap.hpp>
 #include <cassert>
 
 volatile int done;

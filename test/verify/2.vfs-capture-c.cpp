@@ -5,7 +5,7 @@
 #include <cassert>
 #include <regex>
 #include <dios/core/stdlibwrap.hpp>
-#include <dios/kernel.hpp>
+#include <sys/trace.h>
 
 #include "vfs-capture-assert.h"
 
