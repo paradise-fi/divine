@@ -97,15 +97,10 @@ void __dios_trace_t( const char *txt ) noexcept
 __attribute__(( __annotate__( "divine.debugfn" ) ))
 void __dios_trace_f( const char *fmt, ... ) noexcept
 {
-    uintptr_t flags = reinterpret_cast< uintptr_t >(
-        __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
-
     va_list ap;
     va_start( ap, fmt );
     __dios::traceInternalV( 0, fmt, ap );
     va_end( ap );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
 void __dios_trace_i( int indent_level, const char* fmt, ... ) noexcept
@@ -125,33 +120,24 @@ void __dios_trace_i( int indent_level, const char* fmt, ... ) noexcept
 __attribute__(( __annotate__( "divine.debugfn" ) ))
 void __dios_trace( int indent, const char *fmt, ... ) noexcept
 {
-    uintptr_t flags = reinterpret_cast< uintptr_t >(
-        __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
-
     va_list ap;
     va_start( ap, fmt );
     __dios::traceInternalV( indent, fmt, ap );
     va_end( ap );
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
 __attribute__(( __annotate__( "divine.debugfn" ) ))
 void __dios_trace_auto( int indent, const char *fmt, ... ) noexcept
 {
-    uintptr_t flags = reinterpret_cast< uintptr_t >(
-        __vm_control( _VM_CA_Get, _VM_CR_Flags,
-                      _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, _VM_CF_Mask ) );
+    uintptr_t flags = reinterpret_cast< uintptr_t >( __vm_control( _VM_CA_Get, _VM_CR_Flags ) );
 
     if ( flags & _VM_CF_KernelMode )
-        goto unmask;
+        return;
 
     va_list ap;
     va_start( ap, fmt );
     __dios::traceInternalV( indent, fmt, ap );
     va_end( ap );
-unmask:
-    __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask | _VM_CF_Interrupted, flags ); /*  restore */
 }
 
 
