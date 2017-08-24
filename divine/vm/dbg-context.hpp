@@ -67,44 +67,12 @@ struct Context : DNContext< Heap >
     llvm::DIType *_state_di_type;
     llvm::Type   *_state_type;
 
-    int _debug_depth = 0;
-    uint64_t _debug_shuffle;
-
     Context( Program &p, dbg::Info &dbg ) : Context( p, dbg, Heap() ) {}
     Context( Program &p, dbg::Info &dbg, const Heap &h )
         : DNContext< Heap >( p, dbg, h ), _lock_mode( LockDisabled ),
           _state_di_type( nullptr ), _state_type( nullptr )
-    {}
-
-    bool enter_debug()
     {
-        ASSERT_EQ( _debug_depth, 0 );
-        ASSERT( !this->_debug_mode );
-        _debug_shuffle = this->ref( _VM_CR_ObjIdShuffle ).integer;
-        this->_debug_mode = true;
-        return true;
-    }
-
-    void entered( CodePointer pc )
-    {
-        if ( this->_debug_mode )
-            ++ _debug_depth;
-        return Super::entered( pc );
-    }
-
-    void left( CodePointer pc )
-    {
-        if ( this->_debug_mode )
-        {
-            ASSERT_LEQ( 1, _debug_depth );
-            -- _debug_depth;
-            if ( !_debug_depth )
-            {
-                this->_debug_mode = false;
-                this->ref( _VM_CR_ObjIdShuffle ).integer = _debug_shuffle;
-            }
-        }
-        return Super::left( pc );
+        this->_debug_allowed = true;
     }
 
     void reset()

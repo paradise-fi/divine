@@ -96,7 +96,9 @@ struct Context
     std::vector< Interrupt > _interrupts;
 
     uint32_t _instruction_counter;
-    bool _debug_mode = false;
+    bool _debug_mode = false, _debug_allowed = false;
+    int _debug_depth = 0;
+    uint64_t _debug_shuffle;
 
     using MemMap = brick::data::IntervalSet< GenericPointer >;
     std::vector< std::unordered_set< GenericPointer > > _cfl_visited;
@@ -202,7 +204,19 @@ struct Context
         push( p, args... );
     }
 
-    bool enter_debug() { return false; }
+    bool enter_debug()
+    {
+        if ( _debug_allowed && !_debug_mode )
+        {
+            heap()._l.debug_mode = true;
+            _debug_shuffle = ref( _VM_CR_ObjIdShuffle ).integer;
+            _debug_mode = true;
+            return true;
+        }
+        else
+            return false;
+    }
+
 
     template< typename... Args >
     void enter( CodePointer pc, PointerV parent, Args... args )
@@ -237,12 +251,26 @@ struct Context
 
     void entered( CodePointer )
     {
-        if ( !_debug_mode )
+        if ( _debug_mode )
+            ++ _debug_depth;
+        else
             _cfl_visited.emplace_back();
     }
 
     void left( CodePointer )
     {
+        if ( _debug_mode )
+        {
+            ASSERT_LEQ( 1, _debug_depth );
+            -- _debug_depth;
+            if ( !_debug_depth )
+            {
+                _debug_mode = false;
+                ref( _VM_CR_ObjIdShuffle ).integer = _debug_shuffle;
+                heap()._l.debug_mode = false;
+            }
+        }
+
         _cfl_visited.pop_back();
         if ( _cfl_visited.empty() ) /* more returns than calls could happen along an edge */
             _cfl_visited.emplace_back();
@@ -296,6 +324,8 @@ struct Context
     {
         if ( mask() || ( ref( _VM_CR_Flags ).integer & _VM_CF_Interrupted ) == 0 )
             return false;
+
+        ASSERT( !_debug_mode );
 
         if( in_kernel() )
         {
