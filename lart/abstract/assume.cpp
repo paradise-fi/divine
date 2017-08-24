@@ -16,7 +16,6 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/assume.h>
 #include <lart/abstract/intrinsic.h>
-#include <lart/abstract/types/common.h>
 #include <lart/support/query.h>
 #include <lart/analysis/edge.h>
 
