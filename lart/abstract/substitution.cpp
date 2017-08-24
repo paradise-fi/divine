@@ -1,9 +1,9 @@
 // -*- C++ -*- (c) 2016 Henrich Lauko <xlauko@mail.muni.cz>
 #include <lart/abstract/substitution.h>
 
-#include <lart/abstract/types/common.h>
 #include <lart/abstract/walker.h>
 #include <lart/abstract/intrinsic.h>
+#include <lart/abstract/util.h>
 #include <lart/support/query.h>
 #include <lart/analysis/postorder.h>
 
@@ -13,7 +13,7 @@ namespace lart {
 namespace abstract {
 namespace {
 
-void removeInvalidAttributes( llvm::Function* fn ) {
+void removeInvalidAttributes( llvm::Function * fn, TMap & tmap ) {
     using AttrSet = llvm::AttributeSet;
     using Kind = llvm::Attribute::AttrKind;
 
@@ -23,120 +23,133 @@ void removeInvalidAttributes( llvm::Function* fn ) {
     };
     auto attrs = llvm::ArrayRef< Kind >{ Kind::SExt, Kind::ZExt };
 
-    if ( isAbstract( fn->getReturnType() ) )
+    if ( isAbstract( fn->getReturnType(), tmap ) )
         removeAttributes( 0, attrs );
     for ( size_t i = 0; i < fn->arg_size(); ++i )
-        if ( isAbstract( fn->getFunctionType()->getParamType( i ) ) )
+        if ( isAbstract( fn->getFunctionType()->getParamType( i ), tmap ) )
             removeAttributes( i + 1, attrs );
+}
+
+template< typename Fns >
+void clean( Fns & fns, llvm::Module & m ) {
+    for ( auto & f : fns ) {
+        f.first->replaceAllUsesWith( llvm::UndefValue::get( f.first->getType() ) );
+        f.first->eraseFromParent();
+    }
+
+    auto intrinsics = query::query( m )
+        .map( query::refToPtr )
+        .filter( []( llvm::Function * fn ) {
+            return isIntrinsic( fn );
+        } ).freeze();
+    for ( auto & in : intrinsics )
+        in->eraseFromParent();
+}
+
+bool isAbstract( llvm::Function * fn, TMap & tmap ) {
+    bool args = query::query( fn->args() ).any( [&] ( const auto & arg ) {
+        return isAbstract( arg.getType(), tmap );
+    } );
+    return args || isAbstract( fn->getReturnType(), tmap );
+}
+
+Functions abstractFunctions( llvm::Module & m, TMap & tmap ) {
+    return query::query( m )
+        .map( query::refToPtr )
+        .filter( []( llvm::Function * fn ) {
+            return fn->hasName() && ! fn->getName().startswith( "lart." );
+        } )
+        .filter( [&]( llvm::Function * fn ) {
+            return isAbstract( fn, tmap );
+        } ).freeze();
+}
+
+decltype(auto) callsOf( llvm::Function * fn ) {
+    return llvmFilter< llvm::CallInst >( fn->users() );
+}
+
+decltype(auto) callsOf( const Functions & fns ) {
+    return query::query( fns )
+        .map( [] ( const auto & fn ) { return callsOf( fn ); } )
+        .flatten()
+        .freeze();
 }
 
 } // anonymous namespace
 
 void Substitution::run( llvm::Module & m ) {
-    init( m );
-    auto functions = query::query( m )
-        .map( query::refToPtr )
-        .filter( []( llvm::Function * f ) {
-            return f->hasName() && !f->getName().startswith( "lart." );
-        } )
-        .filter( []( llvm::Function * f ) {
-            return query::query( f->args() )
-                .any( [] ( auto& arg ) { return isAbstract( arg.getType() ); } );
-        } ).freeze();
+    { // begin RAII substitution builder
+    auto sb = make_sbuilder( data.tmap, fns, m );
+    auto functions = abstractFunctions( m, data.tmap );
+    for ( auto & fn : functions ) {
+        assert( fn->getName() != "main" );
+        fns[ fn ] = sb.prototype( fn );
+    }
+
     // TODO solve returns of functions without arguments
     // = move changing of returns to here
-    for ( const auto & fn : functions )
-        subst.process( fn );
+    auto intrs = intrinsics( &m );
 
-    auto intrinsics = query::query( m ).flatten().flatten()
-        .map( query::refToPtr )
-        .map( query::llvmdyncast< llvm::CallInst > )
-        .filter( query::notnull )
-        .filter( [] ( llvm::CallInst * call ) {
-            return isIntrinsic( call );
-        } ).freeze();
+    auto allocas = query::query( intrs ).filter( [] ( const auto & i ) {
+        return isAlloca( i );
+    } ).freeze();
 
-    auto allocas = query::query( intrinsics )
-        .filter( []( const Intrinsic & intr ) {
-            return intr.name() == "alloca";
-        } ).freeze();
+    auto lifts = query::query( intrs ).filter( [] ( const auto & i ) {
+        return isLift( i );
+    } ).freeze();
 
-    auto lifts = query::query( intrinsics )
-        .filter( []( const Intrinsic & intr ) {
-            return isLift( intr );
-        } ).freeze();
+    auto calls = callsOf( functions );
 
-    std::vector< llvm::Instruction * > abstract;
+    Insts abstract;
     abstract.reserve( allocas.size() + lifts.size() );
     abstract.insert( abstract.end(), allocas.begin(), allocas.end() );
     abstract.insert( abstract.end(), lifts.begin(), lifts.end() );
+    abstract.insert( abstract.end(), calls.begin(), calls.end() );
 
-    std::map< llvm::Function *, std::vector< llvm::Instruction * > > funToValMap;
-    for ( const auto &a : abstract ) {
-        auto inst = llvm::dyn_cast< llvm::Instruction >( a );
-        assert( inst );
+    Map< llvm::Function *, Values > funToValMap;
+    for ( const auto &a : abstract )
+        funToValMap[ getFunction( a ) ].push_back( a );
 
-        llvm::Function * fn = inst->getParent()->getParent();
-        if ( subst.visited( fn ) )
-            continue;
-        funToValMap[ fn ].push_back( inst );
-    }
-
-    for ( auto & fn : funToValMap ) {
-        if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
-            continue;
-        removeInvalidAttributes( fn.first );
-        for ( auto & inst : fn.second )
-            process( inst );
-    }
-
-    auto retAbsVal = query::query( m )
-                    .map( query::refToPtr )
-                    .filter( [&]( llvm::Function * fn ) {
-                        return isAbstract( fn->getReturnType() ) && !isIntrinsic( fn );
-                    } )
-                    .filter( [&]( llvm::Function * fn ) {
-                        return !subst.visited( fn )
-                             || funToValMap.count( fn );
-                    } ).freeze();
-
-    auto retorder = analysis::callPostorder< llvm::Function * >( m, retAbsVal );
-
-    for ( auto fn : retorder )
-        changeReturn( fn );
-    subst.clean( m );
-}
-
-void Substitution::process( llvm::Value * val ) {
-    using Values = std::vector< llvm::Value * >;
     auto succs = [&] ( llvm::Value * v ) -> Values {
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( v ) ) {
             auto fn = call->getCalledFunction();
-            if ( !isAbstract( fn->getReturnType() ) && !isIntrinsic( fn ) )
+            if ( !isAbstract( fn->getReturnType(), data.tmap ) && !isIntrinsic( fn ) )
                 return {};
         }
         return { v->user_begin(), v->user_end() };
     };
 
-    auto deps = analysis::postorder( Values{ val }, succs );
-    for ( auto dep : lart::util::reverse( deps ) )
-        if( auto i = llvm::dyn_cast< llvm::Instruction >( dep ) )
-            subst.process( i );
-}
-
-void Substitution::changeReturn( llvm::Function * fn ) {
-    subst.clean( fn );
-    if ( !subst.visited( fn ) ) {
-        auto newfn = changeReturnType( fn,
-             subst.process( fn->getReturnType() ) );
-        subst.store( fn, newfn );
+    for ( auto & fn : funToValMap ) {
+        if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
+            continue;
+        for ( auto & arg : fn.first->args() )
+            sb.process( &arg );
+        removeInvalidAttributes( fn.first, data.tmap );
+        auto deps = analysis::postorder( fn.second, succs );
+        for ( auto dep : lart::util::reverse( deps ) )
+            if( auto i = llvm::dyn_cast< llvm::Instruction >( dep ) )
+                sb.process( i );
     }
 
-    for ( auto user : fn->users() ) {
-        subst.changeCallFunction( llvm::cast< llvm::CallInst >( user ) );
-        for ( auto val : user->users() )
-            process( val );
+    } // end RAII substitution builder
+
+    auto remapArg = [] ( llvm::Argument & a ) {
+        if ( auto call = llvm::dyn_cast< llvm::CallInst >( *a.user_begin() ) )
+            if ( call->getCalledFunction()->hasName() &&
+                 call->getCalledFunction()->getName().startswith( "__lart_lift" ) )
+            {
+                call->replaceAllUsesWith( &a );
+                call->eraseFromParent();
+            }
+    };
+
+    for ( auto & fn : fns ) {
+        llvm::ValueToValueMapTy vtvmap;
+        cloneFunctionInto( fn.second, fn.first, vtvmap );
+        for ( auto & arg : fn.second->args() )
+            remapArg( arg );
     }
+    clean( fns, m );
 }
 
 } // namespace abstract

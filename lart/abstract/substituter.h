@@ -9,71 +9,192 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/IRBuilder.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/abstract/types/common.h>
-#include <lart/abstract/types/composed.h>
 #include <lart/abstract/domains/common.h>
+#include <lart/abstract/domains/tristate.h>
+#include <lart/abstract/intrinsic.h>
+#include <lart/abstract/util.h>
+#include <lart/abstract/data.h>
+#include <lart/support/util.h>
 
 namespace lart {
 namespace abstract {
 
-template< typename T >
-using Mapper = std::map< T, T>;
-
-using ValueMap = Mapper< llvm::Value * >;
-using FunctionMap = Mapper< llvm::Function * >;
-
+template< typename TMap, typename Fns >
 struct Substituter {
+    using IRB = llvm::IRBuilder<>;
+
     using Abstraction = std::shared_ptr< Common >;
-    using Abstractions = std::map< DomainValue, Abstraction >;
 
-    Substituter();
+    Substituter( TMap & tmap, Fns & fns ) : tmap( tmap ), fns( fns ) {}
 
-    /* Substitute abstract value */
-    void process( llvm::Value * value );
+    ~Substituter() {
+        for ( const auto & v : vmap ) {
+            if ( auto i = llvm::dyn_cast< llvm::Instruction >( v.first ) ) {
+                i->replaceAllUsesWith( llvm::UndefValue::get( i->getType() ) );
+                i->eraseFromParent();
+            }
+        }
+    }
 
-    /* Substitute all abstract values in function 'fn' */
-    void process( llvm::Function * fn );
+    void process( llvm::Argument * arg ) {
+        if ( isAbstract( arg->getType() ) )
+            vmap[ arg ] = argLift( arg );
+    }
 
-    /* Returns type in corresponding abstract domain if the type is
-     * 'lart' type. Else it returns original type */
-    llvm::Type * process( llvm::Type * ) const;
-    llvm::Type * process( const AbstractTypePtr & type ) const;
+    void process( llvm::Value * val ) {
+        if ( llvm::isa< llvm::Argument >( val ) ) {
+            UNREACHABLE( "Arguments should be substituted before processing of values." );
+        } else {
+            llvmcase( val
+            ,[&]( llvm::CastInst * i ) { doCast( i ); }
+            ,[&]( llvm::BranchInst * i ) { doBr( i ); }
+            ,[&]( llvm::PHINode * i ) { doPhi( i ); }
+            ,[&]( llvm::ReturnInst * i ) { doRet( i ); }
+            ,[&]( llvm::CallInst * c ) {
+                return isIntrinsic( c ) ? doIntrinsic( c ) : doCall( c );
+            }
+            ,[&]( llvm::Instruction *i ) {
+                std::cerr << "ERR: unknown instruction: ";
+                i->dump();
+                std::exit( EXIT_FAILURE );
+            } );
+        }
+    }
 
-    void clean( llvm::Function * );
-    void clean( llvm::Module & );
+    llvm::Type * process( llvm::Type * type ) {
+        if ( !isAbstract( type ) )
+            return type;
+        return getAbstraction( type )->abstract( type );
+    }
 
-    /* Returns true if the function was already proccessed */
-    bool visited( llvm::Function * ) const;
-
-    /* Stores function f2 as substituted equivalent for function f1 */
-    void store( llvm::Function * f1, llvm::Function * f2 );
+    llvm::Function * prototype( llvm::Function * fn ) {
+        auto rty = process( fn->getReturnType() );
+        auto args = remapFn( fn->args(), [&] ( const auto & a ) { return process( a.getType() ); } );
+        auto fty = llvm::FunctionType::get( rty, args, fn->getFunctionType()->isVarArg() );
+        return llvm::Function::Create( fty, fn->getLinkage(), fn->getName(), fn->getParent() );
+    }
 
     /* Add 'abstraction' to available abstractions for builder */
-    void registerAbstraction( Abstraction && abstraction  );
+    void addAbstraction( Abstraction && a ) {
+        abs.emplace( a->domain(), std::move( a ) );
+    }
 
-    void changeCallFunction( llvm::CallInst * );
 private:
-    void substituteAbstractIntrinsic( llvm::CallInst * );
-    void substitutePhi( llvm::PHINode * );
-    void substituteSelect( llvm::SelectInst * );
-    void substituteGEP( llvm::GetElementPtrInst * );
-    void substituteBranch( llvm::BranchInst * );
-    void substituteCall( llvm::CallInst * );
-    void substituteCast( llvm::CastInst * );
-    void substituteReturn( llvm::ReturnInst * );
+    llvm::Value * argLift( llvm::Argument * arg ) {
+        auto dom = tmap.origin( arg->getType() ).second;
+        std::string name = "__lart_lift_" + DomainTable[ dom ];
+        auto abstraction = abs[ dom ];
+        auto rty = process( arg->getType() );
+        auto fty = llvm::FunctionType::get( rty, { arg->getType() }, false );
+        auto lift = getModule( arg )->getOrInsertFunction( name, fty );
+        return IRB( getFunction( arg )->front().begin() ).CreateCall( lift, { arg } );
+    }
 
-    llvm::Type * createStructType( const ComposedTypePtr & ct );
+    Types remap( const Types & tys ) const {
+        return remapFn( tys, [&] ( const auto type ) {
+            return isAbstract( type )
+            ? getAbstraction( type )->abstract( tmap.origin( type ).first )
+            : type;
+        } );
+    }
 
-    const Abstraction getAbstraction( llvm::Value * value ) const;
-    const Abstraction getAbstraction( const AbstractTypePtr & ty ) const;
+    template< typename Vs >
+    Values remapArgs( const Vs & vals ) const {
+        return remapFn( vals, [&] ( const auto & u ) {
+            auto v = u.get();
+            return isAbstract( v->getType() ) ? vmap.at( v ) : v;
+        } );
+    }
 
-    bool isSubstituted( llvm::Value * value ) const;
-    bool isSubstituted( llvm::Type * type ) const;
+    void doBr( llvm::BranchInst * br ) {
+        assert( br->isConditional() );
+        if ( vmap.count( br ) )
+            return;
+        auto cond = vmap.find( br->getCondition() );
+        if( cond != vmap.end() ) {
+            auto tbb = br->getSuccessor( 0 );
+            auto fbb = br->getSuccessor( 1 );
+            vmap[ br ] = IRB( br ).CreateCondBr( cond->second, tbb, fbb );
+        }
+    }
 
-    ValueMap processedValues;
-    FunctionMap processedFunctions;
+    void doPhi( llvm::PHINode * phi ) {
+        auto niv = phi->getNumIncomingValues();
 
-    Abstractions abstractions;
+        std::vector< std::pair< llvm::Value *, llvm::BasicBlock * > > incoming;
+        for ( size_t i = 0; i < niv; ++i ) {
+            auto val = llvm::cast< llvm::Value >( phi->getIncomingValue( i ) );
+            assert( vmap.count( val ) );
+            auto parent = phi->getIncomingBlock( i );
+            incoming.push_back( { vmap[ val ], parent } );
+        }
+
+        if ( incoming.size() > 0 ) {
+            llvm::PHINode * node = nullptr;
+            if ( vmap.count( phi ) )
+                node = llvm::cast< llvm::PHINode >( vmap[ phi ] );
+            else {
+                auto type = incoming.begin()->first->getType();
+                node = IRB( phi ).CreatePHI( type, niv );
+                vmap[ phi ] = node;
+            }
+
+            for ( size_t i = 0; i < node->getNumIncomingValues(); ++i )
+                node->removeIncomingValue( i, false );
+            for ( auto & in : incoming )
+                node->addIncoming( in.first, in.second );
+        }
+    }
+
+    void doCast( llvm::CastInst * cast ) {
+        assert( llvm::isa< llvm::BitCastInst >( cast ) &&
+            "ERR: Only bitcast is supported for pointer cast instructions." );
+
+        IRB irb( cast );
+        auto destTy = process( cast->getDestTy() );
+        auto val = vmap[ cast->getOperand( 0 ) ];
+        assert( val && "ERR: Trying to bitcast value, that is not abstracted." );
+        if ( val->getType() != destTy )
+            vmap[ cast ] = irb.CreateBitCast( val, destTy );
+        else
+            vmap[ cast ] = val;
+    }
+
+    void doRet( llvm::ReturnInst * ret ) {
+        auto val = vmap.find( ret->getReturnValue() );
+        if ( val != vmap.end() )
+            vmap[ ret ] = IRB( ret ).CreateRet( val->second );
+    }
+
+    void doCall( llvm::CallInst * call ) {
+        auto args = remapArgs( call->arg_operands() );
+        auto fn = call->getCalledFunction();
+        fn = fns.count( fn ) ? fns[ fn ] : fn;
+        vmap[ call ] = IRB( call ).CreateCall( fn, args );
+    }
+
+    void doIntrinsic( llvm::CallInst * i ) {
+        assert( isIntrinsic( i ) );
+        auto abstraction = abs[ domain( i ) ];
+        auto args = remapArgs( i->arg_operands() );
+        vmap[ i ] =  abstraction->process( i, args );
+    }
+
+    const Abstraction getAbstraction( llvm::Value * v ) const {
+        return getAbstraction( v->getType() );
+    }
+
+    const Abstraction getAbstraction( llvm::Type * t ) const {
+        return abs.at( tmap.origin( stripPtr( t ) ).second );
+    }
+
+    bool isAbstract( llvm::Type * t ) const { return tmap.isAbstract( t ); }
+
+    Map< Domain, Abstraction > abs;
+    Map< llvm::Value *, llvm::Value * > vmap;
+
+    TMap & tmap;
+    Fns & fns;
 };
 
 } // namespace abstract
