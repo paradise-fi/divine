@@ -17,8 +17,15 @@ struct Abstraction {
 
     void run( llvm::Module & );
 
+    llvm::Function * process( const FunctionNodePtr & node );
+    void clone( const FunctionNodePtr & node );
+
+    void clean( Values & deps );
+
     PassData & data;
+    FunctionMap< llvm::Function *, Types > fns;
 };
+
 
 } // namespace abstract
 } // namespace lart

@@ -12,6 +12,16 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
+namespace {
+
+template< typename Vs >
+inline std::vector< llvm::CallInst * > lifts( const Vs & vs ) {
+    return query::query( llvmFilter< llvm::CallInst >( vs ) )
+    .filter( [&]( llvm::CallInst * c ) { return isLift( c ); } ).freeze();
+}
+
+}
+
 void Abstraction::run( llvm::Module & m ) {
     auto preprocess = [] ( llvm::Function * fn ) {
         auto lowerSwitchInsts = std::unique_ptr< llvm::FunctionPass >(
@@ -26,64 +36,52 @@ void Abstraction::run( llvm::Module & m ) {
         ufen.runOnFunction( *fn );
     };
 
-    std::vector< llvm::Function * > remove;
+    Functions remove;
     auto functions = Walker( m, preprocess ).postorder();
 
-    // create function declarations
-    std::unordered_map< FunctionNodePtr, llvm::Function * > declarations;
+    // create function prototypes
+    Map< FunctionNodePtr, llvm::Function * > prototypes;
 
     for ( const auto & node : functions )
-        declarations[ node ] =  builder.process( node );
+        prototypes[ node ] = process( node );
     for ( const auto & node : functions ) {
+        LiftMap< llvm::Value *, llvm::Value * > vmap;
+        auto builder = make_builder( vmap, data.tmap, fns );
+
         // 1. if signature changes create a new function declaration
 
         // if proccessed function is called with abstract argument create clone of it
         // to preserve original function for potential call without abstract argument
         // TODO what about function with abstract argument and abstract annotation?
         bool called = query::query( node->origins ).any( [] ( const auto & n ) {
-            return llvm::isa< llvm::Argument >( n.value() );
+            return n.template isa< llvm::Argument >();
         } );
 
-        if ( called )
-            builder.clone( node );
+        if ( called ) clone( node );
 
         // 2. process function abstract entries
         auto postorder = node->postorder();
-        for ( auto & val : lart::util::reverse( postorder ) )
-            builder.process( val );
+        for ( auto & av : lart::util::reverse( postorder ) )
+            builder.process( av );
 
         // 3. clean function
         // FIXME let builder take annotation structure
-        std::vector< llvm::Value * > deps;
-        for ( auto & val : postorder )
-            deps.emplace_back( val.value() );
-        builder.clean( deps );
+        Values deps;
+        for ( auto & av : postorder )
+            deps.emplace_back( av.value );
+        clean( deps );
 
         // 4. copy function to declaration and handle function uses
         auto fn = node->function;
-        auto & changed = declarations[ node ];
+        auto & changed = prototypes[ node ];
         if ( changed != fn ) {
             remove.push_back( fn );
-            llvm::ValueToValueMapTy vmap;
-            auto destIt = changed->arg_begin();
-            for ( const auto &arg : fn->args() )
-                if ( vmap.count( &arg ) == 0 ) {
-                    destIt->setName( arg.getName() );
-                    vmap[&arg] = &*destIt++;
-                }
-            // FIXME CloneDebugInfoMeatadata
-            llvm::SmallVector< llvm::ReturnInst *, 8 > returns;
-            llvm::CloneFunctionInto( changed, fn, vmap, false, returns, "", nullptr );
+            llvm::ValueToValueMapTy vtvmap;
+            cloneFunctionInto( changed, fn, vtvmap );
             // Remove lifts of abstract arguments
             for ( auto & arg : changed->args() ) {
-                if ( isAbstract( arg.getType() ) ) {
-                    auto lifts = query::query( arg.users() )
-                        .map( query::llvmdyncast< llvm::CallInst > )
-                        .filter( query::notnull )
-                        .filter( [&]( llvm::CallInst * call ) {
-                             return isLift( call );
-                         } ).freeze();
-                    for ( auto & lift : lifts ) {
+                if ( data.tmap.isAbstract( arg.getType() ) ) {
+                    for ( auto & lift : lifts( arg.users() ) ) {
                         lift->replaceAllUsesWith( &arg );
                         lift->eraseFromParent();
                     }
@@ -91,9 +89,76 @@ void Abstraction::run( llvm::Module & m ) {
             }
         }
     }
-
     for ( auto & fn : lart::util::reverse( remove ) )
-       fn->eraseFromParent();
+        fn->eraseFromParent();
+}
+
+llvm::Function * Abstraction::process( const FunctionNodePtr & node ) {
+    auto rets = filterA< llvm::ReturnInst >( node->postorder() );
+    auto args = filterA< llvm::Argument >( node->postorder() );
+
+    // Signature does not need to be changed
+    if ( rets.empty() && args.empty() )
+        return node->function;
+
+    auto fn = node->function;
+    auto dom = !rets.empty() ? rets[ 0 ].domain : Domain::LLVM;
+    auto rty = liftType( fn->getReturnType(), dom, data.tmap );
+
+    Map< unsigned, llvm::Type * > amap;
+    for ( const auto & a : args )
+        amap[ a.get< llvm::Argument >()->getArgNo() ] = a.type( data.tmap );
+
+    auto as = remapFn( node->function->args(), [&] ( const auto & a ) {
+        return amap.count( a.getArgNo() ) ? amap[ a.getArgNo() ] : a.getType();
+    } );
+
+    auto fty = llvm::FunctionType::get( rty, as, fn->getFunctionType()->isVarArg() );
+    auto newfn = llvm::Function::Create( fty, fn->getLinkage(), fn->getName(), fn->getParent() );
+    fns.insert( fn, newfn );
+    return newfn;
+}
+
+void Abstraction::clone( const FunctionNodePtr & node ) {
+    llvm::ValueToValueMapTy vmap;
+    auto clone = CloneFunction( node->function, vmap, true, nullptr );
+    node->function->getParent()->getFunctionList().push_back( clone );
+
+    Set< AbstractValue > origins;
+    for ( const auto & origin : node->origins )
+        if ( const auto & arg = origin.safeGet< llvm::Argument >() )
+            origins.emplace( argAt( clone, arg->getArgNo() ), origin.domain );
+
+    auto a = query::query( *node->function ).flatten();
+    auto b = query::query( *clone ).flatten();
+    auto aIt = a.begin();
+    auto bIt = b.begin();
+
+    for ( ; aIt != a.end() && bIt != b.end(); ++aIt, ++bIt ) {
+        auto o = node->isOrigin( &( *aIt ) );
+        if ( o.isJust() )
+            origins.emplace( &(*bIt), o.value().domain );
+    }
+
+    if ( fns.count( node->function ) )
+        fns.assign( clone, node->function );
+
+    node->function = clone;
+    node->origins = origins;
+}
+
+void Abstraction::clean( Values & deps ) {
+    auto is = llvmFilter< llvm::Instruction >( deps );
+    for ( auto & inst : is ) {
+        for ( auto & lift : liftsOf( inst ) )
+            if ( std::find( is.begin(), is.end(), lift ) == is.end() )
+                    lift->eraseFromParent();
+        inst->removeFromParent();
+    }
+    for ( auto & inst : is )
+        inst->replaceAllUsesWith( llvm::UndefValue::get( inst->getType() ) );
+    for ( auto & inst : is )
+        delete inst;
 }
 
 } // abstract
