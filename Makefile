@@ -133,7 +133,8 @@ static-toolchain-libs : toolchain
 ${FLAVOURS:%=%-env}:
 	$(MAKE) ${@:%-env=%} ${@:%-env=%}-llvm-utils
 	env PATH=$(OBJ)toolchain/clang/bin:$(OBJ)${@:%-env=%}/llvm/bin:$(OBJ)${@:%-env=%}/tools:$$PATH \
-		CXXFLAGS="$(CXXFLAGS_)" LDFLAGS="$(LDFLAGS_)" $$SHELL
+		CXXFLAGS="$(CXXFLAGS_)" LDFLAGS="$(LDFLAGS_)" \
+		DIVINE_BUILD_ENV="${@:%-env=%}" $$SHELL
 
 env : ${DEFAULT_FLAVOUR}-env
 
