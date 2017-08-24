@@ -86,7 +86,7 @@ struct Context
         GenericPointer pointer;
         uint64_t integer;
         Register() : integer( 0 ) {}
-    } _reg[ _VM_CR_Last ];
+    } _reg[ _VM_CR_Last ], _debug_reg[ _VM_CR_Last ];
 
     /* indexed by _VM_ControlRegister */
     HeapInternal _ptr2i[ _VM_CR_Frame + 1 ];
@@ -98,7 +98,7 @@ struct Context
     uint32_t _instruction_counter;
     bool _debug_mode = false, _debug_allowed = false;
     int _debug_depth = 0;
-    uint64_t _debug_shuffle;
+    typename Heap::Snapshot _debug_snap;
 
     using MemMap = brick::data::IntervalSet< GenericPointer >;
     std::vector< std::unordered_set< GenericPointer > > _cfl_visited;
@@ -204,19 +204,49 @@ struct Context
         push( p, args... );
     }
 
+    template< typename H, typename F >
+    static auto with_snap( H &heap, F f, brick::types::Preferred )
+        -> decltype( heap.snapshot(), void( 0 ) )
+    {
+        f( heap );
+    }
+
+    template< typename H, typename F >
+    static void with_snap( H &, F, brick::types::NotPreferred )
+    {
+        /* nothing: debug mode does not need a rollback in 'run' */
+    }
+
+    template< typename F >
+    void with_snap( F f )
+    {
+        with_snap( heap(), f, brick::types::Preferred() );
+        flush_ptr2i();
+    }
+
     bool enter_debug()
     {
         if ( _debug_allowed && !_debug_mode )
         {
-            heap()._l.debug_mode = true;
-            _debug_shuffle = ref( _VM_CR_ObjIdShuffle ).integer;
+            ASSERT( !_debug_depth );
             _debug_mode = true;
+            std::copy( _reg, _reg + _VM_CR_Last, _debug_reg );
+            with_snap( [&]( auto &h ) { _debug_snap = h.snapshot(); } );
             return true;
         }
         else
             return false;
     }
 
+    void leave_debug()
+    {
+        ASSERT( _debug_allowed );
+        ASSERT( _debug_mode );
+        ASSERT( !_debug_depth );
+        _debug_mode = false;
+        std::copy( _debug_reg, _debug_reg + _VM_CR_Last, _reg );
+        with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
+    }
 
     template< typename... Args >
     void enter( CodePointer pc, PointerV parent, Args... args )
@@ -264,11 +294,7 @@ struct Context
             ASSERT_LEQ( 1, _debug_depth );
             -- _debug_depth;
             if ( !_debug_depth )
-            {
-                _debug_mode = false;
-                ref( _VM_CR_ObjIdShuffle ).integer = _debug_shuffle;
-                heap()._l.debug_mode = false;
-            }
+                leave_debug();
         }
 
         _cfl_visited.pop_back();
