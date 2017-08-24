@@ -26,8 +26,6 @@ DIVINE_UNRELAX_WARNINGS
 #include <fstream>
 #include <string>
 
-#include <experimental/tuple>
-
 #include <lart/abstract/abstraction.h>
 #include <lart/abstract/assume.h>
 #include <lart/abstract/bcp.h>
@@ -41,7 +39,6 @@ namespace abstract {
         PassWrapperImpl( Passes&& passes ) : passes( std::move( passes ) ) {}
 
         void run( llvm::Module & m ) {
-            using std::experimental::apply;
             apply( [&]( auto... p ) { ( p.run( m ),... ); }, passes );
         }
 
