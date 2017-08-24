@@ -161,7 +161,7 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
     struct Local { };
     using AllocaIdentity = brick::types::Either< Local, std::pair< util::Set< llvm::BasicBlock * >, llvm::PHINode * > >;
     util::Map< std::pair< llvm::BasicBlock *, llvm::AllocaInst * >, AllocaIdentity > allocaMap;
-    util::Map< llvm::BasicBlock *, util::Set< llvm::AllocaInst * > > reachingAllocas;
+    util::Map< llvm::BasicBlock *, util::StableSet< llvm::AllocaInst * > > reachingAllocas;
     std::vector< llvm::BasicBlock * > worklist;
     worklist.push_back( &fn.getEntryBlock() );
 
@@ -186,7 +186,7 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
             if ( &pbb == bb )
                 continue;
             for ( auto alloca : reachingAllocas[ &pbb ] ) {
-                if ( reachingHere.insert( alloca ).second )
+                if ( reachingHere.insert( alloca ) )
                     propagate = true;
 
                 bool addToPhi = false;
@@ -212,7 +212,7 @@ void addAllocaCleanups( EhInfo ehi, llvm::Function &fn, ShouldClean &&shouldClea
         // allocas here
         for ( auto &inst : *bb ) {
             if ( auto *alloca = llvm::dyn_cast< llvm::AllocaInst >( &inst ) ) {
-                if ( reachingHere.insert( alloca ).second ) {
+                if ( reachingHere.insert( alloca ) ) {
                     propagate = true;
                     allocaMap[ { bb, alloca } ] = Local();
                 }

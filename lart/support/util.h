@@ -60,6 +60,34 @@ using Set = std::set< T >;
 template< typename K, typename V >
 using Map = std::map< K, V >;
 
+/* Data structure which keeps data ordered in the order of insertion, but remove duplicates.
+ * Internally, this containts a vector and a set.
+ * Data must not be changed after insertion.
+ */
+template< typename T >
+struct StableSet {
+
+    using value_type = T;
+    using iterator = typename std::vector< T >::const_iterator;
+    using const_iterator = iterator;
+
+    // O(log n), retuns true it x was not present prior to insertion
+    bool insert( const T &x ) {
+        if ( _set.insert( x ).second ) {
+            _vec.push_back( x );
+            return true;
+        }
+        return false;
+    }
+
+    iterator begin() const { return _vec.begin(); }
+    iterator end() const { return _vec.end(); }
+
+  private:
+    std::vector< T > _vec;
+    Set< T > _set;
+};
+
 template < typename Container >
 struct Store : public Container {
     using K = typename Container::key_type;
