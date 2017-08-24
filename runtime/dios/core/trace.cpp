@@ -85,12 +85,14 @@ void traceInFile( const char *file, const char *msg, size_t size ) noexcept
 
 } // namespace __dios
 
+__attribute__(( __annotate__( "divine.debugfn" ) ))
 void __dios_trace_t( const char *txt ) noexcept
 {
     /* __vm_trace( _VM_T_Text, txt ); */
     __dios_trace( 0, txt );
 }
 
+__attribute__(( __annotate__( "divine.debugfn" ) ))
 void __dios_trace_f( const char *fmt, ... ) noexcept
 {
     uintptr_t flags = reinterpret_cast< uintptr_t >(
@@ -104,7 +106,8 @@ void __dios_trace_f( const char *fmt, ... ) noexcept
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
-void __dios_trace_i( int indent_level, const char* fmt, ... ) noexcept {
+void __dios_trace_i( int indent_level, const char* fmt, ... ) noexcept
+{
     va_list ap;
     va_start( ap, fmt );
 
@@ -117,6 +120,7 @@ void __dios_trace_i( int indent_level, const char* fmt, ... ) noexcept {
     va_end( ap );
 }
 
+__attribute__(( __annotate__( "divine.debugfn" ) ))
 void __dios_trace( int indent, const char *fmt, ... ) noexcept
 {
     uintptr_t flags = reinterpret_cast< uintptr_t >(
@@ -130,6 +134,7 @@ void __dios_trace( int indent, const char *fmt, ... ) noexcept
     __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Mask, flags ); /*  restore */
 }
 
+__attribute__(( __annotate__( "divine.debugfn" ) ))
 void __dios_trace_auto( int indent, const char *fmt, ... ) noexcept
 {
     uintptr_t flags = reinterpret_cast< uintptr_t >(
