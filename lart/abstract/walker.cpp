@@ -18,42 +18,10 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/support/query.h>
 #include <lart/analysis/postorder.h>
 #include <lart/abstract/value.h>
-#include <lart/abstract/types/common.h>
+#include <lart/abstract/util.h>
 
-using namespace lart;
-using namespace lart::abstract;
-
-template < typename K, typename V >
-using Map = std::map< K, V >;
-
-template < typename V >
-using Set = std::unordered_set< V >;
-
-using AbstractValues = std::vector< AbstractValue >;
-
-template< typename I >
-auto Insts( std::vector< llvm::Value * > values ) {
-    return query::query( values )
-        .map( query::llvmdyncast< I > )
-        .filter( query::notnull )
-        .freeze();
-};
-
-template< typename I >
-auto Insts( llvm::Function * fn ) {
-    return query::query( *fn ).flatten()
-        .map( query::refToPtr )
-        .map( query::llvmdyncast< I > )
-        .filter( query::notnull )
-        .freeze();
-};
-
-DomainPtr getDomainFromGEP( llvm::GetElementPtrInst * gep, DomainPtr dom ) {
-    // TODO for now we are expecting only one layerd structures
-    assert( gep->getNumIndices() == 2 );
-    auto idx = llvm::cast< llvm::ConstantInt >( gep->getOperand( 2 ) )->getZExtValue();
-    return dom->get< ComposedDomain >().values[ idx ];
-}
+namespace lart {
+namespace abstract {
 
 struct ValuesPostOrder {
     ValuesPostOrder( const AbstractValues & roots )
@@ -64,19 +32,15 @@ struct ValuesPostOrder {
             // do not propagate through calls that does not roots
             // ie. that are those calls which does not return abstract value
             bool root = std::find( roots.begin(), roots.end(), n ) != roots.end();
-            if ( llvm::isa< llvm::CallInst >( n.value() ) && !root )
+            if ( n.isa< llvm::CallInst >() && !root )
                 return {};
-            if ( !n.domain()->isAbstract() )
+            if ( !n.isAbstract() )
                 return {};
 
-            return query::query( n.value()->users() )
+            return query::query( n.value->users() )
             .map( [&] ( const auto & val ) -> AbstractValue {
-                if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( val ) )
-                    return { val, getDomainFromGEP( gep, n.domain() ) };
-                else
-                    return { val, n.domain() };
-            } )
-            .freeze();
+                return { val, n.domain };
+            } ).freeze();
         };
     }
 
@@ -107,8 +71,7 @@ AbstractValue getValueFromAnnotation( const llvm::CallInst * call ) {
                       data->getInitializer() )->getAsCString();
     const std::string prefix = "lart.abstract.";
     assert( annotation.startswith( prefix ) );
-    auto tmp = annotation.str().substr( prefix.size() );
-    auto dom = domain( annotation.str().substr( prefix.size() ) );
+    auto dom = DomainTable[ annotation.str().substr( prefix.size() ) ];
     return AbstractValue( call->getOperand( 0 )->stripPointerCasts(), dom );
 }
 
@@ -129,23 +92,18 @@ std::vector< FunctionNodePtr > Walker::annotations( llvm::Module & m ) {
 
         for ( auto a : annotated ) {
             std::vector< llvm::Value * > users = { a->user_begin(), a->user_end() };
-            for ( const auto & call : Insts< llvm::CallInst >( users ) )
+            for ( const auto & call : llvmFilter< llvm::CallInst >( users ) )
                 values.push_back( getValueFromAnnotation( call ) );
         }
     }
 
     return query::query( values )
-        .map( []( const auto & v ) {
-            return llvm::cast< llvm::Instruction >( v.value() )
-                   ->getParent()->getParent();
-        } )
+        .map( []( const auto & v ) { return v.getFunction(); } )
         .unstableUnique()
         .map( [&]( llvm::Function * fn ) {
             auto owned = query::query( values )
                 .filter( [&]( const auto & n ) {
-                    const auto & inst =
-                        llvm::dyn_cast< llvm::Instruction >( n.value() );
-                    return inst->getParent()->getParent() == fn;
+                    return n.getFunction() == fn;
                 } )
                 .freeze();
 
@@ -172,25 +130,25 @@ void Walker::init( llvm::Module & m ) {
 // Write access to abstract value is produced by store:
 // void store %abstract_value, %value*
 // we need %abstract_value type information for correct propagation of domains
-using WriteAccess = std::pair< llvm::StoreInst *, AbstractTypePtr >;
+
+using WriteAccess = std::pair< llvm::StoreInst *, Domain >;
+using Accesses = std::vector< WriteAccess >;
 
 template< typename Roots >
-std::vector< WriteAccess > abstractStores( const Roots & roots ) {
-    std::vector< WriteAccess > accs;
+Accesses abstractStores( const Roots & roots ) {
+    Accesses accs;
     for ( const auto & av : ValuesPostOrder( roots ).get() ) {
         // Do not propagate through calls that does not return abstract value
         // ie. are not roots.
-        if ( llvm::isa< llvm::CallInst >( av.value() ) )
-            if ( std::find( roots.begin(), roots.end(), av ) == roots.end() )
+        if ( av.isa< llvm::CallInst >() &&
+             std::find( roots.begin(), roots.end(), av ) == roots.end() )
                 continue;
-        auto stores = query::query( av.value()->users() )
-            .map( query::llvmdyncast< llvm::StoreInst > )
-            .filter( query::notnull )
+        auto stores = query::query( llvmFilter< llvm::StoreInst >( av.value->users() ) )
             .filter( [&] ( llvm::StoreInst * store ) {
-                return store->getValueOperand() == av.value();
+                return store->getValueOperand() == av.value;
             } ).freeze();
         for ( const auto & store : stores )
-            accs.emplace_back( store, av.type() );
+            accs.emplace_back( store, av.domain );
     }
     return accs;
 }
@@ -202,21 +160,20 @@ auto storesTo( const Value & val, const Stores & stores ) {
     } ).freeze();
 }
 
-
 template< typename Value, typename GEPS >
-void propagateGEP( const Value & v, GEPS & geps ) {
-    using GEP = llvm::GetElementPtrInst;
-    auto val = llvm::cast< GEP >( v.value() );
-    if ( auto gep = llvm::dyn_cast< GEP >( val->getPointerOperand() ) ) {
+void propagateGEP( const Value &, GEPS & ) {
+    /*using GEP = llvm::GetElementPtrInst;
+    if ( auto gep = llvm::dyn_cast< GEP >( v.get< GEP >()->getPointerOperand() ) ) {
         AbstractValue av{ gep, { { 0, v.domain() } } };
         geps[ gep->getPointerOperand() ].push_back( av );
         propagateGEP( av, geps );
-    }
+    }*/
+    NOT_IMPLEMENTED();
 }
 
 template< typename GEPS, typename Accesses >
-auto getAbstractGeps( const GEPS & geps, const Accesses & accs ) {
-    std::map< llvm::Value *, std::vector< AbstractValue > > gepsFromStructs;
+auto getAbstractGeps( const GEPS &, const Accesses & ) {
+    /*std::map< llvm::Value *, std::vector< AbstractValue > > gepsFromStructs;
 
     for ( const auto & gep : geps ) {
         auto storesToGEP = storesTo( gep, accs );
@@ -227,7 +184,8 @@ auto getAbstractGeps( const GEPS & geps, const Accesses & accs ) {
             propagateGEP( av, gepsFromStructs );
         }
     }
-    return gepsFromStructs;
+    return gepsFromStructs;*/
+    NOT_IMPLEMENTED();
 }
 
 // Propagate abstract value through stores to allocas.
@@ -240,22 +198,21 @@ Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
     Set< AbstractValue > reached = { processed->origins };
     Set< AbstractValue > abstract;
 
-    auto allocas = Insts< llvm::AllocaInst >( processed->function );
-    auto geps = Insts< llvm::GetElementPtrInst >( processed->function );
+    auto allocas = llvmFilter< llvm::AllocaInst >( processed->function );
+    auto geps = llvmFilter< llvm::GetElementPtrInst >( processed->function );
 
     do {
         abstract = reached;
-        // TODO do not propagate nonabstract elements of struct
         auto stores = abstractStores( AbstractValues{ reached.begin(), reached.end() } );
         for ( const auto & a : allocas ) {
             auto storesToAlloca = storesTo( a, stores );
             if ( !storesToAlloca.empty() ) {
                 assert( !a->getType()->isStructTy() );
-                reached.emplace( a, storesToAlloca[0].second->domain() );
+                reached.emplace( a, storesToAlloca[0].second );
             }
         }
 
-        for ( const auto & s : getAbstractGeps( geps, stores ) ) {
+        /*for ( const auto & s : getAbstractGeps( geps, stores ) ) {
             DomainMap dmap;
             for ( const auto & abs : s.second ) {
                 auto gep = llvm::cast< llvm::GetElementPtrInst >( abs.value() );
@@ -268,14 +225,14 @@ Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
                 dmap[ idx ] = abs.domain();
             }
             reached.emplace( s.first, dmap );
-        }
+        }*/
     } while ( abstract != reached );
 
     return abstract;
 }
 
 AbstractValues abstractArgs( const FunctionNodePtr & processed, const AbstractValue & vn ) {
-    auto call = llvm::cast< llvm::CallInst >( vn.value() );
+    auto call = vn.get< llvm::CallInst >();
     auto fn = call->getCalledFunction();
     auto abstract = processed->postorder();
 
@@ -283,10 +240,10 @@ AbstractValues abstractArgs( const FunctionNodePtr & processed, const AbstractVa
     for ( size_t i = 0; i < call->getNumArgOperands(); ++i ) {
         auto find = std::find_if( abstract.begin(), abstract.end(),
             [&] ( const auto & vn ) {
-                return vn.value() == call->getArgOperand( i );
+                return vn.value == call->getArgOperand( i );
             } );
         if ( find != abstract.end() )
-            res.emplace_back( std::next( fn->arg_begin(), i ), find->domain() );
+            res.emplace_back( std::next( fn->arg_begin(), i ), find->domain );
     }
     return res;
 }
@@ -299,7 +256,7 @@ std::vector< FunctionNodePtr > Walker::dependencies( const FunctionNodePtr & pro
 
         auto args = query::query( n->origins )
             .filter( []( const auto & o ) {
-                return llvm::dyn_cast< llvm::Argument >( o.value() );
+                return o.template safeGet< llvm::Argument >();
             } ).freeze();
 
         if ( args.size() != processed->origins.size() )
@@ -314,7 +271,7 @@ std::vector< FunctionNodePtr > Walker::dependencies( const FunctionNodePtr & pro
 
 Maybe< AbstractValue > getRet( const FunctionNodePtr & processed ) {
     for ( const auto & n : processed->postorder() )
-        if ( llvm::dyn_cast< llvm::ReturnInst >( n.value() ) )
+        if ( n.isa< llvm::ReturnInst >() )
             return Maybe< AbstractValue >::Just( n );
     return Maybe< AbstractValue >::Nothing();
 }
@@ -324,7 +281,7 @@ bool Walker::propagateThroughCalls( FunctionNodePtr & processed ) {
 
     auto calls = query::query( processed->postorder() )
         .filter( []( const auto & n ) {
-            if ( auto call = llvm::dyn_cast< llvm::CallInst >( n.value() ) )
+            if ( auto call = n.template safeGet< llvm::CallInst >() )
                 return !call->getCalledFunction()->isIntrinsic();
             return false;
         } )
@@ -334,7 +291,7 @@ bool Walker::propagateThroughCalls( FunctionNodePtr & processed ) {
         AbstractValues args = abstractArgs( processed, call );
         Set< AbstractValue > origins( args.begin(), args.end() );
         auto fn = std::make_shared< FunctionNode >(
-                  llvm::cast< llvm::CallInst >( call.value() )->getCalledFunction(),
+                  call.get< llvm::CallInst >()->getCalledFunction(),
                   origins );
 
         auto deps = dependencies( fn );
@@ -364,7 +321,7 @@ std::vector< FunctionNodePtr > Walker::callsOf( const FunctionNodePtr & processe
     Map< llvm::Function *, std::vector< llvm::CallInst * > > users;
     for ( auto user : processed->function->users() ) {
         if ( auto call = llvm::dyn_cast< llvm::CallInst >( user ) ) {
-            auto fn = call->getParent()->getParent();
+            auto fn = getFunction( call );
             users[ fn ].push_back( call );
         }
     }
@@ -381,14 +338,14 @@ std::vector< FunctionNodePtr > Walker::callsOf( const FunctionNodePtr & processe
 
         bool called = query::query( processed->origins )
             .any( [] ( const auto & o ) {
-                return llvm::isa< llvm::Argument >( o.value() );
+                return o.template isa< llvm::Argument >();
             } );
 
         for ( const auto & p : preds ) {
             for ( const auto & e : user.second ) {
                 bool has_entry = query::query( p->origins )
                     .any( [&] ( const auto & o ) {
-                        return o.value() == e;
+                        return o.value == e;
                     } );
 
                 if ( has_entry )
@@ -399,16 +356,16 @@ std::vector< FunctionNodePtr > Walker::callsOf( const FunctionNodePtr & processe
                 if ( called ) {
                     reachable = query::query( p->postorder() )
                         .filter( [] ( const auto & n ) {
-                            return llvm::isa< llvm::CallInst >( n.value() );
+                            return n.template isa< llvm::CallInst >();
                         } )
                         .any( [&] ( const auto & n ) {
-                            const auto& call = llvm::cast< llvm::CallInst >( n.value() );
+                            const auto& call = n.template get< llvm::CallInst >();
                             return call->getCalledFunction() == processed->function;
                         } );
                 }
 
                 if ( !called || reachable ) {
-                    p->origins.emplace( e, ret.domain() );
+                    p->origins.emplace( e, ret.domain );
                     res.push_back( p );
                 }
             }
@@ -422,7 +379,7 @@ std::vector< FunctionNodePtr > Walker::process( FunctionNodePtr & processed ) {
         return {};
 
     bool called = query::query( processed->origins ).all( [] ( const auto & o ) {
-        return llvm::isa< llvm::Argument >( o.value() );
+        return o.template isa< llvm::Argument >();
     } );
 
     bool preprocessed = query::query( functions ).any( [&]( const auto & fn ) {
@@ -450,3 +407,16 @@ std::vector< FunctionNodePtr > Walker::process( FunctionNodePtr & processed ) {
 
     return deps;
 }
+
+Maybe< AbstractValue > FunctionNode::isOrigin( llvm::Value * v ) const {
+    auto find = std::find_if( origins.begin(), origins.end(), [&] ( const auto & o ) {
+        return o.value == v;
+    } );
+
+    if ( find != origins.end() )
+        return Maybe< AbstractValue >::Just( *find );
+    return Maybe< AbstractValue >::Nothing();
+}
+
+} // namespace abstract
+} // namespace lart

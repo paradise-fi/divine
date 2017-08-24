@@ -6,9 +6,6 @@ DIVINE_RELAX_WARNINGS
 DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/value.h>
-#include <lart/abstract/types/common.h>
-
-#include <unordered_set>
 
 namespace lart {
 namespace abstract {
@@ -58,7 +55,7 @@ struct FunctionNode {
     FunctionNode( FunctionNode && ) = default;
 
     FunctionNode( llvm::Function * fn,
-                  const std::unordered_set< AbstractValue > & origins,
+                  const Set< AbstractValue > & origins,
                   FunctionNodes succs = {} )
         : function( fn ), origins( origins ), succs( succs )
     {}
@@ -67,8 +64,10 @@ struct FunctionNode {
 
     std::vector< AbstractValue > postorder() const;
 
+    Maybe< AbstractValue > isOrigin( llvm::Value * v ) const;
+
     llvm::Function * function;
-    std::unordered_set< AbstractValue > origins;
+    Set< AbstractValue > origins;
     FunctionNodes succs;
 };
 
