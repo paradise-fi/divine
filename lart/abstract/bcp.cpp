@@ -3,6 +3,7 @@
 #include <lart/abstract/bcp.h>
 #include <lart/abstract/intrinsic.h>
 #include <lart/abstract/domains/domains.h>
+#include <lart/abstract/types.h>
 #include <lart/analysis/bbreach.h>
 #include <lart/analysis/edge.h>
 #include <lart/support/query.h>
@@ -19,10 +20,10 @@ namespace {
         enum AssumeValue { Predicate, LHS, RHS };
 
         /* Find corresponding tristate to given assume with assumed 'value'. */
-        Assume( I * assume ) : assume( assume ) {}
+        Assume( I * assume, TMap & tmap ) : assume( assume ), tmap( tmap ) {}
 
         /* Abstract icmp condition constrained by given assume. */
-        llvm::CallInst * condition() {
+        llvm::CallInst * condition() const {
             auto call = llvm::cast< llvm::CallInst >( assume );
             return llvm::cast< llvm::CallInst > (
                    llvm::cast< llvm::CallInst >( call->getArgOperand( 0 ) )->getArgOperand( 0 ) );
@@ -31,11 +32,11 @@ namespace {
         /* Creates appropriate assume in given domain about predicate, left
          * or right argument of condition.
          */
-        llvm::Instruction * constrain( const DomainPtr & domain, AssumeValue v ) {
+        llvm::Instruction * constrain( Domain domain, AssumeValue v ) {
             using StructType = llvm::StructType;
             llvm::IRBuilder<> irb( assume );
             StructType * rty;
-            std::vector< llvm::Value * > args;
+            Values args;
 
             switch ( v ) {
                 case AssumeValue::Predicate:
@@ -58,8 +59,8 @@ namespace {
             std::vector< llvm::Type * > arg_types;
             for ( const auto & arg : args )
                 arg_types.push_back( arg->getType() );
-            const std::string tag = "lart." + domain->name() + ".assume."
-                                  + TypeName( rty ).base().name();
+            const std::string tag = "lart." + DomainTable[ domain ] + ".assume."
+                                  + llvmname( tmap.origin( rty ).first );
 
             auto fty = llvm::FunctionType::get( rty, arg_types, false );
             auto m = irb.GetInsertBlock()->getModule();
@@ -67,7 +68,13 @@ namespace {
             return irb.CreateCall( fn , args );
         }
 
+
+        Domain domain() const {
+            return ::lart::abstract::domain( condition() );
+        }
+
         llvm::Instruction * assume;
+        TMap & tmap;
     };
 
     using BBEdge = analysis::BBEdge;
@@ -195,13 +202,12 @@ void BCP::run( llvm::Module & m ) {
 }
 
 void BCP::process( llvm::Instruction * assume ) {
-    Assume ass = { assume };
-    auto domain = Intrinsic::make( ass.condition() ).value().domain();
+    Assume ass = { assume, data.tmap };
 
     // create constraints on arguments from condition, that created tristate
-    auto lhs = ass.constrain( domain, Assume::AssumeValue::LHS );
-    auto rhs = ass.constrain( domain, Assume::AssumeValue::RHS );
-    auto pre = ass.constrain( domain, Assume::AssumeValue::Predicate );
+    auto lhs = ass.constrain( ass.domain(), Assume::AssumeValue::LHS );
+    auto rhs = ass.constrain( ass.domain(), Assume::AssumeValue::RHS );
+    auto pre = ass.constrain( ass.domain(), Assume::AssumeValue::Predicate );
 
     // forward propagate constrained values
     propagate( lhs );
