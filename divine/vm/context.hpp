@@ -296,10 +296,12 @@ struct Context
             if ( !_debug_depth )
                 leave_debug();
         }
-
-        _cfl_visited.pop_back();
-        if ( _cfl_visited.empty() ) /* more returns than calls could happen along an edge */
-            _cfl_visited.emplace_back();
+        else
+        {
+            _cfl_visited.pop_back();
+            if ( _cfl_visited.empty() ) /* more returns than calls could happen along an edge */
+                _cfl_visited.emplace_back();
+        }
     }
 
     void trigger_interrupted( Interrupt::Type t, CodePointer pc )
