@@ -8,104 +8,132 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/abstract/domains/domains.h>
 #include <lart/abstract/value.h>
+#include <lart/abstract/util.h>
+
+#include <sstream>
 
 namespace lart {
 namespace abstract {
 
-struct Intrinsic {
-    using Args = std::vector< llvm::Value * >;
-    using ArgTypes = std::vector< llvm::Type * >;
+namespace intrinsic {
 
-    enum class Type {
-        LLVM, Lift, Lower, Assume
-    };
+struct IntrinsicWrapper {
+    IntrinsicWrapper( std::string name, Domain dom )
+        : name( name ), domain( dom ) {}
+    bool isLift() const { return name == "lift"; }
+    bool isLower() const { return name == "lower"; }
+    bool isAssume() const { return name == "assume"; }
+    bool isAlloca() const { return name == "alloca"; }
 
-    Intrinsic( llvm::Module * m,
-               llvm::Type * rty,
-               const std::string & tag,
-               const ArgTypes & args = {} );
-
-    Intrinsic( llvm::Function * intr ) :
-        intr( intr ) {}
-
-    Intrinsic( llvm::CallInst * call ) :
-        intr( call->getCalledFunction() ) {}
-
-    DomainPtr domain() const;
-    std::string name() const;
-    Type type() const;
-    bool is() const;
-    llvm::Function * declaration() const { return intr; }
-    std::string nameElement( size_t idx ) const;
-
-    template< size_t idx >
-    llvm::Type * argType() const {
-        assert( intr->arg_size() > idx );
-        return intr->getFunctionType()->getParamType( idx );
-    }
-
-private:
-    llvm::Function * intr;
+    std::string name;
+    Domain domain;
 };
 
-static bool isIntrinsic( llvm::Function * fn ) {
-    return Intrinsic( fn ).is();
+using Token = std::string;
+using Tokens = std::vector< Token >;
+static Tokens parse( const std::string & name ) {
+    std::istringstream ss( name );
+    Token token; Tokens tokens;
+    while( std::getline( ss, token, '.' ) )
+        tokens.push_back( token );
+    return tokens;
 }
 
-static bool isIntrinsic( llvm::CallInst * call ) {
-    return isIntrinsic( call->getCalledFunction() );
-}
-
-static bool isAssume( const Intrinsic & intr ) {
-    return intr.type() == Intrinsic::Type::Assume;
-}
-
-static bool isAssume( llvm::CallInst * call ) {
-    return isAssume( Intrinsic( call ) );
-}
-
-static bool isLift( const Intrinsic & intr ) {
-    return intr.type() == Intrinsic::Type::Lift;
-}
-
-static bool isLift( llvm::CallInst* call ) {
-    return isLift( Intrinsic( call ) );
-}
-
-static bool isLower( const Intrinsic & intr ) {
-    return intr.type() == Intrinsic::Type::Lower;
-}
-
-static bool isLower( llvm::Function * call ) {
-    return isLower( Intrinsic( call ) );
-}
-
-// Returns name for abstract value as "lart.<domain>.<inst name>.<extra data>"
-static std::string intrinsicName( const AbstractValue & av ) {
-    auto i = llvm::cast< llvm::Instruction >( av.value() );
-    auto res = "lart." + av.domain()->name() + "." + i->getOpcodeName();
-
-    if ( llvm::isa< llvm::AllocaInst >( av.value() ) ) {
-        if ( av.type()->base() == TypeBaseValue::Struct ) {
-            auto ct = std::dynamic_pointer_cast< ComposedType >( av.type() );
-            auto sname = stripPtr( ct->origin() )->getStructName().str();
-            return res + "." + sname + "." + elementsName( ct->elements() );
-        } else {
-            return res + "." + av.type()->baseName();
-        }
+static Maybe< IntrinsicWrapper > parse( llvm::Function * fn ) {
+    if ( !fn || !fn->hasName() )
+        return Maybe< IntrinsicWrapper >::Nothing();
+    auto tokens = parse( fn->getName() );
+    if ( tokens.size() > 2 && tokens[ 0 ] == "lart" ) {
+        Domain dom = DomainTable[ tokens[ 1 ] ];
+        std::string name = tokens[ 2 ];
+        return Maybe< IntrinsicWrapper >::Just( IntrinsicWrapper( name, dom ) );
     }
-    if ( llvm::isa< llvm::LoadInst >( av.value() ) )
-        return res + "." + av.type()->baseName();
-    if ( llvm::isa< llvm::StoreInst >( av.value() ) )
-        return res;
-    if ( llvm::isa< llvm::ICmpInst >( av.value() ) )
-        return res;
-    if ( llvm::isa< llvm::BinaryOperator >( av.value() ) )
-        return res + "." + av.type()->baseName();
-    if ( auto i = llvm::dyn_cast< llvm::CastInst >( av.value() ) )
-        return res + "." + llvmname( i->getSrcTy() ) + "." + llvmname( i->getDestTy() );
+    return Maybe< IntrinsicWrapper >::Nothing();
+}
 
-    UNREACHABLE( "Unhandled intrinsic." );
+} // anonymous namespace
+
+static bool isIntrinsic( llvm::Function * fn ) {
+    return intrinsic::parse( fn ).isJust();
+}
+
+static bool isIntrinsic( llvm::Instruction * i ) {
+    if ( auto call = llvm::dyn_cast< llvm::CallInst >( i ) )
+        return isIntrinsic( call->getCalledFunction() );
+    return false;
+}
+
+static bool isAssume( llvm::Function * fn ) {
+    auto intr = intrinsic::parse( fn );
+    if ( intr.isJust() )
+        return intr.value().isAssume();
+    return false;
+}
+
+static bool isAssume( llvm::Instruction * i ) {
+    if ( auto call = llvm::dyn_cast< llvm::CallInst >( i ) )
+        return isAssume( call->getCalledFunction() );
+    return false;
+}
+
+static bool isLift( llvm::Function * fn ) {
+    auto intr = intrinsic::parse( fn );
+    if ( intr.isJust() )
+        return intr.value().isLift();
+    return false;
+}
+
+static bool isLift( llvm::Instruction * i ) {
+    if ( auto call = llvm::dyn_cast< llvm::CallInst >( i ) )
+        return isLift( call->getCalledFunction() );
+    return false;
+}
+
+static bool isLower( llvm::Function * fn ) {
+    auto intr = intrinsic::parse( fn );
+    if ( intr.isJust() )
+        return intr.value().isLower();
+    return false;
+}
+
+static bool isLower( llvm::Instruction * i ) {
+    if ( auto call = llvm::dyn_cast< llvm::CallInst >( i ) )
+        return isLower( call->getCalledFunction() );
+    return false;
+}
+
+static bool isAlloca( llvm::Function * fn ) {
+    auto intr = intrinsic::parse( fn );
+    if ( intr.isJust() )
+        return intr.value().isAlloca();
+    return false;
+}
+
+static bool isAlloca( llvm::Instruction * i ) {
+    if ( auto call = llvm::dyn_cast< llvm::CallInst >( i ) )
+        return isAlloca( call->getCalledFunction() );
+    return false;
+}
+
+static Domain domain( llvm::Function * fn ) {
+    return intrinsic::parse( fn ).value().domain;
+}
+
+static Domain domain( llvm::CallInst * call ) {
+    return domain( call->getCalledFunction() );
+}
+
+using IntrinsicCalls = std::vector< llvm::CallInst * >;
+
+template< typename Vs >
+static IntrinsicCalls intrinsics( const Vs & vs ) {
+    return query::query( vs ).filter( [] ( const auto & i ) {
+        return isIntrinsic( i );
+    } ).freeze();
+}
+
+static IntrinsicCalls intrinsics( llvm::Module * m ) {
+    return intrinsics( llvmFilter< llvm::CallInst >( m ) );
 }
 
 } // namespace abstract
