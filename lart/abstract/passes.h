@@ -859,8 +859,7 @@ struct Abstraction {
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
-
-    TEST( struct_simple ) {
+    /*TEST( struct_simple ) {
         auto s = R"(struct S { int x; };
 
                     int main() {
@@ -1022,7 +1021,7 @@ struct Abstraction {
                    gep[2]->getResultElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
-    }
+    }*/
 };
 
 struct Assume {
