@@ -435,12 +435,6 @@ struct Substitute {
         transformMemTrans< llvm::MemMoveInst >( fn, _scmemmove );
     }
 
-    void transformMemTrans( llvm::Function &fn ) {
-        transformMemTrans< llvm::MemSetInst >( fn, _memset );
-        transformMemTrans< llvm::MemCpyInst >( fn, _memcpy );
-        transformMemTrans< llvm::MemMoveInst >( fn, _memmove );
-    }
-
     llvm::Instruction::CastOps castOpFrom( llvm::Type *from, llvm::Type *to, bool isSigned = false ) {
         if ( from->getScalarSizeInBits() == to->getScalarSizeInBits() )
             return llvm::Instruction::BitCast;
@@ -745,8 +739,6 @@ struct Substitute {
                         _moTy, uint64_t( usememord( _config.fence | castmemord( fence->getOrdering() ) ) ) ) } );
             llvm::ReplaceInstWithInst( fence, callFlush );
         }
-
-        transformMemTrans( f );
 
         for ( auto &bb : f )
             ASSERT( bb.getTerminator() );
