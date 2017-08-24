@@ -237,6 +237,10 @@ bool liftingPointer( llvm::Module &m ) {
             } );
 }
 
+bool isCflInterupt( llvm::Function * fn ) {
+    return fn->hasName() && fn->getName() == "__vm_interrupt_cfl";
+}
+
 } //empty namespace
 
 using namespace abstract;
@@ -808,6 +812,7 @@ struct Abstraction {
             .filter( query::notnull )
             .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
             .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
+            .filter( [] ( llvm::CallInst * i ) { return !isCflInterupt( i->getCalledFunction() ); } )
             .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
         ASSERT( call_in_call );
         ASSERT_EQ( call->getNumUses(), 2 );
@@ -849,6 +854,7 @@ struct Abstraction {
             .filter( query::notnull )
             .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
             .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
+            .filter( [] ( llvm::CallInst * i ) { return !isCflInterupt( i->getCalledFunction() ); } )
             .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call ||
                                                       i->getCalledFunction() == call2; } );
         };
@@ -888,6 +894,7 @@ struct Abstraction {
             .filter( query::notnull )
             .filter( []( llvm::CallInst * i ) { return !i->getCalledFunction()->isIntrinsic(); } )
             .filter( [&]( llvm::CallInst * i ) { return !abstract::isIntrinsic( i ); } )
+            .filter( [] ( llvm::CallInst * i ) { return !isCflInterupt( i->getCalledFunction() ); } )
             .all( [&] ( llvm::CallInst * i ) { return i->getCalledFunction() == call; } );
         };
         ASSERT( test_function( main ) );
