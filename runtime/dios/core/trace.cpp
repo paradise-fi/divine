@@ -11,35 +11,38 @@
 
 namespace __dios {
 
-void __attribute__((always_inline)) traceInternalV( int indent, const char *fmt, va_list ap ) noexcept
+void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, va_list ap ) noexcept
 {
-    static int fmtIndent = 0;
+    bool kernel = reinterpret_cast< uintptr_t >(
+        __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
+
+    auto tid = __dios_get_thread_handle();
+    auto &hids = get_debug().hids;
+    auto &indent = tid ? get_debug().trace_indent[ tid ] : get_debug().kernel_indent;
+    auto nice_id_it = tid ? hids.find( tid ): hids.end();
+    unsigned nice_id = nice_id_it == hids.end() ? -1 : nice_id_it->second;
 
     if ( *fmt )
     {
         char buffer[1024];
-
         int n = 0;
-        auto tid = __dios_get_thread_handle();
 
-        bool kernel = reinterpret_cast< uintptr_t >(
-            __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
-        auto utid = reinterpret_cast< uint64_t >( tid ) >> 32;
+        if ( kernel && tid )
+            n = snprintf( buffer, 1024, "[%u] ", nice_id );
+        else if ( tid )
+            n = snprintf( buffer, 1024, "(%u) ", nice_id );
+        else
+            n = snprintf( buffer, 1024, "[  ] " );
 
-        if ( !kernel )
-            n = snprintf( buffer, 1024, "t%u: ",
-                          static_cast< uint32_t >( utid ) );
-
-        for ( int i = 0; i < fmtIndent; ++i )
+        for ( int i = 0; i < indent; ++i )
             buffer[ n++ ] = ' ';
 
         __dios_assert( n >= 0 );
-
-        vsnprintf( buffer + n, 1024 - fmtIndent - n, fmt, ap );
+        vsnprintf( buffer + n, 1024 - indent - n, fmt, ap );
         __vm_trace( _VM_T_Text, buffer );
     }
 
-    fmtIndent += indent * 2;
+    indent += shift * 2;
 }
 
 void traceInternal( int indent, const char *fmt, ... ) noexcept
@@ -49,7 +52,6 @@ void traceInternal( int indent, const char *fmt, ... ) noexcept
     traceInternalV( indent, fmt, ap );
     va_end( ap );
 }
-
 
 void traceInFile( const char *file, const char *msg, size_t size ) noexcept
 {
