@@ -14,6 +14,7 @@
 #ifdef __cplusplus
 #define EXTERN_C extern "C" {
 #define CPP_END }
+#define CAST( T, X ) reinterpret_cast< T >( X )
 #if __cplusplus >= 201103L
 #define NOTHROW noexcept
 #else
@@ -23,6 +24,7 @@
 #define EXTERN_C
 #define CPP_END
 #define NOTHROW __attribute__((__nothrow__))
+#define CAST( T, X ) ((T)(X))
 #endif
 
 EXTERN_C
@@ -67,13 +69,20 @@ _DiOS_ThreadHandle __dios_start_thread( void ( *routine )( void * ), void *arg, 
  * - the resulting _DiOS_ThreadHandle points to the beginning of TLS. Userspace is
  *   allowed to use it from offset _DiOS_TLS_Reserved
  */
-_DiOS_ThreadHandle __dios_get_thread_handle() NOTHROW;
+static inline _DiOS_ThreadHandle __dios_get_thread_handle() NOTHROW
+{
+    return CAST( _DiOS_ThreadHandle, __vm_control( _VM_CA_Get, _VM_CR_User2 ) );
+}
 
 /*
  * get pointer to errno, which is in dios-managed thread-local data (accessible
  * to userspace, but independent of pthreading library)
  */
-int *__dios_get_errno() NOTHROW;
+static inline int *__dios_get_errno() NOTHROW
+{
+    return &( __dios_get_thread_handle()->_errno );
+}
+
 
 /*
  * Kill thread with given id.
@@ -116,3 +125,4 @@ CPP_END
 #undef EXTERN_C
 #undef CPP_END
 #undef NOTHROW
+#undef CAST

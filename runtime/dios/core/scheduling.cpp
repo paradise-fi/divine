@@ -8,21 +8,11 @@
 
 #include <dios/core/scheduling.hpp>
 
-_DiOS_ThreadHandle __dios_get_thread_handle() noexcept {
-    return reinterpret_cast< _DiOS_ThreadHandle >
-        ( __vm_control( _VM_CA_Get, _VM_CR_User2 ) );
-}
-
-int *__dios_get_errno() noexcept {
-    return &( __dios_get_thread_handle()->_errno );
-}
-
 namespace __dios {
 
 void sig_ign( int ) {}
 void sig_die( int ) {}
 void sig_fault( int ) {}
-
 
 const sighandler_t defhandlers[] =
 {
