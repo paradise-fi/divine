@@ -5,6 +5,7 @@
 #include <dios/core/trace.hpp>
 #include <dios/core/syscall.hpp>
 #include <dios/filesystem/fs-utils.h>
+#include <abstract/common.h> // for weaken
 #include <fcntl.h>
 #include <dios.h>
 #include <string.h>
@@ -16,7 +17,7 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
     bool kernel = reinterpret_cast< uintptr_t >(
         __vm_control( _VM_CA_Get, _VM_CR_Flags ) ) & _VM_CF_KernelMode;
 
-    auto tid = __dios_get_thread_handle();
+    auto tid = abstract::weaken( __dios_get_thread_handle() );
     auto &hids = get_debug().hids;
     auto &indent = tid ? get_debug().trace_indent[ tid ] : get_debug().kernel_indent;
     auto nice_id_it = tid ? hids.find( tid ): hids.end();
