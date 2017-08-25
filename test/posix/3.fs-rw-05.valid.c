@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <string.h>
 
 int main() {
     char buf[8]={};

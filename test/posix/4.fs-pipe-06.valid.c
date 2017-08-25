@@ -8,7 +8,6 @@
 const char *message = "1234567";
 
 void *worker( void *_ ) {
-    (void)_;
     int fd = open( "pipe", O_WRONLY );
     assert( fd >= 0 );
 
@@ -16,6 +15,7 @@ void *worker( void *_ ) {
     assert( write( fd, "-", 1 ) == 1 );
 
     assert( close( fd ) == 0 );
+    return _;
 }
 
 int main() {

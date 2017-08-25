@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <assert.h>
+#include <sys/stat.h>
 
 int main() {
     int original = umask( 123 );

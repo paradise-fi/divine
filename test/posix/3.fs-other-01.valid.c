@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 int main() {
     int fd = open( "file", O_CREAT | O_WRONLY, 0644 );

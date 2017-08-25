@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 int main() {
     errno = 0;

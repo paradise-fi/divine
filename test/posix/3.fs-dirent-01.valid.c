@@ -15,7 +15,7 @@ int main() {
 
     struct dirent *item;
 
-    while ( item = readdir( d ) ) {
+    while ( (item = readdir( d )) ) {
         if ( strcmp( item->d_name, "." ) == 0 ) {
             assert( !fDot );
             fDot = 1;

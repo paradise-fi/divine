@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #include <sys/stat.h>
 
 void *worker( void *_ ) {
