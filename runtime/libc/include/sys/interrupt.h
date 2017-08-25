@@ -12,6 +12,7 @@ namespace __dios {
 template< bool fenced >
 struct _InterruptMask
 {
+    __attribute__((always_inline))
     _InterruptMask() _PDCLIB_nothrow
     {
         _orig_state = uintptr_t( __vm_control( _VM_CA_Get, _VM_CR_Flags,
@@ -23,7 +24,9 @@ struct _InterruptMask
             __sync_synchronize();
     }
 
-    ~_InterruptMask() _PDCLIB_nothrow {
+    __attribute__((always_inline))
+    ~_InterruptMask() _PDCLIB_nothrow
+    {
         if ( fenced )
             __sync_synchronize();
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, uintptr_t( _VM_CF_Mask ),
