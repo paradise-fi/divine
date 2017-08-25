@@ -288,13 +288,19 @@ struct Scheduler : public Next
         struct PI { int pid, tid; unsigned choice; };
         PI *pi = reinterpret_cast< PI * >( __vm_obj_make( c * sizeof( PI ) ) );
         PI *pi_it = pi;
-        for ( int i = 0; i != c; i++ ) {
+
+        for ( int i = 0; i != c; i++ )
+        {
             pi_it->pid = 0;
-            auto tidhid = debug->hids.find( threads[ i ]->getId() );
+            auto tid = abstract::weaken( threads[ i ]->getId() );
+            auto tidhid = debug->hids.find( tid );
             if ( tidhid != debug->hids.end() )
                 pi_it->tid = tidhid->second;
             else
-                pi_it->tid = debug->hids.push( threads[ i ]->getId() );
+            {
+                pi_it->tid = debug->hids.push( tid );
+                __vm_trace( _VM_T_DebugPersist, debug );
+            }
             pi_it->choice = i;
             ++pi_it;
         }
