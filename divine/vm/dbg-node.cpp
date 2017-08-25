@@ -390,7 +390,8 @@ void Node< Prog, Heap >::components( YieldDN yield )
     auto hloc = eval.ptr2h( PointerV( _address ) );
 
     if ( _type && _di_type &&
-         di_composite( llvm::dwarf::DW_TAG_structure_type ) &&
+         ( di_composite( llvm::dwarf::DW_TAG_structure_type ) ||
+           di_composite( llvm::dwarf::DW_TAG_class_type ) ) &&
          _type->isStructTy() )
         struct_fields( hloc, yield );
 
