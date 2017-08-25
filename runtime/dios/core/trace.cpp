@@ -23,7 +23,7 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
     auto nice_id_it = tid ? hids.find( tid ): hids.end();
     int nice_id = nice_id_it == hids.end() ? -1 : nice_id_it->second;
 
-    if ( shift < 0 )
+    if ( shift < 0 && indent > 0 )
     {
         indent += shift * 2;
         __vm_trace( _VM_T_DebugPersist, &get_debug() );
@@ -41,15 +41,14 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
         else
             n = snprintf( buffer, 1024, "[  ] " );
 
-        for ( int i = 0; i < indent; ++i )
+        for ( int i = 0; i < indent && i < 32 && indent >= 0; ++i )
             buffer[ n++ ] = ' ';
 
-        __dios_assert( n >= 0 );
-        vsnprintf( buffer + n, 1024 - indent - n, fmt, ap );
+        vsnprintf( buffer + n, 1024 - n, fmt, ap );
         __vm_trace( _VM_T_Text, buffer );
     }
 
-    if ( shift > 0 )
+    if ( shift > 0 && indent < 32 )
     {
         indent += shift * 2;
         __vm_trace( _VM_T_DebugPersist, &get_debug() );
