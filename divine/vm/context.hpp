@@ -248,10 +248,12 @@ struct Context
         ASSERT( !_debug_depth );
         _debug_mode = false;
         std::copy( _debug_reg, _debug_reg + _VM_CR_Last, _reg );
-        Heap from = heap();
-        with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
-        if ( !_debug_persist.ptr.null() )
+        if ( _debug_persist.ptr.null() )
+            with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
+        else
         {
+            Heap from = heap();
+            with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
             vm::heap::clone( from, heap(), _debug_persist.ptr,
                              vm::heap::CloneType::SkipWeak, true );
             _debug_persist.ptr = nullPointer();
