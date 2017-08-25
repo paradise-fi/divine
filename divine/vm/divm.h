@@ -109,7 +109,8 @@ enum _VM_Trace
     _VM_T_StateType,   /* takes one pointer parameter */
     _VM_T_Info,        /* takes one const char * parameter - a line of YAML */
     _VM_T_Alg,         /* takes any number of pointer arguments which will be forwarded to the exploration algorithm */
-    _VM_T_TypeAlias    /* takes one pointer and one const char * parameter and creates a type alias */
+    _VM_T_TypeAlias,   /* takes one pointer and one const char * parameter and creates a type alias */
+    _VM_T_DebugPersist /* takes two pointers, one void ** and one weak void * */
 };
 
 enum _VM_ControlAction

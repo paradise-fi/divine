@@ -19,6 +19,7 @@
 #pragma once
 
 #include <divine/vm/value.hpp>
+#include <divine/vm/heap.hpp>
 #include <divine/vm/divm.h>
 
 #include <brick-data>
@@ -71,6 +72,7 @@ struct TraceStateType { CodePointer pc; };
 struct TraceInfo { GenericPointer text; };
 struct TraceAlg { brick::data::SmallVector< divine::vm::GenericPointer > args; };
 struct TraceTypeAlias { CodePointer pc; GenericPointer alias; };
+struct TraceDebugPersist { GenericPointer where; };
 
 template< typename _Program, typename _Heap >
 struct Context
@@ -98,6 +100,7 @@ struct Context
     uint32_t _instruction_counter;
     bool _debug_mode = false, _debug_allowed = false;
     int _debug_depth = 0;
+    TraceDebugPersist _debug_persist;
     typename Heap::Snapshot _debug_snap;
 
     using MemMap = brick::data::IntervalSet< GenericPointer >;
@@ -245,7 +248,17 @@ struct Context
         ASSERT( !_debug_depth );
         _debug_mode = false;
         std::copy( _debug_reg, _debug_reg + _VM_CR_Last, _reg );
+        Heap from = heap();
         with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
+        if ( !_debug_persist.where.null() )
+        {
+            PointerV optr;
+            from.read( _debug_persist.where, optr );
+            auto nptr = vm::heap::clone( from, heap(), optr.cooked(), vm::heap::CloneType::SkipWeak );
+            nptr.type( PointerType::Weak );
+            heap().write( _debug_persist.where, PointerV( nptr ) );
+            _debug_persist.where = nullPointer();
+        }
     }
 
     template< typename... Args >
@@ -380,6 +393,7 @@ struct Context
     virtual void trace( TraceInfo ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceAlg ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceTypeAlias ) { NOT_IMPLEMENTED(); }
+    virtual void trace( TraceDebugPersist t ) { _debug_persist = t; }
     virtual void trace( std::string ) {}
 
     virtual void doublefault()

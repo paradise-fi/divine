@@ -44,6 +44,7 @@ struct State
 
 struct Context : vm::Context< Program, CowHeap >
 {
+    using Super = vm::Context< Program, CowHeap >;
     using Program = Program;
     std::vector< std::string > _trace;
     std::string _info;
@@ -52,7 +53,7 @@ struct Context : vm::Context< Program, CowHeap >
 
     int _level;
 
-    Context( Program &p ) : vm::Context< Program, CowHeap >( p ), _level( 0 ) {}
+    Context( Program &p ) : Super( p ), _level( 0 ) {}
 
     template< typename I >
     int choose( int count, I, I )
@@ -90,6 +91,7 @@ struct Context : vm::Context< Program, CowHeap >
     }
     void trace( TraceAlg ) { NOT_IMPLEMENTED(); }
     void trace( TraceTypeAlias ) {}
+    void trace( TraceDebugPersist t ) { Super::trace( t ); }
 
     bool finished()
     {
@@ -107,10 +109,7 @@ struct SymbolicContext : Context {
     // note: for some reason complier does not accept out-of-line definition of
     // trace here, so defer it to extra, non-overloaded version
     using Context::trace;
-    void trace( TraceAlg ta ) {
-        return traceAlg( ta );
-    }
-
+    void trace( TraceAlg ta ) { return traceAlg( ta ); }
     void traceAlg( TraceAlg ta );
 };
 

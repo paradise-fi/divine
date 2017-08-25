@@ -1216,6 +1216,9 @@ struct Eval
                             pc(), ptr2h( operandCk< PointerV >( 2 ) )
                         } );
                         break;
+                    case _VM_T_DebugPersist:
+                        context().trace( TraceDebugPersist{ operandCk< PointerV >( 1 ).cooked() } );
+                        return;
                     default:
                         fault( _VM_F_Hypercall ) << "invalid __vm_trace type " << t;
                 }

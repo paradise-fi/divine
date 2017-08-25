@@ -67,6 +67,8 @@ struct RunContext_ : Super
     }
     void trace( vm::TraceAlg ) { }
     void trace( TraceTypeAlias ) { }
+    void trace( TraceDebugPersist ) {} /* noop, since snapshots are not
+                                        * restored here */
 };
 
 using RunContext = RunContext_< vm::Context< Program, MutableHeap<> > >;

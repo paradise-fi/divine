@@ -174,6 +174,8 @@ struct Context : DNContext< Heap >
         _info += this->heap().read_string( ti.text ) + "\n";
     }
 
+    void trace( vm::TraceDebugPersist t ) { Super::trace( t ); }
+
     template < typename F >
     void find_dbg_inst( llvm::Function *f, llvm::Value *v, F yield ) {
         for ( auto &BB : *f )
