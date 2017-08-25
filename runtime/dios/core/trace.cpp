@@ -21,7 +21,13 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
     auto &hids = get_debug().hids;
     auto &indent = tid ? get_debug().trace_indent[ tid ] : get_debug().kernel_indent;
     auto nice_id_it = tid ? hids.find( tid ): hids.end();
-    unsigned nice_id = nice_id_it == hids.end() ? -1 : nice_id_it->second;
+    int nice_id = nice_id_it == hids.end() ? -1 : nice_id_it->second;
+
+    if ( shift < 0 )
+    {
+        indent += shift * 2;
+        __vm_trace( _VM_T_DebugPersist, &get_debug() );
+    }
 
     if ( *fmt )
     {
@@ -29,9 +35,9 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
         int n = 0;
 
         if ( kernel && tid )
-            n = snprintf( buffer, 1024, "[%u] ", nice_id );
+            n = snprintf( buffer, 1024, "[%d] ", nice_id );
         else if ( tid )
-            n = snprintf( buffer, 1024, "(%u) ", nice_id );
+            n = snprintf( buffer, 1024, "(%d) ", nice_id );
         else
             n = snprintf( buffer, 1024, "[  ] " );
 
@@ -43,7 +49,11 @@ void __attribute__((always_inline)) traceInternalV( int shift, const char *fmt, 
         __vm_trace( _VM_T_Text, buffer );
     }
 
-    indent += shift * 2;
+    if ( shift > 0 )
+    {
+        indent += shift * 2;
+        __vm_trace( _VM_T_DebugPersist, &get_debug() );
+    }
 }
 
 void traceInternal( int indent, const char *fmt, ... ) noexcept
