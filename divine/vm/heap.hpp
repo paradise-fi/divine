@@ -224,9 +224,12 @@ brick::hash::hash128_t hash( Heap &heap, HeapPointer root )
     return state.finalize();
 }
 
+enum class CloneType { All, SkipWeak, HeapOnly };
+
 template< typename FromH, typename ToH >
 HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
-                   std::map< HeapPointer, HeapPointer > &visited )
+                   std::map< HeapPointer, HeapPointer > &visited,
+                   CloneType ct )
 {
     if ( root.null() )
         return root;
@@ -253,12 +256,20 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
     for ( auto pos : f.pointers( root ) )
     {
         value::Pointer ptr, ptr_c;
+        GenericPointer cloned;
         root.offset( pos.offset() );
         result.offset( pos.offset() );
         f.read( root, ptr, root_i );
         auto obj = ptr.cooked();
         obj.offset( 0 );
-        auto cloned = obj.type() == PointerType::Heap ? clone( f, t, obj, visited ) : obj;
+        if ( ct == CloneType::SkipWeak && obj.type() == PointerType::Weak )
+            cloned = obj;
+        else if ( ct == CloneType::HeapOnly && obj.type() != PointerType::Heap )
+            cloned = obj;
+        else if ( obj.heap() )
+            cloned = clone( f, t, obj, visited, ct );
+        else
+            cloned = obj;
         cloned.offset( ptr.cooked().offset() );
         t.write( result, value::Pointer( cloned ), result_i );
     }
@@ -267,10 +278,10 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
 }
 
 template< typename FromH, typename ToH >
-HeapPointer clone( FromH &f, ToH &t, HeapPointer root )
+HeapPointer clone( FromH &f, ToH &t, HeapPointer root, CloneType ct = CloneType::All )
 {
     std::map< HeapPointer, HeapPointer > visited;
-    return clone( f, t, root, visited );
+    return clone( f, t, root, visited, ct );
 }
 
 }
