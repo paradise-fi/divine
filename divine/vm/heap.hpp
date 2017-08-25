@@ -229,7 +229,7 @@ enum class CloneType { All, SkipWeak, HeapOnly };
 template< typename FromH, typename ToH >
 HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
                    std::map< HeapPointer, HeapPointer > &visited,
-                   CloneType ct )
+                   CloneType ct, bool overwrite )
 {
     if ( root.null() )
         return root;
@@ -240,7 +240,9 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
         return seen->second;
 
     auto root_i = f.ptr2i( root );
-    auto result = t.make( f.size( root ) ).cooked();
+    if ( overwrite )
+        t.free( root );
+    auto result = t.make( f.size( root ), root.object(), true ).cooked();
     auto result_i = t.ptr2i( result );
     visited.emplace( root, result );
     auto fb = f.unsafe_bytes( root, root_i ), tb = t.unsafe_bytes( result, result_i );
@@ -267,7 +269,7 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
         else if ( ct == CloneType::HeapOnly && obj.type() != PointerType::Heap )
             cloned = obj;
         else if ( obj.heap() )
-            cloned = clone( f, t, obj, visited, ct );
+            cloned = clone( f, t, obj, visited, ct, overwrite );
         else
             cloned = obj;
         cloned.offset( ptr.cooked().offset() );
@@ -278,10 +280,10 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
 }
 
 template< typename FromH, typename ToH >
-HeapPointer clone( FromH &f, ToH &t, HeapPointer root, CloneType ct = CloneType::All )
+HeapPointer clone( FromH &f, ToH &t, HeapPointer root, CloneType ct = CloneType::All, bool over = false )
 {
     std::map< HeapPointer, HeapPointer > visited;
-    return clone( f, t, root, visited, ct );
+    return clone( f, t, root, visited, ct, over );
 }
 
 }
@@ -507,7 +509,7 @@ struct SimpleHeap : HeapMixin< Self, typename mem::Pool< PR >::Pointer >
         return si && si != snap_end() && si->first == p.object() ? si->second : Internal();
     }
 
-    PointerV make( int size, uint32_t hint = 1 )
+    PointerV make( int size, uint32_t hint = 1, bool overwrite = false )
     {
         HeapPointer p;
         SnapItem *search = snap_find( hint );
@@ -516,12 +518,18 @@ struct SimpleHeap : HeapMixin< Self, typename mem::Pool< PR >::Pointer >
         bool found = false;
         while ( !found )
         {
-            ++ hint;
             found = true;
             if ( _l.exceptions.count( hint ) )
-                found = false;
+            {
+                if ( overwrite )
+                    found = !_l.exceptions[ hint ].slab();
+                else
+                    found = false;
+            }
             if ( search && search != snap_end() && search->first == hint )
                 ++ search, found = false;
+            if ( !found )
+                ++ hint;
         }
         p.object( hint );
         p.offset( 0 );
