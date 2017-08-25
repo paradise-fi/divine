@@ -106,13 +106,13 @@ node only has a single instruction pointer in it, always pointing to a callsite
 (there is an additional virtual callsite that represents the entire program,
 i.e. the root of the static call graph). Leaf nodes additionally contain an
 actual points-to set. The points-to set for an internal node can be computed as
-an union of all its children's points-to sets, and as such is not stored
+a union of all its children's points-to sets, and as such is not stored
 explicitly. The depth of a context tree is entirely the discretion of the
 analysis in question, and queries are satisfied by giving the most-specific
 points-to set available in the context tree. (In the degenerate case of a
 context-insensitive analysis, the context tree is singleton.)
 
-To represent flow sensitivity in the data, context-trees are rather cumbersome
+To represent flow sensitivity in the data, context trees are rather cumbersome
 and inefficient, as they would need to allow representing instruction spans,
 and for context-insensitive, flow-sensitive analysis, addition of many
 redundant internal nodes to the context tree. Instead, a different
@@ -140,7 +140,7 @@ points-to set
 :   a set of abstract memory locations
 context tree
 :   each node points to a particular callsite, representing the static
-    callgraph of the program; leaf nodes additionaly contain a points-to set;
+    callgraph of the program; leaf nodes additionally contain a points-to set;
     representing context trees is particularly tricky, because it is not
     possible to directly store references to instructions in global metadata;
     instead, context tree nodes are referenced from callsites, and value
@@ -188,5 +188,5 @@ Future Extensions
 -----------------
 
 This spec is a work in progress. We expect to extend the metadata format to
-cover type information, especially for agregate types, and field sensitivity in
+cover type information, especially for aggregate types, and field sensitivity in
 the points-to sets.

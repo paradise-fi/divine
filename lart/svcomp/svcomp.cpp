@@ -36,7 +36,7 @@ struct NondetTracking {
     enum class Signed { Unknown = -1, No = 0, Yes = 1 };
 
     static PassMeta meta() {
-        return passMeta< NondetTracking >( "nonteterminism-tracking", "" );
+        return passMeta< NondetTracking >( "nondeterminism-tracking", "" );
     }
 
     void run( llvm::Module &m ) {

@@ -25,7 +25,7 @@ struct SimpleEscape {
 
     static PassMeta meta() {
         return passMeta< SimpleEscape >( "SimpleEscape",
-                "simple escape analysis and __vm_interrupt_mem removeal for memory accesses within a function" );
+                "simple escape analysis and __vm_interrupt_mem removal for memory accesses within a function" );
     }
 
     static bool isAllocation( llvm::Instruction *i ) {
@@ -115,7 +115,7 @@ struct SimpleEscape {
 };
 
 PassMeta staticTauMemPass() {
-    return compositePassMeta< SimpleEscape >( "statictaumem", "mark memory instructions which are known to not have effect obeservable by other threads as silent" );
+    return compositePassMeta< SimpleEscape >( "statictaumem", "mark memory instructions which are known to not have effect observable by other threads as silent" );
 }
 
 

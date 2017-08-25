@@ -512,8 +512,8 @@ struct Substitute {
             return llvm::ConstantInt::get( _moTy, uint64_t( usememord( mo ) ) );
         };
 
-        // fist translate atomics, so that if they are translated to
-        // non-atomic equievalents under mask these are later converted to TSO
+        // first translate atomics, so that if they are translated to
+        // non-atomic equivalents under mask these are later converted to TSO
         std::vector< llvm::AtomicCmpXchgInst * > cass;
         std::vector< llvm::AtomicRMWInst * > ats;
         std::set< llvm::Instruction * > atomicOps;
@@ -667,7 +667,7 @@ struct Substitute {
 
             llvm::IRBuilder<> builder( load );
 
-            // fist cast address to i8*
+            // first cast address to i8*
             llvm::Value *addr = op;
             if ( !ety->isIntegerTy() || ety->getPrimitiveSizeInBits() != 8 ) {
                 auto ty = llvm::PointerType::get( llvm::IntegerType::getInt8Ty( ctx ), opty->getAddressSpace() );
@@ -800,7 +800,7 @@ PassMeta meta() {
             "         memory ordering see, C++11 standard of LLVM LangRef for explanation\n"
             "         unordered - not atomicity guarantee\n"
             "\n"
-            "   sc  - equeivalent to all=seq_cst\n"
+            "   sc  - equivalent to all=seq_cst\n"
             "   x86 - equivalent to all=acq_rel,armw=seq_cst,cas=seq_cst\n"
             "         that is total store order + atomic compound operations are sequentially consistent\n"
             "\n"

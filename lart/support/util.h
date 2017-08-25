@@ -621,14 +621,14 @@ namespace _detail {
             case OpCode::Invoke:
             {
                 // if it is a call and we don't have capture information we
-                // must assume the return value depend on the alloca argument
+                // must assume the return value depends on the alloca argument
                 // if it can fit a pointer inside
                 llvm::CallSite cs( use );
 
                 for ( unsigned i = 0; i < cs.arg_size(); ++i )
                     if ( cs.getArgument( i ) == def && !cs.doesNotCapture( i ) )
                         captures = true;
-                // track arguments which can possible receive a copy of 'def'
+                // track arguments which can possibly receive a copy of 'def'
                 if ( captures ) {
                     for ( unsigned i = 0; i < cs.arg_size(); ++i ) {
                         if ( cs.getArgument( i ) != def && !cs.onlyReadsMemory()
@@ -677,7 +677,7 @@ namespace _detail {
 enum class TrackPointers { None, Alloca, All };
 
 // if v is of specified pointer type (either alloca or any type which can contain
-// pointer) returns all uses which can depend on the ponted-to value
+// pointer) returns all uses which can depend on the pointed-to value
 // for v of other type returns v.users() (as a set)
 inline UserSet pointerTransitiveUsers( llvm::Instruction &v, TrackPointers track )
 {
@@ -843,7 +843,7 @@ llvm::Function *cloneFunctionRecursively( llvm::Function *fn, FunMap &map,
                                         Filter filter = detail::cloneAll,
                                         OnUnknown onUnknown = detail::throwOnUnknown );
 
-// map can be initializet to fnptr -> fnptr to skip cloning *fnptr
+// map can be initialized to fnptr -> fnptr to skip cloning *fnptr
 template< typename FunMap,
           typename Filter = bool (*)( llvm::Function & ),
           typename OnUnknown = llvm::Function *(*)( llvm::CallSite & ),
@@ -870,7 +870,7 @@ void cloneCalleesRecursively( llvm::Function *fn, FunMap &map,
     }
 }
 
-// map can be initializet to fnptr -> fnptr to skip cloning *fnptr
+// map can be initialized to fnptr -> fnptr to skip cloning *fnptr
 template< typename FunMap, typename Filter, typename OnUnknown, typename, typename, typename >
 llvm::Function *cloneFunctionRecursively( llvm::Function *fn, FunMap &map,
                                           Filter filter, OnUnknown onUnknown )

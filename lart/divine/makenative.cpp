@@ -69,7 +69,7 @@ struct NativeStart {
                 m.getOrInsertFunction( "__native_start_rt", voidFunT ) );
 
         // create __native_start which invokes __native_start_rt
-        // __native_start_rt cannot be directly invoked from ASM sice it is
+        // __native_start_rt cannot be directly invoked from ASM since it is
         // dynamically loaded
         auto *nativeStart = llvm::cast< llvm::Function >(
                 m.getOrInsertFunction( "__native_start", voidFunT ) );

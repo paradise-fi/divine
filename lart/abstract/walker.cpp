@@ -30,7 +30,7 @@ struct ValuesPostOrder {
     auto succs() const {
         return [&] ( const AbstractValue& n ) -> AbstractValues {
             // do not propagate through calls that does not roots
-            // ie. that are those calls which does not return abstract value
+            // i.e. that are those calls which do not return an abstract value
             bool root = std::find( roots.begin(), roots.end(), n ) != roots.end();
             if ( n.isa< llvm::CallInst >() && !root )
                 return {};
@@ -138,8 +138,8 @@ template< typename Roots >
 Accesses abstractStores( const Roots & roots ) {
     Accesses accs;
     for ( const auto & av : ValuesPostOrder( roots ).get() ) {
-        // Do not propagate through calls that does not return abstract value
-        // ie. are not roots.
+        // Do not propagate through calls that do not return an abstract value
+        // i.e. are not roots.
         if ( av.isa< llvm::CallInst >() &&
              std::find( roots.begin(), roots.end(), av ) == roots.end() )
                 continue;
@@ -350,7 +350,7 @@ std::vector< FunctionNodePtr > Walker::callsOf( const FunctionNodePtr & processe
 
                 if ( has_entry )
                     continue;
-                // If this entry is need to be called - test whether it is reachable from
+                // If this entry needs to be called - test whether it is reachable from
                 // other origins of function else add this entry to node directly
                 bool reachable = false;
                 if ( called ) {

@@ -22,7 +22,7 @@ namespace lart {
 namespace analysis {
 
 /*
-Reachablility for basic blocks and instructions in function
+Reachability for basic blocks and instructions in function
 
 Internally, this uses transitive closure of SCC collapse of basic block graph,
 both for forward and backward transition relation
@@ -38,7 +38,7 @@ struct Reachability {
             _mk( fn );
     }
 
-  private: // has to be defined befor use
+  private: // has to be defined before use
     template< typename T >
     auto _refEqPtr( T *ptr ) { return [ptr]( T &ref ) { return ptr == &ref; }; }
   public:
@@ -64,25 +64,25 @@ struct Reachability {
     }
 
     bool strictlyReachable( I *from, I *to ) {
-        // as a special case invoke is considered to be defined at the beginning
+        // as a special case, invoke is considered to be defined at the beginning
         // of 'normal' patch block, that is it does not reach 'unwind' block, but
         // it reaches all instructions in 'normal' block (and any block reachable
-        // form the normal block)
+        // from the normal block)
         if ( auto inv = llvm::dyn_cast< llvm::InvokeInst >( from ) )
             return reachable( inv->getNormalDest(), to->getParent() );
 
         // this includes case when from is before to in the same bb and there
-        // is cycle going through the bb, and the case of to being
+        // is a cycle going through the bb, and the case of to being
         // in any reachable bb
         if ( strictlyReachable( from->getParent(), to->getParent() ) )
             return true;
 
-        // the remaining reachable case is only if from and to are in same bb,
+        // the remaining reachable case is only if from and to are in the same bb,
         // but to occurs later
         if ( from->getParent() != to->getParent() )
             return false;
 
-        // check if to is in same bb, but later then from
+        // check if to is in the same bb, but later than from
         auto it = std::next( llvm::BasicBlock::iterator( from ) );
         return std::find_if( it, from->getParent()->end(), _refEqPtr( to ) )
                     != from->getParent()->end();

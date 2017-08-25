@@ -98,7 +98,7 @@ struct HoistMasks {
                         for ( ; &*it2 != i; ++it2 ) { }
                         it = it2;
                         // no need to set insertPoint, escape detection will grab
-                        // this insertruction anyway
+                        // this instruction anyway
                     }
                 }
             if ( canEscape( i, allocas ) ) {

@@ -154,7 +154,7 @@ The alloca can be eliminated if:
 3.  there is only one store
 4.  the store dominates all loads
 
-Not that calls to llvm.dbg.declare do not count as uses.
+Note that calls to llvm.dbg.declare do not count as uses.
 */
 struct ConstAllocaElimination {
 
@@ -179,7 +179,7 @@ struct ConstAllocaElimination {
             if ( auto *alloca = llvm::dyn_cast< llvm::AllocaInst >( &inst ) ) {
                 ++allAllocas;
                 bool captured = llvm::PointerMayBeCaptured( alloca, false, true );
-                // we can't safely eliminaty allocas within scope of stacksave
+                // we can't safely eliminate allocas within scope of stacksave
                 // as they can be later freed before the function exits --
                 // eliminating them could hide memory errors
                 bool stacksaveDominated = query::query( stacksaves ).any( [&]( auto *ss ) {

@@ -34,7 +34,7 @@ private:
     // returns dependent functions
     std::vector< FunctionNodePtr > process( FunctionNodePtr & processed );
 
-    // returns true if propagation crearted new entry
+    // returns true if propagation created new entry
     bool propagateThroughCalls( FunctionNodePtr & processed );
 
     // returns dependent function nodes

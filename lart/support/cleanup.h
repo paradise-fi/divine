@@ -48,7 +48,7 @@ struct EhInfo {
 template< typename ShouldTransformCall >
 void makeExceptionsVisible( EhInfo ehi, llvm::Function &fn, ShouldTransformCall &&shouldTransform )
 {
-    if ( !ehi.valid() ) // no exception informations, maybe pure C bitcode…
+    if ( !ehi.valid() ) // no exception information, maybe pure C bitcode…
         return;
 
     auto calls = query::query( fn ).flatten()
@@ -74,7 +74,7 @@ void makeExceptionsVisible( EhInfo ehi, llvm::Function &fn, ShouldTransformCall 
                 auto *cleanupBB = llvm::BasicBlock::Create( fn.getParent()->getContext(), "lart.cleanup.lb.cleanup", &fn );
                 llvm::IRBuilder<>( cleanupBB ).CreateResume( lp );
 
-                // note: split invalidated interator
+                // note: split invalidated iterator
                 llvm::IRBuilder<> irb( unwindBB->getFirstInsertionPt() );
                 auto *sel = irb.CreateExtractValue( lp, ehi.selectorIndices, "lart.cleanup.lb.sel" );
                 auto *cmp = irb.CreateICmpNE( sel, llvm::ConstantInt::get(

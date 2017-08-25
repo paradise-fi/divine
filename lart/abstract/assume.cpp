@@ -56,7 +56,7 @@ namespace {
                 if ( term->getSuccessor( i ) == to )
                     return i;
             }
-            UNREACHABLE( "BasicBlock 'to' is not successor of BasicBlock 'from'." );
+            UNREACHABLE( "BasicBlock 'to' is not a successor of BasicBlock 'from'." );
         }
     };
 

@@ -204,7 +204,7 @@ void BCP::run( llvm::Module & m ) {
 void BCP::process( llvm::Instruction * assume ) {
     Assume ass = { assume, data.tmap };
 
-    // create constraints on arguments from condition, that created tristate
+    // create constraints on arguments from condition that created tristate
     auto lhs = ass.constrain( ass.domain(), Assume::AssumeValue::LHS );
     auto rhs = ass.constrain( ass.domain(), Assume::AssumeValue::RHS );
     auto pre = ass.constrain( ass.domain(), Assume::AssumeValue::Predicate );
