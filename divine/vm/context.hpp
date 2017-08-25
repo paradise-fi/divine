@@ -257,7 +257,6 @@ struct Context
             auto nptr = vm::heap::clone( from, heap(), optr.cooked(), vm::heap::CloneType::SkipWeak );
             nptr.type( PointerType::Weak );
             heap().write( _debug_persist.where, PointerV( nptr ) );
-            _debug_persist.where = nullPointer();
         }
     }
 
