@@ -510,7 +510,10 @@ void Node< Prog, Heap >::struct_fields( HeapPointer hloc, YieldDN yield )
             field.di_type( CTE );
             std::string name = CTE->getName().str();
             if ( name.empty() && CTE->getTag() == llvm::dwarf::DW_TAG_inheritance )
+            {
                 name = "<base"s + (base++ ? "$" + std::to_string( base ) : "") + ">";
+                field.di_type( di_base( CTE ) );
+            }
             if ( name.empty() )
                 name = "<anon"s + (anon++ ? "$" + std::to_string( base ) : "") + ">";
             yield( name, field );
