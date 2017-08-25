@@ -53,7 +53,7 @@ using DNMap = std::map< DNKey, int >;
 template< typename DN >
 int dotDN( std::ostream &o, DN dn, DNMap &visited, int &seq, std::string prefix )
 {
-    if ( dn._address.type() != vm::PointerType::Heap )
+    if ( !dn._address.heap() )
         return 0;
     if ( visited.find( dn.sortkey() ) != visited.end() )
         return visited[ dn.sortkey() ];
