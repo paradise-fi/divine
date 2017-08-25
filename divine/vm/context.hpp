@@ -72,7 +72,7 @@ struct TraceStateType { CodePointer pc; };
 struct TraceInfo { GenericPointer text; };
 struct TraceAlg { brick::data::SmallVector< divine::vm::GenericPointer > args; };
 struct TraceTypeAlias { CodePointer pc; GenericPointer alias; };
-struct TraceDebugPersist { GenericPointer where; };
+struct TraceDebugPersist { GenericPointer ptr; };
 
 template< typename _Program, typename _Heap >
 struct Context
@@ -250,13 +250,11 @@ struct Context
         std::copy( _debug_reg, _debug_reg + _VM_CR_Last, _reg );
         Heap from = heap();
         with_snap( [&]( auto &h ) { h.restore( _debug_snap ); } );
-        if ( !_debug_persist.where.null() )
+        if ( !_debug_persist.ptr.null() )
         {
-            PointerV optr;
-            from.read( _debug_persist.where, optr );
-            auto nptr = vm::heap::clone( from, heap(), optr.cooked(), vm::heap::CloneType::SkipWeak );
-            nptr.type( PointerType::Weak );
-            heap().write( _debug_persist.where, PointerV( nptr ) );
+            vm::heap::clone( from, heap(), _debug_persist.ptr,
+                             vm::heap::CloneType::SkipWeak, true );
+            _debug_persist.ptr = nullPointer();
         }
     }
 
