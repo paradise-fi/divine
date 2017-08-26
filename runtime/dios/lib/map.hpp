@@ -16,11 +16,25 @@ struct Array {
     using value_type = T;
     using iterator = T *;
     using const_iterator = const T *;
+    using reverse_iterator = std::reverse_iterator< iterator >;
+    using const_reverse_iterator = std::reverse_iterator< const_iterator >;
 
     iterator begin() { return _data; }
+    const_iterator begin() const { return _data; }
     const_iterator cbegin() const { return _data; }
+
     iterator end() { return _data + size(); }
+    const_iterator end() const { return _data + size(); }
     const_iterator cend() const { return _data + size(); }
+
+    reverse_iterator rbegin() { return reverse_iterator( end() ); }
+    const_reverse_iterator rbegin() const { return reverse_iterator( end() ); }
+    const_reverse_iterator crbegin() const { return reverse_iterator( end() ); }
+
+    reverse_iterator rend() { return reverse_iterator( begin() ); }
+    const_reverse_iterator rend() const { return const_reverse_iterator( begin() ); }
+    const_reverse_iterator crend() const { return const_reverse_iterator( begin() ); }
+
     T& back() { return *( end() - 1 ); }
 
     bool empty() const { return !_data; }
