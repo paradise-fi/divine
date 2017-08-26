@@ -337,11 +337,13 @@ struct Substitute {
         _memcpy = get( "memcpy" );
         _memset = get( "memset" );
         auto flusher = get( "__lart_weakmem_flusher_main" );
+        auto fsize = get( "__lart_weakmem_buffer_size" );
+        auto ford = get( "__lart_weakmem_min_ordering" );
         _mask = get( "__vmutil_mask" );
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
-        auto inteface = { _store, _load, _fence, _cas, _cleanup, _resize, flusher };
+        auto inteface = { _store, _load, _fence, _cas, _cleanup, _resize, flusher, fsize, ford };
         for ( auto i : inteface ) {
             _cloneMap.emplace( i, i );
         }
@@ -382,13 +384,11 @@ struct Substitute {
                 transformWeak( f, dl, silentID );
         }
 
-        auto *fsize = get( "__lart_weakmem_buffer_size" );
         if ( _bufferSize > 0 ) {
             makeReturnConstant( fsize, _bufferSize );
         }
         inlineIntoCallers( fsize );
 
-        auto *ford = get( "__lart_weakmem_min_ordering" );
         if ( _minMemOrd != MemoryOrder::NotAtomic ) {
             makeReturnConstant( ford, int( _minMemOrd ) );
         }

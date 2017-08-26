@@ -280,8 +280,10 @@ union BFH {
 
 static bool direct( void * ) { return false; }
 
-int __lart_weakmem_buffer_size () { return 2; }
-int __lart_weakmem_min_ordering() { return 0; }
+/* weak here is to prevent optimizer from eliminating calls to these functions
+ * -- they will be replaced by weakmem transformation */
+__attribute__((__weak__)) int __lart_weakmem_buffer_size() { return 2; }
+__attribute__((__weak__)) int __lart_weakmem_min_ordering() { return 0; }
 
 using namespace lart::weakmem;
 

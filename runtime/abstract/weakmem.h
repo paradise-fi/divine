@@ -22,8 +22,8 @@
 extern "C" {
 #endif
 
-int __lart_weakmem_buffer_size();
-int __lart_weakmem_min_ordering();
+int __lart_weakmem_buffer_size() _WM_INTERFACE;
+int __lart_weakmem_min_ordering() _WM_INTERFACE;
 
 enum __lart_weakmem_order {
     __lart_wmo_not_atomic = 0,
