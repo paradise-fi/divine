@@ -243,6 +243,8 @@ HeapPointer clone( FromH &f, ToH &t, HeapPointer root,
     if ( overwrite )
         t.free( root );
     auto result = t.make( f.size( root ), root.object(), true ).cooked();
+    if ( overwrite )
+        ASSERT_EQ( root.object(), result.object() );
     auto result_i = t.ptr2i( result );
     visited.emplace( root, result );
     auto fb = f.unsafe_bytes( root, root_i ), tb = t.unsafe_bytes( result, result_i );
@@ -513,21 +515,16 @@ struct SimpleHeap : HeapMixin< Self, typename mem::Pool< PR >::Pointer >
     {
         HeapPointer p;
         SnapItem *search = snap_find( hint );
-        if ( search && search != snap_end() && search->first <= hint )
-            ++ search; /* points at first snapitem >= than hint */
         bool found = false;
         while ( !found )
         {
             found = true;
             if ( _l.exceptions.count( hint ) )
-            {
-                if ( overwrite )
-                    found = !_l.exceptions[ hint ].slab();
-                else
-                    found = false;
-            }
+                found = false;
             if ( search && search != snap_end() && search->first == hint )
                 ++ search, found = false;
+            if ( overwrite && _l.exceptions.count( hint ) )
+                found = !_l.exceptions[ hint ].slab();
             if ( !found )
                 ++ hint;
         }
