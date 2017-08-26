@@ -8,6 +8,7 @@
 
 #if __cplusplus
 #if __cplusplus >= 201103L
+#include <type_traits>
 #define _WM_NOTHROW noexcept
 #else
 #define _WM_NOTHROW throw()
@@ -71,6 +72,20 @@ enum class MemoryOrder : uint32_t {
     AtomicOp = __lart_wmo_atomic_op,
     WeakCAS = __lart_wmo_weak_cas,
 };
+
+inline MemoryOrder operator|( MemoryOrder a, MemoryOrder b ) {
+    using uint = typename std::underlying_type< MemoryOrder >::type;
+    return MemoryOrder( uint( a ) | uint( b ) );
+}
+
+inline MemoryOrder operator&( MemoryOrder a, MemoryOrder b ) {
+    using uint = typename std::underlying_type< MemoryOrder >::type;
+    return MemoryOrder( uint( a ) & uint( b ) );
+}
+
+inline bool subseteq( MemoryOrder a, MemoryOrder b ) {
+    return a == (a & b);
+}
 
 }
 }

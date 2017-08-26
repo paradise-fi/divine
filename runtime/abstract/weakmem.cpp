@@ -58,10 +58,6 @@ using Array = __dios::Array< T >;
 
 namespace {
 
-bool subseteq( const MemoryOrder a, const MemoryOrder b ) forceinline {
-    return (unsigned( a ) & unsigned( b )) == unsigned( a );
-}
-
 MemoryOrder minMemOrd() forceinline { return MemoryOrder( __lart_weakmem_min_ordering() ); }
 bool minIsAcqRel() forceinline { return subseteq( MemoryOrder::AcqRel, minMemOrd() ); }
 

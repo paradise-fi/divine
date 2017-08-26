@@ -124,12 +124,6 @@ struct ScalarMemory
 
 };
 
-
-MemoryOrder operator|( MemoryOrder a, MemoryOrder b ) {
-    using uint = typename std::underlying_type< MemoryOrder >::type;
-    return MemoryOrder( uint( a ) | uint( b ) );
-}
-
 struct Substitute {
 
     struct OrderConfig {
@@ -182,11 +176,6 @@ struct Substitute {
             case llvm::AtomicOrdering::AcquireRelease: return MemoryOrder::AcqRel;
             case llvm::AtomicOrdering::SequentiallyConsistent: return MemoryOrder::SeqCst;
         }
-    }
-
-    static bool subseteq( MemoryOrder a, MemoryOrder b ) {
-        using uint = typename std::underlying_type< MemoryOrder >::type;
-        return uint( a ) == (uint( a ) & uint( b ));
     }
 
     enum class InstType { Load, Store, Other };
