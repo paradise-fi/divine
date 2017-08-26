@@ -85,7 +85,7 @@ void BitCode::do_lart()
         lart.setup( lart::divine::autotracePass() );
 
     if ( !_relaxed.empty() )
-        lart.setup( "weakmem:" + _relaxed );
+        lart.setup( "weakmem:" + _relaxed, false );
 
     lart.setup( lart::divine::lowering() );
     // reduce again before metadata are added to possibly tweak some generated
