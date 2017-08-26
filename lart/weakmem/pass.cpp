@@ -211,8 +211,6 @@ struct Substitute {
                         opt = opt.substr( 0, c );
                     }
 
-                    std::cout << "opt = " << opt << ", bufferSize = " << bufferSize << std::endl;
-
                     if ( opt == "sc" ) {
                         config.setAll( MemoryOrder::SeqCst );
                     } else if ( opt == "x86" ) {
