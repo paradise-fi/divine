@@ -379,19 +379,11 @@ struct Eval
             if ( !_ctx )
                 return;
             if ( _trace )
+                _ctx->trace( "FAULT: " + str() );
+            if ( _double )
             {
-                std::string s = "FAULT: " + str();
-                auto ptr = _ctx->heap().make( s.size() + 1 );
-                std::copy( s.begin(), s.end(), _ctx->heap().unsafe_bytes( ptr.cooked() ).begin() );
-                _ctx->trace( TraceText{ ptr.cooked() } );
-            }
-            if ( _double ) {
-                if ( _trace ) {
-                    std::string s = "Double fault, terminating...";
-                    auto ptr = _ctx->heap().make( s.size() + 1 );
-                    std::copy( s.begin(), s.end(), _ctx->heap().unsafe_bytes( ptr.cooked() ).begin() );
-                    _ctx->trace( TraceText{ ptr.cooked() } );
-                }
+                if ( _trace )
+                    _ctx->trace( "Double fault, terminating execution." );
                 _ctx->doublefault();
             } else
                 _ctx->fault( _fault, _frame, _pc );
