@@ -76,12 +76,9 @@ struct Context : vm::Context< Program, CowHeap >
         return 0;
     }
 
-    void trace( TraceText tt )
-    {
-        _trace.push_back( heap().read_string( tt.text ) );
-    }
-
+    using Super::trace;
     void trace( std::string s ) { _trace.push_back( s ); }
+
     void trace( TraceSchedInfo ) {} /* noop */
     void trace( TraceSchedChoice ) {} /* noop */
     void trace( TraceStateType ) {}
@@ -89,7 +86,6 @@ struct Context : vm::Context< Program, CowHeap >
     {
         _info += heap().read_string( ti.text ) + "\n";
     }
-    void trace( TraceAlg ) { NOT_IMPLEMENTED(); }
     void trace( TraceTypeAlias ) {}
     void trace( TraceDebugPersist t ) { Super::trace( t ); }
 
