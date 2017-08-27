@@ -1814,6 +1814,7 @@ struct TProgram
 template< typename Prog >
 struct TContext : vm::Context< Prog, vm::MutableHeap<> >
 {
+    using Super = vm::Context< Prog, vm::MutableHeap<> >;
     vm::Fault _fault;
 
     void fault( vm::Fault f, vm::HeapPointer, CodePointer )
@@ -1822,17 +1823,9 @@ struct TContext : vm::Context< Prog, vm::MutableHeap<> >
         this->set( _VM_CR_Frame, vm::nullPointer() );
     }
 
-    void trace( vm::TraceText tt )
-    {
-        std::cerr << "T: " << this->_heap.read_string( tt.text ) << std::endl;
-    }
-    void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
-    void trace( vm::TraceInfo ) { NOT_IMPLEMENTED(); }
-    void trace( vm::TraceSchedChoice ) { NOT_IMPLEMENTED(); }
-    void trace( vm::TraceStateType ) { NOT_IMPLEMENTED(); }
-    void trace( vm::TraceAlg ) { NOT_IMPLEMENTED(); }
-    void trace( vm::TraceTypeAlias ) { NOT_IMPLEMENTED(); }
-    void trace( vm::TraceDebugPersist ) { NOT_IMPLEMENTED(); }
+    using Super::trace;
+    void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
+    void trace( vm::TraceDebugPersist ) { UNREACHABLE( "debug persist not allowed in unit tests" ); }
 
     TContext( Prog &p ) : vm::Context< Prog, vm::MutableHeap<> >( p ), _fault( _VM_F_NoFault ) {}
 };

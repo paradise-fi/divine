@@ -146,12 +146,9 @@ struct Context : DNContext< Heap >
         maybe_interrupt( Interrupt::Cfl, pc, &Super::cfl_interrupt );
     }
 
-    void trace( vm::TraceText tt )
-    {
-        _trace.push_back( this->heap().read_string( tt.text ) );
-    }
+    using Super::trace;
 
-    void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
+    void trace( std::string s ) { _trace.push_back( s ); }
 
     void trace( vm::TraceSchedChoice tsc )
     {
@@ -174,10 +171,9 @@ struct Context : DNContext< Heap >
         _info += this->heap().read_string( ti.text ) + "\n";
     }
 
-    void trace( vm::TraceDebugPersist t ) { Super::trace( t ); }
-
     template < typename F >
-    void find_dbg_inst( llvm::Function *f, llvm::Value *v, F yield ) {
+    void find_dbg_inst( llvm::Function *f, llvm::Value *v, F yield )
+    {
         for ( auto &BB : *f )
             for ( auto &I : BB ) {
                 if ( auto DVI = llvm::dyn_cast< llvm::DbgValueInst >( &I ) )
@@ -216,9 +212,8 @@ struct Context : DNContext< Heap >
         } );
     }
 
-    void trace( vm::TraceAlg ) { }
-
-    void trace( TraceTypeAlias a ) {
+    void trace( TraceTypeAlias a )
+    {
         auto ptr = this->debug().find( nullptr, a.pc ).first->getOperand( 1 );
         std::string alias = this->_heap.read_string( a.alias );
         find_dbg_inst( ptr, [&]( llvm::DIVariable *di ) {

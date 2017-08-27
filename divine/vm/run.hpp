@@ -54,10 +54,8 @@ struct RunContext_ : Super
     void load( typename Heap::Snapshot ) { UNREACHABLE( "RunContext does not support load" ); }
     typename Heap::Snapshot snapshot() { UNREACHABLE( "RunContext does not support snapshots" ); }
 
-    void trace( vm::TraceText tt )
-    {
-        std::cerr << "T: " << this->heap().read_string( tt.text ) << std::endl;
-    }
+    void trace( std::string s ) { std::cerr << "T: " << s << std::endl; }
+    void trace( vm::TraceText tt ) { trace( this->heap().read_string( tt.text ) ); }
     void trace( vm::TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     void trace( vm::TraceSchedChoice ) {}
     void trace( vm::TraceStateType ) {}

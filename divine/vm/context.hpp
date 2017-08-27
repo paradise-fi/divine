@@ -385,14 +385,14 @@ struct Context
         return true;
     }
 
-    virtual void trace( TraceText ) {} // fixme?
+    virtual void trace( TraceText tt ) { trace( heap().read_string( tt.text ) ); }
     virtual void trace( TraceSchedInfo ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceSchedChoice ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceStateType ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceInfo ) { NOT_IMPLEMENTED(); }
-    virtual void trace( TraceAlg ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceTypeAlias ) { NOT_IMPLEMENTED(); }
     virtual void trace( TraceDebugPersist t ) { _debug_persist = t; }
+    virtual void trace( TraceAlg ) {}
     virtual void trace( std::string ) {}
 
     virtual void doublefault()
