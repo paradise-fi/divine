@@ -406,7 +406,7 @@ struct Context
     void fault( Fault f, HeapPointer frame, CodePointer pc )
     {
         auto fh = get( _VM_CR_FaultHandler ).pointer;
-        if ( fh.null() )
+        if ( fh.null() || _debug_mode )
             doublefault();
         else
             enter( fh, PointerV( get( _VM_CR_Frame ).pointer ),
