@@ -67,7 +67,6 @@ void Abstraction::run( llvm::Module & m ) {
         auto builder = make_builder( vmap, data.tmap, fns );
 
         // 1. if signature changes create a new function declaration
-
         // if proccessed function is called with abstract argument create clone of it
         // to preserve original function for potential call without abstract argument
         // TODO what about function with abstract argument and abstract annotation?
@@ -86,7 +85,8 @@ void Abstraction::run( llvm::Module & m ) {
         // FIXME let builder take annotation structure
         Values deps;
         for ( auto & av : postorder )
-            deps.emplace_back( av.value );
+            if ( !av.isa< llvm::GetElementPtrInst >() )
+                deps.emplace_back( av.value );
         clean( deps );
 
         // 4. copy function to declaration and handle function uses

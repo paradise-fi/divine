@@ -902,7 +902,8 @@ struct Abstraction {
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
-    /*TEST( struct_simple ) {
+
+    TEST( struct_simple ) {
         auto s = R"(struct S { int x; };
 
                     int main() {
@@ -912,14 +913,12 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto gep = query::query( *main ).flatten()
-            .map( query::refToPtr )
-            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
-            .filter( query::notnull )
-            .freeze();
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
-                   gep[0]->getResultElementType() );
+        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
+        ASSERT_EQ( gep.size(), 1 );
+        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 0 ]->user_begin() );
+        ASSERT( bc );
+        ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
@@ -934,15 +933,12 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto gep = query::query( *main ).flatten()
-            .map( query::refToPtr )
-            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
-            .filter( query::notnull )
-            .freeze();
-
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
-                   gep[0]->getResultElementType() );
+        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
+        ASSERT_EQ( gep.size(), 1 );
+        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 0 ]->user_begin() );
+        ASSERT( bc );
+        ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
@@ -960,47 +956,17 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto gep = query::query( *main ).flatten()
-            .map( query::refToPtr )
-            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
-            .filter( query::notnull )
-            .freeze();
-
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
-                   gep[0]->getResultElementType() );
-        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
-                   gep[1]->getResultElementType() );
+        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
+        ASSERT_EQ( gep.size(), 3 );
+        auto bc1 = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 0 ]->user_begin() );
+        auto bc2 = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 1 ]->user_begin() );
+        ASSERT( bc1 );
+        ASSERT( bc2 );
+        ASSERT_EQ( alloca->getReturnType(), bc1->getDestTy() );
+        ASSERT_EQ( alloca->getReturnType(), bc2->getDestTy() );
         ASSERT_EQ( llvm::Type::getInt32Ty( m->getContext() ),
                    gep[2]->getResultElementType() );
-        ASSERT( ! containsUndefValue( *m ) );
-        ASSERT( ! liftingPointer( *m ) );
-    }
-
-    TEST( struct_with_pointer ) {
-        auto s = R"(struct S {
-                        int x;
-                        int * y;
-                    };
-
-                    int main() {
-                        __sym int x;
-                        int y = 0;
-                        S s;
-                        s.x = x;
-                        s.y = &y;
-                    })";
-        auto m = test_abstraction( annotation + s );
-        auto main = m->getFunction( "main" );
-        auto gep = query::query( *main ).flatten()
-            .map( query::refToPtr )
-            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
-            .filter( query::notnull )
-            .freeze();
-
-        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
-                   gep[0]->getResultElementType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
@@ -1016,21 +982,12 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto gep = query::query( *main ).flatten()
-            .map( query::refToPtr )
-            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
-            .filter( query::notnull )
-            .freeze();
-
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-
-        auto symS = llvm::StructType::create( { alloca->getReturnType()
-                                                ->getPointerElementType() } );
-
-        ASSERT( symS->isLayoutIdentical( llvm::cast< llvm::StructType >(
-                                         gep[0]->getResultElementType() ) ) );
-        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
-                   gep[1]->getResultElementType() );
+        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
+        ASSERT_EQ( gep.size(), 2 );
+        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 1 ]->user_begin() );
+        ASSERT( bc );
+        ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
     }
@@ -1047,24 +1004,16 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        auto gep = query::query( *main ).flatten()
-            .map( query::refToPtr )
-            .map( query::llvmdyncast< llvm::GetElementPtrInst > )
-            .filter( query::notnull )
-            .freeze();
-
+        main->dump();
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
-
-        auto symS = llvm::StructType::create( { alloca->getReturnType()
-                                                ->getPointerElementType() } );
-        ASSERT( symS->isLayoutIdentical( llvm::cast< llvm::StructType >(
-                                         gep[1]->getResultElementType() ) ) );
-
-        ASSERT_EQ( alloca->getReturnType()->getPointerElementType(),
-                   gep[2]->getResultElementType() );
+        auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
+        ASSERT_EQ( gep.size(), 3 );
+        auto bc = llvm::dyn_cast< llvm::BitCastInst >( *gep[ 2 ]->user_begin() );
+        ASSERT( bc );
+        ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
         ASSERT( ! containsUndefValue( *m ) );
         ASSERT( ! liftingPointer( *m ) );
-    }*/
+    }
 };
 
 struct Assume {

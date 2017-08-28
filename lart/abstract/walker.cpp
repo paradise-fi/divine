@@ -29,7 +29,7 @@ struct ValuesPostOrder {
 
     auto succs() const {
         return [&] ( const AbstractValue& n ) -> AbstractValues {
-            // do not propagate through calls that does not roots
+            // do not propagate through calls that are not in roots
             // i.e. that are those calls which do not return an abstract value
             bool root = std::find( roots.begin(), roots.end(), n ) != roots.end();
             if ( n.isa< llvm::CallInst >() && !root )

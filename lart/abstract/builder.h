@@ -139,6 +139,7 @@ private:
             ,[&]( llvm::PHINode * ) { intr = createPhi( av ); }
             ,[&]( llvm::BranchInst * ) { intr = createBr( av ); }
             ,[&]( llvm::ReturnInst * ) { intr = createRet( av ); }
+            ,[&]( llvm::GetElementPtrInst * ) { intr = createGEP( av ); }
             ,[&]( llvm::Instruction * inst ) {
                 std::cerr << "ERR: unknown instruction: ";
                 inst->dump();
@@ -274,6 +275,15 @@ private:
             }
             return irb.CreateCondBr( cond, i->getSuccessor( 0 ), i->getSuccessor( 1 ) );
         }
+    }
+
+    llvm::Instruction * createGEP( const AbstractValue & av ) {
+        auto gep = av.get< llvm::GetElementPtrInst >();
+        auto bc = llvm::cast< llvm::Instruction >(
+                  IRB( gep ).CreateBitCast( gep, getType( av ) ) );
+        bc->removeFromParent();
+        bc->insertAfter( gep );
+        return bc;
     }
 
     llvm::Instruction * createRet( const AbstractValue & av ) {
