@@ -383,7 +383,7 @@ struct Eval
             if ( _double )
             {
                 if ( _trace )
-                    _ctx->trace( "Double fault, terminating execution." );
+                    _ctx->trace( "FATAL: fault handler called recursively" );
                 _ctx->doublefault();
             } else
                 _ctx->fault( _fault, _frame, _pc );

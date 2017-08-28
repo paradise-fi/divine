@@ -407,7 +407,13 @@ struct Context
     {
         auto fh = get( _VM_CR_FaultHandler ).pointer;
         if ( fh.null() || _debug_mode )
+        {
+            if ( _debug_mode )
+                trace( "FATAL: cannot handle a fault during dbg.call" );
+            if ( fh.null() )
+                trace( "FATAL: no fault handler installed" );
             doublefault();
+        }
         else
             enter( fh, PointerV( get( _VM_CR_Frame ).pointer ),
                    value::Int< 32 >( f ), PointerV( frame ), PointerV( pc ), nullPointerV() );
