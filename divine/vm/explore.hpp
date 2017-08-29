@@ -319,17 +319,11 @@ struct Explore_
                 if ( &tc == &other )
                     continue;
                 for ( auto ol : other.loads )
-                {
                     if ( tc.stores.intersect( ol.first, ol.second ) )
                         s.insert( ol.first, ol.second );
-                }
                 for ( auto sl : other.stores )
-                {
-                    if ( tc.stores.intersect( sl.first, sl.second ) )
-                        s.insert( sl.first, sl.second );
                     if ( tc.loads.intersect( sl.first, sl.second ) )
                         l.insert( sl.first, sl.second );
-                }
             }
 
             if ( s.empty() && l.empty() )
