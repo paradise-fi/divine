@@ -1004,7 +1004,6 @@ struct Abstraction {
                     })";
         auto m = test_abstraction( annotation + s );
         auto main = m->getFunction( "main" );
-        main->dump();
         auto alloca = m->getFunction( "lart.sym.alloca.i32" );
         auto gep = llvmFilter< llvm::GetElementPtrInst >( main );
         ASSERT_EQ( gep.size(), 3 );

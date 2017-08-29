@@ -51,7 +51,6 @@ struct ValuesPostOrder {
     const AbstractValues & roots;
 };
 
-
 // FunctionNode
 AbstractValues FunctionNode::postorder() const {
     AbstractValues unordered = { origins.begin(), origins.end() };
@@ -127,12 +126,8 @@ void Walker::init( llvm::Module & m ) {
     }
 }
 
-// Write access to abstract value is produced by store:
-// void store %abstract_value, %value*
-// we need %abstract_value type information for correct propagation of domains
-
-using WriteAccess = std::pair< llvm::StoreInst *, Domain >;
-using Accesses = std::vector< WriteAccess >;
+using StoreAccess = std::pair< llvm::StoreInst *, Domain >;
+using Accesses = std::vector< StoreAccess >;
 
 template< typename Roots >
 Accesses abstractStores( const Roots & roots ) {
@@ -153,81 +148,24 @@ Accesses abstractStores( const Roots & roots ) {
     return accs;
 }
 
-template< typename Value, typename Stores >
-auto storesTo( const Value & val, const Stores & stores ) {
-    return query::query( stores ).filter( [&] ( const auto & store ) {
-        return store.first->getPointerOperand() == val;
-    } ).freeze();
-}
-
-template< typename Value, typename GEPS >
-void propagateGEP( const Value &, GEPS & ) {
-    /*using GEP = llvm::GetElementPtrInst;
-    if ( auto gep = llvm::dyn_cast< GEP >( v.get< GEP >()->getPointerOperand() ) ) {
-        AbstractValue av{ gep, { { 0, v.domain() } } };
-        geps[ gep->getPointerOperand() ].push_back( av );
-        propagateGEP( av, geps );
-    }*/
-    NOT_IMPLEMENTED();
-}
-
-template< typename GEPS, typename Accesses >
-auto getAbstractGeps( const GEPS &, const Accesses & ) {
-    /*std::map< llvm::Value *, std::vector< AbstractValue > > gepsFromStructs;
-
-    for ( const auto & gep : geps ) {
-        auto storesToGEP = storesTo( gep, accs );
-        if ( !storesToGEP.empty() ) {
-            auto dom = storesToGEP[0].second->domain();
-            AbstractValue av{ gep, dom };
-            gepsFromStructs[ gep->getPointerOperand() ].push_back( av );
-            propagateGEP( av, gepsFromStructs );
-        }
-    }
-    return gepsFromStructs;*/
-    NOT_IMPLEMENTED();
-}
-
 // Propagate abstract value through stores to allocas.
 // Whenever some obstract value is stored to some alloca we mark this alloca
-// as abstract origin.
-//
-// For abstract structs we precompute all geps to which are stored abstract
-// values. And consequently we creates abstract structs.
+// as abstract origin, same with GEP instruction.
 Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
     Set< AbstractValue > reached = { processed->origins };
     Set< AbstractValue > abstract;
 
-    auto allocas = llvmFilter< llvm::AllocaInst >( processed->function );
-    auto geps = llvmFilter< llvm::GetElementPtrInst >( processed->function );
-
     do {
         abstract = reached;
         auto stores = abstractStores( AbstractValues{ reached.begin(), reached.end() } );
-        for ( const auto & a : allocas ) {
-            auto storesToAlloca = storesTo( a, stores );
-            if ( !storesToAlloca.empty() ) {
-                assert( !a->getType()->isStructTy() );
-                reached.emplace( a, storesToAlloca[0].second );
-            }
+        for ( const auto & s : stores ) {
+            auto po = s.first->getPointerOperand();
+            if ( auto a = llvm::dyn_cast< llvm::AllocaInst >( po ) )
+                reached.emplace( a, s.second );
+            if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( po ) )
+                reached.emplace( gep, s.second );
         }
-
-        /*for ( const auto & s : getAbstractGeps( geps, stores ) ) {
-            DomainMap dmap;
-            for ( const auto & abs : s.second ) {
-                auto gep = llvm::cast< llvm::GetElementPtrInst >( abs.value() );
-                assert( gep->getNumIndices() == 2 );
-
-                auto pet = gep->getPointerOperandType()->getPointerElementType();
-                assert( pet->isStructTy() );
-
-                auto idx = llvm::cast< llvm::ConstantInt >( ( gep->idx_begin() + 1 )->get() )->getZExtValue();
-                dmap[ idx ] = abs.domain();
-            }
-            reached.emplace( s.first, dmap );
-        }*/
     } while ( abstract != reached );
-
     return abstract;
 }
 
