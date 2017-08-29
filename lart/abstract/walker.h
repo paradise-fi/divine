@@ -16,6 +16,26 @@ struct FunctionNode;
 using FunctionNodePtr = std::shared_ptr< FunctionNode >;
 using FunctionNodes = std::vector< FunctionNodePtr >;
 
+using Indices = FieldTrie< Domain >::Path;
+
+template< typename Value >
+using ValueField = std::pair< Value, Indices >;
+
+template< typename Value >
+struct AbstractFields {
+    using Field = ValueField< Value >;
+
+    void insert( const Field & field, Domain dom ) {
+        fields[ field.first ].insert( field.second, dom );
+    }
+
+    std::optional< Domain > getDomain( const Field & field ) {
+        return fields[ field.first ].search( field.second );
+    }
+
+    std::map< Value, FieldTrie< Domain > > fields;
+};
+
 
 struct Walker {
     using Preprocessor = std::function< void( llvm::Function * ) >;
@@ -46,6 +66,8 @@ private:
     std::vector< FunctionNodePtr > functions;
     std::unordered_set< FunctionNodePtr > seen;
     Preprocessor preprocess;
+
+    AbstractFields< llvm::Value * > fields;
 };
 
 
