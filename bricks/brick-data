@@ -626,6 +626,19 @@ public:
         return emplace( key, Val{} ).first->second;
     }
 
+    Val& at( const Key& key ) {
+        auto it = find( key );
+        if ( it == end() )
+            throw std::out_of_range( "ArrayMap::at" );
+        return it->second;
+    }
+
+    const Val& at( const Key& key ) const {
+        auto it = find( key );
+        if ( it == cend() )
+            throw std::out_of_range( "ArrayMap::at" );
+        return it->second;
+    }
 private:
     auto comparator() const {
         return []( const_reference a, const_reference b ) {
@@ -1303,6 +1316,18 @@ struct TestArrayMap {
         x.erase( "bKey" );
         ASSERT_EQ( x.find( "aKey" )->second, "aVal" );
         ASSERT_EQ( x.find( "cKey" )->second, "cVal" );
+
+        ASSERT_EQ( x.at( "aKey" ), "aVal" );
+        ASSERT_EQ( x.at( "cKey" ), "cVal" );
+    }
+
+    TEST(outOfRange) {
+        ArrayMap< int, std::string > am;
+        am[ 1 ] = "aKey";
+        try {
+            am.at( 2 );
+            ASSERT( false );
+        } catch ( std::out_of_range & ) { }
     }
 };
 
