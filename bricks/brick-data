@@ -547,6 +547,8 @@ public:
     using size_type = typename Container::size_type;
     using iterator = typename Container::iterator;
     using const_iterator = typename Container::const_iterator;
+    using reference = value_type&;
+    using const_reference = const value_type&;
 
     auto begin() { return _container.begin(); }
     auto cbegin() const { return _container.cbegin(); }
@@ -558,9 +560,9 @@ public:
 
     void clear() noexcept { _container.clear(); }
 
-    std::pair< iterator, bool > insert( const value_type& value ) {
+    std::pair< iterator, bool > insert( const_reference value ) {
         auto it = find( value.first );
-        if ( it != end() )
+        if ( it != cend() )
             return { it, false };
         _container.push_back( value );
         std::sort( begin(), end(), comparator() );
@@ -602,7 +604,7 @@ public:
     }
 
     size_type count( const Key& key ) const {
-        return find( key ) == end() ? 0 : 1;
+        return find( key ) == cend() ? 0 : 1;
     }
 
     iterator find( const Key& key ) {
@@ -612,9 +614,9 @@ public:
     }
 
     const_iterator find( const Key& key ) const {
-        auto elem = std::lower_bound( begin(), end(), std::make_pair( key, Val() ),
+        auto elem = std::lower_bound( cbegin(), cend(), std::make_pair( key, Val() ),
             comparator() );
-        return elem != end() && elem->first == key ? elem : end();
+        return elem != cend() && elem->first == key ? elem : cend();
     }
 
     Val& operator[]( const Key& key ) {
@@ -625,8 +627,8 @@ public:
     }
 
 private:
-    auto comparator() {
-        return []( const value_type& a, const value_type& b ) {
+    auto comparator() const {
+        return []( const_reference a, const_reference b ) {
             return Compare()( a.first, b.first );
         };
     }
