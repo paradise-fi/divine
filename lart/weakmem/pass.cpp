@@ -381,7 +381,7 @@ struct Substitute {
                                          true );
                 _bypass.emplace( fn );
                 llvm::IRBuilder<> irb( fn->begin()->getFirstInsertionPt() );
-                irb.CreateFence( llvm::AtomicOrdering::SequentiallyConsistent );
+                irb.CreateCall( _fence, { irb.getInt32( uint32_t( MemoryOrder::SeqCst ) ) } );
             } );
 
         for ( auto p : cloneMap ) {
