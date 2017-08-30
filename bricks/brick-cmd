@@ -19,6 +19,7 @@
 #pragma once
 
 #include <vector>
+#include <array>
 #include <deque>
 #include <stack>
 #include <unordered_map>
@@ -697,26 +698,46 @@ auto make_option_set( std::shared_ptr< V > v, Args... args )
     return OptionSet< V, T >( v, args... );
 }
 
+template< typename T >
+auto names( types::Preferred ) -> decltype ( T::names() )
+{
+    return T::names();
+}
+
+/* not foolproof, but good enough? will misfire on types nested inside
+ * templates */
+template < typename T >
+std::array< std::string, 1 > names( types::NotPreferred )
+{
+    auto s = brick::unittest::_typeid< T >();
+    size_t p = s.find( "<" );
+    if ( p != std::string::npos )
+        s = std::string( s, 0, p );
+    p = s.rfind( "::" );
+    if ( p != std::string::npos )
+        s = std::string( s, p + 2, std::string::npos );
+    for ( size_t i = 0; i < s.size(); ++i )
+        s[i] = std::tolower( s[i] );
+    return { { s } };
+}
+
 template< typename Validator, typename T >
 struct Command : OptionSet< Validator, T >
 {
     std::vector< std::string > T::*_extra;
     std::string _description;
 
-    /* not foolproof, but good enough? will misfire on types nested inside
-     * templates */
     std::string name()
     {
-        auto s = brick::unittest::_typeid< T >();
-        size_t p = s.find( "<" );
-        if ( p != std::string::npos )
-            s = std::string( s, 0, p );
-        p = s.rfind( "::" );
-        if ( p != std::string::npos )
-            s = std::string( s, p + 2, std::string::npos );
-        for ( size_t i = 0; i < s.size(); ++i )
-            s[i] = std::tolower( s[i] );
-        return s;
+        return names< T >( types::Preferred() )[ 0 ];
+    }
+
+    bool matches( std::string s )
+    {
+        for( std::string name : names< T >( types::Preferred() ) )
+            if( name == s )
+                return true;
+        return false;
     }
 
     virtual std::string describe_header( int setw = 0 )
@@ -797,7 +818,7 @@ struct Parser
         {
             return b;
         }
-        if ( rec.car.name() == *b )
+        if ( rec.car.matches( *b ) )
         {
             typename Rec::Type t;
             auto x = rec.car.parse( t, b + 1, e );
