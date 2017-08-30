@@ -5,4 +5,4 @@ grep '^>' sim.script | cut -c3- | divine sim --skip-init --batch "$@" 2>&1 | tee
 echo; echo = expected ==========
 cat sim.script
 echo; echo = matched ===========
-sed -e "s,^>,+ ^>," sim.script | check sim
+sed -e '/^>/s,\$,\\$,g' -e "s,^>,+ ^>," sim.script | check sim
