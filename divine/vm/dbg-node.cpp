@@ -411,7 +411,8 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
     auto hloc = eval.ptr2h( PointerV( _address ) );
     int hoff = hloc.offset();
 
-    if ( _type && _di_type && _type->isPointerTy() )
+    if ( _type && _di_type && _type->isPointerTy() &&
+         boundcheck( PointerV( hloc + _offset ), PointerBytes ) )
     {
         PointerV addr;
         _ctx.heap().read( hloc + _offset, addr );
@@ -426,7 +427,7 @@ void Node< Prog, Heap >::related( YieldDN yield, bool anon )
         yield( "deref", rel );
     }
 
-    if ( _kind == DNKind::Frame )
+    if ( _kind == DNKind::Frame && boundcheck( PointerV( _address ), 2 * PointerBytes ) )
     {
         PointerV fr( _address );
         _ctx.heap().skip( fr, PointerBytes );
