@@ -337,15 +337,25 @@ struct XTerm
         if ( grantpt( _d.masterfd ) )
             throw std::system_error( errno, std::system_category(),
                                      "Could not grantpt()." );
+        if ( unlockpt( _d.masterfd ) )
+            throw std::system_error( errno, std::system_category(),
+                                     "Could not unlockpt()." );
 
-        _d.slavefd = ::open( ptsname( _d.masterfd ), O_RDWR );
+        const char *slavepts = ptsname( _d.masterfd );
+        if ( !slavepts )
+            throw std::system_error( errno, std::system_category(),
+                                     "Could not ptsname()." );
+        _d.slavefd = ::open( slavepts, O_RDWR );
+        if ( _d.slavefd < 0 )
+            throw std::system_error( errno, std::system_category(),
+                                     "Could not open slave PTS." );
 
         std::string slave = std::string( "-S" ) +
-                            ptsname( _d.masterfd ) + "/" + brick::string::fmt( _d.slavefd );
+                            slavepts + "/" + brick::string::fmt( _d.slavefd );
         const char *argv[] = { "xterm", slave.c_str(), nullptr };
 
         posix_spawnp( &_d.pid, "xterm", nullptr, nullptr,
-                      const_cast< char ** >( argv ), nullptr );
+                      const_cast< char ** >( argv ), environ );
 
         char buf[8];
         ::read( _d.masterfd, buf, 8 ); /* handshake */
