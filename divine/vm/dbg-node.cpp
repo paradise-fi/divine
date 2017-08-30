@@ -365,7 +365,7 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
 }
 
 template< typename Prog, typename Heap >
-void Node< Prog, Heap >::source( std::ostream &out )
+void Node< Prog, Heap >::source( std::ostream &out, std::function< std::string( std::string ) > pp )
 {
     if ( _kind != DNKind::Frame )
         throw brick::except::Error( "cannot display source code, not a stack frame" );
@@ -374,7 +374,7 @@ void Node< Prog, Heap >::source( std::ostream &out )
     auto s = subprogram();
     if ( !s )
         throw brick::except::Error( "cannot display source code, no debugging information found" );
-    out << print::source( _ctx.debug(), s, _ctx.program(), pc() );
+    out << print::source( _ctx.debug(), s, _ctx.program(), pc(), pp );
 }
 
 template< typename Prog, typename Heap >

@@ -290,8 +290,9 @@ static std::string demangle( std::string mangled )
     return ret;
 }
 
-template< typename Program >
-static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &program, CodePointer pc )
+template< typename Program, typename PP >
+static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &program, CodePointer pc,
+                           PP postproc )
 {
     std::stringstream out;
 
@@ -321,16 +322,29 @@ static std::string source( dbg::Info &dbg, llvm::DISubprogram *di, Program &prog
         endline = std::max( endline, dl->getLine() );
     }
 
+    unsigned startline = lineno;
+    std::stringstream raw;
+
     /* print it */
+    while ( line != split.end() && lineno++ <= endline )
+        raw << *line++ << std::endl;
+
+    if ( line != split.end() )
+    {
+        std::regex endbrace( "^[ \t]*}", std::regex::extended );
+        if ( std::regex_search( line->str(), endbrace ) )
+            ++lineno, raw << *line++ << std::endl;
+    }
+
+    std::string txt = postproc( raw.str() );
+    line = split.begin( txt );
+    endline = lineno;
+    lineno = startline;
+
     while ( line != split.end() && lineno <= endline )
     {
         out << (lineno == active ? ">>" : "  ");
-            out << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
-    }
-    if ( line != split.end() ) {
-        std::regex endbrace( "^[ \t]*}", std::regex::extended );
-        if ( std::regex_search( line->str(), endbrace ) )
-            out << "  " << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
+        out << std::setw( 5 ) << lineno++ << " " << *line++ << std::endl;
     }
 
     return out.str();

@@ -172,7 +172,7 @@ struct Node
     int bitoffset();
 
     void bitcode( std::ostream &out );
-    void source( std::ostream &out );
+    void source( std::ostream &out, std::function< std::string( std::string ) > pp );
     void format( std::ostream &out, int depth = 1, int derefs = 0, int indent = 0 );
 
     void components( YieldDN yield );
