@@ -148,12 +148,30 @@ Accesses abstractStores( const Roots & roots ) {
     return accs;
 }
 
+size_t GEPIdx( llvm::GetElementPtrInst * gep, size_t idx ) {
+    return llvm::cast< llvm::ConstantInt >( ( gep->idx_begin() + idx )->get() )->getZExtValue();
+}
+
+ValueField< llvm::Value * > createValueField( llvm::GetElementPtrInst * gep ) {
+    Indices inds;
+    llvm::Value * curr = gep;
+    while( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( curr ) ) {
+        assert( gep->getNumIndices() == 2 );
+        inds.push_back( GEPIdx( gep, 1 ) );
+        curr = gep->getPointerOperand();
+    }
+    std::reverse( inds.begin(), inds.end() );
+    return { curr, inds };
+}
+
 // Propagate abstract value through stores to allocas.
 // Whenever some obstract value is stored to some alloca we mark this alloca
 // as abstract origin, same with GEP instruction.
-Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
+Set< AbstractValue > Walker::origins( const FunctionNodePtr & processed ) {
     Set< AbstractValue > reached = { processed->origins };
     Set< AbstractValue > abstract;
+
+    auto loads = llvmFilter< llvm::LoadInst >( processed->function );
 
     do {
         abstract = reached;
@@ -162,8 +180,17 @@ Set< AbstractValue > abstractOrigins( const FunctionNodePtr & processed ) {
             auto po = s.first->getPointerOperand();
             if ( auto a = llvm::dyn_cast< llvm::AllocaInst >( po ) )
                 reached.emplace( a, s.second );
-            if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( po ) )
+            if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( po ) ) {
+                fields.insert( createValueField( gep ), s.second );
                 reached.emplace( gep, s.second );
+            }
+        }
+
+        for ( const auto & l : loads ) {
+            auto po = l->getPointerOperand();
+            if ( auto gep = llvm::dyn_cast< llvm::GetElementPtrInst >( po ) )
+                if  ( auto dom = fields.getDomain( createValueField( gep ) ) )
+                    reached.emplace( gep, dom.value() );
         }
     } while ( abstract != reached );
     return abstract;
@@ -328,8 +355,8 @@ std::vector< FunctionNodePtr > Walker::process( FunctionNodePtr & processed ) {
         preprocess( processed->function );
 
     do {
-        auto origins = abstractOrigins( processed );
-        processed->origins.insert( origins.begin(), origins.end() );
+        auto orgs = origins( processed );
+        processed->origins.insert( orgs.begin(), orgs.end() );
     } while ( propagateThroughCalls( processed ) );
 
     functions.push_back( processed );

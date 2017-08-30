@@ -54,6 +54,9 @@ private:
     // returns dependent functions
     std::vector< FunctionNodePtr > process( FunctionNodePtr & processed );
 
+    // returns set of origins for propagation of abstract values for processed function
+    Set< AbstractValue > origins( const FunctionNodePtr & processed );
+
     // returns true if propagation created new entry
     bool propagateThroughCalls( FunctionNodePtr & processed );
 

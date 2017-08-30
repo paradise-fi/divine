@@ -923,6 +923,31 @@ struct Abstraction {
         ASSERT( ! liftingPointer( *m ) );
     }
 
+    TEST( struct_multiple_accesses ) {
+        auto s = R"(struct S { int x; };
+
+                    int main() {
+                        __sym int x;
+                        S s;
+                        s.x = x;
+                        if ( s.x == 0 )
+                            return 0;
+                        else
+                            return 1;
+                    })";
+        auto m = test_abstraction( annotation + s );
+        auto main = m->getFunction( "main" );
+        auto geps = llvmFilter< llvm::GetElementPtrInst >( main );
+        auto alloca = m->getFunction( "lart.sym.alloca.i32" );
+        for ( const auto & g : geps ) {
+            auto bc = llvm::dyn_cast< llvm::BitCastInst >( *g->user_begin() );
+            ASSERT( bc );
+            ASSERT_EQ( bc->getDestTy(), alloca->getReturnType() );
+        }
+        ASSERT( ! containsUndefValue( *m ) );
+        ASSERT( ! liftingPointer( *m ) );
+    }
+
     TEST( struct_complex ) {
         auto s = R"(struct S { int x, y, z; };
 
