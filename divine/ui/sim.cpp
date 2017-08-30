@@ -197,7 +197,7 @@ struct BackTrace : WithVar, Teflon
 struct Setup : Teflon
 {
     bool debug_kernel;
-    bool clear_sticky;
+    bool clear_sticky, pygmentize = false;
     std::string xterm;
     std::vector< std::string > sticky_commands;
     Setup() : debug_kernel( false ), clear_sticky( false ) {}
@@ -239,7 +239,7 @@ struct Interpreter
 
     std::pair< int, int > _sticky_tid;
     std::mt19937 _rand;
-    bool _sched_random, _debug_kernel;
+    bool _sched_random, _debug_kernel, _pygmentize = false;
 
     std::vector< cmd::Tokens > _sticky_commands;
 
@@ -307,6 +307,7 @@ struct Interpreter
             .option( "[--debug-kernel]", &command::Setup::debug_kernel, "enable kernel debugging"s )
             .option( "[--xterm {string}]", &command::Setup::xterm, "setup & name an X terminal"s )
             .option( "[--clear-sticky]", &command::Setup::clear_sticky, "remove sticky commands"s )
+            .option( "[--pygmentize]", &command::Setup::pygmentize, "pygmentize source listings"s )
             .option( "[--sticky {string}]", &command::Setup::sticky_commands,
                      "run given commands after each step"s );
 
@@ -1005,11 +1006,31 @@ struct Interpreter
     }
 
     void go( command::BitCode bc ) { get( bc.var ).bitcode( out() ); out() << std::flush; }
-    void go( command::Source src ) { get( src.var ).source( out() ); out() << std::flush; }
+    void go( command::Source src )
+    {
+        get( src.var ).source( out(), [this]( std::string txt )
+                               {
+                                   if ( !_pygmentize )
+                                       return txt;
+                                   auto ansi = brick::proc::spawnAndWait(
+                                       brick::proc::StdinString( txt ) |
+                                       brick::proc::CaptureStdout |
+                                       brick::proc::CaptureStderr,
+                                       { "pygmentize", "-l", "c++", "-f", "terminal256" } );
+                                   if ( ansi.ok() )
+                                       return ansi.out();
+                                   else
+                                       return txt;
+                               } );
+        out() << std::flush;
+    }
+
     void go( command::Setup set )
     {
         OneLineTokenizer tok;
         _debug_kernel = set.debug_kernel;
+        if ( set.pygmentize )
+            _pygmentize = true;
         if ( set.clear_sticky )
             _sticky_commands.clear();
         if ( !set.xterm.empty() )
