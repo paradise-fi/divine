@@ -14,6 +14,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Analysis/CaptureTracking.h>
 DIVINE_UNRELAX_WARNINGS
+#include <brick-llvm>
 #include <brick-string>
 #include <unordered_set>
 #include <string>
@@ -195,8 +196,6 @@ struct Substitute {
         return x;
     }
 
-    virtual ~Substitute() {}
-
     static PassMeta meta() {
         return passMetaC( "Substitute",
                 "Substitute loads and stores (and other memory manipulations) with appropriate "
@@ -341,15 +340,17 @@ struct Substitute {
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
 
+        util::Map< llvm::Function *, llvm::Function * > cloneMap, debugCloneMap;
+
         auto inteface = { _store, _load, _fence, _cas, _cleanup, _resize, flusher, fsize, ford };
         for ( auto i : inteface ) {
-            _cloneMap.emplace( i, i );
+            cloneMap.emplace( i, i );
         }
 
         auto isvm = []( llvm::Function &fn ) { return fn.getName().startswith( "__vm_" ); };
 
         for ( auto i : inteface ) {
-            cloneCalleesRecursively( i, _cloneMap,
+            cloneCalleesRecursively( i, cloneMap,
                  [&]( auto &fn ) { return !isvm( fn ); },
                  []( auto & ) { return nullptr; } );
         }
@@ -359,12 +360,34 @@ struct Substitute {
                          P{ _memcpy, &_scmemcpy },
                          P{ _memset, &_scmemset } } )
         {
-            *p.second = cloneFunctionRecursively( p.first, _cloneMap,
+            *p.second = cloneFunctionRecursively( p.first, cloneMap,
                              [&]( auto &fn ) { return !isvm( fn ); },
                              []( auto & ) { return nullptr; } );
         }
 
-        for ( auto p : _cloneMap ) {
+        /* Make sure divine.debugfn (DbgCall) functions do not use weakmem --
+         * these functions run only in debug mode (trace, sim, draw), and must
+         * not call __vm_choose. To ensure they see consistent memory, we
+         * insert fence at their start, this is OK, as any changes to memory
+         * performed by them are not persisted.
+         */
+        brick::llvm::enumerateFunctionsForAnno( "divine.debugfn", m, [&]( llvm::Function *fn )
+            {
+                // NOTE: clone map must not be shared, as we can clone
+                // functions behind function pointers here
+                cloneCalleesRecursively( fn, debugCloneMap,
+                                         [&]( auto &fn ) { return !isvm( fn ); },
+                                         []( auto & ) { return nullptr; },
+                                         true );
+                _bypass.emplace( fn );
+                llvm::IRBuilder<> irb( fn->begin()->getFirstInsertionPt() );
+                irb.CreateFence( llvm::AtomicOrdering::SequentiallyConsistent );
+            } );
+
+        for ( auto p : cloneMap ) {
+            _bypass.emplace( p.second );
+        }
+        for ( auto p : debugCloneMap ) {
             _bypass.emplace( p.second );
         }
 
@@ -754,7 +777,6 @@ struct Substitute {
     OrderConfig _config;
     int _bufferSize;
     LLVMFunctionSet _bypass;
-    util::Map< llvm::Function *, llvm::Function * > _cloneMap;
     llvm::Function *_store = nullptr, *_load = nullptr, *_fence = nullptr, *_cas = nullptr;
     llvm::Function *_memmove = nullptr, *_memcpy = nullptr, *_memset = nullptr;
     llvm::Function *_scmemmove = nullptr, *_scmemcpy = nullptr, *_scmemset = nullptr;

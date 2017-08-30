@@ -841,7 +841,8 @@ template< typename FunMap,
           typename = std::result_of_t< OnUnknown( llvm::CallSite & ) > >
 llvm::Function *cloneFunctionRecursively( llvm::Function *fn, FunMap &map,
                                         Filter filter = detail::cloneAll,
-                                        OnUnknown onUnknown = detail::throwOnUnknown );
+                                        OnUnknown onUnknown = detail::throwOnUnknown,
+                                        bool cloneFunctionPointers = false );
 
 // map can be initialized to fnptr -> fnptr to skip cloning *fnptr
 template< typename FunMap,
@@ -852,20 +853,35 @@ template< typename FunMap,
           typename = std::result_of_t< OnUnknown( llvm::CallSite & ) > >
 void cloneCalleesRecursively( llvm::Function *fn, FunMap &map,
                               Filter filter = detail::cloneAll,
-                              OnUnknown onUnknown = detail::throwOnUnknown )
+                              OnUnknown onUnknown = detail::throwOnUnknown,
+                              bool cloneFunctionPointers = false )
 {
     for ( auto &bb : *fn ) {
         for ( auto &ins : bb ) {
             if ( llvm::isa< llvm::IntrinsicInst >( ins ) )
                 continue;
             llvm::CallSite cs( &ins );
-            if ( !cs )
+            if ( cs ) {
+                auto *callee = cs.getCalledFunction();
+                callee = callee ? callee : onUnknown( cs );
+                if ( !callee )
+                    continue; // ignored by onUnknown
+                cs.setCalledFunction( cloneFunctionRecursively( callee, map, filter, onUnknown, cloneFunctionPointers ) );
+            }
+
+            if ( !cloneFunctionPointers )
                 continue;
-            auto *callee = cs.getCalledFunction();
-            callee = callee ? callee : onUnknown( cs );
-            if ( !callee )
-                continue; // ignored by onUnknown
-            cs.setCalledFunction( cloneFunctionRecursively( callee, map, filter, onUnknown ) );
+            for ( int i = 0, n = ins.getNumOperands(); i < n; ++i ) {
+                if ( ins.getOpcode() == llvm::Instruction::Call && i == n - 1 )
+                    continue;
+                if ( ins.getOpcode() == llvm::Instruction::Invoke && i == n - 3 )
+                    continue;
+                auto *v = ins.getOperand( i );
+                if ( auto *fptr = llvm::dyn_cast< llvm::Function >( v ) ) {
+                    ins.setOperand( i,
+                            cloneFunctionRecursively( fptr, map, filter, onUnknown, cloneFunctionPointers ) );
+                }
+            }
         }
     }
 }
@@ -873,7 +889,8 @@ void cloneCalleesRecursively( llvm::Function *fn, FunMap &map,
 // map can be initialized to fnptr -> fnptr to skip cloning *fnptr
 template< typename FunMap, typename Filter, typename OnUnknown, typename, typename, typename >
 llvm::Function *cloneFunctionRecursively( llvm::Function *fn, FunMap &map,
-                                          Filter filter, OnUnknown onUnknown )
+                                          Filter filter, OnUnknown onUnknown,
+                                          bool cloneFunctionPointers )
 {
     if ( !filter( *fn ) )
         return fn;
@@ -883,7 +900,7 @@ llvm::Function *cloneFunctionRecursively( llvm::Function *fn, FunMap &map,
     auto *clone = cloneFunction( fn );
     map.emplace( fn, clone );
     map.emplace( clone, clone );
-    cloneCalleesRecursively( clone, map, filter, onUnknown );
+    cloneCalleesRecursively( clone, map, filter, onUnknown, cloneFunctionPointers );
     return clone;
 }
 
