@@ -206,7 +206,11 @@ struct Setup : Teflon
 struct Down : CastIron {};
 struct Up : CastIron {};
 
-struct Exit : Teflon {};
+struct Exit : Teflon
+{
+    static std::array< std::string, 2 > names() { return { { "exit"s, "quit"s } }; };
+};
+
 struct Help : Teflon { std::string _cmd; };
 
 }
