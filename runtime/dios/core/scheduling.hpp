@@ -44,14 +44,11 @@ struct TrampolineFrame : _VM_Frame {
 };
 
 template < class T >
-struct SortedStorage {
+struct SortedStorage
+{
     using Tid = decltype( std::declval< T >().getId() );
-    SortedStorage() : _storage( nullptr ) {}
+    SortedStorage() {}
     SortedStorage( const SortedStorage & ) = delete;
-    ~SortedStorage() {
-        if ( _storage )
-            __vm_obj_free( _storage );
-    }
 
     T *find( Tid id ) noexcept {
         for ( auto t : *this )
@@ -102,32 +99,13 @@ struct SortedStorage {
         sort();
     }
 
-    void resize( int n ) {
-        if ( n == 0 ) {
-            if ( _storage )
-                __vm_obj_free( _storage );
-            _storage = nullptr;
-        }
-        else if ( _storage )
-            __vm_obj_resize( _storage, n * sizeof( T * ) );
-        else
-            _storage = static_cast< T **>( __vm_obj_make( n * sizeof( T * ) ) );
-    }
-
+    void resize( int n ) { __vm_obj_resize( this, std::max( 1,
+                                    static_cast< int > (sizeof( *this ) + n * sizeof( T * ) ) ) ); }
     T **begin() noexcept { return _storage; }
-
     T **end() noexcept { return _storage + size(); }
-
-    int size() const noexcept {
-        return _storage ? __vm_obj_size( _storage ) / sizeof( T * ) : 0;
-    }
-    bool empty() const noexcept {
-        return !_storage || size() == 0;
-    };
-
-    T *operator[]( int i ) const noexcept {
-        return _storage[ i ];
-    };
+    int size() const noexcept { return ( __vm_obj_size( this ) - sizeof( *this ) ) / sizeof( T * ); }
+    bool empty() const noexcept { return size() == 0; };
+    T *operator[]( int i ) const noexcept { return _storage[ i ]; };
 private:
     void sort() {
         if ( empty() )
@@ -137,7 +115,7 @@ private:
         });
     }
 
-    T **_storage;
+    T *_storage[];
 };
 
 template < typename Process >
@@ -226,17 +204,6 @@ extern const sighandler_t defhandlers[ 32 ];
 template < typename Next >
 struct Scheduler : public Next
 {
-    Scheduler() :
-        debug( new_object< Debug >() ),
-        sighandlers( nullptr )
-    {
-        debug = abstract::weaken( debug );
-    }
-
-    ~Scheduler() {
-        delete_object( debug );
-    }
-
     struct Process : Next::Process
     {
         uint16_t pid;
@@ -244,6 +211,21 @@ struct Scheduler : public Next
     };
 
     using Thread = __dios::Thread< Process >;
+    using Threads = SortedStorage< Thread >;
+
+    Scheduler() :
+        threads( *new_object< Threads >() ),
+        debug( new_object< Debug >() ),
+        sighandlers( nullptr )
+    {
+        debug = abstract::weaken( debug );
+    }
+
+    ~Scheduler()
+    {
+        delete_object( debug );
+        delete_object( &threads );
+    }
 
     template< typename Setup >
     void setup( Setup s ) {
@@ -529,7 +511,7 @@ struct Scheduler : public Next
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
     }
 
-    SortedStorage< Thread > threads;
+    Threads &threads;
     Debug *debug;
     Map< pid_t, Process* > zombies;
     sighandler_t *sighandlers;
