@@ -217,13 +217,13 @@ void WithBC::report_options()
     }
 
     if ( _symbolic )
-        _log->info( "symbolic: 1" );
+        _log->info( "symbolic: 1\n" );
     if ( _sequential )
-        _log->info( "sequential: 1", true );
+        _log->info( "sequential: 1\n", true );
     if ( _disableStaticReduction )
-        _log->info( "disable static reduction: 1", true );
+        _log->info( "disable static reduction: 1\n", true );
     if ( !_relaxed.empty() )
-        _log->info( "relaxed memory: " + _relaxed );
+        _log->info( "relaxed memory: " + _relaxed + "\n" );
 }
 
 void WithBC::setup()
