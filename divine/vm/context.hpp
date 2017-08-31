@@ -283,6 +283,7 @@ struct Context
         heap().write_shift( frameptr, PointerV( pc ) );
         heap().write_shift( frameptr, parent );
         push( frameptr, args... );
+        entered( pc );
     }
 
     bool set_interrupted( bool i )
