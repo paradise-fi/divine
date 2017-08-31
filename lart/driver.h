@@ -70,7 +70,9 @@ struct Driver {
     }
 
     template< typename... Passes >
-    void setup( Passes&&... passes ) {
+    auto setup( Passes&&... passes )
+        -> std::void_t< decltype( passes.run( std::declval< llvm::Module & >() ) )... >
+    {
         ( ps.push_back( std::move( passes ) ),... );
     }
 
