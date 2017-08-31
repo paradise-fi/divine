@@ -336,6 +336,7 @@ struct Substitute {
         auto flusher = get( "__lart_weakmem_flusher_main" );
         auto fsize = get( "__lart_weakmem_buffer_size" );
         auto ford = get( "__lart_weakmem_min_ordering" );
+        auto dump = get( "__lart_weakmem_dump" );
         _mask = get( "__vmutil_mask" );
 
         _moTy = _fence->getFunctionType()->getParamType( 0 );
@@ -380,8 +381,10 @@ struct Substitute {
                                          []( auto & ) { return nullptr; },
                                          true );
                 _bypass.emplace( fn );
-                llvm::IRBuilder<> irb( fn->begin()->getFirstInsertionPt() );
-                irb.CreateCall( _fence, { irb.getInt32( uint32_t( MemoryOrder::SeqCst ) ) } );
+                if ( fn != dump ) {
+                    llvm::IRBuilder<> irb( fn->begin()->getFirstInsertionPt() );
+                    irb.CreateCall( _fence, { irb.getInt32( uint32_t( MemoryOrder::SeqCst ) ) } );
+                }
             } );
 
         for ( auto p : cloneMap ) {
