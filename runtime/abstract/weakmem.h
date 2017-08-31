@@ -50,6 +50,8 @@ void __lart_weakmem_cleanup( int32_t cnt, ... ) _WM_INTERFACE;
 void __lart_weakmem_resize( char *addr, uint32_t newsize ) _WM_INTERFACE;
 
 void __lart_weakmem_flusher_main( void * );
+
+void __lart_weakmem_dump() _WM_NOTHROW;
 #endif
 
 #ifdef __cplusplus

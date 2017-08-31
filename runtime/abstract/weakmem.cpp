@@ -91,6 +91,33 @@ ItOut uninitialized_move( ItIn first, ItIn last, ItOut out ) {
     return std::uninitialized_copy( std::make_move_iterator( first ), std::make_move_iterator( last ), out );
 }
 
+static const char *ordstr( MemoryOrder mo ) {
+    if ( subseteq( MemoryOrder::SeqCst, mo ) )
+        return "SC";
+    if ( subseteq( MemoryOrder::AcqRel, mo ) )
+        return "AR";
+    if ( subseteq( MemoryOrder::Acquire, mo ) )
+        return "Acq";
+    if ( subseteq( MemoryOrder::Release, mo ) )
+        return "Rel";
+    if ( subseteq( MemoryOrder::Monotonic, mo ) )
+        return "Mon";
+    if ( subseteq( MemoryOrder::Unordered, mo ) )
+        return "U";
+    return "N";
+}
+
+uint64_t load( char *addr, uint32_t bitwidth ) {
+    switch ( bitwidth ) {
+        case 1: case 8: return *reinterpret_cast< uint8_t * >( addr );
+        case 16: return *reinterpret_cast< uint16_t * >( addr );
+        case 32: return *reinterpret_cast< uint32_t * >( addr );
+        case 64: return *reinterpret_cast< uint64_t * >( addr );
+        default: __dios_fault( _VM_F_Control, "Unhandled case" );
+    }
+    return 0;
+}
+
 struct BufferLine {
 
     BufferLine() = default;
@@ -139,6 +166,16 @@ struct BufferLine {
             MemoryOrder order:8;
         };
     };
+
+    void dump() const {
+        char buffer[] = "[0xdeadbeafdeadbeaf ← 0xdeadbeafdeadbeaf; 00 bit; WA SC]";
+        snprintf( buffer, sizeof( buffer ) - 1, "[0x%llx ← 0x%llx; %d bit; %c%c%s]",
+                  uint64_t( addr ), value, bitwidth,
+                  subseteq( MemoryOrder::WeakCAS, order ) ? 'W' : ' ',
+                  subseteq( MemoryOrder::AtomicOp, order ) ? 'A' : ' ',
+                  ordstr( order ) );
+        __vm_trace( _VM_T_Text, buffer );
+    }
 };
 
 struct Buffer : Array< BufferLine > {
@@ -224,6 +261,11 @@ struct Buffer : Array< BufferLine > {
         while ( size() > 0 && oldest().isFence() )
             erase( 0 );
     }
+
+    void dump() const {
+        for ( auto &e : *this )
+            e.dump();
+    }
 };
 
 struct Buffers : ThreadMap< Buffer > {
@@ -252,18 +294,20 @@ struct Buffers : ThreadMap< Buffer > {
 
     Buffer *getIfExists() { return getIfExists( __dios_get_thread_handle() ); }
     Buffer &get() { return get( __dios_get_thread_handle() ); }
-};
 
-uint64_t load( char *addr, uint32_t bitwidth ) {
-    switch ( bitwidth ) {
-        case 1: case 8: return *reinterpret_cast< uint8_t * >( addr );
-        case 16: return *reinterpret_cast< uint16_t * >( addr );
-        case 32: return *reinterpret_cast< uint32_t * >( addr );
-        case 64: return *reinterpret_cast< uint64_t * >( addr );
-        default: __dios_fault( _VM_F_Control, "Unhandled case" );
+    void dump() {
+        for ( auto &p : *this ) {
+            if ( !p.second.empty() ) {
+                char buffer[] = "thread 0xdeadbeafdeadbeaf*: ";
+                snprintf( buffer, sizeof( buffer ) - 1, "thread: %llx%s ",
+                                  uint64_t( p.first ),
+                                  p.first == __dios_get_thread_handle() ? "*:" : ": " );
+                __vm_trace( _VM_T_Text, buffer );
+                p.second.dump();
+            }
+        }
     }
-    return 0;
-}
+};
 
 }
 
@@ -284,6 +328,10 @@ static bool direct( void * ) { return false; }
  * -- they will be replaced by weakmem transformation */
 __attribute__((__weak__)) int __lart_weakmem_buffer_size() { return 2; }
 __attribute__((__weak__)) int __lart_weakmem_min_ordering() { return 0; }
+
+void __lart_weakmem_dump() noexcept __attribute__((__annotate__("divine.debugfn"),__noinline__,__weak__)) {
+    __lart_weakmem.storeBuffers.dump();
+}
 
 using namespace lart::weakmem;
 
