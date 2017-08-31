@@ -7,6 +7,8 @@
 #include <dios/lib/map.hpp>
 #include <sys/interrupt.h>
 #include <sys/lart.h>
+#include <dios/kernel.hpp> // get_debug
+#include <abstract/common.h> // weaken
 
 #define forceinline __attribute__((always_inline))
 
@@ -296,11 +298,16 @@ struct Buffers : ThreadMap< Buffer > {
     Buffer &get() { return get( __dios_get_thread_handle() ); }
 
     void dump() {
+        auto &hids = __dios::get_debug().hids;
         for ( auto &p : *this ) {
             if ( !p.second.empty() ) {
+                auto tid = abstract::weaken( p.first );
+                auto nice_id_it = hids.find( tid );
+                int nice_id = nice_id_it == hids.end() ? -1 : nice_id_it->second;
+
                 char buffer[] = "thread 0xdeadbeafdeadbeaf*: ";
-                snprintf( buffer, sizeof( buffer ) - 1, "thread: %llx%s ",
-                                  uint64_t( p.first ),
+                snprintf( buffer, sizeof( buffer ) - 1, "thread: %d%s ",
+                                  nice_id,
                                   p.first == __dios_get_thread_handle() ? "*:" : ": " );
                 __vm_trace( _VM_T_Text, buffer );
                 p.second.dump();
