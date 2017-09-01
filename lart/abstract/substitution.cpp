@@ -120,6 +120,13 @@ void Substitution::run( llvm::Module & m ) {
     };
 
     for ( auto & fn : funToValMap ) {
+        auto btcsts = llvmFilter< llvm::BitCastInst >( fn.first );
+        for ( auto bc : btcsts )
+            if ( isAGEPCast( bc, data.tmap ) )
+                fn.second.push_back( bc );
+    }
+
+    for ( auto & fn : funToValMap ) {
         if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
             continue;
         for ( auto & arg : fn.first->args() )

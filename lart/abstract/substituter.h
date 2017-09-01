@@ -19,6 +19,14 @@ DIVINE_UNRELAX_WARNINGS
 namespace lart {
 namespace abstract {
 
+template< typename TMap >
+bool isAGEPCast( llvm::CastInst * bc, TMap & tmap ) {
+    return isAbstract( bc->getDestTy(), tmap ) &&
+           !isAbstract( bc->getSrcTy(), tmap ) &&
+           llvm::isa< llvm::GetElementPtrInst >( bc->getOperand( 0 ) );
+}
+
+
 template< typename TMap, typename Fns >
 struct Substituter {
     using IRB = llvm::IRBuilder<>;
@@ -147,17 +155,18 @@ private:
     }
 
     void doCast( llvm::CastInst * cast ) {
-        assert( llvm::isa< llvm::BitCastInst >( cast ) &&
-            "ERR: Only bitcast is supported for pointer cast instructions." );
-
         IRB irb( cast );
         auto destTy = process( cast->getDestTy() );
-        auto val = vmap[ cast->getOperand( 0 ) ];
-        assert( val && "ERR: Trying to bitcast value, that is not abstracted." );
-        if ( val->getType() != destTy )
+        auto op = cast->getOperand( 0 );
+        auto val = vmap.count( op ) ? vmap[ op ] : op;
+        if ( val->getType() != destTy ) {
+            if ( isAGEPCast( cast, tmap ) )
+                assert( val->getType()->getPrimitiveSizeInBits() ==
+                        destTy->getPrimitiveSizeInBits() );
             vmap[ cast ] = irb.CreateBitCast( val, destTy );
-        else
+        } else {
             vmap[ cast ] = val;
+        }
     }
 
     void doRet( llvm::ReturnInst * ret ) {
