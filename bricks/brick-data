@@ -551,8 +551,10 @@ public:
     using const_reference = const value_type&;
 
     auto begin() { return _container.begin(); }
+    auto begin() const { return _container.cbegin(); }
     auto cbegin() const { return _container.cbegin(); }
     auto end() { return _container.end(); }
+    auto end() const { return _container.cend(); }
     auto cend() const { return _container.cend(); }
 
     auto empty() const { return _container.empty(); }
