@@ -203,11 +203,11 @@ int main( int argc, char **argv ) {
         }
 
         for ( auto srcFile : po.files ) {
-            if ( srcFile.is< cc::File >() ) {
+            if ( std::holds_alternative< cc::File >( srcFile ) ) {
                 std::string ofn = po.outputFile != "" ? po.outputFile
-                    : brick::fs::dropExtension( srcFile.get< cc::File >().name ) + ".o";
+                    : brick::fs::dropExtension( std::get< cc::File >( srcFile ).name ) + ".o";
 
-                auto mod = clang.compileModule( srcFile.get< cc::File >().name, po.opts );
+                auto mod = clang.compileModule( std::get< cc::File >( srcFile ).name, po.opts );
 
                 emitObjFile( *mod, ofn );
             }
