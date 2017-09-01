@@ -208,20 +208,6 @@ struct CLI : Interface
             .option( "[--distance {int}|-d {int}]", &Draw::_distance, "maximum node distance"s )
             .option( "[--render {string}]", &Draw::_render, "the command to process the dot source"s );
 
-        auto dccopts = cmd::make_option_set< DivineCc >( v )
-            .option( "[-o {string}]", &DivineCc::_output, "output file"s )
-            .option( "[-c]", &DivineCc::_dontLink,
-                     "compile or assemble the source files, but do not link."s )
-            .option( "[--divinert-path {paths}]", &DivineCc::_libPaths,
-                     "paths to DIVINE runtime libraries (':' separated)"s )
-            .option( "[{string}]", &DivineCc::_flags,
-                     "any clang options or input files (C, C++, object, bitcode)"s );
-        auto dldopts = cmd::make_option_set< DivineLd >( v )
-            .option( "[-o {string}]", &DivineLd::_output, "output file"s )
-            .option( "[-r|-i|--relocable]", &DivineLd::_incremental,
-                     "generate incremental/relocable object file"s )
-            .option( "[{string}]", &DivineLd::_flags, "any ld options or input files"s );
-
         auto runopts = cmd::make_option_set< Run >( v )
             .option( "[--trace]", &Run::_trace, "trace instructions"s);
 
@@ -238,8 +224,6 @@ struct CLI : Interface
             .command< Draw >( drawopts, bcopts )
             .command< Info >( bcopts )
             .command< Cc >( ccopts )
-            .command< DivineCc >( dccopts )
-            .command< DivineLd >( dldopts )
             .command< Version >()
             .command< Help >( helpopts );
         return parser;
