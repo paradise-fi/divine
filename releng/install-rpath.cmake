@@ -173,9 +173,7 @@ list( APPEND Fs bin/clang-3.7 )
 list( APPEND Fs bin/clang-format )
 list( APPEND Fs bin/clang-check )
 
-set( UNSET_RPATH                "$ENV{TOOLCHAIN_RPATH}/libunwind/src" )
-set( UNSET_RPATH "${UNSET_RPATH}:$ENV{TOOLCHAIN_RPATH}/libcxxabi/src" )
-set( UNSET_RPATH "${UNSET_RPATH}:$ENV{TOOLCHAIN_RPATH}/libcxx/lib" )
+set( UNSET_RPATH "$ENV{BUILD_RPATH}" )
 
 set( P "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}" )
 

@@ -30,6 +30,7 @@ STLIB = $(TOOLDIR)/stlib
 
 LDFLAGS_ = -L$(LIBUNWIND_LDIR) -Wl,-rpath,$(LIBUNWIND_LDIR) \
            -L$(CXX_LDIR) -Wl,-rpath,$(CXX_LDIR)
+BUILD_RPATH = $(LIBUNWIND_LDIR):$(CXX_LDIR)
 
 STATIC_LDFLAGS = -L$(STLIB)
 
@@ -76,7 +77,7 @@ divbench:
 
 GETCONFDEPS = CONFDEP1=`ls _darcs/hashed_inventory 2>/dev/null` \
               CONFDEP2=`ls _darcs/patches/pending 2> /dev/null`
-SETENV = env TOOLCHAIN_RPATH=$(RTBIN) TESTHOOK="$(TESTHOOK)"
+SETENV = env BUILD_RPATH=$(BUILD_RPATH) TESTHOOK="$(TESTHOOK)"
 
 ${FLAVOURS:%=$(OBJ)%/cmake.stamp}: Makefile CMakeLists.txt $(CONFDEP1) $(CONFDEP2) $(TOOLSTAMP)
 	chmod +x test/divine # darcs does not remember +x on files
