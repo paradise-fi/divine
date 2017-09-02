@@ -476,6 +476,18 @@ struct SmallVector {
         }
     }
 
+    iterator erase( iterator i ) {
+        std::move( std::next( i ), end(), i );
+        pop_back();
+        return i; // pop_back invalidates only end()
+    }
+
+    iterator erase( const_iterator i ) {
+        // const_cast is safe as the iterator has to point to this vector for
+        // the call to erase to be valid (and this is non-const)
+        return erase( const_cast< iterator >( i ) );
+    }
+
   private:
 
     struct Range {
@@ -1291,6 +1303,22 @@ struct TestSmallVector {
         ASSERT_NEQ( py, &y[ 0 ] );
         py = &y[ 0 ];
         ASSERT_EQ( pz, py );
+    }
+
+    TEST( erase ) {
+        SmallVector< int, 4 > x{ 1, 2, 3, 4 };
+        auto i = x.erase( x.begin() + 2 );
+        ASSERT_EQ( *i, 4 );
+        ASSERT_EQ( i, std::prev( x.end() ) );
+        ASSERT_EQ( x.size(), 3 );
+        ASSERT_EQ( x[ 0 ], 1 );
+        ASSERT_EQ( x[ 1 ], 2 );
+        ASSERT_EQ( x[ 2 ], 4 );
+
+        i = x.erase( std::prev( x.end() ) );
+        ASSERT_EQ( i, x.end() );
+        ASSERT_EQ( x.size(), 2 );
+        ASSERT_EQ( x.back(), 2 );
     }
 };
 
