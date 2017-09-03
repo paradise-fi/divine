@@ -859,8 +859,6 @@ if( LLVM_INCLUDE_TOOLS )
   add_subdirectory(tools)
 endif()
 
-add_subdirectory(runtimes)
-
 if( LLVM_INCLUDE_EXAMPLES )
   add_subdirectory(examples)
 endif()
