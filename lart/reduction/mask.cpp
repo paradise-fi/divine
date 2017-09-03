@@ -90,7 +90,7 @@ struct HoistMasks {
                         if ( insertPoint )
                             call->insertAfter( insertPoint );
                         else
-                            call->insertBefore( bb.begin() );
+                            call->insertBefore( &*bb.begin() );
 
                         // we must run transformation on this basic block from
                         // the point we moved mask into
@@ -141,7 +141,7 @@ struct Mask {
         ASSERT( mask );
         brick::llvm::enumerateFunctionsForAnno( "lart.interrupt.masked", m, [&]( llvm::Function *fn ) {
                 ASSERT( !fn->empty() );
-                llvm::CallInst::Create( mask )->insertBefore( fn->front().begin() );
+                llvm::CallInst::Create( mask )->insertBefore( &*fn->front().begin() );
             } );
     }
 };

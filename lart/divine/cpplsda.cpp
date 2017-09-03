@@ -1,9 +1,5 @@
 // -*- C++ -*- (c) 2017 Vladimír Štill <xstill@fi.muni.cz>
 
-DIVINE_RELAX_WARNINGS
-#include <llvm/Analysis/LibCallSemantics.h>
-DIVINE_UNRELAX_WARNINGS
-
 #include <lart/support/pass.h>
 #include <lart/support/meta.h>
 #include <lart/divine/cppeh.h>

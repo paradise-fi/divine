@@ -38,7 +38,8 @@ struct DeadRegisterZeoring {
         if ( fn.empty() )
             return;
 
-        auto dt = llvm::DominatorTreeAnalysis().run( fn );
+        llvm::AnalysisManager< llvm::Function > am;
+        auto dt = llvm::DominatorTreeAnalysis().run( fn, am );
         analysis::BasicBlockSCC sccs( fn );
         analysis::Reachability reach( fn, &sccs );
 
@@ -97,7 +98,7 @@ struct DeadRegisterZeoring {
                         return query::owningQuery( std::vector< llvm::Instruction * >{ } ).freeze();
                     else
                         return query::owningQuery( std::vector< llvm::Instruction * >{
-                                std::next( llvm::BasicBlock::iterator( u ) )
+                                &*std::next( llvm::BasicBlock::iterator( u ) )
                             } )
                             .freeze();
                 } )
@@ -107,7 +108,7 @@ struct DeadRegisterZeoring {
             if ( i->getNumUses() == 0 ) {
                 ASSERT( inserts.empty() );
                 if ( !llvm::isa< llvm::TerminatorInst >( i ) && !llvm::isa< llvm::PHINode >( i ) )
-                    inserts.push_back( std::next( llvm::BasicBlock::iterator( i ) ) );
+                    inserts.push_back( &*std::next( llvm::BasicBlock::iterator( i ) ) );
             }
             for ( auto *ip : inserts ) {
                 llvm::IRBuilder<> irb( ip );

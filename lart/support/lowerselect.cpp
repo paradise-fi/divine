@@ -42,7 +42,7 @@ void lart::LowerSelect::lower( SelectInst *si ) {
 
 	// Create a new PHI node in the cont block with the entries we need.
 	std::string name = si->getName(); si->setName("");
-	PHINode *pn = PHINode::Create( si->getType(), 2, name, newCont->begin() );
+	PHINode *pn = PHINode::Create( si->getType(), 2, name, &*newCont->begin() );
 	pn->addIncoming( si->getTrueValue(), newTrue );
 	pn->addIncoming( si->getFalseValue(), bb );
 

@@ -91,7 +91,7 @@ struct DeadAllocaZeoring {
                     } );
                 } ).forall( [&]( llvm::Instruction *enduse ) {
                     auto insPt = std::next( llvm::BasicBlock::iterator( enduse ) );
-                    if ( _meaningfullInsertPoint( insPt ) ) {
+                    if ( _meaningfullInsertPoint( &*insPt ) ) {
                         insertPoints.emplace( &*insPt, alloca );
                         zeroed = true;
                     }
@@ -185,9 +185,9 @@ struct DeadAllocaZeoring {
             return mzero; // already present
 
         auto args = mzero->arg_begin();
-        llvm::Value *ptrarg = args++;
+        llvm::Value *ptrarg = &*args++;
         ptrarg->setName( "ptr" );
-        llvm::Value *siarg = args;
+        llvm::Value *siarg = &*args;
         siarg->setName( "si" );
 
         auto *ret = llvm::BasicBlock::Create( ctx, "ret", mzero );

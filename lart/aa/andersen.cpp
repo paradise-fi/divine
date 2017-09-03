@@ -155,9 +155,10 @@ void Andersen::build( llvm::Instruction &i ) {
                 constraint( Constraint::Ref, &i, _amls.back() );
             } else {
                 int idx = 0;
-                for ( auto arg = F->arg_begin(); arg != F->arg_end(); ++ arg ) {
+                for ( auto &arg : F->args() )
+                {
                     ASSERT( idx <= int( i.getNumOperands() ) );
-                    constraint( Constraint::Copy, arg, i.getOperand( idx ) );
+                    constraint( Constraint::Copy, &arg, i.getOperand( idx ) );
                     ++ idx;
                 }
                 if ( !i.getType()->isVoidTy() )
@@ -186,11 +187,12 @@ void Andersen::build( llvm::Instruction &i ) {
 }
 
 void Andersen::build( llvm::Module &m ) {
-    for ( auto v = m.global_begin(); v != m.global_end(); ++ v ) {
-        if ( !v->hasInitializer() )
+    for ( auto &v : m.globals() )
+    {
+        if ( !v.hasInitializer() )
             continue;
-        constraint( Constraint::Ref, v, v->getInitializer() );
-        _nodes[ v->getInitializer() ]->aml = true;
+        constraint( Constraint::Ref, &v, v.getInitializer() );
+        _nodes[ v.getInitializer() ]->aml = true;
     }
 
     for ( auto &f : m )
@@ -293,8 +295,8 @@ void Andersen::annotate( llvm::Module &m ) {
 
     std::set< Node * > seen;
 
-    for ( auto v = m.global_begin(); v != m.global_end(); ++ v )
-        annotate( v, seen );
+    for ( auto &v : m.globals() )
+        annotate( &v, seen );
 
     for ( auto &f : m )
         for ( auto &b: f )

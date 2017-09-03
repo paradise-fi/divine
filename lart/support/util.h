@@ -160,7 +160,7 @@ struct FixLLVMIt : It {
     FixLLVMIt( It &&it ) : It( std::move( it ) ) { }
 };
 
-using LLVMBBSuccIt = llvm::SuccIterator< llvm::TerminatorInst *, llvm::BasicBlock >;
+using LLVMBBSuccIt = llvm::TerminatorInst::SuccIterator< llvm::TerminatorInst *, llvm::BasicBlock >;
 template<>
 struct FixLLVMIt< LLVMBBSuccIt > : LLVMBBSuccIt
 {
@@ -554,7 +554,7 @@ inline util::StableSet< BBEdge > getBackEdges( llvm::Function &fn ) {
     util::Set< llvm::BasicBlock * > inStack;
     util::Set< llvm::BasicBlock * > seen;
     util::StableSet< BBEdge > backedges;
-    stack.emplace_back( succ_begin( fn.begin() ) );
+    stack.emplace_back( succ_begin( &*fn.begin() ) );
 
     while ( !stack.empty() ) {
         auto *bb = stack.back().getSource();
@@ -741,66 +741,6 @@ inline UserSet pointerTransitiveUsers( llvm::Instruction &v, TrackPointers track
     return UserSet{ v.user_begin(), v.user_end() };
 }
 
-// function manipulations
-namespace llvmstolen {
-
-using namespace llvm;
-// NOTE: these functions are copied from LLVM 3.7's lib/Transforms/Utils/CloneFunction.cpp
-// as they are static in LLVM and therefore cannot be used from the library
-
-// Add an operand to an existing MDNode. The new operand will be added at the
-// back of the operand list.
-inline void AddOperand(DICompileUnit *CU, DISubprogramArray SPs,
-                       Metadata *NewSP) {
-  SmallVector<Metadata *, 16> NewSPs;
-  NewSPs.reserve(SPs.size() + 1);
-  for (auto *SP : SPs)
-    NewSPs.push_back(SP);
-  NewSPs.push_back(NewSP);
-  CU->replaceSubprograms(MDTuple::get(CU->getContext(), NewSPs));
-}
-
-// Find the MDNode which corresponds to the subprogram data that described F.
-inline DISubprogram *FindSubprogram(const Function *F,
-                                    DebugInfoFinder &Finder) {
-  for (DISubprogram *Subprogram : Finder.subprograms()) {
-    if (Subprogram->describes(F))
-      return Subprogram;
-  }
-  return nullptr;
-}
-
-// Clone the module-level debug info associated with OldFunc. The cloned data
-// will point to NewFunc instead.
-inline void CloneDebugInfoMetadata(Function *NewFunc, const Function *OldFunc,
-                            ValueToValueMapTy &VMap) {
-  DebugInfoFinder Finder;
-  Finder.processModule(*OldFunc->getParent());
-
-  const DISubprogram *OldSubprogramMDNode = FindSubprogram(OldFunc, Finder);
-  if (!OldSubprogramMDNode) return;
-
-  // Ensure that OldFunc appears in the map.
-  // (if it's already there it must point to NewFunc anyway)
-  VMap[OldFunc] = NewFunc;
-  auto *NewSubprogram =
-      cast<DISubprogram>(MapMetadata(OldSubprogramMDNode, VMap));
-
-  for (auto *CU : Finder.compile_units()) {
-    auto Subprograms = CU->getSubprograms();
-    // If the compile unit's function list contains the old function, it should
-    // also contain the new one.
-    for (auto *SP : Subprograms) {
-      if (SP == OldSubprogramMDNode) {
-        AddOperand(CU, Subprograms, NewSubprogram);
-        break;
-      }
-    }
-  }
-}
-
-}
-
 inline void remapArgs( llvm::Function * from,
                        llvm::Function * to,
                        llvm::ValueToValueMapTy & vmap )
@@ -828,7 +768,6 @@ inline void cloneFunctionInto( llvm::Function * to,
 {
     remapArgs( from, to, vmap );
     llvm::SmallVector< llvm::ReturnInst *, 8 > returns;
-    llvmstolen::CloneDebugInfoMetadata( to, from, vmap );
     llvm::CloneFunctionInto( to, from, vmap, true, returns, "", nullptr );
 }
 

@@ -164,7 +164,11 @@ struct ConstAllocaElimination {
 
     void processFunction( llvm::Function &fn ) {
         std::vector< std::pair< llvm::AllocaInst *, llvm::StoreInst * > > vars;
-        auto dt = brick::types::lazy( [&]() { return llvm::DominatorTreeAnalysis().run( fn ); } );
+        llvm::AnalysisManager< llvm::Function > am;
+        auto dt = brick::types::lazy( [&]()
+                                      {
+                                          return llvm::DominatorTreeAnalysis().run( fn, am );
+                                      } );
 
         auto stacksaves = query::query( fn ).flatten()
                             .map( query::refToPtr )

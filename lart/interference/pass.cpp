@@ -21,7 +21,7 @@ void Pass::propagate( llvm::Instruction *def, llvm::Instruction *use )
     _interference[ use ].insert( def );
     auto bb = useit->getParent();
     if ( useit != bb->begin() )
-        return propagate( def, --useit );
+        return propagate( def, &*--useit );
     else
         for ( auto &j : util::preds( bb ) )
             propagate( def, j.getTerminator() );
