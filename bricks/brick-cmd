@@ -27,6 +27,7 @@
 #include <brick-unittest>
 #include <brick-types>
 #include <brick-except>
+#include <brick-string>
 
 namespace brick {
 namespace cmd {
@@ -721,6 +722,8 @@ std::array< std::string, 1 > names( types::NotPreferred )
     return { { s } };
 }
 
+enum class Match { None, Partial, Full };
+
 template< typename Validator, typename T >
 struct Command : OptionSet< Validator, T >
 {
@@ -732,12 +735,17 @@ struct Command : OptionSet< Validator, T >
         return names< T >( types::Preferred() )[ 0 ];
     }
 
-    bool matches( std::string s )
+    Match matches( std::string s )
     {
-        for( std::string name : names< T >( types::Preferred() ) )
-            if( name == s )
-                return true;
-        return false;
+        for ( std::string name : names< T >( types::Preferred() ) )
+            if ( string::startsWith( name, s ) )
+            {
+                if ( name.size() == s.size() )
+                    return Match::Full;
+                else
+                    return Match::Partial;
+            }
+        return Match::None;
     }
 
     virtual std::string describe_header( int setw = 0 )
@@ -798,6 +806,8 @@ struct Parser
 {
     using PT = ParserT< Validator, Ts... >;
     PT _rep;
+    Match _match = Match::None;
+    bool _failed = false;
 
     template< typename U >
     auto parse( U &res, Tokens::iterator b, Tokens::iterator e )
@@ -814,11 +824,38 @@ struct Parser
     template< typename Rec, typename U >
     auto parse_rec( Rec &rec, U &res, Tokens::iterator b, Tokens::iterator e )
     {
+
         if (b == e)
         {
             return b;
         }
-        if ( rec.car.matches( *b ) )
+
+        Match latest = rec.car.matches( *b );
+
+        switch ( _match )
+        {
+            case Match::Full:
+                if ( latest == Match::Full )
+                    _failed = true;
+                break;
+            case Match::Partial:
+                if ( latest == Match::Full )
+                {
+                    _failed = false;
+                    _match = latest;
+                }
+                else if ( latest == Match::Partial )
+                    _failed = true;
+                break;
+            case Match::None:
+                _match = latest;
+                break;
+        }
+
+        auto rv = parse_rec( rec.cdr, res, b, e );
+
+        if ( !_failed && ( _match == Match::Full || _match == Match::Partial ) &&
+            rec.car.matches( *b ) == _match )
         {
             typename Rec::Type t;
             auto x = rec.car.parse( t, b + 1, e );
@@ -827,8 +864,7 @@ struct Parser
             res = t;
             return x;
         }
-        else
-            return parse_rec( rec.cdr, res, b, e );
+        return rv;
     }
 
     auto parse( Tokens::iterator b, Tokens::iterator e, std::vector<std::string> &unexpected )
@@ -849,7 +885,12 @@ struct Parser
             std::stringstream extra;
             for (std::string str : unexpected)
                 extra << "'" << str << "' ";
-            throw except::Error( "unexpected options: " + extra.str() );
+            if ( _match == Match::None )
+                throw except::Error( "unknown command, use 'help' for list of available commands" );
+            if ( _failed )
+                throw except::Error( "ambiguous command, use 'help' for list of available commands" );
+            else
+                throw except::Error( "unexpected options: " + extra.str() );
         }
         return _result;
     }
