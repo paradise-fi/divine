@@ -102,8 +102,8 @@ private:
     }
 
     decltype(auto) operands( const AbstractValue & av ) {
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( av.value ) )
-            return call->arg_operands();
+        if ( auto cs = llvm::CallSite( av.value ) )
+            return cs.args();
         else
             return av.get< llvm::Instruction >()->operands();
     }
@@ -134,7 +134,10 @@ private:
                 if ( fn->isIntrinsic() )
                     intr = createIntrinsicCall( av );
                 else
-                    intr = createCall( av );
+                    intr = createCallSite( av );
+            }
+            ,[&]( llvm::InvokeInst * ) {
+                intr = createCallSite( av );
             }
             ,[&]( llvm::PHINode * ) { intr = createPhi( av ); }
             ,[&]( llvm::BranchInst * ) { intr = createBr( av ); }
@@ -200,32 +203,34 @@ private:
         return nullptr;
     }
 
-    llvm::Instruction * createCall( const AbstractValue & av ) {
-        assert( !isIntrinsic( av.get< llvm::Instruction >() ) );
-        return createFunctionCall( av );
-    }
-
     llvm::FunctionType * intrinsicFTy( const AbstractValue & av, const Args & args ) {
         return llvm::FunctionType::get( getType( av ), typesOf( args ), false );
     }
 
-    llvm::Instruction * createFunctionCall( const AbstractValue & av ) {
-        auto i = av.template get< llvm::CallInst >();
-        auto fn = i->getCalledFunction();
+    llvm::Instruction * createCallSite( const AbstractValue & av ) {
+        auto cs = llvm::CallSite( av.value );
+        auto i = cs.getInstruction();
+        assert( !isIntrinsic( i ) );
 
-        IRB irb( i );
         auto args = remapFn( operands( av ), [&] ( const auto & op ) {
             auto l = vmap.safeLift( op.get() );
             return l.isJust() ? l.value() : op.get();
         } );
 
-        auto argTypes = typesOf( args );
-        auto stored = fns.get( fn, argTypes );
+        auto calle = fns.get( cs.getCalledFunction(), typesOf( args ) );
+        IRB irb( i );
 
-        auto call = irb.CreateCall( stored, args );
-        if ( call->getType() == i->getType() )
-            i->replaceAllUsesWith( call );
-        return call;
+        llvm::Instruction * intr = nullptr;
+        if ( cs.isCall() ) {
+            intr = irb.CreateCall( calle, args );
+        } else if ( cs.isInvoke() ) {
+            auto inv = llvm::dyn_cast< llvm::InvokeInst >( i );
+            intr = irb.CreateInvoke( calle, inv->getNormalDest(), inv->getUnwindDest(), args );
+        }
+
+        if ( intr->getType() == i->getType() )
+            i->replaceAllUsesWith( intr );
+        return intr;
     }
 
     llvm::Instruction * createPhi( const AbstractValue & av ) {

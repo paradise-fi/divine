@@ -32,7 +32,7 @@ struct ValuesPostOrder {
             // do not propagate through calls that are not in roots
             // i.e. that are those calls which do not return an abstract value
             bool root = std::find( roots.begin(), roots.end(), n ) != roots.end();
-            if ( n.isa< llvm::CallInst >() && !root )
+            if ( llvm::CallSite( n.value ) && !root )
                 return {};
             if ( !n.isAbstract() )
                 return {};
@@ -135,9 +135,8 @@ Accesses abstractStores( const Roots & roots ) {
     for ( const auto & av : ValuesPostOrder( roots ).get() ) {
         // Do not propagate through calls that do not return an abstract value
         // i.e. are not roots.
-        if ( av.isa< llvm::CallInst >() &&
-             std::find( roots.begin(), roots.end(), av ) == roots.end() )
-                continue;
+        if ( llvm::CallSite( av.value ) && std::find( roots.begin(), roots.end(), av ) == roots.end() )
+            continue;
         auto stores = query::query( llvmFilter< llvm::StoreInst >( av.value->users() ) )
             .filter( [&] ( llvm::StoreInst * store ) {
                 return store->getValueOperand() == av.value;
@@ -196,17 +195,16 @@ Set< AbstractValue > Walker::origins( const FunctionNodePtr & processed ) {
     return abstract;
 }
 
-AbstractValues abstractArgs( const FunctionNodePtr & processed, const AbstractValue & vn ) {
-    auto call = vn.get< llvm::CallInst >();
-    auto fn = call->getCalledFunction();
+AbstractValues abstractArgs( const FunctionNodePtr & processed, const AbstractValue & av ) {
+    auto cs = llvm::CallSite( av.value ); assert( cs );
+    auto fn = cs.getCalledFunction();
     auto abstract = processed->postorder();
 
     AbstractValues res;
-    for ( size_t i = 0; i < call->getNumArgOperands(); ++i ) {
-        auto find = std::find_if( abstract.begin(), abstract.end(),
-            [&] ( const auto & vn ) {
-                return vn.value == call->getArgOperand( i );
-            } );
+    for ( size_t i = 0; i < cs.getNumArgOperands(); ++i ) {
+        auto find = std::find_if( abstract.begin(), abstract.end(), [&] ( const auto & a ) {
+            return a.value == cs.getArgOperand( i );
+        } );
         if ( find != abstract.end() )
             res.emplace_back( std::next( fn->arg_begin(), i ), find->domain );
     }
@@ -246,8 +244,8 @@ bool Walker::propagateThroughCalls( FunctionNodePtr & processed ) {
 
     auto calls = query::query( processed->postorder() )
         .filter( []( const auto & n ) {
-            if ( auto call = n.template safeGet< llvm::CallInst >() )
-                return !call->getCalledFunction()->isIntrinsic();
+            if ( auto cs = llvm::CallSite( n.value ) )
+                return !cs.getCalledFunction()->isIntrinsic();
             return false;
         } )
         .freeze();
@@ -256,7 +254,7 @@ bool Walker::propagateThroughCalls( FunctionNodePtr & processed ) {
         AbstractValues args = abstractArgs( processed, call );
         Set< AbstractValue > origins( args.begin(), args.end() );
         auto fn = std::make_shared< FunctionNode >(
-                  call.get< llvm::CallInst >()->getCalledFunction(),
+                  llvm::CallSite( call.value ).getCalledFunction(),
                   origins );
 
         auto deps = dependencies( fn );
@@ -283,13 +281,10 @@ bool Walker::propagateThroughCalls( FunctionNodePtr & processed ) {
 
 std::vector< FunctionNodePtr > Walker::callsOf( const FunctionNodePtr & processed ) {
     auto ret = getRet( processed ).value();
-    Map< llvm::Function *, std::vector< llvm::CallInst * > > users;
-    for ( auto user : processed->function->users() ) {
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( user ) ) {
-            auto fn = getFunction( call );
-            users[ fn ].push_back( call );
-        }
-    }
+    Map< llvm::Function *, std::vector< llvm::CallSite > > users;
+    for ( auto user : processed->function->users() )
+        if ( auto cs = llvm::CallSite( user ) )
+            users[ getFunction( cs.getInstruction() ) ].push_back( cs );
 
     std::vector< FunctionNodePtr > res;
     for ( const auto & user : users ) {
@@ -321,11 +316,11 @@ std::vector< FunctionNodePtr > Walker::callsOf( const FunctionNodePtr & processe
                 if ( called ) {
                     reachable = query::query( p->postorder() )
                         .filter( [] ( const auto & n ) {
-                            return n.template isa< llvm::CallInst >();
+                            return llvm::CallSite( n.value );
                         } )
                         .any( [&] ( const auto & n ) {
-                            const auto& call = n.template get< llvm::CallInst >();
-                            return call->getCalledFunction() == processed->function;
+                            auto cs = llvm::CallSite( n.value );
+                            return cs.getCalledFunction() == processed->function;
                         } );
                 }
 

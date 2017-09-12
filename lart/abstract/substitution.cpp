@@ -64,13 +64,17 @@ Functions abstractFunctions( llvm::Module & m, TMap & tmap ) {
         } ).freeze();
 }
 
-decltype(auto) callsOf( llvm::Function * fn ) {
-    return llvmFilter< llvm::CallInst >( fn->users() );
+decltype(auto) callSitesOf( llvm::Function * fn ) {
+    return query::query( fn->users() )
+        .filter( [] ( const auto & v ) {
+            return llvm::CallSite( v );
+        } )
+        .freeze();
 }
 
-decltype(auto) callsOf( const Functions & fns ) {
+decltype(auto) callSitesOf( const Functions & fns ) {
     return query::query( fns )
-        .map( [] ( const auto & fn ) { return callsOf( fn ); } )
+        .map( [] ( const auto & fn ) { return callSitesOf( fn ); } )
         .flatten()
         .freeze();
 }
@@ -98,9 +102,9 @@ void Substitution::run( llvm::Module & m ) {
         return isLift( i );
     } ).freeze();
 
-    auto calls = callsOf( functions );
+    auto calls = callSitesOf( functions );
 
-    Insts abstract;
+    Values abstract;
     abstract.reserve( allocas.size() + lifts.size() );
     abstract.insert( abstract.end(), allocas.begin(), allocas.end() );
     abstract.insert( abstract.end(), lifts.begin(), lifts.end() );
@@ -111,8 +115,8 @@ void Substitution::run( llvm::Module & m ) {
         funToValMap[ getFunction( a ) ].push_back( a );
 
     auto succs = [&] ( llvm::Value * v ) -> Values {
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( v ) ) {
-            auto fn = call->getCalledFunction();
+        if ( auto cs = llvm::CallSite( v ) ) {
+            auto fn = cs.getCalledFunction();
             if ( !isAbstract( fn->getReturnType(), data.tmap ) && !isIntrinsic( fn ) )
                 return {};
         }
@@ -133,20 +137,20 @@ void Substitution::run( llvm::Module & m ) {
             sb.process( &arg );
         removeInvalidAttributes( fn.first, data.tmap );
         auto deps = analysis::postorder( fn.second, succs );
-        for ( auto dep : lart::util::reverse( deps ) )
-            if( auto i = llvm::dyn_cast< llvm::Instruction >( dep ) )
+        for ( const auto & dep : lart::util::reverse( deps ) )
+            if( const auto & i = llvm::dyn_cast< llvm::Instruction >( dep ) )
                 sb.process( i );
     }
 
     } // end RAII substitution builder
 
     auto remapArg = [] ( llvm::Argument & a ) {
-        if ( auto call = llvm::dyn_cast< llvm::CallInst >( *a.user_begin() ) )
-            if ( call->getCalledFunction()->hasName() &&
-                 call->getCalledFunction()->getName().startswith( "__lart_lift" ) )
+        if ( const auto & cs = llvm::CallSite( *a.user_begin() ) )
+            if ( cs.getCalledFunction()->hasName() &&
+                 cs.getCalledFunction()->getName().startswith( "__lart_lift" ) )
             {
-                call->replaceAllUsesWith( &a );
-                call->eraseFromParent();
+                cs.getInstruction()->replaceAllUsesWith( &a );
+                cs.getInstruction()->eraseFromParent();
             }
     };
 

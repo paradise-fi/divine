@@ -59,7 +59,10 @@ struct Substituter {
             ,[&]( llvm::PHINode * i ) { doPhi( i ); }
             ,[&]( llvm::ReturnInst * i ) { doRet( i ); }
             ,[&]( llvm::CallInst * c ) {
-                return isIntrinsic( c ) ? doIntrinsic( c ) : doCall( c );
+                return isIntrinsic( c ) ? doIntrinsic( c ) : doCallSite( c );
+            }
+            ,[&]( llvm::InvokeInst * i ) {
+                return doCallSite( i );
             }
             ,[&]( llvm::Instruction *i ) {
                 std::cerr << "ERR: unknown instruction: ";
@@ -175,11 +178,17 @@ private:
             vmap[ ret ] = IRB( ret ).CreateRet( val->second );
     }
 
-    void doCall( llvm::CallInst * call ) {
-        auto args = remapArgs( call->arg_operands() );
-        auto fn = call->getCalledFunction();
+    void doCallSite( const llvm::CallSite & cs ) {
+        auto args = remapArgs( cs.args() );
+        auto fn = cs.getCalledFunction();
         fn = fns.count( fn ) ? fns[ fn ] : fn;
-        vmap[ call ] = IRB( call ).CreateCall( fn, args );
+        auto i = cs.getInstruction();
+        if ( cs.isCall() ) {
+            vmap[ i ] = IRB( i ).CreateCall( fn, args );
+        } else if ( cs.isInvoke() ) {
+            auto inv = llvm::dyn_cast< llvm::InvokeInst >( i );
+            vmap[ i ] = IRB( i ).CreateInvoke( fn, inv->getNormalDest(), inv->getUnwindDest(), args );
+        }
     }
 
     void doIntrinsic( llvm::CallInst * i ) {
