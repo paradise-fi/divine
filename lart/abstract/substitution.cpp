@@ -79,6 +79,19 @@ decltype(auto) callSitesOf( const Functions & fns ) {
         .freeze();
 }
 
+template< typename A, typename B >
+void concat_impl( A & lhs, B && rhs ) {
+    lhs.insert( lhs.end(), std::make_move_iterator( rhs.begin() ),
+                           std::make_move_iterator( rhs.end() ) );
+}
+
+template< typename... Vs >
+Values concat( Vs&&... vs ) {
+    Values res;
+    ( concat_impl( res, std::forward< Vs >( vs ) ), ... );
+    return res;
+}
+
 } // anonymous namespace
 
 void Substitution::run( llvm::Module & m ) {
@@ -102,13 +115,14 @@ void Substitution::run( llvm::Module & m ) {
         return isLift( i );
     } ).freeze();
 
+    auto btcsts = query::query( llvmFilter< llvm::BitCastInst >( &m ) )
+    .filter( [&] ( const auto & i ) {
+        return isAGEPCast( i, data.tmap );
+    } ).freeze();
+
     auto calls = callSitesOf( functions );
 
-    Values abstract;
-    abstract.reserve( allocas.size() + lifts.size() );
-    abstract.insert( abstract.end(), allocas.begin(), allocas.end() );
-    abstract.insert( abstract.end(), lifts.begin(), lifts.end() );
-    abstract.insert( abstract.end(), calls.begin(), calls.end() );
+    auto abstract = concat( allocas, lifts, calls, btcsts );
 
     Map< llvm::Function *, Values > funToValMap;
     for ( const auto &a : abstract )
@@ -122,13 +136,6 @@ void Substitution::run( llvm::Module & m ) {
         }
         return { v->user_begin(), v->user_end() };
     };
-
-    for ( auto & fn : funToValMap ) {
-        auto btcsts = llvmFilter< llvm::BitCastInst >( fn.first );
-        for ( auto bc : btcsts )
-            if ( isAGEPCast( bc, data.tmap ) )
-                fn.second.push_back( bc );
-    }
 
     for ( auto & fn : funToValMap ) {
         if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
