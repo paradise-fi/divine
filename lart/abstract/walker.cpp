@@ -305,7 +305,7 @@ std::vector< FunctionNodePtr > Walker::callsOf( const FunctionNodePtr & processe
             for ( const auto & e : user.second ) {
                 bool has_entry = query::query( p->origins )
                     .any( [&] ( const auto & o ) {
-                        return o.value == e;
+                        return o.value == e.getInstruction();
                     } );
 
                 if ( has_entry )
@@ -325,7 +325,7 @@ std::vector< FunctionNodePtr > Walker::callsOf( const FunctionNodePtr & processe
                 }
 
                 if ( !called || reachable ) {
-                    p->origins.emplace( e, ret.domain );
+                    p->origins.emplace( e.getInstruction(), ret.domain );
                     res.push_back( p );
                 }
             }
