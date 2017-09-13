@@ -2,21 +2,22 @@
 
 #include <cassert>
 #include <limits>
-#include <initializer_list>
+#include <array>
 #define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 struct Node {
-    Node( int val, Node * next ) : val( val ), next( next ) {}
+    Node( int val ) : val( val ) {}
 
     int val;
-    Node * next;
+    Node * next = nullptr;
 };
 
+template< typename Array >
 struct List {
-    List( std::initializer_list< int > && list ) {
-        for ( const auto val : list ) {
-            auto node = new Node( val, head );
-            head = node;
+    List( Array & ns ) {
+        for ( auto& n : ns ) {
+            n.next = head;
+            head = &n;
         }
     }
 
@@ -36,8 +37,14 @@ struct List {
 };
 
 int main() {
-    __sym int i;
-    List list = { 1, 2, 3 };
-    assert( list.at( i ) == nullptr || list.at( i )->val <= 3 ); /* ERROR */
+    auto ns = std::array< Node, 3 >( { 1, 2, 3 } );
+    auto list = List< decltype( ns ) >( ns );
+
+    __sym unsigned int i;
+    auto res = list.at( i );
+    if ( i > 2 )
+        assert( res == nullptr );
+    else
+        assert( res->val == 1 || res->val == 2 || res->val == 3 );
     return 0;
 }
