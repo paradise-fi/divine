@@ -189,6 +189,8 @@ private:
             auto inv = llvm::dyn_cast< llvm::InvokeInst >( i );
             vmap[ i ] = IRB( i ).CreateInvoke( fn, inv->getNormalDest(), inv->getUnwindDest(), args );
         }
+        if ( !isAbstract( i->getType() ) )
+            i->replaceAllUsesWith( vmap[ i ] );
     }
 
     void doIntrinsic( llvm::CallInst * i ) {

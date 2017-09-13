@@ -15,7 +15,6 @@ int zero( int a ) {
 
 int main() {
     __sym int a;
-    int s = zero( a );
-    assert( s == 42 ); /* ERROR */
+    assert( zero( a ) == 42 );
     return 0;
 }
