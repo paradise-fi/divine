@@ -11,5 +11,5 @@ int main() {
     __sym int x;
     S s;
     s.x = x;
-    assert( s.x != 0 ); /* ERROR */
+    assert( s.x == x );
 }
