@@ -6,7 +6,6 @@
 #define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int zero( int a ) {
-    __vmutil_interrupt(); /* FIXME! */
     if ( a % 2 == 0 )
         return 42;
     else

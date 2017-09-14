@@ -22,19 +22,19 @@ inline std::vector< llvm::CallInst * > lifts( const Vs & vs ) {
 
 struct CallInterupt {
     void run( llvm::Function * fn ) {
-        auto _cflInterrupt = interupt( fn->getParent() );
+        auto vmInterrupt = interupt( fn->getParent() );
         auto inPt = fn->getEntryBlock().getFirstInsertionPt();
-        llvm::IRBuilder<>( inPt ).CreateCall( _cflInterrupt, { } );
+        llvm::IRBuilder<>( inPt ).CreateCall( vmInterrupt, { } );
     }
 
     llvm::Function * interupt( llvm::Module * m ) {
         auto fty = llvm::FunctionType::get(
             llvm::Type::getVoidTy( m->getContext() ), false );
-        auto _cflInterrupt = llvm::cast< llvm::Function >(
-            m->getOrInsertFunction( "__vm_interrupt_cfl", fty ) );
-        ASSERT( _cflInterrupt );
-        _cflInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
-        return _cflInterrupt;
+        auto vmInterrupt = llvm::cast< llvm::Function >(
+            m->getOrInsertFunction( "__vmutil_interrupt", fty ) );
+        ASSERT( vmInterrupt );
+        vmInterrupt->addFnAttr( llvm::Attribute::NoUnwind );
+        return vmInterrupt;
     }
 };
 
