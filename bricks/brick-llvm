@@ -100,7 +100,7 @@ struct Annotation : brick::types::Eq {
     explicit Annotation( std::string anno ) {
         size_t oldoff = 0, off = 0;
         do {
-            off = anno.find( oldoff, '.' );
+            off = anno.find( '.', oldoff );
             _parts.emplace_back( anno.substr( oldoff, off - oldoff) );
             oldoff = off + 1;
         } while ( off != std::string::npos );
