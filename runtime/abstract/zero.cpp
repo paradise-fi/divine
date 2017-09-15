@@ -80,7 +80,7 @@ Zero * __abstract_zero_value_or( Zero * a, Zero * b ) {
     return a;
 }
 
-#define __abstract_zero_lift_impl( name, type ) \
+#define LIFT( name, type ) \
 Zero *  __abstract_zero_lift_##name( type i )  { \
     auto val = i == 0 ? Zero::Domain::ZeroValue : Zero::Domain::NonzeroValue; \
     return __new< Zero >( val ); \
@@ -88,7 +88,7 @@ Zero *  __abstract_zero_lift_##name( type i )  { \
 
 #ifdef __divine__
 
-#define __abstract_zero_lower_impl( name, type ) \
+#define LOWER( name, type ) \
 type __abstract_zero_lower_##name( Zero * val ) { \
     size_t range = std::numeric_limits<type>::max(); \
     if ( val->value == Zero::Domain::ZeroValue ) \
@@ -101,7 +101,7 @@ type __abstract_zero_lower_##name( Zero * val ) { \
 
 #else
 
-#define __abstract_zero_lower_impl( name, type ) \
+#define LOWER( name, type ) \
 type __abstract_zero_lower_##name( Zero * val ) { \
     size_t range = std::numeric_limits<type>::max(); \
     if ( val->value == Zero::Domain::ZeroValue ) \
@@ -127,17 +127,17 @@ extern "C" {
         *ptr = weaken( val );
     }
 
-    __abstract_zero_lift_impl( i1, bool )
-    __abstract_zero_lift_impl( i8, uint8_t )
-    __abstract_zero_lift_impl( i16, uint16_t )
-    __abstract_zero_lift_impl( i32, uint32_t )
-    __abstract_zero_lift_impl( i64, uint64_t )
+    LIFT( i1, bool )
+    LIFT( i8, uint8_t )
+    LIFT( i16, uint16_t )
+    LIFT( i32, uint32_t )
+    LIFT( i64, uint64_t )
 
-    __abstract_zero_lower_impl( i1,  bool )
-    __abstract_zero_lower_impl( i8,  uint8_t )
-    __abstract_zero_lower_impl( i16, uint16_t )
-    __abstract_zero_lower_impl( i32, uint32_t )
-    __abstract_zero_lower_impl( i64, uint64_t )
+    LOWER( i1,  bool )
+    LOWER( i8,  uint8_t )
+    LOWER( i16, uint16_t )
+    LOWER( i32, uint32_t )
+    LOWER( i64, uint64_t )
 
     Zero * __abstract_zero_add( Zero * a, Zero * b ) {
         return __abstract_zero_meet( a, b );
