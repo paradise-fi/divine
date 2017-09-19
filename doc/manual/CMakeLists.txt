@@ -33,7 +33,9 @@ add_custom_command(
   OUTPUT divine.1
   DEPENDS commands.md
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMAND pandoc --smart -s --to man -o ${CMAKE_CURRENT_BINARY_DIR}/divine.1 commands.md
+  COMMAND sed -e "/^# /d" -e "s,^##,#," < commands.md |
+          pandoc --smart -s --to man -o ${CMAKE_CURRENT_BINARY_DIR}/divine.1
+  VERBATIM
 )
 
 add_custom_target( manual ALL DEPENDS ${PDFMAN} ${QTHELP} manual.html divine.1 )
