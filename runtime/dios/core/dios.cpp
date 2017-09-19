@@ -70,7 +70,6 @@ void boot( SetupBase sb ) {
     traceAlias< Configuration >( "{Context}" );
     traceAlias< Syscall< Configuration > >( "{Syscall}" );
     __vm_control( _VM_CA_Set, _VM_CR_State, context );
-    context->linkSyscall( Syscall< Configuration >::kernelHandle );
 
     const char *bootInfo = "DiOS boot info:";
     bool initTrace = false;

@@ -141,10 +141,6 @@ struct BaseContext
 
     struct Process {};
 
-    void linkSyscall( SyscallInvoker invoker ) {
-        _kernelCall = invoker;
-    };
-
     template< typename Setup >
     void setup( Setup s ) {
         traceAlias< BaseContext >( "{BaseContext}" );
@@ -158,23 +154,6 @@ struct BaseContext
     void finalize() {}
 
     void getHelp( Map< String, HelpOption >& ) {}
-
-    void kernelSyscall( _DiOS_SC syscode, void *ret, ... ) {
-        va_list vl;
-        va_start( vl, ret );
-        _kernelCall( static_cast< void * >( this ), syscode, ret, vl );
-        va_end( vl );
-    }
-
-    static void kernelSyscall( void *c, _DiOS_SC syscode, void *ret, ... ) {
-        va_list vl;
-        va_start( vl, ret );
-        auto ctx = static_cast< BaseContext *>( c );
-        ctx->_kernelCall( ctx, syscode, ret, vl );
-        va_end( vl );
-    }
-
-    SyscallInvoker _kernelCall;
 
     #include <dios/macro/no_memory_tags>
     #define SYSCALL( name, schedule, ret, arg ) ret name arg;

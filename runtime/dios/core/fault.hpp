@@ -79,7 +79,7 @@ struct Fault: public Next {
     template< typename Setup >
     void setup( Setup s ) {
         traceAlias< Fault >( "{Fault}" );
-        __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, handler );
+        __vm_control( _VM_CA_Set, _VM_CR_FaultHandler, handler< typename Setup::Context > );
         load_user_pref( s.proc1->faultConfig, s.opts );
 
         if ( extractOpt( "debug", "faultcfg", s.opts ) ) {
@@ -137,12 +137,6 @@ struct Fault: public Next {
             *reinterpret_cast< char *>( meta->address ) = flags;
     }
 
-    void terminate() noexcept  {
-        BaseContext::kernelSyscall( SYS_die, nullptr );
-        static_cast< _VM_Frame * >
-            ( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent = nullptr;
-    }
-
     void backtrace( _VM_Frame * frame ) {
         auto guard = makeMallocNofail();
         char *buffer = static_cast< char * >( malloc( 1024 ) );
@@ -164,7 +158,7 @@ struct Fault: public Next {
     {
         if ( what >= fault_count ) {
             traceInternal( 0, "Unknown fault in handler" );
-            terminate();
+            Next::die();
         }
 
         auto *cfg = getCurrentConfig();
@@ -180,10 +174,11 @@ struct Fault: public Next {
             backtrace( frame );
 
             if ( !ready || !( fault_cfg & FaultFlag::Continue ) )
-                terminate();
+                Next::die();
         }
     }
 
+    template < typename Context >
     static void handler( _VM_Fault _what, _VM_Frame *cont_frame,
                          void (*cont_pc)(), ... ) noexcept
     {
@@ -195,8 +190,9 @@ struct Fault: public Next {
         auto *frame = static_cast< _VM_Frame * >( __vm_control( _VM_CA_Get, _VM_CR_Frame ) )->parent;
 
         if ( kernel ) {
-            BaseContext::kernelSyscall( __vm_control( _VM_CA_Get, _VM_CR_State ),
-                SYS_fault_handler, nullptr, kernel, frame, _what );
+            void *ctx = __vm_control( _VM_CA_Get, _VM_CR_State );
+            auto& fault = *static_cast< Context * >( ctx );
+            fault.fault_handler( kernel, frame, _what );
         }
         else {
             __dios_syscall( SYS_fault_handler, nullptr, kernel, frame, _what  );
