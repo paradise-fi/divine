@@ -8,37 +8,38 @@ namespace lart {
 namespace abstract {
 
 namespace {
-    const std::string prefix = "__abstract_";
-    std::string constructFunctionName( const llvm::Instruction & /*intr*/ ) {
-        /*std::string name = prefix + intr.domain()->name() + "_" + intr.name();
-        if ( intr.name() == "load" ) {
+    static const std::string prefix = "__abstract_zero_";
+
+    template< size_t idx >
+    inline llvm::Type * argType( llvm::Instruction * i ) {
+        return i->getOperand( idx )->getType();
+    }
+
+    std::string constructFunctionName( llvm::CallInst * call ) {
+        auto intr = intrinsic::parse( call->getCalledFunction() ).value();
+        std::string name = prefix + intr.name;
+        if ( intr.name == "load" ) {
             //do nothing
-        }
-        else if ( isLift( intr ) || isLower( intr ) ) {
-            auto tn = TypeName( llvm::cast< llvm::StructType >( intr.argType< 0 >() ) );
-            name +=  "_" + tn.base().name();
-        }
-        else if ( intr.declaration()->arg_size() > 0 && intr.argType< 0 >()->isPointerTy() ) {
+        } else if ( ( intr.name == "lift" ) ||
+                    ( intr.name == "lower" ) )
+        {
+            name += "_" + llvmname( argType< 0 >( call ) );
+        } else if ( call->getCalledFunction()->arg_size() > 0 && argType< 0 >( call )->isPointerTy() ) {
             name += "_p";
         }
-        return name;*/
-        NOT_IMPLEMENTED();
+        return name;
     }
 }
 
-llvm::Value * Zero::process( llvm::CallInst *, Values & ) {
-    /*auto intr = Intrinsic( i );
-    assert( (*intr.domain()) == (*domain()) );
-    auto name = constructFunctionName( intr );
-    llvm::Module * m = getModule( i );
+llvm::Value * Zero::process( llvm::CallInst * call, Values & args ) {
+    auto name = constructFunctionName( call );
+    auto m = getModule( call );
 
     llvm::Function * fn = m->getFunction( name );
     assert( fn && "Function for intrinsic substitution was not found." );
-    assert( fn->arg_size() == args.size() );
 
-    llvm::IRBuilder<> irb( i );
-    return irb.CreateCall( fn, args );*/
-    NOT_IMPLEMENTED();
+    llvm::IRBuilder<> irb( call );
+    return irb.CreateCall( fn, args );
 }
 
 bool Zero::is( llvm::Type * type ) {

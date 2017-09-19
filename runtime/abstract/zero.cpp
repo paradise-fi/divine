@@ -238,7 +238,7 @@ extern "C" {
     }
 
     Zero * __abstract_zero_icmp_ult( Zero * a, Zero * b ) {
-       return __abstract_zero_icmp_uge( b, a );
+        return __abstract_zero_icmp_uge( b, a );
     }
 
     Zero * __abstract_zero_icmp_ule( Zero * a, Zero * b ) {
