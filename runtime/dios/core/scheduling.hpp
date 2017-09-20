@@ -287,6 +287,12 @@ struct Scheduler : public Next
             ++pi_it;
         }
 
+        std::sort( pi, pi + c, []( const PI& a, const PI& b ) {
+            if ( a.pid == b.pid )
+                return a.tid < b.tid;
+            return a.pid < b.pid;
+        } );
+
         __vm_trace( _VM_T_SchedChoice, pi );
         __vm_obj_free( pi );
     }
