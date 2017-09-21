@@ -178,6 +178,11 @@ struct Draw : Dot
 struct Inspect : Show {};
 struct BitCode : WithFrame, Teflon {};
 struct Source : WithFrame, Teflon {};
+struct Call : Teflon
+{
+    std::string function;
+};
+
 struct Register : Teflon {};
 struct Thread : CastIron  { std::string spec; bool random; };
 
@@ -289,6 +294,8 @@ struct Interpreter
             .option( "[--depth {int}]", &command::Show::depth, "maximal component unfolding"s )
             .option( "[--deref {int}]", &command::Show::deref,
                      "maximal pointer dereference unfolding"s );
+        auto callopts = cmd::make_option_set< command::Call >( v )
+            .option( "{string}", &command::Call::function, "the function to call"s );
         auto stepopts = cmd::make_option_set< command::WithSteps >( v )
             .option( "[--over]", &command::WithSteps::over, "execute calls as one step"s )
             .option( "[--quiet]", &command::WithSteps::quiet, "suppress output"s )
@@ -341,6 +348,8 @@ struct Interpreter
             .command< command::Thread >( "control thread scheduling"s, threadopts )
             .command< command::Trace >( "load a counterexample trace"s, o_trace, o_trace_cmd )
             .command< command::Show >( "show an object"s, teflopts, varopts, showopts )
+            .command< command::Call >( "run a custom information-gathering function"s,
+                                       teflopts, callopts )
             .command< command::Register >( "show (manipulate) machine control registers"s )
             .command< command::Draw >( "draw a portion of the heap"s, varopts )
             .command< command::Dot >( "draw a portion of the heap to a file of given type"s,
@@ -852,6 +861,27 @@ struct Interpreter
     {
         go( command::Show( i ) );
         set( "$_", i.var );
+    }
+
+    void go( command::Call c )
+    {
+        auto pc = _ctx.program().functionByName( c.function );
+        if ( pc.null() )
+            throw brick::except::Error( "the function '" + c.function + "' is not defined" );
+        auto &fun = _ctx.program().function( pc );
+        if ( fun.argcount )
+            throw brick::except::Error( "the function must not take any arguments" );
+
+        Context ctx( _ctx );
+        vm::Eval< Context, vm::value::Void > eval( ctx );
+        ctx.enter( pc, PointerV() );
+        ctx.set( _VM_CR_FaultHandler, vm::nullPointer() );
+        ctx.ref( _VM_CR_Flags ).integer |= _VM_CF_Mask | _VM_CF_KernelMode;
+        eval.run();
+        for ( auto t : ctx._trace )
+            out() << "  " << t << std::endl;
+        if ( ctx.ref( _VM_CR_Flags ).integer & _VM_CF_Error )
+            throw brick::except::Error( "encountered an error while running '" + c.function + "'" );
     }
 
     DN frame_up( DN frame ) {
