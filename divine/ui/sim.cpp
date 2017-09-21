@@ -858,7 +858,7 @@ struct Interpreter
         auto fup = std::make_unique< DN >( frame );
         if ( !_debug_kernel ) {
             // TODO: obtain this through some DiOS API?
-            std::regex fault( "__dios.*fault_handler", std::regex::basic );
+            std::regex fault( "{Fault}::fault_handler", std::regex::basic );
             if ( frame._kind == dbg::DNKind::Frame &&
                     std::regex_search( frame.attribute( "symbol" ), fault  ) )
                 return get( "frame:deref", false, std::move( fup ), true );
