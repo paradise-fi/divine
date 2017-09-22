@@ -117,7 +117,6 @@ $(TOOLSTAMP):
 	$(CMAKE) --build $(OBJ)toolchain --target cxx_static -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target cxx -- $(EXTRA)
 	$(CMAKE) --build $(OBJ)toolchain --target clang -- $(EXTRA)
-	$(CMAKE) --build $(OBJ)toolchain --target compiler-rt -- $(EXTRA)
 	touch $@
 
 CURSES = libncursesw.a libncurses.a libcurses.a
