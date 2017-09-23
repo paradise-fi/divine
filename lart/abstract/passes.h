@@ -202,7 +202,7 @@ auto test_substitution( const File & src ) {
 
 namespace {
 const std::string annotation =
-                  "#define __sym __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
+                  "#define _SYM __attribute__((__annotate__(\"lart.abstract.sym\")))\n";
 
 bool containsUndefValue( llvm::Function & f ) {
     for ( auto & bb : f )
@@ -254,7 +254,7 @@ struct Abstraction {
 
     TEST( create ) {
         auto s = R"(int main() {
-                        __sym int abs;
+                        _SYM int abs;
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
@@ -267,9 +267,9 @@ struct Abstraction {
 
     TEST( types ) {
         auto s = R"(int main() {
-                        __sym short abs_s;
-                        __sym int abs;
-                        __sym long abs_l;
+                        _SYM short abs_s;
+                        _SYM int abs;
+                        _SYM long abs_l;
                         return 0;
                     })";
         auto m = test_abstraction( annotation + s );
@@ -286,7 +286,7 @@ struct Abstraction {
 
     TEST( binary_ops ) {
         auto s = R"(int main() {
-                        __sym int abs;
+                        _SYM int abs;
                         int a = abs + 42;
                         int b = abs + a;
                         return 0;
@@ -298,8 +298,8 @@ struct Abstraction {
 
     TEST( phi ) {
         auto s = R"(int main() {
-                        __sym int x = 0;
-                        __sym int y = 42;
+                        _SYM int x = 0;
+                        _SYM int y = 42;
                         int z = x || y;
                         return 0;
                     })";
@@ -318,7 +318,7 @@ struct Abstraction {
     TEST( call_simple ) {
         auto s = R"(int call( int arg ) { return arg; }
                     int main() {
-                        __sym int abs;
+                        _SYM int abs;
                         int ret = call( abs );
                         return 0;
                     })";
@@ -339,7 +339,7 @@ struct Abstraction {
     TEST( call_twice ) {
         auto s = R"(int call( int arg ) { return arg; }
                     int main() {
-                        __sym int abs;
+                        _SYM int abs;
                         int ret = call( abs );
                         ret = call( ret );
                         return 0;
@@ -361,7 +361,7 @@ struct Abstraction {
     TEST( call_independent ) {
         auto s = R"(int call( int arg ) { return arg; }
                     int main() {
-                        __sym int abs;
+                        _SYM int abs;
                         int ret = call( abs );
                         ret = call( 10 );
                         return 0;
@@ -385,7 +385,7 @@ struct Abstraction {
     TEST( call_two_args_mixed ) {
         auto s = R"(int call( int a, int b ) { return a + b; }
                     int main() {
-                        __sym int abs;
+                        _SYM int abs;
                         int normal = 10;
                         int ret = call( abs, normal );
                         return 0;
@@ -408,8 +408,8 @@ struct Abstraction {
     TEST( call_two_args_abstract ) {
         auto s = R"(int call( int a, int b ) { return a + b; }
                     int main() {
-                        __sym int a;
-                        __sym int b;
+                        _SYM int a;
+                        _SYM int b;
                         int ret = call( a, b );
                         return 0;
                     })";
@@ -432,7 +432,7 @@ struct Abstraction {
     TEST( call_preserve_original_function ) {
         auto s = R"(int call( int a ) { return a; }
                     int main() {
-                        __sym int a;
+                        _SYM int a;
                         call( a );
                         call( 0 );
                         return 0;
@@ -469,8 +469,8 @@ struct Abstraction {
     TEST( call_two_args_multiple_times ) {
         auto s = R"(int call( int a, int b ) { return a + b; }
                     int main() {
-                        __sym int a;
-                        __sym int b;
+                        _SYM int a;
+                        _SYM int b;
                         int ret, c = 0, d = 1;
                         ret = call( a, b );
                         ret = call( a, c );
@@ -511,7 +511,7 @@ struct Abstraction {
         auto s = R"(int call1( int x ) { return x; }
                     int call2( int x ) { return call1( x ); }
                     int main() {
-                        __sym int x;
+                        _SYM int x;
                         call2( x );
                         call1( x );
                         return 0;
@@ -535,7 +535,7 @@ struct Abstraction {
     TEST( propagate_from_call_not_returning_abstract ) {
         auto s = R"(int call( int x ) { return 10; }
                     int main() {
-                        __sym int x;
+                        _SYM int x;
                         int ret = call( x );
                         ret = call( ret );
                         return 0;
@@ -560,7 +560,7 @@ struct Abstraction {
 
     TEST( call_propagate_1 ) {
         auto s = R"(int call() {
-                        __sym int x;
+                        _SYM int x;
                         return x;
                     }
                     int main() {
@@ -579,7 +579,7 @@ struct Abstraction {
 
     TEST( call_propagate_back_multiple_times ) {
         auto s = R"(int nondet() {
-                        __sym int x;
+                        _SYM int x;
                         return x;
                     }
                     int add() {
@@ -618,7 +618,7 @@ struct Abstraction {
                         return x * x;
                     }
                     int call1() {
-                        __sym int x;
+                        _SYM int x;
                         return x;
                     }
                     int main() {
@@ -646,7 +646,7 @@ struct Abstraction {
                         return call3( x ) * call4( x );
                     }
                     int call1() {
-                        __sym int x;
+                        _SYM int x;
                         return x;
                     }
                     int main() {
@@ -676,7 +676,7 @@ struct Abstraction {
 
     TEST( tristate ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         if ( x > 0 )
                             return 42;
                         else
@@ -696,7 +696,7 @@ struct Abstraction {
 
     TEST( double_icmp ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         if ( x > 0 || x < 0 ) return 0;
                         return 1;
                     })";
@@ -707,7 +707,7 @@ struct Abstraction {
 
     TEST( lift ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         return x + 42;
                     })";
         auto m = test_abstraction( annotation + s );
@@ -720,8 +720,8 @@ struct Abstraction {
 
     TEST( lift_replace ) {
         auto s = R"(int main() {
-                        __sym int x;
-                        __sym int y;
+                        _SYM int x;
+                        _SYM int y;
                         return x + y;
                     })";
         auto m = test_abstraction( annotation + s );
@@ -731,7 +731,7 @@ struct Abstraction {
 
     TEST( switch_test ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         int i = 0;
                         switch( x ) {
                             case 0: i = x; break;
@@ -746,11 +746,11 @@ struct Abstraction {
 
     TEST( loop_test ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         for ( int i = 0; i < x; ++i )
                             for ( int j = 0; j < x; ++j )
                                 for ( int k = 0; k < x; ++k ) {
-                                    __sym int y = i * j *k;
+                                    _SYM int y = i * j *k;
                                 }
                     })";
         auto m = test_abstraction( annotation + s );
@@ -763,7 +763,7 @@ struct Abstraction {
                       unsigned N = 1000;
                       unsigned long long Q = 10000000000ULL;
                       unsigned long long rem = 0;
-                      __sym unsigned i;
+                      _SYM unsigned i;
                       for (i = 1; i < N; i++) {
                         unsigned long long r = 1;
                         unsigned j;
@@ -789,7 +789,7 @@ struct Abstraction {
                             return call( x - 1 );
                     }
                     int main() {
-                        __sym unsigned x;
+                        _SYM unsigned x;
                         call( x );
                         return 0;
                     })";
@@ -830,7 +830,7 @@ struct Abstraction {
                         }
                     }
                     int main() {
-                        __sym unsigned x;
+                        _SYM unsigned x;
                         call( x, 100 );
                         return 0;
                     })";
@@ -873,7 +873,7 @@ struct Abstraction {
                         else return call(x - 1, y - 1);
                     }
                     int main() {
-                        __sym unsigned x;
+                        _SYM unsigned x;
                         call( 100, x );
                         return 0;
                     })";
@@ -907,7 +907,7 @@ struct Abstraction {
         auto s = R"(struct S { int x; };
 
                     int main() {
-                        __sym int x;
+                        _SYM int x;
                         S s;
                         s.x = x;
                     })";
@@ -927,7 +927,7 @@ struct Abstraction {
         auto s = R"(struct S { int x; };
 
                     int main() {
-                        __sym int x;
+                        _SYM int x;
                         S s;
                         s.x = x;
                         if ( s.x == 0 )
@@ -952,7 +952,7 @@ struct Abstraction {
         auto s = R"(struct S { int x, y, z; };
 
                     int main() {
-                        __sym int x;
+                        _SYM int x;
                         S s;
                         s.y = x;
                     })";
@@ -972,8 +972,8 @@ struct Abstraction {
         auto s = R"(struct S { int x, y, z; };
 
                     int main() {
-                        __sym int x;
-                        __sym int y;
+                        _SYM int x;
+                        _SYM int y;
                         S s;
                         s.x = x;
                         s.y = y;
@@ -1001,7 +1001,7 @@ struct Abstraction {
                     struct T { S a; S b; };
 
                     int main() {
-                        __sym int x;
+                        _SYM int x;
                         T t;
                         t.a.x = x;
                     })";
@@ -1023,7 +1023,7 @@ struct Abstraction {
                     struct V { U u; };
 
                     int main() {
-                        __sym int x;
+                        _SYM int x;
                         V v;
                         v.u.s.x = x;
                     })";
@@ -1075,7 +1075,7 @@ struct Assume {
 
     TEST( tristate ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         if ( x > 0 )
                             return 42;
                         else
@@ -1096,7 +1096,7 @@ struct Assume {
 
     TEST( loop ) {
         auto s = R"(int main() {
-                        __sym int abs;
+                        _SYM int abs;
                         while( abs ) {
                             ++abs;
                         }
@@ -1120,8 +1120,8 @@ struct Assume {
 struct BCP {
     TEST( tristate ) {
         auto s = R"(int call() {
-                        __sym int x;
-                        __sym int y;
+                        _SYM int x;
+                        _SYM int y;
                         if ( x == 0 ) {
                             y = x;
                         }
@@ -1149,7 +1149,7 @@ struct Substitution {
 
     TEST( create ) {
         auto s = R"(int main() {
-                        __sym int abs;
+                        _SYM int abs;
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
@@ -1160,9 +1160,9 @@ struct Substitution {
 
     TEST( types ) {
         auto s = R"(int main() {
-                        __sym short abs_s;
-                        __sym int abs;
-                        __sym long abs_l;
+                        _SYM short abs_s;
+                        _SYM int abs;
+                        _SYM long abs_l;
                         return 0;
                     })";
         auto m = test_substitution( annotation + s );
@@ -1176,7 +1176,7 @@ struct Substitution {
 
     TEST( binary_ops ) {
         auto s = R"(int main() {
-                        __sym int abs;
+                        _SYM int abs;
                         int a = abs + 42;
                         int b = abs + a;
                         return 0;
@@ -1192,7 +1192,7 @@ struct Substitution {
 
     TEST( tristate ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         if ( x > 0 )
                             return 42;
                         else
@@ -1211,8 +1211,8 @@ struct Substitution {
 
     TEST( phi ) {
         auto s = R"(int main() {
-                        __sym int x = 0;
-                        __sym int y = 42;
+                        _SYM int x = 0;
+                        _SYM int y = 42;
                         int z = x || y;
                         return 0;
                     })";
@@ -1230,7 +1230,7 @@ struct Substitution {
 
     TEST( switch_test ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         int i = 0;
                         switch( x ) {
                             case 0: i = x; break;
@@ -1244,7 +1244,7 @@ struct Substitution {
 
     TEST( lift_1 ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         x += 42;
                     })";
         auto m = test_substitution( annotation + s );
@@ -1256,7 +1256,7 @@ struct Substitution {
     TEST( lift_2 ) {
 		auto s = R"(
 					int main() {
-						__sym int x;
+						_SYM int x;
 						x %= 5;
 						while( true )
 							x = (x + 1) % 5;
@@ -1268,7 +1268,7 @@ struct Substitution {
     TEST( loop_1 ) {
         auto s = R"(
                     int main() {
-                        __sym int val;
+                        _SYM int val;
 						do {
 						   val++;
 						} while(val % 6 != 0);
@@ -1279,11 +1279,11 @@ struct Substitution {
 
     TEST( loop_2 ) {
         auto s = R"(int main() {
-                        __sym int x;
+                        _SYM int x;
                         for ( int i = 0; i < x; ++i )
                             for ( int j = 0; j < x; ++j )
                                 for ( int k = 0; k < x; ++k ) {
-                                    __sym int y = i * j *k;
+                                    _SYM int y = i * j *k;
                                 }
                     })";
         auto m = test_substitution( annotation + s );
@@ -1292,7 +1292,7 @@ struct Substitution {
 
     TEST( call_propagate_ones ) {
         auto s = R"(int call() {
-                        __sym int x;
+                        _SYM int x;
                         return x;
                     }
                     int main() {
@@ -1312,7 +1312,7 @@ struct Substitution {
                         return x * x;
                     }
                     int call() {
-                        __sym int x;
+                        _SYM int x;
                         return x;
                     }
                     int main() {
@@ -1332,7 +1332,7 @@ struct Substitution {
                         return call3( x ) * call4( x );
                     }
                     int call() {
-                        __sym int x;
+                        _SYM int x;
                         return x;
                     }
                     int main() {

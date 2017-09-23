@@ -1,9 +1,8 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <cassert>
 #include <limits>
 #include <array>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 struct Node {
     Node( int val ) : val( val ) {}
@@ -40,7 +39,7 @@ int main() {
     auto ns = std::array< Node, 3 >( { 1, 2, 3 } );
     auto list = List< decltype( ns ) >( ns );
 
-    __sym unsigned int i;
+    _SYM unsigned int i;
     auto res = list.at( i );
     if ( i > 2 )
         assert( res == nullptr );

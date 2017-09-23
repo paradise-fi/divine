@@ -1,10 +1,10 @@
 /* VERIFY_OPTS: --symbolic */
+#include <abstract/domains.h>
 
 #include <cassert>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int main() {
-    __sym int x;
+    _SYM int x;
     int y = 0;
     assert( x != y ); /* ERROR */
 }

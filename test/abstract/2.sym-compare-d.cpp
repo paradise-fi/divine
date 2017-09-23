@@ -1,12 +1,11 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <cassert>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int y = 0;
 
 int main() {
-    __sym int x;
+    _SYM int x;
     // loaded value should be lifted
     assert( x != y ); /* ERROR */
 }

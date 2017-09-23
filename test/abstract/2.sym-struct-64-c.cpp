@@ -1,9 +1,7 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <cstdint>
 #include <cassert>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
-
 
 struct T {
     int64_t val;
@@ -17,7 +15,7 @@ struct S {
 
 int main() {
     S s; T t;
-    __sym int val;
+    _SYM int val;
     s.val = val;
     t.val = s.val;
     assert( s.val == t.val );

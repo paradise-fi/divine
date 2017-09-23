@@ -1,11 +1,10 @@
 /* VERIFY_OPTS: --symbolic */
+#include <abstract/domains.h>
 
 #include <assert.h>
 
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
-
 int main() {
-    __sym short x;
+    _SYM short x;
     x %= 5;
     while ( true )
         x = (x + 1) % 5;

@@ -1,8 +1,7 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <cassert>
 #include <limits>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 unsigned sum( unsigned a, unsigned b );
 
 unsigned sum_impl( unsigned a, unsigned b ) {
@@ -19,7 +18,7 @@ unsigned sum( unsigned a , unsigned b ) {
 
 
 int main() {
-    __sym int b;
+    _SYM int b;
     int s = sum( 4, b );
     assert( s == 4 + b );
     return 0;

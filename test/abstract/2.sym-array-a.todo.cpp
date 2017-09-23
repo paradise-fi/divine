@@ -1,8 +1,9 @@
+/* VERIFY_OPTS: --symbolic */
+#include <abstract/domains.h>
 #include <cassert>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int main() {
-    __sym int array[ 4 ];
+    _SYM int array[ 4 ];
     if ( array[ 0 ] < array[ 3 ] ) {
         assert( array[ 3 ] - array[ 0 ] > 0 );
     } else {

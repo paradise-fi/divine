@@ -1,8 +1,7 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <cassert>
 #include <limits>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int sum( int a, int b ) {
     if ( a == 0 )
@@ -12,7 +11,7 @@ int sum( int a, int b ) {
 }
 
 int main() {
-    __sym int b;
+    _SYM int b;
     int s = sum( 10, b );
     assert( s == 10 + b );
     return 0;

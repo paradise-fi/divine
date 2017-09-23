@@ -1,11 +1,9 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <assert.h>
 
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
-
 int main() {
-    __sym int x;
-    __sym int y;
+    _SYM int x;
+    _SYM int y;
     assert( x > y ); /* ERROR */
 }

@@ -1,11 +1,10 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <cassert>
 #include <limits>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int main() {
-    __sym union {
+    _SYM union {
         int x;
         short y;
     };

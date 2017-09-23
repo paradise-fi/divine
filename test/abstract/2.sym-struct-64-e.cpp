@@ -1,10 +1,9 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <cstdint>
 #include <limits>
 #include <array>
 #include <cassert>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 struct BinTree {
     using value_type = int64_t;
@@ -49,7 +48,7 @@ struct BinTree {
 };
 
 BinTree::Node make_abstract_node() {
-    __sym int x;
+    _SYM int x;
     return { x };
 }
 

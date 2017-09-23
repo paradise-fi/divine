@@ -1,14 +1,13 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <cassert>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 struct S {
     int x;
 };
 
 int main() {
-    __sym int x;
+    _SYM int x;
     S s;
     s.x = x;
     assert( s.x != 0 ); /* ERROR */

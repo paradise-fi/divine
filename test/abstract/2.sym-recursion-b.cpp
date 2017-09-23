@@ -1,9 +1,8 @@
 /* VERIFY_OPTS: --symbolic */
-
+#include <abstract/domains.h>
 #include <cassert>
 #include <limits>
 #include <sys/vmutil.h>
-#define __sym __attribute__((__annotate__("lart.abstract.sym")))
 
 int zero( int a ) {
     if ( a % 2 == 0 )
@@ -13,7 +12,7 @@ int zero( int a ) {
 }
 
 int main() {
-    __sym int a;
+    _SYM int a;
     assert( zero( a ) == 42 );
     return 0;
 }
