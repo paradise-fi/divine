@@ -631,46 +631,52 @@ struct Interpreter
         return run( step, verbose ? Stepper::PrintInstructions : Stepper::TraceOnly );
     }
 
+    bool check_bp( RefLocation initial, vm::CodePointer pc, bool ch )
+    {
+        if ( ch && initial.second )
+            if ( location( pc ) != initial )
+                initial = std::make_pair( "", 0 );
+
+        auto match_pc = [&]( vm::CodePointer bp_pc )
+        {
+            if ( pc != bp_pc )
+                return false;
+            auto name = _bc->debug().function( pc )->getName();
+            out() << "# stopped at breakpoint " << name.str()
+            << std::endl;
+            return true;
+        };
+
+        auto match_loc = [&]( Location l )
+        {
+            RefLocation rl = l;
+            if ( initial.second == rl.second && rl.first == initial.first )
+                return false;
+            auto current = location( pc );
+            if ( rl.second != current.second )
+                return false;
+            if ( !brick::string::endsWith( current.first, l.first ) )
+                return false;
+            out() << "# stopped at breakpoint "
+            << l.first << ":" << l.second << std::endl;
+            return true;
+        };
+
+        for ( auto bp : _bps )
+            if ( bp.match( match_pc, match_loc ) )
+                return true;
+        return false;
+    }
+
     void run( Stepper &step, Stepper::Verbosity verbose )
     {
         _sigint = &step._sigint;
         brick::types::Defer _( [](){ _sigint = nullptr; } );
 
-        RefLocation initial = location( _ctx.get( _VM_CR_PC ).pointer );
-        auto bp = [&]( vm::CodePointer pc, bool ch )
-                  {
-                      if ( ch && initial.second )
-                          if ( location( pc ) != initial )
-                              initial = std::make_pair( "", 0 );
-                      for ( auto bp : _bps )
-                          if ( bp.match( [&]( vm::CodePointer bp_pc )
-                                         {
-                                             if ( pc != bp_pc )
-                                                 return false;
-                                             auto name = _bc->debug().function( pc )->getName();
-                                             out() << "# stopped at breakpoint " << name.str()
-                                                   << std::endl;
-                                             return true;
-                                         },
-                                         [&]( Location l )
-                                         {
-                                             RefLocation rl = l;
-                                             if ( initial.second == rl.second && rl.first == initial.first )
-                                                 return false;
-                                             auto current = location( pc );
-                                             if ( rl.second != current.second )
-                                                 return false;
-                                             if ( !brick::string::endsWith( current.first, l.first ) )
-                                                 return false;
-                                             out() << "# stopped at breakpoint "
-                                                   << l.first << ":" << l.second << std::endl;
-                                             return true;
-                                         } ) )
-                              return true;
-                      return false;
-                  };
+        auto initial = location( _ctx.get( _VM_CR_PC ).pointer );
         if ( !step._breakpoint )
-            step._breakpoint = bp;
+            step._breakpoint = [&]( auto a, auto b ) { return check_bp( initial, a, b ); };
+
         step.run( _ctx, verbose );
     }
 
