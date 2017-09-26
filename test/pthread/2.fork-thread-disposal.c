@@ -16,8 +16,8 @@ int main()
 
     pthread_create( &tid, NULL, thread, NULL );
 
-    struct _DiOS_TLS ** threads = __dios_get_process_threads();
-    struct _DiOS_TLS * current_thread = __dios_get_thread_handle();
+    struct _DiOS_TLS ** threads = __dios_get_process_tasks();
+    struct _DiOS_TLS * current_thread = __dios_get_task_handle();
     int cnt = __vm_obj_size( threads ) / sizeof( struct _DiOS_TLS * );
     pid_t pid = fork();
 

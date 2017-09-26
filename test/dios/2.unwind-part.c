@@ -28,7 +28,7 @@ void thread( void *_ ) {
 
 int main()
 {
-    __dios_start_thread( thread, NULL, 0 );
+    __dios_start_task( thread, NULL, 0 );
     while ( !tframe ) { }
     __dios_unwind( tframe, tframe->parent, tframe->parent->parent->parent );
     wait = 0;

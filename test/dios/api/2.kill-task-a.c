@@ -10,9 +10,9 @@ void routine( void * x ){
 
 int main() {
     value = 24;
-    _DiOS_ThreadHandle thr = __dios_start_thread( routine, NULL, 0 );
+    _DiOS_TaskHandle thr = __dios_start_task( routine, NULL, 0 );
     while( value != 42 );
-    __dios_kill_thread( thr );
+    __dios_kill_task( thr );
     value = 24;
     assert( value == 24 );
     assert( 0 ); /* ERROR */
