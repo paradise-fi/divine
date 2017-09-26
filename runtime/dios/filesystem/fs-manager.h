@@ -286,8 +286,8 @@ struct VFS: public Next {
     Manager &instance() {
         __FS_assert( _manager );
 
-        if ( this->getCurrentThread() )
-            _manager->_proc = static_cast< Process* >( this->getCurrentThread()->_proc );
+        if ( this->getCurrentTask() )
+            _manager->_proc = static_cast< Process* >( this->getCurrentTask()->_proc );
         return *_manager;
     }
 

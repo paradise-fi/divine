@@ -118,10 +118,10 @@ struct Fault: public Next {
     }
 
     uint8_t *getCurrentConfig() {
-        auto *thread = Next::getCurrentThread();
-        if ( !thread )
+        auto *task = Next::getCurrentTask();
+        if ( !task )
             return nullptr;
-        return static_cast< Process * >( thread->_proc )->faultConfig;
+        return static_cast< Process * >( task->_proc )->faultConfig;
     }
 
     void updateSimFail( uint8_t *config = nullptr ) {
@@ -162,7 +162,7 @@ struct Fault: public Next {
         }
 
         auto *cfg = getCurrentConfig();
-        // If no thread exists, trigger the fault
+        // If no task exists, trigger the fault
         uint8_t fault_cfg = cfg ? cfg[ what ] : FaultFlag::Enabled;
         if ( !ready || fault_cfg & FaultFlag::Enabled ) {
             if ( kernel )

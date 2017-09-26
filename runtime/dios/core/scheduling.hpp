@@ -21,7 +21,7 @@
 
 namespace __dios {
 
-using ThreadHandle = _DiOS_ThreadHandle;
+using TaskHandle = _DiOS_TaskHandle;
 
 struct DiosMainFrame : _VM_Frame {
     int l;
@@ -30,7 +30,7 @@ struct DiosMainFrame : _VM_Frame {
     char** envp;
 };
 
-struct ThreadRoutineFrame : _VM_Frame {
+struct TaskRoutineFrame : _VM_Frame {
     void* arg;
 };
 
@@ -119,67 +119,75 @@ private:
 };
 
 template < typename Process >
-struct Thread {
+struct Task {
     _VM_Frame *_frame;
     struct _DiOS_TLS *_tls;
     Process *_proc;
+    const _MD_Function *_fun;
 
     template <class F>
-    Thread( F routine, int tls_size, Process *proc ) noexcept
-        : _proc( proc )
+    Task( F routine, int tls_size, Process *proc ) noexcept
+        : _frame( nullptr ),
+          _proc( proc ),
+          _fun( __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) ) )
     {
-        auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) );
-        _frame = static_cast< _VM_Frame * >( __vm_obj_make( fun->frame_size ) );
-        _frame->pc = fun->entry_point;
-        _frame->parent = nullptr;
-
+        setupFrame();
         _tls = reinterpret_cast< struct _DiOS_TLS * >
             ( __vm_obj_make( sizeof( struct _DiOS_TLS ) + tls_size ) );
         _tls->_errno = 0;
     }
 
     template <class F>
-    Thread( void *mainFrame, void *mainTls, F routine, int tls_size, Process *proc ) noexcept
-        : _proc( proc )
+    Task( void *mainFrame, void *mainTls, F routine, int tls_size, Process *proc ) noexcept
+        : _frame( nullptr ),
+          _proc( proc ),
+          _fun( __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) ) )
     {
-        auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( routine ) );
-        _frame = static_cast< _VM_Frame * >( mainFrame );
-        __vm_obj_resize( _frame, fun->frame_size );
-        _frame->pc = fun->entry_point;
-        _frame->parent = nullptr;
-
+        setupFrame( mainFrame );
         _tls = reinterpret_cast< struct _DiOS_TLS * >( mainTls );
         __vm_obj_resize( _tls, sizeof( struct _DiOS_TLS ) + tls_size );
         _tls->_errno = 0;
     }
 
-    Thread( const Thread& o ) noexcept = delete;
-    Thread& operator=( const Thread& o ) noexcept = delete;
+    Task( const Task& o ) noexcept = delete;
+    Task& operator=( const Task& o ) noexcept = delete;
 
-    Thread( Thread&& o ) noexcept
+    Task( Task&& o ) noexcept
         : _frame( o._frame ), _tls( o._tls ), _proc( o._proc )
     {
         o._frame = nullptr;
         o._tls = nullptr;
     }
 
-    Thread& operator=( Thread&& o ) noexcept {
+    Task& operator=( Task&& o ) noexcept {
         std::swap( _frame, o._frame );
         std::swap( _tls, o._tls );
         std::swap( _proc, o._proc );
         return *this;
     }
 
-    ~Thread() noexcept {
+    ~Task() noexcept {
         clearFrame();
         __vm_obj_free( _tls );
     }
 
     bool active() const noexcept { return _frame; }
-    ThreadHandle getId() const noexcept { return _tls; }
+    TaskHandle getId() const noexcept { return _tls; }
     uint32_t getUserId() const noexcept {
         auto tid = reinterpret_cast< uint64_t >( _tls ) >> 32;
         return static_cast< uint32_t >( tid );
+    }
+
+    void setupFrame( void *frame = nullptr ) noexcept {
+        clearFrame();
+        if ( frame ) {
+            _frame = static_cast< _VM_Frame * >( frame );
+            __vm_obj_resize( _frame, _fun->frame_size );
+        }
+        else
+            _frame = static_cast< _VM_Frame * >( __vm_obj_make( _fun->frame_size ) );
+        _frame->pc = _fun->entry_point;
+        _frame->parent = nullptr;
     }
 
 private:
@@ -210,11 +218,11 @@ struct Scheduler : public Next
         void *globals;
     };
 
-    using Thread = __dios::Thread< Process >;
-    using Threads = SortedStorage< Thread >;
+    using Task = __dios::Task< Process >;
+    using Tasks = SortedStorage< Task >;
 
     Scheduler() :
-        threads( *new_object< Threads >() ),
+        tasks( *new_object< Tasks >() ),
         debug( new_object< Debug >() ),
         sighandlers( nullptr )
     {
@@ -224,7 +232,7 @@ struct Scheduler : public Next
     ~Scheduler()
     {
         delete_object( debug );
-        delete_object( &threads );
+        delete_object( &tasks );
     }
 
     template< typename Setup >
@@ -234,10 +242,10 @@ struct Scheduler : public Next
         s.proc1->globals = __vm_control( _VM_CA_Get, _VM_CR_Globals );
         s.proc1->pid = 1;
 
-        auto mainThr = newThreadMem( s.pool->get(), s.pool->get(), _start, 0, s.proc1 );
+        auto mainTask = newTaskMem( s.pool->get(), s.pool->get(), _start, 0, s.proc1 );
         auto argv = construct_main_arg( "arg.", s.env, true );
         auto envp = construct_main_arg( "env.", s.env );
-        setupMainThread( mainThr, argv.first, argv.second, envp.second );
+        setupMainTask( mainTask, argv.first, argv.second, envp.second );
 
         __vm_control( _VM_CA_Set, _VM_CR_Scheduler, run_scheduler< typename Setup::Context > );
 
@@ -253,18 +261,18 @@ struct Scheduler : public Next
         Next::setup( s );
     }
 
-    int threadCount() const noexcept { return threads.size(); }
-    Thread *chooseThread() noexcept
+    int taskCount() const noexcept { return tasks.size(); }
+    Task *chooseTask() noexcept
     {
-        if ( threads.empty() )
+        if ( tasks.empty() )
             return nullptr;
-        return threads[ __vm_choose( threads.size() ) ];
+        return tasks[ __vm_choose( tasks.size() ) ];
     }
 
     __attribute__(( noinline, __annotate__( "divine.debugfn" ) ))
-    void traceThreads() const noexcept
+    void traceTasks() const noexcept
     {
-        int c = threads.size();
+        int c = tasks.size();
         if ( c == 0 )
             return;
         struct PI { int pid, tid; unsigned choice; };
@@ -274,7 +282,7 @@ struct Scheduler : public Next
         for ( int i = 0; i != c; i++ )
         {
             pi_it->pid = 0;
-            auto tid = abstract::weaken( threads[ i ]->getId() );
+            auto tid = abstract::weaken( tasks[ i ]->getId() );
             auto tidhid = debug->hids.find( tid );
             if ( tidhid != debug->hids.end() )
                 pi_it->tid = tidhid->second;
@@ -298,20 +306,20 @@ struct Scheduler : public Next
     }
 
     template< typename... Args >
-    Thread *newThreadMem( void *mainFrame, void *mainTls, void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
+    Task *newTaskMem( void *mainFrame, void *mainTls, void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
     {
-        __dios_assert_v( routine, "Invalid thread routine" );
-        return threads.emplace( mainFrame, mainTls, routine, tls_size, proc );
+        __dios_assert_v( routine, "Invalid task routine" );
+        return tasks.emplace( mainFrame, mainTls, routine, tls_size, proc );
     }
 
     template< typename... Args >
-    Thread *newThread( void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
+    Task *newTask( void ( *routine )( Args... ), int tls_size, Process *proc ) noexcept
     {
-        __dios_assert_v( routine, "Invalid thread routine" );
-        return threads.emplace( routine, tls_size, proc );
+        __dios_assert_v( routine, "Invalid task routine" );
+        return tasks.emplace( routine, tls_size, proc );
     }
 
-    void setupMainThread( Thread * t, int argc, char** argv, char** envp ) noexcept {
+    void setupMainTask( Task * t, int argc, char** argv, char** envp ) noexcept {
         DiosMainFrame *frame = reinterpret_cast< DiosMainFrame * >( t->_frame );
         frame->l = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( main ) )->arg_count;
 
@@ -320,35 +328,35 @@ struct Scheduler : public Next
         frame->envp = envp;
     }
 
-    void setupThread( Thread * t, void *arg ) noexcept {
-        ThreadRoutineFrame *frame = reinterpret_cast< ThreadRoutineFrame * >( t->_frame );
+    void setupTask( Task * t, void *arg ) noexcept {
+        TaskRoutineFrame *frame = reinterpret_cast< TaskRoutineFrame * >( t->_frame );
         frame->arg = arg;
     }
 
-    void killThread( ThreadHandle tid ) noexcept  {
-        if ( tid == __dios_get_thread_handle() )
+    void killTask( TaskHandle tid ) noexcept  {
+        if ( tid == __dios_get_task_handle() )
             __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
-        bool res = threads.remove( tid );
-        __dios_assert_v( res, "Killing non-existing thread" );
+        bool res = tasks.remove( tid );
+        __dios_assert_v( res, "Killing non-existing task" );
     }
 
     void killProcess( pid_t id ) noexcept  {
         if ( !id ) {
 
-            size_t c = threads.size();
+            size_t c = tasks.size();
 
             for ( int i = 0; i < c; ++i )
-                delete_object( threads[ i ] );
+                delete_object( tasks[ i ] );
 
-            threads.erase( threads.begin(), threads.end() );
+            tasks.erase( tasks.begin(), tasks.end() );
             __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
             // ToDo: Erase processes
             return;
         }
 
-        auto r = std::remove_if( threads.begin(), threads.end(), [&]( Thread *t )
+        auto r = std::remove_if( tasks.begin(), tasks.end(), [&]( Task *t )
                                  {
-                                     if ( t->_tls == __dios_get_thread_handle() )
+                                     if ( t->_tls == __dios_get_task_handle() )
                                          __vm_control( _VM_CA_Set, _VM_CR_User2, nullptr );
                                      if ( t->_proc->pid == id )
                                      {
@@ -359,7 +367,7 @@ struct Scheduler : public Next
                                      return false;
                                 } );
 
-        threads.erase( r, threads.end() );
+        tasks.erase( r, tasks.end() );
         // ToDo: Erase processes
     }
 
@@ -382,43 +390,43 @@ struct Scheduler : public Next
         return 0;
     }
 
-    Thread* getCurrentThread() {
-        auto tid = __dios_get_thread_handle();
-        return threads.find( tid );
+    Task* getCurrentTask() {
+        auto tid = __dios_get_task_handle();
+        return tasks.find( tid );
     }
 
     pid_t getpid() {
-        return getCurrentThread()->_proc->pid;
+        return getCurrentTask()->_proc->pid;
     }
 
-    _DiOS_ThreadHandle start_thread( _DiOS_ThreadRoutine routine, void * arg, int tls_size ) {
-        auto t = newThread( routine, tls_size, getCurrentThread()->_proc );
-        setupThread( t, arg );
+    _DiOS_TaskHandle start_task( _DiOS_TaskRoutine routine, void * arg, int tls_size ) {
+        auto t = newTask( routine, tls_size, getCurrentTask()->_proc );
+        setupTask( t, arg );
         __vm_obj_shared( t->getId() );
         __vm_obj_shared( arg );
         return t->getId();
     }
 
-    void kill_thread( _DiOS_ThreadHandle id ) {
-        killThread( id );
+    void kill_task( _DiOS_TaskHandle id ) {
+        killTask( id );
     }
 
-    _DiOS_ThreadHandle *get_process_threads( _DiOS_ThreadHandle tid ) {
+    _DiOS_TaskHandle *get_process_tasks( _DiOS_TaskHandle tid ) {
         Process *proc;
-        for ( auto &t : threads ) {
+        for ( auto &t : tasks ) {
             if ( t->_tls == tid ) {
                 proc = t->_proc;
                 break;
             }
         }
         int count = 0;
-        for ( auto &t : threads ) {
+        for ( auto &t : tasks ) {
             if ( t->_proc == proc )
                 ++count;
         }
-        auto ret = static_cast< _DiOS_ThreadHandle * >( __vm_obj_make( sizeof( _DiOS_ThreadHandle ) * count ) );
+        auto ret = static_cast< _DiOS_TaskHandle * >( __vm_obj_make( sizeof( _DiOS_TaskHandle ) * count ) );
         int i = 0;
-        for ( auto &t : threads ) {
+        for ( auto &t : tasks ) {
             if ( t->_proc == proc ) {
                 ret[ i ] = t->_tls;
                 ++i;
@@ -436,12 +444,12 @@ struct Scheduler : public Next
     int _kill( pid_t pid, int sig, F func ) {
         sighandler_t handler;
         bool found = false;
-        Thread *thread;
-        for ( auto t : threads )
+        Task *task;
+        for ( auto t : tasks )
             if ( t->_proc->pid == pid )
             {
                 found = true;
-                thread = t;
+                task = t;
                 break;
             }
         if ( !found )
@@ -457,7 +465,7 @@ struct Scheduler : public Next
             return 0;
         if ( handler.f == sig_die )
         {
-            func( thread->_proc );
+            func( task->_proc );
             killProcess( pid );
         }
         else if ( handler.f == sig_fault )
@@ -467,8 +475,8 @@ struct Scheduler : public Next
             auto fun = __md_get_pc_meta( reinterpret_cast< _VM_CodePointer >( __dios_signal_trampoline ) );
             auto _frame = static_cast< __dios::TrampolineFrame * >( __vm_obj_make( fun->frame_size ) );
             _frame->pc = reinterpret_cast< _VM_CodePointer >( __dios_signal_trampoline );
-            _frame->interrupted = thread->_frame;
-            thread->_frame = _frame;
+            _frame->interrupted = task->_frame;
+            task->_frame = _frame;
             _frame->parent = nullptr;
             _frame->handler = handler.f;
         }
@@ -488,8 +496,8 @@ struct Scheduler : public Next
         auto& scheduler = *static_cast< Context * >( ctx );
         using Sys = Syscall< Context >;
 
-        scheduler.traceThreads();
-        Thread *t = scheduler.chooseThread();
+        scheduler.traceTasks();
+        Task *t = scheduler.chooseTask();
         while ( t && t->_frame )
         {
             __vm_control( _VM_CA_Set, _VM_CR_User2,
@@ -519,7 +527,7 @@ struct Scheduler : public Next
         __vm_control( _VM_CA_Bit, _VM_CR_Flags, _VM_CF_Cancel, _VM_CF_Cancel );
     }
 
-    Threads &threads;
+    Tasks &tasks;
     Debug *debug;
     Map< pid_t, Process* > zombies;
     sighandler_t *sighandlers;

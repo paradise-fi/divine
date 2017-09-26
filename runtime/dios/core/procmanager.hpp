@@ -17,9 +17,9 @@ struct ProcessManager : public Next
         bool calledExecve = false;
     };
 
-    using Thread = typename Next::Thread;
+    using Task = typename Next::Task;
 
-    Process* proc( Thread *t )
+    Process* proc( Task *t )
     {
         return static_cast< Process* >( t->_proc );
     }
@@ -50,33 +50,33 @@ struct ProcessManager : public Next
 
     Process* findProcess( pid_t pid )
     {
-        auto thread = std::find_if( this->threads.begin(), this->threads.end(), [&]( Thread *t )
+        auto task = std::find_if( this->tasks.begin(), this->tasks.end(), [&]( Task *t )
                                      { return proc(t)->pid == pid; } );
-        if ( thread == this->threads.end() )
+        if ( task == this->tasks.end() )
         {
             *__dios_get_errno() = ESRCH;
             return nullptr;
         }
-        return proc(*thread);
+        return proc(*task);
     }
 
     pid_t getppid()
     {
-        return proc(this->getCurrentThread())->ppid;
+        return proc(this->getCurrentTask())->ppid;
     }
 
     pid_t getsid( pid_t pid )
     {
         if ( pid == 0 )
-            return proc(this->getCurrentThread())->sid;
+            return proc(this->getCurrentTask())->sid;
         Process* proc = this->findProcess( pid );
         return proc ? proc->sid : -1;
     }
 
     pid_t setsid()
     {
-        Process* p = proc(this->getCurrentThread());
-        for( Thread* t : this->threads )
+        Process* p = proc(this->getCurrentTask());
+        for( Task* t : this->tasks )
             if( proc(t)->sid == p->sid && proc(t)->pgid == p->pid )
             {
                 *__dios_get_errno() = EPERM;
@@ -90,7 +90,7 @@ struct ProcessManager : public Next
     pid_t getpgid( pid_t pid )
     {
         if ( pid == 0 )
-            return proc(this->getCurrentThread())->pgid;
+            return proc(this->getCurrentTask())->pgid;
         Process* proc = this->findProcess( pid );
         return proc ? proc->pgid : -1;
     }
@@ -104,7 +104,7 @@ struct ProcessManager : public Next
         }
 
         Process* procToSet;
-        Process* currentProc = proc(this->getCurrentThread());
+        Process* currentProc = proc(this->getCurrentTask());
         if ( pid == 0 )
             procToSet = currentProc;
         else
@@ -125,9 +125,9 @@ struct ProcessManager : public Next
             *__dios_get_errno() = EPERM;
             return -1;
         }
-        if ( std::find_if( this->threads.begin(), this->threads.end(), [&]( Thread *t )
+        if ( std::find_if( this->tasks.begin(), this->tasks.end(), [&]( Task *t )
                           { return proc(t)->pgid == pgid && proc(t)->sid == procToSet->sid; } )
-            == this->threads.end() )
+            == this->tasks.end() )
             if ( procToSet->pid != pgid && pgid != 0 )
             {
                 *__dios_get_errno() = EPERM;
@@ -159,25 +159,25 @@ struct ProcessManager : public Next
 
     pid_t sysfork( void )
     {
-        auto tid = __dios_get_thread_handle();
-        auto thread = this->threads.find( tid );
-        Thread *newThread = static_cast< Thread * >( __vm_obj_clone( thread ) );
+        auto tid = __dios_get_task_handle();
+        auto task = this->tasks.find( tid );
+        Task *newTask = static_cast< Task * >( __vm_obj_clone( task ) );
 
         pid_t maxPid = 0;
-        for( auto t : this->threads )
+        for( auto t : this->tasks )
         {
             if ( (proc(t))->pid > maxPid )
                 maxPid = (proc(t))->pid;
         }
 
-        Process *newThreadProc = proc( newThread );
-        Process *threadProc = proc( thread );
-        newThreadProc->pid = maxPid + 1;
-        newThreadProc->ppid = threadProc->pid;
-        newThreadProc->sid = threadProc->sid;
-        newThreadProc->pgid = threadProc->pgid;
-        this->threads.insert( newThread );
-        return newThreadProc->pid;
+        Process *newTaskProc = proc( newTask );
+        Process *taskProc = proc( task );
+        newTaskProc->pid = maxPid + 1;
+        newTaskProc->ppid = taskProc->pid;
+        newTaskProc->sid = taskProc->sid;
+        newTaskProc->pgid = taskProc->pgid;
+        this->tasks.insert( newTask );
+        return newTaskProc->pid;
     }
 
     pid_t wait4(pid_t pid, int *wstatus, int options, struct rusage *rusage)
@@ -191,7 +191,7 @@ struct ProcessManager : public Next
         if ( rusage )
             memset( rusage, 0, sizeof( struct rusage ) );
 
-        Process* parent = proc( this->threads.find( __dios_get_thread_handle() ) );
+        Process* parent = proc( this->tasks.find( __dios_get_task_handle() ) );
         pid_t childpid;
 
         auto pid_criteria_func = [&]( auto pr )
@@ -217,7 +217,7 @@ struct ProcessManager : public Next
             if ( options & WNOHANG )
             {
                 *__dios_get_errno() = ECHILD;
-                if ( std::count_if( this->threads.begin(), this->threads.end(), pid_criteria_func ) )
+                if ( std::count_if( this->tasks.begin(), this->tasks.end(), pid_criteria_func ) )
                     return 0;
                 else
                     return -1;
@@ -245,7 +245,7 @@ struct ProcessManager : public Next
 
     void exit_process( int code )
     {
-        Process* p = proc( this->threads.find( __dios_get_thread_handle() ) );
+        Process* p = proc( this->tasks.find( __dios_get_task_handle() ) );
         p->exitStatus = code << 8;
         Next::kill( p->pid, SIGKILL );
     }
