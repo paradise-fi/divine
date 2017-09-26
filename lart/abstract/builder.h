@@ -375,10 +375,18 @@ private:
             return std::make_tuple( intrType( i ), i->getOpcode(), dom );
         }
 
-        using Key = Union< IKey, ICmpKey >;
+        // SrcType, DestType, opcode, domain
+        using CastKey = std::tuple< llvm::Type *, llvm::Type *, OpCode, Domain >;
+        CastKey castKey( llvm::CastInst * i, Domain dom )  {
+            return std::make_tuple( i->getSrcTy(), i->getDestTy(), i->getOpcode(), dom );
+        }
+
+        using Key = Union< IKey, ICmpKey, CastKey >;
         Key key( const AbstractValue & av ) {
             if ( auto icmp = av.safeGet< llvm::ICmpInst >() )
                 return icmpKey( icmp, av.domain );
+            if ( auto cast = av.safeGet< llvm::CastInst >() )
+                return castKey( cast, av.domain );
             return iKey( av.get< llvm::Instruction >(), av.domain );
         }
 
