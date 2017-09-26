@@ -4,6 +4,7 @@
 #define __DIOS_ARRAY_HPP__
 
 #include <sys/divm.h>
+#include <iterator>
 
 namespace __dios {
 
