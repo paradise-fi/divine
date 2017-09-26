@@ -53,7 +53,7 @@ struct InterruptMask {
 };
 
 template< typename T >
-using ThreadMap = __dios::ArrayMap< _DiOS_ThreadHandle, T >;
+using ThreadMap = __dios::ArrayMap< _DiOS_TaskHandle, T >;
 
 template< typename T >
 using Array = __dios::Array< T >;
@@ -272,30 +272,30 @@ struct Buffer : Array< BufferLine > {
 
 struct Buffers : ThreadMap< Buffer > {
 
-    void flushOne( _DiOS_ThreadHandle which ) __attribute__((__noinline__, __flatten__)) {
+    void flushOne( _DiOS_TaskHandle which ) __attribute__((__noinline__, __flatten__)) {
         __dios::InterruptMask masked;
         auto *buf = getIfExists( which );
         assert( bool( buf ) );
         buf->flushOne();
     }
 
-    Buffer *getIfExists( _DiOS_ThreadHandle h ) {
+    Buffer *getIfExists( _DiOS_TaskHandle h ) {
         auto it = find( h );
         return it != end() ? &it->second : nullptr;
     }
 
-    Buffer &get( _DiOS_ThreadHandle tid ) {
+    Buffer &get( _DiOS_TaskHandle tid ) {
         Buffer *b = getIfExists( tid );
         if ( !b ) {
             b = &emplace( tid, Buffer{} ).first->second;
             // start flusher thread when store buffer for the thread is first used
-            __dios_start_thread( &__lart_weakmem_flusher_main, tid, 0 );
+            __dios_start_task( &__lart_weakmem_flusher_main, tid, 0 );
         }
         return *b;
     }
 
-    Buffer *getIfExists() { return getIfExists( __dios_get_thread_handle() ); }
-    Buffer &get() { return get( __dios_get_thread_handle() ); }
+    Buffer *getIfExists() { return getIfExists( __dios_get_task_handle() ); }
+    Buffer &get() { return get( __dios_get_task_handle() ); }
 
     void dump() {
         auto &hids = __dios::get_debug().hids;
@@ -308,7 +308,7 @@ struct Buffers : ThreadMap< Buffer > {
                 char buffer[] = "thread 0xdeadbeafdeadbeaf*: ";
                 snprintf( buffer, sizeof( buffer ) - 1, "thread: %d%s ",
                                   nice_id,
-                                  p.first == __dios_get_thread_handle() ? "*:" : ": " );
+                                  p.first == __dios_get_task_handle() ? "*:" : ": " );
                 __vm_trace( _VM_T_Text, buffer );
                 p.second.dump();
             }
@@ -343,7 +343,7 @@ void __lart_weakmem_dump() noexcept __attribute__((__annotate__("divine.debugfn"
 using namespace lart::weakmem;
 
 void __lart_weakmem_flusher_main( void *_which ) {
-    _DiOS_ThreadHandle which = static_cast< _DiOS_ThreadHandle >( _which );
+    _DiOS_TaskHandle which = static_cast< _DiOS_TaskHandle >( _which );
 
     while ( true )
         __lart_weakmem.storeBuffers.flushOne( which );
@@ -424,7 +424,7 @@ uint64_t __lart_weakmem_load( char *addr, uint32_t bitwidth, __lart_weakmem_orde
         return load( addr, bitwidth );
     }
 
-    auto tid = __dios_get_thread_handle();
+    auto tid = __dios_get_task_handle();
     if ( subseteq( MemoryOrder::AtomicOp, ord ) ) {
         // make sure we read the last value of this address
         for ( auto &p : __lart_weakmem.storeBuffers ) {
