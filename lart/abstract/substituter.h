@@ -45,8 +45,7 @@ struct Substituter {
     }
 
     void process( llvm::Argument * arg ) {
-        if ( isAbstract( arg->getType() ) )
-            vmap[ arg ] = argLift( arg );
+        vmap[ arg ] = argLift( arg );
     }
 
     void process( llvm::Value * val ) {

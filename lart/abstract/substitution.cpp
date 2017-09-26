@@ -137,16 +137,21 @@ void Substitution::run( llvm::Module & m ) {
         return { v->user_begin(), v->user_end() };
     };
 
+    for ( auto & fn : funToValMap )
+        for ( auto & arg : fn.first->args() )
+            if ( isAbstract( arg.getType(), data.tmap ) )
+                fn.second.push_back( &arg );
     for ( auto & fn : funToValMap ) {
         if ( fn.first->hasName() && fn.first->getName().startswith( "lart." ) )
             continue;
-        for ( auto & arg : fn.first->args() )
-            sb.process( &arg );
         removeInvalidAttributes( fn.first, data.tmap );
         auto deps = analysis::postorder( fn.second, succs );
-        for ( const auto & dep : lart::util::reverse( deps ) )
+        for ( const auto & dep : lart::util::reverse( deps ) ) {
+            if( const auto & a = llvm::dyn_cast< llvm::Argument >( dep ) )
+                sb.process( a );
             if( const auto & i = llvm::dyn_cast< llvm::Instruction >( dep ) )
                 sb.process( i );
+        }
     }
 
     } // end RAII substitution builder
