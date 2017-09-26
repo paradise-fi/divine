@@ -10,18 +10,18 @@ pid_t fork( void )
     __run_atfork_handlers( 0 );
     __dios::InterruptMask mask;
 
-    auto *threads = __dios_get_process_threads();
+    auto *tasks = __dios_get_process_tasks();
     __dios_syscall( SYS_sysfork, &child_pid );
     pid_t new_pid = getpid();
     bool is_parent = old_pid == new_pid;
 
     if ( !is_parent )
     {
-        auto current_thread = __dios_get_thread_handle();
-        int cnt = __vm_obj_size( threads ) / sizeof( _DiOS_ThreadHandle );
+        auto current_task = __dios_get_task_handle();
+        int cnt = __vm_obj_size( tasks ) / sizeof( _DiOS_TaskHandle );
         for ( int i = 0; i < cnt; ++i )
-            if ( threads[ i ] != current_thread )
-                 __vm_obj_free( threads[ i ] );
+            if ( tasks[ i ] != current_task )
+                 __vm_obj_free( tasks[ i ] );
 }
 
     mask.without( [=]{ __run_atfork_handlers( is_parent? 1 : 2 ); } );
